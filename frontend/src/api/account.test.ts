@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
   completeStepUp,
   confirmEmailChange,
@@ -21,7 +22,7 @@ import { AuthenticationAPIError } from './core'
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const passkey = (kind: 'assertion' | 'registration') => ({
@@ -45,8 +46,8 @@ const passkey = (kind: 'assertion' | 'registration') => ({
 })
 
 describe('account API client', () => {
-  beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204))))
-  afterEach(() => vi.unstubAllGlobals())
+  beforeEach(() => stubGlobal('fetch', mock().mockResolvedValue(response(204))))
+  afterEach(() => restoreGlobals())
 
   it('sends protected no-content account operations to their endpoint', async () => {
     await requestEmailChange('csrf', 'new@example.com')
@@ -70,10 +71,9 @@ describe('account API client', () => {
   })
 
   it('returns available step-up methods and serializes each credential form', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi
-        .fn()
+      mock()
         .mockResolvedValueOnce(response(200, { methods: ['password', 'totp'] }))
         .mockResolvedValue(response(204)),
     )
@@ -88,13 +88,12 @@ describe('account API client', () => {
   })
 
   it('obtains a WebAuthn assertion before completing step-up', async () => {
-    vi.stubGlobal('navigator', {
-      credentials: { get: vi.fn().mockResolvedValue(passkey('assertion')) },
+    stubGlobal('navigator', {
+      credentials: { get: mock().mockResolvedValue(passkey('assertion')) },
     })
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi
-        .fn()
+      mock()
         .mockResolvedValueOnce(response(200, { publicKey: { challenge: 'AA' } }))
         .mockResolvedValueOnce(response(204)),
     )
@@ -106,13 +105,12 @@ describe('account API client', () => {
   })
 
   it('handles enrollment, passkey registration, and recovery-code output', async () => {
-    vi.stubGlobal('navigator', {
-      credentials: { create: vi.fn().mockResolvedValue(passkey('registration')) },
+    stubGlobal('navigator', {
+      credentials: { create: mock().mockResolvedValue(passkey('registration')) },
     })
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi
-        .fn()
+      mock()
         .mockResolvedValueOnce(response(200, { secret: 'secret', qr_code: 'qr' }))
         .mockResolvedValueOnce(
           response(200, {
@@ -135,7 +133,7 @@ describe('account API client', () => {
   })
 
   it('turns API failures into a typed error and identifies step-up requirements', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(400, { error: 'step_up_required' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(400, { error: 'step_up_required' })))
     await expect(startStepUp('csrf')).rejects.toBeInstanceOf(AuthenticationAPIError)
     expect(isStepUpRequired(new AuthenticationAPIError('step up', 'step_up_required'))).toBe(true)
     expect(isStepUpRequired(new Error('other'))).toBe(false)

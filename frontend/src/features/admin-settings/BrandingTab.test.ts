@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { brandingTabDictionary } from './BrandingTab.i18n'
 import { brandingColorError, brandingFooterLinkError, brandingSupportURLError } from './BrandingTab'
 

@@ -1,10 +1,11 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import { renderWithRouter } from '../test/renderWithRouter'
 import { SystemShell } from './SystemShell'
 
 describe('SystemShell', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('marks the active nav item and shows a return link back to the admin console', async () => {
     await renderWithRouter(
@@ -31,8 +32,8 @@ describe('SystemShell', () => {
   })
 
   it('opens the account menu and signs the system administrator out', async () => {
-    const assign = vi.fn()
-    vi.stubGlobal('location', { ...window.location, assign })
+    const assign = mock()
+    stubGlobal('location', { ...window.location, assign })
     await renderWithRouter(
       <SystemShell active="key-health" actorUsername="Sonoko" title="Signing key health">
         <p>content</p>

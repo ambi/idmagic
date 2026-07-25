@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, mock } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Input } from './input'
 
@@ -11,7 +11,7 @@ describe('Input Component', () => {
   })
 
   it('passes values and handles onChange events', () => {
-    const handleChange = vi.fn()
+    const handleChange = mock()
     render(<Input placeholder="Enter name" onChange={handleChange} />)
     const input = screen.getByPlaceholderText('Enter name') as HTMLInputElement
     fireEvent.change(input, { target: { value: 'John' } })

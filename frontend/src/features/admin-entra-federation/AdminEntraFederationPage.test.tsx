@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminEntraFederationPage, EntraFederationList } from './AdminEntraFederationPage'
@@ -12,7 +13,7 @@ function renderEn(ui: Parameters<typeof render>[0]) {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the entra federation page in English by default', async () => {
     await renderWithRouter(
@@ -35,10 +36,10 @@ describe('locale', () => {
 
 describe('EntraFederationList', () => {
   it('renders an empty state and delegates a deletion action', () => {
-    const { rerender } = renderEn(<EntraFederationList items={[]} onDelete={vi.fn()} />)
+    const { rerender } = renderEn(<EntraFederationList items={[]} onDelete={mock()} />)
     expect(screen.getByText(t.noFederationsNotice)).toBeInTheDocument()
 
-    const onDelete = vi.fn()
+    const onDelete = mock()
     rerender(
       <LocaleProvider initialLocale="en">
         <EntraFederationList

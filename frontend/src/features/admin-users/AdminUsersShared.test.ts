@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
 import type { AttributeValue, UserAttributeDef } from '../../types'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'

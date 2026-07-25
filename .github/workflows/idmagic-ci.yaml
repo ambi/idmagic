@@ -46,6 +46,14 @@ jobs:
       - name: UI type check
         working-directory: frontend
         run: bun run typecheck
+      - name: UI unit tests
+        working-directory: frontend
+        run: bun run test:unit:coverage
+      - name: Upload UI coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
       - name: UI build
         working-directory: frontend
         run: bun run build

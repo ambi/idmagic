@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminUserEditPage } from './AdminUserEditPage'
@@ -10,7 +11,7 @@ const t = adminUsersDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const emptySchema: TenantUserAttributeSchema = {
@@ -35,13 +36,13 @@ const user: AdminUser = {
 
 describe('AdminUserEditPage', () => {
   const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('shows an error and keeps the form when updating profile fields fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
+      mock(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
     )
     await renderWithRouter(<AdminUserEditPage csrfToken="csrf" user={user} schema={emptySchema} />)
 
@@ -53,10 +54,10 @@ describe('AdminUserEditPage', () => {
   })
 
   it('requires a confirmation step before submitting a role change', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, user))),
+      mock(() => Promise.resolve(response(200, user))),
     )
     await renderWithRouter(<AdminUserEditPage csrfToken="csrf" user={user} schema={emptySchema} />)
 

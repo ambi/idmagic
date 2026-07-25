@@ -11,7 +11,7 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["vite/client", "vitest/globals"],
+    "types": ["vite/client", "bun-types"],
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,

@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminGroupsPage } from './AdminGroupsListPage'
@@ -10,7 +11,7 @@ const t = adminGroupsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const group: AdminGroup = {
@@ -24,12 +25,12 @@ const group: AdminGroup = {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the group list in English by default', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { groups: [] }))),
+      mock(() => Promise.resolve(response(200, { groups: [] }))),
     )
     await renderWithRouter(<AdminGroupsPage csrfToken="csrf" groups={[]} />)
     expect(
@@ -39,9 +40,9 @@ describe('locale', () => {
   })
 
   it('renders the group list in Japanese when explicitly selected', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { groups: [] }))),
+      mock(() => Promise.resolve(response(200, { groups: [] }))),
     )
     await renderWithRouter(<AdminGroupsPage csrfToken="csrf" groups={[]} />, { locale: 'ja' })
     expect(
@@ -51,12 +52,12 @@ describe('locale', () => {
 })
 
 describe('AdminGroupsPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('deletes a group and refreshes the list on success', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/groups/group-1/members')) {
           return Promise.resolve(response(200, { members: [] }))
         }
@@ -85,9 +86,9 @@ describe('AdminGroupsPage', () => {
   })
 
   it('shows an error when deleting a group fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/groups/group-1') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the group.' }))
         }

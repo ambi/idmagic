@@ -1,10 +1,11 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import { renderWithRouter } from '../test/renderWithRouter'
 import { AdminShell } from './AdminShell'
 
 describe('AdminShell', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('marks the active nav item and shows a two-level breadcrumb', async () => {
     await renderWithRouter(
@@ -43,8 +44,8 @@ describe('AdminShell', () => {
   })
 
   it('opens the account menu and signs the admin out', async () => {
-    const assign = vi.fn()
-    vi.stubGlobal('location', { ...window.location, assign })
+    const assign = mock()
+    stubGlobal('location', { ...window.location, assign })
     await renderWithRouter(
       <AdminShell active="dashboard" actorUsername="Alice" title="Dashboard">
         <p>content</p>

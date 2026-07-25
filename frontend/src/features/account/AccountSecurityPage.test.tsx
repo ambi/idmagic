@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, afterEach, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import {
@@ -23,7 +24,7 @@ import type {
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 // isWebAuthnSupported() は window.PublicKeyCredential の有無で判定するため、
@@ -55,14 +56,14 @@ describe('TotpEnrollmentForm', () => {
   }
 
   it('reports digit-only code changes', () => {
-    const onEnrollCodeChange = vi.fn()
+    const onEnrollCodeChange = mock()
     render(
       <TotpEnrollmentForm
         enrollment={enrollment}
         enrollCode=""
         busy={false}
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
+        onConfirm={mock()}
+        onCancel={mock()}
         onEnrollCodeChange={onEnrollCodeChange}
       />,
     )
@@ -78,24 +79,24 @@ describe('TotpEnrollmentForm', () => {
         enrollment={enrollment}
         enrollCode="123"
         busy={false}
-        onConfirm={vi.fn()}
-        onCancel={vi.fn()}
-        onEnrollCodeChange={vi.fn()}
+        onConfirm={mock()}
+        onCancel={mock()}
+        onEnrollCodeChange={mock()}
       />,
     )
     expect(screen.getByRole('button', { name: '登録を完了' })).toBeDisabled()
   })
 
   it('calls onCancel when cancel is clicked', () => {
-    const onCancel = vi.fn()
+    const onCancel = mock()
     render(
       <TotpEnrollmentForm
         enrollment={enrollment}
         enrollCode=""
         busy={false}
-        onConfirm={vi.fn()}
+        onConfirm={mock()}
         onCancel={onCancel}
-        onEnrollCodeChange={vi.fn()}
+        onEnrollCodeChange={mock()}
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
@@ -109,8 +110,8 @@ describe('TotpRemovalForm', () => {
       <TotpRemovalForm
         removeCode="12"
         busy={false}
-        onSubmit={vi.fn()}
-        onRemoveCodeChange={vi.fn()}
+        onSubmit={mock()}
+        onRemoveCodeChange={mock()}
       />,
     )
     expect(screen.getByRole('button', { name: '認証アプリを解除' })).toBeDisabled()
@@ -121,8 +122,8 @@ describe('TotpRemovalForm', () => {
       <TotpRemovalForm
         removeCode="123456"
         busy={false}
-        onSubmit={vi.fn()}
-        onRemoveCodeChange={vi.fn()}
+        onSubmit={mock()}
+        onRemoveCodeChange={mock()}
       />,
     )
     expect(screen.getByRole('button', { name: '認証アプリを解除' })).toBeEnabled()
@@ -138,12 +139,12 @@ describe('PasskeyList', () => {
   }
 
   it('shows an empty state when there are no passkeys', () => {
-    render(<PasskeyList passkeys={[]} busy={false} onRemove={vi.fn()} />)
+    render(<PasskeyList passkeys={[]} busy={false} onRemove={mock()} />)
     expect(screen.getByText('登録済みのパスキーはありません。')).toBeInTheDocument()
   })
 
   it('calls onRemove with the credential id', () => {
-    const onRemove = vi.fn()
+    const onRemove = mock()
     render(<PasskeyList passkeys={[passkey]} busy={false} onRemove={onRemove} />)
     fireEvent.click(screen.getByRole('button', { name: /解除/ }))
     expect(onRemove).toHaveBeenCalledWith('cred-1')
@@ -152,13 +153,13 @@ describe('PasskeyList', () => {
 
 describe('PasskeyRegisterForm', () => {
   it('reports label changes', () => {
-    const onLabelChange = vi.fn()
+    const onLabelChange = mock()
     render(
       <PasskeyRegisterForm
         passkeyLabel=""
         busy={false}
         onLabelChange={onLabelChange}
-        onRegister={vi.fn()}
+        onRegister={mock()}
       />,
     )
     fireEvent.change(screen.getByLabelText('パスキーの名前 (任意)'), {
@@ -168,12 +169,12 @@ describe('PasskeyRegisterForm', () => {
   })
 
   it('calls onRegister when the button is clicked', () => {
-    const onRegister = vi.fn()
+    const onRegister = mock()
     render(
       <PasskeyRegisterForm
         passkeyLabel="My Key"
         busy={false}
-        onLabelChange={vi.fn()}
+        onLabelChange={mock()}
         onRegister={onRegister}
       />,
     )
@@ -192,8 +193,8 @@ describe('RecoveryCodesPanel', () => {
         recovery={emptyRecovery}
         generatedCodes={null}
         busy={false}
-        onGenerate={vi.fn()}
-        onRevoke={vi.fn()}
+        onGenerate={mock()}
+        onRevoke={mock()}
       />,
     )
     expect(screen.getByRole('button', { name: 'リカバリコードを生成' })).toBeInTheDocument()
@@ -206,8 +207,8 @@ describe('RecoveryCodesPanel', () => {
         recovery={activeRecovery}
         generatedCodes={null}
         busy={false}
-        onGenerate={vi.fn()}
-        onRevoke={vi.fn()}
+        onGenerate={mock()}
+        onRevoke={mock()}
       />,
     )
     expect(screen.getByRole('button', { name: 'リカバリコードを再生成' })).toBeInTheDocument()
@@ -220,8 +221,8 @@ describe('RecoveryCodesPanel', () => {
         recovery={activeRecovery}
         generatedCodes={['aaaa-bbbb', 'cccc-dddd']}
         busy={false}
-        onGenerate={vi.fn()}
-        onRevoke={vi.fn()}
+        onGenerate={mock()}
+        onRevoke={mock()}
       />,
     )
     expect(screen.getByText('aaaa-bbbb')).toBeInTheDocument()
@@ -229,13 +230,13 @@ describe('RecoveryCodesPanel', () => {
   })
 
   it('calls onRevoke when the revoke button is clicked', () => {
-    const onRevoke = vi.fn()
+    const onRevoke = mock()
     render(
       <RecoveryCodesPanel
         recovery={activeRecovery}
         generatedCodes={null}
         busy={false}
-        onGenerate={vi.fn()}
+        onGenerate={mock()}
         onRevoke={onRevoke}
       />,
     )
@@ -258,12 +259,12 @@ describe('AccountSecurityPage', () => {
     issuer: 'idmagic',
   }
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('enrolls a TOTP factor and shows a success notice', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/mfa/totp/enroll/start'))
           return Promise.resolve(response(200, enrollment))
         if (url.includes('/mfa/totp/enroll/confirm')) return Promise.resolve(response(204))
@@ -284,9 +285,9 @@ describe('AccountSecurityPage', () => {
   })
 
   it('shows an error when confirming the TOTP code fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/mfa/totp/enroll/start'))
           return Promise.resolve(response(200, enrollment))
         if (url.includes('/mfa/totp/enroll/confirm')) {
@@ -309,9 +310,9 @@ describe('AccountSecurityPage', () => {
   })
 
   it('keeps existing recovery codes when step-up re-authentication is cancelled', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/step_up/start')) {
           return Promise.resolve(response(200, { methods: ['password'] }))
         }

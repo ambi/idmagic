@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminApplicationDetailPage } from './AdminApplicationDetailPage'
@@ -10,7 +11,7 @@ const t = adminApplicationsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const app: AdminApplication = {
@@ -30,12 +31,12 @@ const app: AdminApplication = {
 const detail: AdminApplicationDetail = { application: app }
 
 describe('AdminApplicationDetailPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('shows an error and keeps the confirmation open when deletion fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(409, { message: 'Could not delete the application.' }))),
+      mock(() => Promise.resolve(response(409, { message: 'Could not delete the application.' }))),
     )
     await renderWithRouter(<AdminApplicationDetailPage csrfToken="csrf" detail={detail} />)
 

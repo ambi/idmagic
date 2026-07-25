@@ -1,5 +1,6 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { ApiTokensTab } from './ApiTokensTab'
@@ -9,11 +10,11 @@ const t = adminSettingsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('ApiTokensTab', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('selects scopes, issues a JWT once, lists scopes, and revokes it', async () => {
     const meta = {
@@ -22,10 +23,9 @@ describe('ApiTokensTab', () => {
       scopes: ['scim:users:read', 'scim:users:write'],
       created_at: '2026-07-23T00:00:00Z',
     }
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi
-        .fn()
+      mock()
         .mockResolvedValueOnce(response(200, { tokens: [] }))
         .mockResolvedValueOnce(response(201, { token: 'header.payload.signature', meta }))
         .mockResolvedValueOnce(response(200, { tokens: [meta] }))
@@ -42,7 +42,7 @@ describe('ApiTokensTab', () => {
 
     expect(await screen.findByDisplayValue('header.payload.signature')).toBeInTheDocument()
     expect(await screen.findByText('scim:users:read')).toBeInTheDocument()
-    const post = vi.mocked(fetch).mock.calls.find(([, init]) => init?.method === 'POST')
+    const post = (fetch as any).mock.calls.find(([, init]: any[]) => init?.method === 'POST')
     expect(post?.[1]?.body).toBe(
       JSON.stringify({
         description: 'Okta',
@@ -51,12 +51,15 @@ describe('ApiTokensTab', () => {
       }),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: t.revoke }))
-    await waitFor(() => expect(screen.queryByText('scim:users:read')).not.toBeInTheDocument())
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: t.revoke }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.queryByText('scim:users:read')).not.toBeInTheDocument()
   })
 
   it('offers account self-service scopes without a client selection', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
     await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="default" />)
     await screen.findByText(t.noTokensNotice)
     fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
@@ -80,7 +83,7 @@ describe('ApiTokensTab', () => {
   })
 
   it('offers application and protocol management scopes', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
 
     await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="default" />)
     await screen.findByText(t.noTokensNotice)
@@ -107,7 +110,7 @@ describe('ApiTokensTab', () => {
   })
 
   it('shows all API base URLs and groups scopes with human-readable guidance', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
 
     await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="acme" />)
     await screen.findByText(t.noTokensNotice)

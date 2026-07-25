@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminAuditEventsPage } from './AdminAuditEventsPage'
@@ -12,7 +13,7 @@ const t = adminAuditEventsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const event: AdminAuditEvent = {
@@ -55,7 +56,7 @@ function BrowserHistoryHarness() {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the audit events page in English by default', async () => {
     await renderWithRouter(
@@ -91,12 +92,12 @@ describe('locale', () => {
 })
 
 describe('AdminAuditEventsPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('shows an empty state when a filtered query returns no events', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { events: [] }))),
+      mock(() => Promise.resolve(response(200, { events: [] }))),
     )
     await renderWithRouter(
       <AdminAuditEventsPage
@@ -114,9 +115,9 @@ describe('AdminAuditEventsPage', () => {
   })
 
   it('shows an error when querying audit events fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(500, { message: 'Could not fetch audit events.' }))),
+      mock(() => Promise.resolve(response(500, { message: 'Could not fetch audit events.' }))),
     )
     await renderWithRouter(
       <AdminAuditEventsPage
@@ -165,11 +166,11 @@ describe('AdminAuditEventsPage', () => {
   })
 
   it('calls onSearch with the built query on submit (URL update on search execution, wi-147)', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { events: [] }))),
+      mock(() => Promise.resolve(response(200, { events: [] }))),
     )
-    const onSearch = vi.fn()
+    const onSearch = mock()
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
@@ -193,11 +194,11 @@ describe('AdminAuditEventsPage', () => {
   })
 
   it('resolves username via the actor username condition (username query param, wi-147)', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { events: [] }))),
+      mock(() => Promise.resolve(response(200, { events: [] }))),
     )
-    const onSearch = vi.fn()
+    const onSearch = mock()
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"

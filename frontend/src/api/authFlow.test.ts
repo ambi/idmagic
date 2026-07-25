@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
   changePassword,
   continueBrowserFlow,
@@ -16,15 +17,15 @@ import { AuthenticationAPIError } from './core'
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('auth flow API client', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { next: '/next' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { next: '/next' })))
   })
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('submits browser-flow forms with CSRF protection and returns the destination', async () => {
     await expect(login('csrf', 'alice', 'secret', '/continue')).resolves.toEqual({ next: '/next' })
@@ -44,7 +45,7 @@ describe('auth flow API client', () => {
   })
 
   it('sends password changes and accepts a no-content response', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
+    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     await expect(changePassword('csrf', 'old', 'new')).resolves.toBeUndefined()
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/auth/change_password'),
@@ -55,9 +56,9 @@ describe('auth flow API client', () => {
   })
 
   it('exposes password-policy violations from change and reset requests', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      mock().mockResolvedValue(
         response(400, {
           error: 'password_policy',
           message: 'weak password',
@@ -75,15 +76,15 @@ describe('auth flow API client', () => {
   })
 
   it('reports ordinary failed password-reset requests as API errors', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(500, { error: 'unavailable' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(500, { error: 'unavailable' })))
     await expect(requestPasswordReset('csrf', 'alice@example.com')).rejects.toBeInstanceOf(
       AuthenticationAPIError,
     )
   })
 
   it('redirects to next or redirect_to and rejects a malformed result', () => {
-    const assign = vi.fn()
-    vi.stubGlobal('location', { ...window.location, assign })
+    const assign = mock()
+    stubGlobal('location', { ...window.location, assign })
     continueBrowserFlow({ next: '/next' })
     continueBrowserFlow({ redirect_to: '/redirect' })
     expect(assign).toHaveBeenNthCalledWith(1, '/next')

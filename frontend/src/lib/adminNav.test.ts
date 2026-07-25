@@ -1,18 +1,19 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import { adminNavItems } from './adminNav'
 
 describe('adminNavItems', () => {
   const originalLocation = window.location
 
   beforeEach(() => {
-    vi.stubGlobal('location', {
+    stubGlobal('location', {
       ...originalLocation,
       pathname: '/realms/test-tenant',
     })
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
+    restoreGlobals()
   })
 
   it('should return all admin nav items with specified item active', () => {

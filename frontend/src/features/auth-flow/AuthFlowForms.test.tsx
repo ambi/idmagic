@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, mock } from 'bun:test'
 import { ForgotPasswordFormPresentation } from './ForgotPasswordPage'
 import { LoginFormPresentation } from './LoginPage'
 import { ResetPasswordFormPresentation } from './ResetPasswordPage'
@@ -14,19 +14,19 @@ import { renderWithRouter } from '../../test/renderWithRouter'
 
 describe('LoginFormPresentation', () => {
   it('toggles password visibility through the container callback', () => {
-    const onTogglePassword = vi.fn()
+    const onTogglePassword = mock()
     render(
       <LoginFormPresentation
         submitting={false}
         showPassword={false}
-        onSubmit={vi.fn()}
+        onSubmit={mock()}
         onTogglePassword={onTogglePassword}
       />,
     )
 
     expect(screen.getByLabelText('パスワード')).toHaveAttribute('type', 'password')
     fireEvent.click(screen.getByRole('button', { name: 'パスワードを表示' }))
-    expect(onTogglePassword).toHaveBeenCalledOnce()
+    expect(onTogglePassword).toHaveBeenCalledTimes(1)
   })
 
   it('disables inputs and submit while submitting', () => {
@@ -34,8 +34,8 @@ describe('LoginFormPresentation', () => {
       <LoginFormPresentation
         submitting
         showPassword={false}
-        onSubmit={vi.fn()}
-        onTogglePassword={vi.fn()}
+        onSubmit={mock()}
+        onTogglePassword={mock()}
       />,
     )
 
@@ -46,7 +46,7 @@ describe('LoginFormPresentation', () => {
 
 describe('ForgotPasswordFormPresentation', () => {
   it('prevents a duplicate reset request after submission', () => {
-    render(<ForgotPasswordFormPresentation submitting={false} submitted onSubmit={vi.fn()} />)
+    render(<ForgotPasswordFormPresentation submitting={false} submitted onSubmit={mock()} />)
 
     expect(screen.getByLabelText('メールアドレス')).toBeDisabled()
     expect(screen.getByRole('button', { name: /リセットリンクを送信/ })).toBeDisabled()
@@ -55,7 +55,7 @@ describe('ForgotPasswordFormPresentation', () => {
 
 describe('ResetPasswordFormPresentation', () => {
   it('requires a valid reset token before enabling submission', () => {
-    render(<ResetPasswordFormPresentation token="" submitting={false} onSubmit={vi.fn()} />)
+    render(<ResetPasswordFormPresentation token="" submitting={false} onSubmit={mock()} />)
 
     expect(screen.getByLabelText('新しいパスワード')).toBeDisabled()
     expect(screen.getByRole('button', { name: /パスワードを更新/ })).toBeDisabled()
@@ -64,7 +64,7 @@ describe('ResetPasswordFormPresentation', () => {
 
 describe('EmailVerificationAction', () => {
   it('shows an invalid-link error when no token is available', () => {
-    render(<EmailVerificationAction token="" state="idle" onConfirm={vi.fn()} />)
+    render(<EmailVerificationAction token="" state="idle" onConfirm={mock()} />)
 
     expect(screen.getByText(/確認リンクが正しくありません/)).toBeInTheDocument()
   })
@@ -82,14 +82,14 @@ describe('availableSecondFactorMethods', () => {
 
 describe('DeviceCodeFormPresentation', () => {
   it('normalizes the code and only enables actions once it is complete', () => {
-    const onCodeChange = vi.fn()
+    const onCodeChange = mock()
     render(
       <DeviceCodeFormPresentation
         code="AB"
         error=""
         submitting={false}
         onCodeChange={onCodeChange}
-        onSubmit={vi.fn()}
+        onSubmit={mock()}
       />,
     )
 
@@ -102,7 +102,7 @@ describe('DeviceCodeFormPresentation', () => {
 
 describe('ConsentActionsPresentation', () => {
   it('delegates both choices and prevents duplicate requests while busy', () => {
-    const onConsent = vi.fn()
+    const onConsent = mock()
     const { rerender } = render(
       <ConsentActionsPresentation error="" submitting={false} onConsent={onConsent} />,
     )

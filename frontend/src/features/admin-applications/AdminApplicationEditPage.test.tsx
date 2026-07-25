@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminApplicationEditPage } from './AdminApplicationEditPage'
@@ -10,7 +11,7 @@ const t = adminApplicationsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const app: AdminApplication = {
@@ -31,13 +32,13 @@ const detail: AdminApplicationDetail = { application: app }
 
 describe('AdminApplicationEditPage', () => {
   const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('shows an error and keeps the form when saving fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
+      mock(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
     )
     await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={detail} />)
 

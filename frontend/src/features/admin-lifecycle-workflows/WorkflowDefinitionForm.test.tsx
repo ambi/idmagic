@@ -1,5 +1,5 @@
 import { screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, mock } from 'bun:test'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import type { AdminLifecycleWorkflow } from '../../types'
 import {
@@ -18,7 +18,7 @@ const en = workflowFormDictionary.en
 describe('WorkflowDefinitionForm', () => {
   it('機械向けの値ではなく利用者向けの表示名を出す', async () => {
     await renderWithRouter(
-      <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={vi.fn()} />,
+      <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={mock()} />,
       { locale: 'ja' },
     )
 
@@ -33,7 +33,7 @@ describe('WorkflowDefinitionForm', () => {
 
   it('英語ロケールでは英語で表示する', async () => {
     await renderWithRouter(
-      <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={vi.fn()} />,
+      <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={mock()} />,
       { locale: 'en' },
     )
 
@@ -43,7 +43,7 @@ describe('WorkflowDefinitionForm', () => {
   })
 
   it('必須設定が不足しているとロケールに沿った文言で案内する', async () => {
-    const onSubmit = vi.fn()
+    const onSubmit = mock()
     await renderWithRouter(
       <WorkflowDefinitionForm groups={[]} applications={[]} busy={false} onSubmit={onSubmit} />,
       { locale: 'ja' },
@@ -77,7 +77,7 @@ describe('WorkflowDefinitionForm', () => {
         groups={[]}
         applications={[]}
         busy={false}
-        onSubmit={vi.fn()}
+        onSubmit={mock()}
       />,
       { locale: 'ja' },
     )

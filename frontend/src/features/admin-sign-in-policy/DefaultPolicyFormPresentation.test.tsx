@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, mock } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { LocaleProvider } from '../../lib/i18n'
 import { DefaultPolicyFormPresentation } from './AdminSignInPolicyPage'
@@ -29,8 +29,8 @@ describe('DefaultPolicyFormPresentation', () => {
   }
 
   it('renders initial form values correctly', () => {
-    const handleCancel = vi.fn()
-    const handleSubmit = vi.fn()
+    const handleCancel = mock()
+    const handleSubmit = mock()
 
     renderEn(
       <DefaultPolicyFormPresentation
@@ -51,8 +51,8 @@ describe('DefaultPolicyFormPresentation', () => {
   })
 
   it('submits form with valid inputs', async () => {
-    const handleCancel = vi.fn()
-    const handleSubmit = vi.fn().mockResolvedValue(undefined)
+    const handleCancel = mock()
+    const handleSubmit = mock().mockResolvedValue(undefined)
 
     renderEn(
       <DefaultPolicyFormPresentation
@@ -97,8 +97,8 @@ describe('DefaultPolicyFormPresentation', () => {
   })
 
   it('shows error message and does not submit if reauth max age is invalid', () => {
-    const handleCancel = vi.fn()
-    const handleSubmit = vi.fn()
+    const handleCancel = mock()
+    const handleSubmit = mock()
 
     renderEn(
       <DefaultPolicyFormPresentation
@@ -126,8 +126,8 @@ describe('DefaultPolicyFormPresentation', () => {
   })
 
   it('calls onCancel when cancel button is clicked', () => {
-    const handleCancel = vi.fn()
-    const handleSubmit = vi.fn()
+    const handleCancel = mock()
+    const handleSubmit = mock()
 
     renderEn(
       <DefaultPolicyFormPresentation
@@ -145,8 +145,8 @@ describe('DefaultPolicyFormPresentation', () => {
   })
 
   it('renders external error if provided', () => {
-    const handleCancel = vi.fn()
-    const handleSubmit = vi.fn()
+    const handleCancel = mock()
+    const handleSubmit = mock()
 
     renderEn(
       <DefaultPolicyFormPresentation
@@ -162,8 +162,8 @@ describe('DefaultPolicyFormPresentation', () => {
   })
 
   it('disables save button and shows loading state when saving is true', () => {
-    const handleCancel = vi.fn()
-    const handleSubmit = vi.fn()
+    const handleCancel = mock()
+    const handleSubmit = mock()
 
     renderEn(
       <DefaultPolicyFormPresentation

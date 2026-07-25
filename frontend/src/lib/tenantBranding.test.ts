@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
   isHTTPSURL,
   isTenantBrandingAssetFile,
@@ -12,14 +13,14 @@ describe('tenant branding guards', () => {
   const originalLocation = window.location
 
   beforeEach(() => {
-    vi.stubGlobal('location', {
+    stubGlobal('location', {
       ...originalLocation,
       origin: 'https://id.example',
     })
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
+    restoreGlobals()
   })
 
   it('accepts same-origin branding asset delivery URLs', () => {

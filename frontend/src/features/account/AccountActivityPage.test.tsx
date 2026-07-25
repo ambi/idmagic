@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, mock } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
 import {
   ActivityHistorySection,
@@ -42,8 +42,8 @@ describe('SessionsSection', () => {
     sessions: [session],
     busyId: null,
     busyOthers: false,
-    onRevoke: vi.fn(),
-    onRevokeOthers: vi.fn(),
+    onRevoke: mock(),
+    onRevokeOthers: mock(),
   }
 
   it('shows an empty state when there are no sessions', () => {
@@ -57,7 +57,7 @@ describe('SessionsSection', () => {
   })
 
   it('calls onRevoke with the session id when 終了 is clicked', () => {
-    const onRevoke = vi.fn()
+    const onRevoke = mock()
     render(<SessionsSection {...baseProps} onRevoke={onRevoke} />)
     fireEvent.click(screen.getByRole('button', { name: '終了' }))
     expect(onRevoke).toHaveBeenCalledWith('session-1')
@@ -69,7 +69,7 @@ describe('SessionsSection', () => {
   })
 
   it('calls onRevokeOthers when the button is clicked', () => {
-    const onRevokeOthers = vi.fn()
+    const onRevokeOthers = mock()
     render(<SessionsSection {...baseProps} onRevokeOthers={onRevokeOthers} />)
     fireEvent.click(screen.getByRole('button', { name: '他のセッションを終了' }))
     expect(onRevokeOthers).toHaveBeenCalledTimes(1)

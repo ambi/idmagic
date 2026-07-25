@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { DynamicRuleEditor } from './DynamicRuleEditor'
@@ -19,13 +20,13 @@ const rule = (expression: string): DynamicGroupRule => ({
 })
 
 describe('DynamicRuleEditor', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   const stubUsers = () =>
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve({ ok: true, status: 200, json: vi.fn().mockResolvedValue({ users: [] }) }),
+      mock(() =>
+        Promise.resolve({ ok: true, status: 200, json: mock().mockResolvedValue({ users: [] }) }),
       ),
     )
 

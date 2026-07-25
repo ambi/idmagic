@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock, spyOn } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { AccountDataPage, AccountDataPresentation } from './AccountDataPage'
@@ -9,7 +10,7 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('AccountDataPresentation', () => {
@@ -18,11 +19,11 @@ describe('AccountDataPresentation', () => {
     isAdmin: false,
     downloading: false,
     error: '',
-    onExport: vi.fn(),
+    onExport: mock(),
   }
 
   it('calls onExport when the download button is clicked', async () => {
-    const onExport = vi.fn()
+    const onExport = mock()
     await renderWithRouter(<AccountDataPresentation {...baseProps} onExport={onExport} />)
     fireEvent.click(screen.getByRole('button', { name: /データをダウンロード/ }))
     expect(onExport).toHaveBeenCalledTimes(1)
@@ -42,15 +43,15 @@ describe('AccountDataPresentation', () => {
 })
 
 describe('AccountDataPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('downloads the export and clears the downloading state', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { profile: {} })))
-    const createObjectURL = vi.fn().mockReturnValue('blob:mock')
-    const revokeObjectURL = vi.fn()
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { profile: {} })))
+    const createObjectURL = mock().mockReturnValue('blob:mock')
+    const revokeObjectURL = mock()
     URL.createObjectURL = createObjectURL
     URL.revokeObjectURL = revokeObjectURL
-    const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const anchorClick = spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
 
     await renderWithRouter(<AccountDataPage username="taro" isAdmin={false} />)
     fireEvent.click(screen.getByRole('button', { name: /データをダウンロード/ }))
@@ -63,9 +64,9 @@ describe('AccountDataPage', () => {
   })
 
   it('shows an error message when the export fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
+      mock().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
     )
     await renderWithRouter(<AccountDataPage username="taro" isAdmin={false} />)
     fireEvent.click(screen.getByRole('button', { name: /データをダウンロード/ }))

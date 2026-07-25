@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminUserCreatePage } from './AdminUserCreatePage'
@@ -10,7 +11,7 @@ const t = adminUsersDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const user: AdminUser = {
@@ -27,13 +28,13 @@ const user: AdminUser = {
 
 describe('AdminUserCreatePage', () => {
   const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('creates a user and redirects to the detail page', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(201, { ...user, id: 'user-2' }))),
+      mock(() => Promise.resolve(response(201, { ...user, id: 'user-2' }))),
     )
     await renderWithRouter(<AdminUserCreatePage csrfToken="csrf" />)
 
@@ -47,10 +48,10 @@ describe('AdminUserCreatePage', () => {
   })
 
   it('shows an error and keeps the form when creation fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(409, { message: 'This username is already in use.' }))),
+      mock(() => Promise.resolve(response(409, { message: 'This username is already in use.' }))),
     )
     await renderWithRouter(<AdminUserCreatePage csrfToken="csrf" />)
 

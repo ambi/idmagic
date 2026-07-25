@@ -1,5 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, spyOn, jest } from 'bun:test'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import type { AdminLifecycleWorkflow } from '../../types'
 import { AdminLifecycleWorkflowCreatePage } from './AdminLifecycleWorkflowEditorPage'
@@ -22,7 +22,7 @@ const workflow: AdminLifecycleWorkflow = {
 }
 
 describe('lifecycle workflow page separation', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => jest.restoreAllMocks())
 
   it('一覧画面には作成・編集フォームを置かず、専用画面へのリンクを表示する', async () => {
     await renderWithRouter(
@@ -43,24 +43,25 @@ describe('lifecycle workflow page separation', () => {
   })
 
   it('状態に関係なくワークフローを削除し、一覧から取り除く', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValue(new Response(null, { status: 204 }))
+    spyOn(window, 'confirm').mockReturnValue(true)
+    const fetchMock = spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(null, { status: 204 }),
+    )
     await renderWithRouter(
       <AdminLifecycleWorkflowsPage csrfToken="csrf" actorUsername="admin" workflows={[workflow]} />,
       { locale: 'ja' },
     )
 
-    fireEvent.click(screen.getByRole('button', { name: '削除' }))
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        '/api/admin/lifecycle_workflows/workflow-1',
-        expect.objectContaining({ method: 'DELETE' }),
-      )
-      expect(screen.queryByText('入社処理')).not.toBeInTheDocument()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: '削除' }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
     })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/lifecycle_workflows/workflow-1',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
+    expect(screen.queryByText('入社処理')).not.toBeInTheDocument()
   })
 
   it('専用作成画面にフォームと一覧へ戻る導線を表示する', async () => {

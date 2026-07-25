@@ -1,6 +1,7 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { AdminGroupCreatePage } from './AdminGroupCreatePage'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 import type { AdminGroup } from '../../types'
@@ -10,7 +11,7 @@ const t = adminGroupsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const group: AdminGroup = {
@@ -25,13 +26,13 @@ const group: AdminGroup = {
 
 describe('AdminGroupCreatePage', () => {
   const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('creates a group and redirects to its detail page', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(201, { ...group, id: 'group-2' }))),
+      mock(() => Promise.resolve(response(201, { ...group, id: 'group-2' }))),
     )
     await renderWithRouter(<AdminGroupCreatePage csrfToken="csrf" />)
 
@@ -46,12 +47,10 @@ describe('AdminGroupCreatePage', () => {
   })
 
   it('shows an error and keeps the form when creation fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(response(409, { message: 'This group name is already in use.' })),
-      ),
+      mock(() => Promise.resolve(response(409, { message: 'This group name is already in use.' }))),
     )
     await renderWithRouter(<AdminGroupCreatePage csrfToken="csrf" />)
 

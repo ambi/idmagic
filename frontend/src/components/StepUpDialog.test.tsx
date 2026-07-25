@@ -1,18 +1,19 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import { AuthenticationAPIError } from '../api'
 import { StepUpCancelledError, useStepUpGuard } from './StepUpDialog'
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 function stubStepUpFetch(methods: string[], completeStatus?: number, completeBody?: unknown) {
-  vi.stubGlobal(
+  stubGlobal(
     'fetch',
-    vi.fn((url: string) => {
+    mock((url: string) => {
       if (url.includes('/step_up/start')) return Promise.resolve(response(200, { methods }))
       if (url.includes('/step_up/complete') && completeStatus !== undefined) {
         return Promise.resolve(response(completeStatus, completeBody))
@@ -54,14 +55,11 @@ function StepUpHarness({ action }: { action: () => Promise<string> }) {
 }
 
 describe('useStepUpGuard', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('retries the guarded action once re-authentication succeeds', async () => {
     stubStepUpFetch(['password'], 204)
-    const action = vi
-      .fn()
-      .mockRejectedValueOnce(stepUpRequiredError())
-      .mockResolvedValueOnce('done')
+    const action = mock().mockRejectedValueOnce(stepUpRequiredError()).mockResolvedValueOnce('done')
 
     render(<StepUpHarness action={action} />)
     fireEvent.click(screen.getByRole('button', { name: '実行' }))
@@ -77,7 +75,7 @@ describe('useStepUpGuard', () => {
 
   it('shows an error and keeps the dialog open when re-authentication fails', async () => {
     stubStepUpFetch(['password'], 400, { message: 'パスワードが違います' })
-    const action = vi.fn().mockRejectedValueOnce(stepUpRequiredError())
+    const action = mock().mockRejectedValueOnce(stepUpRequiredError())
 
     render(<StepUpHarness action={action} />)
     fireEvent.click(screen.getByRole('button', { name: '実行' }))
@@ -93,7 +91,7 @@ describe('useStepUpGuard', () => {
 
   it('rejects with StepUpCancelledError when the user cancels', async () => {
     stubStepUpFetch(['password'])
-    const action = vi.fn().mockRejectedValueOnce(stepUpRequiredError())
+    const action = mock().mockRejectedValueOnce(stepUpRequiredError())
 
     render(<StepUpHarness action={action} />)
     fireEvent.click(screen.getByRole('button', { name: '実行' }))
@@ -108,7 +106,7 @@ describe('useStepUpGuard', () => {
 
   it('cancels when the backdrop is clicked', async () => {
     stubStepUpFetch(['password'])
-    const action = vi.fn().mockRejectedValueOnce(stepUpRequiredError())
+    const action = mock().mockRejectedValueOnce(stepUpRequiredError())
 
     render(<StepUpHarness action={action} />)
     fireEvent.click(screen.getByRole('button', { name: '実行' }))
@@ -121,7 +119,7 @@ describe('useStepUpGuard', () => {
 
   it('cancels on Escape', async () => {
     stubStepUpFetch(['password'])
-    const action = vi.fn().mockRejectedValueOnce(stepUpRequiredError())
+    const action = mock().mockRejectedValueOnce(stepUpRequiredError())
 
     render(<StepUpHarness action={action} />)
     fireEvent.click(screen.getByRole('button', { name: '実行' }))
@@ -134,7 +132,7 @@ describe('useStepUpGuard', () => {
 
   it('switches methods and clears the credential field', async () => {
     stubStepUpFetch(['password', 'totp'])
-    const action = vi.fn().mockRejectedValueOnce(stepUpRequiredError())
+    const action = mock().mockRejectedValueOnce(stepUpRequiredError())
 
     render(<StepUpHarness action={action} />)
     fireEvent.click(screen.getByRole('button', { name: '実行' }))
@@ -148,7 +146,7 @@ describe('useStepUpGuard', () => {
 
   it('renders the passkey prompt instead of a credential field for webauthn', async () => {
     stubStepUpFetch(['webauthn'])
-    const action = vi.fn().mockRejectedValueOnce(stepUpRequiredError())
+    const action = mock().mockRejectedValueOnce(stepUpRequiredError())
 
     render(<StepUpHarness action={action} />)
     fireEvent.click(screen.getByRole('button', { name: '実行' }))

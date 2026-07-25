@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminSettingsPage } from './AdminSettingsPage'
@@ -10,7 +11,7 @@ const t = adminSettingsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const settings: AdminSettings = {
@@ -21,7 +22,7 @@ const settings: AdminSettings = {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the settings page in English by default', async () => {
     await renderWithRouter(
@@ -55,12 +56,12 @@ describe('locale', () => {
 })
 
 describe('AdminSettingsPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('updates the display name and shows a success notice', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { ...settings, display_name: 'Acme Renamed' }))),
+      mock(() => Promise.resolve(response(200, { ...settings, display_name: 'Acme Renamed' }))),
     )
     await renderWithRouter(
       <AdminSettingsPage
@@ -82,9 +83,9 @@ describe('AdminSettingsPage', () => {
   })
 
   it('shows an error when updating the display name fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
+      mock(() => Promise.resolve(response(400, { message: 'Could not update the name.' }))),
     )
     await renderWithRouter(
       <AdminSettingsPage
@@ -123,7 +124,7 @@ describe('AdminSettingsPage', () => {
   })
 
   it('keeps a contextual heading and distinguishes the issued token list', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { tokens: [] })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
     await renderWithRouter(
       <AdminSettingsPage
         csrfToken="csrf"

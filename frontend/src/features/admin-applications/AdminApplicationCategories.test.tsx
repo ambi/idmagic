@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { CategoryManager } from './AdminApplicationCategories'
@@ -10,7 +11,7 @@ const t = adminApplicationsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const app: AdminApplication = {
@@ -38,9 +39,9 @@ const category: ApplicationCategory = {
 function stubFetch(
   handler: (url: string, init?: RequestInit) => ReturnType<typeof response> | undefined,
 ) {
-  vi.stubGlobal(
+  stubGlobal(
     'fetch',
-    vi.fn((url: string, init?: RequestInit) => {
+    mock((url: string, init?: RequestInit) => {
       const result = handler(url, init)
       if (result) return Promise.resolve(result)
       throw new Error(`unexpected fetch ${url}`)
@@ -49,7 +50,7 @@ function stubFetch(
 }
 
 describe('CategoryManager', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('shows the empty state when the tenant has no categories yet', async () => {
     stubFetch((url) => {
@@ -124,7 +125,7 @@ describe('CategoryManager', () => {
       }
       return undefined
     })
-    const onError = vi.fn()
+    const onError = mock()
     await renderWithRouter(<CategoryManager app={app} csrfToken="csrf" onError={onError} />)
     await waitFor(() => expect(onError).toHaveBeenCalledWith('Could not load categories.'))
   })

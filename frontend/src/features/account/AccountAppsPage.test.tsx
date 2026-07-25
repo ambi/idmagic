@@ -1,5 +1,5 @@
 import { KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, mock } from 'bun:test'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { AccountAppsPresentation, buildSections } from './AccountAppsPage'
@@ -54,10 +54,10 @@ function Wrapper(props: Partial<Parameters<typeof AccountAppsPresentation>[0]>) 
     saving: false,
     error: null,
     sensors,
-    onDragStart: vi.fn(),
-    onDragEnd: vi.fn(),
-    onDragCancel: vi.fn(),
-    onLaunch: vi.fn(),
+    onDragStart: mock(),
+    onDragEnd: mock(),
+    onDragCancel: mock(),
+    onLaunch: mock(),
   }
   return <AccountAppsPresentation {...base} {...props} />
 }
@@ -85,7 +85,7 @@ describe('AccountAppsPresentation', () => {
   })
 
   it('calls onLaunch when a launchable tile is clicked', async () => {
-    const onLaunch = vi.fn()
+    const onLaunch = mock()
     await renderWithRouter(<Wrapper onLaunch={onLaunch} />)
     fireEvent.click(screen.getByText('App B'))
     expect(onLaunch).toHaveBeenCalledWith(appB)

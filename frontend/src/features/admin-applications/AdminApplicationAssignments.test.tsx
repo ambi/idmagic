@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AssignmentList, AssignmentManager } from './AdminApplicationAssignments'
@@ -10,7 +11,7 @@ const t = adminApplicationsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const user: AdminUser = {
@@ -45,9 +46,9 @@ const assignment: ApplicationAssignment = {
 function stubFetch(
   handler: (url: string, init?: RequestInit) => ReturnType<typeof response> | undefined,
 ) {
-  vi.stubGlobal(
+  stubGlobal(
     'fetch',
-    vi.fn((url: string, init?: RequestInit) => {
+    mock((url: string, init?: RequestInit) => {
       const result = handler(url, init)
       if (result) return Promise.resolve(result)
       throw new Error(`unexpected fetch ${url}`)
@@ -64,7 +65,7 @@ function chooseOption(triggerName: string | RegExp, optionName: string) {
 }
 
 describe('AssignmentList', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('shows the empty state when there are no assignments', async () => {
     stubFetch((url) => {
@@ -97,14 +98,14 @@ describe('AssignmentList', () => {
       if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
       return undefined
     })
-    const onError = vi.fn()
+    const onError = mock()
     await renderWithRouter(<AssignmentList appID="app-1" onError={onError} />)
     await waitFor(() => expect(onError).toHaveBeenCalledWith('Could not load assignments.'))
   })
 })
 
 describe('AssignmentManager', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('assigns the selected user and shows it in the list', async () => {
     stubFetch((url, init) => {
@@ -153,7 +154,7 @@ describe('AssignmentManager', () => {
       if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
       return undefined
     })
-    const onError = vi.fn()
+    const onError = mock()
     await renderWithRouter(<AssignmentManager appID="app-1" csrfToken="csrf" onError={onError} />)
 
     await screen.findByText(t.noAssignmentsShortNotice)

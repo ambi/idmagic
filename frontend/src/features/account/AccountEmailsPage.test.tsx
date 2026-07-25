@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { AccountEmailsPage, AccountEmailsPresentation } from './AccountEmailsPage'
@@ -9,7 +10,7 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('AccountEmailsPresentation', () => {
@@ -23,10 +24,10 @@ describe('AccountEmailsPresentation', () => {
     error: '',
     sentTo: '',
     dialog: null,
-    onStartEdit: vi.fn(),
-    onCancelEdit: vi.fn(),
-    onNewEmailChange: vi.fn(),
-    onSubmit: vi.fn(),
+    onStartEdit: mock(),
+    onCancelEdit: mock(),
+    onNewEmailChange: mock(),
+    onSubmit: mock(),
   }
 
   it('renders English by default when the locale is English', async () => {
@@ -46,14 +47,14 @@ describe('AccountEmailsPresentation', () => {
   })
 
   it('calls onStartEdit when the change button is clicked', async () => {
-    const onStartEdit = vi.fn()
+    const onStartEdit = mock()
     await renderWithRouter(<AccountEmailsPresentation {...baseProps} onStartEdit={onStartEdit} />)
     fireEvent.click(screen.getByRole('button', { name: '変更' }))
     expect(onStartEdit).toHaveBeenCalledTimes(1)
   })
 
   it('renders the edit form and reports input changes when editing', async () => {
-    const onNewEmailChange = vi.fn()
+    const onNewEmailChange = mock()
     await renderWithRouter(
       <AccountEmailsPresentation {...baseProps} editing onNewEmailChange={onNewEmailChange} />,
     )
@@ -79,7 +80,7 @@ describe('AccountEmailsPresentation', () => {
   })
 
   it('calls onCancelEdit when cancel is clicked', async () => {
-    const onCancelEdit = vi.fn()
+    const onCancelEdit = mock()
     await renderWithRouter(
       <AccountEmailsPresentation
         {...baseProps}
@@ -94,7 +95,7 @@ describe('AccountEmailsPresentation', () => {
 })
 
 describe('AccountEmailsPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   async function startEditingAndSubmit(newEmail = 'new@example.com') {
     await renderWithRouter(
@@ -108,7 +109,7 @@ describe('AccountEmailsPage', () => {
   }
 
   it('requests an email change and shows the confirmation notice', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
+    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     await startEditingAndSubmit()
 
     expect(await screen.findByText(/確認メールを送信しました/)).toBeInTheDocument()
@@ -116,9 +117,9 @@ describe('AccountEmailsPage', () => {
   })
 
   it('shows an error message when the request fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(400, { message: 'すでに使用されています' })),
+      mock().mockResolvedValue(response(400, { message: 'すでに使用されています' })),
     )
     await startEditingAndSubmit()
 
@@ -126,9 +127,9 @@ describe('AccountEmailsPage', () => {
   })
 
   it('keeps the form open without an error when step-up re-authentication is cancelled', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/step_up/start')) {
           return Promise.resolve(response(200, { methods: ['password'] }))
         }

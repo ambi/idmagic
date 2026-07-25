@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, mock } from 'bun:test'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { Button } from './button'
 
@@ -24,7 +24,7 @@ describe('Button Component', () => {
   })
 
   it('calls onClick when clicked', async () => {
-    const handleClick = vi.fn()
+    const handleClick = mock()
     render(<Button onClick={handleClick}>Click</Button>)
     const button = screen.getByRole('button', { name: 'Click' })
     fireEvent.click(button)
@@ -32,7 +32,7 @@ describe('Button Component', () => {
   })
 
   it('does not call onClick when disabled', async () => {
-    const handleClick = vi.fn()
+    const handleClick = mock()
     render(
       <Button onClick={handleClick} disabled>
         Click

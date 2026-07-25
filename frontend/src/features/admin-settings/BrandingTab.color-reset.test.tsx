@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
 import { BrandingTab } from './BrandingTab'
 import { brandingTabDictionary } from './BrandingTab.i18n'
@@ -9,15 +10,14 @@ const t = brandingTabDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('BrandingTab color reset', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('resets each configured color to unset and saves empty color values', async () => {
-    const fetch = vi
-      .fn()
+    const fetch = mock()
       .mockResolvedValueOnce(
         response(200, {
           primary_color: '#123456',
@@ -25,7 +25,7 @@ describe('BrandingTab color reset', () => {
         }),
       )
       .mockResolvedValueOnce(response(200, {}))
-    vi.stubGlobal('fetch', fetch)
+    stubGlobal('fetch', fetch)
 
     render(
       <LocaleProvider initialLocale="en">
@@ -43,7 +43,7 @@ describe('BrandingTab color reset', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
-    expect(fetch.mock.calls[1]).toEqual([
+    expect((fetch as any).mock.calls[1]).toEqual([
       '/api/admin/tenant/branding',
       expect.objectContaining({
         method: 'PUT',

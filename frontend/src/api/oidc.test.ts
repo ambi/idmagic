@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
   completeLoginFromCallback,
   currentBearer,
@@ -15,9 +16,9 @@ describe('portal OIDC client', () => {
 
   beforeEach(() => {
     sessionStorage.clear()
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
+      mock().mockResolvedValue({
         ok: true,
         status: 200,
         json: async () => ({
@@ -27,15 +28,15 @@ describe('portal OIDC client', () => {
         }),
       }),
     )
-    vi.stubGlobal('location', {
+    stubGlobal('location', {
       ...originalLocation,
       pathname: '/realms/acme/account',
       search: '',
-      assign: vi.fn(),
+      assign: mock(),
     })
   })
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('uses a fresh session as the bearer without a network request', async () => {
     sessionStorage.setItem(
@@ -75,11 +76,11 @@ describe('portal OIDC client', () => {
         returnTo: '/account/profile',
       }),
     )
-    vi.stubGlobal('location', {
+    stubGlobal('location', {
       ...originalLocation,
       pathname: '/realms/acme/callback',
       search: '?code=code&state=expected',
-      assign: vi.fn(),
+      assign: mock(),
     })
     await expect(completeLoginFromCallback()).resolves.toBe(true)
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/token'), expect.anything())
@@ -92,10 +93,10 @@ describe('portal OIDC client', () => {
       'ra_oidc_login',
       JSON.stringify({ state: 'expected', verifier: 'v', audience: 'admin', returnTo: '/admin' }),
     )
-    vi.stubGlobal('location', {
+    stubGlobal('location', {
       ...originalLocation,
       search: '?code=code&state=wrong',
-      assign: vi.fn(),
+      assign: mock(),
     })
     await expect(completeLoginFromCallback()).rejects.toThrow('state')
   })

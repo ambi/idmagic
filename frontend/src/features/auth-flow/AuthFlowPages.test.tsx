@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { ForgotPasswordPage } from './ForgotPasswordPage'
 import { LoginPage } from './LoginPage'
 import { ResetPasswordPage } from './ResetPasswordPage'
@@ -12,7 +13,7 @@ import { MfaEnrollmentPage } from './MfaEnrollmentPage'
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const assertionCredential = () => ({
@@ -32,11 +33,11 @@ describe('auth-flow pages', () => {
   const originalLocation = window.location
 
   beforeEach(() => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { next: '/continue' })))
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { next: '/continue' })))
   })
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('submits login credentials and continues the browser flow', async () => {
     render(<LoginPage csrfToken="csrf" returnTo="/return" />)
@@ -54,10 +55,9 @@ describe('auth-flow pages', () => {
   })
 
   it('shows a returned login error and allows a retry', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi
-        .fn()
+      mock()
         // AuthShell が mount 時に取得する /api/branding を最初に消費する。
         .mockResolvedValueOnce(response(200, {}))
         .mockResolvedValueOnce(
@@ -76,9 +76,9 @@ describe('auth-flow pages', () => {
   })
 
   it('renders configured footer link labels as text', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(
+      mock().mockResolvedValue(
         response(200, {
           footer_link_1: {
             label: '<img src=x onerror=alert(1)>',
@@ -95,7 +95,7 @@ describe('auth-flow pages', () => {
   })
 
   it('shows only the generic reset-request confirmation after a successful submit', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
+    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     render(<ForgotPasswordPage csrfToken="csrf" />)
     fireEvent.change(screen.getByLabelText('メールアドレス'), {
       target: { value: 'alice@example.com' },
@@ -107,9 +107,9 @@ describe('auth-flow pages', () => {
   })
 
   it('shows an API error for a failed reset request', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
+      mock().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
     )
     render(<ForgotPasswordPage csrfToken="csrf" />)
     fireEvent.change(screen.getByLabelText('メールアドレス'), {
@@ -121,7 +121,7 @@ describe('auth-flow pages', () => {
   })
 
   it('completes a password reset and translates password-policy errors', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200)))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200)))
     const { unmount } = render(<ResetPasswordPage csrfToken="csrf" token="reset-token" />)
     fireEvent.change(screen.getByLabelText('新しいパスワード'), {
       target: { value: 'a long new password' },
@@ -132,7 +132,7 @@ describe('auth-flow pages', () => {
     ).toBeInTheDocument()
     unmount()
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(400, { error: 'password_policy' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(400, { error: 'password_policy' })))
     render(<ResetPasswordPage csrfToken="csrf" token="reset-token" />)
     fireEvent.change(screen.getByLabelText('新しいパスワード'), {
       target: { value: 'a long new password' },
@@ -148,16 +148,16 @@ describe('auth-flow pages', () => {
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     unmount()
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(403, { message: '許可できません' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(403, { message: '許可できません' })))
     render(<ConsentPage {...props} />)
     fireEvent.click(screen.getByRole('button', { name: '許可しない' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('許可できません')
   })
 
   it('also exposes a failure when allowing consent fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(403, { message: '許可を保存できませんでした' })),
+      mock().mockResolvedValue(response(403, { message: '許可を保存できませんでした' })),
     )
     render(<ConsentPage csrfToken="csrf" clientName="Portal" scopes={['openid']} />)
     fireEvent.click(screen.getByRole('button', { name: '許可して続行' }))
@@ -165,15 +165,15 @@ describe('auth-flow pages', () => {
   })
 
   it('confirms an email change and retains an actionable error on failure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
+    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     const { unmount } = render(<EmailVerifyPage csrfToken="csrf" token="verification-token" />)
     fireEvent.click(screen.getByRole('button', { name: 'メールアドレスを確認する' }))
     expect(await screen.findByText(/メールアドレスを確認しました/)).toBeInTheDocument()
     unmount()
 
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(400, { message: 'リンクの有効期限が切れています' })),
+      mock().mockResolvedValue(response(400, { message: 'リンクの有効期限が切れています' })),
     )
     render(<EmailVerifyPage csrfToken="csrf" token="verification-token" />)
     fireEvent.click(screen.getByRole('button', { name: 'メールアドレスを確認する' }))
@@ -209,9 +209,9 @@ describe('auth-flow pages', () => {
   })
 
   it('enrolls TOTP in the dedicated pending flow and continues the transaction', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/mfa/enrollment/totp/start')) {
           return Promise.resolve(
             response(200, { secret: 'SECRET', account_name: 'alice', issuer: 'idmagic' }),
@@ -235,9 +235,9 @@ describe('auth-flow pages', () => {
   })
 
   it('shows a returned error for an invalid TOTP code', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(400, { message: 'コードが正しくありません' })),
+      mock().mockResolvedValue(response(400, { message: 'コードが正しくありません' })),
     )
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} />)
     fireEvent.change(screen.getByLabelText('確認コード'), { target: { value: '000000' } })
@@ -247,9 +247,9 @@ describe('auth-flow pages', () => {
   })
 
   it('shows a returned error for an invalid recovery code', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(400, { message: 'リカバリコードが正しくありません' })),
+      mock().mockResolvedValue(response(400, { message: 'リカバリコードが正しくありません' })),
     )
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'recovery_code']} />)
     fireEvent.click(screen.getByRole('button', { name: 'リカバリコード' }))
@@ -260,12 +260,12 @@ describe('auth-flow pages', () => {
   })
 
   it('authenticates with a passkey and continues the browser flow', async () => {
-    vi.stubGlobal('navigator', {
-      credentials: { get: vi.fn().mockResolvedValue(assertionCredential()) },
+    stubGlobal('navigator', {
+      credentials: { get: mock().mockResolvedValue(assertionCredential()) },
     })
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/webauthn/challenge')) {
           return Promise.resolve(response(200, { publicKey: { challenge: 'Y2hhbGxlbmdl' } }))
         }
@@ -280,14 +280,14 @@ describe('auth-flow pages', () => {
   })
 
   it('shows a cancellation message when the passkey prompt is dismissed', async () => {
-    vi.stubGlobal('navigator', {
+    stubGlobal('navigator', {
       credentials: {
-        get: vi.fn().mockRejectedValue(new DOMException('cancelled', 'NotAllowedError')),
+        get: mock().mockRejectedValue(new DOMException('cancelled', 'NotAllowedError')),
       },
     })
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(200, { publicKey: { challenge: 'Y2hhbGxlbmdl' } })),
+      mock().mockResolvedValue(response(200, { publicKey: { challenge: 'Y2hhbGxlbmdl' } })),
     )
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'webauthn']} />)
     fireEvent.click(screen.getByRole('button', { name: 'パスキー' }))
@@ -301,13 +301,13 @@ describe('DevicePage', () => {
   const originalLocation = window.location
 
   beforeEach(() => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
+    stubGlobal('location', { ...originalLocation, assign: mock() })
   })
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('allows a device connection and continues the browser flow', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { next: '/continue' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { next: '/continue' })))
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
     fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
 
@@ -319,7 +319,7 @@ describe('DevicePage', () => {
   })
 
   it('denies a device connection and continues the browser flow', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { next: '/continue' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { next: '/continue' })))
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
     fireEvent.click(screen.getByRole('button', { name: '接続を拒否' }))
 
@@ -331,9 +331,9 @@ describe('DevicePage', () => {
   })
 
   it('shows an error when the device request cannot be processed', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(400, { message: 'コードが見つかりません' })),
+      mock().mockResolvedValue(response(400, { message: 'コードが見つかりません' })),
     )
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
     fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
@@ -342,9 +342,9 @@ describe('DevicePage', () => {
   })
 
   it('redirects to the status page when re-authentication is required', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(403, { error: 'authentication_required' })),
+      mock().mockResolvedValue(response(403, { error: 'authentication_required' })),
     )
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
     fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))

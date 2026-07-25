@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminGroupEditPage } from './AdminGroupEditPage'
@@ -18,7 +19,7 @@ const schema: TenantUserAttributeSchema = {
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const group: AdminGroup = {
@@ -33,13 +34,13 @@ const group: AdminGroup = {
 
 describe('AdminGroupEditPage', () => {
   const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('shows an error and keeps the form when updating fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the group.' }))),
+      mock(() => Promise.resolve(response(400, { message: 'Could not update the group.' }))),
     )
     await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
 

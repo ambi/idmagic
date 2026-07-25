@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminUsersPage } from './AdminUsersListPage'
@@ -10,7 +11,7 @@ const t = adminUsersDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const user: AdminUser = {
@@ -26,12 +27,12 @@ const user: AdminUser = {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the user list in English by default', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/groups')) {
           return Promise.resolve(
             response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
@@ -46,9 +47,9 @@ describe('locale', () => {
   })
 
   it('renders in Japanese when explicitly selected', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/groups')) {
           return Promise.resolve(
             response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
@@ -65,12 +66,12 @@ describe('locale', () => {
 })
 
 describe('AdminUsersPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('deletes a user and refreshes the list on success', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/users') && init?.method === 'DELETE') {
           return Promise.resolve(response(204))
         }
@@ -91,9 +92,9 @@ describe('AdminUsersPage', () => {
   })
 
   it('shows an error and keeps the dialog open when deletion fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/users') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the user.' }))
         }
@@ -110,9 +111,9 @@ describe('AdminUsersPage', () => {
   })
 
   it('shows an error when disabling a user fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string) => {
+      mock((url: string) => {
         if (url.includes('/disable')) {
           return Promise.resolve(response(403, { message: 'You are not allowed to disable this.' }))
         }
@@ -129,9 +130,9 @@ describe('AdminUsersPage', () => {
   })
 
   it('shows an error when reloading the list fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(500, { message: 'Could not fetch the list.' }))),
+      mock(() => Promise.resolve(response(500, { message: 'Could not fetch the list.' }))),
     )
     await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
 

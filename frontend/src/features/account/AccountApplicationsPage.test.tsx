@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import {
@@ -14,7 +15,7 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('formatAccountConsentDate', () => {
@@ -44,8 +45,8 @@ describe('AccountApplicationsPresentation', () => {
     pending: '',
     error: '',
     notice: '',
-    onDismissNotice: vi.fn(),
-    onRevoke: vi.fn(),
+    onDismissNotice: mock(),
+    onRevoke: mock(),
   }
 
   it('shows an empty state when there are no consents', async () => {
@@ -60,7 +61,7 @@ describe('AccountApplicationsPresentation', () => {
   })
 
   it('calls onRevoke with the consent when revoke is clicked', async () => {
-    const onRevoke = vi.fn()
+    const onRevoke = mock()
     await renderWithRouter(<AccountApplicationsPresentation {...baseProps} onRevoke={onRevoke} />)
     fireEvent.click(screen.getByRole('button', { name: /アクセスを取り消す/ }))
     expect(onRevoke).toHaveBeenCalledWith(consent)
@@ -87,10 +88,10 @@ describe('AccountApplicationsPage', () => {
     expires_at: '2027-01-01T00:00:00Z',
   }
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('revokes access and removes the application with a notice', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204)))
+    stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     await renderWithRouter(
       <AccountApplicationsPage
         csrfToken="csrf"
@@ -106,9 +107,9 @@ describe('AccountApplicationsPage', () => {
   })
 
   it('shows an error message when revoking fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
+      mock().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
     )
     await renderWithRouter(
       <AccountApplicationsPage

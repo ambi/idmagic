@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import * as adminAPI from './admin'
 import {
   addAdminGroupMember,
@@ -43,12 +44,12 @@ import type { AuthenticationAPIError } from './core'
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('admin API client', () => {
-  beforeEach(() => vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(204))))
-  afterEach(() => vi.unstubAllGlobals())
+  beforeEach(() => stubGlobal('fetch', mock().mockResolvedValue(response(204))))
+  afterEach(() => restoreGlobals())
 
   it('MCP resource server 管理契約を公開する', () => {
     expect(adminAPI).toEqual(
@@ -72,10 +73,9 @@ describe('admin API client', () => {
       created_at: '2026-07-20T00:00:00Z',
       updated_at: '2026-07-20T00:00:00Z',
     }
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi
-        .fn()
+      mock()
         .mockResolvedValueOnce(response(200, { resource_servers: [resourceServer] }))
         .mockResolvedValueOnce(response(201, resourceServer))
         .mockResolvedValueOnce(response(200, resourceServer))
@@ -96,8 +96,8 @@ describe('admin API client', () => {
     })
     await adminAPI.deleteMcpResourceServer('csrf', resourceServer.resource_server_id)
 
-    const calls = vi.mocked(fetch).mock.calls
-    expect(calls.map(([url]) => url)).toEqual([
+    const calls = (fetch as any).mock.calls
+    expect(calls.map(([url]: any[]) => url)).toEqual([
       expect.stringContaining('/api/admin/mcp-resource-servers'),
       expect.stringContaining('/api/admin/mcp-resource-servers'),
       expect.stringContaining('/api/admin/mcp-resource-servers/resource%2Fa%20b'),
@@ -116,7 +116,9 @@ describe('admin API client', () => {
     )
     expect(calls[3][1]).toEqual(expect.objectContaining({ method: 'DELETE' }))
     expect(
-      calls.slice(1).every(([, init]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
+      calls
+        .slice(1)
+        .every(([, init]: any[]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
     ).toBe(true)
   })
 
@@ -136,8 +138,8 @@ describe('admin API client', () => {
     await removeAdminGroupMember('csrf', 'group/a b', id)
     await deleteAdminGroup('csrf', 'group/a b')
 
-    const calls = vi.mocked(fetch).mock.calls
-    expect(calls.map(([url]) => url)).toEqual(
+    const calls = (fetch as any).mock.calls
+    expect(calls.map(([url]: any[]) => url)).toEqual(
       expect.arrayContaining([
         expect.stringContaining('/api/admin/users/user%2Fa%20b'),
         expect.stringContaining('/required_actions/reset%2Fpassword'),
@@ -148,21 +150,21 @@ describe('admin API client', () => {
       ]),
     )
     expect(
-      calls.every(([, init]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
+      calls.every(([, init]: any[]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
     ).toBe(true)
     expect(
-      calls.find(([url]) => String(url).includes('/users/user%2Fa%20b?purge=true'))?.[1],
+      calls.find(([url]: any[]) => String(url).includes('/users/user%2Fa%20b?purge=true'))?.[1],
     ).toEqual(expect.objectContaining({ method: 'DELETE' }))
   })
 
   it('セッション管理 (wi-28 T007) が正しい URL に CSRF 保護付きで送る', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { sessions: [] })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, { sessions: [] })))
     await listAdminUserSessions('user/a b')
     await revokeAdminUserSession('csrf', 'user/a b', 'session/1')
     await revokeAllAdminUserSessions('csrf', 'user/a b')
 
-    const calls = vi.mocked(fetch).mock.calls
-    expect(calls.map(([url]) => url)).toEqual([
+    const calls = (fetch as any).mock.calls
+    expect(calls.map(([url]: any[]) => url)).toEqual([
       expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions'),
       expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions/session%2F1/revoke'),
       expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions/revoke_all'),
@@ -171,7 +173,9 @@ describe('admin API client', () => {
     expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'POST' }))
     expect(calls[2][1]).toEqual(expect.objectContaining({ method: 'POST' }))
     expect(
-      calls.slice(1).every(([, init]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
+      calls
+        .slice(1)
+        .every(([, init]: any[]) => new Headers(init?.headers).get('X-CSRF-Token') === 'csrf'),
     ).toBe(true)
   })
 
@@ -197,8 +201,8 @@ describe('admin API client', () => {
     await unassignApplication('csrf', id, 'user', 'user/a b')
     await deleteAdminApplication('csrf', id)
 
-    const calls = vi.mocked(fetch).mock.calls
-    expect(calls.map(([url]) => url)).toEqual(
+    const calls = (fetch as any).mock.calls
+    expect(calls.map(([url]: any[]) => url)).toEqual(
       expect.arrayContaining([
         expect.stringContaining('/api/admin/agents/agent%2Fa%20b/credentials/client%2Fa%20b'),
         expect.stringContaining('/api/admin/applications/app%2Falpha%20beta/oidc'),
@@ -207,7 +211,7 @@ describe('admin API client', () => {
         expect.stringContaining('/assignments/user/user%2Fa%20b'),
       ]),
     )
-    expect(calls.find(([url]) => String(url).endsWith('/applications'))?.[1]).toEqual(
+    expect(calls.find(([url]: any[]) => String(url).endsWith('/applications'))?.[1]).toEqual(
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
@@ -238,12 +242,12 @@ describe('admin API client', () => {
       expect.objectContaining({ method: 'PUT', body: JSON.stringify({ attributes: [] }) }),
     )
 
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(403, { error: 'forbidden', message: 'denied' })),
+      mock().mockResolvedValue(response(403, { error: 'forbidden', message: 'denied' })),
     )
     await expect(deleteAdminUser('csrf', 'user')).rejects.toEqual(
-      expect.objectContaining<Partial<AuthenticationAPIError>>({
+      expect.objectContaining({
         name: 'AuthenticationAPIError',
         code: 'forbidden',
         message: 'denied',
@@ -258,16 +262,15 @@ describe('admin API client', () => {
       scopes: ['scim:users:read'],
       created_at: '2026-07-23T00:00:00Z',
     }
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi
-        .fn()
+      mock()
         .mockResolvedValueOnce(response(200, { tokens: [token] }))
         .mockResolvedValueOnce(response(201, { token: 'header.payload.signature', meta: token }))
         .mockResolvedValueOnce(response(204)),
     )
 
-    await expect(listApiTokens()).resolves.toEqual([token])
+    await expect(listApiTokens()).resolves.toEqual([token as any])
     await createApiToken('csrf', {
       description: 'SCIM',
       scopes: ['scim:users:read'],
@@ -275,8 +278,8 @@ describe('admin API client', () => {
     })
     await revokeApiToken('csrf', token.id)
 
-    const calls = vi.mocked(fetch).mock.calls
-    expect(calls.map(([url]) => String(url))).toEqual([
+    const calls = (fetch as any).mock.calls
+    expect(calls.map(([url]: any[]) => String(url))).toEqual([
       expect.stringContaining('/api/admin/api-tokens'),
       expect.stringContaining('/api/admin/api-tokens'),
       expect.stringContaining('/api/admin/api-tokens/token%2Fa%20b'),

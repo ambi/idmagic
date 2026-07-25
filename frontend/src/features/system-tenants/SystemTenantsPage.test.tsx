@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { SystemTenantsPage, TenantTable } from './SystemTenantsPage'
@@ -20,7 +21,7 @@ function renderEn(ui: Parameters<typeof render>[0]) {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the tenants page in English by default', async () => {
     await renderWithRouter(
@@ -43,13 +44,13 @@ describe('locale', () => {
 
 describe('TenantTable', () => {
   it('keeps the default tenant protected and forwards a selected tenant', () => {
-    const onSelect = vi.fn()
+    const onSelect = mock()
     renderEn(
       <TenantTable
         tenants={[tenant, { ...tenant, id: 'default', realm: 'default' }]}
         busy={false}
         onSelect={onSelect}
-        onToggleDisabled={vi.fn()}
+        onToggleDisabled={mock()}
       />,
     )
     fireEvent.click(screen.getByText('acme'))

@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
   base64URLToBytes,
   createPasskey,
@@ -132,11 +133,11 @@ describe('serializeAssertionCredential', () => {
 })
 
 describe('createPasskey', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('returns the serialized attestation on success', async () => {
-    vi.stubGlobal('navigator', {
-      credentials: { create: vi.fn().mockResolvedValue(registrationCredential()) },
+    stubGlobal('navigator', {
+      credentials: { create: mock().mockResolvedValue(registrationCredential()) },
     })
     const result = (await createPasskey({
       publicKey: {
@@ -148,7 +149,7 @@ describe('createPasskey', () => {
   })
 
   it('throws when the browser returns no credential', async () => {
-    vi.stubGlobal('navigator', { credentials: { create: vi.fn().mockResolvedValue(null) } })
+    stubGlobal('navigator', { credentials: { create: mock().mockResolvedValue(null) } })
     await expect(
       createPasskey({
         publicKey: {
@@ -161,11 +162,11 @@ describe('createPasskey', () => {
 })
 
 describe('getPasskeyAssertion', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('returns the serialized assertion on success', async () => {
-    vi.stubGlobal('navigator', {
-      credentials: { get: vi.fn().mockResolvedValue(assertionCredential()) },
+    stubGlobal('navigator', {
+      credentials: { get: mock().mockResolvedValue(assertionCredential()) },
     })
     const result = (await getPasskeyAssertion({
       publicKey: { challenge: base64URL(new Uint8Array([1])) },
@@ -174,7 +175,7 @@ describe('getPasskeyAssertion', () => {
   })
 
   it('throws when the user cancels the authentication', async () => {
-    vi.stubGlobal('navigator', { credentials: { get: vi.fn().mockResolvedValue(null) } })
+    stubGlobal('navigator', { credentials: { get: mock().mockResolvedValue(null) } })
     await expect(
       getPasskeyAssertion({ publicKey: { challenge: base64URL(new Uint8Array([1])) } }),
     ).rejects.toThrow('Passkey authentication was cancelled.')
@@ -182,10 +183,10 @@ describe('getPasskeyAssertion', () => {
 })
 
 describe('isWebAuthnSupported', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('is true when the browser exposes PublicKeyCredential', () => {
-    vi.stubGlobal('PublicKeyCredential', class {})
+    stubGlobal('PublicKeyCredential', class {})
     expect(isWebAuthnSupported()).toBe(true)
   })
 

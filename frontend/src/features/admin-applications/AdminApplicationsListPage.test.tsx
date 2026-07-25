@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminApplicationsPage } from './AdminApplicationsListPage'
@@ -10,7 +11,7 @@ const t = adminApplicationsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const app: AdminApplication = {
@@ -28,12 +29,12 @@ const app: AdminApplication = {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the application list in English by default', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { applications: [] }))),
+      mock(() => Promise.resolve(response(200, { applications: [] }))),
     )
     await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[]} />)
     expect(
@@ -45,9 +46,9 @@ describe('locale', () => {
   })
 
   it('renders the application list in Japanese when explicitly selected', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { applications: [] }))),
+      mock(() => Promise.resolve(response(200, { applications: [] }))),
     )
     await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[]} />, {
       locale: 'ja',
@@ -60,12 +61,12 @@ describe('locale', () => {
 
 describe('AdminApplicationsPage', () => {
   const originalLocation = window.location
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('deletes an application and refreshes the list on success', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/applications') && init?.method === 'DELETE') {
           return Promise.resolve(response(204))
         }
@@ -85,9 +86,9 @@ describe('AdminApplicationsPage', () => {
   })
 
   it('shows an error when deleting an application fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/applications') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the application.' }))
         }
@@ -103,10 +104,10 @@ describe('AdminApplicationsPage', () => {
   })
 
   it('creates an OIDC application and redirects to its detail page', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/applications') && init?.method === 'POST') {
           return Promise.resolve(
             response(201, {
@@ -138,9 +139,9 @@ describe('AdminApplicationsPage', () => {
   })
 
   it('shows an error and keeps the dialog open when creation fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(409, { message: 'Could not create the application.' }))),
+      mock(() => Promise.resolve(response(409, { message: 'Could not create the application.' }))),
     )
     await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
 

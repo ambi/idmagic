@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { validateReauthMaxAge, parseNetworkCIDRs } from './validation'
 
 describe('validateReauthMaxAge', () => {

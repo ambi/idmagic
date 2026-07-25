@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminKeysPage, SigningKeyTable } from './AdminKeysPage'
@@ -7,7 +8,7 @@ import { adminKeysDictionary } from './AdminKeysPage.i18n'
 
 const t = adminKeysDictionary.en
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => restoreGlobals())
 
 function renderEn(ui: Parameters<typeof render>[0]) {
   return render(<LocaleProvider initialLocale="en">{ui}</LocaleProvider>)
@@ -58,12 +59,12 @@ describe('AdminKeysPage', () => {
 
   it('keeps a successfully disabled key removed even when the subsequent list request is unavailable', async () => {
     const inactiveKey = { ...key, kid: 'kid-previous', active: false }
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
+      mock().mockResolvedValue({
         ok: true,
         status: 200,
-        json: vi.fn().mockResolvedValue(inactiveKey),
+        json: mock().mockResolvedValue(inactiveKey),
       }),
     )
     await renderWithRouter(
@@ -94,14 +95,14 @@ describe('AdminKeysPage', () => {
 
 describe('SigningKeyTable', () => {
   it('notifies selection without exposing destructive actions to non-managers', () => {
-    const onSelect = vi.fn()
+    const onSelect = mock()
     renderEn(
       <SigningKeyTable
         keys={[key]}
         canManage={false}
         busy={false}
         onSelect={onSelect}
-        onDisable={vi.fn()}
+        onDisable={mock()}
       />,
     )
     fireEvent.click(screen.getByText('kid-1'))

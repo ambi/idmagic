@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { AuthenticationAPIError } from '../../api'
 import type { SignInRule } from '../../types'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'

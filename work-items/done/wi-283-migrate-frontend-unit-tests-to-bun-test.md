@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-25
@@ -64,19 +64,19 @@ wi-276 が特定した要点:
 - **未決定事項**: `vi.stubGlobal` の置換先ヘルパーの粒度・命名、coverage reporter 後処理の要否、CI マトリクスの範囲。
 
 ## Tasks
-- [ ] T001 [Helper] `vi.stubGlobal`/`unstubAllGlobals` の置換先を bun ネイティブな用途名ヘルパー
+- [x] T001 [Helper] `vi.stubGlobal`/`unstubAllGlobals` の置換先を bun ネイティブな用途名ヘルパー
       （例 `src/test/globals.ts`）として用意し、`vitest` 命名の shim を常設しない方針を確定する。
-- [ ] T002 [Preload] `register-dom`（Happy DOM + location snapshot + `IS_REACT_ACT_ENVIRONMENT`）と `setup`
+- [x] T002 [Preload] `register-dom`（Happy DOM + location snapshot + `IS_REACT_ACT_ENVIRONMENT`）と `setup`
       （jest-dom matchers + `afterEach(cleanup)`）を `src/test/` に用意し `bunfig.toml` で登録する。
-- [ ] T003 [Convert] 77 test files の `from 'vitest'` を `bun:test` へ、`vi.*` を bun 相当（`mock`/`spyOn`/`jest.restoreAllMocks`/
+- [x] T003 [Convert] 77 test files の `from 'vitest'` を `bun:test` へ、`vi.*` を bun 相当（`mock`/`spyOn`/`jest.restoreAllMocks`/
       ヘルパー）へ機械置換し、リポジトリから `vitest` import を根絶する。
-- [ ] T004 [Residual] 残 2 tests（lifecycle 削除 / ApiTokens 発行取消）をオラクル不変で green にする。
-- [ ] T005 [Coverage] 強制 import で分母復元、reporter を LCOV 化、wi-131 の path group / diff threshold /
+- [x] T004 [Residual] 残 2 tests（lifecycle 削除 / ApiTokens 発行取消）をオラクル不変で green にする。
+- [x] T005 [Coverage] 強制 import で分母復元、reporter を LCOV 化、wi-131 の path group / diff threshold /
       CI artifact を再配線し、Istanbul と対象 file 集合・指標を突き合わせる。
-- [ ] T006 [Wire] `package.json` / `vite.config.ts` / `justfile` / `tsconfig` を Bun test へ切替、Vitest / jsdom /
+- [x] T006 [Wire] `package.json` / `vite.config.ts` / `justfile` / `tsconfig` を Bun test へ切替、Vitest / jsdom /
       coverage-istanbul を除去する。
-- [ ] T007 [CI] macOS / Linux CI でランナーを切替え、両環境で全 green・coverage artifact 生成を確認する。
-- [ ] T008 [Verify] `just verify-ui`、`just test-ui-cover`、`just check-work-items`、`just check-ids` を成功させる。
+- [x] T007 [CI] macOS / Linux CI でランナーを切替え、両環境で全 green・coverage artifact 生成を確認する。
+- [x] T008 [Verify] `just verify-ui`、`just test-ui-cover`、`just check-work-items`、`just check-ids` を成功させる。
 
 ## Verification
 - `just test-ui-unit`（Bun test、427 tests green）
@@ -94,3 +94,26 @@ wi-276 が特定した要点:
 - jsdom は bun 下で清潔に登録できず Happy DOM 前提となるため、jsdom 特有挙動に依存する test が将来追加された
   場合の drift 検出方針（例: Happy DOM で落ちる形の CI ゲート）を用意する。
 - 段階コミットで各ステップを rollback 可能にし、Vitest 除去は全 green 確認後に限定する。
+
+## Completion
+- **Completed At**: 2026-07-25
+- **Summary**:
+  フロントエンドの単体・コンポーネントテスト基盤を Vitest から Bun test へ全面移行した。
+  JS DOM の課題を解決するため Happy DOM への置き換えと 2段階の preload (`register-dom.ts`, `setup.ts`) を導入し、location snapshot を使った互換性を確保。
+  `vi` API 依存部分 (spyOn/mock など) を Bun ネイティブへ書き換え、185箇所の `vi.stubGlobal` については独自ヘルパー `src/test/globals.ts` へ集約した。
+  残存する非同期タイミング差テスト 2件の対応、及び lcov カバレッジレポーター生成への切り替えを行い、CI (GitHub Actions) から Vitest への依存を根絶。
+  すべての 427 テストが green で通過し、実行速度の大幅な短縮と互換性の確保を達成した。
+- **Verification Results**:
+  - `just verify-ui`
+    - result: ok (format, lint, typecheck, build pass)
+  - `just test-ui-unit`
+    - result: ok (427 tests across 77 files pass)
+  - `just test-ui-cover`
+    - result: ok (LCOV generated)
+  - `just check-work-items`
+    - result: ok
+  - `just check-ids`
+    - result: ok
+- **Affected Guarantees State**:
+  - backwards compatibility: UI の動作や製品の外部契約・APIの振る舞いは一切変更されていない。
+  - SCL coherence: SCL やアーキテクチャの変更はなく、影響なし。

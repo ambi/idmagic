@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminUserImportPage } from './AdminUserImportPage'
@@ -9,11 +10,11 @@ const t = adminUsersDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 describe('AdminUserImportPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   function csvFile(content: string) {
     return new File([content], 'users.csv', { type: 'text/csv' })
@@ -38,9 +39,9 @@ describe('AdminUserImportPage', () => {
       errors: [{ row: 3, column: 'email', code: 'invalid_email' }],
     }
     const applyResult = { total_rows: 2, accepted_rows: 1, rejected_rows: 1, errors: [] }
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.endsWith('/api/admin/users/imports') && init?.method === 'POST') {
           const mode = (JSON.parse(String(init.body)) as { mode: string }).mode
           const id = mode === 'apply' ? 'job-apply' : 'job-dry-run'
@@ -81,9 +82,9 @@ describe('AdminUserImportPage', () => {
   })
 
   it('shows a translated message when the CSV is rejected before a job is created', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { error: 'invalid_header' }))),
+      mock(() => Promise.resolve(response(400, { error: 'invalid_header' }))),
     )
 
     await renderWithRouter(<AdminUserImportPage csrfToken="csrf" />)

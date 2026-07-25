@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { domainLabelsDictionary } from './i18n/domainLabels.i18n'
 import { attributeLabel, attributeGroupKey, attributeGroupTitle, cn } from './utils'
 

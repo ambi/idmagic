@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
   tenantBasePath,
   tenantLocalPath,
@@ -16,7 +17,7 @@ describe('core api utils', () => {
   const originalLocation = window.location
 
   beforeEach(() => {
-    vi.stubGlobal('location', {
+    stubGlobal('location', {
       ...originalLocation,
       pathname: '/realms/test-tenant/dashboard',
       origin: 'http://localhost:5173',
@@ -24,7 +25,7 @@ describe('core api utils', () => {
   })
 
   afterEach(() => {
-    vi.unstubAllGlobals()
+    restoreGlobals()
   })
 
   describe('Errors', () => {
@@ -65,7 +66,7 @@ describe('core api utils', () => {
     })
 
     it('should return slash if local path is empty', () => {
-      vi.stubGlobal('location', {
+      stubGlobal('location', {
         ...originalLocation,
         pathname: '/realms/test-tenant',
       })
@@ -121,11 +122,11 @@ describe('core api utils', () => {
   describe('request', () => {
     it('should fetch data successfully', async () => {
       const mockData = { success: true }
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = mock().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockData),
       })
-      vi.stubGlobal('fetch', mockFetch)
+      stubGlobal('fetch', mockFetch)
       setBearerTokenProvider(() => 'my-token')
 
       const res = await request('/test-api')
@@ -141,24 +142,24 @@ describe('core api utils', () => {
     })
 
     it('should throw UnauthenticatedError on 401', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = mock().mockResolvedValue({
         ok: false,
         status: 401,
         json: () => Promise.resolve({ error: 'unauthorized', message: 'Not logged in' }),
       })
-      vi.stubGlobal('fetch', mockFetch)
+      stubGlobal('fetch', mockFetch)
       setBearerTokenProvider(() => null)
 
       await expect(request('/secure-api')).rejects.toThrow(UnauthenticatedError)
     })
 
     it('should throw AuthenticationAPIError on other non-ok status', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = mock().mockResolvedValue({
         ok: false,
         status: 500,
         json: () => Promise.resolve({ error: 'server_error', message: 'Internal error' }),
       })
-      vi.stubGlobal('fetch', mockFetch)
+      stubGlobal('fetch', mockFetch)
 
       await expect(request('/error-api')).rejects.toThrow(AuthenticationAPIError)
     })

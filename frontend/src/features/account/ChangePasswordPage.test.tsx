@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, mock } from 'bun:test'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { ChangePasswordPresentation, passwordViolationMessage } from './ChangePasswordPage'
@@ -33,9 +33,9 @@ describe('ChangePasswordPresentation', () => {
     success: false,
     submitting: false,
     dialog: null,
-    onToggleShowCurrent: vi.fn(),
-    onToggleShowNew: vi.fn(),
-    onSubmit: vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault()),
+    onToggleShowCurrent: mock(),
+    onToggleShowNew: mock(),
+    onSubmit: mock((event: React.FormEvent<HTMLFormElement>) => event.preventDefault()),
   }
 
   it('shows the success message once changed', async () => {
@@ -51,7 +51,7 @@ describe('ChangePasswordPresentation', () => {
   })
 
   it('toggles the current password visibility', async () => {
-    const onToggleShowCurrent = vi.fn()
+    const onToggleShowCurrent = mock()
     await renderWithRouter(
       <ChangePasswordPresentation {...baseProps} onToggleShowCurrent={onToggleShowCurrent} />,
     )

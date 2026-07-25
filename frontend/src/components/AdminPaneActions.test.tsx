@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, mock } from 'bun:test'
 import { LocaleProvider } from '../lib/i18n'
 import { AdminPaneActions } from './AdminPaneActions'
 import { adminPaneActionsDictionary } from './AdminPaneActions.i18n'
@@ -26,7 +26,7 @@ describe('AdminPaneActions', () => {
   })
 
   it('invokes onEdit and disables the edit button while busy', () => {
-    const onEdit = vi.fn()
+    const onEdit = mock()
     const { rerender } = renderEn(<AdminPaneActions onEdit={onEdit} busy={false} />)
 
     fireEvent.click(screen.getByRole('button', { name: new RegExp(t.edit) }))
@@ -41,13 +41,13 @@ describe('AdminPaneActions', () => {
   })
 
   it('renders danger-toned secondary actions and respects per-action disabled state', () => {
-    const onDelete = vi.fn()
+    const onDelete = mock()
     renderEn(
       <AdminPaneActions
         detailHref="/admin/users/1"
         actions={[
           { label: 'Delete', onClick: onDelete, tone: 'danger' },
-          { label: 'Disable', onClick: vi.fn(), disabled: true },
+          { label: 'Disable', onClick: mock(), disabled: true },
         ]}
       />,
     )

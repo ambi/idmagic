@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminAgentsPage } from './AdminAgentsListPage'
@@ -10,7 +11,7 @@ const t = adminAgentsDictionary.en
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const agent: AdminAgent = {
@@ -26,12 +27,12 @@ const agent: AdminAgent = {
 }
 
 describe('locale', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the agent list in English by default', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { agents: [] }))),
+      mock(() => Promise.resolve(response(200, { agents: [] }))),
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[]} />)
     expect(
@@ -41,9 +42,9 @@ describe('locale', () => {
   })
 
   it('renders the agent list in Japanese when explicitly selected', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(200, { agents: [] }))),
+      mock(() => Promise.resolve(response(200, { agents: [] }))),
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[]} />, { locale: 'ja' })
     expect(
@@ -53,12 +54,12 @@ describe('locale', () => {
 })
 
 describe('AdminAgentsPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('registers an agent and refreshes the list on success', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/agents') && init?.method === 'POST') {
           return Promise.resolve(response(201, { ...agent, id: 'agent-2', name: 'billing-bot' }))
         }
@@ -80,11 +81,9 @@ describe('AdminAgentsPage', () => {
   })
 
   it('shows an error and keeps the dialog open when registration fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() =>
-        Promise.resolve(response(409, { message: 'This agent name is already in use.' })),
-      ),
+      mock(() => Promise.resolve(response(409, { message: 'This agent name is already in use.' }))),
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
 
@@ -98,9 +97,9 @@ describe('AdminAgentsPage', () => {
   })
 
   it('deletes an agent and refreshes the list on success', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn((url: string, init?: RequestInit) => {
+      mock((url: string, init?: RequestInit) => {
         if (url.includes('/api/admin/agents/agent-1') && init?.method === 'DELETE') {
           return Promise.resolve(response(204))
         }
@@ -120,9 +119,9 @@ describe('AdminAgentsPage', () => {
   })
 
   it('shows an error when binding a credential fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(409, { message: 'This client_id is already in use.' }))),
+      mock(() => Promise.resolve(response(409, { message: 'This client_id is already in use.' }))),
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
 
@@ -135,9 +134,9 @@ describe('AdminAgentsPage', () => {
   })
 
   it('shows an error and keeps the dialog open when editing an agent fails', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn(() => Promise.resolve(response(400, { message: 'Could not update the agent.' }))),
+      mock(() => Promise.resolve(response(400, { message: 'Could not update the agent.' }))),
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
 

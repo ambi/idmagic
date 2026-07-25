@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import type { McpResourceServer } from '../../types'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
@@ -20,7 +21,7 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
   renderWithRouterBase(ui, { locale: 'ja' })
 
 describe('AdminMcpResourceServersPage', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('renders the resource and scopes in English by default', async () => {
     await renderWithRouterBase(
@@ -60,12 +61,12 @@ describe('AdminMcpResourceServersPage', () => {
   })
 
   it('splits comma and whitespace separated scopes when registering', async () => {
-    vi.stubGlobal(
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({
+      mock().mockResolvedValue({
         ok: true,
         status: 201,
-        json: vi.fn().mockResolvedValue(resourceServer),
+        json: mock().mockResolvedValue(resourceServer),
       }),
     )
     const t = adminMcpResourceServersDictionary.en

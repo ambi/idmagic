@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { commonDictionary } from './common.i18n'
 import { configuredDefaultLocale } from './locale'
 import { resolveLocale } from './resolveLocale'

@@ -1,4 +1,5 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import {
@@ -16,7 +17,7 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
-  json: vi.fn().mockResolvedValue(body),
+  json: mock().mockResolvedValue(body),
 })
 
 const stringDef: UserAttributeDef = {
@@ -122,7 +123,7 @@ describe('AccountProfilePresentation', () => {
         profile={profile}
         isAdmin={false}
         notice=""
-        onDismissNotice={vi.fn()}
+        onDismissNotice={mock()}
       />,
     )
     expect(screen.getByText('Taro Yamada')).toBeInTheDocument()
@@ -135,14 +136,14 @@ describe('AccountProfilePresentation', () => {
         profile={profile}
         isAdmin={false}
         notice="プロフィールを更新しました。"
-        onDismissNotice={vi.fn()}
+        onDismissNotice={mock()}
       />,
     )
     expect(screen.getByText('プロフィールを更新しました。')).toBeInTheDocument()
   })
 
   it('calls onDismissNotice when the toast is dismissed', async () => {
-    const onDismissNotice = vi.fn()
+    const onDismissNotice = mock()
     await renderWithRouter(
       <AccountProfilePresentation
         profile={profile}
@@ -171,11 +172,11 @@ describe('AccountProfileEditPage', () => {
     editable_attributes: [],
   }
 
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => restoreGlobals())
 
   it('saves the profile and redirects with a success notice', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, profile)))
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, profile)))
     await renderWithRouter(
       <AccountProfileEditPage csrfToken="csrf" profile={profile} isAdmin={false} />,
     )
@@ -192,10 +193,10 @@ describe('AccountProfileEditPage', () => {
   })
 
   it('shows an error and keeps the form when saving fails', async () => {
-    vi.stubGlobal('location', { ...originalLocation, assign: vi.fn() })
-    vi.stubGlobal(
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(response(400, { message: '表示名を保存できませんでした。' })),
+      mock().mockResolvedValue(response(400, { message: '表示名を保存できませんでした。' })),
     )
     await renderWithRouter(
       <AccountProfileEditPage csrfToken="csrf" profile={profile} isAdmin={false} />,

@@ -1,0 +1,7 @@
+[test]
+# register-dom は DOM 登録、setup は jest-dom/RTL cleanup。
+# ESM の import 巻き上げを避けるため2段に分離し、この順序で preload する。
+preload = ["./src/test/register-dom.ts", "./src/test/setup.ts"]
+# preload/setup 自身が分母に混入する既知の制約 (oven-sh/bun#19494) への対処。
+coveragePathIgnorePatterns = ["src/test/**", "src/main.tsx", "src/routeTree.gen.ts"]
+coverageReporter = ["lcov", "text"]
