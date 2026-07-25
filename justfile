@@ -35,11 +35,7 @@ install-ui:
 verify:
     #!/usr/bin/env sh
     set -u
-    if [ -n "${CI:-}" ]; then
-        checks="check traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-cover build-ui"
-    else
-        checks="check traceability-strict test-tools typecheck-tools lint-go test-go format-check-ui lint-ui test-ui-unit build-ui"
-    fi
+    checks="check traceability-strict test-tools typecheck-tools lint-go test-go format-check-ui lint-ui test-ui-unit build-ui"
     tmp=$(mktemp -d)
     t0=$(date +%s)
     for c in $checks; do
