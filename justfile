@@ -2,7 +2,6 @@
 #
 # This app repo consumes RA/SCL tools from the embedded tools/ directory.
 
-set shell := ["zsh", "-cu"]
 
 ra_cmd := env("RA_CMD", "bun run tools/ra/src/main.ts")
 golangci_cache := env("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
@@ -34,40 +33,45 @@ install-ui:
 # is timed individually; a duration-sorted table prints at the end so the current
 # bottleneck (and whether the grouping still makes sense) is always visible.
 verify:
-    #!/usr/bin/env zsh
+    #!/usr/bin/env sh
     set -u
-    zmodload zsh/datetime
-    checks=(check traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-unit build-ui)
+    if [ -n "${CI:-}" ]; then
+        checks="check traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-cover build-ui"
+    else
+        checks="check traceability-strict test-tools typecheck-tools lint-go test-go format-check-ui lint-ui test-ui-unit build-ui"
+    fi
     tmp=$(mktemp -d)
-    t0=$EPOCHREALTIME
+    t0=$(date +%s)
     for c in $checks; do
-        ( s=$EPOCHREALTIME
-          just $c >"$tmp/$c.log" 2>&1
+        ( s=$(date +%s)
+          just "$c" >"$tmp/$c.log" 2>&1
           r=$?
-          printf '%s %d %.1f\n' "$c" "$r" "$(( EPOCHREALTIME - s ))" >"$tmp/$c.meta"
+          e=$(date +%s)
+          dur=$(( e - s ))
+          printf '%s %d %d\n' "$c" "$r" "$dur" >"$tmp/$c.meta"
         ) &
     done
     wait
-    total=$(( EPOCHREALTIME - t0 ))
+    total=$(( $(date +%s) - t0 ))
     rc=0
     for c in $checks; do
         read -r _ cstatus _ <"$tmp/$c.meta"
         if [ "$cstatus" -ne 0 ]; then
             rc=1
-            print -r -- "===== FAILED: $c ====="
+            echo "===== FAILED: $c ====="
             cat "$tmp/$c.log"
         fi
     done
-    print -r -- ""
-    print -r -- "── verify timings (all checks run in parallel) ──"
+    echo ""
+    echo "── verify timings (all checks run in parallel) ──"
     for c in $checks; do
         read -r cname cstatus cdur <"$tmp/$c.meta"
         [ "$cstatus" -eq 0 ] && mark="ok  " || mark="FAIL"
-        printf '%s\t%s\t%s\n' "$cdur" "$mark" "$cname"
-    done | sort -rn | while IFS=$'\t' read -r d mark n; do
-        printf '  %6.1fs  %s  %s\n' "$d" "$mark" "$n"
+        printf '%d %s %s\n' "$cdur" "$mark" "$cname"
+    done | sort -rn | while read -r d mark n; do
+        printf '  %3ds  %s  %s\n' "$d" "$mark" "$n"
     done
-    printf '  %6.1fs  ── total wall clock (sum if serial: run `just verify-serial`)\n' "$total"
+    printf '  %3ds  ── total wall clock (sum if serial: run `just verify-serial`)\n' "$total"
     rm -rf "$tmp"
     exit $rc
 
