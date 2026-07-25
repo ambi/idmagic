@@ -1,6 +1,6 @@
 ---
 status: completed
-authors: ["Codex"]
+authors: [tn]
 risk: medium
 created_at: 2026-06-28
 ---

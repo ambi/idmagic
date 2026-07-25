@@ -1,6 +1,6 @@
 ---
 status: pending
-authors: [Agent]
+authors: [tn]
 risk: low
 created_at: 2026-07-25
 depends_on: []

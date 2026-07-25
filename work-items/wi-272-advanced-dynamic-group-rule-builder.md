@@ -1,6 +1,6 @@
 ---
 status: pending
-authors: [tn, antigravity]
+authors: [tn]
 risk: high
 created_at: 2026-07-22
 depends_on: [wi-216-dynamic-group-rule-builder-ui]

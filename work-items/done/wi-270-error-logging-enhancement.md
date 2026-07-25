@@ -1,6 +1,6 @@
 ---
 status: completed
-authors: [Antigravity]
+authors: [tn]
 risk: medium
 created_at: 2026-07-20
 depends_on: []

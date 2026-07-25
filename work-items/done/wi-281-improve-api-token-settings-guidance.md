@@ -1,6 +1,6 @@
 ---
 status: completed
-authors: [codex]
+authors: [tn]
 risk: low
 created_at: 2026-07-24
 depends_on: []

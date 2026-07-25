@@ -1,6 +1,6 @@
 ---
 status: completed
-authors: [Agent]
+authors: [tn]
 risk: medium
 created_at: 2026-07-12
 depends_on: []

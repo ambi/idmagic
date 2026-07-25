@@ -1,6 +1,6 @@
 ---
 status: completed
-authors: [Antigravity]
+authors: [tn]
 risk: low
 created_at: 2026-07-05
 ---
