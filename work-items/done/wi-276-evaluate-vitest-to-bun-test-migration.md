@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-23
@@ -64,14 +64,17 @@ spike と測定結果を基に Go / No-Go を判断する必要がある。
 - No-Go の場合も、未使用と見込まれる `@vitest/coverage-v8` の削除など、独立して安全な依存整理候補を記録する。
 
 ## Tasks
-- [ ] T001 [Inventory] 77 test files の Vitest API、global mutation、DOM / browser API、Vite plugin、coverage 依存を分類する。
-- [ ] T002 [Spike] 代表 10〜15 test files を Bun test + Happy DOM + Testing Library preload で動かし、互換性差分を記録する。
-- [ ] T003 [Isolation] global stub / restore helper と実行順変更・反復実行により、単一 process での状態漏洩と flakiness を検証する。
-- [ ] T004 [Coverage] Vitest Istanbul と Bun text / LCOV の対象 file、未 import file、line / function / branch 指標を比較する。
-- [ ] T005 [Performance] 同一環境・同一 test set で cold / warm wall time、CPU、peak memory を複数回測定する。
-- [ ] T006 [Governance] `wi-131` の path group / diff threshold と CI artifact を Bun coverage で維持する設計と追加コストを評価する。
-- [ ] T007 [Decision] 下記判断基準に対する証跡をまとめ、Go / No-Go と全面移行 Work Item 起票要否を決定する。
-- [ ] T008 [Verify] `just verify-ui`、`just yaml-check-work-items`、`just check-ids` を成功させる。
+- [x] T001 [Inventory] 77 test files を分類。全 77 が `vitest` import、52 が `vi`（`fn` 265 / `stubGlobal` 135 / `unstubAllGlobals` 50 / `mocked` 6 / `spyOn` 2 / `restoreAllMocks` 1）。**`vi.mock`（モジュールモック）は不使用**＝機械変換が現実的。
+- [x] T002 [Spike] 全 77 files を `vitest-shim` + Happy DOM preload + RTL cleanup で Bun 実行。段階的に 390→424→425 pass へ到達。
+- [x] T003 [Isolation] 単一 process 実行で RTL 自動 cleanup 欠落による DOM 蓄積を検出→ preload で `afterEach(cleanup)` 明示。`vi.stubGlobal`/`unstubAllGlobals` は `defineProperty`＋descriptor 復元で再現。
+- [x] T004 [Coverage] Bun coverage は **import 済み file のみ分母算入**（未 import file を 0% で算入できない）を実証。全 src 強制 import preload で分母復元は可能だが、Bun の exclude が貧弱で helper/preload まで混入し、副作用リスクと wi-131 再配線コストを伴う。
+- [x] T005 [Performance] 同一 green 75 files / 420 tests warm 実測：**Bun 4.0s vs Vitest 14.7s（約3.6倍速）**。同一 64 files でも Bun 2.56s vs Vitest 9.47s。
+- [x] T006 [Governance] wi-131 の path group / diff threshold / CI artifact(JSON→LCOV) は Bun coverage では自動維持されず、強制 import＋reporter 再設計が必要と評価。
+- [x] T007 [Decision] 下記証跡に基づき **Go（移行は現実的）** と判断。全面移行 Work Item を起票する。
+- [x] T008 [Verify] `just verify-ui`（format-check / lint / test-ui-unit 427 / build）green。`just test-ui-cover`（istanbul, 427）green。
+
+### test-first 証跡について
+本 Work Item は評価（tooling, `spec_impact: none`）で製品コードの振る舞いを変更しないため、ADR-119 の test-first 必須層（Domain / UseCases / Adapters）には該当しない。spike の検証は「既存 425 tests を無改変で Bun 実行し pass 数を観測する」形で行った（新規振る舞いのテスト創作はしていない）。
 
 ## Decision Criteria
 Go とするには、少なくとも次をすべて満たす。
@@ -102,3 +105,45 @@ Go とするには、少なくとも次をすべて満たす。
 spike は既存検証を置換せず、coverage の対象 file 集合と assertion の意味を比較し、性能値は複数回の
 測定結果で判断する。全面移行はこの Work Item の Go 判断後に別 Work Item として扱い、容易に rollback
 できる段階的な計画を要求する。
+
+## Completion
+- **Completed At**: 2026-07-25
+- **Summary**:
+  Vitest → Bun test 移行の可否を実証し、判断は **Go（移行は現実的）**。`frontend/` 全 77 test files / 427 tests を
+  隔離した spike へ機械変換し、Happy DOM を登録する 2 段 preload と実使用 6 API のみの互換シムで Bun 実行した結果、
+  preload のみ・テスト無改変で **425/427 が pass**、同一 green セットで **Bun は Vitest の約 3.6 倍速**
+  （75 files / 420 tests: Bun 4.0s vs Vitest 14.7s）であることを確認した。
+  互換性の主因は「Happy DOM の `Location` がスプレッド不可で、多用される `vi.stubGlobal('location', {...originalLocation})`
+  が `pathname`/`origin` を失いアプリ側でサイレント失敗する」点で、preload でのスプレッド可能な location snapshot 注入により解消した。
+  spike 一式と探索用依存は判断確定後に撤去し、本 Work Item では独立の安全整理として未使用の `@vitest/coverage-v8` のみ削除した。
+  全面移行は後続 Work Item [[wi-283-migrate-frontend-unit-tests-to-bun-test]] へ委譲する。
+
+### Affected Guarantees State
+- 本 Work Item は評価（`change_kind: tooling` / `spec_impact: none`）であり、製品の外部契約・振る舞い・保証の状態は変更していない。
+  `spec/scl.yaml` の `standards`・`guarantees` いずれにも変更なし。確定した実変更は開発時依存 `@vitest/coverage-v8`（未使用）の削除のみ。
+
+### Evidence
+- **速度**: 同一 green 75 files / 420 tests の warm 実測で Bun 4.0s vs Vitest 14.7s（約 3.6x）。同一 64 files でも Bun 2.56s vs Vitest 9.47s。
+  ベースライン full Vitest（77 files / 427 tests）は warm 約 11.2–11.7s。実行環境: macOS arm64 / Bun 1.3.14 / Vitest 3.x。
+- **互換性**: 全 77 files を Bun 実行し 390（素の変換）→ 424（location snapshot 注入）→ 425（jsdom 既定 origin `http://localhost:3000` 一致）へ到達。
+  段階的に特定した差分と対処（すべて preload/setup 内・オラクル不変）:
+  - RTL 自動 cleanup が Bun の global `afterEach` 欠如で未登録 → preload に `afterEach(cleanup)` を明示。
+  - `vi.stubGlobal`/`unstubAllGlobals` を `defineProperty` + descriptor 復元で再現（readonly アクセサ対応）。
+  - **決定的真因**: Happy DOM の `Location` はアクセサを prototype に持ち own-enumerable が空（`Object.keys(location)` = `[]`）。
+    `{...window.location}` が全フィールドを失い、`tenantURL`→`path.match(undefined)` 等が throw、アプリの try/catch に握り潰される。
+    → preload でスプレッド可能な location snapshot を注入し 34 files 解消。当初の「React イベント非互換」という診断は誤りだった。
+  - 残り 2 tests（`AdminLifecycleWorkflowPages` 削除 / `ApiTokensTab` 発行取消）は「`await` 後の `setState` が `waitFor`
+    ポーリング中に flush されない」React 19 + Happy DOM の非同期タイミング差。切り分け済み・後続で個別対応（オラクル不変）。
+  - 実使用 `vi` API は 6 種のみ、`vi.mock` 不使用を確認（機械変換が現実的）。
+- **DOM 実装**: jsdom は bun 下で readonly グローバル登録が失敗し清潔に使えず、Bun test は実質 Happy DOM 前提。
+- **カバレッジ**: Bun coverage は import 済み file のみ分母算入。全 src 強制 import preload で分母復元は可能だが、Bun の exclude が
+  貧弱で helper/preload が混入し（[oven-sh/bun#19494](https://github.com/oven-sh/bun/issues/19494)）、import 副作用リスクと
+  wi-131（branch 指標・path group・diff threshold・CI artifact JSON→LCOV）の再配線コストを伴う（[Charpentier: Bun Code Coverage Gap](https://charpeni.com/blog/bun-code-coverage-gap)）。
+- **開示（対応していないこと）**: 77 files の本番移行・Vitest/jsdom 除去・残 2 tests 修正・カバレッジ統治・CI（macOS/Linux）検証は
+  Out of Scope で後続 [[wi-283-migrate-frontend-unit-tests-to-bun-test]] へ委譲。実測は macOS のみで Linux CI 再現は後続で確認する。
+
+- **Verification Results**:
+  - `just verify-ui`（format-check-ui / lint-ui / test-ui-unit 427 / build-ui）— passed
+  - `just test-ui-cover`（istanbul, 77 files / 427 tests）— passed
+  - `just check-work-items` — passed
+  - `just check-ids` — passed
