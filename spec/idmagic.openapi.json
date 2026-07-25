@@ -2154,6 +2154,1138 @@
         }
       }
     },
+    "/api/admin/users/exports": {
+      "post": {
+        "operationId": "StartUserCsvExport",
+        "summary": "管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。列は User allowlist の部分集合に限り、status フィルタを引き継げる。202 とエクスポート id を返す。",
+        "x-scl-requires": [
+          "size(input.request.columns) >= 1"
+        ],
+        "description": "Requires: size(input.request.columns) >= 1",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "UserDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/DataExportRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListUserExports",
+        "summary": "管理者が User エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。CSV 本体や PII 値は含まない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "UserDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DataExportJob"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "exports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/exports/{export_id}": {
+      "get": {
+        "operationId": "GetUserExport",
+        "summary": "管理者が User エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/exports/{export_id}/file": {
+      "get": {
+        "operationId": "DownloadUserExportFile",
+        "summary": "管理者が完成済み User エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "$ref": "#/components/schemas/DataExportFile"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "file"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/exports/{export_id}/cancel": {
+      "post": {
+        "operationId": "CancelUserExport",
+        "summary": "管理者が終端前の User エクスポートを取消す。既に終端の場合は拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "export_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "export_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/exports": {
+      "post": {
+        "operationId": "StartGroupCsvExport",
+        "summary": "管理者が Group 一覧の CSV エクスポートを非同期ジョブとして開始する。列は Group allowlist の部分集合に限る。202 とエクスポート id を返す。",
+        "x-scl-requires": [
+          "size(input.request.columns) >= 1"
+        ],
+        "description": "Requires: size(input.request.columns) >= 1",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "GroupDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/DataExportRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListGroupExports",
+        "summary": "管理者が Group エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "GroupDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DataExportJob"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "exports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/exports/{export_id}": {
+      "get": {
+        "operationId": "GetGroupExport",
+        "summary": "管理者が Group エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/exports/{export_id}/file": {
+      "get": {
+        "operationId": "DownloadGroupExportFile",
+        "summary": "管理者が完成済み Group エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "$ref": "#/components/schemas/DataExportFile"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "file"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/exports/{export_id}/cancel": {
+      "post": {
+        "operationId": "CancelGroupExport",
+        "summary": "管理者が終端前の Group エクスポートを取消す。既に終端の場合は拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "export_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "export_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/members/exports": {
+      "post": {
+        "operationId": "StartGroupMemberCsvExport",
+        "summary": "管理者が特定 Group のメンバー一覧の CSV エクスポートを開始する。group_id は path から取り、そのグループのメンバーだけを対象とする (Entra / Okta / Google と同じ per-group)。202 とエクスポート id を返す。",
+        "x-scl-requires": [
+          "size(input.request.columns) >= 1"
+        ],
+        "description": "Requires: size(input.request.columns) >= 1",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "GroupDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "group_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/DataExportRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "group_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListGroupMemberExports",
+        "summary": "管理者が特定 Group のメンバーエクスポート一覧を取得する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "GroupDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exports": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DataExportJob"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "exports"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/members/exports/{export_id}": {
+      "get": {
+        "operationId": "GetGroupMemberExport",
+        "summary": "管理者が特定 Group のメンバーエクスポート 1 件の状態を取得する。別グループの export id は解決しない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/members/exports/{export_id}/file": {
+      "get": {
+        "operationId": "DownloadGroupMemberExportFile",
+        "summary": "管理者が完成済みメンバーエクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "$ref": "#/components/schemas/DataExportFile"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "file"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/groups/{group_id}/members/exports/{export_id}/cancel": {
+      "post": {
+        "operationId": "CancelGroupMemberExport",
+        "summary": "管理者が終端前のメンバーエクスポートを取消す。既に終端の場合は拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "DataExportJob",
+            "id": "input.export_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "group_id": {
+                    "type": "string"
+                  },
+                  "export_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "group_id",
+                  "export_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "group_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "export_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/DataExportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/users/{user_id}/disable": {
       "post": {
         "operationId": "DisableAdminUser",
@@ -21069,6 +22201,390 @@
         ],
         "description": "ConsentLifecycle 状態機械の取りうる状態列挙。GDPR Art.7(3) 撤回権により Granted → Revoked が可能。"
       },
+      "DataExportCanceled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "exportId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "exportId"
+        ],
+        "description": "終端前のリソースエクスポートが管理者によって取消された。"
+      },
+      "DataExportColumn": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "pii": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "label",
+          "pii"
+        ],
+        "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は安定した機械名、label は画面表示名、pii は個人情報を含むか。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
+      },
+      "DataExportDownloaded": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "exportId": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/DataExportTargetKind"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "exportId",
+          "target"
+        ],
+        "description": "管理者が完成済みエクスポートファイルをダウンロードした。PII を大量に取り出す高リスク操作として監査に残す。"
+      },
+      "DataExportError": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "description": "エクスポートの失敗理由。値そのものは返さず stable code のみを返す。"
+      },
+      "DataExportExpired": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "exportId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "exportId"
+        ],
+        "description": "保持期限を経過し、エクスポートファイル本体が purge された。metadata と監査は残る。"
+      },
+      "DataExportFailed": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "exportId": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/DataExportTargetKind"
+          },
+          "errorCode": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "exportId",
+          "target",
+          "errorCode"
+        ],
+        "description": "リソースエクスポートの生成が失敗し、不完全ファイルはダウンロード不可のまま終端した。"
+      },
+      "DataExportFile": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "byte_size": {
+            "type": "integer"
+          },
+          "content": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "filename",
+          "content_type",
+          "byte_size",
+          "content"
+        ],
+        "description": "ダウンロード時に返す完成済みエクスポートファイル。content は CSV 本体で PII を含みうるため、succeeded かつ未期限のジョブに対してのみ、認可済み管理者へ content-disposition attachment として返す。"
+      },
+      "DataExportFormat": {
+        "type": "string",
+        "enum": [
+          "csv"
+        ],
+        "description": "エクスポートの出力形式。初期は CSV (RFC 4180) のみ。"
+      },
+      "DataExportJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DataExportStatus"
+          },
+          "target": {
+            "$ref": "#/components/schemas/DataExportTargetKind"
+          },
+          "format": {
+            "$ref": "#/components/schemas/DataExportFormat"
+          },
+          "requested_columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filename": {
+            "type": "string"
+          },
+          "total_rows": {
+            "type": "integer"
+          },
+          "byte_size": {
+            "type": "integer"
+          },
+          "error_code": {
+            "type": "string"
+          },
+          "requested_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "downloadable": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "status",
+          "target",
+          "format",
+          "requested_columns",
+          "requested_by",
+          "created_at",
+          "downloadable"
+        ],
+        "description": "リソースエクスポートジョブの公開ビュー兼監査可能な記録。CSV 本体や PII の値は含まず、対象種別・選択列 key・件数・バイト数・状態・期限・要求者だけを持つ。"
+      },
+      "DataExportRequest": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/DataExportFormat",
+            "default": "csv"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "filter": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "format",
+          "columns"
+        ],
+        "description": "管理者がエクスポートを開始する入力。対象種別は endpoint (path) が決めるため body には持たない。出力形式、列選択 (allowlist の部分集合)、一覧画面から引き継いだフィルタを持つ。列に allowlist 外の key を含む場合は拒否する。"
+      },
+      "DataExportRequested": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "actorUserId": {
+            "type": "string"
+          },
+          "exportId": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/DataExportTargetKind"
+          },
+          "requestedColumns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "actorUserId",
+          "exportId",
+          "target",
+          "requestedColumns"
+        ],
+        "description": "管理者がリソースエクスポートを要求し、ジョブが受理された。CSV 値は持たず、対象種別・選択列 key・要求者だけを記録する。"
+      },
+      "DataExportStarted": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "exportId": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/DataExportTargetKind"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "exportId",
+          "target"
+        ],
+        "description": "worker がリソースエクスポートの生成を開始した。"
+      },
+      "DataExportStatus": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "canceled",
+          "expired"
+        ],
+        "description": "リソースエクスポートジョブの状態。DataExportLifecycle と一致する。succeeded はファイルをダウンロード可能な状態、expired はファイル本体が TTL 経過で purge され metadata と監査だけが残る状態。"
+      },
+      "DataExportSucceeded": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "exportId": {
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/DataExportTargetKind"
+          },
+          "totalRows": {
+            "type": "integer"
+          },
+          "byteSize": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "exportId",
+          "target",
+          "totalRows",
+          "byteSize"
+        ],
+        "description": "リソースエクスポートの生成が完了し、ファイルがダウンロード可能になった。行数とバイト数だけを記録し、値は持たない。"
+      },
+      "DataExportTargetKind": {
+        "type": "string",
+        "enum": [
+          "user",
+          "group",
+          "group_membership"
+        ],
+        "description": "CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。"
+      },
       "Deliver": {
         "type": "object",
         "properties": {
@@ -33295,6 +34811,54 @@
             }
           },
           {
+            "name": "CancelGroupExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
+              ]
+            }
+          },
+          {
+            "name": "CancelGroupMemberExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
+              ]
+            }
+          },
+          {
+            "name": "CancelUserExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
+              ]
+            }
+          },
+          {
             "name": "ClearUserRequiredAction",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33515,6 +35079,54 @@
               ],
               "resourceTypes": [
                 "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DownloadGroupExportFile",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
+              ]
+            }
+          },
+          {
+            "name": "DownloadGroupMemberExportFile",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
+              ]
+            }
+          },
+          {
+            "name": "DownloadUserExportFile",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
               ]
             }
           },
@@ -33759,6 +35371,38 @@
             }
           },
           {
+            "name": "GetGroupExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
+              ]
+            }
+          },
+          {
+            "name": "GetGroupMemberExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
+              ]
+            }
+          },
+          {
             "name": "GetLifecycleWorkflow",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -33803,6 +35447,22 @@
               ],
               "resourceTypes": [
                 "TenantUserAttributeSchema"
+              ]
+            }
+          },
+          {
+            "name": "GetUserExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.export_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataExportJob"
               ]
             }
           },
@@ -33967,6 +35627,38 @@
             }
           },
           {
+            "name": "ListGroupExports",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "GroupDirectory"
+              ]
+            }
+          },
+          {
+            "name": "ListGroupMemberExports",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "GroupDirectory"
+              ]
+            }
+          },
+          {
             "name": "ListGroups",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -34027,6 +35719,22 @@
               ],
               "resourceTypes": [
                 "User"
+              ]
+            }
+          },
+          {
+            "name": "ListUserExports",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "UserDirectory"
               ]
             }
           },
@@ -34235,6 +35943,54 @@
               ],
               "resourceTypes": [
                 "User"
+              ]
+            }
+          },
+          {
+            "name": "StartGroupCsvExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "GroupDirectory"
+              ]
+            }
+          },
+          {
+            "name": "StartGroupMemberCsvExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "GroupDirectory"
+              ]
+            }
+          },
+          {
+            "name": "StartUserCsvExport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "UserDirectory"
               ]
             }
           },

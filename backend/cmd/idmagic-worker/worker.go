@@ -14,6 +14,7 @@ import (
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
+	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -92,6 +93,15 @@ func RunWorker() error {
 		GroupRepo:  deps.IdManagement.GroupRepo,
 		UserRepo:   deps.IdManagement.UserRepo,
 		SchemaRepo: deps.Tenancy.AttrSchemaRepo,
+		Emit: func(event spec.DomainEvent) error {
+			deps.NewEmitFunc(logger)(event)
+			return nil
+		},
+	}))
+	handlers.Register(idmusecases.KindDataExport, idmusecases.DataExportHandler(idmusecases.DataExportDeps{
+		UserRepo:  deps.IdManagement.UserRepo,
+		GroupRepo: deps.IdManagement.GroupRepo,
+		JobRepo:   deps.Jobs.Repo,
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
 			return nil

@@ -330,3 +330,75 @@ type DynamicMembershipEvaluated struct {
 
 func (e *DynamicMembershipEvaluated) EventType() string     { return "DynamicMembershipEvaluated" }
 func (e *DynamicMembershipEvaluated) OccurredAt() time.Time { return e.At }
+
+// DataExport* events audit the admin CSV export lifecycle
+// (spec/contexts/identity-management.yaml events, ADR-140). Payloads carry no
+// PII values — only counts, target kind, ids, and stable codes — and every
+// event carries tenantId so the shared audit projection (bootstrap.NewEmitFunc)
+// keys it to the tenant.
+
+type DataExportRequested struct {
+	At               time.Time `json:"-"`
+	TenantID         string    `json:"tenantId"`
+	ActorUserID      string    `json:"actorUserId"`
+	ExportID         string    `json:"exportId"`
+	Target           string    `json:"target"`
+	RequestedColumns []string  `json:"requestedColumns"`
+}
+
+func (e *DataExportRequested) EventType() string     { return "DataExportRequested" }
+func (e *DataExportRequested) OccurredAt() time.Time { return e.At }
+
+type DataExportStarted struct {
+	At       time.Time `json:"-"`
+	TenantID string    `json:"tenantId"`
+	ExportID string    `json:"exportId"`
+	Target   string    `json:"target"`
+}
+
+func (e *DataExportStarted) EventType() string     { return "DataExportStarted" }
+func (e *DataExportStarted) OccurredAt() time.Time { return e.At }
+
+type DataExportSucceeded struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	ExportID  string    `json:"exportId"`
+	Target    string    `json:"target"`
+	TotalRows int       `json:"totalRows"`
+	ByteSize  int       `json:"byteSize"`
+}
+
+func (e *DataExportSucceeded) EventType() string     { return "DataExportSucceeded" }
+func (e *DataExportSucceeded) OccurredAt() time.Time { return e.At }
+
+type DataExportFailed struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	ExportID  string    `json:"exportId"`
+	Target    string    `json:"target"`
+	ErrorCode string    `json:"errorCode"`
+}
+
+func (e *DataExportFailed) EventType() string     { return "DataExportFailed" }
+func (e *DataExportFailed) OccurredAt() time.Time { return e.At }
+
+type DataExportCanceled struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	ExportID    string    `json:"exportId"`
+}
+
+func (e *DataExportCanceled) EventType() string     { return "DataExportCanceled" }
+func (e *DataExportCanceled) OccurredAt() time.Time { return e.At }
+
+type DataExportDownloaded struct {
+	At          time.Time `json:"-"`
+	TenantID    string    `json:"tenantId"`
+	ActorUserID string    `json:"actorUserId"`
+	ExportID    string    `json:"exportId"`
+	Target      string    `json:"target"`
+}
+
+func (e *DataExportDownloaded) EventType() string     { return "DataExportDownloaded" }
+func (e *DataExportDownloaded) OccurredAt() time.Time { return e.At }

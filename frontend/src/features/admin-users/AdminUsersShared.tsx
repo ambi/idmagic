@@ -28,7 +28,7 @@ import type {
   UserAttributeDef,
 } from '../../types'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
-import { formatDateTime, RoleList } from './AdminUsersPrimitives'
+import { daysUntil, formatDateTime, RoleList } from './AdminUsersPrimitives'
 
 export function attributeValueToText(value: AttributeValue): string {
   switch (value.type) {
@@ -452,5 +452,29 @@ export function UserSessionsSection({
         )}
       </div>
     </section>
+  )
+}
+
+// PendingDeletionNotice は削除予約中のユーザーに、猶予残日数と自動完全削除の
+// 予定を伝える amber バナー。復元動線 (メニューの「アカウントを復元」) を促す。
+export function PendingDeletionNotice({ user }: { user: AdminUser }) {
+  const remaining = daysUntil(user.purge_after)
+  const t = useDictionary(adminUsersDictionary)
+  const { locale } = useLocale()
+  return (
+    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+      <p className="font-semibold">{t.pendingDeletionTitle}</p>
+      <p className="mt-1">
+        {remaining !== null
+          ? t.pendingDeletionRemaining.replace('{days}', String(remaining))
+          : t.pendingDeletionRemainingUnknown}
+        {t.pendingDeletionRestoreNotice}
+      </p>
+      {user.purge_after && (
+        <p className="mt-1 text-amber-700">
+          {t.purgeScheduledAt.replace('{date}', formatDateTime(user.purge_after, locale))}
+        </p>
+      )}
+    </div>
   )
 }

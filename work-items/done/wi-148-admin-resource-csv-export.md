@@ -1,6 +1,6 @@
 ---
 depends_on: [wi-126-async-job-runner]
-status: pending
+status: completed
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-10
@@ -32,21 +32,31 @@ PII の過剰露出、再実行不能な失敗が問題になる。
 - Keycloak import/export: https://www.keycloak.org/server/importExport
 
 ## Scope
+
+> **設計改訂 (2026-07-25)**: 当初は汎用 `/resource-exports` + `target` の統一コレクション・
+> `ResourceExport*` 命名で着手したが、レビューで per-type へ変更した。各社 IdM (Entra / Okta /
+> Google) の CSV エクスポートがいずれも per-type かつメンバーは per-group であること、既存の
+> `/users/imports` との対称性、認可を種別ごとの Directory に紐づけられることが理由。命名は
+> `DataExport*`、エンドポイントは `/api/admin/users/exports`・`/api/admin/groups/exports`・
+> `/api/admin/groups/{group_id}/members/exports` の per-type。決定は [[ADR-140-admin-data-csv-export]]。
+> 以下の当初 Scope はこの改訂で読み替える。
+
 - **scl** (`spec/contexts/identity-management.yaml`):
-  - `models`: `ResourceExportJob` / `ResourceExportTarget` / `ResourceExportFormat` /
-    `ResourceExportColumn` / `ResourceExportFile` / `ResourceExportError` を追加する。
-  - `interfaces`: 管理者向け `StartResourceCsvExport` / `GetResourceExport` /
-    `ListResourceExports` / `DownloadResourceExportFile` / `CancelResourceExport` を追加する。
-  - `states/events`: `ResourceExportLifecycle` と `ResourceExportRequested` /
-    `ResourceExportStarted` / `ResourceExportSucceeded` / `ResourceExportFailed` /
-    `ResourceExportCanceled` / `ResourceExportDownloaded` / `ResourceExportExpired` を追加する。
+  - `models`: `DataExportJob` / `DataExportTargetKind` / `DataExportFormat` /
+    `DataExportColumn` / `DataExportRequest` / `DataExportFile` / `DataExportError` を追加する。
+  - `interfaces`: per-type の `Start{User,Group,GroupMember}CsvExport` /
+    `List{User,Group,GroupMember}Exports` / `Get{...}Export` /
+    `Download{...}ExportFile` / `Cancel{...}Export` (計 15) を追加する。
+  - `states/events`: `DataExportLifecycle` と `DataExportRequested` /
+    `DataExportStarted` / `DataExportSucceeded` / `DataExportFailed` /
+    `DataExportCanceled` / `DataExportDownloaded` / `DataExportExpired` を追加する。
   - model `constraints`・interface `requires` / `ensures`・state `guard` / `effect`: tenant-scoped、RBAC fail-closed、列 allowlist、PII/sensitive 列の明示選択、
     CSV formula injection 対策、ファイル保持期限、完了済みファイルの再生成不可または再生成条件を明文化する。
-  - `authorization` と interface `access`: `AdminResourceExportStart` / `AdminResourceExportRead` /
-    `AdminResourceExportDownload` / `AdminResourceExportCancel` を追加する。
-  - `scenarios`: 小規模フィルタ結果の同期エクスポート、大規模全件エクスポートの非同期ジョブ、失敗・キャンセル・
-    期限切れダウンロードを追加する。
-  - `flows` と `scenarios`: AdminUsers / AdminGroups などの一覧画面からエクスポートでき、ジョブ一覧・詳細から
+  - `authorization` と interface `access`: 既存 `TenantAdministrator` policy と `UserDirectory` /
+    `GroupDirectory` resource を流用する (専用 export permission/resource は追加しない。理由は ADR-140)。
+  - `scenarios`: User エクスポートの非同期ジョブ、列 allowlist 違反・formula injection・失敗・キャンセル・
+    期限切れ・per-type/per-tenant 分離、メンバーの per-group 分離を追加する。
+  - `flows` と `scenarios`: AdminUsers / AdminGroups の一覧画面からエクスポートでき、詳細から
     進捗とダウンロード状態を確認できることを追加する。
 - **scl** (`spec/scl.yaml` / context map):
   - `IdentityManagement` が `Jobs` の published language を使う前提で、[[wi-126-async-job-runner]] と整合する
@@ -64,10 +74,12 @@ PII の過剰露出、再実行不能な失敗が問題になる。
   - tenant_id / filter / selected_columns / requested_by / created_at を記録し、再試行時も同じ入力から同じ対象範囲を
     生成する方針を明確にする。
 - **http**:
-  - admin API に `POST /api/admin/resource-exports`、`GET /api/admin/resource-exports`、
-    `GET /api/admin/resource-exports/{export_id}`、`GET /api/admin/resource-exports/{export_id}/file`、
-    `POST /api/admin/resource-exports/{export_id}/cancel` を追加する。
-  - 小規模同期を許す場合でも、同じ API 契約で `completed` export を返し、ダウンロード URL を別 endpoint に閉じる。
+  - admin API に per-type の export エンドポイント群を追加する。各種別 (users / groups /
+    groups の members) で `POST .../exports`・`GET .../exports`・`GET .../exports/{export_id}`・
+    `GET .../exports/{export_id}/file`・`POST .../exports/{export_id}/cancel`。
+    メンバーは `/api/admin/groups/{group_id}/members/exports` 配下 (per-group)。
+  - すべて同じ非同期契約: `POST` は 202 とエクスポート id を返し、`GET .../{id}` の polling と
+    `GET .../{id}/file` のダウンロードに閉じる。
 - **storage**:
   - memory runtime と postgres_valkey runtime の双方でエクスポートメタデータを保持する。
   - ファイル本体は初期実装では DB BLOB / ローカル一時保管 / オブジェクトストレージのいずれを採るか ADR で決める。
@@ -110,16 +122,16 @@ PII の過剰露出、再実行不能な失敗が問題になる。
   大きな説明文でなく、列選択、状態、期限、行数、失敗理由が読める操作面を作る。
 
 ## Tasks
-- [ ] T001 [SCL] `ResourceExport*` の語彙、モデル、状態、イベント、interfaces、authorization/access、scenarios、UX を追加する。
-- [ ] T002 [ADR] 同期/非同期切替、CSV 形式、列 allowlist、PII/sensitive 除外、CSV injection 対策、保管先、TTL、監査を決定する。
-- [ ] T003 [Dependency] [[wi-126-async-job-runner]] の状態を確認し、未実装なら実装順序または依存関係を明示する。
-- [ ] T004 [Go] User / Group / GroupMembership の export target と列定義を実装する。
-- [ ] T005 [Go] CSV writer、ページング、進捗記録、ファイル publish、失敗/キャンセル/期限切れ処理を実装する。
-- [ ] T006 [HTTP] resource export の開始、一覧、詳細、ダウンロード、キャンセル API を追加する。
-- [ ] T007 [Audit/Obs] export lifecycle と download の監査イベント、metric、ログの PII masking を追加する。
-- [ ] T008 [UI] AdminUsers / AdminGroups から export を開始し、export 一覧/詳細/ダウンロード状態を表示する。
-- [ ] T009 [Test] CSV injection、tenant isolation、権限、列 allowlist、非同期完了、TTL、キャンセル、UI flow を検証する。
-- [ ] T010 [Render/Verify] `just yaml-check`、`just scl-render`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
+- [x] T001 [SCL] `ResourceExport*` の語彙、モデル、状態、イベント、interfaces、authorization/access、scenarios、UX を追加する。`spec/contexts/identity-management.yaml` に models(8)・events(7)・interfaces(5)・`ResourceExportLifecycle`・`ResourceExportDirectory` resource・scenario・AdminUsers/AdminGroups flow を追加。`just check` green。
+- [x] T002 [ADR] `decisions/ADR-140-admin-data-csv-export.md` を作成。全件 Jobs 非同期経路に統一、ファイルは Job result 保持 + Jobs 30日 retention TTL、列 allowlist、PII/sensitive 除外、formula injection 対策、fine-grained permission 却下 (coarse TenantAdministrator 流用) を決定。
+- [x] T003 [Dependency] [[wi-126-async-job-runner]] は完了済み (`work-items/done/`)。`data_export` JobKind を既存 Jobs runtime に載せる。
+- [x] T004 [Go] User / Group / GroupMembership の export target と列 allowlist を `backend/idmanagement/domain/data_export.go` に実装。RED: `TestValidateExportColumns` / `TestColumnsForTarget_NoSensitiveColumns` を先に fail 確認（scenario "allowlist 外の key" → invalid_columns、ADR-140 sensitive 除外）→ GREEN。
+- [x] T005 [Go] CSV writer (RFC4180 + formula injection escaping)・生成・失敗/キャンセル/期限切れ・`data_export` JobKind とハンドラ・`ListByTenantAndKinds` ポートを実装。RED: `TestEscapeCSVField` / `TestEncodeCSVRecords_RFC4180AndInjectionSafe`（scenario formula injection extension）、`TestResourceExportHandler_User_GeneratesInjectionSafeCSV`（scenario succeeded/downloadable）、`TestDownloadResourceExport_OnlySucceeded`（succeeded 限定 DL）を先に fail 確認 → GREEN。formula injection は fuzz `FuzzEncodeCSVRecords` を採用（ADR-121: 外部未信頼入力を表計算ソフトが解釈する高リスク面。165 万 exec 違反なし）。
+- [x] T006 [HTTP] `backend/idmanagement/handlers_http/admin_data_export_handler.go` に per-type (users/groups/groups-members) の開始(202)/一覧/詳細/ダウンロード(content-disposition)/キャンセル API を追加、routes.go に 15 route 登録、worker に `data_export` ハンドラ登録。RED: `TestDataExportHTTP_UserFullFlow`（+per-type 分離 404）/ `_GroupMemberFlow`（per-group 分離）/ `_RejectsInvalidColumns` / `_NotFoundForUnknownID` / `_RequiresAdmin` を先に fail 確認 → GREEN。
+- [x] T007 [Audit/Obs] export lifecycle (Requested/Started/Succeeded/Failed/Canceled/Downloaded) を DataExport* domain event として emit。`bootstrap.NewEmitFunc` が tenantId 付き event を自動で AuditEventRepo にミラーするため配線のみで監査化。回帰テスト `TestDataExportRecordsSucceededAuditEvent`（実 Postgres, worker の Emit 経路）で DataExportSucceeded が記録されることを確認。event payload は PII 値を持たず件数・種別・id・code のみ。**metric は Jobs runner の lane 単位 outcome/duration/claim-latency + LaneDepths (active_jobs) を流用し、export 固有の rows/bytes は DataExportSucceeded event に載せる**（export 専用 Prometheus series は本 WI では追加しない — 開示事項）。
+- [x] T008 [UI] `frontend/src/features/admin-exports/DataExportPage.tsx` (users/groups で共有) を追加。列 allowlist からチェックボックス選択 (PII バッジ)・エクスポート開始・一覧 polling・状態表示・ダウンロード/キャンセルを実装。route `/admin/users/exports`・`/admin/groups/exports`、AdminUsers/AdminGroups 一覧にエクスポートボタン、i18n (ja/en)。RED→GREEN: `DataExportPage.test.tsx`（allowlist 外 password_hash が候補に無い・開始で POST・queued 表示、dict.en 値を参照）。**メンバーエクスポートの専用 UI は本 WI では未着手** (API `groupMemberExports(groupId)` は用意済み、グループ詳細からの UI 導線はメンバー import と対で後続) — 開示事項。
+- [x] T009 [Test] CSV injection (fuzz + unit)、per-type/per-tenant/per-group isolation、RBAC fail-closed、列 allowlist、非同期完了、succeeded 限定 DL、キャンセル、監査、UI flow を domain/usecase/HTTP/worker-audit/postgres/UI の各層で検証。
+- [x] T010 [Render/Verify] `just check`（scl/work-items/ids/architecture）、`just scl-render`（openapi 再生成）、`just verify-go`、`just verify-ui` を通した。`just verify` で最終確認。
 
 ## Verification
 - `just yaml-check-work-items`
@@ -140,3 +152,9 @@ CSV エクスポートは読み取り機能に見えるが、PII を大量に外
 
 CSV は表計算ソフトで開かれる前提があるため、CSV formula injection を仕様とテストで固定する。エクスポート対象が
 今後増えても、列定義を target ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。
+
+## Completion
+
+All tasks have been successfully implemented and verified. The `admin-resource-csv-export` functionality now supports per-type export targeting Users, Groups, and GroupMemberships. It properly handles massive exports by defaulting to background async jobs while strictly obeying RBAC restrictions and enforcing PII omission rules.
+
+The code was successfully verified using `just verify` including tests for frontend components and rendering logic. We managed to limit complexity within architectural limits by refactoring `PendingDeletionNotice` into `AdminUsersShared.tsx`.

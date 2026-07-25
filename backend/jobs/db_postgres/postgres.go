@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -208,6 +209,35 @@ func (r *JobRepository) LaneDepths(ctx context.Context) ([]ports.LaneDepth, erro
 		depths = append(depths, ports.LaneDepth{Lane: domain.ExecutionLane(row.Lane), Queued: int(row.Queued), Running: int(row.Running)})
 	}
 	return depths, nil
+}
+
+func (r *JobRepository) ListByTenantAndKinds(ctx context.Context, tenantID string, kinds []domain.JobKind, limit int) ([]*domain.Job, error) {
+	if len(kinds) == 0 {
+		return nil, nil
+	}
+	kindStrs := make([]string, len(kinds))
+	for i, k := range kinds {
+		kindStrs[i] = string(k)
+	}
+	// NULLIF($3, 0) treats 0 as "no cap"; clamp out-of-range limits to 0 so an
+	// overflowing int32 conversion can't silently flip the cap.
+	limit32 := int32(0)
+	if limit > 0 && limit <= math.MaxInt32 {
+		limit32 = int32(limit)
+	}
+	rows, err := New(r.Pool).ListJobsByTenantAndKinds(ctx, ListJobsByTenantAndKindsParams{
+		TenantID: tenantID,
+		Column2:  kindStrs,
+		Column3:  limit32,
+	})
+	if err != nil {
+		return nil, err
+	}
+	jobs := make([]*domain.Job, len(rows))
+	for i, row := range rows {
+		jobs[i] = jobFromRow(row)
+	}
+	return jobs, nil
 }
 
 func (r *JobRepository) Get(ctx context.Context, jobID string) (*domain.Job, error) {

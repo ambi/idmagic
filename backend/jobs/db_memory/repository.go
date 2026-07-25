@@ -252,6 +252,31 @@ func (r *JobRepository) LaneDepths(_ context.Context) ([]ports.LaneDepth, error)
 	return depths, nil
 }
 
+func (r *JobRepository) ListByTenantAndKinds(_ context.Context, tenantID string, kinds []domain.JobKind, limit int) ([]*domain.Job, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	kindSet := make(map[domain.JobKind]struct{}, len(kinds))
+	for _, k := range kinds {
+		kindSet[k] = struct{}{}
+	}
+	var out []*domain.Job
+	for _, j := range r.byID {
+		if j.TenantID != tenantID {
+			continue
+		}
+		if _, ok := kindSet[j.Kind]; !ok {
+			continue
+		}
+		out = append(out, copyJob(j))
+	}
+	sort.Slice(out, func(i, k int) bool { return out[i].CreatedAt.After(out[k].CreatedAt) })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
 func (r *JobRepository) Get(_ context.Context, jobID string) (*domain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

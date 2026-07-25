@@ -63,6 +63,33 @@ export type UserImportJob = {
   result?: UserImportResult
 }
 
+// wi-148: 管理者向け CSV データエクスポート (per-type)。
+export type DataExportStatus =
+  | 'queued'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'canceled'
+  | 'expired'
+
+// GET/POST .../exports の公開ビュー。CSV 本体や PII 値は含まない。
+export type DataExportJob = {
+  id: string
+  status: DataExportStatus
+  target: string
+  format: string
+  requested_columns: string[]
+  filename?: string
+  total_rows?: number
+  byte_size?: number
+  error_code?: string
+  requested_by: string
+  created_at: string
+  completed_at?: string
+  expires_at?: string
+  downloadable: boolean
+}
+
 export const REQUIRED_ACTIONS = [
   'update_password',
   'verify_email',

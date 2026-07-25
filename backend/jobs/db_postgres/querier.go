@@ -36,6 +36,10 @@ type Querier interface {
 	// of both statuses are simply absent (no GROUP BY output row), matching
 	// ports.JobRepository.LaneDepths' documented contract.
 	LaneDepths(ctx context.Context) ([]*LaneDepthsRow, error)
+	// wi-148: a tenant-scoped, kind-filtered listing for feature consumers that
+	// surface their own JobKind's rows to admins (DataExport). Newest first.
+	// NULLIF($3, 0) makes a zero limit mean "no cap".
+	ListJobsByTenantAndKinds(ctx context.Context, arg ListJobsByTenantAndKindsParams) ([]*Job, error)
 }
 
 var _ Querier = (*Queries)(nil)

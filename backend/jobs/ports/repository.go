@@ -97,6 +97,13 @@ type JobRepository interface {
 	// snapshot for the wi-261 T006 queue-depth/active gauges, not part of the
 	// claim/lease contract above.
 	LaneDepths(ctx context.Context) ([]LaneDepth, error)
+
+	// ListByTenantAndKinds returns the tenant's Jobs whose Kind is in kinds,
+	// newest-created first, capped at limit (limit <= 0 means no cap). It is a
+	// scoped read for feature consumers that surface their own kind's Jobs to
+	// admins (wi-148 DataExport listing); the cross-kind admin job console
+	// is wi-157's separate concern. Passing no kinds returns no rows.
+	ListByTenantAndKinds(ctx context.Context, tenantID string, kinds []domain.JobKind, limit int) ([]*domain.Job, error)
 }
 
 // LaneDepth is one ExecutionLane's current queue depth (wi-261 T006).

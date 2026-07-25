@@ -683,15 +683,24 @@ modules:
       - { module: idmanagement-agent-domain, via: published_interface }
   idmanagement-usecases:
     path: backend/idmanagement/usecases
-    responsibility: "IdManagement の feature 横断 usecase ヘルパー（role 正規化・emit 等）と feature 横断エラー変数。feature 固有のユースケースは idmanagement-{user,group,agent}-usecases が持つ (ADR-130)。"
+    responsibility: "IdManagement の feature 横断 usecase ヘルパー（role 正規化・emit 等）と feature 横断エラー変数、および feature 横断の data export usecase (wi-148: User/Group/GroupMembership の CSV エクスポート)。feature 固有のユースケースは idmanagement-{user,group,agent}-usecases が持つ (ADR-130)。"
     context: IdManagement
     layer: use_cases
     role: published_interface
     depends_on:
+      - { module: idmanagement-domain, via: published_interface }
+      - { module: idmanagement-group-domain, via: published_interface }
+      - { module: idmanagement-group-ports, via: published_interface }
+      - { module: idmanagement-user-domain, via: published_interface }
+      - { module: idmanagement-user-ports, via: published_interface }
+      - { module: jobs-domain, via: published_interface }
+      - { module: jobs-ports, via: published_interface }
+      - { module: jobs-usecases, via: published_interface }
       - { module: shared-services, via: technical_shared }
       - { module: shared-spec, via: technical_shared }
       - { module: tenancy-domain, via: published_interface }
       - { module: tenancy-ports, via: published_interface }
+      - { module: tenancy-public, via: published_interface }
       - { module: tenancy-usecases, via: published_interface }
   idmanagement-user-usecases:
     path: backend/idmanagement/user/usecases
@@ -843,10 +852,15 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - { module: http-support, via: binding }
       - { module: idmanagement-agent-adapters, via: published_interface }
+      - { module: idmanagement-domain, via: published_interface }
       - { module: idmanagement-group-adapters, via: published_interface }
       - { module: idmanagement-httpdeps, via: published_interface }
+      - { module: idmanagement-usecases, via: published_interface }
       - { module: idmanagement-user-adapters, via: published_interface }
+      - { module: jobs-ports, via: binding }
+      - { module: tenancy-domain, via: published_interface }
   idgovernance-domain:
     path: backend/idgovernance/domain
     responsibility: "IdGovernance の LifecycleWorkflow モデル、状態、純粋な評価規則。"
@@ -2100,6 +2114,7 @@ modules:
       - { module: bootstrap, via: composition_root }
       - { module: idgovernance-usecases, via: composition_root }
       - { module: idmanagement-group-usecases, via: composition_root }
+      - { module: idmanagement-usecases, via: composition_root }
       - { module: idmanagement-user-usecases, via: composition_root }
       - { module: jobs-domain, via: composition_root }
       - { module: jobs-ports, via: composition_root }

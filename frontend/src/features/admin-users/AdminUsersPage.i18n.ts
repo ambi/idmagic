@@ -168,6 +168,7 @@ export const adminUsersDictionary = defineDictionary(
     accountInfoHeading: 'アカウント情報',
     accountInfoDescription: '保存時に属性全体が置換されます。',
     importUsers: 'CSV インポート',
+    exportUsers: 'CSV エクスポート',
     importUsersDescription: 'CSV から複数ユーザーを検証してから作成します。',
     importInstructions:
       'ヘッダーは preferred_username,email,name,roles の4列です。roles は "|" 区切りで複数指定できます。',
@@ -403,6 +404,7 @@ export const adminUsersDictionary = defineDictionary(
     accountInfoHeading: 'Account information',
     accountInfoDescription: 'The entire attribute set is replaced when you save.',
     importUsers: 'Import CSV',
+    exportUsers: 'Export CSV',
     importUsersDescription: 'Validate and create multiple users from a CSV file.',
     importInstructions:
       'The header must have exactly 4 columns: preferred_username,email,name,roles. Separate multiple roles with "|".',

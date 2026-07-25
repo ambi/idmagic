@@ -407,3 +407,57 @@ func (q *Queries) LaneDepths(ctx context.Context) ([]*LaneDepthsRow, error) {
 	}
 	return items, nil
 }
+
+const listJobsByTenantAndKinds = `-- name: ListJobsByTenantAndKinds :many
+SELECT id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+FROM jobs
+WHERE tenant_id = $1 AND kind = ANY($2::text[])
+ORDER BY created_at DESC
+LIMIT NULLIF($3::int, 0)
+`
+
+type ListJobsByTenantAndKindsParams struct {
+	TenantID string
+	Column2  []string
+	Column3  int32
+}
+
+// wi-148: a tenant-scoped, kind-filtered listing for feature consumers that
+// surface their own JobKind's rows to admins (DataExport). Newest first.
+// NULLIF($3, 0) makes a zero limit mean "no cap".
+func (q *Queries) ListJobsByTenantAndKinds(ctx context.Context, arg ListJobsByTenantAndKindsParams) ([]*Job, error) {
+	rows, err := q.db.Query(ctx, listJobsByTenantAndKinds, arg.TenantID, arg.Column2, arg.Column3)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Job
+	for rows.Next() {
+		var i Job
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Kind,
+			&i.Lane,
+			&i.Status,
+			&i.Params,
+			&i.Result,
+			&i.Error,
+			&i.Attempts,
+			&i.MaxAttempts,
+			&i.DedupKey,
+			&i.LeaseOwner,
+			&i.LeaseExpiresAt,
+			&i.RunAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

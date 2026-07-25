@@ -72,6 +72,16 @@ RETURNING id, tenant_id, kind, lane, status, params, result, error, attempts, ma
 SELECT id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
 FROM jobs WHERE id = $1;
 
+-- name: ListJobsByTenantAndKinds :many
+-- wi-148: a tenant-scoped, kind-filtered listing for feature consumers that
+-- surface their own JobKind's rows to admins (DataExport). Newest first.
+-- NULLIF($3, 0) makes a zero limit mean "no cap".
+SELECT id, tenant_id, kind, lane, status, params, result, error, attempts, max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at
+FROM jobs
+WHERE tenant_id = $1 AND kind = ANY($2::text[])
+ORDER BY created_at DESC
+LIMIT NULLIF($3::int, 0);
+
 -- name: LaneDepths :many
 -- wi-261 T006: point-in-time queued/running row counts per lane, for the
 -- worker's periodic queue-depth/active gauge sampling. Lanes with zero rows

@@ -500,3 +500,53 @@ func TestGet_NotFound(t *testing.T) {
 		t.Errorf("Get() error = %v, want ErrJobNotFound", err)
 	}
 }
+
+func TestListByTenantAndKinds_ScopesAndOrders(t *testing.T) {
+	pool := pgtest.Require(t)
+	resetJobsTable(t, pool)
+	tenantA := pgfixtures.SeedTenant(t, pool)
+	tenantB := pgfixtures.SeedTenant(t, pool)
+	r := &postgres.JobRepository{Pool: pool}
+	base := time.Now().UTC()
+	enqueue := func(tenantID string, kind domain.JobKind, lane domain.ExecutionLane, at time.Time) *domain.Job {
+		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
+			TenantID: tenantID, Kind: kind, Lane: lane, Params: json.RawMessage(`{}`),
+			MaxAttempts: 1, Now: at, RunAt: at,
+		})
+		if err != nil {
+			t.Fatalf("Enqueue: %v", err)
+		}
+		return job
+	}
+	older := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, base.Add(-time.Minute))
+	newer := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, base)
+	enqueue(tenantA.ID, domain.KindUserImportApply, domain.LaneBulk, base) // other kind, excluded
+	enqueue(tenantB.ID, domain.KindNoopEcho, domain.LaneDefault, base)     // other tenant, excluded
+
+	got, err := r.ListByTenantAndKinds(context.Background(), tenantA.ID, []domain.JobKind{domain.KindNoopEcho}, 0)
+	if err != nil {
+		t.Fatalf("ListByTenantAndKinds: %v", err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d jobs, want 2 (tenant+kind scoped)", len(got))
+	}
+	if got[0].ID != newer.ID || got[1].ID != older.ID {
+		t.Errorf("order = [%s %s], want newest-first [%s %s]", got[0].ID, got[1].ID, newer.ID, older.ID)
+	}
+
+	limited, err := r.ListByTenantAndKinds(context.Background(), tenantA.ID, []domain.JobKind{domain.KindNoopEcho}, 1)
+	if err != nil {
+		t.Fatalf("ListByTenantAndKinds limit: %v", err)
+	}
+	if len(limited) != 1 || limited[0].ID != newer.ID {
+		t.Errorf("limit=1 got %d jobs, want [%s]", len(limited), newer.ID)
+	}
+
+	none, err := r.ListByTenantAndKinds(context.Background(), tenantA.ID, nil, 0)
+	if err != nil {
+		t.Fatalf("ListByTenantAndKinds no kinds: %v", err)
+	}
+	if len(none) != 0 {
+		t.Errorf("no kinds got %d jobs, want 0", len(none))
+	}
+}

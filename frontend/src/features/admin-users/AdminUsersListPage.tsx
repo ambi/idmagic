@@ -7,6 +7,7 @@ import {
   IconKey,
   IconMail,
   IconRefresh,
+  IconFileExport,
   IconSearch,
   IconShield,
   IconShieldCheck,
@@ -49,7 +50,11 @@ import {
   UserAvatar,
   userLifecycleStatus,
 } from './AdminUsersPrimitives'
-import { UserGroupsSection, UserRequiredActionsSection } from './AdminUsersShared'
+import {
+  PendingDeletionNotice,
+  UserGroupsSection,
+  UserRequiredActionsSection,
+} from './AdminUsersShared'
 
 type StatusFilter = 'all' | 'active' | 'disabled' | 'pending_deletion'
 
@@ -187,6 +192,12 @@ export function AdminUsersPage({
         description={t.pageDescription}
         actions={
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <a href={tenantURL('/admin/users/exports')}>
+                <IconFileExport size={17} aria-hidden="true" />
+                {t.exportUsers}
+              </a>
+            </Button>
             <Button asChild variant="outline">
               <a href={tenantURL('/admin/users/import')}>
                 <IconUpload size={17} aria-hidden="true" />
@@ -531,30 +542,6 @@ function UserDetails({
 
         <UserGroupsSection user={user} csrfToken={csrfToken} allowEditing={false} />
       </div>
-    </div>
-  )
-}
-
-// PendingDeletionNotice は削除予約中のユーザーに、猶予残日数と自動完全削除の
-// 予定を伝える amber バナー。復元動線 (メニューの「アカウントを復元」) を促す。
-function PendingDeletionNotice({ user }: { user: AdminUser }) {
-  const remaining = daysUntil(user.purge_after)
-  const t = useDictionary(adminUsersDictionary)
-  const { locale } = useLocale()
-  return (
-    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-      <p className="font-semibold">{t.pendingDeletionTitle}</p>
-      <p className="mt-1">
-        {remaining !== null
-          ? t.pendingDeletionRemaining.replace('{days}', String(remaining))
-          : t.pendingDeletionRemainingUnknown}
-        {t.pendingDeletionRestoreNotice}
-      </p>
-      {user.purge_after && (
-        <p className="mt-1 text-amber-700">
-          {t.purgeScheduledAt.replace('{date}', formatDateTime(user.purge_after, locale))}
-        </p>
-      )}
     </div>
   )
 }

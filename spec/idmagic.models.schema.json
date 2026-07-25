@@ -5277,6 +5277,390 @@
       ],
       "description": "ConsentLifecycle 状態機械の取りうる状態列挙。GDPR Art.7(3) 撤回権により Granted → Revoked が可能。"
     },
+    "DataExportCanceled": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "exportId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "exportId"
+      ],
+      "description": "終端前のリソースエクスポートが管理者によって取消された。"
+    },
+    "DataExportColumn": {
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "pii": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "key",
+        "label",
+        "pii"
+      ],
+      "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は安定した機械名、label は画面表示名、pii は個人情報を含むか。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
+    },
+    "DataExportDownloaded": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "exportId": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/DataExportTargetKind"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "exportId",
+        "target"
+      ],
+      "description": "管理者が完成済みエクスポートファイルをダウンロードした。PII を大量に取り出す高リスク操作として監査に残す。"
+    },
+    "DataExportError": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "code"
+      ],
+      "description": "エクスポートの失敗理由。値そのものは返さず stable code のみを返す。"
+    },
+    "DataExportExpired": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "exportId": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "exportId"
+      ],
+      "description": "保持期限を経過し、エクスポートファイル本体が purge された。metadata と監査は残る。"
+    },
+    "DataExportFailed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "exportId": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/DataExportTargetKind"
+        },
+        "errorCode": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "exportId",
+        "target",
+        "errorCode"
+      ],
+      "description": "リソースエクスポートの生成が失敗し、不完全ファイルはダウンロード不可のまま終端した。"
+    },
+    "DataExportFile": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "byte_size": {
+          "type": "integer"
+        },
+        "content": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "filename",
+        "content_type",
+        "byte_size",
+        "content"
+      ],
+      "description": "ダウンロード時に返す完成済みエクスポートファイル。content は CSV 本体で PII を含みうるため、succeeded かつ未期限のジョブに対してのみ、認可済み管理者へ content-disposition attachment として返す。"
+    },
+    "DataExportFormat": {
+      "type": "string",
+      "enum": [
+        "csv"
+      ],
+      "description": "エクスポートの出力形式。初期は CSV (RFC 4180) のみ。"
+    },
+    "DataExportJob": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/DataExportStatus"
+        },
+        "target": {
+          "$ref": "#/$defs/DataExportTargetKind"
+        },
+        "format": {
+          "$ref": "#/$defs/DataExportFormat"
+        },
+        "requested_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "filename": {
+          "type": "string"
+        },
+        "total_rows": {
+          "type": "integer"
+        },
+        "byte_size": {
+          "type": "integer"
+        },
+        "error_code": {
+          "type": "string"
+        },
+        "requested_by": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "downloadable": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "status",
+        "target",
+        "format",
+        "requested_columns",
+        "requested_by",
+        "created_at",
+        "downloadable"
+      ],
+      "description": "リソースエクスポートジョブの公開ビュー兼監査可能な記録。CSV 本体や PII の値は含まず、対象種別・選択列 key・件数・バイト数・状態・期限・要求者だけを持つ。"
+    },
+    "DataExportRequest": {
+      "type": "object",
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/DataExportFormat",
+          "default": "csv"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "filter": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "format",
+        "columns"
+      ],
+      "description": "管理者がエクスポートを開始する入力。対象種別は endpoint (path) が決めるため body には持たない。出力形式、列選択 (allowlist の部分集合)、一覧画面から引き継いだフィルタを持つ。列に allowlist 外の key を含む場合は拒否する。"
+    },
+    "DataExportRequested": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "exportId": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/DataExportTargetKind"
+        },
+        "requestedColumns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "exportId",
+        "target",
+        "requestedColumns"
+      ],
+      "description": "管理者がリソースエクスポートを要求し、ジョブが受理された。CSV 値は持たず、対象種別・選択列 key・要求者だけを記録する。"
+    },
+    "DataExportStarted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "exportId": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/DataExportTargetKind"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "exportId",
+        "target"
+      ],
+      "description": "worker がリソースエクスポートの生成を開始した。"
+    },
+    "DataExportStatus": {
+      "type": "string",
+      "enum": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "canceled",
+        "expired"
+      ],
+      "description": "リソースエクスポートジョブの状態。DataExportLifecycle と一致する。succeeded はファイルをダウンロード可能な状態、expired はファイル本体が TTL 経過で purge され metadata と監査だけが残る状態。"
+    },
+    "DataExportSucceeded": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "exportId": {
+          "type": "string"
+        },
+        "target": {
+          "$ref": "#/$defs/DataExportTargetKind"
+        },
+        "totalRows": {
+          "type": "integer"
+        },
+        "byteSize": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "exportId",
+        "target",
+        "totalRows",
+        "byteSize"
+      ],
+      "description": "リソースエクスポートの生成が完了し、ファイルがダウンロード可能になった。行数とバイト数だけを記録し、値は持たない。"
+    },
+    "DataExportTargetKind": {
+      "type": "string",
+      "enum": [
+        "user",
+        "group",
+        "group_membership"
+      ],
+      "description": "CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。"
+    },
     "Deliver": {
       "type": "object",
       "properties": {

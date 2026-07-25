@@ -601,6 +601,163 @@ models:
         type: String
       code:
         type: String
+  DataExportTargetKind:
+    kind: enum
+    description: CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。
+    values: [user, group, group_membership]
+  DataExportFormat:
+    kind: enum
+    description: エクスポートの出力形式。初期は CSV (RFC 4180) のみ。
+    values: [csv]
+  DataExportStatus:
+    kind: enum
+    description: リソースエクスポートジョブの状態。DataExportLifecycle と一致する。succeeded はファイルをダウンロード可能な状態、expired はファイル本体が TTL 経過で purge され metadata と監査だけが残る状態。
+    values: [queued, running, succeeded, failed, canceled, expired]
+  DataExportColumn:
+    kind: value_object
+    description: エクスポート対象種別の allowlist に含まれる 1 列。key は安定した機械名、label は画面表示名、pii は個人情報を含むか。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。
+    fields:
+      key:
+        type: String
+      label:
+        type: String
+      pii:
+        type: Boolean
+        default: false
+  DataExportRequest:
+    kind: value_object
+    description: 管理者がエクスポートを開始する入力。対象種別は endpoint (path) が決めるため body には持たない。出力形式、列選択 (allowlist の部分集合)、一覧画面から引き継いだフィルタを持つ。列に allowlist 外の key を含む場合は拒否する。
+    fields:
+      format:
+        type: DataExportFormat
+        default: csv
+      columns:
+        type: "String[]"
+        constraints: [non_empty]
+      filter:
+        type: "Map<String,String>"
+        optional: true
+  DataExportJob:
+    kind: entity
+    description: リソースエクスポートジョブの公開ビュー兼監査可能な記録。CSV 本体や PII の値は含まず、対象種別・選択列 key・件数・バイト数・状態・期限・要求者だけを持つ。
+    identity: id
+    fields:
+      id:
+        type: String
+      status:
+        type: DataExportStatus
+      target:
+        type: DataExportTargetKind
+      format:
+        type: DataExportFormat
+      requested_columns:
+        type: "String[]"
+      filename:
+        type: String
+        optional: true
+      total_rows:
+        type: Integer
+        optional: true
+      byte_size:
+        type: Integer
+        optional: true
+      error_code:
+        type: String
+        optional: true
+      requested_by:
+        type: String
+      created_at:
+        type: DateTime
+      completed_at:
+        type: DateTime
+        optional: true
+      expires_at:
+        type: DateTime
+        optional: true
+      downloadable:
+        type: Boolean
+        default: false
+  DataExportFile:
+    kind: value_object
+    description: ダウンロード時に返す完成済みエクスポートファイル。content は CSV 本体で PII を含みうるため、succeeded かつ未期限のジョブに対してのみ、認可済み管理者へ content-disposition attachment として返す。
+    fields:
+      filename:
+        type: String
+      content_type:
+        type: String
+      byte_size:
+        type: Integer
+      content:
+        type: String
+        annotations:
+          pii: true
+  DataExportError:
+    kind: value_object
+    description: エクスポートの失敗理由。値そのものは返さず stable code のみを返す。
+    fields:
+      code:
+        type: String
+  DataExportRequested:
+    kind: event
+    description: 管理者がリソースエクスポートを要求し、ジョブが受理された。CSV 値は持たず、対象種別・選択列 key・要求者だけを記録する。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      actorUserId: { type: String }
+      exportId: { type: String }
+      target: { type: DataExportTargetKind }
+      requestedColumns: { type: "String[]" }
+  DataExportStarted:
+    kind: event
+    description: worker がリソースエクスポートの生成を開始した。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      exportId: { type: String }
+      target: { type: DataExportTargetKind }
+  DataExportSucceeded:
+    kind: event
+    description: リソースエクスポートの生成が完了し、ファイルがダウンロード可能になった。行数とバイト数だけを記録し、値は持たない。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      exportId: { type: String }
+      target: { type: DataExportTargetKind }
+      totalRows: { type: Integer }
+      byteSize: { type: Integer }
+  DataExportFailed:
+    kind: event
+    description: リソースエクスポートの生成が失敗し、不完全ファイルはダウンロード不可のまま終端した。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      exportId: { type: String }
+      target: { type: DataExportTargetKind }
+      errorCode: { type: String }
+  DataExportCanceled:
+    kind: event
+    description: 終端前のリソースエクスポートが管理者によって取消された。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      actorUserId: { type: String }
+      exportId: { type: String }
+  DataExportDownloaded:
+    kind: event
+    description: 管理者が完成済みエクスポートファイルをダウンロードした。PII を大量に取り出す高リスク操作として監査に残す。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      actorUserId: { type: String }
+      exportId: { type: String }
+      target: { type: DataExportTargetKind }
+  DataExportExpired:
+    kind: event
+    description: 保持期限を経過し、エクスポートファイル本体が purge された。metadata と監査は残る。
+    payload:
+      occurredAt: { type: DateTime }
+      tenantId: { type: String }
+      exportId: { type: String }
   AccountSummary:
     kind: value_object
     description: "`/api/account/summary` の返り値 (end-user account portal のホーム)。呼び出し\nユーザ自身のアカウント概要で、admin shell 用の AccountContext (/api/auth/account)\nとは別契約。roles は含めず、最終ログイン・パスワード変更日時・MFA 状態・未対応の\nrequired actions を portal home の summary card 用に返す。\n"
@@ -1556,6 +1713,34 @@ states:
       - from: Disabled
         event: AgentKilled
         to: Killed
+  DataExportLifecycle:
+    description: "リソースエクスポートのライフサイクル。queued で受理され、worker が\nrunning で CSV を生成する。成功すると succeeded (ファイルはダウンロード可能)、\n失敗すると failed (不完全ファイルはダウンロード不可) に終端する。終端前は\ncanceled で取消せる。succeeded は保持期限を経過すると expired へ遷移し、\nファイル本体は purge されて metadata と監査だけが残る。succeeded から expired へ\nの遷移 guard は保持期限 (30日、Jobs の既定 record retention と一致) の経過を\n要求する。\n"
+    target: DataExportJob
+    initial: queued
+    terminal:
+      - failed
+      - canceled
+      - expired
+    transitions:
+      - from: queued
+        event: DataExportStarted
+        to: running
+      - from: running
+        event: DataExportSucceeded
+        to: succeeded
+      - from: running
+        event: DataExportFailed
+        to: failed
+      - from: queued
+        event: DataExportCanceled
+        to: canceled
+      - from: running
+        event: DataExportCanceled
+        to: canceled
+      - from: succeeded
+        event: DataExportExpired
+        to: expired
+        guard: "duration_since(completed_at) >= duration('2592000s')"
 interfaces:
   GetEmailVerificationContext:
     description: 未認証で開かれる email verification 画面が確認 POST を保護する CSRF token を取得する。
@@ -1795,6 +1980,207 @@ interfaces:
       - kind: http
         method: GET
         path: "/api/admin/users/imports/{job_id}"
+  StartUserCsvExport:
+    description: 管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。列は User allowlist の部分集合に限り、status フィルタを引き継げる。202 とエクスポート id を返す。
+    input:
+      request: { type: DataExportRequest }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    requires:
+      - size(input.request.columns) >= 1
+    emits: [DataExportRequested]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: UserDirectory, id: context.tenant_id }
+    bindings:
+      - { kind: http, method: POST, path: /api/admin/users/exports, request_form: body, successful_status_codes: ["202"] }
+  ListUserExports:
+    description: 管理者が User エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。CSV 本体や PII 値は含まない。
+    output:
+      exports: { type: "DataExportJob[]" }
+    errors: [AccessDeniedError]
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: UserDirectory, id: context.tenant_id }
+    bindings:
+      - { kind: http, method: GET, path: /api/admin/users/exports }
+  GetUserExport:
+    description: 管理者が User エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。
+    input:
+      export_id: { type: String }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: GET, path: "/api/admin/users/exports/{export_id}" }
+  DownloadUserExportFile:
+    description: 管理者が完成済み User エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。
+    input:
+      export_id: { type: String }
+    output:
+      file: { type: DataExportFile }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DataExportDownloaded]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: GET, path: "/api/admin/users/exports/{export_id}/file" }
+  CancelUserExport:
+    description: 管理者が終端前の User エクスポートを取消す。既に終端の場合は拒否する。
+    input:
+      export_id: { type: String }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DataExportCanceled]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: POST, path: "/api/admin/users/exports/{export_id}/cancel", successful_status_codes: ["200"] }
+  StartGroupCsvExport:
+    description: 管理者が Group 一覧の CSV エクスポートを非同期ジョブとして開始する。列は Group allowlist の部分集合に限る。202 とエクスポート id を返す。
+    input:
+      request: { type: DataExportRequest }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    requires:
+      - size(input.request.columns) >= 1
+    emits: [DataExportRequested]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: GroupDirectory, id: context.tenant_id }
+    bindings:
+      - { kind: http, method: POST, path: /api/admin/groups/exports, request_form: body, successful_status_codes: ["202"] }
+  ListGroupExports:
+    description: 管理者が Group エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。
+    output:
+      exports: { type: "DataExportJob[]" }
+    errors: [AccessDeniedError]
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: GroupDirectory, id: context.tenant_id }
+    bindings:
+      - { kind: http, method: GET, path: /api/admin/groups/exports }
+  GetGroupExport:
+    description: 管理者が Group エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。
+    input:
+      export_id: { type: String }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: GET, path: "/api/admin/groups/exports/{export_id}" }
+  DownloadGroupExportFile:
+    description: 管理者が完成済み Group エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。
+    input:
+      export_id: { type: String }
+    output:
+      file: { type: DataExportFile }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DataExportDownloaded]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: GET, path: "/api/admin/groups/exports/{export_id}/file" }
+  CancelGroupExport:
+    description: 管理者が終端前の Group エクスポートを取消す。既に終端の場合は拒否する。
+    input:
+      export_id: { type: String }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DataExportCanceled]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: POST, path: "/api/admin/groups/exports/{export_id}/cancel", successful_status_codes: ["200"] }
+  StartGroupMemberCsvExport:
+    description: 管理者が特定 Group のメンバー一覧の CSV エクスポートを開始する。group_id は path から取り、そのグループのメンバーだけを対象とする (Entra / Okta / Google と同じ per-group)。202 とエクスポート id を返す。
+    input:
+      group_id: { type: String }
+      request: { type: DataExportRequest }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    requires:
+      - size(input.request.columns) >= 1
+    emits: [DataExportRequested]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: GroupDirectory, id: context.tenant_id }
+    bindings:
+      - { kind: http, method: POST, path: "/api/admin/groups/{group_id}/members/exports", request_form: body, successful_status_codes: ["202"] }
+  ListGroupMemberExports:
+    description: 管理者が特定 Group のメンバーエクスポート一覧を取得する。
+    input:
+      group_id: { type: String }
+    output:
+      exports: { type: "DataExportJob[]" }
+    errors: [AccessDeniedError]
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: GroupDirectory, id: context.tenant_id }
+    bindings:
+      - { kind: http, method: GET, path: "/api/admin/groups/{group_id}/members/exports" }
+  GetGroupMemberExport:
+    description: 管理者が特定 Group のメンバーエクスポート 1 件の状態を取得する。別グループの export id は解決しない。
+    input:
+      group_id: { type: String }
+      export_id: { type: String }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: GET, path: "/api/admin/groups/{group_id}/members/exports/{export_id}" }
+  DownloadGroupMemberExportFile:
+    description: 管理者が完成済みメンバーエクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。
+    input:
+      group_id: { type: String }
+      export_id: { type: String }
+    output:
+      file: { type: DataExportFile }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DataExportDownloaded]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: GET, path: "/api/admin/groups/{group_id}/members/exports/{export_id}/file" }
+  CancelGroupMemberExport:
+    description: 管理者が終端前のメンバーエクスポートを取消す。既に終端の場合は拒否する。
+    input:
+      group_id: { type: String }
+      export_id: { type: String }
+    output:
+      job: { type: DataExportJob }
+    errors: [InvalidRequestError, AccessDeniedError]
+    emits: [DataExportCanceled]
+    access:
+      policies: [TenantAdministrator]
+      resource: { type: DataExportJob, id: input.export_id }
+    bindings:
+      - { kind: http, method: POST, path: "/api/admin/groups/{group_id}/members/exports/{export_id}/cancel", successful_status_codes: ["200"] }
   UpdateAdminUser:
     description: 管理者がユーザーのプロフィール、email_verified、roles を更新する。
     input:
@@ -2545,6 +2931,64 @@ scenarios:
         steps:
           - "インポート投入は拒否される"
           - "エラー \"invalid_header\""
+  管理者はユーザー一覧を CSV に安全にエクスポートできる:
+    actor: TenantAdministrator
+    given:
+      - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のユーザー一覧を開いている"
+      - "一覧には自テナントのユーザーが存在する"
+    main_success:
+      - "管理者が列 [preferred_username, email] と status フィルタで /users/exports へエクスポートを開始する"
+      - "エクスポートは 202 とエクスポート id を返し、ジョブは queued である"
+      - "worker が生成を開始し DataExportStarted が発行される"
+      - "生成が完了して status は succeeded、downloadable は true、total_rows と byte_size が記録される"
+      - "DataExportSucceeded が発行される"
+      - "管理者がファイルをダウンロードすると RFC 4180 の CSV が content-disposition attachment で返り、DataExportDownloaded が発行される"
+    extensions:
+      - at: 1
+        condition: 選択列に User allowlist 外の key (例 password_hash) が含まれる
+        steps:
+          - "エクスポート開始は InvalidRequestError で拒否される"
+          - "エラー \"invalid_columns\""
+      - at: 6
+        condition: セル値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる
+        steps:
+          - "値は formula injection を避けるためエスケープされて出力される"
+      - at: 4
+        condition: 生成が失敗する
+        steps:
+          - "status は failed、downloadable は false、error_code が記録される"
+          - "DataExportFailed が発行される"
+          - "不完全ファイルはダウンロードできない"
+      - at: 2
+        condition: 終端前に管理者が取消す
+        steps:
+          - "status は canceled になり、DataExportCanceled が発行される"
+      - at: 6
+        condition: 保持期限を経過している
+        steps:
+          - "status は expired、downloadable は false"
+          - "ファイル本体は purge され、ダウンロードは InvalidRequestError で拒否される"
+      - at: 6
+        condition: User エクスポートの id を /groups/exports や別テナントで指定する
+        steps:
+          - "取得・ダウンロード・取消は AccessDeniedError または InvalidRequestError で拒否される (per-type / per-tenant 分離)"
+  管理者は特定グループのメンバー一覧を CSV にエクスポートできる:
+    actor: TenantAdministrator
+    given:
+      - "roles=[\"admin\"] のユーザー \"operator\" がグループ \"engineering\" の詳細を開いている"
+    main_success:
+      - "管理者が /groups/{group_id}/members/exports へ列 [user_id, preferred_username] でエクスポートを開始する"
+      - "エクスポートは group_id で scope され、そのグループのメンバーだけが対象になる"
+      - "生成完了後、管理者がメンバー CSV をダウンロードする"
+    extensions:
+      - at: 1
+        condition: group_id を指定しない (per-group 必須)
+        steps:
+          - "エクスポート開始は InvalidRequestError で拒否される"
+      - at: 3
+        condition: 別グループの path でそのエクスポート id を指定する
+        steps:
+          - "取得・ダウンロードは InvalidRequestError で拒否される (per-group 分離)"
   管理者はエージェントを登録し client 資格情報をバインドできる:
     actor: TenantAdministrator
     given:
@@ -2751,6 +3195,26 @@ flows:
             does: インポートジョブを選んで、行ごとの検証・適用結果を表示する
             interface: GetAdminUserImport
             to: AdminUsers
+          - action: export
+            does: 現在のフィルタと列を選んで、ユーザー一覧の CSV エクスポートを開始する
+            interface: StartUserCsvExport
+            to: AdminUsers
+          - action: list_exports
+            does: ユーザーエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する
+            interface: ListUserExports
+            to: AdminUsers
+          - action: view_export
+            does: エクスポートを選んで、進捗・失敗理由・期限を表示する
+            interface: GetUserExport
+            to: AdminUsers
+          - action: download_export
+            does: 完成済みエクスポートファイルをダウンロードする
+            interface: DownloadUserExportFile
+            to: AdminUsers
+          - action: cancel_export
+            does: 終端前のエクスポートを取消す
+            interface: CancelUserExport
+            to: AdminUsers
           - action: view_groups
             does: ユーザーの所属グループとロール内訳を表示する
             interface: ListUserGroups
@@ -2819,6 +3283,26 @@ flows:
             does: グループのメンバー一覧からユーザー管理へ移動する
             interface: ListAdminUsers
             to: AdminUsers
+          - action: export
+            does: 列を選んで、グループ一覧の CSV エクスポートを開始する
+            interface: StartGroupCsvExport
+            to: AdminGroups
+          - action: list_exports
+            does: グループエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する
+            interface: ListGroupExports
+            to: AdminGroups
+          - action: download_export
+            does: 完成済みグループエクスポートをダウンロードする
+            interface: DownloadGroupExportFile
+            to: AdminGroups
+          - action: export_members
+            does: 特定グループのメンバー一覧の CSV エクスポートを開始する
+            interface: StartGroupMemberCsvExport
+            to: AdminGroups
+          - action: download_member_export
+            does: 完成済みメンバーエクスポートをダウンロードする
+            interface: DownloadGroupMemberExportFile
+            to: AdminGroups
   AdminAgents:
     entry: AdminAgents
     views:

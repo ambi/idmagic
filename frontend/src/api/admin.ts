@@ -28,6 +28,7 @@ import type {
   TenantUserAttributeSchema,
   UserAttributeDef,
   EntraFederationProfile,
+  DataExportJob,
   UserImportJob,
   UserImportJobSummary,
   UserImportMode,
@@ -185,6 +186,42 @@ export async function importAdminUsers(
 
 export async function getAdminUserImport(jobId: string): Promise<UserImportJob> {
   return request(`/api/admin/users/imports/${encodeURIComponent(jobId)}`)
+}
+
+// wi-148: 管理者向け CSV データエクスポート (per-type)。各リソース種別ごとに同じ形の
+// start / list / get / file を持つため、base path でパラメタ化した ExportCollection にする。
+export type StartExportInput = { columns: string[]; filter?: Record<string, string> }
+type DataExportListResponse = { exports: DataExportJob[] }
+
+export type ExportCollection = {
+  start: (csrfToken: string, input: StartExportInput) => Promise<DataExportJob>
+  list: () => Promise<DataExportJob[]>
+  get: (exportId: string) => Promise<DataExportJob>
+  cancel: (csrfToken: string, exportId: string) => Promise<DataExportJob>
+  // fileURL は <a href> / window ダウンロード用の tenant 絶対パス。
+  fileURL: (exportId: string) => string
+}
+
+function exportCollection(basePath: string): ExportCollection {
+  return {
+    start: (csrfToken, input) => request(basePath, adminRequest(csrfToken, 'POST', input)),
+    list: async () => (await request<DataExportListResponse>(basePath)).exports,
+    get: (exportId) => request(`${basePath}/${encodeURIComponent(exportId)}`),
+    cancel: (csrfToken, exportId) =>
+      request(
+        `${basePath}/${encodeURIComponent(exportId)}/cancel`,
+        adminRequest(csrfToken, 'POST'),
+      ),
+    fileURL: (exportId) => tenantURL(`${basePath}/${encodeURIComponent(exportId)}/file`),
+  }
+}
+
+export const userExports = exportCollection('/api/admin/users/exports')
+export const groupExports = exportCollection('/api/admin/groups/exports')
+
+// メンバーエクスポートは特定グループ配下 (per-group)。group_id を束ねた ExportCollection を返す。
+export function groupMemberExports(groupId: string): ExportCollection {
+  return exportCollection(`/api/admin/groups/${encodeURIComponent(groupId)}/members/exports`)
 }
 
 export type LifecycleWorkflowInput = {
