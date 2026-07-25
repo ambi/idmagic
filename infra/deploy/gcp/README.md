@@ -9,7 +9,7 @@ compute / DB / イベント配信 を **単一 VPC・単一リージョン**に�
 - フロント: React+Vite の**純 SPA**（`frontend/` → `dist/`）。SSR 無し。
 - ゲートウェイ: **Caddy**（`frontend/Caddyfile`）が静的配信＋同一オリジンで API/OIDC パスを backend へプロキシ。CSP は SPA HTML のみに付与(ADR-076)。
 - backend: 常駐 Go **3サービス** — `idmagic`(API `:8080`) / `idmagic-worker` / `idmagic-relay`。CGO 無し distroless（`infra/docker/Dockerfile`）。`PERSISTENCE=postgres` でステートレス・水平スケール可。
-- データ: **PostgreSQL 17**（本体+blob＋セッション・OAuth 一時状態, [ADR-139](../../../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)）/ **Pub/Sub**（outbox 中継、[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。揮発性状態も PostgreSQL に統合し Valkey は廃止。
+- データ: **PostgreSQL 17**（本体+blob＋セッション・OAuth 一時状態, [ADR-139](../../../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)）/ **Pub/Sub**（outbox 中継、[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。揮発性状態も同じ PostgreSQL が持つため、2 つ目のステートフル基盤は無い。
 - 署名鍵: **DB-backed 永続鍵(ADR-024)** を推奨（全レプリカ JWKS 一致）。Vault Transit(ADR-075) も可。
 - スキーマ: `psqldef` を**デプロイ工程で適用**（起動時適用は ADR-071 で禁止、`--enable-drop` 禁止）。
 
@@ -89,4 +89,4 @@ Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
 | Secret Manager/KMS/ログ/egress | | $30–60 |
 | **合計** | | **~$540–830（中心 ~$685）** |
 
-揮発性状態を PostgreSQL に統合し Valkey (Memorystore, 月 $150–200) を廃したことで 2 つ目のステートフル基盤の固定費が消えた（[ADR-139](../../../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)）。Pub/Sub はサーバレスでクラスタの固定費が無く、イベント量（低〜中量）に対して小さいコストに収まる（[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。CUD（1年 20–25% / 3年 40–52%）で **~$520–700** まで低下しうる（compute/DB の compute 分に適用、storage は対象外）。
+ステートフル基盤は PostgreSQL 一つで、揮発性状態も同居する。2 つ目のキャッシュ基盤 (月 $150–200 規模) の固定費が発生しない（[ADR-139](../../../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)）。Pub/Sub はサーバレスでクラスタの固定費が無く、イベント量（低〜中量）に対して小さいコストに収まる（[ADR-120](../../../decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)）。CUD（1年 20–25% / 3年 40–52%）で **~$520–700** まで低下しうる（compute/DB の compute 分に適用、storage は対象外）。

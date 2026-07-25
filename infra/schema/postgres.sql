@@ -1101,11 +1101,11 @@ CREATE TABLE provisioning_deliveries (
 CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (created_at) WHERE status = 'pending' AND job_id IS NULL;
 CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC);
 
--- Ephemeral auth/OAuth2 state consolidated from Valkey into PostgreSQL (ADR-139).
+-- Ephemeral auth/OAuth2 state: short-lived request / token / challenge rows (ADR-139).
 -- All rows carry expires_at; every read path filters `expires_at > now()`, so the TTL
 -- correctness is independent of GC (DeleteExpiredBatch reclaims space best-effort).
 -- High-churn stores that recover by simply restarting the in-flight flow are UNLOGGED
--- (no WAL, closest to Valkey's volatility). The revocation denylist and login throttle
+-- (no WAL, matching the volatility of these in-flight rows). The revocation denylist and login throttle
 -- are LOGGED so a failover cannot silently regress security (missed revocation, or the
 -- fail-closed throttle assumption), replicating to physical standbys (ADR-139 §4/§5).
 -- tenant_id is kept on every table as a fail-closed predicate over an opaque key
@@ -1182,7 +1182,7 @@ CREATE INDEX oauth2_device_codes_expires_at_idx
 CREATE INDEX oauth2_device_codes_user_idx
     ON oauth2_device_codes (tenant_id, user_id) WHERE user_id IS NOT NULL;
 
--- JTI replay reservation (DPoP / client assertion)。kind は Valkey adapter の Prefix を列化。
+-- JTI replay reservation (DPoP / client assertion)。kind 列で dpop / client_assertion を分ける。
 -- RecordIfNew = INSERT ON CONFLICT DO NOTHING。挿入行数で新規判定する。
 CREATE UNLOGGED TABLE oauth2_replay_jtis (
     tenant_id UUID NOT NULL,

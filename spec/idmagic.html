@@ -801,7 +801,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">API、UI gateway、event relay は個別の実行単位として配備される</li><li class="scn-step"><a class="chip chip-ref" href="#scl-System/interface/MetricsExposition">MetricsExposition</a> の公開範囲は management network に制限される</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Operator が環境 overlay を選んで運用 manifest を適用する</li><li class="scn-step">API の liveness、readiness、startup probe は各々 <a class="chip chip-ref" href="#scl-System/interface/LivenessProbe">LivenessProbe</a>、<a class="chip chip-ref" href="#scl-System/interface/ReadinessProbe">ReadinessProbe</a>、<a class="chip chip-ref" href="#scl-System/interface/StartupProbe">StartupProbe</a> を呼ぶ</li><li class="scn-step">Prometheus が <a class="chip chip-ref" href="#scl-System/interface/MetricsExposition">MetricsExposition</a> をスクレイプし、OAuth2 の availability、latency、error-rate objectives を表示・評価する</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
-            <header><span class="chip chip-hint">at 1</span><code class="name">PostgreSQL または Valkey へ到達できない</code></header>
+            <header><span class="chip chip-hint">at 1</span><code class="name">PostgreSQL へ到達できない</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-System/interface/ReadinessProbe">ReadinessProbe</a> は unavailable を返し、API は新規トラフィックを受けない</li><li class="scn-step"><a class="chip chip-ref" href="#scl-System/interface/LivenessProbe">LivenessProbe</a> は healthy を維持し、依存障害だけで再起動しない</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">Prometheus Operator が導入されていない</code></header>
@@ -9092,7 +9092,7 @@ purge=false で PendingDeletion の user へ呼び出した場合は DeleteAdmin
 <article class="card" id="scl-Authentication/model/LoginSession">
     <header><h3>LoginSession</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Authentication/model/LoginSession</code></header>
     <p class="desc">ブラウザログインセッション。PostgreSQL を単一正本として永続化し (wi-253)、
-プロセス再起動や Valkey 全損を跨いで有効な session を維持する。Cookie には不透明な
+プロセス再起動を跨いで有効な session を維持する。Cookie には不透明な
 session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も
 ここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は
 サインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を
@@ -33709,7 +33709,7 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
         <header><h3>Dockerなしの標準開発環境でworkerがジョブを完了する</h3><span class="chip chip-actor">Developer</span><code class="canonical-ref">Jobs/scenario/Dockerなしの標準開発環境でworkerがジョブを完了する</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">embedded PostgreSQL binary が取得済み、または初回取得可能である</li><li class="scn-step">開発用ポートが利用可能である</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">開発者が標準開発コマンドを実行する</li><li class="scn-step">embedded PostgreSQL と開発用 Valkey 互換 endpoint が起動し schema が適用される</li><li class="scn-step">API、worker、UI が起動する</li><li class="scn-step">API が <a class="chip chip-ref" href="#scl-Jobs/model/Job">Job</a> を enqueue する</li><li class="scn-step">worker が同じ <a class="chip chip-ref" href="#scl-Jobs/model/Job">Job</a> を claim して Succeeded にする</li><li class="scn-step">API と worker は同じ PostgreSQL queue と Valkey 互換 endpoint を共有する</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">開発者が標準開発コマンドを実行する</li><li class="scn-step">embedded PostgreSQL が起動し schema が適用される</li><li class="scn-step">API、worker、UI が起動する</li><li class="scn-step">API が <a class="chip chip-ref" href="#scl-Jobs/model/Job">Job</a> を enqueue する</li><li class="scn-step">worker が同じ <a class="chip chip-ref" href="#scl-Jobs/model/Job">Job</a> を claim して Succeeded にする</li><li class="scn-step">API と worker は同じ PostgreSQL queue を共有する</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 2</span><code class="name">binary 取得、ポート確保、または schema 適用に失敗する</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">標準開発環境は API と UI を起動せず fail-fast する</li></ol></div>

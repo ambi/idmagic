@@ -8458,7 +8458,7 @@
         "expires_at",
         "last_seen_at"
       ],
-      "description": "ブラウザログインセッション。PostgreSQL を単一正本として永続化し (wi-253)、\nプロセス再起動や Valkey 全損を跨いで有効な session を維持する。Cookie には不透明な\nsession id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も\nここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は\nサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を\n遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加\nfactor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize\n完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。\nCookie は http_only かつ same_site=Lax で発行する。tenant_id は認証解決クエリに\n必ず含め、session id が tenant をまたいで推測・再利用されても別 tenant の行を返さない\nfail-closed な分離を DB 層で担保する。失効は revoked_at / revoke_reason を設定する\ntombstone であり、行を物理削除しない (再失効は idempotent に成功する)。認証解決は\nrevoked_at IS NULL AND expires_at > now の行だけを有効とみなす。\n",
+      "description": "ブラウザログインセッション。PostgreSQL を単一正本として永続化し (wi-253)、\nプロセス再起動を跨いで有効な session を維持する。Cookie には不透明な\nsession id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も\nここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は\nサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を\n遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加\nfactor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize\n完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。\nCookie は http_only かつ same_site=Lax で発行する。tenant_id は認証解決クエリに\n必ず含め、session id が tenant をまたいで推測・再利用されても別 tenant の行を返さない\nfail-closed な分離を DB 層で担保する。失効は revoked_at / revoke_reason を設定する\ntombstone であり、行を物理削除しない (再失効は idempotent に成功する)。認証解決は\nrevoked_at IS NULL AND expires_at > now の行だけを有効とみなす。\n",
       "x-scl-untranslated-constraints": [
         "(revoked_at == null) == (revoke_reason == null)"
       ]

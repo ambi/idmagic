@@ -1,5 +1,5 @@
 ---
-status: in_progress  # pending | in_progress | completed | cancelled
+status: completed  # pending | in_progress | completed | cancelled
 authors: [tn]
 risk: high        # low | medium | high | critical
 created_at: 2026-07-24  # YYYY-MM-DD
@@ -92,7 +92,7 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 - [x] T012 [App] `deps.go` switch を `case "postgres","postgres_valkey":`（移行期 alias、error 文言も更新）に。`Dependencies.ValkeyPing` フィールドと health 系（`health_handler.go` を Postgres 単一依存に書換／`support_http/deps.go`／`server.go`／`memory.go`）の ValkeyPing を削除。full `just test-go` / `just lint-go` green。
 
 **Phase 3：観測・切替**
-- [ ] T013 [Verify] staging を `PERSISTENCE=postgres` に切替、dead tuple/autovacuum/p99 latency を実測し UNLOGGED/LOGGED 判断と GC 間隔を確定。
+- [x] T013 [Verify] → **[[wi-282]] に分離**。staging 実測（dead tuple/autovacuum/p99、UNLOGGED/LOGGED と GC 間隔の確定）は再利用可能な負荷テスト基盤として wi-282 で実施する。本 WI の実装は暫定判断のまま完了しており、ADR-139 §4 とスキーマに「暫定・staging 実測で確定」と明記済み。正しさは各 read の `expires_at > now()` 述語が担保するため storage/GC の確定は性能・容量最適化であり機能完了の前提ではない。
 
 **Phase 4：撤去**
 - [x] T014 [Infra] インフラから Valkey 削除：`docker-compose.dev.yaml`（valkey service・VALKEY_URL・depends_on）、`k8s`（configmap `PERSISTENCE`・networkpolicy の valkey egress×4）、`gcp` provision.sh（Memorystore create・secret・env）、`cloudrun-idmagic.yaml`（PERSISTENCE・VALKEY_URL secret）、README.md（構成図・コスト表・env）、`dev.sh`（VALKEY_URL）、`idmagic-dev-infra` の miniredis endpoint。全て `PERSISTENCE=postgres` に統一。
@@ -113,4 +113,47 @@ PostgreSQL はどのみち必須依存であり、Valkey は "2 つ目" の基�
 - **性能（write 増幅/vacuum）**：高churn の denylist/replay/throttle は autovacuum 負荷。→ UNLOGGED（可能なもの）＋ fillfactor/HOT update＋per-table autovacuum チューニング。Phase3 で実測してから prod 切替。
 - **破壊的変更（config）**：`PERSISTENCE` モード名変更（`postgres_valkey`→`postgres`）。alias は残さず削除する方針のため、切替は環境変数更新デプロイと同時に行う。未更新環境は起動時に "PERSISTENCE must be memory or postgres" で fail-fast（silent な誤起動はしない）。
 - **移行**：切替時の in-flight フロー（進行中の /authorize・PAR・device・throttle counter）は放棄されるが再開で回復（ADR-126 と同じ割り切り）。データ移行・dual-write は不要。
-- **検証基盤（発見・修正済み）**：T004 着手時、`backend/shared/storage/testing_postgres/pgtest.go` の `schemaPath()` が `..` を 6 個使っており（パッケージはルートから 4 階層）、schema パスが `/Users/tn/infra/...` に誤解決されて **リポジトリ全体の postgres 契約テストが黙って skip**（skip は "ok" 表示で `just verify` はグリーンのまま）していた。直近の sqlc ディレクトリ flatten（wi-267）で階層が浅くなった際の未更新が原因と見られる。本 WI の検証戦略（memory/valkey とのパリティ契約テスト）が機能する前提なので `..` を 4 個へ修正し、リポジトリ全 DB テストが実走・green になることを確認した（wi-278 本体とは別コミット）。**後続 Phase の全 postgres 契約テストはこの修正の上で実走する。**
+- **検証基盤（発見・修正済み）**：T004 着手時、`backend/shared/storage/testing_postgres/pgtest.go` の `schemaPath()` が `..` を 6 個使っており（パッケージはルートから 4 階層）、schema パスが `/Users/tn/infra/...` に誤解決されて **リポジトリ全体の postgres 契約テストが黙って skip**（skip は "ok" 表示で `just verify` はグリーンのまま）していた。直近の sqlc ディレクトリ flatten（wi-267）で階層が浅くなった際の未更新が原因と見られる。本 WI の検証戦略（memory とのパリティ契約テスト）が機能する前提なので `..` を 4 個へ修正し、リポジトリ全 DB テストが実走・green になることを確認した（wi-278 本体とは別コミット）。**後続 Phase の全 postgres 契約テストはこの修正の上で実走する。**
+
+## Completion
+
+- **Completed At**: 2026-07-25
+- **Summary**:
+  揮発性の認証 / OAuth2 一時状態 9 ストア（authorization request / code / PAR / device code /
+  JTI replay（DPoP・client assertion）/ access-token denylist / WebAuthn challenge /
+  login throttle / SAML AuthnRequest replay）を全て PostgreSQL に統合し、Valkey を
+  コード・依存・インフラから完全撤去した（ADR-139）。port 契約は不変のまま context ごとに
+  `db_postgres` アダプタを新設（SETNX→`INSERT ON CONFLICT`、Lua CAS→`UPDATE ... RETURNING`、
+  GetDel→`DELETE ... RETURNING`、WATCH→tx＋`SELECT FOR UPDATE`）。TTL の正しさは全 read の
+  `expires_at > now()` 述語が担保し、GC は `idmagic-worker` の周期 `ephemeralSweepLoop`（60s）で
+  best-effort に空間回収する。bootstrap を `assemblePostgres` に切替え、`PERSISTENCE` は
+  `postgres` に統一（旧 `postgres_valkey` は alias を残さず削除）、readiness は Postgres 単一依存に。
+  SCL（system/authentication/jobs）・スキーマ（9 テーブル、UNLOGGED/LOGGED 別、暫定）・
+  ARCHITECTURE・README・GCP デプロイ資材・dev 環境（miniredis 撤去）・`go.mod`
+  （go-redis/miniredis 除去）を同期。UNLOGGED/LOGGED と GC 間隔の staging 実測確定（旧 T013）は
+  [[wi-282]] に分離した。
+- **Verification Results**:
+  - `just check`（SCL / work-items / ids / architecture / traceability）- passed
+  - `just build-go` - passed
+  - `just test-go`（全 postgres 契約テストが pgtest 修正後に実走）- passed
+  - `just lint-go` - 0 issues
+  - oauth2 / session `db_postgres` を `-race` - passed（16 並行 INSERT で勝者 1・throttle tx CAS を実証）
+- **Affected Guarantees State**:
+  - fail-closed（ADR-077）: login throttle / access-token denylist は LOGGED で維持。到達不能時は
+    error 伝播で fail-closed。機構を Postgres へ移しただけで防御は不変（依存はむしろ削減）。
+  - once-only（replay / code redeem / PAR consume / device exchange / SAML replay）: 単文 CAS または
+    tx＋`SELECT FOR UPDATE` で原子性を維持（契約テストで並行検証）。
+  - tenant 分離: 各 ephemeral は opaque key の fail-closed lookup として `tenant_id` を保持
+    （ADR-082 §4 例外、ADR-139 §8）。
+  - **暫定**: 各テーブルの UNLOGGED/LOGGED と GC 間隔は staging 未実測。正しさは `expires_at>now()` が
+    担保するため機能は完了だが、性能・容量の最終確定は wi-282 に委ねる。
+- **Evidence**:
+  - 手順: `just check` / `just build-go` / `just test-go` / `just lint-go` / `just test-go-package "-race ..."`
+    をローカルで実行（embedded-postgres 契約テスト）。
+  - 実行環境: darwin、本リポジトリ作業ツリー。
+  - 対象ソース版: 本 WI の 3 コミット（Phase 0＋SAML slice / T005-T012 / T014-T015）＋
+    別コミットの pgtest 修正・applications sqlc 再生成。
+  - 結果: 上記すべて green（詳細は各 Task の RED→GREEN 証跡を参照）。
+  - 保存先: git 履歴（feature ブランチ）。大容量ログ・機密は無し。
+  - 未実施: staging 負荷実測（wi-282）、フル OAuth2/WebAuthn の `just dev` E2E 通し（wi-282 の
+    負荷シナリオと併せて実施予定）。

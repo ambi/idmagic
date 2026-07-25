@@ -372,7 +372,7 @@ modules:
       - { module: shared-spec, via: technical_shared }
   authentication-webauthn-adapters:
     path: backend/authentication/webauthn/handlers_http
-    responsibility: "WebAuthn の HTTP・memory・PostgreSQL・Valkey adapter。"
+    responsibility: "WebAuthn の HTTP・memory・PostgreSQL adapter。"
     context: Authentication
     layer: adapters
     role: binding
@@ -471,7 +471,7 @@ modules:
       - { module: tenancy-usecases, via: published_interface }
   authentication-session-adapters:
     path: backend/authentication/session/handlers_http
-    responsibility: "Login session の HTTP・memory・PostgreSQL・Valkey adapter。"
+    responsibility: "Login session の HTTP・memory・PostgreSQL adapter。"
     context: Authentication
     layer: adapters
     role: binding
@@ -3373,7 +3373,7 @@ complexity:
 
 ## Stack
 
-- Go、React/TypeScript、Bun、PostgreSQL、Valkey、Docker Compose、Kubernetes、Prometheus、Grafana、k6。
+- Go、React/TypeScript、Bun、PostgreSQL、Docker Compose、Kubernetes、Prometheus、Grafana、k6。
 - User 属性による動的 Group membership の式評価には、制限付き CEL (`cel-go`) を使う。
 
 ## Structural Decisions
@@ -3456,7 +3456,7 @@ backend/<context>/
   db_postgres/     # PostgreSQL repository Adapter
 ```
 
-`domain/` は Echo、PostgreSQL、Valkey、HTTP request/response を知らない。`usecases/` は `ports/` に依存し、具体 Adapter には依存しない。`handlers_http` は入力の wire 変換、HTTP status、cookie/header、CSRF/Origin など境界処理を持つ。`usecases/` が Adapter を import しない依存方向は全 context 共通で、外界の能力（署名・割当ゲート・認証解決など）は `ports/` の抽象か usecase パッケージ内の interface で受け、Adapter が具体実装を注入する（例: `oauth2` の `ports.TokenIssuer`、`saml` / `wsfederation` の `ApplicationGate` interface）。
+`domain/` は Echo、PostgreSQL、HTTP request/response を知らない。`usecases/` は `ports/` に依存し、具体 Adapter には依存しない。`handlers_http` は入力の wire 変換、HTTP status、cookie/header、CSRF/Origin など境界処理を持つ。`usecases/` が Adapter を import しない依存方向は全 context 共通で、外界の能力（署名・割当ゲート・認証解決など）は `ports/` の抽象か usecase パッケージ内の interface で受け、Adapter が具体実装を注入する（例: `oauth2` の `ports.TokenIssuer`、`saml` / `wsfederation` の `ApplicationGate` interface）。
 
 Adapter は分類用の `adapters/` や `persistence/` を介さず、所有 context / feature の直下に `<役割>_<技術詳細>` の snake_case 名で置く。役割が handler、repository、publisher、client のどれか、技術が HTTP、PostgreSQL、Kafka、SCIM のどれかを package 名だけで判別できるようにする。
 
@@ -3542,13 +3542,13 @@ HTTP route の集約点は `backend/shared/http/server_http/routes.go` である
 サービス分割しない（[ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)）。
 これは現状の記述であり、将来のスタイルを規定するものではない。
 
-`backend/cmd/internal/bootstrap/deps.go` の `Dependencies` は HTTP 層へ渡す境界の集約で、memory / postgres_valkey / outbox / otel などの runtime 選択を吸収する。context 固有の repository は各 `Module` に束ね、中央 `Dependencies` と server `Deps` には Module を渡す。新しい port を追加したら、少なくとも次を確認する。
+`backend/cmd/internal/bootstrap/deps.go` の `Dependencies` は HTTP 層へ渡す境界の集約で、memory / postgres / outbox / otel などの runtime 選択を吸収する。context 固有の repository は各 `Module` に束ね、中央 `Dependencies` と server `Deps` には Module を渡す。新しい port を追加したら、少なくとも次を確認する。
 
 - 対象 context の `ports/`
 - memory adapter
 - postgres adapter と migration が必要か
 - `bootstrap.Dependencies`
-- `assembleMemory` / `assemblePostgresValkey`
+- `assembleMemory` / `assemblePostgres`
 - `support.Deps`
 - 対象 HTTP handler または usecase の constructor
 
@@ -3632,7 +3632,7 @@ scheduled batch との境界は
 
 ## Persistence
 
-永続化 port と repository 実装は所有 context 側に置く。context 固有の memory / PostgreSQL Adapter は `backend/<context>/{db_memory,db_postgres}` に置き、共有する DB pool、row scanner、transaction helper は `backend/shared/storage/db_postgres` に置く（ADR-090、ADR-133）。揮発性状態も PostgreSQL に統合済みで Valkey adapter は存在しない（ADR-139）。
+永続化 port と repository 実装は所有 context 側に置く。context 固有の memory / PostgreSQL Adapter は `backend/<context>/{db_memory,db_postgres}` に置き、共有する DB pool、row scanner、transaction helper は `backend/shared/storage/db_postgres` に置く（ADR-090、ADR-133）。揮発性状態も PostgreSQL に統合済み（ADR-139）。
 
 PostgreSQL の構造を増やすときは、まず `infra/schema/postgres.sql` の現在形 schema を更新する。構造差分は `psqldef` の dry-run で確認し、デプロイ前ジョブで適用する。既存データの backfill、値変換、削除前の退避など、構造差分だけでは表せない変更は、対象 WI の runbook または専用 SQL script として明示する。アプリ起動時の migration runner は持たない。memory adapter はテスト・ローカル demo の基準にもなるため、postgres だけを更新しない。
 

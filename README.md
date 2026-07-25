@@ -23,7 +23,7 @@ and a foundation for identity platform experiments.
   rotated every 90 days with a 7-day JWKS overlap,
   admin console, account portal, groups, roles, application catalog, consent
   management, audit views, and per-tenant hosted login/account branding.
-- Adapter-oriented runtime: in-memory local mode, PostgreSQL, Valkey, Kafka
+- Adapter-oriented runtime: in-memory local mode, PostgreSQL, Kafka
   outbox relay, OpenTelemetry, SMTP, AuthZEN, and Vault Transit signing.
 - React admin/account/auth UI built with Vite, TanStack Router, Tailwind CSS,
   Radix UI, and local shadcn-style components.
@@ -32,8 +32,7 @@ and a foundation for identity platform experiments.
 
 ## Quick Start
 
-Run the Docker-free local stack with embedded PostgreSQL, a Valkey-compatible
-development endpoint, the API, worker, and UI:
+Run the Docker-free local stack with embedded PostgreSQL, the API, worker, and UI:
 
 ```bash
 just dev
@@ -42,8 +41,8 @@ just dev
 The first run downloads and caches an embedded PostgreSQL binary (about 190 MB).
 Development data is temporary and is removed when the stack stops. The API and
 worker remain separate processes and share the PostgreSQL job queue, so durable
-jobs such as CSV user import work in this mode. The local endpoints are
-`127.0.0.1:55432` (PostgreSQL) and `127.0.0.1:56379` (Valkey-compatible).
+jobs such as CSV user import work in this mode. The local endpoint is
+`127.0.0.1:55432` (PostgreSQL).
 
 For the smallest API + UI loop, without durable jobs or the background worker:
 
@@ -91,9 +90,9 @@ its type changed until the rule is updated.
 
 ### Manual Local Run
 
-If you prefer separate terminals, start shared PostgreSQL/Valkey yourself and
-provide `PERSISTENCE=postgres_valkey`, `DATABASE_URL`, and `VALKEY_URL` to both
-the API and worker. `just dev-api` by itself continues to use memory mode.
+If you prefer separate terminals, start a shared PostgreSQL yourself and
+provide `PERSISTENCE=postgres` and `DATABASE_URL` to both the API and worker.
+`just dev-api` by itself continues to use memory mode.
 
 ```bash
 # Terminal 1: Go API
@@ -109,7 +108,7 @@ just dev-ui
 
 ## Docker Development Stack
 
-The compose stack starts PostgreSQL, Valkey, Redpanda/Kafka, OpenTelemetry
+The compose stack starts PostgreSQL, Redpanda/Kafka, OpenTelemetry
 Collector, Prometheus, the Go API, the UI gateway, and the outbox relay. Caddy
 exposes the combined app at <http://localhost:8080/>. Prometheus scrapes the
 Go API's `/metrics` directly on the compose network (`infra/docker/prometheus.yml`);
@@ -150,10 +149,10 @@ release's digest overlay; Kubernetes keeps the prior ReplicaSet available for
 an immediate `just rollback-k8s idmagic-api` when necessary.
 
 The API probes `/startupz`, `/livez`, and `/readyz` directly. Its NetworkPolicy
-allows only the UI gateway and Prometheus scrape traffic in, plus DNS,
-PostgreSQL, and Valkey egress; relay egress is additionally limited to Kafka.
+allows only the UI gateway and Prometheus scrape traffic in, plus DNS and
+PostgreSQL egress; relay egress is additionally limited to Kafka.
 Each worker lane's NetworkPolicy allows only Prometheus scrape traffic in
-(`/metrics`, port 8080), plus DNS, PostgreSQL, and Valkey egress — worker has
+(`/metrics`, port 8080), plus DNS and PostgreSQL egress — worker has
 no readiness/liveness probes since it serves no application traffic.
 
 `infra/k8s/monitoring` packages the same HTTP RED/authentication recording and
@@ -247,9 +246,8 @@ adapters are selected with environment variables:
 
 | Variable | Values | Purpose |
 | --- | --- | --- |
-| `PERSISTENCE` | `memory`, `postgres_valkey` | storage backend |
+| `PERSISTENCE` | `memory`, `postgres` | storage backend |
 | `DATABASE_URL` | connection string | PostgreSQL database connection |
-| `VALKEY_URL` | connection string | Valkey connection for volatile state |
 | `EVENT_SINK` | `console`, `outbox` | domain event destination |
 | `KAFKA_BROKERS` | broker list | outbox relay broker list |
 | `OBSERVABILITY` | `noop`, `otel` | OpenTelemetry tracing/metrics |
@@ -386,42 +384,44 @@ Open Mailpit at <http://127.0.0.1:8025/>.
 
 ### High Availability & Shared State
 
-Running more than one replica requires the `postgres_valkey` runtime with a shared
-Valkey (`PERSISTENCE=postgres_valkey`, `DATABASE_URL`, `VALKEY_URL`). All ephemeral /
-short-lived state is then kept in a store shared across replicas rather than in
-per-replica process memory:
+Running more than one replica requires the `postgres` runtime
+(`PERSISTENCE=postgres`, `DATABASE_URL`). All shared state — durable and ephemeral
+alike — lives in PostgreSQL, shared across replicas rather than in per-replica
+process memory (ADR-139):
 
-- **Valkey** holds the authorization request / authorization code / PAR / device
-  code / DPoP & client-assertion replay guards / access-token denylist, WebAuthn
-  ceremony challenges, and the **login brute-force throttle** — all short-lived,
-  retry-safe state.
-- **PostgreSQL** owns the durable shared state: refresh tokens, audit events,
-  auth-event aggregation buckets, and (since wi-253 / ADR-126) **login sessions**.
-  A logged-in browser session is the single source of truth in `authentication_sessions`;
-  losing Valkey no longer signs everyone out, and restarting or rolling API replicas
-  does not invalidate active sessions. Revocation (self-service, logout, or an
-  account being disabled) tombstones the row (`revoked_at`/`revoke_reason`) instead
-  of deleting it, so a repeated revoke request is a safe no-op.
+- **Durable state**: refresh tokens, audit events, auth-event aggregation buckets,
+  and (since wi-253 / ADR-126) **login sessions**. A logged-in browser session is
+  the single source of truth in `authentication_sessions`; restarting or rolling
+  API replicas does not invalidate active sessions. Revocation (self-service,
+  logout, or an account being disabled) tombstones the row
+  (`revoked_at`/`revoke_reason`) instead of deleting it, so a repeated revoke
+  request is a safe no-op.
+- **Ephemeral state** (short-lived auth/OAuth2 rows, ADR-139): authorization
+  request / authorization code / PAR / device code / DPoP & client-assertion replay
+  guards / access-token denylist, WebAuthn ceremony challenges, and the **login
+  brute-force throttle** — all short-lived, retry-safe. Every row carries
+  `expires_at` and every read filters `expires_at > now()`, so TTL correctness is
+  independent of the best-effort GC sweep `idmagic-worker` runs to reclaim space.
 
-Because login sessions moved from Valkey to PostgreSQL, a deploy that switches an
-existing `postgres_valkey` environment onto this schema **does not migrate
-previously-issued Valkey sessions** — those browsers will be prompted to sign in
-again once, but no existing PostgreSQL-durable state (refresh tokens, audit
-history) is affected. New sessions issued after the cutover survive Valkey
-restarts/evictions and API replica restarts.
+A cutover that switches an environment onto this runtime abandons any **in-flight**
+ephemeral state (a `/authorize` mid-flow, a pending PAR/device request, a throttle
+counter); those simply restart and recover, and no durable state (refresh tokens,
+audit history, login sessions) is affected.
 
 The login throttle in particular *must* be shared: with per-replica counters an
 attacker's failed attempts split across `N` replicas, so the per-account /
 per-IP lockout thresholds (ADR-029) would effectively loosen up to `N×`
-cluster-wide — a silent security regression. On the shared Valkey they are
-counted cluster-wide with atomic increments, and the account / IP identifiers are
-SHA-256 hashed so no plaintext username or IP is stored (ADR-077).
+cluster-wide — a silent security regression. In the shared PostgreSQL counter they
+are counted cluster-wide with a serialized `SELECT ... FOR UPDATE` update, and the
+account / IP identifiers are SHA-256 hashed so no plaintext username or IP is
+stored (ADR-077).
 
 Because the throttle is on the critical path, its degradation is **fail-closed**:
-if the shared store is unreachable, a login attempt whose throttle state cannot be
+if the store is unreachable, a login attempt whose throttle state cannot be
 verified is rejected rather than let through (it never fails open into an
-un-throttled state). Run Valkey in a highly-available configuration
-(replication / failover) for multi-replica deployments so this path stays up.
+un-throttled state). Run PostgreSQL in a highly-available configuration
+(REGIONAL / synchronous standby) for multi-replica deployments so this path stays
+up.
 
 The `memory` runtime keeps this state in process and is therefore **single-replica
 / test only** — do not run multiple replicas against it.
