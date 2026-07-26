@@ -104,9 +104,9 @@ The main correspondence between SCL contexts and Go packages.
 | `ApiTokens` | `backend/apitoken` | Tenant-scoped API access tokens (`idmagic_pat_` prefix) that authenticate the management and SCIM APIs: issuance, revocation, listing, and the scope vocabulary ([ADR-135](decisions/ADR-135-unify-scim-and-management-api-tokens.md)). |
 | `Jobs` | `backend/jobs` | Generic asynchronous job infrastructure that preserves the tenant boundary. Design: [`backend/jobs/ARCHITECTURE.md`](backend/jobs/ARCHITECTURE.md). |
 | `Seeding` | `backend/seeding` | Environment profiles, dry-run, redacted plans, and apply policy. Business data and its persistence stay in each record context ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md)). |
-| `SigningKeys` | `backend/signingkeys` | Tenant-scoped key metadata, rotation, repository port, admin/JWKS HTTP, and memory/PostgreSQL/Vault adapters. JWT and XML wire signers stay in the protocol/technical adapters. |
-| `WsFederation` | `backend/wsfederation` | WS-Fed passive, WS-Trust active STS, federation metadata, MEX, RP trust. |
-| `Saml` | `backend/saml` | SAML 2.0 IdP, SP trust, metadata, SSO/SLO. |
+| `SigningKeys` | `backend/signingkeys` | Tenant-and-usage-scoped key metadata, X.509 credentials, rotation, repository port, admin/JWKS HTTP, and memory/PostgreSQL/Vault adapters. JWT and XML wire signers stay in the protocol adapters. Design: [`backend/signingkeys/ARCHITECTURE.md`](backend/signingkeys/ARCHITECTURE.md). |
+| `WsFederation` | `backend/wsfederation` | WS-Fed passive, WS-Trust active STS, federation metadata, MEX, RP trust, and request-tenant XML signing. Design: [`backend/wsfederation/ARCHITECTURE.md`](backend/wsfederation/ARCHITECTURE.md). |
+| `Saml` | `backend/saml` | SAML 2.0 IdP, SP trust, metadata, SSO/SLO, and request-tenant XML signing. Design: [`backend/saml/ARCHITECTURE.md`](backend/saml/ARCHITECTURE.md). |
 
 The published vocabulary and dependencies between contexts are authoritative in `spec/scl.yaml`
 `context_map`. Before adding a direct import, revisit `depends_on` there.

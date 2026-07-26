@@ -96,7 +96,7 @@ type Deps struct {
 	WsFederation     wsfederation.Module
 	Saml             saml.Module
 	Sourcing         sourcing.Module
-	FederationSigner *samltoken.Signer
+	FederationSigner samltoken.SignerProvider
 	Application      application.Module
 	ApiTokens        apitoken.Module
 	Jobs             jobs.Module

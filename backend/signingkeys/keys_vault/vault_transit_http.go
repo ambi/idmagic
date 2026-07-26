@@ -3,6 +3,8 @@ package keys_vault
 import (
 	"bytes"
 	"context"
+	"crypto"
+	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -83,11 +85,15 @@ func (e *HTTPTransitEngine) LatestPublicKey(ctx context.Context, name string) (s
 	return entry.PublicKey, version, nil
 }
 
-func (e *HTTPTransitEngine) Sign(ctx context.Context, name string, version int, digest []byte) ([]byte, error) {
+func (e *HTTPTransitEngine) Sign(ctx context.Context, name string, version int, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	signatureAlgorithm := "pkcs1v15"
+	if _, ok := opts.(*rsa.PSSOptions); ok {
+		signatureAlgorithm = "pss"
+	}
 	status, body, err := e.do(ctx, http.MethodPost, "/v1/"+e.Mount+"/sign/"+name, map[string]any{
 		"input":               base64.StdEncoding.EncodeToString(digest),
 		"prehashed":           true,
-		"signature_algorithm": "pss",
+		"signature_algorithm": signatureAlgorithm,
 		"hash_algorithm":      "sha2-256",
 		"key_version":         version,
 	})

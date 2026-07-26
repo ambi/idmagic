@@ -90,13 +90,17 @@ models:
       - VaultTransit
   KeyUsage:
     kind: enum
-    description: 鍵の用途。現状は OAuth2/OIDC の JWT 署名 (Signing) のみ。JWE 暗号鍵や SAML/WS-* の X.509 は将来の用途として枠だけ残す。
+    description: 鍵の用途。Signing は OAuth2/OIDC の JWT 署名、XmlFederationSigning は SAML 2.0 / WS-Fed / WS-Trust の XML 署名と X.509 metadata 公開に用いる。同じ tenant でも用途ごとに active 鍵を分離する。
     values:
       - Signing
+      - XmlFederationSigning
   SigningKey:
     kind: entity
     description: トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。
     identity: kid
+    constraints:
+      - usage != "XmlFederationSigning" || certificate_der != null
+      - active_key_count(tenant_id, usage) <= 1
     fields:
       tenant_id:
         type: String
@@ -116,6 +120,10 @@ models:
         description: 鍵の用途。現状 Signing のみ。
       public_jwk:
         type: JWK
+      certificate_der:
+        type: Bytes
+        optional: true
+        description: XmlFederationSigning 鍵に対応する自己署名 X.509 certificate の DER。Signing 鍵では空、XML用途では必須。公開情報であり秘密鍵を含まない。
       state:
         type: SigningKeyState
       created_at:
@@ -461,7 +469,7 @@ objectives:
     window: 30d
     budgeting: occurrences
   SigningKeyLifecycle:
-    description: 署名鍵は既定90日ごとに回転し、旧鍵を既定7日間 JWKS に重複公開してから archive する。compliance archive の保持期間 2555 日は grace 期間とは別に扱う。
+    description: 署名鍵は用途ごとに既定90日で回転する。Signing の旧鍵は既定7日間 JWKS に、XmlFederationSigning の旧証明書は既定7日間 SAML / WS-Fed metadata に重複公開してから archive する。compliance archive の保持期間 2555 日は grace 期間とは別に扱う。
     indicator: measurement.rotation_cadence_days == 90 && measurement.signing_key_grace_days == 7
     target: 1.0
     window: 30d
@@ -505,6 +513,32 @@ scenarios:
       - "テナント \"tenant-a\" の管理者が署名鍵を回転する"
       - "テナント \"tenant-a\" の JWKS を取得する"
       - "応答にはテナント \"tenant-a\" の kid だけが含まれ、テナント \"tenant-b\" の kid は含まれない"
+  XML federation署名資格情報はテナントと用途で分離される:
+    actor: TenantAdministrator
+    given:
+      - "テナント \"tenant-a\" とテナント \"tenant-b\" が存在する"
+      - 両テナントが JWT Signing 鍵と XmlFederationSigning 鍵を持つ
+    main_success:
+      - "テナント \"tenant-a\" が SAML assertion を発行する"
+      - assertion は tenant-a の active XmlFederationSigning 鍵で署名される
+      - tenant-b の証明書でも tenant-a の JWT Signing 公開鍵でも署名を検証できない
+  XML federation鍵の回転中も既存trustを検証できる:
+    actor: TenantAdministrator
+    given:
+      - XmlFederationSigning の現在鍵 K1 が metadata に掲載されている
+    main_success:
+      - 管理者が XmlFederationSigning 鍵を K2 へ回転する
+      - 新規 XML message は K2 で署名される
+      - grace期間中の SAML / WS-Fed metadata には K1 と K2 の証明書が掲載される
+      - grace期間終了後は K1 が metadata から除去される
+  XML federation署名資格情報は再起動後も同一である:
+    actor: SystemAdministrator
+    given:
+      - PostgreSQL または Vault provider で tenant の XmlFederationSigning 鍵が作成済みである
+    main_success:
+      - API process を再起動する
+      - 同じ tenant の metadata を取得する
+      - active certificate の fingerprint は再起動前と一致する
   KeyProvider障害時は健全性が観測できJWKSは取得可能な範囲で返る:
     actor: SystemAdministrator
     given:

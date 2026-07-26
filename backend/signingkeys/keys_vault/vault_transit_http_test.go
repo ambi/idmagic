@@ -2,6 +2,7 @@ package keys_vault_test
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -62,7 +63,7 @@ func TestHTTPTransitEngineLatestPublicKeyAndSign(t *testing.T) {
 		t.Fatalf("version=%d pem match=%v", version, pemStr == pubPEM)
 	}
 
-	sig, err := engine.Sign(ctx, "idmagic-signing-default", 1, []byte("0123456789abcdef0123456789abcdef"))
+	sig, err := engine.Sign(ctx, "idmagic-signing-default", 1, []byte("0123456789abcdef0123456789abcdef"), &rsa.PSSOptions{Hash: crypto.SHA256})
 	if err != nil {
 		t.Fatal(err)
 	}

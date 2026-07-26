@@ -71,6 +71,10 @@ func (d Deps) handleWsFedSignIn(c *echo.Context, req feddomain.WsFedSignInReques
 func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) error {
 	tenantID := support.RequestTenantID(c)
 	rp := o.Validated.RelyingParty
+	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "signing credential unavailable")
+	}
 
 	signed, _, err := samltoken.BuildSignedAssertion(samltoken.AssertionInput{
 		Version:      samlVersion(o.TokenType),
@@ -83,7 +87,7 @@ func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) e
 		AuthnInstant: time.Unix(o.Authn.AuthTime, 0).UTC(),
 		AuthnMethod:  o.AuthnMethod,
 		Result:       o.ClaimResult,
-	}, d.FederationSigner)
+	}, signer)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "assertion build failed")
 	}

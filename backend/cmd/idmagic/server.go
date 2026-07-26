@@ -26,6 +26,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
+	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -68,10 +69,7 @@ func Run() error {
 			return fmt.Errorf("explicit startup seed: %w", err)
 		}
 	}
-	federationSigner, err := bootstrap.NewDevFederationSigner()
-	if err != nil {
-		return fmt.Errorf("federation signer: %w", err)
-	}
+	federationSigner := samltoken.KeyStoreSignerProvider{KeyStore: deps.SigningKeys.KeyStore}
 	sclDoc, err := spec.LoadSCL()
 	if err != nil {
 		return fmt.Errorf("load SCL: %w", err)

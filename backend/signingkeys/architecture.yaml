@@ -103,6 +103,8 @@ modules:
         via: published_interface
       - module: signingkeys-keys-jose
         via: binding
+      - module: signingkeys-ports
+        via: published_interface
       - module: tenancy-domain
         via: published_interface
       - module: tenancy-public
@@ -127,6 +129,8 @@ modules:
         via: published_interface
       - module: signingkeys-keys-jose
         via: binding
+      - module: signingkeys-ports
+        via: published_interface
       - module: tenancy-domain
         via: published_interface
       - module: tenancy-public
@@ -142,5 +146,7 @@ modules:
         via: published_interface
       - module: signingkeys-keys-jose
         via: binding
+      - module: signingkeys-ports
+        via: published_interface
       - module: tenancy-public
         via: published_interface

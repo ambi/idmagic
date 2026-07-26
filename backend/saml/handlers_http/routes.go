@@ -22,7 +22,7 @@ type Deps struct {
 
 	SamlSPRepo       samlports.SamlServiceProviderRepository
 	ReplayStore      samlports.AuthnRequestReplayStore
-	FederationSigner *samltoken.Signer
+	FederationSigner samltoken.SignerProvider
 	UserRepo         userports.UserRepository
 }
 

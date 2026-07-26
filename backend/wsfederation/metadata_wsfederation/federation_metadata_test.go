@@ -65,6 +65,21 @@ func TestBuildFederationMetadata_AdvertisesCertificateAndEndpoints(t *testing.T)
 	}
 }
 
+func TestBuildFederationMetadataAdvertisesActiveAndVerifyingCertificates(t *testing.T) {
+	xml, err := BuildFederationMetadataWithCertificates(
+		"https://idp.example/realms/acme",
+		[]*x509.Certificate{testCert(t), testCert(t)},
+		EndpointSet{PassiveURL: "https://idp.example/realms/acme/wsfed"},
+		time.Now().UTC(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Count(string(xml), "<KeyDescriptor"); got != 4 {
+		t.Fatalf("KeyDescriptor count=%d want 4 (two roles x two certificates)", got)
+	}
+}
+
 func TestBuildMEX_AdvertisesUserNameMixedEndpoint(t *testing.T) {
 	xml, err := BuildMEX(EndpointSet{
 		ActiveURL:         "https://idp.example/trust/usernamemixed",

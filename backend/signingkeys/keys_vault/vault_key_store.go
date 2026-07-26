@@ -18,6 +18,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	keysJOSE "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -37,7 +38,7 @@ type TransitEngine interface {
 	// LatestPublicKey は最新バージョンの公開鍵 (PKIX PEM) と version を返す。
 	LatestPublicKey(ctx context.Context, name string) (pubPEM string, version int, err error)
 	// Sign は prehashed digest に PSS(sha2-256) で署名し raw signature を返す。
-	Sign(ctx context.Context, name string, version int, digest []byte) ([]byte, error)
+	Sign(ctx context.Context, name string, version int, digest []byte, opts crypto.SignerOpts) ([]byte, error)
 	// Healthy は Vault が到達可能かを返す。
 	Healthy(ctx context.Context) bool
 }
@@ -57,12 +58,19 @@ func NewVaultKeyStore(engine TransitEngine, keyNamePrefix string) *VaultKeyStore
 	return &VaultKeyStore{engine: engine, prefix: keyNamePrefix, byTenant: map[string]*tenantKeys{}}
 }
 
-func (s *VaultKeyStore) keyName(tenantID string) string { return s.prefix + tenantID }
+func (s *VaultKeyStore) keyName(tenantID string, usage signingdomain.KeyUsage) string {
+	return s.prefix + tenantID + "-" + string(usage)
+}
+
+func vaultSetID(tenantID string, usage signingdomain.KeyUsage) string {
+	return tenantID + "\x00" + string(usage)
+}
 
 func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
+	usage := signingports.KeyUsage(ctx)
 	s.mu.RLock()
-	if tk := s.byTenant[tenantID]; tk != nil {
+	if tk := s.byTenant[vaultSetID(tenantID, usage)]; tk != nil {
 		for _, k := range tk.keys {
 			if k.Kid == tk.active {
 				s.mu.RUnlock()
@@ -72,14 +80,15 @@ func (s *VaultKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.Signin
 	}
 	s.mu.RUnlock()
 	// 未取得のテナントは Vault の最新鍵を取り込む (無ければ作成)。
-	return s.loadOrRotate(ctx, tenantID, false, time.Now().UTC(), 7*24*time.Hour)
+	return s.loadOrRotate(ctx, tenantID, usage, false, time.Now().UTC(), 7*24*time.Hour)
 }
 
 func (s *VaultKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
+	usage := signingports.KeyUsage(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	tk := s.byTenant[tenantID]
+	tk := s.byTenant[vaultSetID(tenantID, usage)]
 	if tk == nil {
 		return []*signingdomain.SigningKey{}, nil
 	}
@@ -104,9 +113,10 @@ func (s *VaultKeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*s
 
 func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
+	usage := signingports.KeyUsage(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	tk := s.byTenant[tenantID]
+	tk := s.byTenant[vaultSetID(tenantID, usage)]
 	if tk == nil {
 		return nil, nil //nolint:nilnil // 契約: 見つからない場合は (nil, nil)。local / postgres と同一。
 	}
@@ -120,17 +130,19 @@ func (s *VaultKeyStore) FindByKID(ctx context.Context, kid string) (*signingdoma
 
 func (s *VaultKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
+	usage := signingports.KeyUsage(ctx)
 	s.mu.RLock()
-	had := s.byTenant[tenantID] != nil && len(s.byTenant[tenantID].keys) > 0
+	had := s.byTenant[vaultSetID(tenantID, usage)] != nil && len(s.byTenant[vaultSetID(tenantID, usage)].keys) > 0
 	s.mu.RUnlock()
-	return s.loadOrRotate(ctx, tenantID, had, now, grace)
+	return s.loadOrRotate(ctx, tenantID, usage, had, now, grace)
 }
 
 func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
+	usage := signingports.KeyUsage(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tk := s.byTenant[tenantID]
+	tk := s.byTenant[vaultSetID(tenantID, usage)]
 	if tk == nil {
 		return nil, nil //nolint:nilnil // 契約: 対象鍵が無ければ (nil, nil)。
 	}
@@ -152,9 +164,10 @@ func (s *VaultKeyStore) Disable(ctx context.Context, kid string) (*signingdomain
 
 func (s *VaultKeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
+	usage := signingports.KeyUsage(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tk := s.byTenant[tenantID]
+	tk := s.byTenant[vaultSetID(tenantID, usage)]
 	if tk == nil {
 		return nil, nil
 	}
@@ -177,14 +190,14 @@ func (s *VaultKeyStore) Healthy(ctx context.Context) bool { return s.engine.Heal
 
 // loadOrRotate は Vault の鍵を用意し、最新公開鍵をミラーに取り込んで active にする。
 // advance=true のときは新しいバージョンへ回転してから取り込む。
-func (s *VaultKeyStore) loadOrRotate(ctx context.Context, tenantID string, advance bool, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
+func (s *VaultKeyStore) loadOrRotate(ctx context.Context, tenantID string, usage signingdomain.KeyUsage, advance bool, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
 	if grace < 0 {
 		return nil, errors.New("signing key grace period must not be negative")
 	}
-	name := s.keyName(tenantID)
+	name := s.keyName(tenantID, usage)
 	if err := s.engine.EnsureKey(ctx, name); err != nil {
 		return nil, err
 	}
@@ -214,19 +227,29 @@ func (s *VaultKeyStore) loadOrRotate(ctx context.Context, tenantID string, advan
 		Kid:        kid,
 		Alg:        signingdomain.SigAlgPS256,
 		Provider:   signingdomain.KeyProviderVaultTransit,
-		Usage:      signingdomain.KeyUsageSigning,
+		Usage:      usage,
 		PrivateKey: vaultSigner{engine: s.engine, name: name, version: version, pub: pub},
 		PublicKey:  pub,
 		PublicJWK:  publicJWK,
 		Active:     true,
 		CreatedAt:  now,
 	}
+	if usage == signingdomain.KeyUsageXMLFederationSigning {
+		signer, ok := key.PrivateKey.(crypto.Signer)
+		if !ok {
+			return nil, errors.New("vault signing key does not implement crypto.Signer")
+		}
+		key.CertificateDER, err = keysJOSE.NewFederationCertificate(tenantID, kid, signer, now)
+		if err != nil {
+			return nil, err
+		}
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tk := s.byTenant[tenantID]
+	tk := s.byTenant[vaultSetID(tenantID, usage)]
 	if tk == nil {
 		tk = &tenantKeys{}
-		s.byTenant[tenantID] = tk
+		s.byTenant[vaultSetID(tenantID, usage)] = tk
 	}
 	// 同一 kid が既に取り込まれていれば active にするだけ。
 	for _, existing := range tk.keys {
@@ -256,8 +279,8 @@ type vaultSigner struct {
 
 func (s vaultSigner) Public() crypto.PublicKey { return s.pub }
 
-func (s vaultSigner) Sign(_ io.Reader, digest []byte, _ crypto.SignerOpts) ([]byte, error) {
-	return s.engine.Sign(context.Background(), s.name, s.version, digest)
+func (s vaultSigner) Sign(_ io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
+	return s.engine.Sign(context.Background(), s.name, s.version, digest, opts)
 }
 
 func parseRSAPublicKeyPEM(pemStr string) (*rsa.PublicKey, error) {

@@ -12,7 +12,12 @@ import (
 
 func (d Deps) handleFederationMetadata(c *echo.Context) error {
 	endpoints := d.federationEndpoints(c)
-	out, err := metadata.BuildFederationMetadata(support.RequestIssuer(c, d.Issuer), d.FederationSigner.Certificate(), endpoints, time.Now().UTC())
+	now := time.Now().UTC()
+	certs, err := d.FederationSigner.Certificates(c.Request().Context(), now)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "federation metadata unavailable")
+	}
+	out, err := metadata.BuildFederationMetadataWithCertificates(support.RequestIssuer(c, d.Issuer), certs, endpoints, now)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "federation metadata unavailable")
 	}

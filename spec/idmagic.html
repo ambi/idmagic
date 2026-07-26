@@ -29803,7 +29803,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       <div class="eyebrow">Bounded Context · contexts/signing-keys.yaml</div>
       <h1>SigningKeys</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-signingkeys-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-signingkeys-models"><span class="stat-num">18</span><span class="stat-label">models</span></a><a class="stat" href="#context-signingkeys-interfaces"><span class="stat-num">7</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-signingkeys-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-signingkeys-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-signingkeys-objectives"><span class="stat-num">3</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-signingkeys-scenarios"><span class="stat-num">7</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-signingkeys-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-signingkeys-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-signingkeys-models"><span class="stat-num">18</span><span class="stat-label">models</span></a><a class="stat" href="#context-signingkeys-interfaces"><span class="stat-num">7</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-signingkeys-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-signingkeys-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-signingkeys-objectives"><span class="stat-num">3</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-signingkeys-scenarios"><span class="stat-num">10</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-signingkeys-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-signingkeys-glossary">
     <h2>Glossary <span class="count">9</span></h2>
@@ -29988,6 +29988,12 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
+    <td><code class="name">certificate_der</code></td>
+    <td><code class="type">Bytes</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>XmlFederationSigning 鍵に対応する自己署名 X.509 certificate の DER。Signing 鍵では空、XML用途では必須。公開情報であり秘密鍵を含まない。</td>
+  </tr><tr>
     <td><code class="name">state</code></td>
     <td><code class="type">SigningKeyState</code></td>
     <td><span class="badge badge-required">required</span></td>
@@ -30031,7 +30037,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
     <td></td>
   </tr></tbody>
   </table>
-
+    <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">usage != &quot;XmlFederationSigning&quot; || certificate_der != null</code></li><li><code class="expr">active_key_count(tenant_id, usage) &lt;= 1</code></li></ul></div>
   </article></div>
     </div>
 <div class="group">
@@ -30254,9 +30260,9 @@ JWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転�
   </article>
 <article class="card" id="scl-SigningKeys/model/KeyUsage">
     <header><h3>KeyUsage</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">SigningKeys/model/KeyUsage</code></header>
-    <p class="desc">鍵の用途。現状は OAuth2/OIDC の JWT 署名 (Signing) のみ。JWE 暗号鍵や SAML/WS-* の X.509 は将来の用途として枠だけ残す。</p>
+    <p class="desc">鍵の用途。Signing は OAuth2/OIDC の JWT 署名、XmlFederationSigning は SAML 2.0 / WS-Fed / WS-Trust の XML 署名と X.509 metadata 公開に用いる。同じ tenant でも用途ごとに active 鍵を分離する。</p>
 
-    <div class="enum-vals"><span class="chip chip-enum">Signing</span></div>
+    <div class="enum-vals"><span class="chip chip-enum">Signing</span> <span class="chip chip-enum">XmlFederationSigning</span></div>
 
   </article></div>
     </div>
@@ -30748,7 +30754,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
         </dl>
       </article><article class="card" id="scl-SigningKeys/objective/SigningKeyLifecycle">
         <header><h3>SigningKeyLifecycle</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">SigningKeys/objective/SigningKeyLifecycle</code></header>
-        <p class="desc">署名鍵は既定90日ごとに回転し、旧鍵を既定7日間 JWKS に重複公開してから archive する。compliance archive の保持期間 2555 日は grace 期間とは別に扱う。</p>
+        <p class="desc">署名鍵は用途ごとに既定90日で回転する。Signing の旧鍵は既定7日間 JWKS に、XmlFederationSigning の旧証明書は既定7日間 SAML / WS-Fed metadata に重複公開してから archive する。compliance archive の保持期間 2555 日は grace 期間とは別に扱う。</p>
         <dl class="kv">
 
           <dt>indicator</dt><dd><code class="expr">measurement.rotation_cadence_days == 90 &amp;&amp; measurement.signing_key_grace_days == 7</code></dd>
@@ -30760,7 +30766,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       </article></div>
   </section>
 <section id="context-signingkeys-scenarios">
-    <h2>Scenarios <span class="count">7</span></h2>
+    <h2>Scenarios <span class="count">10</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-SigningKeys/scenario/~E7~BD~B2~E5~90~8D~E9~8D~B5~E3~82~92~E5~9B~9E~E8~BB~A2~E3~81~97~E3~81~A6~E3~82~82~E6~97~A7kid~E3~81~AFJWKS~E3~81~AB~E6~AE~8B~E3~82~8B">
         <header><h3>署名鍵を回転しても旧kidはJWKSに残る</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">SigningKeys/scenario/署名鍵を回転しても旧kidはJWKSに残る</code></header>
@@ -30785,6 +30791,24 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; とテナント &quot;tenant-b&quot; がそれぞれ署名鍵を持つ</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; の管理者が署名鍵を回転する</li><li class="scn-step">テナント &quot;tenant-a&quot; の <a class="chip chip-ref" href="#scl-SigningKeys/model/JWKS">JWKS</a> を取得する</li><li class="scn-step">応答にはテナント &quot;tenant-a&quot; の kid だけが含まれ、テナント &quot;tenant-b&quot; の kid は含まれない</li></ol></div>
+
+      </article><article class="card scenario" id="scl-SigningKeys/scenario/XML~20federation~E7~BD~B2~E5~90~8D~E8~B3~87~E6~A0~BC~E6~83~85~E5~A0~B1~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~A8~E7~94~A8~E9~80~94~E3~81~A7~E5~88~86~E9~9B~A2~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>XML federation署名資格情報はテナントと用途で分離される</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">SigningKeys/scenario/XML federation署名資格情報はテナントと用途で分離される</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; とテナント &quot;tenant-b&quot; が存在する</li><li class="scn-step">両テナントが JWT Signing 鍵と XmlFederationSigning 鍵を持つ</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; が SAML assertion を発行する</li><li class="scn-step">assertion は tenant-a の active XmlFederationSigning 鍵で署名される</li><li class="scn-step">tenant-b の証明書でも tenant-a の JWT Signing 公開鍵でも署名を検証できない</li></ol></div>
+
+      </article><article class="card scenario" id="scl-SigningKeys/scenario/XML~20federation~E9~8D~B5~E3~81~AE~E5~9B~9E~E8~BB~A2~E4~B8~AD~E3~82~82~E6~97~A2~E5~AD~98trust~E3~82~92~E6~A4~9C~E8~A8~BC~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>XML federation鍵の回転中も既存trustを検証できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">SigningKeys/scenario/XML federation鍵の回転中も既存trustを検証できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">XmlFederationSigning の現在鍵 K1 が metadata に掲載されている</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が XmlFederationSigning 鍵を K2 へ回転する</li><li class="scn-step">新規 XML message は K2 で署名される</li><li class="scn-step">grace期間中の SAML / WS-Fed metadata には K1 と K2 の証明書が掲載される</li><li class="scn-step">grace期間終了後は K1 が metadata から除去される</li></ol></div>
+
+      </article><article class="card scenario" id="scl-SigningKeys/scenario/XML~20federation~E7~BD~B2~E5~90~8D~E8~B3~87~E6~A0~BC~E6~83~85~E5~A0~B1~E3~81~AF~E5~86~8D~E8~B5~B7~E5~8B~95~E5~BE~8C~E3~82~82~E5~90~8C~E4~B8~80~E3~81~A7~E3~81~82~E3~82~8B">
+        <header><h3>XML federation署名資格情報は再起動後も同一である</h3><span class="chip chip-actor">SystemAdministrator</span><code class="canonical-ref">SigningKeys/scenario/XML federation署名資格情報は再起動後も同一である</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">PostgreSQL または Vault provider で tenant の XmlFederationSigning 鍵が作成済みである</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">API process を再起動する</li><li class="scn-step">同じ tenant の metadata を取得する</li><li class="scn-step">active certificate の fingerprint は再起動前と一致する</li></ol></div>
 
       </article><article class="card scenario" id="scl-SigningKeys/scenario/KeyProvider~E9~9A~9C~E5~AE~B3~E6~99~82~E3~81~AF~E5~81~A5~E5~85~A8~E6~80~A7~E3~81~8C~E8~A6~B3~E6~B8~AC~E3~81~A7~E3~81~8DJWKS~E3~81~AF~E5~8F~96~E5~BE~97~E5~8F~AF~E8~83~BD~E3~81~AA~E7~AF~84~E5~9B~B2~E3~81~A7~E8~BF~94~E3~82~8B">
         <header><h3>KeyProvider障害時は健全性が観測できJWKSは取得可能な範囲で返る</h3><span class="chip chip-actor">SystemAdministrator</span><code class="canonical-ref">SigningKeys/scenario/KeyProvider障害時は健全性が観測できJWKSは取得可能な範囲で返る</code></header>
@@ -31761,7 +31785,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-WsFederation/interface/PublishWsFederationMetadata">
     <header><h3>PublishWsFederationMetadata</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">WsFederation/interface/PublishWsFederationMetadata</code></header>
-    <p class="desc">WS-Federation / WS-Trust metadata publication。realm entityID、passive endpoint、 active STS endpoint、MEX endpoint、token 署名検証用証明書を AD FS 互換 federationmetadata.xml として公開する。</p>
+    <p class="desc">WS-Federation / WS-Trust metadata publication。realm entityID、passive endpoint、 active STS endpoint、MEX endpoint、tenant の XmlFederationSigning 証明書を AD FS 互換 federationmetadata.xml として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。</p>
 
     <div class="io">
     <div class="label">Output</div>
@@ -32837,7 +32861,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-Saml/interface/PublishSamlMetadata">
     <header><h3>PublishSamlMetadata</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Saml/interface/PublishSamlMetadata</code></header>
-    <p class="desc">SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、token 署名検証用証明書を &lt;EntityDescriptor&gt;&lt;IDPSSODescriptor&gt; として公開し、SP が取り込めるようにする。</p>
+    <p class="desc">SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、tenant の XmlFederationSigning 証明書を &lt;EntityDescriptor&gt;&lt;IDPSSODescriptor&gt; として公開し、SP が取り込めるようにする。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。</p>
 
     <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -32976,7 +33000,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
         <header><h3>SAML SP initiated SSO succeeds</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">Saml/scenario/SAML SP initiated SSO succeeds</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">subject は認証済みで対象 Application に割り当てられている</li><li class="scn-step">SP の entityID、ACS URL、Destination は登録済みである</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">登録済み SP の AuthnRequest を受信する</li><li class="scn-step">Version / IssueInstant / Issuer / ACS / Destination / binding / NameIDPolicy / subject assignment を検証する</li><li class="scn-step">署名済み SAMLResponse を ACS へ POST し RelayState を同値で返す</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">登録済み SP の AuthnRequest を受信する</li><li class="scn-step">Version / IssueInstant / Issuer / ACS / Destination / binding / NameIDPolicy / subject assignment を検証する</li><li class="scn-step">署名済み SAMLResponse を ACS へ POST し RelayState を同値で返す</li><li class="scn-step">assertion と response の署名は request tenant の active XmlFederationSigning 鍵を使用する</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 2</span><code class="name">entityID、ACS、Destination、subject assignment のいずれかが不正である</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">SAMLResponse を発行しない</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Saml/model/SamlSignInRejected">SamlSignInRejected</a> を発行して fail-closed で拒否する</li></ol></div>

@@ -9,6 +9,7 @@ import (
 
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -18,8 +19,7 @@ func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
 
 func TestKeyStoreRotateAndLookup(t *testing.T) {
 	db := pgtest.Require(t)
-	// signing_keys.tenant_id は tenants(id) を参照する。NewKeyStore は default テナントの
-	// active 鍵を bootstrap するため、default テナント行を用意しておく。
+	// signing_keys.tenant_id は tenants(id) を参照するため対象 tenant を用意する。
 	now := pgtest.Now()
 	defaultTenant := &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
 	if err := (&tenancypostgres.TenantRepository{Pool: db}).Save(context.Background(), defaultTenant); err != nil {
@@ -35,6 +35,14 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 	active, err := store.GetActiveKey(ctx)
 	if err != nil || active == nil || !active.Active {
 		t.Fatalf("get active key: %v %+v", err, active)
+	}
+	xmlCtx := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
+	xmlActive, err := store.GetActiveKey(xmlCtx)
+	if err != nil || xmlActive == nil || len(xmlActive.CertificateDER) == 0 {
+		t.Fatalf("get XML federation active key: %v %+v", err, xmlActive)
+	}
+	if xmlActive.Kid == active.Kid {
+		t.Fatal("JWT and XML federation keys must be distinct")
 	}
 
 	found, err := store.FindByKID(ctx, active.Kid)

@@ -66,6 +66,10 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 	}
 	result := decision.ClaimResult
 	tokenType := decision.TokenType
+	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "signing credential unavailable")
+	}
 	signed, _, err := samltoken.BuildSignedAssertion(samltoken.AssertionInput{
 		Version:      samlVersion(tokenType),
 		Issuer:       support.RequestIssuer(c, d.Issuer),
@@ -77,7 +81,7 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		AuthnInstant: now,
 		AuthnMethod:  feddomain.AuthnPassword,
 		Result:       result,
-	}, d.FederationSigner)
+	}, signer)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "assertion build failed")
 	}

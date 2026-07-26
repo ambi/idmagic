@@ -110,6 +110,10 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProv
 	if d.FederationSigner == nil {
 		return nil, fmt.Errorf("SAML signer is required")
 	}
+	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	if err != nil {
+		return nil, err
+	}
 	doc := etree.NewDocument()
 	resp := doc.CreateElement("samlp:LogoutResponse")
 	resp.CreateAttr("xmlns:samlp", "urn:oasis:names:tc:SAML:2.0:protocol")
@@ -122,7 +126,7 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProv
 	resp.CreateElement("saml:Issuer").SetText(support.RequestIssuer(c, d.Issuer))
 	status := resp.CreateElement("samlp:Status")
 	status.CreateElement("samlp:StatusCode").CreateAttr("Value", "urn:oasis:names:tc:SAML:2.0:status:Success")
-	signed, err := d.FederationSigner.Sign(resp, "ID")
+	signed, err := signer.Sign(resp, "ID")
 	if err != nil {
 		return nil, err
 	}

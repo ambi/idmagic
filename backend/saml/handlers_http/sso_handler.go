@@ -137,7 +137,11 @@ func (d Deps) issueProtocolError(c *echo.Context, o samlusecases.SignInOutcome, 
 
 // issueResponse は発行データから SAMLResponse を組み立て・署名し、自動 POST フォームで返す。
 func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relayState string) error {
-	assertion, err := d.buildAssertion(c, o.SP, o.Validated, o.ClaimResult, o.Authn, o.Now)
+	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	if err != nil {
+		return d.rejectSSO(c, o.SP.EntityID, "signing credential unavailable", err)
+	}
+	assertion, err := d.buildAssertion(c, o.SP, o.Validated, o.ClaimResult, o.Authn, o.Now, signer)
 	if err != nil {
 		return d.rejectSSO(c, o.SP.EntityID, "assertion build failed", err)
 	}
@@ -148,7 +152,7 @@ func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relay
 		IssueInstant: o.Now,
 		Assertion:    assertion,
 		SignResponse: o.SP.SignResponse,
-	}, d.FederationSigner)
+	}, signer)
 	if err != nil {
 		return d.rejectSSO(c, o.SP.EntityID, "response build failed", err)
 	}
@@ -166,7 +170,7 @@ func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relay
 }
 
 // buildAssertion は claim 発行結果から SAML 2.0 assertion を組み立て、SP 設定に従って署名する。
-func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider, validated samldomain.ValidatedSignIn, result claimusecases.ClaimIssuanceResult, authn *authdomain.AuthenticationContext, now time.Time) (*etree.Element, error) {
+func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider, validated samldomain.ValidatedSignIn, result claimusecases.ClaimIssuanceResult, authn *authdomain.AuthenticationContext, now time.Time, signer *samltoken.Signer) (*etree.Element, error) {
 	authnMethod := feddomain.AuthnUnspecified
 	if slices.Contains(authn.AMR, "pwd") {
 		authnMethod = feddomain.AuthnPassword
@@ -185,7 +189,7 @@ func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider,
 		Result:       result,
 	}
 	if sp.SignAssertion {
-		signed, _, err := samltoken.BuildSignedAssertion(in, d.FederationSigner)
+		signed, _, err := samltoken.BuildSignedAssertion(in, signer)
 		return signed, err
 	}
 	assertion, _, err := samltoken.BuildAssertion(in)

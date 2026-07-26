@@ -32,9 +32,14 @@ func (p KeyProvider) Valid() bool {
 
 type KeyUsage string
 
-const KeyUsageSigning KeyUsage = "Signing"
+const (
+	KeyUsageSigning              KeyUsage = "Signing"
+	KeyUsageXMLFederationSigning KeyUsage = "XmlFederationSigning"
+)
 
-func (u KeyUsage) Valid() bool { return u == KeyUsageSigning }
+func (u KeyUsage) Valid() bool {
+	return u == KeyUsageSigning || u == KeyUsageXMLFederationSigning
+}
 
 type SigningKey struct {
 	TenantID   string
@@ -45,11 +50,13 @@ type SigningKey struct {
 	PrivateKey crypto.PrivateKey
 	PublicKey  crypto.PublicKey
 	PublicJWK  map[string]any
-	Active     bool
-	CreatedAt  time.Time
-	RetiredAt  *time.Time
-	ExpiresAt  *time.Time
-	ArchivedAt *time.Time
+	// CertificateDER is required for XmlFederationSigning and public metadata only.
+	CertificateDER []byte
+	Active         bool
+	CreatedAt      time.Time
+	RetiredAt      *time.Time
+	ExpiresAt      *time.Time
+	ArchivedAt     *time.Time
 }
 
 type TenantKeyHealth struct {

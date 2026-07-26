@@ -19,7 +19,7 @@ type Module struct {
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner *samltoken.Signer,
+	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
 	clientAssertionReplayStore oauthports.ClientAssertionReplayStore, loginAttemptThrottle sessionports.LoginAttemptThrottle,
 	passwordHasher passwordports.PasswordHasher, sentinelPasswordHash string,
 ) {

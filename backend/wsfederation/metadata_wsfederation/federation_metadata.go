@@ -35,10 +35,14 @@ type EndpointSet struct {
 
 // BuildFederationMetadata は realm 単位の federationmetadata.xml を生成する。
 func BuildFederationMetadata(entityID string, cert *x509.Certificate, endpoints EndpointSet, now time.Time) ([]byte, error) {
+	return BuildFederationMetadataWithCertificates(entityID, []*x509.Certificate{cert}, endpoints, now)
+}
+
+func BuildFederationMetadataWithCertificates(entityID string, certs []*x509.Certificate, endpoints EndpointSet, now time.Time) ([]byte, error) {
 	if strings.TrimSpace(entityID) == "" {
 		return nil, fmt.Errorf("metadata: entityID is required")
 	}
-	if cert == nil {
+	if len(certs) == 0 || certs[0] == nil {
 		return nil, fmt.Errorf("metadata: signing certificate is required")
 	}
 	if strings.TrimSpace(endpoints.PassiveURL) == "" {
@@ -62,7 +66,12 @@ func BuildFederationMetadata(entityID string, cert *x509.Certificate, endpoints 
 	sts.CreateAttr("xsi:type", "fed:SecurityTokenServiceType")
 	sts.CreateAttr("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
 	sts.CreateAttr("protocolSupportEnumeration", nsFed)
-	addKeyDescriptor(sts, cert)
+	for _, cert := range certs {
+		if cert == nil {
+			return nil, fmt.Errorf("metadata: signing certificate is required")
+		}
+		addKeyDescriptor(sts, cert)
+	}
 	addClaimTypes(sts)
 	addPassiveEndpoint(sts, endpoints.PassiveURL)
 	if strings.TrimSpace(endpoints.ActiveURL) != "" {
@@ -76,7 +85,9 @@ func BuildFederationMetadata(entityID string, cert *x509.Certificate, endpoints 
 	app.CreateAttr("xsi:type", "fed:ApplicationServiceType")
 	app.CreateAttr("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance")
 	app.CreateAttr("protocolSupportEnumeration", nsFed)
-	addKeyDescriptor(app, cert)
+	for _, cert := range certs {
+		addKeyDescriptor(app, cert)
+	}
 	addPassiveEndpoint(app, endpoints.PassiveURL)
 
 	doc.Indent(2)

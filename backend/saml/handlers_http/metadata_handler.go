@@ -19,7 +19,12 @@ func (d Deps) handleSamlMetadata(c *echo.Context) error {
 		SSOURL: support.TenantURL(c, "/saml/sso", d.Issuer),
 		SLOURL: support.TenantURL(c, "/saml/slo", d.Issuer),
 	}
-	out, err := metadata.BuildIDPMetadata(support.RequestIssuer(c, d.Issuer), d.FederationSigner.Certificate(), endpoints, time.Now().UTC())
+	now := time.Now().UTC()
+	certs, err := d.FederationSigner.Certificates(c.Request().Context(), now)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "saml metadata unavailable")
+	}
+	out, err := metadata.BuildIDPMetadataWithCertificates(support.RequestIssuer(c, d.Issuer), certs, endpoints, now)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "saml metadata unavailable")
 	}

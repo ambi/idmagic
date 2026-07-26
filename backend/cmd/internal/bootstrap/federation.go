@@ -2,12 +2,7 @@ package bootstrap
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"fmt"
-	"math/big"
 	"reflect"
 	"time"
 
@@ -20,34 +15,7 @@ import (
 	seedingdomain "github.com/ambi/idmagic/backend/seeding/domain"
 	"github.com/ambi/idmagic/backend/wsfederation/domain"
 	wsfederationports "github.com/ambi/idmagic/backend/wsfederation/ports"
-	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 )
-
-// newDevFederationSigner は開発用の自己署名 federation 署名証明書から署名器を作る。
-// 本番の証明書ライフサイクル・ローテーション・metadata 掲載は後続スライス (ADR-060) で扱う。
-func NewDevFederationSigner() (*samltoken.Signer, error) {
-	key, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return nil, fmt.Errorf("generate federation signing key: %w", err)
-	}
-	now := time.Now().UTC()
-	tmpl := &x509.Certificate{
-		SerialNumber: big.NewInt(now.UnixNano()),
-		Subject:      pkix.Name{CommonName: "idmagic federation signing (dev)"},
-		NotBefore:    now.Add(-1 * time.Hour),
-		NotAfter:     now.Add(365 * 24 * time.Hour),
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
-	if err != nil {
-		return nil, fmt.Errorf("create federation signing certificate: %w", err)
-	}
-	cert, err := x509.ParseCertificate(der)
-	if err != nil {
-		return nil, fmt.Errorf("parse federation signing certificate: %w", err)
-	}
-	return samltoken.NewSigner(cert, key)
-}
 
 // seedWsFedRelyingParty は WS-Federation passive のデモ用 relying party を投入する。
 func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRelyingPartyRepository, seed seedingdomain.DevelopmentDemoSeed) error {

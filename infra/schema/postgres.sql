@@ -364,6 +364,7 @@ CREATE TABLE signing_keys (
     key_usage TEXT NOT NULL DEFAULT 'Signing',
     public_jwk JSONB NOT NULL,
     private_jwk JSONB NOT NULL,
+    certificate_der BYTEA,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -375,7 +376,7 @@ CREATE TABLE signing_keys (
 );
 
 CREATE UNIQUE INDEX signing_keys_single_active_idx
-    ON signing_keys (tenant_id, active)
+    ON signing_keys (tenant_id, key_usage, active)
     WHERE active;
 
 CREATE TABLE outbox (

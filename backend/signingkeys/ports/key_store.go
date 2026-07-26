@@ -7,6 +7,21 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 )
 
+type keyUsageContextKey struct{}
+
+// WithKeyUsage selects the isolated key lifecycle used by a caller.
+// Callers that do not opt in retain the OAuth/OIDC Signing lifecycle.
+func WithKeyUsage(ctx context.Context, usage signingdomain.KeyUsage) context.Context {
+	return context.WithValue(ctx, keyUsageContextKey{}, usage)
+}
+
+func KeyUsage(ctx context.Context) signingdomain.KeyUsage {
+	if usage, ok := ctx.Value(keyUsageContextKey{}).(signingdomain.KeyUsage); ok && usage.Valid() {
+		return usage
+	}
+	return signingdomain.KeyUsageSigning
+}
+
 // SigningKey は本実装では RSA を想定。alg=PS256 のみ。
 // 公開鍵 JWK は JWKS 配布用。鍵はテナントに帰属する (TenantID)。
 // VaultTransit provider では PrivateKey は nil で、署名は provider が担う。

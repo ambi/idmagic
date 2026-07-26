@@ -24,7 +24,7 @@ type Deps struct {
 
 	WsFedRPRepo                wsfederationports.WsFedRelyingPartyRepository
 	UserRepo                   userports.UserRepository
-	FederationSigner           *samltoken.Signer
+	FederationSigner           samltoken.SignerProvider
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
 	LoginAttemptThrottle       sessionports.LoginAttemptThrottle
 	PasswordHasher             passwordports.PasswordHasher

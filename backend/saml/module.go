@@ -17,7 +17,7 @@ type Module struct {
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
-	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner *samltoken.Signer,
+	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
 ) {
 	samlhttp.RegisterRoutes(g, samlhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate,

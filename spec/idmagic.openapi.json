@@ -13358,7 +13358,7 @@
     "/federationmetadata/2007-06/federationmetadata.xml": {
       "get": {
         "operationId": "PublishWsFederationMetadata",
-        "summary": "WS-Federation / WS-Trust metadata publication。realm entityID、passive endpoint、 active STS endpoint、MEX endpoint、token 署名検証用証明書を AD FS 互換 federationmetadata.xml として公開する。",
+        "summary": "WS-Federation / WS-Trust metadata publication。realm entityID、passive endpoint、 active STS endpoint、MEX endpoint、tenant の XmlFederationSigning 証明書を AD FS 互換 federationmetadata.xml として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。",
         "security": [],
         "responses": {
           "200": {
@@ -13900,7 +13900,7 @@
     "/saml/metadata": {
       "get": {
         "operationId": "PublishSamlMetadata",
-        "summary": "SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、token 署名検証用証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。",
+        "summary": "SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、tenant の XmlFederationSigning 証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。",
         "security": [],
         "responses": {
           "200": {
@@ -25596,9 +25596,10 @@
       "KeyUsage": {
         "type": "string",
         "enum": [
-          "Signing"
+          "Signing",
+          "XmlFederationSigning"
         ],
-        "description": "鍵の用途。現状は OAuth2/OIDC の JWT 署名 (Signing) のみ。JWE 暗号鍵や SAML/WS-* の X.509 は将来の用途として枠だけ残す。"
+        "description": "鍵の用途。Signing は OAuth2/OIDC の JWT 署名、XmlFederationSigning は SAML 2.0 / WS-Fed / WS-Trust の XML 署名と X.509 metadata 公開に用いる。同じ tenant でも用途ごとに active 鍵を分離する。"
       },
       "LifecycleNotificationDelivery": {
         "type": "object",
@@ -30324,6 +30325,10 @@
           "public_jwk": {
             "$ref": "#/components/schemas/JWK"
           },
+          "certificate_der": {
+            "type": "string",
+            "description": "XmlFederationSigning 鍵に対応する自己署名 X.509 certificate の DER。Signing 鍵では空、XML用途では必須。公開情報であり秘密鍵を含まない。"
+          },
           "state": {
             "$ref": "#/components/schemas/SigningKeyState"
           },
@@ -30367,7 +30372,11 @@
           "created_at",
           "updated_at"
         ],
-        "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。"
+        "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。",
+        "x-scl-untranslated-constraints": [
+          "usage != \"XmlFederationSigning\" || certificate_der != null",
+          "active_key_count(tenant_id, usage) <= 1"
+        ]
       },
       "SigningKeyArchived": {
         "type": "object",

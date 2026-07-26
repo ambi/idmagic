@@ -2,12 +2,14 @@ package keys_memory_test
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"testing"
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -16,6 +18,40 @@ import (
 
 func tenantCtx(id string) context.Context {
 	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "", "")
+}
+
+// SCL scenario "XML federation署名資格情報はテナントと用途で分離される" の RED。
+func TestInMemoryKeyStoreSeparatesXMLFederationUsage(t *testing.T) {
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := tenantCtx("tenant-a")
+	jwtKey, err := ks.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xmlCtx := signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
+	xmlKey, err := ks.GetActiveKey(xmlCtx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if jwtKey.Kid == xmlKey.Kid {
+		t.Fatal("JWT and XML federation usages must have distinct active keys")
+	}
+	if len(jwtKey.CertificateDER) != 0 {
+		t.Fatal("JWT key must not carry an X.509 certificate")
+	}
+	if _, err := x509.ParseCertificate(xmlKey.CertificateDER); err != nil {
+		t.Fatalf("XML federation key certificate is invalid: %v", err)
+	}
+	xmlKeys, err := ks.ListPublicKeys(xmlCtx, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(xmlKeys) != 1 || xmlKeys[0].Usage != signingdomain.KeyUsageXMLFederationSigning {
+		t.Fatalf("XML key list = %#v", xmlKeys)
+	}
 }
 
 // SCL scenario "grace期間終了後の署名鍵はJWKSから除去されarchiveされる" の RED。

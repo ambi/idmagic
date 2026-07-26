@@ -89,6 +89,25 @@ func TestBuildIDPMetadataAdvertisesEndpoints(t *testing.T) {
 	}
 }
 
+func TestBuildIDPMetadataAdvertisesActiveAndVerifyingCertificates(t *testing.T) {
+	xml, err := metadata.BuildIDPMetadataWithCertificates(
+		"https://idp.example/realms/acme",
+		[]*x509.Certificate{selfSignedCert(t), selfSignedCert(t)},
+		metadata.Endpoints{SSOURL: "https://idp.example/realms/acme/saml/sso"},
+		time.Now().UTC(),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	doc := etree.NewDocument()
+	if err := doc.ReadFromBytes(xml); err != nil {
+		t.Fatal(err)
+	}
+	if got := len(doc.FindElements("//md:KeyDescriptor")); got != 2 {
+		t.Fatalf("KeyDescriptor count=%d want 2", got)
+	}
+}
+
 func TestBuildIDPMetadataOmitsSLOWhenUnset(t *testing.T) {
 	cert := selfSignedCert(t)
 	out, err := metadata.BuildIDPMetadata(

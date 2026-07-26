@@ -7,9 +7,9 @@
 package tokens_saml
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/hex"
 	"fmt"
@@ -225,15 +225,31 @@ func splitClaimType(claimType string) (namespace, name string) {
 // 異なるため、署名時に対象属性名を受け取り、署名コンテキストを都度構築する。
 type Signer struct {
 	cert *x509.Certificate
-	key  *rsa.PrivateKey
+	key  crypto.Signer
 }
 
 // NewSigner は federation 署名証明書 (X.509) と RSA 秘密鍵から署名器を作る。
-func NewSigner(cert *x509.Certificate, key *rsa.PrivateKey) (*Signer, error) {
+func NewSigner(cert *x509.Certificate, key crypto.Signer) (*Signer, error) {
 	if cert == nil || key == nil {
 		return nil, fmt.Errorf("samltoken: signing certificate and key are required")
 	}
 	return &Signer{cert: cert, key: key}, nil
+}
+
+// Resolve lets a static Signer satisfy SignerProvider in focused adapter tests.
+func (s *Signer) Resolve(context.Context) (*Signer, error) {
+	if s == nil {
+		return nil, fmt.Errorf("samltoken: signer is required")
+	}
+	return s, nil
+}
+
+// Certificates lets a static Signer satisfy SignerProvider.
+func (s *Signer) Certificates(context.Context, time.Time) ([]*x509.Certificate, error) {
+	if s == nil || s.cert == nil {
+		return nil, fmt.Errorf("samltoken: signing certificate is required")
+	}
+	return []*x509.Certificate{s.cert}, nil
 }
 
 // Certificate は federation 署名証明書の読み取り専用コピーを返す。

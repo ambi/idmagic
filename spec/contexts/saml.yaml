@@ -442,7 +442,7 @@ interfaces:
           - "200"
           - "303"
   PublishSamlMetadata:
-    description: SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、token 署名検証用証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。
+    description: SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、tenant の XmlFederationSigning 証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。
     read_only: true
     access: public
     bindings:
@@ -575,6 +575,7 @@ scenarios:
       - 登録済み SP の AuthnRequest を受信する
       - Version / IssueInstant / Issuer / ACS / Destination / binding / NameIDPolicy / subject assignment を検証する
       - 署名済み SAMLResponse を ACS へ POST し RelayState を同値で返す
+      - assertion と response の署名は request tenant の active XmlFederationSigning 鍵を使用する
     extensions:
       - at: 2
         condition: entityID、ACS、Destination、subject assignment のいずれかが不正である

@@ -196,5 +196,9 @@ modules:
     depends_on:
       - module: claimmapping-usecases
         via: published_interface
+      - module: signingkeys-domain
+        via: published_interface
+      - module: signingkeys-ports
+        via: published_interface
       - module: wsfederation-domain
         via: published_interface

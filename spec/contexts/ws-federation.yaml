@@ -515,7 +515,7 @@ interfaces:
         successful_status_codes:
           - "200"
   PublishWsFederationMetadata:
-    description: WS-Federation / WS-Trust metadata publication。realm entityID、passive endpoint、 active STS endpoint、MEX endpoint、token 署名検証用証明書を AD FS 互換 federationmetadata.xml として公開する。
+    description: WS-Federation / WS-Trust metadata publication。realm entityID、passive endpoint、 active STS endpoint、MEX endpoint、tenant の XmlFederationSigning 証明書を AD FS 互換 federationmetadata.xml として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。
     output:
       endpoint:
         type: SecurityTokenEndpoint

@@ -38,10 +38,14 @@ var nameIDFormats = []string{
 
 // BuildIDPMetadata は realm 単位の IdP metadata XML を生成する。
 func BuildIDPMetadata(entityID string, cert *x509.Certificate, endpoints Endpoints, now time.Time) ([]byte, error) {
+	return BuildIDPMetadataWithCertificates(entityID, []*x509.Certificate{cert}, endpoints, now)
+}
+
+func BuildIDPMetadataWithCertificates(entityID string, certs []*x509.Certificate, endpoints Endpoints, now time.Time) ([]byte, error) {
 	if strings.TrimSpace(entityID) == "" {
 		return nil, fmt.Errorf("metadata: entityID is required")
 	}
-	if cert == nil {
+	if len(certs) == 0 || certs[0] == nil {
 		return nil, fmt.Errorf("metadata: signing certificate is required")
 	}
 	if strings.TrimSpace(endpoints.SSOURL) == "" {
@@ -60,7 +64,12 @@ func BuildIDPMetadata(entityID string, cert *x509.Certificate, endpoints Endpoin
 	idp.CreateAttr("protocolSupportEnumeration", "urn:oasis:names:tc:SAML:2.0:protocol")
 	idp.CreateAttr("WantAuthnRequestsSigned", "false")
 
-	addKeyDescriptor(idp, cert)
+	for _, cert := range certs {
+		if cert == nil {
+			return nil, fmt.Errorf("metadata: signing certificate is required")
+		}
+		addKeyDescriptor(idp, cert)
+	}
 
 	if slo := strings.TrimSpace(endpoints.SLOURL); slo != "" {
 		addEndpoint(idp, "md:SingleLogoutService", domain.SamlBindingHTTPRedirect, slo)

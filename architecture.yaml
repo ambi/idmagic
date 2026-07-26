@@ -33,7 +33,7 @@ contexts:
     summary: protocol-neutral claim release。
   SigningKeys:
     spec: spec/contexts/signing-keys.yaml
-    summary: tenant-scoped signing key lifecycle。
+    summary: tenant-and-usage-scoped JWT / XML federation signing key lifecycle。
   WsFederation:
     spec: spec/contexts/ws-federation.yaml
     summary: WS-Federation / WS-Trust。
@@ -94,6 +94,8 @@ modules:
         via: technical_shared
       - module: shared-security-tokens-jose
         via: technical_shared
+      - module: wsfederation-tokens-saml
+        via: composition_root
       - module: authentication-ports
         via: composition_root
       - module: authentication-session-ports

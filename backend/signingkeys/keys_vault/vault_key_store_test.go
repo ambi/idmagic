@@ -1,6 +1,7 @@
 package keys_vault_test
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"crypto/rand"
@@ -13,14 +14,15 @@ import (
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
+	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	adaptercrypto "github.com/ambi/idmagic/backend/signingkeys/keys_vault"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func tenantCtx(id string) context.Context {
-	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: id}, "", "")
+func tenantCtx() context.Context {
+	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
 }
 
 // fakeTransit は Vault Transit を in-memory の RSA 鍵で模擬する。
@@ -76,7 +78,7 @@ func (f *fakeTransit) LatestPublicKey(_ context.Context, name string) (string, i
 	return pemStr, version, nil
 }
 
-func (f *fakeTransit) Sign(_ context.Context, name string, version int, digest []byte) ([]byte, error) {
+func (f *fakeTransit) Sign(_ context.Context, name string, version int, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.signCall++
@@ -84,8 +86,46 @@ func (f *fakeTransit) Sign(_ context.Context, name string, version int, digest [
 	if version < 1 || version > len(versions) {
 		return nil, errors.New("bad version")
 	}
-	return rsa.SignPSS(rand.Reader, versions[version-1], crypto.SHA256, digest,
-		&rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
+	if pss, ok := opts.(*rsa.PSSOptions); ok {
+		return rsa.SignPSS(rand.Reader, versions[version-1], crypto.SHA256, digest, pss)
+	}
+	return rsa.SignPKCS1v15(rand.Reader, versions[version-1], crypto.SHA256, digest)
+}
+
+func TestVaultKeyStoreSeparatesXMLFederationUsage(t *testing.T) {
+	engine := newFakeTransit()
+	ks := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
+	ctx := tenantCtx()
+	jwtKey, err := ks.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xmlKey, err := ks.GetActiveKey(signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if jwtKey.Kid == xmlKey.Kid || len(xmlKey.CertificateDER) == 0 {
+		t.Fatalf("JWT/XML separation failed: jwt=%s xml=%s cert=%d", jwtKey.Kid, xmlKey.Kid, len(xmlKey.CertificateDER))
+	}
+}
+
+// SCL scenario "XML federation署名資格情報は再起動後も同一である"。
+func TestVaultXMLFederationCertificateIsStableAcrossStoreRestart(t *testing.T) {
+	engine := newFakeTransit()
+	ctx := signingports.WithKeyUsage(tenantCtx(), signingdomain.KeyUsageXMLFederationSigning)
+	firstStore := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
+	first, err := firstStore.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondStore := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
+	second, err := secondStore.GetActiveKey(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first.CertificateDER, second.CertificateDER) {
+		t.Fatal("certificate must be reproducible from the same durable Vault key")
+	}
 }
 
 func (f *fakeTransit) Healthy(context.Context) bool { return f.healthy }
@@ -93,7 +133,7 @@ func (f *fakeTransit) Healthy(context.Context) bool { return f.healthy }
 func TestVaultKeyStoreSignsViaEngineAndVerifies(t *testing.T) {
 	engine := newFakeTransit()
 	ks := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
-	ctx := tenantCtx("tenant-a")
+	ctx := tenantCtx()
 
 	key, err := ks.GetActiveKey(ctx)
 	if err != nil {
@@ -127,7 +167,7 @@ func TestVaultKeyStoreSignsViaEngineAndVerifies(t *testing.T) {
 func TestVaultKeyStoreRotateAdvancesVersion(t *testing.T) {
 	engine := newFakeTransit()
 	ks := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
-	ctx := tenantCtx("tenant-a")
+	ctx := tenantCtx()
 
 	first, err := ks.GetActiveKey(ctx)
 	if err != nil {
@@ -152,7 +192,7 @@ func TestVaultKeyStoreRotateAdvancesVersion(t *testing.T) {
 func TestVaultKeyStoreFailClosedWhenEngineDown(t *testing.T) {
 	engine := newFakeTransit()
 	ks := adaptercrypto.NewVaultKeyStore(engine, "idmagic-signing-")
-	ctx := tenantCtx("tenant-a")
+	ctx := tenantCtx()
 	engine.healthy = false
 	if ks.Healthy(ctx) {
 		t.Fatal("key store must report unhealthy when the engine is down")
