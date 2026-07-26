@@ -36,20 +36,47 @@ func Main(m *testing.M) int {
 
 func start() (*pgxpool.Pool, func()) {
 	noop := func() {}
+	runtimePath, err := os.MkdirTemp("", "idmagic-pgtest-*")
+	if err != nil {
+		warn("cannot create isolated runtime directory", err)
+		return nil, noop
+	}
+	removeRuntimePath := func() {
+		if err := os.RemoveAll(runtimePath); err != nil {
+			fmt.Fprintf(os.Stderr, "pgtest: cannot remove runtime directory %s: %v\n", runtimePath, err)
+		}
+	}
+
 	port, err := freePort(context.Background())
 	if err != nil {
 		warn("cannot allocate port", err)
+		removeRuntimePath()
 		return nil, noop
 	}
 	pg := embeddedpostgres.NewDatabase(
 		embeddedpostgres.DefaultConfig().
 			Port(port).
+			// `go test ./...` runs package test binaries concurrently. The library's
+			// default runtime/data path is shared across processes, so one package
+			// can otherwise remove another package's live PostgreSQL files.
+			RuntimePath(runtimePath).
+			// The immutable binaries are safe to share and expensive to extract.
+			// Keep only mutable runtime/data files in the isolated directory.
+			BinariesPath(postgresBinariesPath()).
 			Logger(nil).
 			StartTimeout(90 * time.Second),
 	)
 	if err := pg.Start(); err != nil {
 		warn("embedded-postgres unavailable", err)
+		removeRuntimePath()
 		return nil, noop
+	}
+	stopAndRemove := func() {
+		if err := pg.Stop(); err != nil {
+			fmt.Fprintf(os.Stderr, "pgtest: cannot stop embedded-postgres: %v; preserving runtime directory %s\n", err, runtimePath)
+			return
+		}
+		removeRuntimePath()
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
@@ -58,7 +85,7 @@ func start() (*pgxpool.Pool, func()) {
 	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		warn("parse config failed", err)
-		return nil, func() { _ = pg.Stop() }
+		return nil, stopAndRemove
 	}
 	// 本番の Open と同じく uuid 列を string で扱えるよう codec を登録する (ADR-084)。
 	// sharedpg.RegisterUUIDAsText と同一ロジックをここに持つ (import cycle 回避のため
@@ -74,14 +101,17 @@ func start() (*pgxpool.Pool, func()) {
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		warn("connect failed", err)
-		return nil, func() { _ = pg.Stop() }
+		return nil, stopAndRemove
 	}
 	if err := loadSchema(ctx, pool); err != nil {
 		warn("schema load failed", err)
 		pool.Close()
-		return nil, func() { _ = pg.Stop() }
+		return nil, stopAndRemove
 	}
-	return pool, func() { pool.Close(); _ = pg.Stop() }
+	return pool, func() {
+		pool.Close()
+		stopAndRemove()
+	}
 }
 
 func warn(msg string, err error) {
@@ -106,6 +136,20 @@ func schemaPath() string {
 	// backend/shared/storage/testing_postgres/pgtest.go からリポジトリルートまでは 4 階層。
 	// (testing_postgres → storage → shared → backend → <root>)
 	return filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "infra", "schema", "postgres.sql")
+}
+
+func postgresBinariesPath() string {
+	cachePath, err := os.UserCacheDir()
+	if err != nil {
+		cachePath = os.TempDir()
+	}
+	return filepath.Join(
+		cachePath,
+		"idmagic",
+		"embedded-postgres",
+		string(embeddedpostgres.V18),
+		runtime.GOOS+"-"+runtime.GOARCH,
+	)
 }
 
 func freePort(ctx context.Context) (uint32, error) {
