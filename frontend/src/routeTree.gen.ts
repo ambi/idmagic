@@ -55,6 +55,7 @@ import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/impo
 import { Route as AdminUsersExportsRouteImport } from './routes/admin/users_/exports'
 import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
+import { Route as AdminSettingsSamlIdpProfilesRouteImport } from './routes/admin/settings_/saml-idp-profiles'
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
 import { Route as AdminLifecycleWorkflowsNewRouteImport } from './routes/admin/lifecycle-workflows_/new'
 import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
@@ -69,11 +70,15 @@ import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id
 import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
+import { Route as AdminSettingsSamlIdpProfilesNewRouteImport } from './routes/admin/settings_/saml-idp-profiles_/new'
+import { Route as AdminSettingsSamlIdpProfilesProfileIdRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId'
 import { Route as AdminLifecycleWorkflowsWorkflowIdEditRouteImport } from './routes/admin/lifecycle-workflows_/$workflowId.edit'
 import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
+import { Route as AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.index'
+import { Route as AdminSettingsSamlIdpProfilesProfileIdEditRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.edit'
 import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
 
 const TotpRoute = TotpRouteImport.update({
@@ -307,6 +312,12 @@ const AdminTenantAttributesRoute = AdminTenantAttributesRouteImport.update({
   path: '/tenant/attributes',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminSettingsSamlIdpProfilesRoute =
+  AdminSettingsSamlIdpProfilesRouteImport.update({
+    id: '/settings_/saml-idp-profiles',
+    path: '/settings/saml-idp-profiles',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminRolesNameRoute = AdminRolesNameRouteImport.update({
   id: '/roles_/$name',
   path: '/roles/$name',
@@ -380,6 +391,18 @@ const AdminUsersIdEditRoute = AdminUsersIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => AdminUsersIdRoute,
 } as any)
+const AdminSettingsSamlIdpProfilesNewRoute =
+  AdminSettingsSamlIdpProfilesNewRouteImport.update({
+    id: '/settings_/saml-idp-profiles_/new',
+    path: '/settings/saml-idp-profiles/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminSettingsSamlIdpProfilesProfileIdRoute =
+  AdminSettingsSamlIdpProfilesProfileIdRouteImport.update({
+    id: '/settings_/saml-idp-profiles_/$profileId',
+    path: '/settings/saml-idp-profiles/$profileId',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminLifecycleWorkflowsWorkflowIdEditRoute =
   AdminLifecycleWorkflowsWorkflowIdEditRouteImport.update({
     id: '/lifecycle-workflows_/$workflowId/edit',
@@ -407,6 +430,18 @@ const AdminApplicationsApplicationIdEditRoute =
     id: '/edit',
     path: '/edit',
     getParentRoute: () => AdminApplicationsApplicationIdRoute,
+  } as any)
+const AdminSettingsSamlIdpProfilesProfileIdIndexRoute =
+  AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminSettingsSamlIdpProfilesProfileIdRoute,
+  } as any)
+const AdminSettingsSamlIdpProfilesProfileIdEditRoute =
+  AdminSettingsSamlIdpProfilesProfileIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AdminSettingsSamlIdpProfilesProfileIdRoute,
   } as any)
 const AdminGroupsGroupIdMembersExportsRoute =
   AdminGroupsGroupIdMembersExportsRouteImport.update({
@@ -466,6 +501,7 @@ export interface FileRoutesByFullPath {
   '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
+  '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/$id': typeof AdminUsersIdRouteWithChildren
   '/admin/users/exports': typeof AdminUsersExportsRoute
@@ -477,11 +513,15 @@ export interface FileRoutesByFullPath {
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
+  '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
+  '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users/$id/': typeof AdminUsersIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
+  '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
+  '/admin/settings/saml-idp-profiles/$profileId/': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -529,6 +569,7 @@ export interface FileRoutesByTo {
   '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
+  '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
@@ -538,11 +579,14 @@ export interface FileRoutesByTo {
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
+  '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users/$id': typeof AdminUsersIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
+  '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
+  '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -596,6 +640,7 @@ export interface FileRoutesById {
   '/admin/groups_/new': typeof AdminGroupsNewRoute
   '/admin/lifecycle-workflows_/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles_/$name': typeof AdminRolesNameRoute
+  '/admin/settings_/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
   '/admin/users_/$id': typeof AdminUsersIdRouteWithChildren
   '/admin/users_/exports': typeof AdminUsersExportsRoute
@@ -607,11 +652,15 @@ export interface FileRoutesById {
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
   '/admin/lifecycle-workflows_/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
+  '/admin/settings_/saml-idp-profiles_/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
+  '/admin/settings_/saml-idp-profiles_/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/users_/$id/': typeof AdminUsersIdIndexRoute
   '/admin/groups_/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
+  '/admin/settings_/saml-idp-profiles_/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
+  '/admin/settings_/saml-idp-profiles_/$profileId/': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -666,6 +715,7 @@ export interface FileRouteTypes {
     | '/admin/groups/new'
     | '/admin/lifecycle-workflows/new'
     | '/admin/roles/$name'
+    | '/admin/settings/saml-idp-profiles'
     | '/admin/tenant/attributes'
     | '/admin/users/$id'
     | '/admin/users/exports'
@@ -677,11 +727,15 @@ export interface FileRouteTypes {
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/lifecycle-workflows/$workflowId/edit'
+    | '/admin/settings/saml-idp-profiles/$profileId'
+    | '/admin/settings/saml-idp-profiles/new'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
     | '/admin/users/$id/'
     | '/admin/groups/$groupId/members/exports'
+    | '/admin/settings/saml-idp-profiles/$profileId/edit'
+    | '/admin/settings/saml-idp-profiles/$profileId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -729,6 +783,7 @@ export interface FileRouteTypes {
     | '/admin/groups/new'
     | '/admin/lifecycle-workflows/new'
     | '/admin/roles/$name'
+    | '/admin/settings/saml-idp-profiles'
     | '/admin/tenant/attributes'
     | '/admin/users/exports'
     | '/admin/users/import'
@@ -738,11 +793,14 @@ export interface FileRouteTypes {
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
     | '/admin/lifecycle-workflows/$workflowId/edit'
+    | '/admin/settings/saml-idp-profiles/new'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
     | '/admin/users/$id'
     | '/admin/groups/$groupId/members/exports'
+    | '/admin/settings/saml-idp-profiles/$profileId/edit'
+    | '/admin/settings/saml-idp-profiles/$profileId'
   id:
     | '__root__'
     | '/'
@@ -795,6 +853,7 @@ export interface FileRouteTypes {
     | '/admin/groups_/new'
     | '/admin/lifecycle-workflows_/new'
     | '/admin/roles_/$name'
+    | '/admin/settings_/saml-idp-profiles'
     | '/admin/tenant/attributes'
     | '/admin/users_/$id'
     | '/admin/users_/exports'
@@ -806,11 +865,15 @@ export interface FileRouteTypes {
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
     | '/admin/lifecycle-workflows_/$workflowId/edit'
+    | '/admin/settings_/saml-idp-profiles_/$profileId'
+    | '/admin/settings_/saml-idp-profiles_/new'
     | '/admin/users_/$id/edit'
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
     | '/admin/users_/$id/'
     | '/admin/groups_/$groupId/members/exports'
+    | '/admin/settings_/saml-idp-profiles_/$profileId/edit'
+    | '/admin/settings_/saml-idp-profiles_/$profileId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1153,6 +1216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTenantAttributesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/settings_/saml-idp-profiles': {
+      id: '/admin/settings_/saml-idp-profiles'
+      path: '/settings/saml-idp-profiles'
+      fullPath: '/admin/settings/saml-idp-profiles'
+      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/roles_/$name': {
       id: '/admin/roles_/$name'
       path: '/roles/$name'
@@ -1251,6 +1321,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersIdEditRouteImport
       parentRoute: typeof AdminUsersIdRoute
     }
+    '/admin/settings_/saml-idp-profiles_/new': {
+      id: '/admin/settings_/saml-idp-profiles_/new'
+      path: '/settings/saml-idp-profiles/new'
+      fullPath: '/admin/settings/saml-idp-profiles/new'
+      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings_/saml-idp-profiles_/$profileId': {
+      id: '/admin/settings_/saml-idp-profiles_/$profileId'
+      path: '/settings/saml-idp-profiles/$profileId'
+      fullPath: '/admin/settings/saml-idp-profiles/$profileId'
+      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/lifecycle-workflows_/$workflowId/edit': {
       id: '/admin/lifecycle-workflows_/$workflowId/edit'
       path: '/lifecycle-workflows/$workflowId/edit'
@@ -1285,6 +1369,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/applications/$applicationId/edit'
       preLoaderRoute: typeof AdminApplicationsApplicationIdEditRouteImport
       parentRoute: typeof AdminApplicationsApplicationIdRoute
+    }
+    '/admin/settings_/saml-idp-profiles_/$profileId/': {
+      id: '/admin/settings_/saml-idp-profiles_/$profileId/'
+      path: '/'
+      fullPath: '/admin/settings/saml-idp-profiles/$profileId/'
+      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport
+      parentRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRoute
+    }
+    '/admin/settings_/saml-idp-profiles_/$profileId/edit': {
+      id: '/admin/settings_/saml-idp-profiles_/$profileId/edit'
+      path: '/edit'
+      fullPath: '/admin/settings/saml-idp-profiles/$profileId/edit'
+      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesProfileIdEditRouteImport
+      parentRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRoute
     }
     '/admin/groups_/$groupId/members/exports': {
       id: '/admin/groups_/$groupId/members/exports'
@@ -1380,6 +1478,24 @@ const AdminUsersIdRouteWithChildren = AdminUsersIdRoute._addFileChildren(
   AdminUsersIdRouteChildren,
 )
 
+interface AdminSettingsSamlIdpProfilesProfileIdRouteChildren {
+  AdminSettingsSamlIdpProfilesProfileIdEditRoute: typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
+  AdminSettingsSamlIdpProfilesProfileIdIndexRoute: typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
+}
+
+const AdminSettingsSamlIdpProfilesProfileIdRouteChildren: AdminSettingsSamlIdpProfilesProfileIdRouteChildren =
+  {
+    AdminSettingsSamlIdpProfilesProfileIdEditRoute:
+      AdminSettingsSamlIdpProfilesProfileIdEditRoute,
+    AdminSettingsSamlIdpProfilesProfileIdIndexRoute:
+      AdminSettingsSamlIdpProfilesProfileIdIndexRoute,
+  }
+
+const AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren =
+  AdminSettingsSamlIdpProfilesProfileIdRoute._addFileChildren(
+    AdminSettingsSamlIdpProfilesProfileIdRouteChildren,
+  )
+
 interface AdminRouteRouteChildren {
   AdminAgentsRoute: typeof AdminAgentsRoute
   AdminApplicationsRoute: typeof AdminApplicationsRoute
@@ -1404,6 +1520,7 @@ interface AdminRouteRouteChildren {
   AdminGroupsNewRoute: typeof AdminGroupsNewRoute
   AdminLifecycleWorkflowsNewRoute: typeof AdminLifecycleWorkflowsNewRoute
   AdminRolesNameRoute: typeof AdminRolesNameRoute
+  AdminSettingsSamlIdpProfilesRoute: typeof AdminSettingsSamlIdpProfilesRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
   AdminUsersIdRoute: typeof AdminUsersIdRouteWithChildren
   AdminUsersExportsRoute: typeof AdminUsersExportsRoute
@@ -1411,6 +1528,8 @@ interface AdminRouteRouteChildren {
   AdminUsersNewRoute: typeof AdminUsersNewRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
   AdminLifecycleWorkflowsWorkflowIdEditRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
+  AdminSettingsSamlIdpProfilesProfileIdRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
+  AdminSettingsSamlIdpProfilesNewRoute: typeof AdminSettingsSamlIdpProfilesNewRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1438,6 +1557,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGroupsNewRoute: AdminGroupsNewRoute,
   AdminLifecycleWorkflowsNewRoute: AdminLifecycleWorkflowsNewRoute,
   AdminRolesNameRoute: AdminRolesNameRoute,
+  AdminSettingsSamlIdpProfilesRoute: AdminSettingsSamlIdpProfilesRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
   AdminUsersIdRoute: AdminUsersIdRouteWithChildren,
   AdminUsersExportsRoute: AdminUsersExportsRoute,
@@ -1446,6 +1566,9 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,
   AdminLifecycleWorkflowsWorkflowIdEditRoute:
     AdminLifecycleWorkflowsWorkflowIdEditRoute,
+  AdminSettingsSamlIdpProfilesProfileIdRoute:
+    AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren,
+  AdminSettingsSamlIdpProfilesNewRoute: AdminSettingsSamlIdpProfilesNewRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

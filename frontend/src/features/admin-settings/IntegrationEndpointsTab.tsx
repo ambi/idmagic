@@ -1,18 +1,10 @@
-import { IconCopy, IconDownload } from '@tabler/icons-react'
-import { useState } from 'react'
-import { createSamlIDPProfile, deleteSamlIDPProfile, updateSamlIDPProfile } from '../../api'
-import { Alert } from '../../components/ui/alert'
+import { IconCopy, IconDownload, IconSettings } from '@tabler/icons-react'
+import { tenantURL } from '../../api'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { Select } from '../../components/ui/select'
-import { useDictionary, useLocale } from '../../lib/i18n'
-import type {
-  AdminIntegrationEndpointCatalog,
-  AdminSamlIDPProfile,
-  SamlIDPProfileMode,
-} from '../../types'
+import { useDictionary } from '../../lib/i18n'
+import type { AdminIntegrationEndpointCatalog, AdminSamlIDPProfile } from '../../types'
 import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSettingsPage.i18n'
 
 function EndpointField({
@@ -77,73 +69,12 @@ function EndpointSection({
 
 export function IntegrationEndpointsTab({
   catalog,
-  csrfToken = '',
   initialSamlIDPProfiles = [],
 }: {
   catalog: AdminIntegrationEndpointCatalog
-  csrfToken?: string
   initialSamlIDPProfiles?: AdminSamlIDPProfile[]
 }) {
   const t = useDictionary(adminSettingsDictionary)
-  const { locale } = useLocale()
-  const [profiles, setProfiles] = useState(initialSamlIDPProfiles)
-  const [newProfileName, setNewProfileName] = useState('')
-  const [newProfileMode, setNewProfileMode] = useState<SamlIDPProfileMode>('shared')
-  const [profileError, setProfileError] = useState('')
-  const [profileBusy, setProfileBusy] = useState(false)
-  const certificate = catalog.saml.signing_certificate
-  const dateLocale = locale === 'ja' ? 'ja-JP' : 'en-US'
-
-  async function createProfile() {
-    if (!newProfileName.trim()) return
-    setProfileBusy(true)
-    setProfileError('')
-    try {
-      const created = await createSamlIDPProfile(csrfToken, {
-        name: newProfileName.trim(),
-        mode: newProfileMode,
-      })
-      setProfiles((current) => [...current, created])
-      setNewProfileName('')
-    } catch {
-      setProfileError(t.samlProfileOperationFailed)
-    } finally {
-      setProfileBusy(false)
-    }
-  }
-
-  async function saveProfile(profile: AdminSamlIDPProfile) {
-    setProfileBusy(true)
-    setProfileError('')
-    try {
-      const updated = await updateSamlIDPProfile(csrfToken, profile.profile.profile_id, {
-        name: profile.profile.name.trim(),
-        mode: profile.profile.mode,
-      })
-      setProfiles((current) =>
-        current.map((entry) =>
-          entry.profile.profile_id === updated.profile.profile_id ? updated : entry,
-        ),
-      )
-    } catch {
-      setProfileError(t.samlProfileOperationFailed)
-    } finally {
-      setProfileBusy(false)
-    }
-  }
-
-  async function removeProfile(profileID: string) {
-    setProfileBusy(true)
-    setProfileError('')
-    try {
-      await deleteSamlIDPProfile(csrfToken, profileID)
-      setProfiles((current) => current.filter(({ profile }) => profile.profile_id !== profileID))
-    } catch {
-      setProfileError(t.samlProfileDeleteFailed)
-    } finally {
-      setProfileBusy(false)
-    }
-  }
 
   return (
     <div className="grid gap-5">
@@ -151,136 +82,6 @@ export function IntegrationEndpointsTab({
         <h2 className="text-base font-semibold text-slate-900">{t.integrationEndpointsHeading}</h2>
         <p className="mt-1 text-sm text-slate-600">{t.integrationEndpointsDescription}</p>
       </div>
-
-      <Card className="p-6">
-        <header>
-          <h3 className="text-base font-semibold text-slate-900">{t.samlProfilesHeading}</h3>
-          <p className="mt-1 text-sm text-slate-600">{t.samlProfilesDescription}</p>
-        </header>
-        {profileError ? (
-          <Alert variant="destructive" className="mt-4">
-            {profileError}
-          </Alert>
-        ) : null}
-        <div className="mt-5 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto]">
-          <div className="grid gap-1.5">
-            <Label htmlFor="new-saml-profile-name">{t.samlProfileNameLabel}</Label>
-            <Input
-              id="new-saml-profile-name"
-              value={newProfileName}
-              onChange={(event) => setNewProfileName(event.target.value)}
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <Label>{t.samlProfileModeLabel}</Label>
-            <Select
-              value={newProfileMode}
-              onValueChange={(value) => setNewProfileMode(value as SamlIDPProfileMode)}
-              options={[
-                { value: 'shared', label: t.samlProfileSharedLabel },
-                { value: 'dedicated', label: t.samlProfileDedicatedLabel },
-              ]}
-            />
-          </div>
-          <Button
-            type="button"
-            className="self-end"
-            disabled={profileBusy || !newProfileName.trim()}
-            onClick={() => void createProfile()}
-          >
-            {t.samlProfileCreate}
-          </Button>
-        </div>
-        <div className="mt-5 grid gap-4">
-          {profiles.map((entry) => {
-            const profile = entry.profile
-            const immutable = profile.is_default
-            const deleteDisabled = immutable || entry.service_provider_count > 0
-            return (
-              <div
-                key={profile.profile_id}
-                className="grid gap-4 rounded-lg border border-slate-200 p-4"
-              >
-                <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto_auto]">
-                  <div className="grid gap-1.5">
-                    <Label>{t.samlProfileNameLabel}</Label>
-                    <Input
-                      value={profile.name}
-                      disabled={immutable}
-                      onChange={(event) =>
-                        setProfiles((current) =>
-                          current.map((candidate) =>
-                            candidate.profile.profile_id === profile.profile_id
-                              ? {
-                                  ...candidate,
-                                  profile: { ...candidate.profile, name: event.target.value },
-                                }
-                              : candidate,
-                          ),
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label>{t.samlProfileModeLabel}</Label>
-                    <Select
-                      value={profile.mode}
-                      disabled={immutable}
-                      onValueChange={(value) =>
-                        setProfiles((current) =>
-                          current.map((candidate) =>
-                            candidate.profile.profile_id === profile.profile_id
-                              ? {
-                                  ...candidate,
-                                  profile: {
-                                    ...candidate.profile,
-                                    mode: value as SamlIDPProfileMode,
-                                  },
-                                }
-                              : candidate,
-                          ),
-                        )
-                      }
-                      options={[
-                        { value: 'shared', label: t.samlProfileSharedLabel },
-                        { value: 'dedicated', label: t.samlProfileDedicatedLabel },
-                      ]}
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="self-end"
-                    disabled={immutable || profileBusy || !profile.name.trim()}
-                    onClick={() => void saveProfile(entry)}
-                  >
-                    {t.samlProfileSave}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="self-end"
-                    disabled={deleteDisabled || profileBusy}
-                    onClick={() => void removeProfile(profile.profile_id)}
-                  >
-                    {t.samlProfileDelete}
-                  </Button>
-                </div>
-                <p className="text-xs text-slate-500">
-                  {profile.is_default ? `${t.samlProfileDefault}. ` : ''}
-                  {t.samlProfileAssignments.replace(
-                    '{count}',
-                    String(entry.service_provider_count),
-                  )}
-                  {deleteDisabled && !immutable ? ` ${t.samlProfileInUse}` : ''}
-                </p>
-                <EndpointField label={t.samlEntityIdLabel} value={entry.entity_id} t={t} />
-                <EndpointField label={t.samlMetadataUrlLabel} value={entry.metadata_url} t={t} />
-              </div>
-            )
-          })}
-        </div>
-      </Card>
 
       <EndpointSection
         title={t.oidcEndpointsHeading}
@@ -322,27 +123,62 @@ export function IntegrationEndpointsTab({
         title={t.samlEndpointsHeading}
         description={t.samlEndpointsDescription}
         t={t}
-        fields={[
-          { label: t.samlEntityIdLabel, value: catalog.saml.entity_id },
-          { label: t.samlMetadataUrlLabel, value: catalog.saml.metadata_url },
-          { label: t.samlSsoUrlLabel, value: catalog.saml.sso_url },
-          { label: t.samlSloUrlLabel, value: catalog.saml.slo_url },
-          { label: t.certificateFingerprintLabel, value: certificate.fingerprint_sha256 },
-        ]}
+        fields={[]}
       >
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-          <p className="text-xs text-slate-600">
-            {t.certificateValidity
-              .replace('{from}', new Date(certificate.not_before).toLocaleString(dateLocale))
-              .replace('{to}', new Date(certificate.not_after).toLocaleString(dateLocale))}
-          </p>
-          <Button asChild variant="outline" className="mt-3">
-            <a href={certificate.download_url} download>
-              <IconDownload size={16} aria-hidden="true" />
-              {t.downloadCertificate}
-            </a>
-          </Button>
-        </div>
+        <section>
+          <div className="flex justify-end">
+            <Button asChild variant="outline">
+              <a href={tenantURL('/admin/settings/saml-idp-profiles')}>
+                <IconSettings size={16} aria-hidden="true" />
+                {t.samlProfilesManage}
+              </a>
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-3">
+            {initialSamlIDPProfiles.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-slate-300 px-4 py-5 text-sm text-slate-500">
+                {t.samlProfilesEmpty}
+              </p>
+            ) : (
+              initialSamlIDPProfiles.map((entry) => (
+                <div
+                  key={entry.profile.profile_id}
+                  className="grid gap-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4"
+                >
+                  <div>
+                    <p className="font-medium text-slate-900">{entry.profile.name}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {entry.profile.is_default ? `${t.samlProfileDefault}. ` : ''}
+                      {entry.profile.mode === 'shared'
+                        ? t.samlProfileSharedLabel
+                        : t.samlProfileDedicatedLabel}
+                      {'. '}
+                      {t.samlProfileAssignments.replace(
+                        '{count}',
+                        String(entry.service_provider_count),
+                      )}
+                    </p>
+                  </div>
+                  <EndpointField label={t.samlEntityIdLabel} value={entry.entity_id} t={t} />
+                  <EndpointField label={t.samlMetadataUrlLabel} value={entry.metadata_url} t={t} />
+                  <EndpointField label={t.samlSsoUrlLabel} value={entry.sso_url} t={t} />
+                  <EndpointField label={t.samlSloUrlLabel} value={entry.slo_url} t={t} />
+                  <EndpointField
+                    label={t.certificateFingerprintLabel}
+                    value={entry.signing_certificate_fingerprint_sha256}
+                    t={t}
+                  />
+                  <Button asChild variant="outline" className="w-fit">
+                    <a href={entry.signing_certificate_url} download>
+                      <IconDownload size={16} aria-hidden="true" />
+                      {t.downloadCertificate}
+                    </a>
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
       </EndpointSection>
 
       <EndpointSection

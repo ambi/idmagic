@@ -69,9 +69,8 @@ export const adminSettingsDictionary = defineDictionary(
     integrationEndpointsHeading: '連携エンドポイント',
     integrationEndpointsDescription:
       '以下はこのテナントの正規URLです。Discoveryまたはmetadataの利用を推奨し、個別URLは手動設定時に使用します。',
-    samlProfilesHeading: 'SAML IdP プロファイル',
-    samlProfilesDescription:
-      '通常はdefault共有プロファイルを利用します。entityID・証明書・変更影響範囲を分離する必要がある場合だけ追加プロファイルを作成します。',
+    samlProfilesManage: 'SAML IdPプロファイルを管理',
+    samlProfilesEmpty: '追加のSAML IdPプロファイルはありません。',
     samlProfileNameLabel: 'プロファイル名',
     samlProfileModeLabel: '共有方式',
     samlProfileSharedLabel: '共有（複数SP）',
@@ -86,7 +85,7 @@ export const adminSettingsDictionary = defineDictionary(
     samlProfileDeleteFailed: 'SAML IdPプロファイルを削除できませんでした。',
     oidcEndpointsHeading: 'OAuth 2.0 / OpenID Connect',
     oidcEndpointsDescription:
-      'OIDC RPにはOpenID Discovery URLを設定してください。個別endpointはDiscoveryを利用できない製品向けです。',
+      'OIDC RPにはOpenID Discovery URLを設定してください。個別エンドポイントはDiscoveryを利用できない製品向けです。',
     issuerLabel: 'Issuer',
     openidConfigurationLabel: 'OpenID Discovery URL',
     oauthAuthorizationServerLabel: 'OAuth Authorization Server Metadata URL',
@@ -102,7 +101,7 @@ export const adminSettingsDictionary = defineDictionary(
     deviceAuthorizationEndpointLabel: 'Device Authorization Endpoint',
     samlEndpointsHeading: 'SAML 2.0 IdP',
     samlEndpointsDescription:
-      'SAML SPにはIdP metadata URLを設定してください。証明書の手動登録が必要な場合はactive証明書をダウンロードできます。',
+      'SAML SPには利用するプロファイルのIdP Metadata URLを設定してください。SSO・SLO・署名証明書もプロファイルごとに異なります。',
     samlEntityIdLabel: 'IdP Entity ID',
     samlMetadataUrlLabel: 'IdP Metadata URL',
     samlSsoUrlLabel: 'Single Sign-On URL',
@@ -120,7 +119,7 @@ export const adminSettingsDictionary = defineDictionary(
     metadataExchangeUrlLabel: 'Metadata Exchange URL',
     apiEndpointsHeading: 'API',
     apiEndpointsDescription:
-      '管理API、SCIM 2.0、本人用アカウントAPIのアクセストークンと組み合わせるBase URLです。',
+      '管理API、SCIM 2.0、本人用アカウントAPIのアクセストークンと組み合わせるベースURLです。',
     apiTokensFetchFailedError: 'API アクセストークンを取得できませんでした。',
     tokenDescriptionRequiredError: 'トークンの説明を入力してください。',
     apiTokenIssuedNotice: 'API アクセストークンを発行しました。',
@@ -132,14 +131,14 @@ export const adminSettingsDictionary = defineDictionary(
     apiTokensDescription:
       'CLI、スクリプト、外部 IDP から管理 API、SCIM 2.0、発行者本人のアカウント API を呼び出すための scope 付きアクセストークンを発行します。OAuth クライアントの事前登録は不要です。',
     connectionInfoHeading: '接続情報',
-    managementApiBaseUrlLabel: '管理 API Base URL',
+    managementApiBaseUrlLabel: '管理 API ベースURL',
     managementApiHelp:
       'CLI やスクリプトから管理 API を呼び出すとき、この URL にリソースのパスを続けます。',
-    scimBaseUrlLabel: 'SCIM 2.0 Base URL',
+    scimBaseUrlLabel: 'SCIM 2.0 ベースURL',
     urlCopiedNotice: 'URLをクリップボードにコピーしました。',
     copy: 'コピー',
     scimConnectorHelp: '外部 IDP の SCIM コネクタ設定でこの URL を指定します。',
-    accountApiBaseUrlLabel: 'アカウント API Base URL',
+    accountApiBaseUrlLabel: 'アカウント API ベースURL',
     accountApiHelp:
       '発行者本人のプロフィールやセキュリティ設定を操作するとき、この URL にリソースのパスを続けます。',
     apiTokensListHeading: '発行済みトークン',
@@ -272,9 +271,8 @@ export const adminSettingsDictionary = defineDictionary(
     integrationEndpointsHeading: 'Integration endpoints',
     integrationEndpointsDescription:
       'These are the canonical URLs for this tenant. Prefer Discovery or metadata; use individual URLs for manual configuration.',
-    samlProfilesHeading: 'SAML IdP profiles',
-    samlProfilesDescription:
-      'Use the shared default profile normally. Add a profile only when an integration needs an isolated entity ID, certificate, or change boundary.',
+    samlProfilesManage: 'Manage SAML IdP profiles',
+    samlProfilesEmpty: 'There are no additional SAML IdP profiles.',
     samlProfileNameLabel: 'Profile name',
     samlProfileModeLabel: 'Sharing mode',
     samlProfileSharedLabel: 'Shared (multiple SPs)',
@@ -305,7 +303,7 @@ export const adminSettingsDictionary = defineDictionary(
     deviceAuthorizationEndpointLabel: 'Device authorization endpoint',
     samlEndpointsHeading: 'SAML 2.0 IdP',
     samlEndpointsDescription:
-      'Configure the IdP metadata URL in SAML SPs. Download the active certificate when manual trust setup is required.',
+      'Configure the selected profile’s IdP metadata URL in the SAML SP. SSO, SLO, and signing certificates are profile-specific.',
     samlEntityIdLabel: 'IdP entity ID',
     samlMetadataUrlLabel: 'IdP metadata URL',
     samlSsoUrlLabel: 'Single sign-on URL',

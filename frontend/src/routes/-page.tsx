@@ -51,6 +51,10 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-mcp-resource-servers': `MCP リソースサーバー | ${ADMIN}`,
   'admin-keys': `署名鍵 | ${ADMIN}`,
   'admin-settings': `設定 | ${ADMIN}`,
+  'admin-saml-idp-profiles': `SAML IdPプロファイル | ${ADMIN}`,
+  'admin-saml-idp-profile-detail': `SAML IdPプロファイル詳細 | ${ADMIN}`,
+  'admin-saml-idp-profile-create': `SAML IdPプロファイルを作成 | ${ADMIN}`,
+  'admin-saml-idp-profile-edit': `SAML IdPプロファイルを編集 | ${ADMIN}`,
   'admin-sign-in-policy': `サインインポリシー | ${ADMIN}`,
   'admin-entra-federation': `Entra ID 連携 | ${ADMIN}`,
   'admin-entra-federation-add': `ドメインフェデレーションを追加 | ${ADMIN}`,
@@ -85,6 +89,10 @@ const PAGE_TITLES_JA: Record<string, string> = {
 
 const PAGE_TITLES_EN: Record<string, string> = {
   ...Object.fromEntries(Object.keys(PAGE_TITLES_JA).map((kind) => [kind, `${kind} | ${BRAND}`])),
+  'admin-saml-idp-profiles': `SAML IdP profiles | ${BRAND} Admin Console`,
+  'admin-saml-idp-profile-detail': `SAML IdP profile details | ${BRAND} Admin Console`,
+  'admin-saml-idp-profile-create': `Create SAML IdP profile | ${BRAND} Admin Console`,
+  'admin-saml-idp-profile-edit': `Edit SAML IdP profile | ${BRAND} Admin Console`,
   home: BRAND,
   error: BRAND,
 }

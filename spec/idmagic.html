@@ -1836,7 +1836,7 @@ UI 表示と weaker policy gating に使う Authentication context の PasswordP
   </article>
 <article class="card" id="scl-Tenancy/model/AdminOAuthEndpointSet">
     <header><h3>AdminOAuthEndpointSet</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminOAuthEndpointSet</code></header>
-    <p class="desc">管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規 endpoint 集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。</p>
+    <p class="desc">管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規エンドポイント集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -2032,7 +2032,7 @@ UI 表示と weaker policy gating に使う Authentication context の PasswordP
   </article>
 <article class="card" id="scl-Tenancy/model/AdminApiEndpointSet">
     <header><h3>AdminApiEndpointSet</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminApiEndpointSet</code></header>
-    <p class="desc">外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規 base URL。</p>
+    <p class="desc">外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規ベースURL。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -2599,7 +2599,7 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </article>
 <article class="card" id="scl-Tenancy/model/TenantUpdateRequest">
     <header><h3>TenantUpdateRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/TenantUpdateRequest</code></header>
-    <p class="desc">管理者がテナントの表示名 / パスワードポリシー上書きを更新する JSON リクエスト。`id` と status は変更しない。status 変更は disable/enable 専用 endpoint を経由。</p>
+    <p class="desc">管理者がテナントの表示名 / パスワードポリシー上書きを更新する JSON リクエスト。`id` と status は変更しない。status 変更は disable/enable 専用エンドポイントを経由。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -4196,7 +4196,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
         <header><h3>管理者は正規ロケーションの連携情報を取得する</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/管理者は正規ロケーションの連携情報を取得する</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">admin が path または subdomain の正規ロケーションから自身のテナントへアクセスしている</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">admin が連携エンドポイント画面を開く</li><li class="scn-step">server は request tenant の canonical issuer から OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの URL を導出する</li><li class="scn-step">画面は discovery と metadata を正本として案内し、個別値をコピーまたは証明書をダウンロードできる</li><li class="scn-step">返却値に client secret、API token、秘密鍵は含まれない</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">admin が連携エンドポイント画面を開く</li><li class="scn-step">server は request tenant の canonical issuer から OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの URL を導出する</li><li class="scn-step">画面はOAuth/OIDC、SAML、WS-Federation、APIのprotocol単位で情報をまとめ、SAML配下ではdefaultを含むprofileごとにentityID、metadata、SSO、SLO、署名証明書を一組で表示する</li><li class="scn-step">画面はread-onlyでdiscoveryとmetadataを正本として案内し、個別値をコピーまたは証明書をダウンロードできる</li><li class="scn-step">canonical issuerと同一originで配信するgatewayは、表示した公開protocol URLを対応するserverエンドポイントへ転送する</li><li class="scn-step">返却値に client secret、API token、秘密鍵は含まれない</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">admin が別テナントの realm を URL として指定しようとする</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">対象指定パラメータは存在せず、解決済みテナント以外の情報は返らない</li></ol></div>
@@ -4253,7 +4253,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
         <header><h3>path style のテナントは realm prefix から解決される</h3><span class="chip chip-actor">OAuth2Client</span><code class="canonical-ref">Tenancy/scenario/path style のテナントは realm prefix から解決される</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;default&quot; の endpoint_style は Path である</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;/realms/default/authorize&quot; にリクエストを送る</li><li class="scn-step">解決されたテナントは &quot;default&quot;</li><li class="scn-step">iss claim は base URL + /realms/default</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;/realms/default/authorize&quot; にリクエストを送る</li><li class="scn-step">解決されたテナントは &quot;default&quot;</li><li class="scn-step">iss claim はベースURL + /realms/default</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">対象テナントが無効化されている</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"> tenant_id &quot;acme&quot; を作成して無効化する</li><li class="scn-step"> 無効化済みテナントの &quot;/realms/acme/authorize&quot; にリクエストを送る</li><li class="scn-step"> テナントの存在を漏らさずエラー &quot;<a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
@@ -4289,7 +4289,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
         <header><h3>discovery の issuer は取得元 URL と一致する</h3><span class="chip chip-actor">OAuth2Client</span><code class="canonical-ref">Tenancy/scenario/discovery の issuer は取得元 URL と一致する</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_base_domain が設定されている</li><li class="scn-step">テナント &quot;default&quot; の endpoint_style は Path、テナント &quot;acme&quot; の endpoint_style は Subdomain である</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;{base}/realms/default/.well-known/openid-configuration&quot; を取得する</li><li class="scn-step">issuer は &quot;{base}/realms/default&quot; であり、取得元 URL の prefix と一致する</li><li class="scn-step">&quot;https://acme.{tenant_base_domain}/.well-known/openid-configuration&quot; を取得する</li><li class="scn-step">issuer は &quot;https://acme.{tenant_base_domain}&quot; であり、取得元 URL の prefix と一致する</li><li class="scn-step">どちらの応答も endpoint URL を自分の正規ロケーション配下だけで組み立てる</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;{base}/realms/default/.well-known/openid-configuration&quot; を取得する</li><li class="scn-step">issuer は &quot;{base}/realms/default&quot; であり、取得元 URL の prefix と一致する</li><li class="scn-step">&quot;https://acme.{tenant_base_domain}/.well-known/openid-configuration&quot; を取得する</li><li class="scn-step">issuer は &quot;https://acme.{tenant_base_domain}&quot; であり、取得元 URL の prefix と一致する</li><li class="scn-step">どちらの応答もエンドポイントURLを自分の正規ロケーション配下だけで組み立てる</li></ol></div>
 
       </article><article class="card scenario" id="scl-Tenancy/scenario/System~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AE~E6~AD~A3~E8~A6~8F~E3~83~AD~E3~82~B1~E3~83~BC~E3~82~B7~E3~83~A7~E3~83~B3~E3~82~92~E5~88~87~E3~82~8A~E6~9B~BF~E3~81~88~E3~82~89~E3~82~8C~E3~82~8B">
         <header><h3>System管理者はテナントの正規ロケーションを切り替えられる</h3><span class="chip chip-actor">SystemAdministrator</span><code class="canonical-ref">Tenancy/scenario/System管理者はテナントの正規ロケーションを切り替えられる</code></header>
@@ -4555,10 +4555,10 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
             <h4>TenantSettings<span class="chip chip-initial">entry</span></h4>
             <p class="desc">テナント設定画面(表示名・既定 locale・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム、利用量とクォータ上限の表示、通知メールタブへの入口)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>表示名、既定 locale、またはパスワードポリシー上書きを変更して保存する <code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateAdminSettings">UpdateAdminSettings</a></td></tr><tr><td>製品名・色・フッターリンク・フッターテキストを変更して保存する <code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateTenantBranding">UpdateTenantBranding</a></td></tr><tr><td>通知メールタブを開く <code>open_notification_templates</code></td><td>NotificationTemplates</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/ListNotificationTemplates">ListNotificationTemplates</a></td></tr><tr><td>連携エンドポイントタブを開き、protocol metadata、個別 endpoint、API base URL、SAML署名証明書を参照・コピーする <code>open_integration_endpoints</code></td><td>IntegrationEndpoints</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/GetAdminIntegrationEndpoints">GetAdminIntegrationEndpoints</a></td></tr></tbody></table>
+                   <tbody><tr><td>表示名、既定 locale、またはパスワードポリシー上書きを変更して保存する <code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateAdminSettings">UpdateAdminSettings</a></td></tr><tr><td>製品名・色・フッターリンク・フッターテキストを変更して保存する <code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateTenantBranding">UpdateTenantBranding</a></td></tr><tr><td>通知メールタブを開く <code>open_notification_templates</code></td><td>NotificationTemplates</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/ListNotificationTemplates">ListNotificationTemplates</a></td></tr><tr><td>read-onlyの連携エンドポイントタブを開き、protocol metadata、個別エンドポイント、APIベースURL、SAML profileエンドポイント、SAML署名証明書をprotocol単位に参照・コピーする <code>open_integration_endpoints</code></td><td>IntegrationEndpoints</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/GetAdminIntegrationEndpoints">GetAdminIntegrationEndpoints</a></td></tr></tbody></table>
           </div><div class="flow-view">
             <h4>IntegrationEndpoints</h4>
-            <p class="desc">OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの正規連携情報とSAML署名証明書</p>
+            <p class="desc">OAuth/OIDC、SAML(defaultを含むprofileごとのentityID・metadata・SSO・SLO・署名証明書)、WS-Federation、SCIM、管理API、本人APIごとに分類された正規連携情報。変更fieldは表示しない</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
                    <tbody><tr><td>テナント設定画面の一般設定へ戻る <code>back</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/GetAdminSettings">GetAdminSettings</a></td></tr></tbody></table>
           </div><div class="flow-view">
@@ -32608,7 +32608,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
 <article class="vocab-entry" id="context-saml-glossary-samlidentityproviderprofile">
       <div class="vocab-name"><code class="name">SamlIdentityProviderProfile</code></div>
       <div class="vocab-body">
-        <p class="def">テナント内のSAML IdP entityID、endpoint、XML署名資格情報をまとめるtrust境界。shared profileは複数SPで共有でき、dedicated profileは最大1 SPだけに割り当てる。</p>
+        <p class="def">テナント内のSAML IdP entityID、エンドポイント、XML署名資格情報をまとめるtrust境界。shared profileは複数SPで共有でき、dedicated profileは最大1 SPだけに割り当てる。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">SAML IdP profile</span> <span class="chip chip-alias">IdP profile</span></div>
 
 
@@ -32700,7 +32700,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-Saml/model/SamlIdentityProviderProfile">
     <header><h3>SamlIdentityProviderProfile</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Saml/model/SamlIdentityProviderProfile</code></header>
-    <p class="desc">テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAML endpointを使う。追加profileはprofile IDを含む固有entityID・endpoint・XmlFederationSigning鍵scopeを持つ。</p>
+    <p class="desc">テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAMLエンドポイントを使う。追加profileはprofile IDを含む固有entityID・エンドポイント・XmlFederationSigning鍵scopeを持つ。</p>
     <dl class="kv"><dt>identity</dt><dd><code>tenant_id, profile_id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -32761,7 +32761,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-default">default: default</span></td>
-    <td>所属テナント ID。SP 登録と SAML endpoint は realm ごとに分離する。</td>
+    <td>所属テナント ID。SP 登録と SAMLエンドポイントは realm ごとに分離する。</td>
   </tr><tr>
     <td><code class="name">idp_profile_id</code></td>
     <td><code class="type">String</code></td>
@@ -33385,7 +33385,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-Saml/interface/DownloadSamlSigningCertificate">
     <header><h3>DownloadSamlSigningCertificate</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Saml/interface/DownloadSamlSigningCertificate</code></header>
-    <p class="desc">SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、この endpoint は新規設定用 active 証明書だけを返す。秘密鍵は返さない。</p>
+    <p class="desc">SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、このエンドポイントは新規設定用 active 証明書だけを返す。秘密鍵は返さない。</p>
 
     <div class="io"><div class="label">Bindings (2)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -33659,12 +33659,12 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
         <header><h3>管理者はSAML IdP profileを共有または専用で管理できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Saml/scenario/管理者はSAML IdP profileを共有または専用で管理できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナントには変更不能なdefault shared profileが存在する</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者がshared profileを作成して複数SPから選択する</li><li class="scn-step">管理者がdedicated profileを作成して1 SPへ割り当てる</li><li class="scn-step">未使用の追加profileを削除する</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者がread-onlyの連携エンドポイント画面から専用profile管理一覧とprofile詳細へ移動する</li><li class="scn-step">管理者が専用作成画面でshared profileを作成して複数SPから選択する</li><li class="scn-step">管理者がprofile詳細から専用編集画面へ移り、追加profileのnameまたはmodeを変更する</li><li class="scn-step">管理者がdedicated profileを作成して1 SPへ割り当てる</li><li class="scn-step">未使用の追加profileを削除する</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
-            <header><span class="chip chip-hint">at 3</span><code class="name">profileがSPから参照中またはdefaultである</code></header>
+            <header><span class="chip chip-hint">at 5</span><code class="name">profileがSPから参照中またはdefaultである</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">削除をconflictで拒否する</li></ol></div>
           </article><article class="requirement">
-            <header><span class="chip chip-hint">at 2</span><code class="name">dedicated profileを別のSPへも割り当てる</code></header>
+            <header><span class="chip chip-hint">at 4</span><code class="name">dedicated profileを別のSPへも割り当てる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">bindingを<a class="chip chip-ref" href="#scl-Saml/model/InvalidRequestError">InvalidRequestError</a>で拒否する</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-Saml/scenario/management~20API~20client~E3~81~AFSAML~20scope~E5~86~85~E3~81~AEservice~20provider~E3~81~A0~E3~81~91~E3~82~92~E6~93~8D~E4~BD~9C~E3~81~A7~E3~81~8D~E3~82~8B">
@@ -33731,25 +33731,49 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       </div>
     </div>
     <div class="diagram-viewport" data-diagram>
-      <svg viewBox="0 0 256 130" data-diagram-svg data-diagram-viewbox="0 0 256 130" role="img" aria-label="AdminSamlIdpProfiles navigation">
+      <svg viewBox="0 0 512 256" data-diagram-svg data-diagram-viewbox="0 0 512 256" role="img" aria-label="AdminSamlIdpProfiles navigation">
         <defs>
           <marker id="arrow-flow-adminsamlidpprofiles" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z"></path>
           </marker>
         </defs>
-        <a href="#scl-Saml/interface/CreateSamlIdentityProviderProfile"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-0">
-        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
-        <text x="128.0" y="59.0">create</text>
-      </g></a><a href="#scl-Saml/interface/UpdateSamlIdentityProviderProfile"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-1">
-        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
-        <text x="128.0" y="59.0">update</text>
-      </g></a><a href="#scl-Saml/interface/DeleteSamlIdentityProviderProfile"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-2">
-        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
-        <text x="128.0" y="59.0">delete</text>
+        <a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-0">
+        <line x1="128.0" y1="94.0" x2="128.0" y2="162.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="128.0" y="122.0">create</text>
+      </g></a><a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-1">
+        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="256.0" y="59.0">view</text>
+      </g></a><a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-2">
+        <line x1="384.0" y1="94.0" x2="384.0" y2="162.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="384.0" y="122.0">edit</text>
+      </g></a><a href="#scl-Saml/interface/DeleteSamlIdentityProviderProfile"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-3">
+        <line x1="292.0" y1="65.0" x2="220.0" y2="65.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="256.0" y="59.0">delete</text>
+      </g></a><a href="#scl-Saml/interface/CreateSamlIdentityProviderProfile"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-4">
+        <line x1="210.5" y1="178.2" x2="301.5" y2="77.8" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="256.0" y="122.0">create</text>
+      </g></a><a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-5">
+        <line x1="128.0" y1="162.0" x2="128.0" y2="94.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="128.0" y="122.0">cancel</text>
+      </g></a><a href="#scl-Saml/interface/UpdateSamlIdentityProviderProfile"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-6">
+        <line x1="384.0" y1="162.0" x2="384.0" y2="94.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="384.0" y="122.0">update</text>
+      </g></a><a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-edge" id="context-saml-diagram-flow-adminsamlidpprofiles-edge-7">
+        <line x1="384.0" y1="162.0" x2="384.0" y2="94.0" marker-end="url(#arrow-flow-adminsamlidpprofiles)"></line>
+        <text x="384.0" y="122.0">cancel</text>
       </g></a>
         <a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-node diagram-node-initial" id="context-saml-diagram-flow-adminsamlidpprofiles-node-idpprofiles">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">IdPProfiles</text>
+      </g></a><a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-node diagram-node-view" id="context-saml-diagram-flow-adminsamlidpprofiles-node-idpprofile">
+        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
+        <text x="384" y="70">IdPProfile</text>
+      </g></a><a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-node diagram-node-view" id="context-saml-diagram-flow-adminsamlidpprofiles-node-newidpprofile">
+        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
+        <text x="128" y="196">NewIdPProfile</text>
+      </g></a><a href="#scl-Saml/flow/AdminSamlIdpProfiles"><g class="diagram-node diagram-node-view" id="context-saml-diagram-flow-adminsamlidpprofiles-node-editidpprofile">
+        <rect x="292" y="162" width="184" height="58" rx="8"></rect>
+        <text x="384" y="196">EditIdPProfile</text>
       </g></a>
       </svg>
     </div>
@@ -33793,7 +33817,22 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
             <h4>IdPProfiles<span class="chip chip-initial">entry</span></h4>
             <p class="desc">SAML IdP profile一覧(default、shared、dedicated、割当数、metadata URL)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>sharedまたはdedicated profileを作成する <code>create</code></td><td>IdPProfiles</td><td><a class="chip chip-iface-ref" href="#scl-Saml/interface/CreateSamlIdentityProviderProfile">CreateSamlIdentityProviderProfile</a></td></tr><tr><td>追加profileのnameまたはmodeを更新する <code>update</code></td><td>IdPProfiles</td><td><a class="chip chip-iface-ref" href="#scl-Saml/interface/UpdateSamlIdentityProviderProfile">UpdateSamlIdentityProviderProfile</a></td></tr><tr><td>未使用の追加profileを削除する <code>delete</code></td><td>IdPProfiles</td><td><a class="chip chip-iface-ref" href="#scl-Saml/interface/DeleteSamlIdentityProviderProfile">DeleteSamlIdentityProviderProfile</a></td></tr></tbody></table>
+                   <tbody><tr><td>一覧から分離された専用作成画面を開く <code>create</code></td><td>NewIdPProfile</td><td></td></tr><tr><td>profileを選択してread-onlyの詳細画面を開く <code>view</code></td><td>IdPProfile</td><td></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>IdPProfile</h4>
+            <p class="desc">profileのname、mode、割当数、正規エンドポイントを表示するread-only詳細画面</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>追加profileの専用編集画面を開く。default profileには表示しない <code>edit</code></td><td>EditIdPProfile</td><td></td></tr><tr><td>影響を確認して未使用の追加profileを削除する <code>delete</code></td><td>IdPProfiles</td><td><a class="chip chip-iface-ref" href="#scl-Saml/interface/DeleteSamlIdentityProviderProfile">DeleteSamlIdentityProviderProfile</a></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>NewIdPProfile</h4>
+            <p class="desc">sharedまたはdedicated profileの専用作成フォーム</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>profileを作成してread-only詳細画面へ移る <code>create</code></td><td>IdPProfile</td><td><a class="chip chip-iface-ref" href="#scl-Saml/interface/CreateSamlIdentityProviderProfile">CreateSamlIdentityProviderProfile</a></td></tr><tr><td>変更せず一覧へ戻る <code>cancel</code></td><td>IdPProfiles</td><td></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>EditIdPProfile</h4>
+            <p class="desc">追加profileのname、mode、割当数、正規エンドポイントを確認できる専用編集フォーム</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>追加profileのnameまたはmodeを更新してread-only詳細画面へ戻る <code>update</code></td><td>IdPProfile</td><td><a class="chip chip-iface-ref" href="#scl-Saml/interface/UpdateSamlIdentityProviderProfile">UpdateSamlIdentityProviderProfile</a></td></tr><tr><td>変更せずread-only詳細画面へ戻る <code>cancel</code></td><td>IdPProfile</td><td></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-Saml/flow/SamlBrowserNavigation">
         <header><h3>SamlBrowserNavigation</h3><span class="chip chip-initial">entry: ServiceProvider</span><code class="canonical-ref">Saml/flow/SamlBrowserNavigation</code></header>

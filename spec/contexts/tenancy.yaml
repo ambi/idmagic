@@ -380,7 +380,7 @@ models:
         type: TenantUsage
   AdminOAuthEndpointSet:
     kind: value_object
-    description: 管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規 endpoint 集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。
+    description: 管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規エンドポイント集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。
     fields:
       openid_configuration:
         type: String
@@ -449,7 +449,7 @@ models:
         type: String
   AdminApiEndpointSet:
     kind: value_object
-    description: 外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規 base URL。
+    description: 外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規ベースURL。
     fields:
       management_api_base_url:
         type: String
@@ -885,7 +885,7 @@ models:
           pii: true
   TenantUpdateRequest:
     kind: value_object
-    description: "管理者がテナントの表示名 / パスワードポリシー上書きを更新する JSON リクエスト。`id` と status は変更しない。status 変更は disable/enable 専用 endpoint を経由。"
+    description: "管理者がテナントの表示名 / パスワードポリシー上書きを更新する JSON リクエスト。`id` と status は変更しない。status 変更は disable/enable 専用エンドポイントを経由。"
     fields:
       display_name:
         type: String
@@ -1625,7 +1625,9 @@ scenarios:
     main_success:
       - admin が連携エンドポイント画面を開く
       - server は request tenant の canonical issuer から OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの URL を導出する
-      - 画面は discovery と metadata を正本として案内し、個別値をコピーまたは証明書をダウンロードできる
+      - 画面はOAuth/OIDC、SAML、WS-Federation、APIのprotocol単位で情報をまとめ、SAML配下ではdefaultを含むprofileごとにentityID、metadata、SSO、SLO、署名証明書を一組で表示する
+      - 画面はread-onlyでdiscoveryとmetadataを正本として案内し、個別値をコピーまたは証明書をダウンロードできる
+      - canonical issuerと同一originで配信するgatewayは、表示した公開protocol URLを対応するserverエンドポイントへ転送する
       - 返却値に client secret、API token、秘密鍵は含まれない
     extensions:
       - at: 1
@@ -1706,7 +1708,7 @@ scenarios:
     main_success:
       - "\"/realms/default/authorize\" にリクエストを送る"
       - "解決されたテナントは \"default\""
-      - iss claim は base URL + /realms/default
+      - iss claim はベースURL + /realms/default
     extensions:
       - at: 1
         condition: 対象テナントが無効化されている
@@ -1765,7 +1767,7 @@ scenarios:
       - "issuer は \"{base}/realms/default\" であり、取得元 URL の prefix と一致する"
       - "\"https://acme.{tenant_base_domain}/.well-known/openid-configuration\" を取得する"
       - "issuer は \"https://acme.{tenant_base_domain}\" であり、取得元 URL の prefix と一致する"
-      - どちらの応答も endpoint URL を自分の正規ロケーション配下だけで組み立てる
+      - どちらの応答もエンドポイントURLを自分の正規ロケーション配下だけで組み立てる
   System管理者はテナントの正規ロケーションを切り替えられる:
     actor: SystemAdministrator
     given:
@@ -1954,11 +1956,11 @@ flows:
             interface: ListNotificationTemplates
             to: NotificationTemplates
           - action: open_integration_endpoints
-            does: 連携エンドポイントタブを開き、protocol metadata、個別 endpoint、API base URL、SAML署名証明書を参照・コピーする
+            does: read-onlyの連携エンドポイントタブを開き、protocol metadata、個別エンドポイント、APIベースURL、SAML profileエンドポイント、SAML署名証明書をprotocol単位に参照・コピーする
             interface: GetAdminIntegrationEndpoints
             to: IntegrationEndpoints
       IntegrationEndpoints:
-        sees: OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの正規連携情報とSAML署名証明書
+        sees: OAuth/OIDC、SAML(defaultを含むprofileごとのentityID・metadata・SSO・SLO・署名証明書)、WS-Federation、SCIM、管理API、本人APIごとに分類された正規連携情報。変更fieldは表示しない
         does:
           - action: back
             does: テナント設定画面の一般設定へ戻る

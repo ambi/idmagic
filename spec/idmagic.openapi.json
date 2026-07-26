@@ -14282,7 +14282,7 @@
     "/saml/signing-certificate.pem": {
       "get": {
         "operationId": "DownloadSamlSigningCertificate",
-        "summary": "SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、この endpoint は新規設定用 active 証明書だけを返す。秘密鍵は返さない。",
+        "summary": "SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、このエンドポイントは新規設定用 active 証明書だけを返す。秘密鍵は返さない。",
         "security": [],
         "responses": {
           "200": {
@@ -14294,7 +14294,7 @@
     "/saml/idp/{profile_id}/signing-certificate.pem": {
       "get": {
         "operationId": "DownloadSamlSigningCertificate",
-        "summary": "SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、この endpoint は新規設定用 active 証明書だけを返す。秘密鍵は返さない。",
+        "summary": "SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、このエンドポイントは新規設定用 active 証明書だけを返す。秘密鍵は返さない。",
         "security": [],
         "parameters": [
           {
@@ -18776,7 +18776,7 @@
           "scim_base_url",
           "account_api_base_url"
         ],
-        "description": "外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規 base URL。"
+        "description": "外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規ベースURL。"
       },
       "AdminApplicationCategoryListResponse": {
         "type": "object",
@@ -19668,7 +19668,7 @@
           "pushed_authorization_request_endpoint",
           "device_authorization_endpoint"
         ],
-        "description": "管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規 endpoint 集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。"
+        "description": "管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規エンドポイント集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。"
       },
       "AdminRequiredActionRequest": {
         "type": "object",
@@ -30463,7 +30463,7 @@
           "created_at",
           "updated_at"
         ],
-        "description": "テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAML endpointを使う。追加profileはprofile IDを含む固有entityID・endpoint・XmlFederationSigning鍵scopeを持つ。",
+        "description": "テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAMLエンドポイントを使う。追加profileはprofile IDを含む固有entityID・エンドポイント・XmlFederationSigning鍵scopeを持つ。",
         "x-scl-untranslated-constraints": [
           "default_profile_count(tenant_id) == 1",
           "profile_id == \"default\" iff is_default",
@@ -30594,7 +30594,7 @@
           "tenant_id": {
             "type": "string",
             "default": "default",
-            "description": "所属テナント ID。SP 登録と SAML endpoint は realm ごとに分離する。"
+            "description": "所属テナント ID。SP 登録と SAMLエンドポイントは realm ごとに分離する。"
           },
           "idp_profile_id": {
             "type": "string",
@@ -32292,7 +32292,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "管理者がテナントの表示名 / パスワードポリシー上書きを更新する JSON リクエスト。`id` と status は変更しない。status 変更は disable/enable 専用 endpoint を経由。"
+        "description": "管理者がテナントの表示名 / パスワードポリシー上書きを更新する JSON リクエスト。`id` と status は変更しない。status 変更は disable/enable 専用エンドポイントを経由。"
       },
       "TenantUpdated": {
         "type": "object",

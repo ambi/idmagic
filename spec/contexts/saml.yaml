@@ -89,7 +89,7 @@ glossary:
   EndUser:
     definition: SAML Web Browser SSO または Single Logout をブラウザで開始する利用者。
   SamlIdentityProviderProfile:
-    definition: テナント内のSAML IdP entityID、endpoint、XML署名資格情報をまとめるtrust境界。shared profileは複数SPで共有でき、dedicated profileは最大1 SPだけに割り当てる。
+    definition: テナント内のSAML IdP entityID、エンドポイント、XML署名資格情報をまとめるtrust境界。shared profileは複数SPで共有でき、dedicated profileは最大1 SPだけに割り当てる。
     aliases:
       - SAML IdP profile
       - IdP profile
@@ -169,7 +169,7 @@ models:
       - dedicated
   SamlIdentityProviderProfile:
     kind: entity
-    description: テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAML endpointを使う。追加profileはprofile IDを含む固有entityID・endpoint・XmlFederationSigning鍵scopeを持つ。
+    description: テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAMLエンドポイントを使う。追加profileはprofile IDを含む固有entityID・エンドポイント・XmlFederationSigning鍵scopeを持つ。
     identity:
       - tenant_id
       - profile_id
@@ -229,7 +229,7 @@ models:
       tenant_id:
         type: String
         default: default
-        description: 所属テナント ID。SP 登録と SAML endpoint は realm ごとに分離する。
+        description: 所属テナント ID。SP 登録と SAMLエンドポイントは realm ごとに分離する。
       idp_profile_id:
         type: String
         default: default
@@ -570,7 +570,7 @@ interfaces:
         successful_status_codes:
           - "200"
   DownloadSamlSigningCertificate:
-    description: SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、この endpoint は新規設定用 active 証明書だけを返す。秘密鍵は返さない。
+    description: SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、このエンドポイントは新規設定用 active 証明書だけを返す。秘密鍵は返さない。
     read_only: true
     access: public
     bindings:
@@ -823,15 +823,17 @@ scenarios:
     given:
       - テナントには変更不能なdefault shared profileが存在する
     main_success:
-      - 管理者がshared profileを作成して複数SPから選択する
+      - 管理者がread-onlyの連携エンドポイント画面から専用profile管理一覧とprofile詳細へ移動する
+      - 管理者が専用作成画面でshared profileを作成して複数SPから選択する
+      - 管理者がprofile詳細から専用編集画面へ移り、追加profileのnameまたはmodeを変更する
       - 管理者がdedicated profileを作成して1 SPへ割り当てる
       - 未使用の追加profileを削除する
     extensions:
-      - at: 3
+      - at: 5
         condition: profileがSPから参照中またはdefaultである
         steps:
           - 削除をconflictで拒否する
-      - at: 2
+      - at: 4
         condition: dedicated profileを別のSPへも割り当てる
         steps:
           - bindingをInvalidRequestErrorで拒否する
@@ -910,17 +912,41 @@ flows:
         sees: SAML IdP profile一覧(default、shared、dedicated、割当数、metadata URL)
         does:
           - action: create
-            does: sharedまたはdedicated profileを作成する
-            interface: CreateSamlIdentityProviderProfile
-            to: IdPProfiles
-          - action: update
-            does: 追加profileのnameまたはmodeを更新する
-            interface: UpdateSamlIdentityProviderProfile
-            to: IdPProfiles
+            does: 一覧から分離された専用作成画面を開く
+            to: NewIdPProfile
+          - action: view
+            does: profileを選択してread-onlyの詳細画面を開く
+            to: IdPProfile
+      IdPProfile:
+        sees: profileのname、mode、割当数、正規エンドポイントを表示するread-only詳細画面
+        does:
+          - action: edit
+            does: 追加profileの専用編集画面を開く。default profileには表示しない
+            to: EditIdPProfile
           - action: delete
-            does: 未使用の追加profileを削除する
+            does: 影響を確認して未使用の追加profileを削除する
             interface: DeleteSamlIdentityProviderProfile
             to: IdPProfiles
+      NewIdPProfile:
+        sees: sharedまたはdedicated profileの専用作成フォーム
+        does:
+          - action: create
+            does: profileを作成してread-only詳細画面へ移る
+            interface: CreateSamlIdentityProviderProfile
+            to: IdPProfile
+          - action: cancel
+            does: 変更せず一覧へ戻る
+            to: IdPProfiles
+      EditIdPProfile:
+        sees: 追加profileのname、mode、割当数、正規エンドポイントを確認できる専用編集フォーム
+        does:
+          - action: update
+            does: 追加profileのnameまたはmodeを更新してread-only詳細画面へ戻る
+            interface: UpdateSamlIdentityProviderProfile
+            to: IdPProfile
+          - action: cancel
+            does: 変更せずread-only詳細画面へ戻る
+            to: IdPProfile
   SamlBrowserNavigation:
     entry: ServiceProvider
     views:

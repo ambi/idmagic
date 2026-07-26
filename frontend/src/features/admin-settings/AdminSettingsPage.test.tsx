@@ -83,8 +83,28 @@ const samlIDPProfiles = [
     sso_url: integrationEndpoints.saml.sso_url,
     slo_url: integrationEndpoints.saml.slo_url,
     signing_certificate_url: integrationEndpoints.saml.signing_certificate.download_url,
-    signing_certificate_fingerprint_sha256: 'AABBCC',
+    signing_certificate_fingerprint_sha256:
+      integrationEndpoints.saml.signing_certificate.fingerprint_sha256,
     service_provider_count: 2,
+  },
+  {
+    profile: {
+      tenant_id: 'tenant-1',
+      profile_id: 'partner',
+      name: 'Partner trust',
+      mode: 'dedicated' as const,
+      is_default: false,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    },
+    entity_id: 'https://idp.example/realms/acme/saml/idp/partner',
+    metadata_url: 'https://idp.example/realms/acme/saml/idp/partner/metadata',
+    sso_url: 'https://idp.example/realms/acme/saml/idp/partner/sso',
+    slo_url: 'https://idp.example/realms/acme/saml/idp/partner/slo',
+    signing_certificate_url:
+      'https://idp.example/realms/acme/saml/idp/partner/signing-certificate.pem',
+    signing_certificate_fingerprint_sha256: 'DD:EE:FF',
+    service_provider_count: 0,
   },
 ]
 
@@ -268,7 +288,7 @@ describe('AdminSettingsPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('shows canonical integration endpoints and supports copy and certificate download', async () => {
+  it('groups canonical integration endpoints by protocol and keeps profile values read-only', async () => {
     const writeText = mock().mockResolvedValue(undefined)
     stubGlobal('navigator', { clipboard: { writeText } })
     await renderWithRouter(
@@ -286,10 +306,30 @@ describe('AdminSettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: t.tabIntegrationEndpointsLabel }))
 
     expect(screen.getByText(integrationEndpoints.oauth.openid_configuration)).toBeInTheDocument()
-    expect(screen.getAllByText(integrationEndpoints.saml.metadata_url).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(integrationEndpoints.saml.metadata_url)).toHaveLength(1)
+    expect(screen.getByText(samlIDPProfiles[1].metadata_url)).toBeInTheDocument()
+    expect(screen.getByText(samlIDPProfiles[1].sso_url)).toBeInTheDocument()
+    expect(screen.getByText(samlIDPProfiles[1].slo_url)).toBeInTheDocument()
+    expect(
+      screen.getByText(samlIDPProfiles[1].signing_certificate_fingerprint_sha256),
+    ).toBeInTheDocument()
     expect(screen.getByText(integrationEndpoints.apis.scim_base_url)).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: t.samlProfilesHeading })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Default')).toBeDisabled()
+    expect(screen.queryByRole('heading', { level: 4 })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: t.samlProfileNameLabel })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.samlProfileCreate })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.samlProfileSave })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.samlProfileDelete })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: t.samlProfilesManage }).getAttribute('href')).toBe(
+      '/admin/settings/saml-idp-profiles',
+    )
+    expect(
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual([
+      t.oidcEndpointsHeading,
+      t.samlEndpointsHeading,
+      t.wsFederationEndpointsHeading,
+      t.apiEndpointsHeading,
+    ])
     expect(
       screen.getByText(
         (_content, element) =>
@@ -297,49 +337,16 @@ describe('AdminSettingsPage', () => {
           element.textContent?.includes(t.samlProfileAssignments.replace('{count}', '2')) === true,
       ),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: t.downloadCertificate })).toHaveAttribute(
-      'href',
+    expect(
+      screen
+        .getAllByRole('link', { name: t.downloadCertificate })
+        .map((link) => link.getAttribute('href')),
+    ).toEqual([
       integrationEndpoints.saml.signing_certificate.download_url,
-    )
+      samlIDPProfiles[1].signing_certificate_url,
+    ])
     fireEvent.click(screen.getAllByRole('button', { name: t.copy })[0])
     expect(writeText).toHaveBeenCalled()
-  })
-
-  it('creates a SAML identity provider profile', async () => {
-    const created = {
-      ...samlIDPProfiles[0],
-      profile: {
-        ...samlIDPProfiles[0].profile,
-        profile_id: 'partner',
-        name: 'Partner trust',
-        is_default: false,
-      },
-      entity_id: 'https://idp.example/realms/acme/saml/idp/partner',
-      metadata_url: 'https://idp.example/realms/acme/saml/idp/partner/metadata',
-      service_provider_count: 0,
-    }
-    const fetchMock = mock().mockResolvedValue(response(201, created))
-    stubGlobal('fetch', fetchMock)
-    await renderWithRouter(
-      <AdminSettingsPage
-        csrfToken="csrf"
-        actorUsername="admin"
-        actorRoles={['admin']}
-        actorRealm="acme"
-        settings={settings}
-        integrationEndpoints={integrationEndpoints}
-        samlIDPProfiles={samlIDPProfiles}
-      />,
-    )
-
-    fireEvent.click(screen.getByRole('button', { name: t.tabIntegrationEndpointsLabel }))
-    fireEvent.change(screen.getAllByLabelText(t.samlProfileNameLabel)[0], {
-      target: { value: created.profile.name },
-    })
-    fireEvent.click(screen.getByRole('button', { name: t.samlProfileCreate }))
-
-    expect(await screen.findByDisplayValue(created.profile.name)).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalled()
   })
 
   it('localizes the integration endpoints tab in Japanese', async () => {

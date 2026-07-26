@@ -101,10 +101,25 @@ export function AdminSettingsPage({
   samlIDPProfiles?: AdminSamlIDPProfile[]
 }) {
   const [settings, setSettings] = useState(initial)
-  const [active, setActive] = useState<TabKey>('general')
+  const [active, setActive] = useState<TabKey>(() =>
+    new URLSearchParams(window.location.search).get('tab') === 'integration-endpoints'
+      ? 'integration-endpoints'
+      : 'general',
+  )
   const isSystemAdminOnDefault = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
   const t = useDictionary(adminSettingsDictionary)
   const tabList = tabs(t)
+
+  function selectTab(key: TabKey) {
+    setActive(key)
+    const url = new URL(window.location.href)
+    if (key === 'integration-endpoints') {
+      url.searchParams.set('tab', key)
+    } else {
+      url.searchParams.delete('tab')
+    }
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`)
+  }
 
   return (
     <AdminShell
@@ -131,7 +146,7 @@ export function AdminSettingsPage({
             <button
               key={tab.key}
               type="button"
-              onClick={() => !tab.disabled && setActive(tab.key)}
+              onClick={() => !tab.disabled && selectTab(tab.key)}
               disabled={tab.disabled}
               aria-current={active === tab.key ? 'page' : undefined}
               className={cn(
@@ -173,7 +188,6 @@ export function AdminSettingsPage({
           {active === 'integration-endpoints' ? (
             <IntegrationEndpointsTab
               catalog={integrationEndpoints}
-              csrfToken={csrfToken}
               initialSamlIDPProfiles={samlIDPProfiles}
             />
           ) : null}
