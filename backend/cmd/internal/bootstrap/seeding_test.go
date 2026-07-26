@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -83,6 +84,9 @@ func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
 	client, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
 	if err != nil || client == nil {
 		t.Fatalf("FindByID(demo client) = %#v, %v", client, err)
+	}
+	if !slices.Contains(client.RedirectURIs, "http://localhost:5173/realms/default/callback") {
+		t.Fatalf("demo client redirect URIs = %v, want canonical local callback", client.RedirectURIs)
 	}
 	client.Scope = "manual-drift"
 	if err := deps.OAuth2.ClientRepo.Save(ctx, client); err != nil {

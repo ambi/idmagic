@@ -7,6 +7,7 @@ import {
   PasswordPolicyError,
   requestPasswordReset,
   resetPassword,
+  startDemoAuthorization,
   submitConsent,
   submitDevice,
   submitRecoveryCode,
@@ -90,5 +91,25 @@ describe('auth flow API client', () => {
     expect(assign).toHaveBeenNthCalledWith(1, '/next')
     expect(assign).toHaveBeenNthCalledWith(2, '/redirect')
     expect(() => continueBrowserFlow({})).toThrow(AuthenticationAPIError)
+  })
+
+  it('starts the local demo authorization with the canonical default callback URI', async () => {
+    const assign = mock()
+    stubGlobal('location', {
+      ...window.location,
+      hostname: 'localhost',
+      port: '5173',
+      pathname: '/',
+      origin: 'http://localhost:5173',
+      assign,
+    })
+
+    await startDemoAuthorization()
+
+    const destination = new URL(assign.mock.calls[0][0], window.location.origin)
+    expect(destination.pathname).toBe('/realms/default/authorize')
+    expect(destination.searchParams.get('redirect_uri')).toBe(
+      'http://localhost:5173/realms/default/callback',
+    )
   })
 })

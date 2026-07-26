@@ -10,7 +10,7 @@ resources:
     logical_key: development-demo
     demo:
       client_id: 00000000-0000-4000-8000-000000000021
-      client_redirect_uris: [http://localhost:3000/callback, http://localhost:5173/callback, http://localhost:8080/callback]
+      client_redirect_uris: [http://localhost:3000/callback, http://localhost:5173/realms/default/callback, http://localhost:8080/realms/default/callback]
       users:
         - {id: 00000000-0000-4000-8000-000000000001, preferred_username: alice, email: alice@example.com, roles: [admin]}
         - {id: 00000000-0000-4000-8000-000000000002, preferred_username: root, email: root@example.com, roles: [admin, system_admin]}

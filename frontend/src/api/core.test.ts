@@ -78,6 +78,17 @@ describe('core api utils', () => {
     it('should prepend tenant base path to input path', () => {
       expect(tenantURL('/admin/users')).toBe('/realms/test-tenant/admin/users')
     })
+
+    it('uses the default path tenant from the local development root', () => {
+      stubGlobal('location', {
+        ...originalLocation,
+        hostname: 'localhost',
+        port: '5173',
+        pathname: '/',
+        origin: 'http://localhost:5173',
+      })
+      expect(tenantURL('/authorize')).toBe('/realms/default/authorize')
+    })
   })
 
   describe('validReturnTo', () => {

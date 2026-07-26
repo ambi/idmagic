@@ -2,7 +2,7 @@
 // 最小クライアント (ADR-061 / wi-66)。authorization_code + PKCE で IdP の /authorize に
 // リダイレクトし、/callback で code を /token に交換して access token を取得する。
 // pure SPA RP のため token は sessionStorage に保持し、API 呼び出しに Bearer を付与する。
-import { base64URL, setBearerTokenProvider, tenantBasePath, tenantURL } from './core'
+import { base64URL, setBearerTokenProvider, tenantURL } from './core'
 
 export type PortalAudience = 'admin' | 'account'
 
@@ -46,7 +46,7 @@ export function currentBearer(): string | null {
 setBearerTokenProvider(currentBearer)
 
 function redirectURI(): string {
-  return `${window.location.origin}${tenantBasePath()}/callback`
+  return `${window.location.origin}${tenantURL('/callback')}`
 }
 
 function randomToken(bytes = 32): string {

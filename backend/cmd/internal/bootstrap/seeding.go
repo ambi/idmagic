@@ -114,7 +114,11 @@ func (c *seedContributor) operations(ctx context.Context, request domain.Request
 	now := time.Now().UTC()
 	redirectURIs := request.FirstPartyRedirectURIs
 	if len(redirectURIs) == 0 {
-		redirectURIs = []string{"http://localhost:3000/callback", "http://localhost:5173/callback", "http://localhost:8080/callback"}
+		redirectURIs = []string{
+			"http://localhost:3000/callback",
+			"http://localhost:5173/realms/default/callback",
+			"http://localhost:8080/realms/default/callback",
+		}
 	}
 	operations := make([]domain.Operation, 0, 16)
 	appendOperation := func(operation domain.Operation, err error) error {

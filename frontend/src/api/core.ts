@@ -78,7 +78,12 @@ export function tenantLocalPath(): string {
 }
 
 export function tenantURL(path: string): string {
-  return `${tenantBasePath()}${path}`
+  const base = tenantBasePath()
+  // Vite のローカル開発ルート (localhost:5173) は path 形式の default テナントを指す。
+  // バックエンドの bare route は fail-closed のまま、クライアント生成 URL のみ補完する。
+  const localDefaultTenant =
+    base === '' && window.location.hostname === 'localhost' && window.location.port === '5173'
+  return `${localDefaultTenant ? '/realms/default' : base}${path}`
 }
 
 // validReturnTo は login 後に戻ってよい同一オリジンの内部パスかを判定する。

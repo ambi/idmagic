@@ -3,6 +3,7 @@ import { AuthShell } from '../../components/AuthShell'
 import { Button } from '../../components/ui/button'
 import { useDictionary } from '../../lib/i18n'
 import { informationalPagesDictionary } from './InformationalPages.i18n'
+import { tenantURL } from '../../api/core'
 
 export function CallbackPage({
   code,
@@ -48,14 +49,14 @@ export function CallbackPage({
         <div className="grid w-full gap-3">
           {succeeded && (
             <Button asChild className="w-full">
-              <a href="/admin">
+              <a href={tenantURL('/admin')}>
                 <IconLayoutDashboard size={17} aria-hidden="true" />
                 {t.openAdmin}
               </a>
             </Button>
           )}
           <Button asChild variant="outline" className="w-full">
-            <a href="/">
+            <a href={tenantURL('/')}>
               <IconRefresh size={17} aria-hidden="true" />
               {t.tryAgain}
             </a>
