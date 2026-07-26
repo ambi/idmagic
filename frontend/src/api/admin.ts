@@ -11,6 +11,7 @@ import type {
   AdminSessionRecord,
   AdminSettings,
   AdminIntegrationEndpointCatalog,
+  AdminSamlIDPProfile,
   ApiToken,
   ApiTokenScope,
   TenantKeyHealth,
@@ -24,6 +25,7 @@ import type {
   TenantDefaultSignInPolicy,
   TenantDefaultSignInPolicyView,
   SignInRule,
+  SamlIDPProfileMode,
   AuthorizationDetailType,
   McpResourceServer,
   TenantUserAttributeSchema,
@@ -931,6 +933,7 @@ export type UpdateApplicationWsFedInput = {
 }
 
 export type UpdateApplicationSamlInput = {
+  idp_profile_id?: string
   acs_urls?: string[]
   slo_url?: string
   audience?: string
@@ -941,6 +944,36 @@ export type UpdateApplicationSamlInput = {
   want_authn_requests_signed?: boolean
   authn_request_signing_certificate_pem?: string
   rules?: WsFedClaimMappingRule[]
+}
+
+export async function listSamlIDPProfiles(): Promise<AdminSamlIDPProfile[]> {
+  return (await request<{ profiles: AdminSamlIDPProfile[] }>('/api/admin/saml/idp-profiles'))
+    .profiles
+}
+
+export async function createSamlIDPProfile(
+  csrfToken: string,
+  input: { name: string; mode: SamlIDPProfileMode },
+): Promise<AdminSamlIDPProfile> {
+  return request('/api/admin/saml/idp-profiles', adminRequest(csrfToken, 'POST', input))
+}
+
+export async function updateSamlIDPProfile(
+  csrfToken: string,
+  profileID: string,
+  input: { name: string; mode: SamlIDPProfileMode },
+): Promise<AdminSamlIDPProfile> {
+  return request(
+    `/api/admin/saml/idp-profiles/${encodeURIComponent(profileID)}`,
+    adminRequest(csrfToken, 'PUT', input),
+  )
+}
+
+export async function deleteSamlIDPProfile(csrfToken: string, profileID: string): Promise<void> {
+  await request(
+    `/api/admin/saml/idp-profiles/${encodeURIComponent(profileID)}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
 }
 
 export async function listAdminApplications(): Promise<AdminApplication[]> {

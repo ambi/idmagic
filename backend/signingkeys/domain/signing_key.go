@@ -47,6 +47,7 @@ type SigningKey struct {
 	Alg        SignatureAlgorithm
 	Provider   KeyProvider
 	Usage      KeyUsage
+	ScopeID    string
 	PrivateKey crypto.PrivateKey
 	PublicKey  crypto.PublicKey
 	PublicJWK  map[string]any

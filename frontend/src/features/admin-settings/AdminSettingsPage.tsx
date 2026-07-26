@@ -11,7 +11,11 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
-import type { AdminIntegrationEndpointCatalog, AdminSettings } from '../../types'
+import type {
+  AdminIntegrationEndpointCatalog,
+  AdminSamlIDPProfile,
+  AdminSettings,
+} from '../../types'
 import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { BrandingTab } from './BrandingTab'
 import { GeneralTab } from './GeneralTab'
@@ -86,6 +90,7 @@ export function AdminSettingsPage({
   actorRealm,
   settings: initial,
   integrationEndpoints,
+  samlIDPProfiles = [],
 }: {
   csrfToken: string
   actorUsername?: string
@@ -93,6 +98,7 @@ export function AdminSettingsPage({
   actorRealm: string
   settings: AdminSettings
   integrationEndpoints: AdminIntegrationEndpointCatalog
+  samlIDPProfiles?: AdminSamlIDPProfile[]
 }) {
   const [settings, setSettings] = useState(initial)
   const [active, setActive] = useState<TabKey>('general')
@@ -165,7 +171,11 @@ export function AdminSettingsPage({
           ) : null}
           {active === 'branding' ? <BrandingTab csrfToken={csrfToken} /> : null}
           {active === 'integration-endpoints' ? (
-            <IntegrationEndpointsTab catalog={integrationEndpoints} />
+            <IntegrationEndpointsTab
+              catalog={integrationEndpoints}
+              csrfToken={csrfToken}
+              initialSamlIDPProfiles={samlIDPProfiles}
+            />
           ) : null}
           {active === 'api-tokens' ? (
             <ApiTokensTab csrfToken={csrfToken} integrationEndpoints={integrationEndpoints} />

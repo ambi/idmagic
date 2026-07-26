@@ -3210,6 +3210,10 @@
     "ApplicationSamlConfig": {
       "type": "object",
       "properties": {
+        "idp_profile_id": {
+          "type": "string",
+          "description": "SAML SPに必ず割り当てられる同一テナント内のIdP profile ID。"
+        },
         "entity_id": {
           "type": "string"
         },
@@ -3252,6 +3256,7 @@
       },
       "additionalProperties": false,
       "required": [
+        "idp_profile_id",
         "entity_id",
         "acs_urls",
         "name_id_format",
@@ -3266,6 +3271,10 @@
     "ApplicationSamlConfigUpdateRequest": {
       "type": "object",
       "properties": {
+        "idp_profile_id": {
+          "type": "string",
+          "description": "SPへ割り当てる同一テナント内のIdP profile。dedicated profileが別SPで使用中なら更新を拒否する。"
+        },
         "acs_urls": {
           "type": "array",
           "items": {
@@ -5866,6 +5875,12 @@
       ],
       "description": "CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。"
     },
+    "DefaultIdPProfileError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "テナントのdefault SAML IdP profileは変更または削除できない。"
+    },
     "Deliver": {
       "type": "object",
       "properties": {
@@ -7661,6 +7676,12 @@
         "changedFields"
       ],
       "description": "管理者がグループの name / description / roles を更新した。"
+    },
+    "IdPProfileInUseError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "SAML IdP profileがSPから参照されているため削除できない。HTTP 409とする。"
     },
     "IdTokenClaims": {
       "type": "object",
@@ -12184,6 +12205,104 @@
       ],
       "description": "SAML 2.0 message binding。SP-initiated の AuthnRequest 受信と SAMLResponse 返送に用いる。HTTP-Redirect は GET でクエリに deflate+base64 を載せ、HTTP-POST は base64 を自動 POST フォームで運ぶ。"
     },
+    "SamlIdentityProviderProfile": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "default": "default"
+        },
+        "profile_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "$ref": "#/$defs/SamlIdentityProviderProfileMode"
+        },
+        "is_default": {
+          "type": "boolean",
+          "default": false
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "tenant_id",
+        "profile_id",
+        "name",
+        "mode",
+        "is_default",
+        "created_at",
+        "updated_at"
+      ],
+      "description": "テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAML endpointを使う。追加profileはprofile IDを含む固有entityID・endpoint・XmlFederationSigning鍵scopeを持つ。",
+      "x-scl-untranslated-constraints": [
+        "default_profile_count(tenant_id) == 1",
+        "profile_id == \"default\" iff is_default",
+        "is_default implies mode == \"shared\"",
+        "mode == \"dedicated\" implies bound_service_provider_count(tenant_id, profile_id) <= 1"
+      ]
+    },
+    "SamlIdentityProviderProfileAdminResponse": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "$ref": "#/$defs/SamlIdentityProviderProfile"
+        },
+        "entity_id": {
+          "type": "string"
+        },
+        "metadata_url": {
+          "type": "string"
+        },
+        "sso_url": {
+          "type": "string"
+        },
+        "slo_url": {
+          "type": "string"
+        },
+        "signing_certificate_url": {
+          "type": "string"
+        },
+        "signing_certificate_fingerprint_sha256": {
+          "type": "string"
+        },
+        "service_provider_count": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "profile",
+        "entity_id",
+        "metadata_url",
+        "sso_url",
+        "slo_url",
+        "signing_certificate_url",
+        "signing_certificate_fingerprint_sha256",
+        "service_provider_count"
+      ],
+      "description": "管理画面向けIdP profile表現。永続profileに加え、request tenantのcanonical issuerからserverが生成した設定値と現在のSP割当数を返す。"
+    },
+    "SamlIdentityProviderProfileMode": {
+      "type": "string",
+      "enum": [
+        "shared",
+        "dedicated"
+      ],
+      "description": "IdP profileを複数SPで共有できるかを表す。"
+    },
     "SamlLogout": {
       "type": "object",
       "properties": {
@@ -12260,6 +12379,12 @@
           "default": "default",
           "description": "所属テナント ID。SP 登録と SAML endpoint は realm ごとに分離する。"
         },
+        "idp_profile_id": {
+          "type": "string",
+          "minLength": 1,
+          "default": "default",
+          "description": "同一テナント内でこのSPに割り当てられたSAML IdP profile。SSO/SLO要求はrouteのprofileと一致する場合だけ受理する。"
+        },
         "entity_id": {
           "type": "string",
           "minLength": 1,
@@ -12325,6 +12450,7 @@
       "additionalProperties": false,
       "required": [
         "tenant_id",
+        "idp_profile_id",
         "entity_id",
         "acs_urls",
         "claim_policy",
@@ -12989,7 +13115,13 @@
         },
         "usage": {
           "$ref": "#/$defs/KeyUsage",
-          "description": "鍵の用途。現状 Signing のみ。"
+          "description": "鍵の用途。"
+        },
+        "scope_id": {
+          "type": "string",
+          "minLength": 1,
+          "default": "default",
+          "description": "同一tenant・usage内の独立した鍵lifecycle。通常はdefault、追加SAML IdP profileではprofile ID。"
         },
         "public_jwk": {
           "$ref": "#/$defs/JWK"
@@ -13036,15 +13168,16 @@
         "alg",
         "provider",
         "usage",
+        "scope_id",
         "public_jwk",
         "state",
         "created_at",
         "updated_at"
       ],
-      "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。",
+      "description": "トークン署名用の非対称鍵。テナント・用途・scopeごとに Active 1本＋Verifying 過去鍵 0本以上を公開する（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id / usage / scope_id で絞る。tenant_id は既存 Tenant を指す。scope_id は既定で default とし、SAML追加IdP profileではprofile IDを用いてXML署名資格情報を分離する。",
       "x-scl-untranslated-constraints": [
         "usage != \"XmlFederationSigning\" || certificate_der != null",
-        "active_key_count(tenant_id, usage) <= 1"
+        "active_key_count(tenant_id, usage, scope_id) <= 1"
       ]
     },
     "SigningKeyArchived": {

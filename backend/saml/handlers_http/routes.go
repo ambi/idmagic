@@ -21,6 +21,7 @@ type Deps struct {
 	*support.ApplicationGate
 
 	SamlSPRepo       samlports.SamlServiceProviderRepository
+	IDPProfileRepo   samlports.SamlIdentityProviderProfileRepository
 	ReplayStore      samlports.AuthnRequestReplayStore
 	FederationSigner samltoken.SignerProvider
 	UserRepo         userports.UserRepository
@@ -34,7 +35,17 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/saml/sso", d.handleSamlSSOPost)
 	g.GET("/saml/slo", d.handleSamlSLO)
 	g.POST("/saml/slo", d.handleSamlSLO)
+	g.GET("/saml/idp/:profile_id/metadata", d.handleSamlMetadata)
+	g.GET("/saml/idp/:profile_id/signing-certificate.pem", d.handleSamlSigningCertificate)
+	g.GET("/saml/idp/:profile_id/sso", d.handleSamlSSORedirect)
+	g.POST("/saml/idp/:profile_id/sso", d.handleSamlSSOPost)
+	g.GET("/saml/idp/:profile_id/slo", d.handleSamlSLO)
+	g.POST("/saml/idp/:profile_id/slo", d.handleSamlSLO)
 	g.GET("/api/admin/saml/service-providers", d.handleListServiceProviders)
 	g.POST("/api/admin/saml/service-providers", d.handleUpsertServiceProvider)
 	g.DELETE("/api/admin/saml/service-providers", d.handleDeleteServiceProvider)
+	g.GET("/api/admin/saml/idp-profiles", d.handleListIDPProfiles)
+	g.POST("/api/admin/saml/idp-profiles", d.handleCreateIDPProfile)
+	g.PUT("/api/admin/saml/idp-profiles/:profile_id", d.handleUpdateIDPProfile)
+	g.DELETE("/api/admin/saml/idp-profiles/:profile_id", d.handleDeleteIDPProfile)
 }

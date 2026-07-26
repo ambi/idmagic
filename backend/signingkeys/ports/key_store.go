@@ -7,7 +7,12 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 )
 
-type keyUsageContextKey struct{}
+type (
+	keyUsageContextKey struct{}
+	keyScopeContextKey struct{}
+)
+
+const DefaultKeyScope = "default"
 
 // WithKeyUsage selects the isolated key lifecycle used by a caller.
 // Callers that do not opt in retain the OAuth/OIDC Signing lifecycle.
@@ -20,6 +25,21 @@ func KeyUsage(ctx context.Context) signingdomain.KeyUsage {
 		return usage
 	}
 	return signingdomain.KeyUsageSigning
+}
+
+// WithKeyScope selects an independent lifecycle within a tenant and usage.
+func WithKeyScope(ctx context.Context, scopeID string) context.Context {
+	if scopeID == "" {
+		scopeID = DefaultKeyScope
+	}
+	return context.WithValue(ctx, keyScopeContextKey{}, scopeID)
+}
+
+func KeyScope(ctx context.Context) string {
+	if scopeID, ok := ctx.Value(keyScopeContextKey{}).(string); ok && scopeID != "" {
+		return scopeID
+	}
+	return DefaultKeyScope
 }
 
 // SigningKey は本実装では RSA を想定。alg=PS256 のみ。

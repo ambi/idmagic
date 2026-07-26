@@ -96,11 +96,11 @@ models:
       - XmlFederationSigning
   SigningKey:
     kind: entity
-    description: トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。
+    description: トークン署名用の非対称鍵。テナント・用途・scopeごとに Active 1本＋Verifying 過去鍵 0本以上を公開する（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id / usage / scope_id で絞る。tenant_id は既存 Tenant を指す。scope_id は既定で default とし、SAML追加IdP profileではprofile IDを用いてXML署名資格情報を分離する。
     identity: kid
     constraints:
       - usage != "XmlFederationSigning" || certificate_der != null
-      - active_key_count(tenant_id, usage) <= 1
+      - active_key_count(tenant_id, usage, scope_id) <= 1
     fields:
       tenant_id:
         type: String
@@ -117,7 +117,13 @@ models:
         description: 鍵マテリアルの保管場所と署名の実行主体。
       usage:
         type: KeyUsage
-        description: 鍵の用途。現状 Signing のみ。
+        description: 鍵の用途。
+      scope_id:
+        type: String
+        default: default
+        constraints:
+          - non_empty
+        description: 同一tenant・usage内の独立した鍵lifecycle。通常はdefault、追加SAML IdP profileではprofile ID。
       public_jwk:
         type: JWK
       certificate_der:

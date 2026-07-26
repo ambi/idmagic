@@ -34,7 +34,7 @@ func (d Deps) handleSamlSLO(c *echo.Context) error {
 	d.clearSessionCookie(c)
 	d.emit(&samldomain.SamlLogout{At: time.Now().UTC(), TenantID: tenantID, EntityID: entityID})
 
-	if target := d.logoutService().ResolveRedirect(ctx, tenantID, entityID, relayState); target != "" {
+	if target := d.logoutService().ResolveRedirect(ctx, tenantID, requestedIDPProfileID(c), entityID, relayState); target != "" {
 		return c.Redirect(http.StatusSeeOther, target)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
@@ -66,9 +66,14 @@ func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayStat
 	if d.SamlSPRepo == nil {
 		return c.String(http.StatusBadRequest, "SAML is not available")
 	}
-	expectedDestination := support.TenantURL(c, "/saml/slo", d.Issuer)
+	profile, err := d.requireIDPProfile(c)
+	if err != nil {
+		return err
+	}
+	expectedDestination := d.idpProfileURL(c, profile.ProfileID, "slo")
 	decision, err := d.logoutService().ValidateLogoutRequest(ctx, samlusecases.LogoutRequestInput{
 		TenantID:            tenantID,
+		ProfileID:           profile.ProfileID,
 		Request:             req,
 		Binding:             binding,
 		RawXML:              xml,
@@ -110,7 +115,8 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProv
 	if d.FederationSigner == nil {
 		return nil, fmt.Errorf("SAML signer is required")
 	}
-	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	profileID := requestedIDPProfileID(c)
+	signer, err := d.FederationSigner.Resolve(idpProfileSigningContext(c, profileID))
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +129,7 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProv
 	resp.CreateAttr("IssueInstant", now.Format(time.RFC3339))
 	resp.CreateAttr("Destination", sp.SLOURL)
 	resp.CreateAttr("InResponseTo", inResponseTo)
-	resp.CreateElement("saml:Issuer").SetText(support.RequestIssuer(c, d.Issuer))
+	resp.CreateElement("saml:Issuer").SetText(d.idpProfileEntityID(c, profileID))
 	status := resp.CreateElement("samlp:Status")
 	status.CreateElement("samlp:StatusCode").CreateAttr("Value", "urn:oasis:names:tc:SAML:2.0:status:Success")
 	signed, err := signer.Sign(resp, "ID")

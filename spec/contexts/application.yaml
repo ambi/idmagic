@@ -481,6 +481,9 @@ models:
     kind: value_object
     description: Application の SAML protocol が指す service provider の実設定 (アプリ詳細表示用)。
     fields:
+      idp_profile_id:
+        type: String
+        description: SAML SPに必ず割り当てられる同一テナント内のIdP profile ID。
       entity_id: { type: String }
       acs_urls: { type: "String[]" }
       slo_url: { type: String, optional: true }
@@ -579,6 +582,10 @@ models:
     kind: value_object
     description: SAML protocol 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。
     fields:
+      idp_profile_id:
+        type: String
+        optional: true
+        description: SPへ割り当てる同一テナント内のIdP profile。dedicated profileが別SPで使用中なら更新を拒否する。
       acs_urls: { type: "String[]", optional: true }
       slo_url: { type: String, optional: true }
       audience: { type: String, optional: true }
@@ -1298,7 +1305,7 @@ interfaces:
         successful_status_codes:
           - "204"
   UpdateApplicationSamlConfig:
-    description: 管理者が Application の SAML protocol が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。
+    description: 管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。
     input:
       application_id:
         type: String
@@ -1764,7 +1771,7 @@ scenarios:
     given:
       - 管理者が SAML protocol を持つ Application の編集画面を開いている
     main_success:
-      - 管理者が ACS URL、署名方針、claim 規則を更新する
+      - 管理者が ACS URL、署名方針、claim 規則、IdP profile割当を更新する
       - SAML service provider 設定だけが同一テナント内で更新される
     extensions:
       - at: 1
@@ -1943,6 +1950,10 @@ flows:
           - action: update_wsfed_config
             does: WS-Fed protocol が指す relying party の設定を編集して保存する
             interface: UpdateApplicationWsFedConfig
+            to: AdminApplications
+          - action: update_saml_config
+            does: SAML service provider設定とIdP profile割当を編集して保存する
+            interface: UpdateApplicationSamlConfig
             to: AdminApplications
           - action: assign
             does: ユーザーまたはグループを割当てる

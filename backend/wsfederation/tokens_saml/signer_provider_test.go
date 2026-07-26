@@ -30,6 +30,13 @@ func TestKeyStoreSignerProviderResolvesTenantXMLCredential(t *testing.T) {
 	if signerA.Certificate().SerialNumber.Cmp(signerB.Certificate().SerialNumber) == 0 {
 		t.Fatal("different tenants must not resolve the same federation certificate")
 	}
+	profileSigner, err := provider.Resolve(WithSignerScope(ctxA, "profile-a"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if signerA.Certificate().SerialNumber.Cmp(profileSigner.Certificate().SerialNumber) == 0 {
+		t.Fatal("different profiles must not resolve the same federation certificate")
+	}
 	certs, err := provider.Certificates(ctxA, time.Now().UTC())
 	if err != nil || len(certs) != 1 {
 		t.Fatalf("certificates: err=%v count=%d", err, len(certs))

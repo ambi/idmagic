@@ -69,6 +69,21 @@ export const adminSettingsDictionary = defineDictionary(
     integrationEndpointsHeading: '連携エンドポイント',
     integrationEndpointsDescription:
       '以下はこのテナントの正規URLです。Discoveryまたはmetadataの利用を推奨し、個別URLは手動設定時に使用します。',
+    samlProfilesHeading: 'SAML IdP プロファイル',
+    samlProfilesDescription:
+      '通常はdefault共有プロファイルを利用します。entityID・証明書・変更影響範囲を分離する必要がある場合だけ追加プロファイルを作成します。',
+    samlProfileNameLabel: 'プロファイル名',
+    samlProfileModeLabel: '共有方式',
+    samlProfileSharedLabel: '共有（複数SP）',
+    samlProfileDedicatedLabel: '専用（1 SP）',
+    samlProfileCreate: 'プロファイルを作成',
+    samlProfileSave: '保存',
+    samlProfileDelete: '削除',
+    samlProfileDefault: 'テナント既定',
+    samlProfileAssignments: '割当済みSP: {count}',
+    samlProfileInUse: '使用中のため削除できません。',
+    samlProfileOperationFailed: 'SAML IdPプロファイルを保存できませんでした。',
+    samlProfileDeleteFailed: 'SAML IdPプロファイルを削除できませんでした。',
     oidcEndpointsHeading: 'OAuth 2.0 / OpenID Connect',
     oidcEndpointsDescription:
       'OIDC RPにはOpenID Discovery URLを設定してください。個別endpointはDiscoveryを利用できない製品向けです。',
@@ -257,6 +272,21 @@ export const adminSettingsDictionary = defineDictionary(
     integrationEndpointsHeading: 'Integration endpoints',
     integrationEndpointsDescription:
       'These are the canonical URLs for this tenant. Prefer Discovery or metadata; use individual URLs for manual configuration.',
+    samlProfilesHeading: 'SAML IdP profiles',
+    samlProfilesDescription:
+      'Use the shared default profile normally. Add a profile only when an integration needs an isolated entity ID, certificate, or change boundary.',
+    samlProfileNameLabel: 'Profile name',
+    samlProfileModeLabel: 'Sharing mode',
+    samlProfileSharedLabel: 'Shared (multiple SPs)',
+    samlProfileDedicatedLabel: 'Dedicated (one SP)',
+    samlProfileCreate: 'Create profile',
+    samlProfileSave: 'Save',
+    samlProfileDelete: 'Delete',
+    samlProfileDefault: 'Tenant default',
+    samlProfileAssignments: 'Assigned SPs: {count}',
+    samlProfileInUse: 'This profile cannot be deleted while in use.',
+    samlProfileOperationFailed: 'Could not save the SAML IdP profile.',
+    samlProfileDeleteFailed: 'Could not delete the SAML IdP profile.',
     oidcEndpointsHeading: 'OAuth 2.0 / OpenID Connect',
     oidcEndpointsDescription:
       'Configure the OpenID Discovery URL in OIDC RPs. Individual endpoints are provided for products that cannot use Discovery.',

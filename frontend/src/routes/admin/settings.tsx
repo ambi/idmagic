@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { request } from '../../api/core'
-import { getAdminIntegrationEndpoints } from '../../api/admin'
+import { getAdminIntegrationEndpoints, listSamlIDPProfiles } from '../../api/admin'
 import { AdminSettingsPage } from '../../features/admin-settings/AdminSettingsPage'
 import type { AdminSettings } from '../../types'
 import { requirePortalAccount } from '../-guards'
@@ -9,9 +9,10 @@ import { PageMarker } from '../-page'
 export const Route = createFileRoute('/admin/settings')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const [settings, integrationEndpoints] = await Promise.all([
+    const [settings, integrationEndpoints, samlIDPProfiles] = await Promise.all([
       request<AdminSettings>('/api/admin/settings'),
       getAdminIntegrationEndpoints(),
+      listSamlIDPProfiles(),
     ])
     return {
       csrfToken: account.csrf_token,
@@ -20,6 +21,7 @@ export const Route = createFileRoute('/admin/settings')({
       actorRealm: account.realm ?? '',
       settings,
       integrationEndpoints,
+      samlIDPProfiles,
     }
   },
   component: AdminSettingsRoute,

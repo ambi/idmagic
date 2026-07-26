@@ -1,16 +1,22 @@
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import type { AdminApplicationDetail, AdminIntegrationEndpointCatalog } from '../../types'
+import type {
+  AdminApplicationDetail,
+  AdminIntegrationEndpointCatalog,
+  AdminSamlIDPProfile,
+} from '../../types'
 import { CopyableField } from './AdminApplicationsShared'
 import type { AdminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 
 export function IdMagicSetupCard({
   detail,
   integrationEndpoints,
+  samlIDPProfile,
   t,
 }: {
   detail: AdminApplicationDetail
   integrationEndpoints: AdminIntegrationEndpointCatalog
+  samlIDPProfile?: AdminSamlIDPProfile
   t: AdminApplicationsDictionary
 }) {
   if (!detail.oidc && !detail.saml) return null
@@ -49,20 +55,35 @@ export function IdMagicSetupCard({
         <div className="mt-5 grid gap-4">
           <CopyableField
             label={t.idpMetadataUrlFieldLabel}
-            value={integrationEndpoints.saml.metadata_url}
+            value={samlIDPProfile?.metadata_url ?? integrationEndpoints.saml.metadata_url}
           />
           <CopyableField
             label={t.idpEntityIdFieldLabel}
-            value={integrationEndpoints.saml.entity_id}
+            value={samlIDPProfile?.entity_id ?? integrationEndpoints.saml.entity_id}
           />
-          <CopyableField label={t.idpSsoUrlFieldLabel} value={integrationEndpoints.saml.sso_url} />
-          <CopyableField label={t.idpSloUrlFieldLabel} value={integrationEndpoints.saml.slo_url} />
+          <CopyableField
+            label={t.idpSsoUrlFieldLabel}
+            value={samlIDPProfile?.sso_url ?? integrationEndpoints.saml.sso_url}
+          />
+          <CopyableField
+            label={t.idpSloUrlFieldLabel}
+            value={samlIDPProfile?.slo_url ?? integrationEndpoints.saml.slo_url}
+          />
           <CopyableField
             label={t.signingCertificateFingerprintFieldLabel}
-            value={integrationEndpoints.saml.signing_certificate.fingerprint_sha256}
+            value={
+              samlIDPProfile?.signing_certificate_fingerprint_sha256 ??
+              integrationEndpoints.saml.signing_certificate.fingerprint_sha256
+            }
           />
           <Button asChild variant="outline" className="justify-self-start">
-            <a href={integrationEndpoints.saml.signing_certificate.download_url} download>
+            <a
+              href={
+                samlIDPProfile?.signing_certificate_url ??
+                integrationEndpoints.saml.signing_certificate.download_url
+              }
+              download
+            >
               {t.downloadSigningCertificate}
             </a>
           </Button>

@@ -88,6 +88,11 @@ glossary:
       - SAML 2.0
   EndUser:
     definition: SAML Web Browser SSO または Single Logout をブラウザで開始する利用者。
+  SamlIdentityProviderProfile:
+    definition: テナント内のSAML IdP entityID、endpoint、XML署名資格情報をまとめるtrust境界。shared profileは複数SPで共有でき、dedicated profileは最大1 SPだけに割り当てる。
+    aliases:
+      - SAML IdP profile
+      - IdP profile
 models:
   User:
     kind: entity
@@ -129,6 +134,12 @@ models:
   ApplicationOwnedProtocolError:
     kind: error
     description: SAML service provider が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。
+  IdPProfileInUseError:
+    kind: error
+    description: SAML IdP profileがSPから参照されているため削除できない。HTTP 409とする。
+  DefaultIdPProfileError:
+    kind: error
+    description: テナントのdefault SAML IdP profileは変更または削除できない。
   ClaimMappingPolicy:
     kind: value_object
     description: ClaimMapping context が publish する trust ごとの claim 発行規則の最小 stub。
@@ -150,6 +161,64 @@ models:
       - urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
       - urn:oasis:names:tc:SAML:2.0:nameid-format:persistent
       - urn:oasis:names:tc:SAML:2.0:nameid-format:transient
+  SamlIdentityProviderProfileMode:
+    kind: enum
+    description: IdP profileを複数SPで共有できるかを表す。
+    values:
+      - shared
+      - dedicated
+  SamlIdentityProviderProfile:
+    kind: entity
+    description: テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAML endpointを使う。追加profileはprofile IDを含む固有entityID・endpoint・XmlFederationSigning鍵scopeを持つ。
+    identity:
+      - tenant_id
+      - profile_id
+    constraints:
+      - default_profile_count(tenant_id) == 1
+      - profile_id == "default" iff is_default
+      - is_default implies mode == "shared"
+      - mode == "dedicated" implies bound_service_provider_count(tenant_id, profile_id) <= 1
+    fields:
+      tenant_id:
+        type: String
+        default: default
+      profile_id:
+        type: String
+        constraints:
+          - non_empty
+      name:
+        type: String
+        constraints:
+          - non_empty
+      mode:
+        type: SamlIdentityProviderProfileMode
+      is_default:
+        type: Boolean
+        default: false
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+  SamlIdentityProviderProfileAdminResponse:
+    kind: value_object
+    description: 管理画面向けIdP profile表現。永続profileに加え、request tenantのcanonical issuerからserverが生成した設定値と現在のSP割当数を返す。
+    fields:
+      profile:
+        type: SamlIdentityProviderProfile
+      entity_id:
+        type: String
+      metadata_url:
+        type: String
+      sso_url:
+        type: String
+      slo_url:
+        type: String
+      signing_certificate_url:
+        type: String
+      signing_certificate_fingerprint_sha256:
+        type: String
+      service_provider_count:
+        type: Integer
   SamlServiceProvider:
     kind: entity
     description: "SAML 2.0 Web Browser SSO の service provider (SP) 登録。entityID で識別し、許可する AssertionConsumerService URL の閉集合、audience、NameID format、署名方針、claim 発行 policy を束ねる。application_id が NULL の catalog 外 SP も許容し、非 NULL の場合は同一 tenant の saml Application を参照して Application 1件に最大1 SP だけが紐づく。"
@@ -161,6 +230,12 @@ models:
         type: String
         default: default
         description: 所属テナント ID。SP 登録と SAML endpoint は realm ごとに分離する。
+      idp_profile_id:
+        type: String
+        default: default
+        constraints:
+          - non_empty
+        description: 同一テナント内でこのSPに割り当てられたSAML IdP profile。SSO/SLO要求はrouteのprofileと一致する場合だけ受理する。
       entity_id:
         type: String
         constraints:
@@ -362,7 +437,7 @@ models:
         description: logout を要求した SP の entityID (判明していれば)。
 interfaces:
   SamlSingleSignOn:
-    description: "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、SP 設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。"
+    description: "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。routeのIdP profile、SPのprofile binding、Destinationが一致しなければfail-closedで拒否する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、割当profileのXML署名資格情報とSP設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。"
     input:
       saml_request:
         type: String
@@ -376,6 +451,10 @@ interfaces:
         type: String
         optional: true
         description: SP が往復させる不透明コンテキスト。SAMLResponse に同値で返す。
+      profile_id:
+        type: String
+        default: default
+        description: request routeが選択したIdP profile ID。
     emits:
       - SamlSignInIssued
       - SamlSignInRejected
@@ -383,6 +462,7 @@ interfaces:
       - input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id)
       - input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id)
       - input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id)
+      - requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id)
       - input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id)
       - input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)
     ensures:
@@ -399,6 +479,20 @@ interfaces:
           - "200"
           - "303"
       - kind: http
+        method: GET
+        path: "/saml/idp/{profile_id}/sso"
+        request_form: query
+        successful_status_codes:
+          - "200"
+          - "303"
+      - kind: http
+        method: POST
+        path: "/saml/idp/{profile_id}/sso"
+        request_form: form
+        successful_status_codes:
+          - "200"
+          - "303"
+      - kind: http
         method: POST
         path: /saml/sso
         request_form: form
@@ -406,7 +500,7 @@ interfaces:
           - "200"
           - "303"
   SamlSingleLogout:
-    description: SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、署名必須 SP では署名を検証する。Destination は現在 realm の SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、署名済み LogoutResponse を登録済み SLO URL へ返す。互換経路として entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。
+    description: SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、routeのIdP profileとSPのprofile bindingを照合し、署名必須 SP では署名を検証する。Destination は選択profileの SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、割当profileの鍵で署名した LogoutResponse を登録済み SLO URL へ返す。entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。
     input:
       entity_id:
         type: String
@@ -415,11 +509,16 @@ interfaces:
       relay_state:
         type: String
         optional: true
+      profile_id:
+        type: String
+        default: default
+        description: request routeが選択したIdP profile ID。
     emits:
       - SamlLogout
     requires:
       - input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id)
       - logout_destination_matches_current_slo_endpoint(context.tenant_id)
+      - requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id)
       - logout_signature_satisfies_policy(input.entity_id, context.tenant_id)
     ensures:
       - local_session_cleared
@@ -441,14 +540,33 @@ interfaces:
         successful_status_codes:
           - "200"
           - "303"
+      - kind: http
+        method: GET
+        path: "/saml/idp/{profile_id}/slo"
+        request_form: query
+        successful_status_codes:
+          - "200"
+          - "303"
+      - kind: http
+        method: POST
+        path: "/saml/idp/{profile_id}/slo"
+        request_form: form
+        successful_status_codes:
+          - "200"
+          - "303"
   PublishSamlMetadata:
-    description: SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、tenant の XmlFederationSigning 証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。
+    description: SAML 2.0 IdP metadata の公開。default routeはrealmのdefault profile、profile routeは指定profileのentityID、SSO / SLO endpoint、対応 NameID format、profile scopeのXmlFederationSigning証明書を <EntityDescriptor><IDPSSODescriptor> として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。
     read_only: true
     access: public
     bindings:
       - kind: http
         method: GET
         path: /saml/metadata
+        successful_status_codes:
+          - "200"
+      - kind: http
+        method: GET
+        path: "/saml/idp/{profile_id}/metadata"
         successful_status_codes:
           - "200"
   DownloadSamlSigningCertificate:
@@ -461,6 +579,102 @@ interfaces:
         path: /saml/signing-certificate.pem
         successful_status_codes:
           - "200"
+      - kind: http
+        method: GET
+        path: "/saml/idp/{profile_id}/signing-certificate.pem"
+        successful_status_codes:
+          - "200"
+  CreateSamlIdentityProviderProfile:
+    description: テナント管理者が追加のsharedまたはdedicated SAML IdP profileを作成する。default profileはこの操作では作成できない。
+    input:
+      profile:
+        type: SamlIdentityProviderProfile
+    output:
+      profile:
+        type: SamlIdentityProviderProfileAdminResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    requires:
+      - input.profile.tenant_id == context.tenant_id
+      - input.profile.profile_id != "default"
+      - not input.profile.is_default
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteSaml]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/saml/idp-profiles
+        request_body: json
+        successful_status_codes:
+          - "201"
+  ListSamlIdentityProviderProfiles:
+    description: テナント内のSAML IdP profileをdefault先頭、name昇順で一覧する。
+    output:
+      profiles:
+        type: "SamlIdentityProviderProfileAdminResponse[]"
+    read_only: true
+    errors:
+      - AccessDeniedError
+    access:
+      policies: [TenantAdministrator, ManagementApiClientReadSaml]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/saml/idp-profiles
+        successful_status_codes:
+          - "200"
+  UpdateSamlIdentityProviderProfile:
+    description: テナント管理者が追加IdP profileのnameまたはmodeを変更する。default profileは変更できず、dedicatedへの変更時に複数SPから参照されていれば拒否する。
+    input:
+      profile:
+        type: SamlIdentityProviderProfile
+    output:
+      profile:
+        type: SamlIdentityProviderProfileAdminResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+      - DefaultIdPProfileError
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteSaml]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/api/admin/saml/idp-profiles/{profile_id}"
+        request_body: json
+        successful_status_codes:
+          - "200"
+  DeleteSamlIdentityProviderProfile:
+    description: 参照されていない追加IdP profileを削除する。default profileとSPが参照中のprofileは拒否する。
+    input:
+      profile_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+      - DefaultIdPProfileError
+      - IdPProfileInUseError
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteSaml]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/saml/idp-profiles/{profile_id}"
+        successful_status_codes:
+          - "204"
   RegisterSamlServiceProvider:
     description: SAML service provider の登録 / 更新 (upsert)。entityID、許可 ACS URL、NameID format、audience、署名方針、claim policy を受け取り、テナント境界に閉じて保存する。entityID と ACS URL の閉集合は必須。
     input:
@@ -573,6 +787,54 @@ scenarios:
         condition: federation signing credential が利用不能である
         steps:
           - 証明書を返さずエラーを返す
+  SPは割当IdP profileだけを利用できる:
+    actor: EndUser
+    given:
+      - SPはprofile-aへ割り当てられている
+      - profile-aとprofile-bは同一テナント内に存在する
+    main_success:
+      - profile-aのSSO endpointへSPのAuthnRequestを送る
+      - Destination、SP Issuer、profile bindingが一体で検証される
+      - profile-aのentityIDと署名資格情報でSAMLResponseが発行される
+    extensions:
+      - at: 1
+        condition: 同じ要求をprofile-bのSSO endpointへ送る
+        steps:
+          - SAMLResponseを発行せずSamlSignInRejectedを発行する
+      - at: 1
+        condition: profile-aのSSO URLと異なるDestinationを指定する
+        steps:
+          - fail-closedで拒否する
+  専用profileは固有metadataを公開する:
+    actor: EndUser
+    given:
+      - テナントにdefault profileとdedicated profileが存在する
+    main_success:
+      - dedicated profileのmetadata URLを取得する
+      - metadataはprofile固有entityID、SSO/SLO URL、署名証明書を公開する
+      - default metadataとは異なる署名資格情報を公開する
+    extensions:
+      - at: 1
+        condition: 存在しないまたは別テナントのprofile IDを指定する
+        steps:
+          - metadataと証明書を公開せずnot foundを返す
+  管理者はSAML IdP profileを共有または専用で管理できる:
+    actor: TenantAdministrator
+    given:
+      - テナントには変更不能なdefault shared profileが存在する
+    main_success:
+      - 管理者がshared profileを作成して複数SPから選択する
+      - 管理者がdedicated profileを作成して1 SPへ割り当てる
+      - 未使用の追加profileを削除する
+    extensions:
+      - at: 3
+        condition: profileがSPから参照中またはdefaultである
+        steps:
+          - 削除をconflictで拒否する
+      - at: 2
+        condition: dedicated profileを別のSPへも割り当てる
+        steps:
+          - bindingをInvalidRequestErrorで拒否する
   management API clientはSAML scope内のservice providerだけを操作できる:
     actor: ManagementApiClient
     given:
@@ -641,6 +903,24 @@ scenarios:
       - 古い認証コンテキストを検出する
       - ログインへリダイレクトする
 flows:
+  AdminSamlIdpProfiles:
+    entry: IdPProfiles
+    views:
+      IdPProfiles:
+        sees: SAML IdP profile一覧(default、shared、dedicated、割当数、metadata URL)
+        does:
+          - action: create
+            does: sharedまたはdedicated profileを作成する
+            interface: CreateSamlIdentityProviderProfile
+            to: IdPProfiles
+          - action: update
+            does: 追加profileのnameまたはmodeを更新する
+            interface: UpdateSamlIdentityProviderProfile
+            to: IdPProfiles
+          - action: delete
+            does: 未使用の追加profileを削除する
+            interface: DeleteSamlIdentityProviderProfile
+            to: IdPProfiles
   SamlBrowserNavigation:
     entry: ServiceProvider
     views:

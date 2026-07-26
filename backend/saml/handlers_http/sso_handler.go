@@ -64,7 +64,8 @@ func (d Deps) processAuthnRequest(c *echo.Context, xml []byte, relayState string
 	if err != nil {
 		return d.rejectSSO(c, req.Issuer, "encode resume request", err)
 	}
-	resumeURL := support.TenantRoute(c, "/saml/sso") + "?SAMLRequest=" + url.QueryEscape(encoded)
+	profileID := requestedIDPProfileID(c)
+	resumeURL := support.TenantRoute(c, idpProfileRoute(profileID, "sso")) + "?SAMLRequest=" + url.QueryEscape(encoded)
 	if relayState != "" {
 		resumeURL += "&RelayState=" + url.QueryEscape(relayState)
 	}
@@ -91,11 +92,16 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 		return c.String(http.StatusBadRequest, "SAML is not available")
 	}
 	ctx := c.Request().Context()
+	profile, err := d.requireIDPProfile(c)
+	if err != nil {
+		return err
+	}
 	authn, _ := d.AuthnResolver.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: c.Request().Header})
-	expectedDestination := support.TenantURL(c, "/saml/sso", d.Issuer)
+	expectedDestination := d.idpProfileURL(c, profile.ProfileID, "sso")
 
 	outcome, err := d.signInService().Issue(ctx, samlusecases.SignInInput{
 		TenantID:            support.RequestTenantID(c),
+		ProfileID:           profile.ProfileID,
 		Request:             req,
 		Binding:             binding,
 		RawXML:              xml,
@@ -122,7 +128,8 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 }
 
 func (d Deps) issueProtocolError(c *echo.Context, o samlusecases.SignInOutcome, relayState string) error {
-	responseXML, err := samlresponse.BuildErrorResponse(support.RequestIssuer(c, d.Issuer), o.Validated.ACSURL, o.Validated.InResponseTo, o.ProtocolStatus, o.Now)
+	profileID := requestedIDPProfileID(c)
+	responseXML, err := samlresponse.BuildErrorResponse(d.idpProfileEntityID(c, profileID), o.Validated.ACSURL, o.Validated.InResponseTo, o.ProtocolStatus, o.Now)
 	if err != nil {
 		return d.rejectSSO(c, o.SP.EntityID, "protocol error build failed", err)
 	}
@@ -137,7 +144,8 @@ func (d Deps) issueProtocolError(c *echo.Context, o samlusecases.SignInOutcome, 
 
 // issueResponse は発行データから SAMLResponse を組み立て・署名し、自動 POST フォームで返す。
 func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relayState string) error {
-	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	profileID := requestedIDPProfileID(c)
+	signer, err := d.FederationSigner.Resolve(idpProfileSigningContext(c, profileID))
 	if err != nil {
 		return d.rejectSSO(c, o.SP.EntityID, "signing credential unavailable", err)
 	}
@@ -146,7 +154,7 @@ func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relay
 		return d.rejectSSO(c, o.SP.EntityID, "assertion build failed", err)
 	}
 	responseXML, err := samlresponse.BuildResponse(samlresponse.ResponseInput{
-		Issuer:       support.RequestIssuer(c, d.Issuer),
+		Issuer:       d.idpProfileEntityID(c, profileID),
 		Destination:  o.Validated.ACSURL,
 		InResponseTo: o.Validated.InResponseTo,
 		IssueInstant: o.Now,
@@ -177,7 +185,7 @@ func (d Deps) buildAssertion(c *echo.Context, sp samldomain.SamlServiceProvider,
 	}
 	in := samltoken.AssertionInput{
 		Version:      samltoken.SAML20,
-		Issuer:       support.RequestIssuer(c, d.Issuer),
+		Issuer:       d.idpProfileEntityID(c, requestedIDPProfileID(c)),
 		Audience:     sp.EffectiveAudience(),
 		Recipient:    validated.ACSURL,
 		InResponseTo: validated.InResponseTo,

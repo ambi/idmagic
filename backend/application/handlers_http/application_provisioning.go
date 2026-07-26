@@ -6,6 +6,7 @@ package handlers_http
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -50,6 +51,7 @@ type createApplicationRequest struct {
 	NameIDFormat string   `json:"name_id_format"`
 	NameIDSource string   `json:"name_id_source"`
 	// SAML 2.0
+	IDPProfileID                      string   `json:"idp_profile_id"`
 	EntityID                          string   `json:"entity_id"`
 	ACSURLs                           []string `json:"acs_urls"`
 	SLOURL                            string   `json:"slo_url"`
@@ -94,6 +96,7 @@ type wsfedConfig struct {
 }
 
 type samlConfig struct {
+	IDPProfileID                      string                         `json:"idp_profile_id"`
 	EntityID                          string                         `json:"entity_id"`
 	ACSURLs                           []string                       `json:"acs_urls"`
 	SLOURL                            string                         `json:"slo_url"`
@@ -237,7 +240,8 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 		}
 		sp := &samldomain.SamlServiceProvider{
 			TenantID: support.RequestTenantID(c), EntityID: req.EntityID, DisplayName: req.Name,
-			ACSURLs: req.ACSURLs, SLOURL: strings.TrimSpace(req.SLOURL),
+			IDPProfileID: nonEmpty(req.IDPProfileID, samldomain.DefaultIDPProfileID),
+			ACSURLs:      req.ACSURLs, SLOURL: strings.TrimSpace(req.SLOURL),
 			ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
 				Format: nonEmpty(req.NameIDFormat, samldomain.SamlNameIDFormatPersistent), SourceAttribute: nonEmpty(req.NameIDSource, defaultNameIDSource),
 			}},
@@ -247,6 +251,9 @@ func (d Deps) handleCreateApplication(c *echo.Context) error {
 			CreatedAt:                         now,
 		}
 		if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
+			if errors.Is(err, samldomain.ErrInvalidIDPProfile) || errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality) {
+				return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+			}
 			return err
 		}
 		app, err := d.createCatalogApp(ctx, actor.ID, req, now, domain.ApplicationFederated,
@@ -359,7 +366,8 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 			}
 			if sp, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, protocol.EntityID); err == nil && sp != nil {
 				saml = &samlConfig{
-					EntityID: sp.EntityID, ACSURLs: sp.ACSURLs, SLOURL: sp.SLOURL,
+					IDPProfileID: sp.EffectiveIDPProfileID(),
+					EntityID:     sp.EntityID, ACSURLs: sp.ACSURLs, SLOURL: sp.SLOURL,
 					Audience: sp.Audience, NameIDFormat: sp.ClaimPolicy.NameID.Format,
 					NameIDSource:  sp.ClaimPolicy.NameID.SourceAttribute,
 					SignAssertion: sp.SignAssertion, SignResponse: sp.SignResponse,
@@ -515,6 +523,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 }
 
 type updateSamlRequest struct {
+	IDPProfileID                      *string                         `json:"idp_profile_id"`
 	ACSURLs                           *[]string                       `json:"acs_urls"`
 	SLOURL                            *string                         `json:"slo_url"`
 	Audience                          *string                         `json:"audience"`
@@ -554,6 +563,9 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	if req.ACSURLs != nil {
 		sp.ACSURLs = *req.ACSURLs
 	}
+	if req.IDPProfileID != nil {
+		sp.IDPProfileID = strings.TrimSpace(*req.IDPProfileID)
+	}
 	if req.SLOURL != nil {
 		sp.SLOURL = strings.TrimSpace(*req.SLOURL)
 	}
@@ -589,6 +601,9 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	now := time.Now().UTC()
 	sp.UpdatedAt = now
 	if err := d.SamlSPRepo.Save(ctx, sp); err != nil {
+		if errors.Is(err, samldomain.ErrInvalidIDPProfile) || errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality) {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		}
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)

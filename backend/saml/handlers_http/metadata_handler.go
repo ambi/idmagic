@@ -6,7 +6,6 @@ import (
 	"time"
 
 	metadata "github.com/ambi/idmagic/backend/saml/metadata_saml"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
@@ -16,16 +15,20 @@ func (d Deps) handleSamlMetadata(c *echo.Context) error {
 	if d.FederationSigner == nil {
 		return c.String(http.StatusInternalServerError, "saml metadata unavailable")
 	}
+	profile, err := d.requireIDPProfile(c)
+	if err != nil {
+		return err
+	}
 	endpoints := metadata.Endpoints{
-		SSOURL: support.TenantURL(c, "/saml/sso", d.Issuer),
-		SLOURL: support.TenantURL(c, "/saml/slo", d.Issuer),
+		SSOURL: d.idpProfileURL(c, profile.ProfileID, "sso"),
+		SLOURL: d.idpProfileURL(c, profile.ProfileID, "slo"),
 	}
 	now := time.Now().UTC()
-	certs, err := d.FederationSigner.Certificates(c.Request().Context(), now)
+	certs, err := d.FederationSigner.Certificates(idpProfileSigningContext(c, profile.ProfileID), now)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "saml metadata unavailable")
 	}
-	out, err := metadata.BuildIDPMetadataWithCertificates(support.RequestIssuer(c, d.Issuer), certs, endpoints, now)
+	out, err := metadata.BuildIDPMetadataWithCertificates(d.idpProfileEntityID(c, profile.ProfileID), certs, endpoints, now)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, "saml metadata unavailable")
 	}
@@ -39,7 +42,11 @@ func (d Deps) handleSamlSigningCertificate(c *echo.Context) error {
 	if d.FederationSigner == nil {
 		return c.String(http.StatusInternalServerError, "saml signing certificate unavailable")
 	}
-	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	profile, err := d.requireIDPProfile(c)
+	if err != nil {
+		return err
+	}
+	signer, err := d.FederationSigner.Resolve(idpProfileSigningContext(c, profile.ProfileID))
 	if err != nil || signer == nil || signer.Certificate() == nil {
 		return c.String(http.StatusInternalServerError, "saml signing certificate unavailable")
 	}

@@ -6,7 +6,7 @@ updated_at: 2026-07-26
 modules:
   signingkeys-domain:
     path: domain
-    responsibility: tenant-scoped signing key metadata、状態語彙、domain event。
+    responsibility: tenant・usage・scopeで分離したsigning key metadata、状態語彙、domain event。
     context: SigningKeys
     layer: domain
     role: published_interface
@@ -25,7 +25,7 @@ modules:
         element: SigningKey
   signingkeys-ports:
     path: ports
-    responsibility: SigningKeys の鍵 repository/provider port。
+    responsibility: tenant・usage・scopeを伝播するSigningKeys repository/provider port。
     context: SigningKeys
     layer: use_cases
     role: published_interface

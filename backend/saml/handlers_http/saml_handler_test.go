@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"math/big"
 	"net/http"
@@ -29,6 +30,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
@@ -92,6 +94,12 @@ func certPEM(t *testing.T) string {
 
 func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
+	e, captured, _ := newServerWithRepository(t, authn)
+	return e, captured
+}
+
+func newServerWithRepository(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Echo, *[]spec.DomainEvent, *samlmemory.SamlServiceProviderRepository) {
+	t.Helper()
 
 	captured := &[]spec.DomainEvent{}
 
@@ -110,6 +118,10 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 
 	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
+	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
@@ -120,10 +132,10 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
-		FederationSigner: devSigner(t),
+		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
 		AuthnResolver:    stubResolver{ctx: authn},
 	})
-	return e, captured
+	return e, captured, spRepo
 }
 
 func hasEvent(events []spec.DomainEvent, eventType string) bool {
@@ -441,6 +453,58 @@ func TestSamlSigningCertificateDownloadMatchesMetadata(t *testing.T) {
 	}
 }
 
+func TestSamlIDPProfilePublishesIsolatedMetadataAndRejectsCrossProfileRequest(t *testing.T) {
+	e, _, repo := newServerWithRepository(t, nil)
+	profile := &samldomain.SamlIdentityProviderProfile{
+		TenantID: tenancydomain.DefaultTenantID, ProfileID: "partner-a",
+		Name: "Partner A", Mode: samldomain.IDPProfileModeDedicated,
+	}
+	if err := repo.SaveIDPProfile(context.Background(), profile); err != nil {
+		t.Fatal(err)
+	}
+
+	defaultMetadata := get(e, "/saml/metadata")
+	profileMetadata := get(e, "/saml/idp/partner-a/metadata")
+	if profileMetadata.Code != http.StatusOK {
+		t.Fatalf("profile metadata status=%d body=%s", profileMetadata.Code, profileMetadata.Body.String())
+	}
+	for _, want := range []string{
+		`entityID="https://idp.example/realms/default/saml/idp/partner-a"`,
+		"https://idp.example/realms/default/saml/idp/partner-a/sso",
+		"https://idp.example/realms/default/saml/idp/partner-a/slo",
+	} {
+		if !strings.Contains(profileMetadata.Body.String(), want) {
+			t.Fatalf("profile metadata missing %q:\n%s", want, profileMetadata.Body.String())
+		}
+	}
+	if defaultMetadata.Body.String() == profileMetadata.Body.String() {
+		t.Fatal("default and additional profiles must publish distinct metadata")
+	}
+	profileCertificate := get(e, "/saml/idp/partner-a/signing-certificate.pem")
+	block, _ := pem.Decode(profileCertificate.Body.Bytes())
+	if block == nil {
+		t.Fatalf("invalid profile certificate: %s", profileCertificate.Body.String())
+	}
+	if encoded := base64.StdEncoding.EncodeToString(block.Bytes); !strings.Contains(profileMetadata.Body.String(), encoded) {
+		t.Fatal("profile certificate is not published in its metadata")
+	}
+	if rec := get(e, "/saml/idp/missing/metadata"); rec.Code != http.StatusNotFound {
+		t.Fatalf("missing profile status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	request := authnRequestRedirectWith(
+		t,
+		"https://sp.example.com",
+		"https://sp.example.com/acs",
+		"https://idp.example/realms/default/saml/idp/partner-a/sso",
+		false,
+	)
+	rec := get(e, "/saml/idp/partner-a/sso?SAMLRequest="+url.QueryEscape(request))
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "not assigned") {
+		t.Fatalf("cross-profile status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func newAdminServer(t *testing.T) *echo.Echo {
 	t.Helper()
 	userRepo := usermemory.NewUserRepository()
@@ -450,14 +514,19 @@ func newAdminServer(t *testing.T) *echo.Echo {
 		PreferredUsername: "admin@example.com",
 		Roles:             []string{"admin"},
 	})
+	keyStore, err := keys_memory.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
 			Issuer: "https://idp.example",
 			SCL:    spec.MustLoadSCL(),
 		}, Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
-		UserRepo:      userRepo,
-		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
+		UserRepo:         userRepo,
+		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
+		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
 	})
 	return e
 }
@@ -470,19 +539,81 @@ func doJSON(e *echo.Echo, method, target, body string) *httptest.ResponseRecorde
 	return rec
 }
 
+func doAdminJSON(e *echo.Echo, method, target, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, defaultRealmPath(target), strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://idp.example")
+	req.Header.Set("X-Csrf-Token", "csrf")
+	req.Header.Set("Cookie", "idmagic_csrf=csrf")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	return rec
+}
+
+func TestAdminIDPProfileCRUDAndCanonicalEndpoints(t *testing.T) {
+	e := newAdminServer(t)
+	const path = "/api/admin/saml/idp-profiles"
+	create := doAdminJSON(e, http.MethodPost, path, `{"name":"Partner trust","mode":"dedicated"}`)
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
+	}
+	body := create.Body.String()
+	if !strings.Contains(body, `"mode":"dedicated"`) ||
+		!strings.Contains(body, `/saml/idp/`) ||
+		!strings.Contains(body, `/metadata`) {
+		t.Fatalf("create response missing profile endpoints: %s", body)
+	}
+	var created struct {
+		Profile samldomain.SamlIdentityProviderProfile `json:"profile"`
+	}
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Profile.ProfileID == "" || created.Profile.ProfileID == samldomain.DefaultIDPProfileID {
+		t.Fatalf("generated profile ID = %q", created.Profile.ProfileID)
+	}
+	if rec := get(e, path); rec.Code != http.StatusOK ||
+		!strings.Contains(rec.Body.String(), `"profile_id":"default"`) ||
+		!strings.Contains(rec.Body.String(), created.Profile.ProfileID) {
+		t.Fatalf("list status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if rec := doAdminJSON(e, http.MethodDelete, path+"/"+created.Profile.ProfileID, ""); rec.Code != http.StatusNoContent {
+		t.Fatalf("delete status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if rec := doAdminJSON(e, http.MethodDelete, path+"/default", ""); rec.Code != http.StatusConflict {
+		t.Fatalf("delete default status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestAdminServiceProvider_CRUD(t *testing.T) {
 	e := newAdminServer(t)
+	profileCreate := doAdminJSON(e, http.MethodPost, "/api/admin/saml/idp-profiles", `{"name":"Partner trust","mode":"shared"}`)
+	if profileCreate.Code != http.StatusCreated {
+		t.Fatalf("create profile status=%d body=%s", profileCreate.Code, profileCreate.Body.String())
+	}
+	var profileResponse struct {
+		Profile samldomain.SamlIdentityProviderProfile `json:"profile"`
+	}
+	if err := json.Unmarshal(profileCreate.Body.Bytes(), &profileResponse); err != nil {
+		t.Fatal(err)
+	}
+
 	const path = "/api/admin/saml/service-providers"
-	body := `{"entity_id":"https://sp.example.com","acs_urls":["https://sp.example.com/acs"],` +
+	body := `{"entity_id":"https://sp.example.com","idp_profile_id":"` + profileResponse.Profile.ProfileID +
+		`","acs_urls":["https://sp.example.com/acs"],` +
 		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"sub"}}}`
 
 	if rec := doJSON(e, http.MethodPost, path, body); rec.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if rec := doJSON(e, http.MethodPost, path, body); rec.Code != http.StatusOK {
+	updateWithoutProfile := `{"entity_id":"https://sp.example.com","acs_urls":["https://sp.example.com/acs"],` +
+		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"sub"}}}`
+	if rec := doJSON(e, http.MethodPost, path, updateWithoutProfile); rec.Code != http.StatusOK {
 		t.Fatalf("update status=%d, want 200", rec.Code)
 	}
-	if rec := get(e, path); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "https://sp.example.com") {
+	if rec := get(e, path); rec.Code != http.StatusOK ||
+		!strings.Contains(rec.Body.String(), "https://sp.example.com") ||
+		!strings.Contains(rec.Body.String(), `"idp_profile_id":"`+profileResponse.Profile.ProfileID+`"`) {
 		t.Fatalf("list status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	if rec := doJSON(e, http.MethodDelete, path+"?entity_id="+url.QueryEscape("https://sp.example.com"), ""); rec.Code != http.StatusNoContent {

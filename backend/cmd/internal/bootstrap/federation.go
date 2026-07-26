@@ -54,10 +54,11 @@ func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProviderRepository, seed seedingdomain.DevelopmentDemoSeed) error {
 	now := time.Now().UTC()
 	sp := &samldomain.SamlServiceProvider{
-		TenantID:    tenancydomain.DefaultTenantID,
-		EntityID:    seed.SamlEntityID,
-		DisplayName: seed.SamlDisplayName,
-		ACSURLs:     seed.SamlACSURLs,
+		TenantID:     tenancydomain.DefaultTenantID,
+		IDPProfileID: samldomain.DefaultIDPProfileID,
+		EntityID:     seed.SamlEntityID,
+		DisplayName:  seed.SamlDisplayName,
+		ACSURLs:      seed.SamlACSURLs,
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          samldomain.SamlNameIDFormatPersistent,

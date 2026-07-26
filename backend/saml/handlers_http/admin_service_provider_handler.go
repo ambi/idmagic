@@ -18,6 +18,7 @@ import (
 type serviceProviderRequest struct {
 	EntityID                string                         `json:"entity_id"`
 	DisplayName             string                         `json:"display_name"`
+	IDPProfileID            string                         `json:"idp_profile_id"`
 	ACSURLs                 []string                       `json:"acs_urls"`
 	SLOURL                  string                         `json:"slo_url"`
 	Audience                string                         `json:"audience"`
@@ -93,10 +94,18 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 	if req.SignAssertion != nil {
 		signAssertion = *req.SignAssertion
 	}
+	idpProfileID := strings.TrimSpace(req.IDPProfileID)
+	if idpProfileID == "" {
+		idpProfileID = samldomain.DefaultIDPProfileID
+		if existing != nil {
+			idpProfileID = existing.EffectiveIDPProfileID()
+		}
+	}
 	sp := &samldomain.SamlServiceProvider{
 		TenantID:                          tenantID,
 		EntityID:                          req.EntityID,
 		DisplayName:                       req.DisplayName,
+		IDPProfileID:                      idpProfileID,
 		ACSURLs:                           req.ACSURLs,
 		SLOURL:                            strings.TrimSpace(req.SLOURL),
 		Audience:                          strings.TrimSpace(req.Audience),

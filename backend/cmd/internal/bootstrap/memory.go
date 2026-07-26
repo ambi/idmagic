@@ -124,10 +124,13 @@ func assembleMemory() (*Dependencies, error) {
 			TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(),
 		},
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
-		Saml:         saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository(), ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
-		Sourcing:     sourcing.Module{ScimRepo: scimmemory.NewScimRepository()},
-		ApiTokens:    apitoken.Module{Repo: apitokenmemory.NewRepository()},
-		Jobs:         jobs.Module{Repo: jobsmemory.NewJobRepository()},
+		Saml: func() saml.Module {
+			repo := samlmemory.NewSamlServiceProviderRepository()
+			return saml.Module{SPRepo: repo, ProfileRepo: repo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()}
+		}(),
+		Sourcing:  sourcing.Module{ScimRepo: scimmemory.NewScimRepository()},
+		ApiTokens: apitoken.Module{Repo: apitokenmemory.NewRepository()},
+		Jobs:      jobs.Module{Repo: jobsmemory.NewJobRepository()},
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

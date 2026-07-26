@@ -325,6 +325,7 @@ export type ApplicationWsFedConfig = {
 }
 
 export type ApplicationSamlConfig = {
+  idp_profile_id: string
   entity_id: string
   acs_urls: string[]
   slo_url: string
@@ -336,6 +337,29 @@ export type ApplicationSamlConfig = {
   want_authn_requests_signed: boolean
   authn_request_signing_certificate_pem: string
   rules: WsFedClaimMappingRule[]
+}
+
+export type SamlIDPProfileMode = 'shared' | 'dedicated'
+
+export type SamlIDPProfile = {
+  tenant_id: string
+  profile_id: string
+  name: string
+  mode: SamlIDPProfileMode
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type AdminSamlIDPProfile = {
+  profile: SamlIDPProfile
+  entity_id: string
+  metadata_url: string
+  sso_url: string
+  slo_url: string
+  signing_certificate_url: string
+  signing_certificate_fingerprint_sha256: string
+  service_provider_count: number
 }
 
 export type AdminApplicationDetail = {

@@ -349,6 +349,29 @@ export async function clickButtonByText(view: Bun.WebView, text: string): Promis
   }
 }
 
+export async function clickEnabledButtonByText(
+  view: Bun.WebView,
+  text: string,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const clicked = await view.evaluate(`(() => {
+      const target = [...document.querySelectorAll('button')]
+        .find((button) =>
+          (button.textContent ?? '').includes(${JSON.stringify(text)}) &&
+          !button.disabled
+        )
+      if (!target) return false
+      target.click()
+      return true
+    })()`)
+    if (clicked === true) return
+    await Bun.sleep(150)
+  }
+  throw new Error(`enabled button not found: ${text}`)
+}
+
 // i18n 対象の利用者向け操作は、サポート済み locale のいずれで描画されても同じ振る舞いを
 // 検証する。文言の一致そのものではなく、操作可能なボタンがあることを確認する。
 export async function clickButtonByAnyText(view: Bun.WebView, texts: string[]): Promise<void> {
@@ -397,6 +420,21 @@ export async function waitForText(
     await Bun.sleep(150)
   }
   throw new Error(`timeout waiting for text: ${text}`)
+}
+
+export async function waitForInputValue(
+  view: Bun.WebView,
+  value: string,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const found = await view.evaluate(`(() => [...document.querySelectorAll('input, textarea')]
+      .some((input) => input.value === ${JSON.stringify(value)}))()`)
+    if (found === true) return
+    await Bun.sleep(150)
+  }
+  throw new Error(`timeout waiting for input value: ${value}`)
 }
 
 export async function setInputValue(

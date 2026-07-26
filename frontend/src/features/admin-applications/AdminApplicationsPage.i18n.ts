@@ -166,6 +166,13 @@ export const adminApplicationsDictionary = defineDictionary(
     claimMappingRulesHelp:
       'source は user_attribute / fixed / nameid。required:true の claim は値が解決できないと fail-closed で sign-in を拒否します。',
     samlSectionHeading: 'SAML 2.0',
+    idpProfileFieldLabel: 'IdP プロファイル',
+    sharedProfileLabel: '共有',
+    dedicatedProfileLabel: '専用',
+    createDedicatedProfile: 'このアプリ専用プロファイルを作成',
+    idpProfileHelp:
+      '共有プロファイルは複数SPで同じentityID・証明書を使います。専用プロファイルはこのSPだけのtrust境界になります。',
+    idpProfileCreateFailedError: '専用IdPプロファイルを作成できませんでした。',
     acsUrlHelp:
       '改行区切りで複数指定できます。AuthnRequest の ACS はこの許可集合に対して検証します (open redirect 防止)。',
     sloUrlOptionalFieldLabel: 'SLO URL (任意)',
@@ -420,6 +427,13 @@ export const adminApplicationsDictionary = defineDictionary(
     claimMappingRulesHelp:
       'source is user_attribute / fixed / nameid. A claim with required:true fails closed and denies sign-in if its value cannot be resolved.',
     samlSectionHeading: 'SAML 2.0',
+    idpProfileFieldLabel: 'IdP profile',
+    sharedProfileLabel: 'Shared',
+    dedicatedProfileLabel: 'Dedicated',
+    createDedicatedProfile: 'Create dedicated profile',
+    idpProfileHelp:
+      'Shared profiles reuse an entity ID and certificate across SPs. A dedicated profile creates a trust boundary for this SP only.',
+    idpProfileCreateFailedError: 'Could not create the dedicated IdP profile.',
     acsUrlHelp:
       'Enter one per line for multiple values. The AuthnRequest ACS is validated against this allow-list (to prevent open redirects).',
     sloUrlOptionalFieldLabel: 'SLO URL (optional)',

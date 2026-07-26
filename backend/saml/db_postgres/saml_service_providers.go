@@ -16,7 +16,8 @@ type SamlServiceProviderRepository struct{ Pool sharedpg.DB }
 
 func samlServiceProviderFromRow(row *SamlServiceProvider) (*domain.SamlServiceProvider, error) {
 	var sp domain.SamlServiceProvider
-	sp.TenantID, sp.EntityID, sp.DisplayName, sp.SLOURL, sp.Audience = row.TenantID, row.EntityID, row.DisplayName, row.SloUrl, row.Audience
+	sp.TenantID, sp.EntityID, sp.IDPProfileID = row.TenantID, row.EntityID, row.IdpProfileID
+	sp.DisplayName, sp.SLOURL, sp.Audience = row.DisplayName, row.SloUrl, row.Audience
 	sp.ApplicationID = sharedpg.UUIDString(row.ApplicationID)
 	sp.SignAssertion, sp.SignResponse, sp.WantAuthnRequestsSigned = row.SignAssertion, row.SignResponse, row.WantAuthnRequestsSigned
 	sp.AuthnRequestSigningCertificatePEM, sp.CreatedAt, sp.UpdatedAt = row.AuthnRequestSigningCertificatePem, row.CreatedAt, row.UpdatedAt
@@ -57,6 +58,9 @@ func (r *SamlServiceProviderRepository) ListByTenant(ctx context.Context, tenant
 }
 
 func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *domain.SamlServiceProvider) error {
+	if sp == nil {
+		return errors.New("saml service provider is required")
+	}
 	acsURLs := sp.ACSURLs
 	if acsURLs == nil {
 		acsURLs = []string{}
@@ -69,7 +73,47 @@ func (r *SamlServiceProviderRepository) Save(ctx context.Context, sp *domain.Sam
 	if err != nil {
 		return err
 	}
-	return New(r.Pool).UpsertSamlServiceProvider(ctx, UpsertSamlServiceProviderParams{TenantID: sp.TenantID, EntityID: sp.EntityID, DisplayName: sp.DisplayName, AcsUrls: encodedACSURLs, SloUrl: sp.SLOURL, Audience: sp.Audience, ClaimPolicy: encodedClaimPolicy, SignAssertion: sp.SignAssertion, SignResponse: sp.SignResponse, WantAuthnRequestsSigned: sp.WantAuthnRequestsSigned, AuthnRequestSigningCertificatePem: sp.AuthnRequestSigningCertificatePEM, CreatedAt: sp.CreatedAt, UpdatedAt: sp.UpdatedAt})
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := New(tx)
+	sp.IDPProfileID = sp.EffectiveIDPProfileID()
+	if sp.IDPProfileID == domain.DefaultIDPProfileID {
+		if _, err := q.EnsureDefaultSamlIDPProfile(ctx, sp.TenantID); err != nil {
+			return err
+		}
+	}
+	profileRow, err := q.GetSamlIDPProfileForUpdate(ctx, GetSamlIDPProfileForUpdateParams{
+		TenantID: sp.TenantID, ProfileID: sp.IDPProfileID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrInvalidIDPProfile
+	}
+	if err != nil {
+		return err
+	}
+	otherBindings, err := q.CountOtherSamlServiceProvidersByIDPProfile(ctx, CountOtherSamlServiceProvidersByIDPProfileParams{
+		TenantID: sp.TenantID, IdpProfileID: sp.IDPProfileID, EntityID: sp.EntityID,
+	})
+	if err != nil {
+		return err
+	}
+	if err := samlIDPProfileFromRow(profileRow).Validate(int(otherBindings + 1)); err != nil {
+		return err
+	}
+	if err := q.UpsertSamlServiceProvider(ctx, UpsertSamlServiceProviderParams{
+		TenantID: sp.TenantID, EntityID: sp.EntityID, IdpProfileID: sp.IDPProfileID,
+		DisplayName: sp.DisplayName, AcsUrls: encodedACSURLs, SloUrl: sp.SLOURL,
+		Audience: sp.Audience, ClaimPolicy: encodedClaimPolicy, SignAssertion: sp.SignAssertion,
+		SignResponse: sp.SignResponse, WantAuthnRequestsSigned: sp.WantAuthnRequestsSigned,
+		AuthnRequestSigningCertificatePem: sp.AuthnRequestSigningCertificatePEM,
+		CreatedAt:                         sp.CreatedAt, UpdatedAt: sp.UpdatedAt,
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *SamlServiceProviderRepository) Delete(ctx context.Context, tenantID, entityID string) error {

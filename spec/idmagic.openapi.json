@@ -11639,7 +11639,7 @@
     "/api/admin/applications/{application_id}/saml": {
       "patch": {
         "operationId": "UpdateApplicationSamlConfig",
-        "summary": "管理者が Application の SAML protocol が指す service provider 設定を部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。",
+        "summary": "管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。",
         "security": [
           {
             "SclBearer": []
@@ -13758,11 +13758,12 @@
     "/saml/sso": {
       "get": {
         "operationId": "SamlSingleSignOn",
-        "summary": "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、SP 設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。",
+        "summary": "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。routeのIdP profile、SPのprofile binding、Destinationが一致しなければfail-closedで拒否する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、割当profileのXML署名資格情報とSP設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。",
         "x-scl-requires": [
           "input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id)",
           "input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id)",
           "input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id)",
           "input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id)",
           "input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)"
         ],
@@ -13771,9 +13772,145 @@
           "saml_response_matches_request(input.saml_request, context.tenant_id)",
           "assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)"
         ],
-        "description": "Requires: input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id); input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id); input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id); input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id); input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)\n\nEnsures: relay_state_round_tripped(input.relay_state); saml_response_matches_request(input.saml_request, context.tenant_id); assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)",
+        "description": "Requires: input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id); input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id); input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id); input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id); input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)\n\nEnsures: relay_state_round_tripped(input.relay_state); saml_response_matches_request(input.saml_request, context.tenant_id); assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)",
         "security": [],
         "parameters": [
+          {
+            "name": "saml_request",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "SP-initiated の AuthnRequest (binding に応じ deflate+base64 / base64)。IdP-initiated では空。"
+            }
+          },
+          {
+            "name": "entity_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "IdP-initiated で対象 SP を指定する entityID。"
+            }
+          },
+          {
+            "name": "relay_state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "SP が往復させる不透明コンテキスト。SAMLResponse に同値で返す。"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "description": "request routeが選択したIdP profile ID。"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "303": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "operationId": "SamlSingleSignOn",
+        "summary": "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。routeのIdP profile、SPのprofile binding、Destinationが一致しなければfail-closedで拒否する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、割当profileのXML署名資格情報とSP設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。",
+        "x-scl-requires": [
+          "input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id)",
+          "input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id)",
+          "input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id)",
+          "input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id)",
+          "input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)"
+        ],
+        "x-scl-ensures": [
+          "relay_state_round_tripped(input.relay_state)",
+          "saml_response_matches_request(input.saml_request, context.tenant_id)",
+          "assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)"
+        ],
+        "description": "Requires: input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id); input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id); input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id); input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id); input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)\n\nEnsures: relay_state_round_tripped(input.relay_state); saml_response_matches_request(input.saml_request, context.tenant_id); assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "saml_request": {
+                    "type": "string",
+                    "description": "SP-initiated の AuthnRequest (binding に応じ deflate+base64 / base64)。IdP-initiated では空。"
+                  },
+                  "entity_id": {
+                    "type": "string",
+                    "description": "IdP-initiated で対象 SP を指定する entityID。"
+                  },
+                  "relay_state": {
+                    "type": "string",
+                    "description": "SP が往復させる不透明コンテキスト。SAMLResponse に同値で返す。"
+                  },
+                  "profile_id": {
+                    "type": "string",
+                    "default": "default",
+                    "description": "request routeが選択したIdP profile ID。"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "profile_id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "303": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/saml/idp/{profile_id}/sso": {
+      "get": {
+        "operationId": "SamlSingleSignOn",
+        "summary": "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。routeのIdP profile、SPのprofile binding、Destinationが一致しなければfail-closedで拒否する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、割当profileのXML署名資格情報とSP設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。",
+        "x-scl-requires": [
+          "input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id)",
+          "input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id)",
+          "input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id)",
+          "input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id)",
+          "input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)"
+        ],
+        "x-scl-ensures": [
+          "relay_state_round_tripped(input.relay_state)",
+          "saml_response_matches_request(input.saml_request, context.tenant_id)",
+          "assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)"
+        ],
+        "description": "Requires: input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id); input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id); input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id); input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id); input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)\n\nEnsures: relay_state_round_tripped(input.relay_state); saml_response_matches_request(input.saml_request, context.tenant_id); assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)",
+        "security": [],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "saml_request",
             "in": "query",
@@ -13813,11 +13950,12 @@
       },
       "post": {
         "operationId": "SamlSingleSignOn",
-        "summary": "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、SP 設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。",
+        "summary": "SAML 2.0 Web Browser SSO の sign-in。SP-initiated は AuthnRequest を HTTP-Redirect / HTTP-POST binding で受信し、Version=2.0、IssueInstant の許容窓、Issuer、Destination、HTTP-POST response ProtocolBinding、ACS URL/index の排他と対応可否、NameIDPolicy format を検証してから service provider を解決する。routeのIdP profile、SPのprofile binding、Destinationが一致しなければfail-closedで拒否する。署名必須 SP では Redirect binding 署名または XML 署名を検証する。未対応または矛盾する要求は fail-closed に拒否し、返信可能な検証済み ACS がある場合だけ HTTP-POST の SAML protocol error を返す。ForceAuthn=true は直近再認証済みでなければログインへ誘導する。IsPassive=true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。IdP-initiated は entityID クエリで対象 SP を選ぶ。未認証はログインへ誘導し、認証往復をまたいで要求を保つ。認証済みなら application 割当ゲートを fail-closed で適用し、未割当 subject には発行しない。SP の claim policy で発行した NameID と attribute を bearer SAML assertion に載せ、割当profileのXML署名資格情報とSP設定に従って assertion / response を署名し、SAMLResponse を ACS へ HTTP-POST で自動送信する。tenant / SP / AuthnRequest ID は assertion 発行直前に TTL replay store へ原子的に一度だけ記録する。InResponseTo・AudienceRestriction・Recipient・Destination を整合させる。",
         "x-scl-requires": [
           "input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id)",
           "input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id)",
           "input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id)",
           "input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id)",
           "input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)"
         ],
@@ -13826,7 +13964,7 @@
           "saml_response_matches_request(input.saml_request, context.tenant_id)",
           "assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)"
         ],
-        "description": "Requires: input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id); input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id); input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id); input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id); input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)\n\nEnsures: relay_state_round_tripped(input.relay_state); saml_response_matches_request(input.saml_request, context.tenant_id); assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)",
+        "description": "Requires: input.saml_request == null || issuer_registered(input.saml_request, context.tenant_id); input.saml_request == null || request_acs_allowed(input.saml_request, context.tenant_id); input.saml_request == null || destination_matches_current_sso_endpoint(input.saml_request, context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.saml_request, input.entity_id, context.tenant_id); input.saml_request == null || request_signature_satisfies_policy(input.saml_request, context.tenant_id); input.saml_request == null || request_semantics_supported_and_fresh(input.saml_request, context.tenant_id)\n\nEnsures: relay_state_round_tripped(input.relay_state); saml_response_matches_request(input.saml_request, context.tenant_id); assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)",
         "security": [],
         "requestBody": {
           "required": true,
@@ -13846,9 +13984,136 @@
                   "relay_state": {
                     "type": "string",
                     "description": "SP が往復させる不透明コンテキスト。SAMLResponse に同値で返す。"
+                  },
+                  "profile_id": {
+                    "type": "string",
+                    "default": "default",
+                    "description": "request routeが選択したIdP profile ID。"
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": false,
+                "required": [
+                  "profile_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "303": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/saml/slo": {
+      "get": {
+        "operationId": "SamlSingleLogout",
+        "summary": "SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、routeのIdP profileとSPのprofile bindingを照合し、署名必須 SP では署名を検証する。Destination は選択profileの SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、割当profileの鍵で署名した LogoutResponse を登録済み SLO URL へ返す。entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。",
+        "x-scl-requires": [
+          "input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id)",
+          "logout_destination_matches_current_slo_endpoint(context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id)",
+          "logout_signature_satisfies_policy(input.entity_id, context.tenant_id)"
+        ],
+        "x-scl-ensures": [
+          "local_session_cleared",
+          "logout_response_destination_is_registered(input.entity_id, context.tenant_id)",
+          "no_unregistered_redirect"
+        ],
+        "description": "Requires: input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id); logout_destination_matches_current_slo_endpoint(context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id); logout_signature_satisfies_policy(input.entity_id, context.tenant_id)\n\nEnsures: local_session_cleared; logout_response_destination_is_registered(input.entity_id, context.tenant_id); no_unregistered_redirect",
+        "security": [],
+        "parameters": [
+          {
+            "name": "entity_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "logout を要求した SP の entityID。"
+            }
+          },
+          {
+            "name": "relay_state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "default": "default",
+              "description": "request routeが選択したIdP profile ID。"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          },
+          "303": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "operationId": "SamlSingleLogout",
+        "summary": "SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、routeのIdP profileとSPのprofile bindingを照合し、署名必須 SP では署名を検証する。Destination は選択profileの SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、割当profileの鍵で署名した LogoutResponse を登録済み SLO URL へ返す。entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。",
+        "x-scl-requires": [
+          "input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id)",
+          "logout_destination_matches_current_slo_endpoint(context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id)",
+          "logout_signature_satisfies_policy(input.entity_id, context.tenant_id)"
+        ],
+        "x-scl-ensures": [
+          "local_session_cleared",
+          "logout_response_destination_is_registered(input.entity_id, context.tenant_id)",
+          "no_unregistered_redirect"
+        ],
+        "description": "Requires: input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id); logout_destination_matches_current_slo_endpoint(context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id); logout_signature_satisfies_policy(input.entity_id, context.tenant_id)\n\nEnsures: local_session_cleared; logout_response_destination_is_registered(input.entity_id, context.tenant_id); no_unregistered_redirect",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "entity_id": {
+                    "type": "string",
+                    "description": "logout を要求した SP の entityID。"
+                  },
+                  "relay_state": {
+                    "type": "string"
+                  },
+                  "profile_id": {
+                    "type": "string",
+                    "default": "default",
+                    "description": "request routeが選択したIdP profile ID。"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "profile_id"
+                ]
               }
             }
           }
@@ -13863,13 +14128,14 @@
         }
       }
     },
-    "/saml/slo": {
+    "/saml/idp/{profile_id}/slo": {
       "get": {
         "operationId": "SamlSingleLogout",
-        "summary": "SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、署名必須 SP では署名を検証する。Destination は現在 realm の SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、署名済み LogoutResponse を登録済み SLO URL へ返す。互換経路として entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。",
+        "summary": "SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、routeのIdP profileとSPのprofile bindingを照合し、署名必須 SP では署名を検証する。Destination は選択profileの SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、割当profileの鍵で署名した LogoutResponse を登録済み SLO URL へ返す。entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。",
         "x-scl-requires": [
           "input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id)",
           "logout_destination_matches_current_slo_endpoint(context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id)",
           "logout_signature_satisfies_policy(input.entity_id, context.tenant_id)"
         ],
         "x-scl-ensures": [
@@ -13877,9 +14143,17 @@
           "logout_response_destination_is_registered(input.entity_id, context.tenant_id)",
           "no_unregistered_redirect"
         ],
-        "description": "Requires: input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id); logout_destination_matches_current_slo_endpoint(context.tenant_id); logout_signature_satisfies_policy(input.entity_id, context.tenant_id)\n\nEnsures: local_session_cleared; logout_response_destination_is_registered(input.entity_id, context.tenant_id); no_unregistered_redirect",
+        "description": "Requires: input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id); logout_destination_matches_current_slo_endpoint(context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id); logout_signature_satisfies_policy(input.entity_id, context.tenant_id)\n\nEnsures: local_session_cleared; logout_response_destination_is_registered(input.entity_id, context.tenant_id); no_unregistered_redirect",
         "security": [],
         "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "name": "entity_id",
             "in": "query",
@@ -13909,10 +14183,11 @@
       },
       "post": {
         "operationId": "SamlSingleLogout",
-        "summary": "SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、署名必須 SP では署名を検証する。Destination は現在 realm の SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、署名済み LogoutResponse を登録済み SLO URL へ返す。互換経路として entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。",
+        "summary": "SAML Single Logout。LogoutRequest を HTTP-Redirect / HTTP-POST binding で受信し、Issuer で SP を解決し、routeのIdP profileとSPのprofile bindingを照合し、署名必須 SP では署名を検証する。Destination は選択profileの SLO endpoint、返送先は登録済み SingleLogoutService に限定する。ローカルセッションを破棄し、割当profileの鍵で署名した LogoutResponse を登録済み SLO URL へ返す。entityID / sp 指定のローカル logout も受理するが、判定不能・未登録の返送先へはリダイレクトしない (open redirect 防止)。",
         "x-scl-requires": [
           "input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id)",
           "logout_destination_matches_current_slo_endpoint(context.tenant_id)",
+          "requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id)",
           "logout_signature_satisfies_policy(input.entity_id, context.tenant_id)"
         ],
         "x-scl-ensures": [
@@ -13920,7 +14195,7 @@
           "logout_response_destination_is_registered(input.entity_id, context.tenant_id)",
           "no_unregistered_redirect"
         ],
-        "description": "Requires: input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id); logout_destination_matches_current_slo_endpoint(context.tenant_id); logout_signature_satisfies_policy(input.entity_id, context.tenant_id)\n\nEnsures: local_session_cleared; logout_response_destination_is_registered(input.entity_id, context.tenant_id); no_unregistered_redirect",
+        "description": "Requires: input.entity_id == null || issuer_registered(input.entity_id, context.tenant_id); logout_destination_matches_current_slo_endpoint(context.tenant_id); requested_profile_matches_service_provider_binding(input.profile_id, input.entity_id, context.tenant_id); logout_signature_satisfies_policy(input.entity_id, context.tenant_id)\n\nEnsures: local_session_cleared; logout_response_destination_is_registered(input.entity_id, context.tenant_id); no_unregistered_redirect",
         "security": [],
         "requestBody": {
           "required": true,
@@ -13935,13 +14210,31 @@
                   },
                   "relay_state": {
                     "type": "string"
+                  },
+                  "profile_id": {
+                    "type": "string",
+                    "default": "default",
+                    "description": "request routeが選択したIdP profile ID。"
                   }
                 },
-                "additionalProperties": false
+                "additionalProperties": false,
+                "required": [
+                  "profile_id"
+                ]
               }
             }
           }
         },
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success"
@@ -13955,8 +14248,30 @@
     "/saml/metadata": {
       "get": {
         "operationId": "PublishSamlMetadata",
-        "summary": "SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、tenant の XmlFederationSigning 証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。",
+        "summary": "SAML 2.0 IdP metadata の公開。default routeはrealmのdefault profile、profile routeは指定profileのentityID、SSO / SLO endpoint、対応 NameID format、profile scopeのXmlFederationSigning証明書を <EntityDescriptor><IDPSSODescriptor> として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。",
         "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/saml/idp/{profile_id}/metadata": {
+      "get": {
+        "operationId": "PublishSamlMetadata",
+        "summary": "SAML 2.0 IdP metadata の公開。default routeはrealmのdefault profile、profile routeは指定profileのentityID、SSO / SLO endpoint、対応 NameID format、profile scopeのXmlFederationSigning証明書を <EntityDescriptor><IDPSSODescriptor> として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。",
+        "security": [],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success"
@@ -13972,6 +14287,317 @@
         "responses": {
           "200": {
             "description": "Success"
+          }
+        }
+      }
+    },
+    "/saml/idp/{profile_id}/signing-certificate.pem": {
+      "get": {
+        "operationId": "DownloadSamlSigningCertificate",
+        "summary": "SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、この endpoint は新規設定用 active 証明書だけを返す。秘密鍵は返さない。",
+        "security": [],
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/saml/idp-profiles": {
+      "post": {
+        "operationId": "CreateSamlIdentityProviderProfile",
+        "summary": "テナント管理者が追加のsharedまたはdedicated SAML IdP profileを作成する。default profileはこの操作では作成できない。",
+        "x-scl-requires": [
+          "input.profile.tenant_id == context.tenant_id",
+          "input.profile.profile_id != \"default\"",
+          "not input.profile.is_default"
+        ],
+        "description": "Requires: input.profile.tenant_id == context.tenant_id; input.profile.profile_id != \"default\"; not input.profile.is_default",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteSaml",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "$ref": "#/components/schemas/SamlIdentityProviderProfile"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "profile"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "$ref": "#/components/schemas/SamlIdentityProviderProfileAdminResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "profile"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListSamlIdentityProviderProfiles",
+        "summary": "テナント内のSAML IdP profileをdefault先頭、name昇順で一覧する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientReadSaml",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profiles": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SamlIdentityProviderProfileAdminResponse"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "profiles"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/saml/idp-profiles/{profile_id}": {
+      "put": {
+        "operationId": "UpdateSamlIdentityProviderProfile",
+        "summary": "テナント管理者が追加IdP profileのnameまたはmodeを変更する。default profileは変更できず、dedicatedへの変更時に複数SPから参照されていれば拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteSaml",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "$ref": "#/components/schemas/SamlIdentityProviderProfile"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "profile"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "$ref": "#/components/schemas/SamlIdentityProviderProfileAdminResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "profile"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError, DefaultIdPProfileError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DefaultIdPProfileError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteSamlIdentityProviderProfile",
+        "summary": "参照されていない追加IdP profileを削除する。default profileとSPが参照中のprofileは拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteSaml",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError, DefaultIdPProfileError, IdPProfileInUseError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DefaultIdPProfileError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/IdPProfileInUseError"
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -20801,6 +21427,10 @@
       "ApplicationSamlConfig": {
         "type": "object",
         "properties": {
+          "idp_profile_id": {
+            "type": "string",
+            "description": "SAML SPに必ず割り当てられる同一テナント内のIdP profile ID。"
+          },
           "entity_id": {
             "type": "string"
           },
@@ -20843,6 +21473,7 @@
         },
         "additionalProperties": false,
         "required": [
+          "idp_profile_id",
           "entity_id",
           "acs_urls",
           "name_id_format",
@@ -20857,6 +21488,10 @@
       "ApplicationSamlConfigUpdateRequest": {
         "type": "object",
         "properties": {
+          "idp_profile_id": {
+            "type": "string",
+            "description": "SPへ割り当てる同一テナント内のIdP profile。dedicated profileが別SPで使用中なら更新を拒否する。"
+          },
           "acs_urls": {
             "type": "array",
             "items": {
@@ -23457,6 +24092,12 @@
         ],
         "description": "CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。"
       },
+      "DefaultIdPProfileError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "テナントのdefault SAML IdP profileは変更または削除できない。"
+      },
       "Deliver": {
         "type": "object",
         "properties": {
@@ -25252,6 +25893,12 @@
           "changedFields"
         ],
         "description": "管理者がグループの name / description / roles を更新した。"
+      },
+      "IdPProfileInUseError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "SAML IdP profileがSPから参照されているため削除できない。HTTP 409とする。"
       },
       "IdTokenClaims": {
         "type": "object",
@@ -29775,6 +30422,104 @@
         ],
         "description": "SAML 2.0 message binding。SP-initiated の AuthnRequest 受信と SAMLResponse 返送に用いる。HTTP-Redirect は GET でクエリに deflate+base64 を載せ、HTTP-POST は base64 を自動 POST フォームで運ぶ。"
       },
+      "SamlIdentityProviderProfile": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "default": "default"
+          },
+          "profile_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mode": {
+            "$ref": "#/components/schemas/SamlIdentityProviderProfileMode"
+          },
+          "is_default": {
+            "type": "boolean",
+            "default": false
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "profile_id",
+          "name",
+          "mode",
+          "is_default",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAML endpointを使う。追加profileはprofile IDを含む固有entityID・endpoint・XmlFederationSigning鍵scopeを持つ。",
+        "x-scl-untranslated-constraints": [
+          "default_profile_count(tenant_id) == 1",
+          "profile_id == \"default\" iff is_default",
+          "is_default implies mode == \"shared\"",
+          "mode == \"dedicated\" implies bound_service_provider_count(tenant_id, profile_id) <= 1"
+        ]
+      },
+      "SamlIdentityProviderProfileAdminResponse": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/SamlIdentityProviderProfile"
+          },
+          "entity_id": {
+            "type": "string"
+          },
+          "metadata_url": {
+            "type": "string"
+          },
+          "sso_url": {
+            "type": "string"
+          },
+          "slo_url": {
+            "type": "string"
+          },
+          "signing_certificate_url": {
+            "type": "string"
+          },
+          "signing_certificate_fingerprint_sha256": {
+            "type": "string"
+          },
+          "service_provider_count": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "profile",
+          "entity_id",
+          "metadata_url",
+          "sso_url",
+          "slo_url",
+          "signing_certificate_url",
+          "signing_certificate_fingerprint_sha256",
+          "service_provider_count"
+        ],
+        "description": "管理画面向けIdP profile表現。永続profileに加え、request tenantのcanonical issuerからserverが生成した設定値と現在のSP割当数を返す。"
+      },
+      "SamlIdentityProviderProfileMode": {
+        "type": "string",
+        "enum": [
+          "shared",
+          "dedicated"
+        ],
+        "description": "IdP profileを複数SPで共有できるかを表す。"
+      },
       "SamlLogout": {
         "type": "object",
         "properties": {
@@ -29851,6 +30596,12 @@
             "default": "default",
             "description": "所属テナント ID。SP 登録と SAML endpoint は realm ごとに分離する。"
           },
+          "idp_profile_id": {
+            "type": "string",
+            "minLength": 1,
+            "default": "default",
+            "description": "同一テナント内でこのSPに割り当てられたSAML IdP profile。SSO/SLO要求はrouteのprofileと一致する場合だけ受理する。"
+          },
           "entity_id": {
             "type": "string",
             "minLength": 1,
@@ -29916,6 +30667,7 @@
         "additionalProperties": false,
         "required": [
           "tenant_id",
+          "idp_profile_id",
           "entity_id",
           "acs_urls",
           "claim_policy",
@@ -30580,7 +31332,13 @@
           },
           "usage": {
             "$ref": "#/components/schemas/KeyUsage",
-            "description": "鍵の用途。現状 Signing のみ。"
+            "description": "鍵の用途。"
+          },
+          "scope_id": {
+            "type": "string",
+            "minLength": 1,
+            "default": "default",
+            "description": "同一tenant・usage内の独立した鍵lifecycle。通常はdefault、追加SAML IdP profileではprofile ID。"
           },
           "public_jwk": {
             "$ref": "#/components/schemas/JWK"
@@ -30627,15 +31385,16 @@
           "alg",
           "provider",
           "usage",
+          "scope_id",
           "public_jwk",
           "state",
           "created_at",
           "updated_at"
         ],
-        "description": "トークン署名用の非対称鍵。テナントごとに Active 1本＋Verifying 過去鍵 0本以上を JWKS に並べる（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id で絞る。tenant_id は既存 Tenant を指す。",
+        "description": "トークン署名用の非対称鍵。テナント・用途・scopeごとに Active 1本＋Verifying 過去鍵 0本以上を公開する（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id / usage / scope_id で絞る。tenant_id は既存 Tenant を指す。scope_id は既定で default とし、SAML追加IdP profileではprofile IDを用いてXML署名資格情報を分離する。",
         "x-scl-untranslated-constraints": [
           "usage != \"XmlFederationSigning\" || certificate_der != null",
-          "active_key_count(tenant_id, usage) <= 1"
+          "active_key_count(tenant_id, usage, scope_id) <= 1"
         ]
       },
       "SigningKeyArchived": {
@@ -34721,6 +35480,24 @@
         ],
         "actions": [
           {
+            "name": "ListSamlIdentityProviderProfiles",
+            "memberOf": "policy:ManagementApiClientReadSaml+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadSaml",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
             "name": "ListSamlServiceProviders",
             "memberOf": "policy:ManagementApiClientReadSaml+TenantAdministrator",
             "policies": [
@@ -35441,6 +36218,42 @@
         ],
         "actions": [
           {
+            "name": "CreateSamlIdentityProviderProfile",
+            "memberOf": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteSaml",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "DeleteSamlIdentityProviderProfile",
+            "memberOf": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteSaml",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
             "name": "DeleteSamlServiceProvider",
             "memberOf": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
             "policies": [
@@ -35460,6 +36273,24 @@
           },
           {
             "name": "RegisterSamlServiceProvider",
+            "memberOf": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteSaml",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "UpdateSamlIdentityProviderProfile",
             "memberOf": "policy:ManagementApiClientWriteSaml+TenantAdministrator",
             "policies": [
               "ManagementApiClientWriteSaml",

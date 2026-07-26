@@ -362,6 +362,7 @@ CREATE TABLE signing_keys (
     alg TEXT NOT NULL,
     provider TEXT NOT NULL DEFAULT 'Postgres',
     key_usage TEXT NOT NULL DEFAULT 'Signing',
+    scope_id TEXT NOT NULL DEFAULT 'default',
     public_jwk JSONB NOT NULL,
     private_jwk JSONB NOT NULL,
     certificate_der BYTEA,
@@ -376,7 +377,7 @@ CREATE TABLE signing_keys (
 );
 
 CREATE UNIQUE INDEX signing_keys_single_active_idx
-    ON signing_keys (tenant_id, key_usage, active)
+    ON signing_keys (tenant_id, key_usage, scope_id, active)
     WHERE active;
 
 CREATE TABLE outbox (
@@ -730,9 +731,48 @@ CREATE TABLE application_assignments (
 CREATE INDEX application_assignments_subject_idx
     ON application_assignments (subject_type, subject_id);
 
+CREATE TABLE saml_identity_provider_profiles (
+    tenant_id UUID NOT NULL,
+    profile_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    mode TEXT NOT NULL CHECK (mode IN ('shared', 'dedicated')),
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, profile_id),
+    CHECK ((profile_id = 'default') = is_default),
+    CHECK (NOT is_default OR mode = 'shared'),
+    CONSTRAINT saml_identity_provider_profiles_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX saml_identity_provider_profiles_single_default_idx
+    ON saml_identity_provider_profiles (tenant_id) WHERE is_default;
+
+CREATE FUNCTION create_default_saml_identity_provider_profile()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO saml_identity_provider_profiles
+        (tenant_id, profile_id, name, mode, is_default)
+    VALUES (NEW.id, 'default', 'Default', 'shared', TRUE);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tenants_create_default_saml_identity_provider_profile
+AFTER INSERT ON tenants
+FOR EACH ROW EXECUTE FUNCTION create_default_saml_identity_provider_profile();
+
+INSERT INTO saml_identity_provider_profiles
+    (tenant_id, profile_id, name, mode, is_default)
+SELECT id, 'default', 'Default', 'shared', TRUE
+FROM tenants
+ON CONFLICT (tenant_id, profile_id) DO NOTHING;
+
 CREATE TABLE saml_service_providers (
     tenant_id UUID NOT NULL,
     entity_id TEXT NOT NULL,
+    idp_profile_id TEXT NOT NULL DEFAULT 'default',
     application_id UUID UNIQUE,
     application_protocol_type TEXT NOT NULL DEFAULT 'saml'
         CHECK (application_protocol_type = 'saml'),
@@ -749,7 +789,10 @@ CREATE TABLE saml_service_providers (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, entity_id),
     CONSTRAINT saml_service_providers_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT saml_service_providers_idp_profile_fkey
+        FOREIGN KEY (tenant_id, idp_profile_id)
+        REFERENCES saml_identity_provider_profiles (tenant_id, profile_id) ON DELETE RESTRICT
 );
 
 CREATE TABLE wsfed_relying_parties (

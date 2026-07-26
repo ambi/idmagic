@@ -37,8 +37,9 @@ func NewInMemoryKeyStore() (*InMemoryKeyStore, error) {
 func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
-	if tk := s.byTenant[keySetID(tenantID, usage)]; tk != nil {
+	if tk := s.byTenant[keySetID(tenantID, usage, scopeID)]; tk != nil {
 		for _, k := range tk.keys {
 			if k.Kid == tk.active {
 				s.mu.RUnlock()
@@ -48,15 +49,16 @@ func (s *InMemoryKeyStore) GetActiveKey(ctx context.Context) (*signingdomain.Sig
 	}
 	s.mu.RUnlock()
 	// まだ鍵の無いテナントは初回に遅延生成する。
-	return s.rotateInternal(tenantID, usage, time.Now().UTC(), 7*24*time.Hour)
+	return s.rotateInternal(tenantID, usage, scopeID, time.Now().UTC(), 7*24*time.Hour)
 }
 
 func (s *InMemoryKeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	tk := s.byTenant[keySetID(tenantID, usage)]
+	tk := s.byTenant[keySetID(tenantID, usage, scopeID)]
 	if tk == nil {
 		return []*signingdomain.SigningKey{}, nil
 	}
@@ -81,9 +83,11 @@ func (s *InMemoryKeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([
 
 func (s *InMemoryKeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
+	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	tk := s.byTenant[tenantID]
+	tk := s.byTenant[keySetID(tenantID, usage, scopeID)]
 	if tk == nil {
 		return nil, nil //nolint:nilnil // repository contract: a missing key is not an adapter failure.
 	}
@@ -96,15 +100,16 @@ func (s *InMemoryKeyStore) FindByKID(ctx context.Context, kid string) (*signingd
 }
 
 func (s *InMemoryKeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
-	return s.rotateInternal(tenancy.TenantID(ctx), signingports.KeyUsage(ctx), now, grace)
+	return s.rotateInternal(tenancy.TenantID(ctx), signingports.KeyUsage(ctx), signingports.KeyScope(ctx), now, grace)
 }
 
 func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tk := s.byTenant[keySetID(tenantID, usage)]
+	tk := s.byTenant[keySetID(tenantID, usage, scopeID)]
 	if tk == nil {
 		return nil, nil //nolint:nilnil // repository contract: a missing key is not an adapter failure.
 	}
@@ -127,9 +132,10 @@ func (s *InMemoryKeyStore) Disable(ctx context.Context, kid string) (*signingdom
 func (s *InMemoryKeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tk := s.byTenant[keySetID(tenantID, usage)]
+	tk := s.byTenant[keySetID(tenantID, usage, scopeID)]
 	if tk == nil {
 		return nil, nil
 	}
@@ -150,11 +156,11 @@ func (s *InMemoryKeyStore) Provider() signingdomain.KeyProvider {
 
 func (s *InMemoryKeyStore) Healthy(_ context.Context) bool { return true }
 
-func keySetID(tenantID string, usage signingdomain.KeyUsage) string {
-	return tenantID + "\x00" + string(usage)
+func keySetID(tenantID string, usage signingdomain.KeyUsage, scopeID string) string {
+	return tenantID + "\x00" + string(usage) + "\x00" + scopeID
 }
 
-func (s *InMemoryKeyStore) rotateInternal(tenantID string, usage signingdomain.KeyUsage, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
+func (s *InMemoryKeyStore) rotateInternal(tenantID string, usage signingdomain.KeyUsage, scopeID string, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
 	priv, jwk, _, kid, err := keysJOSE.GenerateRSAJWKPair()
 	if err != nil {
 		return nil, err
@@ -162,10 +168,10 @@ func (s *InMemoryKeyStore) rotateInternal(tenantID string, usage signingdomain.K
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	tk := s.byTenant[keySetID(tenantID, usage)]
+	tk := s.byTenant[keySetID(tenantID, usage, scopeID)]
 	if tk == nil {
 		tk = &tenantKeys{}
-		s.byTenant[keySetID(tenantID, usage)] = tk
+		s.byTenant[keySetID(tenantID, usage, scopeID)] = tk
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
@@ -185,6 +191,7 @@ func (s *InMemoryKeyStore) rotateInternal(tenantID string, usage signingdomain.K
 		Alg:        signingdomain.SigAlgPS256,
 		Provider:   signingdomain.KeyProviderLocal,
 		Usage:      usage,
+		ScopeID:    scopeID,
 		PrivateKey: priv,
 		PublicKey:  &priv.PublicKey,
 		PublicJWK:  jwk,

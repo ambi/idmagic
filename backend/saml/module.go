@@ -13,14 +13,20 @@ import (
 
 type Module struct {
 	SPRepo      ports.SamlServiceProviderRepository
+	ProfileRepo ports.SamlIdentityProviderProfileRepository
 	ReplayStore ports.AuthnRequestReplayStore
 }
 
 func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	applicationGate *support.ApplicationGate, userRepo userports.UserRepository, federationSigner samltoken.SignerProvider,
 ) {
+	profileRepo := m.ProfileRepo
+	if profileRepo == nil {
+		profileRepo, _ = m.SPRepo.(ports.SamlIdentityProviderProfileRepository)
+	}
 	samlhttp.RegisterRoutes(g, samlhttp.Deps{
 		Deps: deps, Authenticator: authenticator, ApplicationGate: applicationGate,
-		SamlSPRepo: m.SPRepo, ReplayStore: m.ReplayStore, FederationSigner: federationSigner, UserRepo: userRepo,
+		SamlSPRepo: m.SPRepo, IDPProfileRepo: profileRepo, ReplayStore: m.ReplayStore,
+		FederationSigner: federationSigner, UserRepo: userRepo,
 	})
 }

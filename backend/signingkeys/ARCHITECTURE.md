@@ -11,15 +11,19 @@ The `SigningKeys` context owns tenant-scoped asymmetric key metadata, provider s
 verification overlap, and archival. It exposes key material only through published signing and public-key
 ports; protocol serialization remains in OAuth2, SAML, and WS-Federation adapters.
 
-## Usage isolation
+## Usage and scope isolation
 
-Every key lookup is scoped by both the request tenant and `KeyUsage`. Callers that do not select a usage
-use `Signing`, preserving a small API for OAuth2/OIDC. XML protocol adapters explicitly select
-`XmlFederationSigning`, so a JWT key can never be selected accidentally for an XML assertion.
+Every key lookup is scoped by the request tenant, `KeyUsage`, and an opaque scope ID. Callers that do
+not select a usage or scope use `Signing` and the default scope, preserving a small API for OAuth2/OIDC.
+XML protocol adapters explicitly select `XmlFederationSigning`; SAML additionally selects its identity
+provider profile ID as the scope. A JWT key can therefore never be selected for an XML assertion, and
+one SAML profile cannot select another profile's credential.
 
-The local, PostgreSQL, and Vault adapters all maintain one active key per tenant and usage. PostgreSQL
-enforces the same invariant with a partial unique index. This compound scope exists because rotating a
-SAML trust must not rotate every JWT verification key, and the reverse must also be true.
+The local, PostgreSQL, and Vault adapters all maintain one active key per tenant, usage, and scope.
+PostgreSQL enforces the same invariant with a partial unique index, and Vault includes the scope in its
+key-set identity. This compound key exists because rotating one SAML profile must not rotate another
+profile or every JWT verification key. The SAML profile model that supplies the scope is described in
+[ADR-145](../../decisions/ADR-145-shareable-saml-idp-profiles.md).
 
 ## XML federation credentials
 
@@ -34,9 +38,9 @@ Signature and X.509 operations because those wire formats advertise RSA-SHA256 r
 
 ## Lifecycle
 
-Keys are created lazily for the resolved tenant and usage. No default tenant receives an eager bootstrap
-key. This keeps tenant creation uniform and avoids special state that cannot be explained by the
-request-scoped lifecycle.
+Keys are created lazily for the resolved tenant, usage, and scope. No default tenant receives an eager
+bootstrap key. This keeps tenant creation uniform and avoids special state that cannot be explained by
+the request-scoped lifecycle.
 
 Rotation atomically demotes the old active key to verifying and gives it an overlap expiry. Public key
 and certificate listing includes active and unexpired verifying records; archive removes expired records

@@ -549,9 +549,20 @@ type SamlAuthnrequestReplay struct {
 	CreatedAt time.Time
 }
 
+type SamlIdentityProviderProfile struct {
+	TenantID  string
+	ProfileID string
+	Name      string
+	Mode      string
+	IsDefault bool
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type SamlServiceProvider struct {
 	TenantID                          string
 	EntityID                          string
+	IdpProfileID                      string
 	ApplicationID                     pgtype.UUID
 	ApplicationProtocolType           string
 	DisplayName                       string
@@ -584,19 +595,21 @@ type ScimUserRef struct {
 }
 
 type SigningKey struct {
-	Kid        string
-	TenantID   string
-	Alg        string
-	Provider   string
-	KeyUsage   string
-	PublicJwk  []byte
-	PrivateJwk []byte
-	Active     bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	RetiredAt  pgtype.Timestamptz
-	ExpiresAt  pgtype.Timestamptz
-	ArchivedAt pgtype.Timestamptz
+	Kid            string
+	TenantID       string
+	Alg            string
+	Provider       string
+	KeyUsage       string
+	ScopeID        string
+	PublicJwk      []byte
+	PrivateJwk     []byte
+	CertificateDer []byte
+	Active         bool
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	RetiredAt      pgtype.Timestamptz
+	ExpiresAt      pgtype.Timestamptz
+	ArchivedAt     pgtype.Timestamptz
 }
 
 type Tenant struct {

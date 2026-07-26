@@ -1,11 +1,4 @@
-import {
-  IconArrowLeft,
-  IconExternalLink,
-  IconKey,
-  IconPencil,
-  IconTrash,
-  IconWorldShare,
-} from '@tabler/icons-react'
+import { IconExternalLink, IconKey, IconTrash, IconWorldShare } from '@tabler/icons-react'
 import { useState } from 'react'
 import { deleteAdminApplication } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -14,13 +7,12 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { AssignmentList } from './AdminApplicationAssignments'
+import { AdminApplicationDetailActions } from './AdminApplicationDetailActions'
 import { IdMagicSetupCard } from './IdMagicSetupCard'
-import { ProvisioningNavButton } from './AdminApplicationProvisioningShared'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import {
   AppIcon,
   CopyableField,
-  editURL,
   kindLabel,
   KindBadge,
   listURL,
@@ -34,19 +26,24 @@ import {
   UriList,
   wsfedTokenTypeOptions,
 } from './AdminApplicationsShared'
-import type { AdminApplicationDetail } from '../../types'
-import type { AdminIntegrationEndpointCatalog } from '../../types'
+import type {
+  AdminApplicationDetail,
+  AdminIntegrationEndpointCatalog,
+  AdminSamlIDPProfile,
+} from '../../types'
 
 export function AdminApplicationDetailPage({
   csrfToken,
   actorUsername,
   detail,
   integrationEndpoints,
+  samlIDPProfiles = [],
 }: {
   csrfToken: string
   actorUsername?: string
   detail: AdminApplicationDetail
   integrationEndpoints: AdminIntegrationEndpointCatalog
+  samlIDPProfiles?: AdminSamlIDPProfile[]
 }) {
   const app = detail.application
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -74,31 +71,12 @@ export function AdminApplicationDetailPage({
       title={app.name}
       description={kindLabel(app, t)}
       actions={
-        <div className="flex items-center gap-2">
-          <a
-            href={listURL()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-          >
-            <IconArrowLeft size={16} aria-hidden="true" />
-            {t.backToList}
-          </a>
-          <ProvisioningNavButton app={app} />
-          <Button asChild>
-            <a href={editURL(app.application_id)}>
-              <IconPencil size={16} aria-hidden="true" />
-              {t.edit}
-            </a>
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={busy}
-            onClick={() => setConfirmDelete(true)}
-          >
-            <IconTrash size={16} aria-hidden="true" />
-            {t.delete}
-          </Button>
-        </div>
+        <AdminApplicationDetailActions
+          app={app}
+          busy={busy}
+          onDelete={() => setConfirmDelete(true)}
+          t={t}
+        />
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
@@ -118,7 +96,14 @@ export function AdminApplicationDetailPage({
       ) : null}
 
       <div className="grid max-w-3xl gap-6">
-        <IdMagicSetupCard detail={detail} integrationEndpoints={integrationEndpoints} t={t} />
+        <IdMagicSetupCard
+          detail={detail}
+          integrationEndpoints={integrationEndpoints}
+          samlIDPProfile={samlIDPProfiles.find(
+            ({ profile }) => profile.profile_id === detail.saml?.idp_profile_id,
+          )}
+          t={t}
+        />
 
         <Card className="overflow-hidden">
           <div className="flex items-start gap-3 border-b border-slate-200 p-5">

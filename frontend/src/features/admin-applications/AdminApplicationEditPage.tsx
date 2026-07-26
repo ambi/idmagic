@@ -24,6 +24,7 @@ import {
 import { useDictionary } from '../../lib/i18n'
 import { AssignmentManager } from './AdminApplicationAssignments'
 import { CategoryManager } from './AdminApplicationCategories'
+import { AdminApplicationSamlFormSection } from './AdminApplicationSamlFormSection'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import { ClientSecretRotationPanel } from './ClientSecretRotationPanel'
 import {
@@ -49,6 +50,7 @@ import {
 } from './AdminApplicationsShared'
 import type {
   AdminApplicationDetail,
+  AdminSamlIDPProfile,
   ApplicationStatus,
   RequiredAuthnStrength,
   SignInRule,
@@ -60,10 +62,12 @@ export function AdminApplicationEditPage({
   csrfToken,
   actorUsername,
   detail,
+  samlIDPProfiles: initialSamlIDPProfiles = [],
 }: {
   csrfToken: string
   actorUsername?: string
   detail: AdminApplicationDetail
+  samlIDPProfiles?: AdminSamlIDPProfile[]
 }) {
   const app = detail.application
   const [name, setName] = useState(app.name)
@@ -94,6 +98,7 @@ export function AdminApplicationEditPage({
   )
   const [rulesJSON, setRulesJSON] = useState(JSON.stringify(detail.wsfed?.rules ?? [], null, 2))
   const [samlACS, setSamlACS] = useState((detail.saml?.acs_urls ?? []).join('\n'))
+  const samlIDPProfileID = useRef(detail.saml?.idp_profile_id ?? 'default')
   const [samlSLO, setSamlSLO] = useState(detail.saml?.slo_url ?? '')
   const [samlAudience, setSamlAudience] = useState(detail.saml?.audience ?? '')
   const [samlNameIDFormat, setSamlNameIDFormat] = useState(
@@ -265,6 +270,7 @@ export function AdminApplicationEditPage({
         }
         const changed =
           nextACS.join(',') !== detail.saml.acs_urls.join(',') ||
+          samlIDPProfileID.current !== detail.saml.idp_profile_id ||
           samlSLO.trim() !== detail.saml.slo_url ||
           samlAudience.trim() !== detail.saml.audience ||
           samlNameIDFormat !== detail.saml.name_id_format ||
@@ -281,6 +287,7 @@ export function AdminApplicationEditPage({
             return
           }
           await updateApplicationSamlConfig(csrfToken, app.application_id, {
+            idp_profile_id: samlIDPProfileID.current,
             acs_urls: nextACS,
             slo_url: samlSLO.trim(),
             audience: samlAudience.trim(),
@@ -334,6 +341,7 @@ export function AdminApplicationEditPage({
       setSaving(false)
     }
   }
+
   return (
     <AdminShell
       active="applications"
@@ -603,122 +611,39 @@ export function AdminApplicationEditPage({
               </section>
             ) : null}
             {detail.saml ? (
-              <section className="grid gap-4 border-t border-slate-200 pt-5">
-                <div className="flex items-center gap-2">
-                  <IconWorldShare size={16} className="text-slate-400" aria-hidden="true" />
-                  <SectionTitle>{t.samlSectionHeading}</SectionTitle>
-                </div>
-                <CopyableField label={t.entityIdFieldLabel} value={detail.saml.entity_id} />
-                <div className="grid gap-1.5">
-                  <Label htmlFor="edit-saml-acs">{t.acsUrlFieldLabel}</Label>
-                  <textarea
-                    id="edit-saml-acs"
-                    value={samlACS}
-                    onChange={(e) => setSamlACS(e.target.value)}
-                    rows={2}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
-                    placeholder="https://app.example.com/saml/acs"
-                  />
-                  <p className="text-xs text-slate-500">{t.acsUrlHelp}</p>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="edit-saml-slo">{t.sloUrlOptionalFieldLabel}</Label>
-                  <Input
-                    id="edit-saml-slo"
-                    value={samlSLO}
-                    onChange={(e) => setSamlSLO(e.target.value)}
-                    className="font-mono text-xs"
-                    placeholder="https://app.example.com/saml/slo"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label>{t.nameIdFormatFieldLabel}</Label>
-                  <Select
-                    value={samlNameIDFormat}
-                    onValueChange={setSamlNameIDFormat}
-                    options={nameIdFormatOptions(t)}
-                    className="w-full"
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="edit-saml-nameid-source">{t.nameIdSourceFieldLabel}</Label>
-                    <Input
-                      id="edit-saml-nameid-source"
-                      value={samlNameIDSource}
-                      onChange={(e) => setSamlNameIDSource(e.target.value)}
-                      placeholder="sub"
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label htmlFor="edit-saml-audience">{t.audienceOptionalFieldLabel}</Label>
-                    <Input
-                      id="edit-saml-audience"
-                      value={samlAudience}
-                      onChange={(e) => setSamlAudience(e.target.value)}
-                      className="font-mono text-xs"
-                      placeholder={t.audienceEntityDefault}
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2.5">
-                  <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={samlSignAssertion}
-                      onChange={(e) => setSamlSignAssertion(e.target.checked)}
-                      className="size-4"
-                    />
-                    {t.signAssertionLabel}
-                  </label>
-                  <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={samlSignResponse}
-                      onChange={(e) => setSamlSignResponse(e.target.checked)}
-                      className="size-4"
-                    />
-                    {t.signResponseLabel}
-                  </label>
-                  <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={samlWantSignedRequests}
-                      onChange={(e) => setSamlWantSignedRequests(e.target.checked)}
-                      className="size-4"
-                    />
-                    {t.wantSignedRequestsLabel}
-                  </label>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="edit-saml-request-signing-cert">
-                    {t.requestSigningCertFieldLabel}
-                  </Label>
-                  <textarea
-                    id="edit-saml-request-signing-cert"
-                    value={samlSigningCert}
-                    onChange={(e) => setSamlSigningCert(e.target.value)}
-                    rows={7}
-                    spellCheck={false}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
-                    placeholder="-----BEGIN CERTIFICATE-----"
-                  />
-                  <p className="text-xs text-slate-500">{t.requestSigningCertHelp}</p>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="edit-saml-rules">{t.claimMappingRulesJsonFieldLabel}</Label>
-                  <textarea
-                    id="edit-saml-rules"
-                    value={samlRulesJSON}
-                    onChange={(e) => setSamlRulesJSON(e.target.value)}
-                    rows={8}
-                    spellCheck={false}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
-                    placeholder='[{"claim_type":"email","source":"user_attribute","source_key":"email","required":true}]'
-                  />
-                  <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
-                </div>
-              </section>
+              <AdminApplicationSamlFormSection
+                csrfToken={csrfToken}
+                applicationName={app.name}
+                entityID={detail.saml.entity_id}
+                initialProfiles={initialSamlIDPProfiles}
+                initialProfileID={samlIDPProfileID.current}
+                disabled={saving}
+                acs={samlACS}
+                slo={samlSLO}
+                audience={samlAudience}
+                nameIDFormat={samlNameIDFormat}
+                nameIDSource={samlNameIDSource}
+                signAssertion={samlSignAssertion}
+                signResponse={samlSignResponse}
+                wantSignedRequests={samlWantSignedRequests}
+                signingCertificate={samlSigningCert}
+                rulesJSON={samlRulesJSON}
+                onProfileChange={(value) => {
+                  samlIDPProfileID.current = value
+                }}
+                onACSChange={setSamlACS}
+                onSLOChange={setSamlSLO}
+                onAudienceChange={setSamlAudience}
+                onNameIDFormatChange={setSamlNameIDFormat}
+                onNameIDSourceChange={setSamlNameIDSource}
+                onSignAssertionChange={setSamlSignAssertion}
+                onSignResponseChange={setSamlSignResponse}
+                onWantSignedRequestsChange={setSamlWantSignedRequests}
+                onSigningCertificateChange={setSamlSigningCert}
+                onRulesJSONChange={setSamlRulesJSON}
+                onError={setError}
+                t={t}
+              />
             ) : null}
 
             {app.kind !== 'service' ? (

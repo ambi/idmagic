@@ -6,10 +6,13 @@ updated_at: 2026-07-26
 modules:
   saml-domain:
     path: domain
-    responsibility: Saml のドメインモデルと純粋な規則。
+    responsibility: Saml のSP・IdP profileドメインモデルとtrust境界の純粋な規則。
     context: Saml
     layer: domain
     role: published_interface
+    realizes:
+      - { context: Saml, kind: model, element: SamlIdentityProviderProfile }
+      - { context: Saml, kind: model, element: SamlServiceProvider }
     depends_on:
       - module: claimmapping-domain
         via: published_interface
@@ -49,10 +52,17 @@ modules:
         via: published_interface
   saml-adapters:
     path: handlers_http
-    responsibility: Saml の HTTP・永続化 adapter。
+    responsibility: Saml protocol routeとIdP profile管理APIのHTTP adapter。
     context: Saml
     layer: adapters
     role: binding
+    realizes:
+      - { context: Saml, kind: interface, element: CreateSamlIdentityProviderProfile }
+      - { context: Saml, kind: interface, element: ListSamlIdentityProviderProfiles }
+      - { context: Saml, kind: interface, element: UpdateSamlIdentityProviderProfile }
+      - { context: Saml, kind: interface, element: DeleteSamlIdentityProviderProfile }
+      - { context: Saml, kind: interface, element: PublishSamlMetadata }
+      - { context: Saml, kind: interface, element: SamlSingleSignOn }
     depends_on:
       - module: saml-metadata-saml
         via: binding
@@ -126,7 +136,7 @@ modules:
         via: composition_root
   saml-db-memory:
     path: db_memory
-    responsibility: backend/saml/db_memory の Flat Architecture adapter。
+    responsibility: SAML SP・IdP profile・request replayのin-memory永続化adapter。
     context: Saml
     layer: adapters
     role: binding
@@ -137,7 +147,7 @@ modules:
         via: technical_shared
   saml-db-postgres:
     path: db_postgres
-    responsibility: backend/saml/db_postgres の Flat Architecture adapter。
+    responsibility: SAML SP・IdP profileのPostgreSQL永続化adapter。
     context: Saml
     layer: adapters
     role: binding

@@ -15,12 +15,12 @@ type LogoutService struct {
 // ResolveRedirect は IdP-initiated ログアウトの返送先を返す。entityID で SP を解決し、
 // 登録済み SingleLogoutService URL があればそれを返す。SP / SLO URL が解決できない、または
 // 判定不能なら空文字を返す (open redirect 防止)。エラーは「リダイレクトしない」判断へ畳む。
-func (s LogoutService) ResolveRedirect(ctx context.Context, tenantID, entityID, relayState string) string {
+func (s LogoutService) ResolveRedirect(ctx context.Context, tenantID, profileID, entityID, relayState string) string {
 	if entityID == "" || s.SPRepo == nil {
 		return ""
 	}
 	sp, err := s.SPRepo.FindByEntityID(ctx, tenantID, entityID)
-	if err != nil || sp == nil || sp.SLOURL == "" {
+	if err != nil || sp == nil || sp.SLOURL == "" || !sp.MatchesIDPProfile(profileID) {
 		return ""
 	}
 	target := sp.SLOURL
@@ -33,6 +33,7 @@ func (s LogoutService) ResolveRedirect(ctx context.Context, tenantID, entityID, 
 // LogoutRequestInput は adapter が wire から組み立てて渡す LogoutRequest 検証入力。
 type LogoutRequestInput struct {
 	TenantID            string
+	ProfileID           string
 	Request             samldomain.LogoutRequest
 	Binding             samldomain.Binding
 	RawXML              []byte
@@ -57,6 +58,9 @@ func (s LogoutService) ValidateLogoutRequest(ctx context.Context, in LogoutReque
 	}
 	if sp == nil || sp.SLOURL == "" {
 		return LogoutRequestDecision{BadRequest: "unknown service provider", EmitLogout: true}, nil
+	}
+	if !sp.MatchesIDPProfile(in.ProfileID) {
+		return LogoutRequestDecision{BadRequest: "service provider is not assigned to this identity provider profile"}, nil
 	}
 	if err := samldomain.ValidateRequestSignature(in.Binding, in.RawXML, in.RawQuery, *sp); err != nil {
 		//nolint:nilerr // 署名検証エラーは 400 の reject outcome へ変換し、呼び出し側には error を返さない。

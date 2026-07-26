@@ -43,6 +43,7 @@ func ValidSamlNameIDFormat(format string) bool {
 // entityID で識別し、許可 ACS の閉集合・audience・NameID format・署名方針・claim policy を束ねる。
 type SamlServiceProvider struct {
 	TenantID      string                         `json:"tenant_id"`
+	IDPProfileID  string                         `json:"idp_profile_id"`
 	EntityID      string                         `json:"entity_id"`
 	ApplicationID string                         `json:"application_id,omitempty"`
 	DisplayName   string                         `json:"display_name,omitempty"`
@@ -60,6 +61,17 @@ type SamlServiceProvider struct {
 	AuthnRequestSigningCertificatePEM string    `json:"authn_request_signing_certificate_pem,omitempty"`
 	CreatedAt                         time.Time `json:"created_at"`
 	UpdatedAt                         time.Time `json:"updated_at"`
+}
+
+func (sp SamlServiceProvider) EffectiveIDPProfileID() string {
+	if sp.IDPProfileID == "" {
+		return DefaultIDPProfileID
+	}
+	return sp.IDPProfileID
+}
+
+func (sp SamlServiceProvider) MatchesIDPProfile(profileID string) bool {
+	return profileID != "" && sp.EffectiveIDPProfileID() == profileID
 }
 
 // EffectiveAudience は assertion の AudienceRestriction に用いる値を返す。未設定なら entityID。

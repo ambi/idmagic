@@ -67,6 +67,27 @@ const integrationEndpoints = {
   },
 }
 
+const samlIDPProfiles = [
+  {
+    profile: {
+      tenant_id: 'tenant-1',
+      profile_id: 'default',
+      name: 'Default',
+      mode: 'shared' as const,
+      is_default: true,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    },
+    entity_id: integrationEndpoints.saml.entity_id,
+    metadata_url: integrationEndpoints.saml.metadata_url,
+    sso_url: integrationEndpoints.saml.sso_url,
+    slo_url: integrationEndpoints.saml.slo_url,
+    signing_certificate_url: integrationEndpoints.saml.signing_certificate.download_url,
+    signing_certificate_fingerprint_sha256: 'AABBCC',
+    service_provider_count: 2,
+  },
+]
+
 describe('locale', () => {
   afterEach(() => restoreGlobals())
 
@@ -79,6 +100,7 @@ describe('locale', () => {
         actorRealm="acme"
         settings={settings}
         integrationEndpoints={integrationEndpoints}
+        samlIDPProfiles={samlIDPProfiles}
       />,
     )
     expect(screen.getByRole('heading', { name: t.pageTitle })).toBeInTheDocument()
@@ -119,6 +141,7 @@ describe('AdminSettingsPage', () => {
         actorRealm="acme"
         settings={settings}
         integrationEndpoints={integrationEndpoints}
+        samlIDPProfiles={samlIDPProfiles}
       />,
     )
 
@@ -256,20 +279,67 @@ describe('AdminSettingsPage', () => {
         actorRealm="acme"
         settings={settings}
         integrationEndpoints={integrationEndpoints}
+        samlIDPProfiles={samlIDPProfiles}
       />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: t.tabIntegrationEndpointsLabel }))
 
     expect(screen.getByText(integrationEndpoints.oauth.openid_configuration)).toBeInTheDocument()
-    expect(screen.getByText(integrationEndpoints.saml.metadata_url)).toBeInTheDocument()
+    expect(screen.getAllByText(integrationEndpoints.saml.metadata_url).length).toBeGreaterThan(0)
     expect(screen.getByText(integrationEndpoints.apis.scim_base_url)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: t.samlProfilesHeading })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Default')).toBeDisabled()
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName === 'P' &&
+          element.textContent?.includes(t.samlProfileAssignments.replace('{count}', '2')) === true,
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: t.downloadCertificate })).toHaveAttribute(
       'href',
       integrationEndpoints.saml.signing_certificate.download_url,
     )
     fireEvent.click(screen.getAllByRole('button', { name: t.copy })[0])
     expect(writeText).toHaveBeenCalled()
+  })
+
+  it('creates a SAML identity provider profile', async () => {
+    const created = {
+      ...samlIDPProfiles[0],
+      profile: {
+        ...samlIDPProfiles[0].profile,
+        profile_id: 'partner',
+        name: 'Partner trust',
+        is_default: false,
+      },
+      entity_id: 'https://idp.example/realms/acme/saml/idp/partner',
+      metadata_url: 'https://idp.example/realms/acme/saml/idp/partner/metadata',
+      service_provider_count: 0,
+    }
+    const fetchMock = mock().mockResolvedValue(response(201, created))
+    stubGlobal('fetch', fetchMock)
+    await renderWithRouter(
+      <AdminSettingsPage
+        csrfToken="csrf"
+        actorUsername="admin"
+        actorRoles={['admin']}
+        actorRealm="acme"
+        settings={settings}
+        integrationEndpoints={integrationEndpoints}
+        samlIDPProfiles={samlIDPProfiles}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.tabIntegrationEndpointsLabel }))
+    fireEvent.change(screen.getAllByLabelText(t.samlProfileNameLabel)[0], {
+      target: { value: created.profile.name },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.samlProfileCreate }))
+
+    expect(await screen.findByDisplayValue(created.profile.name)).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalled()
   })
 
   it('localizes the integration endpoints tab in Japanese', async () => {

@@ -140,6 +140,7 @@ describe('AdminApplicationDetailPage', () => {
     const samlDetail: AdminApplicationDetail = {
       application: samlApp,
       saml: {
+        idp_profile_id: 'default',
         entity_id: 'https://sp.example',
         acs_urls: ['https://sp.example/acs'],
         slo_url: '',
@@ -153,18 +154,42 @@ describe('AdminApplicationDetailPage', () => {
         rules: [],
       },
     }
+    const dedicatedProfile = {
+      profile: {
+        tenant_id: 'tenant-1',
+        profile_id: 'partner',
+        name: 'Partner trust',
+        mode: 'dedicated' as const,
+        is_default: false,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+      entity_id: 'https://idp.example/realms/acme/saml/idp/partner',
+      metadata_url: 'https://idp.example/realms/acme/saml/idp/partner/metadata',
+      sso_url: 'https://idp.example/realms/acme/saml/idp/partner/sso',
+      slo_url: 'https://idp.example/realms/acme/saml/idp/partner/slo',
+      signing_certificate_url:
+        'https://idp.example/realms/acme/saml/idp/partner/signing-certificate.pem',
+      signing_certificate_fingerprint_sha256: 'DD:EE:FF',
+      service_provider_count: 1,
+    }
+    samlDetail.saml!.idp_profile_id = dedicatedProfile.profile.profile_id
     await renderWithRouter(
       <AdminApplicationDetailPage
         csrfToken="csrf"
         detail={samlDetail}
         integrationEndpoints={integrationEndpoints}
+        samlIDPProfiles={[dedicatedProfile]}
       />,
     )
-    expect(screen.getByText(integrationEndpoints.saml.metadata_url)).toBeInTheDocument()
-    expect(screen.getByText(integrationEndpoints.saml.entity_id)).toBeInTheDocument()
+    expect(screen.getByText(dedicatedProfile.metadata_url)).toBeInTheDocument()
+    expect(screen.getByText(dedicatedProfile.entity_id)).toBeInTheDocument()
+    expect(
+      screen.getByText(dedicatedProfile.signing_certificate_fingerprint_sha256),
+    ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: t.downloadSigningCertificate })).toHaveAttribute(
       'href',
-      integrationEndpoints.saml.signing_certificate.download_url,
+      dedicatedProfile.signing_certificate_url,
     )
   })
 })

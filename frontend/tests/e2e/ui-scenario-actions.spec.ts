@@ -5,6 +5,7 @@ import { afterAll, beforeAll, expect, test } from 'bun:test'
 import {
   authorizePath,
   clickButtonByAnyText,
+  clickEnabledButtonByText,
   clickButtonByText,
   clickElementByAriaLabel,
   clickLinkByText,
@@ -23,6 +24,7 @@ import {
   waitForPage,
   waitForUrl,
   waitForEmailURL,
+  waitForInputValue,
   waitForText,
 } from './fixtures'
 
@@ -125,6 +127,23 @@ test('admin general settings can be updated from the browser', async () => {
 
     await waitForText(view, 'Updated the display name.')
     await waitForText(view, displayName)
+  } finally {
+    view.close()
+  }
+}, 60_000)
+
+test('admin can create a shared SAML identity provider profile', async () => {
+  const view = new Bun.WebView({ width: 1280, height: 2200 })
+  try {
+    await navigateAndLogin(view, '/admin/settings', 'admin-settings')
+    await clickButtonByText(view, 'Integration endpoints')
+
+    const profileName = `SAML partner ${Date.now()}`
+    await setInputValue(view, '#new-saml-profile-name', profileName)
+    await clickEnabledButtonByText(view, 'Create profile')
+
+    await waitForInputValue(view, profileName)
+    await waitForText(view, 'Shared (multiple SPs)')
   } finally {
     view.close()
   }

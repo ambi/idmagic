@@ -20,6 +20,10 @@ type KeyStoreSignerProvider struct {
 	KeyStore signingports.KeyStore
 }
 
+func WithSignerScope(ctx context.Context, scopeID string) context.Context {
+	return signingports.WithKeyScope(ctx, scopeID)
+}
+
 func (p KeyStoreSignerProvider) xmlContext(ctx context.Context) context.Context {
 	return signingports.WithKeyUsage(ctx, signingdomain.KeyUsageXMLFederationSigning)
 }

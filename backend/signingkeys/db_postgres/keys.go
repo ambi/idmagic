@@ -27,8 +27,9 @@ func NewKeyStore(_ context.Context, pool sharedpostgres.DB) (*KeyStore, error) {
 func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	key, err := scanSigningKey(s.Pool.QueryRow(ctx,
-		keySelect+" WHERE active=TRUE AND tenant_id=$1 AND key_usage=$2 LIMIT 1", tenantID, usage))
+		keySelect+" WHERE active=TRUE AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 LIMIT 1", tenantID, usage, scopeID))
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +43,9 @@ func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey,
 func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	rows, err := s.Pool.Query(ctx,
-		keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 ORDER BY created_at DESC", tenantID, usage)
+		keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 ORDER BY created_at DESC", tenantID, usage, scopeID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +64,8 @@ func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey,
 func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
-	rows, err := s.Pool.Query(ctx, keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND (active=TRUE OR expires_at>$3) ORDER BY created_at DESC", tenantID, usage, now)
+	scopeID := signingports.KeyScope(ctx)
+	rows, err := s.Pool.Query(ctx, keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 AND (active=TRUE OR expires_at>$4) ORDER BY created_at DESC", tenantID, usage, scopeID, now)
 	if err != nil {
 		return nil, err
 	}
@@ -81,8 +84,9 @@ func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signin
 func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	return scanSigningKey(s.Pool.QueryRow(ctx,
-		keySelect+" WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3", kid, tenantID, usage))
+		keySelect+" WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4", kid, tenantID, usage, scopeID))
 }
 
 func (s *KeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
@@ -101,8 +105,9 @@ func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grac
 func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	key, err := scanSigningKey(s.Pool.QueryRow(ctx,
-		keySelect+" WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3", kid, tenantID, usage))
+		keySelect+" WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4", kid, tenantID, usage, scopeID))
 	if err != nil || key == nil {
 		return nil, err
 	}
@@ -121,11 +126,12 @@ func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.Sign
 func (s *KeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	rows, err := s.Pool.Query(ctx, `UPDATE signing_keys
 SET archived_at=$2,updated_at=$2
-WHERE archived_at IS NULL AND tenant_id=$1 AND expires_at IS NOT NULL AND expires_at<=$2 AND key_usage=$3
-RETURNING kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at`,
-		tenantID, before.UTC(), usage)
+WHERE archived_at IS NULL AND tenant_id=$1 AND expires_at IS NOT NULL AND expires_at<=$2 AND key_usage=$3 AND scope_id=$4
+RETURNING kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at`,
+		tenantID, before.UTC(), usage, scopeID)
 	if err != nil {
 		return nil, err
 	}
@@ -150,6 +156,7 @@ func (s *KeyStore) Healthy(ctx context.Context) bool { return s.Pool.Ping(ctx) =
 
 func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now time.Time, grace time.Duration, dueBefore *time.Time) (*signingdomain.SigningKey, error) {
 	usage := signingports.KeyUsage(ctx)
+	scopeID := signingports.KeyScope(ctx)
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
@@ -183,14 +190,14 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 	defer func() { _ = tx.Rollback(ctx) }()
 	// advisory lock は tenant 単位に取り、テナント間の回転は直列化しない。
 	if _, err := tx.Exec(ctx,
-		"SELECT pg_advisory_xact_lock(hashtext('idmagic-signing-key:'||$1||':'||$2))", tenantID, usage); err != nil {
+		"SELECT pg_advisory_xact_lock(hashtext('idmagic-signing-key:'||$1||':'||$2||':'||$3))", tenantID, usage, scopeID); err != nil {
 		return nil, err
 	}
 	if dueBefore != nil {
 		var createdAt time.Time
 		err := tx.QueryRow(ctx,
-			"SELECT created_at FROM signing_keys WHERE active AND tenant_id=$1 AND key_usage=$2 LIMIT 1 FOR UPDATE",
-			tenantID, usage).Scan(&createdAt)
+			"SELECT created_at FROM signing_keys WHERE active AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 LIMIT 1 FOR UPDATE",
+			tenantID, usage, scopeID).Scan(&createdAt)
 		if err == nil && createdAt.After(*dueBefore) {
 			if err := tx.Commit(ctx); err != nil {
 				return nil, err
@@ -202,14 +209,14 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 		}
 	}
 	if _, err := tx.Exec(ctx,
-		"UPDATE signing_keys SET active=FALSE,retired_at=$3,expires_at=$4,updated_at=$3 WHERE active AND tenant_id=$1 AND key_usage=$2",
-		tenantID, usage, now, expires); err != nil {
+		"UPDATE signing_keys SET active=FALSE,retired_at=$4,expires_at=$5,updated_at=$4 WHERE active AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3",
+		tenantID, usage, scopeID, now, expires); err != nil {
 		return nil, err
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO signing_keys
-		(kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,certificate_der,active)
-VALUES ($1,$2,'PS256','Database',$3,$4,$5,$6,TRUE)`,
-		kid, tenantID, usage, string(publicJSON), string(privateJSON), certificateDER); err != nil {
+		(kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active)
+VALUES ($1,$2,'PS256','Database',$3,$4,$5,$6,$7,TRUE)`,
+		kid, tenantID, usage, scopeID, string(publicJSON), string(privateJSON), certificateDER); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -218,17 +225,18 @@ VALUES ($1,$2,'PS256','Database',$3,$4,$5,$6,TRUE)`,
 	return &signingdomain.SigningKey{
 		TenantID: tenantID, Kid: kid, Alg: signingdomain.SigAlgPS256,
 		Provider: signingdomain.KeyProviderDatabase, Usage: usage,
+		ScopeID:    scopeID,
 		PrivateKey: priv, PublicKey: &priv.PublicKey,
 		PublicJWK: publicJWK, CertificateDER: certificateDER, Active: true, CreatedAt: now,
 	}, nil
 }
 
-const keySelect = `SELECT kid,tenant_id,alg,provider,key_usage,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at FROM signing_keys`
+const keySelect = `SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at FROM signing_keys`
 
 func scanSigningKey(row sharedpostgres.RowScanner) (*signingdomain.SigningKey, error) {
 	var key signingdomain.SigningKey
 	var publicJSON, privateJSON []byte
-	err := row.Scan(&key.Kid, &key.TenantID, &key.Alg, &key.Provider, &key.Usage,
+	err := row.Scan(&key.Kid, &key.TenantID, &key.Alg, &key.Provider, &key.Usage, &key.ScopeID,
 		&publicJSON, &privateJSON, &key.CertificateDER, &key.Active, &key.CreatedAt, &key.RetiredAt, &key.ExpiresAt, &key.ArchivedAt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil

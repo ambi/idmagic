@@ -83,6 +83,7 @@ type SignInOutcome struct {
 // SignInInput は adapter が wire から組み立てて渡す SSO 判断入力。
 type SignInInput struct {
 	TenantID            string
+	ProfileID           string
 	Request             samldomain.AuthnRequest
 	Binding             samldomain.Binding // 空なら IdP-initiated (署名検証しない)。
 	RawXML              []byte
@@ -96,12 +97,18 @@ type SignInInput struct {
 // claim 発行を順に適用し、拒否 / 要ログイン / 発行可の outcome を返す。挙動は旧 HTTP ハンドラの
 // issueForRequest と一致する。
 func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome, error) {
+	if in.ProfileID == "" {
+		in.ProfileID = samldomain.DefaultIDPProfileID
+	}
 	sp, err := s.SPRepo.FindByEntityID(ctx, in.TenantID, in.Request.Issuer)
 	if err != nil {
 		return SignInOutcome{}, err
 	}
 	if sp == nil {
 		return s.rejected(in.TenantID, in.Request.Issuer, "unknown service provider", nil), nil
+	}
+	if !sp.MatchesIDPProfile(in.ProfileID) {
+		return s.rejected(in.TenantID, in.Request.Issuer, "service provider is not assigned to this identity provider profile", nil), nil
 	}
 	if in.Binding != "" {
 		if err := samldomain.ValidateRequestSignature(in.Binding, in.RawXML, in.RawQuery, *sp); err != nil {
