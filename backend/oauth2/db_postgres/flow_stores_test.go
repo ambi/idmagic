@@ -20,7 +20,7 @@ func TestPARStore(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
 	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
 	store := &oauth2postgres.PARStore{Pool: db}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	rec := &domain.PARRecord{
 		RequestURI: "urn:par:1", TenantID: tenant.ID, ClientID: "client-1",
@@ -64,7 +64,7 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	tenant := seedTenant(t, db)
 	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
 	store := &oauth2postgres.AuthorizationCodeStore{Pool: db}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	rec := &domain.AuthorizationCodeRecord{
 		Code: "code-1", TenantID: tenant.ID, ClientID: "client-1", UserID: "user-1",
@@ -105,7 +105,7 @@ func TestDeviceCodeStore(t *testing.T) {
 	user := seedUser(t, db, tenant.ID)
 	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
 	store := &oauth2postgres.DeviceCodeStore{Pool: db}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	rec := &domain.DeviceAuthorization{
 		DeviceCodeHash: "hash-1", TenantID: tenant.ID, UserCode: "USER-CODE-1", ClientID: "client-1",

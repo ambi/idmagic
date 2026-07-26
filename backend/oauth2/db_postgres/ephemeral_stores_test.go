@@ -20,7 +20,7 @@ func TestReplayStore(t *testing.T) {
 	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
 	store := &oauth2postgres.ReplayStore{Pool: db, Kind: "dpop"}
 	caStore := &oauth2postgres.ReplayStore{Pool: db, Kind: "client_assertion"}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	if ok, err := store.RecordIfNew(ctx, "jti-1", 60, now); err != nil || !ok {
 		t.Fatalf("first ok=%v err=%v (want true)", ok, err)
@@ -51,7 +51,7 @@ func TestAccessTokenDenylist(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
 	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
 	d := &oauth2postgres.AccessTokenDenylist{Pool: db}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	if revoked, err := d.IsRevoked(ctx, "jti-a"); err != nil || revoked {
 		t.Fatalf("pre-add revoked=%v err=%v (want false)", revoked, err)

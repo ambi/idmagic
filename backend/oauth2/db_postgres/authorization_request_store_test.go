@@ -22,7 +22,7 @@ func TestAuthorizationRequestStore(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
 	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
 	store := &oauth2postgres.AuthorizationRequestStore{Pool: db}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	req := &domain.AuthorizationRequest{
 		ID: "req-1", TenantID: tenant.ID, State: spec.AuthFlowReceived, ClientID: "client-1",

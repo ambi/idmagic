@@ -24,7 +24,7 @@ func TestLoginAttemptThrottle(t *testing.T) {
 	throttle := &LoginAttemptThrottle{Pool: db, Configs: configs}
 	ctx := withTenant(context.Background(), tenant)
 	otherCtx := withTenant(context.Background(), other)
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	acct := sessionports.LoginThrottleAccount
 
 	if r, err := throttle.TryAcquire(ctx, acct, "alice", now); err != nil || !r.Allowed {

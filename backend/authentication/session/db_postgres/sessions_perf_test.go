@@ -58,7 +58,7 @@ func TestSessionQueryPlansUseIndexes(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, db)
 	user := pgfixtures.SeedUser(t, db, tenant.ID)
 	ctx := withTenant(context.Background(), tenant)
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	// 対象ユーザーに 200 件、無関係な他ユーザーに 4,800 件、計 5,000 件で計画を安定させる。
 	targetIDs := seedManySessions(ctx, t, db, tenant.ID, user.ID, 200, now)
@@ -137,7 +137,7 @@ func BenchmarkSessionRepository_Find(b *testing.B) {
 	repo := &SessionRepository{Pool: db}
 	sess := &domain.LoginSession{
 		ID: pgfixtures.NewUUID(b), TenantID: tenant.ID, UserID: user.ID, AMR: []string{"pwd"},
-		ACR: "urn:idmagic:acr:pwd", ExpiresAt: time.Now().Add(time.Hour),
+		ACR: "urn:idmagic:acr:pwd", ExpiresAt: pgtest.Now().Add(time.Hour),
 	}
 	if err := repo.Save(ctx, sess); err != nil {
 		b.Fatal(err)
@@ -157,7 +157,7 @@ func BenchmarkSessionRepository_ListBySub(b *testing.B) {
 			tenant := pgfixtures.SeedTenant(b, db)
 			user := pgfixtures.SeedUser(b, db, tenant.ID)
 			ctx := withTenant(context.Background(), tenant)
-			seedManySessions(ctx, b, db, tenant.ID, user.ID, n, time.Now().UTC())
+			seedManySessions(ctx, b, db, tenant.ID, user.ID, n, pgtest.Now())
 			repo := &SessionRepository{Pool: db}
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {

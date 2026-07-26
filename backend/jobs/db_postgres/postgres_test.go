@@ -52,7 +52,7 @@ func TestEnqueue_DedupReturnsExistingNonTerminalJob(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	dedup := "import-2026-01"
 	input := ports.EnqueueInput{
 		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
@@ -82,7 +82,7 @@ func TestEnqueue_DedupIgnoresTerminalJobs(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	dedup := "import-2026-01"
 	input := ports.EnqueueInput{
 		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
@@ -120,7 +120,7 @@ func TestClaimBatch_ExcludesOtherLanes(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	if _, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
 		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
 		MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now,
@@ -141,7 +141,7 @@ func TestClaimBatch_ExcludesFutureRunAt(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	if _, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
 		TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: domain.LaneDefault, Params: json.RawMessage(`{}`),
 		MaxAttempts: domain.DefaultMaxAttempts, Now: now, RunAt: now.Add(time.Hour),
@@ -162,7 +162,7 @@ func TestClaimBatch_IncrementsAttemptsAndSetsLease(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	job := newTestJob(t, r, tenant.ID, now)
 
 	claimed, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
@@ -192,7 +192,7 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 
 	first, err := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
@@ -234,7 +234,7 @@ func TestClaimBatch_ConcurrentClaimIsExclusive(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	const numJobs = 30
 	for range numJobs {
 		newTestJob(t, r, tenant.ID, now)
@@ -278,7 +278,7 @@ func TestHeartbeat_ExtendsLease(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
@@ -298,7 +298,7 @@ func TestHeartbeat_WrongWorkerReturnsErrJobLeaseLost(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
@@ -314,7 +314,7 @@ func TestComplete_Success(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
@@ -346,7 +346,7 @@ func TestComplete_WrongWorkerReturnsErrJobLeaseLost(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
@@ -362,7 +362,7 @@ func TestFail_RetrySetsQueuedAndRunAt(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
@@ -390,7 +390,7 @@ func TestFail_DeadLetterSetsFailedTerminal(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	newTestJob(t, r, tenant.ID, now)
 	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	job := claimed[0]
@@ -418,7 +418,7 @@ func TestCancel_TerminalReturnsErrJobAlreadyTerminal(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	job := newTestJob(t, r, tenant.ID, now)
 	claimed, _ := r.ClaimBatch(context.Background(), "worker-1", domain.LaneDefault, 10, time.Minute, now)
 	if _, err := r.Complete(context.Background(), claimed[0].ID, "worker-1", nil, now); err != nil {
@@ -436,7 +436,7 @@ func TestCancel_FromQueuedSucceeds(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	job := newTestJob(t, r, tenant.ID, now)
 
 	got, err := r.Cancel(context.Background(), job.ID, now)
@@ -455,7 +455,7 @@ func TestLaneDepths_CountsQueuedAndRunningPerLane(t *testing.T) {
 	resetJobsTable(t, pool)
 	tenant := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	enqueueLane := func(lane domain.ExecutionLane) *domain.Job {
 		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
 			TenantID: tenant.ID, Kind: domain.KindNoopEcho, Lane: lane, Params: json.RawMessage(`{}`),
@@ -507,7 +507,7 @@ func TestListByTenantAndKinds_ScopesAndOrders(t *testing.T) {
 	tenantA := pgfixtures.SeedTenant(t, pool)
 	tenantB := pgfixtures.SeedTenant(t, pool)
 	r := &postgres.JobRepository{Pool: pool}
-	base := time.Now().UTC()
+	base := pgtest.Now()
 	enqueue := func(tenantID string, kind domain.JobKind, lane domain.ExecutionLane, at time.Time) *domain.Job {
 		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
 			TenantID: tenantID, Kind: kind, Lane: lane, Params: json.RawMessage(`{}`),

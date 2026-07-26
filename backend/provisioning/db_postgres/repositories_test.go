@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -46,7 +45,7 @@ func seedApplication(tb testing.TB, pool *pgxpool.Pool, tenantID string) *applic
 
 func testConnection(tb testing.TB, applicationID, tenantID string) *domain.ProvisioningConnection {
 	tb.Helper()
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	return &domain.ProvisioningConnection{
 		ApplicationID: applicationID,
 		TenantID:      tenantID,
@@ -176,7 +175,7 @@ func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing
 
 func testDelivery(tb testing.TB, tenantID, connectionID, sourceID string, version int64) *domain.ProvisioningDelivery {
 	tb.Helper()
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	return &domain.ProvisioningDelivery{
 		ID:            pgfixtures.NewUUID(tb),
 		TenantID:      tenantID,
@@ -290,7 +289,7 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	ctx := context.Background()
 
 	link := domain.NewRemoteResourceLink(app.ApplicationID, tenant.ID, domain.SourceTypeUser, user.ID)
-	if err := link.ApplySync(1, "remote-1", user.ID, nil, time.Now()); err != nil {
+	if err := link.ApplySync(1, "remote-1", user.ID, nil, pgtest.Now()); err != nil {
 		t.Fatalf("ApplySync() error = %v", err)
 	}
 	if err := repo.Upsert(ctx, link); err != nil {
@@ -301,7 +300,7 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 		t.Fatalf("Find() = %+v, err=%v, want remote_id=remote-1 version=1", found, err)
 	}
 
-	if err := link.ApplySync(2, "remote-1", user.ID, nil, time.Now()); err != nil {
+	if err := link.ApplySync(2, "remote-1", user.ID, nil, pgtest.Now()); err != nil {
 		t.Fatalf("second ApplySync() error = %v", err)
 	}
 	if err := repo.Upsert(ctx, link); err != nil {

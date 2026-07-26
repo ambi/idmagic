@@ -32,7 +32,8 @@ func TestSessionRepositoryRoundTrip(t *testing.T) {
 	// Find / ListBySub は expires_at をリクエスト時点の実時計 (time.Now()) と比較するため
 	// (port の Find(ctx, id) に now 引数が無く、production は常に実時計を使う設計、wi-253)、
 	// ここも実時計を基準にした相対時刻を使う。pgfixtures.TestClock の固定日時は使わない。
-	now := time.Now().UTC()
+	// last_seen_at 等を read-back と厳密比較するため、DB 分解能に揃える pgtest.Now() を使う。
+	now := pgtest.Now()
 
 	sess := &domain.LoginSession{
 		ID: pgfixtures.NewUUID(t), TenantID: tenant.ID, UserID: user.ID,

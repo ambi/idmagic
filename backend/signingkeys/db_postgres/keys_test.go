@@ -20,7 +20,7 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 	db := pgtest.Require(t)
 	// signing_keys.tenant_id は tenants(id) を参照する。NewKeyStore は default テナントの
 	// active 鍵を bootstrap するため、default テナント行を用意しておく。
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	defaultTenant := &tenancydomain.Tenant{ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm, DisplayName: "Default", Status: tenancydomain.TenantStatusActive, CreatedAt: now, UpdatedAt: now}
 	if err := (&tenancypostgres.TenantRepository{Pool: db}).Save(context.Background(), defaultTenant); err != nil {
 		t.Fatalf("seed default tenant: %v", err)
@@ -42,7 +42,7 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 		t.Fatalf("find by kid: %v %+v", err, found)
 	}
 
-	rotated, err := store.Rotate(ctx, time.Now().UTC(), 7*24*time.Hour)
+	rotated, err := store.Rotate(ctx, pgtest.Now(), 7*24*time.Hour)
 	if err != nil || rotated == nil || rotated.Kid == active.Kid {
 		t.Fatalf("rotate: %v %+v (prev %s)", err, rotated, active.Kid)
 	}
@@ -59,11 +59,11 @@ func TestKeyStoreRotateAndLookup(t *testing.T) {
 
 	// PostgreSQL advisory lock 内の cadence 再判定により、同時 batch でも
 	// due rotation は tenant ごとに一度だけ実行される。
-	old := time.Now().UTC().Add(-100 * 24 * time.Hour)
+	old := pgtest.Now().Add(-100 * 24 * time.Hour)
 	if _, err := db.Exec(ctx, "UPDATE signing_keys SET created_at=$2 WHERE tenant_id=$1 AND active", defaultTenant.ID, old); err != nil {
 		t.Fatalf("age active key: %v", err)
 	}
-	now = time.Now().UTC()
+	now = pgtest.Now()
 	results := make(chan *signingdomain.SigningKey, 2)
 	errs := make(chan error, 2)
 	var wg sync.WaitGroup

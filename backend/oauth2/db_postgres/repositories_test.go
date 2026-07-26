@@ -146,7 +146,7 @@ func TestConsentRepositoryRoundTrip(t *testing.T) {
 		Scopes:   []string{"openid", "profile"},
 		// State は Find 時に実時刻 (time.Now) で導出されるため、有効期限は実時刻基準で未来に置く。
 		GrantedAt: now,
-		ExpiresAt: time.Now().Add(24 * time.Hour),
+		ExpiresAt: pgtest.Now().Add(24 * time.Hour),
 	}
 	if err := repo.Save(ctx, tenant.ID, consent); err != nil {
 		t.Fatalf("save: %v", err)

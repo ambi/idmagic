@@ -132,3 +132,11 @@ func Require(tb testing.TB) *pgxpool.Pool {
 	}
 	return Pool
 }
+
+// Now は TIMESTAMPTZ の分解能 (マイクロ秒) に切り捨てた現在時刻を返す。
+// PostgreSQL は保存時にナノ秒を落とすため、time.Now() をそのまま期待値に
+// 使うと read-back との比較が Linux (ナノ秒分解能) でのみ失敗する。
+// DB に書き込む時刻をテストで組み立てる際は必ずこれを使う。
+func Now() time.Time {
+	return time.Now().UTC().Truncate(time.Microsecond)
+}

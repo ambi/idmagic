@@ -22,7 +22,7 @@ func TestWebAuthnSessionStore(t *testing.T) {
 	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
 	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
 	store := &webauthnpg.WebAuthnSessionStore{Pool: db}
-	now := time.Now().UTC()
+	now := pgtest.Now()
 	data := gowebauthn.SessionData{Challenge: "abc", UserID: []byte("user-1")}
 
 	if err := store.Save(ctx, "key-1", data, now.Add(time.Minute)); err != nil {

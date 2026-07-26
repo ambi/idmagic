@@ -23,7 +23,7 @@ func TestAuthnRequestReplayStore(t *testing.T) {
 	other := pgfixtures.SeedTenant(t, db)
 	store := &AuthnRequestReplayStore{Pool: db}
 	ctx := context.Background()
-	now := time.Now().UTC()
+	now := pgtest.Now()
 
 	t.Run("records once, rejects duplicate, re-allows after expiry", func(t *testing.T) {
 		if ok, err := store.RecordIfNew(ctx, tenant.ID, "sp", "req-1", time.Minute, now); err != nil || !ok {
