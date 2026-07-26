@@ -69,7 +69,7 @@ func TestAdminCreatesAndListsAuthorizationDetailType(t *testing.T) {
 		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
 	}
 
-	listReq := httptest.NewRequest(http.MethodGet, "/api/admin/authorization-detail-types", http.NoBody)
+	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/authorization-detail-types", http.NoBody)
 	listReq.Header.Set("X-Demo-Sub", "admin")
 	listRes := httptest.NewRecorder()
 	e.ServeHTTP(listRes, listReq)
@@ -101,7 +101,7 @@ func TestAdminRejectsInvalidTypeSchema(t *testing.T) {
 
 func TestAdminAuthorizationDetailTypeRequiresAdmin(t *testing.T) {
 	e := newAdminAuthzTypeHandler()
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/authorization-detail-types", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/authorization-detail-types", http.NoBody)
 	req.Header.Set("X-Demo-Sub", "regular")
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)

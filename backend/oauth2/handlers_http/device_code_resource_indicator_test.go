@@ -101,7 +101,7 @@ func TestTokenDeviceCode_unregisteredResource_rejectedAsInvalidTarget(t *testing
 		"device_code": {deviceCode},
 		"resource":    {"https://mcp.example.com/unknown"},
 	}
-	req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -128,7 +128,7 @@ func TestTokenDeviceCode_registeredResource_boundAudience(t *testing.T) {
 		"device_code": {deviceCode},
 		"resource":    {"https://mcp.example.com/tools"},
 	}
-	req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -143,7 +143,7 @@ func TestTokenDeviceCode_registeredResource_boundAudience(t *testing.T) {
 	}
 
 	introForm := url.Values{"token": {accessToken}, "client_id": {"device-client-2"}}
-	introReq := httptest.NewRequest(http.MethodPost, "/introspect", strings.NewReader(introForm.Encode()))
+	introReq := httptest.NewRequest(http.MethodPost, "/realms/default/introspect", strings.NewReader(introForm.Encode()))
 	introReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	introRec := httptest.NewRecorder()
 	e.ServeHTTP(introRec, introReq)

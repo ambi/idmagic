@@ -82,3 +82,41 @@ func TestTenantRepositoryFindByIDMissing(t *testing.T) {
 		t.Fatalf("expected nil for missing tenant, got %+v", got)
 	}
 }
+
+// wi-285 / ADR-144: endpoint_style がラウンドトリップし、列を知らない呼び出し元が
+// 組み立てたゼロ値の Tenant は 'path' として保存される (NOT NULL + CHECK があるため、
+// 空文字列を素通しすると保存が落ちる)。
+func TestTenantRepositoryPersistsEndpointStyle(t *testing.T) {
+	db := pgtest.Require(t)
+	repo := &TenantRepository{Pool: db}
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	zeroValue := &domain.Tenant{
+		ID: "33333333-3333-3333-3333-333333333340", Realm: "style-default",
+		DisplayName: "Style Default", Status: domain.TenantStatusActive,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := repo.Save(ctx, zeroValue); err != nil {
+		t.Fatalf("save zero-value endpoint style: %v", err)
+	}
+	stored, err := repo.FindByID(ctx, zeroValue.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("find: %+v %v", stored, err)
+	}
+	if stored.EndpointStyle != domain.TenantEndpointStylePath {
+		t.Fatalf("EndpointStyle = %q, want %q", stored.EndpointStyle, domain.TenantEndpointStylePath)
+	}
+
+	stored.EndpointStyle = domain.TenantEndpointStyleSubdomain
+	if err := repo.Save(ctx, stored); err != nil {
+		t.Fatalf("save subdomain endpoint style: %v", err)
+	}
+	stored, err = repo.FindByID(ctx, zeroValue.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("find after switch: %+v %v", stored, err)
+	}
+	if stored.EndpointStyle != domain.TenantEndpointStyleSubdomain {
+		t.Fatalf("EndpointStyle = %q, want %q", stored.EndpointStyle, domain.TenantEndpointStyleSubdomain)
+	}
+}

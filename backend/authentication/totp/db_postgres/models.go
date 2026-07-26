@@ -605,6 +605,7 @@ type Tenant struct {
 	DisplayName   string
 	Status        string
 	DefaultLocale pgtype.Text
+	EndpointStyle string
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 	DisabledAt    pgtype.Timestamptz

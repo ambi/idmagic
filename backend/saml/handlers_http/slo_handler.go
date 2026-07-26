@@ -66,7 +66,7 @@ func (d Deps) handleSamlLogoutRequest(c *echo.Context, encodedRequest, relayStat
 	if d.SamlSPRepo == nil {
 		return c.String(http.StatusBadRequest, "SAML is not available")
 	}
-	expectedDestination := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/") + support.TenantRoute(c, "/saml/slo")
+	expectedDestination := support.TenantURL(c, "/saml/slo", d.Issuer)
 	decision, err := d.logoutService().ValidateLogoutRequest(ctx, samlusecases.LogoutRequestInput{
 		TenantID:            tenantID,
 		Request:             req,
@@ -137,8 +137,8 @@ func (d Deps) buildLogoutResponse(c *echo.Context, sp samldomain.SamlServiceProv
 
 func (d Deps) clearSessionCookie(c *echo.Context) {
 	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure は HTTPS issuer で有効化、ローカル HTTP 開発では意図的に無効。
-		Name: authusecases.SessionCookie, Path: support.TenantCookiePath(c),
-		Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		Name: support.TenantCookieName(c, authusecases.SessionCookie), Path: support.TenantCookiePath(c),
+		Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode,
 		MaxAge: -1,
 	})
 }

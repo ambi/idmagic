@@ -330,7 +330,7 @@ func TestAccountDataExport(t *testing.T) {
 	_ = h.consents.Save(context.Background(), tenancydomain.DefaultTenantID, consent)
 
 	// Test Export for regular user
-	request := httptest.NewRequest(http.MethodGet, "/api/account/data_export", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/data_export", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "regular")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -379,7 +379,7 @@ func TestAccountProfileHTTPExtra(t *testing.T) {
 		t.Fatalf("invalid json status=%d body=%s", invalidJSON.Code, invalidJSON.Body.String())
 	}
 
-	request := httptest.NewRequest(http.MethodGet, "/api/account/profile", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/profile", http.NoBody)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusUnauthorized {
@@ -394,7 +394,7 @@ func TestEmailChangeLifecycle(t *testing.T) {
 	csrf, cookie := adminCSRF(t, e)
 
 	// GET verify context
-	ctxReq := httptest.NewRequest(http.MethodGet, "/api/account/email/verify_context", http.NoBody)
+	ctxReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/email/verify_context", http.NoBody)
 	ctxRes := httptest.NewRecorder()
 	e.ServeHTTP(ctxRes, ctxReq)
 	if ctxRes.Code != http.StatusOK {
@@ -563,7 +563,7 @@ func TestIdentityAPIErrors(t *testing.T) {
 	// Unchanged email (400)
 	unchangedReq := httptest.NewRequest(
 		http.MethodPost,
-		"/api/account/email/change_request",
+		"/realms/default/api/account/email/change_request",
 		bytes.NewBufferString(`{"new_email":"regular@example.com"}`),
 	)
 	unchangedReq.Header.Set("Content-Type", "application/json")

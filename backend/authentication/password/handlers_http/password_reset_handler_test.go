@@ -110,7 +110,7 @@ func newPasswordResetHandler(
 
 func passwordResetCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/api/auth/password_reset_context", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password_reset_context", http.NoBody)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
@@ -143,7 +143,7 @@ func serveJSON(
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(data))
+	request := httptest.NewRequest(http.MethodPost, defaultRealmPath(path), bytes.NewReader(data))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -173,4 +173,14 @@ func resetTokenFromEmail(t *testing.T, message string) string {
 		t.Fatal("reset token missing")
 	}
 	return token
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
 }

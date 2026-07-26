@@ -70,7 +70,7 @@ func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	}
 
 	// GET order が保存済み順を返す。
-	getOrder := httptest.NewRequest(http.MethodGet, "/api/account/applications/order", http.NoBody)
+	getOrder := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications/order", http.NoBody)
 	getOrder.Header.Set("X-Demo-Sub", "admin")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, getOrder)

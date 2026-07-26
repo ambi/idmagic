@@ -74,7 +74,7 @@ func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 	Register(e, Deps{Deps: support.Deps{Issuer: "https://idp.example", SCL: spec.MustLoadSCL(), TenantRepo: tenants}})
 
 	bare := httptest.NewRecorder()
-	e.ServeHTTP(bare, httptest.NewRequest(http.MethodGet, "/.well-known/openid-configuration", http.NoBody))
+	e.ServeHTTP(bare, httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/openid-configuration", http.NoBody))
 	if bare.Code != http.StatusOK {
 		t.Fatalf("bare status = %d, body = %s", bare.Code, bare.Body.String())
 	}

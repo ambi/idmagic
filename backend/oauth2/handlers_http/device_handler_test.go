@@ -99,7 +99,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 			"client_id": {"device-client"},
 			"scope":     {"openid"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/device_authorization", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/device_authorization", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -126,7 +126,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		form := url.Values{
 			"client_id": {"client-none"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/device_authorization", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/device_authorization", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -139,7 +139,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 
 	// 2. handleDeviceContext (GET /api/auth/device)
 	t.Run("DeviceContext_Succeeds", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/api/auth/device?user_code="+fix.userCode, http.NoBody)
+		req := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/device?user_code="+fix.userCode, http.NoBody)
 		rec := httptest.NewRecorder()
 
 		fix.e.ServeHTTP(rec, req)
@@ -161,7 +161,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 	// 3. handleDeviceAPI (POST /api/auth/device)
 	t.Run("DeviceAPI_Approve", func(t *testing.T) {
 		payload := `{"user_code":"` + fix.userCode + `","action":"approve"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/auth/device", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/api/auth/device", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://test")
 		req.Header.Set("X-Csrf-Token", "csrf-val")
@@ -193,7 +193,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 			"client_id": {"device-client"},
 			"scope":     {"openid"},
 		}
-		reqGen := httptest.NewRequest(http.MethodPost, "/device_authorization", strings.NewReader(form.Encode()))
+		reqGen := httptest.NewRequest(http.MethodPost, "/realms/default/device_authorization", strings.NewReader(form.Encode()))
 		reqGen.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recGen := httptest.NewRecorder()
 		fix.e.ServeHTTP(recGen, reqGen)
@@ -202,7 +202,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		newUserCode := bodyGen["user_code"].(string)
 
 		payload := `{"user_code":"` + newUserCode + `","action":"deny"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/auth/device", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/api/auth/device", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://test")
 		req.Header.Set("X-Csrf-Token", "csrf-val")
@@ -224,7 +224,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 
 	t.Run("DeviceAPI_CSRFFail", func(t *testing.T) {
 		payload := `{"user_code":"` + fix.userCode + `","action":"approve"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/auth/device", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/api/auth/device", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://test")
 		// X-Csrf-Token 不一致
@@ -244,7 +244,7 @@ func TestDeviceAuthorizationAPI(t *testing.T) {
 		fix.authn.ctx = nil
 
 		payload := `{"user_code":"` + fix.userCode + `","action":"approve"}`
-		req := httptest.NewRequest(http.MethodPost, "/api/auth/device", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/api/auth/device", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Origin", "http://test")
 		req.Header.Set("X-Csrf-Token", "csrf-val")

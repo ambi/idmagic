@@ -59,7 +59,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 		t.Fatalf("secret hash leaked: %s", create.Body.String())
 	}
 
-	get := httptest.NewRequest(http.MethodGet, "/api/admin/clients/"+created.Client.ClientID, http.NoBody)
+	get := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/clients/"+created.Client.ClientID, http.NoBody)
 	get.Header.Set("X-Demo-Sub", "admin")
 	getResponse := httptest.NewRecorder()
 	e.ServeHTTP(getResponse, get)
@@ -127,7 +127,7 @@ func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
-	request := httptest.NewRequest(http.MethodGet, "/api/admin/clients/portal", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/clients/portal", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -135,7 +135,7 @@ func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
 
-	request = httptest.NewRequest(http.MethodGet, "/api/admin/clients", http.NoBody)
+	request = httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/clients", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "regular")
 	response = httptest.NewRecorder()
 	e.ServeHTTP(response, request)

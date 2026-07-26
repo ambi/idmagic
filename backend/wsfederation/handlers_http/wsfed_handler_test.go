@@ -134,7 +134,7 @@ func hasEvent(events []spec.DomainEvent, eventType string) bool {
 }
 
 func get(e *echo.Echo, target string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, target, http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, defaultRealmPath(target), http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec
@@ -192,8 +192,8 @@ func TestWsFedSignIn_StaleSessionWithWfreshRedirectsToLogin(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status=%d, want 303 (wfresh forces re-auth)", rec.Code)
 	}
-	if loc := rec.Header().Get("Location"); !strings.HasPrefix(loc, "/login") {
-		t.Fatalf("Location = %q, want /login", loc)
+	if loc := rec.Header().Get("Location"); !strings.HasPrefix(loc, "/realms/default/login") {
+		t.Fatalf("Location = %q, want /realms/default/login", loc)
 	}
 }
 
@@ -217,8 +217,9 @@ func TestWsFedSignIn_UnauthenticatedRedirectsToLogin(t *testing.T) {
 		t.Fatalf("status=%d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
-	if !strings.HasPrefix(loc, "/login") || !strings.Contains(loc, "return_to=") {
-		t.Fatalf("Location = %q, want /login with return_to", loc)
+	// redirect 先はテナントの正規ロケーション配下の相対パス (ADR-144)。
+	if !strings.HasPrefix(loc, "/realms/default/login") || !strings.Contains(loc, "return_to=") {
+		t.Fatalf("Location = %q, want /realms/default/login with return_to", loc)
 	}
 	// return_to は元の WS-Fed 要求へ戻ること。
 	if decoded := loc[strings.Index(loc, "return_to=")+len("return_to="):]; !strings.Contains(mustUnescape(t, decoded), "/wsfed") {
@@ -395,7 +396,7 @@ func TestWsTrustUsernameMixed_RejectsNonBearerKeyType(t *testing.T) {
 }
 
 func postWsTrustSOAP(e *echo.Echo, body string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/trust/usernamemixed", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/trust/usernamemixed", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/soap+xml")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -464,7 +465,7 @@ func newAdminServer(t *testing.T) *echo.Echo {
 }
 
 func doJSON(e *echo.Echo, method, target, body string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(method, target, strings.NewReader(body))
+	req := httptest.NewRequest(method, defaultRealmPath(target), strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -553,4 +554,14 @@ func mustUnescape(t *testing.T, s string) string {
 		t.Fatalf("unescape: %v", err)
 	}
 	return out
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
 }

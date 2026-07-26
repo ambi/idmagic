@@ -61,6 +61,9 @@ func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) erro
 		DisplayName:   tenant.DisplayName,
 		Status:        string(tenant.Status),
 		DefaultLocale: textPtrOrNil(tenant.DefaultLocale),
+		// ゼロ値の Tenant を 'path' として書く。列は NOT NULL なので、空文字列を
+		// そのまま渡すと CHECK 制約で落ちる。
+		EndpointStyle: string(tenant.EffectiveEndpointStyle()),
 		CreatedAt:     tenant.CreatedAt,
 		UpdatedAt:     tenant.UpdatedAt,
 		DisabledAt:    timestamptzOrNil(tenant.DisabledAt),
@@ -69,12 +72,13 @@ func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) erro
 
 func tenantFromRow(row *Tenant) (*domain.Tenant, error) {
 	tenant := &domain.Tenant{
-		ID:          row.ID,
-		Realm:       row.Realm,
-		DisplayName: row.DisplayName,
-		Status:      domain.TenantStatus(row.Status),
-		CreatedAt:   row.CreatedAt,
-		UpdatedAt:   row.UpdatedAt,
+		ID:            row.ID,
+		Realm:         row.Realm,
+		DisplayName:   row.DisplayName,
+		Status:        domain.TenantStatus(row.Status),
+		EndpointStyle: domain.TenantEndpointStyle(row.EndpointStyle),
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
 	}
 	if row.DisabledAt.Valid {
 		disabledAt := row.DisabledAt.Time

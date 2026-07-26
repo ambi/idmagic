@@ -29,6 +29,12 @@ CREATE TABLE tenants (
     -- default_locale (wi-288, ADR-142 §7): the tenant tier of notification locale
     -- resolution (recipient -> tenant -> system). NULL means "use the system default".
     default_locale TEXT,
+    -- endpoint_style (wi-285, ADR-144): the shape of this tenant's canonical
+    -- location. A tenant is reachable only there, and its issuer, cookie scope and
+    -- WebAuthn RP ID are all derived from it. 'path' is the default because it needs
+    -- neither wildcard DNS nor a wildcard certificate.
+    endpoint_style TEXT NOT NULL DEFAULT 'path'
+        CHECK (endpoint_style IN ('path', 'subdomain')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,

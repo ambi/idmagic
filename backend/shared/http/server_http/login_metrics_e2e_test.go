@@ -150,15 +150,15 @@ func directLoginRequest(t *testing.T, srv *httptest.Server, username, password s
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction?return_to="+url.QueryEscape("/admin"))
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+url.QueryEscape("/realms/default/admin"))
 
 	payload, err := json.Marshal(map[string]string{
-		"username": username, "password": password, "return_to": "/admin",
+		"username": username, "password": password, "return_to": "/realms/default/admin",
 	})
 	if err != nil {
 		t.Fatalf("marshal payload: %v", err)
 	}
-	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/auth/login", bytes.NewReader(payload))
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/login", bytes.NewReader(payload))
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestTokenMetricsRecordSuccessfulClientCredentialsGrant(t *testing.T) {
 	defer srv.Close()
 
 	form := "grant_type=client_credentials&scope=idmagic.admin"
-	req, err := http.NewRequest(http.MethodPost, srv.URL+"/token", strings.NewReader(form))
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/token", strings.NewReader(form))
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}

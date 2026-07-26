@@ -643,6 +643,7 @@ export type AdminTenant = {
   realm: string
   display_name: string
   status: 'active' | 'disabled'
+  endpoint_style?: 'path' | 'subdomain'
   password_policy_override?: {
     min_length?: number
     max_length?: number

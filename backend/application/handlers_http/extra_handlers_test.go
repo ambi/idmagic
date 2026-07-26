@@ -274,7 +274,7 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	csrf, cookie := appCSRF(t, e)
 
 	// GET /api/account/applications without X-Demo-Sub
-	request := httptest.NewRequest(http.MethodGet, "/api/account/applications", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications", http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, request)
 	if rec.Code != http.StatusUnauthorized {
@@ -282,7 +282,7 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	}
 
 	// GET /api/account/applications/order without X-Demo-Sub
-	request2 := httptest.NewRequest(http.MethodGet, "/api/account/applications/order", http.NoBody)
+	request2 := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications/order", http.NoBody)
 	rec2 := httptest.NewRecorder()
 	e.ServeHTTP(rec2, request2)
 	if rec2.Code != http.StatusUnauthorized {
@@ -290,7 +290,7 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	}
 
 	// PUT /api/account/applications/order without X-Demo-Sub -> This will fail on CSRF validation first (403), because no CSRF cookie/header is sent.
-	request3 := httptest.NewRequest(http.MethodPut, "/api/account/applications/order", http.NoBody)
+	request3 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/applications/order", http.NoBody)
 	rec3 := httptest.NewRecorder()
 	e.ServeHTTP(rec3, request3)
 	if rec3.Code != http.StatusForbidden {
@@ -298,7 +298,7 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	}
 
 	// PUT /api/account/applications/order with CSRF but without X-Demo-Sub -> This should pass CSRF but fail authentication (401).
-	request4 := httptest.NewRequest(http.MethodPut, "/api/account/applications/order", http.NoBody)
+	request4 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/applications/order", http.NoBody)
 	request4.Header.Set("X-Csrf-Token", csrf)
 	request4.Header.Set("Origin", "http://idp.test")
 	request4.AddCookie(cookie)
@@ -309,7 +309,7 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	}
 
 	// PUT /api/account/applications/order with bad json
-	request5 := httptest.NewRequest(http.MethodPut, "/api/account/applications/order", http.NoBody)
+	request5 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/applications/order", http.NoBody)
 	request5.Header.Set("X-Demo-Sub", "admin")
 	request5.Header.Set("Content-Type", "application/json")
 	request5.Header.Set("Origin", "http://idp.test")

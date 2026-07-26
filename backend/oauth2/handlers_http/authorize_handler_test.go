@@ -124,7 +124,7 @@ func authorizeQuery(extra url.Values) url.Values {
 
 func runAuthorize(t *testing.T, e *echo.Echo, q url.Values) *httptest.ResponseRecorder {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodGet, "/authorize?"+q.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/authorize?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec

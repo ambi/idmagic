@@ -16,6 +16,10 @@ export const systemTenantsDictionary = defineDictionary(
     realmLabel: 'Realm',
     realmHelp: 'URL-safe slug (a-z 0-9 -)。',
     displayNameLabel: '表示名',
+    endpointStyleLabel: 'Endpoint style',
+    endpointStyleHelp: '変更すると issuer、RP 設定、既存 passkey、進行中の session に影響します。',
+    endpointStyleWarning:
+      'この変更は issuer と WebAuthn RP ID を切り替えます。RP の再設定と passkey の再登録が必要です。続行しますか？',
     cancel: 'キャンセル',
     create: '作成',
     tableHeaderDisplayName: '表示名',
@@ -64,6 +68,11 @@ export const systemTenantsDictionary = defineDictionary(
     realmLabel: 'Realm',
     realmHelp: 'URL-safe slug (a-z 0-9 -).',
     displayNameLabel: 'Display name',
+    endpointStyleLabel: 'Endpoint style',
+    endpointStyleHelp:
+      'Changing this affects the issuer, RP configuration, existing passkeys, and active sessions.',
+    endpointStyleWarning:
+      'This changes the issuer and WebAuthn RP ID. Relying parties must be reconfigured and passkeys re-enrolled. Continue?',
     cancel: 'Cancel',
     create: 'Create',
     tableHeaderDisplayName: 'Display name',

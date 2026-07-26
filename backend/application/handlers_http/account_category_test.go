@@ -42,7 +42,7 @@ func TestApplicationCategoryCRUDAndPortalGrouping(t *testing.T) {
 	}
 
 	// ポータル応答にカテゴリ定義とアプリの category_ids が含まれる。
-	request := httptest.NewRequest(http.MethodGet, "/api/account/applications", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, request)

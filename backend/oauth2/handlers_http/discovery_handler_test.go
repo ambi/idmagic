@@ -28,8 +28,8 @@ func TestDiscoveryRoutesIncludeRFC8414Alias(t *testing.T) {
 	httpadapter.Register(e, httpadapter.Deps{Deps: support.Deps{Issuer: "https://idp.example", SCL: spec.MustLoadSCL()}})
 
 	for _, path := range []string{
-		"/.well-known/openid-configuration",
-		"/.well-known/oauth-authorization-server",
+		"/realms/default/.well-known/openid-configuration",
+		"/realms/default/.well-known/oauth-authorization-server",
 	} {
 		req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
 		rec := httptest.NewRecorder()

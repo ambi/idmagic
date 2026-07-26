@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func newAdminLifecycleWorkflowHandler(t *testing.T) *echo.Echo {
 
 func adminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/api/auth/account", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/account", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -76,7 +77,7 @@ func adminJSONRequest(t *testing.T, e *echo.Echo, path, csrf string, cookie *htt
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(payload))
+	request := httptest.NewRequest(http.MethodPost, defaultRealmPath(path), bytes.NewReader(payload))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -141,7 +142,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	}
 
 	// alice's membership must be untouched by the dry-run.
-	groupsRequest := httptest.NewRequest(http.MethodGet, "/api/admin/users/alice/groups", http.NoBody)
+	groupsRequest := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/alice/groups", http.NoBody)
 	groupsRequest.Header.Set("X-Demo-Sub", "admin")
 	groupsResponse := httptest.NewRecorder()
 	e.ServeHTTP(groupsResponse, groupsRequest)
@@ -164,4 +165,14 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	if missingUser.Code != http.StatusBadRequest {
 		t.Fatalf("dry_run for missing user status=%d body=%s", missingUser.Code, missingUser.Body.String())
 	}
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
 }

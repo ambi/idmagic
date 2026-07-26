@@ -5,6 +5,7 @@ package domain
 import (
 	"errors"
 	"regexp"
+	"strings"
 	"time"
 
 	z "github.com/Oudwins/zog"
@@ -36,6 +37,25 @@ func (s TenantStatus) Valid() bool {
 	return s == TenantStatusActive || s == TenantStatusDisabled
 }
 
+// TenantEndpointStyle はテナントの正規ロケーションの形 (ADR-144)。SCL
+// `TenantEndpointStyle` の双子定義。1 テナントは 1 つの正規ロケーションしか持たず、
+// issuer / cookie scope / WebAuthn RP ID はすべてそこから導出される。
+type TenantEndpointStyle string
+
+const (
+	// TenantEndpointStylePath は共有ホスト上の `{base}/realms/{realm}`。ワイルドカード
+	// DNS も証明書も要らないため既定であり、tenant base domain を持たない配備では
+	// 唯一の選択肢になる。
+	TenantEndpointStylePath TenantEndpointStyle = "path"
+	// TenantEndpointStyleSubdomain はテナント固有ホスト `{realm}.{base}`。テナント固有
+	// origin を必要とする機能 (__Host- cookie、テナント別 RP ID) が成立する。
+	TenantEndpointStyleSubdomain TenantEndpointStyle = "subdomain"
+)
+
+func (s TenantEndpointStyle) Valid() bool {
+	return s == TenantEndpointStylePath || s == TenantEndpointStyleSubdomain
+}
+
 type Tenant struct {
 	ID                     string                  `json:"id"`
 	Realm                  string                  `json:"realm"`
@@ -45,12 +65,16 @@ type Tenant struct {
 	// DefaultLocale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。nil / 空文字列は
 	// 「システム既定 locale を使う」を意味する。値の妥当性 (同梱翻訳を持つ locale か)
 	// は shared/notification のカタログが正本なので、ここでは形だけを検証する。
-	DefaultLocale *string      `json:"default_locale,omitempty"`
-	Quota         *TenantQuota `json:"quota,omitempty"`
-	Usage         *TenantUsage `json:"usage,omitempty"`
-	CreatedAt     time.Time    `json:"created_at"`
-	UpdatedAt     time.Time    `json:"updated_at"`
-	DisabledAt    *time.Time   `json:"disabled_at,omitempty"`
+	DefaultLocale *string `json:"default_locale,omitempty"`
+	// EndpointStyle はこのテナントの正規ロケーションの形 (ADR-144)。ゼロ値は
+	// TenantEndpointStylePath として扱う: 既存行と、この列を知らない呼び出し元が
+	// 作る Tenant が、暗黙に到達不能な subdomain 側へ倒れないようにするため。
+	EndpointStyle TenantEndpointStyle `json:"endpoint_style,omitempty"`
+	Quota         *TenantQuota        `json:"quota,omitempty"`
+	Usage         *TenantUsage        `json:"usage,omitempty"`
+	CreatedAt     time.Time           `json:"created_at"`
+	UpdatedAt     time.Time           `json:"updated_at"`
+	DisabledAt    *time.Time          `json:"disabled_at,omitempty"`
 }
 
 func (t Tenant) Validate() error {
@@ -187,6 +211,66 @@ func (q *TenantQuota) EffectiveLimit(resource string) int {
 
 var tenantIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
 
+// newRealmPattern は realm を単一 DNS ラベルとして受け入れる形 (ADR-144)。
+// tenantIDPattern との差は hyphen 終端を許さない点で、endpoint_style が Subdomain の
+// とき realm はホスト名の最左ラベルになるため、`acme-` のような値を作らせない。
+var newRealmPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// reservedRealms は realm として採らせないラベル。realm はサブドメインになりうるので、
+// base domain 上に first-party ホストとして置きうる名前をテナントに奪われないようにする。
+var reservedRealms = map[string]struct{}{
+	"admin": {}, "www": {}, "api": {}, "login": {}, "id": {}, "sso": {},
+	"mail": {}, "smtp": {}, "status": {}, "docs": {}, "app": {}, "static": {},
+	"cdn": {}, "auth": {}, "account": {},
+}
+
+var (
+	ErrRealmNotDNSLabel     = errors.New("tenant realm must be a single DNS label: lowercase alphanumerics and inner hyphens only")
+	ErrRealmLooksLikeALabel = errors.New("tenant realm must not start with xn-- (reserved for IDNA A-labels)")
+	ErrRealmReserved        = errors.New("tenant realm is reserved")
+	ErrEndpointStyleUnknown = errors.New("tenant endpoint style is not in enum")
+	ErrSubdomainStyleNoBase = errors.New("subdomain endpoint style requires a tenant base domain to be configured")
+)
+
+// ValidateNewRealm は**新規に採番する** realm を検証する (ADR-144)。Tenant.Validate とは
+// 別に置くのは、厳格化した規則を既存 realm に遡って適用しないため: 遡及すると厳格化前に
+// 作られたテナントの読み出しや起動が壊れる。
+func ValidateNewRealm(realm string) error {
+	if !newRealmPattern.MatchString(realm) || len(realm) > 63 {
+		return ErrRealmNotDNSLabel
+	}
+	// xn-- は IDNA A-label の予約 prefix。punycode でない値がホスト名の最左ラベルに
+	// 入ると、解決側とブラウザ側で別の名前として扱われうる。
+	if strings.HasPrefix(realm, "xn--") {
+		return ErrRealmLooksLikeALabel
+	}
+	if _, reserved := reservedRealms[realm]; reserved {
+		return ErrRealmReserved
+	}
+	return nil
+}
+
+// ValidateEndpointStyleSelectable は配備構成のもとで style を選べるかを判定する。
+// baseDomain は設定済みの tenant base domain (未設定なら空文字列)。
+func ValidateEndpointStyleSelectable(style TenantEndpointStyle, baseDomain string) error {
+	if !style.Valid() {
+		return ErrEndpointStyleUnknown
+	}
+	if style == TenantEndpointStyleSubdomain && strings.TrimSpace(baseDomain) == "" {
+		return ErrSubdomainStyleNoBase
+	}
+	return nil
+}
+
+// EffectiveEndpointStyle はゼロ値を Path として読む。永続化前の行や、この列を知らない
+// 呼び出し元が組み立てた Tenant が、暗黙に到達不能な subdomain 側へ倒れないようにする。
+func (t Tenant) EffectiveEndpointStyle() TenantEndpointStyle {
+	if t.EndpointStyle == "" {
+		return TenantEndpointStylePath
+	}
+	return t.EndpointStyle
+}
+
 // localeTagPattern は DefaultLocale の形 (2 文字の言語タグ)。
 var localeTagPattern = regexp.MustCompile(`^[a-z]{2}$`)
 
@@ -207,6 +291,11 @@ var tenantSchema = z.Struct(z.Shape{
 		func(value *string, _ z.Ctx) bool { return value != nil && localeTagPattern.MatchString(*value) },
 		z.Message("tenant default locale must be a two-letter language tag"),
 	)),
+	// ゼロ値は Path として読むので許す (EffectiveEndpointStyle)。
+	"EndpointStyle": z.StringLike[TenantEndpointStyle]().TestFunc(
+		func(value *TenantEndpointStyle, _ z.Ctx) bool { return *value == "" || value.Valid() },
+		z.Message("tenant endpoint style is not in enum"),
+	),
 	"CreatedAt": z.Time().Required(),
 	"UpdatedAt": z.Time().Required(),
 })

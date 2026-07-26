@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"net/url"
 	"slices"
-	"strings"
 	"time"
 
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
@@ -93,7 +92,7 @@ func (d Deps) issueForRequest(c *echo.Context, req samldomain.AuthnRequest, rela
 	}
 	ctx := c.Request().Context()
 	authn, _ := d.AuthnResolver.Resolve(ctx, authdomain.HTTPHeadersAdapter{H: c.Request().Header})
-	expectedDestination := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/") + support.TenantRoute(c, "/saml/sso")
+	expectedDestination := support.TenantURL(c, "/saml/sso", d.Issuer)
 
 	outcome, err := d.signInService().Issue(ctx, samlusecases.SignInInput{
 		TenantID:            support.RequestTenantID(c),

@@ -49,7 +49,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 	if err != nil {
 		t.Fatal(err)
 	}
-	signer := cryptoadapter.NewJWTSigner("http://test", ks)
+	signer := cryptoadapter.NewJWTSigner("http://test/realms/default", ks)
 
 	clientRepo := oauth2memory.NewClientRepository()
 	clientRepo.Seed(&oauthdomain.OAuth2Client{
@@ -68,7 +68,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test", LegacyBareIssuer: true},
+		Deps: support.Deps{Issuer: "http://test"},
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, RefreshStore: refreshStore,
 			TokenIssuer: signer, TokenIntrospector: signer, IDTokenHintVerifier: signer,
@@ -123,7 +123,7 @@ func TestEndSessionWithValidIDTokenHintRevokesSessionAndAllClientTokens(t *testi
 	hint := s.signIDTokenHint(t, hintClientID, "alice", sid)
 
 	q := url.Values{"id_token_hint": {hint}}
-	req := httptest.NewRequest(http.MethodGet, "/end_session?"+q.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	s.e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusSeeOther {
@@ -150,7 +150,7 @@ func TestEndSessionRejectsIDTokenHintAudienceMismatch(t *testing.T) {
 	hint := s.signIDTokenHint(t, hintClientID, "alice", sid)
 
 	q := url.Values{"client_id": {"other-app"}, "id_token_hint": {hint}}
-	req := httptest.NewRequest(http.MethodGet, "/end_session?"+q.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	s.e.ServeHTTP(rec, req)
 	if rec.Code == http.StatusSeeOther || rec.Code == http.StatusFound {
@@ -181,7 +181,7 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 	}
 
 	q := url.Values{"id_token_hint": {forged}}
-	req := httptest.NewRequest(http.MethodGet, "/end_session?"+q.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	s.e.ServeHTTP(rec, req)
 	if rec.Code == http.StatusSeeOther || rec.Code == http.StatusFound {
@@ -204,7 +204,7 @@ func TestEndSessionAcceptsExpiredIDTokenHint(t *testing.T) {
 	hint := s.signIDTokenHint(t, hintClientID, "alice", sid)
 
 	q := url.Values{"id_token_hint": {hint}}
-	req := httptest.NewRequest(http.MethodGet, "/end_session?"+q.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	s.e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusSeeOther {

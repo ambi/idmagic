@@ -59,7 +59,7 @@ func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.
 func postIntrospect(t *testing.T, e *echo.Echo, token string) (int, map[string]any) {
 	t.Helper()
 	form := url.Values{"token": {token}}
-	req := httptest.NewRequest(http.MethodPost, "/introspect", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/introspect", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(introClientID, introSecret)
 	rec := httptest.NewRecorder()

@@ -230,7 +230,13 @@ func (m *SessionManager) RecordStepUp(
 }
 
 func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers) (*authdomain.AuthenticationContext, error) {
-	sid := parseCookies(headers.Get("Cookie"))[SessionCookie]
+	cookies := parseCookies(headers.Get("Cookie"))
+	// Subdomain tenants use the browser-enforced __Host- name (ADR-144). Path
+	// tenants retain the legacy name; prefer the host-only cookie if both exist.
+	sid := cookies["__Host-"+SessionCookie]
+	if sid == "" {
+		sid = cookies[SessionCookie]
+	}
 	if sid == "" {
 		return nil, nil //nolint:nilnil // A missing session cookie is an anonymous request, not an error.
 	}
@@ -264,7 +270,11 @@ func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error 
 // revoking it. RP-Initiated Logout (/end_session) uses this as the fallback
 // session resolution when no id_token_hint was given (ADR-127 decision 4).
 func (m *SessionManager) SessionIDFromCookie(cookieHeader string) string {
-	return parseCookies(cookieHeader)[SessionCookie]
+	cookies := parseCookies(cookieHeader)
+	if sid := cookies["__Host-"+SessionCookie]; sid != "" {
+		return sid
+	}
+	return cookies[SessionCookie]
 }
 
 func parseCookies(header string) map[string]string {

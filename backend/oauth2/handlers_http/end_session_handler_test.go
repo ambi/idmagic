@@ -61,7 +61,7 @@ func TestEndSessionRedirectsToRegisteredURIWithStatePropagation(t *testing.T) {
 		"post_logout_redirect_uri": {logoutRedirectURI},
 		"state":                    {"opaque-state-123"},
 	}
-	req := httptest.NewRequest(http.MethodGet, "/end_session?"+q.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusFound {
@@ -85,7 +85,7 @@ func TestEndSessionRejectsUnregisteredPostLogoutURI(t *testing.T) {
 		"client_id":                {logoutClientID},
 		"post_logout_redirect_uri": {"https://evil.example.com/cb"},
 	}
-	req := httptest.NewRequest(http.MethodGet, "/end_session?"+q.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/end_session?"+q.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code == http.StatusFound ||

@@ -560,6 +560,81 @@
         }
       }
     },
+    "/api/admin/tenants/{tenant_id}/endpoint_style": {
+      "put": {
+        "operationId": "SetTenantEndpointStyle",
+        "summary": "system_admin がテナントの正規ロケーションの形を切り替える。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "SystemAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "input.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tenant_id": {
+                    "type": "string"
+                  },
+                  "endpoint_style": {
+                    "$ref": "#/components/schemas/TenantEndpointStyle"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "tenant_id",
+                  "endpoint_style"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/tenants/{tenant_id}/quota": {
       "put": {
         "operationId": "UpdateTenantQuota",
@@ -30911,6 +30986,14 @@
         ],
         "description": "system_admin が無効化済みテナントを再有効化した。"
       },
+      "TenantEndpointStyle": {
+        "type": "string",
+        "enum": [
+          "Path",
+          "Subdomain"
+        ],
+        "description": "テナントの正規ロケーションの形。1 テナントは 1 つの正規ロケーションしか持たず、そこから issuer / cookie scope / WebAuthn RP ID が一意に決まる。Path は共有ホスト上の `{base}/realms/{realm}` で、ワイルドカード DNS も証明書も要らない既定。Subdomain はテナント固有ホスト `{realm}.{tenant_base_domain}` で、テナント固有 origin を必要とする機能 (`__Host-` cookie、テナント別 WebAuthn RP ID、テナント別ブランド origin) が成立する。tenant_base_domain が未設定の配備では Subdomain を選べない。"
+      },
       "TenantFooterLink": {
         "type": "object",
         "properties": {
@@ -35619,6 +35702,22 @@
               ],
               "resourceTypes": [
                 "TenantDirectory"
+              ]
+            }
+          },
+          {
+            "name": "SetTenantEndpointStyle",
+            "memberOf": "policy:SystemAdministrator",
+            "policies": [
+              "SystemAdministrator"
+            ],
+            "resourceId": "input.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
               ]
             }
           },

@@ -671,6 +671,17 @@ export async function setAdminTenantDisabled(
   )
 }
 
+export async function setAdminTenantEndpointStyle(
+  csrfToken: string,
+  tenantID: string,
+  endpointStyle: NonNullable<AdminTenant['endpoint_style']>,
+): Promise<void> {
+  await request(
+    `/api/admin/tenants/${encodeURIComponent(tenantID)}/endpoint_style`,
+    adminRequest(csrfToken, 'PUT', { endpoint_style: endpointStyle }),
+  )
+}
+
 export async function listAdminGroups(): Promise<AdminGroup[]> {
   return (await request<{ groups: AdminGroup[] }>('/api/admin/groups')).groups
 }

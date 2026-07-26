@@ -63,7 +63,7 @@ func TestRegisterClientAPI(t *testing.T) {
 			"response_types": ["code"],
 			"scope": "openid email"
 		}`
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/register", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 
@@ -86,7 +86,7 @@ func TestRegisterClientAPI(t *testing.T) {
 
 	t.Run("Register_InvalidJSON", func(t *testing.T) {
 		payload := `{invalid-json}`
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/register", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 
@@ -106,7 +106,7 @@ func TestRegisterClientAPI(t *testing.T) {
 			"grant_types": ["authorization_code"],
 			"response_types": ["code"]
 		}`
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/register", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 
@@ -134,7 +134,7 @@ func TestRegisterClientAPI(t *testing.T) {
 			"response_types": ["code"],
 			"jwks_uri": "http://insecure-jwks.example"
 		}`
-		req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(payload))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/register", strings.NewReader(payload))
 		req.Header.Set("Content-Type", "application/json")
 		rec := httptest.NewRecorder()
 

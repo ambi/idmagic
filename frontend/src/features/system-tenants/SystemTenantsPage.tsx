@@ -18,6 +18,10 @@ import { Label } from '../../components/ui/label'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminTenant } from '../../types'
 import { systemTenantsDictionary } from './SystemTenantsPage.i18n'
+import { formatDate, StatusBadge } from './SystemTenantsShared'
+import { TenantEndpointStyleEditor } from './TenantEndpointStyleEditor'
+
+export { StatusBadge } from './SystemTenantsShared'
 
 export function SystemTenantsPage({
   csrfToken,
@@ -263,6 +267,8 @@ export function TenantDetailCard({
       <dl className="mt-4 grid grid-cols-[110px_minmax(0,1fr)] gap-y-3 text-sm">
         <dt className="text-slate-500">Realm</dt>
         <dd className="font-mono text-xs">{tenant.realm}</dd>
+        <dt className="text-slate-500">{t.endpointStyleLabel}</dt>
+        <dd>{tenant.endpoint_style ?? 'path'}</dd>
         <dt className="text-slate-500">{t.idLabel}</dt>
         <dd className="font-mono text-xs">{tenant.id}</dd>
         <dt className="text-slate-500">{t.displayNameLabel}</dt>
@@ -306,6 +312,12 @@ export function TenantDetailCard({
         ) : null}
       </dl>
       <TenantEditor tenant={tenant} csrfToken={csrfToken} busy={busy} onSaved={onSaved} />
+      <TenantEndpointStyleEditor
+        tenant={tenant}
+        csrfToken={csrfToken}
+        busy={busy}
+        onSaved={onSaved}
+      />
     </Card>
   )
 }
@@ -343,7 +355,6 @@ function TenantEditor({
   const [qArtifacts, setQArtifacts] = useState(
     tenant.quota?.export_artifacts_bytes?.toString() ?? '',
   )
-
   const [saving, setSaving] = useState(false)
   const [editError, setEditError] = useState('')
   const t = useDictionary(systemTenantsDictionary)
@@ -362,7 +373,6 @@ function TenantEditor({
         display_name: displayName !== tenant.display_name ? displayName : undefined,
         password_policy_override: hasPolicy ? policy : undefined,
       })
-
       const num = (v: string) => (v.trim() ? Number.parseInt(v, 10) : undefined)
       await updateAdminTenantQuota(csrfToken, tenant.id, {
         users: num(qUsers),
@@ -548,25 +558,4 @@ function TenantEditor({
       </Button>
     </form>
   )
-}
-
-export function StatusBadge({ status }: { status: AdminTenant['status'] }) {
-  return status === 'active' ? (
-    <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-      active
-    </span>
-  ) : (
-    <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">
-      disabled
-    </span>
-  )
-}
-
-function formatDate(value: string | undefined, locale: 'ja' | 'en'): string {
-  if (!value) return '—'
-  try {
-    return new Date(value).toLocaleString(locale === 'ja' ? 'ja-JP' : 'en-US')
-  } catch {
-    return value
-  }
 }

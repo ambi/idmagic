@@ -126,6 +126,8 @@ modules:
         via: binding
       - module: authentication-webauthn-ports
         via: binding
+      - module: authentication-webauthn-adapters
+        via: binding
       - module: authentication-webauthn-usecases
         via: binding
       - module: http-support

@@ -956,7 +956,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
       <div class="eyebrow">Bounded Context · contexts/tenancy.yaml</div>
       <h1>Tenancy</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">17</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">47</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">23</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">13</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">17</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">48</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">24</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">18</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-tenancy-glossary">
     <h2>Glossary <span class="count">17</span></h2>
@@ -1122,7 +1122,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
     </article></div>
   </section>
 <section id="context-tenancy-models">
-    <h2>Models <span class="count">47</span></h2>
+    <h2>Models <span class="count">48</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">5</span></h3>
@@ -1176,8 +1176,8 @@ outcome class、lane などの有限集合だけを label とする。applicatio
     <td><code class="name">realm</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
-    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 63</span> <span class="chip chip-constraint">pattern: ^[a-z0-9][a-z0-9-]{0,62}$</span></td>
-    <td>URL `/realms/{realm}/`・OIDC issuer 等の公開語彙に現れる mutable な一意識別子 (旧 id の slug)。予約語 admin は禁止。一意制約の範囲で変更可能 (rename)。</td>
+    <td><span class="chip chip-constraint">non empty</span> <span class="chip chip-constraint">max length: 63</span> <span class="chip chip-constraint">pattern: ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$</span></td>
+    <td>URL `/realms/{realm}/`・サブドメイン `{realm}.{base}`・OIDC issuer 等の公開語彙に現れる不変の一意識別子 (旧 id の slug)。endpoint_style が Subdomain のときホスト名の最左ラベルになるため、単一 DNS ラベルとして妥当でなければならない: hyphen で終わらず、IDNA A-label と紛れる xn-- で始まらない。予約語 admin / www / api / login / id / sso / mail / smtp / status / docs / app / static / cdn / auth / account は禁止。採番後は変更できない (rename 不可) — issuer と WebAuthn RP ID に現れるため、変更は既発行 token と既存 passkey を破壊する。制約の強化は新規作成時にのみ適用し、既存 realm は再検証しない。</td>
   </tr><tr>
     <td><code class="name">display_name</code></td>
     <td><code class="type">String</code></td>
@@ -1190,6 +1190,12 @@ outcome class、lane などの有限集合だけを label とする。applicatio
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-default">default: Active</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">endpoint_style</code></td>
+    <td><code class="type">TenantEndpointStyle</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-default">default: Path</span></td>
+    <td>このテナントの正規ロケーションの形。テナントは正規ロケーションからのみ到達でき、issuer / cookie scope / WebAuthn RP ID はすべてそこから導出される。変更は破壊的操作なので SetTenantEndpointStyle でのみ行う。</td>
   </tr><tr>
     <td><code class="name">password_policy_override</code></td>
     <td><code class="type">PasswordPolicyOverride</code></td>
@@ -2449,12 +2455,19 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">5</span></h3>
+      <h3 class="grp-title">enum <span class="count">6</span></h3>
       <div class="cards"><article class="card" id="scl-Tenancy/model/TenantStatus">
     <header><h3>TenantStatus</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Tenancy/model/TenantStatus</code></header>
     <p class="desc">テナント状態。Active は通常稼働、Disabled はテナント全体のプロトコル受付を停止 (`/authorize` `/token` 等が一律 invalid_request)。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">Active</span> <span class="chip chip-enum">Disabled</span></div>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/TenantEndpointStyle">
+    <header><h3>TenantEndpointStyle</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Tenancy/model/TenantEndpointStyle</code></header>
+    <p class="desc">テナントの正規ロケーションの形。1 テナントは 1 つの正規ロケーションしか持たず、そこから issuer / cookie scope / WebAuthn RP ID が一意に決まる。Path は共有ホスト上の `{base}/realms/{realm}` で、ワイルドカード DNS も証明書も要らない既定。Subdomain はテナント固有ホスト `{realm}.{tenant_base_domain}` で、テナント固有 origin を必要とする機能 (`__Host-` cookie、テナント別 WebAuthn RP ID、テナント別ブランド origin) が成立する。tenant_base_domain が未設定の配備では Subdomain を選べない。</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">Path</span> <span class="chip chip-enum">Subdomain</span></div>
 
   </article>
 <article class="card" id="scl-Tenancy/model/AttributeType">
@@ -2873,15 +2886,33 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
     </div>
   </section>
 <section id="context-tenancy-interfaces">
-    <h2>Interfaces <span class="count">23</span></h2>
+    <h2>Interfaces <span class="count">24</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Tenancy/interface/ResolveTenant">
     <header><h3>ResolveTenant</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">Tenancy/interface/ResolveTenant</code></header>
-    <p class="desc">HTTP リクエストの path の realm slug から所属テナントを解決する内部インターフェース。
-`/realms/{realm}/...` の realm を UUID キーのテナントへ写像し、prefix が無い場合は
-`default` realm のテナントに解決する。issuer / URL prefix は解決した realm から組み立て、
-公開語彙を realm に保つ。不在テナントは 404 tenant_not_found、disabled テナントは
-OAuth/OIDC の protocol route では 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。
+    <p class="desc">HTTP リクエストの Host と path から所属テナントを解決する内部インターフェース。
+
+**不変条件: 1 テナント = 1 正規ロケーション = 1 issuer。** テナントは自分の
+endpoint_style が指す正規ロケーションからのみ到達でき、他方の経路では不在として扱う。
+同一テナントが 2 つの origin から到達できると issuer が多義になり、discovery 文書の
+`issuer` が取得元 URL と一致しなくなる (OpenID Connect Discovery 1.0 §4.3 /
+RFC 8414 §3.3 違反)。
+
+解決順序:
+1. tenant_base_domain が設定され Host が `{label}.{tenant_base_domain}` に一致するなら
+   label を realm として写像する。見つかったテナントの endpoint_style が Subdomain で
+   なければ不在として扱う。
+2. path が `/realms/{realm}/...` に一致するなら realm を写像する。見つかったテナントの
+   endpoint_style が Path でなければ不在として扱う。
+3. どちらにも一致しないリクエストは不在として扱う。任意の Host や prefix 無し path を
+   default テナントへ落とすことはしない (fail-closed)。テナント境界の破りを防ぐため、
+   既定は deny とする。
+
+issuer / URL prefix / cookie scope / WebAuthn RP ID は解決した正規ロケーションから
+組み立てる。Path なら issuer は `{base}/realms/{realm}`、Subdomain なら
+`{scheme}://{realm}.{tenant_base_domain}`。
+不在テナントは 404 tenant_not_found、disabled テナントは OAuth/OIDC の protocol route
+では 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。
 </p>
 
     <div class="io">
@@ -2889,6 +2920,11 @@ OAuth/OIDC の protocol route では 400 invalid_request とし、いずれも�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
+    <td><code class="name">host</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td>HTTP リクエストの Host ヘッダ。port と trailing dot を除き lowercase に正規化して照合する。</td>
+  </tr><tr>
     <td><code class="name">path</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
@@ -3088,6 +3124,41 @@ bare path と control-plane path (/realms/default 配下、cookie session 整合
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/tenants/{tenant_id}/enable</code> <span class="chip chip-hint">response: 204</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Tenancy/interface/SetTenantEndpointStyle">
+    <header><h3>SetTenantEndpointStyle</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/SystemAdministrator">SystemAdministrator</a> <code>Tenant:input.tenant_id</code><code class="canonical-ref">Tenancy/interface/SetTenantEndpointStyle</code></header>
+    <p class="desc">system_admin がテナントの正規ロケーションの形を切り替える。
+通常の属性更新 (UpdateTenant) から分離するのは、これがテナントの identity を
+作り替える破壊的操作だからである: issuer が変わるため既発行 token の `iss` 検証と
+全 RP の設定が壊れ、WebAuthn RP ID が変わるため既存 passkey がすべて無効になり、
+cookie scope が変わるため進行中のセッションが切れる。
+Subdomain は tenant_base_domain が設定された配備でのみ選択でき、未設定なら
+InvalidRequestError とする。realm は不変なので、切り替え後のホスト名は既存 realm から
+一意に決まる。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">tenant_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">endpoint_style</code></td>
+    <td><code class="type">TenantEndpointStyle</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/tenants/{tenant_id}/endpoint_style</code> <span class="chip chip-hint">response: 204</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Tenancy/interface/UpdateTenantQuota">
@@ -3833,7 +3904,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       </article></div>
   </section>
 <section id="context-tenancy-scenarios">
-    <h2>Scenarios <span class="count">13</span></h2>
+    <h2>Scenarios <span class="count">18</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-Tenancy/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E5~9B~BA~E6~9C~89~E3~81~AE~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E5~B1~9E~E6~80~A7~E3~82~B9~E3~82~AD~E3~83~BC~E3~83~9E~E3~82~92~E5~AE~9A~E7~BE~A9~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者はテナント固有のユーザー属性スキーマを定義できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/管理者はテナント固有のユーザー属性スキーマを定義できる</code></header>
@@ -3883,14 +3954,56 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
             <header><span class="chip chip-hint">at 1</span><code class="name">管理者が SVG ファイルをロゴとしてアップロードしようとする</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> で拒否され保存されない</li></ol></div>
           </article></div>
-      </article><article class="card scenario" id="scl-Tenancy/scenario/~E3~83~AA~E3~82~AF~E3~82~A8~E3~82~B9~E3~83~88~E3~81~AE~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AFrealm~20prefix~E3~81~8B~E3~82~89~E8~A7~A3~E6~B1~BA~E3~81~95~E3~82~8C~E3~82~8B">
-        <header><h3>リクエストのテナントはrealm prefixから解決される</h3><span class="chip chip-actor">OAuth2Client</span><code class="canonical-ref">Tenancy/scenario/リクエストのテナントはrealm prefixから解決される</code></header>
+      </article><article class="card scenario" id="scl-Tenancy/scenario/path~20style~20~E3~81~AE~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AF~20realm~20prefix~20~E3~81~8B~E3~82~89~E8~A7~A3~E6~B1~BA~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>path style のテナントは realm prefix から解決される</h3><span class="chip chip-actor">OAuth2Client</span><code class="canonical-ref">Tenancy/scenario/path style のテナントは realm prefix から解決される</code></header>
 
-
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">/realms/ 接頭辞を持たない /authorize にリクエストを送る</li><li class="scn-step">解決されたテナントは &quot;default&quot;</li><li class="scn-step">iss claim は base URL + /realms/default</li></ol></div>
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;default&quot; の endpoint_style は Path である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;/realms/default/authorize&quot; にリクエストを送る</li><li class="scn-step">解決されたテナントは &quot;default&quot;</li><li class="scn-step">iss claim は base URL + /realms/default</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">対象テナントが無効化されている</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"> tenant_id &quot;acme&quot; を作成して無効化する</li><li class="scn-step"> 無効化済みテナントの &quot;/realms/acme/authorize&quot; にリクエストを送る</li><li class="scn-step"> テナントの存在を漏らさずエラー &quot;<a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">realm prefix を持たない &quot;/authorize&quot; にリクエストを送る</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">テナントは解決されず 404 tenant_not_found になる</li><li class="scn-step">任意のリクエストが default テナントへ落ちることはない</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Tenancy/scenario/subdomain~20style~20~E3~81~AE~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AF~20Host~20~E3~81~8B~E3~82~89~E8~A7~A3~E6~B1~BA~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>subdomain style のテナントは Host から解決される</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">Tenancy/scenario/subdomain style のテナントは Host から解決される</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_base_domain が設定されている</li><li class="scn-step">テナント &quot;acme&quot; の endpoint_style は Subdomain である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Host &quot;acme.{tenant_base_domain}&quot; の &quot;/authorize&quot; にリクエストを送る</li><li class="scn-step">解決されたテナントは &quot;acme&quot; で、その branding のログイン画面が表示される</li><li class="scn-step">session cookie は __Host- prefix と Path=/ を持ち Domain 属性を持たない</li><li class="scn-step">WebAuthn RP ID は &quot;acme.{tenant_base_domain}&quot; である</li></ol></div>
+
+      </article><article class="card scenario" id="scl-Tenancy/scenario/~E6~9C~AA~E7~9F~A5~E3~81~AE~E3~82~B5~E3~83~96~E3~83~89~E3~83~A1~E3~82~A4~E3~83~B3~E3~81~AF~20default~20~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AB~E8~A7~A3~E6~B1~BA~E3~81~95~E3~82~8C~E3~81~AA~E3~81~84">
+        <header><h3>未知のサブドメインは default テナントに解決されない</h3><span class="chip chip-actor">OAuth2Client</span><code class="canonical-ref">Tenancy/scenario/未知のサブドメインは default テナントに解決されない</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_base_domain が設定されている</li><li class="scn-step">realm &quot;unknown&quot; のテナントは存在しない</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">Host &quot;unknown.{tenant_base_domain}&quot; の &quot;/authorize&quot; にリクエストを送る</li><li class="scn-step">404 tenant_not_found になり、default テナントにも他のどのテナントにも到達しない</li></ol></div>
+
+      </article><article class="card scenario" id="scl-Tenancy/scenario/~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AF~E8~87~AA~E5~88~86~E3~81~AE~E6~AD~A3~E8~A6~8F~E3~83~AD~E3~82~B1~E3~83~BC~E3~82~B7~E3~83~A7~E3~83~B3~E4~BB~A5~E5~A4~96~E3~81~8B~E3~82~89~E3~81~AF~E5~88~B0~E9~81~94~E3~81~A7~E3~81~8D~E3~81~AA~E3~81~84">
+        <header><h3>テナントは自分の正規ロケーション以外からは到達できない</h3><span class="chip chip-actor">OAuth2Client</span><code class="canonical-ref">Tenancy/scenario/テナントは自分の正規ロケーション以外からは到達できない</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_base_domain が設定されている</li><li class="scn-step">テナント &quot;acme&quot; の endpoint_style は Subdomain である</li><li class="scn-step">テナント &quot;beta&quot; の endpoint_style は Path である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;/realms/acme/authorize&quot; にリクエストを送る</li><li class="scn-step">acme は Subdomain なので path prefix 経路では不在として扱われ 404 になる</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">Host &quot;beta.{tenant_base_domain}&quot; の &quot;/authorize&quot; にリクエストを送る</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">beta は Path なのでサブドメイン経路では不在として扱われ 404 になる</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">Host &quot;acme.{tenant_base_domain}&quot; の &quot;/realms/beta/authorize&quot; にリクエストを送る</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">acme の origin から beta へ到達することはできず 404 になる</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Tenancy/scenario/discovery~20~E3~81~AE~20issuer~20~E3~81~AF~E5~8F~96~E5~BE~97~E5~85~83~20URL~20~E3~81~A8~E4~B8~80~E8~87~B4~E3~81~99~E3~82~8B">
+        <header><h3>discovery の issuer は取得元 URL と一致する</h3><span class="chip chip-actor">OAuth2Client</span><code class="canonical-ref">Tenancy/scenario/discovery の issuer は取得元 URL と一致する</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_base_domain が設定されている</li><li class="scn-step">テナント &quot;default&quot; の endpoint_style は Path、テナント &quot;acme&quot; の endpoint_style は Subdomain である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;{base}/realms/default/.well-known/openid-configuration&quot; を取得する</li><li class="scn-step">issuer は &quot;{base}/realms/default&quot; であり、取得元 URL の prefix と一致する</li><li class="scn-step">&quot;https://acme.{tenant_base_domain}/.well-known/openid-configuration&quot; を取得する</li><li class="scn-step">issuer は &quot;https://acme.{tenant_base_domain}&quot; であり、取得元 URL の prefix と一致する</li><li class="scn-step">どちらの応答も endpoint URL を自分の正規ロケーション配下だけで組み立てる</li></ol></div>
+
+      </article><article class="card scenario" id="scl-Tenancy/scenario/System~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AE~E6~AD~A3~E8~A6~8F~E3~83~AD~E3~82~B1~E3~83~BC~E3~82~B7~E3~83~A7~E3~83~B3~E3~82~92~E5~88~87~E3~82~8A~E6~9B~BF~E3~81~88~E3~82~89~E3~82~8C~E3~82~8B">
+        <header><h3>System管理者はテナントの正規ロケーションを切り替えられる</h3><span class="chip chip-actor">SystemAdministrator</span><code class="canonical-ref">Tenancy/scenario/System管理者はテナントの正規ロケーションを切り替えられる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">system_admin ロールを持つ &quot;sysadmin&quot; が認証済みである</li><li class="scn-step">tenant_base_domain が設定されている</li><li class="scn-step">テナント &quot;acme&quot; の endpoint_style は Path である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;sysadmin&quot; が <a class="chip chip-ref" href="#scl-Tenancy/interface/SetTenantEndpointStyle">SetTenantEndpointStyle</a> で acme を Subdomain に切り替える</li><li class="scn-step">acme は &quot;acme.{tenant_base_domain}&quot; からのみ到達できるようになる</li><li class="scn-step">&quot;{base}/realms/acme/...&quot; は 404 になる</li><li class="scn-step">issuer と WebAuthn RP ID が新しい正規ロケーション由来の値に変わる</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">tenant_base_domain が設定されていない配備で Subdomain を指定する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> で拒否され endpoint_style は変わらない</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-Tenancy/scenario/System~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E3~81~AE~E3~82~AF~E3~82~A9~E3~83~BC~E3~82~BF~E4~B8~8A~E9~99~90~E3~82~92~E8~AA~BF~E6~95~B4~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>System管理者はテナントのクォータ上限を調整できる</h3><span class="chip chip-actor">SystemAdministrator</span><code class="canonical-ref">Tenancy/scenario/System管理者はテナントのクォータ上限を調整できる</code></header>

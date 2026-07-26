@@ -72,7 +72,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 }
 
 func (d Deps) transactionRequest(c *echo.Context) (*domain.AuthorizationRequest, error) {
-	cookie, err := c.Cookie(authorizationTransactionCookie)
+	cookie, err := c.Cookie(support.TenantCookieName(c, authorizationTransactionCookie))
 	if err != nil || cookie.Value == "" {
 		return nil, errors.New("no authorization transaction is available")
 	}
@@ -99,17 +99,17 @@ func validReturnTo(c *echo.Context, returnTo string) bool {
 }
 
 func (d Deps) setTransactionCookie(c *echo.Context, requestID string) {
-	c.SetCookie(&http.Cookie{Name: authorizationTransactionCookie, Value: requestID, Path: support.TenantCookiePath(c), Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 600}) //nolint:gosec // Secure is selected from the configured issuer scheme.
+	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, authorizationTransactionCookie), Value: requestID, Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 600}) //nolint:gosec // Secure is selected from the configured issuer scheme.
 }
 
 func (d Deps) clearTransactionCookie(c *echo.Context) {
-	c.SetCookie(&http.Cookie{Name: authorizationTransactionCookie, Path: support.TenantCookiePath(c), Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Secure is selected from the configured issuer scheme.
+	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, authorizationTransactionCookie), Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Secure is selected from the configured issuer scheme.
 }
 
 func (d Deps) setSessionCookie(c *echo.Context, sessionID string) {
-	c.SetCookie(&http.Cookie{Name: usecases.SessionCookie, Value: sessionID, Path: support.TenantCookiePath(c), Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: usecases.SessionTTLSeconds}) //nolint:gosec // Secure is selected from the configured issuer scheme.
+	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, usecases.SessionCookie), Value: sessionID, Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: usecases.SessionTTLSeconds}) //nolint:gosec // Secure is selected from the configured issuer scheme.
 }
 
 func (d Deps) clearSessionCookie(c *echo.Context) {
-	c.SetCookie(&http.Cookie{Name: usecases.SessionCookie, Path: support.TenantCookiePath(c), Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Secure is selected from the configured issuer scheme.
+	c.SetCookie(&http.Cookie{Name: support.TenantCookieName(c, usecases.SessionCookie), Path: support.TenantCookiePath(c), Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1}) //nolint:gosec // Secure is selected from the configured issuer scheme.
 }

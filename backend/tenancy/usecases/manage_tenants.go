@@ -71,7 +71,13 @@ func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displ
 	}
 	tenant := &domain.Tenant{
 		ID: id, Realm: strings.TrimSpace(realm), DisplayName: displayName, Status: domain.TenantStatusActive,
-		CreatedAt: normalizeNow(now), UpdatedAt: normalizeNow(now),
+		EndpointStyle: domain.TenantEndpointStylePath,
+		CreatedAt:     normalizeNow(now), UpdatedAt: normalizeNow(now),
+	}
+	// 新規 realm には DNS ラベル規則と予約語を適用する (ADR-144)。Tenant.Validate は
+	// 既存 realm を落とさないよう緩いままなので、作成経路で別に検査する。
+	if err := domain.ValidateNewRealm(tenant.Realm); err != nil {
+		return nil, ErrInvalidTenantID
 	}
 	if err := tenant.Validate(); err != nil {
 		return nil, ErrInvalidTenantID
@@ -200,6 +206,36 @@ func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id stri
 		updated.Status = domain.TenantStatusActive
 		updated.DisabledAt = nil
 	}
+	if err := repo.Save(ctx, &updated); err != nil {
+		return nil, err
+	}
+	return &updated, nil
+}
+
+// SetEndpointStyle はテナントの正規ロケーションを切り替える破壊的操作 (ADR-144)。
+// 通常の Update に混ぜないことで、呼び出し側が issuer / RP ID / cookie scope の変更を
+// 明示的に扱うことを強制する。
+func SetEndpointStyle(
+	ctx context.Context,
+	repo tenantports.TenantRepository,
+	id string,
+	style domain.TenantEndpointStyle,
+	baseDomain string,
+	now time.Time,
+) (*domain.Tenant, error) {
+	if err := domain.ValidateEndpointStyleSelectable(style, baseDomain); err != nil {
+		return nil, err
+	}
+	tenant, err := repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if tenant == nil {
+		return nil, ErrTenantNotFound
+	}
+	updated := *tenant
+	updated.EndpointStyle = style
+	updated.UpdatedAt = normalizeNow(now)
 	if err := repo.Save(ctx, &updated); err != nil {
 		return nil, err
 	}

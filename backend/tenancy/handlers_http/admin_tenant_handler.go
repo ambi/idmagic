@@ -27,6 +27,10 @@ type tenantUpdateRequest struct {
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 }
 
+type tenantEndpointStyleRequest struct {
+	EndpointStyle domain.TenantEndpointStyle `json:"endpoint_style"`
+}
+
 func (d Deps) handleListTenants(c *echo.Context) error {
 	if _, err := d.requireSystemAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
@@ -146,6 +150,31 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, tenant)
 }
 
+// handleSetTenantEndpointStyle は issuer / WebAuthn RP ID / cookie scope を変えるため、
+// 通常の PATCH から切り離した endpoint_style の明示的な切替操作。
+func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
+	if err := d.VerifyBrowserRequest(c); err != nil {
+		return err
+	}
+	if _, err := d.requireSystemAdmin(c); err != nil {
+		return d.WriteAdminAccessError(c, err)
+	}
+	var input tenantEndpointStyleRequest
+	if err := support.DecodeJSON(c.Request(), &input); err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	target, err := d.resolveTenantByRealm(c, c.Param("tenant_id"))
+	if err != nil {
+		return d.writeTenantError(c, err)
+	}
+	if _, err := tenantusecases.SetEndpointStyle(
+		c.Request().Context(), d.TenantRepo, target.ID, input.EndpointStyle, d.TenantBaseDomain, time.Now().UTC(),
+	); err != nil {
+		return d.writeTenantError(c, err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
 func tenantChangedFields(input tenantUpdateRequest) []string {
 	fields := []string{}
 	if input.DisplayName != nil {
@@ -229,7 +258,9 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 		return support.WriteBrowserError(c, http.StatusConflict, "tenant_conflict", "The tenant ID is already in use.")
 	case errors.Is(err, tenantusecases.ErrInvalidTenantID),
 		errors.Is(err, tenantusecases.ErrDisplayNameEmpty),
-		errors.Is(err, tenantusecases.ErrDefaultTenant):
+		errors.Is(err, tenantusecases.ErrDefaultTenant),
+		errors.Is(err, domain.ErrEndpointStyleUnknown),
+		errors.Is(err, domain.ErrSubdomainStyleNoBase):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	case errors.Is(err, tenantusecases.ErrUnsupportedDefaultLocale):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request",

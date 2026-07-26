@@ -31,12 +31,12 @@ type stepUpCompleteRequest struct {
 	Assertion json.RawMessage `json:"assertion,omitempty"`
 }
 
-func stepUpDeps(d httpdeps.Deps) authusecases.StepUpDeps {
+func stepUpDeps(d httpdeps.Deps, c *echo.Context) authusecases.StepUpDeps {
 	return authusecases.StepUpDeps{
 		UserRepo:         d.UserRepo,
 		PasswordHasher:   d.PasswordHasher,
 		MfaFactorRepo:    d.MfaFactorRepo,
-		WebAuthn:         webauthnhttp.WebAuthnAccountDeps(d),
+		WebAuthn:         webauthnhttp.WebAuthnAccountDeps(d, c),
 		RecoveryCodeRepo: d.RecoveryCodeRepo,
 		SessionManager:   d.SessionManager,
 		Emit:             d.Emit,
@@ -46,7 +46,7 @@ func stepUpDeps(d httpdeps.Deps) authusecases.StepUpDeps {
 // HandleStepUpWebAuthnChallenge は step-up 再認証用の WebAuthn assertion challenge を発行する。
 // challenge は現在の認証済み session id をキーに保存し、complete で method=webauthn として検証する。
 func HandleStepUpWebAuthnChallenge(d httpdeps.Deps, c *echo.Context) error {
-	if d.WebAuthnRP == nil {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) == nil {
 		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
@@ -56,7 +56,7 @@ func HandleStepUpWebAuthnChallenge(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	assertion, err := webauthnusecases.BeginWebAuthnAssertion(c.Request().Context(), webauthnhttp.WebAuthnAccountDeps(d), authn.SessionID, authn.UserID)
+	assertion, err := webauthnusecases.BeginWebAuthnAssertion(c.Request().Context(), webauthnhttp.WebAuthnAccountDeps(d, c), authn.SessionID, authn.UserID)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -71,7 +71,7 @@ func HandleStartStepUp(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	methods, err := authusecases.StepUpStart(c.Request().Context(), stepUpDeps(d), authn.UserID, authn.SessionID)
+	methods, err := authusecases.StepUpStart(c.Request().Context(), stepUpDeps(d, c), authn.UserID, authn.SessionID)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -94,7 +94,7 @@ func HandleCompleteStepUp(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if err := authusecases.CompleteStepUp(c.Request().Context(), stepUpDeps(d), authusecases.CompleteStepUpInput{
+	if err := authusecases.CompleteStepUp(c.Request().Context(), stepUpDeps(d, c), authusecases.CompleteStepUpInput{
 		Sub:       authn.UserID,
 		SessionID: authn.SessionID,
 		Method:    authusecases.StepUpMethod(input.Method),

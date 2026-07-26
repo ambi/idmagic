@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
+superseded_by: [ADR-144]
 ---
 
 # ADR-033: テナント解決は `/realms/{tenant_id}` パスプレフィックスで行う
@@ -40,6 +41,10 @@ idmagic はブラウザフロー (`/authorize` `/login` `/consent`) を扱うた
    既存 RP / `demo.sh` / 既存 docs を破壊しないため。README の endpoint
    テーブルでは prefix 形式を正、bare 形式を deprecated と明示する。
 
+   > この項は [[ADR-144-tenant-canonical-location-and-host-based-resolution]] で撤回した。
+   > 未 prefix 経路は `default` テナントの第 2 ロケーションであり、
+   > 「1 テナント = 1 正規ロケーション」の不変条件に反する。
+
 3. **`iss` claim は `{base}/realms/{tenant_id}` を発行する**。
    token 発行・Discovery `issuer` フィールド・OIDC ID token の `iss`
    は同一文字列となる。
@@ -48,6 +53,10 @@ idmagic はブラウザフロー (`/authorize` `/login` `/consent`) を扱うた
    `LEGACY_BARE_ISSUER=true` を設定すると `default` テナントの未 prefix
    ルートが `iss = {base}` を発行する。1 リリース限定の暫定措置として
    提供し、その後削除する。
+
+   > この escape hatch は [[ADR-144-tenant-canonical-location-and-host-based-resolution]]
+   > で削除した。未 prefix 経路そのものを廃止したため不要になった。
+   > `iss` の組み立て規則は `endpoint_style` 由来に変わっている。
 
 4. **`/realms/{tenant_id}/.well-known/openid-configuration`** は同 prefix の
    endpoint URL を返す。JWKS URI は `{base}/realms/{tenant_id}/jwks` だが、

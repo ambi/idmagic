@@ -80,7 +80,7 @@ func newScopedScimHarness() (*echo.Echo, *apitokenusecases.Service) {
 
 	e := echo.New()
 	deps := support.Deps{Emit: func(spec.DomainEvent) {}}
-	scimhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultTenant), scimhttp.Deps{
+	scimhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), scimhttp.Deps{
 		Deps: deps, Authenticator: &support.Authenticator{UserRepo: userRepo, GroupRepo: groupRepo},
 		Usecases: scimUsecases, ApiTokenAuthenticator: apiTokens,
 	})
@@ -163,7 +163,7 @@ func newScimTestHarness() (*echo.Echo, *usecases.Usecases, *apitokenusecases.Ser
 	scimDeps := scimhttp.Deps{Deps: sd, Authenticator: authenticator, Usecases: usecasesInst, ApiTokenAuthenticator: apiTokens}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultTenant), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
 	return e, usecasesInst, apiTokens
 }
 
@@ -466,7 +466,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultTenant), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
 
 	// 1. 未登録のアクセストークンでは 401 になること
 	{
@@ -661,7 +661,7 @@ func TestScimGroupSync(t *testing.T) {
 	}
 
 	e := echo.New()
-	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultTenant), scimDeps)
+	scimhttp.RegisterRoutes(e.Group("", sd.ResolveDefaultRealmTenant), scimDeps)
 
 	tokenStr := issueAllScimToken(t, apiTokens)
 

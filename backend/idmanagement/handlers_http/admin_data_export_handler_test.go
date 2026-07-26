@@ -201,7 +201,7 @@ func TestDataExportHTTP_NotFoundForUnknownID(t *testing.T) {
 func TestDataExportHTTP_RequiresAdmin(t *testing.T) {
 	h := newExportTestHandler(t)
 	// A non-admin authenticated user must be denied (u1 is a regular user).
-	request := httptest.NewRequest(http.MethodGet, "/api/admin/users/exports", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/exports", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "u1")
 	resp := httptest.NewRecorder()
 	h.echo.ServeHTTP(resp, request)

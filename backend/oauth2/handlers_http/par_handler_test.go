@@ -61,7 +61,7 @@ func newPARTestServer(t *testing.T) *echo.Echo {
 
 func postPAR(t *testing.T, e *echo.Echo, form url.Values) (status int, requestURI string) {
 	t.Helper()
-	req := httptest.NewRequest(http.MethodPost, "/par", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/par", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(parClientID, parClientSecret)
 	rec := httptest.NewRecorder()
@@ -80,7 +80,7 @@ func postPAR(t *testing.T, e *echo.Echo, form url.Values) (status int, requestUR
 }
 
 func getAuthorize(e *echo.Echo, query url.Values) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, "/authorize?"+query.Encode(), http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/authorize?"+query.Encode(), http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec
@@ -199,7 +199,7 @@ func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	req := httptest.NewRequest(http.MethodPost, "/par", strings.NewReader(form.Encode())).WithContext(ctx)
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/par", strings.NewReader(form.Encode())).WithContext(ctx)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(parClientID, parClientSecret)
 	rec := httptest.NewRecorder()

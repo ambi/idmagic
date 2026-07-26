@@ -134,6 +134,7 @@ Local defaults use in-memory persistence and console email output. Production ad
 | `HSTS_INCLUDE_SUBDOMAINS` | `true`, `false` | add `includeSubDomains` to HSTS |
 | `CSP_REPORT_ONLY` | `false`, `true` | send CSP as `Content-Security-Policy-Report-Only` for staged rollout |
 | `CSP_REPORT_URI` | URL/path | CSP `report-uri` for violation collection |
+| `TENANT_BASE_DOMAIN` | parent hostname, e.g. `id.example.com` | enables the `subdomain` endpoint style at `{realm}.<domain>`; unset keeps every tenant on path routing |
 | `WEBAUTHN_RP_ID` | domain, e.g. `localhost` | WebAuthn relying-party ID; WebAuthn/passkeys are disabled when unset |
 | `WEBAUTHN_RP_ORIGINS` | comma-separated origins | Allowed browser origins for WebAuthn ceremonies, e.g. `http://localhost:5173` |
 | `WEBAUTHN_RP_DISPLAY_NAME` | display name | WebAuthn relying-party display name shown by authenticators |
@@ -152,6 +153,12 @@ Production splits `idmagic-worker` into one Deployment per lane using the `JOB_W
 ### WebAuthn Configuration Notes
 
 WebAuthn binds passkeys to the browser origin and relying-party ID. Non-local deployments must use HTTPS and set `WEBAUTHN_RP_ID` to the registrable domain that users visit. `WEBAUTHN_RP_ORIGINS` must include every public origin used by the UI.
+
+### Tenant Endpoint Styles
+
+Each tenant has exactly one canonical location and issuer. The default `path` style is served at `{ISSUER}/realms/{realm}` and needs no wildcard DNS or certificate. `subdomain` is served at `https://{realm}.{TENANT_BASE_DOMAIN}` and is available only when `TENANT_BASE_DOMAIN` is configured. The ingress layer must provide wildcard DNS and a matching wildcard TLS certificate; IdMagic does not issue or renew certificates.
+
+Changing a tenant from `path` to `subdomain` (or back) is disruptive: its issuer and protocol metadata URLs change, relying parties must be reconfigured, existing passkeys must be re-enrolled, and active browser sessions end. Plan the change as an identity migration. The current work covers IdMagic-managed subdomains only; customer-owned domains are separate work.
 
 ### Notification Email Templates
 

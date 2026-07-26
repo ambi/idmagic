@@ -168,7 +168,7 @@ func Run() error {
 		Deps: httpsupport.Deps{
 			Issuer:                    issuer,
 			SCL:                       sclDoc,
-			LegacyBareIssuer:          bootstrap.EnvDefault("LEGACY_BARE_ISSUER", "false") == "true",
+			TenantBaseDomain:          bootstrap.EnvDefault("TENANT_BASE_DOMAIN", ""),
 			TrustedForwardedHops:      bootstrap.EnvInt("TRUSTED_FORWARDED_HOPS", 0),
 			OperationTimeout:          0, // 必要なら設定
 			DetachedCompletionTimeout: 0,

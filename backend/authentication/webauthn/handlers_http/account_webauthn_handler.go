@@ -27,9 +27,9 @@ type webAuthnCredentialRemoveRequest struct {
 // WebAuthnAccountDeps は webauthn ceremony use case の依存を組み立てる。webauthn 自身の
 // handler に加え、mfa の step-up ハンドラからも package 境界を越えて呼ばれる
 // (ADR-130 Phase 2)。
-func WebAuthnAccountDeps(d httpdeps.Deps) authusecases.WebAuthnDeps {
+func WebAuthnAccountDeps(d httpdeps.Deps, c *echo.Context) authusecases.WebAuthnDeps {
 	return authusecases.WebAuthnDeps{
-		RP:             d.WebAuthnRP,
+		RP:             ResolveRPForRequest(c, d.Deps, d.WebAuthnRP),
 		UserRepo:       d.UserRepo,
 		CredentialRepo: d.WebAuthnCredentialRepo,
 		MfaFactorRepo:  d.MfaFactorRepo,
@@ -46,7 +46,7 @@ func HandleStartWebAuthnRegistration(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
-	creation, err := authusecases.StartWebAuthnRegistration(c.Request().Context(), WebAuthnAccountDeps(d), sub)
+	creation, err := authusecases.StartWebAuthnRegistration(c.Request().Context(), WebAuthnAccountDeps(d, c), sub)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -66,7 +66,7 @@ func HandleFinishWebAuthnRegistration(d httpdeps.Deps, c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := authusecases.FinishWebAuthnRegistration(
-		c.Request().Context(), WebAuthnAccountDeps(d), sub, []byte(input.Attestation), input.Label, time.Now().UTC(),
+		c.Request().Context(), WebAuthnAccountDeps(d, c), sub, []byte(input.Attestation), input.Label, time.Now().UTC(),
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
@@ -91,7 +91,7 @@ func HandleRemoveWebAuthnCredential(d httpdeps.Deps, c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := authusecases.RemoveWebAuthnCredential(
-		c.Request().Context(), WebAuthnAccountDeps(d), sub, input.CredentialID, time.Now().UTC(),
+		c.Request().Context(), WebAuthnAccountDeps(d, c), sub, input.CredentialID, time.Now().UTC(),
 	); err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}

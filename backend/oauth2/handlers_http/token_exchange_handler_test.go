@@ -68,7 +68,9 @@ func newTokenExchangeServer(t *testing.T) string {
 	})
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
-	return srv.URL
+	// bare path はテナントの正規ロケーションではないので (ADR-144)、
+	// default テナントの prefix まで含めた base を返す。
+	return srv.URL + "/realms/default"
 }
 
 func postToken(t *testing.T, base string, form url.Values) (int, map[string]any) {

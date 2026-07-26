@@ -30,7 +30,7 @@ func (d Deps) VerifyBrowserRequest(c *echo.Context) error {
 	if err != nil || origin == "" || origin != issuer.Scheme+"://"+issuer.Host {
 		return WriteBrowserError(c, http.StatusForbidden, "invalid_origin", "The request origin does not match.")
 	}
-	cookie, err := c.Cookie(CSRFCookie)
+	cookie, err := c.Cookie(TenantCookieName(c, CSRFCookie))
 	header := c.Request().Header.Get(CSRFHeader)
 	if err != nil || cookie.Value == "" || header == "" ||
 		len(cookie.Value) != len(header) ||
@@ -42,7 +42,7 @@ func (d Deps) VerifyBrowserRequest(c *echo.Context) error {
 
 // EnsureCSRFCookie は CSRF cookie が無ければ発行し、そのトークン値を返す。
 func (d Deps) EnsureCSRFCookie(c *echo.Context) (string, error) {
-	if cookie, err := c.Cookie(CSRFCookie); err == nil && cookie.Value != "" {
+	if cookie, err := c.Cookie(TenantCookieName(c, CSRFCookie)); err == nil && cookie.Value != "" {
 		return cookie.Value, nil
 	}
 	value, err := randomToken(32)
@@ -50,8 +50,8 @@ func (d Deps) EnsureCSRFCookie(c *echo.Context) (string, error) {
 		return "", err
 	}
 	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure is enabled for HTTPS issuers; local HTTP development intentionally disables it.
-		Name: CSRFCookie, Value: value, Path: TenantCookiePath(c),
-		Secure: d.SecureCookies(), HttpOnly: false, SameSite: http.SameSiteStrictMode,
+		Name: TenantCookieName(c, CSRFCookie), Value: value, Path: TenantCookiePath(c),
+		Secure: d.SecureCookies() || TenantCookieSecure(c), HttpOnly: false, SameSite: http.SameSiteStrictMode,
 		MaxAge: 600,
 	})
 	return value, nil

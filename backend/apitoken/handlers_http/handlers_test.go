@@ -46,7 +46,7 @@ func newHandler(t *testing.T) *echo.Echo {
 	deps := support.Deps{Issuer: "http://idp.test"}
 	authenticator := &support.Authenticator{UserRepo: users, AuthnResolver: authusecases.DemoHeaderResolver{}}
 	e := echo.New()
-	apitokenhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultTenant), apitokenhttp.Deps{
+	apitokenhttp.RegisterRoutes(e.Group("", deps.ResolveDefaultRealmTenant), apitokenhttp.Deps{
 		Deps: deps, Authenticator: authenticator, Service: service,
 	})
 	return e

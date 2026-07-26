@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -88,7 +89,7 @@ func notificationRequest(t *testing.T, e *echo.Echo, method, path string, body a
 		reader = bytes.NewReader(nil)
 	}
 	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password_reset_context")
-	req := httptest.NewRequest(method, path, reader)
+	req := httptest.NewRequest(method, defaultRealmPath(path), reader)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", csrf)
@@ -293,4 +294,14 @@ func TestNotificationTemplateTestSendRequiresVerifiedActorAddress(t *testing.T) 
 	if len(sender.Sent) != 0 {
 		t.Fatalf("sent %d emails", len(sender.Sent))
 	}
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
 }

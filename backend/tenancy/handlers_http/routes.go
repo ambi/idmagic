@@ -61,6 +61,7 @@ func RegisterControlPlaneRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/tenants/:tenant_id", d.handleGetTenant)
 	g.POST("/api/admin/tenants", d.handleCreateTenant)
 	g.PATCH("/api/admin/tenants/:tenant_id", d.handleUpdateTenant)
+	g.PUT("/api/admin/tenants/:tenant_id/endpoint_style", d.handleSetTenantEndpointStyle)
 	g.POST("/api/admin/tenants/:tenant_id/disable", d.handleDisableTenant)
 	g.POST("/api/admin/tenants/:tenant_id/enable", d.handleEnableTenant)
 	g.PUT("/api/admin/tenants/:tenant_id/quota", d.handleUpdateTenantQuota)

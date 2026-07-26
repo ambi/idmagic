@@ -13462,6 +13462,14 @@
       ],
       "description": "system_admin が無効化済みテナントを再有効化した。"
     },
+    "TenantEndpointStyle": {
+      "type": "string",
+      "enum": [
+        "Path",
+        "Subdomain"
+      ],
+      "description": "テナントの正規ロケーションの形。1 テナントは 1 つの正規ロケーションしか持たず、そこから issuer / cookie scope / WebAuthn RP ID が一意に決まる。Path は共有ホスト上の `{base}/realms/{realm}` で、ワイルドカード DNS も証明書も要らない既定。Subdomain はテナント固有ホスト `{realm}.{tenant_base_domain}` で、テナント固有 origin を必要とする機能 (`__Host-` cookie、テナント別 WebAuthn RP ID、テナント別ブランド origin) が成立する。tenant_base_domain が未設定の配備では Subdomain を選べない。"
+    },
     "TenantFooterLink": {
       "type": "object",
       "properties": {

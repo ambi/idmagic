@@ -72,7 +72,7 @@ func TestAdminCreatesAndListsMcpResourceServer(t *testing.T) {
 		t.Fatalf("expected default state Active, got %v", createdBody["state"])
 	}
 
-	listReq := httptest.NewRequest(http.MethodGet, "/api/admin/mcp-resource-servers", http.NoBody)
+	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/mcp-resource-servers", http.NoBody)
 	listReq.Header.Set("X-Demo-Sub", "admin")
 	listRes := httptest.NewRecorder()
 	e.ServeHTTP(listRes, listReq)
@@ -152,7 +152,7 @@ func TestAdminDeletesMcpResourceServer(t *testing.T) {
 		t.Fatalf("delete status=%d body=%s", deleteRes.Code, deleteRes.Body.String())
 	}
 
-	getReq := httptest.NewRequest(http.MethodGet, "/api/admin/mcp-resource-servers/"+id, http.NoBody)
+	getReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/mcp-resource-servers/"+id, http.NoBody)
 	getReq.Header.Set("X-Demo-Sub", "admin")
 	getRes := httptest.NewRecorder()
 	e.ServeHTTP(getRes, getReq)
@@ -163,7 +163,7 @@ func TestAdminDeletesMcpResourceServer(t *testing.T) {
 
 func TestAdminMcpResourceServerRequiresAdmin(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/mcp-resource-servers", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/mcp-resource-servers", http.NoBody)
 	req.Header.Set("X-Demo-Sub", "regular")
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)

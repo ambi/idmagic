@@ -187,6 +187,12 @@ models:
     values:
       - Active
       - Disabled
+  TenantEndpointStyle:
+    kind: enum
+    description: "テナントの正規ロケーションの形。1 テナントは 1 つの正規ロケーションしか持たず、そこから issuer / cookie scope / WebAuthn RP ID が一意に決まる。Path は共有ホスト上の `{base}/realms/{realm}` で、ワイルドカード DNS も証明書も要らない既定。Subdomain はテナント固有ホスト `{realm}.{tenant_base_domain}` で、テナント固有 origin を必要とする機能 (`__Host-` cookie、テナント別 WebAuthn RP ID、テナント別ブランド origin) が成立する。tenant_base_domain が未設定の配備では Subdomain を選べない。"
+    values:
+      - Path
+      - Subdomain
   AttributeType:
     kind: enum
     description: 属性値の sum type discriminator。OIDC 標準クレームの組み込み属性と tenant 定義 custom 属性の両方で共通。
@@ -219,8 +225,8 @@ models:
         constraints:
           - non_empty
           - max_length: 63
-          - pattern: "^[a-z0-9][a-z0-9-]{0,62}$"
-        description: "URL `/realms/{realm}/`・OIDC issuer 等の公開語彙に現れる mutable な一意識別子 (旧 id の slug)。予約語 admin は禁止。一意制約の範囲で変更可能 (rename)。"
+          - pattern: "^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
+        description: "URL `/realms/{realm}/`・サブドメイン `{realm}.{base}`・OIDC issuer 等の公開語彙に現れる不変の一意識別子 (旧 id の slug)。endpoint_style が Subdomain のときホスト名の最左ラベルになるため、単一 DNS ラベルとして妥当でなければならない: hyphen で終わらず、IDNA A-label と紛れる xn-- で始まらない。予約語 admin / www / api / login / id / sso / mail / smtp / status / docs / app / static / cdn / auth / account は禁止。採番後は変更できない (rename 不可) — issuer と WebAuthn RP ID に現れるため、変更は既発行 token と既存 passkey を破壊する。制約の強化は新規作成時にのみ適用し、既存 realm は再検証しない。"
       display_name:
         type: String
         constraints:
@@ -231,6 +237,10 @@ models:
       status:
         type: TenantStatus
         default: Active
+      endpoint_style:
+        type: TenantEndpointStyle
+        default: Path
+        description: このテナントの正規ロケーションの形。テナントは正規ロケーションからのみ到達でき、issuer / cookie scope / WebAuthn RP ID はすべてそこから導出される。変更は破壊的操作なので SetTenantEndpointStyle でのみ行う。
       password_policy_override:
         type: PasswordPolicyOverride
         optional: true
@@ -940,8 +950,11 @@ states:
         to: Active
 interfaces:
   ResolveTenant:
-    description: "HTTP リクエストの path の realm slug から所属テナントを解決する内部インターフェース。\n`/realms/{realm}/...` の realm を UUID キーのテナントへ写像し、prefix が無い場合は\n`default` realm のテナントに解決する。issuer / URL prefix は解決した realm から組み立て、\n公開語彙を realm に保つ。不在テナントは 404 tenant_not_found、disabled テナントは\nOAuth/OIDC の protocol route では 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。\n"
+    description: "HTTP リクエストの Host と path から所属テナントを解決する内部インターフェース。\n\n**不変条件: 1 テナント = 1 正規ロケーション = 1 issuer。** テナントは自分の\nendpoint_style が指す正規ロケーションからのみ到達でき、他方の経路では不在として扱う。\n同一テナントが 2 つの origin から到達できると issuer が多義になり、discovery 文書の\n`issuer` が取得元 URL と一致しなくなる (OpenID Connect Discovery 1.0 §4.3 /\nRFC 8414 §3.3 違反)。\n\n解決順序:\n1. tenant_base_domain が設定され Host が `{label}.{tenant_base_domain}` に一致するなら\n   label を realm として写像する。見つかったテナントの endpoint_style が Subdomain で\n   なければ不在として扱う。\n2. path が `/realms/{realm}/...` に一致するなら realm を写像する。見つかったテナントの\n   endpoint_style が Path でなければ不在として扱う。\n3. どちらにも一致しないリクエストは不在として扱う。任意の Host や prefix 無し path を\n   default テナントへ落とすことはしない (fail-closed)。テナント境界の破りを防ぐため、\n   既定は deny とする。\n\nissuer / URL prefix / cookie scope / WebAuthn RP ID は解決した正規ロケーションから\n組み立てる。Path なら issuer は `{base}/realms/{realm}`、Subdomain なら\n`{scheme}://{realm}.{tenant_base_domain}`。\n不在テナントは 404 tenant_not_found、disabled テナントは OAuth/OIDC の protocol route\nでは 400 invalid_request とし、いずれも存在や状態の詳細を漏らさない。\n"
     input:
+      host:
+        type: String
+        description: HTTP リクエストの Host ヘッダ。port と trailing dot を除き lowercase に正規化して照合する。
       path:
         type: String
         description: HTTP リクエスト path
@@ -1079,6 +1092,27 @@ interfaces:
       - kind: http
         method: POST
         path: "/api/admin/tenants/{tenant_id}/enable"
+        successful_status_codes:
+          - "204"
+  SetTenantEndpointStyle:
+    description: "system_admin がテナントの正規ロケーションの形を切り替える。\n通常の属性更新 (UpdateTenant) から分離するのは、これがテナントの identity を\n作り替える破壊的操作だからである: issuer が変わるため既発行 token の `iss` 検証と\n全 RP の設定が壊れ、WebAuthn RP ID が変わるため既存 passkey がすべて無効になり、\ncookie scope が変わるため進行中のセッションが切れる。\nSubdomain は tenant_base_domain が設定された配備でのみ選択でき、未設定なら\nInvalidRequestError とする。realm は不変なので、切り替え後のホスト名は既存 realm から\n一意に決まる。\n"
+    input:
+      tenant_id:
+        type: String
+      endpoint_style:
+        type: TenantEndpointStyle
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    access:
+      policies: [SystemAdministrator]
+      resource:
+        type: Tenant
+        id: input.tenant_id
+    bindings:
+      - kind: http
+        method: PUT
+        path: "/api/admin/tenants/{tenant_id}/endpoint_style"
         successful_status_codes:
           - "204"
   UpdateTenantQuota:
@@ -1541,10 +1575,12 @@ scenarios:
         condition: 管理者が SVG ファイルをロゴとしてアップロードしようとする
         steps:
           - InvalidRequestError で拒否され保存されない
-  リクエストのテナントはrealm prefixから解決される:
+  path style のテナントは realm prefix から解決される:
     actor: OAuth2Client
+    given:
+      - "テナント \"default\" の endpoint_style は Path である"
     main_success:
-      - /realms/ 接頭辞を持たない /authorize にリクエストを送る
+      - "\"/realms/default/authorize\" にリクエストを送る"
       - "解決されたテナントは \"default\""
       - iss claim は base URL + /realms/default
     extensions:
@@ -1554,6 +1590,74 @@ scenarios:
           - " tenant_id \"acme\" を作成して無効化する"
           - " 無効化済みテナントの \"/realms/acme/authorize\" にリクエストを送る"
           - " テナントの存在を漏らさずエラー \"InvalidRequestError\""
+      - at: 1
+        condition: realm prefix を持たない "/authorize" にリクエストを送る
+        steps:
+          - テナントは解決されず 404 tenant_not_found になる
+          - 任意のリクエストが default テナントへ落ちることはない
+  subdomain style のテナントは Host から解決される:
+    actor: EndUser
+    given:
+      - tenant_base_domain が設定されている
+      - "テナント \"acme\" の endpoint_style は Subdomain である"
+    main_success:
+      - "Host \"acme.{tenant_base_domain}\" の \"/authorize\" にリクエストを送る"
+      - "解決されたテナントは \"acme\" で、その branding のログイン画面が表示される"
+      - "session cookie は __Host- prefix と Path=/ を持ち Domain 属性を持たない"
+      - "WebAuthn RP ID は \"acme.{tenant_base_domain}\" である"
+  未知のサブドメインは default テナントに解決されない:
+    actor: OAuth2Client
+    given:
+      - tenant_base_domain が設定されている
+      - "realm \"unknown\" のテナントは存在しない"
+    main_success:
+      - "Host \"unknown.{tenant_base_domain}\" の \"/authorize\" にリクエストを送る"
+      - 404 tenant_not_found になり、default テナントにも他のどのテナントにも到達しない
+  テナントは自分の正規ロケーション以外からは到達できない:
+    actor: OAuth2Client
+    given:
+      - tenant_base_domain が設定されている
+      - "テナント \"acme\" の endpoint_style は Subdomain である"
+      - "テナント \"beta\" の endpoint_style は Path である"
+    main_success:
+      - "\"/realms/acme/authorize\" にリクエストを送る"
+      - "acme は Subdomain なので path prefix 経路では不在として扱われ 404 になる"
+    extensions:
+      - at: 1
+        condition: "Host \"beta.{tenant_base_domain}\" の \"/authorize\" にリクエストを送る"
+        steps:
+          - beta は Path なのでサブドメイン経路では不在として扱われ 404 になる
+      - at: 1
+        condition: "Host \"acme.{tenant_base_domain}\" の \"/realms/beta/authorize\" にリクエストを送る"
+        steps:
+          - acme の origin から beta へ到達することはできず 404 になる
+  discovery の issuer は取得元 URL と一致する:
+    actor: OAuth2Client
+    given:
+      - tenant_base_domain が設定されている
+      - "テナント \"default\" の endpoint_style は Path、テナント \"acme\" の endpoint_style は Subdomain である"
+    main_success:
+      - "\"{base}/realms/default/.well-known/openid-configuration\" を取得する"
+      - "issuer は \"{base}/realms/default\" であり、取得元 URL の prefix と一致する"
+      - "\"https://acme.{tenant_base_domain}/.well-known/openid-configuration\" を取得する"
+      - "issuer は \"https://acme.{tenant_base_domain}\" であり、取得元 URL の prefix と一致する"
+      - どちらの応答も endpoint URL を自分の正規ロケーション配下だけで組み立てる
+  System管理者はテナントの正規ロケーションを切り替えられる:
+    actor: SystemAdministrator
+    given:
+      - "system_admin ロールを持つ \"sysadmin\" が認証済みである"
+      - tenant_base_domain が設定されている
+      - "テナント \"acme\" の endpoint_style は Path である"
+    main_success:
+      - "\"sysadmin\" が SetTenantEndpointStyle で acme を Subdomain に切り替える"
+      - "acme は \"acme.{tenant_base_domain}\" からのみ到達できるようになる"
+      - "\"{base}/realms/acme/...\" は 404 になる"
+      - issuer と WebAuthn RP ID が新しい正規ロケーション由来の値に変わる
+    extensions:
+      - at: 1
+        condition: tenant_base_domain が設定されていない配備で Subdomain を指定する
+        steps:
+          - InvalidRequestError で拒否され endpoint_style は変わらない
   System管理者はテナントのクォータ上限を調整できる:
     actor: SystemAdministrator
     given:

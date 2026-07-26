@@ -23,7 +23,7 @@ func TestTokenClientCredentials_unregisteredResource_rejectedAsInvalidTarget(t *
 		"grant_type":    {"client_credentials"},
 		"resource":      {"https://mcp.example.com/unknown"},
 	}
-	req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	f.e.ServeHTTP(rec, req)
@@ -53,7 +53,7 @@ func TestTokenClientCredentials_registeredResource_boundAudience(t *testing.T) {
 		"scope":         {"openid"},
 		"resource":      {"https://mcp.example.com/tools"},
 	}
-	req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	f.e.ServeHTTP(rec, req)
@@ -72,7 +72,7 @@ func TestTokenClientCredentials_registeredResource_boundAudience(t *testing.T) {
 		"client_secret": {"secret-conf"},
 		"token":         {accessToken},
 	}
-	introReq := httptest.NewRequest(http.MethodPost, "/introspect", strings.NewReader(introForm.Encode()))
+	introReq := httptest.NewRequest(http.MethodPost, "/realms/default/introspect", strings.NewReader(introForm.Encode()))
 	introReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	introRec := httptest.NewRecorder()
 	f.e.ServeHTTP(introRec, introReq)
@@ -105,7 +105,7 @@ func TestTokenClientCredentials_noResource_unaffected(t *testing.T) {
 		"grant_type":    {"client_credentials"},
 		"scope":         {"openid"},
 	}
-	req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+	req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rec := httptest.NewRecorder()
 	f.e.ServeHTTP(rec, req)
@@ -124,7 +124,7 @@ func TestTokenClientCredentials_noResource_unaffected(t *testing.T) {
 		"client_secret": {"secret-conf"},
 		"token":         {accessToken},
 	}
-	introReq := httptest.NewRequest(http.MethodPost, "/introspect", strings.NewReader(introForm.Encode()))
+	introReq := httptest.NewRequest(http.MethodPost, "/realms/default/introspect", strings.NewReader(introForm.Encode()))
 	introReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	introRec := httptest.NewRecorder()
 	f.e.ServeHTTP(introRec, introReq)

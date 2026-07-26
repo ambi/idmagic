@@ -95,7 +95,7 @@ func (f adminSessionsFixture) seedRefreshToken(t *testing.T, sid, clientID strin
 // (ADR-130 Phase 2 と同方針)。
 func sessionTestCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/api/auth/password_reset_context", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password_reset_context", http.NoBody)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	if response.Code != http.StatusOK {
@@ -117,7 +117,7 @@ func sessionTestCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 }
 
 func adminRequest(method, path string) *http.Request {
-	req := httptest.NewRequest(method, path, http.NoBody)
+	req := httptest.NewRequest(method, defaultRealmPath(path), http.NoBody)
 	req.Header.Set("X-Demo-Sub", "admin")
 	return req
 }
@@ -128,7 +128,7 @@ func adminRequest(method, path string) *http.Request {
 func adminMutationRequest(t *testing.T, e *echo.Echo, method, path string) *http.Request {
 	t.Helper()
 	csrf, cookie := sessionTestCSRF(t, e)
-	req := httptest.NewRequest(method, path, http.NoBody)
+	req := httptest.NewRequest(method, defaultRealmPath(path), http.NoBody)
 	req.Header.Set("X-Demo-Sub", "admin")
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", csrf)
@@ -220,11 +220,21 @@ func TestAdminSessionEndpointsRequireAdminRole(t *testing.T) {
 	base := time.Now().UTC().Truncate(time.Second)
 	f.seedSession(t, "s1", "alice", base)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/users/alice/sessions", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/alice/sessions", http.NoBody)
 	req.Header.Set("X-Demo-Sub", "alice")
 	rec := httptest.NewRecorder()
 	f.e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
 	}
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
 }

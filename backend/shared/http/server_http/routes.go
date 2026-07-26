@@ -111,7 +111,10 @@ func Register(e *echo.Echo, d Deps) {
 	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)
 	d.Notification = mergeLegacyNotificationDeps(d.Notification, d)
 	d.Tenancy = mergeLegacyTenancyDeps(d.Tenancy, d)
-	registerTenantRoutes(e.Group("", d.ResolveDefaultTenant), d)
+	// テナントの正規ロケーションは 2 形あり、どちらか一方だけが有効になる (ADR-144)。
+	// subdomain style は origin 直下の bare path、path style は /realms/{realm} 配下。
+	// 到達経路と endpoint_style の一致は resolver 側で確かめる。
+	registerTenantRoutes(e.Group("", d.ResolveHostTenant), d)
 	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
 
 	authenticator := &support.Authenticator{
@@ -123,7 +126,7 @@ func Register(e *echo.Echo, d Deps) {
 		AuthnResolver:     d.Authentication.AuthnResolver,
 	}
 
-	controlPlane := e.Group("/realms/"+tenancydomain.DefaultRealm, d.ResolveControlPlaneTenant)
+	controlPlane := e.Group("/realms/"+tenancydomain.DefaultRealm, d.ResolveDefaultRealmTenant)
 	tenancyhttp.RegisterControlPlaneRoutes(controlPlane, tenancyhttp.Deps{
 		Deps:           d.Deps,
 		Authenticator:  authenticator,
@@ -132,14 +135,9 @@ func Register(e *echo.Echo, d Deps) {
 		UserRepo:       d.IdManagement.UserRepo,
 		QuotaRepo:      d.Tenancy.QuotaRepo,
 	})
-	tenancyhttp.RegisterControlPlaneRoutes(e.Group("", d.ResolveDefaultTenant), tenancyhttp.Deps{
-		Deps:           d.Deps,
-		Authenticator:  authenticator,
-		TenantRepo:     d.TenantRepo,
-		AttrSchemaRepo: d.Tenancy.AttrSchemaRepo,
-		UserRepo:       d.IdManagement.UserRepo,
-		QuotaRepo:      d.Tenancy.QuotaRepo,
-	})
+	// control-plane はテナント横断操作なので、default テナントの正規ロケーション
+	// (/realms/default) にのみ置く。bare path への二重登録は default テナントの
+	// 第 2 ロケーションになるため ADR-144 で廃止した。
 
 	e.GET("/health", d.handleHealth)
 	e.GET("/livez", d.handleLivez)

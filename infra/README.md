@@ -82,6 +82,12 @@ BASE=http://localhost:8080 ./demo.sh
 
 ## Design
 
+## Tenant Subdomain Routing
+
+Set `TENANT_BASE_DOMAIN` only after the ingress has wildcard DNS and a wildcard TLS certificate for `*.${TENANT_BASE_DOMAIN}`. A tenant configured with endpoint style `subdomain` is reachable exclusively at `{realm}.${TENANT_BASE_DOMAIN}`; path-style tenants remain exclusively under `/realms/{realm}`. The application returns `Vary: Host` for tenant responses, so any CDN or reverse proxy must retain the host in its cache key. Certificate issuance and renewal remain platform responsibilities.
+
+Changing endpoint style changes the issuer, cookie scope, and WebAuthn RP ID. Coordinate RP metadata changes and passkey re-enrollment before switching it in the system tenant console.
+
 The cross-cutting runtime design these assets implement — high availability and shared state, request
 correlation, the metrics contract, HTTP server hardening, and security response headers — is recorded in
 the repository design record, not here. See

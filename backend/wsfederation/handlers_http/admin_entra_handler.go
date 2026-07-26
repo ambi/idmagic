@@ -61,11 +61,10 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 
-	base := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/")
-	passive := base + support.TenantRoute(c, "/wsfed")
-	active := base + support.TenantRoute(c, "/trust/usernamemixed")
-	mex := base + support.TenantRoute(c, "/trust/mex")
-	metadata := base + support.TenantRoute(c, "/federationmetadata/2007-06/federationmetadata.xml")
+	passive := support.TenantURL(c, "/wsfed", d.Issuer)
+	active := support.TenantURL(c, "/trust/usernamemixed", d.Issuer)
+	mex := support.TenantURL(c, "/trust/mex", d.Issuer)
+	metadata := support.TenantURL(c, "/federationmetadata/2007-06/federationmetadata.xml", d.Issuer)
 	domain := strings.ToLower(strings.TrimSpace(req.Domain))
 	issuerURI := strings.TrimSpace(req.IssuerURI)
 	if issuerURI == "" {

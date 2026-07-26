@@ -113,7 +113,7 @@ func TestTokenAPI(t *testing.T) {
 			"client_id":     {"client-conf"},
 			"client_secret": {"secret-conf"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -135,7 +135,7 @@ func TestTokenAPI(t *testing.T) {
 			"client_secret": {"secret-conf"},
 			"grant_type":    {"bad-grant"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -157,7 +157,7 @@ func TestTokenAPI(t *testing.T) {
 			"client_secret": {"secret-conf"},
 			"grant_type":    {"authorization_code"}, // 宣言されていない
 		}
-		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -180,7 +180,7 @@ func TestTokenAPI(t *testing.T) {
 			"grant_type":    {"client_credentials"},
 			"scope":         {"openid"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -204,7 +204,7 @@ func TestTokenAPI(t *testing.T) {
 			"client_id":  {"client-pub"},
 			"grant_type": {"client_credentials"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -227,7 +227,7 @@ func TestTokenAPI(t *testing.T) {
 			"grant_type":    {"client_credentials"},
 			"scope":         {"openid invalid-scope"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -245,7 +245,7 @@ func TestTokenAPI(t *testing.T) {
 
 	t.Run("Token_ClientCredentials_RejectsAccountScopeWithoutUser", func(t *testing.T) {
 		form := url.Values{"client_id": {"client-conf"}, "client_secret": {"secret-conf"}, "grant_type": {"client_credentials"}, "scope": {"account:read"}}
-		req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/token", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 		fix.e.ServeHTTP(rec, req)
@@ -262,7 +262,7 @@ func TestTokenAPI(t *testing.T) {
 			"client_secret": {"secret-conf"},
 			"token":         {"dummy-token"},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/revoke", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/revoke", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 
@@ -275,7 +275,7 @@ func TestTokenAPI(t *testing.T) {
 
 	t.Run("Revoke_BuiltinManagedPublicClientUnknownTokenIsNoop", func(t *testing.T) {
 		form := url.Values{"client_id": {"idmagic-api-token"}, "token": {"unknown-token"}, "token_type_hint": {"access_token"}}
-		req := httptest.NewRequest(http.MethodPost, "/revoke", strings.NewReader(form.Encode()))
+		req := httptest.NewRequest(http.MethodPost, "/realms/default/revoke", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
 		fix.e.ServeHTTP(rec, req)

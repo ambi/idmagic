@@ -39,7 +39,7 @@ func newCheckSessionIframeServer() (*echo.Echo, *sessionmemory.SessionStore) {
 
 func TestCheckSessionIframe_noSession_respondsChanged(t *testing.T) {
 	e, _ := newCheckSessionIframeServer()
-	req := httptest.NewRequest(http.MethodGet, "/session/check", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/session/check", http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -68,7 +68,7 @@ func TestCheckSessionIframe_validSession_respondsUnchanged(t *testing.T) {
 	if err := store.Save(context.Background(), sess); err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodGet, "/session/check", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/session/check", http.NoBody)
 	req.AddCookie(&http.Cookie{Name: sessionusecases.SessionCookie, Value: sess.ID})
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)

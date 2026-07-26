@@ -116,7 +116,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	})
 
 	call := func(authHeader, proof string) *httptest.ResponseRecorder {
-		req := httptest.NewRequest(http.MethodGet, "/userinfo", http.NoBody)
+		req := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)
 		req.Header.Set("Authorization", authHeader)
 		if proof != "" {
 			req.Header.Set("DPoP", proof)
@@ -135,7 +135,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	}
 
 	// 有効プルーフ。htu は requestHTU と一致する形 (base + path)。
-	validProof := signDPoPProof(t, key, jwk, "GET", "http://test/userinfo", "jti-valid", now)
+	validProof := signDPoPProof(t, key, jwk, "GET", "http://test/realms/default/userinfo", "jti-valid", now)
 	if rec := call("DPoP atoken", validProof); rec.Code != http.StatusOK {
 		t.Fatalf("valid proof status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -149,7 +149,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 		t.Fatal(err)
 	}
 	attJWK := rsaJWK(&attacker.PublicKey)
-	attProof := signDPoPProof(t, attacker, attJWK, "GET", "http://test/userinfo", "jti-attacker", now)
+	attProof := signDPoPProof(t, attacker, attJWK, "GET", "http://test/realms/default/userinfo", "jti-attacker", now)
 	mustReject("wrong jkt", call("DPoP atoken", attProof))
 }
 
@@ -284,7 +284,7 @@ func TestUserInfoRejectsTokenWithoutOpenIDScope(t *testing.T) {
 		Active: true, Sub: "user_alice", Scope: "profile", ClientID: "demo-client",
 	}}
 	e := newUserInfoServer(t, intro, nil)
-	req := httptest.NewRequest(http.MethodGet, "/userinfo", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)
 	req.Header.Set("Authorization", "Bearer atoken")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -302,7 +302,7 @@ func TestUserInfoRejectsRevokedAccessToken(t *testing.T) {
 	}}
 	denylist := &fakeDenylist{revoked: map[string]bool{"revoked-jti": true}}
 	e := newUserInfoServer(t, intro, denylist)
-	req := httptest.NewRequest(http.MethodGet, "/userinfo", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)
 	req.Header.Set("Authorization", "Bearer atoken")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -322,7 +322,7 @@ func TestUserInfoMTLSBoundRequiresMatchingThumbprint(t *testing.T) {
 		},
 	}}
 	e := newUserInfoServer(t, intro, nil)
-	req := httptest.NewRequest(http.MethodGet, "/userinfo", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)
 	req.Header.Set("Authorization", "Bearer atoken")
 	req.Header.Set("X-Client-Certificate", clientCertificateHeader(t, "client"))
 	rec := httptest.NewRecorder()

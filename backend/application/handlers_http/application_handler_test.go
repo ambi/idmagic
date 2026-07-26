@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -72,7 +73,7 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 
 func appCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/api/auth/account", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/account", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -101,7 +102,7 @@ func adminJSON(t *testing.T, e *echo.Echo, method, path, csrf string, cookie *ht
 			t.Fatal(err)
 		}
 	}
-	request := httptest.NewRequest(method, path, bytes.NewReader(payload))
+	request := httptest.NewRequest(method, defaultRealmPath(path), bytes.NewReader(payload))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -126,7 +127,7 @@ func adminMultipart(t *testing.T, e *echo.Echo, path, csrf string, cookie *http.
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodPost, path, &body)
+	request := httptest.NewRequest(http.MethodPost, defaultRealmPath(path), &body)
 	request.Header.Set("Content-Type", writer.FormDataContentType())
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -139,7 +140,7 @@ func adminMultipart(t *testing.T, e *echo.Echo, path, csrf string, cookie *http.
 
 func myApplications(t *testing.T, e *echo.Echo, sub string) []map[string]any {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/api/account/applications", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications", http.NoBody)
 	request.Header.Set("X-Demo-Sub", sub)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -308,7 +309,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	}
 
 	// 非管理者はデフォルトポリシーを更新できない。
-	req := httptest.NewRequest(http.MethodPut, "/api/admin/default-sign-in-policy", bytes.NewReader([]byte(`{"rules":[]}`)))
+	req := httptest.NewRequest(http.MethodPut, "/realms/default/api/admin/default-sign-in-policy", bytes.NewReader([]byte(`{"rules":[]}`)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", csrf)
@@ -445,7 +446,7 @@ func TestApplicationIconUploadServeRejectAndDelete(t *testing.T) {
 func TestApplicationCreateRejectsNonAdmin(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
-	request := httptest.NewRequest(http.MethodPost, "/api/admin/applications", bytes.NewReader([]byte(`{"name":"X","kind":"federated"}`)))
+	request := httptest.NewRequest(http.MethodPost, "/realms/default/api/admin/applications", bytes.NewReader([]byte(`{"name":"X","kind":"federated"}`)))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)
@@ -456,4 +457,14 @@ func TestApplicationCreateRejectsNonAdmin(t *testing.T) {
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("non-admin create status=%d body=%s", response.Code, response.Body.String())
 	}
+}
+
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
+// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// テストのリクエスト先も /realms/default 配下でなければ 404 になる。
+func defaultRealmPath(path string) string {
+	if strings.HasPrefix(path, "/realms/") {
+		return path
+	}
+	return "/realms/default" + path
 }

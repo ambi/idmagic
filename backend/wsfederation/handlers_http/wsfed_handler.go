@@ -138,8 +138,8 @@ func (d Deps) emit(event spec.DomainEvent) {
 
 func (d Deps) clearSessionCookie(c *echo.Context) {
 	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure は HTTPS issuer で有効化、ローカル HTTP 開発では意図的に無効。
-		Name: authusecases.SessionCookie, Path: support.TenantCookiePath(c),
-		Secure: d.SecureCookies(), HttpOnly: true, SameSite: http.SameSiteLaxMode,
+		Name: support.TenantCookieName(c, authusecases.SessionCookie), Path: support.TenantCookiePath(c),
+		Secure: d.SecureCookies() || support.TenantCookieSecure(c), HttpOnly: true, SameSite: http.SameSiteLaxMode,
 		MaxAge: -1,
 	})
 }

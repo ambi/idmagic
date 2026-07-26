@@ -2,7 +2,6 @@ package handlers_http
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	metadata "github.com/ambi/idmagic/backend/saml/metadata_saml"
@@ -16,10 +15,9 @@ func (d Deps) handleSamlMetadata(c *echo.Context) error {
 	if d.FederationSigner == nil {
 		return c.String(http.StatusInternalServerError, "saml metadata unavailable")
 	}
-	base := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/")
 	endpoints := metadata.Endpoints{
-		SSOURL: base + support.TenantRoute(c, "/saml/sso"),
-		SLOURL: base + support.TenantRoute(c, "/saml/slo"),
+		SSOURL: support.TenantURL(c, "/saml/sso", d.Issuer),
+		SLOURL: support.TenantURL(c, "/saml/slo", d.Issuer),
 	}
 	out, err := metadata.BuildIDPMetadata(support.RequestIssuer(c, d.Issuer), d.FederationSigner.Certificate(), endpoints, time.Now().UTC())
 	if err != nil {

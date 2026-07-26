@@ -44,7 +44,7 @@ func newAdminGroupHandler(t *testing.T) (*echo.Echo, *groupmemory.GroupRepositor
 
 func TestAdminGroupAPIRequiresAdminRole(t *testing.T) {
 	e, _ := newAdminGroupHandler(t)
-	request := httptest.NewRequest(http.MethodGet, "/api/admin/groups", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/groups", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "alice")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -85,7 +85,7 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 		t.Fatalf("idempotent add status=%d", again.Code)
 	}
 
-	groupsResp := httptest.NewRequest(http.MethodGet, "/api/admin/users/alice/groups", http.NoBody)
+	groupsResp := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/alice/groups", http.NoBody)
 	groupsResp.Header.Set("X-Demo-Sub", "admin")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, groupsResp)
@@ -111,7 +111,7 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 // alice をグループ経由で admin にすると admin API を通過できる (effective roles)。
 func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	e, groupRepo := newAdminGroupHandler(t)
-	ctx := httptest.NewRequest(http.MethodGet, "/", http.NoBody).Context()
+	ctx := httptest.NewRequest(http.MethodGet, "/realms/default/", http.NoBody).Context()
 	group := &groupdomain.Group{ID: "group_admins", TenantID: tenancydomain.DefaultTenantID, Name: "admins", Roles: []string{"admin"}, CreatedAt: time.Now().UTC()}
 	if err := groupRepo.Save(ctx, group); err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	if _, err := groupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: group.ID, UserID: "alice", CreatedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodGet, "/api/admin/groups", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/groups", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "alice")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -154,7 +154,7 @@ func TestDynamicGroupRulePreviewEnableAndManualMembershipRejection(t *testing.T)
 	if enable.Code != http.StatusOK {
 		t.Fatalf("enable status=%d body=%s", enable.Code, enable.Body.String())
 	}
-	detailRequest := httptest.NewRequest(http.MethodGet, "/api/admin/groups/"+created.ID, http.NoBody)
+	detailRequest := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/groups/"+created.ID, http.NoBody)
 	detailRequest.Header.Set("X-Demo-Sub", "admin")
 	detail := httptest.NewRecorder()
 	e.ServeHTTP(detail, detailRequest)

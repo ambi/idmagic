@@ -88,7 +88,7 @@ func getAdminRolePolicies(e interface {
 	ServeHTTP(http.ResponseWriter, *http.Request)
 }, path string,
 ) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, defaultRealmPath(path), http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	return rec

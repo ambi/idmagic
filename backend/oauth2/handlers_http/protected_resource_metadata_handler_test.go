@@ -39,7 +39,7 @@ func newProtectedResourceMetadataHandler() *echo.Echo {
 
 func TestProtectedResourceMetadata_registeredResource_returnsMetadata(t *testing.T) {
 	e := newProtectedResourceMetadataHandler()
-	req := httptest.NewRequest(http.MethodGet, "/.well-known/oauth-protected-resource?resource=https://mcp.example.com/tools/github", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/oauth-protected-resource?resource=https://mcp.example.com/tools/github", http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -67,7 +67,7 @@ func TestProtectedResourceMetadata_registeredResource_returnsMetadata(t *testing
 
 func TestProtectedResourceMetadata_missingResourceParam_returnsRealmAPI(t *testing.T) {
 	e := newProtectedResourceMetadataHandler()
-	req := httptest.NewRequest(http.MethodGet, "/.well-known/oauth-protected-resource", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/oauth-protected-resource", http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -87,7 +87,7 @@ func TestProtectedResourceMetadata_missingResourceParam_returnsRealmAPI(t *testi
 
 func TestProtectedResourceMetadata_unregisteredResource_rejected(t *testing.T) {
 	e := newProtectedResourceMetadataHandler()
-	req := httptest.NewRequest(http.MethodGet, "/.well-known/oauth-protected-resource?resource=https://mcp.example.com/unknown", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/oauth-protected-resource?resource=https://mcp.example.com/unknown", http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusBadRequest {

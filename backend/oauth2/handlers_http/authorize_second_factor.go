@@ -12,6 +12,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	recoveryusecases "github.com/ambi/idmagic/backend/authentication/recovery/usecases"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
+	webauthnhttp "github.com/ambi/idmagic/backend/authentication/webauthn/handlers_http"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
@@ -35,9 +36,9 @@ type totpAPIRequest struct {
 	ReturnTo string `json:"return_to,omitempty"`
 }
 
-func (d Deps) webAuthnLoginDeps() webauthnusecases.WebAuthnDeps {
+func (d Deps) webAuthnLoginDeps(c *echo.Context) webauthnusecases.WebAuthnDeps {
 	return webauthnusecases.WebAuthnDeps{
-		RP:             d.WebAuthnRP,
+		RP:             webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP),
 		UserRepo:       d.UserRepo,
 		CredentialRepo: d.WebAuthnCredentialRepo,
 		MfaFactorRepo:  d.MfaFactorRepo,
@@ -70,7 +71,7 @@ func (d Deps) secondFactorMethods(c *echo.Context, sub string) []string {
 	if d.canUseTOTP(c, sub) {
 		methods = append(methods, "totp")
 	}
-	if d.WebAuthnRP != nil && d.WebAuthnCredentialRepo != nil {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) != nil && d.WebAuthnCredentialRepo != nil {
 		if creds, err := d.WebAuthnCredentialRepo.ListBySub(c.Request().Context(), sub); err == nil && len(creds) > 0 {
 			methods = append(methods, "webauthn")
 		}
@@ -90,7 +91,7 @@ func (d Deps) secondFactorMethods(c *echo.Context, sub string) []string {
 
 // handleWebAuthnChallengeAPI は login の WebAuthn assertion challenge を発行する。
 func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
-	if d.WebAuthnRP == nil {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) == nil {
 		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
@@ -103,7 +104,7 @@ func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
 	if !authn.AuthenticationPending {
 		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "Additional authentication is not required.")
 	}
-	assertion, err := webauthnusecases.BeginWebAuthnAssertion(c.Request().Context(), d.webAuthnLoginDeps(), authn.SessionID, authn.UserID)
+	assertion, err := webauthnusecases.BeginWebAuthnAssertion(c.Request().Context(), d.webAuthnLoginDeps(c), authn.SessionID, authn.UserID)
 	if err != nil {
 		if errors.Is(err, webauthnusecases.ErrWebAuthnNoCredential) {
 			return support.WriteBrowserError(c, http.StatusNotFound, "webauthn_not_enrolled", "No passkey is enrolled.")
@@ -115,7 +116,7 @@ func (d Deps) handleWebAuthnChallengeAPI(c *echo.Context) error {
 
 // handleWebAuthnAPI は login の WebAuthn assertion を検証し、成功すれば認証を完了させる。
 func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
-	if d.WebAuthnRP == nil {
+	if webauthnhttp.ResolveRPForRequest(c, d.Deps, d.WebAuthnRP) == nil {
 		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	if err := d.VerifyBrowserRequest(c); err != nil {
@@ -142,7 +143,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
 	if _, err := webauthnusecases.FinishWebAuthnAssertion(
-		c.Request().Context(), d.webAuthnLoginDeps(), authn.SessionID, authn.UserID, []byte(input.Assertion), time.Now().UTC(),
+		c.Request().Context(), d.webAuthnLoginDeps(c), authn.SessionID, authn.UserID, []byte(input.Assertion), time.Now().UTC(),
 	); err != nil {
 		d.recordLoginOutcome("failure", "webauthn_invalid", "webauthn")
 		d.emitAuthenticationFailure(c, authn.UserID, "webauthn_invalid")

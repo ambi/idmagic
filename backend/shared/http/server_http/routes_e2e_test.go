@@ -274,12 +274,12 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 
 	verifier := "this-is-a-cryptographically-fine-verifier-for-pkce-tests"
 	state := "opaque-state"
-	resp := startAuthorization(t, client, srv.URL, verifier, state)
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", verifier, state)
 	if resp.StatusCode != http.StatusSeeOther {
 		t.Fatalf("/authorize status=%d, want 303", resp.StatusCode)
 	}
-	if location := resp.Header.Get("Location"); location != "/login" {
-		t.Fatalf("/authorize Location=%q, want /login", location)
+	if location := resp.Header.Get("Location"); location != "/realms/default/login" {
+		t.Fatalf("/authorize Location=%q, want /realms/default/login", location)
 	}
 	transactionCookie := findCookie(resp.Cookies(), "idmagic_transaction")
 	if transactionCookie == nil || !transactionCookie.HttpOnly {
@@ -290,7 +290,7 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 	if transaction.Kind != "login" || transaction.CSRFToken == "" {
 		t.Fatalf("unexpected login transaction: %+v", transaction)
 	}
@@ -298,12 +298,12 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 		t.Fatal("browser API exposed the internal authorization request ID")
 	}
 
-	loginResult := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+	loginResult := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
 		"username": demoUsername,
 		"password": demoPassword,
 	})
-	if loginResult["next"] != "/consent" {
-		t.Fatalf("login next=%q, want /consent", loginResult["next"])
+	if loginResult["next"] != "/realms/default/consent" {
+		t.Fatalf("login next=%q, want /realms/default/consent", loginResult["next"])
 	}
 
 	consent := getJSON[struct {
@@ -311,7 +311,7 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 		CSRFToken  string   `json:"csrf_token"`
 		ClientName string   `json:"client_name"`
 		Scopes     []string `json:"scopes"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 	if consent.Kind != "consent" || consent.ClientName != demoClientID {
 		t.Fatalf("unexpected consent transaction: %+v", consent)
 	}
@@ -319,7 +319,7 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 	consentResult := postJSON[map[string]string](
 		t,
 		client,
-		srv.URL+"/api/auth/consent",
+		srv.URL+"/realms/default/api/auth/consent",
 		consent.CSRFToken,
 		map[string]string{"action": "allow"},
 	)
@@ -342,7 +342,7 @@ func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {
 		"code_verifier": {verifier},
 		"redirect_uri":  {demoRedirectURI},
 	}
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/token", strings.NewReader(tokenForm.Encode()))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/token", strings.NewReader(tokenForm.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(demoClientID, demoClientSecret)
 	resp, err = client.Do(req)
@@ -362,22 +362,22 @@ func TestBrowserAuthorizationFlowSkipsTOTPWhenPolicyAllowsPassword(t *testing.T)
 	defer srv.Close()
 	client := browserClient(t)
 
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-totp-test-12345678901234567890", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-totp-test-12345678901234567890", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 	if transaction.Kind != "login" {
 		t.Fatalf("transaction kind=%q, want login", transaction.Kind)
 	}
 
-	loginResult := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+	loginResult := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
 		"username": demoUsername,
 		"password": demoPassword,
 	})
-	if loginResult["next"] != "/consent" {
-		t.Fatalf("login next=%q, want /consent", loginResult["next"])
+	if loginResult["next"] != "/realms/default/consent" {
+		t.Fatalf("login next=%q, want /realms/default/consent", loginResult["next"])
 	}
 }
 
@@ -387,28 +387,28 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 	defer srv.Close()
 	client := browserClient(t)
 
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-totp-policy-test-1234567890123456", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-totp-policy-test-1234567890123456", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 	if transaction.Kind != "login" {
 		t.Fatalf("transaction kind=%q, want login", transaction.Kind)
 	}
 
-	loginResult := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+	loginResult := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
 		"username": demoUsername,
 		"password": demoPassword,
 	})
-	if loginResult["next"] != "/totp" {
-		t.Fatalf("login next=%q, want /totp", loginResult["next"])
+	if loginResult["next"] != "/realms/default/totp" {
+		t.Fatalf("login next=%q, want /realms/default/totp", loginResult["next"])
 	}
 
 	totpTransaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 	if totpTransaction.Kind != "totp" || totpTransaction.CSRFToken == "" {
 		t.Fatalf("unexpected totp transaction: %+v", totpTransaction)
 	}
@@ -416,11 +416,11 @@ func TestBrowserAuthorizationFlowRequiresTOTPWhenPolicyRequiresMFA(t *testing.T)
 	if err != nil {
 		t.Fatalf("generate totp: %v", err)
 	}
-	totpResult := postJSON[map[string]string](t, client, srv.URL+"/api/auth/totp", totpTransaction.CSRFToken, map[string]string{
+	totpResult := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/totp", totpTransaction.CSRFToken, map[string]string{
 		"code": code,
 	})
-	if totpResult["next"] != "/consent" {
-		t.Fatalf("totp next=%q, want /consent", totpResult["next"])
+	if totpResult["next"] != "/realms/default/consent" {
+		t.Fatalf("totp next=%q, want /realms/default/consent", totpResult["next"])
 	}
 }
 
@@ -429,40 +429,40 @@ func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testi
 	defer srv.Close()
 	client := browserClient(t)
 
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-enrollment-test-123456789012345", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-enrollment-test-123456789012345", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
-	loginResult := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
-	if loginResult["next"] != "/mfa-enrollment" {
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	loginResult := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
+	if loginResult["next"] != "/realms/default/mfa-enrollment" {
 		t.Fatalf("login next=%q", loginResult["next"])
 	}
 
 	enrollmentTransaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 	if enrollmentTransaction.Kind != "mfa_enrollment" {
 		t.Fatalf("kind=%q", enrollmentTransaction.Kind)
 	}
 	start := postJSON[struct {
 		Secret string `json:"secret"`
-	}](t, client, srv.URL+"/api/auth/mfa/enrollment/totp/start", enrollmentTransaction.CSRFToken, map[string]string{})
+	}](t, client, srv.URL+"/realms/default/api/auth/mfa/enrollment/totp/start", enrollmentTransaction.CSRFToken, map[string]string{})
 	code, err := totpusecases.GenerateTOTP(start.Secret, time.Now().UTC().Unix())
 	if err != nil {
 		t.Fatal(err)
 	}
-	completed := postJSON[map[string]string](t, client, srv.URL+"/api/auth/mfa/enrollment/totp/confirm", enrollmentTransaction.CSRFToken, map[string]string{"secret": start.Secret, "code": code})
-	if completed["next"] != "/consent" {
+	completed := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/mfa/enrollment/totp/confirm", enrollmentTransaction.CSRFToken, map[string]string{"secret": start.Secret, "code": code})
+	if completed["next"] != "/realms/default/consent" {
 		t.Fatalf("enrollment next=%q", completed["next"])
 	}
 
 	// bypass は単発であり、登録完了後の同一 session は通常 transaction を継続する。
 	consent := getJSON[struct {
 		Kind string `json:"kind"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 	if consent.Kind != "consent" {
 		t.Fatalf("post-enrollment kind=%q", consent.Kind)
 	}
@@ -472,12 +472,12 @@ func TestBrowserAuthorizationFlowRejectsUnregisteredUserWithoutEnrollmentApprova
 	srv := newServerWithTOTPPolicy(t, "", true)
 	defer srv.Close()
 	client := browserClient(t)
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-no-enrollment-test-123456789012", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-no-enrollment-test-123456789012", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
-	result := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	result := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
 	if !strings.Contains(result["redirect_to"], "error=access_denied") {
 		t.Fatalf("redirect=%q", result["redirect_to"])
 	}
@@ -487,12 +487,12 @@ func TestBrowserAuthorizationFlowRejectsExpiredEnrollmentApproval(t *testing.T) 
 	srv := newServerWithTOTPPolicy(t, "", true, true, true)
 	defer srv.Close()
 	client := browserClient(t)
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-expired-enrollment-123456789012", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-expired-enrollment-123456789012", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
-	result := postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	result := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
 	if !strings.Contains(result["redirect_to"], "error=access_denied") {
 		t.Fatalf("redirect=%q", result["redirect_to"])
 	}
@@ -502,12 +502,12 @@ func TestBrowserAPIPostRejectsMissingCSRF(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()
 	client := browserClient(t)
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-csrf-test-12345678901234567890", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-csrf-test-12345678901234567890", "state")
 	resp.Body.Close()
-	_ = getJSON[map[string]any](t, client, srv.URL+"/api/auth/transaction")
+	_ = getJSON[map[string]any](t, client, srv.URL+"/realms/default/api/auth/transaction")
 
 	payload := mustJSONBytes(t, map[string]string{"username": demoUsername, "password": demoPassword})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/auth/login", bytes.NewReader(payload))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/login", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	resp, err := client.Do(req)
@@ -525,12 +525,12 @@ func TestDirectAdminLoginReturnsToRequestedPage(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()
 	client := browserClient(t)
-	returnTo := "/admin/users?status=active"
+	returnTo := "/realms/default/admin/users?status=active"
 
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
 	if transaction.Kind != "login" || transaction.CSRFToken == "" {
 		t.Fatalf("unexpected direct login transaction: %+v", transaction)
 	}
@@ -538,7 +538,7 @@ func TestDirectAdminLoginReturnsToRequestedPage(t *testing.T) {
 	result := postJSON[map[string]string](
 		t,
 		client,
-		srv.URL+"/api/auth/login",
+		srv.URL+"/realms/default/api/auth/login",
 		transaction.CSRFToken,
 		map[string]string{
 			"username":  demoUsername,
@@ -555,7 +555,7 @@ func TestLoginWithUpdatePasswordActionRedirectsToChangePassword(t *testing.T) {
 	srv, userRepo := newServerWithUserAccess(t)
 	defer srv.Close()
 	client := browserClient(t)
-	returnTo := "/admin/users?status=active"
+	returnTo := "/realms/default/admin/users?status=active"
 
 	// 対象 user に update_password の required action を立てる。
 	user, err := userRepo.FindBySub(context.Background(), "user_alice")
@@ -570,7 +570,7 @@ func TestLoginWithUpdatePasswordActionRedirectsToChangePassword(t *testing.T) {
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
 	if transaction.Kind != "login" || transaction.CSRFToken == "" {
 		t.Fatalf("unexpected direct login transaction: %+v", transaction)
 	}
@@ -578,7 +578,7 @@ func TestLoginWithUpdatePasswordActionRedirectsToChangePassword(t *testing.T) {
 	result := postJSON[map[string]string](
 		t,
 		client,
-		srv.URL+"/api/auth/login",
+		srv.URL+"/realms/default/api/auth/login",
 		transaction.CSRFToken,
 		map[string]string{
 			"username":  demoUsername,
@@ -621,7 +621,7 @@ func TestDirectAdminLoginRejectsUnsafeReturnTo(t *testing.T) {
 	for _, attack := range attacks {
 		t.Run(attack, func(t *testing.T) {
 			resp, err := client.Get(
-				srv.URL + "/api/auth/transaction?return_to=" + url.QueryEscape(attack),
+				srv.URL + "/realms/default/api/auth/transaction?return_to=" + url.QueryEscape(attack),
 			)
 			if err != nil {
 				t.Fatalf("GET direct login transaction: %v", err)
@@ -639,15 +639,15 @@ func TestDirectAdminLoginWithEnrolledTOTPReturnsToRequestedPage(t *testing.T) {
 	srv := newServerWithTOTP(t, totpTestSecret)
 	defer srv.Close()
 	client := browserClient(t)
-	returnTo := "/admin/keys"
+	returnTo := "/realms/default/admin/keys"
 
 	transaction := getJSON[struct {
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
 	loginResult := postJSON[map[string]string](
 		t,
 		client,
-		srv.URL+"/api/auth/login",
+		srv.URL+"/realms/default/api/auth/login",
 		transaction.CSRFToken,
 		map[string]string{
 			"username":  demoUsername,
@@ -664,15 +664,15 @@ func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) 
 	srv := newServerWithTOTPPolicy(t, totpTestSecret, true)
 	defer srv.Close()
 	client := browserClient(t)
-	returnTo := "/admin/keys"
+	returnTo := "/realms/default/admin/keys"
 
 	transaction := getJSON[struct {
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
 	loginResult := postJSON[map[string]string](
 		t,
 		client,
-		srv.URL+"/api/auth/login",
+		srv.URL+"/realms/default/api/auth/login",
 		transaction.CSRFToken,
 		map[string]string{
 			"username":  demoUsername,
@@ -680,14 +680,14 @@ func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) 
 			"return_to": returnTo,
 		},
 	)
-	if loginResult["next"] != "/totp?return_to=%2Fadmin%2Fkeys" {
-		t.Fatalf("next=%q, want /totp with return_to", loginResult["next"])
+	if loginResult["next"] != "/realms/default/totp?return_to=%2Frealms%2Fdefault%2Fadmin%2Fkeys" {
+		t.Fatalf("next=%q, want /realms/default/totp with return_to", loginResult["next"])
 	}
 
 	totpTransaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction?return_to="+url.QueryEscape(returnTo))
 	if totpTransaction.Kind != "totp" {
 		t.Fatalf("kind=%q, want totp", totpTransaction.Kind)
 	}
@@ -698,7 +698,7 @@ func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) 
 	totpResult := postJSON[map[string]string](
 		t,
 		client,
-		srv.URL+"/api/auth/totp",
+		srv.URL+"/realms/default/api/auth/totp",
 		totpTransaction.CSRFToken,
 		map[string]string{"code": code, "return_to": returnTo},
 	)
@@ -710,7 +710,7 @@ func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) 
 			Current bool     `json:"current"`
 			AMR     []string `json:"amr"`
 		} `json:"sessions"`
-	}](t, client, srv.URL+"/api/account/sessions")
+	}](t, client, srv.URL+"/realms/default/api/account/sessions")
 	if len(sessions.Sessions) != 1 {
 		t.Fatalf("sessions=%+v, want exactly one completed MFA session", sessions.Sessions)
 	}
@@ -725,14 +725,14 @@ func TestBrowserAPIPostRejectsForeignOrigin(t *testing.T) {
 	srv := newServer(t)
 	defer srv.Close()
 	client := browserClient(t)
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-origin-test-123456789012345678", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-origin-test-123456789012345678", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
 
 	payload := mustJSONBytes(t, map[string]string{"username": demoUsername, "password": demoPassword})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/auth/login", bytes.NewReader(payload))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/login", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
 	req.Header.Set("Origin", "https://attacker.example")
@@ -751,13 +751,13 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 	defer srv.Close()
 	client := browserClient(t)
 
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-change-password-123456789012345", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-change-password-123456789012345", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
-	postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
 		"username": demoUsername,
 		"password": demoPassword,
 	})
@@ -766,7 +766,7 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 		"current_password": demoPassword,
 		"new_password":     "fresh-pass-9182",
 	})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/auth/change_password", bytes.NewReader(reqBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change_password", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
@@ -782,7 +782,7 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 	resp.Body.Close()
 
 	payload := mustJSONBytes(t, map[string]string{"username": demoUsername, "password": "fresh-pass-9182"})
-	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/api/auth/login", bytes.NewReader(payload))
+	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/login", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
@@ -801,7 +801,7 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 		"current_password": "fresh-pass-9182",
 		"new_password":     demoPassword,
 	})
-	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/api/auth/change_password", bytes.NewReader(reqBody))
+	req, _ = http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change_password", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
@@ -825,7 +825,7 @@ func TestAccountContextRequiresAuthenticatedSession(t *testing.T) {
 	defer srv.Close()
 	client := browserClient(t)
 
-	resp, err := client.Get(srv.URL + "/api/auth/account")
+	resp, err := client.Get(srv.URL + "/realms/default/api/auth/account")
 	if err != nil {
 		t.Fatalf("GET /api/auth/account: %v", err)
 	}
@@ -850,7 +850,7 @@ func TestAccountContextRejectsStaleBearerToken(t *testing.T) {
 	defer srv.Close()
 	client := browserClient(t)
 
-	req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/auth/account", http.NoBody)
+	req, err := http.NewRequest(http.MethodGet, srv.URL+"/realms/default/api/auth/account", http.NoBody)
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}
@@ -880,13 +880,13 @@ func TestAccountContextReturnsCSRFTokenForAuthenticatedSession(t *testing.T) {
 	client := browserClient(t)
 
 	// 認可フローを 1 度走らせて認証済みセッションを得る
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-account-context-1234567890123", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-account-context-1234567890123", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
-	postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
 		"username": demoUsername,
 		"password": demoPassword,
 	})
@@ -895,7 +895,7 @@ func TestAccountContextReturnsCSRFTokenForAuthenticatedSession(t *testing.T) {
 		CSRFToken         string `json:"csrf_token"`
 		ID                string `json:"id"`
 		PreferredUsername string `json:"preferred_username"`
-	}](t, client, srv.URL+"/api/auth/account")
+	}](t, client, srv.URL+"/realms/default/api/auth/account")
 	if ctx.CSRFToken == "" {
 		t.Fatal("csrf_token is empty")
 	}
@@ -912,13 +912,13 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 	defer srv.Close()
 	client := browserClient(t)
 
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-change-password-policy-12345678", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-change-password-policy-12345678", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
-	postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
 		"username": demoUsername,
 		"password": demoPassword,
 	})
@@ -927,7 +927,7 @@ func TestChangePasswordReturnsViolationsForPolicyError(t *testing.T) {
 		"current_password": demoPassword,
 		"new_password":     "short",
 	})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/auth/change_password", bytes.NewReader(reqBody))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/change_password", bytes.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
@@ -969,13 +969,13 @@ func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	client := browserClient(t)
 
 	// 通常ログインを成立させてセッション cookie を取得。
-	resp := startAuthorization(t, client, srv.URL, "verifier-for-disable-user-test-12345678901234567", "state")
+	resp := startAuthorization(t, client, srv.URL+"/realms/default", "verifier-for-disable-user-test-12345678901234567", "state")
 	resp.Body.Close()
 	transaction := getJSON[struct {
 		Kind      string `json:"kind"`
 		CSRFToken string `json:"csrf_token"`
-	}](t, client, srv.URL+"/api/auth/transaction")
-	postJSON[map[string]string](t, client, srv.URL+"/api/auth/login", transaction.CSRFToken, map[string]string{
+	}](t, client, srv.URL+"/realms/default/api/auth/transaction")
+	postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{
 		"username": demoUsername, "password": demoPassword,
 	})
 
@@ -992,7 +992,7 @@ func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	}
 
 	// 既存セッションでの認証必須 API は 401 authentication_required。
-	resp, err = client.Get(srv.URL + "/api/auth/account")
+	resp, err = client.Get(srv.URL + "/realms/default/api/auth/account")
 	if err != nil {
 		t.Fatalf("GET /api/auth/account after disable: %v", err)
 	}
@@ -1005,7 +1005,7 @@ func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 
 	// 新規ログインも拒否される。
 	payload := mustJSONBytes(t, map[string]string{"username": demoUsername, "password": demoPassword})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/auth/login", bytes.NewReader(payload))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/login", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)

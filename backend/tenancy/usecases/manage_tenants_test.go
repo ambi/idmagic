@@ -55,6 +55,27 @@ func TestTenantLifecycle(t *testing.T) {
 	}
 }
 
+// wi-285 / scenario Tenancy.tenant_endpoint_style: endpoint style は破壊的な
+// 専用操作でのみ切り替え、subdomain は base domain を持つ配備でしか選べない。
+func TestSetEndpointStyle(t *testing.T) {
+	ctx := context.Background()
+	repo := memory.NewTenantRepository()
+	tenant, err := Create(ctx, repo, "acme", "Acme", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SetEndpointStyle(ctx, repo, tenant.ID, domain.TenantEndpointStyleSubdomain, "", time.Now().UTC()); !errors.Is(err, domain.ErrSubdomainStyleNoBase) {
+		t.Fatalf("unset base domain error = %v", err)
+	}
+	updated, err := SetEndpointStyle(ctx, repo, tenant.ID, domain.TenantEndpointStyleSubdomain, "idp.example", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.EndpointStyle != domain.TenantEndpointStyleSubdomain {
+		t.Fatalf("endpoint style = %q", updated.EndpointStyle)
+	}
+}
+
 func TestUpdateAppliesDisplayNameAndPolicyOverride(t *testing.T) {
 	repo := memory.NewTenantRepository()
 	created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())

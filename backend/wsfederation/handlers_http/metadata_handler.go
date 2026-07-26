@@ -2,7 +2,6 @@ package handlers_http
 
 import (
 	"net/http"
-	"strings"
 	"time"
 
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -31,11 +30,10 @@ func (d Deps) handleTrustMEX(c *echo.Context) error {
 }
 
 func (d Deps) federationEndpoints(c *echo.Context) metadata.EndpointSet {
-	base := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/")
 	return metadata.EndpointSet{
-		PassiveURL:        base + support.TenantRoute(c, "/wsfed"),
-		ActiveURL:         base + support.TenantRoute(c, "/trust/usernamemixed"),
-		MEXURL:            base + support.TenantRoute(c, "/trust/mex"),
-		FederationMetaURL: base + support.TenantRoute(c, "/federationmetadata/2007-06/federationmetadata.xml"),
+		PassiveURL:        support.TenantURL(c, "/wsfed", d.Issuer),
+		ActiveURL:         support.TenantURL(c, "/trust/usernamemixed", d.Issuer),
+		MEXURL:            support.TenantURL(c, "/trust/mex", d.Issuer),
+		FederationMetaURL: support.TenantURL(c, "/federationmetadata/2007-06/federationmetadata.xml", d.Issuer),
 	}
 }
