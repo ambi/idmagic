@@ -2,7 +2,7 @@
 import { existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { readFile as readFileAsync } from 'node:fs/promises'
-import { parseArchitectureDoc } from '../../check/src/arch-check.ts'
+import { type ArchitectureLedgerFile, mergeArchitectureLedgers } from './architecture-ledger.ts'
 import {
   buildTraceabilityReport,
   type TraceabilityEvidence,
@@ -43,13 +43,22 @@ if (errors.length > 0) {
   for (const error of errors) console.error(`traceability: ${error.message}`)
   process.exit(1)
 }
-const modules = new Set<string>()
-for (const path of config.architectureDocs ?? []) {
-  const doc = parseArchitectureDoc(await readFileAsync(rootPath(path), 'utf8'))
-  for (const id of Object.keys((doc.modules as Record<string, unknown> | undefined) ?? {})) {
-    modules.add(id)
-  }
+// Modules are declared by the ledgers, not by the prose design record (ADR-143).
+// Several ledgers merge into one workspace-rooted module graph, exactly as
+// `ra check --architecture` sees it.
+const architectureLedgers = config.architectureLedgers ?? []
+if (architectureLedgers.length === 0) {
+  console.error('traceability: no architecture.yaml ledger was discovered')
+  process.exit(2)
 }
+const ledgerFiles: ArchitectureLedgerFile[] = []
+for (const path of architectureLedgers) {
+  ledgerFiles.push({ path, doc: Bun.YAML.parse(await readFileAsync(rootPath(path), 'utf8')) })
+}
+const { doc: architectureMap } = mergeArchitectureLedgers(ledgerFiles)
+const modules = new Set(
+  Object.keys((architectureMap.modules as Record<string, unknown> | undefined) ?? {}),
+)
 const report = buildTraceabilityReport({
   manifest,
   evidence,

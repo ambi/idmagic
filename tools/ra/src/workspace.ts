@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs'
+import { type Dirent, existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -89,7 +89,7 @@ async function scanArchitectureArtifacts(
   dir = workspaceRoot,
   found: { docs: string[]; ledgers: string[] } = { docs: [], ledgers: [] },
 ): Promise<{ docs: string[]; ledgers: string[] }> {
-  let entries: Awaited<ReturnType<typeof readdir>>
+  let entries: Dirent[]
   try {
     entries = await readdir(dir, { withFileTypes: true })
   } catch {
