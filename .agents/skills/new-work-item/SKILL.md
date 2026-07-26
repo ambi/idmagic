@@ -7,6 +7,7 @@ description: Create a new Regenerative Architecture work item under work-items/ 
 
 正本書式は `WORK_ITEM_FORMAT.md`。**既存ファイルを開いて書式を逆算しない**——
 本 Skill と同文書の記法に従う。既存ファイルは「似た題材の中身」を見たいときだけ開く。
+Work Item は単なるチケットではなく、その変更に関する **Design Doc** でもあるため、実装前に設計を吟味する意図で書くこと。
 
 ## 手順
 
@@ -18,7 +19,7 @@ description: Create a new Regenerative Architecture work item under work-items/ 
    - 連番は正本ではない。並行採番で被っても `check-ids` が検出するので、被ったら採り直す。
 2. **未着手・進行中は `work-items/` 直下に置く**。完了・中止になったら `done/` サブディレクトリへ移す（id は変えない）。
 3. 機能変更なら **触れる SCL セクションを `## Scope` に列挙する**。判定は SCL-first の網羅表に従う（`scl-change` Skill / `SPECIFICATION_CORE_LANGUAGE.md §3` 冒頭）。
-4. 中規模以上なら `## Plan` と `## Tasks` を追加する。複数 scenario、RA 3 層以上、DB migration / 認可 / 外部契約 / 破壊的変更、1 セッションで終わる確信がない作業、複数サブシステム検証は中規模以上として扱う。
+4. `## Tasks` は規模にかかわらず必ず記述する。複数 scenario、RA 3 層以上、DB migration / 認可 / 外部契約 / 破壊的変更、1 セッションで終わる確信がない作業、複数サブシステム検証などに該当する場合は中規模以上として扱い、さらに `## Design` と `## Plan` を詳細に追加する（小規模なら省略可）。
 5. 下記スケルトンを埋める。
 6. **検証**: `just check-work-items` と `just check-ids` を通す。
 
@@ -45,8 +46,13 @@ depends_on: []   # 完了前提の WI ID（完全 slug。例 [wi-49-agent-identi
 ## Out of Scope
 - 明示的にやらないこと。
 
+## Design
+- 変更の技術的な設計方針、データモデルやインターフェースの変更点。
+- 依存関係、セキュリティやパフォーマンス上の考慮事項。
+- 検討したが採用しなかった代替案（重要なものは ADR へ）。
+
 ## Plan
-- 採る技術方針、触れる層、却下した代替案、未決定事項。
+- 実装手順、触れる層、デプロイやマイグレーションの移行ステップ、未決定事項。
 
 ## Tasks
 - [ ] T001 [SCL] 仕様を更新する。
