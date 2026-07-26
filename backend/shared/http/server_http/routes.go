@@ -388,6 +388,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo:                 d.IdManagement.UserRepo,
 		GroupRepo:                d.IdManagement.GroupRepo,
 		QuotaRepo:                d.Tenancy.QuotaRepo,
+		FederationSigner:         d.FederationSigner,
 	})
 
 	d.WsFederation.Register(g, d.Deps, authenticator, appGate, d.IdManagement.UserRepo, d.FederationSigner,

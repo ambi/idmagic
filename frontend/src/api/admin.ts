@@ -10,6 +10,7 @@ import type {
   AdminKey,
   AdminSessionRecord,
   AdminSettings,
+  AdminIntegrationEndpointCatalog,
   ApiToken,
   ApiTokenScope,
   TenantKeyHealth,
@@ -545,6 +546,10 @@ export type UpdateAdminSettingsInput = {
 
 export async function getAdminSettings(): Promise<AdminSettings> {
   return request<AdminSettings>('/api/admin/settings')
+}
+
+export async function getAdminIntegrationEndpoints(): Promise<AdminIntegrationEndpointCatalog> {
+  return request<AdminIntegrationEndpointCatalog>('/api/admin/integration-endpoints')
 }
 
 export async function updateAdminSettings(

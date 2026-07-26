@@ -10,6 +10,7 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
 	"github.com/labstack/echo/v5"
 )
@@ -28,6 +29,8 @@ type Deps struct {
 	UserRepo  userports.UserRepository
 	GroupRepo groupports.GroupRepository
 	QuotaRepo tenantports.QuotaRepository
+	// FederationSigner resolves the request tenant's active public XML credential.
+	FederationSigner samltoken.SignerProvider
 }
 
 // RegisterRoutes はテナント解決済みグループに、テナント単位の admin 設定・
@@ -36,6 +39,7 @@ type Deps struct {
 // public とする (wi-89, ADR-096)。
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/settings", d.handleGetAdminSettings)
+	g.GET("/api/admin/integration-endpoints", d.handleGetAdminIntegrationEndpoints)
 	g.PATCH("/api/admin/settings", d.handleUpdateAdminSettings)
 	g.GET("/api/admin/tenant/user_attribute_schema", d.handleGetUserAttributeSchema)
 	g.PUT("/api/admin/tenant/user_attribute_schema", d.handleUpdateUserAttributeSchema)

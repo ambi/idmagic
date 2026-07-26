@@ -1,6 +1,7 @@
 package handlers_http
 
 import (
+	"encoding/pem"
 	"net/http"
 	"time"
 
@@ -30,4 +31,20 @@ func (d Deps) handleSamlMetadata(c *echo.Context) error {
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.Blob(http.StatusOK, "application/xml; charset=utf-8", out)
+}
+
+// handleSamlSigningCertificate は新規 SP 設定に使う active XML federation 証明書を
+// PEM で返す。rotation overlap の全証明書は SAML metadata を正本とする。
+func (d Deps) handleSamlSigningCertificate(c *echo.Context) error {
+	if d.FederationSigner == nil {
+		return c.String(http.StatusInternalServerError, "saml signing certificate unavailable")
+	}
+	signer, err := d.FederationSigner.Resolve(c.Request().Context())
+	if err != nil || signer == nil || signer.Certificate() == nil {
+		return c.String(http.StatusInternalServerError, "saml signing certificate unavailable")
+	}
+	pemBytes := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: signer.Certificate().Raw})
+	c.Response().Header().Set("Cache-Control", "no-store")
+	c.Response().Header().Set("Content-Disposition", `attachment; filename="idmagic-saml-signing-certificate.pem"`)
+	return c.Blob(http.StatusOK, "application/x-pem-file; charset=utf-8", pemBytes)
 }

@@ -22,7 +22,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
-import type { WsFedRelyingParty } from '../../types'
+import type { AdminIntegrationEndpointCatalog, WsFedRelyingParty } from '../../types'
 import {
   adminEntraFederationDictionary,
   type AdminEntraFederationDictionary,
@@ -34,24 +34,27 @@ import {
 // 詳細→編集ポリシー (wi-126 §8): 最初に出るこの画面は「現在 federation 済みのドメイン一覧」
 // (= 現在の設定) を見せるだけにし、追加 (configure) は専用画面 /admin/federation/entra/new に
 // 分離する。一覧画面がそのまま追加フォームを兼ねている状態を無くす。
-function endpointLinks(t: AdminEntraFederationDictionary) {
+function endpointLinks(
+  t: AdminEntraFederationDictionary,
+  endpoints: AdminIntegrationEndpointCatalog['ws_federation'],
+) {
   return [
     {
       label: t.federationMetadataLabel,
-      href: tenantURL('/federationmetadata/2007-06/federationmetadata.xml'),
-      value: '/federationmetadata/2007-06/federationmetadata.xml',
+      href: endpoints.metadata_url,
+      value: endpoints.metadata_url,
       icon: IconDownload,
     },
     {
       label: t.wsTrustMexLabel,
-      href: tenantURL('/trust/mex'),
-      value: '/trust/mex',
+      href: endpoints.metadata_exchange_url,
+      value: endpoints.metadata_exchange_url,
       icon: IconServerBolt,
     },
     {
       label: t.wsTrustUsernamemixedLabel,
-      href: tenantURL('/trust/usernamemixed'),
-      value: '/trust/usernamemixed',
+      href: endpoints.active_logon_url,
+      value: endpoints.active_logon_url,
       icon: IconServerBolt,
     },
   ]
@@ -64,10 +67,12 @@ export function AdminEntraFederationPage({
   csrfToken,
   actorUsername,
   relyingParties,
+  integrationEndpoints,
 }: {
   csrfToken: string
   actorUsername?: string
   relyingParties: WsFedRelyingParty[]
+  integrationEndpoints: AdminIntegrationEndpointCatalog
 }) {
   const [items, setItems] = useState(relyingParties.filter((rp) => rp.entra_profile))
   const [error, setError] = useState('')
@@ -106,19 +111,21 @@ export function AdminEntraFederationPage({
       <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <div className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 sm:grid-cols-3">
-        {endpointLinks(t).map(({ label, href, value, icon: Icon }) => (
-          <a
-            key={value}
-            className="flex min-w-0 items-start gap-2 rounded-md border border-slate-200 bg-white p-2.5 text-xs text-slate-600 hover:border-blue-300 hover:text-blue-700"
-            href={href}
-          >
-            <Icon size={16} className="mt-0.5 shrink-0 text-blue-600" aria-hidden="true" />
-            <span className="min-w-0">
-              <span className="block font-semibold text-slate-800">{label}</span>
-              <span className="block truncate font-mono">{value}</span>
-            </span>
-          </a>
-        ))}
+        {endpointLinks(t, integrationEndpoints.ws_federation).map(
+          ({ label, href, value, icon: Icon }) => (
+            <a
+              key={value}
+              className="flex min-w-0 items-start gap-2 rounded-md border border-slate-200 bg-white p-2.5 text-xs text-slate-600 hover:border-blue-300 hover:text-blue-700"
+              href={href}
+            >
+              <Icon size={16} className="mt-0.5 shrink-0 text-blue-600" aria-hidden="true" />
+              <span className="min-w-0">
+                <span className="block font-semibold text-slate-800">{label}</span>
+                <span className="block truncate font-mono">{value}</span>
+              </span>
+            </a>
+          ),
+        )}
       </div>
 
       <EntraFederationList items={items} onDelete={handleDelete} />

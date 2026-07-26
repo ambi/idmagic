@@ -29,6 +29,7 @@ type Deps struct {
 // RegisterRoutes は SAML 2.0 IdP のエンドポイントを登録する。
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/saml/metadata", d.handleSamlMetadata)
+	g.GET("/saml/signing-certificate.pem", d.handleSamlSigningCertificate)
 	g.GET("/saml/sso", d.handleSamlSSORedirect)
 	g.POST("/saml/sso", d.handleSamlSSOPost)
 	g.GET("/saml/slo", d.handleSamlSLO)

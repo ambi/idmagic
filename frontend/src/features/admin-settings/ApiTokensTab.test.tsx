@@ -7,6 +7,51 @@ import { ApiTokensTab } from './ApiTokensTab'
 
 const t = adminSettingsDictionary.en
 
+const integrationEndpoints = {
+  issuer: 'https://login.idmagic.example/realms/acme',
+  oauth: {
+    openid_configuration:
+      'https://login.idmagic.example/realms/acme/.well-known/openid-configuration',
+    oauth_authorization_server:
+      'https://login.idmagic.example/realms/acme/.well-known/oauth-authorization-server',
+    authorization_endpoint: 'https://login.idmagic.example/realms/acme/authorize',
+    token_endpoint: 'https://login.idmagic.example/realms/acme/token',
+    userinfo_endpoint: 'https://login.idmagic.example/realms/acme/userinfo',
+    jwks_uri: 'https://login.idmagic.example/realms/acme/jwks',
+    revocation_endpoint: 'https://login.idmagic.example/realms/acme/revoke',
+    introspection_endpoint: 'https://login.idmagic.example/realms/acme/introspect',
+    end_session_endpoint: 'https://login.idmagic.example/realms/acme/logout',
+    registration_endpoint: 'https://login.idmagic.example/realms/acme/register',
+    pushed_authorization_request_endpoint: 'https://login.idmagic.example/realms/acme/par',
+    device_authorization_endpoint: 'https://login.idmagic.example/realms/acme/device_authorization',
+  },
+  saml: {
+    entity_id: 'https://login.idmagic.example/realms/acme/saml',
+    metadata_url: 'https://login.idmagic.example/realms/acme/saml/metadata',
+    sso_url: 'https://login.idmagic.example/realms/acme/saml/sso',
+    slo_url: 'https://login.idmagic.example/realms/acme/saml/slo',
+    signing_certificate: {
+      download_url: 'https://login.idmagic.example/realms/acme/saml/signing-certificate.pem',
+      fingerprint_sha256: 'AA:BB',
+      not_before: '2026-01-01T00:00:00Z',
+      not_after: '2027-01-01T00:00:00Z',
+    },
+  },
+  ws_federation: {
+    realm: 'https://login.idmagic.example/realms/acme',
+    metadata_url:
+      'https://login.idmagic.example/realms/acme/federationmetadata/2007-06/federationmetadata.xml',
+    passive_logon_url: 'https://login.idmagic.example/realms/acme/wsfed',
+    active_logon_url: 'https://login.idmagic.example/realms/acme/trust/usernamemixed',
+    metadata_exchange_url: 'https://login.idmagic.example/realms/acme/trust/mex',
+  },
+  apis: {
+    management_api_base_url: 'https://api.idmagic.example/management/acme',
+    scim_base_url: 'https://api.idmagic.example/scim/acme/v2',
+    account_api_base_url: 'https://api.idmagic.example/account/acme',
+  },
+} as const
+
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
@@ -32,7 +77,9 @@ describe('ApiTokensTab', () => {
         .mockResolvedValueOnce(response(204)),
     )
 
-    await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="default" />)
+    await renderWithRouter(
+      <ApiTokensTab csrfToken="csrf" integrationEndpoints={integrationEndpoints} />,
+    )
     await screen.findByText(t.noTokensNotice)
     fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
     fireEvent.change(screen.getByLabelText(t.tokenDescriptionLabel), { target: { value: 'Okta' } })
@@ -60,7 +107,9 @@ describe('ApiTokensTab', () => {
 
   it('offers account self-service scopes without a client selection', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
-    await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="default" />)
+    await renderWithRouter(
+      <ApiTokensTab csrfToken="csrf" integrationEndpoints={integrationEndpoints} />,
+    )
     await screen.findByText(t.noTokensNotice)
     fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
     for (const scope of [
@@ -85,7 +134,9 @@ describe('ApiTokensTab', () => {
   it('offers application and protocol management scopes', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
 
-    await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="default" />)
+    await renderWithRouter(
+      <ApiTokensTab csrfToken="csrf" integrationEndpoints={integrationEndpoints} />,
+    )
     await screen.findByText(t.noTokensNotice)
     fireEvent.click(screen.getByRole('button', { name: t.issueToken }))
 
@@ -112,17 +163,19 @@ describe('ApiTokensTab', () => {
   it('shows all API base URLs and groups scopes with human-readable guidance', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(200, { tokens: [] })))
 
-    await renderWithRouter(<ApiTokensTab csrfToken="csrf" tenantRealm="acme" />)
+    await renderWithRouter(
+      <ApiTokensTab csrfToken="csrf" integrationEndpoints={integrationEndpoints} />,
+    )
     await screen.findByText(t.noTokensNotice)
 
     expect(screen.getByLabelText(t.managementApiBaseUrlLabel)).toHaveValue(
-      'http://localhost:3000/realms/acme/api/admin',
+      'https://api.idmagic.example/management/acme',
     )
     expect(screen.getByLabelText(t.scimBaseUrlLabel)).toHaveValue(
-      'http://localhost:3000/realms/acme/scim/v2',
+      'https://api.idmagic.example/scim/acme/v2',
     )
     expect(screen.getByLabelText(t.accountApiBaseUrlLabel)).toHaveValue(
-      'http://localhost:3000/realms/acme/api/account',
+      'https://api.idmagic.example/account/acme',
     )
 
     fireEvent.click(screen.getByRole('button', { name: t.issueToken }))

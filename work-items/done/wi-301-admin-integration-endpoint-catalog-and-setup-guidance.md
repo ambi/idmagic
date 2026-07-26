@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-26
@@ -21,9 +21,10 @@ initial_context:
     - frontend/src/features
   stop_before_reading: [backend/idmanagement]
 affected_spec:
-  - { context: Tenancy, kind: interface, element: GetAdminSettings }
+  - { context: Tenancy, kind: interface, element: GetAdminIntegrationEndpoints }
+  - { context: Tenancy, kind: model, element: AdminIntegrationEndpointCatalog }
   - { context: Application, kind: interface, element: GetAdminApplication }
-  - { context: Saml, kind: interface, element: PublishSamlMetadata }
+  - { context: Saml, kind: interface, element: DownloadSamlSigningCertificate }
 ---
 
 # 管理画面に正規の連携 endpoint catalog とアプリ設定ガイドを表示する
@@ -58,12 +59,12 @@ subdomain / custom domain を意識して URL を手組みせず、正規ロケ�
 
 ## Tasks
 
-- [ ] T001 [SCL] catalog model/interface、certificate download、管理UI flow/scenarioを追加して再生成する。
-- [ ] T002 [Usecase/HTTP] RED: canonical path/subdomain catalog test を先に fail 確認（scenario `管理者は正規ロケーションの連携情報を取得する`）→ GREEN。
-- [ ] T003 [SAML Adapter] RED: PEM download と metadata certificate 一致 test を先に fail 確認（scenario `SPは署名証明書を取得できる`）→ GREEN。
-- [ ] T004 [UI] RED: 日英、コピー、download、OIDC/SAML setup guidance test を先に fail 確認（flow `AdminIntegrationSetup`）→ GREEN。
-- [ ] T005 [Consolidation] API token / Entra の重複URL生成を catalog 利用へ移す。
-- [ ] T006 [Verify] protocol別、tenant style別、認可・アクセシビリティを検証する。
+- [x] T001 [SCL] catalog model/interface、certificate download、管理UI flow/scenarioを追加して再生成する。
+- [x] T002 [Usecase/HTTP] RED: canonical path/subdomain catalog test を先に fail 確認（scenario `管理者は正規ロケーションの連携情報を取得する`）→ GREEN。
+- [x] T003 [SAML Adapter] RED: PEM download と metadata certificate 一致 test を先に fail 確認（scenario `SPは署名証明書を取得できる`）→ GREEN。
+- [x] T004 [UI] RED: 日英、コピー、download、OIDC/SAML setup guidance test を先に fail 確認（flow `AdminIntegrationSetup`）→ GREEN。
+- [x] T005 [Consolidation] API token / Entra の重複URL生成を catalog 利用へ移す。
+- [x] T006 [Verify] protocol別、tenant style別、認可・アクセシビリティを検証する。
 
 ## Verification
 
@@ -79,3 +80,16 @@ subdomain / custom domain を意識して URL を手組みせず、正規ロケ�
 
 誤ったissuerやmetadata URLのコピーは連携全体を停止させる。URLは request context の
 canonical issuer からのみ生成し、frontendのrealm文字列連結を禁止する。
+
+## Completion
+
+- **Completed At**: 2026-07-26
+- **Summary**: Added a canonical tenant integration endpoint catalog, SAML signing certificate download, and localized OIDC RP / SAML SP setup guidance in the administration UI.
+- **Verification Results**:
+  - `just verify-ui` - passed (450 unit tests, typecheck, lint, and production build)
+  - `just test-ui-e2e` - passed (21 browser scenarios)
+  - `just verify` - passed
+- **Evidence**:
+  - HTTP tests cover canonical path- and host-style endpoint generation, authorization, no-store responses, and matching SAML metadata/download certificates.
+  - Settings, application detail, Entra federation, and API token tests cover localized catalog presentation and reuse without frontend URL reconstruction.
+  - Browser scenarios cover account and admin navigation, application/token workflows, and client-side navigation under the local default tenant.

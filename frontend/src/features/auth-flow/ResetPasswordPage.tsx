@@ -1,6 +1,7 @@
 import { IconAlertCircle, IconArrowRight, IconCircleCheck, IconLock } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, PasswordPolicyError, resetPassword } from '../../api'
+import { tenantURL } from '../../api/core'
 import { AuthShell } from '../../components/AuthShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -63,7 +64,10 @@ export function ResetPasswordPage({ csrfToken, token }: { csrfToken: string; tok
             onSubmit={handleSubmit}
           />
         ) : null}
-        <a className="text-center text-sm font-medium text-blue-700 hover:underline" href="/login">
+        <a
+          className="text-center text-sm font-medium text-blue-700 hover:underline"
+          href={tenantURL('/login')}
+        >
           {t.returnToSignIn}
         </a>
       </div>

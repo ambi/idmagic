@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"math/big"
 	"net/http"
@@ -415,6 +416,28 @@ func TestSamlMetadata_Published(t *testing.T) {
 	}
 	if ct := rec.Header().Get("Content-Type"); !strings.Contains(ct, "application/xml") {
 		t.Fatalf("Content-Type=%q, want application/xml", ct)
+	}
+}
+
+func TestSamlSigningCertificateDownloadMatchesMetadata(t *testing.T) {
+	e, _ := newServer(t, nil)
+	pemResponse := get(e, "/saml/signing-certificate.pem")
+	if pemResponse.Code != http.StatusOK {
+		t.Fatalf("certificate status=%d body=%s", pemResponse.Code, pemResponse.Body.String())
+	}
+	block, _ := pem.Decode(pemResponse.Body.Bytes())
+	if block == nil || block.Type != "CERTIFICATE" {
+		t.Fatalf("invalid certificate PEM: %q", pemResponse.Body.String())
+	}
+	if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+		t.Fatalf("parse certificate: %v", err)
+	}
+	metadataResponse := get(e, "/saml/metadata")
+	if metadataResponse.Code != http.StatusOK {
+		t.Fatalf("metadata status=%d body=%s", metadataResponse.Code, metadataResponse.Body.String())
+	}
+	if want := base64.StdEncoding.EncodeToString(block.Bytes); !strings.Contains(metadataResponse.Body.String(), want) {
+		t.Fatal("downloaded certificate is not published in SAML metadata")
 	}
 }
 

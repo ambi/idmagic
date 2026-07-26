@@ -724,6 +724,48 @@ export type AdminSettings = {
   usage?: TenantUsage
 }
 
+export type AdminIntegrationEndpointCatalog = {
+  issuer: string
+  oauth: {
+    openid_configuration: string
+    oauth_authorization_server: string
+    authorization_endpoint: string
+    token_endpoint: string
+    userinfo_endpoint: string
+    jwks_uri: string
+    revocation_endpoint: string
+    introspection_endpoint: string
+    end_session_endpoint: string
+    registration_endpoint: string
+    pushed_authorization_request_endpoint: string
+    device_authorization_endpoint: string
+  }
+  saml: {
+    entity_id: string
+    metadata_url: string
+    sso_url: string
+    slo_url: string
+    signing_certificate: {
+      download_url: string
+      fingerprint_sha256: string
+      not_before: string
+      not_after: string
+    }
+  }
+  ws_federation: {
+    realm: string
+    metadata_url: string
+    passive_logon_url: string
+    active_logon_url: string
+    metadata_exchange_url: string
+  }
+  apis: {
+    management_api_base_url: string
+    scim_base_url: string
+    account_api_base_url: string
+  }
+}
+
 // NotificationTemplateKey は通知の用途を表す固定識別子。テナントは key を追加できない
 // (ADR-142 決定 2)。
 export type NotificationTemplateKey =

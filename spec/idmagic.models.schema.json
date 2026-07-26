@@ -540,6 +540,27 @@
       ],
       "description": "`/api/account/summary` の返り値 (end-user account portal のホーム)。呼び出し\nユーザ自身のアカウント概要で、admin shell 用の AccountContext (/api/auth/account)\nとは別契約。roles は含めず、最終ログイン・パスワード変更日時・MFA 状態・未対応の\nrequired actions を portal home の summary card 用に返す。\n"
     },
+    "AdminApiEndpointSet": {
+      "type": "object",
+      "properties": {
+        "management_api_base_url": {
+          "type": "string"
+        },
+        "scim_base_url": {
+          "type": "string"
+        },
+        "account_api_base_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "management_api_base_url",
+        "scim_base_url",
+        "account_api_base_url"
+      ],
+      "description": "外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規 base URL。"
+    },
     "AdminApplicationCategoryListResponse": {
       "type": "object",
       "properties": {
@@ -957,6 +978,63 @@
       ],
       "description": "管理 API が返す所属テナント内の Consent 表現。client_id / user_id は UUID のため、表示用に解決済みの可読名 (client_name / preferred_username) を併記する。"
     },
+    "AdminFederationCertificate": {
+      "type": "object",
+      "properties": {
+        "download_url": {
+          "type": "string"
+        },
+        "fingerprint_sha256": {
+          "type": "string",
+          "description": "大文字16進数を colon 区切りにした SHA-256 fingerprint。"
+        },
+        "not_before": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "not_after": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "download_url",
+        "fingerprint_sha256",
+        "not_before",
+        "not_after"
+      ],
+      "description": "IdMagic が XML federation の新規署名に使う active X.509 証明書の公開情報。秘密鍵は含めず、rotation overlap の全証明書は metadata を正本とする。"
+    },
+    "AdminIntegrationEndpointCatalog": {
+      "type": "object",
+      "properties": {
+        "issuer": {
+          "type": "string"
+        },
+        "oauth": {
+          "$ref": "#/$defs/AdminOAuthEndpointSet"
+        },
+        "saml": {
+          "$ref": "#/$defs/AdminSamlIdentityProviderEndpointSet"
+        },
+        "ws_federation": {
+          "$ref": "#/$defs/AdminWsFederationEndpointSet"
+        },
+        "apis": {
+          "$ref": "#/$defs/AdminApiEndpointSet"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "issuer",
+        "oauth",
+        "saml",
+        "ws_federation",
+        "apis"
+      ],
+      "description": "`/api/admin/integration-endpoints` の read-only projection。request tenant の canonical issuer だけから導出し、path / subdomain / custom domain の知識を UI に持たせない。client secret、token、秘密鍵は含めない。"
+    },
     "AdminKeyListResponse": {
       "type": "object",
       "properties": {
@@ -1318,6 +1396,63 @@
       ],
       "description": "管理者が OAuth client metadata を更新した。"
     },
+    "AdminOAuthEndpointSet": {
+      "type": "object",
+      "properties": {
+        "openid_configuration": {
+          "type": "string"
+        },
+        "oauth_authorization_server": {
+          "type": "string"
+        },
+        "authorization_endpoint": {
+          "type": "string"
+        },
+        "token_endpoint": {
+          "type": "string"
+        },
+        "userinfo_endpoint": {
+          "type": "string"
+        },
+        "jwks_uri": {
+          "type": "string"
+        },
+        "revocation_endpoint": {
+          "type": "string"
+        },
+        "introspection_endpoint": {
+          "type": "string"
+        },
+        "end_session_endpoint": {
+          "type": "string"
+        },
+        "registration_endpoint": {
+          "type": "string"
+        },
+        "pushed_authorization_request_endpoint": {
+          "type": "string"
+        },
+        "device_authorization_endpoint": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "openid_configuration",
+        "oauth_authorization_server",
+        "authorization_endpoint",
+        "token_endpoint",
+        "userinfo_endpoint",
+        "jwks_uri",
+        "revocation_endpoint",
+        "introspection_endpoint",
+        "end_session_endpoint",
+        "registration_endpoint",
+        "pushed_authorization_request_endpoint",
+        "device_authorization_endpoint"
+      ],
+      "description": "管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規 endpoint 集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。"
+    },
     "AdminRequiredActionRequest": {
       "type": "object",
       "properties": {
@@ -1348,6 +1483,35 @@
         "next"
       ],
       "description": "鍵ローテーションの結果。新しい active 鍵と直前の active 鍵 (verifying へ降りた) の kid を返す。"
+    },
+    "AdminSamlIdentityProviderEndpointSet": {
+      "type": "object",
+      "properties": {
+        "entity_id": {
+          "type": "string"
+        },
+        "metadata_url": {
+          "type": "string"
+        },
+        "sso_url": {
+          "type": "string"
+        },
+        "slo_url": {
+          "type": "string"
+        },
+        "signing_certificate": {
+          "$ref": "#/$defs/AdminFederationCertificate"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "entity_id",
+        "metadata_url",
+        "sso_url",
+        "slo_url",
+        "signing_certificate"
+      ],
+      "description": "SP に投入する tenant 共有 SAML IdP の正規情報。"
     },
     "AdminSettingsResponse": {
       "type": "object",
@@ -1558,6 +1722,35 @@
       },
       "additionalProperties": false,
       "description": "管理者がユーザーの可変プロフィールとロールを更新する JSON リクエスト。id と password_hash は変更しない。"
+    },
+    "AdminWsFederationEndpointSet": {
+      "type": "object",
+      "properties": {
+        "realm": {
+          "type": "string"
+        },
+        "metadata_url": {
+          "type": "string"
+        },
+        "passive_logon_url": {
+          "type": "string"
+        },
+        "active_logon_url": {
+          "type": "string"
+        },
+        "metadata_exchange_url": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "realm",
+        "metadata_url",
+        "passive_logon_url",
+        "active_logon_url",
+        "metadata_exchange_url"
+      ],
+      "description": "WS-Federation RP / Microsoft Entra domain federation に投入する tenant の正規情報。"
     },
     "Agent": {
       "type": "object",

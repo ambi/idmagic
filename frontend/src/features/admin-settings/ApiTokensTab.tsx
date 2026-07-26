@@ -7,16 +7,16 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
-import type { ApiToken, ApiTokenScope } from '../../types'
+import type { AdminIntegrationEndpointCatalog, ApiToken, ApiTokenScope } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { ApiTokenScopePicker } from './ApiTokenScopePicker'
 
 export function ApiTokensTab({
   csrfToken,
-  tenantRealm,
+  integrationEndpoints,
 }: {
   csrfToken: string
-  tenantRealm: string
+  integrationEndpoints: AdminIntegrationEndpointCatalog
 }) {
   const [tokens, setTokens] = useState<ApiToken[]>([])
   const [loading, setLoading] = useState(true)
@@ -88,9 +88,11 @@ export function ApiTokensTab({
     return <div className="text-sm text-slate-500">{t.loadingNotice}</div>
   }
 
-  const managementApiBaseUrl = `${window.location.origin}/realms/${tenantRealm}/api/admin`
-  const scimBaseUrl = `${window.location.origin}/realms/${tenantRealm}/scim/v2`
-  const accountApiBaseUrl = `${window.location.origin}/realms/${tenantRealm}/api/account`
+  const {
+    management_api_base_url: managementApiBaseUrl,
+    scim_base_url: scimBaseUrl,
+    account_api_base_url: accountApiBaseUrl,
+  } = integrationEndpoints.apis
 
   return (
     <Card className="p-6">

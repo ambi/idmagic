@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { AssignmentList } from './AdminApplicationAssignments'
+import { IdMagicSetupCard } from './IdMagicSetupCard'
 import { ProvisioningNavButton } from './AdminApplicationProvisioningShared'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import {
@@ -34,15 +35,18 @@ import {
   wsfedTokenTypeOptions,
 } from './AdminApplicationsShared'
 import type { AdminApplicationDetail } from '../../types'
+import type { AdminIntegrationEndpointCatalog } from '../../types'
 
 export function AdminApplicationDetailPage({
   csrfToken,
   actorUsername,
   detail,
+  integrationEndpoints,
 }: {
   csrfToken: string
   actorUsername?: string
   detail: AdminApplicationDetail
+  integrationEndpoints: AdminIntegrationEndpointCatalog
 }) {
   const app = detail.application
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -114,6 +118,8 @@ export function AdminApplicationDetailPage({
       ) : null}
 
       <div className="grid max-w-3xl gap-6">
+        <IdMagicSetupCard detail={detail} integrationEndpoints={integrationEndpoints} t={t} />
+
         <Card className="overflow-hidden">
           <div className="flex items-start gap-3 border-b border-slate-200 p-5">
             <AppIcon app={app} />

@@ -3,6 +3,7 @@ import { restoreGlobals, stubGlobal } from '../test/globals'
 import {
   tenantBasePath,
   tenantLocalPath,
+  tenantRouterPath,
   tenantURL,
   validReturnTo,
   base64URL,
@@ -74,6 +75,17 @@ describe('core api utils', () => {
     })
   })
 
+  describe('tenantRouterPath', () => {
+    it('should remove the tenant prefix from a router destination', () => {
+      expect(tenantRouterPath('/realms/test-tenant/admin/users')).toBe('/admin/users')
+      expect(tenantRouterPath('/realms/test-tenant')).toBe('/')
+    })
+
+    it('should preserve a destination without a tenant prefix', () => {
+      expect(tenantRouterPath('/admin/users')).toBe('/admin/users')
+    })
+  })
+
   describe('tenantURL', () => {
     it('should prepend tenant base path to input path', () => {
       expect(tenantURL('/admin/users')).toBe('/realms/test-tenant/admin/users')
@@ -86,6 +98,17 @@ describe('core api utils', () => {
         port: '5173',
         pathname: '/',
         origin: 'http://localhost:5173',
+      })
+      expect(tenantURL('/authorize')).toBe('/realms/default/authorize')
+    })
+
+    it('uses the default path tenant from the E2E development root', () => {
+      stubGlobal('location', {
+        ...originalLocation,
+        hostname: 'localhost',
+        port: '5174',
+        pathname: '/',
+        origin: 'http://localhost:5174',
       })
       expect(tenantURL('/authorize')).toBe('/realms/default/authorize')
     })

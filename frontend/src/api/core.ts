@@ -77,12 +77,23 @@ export function tenantLocalPath(): string {
   return path === '' ? '/' : path
 }
 
+// TanStack Router はテナント基底を basepath として別管理するため、Link には
+// tenantURL が生成した URL 自身から基底を除いたローカルパスを渡す。
+export function tenantRouterPath(path: string): string {
+  const base = tenantBasePath(path)
+  const localPath = path.slice(base.length)
+  return localPath === '' ? '/' : localPath
+}
+
 export function tenantURL(path: string): string {
   const base = tenantBasePath()
-  // Vite のローカル開発ルート (localhost:5173) は path 形式の default テナントを指す。
+  // Vite のローカル開発ルート (5173) と E2E 専用ルート (5174) は path 形式の default
+  // テナントを指す。ユニットテストなどの別localhostポートへこの補完を広げない。
   // バックエンドの bare route は fail-closed のまま、クライアント生成 URL のみ補完する。
   const localDefaultTenant =
-    base === '' && window.location.hostname === 'localhost' && window.location.port === '5173'
+    base === '' &&
+    window.location.hostname === 'localhost' &&
+    (window.location.port === '5173' || window.location.port === '5174')
   return `${localDefaultTenant ? '/realms/default' : base}${path}`
 }
 

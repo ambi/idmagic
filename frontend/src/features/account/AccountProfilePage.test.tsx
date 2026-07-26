@@ -175,7 +175,11 @@ describe('AccountProfileEditPage', () => {
   afterEach(() => restoreGlobals())
 
   it('saves the profile and redirects with a success notice', async () => {
-    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal('location', {
+      ...originalLocation,
+      pathname: '/realms/acme/account/profile/edit',
+      assign: mock(),
+    })
     stubGlobal('fetch', mock().mockResolvedValue(response(200, profile)))
     await renderWithRouter(
       <AccountProfileEditPage csrfToken="csrf" profile={profile} isAdmin={false} />,
@@ -184,7 +188,9 @@ describe('AccountProfileEditPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
 
     await waitFor(() =>
-      expect(window.location.assign).toHaveBeenCalledWith('/account/profile?notice=success'),
+      expect(window.location.assign).toHaveBeenCalledWith(
+        '/realms/acme/account/profile?notice=success',
+      ),
     )
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/account/profile'),

@@ -8,6 +8,7 @@ import {
   clickButtonByText,
   clickElementByAriaLabel,
   clickLinkByText,
+  clickSummaryByText,
   demo,
   navigateAndLogin,
   selectDropdownOption,
@@ -138,14 +139,17 @@ test('admin API access token lifecycle works with selected SCIM scopes', async (
 
     await clickButtonByText(view, 'Issue token')
     await setInputValue(view, '#token-desc', `SCIM E2E ${Date.now()}`)
+    await clickSummaryByText(view, 'SCIM 2.0 API')
     await view.click('input[value="scim:users:read"]')
     await view.click('input[value="scim:users:write"]')
     await clickButtonByText(view, 'Issue token')
 
     await waitForText(view, 'Issued the API access token.')
     expect(
-      await view.evaluate(`document.querySelector('input[value^="idmagic_pat_"]')?.value ?? ''`),
-    ).toMatch(/^idmagic_pat_[0-9a-f]{64}$/)
+      await view.evaluate(`(() => [...document.querySelectorAll('input')]
+        .map((input) => input.value)
+        .find((value) => value.split('.').length === 3) ?? '')()`),
+    ).toMatch(/^[^.]+\.[^.]+\.[^.]+$/)
     await waitForText(view, 'scim:users:read')
     await waitForText(view, 'scim:users:write')
 
@@ -502,6 +506,7 @@ test('admin application lifecycle and agent credential binding work from the bro
     await waitForText(view, clientID)
     await clickLinkByText(view, 'Edit')
     await waitForUrl(view, /\/admin\/applications\/[^/]+\/edit$/)
+    await waitForText(view, demo.username)
     await selectDropdownOption(view, 'Select…', demo.username)
     await clickButtonByText(view, 'Assign')
     await waitForText(view, demo.username)
@@ -539,7 +544,7 @@ test('admin user list opens a user detail page', async () => {
   try {
     await navigateAndLogin(view, '/admin/users', 'admin-users')
     // 一覧で先頭ユーザーが選択され、右ペインの「詳細」から専用詳細画面へ遷移する。
-    await view.click('aside a[href^="/admin/users/"]:not([href$="/edit"])')
+    await view.click('aside a[href*="/admin/users/"]:not([href$="/edit"])')
     await waitForPage(view, 'admin-user-detail')
     await waitForUrl(view, /\/admin\/users\/[^/]+$/)
     await waitForText(view, 'User ID')

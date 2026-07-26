@@ -378,6 +378,99 @@ models:
         type: TenantQuota
       usage:
         type: TenantUsage
+  AdminOAuthEndpointSet:
+    kind: value_object
+    description: 管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規 endpoint 集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。
+    fields:
+      openid_configuration:
+        type: String
+      oauth_authorization_server:
+        type: String
+      authorization_endpoint:
+        type: String
+      token_endpoint:
+        type: String
+      userinfo_endpoint:
+        type: String
+      jwks_uri:
+        type: String
+      revocation_endpoint:
+        type: String
+      introspection_endpoint:
+        type: String
+      end_session_endpoint:
+        type: String
+      registration_endpoint:
+        type: String
+      pushed_authorization_request_endpoint:
+        type: String
+      device_authorization_endpoint:
+        type: String
+  AdminFederationCertificate:
+    kind: value_object
+    description: IdMagic が XML federation の新規署名に使う active X.509 証明書の公開情報。秘密鍵は含めず、rotation overlap の全証明書は metadata を正本とする。
+    fields:
+      download_url:
+        type: String
+      fingerprint_sha256:
+        type: String
+        description: 大文字16進数を colon 区切りにした SHA-256 fingerprint。
+      not_before:
+        type: DateTime
+      not_after:
+        type: DateTime
+  AdminSamlIdentityProviderEndpointSet:
+    kind: value_object
+    description: SP に投入する tenant 共有 SAML IdP の正規情報。
+    fields:
+      entity_id:
+        type: String
+      metadata_url:
+        type: String
+      sso_url:
+        type: String
+      slo_url:
+        type: String
+      signing_certificate:
+        type: AdminFederationCertificate
+  AdminWsFederationEndpointSet:
+    kind: value_object
+    description: WS-Federation RP / Microsoft Entra domain federation に投入する tenant の正規情報。
+    fields:
+      realm:
+        type: String
+      metadata_url:
+        type: String
+      passive_logon_url:
+        type: String
+      active_logon_url:
+        type: String
+      metadata_exchange_url:
+        type: String
+  AdminApiEndpointSet:
+    kind: value_object
+    description: 外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規 base URL。
+    fields:
+      management_api_base_url:
+        type: String
+      scim_base_url:
+        type: String
+      account_api_base_url:
+        type: String
+  AdminIntegrationEndpointCatalog:
+    kind: value_object
+    description: "`/api/admin/integration-endpoints` の read-only projection。request tenant の canonical issuer だけから導出し、path / subdomain / custom domain の知識を UI に持たせない。client secret、token、秘密鍵は含めない。"
+    fields:
+      issuer:
+        type: String
+      oauth:
+        type: AdminOAuthEndpointSet
+      saml:
+        type: AdminSamlIdentityProviderEndpointSet
+      ws_federation:
+        type: AdminWsFederationEndpointSet
+      apis:
+        type: AdminApiEndpointSet
   TenantUserAttributeSchemaResponse:
     kind: value_object
     description: "`/api/admin/tenant/user_attribute_schema` の返り値。tenant 固有の custom 属性定義\n(attributes) に加え、参照用にコードが持つ組み込みカタログ (builtin) を併せて返し、\nUI が key 衝突を避けつつ全属性を一覧できるようにする。\n"
@@ -1157,6 +1250,23 @@ interfaces:
       - kind: http
         method: GET
         path: /api/admin/settings
+  GetAdminIntegrationEndpoints:
+    description: "テナント内 admin が、外部の OIDC RP / SAML SP / WS-Federation RP / SCIM client / management client に投入する IdMagic の正規連携情報を一括取得する。全 URL は解決済み request tenant の canonical issuer から server が導出し、frontend は realm や origin を連結しない。秘密情報は含めず Cache-Control: no-store で返す。"
+    output:
+      catalog:
+        type: AdminIntegrationEndpointCatalog
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: Tenant
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/integration-endpoints
   UpdateAdminSettings:
     description: "テナント内 admin が自身のテナントの設定を更新する。display_name、default_locale、\npassword_policy_override のいずれかを任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) は use case\n側で拒否する。default_locale はカタログが同梱翻訳を持つ locale のみ受け付け、\n空文字列でシステム既定へ戻す。\n"
     input:
@@ -1508,6 +1618,20 @@ authorization:
       principal: TenantAdministrator
       when: principal.tenant_id == resource.id
 scenarios:
+  管理者は正規ロケーションの連携情報を取得する:
+    actor: TenantAdministrator
+    given:
+      - admin が path または subdomain の正規ロケーションから自身のテナントへアクセスしている
+    main_success:
+      - admin が連携エンドポイント画面を開く
+      - server は request tenant の canonical issuer から OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの URL を導出する
+      - 画面は discovery と metadata を正本として案内し、個別値をコピーまたは証明書をダウンロードできる
+      - 返却値に client secret、API token、秘密鍵は含まれない
+    extensions:
+      - at: 1
+        condition: admin が別テナントの realm を URL として指定しようとする
+        steps:
+          - 対象指定パラメータは存在せず、解決済みテナント以外の情報は返らない
   管理者はテナント固有のユーザー属性スキーマを定義できる:
     actor: TenantAdministrator
     given:
@@ -1829,6 +1953,17 @@ flows:
             does: 通知メールタブを開く
             interface: ListNotificationTemplates
             to: NotificationTemplates
+          - action: open_integration_endpoints
+            does: 連携エンドポイントタブを開き、protocol metadata、個別 endpoint、API base URL、SAML署名証明書を参照・コピーする
+            interface: GetAdminIntegrationEndpoints
+            to: IntegrationEndpoints
+      IntegrationEndpoints:
+        sees: OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの正規連携情報とSAML署名証明書
+        does:
+          - action: back
+            does: テナント設定画面の一般設定へ戻る
+            interface: GetAdminSettings
+            to: TenantSettings
       NotificationTemplates:
         sees: 通知メールテンプレート一覧(template_key × locale の行、上書き済みかどうか、現在有効な件名、テスト送信の宛先が操作者本人に固定される旨の注記)
         does:

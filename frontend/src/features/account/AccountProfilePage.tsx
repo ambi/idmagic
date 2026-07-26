@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from 'react'
-import { AuthenticationAPIError, updateAccountProfile } from '../../api'
+import { AuthenticationAPIError, tenantURL, updateAccountProfile } from '../../api'
 import { attributeGroupKey, attributeGroupTitle, attributeLabel } from '../../lib/utils'
 import { useDictionary } from '../../lib/i18n'
 import {
@@ -120,7 +120,7 @@ export function AccountProfilePresentation({
               <p className="mt-1 text-sm text-slate-600">{t.profileDescription}</p>
             </div>
             <Button asChild variant="outline">
-              <a href="/account/profile/edit">{t.edit}</a>
+              <a href={tenantURL('/account/profile/edit')}>{t.edit}</a>
             </Button>
           </div>
 
@@ -133,7 +133,7 @@ export function AccountProfilePresentation({
               value={profile.email ?? t.notSet}
               action={
                 <a
-                  href="/account/emails"
+                  href={tenantURL('/account/emails')}
                   className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   {t.change}
@@ -194,7 +194,7 @@ export function AccountProfileEditPage({
         family_name: familyName.trim() || undefined,
         attributes: nextAttributes,
       })
-      window.location.assign('/account/profile?notice=success')
+      window.location.assign(`${tenantURL('/account/profile')}?notice=success`)
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.updateFailed)
       setSaving(false)
@@ -264,7 +264,7 @@ export function AccountProfileEditPresentation({
         <Card className="p-5">
           <div className="flex items-center gap-3">
             <a
-              href="/account/profile"
+              href={tenantURL('/account/profile')}
               className="inline-flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 hover:text-slate-900"
               aria-label={t.back}
             >
@@ -326,7 +326,7 @@ export function AccountProfileEditPresentation({
                 {saving ? t.saving : t.save}
               </Button>
               <Button type="button" variant="ghost" disabled={saving} asChild>
-                <a href="/account/profile">{t.cancel}</a>
+                <a href={tenantURL('/account/profile')}>{t.cancel}</a>
               </Button>
             </div>
           </form>

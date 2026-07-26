@@ -1,20 +1,34 @@
-import { IconMail, IconPalette, IconShieldLock, IconTag, IconUsers } from '@tabler/icons-react'
+import {
+  IconLink,
+  IconMail,
+  IconPalette,
+  IconShieldLock,
+  IconTag,
+  IconUsers,
+} from '@tabler/icons-react'
 import { useState } from 'react'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
-import type { AdminSettings } from '../../types'
+import type { AdminIntegrationEndpointCatalog, AdminSettings } from '../../types'
 import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { BrandingTab } from './BrandingTab'
 import { GeneralTab } from './GeneralTab'
 import { NotificationTemplatesTab } from './NotificationTemplatesTab'
 import { PasswordPolicyTab } from './PasswordPolicyTab'
 import { ApiTokensTab } from './ApiTokensTab'
+import { IntegrationEndpointsTab } from './IntegrationEndpointsTab'
 
 const DEFAULT_REALM = 'default'
 
-type TabKey = 'general' | 'password-policy' | 'branding' | 'email' | 'api-tokens'
+type TabKey =
+  | 'general'
+  | 'password-policy'
+  | 'branding'
+  | 'integration-endpoints'
+  | 'email'
+  | 'api-tokens'
 
 type Tab = {
   key: TabKey
@@ -45,6 +59,12 @@ function tabs(t: AdminSettingsDictionary): Tab[] {
       icon: IconPalette,
     },
     {
+      key: 'integration-endpoints',
+      label: t.tabIntegrationEndpointsLabel,
+      description: t.tabIntegrationEndpointsDescription,
+      icon: IconLink,
+    },
+    {
       key: 'api-tokens',
       label: t.tabApiTokensLabel,
       description: t.tabApiTokensDescription,
@@ -65,12 +85,14 @@ export function AdminSettingsPage({
   actorRoles,
   actorRealm,
   settings: initial,
+  integrationEndpoints,
 }: {
   csrfToken: string
   actorUsername?: string
   actorRoles: string[]
   actorRealm: string
   settings: AdminSettings
+  integrationEndpoints: AdminIntegrationEndpointCatalog
 }) {
   const [settings, setSettings] = useState(initial)
   const [active, setActive] = useState<TabKey>('general')
@@ -142,8 +164,11 @@ export function AdminSettingsPage({
             />
           ) : null}
           {active === 'branding' ? <BrandingTab csrfToken={csrfToken} /> : null}
+          {active === 'integration-endpoints' ? (
+            <IntegrationEndpointsTab catalog={integrationEndpoints} />
+          ) : null}
           {active === 'api-tokens' ? (
-            <ApiTokensTab csrfToken={csrfToken} tenantRealm={settings.realm} />
+            <ApiTokensTab csrfToken={csrfToken} integrationEndpoints={integrationEndpoints} />
           ) : null}
           {active === 'email' ? <NotificationTemplatesTab csrfToken={csrfToken} /> : null}
         </div>

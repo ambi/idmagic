@@ -1,7 +1,7 @@
 import { IconChevronDown, IconLogout, IconUserCircle } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import { logout, tenantBasePath } from '../api'
+import { logout, tenantRouterPath } from '../api'
 import { adminNavItems, type AdminNavKey } from '../lib/adminNav'
 import { cn } from '../lib/utils'
 import { useDictionary, useLocale } from '../lib/i18n'
@@ -9,15 +9,6 @@ import { Brand } from './Brand'
 import { LanguageSwitcher } from './LanguageSwitcher'
 import { shellDictionary } from './shell.i18n'
 
-// toLocal は tenantURL 由来の絶対パスを router 相対パス (テナント基底を除いたもの) に変換する。
-// TanStack Router は basepath を別管理するため、Link には基底を除いたパスを渡す。
-function toLocal(href: string): string {
-  const base = tenantBasePath()
-  if (base && href.startsWith(base)) {
-    return href.slice(base.length) || '/'
-  }
-  return href
-}
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,7 +123,7 @@ export function AdminShell({
             {items.map((item) => (
               <Link
                 key={item.key}
-                to={toLocal(item.href)}
+                to={tenantRouterPath(item.href)}
                 className={cn(
                   'flex h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-[background-color,color,box-shadow]',
                   item.active

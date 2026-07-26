@@ -856,6 +856,61 @@
         }
       }
     },
+    "/api/admin/integration-endpoints": {
+      "get": {
+        "operationId": "GetAdminIntegrationEndpoints",
+        "summary": "テナント内 admin が、外部の OIDC RP / SAML SP / WS-Federation RP / SCIM client / management client に投入する IdMagic の正規連携情報を一括取得する。全 URL は解決済み request tenant の canonical issuer から server が導出し、frontend は realm や origin を連結しない。秘密情報は含めず Cache-Control: no-store で返す。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "Tenant",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "catalog": {
+                      "$ref": "#/components/schemas/AdminIntegrationEndpointCatalog"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "catalog"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/tenant/user_attribute_schema": {
       "get": {
         "operationId": "GetTenantUserAttributeSchema",
@@ -10900,7 +10955,7 @@
     "/api/admin/applications/{application_id}": {
       "get": {
         "operationId": "GetAdminApplication",
-        "summary": "管理者が Application を取得する。protocol relation から解決した実設定も含む。別テナントは未存在として扱う。",
+        "summary": "管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。",
         "security": [
           {
             "SclBearer": []
@@ -13901,6 +13956,18 @@
       "get": {
         "operationId": "PublishSamlMetadata",
         "summary": "SAML 2.0 IdP metadata の公開。realm の entityID、SSO / SLO endpoint、対応 NameID format、tenant の XmlFederationSigning 証明書を <EntityDescriptor><IDPSSODescriptor> として公開し、SP が取り込めるようにする。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/saml/signing-certificate.pem": {
+      "get": {
+        "operationId": "DownloadSamlSigningCertificate",
+        "summary": "SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、この endpoint は新規設定用 active 証明書だけを返す。秘密鍵は返さない。",
         "security": [],
         "responses": {
           "200": {
@@ -18064,6 +18131,27 @@
         ],
         "description": "`/api/account/summary` の返り値 (end-user account portal のホーム)。呼び出し\nユーザ自身のアカウント概要で、admin shell 用の AccountContext (/api/auth/account)\nとは別契約。roles は含めず、最終ログイン・パスワード変更日時・MFA 状態・未対応の\nrequired actions を portal home の summary card 用に返す。\n"
       },
+      "AdminApiEndpointSet": {
+        "type": "object",
+        "properties": {
+          "management_api_base_url": {
+            "type": "string"
+          },
+          "scim_base_url": {
+            "type": "string"
+          },
+          "account_api_base_url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "management_api_base_url",
+          "scim_base_url",
+          "account_api_base_url"
+        ],
+        "description": "外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規 base URL。"
+      },
       "AdminApplicationCategoryListResponse": {
         "type": "object",
         "properties": {
@@ -18481,6 +18569,63 @@
         ],
         "description": "管理 API が返す所属テナント内の Consent 表現。client_id / user_id は UUID のため、表示用に解決済みの可読名 (client_name / preferred_username) を併記する。"
       },
+      "AdminFederationCertificate": {
+        "type": "object",
+        "properties": {
+          "download_url": {
+            "type": "string"
+          },
+          "fingerprint_sha256": {
+            "type": "string",
+            "description": "大文字16進数を colon 区切りにした SHA-256 fingerprint。"
+          },
+          "not_before": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "not_after": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "download_url",
+          "fingerprint_sha256",
+          "not_before",
+          "not_after"
+        ],
+        "description": "IdMagic が XML federation の新規署名に使う active X.509 証明書の公開情報。秘密鍵は含めず、rotation overlap の全証明書は metadata を正本とする。"
+      },
+      "AdminIntegrationEndpointCatalog": {
+        "type": "object",
+        "properties": {
+          "issuer": {
+            "type": "string"
+          },
+          "oauth": {
+            "$ref": "#/components/schemas/AdminOAuthEndpointSet"
+          },
+          "saml": {
+            "$ref": "#/components/schemas/AdminSamlIdentityProviderEndpointSet"
+          },
+          "ws_federation": {
+            "$ref": "#/components/schemas/AdminWsFederationEndpointSet"
+          },
+          "apis": {
+            "$ref": "#/components/schemas/AdminApiEndpointSet"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "issuer",
+          "oauth",
+          "saml",
+          "ws_federation",
+          "apis"
+        ],
+        "description": "`/api/admin/integration-endpoints` の read-only projection。request tenant の canonical issuer だけから導出し、path / subdomain / custom domain の知識を UI に持たせない。client secret、token、秘密鍵は含めない。"
+      },
       "AdminKeyListResponse": {
         "type": "object",
         "properties": {
@@ -18842,6 +18987,63 @@
         ],
         "description": "管理者が OAuth client metadata を更新した。"
       },
+      "AdminOAuthEndpointSet": {
+        "type": "object",
+        "properties": {
+          "openid_configuration": {
+            "type": "string"
+          },
+          "oauth_authorization_server": {
+            "type": "string"
+          },
+          "authorization_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "userinfo_endpoint": {
+            "type": "string"
+          },
+          "jwks_uri": {
+            "type": "string"
+          },
+          "revocation_endpoint": {
+            "type": "string"
+          },
+          "introspection_endpoint": {
+            "type": "string"
+          },
+          "end_session_endpoint": {
+            "type": "string"
+          },
+          "registration_endpoint": {
+            "type": "string"
+          },
+          "pushed_authorization_request_endpoint": {
+            "type": "string"
+          },
+          "device_authorization_endpoint": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "openid_configuration",
+          "oauth_authorization_server",
+          "authorization_endpoint",
+          "token_endpoint",
+          "userinfo_endpoint",
+          "jwks_uri",
+          "revocation_endpoint",
+          "introspection_endpoint",
+          "end_session_endpoint",
+          "registration_endpoint",
+          "pushed_authorization_request_endpoint",
+          "device_authorization_endpoint"
+        ],
+        "description": "管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規 endpoint 集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。"
+      },
       "AdminRequiredActionRequest": {
         "type": "object",
         "properties": {
@@ -18872,6 +19074,35 @@
           "next"
         ],
         "description": "鍵ローテーションの結果。新しい active 鍵と直前の active 鍵 (verifying へ降りた) の kid を返す。"
+      },
+      "AdminSamlIdentityProviderEndpointSet": {
+        "type": "object",
+        "properties": {
+          "entity_id": {
+            "type": "string"
+          },
+          "metadata_url": {
+            "type": "string"
+          },
+          "sso_url": {
+            "type": "string"
+          },
+          "slo_url": {
+            "type": "string"
+          },
+          "signing_certificate": {
+            "$ref": "#/components/schemas/AdminFederationCertificate"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "entity_id",
+          "metadata_url",
+          "sso_url",
+          "slo_url",
+          "signing_certificate"
+        ],
+        "description": "SP に投入する tenant 共有 SAML IdP の正規情報。"
       },
       "AdminSettingsResponse": {
         "type": "object",
@@ -19082,6 +19313,35 @@
         },
         "additionalProperties": false,
         "description": "管理者がユーザーの可変プロフィールとロールを更新する JSON リクエスト。id と password_hash は変更しない。"
+      },
+      "AdminWsFederationEndpointSet": {
+        "type": "object",
+        "properties": {
+          "realm": {
+            "type": "string"
+          },
+          "metadata_url": {
+            "type": "string"
+          },
+          "passive_logon_url": {
+            "type": "string"
+          },
+          "active_logon_url": {
+            "type": "string"
+          },
+          "metadata_exchange_url": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "realm",
+          "metadata_url",
+          "passive_logon_url",
+          "active_logon_url",
+          "metadata_exchange_url"
+        ],
+        "description": "WS-Federation RP / Microsoft Entra domain federation に投入する tenant の正規情報。"
       },
       "Agent": {
         "type": "object",
@@ -36252,6 +36512,22 @@
           },
           {
             "name": "GetAdminConsent",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "GetAdminIntegrationEndpoints",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
               "TenantAdministrator"

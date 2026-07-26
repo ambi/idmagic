@@ -82,6 +82,8 @@ modules:
         via: published_interface
       - module: tenancy-usecases
         via: published_interface
+      - module: wsfederation-tokens-saml
+        via: binding
   tenancy-public:
     path: "."
     responsibility: Tenancy root package の公開 facade。

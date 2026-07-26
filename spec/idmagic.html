@@ -956,7 +956,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
       <div class="eyebrow">Bounded Context · contexts/tenancy.yaml</div>
       <h1>Tenancy</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">17</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">48</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">24</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">18</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">17</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">54</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">25</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">19</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-tenancy-glossary">
     <h2>Glossary <span class="count">17</span></h2>
@@ -1122,7 +1122,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
     </article></div>
   </section>
 <section id="context-tenancy-models">
-    <h2>Models <span class="count">48</span></h2>
+    <h2>Models <span class="count">54</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">5</span></h3>
@@ -1423,7 +1423,7 @@ TenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tena
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">24</span></h3>
+      <h3 class="grp-title">value object <span class="count">30</span></h3>
       <div class="cards"><article class="card" id="scl-Tenancy/model/TenantQuota">
     <header><h3>TenantQuota</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/TenantQuota</code></header>
     <p class="desc">テナント単位のリソース上限値 (Hard / Soft)。システム管理者がテナントごとに上書きできる。</p>
@@ -1827,6 +1827,270 @@ UI 表示と weaker policy gating に使う Authentication context の PasswordP
   </tr><tr>
     <td><code class="name">usage</code></td>
     <td><code class="type">TenantUsage</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/AdminOAuthEndpointSet">
+    <header><h3>AdminOAuthEndpointSet</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminOAuthEndpointSet</code></header>
+    <p class="desc">管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規 endpoint 集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">openid_configuration</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">oauth_authorization_server</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">authorization_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">token_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">userinfo_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">jwks_uri</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">revocation_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">introspection_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">end_session_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">registration_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">pushed_authorization_request_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">device_authorization_endpoint</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/AdminFederationCertificate">
+    <header><h3>AdminFederationCertificate</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminFederationCertificate</code></header>
+    <p class="desc">IdMagic が XML federation の新規署名に使う active X.509 証明書の公開情報。秘密鍵は含めず、rotation overlap の全証明書は metadata を正本とする。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">download_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">fingerprint_sha256</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>大文字16進数を colon 区切りにした SHA-256 fingerprint。</td>
+  </tr><tr>
+    <td><code class="name">not_before</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">not_after</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/AdminSamlIdentityProviderEndpointSet">
+    <header><h3>AdminSamlIdentityProviderEndpointSet</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminSamlIdentityProviderEndpointSet</code></header>
+    <p class="desc">SP に投入する tenant 共有 SAML IdP の正規情報。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">entity_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">metadata_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">sso_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">slo_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">signing_certificate</code></td>
+    <td><code class="type">AdminFederationCertificate</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/AdminWsFederationEndpointSet">
+    <header><h3>AdminWsFederationEndpointSet</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminWsFederationEndpointSet</code></header>
+    <p class="desc">WS-Federation RP / Microsoft Entra domain federation に投入する tenant の正規情報。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">realm</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">metadata_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">passive_logon_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">active_logon_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">metadata_exchange_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/AdminApiEndpointSet">
+    <header><h3>AdminApiEndpointSet</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminApiEndpointSet</code></header>
+    <p class="desc">外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規 base URL。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">management_api_base_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">scim_base_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">account_api_base_url</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/AdminIntegrationEndpointCatalog">
+    <header><h3>AdminIntegrationEndpointCatalog</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Tenancy/model/AdminIntegrationEndpointCatalog</code></header>
+    <p class="desc">`/api/admin/integration-endpoints` の read-only projection。request tenant の canonical issuer だけから導出し、path / subdomain / custom domain の知識を UI に持たせない。client secret、token、秘密鍵は含めない。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">issuer</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">oauth</code></td>
+    <td><code class="type">AdminOAuthEndpointSet</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">saml</code></td>
+    <td><code class="type">AdminSamlIdentityProviderEndpointSet</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">ws_federation</code></td>
+    <td><code class="type">AdminWsFederationEndpointSet</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">apis</code></td>
+    <td><code class="type">AdminApiEndpointSet</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -2886,7 +3150,7 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
     </div>
   </section>
 <section id="context-tenancy-interfaces">
-    <h2>Interfaces <span class="count">24</span></h2>
+    <h2>Interfaces <span class="count">25</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Tenancy/interface/ResolveTenant">
     <header><h3>ResolveTenant</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">Tenancy/interface/ResolveTenant</code></header>
@@ -3227,6 +3491,28 @@ InvalidRequestError とする。realm は不変なので、切り替え後のホ
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/settings</code></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Tenancy/interface/GetAdminIntegrationEndpoints">
+    <header><h3>GetAdminIntegrationEndpoints</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Tenancy/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Tenancy/interface/GetAdminIntegrationEndpoints</code></header>
+    <p class="desc">テナント内 admin が、外部の OIDC RP / SAML SP / WS-Federation RP / SCIM client / management client に投入する IdMagic の正規連携情報を一括取得する。全 URL は解決済み request tenant の canonical issuer から server が導出し、frontend は realm や origin を連結しない。秘密情報は含めず Cache-Control: no-store で返す。</p>
+
+    <div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">catalog</code></td>
+    <td><code class="type">AdminIntegrationEndpointCatalog</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/integration-endpoints</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Tenancy/interface/UpdateAdminSettings">
@@ -3904,9 +4190,18 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       </article></div>
   </section>
 <section id="context-tenancy-scenarios">
-    <h2>Scenarios <span class="count">18</span></h2>
+    <h2>Scenarios <span class="count">19</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scl-Tenancy/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E5~9B~BA~E6~9C~89~E3~81~AE~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E5~B1~9E~E6~80~A7~E3~82~B9~E3~82~AD~E3~83~BC~E3~83~9E~E3~82~92~E5~AE~9A~E7~BE~A9~E3~81~A7~E3~81~8D~E3~82~8B">
+    <div class="cards"><article class="card scenario" id="scl-Tenancy/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E6~AD~A3~E8~A6~8F~E3~83~AD~E3~82~B1~E3~83~BC~E3~82~B7~E3~83~A7~E3~83~B3~E3~81~AE~E9~80~A3~E6~90~BA~E6~83~85~E5~A0~B1~E3~82~92~E5~8F~96~E5~BE~97~E3~81~99~E3~82~8B">
+        <header><h3>管理者は正規ロケーションの連携情報を取得する</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/管理者は正規ロケーションの連携情報を取得する</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">admin が path または subdomain の正規ロケーションから自身のテナントへアクセスしている</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">admin が連携エンドポイント画面を開く</li><li class="scn-step">server は request tenant の canonical issuer から OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの URL を導出する</li><li class="scn-step">画面は discovery と metadata を正本として案内し、個別値をコピーまたは証明書をダウンロードできる</li><li class="scn-step">返却値に client secret、API token、秘密鍵は含まれない</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">admin が別テナントの realm を URL として指定しようとする</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">対象指定パラメータは存在せず、解決済みテナント以外の情報は返らない</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Tenancy/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E5~9B~BA~E6~9C~89~E3~81~AE~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E5~B1~9E~E6~80~A7~E3~82~B9~E3~82~AD~E3~83~BC~E3~83~9E~E3~82~92~E5~AE~9A~E7~BE~A9~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者はテナント固有のユーザー属性スキーマを定義できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Tenancy/scenario/管理者はテナント固有のユーザー属性スキーマを定義できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">admin ロールを持つ &quot;operator&quot; が認証済みである</li></ol></div>
@@ -4190,39 +4485,48 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
         <text x="128.0" y="59.0">update_branding</text>
       </g></a><a href="#scl-Tenancy/interface/ListNotificationTemplates"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-2">
+        <line x1="128.0" y1="94.0" x2="128.0" y2="162.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="128.0" y="122.0">open_notification_templates</text>
+      </g></a><a href="#scl-Tenancy/interface/GetAdminIntegrationEndpoints"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-3">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
-        <text x="256.0" y="59.0">open_notification_templates</text>
-      </g></a><a href="#scl-Tenancy/interface/GetNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-3">
-        <line x1="301.5" y1="77.8" x2="210.5" y2="178.2" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
-        <text x="256.0" y="122.0">edit</text>
-      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-4">
+        <text x="256.0" y="59.0">open_integration_endpoints</text>
+      </g></a><a href="#scl-Tenancy/interface/GetAdminSettings"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-4">
         <line x1="292.0" y1="65.0" x2="220.0" y2="65.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
         <text x="256.0" y="59.0">back</text>
-      </g></a><a href="#scl-Tenancy/interface/PreviewNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-5">
-        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
-        <text x="128.0" y="185.0">preview</text>
-      </g></a><a href="#scl-Tenancy/interface/UpdateNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-6">
-        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
-        <text x="128.0" y="185.0">save</text>
-      </g></a><a href="#scl-Tenancy/interface/ResetNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-7">
-        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
-        <text x="128.0" y="185.0">reset</text>
-      </g></a><a href="#scl-Tenancy/interface/SendTestNotification"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-8">
-        <line x1="128.0" y1="191.0" x2="128.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
-        <text x="128.0" y="185.0">send_test</text>
-      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-9">
-        <line x1="210.5" y1="178.2" x2="301.5" y2="77.8" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
-        <text x="256.0" y="122.0">back</text>
+      </g></a><a href="#scl-Tenancy/interface/GetNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-5">
+        <line x1="220.0" y1="191.0" x2="292.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="256.0" y="185.0">edit</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-6">
+        <line x1="128.0" y1="162.0" x2="128.0" y2="94.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="128.0" y="122.0">back</text>
+      </g></a><a href="#scl-Tenancy/interface/PreviewNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-7">
+        <line x1="384.0" y1="191.0" x2="384.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="384.0" y="185.0">preview</text>
+      </g></a><a href="#scl-Tenancy/interface/UpdateNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-8">
+        <line x1="384.0" y1="191.0" x2="384.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="384.0" y="185.0">save</text>
+      </g></a><a href="#scl-Tenancy/interface/ResetNotificationTemplate"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-9">
+        <line x1="384.0" y1="191.0" x2="384.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="384.0" y="185.0">reset</text>
+      </g></a><a href="#scl-Tenancy/interface/SendTestNotification"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-10">
+        <line x1="384.0" y1="191.0" x2="384.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="384.0" y="185.0">send_test</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-edge" id="context-tenancy-diagram-flow-tenantsettingsmanagement-edge-11">
+        <line x1="292.0" y1="191.0" x2="220.0" y2="191.0" marker-end="url(#arrow-flow-tenantsettingsmanagement)"></line>
+        <text x="256.0" y="185.0">back</text>
       </g></a>
         <a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-initial" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-tenantsettings">
         <rect x="36" y="36" width="184" height="58" rx="8"></rect>
         <text x="128" y="70">TenantSettings</text>
-      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-view" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-notificationtemplates">
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-view" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-integrationendpoints">
         <rect x="292" y="36" width="184" height="58" rx="8"></rect>
-        <text x="384" y="70">NotificationTemplates</text>
-      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-view" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-notificationtemplateeditor">
+        <text x="384" y="70">IntegrationEndpoints</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-view" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-notificationtemplates">
         <rect x="36" y="162" width="184" height="58" rx="8"></rect>
-        <text x="128" y="196">NotificationTemplateEditor</text>
+        <text x="128" y="196">NotificationTemplates</text>
+      </g></a><a href="#scl-Tenancy/flow/TenantSettingsManagement"><g class="diagram-node diagram-node-view" id="context-tenancy-diagram-flow-tenantsettingsmanagement-node-notificationtemplateeditor">
+        <rect x="292" y="162" width="184" height="58" rx="8"></rect>
+        <text x="384" y="196">NotificationTemplateEditor</text>
       </g></a>
       </svg>
     </div>
@@ -4251,7 +4555,12 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
             <h4>TenantSettings<span class="chip chip-initial">entry</span></h4>
             <p class="desc">テナント設定画面(表示名・既定 locale・パスワードポリシー上書きフォーム、ブランディング(製品名・色・フッターリンク・フッターテキスト)フォーム、利用量とクォータ上限の表示、通知メールタブへの入口)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>表示名、既定 locale、またはパスワードポリシー上書きを変更して保存する <code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateAdminSettings">UpdateAdminSettings</a></td></tr><tr><td>製品名・色・フッターリンク・フッターテキストを変更して保存する <code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateTenantBranding">UpdateTenantBranding</a></td></tr><tr><td>通知メールタブを開く <code>open_notification_templates</code></td><td>NotificationTemplates</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/ListNotificationTemplates">ListNotificationTemplates</a></td></tr></tbody></table>
+                   <tbody><tr><td>表示名、既定 locale、またはパスワードポリシー上書きを変更して保存する <code>update_settings</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateAdminSettings">UpdateAdminSettings</a></td></tr><tr><td>製品名・色・フッターリンク・フッターテキストを変更して保存する <code>update_branding</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/UpdateTenantBranding">UpdateTenantBranding</a></td></tr><tr><td>通知メールタブを開く <code>open_notification_templates</code></td><td>NotificationTemplates</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/ListNotificationTemplates">ListNotificationTemplates</a></td></tr><tr><td>連携エンドポイントタブを開き、protocol metadata、個別 endpoint、API base URL、SAML署名証明書を参照・コピーする <code>open_integration_endpoints</code></td><td>IntegrationEndpoints</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/GetAdminIntegrationEndpoints">GetAdminIntegrationEndpoints</a></td></tr></tbody></table>
+          </div><div class="flow-view">
+            <h4>IntegrationEndpoints</h4>
+            <p class="desc">OAuth/OIDC、SAML、WS-Federation、SCIM、管理API、本人APIの正規連携情報とSAML署名証明書</p>
+            <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
+                   <tbody><tr><td>テナント設定画面の一般設定へ戻る <code>back</code></td><td>TenantSettings</td><td><a class="chip chip-iface-ref" href="#scl-Tenancy/interface/GetAdminSettings">GetAdminSettings</a></td></tr></tbody></table>
           </div><div class="flow-view">
             <h4>NotificationTemplates</h4>
             <p class="desc">通知メールテンプレート一覧(template_key × locale の行、上書き済みかどうか、現在有効な件名、テスト送信の宛先が操作者本人に固定される旨の注記)</p>
@@ -25981,7 +26290,7 @@ filter の field は registry allowlist のみ。
       <div class="eyebrow">Bounded Context · contexts/application.yaml</div>
       <h1>Application</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">75</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">29</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">11</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">75</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">29</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">12</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-application-glossary">
     <h2>Glossary <span class="count">2</span></h2>
@@ -28441,7 +28750,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
   </article>
 <article class="card" id="scl-Application/interface/GetAdminApplication">
     <header><h3>GetAdminApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetAdminApplication</code></header>
-    <p class="desc">管理者が Application を取得する。protocol relation から解決した実設定も含む。別テナントは未存在として扱う。</p>
+    <p class="desc">管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -29366,9 +29675,15 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       </article></div></div>
   </section>
 <section id="context-application-scenarios">
-    <h2>Scenarios <span class="count">11</span></h2>
+    <h2>Scenarios <span class="count">12</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scl-Application/scenario/API~20token~E7~99~BA~E8~A1~8C~E8~80~85~E3~81~AFaccount~20scope~E5~86~85~E3~81~A7~E8~87~AA~E8~BA~AB~E3~81~AEportal~20application~E3~81~A0~E3~81~91~E3~82~92~E6~93~8D~E4~BD~9C~E3~81~A7~E3~81~8D~E3~82~8B">
+    <div class="cards"><article class="card scenario" id="scl-Application/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~82~A2~E3~83~97~E3~83~AA~E8~A9~B3~E7~B4~B0~E3~81~A7IdMagic~E5~81~B4~E3~81~AE~E9~80~A3~E6~90~BA~E8~A8~AD~E5~AE~9A~E3~82~92~E7~A2~BA~E8~AA~8D~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者はアプリ詳細でIdMagic側の連携設定を確認できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Application/scenario/管理者はアプリ詳細でIdMagic側の連携設定を確認できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">管理者が OIDC または SAML protocol を持つ <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> の詳細画面を開いている</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">画面は IdMagic に登録済みの RP / SP 情報と、相手側へ投入する IdMagic の discovery または metadata を区別して表示する</li><li class="scn-step">OIDC application には OpenID Discovery URL と client_id を表示する</li><li class="scn-step">SAML application には IdP metadata URL、entityID、SSO URL、SLO URL、署名証明書を表示する</li><li class="scn-step">client secret は作成・ローテーション応答以外では表示しない</li></ol></div>
+
+      </article><article class="card scenario" id="scl-Application/scenario/API~20token~E7~99~BA~E8~A1~8C~E8~80~85~E3~81~AFaccount~20scope~E5~86~85~E3~81~A7~E8~87~AA~E8~BA~AB~E3~81~AEportal~20application~E3~81~A0~E3~81~91~E3~82~92~E6~93~8D~E4~BD~9C~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>API token発行者はaccount scope内で自身のportal applicationだけを操作できる</h3><span class="chip chip-actor">SelfApiClient</span><code class="canonical-ref">Application/scenario/API token発行者はaccount scope内で自身のportal applicationだけを操作できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">client は対象 tenant の active <a class="chip chip-ref" href="#scl-Application/model/User">User</a> に固定された有効な API access token を提示している</li></ol></div>
@@ -29513,43 +29828,46 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       </g></a><a href="#scl-Application/interface/UpdateAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-1">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update</text>
-      </g></a><a href="#scl-Application/interface/DeleteAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-2">
+      </g></a><a href="#scl-Application/interface/GetAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-2">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
+        <text x="128.0" y="59.0">view_setup_guidance</text>
+      </g></a><a href="#scl-Application/interface/DeleteAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-3">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">delete</text>
-      </g></a><a href="#scl-Application/interface/UploadApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-3">
+      </g></a><a href="#scl-Application/interface/UploadApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-4">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">upload_icon</text>
-      </g></a><a href="#scl-Application/interface/DeleteApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-4">
+      </g></a><a href="#scl-Application/interface/DeleteApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-5">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">delete_icon</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationOidcConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-5">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationOidcConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-6">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_oidc_config</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationWsFedConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-6">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationWsFedConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-7">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_wsfed_config</text>
-      </g></a><a href="#scl-Application/interface/AssignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-7">
+      </g></a><a href="#scl-Application/interface/AssignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-8">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">assign</text>
-      </g></a><a href="#scl-Application/interface/UnassignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-8">
+      </g></a><a href="#scl-Application/interface/UnassignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-9">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">unassign</text>
-      </g></a><a href="#scl-Application/interface/UpdateAppSignInPolicy"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-9">
+      </g></a><a href="#scl-Application/interface/UpdateAppSignInPolicy"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-10">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_sign_in_policy</text>
-      </g></a><a href="#scl-Application/interface/CreateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-10">
+      </g></a><a href="#scl-Application/interface/CreateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-11">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">create_category</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-11">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-12">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_category</text>
-      </g></a><a href="#scl-Application/interface/DeleteApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-12">
+      </g></a><a href="#scl-Application/interface/DeleteApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-13">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">delete_category</text>
-      </g></a><a href="#scl-Application/interface/SetApplicationCategories"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-13">
+      </g></a><a href="#scl-Application/interface/SetApplicationCategories"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-14">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">set_categories</text>
-      </g></a><a href="#scl-Application/flow/AdminApplicationManagement"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-14">
+      </g></a><a href="#scl-Application/flow/AdminApplicationManagement"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-15">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="256.0" y="59.0">manage_users</text>
       </g></a>
@@ -29629,7 +29947,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
             <h4>AdminApplications<span class="chip chip-initial">entry</span></h4>
             <p class="desc">アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成) <code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateAdminApplication">CreateAdminApplication</a></td></tr><tr><td>アプリケーションのメタデータを編集して保存する <code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAdminApplication">UpdateAdminApplication</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteAdminApplication">DeleteAdminApplication</a></td></tr><tr><td>アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする <code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UploadApplicationIcon">UploadApplicationIcon</a></td></tr><tr><td>保存済みアイコンを削除する <code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationIcon">DeleteApplicationIcon</a></td></tr><tr><td>OIDC protocol が指す OAuth2 client の設定を編集して保存する <code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationOidcConfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>WS-Fed protocol が指す relying party の設定を編集して保存する <code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationWsFedConfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>ユーザーまたはグループを割当てる <code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/AssignApplication">AssignApplication</a></td></tr><tr><td>割当を解除する <code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UnassignApplication">UnassignApplication</a></td></tr><tr><td>sign-in policy を編集して保存する <code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAppSignInPolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>カテゴリ名を入力して作成する <code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateApplicationCategory">CreateApplicationCategory</a></td></tr><tr><td>カテゴリの名前または並び順を編集して保存する <code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationCategory">UpdateApplicationCategory</a></td></tr><tr><td>カテゴリを削除する <code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationCategory">DeleteApplicationCategory</a></td></tr><tr><td>アプリケーションに付与するカテゴリ集合を選び直して保存する <code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/SetApplicationCategories">SetApplicationCategories</a></td></tr><tr><td>ユーザー管理へのリンクをクリックする <code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
+                   <tbody><tr><td>種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成) <code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateAdminApplication">CreateAdminApplication</a></td></tr><tr><td>アプリケーションのメタデータを編集して保存する <code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAdminApplication">UpdateAdminApplication</a></td></tr><tr><td>OIDC / SAML のアプリ詳細を開き、登録済み相手側設定とIdMagic側の連携情報を確認する <code>view_setup_guidance</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/GetAdminApplication">GetAdminApplication</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteAdminApplication">DeleteAdminApplication</a></td></tr><tr><td>アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする <code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UploadApplicationIcon">UploadApplicationIcon</a></td></tr><tr><td>保存済みアイコンを削除する <code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationIcon">DeleteApplicationIcon</a></td></tr><tr><td>OIDC protocol が指す OAuth2 client の設定を編集して保存する <code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationOidcConfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>WS-Fed protocol が指す relying party の設定を編集して保存する <code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationWsFedConfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>ユーザーまたはグループを割当てる <code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/AssignApplication">AssignApplication</a></td></tr><tr><td>割当を解除する <code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UnassignApplication">UnassignApplication</a></td></tr><tr><td>sign-in policy を編集して保存する <code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAppSignInPolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>カテゴリ名を入力して作成する <code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateApplicationCategory">CreateApplicationCategory</a></td></tr><tr><td>カテゴリの名前または並び順を編集して保存する <code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationCategory">UpdateApplicationCategory</a></td></tr><tr><td>カテゴリを削除する <code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationCategory">DeleteApplicationCategory</a></td></tr><tr><td>アプリケーションに付与するカテゴリ集合を選び直して保存する <code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/SetApplicationCategories">SetApplicationCategories</a></td></tr><tr><td>ユーザー管理へのリンクをクリックする <code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-Application/flow/AdminSignInPolicyManagement">
         <header><h3>AdminSignInPolicyManagement</h3><span class="chip chip-initial">entry: AdminSignInPolicy</span><code class="canonical-ref">Application/flow/AdminSignInPolicyManagement</code></header>
@@ -32129,7 +32447,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       <div class="eyebrow">Bounded Context · contexts/saml.yaml</div>
       <h1>Saml</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-saml-standards"><span class="stat-num">4</span><span class="stat-label">standards</span></a><a class="stat" href="#context-saml-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-saml-models"><span class="stat-num">16</span><span class="stat-label">models</span></a><a class="stat" href="#context-saml-interfaces"><span class="stat-num">6</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-saml-authorization"><span class="stat-num">2</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-saml-scenarios"><span class="stat-num">4</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-saml-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-saml-standards"><span class="stat-num">4</span><span class="stat-label">standards</span></a><a class="stat" href="#context-saml-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-saml-models"><span class="stat-num">16</span><span class="stat-label">models</span></a><a class="stat" href="#context-saml-interfaces"><span class="stat-num">7</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-saml-authorization"><span class="stat-num">2</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-saml-scenarios"><span class="stat-num">5</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-saml-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-saml-standards">
     <h2>Standards <span class="count">4</span></h2>
@@ -32786,7 +33104,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     </div>
   </section>
 <section id="context-saml-interfaces">
-    <h2>Interfaces <span class="count">6</span></h2>
+    <h2>Interfaces <span class="count">7</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Saml/interface/SamlSingleSignOn">
     <header><h3>SamlSingleSignOn</h3><span class="badge badge-access-public">public</span><code class="canonical-ref">Saml/interface/SamlSingleSignOn</code></header>
@@ -32866,6 +33184,15 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/saml/metadata</code> <span class="chip chip-hint">response: 200</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Saml/interface/DownloadSamlSigningCertificate">
+    <header><h3>DownloadSamlSigningCertificate</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Saml/interface/DownloadSamlSigningCertificate</code></header>
+    <p class="desc">SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、この endpoint は新規設定用 active 証明書だけを返す。秘密鍵は返さない。</p>
+
+    <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/saml/signing-certificate.pem</code> <span class="chip chip-hint">response: 200</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Saml/interface/RegisterSamlServiceProvider">
@@ -32982,9 +33309,18 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       </article></div></div>
   </section>
 <section id="context-saml-scenarios">
-    <h2>Scenarios <span class="count">4</span></h2>
+    <h2>Scenarios <span class="count">5</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
-    <div class="cards"><article class="card scenario" id="scl-Saml/scenario/management~20API~20client~E3~81~AFSAML~20scope~E5~86~85~E3~81~AEservice~20provider~E3~81~A0~E3~81~91~E3~82~92~E6~93~8D~E4~BD~9C~E3~81~A7~E3~81~8D~E3~82~8B">
+    <div class="cards"><article class="card scenario" id="scl-Saml/scenario/SP~E3~81~AF~E7~BD~B2~E5~90~8D~E8~A8~BC~E6~98~8E~E6~9B~B8~E3~82~92~E5~8F~96~E5~BE~97~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>SPは署名証明書を取得できる</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">Saml/scenario/SPは署名証明書を取得できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">SP が IdMagic tenant の SAML metadata または証明書ダウンロード URL を参照できる</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">SP は active XmlFederationSigning 証明書を PEM で取得する</li><li class="scn-step">取得した証明書は同時点の SAML metadata に公開される証明書と一致する</li><li class="scn-step">rotation overlap 中の全 trust 証明書は SAML metadata から取得する</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">federation signing credential が利用不能である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">証明書を返さずエラーを返す</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Saml/scenario/management~20API~20client~E3~81~AFSAML~20scope~E5~86~85~E3~81~AEservice~20provider~E3~81~A0~E3~81~91~E3~82~92~E6~93~8D~E4~BD~9C~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>management API clientはSAML scope内のservice providerだけを操作できる</h3><span class="chip chip-actor">ManagementApiClient</span><code class="canonical-ref">Saml/scenario/management API clientはSAML scope内のservice providerだけを操作できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">client は対象 tenant の有効な API access token を提示している</li></ol></div>

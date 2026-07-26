@@ -1064,7 +1064,7 @@ interfaces:
         method: GET
         path: /api/admin/applications
   GetAdminApplication:
-    description: 管理者が Application を取得する。protocol relation から解決した実設定も含む。別テナントは未存在として扱う。
+    description: 管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。
     input:
       application_id:
         type: String
@@ -1717,6 +1717,15 @@ authorization:
       principal: SelfApiClient
       when: '"account:write" in context.token_scopes && principal.id == resource.id'
 scenarios:
+  管理者はアプリ詳細でIdMagic側の連携設定を確認できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が OIDC または SAML protocol を持つ Application の詳細画面を開いている
+    main_success:
+      - 画面は IdMagic に登録済みの RP / SP 情報と、相手側へ投入する IdMagic の discovery または metadata を区別して表示する
+      - OIDC application には OpenID Discovery URL と client_id を表示する
+      - SAML application には IdP metadata URL、entityID、SSO URL、SLO URL、署名証明書を表示する
+      - client secret は作成・ローテーション応答以外では表示しない
   API token発行者はaccount scope内で自身のportal applicationだけを操作できる:
     actor: SelfApiClient
     given:
@@ -1910,6 +1919,10 @@ flows:
           - action: update
             does: アプリケーションのメタデータを編集して保存する
             interface: UpdateAdminApplication
+            to: AdminApplications
+          - action: view_setup_guidance
+            does: OIDC / SAML のアプリ詳細を開き、登録済み相手側設定とIdMagic側の連携情報を確認する
+            interface: GetAdminApplication
             to: AdminApplications
           - action: delete
             does: 削除ボタンをクリックする

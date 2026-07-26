@@ -43,7 +43,7 @@ export function authorizePath(state: string): string {
     code_challenge: codeChallenge,
     code_challenge_method: 'S256',
   })
-  return `/authorize?${params.toString()}`
+  return `/realms/default/authorize?${params.toString()}`
 }
 
 let goServer: Subprocess | undefined
@@ -112,6 +112,9 @@ export async function startE2EEnvironment(): Promise<void> {
       WEBAUTHN_RP_DISPLAY_NAME: 'IdMagic E2E',
       SEED_PROFILE: 'test',
       SEED_ENVIRONMENT: 'test',
+      // E2E UI は開発既定の5173ではなく5174を使うため、first-party portal の
+      // canonical callback を明示する。
+      SEED_FIRST_PARTY_REDIRECT_URIS: `${uiOrigin}/realms/default/callback`,
       DEMO_USER_PASSWORD: 'demo-password-1234',
       DEMO_CLIENT_SECRET: 'demo-client-secret',
     },
@@ -519,6 +522,19 @@ export async function clickMenuItemByText(view: Bun.WebView, text: string): Prom
     await Bun.sleep(150)
   }
   throw new Error(`menu item not found: ${text}`)
+}
+
+export async function clickSummaryByText(view: Bun.WebView, text: string): Promise<void> {
+  const clicked = await view.evaluate(`(() => {
+    const target = [...document.querySelectorAll('summary')]
+      .find((summary) => (summary.textContent ?? '').includes(${JSON.stringify(text)}))
+    if (!(target instanceof HTMLElement)) return false
+    target.click()
+    return true
+  })()`)
+  if (clicked !== true) {
+    throw new Error(`summary not found: ${text}`)
+  }
 }
 
 export async function setCheckboxValue(

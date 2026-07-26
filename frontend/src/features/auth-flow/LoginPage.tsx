@@ -8,6 +8,7 @@ import {
   IconShieldLock,
 } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
+import { tenantURL } from '../../api/core'
 import { AuthenticationAPIError, continueBrowserFlow, login } from '../../api'
 import { AuthShell } from '../../components/AuthShell'
 import { Alert } from '../../components/ui/alert'
@@ -167,7 +168,10 @@ export function LoginFormPresentation({
           <IconArrowRight size={18} aria-hidden="true" />
         </Button>
         <div className="flex justify-center">
-          <a className="text-xs font-medium text-blue-700 hover:underline" href="/forgot_password">
+          <a
+            className="text-xs font-medium text-blue-700 hover:underline"
+            href={tenantURL('/forgot_password')}
+          >
             {t.forgotPassword}
           </a>
         </div>
