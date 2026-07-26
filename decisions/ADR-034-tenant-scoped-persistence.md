@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
+superseded_by: [ADR-083]  # composite FK / tenant-scoped 複合キーの条項のみ
 ---
 
 # ADR-034: テナント単位の永続化境界とクロステナント分離
@@ -158,3 +159,11 @@ global 一意を維持しつつ、`sub` から resolve した `user.tenant_id` �
 - **Valkey を tenant 別 instance に分割** — 運用負荷が高い。namespace prefix で
   論理分離する方が Phase 4 のスコープに合う。物理分離は Phase 8 の
   検討事項。
+
+## 現行の正本
+
+`clients` を `(tenant_id, client_id)` の複合キーとし、それを参照する子テーブルへ `tenant_id` を
+伝播させて composite FK を張る条項は [ADR-083](ADR-083-globally-unique-client-id.md) が置き換えた。
+本文中のスキーマ表は当時の姿であり、現行の schema は `infra/schema/postgres.sql`、設計方針は
+[`ARCHITECTURE.md`](../ARCHITECTURE.md) の `## Cross-cutting Concerns` >
+データベース設計ポリシー を正とする（ADR-143）。

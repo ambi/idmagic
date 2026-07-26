@@ -1,0 +1,421 @@
+# backend/shared — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: shared
+updated_at: 2026-07-26
+modules:
+  shared-kernel:
+    path: kernel
+    responsibility: context 横断の最小共有ドメイン語彙。
+    context: System
+    layer: domain
+    role: technical_shared
+  shared-spec:
+    path: spec
+    responsibility: SCL の Go binding と仕様整合検査。
+    context: System
+    layer: domain
+    role: technical_shared
+    depends_on:
+      - module: shared-kernel
+        via: technical_shared
+  shared-adapters:
+    path: storage/db_postgres
+    responsibility: HTTP、crypto、persistence、observability の共有 adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: authentication-ports
+        via: published_interface
+      - module: http-support
+        via: technical_shared
+      - module: idmanagement-group-domain
+        via: published_interface
+      - module: idmanagement-user-domain
+        via: published_interface
+      - module: jobs-domain
+        via: published_interface
+      - module: oauth2-domain
+        via: published_interface
+      - module: oauth2-ports
+        via: published_interface
+      - module: shared-kernel
+        via: technical_shared
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: signingkeys-domain
+        via: published_interface
+      - module: signingkeys-ports
+        via: published_interface
+      - module: tenancy-domain
+        via: published_interface
+      - module: tenancy-public
+        via: published_interface
+  http-support:
+    path: http/support_http
+    responsibility: context 横断 HTTP handler binding と request support。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: apitoken-ports
+        via: published_interface
+      - module: application-domain
+        via: published_interface
+      - module: application-ports
+        via: published_interface
+      - module: application-usecases
+        via: published_interface
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-session-usecases
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: idmanagement-group-domain
+        via: published_interface
+      - module: idmanagement-group-ports
+        via: published_interface
+      - module: idmanagement-user-domain
+        via: published_interface
+      - module: idmanagement-user-ports
+        via: published_interface
+      - module: oauth2-ports
+        via: published_interface
+      - module: oauth2-consent-usecases
+        via: published_interface
+      - module: oauth2-usecases
+        via: published_interface
+      - module: shared-kernel
+        via: technical_shared
+      - module: shared-security-tokens-jose
+        via: technical_shared
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-domain
+        via: published_interface
+      - module: tenancy-ports
+        via: published_interface
+      - module: tenancy-public
+        via: published_interface
+  http-server:
+    path: http/server_http
+    responsibility: context route を API runtime へ束ねる composition module。
+    context: System
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: shared-security-tokens-jose
+        via: technical_shared
+      - module: wsfederation-tokens-saml
+        via: composition_root
+      - module: apitoken-public
+        via: composition_root
+      - module: application-public
+        via: composition_root
+      - module: audit-adapters
+        via: composition_root
+      - module: audit-public
+        via: composition_root
+      - module: authentication-adapters
+        via: composition_root
+      - module: authentication-domain
+        via: composition_root
+      - module: authentication-password-ports
+        via: composition_root
+      - module: authentication-ports
+        via: composition_root
+      - module: authentication-public
+        via: composition_root
+      - module: authentication-recovery-ports
+        via: composition_root
+      - module: authentication-session-usecases
+        via: composition_root
+      - module: authentication-totp-ports
+        via: composition_root
+      - module: authentication-usecases
+        via: composition_root
+      - module: authentication-webauthn-ports
+        via: composition_root
+      - module: http-support
+        via: technical_shared
+      - module: idgovernance-adapters
+        via: composition_root
+      - module: idgovernance-public
+        via: composition_root
+      - module: idmanagement-adapters
+        via: composition_root
+      - module: idmanagement-agent-ports
+        via: composition_root
+      - module: idmanagement-group-ports
+        via: composition_root
+      - module: idmanagement-public
+        via: composition_root
+      - module: idmanagement-user-ports
+        via: composition_root
+      - module: jobs-public
+        via: composition_root
+      - module: oauth2-adapters
+        via: composition_root
+      - module: oauth2-ports
+        via: composition_root
+      - module: oauth2-public
+        via: composition_root
+      - module: provisioning-composition
+        via: composition_root
+      - module: saml-public
+        via: composition_root
+      - module: sourcing-public
+        via: composition_root
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-services
+        via: technical_shared
+      - module: shared-notification-template
+        via: technical_shared
+      - module: signingkeys-adapters
+        via: composition_root
+      - module: signingkeys-public
+        via: composition_root
+      - module: signingkeys-ports
+        via: composition_root
+      - module: tenancy-adapters
+        via: composition_root
+      - module: tenancy-domain
+        via: composition_root
+      - module: tenancy-ports
+        via: composition_root
+      - module: tenancy-public
+        via: composition_root
+      - module: wsfederation-adapters
+        via: composition_root
+      - module: wsfederation-public
+        via: composition_root
+  shared-services:
+    path: "."
+    responsibility: 共有 notification port、logging、resilience、media validation、version capability。
+    context: System
+    layer: use_cases
+    role: technical_shared
+    depends_on:
+      - module: shared-kernel
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+  shared-events-publishers-kafka:
+    path: events/publishers_kafka
+    responsibility: backend/shared/events/publishers_kafka の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-events-publishers-log:
+    path: events/publishers_log
+    responsibility: backend/shared/events/publishers_log の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-events-publishers-pubsub:
+    path: events/publishers_pubsub
+    responsibility: backend/shared/events/publishers_pubsub の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-events-relay-postgres:
+    path: events/relay_postgres
+    responsibility: backend/shared/events/relay_postgres の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-services
+        via: technical_shared
+  shared-events-sinks-console:
+    path: events/sinks_console
+    responsibility: backend/shared/events/sinks_console の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: oauth2-ports
+        via: published_interface
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+  shared-notification-email-console:
+    path: notification/email_console
+    responsibility: backend/shared/notification/email_console の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-notification-email-memory:
+    path: notification/email_memory
+    responsibility: backend/shared/notification/email_memory の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-notification-email-smtp:
+    path: notification/email_smtp
+    responsibility: backend/shared/notification/email_smtp の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-notification-template:
+    path: notification/template
+    responsibility: 通知メールの組込み既定カタログ、差し込み変数のレンダラ、locale 解決、Notifier。
+    context: System
+    layer: use_cases
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-observability-metrics-prometheus:
+    path: observability/metrics_prometheus
+    responsibility: backend/shared/observability/metrics_prometheus の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: http-support
+        via: technical_shared
+      - module: jobs-domain
+        via: published_interface
+  shared-observability-telemetry-otlp:
+    path: observability/telemetry_otlp
+    responsibility: backend/shared/observability/telemetry_otlp の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      []
+  shared-policy-authorization-http:
+    path: policy/authorization_http
+    responsibility: backend/shared/policy/authorization_http の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-spec
+        via: technical_shared
+  shared-policy-authorization-local:
+    path: policy/authorization_local
+    responsibility: backend/shared/policy/authorization_local の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-spec
+        via: technical_shared
+  shared-policy-breaches-hibp:
+    path: policy/breaches_hibp
+    responsibility: backend/shared/policy/breaches_hibp の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-services
+        via: technical_shared
+  shared-policy-breaches-noop:
+    path: policy/breaches_noop
+    responsibility: backend/shared/policy/breaches_noop の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      []
+  shared-security-certificates-mtls:
+    path: security/certificates_mtls
+    responsibility: backend/shared/security/certificates_mtls の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      []
+  shared-security-passwords-argon2id:
+    path: security/passwords_argon2id
+    responsibility: backend/shared/security/passwords_argon2id の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      []
+  shared-security-salts-memory:
+    path: security/salts_memory
+    responsibility: backend/shared/security/salts_memory の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: tenancy-public
+        via: published_interface
+  shared-security-tokens-jose:
+    path: security/tokens_jose
+    responsibility: backend/shared/security/tokens_jose の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: idmanagement-user-domain
+        via: published_interface
+      - module: oauth2-domain
+        via: published_interface
+      - module: oauth2-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+      - module: signingkeys-domain
+        via: published_interface
+      - module: signingkeys-ports
+        via: published_interface
+      - module: tenancy-public
+        via: published_interface
+  shared-storage-db-memory:
+    path: storage/db_memory
+    responsibility: backend/shared/storage/db_memory の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: tenancy-domain
+        via: published_interface
+  shared-storage-fixtures-postgres:
+    path: storage/fixtures_postgres
+    responsibility: context-local PostgreSQL adapter tests が共有する fixture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      []
+  shared-storage-testing-postgres:
+    path: storage/testing_postgres
+    responsibility: context-local PostgreSQL adapter tests が共有する embedded PostgreSQL adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      []

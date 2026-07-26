@@ -1,0 +1,159 @@
+# backend/application — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: application
+updated_at: 2026-07-26
+modules:
+  application-domain:
+    path: domain
+    responsibility: Application のドメインモデルと純粋な規則。
+    context: Application
+    layer: domain
+    role: published_interface
+  application-ports:
+    path: ports
+    responsibility: Application の公開 port と外界への抽象。
+    context: Application
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: application-domain
+        via: published_interface
+  application-usecases:
+    path: usecases
+    responsibility: Application のユースケース。
+    context: Application
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: application-domain
+        via: published_interface
+      - module: application-ports
+        via: published_interface
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-domain
+        via: published_interface
+      - module: tenancy-ports
+        via: published_interface
+      - module: tenancy-public
+        via: published_interface
+      - module: tenancy-usecases
+        via: published_interface
+  application-adapters:
+    path: handlers_http
+    responsibility: Application の HTTP・永続化 adapter。
+    context: Application
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: application-domain
+        via: published_interface
+      - module: application-ports
+        via: published_interface
+      - module: application-usecases
+        via: published_interface
+      - module: claimmapping-domain
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: idmanagement-group-ports
+        via: binding
+      - module: idmanagement-user-domain
+        via: binding
+      - module: idmanagement-user-ports
+        via: binding
+      - module: oauth2-domain
+        via: binding
+      - module: oauth2-client-usecases
+        via: binding
+      - module: oauth2-ports
+        via: binding
+      - module: oauth2-usecases
+        via: binding
+      - module: saml-domain
+        via: binding
+      - module: saml-ports
+        via: binding
+      - module: shared-adapters
+        via: binding
+      - module: shared-spec
+        via: binding
+      - module: tenancy-domain
+        via: binding
+      - module: tenancy-ports
+        via: binding
+      - module: wsfederation-domain
+        via: binding
+      - module: wsfederation-ports
+        via: binding
+  application-public:
+    path: "."
+    responsibility: Application root package の公開 facade。
+    context: Application
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: application-domain
+        via: published_interface
+  application-composition:
+    path: module.go
+    responsibility: Application の adapter と port を束ねる composition module。
+    context: Application
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: application-adapters
+        via: published_interface
+      - module: application-domain
+        via: published_interface
+      - module: application-ports
+        via: published_interface
+      - module: application-usecases
+        via: published_interface
+      - module: http-support
+        via: composition_root
+      - module: idmanagement-group-ports
+        via: composition_root
+      - module: idmanagement-user-ports
+        via: composition_root
+      - module: oauth2-ports
+        via: composition_root
+      - module: saml-ports
+        via: composition_root
+      - module: tenancy-ports
+        via: composition_root
+      - module: wsfederation-ports
+        via: composition_root
+  application-db-memory:
+    path: db_memory
+    responsibility: backend/application/db_memory の Flat Architecture adapter。
+    context: Application
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: application-domain
+        via: published_interface
+      - module: application-ports
+        via: published_interface
+      - module: shared-storage-db-memory
+        via: technical_shared
+  application-db-postgres:
+    path: db_postgres
+    responsibility: backend/application/db_postgres の Flat Architecture adapter。
+    context: Application
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: application-domain
+        via: published_interface
+      - module: application-ports
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared

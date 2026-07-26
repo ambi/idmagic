@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-05
+superseded_by: [ADR-083]  # §4 composite FK / tenant_id 伝播の条項のみ
 ---
 
 # ADR-082: User の domain identity と Postgres tenant key 方針
@@ -125,3 +126,12 @@ wi-120 で導入。ADR-071 (declarative schema with sqldef) を前提とする�
   `sub` から `id` / `user_id` に変わり、React UI もこれに追随する。
 - 既存データは `sub` 値をそのまま `id` / `user_id` として読み替える (値は不変、列名
   のみ変更)。versioned migration は持たないため移行ノートとして扱う。
+
+## 現行の正本
+
+§4 の tenant_id 保持ルールのうち、tenant スコープ複合キーを参照する子に `tenant_id` を伝播させて
+composite FK を張る条項は [ADR-083](ADR-083-globally-unique-client-id.md) が置き換えた。`users.id` と
+`oauth2_clients.client_id` がグローバル一意になったため、子はグローバルキーで親を参照する。
+現行の分類は [`ARCHITECTURE.md`](../ARCHITECTURE.md) の `## Cross-cutting Concerns` >
+データベース設計ポリシー を正とする（ADR-143）。本 ADR の他の決定（`users.id` を正準識別子とし、
+protocol の `sub` を保存 identity にしない）は有効である。

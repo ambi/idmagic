@@ -72,3 +72,9 @@ SELECT id, tenant_id, kind, params, attempts, max_attempts
   `backend/jobs/adapters/persistence/memory/` に in-process 実装
   （mutex ベースで SKIP LOCKED を模擬）を用意し、memory ランタイムでも
   同一 port で疎通させる。
+
+## 現行の設計
+
+この決定が形づくった durable job 実行基盤の現在の設計は
+[`backend/jobs/ARCHITECTURE.md`](../backend/jobs/ARCHITECTURE.md) が正本である（ADR-143 で移送）。
+本 ADR が保つのは、そこから再導出できない却下案と当時の前提だけである。

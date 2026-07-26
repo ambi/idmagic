@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://regenerative-architecture/schemas/architecture-doc.json",
+  "title": "Architecture document",
+  "description": "ARCHITECTURE_FORMAT.md を正本とする設計正本（ARCHITECTURE.md）のスキーマ（同文書からの派生物）。機械検証される台帳は architecture.yaml が持ち、この文書は散文だけを持つ（ADR-143）。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["context", "updated_at", "overview"],
+  "properties": {
+    "context": {
+      "description": "この文書が記述するコンテキスト接頭辞。横断はルートで repo。隣接する architecture.yaml および SCL の context map と一致する。",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "updated_at": {
+      "description": "最終更新日。YYYY-MM-DD または RFC3339。",
+      "oneOf": [{ "type": "string", "format": "date" }, { "type": "string", "format": "date-time" }]
+    },
+    "overview": {
+      "description": "本文 ## Overview。構成の全体像と読む順序。root / per-context ともに必須。",
+      "type": "string",
+      "minLength": 1
+    },
+    "structure": {
+      "description": "本文 ## Structure。ディレクトリ構造・依存の向き・RA レイヤ対応。",
+      "type": "string",
+      "minLength": 1
+    },
+    "stack": {
+      "description": "本文 ## Stack。採用言語・ランタイム・主要ツール。",
+      "type": "string",
+      "minLength": 1
+    },
+    "context_map": {
+      "description": "本文 ## Context Map。SCL context と実装 package の対応。",
+      "type": "string",
+      "minLength": 1
+    },
+    "conventions": {
+      "description": "本文 ## Conventions。package 規約・Adapter 命名・feature 垂直スライス。",
+      "type": "string",
+      "minLength": 1
+    },
+    "cross_cutting_concerns": {
+      "description": "本文 ## Cross-cutting Concerns。認可・エラー処理・観測・routing・永続化方針など層をまたぐ方針。",
+      "type": "string",
+      "minLength": 1
+    },
+    "runtime_composition": {
+      "description": "本文 ## Runtime Composition。bootstrap・DI・実行単位・可用性と共有状態。",
+      "type": "string",
+      "minLength": 1
+    },
+    "structural_decisions": {
+      "description": "本文 ## Structural Decisions。主要な構造判断の要点と根拠 ADR。",
+      "type": "string",
+      "minLength": 1
+    },
+    "documentation_policy": {
+      "description": "本文 ## Documentation Policy。どこに何を書くかの判断表。",
+      "type": "string",
+      "minLength": 1
+    },
+    "design_decisions": {
+      "description": "本文 ## Design Decisions。per-context の主要判断の要点と根拠 ADR。",
+      "type": "string",
+      "minLength": 1
+    },
+    "diagrams": {
+      "description": "本文 ## Diagrams。コンテキスト図・依存図。",
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "横断の設計正本（repo）は ARCHITECTURE_FORMAT.md §3 の 9 セクションをすべて持つ。per-context は ## Overview だけが必須で、以降は話題別の自由見出しを置ける。",
+      "if": {
+        "properties": { "context": { "const": "repo" } },
+        "required": ["context"]
+      },
+      "then": {
+        "required": [
+          "context",
+          "updated_at",
+          "overview",
+          "structure",
+          "stack",
+          "context_map",
+          "conventions",
+          "cross_cutting_concerns",
+          "runtime_composition",
+          "structural_decisions",
+          "documentation_policy"
+        ]
+      }
+    }
+  ]
+}

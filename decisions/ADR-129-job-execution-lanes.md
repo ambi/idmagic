@@ -124,3 +124,9 @@ at-least-once・lease・retry/dead-letter という ADR-098/099 の基盤を
   そのまま維持する。
 - `ARCHITECTURE.md` の「Durable Job Worker」節（lane 非対応の現状記述）を
   実装後の現在形に同期する。
+
+## 現行の設計
+
+この決定が形づくった durable job 実行基盤の現在の設計は
+[`backend/jobs/ARCHITECTURE.md`](../backend/jobs/ARCHITECTURE.md) が正本である（ADR-143 で移送）。
+本 ADR が保つのは、そこから再導出できない却下案と当時の前提だけである。

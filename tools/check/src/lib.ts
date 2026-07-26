@@ -7,7 +7,8 @@
 
 import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
-import architectureSchema from '../schemas/architecture.schema.json' with { type: 'json' }
+import architectureDocSchema from '../schemas/architecture-doc.schema.json' with { type: 'json' }
+import architectureMapSchema from '../schemas/architecture-map.schema.json' with { type: 'json' }
 import verificationEvidenceSchema from '../schemas/verification-evidence.schema.json' with {
   type: 'json',
 }
@@ -27,7 +28,8 @@ const sclV3Validator = ajv.compile(sclV3Schema)
 export const SCHEMAS: Record<string, ValidateFunction> = {
   'work-item': ajv.compile(workItemSchema),
   scl: sclV3Validator,
-  architecture: ajv.compile(architectureSchema),
+  'architecture-map': ajv.compile(architectureMapSchema),
+  'architecture-doc': ajv.compile(architectureDocSchema),
   'verification-manifest': ajv.compile(verificationManifestSchema),
   'verification-evidence': ajv.compile(verificationEvidenceSchema),
 }

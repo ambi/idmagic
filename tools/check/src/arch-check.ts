@@ -25,12 +25,22 @@ const SCL_ELEMENT_SECTIONS = [
   'glossary',
 ] as const
 
+/**
+ * Body headings the design record schema knows (ARCHITECTURE_FORMAT.md §3).
+ * The root record carries all nine; a per-context record needs only Overview and
+ * may add topic headings of its own, which stay outside this map on purpose.
+ */
 const BODY_HEADINGS: Record<string, string> = {
   overview: 'overview',
   structure: 'structure',
   stack: 'stack',
-  'structural decisions': 'structural_decisions',
+  'context map': 'context_map',
+  conventions: 'conventions',
   'cross-cutting concerns': 'cross_cutting_concerns',
+  'runtime composition': 'runtime_composition',
+  'structural decisions': 'structural_decisions',
+  'documentation policy': 'documentation_policy',
+  'design decisions': 'design_decisions',
   diagrams: 'diagrams',
 }
 

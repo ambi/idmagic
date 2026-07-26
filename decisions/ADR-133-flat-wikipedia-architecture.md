@@ -43,3 +43,9 @@ Core は feature 直下の `domain`、`ports`、`usecases` とし、Adapter は�
 - ADR-047/070/090/130 の context ownership、shared capability、context-local persistence、feature
   vertical slice の判断は維持し、それらが規定した Adapter の物理階層だけを本 ADR で置き換える。
 - HTTP、SCL、DB schema、認可、運用上の振る舞いは変わらない。
+
+## 現行の設計
+
+この決定が形づくった package 配置と feature 垂直スライスの現在の規約は
+[`ARCHITECTURE.md`](../ARCHITECTURE.md) の `## Conventions` が正本である（ADR-143 で移送）。
+本 ADR が保つのは、そこから再導出できない却下案と当時の前提だけである。

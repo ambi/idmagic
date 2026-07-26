@@ -1,0 +1,735 @@
+# backend/authentication — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: authentication
+updated_at: 2026-07-26
+modules:
+  authentication-domain:
+    path: domain
+    responsibility: Authentication feature 横断の認証コンテキスト・イベント型と純粋規則。
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-domain
+        via: published_interface
+  authentication-password-domain:
+    path: password/domain
+    responsibility: Password policy のドメイン規則。
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - module: tenancy-domain
+        via: published_interface
+  authentication-password-ports:
+    path: password/ports
+    responsibility: Password hash・履歴・reset token・breach 検査の公開 port。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+  authentication-password-usecases:
+    path: password/usecases
+    responsibility: Password policy、変更、reset のユースケース。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-password-ports
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: idmanagement-domain
+        via: published_interface
+      - module: idmanagement-user-domain
+        via: published_interface
+      - module: idmanagement-user-ports
+        via: published_interface
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-public
+        via: published_interface
+  authentication-password-adapters:
+    path: password/handlers_http
+    responsibility: Password の HTTP・memory・PostgreSQL adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-httpdeps
+        via: binding
+      - module: authentication-mfa-usecases
+        via: published_interface
+      - module: authentication-password-domain
+        via: published_interface
+      - module: authentication-password-ports
+        via: published_interface
+      - module: authentication-password-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-kernel
+        via: technical_shared
+      - module: tenancy-domain
+        via: binding
+      - module: tenancy-public
+        via: binding
+  authentication-totp-domain:
+    path: totp/domain
+    responsibility: TOTP factor のドメイン型。
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - module: shared-spec
+        via: technical_shared
+  authentication-totp-ports:
+    path: totp/ports
+    responsibility: TOTP factor repository の公開 port。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-totp-domain
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+  authentication-totp-usecases:
+    path: totp/usecases
+    responsibility: TOTP 生成・検証のユースケース。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-totp-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+  authentication-totp-adapters:
+    path: totp/db_memory
+    responsibility: TOTP factor の memory・PostgreSQL adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-totp-domain
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+  authentication-webauthn-domain:
+    path: webauthn/domain
+    responsibility: WebAuthn credential のドメイン型。
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - module: shared-spec
+        via: technical_shared
+  authentication-webauthn-ports:
+    path: webauthn/ports
+    responsibility: WebAuthn credential・ceremony session の公開 port。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-webauthn-domain
+        via: published_interface
+  authentication-webauthn-usecases:
+    path: webauthn/usecases
+    responsibility: WebAuthn enrollment・authentication・factor 検証のユースケース。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-totp-ports
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: authentication-webauthn-domain
+        via: published_interface
+      - module: authentication-webauthn-ports
+        via: published_interface
+      - module: idmanagement-user-domain
+        via: published_interface
+      - module: idmanagement-user-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+  authentication-webauthn-adapters:
+    path: webauthn/handlers_http
+    responsibility: WebAuthn の HTTP・memory・PostgreSQL adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-httpdeps
+        via: binding
+      - module: authentication-webauthn-domain
+        via: published_interface
+      - module: authentication-webauthn-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: shared-adapters
+        via: technical_shared
+  authentication-mfa-domain:
+    path: mfa/domain
+    responsibility: MFA enrollment decision・bypass のドメイン型。
+    context: Authentication
+    layer: domain
+    role: published_interface
+  authentication-mfa-ports:
+    path: mfa/ports
+    responsibility: MFA enrollment bypass repository の公開 port。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-mfa-domain
+        via: published_interface
+  authentication-mfa-usecases:
+    path: mfa/usecases
+    responsibility: TOTP・WebAuthn 横断の enrollment・second factor・step-up orchestration。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-mfa-domain
+        via: published_interface
+      - module: authentication-mfa-ports
+        via: published_interface
+      - module: authentication-password-ports
+        via: published_interface
+      - module: authentication-recovery-ports
+        via: published_interface
+      - module: authentication-recovery-usecases
+        via: published_interface
+      - module: authentication-session-usecases
+        via: published_interface
+      - module: authentication-totp-domain
+        via: published_interface
+      - module: authentication-totp-ports
+        via: published_interface
+      - module: authentication-totp-usecases
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: authentication-webauthn-ports
+        via: published_interface
+      - module: authentication-webauthn-usecases
+        via: published_interface
+      - module: idmanagement-user-domain
+        via: published_interface
+      - module: idmanagement-user-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-public
+        via: published_interface
+  authentication-mfa-adapters:
+    path: mfa/handlers_http
+    responsibility: MFA orchestration の HTTP・memory・PostgreSQL adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-httpdeps
+        via: binding
+      - module: authentication-mfa-domain
+        via: published_interface
+      - module: authentication-mfa-usecases
+        via: published_interface
+      - module: authentication-webauthn-adapters
+        via: binding
+      - module: authentication-webauthn-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: shared-adapters
+        via: technical_shared
+  authentication-session-domain:
+    path: session/domain
+    responsibility: Login session・pending request のドメイン型。
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - module: authentication-domain
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+  authentication-session-ports:
+    path: session/ports
+    responsibility: Login session store・login throttle の公開 port。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-session-domain
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+  authentication-session-usecases:
+    path: session/usecases
+    responsibility: Login session lifecycle と cookie 管理のユースケース。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-mfa-domain
+        via: published_interface
+      - module: authentication-session-domain
+        via: published_interface
+      - module: authentication-session-ports
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-domain
+        via: published_interface
+      - module: tenancy-ports
+        via: published_interface
+      - module: tenancy-public
+        via: published_interface
+      - module: tenancy-usecases
+        via: published_interface
+  authentication-session-adapters:
+    path: session/handlers_http
+    responsibility: Login session の HTTP・memory・PostgreSQL adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-httpdeps
+        via: binding
+      - module: authentication-session-domain
+        via: published_interface
+      - module: authentication-session-ports
+        via: published_interface
+      - module: authentication-session-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: oauth2-usecases
+        via: binding
+      - module: oauth2-token-usecases
+        via: binding
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-public
+        via: binding
+  authentication-recovery-domain:
+    path: recovery/domain
+    responsibility: Recovery code のドメイン型。
+    context: Authentication
+    layer: domain
+    role: published_interface
+    depends_on:
+      - module: shared-spec
+        via: technical_shared
+  authentication-recovery-ports:
+    path: recovery/ports
+    responsibility: Recovery code repository の公開 port。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-recovery-domain
+        via: published_interface
+  authentication-recovery-usecases:
+    path: recovery/usecases
+    responsibility: Recovery code の生成・再生成・消費ユースケース。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-recovery-domain
+        via: published_interface
+      - module: authentication-recovery-ports
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: idmanagement-user-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+  authentication-recovery-adapters:
+    path: recovery/handlers_http
+    responsibility: Recovery code の HTTP・memory・PostgreSQL adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-httpdeps
+        via: binding
+      - module: authentication-recovery-domain
+        via: published_interface
+      - module: authentication-recovery-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: shared-adapters
+        via: technical_shared
+  authentication-ports:
+    path: ports
+    responsibility: Authentication feature 横断の認証失敗 event bucket 公開 port。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      []
+  authentication-usecases:
+    path: usecases
+    responsibility: Authentication feature 横断の ACR・event・retention・lifecycle helper。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: audit-ports
+        via: published_interface
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-ports
+        via: published_interface
+      - module: authentication-totp-ports
+        via: published_interface
+      - module: authentication-webauthn-ports
+        via: published_interface
+      - module: idmanagement-domain
+        via: published_interface
+      - module: idmanagement-user-domain
+        via: published_interface
+      - module: idmanagement-user-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-public
+        via: published_interface
+  authentication-adapters:
+    path: handlers_http
+    responsibility: Authentication feature 横断 route と event bucket persistence adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: audit-ports
+        via: binding
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-httpdeps
+        via: binding
+      - module: authentication-mfa-adapters
+        via: binding
+      - module: authentication-mfa-usecases
+        via: published_interface
+      - module: authentication-password-adapters
+        via: binding
+      - module: authentication-password-ports
+        via: published_interface
+      - module: authentication-ports
+        via: published_interface
+      - module: authentication-recovery-adapters
+        via: binding
+      - module: authentication-recovery-ports
+        via: published_interface
+      - module: authentication-recovery-usecases
+        via: published_interface
+      - module: authentication-session-adapters
+        via: binding
+      - module: authentication-session-usecases
+        via: published_interface
+      - module: authentication-totp-ports
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: authentication-webauthn-adapters
+        via: binding
+      - module: authentication-webauthn-ports
+        via: published_interface
+      - module: authentication-webauthn-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: idmanagement-usecases
+        via: binding
+      - module: idmanagement-user-ports
+        via: binding
+      - module: idmanagement-user-usecases
+        via: binding
+      - module: oauth2-domain
+        via: binding
+      - module: oauth2-consent-usecases
+        via: binding
+      - module: oauth2-ports
+        via: binding
+      - module: oauth2-usecases
+        via: binding
+      - module: shared-adapters
+        via: binding
+      - module: shared-kernel
+        via: binding
+      - module: shared-spec
+        via: binding
+      - module: tenancy-domain
+        via: binding
+      - module: tenancy-ports
+        via: binding
+      - module: tenancy-public
+        via: binding
+  authentication-httpdeps:
+    path: deps_http
+    responsibility: Authentication HTTP handler 群が共有する Deps と account 認証 helper の leaf package。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: audit-ports
+        via: binding
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-mfa-ports
+        via: published_interface
+      - module: authentication-mfa-usecases
+        via: published_interface
+      - module: authentication-password-ports
+        via: published_interface
+      - module: authentication-ports
+        via: published_interface
+      - module: authentication-recovery-ports
+        via: published_interface
+      - module: authentication-recovery-usecases
+        via: published_interface
+      - module: authentication-session-usecases
+        via: published_interface
+      - module: authentication-totp-ports
+        via: published_interface
+      - module: authentication-webauthn-ports
+        via: published_interface
+      - module: authentication-webauthn-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: idmanagement-usecases
+        via: binding
+      - module: idmanagement-user-ports
+        via: binding
+      - module: idmanagement-user-usecases
+        via: binding
+      - module: oauth2-ports
+        via: binding
+      - module: oauth2-consent-usecases
+        via: binding
+      - module: oauth2-usecases
+        via: binding
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: binding
+      - module: tenancy-ports
+        via: binding
+  authentication-public:
+    path: "."
+    responsibility: Authentication root package の公開 facade。
+    context: Authentication
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: authentication-domain
+        via: published_interface
+  authentication-composition:
+    path: module.go
+    responsibility: Authentication の adapter と port を束ねる composition module。
+    context: Authentication
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: authentication-adapters
+        via: published_interface
+      - module: authentication-domain
+        via: published_interface
+      - module: authentication-mfa-ports
+        via: published_interface
+      - module: authentication-password-ports
+        via: published_interface
+      - module: authentication-ports
+        via: published_interface
+      - module: authentication-recovery-ports
+        via: published_interface
+      - module: authentication-session-ports
+        via: published_interface
+      - module: authentication-session-usecases
+        via: published_interface
+      - module: authentication-totp-ports
+        via: published_interface
+      - module: authentication-usecases
+        via: published_interface
+      - module: authentication-webauthn-ports
+        via: published_interface
+  authentication-db-memory:
+    path: db_memory
+    responsibility: backend/authentication/db_memory の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-ports
+        via: published_interface
+  authentication-db-postgres:
+    path: db_postgres
+    responsibility: backend/authentication/db_postgres の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-ports
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+  authentication-mfa-db-memory:
+    path: mfa/db_memory
+    responsibility: backend/authentication/mfa/db_memory の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-mfa-domain
+        via: published_interface
+  authentication-mfa-db-postgres:
+    path: mfa/db_postgres
+    responsibility: backend/authentication/mfa/db_postgres の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-mfa-domain
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+  authentication-password-db-memory:
+    path: password/db_memory
+    responsibility: backend/authentication/password/db_memory の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-password-ports
+        via: published_interface
+  authentication-password-db-postgres:
+    path: password/db_postgres
+    responsibility: backend/authentication/password/db_postgres の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-password-ports
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+  authentication-recovery-db-memory:
+    path: recovery/db_memory
+    responsibility: backend/authentication/recovery/db_memory の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-recovery-domain
+        via: published_interface
+  authentication-recovery-db-postgres:
+    path: recovery/db_postgres
+    responsibility: backend/authentication/recovery/db_postgres の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-recovery-domain
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+  authentication-session-db-memory:
+    path: session/db_memory
+    responsibility: backend/authentication/session/db_memory の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-session-domain
+        via: published_interface
+      - module: authentication-session-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+      - module: shared-storage-db-memory
+        via: technical_shared
+  authentication-session-db-postgres:
+    path: session/db_postgres
+    responsibility: backend/authentication/session/db_postgres の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-session-domain
+        via: published_interface
+      - module: authentication-session-ports
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-public
+        via: published_interface
+  authentication-totp-db-postgres:
+    path: totp/db_postgres
+    responsibility: backend/authentication/totp/db_postgres の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-totp-domain
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+  authentication-webauthn-db-memory:
+    path: webauthn/db_memory
+    responsibility: backend/authentication/webauthn/db_memory の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-webauthn-domain
+        via: published_interface
+  authentication-webauthn-db-postgres:
+    path: webauthn/db_postgres
+    responsibility: backend/authentication/webauthn/db_postgres の Flat Architecture adapter。
+    context: Authentication
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: authentication-webauthn-domain
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+      - module: tenancy-public
+        via: published_interface

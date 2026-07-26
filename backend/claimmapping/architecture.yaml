@@ -1,0 +1,41 @@
+# backend/claimmapping — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: claimmapping
+updated_at: 2026-07-26
+modules:
+  claimmapping-domain:
+    path: domain
+    responsibility: protocol-neutral な claim release policy と issued claim の公開語彙。
+    context: ClaimMapping
+    layer: domain
+    role: published_interface
+    realizes:
+      - context: ClaimMapping
+        kind: model
+        element: ClaimMappingSource
+      - context: ClaimMapping
+        kind: model
+        element: ClaimMappingRule
+      - context: ClaimMapping
+        kind: model
+        element: NameIdConfiguration
+      - context: ClaimMapping
+        kind: model
+        element: ClaimMappingPolicy
+      - context: ClaimMapping
+        kind: model
+        element: IssuedClaim
+  claimmapping-usecases:
+    path: usecases
+    responsibility: identity 属性から protocol-neutral claim を fail-closed で射影する公開 application service。
+    context: ClaimMapping
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: claimmapping-domain
+        via: published_interface
+      - module: idmanagement-domain
+        via: published_interface
+      - module: idmanagement-user-domain
+        via: published_interface

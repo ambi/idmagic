@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-17
+superseded_by: [ADR-143]
 ---
 
 # ADR-116: Architecture map を依存方向と複雑度を検査する実行可能な宣言にする
@@ -19,7 +20,9 @@ technical shared、composition root を区別せず cross-context import を禁�
 ## 決定
 
 `ARCHITECTURE.md` の frontmatter を、context、RA layer、module role、宣言依存、runtime unit、
-complexity budget を持つ実行可能な Architecture map とする。module は
+complexity budget を持つ実行可能な Architecture map とする。map を検査可能な宣言として保つ判断は
+有効だが、その置き場は [ADR-143](ADR-143-second-layer-design-ledger-decision-split.md) が
+`architecture.yaml` へ移した（`ARCHITECTURE.md` は散文の設計正本に純化した）。module は
 `specification_core -> decision_record -> domain -> use_cases -> adapters -> infrastructure ->
 deploy_pipeline` の内層から外層への順序へ所属し、依存は同層または内側だけを許可する。
 

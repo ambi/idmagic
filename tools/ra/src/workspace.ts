@@ -32,6 +32,7 @@ export type WorkspaceConfig = {
   repositoryWorkItems?: string
   toolSpecs?: string[]
   architectureDocs?: string[]
+  architectureLedgers?: string[]
   verificationManifest?: string
   verificationEvidence?: string
 }
@@ -75,20 +76,38 @@ async function discoverToolSpecs(workspaceRoot: string): Promise<string[]> {
   return specs.sort()
 }
 
+const ARCHITECTURE_SCAN_EXCLUDED = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build'])
+
 /**
- * Discover ARCHITECTURE.md maps: the repository-wide one at the root, plus any
- * per-context one at an app root. Placement mirrors decisions/ and work-items/
- * (REGENERATIVE_ARCHITECTURE.md §3.2.1 / ARCHITECTURE_FORMAT.md §1).
+ * Walk the workspace for the second-layer Architecture artifacts: the prose
+ * design records (`ARCHITECTURE.md`) and the machine-checked ledgers
+ * (`architecture.yaml`). Both may sit at the workspace root or next to the code
+ * a bounded context owns (ADR-143 / ARCHITECTURE_FORMAT.md §1).
  */
-function discoverArchitectureDocs(workspaceRoot: string, apps: WorkspaceApp[]): string[] {
-  const docs = new Set<string>()
-  const rootDoc = resolve(workspaceRoot, 'ARCHITECTURE.md')
-  if (exists(rootDoc)) docs.add(workspacePath(workspaceRoot, rootDoc))
-  for (const app of apps) {
-    const appDoc = resolve(workspaceRoot, app.root, 'ARCHITECTURE.md')
-    if (exists(appDoc)) docs.add(workspacePath(workspaceRoot, appDoc))
+async function scanArchitectureArtifacts(
+  workspaceRoot: string,
+  dir = workspaceRoot,
+  found: { docs: string[]; ledgers: string[] } = { docs: [], ledgers: [] },
+): Promise<{ docs: string[]; ledgers: string[] }> {
+  let entries: Awaited<ReturnType<typeof readdir>>
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return found
   }
-  return [...docs].sort()
+  for (const entry of entries) {
+    const absolute = resolve(dir, entry.name)
+    if (entry.isDirectory()) {
+      if (ARCHITECTURE_SCAN_EXCLUDED.has(entry.name) || entry.name.startsWith('.')) continue
+      await scanArchitectureArtifacts(workspaceRoot, absolute, found)
+      continue
+    }
+    if (!entry.isFile()) continue
+    if (entry.name === 'ARCHITECTURE.md') found.docs.push(workspacePath(workspaceRoot, absolute))
+    if (entry.name === 'architecture.yaml')
+      found.ledgers.push(workspacePath(workspaceRoot, absolute))
+  }
+  return found
 }
 
 export async function discoverWorkspaceConfig(
@@ -115,7 +134,9 @@ export async function discoverWorkspaceConfig(
   const repositoryWorkItems =
     apps.length === 0 && exists(resolve(root, 'work-items')) ? 'work-items' : undefined
   const toolSpecs = await discoverToolSpecs(root)
-  const architectureDocs = discoverArchitectureDocs(root, apps)
+  const scanned = await scanArchitectureArtifacts(root)
+  const architectureDocs = [...scanned.docs].sort()
+  const architectureLedgers = [...scanned.ledgers].sort()
   const verificationManifest = exists(resolve(root, 'verification/manifest.yaml'))
     ? 'verification/manifest.yaml'
     : undefined
@@ -127,6 +148,7 @@ export async function discoverWorkspaceConfig(
     repositoryWorkItems,
     toolSpecs,
     architectureDocs,
+    architectureLedgers,
     verificationManifest,
     verificationEvidence,
   }

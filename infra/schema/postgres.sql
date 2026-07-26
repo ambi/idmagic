@@ -1,74 +1,22 @@
--- User identity policy (ADR-082):
--- - The User's canonical identifier is the domain column users.id (global,
---   unique across tenants). The OIDC `sub` claim, SAML NameID, WS-Fed subject,
---   and SCIM resource references are protocol-facing projections of users.id;
---   the protocol vocabulary `sub` is not used as a storage identity.
--- - A User's own identifier is `id`; a reference to a User from another table is
+-- Schema design policy lives in the repository design record, not here:
+-- ARCHITECTURE.md `## Cross-cutting Concerns` > データベース設計ポリシー covers the
+-- column-type rules (ADR-084) and the tenant_id retention classes (ADR-082, simplified
+-- by ADR-083). Read it before adding a table or column; do not restate it here, because
+-- a second copy is what let the pre-ADR-083 composite-FK rule go stale (ADR-143).
+--
+-- Conventions this file keeps, because they are about writing SQL rather than design:
+-- - A table's own identifier is `id`; a reference to a User from another table is
 --   `user_id` (an owner reference is `owner_user_id`).
-
--- tenant_id key policy (ADR-082, simplified by ADR-083): users.id and
--- oauth2_clients.client_id are system-generated globally unique identifiers, so child
--- rows reference them by their global key and tenant-scoped composite foreign keys
--- are no longer used. Keep tenant_id on a table only when it serves search, a
--- constraint/uniqueness, retention, or audit; do not add it just because tenant is
--- reachable through a globally unique parent. Cases:
--- - tenant-owned aggregate / tenant-scoped config: carry tenant_id, often as part
---   of the PK or a unique key (users, groups, oauth2_clients, applications, agents,
---   signing_keys, application_categories, saml_service_providers,
---   wsfed_relying_parties, *_sign_in_policies).
--- - external tenant-scoped natural key: tenant_id is part of the PK because the
---   external id is only unique within a tenant (scim_user_refs, scim_group_refs on
---   (tenant_id, scim_id)).
--- - child of a globally unique parent: rely on the global key (user_id / client_id)
---   and omit tenant_id unless per-tenant search/retention needs it. Omitted:
---   consents, application_orderings, mfa_factors, password_history,
---   password_reset_tokens, email_change_tokens, group_members. Kept:
---   authentication_sessions (session id is an opaque cookie value resolved on every
---   request; tenant_id is a fail-closed defense-in-depth predicate on that lookup,
---   plus the per-tenant active-session listing index, ADR-126). The ephemeral
---   auth/OAuth2 stores keyed by opaque token/code/challenge (ADR-139:
---   oauth2_authorization_requests, oauth2_authorization_codes, oauth2_par_requests,
---   oauth2_device_codes, oauth2_replay_jtis, oauth2_access_token_denylist,
---   webauthn_sessions, login_throttle_counters, saml_authnrequest_replays) keep
---   tenant_id for the same reason: every lookup is a high-frequency fail-closed
---   resolution of an opaque, attacker-influenced key, so the tenant boundary is
---   enforced in the DB layer (ADR-082 §4 exception).
--- - append-only / audit / outbox / throttling: decide by emit-time tenant, query
---   boundary, and retention (audit_events, authentication_event_buckets, outbox).
-
--- Timestamp policy:
--- - Every table has created_at.
--- - Tables whose rows can be updated after creation have updated_at.
--- - Insert-only/delete-only rows do not have updated_at.
--- - Domain timestamps such as issued_at, granted_at, occurred_at, expires_at,
---   revoked_at, first_seen, and last_seen keep their domain meaning;
---   they do not replace created_at.
-
--- Column type policy (ADR-084):
--- - Strings: never use unconstrained varchar. Unbounded values are TEXT; values
---   with a spec/UI/ops limit get TEXT + CHECK(char_length) or varchar(N)
---   (the limits themselves are decided in wi-128).
--- - JSONB is for external-spec-derived metadata, claim/policy config, and
---   append-only audit/outbox payloads. Values needing join/filter/FK/
---   uniqueness or a lifecycle state machine are not kept inside JSONB
---   (users.lifecycle is the flagged normalization candidate).
--- - TIMESTAMPTZ stores microsecond precision as the source of truth; do not round
---   in schema. Second-precision rounding happens only at external protocol
---   boundaries (SCIM/SAML/WS-Fed formatting).
--- - Ids that idmagic generates internally use UUID: users.id, oauth2_clients.client_id,
---   groups.id, agents.id, audit_events.id, api_tokens.id, and the already-UUID
---   refresh_tokens/applications/application_categories keys, plus every FK column
---   that references them (user_id, owner_user_id, group_id, agent_id, client_id,
---   subject_id). Go keeps these as string; base.go registers a text codec for the
---   uuid OID so UUID columns read/write as string. Ids whose value is decided
---   externally stay TEXT: entity_id, wtrealm, scim_id, kid. tenants.id is a UUID
---   surrogate key; the mutable URL slug lives in tenants.realm (ADR-085). Non-FK
---   tenant_id columns (audit_events, authentication_event_buckets)
---   stay TEXT and hold the UUID as string (audit_events also carries a ''
---   tenantless sentinel).
--- - Finite value sets default to TEXT + CHECK; PostgreSQL enums are avoided due to
---   migration friction. CHECK-less finite columns are constraint-addition
---   candidates, added per-column with matching Go validation, not in bulk.
+-- - Every table has created_at. Tables whose rows can be updated after creation have
+--   updated_at; insert-only/delete-only rows do not. Domain timestamps (issued_at,
+--   granted_at, occurred_at, expires_at, revoked_at, first_seen, last_seen) keep their
+--   domain meaning and do not replace created_at.
+-- - Second-precision rounding happens only at external protocol boundaries
+--   (SCIM/SAML/WS-Fed formatting), never in the schema.
+-- - Go keeps UUID columns as string; base.go registers a text codec for the uuid OID.
+-- - Non-FK tenant_id columns (audit_events, authentication_event_buckets) stay TEXT and
+--   hold the UUID as string (audit_events also carries a '' tenantless sentinel).
+-- - users.lifecycle is the flagged JSONB normalization candidate.
 
 -- tenants (ADR-085): id is an immutable UUID surrogate key referenced by every
 -- tenant_id FK; realm is the mutable URL slug shown in /realms/{realm}/ and the

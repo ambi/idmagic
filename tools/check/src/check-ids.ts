@@ -14,8 +14,10 @@
  * Exits non-zero when any duplicate or malformed ADR filename is found.
  */
 
+import { existsSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
-import { isAbsolute, join, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { type AdrLinkSource, checkAdrLinks } from './adr-links.ts'
 import {
   type AdrSupersessionRecord,
   checkAdrSupersession,
@@ -102,23 +104,38 @@ async function collectAdrs(dir: string): Promise<{ refs: RecordRef[]; findings: 
   return { refs, findings }
 }
 
-function parseArgs(argv: string[]): { workItems: string[]; decisions: string[] } {
+function parseArgs(argv: string[]): {
+  workItems: string[]
+  decisions: string[]
+  links: string[]
+  root: string[]
+} {
   const workItems: string[] = []
   const decisions: string[] = []
+  const links: string[] = []
+  const root: string[] = []
   let bucket: string[] | null = null
   for (const arg of argv) {
     if (arg === '--work-items') bucket = workItems
     else if (arg === '--decisions') bucket = decisions
+    else if (arg === '--links') bucket = links
+    else if (arg === '--root') bucket = root
     else if (bucket) bucket.push(arg)
     else
-      throw new Error(`unexpected argument '${arg}' (expected --work-items or --decisions first)`)
+      throw new Error(
+        `unexpected argument '${arg}' (expected --work-items, --decisions, --links or --root first)`,
+      )
   }
-  return { workItems, decisions }
+  return { workItems, decisions, links, root }
 }
 
-const { workItems, decisions } = parseArgs(process.argv.slice(2))
-if (workItems.length === 0 && decisions.length === 0) {
-  console.error('check-ids: nothing to check — pass --work-items <dir> and/or --decisions <dir>')
+const { workItems, decisions, links, root } = parseArgs(process.argv.slice(2))
+/** Workspace root: references may be spelled relative to it, not to the CLI cwd. */
+const workspaceRoot = root[0] ? resolveDir(root[0]) : process.cwd()
+if (workItems.length === 0 && decisions.length === 0 && links.length === 0) {
+  console.error(
+    'check-ids: nothing to check — pass --work-items <dir>, --decisions <dir> and/or --links <file>',
+  )
   process.exit(2)
 }
 
@@ -135,6 +152,47 @@ for (const dir of decisions) {
   findings.push(...r.findings)
 }
 findings.push(...findDuplicates(refs))
+
+// Work items and design records point at ADRs by path; nothing verified those
+// paths before, so a rename left silent dead links (ADR-143).
+const linkFiles = [...links.map(resolveDir)]
+for (const dir of workItems) {
+  const namespace = resolveDir(dir)
+  linkFiles.push(
+    ...(await listFiles(namespace, '.md')),
+    ...(await listFiles(join(namespace, DONE_SUBDIR), '.md')),
+  )
+}
+if (linkFiles.length > 0) {
+  const sources: AdrLinkSource[] = []
+  for (const path of linkFiles) {
+    let text: string
+    try {
+      text = await readFile(path, 'utf8')
+    } catch {
+      continue
+    }
+    const declared: string[] = []
+    const yaml = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n/)?.[1]
+    if (yaml) {
+      const fm = Bun.YAML.parse(yaml) as { initial_context?: { decisions?: unknown } }
+      const entries = fm?.initial_context?.decisions
+      if (Array.isArray(entries)) {
+        // Entries are spelled either as a path or as a bare id; only paths are
+        // checkable here, bare ids are covered by the id namespace above.
+        for (const entry of entries) {
+          if (typeof entry === 'string' && entry.includes('/')) declared.push(entry)
+        }
+      }
+    }
+    sources.push({ path, text, declared })
+  }
+  findings.push(
+    ...checkAdrLinks(sources, (fromPath, reference) =>
+      [resolve(dirname(fromPath), reference), resolve(workspaceRoot, reference)].some(existsSync),
+    ),
+  )
+}
 
 if (findings.length > 0) {
   for (const f of findings) {

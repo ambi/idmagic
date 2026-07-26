@@ -1,0 +1,444 @@
+# idmagic — Architecture ledger (root)
+# 横断台帳。context 台帳・実行単位・複雑度 budget と、どの context にも属さない module。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: repo
+updated_at: 2026-07-26
+contexts:
+  System:
+    spec: spec/contexts/system.yaml
+    summary: 横断ユーザー体験、共有語彙、runtime composition。
+  Tenancy:
+    spec: spec/contexts/tenancy.yaml
+    summary: テナント境界と設定。
+  IdManagement:
+    spec: spec/contexts/identity-management.yaml
+    summary: User、Group、Agent のライフサイクル。
+  IdGovernance:
+    spec: spec/contexts/identity-governance.yaml
+    summary: LifecycleWorkflow (JML 自動化) と IGA policy/orchestration。
+  Authentication:
+    spec: spec/contexts/authentication.yaml
+    summary: 資格情報、MFA、ログインセッション。
+  OAuth2:
+    spec: spec/contexts/oauth2.yaml
+    summary: OAuth 2.0 / OIDC プロトコル。
+  Audit:
+    spec: spec/contexts/audit.yaml
+    summary: 横断監査 read model。
+  Application:
+    spec: spec/contexts/application.yaml
+    summary: Application catalog と割当。
+  ClaimMapping:
+    spec: spec/contexts/claim-mapping.yaml
+    summary: protocol-neutral claim release。
+  SigningKeys:
+    spec: spec/contexts/signing-keys.yaml
+    summary: tenant-scoped signing key lifecycle。
+  WsFederation:
+    spec: spec/contexts/ws-federation.yaml
+    summary: WS-Federation / WS-Trust。
+  Saml:
+    spec: spec/contexts/saml.yaml
+    summary: SAML 2.0 IdP。
+  Provisioning:
+    spec: spec/contexts/provisioning.yaml
+    summary: SCIM 2.0 outbound provisioning (下流 SaaS への user/group push lifecycle management)。
+  Sourcing:
+    spec: spec/contexts/sourcing.yaml
+    summary: 上流の外部権威からの identity 取り込み (source binding・correlation・ingestion)。現在の source slice は scim (SCIM 2.0 server) のみ。
+  ApiTokens:
+    spec: spec/contexts/api-tokens.yaml
+    summary: 管理用 API と SCIM API を認証する tenant-scoped API アクセストークンの発行・失効・scope。
+  Jobs:
+    spec: spec/contexts/jobs.yaml
+    summary: durable asynchronous jobs。
+  Seeding:
+    spec: spec/contexts/seeding.yaml
+    summary: 環境別 seed profile、計画、安全な適用 orchestration。
+  ra:
+    spec: tools/ra/spec/scl.yaml
+    summary: RA workspace orchestration。
+  check:
+    spec: tools/check/spec/scl.yaml
+    summary: SCL と Architecture schema/semantic validation。
+  scl-to-html:
+    spec: tools/scl-to-html/spec/scl.yaml
+    summary: SCL HTML renderer。
+  scl-to-jsonschema:
+    spec: tools/scl-to-jsonschema/spec/scl.yaml
+    summary: SCL JSON Schema generator。
+  scl-to-openapi:
+    spec: tools/scl-to-openapi/spec/scl.yaml
+    summary: SCL OpenAPI generator。
+modules:
+  backend:
+    path: backend
+    responsibility: Go bounded contexts を組み立てる composition root。
+    context: System
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: shared-events-publishers-kafka
+        via: technical_shared
+      - module: shared-events-publishers-log
+        via: technical_shared
+      - module: shared-events-publishers-pubsub
+        via: technical_shared
+      - module: shared-events-relay-postgres
+        via: technical_shared
+      - module: shared-observability-metrics-prometheus
+        via: technical_shared
+      - module: shared-observability-telemetry-otlp
+        via: technical_shared
+      - module: shared-security-passwords-argon2id
+        via: technical_shared
+      - module: shared-security-tokens-jose
+        via: technical_shared
+      - module: authentication-ports
+        via: composition_root
+      - module: authentication-session-ports
+        via: composition_root
+      - module: authentication-session-usecases
+        via: composition_root
+      - module: authentication-usecases
+        via: composition_root
+      - module: apitoken-usecases
+        via: composition_root
+      - module: bootstrap
+        via: published_interface
+      - module: http-server
+        via: published_interface
+      - module: http-support
+        via: technical_shared
+      - module: idmanagement-usecases
+        via: composition_root
+      - module: idgovernance-public
+        via: composition_root
+      - module: idgovernance-usecases
+        via: composition_root
+      - module: jobs-domain
+        via: composition_root
+      - module: jobs-public
+        via: composition_root
+      - module: jobs-usecases
+        via: composition_root
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: seeding-domain
+        via: composition_root
+      - module: tenancy-usecases
+        via: composition_root
+  specification:
+    path: spec
+    responsibility: IdMagic SCL の規範仕様と派生契約。
+    context: System
+    layer: specification_core
+    role: published_interface
+  check-tool:
+    path: tools/check
+    responsibility: SCL、Work Item、Architecture の schema と semantic 検査。
+    context: check
+    layer: adapters
+    role: technical_shared
+    realizes:
+      - context: check
+        kind: interface
+        element: CheckYaml
+  scl-to-html-tool:
+    path: tools/scl-to-html
+    responsibility: SCL と変更記録の HTML 描画。
+    context: scl-to-html
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: check-tool
+        via: technical_shared
+  scl-to-jsonschema-tool:
+    path: tools/scl-to-jsonschema
+    responsibility: SCL model の JSON Schema 生成。
+    context: scl-to-jsonschema
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: scl-to-html-tool
+        via: technical_shared
+  scl-to-openapi-tool:
+    path: tools/scl-to-openapi
+    responsibility: SCL interface の OpenAPI 生成。
+    context: scl-to-openapi
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: scl-to-html-tool
+        via: technical_shared
+      - module: scl-to-jsonschema-tool
+        via: technical_shared
+  ra-tools:
+    path: tools/ra
+    responsibility: workspace 発見、検証、派生物生成の composition root。
+    context: ra
+    layer: infrastructure
+    role: composition_root
+    realizes:
+      - context: ra
+        kind: interface
+        element: CheckTraceability
+      - context: ra
+        kind: interface
+        element: CheckArchitecture
+    depends_on:
+      - module: scl-to-html-tool
+        via: composition_root
+      - module: scl-to-jsonschema-tool
+        via: composition_root
+      - module: scl-to-openapi-tool
+        via: composition_root
+      - module: check-tool
+        via: composition_root
+  verification:
+    path: verification
+    responsibility: SCL realization、check、revision 付き evidence の外部 binding。
+    context: ra
+    layer: adapters
+    role: binding
+  deploy-infra:
+    path: infra
+    responsibility: container、database schema、ローカル runtime 構成。
+    context: System
+    layer: deploy_pipeline
+    role: implementation
+  load-testing:
+    path: load/k6
+    responsibility: tenant-local OAuth flows の SLO smoke を実行する k6 運用資産。
+    context: System
+    layer: deploy_pipeline
+    role: implementation
+    realizes:
+      - context: System
+        kind: scenario
+        element: Operatorは分離された運用資産でSLOを検証する
+runtime_units:
+  idmagic-api:
+    kind: api
+    entrypoint: backend/cmd/idmagic/main.go
+    modules:
+      - backend
+      - bootstrap
+  idmagic-worker:
+    kind: worker
+    entrypoint: backend/cmd/idmagic-worker/main.go
+    modules:
+      - worker
+      - bootstrap
+      - jobs-usecases
+      - jobs-adapters
+      - provisioning-usecases
+      - provisioning-adapters
+  idmagic-batch:
+    kind: batch
+    entrypoint: backend/cmd/idmagic-batch/main.go
+    modules:
+      - batch
+      - bootstrap
+      - signingkeys-usecases
+  idmagic-relay:
+    kind: relay
+    entrypoint: backend/cmd/idmagic-relay/main.go
+    modules:
+      - backend
+      - shared-adapters
+  idmagic-ui:
+    kind: ui
+    entrypoint: frontend/src/main.tsx
+    modules:
+      - frontend
+      - frontend-routes
+      - frontend-features
+      - frontend-api
+      - frontend-components
+complexity:
+  budgets:
+    - id: ui-page-lines
+      include:
+        - frontend/src/**/*Page.tsx
+      exclude:
+        - "**/*.test.tsx"
+        - "**/*.spec.tsx"
+        - "**/routeTree.gen.ts"
+      metric: source_lines
+      limit: 400
+    - id: ui-page-local-state
+      include:
+        - frontend/src/**/*Page.tsx
+      exclude:
+        - "**/*.test.tsx"
+        - "**/*.spec.tsx"
+        - "**/routeTree.gen.ts"
+      metric: react_local_state_hooks
+      limit: 10
+    - id: go-source-lines
+      include:
+        - backend/**/*.go
+      exclude:
+        - "**/*_test.go"
+        - "**/generated/**"
+        - "**/sqlcgen/**"
+      metric: source_lines
+      limit: 800
+  debts:
+    - id: wi45-ui-page-lines-admin-application-detail-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-applications/AdminApplicationDetailPage.tsx
+      ceiling: 410
+      owner: maintainers
+      reason: wi-45 T007b でプロビジョニング導線ボタンを追加し、既に上限ちょうどだった 400 行を 2 行超過。ProvisioningNavButton は既に AdminApplicationProvisioningShared.tsx へ抽出済みで追加分はこれ以上圧縮できない。wi-234 の list/detail 分割と合わせて解消する。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-account-profile-page
+      budget: ui-page-lines
+      path: frontend/src/features/account/AccountProfilePage.tsx
+      ceiling: 499
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-account-security-page
+      budget: ui-page-lines
+      path: frontend/src/features/account/AccountSecurityPage.tsx
+      ceiling: 699
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-application-edit-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-applications/AdminApplicationEditPage.tsx
+      ceiling: 860
+      owner: maintainers
+      reason: wi-234 T002 で list/detail/edit へ分割済み。edit は OIDC/WS-Fed/SAML/サインインポリシーの4プロトコル分岐フォームが同居し、残存超過はプロトコル単位のフォームセクション分割で解消する。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-audit-events-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-audit-events/AdminAuditEventsPage.tsx
+      ceiling: 538
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-dashboard-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-dashboard/AdminDashboardPage.tsx
+      ceiling: 539
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-sign-in-policy-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-sign-in-policy/AdminSignInPolicyPage.tsx
+      ceiling: 457
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-tenant-attributes-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-tenants/AdminTenantAttributesPage.tsx
+      ceiling: 432
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-users-list-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-users/AdminUsersListPage.tsx
+      ceiling: 560
+      owner: maintainers
+      reason: wi-234 T002 で list/detail/edit/create/import へ分割済み。list は一覧テーブルと右ペイン詳細 (UserDetails) を同居しており残存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-user-detail-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-users/AdminUserDetailPage.tsx
+      ceiling: 493
+      owner: maintainers
+      reason: wi-234 T002 で分割済み。プロフィール/属性/ライフサイクル/ロールとグループの全網羅ビューで残存超過。wi-28 T007 で admin セッション管理 (UserSessionsSection) を追加しセッション/ロールとグループをそれぞれ独立したカードへ分離 (レイアウトフィードバック対応)、5行分増加 (ロジック本体は AdminUsersShared.tsx 側に分割済み)。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-user-edit-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-users/AdminUserEditPage.tsx
+      ceiling: 489
+      owner: maintainers
+      reason: wi-234 T002 で分割済み。属性エディタとロール変更確認ステップが同居し残存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-admin-user-import-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-users/AdminUserImportPage.tsx
+      ceiling: 436
+      owner: maintainers
+      reason: wi-234 T002 で分割済み。CSV import の dry-run/apply ウィザードとエラー表示 helper が同居し残存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-lines-system-tenants-page
+      budget: ui-page-lines
+      path: frontend/src/features/system-tenants/SystemTenantsPage.tsx
+      ceiling: 572
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-local-state-account-security-page
+      budget: ui-page-local-state
+      path: frontend/src/features/account/AccountSecurityPage.tsx
+      ceiling: 11
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-local-state-admin-application-edit-page
+      budget: ui-page-local-state
+      path: frontend/src/features/admin-applications/AdminApplicationEditPage.tsx
+      ceiling: 34
+      owner: maintainers
+      reason: wi-234 T002 で list/detail/edit へ分割済み。edit の残存超過はプロトコル単位のフォームセクション分割で解消する。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-local-state-admin-group-edit-page
+      budget: ui-page-local-state
+      path: frontend/src/features/admin-groups/AdminGroupEditPage.tsx
+      ceiling: 12
+      owner: maintainers
+      reason: wi-234 T003 で list/detail/create/edit へ分割済み。edit は基本情報フォームと動的ルール編集/プレビューの状態が同居し残存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-local-state-admin-sign-in-policy-page
+      budget: ui-page-local-state
+      path: frontend/src/features/admin-sign-in-policy/AdminSignInPolicyPage.tsx
+      ceiling: 11
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-local-state-admin-user-edit-page
+      budget: ui-page-local-state
+      path: frontend/src/features/admin-users/AdminUserEditPage.tsx
+      ceiling: 12
+      owner: maintainers
+      reason: wi-234 T002 で分割済み。残存超過はプロフィール/属性/ロール変更確認の状態が同一 component に残るため。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01
+    - id: wi234-ui-page-local-state-system-tenants-page
+      budget: ui-page-local-state
+      path: frontend/src/features/system-tenants/SystemTenantsPage.tsx
+      ceiling: 22
+      owner: maintainers
+      reason: wi-234 で責務境界に沿って分割する既存超過。
+      work_item: wi-234-complexity-ratchet
+      expires_at: 2026-10-01

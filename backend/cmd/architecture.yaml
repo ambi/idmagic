@@ -1,0 +1,339 @@
+# backend/cmd — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: cmd
+updated_at: 2026-07-26
+modules:
+  batch:
+    path: idmagic-batch
+    responsibility: 外部 scheduler から one-shot で起動する横断 batch composition root。
+    context: System
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: bootstrap
+        via: composition_root
+      - module: shared-services
+        via: technical_shared
+      - module: signingkeys-usecases
+        via: composition_root
+      - module: tenancy-public
+        via: composition_root
+  worker:
+    path: idmagic-worker
+    responsibility: durable job queue の claim・handler 実行を担う API 分離 worker composition root (ADR-099)。
+    context: System
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: provisioning-source-idmanagement
+        via: composition_root
+      - module: shared-observability-metrics-prometheus
+        via: technical_shared
+      - module: shared-security-passwords-argon2id
+        via: technical_shared
+      - module: bootstrap
+        via: composition_root
+      - module: idgovernance-usecases
+        via: composition_root
+      - module: idmanagement-group-usecases
+        via: composition_root
+      - module: idmanagement-usecases
+        via: composition_root
+      - module: idmanagement-user-usecases
+        via: composition_root
+      - module: jobs-domain
+        via: composition_root
+      - module: jobs-ports
+        via: composition_root
+      - module: jobs-public
+        via: composition_root
+      - module: jobs-usecases
+        via: composition_root
+      - module: provisioning-adapters
+        via: composition_root
+      - module: provisioning-composition
+        via: composition_root
+      - module: provisioning-usecases
+        via: composition_root
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+  bootstrap:
+    path: internal/bootstrap
+    responsibility: API runtime の依存注入と runtime adapter 選択。
+    context: System
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: apitoken-public
+        via: composition_root
+      - module: oauth2-client-db-postgres
+        via: composition_root
+      - module: oauth2-consent-db-postgres
+        via: composition_root
+      - module: oauth2-token-db-postgres
+        via: composition_root
+      - module: apitoken-db-memory
+        via: composition_root
+      - module: apitoken-db-postgres
+        via: composition_root
+      - module: application-db-memory
+        via: composition_root
+      - module: application-db-postgres
+        via: composition_root
+      - module: audit-db-memory
+        via: composition_root
+      - module: audit-db-postgres
+        via: composition_root
+      - module: authentication-db-memory
+        via: composition_root
+      - module: authentication-db-postgres
+        via: composition_root
+      - module: authentication-mfa-db-memory
+        via: composition_root
+      - module: authentication-mfa-db-postgres
+        via: composition_root
+      - module: authentication-password-db-memory
+        via: composition_root
+      - module: authentication-password-db-postgres
+        via: composition_root
+      - module: authentication-recovery-db-memory
+        via: composition_root
+      - module: authentication-recovery-db-postgres
+        via: composition_root
+      - module: authentication-session-db-memory
+        via: composition_root
+      - module: authentication-session-db-postgres
+        via: composition_root
+      - module: authentication-totp-db-postgres
+        via: composition_root
+      - module: authentication-webauthn-db-memory
+        via: composition_root
+      - module: authentication-webauthn-db-postgres
+        via: composition_root
+      - module: idgovernance-db-memory
+        via: composition_root
+      - module: idgovernance-db-postgres
+        via: composition_root
+      - module: idmanagement-agent-db-memory
+        via: composition_root
+      - module: idmanagement-agent-db-postgres
+        via: composition_root
+      - module: idmanagement-group-db-memory
+        via: composition_root
+      - module: idmanagement-group-db-postgres
+        via: composition_root
+      - module: idmanagement-user-db-memory
+        via: composition_root
+      - module: idmanagement-user-db-postgres
+        via: composition_root
+      - module: jobs-db-postgres
+        via: composition_root
+      - module: oauth2-db-memory
+        via: composition_root
+      - module: oauth2-db-postgres
+        via: composition_root
+      - module: provisioning-db-memory
+        via: composition_root
+      - module: provisioning-db-postgres
+        via: composition_root
+      - module: saml-db-memory
+        via: composition_root
+      - module: saml-db-postgres
+        via: composition_root
+      - module: sourcing-scim-db-memory
+        via: composition_root
+      - module: sourcing-scim-db-postgres
+        via: composition_root
+      - module: shared-events-sinks-console
+        via: technical_shared
+      - module: shared-notification-email-console
+        via: technical_shared
+      - module: shared-notification-email-smtp
+        via: technical_shared
+      - module: shared-notification-template
+        via: technical_shared
+      - module: shared-policy-authorization-http
+        via: technical_shared
+      - module: shared-policy-authorization-local
+        via: technical_shared
+      - module: shared-policy-breaches-hibp
+        via: technical_shared
+      - module: shared-policy-breaches-noop
+        via: technical_shared
+      - module: shared-security-passwords-argon2id
+        via: technical_shared
+      - module: shared-security-salts-memory
+        via: technical_shared
+      - module: signingkeys-db-postgres
+        via: composition_root
+      - module: signingkeys-keys-memory
+        via: composition_root
+      - module: signingkeys-keys-vault
+        via: composition_root
+      - module: tenancy-db-memory
+        via: composition_root
+      - module: tenancy-db-postgres
+        via: composition_root
+      - module: wsfederation-db-memory
+        via: composition_root
+      - module: wsfederation-db-postgres
+        via: composition_root
+      - module: wsfederation-tokens-saml
+        via: composition_root
+      - module: application-adapters
+        via: composition_root
+      - module: application-domain
+        via: composition_root
+      - module: application-ports
+        via: composition_root
+      - module: application-public
+        via: composition_root
+      - module: audit-adapters
+        via: composition_root
+      - module: audit-ports
+        via: composition_root
+      - module: audit-public
+        via: composition_root
+      - module: audit-usecases
+        via: composition_root
+      - module: authentication-adapters
+        via: composition_root
+      - module: authentication-domain
+        via: composition_root
+      - module: authentication-mfa-adapters
+        via: composition_root
+      - module: authentication-password-adapters
+        via: composition_root
+      - module: authentication-password-ports
+        via: composition_root
+      - module: authentication-password-usecases
+        via: composition_root
+      - module: authentication-ports
+        via: composition_root
+      - module: authentication-public
+        via: composition_root
+      - module: authentication-recovery-adapters
+        via: composition_root
+      - module: authentication-session-adapters
+        via: composition_root
+      - module: authentication-session-ports
+        via: composition_root
+      - module: authentication-totp-adapters
+        via: composition_root
+      - module: authentication-totp-domain
+        via: composition_root
+      - module: authentication-totp-ports
+        via: composition_root
+      - module: authentication-usecases
+        via: composition_root
+      - module: authentication-webauthn-adapters
+        via: composition_root
+      - module: authentication-webauthn-usecases
+        via: composition_root
+      - module: claimmapping-domain
+        via: composition_root
+      - module: http-support
+        via: technical_shared
+      - module: idgovernance-adapters
+        via: composition_root
+      - module: idgovernance-composition
+        via: composition_root
+      - module: idgovernance-domain
+        via: composition_root
+      - module: idgovernance-ports
+        via: composition_root
+      - module: idgovernance-public
+        via: composition_root
+      - module: idgovernance-usecases
+        via: composition_root
+      - module: idmanagement-adapters
+        via: composition_root
+      - module: idmanagement-agent-adapters
+        via: composition_root
+      - module: idmanagement-domain
+        via: composition_root
+      - module: idmanagement-group-adapters
+        via: composition_root
+      - module: idmanagement-group-domain
+        via: composition_root
+      - module: idmanagement-group-ports
+        via: composition_root
+      - module: idmanagement-public
+        via: composition_root
+      - module: idmanagement-user-adapters
+        via: composition_root
+      - module: idmanagement-user-domain
+        via: composition_root
+      - module: idmanagement-user-ports
+        via: composition_root
+      - module: jobs-adapters
+        via: composition_root
+      - module: jobs-public
+        via: composition_root
+      - module: oauth2-adapters
+        via: composition_root
+      - module: oauth2-domain
+        via: composition_root
+      - module: oauth2-ports
+        via: composition_root
+      - module: oauth2-public
+        via: composition_root
+      - module: provisioning-adapters
+        via: composition_root
+      - module: provisioning-composition
+        via: composition_root
+      - module: provisioning-usecases
+        via: composition_root
+      - module: saml-adapters
+        via: composition_root
+      - module: saml-domain
+        via: composition_root
+      - module: saml-ports
+        via: composition_root
+      - module: saml-public
+        via: composition_root
+      - module: sourcing-scim-adapters
+        via: composition_root
+      - module: sourcing-public
+        via: composition_root
+      - module: seeding-manifest-adapter
+        via: composition_root
+      - module: seeding-domain
+        via: composition_root
+      - module: seeding-usecases
+        via: composition_root
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: signingkeys-adapters
+        via: composition_root
+      - module: signingkeys-domain
+        via: composition_root
+      - module: signingkeys-ports
+        via: composition_root
+      - module: signingkeys-public
+        via: composition_root
+      - module: tenancy-adapters
+        via: composition_root
+      - module: tenancy-domain
+        via: composition_root
+      - module: tenancy-public
+        via: composition_root
+      - module: tenancy-usecases
+        via: composition_root
+      - module: wsfederation-adapters
+        via: composition_root
+      - module: wsfederation-domain
+        via: composition_root
+      - module: wsfederation-ports
+        via: composition_root
+      - module: wsfederation-public
+        via: composition_root

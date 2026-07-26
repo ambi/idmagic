@@ -1,0 +1,98 @@
+# backend/jobs — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: jobs
+updated_at: 2026-07-26
+modules:
+  jobs-domain:
+    path: domain
+    responsibility: Jobs のドメインモデルと純粋な規則。
+    context: Jobs
+    layer: domain
+    role: published_interface
+  jobs-ports:
+    path: ports
+    responsibility: Jobs の公開 port と外界への抽象。
+    context: Jobs
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: jobs-domain
+        via: published_interface
+  jobs-usecases:
+    path: usecases
+    responsibility: Jobs のユースケース。
+    context: Jobs
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: jobs-domain
+        via: published_interface
+      - module: jobs-ports
+        via: published_interface
+      - module: shared-services
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+      - module: tenancy-domain
+        via: published_interface
+      - module: tenancy-ports
+        via: published_interface
+      - module: tenancy-usecases
+        via: published_interface
+  jobs-adapters:
+    path: db_memory
+    responsibility: Jobs の HTTP・永続化 adapter。
+    context: Jobs
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: jobs-domain
+        via: published_interface
+      - module: jobs-ports
+        via: published_interface
+      - module: jobs-usecases
+        via: published_interface
+      - module: shared-adapters
+        via: binding
+      - module: shared-spec
+        via: binding
+  jobs-public:
+    path: "."
+    responsibility: Jobs root package の公開 facade。
+    context: Jobs
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: jobs-domain
+        via: published_interface
+  jobs-composition:
+    path: module.go
+    responsibility: Jobs の adapter と port を束ねる composition module。
+    context: Jobs
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: jobs-adapters
+        via: published_interface
+      - module: jobs-domain
+        via: published_interface
+      - module: jobs-ports
+        via: published_interface
+      - module: jobs-usecases
+        via: published_interface
+  jobs-db-postgres:
+    path: db_postgres
+    responsibility: backend/jobs/db_postgres の Flat Architecture adapter。
+    context: Jobs
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: jobs-domain
+        via: published_interface
+      - module: jobs-ports
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared

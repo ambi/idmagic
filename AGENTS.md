@@ -4,13 +4,15 @@
 
 - Status updates, explanations, questions, summaries, and final responses of AI coding agents must be Japanese.
 - The main `README.md` file must be written in English only.
+- `ARCHITECTURE.md` (root and per-context design records) must be written in English only.
 - Develop according to Regenerative Architecture.
   - Keep feature and behavior changes SCL-first: update `spec/scl.yaml` before implementation.
   - Treat RA/SCL meta-documents ([REGENERATIVE_ARCHITECTURE.md](file:///Users/tn/src/idmagic/REGENERATIVE_ARCHITECTURE.md), [SPECIFICATION_CORE_LANGUAGE.md](file:///Users/tn/src/idmagic/SPECIFICATION_CORE_LANGUAGE.md)) as section-addressable references, not required reading.
   - Use RA/SCL skills for work items, SCL changes, ADRs, rendering, implementation, and commits.
   - Expect the `ra` CLI to discover the standard repository layout without a registry file.
   - Regenerate derived artifacts after SCL changes.
-  - If bounded contexts, global directory structures, or core architecture rules are added or modified, synchronize the map and details in [ARCHITECTURE.md](file:///Users/tn/src/idmagic/ARCHITECTURE.md).
+  - If bounded contexts, global directory structures, or core architecture rules are added or modified, synchronize the design record ([ARCHITECTURE.md](file:///Users/tn/src/idmagic/ARCHITECTURE.md)) and the ledger beside it (`architecture.yaml`).
+  - Write design in `ARCHITECTURE.md`, not in an ADR. Open an ADR only when a real fork existed and a rejected option is on record (ADR-143).
 
 ## Commands via just
 

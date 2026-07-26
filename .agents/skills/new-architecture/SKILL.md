@@ -1,13 +1,23 @@
 ---
 name: new-architecture
-description: Create or synchronize an ARCHITECTURE.md — the second-layer current-state map (structured contexts and modules in frontmatter; stack, directory structure and dependency direction in prose). Use when core structure changes (a new bounded context, module, adopted technology, or directory convention), or when the user asks to draft/update the architecture map.
+description: Create or synchronize the second-layer Architecture — the prose design record (ARCHITECTURE.md, English) and the machine-checked ledger beside it (architecture.yaml). Use when core structure changes (a new bounded context, module, adopted technology, or directory convention), when design currently trapped in an ADR or README should be moved, or when the user asks to draft/update the architecture.
 ---
 
-# ARCHITECTURE.md（構成）の作成・同期
+# Architecture（設計）の作成・同期
 
-正本書式は `ARCHITECTURE_FORMAT.md`。**既存ファイルを開いて書式を逆算しない**。ARCHITECTURE は
-第2層の現状射影（`REGENERATIVE_ARCHITECTURE.md §3.2.1`）であり、ADR が決定の履歴を、これが現在の
-構成を持つ。**なぜ**は ADR、**何を一つの変更で**はワークアイテム、**いまどういう構成か**が本ファイル。
+正本書式は `ARCHITECTURE_FORMAT.md`。**既存ファイルを開いて書式を逆算しない**。Architecture は
+第2層の現状射影（`REGENERATIVE_ARCHITECTURE.md §3.2`）であり、ADR が決定の履歴を、これが現在の
+設計を持つ。**なぜ**の全文は ADR、**何を一つの変更で**はワークアイテム、**いまどういう設計か**が
+本ファイル。
+
+## 二つの成果物のどちらを触るか
+
+| 変更 | 更新先 |
+| --- | --- |
+| module の新設・移動・責務変更・依存の増減、実行単位、複雑度 budget/debt | `architecture.yaml`（台帳） |
+| 構造の説明、規約、横断方針、メカニズムの動作、その形にした理由 | `ARCHITECTURE.md`（設計正本） |
+
+台帳と散文を同じファイルに混ぜない（ADR-143）。
 
 ## いつ更新するか
 
@@ -17,25 +27,39 @@ description: Create or synchronize an ARCHITECTURE.md — the second-layer curre
 - モジュール／パッケージの新設・責務変更・実現する SCL 要素の増減
 - 採用スタックの変更
 - ディレクトリ・命名規約の変更
+- 主要フロー・プロトコルの動作、データモデル設計、横断方針の変更
+- ADR や README に設計本文が残っているのを見つけたとき（移送する）
 
 ## 手順
 
-1. **配置先を決める**（`ARCHITECTURE_FORMAT.md §1`）
-   - リポジトリ横断はルートの `ARCHITECTURE.md`（`context: repo`）。特定コンテキストはその配下
-     （例 `<app>/ARCHITECTURE.md`、`context: <app>`）。
-   - 追記型ログではないので版を分けたファイルを増やさない。1 コンテキスト 1 ファイルを更新し続ける。
-2. **Frontmatter（機械検証する構造）を現状に合わせる**（`§2`）
-   - 必須は `context` と `updated_at`。`contexts` と `modules` を実態に一致させる。frontmatter には
-     機械検証する構造だけを置き、採用技術・依存・ディレクトリ構造は本文へ回す（肥大させない）。
-   - `modules[].path` は実在するパス、`modules[].realizes` は実在する SCL 要素
-     （`interfaces.Xxx` / `models.Yyy` 等）を指す。
-3. **本文（叙述）を書く**（`§3`）— 先頭に H1 を 1 つ、各セクションは H2。`## Overview` /
-   `## Structure`（ディレクトリツリー＋依存の向き）/ `## Structural Decisions` は必須。構造判断は
-   根拠 ADR へリンクし、履歴は再説せず ADR を指す。`## Stack` / `## Cross-cutting Concerns` /
-   `## Diagrams` は任意。
-4. `updated_at` を更新する。
-5. **検証**: `just check`。スキーマ（Frontmatter）と横断整合検査（modules パス実在・realizes
-   の SCL 要素解決・contexts 整合）の両方を通す。落ちたら地図が現実と乖離しているので直す。
+1. **配置先を決める**（`ARCHITECTURE_FORMAT.md §1.1`）
+   - リポジトリ横断はワークスペースルート（`context: repo`）。特定コンテキストはその実装ディレクトリ
+     直下（例 `backend/jobs/`、`context: jobs`）。
+   - `architecture.yaml` は module を持つ全コンテキストに置く。`ARCHITECTURE.md` は SCL に載らない
+     設計が実在するコンテキストにだけ置く。空の文書を作らない。
+   - 追記型ログではないので版を分けたファイルを増やさない。1 コンテキスト 1 組を更新し続ける。
+2. **台帳を現状に合わせる**（`§2`）
+   - module は `path` を含む最も近い祖先の `architecture.yaml` が宣言する。`path` はその台帳からの
+     相対で、台帳のディレクトリ配下でなければならない。
+   - `contexts` / `runtime_units` / `complexity` は root の台帳だけが持つ。
+   - `modules[].realizes` は実在する SCL 要素を指す。
+3. **設計正本を書く**（`§3`）— **English で書く**。先頭に H1 を 1 つ、各セクションは H2。
+   - 横断（`context: repo`）は 9 セクション必須: Overview / Structure / Stack / Context Map /
+     Conventions / Cross-cutting Concerns / Runtime Composition / Structural Decisions /
+     Documentation Policy。
+   - コンテキスト単位は `## Overview` だけ必須。以降は話題別の H2 を自由に置く。
+   - **根拠をインラインで添える**（`§3.3`）: 設計記述には、その形になった理由を1〜2文書き、ADR へ
+     リンクする。**ADR 本文を転記しない**——複製は必ず drift する。
+4. 両ファイルの `updated_at` を更新する。
+5. **検証**: `just check`。台帳スキーマ・設計正本スキーマ・横断整合検査（module path 実在、
+   realizes の SCL 要素解決、contexts 整合、依存方向、実 import、複雑度 ratchet、ADR リンク実在）を
+   すべて通す。落ちたら地図が現実と乖離しているので直す。
+
+## 設計を書くのか ADR を書くのか
+
+設計を記述したいだけなら **ADR を起こさない**。ADR は実際に分岐があり、却下した選択肢が実在する
+ときだけ書く（`ADR_FORMAT.md`「ADR を書く条件」）。既存 ADR に設計本文が残っていたら、この Skill で
+設計正本へ移し、ADR にはポインタと「なぜ」だけを残す。
 
 ## スケルトン
 

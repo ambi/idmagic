@@ -29,7 +29,11 @@ RA の 7 層（`REGENERATIVE_ARCHITECTURE.md §3`）を内側から。**先に S
 
    `adoption: partial` にする場合は、実装した範囲と実装しなかった範囲を `reason` に具体的に書く（自由記述の interface description に埋もれさせない）。
 
-   コア構造（コンテキスト・モジュール・スタック・ディレクトリ規約）に触れたら、`new-architecture` Skill に従い該当 `ARCHITECTURE.md` を現状へ同期する（書式は `ARCHITECTURE_FORMAT.md`）。同期は努力目標ではなく検証ゲートであり、`just check` の Architecture 整合検査（modules パス実在・realizes の SCL 要素解決・contexts 整合）を通すこと。
+   **ADR は分岐があったときだけ**書く。設計を記述したいだけなら ADR を起こさず設計正本を更新する（ADR-143、`ADR_FORMAT.md`「ADR を書く条件」）。
+
+   コア構造（コンテキスト・モジュール・スタック・ディレクトリ規約）または context の設計に触れたら、`new-architecture` Skill に従い該当 `architecture.yaml`（台帳）と `ARCHITECTURE.md`（設計正本、English）を現状へ同期する（書式は `ARCHITECTURE_FORMAT.md`）。同期は努力目標ではなく検証ゲートであり、`just check` の Architecture 整合検査（台帳合成・modules パス実在・realizes の SCL 要素解決・contexts 整合・依存方向・実 import・複雑度 ratchet・ADR リンク実在）を通すこと。
+
+   **移送の完了ゲート（ADR-143）**: その context の設計に触れたなら、対象 ADR や README に設計本文が残っていないか確認する。残っていれば設計正本へ移し、ADR にはポインタと「なぜ」だけを、README には手順だけを残す。ADR ファイルは削除しない。139 本を一括で棚卸しはせず、触れた context の分だけ片付ける。
 3. **Domain** — ドメインモデルや状態定義。SCL から機械的に導出されて特定の言語に変換した層。**test-first 必須層**。
 4. **Use Cases** — ユースケース実装。**test-first 必須層**。
 5. **Adapters** — HTTP / 永続化などの境界実装。**test-first 必須層**。

@@ -114,3 +114,9 @@ goroutine として API プロセス内で起動されている。
 - `deploy/docker/Dockerfile` に `idmagic-worker` バイナリの build を追加し、
   `deploy/docker/docker-compose.dev.yaml` に `event-relay` と同型の
   `worker` サービスを追加する。
+
+## 現行の設計
+
+この決定が形づくった durable job 実行基盤の現在の設計は
+[`backend/jobs/ARCHITECTURE.md`](../backend/jobs/ARCHITECTURE.md) が正本である（ADR-143 で移送）。
+本 ADR が保つのは、そこから再導出できない却下案と当時の前提だけである。

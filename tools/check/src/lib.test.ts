@@ -122,7 +122,14 @@ describe('locatePointer', () => {
 describe('SCHEMAS', () => {
   it('exposes exactly the documented schemas', () => {
     expect(Object.keys(SCHEMAS).sort()).toEqual(
-      ['architecture', 'scl', 'work-item', 'verification-manifest', 'verification-evidence'].sort(),
+      [
+        'architecture-map',
+        'architecture-doc',
+        'scl',
+        'work-item',
+        'verification-manifest',
+        'verification-evidence',
+      ].sort(),
     )
   })
 })

@@ -20,7 +20,8 @@ SCL は次の性質を持つ。
 - bounded context ごとに局所化でき、context map で公開言語と依存だけを接続する。
 - 規則をそれを所有・実現する model、interface、state、authorization 等へ置く。
 
-SCL は構成や技術選択を所有しない。それらは ADR または `ARCHITECTURE.md` に置く。
+SCL は構成や技術選択を所有しない。**いまどうなっているかは `ARCHITECTURE.md`（散文の設計正本）と
+`architecture.yaml`（機械検証される台帳）、なぜそう決めたかは ADR** に置く（ADR-143）。
 
 ## 2 文書構造
 

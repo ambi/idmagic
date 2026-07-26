@@ -111,3 +111,9 @@ context ルート共有）。`just build-go` / `just test-go` / `just verify-go`
 - `ARCHITECTURE.md` の `## Go Package Conventions` と `modules[].path`（idmanagement 分）を
   feature 粒度へ更新する（wi-254 T005, `new-architecture` skill）。
 - ADR-089/090/091（context-locality 系）と RA §3.8 を前提とする。
+
+## 現行の設計
+
+この決定が形づくった package 配置と feature 垂直スライスの現在の規約は
+[`ARCHITECTURE.md`](../ARCHITECTURE.md) の `## Conventions` が正本である（ADR-143 で移送）。
+本 ADR が保つのは、そこから再導出できない却下案と当時の前提だけである。

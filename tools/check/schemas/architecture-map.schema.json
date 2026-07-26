@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://regenerative-architecture/schemas/architecture.json",
-  "title": "Architecture",
-  "description": "ARCHITECTURE_FORMAT.md を正本とする Architecture（構成）のスキーマ（同文書からの派生物）。ARCHITECTURE.md の Frontmatter（構造）と本文（叙述）を検証する。",
+  "$id": "https://regenerative-architecture/schemas/architecture-map.json",
+  "title": "Architecture map",
+  "description": "ARCHITECTURE_FORMAT.md を正本とする Architecture 台帳（architecture.yaml）のスキーマ（同文書からの派生物）。機械検証できる構造だけを持ち、読み物としての設計は ARCHITECTURE.md が持つ（ADR-143）。",
   "type": "object",
   "additionalProperties": false,
-  "required": ["context", "updated_at", "overview", "structure", "structural_decisions"],
+  "required": ["context", "updated_at"],
   "properties": {
     "context": {
-      "description": "このマップが記述するコンテキスト接頭辞。横断はルートで repo。実際の ADR・ワークアイテム配置および SCL の context map と一致する。",
+      "description": "この台帳が記述するコンテキスト接頭辞。横断はルートで repo。実際の ADR・ワークアイテム配置および SCL の context map と一致する。",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },
@@ -17,52 +17,23 @@
       "oneOf": [{ "type": "string", "format": "date" }, { "type": "string", "format": "date-time" }]
     },
     "contexts": {
-      "description": "境界づけられたコンテキストの台帳。接頭辞 → オブジェクト。",
+      "description": "境界づけられたコンテキストの台帳。接頭辞 → オブジェクト。root の台帳だけが持つ。",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/Context" }
     },
     "modules": {
-      "description": "モジュール／パッケージ台帳。id → オブジェクト。",
+      "description": "モジュール／パッケージ台帳。id → オブジェクト。path はこの台帳の位置からの相対パスで、この台帳のディレクトリ配下になければならない。",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/Module" }
     },
     "runtime_units": {
-      "description": "実行単位の台帳。id → オブジェクト。",
+      "description": "実行単位の台帳。id → オブジェクト。root の台帳だけが持つ。",
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/RuntimeUnit" }
     },
     "complexity": {
+      "description": "複雑度 budget と期限付き debt。root の台帳だけが持つ。",
       "$ref": "#/$defs/Complexity"
-    },
-    "overview": {
-      "description": "本文 ## Overview。構成の全体像。",
-      "type": "string",
-      "minLength": 1
-    },
-    "structure": {
-      "description": "本文 ## Structure。ディレクトリ構造と依存の向き。",
-      "type": "string",
-      "minLength": 1
-    },
-    "stack": {
-      "description": "本文 ## Stack。採用技術。",
-      "type": "string",
-      "minLength": 1
-    },
-    "structural_decisions": {
-      "description": "本文 ## Structural Decisions。主要な構造判断と根拠 ADR。",
-      "type": "string",
-      "minLength": 1
-    },
-    "cross_cutting_concerns": {
-      "description": "本文 ## Cross-cutting Concerns。層をまたぐ方針。",
-      "type": "string",
-      "minLength": 1
-    },
-    "diagrams": {
-      "description": "本文 ## Diagrams。コンテキスト図・依存図。",
-      "type": "string",
-      "minLength": 1
     }
   },
   "$defs": {
@@ -72,7 +43,7 @@
       "additionalProperties": false,
       "properties": {
         "path": {
-          "description": "モジュールの実体があるディレクトリ／ファイル。ARCHITECTURE.md の位置からの相対パス。横断検査で実在を確認する。",
+          "description": "モジュールの実体があるディレクトリ／ファイル。architecture.yaml の位置からの相対パス。横断検査で実在と、宣言元ディレクトリ配下であることを確認する。",
           "type": "string",
           "minLength": 1
         },
@@ -119,7 +90,7 @@
       "additionalProperties": false,
       "properties": {
         "spec": {
-          "description": "そのコンテキストを定義する SCL YAML の Architecture からの相対パス。",
+          "description": "そのコンテキストを定義する SCL YAML の root 台帳からの相対パス。",
           "type": "string",
           "minLength": 1
         },
@@ -145,7 +116,7 @@
       "additionalProperties": false,
       "properties": {
         "module": {
-          "description": "依存先 module id。",
+          "description": "依存先 module id。台帳をまたいで解決する。",
           "type": "string",
           "minLength": 1
         },

@@ -15,6 +15,13 @@ import {
   collectArchitectureWorkspace,
   evaluateArchitectureWorkspace,
 } from './architecture-workspace.ts'
+import {
+  type ArchitectureLedgerFile,
+  ledgerDirectory,
+  mergeArchitectureLedgers,
+} from './architecture-ledger.ts'
+
+type Dict = Record<string, unknown>
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
@@ -210,6 +217,11 @@ for (const app of config.apps) {
 for (const app of config.apps) {
   if (app.decisions) checkIdsArgs.push('--decisions', rootPath(app.decisions))
 }
+// Design records and work items cite ADRs by path; verify those paths resolve.
+// Work-item files come from the --work-items directories already passed above.
+checkIdsArgs.push('--root', rootPath('.'))
+const architectureDocPaths = (config.architectureDocs ?? []).map((doc) => rootPath(doc))
+if (architectureDocPaths.length > 0) checkIdsArgs.push('--links', ...architectureDocPaths)
 if (runIds && checkIdsArgs.length > 1) await runTool(checkIdsArgs)
 
 // Architecture maps: schema-validate the frontmatter, then cross-check that the
@@ -243,12 +255,22 @@ async function collectExpectedArchitectureContexts(): Promise<Map<string, string
 }
 
 const architectureDocs = config.architectureDocs ?? []
-if (runArchitecture && architectureDocs.length > 0) {
-  await runTool([
-    'check/src/main.ts',
-    '--schema=architecture',
-    ...architectureDocs.map((doc) => rootPath(doc)),
-  ])
+const architectureLedgers = config.architectureLedgers ?? []
+if (runArchitecture && (architectureDocs.length > 0 || architectureLedgers.length > 0)) {
+  if (architectureLedgers.length > 0) {
+    await runTool([
+      'check/src/main.ts',
+      '--schema=architecture-map',
+      ...architectureLedgers.map((ledger) => rootPath(ledger)),
+    ])
+  }
+  if (architectureDocs.length > 0) {
+    await runTool([
+      'check/src/main.ts',
+      '--schema=architecture-doc',
+      ...architectureDocs.map((doc) => rootPath(doc)),
+    ])
+  }
 
   const { index: sclIndex, errors: sclIndexErrors } = await loadWorkspaceSclIndex(config)
   if (sclIndexErrors.length > 0) {
@@ -257,36 +279,73 @@ if (runArchitecture && architectureDocs.length > 0) {
     }
     process.exit(1)
   }
+
+  // Ledgers merge into one workspace-rooted map so the cross-checks below see a
+  // single module graph regardless of how many files declare it (ADR-143).
+  const ledgerFiles: ArchitectureLedgerFile[] = []
+  for (const rel of architectureLedgers) {
+    ledgerFiles.push({
+      path: rel,
+      doc: Bun.YAML.parse(await readFile(rootPath(rel), 'utf8')),
+    })
+  }
+  const { doc: architectureMap, findings: ledgerFindings } = mergeArchitectureLedgers(ledgerFiles)
+
   const expectedContexts = await collectExpectedArchitectureContexts()
   const architectureWorkspace = await collectArchitectureWorkspace(rootPath('.'))
+  const { errors: mapErrors } = verifyArchitecture(architectureMap, {
+    archDir: rootPath('.'),
+    workspaceRoot: rootPath('.'),
+    sclIndex,
+    expectedContexts,
+    pathExists: existsSync,
+    join,
+  })
+  const workspaceFindings = evaluateArchitectureWorkspace(architectureMap, architectureWorkspace)
+
   let archFailed = 0
+  if (ledgerFindings.length > 0 || mapErrors.length > 0 || workspaceFindings.length > 0) {
+    archFailed++
+    console.log('FAIL architecture map')
+    for (const finding of ledgerFindings) console.log(`${finding.path}:1:1: ${finding.message}`)
+    for (const e of mapErrors) console.log(`architecture.yaml:${e.line}:${e.column}: ${e.message}`)
+    for (const finding of workspaceFindings) {
+      console.log(`architecture.yaml:1:1: ${finding.message} (${finding.path})`)
+    }
+  } else {
+    const moduleCount = Object.keys(architectureMap.modules ?? {}).length
+    console.log(
+      `ok  ${architectureLedgers.length} architecture ledger(s), ${moduleCount} module(s) (cross-check)`,
+    )
+  }
+
+  // A design record and the ledger beside it describe the same boundary, so
+  // their context prefixes must agree (ARCHITECTURE_FORMAT.md §1).
+  const ledgerContextByDir = new Map<string, unknown>()
+  for (const ledger of ledgerFiles) {
+    ledgerContextByDir.set(ledgerDirectory(ledger.path), (ledger.doc as Dict | null)?.context)
+  }
   for (const rel of architectureDocs) {
-    const abs = rootPath(rel)
-    const text = await readFile(abs, 'utf8')
-    const data = parseArchitectureDoc(text)
-    const { errors } = verifyArchitecture(data, {
-      text,
-      archDir: dirname(abs),
-      workspaceRoot: rootPath('.'),
-      sclIndex,
-      expectedContexts,
-      pathExists: existsSync,
-      join,
-    })
-    const workspaceFindings = evaluateArchitectureWorkspace(data, architectureWorkspace)
-    if (errors.length === 0 && workspaceFindings.length === 0) {
-      console.log(`ok  ${rel} (architecture cross-check)`)
+    const dir = ledgerDirectory(rel)
+    const data = parseArchitectureDoc(await readFile(rootPath(rel), 'utf8'))
+    if (!ledgerContextByDir.has(dir)) {
+      archFailed++
+      console.log(`${rel}:1:1: architecture: no architecture.yaml beside this design record`)
       continue
     }
-    archFailed++
-    console.log(`FAIL ${rel}`)
-    for (const e of errors) console.log(`${rel}:${e.line}:${e.column}: ${e.message}`)
-    for (const finding of workspaceFindings) {
-      console.log(`${rel}:1:1: ${finding.message} (${finding.path})`)
+    const ledgerContext = ledgerContextByDir.get(dir)
+    if (data.context !== ledgerContext) {
+      archFailed++
+      console.log(
+        `${rel}:1:1: architecture: context '${String(data.context)}' does not match '${String(ledgerContext)}' in ${dir === '.' ? 'architecture.yaml' : `${dir}/architecture.yaml`}`,
+      )
+      continue
     }
+    console.log(`ok  ${rel} (design record)`)
   }
+
   if (archFailed > 0) {
-    console.error(`\n${archFailed} architecture doc(s) failed cross-check.`)
+    console.error('\narchitecture cross-check failed.')
     process.exit(1)
   }
 }

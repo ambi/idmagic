@@ -1,0 +1,168 @@
+# backend/saml — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: saml
+updated_at: 2026-07-26
+modules:
+  saml-domain:
+    path: domain
+    responsibility: Saml のドメインモデルと純粋な規則。
+    context: Saml
+    layer: domain
+    role: published_interface
+    depends_on:
+      - module: claimmapping-domain
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+  saml-ports:
+    path: ports
+    responsibility: Saml の公開 port と外界への抽象。
+    context: Saml
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: saml-domain
+        via: published_interface
+  saml-usecases:
+    path: usecases
+    responsibility: Saml のユースケース。
+    context: Saml
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: claimmapping-usecases
+        via: published_interface
+      - module: application-domain
+        via: published_interface
+      - module: authentication-domain
+        via: published_interface
+      - module: idmanagement-user-ports
+        via: published_interface
+      - module: saml-domain
+        via: published_interface
+      - module: saml-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+      - module: wsfederation-domain
+        via: published_interface
+  saml-adapters:
+    path: handlers_http
+    responsibility: Saml の HTTP・永続化 adapter。
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: saml-metadata-saml
+        via: binding
+      - module: saml-responses-saml
+        via: binding
+      - module: wsfederation-tokens-saml
+        via: binding
+      - module: application-domain
+        via: binding
+      - module: authentication-domain
+        via: binding
+      - module: authentication-session-usecases
+        via: binding
+      - module: authentication-usecases
+        via: binding
+      - module: claimmapping-domain
+        via: published_interface
+      - module: claimmapping-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: idmanagement-user-ports
+        via: binding
+      - module: saml-domain
+        via: published_interface
+      - module: saml-ports
+        via: published_interface
+      - module: saml-usecases
+        via: published_interface
+      - module: shared-adapters
+        via: binding
+      - module: shared-kernel
+        via: binding
+      - module: shared-spec
+        via: binding
+      - module: wsfederation-adapters
+        via: binding
+      - module: wsfederation-domain
+        via: binding
+  saml-public:
+    path: "."
+    responsibility: Saml root package の公開 facade。
+    context: Saml
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: saml-domain
+        via: published_interface
+  saml-composition:
+    path: module.go
+    responsibility: Saml の adapter と port を束ねる composition module。
+    context: Saml
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: wsfederation-tokens-saml
+        via: composition_root
+      - module: http-support
+        via: composition_root
+      - module: idmanagement-user-ports
+        via: composition_root
+      - module: saml-adapters
+        via: published_interface
+      - module: saml-domain
+        via: published_interface
+      - module: saml-ports
+        via: published_interface
+      - module: saml-usecases
+        via: published_interface
+      - module: wsfederation-adapters
+        via: composition_root
+  saml-db-memory:
+    path: db_memory
+    responsibility: backend/saml/db_memory の Flat Architecture adapter。
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: saml-domain
+        via: published_interface
+      - module: shared-storage-db-memory
+        via: technical_shared
+  saml-db-postgres:
+    path: db_postgres
+    responsibility: backend/saml/db_postgres の Flat Architecture adapter。
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: saml-domain
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+  saml-metadata-saml:
+    path: metadata_saml
+    responsibility: backend/saml/metadata_saml の Flat Architecture adapter。
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: saml-domain
+        via: published_interface
+  saml-responses-saml:
+    path: responses_saml
+    responsibility: backend/saml/responses_saml の Flat Architecture adapter。
+    context: Saml
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: http-support
+        via: technical_shared
+      - module: wsfederation-tokens-saml
+        via: binding

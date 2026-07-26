@@ -1,7 +1,8 @@
 ---
-status: suggested
+status: accepted
 authors: [tn]
 created_at: 2026-07-05
+supersedes: [ADR-034, ADR-082]  # composite-FK / tenant_id 伝播の条項のみ
 ---
 
 # ADR-083: Globally Unique client_id の強制とスキーマの単純化
@@ -47,3 +48,10 @@ created_at: 2026-07-05
   - 各種ユースケースやハンドラー of /api/admin/clients などの引数・ロジックの簡素化。
 - **UI**:
   - クライアント作成画面から `client_id` 入力フィールドを削除し、「作成時に自動的に ID が割り当てられる」仕様に変更する。
+
+## 現行の正本
+
+本 ADR が定めた tenant_id 保持の分類は、[`ARCHITECTURE.md`](../ARCHITECTURE.md) の
+`## Cross-cutting Concerns` > データベース設計ポリシー が現行の正本である（ADR-143 で移送）。
+ADR-082 §4 と ADR-034 の composite FK 条項は本 ADR が置き換えたが、それぞれの残りの決定は有効なので
+両者の `status` は `accepted` のまま `superseded_by` だけを張っている。
