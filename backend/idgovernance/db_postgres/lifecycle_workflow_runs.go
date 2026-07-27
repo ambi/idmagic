@@ -49,13 +49,27 @@ func saveWorkflowRun(ctx context.Context, tx pgx.Tx, run *igdomain.WorkflowRun, 
 	if err != nil {
 		return false, err
 	}
-	row := tx.QueryRow(ctx, `INSERT INTO lifecycle_workflow_runs (id,tenant_id,workflow_id,revision,source_occurrence_id,target_user_id,trigger_kind,changed_fields,actions,status,triggered_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (tenant_id,workflow_id,revision,source_occurrence_id,target_user_id) DO NOTHING RETURNING id`, run.ID, run.TenantID, run.WorkflowID, run.Revision, run.SourceOccurrenceID, run.TargetUserID, run.TriggerKind, changed, actions, run.Status, run.TriggeredAt)
-	var id string
-	if err := row.Scan(&id); errors.Is(err, pgx.ErrNoRows) {
+
+	q := New(tx)
+	_, err = q.InsertLifecycleWorkflowRun(ctx, InsertLifecycleWorkflowRunParams{
+		ID:                 run.ID,
+		TenantID:           run.TenantID,
+		WorkflowID:         run.WorkflowID,
+		Revision:           run.Revision,
+		SourceOccurrenceID: run.SourceOccurrenceID,
+		TargetUserID:       run.TargetUserID,
+		TriggerKind:        string(run.TriggerKind),
+		ChangedFields:      changed,
+		Actions:            actions,
+		Status:             string(run.Status),
+		TriggeredAt:        run.TriggeredAt,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	} else if err != nil {
 		return false, err
 	}
+
 	for _, step := range steps {
 		if err := step.Validate(); err != nil {
 			return false, err
@@ -64,7 +78,12 @@ func saveWorkflowRun(ctx context.Context, tx pgx.Tx, run *igdomain.WorkflowRun, 
 		if marshalErr != nil {
 			return false, marshalErr
 		}
-		_, err = tx.Exec(ctx, `INSERT INTO lifecycle_workflow_steps (run_id,step_index,action,outcome) VALUES ($1,$2,$3,$4)`, run.ID, step.Index, action, step.Outcome)
+		err = q.InsertLifecycleWorkflowStep(ctx, InsertLifecycleWorkflowStepParams{
+			RunID:     run.ID,
+			StepIndex: int32(step.Index), //nolint:gosec // safe downcast
+			Action:    action,
+			Outcome:   string(step.Outcome),
+		})
 		if err != nil {
 			return false, err
 		}
@@ -72,33 +91,38 @@ func saveWorkflowRun(ctx context.Context, tx pgx.Tx, run *igdomain.WorkflowRun, 
 	return true, nil
 }
 
-func scanWorkflowRun(row sharedpg.RowScanner) (*igdomain.WorkflowRun, error) {
-	run := &igdomain.WorkflowRun{}
-	var changed, actions []byte
-	var job pgtype.Text
-	err := row.Scan(&run.ID, &run.TenantID, &run.WorkflowID, &run.Revision, &run.SourceOccurrenceID, &run.TargetUserID, &run.TriggerKind, &changed, &actions, &run.Status, &job, &run.TriggeredAt)
-	if err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(changed, &run.ChangedFields); err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(actions, &run.Actions); err != nil {
-		return nil, err
-	}
-	if job.Valid {
-		v := job.String
-		run.JobID = &v
-	}
-	return run, run.Validate()
-}
-
 func (r *LifecycleWorkflowRunRepository) FindRun(ctx context.Context, tenantID, runID string) (*igdomain.WorkflowRun, error) {
-	run, err := scanWorkflowRun(r.Pool.QueryRow(ctx, `SELECT id,tenant_id,workflow_id,revision,source_occurrence_id,target_user_id,trigger_kind,changed_fields,actions,status,job_id,triggered_at FROM lifecycle_workflow_runs WHERE tenant_id=$1 AND id=$2`, tenantID, runID))
+	row, err := New(r.Pool).FindLifecycleWorkflowRun(ctx, FindLifecycleWorkflowRunParams{
+		TenantID: tenantID,
+		ID:       runID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
-	return run, err
+	run := &igdomain.WorkflowRun{
+		ID:                 row.ID,
+		TenantID:           row.TenantID,
+		WorkflowID:         row.WorkflowID,
+		Revision:           row.Revision,
+		SourceOccurrenceID: row.SourceOccurrenceID,
+		TargetUserID:       row.TargetUserID,
+		TriggerKind:        igdomain.WorkflowTriggerKind(row.TriggerKind),
+		Status:             igdomain.WorkflowRunStatus(row.Status),
+		TriggeredAt:        row.TriggeredAt,
+	}
+	if err := json.Unmarshal(row.ChangedFields, &run.ChangedFields); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(row.Actions, &run.Actions); err != nil {
+		return nil, err
+	}
+	if row.JobID.Valid {
+		value := row.JobID.String()
+		run.JobID = &value
+	}
+	return run, run.Validate()
 }
 
 func (r *LifecycleWorkflowRunRepository) ListRuns(ctx context.Context, tenantID, workflowID string, limit int) ([]*igdomain.WorkflowRun, error) {
@@ -157,65 +181,109 @@ func (r *LifecycleWorkflowRunRepository) CancelQueuedByWorkflow(ctx context.Cont
 }
 
 func (r *LifecycleWorkflowRunRepository) ListUnenqueuedRuns(ctx context.Context, limit int) ([]*igdomain.WorkflowRun, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT id,tenant_id,workflow_id,revision,source_occurrence_id,target_user_id,trigger_kind,changed_fields,actions,status,job_id,triggered_at FROM lifecycle_workflow_runs WHERE status='queued' AND job_id IS NULL ORDER BY triggered_at LIMIT $1`, limit)
+	rows, err := New(r.Pool).ListUnenqueuedLifecycleWorkflowRuns(ctx, int32(limit)) //nolint:gosec // safe downcast
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*igdomain.WorkflowRun{}
-	for rows.Next() {
-		run, scanErr := scanWorkflowRun(rows)
-		if scanErr != nil {
-			return nil, scanErr
+	out := make([]*igdomain.WorkflowRun, 0, len(rows))
+	for _, row := range rows {
+		run := &igdomain.WorkflowRun{
+			ID:                 row.ID,
+			TenantID:           row.TenantID,
+			WorkflowID:         row.WorkflowID,
+			Revision:           row.Revision,
+			SourceOccurrenceID: row.SourceOccurrenceID,
+			TargetUserID:       row.TargetUserID,
+			TriggerKind:        igdomain.WorkflowTriggerKind(row.TriggerKind),
+			Status:             igdomain.WorkflowRunStatus(row.Status),
+			TriggeredAt:        row.TriggeredAt,
+		}
+		if err := json.Unmarshal(row.ChangedFields, &run.ChangedFields); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(row.Actions, &run.Actions); err != nil {
+			return nil, err
+		}
+		if row.JobID.Valid {
+			value := row.JobID.String()
+			run.JobID = &value
+		}
+		if err := run.Validate(); err != nil {
+			return nil, err
 		}
 		out = append(out, run)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *LifecycleWorkflowRunRepository) AttachJob(ctx context.Context, tenantID, runID, jobID string) (bool, error) {
-	tag, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_runs SET job_id=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2 AND status='queued' AND job_id IS NULL`, tenantID, runID, jobID)
-	return tag.RowsAffected() == 1, err
+	var parsedJobID pgtype.UUID
+	if err := parsedJobID.Scan(jobID); err != nil {
+		return false, err
+	}
+	affected, err := New(r.Pool).AttachLifecycleWorkflowRunJob(ctx, AttachLifecycleWorkflowRunJobParams{
+		TenantID: tenantID,
+		ID:       runID,
+		JobID:    parsedJobID,
+	})
+	return affected == 1, err
 }
 
 func (r *LifecycleWorkflowRunRepository) ListSteps(ctx context.Context, tenantID, runID string) ([]igdomain.WorkflowStep, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT s.step_index,s.action,s.outcome,COALESCE(s.error_code,''),s.completed_at FROM lifecycle_workflow_steps s JOIN lifecycle_workflow_runs r ON r.id=s.run_id WHERE r.tenant_id=$1 AND s.run_id=$2 ORDER BY s.step_index`, tenantID, runID)
+	rows, err := New(r.Pool).ListLifecycleWorkflowSteps(ctx, ListLifecycleWorkflowStepsParams{
+		TenantID: tenantID,
+		RunID:    runID,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []igdomain.WorkflowStep{}
-	for rows.Next() {
-		var step igdomain.WorkflowStep
-		var action []byte
-		var completed pgtype.Timestamptz
-		step.RunID = runID
-		if err := rows.Scan(&step.Index, &action, &step.Outcome, &step.ErrorCode, &completed); err != nil {
+	out := make([]igdomain.WorkflowStep, 0, len(rows))
+	for _, row := range rows {
+		step := igdomain.WorkflowStep{
+			RunID:     runID,
+			Index:     int(row.StepIndex),
+			Outcome:   igdomain.WorkflowStepOutcome(row.Outcome),
+			ErrorCode: row.ErrorCode,
+		}
+		if err := json.Unmarshal(row.Action, &step.Action); err != nil {
 			return nil, err
 		}
-		if err := json.Unmarshal(action, &step.Action); err != nil {
-			return nil, err
-		}
-		if completed.Valid {
-			v := completed.Time
+		if row.CompletedAt.Valid {
+			v := row.CompletedAt.Time
 			step.CompletedAt = &v
 		}
 		out = append(out, step)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *LifecycleWorkflowRunRepository) StartRun(ctx context.Context, tenantID, runID string, _ time.Time) (bool, error) {
-	tag, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_runs candidate SET status='running',updated_at=now() WHERE candidate.tenant_id=$1 AND candidate.id=$2 AND candidate.status='queued' AND NOT EXISTS (SELECT 1 FROM lifecycle_workflow_runs prior WHERE prior.tenant_id=candidate.tenant_id AND prior.target_user_id=candidate.target_user_id AND prior.id<>candidate.id AND prior.status IN ('queued','running') AND prior.triggered_at<candidate.triggered_at)`, tenantID, runID)
-	return tag.RowsAffected() == 1, err
+	affected, err := New(r.Pool).StartLifecycleWorkflowRun(ctx, StartLifecycleWorkflowRunParams{
+		TenantID: tenantID,
+		ID:       runID,
+	})
+	return affected == 1, err
 }
 
 func (r *LifecycleWorkflowRunRepository) CheckpointStep(ctx context.Context, tenantID, runID string, step igdomain.WorkflowStep) error {
-	_, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_steps SET outcome=$3,error_code=NULLIF($4,''),completed_at=$5 WHERE run_id=$1 AND step_index=$2 AND EXISTS (SELECT 1 FROM lifecycle_workflow_runs WHERE id=$1 AND tenant_id=$6)`, runID, step.Index, step.Outcome, step.ErrorCode, step.CompletedAt, tenantID)
-	return err
+	completedAt := pgtype.Timestamptz{}
+	if step.CompletedAt != nil {
+		completedAt = pgtype.Timestamptz{Time: *step.CompletedAt, Valid: true}
+	}
+	return New(r.Pool).CheckpointLifecycleWorkflowStep(ctx, CheckpointLifecycleWorkflowStepParams{
+		RunID:       runID,
+		StepIndex:   int32(step.Index), //nolint:gosec // safe downcast
+		Outcome:     string(step.Outcome),
+		Column4:     step.ErrorCode,
+		CompletedAt: completedAt,
+		TenantID:    tenantID,
+	})
 }
 
 func (r *LifecycleWorkflowRunRepository) CompleteRun(ctx context.Context, tenantID, runID string, status igdomain.WorkflowRunStatus, _ time.Time) error {
-	_, err := r.Pool.Exec(ctx, `UPDATE lifecycle_workflow_runs SET status=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2`, tenantID, runID, status)
-	return err
+	return New(r.Pool).CompleteLifecycleWorkflowRun(ctx, CompleteLifecycleWorkflowRunParams{
+		TenantID: tenantID,
+		ID:       runID,
+		Status:   string(status),
+	})
 }

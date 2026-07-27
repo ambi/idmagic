@@ -306,6 +306,8 @@ scanner, and transaction helpers go in `backend/shared/storage/db_postgres` (ADR
 Ephemeral state is consolidated into PostgreSQL as well, so no second class of datastore is operated
 ([ADR-139](decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)).
 
+All static SQL statements in `db_postgres` must use `sqlc` to generate type-safe queries. Raw `Pool.Query`/`Pool.Exec` with strings are only permitted for highly dynamic queries where `sqlc` provides no benefit, serving as an escape hatch rather than the default (ADR-090).
+
 To add structure to PostgreSQL, first update the current-state schema in `infra/schema/postgres.sql`.
 Structural diffs are inspected with a `psqldef` dry-run and applied by a pre-deploy job (the procedure is
 in `infra/schema/README.md`). Changes a structural diff cannot express — backfills, value conversions,

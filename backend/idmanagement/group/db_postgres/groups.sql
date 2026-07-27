@@ -41,3 +41,12 @@ ON CONFLICT (group_id,user_id) DO NOTHING;
 DELETE FROM group_members
 WHERE group_id=$2 AND user_id=$3
   AND group_id IN (SELECT id FROM groups WHERE tenant_id=$1 AND id=$2);
+
+-- name: FindDynamicGroupRule :one
+SELECT group_id,tenant_id,expression,enabled,version,referenced_attributes,created_at,updated_at FROM dynamic_group_rules WHERE tenant_id=$1 AND group_id=$2;
+
+-- name: ListDynamicGroupRules :many
+SELECT group_id FROM dynamic_group_rules WHERE tenant_id=$1 ORDER BY group_id;
+
+-- name: SaveDynamicGroupRule :exec
+INSERT INTO dynamic_group_rules (group_id,tenant_id,expression,enabled,version,referenced_attributes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (group_id) DO UPDATE SET expression=EXCLUDED.expression,enabled=EXCLUDED.enabled,version=EXCLUDED.version,referenced_attributes=EXCLUDED.referenced_attributes,updated_at=EXCLUDED.updated_at;

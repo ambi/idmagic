@@ -12,11 +12,14 @@ type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (int64, error)
 	CountGroupMembers(ctx context.Context, arg CountGroupMembersParams) (int64, error)
 	DeleteGroup(ctx context.Context, arg DeleteGroupParams) error
+	FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroupRuleParams) (*DynamicGroupRule, error)
 	FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*Group, error)
+	ListDynamicGroupRules(ctx context.Context, tenantID string) ([]string, error)
 	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error)
 	ListGroupsByTenant(ctx context.Context, tenantID string) ([]*Group, error)
 	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*Group, error)
 	RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberParams) (int64, error)
+	SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroupRuleParams) error
 	SaveGroup(ctx context.Context, arg SaveGroupParams) error
 }
 

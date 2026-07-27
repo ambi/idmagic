@@ -12,6 +12,24 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const attachLifecycleWorkflowRunJob = `-- name: AttachLifecycleWorkflowRunJob :execrows
+UPDATE lifecycle_workflow_runs SET job_id=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2 AND status='queued' AND job_id IS NULL
+`
+
+type AttachLifecycleWorkflowRunJobParams struct {
+	TenantID string
+	ID       string
+	JobID    pgtype.UUID
+}
+
+func (q *Queries) AttachLifecycleWorkflowRunJob(ctx context.Context, arg AttachLifecycleWorkflowRunJobParams) (int64, error) {
+	result, err := q.db.Exec(ctx, attachLifecycleWorkflowRunJob, arg.TenantID, arg.ID, arg.JobID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const cancelQueuedLifecycleWorkflowRuns = `-- name: CancelQueuedLifecycleWorkflowRuns :many
 UPDATE lifecycle_workflow_runs SET status='canceled',updated_at=now() WHERE tenant_id=$1 AND workflow_id=$2 AND status='queued' RETURNING id,target_user_id
 `
@@ -44,6 +62,46 @@ func (q *Queries) CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg Can
 		return nil, err
 	}
 	return items, nil
+}
+
+const checkpointLifecycleWorkflowStep = `-- name: CheckpointLifecycleWorkflowStep :exec
+UPDATE lifecycle_workflow_steps SET outcome=$3,error_code=NULLIF($4::text,''),completed_at=$5 WHERE run_id=$1 AND step_index=$2 AND EXISTS (SELECT 1 FROM lifecycle_workflow_runs WHERE id=$1 AND tenant_id=$6)
+`
+
+type CheckpointLifecycleWorkflowStepParams struct {
+	RunID       string
+	StepIndex   int32
+	Outcome     string
+	Column4     string
+	CompletedAt pgtype.Timestamptz
+	TenantID    string
+}
+
+func (q *Queries) CheckpointLifecycleWorkflowStep(ctx context.Context, arg CheckpointLifecycleWorkflowStepParams) error {
+	_, err := q.db.Exec(ctx, checkpointLifecycleWorkflowStep,
+		arg.RunID,
+		arg.StepIndex,
+		arg.Outcome,
+		arg.Column4,
+		arg.CompletedAt,
+		arg.TenantID,
+	)
+	return err
+}
+
+const completeLifecycleWorkflowRun = `-- name: CompleteLifecycleWorkflowRun :exec
+UPDATE lifecycle_workflow_runs SET status=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2
+`
+
+type CompleteLifecycleWorkflowRunParams struct {
+	TenantID string
+	ID       string
+	Status   string
+}
+
+func (q *Queries) CompleteLifecycleWorkflowRun(ctx context.Context, arg CompleteLifecycleWorkflowRunParams) error {
+	_, err := q.db.Exec(ctx, completeLifecycleWorkflowRun, arg.TenantID, arg.ID, arg.Status)
+	return err
 }
 
 const findLifecycleWorkflow = `-- name: FindLifecycleWorkflow :one
@@ -94,6 +152,108 @@ func (q *Queries) FindLifecycleWorkflowRevision(ctx context.Context, arg FindLif
 		&i.CreatedAt,
 	)
 	return &i, err
+}
+
+const findLifecycleWorkflowRun = `-- name: FindLifecycleWorkflowRun :one
+SELECT id,tenant_id,workflow_id,revision,source_occurrence_id,target_user_id,trigger_kind,changed_fields,actions,status,job_id,triggered_at FROM lifecycle_workflow_runs WHERE tenant_id=$1 AND id=$2
+`
+
+type FindLifecycleWorkflowRunParams struct {
+	TenantID string
+	ID       string
+}
+
+type FindLifecycleWorkflowRunRow struct {
+	ID                 string
+	TenantID           string
+	WorkflowID         string
+	Revision           int64
+	SourceOccurrenceID string
+	TargetUserID       string
+	TriggerKind        string
+	ChangedFields      []byte
+	Actions            []byte
+	Status             string
+	JobID              pgtype.UUID
+	TriggeredAt        time.Time
+}
+
+func (q *Queries) FindLifecycleWorkflowRun(ctx context.Context, arg FindLifecycleWorkflowRunParams) (*FindLifecycleWorkflowRunRow, error) {
+	row := q.db.QueryRow(ctx, findLifecycleWorkflowRun, arg.TenantID, arg.ID)
+	var i FindLifecycleWorkflowRunRow
+	err := row.Scan(
+		&i.ID,
+		&i.TenantID,
+		&i.WorkflowID,
+		&i.Revision,
+		&i.SourceOccurrenceID,
+		&i.TargetUserID,
+		&i.TriggerKind,
+		&i.ChangedFields,
+		&i.Actions,
+		&i.Status,
+		&i.JobID,
+		&i.TriggeredAt,
+	)
+	return &i, err
+}
+
+const insertLifecycleWorkflowRun = `-- name: InsertLifecycleWorkflowRun :one
+INSERT INTO lifecycle_workflow_runs (id,tenant_id,workflow_id,revision,source_occurrence_id,target_user_id,trigger_kind,changed_fields,actions,status,triggered_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT (tenant_id,workflow_id,revision,source_occurrence_id,target_user_id) DO NOTHING RETURNING id
+`
+
+type InsertLifecycleWorkflowRunParams struct {
+	ID                 string
+	TenantID           string
+	WorkflowID         string
+	Revision           int64
+	SourceOccurrenceID string
+	TargetUserID       string
+	TriggerKind        string
+	ChangedFields      []byte
+	Actions            []byte
+	Status             string
+	TriggeredAt        time.Time
+}
+
+func (q *Queries) InsertLifecycleWorkflowRun(ctx context.Context, arg InsertLifecycleWorkflowRunParams) (string, error) {
+	row := q.db.QueryRow(ctx, insertLifecycleWorkflowRun,
+		arg.ID,
+		arg.TenantID,
+		arg.WorkflowID,
+		arg.Revision,
+		arg.SourceOccurrenceID,
+		arg.TargetUserID,
+		arg.TriggerKind,
+		arg.ChangedFields,
+		arg.Actions,
+		arg.Status,
+		arg.TriggeredAt,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertLifecycleWorkflowStep = `-- name: InsertLifecycleWorkflowStep :exec
+INSERT INTO lifecycle_workflow_steps (run_id,step_index,action,outcome) VALUES ($1,$2,$3,$4)
+`
+
+type InsertLifecycleWorkflowStepParams struct {
+	RunID     string
+	StepIndex int32
+	Action    []byte
+	Outcome   string
+}
+
+func (q *Queries) InsertLifecycleWorkflowStep(ctx context.Context, arg InsertLifecycleWorkflowStepParams) error {
+	_, err := q.db.Exec(ctx, insertLifecycleWorkflowStep,
+		arg.RunID,
+		arg.StepIndex,
+		arg.Action,
+		arg.Outcome,
+	)
+	return err
 }
 
 const listLifecycleWorkflowRuns = `-- name: ListLifecycleWorkflowRuns :many
@@ -154,6 +314,49 @@ func (q *Queries) ListLifecycleWorkflowRuns(ctx context.Context, arg ListLifecyc
 	return items, nil
 }
 
+const listLifecycleWorkflowSteps = `-- name: ListLifecycleWorkflowSteps :many
+SELECT s.step_index,s.action,s.outcome,COALESCE(s.error_code,'') AS error_code,s.completed_at FROM lifecycle_workflow_steps s JOIN lifecycle_workflow_runs r ON r.id=s.run_id WHERE r.tenant_id=$1 AND s.run_id=$2 ORDER BY s.step_index
+`
+
+type ListLifecycleWorkflowStepsParams struct {
+	TenantID string
+	RunID    string
+}
+
+type ListLifecycleWorkflowStepsRow struct {
+	StepIndex   int32
+	Action      []byte
+	Outcome     string
+	ErrorCode   string
+	CompletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) ListLifecycleWorkflowSteps(ctx context.Context, arg ListLifecycleWorkflowStepsParams) ([]*ListLifecycleWorkflowStepsRow, error) {
+	rows, err := q.db.Query(ctx, listLifecycleWorkflowSteps, arg.TenantID, arg.RunID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListLifecycleWorkflowStepsRow
+	for rows.Next() {
+		var i ListLifecycleWorkflowStepsRow
+		if err := rows.Scan(
+			&i.StepIndex,
+			&i.Action,
+			&i.Outcome,
+			&i.ErrorCode,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLifecycleWorkflowsByTenant = `-- name: ListLifecycleWorkflowsByTenant :many
 SELECT id,tenant_id,name,description,status,current_revision,enabled_revision,created_at,updated_at FROM lifecycle_workflows WHERE tenant_id=$1 ORDER BY name
 `
@@ -177,6 +380,58 @@ func (q *Queries) ListLifecycleWorkflowsByTenant(ctx context.Context, tenantID s
 			&i.EnabledRevision,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUnenqueuedLifecycleWorkflowRuns = `-- name: ListUnenqueuedLifecycleWorkflowRuns :many
+SELECT id,tenant_id,workflow_id,revision,source_occurrence_id,target_user_id,trigger_kind,changed_fields,actions,status,job_id,triggered_at FROM lifecycle_workflow_runs WHERE status='queued' AND job_id IS NULL ORDER BY triggered_at LIMIT $1
+`
+
+type ListUnenqueuedLifecycleWorkflowRunsRow struct {
+	ID                 string
+	TenantID           string
+	WorkflowID         string
+	Revision           int64
+	SourceOccurrenceID string
+	TargetUserID       string
+	TriggerKind        string
+	ChangedFields      []byte
+	Actions            []byte
+	Status             string
+	JobID              pgtype.UUID
+	TriggeredAt        time.Time
+}
+
+func (q *Queries) ListUnenqueuedLifecycleWorkflowRuns(ctx context.Context, limit int32) ([]*ListUnenqueuedLifecycleWorkflowRunsRow, error) {
+	rows, err := q.db.Query(ctx, listUnenqueuedLifecycleWorkflowRuns, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListUnenqueuedLifecycleWorkflowRunsRow
+	for rows.Next() {
+		var i ListUnenqueuedLifecycleWorkflowRunsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.WorkflowID,
+			&i.Revision,
+			&i.SourceOccurrenceID,
+			&i.TargetUserID,
+			&i.TriggerKind,
+			&i.ChangedFields,
+			&i.Actions,
+			&i.Status,
+			&i.JobID,
+			&i.TriggeredAt,
 		); err != nil {
 			return nil, err
 		}
@@ -269,4 +524,21 @@ func (q *Queries) SaveLifecycleWorkflowRevision(ctx context.Context, arg SaveLif
 		arg.CreatedAt,
 	)
 	return err
+}
+
+const startLifecycleWorkflowRun = `-- name: StartLifecycleWorkflowRun :execrows
+UPDATE lifecycle_workflow_runs candidate SET status='running',updated_at=now() WHERE candidate.tenant_id=$1 AND candidate.id=$2 AND candidate.status='queued' AND NOT EXISTS (SELECT 1 FROM lifecycle_workflow_runs prior WHERE prior.tenant_id=candidate.tenant_id AND prior.target_user_id=candidate.target_user_id AND prior.id<>candidate.id AND prior.status IN ('queued','running') AND prior.triggered_at<candidate.triggered_at)
+`
+
+type StartLifecycleWorkflowRunParams struct {
+	TenantID string
+	ID       string
+}
+
+func (q *Queries) StartLifecycleWorkflowRun(ctx context.Context, arg StartLifecycleWorkflowRunParams) (int64, error) {
+	result, err := q.db.Exec(ctx, startLifecycleWorkflowRun, arg.TenantID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -155,39 +155,42 @@ func int8OrNil(value *int64) pgtype.Int8 {
 }
 
 func (r *GroupRepository) FindDynamicRule(ctx context.Context, tenantID, groupID string) (*groupdomain.DynamicGroupRule, error) {
-	row := r.Pool.QueryRow(ctx, `SELECT group_id,tenant_id,expression,enabled,version,referenced_attributes,created_at,updated_at FROM dynamic_group_rules WHERE tenant_id=$1 AND group_id=$2`, tenantID, groupID)
-	var rule groupdomain.DynamicGroupRule
-	var refs []byte
-	if err := row.Scan(&rule.GroupID, &rule.TenantID, &rule.Expression, &rule.Enabled, &rule.Version, &refs, &rule.CreatedAt, &rule.UpdatedAt); errors.Is(err, pgx.ErrNoRows) {
+	row, err := New(r.Pool).FindDynamicGroupRule(ctx, FindDynamicGroupRuleParams{TenantID: tenantID, GroupID: groupID})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	} else if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(refs, &rule.ReferencedAttributes); err != nil {
+	var rule groupdomain.DynamicGroupRule
+	rule.GroupID = row.GroupID
+	rule.TenantID = row.TenantID
+	rule.Expression = row.Expression
+	rule.Enabled = row.Enabled
+	rule.Version = row.Version
+	rule.CreatedAt = row.CreatedAt
+	rule.UpdatedAt = row.UpdatedAt
+	if err := json.Unmarshal(row.ReferencedAttributes, &rule.ReferencedAttributes); err != nil {
 		return nil, err
 	}
 	return &rule, nil
 }
 
 func (r *GroupRepository) ListDynamicRules(ctx context.Context, tenantID string) ([]*groupdomain.DynamicGroupRule, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT group_id FROM dynamic_group_rules WHERE tenant_id=$1 ORDER BY group_id`, tenantID)
+	ids, err := New(r.Pool).ListDynamicGroupRules(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*groupdomain.DynamicGroupRule{}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
+	out := make([]*groupdomain.DynamicGroupRule, 0, len(ids))
+	for _, id := range ids {
 		rule, err := r.FindDynamicRule(ctx, tenantID, id)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, rule)
+		if rule != nil {
+			out = append(out, rule)
+		}
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *GroupRepository) SaveDynamicRule(ctx context.Context, rule *groupdomain.DynamicGroupRule) error {
@@ -195,8 +198,16 @@ func (r *GroupRepository) SaveDynamicRule(ctx context.Context, rule *groupdomain
 	if err != nil {
 		return err
 	}
-	_, err = r.Pool.Exec(ctx, `INSERT INTO dynamic_group_rules (group_id,tenant_id,expression,enabled,version,referenced_attributes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (group_id) DO UPDATE SET expression=EXCLUDED.expression,enabled=EXCLUDED.enabled,version=EXCLUDED.version,referenced_attributes=EXCLUDED.referenced_attributes,updated_at=EXCLUDED.updated_at`, rule.GroupID, rule.TenantID, rule.Expression, rule.Enabled, rule.Version, refs, rule.CreatedAt, rule.UpdatedAt)
-	return err
+	return New(r.Pool).SaveDynamicGroupRule(ctx, SaveDynamicGroupRuleParams{
+		GroupID:              rule.GroupID,
+		TenantID:             rule.TenantID,
+		Expression:           rule.Expression,
+		Enabled:              rule.Enabled,
+		Version:              rule.Version,
+		ReferencedAttributes: refs,
+		CreatedAt:            rule.CreatedAt,
+		UpdatedAt:            rule.UpdatedAt,
+	})
 }
 
 func (r *GroupRepository) RemoveMember(ctx context.Context, tenantID, groupID, userID string) (bool, error) {

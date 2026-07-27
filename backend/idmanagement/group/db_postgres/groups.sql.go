@@ -70,6 +70,31 @@ func (q *Queries) DeleteGroup(ctx context.Context, arg DeleteGroupParams) error 
 	return err
 }
 
+const findDynamicGroupRule = `-- name: FindDynamicGroupRule :one
+SELECT group_id,tenant_id,expression,enabled,version,referenced_attributes,created_at,updated_at FROM dynamic_group_rules WHERE tenant_id=$1 AND group_id=$2
+`
+
+type FindDynamicGroupRuleParams struct {
+	TenantID string
+	GroupID  string
+}
+
+func (q *Queries) FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroupRuleParams) (*DynamicGroupRule, error) {
+	row := q.db.QueryRow(ctx, findDynamicGroupRule, arg.TenantID, arg.GroupID)
+	var i DynamicGroupRule
+	err := row.Scan(
+		&i.GroupID,
+		&i.TenantID,
+		&i.Expression,
+		&i.Enabled,
+		&i.Version,
+		&i.ReferencedAttributes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return &i, err
+}
+
 const findGroupByID = `-- name: FindGroupByID :one
 SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 AND id=$2
@@ -94,6 +119,30 @@ func (q *Queries) FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*
 		&i.UpdatedAt,
 	)
 	return &i, err
+}
+
+const listDynamicGroupRules = `-- name: ListDynamicGroupRules :many
+SELECT group_id FROM dynamic_group_rules WHERE tenant_id=$1 ORDER BY group_id
+`
+
+func (q *Queries) ListDynamicGroupRules(ctx context.Context, tenantID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listDynamicGroupRules, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var group_id string
+		if err := rows.Scan(&group_id); err != nil {
+			return nil, err
+		}
+		items = append(items, group_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listGroupMembersByGroup = `-- name: ListGroupMembersByGroup :many
@@ -237,6 +286,35 @@ func (q *Queries) RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const saveDynamicGroupRule = `-- name: SaveDynamicGroupRule :exec
+INSERT INTO dynamic_group_rules (group_id,tenant_id,expression,enabled,version,referenced_attributes,created_at,updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (group_id) DO UPDATE SET expression=EXCLUDED.expression,enabled=EXCLUDED.enabled,version=EXCLUDED.version,referenced_attributes=EXCLUDED.referenced_attributes,updated_at=EXCLUDED.updated_at
+`
+
+type SaveDynamicGroupRuleParams struct {
+	GroupID              string
+	TenantID             string
+	Expression           string
+	Enabled              bool
+	Version              int64
+	ReferencedAttributes []byte
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+func (q *Queries) SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroupRuleParams) error {
+	_, err := q.db.Exec(ctx, saveDynamicGroupRule,
+		arg.GroupID,
+		arg.TenantID,
+		arg.Expression,
+		arg.Enabled,
+		arg.Version,
+		arg.ReferencedAttributes,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
 }
 
 const saveGroup = `-- name: SaveGroup :exec

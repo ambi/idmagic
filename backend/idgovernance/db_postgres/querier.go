@@ -9,15 +9,24 @@ import (
 )
 
 type Querier interface {
+	AttachLifecycleWorkflowRunJob(ctx context.Context, arg AttachLifecycleWorkflowRunJobParams) (int64, error)
 	CancelQueuedLifecycleWorkflowRuns(ctx context.Context, arg CancelQueuedLifecycleWorkflowRunsParams) ([]*CancelQueuedLifecycleWorkflowRunsRow, error)
+	CheckpointLifecycleWorkflowStep(ctx context.Context, arg CheckpointLifecycleWorkflowStepParams) error
+	CompleteLifecycleWorkflowRun(ctx context.Context, arg CompleteLifecycleWorkflowRunParams) error
 	FindLifecycleWorkflow(ctx context.Context, arg FindLifecycleWorkflowParams) (*LifecycleWorkflow, error)
 	FindLifecycleWorkflowRevision(ctx context.Context, arg FindLifecycleWorkflowRevisionParams) (*LifecycleWorkflowRevision, error)
+	FindLifecycleWorkflowRun(ctx context.Context, arg FindLifecycleWorkflowRunParams) (*FindLifecycleWorkflowRunRow, error)
+	InsertLifecycleWorkflowRun(ctx context.Context, arg InsertLifecycleWorkflowRunParams) (string, error)
+	InsertLifecycleWorkflowStep(ctx context.Context, arg InsertLifecycleWorkflowStepParams) error
 	ListLifecycleWorkflowRuns(ctx context.Context, arg ListLifecycleWorkflowRunsParams) ([]*ListLifecycleWorkflowRunsRow, error)
+	ListLifecycleWorkflowSteps(ctx context.Context, arg ListLifecycleWorkflowStepsParams) ([]*ListLifecycleWorkflowStepsRow, error)
 	ListLifecycleWorkflowsByTenant(ctx context.Context, tenantID string) ([]*LifecycleWorkflow, error)
+	ListUnenqueuedLifecycleWorkflowRuns(ctx context.Context, limit int32) ([]*ListUnenqueuedLifecycleWorkflowRunsRow, error)
 	ResetFailedLifecycleWorkflowSteps(ctx context.Context, runID string) error
 	RetryLifecycleWorkflowRun(ctx context.Context, arg RetryLifecycleWorkflowRunParams) (int64, error)
 	SaveLifecycleWorkflow(ctx context.Context, arg SaveLifecycleWorkflowParams) error
 	SaveLifecycleWorkflowRevision(ctx context.Context, arg SaveLifecycleWorkflowRevisionParams) error
+	StartLifecycleWorkflowRun(ctx context.Context, arg StartLifecycleWorkflowRunParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

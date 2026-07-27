@@ -340,3 +340,54 @@ sql:
           - db_type: "timestamptz"
             go_type: "time.Time"
             nullable: false
+  - engine: "postgresql"
+    schema: "infra/schema/postgres.sql"
+    queries: "backend/signingkeys/db_postgres"
+    gen:
+      go:
+        package: "db_postgres"
+        out: "backend/signingkeys/db_postgres"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_result_struct_pointers: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "string"
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+            nullable: false
+  - engine: "postgresql"
+    schema: "infra/schema/postgres.sql"
+    queries: "backend/provisioning/db_postgres"
+    gen:
+      go:
+        package: "db_postgres"
+        out: "backend/provisioning/db_postgres"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_result_struct_pointers: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "string"
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+            nullable: false
+  - engine: "postgresql"
+    schema: "infra/schema/postgres.sql"
+    queries: "backend/authentication/federation/db_postgres"
+    gen:
+      go:
+        package: "db_postgres"
+        out: "backend/authentication/federation/db_postgres"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_json_tags: false
+        emit_result_struct_pointers: true
+        overrides:
+          - db_type: "uuid"
+            go_type: "string"
+          - db_type: "timestamptz"
+            go_type: "time.Time"
+            nullable: false

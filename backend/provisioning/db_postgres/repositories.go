@@ -9,13 +9,66 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
+
+func pgText(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+func fromPgText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
+}
+
+func pgTimestamptz(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+func fromPgTimestamptz(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	return &t.Time
+}
+
+func pgUUID(s *string) pgtype.UUID {
+	if s == nil {
+		return pgtype.UUID{}
+	}
+	var u pgtype.UUID
+	_ = u.Scan(*s)
+	return u
+}
+
+func pgUUIDVal(s string) pgtype.UUID {
+	var u pgtype.UUID
+	_ = u.Scan(s)
+	return u
+}
+
+func fromPgUUID(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := sharedpg.UUIDString(u)
+	return &s
+}
 
 // ProvisioningConnectionRepository is the PostgreSQL ports.ProvisioningConnectionRepository.
 type ProvisioningConnectionRepository struct{ Pool sharedpg.DB }
@@ -30,28 +83,39 @@ func (r *ProvisioningConnectionRepository) Register(ctx context.Context, conn *d
 	if err != nil {
 		return err
 	}
-	row := r.Pool.QueryRow(ctx, `
-INSERT INTO provisioning_connections (
-  application_id, tenant_id, status, base_url, credential_id, auth_method, credential_secret,
-  credential_created_at, credential_rotated_at, capabilities, feature_flags, scope, group_push,
-  attribute_mappings, matching, deprovision_policy, rate_limit_per_minute, max_attempts,
-  notification_email, quarantine_after_consecutive_failures, health, consecutive_failure_count,
-  last_full_sync_at, quarantined_at, quarantine_reason, created_at, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
-ON CONFLICT (application_id) DO NOTHING
-RETURNING application_id`,
-		conn.ApplicationID, conn.TenantID, conn.Status, conn.BaseURL, conn.Credential.CredentialID, conn.Credential.AuthMethod, secret,
-		conn.Credential.CreatedAt, conn.Credential.RotatedAt, j.capabilities, j.featureFlags, conn.Scope, j.groupPush,
-		j.mappings, j.matching, j.deprovision, conn.RateLimitPerMinute, conn.MaxAttempts,
-		conn.NotificationEmail, conn.QuarantineAfterConsecutiveFailure, conn.Health, conn.ConsecutiveFailureCount,
-		conn.LastFullSyncAt, conn.QuarantinedAt, conn.QuarantineReason, conn.CreatedAt, conn.UpdatedAt)
-	var id string
-	if err := row.Scan(&id); errors.Is(err, pgx.ErrNoRows) {
+	_, err = New(r.Pool).InsertProvisioningConnection(ctx, InsertProvisioningConnectionParams{
+		ApplicationID:                      conn.ApplicationID,
+		TenantID:                           conn.TenantID,
+		Status:                             string(conn.Status),
+		BaseUrl:                            conn.BaseURL,
+		CredentialID:                       conn.Credential.CredentialID,
+		AuthMethod:                         string(conn.Credential.AuthMethod),
+		CredentialSecret:                   secret,
+		CredentialCreatedAt:                conn.Credential.CreatedAt,
+		CredentialRotatedAt:                pgTimestamptz(conn.Credential.RotatedAt),
+		Capabilities:                       j.capabilities,
+		FeatureFlags:                       j.featureFlags,
+		Scope:                              string(conn.Scope),
+		GroupPush:                          j.groupPush,
+		AttributeMappings:                  j.mappings,
+		Matching:                           j.matching,
+		DeprovisionPolicy:                  j.deprovision,
+		RateLimitPerMinute:                 int32(conn.RateLimitPerMinute), //nolint:gosec // safe downcast
+		MaxAttempts:                        int32(conn.MaxAttempts),        //nolint:gosec // safe downcast
+		NotificationEmail:                  pgText(conn.NotificationEmail),
+		QuarantineAfterConsecutiveFailures: int32(conn.QuarantineAfterConsecutiveFailure), //nolint:gosec // safe downcast
+		Health:                             string(conn.Health),
+		ConsecutiveFailureCount:            int32(conn.ConsecutiveFailureCount), //nolint:gosec // safe downcast
+		LastFullSyncAt:                     pgTimestamptz(conn.LastFullSyncAt),
+		QuarantinedAt:                      pgTimestamptz(conn.QuarantinedAt),
+		QuarantineReason:                   pgText(conn.QuarantineReason),
+		CreatedAt:                          conn.CreatedAt,
+		UpdatedAt:                          conn.UpdatedAt,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return ports.ErrConnectionAlreadyExists
-	} else if err != nil {
-		return err
 	}
-	return nil
+	return err
 }
 
 func (r *ProvisioningConnectionRepository) Update(ctx context.Context, conn *domain.ProvisioningConnection, secret *string) error {
@@ -63,36 +127,58 @@ func (r *ProvisioningConnectionRepository) Update(ctx context.Context, conn *dom
 		return err
 	}
 	if secret != nil {
-		_, err = r.Pool.Exec(ctx, `
-UPDATE provisioning_connections SET
-  status=$3, base_url=$4, credential_id=$5, auth_method=$6, credential_secret=$7,
-  credential_rotated_at=$8, capabilities=$9, feature_flags=$10, scope=$11, group_push=$12,
-  attribute_mappings=$13, matching=$14, deprovision_policy=$15, rate_limit_per_minute=$16,
-  max_attempts=$17, notification_email=$18, quarantine_after_consecutive_failures=$19, health=$20,
-  consecutive_failure_count=$21, last_full_sync_at=$22, quarantined_at=$23, quarantine_reason=$24,
-  updated_at=$25
-WHERE tenant_id=$1 AND application_id=$2`,
-			conn.TenantID, conn.ApplicationID, conn.Status, conn.BaseURL, conn.Credential.CredentialID, conn.Credential.AuthMethod, *secret,
-			conn.Credential.RotatedAt, j.capabilities, j.featureFlags, conn.Scope, j.groupPush,
-			j.mappings, j.matching, j.deprovision, conn.RateLimitPerMinute,
-			conn.MaxAttempts, conn.NotificationEmail, conn.QuarantineAfterConsecutiveFailure, conn.Health,
-			conn.ConsecutiveFailureCount, conn.LastFullSyncAt, conn.QuarantinedAt, conn.QuarantineReason,
-			conn.UpdatedAt)
+		err = New(r.Pool).UpdateProvisioningConnectionWithSecret(ctx, UpdateProvisioningConnectionWithSecretParams{
+			TenantID:                           conn.TenantID,
+			ApplicationID:                      conn.ApplicationID,
+			Status:                             string(conn.Status),
+			BaseUrl:                            conn.BaseURL,
+			CredentialID:                       conn.Credential.CredentialID,
+			AuthMethod:                         string(conn.Credential.AuthMethod),
+			CredentialSecret:                   *secret,
+			CredentialRotatedAt:                pgTimestamptz(conn.Credential.RotatedAt),
+			Capabilities:                       j.capabilities,
+			FeatureFlags:                       j.featureFlags,
+			Scope:                              string(conn.Scope),
+			GroupPush:                          j.groupPush,
+			AttributeMappings:                  j.mappings,
+			Matching:                           j.matching,
+			DeprovisionPolicy:                  j.deprovision,
+			RateLimitPerMinute:                 int32(conn.RateLimitPerMinute), //nolint:gosec // safe downcast
+			MaxAttempts:                        int32(conn.MaxAttempts),        //nolint:gosec // safe downcast
+			NotificationEmail:                  pgText(conn.NotificationEmail),
+			QuarantineAfterConsecutiveFailures: int32(conn.QuarantineAfterConsecutiveFailure), //nolint:gosec // safe downcast
+			Health:                             string(conn.Health),
+			ConsecutiveFailureCount:            int32(conn.ConsecutiveFailureCount), //nolint:gosec // safe downcast
+			LastFullSyncAt:                     pgTimestamptz(conn.LastFullSyncAt),
+			QuarantinedAt:                      pgTimestamptz(conn.QuarantinedAt),
+			QuarantineReason:                   pgText(conn.QuarantineReason),
+			UpdatedAt:                          conn.UpdatedAt,
+		})
 		return err
 	}
-	_, err = r.Pool.Exec(ctx, `
-UPDATE provisioning_connections SET
-  status=$3, base_url=$4, capabilities=$5, feature_flags=$6, scope=$7, group_push=$8,
-  attribute_mappings=$9, matching=$10, deprovision_policy=$11, rate_limit_per_minute=$12,
-  max_attempts=$13, notification_email=$14, quarantine_after_consecutive_failures=$15, health=$16,
-  consecutive_failure_count=$17, last_full_sync_at=$18, quarantined_at=$19, quarantine_reason=$20,
-  updated_at=$21
-WHERE tenant_id=$1 AND application_id=$2`,
-		conn.TenantID, conn.ApplicationID, conn.Status, conn.BaseURL, j.capabilities, j.featureFlags, conn.Scope, j.groupPush,
-		j.mappings, j.matching, j.deprovision, conn.RateLimitPerMinute,
-		conn.MaxAttempts, conn.NotificationEmail, conn.QuarantineAfterConsecutiveFailure, conn.Health,
-		conn.ConsecutiveFailureCount, conn.LastFullSyncAt, conn.QuarantinedAt, conn.QuarantineReason,
-		conn.UpdatedAt)
+	err = New(r.Pool).UpdateProvisioningConnection(ctx, UpdateProvisioningConnectionParams{
+		TenantID:                           conn.TenantID,
+		ApplicationID:                      conn.ApplicationID,
+		Status:                             string(conn.Status),
+		BaseUrl:                            conn.BaseURL,
+		Capabilities:                       j.capabilities,
+		FeatureFlags:                       j.featureFlags,
+		Scope:                              string(conn.Scope),
+		GroupPush:                          j.groupPush,
+		AttributeMappings:                  j.mappings,
+		Matching:                           j.matching,
+		DeprovisionPolicy:                  j.deprovision,
+		RateLimitPerMinute:                 int32(conn.RateLimitPerMinute), //nolint:gosec // safe downcast
+		MaxAttempts:                        int32(conn.MaxAttempts),        //nolint:gosec // safe downcast
+		NotificationEmail:                  pgText(conn.NotificationEmail),
+		QuarantineAfterConsecutiveFailures: int32(conn.QuarantineAfterConsecutiveFailure), //nolint:gosec // safe downcast
+		Health:                             string(conn.Health),
+		ConsecutiveFailureCount:            int32(conn.ConsecutiveFailureCount), //nolint:gosec // safe downcast
+		LastFullSyncAt:                     pgTimestamptz(conn.LastFullSyncAt),
+		QuarantinedAt:                      pgTimestamptz(conn.QuarantinedAt),
+		QuarantineReason:                   pgText(conn.QuarantineReason),
+		UpdatedAt:                          conn.UpdatedAt,
+	})
 	return err
 }
 
@@ -131,65 +217,117 @@ func marshalConnectionJSON(conn *domain.ProvisioningConnection) (connectionJSON,
 	return j, nil
 }
 
-const connectionColumns = `application_id, tenant_id, status, base_url, credential_id, auth_method,
-credential_created_at, credential_rotated_at, capabilities, feature_flags, scope, group_push,
-attribute_mappings, matching, deprovision_policy, rate_limit_per_minute, max_attempts,
-notification_email, quarantine_after_consecutive_failures, health, consecutive_failure_count,
-last_full_sync_at, quarantined_at, quarantine_reason, created_at, updated_at`
-
-func scanConnection(row sharedpg.RowScanner) (*domain.ProvisioningConnection, error) {
-	c := &domain.ProvisioningConnection{Credential: domain.ProvisioningConnectionCredentialMetadata{}}
-	var capabilitiesRaw, featureFlagsRaw, groupPushRaw, mappingsRaw, matchingRaw, deprovisionRaw []byte
-	err := row.Scan(
-		&c.ApplicationID, &c.TenantID, &c.Status, &c.BaseURL, &c.Credential.CredentialID, &c.Credential.AuthMethod,
-		&c.Credential.CreatedAt, &c.Credential.RotatedAt, &capabilitiesRaw, &featureFlagsRaw, &c.Scope, &groupPushRaw,
-		&mappingsRaw, &matchingRaw, &deprovisionRaw, &c.RateLimitPerMinute, &c.MaxAttempts,
-		&c.NotificationEmail, &c.QuarantineAfterConsecutiveFailure, &c.Health, &c.ConsecutiveFailureCount,
-		&c.LastFullSyncAt, &c.QuarantinedAt, &c.QuarantineReason, &c.CreatedAt, &c.UpdatedAt,
-	)
-	if err != nil {
-		return nil, err
-	}
+func mapConnection(c *domain.ProvisioningConnection, featureFlagsRaw, capabilitiesRaw, groupPushRaw, mappingsRaw, matchingRaw, deprovisionRaw []byte) error {
 	if err := json.Unmarshal(featureFlagsRaw, &c.FeatureFlags); err != nil {
-		return nil, err
+		return err
 	}
 	if len(capabilitiesRaw) > 0 {
 		var caps domain.ProvisioningCapabilities
 		if err := json.Unmarshal(capabilitiesRaw, &caps); err != nil {
-			return nil, err
+			return err
 		}
 		c.Capabilities = &caps
 	}
 	if len(groupPushRaw) > 0 {
 		var gp domain.GroupPushConfig
 		if err := json.Unmarshal(groupPushRaw, &gp); err != nil {
-			return nil, err
+			return err
 		}
 		c.GroupPush = &gp
 	}
 	if err := json.Unmarshal(mappingsRaw, &c.AttributeMappings); err != nil {
-		return nil, err
+		return err
 	}
 	if err := json.Unmarshal(matchingRaw, &c.Matching); err != nil {
-		return nil, err
+		return err
 	}
 	if err := json.Unmarshal(deprovisionRaw, &c.DeprovisionPolicy); err != nil {
+		return err
+	}
+	return c.Validate()
+}
+
+func mapFindConnection(row *FindProvisioningConnectionRow) (*domain.ProvisioningConnection, error) {
+	c := &domain.ProvisioningConnection{
+		ApplicationID: row.ApplicationID,
+		TenantID:      row.TenantID,
+		Status:        domain.ProvisioningConnectionStatus(row.Status),
+		BaseURL:       row.BaseUrl,
+		Credential: domain.ProvisioningConnectionCredentialMetadata{
+			CredentialID: row.CredentialID,
+			AuthMethod:   domain.ProvisioningAuthMethod(row.AuthMethod),
+			CreatedAt:    row.CredentialCreatedAt,
+			RotatedAt:    fromPgTimestamptz(row.CredentialRotatedAt),
+		},
+		Scope:                             domain.ProvisioningScope(row.Scope),
+		RateLimitPerMinute:                int(row.RateLimitPerMinute),
+		MaxAttempts:                       int(row.MaxAttempts),
+		NotificationEmail:                 fromPgText(row.NotificationEmail),
+		QuarantineAfterConsecutiveFailure: int(row.QuarantineAfterConsecutiveFailures),
+		Health:                            domain.ProvisioningHealth(row.Health),
+		ConsecutiveFailureCount:           int(row.ConsecutiveFailureCount),
+		LastFullSyncAt:                    fromPgTimestamptz(row.LastFullSyncAt),
+		QuarantinedAt:                     fromPgTimestamptz(row.QuarantinedAt),
+		QuarantineReason:                  fromPgText(row.QuarantineReason),
+		CreatedAt:                         row.CreatedAt,
+		UpdatedAt:                         row.UpdatedAt,
+	}
+	if err := mapConnection(c, row.FeatureFlags, row.Capabilities, row.GroupPush, row.AttributeMappings, row.Matching, row.DeprovisionPolicy); err != nil {
 		return nil, err
 	}
-	return c, c.Validate()
+	return c, nil
+}
+
+func mapListConnection(row *ListProvisioningConnectionsByTenantRow) (*domain.ProvisioningConnection, error) {
+	c := &domain.ProvisioningConnection{
+		ApplicationID: row.ApplicationID,
+		TenantID:      row.TenantID,
+		Status:        domain.ProvisioningConnectionStatus(row.Status),
+		BaseURL:       row.BaseUrl,
+		Credential: domain.ProvisioningConnectionCredentialMetadata{
+			CredentialID: row.CredentialID,
+			AuthMethod:   domain.ProvisioningAuthMethod(row.AuthMethod),
+			CreatedAt:    row.CredentialCreatedAt,
+			RotatedAt:    fromPgTimestamptz(row.CredentialRotatedAt),
+		},
+		Scope:                             domain.ProvisioningScope(row.Scope),
+		RateLimitPerMinute:                int(row.RateLimitPerMinute),
+		MaxAttempts:                       int(row.MaxAttempts),
+		NotificationEmail:                 fromPgText(row.NotificationEmail),
+		QuarantineAfterConsecutiveFailure: int(row.QuarantineAfterConsecutiveFailures),
+		Health:                            domain.ProvisioningHealth(row.Health),
+		ConsecutiveFailureCount:           int(row.ConsecutiveFailureCount),
+		LastFullSyncAt:                    fromPgTimestamptz(row.LastFullSyncAt),
+		QuarantinedAt:                     fromPgTimestamptz(row.QuarantinedAt),
+		QuarantineReason:                  fromPgText(row.QuarantineReason),
+		CreatedAt:                         row.CreatedAt,
+		UpdatedAt:                         row.UpdatedAt,
+	}
+	if err := mapConnection(c, row.FeatureFlags, row.Capabilities, row.GroupPush, row.AttributeMappings, row.Matching, row.DeprovisionPolicy); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 func (r *ProvisioningConnectionRepository) Find(ctx context.Context, tenantID, applicationID string) (*domain.ProvisioningConnection, error) {
-	conn, err := scanConnection(r.Pool.QueryRow(ctx, `SELECT `+connectionColumns+` FROM provisioning_connections WHERE tenant_id=$1 AND application_id=$2`, tenantID, applicationID))
+	row, err := New(r.Pool).FindProvisioningConnection(ctx, FindProvisioningConnectionParams{
+		TenantID:      tenantID,
+		ApplicationID: applicationID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
-	return conn, err
+	if err != nil {
+		return nil, err
+	}
+	return mapFindConnection(row)
 }
 
 func (r *ProvisioningConnectionRepository) CredentialSecret(ctx context.Context, tenantID, applicationID string) (string, error) {
-	var secret string
-	err := r.Pool.QueryRow(ctx, `SELECT credential_secret FROM provisioning_connections WHERE tenant_id=$1 AND application_id=$2`, tenantID, applicationID).Scan(&secret)
+	secret, err := New(r.Pool).GetProvisioningConnectionSecret(ctx, GetProvisioningConnectionSecretParams{
+		TenantID:      tenantID,
+		ApplicationID: applicationID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return "", nil
 	}
@@ -197,25 +335,26 @@ func (r *ProvisioningConnectionRepository) CredentialSecret(ctx context.Context,
 }
 
 func (r *ProvisioningConnectionRepository) Delete(ctx context.Context, tenantID, applicationID string) error {
-	_, err := r.Pool.Exec(ctx, `DELETE FROM provisioning_connections WHERE tenant_id=$1 AND application_id=$2`, tenantID, applicationID)
-	return err
+	return New(r.Pool).DeleteProvisioningConnection(ctx, DeleteProvisioningConnectionParams{
+		TenantID:      tenantID,
+		ApplicationID: applicationID,
+	})
 }
 
 func (r *ProvisioningConnectionRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT `+connectionColumns+` FROM provisioning_connections WHERE tenant_id=$1 ORDER BY application_id`, tenantID)
+	rows, err := New(r.Pool).ListProvisioningConnectionsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*domain.ProvisioningConnection{}
-	for rows.Next() {
-		conn, err := scanConnection(rows)
+	out := make([]*domain.ProvisioningConnection, 0, len(rows))
+	for _, row := range rows {
+		conn, err := mapListConnection(row)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, conn)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 // RemoteResourceLinkRepository is the PostgreSQL ports.RemoteResourceLinkRepository.
@@ -224,30 +363,42 @@ type RemoteResourceLinkRepository struct{ Pool sharedpg.DB }
 var _ ports.RemoteResourceLinkRepository = (*RemoteResourceLinkRepository)(nil)
 
 func (r *RemoteResourceLinkRepository) Find(ctx context.Context, connectionID string, sourceType domain.ProvisioningSourceType, sourceID string) (*domain.RemoteResourceLink, error) {
-	link := &domain.RemoteResourceLink{}
-	var etag *string
-	err := r.Pool.QueryRow(ctx, `SELECT connection_id,tenant_id,source_type,source_id,remote_id,external_id,etag,last_synced_version,updated_at
-FROM provisioning_remote_links WHERE connection_id=$1 AND source_type=$2 AND source_id=$3`, connectionID, sourceType, sourceID).
-		Scan(&link.ConnectionID, &link.TenantID, &link.SourceType, &link.SourceID, &link.RemoteID, &link.ExternalID, &etag, &link.LastSyncedVersion, &link.UpdatedAt)
+	row, err := New(r.Pool).FindRemoteResourceLink(ctx, FindRemoteResourceLinkParams{
+		ConnectionID: connectionID,
+		SourceType:   string(sourceType),
+		SourceID:     sourceID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	link.ETag = etag
-	return link, nil
+	return &domain.RemoteResourceLink{
+		ConnectionID:      row.ConnectionID,
+		TenantID:          row.TenantID,
+		SourceType:        domain.ProvisioningSourceType(row.SourceType),
+		SourceID:          row.SourceID,
+		RemoteID:          row.RemoteID,
+		ExternalID:        row.ExternalID,
+		ETag:              fromPgText(row.Etag),
+		LastSyncedVersion: row.LastSyncedVersion,
+		UpdatedAt:         row.UpdatedAt,
+	}, nil
 }
 
 func (r *RemoteResourceLinkRepository) Upsert(ctx context.Context, link *domain.RemoteResourceLink) error {
-	_, err := r.Pool.Exec(ctx, `
-INSERT INTO provisioning_remote_links (connection_id, tenant_id, source_type, source_id, remote_id, external_id, etag, last_synced_version, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-ON CONFLICT (connection_id, source_type, source_id) DO UPDATE SET
-  remote_id=EXCLUDED.remote_id, external_id=EXCLUDED.external_id, etag=EXCLUDED.etag,
-  last_synced_version=EXCLUDED.last_synced_version, updated_at=EXCLUDED.updated_at`,
-		link.ConnectionID, link.TenantID, link.SourceType, link.SourceID, link.RemoteID, link.ExternalID, link.ETag, link.LastSyncedVersion, link.UpdatedAt)
-	return err
+	return New(r.Pool).UpsertRemoteResourceLink(ctx, UpsertRemoteResourceLinkParams{
+		ConnectionID:      link.ConnectionID,
+		TenantID:          link.TenantID,
+		SourceType:        string(link.SourceType),
+		SourceID:          link.SourceID,
+		RemoteID:          link.RemoteID,
+		ExternalID:        link.ExternalID,
+		Etag:              pgText(link.ETag),
+		LastSyncedVersion: link.LastSyncedVersion,
+		UpdatedAt:         link.UpdatedAt,
+	})
 }
 
 // ProvisioningDeliveryRepository is the PostgreSQL ports.ProvisioningDeliveryRepository.
@@ -255,99 +406,136 @@ type ProvisioningDeliveryRepository struct{ Pool sharedpg.DB }
 
 var _ ports.ProvisioningDeliveryRepository = (*ProvisioningDeliveryRepository)(nil)
 
+func mapDelivery(row *ProvisioningDelivery) (*domain.ProvisioningDelivery, error) {
+	d := &domain.ProvisioningDelivery{
+		ID:            row.ID,
+		TenantID:      row.TenantID,
+		ConnectionID:  row.ConnectionID,
+		SourceType:    domain.ProvisioningSourceType(row.SourceType),
+		SourceID:      row.SourceID,
+		SourceVersion: row.SourceVersion,
+		Operation:     domain.ProvisioningOperation(row.Operation),
+		Status:        domain.ProvisioningDeliveryStatus(row.Status),
+		JobID:         fromPgUUID(row.JobID),
+		LastError:     fromPgText(row.LastError),
+		CreatedAt:     row.CreatedAt,
+		UpdatedAt:     row.UpdatedAt,
+		CompletedAt:   fromPgTimestamptz(row.CompletedAt),
+	}
+	return d, d.Validate()
+}
+
 func (r *ProvisioningDeliveryRepository) Save(ctx context.Context, d *domain.ProvisioningDelivery) (bool, error) {
 	if err := d.Validate(); err != nil {
 		return false, err
 	}
-	row := r.Pool.QueryRow(ctx, `
-INSERT INTO provisioning_deliveries (id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-ON CONFLICT (tenant_id, connection_id, source_type, source_id, source_version) DO NOTHING
-RETURNING id`,
-		d.ID, d.TenantID, d.ConnectionID, d.SourceType, d.SourceID, d.SourceVersion, d.Operation, d.Status, d.JobID, d.LastError, d.CreatedAt, d.UpdatedAt, d.CompletedAt)
-	var id string
-	if err := row.Scan(&id); errors.Is(err, pgx.ErrNoRows) {
+	_, err := New(r.Pool).InsertProvisioningDelivery(ctx, InsertProvisioningDeliveryParams{
+		ID:            d.ID,
+		TenantID:      d.TenantID,
+		ConnectionID:  d.ConnectionID,
+		SourceType:    string(d.SourceType),
+		SourceID:      d.SourceID,
+		SourceVersion: d.SourceVersion,
+		Operation:     string(d.Operation),
+		Status:        string(d.Status),
+		JobID:         pgUUID(d.JobID),
+		LastError:     pgText(d.LastError),
+		CreatedAt:     d.CreatedAt,
+		UpdatedAt:     d.UpdatedAt,
+		CompletedAt:   pgTimestamptz(d.CompletedAt),
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
-	} else if err != nil {
+	}
+	if err != nil {
 		return false, err
 	}
 	return true, nil
 }
 
-const deliveryColumns = `id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at`
-
-func scanDelivery(row sharedpg.RowScanner) (*domain.ProvisioningDelivery, error) {
-	d := &domain.ProvisioningDelivery{}
-	err := row.Scan(&d.ID, &d.TenantID, &d.ConnectionID, &d.SourceType, &d.SourceID, &d.SourceVersion, &d.Operation, &d.Status, &d.JobID, &d.LastError, &d.CreatedAt, &d.UpdatedAt, &d.CompletedAt)
-	if err != nil {
-		return nil, err
-	}
-	return d, d.Validate()
-}
-
 func (r *ProvisioningDeliveryRepository) Find(ctx context.Context, tenantID, deliveryID string) (*domain.ProvisioningDelivery, error) {
-	d, err := scanDelivery(r.Pool.QueryRow(ctx, `SELECT `+deliveryColumns+` FROM provisioning_deliveries WHERE tenant_id=$1 AND id=$2`, tenantID, deliveryID))
+	row, err := New(r.Pool).FindProvisioningDelivery(ctx, FindProvisioningDeliveryParams{
+		TenantID: tenantID,
+		ID:       deliveryID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
-	return d, err
+	if err != nil {
+		return nil, err
+	}
+	return mapDelivery(row)
 }
 
 func (r *ProvisioningDeliveryRepository) ListByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, limit int) ([]*domain.ProvisioningDelivery, error) {
-	var rows pgx.Rows
+	var rows []*ProvisioningDelivery
 	var err error
 	if status != nil {
-		rows, err = r.Pool.Query(ctx, `SELECT `+deliveryColumns+` FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 AND status=$3 ORDER BY created_at DESC LIMIT $4`, tenantID, connectionID, *status, limit)
+		rows, err = New(r.Pool).ListProvisioningDeliveriesByConnectionAndStatus(ctx, ListProvisioningDeliveriesByConnectionAndStatusParams{
+			TenantID:     tenantID,
+			ConnectionID: connectionID,
+			Status:       string(*status),
+			Limit:        int32(limit), //nolint:gosec // safe downcast
+		})
 	} else {
-		rows, err = r.Pool.Query(ctx, `SELECT `+deliveryColumns+` FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 ORDER BY created_at DESC LIMIT $3`, tenantID, connectionID, limit)
+		rows, err = New(r.Pool).ListProvisioningDeliveriesByConnection(ctx, ListProvisioningDeliveriesByConnectionParams{
+			TenantID:     tenantID,
+			ConnectionID: connectionID,
+			Limit:        int32(limit), //nolint:gosec // safe downcast
+		})
 	}
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*domain.ProvisioningDelivery{}
-	for rows.Next() {
-		d, err := scanDelivery(rows)
+	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	for _, row := range rows {
+		d, err := mapDelivery(row)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, d)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *ProvisioningDeliveryRepository) ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningDelivery, error) {
-	rows, err := r.Pool.Query(ctx, `SELECT `+deliveryColumns+` FROM provisioning_deliveries WHERE status='pending' AND job_id IS NULL ORDER BY created_at LIMIT $1`, limit)
+	rows, err := New(r.Pool).ListUnenqueuedProvisioningDeliveries(ctx, int32(limit)) //nolint:gosec // safe downcast
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*domain.ProvisioningDelivery{}
-	for rows.Next() {
-		d, err := scanDelivery(rows)
+	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	for _, row := range rows {
+		d, err := mapDelivery(row)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, d)
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (r *ProvisioningDeliveryRepository) AttachJob(ctx context.Context, tenantID, deliveryID, jobID string) (bool, error) {
-	tag, err := r.Pool.Exec(ctx, `UPDATE provisioning_deliveries SET job_id=$3,updated_at=now() WHERE tenant_id=$1 AND id=$2 AND job_id IS NULL`, tenantID, deliveryID, jobID)
-	return tag.RowsAffected() == 1, err
+	affected, err := New(r.Pool).AttachProvisioningDeliveryJob(ctx, AttachProvisioningDeliveryJobParams{
+		TenantID: tenantID,
+		ID:       deliveryID,
+		JobID:    pgUUIDVal(jobID),
+	})
+	return affected == 1, err
 }
 
 func (r *ProvisioningDeliveryRepository) UpdateStatus(ctx context.Context, tenantID, deliveryID string, status domain.ProvisioningDeliveryStatus, lastError *string) error {
-	_, err := r.Pool.Exec(ctx, `
-UPDATE provisioning_deliveries SET status=$3, last_error=$4, updated_at=now(),
-  completed_at = CASE WHEN $3 IN ('succeeded','dead_letter') THEN now() ELSE completed_at END
-WHERE tenant_id=$1 AND id=$2`, tenantID, deliveryID, status, lastError)
-	return err
+	return New(r.Pool).UpdateProvisioningDeliveryStatus(ctx, UpdateProvisioningDeliveryStatusParams{
+		TenantID:  tenantID,
+		ID:        deliveryID,
+		Status:    string(status),
+		LastError: pgText(lastError),
+	})
 }
 
 func (r *ProvisioningDeliveryRepository) RetryDeadLetter(ctx context.Context, tenantID, deliveryID string) (bool, error) {
-	tag, err := r.Pool.Exec(ctx, `UPDATE provisioning_deliveries SET status='pending', job_id=NULL, last_error=NULL, updated_at=now()
-WHERE tenant_id=$1 AND id=$2 AND status='dead_letter'`, tenantID, deliveryID)
-	return tag.RowsAffected() == 1, err
+	affected, err := New(r.Pool).RetryDeadLetterProvisioningDelivery(ctx, RetryDeadLetterProvisioningDeliveryParams{
+		TenantID: tenantID,
+		ID:       deliveryID,
+	})
+	return affected == 1, err
 }

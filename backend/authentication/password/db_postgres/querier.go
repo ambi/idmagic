@@ -9,8 +9,11 @@ import (
 )
 
 type Querier interface {
+	ConsumePasswordResetToken(ctx context.Context, tokenHash string) (*ConsumePasswordResetTokenRow, error)
 	DeletePasswordHistoryForSub(ctx context.Context, userID string) error
+	DeletePasswordResetTokensByUser(ctx context.Context, userID string) error
 	InsertPasswordHistory(ctx context.Context, arg InsertPasswordHistoryParams) error
+	InsertPasswordResetToken(ctx context.Context, arg InsertPasswordResetTokenParams) error
 	RecentPasswordHistory(ctx context.Context, arg RecentPasswordHistoryParams) ([]*RecentPasswordHistoryRow, error)
 }
 

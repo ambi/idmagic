@@ -10,6 +10,7 @@ import (
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	sharedpostgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_jose"
@@ -18,75 +19,218 @@ import (
 
 // KeyStore (OAuth2: 署名鍵)。tenant scope は ctx (tenancy.TenantID) から解決する。
 // 秘密鍵マテリアルを app DB に置く dev/test 用の provider。本番は VaultTransit を使う。
-type KeyStore struct{ Pool sharedpostgres.DB }
+type KeyStore struct {
+	Pool sharedpostgres.DB
+}
 
 func NewKeyStore(_ context.Context, pool sharedpostgres.DB) (*KeyStore, error) {
 	return &KeyStore{Pool: pool}, nil
+}
+
+func timePtr(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	v := t.Time
+	return &v
+}
+
+func timeToPg(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
 func (s *KeyStore) GetActiveKey(ctx context.Context) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
-	key, err := scanSigningKey(s.Pool.QueryRow(ctx,
-		keySelect+" WHERE active=TRUE AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 LIMIT 1", tenantID, usage, scopeID))
+
+	row, err := New(s.Pool).GetActiveKey(ctx, GetActiveKeyParams{
+		TenantID: tenantID,
+		KeyUsage: string(usage),
+		ScopeID:  scopeID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return s.rotateForTenant(ctx, tenantID, time.Now().UTC(), 7*24*time.Hour, nil)
+	}
 	if err != nil {
 		return nil, err
 	}
-	if key == nil {
-		// まだ鍵の無いテナントは初回に遅延生成する。
-		return s.rotateForTenant(ctx, tenantID, time.Now().UTC(), 7*24*time.Hour, nil)
+
+	var publicJWK, privateJWK map[string]any
+	if err := json.Unmarshal(row.PublicJwk, &publicJWK); err != nil {
+		return nil, err
 	}
-	return key, nil
+	if err := json.Unmarshal(row.PrivateJwk, &privateJWK); err != nil {
+		return nil, err
+	}
+	pub, priv, err := signingcrypto.ImportRSAJWK(publicJWK, privateJWK)
+	if err != nil {
+		return nil, err
+	}
+
+	return &signingdomain.SigningKey{
+		Kid:            row.Kid,
+		TenantID:       row.TenantID,
+		Alg:            signingdomain.SignatureAlgorithm(row.Alg),
+		Provider:       signingdomain.KeyProvider(row.Provider),
+		Usage:          signingdomain.KeyUsage(row.KeyUsage),
+		ScopeID:        row.ScopeID,
+		PublicJWK:      publicJWK,
+		PublicKey:      pub,
+		PrivateKey:     priv,
+		CertificateDER: row.CertificateDer,
+		Active:         row.Active,
+		CreatedAt:      row.CreatedAt,
+		RetiredAt:      timePtr(row.RetiredAt),
+		ExpiresAt:      timePtr(row.ExpiresAt),
+		ArchivedAt:     timePtr(row.ArchivedAt),
+	}, nil
 }
 
 func (s *KeyStore) GetAllKeys(ctx context.Context) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
-	rows, err := s.Pool.Query(ctx,
-		keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 ORDER BY created_at DESC", tenantID, usage, scopeID)
+	rows, err := New(s.Pool).GetAllKeys(ctx, GetAllKeysParams{
+		TenantID: tenantID,
+		KeyUsage: string(usage),
+		ScopeID:  scopeID,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*signingdomain.SigningKey{}
-	for rows.Next() {
-		key, err := scanSigningKey(rows)
+	out := make([]*signingdomain.SigningKey, 0, len(rows))
+	for _, row := range rows {
+		var publicJWK, privateJWK map[string]any
+		if err := json.Unmarshal(row.PublicJwk, &publicJWK); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(row.PrivateJwk, &privateJWK); err != nil {
+			return nil, err
+		}
+		pub, priv, err := signingcrypto.ImportRSAJWK(publicJWK, privateJWK)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, key)
+		out = append(out, &signingdomain.SigningKey{
+			Kid:            row.Kid,
+			TenantID:       row.TenantID,
+			Alg:            signingdomain.SignatureAlgorithm(row.Alg),
+			Provider:       signingdomain.KeyProvider(row.Provider),
+			Usage:          signingdomain.KeyUsage(row.KeyUsage),
+			ScopeID:        row.ScopeID,
+			PublicJWK:      publicJWK,
+			PublicKey:      pub,
+			PrivateKey:     priv,
+			CertificateDER: row.CertificateDer,
+			Active:         row.Active,
+			CreatedAt:      row.CreatedAt,
+			RetiredAt:      timePtr(row.RetiredAt),
+			ExpiresAt:      timePtr(row.ExpiresAt),
+			ArchivedAt:     timePtr(row.ArchivedAt),
+		})
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (s *KeyStore) ListPublicKeys(ctx context.Context, now time.Time) ([]*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
-	rows, err := s.Pool.Query(ctx, keySelect+" WHERE archived_at IS NULL AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 AND (active=TRUE OR expires_at>$4) ORDER BY created_at DESC", tenantID, usage, scopeID, now)
+
+	expiresAt := now
+	rows, err := New(s.Pool).ListPublicKeys(ctx, ListPublicKeysParams{
+		TenantID:  tenantID,
+		KeyUsage:  string(usage),
+		ScopeID:   scopeID,
+		ExpiresAt: timeToPg(&expiresAt),
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []*signingdomain.SigningKey{}
-	for rows.Next() {
-		key, err := scanSigningKey(rows)
+	out := make([]*signingdomain.SigningKey, 0, len(rows))
+	for _, row := range rows {
+		var publicJWK, privateJWK map[string]any
+		if err := json.Unmarshal(row.PublicJwk, &publicJWK); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(row.PrivateJwk, &privateJWK); err != nil {
+			return nil, err
+		}
+		pub, priv, err := signingcrypto.ImportRSAJWK(publicJWK, privateJWK)
 		if err != nil {
 			return nil, err
 		}
-		out = append(out, key)
+		out = append(out, &signingdomain.SigningKey{
+			Kid:            row.Kid,
+			TenantID:       row.TenantID,
+			Alg:            signingdomain.SignatureAlgorithm(row.Alg),
+			Provider:       signingdomain.KeyProvider(row.Provider),
+			Usage:          signingdomain.KeyUsage(row.KeyUsage),
+			ScopeID:        row.ScopeID,
+			PublicJWK:      publicJWK,
+			PublicKey:      pub,
+			PrivateKey:     priv,
+			CertificateDER: row.CertificateDer,
+			Active:         row.Active,
+			CreatedAt:      row.CreatedAt,
+			RetiredAt:      timePtr(row.RetiredAt),
+			ExpiresAt:      timePtr(row.ExpiresAt),
+			ArchivedAt:     timePtr(row.ArchivedAt),
+		})
 	}
-	return out, rows.Err()
+	return out, nil
 }
 
 func (s *KeyStore) FindByKID(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
-	return scanSigningKey(s.Pool.QueryRow(ctx,
-		keySelect+" WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4", kid, tenantID, usage, scopeID))
+	row, err := New(s.Pool).FindKeyByKID(ctx, FindKeyByKIDParams{
+		Kid:      kid,
+		TenantID: tenantID,
+		KeyUsage: string(usage),
+		ScopeID:  scopeID,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	var publicJWK, privateJWK map[string]any
+	if err := json.Unmarshal(row.PublicJwk, &publicJWK); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(row.PrivateJwk, &privateJWK); err != nil {
+		return nil, err
+	}
+	pub, priv, err := signingcrypto.ImportRSAJWK(publicJWK, privateJWK)
+	if err != nil {
+		return nil, err
+	}
+
+	return &signingdomain.SigningKey{
+		Kid:            row.Kid,
+		TenantID:       row.TenantID,
+		Alg:            signingdomain.SignatureAlgorithm(row.Alg),
+		Provider:       signingdomain.KeyProvider(row.Provider),
+		Usage:          signingdomain.KeyUsage(row.KeyUsage),
+		ScopeID:        row.ScopeID,
+		PublicJWK:      publicJWK,
+		PublicKey:      pub,
+		PrivateKey:     priv,
+		CertificateDER: row.CertificateDer,
+		Active:         row.Active,
+		CreatedAt:      row.CreatedAt,
+		RetiredAt:      timePtr(row.RetiredAt),
+		ExpiresAt:      timePtr(row.ExpiresAt),
+		ArchivedAt:     timePtr(row.ArchivedAt),
+	}, nil
 }
 
 func (s *KeyStore) Rotate(ctx context.Context, now time.Time, grace time.Duration) (*signingdomain.SigningKey, error) {
@@ -101,22 +245,18 @@ func (s *KeyStore) RotateIfDue(ctx context.Context, now time.Time, cadence, grac
 	return s.rotateForTenant(ctx, tenancy.TenantID(ctx), now, grace, &dueBefore)
 }
 
-// Disable は ctx テナントの鍵 1 件を archive し JWKS から即時に外す。
 func (s *KeyStore) Disable(ctx context.Context, kid string) (*signingdomain.SigningKey, error) {
-	tenantID := tenancy.TenantID(ctx)
-	usage := signingports.KeyUsage(ctx)
-	scopeID := signingports.KeyScope(ctx)
-	key, err := scanSigningKey(s.Pool.QueryRow(ctx,
-		keySelect+" WHERE kid=$1 AND tenant_id=$2 AND key_usage=$3 AND scope_id=$4", kid, tenantID, usage, scopeID))
+	key, err := s.FindByKID(ctx, kid)
 	if err != nil || key == nil {
 		return nil, err
 	}
 	if key.Active {
 		return nil, signingdomain.ErrActiveSigningKeyCannotBeDisabled
 	}
-	if _, err := s.Pool.Exec(ctx,
-		"UPDATE signing_keys SET active=FALSE,archived_at=now(),updated_at=now() WHERE kid=$1 AND tenant_id=$2",
-		kid, tenantID); err != nil {
+	if err := New(s.Pool).DisableKey(ctx, DisableKeyParams{
+		Kid:      kid,
+		TenantID: tenancy.TenantID(ctx),
+	}); err != nil {
 		return nil, err
 	}
 	key.Active = false
@@ -127,25 +267,48 @@ func (s *KeyStore) ArchiveExpired(ctx context.Context, before time.Time) ([]*sig
 	tenantID := tenancy.TenantID(ctx)
 	usage := signingports.KeyUsage(ctx)
 	scopeID := signingports.KeyScope(ctx)
-	rows, err := s.Pool.Query(ctx, `UPDATE signing_keys
-SET archived_at=$2,updated_at=$2
-WHERE archived_at IS NULL AND tenant_id=$1 AND expires_at IS NOT NULL AND expires_at<=$2 AND key_usage=$3 AND scope_id=$4
-RETURNING kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at`,
-		tenantID, before.UTC(), usage, scopeID)
+
+	expiresAt := before.UTC()
+	rows, err := New(s.Pool).ArchiveExpiredKeys(ctx, ArchiveExpiredKeysParams{
+		ArchivedAt: timeToPg(&expiresAt),
+		TenantID:   tenantID,
+		KeyUsage:   string(usage),
+		ScopeID:    scopeID,
+	})
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	archived := []*signingdomain.SigningKey{}
-	for rows.Next() {
-		key, err := scanSigningKey(rows)
+
+	archived := make([]*signingdomain.SigningKey, 0, len(rows))
+	for _, row := range rows {
+		var publicJWK, privateJWK map[string]any
+		if err := json.Unmarshal(row.PublicJwk, &publicJWK); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(row.PrivateJwk, &privateJWK); err != nil {
+			return nil, err
+		}
+		pub, priv, err := signingcrypto.ImportRSAJWK(publicJWK, privateJWK)
 		if err != nil {
 			return nil, err
 		}
-		archived = append(archived, key)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
+		archived = append(archived, &signingdomain.SigningKey{
+			Kid:            row.Kid,
+			TenantID:       row.TenantID,
+			Alg:            signingdomain.SignatureAlgorithm(row.Alg),
+			Provider:       signingdomain.KeyProvider(row.Provider),
+			Usage:          signingdomain.KeyUsage(row.KeyUsage),
+			ScopeID:        row.ScopeID,
+			PublicJWK:      publicJWK,
+			PublicKey:      pub,
+			PrivateKey:     priv,
+			CertificateDER: row.CertificateDer,
+			Active:         row.Active,
+			CreatedAt:      row.CreatedAt,
+			RetiredAt:      timePtr(row.RetiredAt),
+			ExpiresAt:      timePtr(row.ExpiresAt),
+			ArchivedAt:     timePtr(row.ArchivedAt),
+		})
 	}
 	return archived, nil
 }
@@ -188,16 +351,20 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 		return nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	// advisory lock は tenant 単位に取り、テナント間の回転は直列化しない。
-	if _, err := tx.Exec(ctx,
-		"SELECT pg_advisory_xact_lock(hashtext('idmagic-signing-key:'||$1||':'||$2||':'||$3))", tenantID, usage, scopeID); err != nil {
+	q := New(tx)
+	if err := q.LockSigningKeyRotation(ctx, LockSigningKeyRotationParams{
+		Column1: pgtype.Text{String: tenantID, Valid: true},
+		Column2: pgtype.Text{String: string(usage), Valid: true},
+		Column3: pgtype.Text{String: scopeID, Valid: true},
+	}); err != nil {
 		return nil, err
 	}
 	if dueBefore != nil {
-		var createdAt time.Time
-		err := tx.QueryRow(ctx,
-			"SELECT created_at FROM signing_keys WHERE active AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3 LIMIT 1 FOR UPDATE",
-			tenantID, usage, scopeID).Scan(&createdAt)
+		createdAt, err := q.GetActiveKeyCreatedAtForUpdate(ctx, GetActiveKeyCreatedAtForUpdateParams{
+			TenantID: tenantID,
+			KeyUsage: string(usage),
+			ScopeID:  scopeID,
+		})
 		if err == nil && createdAt.After(*dueBefore) {
 			if err := tx.Commit(ctx); err != nil {
 				return nil, err
@@ -208,15 +375,27 @@ func (s *KeyStore) rotateForTenant(ctx context.Context, tenantID string, now tim
 			return nil, err
 		}
 	}
-	if _, err := tx.Exec(ctx,
-		"UPDATE signing_keys SET active=FALSE,retired_at=$4,expires_at=$5,updated_at=$4 WHERE active AND tenant_id=$1 AND key_usage=$2 AND scope_id=$3",
-		tenantID, usage, scopeID, now, expires); err != nil {
+
+	retireExpires := expires
+	if err := q.RetireActiveKey(ctx, RetireActiveKeyParams{
+		RetiredAt: timeToPg(&now),
+		ExpiresAt: timeToPg(&retireExpires),
+		TenantID:  tenantID,
+		KeyUsage:  string(usage),
+		ScopeID:   scopeID,
+	}); err != nil {
 		return nil, err
 	}
-	if _, err := tx.Exec(ctx, `INSERT INTO signing_keys
-		(kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active)
-VALUES ($1,$2,'PS256','Database',$3,$4,$5,$6,$7,TRUE)`,
-		kid, tenantID, usage, scopeID, string(publicJSON), string(privateJSON), certificateDER); err != nil {
+
+	if err := q.InsertSigningKey(ctx, InsertSigningKeyParams{
+		Kid:            kid,
+		TenantID:       tenantID,
+		KeyUsage:       string(usage),
+		ScopeID:        scopeID,
+		PublicJwk:      publicJSON,
+		PrivateJwk:     privateJSON,
+		CertificateDer: certificateDER,
+	}); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -229,32 +408,4 @@ VALUES ($1,$2,'PS256','Database',$3,$4,$5,$6,$7,TRUE)`,
 		PrivateKey: priv, PublicKey: &priv.PublicKey,
 		PublicJWK: publicJWK, CertificateDER: certificateDER, Active: true, CreatedAt: now,
 	}, nil
-}
-
-const keySelect = `SELECT kid,tenant_id,alg,provider,key_usage,scope_id,public_jwk,private_jwk,certificate_der,active,created_at,retired_at,expires_at,archived_at FROM signing_keys`
-
-func scanSigningKey(row sharedpostgres.RowScanner) (*signingdomain.SigningKey, error) {
-	var key signingdomain.SigningKey
-	var publicJSON, privateJSON []byte
-	err := row.Scan(&key.Kid, &key.TenantID, &key.Alg, &key.Provider, &key.Usage, &key.ScopeID,
-		&publicJSON, &privateJSON, &key.CertificateDER, &key.Active, &key.CreatedAt, &key.RetiredAt, &key.ExpiresAt, &key.ArchivedAt)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	var publicJWK, privateJWK map[string]any
-	if err := json.Unmarshal(publicJSON, &publicJWK); err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal(privateJSON, &privateJWK); err != nil {
-		return nil, err
-	}
-	pub, priv, err := signingcrypto.ImportRSAJWK(publicJWK, privateJWK)
-	if err != nil {
-		return nil, err
-	}
-	key.PublicJWK, key.PublicKey, key.PrivateKey = publicJWK, pub, priv
-	return &key, nil
 }
