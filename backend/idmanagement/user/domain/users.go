@@ -46,7 +46,7 @@ type User struct {
 var userSchema = z.Struct(z.Shape{
 	"ID":                z.String().Required(),
 	"PreferredUsername": z.String().Min(1).Max(100).Required(),
-	"PasswordHash":      z.String().Required(),
+	"PasswordHash":      z.String(),
 	"Name":              z.Ptr(z.String().Max(200)),
 	"GivenName":         z.Ptr(z.String().Max(100)),
 	"FamilyName":        z.Ptr(z.String().Max(100)),

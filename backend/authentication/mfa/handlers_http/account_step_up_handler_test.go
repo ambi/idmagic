@@ -20,6 +20,8 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	"github.com/ambi/idmagic/backend/authentication"
+	federationmemory "github.com/ambi/idmagic/backend/authentication/federation/db_memory"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
@@ -91,6 +93,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 
 	store := sessionmemory.NewSessionStore()
 	sm := sessionusecases.NewSessionManager(store)
+	federationRepos := federationmemory.NewRepositories()
 	var events []spec.DomainEvent
 
 	e := echo.New()
@@ -107,6 +110,12 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 		PasswordHistoryRepo:   passwordmemory.NewPasswordHistoryRepository(),
 		EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(),
 		SessionManager:        sm, AuthnResolver: sm,
+		Authentication: authentication.Module{
+			FederationConnectionRepo: federationRepos.Connections,
+			FederationIdentityRepo:   federationRepos.Identities,
+			FederationAttemptStore:   federationRepos.Attempts,
+			FederationReplayStore:    federationRepos.Replay,
+		},
 	})
 	return e, store, &events
 }
@@ -129,11 +138,16 @@ func seedSession(t *testing.T, store *sessionmemory.SessionStore, id string, aut
 
 func postAccount(t *testing.T, e *echo.Echo, path, sessionID string, body any) *httptest.ResponseRecorder {
 	t.Helper()
+	return accountRequest(t, e, http.MethodPost, path, sessionID, body)
+}
+
+func accountRequest(t *testing.T, e *echo.Echo, method, path, sessionID string, body any) *httptest.ResponseRecorder {
+	t.Helper()
 	payload, err := json.Marshal(body)
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodPost, path, bytes.NewReader(payload))
+	req := httptest.NewRequest(method, path, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", "csrf-token-value")
@@ -158,17 +172,20 @@ func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 
 // 対象表: step-up が必要な sensitive 操作の全エンドポイント。
 var stepUpGatedEndpoints = []struct {
-	name string
-	path string
+	name   string
+	method string
+	path   string
 }{
-	{"change_password", "/realms/default/api/auth/change_password"},
-	{"totp_enroll_confirm", "/realms/default/api/account/mfa/totp/enroll/confirm"},
-	{"totp_remove", "/realms/default/api/account/mfa/totp/remove"},
-	{"email_change", "/realms/default/api/account/email/change_request"},
-	{"revoke_others", "/realms/default/api/account/sessions/revoke_others"},
-	{"webauthn_remove", "/realms/default/api/account/mfa/webauthn/remove"},
-	{"recovery_codes_generate", "/realms/default/api/account/mfa/recovery-codes/generate"},
-	{"recovery_codes_revoke", "/realms/default/api/account/mfa/recovery-codes/revoke"},
+	{"change_password", http.MethodPost, "/realms/default/api/auth/change_password"},
+	{"totp_enroll_confirm", http.MethodPost, "/realms/default/api/account/mfa/totp/enroll/confirm"},
+	{"totp_remove", http.MethodPost, "/realms/default/api/account/mfa/totp/remove"},
+	{"email_change", http.MethodPost, "/realms/default/api/account/email/change_request"},
+	{"revoke_others", http.MethodPost, "/realms/default/api/account/sessions/revoke_others"},
+	{"webauthn_remove", http.MethodPost, "/realms/default/api/account/mfa/webauthn/remove"},
+	{"recovery_codes_generate", http.MethodPost, "/realms/default/api/account/mfa/recovery-codes/generate"},
+	{"recovery_codes_revoke", http.MethodPost, "/realms/default/api/account/mfa/recovery-codes/revoke"},
+	{"link_external_identity", http.MethodPost, "/realms/default/api/account/linked-identities/{provider_id}"},
+	{"unlink_external_identity", http.MethodDelete, "/realms/default/api/account/linked-identities/{provider_id}"},
 }
 
 // TestStepUpAnnotatedInterfacesMatchGatedHandlers は ADR-043 の対象表を機械照合する:
@@ -213,7 +230,7 @@ func TestStepUpGateBlocksStaleSessionOnAllSensitiveEndpoints(t *testing.T) {
 	e, store, _ := newStepUpServer(t)
 	stale := seedSession(t, store, "sess-stale", time.Now().Add(-10*time.Minute))
 	for _, ep := range stepUpGatedEndpoints {
-		rec := postAccount(t, e, ep.path, stale, map[string]any{})
+		rec := accountRequest(t, e, ep.method, ep.path, stale, map[string]any{})
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("%s: status=%d body=%s, want 403", ep.name, rec.Code, rec.Body.String())
 		}
@@ -227,7 +244,7 @@ func TestStepUpGateAllowsFreshSession(t *testing.T) {
 	e, store, _ := newStepUpServer(t)
 	fresh := seedSession(t, store, "sess-fresh", time.Now())
 	for _, ep := range stepUpGatedEndpoints {
-		rec := postAccount(t, e, ep.path, fresh, map[string]any{})
+		rec := accountRequest(t, e, ep.method, ep.path, fresh, map[string]any{})
 		// gate を通過するので step_up_required にはならない (以降の検証で別エラーや成功になる)。
 		if code := errorCode(t, rec); code == "step_up_required" {
 			t.Fatalf("%s: fresh session blocked by step-up (status=%d)", ep.name, rec.Code)

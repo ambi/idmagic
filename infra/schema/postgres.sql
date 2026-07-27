@@ -462,6 +462,79 @@ CREATE INDEX authentication_sessions_active_user_idx
 -- housekeeping batch cleanup 用。
 CREATE INDEX authentication_sessions_expires_at_idx ON authentication_sessions (expires_at);
 
+CREATE TABLE identity_provider_connections (
+    tenant_id UUID NOT NULL,
+    provider_id TEXT NOT NULL,
+    display_name TEXT NOT NULL,
+    protocol TEXT NOT NULL CHECK (protocol IN ('oidc', 'saml')),
+    status TEXT NOT NULL CHECK (status IN ('draft', 'active', 'disabled')),
+    issuer TEXT NOT NULL,
+    client_id TEXT,
+    secret_reference TEXT,
+    authorization_endpoint TEXT,
+    token_endpoint TEXT,
+    jwks_uri TEXT,
+    saml_sso_url TEXT,
+    saml_entity_id TEXT,
+    saml_signing_certificates JSONB NOT NULL DEFAULT '[]'::jsonb,
+    claim_mapping JSONB NOT NULL,
+    linking_policy TEXT NOT NULL CHECK (linking_policy IN ('none', 'verified_email')),
+    jit_provisioning BOOLEAN NOT NULL DEFAULT FALSE,
+    allowed_email_domains JSONB NOT NULL DEFAULT '[]'::jsonb,
+    metadata_refreshed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (tenant_id, provider_id),
+    CONSTRAINT identity_provider_connections_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE federated_identities (
+    tenant_id UUID NOT NULL,
+    provider_id TEXT NOT NULL,
+    external_subject TEXT NOT NULL,
+    local_user_id UUID NOT NULL,
+    linked_at TIMESTAMPTZ NOT NULL,
+    last_login_at TIMESTAMPTZ,
+    PRIMARY KEY (tenant_id, provider_id, external_subject),
+    UNIQUE (tenant_id, provider_id, local_user_id),
+    CONSTRAINT federated_identities_provider_fkey
+        FOREIGN KEY (tenant_id, provider_id)
+        REFERENCES identity_provider_connections(tenant_id, provider_id) ON DELETE RESTRICT,
+    CONSTRAINT federated_identities_user_fkey
+        FOREIGN KEY (local_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE federated_login_attempts (
+    tenant_id UUID NOT NULL,
+    state TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    protocol TEXT NOT NULL CHECK (protocol IN ('oidc', 'saml')),
+    nonce TEXT,
+    pkce_verifier TEXT,
+    request_id TEXT,
+    return_to TEXT,
+    link_user_id UUID,
+    created_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ,
+    PRIMARY KEY (tenant_id, state),
+    CONSTRAINT federated_login_attempts_provider_fkey
+        FOREIGN KEY (tenant_id, provider_id)
+        REFERENCES identity_provider_connections(tenant_id, provider_id) ON DELETE CASCADE,
+    CONSTRAINT federated_login_attempts_user_fkey
+        FOREIGN KEY (link_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE federated_response_replays (
+    tenant_id UUID NOT NULL,
+    response_id TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (tenant_id, response_id),
+    CONSTRAINT federated_response_replays_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
 CREATE TABLE groups (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,

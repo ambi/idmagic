@@ -44,10 +44,10 @@ type LocaleContextValue = {
   setLocale: (next: Locale) => void
 }
 
-// Provider が無い純粋な presentation unit test では従来の日本語を返す。本体と統合
-// テストは必ず LocaleProvider を通り、FallbackLocale=en を使用する。
+// Provider が無い presentation unit test も製品 fallback と同じ英語を使う。
+// 日本語を検証するテストは LocaleProvider で locale=ja を明示する。
 const defaultLocaleContextValue: LocaleContextValue = {
-  locale: 'ja',
+  locale: FALLBACK_LOCALE,
   setLocale: () => {},
 }
 

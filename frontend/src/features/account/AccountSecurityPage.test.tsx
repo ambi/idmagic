@@ -9,11 +9,15 @@ import {
   RecoveryCodesPanel,
   TotpEnrollmentForm,
   TotpRemovalForm,
-  formatAccountSecurityDateTime,
 } from './AccountSecurityPage'
+import { accountSecurityDictionary } from './AccountSecurityPage.i18n'
+import { formatAccountSecurityDateTime } from './accountSecurityPresentation'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 
 const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
-  renderWithRouterBase(ui, { locale: 'ja' })
+  renderWithRouterBase(ui)
+const t = accountSecurityDictionary.en
+const commonT = commonDictionary.en
 import type {
   AccountSecurity,
   RecoveryCodeStatus,
@@ -38,8 +42,8 @@ afterAll(() => {
 })
 
 describe('formatAccountSecurityDateTime', () => {
-  it('returns 記録なし when no value is given', () => {
-    expect(formatAccountSecurityDateTime(undefined)).toBe('記録なし')
+  it('returns the English no-record label when no value is given', () => {
+    expect(formatAccountSecurityDateTime(undefined)).toBe(t.noRecord)
   })
 
   it('formats a valid ISO date string', () => {
@@ -67,7 +71,7 @@ describe('TotpEnrollmentForm', () => {
         onEnrollCodeChange={onEnrollCodeChange}
       />,
     )
-    fireEvent.change(screen.getByLabelText('認証アプリに表示された 6 桁コード'), {
+    fireEvent.change(screen.getByLabelText(t.totpCode), {
       target: { value: 'ab12cd' },
     })
     expect(onEnrollCodeChange).toHaveBeenCalledWith('12')
@@ -84,7 +88,7 @@ describe('TotpEnrollmentForm', () => {
         onEnrollCodeChange={mock()}
       />,
     )
-    expect(screen.getByRole('button', { name: '登録を完了' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: t.completeEnrollment })).toBeDisabled()
   })
 
   it('calls onCancel when cancel is clicked', () => {
@@ -99,7 +103,7 @@ describe('TotpEnrollmentForm', () => {
         onEnrollCodeChange={mock()}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }))
+    fireEvent.click(screen.getByRole('button', { name: t.cancel }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
 })
@@ -114,7 +118,7 @@ describe('TotpRemovalForm', () => {
         onRemoveCodeChange={mock()}
       />,
     )
-    expect(screen.getByRole('button', { name: '認証アプリを解除' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: t.removeTotp })).toBeDisabled()
   })
 
   it('enables the remove button once 6 digits are entered', () => {
@@ -126,7 +130,7 @@ describe('TotpRemovalForm', () => {
         onRemoveCodeChange={mock()}
       />,
     )
-    expect(screen.getByRole('button', { name: '認証アプリを解除' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: t.removeTotp })).toBeEnabled()
   })
 })
 
@@ -140,13 +144,13 @@ describe('PasskeyList', () => {
 
   it('shows an empty state when there are no passkeys', () => {
     render(<PasskeyList passkeys={[]} busy={false} onRemove={mock()} />)
-    expect(screen.getByText('登録済みのパスキーはありません。')).toBeInTheDocument()
+    expect(screen.getByText(t.noPasskeys)).toBeInTheDocument()
   })
 
   it('calls onRemove with the credential id', () => {
     const onRemove = mock()
     render(<PasskeyList passkeys={[passkey]} busy={false} onRemove={onRemove} />)
-    fireEvent.click(screen.getByRole('button', { name: /解除/ }))
+    fireEvent.click(screen.getByRole('button', { name: t.remove }))
     expect(onRemove).toHaveBeenCalledWith('cred-1')
   })
 })
@@ -162,7 +166,7 @@ describe('PasskeyRegisterForm', () => {
         onRegister={mock()}
       />,
     )
-    fireEvent.change(screen.getByLabelText('パスキーの名前 (任意)'), {
+    fireEvent.change(screen.getByLabelText(t.passkeyName), {
       target: { value: 'My Key' },
     })
     expect(onLabelChange).toHaveBeenCalledWith('My Key')
@@ -178,7 +182,7 @@ describe('PasskeyRegisterForm', () => {
         onRegister={onRegister}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'パスキーを登録' }))
+    fireEvent.click(screen.getByRole('button', { name: t.registerPasskey }))
     expect(onRegister).toHaveBeenCalledTimes(1)
   })
 })
@@ -187,7 +191,7 @@ describe('RecoveryCodesPanel', () => {
   const emptyRecovery: RecoveryCodeStatus = { total: 0, remaining: 0 }
   const activeRecovery: RecoveryCodeStatus = { total: 8, remaining: 5 }
 
-  it('shows the 生成 label when there are no codes yet', () => {
+  it('shows the Generate label when there are no codes yet', () => {
     render(
       <RecoveryCodesPanel
         recovery={emptyRecovery}
@@ -197,11 +201,11 @@ describe('RecoveryCodesPanel', () => {
         onRevoke={mock()}
       />,
     )
-    expect(screen.getByRole('button', { name: 'リカバリコードを生成' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'すべて失効' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.generate })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.revokeAll })).not.toBeInTheDocument()
   })
 
-  it('shows the 再生成 label and revoke button once codes exist', () => {
+  it('shows the Regenerate label and revoke button once codes exist', () => {
     render(
       <RecoveryCodesPanel
         recovery={activeRecovery}
@@ -211,8 +215,8 @@ describe('RecoveryCodesPanel', () => {
         onRevoke={mock()}
       />,
     )
-    expect(screen.getByRole('button', { name: 'リカバリコードを再生成' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'すべて失効' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.regenerate })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.revokeAll })).toBeInTheDocument()
   })
 
   it('renders generated codes when present', () => {
@@ -240,7 +244,7 @@ describe('RecoveryCodesPanel', () => {
         onRevoke={onRevoke}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'すべて失効' }))
+    fireEvent.click(screen.getByRole('button', { name: t.revokeAll }))
     expect(onRevoke).toHaveBeenCalledTimes(1)
   })
 })
@@ -271,17 +275,17 @@ describe('AccountSecurityPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(
+    await renderWithRouterBase(
       <AccountSecurityPage csrfToken="csrf" username="taro" isAdmin={false} security={security} />,
     )
-    fireEvent.click(screen.getByRole('button', { name: '認証アプリを設定' }))
-    fireEvent.change(await screen.findByLabelText('認証アプリに表示された 6 桁コード'), {
+    fireEvent.click(screen.getByRole('button', { name: t.setUpTotp }))
+    fireEvent.change(await screen.findByLabelText(t.totpCode), {
       target: { value: '123456' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '登録を完了' }))
+    fireEvent.click(screen.getByRole('button', { name: t.completeEnrollment }))
 
-    expect(await screen.findByText(/認証アプリを登録しました/)).toBeInTheDocument()
-    expect(screen.getByText('設定済み')).toBeInTheDocument()
+    expect(await screen.findByText(t.totpEnrolled)).toBeInTheDocument()
+    expect(screen.getByText(t.configured)).toBeInTheDocument()
   })
 
   it('shows an error when confirming the TOTP code fails', async () => {
@@ -291,7 +295,7 @@ describe('AccountSecurityPage', () => {
         if (url.includes('/mfa/totp/enroll/start'))
           return Promise.resolve(response(200, enrollment))
         if (url.includes('/mfa/totp/enroll/confirm')) {
-          return Promise.resolve(response(400, { message: 'コードが正しくありません' }))
+          return Promise.resolve(response(400, { message: 'The code is invalid' }))
         }
         throw new Error(`unexpected fetch ${url}`)
       }),
@@ -299,14 +303,14 @@ describe('AccountSecurityPage', () => {
     await renderWithRouter(
       <AccountSecurityPage csrfToken="csrf" username="taro" isAdmin={false} security={security} />,
     )
-    fireEvent.click(screen.getByRole('button', { name: '認証アプリを設定' }))
-    fireEvent.change(await screen.findByLabelText('認証アプリに表示された 6 桁コード'), {
+    fireEvent.click(screen.getByRole('button', { name: t.setUpTotp }))
+    fireEvent.change(await screen.findByLabelText(t.totpCode), {
       target: { value: '000000' },
     })
-    fireEvent.click(screen.getByRole('button', { name: '登録を完了' }))
+    fireEvent.click(screen.getByRole('button', { name: t.completeEnrollment }))
 
-    expect(await screen.findByText('コードが正しくありません')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '登録を完了' })).toBeInTheDocument()
+    expect(await screen.findByText('The code is invalid')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.completeEnrollment })).toBeInTheDocument()
   })
 
   it('keeps existing recovery codes when step-up re-authentication is cancelled', async () => {
@@ -318,7 +322,7 @@ describe('AccountSecurityPage', () => {
         }
         if (url.includes('/mfa/recovery-codes/generate')) {
           return Promise.resolve(
-            response(403, { message: '再認証が必要です', error: 'step_up_required' }),
+            response(403, { message: 'Reauthentication is required', error: 'step_up_required' }),
           )
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -327,13 +331,48 @@ describe('AccountSecurityPage', () => {
     await renderWithRouter(
       <AccountSecurityPage csrfToken="csrf" username="taro" isAdmin={false} security={security} />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'リカバリコードを生成' }))
+    fireEvent.click(screen.getByRole('button', { name: t.generate }))
 
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'キャンセル' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: commonT.cancel }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'リカバリコードを生成' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.generate })).toBeInTheDocument()
+  })
+
+  it('lists and removes a linked external identity', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string) =>
+        Promise.resolve(
+          url.includes('/api/account/linked-identities') ? response(204) : response(200, {}),
+        ),
+      ),
+    )
+    await renderWithRouter(
+      <AccountSecurityPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        security={security}
+        linkedIdentities={[
+          {
+            provider_id: 'contoso',
+            local_user_id: 'user-taro',
+            linked_at: '2026-07-27T10:00:00Z',
+          },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('contoso')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Unlink contoso' }))
+
+    expect(await screen.findByText(t.noLinkedIdentities)).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/account/linked-identities/contoso'),
+      expect.objectContaining({ method: 'DELETE' }),
+    )
   })
 })

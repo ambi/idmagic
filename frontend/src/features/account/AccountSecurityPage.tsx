@@ -21,6 +21,7 @@ import {
   revokeRecoveryCodes,
   startTotpEnrollment,
   tenantURL,
+  type LinkedIdentity,
 } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
@@ -38,15 +39,8 @@ import type {
 } from '../../types'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { accountSecurityDictionary } from './AccountSecurityPage.i18n'
-
-export function formatAccountSecurityDateTime(
-  value?: string,
-  locale = 'ja',
-  noRecord = accountSecurityDictionary.ja.noRecord,
-): string {
-  if (!value) return noRecord
-  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
-}
+import { LinkedIdentitiesCard } from './LinkedIdentitiesCard'
+import { formatAccountSecurityDateTime } from './accountSecurityPresentation'
 
 function errorMessage(cause: unknown, fallback: string): string {
   return cause instanceof AuthenticationAPIError ? cause.message : fallback
@@ -57,11 +51,13 @@ export function AccountSecurityPage({
   username,
   isAdmin,
   security,
+  linkedIdentities = [],
 }: {
   csrfToken: string
   username: string
   isAdmin: boolean
   security: AccountSecurity
+  linkedIdentities?: LinkedIdentity[]
 }) {
   const t = useDictionary(accountSecurityDictionary)
   const [enrolled, setEnrolled] = useState(security.totp_enrolled)
@@ -214,6 +210,8 @@ export function AccountSecurityPage({
       {error ? <Alert variant="destructive">{error}</Alert> : null}
 
       <PasswordCard passwordChangedAt={security.password_changed_at} />
+
+      <LinkedIdentitiesCard csrfToken={csrfToken} initialIdentities={linkedIdentities} />
 
       <TotpCard
         enrolled={enrolled}

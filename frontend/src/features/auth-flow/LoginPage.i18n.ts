@@ -15,6 +15,8 @@ export const loginPageDictionary = defineDictionary(
     submitting: '確認しています…',
     submit: 'ログインして続行',
     forgotPassword: 'パスワードを忘れた場合',
+    alternativeSignIn: 'または外部アカウントで続行',
+    continueWith: '{provider} で続行',
     securityNote:
       '認証情報は保護された接続で送信されます。共有端末では、利用後に必ずログアウトしてください。',
   },
@@ -32,6 +34,8 @@ export const loginPageDictionary = defineDictionary(
     submitting: 'Checking…',
     submit: 'Sign in',
     forgotPassword: 'Forgot your password?',
+    alternativeSignIn: 'Or continue with an external account',
+    continueWith: 'Continue with {provider}',
     securityNote:
       'Your credentials are sent over a protected connection. Always sign out after using a shared device.',
   },

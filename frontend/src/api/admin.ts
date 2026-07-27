@@ -560,6 +560,109 @@ export async function updateAdminSettings(
 ): Promise<AdminSettings> {
   return request('/api/admin/settings', adminRequest(csrfToken, 'PATCH', input))
 }
+
+export type IdentityProviderConnection = {
+  id: string
+  tenant_id: string
+  display_name: string
+  protocol: 'oidc' | 'saml'
+  status: 'draft' | 'active' | 'disabled'
+  issuer: string
+  client_id?: string
+  authorization_endpoint?: string
+  token_endpoint?: string
+  jwks_uri?: string
+  saml_sso_url?: string
+  saml_entity_id?: string
+  saml_signing_certificates?: string[]
+  claim_mapping: {
+    subject: string
+    username: string
+    email?: string
+    email_verified?: string
+    name?: string
+  }
+  linking_policy: 'none' | 'verified_email'
+  jit_provisioning: boolean
+  allowed_email_domains?: string[]
+}
+
+export type IdentityProviderConnectionInput = Omit<
+  IdentityProviderConnection,
+  'id' | 'tenant_id' | 'status'
+> & { secret_reference?: string }
+
+export async function listIdentityProviderConnections(): Promise<IdentityProviderConnection[]> {
+  const response = await request<{ connections: IdentityProviderConnection[] }>(
+    '/api/admin/identity-providers',
+  )
+  return response.connections ?? []
+}
+
+export async function createIdentityProviderConnection(
+  csrfToken: string,
+  input: IdentityProviderConnectionInput,
+): Promise<IdentityProviderConnection> {
+  return request('/api/admin/identity-providers', adminRequest(csrfToken, 'POST', input))
+}
+
+export async function updateIdentityProviderConnection(
+  csrfToken: string,
+  providerID: string,
+  input: IdentityProviderConnectionInput,
+): Promise<IdentityProviderConnection> {
+  return request(
+    `/api/admin/identity-providers/${encodeURIComponent(providerID)}`,
+    adminRequest(csrfToken, 'PUT', input),
+  )
+}
+
+export async function runIdentityProviderAction(
+  csrfToken: string,
+  providerID: string,
+  action: 'activate' | 'disable' | 'refresh' | 'test',
+): Promise<void> {
+  await request(
+    `/api/admin/identity-providers/${encodeURIComponent(providerID)}/${action}`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function previewIdentityProviderMapping(
+  csrfToken: string,
+  providerID: string,
+  claims: Record<string, unknown>,
+): Promise<{
+  subject: string
+  username: string
+  email?: string
+  email_verified: boolean
+  name?: string
+}> {
+  const response = await request<{
+    preview: {
+      subject: string
+      username: string
+      email?: string
+      email_verified: boolean
+      name?: string
+    }
+  }>(
+    `/api/admin/identity-providers/${encodeURIComponent(providerID)}/mapping-preview`,
+    adminRequest(csrfToken, 'POST', { claims }),
+  )
+  return response.preview
+}
+
+export async function deleteIdentityProviderConnection(
+  csrfToken: string,
+  providerID: string,
+): Promise<void> {
+  await request(
+    `/api/admin/identity-providers/${encodeURIComponent(providerID)}`,
+    adminRequest(csrfToken, 'DELETE'),
+  )
+}
 // 通知テンプレート (wi-288, ADR-142)。文面は組込み既定カタログとテナント上書きの
 // 2 段で解決され、DELETE (reset) は上書きを消して組込み既定へ戻す。
 function notificationTemplatePath(templateKey: string, locale: string): string {

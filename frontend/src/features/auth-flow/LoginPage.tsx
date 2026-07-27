@@ -7,9 +7,15 @@ import {
   IconLock,
   IconShieldLock,
 } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { tenantURL } from '../../api/core'
-import { AuthenticationAPIError, continueBrowserFlow, login } from '../../api'
+import {
+  AuthenticationAPIError,
+  continueBrowserFlow,
+  listFederatedLoginProviders,
+  login,
+  type FederatedLoginProvider,
+} from '../../api'
 import { AuthShell } from '../../components/AuthShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -26,6 +32,21 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [providers, setProviders] = useState<FederatedLoginProvider[]>([])
+
+  useEffect(() => {
+    let active = true
+    listFederatedLoginProviders()
+      .then((items) => {
+        if (active) setProviders(items)
+      })
+      .catch(() => {
+        // Password authentication remains available if provider discovery is unavailable.
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -79,6 +100,29 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
           onSubmit={handleSubmit}
           onTogglePassword={() => setShowPassword((visible) => !visible)}
         />
+
+        {providers.length > 0 ? (
+          <section className="flex flex-col gap-3" aria-label={t.alternativeSignIn}>
+            <div className="flex items-center gap-3 text-xs text-slate-500">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span>{t.alternativeSignIn}</span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+            {providers.map((provider) => {
+              const parameters = new URLSearchParams({ provider_id: provider.id })
+              if (returnTo) parameters.set('return_to', returnTo)
+              return (
+                <a
+                  key={provider.id}
+                  className="flex h-11 items-center justify-center rounded-md border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+                  href={`${tenantURL('/api/auth/federation/start')}?${parameters.toString()}`}
+                >
+                  {t.continueWith.replace('{provider}', provider.display_name)}
+                </a>
+              )
+            })}
+          </section>
+        ) : null}
 
         <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
           <IconShieldLock className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />

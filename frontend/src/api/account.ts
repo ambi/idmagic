@@ -78,6 +78,33 @@ export async function getAccountSecurity(): Promise<AccountSecurity> {
   return request<AccountSecurity>('/api/account/security')
 }
 
+export type LinkedIdentity = {
+  provider_id: string
+  local_user_id: string
+  linked_at: string
+  last_login_at?: string
+}
+
+export async function listLinkedIdentities(): Promise<LinkedIdentity[]> {
+  const response = await request<{ identities: LinkedIdentity[] }>('/api/account/linked-identities')
+  return response.identities ?? []
+}
+
+export async function unlinkIdentity(csrfToken: string, providerId: string): Promise<void> {
+  const response = await fetch(
+    tenantURL(`/api/account/linked-identities/${encodeURIComponent(providerId)}`),
+    {
+      method: 'DELETE',
+      headers: { 'X-CSRF-Token': csrfToken },
+      credentials: 'same-origin',
+      cache: 'no-store',
+    },
+  )
+  if (response.status === 204) return
+  const body = (await response.json().catch(() => ({}))) as APIError
+  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
+}
+
 export async function getSignInActivity(): Promise<AccountSignInActivity[]> {
   return (await request<{ activities: AccountSignInActivity[] }>('/api/account/signin_activity'))
     .activities

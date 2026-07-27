@@ -223,3 +223,46 @@ func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 		t.Fatal("expected AuthorizationCodeIssued to be emitted")
 	}
 }
+
+// Federated authentication completes outside the password handler. The resume
+// endpoint must continue the authorization transaction using the newly created
+// session and issue a code for a first-party client.
+func TestAuthorizeResumeCompletesFederatedSession(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", SessionID: "session_federated",
+		AuthTime: now.Unix(), AMR: []string{"federated"},
+	}
+	e, _ := newAuthorizeTestServer(t, authn, nil)
+	q := authorizeQuery(url.Values{"prompt": {"login"}})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+
+	start := runAuthorize(t, e, q)
+	if start.Code != http.StatusSeeOther {
+		t.Fatalf("start status=%d body=%s", start.Code, start.Body.String())
+	}
+	var transactionCookie *http.Cookie
+	for _, cookie := range start.Result().Cookies() {
+		if strings.Contains(cookie.Name, "idmagic_transaction") {
+			transactionCookie = cookie
+			break
+		}
+	}
+	if transactionCookie == nil {
+		t.Fatal("authorization transaction cookie was not set")
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/authorize/resume", http.NoBody)
+	req.AddCookie(transactionCookie)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusFound {
+		t.Fatalf("resume status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if location := rec.Header().Get("Location"); !strings.HasPrefix(location, authRedirectURI) ||
+		!strings.Contains(location, "code=") {
+		t.Fatalf("resume Location=%q, want redirect URI with authorization code", location)
+	}
+}

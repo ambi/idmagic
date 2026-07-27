@@ -2,7 +2,7 @@
 # この context が所有する module 台帳。path はこのファイルからの相対。
 # 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
 context: shared
-updated_at: 2026-07-26
+updated_at: 2026-07-27
 modules:
   shared-kernel:
     path: kernel
@@ -126,6 +126,14 @@ modules:
         via: composition_root
       - module: authentication-domain
         via: composition_root
+      - module: authentication-federation-domain
+        via: composition_root
+      - module: authentication-federation-http
+        via: composition_root
+      - module: authentication-federation-protocol-oidc
+        via: composition_root
+      - module: authentication-federation-usecases
+        via: composition_root
       - module: authentication-password-ports
         via: composition_root
       - module: authentication-ports
@@ -158,6 +166,10 @@ modules:
         via: composition_root
       - module: idmanagement-user-ports
         via: composition_root
+      - module: idmanagement-user-domain
+        via: composition_root
+      - module: idmanagement-user-usecases
+        via: composition_root
       - module: jobs-public
         via: composition_root
       - module: oauth2-adapters
@@ -175,6 +187,8 @@ modules:
       - module: shared-adapters
         via: technical_shared
       - module: shared-services
+        via: technical_shared
+      - module: shared-spec
         via: technical_shared
       - module: shared-notification-template
         via: technical_shared

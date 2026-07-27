@@ -8026,6 +8026,1140 @@
         }
       }
     },
+    "/api/auth/federation/providers": {
+      "get": {
+        "operationId": "DiscoverIdentityProviders",
+        "summary": "login UI が request tenant で Active な upstream provider の表示用情報だけを取得する。secret、endpoint、certificate、link policy は公開しない。optional email/domain hint は管理時に検証済み routing rule だけに適用する。",
+        "security": [],
+        "parameters": [
+          {
+            "name": "hint",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "providers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ExternalIdentityProviderSummary"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "providers"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/federation/start": {
+      "get": {
+        "operationId": "StartFederatedLogin",
+        "summary": "Active connection を tenant 内で解決し、OIDC state / nonce / PKCE または SAML RelayState / AuthnRequest ID を単発 FederatedLoginAttempt に保存して、管理時検証済み upstream endpoint への redirect を返す。任意 URL は受け取らない。",
+        "security": [],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "return_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "link",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/FederatedLoginStartResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/federation/oidc/callback": {
+      "get": {
+        "operationId": "CompleteFederatedLogin",
+        "summary": "callback を single-use login attempt と相関し、OIDC token または SAML response の trust、issuer、audience、nonce/InResponseTo、time、replay を検証する。既存 link、明示 policy 下の verified-email link、明示 JIT の順で local User を解決し、LoginSession 発行へ渡す。",
+        "security": [],
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "response",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "completion": {
+                      "$ref": "#/components/schemas/FederatedLoginCompletion"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "completion"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/federation/saml/callback": {
+      "post": {
+        "operationId": "CompleteFederatedLogin",
+        "summary": "callback を single-use login attempt と相関し、OIDC token または SAML response の trust、issuer、audience、nonce/InResponseTo、time、replay を検証する。既存 link、明示 policy 下の verified-email link、明示 JIT の順で local User を解決し、LoginSession 発行へ渡す。",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "response": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id",
+                  "state",
+                  "response"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "completion": {
+                      "$ref": "#/components/schemas/FederatedLoginCompletion"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "completion"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError, QuotaExceededError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/QuotaExceededError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/linked-identities": {
+      "get": {
+        "operationId": "ListLinkedExternalIdentities",
+        "summary": "ResourceOwner が自身に結び付く external identity の provider 表示名、protocol、linked_at、last_login_at を取得する。external subject と token は返さない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "AuthenticatedSelf"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "subject.id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "identities": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FederatedIdentity"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "identities"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/account/linked-identities/{provider_id}": {
+      "post": {
+        "operationId": "LinkExternalIdentity",
+        "summary": "直近5分以内に step-up 済みの ResourceOwner が provider の外部認証を開始し、callback で得た subject を自身へ明示 link する。既に他 user に link 済みの subject は付け替えない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "AuthenticatedSelf"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "subject.id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/FederatedLoginStartResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "UnlinkExternalIdentity",
+        "summary": "直近5分以内に step-up 済みの ResourceOwner が自身の provider link を解除する。利用可能な password credential も他の link も無い場合は account lockout 防止のため拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "AuthenticatedSelf"
+          ],
+          "resource": {
+            "type": "User",
+            "id": "subject.id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/identity-providers": {
+      "get": {
+        "operationId": "ListIdentityProviderConnections",
+        "summary": "tenant administrator が connection 一覧を取得する。secret_reference と secret は返さない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connections": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/IdentityProviderConnection"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "connections"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "CreateIdentityProviderConnection",
+        "summary": "tenant administrator が Draft connection を作る。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret の実値ではなく secret_reference だけを受け取る。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "connection": {
+                    "$ref": "#/components/schemas/IdentityProviderConnection"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "connection"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "$ref": "#/components/schemas/IdentityProviderConnection"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/identity-providers/{provider_id}": {
+      "put": {
+        "operationId": "UpdateIdentityProviderConnection",
+        "summary": "tenant administrator が connection の display、mapping、policy、secret reference、trust source を更新する。trust source 変更時は再検証が成功するまで Draft とし、失敗時は last-known-good を維持する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderConnection",
+            "id": "input.provider_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  },
+                  "connection": {
+                    "$ref": "#/components/schemas/IdentityProviderConnection"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id",
+                  "connection"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "$ref": "#/components/schemas/IdentityProviderConnection"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteIdentityProviderConnection",
+        "summary": "tenant administrator が Disabled connection を削除する。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderConnection",
+            "id": "input.provider_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/identity-providers/{provider_id}/activate": {
+      "post": {
+        "operationId": "ActivateIdentityProviderConnection",
+        "summary": "trust validation と接続 test に成功した Draft / Disabled connection を Active にする。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderConnection",
+            "id": "input.provider_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/identity-providers/{provider_id}/disable": {
+      "post": {
+        "operationId": "DisableIdentityProviderConnection",
+        "summary": "Active connection を Disabled にし、新規 routing と callback completion を直ちに拒否する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderConnection",
+            "id": "input.provider_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/identity-providers/{provider_id}/refresh": {
+      "post": {
+        "operationId": "RefreshIdentityProviderMetadata",
+        "summary": "tenant administrator が固定済み issuer / metadata source から discovery/JWKS または SAML metadata を再取得し、SSRF と trust validation 成功時だけ last-known-good を更新する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderConnection",
+            "id": "input.provider_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "connection": {
+                      "$ref": "#/components/schemas/IdentityProviderConnection"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "connection"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/identity-providers/{provider_id}/test": {
+      "post": {
+        "operationId": "TestIdentityProviderConnection",
+        "summary": "保存済み last-known-good trust と secret resolver を使って接続可能性を検査する。secret の実値、token、certificate 本文は返さない。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderConnection",
+            "id": "input.provider_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "result"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/identity-providers/{provider_id}/mapping-preview": {
+      "post": {
+        "operationId": "PreviewIdentityProviderMapping",
+        "summary": "tenant administrator が保存済み test response の検証済み claim を mapping し、token/assertionを含まない正規化 preview を取得する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "IdentityProviderConnection",
+            "id": "input.provider_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider_id": {
+                    "type": "string"
+                  },
+                  "claims": {
+                    "type": "object"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "provider_id",
+                  "claims"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "provider_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preview": {
+                      "$ref": "#/components/schemas/ExternalIdentityClaimsPreview"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "preview"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/register": {
       "post": {
         "operationId": "RegisterClient",
@@ -8140,6 +9274,54 @@
                     },
                     {
                       "$ref": "#/components/schemas/InvalidTargetError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/authorize/resume": {
+      "get": {
+        "operationId": "ResumeFederatedAuthorization",
+        "summary": "Authentication context の inbound federation callback が認証済み session を確立した後、保存済み authorization transaction を再開して通常の application policy・consent・required-action gate を適用する。",
+        "x-scl-requires": [
+          "valid_authorization_transaction(context.transaction_cookie)",
+          "application_assignment_permits(context.tenant_id, subject.id, context.client_id)",
+          "application_sign_in_policy_satisfied(context.tenant_id, subject.id, context.client_id)"
+        ],
+        "description": "Requires: valid_authorization_transaction(context.transaction_cookie); application_assignment_permits(context.tenant_id, subject.id, context.client_id); application_sign_in_policy_satisfied(context.tenant_id, subject.id, context.client_id)",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "AuthenticatedResourceOwner"
+          ],
+          "resource": {
+            "type": "OAuth2AuthorizationService",
+            "id": "context.transaction_id"
+          }
+        },
+        "responses": {
+          "302": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
                     }
                   ]
                 }
@@ -18520,6 +19702,14 @@
         ],
         "description": "primary email 変更の起票リクエスト (self-service)。新アドレスへ確認リンクを\n送るだけで、User.email の反映は確認完了 (ConfirmEmailChange) まで起きない。\n"
       },
+      "AccountLinkingPolicy": {
+        "type": "string",
+        "enum": [
+          "None",
+          "VerifiedEmail"
+        ],
+        "description": "外部 identity と local User の相関方針。既定 None は既存 link 以外を自動相関しない。VerifiedEmail は tenant が明示した場合だけ verified email の一意一致を許可する。"
+      },
       "AccountMfaFactor": {
         "type": "object",
         "properties": {
@@ -23235,6 +24425,36 @@
         ],
         "description": "SubmitBrowserWebAuthn の入力。navigator.credentials.get が返した assertion を\nJSON で送り返す。pending login session cookie が sub を、X-CSRF-Token が CSRF を解決する。\n"
       },
+      "ClaimMapping": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "email_verified": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "username"
+        ],
+        "description": "検証済み upstream claim / attribute を local identity field へ写像する tenant 管理設定。JIT provisioning には subject と username の mapping が必須。",
+        "x-scl-untranslated-constraints": [
+          "size(subject) > 0",
+          "size(username) > 0"
+        ]
+      },
       "ClaimMappingPolicy": {
         "type": "object",
         "properties": {
@@ -25262,6 +26482,54 @@
         "additionalProperties": false,
         "description": "Device Authorization Grant において device_code が有効期限を過ぎた (RFC 8628 §3.5 expired_token)。"
       },
+      "ExternalIdentityClaimsPreview": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "email_verified": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "subject",
+          "username",
+          "email_verified"
+        ],
+        "description": "管理者が mapping を確認するための正規化結果。token、assertion、secret は返さない。"
+      },
+      "ExternalIdentityProviderSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/IdentityProviderProtocol"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "display_name",
+          "protocol"
+        ],
+        "description": "login UI に公開してよい active upstream provider。secret、内部 endpoint、certificate は含まない。"
+      },
       "FapiProfile": {
         "type": "string",
         "enum": [
@@ -25299,6 +26567,214 @@
           "provider"
         ],
         "description": "外部 IdP 経由の federated login が成功した。"
+      },
+      "FederatedIdentity": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "external_subject": {
+            "type": "string"
+          },
+          "local_user_id": {
+            "type": "string"
+          },
+          "linked_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_login_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "provider_id",
+          "external_subject",
+          "local_user_id",
+          "linked_at"
+        ],
+        "description": "外部の不変 subject を local User に相関する link。同一 tenant/provider/subject は最大1 local user、同一 local user/provider も最大1 subject とする。"
+      },
+      "FederatedIdentityLinked": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "linkingMethod": {
+            "type": "string",
+            "description": "explicit | verified_email | jit"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "providerId",
+          "userId",
+          "linkingMethod"
+        ],
+        "description": "検証済み external subject と local User の link を作成した。external token / assertion と PII claim は含めない。"
+      },
+      "FederatedIdentityUnlinked": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "providerId",
+          "userId"
+        ],
+        "description": "step-up 済み ResourceOwner が external identity link を解除した。"
+      },
+      "FederatedLoginAttempt": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/IdentityProviderProtocol"
+          },
+          "nonce": {
+            "type": "string"
+          },
+          "pkce_verifier": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "return_to": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "consumed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "state",
+          "tenant_id",
+          "provider_id",
+          "protocol",
+          "created_at",
+          "expires_at"
+        ],
+        "description": "upstream browser round-trip を相関する単発 ephemeral record。state / nonce / PKCE verifier または RelayState / AuthnRequest ID を tenant と provider に束縛し、10分以内に一度だけ消費する。",
+        "x-scl-untranslated-constraints": [
+          "expires_at > created_at"
+        ]
+      },
+      "FederatedLoginCompletion": {
+        "type": "object",
+        "properties": {
+          "local_user_id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          },
+          "return_to": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "local_user_id",
+          "provider_id",
+          "session_id"
+        ],
+        "description": "検証済み外部 identity を local User と LoginSession に相関した結果。"
+      },
+      "FederatedLoginRejected": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "providerId",
+          "reason"
+        ],
+        "description": "upstream callback の trust / correlation / policy 検証を fail closed で拒否した。token、assertion、state、nonce は含めない。"
+      },
+      "FederatedLoginStartResponse": {
+        "type": "object",
+        "properties": {
+          "redirect_to": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "redirect_to"
+        ],
+        "description": "upstream 認証を開始するための検証済み redirect。"
       },
       "FederationLinked": {
         "type": "object",
@@ -25971,6 +27447,192 @@
           "auth_time"
         ],
         "description": "OIDC ID Token クレーム。TTL 3600 秒。"
+      },
+      "IdentityProviderConnection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/IdentityProviderProtocol"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IdentityProviderConnectionStatus"
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string"
+          },
+          "secret_reference": {
+            "type": "string"
+          },
+          "authorization_endpoint": {
+            "type": "string"
+          },
+          "token_endpoint": {
+            "type": "string"
+          },
+          "jwks_uri": {
+            "type": "string"
+          },
+          "saml_sso_url": {
+            "type": "string"
+          },
+          "saml_entity_id": {
+            "type": "string"
+          },
+          "saml_signing_certificates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "claim_mapping": {
+            "$ref": "#/components/schemas/ClaimMapping"
+          },
+          "linking_policy": {
+            "$ref": "#/components/schemas/AccountLinkingPolicy"
+          },
+          "jit_provisioning": {
+            "type": "boolean"
+          },
+          "allowed_email_domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metadata_refreshed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "display_name",
+          "protocol",
+          "status",
+          "issuer",
+          "saml_signing_certificates",
+          "claim_mapping",
+          "linking_policy",
+          "jit_provisioning",
+          "allowed_email_domains",
+          "created_at",
+          "updated_at"
+        ],
+        "description": "tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で保持する。",
+        "x-scl-untranslated-constraints": [
+          "protocol != Oidc || (client_id != null && authorization_endpoint != null && token_endpoint != null && jwks_uri != null)",
+          "protocol != Saml || (saml_sso_url != null && saml_entity_id != null && size(saml_signing_certificates) > 0)",
+          "!jit_provisioning || (size(claim_mapping.subject) > 0 && size(claim_mapping.username) > 0)"
+        ]
+      },
+      "IdentityProviderConnectionActivated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "providerId"
+        ],
+        "description": "metadata / trust validation を通過した connection を login routing で利用可能にした。"
+      },
+      "IdentityProviderConnectionCreated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          },
+          "protocol": {
+            "$ref": "#/components/schemas/IdentityProviderProtocol"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "providerId",
+          "protocol"
+        ],
+        "description": "tenant administrator が upstream connection を Draft として作成した。secret / token / certificate 本文は含めない。"
+      },
+      "IdentityProviderConnectionDisabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "providerId"
+        ],
+        "description": "connection を login routing から除外した。"
+      },
+      "IdentityProviderConnectionStatus": {
+        "type": "string",
+        "enum": [
+          "Draft",
+          "Active",
+          "Disabled"
+        ],
+        "description": "connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。"
+      },
+      "IdentityProviderProtocol": {
+        "type": "string",
+        "enum": [
+          "Oidc",
+          "Saml"
+        ],
+        "description": "upstream connection の wire protocol。social provider preset は Oidc の設定初期値として表す。"
       },
       "InsufficientScopeError": {
         "type": "object",
@@ -27217,7 +28879,7 @@
               "type": "string"
             },
             "x-scl-untranslated-constraints": [
-              "amr.all(m, m in ['pwd', 'otp', 'webauthn', 'hwk', 'swk', 'rc'])"
+              "amr.all(m, m in ['pwd', 'otp', 'webauthn', 'hwk', 'swk', 'rc', 'federated'])"
             ],
             "description": "認証成立時の RFC 8176 メソッド列 (RFC8176-AMR-VOCABULARY)。"
           },
@@ -34524,6 +36186,22 @@
         ],
         "actions": [
           {
+            "name": "ResumeFederatedAuthorization",
+            "memberOf": "policy:AuthenticatedResourceOwner",
+            "policies": [
+              "AuthenticatedResourceOwner"
+            ],
+            "resourceId": "context.transaction_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "OAuth2AuthorizationService"
+              ]
+            }
+          },
+          {
             "name": "SubmitBrowserConsent",
             "memberOf": "policy:AuthenticatedResourceOwner",
             "policies": [
@@ -34580,6 +36258,38 @@
             }
           },
           {
+            "name": "LinkExternalIdentity",
+            "memberOf": "policy:AuthenticatedSelf",
+            "policies": [
+              "AuthenticatedSelf"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "ListLinkedExternalIdentities",
+            "memberOf": "policy:AuthenticatedSelf",
+            "policies": [
+              "AuthenticatedSelf"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
             "name": "StartStepUpAuthentication",
             "memberOf": "policy:AuthenticatedSelf",
             "policies": [
@@ -34597,6 +36307,22 @@
           },
           {
             "name": "StartStepUpWebAuthnChallenge",
+            "memberOf": "policy:AuthenticatedSelf",
+            "policies": [
+              "AuthenticatedSelf"
+            ],
+            "resourceId": "subject.id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "User"
+              ]
+            }
+          },
+          {
+            "name": "UnlinkExternalIdentity",
             "memberOf": "policy:AuthenticatedSelf",
             "policies": [
               "AuthenticatedSelf"
@@ -36862,6 +38588,22 @@
         ],
         "actions": [
           {
+            "name": "ActivateIdentityProviderConnection",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.provider_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderConnection"
+              ]
+            }
+          },
+          {
             "name": "AddGroupMember",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -36990,6 +38732,22 @@
             }
           },
           {
+            "name": "CreateIdentityProviderConnection",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderDirectory"
+              ]
+            }
+          },
+          {
             "name": "CreateLifecycleWorkflow",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -37050,6 +38808,22 @@
               ],
               "resourceTypes": [
                 "Group"
+              ]
+            }
+          },
+          {
+            "name": "DeleteIdentityProviderConnection",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.provider_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderConnection"
               ]
             }
           },
@@ -37130,6 +38904,22 @@
               ],
               "resourceTypes": [
                 "Group"
+              ]
+            }
+          },
+          {
+            "name": "DisableIdentityProviderConnection",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.provider_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderConnection"
               ]
             }
           },
@@ -37790,6 +39580,22 @@
             }
           },
           {
+            "name": "ListIdentityProviderConnections",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderDirectory"
+              ]
+            }
+          },
+          {
             "name": "ListLifecycleWorkflowRuns",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -37918,6 +39724,22 @@
             }
           },
           {
+            "name": "PreviewIdentityProviderMapping",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.provider_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderConnection"
+              ]
+            }
+          },
+          {
             "name": "PreviewNotificationTemplate",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -37930,6 +39752,22 @@
               ],
               "resourceTypes": [
                 "NotificationTemplate"
+              ]
+            }
+          },
+          {
+            "name": "RefreshIdentityProviderMetadata",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.provider_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderConnection"
               ]
             }
           },
@@ -38174,6 +40012,22 @@
             }
           },
           {
+            "name": "TestIdentityProviderConnection",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.provider_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderConnection"
+              ]
+            }
+          },
+          {
             "name": "UnbindAgentCredential",
             "memberOf": "policy:TenantAdministrator",
             "policies": [
@@ -38266,6 +40120,22 @@
               ],
               "resourceTypes": [
                 "Group"
+              ]
+            }
+          },
+          {
+            "name": "UpdateIdentityProviderConnection",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.provider_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "IdentityProviderConnection"
               ]
             }
           },

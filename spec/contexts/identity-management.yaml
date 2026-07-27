@@ -288,6 +288,8 @@ models:
           pii: true
       password_hash:
         type: String
+        optional: true
+        description: Password credential を持つ User のみ設定する。federated-only User は null とし、Authentication の password login は常に拒否する。
         annotations:
           sensitive: true
       name:
@@ -1930,6 +1932,34 @@ interfaces:
         request_form: body
         successful_status_codes:
           - "201"
+  ProvisionFederatedUser:
+    description: Authentication context が、検証済み upstream identity と tenant の明示 JIT policy / claim mapping に基づき password credential を持たない active User を作成する内部 published interface。tenant quota、username/email 一意性、属性 schema、UserCreated event は通常作成と同じ契約を適用する。
+    input:
+      preferred_username:
+        type: String
+      name:
+        type: String
+        optional: true
+      email:
+        type: String
+        optional: true
+      email_verified:
+        type: Boolean
+      attributes:
+        type: "Map<String,AttributeValue>"
+        optional: true
+    output:
+      user:
+        type: User
+    errors:
+      - InvalidRequestError
+      - QuotaExceededError
+    emits:
+      - UserCreated
+    ensures:
+      - output.user.password_hash == null
+      - output.user.lifecycle.status == Active
+    access: internal
   ImportAdminUsers:
     description: 管理者が CSV を dry_run または apply ジョブへ投入する。入力は UTF-8 (BOM 可)、最大 1 MiB・1,000 行・64 KiB/field とし、password/hash 列は拒否する。
     input:
@@ -2885,6 +2915,19 @@ authorization:
       principal: SelfApiClient
       when: '"account:write" in context.token_scopes && principal.id == resource.id'
 scenarios:
+  federated JITはpassword credentialを作らずactive Userを作成する:
+    actor: EndUser
+    given:
+      - Authentication context が upstream token/assertion と tenant JIT policy を検証済みである
+    main_success:
+      - ProvisionFederatedUser は mapped username、任意の name/email/attributes を検証する
+      - tenant quota と一意性を検証する
+      - password_hash が null の active User を作成して UserCreated を発行する
+    extensions:
+      - at: 2
+        condition: username/email が衝突する、quota 超過、または属性 schema が不正である
+        steps:
+          - User を作成せずエラーを返す
   API token発行者はaccount scope内で自身のidentity情報だけを操作できる:
     actor: SelfApiClient
     given:

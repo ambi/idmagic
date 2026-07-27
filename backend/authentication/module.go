@@ -5,6 +5,7 @@ package authentication
 
 import (
 	"github.com/ambi/idmagic/backend/authentication/domain"
+	federationports "github.com/ambi/idmagic/backend/authentication/federation/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	"github.com/ambi/idmagic/backend/authentication/ports"
@@ -20,17 +21,22 @@ import (
 // Module は authentication context が所有する永続化 port と実行時依存の束。
 // bootstrap は backend ごとの adapter を組み立て、起動時に実行時依存を補完する。
 type Module struct {
-	MfaFactorRepo           totpports.MfaFactorRepository
-	MfaEnrollmentBypassRepo mfaports.MfaEnrollmentBypassRepository
-	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
-	PasswordResetTokenStore passwordports.PasswordResetTokenStore
-	SessionStore            sessionports.SessionStore
-	WebAuthnCredentialRepo  webauthnports.WebAuthnCredentialRepository
-	WebAuthnSessionStore    webauthnports.WebAuthnSessionStore
-	WebAuthnRP              *webauthn.WebAuthn
-	RecoveryCodeRepo        recoveryports.RecoveryCodeRepository
-	NewLoginAttemptThrottle func(sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle
-	AuthEventBucketStore    ports.AuthEventBucketStore
+	FederationConnectionRepo federationports.ConnectionRepository
+	FederationIdentityRepo   federationports.IdentityRepository
+	FederationAttemptStore   federationports.AttemptStore
+	FederationReplayStore    federationports.ReplayStore
+	FederationSecretResolver federationports.SecretResolver
+	MfaFactorRepo            totpports.MfaFactorRepository
+	MfaEnrollmentBypassRepo  mfaports.MfaEnrollmentBypassRepository
+	PasswordHistoryRepo      passwordports.PasswordHistoryRepository
+	PasswordResetTokenStore  passwordports.PasswordResetTokenStore
+	SessionStore             sessionports.SessionStore
+	WebAuthnCredentialRepo   webauthnports.WebAuthnCredentialRepository
+	WebAuthnSessionStore     webauthnports.WebAuthnSessionStore
+	WebAuthnRP               *webauthn.WebAuthn
+	RecoveryCodeRepo         recoveryports.RecoveryCodeRepository
+	NewLoginAttemptThrottle  func(sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle
+	AuthEventBucketStore     ports.AuthEventBucketStore
 
 	PasswordHasher          passwordports.PasswordHasher
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker

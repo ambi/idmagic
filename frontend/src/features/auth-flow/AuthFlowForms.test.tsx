@@ -11,6 +11,17 @@ import { CallbackPage } from './CallbackPage'
 import { HomePage } from './HomePage'
 import { StatusPage } from './StatusPage'
 import { renderWithRouter } from '../../test/renderWithRouter'
+import { loginPageDictionary } from './LoginPage.i18n'
+import { passwordRecoveryDictionary } from './PasswordRecoveryPages.i18n'
+import { emailVerifyPageDictionary } from './EmailVerifyPage.i18n'
+import { devicePageDictionary } from './DevicePage.i18n'
+import { consentPageDictionary } from './ConsentPage.i18n'
+
+const loginT = loginPageDictionary.en
+const recoveryT = passwordRecoveryDictionary.en
+const emailT = emailVerifyPageDictionary.en
+const deviceT = devicePageDictionary.en
+const consentT = consentPageDictionary.en
 
 describe('LoginFormPresentation', () => {
   it('toggles password visibility through the container callback', () => {
@@ -24,8 +35,8 @@ describe('LoginFormPresentation', () => {
       />,
     )
 
-    expect(screen.getByLabelText('パスワード')).toHaveAttribute('type', 'password')
-    fireEvent.click(screen.getByRole('button', { name: 'パスワードを表示' }))
+    expect(screen.getByLabelText(loginT.passwordLabel)).toHaveAttribute('type', 'password')
+    fireEvent.click(screen.getByRole('button', { name: loginT.showPassword }))
     expect(onTogglePassword).toHaveBeenCalledTimes(1)
   })
 
@@ -39,8 +50,8 @@ describe('LoginFormPresentation', () => {
       />,
     )
 
-    expect(screen.getByLabelText('ユーザー名')).toBeDisabled()
-    expect(screen.getByRole('button', { name: /確認しています/ })).toBeDisabled()
+    expect(screen.getByLabelText(loginT.usernameLabel)).toBeDisabled()
+    expect(screen.getByRole('button', { name: loginT.submitting })).toBeDisabled()
   })
 })
 
@@ -48,8 +59,8 @@ describe('ForgotPasswordFormPresentation', () => {
   it('prevents a duplicate reset request after submission', () => {
     render(<ForgotPasswordFormPresentation submitting={false} submitted onSubmit={mock()} />)
 
-    expect(screen.getByLabelText('メールアドレス')).toBeDisabled()
-    expect(screen.getByRole('button', { name: /リセットリンクを送信/ })).toBeDisabled()
+    expect(screen.getByLabelText(recoveryT.emailAddress)).toBeDisabled()
+    expect(screen.getByRole('button', { name: recoveryT.sendResetLink })).toBeDisabled()
   })
 })
 
@@ -57,8 +68,8 @@ describe('ResetPasswordFormPresentation', () => {
   it('requires a valid reset token before enabling submission', () => {
     render(<ResetPasswordFormPresentation token="" submitting={false} onSubmit={mock()} />)
 
-    expect(screen.getByLabelText('新しいパスワード')).toBeDisabled()
-    expect(screen.getByRole('button', { name: /パスワードを更新/ })).toBeDisabled()
+    expect(screen.getByLabelText(recoveryT.newPassword)).toBeDisabled()
+    expect(screen.getByRole('button', { name: recoveryT.updatePassword })).toBeDisabled()
   })
 })
 
@@ -66,7 +77,7 @@ describe('EmailVerificationAction', () => {
   it('shows an invalid-link error when no token is available', () => {
     render(<EmailVerificationAction token="" state="idle" onConfirm={mock()} />)
 
-    expect(screen.getByText(/確認リンクが正しくありません/)).toBeInTheDocument()
+    expect(screen.getByText(emailT.invalidLink)).toBeInTheDocument()
   })
 })
 
@@ -93,8 +104,10 @@ describe('DeviceCodeFormPresentation', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: /このデバイスを承認/ })).toBeDisabled()
-    fireEvent.change(screen.getByLabelText('デバイスコード'), { target: { value: 'ab-cd efgh!' } })
+    expect(screen.getByRole('button', { name: deviceT.approve })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText(deviceT.codeLabel), {
+      target: { value: 'ab-cd efgh!' },
+    })
     expect(onCodeChange).toHaveBeenCalledWith('ABCDEFGH')
     expect(normalizeDeviceCode('ab-cd efgh!')).toBe('ABCDEFGH')
   })
@@ -106,14 +119,14 @@ describe('ConsentActionsPresentation', () => {
     const { rerender } = render(
       <ConsentActionsPresentation error="" submitting={false} onConsent={onConsent} />,
     )
-    fireEvent.click(screen.getByRole('button', { name: '許可して続行' }))
-    fireEvent.click(screen.getByRole('button', { name: '許可しない' }))
+    fireEvent.click(screen.getByRole('button', { name: consentT.allow }))
+    fireEvent.click(screen.getByRole('button', { name: consentT.deny }))
     expect(onConsent).toHaveBeenNthCalledWith(1, 'allow')
     expect(onConsent).toHaveBeenNthCalledWith(2, 'deny')
 
-    rerender(<ConsentActionsPresentation error="失敗しました" submitting onConsent={onConsent} />)
-    expect(screen.getByRole('alert')).toHaveTextContent('失敗しました')
-    expect(screen.getByRole('button', { name: /処理しています/ })).toBeDisabled()
+    rerender(<ConsentActionsPresentation error="Request failed" submitting onConsent={onConsent} />)
+    expect(screen.getByRole('alert')).toHaveTextContent('Request failed')
+    expect(screen.getByRole('button', { name: consentT.processing })).toBeDisabled()
   })
 })
 

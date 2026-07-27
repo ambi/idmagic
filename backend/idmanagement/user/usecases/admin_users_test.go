@@ -88,6 +88,33 @@ func TestCreateUpdateAndDisableUser(t *testing.T) {
 	}
 }
 
+func TestProvisionFederatedUserCreatesCredentiallessActiveUser(t *testing.T) {
+	ctx := context.Background()
+	userRepo := usermemory.NewUserRepository()
+	now := time.Date(2026, 7, 27, 12, 0, 0, 0, time.UTC)
+	email := "federated@example.com"
+	user, err := userusecases.ProvisionFederatedUser(
+		ctx,
+		userusecases.AdminUserDeps{UserRepo: userRepo},
+		userusecases.ProvisionFederatedUserInput{
+			PreferredUsername: "federated", Email: &email, EmailVerified: true, Now: now,
+		},
+	)
+	if err != nil {
+		t.Fatalf("ProvisionFederatedUser: %v", err)
+	}
+	if user.PasswordHash != "" {
+		t.Fatalf("password_hash=%q, want credentialless", user.PasswordHash)
+	}
+	if !user.IsActive() || !user.EmailVerified {
+		t.Fatalf("user=%+v", user)
+	}
+	found, err := userRepo.FindByUsername(ctx, user.TenantID, user.PreferredUsername)
+	if err != nil || found == nil || found.ID != user.ID {
+		t.Fatalf("persisted user=(%+v,%v)", found, err)
+	}
+}
+
 func TestUpdateUserExtraFieldsAndNoop(t *testing.T) {
 	ctx := context.Background()
 	userRepo := usermemory.NewUserRepository()

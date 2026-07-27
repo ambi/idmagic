@@ -108,6 +108,29 @@ const samlIDPProfiles = [
   },
 ]
 
+const identityProviders = [
+  {
+    id: 'contoso',
+    tenant_id: 'tenant-1',
+    display_name: 'Contoso Workforce',
+    protocol: 'oidc' as const,
+    status: 'active' as const,
+    issuer: 'https://login.contoso.example',
+    client_id: 'idmagic',
+    authorization_endpoint: 'https://login.contoso.example/authorize',
+    token_endpoint: 'https://login.contoso.example/token',
+    jwks_uri: 'https://login.contoso.example/jwks',
+    claim_mapping: {
+      subject: 'sub',
+      username: 'preferred_username',
+      email: 'email',
+      email_verified: 'email_verified',
+    },
+    linking_policy: 'none' as const,
+    jit_provisioning: false,
+  },
+]
+
 describe('locale', () => {
   afterEach(() => restoreGlobals())
 
@@ -142,11 +165,34 @@ describe('locale', () => {
     expect(
       screen.getByRole('heading', { name: adminSettingsDictionary.ja.pageTitle }),
     ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: adminSettingsDictionary.ja.tabIdentityProvidersLabel,
+      }),
+    ).toBeInTheDocument()
   })
 })
 
 describe('AdminSettingsPage', () => {
   afterEach(() => restoreGlobals())
+
+  it('shows configured external identity providers in English by default', async () => {
+    await renderWithRouter(
+      <AdminSettingsPage
+        csrfToken="csrf"
+        actorUsername="admin"
+        actorRoles={['admin']}
+        actorRealm="acme"
+        settings={settings}
+        integrationEndpoints={integrationEndpoints}
+        identityProviders={identityProviders}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.tabIdentityProvidersLabel }))
+    expect(screen.getByRole('heading', { name: 'External identity providers' })).toBeInTheDocument()
+    expect(screen.getByText('Contoso Workforce')).toBeInTheDocument()
+  })
 
   it('updates the display name and shows a success notice', async () => {
     stubGlobal(

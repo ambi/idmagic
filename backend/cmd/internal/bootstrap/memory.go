@@ -11,6 +11,8 @@ import (
 	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
 	"github.com/ambi/idmagic/backend/authentication"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
+	federationmemory "github.com/ambi/idmagic/backend/authentication/federation/db_memory"
+	federationsecrets "github.com/ambi/idmagic/backend/authentication/federation/secrets_env"
 	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/db_memory"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
@@ -66,6 +68,7 @@ func assembleMemory() (*Dependencies, error) {
 		RemoteLinkRepo: provisioningmemory.NewRemoteResourceLinkRepository(),
 		DeliveryRepo:   provisioningmemory.NewProvisioningDeliveryRepository(),
 	}
+	federationRepos := federationmemory.NewRepositories()
 	return &Dependencies{
 		Tenancy: tenancy.Module{
 			TenantRepo:            tenancymemory.NewTenantRepository(),
@@ -90,14 +93,19 @@ func assembleMemory() (*Dependencies, error) {
 			UserMutationCommitter:    userMutationCommitter,
 		},
 		Authentication: authentication.Module{
-			MfaFactorRepo:           totpmemory.NewMfaFactorRepository(),
-			MfaEnrollmentBypassRepo: mfamemory.NewMfaEnrollmentBypassRepository(),
-			PasswordHistoryRepo:     passwordmemory.NewPasswordHistoryRepository(),
-			PasswordResetTokenStore: passwordmemory.NewPasswordResetTokenStore(),
-			SessionStore:            sessionmemory.NewSessionStore(),
-			WebAuthnCredentialRepo:  webauthnmemory.NewWebAuthnCredentialRepository(),
-			WebAuthnSessionStore:    webauthnmemory.NewWebAuthnSessionStore(),
-			RecoveryCodeRepo:        recoverymemory.NewRecoveryCodeRepository(),
+			FederationConnectionRepo: federationRepos.Connections,
+			FederationIdentityRepo:   federationRepos.Identities,
+			FederationAttemptStore:   federationRepos.Attempts,
+			FederationReplayStore:    federationRepos.Replay,
+			FederationSecretResolver: federationsecrets.Resolver{},
+			MfaFactorRepo:            totpmemory.NewMfaFactorRepository(),
+			MfaEnrollmentBypassRepo:  mfamemory.NewMfaEnrollmentBypassRepository(),
+			PasswordHistoryRepo:      passwordmemory.NewPasswordHistoryRepository(),
+			PasswordResetTokenStore:  passwordmemory.NewPasswordResetTokenStore(),
+			SessionStore:             sessionmemory.NewSessionStore(),
+			WebAuthnCredentialRepo:   webauthnmemory.NewWebAuthnCredentialRepository(),
+			WebAuthnSessionStore:     webauthnmemory.NewWebAuthnSessionStore(),
+			RecoveryCodeRepo:         recoverymemory.NewRecoveryCodeRepository(),
 			NewLoginAttemptThrottle: func(configs sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle {
 				return sessionmemory.NewLoginAttemptThrottle(configs)
 			},

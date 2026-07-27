@@ -154,6 +154,57 @@ Production splits `idmagic-worker` into one Deployment per lane using the `JOB_W
 
 WebAuthn binds passkeys to the browser origin and relying-party ID. Non-local deployments must use HTTPS and set `WEBAUTHN_RP_ID` to the registrable domain that users visit. `WEBAUTHN_RP_ORIGINS` must include every public origin used by the UI.
 
+### Upstream OIDC Identity Provider
+
+Tenant administrators configure inbound OIDC and SAML connections under **Settings → External identity
+providers**. An OIDC connection needs a fixed HTTPS issuer and its last-known-good authorization,
+token, and JWKS endpoints. The callback URI registered at the upstream provider is:
+
+```text
+https://<idmagic-origin>/realms/<realm>/api/auth/federation/oidc/callback
+```
+
+Client secrets are not stored in the IdMagic database. Put the value in the API process environment and
+save only an `env:` reference in the connection:
+
+```bash
+CONTOSO_CLIENT_SECRET=replace-with-the-provider-secret
+```
+
+Example connection input:
+
+```json
+{
+  "display_name": "Contoso Workforce",
+  "protocol": "oidc",
+  "issuer": "https://login.contoso.example",
+  "client_id": "idmagic-production",
+  "secret_reference": "env:CONTOSO_CLIENT_SECRET",
+  "authorization_endpoint": "https://login.contoso.example/oauth2/authorize",
+  "token_endpoint": "https://login.contoso.example/oauth2/token",
+  "jwks_uri": "https://login.contoso.example/oauth2/jwks",
+  "claim_mapping": {
+    "subject": "sub",
+    "username": "preferred_username",
+    "email": "email",
+    "email_verified": "email_verified",
+    "name": "name"
+  },
+  "linking_policy": "none",
+  "jit_provisioning": false
+}
+```
+
+Test the draft connection before activating it. Login requests use only the saved provider and endpoint
+configuration; a browser request cannot supply an arbitrary discovery or token URL.
+
+JIT provisioning is disabled by default. When enabled, the first accepted upstream identity creates an
+active local user without a password credential. Use `allowed_email_domains` to narrow who can be
+created. Automatic linking by verified email is a separate opt-in policy: it requires the upstream
+`email_verified` claim and exactly one matching verified local email. Keep it disabled unless the
+upstream provider's email-verification and account-recovery guarantees are trusted. External tokens and
+SAML assertions are validated for the login and are never retained.
+
 ### Tenant Endpoint Styles
 
 Each tenant has exactly one canonical location and issuer. The default `path` style is served at `{ISSUER}/realms/{realm}` and needs no wildcard DNS or certificate. `subdomain` is served at `https://{realm}.{TENANT_BASE_DOMAIN}` and is available only when `TENANT_BASE_DOMAIN` is configured. The ingress layer must provide wildcard DNS and a matching wildcard TLS certificate; IdMagic does not issue or renew certificates.

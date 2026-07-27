@@ -9,6 +9,23 @@ import { DevicePage } from './DevicePage'
 import { EmailVerifyPage } from './EmailVerifyPage'
 import { TotpPage } from './TotpPage'
 import { MfaEnrollmentPage } from './MfaEnrollmentPage'
+import { loginPageDictionary } from './LoginPage.i18n'
+import { passwordRecoveryDictionary } from './PasswordRecoveryPages.i18n'
+import { consentPageDictionary } from './ConsentPage.i18n'
+import { emailVerifyPageDictionary } from './EmailVerifyPage.i18n'
+import { totpPageDictionary } from './TotpPage.i18n'
+import { devicePageDictionary } from './DevicePage.i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { mfaEnrollmentPageDictionary } from './MfaEnrollmentPage.i18n'
+
+const loginT = loginPageDictionary.en
+const recoveryT = passwordRecoveryDictionary.en
+const consentT = consentPageDictionary.en
+const emailT = emailVerifyPageDictionary.en
+const totpT = totpPageDictionary.en
+const deviceT = devicePageDictionary.en
+const commonT = commonDictionary.en
+const mfaEnrollmentT = mfaEnrollmentPageDictionary.en
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
@@ -41,9 +58,9 @@ describe('auth-flow pages', () => {
 
   it('submits login credentials and continues the browser flow', async () => {
     render(<LoginPage csrfToken="csrf" returnTo="/return" />)
-    fireEvent.change(screen.getByLabelText('ユーザー名'), { target: { value: 'alice' } })
-    fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'secret' } })
-    fireEvent.click(screen.getByRole('button', { name: 'ログインして続行' }))
+    fireEvent.change(screen.getByLabelText(loginT.usernameLabel), { target: { value: 'alice' } })
+    fireEvent.change(screen.getByLabelText(loginT.passwordLabel), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByRole('button', { name: loginT.submit }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     expect(fetch).toHaveBeenCalledWith(
@@ -54,24 +71,50 @@ describe('auth-flow pages', () => {
     )
   })
 
+  it('renders active external identity providers as login choices', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string) => {
+        if (url.includes('/api/auth/federation/providers')) {
+          return Promise.resolve(
+            response(200, {
+              providers: [{ id: 'contoso', display_name: 'Contoso', protocol: 'oidc' }],
+            }),
+          )
+        }
+        return Promise.resolve(response(200, {}))
+      }),
+    )
+
+    render(<LoginPage csrfToken="csrf" returnTo="/admin" />)
+
+    const link = await screen.findByRole('link', { name: 'Continue with Contoso' })
+    expect(link).toHaveAttribute(
+      'href',
+      expect.stringContaining('/api/auth/federation/start?provider_id=contoso&return_to=%2Fadmin'),
+    )
+  })
+
   it('shows a returned login error and allows a retry', async () => {
     stubGlobal(
       'fetch',
       mock()
         // AuthShell が mount 時に取得する /api/branding を最初に消費する。
         .mockResolvedValueOnce(response(200, {}))
+        // LoginPage が有効な外部 IdP 一覧を取得する。
+        .mockResolvedValueOnce(response(200, { providers: [] }))
         .mockResolvedValueOnce(
-          response(401, { error: 'invalid_credentials', message: '認証情報が違います' }),
+          response(401, { error: 'invalid_credentials', message: 'The credentials are wrong.' }),
         )
         .mockResolvedValueOnce(response(200, { next: '/continue' })),
     )
     render(<LoginPage csrfToken="csrf" />)
-    fireEvent.change(screen.getByLabelText('ユーザー名'), { target: { value: 'alice' } })
-    fireEvent.change(screen.getByLabelText('パスワード'), { target: { value: 'wrong' } })
-    fireEvent.click(screen.getByRole('button', { name: 'ログインして続行' }))
-    expect(await screen.findByText('認証情報が正しくありません。')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(loginT.usernameLabel), { target: { value: 'alice' } })
+    fireEvent.change(screen.getByLabelText(loginT.passwordLabel), { target: { value: 'wrong' } })
+    fireEvent.click(screen.getByRole('button', { name: loginT.submit }))
+    expect(await screen.findByText(commonT.invalidCredentials)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'ログインして続行' }))
+    fireEvent.click(screen.getByRole('button', { name: loginT.submit }))
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
   })
 
@@ -97,97 +140,95 @@ describe('auth-flow pages', () => {
   it('shows only the generic reset-request confirmation after a successful submit', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     render(<ForgotPasswordPage csrfToken="csrf" />)
-    fireEvent.change(screen.getByLabelText('メールアドレス'), {
+    fireEvent.change(screen.getByLabelText(recoveryT.emailAddress), {
       target: { value: 'alice@example.com' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'リセットリンクを送信' }))
+    fireEvent.click(screen.getByRole('button', { name: recoveryT.sendResetLink }))
 
-    expect(await screen.findByText(/アカウントが確認できた場合/)).toBeInTheDocument()
-    expect(screen.getByLabelText('メールアドレス')).toBeDisabled()
+    expect(await screen.findByText(recoveryT.resetSent)).toBeInTheDocument()
+    expect(screen.getByLabelText(recoveryT.emailAddress)).toBeDisabled()
   })
 
   it('shows an API error for a failed reset request', async () => {
     stubGlobal(
       'fetch',
-      mock().mockResolvedValue(response(500, { message: '一時的に利用できません' })),
+      mock().mockResolvedValue(response(500, { message: 'Temporarily unavailable' })),
     )
     render(<ForgotPasswordPage csrfToken="csrf" />)
-    fireEvent.change(screen.getByLabelText('メールアドレス'), {
+    fireEvent.change(screen.getByLabelText(recoveryT.emailAddress), {
       target: { value: 'alice@example.com' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'リセットリンクを送信' }))
+    fireEvent.click(screen.getByRole('button', { name: recoveryT.sendResetLink }))
 
-    expect(await screen.findByText('一時的に利用できません')).toBeInTheDocument()
+    expect(await screen.findByText('Temporarily unavailable')).toBeInTheDocument()
   })
 
   it('completes a password reset and translates password-policy errors', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(200)))
     const { unmount } = render(<ResetPasswordPage csrfToken="csrf" token="reset-token" />)
-    fireEvent.change(screen.getByLabelText('新しいパスワード'), {
+    fireEvent.change(screen.getByLabelText(recoveryT.newPassword), {
       target: { value: 'a long new password' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'パスワードを更新' }))
-    expect(
-      await screen.findByText('パスワードを更新しました。ログインできます。'),
-    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: recoveryT.updatePassword }))
+    expect(await screen.findByText(recoveryT.passwordUpdated)).toBeInTheDocument()
     unmount()
 
     stubGlobal('fetch', mock().mockResolvedValue(response(400, { error: 'password_policy' })))
     render(<ResetPasswordPage csrfToken="csrf" token="reset-token" />)
-    fireEvent.change(screen.getByLabelText('新しいパスワード'), {
+    fireEvent.change(screen.getByLabelText(recoveryT.newPassword), {
       target: { value: 'a long new password' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'パスワードを更新' }))
-    expect(await screen.findByText(/12文字以上の、最近使用していない/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: recoveryT.updatePassword }))
+    expect(await screen.findByText(recoveryT.passwordPolicy)).toBeInTheDocument()
   })
 
   it('continues an allowed consent request and exposes a denied request failure', async () => {
     const props = { csrfToken: 'csrf', clientName: 'Portal', scopes: ['openid'] }
     const { unmount } = render(<ConsentPage {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: '許可して続行' }))
+    fireEvent.click(screen.getByRole('button', { name: consentT.allow }))
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     unmount()
 
-    stubGlobal('fetch', mock().mockResolvedValue(response(403, { message: '許可できません' })))
+    stubGlobal('fetch', mock().mockResolvedValue(response(403, { message: 'Permission denied' })))
     render(<ConsentPage {...props} />)
-    fireEvent.click(screen.getByRole('button', { name: '許可しない' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('許可できません')
+    fireEvent.click(screen.getByRole('button', { name: consentT.deny }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Permission denied')
   })
 
   it('also exposes a failure when allowing consent fails', async () => {
     stubGlobal(
       'fetch',
-      mock().mockResolvedValue(response(403, { message: '許可を保存できませんでした' })),
+      mock().mockResolvedValue(response(403, { message: 'Could not save consent' })),
     )
     render(<ConsentPage csrfToken="csrf" clientName="Portal" scopes={['openid']} />)
-    fireEvent.click(screen.getByRole('button', { name: '許可して続行' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('許可を保存できませんでした')
+    fireEvent.click(screen.getByRole('button', { name: consentT.allow }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save consent')
   })
 
   it('confirms an email change and retains an actionable error on failure', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(204)))
     const { unmount } = render(<EmailVerifyPage csrfToken="csrf" token="verification-token" />)
-    fireEvent.click(screen.getByRole('button', { name: 'メールアドレスを確認する' }))
-    expect(await screen.findByText(/メールアドレスを確認しました/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: emailT.confirmEmail }))
+    expect(await screen.findByText(emailT.confirmed)).toBeInTheDocument()
     unmount()
 
     stubGlobal(
       'fetch',
-      mock().mockResolvedValue(response(400, { message: 'リンクの有効期限が切れています' })),
+      mock().mockResolvedValue(response(400, { message: 'The link has expired' })),
     )
     render(<EmailVerifyPage csrfToken="csrf" token="verification-token" />)
-    fireEvent.click(screen.getByRole('button', { name: 'メールアドレスを確認する' }))
-    expect(await screen.findByText('リンクの有効期限が切れています')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'メールアドレスを確認する' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: emailT.confirmEmail }))
+    expect(await screen.findByText('The link has expired')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: emailT.confirmEmail })).toBeEnabled()
   })
 
   it('submits a selected recovery code and keeps methods separate', async () => {
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'recovery_code']} />)
-    fireEvent.click(screen.getByRole('button', { name: 'リカバリコード' }))
-    fireEvent.change(screen.getByLabelText('リカバリコード'), {
+    fireEvent.click(screen.getByRole('button', { name: totpT.methodRecoveryCode }))
+    fireEvent.change(screen.getByLabelText(totpT.recoveryLabel), {
       target: { value: 'recovery-code' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'リカバリコードを確認' }))
+    fireEvent.click(screen.getByRole('button', { name: totpT.verifyRecoveryCode }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     expect(fetch).toHaveBeenCalledWith(
@@ -198,8 +239,8 @@ describe('auth-flow pages', () => {
 
   it('submits a TOTP code and continues the browser flow', async () => {
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} />)
-    fireEvent.change(screen.getByLabelText('確認コード'), { target: { value: '123456' } })
-    fireEvent.click(screen.getByRole('button', { name: 'コードを確認' }))
+    fireEvent.change(screen.getByLabelText(totpT.codeLabel), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: totpT.verifyCode }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     expect(fetch).toHaveBeenCalledWith(
@@ -225,8 +266,10 @@ describe('auth-flow pages', () => {
     )
     render(<MfaEnrollmentPage csrfToken="csrf" />)
     expect(await screen.findByText('SECRET')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('確認コード'), { target: { value: '123456' } })
-    fireEvent.click(screen.getByRole('button', { name: '登録してログインを続行' }))
+    fireEvent.change(screen.getByLabelText(mfaEnrollmentT.verificationCode), {
+      target: { value: '123456' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: mfaEnrollmentT.submit }))
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     expect(fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/auth/mfa/enrollment/totp/confirm'),
@@ -235,28 +278,27 @@ describe('auth-flow pages', () => {
   })
 
   it('shows a returned error for an invalid TOTP code', async () => {
-    stubGlobal(
-      'fetch',
-      mock().mockResolvedValue(response(400, { message: 'コードが正しくありません' })),
-    )
+    stubGlobal('fetch', mock().mockResolvedValue(response(400, { message: 'The code is invalid' })))
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} />)
-    fireEvent.change(screen.getByLabelText('確認コード'), { target: { value: '000000' } })
-    fireEvent.click(screen.getByRole('button', { name: 'コードを確認' }))
+    fireEvent.change(screen.getByLabelText(totpT.codeLabel), { target: { value: '000000' } })
+    fireEvent.click(screen.getByRole('button', { name: totpT.verifyCode }))
 
-    expect(await screen.findByText('コードが正しくありません')).toBeInTheDocument()
+    expect(await screen.findByText('The code is invalid')).toBeInTheDocument()
   })
 
   it('shows a returned error for an invalid recovery code', async () => {
     stubGlobal(
       'fetch',
-      mock().mockResolvedValue(response(400, { message: 'リカバリコードが正しくありません' })),
+      mock().mockResolvedValue(response(400, { message: 'The recovery code is invalid' })),
     )
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'recovery_code']} />)
-    fireEvent.click(screen.getByRole('button', { name: 'リカバリコード' }))
-    fireEvent.change(screen.getByLabelText('リカバリコード'), { target: { value: 'wrong-code' } })
-    fireEvent.click(screen.getByRole('button', { name: 'リカバリコードを確認' }))
+    fireEvent.click(screen.getByRole('button', { name: totpT.methodRecoveryCode }))
+    fireEvent.change(screen.getByLabelText(totpT.recoveryLabel), {
+      target: { value: 'wrong-code' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: totpT.verifyRecoveryCode }))
 
-    expect(await screen.findByText('リカバリコードが正しくありません')).toBeInTheDocument()
+    expect(await screen.findByText('The recovery code is invalid')).toBeInTheDocument()
   })
 
   it('authenticates with a passkey and continues the browser flow', async () => {
@@ -273,8 +315,8 @@ describe('auth-flow pages', () => {
       }),
     )
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'webauthn']} />)
-    fireEvent.click(screen.getByRole('button', { name: 'パスキー' }))
-    fireEvent.click(screen.getByRole('button', { name: 'パスキーで認証' }))
+    fireEvent.click(screen.getByRole('button', { name: totpT.methodWebauthn }))
+    fireEvent.click(screen.getByRole('button', { name: totpT.authenticateWithPasskey }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
   })
@@ -290,10 +332,10 @@ describe('auth-flow pages', () => {
       mock().mockResolvedValue(response(200, { publicKey: { challenge: 'Y2hhbGxlbmdl' } })),
     )
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp', 'webauthn']} />)
-    fireEvent.click(screen.getByRole('button', { name: 'パスキー' }))
-    fireEvent.click(screen.getByRole('button', { name: 'パスキーで認証' }))
+    fireEvent.click(screen.getByRole('button', { name: totpT.methodWebauthn }))
+    fireEvent.click(screen.getByRole('button', { name: totpT.authenticateWithPasskey }))
 
-    expect(await screen.findByText('パスキー認証がキャンセルされました。')).toBeInTheDocument()
+    expect(await screen.findByText(totpT.passkeyCancelled)).toBeInTheDocument()
   })
 })
 
@@ -309,7 +351,7 @@ describe('DevicePage', () => {
   it('allows a device connection and continues the browser flow', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(200, { next: '/continue' })))
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
-    fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
+    fireEvent.click(screen.getByRole('button', { name: deviceT.approve }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     expect(fetch).toHaveBeenCalledWith(
@@ -321,7 +363,7 @@ describe('DevicePage', () => {
   it('denies a device connection and continues the browser flow', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(200, { next: '/continue' })))
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
-    fireEvent.click(screen.getByRole('button', { name: '接続を拒否' }))
+    fireEvent.click(screen.getByRole('button', { name: deviceT.deny }))
 
     await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
     expect(fetch).toHaveBeenCalledWith(
@@ -333,12 +375,12 @@ describe('DevicePage', () => {
   it('shows an error when the device request cannot be processed', async () => {
     stubGlobal(
       'fetch',
-      mock().mockResolvedValue(response(400, { message: 'コードが見つかりません' })),
+      mock().mockResolvedValue(response(400, { message: 'The code was not found' })),
     )
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
-    fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
+    fireEvent.click(screen.getByRole('button', { name: deviceT.approve }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('コードが見つかりません')
+    expect(await screen.findByRole('alert')).toHaveTextContent('The code was not found')
   })
 
   it('redirects to the status page when re-authentication is required', async () => {
@@ -347,7 +389,7 @@ describe('DevicePage', () => {
       mock().mockResolvedValue(response(403, { error: 'authentication_required' })),
     )
     render(<DevicePage csrfToken="csrf" userCode="ABCDEFGH" />)
-    fireEvent.click(screen.getByRole('button', { name: 'このデバイスを承認' }))
+    fireEvent.click(screen.getByRole('button', { name: deviceT.approve }))
 
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith('/status?state=authentication-required'),

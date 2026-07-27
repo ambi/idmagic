@@ -3562,6 +3562,29 @@ interfaces:
         request_form: query
         successful_status_codes:
           - "302"
+  ResumeFederatedAuthorization:
+    description: Authentication context の inbound federation callback が認証済み session を確立した後、保存済み authorization transaction を再開して通常の application policy・consent・required-action gate を適用する。
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    requires:
+      - valid_authorization_transaction(context.transaction_cookie)
+      - application_assignment_permits(context.tenant_id, subject.id, context.client_id)
+      - application_sign_in_policy_satisfied(context.tenant_id, subject.id, context.client_id)
+    emits:
+      - AuthorizationCodeIssued
+      - ConsentGranted
+    access:
+      policies: [AuthenticatedResourceOwner]
+      resource:
+        type: OAuth2AuthorizationService
+        id: context.transaction_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /authorize/resume
+        successful_status_codes:
+          - "302"
   GetBrowserTransaction:
     description: SPA が HttpOnly transaction cookie に対応するログイン・同意コンテキストを取得する。
     output:

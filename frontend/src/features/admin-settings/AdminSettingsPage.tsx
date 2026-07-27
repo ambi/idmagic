@@ -1,6 +1,7 @@
 import {
   IconLink,
   IconMail,
+  IconNetwork,
   IconPalette,
   IconShieldLock,
   IconTag,
@@ -16,6 +17,7 @@ import type {
   AdminSamlIDPProfile,
   AdminSettings,
 } from '../../types'
+import type { IdentityProviderConnection } from '../../api'
 import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { BrandingTab } from './BrandingTab'
 import { GeneralTab } from './GeneralTab'
@@ -23,6 +25,7 @@ import { NotificationTemplatesTab } from './NotificationTemplatesTab'
 import { PasswordPolicyTab } from './PasswordPolicyTab'
 import { ApiTokensTab } from './ApiTokensTab'
 import { IntegrationEndpointsTab } from './IntegrationEndpointsTab'
+import { IdentityProvidersTab } from './IdentityProvidersTab'
 
 const DEFAULT_REALM = 'default'
 
@@ -31,6 +34,7 @@ type TabKey =
   | 'password-policy'
   | 'branding'
   | 'integration-endpoints'
+  | 'identity-providers'
   | 'email'
   | 'api-tokens'
 
@@ -69,6 +73,12 @@ function tabs(t: AdminSettingsDictionary): Tab[] {
       icon: IconLink,
     },
     {
+      key: 'identity-providers',
+      label: t.tabIdentityProvidersLabel,
+      description: t.tabIdentityProvidersDescription,
+      icon: IconNetwork,
+    },
+    {
       key: 'api-tokens',
       label: t.tabApiTokensLabel,
       description: t.tabApiTokensDescription,
@@ -91,6 +101,7 @@ export function AdminSettingsPage({
   settings: initial,
   integrationEndpoints,
   samlIDPProfiles = [],
+  identityProviders = [],
 }: {
   csrfToken: string
   actorUsername?: string
@@ -99,12 +110,16 @@ export function AdminSettingsPage({
   settings: AdminSettings
   integrationEndpoints: AdminIntegrationEndpointCatalog
   samlIDPProfiles?: AdminSamlIDPProfile[]
+  identityProviders?: IdentityProviderConnection[]
 }) {
   const [settings, setSettings] = useState(initial)
   const [active, setActive] = useState<TabKey>(() =>
-    new URLSearchParams(window.location.search).get('tab') === 'integration-endpoints'
-      ? 'integration-endpoints'
-      : 'general',
+    (() => {
+      const selected = new URLSearchParams(window.location.search).get('tab')
+      return selected === 'integration-endpoints' || selected === 'identity-providers'
+        ? selected
+        : 'general'
+    })(),
   )
   const isSystemAdminOnDefault = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
   const t = useDictionary(adminSettingsDictionary)
@@ -113,7 +128,7 @@ export function AdminSettingsPage({
   function selectTab(key: TabKey) {
     setActive(key)
     const url = new URL(window.location.href)
-    if (key === 'integration-endpoints') {
+    if (key === 'integration-endpoints' || key === 'identity-providers') {
       url.searchParams.set('tab', key)
     } else {
       url.searchParams.delete('tab')
@@ -190,6 +205,9 @@ export function AdminSettingsPage({
               catalog={integrationEndpoints}
               initialSamlIDPProfiles={samlIDPProfiles}
             />
+          ) : null}
+          {active === 'identity-providers' ? (
+            <IdentityProvidersTab csrfToken={csrfToken} initialConnections={identityProviders} />
           ) : null}
           {active === 'api-tokens' ? (
             <ApiTokensTab csrfToken={csrfToken} integrationEndpoints={integrationEndpoints} />

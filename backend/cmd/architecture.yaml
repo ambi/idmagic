@@ -2,7 +2,7 @@
 # この context が所有する module 台帳。path はこのファイルからの相対。
 # 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
 context: cmd
-updated_at: 2026-07-26
+updated_at: 2026-07-27
 modules:
   batch:
     path: idmagic-batch
@@ -92,6 +92,12 @@ modules:
       - module: authentication-db-memory
         via: composition_root
       - module: authentication-db-postgres
+        via: composition_root
+      - module: authentication-federation-db-memory
+        via: composition_root
+      - module: authentication-federation-db-postgres
+        via: composition_root
+      - module: authentication-federation-secrets-env
         via: composition_root
       - module: authentication-mfa-db-memory
         via: composition_root

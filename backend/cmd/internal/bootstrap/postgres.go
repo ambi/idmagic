@@ -14,6 +14,8 @@ import (
 	auditpostgres "github.com/ambi/idmagic/backend/audit/db_postgres"
 	"github.com/ambi/idmagic/backend/authentication"
 	authnpostgres "github.com/ambi/idmagic/backend/authentication/db_postgres"
+	federationpostgres "github.com/ambi/idmagic/backend/authentication/federation/db_postgres"
+	federationsecrets "github.com/ambi/idmagic/backend/authentication/federation/secrets_env"
 	mfapostgres "github.com/ambi/idmagic/backend/authentication/mfa/db_postgres"
 	passwordpostgres "github.com/ambi/idmagic/backend/authentication/password/db_postgres"
 	recoverypostgres "github.com/ambi/idmagic/backend/authentication/recovery/db_postgres"
@@ -150,14 +152,19 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			UserMutationCommitter:    userMutationCommitter,
 		},
 		Authentication: authentication.Module{
-			MfaFactorRepo:           &totppostgres.MfaFactorRepository{Pool: resilientDB},
-			MfaEnrollmentBypassRepo: &mfapostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
-			PasswordHistoryRepo:     &passwordpostgres.PasswordHistoryRepository{Pool: resilientDB},
-			PasswordResetTokenStore: &passwordpostgres.PasswordResetTokenStore{Pool: resilientDB},
-			SessionStore:            &sessionpostgres.SessionRepository{Pool: resilientDB},
-			WebAuthnCredentialRepo:  &webauthnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
-			WebAuthnSessionStore:    &webauthnpostgres.WebAuthnSessionStore{Pool: resilientDB},
-			RecoveryCodeRepo:        &recoverypostgres.RecoveryCodeRepository{Pool: resilientDB},
+			FederationConnectionRepo: &federationpostgres.ConnectionRepository{Pool: resilientDB},
+			FederationIdentityRepo:   &federationpostgres.IdentityRepository{Pool: resilientDB},
+			FederationAttemptStore:   &federationpostgres.AttemptStore{Pool: resilientDB},
+			FederationReplayStore:    &federationpostgres.ReplayStore{Pool: resilientDB},
+			FederationSecretResolver: federationsecrets.Resolver{},
+			MfaFactorRepo:            &totppostgres.MfaFactorRepository{Pool: resilientDB},
+			MfaEnrollmentBypassRepo:  &mfapostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
+			PasswordHistoryRepo:      &passwordpostgres.PasswordHistoryRepository{Pool: resilientDB},
+			PasswordResetTokenStore:  &passwordpostgres.PasswordResetTokenStore{Pool: resilientDB},
+			SessionStore:             &sessionpostgres.SessionRepository{Pool: resilientDB},
+			WebAuthnCredentialRepo:   &webauthnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
+			WebAuthnSessionStore:     &webauthnpostgres.WebAuthnSessionStore{Pool: resilientDB},
+			RecoveryCodeRepo:         &recoverypostgres.RecoveryCodeRepository{Pool: resilientDB},
 			NewLoginAttemptThrottle: func(configs sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle {
 				return &sessionpostgres.LoginAttemptThrottle{Pool: resilientDB, Configs: configs}
 			},

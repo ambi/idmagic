@@ -135,12 +135,15 @@ test('admin general settings can be updated from the browser', async () => {
 test('admin can create a shared SAML identity provider profile', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2200 })
   try {
-    await navigateAndLogin(view, '/admin/settings', 'admin-settings')
-    await clickButtonByText(view, 'Integration endpoints')
+    await navigateAndLogin(
+      view,
+      '/admin/settings/saml-idp-profiles/new',
+      'admin-saml-idp-profile-create',
+    )
 
     const profileName = `SAML partner ${Date.now()}`
-    await setInputValue(view, '#new-saml-profile-name', profileName)
-    await clickEnabledButtonByText(view, 'Create profile')
+    await setInputValue(view, '#saml-profile-name', profileName)
+    await clickEnabledButtonByText(view, 'Create')
 
     await waitForInputValue(view, profileName)
     await waitForText(view, 'Shared (multiple SPs)')

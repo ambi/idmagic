@@ -12,6 +12,8 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { useDictionary } from '../../lib/i18n'
+import { mfaEnrollmentPageDictionary } from './MfaEnrollmentPage.i18n'
 
 export function MfaEnrollmentPage({
   csrfToken,
@@ -20,6 +22,7 @@ export function MfaEnrollmentPage({
   csrfToken: string
   returnTo?: string
 }) {
+  const t = useDictionary(mfaEnrollmentPageDictionary)
   const [enrollment, setEnrollment] = useState<MfaEnrollmentStart>()
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
@@ -29,11 +32,9 @@ export function MfaEnrollmentPage({
     void startMfaEnrollment(csrfToken)
       .then(setEnrollment)
       .catch((cause: unknown) =>
-        setError(
-          cause instanceof AuthenticationAPIError ? cause.message : '登録を開始できませんでした。',
-        ),
+        setError(cause instanceof AuthenticationAPIError ? cause.message : t.startFailed),
       )
-  }, [csrfToken])
+  }, [csrfToken, t.startFailed])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -45,9 +46,7 @@ export function MfaEnrollmentPage({
         await confirmMfaEnrollment(csrfToken, enrollment.secret, code.trim(), returnTo),
       )
     } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError ? cause.message : '登録を完了できませんでした。',
-      )
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.completeFailed)
       setSubmitting(false)
     }
   }
@@ -56,11 +55,9 @@ export function MfaEnrollmentPage({
     <AuthShell>
       <div className="flex flex-col gap-6">
         <header className="flex flex-col gap-2.5">
-          <p className="eyebrow">MFA 登録が必要です</p>
-          <h2 className="page-title">認証アプリを登録</h2>
-          <p className="page-description">
-            管理者が承認した登録手続きです。完了するまでアプリやマイページにはアクセスできません。
-          </p>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h2 className="page-title">{t.title}</h2>
+          <p className="page-description">{t.description}</p>
         </header>
         {error ? (
           <Alert className="flex gap-3" aria-live="polite">
@@ -71,14 +68,16 @@ export function MfaEnrollmentPage({
         {enrollment ? (
           <form onSubmit={handleSubmit} className="grid gap-5">
             <div className="rounded-xl bg-slate-50 p-4 text-sm">
-              <p>認証アプリに次のキーを登録してください。</p>
+              <p>{t.setupInstruction}</p>
               <code className="mt-2 block break-all font-mono font-semibold">
                 {enrollment.secret}
               </code>
-              <p className="mt-2 text-xs text-slate-500">アカウント: {enrollment.account_name}</p>
+              <p className="mt-2 text-xs text-slate-500">
+                {t.account.replace('{account}', enrollment.account_name)}
+              </p>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="enrollment-code">確認コード</Label>
+              <Label htmlFor="enrollment-code">{t.verificationCode}</Label>
               <Input
                 id="enrollment-code"
                 inputMode="numeric"
@@ -91,14 +90,14 @@ export function MfaEnrollmentPage({
               />
             </div>
             <Button type="submit" size="lg" disabled={submitting}>
-              {submitting ? '登録中…' : '登録してログインを続行'}
+              {submitting ? t.enrolling : t.submit}
               <IconArrowRight size={18} aria-hidden="true" />
             </Button>
           </form>
         ) : null}
         <div className="flex gap-3 rounded-xl bg-slate-50 p-3.5 text-xs text-slate-600">
           <IconShieldLock size={17} aria-hidden="true" />
-          <p>この登録は一度だけ利用できる管理者承認に基づいています。</p>
+          <p>{t.securityNote}</p>
         </div>
       </div>
     </AuthShell>

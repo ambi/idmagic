@@ -13,6 +13,8 @@ export const adminSettingsDictionary = defineDictionary(
     tabIntegrationEndpointsLabel: '連携エンドポイント',
     tabIntegrationEndpointsDescription:
       '外部のOIDC RP、SAML SP、WS-Federation RP、APIクライアントに設定する値を確認します。',
+    tabIdentityProvidersLabel: '外部 ID プロバイダー',
+    tabIdentityProvidersDescription: '上流 OIDC / SAML IdP とアカウント連携を管理します。',
     tabApiTokensLabel: 'API アクセストークン',
     tabApiTokensDescription:
       '管理 API、SCIM 2.0、アカウント API の scope 付きアクセストークンを管理します。',
@@ -214,6 +216,8 @@ export const adminSettingsDictionary = defineDictionary(
     tabIntegrationEndpointsLabel: 'Integration endpoints',
     tabIntegrationEndpointsDescription:
       'Review the values to configure in external OIDC RPs, SAML SPs, WS-Federation RPs, and API clients.',
+    tabIdentityProvidersLabel: 'External identity providers',
+    tabIdentityProvidersDescription: 'Manage upstream OIDC / SAML IdPs and account linking.',
     tabApiTokensLabel: 'API access tokens',
     tabApiTokensDescription:
       'Manage scoped access tokens for the management API, SCIM 2.0, and account API.',

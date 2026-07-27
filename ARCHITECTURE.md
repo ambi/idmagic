@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-26
+updated_at: 2026-07-27
 ---
 
 # Architecture: repo
@@ -34,6 +34,7 @@ For a feature change, read in this order.
 6. `backend/shared/` and `backend/cmd/internal/bootstrap/` only when touching cross-cutting HTTP or
    persistence behavior.
 7. `frontend/ARCHITECTURE.md` and `frontend/src/features/README.md` first when touching the UI.
+8. `DEVELOPMENT.md` for repository-wide implementation and test practices.
 
 Going the other way — implementation back to specification — package names correspond closely to SCL
 context names. The exceptions are collected under `backend/shared/`.
@@ -43,6 +44,7 @@ context names. The exceptions are collected under `backend/shared/`.
 ```text
 .
 ├── architecture.yaml  # cross-cutting module ledger (machine-checked)
+├── DEVELOPMENT.md     # repository-wide implementation and test practices
 ├── backend/           # Go bounded contexts, shared, cmd/
 │   └── <context>/
 │       ├── architecture.yaml   # this context's module ledger
@@ -474,6 +476,7 @@ document answers.
 | Machine-checked module ledger | `architecture.yaml` (root / context) | How the structure is checked |
 | Rejected options, premises at the time, revisit conditions | `decisions/ADR-NNN-*.md` | What was rejected, and why this was chosen |
 | How to use or run something | the `README.md` of that directory | How to use it / how to run it |
+| Repository-wide implementation and test practice | `DEVELOPMENT.md` | How changes are made and tested |
 | What to do when something happens | `infra/runbooks/*.md` | What to do in an incident |
 | A one-off implementation record | `work-items/` | What was done this time |
 

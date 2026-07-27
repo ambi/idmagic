@@ -15,11 +15,11 @@ import type { AccountSession, AccountSignInActivity } from '../../types'
 import { useDictionary, useFormatters } from '../../lib/i18n'
 import { accountActivityDictionary } from './AccountActivityPage.i18n'
 
-export function formatAccountActivityDateTime(value: string): string {
-  return new Date(value).toLocaleString('ja-JP', { dateStyle: 'medium', timeStyle: 'short' })
+export function formatAccountActivityDateTime(value: string, locale = 'en'): string {
+  return new Date(value).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' })
 }
 
-const amrLabels: Record<string, string> = accountActivityDictionary.ja
+const amrLabels: Record<string, string> = accountActivityDictionary.en
 
 export function accountActivityMethodSummary(
   amr: string[],

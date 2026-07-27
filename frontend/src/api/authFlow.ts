@@ -6,6 +6,19 @@ import { getCurrentLocale } from '../lib/i18n/currentLocale'
 
 const uiFallback = () => commonDictionary[getCurrentLocale()].networkError
 
+export type FederatedLoginProvider = {
+  id: string
+  display_name: string
+  protocol: 'oidc' | 'saml'
+}
+
+export async function listFederatedLoginProviders(): Promise<FederatedLoginProvider[]> {
+  const response = await request<{ providers: FederatedLoginProvider[] }>(
+    '/api/auth/federation/providers',
+  )
+  return response.providers ?? []
+}
+
 export async function login(
   csrfToken: string,
   username: string,

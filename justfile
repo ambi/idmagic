@@ -186,6 +186,10 @@ typecheck-ui:
 test-ui-unit:
     cd frontend && bun run test:unit
 
+# Run one UI unit-test file.
+test-ui-unit-file file:
+    cd frontend && bun test {{file}}
+
 # Run UI unit tests with coverage.
 test-ui-cover:
     cd frontend && bun run test:unit:coverage

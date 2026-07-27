@@ -83,6 +83,7 @@ type Deps struct {
 // 登録する。パス・メソッド・middleware は分割前と一致する。
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/authorize", d.handleAuthorize)
+	g.GET("/authorize/resume", d.handleFederatedResume)
 	g.GET("/end_session", d.handleEndSession)
 	g.POST("/end_session", d.handleEndSession)
 	g.GET("/api/auth/transaction", d.handleTransaction)
