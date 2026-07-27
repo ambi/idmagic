@@ -119,7 +119,6 @@ Local defaults use in-memory persistence and console email output. Production ad
 | --- | --- | --- |
 | `PERSISTENCE` | `memory`, `postgres` | storage backend |
 | `DATABASE_URL` | connection string | PostgreSQL database connection |
-
 | `OBSERVABILITY` | `noop`, `otel` | OpenTelemetry tracing/metrics |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | endpoint URL | OTLP/HTTP collector endpoint |
 | `EMAIL_SENDER` | `console`, `smtp` | password reset and notification delivery |
