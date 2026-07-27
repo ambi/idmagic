@@ -34,7 +34,6 @@ For a feature change, read in this order.
 6. `backend/shared/` and `backend/cmd/internal/bootstrap/` only when touching cross-cutting HTTP or
    persistence behavior.
 7. `frontend/ARCHITECTURE.md` and `frontend/src/features/README.md` first when touching the UI.
-8. `DEVELOPMENT.md` for repository-wide implementation and test practices.
 
 Going the other way — implementation back to specification — package names correspond closely to SCL
 context names. The exceptions are collected under `backend/shared/`.
@@ -44,7 +43,6 @@ context names. The exceptions are collected under `backend/shared/`.
 ```text
 .
 ├── architecture.yaml  # cross-cutting module ledger (machine-checked)
-├── DEVELOPMENT.md     # repository-wide implementation and test practices
 ├── backend/           # Go bounded contexts, shared, cmd/
 │   └── <context>/
 │       ├── architecture.yaml   # this context's module ledger
@@ -203,6 +201,12 @@ Core package names stay as the layer names (`domain`/`ports`/`usecases`); adapte
 context are imported together, named imports (`userDomain`, `groupDomain`) disambiguate them. Resolving
 the collision with an import alias preserves the shared vocabulary of the core packages, which
 lengthening the directory names would not (ADR-133).
+
+### Frontend Component Structure
+
+A UI context boundary aligned with an RA/SCL feature is placed in `frontend/src/features/<feature>/`. 
+Views, local components, helpers, tests, and localized dictionaries (`*.i18n.ts`) for that feature must reside in its directory. The alias `slices/` is not used.
+Cross-cutting reusable components not tied to a specific feature boundary are placed in `frontend/src/components/`.
 
 ## Cross-cutting Concerns
 
@@ -476,7 +480,6 @@ document answers.
 | Machine-checked module ledger | `architecture.yaml` (root / context) | How the structure is checked |
 | Rejected options, premises at the time, revisit conditions | `decisions/ADR-NNN-*.md` | What was rejected, and why this was chosen |
 | How to use or run something | the `README.md` of that directory | How to use it / how to run it |
-| Repository-wide implementation and test practice | `DEVELOPMENT.md` | How changes are made and tested |
 | What to do when something happens | `infra/runbooks/*.md` | What to do in an incident |
 | A one-off implementation record | `work-items/` | What was done this time |
 
