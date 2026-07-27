@@ -81,8 +81,7 @@ type AdminUserDeps struct {
 
 // notifyProvisioning is a best-effort call to deps.ProvisioningNotifier: a nil
 // notifier or a notification error must not fail the admin operation that
-// already committed (mirrors bootstrap.Dependencies.NewEmitFunc's own
-// log-don't-fail treatment of outbox/audit side channels). This is ADR-128
+// already committed. This is ADR-128
 // decision 4's scoped simplification; see backend/provisioning/ports.
 // ProvisioningCapture doc for the residual reliability gap it accepts.
 func notifyProvisioning(ctx context.Context, deps AdminUserDeps, tenantID, userID string, trigger userports.ProvisioningTrigger, now time.Time) {

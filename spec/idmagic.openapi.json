@@ -29050,7 +29050,7 @@
           "attempts",
           "created_at"
         ],
-        "description": "back-channel logout の1配送試行を表す outbox 行。ローカル session/refresh token\nの失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない\n(wi-28 Plan)。配送実行は Jobs bounded context の durable job\n(kind=backchannel_logout_delivery) に委譲する。\n",
+        "description": "back-channel logout の1配送試行を表すレコード。ローカル session/refresh token\nの失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない\n(wi-28 Plan)。配送実行は Jobs bounded context の durable job\n(kind=backchannel_logout_delivery) に委譲する。\n",
         "x-scl-untranslated-constraints": [
           "logout_notification_references_existing_client(client_id)"
         ]

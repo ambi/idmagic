@@ -179,7 +179,6 @@ func Run() error {
 			TenantRepo:                deps.Tenancy.TenantRepo,
 			HealthInfo: httpsupport.HealthInfo{
 				Persistence:   runtime.Persistence,
-				EventSink:     runtime.EventSink,
 				Observability: runtime.Observability,
 				AuthZEN:       runtime.AuthZEN,
 			},

@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
+superseded_by: [ADR-139]
 ---
 
 # ADR-077: login throttle を共有ストア化し ephemeral state の HA 前提を明文化する

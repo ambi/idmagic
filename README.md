@@ -16,7 +16,7 @@ capable of handling complex enterprise authentication flows.
 - **Comprehensive Identity Protocols**: Full-featured OAuth 2.0 and OpenID Connect authorization server including PKCE, PAR, device flow, DPoP, dynamic client registration, and token rotation.
 - **Enterprise Federation**: Out-of-the-box support for SAML 2.0 IdP, WS-Federation passive profile, WS-Trust STS, and Microsoft Entra domain federation presets.
 - **Multi-Tenant Architecture**: Deep tenant isolation with realm-scoped routes, per-tenant signing keys (auto-rotated), tenant-specific application catalogs, and customizable branded portals.
-- **High Availability & Scalability**: Built for scale with shared state in PostgreSQL, Kafka outbox relays, robust distributed job processing, and native OpenTelemetry integration.
+- **High Availability & Scalability**: Built for scale with shared state in PostgreSQL, robust distributed job processing, and native OpenTelemetry integration.
 - **Modern Administration Experience**: High-performance React-based admin console and account portals powered by Vite, Tailwind CSS, and Radix UI.
 
 ## Architecture & Repository Map
@@ -63,7 +63,7 @@ Use:
 
 ### Docker Development Stack
 
-The compose stack starts PostgreSQL, Redpanda/Kafka, OpenTelemetry Collector, Prometheus, the Go API, the UI gateway, and the outbox relay. Caddy exposes the combined app at <http://localhost:8080/>. 
+The compose stack starts PostgreSQL, OpenTelemetry Collector, Prometheus, the Go API, and the UI gateway. Caddy exposes the combined app at <http://localhost:8080/>. 
 
 ```bash
 just dev-compose
@@ -119,8 +119,7 @@ Local defaults use in-memory persistence and console email output. Production ad
 | --- | --- | --- |
 | `PERSISTENCE` | `memory`, `postgres` | storage backend |
 | `DATABASE_URL` | connection string | PostgreSQL database connection |
-| `EVENT_SINK` | `console`, `outbox` | domain event destination |
-| `KAFKA_BROKERS` | broker list | outbox relay broker list |
+
 | `OBSERVABILITY` | `noop`, `otel` | OpenTelemetry tracing/metrics |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | endpoint URL | OTLP/HTTP collector endpoint |
 | `EMAIL_SENDER` | `console`, `smtp` | password reset and notification delivery |

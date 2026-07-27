@@ -19699,7 +19699,7 @@ front/back-channel logout を通知するかを解決する索引としてのみ
   </article>
 <article class="card" id="scl-OAuth2/model/LogoutNotification">
     <header><h3>LogoutNotification</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/LogoutNotification</code></header>
-    <p class="desc">back-channel logout の1配送試行を表す outbox 行。ローカル session/refresh token
+    <p class="desc">back-channel logout の1配送試行を表すレコード。ローカル session/refresh token
 の失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない
 (wi-28 Plan)。配送実行は Jobs bounded context の durable job
 (kind=backchannel_logout_delivery) に委譲する。

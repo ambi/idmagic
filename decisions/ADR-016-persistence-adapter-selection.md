@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-04
+superseded_by: [ADR-139, ADR-147]
 ---
 
 # ADR-016: 永続化アダプタは Postgres (durable) + Valkey (volatile) + Postgres outbox → Kafka (events) で構成する

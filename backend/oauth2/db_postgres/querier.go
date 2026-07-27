@@ -13,7 +13,6 @@ import (
 type Querier interface {
 	// 失効マーカーを追加する。同一 jti は同一トークンを指し exp も決定的なので冪等 (DO NOTHING)。
 	AddOauth2AccessTokenDenylist(ctx context.Context, arg AddOauth2AccessTokenDenylistParams) error
-	AppendOutboxEvent(ctx context.Context, arg AppendOutboxEventParams) error
 	// 単発消費の CAS。未使用かつ未期限の行だけを used=true にして 1 行返す。それ以外は 0 行。
 	ConsumePARRequest(ctx context.Context, arg ConsumePARRequestParams) ([]byte, error)
 	DeleteAuthorizationDetailType(ctx context.Context, arg DeleteAuthorizationDetailTypeParams) error

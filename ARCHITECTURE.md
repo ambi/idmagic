@@ -136,8 +136,7 @@ in `saml` and `wsfederation`.
 
 Adapters sit directly under the context or feature that owns them, named `<role>_<technology>` in
 snake_case, with no `adapters/` or `persistence/` classification directory in between. A package name
-alone should reveal whether the role is handler, repository, publisher, or client, and whether the
-technology is HTTP, PostgreSQL, Kafka, or SCIM. A classification directory destroys exactly that: the
+alone should reveal whether the role is handler, repository, publisher, or client, and whether they represent technical adapters—HTTP, PostgreSQL, S3, or SCIM. A classification directory destroys exactly that: the
 package name stops saying what the thing does
 ([ADR-133](decisions/ADR-133-flat-wikipedia-architecture.md)).
 
@@ -204,7 +203,7 @@ lengthening the directory names would not (ADR-133).
 
 ### Frontend Component Structure
 
-A UI context boundary aligned with an RA/SCL feature is placed in `frontend/src/features/<feature>/`. 
+A UI context boundary aligned with an RA/SCL feature is placed in `frontend/src/features/<feature>/`.
 Views, local components, helpers, tests, and localized dictionaries (`*.i18n.ts`) for that feature must reside in its directory. The alias `slices/` is not used.
 Cross-cutting reusable components not tied to a specific feature boundary are placed in `frontend/src/components/`.
 
@@ -364,14 +363,13 @@ retention, or audit.
   `login_throttle_counters`, `saml_authnrequest_replays`) keep it for the same reason: each lookup is a
   high-frequency, fail-closed resolution of an attacker-influenced opaque key, so the tenant boundary is
   enforced in the DB layer (ADR-139; the ADR-082 §4 exception).
-- **Append-only / audit / outbox / throttling**: decided by emit-time tenant, query boundary, and
-  retention (`audit_events`, `authentication_event_buckets`, `outbox`).
+- **Append-only / audit / throttling**: decided by emit-time tenant, query boundary, and
+  retention (`audit_events`, `authentication_event_buckets`).
 
 ## Runtime Composition
 
 The main package in `backend/cmd/idmagic/` performs startup, and `backend/cmd/internal/bootstrap` owns
-startup-time DI. `backend/cmd/idmagic-relay/main.go` starts the outbox-to-Kafka relay process by calling
-`Run()` in `backend/cmd/idmagic-relay/internal/relay`. `backend/cmd/idmagic-worker/` only claims durable
+startup-time DI. `backend/cmd/idmagic-worker/` only claims durable
 jobs and runs handlers, scaling horizontally independently of the API
 ([ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)).
 `backend/cmd/idmagic-batch/` is started one-shot by an external scheduler, performs a single retention
@@ -387,14 +385,13 @@ ADR-091), and by default several contexts compose into one process. The runtime 
 keep the synchronous dependencies of authentication and OAuth2 inside the API process, and are limited
 to what the triggers in [REGENERATIVE_ARCHITECTURE.md §3.9](REGENERATIVE_ARCHITECTURE.md) justify:
 resource and latency characteristics (per-lane workers,
-[ADR-129](decisions/ADR-129-job-execution-lanes.md)), the execution boundary of cross-cutting batches
-(ADR-124), and availability-preserving asynchronous delivery (outbox relay,
-[ADR-120](decisions/ADR-120-event-relay-transport-abstraction-and-pubsub.md)). The organizational
+[ADR-129](decisions/ADR-129-job-execution-lanes.md)), and the execution boundary of cross-cutting batches
+(ADR-124). The organizational
 trigger has not fired, so no service split happens until independent data ownership, teams, and SLOs
 exist (ADR-099). This describes the present state; it does not prescribe a future style.
 
 `Dependencies` in `backend/cmd/internal/bootstrap/deps.go` is the boundary aggregate handed to the HTTP
-layer, absorbing runtime choices such as memory / postgres / outbox / otel. Context-specific
+layer, absorbing runtime choices such as memory / postgres / console / otel. Context-specific
 repositories are bundled into each `Module`, and the central `Dependencies` and server `Deps` receive
 the Module. After adding a port, check at least the context's `ports/`, the memory adapter, whether the
 postgres adapter and a schema diff are needed, `bootstrap.Dependencies`, `assembleMemory` /
@@ -459,7 +456,7 @@ The `memory` runtime keeps this state in process and is therefore **single-repli
   ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md)).
 - Outbound provisioning (the SCIM client) is a separate context from the inbound SCIM server because the
   direction of truth is reversed and the lifecycles differ. Delivery does not observe the existing
-  outbox; it is committed by a same-transaction capture that writes `ProvisioningDelivery` inside the
+  queue; it is committed by a same-transaction capture that writes `ProvisioningDelivery` inside the
   caller's Postgres transaction
   ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md)).
 - Inbound identity intake is grouped by whether there is an authority with a durable source binding —

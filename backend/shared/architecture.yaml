@@ -221,44 +221,8 @@ modules:
         via: technical_shared
       - module: shared-spec
         via: technical_shared
-  shared-events-publishers-kafka:
-    path: events/publishers_kafka
-    responsibility: backend/shared/events/publishers_kafka の Flat Architecture adapter。
-    context: System
-    layer: adapters
-    role: technical_shared
-    depends_on:
-      - module: shared-services
-        via: technical_shared
-  shared-events-publishers-log:
-    path: events/publishers_log
-    responsibility: backend/shared/events/publishers_log の Flat Architecture adapter。
-    context: System
-    layer: adapters
-    role: technical_shared
-    depends_on:
-      - module: shared-services
-        via: technical_shared
-  shared-events-publishers-pubsub:
-    path: events/publishers_pubsub
-    responsibility: backend/shared/events/publishers_pubsub の Flat Architecture adapter。
-    context: System
-    layer: adapters
-    role: technical_shared
-    depends_on:
-      - module: shared-services
-        via: technical_shared
-  shared-events-relay-postgres:
-    path: events/relay_postgres
-    responsibility: backend/shared/events/relay_postgres の Flat Architecture adapter。
-    context: System
-    layer: adapters
-    role: technical_shared
-    depends_on:
-      - module: shared-adapters
-        via: technical_shared
-      - module: shared-services
-        via: technical_shared
+
+
   shared-events-sinks-console:
     path: events/sinks_console
     responsibility: backend/shared/events/sinks_console の Flat Architecture adapter。

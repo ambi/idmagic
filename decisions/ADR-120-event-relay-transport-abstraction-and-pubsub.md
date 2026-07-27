@@ -1,7 +1,8 @@
 ---
-status: accepted
+status: superseded
 authors: [tn]
 created_at: 2026-07-18
+superseded_by: [ADR-147]
 ---
 
 # ADR-120: イベント relay を `Publisher` 抽象で transport 中立化し、Pub/Sub を build タグ隔離の任意アダプタとする

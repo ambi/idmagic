@@ -78,14 +78,6 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
-      - module: shared-events-publishers-kafka
-        via: technical_shared
-      - module: shared-events-publishers-log
-        via: technical_shared
-      - module: shared-events-publishers-pubsub
-        via: technical_shared
-      - module: shared-events-relay-postgres
-        via: technical_shared
       - module: shared-observability-metrics-prometheus
         via: technical_shared
       - module: shared-observability-telemetry-otlp
@@ -247,12 +239,7 @@ runtime_units:
       - batch
       - bootstrap
       - signingkeys-usecases
-  idmagic-relay:
-    kind: relay
-    entrypoint: backend/cmd/idmagic-relay/main.go
-    modules:
-      - backend
-      - shared-adapters
+
   idmagic-ui:
     kind: ui
     entrypoint: frontend/src/main.tsx

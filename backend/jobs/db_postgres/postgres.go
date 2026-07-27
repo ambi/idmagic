@@ -1,10 +1,7 @@
 // Package postgres is the PostgreSQL JobRepository implementation (ADR-098):
 // claim uses `FOR UPDATE SKIP LOCKED` inside a single atomic
 // `UPDATE ... FROM (SELECT ... FOR UPDATE SKIP LOCKED) RETURNING` statement, so
-// no explicit transaction is needed (there is no external side effect between
-// claim and marking the Job Running, unlike
-// backend/shared/events/relay_postgres/relay.go's Kafka-publish-in-the-middle
-// case).
+// no explicit transaction is needed.
 package db_postgres
 
 import (

@@ -51,7 +51,6 @@ type Dependencies struct {
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。
 type RuntimeConfig struct {
 	Persistence   string
-	EventSink     string
 	Observability string
 	AuthZEN       string
 }
@@ -59,7 +58,6 @@ type RuntimeConfig struct {
 func LoadRuntimeConfig() RuntimeConfig {
 	return RuntimeConfig{
 		Persistence:   EnvDefault("PERSISTENCE", "memory"),
-		EventSink:     EnvDefault("EVENT_SINK", "console"),
 		Observability: EnvDefault("OBSERVABILITY", "noop"),
 		AuthZEN:       EnvDefault("AUTHZEN", "local"),
 	}

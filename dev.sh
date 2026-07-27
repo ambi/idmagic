@@ -114,7 +114,7 @@ echo "Starting idmagic API at $DEV_API_ADDR"
   : "${DEMO_USER_PASSWORD:=demo-password-1234}"
   export WEBAUTHN_RP_ID WEBAUTHN_RP_ORIGINS WEBAUTHN_RP_DISPLAY_NAME
   export DEMO_CLIENT_SECRET DEMO_USER_PASSWORD
-  export ADDR="$DEV_API_ADDR" ISSUER="$DEV_ISSUER" EVENT_SINK=console SEED_ENVIRONMENT=development SEED_PROFILE=development
+  export ADDR="$DEV_API_ADDR" ISSUER="$DEV_ISSUER" SEED_ENVIRONMENT=development SEED_PROFILE=development
   if [ "$MODE" = "durable" ]; then
     export PERSISTENCE=postgres DATABASE_URL
   else
@@ -128,7 +128,7 @@ if [ "$MODE" = "durable" ]; then
   echo "Starting idmagic worker"
   (
     cd "$ROOT_DIR"
-    export PERSISTENCE=postgres DATABASE_URL EVENT_SINK=console
+    export PERSISTENCE=postgres DATABASE_URL
     exec "$RUN_DIR/idmagic-worker"
   ) &
   WORKER_PID=$!

@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-24
+supersedes: [ADR-016, ADR-077]
 ---
 
 # ADR-139: 揮発性の認証 / OAuth2 一時状態を全て PostgreSQL に統合し Valkey を廃止する

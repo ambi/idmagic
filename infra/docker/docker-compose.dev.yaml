@@ -22,20 +22,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
 
-  kafka:
-    image: redpandadata/redpanda:v24.3.18
-    command:
-      - redpanda
-      - start
-      - --overprovisioned
-      - --smp=1
-      - --memory=512M
-      - --reserve-memory=0M
-      - --node-id=0
-      - --check=false
-      - --kafka-addr=0.0.0.0:9092
-      - --advertise-kafka-addr=kafka:9092
-    ports: ["9092:9092"]
+
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.153.0
@@ -68,7 +55,6 @@ services:
       WEBAUTHN_RP_DISPLAY_NAME: IdMagic Local
       PERSISTENCE: postgres
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
-      EVENT_SINK: outbox
       OBSERVABILITY: otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
@@ -88,16 +74,7 @@ services:
       idp: { condition: service_started }
     ports: ["8080:8080"]
 
-  event-relay:
-    image: idmagic:dev
-    entrypoint: ["/app/idmagic-relay"]
-    environment:
-      DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
-      KAFKA_BROKERS: kafka:9092
-    depends_on:
-      postgres: { condition: service_healthy }
-      schema: { condition: service_completed_successfully }
-      kafka: { condition: service_started }
+
 
   worker:
     image: idmagic:dev
@@ -109,7 +86,6 @@ services:
     environment:
       PERSISTENCE: postgres
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
-      EVENT_SINK: outbox
       OBSERVABILITY: otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf

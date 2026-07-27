@@ -5,7 +5,7 @@
 #   - context 内部は protocol 非依存コア (本ファイル) + protocol 別 feature slice
 #     (backend/provisioning/scim/ など) で構成する。SCL は protocol 非依存の契約だけを持ち、
 #     SCIM wire 変換は Go adapter 層の実装詳細として本ファイルには現れない。
-#   - 配送は既存 outbox を観測せず、呼び出し元 (IdManagement/Application) の
+#   - 配送は呼び出し元 (IdManagement/Application) の
 #     Postgres トランザクション内で ProvisioningDelivery 行を書く same-Tx capture で確定する
 #     (IdGovernance の UserWorkflowCapture と同型)。この capture は Go adapter port であり、
 #     SCL interfaces には現れない (IdGovernance の前例と同じ)。

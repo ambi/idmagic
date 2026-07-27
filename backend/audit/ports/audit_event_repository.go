@@ -6,7 +6,7 @@ package ports
 //
 // 本実装は監査保管 (SCL objectives.AuditLogRetention 7y) ではなく、
 // 直近のオペレーション可視化を目的としたショートウィンドウ用途を想定する。
-// 永続化アダプタは Phase 4 以降で Outbox / SIEM クエリ等に差し替えられる。
+// 永続化アダプタは Phase 4 以降でログストリーミングや SIEM 転送に拡張される可能性がある。
 
 import (
 	"context"

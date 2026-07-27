@@ -4,14 +4,12 @@ This guide covers deployment, monitoring, and security configurations for IdMagi
 
 ## Kubernetes, Monitoring, and Load Smoke
 
-The Kubernetes base separates the API, UI gateway, outbox relay, and durable
-job worker in `infra/k8s/base`; the relay has no HTTP surface and therefore
-deliberately has no Service. The worker is split into one Deployment per
+The Kubernetes base separates the API, UI gateway, and durable
+job worker into independent Deployments, linked by PostgreSQL and a shared OTLP. The worker is split into one Deployment per
 execution lane (`idmagic-worker-{latency-sensitive,default,bulk}`),
 each with its own metrics-only Service (`/metrics`, no application HTTP
 surface). Apply a rendered environment only after your platform has created
 the referenced Secrets (`idmagic-<environment>-runtime-secrets`,
-`idmagic-<environment>-relay-secrets`, and
 `idmagic-<environment>-worker-secrets`). Secret values, image release digests,
 and cloud-specific database endpoints are never stored in this repository.
 
@@ -28,7 +26,7 @@ an immediate `just rollback-k8s idmagic-api` when necessary.
 
 The API probes `/startupz`, `/livez`, and `/readyz` directly. Its NetworkPolicy
 allows only the UI gateway and Prometheus scrape traffic in, plus DNS and
-PostgreSQL egress; relay egress is additionally limited to Kafka.
+PostgreSQL egress.
 Each worker lane's NetworkPolicy allows only Prometheus scrape traffic in
 (`/metrics`, port 8080), plus DNS and PostgreSQL egress — worker has
 no readiness/liveness probes since it serves no application traffic.

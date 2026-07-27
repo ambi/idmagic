@@ -380,20 +380,7 @@ CREATE UNIQUE INDEX signing_keys_single_active_idx
     ON signing_keys (tenant_id, key_usage, scope_id, active)
     WHERE active;
 
-CREATE TABLE outbox (
-    id BIGSERIAL PRIMARY KEY,
-    event_type TEXT NOT NULL,
-    topic TEXT NOT NULL,
-    payload JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    published_at TIMESTAMPTZ,
-    published_to TEXT,
-    attempts INT NOT NULL DEFAULT 0,
-    last_error TEXT
-);
 
-CREATE INDEX outbox_unpublished_idx ON outbox (id) WHERE published_at IS NULL;
 
 CREATE TABLE password_history (
     id UUID PRIMARY KEY,

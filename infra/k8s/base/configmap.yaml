@@ -8,7 +8,6 @@ metadata:
 data:
   ADDR: :8080
   PERSISTENCE: postgres
-  EVENT_SINK: outbox
   OBSERVABILITY: otel
   OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
   SCL_PATH: /app/spec/scl.yaml

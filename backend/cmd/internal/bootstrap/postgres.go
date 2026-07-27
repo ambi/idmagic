@@ -36,7 +36,6 @@ import (
 	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
 	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/consent/db_postgres"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
-	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	oauth2tokenpostgres "github.com/ambi/idmagic/backend/oauth2/token/db_postgres"
 	"github.com/ambi/idmagic/backend/provisioning"
 	provisioningpostgres "github.com/ambi/idmagic/backend/provisioning/db_postgres"
@@ -101,17 +100,6 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 	if err != nil {
 		pool.Close()
 		return nil, err
-	}
-
-	var sink oauthports.EventSink
-	switch EnvDefault("EVENT_SINK", "console") {
-	case "console":
-		sink = sinks_console.NewConsoleSink()
-	case "outbox":
-		sink = &oauth2postgres.OutboxEventSink{Pool: resilientDB}
-	default:
-		pool.Close()
-		return nil, errors.New("EVENT_SINK must be console or outbox")
 	}
 
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
@@ -183,7 +171,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			DpopReplayStore:            &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "dpop"},
 			ClientAssertionReplayStore: &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "client_assertion"},
 			AccessTokenDenylist:        &oauth2postgres.AccessTokenDenylist{Pool: resilientDB},
-			EventSink:                  sink,
+			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
 		Audit: audit.Module{

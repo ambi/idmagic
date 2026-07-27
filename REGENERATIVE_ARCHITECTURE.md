@@ -135,7 +135,7 @@ Architecture は二つの成果物に分かれる。**散文の設計正本**（
 `persistence/` のような分類だけを目的とする中継ぎディレクトリは作らず、Adapter を所有する
 context または feature の直下に `<役割>_<技術詳細>` の snake_case 名で置く。
 Wikipedia の記事名のように package 名だけで役割と実装技術を判別できることを優先する
-（例: `handlers_http`、`db_postgres`、`publishers_kafka`）。
+（例: `handlers_http`、`db_postgres`、`publishers_log`）。
 
 ### 3.6 第6層：Infrastructure（インフラストラクチャ）
 

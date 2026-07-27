@@ -37,8 +37,6 @@ spec:
               value: "https://id.example.com" # 本番ホスト名。discovery の issuer と一致必須
             - name: PERSISTENCE
               value: "postgres"
-            - name: EVENT_SINK
-              value: "outbox"
             - name: KEY_PROVIDER
               value: "db" # DB-backed 署名鍵(ADR-024)。全レプリカで JWKS 一致
             - name: OBSERVABILITY

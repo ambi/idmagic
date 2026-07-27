@@ -195,6 +195,36 @@ type EmailChangeToken struct {
 	ExpiresAt time.Time
 }
 
+type FederatedIdentity struct {
+	TenantID        string
+	ProviderID      string
+	ExternalSubject string
+	LocalUserID     string
+	LinkedAt        time.Time
+	LastLoginAt     pgtype.Timestamptz
+}
+
+type FederatedLoginAttempt struct {
+	TenantID     string
+	State        string
+	ProviderID   string
+	Protocol     string
+	Nonce        pgtype.Text
+	PkceVerifier pgtype.Text
+	RequestID    pgtype.Text
+	ReturnTo     pgtype.Text
+	LinkUserID   pgtype.UUID
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+	ConsumedAt   pgtype.Timestamptz
+}
+
+type FederatedResponseReplay struct {
+	TenantID   string
+	ResponseID string
+	ExpiresAt  time.Time
+}
+
 type Group struct {
 	ID             string
 	TenantID       string
@@ -212,6 +242,30 @@ type GroupMember struct {
 	CreatedAt   time.Time
 	Source      string
 	RuleVersion pgtype.Int8
+}
+
+type IdentityProviderConnection struct {
+	TenantID                string
+	ProviderID              string
+	DisplayName             string
+	Protocol                string
+	Status                  string
+	Issuer                  string
+	ClientID                pgtype.Text
+	SecretReference         pgtype.Text
+	AuthorizationEndpoint   pgtype.Text
+	TokenEndpoint           pgtype.Text
+	JwksUri                 pgtype.Text
+	SamlSsoUrl              pgtype.Text
+	SamlEntityID            pgtype.Text
+	SamlSigningCertificates []byte
+	ClaimMapping            []byte
+	LinkingPolicy           string
+	JitProvisioning         bool
+	AllowedEmailDomains     []byte
+	MetadataRefreshedAt     pgtype.Timestamptz
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
 }
 
 type Job struct {
@@ -427,19 +481,6 @@ type Oauth2ReplayJti struct {
 	Jti       string
 	ExpiresAt time.Time
 	CreatedAt time.Time
-}
-
-type Outbox struct {
-	ID          int64
-	EventType   string
-	Topic       string
-	Payload     []byte
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	PublishedAt pgtype.Timestamptz
-	PublishedTo pgtype.Text
-	Attempts    int32
-	LastError   pgtype.Text
 }
 
 type PasswordHistory struct {

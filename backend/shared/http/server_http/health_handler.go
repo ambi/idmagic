@@ -24,7 +24,6 @@ func (d Deps) handleHealth(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"status":        "ok",
 		"persistence":   d.HealthInfo.Persistence,
-		"event_sink":    d.HealthInfo.EventSink,
 		"observability": d.HealthInfo.Observability,
 		"authzen":       d.HealthInfo.AuthZEN,
 	})
