@@ -56,7 +56,12 @@ depends_on: []
 - 移行対象が多岐にわたるため、既存のクエリと少しでも挙動が変わるとエンバグするリスクがある（Medium）。SQL のコピーミスや、`RETURNING` パラメータの対応関係に特に注意する。
 
 ## Completion
-- **Implementation Done**: すべての対象コンテキストにおける静的 SQL の `sqlc` への移行を完了し、各所の不要な生 SQL と手書き Scan メソッドを削除しました。
-- **Documentation Done**: `ARCHITECTURE.md` に ADR-090 に基づく `sqlc` デフォルトの方針を明記しました。
-- **Test Passed**: `just verify-go` がすべてエラーゼロでパスしました。
-- **Out of Scope**: 動的クエリとして残す予定であった `audit` 等のクエリには触れていません。
+- **Completed At**: 2026-07-28
+- **Summary**:
+  対象コンテキスト (`signingkeys` / `provisioning` / `authentication/federation` /
+  `idgovernance` / `idmanagement/group` / `authentication/password`) における
+  静的 SQL の `sqlc` への移行を完了し、各所の不要な生 SQL と手書き Scan メソッドを
+  削除した。`ARCHITECTURE.md` に ADR-090 に基づく `sqlc` デフォルトの方針を明記した。
+  動的クエリとして残す予定であった `audit` 等のクエリには触れていない (Out of Scope 通り)。
+- **Verification Results**:
+  - `just verify-go`
