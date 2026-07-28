@@ -11928,7 +11928,8 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="chip chip-annotation">sensitive</span></td>
-    <td>Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。</td>
+    <td>Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。DB 永続化時は DataKeys の per-tenant DEK でエンベロープ暗号化し、平文を保存しない ([[ADR-148]])。
+</td>
   </tr><tr>
     <td><code class="name">label</code></td>
     <td><code class="type">String</code></td>
@@ -32919,11 +32920,11 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">key_id</code></td>
-    <td><code class="type">String</code></td>
+    <td><code class="name">key_version</code></td>
+    <td><code class="type">Integer</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>暗号化に使った TenantDataEncryptionKey.id。復号時にどのバージョンを使うか選択する。</td>
+    <td>暗号化に使った TenantDataEncryptionKey.version。所有レコードのテナント境界内で一意なため、復号は呼び出し側が持つ tenant_id とこの version から対象 TenantDataEncryptionKey を選択する (グローバルな鍵 ID lookup を持たない)。</td>
   </tr><tr>
     <td><code class="name">ciphertext</code></td>
     <td><code class="type">Bytes</code></td>

@@ -36,7 +36,7 @@ func (q *Queries) DeleteMfaFactorsForSub(ctx context.Context, userID string) err
 }
 
 const getMfaFactor = `-- name: GetMfaFactor :one
-SELECT user_id, type, secret, label, created_at, last_used_at
+SELECT user_id, type, secret, secret_key_version, secret_ciphertext, label, created_at, last_used_at
 FROM mfa_factors
 WHERE user_id = $1 AND type = $2
 `
@@ -47,12 +47,14 @@ type GetMfaFactorParams struct {
 }
 
 type GetMfaFactorRow struct {
-	UserID     string
-	Type       string
-	Secret     pgtype.Text
-	Label      pgtype.Text
-	CreatedAt  time.Time
-	LastUsedAt pgtype.Timestamptz
+	UserID           string
+	Type             string
+	Secret           pgtype.Text
+	SecretKeyVersion pgtype.Int4
+	SecretCiphertext []byte
+	Label            pgtype.Text
+	CreatedAt        time.Time
+	LastUsedAt       pgtype.Timestamptz
 }
 
 func (q *Queries) GetMfaFactor(ctx context.Context, arg GetMfaFactorParams) (*GetMfaFactorRow, error) {
@@ -62,6 +64,8 @@ func (q *Queries) GetMfaFactor(ctx context.Context, arg GetMfaFactorParams) (*Ge
 		&i.UserID,
 		&i.Type,
 		&i.Secret,
+		&i.SecretKeyVersion,
+		&i.SecretCiphertext,
 		&i.Label,
 		&i.CreatedAt,
 		&i.LastUsedAt,
@@ -70,19 +74,21 @@ func (q *Queries) GetMfaFactor(ctx context.Context, arg GetMfaFactorParams) (*Ge
 }
 
 const listMfaFactorsBySub = `-- name: ListMfaFactorsBySub :many
-SELECT user_id, type, secret, label, created_at, last_used_at
+SELECT user_id, type, secret, secret_key_version, secret_ciphertext, label, created_at, last_used_at
 FROM mfa_factors
 WHERE user_id = $1
 ORDER BY created_at
 `
 
 type ListMfaFactorsBySubRow struct {
-	UserID     string
-	Type       string
-	Secret     pgtype.Text
-	Label      pgtype.Text
-	CreatedAt  time.Time
-	LastUsedAt pgtype.Timestamptz
+	UserID           string
+	Type             string
+	Secret           pgtype.Text
+	SecretKeyVersion pgtype.Int4
+	SecretCiphertext []byte
+	Label            pgtype.Text
+	CreatedAt        time.Time
+	LastUsedAt       pgtype.Timestamptz
 }
 
 func (q *Queries) ListMfaFactorsBySub(ctx context.Context, userID string) ([]*ListMfaFactorsBySubRow, error) {
@@ -98,6 +104,8 @@ func (q *Queries) ListMfaFactorsBySub(ctx context.Context, userID string) ([]*Li
 			&i.UserID,
 			&i.Type,
 			&i.Secret,
+			&i.SecretKeyVersion,
+			&i.SecretCiphertext,
 			&i.Label,
 			&i.CreatedAt,
 			&i.LastUsedAt,
@@ -113,22 +121,26 @@ func (q *Queries) ListMfaFactorsBySub(ctx context.Context, userID string) ([]*Li
 }
 
 const upsertMfaFactor = `-- name: UpsertMfaFactor :exec
-INSERT INTO mfa_factors (user_id, type, secret, label, created_at, last_used_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO mfa_factors (user_id, type, secret, secret_key_version, secret_ciphertext, label, created_at, last_used_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (user_id, type) DO UPDATE SET
     secret = EXCLUDED.secret,
+    secret_key_version = EXCLUDED.secret_key_version,
+    secret_ciphertext = EXCLUDED.secret_ciphertext,
     label = EXCLUDED.label,
     last_used_at = EXCLUDED.last_used_at,
     updated_at = now()
 `
 
 type UpsertMfaFactorParams struct {
-	UserID     string
-	Type       string
-	Secret     pgtype.Text
-	Label      pgtype.Text
-	CreatedAt  time.Time
-	LastUsedAt pgtype.Timestamptz
+	UserID           string
+	Type             string
+	Secret           pgtype.Text
+	SecretKeyVersion pgtype.Int4
+	SecretCiphertext []byte
+	Label            pgtype.Text
+	CreatedAt        time.Time
+	LastUsedAt       pgtype.Timestamptz
 }
 
 func (q *Queries) UpsertMfaFactor(ctx context.Context, arg UpsertMfaFactorParams) error {
@@ -136,6 +148,8 @@ func (q *Queries) UpsertMfaFactor(ctx context.Context, arg UpsertMfaFactorParams
 		arg.UserID,
 		arg.Type,
 		arg.Secret,
+		arg.SecretKeyVersion,
+		arg.SecretCiphertext,
 		arg.Label,
 		arg.CreatedAt,
 		arg.LastUsedAt,

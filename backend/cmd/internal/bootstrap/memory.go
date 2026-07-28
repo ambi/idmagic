@@ -20,6 +20,9 @@ import (
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
+	"github.com/ambi/idmagic/backend/datakeys"
+	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igmemory "github.com/ambi/idmagic/backend/idgovernance/db_memory"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -36,6 +39,7 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
@@ -52,6 +56,13 @@ func assembleMemory() (*Dependencies, error) {
 	if err != nil {
 		return nil, err
 	}
+	masterKeyProvider, err := selectMasterKeyProvider()
+	if err != nil {
+		return nil, err
+	}
+	dataKeysRepo := datakeysmemory.NewDataKeyRepository()
+	dataKeysCrypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKeyProvider)
+	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
 	userRepo := usermemory.NewUserRepository()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	workflowRunRepo := igmemory.NewLifecycleWorkflowRunRepository()
@@ -127,6 +138,7 @@ func assembleMemory() (*Dependencies, error) {
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
+		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache},
 		Audit: audit.Module{
 			AuditEventRepo:  auditmemory.NewAuditEventStore(0),
 			TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(),

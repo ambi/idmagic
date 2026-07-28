@@ -1,0 +1,107 @@
+# backend/datakeys — Architecture ledger
+# この context が所有する module 台帳。path はこのファイルからの相対。
+# 散文の設計正本は ARCHITECTURE.md (ADR-148)。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
+context: datakeys
+updated_at: 2026-07-29
+modules:
+  datakeys-domain:
+    path: domain
+    responsibility: TenantDataEncryptionKey・DataKeyStatus・lifecycle error・domain event (ADR-148)。
+    context: DataKeys
+    layer: domain
+    role: published_interface
+    realizes:
+      - context: DataKeys
+        kind: model
+        element: TenantDataEncryptionKey
+  datakeys-ports:
+    path: ports
+    responsibility: DataKeyRepository (lifecycle 状態機械の原子性を持つ port) と CacheInvalidator。
+    context: DataKeys
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: datakeys-domain
+        via: published_interface
+  datakeys-usecases:
+    path: usecases
+    responsibility: Bootstrap/Rotate/Disable/DestroyTenantDataKey usecase と DataKeyCache (テナント DEK の unwrap キャッシュ)。
+    context: DataKeys
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: datakeys-domain
+        via: published_interface
+      - module: datakeys-ports
+        via: published_interface
+      - module: shared-security-envelope-crypto
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+    realizes:
+      - context: DataKeys
+        kind: interface
+        element: BootstrapTenantDataKey
+      - context: DataKeys
+        kind: interface
+        element: RotateTenantDataKey
+      - context: DataKeys
+        kind: interface
+        element: DisableTenantDataKey
+      - context: DataKeys
+        kind: interface
+        element: DestroyTenantDataKey
+  datakeys-db-memory:
+    path: db_memory
+    responsibility: DataKeyRepository の in-process 参照実装。テストとローカルデモの参照でもある。
+    context: DataKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: datakeys-domain
+        via: published_interface
+      - module: datakeys-ports
+        via: published_interface
+  datakeys-db-postgres:
+    path: db_postgres
+    responsibility: backend/datakeys/db_postgres の Flat Architecture adapter。tenant_data_encryption_keys の永続化。
+    context: DataKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: datakeys-domain
+        via: published_interface
+      - module: datakeys-ports
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+  datakeys-public:
+    path: "."
+    responsibility: FieldCipher (record-owning repository が使う encrypt/decrypt facade)。
+    context: DataKeys
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: datakeys-domain
+        via: published_interface
+      - module: datakeys-ports
+        via: published_interface
+      - module: datakeys-usecases
+        via: published_interface
+      - module: shared-security-envelope-crypto
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
+  datakeys-composition:
+    path: module.go
+    responsibility: DataKeys の repository/cache を束ねる composition module。
+    context: DataKeys
+    layer: infrastructure
+    role: composition_root
+    depends_on:
+      - module: datakeys-ports
+        via: published_interface
+      - module: datakeys-usecases
+        via: published_interface

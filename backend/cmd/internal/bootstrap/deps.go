@@ -11,6 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
+	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -35,6 +36,7 @@ type Dependencies struct {
 	Authentication authentication.Module
 	OAuth2         oauth2.Module
 	SigningKeys    signingkeys.Module
+	DataKeys       datakeys.Module
 	Audit          audit.Module
 	WsFederation   wsfederation.Module
 	Saml           saml.Module

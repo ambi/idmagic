@@ -89,6 +89,14 @@ modules:
         via: composition_root
       - module: audit-db-postgres
         via: composition_root
+      - module: datakeys-db-memory
+        via: composition_root
+      - module: datakeys-db-postgres
+        via: composition_root
+      - module: datakeys-public
+        via: composition_root
+      - module: datakeys-usecases
+        via: composition_root
       - module: authentication-db-memory
         via: composition_root
       - module: authentication-db-postgres
@@ -170,6 +178,12 @@ modules:
       - module: shared-policy-breaches-hibp
         via: technical_shared
       - module: shared-policy-breaches-noop
+        via: technical_shared
+      - module: shared-security-envelope-cleartext
+        via: technical_shared
+      - module: shared-security-envelope-crypto
+        via: technical_shared
+      - module: shared-security-envelope-openbao
         via: technical_shared
       - module: shared-security-passwords-argon2id
         via: technical_shared

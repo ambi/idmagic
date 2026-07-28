@@ -449,7 +449,7 @@ models:
       secret:
         type: String
         optional: true
-        description: Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。
+        description: "Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。DB 永続化時は DataKeys の per-tenant DEK でエンベロープ暗号化し、平文を保存しない ([[ADR-148]])。\n"
         annotations:
           sensitive: true
       label:

@@ -820,17 +820,21 @@ modules:
         via: published_interface
   authentication-totp-db-postgres:
     path: totp/db_postgres
-    responsibility: backend/authentication/totp/db_postgres の Flat Architecture adapter。
+    responsibility: backend/authentication/totp/db_postgres の Flat Architecture adapter。mfa_factors.secret を DataKeys 経由でエンベロープ暗号化する (ADR-148)。
     context: Authentication
     layer: adapters
     role: binding
     depends_on:
       - module: authentication-totp-domain
         via: published_interface
+      - module: authentication-totp-ports
+        via: published_interface
       - module: shared-adapters
         via: technical_shared
       - module: shared-spec
         via: technical_shared
+      - module: tenancy-public
+        via: published_interface
   authentication-webauthn-db-memory:
     path: webauthn/db_memory
     responsibility: backend/authentication/webauthn/db_memory の Flat Architecture adapter。

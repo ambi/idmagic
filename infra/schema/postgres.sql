@@ -229,10 +229,16 @@ CREATE UNIQUE INDEX users_preferred_username_active_idx
     ON users (tenant_id, preferred_username)
     WHERE lifecycle->>'status' <> 'deleted';
 
+-- secret is the pre-ADR-148 plaintext TOTP seed column, kept only so
+-- existing rows can still be read (dual-read); new writes always populate
+-- secret_key_version/secret_ciphertext and leave secret NULL. wi-97 T006
+-- backfills remaining plaintext rows; secret is dropped once none remain.
 CREATE TABLE mfa_factors (
     user_id UUID NOT NULL,
     type TEXT NOT NULL,
     secret TEXT,
+    secret_key_version INTEGER,
+    secret_ciphertext BYTEA,
     label TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),

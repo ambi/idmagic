@@ -372,6 +372,42 @@ modules:
         via: published_interface
       - module: tenancy-public
         via: published_interface
+  shared-security-envelope-crypto:
+    path: security/envelope_crypto
+    responsibility: エンベロープ暗号化の port (EnvelopeCrypto/MasterKeyProvider) と Tink ベースの DEK 生成/AAD/encrypt/decrypt 実装 (ADR-148)。port 本体を持つため shared-services 同様 use_cases 層に置く。
+    context: System
+    layer: use_cases
+    role: technical_shared
+    depends_on:
+      []
+  shared-security-envelope-cleartext:
+    path: security/envelope_cleartext
+    responsibility: dev/local 向け MasterKeyProvider。Tink cleartext keyset で DEK を wrap し、OpenBao を必須にしない (ADR-148)。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-security-envelope-crypto
+        via: published_interface
+  shared-security-envelope-openbao:
+    path: security/envelope_openbao
+    responsibility: 本番向け MasterKeyProvider。OpenBao の Vault Transit 互換 HTTP API 経由でテナント DEK を wrap/unwrap する (ADR-148)。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-security-envelope-crypto
+        via: published_interface
+      - module: oauth2-ports
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
+      - module: signingkeys-domain
+        via: published_interface
+      - module: signingkeys-ports
+        via: published_interface
+      - module: tenancy-public
+        via: published_interface
   shared-storage-db-memory:
     path: storage/db_memory
     responsibility: backend/shared/storage/db_memory の Flat Architecture adapter。

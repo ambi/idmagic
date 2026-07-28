@@ -7029,9 +7029,9 @@
     "EncryptedSecret": {
       "type": "object",
       "properties": {
-        "key_id": {
-          "type": "string",
-          "description": "暗号化に使った TenantDataEncryptionKey.id。復号時にどのバージョンを使うか選択する。"
+        "key_version": {
+          "type": "integer",
+          "description": "暗号化に使った TenantDataEncryptionKey.version。所有レコードのテナント境界内で一意なため、復号は呼び出し側が持つ tenant_id とこの version から対象 TenantDataEncryptionKey を選択する (グローバルな鍵 ID lookup を持たない)。"
         },
         "ciphertext": {
           "type": "string",
@@ -7040,7 +7040,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "key_id",
+        "key_version",
         "ciphertext"
       ],
       "description": "可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。ciphertext は Tink の AEAD primitive がそのまま出力する不透明な bytes で、nonce/tag は Tink 内部管理のため別フィールドとして持たない (自前で nonce を組み立てない、[[ADR-148]])。\n"
@@ -10359,7 +10359,7 @@
         },
         "secret": {
           "type": "string",
-          "description": "Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。"
+          "description": "Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。DB 永続化時は DataKeys の per-tenant DEK でエンベロープ暗号化し、平文を保存しない ([[ADR-148]])。\n"
         },
         "label": {
           "type": "string",

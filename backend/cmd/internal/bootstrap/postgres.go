@@ -23,6 +23,9 @@ import (
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totppostgres "github.com/ambi/idmagic/backend/authentication/totp/db_postgres"
 	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres"
+	"github.com/ambi/idmagic/backend/datakeys"
+	datakeyspostgres "github.com/ambi/idmagic/backend/datakeys/db_postgres"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	igpostgres "github.com/ambi/idmagic/backend/idgovernance/db_postgres"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
@@ -43,6 +46,7 @@ import (
 	samlpostgres "github.com/ambi/idmagic/backend/saml/db_postgres"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/resilience"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/db_postgres"
@@ -102,6 +106,20 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 		return nil, err
 	}
 
+	dataKeysRepo, err := datakeyspostgres.NewDataKeyRepository(ctx, resilientDB)
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	masterKeyProvider, err := selectMasterKeyProvider()
+	if err != nil {
+		pool.Close()
+		return nil, err
+	}
+	dataKeysCrypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKeyProvider)
+	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
+	mfaSecretCipher := &datakeys.FieldCipher{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto}
+
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
 	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}
@@ -145,7 +163,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			FederationAttemptStore:   &federationpostgres.AttemptStore{Pool: resilientDB},
 			FederationReplayStore:    &federationpostgres.ReplayStore{Pool: resilientDB},
 			FederationSecretResolver: federationsecrets.Resolver{},
-			MfaFactorRepo:            &totppostgres.MfaFactorRepository{Pool: resilientDB},
+			MfaFactorRepo:            &totppostgres.MfaFactorRepository{Pool: resilientDB, Cipher: mfaSecretCipher},
 			MfaEnrollmentBypassRepo:  &mfapostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
 			PasswordHistoryRepo:      &passwordpostgres.PasswordHistoryRepository{Pool: resilientDB},
 			PasswordResetTokenStore:  &passwordpostgres.PasswordResetTokenStore{Pool: resilientDB},
@@ -174,6 +192,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
+		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache},
 		Audit: audit.Module{
 			AuditEventRepo:  &auditpostgres.AuditEventRepository{Pool: resilientDB},
 			TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),

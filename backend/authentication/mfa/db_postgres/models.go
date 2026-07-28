@@ -370,13 +370,15 @@ type MfaEnrollmentBypass struct {
 }
 
 type MfaFactor struct {
-	UserID     string
-	Type       string
-	Secret     pgtype.Text
-	Label      pgtype.Text
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	LastUsedAt pgtype.Timestamptz
+	UserID           string
+	Type             string
+	Secret           pgtype.Text
+	SecretKeyVersion pgtype.Int4
+	SecretCiphertext []byte
+	Label            pgtype.Text
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	LastUsedAt       pgtype.Timestamptz
 }
 
 type NotificationTemplate struct {
