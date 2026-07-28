@@ -15,6 +15,7 @@ require (
 	github.com/labstack/echo/v5 v5.1.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/russellhaering/goxmldsig v1.6.0
+	github.com/tink-crypto/tink-go/v2 v2.7.0
 	go.opentelemetry.io/otel v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.44.0

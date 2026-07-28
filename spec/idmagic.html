@@ -32913,7 +32913,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       <h3 class="grp-title">value object <span class="count">2</span></h3>
       <div class="cards"><article class="card" id="scl-DataKeys/model/EncryptedSecret">
     <header><h3>EncryptedSecret</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">DataKeys/model/EncryptedSecret</code></header>
-    <p class="desc">可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。
+    <p class="desc">可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。ciphertext は Tink の AEAD primitive がそのまま出力する不透明な bytes で、nonce/tag は Tink 内部管理のため別フィールドとして持たない (自前で nonce を組み立てない、[[ADR-148]])。
 </p>
 
     <table class="fields">
@@ -32929,13 +32929,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     <td><code class="type">Bytes</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>Tink AEAD が出力する ciphertext。</td>
-  </tr><tr>
-    <td><code class="name">nonce</code></td>
-    <td><code class="type">Bytes</code></td>
-    <td><span class="badge badge-required">required</span></td>
-    <td><span class="muted">—</span></td>
-    <td>Tink AEAD の nonce/IV。実装上 ciphertext に内包される場合もあるが、AAD の再構成と監査のためモデル上は明示的に保持する。</td>
+    <td>Tink AEAD primitive が出力する不透明な ciphertext (nonce/tag を内包する)。AAD は呼び出し側が `(tenant, context, table, record id, field)` から再構成して渡す。</td>
   </tr></tbody>
   </table>
 

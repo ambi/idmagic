@@ -111,17 +111,14 @@ models:
         optional: true
   EncryptedSecret:
     kind: value_object
-    description: "可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。\n"
+    description: "可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。ciphertext は Tink の AEAD primitive がそのまま出力する不透明な bytes で、nonce/tag は Tink 内部管理のため別フィールドとして持たない (自前で nonce を組み立てない、[[ADR-148]])。\n"
     fields:
       key_id:
         type: String
         description: 暗号化に使った TenantDataEncryptionKey.id。復号時にどのバージョンを使うか選択する。
       ciphertext:
         type: Bytes
-        description: Tink AEAD が出力する ciphertext。
-      nonce:
-        type: Bytes
-        description: Tink AEAD の nonce/IV。実装上 ciphertext に内包される場合もあるが、AAD の再構成と監査のためモデル上は明示的に保持する。
+        description: Tink AEAD primitive が出力する不透明な ciphertext (nonce/tag を内包する)。AAD は呼び出し側が `(tenant, context, table, record id, field)` から再構成して渡す。
   TenantDataKeyHealth:
     kind: value_object
     description: system_admin 向けの鍵健全性スナップショット。秘密鍵材料は含まない。
