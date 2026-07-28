@@ -265,7 +265,7 @@ interfaces:
       - DataEncryptionKeyDestroyed
     access: internal
   ListTenantDataKeyHealth:
-    description: "system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。\n"
+    description: "system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。HTTP binding は実装済みの GET /api/admin/data-keys/health ハンドラと共に追加する (wi-97 T007)。\n"
     output:
       tenants:
         type: "TenantDataKeyHealth[]"
@@ -277,10 +277,6 @@ interfaces:
       resource:
         type: DataKeyDirectory
         id: '"data_key_directory"'
-    bindings:
-      - kind: http
-        method: GET
-        path: /api/admin/data-keys/health
 authorization:
   resources:
     DataKeyDirectory:

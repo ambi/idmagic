@@ -279,6 +279,10 @@ complexity:
         - "**/*_test.go"
         - "**/generated/**"
         - "**/sqlcgen/**"
+        - "**/db_postgres/models.go"
+        - "**/db_postgres/db.go"
+        - "**/db_postgres/querier.go"
+        - "**/*.sql.go"
       metric: source_lines
       limit: 800
   debts:

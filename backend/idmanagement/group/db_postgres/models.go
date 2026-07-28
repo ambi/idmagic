@@ -700,6 +700,20 @@ type TenantCorrelationSalt struct {
 	CreatedAt time.Time
 }
 
+type TenantDataEncryptionKey struct {
+	ID          string
+	TenantID    string
+	Version     int32
+	Status      string
+	WrappedDek  []byte
+	MasterKeyID string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ActivatedAt pgtype.Timestamptz
+	DisabledAt  pgtype.Timestamptz
+	DestroyedAt pgtype.Timestamptz
+}
+
 type TenantDefaultSignInPolicy struct {
 	TenantID  string
 	Rules     []byte

@@ -33282,7 +33282,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-DataKeys/interface/ListTenantDataKeyHealth">
     <header><h3>ListTenantDataKeyHealth</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-DataKeys/authorization_policy/SystemAdministrator">SystemAdministrator</a> <code>DataKeyDirectory:&quot;data_key_directory&quot;</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">DataKeys/interface/ListTenantDataKeyHealth</code></header>
-    <p class="desc">system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。
+    <p class="desc">system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。HTTP binding は実装済みの GET /api/admin/data-keys/health ハンドラと共に追加する (wi-97 T007)。
 </p>
 
     <div class="io">
@@ -33298,10 +33298,6 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-DataKeys/model/AccessDeniedError">AccessDeniedError</a></div></div>
-<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
-    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/data-keys/health</code></div></div>
-  </div></div></div>
   </article></div>
   </section>
 <section id="context-datakeys-states">

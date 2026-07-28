@@ -14381,64 +14381,6 @@
         }
       }
     },
-    "/api/admin/data-keys/health": {
-      "get": {
-        "operationId": "ListTenantDataKeyHealth",
-        "summary": "system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。",
-        "security": [
-          {
-            "SclBearer": []
-          }
-        ],
-        "x-scl-access": {
-          "policies": [
-            "SystemAdministrator"
-          ],
-          "resource": {
-            "type": "DataKeyDirectory",
-            "id": "\"data_key_directory\""
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "tenants": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/TenantDataKeyHealth"
-                      }
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "tenants"
-                  ]
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Errors: AccessDeniedError",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "oneOf": [
-                    {
-                      "$ref": "#/components/schemas/AccessDeniedError"
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/wsfed": {
       "get": {
         "operationId": "WsFederationSignIn",

@@ -380,6 +380,32 @@ CREATE UNIQUE INDEX signing_keys_single_active_idx
     ON signing_keys (tenant_id, key_usage, scope_id, active)
     WHERE active;
 
+-- DataKeys context (ADR-148): per-tenant DataEncryptionKey (DEK) metadata and
+-- lifecycle. wrapped_dek is the master-key-wrapped DEK; it is erased (set
+-- NULL) on destroy (crypto-shredding). The plaintext DEK itself never
+-- appears in this table.
+CREATE TABLE tenant_data_encryption_keys (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    version INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'retiring', 'disabled', 'destroyed')),
+    wrapped_dek BYTEA,
+    master_key_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    activated_at TIMESTAMPTZ,
+    disabled_at TIMESTAMPTZ,
+    destroyed_at TIMESTAMPTZ,
+    CONSTRAINT tenant_data_encryption_keys_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT tenant_data_encryption_keys_tenant_version_key
+        UNIQUE (tenant_id, version)
+);
+
+CREATE UNIQUE INDEX tenant_data_encryption_keys_single_active_idx
+    ON tenant_data_encryption_keys (tenant_id)
+    WHERE status = 'active';
+
 
 
 CREATE TABLE password_history (
