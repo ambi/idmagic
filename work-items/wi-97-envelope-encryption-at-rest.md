@@ -84,8 +84,8 @@ per-tenant DEK / `EnvelopeCrypto` がその「既存 KMS」の実体であり、
 - 移行/再暗号化ジョブは[[wi-126-async-job-runner]]が提供する`backend/jobs`のJobKind登録(HandlerRegistry)を使って実装し、独自のジョブ基盤を作らない。
 
 ## Tasks
-- [ ] T001 [Inventory/ADR] 暗号化対象field/owner、Tink+OpenBao(初期provider)/AEAD、AAD、DEK cache/fail mode、rotation/destroy、backup recovery、新規bounded context名、provider非ロックインの明記を決定する。
-- [ ] T002 [SCL] 新規bounded context (T001で命名) にencryption objectives、TenantDataKey lifecycle、rotate/health interfaces、key-loss/fail-closed constraints/contractsを追加して再生成し、ARCHITECTURE.md/architecture.yamlを同期する。
+- [x] T001 [Inventory/ADR] 暗号化対象field/owner、Tink+OpenBao(初期provider)/AEAD、AAD、DEK cache/fail mode、rotation/destroy、backup recovery、新規bounded context名、provider非ロックインの明記を決定する。→ [[ADR-148]] (`decisions/ADR-148-envelope-encryption-and-datakeys-context.md`)。設計本文は `ARCHITECTURE.md` §Persistence #3 / Context Map / Structural Decisions に記載し、ADRは「なぜ」に限定。
+- [x] T002 [SCL] 新規bounded context (`DataKeys`) にencryption objectives、TenantDataKey lifecycle、rotate/health interfaces、key-loss/fail-closed constraints/contractsを追加して再生成し、ARCHITECTURE.md/architecture.yamlを同期する。→ `spec/contexts/data-keys.yaml` 新設、`spec/scl.yaml` context_map に `DataKeys` 追加、`architecture.yaml` に `contexts.DataKeys` 追加、`ARCHITECTURE.md` に Context Map行/Persistence設計/Structural Decisions同期。`just check` green。
 - [ ] T003 [Crypto] TinkベースのEnvelopeCrypto port、OpenBao provider adapter (`keys_vault`のHTTPクライアントパターンを流用)、Tink cleartext keysetによるlocal/dev fallback、DEKキャッシュのrotate/disable時無効化を実装しknown-answer/tamper/AAD testsを追加する。
 - [ ] T004 [Key Persistence] 新規bounded contextにwrapped tenant DEK/version/status repository、bootstrap/rotate/disable use caseをmemory/PostgreSQLへ実装する。
 - [ ] T005 [Repositories] 対象contextを一つずつdual-read/writeへ移行し、plaintextをevent/log/error DTOへ渡さないcontract testを追加する。

@@ -184,6 +184,17 @@ context_map:
         uses:
           - TenantRef
         reason: 署名鍵と証明書は tenant / realm 境界内に閉じる。
+  DataKeys:
+    description: "テナントごとの DataEncryptionKey (DEK) のライフサイクル (bootstrap/rotate/\ndisable/destroy) とメタデータを所有する。DEK は master key provider (OpenBao Transit\n互換、dev/local は Tink cleartext keyset) が wrap し、DB に残る可逆秘密 (TOTP シード等) の\nエンベロープ暗号化に使う ([[ADR-148]])。EnvelopeCrypto port 自体は Go 側の\nshared technical adapter に置き、SCL への露出は EncryptedSecret / 鍵ライフサイクルの\nメタデータに留める。署名鍵 (private_jwk) の鍵管理は所有しない (SigningKeys の範囲)。\n"
+    path: contexts/data-keys.yaml
+    publishes:
+      - EncryptedSecret
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: DataEncryptionKey はテナント境界内に閉じる。
   WsFederation:
     description: WS-Federation passive と WS-Trust active STS の trust、federationmetadata.xml、MEX、RST/RSTR、WS-Fed relying party binding を所有する。SAML assertion / claim release / signing key lifecycle の共有 capability には依存するが、SAML 2.0 SP binding は Saml context が所有する。
     path: contexts/ws-federation.yaml

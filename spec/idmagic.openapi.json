@@ -14381,6 +14381,64 @@
         }
       }
     },
+    "/api/admin/data-keys/health": {
+      "get": {
+        "operationId": "ListTenantDataKeyHealth",
+        "summary": "system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "SystemAdministrator"
+          ],
+          "resource": {
+            "type": "DataKeyDirectory",
+            "id": "\"data_key_directory\""
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tenants": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TenantDataKeyHealth"
+                      }
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "tenants"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/wsfed": {
       "get": {
         "operationId": "WsFederationSignIn",
@@ -24928,6 +24986,101 @@
         ],
         "description": "ConsentLifecycle 状態機械の取りうる状態列挙。GDPR Art.7(3) 撤回権により Granted → Revoked が可能。"
       },
+      "DataEncryptionKeyBootstrapped": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "version"
+        ],
+        "description": "テナントの最初の DataEncryptionKey (version 1, active) が生成された。"
+      },
+      "DataEncryptionKeyDestroyed": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "version"
+        ],
+        "description": "wrapped_dek が破棄され、当該バージョンの復号が恒久的に不能になった。"
+      },
+      "DataEncryptionKeyDisabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "version"
+        ],
+        "description": "retiring の DataEncryptionKey が手動で即時ロックアウトされた。"
+      },
+      "DataEncryptionKeyRotated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "previousVersion": {
+            "type": "integer"
+          },
+          "newVersion": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "previousVersion",
+          "newVersion"
+        ],
+        "description": "新しい DataEncryptionKey が active になり、旧バージョンが retiring に遷移した。"
+      },
       "DataExportCanceled": {
         "type": "object",
         "properties": {
@@ -25311,6 +25464,22 @@
           "group_membership"
         ],
         "description": "CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。"
+      },
+      "DataKeyStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "retiring",
+          "disabled",
+          "destroyed"
+        ],
+        "description": "DataEncryptionKeyLifecycle の状態。"
+      },
+      "DataKeyUnavailableError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "MasterKey provider への到達不能、wrap/unwrap 失敗、または AAD/tamper 不一致により鍵操作が完了できない。呼び出し元は fail-closed としてアクセスを拒否しなければならない。"
       },
       "DefaultIdPProfileError": {
         "type": "object",
@@ -26313,6 +26482,30 @@
           "delivered"
         ],
         "description": "EmailSender port 経由でメールを送信した。fail-open の port なので\n送信失敗時も use case 層には伝播しないが、本イベントの有無で\nSIEM 側からは観測できる。to は SHA-256 hash で記録する。\n"
+      },
+      "EncryptedSecret": {
+        "type": "object",
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "description": "暗号化に使った TenantDataEncryptionKey.id。復号時にどのバージョンを使うか選択する。"
+          },
+          "ciphertext": {
+            "type": "string",
+            "description": "Tink AEAD が出力する ciphertext。"
+          },
+          "nonce": {
+            "type": "string",
+            "description": "Tink AEAD の nonce/IV。実装上 ciphertext に内包される場合もあるが、AAD の再構成と監査のためモデル上は明示的に保持する。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "key_id",
+          "ciphertext",
+          "nonce"
+        ],
+        "description": "可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。\n"
       },
       "EndSessionParameters": {
         "type": "object",
@@ -33545,6 +33738,99 @@
         ],
         "description": "system_admin が新規テナントを作成した。"
       },
+      "TenantDataEncryptionKey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "内部識別子。EncryptedSecret.key_id が参照する値。"
+          },
+          "tenant_id": {
+            "type": "string",
+            "description": "鍵が属するテナント ID。既存 Tenant を指す。"
+          },
+          "version": {
+            "type": "integer",
+            "description": "テナント内で単調増加するバージョン番号。rotation のたびに 1 増える。"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DataKeyStatus"
+          },
+          "wrapped_dek": {
+            "type": "string",
+            "description": "MasterKey provider で wrap 済みの DEK。平文 DEK は保存・ログ・イベントに一切出さない。"
+          },
+          "master_key_id": {
+            "type": "string",
+            "description": "この DEK を wrap した MasterKey (provider 側の鍵/バージョン) の識別子。MasterKey 自体の rotation を追跡する。"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "activated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabled_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "destroyed_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "version",
+          "status",
+          "wrapped_dek",
+          "master_key_id",
+          "created_at"
+        ],
+        "description": "テナントごとの DEK 1 バージョン。MasterKey provider が wrap した鍵材料 (wrapped_dek) だけを保持し、平文 DEK は保存しない。テナントにつき Active は高々 1 本 ([[ADR-148]])。\n",
+        "x-scl-untranslated-constraints": [
+          "active_key_count(tenant_id) <= 1"
+        ]
+      },
+      "TenantDataKeyHealth": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "active_version": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DataKeyStatus"
+          },
+          "provider": {
+            "type": "string",
+            "description": "MasterKey provider 名 (例: \"openbao\" / \"tink_cleartext\")。"
+          },
+          "provider_reachable": {
+            "type": "boolean"
+          },
+          "rotated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "tenant_id",
+          "active_version",
+          "status",
+          "provider",
+          "provider_reachable"
+        ],
+        "description": "system_admin 向けの鍵健全性スナップショット。秘密鍵材料は含まない。"
+      },
       "TenantDefaultSignInPolicy": {
         "type": "object",
         "properties": {
@@ -38496,6 +38782,22 @@
               ],
               "resourceTypes": [
                 "Tenant"
+              ]
+            }
+          },
+          {
+            "name": "ListTenantDataKeyHealth",
+            "memberOf": "policy:SystemAdministrator",
+            "policies": [
+              "SystemAdministrator"
+            ],
+            "resourceId": "\"data_key_directory\"",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "DataKeyDirectory"
               ]
             }
           },

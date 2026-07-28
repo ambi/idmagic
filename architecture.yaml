@@ -2,7 +2,7 @@
 # 横断台帳。context 台帳・実行単位・複雑度 budget と、どの context にも属さない module。
 # 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
 context: repo
-updated_at: 2026-07-27
+updated_at: 2026-07-29
 contexts:
   System:
     spec: spec/contexts/system.yaml
@@ -34,6 +34,9 @@ contexts:
   SigningKeys:
     spec: spec/contexts/signing-keys.yaml
     summary: tenant-and-usage-scoped JWT / XML federation signing key lifecycle。
+  DataKeys:
+    spec: spec/contexts/data-keys.yaml
+    summary: per-tenant DataEncryptionKey (DEK) のライフサイクル。DB に残る可逆秘密のエンベロープ暗号化を支える (ADR-148)。
   WsFederation:
     spec: spec/contexts/ws-federation.yaml
     summary: WS-Federation / WS-Trust。

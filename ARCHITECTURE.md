@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-27
+updated_at: 2026-07-29
 ---
 
 # Architecture: repo
@@ -105,6 +105,7 @@ The main correspondence between SCL contexts and Go packages.
 | `Jobs` | `backend/jobs` | Generic asynchronous job infrastructure that preserves the tenant boundary. Design: [`backend/jobs/ARCHITECTURE.md`](backend/jobs/ARCHITECTURE.md). |
 | `Seeding` | `backend/seeding` | Environment profiles, dry-run, redacted plans, and apply policy. Business data and its persistence stay in each record context ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md)). |
 | `SigningKeys` | `backend/signingkeys` | Tenant-and-usage-scoped key metadata, X.509 credentials, rotation, repository port, admin/JWKS HTTP, and memory/PostgreSQL/Vault adapters. JWT and XML wire signers stay in the protocol adapters. Design: [`backend/signingkeys/ARCHITECTURE.md`](backend/signingkeys/ARCHITECTURE.md). |
+| `DataKeys` | `backend/datakeys` | Per-tenant `DataEncryptionKey` (DEK) metadata and lifecycle (bootstrap/rotate/disable/destroy) for reversible secrets left in the app DB (e.g. MFA TOTP seeds). Does not own signing keys (`SigningKeys`) or the `EnvelopeCrypto` port itself, which lives in `backend/shared/security` as a technical shared adapter ([ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md)). |
 | `WsFederation` | `backend/wsfederation` | WS-Fed passive, WS-Trust active STS, federation metadata, MEX, RP trust, and request-tenant XML signing. Design: [`backend/wsfederation/ARCHITECTURE.md`](backend/wsfederation/ARCHITECTURE.md). |
 | `Saml` | `backend/saml` | SAML 2.0 IdP, SP trust, metadata, SSO/SLO, and request-tenant XML signing. Design: [`backend/saml/ARCHITECTURE.md`](backend/saml/ARCHITECTURE.md). |
 
@@ -368,6 +369,35 @@ retention, or audit.
 - **Append-only / audit / throttling**: decided by emit-time tenant, query boundary, and
   retention (`audit_events`, `authentication_event_buckets`).
 
+#### 3. Envelope encryption for reversible secrets
+
+Reversible secrets that must remain in the app DB (MFA TOTP seeds today; future Token Vault upstream
+tokens) are never stored as plaintext. The scheme is two-tier: a master key, held by a swappable
+`EnvelopeCrypto` provider, wraps a per-tenant `DataEncryptionKey` (DEK); the DEK then AEAD-encrypts each
+secret directly. AEAD/keyset handling is delegated entirely to [Tink](https://developers.google.com/tink)
+— no hand-rolled nonce, tag, or AAD assembly. Every ciphertext binds an AAD of
+`(tenant, context, table, record id, field)` plus the DEK version, so a ciphertext copied across tenant,
+table, or field boundaries fails to decrypt rather than silently succeeding.
+
+- `EnvelopeCrypto` (the Tink-backed AEAD/keyset port, plus the OpenBao/cleartext-keyset master-key
+  provider adapter) lives in `backend/shared/security` alongside `certificates_mtls` /
+  `passwords_argon2id` / `tokens_jose` — it is a technical capability, not a business aggregate.
+- `backend/datakeys` (`DataKeys` context) owns only the wrapped-DEK metadata and lifecycle (bootstrap,
+  rotate, disable, destroy) — never the `EnvelopeCrypto` port itself, mirroring how `SigningKeys` keeps
+  `transit/sign` separate from this `encrypt`/`decrypt`/`datakey` capability.
+- Rotation activates a new DEK version for new writes while the previous version stays `retiring` (still
+  decryptable) until a resumable re-encryption job, registered through `backend/jobs`'
+  `JobKind`/`HandlerRegistry` (`wi-126-async-job-runner`), migrates every reference; only then can the old
+  version be destroyed.
+- Decrypt failure (unwrap failure, provider unreachable, AAD/tamper mismatch) is fail-closed: the caller
+  denies access rather than falling back to plaintext or skipping the field.
+- The initial master-key provider is OpenBao (Vault Transit-compatible HTTP API); dev/local uses a Tink
+  cleartext keyset so OpenBao is not required to develop. The provider is swappable by design.
+
+The full rationale — including why OpenBao over HashiCorp Vault CE, and why this is not merged into the
+`SigningKeys` `KeyStore` port — is in
+[ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md).
+
 ## Runtime Composition
 
 The main package in `backend/cmd/idmagic/` performs startup, and `backend/cmd/internal/bootstrap` owns
@@ -465,6 +495,11 @@ The `memory` runtime keeps this state in process and is therefore **single-repli
   not by direction or runtime shape — into a single `Sourcing` context with one feature slice per
   source. A source-independent core is not built until a second source lands (thin root)
   ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md)).
+- Envelope encryption for DB-resident reversible secrets splits the technical `EnvelopeCrypto` port
+  (Tink AEAD/keyset, master-key provider) from the business-facing per-tenant DEK lifecycle, the same
+  split `SigningKeys` uses for `transit/sign`; the port lives in `backend/shared/security`, the lifecycle
+  in the new `DataKeys` context, and neither is merged into `SigningKeys`, whose `KeyStore` port has a
+  different operation shape and lifecycle ([ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md)).
 
 ## Documentation Policy
 
