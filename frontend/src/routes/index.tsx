@@ -3,7 +3,9 @@ import { HomePage } from '../features/auth-flow/HomePage'
 import { PageMarker } from './-page'
 
 export const Route = createFileRoute('/')({
-  loader: () => ({ demoEnabled: import.meta.env.DEV }),
+  loader: () => ({
+    demoEnabled: import.meta.env.DEV || import.meta.env.VITE_DEMO_LOGIN_ENABLED === 'true',
+  }),
   component: HomeRoute,
 })
 

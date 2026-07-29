@@ -94,6 +94,10 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       SCL_PATH: /app/spec/scl.yaml
+      SEED_ENVIRONMENT: development
+      SEED_PROFILE: development
+      DEMO_CLIENT_SECRET: demo-client-secret
+      DEMO_USER_PASSWORD: demo-password-1234
     depends_on:
       postgres: { condition: service_healthy }
       schema: { condition: service_completed_successfully }
@@ -101,8 +105,10 @@ services:
 
   frontend:
     build:
-      context: ../..
+      context: ../../frontend
       dockerfile: Dockerfile
+      args:
+        VITE_DEMO_LOGIN_ENABLED: "true"
     environment:
       BACKEND_ADDRESS: http://idp:8081
     depends_on:

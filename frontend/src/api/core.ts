@@ -85,15 +85,18 @@ export function tenantRouterPath(path: string): string {
   return localPath === '' ? '/' : localPath
 }
 
+// ローカル開発でこの補完を必要とする既知の bare origin: Vite dev server (5173)、
+// E2E 専用ルート (5174)、docker-compose の frontend (8080)。ユニットテストなどの
+// 他 localhost ポートへこの補完を広げない。
+const LOCAL_DEFAULT_TENANT_PORTS = new Set(['5173', '5174', '8080'])
+
 export function tenantURL(path: string): string {
   const base = tenantBasePath()
-  // Vite のローカル開発ルート (5173) と E2E 専用ルート (5174) は path 形式の default
-  // テナントを指す。ユニットテストなどの別localhostポートへこの補完を広げない。
   // バックエンドの bare route は fail-closed のまま、クライアント生成 URL のみ補完する。
   const localDefaultTenant =
     base === '' &&
     window.location.hostname === 'localhost' &&
-    (window.location.port === '5173' || window.location.port === '5174')
+    LOCAL_DEFAULT_TENANT_PORTS.has(window.location.port)
   return `${localDefaultTenant ? '/realms/default' : base}${path}`
 }
 

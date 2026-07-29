@@ -32,6 +32,14 @@ glossary:
     aliases:
       - startup default locale
       - configured locale fallback
+  DemoLoginAffordance:
+    definition: HomePage が表示する、ローカルデモ資格情報 (Seeding の development profile が作成する demo user と demo OAuth2 client) を使った authorization_code フローへの近道。Vite dev server 実行時は既定で表示し、それ以外のビルドではアプリケーション起動時の設定 VITE_DEMO_LOGIN_ENABLED を "true" に明示したときだけ表示する。表示条件は development profile が実際に seed 済みかどうかを問わない。
+    aliases:
+      - demo login shortcut
+      - ローカルデモ認証の近道
+    not_to_confuse_with:
+      - term: BootstrapSeed
+        reason: BootstrapSeed はデモ資格情報を含まない最小 seed。DemoLoginAffordance が使う demo user / demo OAuth2 client は development profile 由来で、production では Seeding が development profile 自体を拒否する。
   BackendErrorText:
     definition: バックエンドが HTTP、OAuth/OIDC redirect、SAML、SCIM などの外部 API 応答で返す利用者向けエラー本文。message、error_description、detail およびプレーンテキストのエラー本文を含む。常に英語であり、表示言語によって変化しない。
     aliases:
@@ -235,6 +243,32 @@ scenarios:
         condition: VITE_DEFAULT_LOCALE が未設定または未対応値である
         steps:
           - "画面の文言は FallbackLocale \"en\" の辞書で表示される"
+  起動時設定でVite dev server以外でもDemoLoginAffordanceが表示される:
+    actor: Operator
+    given:
+      - Vite dev server ではなくビルド済み frontend を配備している
+    main_success:
+      - "Operator が VITE_DEMO_LOGIN_ENABLED を \"true\" に設定してビルドする"
+      - EndUser が HomePage を表示する
+      - HomePage は DemoLoginAffordance を表示する
+      - EndUser が DemoLoginAffordance を選択する
+      - development profile が seed した demo user の資格情報で authorization_code フローが完了する
+    extensions:
+      - at: 1
+        condition: "VITE_DEMO_LOGIN_ENABLED が未設定または \"true\" 以外である"
+        steps:
+          - HomePage は DemoLoginAffordance を表示しない
+      - at: 4
+        condition: development profile が seed されていない
+        steps:
+          - authorization は既知のデモ資格情報が存在せず失敗する
+  Vite dev server実行時は設定なしでDemoLoginAffordanceが表示される:
+    actor: EndUser
+    given:
+      - Vite dev server で frontend を実行している
+    main_success:
+      - EndUser が HomePage を表示する
+      - "VITE_DEMO_LOGIN_ENABLED の設定に関わらず HomePage は DemoLoginAffordance を表示する"
   OIDC ui_localesヒントにより表示言語が決まる:
     actor: ResourceOwner
     given:

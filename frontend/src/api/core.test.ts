@@ -112,6 +112,17 @@ describe('core api utils', () => {
       })
       expect(tenantURL('/authorize')).toBe('/realms/default/authorize')
     })
+
+    it('uses the default path tenant from the docker-compose frontend root', () => {
+      stubGlobal('location', {
+        ...originalLocation,
+        hostname: 'localhost',
+        port: '8080',
+        pathname: '/',
+        origin: 'http://localhost:8080',
+      })
+      expect(tenantURL('/authorize')).toBe('/realms/default/authorize')
+    })
   })
 
   describe('validReturnTo', () => {

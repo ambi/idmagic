@@ -1,4 +1,6 @@
 FROM oven/bun:1.3.14-alpine AS build
+ARG VITE_DEMO_LOGIN_ENABLED=false
+ENV VITE_DEMO_LOGIN_ENABLED=$VITE_DEMO_LOGIN_ENABLED
 WORKDIR /src
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
