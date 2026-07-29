@@ -9,5 +9,4 @@ images:
     newTag: dev
 patches:
   - path: api.yaml
-  - path: relay.yaml
   - path: worker.yaml

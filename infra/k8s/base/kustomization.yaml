@@ -6,7 +6,6 @@ resources:
   - configmap.yaml
   - api.yaml
   - frontend.yaml
-  - relay.yaml
   - worker.yaml
   - networkpolicy.yaml
   - pdb.yaml

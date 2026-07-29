@@ -12,5 +12,4 @@ images:
 patches:
   - path: api.yaml
   - path: frontend.yaml
-  - path: relay.yaml
   - path: worker.yaml
