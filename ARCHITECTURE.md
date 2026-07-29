@@ -78,7 +78,8 @@ core itself. Do not adjust the Go binding in place of changing SCL.
 
 ## Stack
 
-- Go, React/TypeScript, Bun, PostgreSQL, Docker Compose, Kubernetes, Prometheus, Grafana, k6.
+- Go, React/TypeScript, Bun, PostgreSQL, Docker Compose, Kubernetes, Prometheus, Grafana, Loki, Promtail,
+  k6.
 - Dynamic Group membership expressions over User attributes evaluate through a restricted CEL
   environment (`cel-go`). The environment is narrowed so unsafe expressions cannot be accepted, and a
   rule-version mismatch fails closed
@@ -255,6 +256,34 @@ the tenant-resolution middleware and kept separate from the application API. It 
 returns `503` until the process finishes constructing its Prometheus registry at startup, and works
 independently of `OBSERVABILITY`, because a pull-based scrape needs no collector configured. Expose it
 only on a loopback/management network or behind an authenticating proxy.
+
+### Logging
+
+Application logs are structured JSON Lines on stdout (`timestamp`, `level`, `service`, `message`, plus
+`trace_id` / `span_id` / `request_id` for correlation — `backend/shared/logging`, ADR-018). This process
+never writes them anywhere else; aggregating and searching them across replicas and nodes is a separate,
+externally-observing concern, kept independent of the OpenTelemetry Collector so a logging outage cannot
+affect trace/metric export.
+
+**Local** (`infra/docker/docker-compose.dev.yaml`): Promtail discovers every container through the Docker
+Engine API (`docker_sd_configs`) and ships its logs to Loki, so no host log directory needs to be
+bind-mounted — only the Docker socket. Grafana is provisioned on first boot with both Prometheus (wi-11)
+and Loki as datasources and with the existing golden-signals dashboard, so `docker compose up` is enough
+to browse metrics and logs together.
+
+**Kubernetes** (`infra/k8s/monitoring/loki/`): Promtail runs as a DaemonSet, discovering pods via
+`kubernetes_sd_configs` and tailing `/var/log/pods`; Loki runs as a single-replica StatefulSet with PVC
+storage (ADR-102 placement; filesystem storage is a dev-shaped default, replaced by an overlay for
+object-store-backed retention in a real production cluster, per the work item's Risk Notes). Grafana
+itself is not deployed by this repo — the Loki datasource is registered against whatever Grafana instance
+already exists, using the same ConfigMap-sidecar convention `grafana-dashboard.yaml` already relies on
+(a label the cluster's Grafana sidecar watches), rather than the `grafana-dashboard.yaml` dashboard content
+itself.
+
+| Field | Loki treatment | Why |
+| --- | --- | --- |
+| `service`, `level` | index label | bounded, finite sets |
+| `trace_id`, `span_id`, `request_id` | structured metadata (not a label) | unbounded — an index label here would blow up cardinality, the same reasoning [Metrics](#metrics) applies to `tenant_id` / `user_id` |
 
 ### HTTP server hardening
 

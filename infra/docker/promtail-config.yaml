@@ -1,0 +1,50 @@
+# Discovers every container via the Docker Engine API (docker_sd_configs) and
+# tails its logs through that same API, so no host log directory needs to be
+# bind-mounted. idp/worker emit ADR-018 JSON Lines; their `service`/`level`
+# fields become Loki labels (bounded sets), while `trace_id`/`span_id`/
+# `request_id` are attached as structured metadata rather than labels, because
+# they are unbounded and would blow up the index (same rationale as
+# ARCHITECTURE.md's Metrics section for tenant_id/user_id).
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_label_com_docker_compose_service]
+        target_label: compose_service
+      - source_labels: [__meta_docker_container_name]
+        regex: '/(.*)'
+        target_label: container
+    pipeline_stages:
+      - match:
+          selector: '{compose_service=~"idp|worker"}'
+          stages:
+            - json:
+                expressions:
+                  timestamp: timestamp
+                  level: level
+                  service: service
+                  trace_id: trace_id
+                  span_id: span_id
+                  request_id: request_id
+            - labels:
+                level:
+                service:
+            - structured_metadata:
+                trace_id:
+                span_id:
+                request_id:
+            - timestamp:
+                source: timestamp
+                format: RFC3339Nano

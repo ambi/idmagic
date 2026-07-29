@@ -1,0 +1,42 @@
+# Promtail's kubernetes_sd_configs (pod role, promtail-configmap.yaml) needs
+# cluster-wide read access to discover pods on every node, so — unlike the
+# app's own `idmagic` ServiceAccount (automountServiceAccountToken: false) —
+# this token must be mounted and this ClusterRole granted.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: idmagic-promtail
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: promtail
+    app.kubernetes.io/part-of: idmagic
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: idmagic-promtail
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: promtail
+    app.kubernetes.io/part-of: idmagic
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "services", "pods"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: idmagic-promtail
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: promtail
+    app.kubernetes.io/part-of: idmagic
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: idmagic-promtail
+subjects:
+  - kind: ServiceAccount
+    name: idmagic-promtail
+    namespace: default

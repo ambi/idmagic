@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - prometheus-rule.yaml
   - grafana-dashboard.yaml
+  - loki

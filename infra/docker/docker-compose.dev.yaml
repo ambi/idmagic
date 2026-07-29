@@ -42,6 +42,41 @@ services:
     depends_on:
       idp: { condition: service_started }
 
+  # wi-304: application log aggregation (ADR-018 JSON Lines -> Loki).
+  loki:
+    image: grafana/loki:3.1.1
+    command: ["-config.file=/etc/loki/loki-config.yaml"]
+    volumes:
+      - ./loki-config.yaml:/etc/loki/loki-config.yaml:ro
+    ports: ["3100:3100"]
+
+  # Reads every container's logs via the Docker Engine API (docker_sd_configs
+  # in promtail-config.yaml), so only the socket is mounted, not a host log
+  # directory.
+  promtail:
+    image: grafana/promtail:3.1.1
+    command: ["-config.file=/etc/promtail/promtail-config.yaml"]
+    volumes:
+      - ./promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      loki: { condition: service_started }
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./grafana-dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./grafana-dashboard.json:/var/lib/grafana/dashboards/idmagic-golden-signals.json:ro
+    ports: ["3000:3000"]
+    depends_on:
+      prometheus: { condition: service_started }
+      loki: { condition: service_started }
+
   idp:
     image: idmagic:dev
     build:

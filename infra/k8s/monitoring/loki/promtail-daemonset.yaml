@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: idmagic-promtail
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: promtail
+    app.kubernetes.io/part-of: idmagic
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: promtail
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: idmagic
+        app.kubernetes.io/component: promtail
+        app.kubernetes.io/part-of: idmagic
+    spec:
+      serviceAccountName: idmagic-promtail
+      # Runs on every node, including control-plane, so no pod's logs are missed.
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: promtail
+          image: grafana/promtail:3.1.1
+          args: ["-config.file=/etc/promtail/promtail-config.yaml"]
+          ports:
+            - name: http-metrics
+              containerPort: 9080
+          env:
+            - name: HOSTNAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          securityContext:
+            # /var/log/pods and /var/lib/docker/containers are root-owned on
+            # the host, so promtail (unlike the app's own containers) cannot
+            # run as a non-root user.
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsUser: 0
+            runAsGroup: 0
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: config, mountPath: /etc/promtail }
+            - { name: positions, mountPath: /run/promtail }
+            - { name: varlogpods, mountPath: /var/log/pods, readOnly: true }
+            - { name: varlibdockercontainers, mountPath: /var/lib/docker/containers, readOnly: true }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 200m, memory: 256Mi }
+      volumes:
+        - name: config
+          configMap: { name: idmagic-promtail }
+        - name: positions
+          emptyDir: {}
+        - name: varlogpods
+          hostPath: { path: /var/log/pods }
+        - name: varlibdockercontainers
+          hostPath: { path: /var/lib/docker/containers }

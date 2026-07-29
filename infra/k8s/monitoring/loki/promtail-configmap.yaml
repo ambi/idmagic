@@ -1,0 +1,74 @@
+# Discovers pods cluster-wide via kubernetes_sd_configs and tails their log
+# files under /var/log/pods (mounted by the DaemonSet). The `cri` stage
+# unwraps the containerd/CRI-O log envelope before the same ADR-018 JSON
+# pipeline used in infra/docker/promtail-config.yaml: `service`/`level`
+# become bounded Loki labels, `trace_id`/`span_id`/`request_id` become
+# structured metadata instead of labels because they are unbounded. `component`
+# mirrors the app.kubernetes.io/component pod label (api/worker-*) so the
+# match selector only parses JSON for idmagic's own containers.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: idmagic-promtail
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: promtail
+    app.kubernetes.io/part-of: idmagic
+data:
+  promtail-config.yaml: |
+    server:
+      http_listen_port: 9080
+      grpc_listen_port: 0
+
+    positions:
+      filename: /run/promtail/positions.yaml
+
+    clients:
+      - url: http://idmagic-loki:3100/loki/api/v1/push
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: __host__
+          - action: replace
+            source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - action: replace
+            source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - action: replace
+            source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          - action: replace
+            source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+            target_label: component
+          - replacement: /var/log/pods/*$1/*.log
+            separator: /
+            source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+            target_label: __path__
+        pipeline_stages:
+          - cri: {}
+          - match:
+              selector: '{component=~"api|worker.*"}'
+              stages:
+                - json:
+                    expressions:
+                      timestamp: timestamp
+                      level: level
+                      service: service
+                      trace_id: trace_id
+                      span_id: span_id
+                      request_id: request_id
+                - labels:
+                    level:
+                    service:
+                - structured_metadata:
+                    trace_id:
+                    span_id:
+                    request_id:
+                - timestamp:
+                    source: timestamp
+                    format: RFC3339Nano

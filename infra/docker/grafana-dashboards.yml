@@ -1,0 +1,10 @@
+# Auto-loads grafana-dashboard.json (wi-112) from /var/lib/grafana/dashboards
+# so the golden-signals dashboard is present on first Grafana boot (wi-304).
+apiVersion: 1
+
+providers:
+  - name: idmagic
+    folder: IdMagic
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

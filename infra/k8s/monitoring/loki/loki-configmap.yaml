@@ -1,0 +1,42 @@
+# Single-binary Loki (wi-304). Storage is the PVC mounted at /loki
+# (loki-statefulset.yaml); there is no object-store or retention/compactor
+# tuning here because environments differ (Risk Notes) — an overlay that
+# needs S3/GCS-backed storage or a retention policy replaces this ConfigMap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: idmagic-loki
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: loki
+    app.kubernetes.io/part-of: idmagic
+data:
+  loki-config.yaml: |
+    auth_enabled: false
+
+    server:
+      http_listen_port: 3100
+
+    common:
+      path_prefix: /loki
+      storage:
+        filesystem:
+          chunks_directory: /loki/chunks
+          rules_directory: /loki/rules
+      replication_factor: 1
+      ring:
+        kvstore:
+          store: inmemory
+
+    schema_config:
+      configs:
+        - from: 2024-01-01
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+
+    limits_config:
+      allow_structured_metadata: true

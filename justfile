@@ -278,6 +278,7 @@ check-monitoring:
     jq empty infra/docker/grafana-dashboard.json
     docker run --rm -v "{{justfile_directory()}}:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring > /dev/null
     docker run --rm -v "{{justfile_directory()}}:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring/operator > /dev/null
+    docker run --rm -v "{{justfile_directory()}}:/workspace:ro" -w /workspace registry.k8s.io/kustomize/kustomize:v5.6.0 build infra/k8s/monitoring/loki > /dev/null
 
 # Apply monitoring assets; ServiceMonitor remains opt-in for clusters with
 # Prometheus Operator installed.

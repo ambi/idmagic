@@ -1,0 +1,21 @@
+# Registers Loki against the cluster's existing Grafana via the same
+# sidecar-discovery convention grafana-dashboard.yaml already uses
+# (grafana_dashboard: "1") — here with the sidecar's datasource label
+# (wi-304). This repo does not deploy Grafana itself; only the K8s Prometheus
+# integration lives in ../grafana-dashboard.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: idmagic-grafana-loki-datasource
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/part-of: idmagic
+    grafana_datasource: "1"
+data:
+  loki-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://idmagic-loki:3100

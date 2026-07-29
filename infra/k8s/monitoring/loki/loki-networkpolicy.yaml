@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: idmagic-loki
+  labels:
+    app.kubernetes.io/name: idmagic
+    app.kubernetes.io/component: loki
+    app.kubernetes.io/part-of: idmagic
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: idmagic
+      app.kubernetes.io/component: loki
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: idmagic, app.kubernetes.io/component: promtail }
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: grafana }
+      ports: [{ protocol: TCP, port: 3100 }]
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports: [{ protocol: UDP, port: 53 }, { protocol: TCP, port: 53 }]
