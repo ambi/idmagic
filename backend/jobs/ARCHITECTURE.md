@@ -101,6 +101,18 @@ The lifecycle workflow dispatcher inside the worker is not a periodic batch that
 directly. It is a recovery path: it re-scans WorkflowRuns that were committed in the same transaction
 but never associated with a Job, and hands them off safely to the durable queue.
 
+## Schema notes
+
+`jobs.tenant_id` is required even though a `Job` has no natural-key parent, following the root
+`ARCHITECTURE.md` [`tenant_id` retention classes](../../ARCHITECTURE.md#2-tenant_id-retention-classes)
+tenant-owned-aggregate category. `status` and `kind` are closed vocabularies normative in
+`spec/contexts/jobs.yaml`; the `CHECK` constraints are defense in depth alongside that, not the source of
+truth. `params`/`result` are opaque per-`JobKind` JSONB payloads (ADR-100: no at-rest encryption in this
+WI); terminal rows are purged after a TTL by the worker's retention sweep, not by a dedicated Job.
+`lane`'s `DEFAULT 'default'` backfills pre-lane rows in place when the column was added to an existing
+table, part of ADR-129 decision 5's zero-downtime rollout. `dedup_key` backs `JobHandlerIdempotency`: the
+partial unique index allows at most one non-terminal Job per `(tenant_id, dedup_key)`.
+
 ## Design Decisions
 
 - Durable queue implemented as a PostgreSQL `FOR UPDATE SKIP LOCKED` lease:

@@ -39,3 +39,35 @@ Public provider discovery exposes only active provider identifiers, display name
 After callback validation the broker creates a normal Authentication session with `federated` in AMR.
 OAuth authorization resumes through `/authorize/resume`, so application policy, required actions,
 consent, and code issuance remain owned by OAuth2 rather than being duplicated in the broker.
+
+## Persistence
+
+`authentication_sessions` (wi-253, ADR-126) is the single source of truth for a `LoginSession`.
+`tenant_id` is kept alongside the user-derived path as an exception to the usual
+[`tenant_id` retention classes](../../ARCHITECTURE.md#2-tenant_id-retention-classes): a session id is an
+opaque browser-cookie value re-verified on every request, a fail-closed boundary where per-tenant lookup
+matters the same way it does for `refresh_tokens.sid` (ADR-082 §4). Revocation sets
+`revoked_at`/`revoke_reason` rather than deleting the row, so physical removal stays a housekeeping
+concern independent of revoke state, and a repeated revoke is a safe no-op. Its two indexes serve, in
+order: keyset pagination over one user's non-revoked sessions ordered by `auth_time DESC`, and the
+housekeeping batch's `expires_at` cleanup scan.
+
+`mfa_factors.secret` (pre-ADR-148) is the plaintext TOTP seed column, kept only so existing rows remain
+readable (dual-read); new writes populate `secret_key_version`/`secret_ciphertext` and leave `secret`
+`NULL`. wi-97 T006 backfills the remaining plaintext rows, after which `secret` is dropped.
+
+`webauthn_credentials` (wi-26, ADR-087) keys on `credential_id` because one user can register several;
+it stays a separate table from `mfa_factors` for that reason. `public_key` holds the COSE public key
+(base64url). `recovery_codes` (wi-26, ADR-087) never stores the plaintext code, only `code_hash`
+(SHA-256 hex); a non-`NULL` `consumed_at` means the code is used and cannot be replayed, and
+regeneration replaces a user's whole set at once. `webauthn_sessions` is the WebAuthn ceremony
+challenge store; `GetDel` is `DELETE ... WHERE expires_at > now() RETURNING data`.
+
+`tenant_correlation_salts` (wi-145, ADR-046) is a per-tenant secret used to compute the correlated hash
+(`SaltedHash`) of usernames/IPs and the throttle/bucket `keyHash`, so correlation is never aggregated
+across tenants; it is generated on first use rather than provisioned up front.
+
+`login_throttle_counters` (ADR-077's fail-closed premise) is `LOGGED` because losing it on failover would
+be a defense-in-depth regression, and uses `fillfactor = 80` to leave header room for the frequent
+same-row `UPDATE`s (HOT updates) a counter takes. `identifier_hash` is a SHA-256 hex digest, so no
+plaintext username or IP is retained.

@@ -345,6 +345,11 @@ saving data before a drop — are stated explicitly in the work item's runbook o
 There is no migration runner at application startup. The memory adapter is also the reference for tests
 and the local demo, so never update only the postgres side.
 
+`postgres.sql` carries no SQL comments. Design rationale for a table or column goes here (or the owning
+context's own `ARCHITECTURE.md`) instead, both because a second copy of "why" drifts from this record and
+because `psqldef`'s dependency-ordering pass has shown comment-content-sensitive statement-ordering bugs
+on an empty database (`infra/schema/README.md` Rules has the detail and upstream references).
+
 ### Database design policy
 
 #### 1. Column type selection
@@ -434,6 +439,72 @@ table, or field boundaries fails to decrypt rather than silently succeeding.
 The full rationale — including why OpenBao over HashiCorp Vault CE, and why this is not merged into the
 `SigningKeys` `KeyStore` port — is in
 [ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md).
+
+`tenant_data_encryption_keys.wrapped_dek` is erased (set `NULL`) on destroy rather than the row being
+deleted — crypto-shredding — so DEK lifecycle history (`status` moving through `active` / `retiring` /
+`disabled` / `destroyed`) stays queryable after the key material itself is gone.
+
+#### 4. Per-context schema notes without a dedicated `ARCHITECTURE.md`
+
+The contexts below have no `<context>/ARCHITECTURE.md` of their own (see [Context Map](#context-map)), so
+schema-level design rationale that does not fit the policies above lives here instead of in
+`infra/schema/postgres.sql` (which carries no comments, see [Persistence](#persistence)).
+
+- **Tenancy** — `tenant_brandings` (wi-89, ADR-096) is 1:1 hosted UI branding config kept in its own
+  table rather than columns on `tenants` so per-feature config growth does not bloat the core tenant row;
+  `tenant_branding_assets` and `tenant_user_attribute_schemas` follow the same reasoning. Absence of a
+  `tenant_brandings` row, or all-`NULL` columns, means branding is unset and callers fall back to system
+  defaults. `tenant_branding_assets` (wi-89, ADR-096) validates and stores logo/favicon blobs in the same
+  shape as `application_icons` (ADR-073), kept in a separate table and `object_key` space so branding
+  asset ownership never crosses with Application icon storage. `notification_templates` (wi-288,
+  ADR-142) holds tenant overrides of the notification email catalog keyed by
+  `(tenant_id, template_key, locale)`; absence of a row means the builtin default for that key/locale
+  applies, and deleting the row is how "reset to default" works (no version history, ADR-142 §1).
+  Individual columns rather than JSONB keep per-column length limits as `CHECK` constraints (ADR-084);
+  `subject`/`body_text`/`body_html` are `NOT NULL` together so a half-overridden template cannot exist
+  (ADR-142 §4), while `from_display_name` is nullable because the system default sender name is a valid
+  choice. `tenants.default_locale` (wi-288, ADR-142 §7) is the tenant tier of notification locale
+  resolution (recipient → tenant → system); `NULL` means "use the system default".
+  `tenants.endpoint_style` (wi-285, ADR-144) fixes the shape of a tenant's canonical location (its
+  issuer, cookie scope, and WebAuthn RP ID all derive from it); `'path'` is the default because it needs
+  neither wildcard DNS nor a wildcard certificate.
+- **OAuth2** — `oauth2_client_secrets` (wi-25) separates the `client_secret` credential from the client
+  row itself; `oauth2_clients.client_secret_hash` is kept only for dual-read/backfill during that
+  rollout. `refresh_tokens.sid` (ADR-127) is the OIDC session id, equal to
+  `authentication_sessions.id`, `NULL` when issuance has no browser session (`client_credentials` etc.);
+  there is no FK to `authentication_sessions` because housekeeping retention's physical deletes there run
+  independent of a refresh token's own revoke state (the ADR-082 §4 opaque-cross-context-reference
+  exception). `refresh_tokens.resource` (RFC 8707, ADR-055, wi-262) is the resource indicator bound at
+  authorization-code redemption, retained across rotation; `NULL` means no resource was specified.
+  `mcp_resource_servers` (ADR-055) is the tenant-scoped registration of an MCP resource server (a
+  tool/data source); `resource` is the tenant-unique canonical resource URI that Protected Resource
+  Metadata (RFC 9728) and resource-indicator (RFC 8707) verification are checked against. Within the
+  ephemeral protocol-state tables already listed under [tenant_id retention
+  classes](#2-tenant_id-retention-classes): `oauth2_authorization_requests` keeps the whole `/authorize`
+  mid-flow state in `payload` JSONB and serializes its transitions with `SELECT ... FOR UPDATE` in one
+  transaction (ADR-139 §3); `oauth2_authorization_codes` is single-redeem, promoting `state` to a CAS
+  predicate (`UPDATE ... WHERE state = 'issued' RETURNING`); `oauth2_par_requests` is likewise
+  single-consume through a `used` CAS predicate; `oauth2_device_codes` keys on `device_code_hash` with
+  `user_code` as a tenant-unique secondary lookup, approval sets `user_id`, and `state` is the Exchange
+  CAS predicate; `oauth2_replay_jtis.kind` distinguishes `dpop` from `client_assertion` replay guards,
+  recorded via `INSERT ... ON CONFLICT DO NOTHING` (a new row means new-use); `oauth2_access_token_denylist`
+  stays `LOGGED` (replicated to a physical standby) because losing a revocation on failover would be a
+  defense-in-depth regression.
+- **Audit** — `audit_event_search_attributes` (wi-145) is a sidecar search index: one row per
+  `(event, attr_name, transformed value)`, where `attr_name` is a `Field` from the `AuditSearchRegistry`.
+  PII attributes are hashed or rounded before being stored here; plaintext exists only in
+  `audit_events.payload`, and only for failure events under short-lived retention. It cascades on
+  `audit_events` deletion, and its lookup index orders `(tenant_id, attr_name, attr_value)` for equality
+  matches with `occurred_at DESC` for the scan.
+- **ApiTokens** — `api_tokens` (wi-273, wi-275) holds lifecycle records for managed RFC 9068 JWT access
+  tokens; JWT bodies are never stored, `jti` is the lookup key. `scopes` lists the granted
+  `<resource>:<action>` permissions (`ApiTokenScope` in `spec/contexts/api-tokens.yaml`); the table's
+  `CHECK` mirrors that enum as defense in depth alongside Go-side validation.
+- **IdGovernance** — `lifecycle_workflow_revisions` are append-only; execution records
+  (`lifecycle_workflow_runs`/`_steps`) reference the revision they expand rather than mutable JSON.
+- **Provisioning** — `provisioning_connections.credential_secret` (ADR-128) is a dev/test-grade plaintext
+  column with no envelope encryption yet (wi-97); production deployments must not rely on it as-is,
+  matching the `SigningKeys` PostgreSQL `KeyStore`'s own dev/test disclaimer.
 
 ## Runtime Composition
 

@@ -1,38 +1,9 @@
--- Schema design policy lives in the repository design record, not here:
--- ARCHITECTURE.md `## Cross-cutting Concerns` > データベース設計ポリシー covers the
--- column-type rules (ADR-084) and the tenant_id retention classes (ADR-082, simplified
--- by ADR-083). Read it before adding a table or column; do not restate it here, because
--- a second copy is what let the pre-ADR-083 composite-FK rule go stale (ADR-143).
---
--- Conventions this file keeps, because they are about writing SQL rather than design:
--- - A table's own identifier is `id`; a reference to a User from another table is
---   `user_id` (an owner reference is `owner_user_id`).
--- - Every table has created_at. Tables whose rows can be updated after creation have
---   updated_at; insert-only/delete-only rows do not. Domain timestamps (issued_at,
---   granted_at, occurred_at, expires_at, revoked_at, first_seen, last_seen) keep their
---   domain meaning and do not replace created_at.
--- - Second-precision rounding happens only at external protocol boundaries
---   (SCIM/SAML/WS-Fed formatting), never in the schema.
--- - Go keeps UUID columns as string; base.go registers a text codec for the uuid OID.
--- - Non-FK tenant_id columns (audit_events, authentication_event_buckets) stay TEXT and
---   hold the UUID as string (audit_events also carries a '' tenantless sentinel).
--- - users.lifecycle is the flagged JSONB normalization candidate.
-
--- tenants (ADR-085): id is an immutable UUID surrogate key referenced by every
--- tenant_id FK; realm is the mutable URL slug shown in /realms/{realm}/ and the
--- OIDC issuer, unique and renameable.
 CREATE TABLE tenants (
     id UUID PRIMARY KEY,
     realm TEXT NOT NULL,
     display_name TEXT NOT NULL,
     status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
-    -- default_locale (wi-288, ADR-142 §7): the tenant tier of notification locale
-    -- resolution (recipient -> tenant -> system). NULL means "use the system default".
     default_locale TEXT,
-    -- endpoint_style (wi-285, ADR-144): the shape of this tenant's canonical
-    -- location. A tenant is reachable only there, and its issuer, cookie scope and
-    -- WebAuthn RP ID are all derived from it. 'path' is the default because it needs
-    -- neither wildcard DNS nor a wildcard certificate.
     endpoint_style TEXT NOT NULL DEFAULT 'path'
         CHECK (endpoint_style IN ('path', 'subdomain')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -75,11 +46,6 @@ CREATE TABLE tenant_usages (
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 
--- tenant_brandings (wi-89, ADR-096): 1:1 hosted UI branding config per tenant, kept
--- in its own table rather than columns on tenants so per-feature config growth does
--- not bloat the core tenant row (same reasoning as tenant_user_attribute_schemas).
--- Absence of a row, or all-NULL columns, means branding is unset and callers fall
--- back to system defaults.
 CREATE TABLE tenant_brandings (
     tenant_id UUID PRIMARY KEY,
     product_name TEXT,
@@ -108,19 +74,11 @@ CREATE TABLE tenant_brandings (
     CONSTRAINT tenant_brandings_footer_link_2_url_format CHECK (footer_link_2_url IS NULL OR footer_link_2_url ~ '^https://')
 );
 
--- notification_templates (wi-288, ADR-142): tenant overrides of the notification
--- email catalog, keyed by (tenant_id, template_key, locale). Absence of a row means
--- the builtin default for that key / locale is used, and deleting the row is exactly
--- how "reset to default" works (no version history, ADR-142 §1). Individual columns
--- rather than JSONB so per-column length limits are CHECK constraints (ADR-084,
--- same reasoning as tenant_brandings). Subject / text body / HTML body are NOT NULL
--- together so a half-overridden template cannot exist (ADR-142 §4); from_display_name
--- is nullable because the system default sender display name is a valid choice.
 CREATE TABLE notification_templates (
     tenant_id UUID NOT NULL,
     template_key TEXT NOT NULL CHECK (template_key IN (
-        'password_reset', 'email_verification', 'email_change_confirmation',
-        'account_security_alert', 'lifecycle_workflow_notification'
+        'account_security_alert', 'email_change_confirmation', 'email_verification',
+        'lifecycle_workflow_notification', 'password_reset'
     )),
     locale TEXT NOT NULL,
     subject TEXT NOT NULL,
@@ -140,11 +98,6 @@ CREATE TABLE notification_templates (
         CHECK (from_display_name IS NULL OR char_length(from_display_name) <= 80)
 );
 
--- tenant_branding_assets (wi-89, ADR-096): validated logo / favicon blobs for
--- tenant branding. Same shape as application_icons (ADR-073) but kept in a
--- separate table / object_key space so branding asset ownership never crosses
--- with Application icon storage. kind distinguishes logo vs favicon within one
--- tenant.
 CREATE TABLE tenant_branding_assets (
     tenant_id UUID NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('logo', 'favicon')),
@@ -187,8 +140,6 @@ CREATE TABLE oauth2_clients (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
--- oauth2_client_secrets (wi-25): client_secret credential は client 本体から分離する。
--- 旧 oauth2_clients.client_secret_hash は secret credential 分離 rollout 中の dual-read/backfill 用に残す。
 CREATE TABLE oauth2_client_secrets (
     credential_id UUID PRIMARY KEY,
     client_id UUID NOT NULL,
@@ -229,10 +180,6 @@ CREATE UNIQUE INDEX users_preferred_username_active_idx
     ON users (tenant_id, preferred_username)
     WHERE lifecycle->>'status' <> 'deleted';
 
--- secret is the pre-ADR-148 plaintext TOTP seed column, kept only so
--- existing rows can still be read (dual-read); new writes always populate
--- secret_key_version/secret_ciphertext and leave secret NULL. wi-97 T006
--- backfills remaining plaintext rows; secret is dropped once none remain.
 CREATE TABLE mfa_factors (
     user_id UUID NOT NULL,
     type TEXT NOT NULL,
@@ -269,8 +216,6 @@ CREATE UNIQUE INDEX mfa_enrollment_bypasses_active_user_idx
     ON mfa_enrollment_bypasses (tenant_id, user_id)
     WHERE consumed_at IS NULL AND revoked_at IS NULL AND expired_at IS NULL;
 
--- WebAuthn / Passkey credential (wi-26 / ADR-087)。1 ユーザーが複数持てるため credential_id を
--- 主キーとし、mfa_factors とは別テーブルとする。public_key は COSE 公開鍵 (base64url)。
 CREATE TABLE webauthn_credentials (
     credential_id TEXT PRIMARY KEY,
     user_id UUID NOT NULL,
@@ -290,8 +235,6 @@ CREATE TABLE webauthn_credentials (
 
 CREATE INDEX webauthn_credentials_user_id_idx ON webauthn_credentials (user_id);
 
--- backup recovery code (wi-26 / ADR-087)。平文は保存せず code_hash (SHA-256 hex) のみ。
--- consumed_at が非 NULL なら使用済みで再利用不可。再生成は user 単位で全置換する。
 CREATE TABLE recovery_codes (
     user_id UUID NOT NULL,
     code_hash TEXT NOT NULL,
@@ -336,15 +279,7 @@ CREATE TABLE refresh_tokens (
     revoked BOOLEAN NOT NULL DEFAULT FALSE,
     rotated BOOLEAN NOT NULL DEFAULT FALSE,
     sender_constraint JSONB,
-    -- OIDC session id (Authentication の authentication_sessions.id と同値, ADR-127).
-    -- browser session を持たない発行 (client_credentials 等) では NULL。cookie 由来の
-    -- 不透明値を横断する correlation id であり、authentication_sessions への FK は張らない
-    -- (housekeeping retention による物理削除が refresh_tokens 側の revoke 状態と独立して
-    -- 進めるようにするため、ADR-082 の opaque cross-context reference と同じ扱い)。
     sid UUID,
-    -- resource indicator (RFC 8707, ADR-055)。発行元 (authorization_code redemption)
-    -- で束縛された resource をローテーションを跨いで保持する (wi-262)。NULL は
-    -- resource 未指定の発行。
     resource TEXT,
     CONSTRAINT refresh_tokens_hash_key UNIQUE (hash),
     CONSTRAINT refresh_tokens_parent_id_fkey
@@ -386,10 +321,6 @@ CREATE UNIQUE INDEX signing_keys_single_active_idx
     ON signing_keys (tenant_id, key_usage, scope_id, active)
     WHERE active;
 
--- DataKeys context (ADR-148): per-tenant DataEncryptionKey (DEK) metadata and
--- lifecycle. wrapped_dek is the master-key-wrapped DEK; it is erased (set
--- NULL) on destroy (crypto-shredding). The plaintext DEK itself never
--- appears in this table.
 CREATE TABLE tenant_data_encryption_keys (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -411,8 +342,6 @@ CREATE TABLE tenant_data_encryption_keys (
 CREATE UNIQUE INDEX tenant_data_encryption_keys_single_active_idx
     ON tenant_data_encryption_keys (tenant_id)
     WHERE status = 'active';
-
-
 
 CREATE TABLE password_history (
     id UUID PRIMARY KEY,
@@ -438,11 +367,6 @@ CREATE TABLE password_reset_tokens (
 CREATE INDEX password_reset_tokens_user_id_idx ON password_reset_tokens (user_id);
 CREATE INDEX password_reset_tokens_expires_at_idx ON password_reset_tokens (expires_at);
 
--- LoginSession の単一正本 (wi-253 / ADR-126)。tenant_id は user_id からも辿れるが、session
--- id は browser cookie 由来の不透明値で認証解決のたびに検証する fail-closed な境界の
--- ため、per-tenant 検索と同様に例外として保持する (ADR-082 §4 / refresh_tokens と同じ理由)。
--- 失効は revoked_at / revoke_reason を設定する tombstone で、物理削除は housekeeping
--- cleanup に限定する。
 CREATE TABLE authentication_sessions (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -473,12 +397,10 @@ CREATE TABLE authentication_sessions (
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- ユーザー別一覧の keyset pagination 用 (未失効のみ、auth_time の降順)。
 CREATE INDEX authentication_sessions_active_user_idx
     ON authentication_sessions (tenant_id, user_id, auth_time DESC, id DESC)
     WHERE revoked_at IS NULL;
 
--- housekeeping batch cleanup 用。
 CREATE INDEX authentication_sessions_expires_at_idx ON authentication_sessions (expires_at);
 
 CREATE TABLE identity_provider_connections (
@@ -516,7 +438,8 @@ CREATE TABLE federated_identities (
     linked_at TIMESTAMPTZ NOT NULL,
     last_login_at TIMESTAMPTZ,
     PRIMARY KEY (tenant_id, provider_id, external_subject),
-    UNIQUE (tenant_id, provider_id, local_user_id),
+    CONSTRAINT federated_identities_tenant_id_provider_id_local_user_id_key
+        UNIQUE (tenant_id, provider_id, local_user_id),
     CONSTRAINT federated_identities_provider_fkey
         FOREIGN KEY (tenant_id, provider_id)
         REFERENCES identity_provider_connections(tenant_id, provider_id) ON DELETE RESTRICT,
@@ -593,7 +516,8 @@ CREATE TABLE dynamic_group_rules (
     referenced_attributes JSONB NOT NULL DEFAULT '[]'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (tenant_id, group_id)
+    CONSTRAINT dynamic_group_rules_tenant_id_group_id_key
+        UNIQUE (tenant_id, group_id)
 );
 
 CREATE TABLE tenant_user_attribute_schemas (
@@ -649,19 +573,12 @@ CREATE TABLE authentication_event_buckets (
 CREATE INDEX authentication_event_buckets_window_idx
     ON authentication_event_buckets (tenant_id, window_start DESC);
 
--- 相関 salt (wi-145 / ADR-046)。username / IP の相関ハッシュ (SaltedHash) と
--- throttle / bucket の keyHash に使う per-tenant secret。tenant salt により
--- cross-tenant で相関を集約しない。初回取得時に generate-on-first-use する。
 CREATE TABLE tenant_correlation_salts (
     tenant_id TEXT PRIMARY KEY,
     salt BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- 監査イベントの sidecar 検索属性 (wi-145)。1 行 = (event, attr_name, transform 済み値)。
--- attr_name は AuditSearchRegistry の Field。PII 属性は hash / 丸め済みで平文は入らない
--- (平文は audit_events.payload 側にのみ、失敗イベント限定で短期保持される)。
--- audit_events の削除に追随するよう ON DELETE CASCADE。
 CREATE TABLE audit_event_search_attributes (
     event_id UUID NOT NULL REFERENCES audit_events(id) ON DELETE CASCADE,
     tenant_id TEXT NOT NULL,
@@ -671,7 +588,6 @@ CREATE TABLE audit_event_search_attributes (
     PRIMARY KEY (event_id, attr_name)
 );
 
--- eq / in の等値照合を (tenant, attr_name, attr_value) で index し、occurred_at で降順走査する。
 CREATE INDEX audit_event_search_attributes_lookup_idx
     ON audit_event_search_attributes (tenant_id, attr_name, attr_value, occurred_at DESC);
 
@@ -729,9 +645,6 @@ CREATE TABLE authorization_detail_types (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
--- mcp_resource_servers (ADR-055): MCP resource server (ツール/データソース) の
--- tenant-scoped 登録。resource は tenant 内で一意な canonical resource URI で、
--- Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。
 CREATE TABLE mcp_resource_servers (
     tenant_id UUID NOT NULL,
     resource_server_id UUID PRIMARY KEY,
@@ -855,12 +768,6 @@ CREATE TRIGGER tenants_create_default_saml_identity_provider_profile
 AFTER INSERT ON tenants
 FOR EACH ROW EXECUTE FUNCTION create_default_saml_identity_provider_profile();
 
-INSERT INTO saml_identity_provider_profiles
-    (tenant_id, profile_id, name, mode, is_default)
-SELECT id, 'default', 'Default', 'shared', TRUE
-FROM tenants
-ON CONFLICT (tenant_id, profile_id) DO NOTHING;
-
 CREATE TABLE saml_service_providers (
     tenant_id UUID NOT NULL,
     entity_id TEXT NOT NULL,
@@ -949,11 +856,6 @@ CREATE TABLE application_categories (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
--- api_tokens (wi-273, wi-275): lifecycle records for managed RFC 9068 JWT
--- access tokens. JWT bodies are never stored; jti is the lookup key.
--- scopes lists the granted <resource>:<action> permissions (ApiTokenScope in
--- spec/contexts/api-tokens.yaml); the CHECK mirrors that enum as defense in
--- depth alongside Go-side validation.
 CREATE TABLE api_tokens (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1030,17 +932,6 @@ CREATE TABLE scim_group_refs (
         FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE
 );
 
--- jobs (wi-126, ADR-098/099/100): durable async job queue. tenant-owned aggregate
--- (ARCHITECTURE.md tenant_id 4-category rule), so tenant_id is required even for
--- an aggregate with no natural-key parent. status/kind are closed vocabularies
--- normative in spec/contexts/jobs.yaml, enforced here via CHECK. params/result are
--- opaque per-JobKind payloads (ADR-100: plain JSONB, no at-rest encryption in this
--- WI; terminal rows are purged after a TTL by the worker's relocated retention
--- sweep, not by a dedicated Job). lane (wi-261, ADR-129) isolates claim/execution
--- capacity across JobKinds with different latency/resource characteristics; a
--- JobKind's lane is fixed at registration, never chosen by the enqueue caller.
--- DEFAULT 'default' backfills pre-lane rows in place when this column is added to
--- an existing table (ADR-129 decision 5's zero-downtime rollout).
 CREATE TABLE jobs (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1062,21 +953,13 @@ CREATE TABLE jobs (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
 
--- Claim scan (ADR-098 SKIP LOCKED, lane-scoped per ADR-129): due StatusQueued jobs
--- within a lane ordered by run_at, plus StatusRunning jobs within a lane whose
--- lease expired (JobLeaseExclusivity reclaim). lane is the leading index column
--- since ClaimJobs always filters by a single lane first.
 CREATE INDEX jobs_claimable_idx ON jobs (lane, run_at) WHERE status = 'queued';
 CREATE INDEX jobs_lease_expiry_idx ON jobs (lane, lease_expires_at) WHERE status = 'running';
 
-
--- JobHandlerIdempotency: at most one non-terminal Job per (tenant_id, dedup_key).
 CREATE UNIQUE INDEX jobs_tenant_dedup_key_active_idx
     ON jobs (tenant_id, dedup_key)
     WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running');
 
--- IdGovernance lifecycle workflow definitions. Revisions are append-only;
--- execution records will reference the revision they expand, never mutable JSON.
 CREATE TABLE lifecycle_workflows (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1090,7 +973,7 @@ CREATE TABLE lifecycle_workflows (
     CONSTRAINT lifecycle_workflows_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT lifecycle_workflows_tenant_name_unique UNIQUE (tenant_id, name),
-    CONSTRAINT lifecycle_workflows_enabled_revision_check CHECK (
+    CONSTRAINT lifecycle_workflows_enabled_revision_consistency CHECK (
         (status = 'enabled' AND enabled_revision IS NOT NULL) OR
         (status <> 'enabled' AND enabled_revision IS NULL)
     )
@@ -1147,12 +1030,6 @@ CREATE TABLE lifecycle_workflow_steps (
 
 CREATE INDEX lifecycle_workflow_runs_unenqueued_idx ON lifecycle_workflow_runs (triggered_at) WHERE status = 'queued' AND job_id IS NULL;
 
--- Provisioning: outbound SCIM provisioning (ADR-128). Protocol-agnostic core;
--- protocol-specific wire clients (backend/provisioning/scim/ etc.) do not add
--- extra tables, they call these repositories. credential_secret is a dev/test
--- grade plaintext column (no envelope encryption yet, see wi-97); production
--- deployments must not rely on it as-is, matching the signingkeys Postgres
--- KeyStore's own dev/test disclaimer.
 CREATE TABLE provisioning_connections (
     application_id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1227,18 +1104,6 @@ CREATE TABLE provisioning_deliveries (
 CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (created_at) WHERE status = 'pending' AND job_id IS NULL;
 CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC);
 
--- Ephemeral auth/OAuth2 state: short-lived request / token / challenge rows (ADR-139).
--- All rows carry expires_at; every read path filters `expires_at > now()`, so the TTL
--- correctness is independent of GC (DeleteExpiredBatch reclaims space best-effort).
--- High-churn stores that recover by simply restarting the in-flight flow are UNLOGGED
--- (no WAL, matching the volatility of these in-flight rows). The revocation denylist and login throttle
--- are LOGGED so a failover cannot silently regress security (missed revocation, or the
--- fail-closed throttle assumption), replicating to physical standbys (ADR-139 §4/§5).
--- tenant_id is kept on every table as a fail-closed predicate over an opaque key
--- (ADR-082 §4 exception, see the tenant_id policy header).
-
--- AuthorizationRequest: /authorize の中間状態。state を含む全体を payload JSONB に保持し、
--- 状態遷移は tx 内 SELECT FOR UPDATE で直列化する (ADR-139 §3)。
 CREATE UNLOGGED TABLE oauth2_authorization_requests (
     id TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1252,8 +1117,6 @@ CREATE UNLOGGED TABLE oauth2_authorization_requests (
 CREATE INDEX oauth2_authorization_requests_expires_at_idx
     ON oauth2_authorization_requests (expires_at);
 
--- AuthorizationCode: 単発 redeem。state 列を CAS 述語に昇格させ
--- (UPDATE ... WHERE state='issued' RETURNING)、redeemed_at / issued_family_id も列に持つ。
 CREATE UNLOGGED TABLE oauth2_authorization_codes (
     code TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1270,7 +1133,6 @@ CREATE UNLOGGED TABLE oauth2_authorization_codes (
 CREATE INDEX oauth2_authorization_codes_expires_at_idx
     ON oauth2_authorization_codes (expires_at);
 
--- PAR (Pushed Authorization Request): request_uri を単発消費する。used を CAS 述語に昇格。
 CREATE UNLOGGED TABLE oauth2_par_requests (
     request_uri TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1285,8 +1147,6 @@ CREATE UNLOGGED TABLE oauth2_par_requests (
 CREATE INDEX oauth2_par_requests_expires_at_idx
     ON oauth2_par_requests (expires_at);
 
--- DeviceCode: device_code_hash を PK に、user_code を tenant 内 UNIQUE の別ルックアップ鍵とする。
--- 承認で user_id が確定し、state を Exchange の CAS 述語に昇格させる。
 CREATE UNLOGGED TABLE oauth2_device_codes (
     device_code_hash TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1308,8 +1168,6 @@ CREATE INDEX oauth2_device_codes_expires_at_idx
 CREATE INDEX oauth2_device_codes_user_idx
     ON oauth2_device_codes (tenant_id, user_id) WHERE user_id IS NOT NULL;
 
--- JTI replay reservation (DPoP / client assertion)。kind 列で dpop / client_assertion を分ける。
--- RecordIfNew = INSERT ON CONFLICT DO NOTHING。挿入行数で新規判定する。
 CREATE UNLOGGED TABLE oauth2_replay_jtis (
     tenant_id UUID NOT NULL,
     kind TEXT NOT NULL,
@@ -1323,8 +1181,6 @@ CREATE UNLOGGED TABLE oauth2_replay_jtis (
 CREATE INDEX oauth2_replay_jtis_expires_at_idx
     ON oauth2_replay_jtis (expires_at);
 
--- Access token denylist。失効の取りこぼしが防御後退になるため LOGGED (物理 standby へ複製)。
--- IsRevoked = SELECT EXISTS(... AND expires_at > now())。
 CREATE TABLE oauth2_access_token_denylist (
     tenant_id UUID NOT NULL,
     jti TEXT NOT NULL,
@@ -1337,7 +1193,6 @@ CREATE TABLE oauth2_access_token_denylist (
 CREATE INDEX oauth2_access_token_denylist_expires_at_idx
     ON oauth2_access_token_denylist (expires_at);
 
--- WebAuthn ceremony session (challenge)。GetDel = DELETE ... WHERE expires_at > now() RETURNING data。
 CREATE UNLOGGED TABLE webauthn_sessions (
     tenant_id UUID NOT NULL,
     session_key TEXT NOT NULL,
@@ -1352,9 +1207,6 @@ CREATE UNLOGGED TABLE webauthn_sessions (
 CREATE INDEX webauthn_sessions_expires_at_idx
     ON webauthn_sessions (expires_at);
 
--- Login throttle counter / lock (ADR-077 の fail-closed 前提を維持)。failover で消えると
--- 防御後退になるため LOGGED。高 churn な HOT update を促すため fillfactor 80。identifier_hash は
--- SHA-256 hex で平文 username/IP を残さない。
 CREATE TABLE login_throttle_counters (
     tenant_id UUID NOT NULL,
     kind TEXT NOT NULL,
@@ -1371,7 +1223,6 @@ CREATE TABLE login_throttle_counters (
 CREATE INDEX login_throttle_counters_gc_idx
     ON login_throttle_counters (window_expires_at);
 
--- SAML AuthnRequest replay reservation。RecordIfNew = INSERT ON CONFLICT DO NOTHING。
 CREATE UNLOGGED TABLE saml_authnrequest_replays (
     tenant_id UUID NOT NULL,
     entity_id TEXT NOT NULL,

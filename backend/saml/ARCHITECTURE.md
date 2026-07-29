@@ -44,3 +44,8 @@ the same key scope. New assertions and responses use only the active credential,
 service providers validate messages issued immediately before rotation. XML parsing and canonicalization
 continue to use the reviewed library selected in
 [ADR-060](../../decisions/ADR-060-xml-signature-library-and-saml-assertion-signing.md).
+
+## Persistence
+
+`saml_authnrequest_replays` records an AuthnRequest id as seen exactly once: `RecordIfNew` is an
+`INSERT ... ON CONFLICT DO NOTHING`, and the insert's affected-row count is the new/replay signal.
