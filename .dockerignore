@@ -1,0 +1,16 @@
+# infra/docker/Dockerfile (backend) build context is the repo root; keep it
+# scoped to what the Go build and image actually need (go.mod/go.sum,
+# backend/, spec/, seed/, infra/schema) so unrelated edits elsewhere don't
+# invalidate the COPY layer or bloat the context sent to the Docker daemon.
+.git
+.github
+.claude
+.agents
+.dev
+frontend
+tools
+verification
+load
+decisions
+work-items
+**/.DS_Store
