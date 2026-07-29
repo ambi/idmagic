@@ -222,14 +222,19 @@ export async function completeLoginFromCallback(): Promise<boolean> {
     return false
   }
   const params = new URLSearchParams(window.location.search)
+  const state = params.get('state')
+  if (state !== login.state) {
+    // この /callback は別フロー (例: ローカルデモ認証) の着地先で、この login 試行とは
+    // 無関係。false を返し、既存のデモ表示 (CallbackPage) へのフォールバックに委ねる。
+    return false
+  }
   const error = params.get('error')
   if (error) {
     throw new Error(params.get('error_description') ?? error)
   }
   const code = params.get('code')
-  const state = params.get('state')
-  if (!code || state !== login.state) {
-    throw new Error('OIDC callback state does not match')
+  if (!code) {
+    throw new Error('OIDC callback is missing an authorization code')
   }
   await exchange(login.audience, {
     grant_type: 'authorization_code',

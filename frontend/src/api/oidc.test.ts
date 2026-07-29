@@ -87,7 +87,7 @@ describe('portal OIDC client', () => {
     expect(window.location.assign).toHaveBeenCalledWith('/account/profile')
   })
 
-  it('rejects invalid callback state and recognizes non-portal callbacks', async () => {
+  it('recognizes non-portal callbacks, including a mismatched stale login state', async () => {
     await expect(completeLoginFromCallback()).resolves.toBe(false)
     sessionStorage.setItem(
       'ra_oidc_login',
@@ -98,7 +98,23 @@ describe('portal OIDC client', () => {
       search: '?code=code&state=wrong',
       assign: mock(),
     })
-    await expect(completeLoginFromCallback()).rejects.toThrow('state')
+    // A state mismatch means this /callback landing belongs to an unrelated flow
+    // (e.g. the local demo authorization sharing the same route), not a corrupted
+    // portal login — it must fall back rather than throw.
+    await expect(completeLoginFromCallback()).resolves.toBe(false)
+  })
+
+  it('rejects a matched-state callback that carries an error param', async () => {
+    sessionStorage.setItem(
+      'ra_oidc_login',
+      JSON.stringify({ state: 'expected', verifier: 'v', audience: 'admin', returnTo: '/admin' }),
+    )
+    stubGlobal('location', {
+      ...originalLocation,
+      search: '?error=access_denied&state=expected',
+      assign: mock(),
+    })
+    await expect(completeLoginFromCallback()).rejects.toThrow('access_denied')
   })
 
   it('suppresses repeated 401 recovery and clears stale state', async () => {
