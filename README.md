@@ -63,10 +63,12 @@ Use:
 
 ### Docker Development Stack
 
-The compose stack starts PostgreSQL, OpenTelemetry Collector, Prometheus, the Go API, and the UI gateway. Caddy exposes the combined app at <http://localhost:8080/>. 
+The compose stack starts PostgreSQL, OpenTelemetry Collector, Prometheus, the Go API, and the UI gateway. Caddy exposes the combined app at <http://localhost:8080/>.
 
 ```bash
-just dev-compose
+just dev-compose       # start, detached
+just logs-compose      # follow logs
+just down-compose      # stop and remove
 ```
 
 ### Manual Local Run

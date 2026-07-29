@@ -249,9 +249,21 @@ dev-api:
 dev-ui:
     cd frontend && bun run dev
 
-# Start the Docker Compose development stack.
+# Start the Docker Compose development stack, detached.
 dev-compose:
-    docker compose -f infra/docker/docker-compose.dev.yaml up --build
+    docker compose -f infra/docker/docker-compose.dev.yaml up --build -d
+
+# Follow logs for the Docker Compose development stack.
+logs-compose:
+    docker compose -f infra/docker/docker-compose.dev.yaml logs -f
+
+# Stop and remove the Docker Compose development stack.
+down-compose:
+    docker compose -f infra/docker/docker-compose.dev.yaml down
+
+# Re-apply infra/schema/postgres.sql without recreating the rest of the stack.
+schema-compose:
+    docker compose -f infra/docker/docker-compose.dev.yaml run --rm schema
 
 # Validate the Docker Compose development stack configuration.
 check-compose:
