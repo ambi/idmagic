@@ -119,6 +119,13 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 	dataKeysCrypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKeyProvider)
 	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
 	mfaSecretCipher := &datakeys.FieldCipher{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto}
+	mfaFactorRepo := &totppostgres.MfaFactorRepository{Pool: resilientDB, Cipher: mfaSecretCipher}
+	// dataKeysMigrators feeds the data_key_reencryption job (wi-97 T006):
+	// every owning context registers its FieldMigrator here so Rotate can
+	// enqueue per-migrator backfill jobs and Destroy's gate can verify no
+	// migrator still has pending rows before crypto-shredding a version.
+	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
+	dataKeysMigrators.Register(totppostgres.MfaFactorMigratorName, &totppostgres.MfaFactorReencryptor{Repo: mfaFactorRepo})
 
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
@@ -163,7 +170,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			FederationAttemptStore:   &federationpostgres.AttemptStore{Pool: resilientDB},
 			FederationReplayStore:    &federationpostgres.ReplayStore{Pool: resilientDB},
 			FederationSecretResolver: federationsecrets.Resolver{},
-			MfaFactorRepo:            &totppostgres.MfaFactorRepository{Pool: resilientDB, Cipher: mfaSecretCipher},
+			MfaFactorRepo:            mfaFactorRepo,
 			MfaEnrollmentBypassRepo:  &mfapostgres.MfaEnrollmentBypassRepository{Pool: resilientDB},
 			PasswordHistoryRepo:      &passwordpostgres.PasswordHistoryRepository{Pool: resilientDB},
 			PasswordResetTokenStore:  &passwordpostgres.PasswordResetTokenStore{Pool: resilientDB},
@@ -192,7 +199,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
-		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache},
+		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
 		Audit: audit.Module{
 			AuditEventRepo:  &auditpostgres.AuditEventRepository{Pool: resilientDB},
 			TenantSaltStore: postgres.NewTenantSaltStore(resilientDB),

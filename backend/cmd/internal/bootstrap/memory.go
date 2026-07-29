@@ -63,6 +63,10 @@ func assembleMemory() (*Dependencies, error) {
 	dataKeysRepo := datakeysmemory.NewDataKeyRepository()
 	dataKeysCrypto := envelope_crypto.NewTinkEnvelopeCrypto(masterKeyProvider)
 	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
+	// No FieldMigrator to register: the memory runtime's MfaFactorRepository
+	// (below) never encrypts, so there is nothing for the
+	// data_key_reencryption job to migrate (dev/test only, ADR-139).
+	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
 	userRepo := usermemory.NewUserRepository()
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	workflowRunRepo := igmemory.NewLifecycleWorkflowRunRepository()
@@ -138,7 +142,7 @@ func assembleMemory() (*Dependencies, error) {
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
-		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache},
+		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
 		Audit: audit.Module{
 			AuditEventRepo:  auditmemory.NewAuditEventStore(0),
 			TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(),

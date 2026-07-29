@@ -15,6 +15,7 @@ import type {
   ApiToken,
   ApiTokenScope,
   TenantKeyHealth,
+  TenantDataKeyHealth,
   AdminTenant,
   TenantQuota,
   AdminUser,
@@ -68,6 +69,7 @@ type AdminConsentListResponse = { consents: AdminConsent[] }
 type AdminAuditEventListResponse = { events: AdminAuditEvent[] }
 type AdminKeyListResponse = { keys: AdminKey[] }
 type TenantKeyHealthListResponse = { tenants: TenantKeyHealth[] }
+type TenantDataKeyHealthListResponse = { tenants: TenantDataKeyHealth[] }
 export type AdminRotateKeyResponse = { next: AdminKey; previous?: AdminKey }
 type AdminTenantListResponse = { tenants: AdminTenant[] }
 
@@ -537,6 +539,10 @@ export async function disableTenantKey(csrfToken: string, kid: string): Promise<
 
 export async function listTenantKeyHealth(): Promise<TenantKeyHealth[]> {
   return (await request<TenantKeyHealthListResponse>('/api/admin/keys/health')).tenants
+}
+
+export async function listTenantDataKeyHealth(): Promise<TenantDataKeyHealth[]> {
+  return (await request<TenantDataKeyHealthListResponse>('/api/admin/data-keys/health')).tenants
 }
 
 export type UpdateAdminSettingsInput = {

@@ -125,6 +125,10 @@ Local defaults use in-memory persistence and console email output. Production ad
 | `DEFAULT_LOCALE` | `ja`, `en` | last resort language for notification emails; defaults to `en`. An unsupported value fails startup |
 | `KEY_PROVIDER` | `local`, `vault` | signing key provider |
 | `VAULT_ADDR`, `VAULT_TOKEN` | Vault configuration | Vault Transit configuration |
+| `DATA_KEY_PROVIDER` | unset, `openbao` | master-key custody for envelope-encrypted reversible secrets (MFA TOTP seeds today); unset uses an in-process Tink cleartext keyset (dev/local only) |
+| `OPENBAO_ADDR`, `OPENBAO_TOKEN` | OpenBao configuration | required when `DATA_KEY_PROVIDER=openbao`; startup fails fast if either is empty |
+| `OPENBAO_TRANSIT_MOUNT` | mount path, default `transit` | OpenBao Transit engine mount |
+| `OPENBAO_DATA_KEY_PREFIX` | key name prefix, default `idmagic/datakeys` | per-tenant OpenBao Transit key naming (`{prefix}/{tenant_id}`) |
 | `BREACHED_PASSWORD_CHECKER` | `noop`, `hibp` | breached password checker |
 | `REQUEST_ID_TRUST_INBOUND` | `false`, `true` | reuse an edge proxy's inbound `X-Request-ID` |
 | `HSTS_ENABLED` | `false`, `true` | emit `Strict-Transport-Security` |
@@ -147,6 +151,29 @@ Local defaults use in-memory persistence and console email output. Production ad
 Production splits `idmagic-worker` into one Deployment per lane using the `JOB_WORKER_LANES` variable (e.g. `latency_sensitive`, `default`, `bulk`).
 
 `idmagic-batch` executes one operational batch and exits. External schedulers run `retention-sweep` hourly and `signing-key-lifecycle` daily; neither task is coupled to the horizontally scaled durable-job worker. 
+
+### Envelope Encryption & Data Keys
+
+Reversible secrets that must remain in the app DB (MFA TOTP seeds today) are envelope-encrypted at rest
+(ADR-148, [ARCHITECTURE.md](ARCHITECTURE.md#3-envelope-encryption-for-reversible-secrets)): a per-tenant
+`DataEncryptionKey` (DEK) directly encrypts each secret, and a master key — held by the swappable
+`DATA_KEY_PROVIDER` — wraps that DEK.
+
+- **Dev fallback**: leaving `DATA_KEY_PROVIDER` unset uses an in-process Tink cleartext keyset, so no
+  external service is required to develop. This must never be selected in production.
+- **Losing the master key is unrecoverable.** If OpenBao's Transit keys are lost without a backup, every
+  tenant's wrapped DEKs become permanently unwrappable — this is the same crypto-shredding property that
+  makes `DestroyTenantDataKey` deliberate, but applied by accident. Back up OpenBao's Transit engine
+  storage using OpenBao's own backup mechanism; a PostgreSQL backup of `tenant_data_encryption_keys` alone
+  is not sufficient to recover, since it only holds the wrapped (master-key-encrypted) form.
+- **Key health**: `GET /api/admin/data-keys/health` (`system_admin` only) reports each tenant's active DEK
+  version/status and the configured provider's name/reachability, without ever returning key material.
+- **Rotation and backfill**: rotating a tenant's DEK (internal-only today, no admin endpoint yet) enqueues
+  a resumable `data_key_reencryption` job (`backend/jobs`) that migrates every reference onto the new
+  version; only once that job reports nothing pending can the old version be destroyed. To backfill
+  legacy plaintext rows written before this migration (or to catch up any tenant whose auto-enqueued job
+  failed), run `idmagic-batch data-key-reencryption-sweep` — it is idempotent and safe to re-run or put on
+  a cadence.
 
 ### WebAuthn Configuration Notes
 

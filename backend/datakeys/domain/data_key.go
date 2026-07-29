@@ -39,6 +39,12 @@ var (
 	// ErrDataKeyNotDestroyable: DestroyTenantDataKey requires
 	// status in {retiring, disabled}.
 	ErrDataKeyNotDestroyable = errors.New("datakeys: data key must be retiring or disabled to destroy")
+	// ErrDataKeyStillReferenced: DestroyTenantDataKey found a registered
+	// FieldMigrator reporting rows not yet re-encrypted onto the tenant's
+	// active version; destroying now would make those rows permanently
+	// undecryptable (spec/contexts/data-keys.yaml DataKeyStillReferencedError,
+	// wi-97 T006). Run the reencryption job to completion first.
+	ErrDataKeyStillReferenced = errors.New("datakeys: cannot destroy data key while secrets are still pending re-encryption onto the active version")
 )
 
 // TenantDataEncryptionKey is one version of a tenant's DEK lifecycle

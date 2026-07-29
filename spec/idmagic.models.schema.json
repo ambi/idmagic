@@ -6018,6 +6018,12 @@
       ],
       "description": "DataEncryptionKeyLifecycle の状態。"
     },
+    "DataKeyStillReferencedError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "DestroyTenantDataKey の対象バージョンについて、所有 context の再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) がまだ全参照を active バージョンへ移行し終えていない。先に再暗号化を完了させてから destroy する。\n"
+    },
     "DataKeyUnavailableError": {
       "type": "object",
       "properties": {},
@@ -8733,9 +8739,10 @@
         "dynamic_group_reconcile",
         "lifecycle_workflow_run",
         "backchannel_logout_delivery",
-        "provisioning_delivery"
+        "provisioning_delivery",
+        "data_key_reencryption"
       ],
-      "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。\n"
+      "description": "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。data_key_reencryption は\nwi-97 (エンベロープ暗号化) が DataKeys の再暗号化 job 用に追加する。\n"
     },
     "JobLeaseLostError": {
       "type": "object",

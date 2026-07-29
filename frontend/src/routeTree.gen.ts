@@ -27,6 +27,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
 import { Route as SystemTenantsRouteImport } from './routes/system/tenants'
 import { Route as SystemKeysRouteImport } from './routes/system/keys'
+import { Route as SystemDataKeysRouteImport } from './routes/system/data-keys'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
@@ -169,6 +170,11 @@ const SystemTenantsRoute = SystemTenantsRouteImport.update({
 const SystemKeysRoute = SystemKeysRouteImport.update({
   id: '/keys',
   path: '/keys',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
+const SystemDataKeysRoute = SystemDataKeysRouteImport.update({
+  id: '/data-keys',
+  path: '/data-keys',
   getParentRoute: () => SystemRouteRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
@@ -486,6 +492,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/system/data-keys': typeof SystemDataKeysRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account/': typeof AccountIndexRoute
@@ -556,6 +563,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/system/data-keys': typeof SystemDataKeysRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account': typeof AccountIndexRoute
@@ -625,6 +633,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/system/data-keys': typeof SystemDataKeysRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
   '/account/': typeof AccountIndexRoute
@@ -700,6 +709,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/sign-in-policy'
     | '/admin/users'
+    | '/system/data-keys'
     | '/system/keys'
     | '/system/tenants'
     | '/account/'
@@ -770,6 +780,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/sign-in-policy'
     | '/admin/users'
+    | '/system/data-keys'
     | '/system/keys'
     | '/system/tenants'
     | '/account'
@@ -838,6 +849,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/sign-in-policy'
     | '/admin/users'
+    | '/system/data-keys'
     | '/system/keys'
     | '/system/tenants'
     | '/account/'
@@ -1018,6 +1030,13 @@ declare module '@tanstack/react-router' {
       path: '/keys'
       fullPath: '/system/keys'
       preLoaderRoute: typeof SystemKeysRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
+    '/system/data-keys': {
+      id: '/system/data-keys'
+      path: '/data-keys'
+      fullPath: '/system/data-keys'
+      preLoaderRoute: typeof SystemDataKeysRouteImport
       parentRoute: typeof SystemRouteRoute
     }
     '/admin/users': {
@@ -1576,12 +1595,14 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 )
 
 interface SystemRouteRouteChildren {
+  SystemDataKeysRoute: typeof SystemDataKeysRoute
   SystemKeysRoute: typeof SystemKeysRoute
   SystemTenantsRoute: typeof SystemTenantsRoute
   SystemIndexRoute: typeof SystemIndexRoute
 }
 
 const SystemRouteRouteChildren: SystemRouteRouteChildren = {
+  SystemDataKeysRoute: SystemDataKeysRoute,
   SystemKeysRoute: SystemKeysRoute,
   SystemTenantsRoute: SystemTenantsRoute,
   SystemIndexRoute: SystemIndexRoute,

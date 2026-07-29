@@ -190,6 +190,7 @@ func Run() error {
 		Notification:     deps.Notification,
 		OAuth2:           deps.OAuth2,
 		SigningKeys:      deps.SigningKeys,
+		DataKeys:         deps.DataKeys,
 		Audit:            deps.Audit,
 		JWKResolver:      jwkResolver,
 		WsFederation:     deps.WsFederation,

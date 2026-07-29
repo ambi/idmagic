@@ -8,12 +8,13 @@ import (
 )
 
 type fakeMasterKeyProvider struct {
-	sealKey []byte
-	healthy bool
+	sealKey  []byte
+	healthy  bool
+	provider string
 }
 
 func newFakeMasterKeyProvider() *fakeMasterKeyProvider {
-	return &fakeMasterKeyProvider{sealKey: []byte("fake-master-key-material-32byte"), healthy: true}
+	return &fakeMasterKeyProvider{sealKey: []byte("fake-master-key-material-32byte"), healthy: true, provider: "fake"}
 }
 
 func (f *fakeMasterKeyProvider) WrapDataKey(_ context.Context, tenantID string, plaintextDEK []byte) ([]byte, string, error) {
@@ -37,6 +38,10 @@ func (f *fakeMasterKeyProvider) UnwrapDataKey(_ context.Context, tenantID string
 
 func (f *fakeMasterKeyProvider) Healthy(_ context.Context) bool {
 	return f.healthy
+}
+
+func (f *fakeMasterKeyProvider) Provider() string {
+	return f.provider
 }
 
 // TestGenerateWrapUnwrapRoundTrip は scenario
@@ -193,5 +198,17 @@ func TestHealthyDelegatesToMasterKeyProvider(t *testing.T) {
 	provider.healthy = false
 	if crypto.Healthy(ctx) {
 		t.Fatal("expected Healthy to be false when provider is unhealthy")
+	}
+}
+
+// TestProviderDelegatesToMasterKeyProvider covers the wi-97 T007 health
+// surface (TenantDataKeyHealth.provider, spec/contexts/data-keys.yaml):
+// EnvelopeCrypto reports whichever MasterKeyProvider it was constructed
+// with, so ListTenantDataKeyHealth never has to special-case providers.
+func TestProviderDelegatesToMasterKeyProvider(t *testing.T) {
+	provider := newFakeMasterKeyProvider()
+	crypto := NewTinkEnvelopeCrypto(provider)
+	if got := crypto.Provider(); got != "fake" {
+		t.Fatalf("Provider() = %q, want %q", got, "fake")
 	}
 }

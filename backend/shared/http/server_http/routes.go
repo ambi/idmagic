@@ -23,6 +23,8 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	"github.com/ambi/idmagic/backend/datakeys"
+	datakeyshttp "github.com/ambi/idmagic/backend/datakeys/handlers_http"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	ighttp "github.com/ambi/idmagic/backend/idgovernance/handlers_http"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -98,6 +100,7 @@ type Deps struct {
 	TokenIntrospector oauthports.TokenIntrospector
 	Authorizer        oauthports.Authorizer
 	SigningKeys       signingkeys.Module
+	DataKeys          datakeys.Module
 	// Deprecated: tests may still provide the legacy direct field.
 	KeyStore         signingports.KeyStore
 	Audit            audit.Module
@@ -310,6 +313,14 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps:          d.Deps,
 		Authenticator: authenticator,
 		KeyStore:      d.SigningKeys.KeyStore,
+		TenantRepo:    d.TenantRepo,
+	})
+
+	datakeyshttp.RegisterRoutes(g, datakeyshttp.Deps{
+		Deps:          d.Deps,
+		Authenticator: authenticator,
+		Repository:    d.DataKeys.Repository,
+		Crypto:        d.DataKeys.Crypto,
 		TenantRepo:    d.TenantRepo,
 	})
 

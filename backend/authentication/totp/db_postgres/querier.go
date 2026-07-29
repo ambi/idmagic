@@ -9,10 +9,19 @@ import (
 )
 
 type Querier interface {
+	CountMfaFactorsPendingReencryption(ctx context.Context, arg CountMfaFactorsPendingReencryptionParams) (int64, error)
 	DeleteMfaFactor(ctx context.Context, arg DeleteMfaFactorParams) error
 	DeleteMfaFactorsForSub(ctx context.Context, userID string) error
 	GetMfaFactor(ctx context.Context, arg GetMfaFactorParams) (*GetMfaFactorRow, error)
 	ListMfaFactorsBySub(ctx context.Context, userID string) ([]*ListMfaFactorsBySubRow, error)
+	// Rows with secret material (plaintext or ciphertext) not yet on
+	// activeVersion: legacy plaintext (secret_key_version NULL) or an older DEK
+	// version. Rows with neither secret nor secret_ciphertext (factor types that
+	// carry no reversible secret) are excluded — there is nothing to migrate.
+	ListMfaFactorsPendingReencryption(ctx context.Context, arg ListMfaFactorsPendingReencryptionParams) ([]*ListMfaFactorsPendingReencryptionRow, error)
+	// Writes back a re-encrypted secret without touching label/created_at/
+	// last_used_at, and always clears the legacy plaintext column.
+	UpdateMfaFactorCiphertext(ctx context.Context, arg UpdateMfaFactorCiphertextParams) error
 	UpsertMfaFactor(ctx context.Context, arg UpsertMfaFactorParams) error
 }
 

@@ -13,6 +13,8 @@ modules:
     depends_on:
       - module: bootstrap
         via: composition_root
+      - module: datakeys-usecases
+        via: composition_root
       - module: shared-services
         via: technical_shared
       - module: signingkeys-usecases
@@ -33,6 +35,8 @@ modules:
       - module: shared-security-passwords-argon2id
         via: technical_shared
       - module: bootstrap
+        via: composition_root
+      - module: datakeys-usecases
         via: composition_root
       - module: idgovernance-usecases
         via: composition_root

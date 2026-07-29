@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
@@ -106,6 +107,11 @@ func RunWorker() error {
 			deps.NewEmitFunc(logger)(event)
 			return nil
 		},
+	}))
+	handlers.Register(domain.KindDataKeyReencryption, datakeysusecases.ReencryptionHandler(datakeysusecases.ReencryptDeps{
+		Repository: deps.DataKeys.Repository,
+		Migrators:  deps.DataKeys.Migrators,
+		Jobs:       deps.Jobs.Repo,
 	}))
 	handlers.Register(igusecases.LifecycleWorkflowRunJobKind, igusecases.LifecycleWorkflowRunHandler(igusecases.LifecycleWorkflowExecutorDeps{
 		RunRepo: deps.IdGovernance.LifecycleWorkflowRunRepo, UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo,

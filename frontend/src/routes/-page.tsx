@@ -74,6 +74,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   // システム管理
   'system-tenants': `テナント | ${SYSTEM}`,
   'system-key-health': `署名鍵の健全性 | ${SYSTEM}`,
+  'system-data-key-health': `暗号鍵の健全性 | ${SYSTEM}`,
   // ログイン / 認証フロー
   login: `ログイン | ${BRAND}`,
   totp: `二要素認証 | ${BRAND}`,

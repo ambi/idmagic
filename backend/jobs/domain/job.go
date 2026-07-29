@@ -40,6 +40,11 @@ const (
 	KindUserImportPreview     JobKind = "user_import_preview"
 	KindUserImportApply       JobKind = "user_import_apply"
 	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
+	// KindDataKeyReencryption is wi-97's DataKeys re-encryption job
+	// (spec/contexts/data-keys.yaml, ADR-148): it drives a registered
+	// FieldMigrator through pending rows onto a tenant's active
+	// DataEncryptionKey version.
+	KindDataKeyReencryption JobKind = "data_key_reencryption"
 )
 
 // ExecutionLane is the ADR-129 execution-lane vocabulary
@@ -74,6 +79,7 @@ func init() {
 	RegisterKind(KindUserImportPreview, LaneBulk)
 	RegisterKind(KindUserImportApply, LaneBulk)
 	RegisterKind(KindDynamicGroupReconcile, LaneBulk)
+	RegisterKind(KindDataKeyReencryption, LaneBulk)
 }
 
 // RegisterKind declares a context-owned job kind and the ExecutionLane it

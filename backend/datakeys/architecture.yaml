@@ -25,7 +25,7 @@ modules:
         via: published_interface
   datakeys-usecases:
     path: usecases
-    responsibility: Bootstrap/Rotate/Disable/DestroyTenantDataKey usecase と DataKeyCache (テナント DEK の unwrap キャッシュ)。
+    responsibility: Bootstrap/Rotate/Disable/DestroyTenantDataKey usecase、DataKeyCache (テナント DEK の unwrap キャッシュ)、MigratorRegistry と data_key_reencryption job (ReencryptTenantField/ReencryptionHandler、wi-97 T006)。
     context: DataKeys
     layer: use_cases
     role: published_interface
@@ -34,10 +34,20 @@ modules:
         via: published_interface
       - module: datakeys-ports
         via: published_interface
+      - module: jobs-domain
+        via: published_interface
+      - module: jobs-ports
+        via: published_interface
+      - module: jobs-usecases
+        via: published_interface
       - module: shared-security-envelope-crypto
+        via: technical_shared
+      - module: shared-services
         via: technical_shared
       - module: shared-spec
         via: technical_shared
+      - module: tenancy-ports
+        via: published_interface
     realizes:
       - context: DataKeys
         kind: interface
@@ -51,6 +61,9 @@ modules:
       - context: DataKeys
         kind: interface
         element: DestroyTenantDataKey
+      - context: DataKeys
+        kind: interface
+        element: ListTenantDataKeyHealth
   datakeys-db-memory:
     path: db_memory
     responsibility: DataKeyRepository の in-process 参照実装。テストとローカルデモの参照でもある。
@@ -94,9 +107,30 @@ modules:
         via: technical_shared
       - module: shared-spec
         via: technical_shared
+  datakeys-handlers-http:
+    path: handlers_http
+    responsibility: "system_admin 向け read-only 健全性エンドポイント (GET /api/admin/data-keys/health、wi-97 T007)。rotate/disable/destroy の action endpoint は持たない (Scope が管理面を最小限と定める)。"
+    context: DataKeys
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: datakeys-ports
+        via: published_interface
+      - module: datakeys-usecases
+        via: published_interface
+      - module: http-support
+        via: binding
+      - module: shared-security-envelope-crypto
+        via: technical_shared
+      - module: tenancy-ports
+        via: published_interface
+    realizes:
+      - context: DataKeys
+        kind: interface
+        element: ListTenantDataKeyHealth
   datakeys-composition:
     path: module.go
-    responsibility: DataKeys の repository/cache を束ねる composition module。
+    responsibility: DataKeys の repository/cache/crypto/migrator registry を束ねる composition module。
     context: DataKeys
     layer: infrastructure
     role: composition_root
@@ -105,3 +139,5 @@ modules:
         via: published_interface
       - module: datakeys-usecases
         via: published_interface
+      - module: shared-security-envelope-crypto
+        via: technical_shared

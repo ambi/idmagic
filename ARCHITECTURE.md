@@ -388,11 +388,19 @@ table, or field boundaries fails to decrypt rather than silently succeeding.
 - Rotation activates a new DEK version for new writes while the previous version stays `retiring` (still
   decryptable) until a resumable re-encryption job, registered through `backend/jobs`'
   `JobKind`/`HandlerRegistry` (`wi-126-async-job-runner`), migrates every reference; only then can the old
-  version be destroyed.
+  version be destroyed. A `FieldMigrator` port (`backend/datakeys/ports`) lets each owning context
+  register its own batch re-encryption/pending-count logic without `DataKeys` depending on any consumer's
+  schema, mirroring how `Jobs`' `HandlerRegistry` stays decoupled from consumer business logic; Rotate
+  auto-enqueues the job per registered migrator, and Destroy refuses to erase a wrapped DEK while any
+  migrator still reports pending rows.
 - Decrypt failure (unwrap failure, provider unreachable, AAD/tamper mismatch) is fail-closed: the caller
   denies access rather than falling back to plaintext or skipping the field.
 - The initial master-key provider is OpenBao (Vault Transit-compatible HTTP API); dev/local uses a Tink
   cleartext keyset so OpenBao is not required to develop. The provider is swappable by design.
+- The only HTTP surface is a read-only, `system_admin`-gated `GET /api/admin/data-keys/health`
+  (`backend/datakeys/handlers_http`) reporting each tenant's active DEK version/status and master-key
+  provider name/reachability — never key material. There is no rotate/disable/destroy admin endpoint;
+  those lifecycle operations are internal-only for now.
 
 The full rationale — including why OpenBao over HashiCorp Vault CE, and why this is not merged into the
 `SigningKeys` `KeyStore` port — is in

@@ -32712,7 +32712,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       <div class="eyebrow">Bounded Context · contexts/data-keys.yaml</div>
       <h1>DataKeys</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-datakeys-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-datakeys-models"><span class="stat-num">12</span><span class="stat-label">models</span></a><a class="stat" href="#context-datakeys-interfaces"><span class="stat-num">5</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-datakeys-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-datakeys-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-datakeys-scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#context-datakeys-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-datakeys-models"><span class="stat-num">13</span><span class="stat-label">models</span></a><a class="stat" href="#context-datakeys-interfaces"><span class="stat-num">5</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-datakeys-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-datakeys-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-datakeys-scenarios"><span class="stat-num">6</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="context-datakeys-glossary">
     <h2>Glossary <span class="count">9</span></h2>
@@ -32800,7 +32800,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     </article></div>
   </section>
 <section id="context-datakeys-models">
-    <h2>Models <span class="count">12</span></h2>
+    <h2>Models <span class="count">13</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">2</span></h3>
@@ -33120,7 +33120,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">3</span></h3>
+      <h3 class="grp-title">error <span class="count">4</span></h3>
       <div class="cards"><article class="card" id="scl-DataKeys/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">DataKeys/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -33153,6 +33153,23 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     <tbody><tr>
     <td><code class="name">reason</code></td>
     <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-DataKeys/model/DataKeyStillReferencedError">
+    <header><h3>DataKeyStillReferencedError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">DataKeys/model/DataKeyStillReferencedError</code></header>
+    <p class="desc">DestroyTenantDataKey の対象バージョンについて、所有 context の再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) がまだ全参照を active バージョンへ移行し終えていない。先に再暗号化を完了させてから destroy する。
+</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">pendingCount</code></td>
+    <td><code class="type">Integer</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -33257,7 +33274,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-DataKeys/interface/DestroyTenantDataKey">
     <header><h3>DestroyTenantDataKey</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">DataKeys/interface/DestroyTenantDataKey</code></header>
-    <p class="desc">retiring または disabled の DataEncryptionKey 1 本の wrapped_dek を破棄し destroyed (crypto-shredding) にする。全参照が新しい active 鍵へ再暗号化済みであることを migration job ([[wi-126-async-job-runner]]) 側で確認してから呼び出す運用とする。不可逆。
+    <p class="desc">retiring または disabled の DataEncryptionKey 1 本の wrapped_dek を破棄し destroyed (crypto-shredding) にする。所有 context ごとに登録された再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) が全参照を active バージョンへ移行済みであることを呼び出し前に検証し、未移行の参照が残っていれば DataKeyStillReferencedError で拒否する (fail-closed)。不可逆。
 </p>
 
     <div class="io">
@@ -33277,13 +33294,13 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-DataKeys/model/InvalidRequestError">InvalidRequestError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-DataKeys/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-DataKeys/model/DataKeyStillReferencedError">DataKeyStillReferencedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-DataKeys/model/DataEncryptionKeyDestroyed">DataEncryptionKeyDestroyed</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">data_key_is_not_active(input.tenant_id, input.version)</code></li></ul></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">data_key_is_not_active(input.tenant_id, input.version)</code></li><li><code class="expr">no_pending_reencryption_references(input.tenant_id)</code></li></ul></div>
   </article>
 <article class="card" id="scl-DataKeys/interface/ListTenantDataKeyHealth">
     <header><h3>ListTenantDataKeyHealth</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-DataKeys/authorization_policy/SystemAdministrator">SystemAdministrator</a> <code>DataKeyDirectory:&quot;data_key_directory&quot;</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">DataKeys/interface/ListTenantDataKeyHealth</code></header>
-    <p class="desc">system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。HTTP binding は実装済みの GET /api/admin/data-keys/health ハンドラと共に追加する (wi-97 T007)。
+    <p class="desc">system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。
 </p>
 
     <div class="io">
@@ -33299,6 +33316,10 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-DataKeys/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/data-keys/health</code></div></div>
+  </div></div></div>
   </article></div>
   </section>
 <section id="context-datakeys-states">
@@ -33447,7 +33468,10 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; の version 1 が retiring で、[[wi-126-async-job-runner]] 経由の再暗号化 job が version 1 参照をすべて version 2 へ移行済みである</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; の version 1 に対して <a class="chip chip-ref" href="#scl-DataKeys/interface/DestroyTenantDataKey">DestroyTenantDataKey</a> を呼ぶ</li><li class="scn-step">version 1 が destroyed に遷移し wrapped_dek が破棄される</li><li class="scn-step">version 1 での復号は恒久的に不能になる</li></ol></div>
-
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">登録済みの所有 context に未移行の参照が残っている</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-DataKeys/interface/DestroyTenantDataKey">DestroyTenantDataKey</a> が <a class="chip chip-ref" href="#scl-DataKeys/model/DataKeyStillReferencedError">DataKeyStillReferencedError</a> で拒否され version 1 は retiring のままである</li></ol></div>
+          </article></div>
       </article><article class="card scenario" id="scl-DataKeys/scenario/systemAdmin~E3~81~8C~E3~83~86~E3~83~8A~E3~83~B3~E3~83~88~E6~A8~AA~E6~96~AD~E3~81~A7DEK~E5~81~A5~E5~85~A8~E6~80~A7~E3~82~92~E4~B8~80~E8~A6~A7~E3~81~99~E3~82~8B">
         <header><h3>systemAdminがテナント横断でDEK健全性を一覧する</h3><span class="chip chip-actor">System</span><code class="canonical-ref">DataKeys/scenario/systemAdminがテナント横断でDEK健全性を一覧する</code></header>
 
@@ -37211,10 +37235,11 @@ language。Job aggregate 全体ではなく、外部公開してよい最小の�
     <p class="desc">worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を
 追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を
 同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを
-追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。
+追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。data_key_reencryption は
+wi-97 (エンベロープ暗号化) が DataKeys の再暗号化 job 用に追加する。
 </p>
 
-    <div class="enum-vals"><span class="chip chip-enum">noop_echo</span> <span class="chip chip-enum">user_import_preview</span> <span class="chip chip-enum">user_import_apply</span> <span class="chip chip-enum">dynamic_group_reconcile</span> <span class="chip chip-enum">lifecycle_workflow_run</span> <span class="chip chip-enum">backchannel_logout_delivery</span> <span class="chip chip-enum">provisioning_delivery</span></div>
+    <div class="enum-vals"><span class="chip chip-enum">noop_echo</span> <span class="chip chip-enum">user_import_preview</span> <span class="chip chip-enum">user_import_apply</span> <span class="chip chip-enum">dynamic_group_reconcile</span> <span class="chip chip-enum">lifecycle_workflow_run</span> <span class="chip chip-enum">backchannel_logout_delivery</span> <span class="chip chip-enum">provisioning_delivery</span> <span class="chip chip-enum">data_key_reencryption</span></div>
 
   </article>
 <article class="card" id="scl-Jobs/model/ExecutionLane">

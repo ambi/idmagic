@@ -33,6 +33,10 @@ type MasterKeyProvider interface {
 	WrapDataKey(ctx context.Context, tenantID string, plaintextDEK []byte) (wrapped []byte, masterKeyID string, err error)
 	UnwrapDataKey(ctx context.Context, tenantID string, wrapped []byte, masterKeyID string) (plaintextDEK []byte, err error)
 	Healthy(ctx context.Context) bool
+	// Provider names this MasterKeyProvider for health/observability display
+	// (spec/contexts/data-keys.yaml TenantDataKeyHealth.provider, wi-97 T007)
+	// — e.g. "openbao" or "tink_cleartext". Never reveals key material.
+	Provider() string
 }
 
 // EnvelopeCrypto is the port DataKeys and record-owning repositories depend
@@ -45,6 +49,7 @@ type EnvelopeCrypto interface {
 	Encrypt(ctx context.Context, plaintextDEK []byte, aad AAD, plaintext []byte) (ciphertext []byte, err error)
 	Decrypt(ctx context.Context, plaintextDEK []byte, aad AAD, ciphertext []byte) (plaintext []byte, err error)
 	Healthy(ctx context.Context) bool
+	Provider() string
 }
 
 // AAD is the fixed associated-data binding for record-level ciphertext
@@ -131,6 +136,10 @@ func (c *TinkEnvelopeCrypto) Decrypt(_ context.Context, plaintextDEK []byte, aad
 
 func (c *TinkEnvelopeCrypto) Healthy(ctx context.Context) bool {
 	return c.masterKey.Healthy(ctx)
+}
+
+func (c *TinkEnvelopeCrypto) Provider() string {
+	return c.masterKey.Provider()
 }
 
 func aeadPrimitive(serializedKeyset []byte) (tink.AEAD, error) {

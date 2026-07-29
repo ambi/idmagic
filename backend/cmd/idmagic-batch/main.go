@@ -12,13 +12,14 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/version"
 	signingusecases "github.com/ambi/idmagic/backend/signingkeys/usecases"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
-const usage = "usage: idmagic-batch <retention-sweep|signing-key-lifecycle> [flags]"
+const usage = "usage: idmagic-batch <retention-sweep|signing-key-lifecycle|data-key-reencryption-sweep> [flags]"
 
 func main() {
 	buildInfo := version.Get()
@@ -52,6 +53,13 @@ func run(ctx context.Context, args []string) error {
 		return withDependencies(ctx, func(deps *bootstrap.Dependencies) error {
 			return runSigningKeyLifecycle(ctx, deps, cfg, time.Now().UTC())
 		})
+	case "data-key-reencryption-sweep":
+		if len(args) != 1 {
+			return errors.New("data-key-reencryption-sweep accepts no flags")
+		}
+		return withDependencies(ctx, func(deps *bootstrap.Dependencies) error {
+			return runDataKeyReencryptionSweep(ctx, deps, time.Now().UTC())
+		})
 	default:
 		return fmt.Errorf("unknown batch %q; %s", args[0], usage)
 	}
@@ -76,6 +84,37 @@ func parseSigningKeyLifecycleConfig(args []string) (signingKeyLifecycleConfig, e
 		cadence: time.Duration(*cadenceDays) * 24 * time.Hour,
 		grace:   time.Duration(*graceDays) * 24 * time.Hour,
 	}, nil
+}
+
+// runDataKeyReencryptionSweep enqueues the data_key_reencryption Job for
+// every tenant and every registered FieldMigrator (wi-97 T006, ADR-148). Its
+// own enqueue is dedup'd (JobHandlerIdempotency), so re-running this sweep
+// on a cadence, or after a rotation's own auto-enqueue already fired, is
+// always safe. It is the operator-facing entry point for the initial
+// backfill of legacy plaintext rows written before this migration: a tenant
+// whose secrets have all already migrated just gets a job that finds nothing
+// pending and completes immediately.
+//
+// A tenant with legacy plaintext rows but no DataEncryptionKey bootstrapped
+// yet (no MFA activity since deploying wi-97) will have its enqueued Job
+// fail closed with domain.ErrNoActiveDataKey rather than lose data; the next
+// MFA registration or login lazily bootstraps the tenant's DEK the same way
+// FieldCipher.Encrypt always has, after which a re-run of this sweep
+// succeeds.
+func runDataKeyReencryptionSweep(ctx context.Context, deps *bootstrap.Dependencies, now time.Time) error {
+	tenants, err := deps.Tenancy.TenantRepo.FindAll(ctx)
+	if err != nil {
+		return err
+	}
+	names := deps.DataKeys.Migrators.Names()
+	for _, tenant := range tenants {
+		for _, name := range names {
+			if err := datakeysusecases.EnqueueReencryptionJob(ctx, deps.Jobs.Repo, tenant.ID, name, now); err != nil {
+				return fmt.Errorf("enqueue reencryption job for tenant %s migrator %s: %w", tenant.ID, name, err)
+			}
+		}
+	}
+	return nil
 }
 
 func withDependencies(ctx context.Context, fn func(*bootstrap.Dependencies) error) error {

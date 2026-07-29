@@ -151,7 +151,7 @@ models:
       - canceled
   JobKind:
     kind: enum
-    description: "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。\n"
+    description: "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。data_key_reencryption は\nwi-97 (エンベロープ暗号化) が DataKeys の再暗号化 job 用に追加する。\n"
     values:
       - noop_echo
       - user_import_preview
@@ -160,6 +160,7 @@ models:
       - lifecycle_workflow_run
       - backchannel_logout_delivery
       - provisioning_delivery
+      - data_key_reencryption
   ExecutionLane:
     kind: enum
     description: "Job の実行枠を隔離する区分 (ADR-129)。JobKind の登録情報が lane を一意に決め、\nenqueue 呼び出し元は指定できない。latency_sensitive は低遅延配送を専用実行枠で保証し、\nbulk backlog の滞留から隔離される。bulk は長時間・大量ジョブ、default はそのいずれでもない\nジョブに使う。\n"

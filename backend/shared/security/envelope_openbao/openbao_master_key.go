@@ -57,6 +57,10 @@ func (p *OpenBaoMasterKeyProvider) Healthy(ctx context.Context) bool {
 	return p.engine.Healthy(ctx)
 }
 
+func (p *OpenBaoMasterKeyProvider) Provider() string {
+	return "openbao"
+}
+
 func (p *OpenBaoMasterKeyProvider) keyName(tenantID string) string {
 	return p.keyNamePrefix + "/" + tenantID
 }

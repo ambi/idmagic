@@ -58,6 +58,10 @@ func (p *CleartextMasterKeyProvider) Healthy(_ context.Context) bool {
 	return true
 }
 
+func (p *CleartextMasterKeyProvider) Provider() string {
+	return "tink_cleartext"
+}
+
 func wrapAAD(tenantID string) []byte {
 	return fmt.Appendf(nil, "idmagic:datakeys:master:cleartext:%s", tenantID)
 }

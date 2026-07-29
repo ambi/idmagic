@@ -121,6 +121,7 @@ func TestLaneFor_BuiltinKinds(t *testing.T) {
 		{KindUserImportPreview, LaneBulk},
 		{KindUserImportApply, LaneBulk},
 		{KindDynamicGroupReconcile, LaneBulk},
+		{KindDataKeyReencryption, LaneBulk},
 	}
 	for _, tt := range tests {
 		got, ok := LaneFor(tt.kind)

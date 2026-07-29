@@ -124,6 +124,10 @@ modules:
         via: composition_root
       - module: authentication-adapters
         via: composition_root
+      - module: datakeys-handlers-http
+        via: composition_root
+      - module: datakeys-public
+        via: composition_root
       - module: authentication-domain
         via: composition_root
       - module: authentication-federation-domain

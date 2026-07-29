@@ -599,6 +599,15 @@ export type TenantKeyHealth = {
   provider_healthy: boolean
 }
 
+export type TenantDataKeyHealth = {
+  tenant_id: string
+  active_version: number
+  status: string
+  provider: string
+  provider_reachable: boolean
+  rotated_at?: string
+}
+
 export type AdminGroup = {
   id: string
   tenant_id: string

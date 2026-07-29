@@ -8,6 +8,8 @@ import (
 
 	"github.com/ambi/idmagic/backend/datakeys/db_memory"
 	"github.com/ambi/idmagic/backend/datakeys/domain"
+	jobsdbmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
+	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -170,5 +172,92 @@ func TestDestroyTenantDataKeyErasesWrappedDEK(t *testing.T) {
 	}
 	if destroyed.WrappedDEK != nil {
 		t.Fatal("expected wrapped_dek to be erased after destroy")
+	}
+}
+
+// TestRotateTenantDataKeyEnqueuesReencryptionJobForRegisteredMigrators covers
+// the ARCHITECTURE.md §Persistence #3 design: rotation must kick off the
+// resumable re-encryption job for every registered FieldMigrator so old
+// references eventually migrate onto the new active version.
+func TestRotateTenantDataKeyEnqueuesReencryptionJobForRegisteredMigrators(t *testing.T) {
+	deps := newTestDeps(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	if _, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
+	}
+
+	migrators := NewMigratorRegistry()
+	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{})
+	jobRepo := jobsdbmemory.NewJobRepository()
+	deps.Migrators = migrators
+	deps.Jobs = jobRepo
+
+	if _, err := RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatalf("RotateTenantDataKey failed: %v", err)
+	}
+
+	jobs, err := jobRepo.ListByTenantAndKinds(ctx, "tenant-a", []jobsdomain.JobKind{jobsdomain.KindDataKeyReencryption}, 10)
+	if err != nil {
+		t.Fatalf("ListByTenantAndKinds: %v", err)
+	}
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 reencryption job enqueued after rotate, got %d", len(jobs))
+	}
+}
+
+// TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords covers the
+// new DestroyTenantDataKey destroy gate (spec/contexts/data-keys.yaml
+// DataKeyStillReferencedError, wi-97 T006): crypto-shredding a version while
+// a registered FieldMigrator still has unmigrated rows would make them
+// permanently undecryptable.
+func TestDestroyTenantDataKeyRejectsWhenMigratorReportsPendingRecords(t *testing.T) {
+	deps := newTestDeps(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	if _, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
+	}
+	if _, err := RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatalf("RotateTenantDataKey failed: %v", err)
+	}
+
+	migrators := NewMigratorRegistry()
+	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{pending: 3})
+	deps.Migrators = migrators
+
+	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now.Add(2*time.Hour)); !errors.Is(err, domain.ErrDataKeyStillReferenced) {
+		t.Fatalf("expected ErrDataKeyStillReferenced, got %v", err)
+	}
+
+	key, err := deps.Repository.FindByVersion(ctx, "tenant-a", 1)
+	if err != nil {
+		t.Fatalf("FindByVersion failed: %v", err)
+	}
+	if key.WrappedDEK == nil {
+		t.Fatal("expected wrapped_dek to survive a rejected destroy")
+	}
+}
+
+// TestDestroyTenantDataKeyAllowsWhenMigratorReportsNoPendingRecords is the
+// green-path counterpart: once every registered FieldMigrator reports 0
+// pending rows, destroy proceeds normally.
+func TestDestroyTenantDataKeyAllowsWhenMigratorReportsNoPendingRecords(t *testing.T) {
+	deps := newTestDeps(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+	if _, err := BootstrapTenantDataKey(ctx, deps, "tenant-a", now); err != nil {
+		t.Fatalf("BootstrapTenantDataKey failed: %v", err)
+	}
+	if _, err := RotateTenantDataKey(ctx, deps, "tenant-a", now.Add(time.Hour)); err != nil {
+		t.Fatalf("RotateTenantDataKey failed: %v", err)
+	}
+
+	migrators := NewMigratorRegistry()
+	migrators.Register("mfa_totp_secret", &fakeReencryptMigrator{pending: 0})
+	deps.Migrators = migrators
+
+	if err := DestroyTenantDataKey(ctx, deps, "tenant-a", 1, now.Add(2*time.Hour)); err != nil {
+		t.Fatalf("DestroyTenantDataKey failed: %v", err)
 	}
 }
