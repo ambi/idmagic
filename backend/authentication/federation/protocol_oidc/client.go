@@ -91,14 +91,24 @@ func (c Client) TestConnection(ctx context.Context, connection domain.IdentityPr
 			failures = append(failures, fmt.Sprintf("%s is unreachable", endpoint.label))
 		}
 	}
-	if connection.SecretReference != "" {
-		if c.SecretResolver == nil {
-			failures = append(failures, "secret reference cannot be resolved")
-		} else if _, err := c.SecretResolver.Resolve(ctx, connection.SecretReference); err != nil {
-			failures = append(failures, "secret reference cannot be resolved")
-		}
+	if _, err := c.resolveSecret(ctx, connection.SecretReference); err != nil {
+		failures = append(failures, "secret reference cannot be resolved")
 	}
 	return failures
+}
+
+// resolveSecret returns the client secret ready to use. A value using the legacy "env:" scheme
+// is resolved via SecretResolver; anything else (including "") is already the real secret value
+// — the repository dual-reads legacy env: references and decrypted ciphertext into the same
+// SecretReference field (ADR-150), so only the legacy case still needs resolution here.
+func (c Client) resolveSecret(ctx context.Context, reference string) (string, error) {
+	if reference == "" || !strings.HasPrefix(reference, "env:") {
+		return reference, nil
+	}
+	if c.SecretResolver == nil {
+		return "", errors.New("OIDC secret resolver unavailable")
+	}
+	return c.SecretResolver.Resolve(ctx, reference)
 }
 
 func reachable(ctx context.Context, client *http.Client, rawURL string) error {
@@ -152,16 +162,9 @@ func (c Client) ExchangeAndValidate(
 	if !connection.Active() || connection.Protocol != domain.ProtocolOIDC || code == "" {
 		return empty, errors.New("invalid OIDC callback")
 	}
-	secret := ""
-	if connection.SecretReference != "" {
-		if c.SecretResolver == nil {
-			return empty, errors.New("OIDC secret resolver unavailable")
-		}
-		var err error
-		secret, err = c.SecretResolver.Resolve(ctx, connection.SecretReference)
-		if err != nil {
-			return empty, err
-		}
+	secret, err := c.resolveSecret(ctx, connection.SecretReference)
+	if err != nil {
+		return empty, err
 	}
 	values := url.Values{
 		"grant_type":    {"authorization_code"},

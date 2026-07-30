@@ -93,6 +93,25 @@ func TestExchangeValidatesSignedIDTokenAndNormalizesClaims(t *testing.T) {
 
 // RED (interface: TestIdentityProviderConnection, ADR-150): reachable endpoints and a
 // resolvable secret_reference together report success with no failures.
+// RED (bug found via manual verification, ADR-150): after envelope encryption, the repository
+// hands protocol_oidc the already-decrypted plaintext secret directly (or, in the memory
+// backend, whatever value was saved), not an "env:" reference. That value must be usable
+// as-is without a SecretResolver — only a literal "env:" prefix should require resolution.
+func TestTestConnectionAcceptsAlreadyResolvedSecretWithoutAResolver(t *testing.T) {
+	client := Client{
+		HTTPClient: fakeHTTPClient(map[string]any{
+			"https://idp.example/auth":  map[string]any{},
+			"https://idp.example/token": map[string]any{},
+			"https://idp.example/jwks":  map[string]any{},
+		}),
+	}
+	connection := testConnection()
+	connection.SecretReference = "s3cr3t-plaintext-client-secret"
+	if failures := client.TestConnection(context.Background(), connection); len(failures) != 0 {
+		t.Fatalf("failures=%v, want none (SecretResolver is nil but the value is not an env: reference)", failures)
+	}
+}
+
 func TestTestConnectionReportsSuccessWhenEndpointsReachableAndSecretResolves(t *testing.T) {
 	client := Client{
 		HTTPClient: fakeHTTPClient(map[string]any{

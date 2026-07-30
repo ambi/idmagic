@@ -401,3 +401,22 @@ ADR で明示する。
     `AdminIdentityProvidersPage.test.tsx` のバナー表示テスト。(4) `db_postgres` の
     `TestConnectionRepositoryEncryptsRealSecretAtRest`。(5) `adminNav.test.ts` と
     `AdminSettingsPage.test.tsx` (identity-providers タブが撤去されたことの確認)。
+
+### Post-completion fix: secret resolution rejected already-plaintext secrets
+
+ユーザーが実際に外部 IdP (Duende の公開デモ IdentityServer) を設定し「設定をテスト」を
+実行したところ、`secret reference cannot be resolved` で失敗した。原因は
+`protocol_oidc.Client.TestConnection`/`ExchangeAndValidate` が `SecretReference` を
+常に `secrets_env.Resolver` (`env:` scheme 専用) で解決しようとしていたこと。ADR-150 の
+repository 層は ciphertext を復号した実値、あるいは memory backend では入力された実値を
+そのまま `SecretReference` に入れるため、`env:` プレフィックスを持たない実値は
+`secrets_env.Resolver.Resolve` が必ずエラーを返し、テストも実ログインも失敗していた
+(この手動確認で発覚するまで自動テストのカバレッジに穴があった)。
+
+`Client.resolveSecret` を追加し、「`env:` プレフィックスを持つ値だけ `SecretResolver` で
+解決し、それ以外 (空文字含む) はそのまま実値として使う」規約に統一。
+`TestConnection`/`ExchangeAndValidate` 双方をこのヘルパー経由に変更した。RED:
+`TestTestConnectionAcceptsAlreadyResolvedSecretWithoutAResolver`
+(`protocol_oidc/client_test.go`) を先に fail 確認 → GREEN。
+`just build-go` / `golangci-lint run ./backend/authentication/federation/...` /
+`go test ./backend/authentication/federation/...` は green。
