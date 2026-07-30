@@ -572,9 +572,10 @@ export type IdentityProviderConnection = {
   tenant_id: string
   display_name: string
   protocol: 'oidc' | 'saml'
-  status: 'draft' | 'active' | 'disabled'
+  status: 'active' | 'disabled'
   issuer: string
   client_id?: string
+  client_secret_configured: boolean
   authorization_endpoint?: string
   token_endpoint?: string
   jwks_uri?: string
@@ -591,12 +592,30 @@ export type IdentityProviderConnection = {
   linking_policy: 'none' | 'verified_email'
   jit_provisioning: boolean
   allowed_email_domains?: string[]
+  metadata_refreshed_at?: string
+  created_at: string
+  updated_at: string
 }
 
+// secret_reference は書き込み専用でクライアントシークレットの実値を受け取る
+// (ADR-150)。未入力なら既存の値を維持する。レスポンス側の型には含まれない
+// (API レスポンスには実値もciphertextも含まれないため IdentityProviderConnection
+// 自体に secret_reference フィールドはない)。
 export type IdentityProviderConnectionInput = Omit<
   IdentityProviderConnection,
-  'id' | 'tenant_id' | 'status'
+  | 'id'
+  | 'tenant_id'
+  | 'status'
+  | 'client_secret_configured'
+  | 'metadata_refreshed_at'
+  | 'created_at'
+  | 'updated_at'
 > & { secret_reference?: string }
+
+export type IdentityProviderConnectionTestResult = {
+  success: boolean
+  failures: string[]
+}
 
 export async function listIdentityProviderConnections(): Promise<IdentityProviderConnection[]> {
   const response = await request<{ connections: IdentityProviderConnection[] }>(
@@ -626,12 +645,23 @@ export async function updateIdentityProviderConnection(
 export async function runIdentityProviderAction(
   csrfToken: string,
   providerID: string,
-  action: 'activate' | 'disable' | 'refresh' | 'test',
+  action: 'activate' | 'disable' | 'refresh',
 ): Promise<void> {
   await request(
     `/api/admin/identity-providers/${encodeURIComponent(providerID)}/${action}`,
     adminRequest(csrfToken, 'POST'),
   )
+}
+
+export async function testIdentityProviderConnection(
+  csrfToken: string,
+  providerID: string,
+): Promise<IdentityProviderConnectionTestResult> {
+  const response = await request<{ result: IdentityProviderConnectionTestResult }>(
+    `/api/admin/identity-providers/${encodeURIComponent(providerID)}/test`,
+    adminRequest(csrfToken, 'POST'),
+  )
+  return response.result
 }
 
 export async function previewIdentityProviderMapping(

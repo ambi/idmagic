@@ -120,12 +120,16 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
 	mfaSecretCipher := &datakeys.FieldCipher{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto}
 	mfaFactorRepo := &totppostgres.MfaFactorRepository{Pool: resilientDB, Cipher: mfaSecretCipher}
+	federationConnectionRepo := &federationpostgres.ConnectionRepository{Pool: resilientDB, Cipher: mfaSecretCipher}
 	// dataKeysMigrators feeds the data_key_reencryption job (wi-97 T006):
 	// every owning context registers its FieldMigrator here so Rotate can
 	// enqueue per-migrator backfill jobs and Destroy's gate can verify no
 	// migrator still has pending rows before crypto-shredding a version.
 	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
 	dataKeysMigrators.Register(totppostgres.MfaFactorMigratorName, &totppostgres.MfaFactorReencryptor{Repo: mfaFactorRepo})
+	dataKeysMigrators.Register(federationpostgres.IdentityProviderSecretMigratorName, &federationpostgres.ConnectionSecretReencryptor{
+		Repo: federationConnectionRepo, EnvResolver: federationsecrets.Resolver{},
+	})
 
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
@@ -165,7 +169,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			UserMutationCommitter:    userMutationCommitter,
 		},
 		Authentication: authentication.Module{
-			FederationConnectionRepo: &federationpostgres.ConnectionRepository{Pool: resilientDB},
+			FederationConnectionRepo: federationConnectionRepo,
 			FederationIdentityRepo:   &federationpostgres.IdentityRepository{Pool: resilientDB},
 			FederationAttemptStore:   &federationpostgres.AttemptStore{Pool: resilientDB},
 			FederationReplayStore:    &federationpostgres.ReplayStore{Pool: resilientDB},

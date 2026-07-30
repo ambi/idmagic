@@ -253,6 +253,8 @@ type IdentityProviderConnection struct {
 	Issuer                  string
 	ClientID                pgtype.Text
 	SecretReference         pgtype.Text
+	SecretKeyVersion        pgtype.Int4
+	SecretCiphertext        []byte
 	AuthorizationEndpoint   pgtype.Text
 	TokenEndpoint           pgtype.Text
 	JwksUri                 pgtype.Text

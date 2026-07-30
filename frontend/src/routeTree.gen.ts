@@ -36,6 +36,7 @@ import { Route as AdminProvisioningRouteImport } from './routes/admin/provisioni
 import { Route as AdminMcpResourceServersRouteImport } from './routes/admin/mcp-resource-servers'
 import { Route as AdminLifecycleWorkflowsRouteImport } from './routes/admin/lifecycle-workflows'
 import { Route as AdminKeysRouteImport } from './routes/admin/keys'
+import { Route as AdminIdentityProvidersRouteImport } from './routes/admin/identity-providers'
 import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
 import { Route as AdminConsentsRouteImport } from './routes/admin/consents'
 import { Route as AdminAuthorizationDetailTypesRouteImport } from './routes/admin/authorization-detail-types'
@@ -59,6 +60,8 @@ import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant
 import { Route as AdminSettingsSamlIdpProfilesRouteImport } from './routes/admin/settings_/saml-idp-profiles'
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
 import { Route as AdminLifecycleWorkflowsNewRouteImport } from './routes/admin/lifecycle-workflows_/new'
+import { Route as AdminIdentityProvidersNewRouteImport } from './routes/admin/identity-providers_/new'
+import { Route as AdminIdentityProvidersIdRouteImport } from './routes/admin/identity-providers_/$id'
 import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
 import { Route as AdminGroupsExportsRouteImport } from './routes/admin/groups_/exports'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
@@ -68,12 +71,14 @@ import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$
 import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
 import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id.index'
+import { Route as AdminIdentityProvidersIdIndexRouteImport } from './routes/admin/identity-providers_/$id.index'
 import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
 import { Route as AdminSettingsSamlIdpProfilesNewRouteImport } from './routes/admin/settings_/saml-idp-profiles_/new'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId'
 import { Route as AdminLifecycleWorkflowsWorkflowIdEditRouteImport } from './routes/admin/lifecycle-workflows_/$workflowId.edit'
+import { Route as AdminIdentityProvidersIdEditRouteImport } from './routes/admin/identity-providers_/$id.edit'
 import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
 import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
 import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
@@ -217,6 +222,11 @@ const AdminKeysRoute = AdminKeysRouteImport.update({
   path: '/keys',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminIdentityProvidersRoute = AdminIdentityProvidersRouteImport.update({
+  id: '/identity-providers',
+  path: '/identity-providers',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminGroupsRoute = AdminGroupsRouteImport.update({
   id: '/groups',
   path: '/groups',
@@ -335,6 +345,18 @@ const AdminLifecycleWorkflowsNewRoute =
     path: '/lifecycle-workflows/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminIdentityProvidersNewRoute =
+  AdminIdentityProvidersNewRouteImport.update({
+    id: '/identity-providers_/new',
+    path: '/identity-providers/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminIdentityProvidersIdRoute =
+  AdminIdentityProvidersIdRouteImport.update({
+    id: '/identity-providers_/$id',
+    path: '/identity-providers/$id',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminGroupsNewRoute = AdminGroupsNewRouteImport.update({
   id: '/groups_/new',
   path: '/groups/new',
@@ -381,6 +403,12 @@ const AdminUsersIdIndexRoute = AdminUsersIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminUsersIdRoute,
 } as any)
+const AdminIdentityProvidersIdIndexRoute =
+  AdminIdentityProvidersIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminIdentityProvidersIdRoute,
+  } as any)
 const AdminGroupsGroupIdIndexRoute = AdminGroupsGroupIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -414,6 +442,12 @@ const AdminLifecycleWorkflowsWorkflowIdEditRoute =
     id: '/lifecycle-workflows_/$workflowId/edit',
     path: '/lifecycle-workflows/$workflowId/edit',
     getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminIdentityProvidersIdEditRoute =
+  AdminIdentityProvidersIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AdminIdentityProvidersIdRoute,
   } as any)
 const AdminGroupsGroupIdEditRoute = AdminGroupsGroupIdEditRouteImport.update({
   id: '/edit',
@@ -484,6 +518,7 @@ export interface FileRoutesByFullPath {
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
+  '/admin/identity-providers': typeof AdminIdentityProvidersRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
@@ -506,6 +541,8 @@ export interface FileRoutesByFullPath {
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
+  '/admin/identity-providers/$id': typeof AdminIdentityProvidersIdRouteWithChildren
+  '/admin/identity-providers/new': typeof AdminIdentityProvidersNewRoute
   '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
@@ -519,12 +556,14 @@ export interface FileRoutesByFullPath {
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
+  '/admin/identity-providers/$id/edit': typeof AdminIdentityProvidersIdEditRoute
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
+  '/admin/identity-providers/$id/': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users/$id/': typeof AdminUsersIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
@@ -555,6 +594,7 @@ export interface FileRoutesByTo {
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
+  '/admin/identity-providers': typeof AdminIdentityProvidersRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
@@ -575,6 +615,7 @@ export interface FileRoutesByTo {
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
+  '/admin/identity-providers/new': typeof AdminIdentityProvidersNewRoute
   '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
@@ -586,11 +627,13 @@ export interface FileRoutesByTo {
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
   '/admin/groups/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
+  '/admin/identity-providers/$id/edit': typeof AdminIdentityProvidersIdEditRoute
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
+  '/admin/identity-providers/$id': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users/$id': typeof AdminUsersIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
@@ -625,6 +668,7 @@ export interface FileRoutesById {
   '/admin/authorization-detail-types': typeof AdminAuthorizationDetailTypesRoute
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
+  '/admin/identity-providers': typeof AdminIdentityProvidersRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
@@ -647,6 +691,8 @@ export interface FileRoutesById {
   '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups_/exports': typeof AdminGroupsExportsRoute
   '/admin/groups_/new': typeof AdminGroupsNewRoute
+  '/admin/identity-providers_/$id': typeof AdminIdentityProvidersIdRouteWithChildren
+  '/admin/identity-providers_/new': typeof AdminIdentityProvidersNewRoute
   '/admin/lifecycle-workflows_/new': typeof AdminLifecycleWorkflowsNewRoute
   '/admin/roles_/$name': typeof AdminRolesNameRoute
   '/admin/settings_/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
@@ -660,12 +706,14 @@ export interface FileRoutesById {
   '/admin/applications_/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
   '/admin/groups_/$groupId/edit': typeof AdminGroupsGroupIdEditRoute
+  '/admin/identity-providers_/$id/edit': typeof AdminIdentityProvidersIdEditRoute
   '/admin/lifecycle-workflows_/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/settings_/saml-idp-profiles_/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings_/saml-idp-profiles_/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
+  '/admin/identity-providers_/$id/': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users_/$id/': typeof AdminUsersIdIndexRoute
   '/admin/groups_/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/settings_/saml-idp-profiles_/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
@@ -701,6 +749,7 @@ export interface FileRouteTypes {
     | '/admin/authorization-detail-types'
     | '/admin/consents'
     | '/admin/groups'
+    | '/admin/identity-providers'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
     | '/admin/mcp-resource-servers'
@@ -723,6 +772,8 @@ export interface FileRouteTypes {
     | '/admin/groups/$groupId'
     | '/admin/groups/exports'
     | '/admin/groups/new'
+    | '/admin/identity-providers/$id'
+    | '/admin/identity-providers/new'
     | '/admin/lifecycle-workflows/new'
     | '/admin/roles/$name'
     | '/admin/settings/saml-idp-profiles'
@@ -736,12 +787,14 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
+    | '/admin/identity-providers/$id/edit'
     | '/admin/lifecycle-workflows/$workflowId/edit'
     | '/admin/settings/saml-idp-profiles/$profileId'
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
+    | '/admin/identity-providers/$id/'
     | '/admin/users/$id/'
     | '/admin/groups/$groupId/members/exports'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
@@ -772,6 +825,7 @@ export interface FileRouteTypes {
     | '/admin/authorization-detail-types'
     | '/admin/consents'
     | '/admin/groups'
+    | '/admin/identity-providers'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
     | '/admin/mcp-resource-servers'
@@ -792,6 +846,7 @@ export interface FileRouteTypes {
     | '/admin/federation/entra'
     | '/admin/groups/exports'
     | '/admin/groups/new'
+    | '/admin/identity-providers/new'
     | '/admin/lifecycle-workflows/new'
     | '/admin/roles/$name'
     | '/admin/settings/saml-idp-profiles'
@@ -803,11 +858,13 @@ export interface FileRouteTypes {
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/federation/entra/new'
     | '/admin/groups/$groupId/edit'
+    | '/admin/identity-providers/$id/edit'
     | '/admin/lifecycle-workflows/$workflowId/edit'
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/users/$id/edit'
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
+    | '/admin/identity-providers/$id'
     | '/admin/users/$id'
     | '/admin/groups/$groupId/members/exports'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
@@ -841,6 +898,7 @@ export interface FileRouteTypes {
     | '/admin/authorization-detail-types'
     | '/admin/consents'
     | '/admin/groups'
+    | '/admin/identity-providers'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
     | '/admin/mcp-resource-servers'
@@ -863,6 +921,8 @@ export interface FileRouteTypes {
     | '/admin/groups_/$groupId'
     | '/admin/groups_/exports'
     | '/admin/groups_/new'
+    | '/admin/identity-providers_/$id'
+    | '/admin/identity-providers_/new'
     | '/admin/lifecycle-workflows_/new'
     | '/admin/roles_/$name'
     | '/admin/settings_/saml-idp-profiles'
@@ -876,12 +936,14 @@ export interface FileRouteTypes {
     | '/admin/applications_/$applicationId/provisioning'
     | '/admin/federation/entra_/new'
     | '/admin/groups_/$groupId/edit'
+    | '/admin/identity-providers_/$id/edit'
     | '/admin/lifecycle-workflows_/$workflowId/edit'
     | '/admin/settings_/saml-idp-profiles_/$profileId'
     | '/admin/settings_/saml-idp-profiles_/new'
     | '/admin/users_/$id/edit'
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
+    | '/admin/identity-providers_/$id/'
     | '/admin/users_/$id/'
     | '/admin/groups_/$groupId/members/exports'
     | '/admin/settings_/saml-idp-profiles_/$profileId/edit'
@@ -1095,6 +1157,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminKeysRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/identity-providers': {
+      id: '/admin/identity-providers'
+      path: '/identity-providers'
+      fullPath: '/admin/identity-providers'
+      preLoaderRoute: typeof AdminIdentityProvidersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/groups': {
       id: '/admin/groups'
       path: '/groups'
@@ -1256,6 +1325,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLifecycleWorkflowsNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/identity-providers_/new': {
+      id: '/admin/identity-providers_/new'
+      path: '/identity-providers/new'
+      fullPath: '/admin/identity-providers/new'
+      preLoaderRoute: typeof AdminIdentityProvidersNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/identity-providers_/$id': {
+      id: '/admin/identity-providers_/$id'
+      path: '/identity-providers/$id'
+      fullPath: '/admin/identity-providers/$id'
+      preLoaderRoute: typeof AdminIdentityProvidersIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/groups_/new': {
       id: '/admin/groups_/new'
       path: '/groups/new'
@@ -1319,6 +1402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersIdIndexRouteImport
       parentRoute: typeof AdminUsersIdRoute
     }
+    '/admin/identity-providers_/$id/': {
+      id: '/admin/identity-providers_/$id/'
+      path: '/'
+      fullPath: '/admin/identity-providers/$id/'
+      preLoaderRoute: typeof AdminIdentityProvidersIdIndexRouteImport
+      parentRoute: typeof AdminIdentityProvidersIdRoute
+    }
     '/admin/groups_/$groupId/': {
       id: '/admin/groups_/$groupId/'
       path: '/'
@@ -1360,6 +1450,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/lifecycle-workflows/$workflowId/edit'
       preLoaderRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/identity-providers_/$id/edit': {
+      id: '/admin/identity-providers_/$id/edit'
+      path: '/edit'
+      fullPath: '/admin/identity-providers/$id/edit'
+      preLoaderRoute: typeof AdminIdentityProvidersIdEditRouteImport
+      parentRoute: typeof AdminIdentityProvidersIdRoute
     }
     '/admin/groups_/$groupId/edit': {
       id: '/admin/groups_/$groupId/edit'
@@ -1483,6 +1580,22 @@ const AdminGroupsGroupIdRouteChildren: AdminGroupsGroupIdRouteChildren = {
 const AdminGroupsGroupIdRouteWithChildren =
   AdminGroupsGroupIdRoute._addFileChildren(AdminGroupsGroupIdRouteChildren)
 
+interface AdminIdentityProvidersIdRouteChildren {
+  AdminIdentityProvidersIdEditRoute: typeof AdminIdentityProvidersIdEditRoute
+  AdminIdentityProvidersIdIndexRoute: typeof AdminIdentityProvidersIdIndexRoute
+}
+
+const AdminIdentityProvidersIdRouteChildren: AdminIdentityProvidersIdRouteChildren =
+  {
+    AdminIdentityProvidersIdEditRoute: AdminIdentityProvidersIdEditRoute,
+    AdminIdentityProvidersIdIndexRoute: AdminIdentityProvidersIdIndexRoute,
+  }
+
+const AdminIdentityProvidersIdRouteWithChildren =
+  AdminIdentityProvidersIdRoute._addFileChildren(
+    AdminIdentityProvidersIdRouteChildren,
+  )
+
 interface AdminUsersIdRouteChildren {
   AdminUsersIdEditRoute: typeof AdminUsersIdEditRoute
   AdminUsersIdIndexRoute: typeof AdminUsersIdIndexRoute
@@ -1522,6 +1635,7 @@ interface AdminRouteRouteChildren {
   AdminAuthorizationDetailTypesRoute: typeof AdminAuthorizationDetailTypesRoute
   AdminConsentsRoute: typeof AdminConsentsRoute
   AdminGroupsRoute: typeof AdminGroupsRoute
+  AdminIdentityProvidersRoute: typeof AdminIdentityProvidersRoute
   AdminKeysRoute: typeof AdminKeysRoute
   AdminLifecycleWorkflowsRoute: typeof AdminLifecycleWorkflowsRoute
   AdminMcpResourceServersRoute: typeof AdminMcpResourceServersRoute
@@ -1537,6 +1651,8 @@ interface AdminRouteRouteChildren {
   AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRouteWithChildren
   AdminGroupsExportsRoute: typeof AdminGroupsExportsRoute
   AdminGroupsNewRoute: typeof AdminGroupsNewRoute
+  AdminIdentityProvidersIdRoute: typeof AdminIdentityProvidersIdRouteWithChildren
+  AdminIdentityProvidersNewRoute: typeof AdminIdentityProvidersNewRoute
   AdminLifecycleWorkflowsNewRoute: typeof AdminLifecycleWorkflowsNewRoute
   AdminRolesNameRoute: typeof AdminRolesNameRoute
   AdminSettingsSamlIdpProfilesRoute: typeof AdminSettingsSamlIdpProfilesRoute
@@ -1558,6 +1674,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAuthorizationDetailTypesRoute: AdminAuthorizationDetailTypesRoute,
   AdminConsentsRoute: AdminConsentsRoute,
   AdminGroupsRoute: AdminGroupsRoute,
+  AdminIdentityProvidersRoute: AdminIdentityProvidersRoute,
   AdminKeysRoute: AdminKeysRoute,
   AdminLifecycleWorkflowsRoute: AdminLifecycleWorkflowsRoute,
   AdminMcpResourceServersRoute: AdminMcpResourceServersRoute,
@@ -1574,6 +1691,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminGroupsGroupIdRoute: AdminGroupsGroupIdRouteWithChildren,
   AdminGroupsExportsRoute: AdminGroupsExportsRoute,
   AdminGroupsNewRoute: AdminGroupsNewRoute,
+  AdminIdentityProvidersIdRoute: AdminIdentityProvidersIdRouteWithChildren,
+  AdminIdentityProvidersNewRoute: AdminIdentityProvidersNewRoute,
   AdminLifecycleWorkflowsNewRoute: AdminLifecycleWorkflowsNewRoute,
   AdminRolesNameRoute: AdminRolesNameRoute,
   AdminSettingsSamlIdpProfilesRoute: AdminSettingsSamlIdpProfilesRoute,

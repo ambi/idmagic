@@ -173,9 +173,8 @@ models:
       - Saml
   IdentityProviderConnectionStatus:
     kind: enum
-    description: connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。
+    description: connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。作成直後の初期状態は Disabled ([[ADR-149]])。
     values:
-      - Draft
       - Active
       - Disabled
   AccountLinkingPolicy:
@@ -206,7 +205,7 @@ models:
       - size(username) > 0
   IdentityProviderConnection:
     kind: entity
-    description: tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で保持する。
+    description: tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で受け取り、DataKeys の per-tenant DEK でエンベロープ暗号化して保持する ([[ADR-150]])。
     identity:
       - tenant_id
       - id
@@ -229,8 +228,12 @@ models:
       secret_reference:
         type: String
         optional: true
+        description: "client secret の実値を書き込み専用で受け取るフィールド。DB には DataKeys の per-tenant DEK でエンベロープ暗号化した ciphertext のみを保存し、API レスポンスには実値・ciphertext のいずれも含めない ([[ADR-150]])。フィールド名は移行元の env: 参照方式から維持している。\n"
         annotations:
           sensitive: true
+      client_secret_configured:
+        type: Boolean
+        description: secret_reference が設定済みかどうかを示す読み取り専用の派生フィールド。実値・ciphertext を含む書き込みには使わない。管理画面の詳細ビューが「設定済み/未設定」だけを示すために使う。
       authorization_endpoint:
         type: String
         optional: true
@@ -267,6 +270,16 @@ models:
       - protocol != Oidc || (client_id != null && authorization_endpoint != null && token_endpoint != null && jwks_uri != null)
       - protocol != Saml || (saml_sso_url != null && saml_entity_id != null && size(saml_signing_certificates) > 0)
       - "!jit_provisioning || (size(claim_mapping.subject) > 0 && size(claim_mapping.username) > 0)"
+  IdentityProviderConnectionTestResult:
+    kind: value_object
+    description: 接続テストの構造化結果。OIDC discovery/JWKS 到達性、SAML 証明書のパース可否、secret_reference の解決 (復号) 可能性を検証する。値そのもの (secret、token、証明書本文) は含まない。
+    fields:
+      success:
+        type: Boolean
+      failures:
+        type: "String[]"
+    constraints:
+      - success || size(failures) > 0
   FederatedIdentity:
     kind: entity
     description: 外部の不変 subject を local User に相関する link。同一 tenant/provider/subject は最大1 local user、同一 local user/provider も最大1 subject とする。
@@ -2497,7 +2510,7 @@ interfaces:
         method: GET
         path: /api/admin/identity-providers
   CreateIdentityProviderConnection:
-    description: tenant administrator が Draft connection を作る。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret の実値ではなく secret_reference だけを受け取る。
+    description: tenant administrator が connection を作る。作成直後の初期状態は Disabled ([[ADR-149]])。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす ([[ADR-150]])。
     input:
       connection:
         type: IdentityProviderConnection
@@ -2522,7 +2535,7 @@ interfaces:
         successful_status_codes:
           - "201"
   UpdateIdentityProviderConnection:
-    description: tenant administrator が connection の display、mapping、policy、secret reference、trust source を更新する。trust source 変更時は再検証が成功するまで Draft とし、失敗時は last-known-good を維持する。
+    description: tenant administrator が connection の display、mapping、policy、secret reference、trust source を更新する。issuer / endpoint / certificate / protocol などの trust source を変更したときだけ Active を Disabled に落とし、display_name や claim_mapping など非 trust フィールドの変更では状態を保持する。trust source 変更時に再検証が失敗した場合は last-known-good を維持する。
     input:
       provider_id:
         type: String
@@ -2545,7 +2558,7 @@ interfaces:
         path: "/api/admin/identity-providers/{provider_id}"
         request_body: json
   DeleteIdentityProviderConnection:
-    description: tenant administrator が Disabled connection を削除する。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。
+    description: tenant administrator が connection を状態を問わずいつでも削除する ([[ADR-149]])。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。
     input:
       provider_id:
         type: String
@@ -2564,7 +2577,7 @@ interfaces:
         successful_status_codes:
           - "204"
   ActivateIdentityProviderConnection:
-    description: trust validation と接続 test に成功した Draft / Disabled connection を Active にする。
+    description: trust validation と接続 test に成功した Disabled connection を Active にする。
     input:
       provider_id:
         type: String
@@ -2625,13 +2638,13 @@ interfaces:
         method: POST
         path: "/api/admin/identity-providers/{provider_id}/refresh"
   TestIdentityProviderConnection:
-    description: 保存済み last-known-good trust と secret resolver を使って接続可能性を検査する。secret の実値、token、certificate 本文は返さない。
+    description: 保存済み last-known-good trust source に対して実際に到達性・解決可能性を検査する。OIDC は authorization_endpoint/token_endpoint/jwks_uri への到達性と secret_reference の解決可能性を、SAML は保存済み証明書の X.509 パース可否と有効期限を確認する。secret の実値、token、certificate 本文は返さない。
     input:
       provider_id:
         type: String
     output:
       result:
-        type: String
+        type: IdentityProviderConnectionTestResult
     errors:
       - InvalidRequestError
       - AccessDeniedError
@@ -2671,14 +2684,11 @@ interfaces:
         request_body: json
 states:
   IdentityProviderConnectionLifecycle:
-    description: upstream connection は検証前 Draft、利用可能 Active、routing 停止 Disabled を遷移する。metadata refresh 失敗は状態を変えず last-known-good を保持する。
+    description: upstream connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する ([[ADR-149]])。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。
     target: IdentityProviderConnection
-    initial: Draft
+    initial: Disabled
     terminal: []
     transitions:
-      - from: Draft
-        event: IdentityProviderConnectionActivated
-        to: Active
       - from: Active
         event: IdentityProviderConnectionDisabled
         to: Disabled

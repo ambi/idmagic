@@ -11,6 +11,7 @@ import (
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	federationdomain "github.com/ambi/idmagic/backend/authentication/federation/domain"
 	oidcprotocol "github.com/ambi/idmagic/backend/authentication/federation/protocol_oidc"
+	samlprotocol "github.com/ambi/idmagic/backend/authentication/federation/protocol_saml"
 	federationusecases "github.com/ambi/idmagic/backend/authentication/federation/usecases"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -230,7 +231,21 @@ func (d Deps) listAdmin(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
+	for _, connection := range connections {
+		withSecretPresence(connection)
+	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"connections": connections})
+}
+
+// withSecretPresence sets ClientSecretConfigured from whatever secret value the connection
+// currently carries (decrypted plaintext, a legacy env: reference, or none) and then clears
+// SecretReference so the caller can pass the connection straight into a JSON response without
+// resolved secret material lingering in memory beyond this point. SecretReference is already
+// excluded from JSON output (`json:"-"`); the explicit clear here is defense in depth.
+func withSecretPresence(connection *federationdomain.IdentityProviderConnection) *federationdomain.IdentityProviderConnection {
+	connection.ClientSecretConfigured = connection.SecretReference != ""
+	connection.SecretReference = ""
+	return connection
 }
 
 func (d Deps) createAdmin(c *echo.Context) error {
@@ -247,13 +262,12 @@ func (d Deps) createAdmin(c *echo.Context) error {
 	if connection.ID == "" {
 		connection.ID = uuid.NewString()
 	}
-	connection.TenantID, connection.Status = support.RequestTenantID(c), federationdomain.ConnectionDraft
+	connection.TenantID, connection.Status = support.RequestTenantID(c), federationdomain.ConnectionDisabled
 	connection.CreatedAt, connection.UpdatedAt = now, now
 	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	connection.SecretReference = ""
-	return support.NoStoreJSON(c, http.StatusCreated, connection)
+	return support.NoStoreJSON(c, http.StatusCreated, withSecretPresence(&connection))
 }
 
 func (d Deps) updateAdmin(c *echo.Context) error {
@@ -270,17 +284,16 @@ func (d Deps) updateAdmin(c *echo.Context) error {
 	}
 	var connection federationdomain.IdentityProviderConnection
 	input.apply(&connection)
-	connection.ID, connection.TenantID = existing.ID, existing.TenantID
-	connection.Status, connection.CreatedAt = federationdomain.ConnectionDraft, existing.CreatedAt
-	connection.UpdatedAt = time.Now().UTC()
+	connection.ID, connection.TenantID, connection.CreatedAt = existing.ID, existing.TenantID, existing.CreatedAt
 	if connection.SecretReference == "" {
 		connection.SecretReference = existing.SecretReference
 	}
+	connection.Status = federationusecases.ResolveUpdatedStatus(*existing, connection)
+	connection.UpdatedAt = time.Now().UTC()
 	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	connection.SecretReference = ""
-	return support.NoStoreJSON(c, http.StatusOK, connection)
+	return support.NoStoreJSON(c, http.StatusOK, withSecretPresence(&connection))
 }
 
 func (d Deps) deleteAdmin(c *echo.Context) error {
@@ -290,9 +303,6 @@ func (d Deps) deleteAdmin(c *echo.Context) error {
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
 	if err != nil || connection == nil {
 		return c.NoContent(http.StatusNoContent)
-	}
-	if connection.Status != federationdomain.ConnectionDisabled {
-		return support.WriteBrowserError(c, http.StatusConflict, "invalid_state", "Disable the identity provider before deleting it.")
 	}
 	if err := d.Broker.Connections.Delete(c.Request().Context(), connection.TenantID, connection.ID); err != nil {
 		return err
@@ -348,8 +358,12 @@ func (d Deps) refresh(c *echo.Context) error {
 	if err := d.Broker.Connections.Save(c.Request().Context(), connection); err != nil {
 		return err
 	}
-	connection.SecretReference = ""
-	return support.NoStoreJSON(c, http.StatusOK, connection)
+	return support.NoStoreJSON(c, http.StatusOK, withSecretPresence(connection))
+}
+
+type connectionTestResult struct {
+	Success  bool     `json:"success"`
+	Failures []string `json:"failures"`
 }
 
 func (d Deps) test(c *echo.Context) error {
@@ -360,10 +374,27 @@ func (d Deps) test(c *echo.Context) error {
 	if err != nil || connection == nil {
 		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
 	}
+	var failures []string
 	if err := connection.Validate(); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "connection_invalid", err.Error())
+		failures = append(failures, err.Error())
+	} else {
+		switch connection.Protocol {
+		case federationdomain.ProtocolOIDC:
+			if d.OIDC == nil {
+				failures = append(failures, "OIDC connection testing is unavailable")
+			} else {
+				failures = d.OIDC.TestConnection(c.Request().Context(), *connection)
+			}
+		case federationdomain.ProtocolSAML:
+			failures = samlprotocol.ValidateSigningCertificates(connection.SAMLSigningCertificates, time.Now().UTC())
+		}
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]string{"result": "valid"})
+	if failures == nil {
+		failures = []string{}
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
+		"result": connectionTestResult{Success: len(failures) == 0, Failures: failures},
+	})
 }
 
 func (d Deps) previewMapping(c *echo.Context) error {

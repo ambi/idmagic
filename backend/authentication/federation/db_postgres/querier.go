@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	ConsumeFederatedLoginAttempt(ctx context.Context, arg ConsumeFederatedLoginAttemptParams) (*ConsumeFederatedLoginAttemptRow, error)
+	CountIdentityProviderConnectionsPendingSecretReencryption(ctx context.Context, arg CountIdentityProviderConnectionsPendingSecretReencryptionParams) (int64, error)
 	CreateFederatedIdentity(ctx context.Context, arg CreateFederatedIdentityParams) error
 	DeleteExpiredReplays(ctx context.Context, arg DeleteExpiredReplaysParams) error
 	DeleteFederatedIdentity(ctx context.Context, arg DeleteFederatedIdentityParams) error
@@ -22,9 +23,20 @@ type Querier interface {
 	GetFederatedLoginAttemptConsumedAt(ctx context.Context, arg GetFederatedLoginAttemptConsumedAtParams) (pgtype.Timestamptz, error)
 	ListFederatedIdentitiesByUser(ctx context.Context, arg ListFederatedIdentitiesByUserParams) ([]*FederatedIdentity, error)
 	ListIdentityProviderConnections(ctx context.Context, tenantID string) ([]*ListIdentityProviderConnectionsRow, error)
+	// Rows with secret material (legacy env: reference or ciphertext) not yet on
+	// activeVersion: never-migrated legacy reference (secret_key_version NULL) or an
+	// older DEK version. Rows with no secret configured at all are excluded.
+	ListIdentityProviderConnectionsPendingSecretReencryption(ctx context.Context, arg ListIdentityProviderConnectionsPendingSecretReencryptionParams) ([]*ListIdentityProviderConnectionsPendingSecretReencryptionRow, error)
 	ReserveReplay(ctx context.Context, arg ReserveReplayParams) (string, error)
 	SaveFederatedLoginAttempt(ctx context.Context, arg SaveFederatedLoginAttemptParams) error
+	// secret_reference/secret_key_version/secret_ciphertext are always written as an
+	// authoritative trio computed by the Go layer (ADR-150): the caller already resolved
+	// "keep the existing secret unchanged" by copying the previous value forward, so this
+	// query never needs to fall back to the stored row for those three columns.
 	SaveIdentityProviderConnection(ctx context.Context, arg SaveIdentityProviderConnectionParams) error
+	// Writes back a (re-)encrypted secret and always clears the legacy plaintext
+	// secret_reference column, mirroring UpdateMfaFactorCiphertext (ADR-148).
+	UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) error
 }
 
 var _ Querier = (*Queries)(nil)

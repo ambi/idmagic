@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"math/big"
 	"net/http"
@@ -89,6 +90,56 @@ func TestExchangeValidatesSignedIDTokenAndNormalizesClaims(t *testing.T) {
 		t.Fatalf("claims=%+v", claims)
 	}
 }
+
+// RED (interface: TestIdentityProviderConnection, ADR-150): reachable endpoints and a
+// resolvable secret_reference together report success with no failures.
+func TestTestConnectionReportsSuccessWhenEndpointsReachableAndSecretResolves(t *testing.T) {
+	client := Client{
+		HTTPClient: fakeHTTPClient(map[string]any{
+			"https://idp.example/auth":  map[string]any{},
+			"https://idp.example/token": map[string]any{},
+			"https://idp.example/jwks":  map[string]any{},
+		}),
+		SecretResolver: stubResolver{value: "shh"},
+	}
+	connection := testConnection()
+	connection.SecretReference = "env:CLIENT_SECRET"
+	if failures := client.TestConnection(context.Background(), connection); len(failures) != 0 {
+		t.Fatalf("failures=%v, want none", failures)
+	}
+}
+
+// RED: an unreachable JWKS endpoint and an unresolvable secret_reference are both reported,
+// without leaking the secret value itself.
+func TestTestConnectionReportsUnreachableEndpointAndUnresolvableSecret(t *testing.T) {
+	client := Client{
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+			if r.URL.String() == "https://idp.example/jwks" {
+				return nil, errors.New("connection refused")
+			}
+			return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody, Header: make(http.Header)}, nil
+		})},
+		SecretResolver: stubResolver{err: errors.New("referenced environment secret is unavailable")},
+	}
+	connection := testConnection()
+	connection.SecretReference = "env:MISSING"
+	failures := client.TestConnection(context.Background(), connection)
+	if len(failures) != 2 {
+		t.Fatalf("failures=%v, want 2 (jwks unreachable + secret unresolved)", failures)
+	}
+	for _, failure := range failures {
+		if strings.Contains(failure, "referenced environment secret is unavailable") {
+			t.Fatalf("failure message leaked resolver error detail: %q", failure)
+		}
+	}
+}
+
+type stubResolver struct {
+	value string
+	err   error
+}
+
+func (s stubResolver) Resolve(context.Context, string) (string, error) { return s.value, s.err }
 
 func testConnection() domain.IdentityProviderConnection {
 	return domain.IdentityProviderConnection{

@@ -5,6 +5,7 @@ import {
   IconCloudUpload,
   IconForms,
   IconLayoutDashboard,
+  IconNetwork,
   IconPlugConnected,
   IconRobot,
   IconSettings,
@@ -29,6 +30,7 @@ export type AdminNavKey =
   | 'provisioning'
   | 'sign-in-policy'
   | 'entra-federation'
+  | 'identity-providers'
   | 'authz-detail-types'
   | 'mcp-resource-servers'
   | 'consents'
@@ -163,6 +165,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
     icon: IconWorldShare,
     href: tenantURL('/admin/federation/entra'),
     active: active === 'entra-federation',
+  })
+  items.push({
+    key: 'identity-providers',
+    label: t.identityProviders,
+    icon: IconNetwork,
+    href: tenantURL('/admin/identity-providers'),
+    active: active === 'identity-providers',
   })
   items.push({
     key: 'settings',

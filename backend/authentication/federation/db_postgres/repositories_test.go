@@ -10,14 +10,130 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/federation/db_postgres"
 	"github.com/ambi/idmagic/backend/authentication/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/federation/ports"
+	"github.com/ambi/idmagic/backend/datakeys"
+	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
+	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
+	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
 func TestMain(m *testing.M) { os.Exit(pgtest.Main(m)) }
+
+// newTestCipher bootstraps a real DataKeys stack (memory repository + Tink cleartext master
+// key, no OpenBao needed) with an active DEK for tenantID, mirroring
+// totp/db_postgres/mfa_test.go's identically named helper.
+func newTestCipher(t *testing.T, tenantID string) *datakeys.FieldCipher {
+	t.Helper()
+	repo := datakeysmemory.NewDataKeyRepository()
+	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
+	if err != nil {
+		t.Fatalf("NewCleartextMasterKeyProvider failed: %v", err)
+	}
+	crypto := envelope_crypto.NewTinkEnvelopeCrypto(master)
+	cache := datakeysusecases.NewDataKeyCache(repo, crypto)
+	deps := datakeysusecases.Deps{Repository: repo, Crypto: crypto, Cache: cache}
+	if _, err := datakeysusecases.BootstrapTenantDataKey(context.Background(), deps, tenantID, pgfixtures.TestClock()); err != nil {
+		t.Fatalf("bootstrap tenant data key: %v", err)
+	}
+	return &datakeys.FieldCipher{Cache: cache, Crypto: crypto}
+}
+
+// RED (interface: UpdateIdentityProviderConnection, ADR-150): a real (non "env:") secret
+// value is encrypted at rest, never written to the legacy plaintext column.
+func TestConnectionRepositoryEncryptsRealSecretAtRest(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	ctx, now := context.Background(), pgtest.Now()
+	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: newTestCipher(t, tenant.ID)}
+	connection := testConnection(tenant.ID, now)
+	connection.SecretReference = "s3cr3t-client-secret"
+	if err := connections.Save(ctx, connection); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	found, err := connections.Find(ctx, tenant.ID, connection.ID)
+	if err != nil || found == nil || found.SecretReference != "s3cr3t-client-secret" {
+		t.Fatalf("Find=(%+v,%v), want round-tripped plaintext", found, err)
+	}
+
+	row, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{
+		TenantID: tenant.ID, ProviderID: connection.ID,
+	})
+	if err != nil {
+		t.Fatalf("raw find: %v", err)
+	}
+	if row.SecretReference != "" {
+		t.Fatal("expected legacy plaintext secret_reference column to be empty after an encrypted write")
+	}
+	if len(row.SecretCiphertext) == 0 {
+		t.Fatal("expected secret_ciphertext to be populated")
+	}
+	if string(row.SecretCiphertext) == "s3cr3t-client-secret" {
+		t.Fatal("ciphertext at rest must not equal plaintext")
+	}
+}
+
+// RED: a legacy "env:" reference is left untouched (dual-read/dual-write, unchanged
+// behavior) even when a Cipher is configured — only real secret values are encrypted.
+func TestConnectionRepositoryDualReadsLegacyEnvReference(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	ctx, now := context.Background(), pgtest.Now()
+	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: newTestCipher(t, tenant.ID)}
+	connection := testConnection(tenant.ID, now)
+	if err := connections.Save(ctx, connection); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	found, err := connections.Find(ctx, tenant.ID, connection.ID)
+	if err != nil || found == nil || found.SecretReference != "env:OIDC_SECRET" {
+		t.Fatalf("Find=(%+v,%v), want unchanged env: reference", found, err)
+	}
+	row, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{
+		TenantID: tenant.ID, ProviderID: connection.ID,
+	})
+	if err != nil {
+		t.Fatalf("raw find: %v", err)
+	}
+	if len(row.SecretCiphertext) != 0 {
+		t.Fatal("expected no ciphertext for a legacy env: reference")
+	}
+}
+
+// RED: re-saving a connection whose secret is an unresolved legacy env: reference —
+// without the caller touching the secret field — must not corrupt it into ciphertext.
+// This guards the "keep existing secret unchanged" copy-forward pattern used by
+// handlers_http.updateAdmin: Find returns the raw reference string, and re-Save must
+// recognize it as still legacy, not encrypt the literal "env:..." text.
+func TestConnectionRepositoryPreservesLegacyReferenceAcrossUnrelatedSave(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	ctx, now := context.Background(), pgtest.Now()
+	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: newTestCipher(t, tenant.ID)}
+	connection := testConnection(tenant.ID, now)
+	if err := connections.Save(ctx, connection); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	found, err := connections.Find(ctx, tenant.ID, connection.ID)
+	if err != nil || found == nil {
+		t.Fatalf("Find=(%+v,%v)", found, err)
+	}
+	found.DisplayName = "Renamed"
+	if err := connections.Save(ctx, found); err != nil {
+		t.Fatalf("unrelated Save: %v", err)
+	}
+
+	again, err := connections.Find(ctx, tenant.ID, connection.ID)
+	if err != nil || again == nil || again.SecretReference != "env:OIDC_SECRET" {
+		t.Fatalf("Find after unrelated save=(%+v,%v), want unchanged env: reference", again, err)
+	}
+}
 
 func TestConnectionAndIdentityRepositoriesRoundTrip(t *testing.T) {
 	pool := pgtest.Require(t)

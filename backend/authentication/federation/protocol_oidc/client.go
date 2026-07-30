@@ -70,6 +70,53 @@ func (c Client) RefreshDiscovery(ctx context.Context, connection *domain.Identit
 	return nil
 }
 
+// TestConnection reports, without performing any authorization_code flow, whether the
+// connection's fixed trust-source endpoints are reachable and its secret_reference resolves.
+// It never returns the secret value, tokens, or certificate bodies; an empty slice means success.
+func (c Client) TestConnection(ctx context.Context, connection domain.IdentityProviderConnection) []string {
+	if connection.Protocol != domain.ProtocolOIDC {
+		return []string{"connection is not OIDC"}
+	}
+	client := c.HTTPClient
+	if client == nil {
+		client = safeHTTPClient()
+	}
+	var failures []string
+	for _, endpoint := range []struct{ label, url string }{
+		{"authorization endpoint", connection.AuthorizationEndpoint},
+		{"token endpoint", connection.TokenEndpoint},
+		{"JWKS URI", connection.JWKSURI},
+	} {
+		if err := reachable(ctx, client, endpoint.url); err != nil {
+			failures = append(failures, fmt.Sprintf("%s is unreachable", endpoint.label))
+		}
+	}
+	if connection.SecretReference != "" {
+		if c.SecretResolver == nil {
+			failures = append(failures, "secret reference cannot be resolved")
+		} else if _, err := c.SecretResolver.Resolve(ctx, connection.SecretReference); err != nil {
+			failures = append(failures, "secret reference cannot be resolved")
+		}
+	}
+	return failures
+}
+
+func reachable(ctx context.Context, client *http.Client, rawURL string) error {
+	if err := validateRemoteURL(rawURL); err != nil {
+		return err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodHead, rawURL, http.NoBody)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = response.Body.Close() }()
+	return nil
+}
+
 func AuthorizationURL(connection domain.IdentityProviderConnection, attempt domain.FederatedLoginAttempt, redirectURI string) (string, error) {
 	if !connection.Active() || connection.Protocol != domain.ProtocolOIDC {
 		return "", errors.New("OIDC connection is not active")

@@ -9,7 +9,7 @@ func TestIdentityProviderConnectionValidateAndLifecycle(t *testing.T) {
 	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
 	connection := IdentityProviderConnection{
 		ID: "google", TenantID: "tenant-a", DisplayName: "Google",
-		Protocol: ProtocolOIDC, Status: ConnectionDraft,
+		Protocol: ProtocolOIDC, Status: ConnectionDisabled,
 		Issuer: "https://accounts.example.com", ClientID: "client-1",
 		SecretReference:       "env:GOOGLE_CLIENT_SECRET",
 		AuthorizationEndpoint: "https://accounts.example.com/authorize",
@@ -34,11 +34,51 @@ func TestIdentityProviderConnectionValidateAndLifecycle(t *testing.T) {
 	}
 }
 
+// RED (scenario/state guard: IdentityProviderConnectionLifecycle, ADR-149): Draft は廃止され、
+// Active な connection の再 activate は許可されない (Disabled からの遷移だけが有効)。
+func TestActivateRejectsAlreadyActiveConnection(t *testing.T) {
+	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
+	connection := IdentityProviderConnection{
+		ID: "google", TenantID: "tenant-a", DisplayName: "Google",
+		Protocol: ProtocolOIDC, Status: ConnectionActive,
+		Issuer: "https://accounts.example.com", ClientID: "client-1",
+		AuthorizationEndpoint: "https://accounts.example.com/authorize",
+		TokenEndpoint:         "https://accounts.example.com/token",
+		JWKSURI:               "https://accounts.example.com/jwks",
+		ClaimMapping:          ClaimMapping{Subject: "sub", Username: "email"},
+		LinkingPolicy:         LinkingNone,
+		CreatedAt:             now, UpdatedAt: now,
+	}
+	if err := connection.Activate(now.Add(time.Minute)); err == nil {
+		t.Fatal("activating an already-active connection must fail")
+	}
+}
+
+// RED (model: IdentityProviderConnectionStatus, ADR-149): Draft は enum から除かれたので
+// Validate は Active/Disabled 以外の status 値を常に拒否する。
+func TestValidateRejectsNonActiveDisabledStatus(t *testing.T) {
+	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
+	connection := IdentityProviderConnection{
+		ID: "google", TenantID: "tenant-a", DisplayName: "Google",
+		Protocol: ProtocolOIDC, Status: ConnectionStatus("draft"),
+		Issuer: "https://accounts.example.com", ClientID: "client-1",
+		AuthorizationEndpoint: "https://accounts.example.com/authorize",
+		TokenEndpoint:         "https://accounts.example.com/token",
+		JWKSURI:               "https://accounts.example.com/jwks",
+		ClaimMapping:          ClaimMapping{Subject: "sub", Username: "email"},
+		LinkingPolicy:         LinkingNone,
+		CreatedAt:             now, UpdatedAt: now,
+	}
+	if err := connection.Validate(); err == nil {
+		t.Fatal("status \"draft\" must be rejected now that Draft is removed")
+	}
+}
+
 func TestIdentityProviderConnectionRejectsUnsafeOrIncompleteTrust(t *testing.T) {
 	tests := []IdentityProviderConnection{
 		{
 			ID: "oidc", TenantID: "tenant-a", DisplayName: "OIDC",
-			Protocol: ProtocolOIDC, Status: ConnectionDraft,
+			Protocol: ProtocolOIDC, Status: ConnectionDisabled,
 			Issuer: "http://idp.example.com", ClientID: "client",
 			AuthorizationEndpoint: "https://idp.example.com/auth",
 			TokenEndpoint:         "https://idp.example.com/token", JWKSURI: "https://idp.example.com/jwks",
@@ -46,7 +86,7 @@ func TestIdentityProviderConnectionRejectsUnsafeOrIncompleteTrust(t *testing.T) 
 		},
 		{
 			ID: "saml", TenantID: "tenant-a", DisplayName: "SAML",
-			Protocol: ProtocolSAML, Status: ConnectionDraft,
+			Protocol: ProtocolSAML, Status: ConnectionDisabled,
 			Issuer:       "https://idp.example.com",
 			SAMLEntityID: "https://idp.example.com/metadata",
 			SAMLSSOURL:   "https://idp.example.com/sso",

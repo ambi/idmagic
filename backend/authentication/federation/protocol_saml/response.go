@@ -146,6 +146,33 @@ func ValidateResponse(
 	return normalizeClaims(connection.ClaimMapping, values)
 }
 
+// ValidateSigningCertificates reports, without a browser round-trip, whether the connection's
+// saved SAML signing certificates parse as valid X.509 and are within their validity period.
+// An empty slice means every configured certificate is currently usable.
+func ValidateSigningCertificates(certificates []string, now time.Time) []string {
+	if len(certificates) == 0 {
+		return []string{"no SAML signing certificates are configured"}
+	}
+	now = normalizedNow(now)
+	var failures []string
+	for _, certificatePEM := range certificates {
+		block, _ := pem.Decode([]byte(certificatePEM))
+		if block == nil || block.Type != "CERTIFICATE" {
+			failures = append(failures, "a SAML signing certificate could not be parsed")
+			continue
+		}
+		certificate, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			failures = append(failures, "a SAML signing certificate could not be parsed")
+			continue
+		}
+		if now.Before(certificate.NotBefore) || !now.Before(certificate.NotAfter) {
+			failures = append(failures, "a SAML signing certificate is outside its validity period")
+		}
+	}
+	return failures
+}
+
 func validateSignature(root *etree.Element, certificates []string) (*etree.Element, error) {
 	if childByLocal(root, "Signature") == nil {
 		return nil, errors.New("SAML response signature is required")

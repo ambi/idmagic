@@ -141,7 +141,7 @@ Priorities are accessibility, bundle size, maintainability, design ownership, an
 
 ## UI navigation and consistency policy
 
-The admin console and account portal follow a set of strict UI consistency and navigation guidelines (ADR-086, wi-126):
+The admin console and account portal follow a set of strict UI consistency and navigation guidelines (ADR-086, wi-126). Applied to Entra federation (wi-126 §8) and, as of wi-309, to external identity providers (`/admin/identity-providers`).
 
 1. **Detail-then-Edit Navigation Policy**
    - For resource creation or editing, the UI must separate the read-only view (detail) from the write/edit view.

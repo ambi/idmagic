@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,7 +16,28 @@ import (
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
-type ConnectionRepository struct{ Pool sharedpg.DB }
+// federationSecretRecordContext/-Table/-Field name the AAD components for envelope
+// encryption of the client secret (ADR-150), mirroring
+// backend/authentication/totp/db_postgres's mfaFactorRecordContext/-Table/-Field.
+const (
+	federationSecretRecordContext = "Authentication"
+	federationSecretTable         = "identity_provider_connections"
+	federationSecretField         = "secret_reference"
+)
+
+// connectionRecordID is the stable per-row id fed into the encryption AAD.
+func connectionRecordID(tenantID, providerID string) string { return tenantID + ":" + providerID }
+
+// ConnectionRepository persists IdentityProviderConnection. Cipher envelope-encrypts a real
+// secret value at rest (ADR-150): Save always encrypts a non-empty SecretReference that is
+// not a legacy "env:" reference, and never writes it to the legacy plaintext column. A
+// SecretReference that still uses the "env:" scheme is left untouched in the legacy column
+// (dual-read/dual-write) until a FieldMigrator resolves and re-encrypts it. Cipher may be nil
+// (encryption not yet wired), in which case every value is written to the legacy column as-is.
+type ConnectionRepository struct {
+	Pool   sharedpg.DB
+	Cipher federationports.SecretCipher
+}
 
 func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProviderConnection) error {
 	if err := c.Validate(); err != nil {
@@ -33,6 +55,10 @@ func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProvi
 	if err != nil {
 		return err
 	}
+	secretReference, keyVersion, ciphertext, err := r.resolveSecretColumns(ctx, c)
+	if err != nil {
+		return err
+	}
 	return New(r.Pool).SaveIdentityProviderConnection(ctx, SaveIdentityProviderConnectionParams{
 		TenantID:                c.TenantID,
 		ProviderID:              c.ID,
@@ -41,12 +67,14 @@ func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProvi
 		Status:                  string(c.Status),
 		Issuer:                  c.Issuer,
 		Column7:                 c.ClientID,
-		Column8:                 c.SecretReference,
-		Column9:                 c.AuthorizationEndpoint,
-		Column10:                c.TokenEndpoint,
-		Column11:                c.JWKSURI,
-		Column12:                c.SAMLSSOURL,
-		Column13:                c.SAMLEntityID,
+		Column8:                 secretReference,
+		SecretKeyVersion:        keyVersion,
+		SecretCiphertext:        ciphertext,
+		Column11:                c.AuthorizationEndpoint,
+		Column12:                c.TokenEndpoint,
+		Column13:                c.JWKSURI,
+		Column14:                c.SAMLSSOURL,
+		Column15:                c.SAMLEntityID,
 		SamlSigningCertificates: certs,
 		ClaimMapping:            mapping,
 		LinkingPolicy:           string(c.LinkingPolicy),
@@ -58,7 +86,56 @@ func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProvi
 	})
 }
 
-func mapConnection(row *FindIdentityProviderConnectionRow) (*domain.IdentityProviderConnection, error) {
+// resolveSecretColumns computes the authoritative (secret_reference, secret_key_version,
+// secret_ciphertext) trio to write. A blank SecretReference means "no secret configured" (both
+// forms NULL). A legacy "env:" reference — or any value at all when Cipher is nil — is written
+// to the legacy plaintext column unchanged. Anything else is treated as a real secret value and
+// is always encrypted, never written in plaintext (ADR-150, mirrors MfaFactorRepository.Save).
+func (r *ConnectionRepository) resolveSecretColumns(
+	ctx context.Context, c *domain.IdentityProviderConnection,
+) (secretReference string, keyVersion pgtype.Int4, ciphertext []byte, err error) {
+	switch {
+	case c.SecretReference == "":
+		return "", pgtype.Int4{}, nil, nil
+	case r.Cipher == nil || strings.HasPrefix(c.SecretReference, "env:"):
+		return c.SecretReference, pgtype.Int4{}, nil, nil
+	default:
+		version, ct, err := r.Cipher.Encrypt(
+			ctx, c.TenantID, federationSecretRecordContext, federationSecretTable,
+			connectionRecordID(c.TenantID, c.ID), federationSecretField, c.SecretReference,
+		)
+		if err != nil {
+			return "", pgtype.Int4{}, nil, err
+		}
+		return "", pgtype.Int4{Int32: int32(version), Valid: true}, ct, nil //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
+	}
+}
+
+// resolveStoredSecret dual-reads a row's secret: ciphertext present means decrypt it (the
+// resulting plaintext is used directly by callers, no further "env:" resolution needed);
+// otherwise the legacy secret_reference column value (an "env:" reference, or empty) is
+// returned unchanged, exactly as before this migration.
+func (r *ConnectionRepository) resolveStoredSecret(
+	ctx context.Context, tenantID, providerID, legacyReference string, keyVersion pgtype.Int4, ciphertext []byte,
+) (string, error) {
+	if !keyVersion.Valid || len(ciphertext) == 0 {
+		return legacyReference, nil
+	}
+	if r.Cipher == nil {
+		return "", errors.New("identity provider secret cipher is not configured")
+	}
+	return r.Cipher.Decrypt(
+		ctx, tenantID, federationSecretRecordContext, federationSecretTable,
+		connectionRecordID(tenantID, providerID), federationSecretField,
+		int(keyVersion.Int32), ciphertext,
+	)
+}
+
+func (r *ConnectionRepository) mapConnection(ctx context.Context, row *FindIdentityProviderConnectionRow) (*domain.IdentityProviderConnection, error) {
+	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ProviderID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
+	if err != nil {
+		return nil, err
+	}
 	c := &domain.IdentityProviderConnection{
 		TenantID:              row.TenantID,
 		ID:                    row.ProviderID,
@@ -67,7 +144,7 @@ func mapConnection(row *FindIdentityProviderConnectionRow) (*domain.IdentityProv
 		Status:                domain.ConnectionStatus(row.Status),
 		Issuer:                row.Issuer,
 		ClientID:              row.ClientID,
-		SecretReference:       row.SecretReference,
+		SecretReference:       secretReference,
 		AuthorizationEndpoint: row.AuthorizationEndpoint,
 		TokenEndpoint:         row.TokenEndpoint,
 		JWKSURI:               row.JwksUri,
@@ -91,7 +168,11 @@ func mapConnection(row *FindIdentityProviderConnectionRow) (*domain.IdentityProv
 	return c, c.Validate()
 }
 
-func mapConnectionListRow(row *ListIdentityProviderConnectionsRow) (*domain.IdentityProviderConnection, error) {
+func (r *ConnectionRepository) mapConnectionListRow(ctx context.Context, row *ListIdentityProviderConnectionsRow) (*domain.IdentityProviderConnection, error) {
+	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ProviderID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
+	if err != nil {
+		return nil, err
+	}
 	c := &domain.IdentityProviderConnection{
 		TenantID:              row.TenantID,
 		ID:                    row.ProviderID,
@@ -100,7 +181,7 @@ func mapConnectionListRow(row *ListIdentityProviderConnectionsRow) (*domain.Iden
 		Status:                domain.ConnectionStatus(row.Status),
 		Issuer:                row.Issuer,
 		ClientID:              row.ClientID,
-		SecretReference:       row.SecretReference,
+		SecretReference:       secretReference,
 		AuthorizationEndpoint: row.AuthorizationEndpoint,
 		TokenEndpoint:         row.TokenEndpoint,
 		JWKSURI:               row.JwksUri,
@@ -135,7 +216,7 @@ func (r *ConnectionRepository) Find(ctx context.Context, tenantID, id string) (*
 	if err != nil {
 		return nil, err
 	}
-	return mapConnection(row)
+	return r.mapConnection(ctx, row)
 }
 
 func (r *ConnectionRepository) List(ctx context.Context, tenantID string) ([]*domain.IdentityProviderConnection, error) {
@@ -145,7 +226,7 @@ func (r *ConnectionRepository) List(ctx context.Context, tenantID string) ([]*do
 	}
 	out := make([]*domain.IdentityProviderConnection, 0, len(rows))
 	for _, row := range rows {
-		c, err := mapConnectionListRow(row)
+		c, err := r.mapConnectionListRow(ctx, row)
 		if err != nil {
 			return nil, err
 		}

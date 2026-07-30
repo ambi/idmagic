@@ -41,3 +41,12 @@ type ReplayStore interface {
 type SecretResolver interface {
 	Resolve(context.Context, string) (string, error)
 }
+
+// SecretCipher envelope-encrypts the client secret at rest (ADR-150). The concrete
+// implementation is backend/datakeys.FieldCipher; this port exists so db_postgres does
+// not depend on DataKeys' internal packages directly (mirrors
+// backend/authentication/totp/ports.SecretCipher).
+type SecretCipher interface {
+	Encrypt(ctx context.Context, tenantID, recordContext, table, recordID, field, plaintext string) (keyVersion int, ciphertext []byte, err error)
+	Decrypt(ctx context.Context, tenantID, recordContext, table, recordID, field string, keyVersion int, ciphertext []byte) (plaintext string, err error)
+}

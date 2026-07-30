@@ -58,6 +58,52 @@ func TestValidateResponseChecksSignatureCorrelationAudienceAndClaims(t *testing.
 	}
 }
 
+// RED (interface: TestIdentityProviderConnection, ADR-149 SAML test-connection design):
+// a currently-valid signing certificate reports no failures.
+func TestValidateSigningCertificatesAcceptsValidCertificate(t *testing.T) {
+	now := time.Now().UTC()
+	certificatePEM := pemCertificate(t, now.Add(-time.Hour), now.Add(time.Hour))
+	if failures := ValidateSigningCertificates([]string{certificatePEM}, now); len(failures) != 0 {
+		t.Fatalf("failures=%v, want none", failures)
+	}
+}
+
+// RED: an expired certificate is reported as a failure, and an unparsable PEM value is too.
+func TestValidateSigningCertificatesRejectsExpiredOrUnparsableCertificate(t *testing.T) {
+	now := time.Now().UTC()
+	expired := pemCertificate(t, now.Add(-2*time.Hour), now.Add(-time.Hour))
+	failures := ValidateSigningCertificates([]string{expired, "not a certificate"}, now)
+	if len(failures) != 2 {
+		t.Fatalf("failures=%v, want 2 (expired + unparsable)", failures)
+	}
+}
+
+// RED: no configured certificates is itself a failure.
+func TestValidateSigningCertificatesRejectsEmptyList(t *testing.T) {
+	if failures := ValidateSigningCertificates(nil, time.Now().UTC()); len(failures) != 1 {
+		t.Fatalf("failures=%v, want 1", failures)
+	}
+}
+
+func pemCertificate(t *testing.T, notBefore, notAfter time.Time) string {
+	t.Helper()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	der, err := x509.CreateCertificate(rand.Reader, &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "SAML IdP"},
+		NotBefore: notBefore, NotAfter: notAfter, KeyUsage: x509.KeyUsageDigitalSignature,
+	}, &x509.Certificate{
+		SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "SAML IdP"},
+		NotBefore: notBefore, NotAfter: notAfter, KeyUsage: x509.KeyUsageDigitalSignature,
+	}, &key.PublicKey, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der}))
+}
+
 func testSAMLConnection(t *testing.T) domain.IdentityProviderConnection {
 	t.Helper()
 	connection, _, _ := testSAMLConnectionWithKey(t)

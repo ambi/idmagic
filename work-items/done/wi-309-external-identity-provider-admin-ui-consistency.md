@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-07-30
@@ -280,34 +280,56 @@ Edit ボタン) → 編集 (専用ルート)」を、wi-126 §8 が Entra 連携
 
 ## Tasks
 
-- [ ] T001 [ADR] 状態モデル単純化 (Draft 廃止) の ADR を書く。既存 `draft` 行の移行方針を含める。
-- [ ] T002 [ADR] secret_reference の `env:` 方式から `EnvelopeCrypto`/`DataKeys` 実値暗号化への
-      切替 ADR を書く。既存参照の移行方針を含める。
-- [ ] T003 [SCL] `IdentityProviderConnectionStatus`、`IdentityProviderConnectionLifecycle`、
+- [x] T001 [ADR] 状態モデル単純化 (Draft 廃止) の ADR を書く。既存 `draft` 行の移行方針を含める。
+      → [[ADR-149]]。既存行の移行は宣言的 schema と分離し
+      `infra/schema/data-migrations/2026-07-31-identity-provider-connections-draft-to-disabled.sql`
+      に one-off script として用意 (ADR-071 §5)。
+- [x] T002 [ADR] secret_reference の `env:` 方式から `EnvelopeCrypto`/`DataKeys` 実値暗号化への
+      切替 ADR を書く。既存参照の移行方針を含める。→ [[ADR-150]]。
+- [x] T003 [SCL] `IdentityProviderConnectionStatus`、`IdentityProviderConnectionLifecycle`、
       `CreateIdentityProviderConnection`/`UpdateIdentityProviderConnection`/
       `DeleteIdentityProviderConnection`/`TestIdentityProviderConnection` の記述を更新し
-      `just check-scl` を通す。
-- [ ] T004 [Domain] `ConnectionStatus` を2値化し、`Activate`/`Disable` の遷移を更新する。
-      RED: Disabled からの削除が常に成功し、Active からの削除は確認を要求するテスト → GREEN。
-- [ ] T005 [Usecase] 更新時のトラストフィールド判定によるステータス保持ロジックを実装する。
-      RED: display_name のみの更新で Active が維持されるテスト、issuer 変更で Disabled に
-      落ちるテスト → GREEN。
-- [ ] T006 [Handlers] `deleteAdmin` のステータスガードを撤去し、`test` を実接続確認に置き換える。
-      RED: 到達不能な issuer で test が失敗を返すテスト、到達可能な discovery で成功するテスト
-      → GREEN。
-- [ ] T007 [Secrets] `EnvelopeCrypto`/`DataKeys` を使う secret 保管アダプタを実装し、
+      `just check-scl` を通す。新設 `models.IdentityProviderConnectionTestResult` と
+      `IdentityProviderConnection.client_secret_configured` (詳細画面の設定済み/未設定表示用の
+      派生フィールド) も追加。`just check-scl` green。
+- [x] T004 [Domain] `ConnectionStatus` を2値化し、`Activate`/`Disable` の遷移を更新する。
+      RED: `TestValidateRejectsNonActiveDisabledStatus` (`domain/models_test.go`) を先に fail 確認
+      (model `IdentityProviderConnectionStatus`) → GREEN。
+      `TestActivateRejectsAlreadyActiveConnection` は回帰ガードとして追加 (既存ロジックで
+      既に green だったため RED を確認できなかった点は self-attest として明記)。
+- [x] T005 [Usecase] 更新時のトラストフィールド判定によるステータス保持ロジックを実装する。
+      RED: `TestResolveUpdatedStatusPreservesActiveOnNonTrustChange` /
+      `TestResolveUpdatedStatusDegradesOnTrustChange` (`usecases/connection_update_test.go`) を
+      先に fail 確認 (未定義の `ResolveUpdatedStatus`) → GREEN。
+- [x] T006 [Handlers] `deleteAdmin` のステータスガードを撤去し、`test` を実接続確認に置き換える。
+      RED: `TestTestConnectionReportsUnreachableEndpointAndUnresolvableSecret`
+      (`protocol_oidc/client_test.go`)、`TestValidateSigningCertificatesRejectsExpiredOrUnparsableCertificate`
+      (`protocol_saml/response_test.go`)、`TestDeleteAdminSucceedsForActiveConnection` /
+      `TestTestAdminReportsStructuredReachabilityResult` (`handlers_http/routes_test.go`) を
+      先に fail 確認 → GREEN。SSRF 対策は `protocol_oidc` の既存 `validateRemoteURL`/
+      `safeHTTPClient` (DNS pin・redirect 禁止・1MiB cap) をそのまま再利用。
+- [x] T007 [Secrets] `EnvelopeCrypto`/`DataKeys` を使う secret 保管アダプタを実装し、
       `FieldMigrator` で既存 `env:` 参照からの移行を登録する。
-      RED: 暗号化して保存した secret が復号できるテスト、DataKeys destroy 前に移行未完了なら
-      拒否されるテスト → GREEN。
-- [ ] T008 [Schema] `infra/schema/postgres.sql` の CHECK 制約から `'draft'` を除去し、
-      既存行の移行 SQL を用意する。psqldef の冪等性を壊さないことを確認する
-      ([[wi-308-reconsider-psqldef-adoption]] の教訓を踏まえる)。
-- [ ] T009 [UI] ADR-086 / wi-126 の Detail-then-Edit ポリシーに従い、一覧 (`identity-providers.tsx`)
+      `db_postgres/repositories_test.go`・`reencrypt_test.go` に実 Postgres + Tink
+      (`envelope_cleartext`) を使った暗号化/復号/dual-read/移行/PendingCount のテストを追加、
+      green。**self-attest 上の逸脱**: このタスクは repository/migrator の実装コードを先に書き、
+      その後にテストを書いた (先に RED を確認していない)。理由は `datakeys.FieldCipher` の
+      配線を伴う実装を先に固めないとテストの土台 (`newTestCipher` 等) を書けなかったため。
+      実装後のテストは green で、実際の暗号化/dual-read/移行スキップ挙動を検証済み。
+- [x] T008 [Schema] `infra/schema/postgres.sql` の CHECK 制約から `'draft'` を除去し、
+      既存行の移行 SQL を用意する ([[wi-308-reconsider-psqldef-adoption]] に倣い、データ移行は
+      宣言的 schema に混ぜず one-off script に分離)。psqldef 冪等性 (SQL コメント排除等) は
+      wi-308 のパターンを踏襲。
+- [x] T009 [UI] ADR-086 / wi-126 の Detail-then-Edit ポリシーに従い、一覧 (`identity-providers.tsx`)
       / 詳細 (`$id.index.tsx`) / 編集 (`$id.edit.tsx`) / 作成 (`new.tsx`) を別ルートに分割し、
       `adminNav.ts` にトップレベル項目を追加、`src/routes/-page.tsx` の `PAGE_TITLES` に
-      追加、`AdminSettingsPage.tsx` から撤去する。設定テスト結果表示とシークレット実値入力に
-      改める。RED: presentation logic の unit test → GREEN。
-- [ ] T010 [Verify] 下記 Verification を緑にする。`just scl-render` で派生物を再生成する。
+      追加、`AdminSettingsPage.tsx` から撤去した。設定テスト結果表示とシークレット実値入力に
+      改めた。RED: `AdminIdentityProvidersPage.test.tsx` の削除確認ダイアログ (Active/Disabled
+      非対称) とテスト結果バナーのテストを実装直後に green 化して確認 (self-attest: 実装と
+      テストをほぼ同時に書いたため厳密な事前 RED 確認はしていない)。
+      `ui-page-lines` 複雑度予算 (400 行) 超過を `AdminIdentityProviderFormShared.tsx` /
+      `AdminIdentityProviderFormFields.tsx` への抽出で解消し、debt 登録なしで通した。
+- [x] T010 [Verify] 下記 Verification を緑にする。`just scl-render` で派生物を再生成した。
 
 ## Verification
 
@@ -340,3 +362,42 @@ ADR で明示する。
 「設定テスト」の実処理化はサーバーから任意到達性確認の外向き通信を伴う。
 `RefreshIdentityProviderMetadata` が既に持つ SSRF 対策 (固定済み endpoint のみを対象にし
 任意 URL を取得しない) を必ず踏襲し、新たな SSRF 面を作らないこと。
+
+## Completion
+- **Completed At**: 2026-07-31
+- **Summary**:
+  Motivation で指摘した4点全てに対応した。(1) 一覧/詳細/編集/作成の別ルート分割と
+  `adminNav.ts` トップレベル項目化 ([[ADR-086]] /
+  [[wi-126-admin-and-account-ui-consistency-and-navigation-policy]] を Entra 連携と同じ形で
+  適用)。(2) Draft 廃止と `Active`/`Disabled` の2値化により未着手接続の即時削除を可能化
+  ([[ADR-149]])。(3) 「設定テスト」を OIDC discovery/JWKS 到達性・SAML 証明書検証・secret
+  解決可能性の実処理に置き換え、構造化結果 (成功/失敗理由) を画面表示。(4) `secret_reference`
+  を `EnvelopeCrypto`/`DataKeys` による実値暗号化保存に切替え、UI をシークレット実値入力
+  (write-only) に変更 ([[ADR-150]])。
+  Out of Scope として明記済みの未対応: 「設定」タブに残る他項目の整理、`entra-federation`
+  との画面統合、authorization_code フロー全体のシミュレート、`EnvelopeCrypto`/`DataKeys`
+  自体の新機能追加 (いずれも Scope の Out of Scope 節に記載済み)。
+  test-first からの逸脱 (self-attest): T007 (secrets アダプタ) と T009 (UI) は、配線の
+  複雑さ・実装とテストの一体的な組み立てを理由に、事前の RED 確認を経ずに実装とテストを
+  ほぼ同時に書いた (Tasks の該当項目に理由を明記)。それ以外の層 (Domain/Usecase/Handlers) は
+  RED → GREEN を確認した。
+  手動検証 (Verification 節の (1)〜(5)) はブラウザでの実機確認を本セッションでは実施しておらず、
+  各項目に対応する自動テストで同等の挙動を検証した点をユーザーに開示する。
+- **Verification Results**:
+  - `just check` / `just check-scl` / `just check-ids` / `just check-work-items`: green。
+  - `just verify-go` (lint-go + test-go-race) / `just test-go`: 2件の pre-existing かつ
+    本 WI と無関係な失敗を検出した。`TestMfaFactorReencryptor_NoPlaintextSurvivesBackfillAcrossTenants`
+    (`backend/authentication/totp/db_postgres`) は既存のテスト分離不備によるフレークで単独実行では
+    green。`TestAgentStatusMatchesSCL` (`backend/shared/spec`) は本 WI が触れていない
+    `identity-management.yaml` の `AgentStatus` と Go enum のケース不一致で、本 WI 着手前から
+    存在する不具合。本 WI が新規に導入した federation 関連パッケージのテストは全て green。
+  - `just verify-ui` (format-check/lint/typecheck/build) / `just test-ui-unit`: green
+    (474 tests pass)。
+  - 手動検証 (1)〜(5) はブラウザでの実機確認を実施していない。代わりに以下の自動テストで
+    同等の挙動を検証した: (1)(2) `handlers_http/routes_test.go` の
+    `TestDeleteAdminSucceedsForActiveConnection` /
+    `TestUpdateAdminDegradesOnlyOnTrustSourceChange`。(3) `protocol_oidc`/`protocol_saml` の
+    `TestTestConnection*`/`TestValidateSigningCertificates*` と
+    `AdminIdentityProvidersPage.test.tsx` のバナー表示テスト。(4) `db_postgres` の
+    `TestConnectionRepositoryEncryptsRealSecretAtRest`。(5) `adminNav.test.ts` と
+    `AdminSettingsPage.test.tsx` (identity-providers タブが撤去されたことの確認)。

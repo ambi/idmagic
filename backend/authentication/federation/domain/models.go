@@ -19,7 +19,6 @@ const (
 type ConnectionStatus string
 
 const (
-	ConnectionDraft    ConnectionStatus = "draft"
 	ConnectionActive   ConnectionStatus = "active"
 	ConnectionDisabled ConnectionStatus = "disabled"
 )
@@ -55,6 +54,7 @@ type IdentityProviderConnection struct {
 	Issuer                  string           `json:"issuer"`
 	ClientID                string           `json:"client_id,omitempty"`
 	SecretReference         string           `json:"-"`
+	ClientSecretConfigured  bool             `json:"client_secret_configured"`
 	AuthorizationEndpoint   string           `json:"authorization_endpoint,omitempty"`
 	TokenEndpoint           string           `json:"token_endpoint,omitempty"`
 	JWKSURI                 string           `json:"jwks_uri,omitempty"`
@@ -74,7 +74,7 @@ func (c IdentityProviderConnection) Validate() error {
 	if strings.TrimSpace(c.ID) == "" || strings.TrimSpace(c.TenantID) == "" || strings.TrimSpace(c.DisplayName) == "" {
 		return errors.New("connection id, tenant id, and display name are required")
 	}
-	if c.Status != ConnectionDraft && c.Status != ConnectionActive && c.Status != ConnectionDisabled {
+	if c.Status != ConnectionActive && c.Status != ConnectionDisabled {
 		return errors.New("invalid connection status")
 	}
 	if c.LinkingPolicy != LinkingNone && c.LinkingPolicy != LinkingVerifiedEmail {
@@ -120,8 +120,8 @@ func (c *IdentityProviderConnection) Activate(now time.Time) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
-	if c.Status != ConnectionDraft && c.Status != ConnectionDisabled {
-		return errors.New("only draft or disabled connections can be activated")
+	if c.Status != ConnectionDisabled {
+		return errors.New("only disabled connections can be activated")
 	}
 	c.Status, c.UpdatedAt = ConnectionActive, normalizedNow(now)
 	return nil

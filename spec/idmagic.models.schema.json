@@ -8210,7 +8210,12 @@
           "type": "string"
         },
         "secret_reference": {
-          "type": "string"
+          "type": "string",
+          "description": "client secret の実値を書き込み専用で受け取るフィールド。DB には DataKeys の per-tenant DEK でエンベロープ暗号化した ciphertext のみを保存し、API レスポンスには実値・ciphertext のいずれも含めない ([[ADR-150]])。フィールド名は移行元の env: 参照方式から維持している。\n"
+        },
+        "client_secret_configured": {
+          "type": "boolean",
+          "description": "secret_reference が設定済みかどうかを示す読み取り専用の派生フィールド。実値・ciphertext を含む書き込みには使わない。管理画面の詳細ビューが「設定済み/未設定」だけを示すために使う。"
         },
         "authorization_endpoint": {
           "type": "string"
@@ -8269,6 +8274,7 @@
         "protocol",
         "status",
         "issuer",
+        "client_secret_configured",
         "saml_signing_certificates",
         "claim_mapping",
         "linking_policy",
@@ -8277,7 +8283,7 @@
         "created_at",
         "updated_at"
       ],
-      "description": "tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で保持する。",
+      "description": "tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で受け取り、DataKeys の per-tenant DEK でエンベロープ暗号化して保持する ([[ADR-150]])。",
       "x-scl-untranslated-constraints": [
         "protocol != Oidc || (client_id != null && authorization_endpoint != null && token_endpoint != null && jwks_uri != null)",
         "protocol != Saml || (saml_sso_url != null && saml_entity_id != null && size(saml_signing_certificates) > 0)",
@@ -8357,11 +8363,33 @@
     "IdentityProviderConnectionStatus": {
       "type": "string",
       "enum": [
-        "Draft",
         "Active",
         "Disabled"
       ],
-      "description": "connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。"
+      "description": "connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。作成直後の初期状態は Disabled ([[ADR-149]])。"
+    },
+    "IdentityProviderConnectionTestResult": {
+      "type": "object",
+      "properties": {
+        "success": {
+          "type": "boolean"
+        },
+        "failures": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "success",
+        "failures"
+      ],
+      "description": "接続テストの構造化結果。OIDC discovery/JWKS 到達性、SAML 証明書のパース可否、secret_reference の解決 (復号) 可能性を検証する。値そのもの (secret、token、証明書本文) は含まない。",
+      "x-scl-untranslated-constraints": [
+        "success || size(failures) > 0"
+      ]
     },
     "IdentityProviderProtocol": {
       "type": "string",
