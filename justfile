@@ -269,6 +269,12 @@ schema-compose:
 check-compose:
     docker compose -f infra/docker/docker-compose.dev.yaml config --quiet
 
+# Verify infra/schema/postgres.sql converges under psqldef against an empty
+# database (apply -> dry-run -> apply -> dry-run, both dry-runs expected to be
+# no-ops). Runs in an isolated, disposable compose project (wi-308).
+check-schema:
+    ./infra/schema/check-convergence.sh
+
 # Render and schema-validate one Kubernetes environment overlay. Image digests
 # in production are release placeholders until the release pipeline supplies them.
 check-k8s overlay="dev":

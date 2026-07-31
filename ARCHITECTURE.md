@@ -340,10 +340,13 @@ All static SQL statements in `db_postgres` must use `sqlc` to generate type-safe
 
 To add structure to PostgreSQL, first update the current-state schema in `infra/schema/postgres.sql`.
 Structural diffs are inspected with a `psqldef` dry-run and applied by a pre-deploy job (the procedure is
-in `infra/schema/README.md`). Changes a structural diff cannot express — backfills, value conversions,
-saving data before a drop — are stated explicitly in the work item's runbook or a dedicated SQL script.
-There is no migration runner at application startup. The memory adapter is also the reference for tests
-and the local demo, so never update only the postgres side.
+in `infra/schema/README.md`). CI additionally enforces that `postgres.sql` converges under `psqldef`
+against an empty database (`just check-schema`): apply, dry-run must be a no-op, apply again, dry-run
+must still be a no-op. This is a permanent guard against `psqldef` regressions, not a one-time check —
+see `infra/schema/README.md` Rules for the specific bug classes it backstops. Changes a structural diff
+cannot express — backfills, value conversions, saving data before a drop — are stated explicitly in the
+work item's runbook or a dedicated SQL script. There is no migration runner at application startup. The
+memory adapter is also the reference for tests and the local demo, so never update only the postgres side.
 
 `postgres.sql` carries no SQL comments. Design rationale for a table or column goes here (or the owning
 context's own `ARCHITECTURE.md`) instead, both because a second copy of "why" drifts from this record and

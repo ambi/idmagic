@@ -13,7 +13,7 @@ services:
     ports: ["5432:5432"]
 
   schema:
-    image: sqldef/psqldef:3.11
+    image: sqldef/psqldef:3.11.18
     environment:
       PGPASSWORD: idmagic
     volumes:

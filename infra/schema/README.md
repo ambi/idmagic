@@ -14,7 +14,9 @@ brew install sqldef/sqldef/psqldef
 
 On Linux, download the pre-built `psqldef` binary from the sqldef releases page,
 or use the sqldef Docker image in the deploy job. Pin the version in CI/CD jobs
-instead of using an unqualified latest binary.
+instead of using an unqualified latest binary. The dev compose `schema` service
+pins `sqldef/psqldef:3.11.18`; match that version locally when reproducing a CI
+or compose result exactly.
 
 Confirm the installed command:
 
@@ -103,6 +105,21 @@ psqldef -U idmagic -h localhost -p 5432 idmagic \
   --dry-run < infra/schema/postgres.sql
 ```
 
+## CI convergence check
+
+CI runs `just check-schema` on every push and pull request. It applies
+`postgres.sql` to a disposable, empty PostgreSQL database (an isolated compose
+project, not the dev stack) and verifies convergence: apply -> dry-run (must be
+a no-op) -> apply again -> dry-run (must still be a no-op). This is a
+permanent, machine-checked guard against the psqldef bug classes recorded in
+`work-items/done/wi-308-reconsider-psqldef-adoption.md` — most importantly the
+silent `DROP CONSTRAINT` without a matching `ADD` (see Rules below), which a
+human reviewing a single dry-run can easily miss. Run it locally with:
+
+```bash
+just check-schema
+```
+
 ## Production deployment
 
 The application does not apply schema changes at startup. Production uses an
@@ -151,16 +168,19 @@ converges required rows such as the default tenant at startup.
     `## Cross-cutting Concerns` > Database design policy for the column-type
     rules (ADR-084) and the `tenant_id` retention classes (ADR-082, simplified
     by ADR-083); do not restate them here.
-  - `psqldef`'s dependency-aware statement ordering (introduced upstream in
-    [sqldef/sqldef#1209](https://github.com/sqldef/sqldef/pull/1209)) has shown
-    content-sensitive bugs where a comment's exact text — not its meaning —
-    changes whether a table is emitted before or after its own indexes on an
-    empty database, producing `relation "..." does not exist` during
-    `--apply`. [sqldef/sqldef#1121](https://github.com/sqldef/sqldef/issues/1121)
+  - `psqldef`'s dependency-aware statement ordering (rewritten from a fixed
+    bucket order to a topological sort upstream in
+    [sqldef/sqldef#1209](https://github.com/sqldef/sqldef/pull/1209), merged
+    2026-05-16) has shown content-sensitive bugs where a comment's exact text —
+    not its meaning — changes whether a table is emitted before or after its
+    own indexes on an empty database, producing `relation "..." does not
+    exist` during `--apply`. [sqldef/sqldef#1121](https://github.com/sqldef/sqldef/issues/1121)
     is a previously-fixed bug in the same family (a comment before `CREATE
-    TABLE` made a trailing `CREATE INDEX` run first). Keeping this file
-    comment-free sidesteps the whole bug class rather than chasing each
-    occurrence.
+    TABLE` made a trailing `CREATE INDEX` run first). This one is not yet
+    reported upstream and status as of 2026-07-31 is unconfirmed either way.
+    Keeping this file comment-free sidesteps the whole bug class rather than
+    chasing each occurrence — `just check-schema` (below) does not by itself
+    guard against this one, since it only runs against a comment-free file.
 - Never name a table-level (multi-column) `CONSTRAINT` so it looks exactly
   like PostgreSQL's own default name for an unnamed single-column constraint —
   `<table>_<column>_key` for `UNIQUE`, `<table>_<column>_check` for `CHECK`
@@ -172,22 +192,35 @@ converges required rows such as the default tenant at startup.
   appears to treat a name matching that shape as an implicit/auto-generated
   constraint for comparison purposes; on re-`--apply` this has produced (a)
   spurious rename churn when the table has no explicit name at all, and (b)
-  — confirmed against a real, deployed database — the constraint being
-  silently `DROP`ped with no replacement `ADD`, permanently losing the
-  invariant. Give such constraints an explicit name that does not collide
-  with this pattern (e.g. `..._consistency` instead of `..._check`, or add a
-  column to the name that isn't a real column).
+  the constraint being silently `DROP`ped with no replacement `ADD`,
+  permanently losing the invariant. (a) is fixed upstream as of
+  [sqldef/sqldef#1292](https://github.com/sqldef/sqldef/pull/1292)
+  (`sqldef/psqldef:3.11.17`) — confirmed by temporarily removing an explicit
+  name and re-checking convergence. (b), the more severe one, is still
+  present as of `sqldef/psqldef:3.11.18` — reconfirmed 2026-07-31 by
+  reintroducing the colliding name and watching the constraint actually
+  disappear from `pg_constraint` after `--apply`. `just check-schema` (below)
+  would catch a *new* occurrence of (b) (dry-run stops being a no-op), but
+  give such constraints an explicit name that does not collide with this
+  pattern regardless (e.g. `..._consistency` instead of `..._check`, or add a
+  column to the name that isn't a real column) — the check is a safety net,
+  not a substitute for avoiding the pattern.
 - Write every `CHECK (col IN (...))` value list in alphabetical order.
   PostgreSQL preserves whatever literal order the schema was written in when
-  it reports the constraint back (`pg_get_constraintdef`), but `psqldef`
-  normalizes its own "desired state" representation of the same list to
-  alphabetical order before comparing. If the source order isn't already
-  alphabetical, the two never match and every `--apply` — even a true no-op —
-  emits a pointless `DROP CONSTRAINT` / `ADD CONSTRAINT` pair for that column
+  it reports the constraint back (`pg_get_constraintdef`), but older `psqldef`
+  normalized its own "desired state" representation of the same list to
+  alphabetical order before comparing, so a non-alphabetical source order
+  never matched and every `--apply` — even a true no-op — emitted a
+  pointless `DROP CONSTRAINT` / `ADD CONSTRAINT` pair for that column
   (harmless — the recreated constraint is semantically identical — but noisy,
   and it defeats using dry-run output as a reliable "did anything actually
-  change" signal). This is the still-open
-  [sqldef/sqldef#1295](https://github.com/sqldef/sqldef/issues/1295).
+  change" signal). Fixed upstream in
+  [sqldef/sqldef#1295](https://github.com/sqldef/sqldef/issues/1295)
+  (`sqldef/psqldef:3.11.18`, merged 2026-07-30) — confirmed by temporarily
+  un-alphabetizing `notification_templates.template_key` and re-checking
+  convergence. Kept alphabetical anyway as a harmless, zero-cost habit; there
+  is no reason to revert working hygiene just because the upstream bug it
+  guarded against is now fixed.
 - Conventions this file keeps, because they are about writing SQL rather than
   design (see `ARCHITECTURE.md` for anything beyond these):
   - A table's own identifier is `id`; a reference to a User from another table
