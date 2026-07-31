@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: low
 created_at: 2026-07-29
@@ -107,22 +107,146 @@ FUNCTION／TRIGGER が Pro 限定機能に該当するため、現状では乗�
 まず「CI に apply→dry-run 収束チェックを追加する」「upstream（#1290 等）を追跡する」を優先し、ADR-071 の再検討はそれらの状況を見てから
 判断するのが妥当と考えられる。
 
+## Decision
+
+**psqldef の採用は継続する。安全網(CI 収束チェック)を追加しつつ、将来的な別ツールへの移行は可能性として残す。**
+ADR-071 の再検討(Atlas/pgschema 等への乗り換え)は今回は行わない。
+
+### なぜ乗り換えないか
+
+着手時、「pgschema の方がアーキテクチャ上この種のバグを踏みにくいのでは」という再検討を行った。
+
+- pgschema は OSS(Apache-2.0)で function/procedure/trigger/view/RLS/sequence まで無制限にサポートしており、
+  Atlas のような Pro gating はない。idmagic が使う `create_default_saml_identity_provider_profile`
+  (FUNCTION+TRIGGER)は問題にならない。wi-308 の当初所見が挙げた懸念のうち、Issue #450(GRANT 文を含む
+  スキーマで一時インスタンスにロールが無くて `plan` が失敗する)は、`infra/schema/postgres.sql` に
+  `GRANT`/`CREATE ROLE` 文が一つもないため無関係。embedded postgres 起動コスト(~2.8秒)も、CI 専用の
+  収束チェック用途では無視できる。つまり pgschema を退けた当初の理由は、再検証すると根拠が薄かった。
+
+しかし、upstream (sqldef/sqldef) の実際の状況を調べ直すと、乗り換えを急ぐ理由も同様に薄いことが分かった。
+
+- Discussion #1290(不具合#2: 無名複合UNIQUE制約の命名不一致)は [PR #1292](https://github.com/sqldef/sqldef/pull/1292)
+  で報告から**7日**で修正され、**v3.11.17(2026-07-27)**に含まれている。
+- Issue #1295(不具合#4: CHECK制約IN句のアルファベット順正規化diff)も**2026-07-30に修正マージ済み**、
+  **v3.11.18** に含まれている。
+- 2026-07-21〜07-30の9日間で 3.11.16 → 3.11.17 → 3.11.18 と3パッチリリースがあり、2026年1〜7月通算でも
+  月3〜4回のペースでリリースが続く、活発に保守されているプロジェクトである。
+
+さらに「なぜ今になってこれだけの不具合が集中したのか」を調べたところ、**古い技術的負債ではなく、進行中の
+大規模リファクタリングによる比較的新しいエンバグ**である可能性が高いと分かった。
+
+- 不具合#1(コメント内容依存の順序バグ)が関わる依存関係グラフによる並び替えロジックは、
+  [PR #1209](https://github.com/sqldef/sqldef/pull/1209)(**2026-05-16マージ**)で、従来の
+  「固定バケツ順」を「トポロジカルソート」へ全面書き換えしたばかりのコード。本 WI の調査(2026-07末)は
+  この書き換えのわずか2.5ヶ月後にあたる。
+- さらに背景として、sqldef は2025年11月頃(v3.5.0)から、mysqldef/psqldef/sqlite3def 等が個別に持っていた
+  パーサーを共通の "generic parser" へ統合する移行を継続中で、2026年半ば(v3.13.0)時点でも
+  「generic parser adoption」が進行中と changelog に明記されている。CHECK制約の比較ロジックも
+  2025年10月に「文字列比較 → AST比較」へ書き換えられており、同じ刷新の一部とみられる。
+
+この「活発だが今まさに中核ロジックを刷新中」という状態は両刃の剣である。修正は速い(#2・#4 は報告から
+1週間程度)反面、刷新が続く限り新しい退行が今後も出る可能性がある。したがって「一度確認すれば終わり」の
+人的検証ではなく、**upstream が刷新を続ける間ずっと機能する機械的な安全網(CI 収束チェック)を今回追加し、
+psqldef の採用は当面継続する**。ADR-071 の再検討(pgschema 等への乗り換え)は選択肢として残すが、今回は
+実行しない — 乗り換える緊急性より、まず安全網を張ることを優先する。
+
+### 決めたこと
+
+1. psqldef の採用を継続する。ADR-071 の再検討は今回は行わない(将来、upstream の刷新が停滞する、または
+   安全網をすり抜ける新しい不具合が続くようなら再検討の材料にする)。
+2. ピン留めバージョンを `sqldef/psqldef:3.11` → `sqldef/psqldef:3.11.18` に更新する。
+3. CI に、空の PostgreSQL に対する apply→dry-run→apply→dry-run の収束チェックを追加する
+   (upstream の刷新が続く間、新しい退行を継続的に検知するための恒久的な安全網)。
+4. 不具合#1・#3 は upstream 未報告と見られる。issue 報告は本 WI の実装としては行わず、
+   Tasks に推奨事項として残す(第三者リポジトリへの公開投稿はユーザーの明示的な承認を要するため)。
+
 ## Plan
 
-（本 WI 自体は調査記録であり、実装計画は次にこの WI に着手する際に具体化する）
+1. `infra/docker/docker-compose.dev.yaml` の `schema` サービスのイメージを `sqldef/psqldef:3.11.18` に更新する。
+2. 不具合#2・#4 の回避策(明示的な制約名、IN句のアルファベット順)を一時的に外し、3.11.18 に対して空DBから
+   apply→dry-run を行い実際に収束することを確認してから戻す(upstream 修正の裏取り)。回避策自体は安価で
+   無害なため、修正が確認できても `postgres.sql` からは外さない。
+3. `infra/schema/check-convergence.sh` を新規作成し、専用の compose project で分離した使い捨て環境に対して
+   apply→dry-run(空であること)→apply→dry-run(空であること)を検証する。
+4. `justfile` に `check-schema` レシピを追加する(`check:` の集約レシピには含めない)。
+5. `.github/workflows/idmagic-ci.yaml` に軽量な新規ジョブを追加し `just check-schema` を実行する。
+6. `infra/schema/README.md` に、CIによる自動収束チェックの追加と、不具合#2・#4のupstream修正状況を記録する。
+7. `ARCHITECTURE.md` の Persistence 節に、CIがこの収束を強制する旨を1文加える。
 
 ## Tasks
 
-- [ ] T001 [Decision] CI に apply→dry-run 収束チェックを追加するか、psqldef バージョン追従方針にするか、
-      ADR-071 を再検討するかを判断する。
-- [ ] T002 [Impl] 判断した方針を実装する。
+- [x] T001 [Decision] CI に apply→dry-run 収束チェックを追加するか、psqldef バージョン追従方針にするか、
+      ADR-071 を再検討するかを判断する。→ 上記「Decision」参照: psqldef 継続 + 安全網追加、乗り換えは
+      選択肢として保留。
+- [x] T002 [Infrastructure] 判断した方針を実装する(バージョン更新・収束チェックスクリプト・justfile・CI・
+      README・ARCHITECTURE.md)。
+- [ ] T003 [Track] 不具合#1(順序バグ)・#3(CHECK制約無言DROP)を upstream (sqldef/sqldef) にまだ報告して
+      いない。#2・#4 の修正ターンアラウンド(報告から約1週間)を踏まえると、報告すれば近く直る見込みがある。
+      報告するかどうか・実施時期はユーザーの判断を仰ぐ(第三者リポジトリへの公開投稿のため)。
 
 ## Verification
 
-（着手時に定める）
+実装時に空DBに対する実地検証を行い、以下を確認した(いずれも `sqldef/psqldef:3.11.18`、専用の使い捨て compose
+project `idmagic-schema-check` 上):
+
+- **不具合#2(無名複合UNIQUE制約の命名不一致)は修正済み**: `dynamic_group_rules_tenant_id_group_id_key` の
+  明示名を一時的に外し、既に収束済みのDBに対して dry-run したところ `-- Nothing is modified --`。psqldef が
+  PostgreSQL 自身の自動命名規則と一致する名前を正しく導出できることを確認。
+- **不具合#4(CHECK IN句のアルファベット順diff)は修正済み**: `notification_templates.template_key` のIN句を
+  一時的にアルファベット順から崩し、既に収束済みのDBに対して dry-run したところ同じく空。
+- **不具合#3(CHECK制約の無言DROP)は依然再現する**: `lifecycle_workflows_enabled_revision_consistency` を
+  衝突パターン `..._enabled_revision_check` に戻し、空DBから1回目 `--apply` で正しく作成されることを
+  `pg_constraint` で確認した直後、同じ desired state に対する `--dry-run` が
+  `DROP CONSTRAINT "lifecycle_workflows_enabled_revision_check"`(ADDなし)を提案し、実際に `--apply` すると
+  `pg_constraint` から消えることを再確認した。3.11.18 でも未修正。
+- **不具合#1(コメント起因の順序バグ)は今回は再現できず**: `CREATE TABLE jobs` の直前に代表的なコメントを
+  1本追加して空DBに apply したが、今回のコメント内容ではエラーは再現しなかった。元の bisection で使われた
+  正確なトリガー文字列は既に `postgres.sql` から削除済みで残っておらず、短時間の再試行では再現条件を
+  再発見できなかった。`postgres.sql` は引き続き無コメント方針を維持するため、実運用上のリスクは低いままだが、
+  upstream での真の修正状況は未確認のまま。
+- **`just check-schema` は実際に機能する**: 現状の(全ワークアラウンド適用済みの)`postgres.sql` に対しては
+  成功(`schema convergence check passed`)。不具合#3の衝突パターンを一時的に再現させた状態で実行すると、
+  期待通り非ゼロ終了で dry-run の diff を表示して失敗することを確認した。
+- `just check-compose` は新しい `infra/docker/docker-compose.schema-check.yaml` オーバーレイ追加後も
+  引き続き成功。
+- `just check`(SCL/YAML/work-item/architecture 検証一式)は成功。SCL変更は伴わない。
 
 ## Risk Notes
 
 - 3番の不具合は、今回たまたま気づいたが、レビューなしで自動適用される環境（`docker compose up` での
   ローカル開発）では気づけない形で安全制約が消える。同種の命名パターンを踏む新しい制約が将来追加された場合、
   本 WI の対応（`infra/schema/README.md` の注意書き）だけでは人的レビューに依存し、機械的な防止策ではない。
+  → 本 WI の実装(`just check-schema`、CI `schema-convergence` ジョブ)で機械的な防止策を追加したため、この
+  リスクは軽減された。ただし CI がその PR/push の対象範囲でしか走らない点、および upstream が現在進行形で
+  中核ロジックを刷新中で新しい退行が今後も出うる点(Decision 参照)は残るリスクとして認識しておく。
+- 不具合#1・#3は upstream 未報告のままである。psqldef の実際の修正ターンアラウンド(#2・#4 は報告から
+  1週間程度)を踏まえると、報告すれば近く直る可能性があるが、報告は本WIでは実行していない(T003参照)。
+
+## Completion
+
+- **Completed At**: 2026-07-31
+- **Summary**:
+  - psqldef の採用を継続する決定を記録した。当初「pgschema の方が構造的に有望では」という再検討を行ったが、
+    実際には upstream (sqldef/sqldef) が活発かつ応答が速く(発見した不具合のうち2件は報告から1週間程度で
+    修正リリース済み)、乗り換えを急ぐ根拠は乏しいと判断した。ADR-071 の再検討(ツール入れ替え)は選択肢として
+    残すが実行しない。
+  - なぜ今回まとめて4件もの不具合が見つかったかを調査し、`sqldef` が2025年11月頃から続く「generic parser」
+    統合、および2026年5月にDDL順序ロジックを固定バケツ順からトポロジカルソートへ全面書き換えした
+    ([sqldef/sqldef#1209](https://github.com/sqldef/sqldef/pull/1209))ばかりであることを特定した。古い技術的
+    負債ではなく、進行中の刷新による比較的新しいエンバグである可能性が高い。
+  - `sqldef/psqldef:3.11` → `3.11.18` へピン留めを更新し、不具合#2(無名複合UNIQUE制約の命名不一致)と
+    #4(CHECK IN句のアルファベット順diff)が実際にこのバージョンで修正済みであることを空DBに対する実地検証で
+    確認した。不具合#3(CHECK制約の無言DROP)は3.11.18でも再現することを同様に実地確認した(既存の回避策は
+    全て維持)。
+  - `infra/schema/check-convergence.sh`(新規)・`just check-schema`・CI `schema-convergence` ジョブを追加し、
+    空のPostgreSQLに対する apply→dry-run→apply→dry-run の収束を機械的に検証する恒久的な安全網を実装した。
+    不具合#3の再現パターンに対して実際に失敗を検知することを確認済み。
+  - `infra/schema/README.md` と `ARCHITECTURE.md` を、upstream 修正状況とCIによる自動検証の追加を反映して
+    更新した。
+- **開示(未対応・保留事項)**:
+  - 不具合#1(コメント起因の順序バグ)は今回の再検証では再現できなかった(元のトリガー文字列は既に削除済みで
+    再発見に至らず)。upstreamでの真の修正状況は未確認のまま。`postgres.sql` の無コメント方針が主な防御線。
+  - 不具合#1・#3のupstream issue報告は実行していない(T003、第三者リポジトリへの公開投稿のためユーザーの
+    判断を仰ぐ)。
+  - ADR-071の再検討(pgschema等への乗り換え)は選択肢として保留のままであり、今回は判断・実行していない。
+  - Scope通り、SCL変更・psqldef自体の置き換えは対象外。
