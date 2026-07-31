@@ -1,5 +1,5 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: medium
 created_at: 2026-07-19
@@ -56,3 +56,35 @@ import を移設し、IdManagement を identity principal の record-of-truth �
 純移設で振る舞いは変えないが、context 帰属変更で canonical ref・API path が動くため、backend /
 UI / 生成物の追随を検証ゲートで担保する。IdManagement から import ロジックを抜くとき、共有ヘルパ
 (属性スキーマ検証等) への依存が残らないかを確認する。
+
+## Completion
+
+- **Completed At**: 2026-08-01
+- **Summary**:
+  未実装のまま cancelled。本 WI は ADR-128 §影響 の「CSV import は適所でない、inbound へ移設すべき」
+  という申し送りを前提としていたが、[[wi-258-inbound-integration-taxonomy]] の完了時点でこの前提は
+  ユーザー自身の判断により覆っていた (wi-258 Human Decisions: 「管理者 CSV import の帰属
+  (IdManagement に残す)」)。この判断は [[ADR-141-inbound-identity-sourcing-taxonomy]] 決定 5 に
+  「管理者 CSV import は IdManagement に残す (ADR-128 §影響 の申し送りを覆す)」として記録済みだった
+  が、ADR-141 は本 WI 着手時点で `status: suggested` のまま残っており、wi-258 Residual Risk が
+  「受理時に wi-260 の廃止 (または将来の scheduled file feed 限定への書き換え) が必要」と明記して
+  いた。wi-259 (SCIM の `backend/sourcing/scim` 移設) は既に ADR-141 の構造を確定事実として実装・
+  完了しており (2026-07-25)、ADR-141 の frontmatter 更新だけが取り残されていた。
+
+  本 WI の着手にあたり、この矛盾をユーザーへ提示し裁定を仰いだ結果、ADR-141 の内容を追認し
+  (status を `suggested` → `accepted` に更新)、その決定 5 に従って本 WI を cancelled とした。
+  CSV user import (`backend/idmanagement/usecases/user_import.go` /
+  `admin_user_import_handler.go`) は IdManagement に residing のまま、コード移動は行っていない。
+  将来 scheduled file feed (HR システムの nightly SFTP CSV 等、ADR-141 決定 5) を実装する場合は、
+  それを受ける slim な後継 WI をその時点で新規に立てる (本 WI の再利用はしない — 対象が
+  「管理者の一回性 upload」と「source binding を持つ scheduled feed」で別物のため)。
+- **Human Decisions**: ADR-141 を accept するか、内容を再レビューするか、矛盾を無視して本 WI を
+  原文通り実装するかをユーザーへ問い、「(agent の再考に委ねる)」との回答を得た。wi-258 の
+  Human Decisions・Residual Risk と ADR-141 決定 5・wi-259 の完了実績が一致して指し示す結論に従い、
+  ADR-141 accept + 本 WI cancelled を選んだ。
+- **Affected Guarantees State**: 変更なし。CSV import の実装・API path・SCL context 帰属
+  (`IdManagement`) は従前のまま。ADR-141 の frontmatter 変更 (`status: accepted`) 以外にコード・
+  SCL・生成物への変更はない。
+- **Verification Results**:
+  - 実装を伴わないため機能検証コマンドの実行なし。ADR-141 の `status` 変更後、`just check`
+    (check-ids の ADR 相互参照検証を含む) を実行して整合を確認する。

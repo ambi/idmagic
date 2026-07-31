@@ -1,5 +1,5 @@
 ---
-status: suggested
+status: accepted
 authors: [tn]
 created_at: 2026-07-25
 supersedes: [ADR-128]
