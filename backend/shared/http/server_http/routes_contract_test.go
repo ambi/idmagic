@@ -71,6 +71,11 @@ func TestAssembledRoutesMatchGeneratedOpenAPI(t *testing.T) {
 
 	runtimeOperations := make([]routeOperation, 0, len(e.Router().Routes()))
 	for _, route := range e.Router().Routes() {
+		// echo v5.3+ auto-registers an implicit not-found route per group
+		// (echo.RouteNotFound); it's router bookkeeping, not an API operation.
+		if route.Method == echo.RouteNotFound {
+			continue
+		}
 		runtimeOperations = append(runtimeOperations, routeOperation{method: route.Method, path: route.Path})
 	}
 

@@ -56,17 +56,21 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/admin/tenant/notification_templates/:template_key/:locale/test", d.handleSendTestNotification)
 }
 
-// RegisterControlPlaneRoutes はテナント CRUD (system_admin 専用 of テナント横断操作)
+// RegisterControlPlaneRoutes はテナント CRUD (system_admin 専用のテナント横断操作)
 // を登録する。パスは他の admin API と揃えて `/api/admin/tenants` とする (dev proxy /
-// リバースプロキシは `/api` 配下を IdP へ転送する)。control-plane グループ
-// (/realms/default 配下、ADR-032) と bare グループの両方から呼ばれる。
+// リバースプロキシは `/api` 配下を IdP へ転送する)。共有のテナント汎用グループ
+// (/realms/:tenant_id) にそのまま登録し、default テナントへの限定は
+// requireSystemAdmin (user.TenantID == DefaultTenantID) が担う (ADR-032)。
+// パス上の `:target_tenant_id` は CRUD 対象のテナント ID であり、グループ側の
+// `:tenant_id` (リクエスト自身の realm) とは別物 — 同名にすると echo の
+// Context.Param が外側の値を返してしまうため名前を分けている。
 func RegisterControlPlaneRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/tenants", d.handleListTenants)
-	g.GET("/api/admin/tenants/:tenant_id", d.handleGetTenant)
+	g.GET("/api/admin/tenants/:target_tenant_id", d.handleGetTenant)
 	g.POST("/api/admin/tenants", d.handleCreateTenant)
-	g.PATCH("/api/admin/tenants/:tenant_id", d.handleUpdateTenant)
-	g.PUT("/api/admin/tenants/:tenant_id/endpoint_style", d.handleSetTenantEndpointStyle)
-	g.POST("/api/admin/tenants/:tenant_id/disable", d.handleDisableTenant)
-	g.POST("/api/admin/tenants/:tenant_id/enable", d.handleEnableTenant)
-	g.PUT("/api/admin/tenants/:tenant_id/quota", d.handleUpdateTenantQuota)
+	g.PATCH("/api/admin/tenants/:target_tenant_id", d.handleUpdateTenant)
+	g.PUT("/api/admin/tenants/:target_tenant_id/endpoint_style", d.handleSetTenantEndpointStyle)
+	g.POST("/api/admin/tenants/:target_tenant_id/disable", d.handleDisableTenant)
+	g.POST("/api/admin/tenants/:target_tenant_id/enable", d.handleEnableTenant)
+	g.PUT("/api/admin/tenants/:target_tenant_id/quota", d.handleUpdateTenantQuota)
 }

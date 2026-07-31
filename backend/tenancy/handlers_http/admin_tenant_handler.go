@@ -56,7 +56,7 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 	if _, err := d.requireSystemAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), c.Param("tenant_id"))
+	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), c.Param("target_tenant_id"))
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	target, err := d.resolveTenantByRealm(c, c.Param("tenant_id"))
+	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
 	if err != nil {
 		return d.writeTenantError(c, err)
 	}
@@ -163,7 +163,7 @@ func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	target, err := d.resolveTenantByRealm(c, c.Param("tenant_id"))
+	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
 	if err != nil {
 		return d.writeTenantError(c, err)
 	}
@@ -210,7 +210,7 @@ func (d Deps) handleSetTenantDisabled(c *echo.Context, disabled bool) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	target, err := d.resolveTenantByRealm(c, c.Param("tenant_id"))
+	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
 	if err != nil {
 		return d.writeTenantError(c, err)
 	}
@@ -292,7 +292,7 @@ type tenantQuotaUpdateRequest struct {
 
 func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 	ctx := c.Request().Context()
-	tenantID := c.Param("tenant_id")
+	tenantID := c.Param("target_tenant_id")
 	if tenantID == "" {
 		return support.WriteBrowserError(c, 400, "invalid_request", "tenant_id is required")
 	}

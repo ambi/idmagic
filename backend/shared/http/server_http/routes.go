@@ -50,7 +50,6 @@ import (
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/handlers_http"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 	"github.com/ambi/idmagic/backend/wsfederation"
@@ -127,7 +126,8 @@ func Register(e *echo.Echo, d Deps) {
 	// subdomain style は origin 直下の bare path、path style は /realms/{realm} 配下。
 	// 到達経路と endpoint_style の一致は resolver 側で確かめる。
 	registerTenantRoutes(e.Group("", d.ResolveHostTenant), d)
-	registerTenantRoutes(e.Group("/realms/:tenant_id", d.ResolvePathTenant), d)
+	tenantGroup := e.Group("/realms/:tenant_id", d.ResolvePathTenant)
+	registerTenantRoutes(tenantGroup, d)
 
 	authenticator := &support.Authenticator{
 		UserRepo:          d.IdManagement.UserRepo,
@@ -138,8 +138,11 @@ func Register(e *echo.Echo, d Deps) {
 		AuthnResolver:     d.Authentication.AuthnResolver,
 	}
 
-	controlPlane := e.Group("/realms/"+tenancydomain.DefaultRealm, d.ResolveDefaultRealmTenant)
-	tenancyhttp.RegisterControlPlaneRoutes(controlPlane, tenancyhttp.Deps{
+	// control-plane (テナント横断操作) は他の全ボンデッドコンテキストと同じ
+	// tenantGroup にそのまま登録する。default テナントへの限定は
+	// requireSystemAdmin (user.TenantID == DefaultTenantID) が担う (ADR-032) —
+	// ルーティング層で別 prefix に隔離する必要はない。
+	tenancyhttp.RegisterControlPlaneRoutes(tenantGroup, tenancyhttp.Deps{
 		Deps:           d.Deps,
 		Authenticator:  authenticator,
 		TenantRepo:     d.TenantRepo,
@@ -147,9 +150,6 @@ func Register(e *echo.Echo, d Deps) {
 		UserRepo:       d.IdManagement.UserRepo,
 		QuotaRepo:      d.Tenancy.QuotaRepo,
 	})
-	// control-plane はテナント横断操作なので、default テナントの正規ロケーション
-	// (/realms/default) にのみ置く。bare path への二重登録は default テナントの
-	// 第 2 ロケーションになるため ADR-144 で廃止した。
 
 	e.GET("/health", d.handleHealth)
 	e.GET("/livez", d.handleLivez)
