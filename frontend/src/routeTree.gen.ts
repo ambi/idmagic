@@ -9,137 +9,87 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TotpRouteImport } from './routes/totp'
-import { Route as StatusRouteImport } from './routes/status'
-import { Route as Reset_passwordRouteImport } from './routes/reset_password'
-import { Route as MfaEnrollmentRouteImport } from './routes/mfa-enrollment'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as Forgot_passwordRouteImport } from './routes/forgot_password'
-import { Route as DeviceRouteImport } from './routes/device'
-import { Route as ConsentRouteImport } from './routes/consent'
-import { Route as CallbackRouteImport } from './routes/callback'
-import { Route as SystemRouteRouteImport } from './routes/system/route'
-import { Route as AdminRouteRouteImport } from './routes/admin/route'
-import { Route as AccountRouteRouteImport } from './routes/account/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SystemIndexRouteImport } from './routes/system/index'
-import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AccountRouteRouteImport } from './routes/account/route'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
+import { Route as CallbackRouteImport } from './routes/callback'
+import { Route as ConsentRouteImport } from './routes/consent'
+import { Route as DeviceRouteImport } from './routes/device'
+import { Route as Forgot_passwordRouteImport } from './routes/forgot_password'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MfaEnrollmentRouteImport } from './routes/mfa-enrollment'
+import { Route as Reset_passwordRouteImport } from './routes/reset_password'
+import { Route as StatusRouteImport } from './routes/status'
+import { Route as SystemRouteRouteImport } from './routes/system/route'
+import { Route as TotpRouteImport } from './routes/totp'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
-import { Route as SystemTenantsRouteImport } from './routes/system/tenants'
-import { Route as SystemKeysRouteImport } from './routes/system/keys'
-import { Route as SystemDataKeysRouteImport } from './routes/system/data-keys'
-import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
-import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
-import { Route as AdminRolesRouteImport } from './routes/admin/roles'
-import { Route as AdminProvisioningRouteImport } from './routes/admin/provisioning'
-import { Route as AdminMcpResourceServersRouteImport } from './routes/admin/mcp-resource-servers'
-import { Route as AdminLifecycleWorkflowsRouteImport } from './routes/admin/lifecycle-workflows'
-import { Route as AdminKeysRouteImport } from './routes/admin/keys'
-import { Route as AdminIdentityProvidersRouteImport } from './routes/admin/identity-providers'
-import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
-import { Route as AdminConsentsRouteImport } from './routes/admin/consents'
-import { Route as AdminAuthorizationDetailTypesRouteImport } from './routes/admin/authorization-detail-types'
-import { Route as AdminAudit_eventsRouteImport } from './routes/admin/audit_events'
-import { Route as AdminApplicationsRouteImport } from './routes/admin/applications'
-import { Route as AdminAgentsRouteImport } from './routes/admin/agents'
-import { Route as AccountSecurityRouteImport } from './routes/account/security'
-import { Route as AccountProfileRouteImport } from './routes/account/profile'
-import { Route as AccountPasswordRouteImport } from './routes/account/password'
-import { Route as AccountEmailsRouteImport } from './routes/account/emails'
-import { Route as AccountDataRouteImport } from './routes/account/data'
-import { Route as AccountAppsRouteImport } from './routes/account/apps'
-import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
 import { Route as AccountActivityRouteImport } from './routes/account/activity'
-import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
-import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
-import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/import'
-import { Route as AdminUsersExportsRouteImport } from './routes/admin/users_/exports'
-import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
-import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
-import { Route as AdminSettingsSamlIdpProfilesRouteImport } from './routes/admin/settings_/saml-idp-profiles'
-import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
-import { Route as AdminLifecycleWorkflowsNewRouteImport } from './routes/admin/lifecycle-workflows_/new'
-import { Route as AdminIdentityProvidersNewRouteImport } from './routes/admin/identity-providers_/new'
-import { Route as AdminIdentityProvidersIdRouteImport } from './routes/admin/identity-providers_/$id'
-import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
-import { Route as AdminGroupsExportsRouteImport } from './routes/admin/groups_/exports'
-import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
-import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
-import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
-import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
-import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
+import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
+import { Route as AccountAppsRouteImport } from './routes/account/apps'
+import { Route as AccountDataRouteImport } from './routes/account/data'
+import { Route as AccountEmailsRouteImport } from './routes/account/emails'
+import { Route as AccountPasswordRouteImport } from './routes/account/password'
+import { Route as AccountProfileRouteImport } from './routes/account/profile'
+import { Route as AccountSecurityRouteImport } from './routes/account/security'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminAgentsRouteImport } from './routes/admin/agents'
+import { Route as AdminApplicationsRouteImport } from './routes/admin/applications'
+import { Route as AdminAudit_eventsRouteImport } from './routes/admin/audit_events'
+import { Route as AdminAuthorizationDetailTypesRouteImport } from './routes/admin/authorization-detail-types'
+import { Route as AdminConsentsRouteImport } from './routes/admin/consents'
+import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
+import { Route as AdminIdentityProvidersRouteImport } from './routes/admin/identity-providers'
+import { Route as AdminKeysRouteImport } from './routes/admin/keys'
+import { Route as AdminLifecycleWorkflowsRouteImport } from './routes/admin/lifecycle-workflows'
+import { Route as AdminMcpResourceServersRouteImport } from './routes/admin/mcp-resource-servers'
+import { Route as AdminProvisioningRouteImport } from './routes/admin/provisioning'
+import { Route as AdminRolesRouteImport } from './routes/admin/roles'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as SystemIndexRouteImport } from './routes/system/index'
+import { Route as SystemDataKeysRouteImport } from './routes/system/data-keys'
+import { Route as SystemKeysRouteImport } from './routes/system/keys'
+import { Route as SystemTenantsRouteImport } from './routes/system/tenants'
 import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/verify'
-import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id.index'
-import { Route as AdminIdentityProvidersIdIndexRouteImport } from './routes/admin/identity-providers_/$id.index'
-import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
+import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
+import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
+import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
+import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
+import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
+import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
+import { Route as AdminGroupsExportsRouteImport } from './routes/admin/groups_/exports'
+import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
+import { Route as AdminIdentityProvidersIdRouteImport } from './routes/admin/identity-providers_/$id'
+import { Route as AdminIdentityProvidersNewRouteImport } from './routes/admin/identity-providers_/new'
+import { Route as AdminLifecycleWorkflowsNewRouteImport } from './routes/admin/lifecycle-workflows_/new'
+import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
+import { Route as AdminSettingsSamlIdpProfilesRouteImport } from './routes/admin/settings_/saml-idp-profiles'
+import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
+import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
+import { Route as AdminUsersExportsRouteImport } from './routes/admin/users_/exports'
+import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/import'
+import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
-import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
-import { Route as AdminSettingsSamlIdpProfilesNewRouteImport } from './routes/admin/settings_/saml-idp-profiles_/new'
-import { Route as AdminSettingsSamlIdpProfilesProfileIdRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId'
-import { Route as AdminLifecycleWorkflowsWorkflowIdEditRouteImport } from './routes/admin/lifecycle-workflows_/$workflowId.edit'
-import { Route as AdminIdentityProvidersIdEditRouteImport } from './routes/admin/identity-providers_/$id.edit'
-import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
-import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
-import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
+import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
+import { Route as AdminFederationEntraNewRouteImport } from './routes/admin/federation/entra_/new'
+import { Route as AdminGroupsGroupIdIndexRouteImport } from './routes/admin/groups_/$groupId.index'
+import { Route as AdminGroupsGroupIdEditRouteImport } from './routes/admin/groups_/$groupId.edit'
+import { Route as AdminIdentityProvidersIdIndexRouteImport } from './routes/admin/identity-providers_/$id.index'
+import { Route as AdminIdentityProvidersIdEditRouteImport } from './routes/admin/identity-providers_/$id.edit'
+import { Route as AdminLifecycleWorkflowsWorkflowIdEditRouteImport } from './routes/admin/lifecycle-workflows_/$workflowId.edit'
+import { Route as AdminSettingsSamlIdpProfilesProfileIdRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId'
+import { Route as AdminSettingsSamlIdpProfilesNewRouteImport } from './routes/admin/settings_/saml-idp-profiles_/new'
+import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id.index'
+import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
+import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.index'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdEditRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.edit'
-import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
 
-const TotpRoute = TotpRouteImport.update({
-  id: '/totp',
-  path: '/totp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StatusRoute = StatusRouteImport.update({
-  id: '/status',
-  path: '/status',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Reset_passwordRoute = Reset_passwordRouteImport.update({
-  id: '/reset_password',
-  path: '/reset_password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MfaEnrollmentRoute = MfaEnrollmentRouteImport.update({
-  id: '/mfa-enrollment',
-  path: '/mfa-enrollment',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Forgot_passwordRoute = Forgot_passwordRouteImport.update({
-  id: '/forgot_password',
-  path: '/forgot_password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeviceRoute = DeviceRouteImport.update({
-  id: '/device',
-  path: '/device',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConsentRoute = ConsentRouteImport.update({
-  id: '/consent',
-  path: '/consent',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CallbackRoute = CallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SystemRouteRoute = SystemRouteRouteImport.update({
-  id: '/system',
-  path: '/system',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRouteRoute = AdminRouteRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AccountRouteRoute = AccountRouteRouteImport.update({
@@ -147,94 +97,124 @@ const AccountRouteRoute = AccountRouteRouteImport.update({
   path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AdminRouteRoute = AdminRouteRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SystemIndexRoute = SystemIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SystemRouteRoute,
+const CallbackRoute = CallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminRouteRoute,
+const ConsentRoute = ConsentRouteImport.update({
+  id: '/consent',
+  path: '/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeviceRoute = DeviceRouteImport.update({
+  id: '/device',
+  path: '/device',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Forgot_passwordRoute = Forgot_passwordRouteImport.update({
+  id: '/forgot_password',
+  path: '/forgot_password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MfaEnrollmentRoute = MfaEnrollmentRouteImport.update({
+  id: '/mfa-enrollment',
+  path: '/mfa-enrollment',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Reset_passwordRoute = Reset_passwordRouteImport.update({
+  id: '/reset_password',
+  path: '/reset_password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SystemRouteRoute = SystemRouteRouteImport.update({
+  id: '/system',
+  path: '/system',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TotpRoute = TotpRouteImport.update({
+  id: '/totp',
+  path: '/totp',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AccountIndexRoute = AccountIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AccountRouteRoute,
 } as any)
-const SystemTenantsRoute = SystemTenantsRouteImport.update({
-  id: '/tenants',
-  path: '/tenants',
-  getParentRoute: () => SystemRouteRoute,
+const AccountActivityRoute = AccountActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AccountRouteRoute,
 } as any)
-const SystemKeysRoute = SystemKeysRouteImport.update({
-  id: '/keys',
-  path: '/keys',
-  getParentRoute: () => SystemRouteRoute,
+const AccountApplicationsRoute = AccountApplicationsRouteImport.update({
+  id: '/applications',
+  path: '/applications',
+  getParentRoute: () => AccountRouteRoute,
 } as any)
-const SystemDataKeysRoute = SystemDataKeysRouteImport.update({
-  id: '/data-keys',
-  path: '/data-keys',
-  getParentRoute: () => SystemRouteRoute,
+const AccountAppsRoute = AccountAppsRouteImport.update({
+  id: '/apps',
+  path: '/apps',
+  getParentRoute: () => AccountRouteRoute,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
+const AccountDataRoute = AccountDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AccountEmailsRoute = AccountEmailsRouteImport.update({
+  id: '/emails',
+  path: '/emails',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AccountPasswordRoute = AccountPasswordRouteImport.update({
+  id: '/password',
+  path: '/password',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AccountProfileRoute = AccountProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AccountSecurityRoute = AccountSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminSignInPolicyRoute = AdminSignInPolicyRouteImport.update({
-  id: '/sign-in-policy',
-  path: '/sign-in-policy',
+const AdminAgentsRoute = AdminAgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const AdminApplicationsRoute = AdminApplicationsRouteImport.update({
+  id: '/applications',
+  path: '/applications',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminRolesRoute = AdminRolesRouteImport.update({
-  id: '/roles',
-  path: '/roles',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
-  id: '/provisioning',
-  path: '/provisioning',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminMcpResourceServersRoute = AdminMcpResourceServersRouteImport.update({
-  id: '/mcp-resource-servers',
-  path: '/mcp-resource-servers',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminLifecycleWorkflowsRoute = AdminLifecycleWorkflowsRouteImport.update({
-  id: '/lifecycle-workflows',
-  path: '/lifecycle-workflows',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminKeysRoute = AdminKeysRouteImport.update({
-  id: '/keys',
-  path: '/keys',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminIdentityProvidersRoute = AdminIdentityProvidersRouteImport.update({
-  id: '/identity-providers',
-  path: '/identity-providers',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminGroupsRoute = AdminGroupsRouteImport.update({
-  id: '/groups',
-  path: '/groups',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminConsentsRoute = AdminConsentsRouteImport.update({
-  id: '/consents',
-  path: '/consents',
+const AdminAudit_eventsRoute = AdminAudit_eventsRouteImport.update({
+  id: '/audit_events',
+  path: '/audit_events',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminAuthorizationDetailTypesRoute =
@@ -243,59 +223,84 @@ const AdminAuthorizationDetailTypesRoute =
     path: '/authorization-detail-types',
     getParentRoute: () => AdminRouteRoute,
   } as any)
-const AdminAudit_eventsRoute = AdminAudit_eventsRouteImport.update({
-  id: '/audit_events',
-  path: '/audit_events',
+const AdminConsentsRoute = AdminConsentsRouteImport.update({
+  id: '/consents',
+  path: '/consents',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminApplicationsRoute = AdminApplicationsRouteImport.update({
-  id: '/applications',
-  path: '/applications',
+const AdminGroupsRoute = AdminGroupsRouteImport.update({
+  id: '/groups',
+  path: '/groups',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminAgentsRoute = AdminAgentsRouteImport.update({
-  id: '/agents',
-  path: '/agents',
+const AdminIdentityProvidersRoute = AdminIdentityProvidersRouteImport.update({
+  id: '/identity-providers',
+  path: '/identity-providers',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountSecurityRoute = AccountSecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
-  getParentRoute: () => AccountRouteRoute,
+const AdminKeysRoute = AdminKeysRouteImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountProfileRoute = AccountProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => AccountRouteRoute,
+const AdminLifecycleWorkflowsRoute = AdminLifecycleWorkflowsRouteImport.update({
+  id: '/lifecycle-workflows',
+  path: '/lifecycle-workflows',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountPasswordRoute = AccountPasswordRouteImport.update({
-  id: '/password',
-  path: '/password',
-  getParentRoute: () => AccountRouteRoute,
+const AdminMcpResourceServersRoute = AdminMcpResourceServersRouteImport.update({
+  id: '/mcp-resource-servers',
+  path: '/mcp-resource-servers',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountEmailsRoute = AccountEmailsRouteImport.update({
-  id: '/emails',
-  path: '/emails',
-  getParentRoute: () => AccountRouteRoute,
+const AdminProvisioningRoute = AdminProvisioningRouteImport.update({
+  id: '/provisioning',
+  path: '/provisioning',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountDataRoute = AccountDataRouteImport.update({
-  id: '/data',
-  path: '/data',
-  getParentRoute: () => AccountRouteRoute,
+const AdminRolesRoute = AdminRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountAppsRoute = AccountAppsRouteImport.update({
-  id: '/apps',
-  path: '/apps',
-  getParentRoute: () => AccountRouteRoute,
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountApplicationsRoute = AccountApplicationsRouteImport.update({
-  id: '/applications',
-  path: '/applications',
-  getParentRoute: () => AccountRouteRoute,
+const AdminSignInPolicyRoute = AdminSignInPolicyRouteImport.update({
+  id: '/sign-in-policy',
+  path: '/sign-in-policy',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountActivityRoute = AccountActivityRouteImport.update({
-  id: '/activity',
-  path: '/activity',
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const SystemIndexRoute = SystemIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
+const SystemDataKeysRoute = SystemDataKeysRouteImport.update({
+  id: '/data-keys',
+  path: '/data-keys',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
+const SystemKeysRoute = SystemKeysRouteImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
+const SystemTenantsRoute = SystemTenantsRouteImport.update({
+  id: '/tenants',
+  path: '/tenants',
+  getParentRoute: () => SystemRouteRoute,
+} as any)
+const AccountEmailVerifyRoute = AccountEmailVerifyRouteImport.update({
+  id: '/email/verify',
+  path: '/email/verify',
   getParentRoute: () => AccountRouteRoute,
 } as any)
 const AccountProfileIndexRoute = AccountProfileIndexRouteImport.update({
@@ -303,78 +308,14 @@ const AccountProfileIndexRoute = AccountProfileIndexRouteImport.update({
   path: '/profile/',
   getParentRoute: () => AccountRouteRoute,
 } as any)
-const AdminUsersNewRoute = AdminUsersNewRouteImport.update({
-  id: '/users_/new',
-  path: '/users/new',
-  getParentRoute: () => AdminRouteRoute,
+const AccountProfileEditRoute = AccountProfileEditRouteImport.update({
+  id: '/profile_/edit',
+  path: '/profile/edit',
+  getParentRoute: () => AccountRouteRoute,
 } as any)
-const AdminUsersImportRoute = AdminUsersImportRouteImport.update({
-  id: '/users_/import',
-  path: '/users/import',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminUsersExportsRoute = AdminUsersExportsRouteImport.update({
-  id: '/users_/exports',
-  path: '/users/exports',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
-  id: '/users_/$id',
-  path: '/users/$id',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminTenantAttributesRoute = AdminTenantAttributesRouteImport.update({
-  id: '/tenant/attributes',
-  path: '/tenant/attributes',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminSettingsSamlIdpProfilesRoute =
-  AdminSettingsSamlIdpProfilesRouteImport.update({
-    id: '/settings_/saml-idp-profiles',
-    path: '/settings/saml-idp-profiles',
-    getParentRoute: () => AdminRouteRoute,
-  } as any)
-const AdminRolesNameRoute = AdminRolesNameRouteImport.update({
-  id: '/roles_/$name',
-  path: '/roles/$name',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminLifecycleWorkflowsNewRoute =
-  AdminLifecycleWorkflowsNewRouteImport.update({
-    id: '/lifecycle-workflows_/new',
-    path: '/lifecycle-workflows/new',
-    getParentRoute: () => AdminRouteRoute,
-  } as any)
-const AdminIdentityProvidersNewRoute =
-  AdminIdentityProvidersNewRouteImport.update({
-    id: '/identity-providers_/new',
-    path: '/identity-providers/new',
-    getParentRoute: () => AdminRouteRoute,
-  } as any)
-const AdminIdentityProvidersIdRoute =
-  AdminIdentityProvidersIdRouteImport.update({
-    id: '/identity-providers_/$id',
-    path: '/identity-providers/$id',
-    getParentRoute: () => AdminRouteRoute,
-  } as any)
-const AdminGroupsNewRoute = AdminGroupsNewRouteImport.update({
-  id: '/groups_/new',
-  path: '/groups/new',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminGroupsExportsRoute = AdminGroupsExportsRouteImport.update({
-  id: '/groups_/exports',
-  path: '/groups/exports',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminGroupsGroupIdRoute = AdminGroupsGroupIdRouteImport.update({
-  id: '/groups_/$groupId',
-  path: '/groups/$groupId',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminFederationEntraRoute = AdminFederationEntraRouteImport.update({
-  id: '/federation/entra',
-  path: '/federation/entra',
+const AdminAgentsAgentIdRoute = AdminAgentsAgentIdRouteImport.update({
+  id: '/agents_/$agentId',
+  path: '/agents/$agentId',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminApplicationsApplicationIdRoute =
@@ -383,36 +324,79 @@ const AdminApplicationsApplicationIdRoute =
     path: '/applications/$applicationId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
-const AdminAgentsAgentIdRoute = AdminAgentsAgentIdRouteImport.update({
-  id: '/agents_/$agentId',
-  path: '/agents/$agentId',
+const AdminFederationEntraRoute = AdminFederationEntraRouteImport.update({
+  id: '/federation/entra',
+  path: '/federation/entra',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountProfileEditRoute = AccountProfileEditRouteImport.update({
-  id: '/profile_/edit',
-  path: '/profile/edit',
-  getParentRoute: () => AccountRouteRoute,
+const AdminGroupsGroupIdRoute = AdminGroupsGroupIdRouteImport.update({
+  id: '/groups_/$groupId',
+  path: '/groups/$groupId',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AccountEmailVerifyRoute = AccountEmailVerifyRouteImport.update({
-  id: '/email/verify',
-  path: '/email/verify',
-  getParentRoute: () => AccountRouteRoute,
+const AdminGroupsExportsRoute = AdminGroupsExportsRouteImport.update({
+  id: '/groups_/exports',
+  path: '/groups/exports',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminUsersIdIndexRoute = AdminUsersIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminUsersIdRoute,
+const AdminGroupsNewRoute = AdminGroupsNewRouteImport.update({
+  id: '/groups_/new',
+  path: '/groups/new',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminIdentityProvidersIdIndexRoute =
-  AdminIdentityProvidersIdIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AdminIdentityProvidersIdRoute,
+const AdminIdentityProvidersIdRoute =
+  AdminIdentityProvidersIdRouteImport.update({
+    id: '/identity-providers_/$id',
+    path: '/identity-providers/$id',
+    getParentRoute: () => AdminRouteRoute,
   } as any)
-const AdminGroupsGroupIdIndexRoute = AdminGroupsGroupIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => AdminGroupsGroupIdRoute,
+const AdminIdentityProvidersNewRoute =
+  AdminIdentityProvidersNewRouteImport.update({
+    id: '/identity-providers_/new',
+    path: '/identity-providers/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminLifecycleWorkflowsNewRoute =
+  AdminLifecycleWorkflowsNewRouteImport.update({
+    id: '/lifecycle-workflows_/new',
+    path: '/lifecycle-workflows/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminRolesNameRoute = AdminRolesNameRouteImport.update({
+  id: '/roles_/$name',
+  path: '/roles/$name',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettingsSamlIdpProfilesRoute =
+  AdminSettingsSamlIdpProfilesRouteImport.update({
+    id: '/settings_/saml-idp-profiles',
+    path: '/settings/saml-idp-profiles',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminTenantAttributesRoute = AdminTenantAttributesRouteImport.update({
+  id: '/tenant/attributes',
+  path: '/tenant/attributes',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
+  id: '/users_/$id',
+  path: '/users/$id',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminUsersExportsRoute = AdminUsersExportsRouteImport.update({
+  id: '/users_/exports',
+  path: '/users/exports',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminUsersImportRoute = AdminUsersImportRouteImport.update({
+  id: '/users_/import',
+  path: '/users/import',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminUsersNewRoute = AdminUsersNewRouteImport.update({
+  id: '/users_/new',
+  path: '/users/new',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminApplicationsApplicationIdIndexRoute =
   AdminApplicationsApplicationIdIndexRouteImport.update({
@@ -420,15 +404,49 @@ const AdminApplicationsApplicationIdIndexRoute =
     path: '/',
     getParentRoute: () => AdminApplicationsApplicationIdRoute,
   } as any)
-const AdminUsersIdEditRoute = AdminUsersIdEditRouteImport.update({
+const AdminApplicationsApplicationIdEditRoute =
+  AdminApplicationsApplicationIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AdminApplicationsApplicationIdRoute,
+  } as any)
+const AdminApplicationsApplicationIdProvisioningRoute =
+  AdminApplicationsApplicationIdProvisioningRouteImport.update({
+    id: '/provisioning',
+    path: '/provisioning',
+    getParentRoute: () => AdminApplicationsApplicationIdRoute,
+  } as any)
+const AdminFederationEntraNewRoute = AdminFederationEntraNewRouteImport.update({
+  id: '/federation/entra_/new',
+  path: '/federation/entra/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminGroupsGroupIdIndexRoute = AdminGroupsGroupIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminGroupsGroupIdRoute,
+} as any)
+const AdminGroupsGroupIdEditRoute = AdminGroupsGroupIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
-  getParentRoute: () => AdminUsersIdRoute,
+  getParentRoute: () => AdminGroupsGroupIdRoute,
 } as any)
-const AdminSettingsSamlIdpProfilesNewRoute =
-  AdminSettingsSamlIdpProfilesNewRouteImport.update({
-    id: '/settings_/saml-idp-profiles_/new',
-    path: '/settings/saml-idp-profiles/new',
+const AdminIdentityProvidersIdIndexRoute =
+  AdminIdentityProvidersIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminIdentityProvidersIdRoute,
+  } as any)
+const AdminIdentityProvidersIdEditRoute =
+  AdminIdentityProvidersIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AdminIdentityProvidersIdRoute,
+  } as any)
+const AdminLifecycleWorkflowsWorkflowIdEditRoute =
+  AdminLifecycleWorkflowsWorkflowIdEditRouteImport.update({
+    id: '/lifecycle-workflows_/$workflowId/edit',
+    path: '/lifecycle-workflows/$workflowId/edit',
     getParentRoute: () => AdminRouteRoute,
   } as any)
 const AdminSettingsSamlIdpProfilesProfileIdRoute =
@@ -437,39 +455,27 @@ const AdminSettingsSamlIdpProfilesProfileIdRoute =
     path: '/settings/saml-idp-profiles/$profileId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
-const AdminLifecycleWorkflowsWorkflowIdEditRoute =
-  AdminLifecycleWorkflowsWorkflowIdEditRouteImport.update({
-    id: '/lifecycle-workflows_/$workflowId/edit',
-    path: '/lifecycle-workflows/$workflowId/edit',
+const AdminSettingsSamlIdpProfilesNewRoute =
+  AdminSettingsSamlIdpProfilesNewRouteImport.update({
+    id: '/settings_/saml-idp-profiles_/new',
+    path: '/settings/saml-idp-profiles/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
-const AdminIdentityProvidersIdEditRoute =
-  AdminIdentityProvidersIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => AdminIdentityProvidersIdRoute,
-  } as any)
-const AdminGroupsGroupIdEditRoute = AdminGroupsGroupIdEditRouteImport.update({
+const AdminUsersIdIndexRoute = AdminUsersIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminUsersIdRoute,
+} as any)
+const AdminUsersIdEditRoute = AdminUsersIdEditRouteImport.update({
   id: '/edit',
   path: '/edit',
-  getParentRoute: () => AdminGroupsGroupIdRoute,
+  getParentRoute: () => AdminUsersIdRoute,
 } as any)
-const AdminFederationEntraNewRoute = AdminFederationEntraNewRouteImport.update({
-  id: '/federation/entra_/new',
-  path: '/federation/entra/new',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminApplicationsApplicationIdProvisioningRoute =
-  AdminApplicationsApplicationIdProvisioningRouteImport.update({
-    id: '/provisioning',
-    path: '/provisioning',
-    getParentRoute: () => AdminApplicationsApplicationIdRoute,
-  } as any)
-const AdminApplicationsApplicationIdEditRoute =
-  AdminApplicationsApplicationIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => AdminApplicationsApplicationIdRoute,
+const AdminGroupsGroupIdMembersExportsRoute =
+  AdminGroupsGroupIdMembersExportsRouteImport.update({
+    id: '/members/exports',
+    path: '/members/exports',
+    getParentRoute: () => AdminGroupsGroupIdRoute,
   } as any)
 const AdminSettingsSamlIdpProfilesProfileIdIndexRoute =
   AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport.update({
@@ -482,12 +488,6 @@ const AdminSettingsSamlIdpProfilesProfileIdEditRoute =
     id: '/edit',
     path: '/edit',
     getParentRoute: () => AdminSettingsSamlIdpProfilesProfileIdRoute,
-  } as any)
-const AdminGroupsGroupIdMembersExportsRoute =
-  AdminGroupsGroupIdMembersExportsRouteImport.update({
-    id: '/members/exports',
-    path: '/members/exports',
-    getParentRoute: () => AdminGroupsGroupIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -968,81 +968,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/totp': {
-      id: '/totp'
-      path: '/totp'
-      fullPath: '/totp'
-      preLoaderRoute: typeof TotpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/status': {
-      id: '/status'
-      path: '/status'
-      fullPath: '/status'
-      preLoaderRoute: typeof StatusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/reset_password': {
-      id: '/reset_password'
-      path: '/reset_password'
-      fullPath: '/reset_password'
-      preLoaderRoute: typeof Reset_passwordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mfa-enrollment': {
-      id: '/mfa-enrollment'
-      path: '/mfa-enrollment'
-      fullPath: '/mfa-enrollment'
-      preLoaderRoute: typeof MfaEnrollmentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/forgot_password': {
-      id: '/forgot_password'
-      path: '/forgot_password'
-      fullPath: '/forgot_password'
-      preLoaderRoute: typeof Forgot_passwordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/device': {
-      id: '/device'
-      path: '/device'
-      fullPath: '/device'
-      preLoaderRoute: typeof DeviceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/consent': {
-      id: '/consent'
-      path: '/consent'
-      fullPath: '/consent'
-      preLoaderRoute: typeof ConsentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/callback': {
-      id: '/callback'
-      path: '/callback'
-      fullPath: '/callback'
-      preLoaderRoute: typeof CallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/system': {
-      id: '/system'
-      path: '/system'
-      fullPath: '/system'
-      preLoaderRoute: typeof SystemRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/account': {
@@ -1052,207 +982,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/system/': {
-      id: '/system/'
-      path: '/'
-      fullPath: '/system/'
-      preLoaderRoute: typeof SystemIndexRouteImport
-      parentRoute: typeof SystemRouteRoute
+    '/callback': {
+      id: '/callback'
+      path: '/callback'
+      fullPath: '/callback'
+      preLoaderRoute: typeof CallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
-      preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRouteRoute
+    '/consent': {
+      id: '/consent'
+      path: '/consent'
+      fullPath: '/consent'
+      preLoaderRoute: typeof ConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/device': {
+      id: '/device'
+      path: '/device'
+      fullPath: '/device'
+      preLoaderRoute: typeof DeviceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot_password': {
+      id: '/forgot_password'
+      path: '/forgot_password'
+      fullPath: '/forgot_password'
+      preLoaderRoute: typeof Forgot_passwordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mfa-enrollment': {
+      id: '/mfa-enrollment'
+      path: '/mfa-enrollment'
+      fullPath: '/mfa-enrollment'
+      preLoaderRoute: typeof MfaEnrollmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset_password': {
+      id: '/reset_password'
+      path: '/reset_password'
+      fullPath: '/reset_password'
+      preLoaderRoute: typeof Reset_passwordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/system': {
+      id: '/system'
+      path: '/system'
+      fullPath: '/system'
+      preLoaderRoute: typeof SystemRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/totp': {
+      id: '/totp'
+      path: '/totp'
+      fullPath: '/totp'
+      preLoaderRoute: typeof TotpRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/account/': {
       id: '/account/'
       path: '/'
       fullPath: '/account/'
       preLoaderRoute: typeof AccountIndexRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
-    '/system/tenants': {
-      id: '/system/tenants'
-      path: '/tenants'
-      fullPath: '/system/tenants'
-      preLoaderRoute: typeof SystemTenantsRouteImport
-      parentRoute: typeof SystemRouteRoute
-    }
-    '/system/keys': {
-      id: '/system/keys'
-      path: '/keys'
-      fullPath: '/system/keys'
-      preLoaderRoute: typeof SystemKeysRouteImport
-      parentRoute: typeof SystemRouteRoute
-    }
-    '/system/data-keys': {
-      id: '/system/data-keys'
-      path: '/data-keys'
-      fullPath: '/system/data-keys'
-      preLoaderRoute: typeof SystemDataKeysRouteImport
-      parentRoute: typeof SystemRouteRoute
-    }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/sign-in-policy': {
-      id: '/admin/sign-in-policy'
-      path: '/sign-in-policy'
-      fullPath: '/admin/sign-in-policy'
-      preLoaderRoute: typeof AdminSignInPolicyRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/roles': {
-      id: '/admin/roles'
-      path: '/roles'
-      fullPath: '/admin/roles'
-      preLoaderRoute: typeof AdminRolesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/provisioning': {
-      id: '/admin/provisioning'
-      path: '/provisioning'
-      fullPath: '/admin/provisioning'
-      preLoaderRoute: typeof AdminProvisioningRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/mcp-resource-servers': {
-      id: '/admin/mcp-resource-servers'
-      path: '/mcp-resource-servers'
-      fullPath: '/admin/mcp-resource-servers'
-      preLoaderRoute: typeof AdminMcpResourceServersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/lifecycle-workflows': {
-      id: '/admin/lifecycle-workflows'
-      path: '/lifecycle-workflows'
-      fullPath: '/admin/lifecycle-workflows'
-      preLoaderRoute: typeof AdminLifecycleWorkflowsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/keys': {
-      id: '/admin/keys'
-      path: '/keys'
-      fullPath: '/admin/keys'
-      preLoaderRoute: typeof AdminKeysRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/identity-providers': {
-      id: '/admin/identity-providers'
-      path: '/identity-providers'
-      fullPath: '/admin/identity-providers'
-      preLoaderRoute: typeof AdminIdentityProvidersRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/groups': {
-      id: '/admin/groups'
-      path: '/groups'
-      fullPath: '/admin/groups'
-      preLoaderRoute: typeof AdminGroupsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/consents': {
-      id: '/admin/consents'
-      path: '/consents'
-      fullPath: '/admin/consents'
-      preLoaderRoute: typeof AdminConsentsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/authorization-detail-types': {
-      id: '/admin/authorization-detail-types'
-      path: '/authorization-detail-types'
-      fullPath: '/admin/authorization-detail-types'
-      preLoaderRoute: typeof AdminAuthorizationDetailTypesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/audit_events': {
-      id: '/admin/audit_events'
-      path: '/audit_events'
-      fullPath: '/admin/audit_events'
-      preLoaderRoute: typeof AdminAudit_eventsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/applications': {
-      id: '/admin/applications'
-      path: '/applications'
-      fullPath: '/admin/applications'
-      preLoaderRoute: typeof AdminApplicationsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/agents': {
-      id: '/admin/agents'
-      path: '/agents'
-      fullPath: '/admin/agents'
-      preLoaderRoute: typeof AdminAgentsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/account/security': {
-      id: '/account/security'
-      path: '/security'
-      fullPath: '/account/security'
-      preLoaderRoute: typeof AccountSecurityRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
-    '/account/profile': {
-      id: '/account/profile'
-      path: '/profile'
-      fullPath: '/account/profile'
-      preLoaderRoute: typeof AccountProfileRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
-    '/account/password': {
-      id: '/account/password'
-      path: '/password'
-      fullPath: '/account/password'
-      preLoaderRoute: typeof AccountPasswordRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
-    '/account/emails': {
-      id: '/account/emails'
-      path: '/emails'
-      fullPath: '/account/emails'
-      preLoaderRoute: typeof AccountEmailsRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
-    '/account/data': {
-      id: '/account/data'
-      path: '/data'
-      fullPath: '/account/data'
-      preLoaderRoute: typeof AccountDataRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
-    '/account/apps': {
-      id: '/account/apps'
-      path: '/apps'
-      fullPath: '/account/apps'
-      preLoaderRoute: typeof AccountAppsRouteImport
-      parentRoute: typeof AccountRouteRoute
-    }
-    '/account/applications': {
-      id: '/account/applications'
-      path: '/applications'
-      fullPath: '/account/applications'
-      preLoaderRoute: typeof AccountApplicationsRouteImport
       parentRoute: typeof AccountRouteRoute
     }
     '/account/activity': {
@@ -1262,6 +1073,202 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountActivityRouteImport
       parentRoute: typeof AccountRouteRoute
     }
+    '/account/applications': {
+      id: '/account/applications'
+      path: '/applications'
+      fullPath: '/account/applications'
+      preLoaderRoute: typeof AccountApplicationsRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/account/apps': {
+      id: '/account/apps'
+      path: '/apps'
+      fullPath: '/account/apps'
+      preLoaderRoute: typeof AccountAppsRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/account/data': {
+      id: '/account/data'
+      path: '/data'
+      fullPath: '/account/data'
+      preLoaderRoute: typeof AccountDataRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/account/emails': {
+      id: '/account/emails'
+      path: '/emails'
+      fullPath: '/account/emails'
+      preLoaderRoute: typeof AccountEmailsRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/account/password': {
+      id: '/account/password'
+      path: '/password'
+      fullPath: '/account/password'
+      preLoaderRoute: typeof AccountPasswordRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/account/profile': {
+      id: '/account/profile'
+      path: '/profile'
+      fullPath: '/account/profile'
+      preLoaderRoute: typeof AccountProfileRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/account/security': {
+      id: '/account/security'
+      path: '/security'
+      fullPath: '/account/security'
+      preLoaderRoute: typeof AccountSecurityRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/agents': {
+      id: '/admin/agents'
+      path: '/agents'
+      fullPath: '/admin/agents'
+      preLoaderRoute: typeof AdminAgentsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/applications': {
+      id: '/admin/applications'
+      path: '/applications'
+      fullPath: '/admin/applications'
+      preLoaderRoute: typeof AdminApplicationsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/audit_events': {
+      id: '/admin/audit_events'
+      path: '/audit_events'
+      fullPath: '/admin/audit_events'
+      preLoaderRoute: typeof AdminAudit_eventsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/authorization-detail-types': {
+      id: '/admin/authorization-detail-types'
+      path: '/authorization-detail-types'
+      fullPath: '/admin/authorization-detail-types'
+      preLoaderRoute: typeof AdminAuthorizationDetailTypesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/consents': {
+      id: '/admin/consents'
+      path: '/consents'
+      fullPath: '/admin/consents'
+      preLoaderRoute: typeof AdminConsentsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/groups': {
+      id: '/admin/groups'
+      path: '/groups'
+      fullPath: '/admin/groups'
+      preLoaderRoute: typeof AdminGroupsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/identity-providers': {
+      id: '/admin/identity-providers'
+      path: '/identity-providers'
+      fullPath: '/admin/identity-providers'
+      preLoaderRoute: typeof AdminIdentityProvidersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/keys': {
+      id: '/admin/keys'
+      path: '/keys'
+      fullPath: '/admin/keys'
+      preLoaderRoute: typeof AdminKeysRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/lifecycle-workflows': {
+      id: '/admin/lifecycle-workflows'
+      path: '/lifecycle-workflows'
+      fullPath: '/admin/lifecycle-workflows'
+      preLoaderRoute: typeof AdminLifecycleWorkflowsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/mcp-resource-servers': {
+      id: '/admin/mcp-resource-servers'
+      path: '/mcp-resource-servers'
+      fullPath: '/admin/mcp-resource-servers'
+      preLoaderRoute: typeof AdminMcpResourceServersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/provisioning': {
+      id: '/admin/provisioning'
+      path: '/provisioning'
+      fullPath: '/admin/provisioning'
+      preLoaderRoute: typeof AdminProvisioningRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/roles': {
+      id: '/admin/roles'
+      path: '/roles'
+      fullPath: '/admin/roles'
+      preLoaderRoute: typeof AdminRolesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/sign-in-policy': {
+      id: '/admin/sign-in-policy'
+      path: '/sign-in-policy'
+      fullPath: '/admin/sign-in-policy'
+      preLoaderRoute: typeof AdminSignInPolicyRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/system/': {
+      id: '/system/'
+      path: '/'
+      fullPath: '/system/'
+      preLoaderRoute: typeof SystemIndexRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
+    '/system/data-keys': {
+      id: '/system/data-keys'
+      path: '/data-keys'
+      fullPath: '/system/data-keys'
+      preLoaderRoute: typeof SystemDataKeysRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
+    '/system/keys': {
+      id: '/system/keys'
+      path: '/keys'
+      fullPath: '/system/keys'
+      preLoaderRoute: typeof SystemKeysRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
+    '/system/tenants': {
+      id: '/system/tenants'
+      path: '/tenants'
+      fullPath: '/system/tenants'
+      preLoaderRoute: typeof SystemTenantsRouteImport
+      parentRoute: typeof SystemRouteRoute
+    }
+    '/account/email/verify': {
+      id: '/account/email/verify'
+      path: '/email/verify'
+      fullPath: '/account/email/verify'
+      preLoaderRoute: typeof AccountEmailVerifyRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
     '/account/profile_/': {
       id: '/account/profile_/'
       path: '/profile'
@@ -1269,102 +1276,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountProfileIndexRouteImport
       parentRoute: typeof AccountRouteRoute
     }
-    '/admin/users_/new': {
-      id: '/admin/users_/new'
-      path: '/users/new'
-      fullPath: '/admin/users/new'
-      preLoaderRoute: typeof AdminUsersNewRouteImport
-      parentRoute: typeof AdminRouteRoute
+    '/account/profile_/edit': {
+      id: '/account/profile_/edit'
+      path: '/profile/edit'
+      fullPath: '/account/profile/edit'
+      preLoaderRoute: typeof AccountProfileEditRouteImport
+      parentRoute: typeof AccountRouteRoute
     }
-    '/admin/users_/import': {
-      id: '/admin/users_/import'
-      path: '/users/import'
-      fullPath: '/admin/users/import'
-      preLoaderRoute: typeof AdminUsersImportRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/users_/exports': {
-      id: '/admin/users_/exports'
-      path: '/users/exports'
-      fullPath: '/admin/users/exports'
-      preLoaderRoute: typeof AdminUsersExportsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/users_/$id': {
-      id: '/admin/users_/$id'
-      path: '/users/$id'
-      fullPath: '/admin/users/$id'
-      preLoaderRoute: typeof AdminUsersIdRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/tenant/attributes': {
-      id: '/admin/tenant/attributes'
-      path: '/tenant/attributes'
-      fullPath: '/admin/tenant/attributes'
-      preLoaderRoute: typeof AdminTenantAttributesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/settings_/saml-idp-profiles': {
-      id: '/admin/settings_/saml-idp-profiles'
-      path: '/settings/saml-idp-profiles'
-      fullPath: '/admin/settings/saml-idp-profiles'
-      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/roles_/$name': {
-      id: '/admin/roles_/$name'
-      path: '/roles/$name'
-      fullPath: '/admin/roles/$name'
-      preLoaderRoute: typeof AdminRolesNameRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/lifecycle-workflows_/new': {
-      id: '/admin/lifecycle-workflows_/new'
-      path: '/lifecycle-workflows/new'
-      fullPath: '/admin/lifecycle-workflows/new'
-      preLoaderRoute: typeof AdminLifecycleWorkflowsNewRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/identity-providers_/new': {
-      id: '/admin/identity-providers_/new'
-      path: '/identity-providers/new'
-      fullPath: '/admin/identity-providers/new'
-      preLoaderRoute: typeof AdminIdentityProvidersNewRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/identity-providers_/$id': {
-      id: '/admin/identity-providers_/$id'
-      path: '/identity-providers/$id'
-      fullPath: '/admin/identity-providers/$id'
-      preLoaderRoute: typeof AdminIdentityProvidersIdRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/groups_/new': {
-      id: '/admin/groups_/new'
-      path: '/groups/new'
-      fullPath: '/admin/groups/new'
-      preLoaderRoute: typeof AdminGroupsNewRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/groups_/exports': {
-      id: '/admin/groups_/exports'
-      path: '/groups/exports'
-      fullPath: '/admin/groups/exports'
-      preLoaderRoute: typeof AdminGroupsExportsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/groups_/$groupId': {
-      id: '/admin/groups_/$groupId'
-      path: '/groups/$groupId'
-      fullPath: '/admin/groups/$groupId'
-      preLoaderRoute: typeof AdminGroupsGroupIdRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/federation/entra': {
-      id: '/admin/federation/entra'
-      path: '/federation/entra'
-      fullPath: '/admin/federation/entra'
-      preLoaderRoute: typeof AdminFederationEntraRouteImport
+    '/admin/agents_/$agentId': {
+      id: '/admin/agents_/$agentId'
+      path: '/agents/$agentId'
+      fullPath: '/admin/agents/$agentId'
+      preLoaderRoute: typeof AdminAgentsAgentIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/applications_/$applicationId': {
@@ -1374,47 +1297,103 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminApplicationsApplicationIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/agents_/$agentId': {
-      id: '/admin/agents_/$agentId'
-      path: '/agents/$agentId'
-      fullPath: '/admin/agents/$agentId'
-      preLoaderRoute: typeof AdminAgentsAgentIdRouteImport
+    '/admin/federation/entra': {
+      id: '/admin/federation/entra'
+      path: '/federation/entra'
+      fullPath: '/admin/federation/entra'
+      preLoaderRoute: typeof AdminFederationEntraRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/account/profile_/edit': {
-      id: '/account/profile_/edit'
-      path: '/profile/edit'
-      fullPath: '/account/profile/edit'
-      preLoaderRoute: typeof AccountProfileEditRouteImport
-      parentRoute: typeof AccountRouteRoute
+    '/admin/groups_/$groupId': {
+      id: '/admin/groups_/$groupId'
+      path: '/groups/$groupId'
+      fullPath: '/admin/groups/$groupId'
+      preLoaderRoute: typeof AdminGroupsGroupIdRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/account/email/verify': {
-      id: '/account/email/verify'
-      path: '/email/verify'
-      fullPath: '/account/email/verify'
-      preLoaderRoute: typeof AccountEmailVerifyRouteImport
-      parentRoute: typeof AccountRouteRoute
+    '/admin/groups_/exports': {
+      id: '/admin/groups_/exports'
+      path: '/groups/exports'
+      fullPath: '/admin/groups/exports'
+      preLoaderRoute: typeof AdminGroupsExportsRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/admin/users_/$id/': {
-      id: '/admin/users_/$id/'
-      path: '/'
-      fullPath: '/admin/users/$id/'
-      preLoaderRoute: typeof AdminUsersIdIndexRouteImport
-      parentRoute: typeof AdminUsersIdRoute
+    '/admin/groups_/new': {
+      id: '/admin/groups_/new'
+      path: '/groups/new'
+      fullPath: '/admin/groups/new'
+      preLoaderRoute: typeof AdminGroupsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/admin/identity-providers_/$id/': {
-      id: '/admin/identity-providers_/$id/'
-      path: '/'
-      fullPath: '/admin/identity-providers/$id/'
-      preLoaderRoute: typeof AdminIdentityProvidersIdIndexRouteImport
-      parentRoute: typeof AdminIdentityProvidersIdRoute
+    '/admin/identity-providers_/$id': {
+      id: '/admin/identity-providers_/$id'
+      path: '/identity-providers/$id'
+      fullPath: '/admin/identity-providers/$id'
+      preLoaderRoute: typeof AdminIdentityProvidersIdRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/admin/groups_/$groupId/': {
-      id: '/admin/groups_/$groupId/'
-      path: '/'
-      fullPath: '/admin/groups/$groupId/'
-      preLoaderRoute: typeof AdminGroupsGroupIdIndexRouteImport
-      parentRoute: typeof AdminGroupsGroupIdRoute
+    '/admin/identity-providers_/new': {
+      id: '/admin/identity-providers_/new'
+      path: '/identity-providers/new'
+      fullPath: '/admin/identity-providers/new'
+      preLoaderRoute: typeof AdminIdentityProvidersNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/lifecycle-workflows_/new': {
+      id: '/admin/lifecycle-workflows_/new'
+      path: '/lifecycle-workflows/new'
+      fullPath: '/admin/lifecycle-workflows/new'
+      preLoaderRoute: typeof AdminLifecycleWorkflowsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/roles_/$name': {
+      id: '/admin/roles_/$name'
+      path: '/roles/$name'
+      fullPath: '/admin/roles/$name'
+      preLoaderRoute: typeof AdminRolesNameRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings_/saml-idp-profiles': {
+      id: '/admin/settings_/saml-idp-profiles'
+      path: '/settings/saml-idp-profiles'
+      fullPath: '/admin/settings/saml-idp-profiles'
+      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/tenant/attributes': {
+      id: '/admin/tenant/attributes'
+      path: '/tenant/attributes'
+      fullPath: '/admin/tenant/attributes'
+      preLoaderRoute: typeof AdminTenantAttributesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/users_/$id': {
+      id: '/admin/users_/$id'
+      path: '/users/$id'
+      fullPath: '/admin/users/$id'
+      preLoaderRoute: typeof AdminUsersIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/users_/exports': {
+      id: '/admin/users_/exports'
+      path: '/users/exports'
+      fullPath: '/admin/users/exports'
+      preLoaderRoute: typeof AdminUsersExportsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/users_/import': {
+      id: '/admin/users_/import'
+      path: '/users/import'
+      fullPath: '/admin/users/import'
+      preLoaderRoute: typeof AdminUsersImportRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/users_/new': {
+      id: '/admin/users_/new'
+      path: '/users/new'
+      fullPath: '/admin/users/new'
+      preLoaderRoute: typeof AdminUsersNewRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/applications_/$applicationId/': {
       id: '/admin/applications_/$applicationId/'
@@ -1423,18 +1402,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminApplicationsApplicationIdIndexRouteImport
       parentRoute: typeof AdminApplicationsApplicationIdRoute
     }
-    '/admin/users_/$id/edit': {
-      id: '/admin/users_/$id/edit'
+    '/admin/applications_/$applicationId/edit': {
+      id: '/admin/applications_/$applicationId/edit'
       path: '/edit'
-      fullPath: '/admin/users/$id/edit'
-      preLoaderRoute: typeof AdminUsersIdEditRouteImport
-      parentRoute: typeof AdminUsersIdRoute
+      fullPath: '/admin/applications/$applicationId/edit'
+      preLoaderRoute: typeof AdminApplicationsApplicationIdEditRouteImport
+      parentRoute: typeof AdminApplicationsApplicationIdRoute
     }
-    '/admin/settings_/saml-idp-profiles_/new': {
-      id: '/admin/settings_/saml-idp-profiles_/new'
-      path: '/settings/saml-idp-profiles/new'
-      fullPath: '/admin/settings/saml-idp-profiles/new'
-      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesNewRouteImport
+    '/admin/applications_/$applicationId/provisioning': {
+      id: '/admin/applications_/$applicationId/provisioning'
+      path: '/provisioning'
+      fullPath: '/admin/applications/$applicationId/provisioning'
+      preLoaderRoute: typeof AdminApplicationsApplicationIdProvisioningRouteImport
+      parentRoute: typeof AdminApplicationsApplicationIdRoute
+    }
+    '/admin/federation/entra_/new': {
+      id: '/admin/federation/entra_/new'
+      path: '/federation/entra/new'
+      fullPath: '/admin/federation/entra/new'
+      preLoaderRoute: typeof AdminFederationEntraNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/groups_/$groupId/': {
+      id: '/admin/groups_/$groupId/'
+      path: '/'
+      fullPath: '/admin/groups/$groupId/'
+      preLoaderRoute: typeof AdminGroupsGroupIdIndexRouteImport
+      parentRoute: typeof AdminGroupsGroupIdRoute
+    }
+    '/admin/groups_/$groupId/edit': {
+      id: '/admin/groups_/$groupId/edit'
+      path: '/edit'
+      fullPath: '/admin/groups/$groupId/edit'
+      preLoaderRoute: typeof AdminGroupsGroupIdEditRouteImport
+      parentRoute: typeof AdminGroupsGroupIdRoute
+    }
+    '/admin/identity-providers_/$id/': {
+      id: '/admin/identity-providers_/$id/'
+      path: '/'
+      fullPath: '/admin/identity-providers/$id/'
+      preLoaderRoute: typeof AdminIdentityProvidersIdIndexRouteImport
+      parentRoute: typeof AdminIdentityProvidersIdRoute
+    }
+    '/admin/identity-providers_/$id/edit': {
+      id: '/admin/identity-providers_/$id/edit'
+      path: '/edit'
+      fullPath: '/admin/identity-providers/$id/edit'
+      preLoaderRoute: typeof AdminIdentityProvidersIdEditRouteImport
+      parentRoute: typeof AdminIdentityProvidersIdRoute
+    }
+    '/admin/lifecycle-workflows_/$workflowId/edit': {
+      id: '/admin/lifecycle-workflows_/$workflowId/edit'
+      path: '/lifecycle-workflows/$workflowId/edit'
+      fullPath: '/admin/lifecycle-workflows/$workflowId/edit'
+      preLoaderRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/settings_/saml-idp-profiles_/$profileId': {
@@ -1444,47 +1465,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/lifecycle-workflows_/$workflowId/edit': {
-      id: '/admin/lifecycle-workflows_/$workflowId/edit'
-      path: '/lifecycle-workflows/$workflowId/edit'
-      fullPath: '/admin/lifecycle-workflows/$workflowId/edit'
-      preLoaderRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRouteImport
+    '/admin/settings_/saml-idp-profiles_/new': {
+      id: '/admin/settings_/saml-idp-profiles_/new'
+      path: '/settings/saml-idp-profiles/new'
+      fullPath: '/admin/settings/saml-idp-profiles/new'
+      preLoaderRoute: typeof AdminSettingsSamlIdpProfilesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/identity-providers_/$id/edit': {
-      id: '/admin/identity-providers_/$id/edit'
-      path: '/edit'
-      fullPath: '/admin/identity-providers/$id/edit'
-      preLoaderRoute: typeof AdminIdentityProvidersIdEditRouteImport
-      parentRoute: typeof AdminIdentityProvidersIdRoute
+    '/admin/users_/$id/': {
+      id: '/admin/users_/$id/'
+      path: '/'
+      fullPath: '/admin/users/$id/'
+      preLoaderRoute: typeof AdminUsersIdIndexRouteImport
+      parentRoute: typeof AdminUsersIdRoute
     }
-    '/admin/groups_/$groupId/edit': {
-      id: '/admin/groups_/$groupId/edit'
+    '/admin/users_/$id/edit': {
+      id: '/admin/users_/$id/edit'
       path: '/edit'
-      fullPath: '/admin/groups/$groupId/edit'
-      preLoaderRoute: typeof AdminGroupsGroupIdEditRouteImport
+      fullPath: '/admin/users/$id/edit'
+      preLoaderRoute: typeof AdminUsersIdEditRouteImport
+      parentRoute: typeof AdminUsersIdRoute
+    }
+    '/admin/groups_/$groupId/members/exports': {
+      id: '/admin/groups_/$groupId/members/exports'
+      path: '/members/exports'
+      fullPath: '/admin/groups/$groupId/members/exports'
+      preLoaderRoute: typeof AdminGroupsGroupIdMembersExportsRouteImport
       parentRoute: typeof AdminGroupsGroupIdRoute
-    }
-    '/admin/federation/entra_/new': {
-      id: '/admin/federation/entra_/new'
-      path: '/federation/entra/new'
-      fullPath: '/admin/federation/entra/new'
-      preLoaderRoute: typeof AdminFederationEntraNewRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/applications_/$applicationId/provisioning': {
-      id: '/admin/applications_/$applicationId/provisioning'
-      path: '/provisioning'
-      fullPath: '/admin/applications/$applicationId/provisioning'
-      preLoaderRoute: typeof AdminApplicationsApplicationIdProvisioningRouteImport
-      parentRoute: typeof AdminApplicationsApplicationIdRoute
-    }
-    '/admin/applications_/$applicationId/edit': {
-      id: '/admin/applications_/$applicationId/edit'
-      path: '/edit'
-      fullPath: '/admin/applications/$applicationId/edit'
-      preLoaderRoute: typeof AdminApplicationsApplicationIdEditRouteImport
-      parentRoute: typeof AdminApplicationsApplicationIdRoute
     }
     '/admin/settings_/saml-idp-profiles_/$profileId/': {
       id: '/admin/settings_/saml-idp-profiles_/$profileId/'
@@ -1499,13 +1506,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/settings/saml-idp-profiles/$profileId/edit'
       preLoaderRoute: typeof AdminSettingsSamlIdpProfilesProfileIdEditRouteImport
       parentRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRoute
-    }
-    '/admin/groups_/$groupId/members/exports': {
-      id: '/admin/groups_/$groupId/members/exports'
-      path: '/members/exports'
-      fullPath: '/admin/groups/$groupId/members/exports'
-      preLoaderRoute: typeof AdminGroupsGroupIdMembersExportsRouteImport
-      parentRoute: typeof AdminGroupsGroupIdRoute
     }
   }
 }
