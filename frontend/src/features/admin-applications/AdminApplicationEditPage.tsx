@@ -30,6 +30,7 @@ import { ClientSecretRotationPanel } from './ClientSecretRotationPanel'
 import {
   appRuleFromInputs,
   ClaimReleaseAttributesPreview,
+  ClaimRulesEditor,
   CopyableField,
   DEFAULT_NAMEID_FORMAT,
   DEFAULT_NAMEID_SOURCE,
@@ -44,6 +45,7 @@ import {
   SectionTitle,
   signInRuleWeakerThanDefault,
   signInStrengthOptions,
+  SourceAttributeSelect,
   statusOptions,
   summarizeSignInRule,
   TOKEN_TYPE_SAML11,
@@ -89,9 +91,7 @@ export function AdminApplicationEditPage({
   const [oidcSubSource, setOidcSubSource] = useState(
     detail.oidc?.sub_source_attribute || DEFAULT_NAMEID_SOURCE,
   )
-  const [oidcRulesJSON, setOidcRulesJSON] = useState(
-    JSON.stringify(detail.oidc?.rules ?? [], null, 2),
-  )
+  const [oidcRules, setOidcRules] = useState<WsFedClaimMappingRule[]>(detail.oidc?.rules ?? [])
   const [replies, setReplies] = useState((detail.wsfed?.reply_urls ?? []).join('\n'))
   const [audience, setAudience] = useState(detail.wsfed?.audience ?? '')
   const [tokenType, setTokenType] = useState<WsFedTokenType>(
@@ -103,7 +103,7 @@ export function AdminApplicationEditPage({
   const [nameIDSource, setNameIDSource] = useState(
     detail.wsfed?.name_id_source || DEFAULT_NAMEID_SOURCE,
   )
-  const [rulesJSON, setRulesJSON] = useState(JSON.stringify(detail.wsfed?.rules ?? [], null, 2))
+  const [wsfedRules, setWsfedRules] = useState<WsFedClaimMappingRule[]>(detail.wsfed?.rules ?? [])
   const [samlACS, setSamlACS] = useState((detail.saml?.acs_urls ?? []).join('\n'))
   const samlIDPProfileID = useRef(detail.saml?.idp_profile_id ?? 'default')
   const [samlSLO, setSamlSLO] = useState(detail.saml?.slo_url ?? '')
@@ -122,9 +122,7 @@ export function AdminApplicationEditPage({
   const [samlSigningCert, setSamlSigningCert] = useState(
     detail.saml?.authn_request_signing_certificate_pem ?? '',
   )
-  const [samlRulesJSON, setSamlRulesJSON] = useState(
-    JSON.stringify(detail.saml?.rules ?? [], null, 2),
-  )
+  const [samlRules, setSamlRules] = useState<WsFedClaimMappingRule[]>(detail.saml?.rules ?? [])
   const signInView = detail.sign_in_policy
   const initialSignInRule = signInView?.policy?.rules?.[0]
   const [signInEnabled, setSignInEnabled] = useState(initialSignInRule?.enabled ?? false)
@@ -200,16 +198,6 @@ export function AdminApplicationEditPage({
         await uploadApplicationIcon(csrfToken, app.application_id, iconFile)
       }
       if (detail.oidc) {
-        let nextOidcRules: WsFedClaimMappingRule[]
-        try {
-          const parsed = JSON.parse(oidcRulesJSON || '[]')
-          if (!Array.isArray(parsed)) throw new Error('not an array')
-          nextOidcRules = parsed
-        } catch {
-          setError(t.invalidClaimRulesJsonError)
-          setSaving(false)
-          return
-        }
         const nextRedirects = parseList(redirects)
         const nextGrants = parseList(grantTypes)
         const nextResponses = parseList(responseTypes)
@@ -222,7 +210,7 @@ export function AdminApplicationEditPage({
         const dpopChanged = dpopBound !== detail.oidc.dpop_bound_access_tokens
         const subSourceChanged = oidcSubSource.trim() !== (detail.oidc.sub_source_attribute || '')
         const oidcRulesChanged =
-          JSON.stringify(nextOidcRules) !== JSON.stringify(detail.oidc.rules ?? [])
+          JSON.stringify(oidcRules) !== JSON.stringify(detail.oidc.rules ?? [])
         if (
           redirectsChanged ||
           scopeChanged ||
@@ -241,21 +229,11 @@ export function AdminApplicationEditPage({
             require_pushed_authorization_requests: parChanged ? requirePAR : undefined,
             dpop_bound_access_tokens: dpopChanged ? dpopBound : undefined,
             sub_source_attribute: subSourceChanged ? oidcSubSource.trim() : undefined,
-            rules: oidcRulesChanged ? nextOidcRules : undefined,
+            rules: oidcRulesChanged ? oidcRules : undefined,
           })
         }
       }
       if (detail.wsfed) {
-        let nextRules: WsFedClaimMappingRule[]
-        try {
-          const parsed = JSON.parse(rulesJSON || '[]')
-          if (!Array.isArray(parsed)) throw new Error('not an array')
-          nextRules = parsed
-        } catch {
-          setError(t.invalidClaimRulesJsonError)
-          setSaving(false)
-          return
-        }
         const nextReplies = parseList(replies)
         const changed =
           nextReplies.join(',') !== detail.wsfed.reply_urls.join(',') ||
@@ -263,7 +241,7 @@ export function AdminApplicationEditPage({
           tokenType !== detail.wsfed.token_type ||
           nameIDFormat !== detail.wsfed.name_id_format ||
           nameIDSource.trim() !== detail.wsfed.name_id_source ||
-          JSON.stringify(nextRules) !== JSON.stringify(detail.wsfed.rules ?? [])
+          JSON.stringify(wsfedRules) !== JSON.stringify(detail.wsfed.rules ?? [])
         if (changed) {
           await updateApplicationWsFedConfig(csrfToken, app.application_id, {
             reply_urls: nextReplies,
@@ -271,21 +249,11 @@ export function AdminApplicationEditPage({
             token_type: tokenType,
             name_id_format: nameIDFormat,
             name_id_source: nameIDSource.trim(),
-            rules: nextRules,
+            rules: wsfedRules,
           })
         }
       }
       if (detail.saml) {
-        let nextRules: WsFedClaimMappingRule[]
-        try {
-          const parsed = JSON.parse(samlRulesJSON || '[]')
-          if (!Array.isArray(parsed)) throw new Error('not an array')
-          nextRules = parsed
-        } catch {
-          setError(t.invalidClaimRulesJsonError)
-          setSaving(false)
-          return
-        }
         const nextACS = parseList(samlACS)
         if (samlWantSignedRequests && samlSigningCert.trim() === '') {
           setError(t.signingCertRequiredError)
@@ -303,7 +271,7 @@ export function AdminApplicationEditPage({
           samlSignResponse !== detail.saml.sign_response ||
           samlWantSignedRequests !== (detail.saml.want_authn_requests_signed ?? false) ||
           samlSigningCert.trim() !== (detail.saml.authn_request_signing_certificate_pem ?? '') ||
-          JSON.stringify(nextRules) !== JSON.stringify(detail.saml.rules ?? [])
+          JSON.stringify(samlRules) !== JSON.stringify(detail.saml.rules ?? [])
         if (changed) {
           if (nextACS.length === 0) {
             setError(t.acsUrlRequiredError)
@@ -321,7 +289,7 @@ export function AdminApplicationEditPage({
             sign_response: samlSignResponse,
             want_authn_requests_signed: samlWantSignedRequests,
             authn_request_signing_certificate_pem: samlSigningCert.trim(),
-            rules: nextRules,
+            rules: samlRules,
           })
         }
       }
@@ -562,25 +530,16 @@ export function AdminApplicationEditPage({
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="edit-oidc-sub-source">{t.subSourceAttributeFieldLabel}</Label>
-                  <Input
+                  <SourceAttributeSelect
                     id="edit-oidc-sub-source"
                     value={oidcSubSource}
-                    onChange={(e) => setOidcSubSource(e.target.value)}
-                    placeholder={DEFAULT_NAMEID_SOURCE}
+                    onChange={setOidcSubSource}
                   />
                   <p className="text-xs text-slate-500">{t.subSourceAttributeHelp}</p>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-oidc-rules">{t.claimMappingRulesJsonFieldLabel}</Label>
-                  <textarea
-                    id="edit-oidc-rules"
-                    value={oidcRulesJSON}
-                    onChange={(e) => setOidcRulesJSON(e.target.value)}
-                    rows={6}
-                    spellCheck={false}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
-                    placeholder='[{"claim_type":"department","source":"user_attribute","source_key":"department"}]'
-                  />
+                  <Label>{t.claimMappingRulesJsonFieldLabel}</Label>
+                  <ClaimRulesEditor rules={oidcRules} onChange={setOidcRules} t={t} />
                   <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>
                 <ClaimReleaseAttributesPreview />
@@ -615,11 +574,10 @@ export function AdminApplicationEditPage({
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="edit-nameid-source">{t.nameIdSourceFieldLabel}</Label>
-                  <Input
+                  <SourceAttributeSelect
                     id="edit-nameid-source"
                     value={nameIDSource}
-                    onChange={(e) => setNameIDSource(e.target.value)}
-                    placeholder="sub"
+                    onChange={setNameIDSource}
                   />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -644,16 +602,8 @@ export function AdminApplicationEditPage({
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="edit-wsfed-rules">{t.claimMappingRulesJsonFieldLabel}</Label>
-                  <textarea
-                    id="edit-wsfed-rules"
-                    value={rulesJSON}
-                    onChange={(e) => setRulesJSON(e.target.value)}
-                    rows={8}
-                    spellCheck={false}
-                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
-                    placeholder='[{"claim_type":"http://schemas.xmlsoap.org/claims/UPN","source":"user_attribute","source_key":"preferred_username","required":true}]'
-                  />
+                  <Label>{t.claimMappingRulesJsonFieldLabel}</Label>
+                  <ClaimRulesEditor rules={wsfedRules} onChange={setWsfedRules} t={t} />
                   <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>
                 <ClaimReleaseAttributesPreview />
@@ -676,7 +626,7 @@ export function AdminApplicationEditPage({
                 signResponse={samlSignResponse}
                 wantSignedRequests={samlWantSignedRequests}
                 signingCertificate={samlSigningCert}
-                rulesJSON={samlRulesJSON}
+                rules={samlRules}
                 onProfileChange={(value) => {
                   samlIDPProfileID.current = value
                 }}
@@ -689,7 +639,7 @@ export function AdminApplicationEditPage({
                 onSignResponseChange={setSamlSignResponse}
                 onWantSignedRequestsChange={setSamlWantSignedRequests}
                 onSigningCertificateChange={setSamlSigningCert}
-                onRulesJSONChange={setSamlRulesJSON}
+                onRulesChange={setSamlRules}
                 onError={setError}
                 t={t}
               />

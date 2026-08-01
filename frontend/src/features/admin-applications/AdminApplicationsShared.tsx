@@ -3,14 +3,17 @@ import {
   IconCopy,
   IconKey,
   IconLink,
+  IconPlus,
   IconServer,
+  IconTrash,
   IconWorldShare,
 } from '@tabler/icons-react'
 import { type ReactNode, useEffect, useState } from 'react'
 import { AuthenticationAPIError, getTenantUserAttributeSchema, tenantURL } from '../../api'
 import { Button } from '../../components/ui/button'
+import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import type { SelectOption } from '../../components/ui/select'
+import { Select, type SelectOption } from '../../components/ui/select'
 import { safeApplicationIconURL } from '../../lib/applicationIcon'
 import { useDictionary } from '../../lib/i18n'
 import {
@@ -23,6 +26,7 @@ import type {
   RequiredAuthnStrength,
   SignInRule,
   UserAttributeDef,
+  WsFedClaimMappingRule,
   WsFedTokenType,
 } from '../../types'
 
@@ -283,14 +287,56 @@ export function ReadonlyMeta({ label, value }: { label: string; value: string })
   )
 }
 
-// ClaimReleaseAttributesPreview は claim release rule / NameID・sub source の候補を示す
-// 非PII preview (wi-73, ADR-151)。実際の利用者の値は取得・表示せず、テナントの属性
-// 定義 (key / type / visibility) だけを一覧する。visibility=private は fail-closed floor で
-// 常に拒否されることを明示する。
-export function ClaimReleaseAttributesPreview() {
+// coreAttributeKeys は User の型付きフィールドで、UserAttributeDef には現れないが常に
+// releasable な source (backend/claimmapping/usecases/floor.go の coreAttributeKeys と同じ集合)。
+const CORE_ATTRIBUTE_KEYS = [
+  'sub',
+  'preferred_username',
+  'email',
+  'email_verified',
+  'name',
+  'given_name',
+  'family_name',
+  'roles',
+] as const
+
+function coreAttributeLabel(key: string, t: AdminApplicationsDictionary): string {
+  switch (key) {
+    case 'sub':
+      return t.coreAttributeSubLabel
+    case 'preferred_username':
+      return t.coreAttributePreferredUsernameLabel
+    case 'email':
+      return t.coreAttributeEmailLabel
+    case 'email_verified':
+      return t.coreAttributeEmailVerifiedLabel
+    case 'name':
+      return t.coreAttributeNameLabel
+    case 'given_name':
+      return t.coreAttributeGivenNameLabel
+    case 'family_name':
+      return t.coreAttributeFamilyNameLabel
+    case 'roles':
+      return t.coreAttributeRolesLabel
+    default:
+      return key
+  }
+}
+
+export type ReleasableAttributeOption = SelectOption & { visibility?: AttrVisibility }
+
+// useReleasableAttributes はテナントの属性定義 (組み込み + custom) を一度だけ取得し、
+// (1) claim release preview 用の全定義 (Private を含む、非PII: key/type/visibility のみ)、
+// (2) source 選択肢用の releasable 一覧 (User の core field + visibility != private) を返す
+// (wi-73, ADR-151)。実際の利用者の値は取得・表示しない。
+export function useReleasableAttributes(): {
+  allDefs: UserAttributeDef[] | null
+  options: ReleasableAttributeOption[]
+  error: boolean
+} {
   const t = useDictionary(adminApplicationsDictionary)
   const [defs, setDefs] = useState<UserAttributeDef[] | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(false)
   useEffect(() => {
     let cancelled = false
     getTenantUserAttributeSchema()
@@ -299,12 +345,33 @@ export function ClaimReleaseAttributesPreview() {
         setDefs([...schema.builtin, ...schema.attributes])
       })
       .catch(() => {
-        if (!cancelled) setError('error')
+        if (!cancelled) setError(true)
       })
     return () => {
       cancelled = true
     }
   }, [])
+  const core: ReleasableAttributeOption[] = CORE_ATTRIBUTE_KEYS.map((key) => ({
+    value: key,
+    label: `${key} — ${coreAttributeLabel(key, t)}`,
+  }))
+  const releasable: ReleasableAttributeOption[] = (defs ?? [])
+    .filter((def) => def.visibility !== 'private')
+    .map((def) => ({
+      value: def.key,
+      label: def.label ? `${def.key} — ${def.label}` : def.key,
+      visibility: def.visibility,
+    }))
+  return { allDefs: defs, options: [...core, ...releasable], error }
+}
+
+// ClaimReleaseAttributesPreview は claim release rule / NameID・sub source の候補を示す
+// 非PII preview (wi-73, ADR-151)。実際の利用者の値は取得・表示せず、テナントの属性
+// 定義 (key / type / visibility) だけを一覧する。visibility=private は fail-closed floor で
+// 常に拒否されることを明示する。
+export function ClaimReleaseAttributesPreview() {
+  const t = useDictionary(adminApplicationsDictionary)
+  const { allDefs: defs, error } = useReleasableAttributes()
   if (error) return null
   return (
     <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
@@ -357,6 +424,155 @@ function visibilityLabel(visibility: AttrVisibility, t: AdminApplicationsDiction
     default:
       return visibility
   }
+}
+
+// SourceAttributeSelect は NameID / sub の source 属性を選ぶ。releasable な属性 (User の
+// core field + visibility != private) だけを選択肢にする (wi-73, ADR-151)。既存値が一覧に
+// 無い場合 (未取得中・tenant 定義から外れた値) も選択肢に含め、値を失わないようにする。
+export function SourceAttributeSelect({
+  value,
+  onChange,
+  id,
+}: {
+  value: string
+  onChange: (value: string) => void
+  id?: string
+}) {
+  const { options } = useReleasableAttributes()
+  const selectOptions =
+    value && !options.some((option) => option.value === value)
+      ? [...options, { value, label: value }]
+      : options
+  return (
+    <Select
+      id={id}
+      value={value}
+      onValueChange={onChange}
+      options={selectOptions}
+      className="w-full"
+    />
+  )
+}
+
+function claimRuleSourceOptions(t: AdminApplicationsDictionary): SelectOption[] {
+  return [
+    { value: 'user_attribute', label: t.claimRuleSourceUserAttributeLabel },
+    { value: 'fixed', label: t.claimRuleSourceFixedLabel },
+    { value: 'nameid', label: t.claimRuleSourceNameIdLabel },
+  ]
+}
+
+// ClaimRulesEditor は claim release 上書き rule の構造化エディタ (wi-73, ADR-151)。
+// 生 JSON を書かせる代わりに、claim 名の入力・source の選択・(user_attribute のときの)
+// releasable な属性選択・(fixed のときの) 固定値入力・required チェックボックスを行単位で
+// 提供する。source_key は floor (visibility != private) を満たす属性だけから選べるため、
+// 保存前に無効な値を作りにくい。
+export function ClaimRulesEditor({
+  rules,
+  onChange,
+  t,
+}: {
+  rules: WsFedClaimMappingRule[]
+  onChange: (rules: WsFedClaimMappingRule[]) => void
+  t: AdminApplicationsDictionary
+}) {
+  function updateRule(index: number, patch: Partial<WsFedClaimMappingRule>) {
+    onChange(rules.map((rule, i) => (i === index ? { ...rule, ...patch } : rule)))
+  }
+  function removeRule(index: number) {
+    onChange(rules.filter((_, i) => i !== index))
+  }
+  function addRule() {
+    onChange([...rules, { claim_type: '', source: 'user_attribute', source_key: '' }])
+  }
+  return (
+    <div className="grid gap-2">
+      {rules.length === 0 ? (
+        <p className="text-xs text-slate-400">{t.claimRulesEmptyNotice}</p>
+      ) : (
+        <div className="grid gap-2">
+          {rules.map((rule, index) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: rows have no stable identity until saved
+              key={index}
+              className="grid gap-2 rounded-lg border border-slate-200 p-2 sm:grid-cols-[1fr_auto] sm:items-end"
+            >
+              <div className="grid gap-2 sm:grid-cols-4">
+                <div className="grid gap-1">
+                  <Label className="text-[11px] font-semibold text-slate-500">
+                    {t.claimTypeFieldLabel}
+                  </Label>
+                  <Input
+                    value={rule.claim_type}
+                    onChange={(e) => updateRule(index, { claim_type: e.target.value })}
+                    className="font-mono text-xs"
+                    placeholder="department"
+                  />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-[11px] font-semibold text-slate-500">
+                    {t.claimRuleSourceFieldLabel}
+                  </Label>
+                  <Select
+                    value={rule.source}
+                    onValueChange={(v) =>
+                      updateRule(index, { source: v as WsFedClaimMappingRule['source'] })
+                    }
+                    options={claimRuleSourceOptions(t)}
+                    className="w-full"
+                  />
+                </div>
+                {rule.source === 'user_attribute' ? (
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold text-slate-500">
+                      {t.claimRuleSourceKeyFieldLabel}
+                    </Label>
+                    <SourceAttributeSelect
+                      value={rule.source_key ?? ''}
+                      onChange={(v) => updateRule(index, { source_key: v })}
+                    />
+                  </div>
+                ) : null}
+                {rule.source === 'fixed' ? (
+                  <div className="grid gap-1">
+                    <Label className="text-[11px] font-semibold text-slate-500">
+                      {t.claimRuleFixedValueFieldLabel}
+                    </Label>
+                    <Input
+                      value={rule.fixed_value ?? ''}
+                      onChange={(e) => updateRule(index, { fixed_value: e.target.value })}
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                ) : null}
+                <label className="flex items-center gap-2 pb-1.5 text-xs font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={rule.required ?? false}
+                    onChange={(e) => updateRule(index, { required: e.target.checked })}
+                    className="size-4"
+                  />
+                  {t.claimRuleRequiredLabel}
+                </label>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => removeRule(index)}
+                aria-label={t.claimRuleRemoveAria}
+              >
+                <IconTrash size={16} aria-hidden="true" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <Button type="button" variant="outline" onClick={addRule}>
+        <IconPlus size={16} aria-hidden="true" />
+        {t.claimRuleAddButton}
+      </Button>
+    </div>
+  )
 }
 
 export function UriList({ values }: { values: string[] }) {

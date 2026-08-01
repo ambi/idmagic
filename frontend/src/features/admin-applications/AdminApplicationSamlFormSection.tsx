@@ -5,13 +5,15 @@ import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
-import type { AdminSamlIDPProfile } from '../../types'
+import type { AdminSamlIDPProfile, WsFedClaimMappingRule } from '../../types'
 import {
   ClaimReleaseAttributesPreview,
+  ClaimRulesEditor,
   CopyableField,
   messageOf,
   nameIdFormatOptions,
   SectionTitle,
+  SourceAttributeSelect,
 } from './AdminApplicationsShared'
 import type { AdminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 
@@ -31,7 +33,7 @@ type Props = {
   signResponse: boolean
   wantSignedRequests: boolean
   signingCertificate: string
-  rulesJSON: string
+  rules: WsFedClaimMappingRule[]
   onProfileChange: (profileID: string) => void
   onACSChange: (value: string) => void
   onSLOChange: (value: string) => void
@@ -42,7 +44,7 @@ type Props = {
   onSignResponseChange: (value: boolean) => void
   onWantSignedRequestsChange: (value: boolean) => void
   onSigningCertificateChange: (value: string) => void
-  onRulesJSONChange: (value: string) => void
+  onRulesChange: (rules: WsFedClaimMappingRule[]) => void
   onError: (message: string) => void
   t: AdminApplicationsDictionary
 }
@@ -139,11 +141,10 @@ export function AdminApplicationSamlFormSection(props: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="edit-saml-nameid-source">{t.nameIdSourceFieldLabel}</Label>
-          <Input
+          <SourceAttributeSelect
             id="edit-saml-nameid-source"
             value={props.nameIDSource}
-            onChange={(event) => props.onNameIDSourceChange(event.target.value)}
-            placeholder="sub"
+            onChange={props.onNameIDSourceChange}
           />
         </div>
         <div className="grid gap-1.5">
@@ -188,16 +189,8 @@ export function AdminApplicationSamlFormSection(props: Props) {
         <p className="text-xs text-slate-500">{t.requestSigningCertHelp}</p>
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="edit-saml-rules">{t.claimMappingRulesJsonFieldLabel}</Label>
-        <textarea
-          id="edit-saml-rules"
-          value={props.rulesJSON}
-          onChange={(event) => props.onRulesJSONChange(event.target.value)}
-          rows={8}
-          spellCheck={false}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
-          placeholder='[{"claim_type":"email","source":"user_attribute","source_key":"email","required":true}]'
-        />
+        <Label>{t.claimMappingRulesJsonFieldLabel}</Label>
+        <ClaimRulesEditor rules={props.rules} onChange={props.onRulesChange} t={t} />
         <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
       </div>
       <ClaimReleaseAttributesPreview />
