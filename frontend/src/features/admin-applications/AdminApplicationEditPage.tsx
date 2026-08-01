@@ -753,8 +753,12 @@ export function AdminApplicationEditPage({
             ) : null}
 
             <div className="flex justify-end gap-2 border-t border-slate-200 pt-5">
-              <Button asChild variant="outline">
-                <a href={detailURL(app.application_id)}>{t.cancel}</a>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<a href={detailURL(app.application_id)} />}
+              >
+                {t.cancel}
               </Button>
               <Button type="submit" disabled={saving || nameInvalid}>
                 {saving ? t.saving : t.save}

@@ -19,11 +19,13 @@ export function ProvisioningNavButton({ app }: { app: AdminApplication }) {
   const t = useDictionary(provisioningDictionary)
   if (app.kind === 'service') return null
   return (
-    <Button variant="outline" asChild>
-      <a href={provisioningURL(app.application_id)}>
-        <IconCloudUpload size={16} aria-hidden="true" />
-        {t.provisioningNavLabel}
-      </a>
+    <Button
+      variant="outline"
+      nativeButton={false}
+      render={<a href={provisioningURL(app.application_id)} />}
+    >
+      <IconCloudUpload size={16} aria-hidden="true" />
+      {t.provisioningNavLabel}
     </Button>
   )
 }

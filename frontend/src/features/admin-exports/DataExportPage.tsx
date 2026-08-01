@@ -260,11 +260,13 @@ export function DataExportPage({
                       </td>
                       <td className="px-4 py-2">
                         {job.downloadable ? (
-                          <Button asChild variant="outline">
-                            <a href={api.fileURL(job.id)}>
-                              <IconDownload size={14} aria-hidden="true" />
-                              {t.download}
-                            </a>
+                          <Button
+                            variant="outline"
+                            nativeButton={false}
+                            render={<a href={api.fileURL(job.id)} />}
+                          >
+                            <IconDownload size={14} aria-hidden="true" />
+                            {t.download}
                           </Button>
                         ) : isTerminal(job.status) ? null : (
                           <Button

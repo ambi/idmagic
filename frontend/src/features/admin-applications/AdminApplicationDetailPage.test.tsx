@@ -189,7 +189,7 @@ describe('AdminApplicationDetailPage', () => {
     expect(
       screen.getByText(dedicatedProfile.signing_certificate_fingerprint_sha256),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: t.downloadSigningCertificate })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: t.downloadSigningCertificate })).toHaveAttribute(
       'href',
       dedicatedProfile.signing_certificate_url,
     )

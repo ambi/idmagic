@@ -192,23 +192,25 @@ export function AdminUsersPage({
         description={t.pageDescription}
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline">
-              <a href={tenantURL('/admin/users/exports')}>
-                <IconFileExport size={17} aria-hidden="true" />
-                {t.exportUsers}
-              </a>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a href={tenantURL('/admin/users/exports')} />}
+            >
+              <IconFileExport size={17} aria-hidden="true" />
+              {t.exportUsers}
             </Button>
-            <Button asChild variant="outline">
-              <a href={tenantURL('/admin/users/import')}>
-                <IconUpload size={17} aria-hidden="true" />
-                {t.importUsers}
-              </a>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a href={tenantURL('/admin/users/import')} />}
+            >
+              <IconUpload size={17} aria-hidden="true" />
+              {t.importUsers}
             </Button>
-            <Button asChild>
-              <a href={tenantURL('/admin/users/new')}>
-                <IconUserPlus size={17} aria-hidden="true" />
-                {t.addUser}
-              </a>
+            <Button nativeButton={false} render={<a href={tenantURL('/admin/users/new')} />}>
+              <IconUserPlus size={17} aria-hidden="true" />
+              {t.addUser}
             </Button>
           </div>
         }

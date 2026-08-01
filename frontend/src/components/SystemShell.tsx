@@ -61,23 +61,25 @@ export function SystemShell({
             </div>
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/30"
-                aria-label={t.accountMenu}
-              >
-                <div className="hidden text-right sm:block">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {actorUsername ?? 'system administrator'}
-                  </p>
-                  <p className="text-xs text-slate-500">{t.systemAdministrator}</p>
-                </div>
-                <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500 text-sm font-semibold text-white shadow-sm">
-                  {(actorUsername ?? 'S').slice(0, 1).toUpperCase()}
-                </span>
-                <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />
-              </button>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/30"
+                  aria-label={t.accountMenu}
+                />
+              }
+            >
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-semibold text-slate-800">
+                  {actorUsername ?? 'system administrator'}
+                </p>
+                <p className="text-xs text-slate-500">{t.systemAdministrator}</p>
+              </div>
+              <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500 text-sm font-semibold text-white shadow-sm">
+                {(actorUsername ?? 'S').slice(0, 1).toUpperCase()}
+              </span>
+              <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
@@ -87,24 +89,25 @@ export function SystemShell({
                 </p>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
-              <DropdownMenuItem asChild>
-                <Link to="/admin" preload={false}>
-                  <IconArrowLeft size={17} aria-hidden="true" />
-                  {t.returnToAdminConsole}
-                </Link>
+              <DropdownMenuItem render={<Link to="/admin" preload={false} />}>
+                <IconArrowLeft size={17} aria-hidden="true" />
+                {t.returnToAdminConsole}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
-              <DropdownMenuItem asChild>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void logout('admin')
-                  }}
-                  className="w-full text-left text-red-700"
-                >
-                  <IconLogout size={17} aria-hidden="true" />
-                  {t.signOut}
-                </button>
+              <DropdownMenuItem
+                nativeButton
+                render={
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void logout('admin')
+                    }}
+                    className="w-full text-left text-red-700"
+                  />
+                }
+              >
+                <IconLogout size={17} aria-hidden="true" />
+                {t.signOut}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

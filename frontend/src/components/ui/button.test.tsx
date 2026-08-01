@@ -7,20 +7,20 @@ describe('Button Component', () => {
     render(<Button>Click me</Button>)
     const button = screen.getByRole('button', { name: 'Click me' })
     expect(button).toBeInTheDocument()
-    expect(button).toHaveClass('bg-slate-950') // Default variant class
-    expect(button).toHaveClass('h-10') // Default size class
+    expect(button).toHaveClass('bg-primary') // Default variant class
+    expect(button).toHaveClass('h-9') // Default size class
   })
 
   it('applies variant classes correctly', () => {
     render(<Button variant="destructive">Delete</Button>)
     const button = screen.getByRole('button', { name: 'Delete' })
-    expect(button).toHaveClass('bg-red-600')
+    expect(button).toHaveClass('bg-destructive/10')
   })
 
   it('applies size classes correctly', () => {
     render(<Button size="lg">Large</Button>)
     const button = screen.getByRole('button', { name: 'Large' })
-    expect(button).toHaveClass('h-12')
+    expect(button).toHaveClass('h-10')
   })
 
   it('calls onClick when clicked', async () => {
@@ -44,15 +44,17 @@ describe('Button Component', () => {
     expect(handleClick).not.toHaveBeenCalled()
   })
 
-  it('renders as a custom child component when asChild is true', () => {
+  it('renders as a custom element when render is given', () => {
     render(
-      <Button asChild>
-        <a href="/test">Link Button</a>
+      <Button nativeButton={false} render={<a href="/test" />}>
+        Link Button
       </Button>,
     )
-    const link = screen.getByRole('link', { name: 'Link Button' })
+    // Base UI gives a non-<button> render target role="button" (matching its visual/
+    // interactive presentation), so it's queried as a button, not a link.
+    const link = screen.getByRole('button', { name: 'Link Button' })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute('href', '/test')
-    expect(link).toHaveClass('bg-slate-950')
+    expect(link).toHaveClass('bg-primary')
   })
 })

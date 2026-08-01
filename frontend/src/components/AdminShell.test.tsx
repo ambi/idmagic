@@ -52,7 +52,7 @@ describe('AdminShell', () => {
       </AdminShell>,
     )
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Account menu' }), { key: 'Enter' })
+    fireEvent.click(screen.getByRole('button', { name: 'Account menu' }))
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
 
     await waitFor(() =>

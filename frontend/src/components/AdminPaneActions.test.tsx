@@ -15,11 +15,13 @@ describe('AdminPaneActions', () => {
   it('renders detail and edit links pointing at the given hrefs', () => {
     renderEn(<AdminPaneActions detailHref="/admin/users/1" editHref="/admin/users/1/edit" />)
 
-    expect(screen.getByRole('link', { name: new RegExp(t.detail) })).toHaveAttribute(
+    // Base UI gives a non-<button> Button render target role="button" (matching its
+    // visual/interactive presentation), so these are queried as buttons, not links.
+    expect(screen.getByRole('button', { name: new RegExp(t.detail) })).toHaveAttribute(
       'href',
       '/admin/users/1',
     )
-    expect(screen.getByRole('link', { name: new RegExp(t.edit) })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: new RegExp(t.edit) })).toHaveAttribute(
       'href',
       '/admin/users/1/edit',
     )

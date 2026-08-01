@@ -57,26 +57,31 @@ export function AdminGroupDetailPage({
             <IconArrowLeft size={16} aria-hidden="true" />
             {t.backToGroupList}
           </a>
-          <Button type="button" disabled={busy} asChild>
-            <a href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/edit`)}>
-              <IconPencil size={16} aria-hidden="true" />
-              {t.edit}
-            </a>
+          <Button
+            type="button"
+            disabled={busy}
+            nativeButton={false}
+            render={<a href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/edit`)} />}
+          >
+            <IconPencil size={16} aria-hidden="true" />
+            {t.edit}
           </Button>
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                className="size-9 px-0"
-                aria-label={t.groupActionsAriaLabel}
-                disabled={busy}
-              >
-                <IconDotsVertical size={18} aria-hidden="true" />
-              </Button>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="size-9 px-0"
+                  aria-label={t.groupActionsAriaLabel}
+                  disabled={busy}
+                />
+              }
+            >
+              <IconDotsVertical size={18} aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="text-red-700" onSelect={() => setConfirmDelete(true)}>
+              <DropdownMenuItem className="text-red-700" onClick={() => setConfirmDelete(true)}>
                 <IconTrash size={17} aria-hidden="true" />
                 {t.deleteGroup}
               </DropdownMenuItem>

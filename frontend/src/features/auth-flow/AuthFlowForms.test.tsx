@@ -135,7 +135,7 @@ describe('static auth-flow pages', () => {
     await renderWithRouter(<CallbackPage code="authorization-code" />)
 
     expect(screen.getByText('Local demo authorization is complete')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Open admin console' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Open admin console' })).toHaveAttribute(
       'href',
       '/admin',
     )
@@ -148,7 +148,7 @@ describe('static auth-flow pages', () => {
 
     expect(screen.getByText('Could not complete authentication')).toBeInTheDocument()
     expect(screen.getByText('ユーザーが拒否しました')).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Open admin console' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open admin console' })).not.toBeInTheDocument()
   })
 
   it('renders demo guidance only when the local demo is enabled', async () => {
@@ -168,7 +168,7 @@ describe('static auth-flow pages', () => {
     await renderWithRouter(<StatusPage status="signed-out" />)
 
     expect(screen.getByText('You have signed out')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in to account' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Sign in to admin console' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in to account' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in to admin console' })).toBeInTheDocument()
   })
 })

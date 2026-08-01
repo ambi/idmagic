@@ -324,7 +324,7 @@ describe('AdminSettingsPage', () => {
     expect(screen.queryByRole('button', { name: t.samlProfileCreate })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: t.samlProfileSave })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: t.samlProfileDelete })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: t.samlProfilesManage }).getAttribute('href')).toBe(
+    expect(screen.getByRole('button', { name: t.samlProfilesManage }).getAttribute('href')).toBe(
       '/admin/settings/saml-idp-profiles',
     )
     expect(
@@ -344,7 +344,7 @@ describe('AdminSettingsPage', () => {
     ).toBeInTheDocument()
     expect(
       screen
-        .getAllByRole('link', { name: t.downloadCertificate })
+        .getAllByRole('button', { name: t.downloadCertificate })
         .map((link) => link.getAttribute('href')),
     ).toEqual([
       integrationEndpoints.saml.signing_certificate.download_url,

@@ -158,11 +158,9 @@ export function AdminUserEditPage({
       title={t.editUserTitle}
       description={`${user.name || user.preferred_username} (@${user.preferred_username})`}
       actions={
-        <Button asChild variant="outline">
-          <a href={detailPath}>
-            <IconArrowLeft size={16} aria-hidden="true" />
-            {t.userDetail}
-          </a>
+        <Button variant="outline" nativeButton={false} render={<a href={detailPath} />}>
+          <IconArrowLeft size={16} aria-hidden="true" />
+          {t.userDetail}
         </Button>
       }
     >
@@ -342,8 +340,8 @@ export function AdminUserEditPage({
                 {t.back}
               </Button>
             ) : (
-              <Button asChild variant="outline">
-                <a href={detailPath}>{t.cancel}</a>
+              <Button variant="outline" nativeButton={false} render={<a href={detailPath} />}>
+                {t.cancel}
               </Button>
             )}
             <Button type="submit" disabled={busy || usernameInvalid || !changed}>

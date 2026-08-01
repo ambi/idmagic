@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  screen,
+  waitFor,
+  waitForElementToBeRemoved,
+  within,
+} from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AssignmentList, AssignmentManager } from './AdminApplicationAssignments'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
@@ -56,12 +62,15 @@ function stubFetch(
   )
 }
 
-// openSelect は Select (Radix DropdownMenu ベース) をキーボードで開き、指定ラベルの
-// menuitem を選ぶ。SystemShell.test.tsx と同じ操作パターン (fireEvent.click では
-// Radix の open ハンドラが発火しないため keyDown を使う)。
-function chooseOption(triggerName: string | RegExp, optionName: string) {
-  fireEvent.keyDown(screen.getByRole('button', { name: triggerName }), { key: 'Enter' })
-  fireEvent.click(screen.getByRole('menuitem', { name: optionName }))
+// chooseOption は Select (Base UI Select ベース) をクリックで開き、指定ラベルの
+// option を選ぶ。トリガーは role="combobox"、項目は role="option"(ARIA select パターン)。
+// Base UI の SelectItem はマウスクリックの直前に pointerdown が無いと選択を確定しない
+// (allowMouseSelectionRef の実装)。fireEvent.click 単独では発火しないため両方送る。
+async function chooseOption(triggerName: string | RegExp, optionName: string) {
+  fireEvent.click(screen.getByRole('combobox', { name: triggerName }))
+  const option = await screen.findByRole('option', { name: optionName })
+  fireEvent.pointerDown(option)
+  fireEvent.click(option)
 }
 
 describe('AssignmentList', () => {
@@ -120,7 +129,7 @@ describe('AssignmentManager', () => {
     await renderWithRouter(<AssignmentManager appID="app-1" csrfToken="csrf" onError={() => {}} />)
 
     await screen.findByText(t.noAssignmentsShortNotice)
-    chooseOption(t.selectPlaceholder, 'taro')
+    await chooseOption(t.selectPlaceholder, 'taro')
     fireEvent.click(screen.getByRole('button', { name: t.assign }))
 
     expect(await screen.findByText('taro')).toBeInTheDocument()
@@ -141,7 +150,7 @@ describe('AssignmentManager', () => {
     const row = (await screen.findByText('taro')).closest('li') as HTMLElement
     fireEvent.click(within(row).getByRole('button', { name: t.unassign }))
 
-    await waitFor(() => expect(screen.queryByText('taro')).not.toBeInTheDocument())
+    await waitForElementToBeRemoved(() => screen.queryByText('taro'))
   })
 
   it('reports an assignment failure through onError', async () => {
@@ -158,7 +167,7 @@ describe('AssignmentManager', () => {
     await renderWithRouter(<AssignmentManager appID="app-1" csrfToken="csrf" onError={onError} />)
 
     await screen.findByText(t.noAssignmentsShortNotice)
-    chooseOption(t.selectPlaceholder, 'taro')
+    await chooseOption(t.selectPlaceholder, 'taro')
     fireEvent.click(screen.getByRole('button', { name: t.assign }))
 
     await waitFor(() => expect(onError).toHaveBeenCalledWith('This user is already assigned.'))
@@ -174,8 +183,8 @@ describe('AssignmentManager', () => {
     await renderWithRouter(<AssignmentManager appID="app-1" csrfToken="csrf" onError={() => {}} />)
 
     await screen.findByText(t.noAssignmentsShortNotice)
-    chooseOption(t.userTypeLabel, t.groupTypeLabel)
-    fireEvent.keyDown(screen.getByRole('button', { name: t.selectPlaceholder }), { key: 'Enter' })
-    expect(await screen.findByRole('menuitem', { name: 'Engineering' })).toBeInTheDocument()
+    await chooseOption(t.userTypeLabel, t.groupTypeLabel)
+    fireEvent.click(await screen.findByRole('combobox', { name: t.selectPlaceholder }))
+    expect(await screen.findByRole('option', { name: 'Engineering' })).toBeInTheDocument()
   })
 })

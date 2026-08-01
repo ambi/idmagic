@@ -71,11 +71,20 @@ export function StatusPage({ status }: { status: StatusKey }) {
 
         {status === 'signed-out' ? (
           <div className="grid w-full gap-2">
-            <Button asChild className="w-full">
-              <a href={tenantURL('/account')}>{t.signInToAccount}</a>
+            <Button
+              className="w-full"
+              nativeButton={false}
+              render={<a href={tenantURL('/account')} />}
+            >
+              {t.signInToAccount}
             </Button>
-            <Button asChild variant="outline" className="w-full">
-              <a href={tenantURL('/admin')}>{t.signInToAdmin}</a>
+            <Button
+              variant="outline"
+              className="w-full"
+              nativeButton={false}
+              render={<a href={tenantURL('/admin')} />}
+            >
+              {t.signInToAdmin}
             </Button>
           </div>
         ) : null}

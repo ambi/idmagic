@@ -99,11 +99,9 @@ export function AdminEntraFederationPage({
       title={t.pageTitle}
       description={t.pageDescription}
       actions={
-        <Button asChild>
-          <a href={tenantURL(ADD_PATH)}>
-            <IconPlus size={16} aria-hidden="true" />
-            {t.addDomainFederation}
-          </a>
+        <Button nativeButton={false} render={<a href={tenantURL(ADD_PATH)} />}>
+          <IconPlus size={16} aria-hidden="true" />
+          {t.addDomainFederation}
         </Button>
       }
     >
@@ -223,11 +221,9 @@ export function AdminEntraFederationAddPage({
       title={t.addPageTitle}
       description={t.addPageDescription}
       actions={
-        <Button asChild variant="outline">
-          <a href={tenantURL(LIST_PATH)}>
-            <IconArrowLeft size={16} aria-hidden="true" />
-            {t.federationList}
-          </a>
+        <Button variant="outline" nativeButton={false} render={<a href={tenantURL(LIST_PATH)} />}>
+          <IconArrowLeft size={16} aria-hidden="true" />
+          {t.federationList}
         </Button>
       }
     >
@@ -288,11 +284,13 @@ export function AdminEntraFederationAddPage({
             </div>
             <Alert>{t.hybridJoinNotProvidedNotice}</Alert>
             <div>
-              <Button asChild variant="outline">
-                <a href={tenantURL(LIST_PATH)}>
-                  <IconArrowLeft size={16} aria-hidden="true" />
-                  {t.backToFederationList}
-                </a>
+              <Button
+                variant="outline"
+                nativeButton={false}
+                render={<a href={tenantURL(LIST_PATH)} />}
+              >
+                <IconArrowLeft size={16} aria-hidden="true" />
+                {t.backToFederationList}
               </Button>
             </div>
           </div>

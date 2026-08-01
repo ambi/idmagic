@@ -48,19 +48,15 @@ export function AdminSamlIDPProfileDetailPage({
       description={t.detailDescription}
       actions={
         <>
-          <Button asChild variant="outline">
-            <a href={listPath}>
-              <IconArrowLeft size={16} aria-hidden="true" />
-              {t.listTitle}
-            </a>
+          <Button variant="outline" nativeButton={false} render={<a href={listPath} />}>
+            <IconArrowLeft size={16} aria-hidden="true" />
+            {t.listTitle}
           </Button>
           {!profile.is_default ? (
             <>
-              <Button asChild>
-                <a href={`${detailPath}/edit`}>
-                  <IconPencil size={16} aria-hidden="true" />
-                  {t.editProfile}
-                </a>
+              <Button nativeButton={false} render={<a href={`${detailPath}/edit`} />}>
+                <IconPencil size={16} aria-hidden="true" />
+                {t.editProfile}
               </Button>
               <Button
                 type="button"

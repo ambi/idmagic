@@ -104,15 +104,19 @@ export function AdminIdentityProviderDetailPage({
               <IconArrowLeft size={16} aria-hidden="true" />
               {t.backToList}
             </a>
-            <Button asChild variant="outline">
-              <a
-                href={tenantURL(
-                  `/admin/identity-providers/${encodeURIComponent(connection.id)}/edit`,
-                )}
-              >
-                <IconPencil size={16} aria-hidden="true" />
-                {t.edit}
-              </a>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={
+                <a
+                  href={tenantURL(
+                    `/admin/identity-providers/${encodeURIComponent(connection.id)}/edit`,
+                  )}
+                />
+              }
+            >
+              <IconPencil size={16} aria-hidden="true" />
+              {t.edit}
             </Button>
             <Button variant="outline" disabled={busy} onClick={() => void test()}>
               {t.test}

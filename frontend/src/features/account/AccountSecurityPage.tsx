@@ -277,11 +277,13 @@ function PasswordCard({ passwordChangedAt }: { passwordChangedAt?: string }) {
         </div>
       </div>
       <div>
-        <Button asChild variant="outline">
-          <a href={tenantURL('/account/password')}>
-            {t.changePassword}
-            <IconArrowRight size={16} aria-hidden="true" />
-          </a>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<a href={tenantURL('/account/password')} />}
+        >
+          {t.changePassword}
+          <IconArrowRight size={16} aria-hidden="true" />
         </Button>
       </div>
     </Card>

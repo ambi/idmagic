@@ -24,17 +24,20 @@ export function AdminSamlIDPProfilesListPage({
       description={t.listDescription}
       actions={
         <>
-          <Button asChild variant="outline">
-            <a href={tenantURL('/admin/settings?tab=integration-endpoints')}>
-              <IconArrowLeft size={16} aria-hidden="true" />
-              {t.backToSettings}
-            </a>
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href={tenantURL('/admin/settings?tab=integration-endpoints')} />}
+          >
+            <IconArrowLeft size={16} aria-hidden="true" />
+            {t.backToSettings}
           </Button>
-          <Button asChild>
-            <a href={tenantURL('/admin/settings/saml-idp-profiles/new')}>
-              <IconPlus size={16} aria-hidden="true" />
-              {t.createProfile}
-            </a>
+          <Button
+            nativeButton={false}
+            render={<a href={tenantURL('/admin/settings/saml-idp-profiles/new')} />}
+          >
+            <IconPlus size={16} aria-hidden="true" />
+            {t.createProfile}
           </Button>
         </>
       }
@@ -68,14 +71,18 @@ export function AdminSamlIDPProfilesListPage({
                 </td>
                 <td className="px-4 py-3 text-slate-600">{entry.service_provider_count}</td>
                 <td className="px-4 py-3 text-right">
-                  <Button asChild variant="outline">
-                    <a
-                      href={tenantURL(
-                        `/admin/settings/saml-idp-profiles/${encodeURIComponent(entry.profile.profile_id)}`,
-                      )}
-                    >
-                      {t.viewDetails}
-                    </a>
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={
+                      <a
+                        href={tenantURL(
+                          `/admin/settings/saml-idp-profiles/${encodeURIComponent(entry.profile.profile_id)}`,
+                        )}
+                      />
+                    }
+                  >
+                    {t.viewDetails}
                   </Button>
                 </td>
               </tr>

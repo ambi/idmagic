@@ -65,10 +65,10 @@ describe('SAML IdP profile routed management', () => {
     expect(screen.getByText('Default')).toBeInTheDocument()
     expect(screen.getByText('Partner trust')).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: t.createProfile }).getAttribute('href')).toBe(
+    expect(screen.getByRole('button', { name: t.createProfile }).getAttribute('href')).toBe(
       '/admin/settings/saml-idp-profiles/new',
     )
-    expect(screen.getAllByRole('link', { name: t.viewDetails })[1].getAttribute('href')).toBe(
+    expect(screen.getAllByRole('button', { name: t.viewDetails })[1].getAttribute('href')).toBe(
       '/admin/settings/saml-idp-profiles/partner',
     )
   })
@@ -78,13 +78,13 @@ describe('SAML IdP profile routed management', () => {
       <AdminSamlIDPProfileDetailPage csrfToken="csrf" entry={defaultProfile} />,
     )
     expect(screen.getByText(t.defaultImmutable)).toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: t.editProfile })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.editProfile })).not.toBeInTheDocument()
     unmount()
 
     await renderWithRouter(
       <AdminSamlIDPProfileDetailPage csrfToken="csrf" entry={partnerProfile} />,
     )
-    expect(screen.getByRole('link', { name: t.editProfile }).getAttribute('href')).toBe(
+    expect(screen.getByRole('button', { name: t.editProfile }).getAttribute('href')).toBe(
       '/admin/settings/saml-idp-profiles/partner/edit',
     )
     expect(screen.getByRole('button', { name: t.deleteProfile })).toBeEnabled()

@@ -138,6 +138,16 @@ export function AssignmentManager({
     return source.filter((o) => !assignedKeys.has(`${subjectType}:${o.value}`))
   }, [subjectType, users, groups, assignedKeys])
 
+  // Base UI の Select は items の参照変化に敏感なため、インライン配列リテラルを渡さず
+  // 安定した参照を保つ (毎レンダー新規配列だと操作中に選択状態が失われることがある)。
+  const subjectTypeOptions: SelectOption[] = useMemo(
+    () => [
+      { value: 'user', label: t.userTypeLabel },
+      { value: 'group', label: t.groupTypeLabel },
+    ],
+    [t.userTypeLabel, t.groupTypeLabel],
+  )
+
   async function add(event: FormEvent) {
     event.preventDefault()
     if (!subjectID) return
@@ -209,10 +219,7 @@ export function AssignmentManager({
               setSubjectType(v as 'user' | 'group')
               setSubjectID('')
             }}
-            options={[
-              { value: 'user', label: t.userTypeLabel },
-              { value: 'group', label: t.groupTypeLabel },
-            ]}
+            options={subjectTypeOptions}
             className="w-32"
           />
         </div>

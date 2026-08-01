@@ -106,21 +106,23 @@ export function AdminAgentDetailPage({
               {t.edit}
             </Button>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="size-9 px-0"
-                  aria-label={t.agentActionsAriaLabel}
-                  disabled={busy}
-                >
-                  <IconDotsVertical size={18} aria-hidden="true" />
-                </Button>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="size-9 px-0"
+                    aria-label={t.agentActionsAriaLabel}
+                    disabled={busy}
+                  />
+                }
+              >
+                <IconDotsVertical size={18} aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {!killed && agent.status === 'active' ? (
                   <DropdownMenuItem
-                    onSelect={() =>
+                    onClick={() =>
                       void run(async () => {
                         await disableAdminAgent(csrfToken, agent.id)
                         await reload(agent.id)
@@ -133,7 +135,7 @@ export function AdminAgentDetailPage({
                 ) : null}
                 {!killed && agent.status === 'disabled' ? (
                   <DropdownMenuItem
-                    onSelect={() =>
+                    onClick={() =>
                       void run(async () => {
                         await enableAdminAgent(csrfToken, agent.id)
                         await reload(agent.id)
@@ -145,12 +147,12 @@ export function AdminAgentDetailPage({
                   </DropdownMenuItem>
                 ) : null}
                 {!killed ? (
-                  <DropdownMenuItem className="text-rose-700" onSelect={() => setConfirmKill(true)}>
+                  <DropdownMenuItem className="text-rose-700" onClick={() => setConfirmKill(true)}>
                     <IconPlayerStop size={17} aria-hidden="true" />
                     {t.kill}
                   </DropdownMenuItem>
                 ) : null}
-                <DropdownMenuItem className="text-red-700" onSelect={() => setConfirmDelete(true)}>
+                <DropdownMenuItem className="text-red-700" onClick={() => setConfirmDelete(true)}>
                   <IconTrash size={17} aria-hidden="true" />
                   {t.deleteAgent}
                 </DropdownMenuItem>

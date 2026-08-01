@@ -40,11 +40,9 @@ export function AdminPaneActions({
   // 詳細だけの場合 (例: ロール一覧) は 1 ボタンをそのまま置く。
   if (!hasSecondaryAction) {
     return detailHref ? (
-      <Button asChild className="min-w-28">
-        <a href={detailHref}>
-          {t.detail}
-          <IconChevronRight size={16} aria-hidden="true" />
-        </a>
+      <Button className="min-w-28" nativeButton={false} render={<a href={detailHref} />}>
+        {t.detail}
+        <IconChevronRight size={16} aria-hidden="true" />
       </Button>
     ) : null
   }
@@ -59,19 +57,20 @@ export function AdminPaneActions({
   return (
     <div className={useGrid ? 'grid grid-cols-2 gap-2' : 'flex flex-wrap items-center gap-2'}>
       {detailHref ? (
-        <Button asChild className={itemClass}>
-          <a href={detailHref}>
-            {t.detail}
-            <IconChevronRight size={16} aria-hidden="true" />
-          </a>
+        <Button className={itemClass} nativeButton={false} render={<a href={detailHref} />}>
+          {t.detail}
+          <IconChevronRight size={16} aria-hidden="true" />
         </Button>
       ) : null}
       {editHref ? (
-        <Button asChild variant="outline" className={itemClass}>
-          <a href={editHref}>
-            <IconPencil size={16} aria-hidden="true" />
-            {t.edit}
-          </a>
+        <Button
+          variant="outline"
+          className={itemClass}
+          nativeButton={false}
+          render={<a href={editHref} />}
+        >
+          <IconPencil size={16} aria-hidden="true" />
+          {t.edit}
         </Button>
       ) : onEdit ? (
         <Button

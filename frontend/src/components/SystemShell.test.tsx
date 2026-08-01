@@ -40,8 +40,8 @@ describe('SystemShell', () => {
       </SystemShell>,
     )
 
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Account menu' }), { key: 'Enter' })
-    const menu = screen.getByRole('menu')
+    fireEvent.click(screen.getByRole('button', { name: 'Account menu' }))
+    const menu = await screen.findByRole('menu')
     expect(within(menu).getByText('Sonoko')).toBeInTheDocument()
     fireEvent.click(within(menu).getByRole('menuitem', { name: /Sign out/ }))
 

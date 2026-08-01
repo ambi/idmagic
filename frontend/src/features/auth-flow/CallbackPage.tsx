@@ -48,18 +48,23 @@ export function CallbackPage({
 
         <div className="grid w-full gap-3">
           {succeeded && (
-            <Button asChild className="w-full">
-              <a href={tenantURL('/admin')}>
-                <IconLayoutDashboard size={17} aria-hidden="true" />
-                {t.openAdmin}
-              </a>
+            <Button
+              className="w-full"
+              nativeButton={false}
+              render={<a href={tenantURL('/admin')} />}
+            >
+              <IconLayoutDashboard size={17} aria-hidden="true" />
+              {t.openAdmin}
             </Button>
           )}
-          <Button asChild variant="outline" className="w-full">
-            <a href={tenantURL('/')}>
-              <IconRefresh size={17} aria-hidden="true" />
-              {t.tryAgain}
-            </a>
+          <Button
+            variant="outline"
+            className="w-full"
+            nativeButton={false}
+            render={<a href={tenantURL('/')} />}
+          >
+            <IconRefresh size={17} aria-hidden="true" />
+            {t.tryAgain}
           </Button>
         </div>
       </div>

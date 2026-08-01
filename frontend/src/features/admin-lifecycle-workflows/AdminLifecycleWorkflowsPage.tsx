@@ -135,11 +135,12 @@ export function AdminLifecycleWorkflowsPage({
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
       <div className="mb-6 flex justify-end">
-        <Button asChild>
-          <a href={tenantURL('/admin/lifecycle-workflows/new')}>
-            <IconPlus size={16} aria-hidden="true" />
-            {t.addWorkflow}
-          </a>
+        <Button
+          nativeButton={false}
+          render={<a href={tenantURL('/admin/lifecycle-workflows/new')} />}
+        >
+          <IconPlus size={16} aria-hidden="true" />
+          {t.addWorkflow}
         </Button>
       </div>
       <Card className="overflow-hidden">
@@ -172,15 +173,19 @@ export function AdminLifecycleWorkflowsPage({
                   {workflow.actions.map((action) => actionLabel(action.kind, t)).join(' → ')}
                 </td>
                 <td className="flex gap-2 p-3">
-                  <Button asChild variant="outline">
-                    <a
-                      href={tenantURL(
-                        `/admin/lifecycle-workflows/${encodeURIComponent(workflow.id)}/edit`,
-                      )}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      {t.edit}
-                    </a>
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={
+                      <a
+                        href={tenantURL(
+                          `/admin/lifecycle-workflows/${encodeURIComponent(workflow.id)}/edit`,
+                        )}
+                        onClick={(event) => event.stopPropagation()}
+                      />
+                    }
+                  >
+                    {t.edit}
                   </Button>
                   <Button
                     variant="outline"

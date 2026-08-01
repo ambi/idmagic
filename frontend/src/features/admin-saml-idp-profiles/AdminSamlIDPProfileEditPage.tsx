@@ -81,8 +81,8 @@ export function AdminSamlIDPProfileEditPage({
             </div>
           </div>
           <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
-            <Button asChild variant="outline">
-              <a href={detailPath}>{t.cancel}</a>
+            <Button variant="outline" nativeButton={false} render={<a href={detailPath} />}>
+              {t.cancel}
             </Button>
             <Button type="submit" disabled={busy || !name.trim() || !changed}>
               {busy ? t.saving : t.save}

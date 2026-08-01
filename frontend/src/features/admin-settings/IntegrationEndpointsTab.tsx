@@ -127,11 +127,13 @@ export function IntegrationEndpointsTab({
       >
         <section>
           <div className="flex justify-end">
-            <Button asChild variant="outline">
-              <a href={tenantURL('/admin/settings/saml-idp-profiles')}>
-                <IconSettings size={16} aria-hidden="true" />
-                {t.samlProfilesManage}
-              </a>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a href={tenantURL('/admin/settings/saml-idp-profiles')} />}
+            >
+              <IconSettings size={16} aria-hidden="true" />
+              {t.samlProfilesManage}
             </Button>
           </div>
           <div className="mt-4 grid gap-3">
@@ -168,11 +170,14 @@ export function IntegrationEndpointsTab({
                     value={entry.signing_certificate_fingerprint_sha256}
                     t={t}
                   />
-                  <Button asChild variant="outline" className="w-fit">
-                    <a href={entry.signing_certificate_url} download>
-                      <IconDownload size={16} aria-hidden="true" />
-                      {t.downloadCertificate}
-                    </a>
+                  <Button
+                    variant="outline"
+                    className="w-fit"
+                    nativeButton={false}
+                    render={<a href={entry.signing_certificate_url} download />}
+                  >
+                    <IconDownload size={16} aria-hidden="true" />
+                    {t.downloadCertificate}
                   </Button>
                 </div>
               ))

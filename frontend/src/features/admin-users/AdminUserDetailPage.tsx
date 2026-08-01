@@ -198,33 +198,36 @@ export function AdminUserDetailPage({
               <IconArrowLeft size={16} aria-hidden="true" />
               {t.backToUserList}
             </a>
-            <Button asChild>
-              <a href={tenantURL(`/admin/users/${encodeURIComponent(user.id)}/edit`)}>
-                <IconPencil size={16} aria-hidden="true" />
-                {t.edit}
-              </a>
+            <Button
+              nativeButton={false}
+              render={<a href={tenantURL(`/admin/users/${encodeURIComponent(user.id)}/edit`)} />}
+            >
+              <IconPencil size={16} aria-hidden="true" />
+              {t.edit}
             </Button>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="size-9 px-0"
-                  aria-label={t.userActionsAriaLabel}
-                  disabled={busy}
-                >
-                  <IconDotsVertical size={18} aria-hidden="true" />
-                </Button>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="size-9 px-0"
+                    aria-label={t.userActionsAriaLabel}
+                    disabled={busy}
+                  />
+                }
+              >
+                <IconDotsVertical size={18} aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {userLifecycleStatus(user) === 'pending_deletion' ? (
                   <>
-                    <DropdownMenuItem onSelect={() => void handleRestore()}>
+                    <DropdownMenuItem onClick={() => void handleRestore()}>
                       <IconRefresh size={17} aria-hidden="true" />
                       {t.restoreAccount}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
-                    <DropdownMenuItem className="text-red-700" onSelect={() => setShowPurge(true)}>
+                    <DropdownMenuItem className="text-red-700" onClick={() => setShowPurge(true)}>
                       <IconTrash size={17} aria-hidden="true" />
                       {t.permanentlyDelete}
                     </DropdownMenuItem>
@@ -233,11 +236,11 @@ export function AdminUserDetailPage({
                   <>
                     {!user.mfa_enrolled ? (
                       <>
-                        <DropdownMenuItem onSelect={() => void handleIssueMfaEnrollmentBypass()}>
+                        <DropdownMenuItem onClick={() => void handleIssueMfaEnrollmentBypass()}>
                           <IconShield size={17} aria-hidden="true" />
                           {t.issueMfaEnrollmentBypass}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => void handleRevokeMfaEnrollmentBypass()}>
+                        <DropdownMenuItem onClick={() => void handleRevokeMfaEnrollmentBypass()}>
                           <IconX size={17} aria-hidden="true" />
                           {t.revokeMfaEnrollmentBypass}
                         </DropdownMenuItem>
@@ -246,7 +249,7 @@ export function AdminUserDetailPage({
                     ) : null}
                     <DropdownMenuItem
                       className={user.disabled_at ? undefined : 'text-red-700'}
-                      onSelect={() => requestDisable()}
+                      onClick={() => requestDisable()}
                     >
                       {user.disabled_at ? (
                         <IconCheck size={17} aria-hidden="true" />
@@ -256,7 +259,7 @@ export function AdminUserDetailPage({
                       {user.disabled_at ? t.reEnableAccount : t.disableAccount}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
-                    <DropdownMenuItem className="text-red-700" onSelect={() => setShowDelete(true)}>
+                    <DropdownMenuItem className="text-red-700" onClick={() => setShowDelete(true)}>
                       <IconTrash size={17} aria-hidden="true" />
                       {t.deleteAccount}
                     </DropdownMenuItem>

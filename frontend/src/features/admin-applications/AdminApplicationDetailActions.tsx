@@ -26,11 +26,9 @@ export function AdminApplicationDetailActions({
         {t.backToList}
       </a>
       <ProvisioningNavButton app={app} />
-      <Button asChild>
-        <a href={editURL(app.application_id)}>
-          <IconPencil size={16} aria-hidden="true" />
-          {t.edit}
-        </a>
+      <Button nativeButton={false} render={<a href={editURL(app.application_id)} />}>
+        <IconPencil size={16} aria-hidden="true" />
+        {t.edit}
       </Button>
       <Button type="button" variant="destructive" disabled={busy} onClick={onDelete}>
         <IconTrash size={16} aria-hidden="true" />

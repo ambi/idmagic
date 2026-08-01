@@ -503,39 +503,51 @@ export async function setSelectValueAt(
   }
 }
 
+// トリガーは Base UI の Select/DropdownMenu どちらも <button> を描画する。項目は Select が
+// role="option" (ARIA listbox パターン)、DropdownMenu が role="menuitem" なので両方を対象にする。
 export async function selectDropdownOption(
   view: Bun.WebView,
   triggerText: string,
   optionText: string,
 ): Promise<void> {
-  const opened = await view.evaluate(`(() => {
-    const target = [...document.querySelectorAll('button')]
-      .find((button) => (button.textContent ?? '').includes(${JSON.stringify(triggerText)}))
-    if (!(target instanceof HTMLElement)) return false
-    target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
-    target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
-    target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }))
-    target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }))
-    target.click()
-    return true
-  })()`)
-  if (opened !== true) {
+  const openDeadline = Date.now() + 10_000
+  let opened = false
+  while (Date.now() < openDeadline) {
+    opened = Boolean(
+      await view.evaluate(`(() => {
+        const target = [...document.querySelectorAll('button')]
+          .find((button) => (button.textContent ?? '').includes(${JSON.stringify(triggerText)}) && !button.disabled)
+        if (!(target instanceof HTMLElement)) return false
+        target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+        target.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }))
+        target.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, button: 0 }))
+        target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }))
+        target.click()
+        return true
+      })()`),
+    )
+    if (opened) break
+    await Bun.sleep(150)
+  }
+  if (!opened) {
     throw new Error(`dropdown trigger not found: ${triggerText}`)
   }
 
   const deadline = Date.now() + 10_000
   while (Date.now() < deadline) {
     const selected = await view.evaluate(`(() => {
-      const target = [...document.querySelectorAll('[role="menuitem"]')]
+      const target = [...document.querySelectorAll('[role="option"], [role="menuitem"]')]
         .find((item) => (item.textContent ?? '').includes(${JSON.stringify(optionText)}))
       if (!(target instanceof HTMLElement)) return false
+      target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
       target.click()
       return true
     })()`)
     if (selected === true) return
     await Bun.sleep(150)
   }
-  const available = await view.evaluate(`(() => [...document.querySelectorAll('[role="menuitem"]')]
+  const available =
+    await view.evaluate(`(() => [...document.querySelectorAll('[role="option"], [role="menuitem"]')]
     .map((item) => item.textContent?.trim() ?? '')
     .filter(Boolean)
     .join(' | '))()`)

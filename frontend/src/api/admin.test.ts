@@ -39,7 +39,6 @@ import {
   updateApplicationWsFedConfig,
   updateTenantUserAttributeSchema,
 } from './admin'
-import type { AuthenticationAPIError } from './core'
 
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,

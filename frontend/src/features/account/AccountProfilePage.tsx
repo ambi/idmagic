@@ -119,8 +119,12 @@ export function AccountProfilePresentation({
               <h2 className="text-base font-semibold text-slate-900">{t.profile}</h2>
               <p className="mt-1 text-sm text-slate-600">{t.profileDescription}</p>
             </div>
-            <Button asChild variant="outline">
-              <a href={tenantURL('/account/profile/edit')}>{t.edit}</a>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<a href={tenantURL('/account/profile/edit')} />}
+            >
+              {t.edit}
             </Button>
           </div>
 
@@ -325,8 +329,14 @@ export function AccountProfileEditPresentation({
               <Button type="submit" disabled={saving}>
                 {saving ? t.saving : t.save}
               </Button>
-              <Button type="button" variant="ghost" disabled={saving} asChild>
-                <a href={tenantURL('/account/profile')}>{t.cancel}</a>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={saving}
+                nativeButton={false}
+                render={<a href={tenantURL('/account/profile')} />}
+              >
+                {t.cancel}
               </Button>
             </div>
           </form>

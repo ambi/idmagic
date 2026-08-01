@@ -101,11 +101,12 @@ export function AdminIdentityProvidersPage({
         title={t.pageTitle}
         description={t.pageDescription}
         actions={
-          <Button asChild>
-            <a href={tenantURL('/admin/identity-providers/new')}>
-              <IconPlus size={17} aria-hidden="true" />
-              {t.addConnection}
-            </a>
+          <Button
+            nativeButton={false}
+            render={<a href={tenantURL('/admin/identity-providers/new')} />}
+          >
+            <IconPlus size={17} aria-hidden="true" />
+            {t.addConnection}
           </Button>
         }
       >

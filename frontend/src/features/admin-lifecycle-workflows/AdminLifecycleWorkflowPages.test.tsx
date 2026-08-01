@@ -32,11 +32,11 @@ describe('lifecycle workflow page separation', () => {
 
     expect(screen.queryByLabelText('名前')).not.toBeInTheDocument()
     expect(screen.queryByText('トリガー（いつ実行するか）')).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: wf.addWorkflow })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: wf.addWorkflow })).toHaveAttribute(
       'href',
       '/admin/lifecycle-workflows/new',
     )
-    expect(screen.getByRole('link', { name: '編集' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: '編集' })).toHaveAttribute(
       'href',
       '/admin/lifecycle-workflows/workflow-1/edit',
     )

@@ -69,17 +69,22 @@ export function AdminGroupsPage({
           >
             <IconRefresh size={16} aria-hidden="true" />
           </Button>
-          <Button asChild variant="outline" disabled={busy}>
-            <a href={tenantURL('/admin/groups/exports')}>
-              <IconFileExport size={16} aria-hidden="true" />
-              {t.exportGroups}
-            </a>
+          <Button
+            variant="outline"
+            disabled={busy}
+            nativeButton={false}
+            render={<a href={tenantURL('/admin/groups/exports')} />}
+          >
+            <IconFileExport size={16} aria-hidden="true" />
+            {t.exportGroups}
           </Button>
-          <Button asChild disabled={busy}>
-            <a href={tenantURL('/admin/groups/new')}>
-              <IconUsersPlus size={16} aria-hidden="true" />
-              {t.newGroup}
-            </a>
+          <Button
+            disabled={busy}
+            nativeButton={false}
+            render={<a href={tenantURL('/admin/groups/new')} />}
+          >
+            <IconUsersPlus size={16} aria-hidden="true" />
+            {t.newGroup}
           </Button>
         </>
       }

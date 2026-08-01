@@ -76,16 +76,21 @@ export function IdMagicSetupCard({
               integrationEndpoints.saml.signing_certificate.fingerprint_sha256
             }
           />
-          <Button asChild variant="outline" className="justify-self-start">
-            <a
-              href={
-                samlIDPProfile?.signing_certificate_url ??
-                integrationEndpoints.saml.signing_certificate.download_url
-              }
-              download
-            >
-              {t.downloadSigningCertificate}
-            </a>
+          <Button
+            variant="outline"
+            className="justify-self-start"
+            nativeButton={false}
+            render={
+              <a
+                href={
+                  samlIDPProfile?.signing_certificate_url ??
+                  integrationEndpoints.saml.signing_certificate.download_url
+                }
+                download
+              />
+            }
+          >
+            {t.downloadSigningCertificate}
           </Button>
         </div>
       ) : null}
