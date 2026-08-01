@@ -26,6 +26,7 @@ import { AssignmentManager } from './AdminApplicationAssignments'
 import { CategoryManager } from './AdminApplicationCategories'
 import { AdminApplicationSamlFormSection } from './AdminApplicationSamlFormSection'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
+import { ProvisioningNavButton } from './AdminApplicationProvisioningShared'
 import { ClientSecretRotationPanel } from './ClientSecretRotationPanel'
 import {
   appRuleFromInputs,
@@ -342,13 +343,16 @@ export function AdminApplicationEditPage({
       title={t.editTitle.replace('{name}', app.name)}
       description={kindLabel(app, t)}
       actions={
-        <a
-          href={detailURL(app.application_id)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-        >
-          <IconArrowLeft size={16} aria-hidden="true" />
-          {t.backToDetail}
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href={detailURL(app.application_id)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <IconArrowLeft size={16} aria-hidden="true" />
+            {t.backToDetail}
+          </a>
+          <ProvisioningNavButton app={app} />
+        </div>
       }
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
@@ -457,13 +461,6 @@ export function AdminApplicationEditPage({
                   </SectionTitle>
                 </div>
                 <CopyableField label={t.clientIdFieldLabel} value={detail.oidc.client_id} />
-                {detail.oidc.client_secret_rotatable ? (
-                  <ClientSecretRotationPanel
-                    applicationID={app.application_id}
-                    csrfToken={csrfToken}
-                    onError={setError}
-                  />
-                ) : null}
                 {app.kind !== 'service' ? (
                   <div className="grid gap-1.5">
                     <Label htmlFor="edit-redirects">{t.redirectUriFieldLabel}</Label>
@@ -557,6 +554,15 @@ export function AdminApplicationEditPage({
                   <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>
                 <ClaimReleaseAttributesPreview />
+              </section>
+            ) : null}
+            {detail.oidc?.client_secret_rotatable ? (
+              <section className="border-t border-slate-200 pt-5">
+                <ClientSecretRotationPanel
+                  applicationID={app.application_id}
+                  csrfToken={csrfToken}
+                  onError={setError}
+                />
               </section>
             ) : null}
             {detail.wsfed ? (

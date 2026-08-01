@@ -62,4 +62,13 @@ describe('AdminApplicationEditPage', () => {
     expect(await screen.findByText('logo.png')).toBeInTheDocument()
     expect(screen.queryByText(t.noIconFileChosen)).not.toBeInTheDocument()
   })
+
+  it('links to the provisioning settings screen (T019: also reachable from edit, not just detail)', async () => {
+    await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={detail} />)
+
+    expect(screen.getByRole('button', { name: /Provisioning/i })).toHaveAttribute(
+      'href',
+      '/admin/applications/app-1/provisioning',
+    )
+  })
 })

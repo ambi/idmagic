@@ -110,10 +110,10 @@ describe('AdminApplicationDetailPage', () => {
         client_id: 'client-1',
         client_type: 'confidential',
         redirect_uris: ['https://rp.example/callback'],
-        grant_types: ['authorization_code'],
+        grant_types: ['authorization_code', 'refresh_token'],
         response_types: ['code'],
         token_endpoint_auth_method: 'client_secret_basic',
-        scope: 'openid profile',
+        scope: 'openid profile email',
         require_pushed_authorization_requests: false,
         dpop_bound_access_tokens: false,
         fapi_profile: '',
@@ -134,6 +134,13 @@ describe('AdminApplicationDetailPage', () => {
     expect(screen.getByText(integrationEndpoints.oauth.openid_configuration)).toBeInTheDocument()
     expect(screen.getAllByText('client-1').length).toBeGreaterThan(0)
     expect(screen.queryByText(/client secret/i)).not.toBeInTheDocument()
+
+    // Scope and grant types render as one-per-line (UriList), not space/comma-joined text (T017).
+    expect(screen.getByText('openid')).toBeInTheDocument()
+    expect(screen.getByText('email')).toBeInTheDocument()
+    expect(screen.queryByText('openid profile email')).not.toBeInTheDocument()
+    expect(screen.getByText('refresh_token')).toBeInTheDocument()
+    expect(screen.queryByText('authorization_code, refresh_token')).not.toBeInTheDocument()
   })
 
   it('shows SAML SP setup guidance and certificate download', async () => {

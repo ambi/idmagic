@@ -20,6 +20,7 @@ import {
   nameIdFormatOptions,
   ReadOnlyField,
   ReadonlyMeta,
+  parseList,
   SectionTitle,
   StatusBadge,
   summarizeSignInRule,
@@ -195,12 +196,10 @@ export function AdminApplicationDetailPage({
                   </ReadOnlyField>
                 ) : null}
                 <ReadOnlyField label={t.scopeFieldLabel}>
-                  <span className="font-mono text-xs">{detail.oidc.scope || '—'}</span>
+                  <UriList values={parseList(detail.oidc.scope)} />
                 </ReadOnlyField>
                 <ReadOnlyField label={t.grantTypesFieldLabel}>
-                  <span className="font-mono text-xs">
-                    {detail.oidc.grant_types.join(', ') || '—'}
-                  </span>
+                  <UriList values={detail.oidc.grant_types} />
                 </ReadOnlyField>
                 <ReadOnlyField label={t.responseTypesFieldLabel}>
                   <span className="font-mono text-xs">
