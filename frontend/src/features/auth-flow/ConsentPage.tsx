@@ -163,8 +163,8 @@ export function ConsentPage({
           </Card>
         ) : null}
 
-        <div className="flex gap-3 rounded-xl border border-amber-200/80 bg-amber-50/70 p-3.5 text-xs leading-5 text-amber-950">
-          <IconClock className="mt-0.5 shrink-0 text-amber-700" size={17} aria-hidden="true" />
+        <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
+          <IconClock className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />
           <p>{t.retentionNote}</p>
         </div>
 

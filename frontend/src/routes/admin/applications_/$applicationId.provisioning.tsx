@@ -3,6 +3,7 @@ import {
   AuthenticationAPIError,
   getAdminApplication,
   getAdminApplicationProvisioning,
+  listAdminGroups,
 } from '../../../api'
 import { AdminApplicationProvisioningPage } from '../../../features/admin-applications/AdminApplicationProvisioningPage'
 import { requirePortalAccount } from '../../-guards'
@@ -12,7 +13,10 @@ import type { ProvisioningConnection } from '../../../types'
 export const Route = createFileRoute('/admin/applications_/$applicationId/provisioning')({
   loader: async ({ location, params }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const detail = await getAdminApplication(params.applicationId)
+    const [detail, groups] = await Promise.all([
+      getAdminApplication(params.applicationId),
+      listAdminGroups(),
+    ])
     let connection: ProvisioningConnection | null = null
     try {
       connection = await getAdminApplicationProvisioning(params.applicationId)
@@ -27,6 +31,7 @@ export const Route = createFileRoute('/admin/applications_/$applicationId/provis
       applicationID: params.applicationId,
       applicationName: detail.application.name,
       initialConnection: connection,
+      groups,
     }
   },
   component: AdminApplicationProvisioningRoute,

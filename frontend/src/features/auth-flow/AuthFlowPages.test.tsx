@@ -207,6 +207,14 @@ describe('auth-flow pages', () => {
     )
   })
 
+  it('shows the consent retention note as neutral information instead of a warning', () => {
+    render(<ConsentPage csrfToken="csrf" clientName="Portal" scopes={['openid']} />)
+
+    const note = screen.getByText(consentT.retentionNote).parentElement
+    expect(note).toHaveClass('bg-slate-50', 'text-slate-600')
+    expect(note).not.toHaveClass('bg-amber-50/70', 'text-amber-950')
+  })
+
   it('shows a deny-specific retry message when denying fails at the network level', async () => {
     stubGlobal('fetch', mock().mockRejectedValue(new TypeError('network down')))
     render(<ConsentPage csrfToken="csrf" clientName="Portal" scopes={['openid']} />)

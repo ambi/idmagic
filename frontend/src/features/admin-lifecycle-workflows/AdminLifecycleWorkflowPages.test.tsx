@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, spyOn, jest } from 'bun:test'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import type { AdminLifecycleWorkflow } from '../../types'
@@ -43,7 +43,6 @@ describe('lifecycle workflow page separation', () => {
   })
 
   it('状態に関係なくワークフローを削除し、一覧から取り除く', async () => {
-    spyOn(window, 'confirm').mockReturnValue(true)
     const fetchMock = spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(null, { status: 204 }),
     )
@@ -52,8 +51,13 @@ describe('lifecycle workflow page separation', () => {
       { locale: 'ja' },
     )
 
+    fireEvent.click(screen.getByRole('button', { name: '削除' }))
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'ワークフローの削除' })).toHaveTextContent('入社処理')
+
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: '削除' }))
+      fireEvent.click(screen.getByRole('button', { name: '削除する' }))
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
@@ -62,6 +66,47 @@ describe('lifecycle workflow page separation', () => {
       expect.objectContaining({ method: 'DELETE' }),
     )
     expect(screen.queryByText('入社処理')).not.toBeInTheDocument()
+  })
+
+  it('実行前確認の対象ユーザーを説明付きアプリ内ダイアログで入力する', async () => {
+    const promptSpy = spyOn(window, 'prompt')
+    const fetchMock = spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ runs: [] }))
+      .mockResolvedValueOnce(
+        Response.json({
+          steps: [{ action_kind: 'send_email', would_change: 'would_change' }],
+        }),
+      )
+    await renderWithRouter(
+      <AdminLifecycleWorkflowsPage csrfToken="csrf" actorUsername="admin" workflows={[workflow]} />,
+      { locale: 'ja' },
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: wf.history }))
+    await screen.findByRole('heading', {
+      name: wf.executionHeading.replace('{name}', workflow.name),
+    })
+    fireEvent.click(screen.getByRole('button', { name: wf.dryRunButton }))
+
+    const dialog = screen.getByRole('dialog', { name: '実行前確認' })
+    expect(dialog).toHaveTextContent(
+      'このワークフローを適用した場合の処理内容を確認するユーザーを指定します。',
+    )
+    fireEvent.change(screen.getByLabelText('対象ユーザー ID'), {
+      target: { value: 'user-123' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '確認する' }))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/admin/lifecycle_workflows/workflow-1/dry_run',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ target_user_id: 'user-123' }),
+        }),
+      ),
+    )
+    expect(promptSpy).not.toHaveBeenCalled()
   })
 
   it('専用作成画面にフォームと一覧へ戻る導線を表示する', async () => {

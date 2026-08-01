@@ -51,6 +51,15 @@ async function chooseOption(triggerName: string | RegExp, optionName: string) {
   fireEvent.click(option)
 }
 
+// chooseComboboxOption は検索可能な SearchableSelect (Base UI combobox ベース) を対象に、
+// 入力欄への mousedown でポップアップを開き (openOnInputClick は mousedown-only で判定される)、
+// 指定ラベルの option を選ぶ (AdminGroupEditPage.test.tsx と同じパターン)。
+async function chooseComboboxOption(inputName: string | RegExp, optionName: string) {
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: inputName }))
+  const option = await screen.findByRole('option', { name: optionName })
+  fireEvent.click(option)
+}
+
 describe('OnDemandAndResyncPanel', () => {
   afterEach(() => restoreGlobals())
 
@@ -62,7 +71,7 @@ describe('OnDemandAndResyncPanel', () => {
     })
     await renderWithRouter(<OnDemandAndResyncPanel csrfToken="csrf" applicationID="app-1" />)
 
-    await chooseOption(t.onDemandSelectUserPlaceholder, user.preferred_username)
+    await chooseComboboxOption(t.onDemandSelectUserPlaceholder, user.preferred_username)
     fireEvent.click(screen.getByRole('button', { name: t.onDemandButton }))
 
     await waitFor(() =>
@@ -84,10 +93,12 @@ describe('OnDemandAndResyncPanel', () => {
     })
     await renderWithRouter(<OnDemandAndResyncPanel csrfToken="csrf" applicationID="app-1" />)
 
-    await chooseOption(t.onDemandSelectUserPlaceholder, user.preferred_username)
+    await chooseComboboxOption(t.onDemandSelectUserPlaceholder, user.preferred_username)
     await chooseOption(t.onDemandSubjectTypeUser, t.onDemandSubjectTypeGroup)
 
-    expect(await screen.findByText(t.onDemandSelectGroupPlaceholder)).toBeInTheDocument()
+    expect(
+      await screen.findByRole('combobox', { name: t.onDemandSelectGroupPlaceholder }),
+    ).toHaveValue('')
     expect(screen.queryByText(user.preferred_username)).not.toBeInTheDocument()
   })
 

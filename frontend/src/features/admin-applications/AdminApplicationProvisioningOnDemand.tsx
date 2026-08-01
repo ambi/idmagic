@@ -8,6 +8,7 @@ import {
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { SearchableSelect } from '../../components/ui/combobox'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import { useDictionary } from '../../lib/i18n'
@@ -102,7 +103,7 @@ export function OnDemandAndResyncPanel({
           </div>
           <div className="grid min-w-56 gap-1.5">
             <Label>{t.onDemandSubjectIdFieldLabel}</Label>
-            <Select
+            <SearchableSelect
               value={subjectID}
               onValueChange={setSubjectID}
               options={

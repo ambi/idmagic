@@ -4,7 +4,7 @@ import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { ConnectionSettingsForm } from './AdminApplicationProvisioningSettings'
 import { provisioningDictionary } from './AdminApplicationProvisioning.i18n'
-import type { ProvisioningConnection } from '../../types'
+import type { AdminGroup, ProvisioningConnection } from '../../types'
 
 const t = provisioningDictionary.en
 
@@ -53,6 +53,15 @@ const connection: ProvisioningConnection = {
   updated_at: '2026-01-01T00:00:00Z',
 }
 
+const group: AdminGroup = {
+  id: 'group-1',
+  tenant_id: 'tenant-1',
+  name: 'Engineering',
+  roles: [],
+  member_count: 4,
+  created_at: '2026-01-01T00:00:00Z',
+}
+
 describe('ConnectionSettingsForm group push consolidation', () => {
   afterEach(() => restoreGlobals())
 
@@ -77,5 +86,44 @@ describe('ConnectionSettingsForm group push consolidation', () => {
     const init = call[1] as RequestInit
     const body = JSON.parse(init.body as string) as { feature_flags: { push_groups: boolean } }
     expect(body.feature_flags.push_groups).toBe(true)
+  })
+
+  it('explains the display-name source and selects explicit groups by name', async () => {
+    const explicitConnection: ProvisioningConnection = {
+      ...connection,
+      feature_flags: { ...connection.feature_flags, push_groups: true },
+      group_push: {
+        selection: 'explicit',
+        explicit_group_ids: [],
+        display_name_source: 'displayName',
+      },
+    }
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, explicitConnection)))
+    await renderWithRouter(
+      <ConnectionSettingsForm
+        csrfToken="csrf"
+        applicationID="app-1"
+        connection={explicitConnection}
+        groups={[group]}
+        onSaved={() => {}}
+      />,
+    )
+
+    expect(
+      screen.getByText('Attribute path whose value is sent as the downstream group display name.'),
+    ).toBeInTheDocument()
+    const picker = screen.getByRole('combobox', { name: 'Select a group…' })
+    fireEvent.mouseDown(picker)
+    fireEvent.click(await screen.findByRole('option', { name: group.name }))
+    expect(screen.getByText(group.name)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: t.saveButton }))
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    const call = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]
+    const init = call[1] as RequestInit
+    const body = JSON.parse(init.body as string) as {
+      group_push: { explicit_group_ids: string[] }
+    }
+    expect(body.group_push.explicit_group_ids).toEqual([group.id])
   })
 })

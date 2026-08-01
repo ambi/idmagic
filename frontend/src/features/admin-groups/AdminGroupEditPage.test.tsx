@@ -111,9 +111,10 @@ describe('AdminGroupEditPage', () => {
     )
     await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
 
-    fireEvent.change(await screen.findByLabelText(t.selectUserToAddAria), {
-      target: { value: user.id },
-    })
+    const input = await screen.findByRole('combobox', { name: t.selectUserToAddAria })
+    fireEvent.mouseDown(input)
+    const option = await screen.findByRole('option', { name: user.preferred_username })
+    fireEvent.click(option)
     fireEvent.click(screen.getByRole('button', { name: t.add }))
 
     await waitFor(() =>

@@ -10,7 +10,7 @@ import { DeliveriesPanel } from './AdminApplicationProvisioningDeliveries'
 import { OnDemandAndResyncPanel } from './AdminApplicationProvisioningOnDemand'
 import { ConnectionSettingsForm } from './AdminApplicationProvisioningSettings'
 import { ConnectionStatusPanel, TestConnectionPanel } from './AdminApplicationProvisioningStatus'
-import type { ProvisioningConnection } from '../../types'
+import type { AdminGroup, ProvisioningConnection } from '../../types'
 
 export function AdminApplicationProvisioningPage({
   csrfToken,
@@ -18,12 +18,14 @@ export function AdminApplicationProvisioningPage({
   applicationID,
   applicationName,
   initialConnection,
+  groups = [],
 }: {
   csrfToken: string
   actorUsername?: string
   applicationID: string
   applicationName: string
   initialConnection: ProvisioningConnection | null
+  groups?: AdminGroup[]
 }) {
   const t = useDictionary(provisioningDictionary)
   const [connection, setConnection] = useState(initialConnection)
@@ -63,6 +65,7 @@ export function AdminApplicationProvisioningPage({
               csrfToken={csrfToken}
               applicationID={applicationID}
               connection={connection}
+              groups={groups}
               onSaved={setConnection}
             />
             <TestConnectionPanel

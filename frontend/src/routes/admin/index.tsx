@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { listAdminAuditEvents } from '../../api/admin'
 import { request } from '../../api/core'
 import { AdminDashboardPage } from '../../features/admin-dashboard/AdminDashboardPage'
 import type { AdminOAuth2Client, AdminConsent, AdminUser, AdminSettings } from '../../types'
@@ -13,12 +12,10 @@ type AdminConsentListResponse = { consents: AdminConsent[] }
 export const Route = createFileRoute('/admin/')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const [users, clients, consents, recentEvents, settings] = await Promise.all([
+    const [users, clients, consents, settings] = await Promise.all([
       request<AdminUserListResponse>('/api/admin/users'),
       request<AdminOAuth2ClientListResponse>('/api/admin/clients'),
       request<AdminConsentListResponse>('/api/admin/consents'),
-      listAdminAuditEvents({ after: since, limit: 100 }),
       request<AdminSettings>('/api/admin/settings'),
     ])
     const activeUserCount = users.users.filter((u) => !u.disabled_at).length
@@ -32,8 +29,6 @@ export const Route = createFileRoute('/admin/')({
       disabledUserCount: users.users.length - activeUserCount,
       clientCount: clients.clients.length,
       grantedConsentCount: consents.consents.filter((c) => c.state === 'granted').length,
-      auditEventCount24h: recentEvents.length,
-      recentEvents: recentEvents.slice(0, 5),
       quota: settings.quota,
       usage: settings.usage,
     }

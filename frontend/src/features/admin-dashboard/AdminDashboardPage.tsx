@@ -2,7 +2,6 @@ import {
   IconActivity,
   IconArrowRight,
   IconCheckupList,
-  IconChevronRight,
   IconKey,
   IconShieldCheck,
   IconUsers,
@@ -10,10 +9,10 @@ import {
 import { tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Card } from '../../components/ui/card'
-import { useDictionary, useLocale } from '../../lib/i18n'
+import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
-import type { AdminAuditEvent, TenantQuota, TenantUsage } from '../../types'
-import { adminDashboardDictionary, friendlyEventName } from './AdminDashboardPage.i18n'
+import type { TenantQuota, TenantUsage } from '../../types'
+import { adminDashboardDictionary } from './AdminDashboardPage.i18n'
 
 export function AdminDashboardPage({
   actorUsername,
@@ -22,8 +21,6 @@ export function AdminDashboardPage({
   disabledUserCount,
   clientCount,
   grantedConsentCount,
-  auditEventCount24h,
-  recentEvents,
   quota,
   usage,
 }: {
@@ -33,13 +30,10 @@ export function AdminDashboardPage({
   disabledUserCount: number
   clientCount: number
   grantedConsentCount: number
-  auditEventCount24h: number
-  recentEvents: AdminAuditEvent[]
   quota?: TenantQuota
   usage?: TenantUsage
 }) {
   const t = useDictionary(adminDashboardDictionary)
-  const { locale } = useLocale()
   const activeRate = userCount > 0 ? Math.round((activeUserCount / userCount) * 100) : 0
 
   // テナントのセキュリティ状態を評価する擬似スコア
@@ -91,12 +85,6 @@ export function AdminDashboardPage({
                   <span className="block text-slate-400">{t.activeUserRateLabel}</span>
                   <span className="mt-0.5 block font-semibold">{activeRate}%</span>
                 </div>
-                <div className="rounded-lg bg-white/5 px-3 py-2 border border-white/10">
-                  <span className="block text-slate-400">{t.auditEvents24hLabel}</span>
-                  <span className="mt-0.5 block font-semibold">
-                    {t.countSuffix.replace('{count}', String(auditEventCount24h))}
-                  </span>
-                </div>
               </div>
             </div>
 
@@ -119,7 +107,7 @@ export function AdminDashboardPage({
 
       {/* システムサマリー (ビジュアルと価値を再検討した MetricCards) */}
       <section
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 mb-6"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mb-6"
         aria-label={t.summarySectionLabel}
       >
         <DashboardMetricCard
@@ -176,112 +164,36 @@ export function AdminDashboardPage({
             </div>
           }
         />
-        <DashboardMetricCard
-          label={t.auditEvents24hCardLabel}
-          value={auditEventCount24h}
-          icon={IconActivity}
-          tone="amber"
-          extra={
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <div className="flex items-center gap-1.5 text-[0.68rem] font-semibold">
-                <span
-                  className={cn(
-                    'inline-block size-2 rounded-full',
-                    auditEventCount24h > 50 ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500',
-                  )}
-                />
-                <span className="text-slate-500">
-                  {auditEventCount24h > 50 ? t.trafficRising : t.activityNormal}
-                </span>
-              </div>
-            </div>
-          }
-        />
       </section>
 
       <div className="grid gap-6">
-        {/* 直近の監査イベントと推奨セキュリティ構成を横 2 列で並べ、縦の間延びを抑える */}
-        <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-          {/* 直近の監査イベント */}
-          <Card className="overflow-hidden shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">
-                  {t.recentAuditEventsHeading}
-                </h2>
-                <p className="mt-0.5 text-xs text-slate-500">{t.recentAuditEventsDescription}</p>
-              </div>
-              <a
-                href={tenantURL('/admin/audit_events')}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800"
-              >
-                {t.viewAll}
-                <IconChevronRight size={14} aria-hidden="true" />
-              </a>
+        {/* セキュリティ推奨タスク (Okta / IAM風) */}
+        <Card className="p-5 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <IconShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t.recommendedSecurityHeading}
+              </h2>
+              <p className="mt-0.5 text-xs text-slate-500">{t.recommendedSecurityDescription}</p>
             </div>
-            {recentEvents.length === 0 ? (
-              <div className="px-5 py-10 text-center text-sm text-slate-500">
-                {t.emptyRecentEvents}
-              </div>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {recentEvents.map((event) => (
-                  <li key={event.id}>
-                    <a
-                      href={eventLink(event)}
-                      className="flex items-start gap-3 px-5 py-3.5 transition-colors hover:bg-slate-50"
-                    >
-                      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-500">
-                        <IconActivity size={16} aria-hidden="true" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-slate-900">
-                          {friendlyEventName(event.type, locale)}
-                        </p>
-                        <p className="mt-0.5 truncate text-xs text-slate-500">
-                          {formatDateTime(event.occurred_at, locale)} · {summarizeActor(event)}
-                        </p>
-                      </div>
-                      <IconChevronRight
-                        size={16}
-                        className="mt-1 shrink-0 text-slate-400"
-                        aria-hidden="true"
-                      />
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          </div>
 
-          {/* セキュリティ推奨タスク (Okta / IAM風) */}
-          <Card className="p-5 shadow-sm">
-            <div className="flex items-start gap-2.5">
-              <IconShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">
-                  {t.recommendedSecurityHeading}
-                </h2>
-                <p className="mt-0.5 text-xs text-slate-500">{t.recommendedSecurityDescription}</p>
-              </div>
-            </div>
-
-            <ul className="mt-4 grid gap-3.5">
-              <SecurityTaskCard
-                title={t.mfaTaskTitle}
-                description={t.mfaTaskDescription}
-                href={tenantURL('/admin/sign-in-policy')}
-                actionLabel={t.setPolicyAction}
-              />
-              <SecurityTaskCard
-                title={t.federationTaskTitle}
-                description={t.federationTaskDescription}
-                href={tenantURL('/admin/federation/entra')}
-                actionLabel={t.configureFederationAction}
-              />
-            </ul>
-          </Card>
-        </div>
+          <ul className="mt-4 grid gap-3.5 sm:grid-cols-2">
+            <SecurityTaskCard
+              title={t.mfaTaskTitle}
+              description={t.mfaTaskDescription}
+              href={tenantURL('/admin/sign-in-policy')}
+              actionLabel={t.setPolicyAction}
+            />
+            <SecurityTaskCard
+              title={t.federationTaskTitle}
+              description={t.federationTaskDescription}
+              href={tenantURL('/admin/federation/entra')}
+              actionLabel={t.configureFederationAction}
+            />
+          </ul>
+        </Card>
 
         {/* Quota Usage */}
         {usage && (
@@ -410,47 +322,4 @@ export function SecurityTaskCard({
       </div>
     </li>
   )
-}
-
-function summarizeActor(event: AdminAuditEvent): string {
-  const payload = event.payload as { actor_sub?: string; sub?: string; target_sub?: string }
-  const actor = payload.actor_sub ?? payload.sub
-  const target = payload.target_sub
-  if (actor && target && actor !== target) return `${actor} → ${target}`
-  if (actor) return actor
-  if (target) return target
-  return event.tenant_id
-}
-
-function formatDateTime(value: string, locale: 'ja' | 'en') {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date)
-}
-
-function eventLink(event: AdminAuditEvent): string {
-  const payload = event.payload as {
-    user_id?: string
-    sub?: string
-    client_id?: string
-    application_id?: string
-  }
-  const userId = payload.user_id || payload.sub
-  const clientId = payload.client_id || payload.application_id
-
-  if (event.type.startsWith('User') && userId) {
-    return tenantURL(`/admin/users/${encodeURIComponent(userId)}`)
-  }
-  if (event.type.startsWith('Client') && clientId) {
-    return tenantURL(`/admin/applications/${encodeURIComponent(clientId)}`)
-  }
-  if (event.type.startsWith('Application') && clientId) {
-    return tenantURL(`/admin/applications/${encodeURIComponent(clientId)}`)
-  }
-  return `${tenantURL('/admin/audit_events')}?type=${encodeURIComponent(event.type)}`
 }

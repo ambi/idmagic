@@ -3,11 +3,12 @@ import { updateAdminApplicationProvisioning } from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { SearchableSelect } from '../../components/ui/combobox'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import { useDictionary } from '../../lib/i18n'
-import { messageOf, parseList, SectionTitle } from './AdminApplicationsShared'
+import { messageOf, SectionTitle } from './AdminApplicationsShared'
 import { provisioningDictionary } from './AdminApplicationProvisioning.i18n'
 import {
   CredentialFieldsEditor,
@@ -23,6 +24,7 @@ import type {
   ProvisioningFeatureFlags,
   ProvisioningGroupSelection,
   ProvisioningScope,
+  AdminGroup,
 } from '../../types'
 
 function defaultDeprovisionPolicy(): DeprovisionPolicy {
@@ -40,11 +42,13 @@ export function ConnectionSettingsForm({
   csrfToken,
   applicationID,
   connection,
+  groups = [],
   onSaved,
 }: {
   csrfToken: string
   applicationID: string
   connection: ProvisioningConnection
+  groups?: AdminGroup[]
   onSaved: (conn: ProvisioningConnection) => void
 }) {
   const t = useDictionary(provisioningDictionary)
@@ -182,6 +186,7 @@ export function ConnectionSettingsForm({
           setGroupPushEnabled={setGroupPushEnabled}
           groupPush={groupPush}
           setGroupPush={setGroupPush}
+          groups={groups}
         />
 
         <section className="grid gap-1.5 border-t border-slate-100 pt-5">
@@ -288,11 +293,13 @@ function GroupPushSection({
   setGroupPushEnabled,
   groupPush,
   setGroupPush,
+  groups,
 }: {
   groupPushEnabled: boolean
   setGroupPushEnabled: (v: boolean) => void
   groupPush: GroupPushConfig
   setGroupPush: (v: GroupPushConfig) => void
+  groups: AdminGroup[]
 }) {
   const t = useDictionary(provisioningDictionary)
   return (
@@ -328,17 +335,57 @@ function GroupPushSection({
               value={groupPush.display_name_source ?? ''}
               onChange={(e) => setGroupPush({ ...groupPush, display_name_source: e.target.value })}
             />
+            <p className="text-xs text-slate-500">{t.displayNameSourceHelp}</p>
           </div>
           {groupPush.selection === 'explicit' ? (
             <div className="grid gap-1.5 sm:col-span-2">
               <Label>{t.explicitGroupIdsFieldLabel}</Label>
-              <textarea
-                className="min-h-24 rounded-lg border border-slate-300 bg-white/92 px-3.5 py-2 font-mono text-xs text-slate-950 outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-600/10"
-                value={(groupPush.explicit_group_ids ?? []).join('\n')}
-                onChange={(e) =>
-                  setGroupPush({ ...groupPush, explicit_group_ids: parseList(e.target.value) })
-                }
+              <SearchableSelect
+                value=""
+                onValueChange={(groupID) => {
+                  if (!groupID || groupPush.explicit_group_ids?.includes(groupID)) return
+                  setGroupPush({
+                    ...groupPush,
+                    explicit_group_ids: [...(groupPush.explicit_group_ids ?? []), groupID],
+                  })
+                }}
+                options={groups
+                  .filter((group) => !groupPush.explicit_group_ids?.includes(group.id))
+                  .map((group) => ({ value: group.id, label: group.name }))}
+                placeholder={t.explicitGroupPickerPlaceholder}
+                aria-label={t.explicitGroupPickerPlaceholder}
               />
+              {(groupPush.explicit_group_ids ?? []).length > 0 ? (
+                <ul className="grid gap-2">
+                  {(groupPush.explicit_group_ids ?? []).map((groupID) => {
+                    const name = groups.find((group) => group.id === groupID)?.name ?? groupID
+                    return (
+                      <li
+                        key={groupID}
+                        className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                      >
+                        <span>{name}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-8 px-2 text-xs"
+                          onClick={() =>
+                            setGroupPush({
+                              ...groupPush,
+                              explicit_group_ids: (groupPush.explicit_group_ids ?? []).filter(
+                                (id) => id !== groupID,
+                              ),
+                            })
+                          }
+                          aria-label={t.removeExplicitGroup.replace('{name}', name)}
+                        >
+                          {t.removeExplicitGroup.replace('{name}', name)}
+                        </Button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              ) : null}
             </div>
           ) : null}
         </div>

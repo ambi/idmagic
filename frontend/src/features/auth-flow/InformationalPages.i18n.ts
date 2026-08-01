@@ -3,11 +3,11 @@ import { defineDictionary } from '../../lib/i18n'
 export const informationalPagesDictionary = defineDictionary(
   {
     homeEyebrow: 'IDプロバイダー',
-    homeTitle: 'このページでは何も操作できません',
+    homeTitle: 'サインインを開始',
     homeDescription:
-      'ここは各アプリケーションのサインインを仲介する基盤のトップページです。ログイン画面は、利用するアプリケーションを経由してアクセスしたときに表示されます。',
+      'このテナントのアプリケーションへのサインインとアクセス管理を行う ID プロバイダーです。ご利用のアプリケーションを経由してアクセスした場合は、そのままサインイン画面が表示されます。',
     homeDirectLogin:
-      'このアドレスへ直接アクセスした場合は、利用したいアプリケーションの画面に戻ってログインを始めてください。',
+      'このページへ直接アクセスした場合は、下記からアカウントまたは管理コンソールを開いてサインインするか、利用したいアプリケーションの画面に戻ってサインインを始めてください。',
     startDemo: 'ローカルデモ認証を開始',
     startFromApplication: '利用するアプリケーションからログインを開始してください。',
     demoUser: 'デモユーザー:',
@@ -20,11 +20,11 @@ export const informationalPagesDictionary = defineDictionary(
   },
   {
     homeEyebrow: 'Identity provider',
-    homeTitle: 'There is nothing to do on this page',
+    homeTitle: 'Sign in to get started',
     homeDescription:
-      'This is the landing page for the sign-in service that connected applications use. The sign-in screen appears only when you reach it through the application you are using.',
+      'This is the identity provider that handles sign-in and access management for this tenant. If you reached this page through an application, the sign-in screen will appear automatically.',
     homeDirectLogin:
-      'If you reached this address directly, go back to the application you want to use and start signing in from there.',
+      'If you reached this page directly, open your account or the admin console below to sign in, or go back to the application you want to use and start signing in from there.',
     startDemo: 'Start local demo authorization',
     startFromApplication: 'Start signing in from the application you use.',
     demoUser: 'Demo user:',

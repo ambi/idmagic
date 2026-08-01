@@ -162,6 +162,14 @@ describe('static auth-flow pages', () => {
 
     await renderWithRouter(<HomePage demoEnabled={false} />)
     expect(screen.getByText('Start signing in from the application you use.')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open account portal' })).toHaveAttribute(
+      'href',
+      '/account',
+    )
+    expect(screen.getByRole('link', { name: 'Open admin console' })).toHaveAttribute(
+      'href',
+      '/admin',
+    )
   })
 
   it('shows sign-in links only after a signed-out status', async () => {

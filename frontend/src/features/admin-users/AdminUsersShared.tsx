@@ -19,6 +19,7 @@ import {
 } from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
+import { SearchableSelect } from '../../components/ui/combobox'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import {
   domainLabelsDictionary,
@@ -312,20 +313,15 @@ export function UserGroupsSection({
 
           {allowEditing && addable.length > 0 && (
             <div className="flex items-center gap-2 border-t border-slate-100 p-3">
-              <select
+              <SearchableSelect
                 value={selectedGroup}
-                onChange={(event) => setSelectedGroup(event.target.value)}
+                onValueChange={setSelectedGroup}
                 disabled={adding}
+                placeholder={t.selectGroupPlaceholder}
                 aria-label={t.selectGroupPlaceholder}
-                className="h-10 flex-1 rounded-lg border border-slate-200 bg-white px-2 text-sm text-slate-700"
-              >
-                <option value="">{t.selectGroupPlaceholder}</option>
-                {addable.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
+                className="h-10 flex-1"
+                options={addable.map((group) => ({ value: group.id, label: group.name }))}
+              />
               <Button
                 type="button"
                 className="h-10"

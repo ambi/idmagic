@@ -20,6 +20,7 @@ import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { SearchableSelect } from '../../components/ui/combobox'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminGroup, AdminGroupMember, AdminUser } from '../../types'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
@@ -331,20 +332,18 @@ export function GroupMembersSection({
 
       {allowEditing ? (
         <div className="mt-3 flex items-center gap-2">
-          <select
+          <SearchableSelect
             value={addSub}
-            onChange={(e) => setAddSub(e.target.value)}
+            onValueChange={setAddSub}
             disabled={!!group.scim_source || group.membership_type === 'dynamic'}
-            className="h-10 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
+            className="h-10 flex-1"
+            placeholder={t.selectUserPlaceholder}
             aria-label={t.selectUserToAddAria}
-          >
-            <option value="">{t.selectUserPlaceholder}</option>
-            {addableUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.preferred_username}
-              </option>
-            ))}
-          </select>
+            options={addableUsers.map((user) => ({
+              value: user.id,
+              label: user.preferred_username,
+            }))}
+          />
           <Button
             className="h-10"
             disabled={busy || !addSub || !!group.scim_source || group.membership_type === 'dynamic'}

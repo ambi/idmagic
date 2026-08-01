@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: low
 created_at: 2026-08-01
@@ -220,6 +220,72 @@ depends_on: []
 現状のように「エラー文言だけ追加されて実際には何が起きたか分からない」表示は避け、
 拒否が成立したのか通信が失敗しただけなのかをエラーメッセージで区別する。
 
+### 系統5: 実機レビュー第2弾（旧 T001-T022 完了後の再指摘）の対応
+
+自動検証（`just verify-ui` / `just test-ui-e2e` / `just check`）が全て green になった段階で
+一度 `## Completion` を書いたが、その後の実機レビューで下記9件が「対応済みのはずが実際には
+直っていない／当初の指摘の一部にしか対応していない」と指摘された。自動検証のグリーンは
+「実際に触って良くなっているか」の証明にならないという教訓を踏まえ、以下を新規タスクとして
+明示的に追加し、系統1〜4と同じ厳密さで対応する。旧 T001-T022 の実装・検証結果自体は取り消さない
+（該当する個別画面の再修正として扱う）。
+
+- **トップページ・他ホーム系メッセージ**。T001 で書き直した文言のうち
+  `homeTitle`（「このページでは何も操作できません」）はむしろ以前より否定的・冷淡になっており、
+  一般ユーザーが迷い込んだ際の着地画面として不適切。Okta（"You do not have access to this
+  application" ではなくテナントのブランドと状態を示す形）、Entra ID（マイアプリ的な導線）、
+  Keycloak（アカウントコンソールへの案内）のような、IdP のトップページが実際に担う役割
+  （このサービスの説明・サインインは各アプリ経由で始まる旨の案内）に沿って書き直す。
+- **同意ページの保持メッセージのスタイル**。T001 で文言自体は「許可した内容は、後から
+  取り消せます」に簡略化したが、警告色（amber/警告アイコン）のボックスに入れたままのため、
+  エラーや警告のように見えてしまう。内容はそのままに、`LoginPage.tsx` の `securityNote`
+  （中立トーンの slate ボックス）と同じ見た目に変更する。
+- **グループ追加・メンバー追加セレクトのスケーラビリティ**。Design 系統2/3では参照/編集分離と
+  ピッカー化（T020）のみを扱い、「大量のグループ・ユーザーが存在する場合に素の
+  `<select>`/`Select` が破綻する」という指摘そのものには対応していなかった。
+  `UserGroupsSection`（`AdminUsersShared.tsx`）、`GroupMembersSection`
+  （`AdminGroupDetailCard.tsx`）、`OnDemandAndResyncPanel`
+  （`AdminApplicationProvisioningOnDemand.tsx`、T020 で追加したもの）の3箇所が対象。
+  Base UI が提供する `combobox` プリミティブ（`@base-ui/react/combobox`）を用いた
+  検索可能なピッカー共通コンポーネントを `components/ui/` に新設し、3箇所を置き換える。
+- **ライフサイクルワークフロー画面のブラウザネイティブダイアログ**。
+  `AdminLifecycleWorkflowsPage.tsx` は当初の Scope に列挙されていたが T001-T022 のどのタスクでも
+  実際には触れられていなかった。`deleteWorkflow` が `window.confirm`、`dryRunWorkflow` が
+  `window.prompt`（ラベル「対象ユーザー ID」）をそれぞれ使っており、(a) ブラウザ標準ダイアログが
+  他の削除確認（`role="dialog"` のアプリ内モーダル、`AdminUsersListPage.tsx` 等で採用済み）と
+  見た目・操作感が異なる、(b) dry-run 実行前に「対象ユーザー ID」を求められても
+  ワークフローが誰に対するものか・何を入力すべきかが画面から読み取れず意味不明、という2つの
+  実害がある。アプリ内 `Dialog` に統一し、dry-run の対象入力も文脈が分かるラベル・説明に変更する。
+- **プロビジョニング設定「グループ連携」の入力補助**。`GroupPushSection`
+  （`AdminApplicationProvisioningSettings.tsx`）の `表示名ソース属性`
+  (`displayNameSourceFieldLabel`) は補足説明が無いプレーンな `<Input>` で、
+  自由記入か・何を指すか（下流へ同期するグループ表示名として使う属性パス等）が分からない。
+  ヘルプテキストを追加する。また `明示的なグループ ID`
+  (`explicitGroupIdsFieldLabel`) は改行区切りテキストエリアへ ID を手打ちさせる方式であり、
+  ユーザー編集画面の「所属グループ追加」と同じ検索ピッカー（本節のコンボボックス化と共通化）に
+  置き換える。
+- **監査イベント種別の未翻訳（ライフサイクルワークフロー関連）**。T008 で `friendlyEventName`
+  を監査イベント一覧に適用したが、`AdminDashboardPage.i18n.ts` の `EVENT_NAME_JA`/`EVENT_NAME_EN`
+  にライフサイクルワークフロー関連の型が未登録のため、日本語ロケールでも英語のまま
+  （スペース区切りへのフォールバック）表示される。バックエンドの実際の発行型
+  （`LifecycleWorkflowCreated` / `Updated` / `Deleted` / `Enabled` / `Disabled` /
+  `LifecycleWorkflowRunStarted` / `RunSucceeded` / `RunFailed` / `RunPartiallyFailed` /
+  `RunCanceled` / `LifecycleWorkflowStepFailed`）を grep で確認済み。全件を両言語マップへ追加する。
+- **ユーザー属性追加画面の未翻訳語**。`AdminTenantAttributesPage.i18n.ts` の
+  `keyFieldLabel`（値が英単語 `'key'` そのまま）、`claimNameFieldLabel`（「claim 名 (任意)」）、
+  `piiToggle`（「PII (監査で hash 化)」）、`customAttributesDescription`（「key は snake_case
+  ...」）に日本語化されていない用語が残っている。`snake_case` のような命名規則を指す固有の
+  技術用語は残しつつ、`key`→「属性キー」、`claim`→「クレーム」、`hash`→「ハッシュ」等、
+  一般名詞として使われている箇所を日本語化する。
+- **ユーザー属性一覧の文言不一致**。`noCustomAttributesNotice`
+  （「カスタム属性はまだありません。「属性を追加」で定義できます。」）が参照しているボタン名が
+  実際のボタンラベル `addAttribute`（「ユーザー属性を追加」）と一致していない。文言を揃える。
+- **ダッシュボードの監査イベント表示**。以前の指摘で「ダッシュボードに監査イベントは不要」と
+  伝えていたにもかかわらず、`AdminDashboardPage.tsx` に「直近の監査イベント」カードと
+  ヒーローカード内の「過去24時間の監査イベント」統計、KPI カード「監査イベント (24h)」が
+  引き続き表示されている。ダッシュボードから監査イベント関連の表示（一覧・件数統計とも）を
+  撤去する。監査イベントの確認は既存の監査イベント一覧画面
+  (`/admin/audit_events`) に一本化する。
+
 ## Plan
 
 1. まず系統1（文言修正）を i18n ファイル中心に横断的に片付ける。挙動変更を伴わないため
@@ -386,6 +452,41 @@ depends_on: []
       `/\/admin\/applications\/[^/]+$/` と偶然一致し、リダイレクト前の URL で
       誤って早期成立していたバグを負の先読みで修正。
 
+- [x] T023 [App] トップページ（ならびに他のホーム系メッセージ）を IdP のトップページらしい
+      文言に書き直す (`InformationalPages.i18n.ts`)。アカウント画面と管理コンソールへの導線も
+      明示し、`AuthFlowForms.test.tsx` で両リンクを回帰検証した。
+- [x] T024 [App] 同意ページの保持メッセージのボックスを警告色から情報色（`LoginPage.tsx` の
+      `securityNote` と同じトーン）へ変更する (`ConsentPage.tsx`)。
+      `AuthFlowPages.test.tsx` で neutral slate tone を回帰検証した。
+- [x] T025 [App] Base UI combobox を用いた検索可能な共通ピッカーコンポーネントを新設し、
+      `UserGroupsSection`（`AdminUsersShared.tsx`）、`GroupMembersSection`
+      （`AdminGroupDetailCard.tsx`）、`OnDemandAndResyncPanel`
+      （`AdminApplicationProvisioningOnDemand.tsx`）の素の select/Select を置き換える。
+      共通 `SearchableSelect` の検索・選択・アクセシブル名を直接テストし、各利用画面の既存
+      操作テストも GREEN を確認した。
+- [x] T026 [App] ライフサイクルワークフロー画面の `window.confirm`/`window.prompt` をアプリ内
+      `Dialog` に置き換え、dry-run の対象入力ラベル・説明を分かりやすくする
+      (`AdminLifecycleWorkflowsPage.tsx`)。
+      RED: 削除確認 dialog と dry-run の説明・対象入力を要求するテストを追加し fail を確認後、
+      アプリ内 dialog と busy state を実装して GREEN にした。
+- [x] T027 [App] プロビジョニング設定「グループ連携」の表示名ソース属性にヘルプテキストを追加し、
+      明示的なグループ ID 入力を T025 のピッカーへ置き換える
+      (`AdminApplicationProvisioningSettings.tsx`)。
+      loader でグループ一覧を取得し、複数選択・解除できる行として表示する。RED: ヘルプと
+      グループ名選択を要求するテストを追加し fail を確認後、実装して GREEN にした。
+- [x] T028 [App] 監査イベント名の日本語マップにライフサイクルワークフロー関連の型を追加する
+      (`AdminDashboardPage.i18n.ts` `EVENT_NAME_JA`/`EVENT_NAME_EN`)。
+      バックエンドが発行する11種すべてについて、日本語名への解決をテストした。
+- [x] T029 [App] ユーザー属性追加画面の未翻訳語（key/claim/hash）を日本語化する
+      (`AdminTenantAttributesPage.i18n.ts`)。
+- [x] T030 [App] `noCustomAttributesNotice` の文言をボタンラベル「ユーザー属性を追加」に
+      揃える (`AdminTenantAttributesPage.i18n.ts`)。
+- [x] T031 [App] ダッシュボードから監査イベント関連の表示（一覧・統計とも）を撤去する
+      (`AdminDashboardPage.tsx`)。
+- [x] T032 [Verify] T023-T031 反映後に `just verify-ui` / `just test-ui-e2e` / `just check` /
+      `just check-work-items` / `just check-ids` を再実行し、全て green にする。
+      最終的に baseline 修復も含む `just verify` と E2E 22件を再実行し、全て GREEN を確認した。
+
 ## Verification
 
 - `just verify-ui`（format-check / lint / typecheck / unit test / build）
@@ -406,3 +507,26 @@ depends_on: []
 区切って進める。同意拒否フロー修正 (T002) は認可フローに触れる唯一の Task であり、
 クライアントへのリダイレクトパラメータが RFC 6749 の `error=access_denied` 相当になっている
 ことを確認する。
+
+## Completion
+
+- **Completed At**: 2026-08-01
+- **Summary**:
+  ホスト認証画面と管理コンソールの文言・ナビゲーション・参照編集分離を T001-T022 で横断的に
+  改善し、実機レビュー第2弾の T023-T031 も反映した。第2弾では IdP ホーム導線、同意表示、
+  検索可能な共通ピッカー、ライフサイクルワークフローのアプリ内 dialog、グループ push の
+  入力補助、監査イベント名、ユーザー属性文言、ダッシュボード情報量を是正した。
+  Out of Scope としたグループ属性拡張と OIDC client secret lifecycle はそれぞれ
+  [[wi-315-group-contact-and-custom-attributes]] / [[wi-316-oidc-client-secret-lifecycle-management]]
+  に分割済み。GUI 属性マッピング、SAML/WS-Federation 署名鍵画面、デザインシステム刷新は
+  本 WI では実装していない。
+  test-first からの逸脱 (self-attest): 第2弾の T023/T024/T028-T031 は既存の部分実装を確認後に
+  回帰テストを補ったため、RED を先行確認していない。T025 の共通 picker accessibility、T026、
+  T027 は RED → GREEN を確認した。
+  Verification 節の手動確認は本セッションでは実施せず、同じ主要導線を E2E 22件と UI unit
+  516件で自動検証した。
+- **Verification Results**:
+  - `just verify` - passed（check / Go test・lint / UI unit・lint・typecheck・build / tools）。
+  - `just test-ui-unit` - passed（516 tests）。
+  - `just test-ui-e2e` - passed（4 spec ファイル・22 tests）。
+  - `just check` / `just check-work-items` / `just check-ids` - passed。
