@@ -1,15 +1,19 @@
-import { type FormEvent, useState } from 'react'
-import { provisionOnDemand, startAdminApplicationProvisioningFullResync } from '../../api'
+import { type FormEvent, useEffect, useState } from 'react'
+import {
+  listAdminGroups,
+  listAdminUsers,
+  provisionOnDemand,
+  startAdminApplicationProvisioningFullResync,
+} from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import { useDictionary } from '../../lib/i18n'
 import { messageOf, SectionTitle } from './AdminApplicationsShared'
 import { provisioningDictionary } from './AdminApplicationProvisioning.i18n'
-import type { ProvisioningSourceType } from '../../types'
+import type { AdminGroup, AdminUser, ProvisioningSourceType } from '../../types'
 
 export function OnDemandAndResyncPanel({
   csrfToken,
@@ -21,10 +25,28 @@ export function OnDemandAndResyncPanel({
   const t = useDictionary(provisioningDictionary)
   const [subjectType, setSubjectType] = useState<ProvisioningSourceType>('user')
   const [subjectID, setSubjectID] = useState('')
+  const [users, setUsers] = useState<AdminUser[]>([])
+  const [groups, setGroups] = useState<AdminGroup[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [resyncing, setResyncing] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([listAdminUsers(), listAdminGroups()])
+      .then(([nextUsers, nextGroups]) => {
+        if (cancelled) return
+        setUsers(nextUsers)
+        setGroups(nextGroups)
+      })
+      .catch(() => {
+        if (!cancelled) setError(t.onDemandSubjectsLoadFailedError)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [t.onDemandSubjectsLoadFailedError])
 
   async function submitOnDemand(e: FormEvent) {
     e.preventDefault()
@@ -68,16 +90,35 @@ export function OnDemandAndResyncPanel({
             <Label>{t.onDemandSubjectTypeFieldLabel}</Label>
             <Select
               value={subjectType}
-              onValueChange={(v) => setSubjectType(v as ProvisioningSourceType)}
+              onValueChange={(v) => {
+                setSubjectType(v as ProvisioningSourceType)
+                setSubjectID('')
+              }}
               options={[
                 { value: 'user', label: t.onDemandSubjectTypeUser },
                 { value: 'group', label: t.onDemandSubjectTypeGroup },
               ]}
             />
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid min-w-56 gap-1.5">
             <Label>{t.onDemandSubjectIdFieldLabel}</Label>
-            <Input required value={subjectID} onChange={(e) => setSubjectID(e.target.value)} />
+            <Select
+              value={subjectID}
+              onValueChange={setSubjectID}
+              options={
+                subjectType === 'user'
+                  ? users.map((user) => ({
+                      value: user.id,
+                      label: user.preferred_username,
+                    }))
+                  : groups.map((group) => ({ value: group.id, label: group.name }))
+              }
+              placeholder={
+                subjectType === 'user'
+                  ? t.onDemandSelectUserPlaceholder
+                  : t.onDemandSelectGroupPlaceholder
+              }
+            />
           </div>
           <Button type="submit" disabled={submitting || subjectID.trim() === ''}>
             {submitting ? t.onDemandSubmitting : t.onDemandButton}

@@ -352,8 +352,13 @@ depends_on: []
 - [x] T019 [App] プロビジョニング設定画面への導線をアプリケーション編集画面にも追加する。
       既存の `ProvisioningNavButton`（詳細画面の `AdminApplicationDetailActions` が使用）を
       編集画面のヘッダー actions にも追加。回帰テストを追加。
-- [ ] T020 [App] 個別（オンデマンド）プロビジョニングの対象 ID テキスト入力を、ユーザー/グループ
+- [x] T020 [App] 個別（オンデマンド）プロビジョニングの対象 ID テキスト入力を、ユーザー/グループ
       検索ピッカーに置き換える。
+      テナント内のユーザー/グループ件数が大きくない前提の一覧選択（`listAdminUsers`/
+      `listAdminGroups` を取得し、既存の `Select` コンポーネントで選択）に置き換えた。
+      対象種別 (ユーザー/グループ) 切り替え時に選択をリセットする。
+      新規テスト `AdminApplicationProvisioningOnDemand.test.tsx`
+      （選択して送信・種別切り替えでリセット・一覧取得失敗時のエラー表示）。
 - [ ] T021 [App] 変更した各画面のコンポーネントテストを更新し、新規抽出した presentational
       component にユニットテストを追加する。
 - [ ] T022 [Verify] 下記 Verification を通す。
