@@ -538,7 +538,7 @@ export function AdminApplicationEditPage({
                   <p className="text-xs text-slate-500">{t.subSourceAttributeHelp}</p>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>{t.claimMappingRulesJsonFieldLabel}</Label>
+                  <Label>{t.claimMappingRulesFieldLabel}</Label>
                   <ClaimRulesEditor rules={oidcRules} onChange={setOidcRules} t={t} />
                   <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>
@@ -602,7 +602,7 @@ export function AdminApplicationEditPage({
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>{t.claimMappingRulesJsonFieldLabel}</Label>
+                  <Label>{t.claimMappingRulesFieldLabel}</Label>
                   <ClaimRulesEditor rules={wsfedRules} onChange={setWsfedRules} t={t} />
                   <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>

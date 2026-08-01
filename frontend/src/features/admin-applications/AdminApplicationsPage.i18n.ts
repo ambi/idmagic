@@ -104,7 +104,7 @@ export const adminApplicationsDictionary = defineDictionary(
     audienceFieldLabel: 'Audience',
     audienceDefaultSuffix: '{value} (既定)',
     tokenTypeFieldLabel: 'トークン種別',
-    claimMappingRulesFieldLabel: 'claim mapping 規則',
+    claimMappingRulesFieldLabel: 'クレームマッピング',
     nameIdOnlyNotice: 'NameID のみ',
     entityIdFieldLabel: 'エンティティ ID (SP)',
     acsUrlFieldLabel: 'ACS URL',
@@ -161,7 +161,6 @@ export const adminApplicationsDictionary = defineDictionary(
     audienceOptionalFieldLabel: 'Audience (任意)',
     audiencePlaceholderDefault: '未指定なら wtrealm を使用',
     tokenTypeSamlVersionFieldLabel: 'トークン種別 (SAML バージョン)',
-    claimMappingRulesJsonFieldLabel: 'claim mapping 規則',
     claimMappingRulesHelp:
       'required にすると、値が解決できないとき fail-closed で sign-in / 発行自体を拒否します。',
     subSourceAttributeFieldLabel: 'sub ソース属性',
@@ -487,7 +486,6 @@ export const adminApplicationsDictionary = defineDictionary(
     audienceOptionalFieldLabel: 'Audience (optional)',
     audiencePlaceholderDefault: 'If unspecified, wtrealm is used',
     tokenTypeSamlVersionFieldLabel: 'Token type (SAML version)',
-    claimMappingRulesJsonFieldLabel: 'Claim mapping rules',
     claimMappingRulesHelp:
       'Marking a rule required means sign-in / issuance fails closed if its value cannot be resolved.',
     samlSectionHeading: 'SAML 2.0',

@@ -351,15 +351,17 @@ export function useReleasableAttributes(): {
       cancelled = true
     }
   }, [])
+  // 表示名を先頭にし、内部属性キー (sub 等、OIDC 由来の名前が SAML/WS-Fed 画面にも出る) は
+  // 括弧書きの補足に留める。値そのものは変えない (プロトコル間で共有する内部表現)。
   const core: ReleasableAttributeOption[] = CORE_ATTRIBUTE_KEYS.map((key) => ({
     value: key,
-    label: `${key} — ${coreAttributeLabel(key, t)}`,
+    label: `${coreAttributeLabel(key, t)} (${key})`,
   }))
   const releasable: ReleasableAttributeOption[] = (defs ?? [])
     .filter((def) => def.visibility !== 'private')
     .map((def) => ({
       value: def.key,
-      label: def.label ? `${def.key} — ${def.label}` : def.key,
+      label: def.label ? `${def.label} (${def.key})` : def.key,
       visibility: def.visibility,
     }))
   return { allDefs: defs, options: [...core, ...releasable], error }

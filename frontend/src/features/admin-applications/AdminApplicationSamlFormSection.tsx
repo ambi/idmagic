@@ -189,7 +189,7 @@ export function AdminApplicationSamlFormSection(props: Props) {
         <p className="text-xs text-slate-500">{t.requestSigningCertHelp}</p>
       </div>
       <div className="grid gap-1.5">
-        <Label>{t.claimMappingRulesJsonFieldLabel}</Label>
+        <Label>{t.claimMappingRulesFieldLabel}</Label>
         <ClaimRulesEditor rules={props.rules} onChange={props.onRulesChange} t={t} />
         <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
       </div>

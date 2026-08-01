@@ -21,6 +21,7 @@ import {
   parseList,
   SAML_DEFAULT_NAMEID_FORMAT,
   SectionTitle,
+  SourceAttributeSelect,
 } from './AdminApplicationsShared'
 
 export function CreateApplicationDialog({
@@ -367,11 +368,10 @@ export function CreateApplicationDialog({
                     </div>
                     <div className="grid gap-1.5">
                       <Label htmlFor="app-nameid-source">{t.nameIdSourceFieldLabel}</Label>
-                      <Input
+                      <SourceAttributeSelect
                         id="app-nameid-source"
                         value={nameIDSource}
-                        onChange={(e) => setNameIDSource(e.target.value)}
-                        placeholder="sub"
+                        onChange={setNameIDSource}
                       />
                     </div>
                   </section>
@@ -425,11 +425,10 @@ export function CreateApplicationDialog({
                     </div>
                     <div className="grid gap-1.5">
                       <Label htmlFor="app-saml-nameid-source">{t.nameIdSourceFieldLabel}</Label>
-                      <Input
+                      <SourceAttributeSelect
                         id="app-saml-nameid-source"
                         value={samlNameIDSource}
-                        onChange={(e) => setSamlNameIDSource(e.target.value)}
-                        placeholder="sub"
+                        onChange={setSamlNameIDSource}
                       />
                     </div>
                     <label className="flex items-center gap-3 text-sm font-medium text-slate-700">
