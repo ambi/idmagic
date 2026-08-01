@@ -89,6 +89,7 @@ import { Route as AdminLifecycleWorkflowsWorkflowIdEditRouteImport } from './rou
 import { Route as AdminMcpResourceServersResourceServerIdEditRouteImport } from './routes/admin/mcp-resource-servers_/$resourceServerId.edit'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId'
 import { Route as AdminSettingsSamlIdpProfilesNewRouteImport } from './routes/admin/settings_/saml-idp-profiles_/new'
+import { Route as AdminTenantAttributesNewRouteImport } from './routes/admin/tenant/attributes_/new'
 import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id.index'
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
 import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
@@ -513,6 +514,12 @@ const AdminSettingsSamlIdpProfilesNewRoute =
     path: '/settings/saml-idp-profiles/new',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminTenantAttributesNewRoute =
+  AdminTenantAttributesNewRouteImport.update({
+    id: '/tenant/attributes_/new',
+    path: '/tenant/attributes/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminUsersIdIndexRoute = AdminUsersIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -619,6 +626,7 @@ export interface FileRoutesByFullPath {
   '/admin/mcp-resource-servers/$resourceServerId/edit': typeof AdminMcpResourceServersResourceServerIdEditRoute
   '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
+  '/admin/tenant/attributes/new': typeof AdminTenantAttributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/agents/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
@@ -696,6 +704,7 @@ export interface FileRoutesByTo {
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/mcp-resource-servers/$resourceServerId/edit': typeof AdminMcpResourceServersResourceServerIdEditRoute
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
+  '/admin/tenant/attributes/new': typeof AdminTenantAttributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
@@ -784,6 +793,7 @@ export interface FileRoutesById {
   '/admin/mcp-resource-servers_/$resourceServerId/edit': typeof AdminMcpResourceServersResourceServerIdEditRoute
   '/admin/settings_/saml-idp-profiles_/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings_/saml-idp-profiles_/new': typeof AdminSettingsSamlIdpProfilesNewRoute
+  '/admin/tenant/attributes_/new': typeof AdminTenantAttributesNewRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
   '/admin/agents_/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
@@ -873,6 +883,7 @@ export interface FileRouteTypes {
     | '/admin/mcp-resource-servers/$resourceServerId/edit'
     | '/admin/settings/saml-idp-profiles/$profileId'
     | '/admin/settings/saml-idp-profiles/new'
+    | '/admin/tenant/attributes/new'
     | '/admin/users/$id/edit'
     | '/admin/agents/$agentId/'
     | '/admin/applications/$applicationId/'
@@ -950,6 +961,7 @@ export interface FileRouteTypes {
     | '/admin/lifecycle-workflows/$workflowId/edit'
     | '/admin/mcp-resource-servers/$resourceServerId/edit'
     | '/admin/settings/saml-idp-profiles/new'
+    | '/admin/tenant/attributes/new'
     | '/admin/users/$id/edit'
     | '/admin/agents/$agentId'
     | '/admin/applications/$applicationId'
@@ -1037,6 +1049,7 @@ export interface FileRouteTypes {
     | '/admin/mcp-resource-servers_/$resourceServerId/edit'
     | '/admin/settings_/saml-idp-profiles_/$profileId'
     | '/admin/settings_/saml-idp-profiles_/new'
+    | '/admin/tenant/attributes_/new'
     | '/admin/users_/$id/edit'
     | '/admin/agents_/$agentId/'
     | '/admin/applications_/$applicationId/'
@@ -1626,6 +1639,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsSamlIdpProfilesNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/tenant/attributes_/new': {
+      id: '/admin/tenant/attributes_/new'
+      path: '/tenant/attributes/new'
+      fullPath: '/admin/tenant/attributes/new'
+      preLoaderRoute: typeof AdminTenantAttributesNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/users_/$id/': {
       id: '/admin/users_/$id/'
       path: '/'
@@ -1838,6 +1858,7 @@ interface AdminRouteRouteChildren {
   AdminMcpResourceServersResourceServerIdEditRoute: typeof AdminMcpResourceServersResourceServerIdEditRoute
   AdminSettingsSamlIdpProfilesProfileIdRoute: typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   AdminSettingsSamlIdpProfilesNewRoute: typeof AdminSettingsSamlIdpProfilesNewRoute
+  AdminTenantAttributesNewRoute: typeof AdminTenantAttributesNewRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
@@ -1888,6 +1909,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSettingsSamlIdpProfilesProfileIdRoute:
     AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren,
   AdminSettingsSamlIdpProfilesNewRoute: AdminSettingsSamlIdpProfilesNewRoute,
+  AdminTenantAttributesNewRoute: AdminTenantAttributesNewRoute,
 }
 
 const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(

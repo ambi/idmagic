@@ -70,6 +70,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-identity-provider-create': `外部 ID プロバイダーを追加 | ${ADMIN}`,
   'admin-identity-provider-edit': `外部 ID プロバイダーを編集 | ${ADMIN}`,
   'admin-tenant-attributes': `テナント属性 | ${ADMIN}`,
+  'admin-tenant-attribute-create': `ユーザー属性を追加 | ${ADMIN}`,
   // マイページ
   'account-home': `アカウント情報 | ${ACCOUNT}`,
   'account-profile': `プロフィール | ${ACCOUNT}`,

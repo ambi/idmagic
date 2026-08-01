@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { newAttribute, normalizeAttribute } from './AdminTenantAttributesPage'
+import { newAttribute, normalizeAttribute } from './AdminTenantAttributesShared'
 
 describe('attribute presentation helpers', () => {
   it('creates a safe default and normalizes form-only values', () => {

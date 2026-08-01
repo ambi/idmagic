@@ -326,8 +326,15 @@ depends_on: []
       個別 GET エンドポイントが無いため、編集ルートの loader は一覧を取得して該当項目を
       検索する方式（`saml-idp-profiles_/$profileId.edit.tsx` の既存パターンを踏襲）。
       モーダル前提だった既存テストを Create/Edit 専用テストへ移設・新設。
-- [ ] T015 [App] ユーザー属性画面の追加モーダルを専用ルートに分割し、編集・削除ボタンを
+- [x] T015 [App] ユーザー属性画面の追加モーダルを専用ルートに分割し、編集・削除ボタンを
       他画面と同じテキスト付きボタンに揃える。
+      カスタム属性はテナントスキーマの配列全置換で保存される単一ドキュメントのため、
+      `AdminTenantAttributeCreatePage.tsx` は一覧 loader と同じスキーマを取得し、新規属性を
+      追加した配列全体を PATCH する。フォーム本体は `AdminTenantAttributesShared.tsx` に
+      `AttributeFormFields` として抽出し、一覧画面の編集ダイアログ (既存のまま維持、
+      Design 節が専用ルート化を明示したのは追加のみ) と再利用。編集・削除ボタンは
+      アイコンのみ→アイコン+テキスト（`variant="outline"`/`variant="destructive"`、
+      lifecycle-workflows 一覧の既存ボタン様式を踏襲）に変更。
 - [ ] T016 [App] ユーザー編集画面のフォームレイアウトを、ユーザー詳細画面と同じ2列グリッドに
       揃える。
 - [ ] T017 [App] OIDC アプリケーション詳細のリダイレクト URI/スコープ/グラント種別の表示を、
