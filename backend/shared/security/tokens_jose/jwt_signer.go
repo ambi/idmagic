@@ -18,6 +18,7 @@ import (
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -157,8 +158,10 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 		claims["email"] = *in.User.Email
 		claims["email_verified"] = in.User.EmailVerified
 	}
+	var defs []userdomain.UserAttributeDef
 	if in.ResolveAttributeDefs != nil {
-		defs, err := in.ResolveAttributeDefs(ctx, in.User.TenantID)
+		var err error
+		defs, err = in.ResolveAttributeDefs(ctx, in.User.TenantID)
 		if err != nil {
 			return "", err
 		}
@@ -166,6 +169,25 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 		for key, value := range userdomain.ClaimsForScopes(*in.User, defs, in.Scopes) {
 			if _, exists := claims[key]; !exists {
 				claims[key] = value
+			}
+		}
+	}
+	if in.ClaimPolicy != nil {
+		result, err := claimusecases.IssueClaimsWithFloor(*in.ClaimPolicy, claimusecases.ResolveUserAttributes(*in.User), defs)
+		if err != nil {
+			return "", err
+		}
+		if result.NameIDValue != "" {
+			claims["sub"] = result.NameIDValue
+		}
+		for _, c := range result.Claims {
+			if _, exists := claims[c.ClaimType]; exists {
+				continue
+			}
+			if len(c.Values) == 1 {
+				claims[c.ClaimType] = c.Values[0]
+			} else {
+				claims[c.ClaimType] = c.Values
 			}
 		}
 	}

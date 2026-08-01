@@ -31,7 +31,7 @@ SELECT tenant_id, client_id, application_id, application_protocol_type, client_s
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
-  created_at, updated_at, first_party
+  created_at, updated_at, first_party, claim_policy
 FROM oauth2_clients
 WHERE tenant_id = $1 AND client_id = $2
 `
@@ -67,6 +67,7 @@ func (q *Queries) GetClientByID(ctx context.Context, arg GetClientByIDParams) (*
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.FirstParty,
+		&i.ClaimPolicy,
 	)
 	return &i, err
 }
@@ -136,7 +137,7 @@ SELECT tenant_id, client_id, application_id, application_protocol_type, client_s
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
-  created_at, updated_at, first_party
+  created_at, updated_at, first_party, claim_policy
 FROM oauth2_clients
 WHERE tenant_id = $1
 ORDER BY created_at
@@ -174,6 +175,7 @@ func (q *Queries) ListClientsByTenant(ctx context.Context, tenantID string) ([]*
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.FirstParty,
+			&i.ClaimPolicy,
 		); err != nil {
 			return nil, err
 		}
@@ -214,8 +216,8 @@ INSERT INTO oauth2_clients (
   grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
   tls_client_auth_subject_dn, id_token_signed_response_alg,
   require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
-  created_at, updated_at, first_party
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+  created_at, updated_at, first_party, claim_policy
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
 ON CONFLICT (client_id) DO UPDATE SET
   client_secret_hash = COALESCE(EXCLUDED.client_secret_hash, oauth2_clients.client_secret_hash),
   client_name = EXCLUDED.client_name,
@@ -233,6 +235,7 @@ ON CONFLICT (client_id) DO UPDATE SET
   dpop_bound_access_tokens = EXCLUDED.dpop_bound_access_tokens,
   fapi_profile = EXCLUDED.fapi_profile,
   first_party = EXCLUDED.first_party,
+  claim_policy = EXCLUDED.claim_policy,
   updated_at = EXCLUDED.updated_at
 `
 
@@ -257,6 +260,7 @@ type UpsertClientParams struct {
 	CreatedAt                          time.Time
 	UpdatedAt                          time.Time
 	FirstParty                         bool
+	ClaimPolicy                        []byte
 }
 
 func (q *Queries) UpsertClient(ctx context.Context, arg UpsertClientParams) error {
@@ -281,6 +285,7 @@ func (q *Queries) UpsertClient(ctx context.Context, arg UpsertClientParams) erro
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.FirstParty,
+		arg.ClaimPolicy,
 	)
 	return err
 }

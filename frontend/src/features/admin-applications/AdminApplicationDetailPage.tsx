@@ -225,6 +225,26 @@ export function AdminApplicationDetailPage({
                       .join(', ') || t.standardSecurity}
                   </span>
                 </ReadOnlyField>
+                <ReadOnlyField label={t.subSourceAttributeFieldLabel}>
+                  <span className="font-mono text-xs">{detail.oidc.sub_source_attribute}</span>
+                </ReadOnlyField>
+                <ReadOnlyField label={t.claimMappingRulesFieldLabel}>
+                  {detail.oidc.rules.length === 0 ? (
+                    <span className="text-xs text-slate-400">{t.nameIdOnlyNotice}</span>
+                  ) : (
+                    <ul className="flex flex-wrap gap-1.5">
+                      {detail.oidc.rules.map((rule) => (
+                        <li
+                          key={rule.claim_type}
+                          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-700"
+                        >
+                          {rule.claim_type.split('/').pop()}
+                          {rule.required ? '*' : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </ReadOnlyField>
                 {app.kind === 'service' ? (
                   <p className="text-xs text-slate-500">{t.m2mNoLoginNotice}</p>
                 ) : null}

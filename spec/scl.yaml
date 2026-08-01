@@ -16,6 +16,8 @@ context_map:
       - TenantRef
       - ResolveTenant
       - QuotaExceededError
+      - UserAttributeDef
+      - AttrVisibility
   IdManagement:
     description: 人間 User、Group、非人間 Agent という identity principal と、そのプロフィール、ロール、ライフサイクル、管理 API、自己管理 API を所有する。資格情報検証、MFA、ログインセッションは Authentication に分離する。
     path: contexts/identity-management.yaml
@@ -109,6 +111,12 @@ context_map:
         uses:
           - ApplicationAssignmentRef
         reason: authorize は client が属する Application への割当を fail-closed で確認する。
+      ClaimMapping:
+        via: published_language
+        uses:
+          - ClaimMappingPolicy
+          - IssuedClaim
+        reason: ID Token / UserInfo の追加 claim は client 単位の ClaimMapping policy で組み立て、fail-closed な属性可視性・reserved claim floor を共有する。
       ApiTokens:
         via: published_language
         uses:
@@ -165,7 +173,9 @@ context_map:
         via: published_language
         uses:
           - TenantRef
-        reason: claim release policy は realm 境界内に閉じる。
+          - UserAttributeDef
+          - AttrVisibility
+        reason: claim release policy は realm 境界内に閉じる。属性可視性 (visibility != Private) は claim 発行の fail-closed floor として使う。
       IdManagement:
         via: published_language
         uses:

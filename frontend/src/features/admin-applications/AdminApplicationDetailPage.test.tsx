@@ -119,6 +119,8 @@ describe('AdminApplicationDetailPage', () => {
         fapi_profile: '',
         client_secret_rotatable: true,
         secret_credentials: [],
+        sub_source_attribute: 'sub',
+        rules: [],
       },
     }
     await renderWithRouter(

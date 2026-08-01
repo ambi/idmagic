@@ -55,11 +55,14 @@ func (d Deps) handleWsTrustUsernameMixed(c *echo.Context) error {
 		return c.String(http.StatusUnauthorized, "invalid credentials")
 	}
 
-	decision := wsfedusecases.WsTrustService{}.IssueToken(wsfedusecases.TokenRequest{
+	decision, err := wsfedusecases.WsTrustService{}.IssueToken(c.Request().Context(), tenantID, d.AttrSchemaRepo, wsfedusecases.TokenRequest{
 		RP:                 *rp,
 		User:               *user,
 		RequestedTokenType: rst.TokenType,
 	})
+	if err != nil {
+		return err
+	}
 	if decision.RejectReason != "" {
 		d.emit(&feddomain.WsTrustTokenRejected{At: now, TenantID: tenantID, AppliesTo: rst.AppliesTo, Reason: decision.RejectReason})
 		return c.String(decision.RejectStatus, decision.RejectReason)

@@ -11,6 +11,7 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
@@ -141,5 +142,66 @@ func TestSignIDTokenOmitsAttributeClaimsWithoutScope(t *testing.T) {
 	}
 	if _, ok := claims["phone_number"]; ok {
 		t.Fatalf("phone_number leaked without phone scope: %#v", claims)
+	}
+}
+
+// TestSignIDTokenClaimPolicyAddsOverrideClaim covers wi-73: a client's per-application
+// claim_policy can release attributes standard OIDC scopes never expose.
+func TestSignIDTokenClaimPolicyAddsOverrideClaim(t *testing.T) {
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := NewJWTSigner("https://idp.test", ks)
+	resolve := func(_ context.Context, _ string) ([]userdomain.UserAttributeDef, error) {
+		return userdomain.BuiltinUserAttributeDefs(), nil
+	}
+	user := idTokenTestUser()
+	user.Attributes["department"] = userdomain.AttributeValue{Type: idmdomain.AttributeTypeString, String: new("R&D")}
+	policy := claimdomain.ClaimMappingPolicy{
+		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "sub"},
+		Rules: []claimdomain.ClaimMappingRule{
+			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department", Required: true},
+		},
+	}
+
+	token, err := signer.SignIDToken(context.Background(), ports.IDTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: user,
+		Scopes: []string{"openid"}, ResolveAttributeDefs: resolve, ClaimPolicy: &policy,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := idTokenClaims(t, token)
+	if claims["department"] != "R&D" {
+		t.Fatalf("expected claim_policy override claim, got %#v", claims)
+	}
+}
+
+// TestSignIDTokenClaimPolicyRejectsPrivateAttribute verifies the fail-closed floor
+// (ADR-151) rejects issuance when a claim_policy rule targets an undefined/Private
+// attribute.
+func TestSignIDTokenClaimPolicyRejectsPrivateAttribute(t *testing.T) {
+	ks, err := signingcrypto.NewInMemoryKeyStore()
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := NewJWTSigner("https://idp.test", ks)
+	resolve := func(_ context.Context, _ string) ([]userdomain.UserAttributeDef, error) {
+		return userdomain.BuiltinUserAttributeDefs(), nil
+	}
+	policy := claimdomain.ClaimMappingPolicy{
+		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "sub"},
+		Rules: []claimdomain.ClaimMappingRule{
+			{ClaimType: "leak", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "not_a_defined_attribute"},
+		},
+	}
+
+	_, err = signer.SignIDToken(context.Background(), ports.IDTokenInput{
+		Client: &oauthdomain.OAuth2Client{ClientID: "c1"}, User: idTokenTestUser(),
+		Scopes: []string{"openid"}, ResolveAttributeDefs: resolve, ClaimPolicy: &policy,
+	})
+	if err == nil {
+		t.Fatal("expected fail-closed rejection for undefined attribute source, got nil")
 	}
 }

@@ -43,10 +43,11 @@ type ApplicationGate interface {
 
 // SignInService は WS-Federation passive sign-in の発行判断を所有する。
 type SignInService struct {
-	RPRepo   wsfedports.WsFedRelyingPartyRepository
-	UserRepo userports.UserRepository
-	Gate     ApplicationGate
-	Emit     func(spec.DomainEvent)
+	RPRepo         wsfedports.WsFedRelyingPartyRepository
+	UserRepo       userports.UserRepository
+	Gate           ApplicationGate
+	Emit           func(spec.DomainEvent)
+	AttrSchemaRepo claimusecases.TenantAttributeSchemaRepo
 }
 
 // SignInOutcomeKind は sign-in 判断の分岐種別。
@@ -167,7 +168,11 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		//nolint:nilerr // entra profile 失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。
 		return SignInOutcome{Kind: SignInRejected, Message: "entra profile failed", Status: 500}, nil
 	}
-	result, err := claimusecases.IssueClaims(rp.ClaimPolicy, attrs)
+	defs, err := claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, s.AttrSchemaRepo)
+	if err != nil {
+		return SignInOutcome{}, err
+	}
+	result, err := claimusecases.IssueClaimsWithFloor(rp.ClaimPolicy, attrs, defs)
 	if err != nil {
 		s.emit(&feddomain.WsFedSignInRejected{At: now, TenantID: tenantID, Wtrealm: rp.Wtrealm, Reason: "claim issuance failed"})
 		//nolint:nilerr // claim 発行失敗は 500 の reject outcome へ変換し、呼び出し側には error を返さない。

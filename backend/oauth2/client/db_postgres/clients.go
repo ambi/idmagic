@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	oauth2pg "github.com/ambi/idmagic/backend/oauth2/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -62,6 +63,13 @@ func clientFromRow(row *oauth2pg.Oauth2Client) (*domain.OAuth2Client, error) {
 		if err := json.Unmarshal(row.Jwks, &c.JWKS); err != nil {
 			return nil, err
 		}
+	}
+	if len(row.ClaimPolicy) > 0 {
+		var policy claimdomain.ClaimMappingPolicy
+		if err := json.Unmarshal(row.ClaimPolicy, &policy); err != nil {
+			return nil, err
+		}
+		c.ClaimPolicy = &policy
 	}
 	return c, c.Validate()
 }
@@ -120,6 +128,13 @@ func (r *OAuth2ClientRepository) Save(ctx context.Context, c *domain.OAuth2Clien
 			return err
 		}
 	}
+	var claimPolicy []byte
+	if c.ClaimPolicy != nil {
+		claimPolicy, err = json.Marshal(c.ClaimPolicy)
+		if err != nil {
+			return err
+		}
+	}
 	return oauth2pg.New(r.Pool).UpsertClient(ctx, oauth2pg.UpsertClientParams{
 		TenantID:                           c.TenantID,
 		ClientID:                           c.ClientID,
@@ -141,6 +156,7 @@ func (r *OAuth2ClientRepository) Save(ctx context.Context, c *domain.OAuth2Clien
 		FirstParty:                         c.FirstParty,
 		CreatedAt:                          c.CreatedAt,
 		UpdatedAt:                          c.UpdatedAt,
+		ClaimPolicy:                        claimPolicy,
 	})
 }
 

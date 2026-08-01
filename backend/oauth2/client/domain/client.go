@@ -13,6 +13,7 @@ import (
 
 	z "github.com/Oudwins/zog"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -69,6 +70,11 @@ type OAuth2Client struct {
 	FirstParty bool      `json:"first_party"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
+	// ClaimPolicy is this client's per-application claim release override
+	// (allow/rename/remap within the tenant attribute-visibility floor, ADR-151).
+	// nil means no override: only the existing scope-gated standard claims
+	// (ClaimsForScopes) are issued.
+	ClaimPolicy *claimdomain.ClaimMappingPolicy `json:"claim_policy,omitempty"`
 }
 
 var oauth2ClientSchema = z.Struct(z.Shape{

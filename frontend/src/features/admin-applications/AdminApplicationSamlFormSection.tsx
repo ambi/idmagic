@@ -7,6 +7,7 @@ import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import type { AdminSamlIDPProfile } from '../../types'
 import {
+  ClaimReleaseAttributesPreview,
   CopyableField,
   messageOf,
   nameIdFormatOptions,
@@ -199,6 +200,7 @@ export function AdminApplicationSamlFormSection(props: Props) {
         />
         <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
       </div>
+      <ClaimReleaseAttributesPreview />
     </section>
   )
 }

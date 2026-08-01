@@ -6,6 +6,7 @@ package application
 import (
 	apphttp "github.com/ambi/idmagic/backend/application/handlers_http"
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -57,7 +58,7 @@ func (m Module) Register(
 	g *echo.Group, deps support.Deps, authenticator *support.Authenticator,
 	groupRepo groupports.GroupRepository, userRepo userports.UserRepository, clientRepo oauthports.OAuth2ClientRepository,
 	wsFedRPRepo wsfederationports.WsFedRelyingPartyRepository, samlSPRepo samlports.SamlServiceProviderRepository,
-	quotaRepo tenantports.QuotaRepository,
+	quotaRepo tenantports.QuotaRepository, attrSchemaRepo claimusecases.TenantAttributeSchemaRepo,
 ) {
 	apphttp.RegisterRoutes(g, apphttp.Deps{
 		Deps:                        deps,
@@ -76,5 +77,6 @@ func (m Module) Register(
 		SamlSPRepo:                  samlSPRepo,
 		ProvisioningNotifier:        m.ProvisioningNotifier,
 		QuotaRepo:                   quotaRepo,
+		AttrSchemaRepo:              attrSchemaRepo,
 	})
 }

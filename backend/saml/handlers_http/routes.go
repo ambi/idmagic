@@ -6,6 +6,7 @@
 package handlers_http
 
 import (
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	samlports "github.com/ambi/idmagic/backend/saml/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -25,6 +26,7 @@ type Deps struct {
 	ReplayStore      samlports.AuthnRequestReplayStore
 	FederationSigner samltoken.SignerProvider
 	UserRepo         userports.UserRepository
+	AttrSchemaRepo   claimusecases.TenantAttributeSchemaRepo
 }
 
 // RegisterRoutes は SAML 2.0 IdP のエンドポイントを登録する。

@@ -7,6 +7,7 @@ package handlers_http
 import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -29,6 +30,7 @@ type Deps struct {
 	LoginAttemptThrottle       sessionports.LoginAttemptThrottle
 	PasswordHasher             passwordports.PasswordHasher
 	SentinelPasswordHash       string
+	AttrSchemaRepo             claimusecases.TenantAttributeSchemaRepo
 }
 
 // RegisterRoutes は WS-Federation passive のエンドポイントを登録する。

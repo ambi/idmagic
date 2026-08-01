@@ -12,11 +12,13 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
 	samldomain "github.com/ambi/idmagic/backend/saml/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -76,6 +78,9 @@ type oidcConfig struct {
 	FapiProfile             oauthdomain.FapiProfile             `json:"fapi_profile"`
 	ClientSecretRotatable   bool                                `json:"client_secret_rotatable"`
 	SecretCredentials       []clientSecretCredentialMetadata    `json:"secret_credentials"`
+	// SubSourceAttribute and Rules are the claim release override (wi-73, ADR-151).
+	SubSourceAttribute string                         `json:"sub_source_attribute"`
+	Rules              []claimdomain.ClaimMappingRule `json:"rules"`
 }
 
 type clientSecretCredentialMetadata struct {
@@ -117,6 +122,29 @@ func nonNilRules(rules []claimdomain.ClaimMappingRule) []claimdomain.ClaimMappin
 		return []claimdomain.ClaimMappingRule{}
 	}
 	return rules
+}
+
+// oidcSubSourceAttribute は OAuth2Client.ClaimPolicy から sub の source 属性を取り出す
+// (wi-73, ADR-151)。policy 未設定なら既定 (defaultNameIDSource = "sub") を返す。
+func oidcSubSourceAttribute(policy *claimdomain.ClaimMappingPolicy) string {
+	if policy == nil || policy.NameID.SourceAttribute == "" {
+		return defaultNameIDSource
+	}
+	return policy.NameID.SourceAttribute
+}
+
+// oidcClaimPolicyRules は OAuth2Client.ClaimPolicy から claim release 上書き rule を取り出す。
+func oidcClaimPolicyRules(policy *claimdomain.ClaimMappingPolicy) []claimdomain.ClaimMappingRule {
+	if policy == nil {
+		return nil
+	}
+	return policy.Rules
+}
+
+// resolveClaimAttributeDefs はこのテナントの属性可視性 floor (ADR-151) 判定用に builtin +
+// custom 属性定義を解決する。OIDC / WS-Fed / SAML の claim release 上書き検証が共有する。
+func (d Deps) resolveClaimAttributeDefs(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error) {
+	return claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
 }
 
 func (d Deps) handleCreateApplication(c *echo.Context) error {
@@ -346,6 +374,8 @@ func (d Deps) resolveProtocolConfig(c *echo.Context, app *domain.Application) (*
 					DpopBoundAccessTokens: client.DpopBoundAccessTokens, FapiProfile: client.FapiProfile,
 					ClientSecretRotatable: client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretBasic || client.TokenEndpointAuthMethod == oauthdomain.AuthMethodClientSecretPost,
 					SecretCredentials:     metadata,
+					SubSourceAttribute:    oidcSubSourceAttribute(client.ClaimPolicy),
+					Rules:                 nonNilRules(oidcClaimPolicyRules(client.ClaimPolicy)),
 				}
 			}
 		case domain.ApplicationProtocolWsFed:
@@ -421,12 +451,14 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 }
 
 type updateOIDCRequest struct {
-	RedirectURIs    *[]string            `json:"redirect_uris"`
-	GrantTypes      *[]spec.GrantType    `json:"grant_types"`
-	ResponseTypes   *[]spec.ResponseType `json:"response_types"`
-	Scope           *string              `json:"scope"`
-	RequirePAR      *bool                `json:"require_pushed_authorization_requests"`
-	DpopBoundTokens *bool                `json:"dpop_bound_access_tokens"`
+	RedirectURIs       *[]string                       `json:"redirect_uris"`
+	GrantTypes         *[]spec.GrantType               `json:"grant_types"`
+	ResponseTypes      *[]spec.ResponseType            `json:"response_types"`
+	Scope              *string                         `json:"scope"`
+	RequirePAR         *bool                           `json:"require_pushed_authorization_requests"`
+	DpopBoundTokens    *bool                           `json:"dpop_bound_access_tokens"`
+	SubSourceAttribute *string                         `json:"sub_source_attribute"`
+	Rules              *[]claimdomain.ClaimMappingRule `json:"rules"`
 }
 
 func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
@@ -449,13 +481,60 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	if _, err := clientusecases.UpdateAdminOAuth2Client(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.UpdateAdminOAuth2ClientInput{
+	ctx := c.Request().Context()
+	tenantID := support.RequestTenantID(c)
+	if req.Rules != nil {
+		defs, err := d.resolveClaimAttributeDefs(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		if err := claimusecases.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		}
+	}
+	if _, err := clientusecases.UpdateAdminOAuth2Client(ctx, clientusecases.AdminOAuth2ClientDeps{ClientRepo: d.ClientRepo, Emit: d.Emit}, clientusecases.UpdateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, ClientID: clientID,
 		RedirectURIs: req.RedirectURIs, GrantTypes: req.GrantTypes, ResponseTypes: req.ResponseTypes,
 		Scope: req.Scope, RequirePAR: req.RequirePAR, DpopBoundTokens: req.DpopBoundTokens,
 		Now: time.Now().UTC(),
 	}); err != nil {
 		return d.writeApplicationError(c, err)
+	}
+	if req.SubSourceAttribute != nil || req.Rules != nil {
+		client, err := d.ClientRepo.FindByID(ctx, tenantID, clientID)
+		if err != nil {
+			return err
+		}
+		if client == nil {
+			return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The client does not exist.")
+		}
+		policy := claimdomain.ClaimMappingPolicy{}
+		if client.ClaimPolicy != nil {
+			policy = *client.ClaimPolicy
+		}
+		if policy.NameID.Format == "" {
+			policy.NameID.Format = defaultNameIDSource
+		}
+		if req.SubSourceAttribute != nil {
+			sub := strings.TrimSpace(*req.SubSourceAttribute)
+			if sub == "" {
+				sub = defaultNameIDSource
+			}
+			policy.NameID.SourceAttribute = sub
+		} else if policy.NameID.SourceAttribute == "" {
+			policy.NameID.SourceAttribute = defaultNameIDSource
+		}
+		if req.Rules != nil {
+			policy.Rules = *req.Rules
+		}
+		client.ClaimPolicy = &policy
+		client.UpdatedAt = time.Now().UTC()
+		if err := d.ClientRepo.Save(ctx, client); err != nil {
+			return err
+		}
+		d.Emit(&domain.ApplicationClaimMappingUpdated{
+			At: client.UpdatedAt, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ApplicationID, Protocol: string(domain.ApplicationProtocolOIDC),
+		})
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -473,7 +552,8 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	app, err := d.requireApp(c)
@@ -485,13 +565,23 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The WS-Federation binding does not exist.")
 	}
 	ctx := c.Request().Context()
-	rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, support.RequestTenantID(c), wtrealm)
+	tenantID := support.RequestTenantID(c)
+	rp, err := d.WsFedRPRepo.FindByWtrealm(ctx, tenantID, wtrealm)
 	if err != nil || rp == nil {
 		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The relying party does not exist.")
 	}
 	var req updateWsFedRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	if req.Rules != nil {
+		defs, err := d.resolveClaimAttributeDefs(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		if err := claimusecases.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		}
 	}
 	if req.ReplyURLs != nil {
 		rp.ReplyURLs = *req.ReplyURLs
@@ -519,6 +609,11 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	if err := d.WsFedRPRepo.Save(ctx, rp); err != nil {
 		return err
 	}
+	if req.NameIDSource != nil || req.Rules != nil {
+		d.Emit(&domain.ApplicationClaimMappingUpdated{
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ApplicationID, Protocol: string(domain.ApplicationProtocolWsFed),
+		})
+	}
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -540,7 +635,8 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	if _, err := d.RequireAdmin(c); err != nil {
+	actor, err := d.RequireAdmin(c)
+	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	app, err := d.requireApp(c)
@@ -552,13 +648,23 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The SAML binding does not exist.")
 	}
 	ctx := c.Request().Context()
-	sp, err := d.SamlSPRepo.FindByEntityID(ctx, support.RequestTenantID(c), entityID)
+	tenantID := support.RequestTenantID(c)
+	sp, err := d.SamlSPRepo.FindByEntityID(ctx, tenantID, entityID)
 	if err != nil || sp == nil {
 		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The service provider does not exist.")
 	}
 	var req updateSamlRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+	}
+	if req.Rules != nil {
+		defs, err := d.resolveClaimAttributeDefs(ctx, tenantID)
+		if err != nil {
+			return err
+		}
+		if err := claimusecases.ValidateClaimReleaseRules(*req.Rules, defs); err != nil {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		}
 	}
 	if req.ACSURLs != nil {
 		sp.ACSURLs = *req.ACSURLs
@@ -605,6 +711,11 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 		}
 		return err
+	}
+	if req.NameIDSource != nil || req.Rules != nil {
+		d.Emit(&domain.ApplicationClaimMappingUpdated{
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ApplicationID, Protocol: string(domain.ApplicationProtocolSAML),
+		})
 	}
 	return c.NoContent(http.StatusNoContent)
 }

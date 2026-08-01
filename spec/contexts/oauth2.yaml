@@ -1215,6 +1215,9 @@ models:
         type: Boolean
         default: false
         description: iframe URI に iss / sid クエリパラメータを付与するか。
+      claim_policy:
+        type: ClaimMappingPolicy
+        description: "この client 向けの claim 発行 policy (アプリ単位の release 上書き)。\nNameID 相当の source 属性を sub の source として使う。scope/consent による ClaimExposed 属性の\n開示可否判定 (openid/profile/email 等の標準 scope) はこの policy とは独立に先に適用され、\n本 policy はその範囲に対する追加の絞り込み・属性写像として ID Token / UserInfo にマージされる。\n"
       created_at:
         type: DateTime
       updated_at:
@@ -1952,6 +1955,10 @@ models:
       email_verified:
         type: Boolean
         optional: true
+      additional_claims:
+        type: JSON
+        optional: true
+        description: "scope 主導の属性 claim (ClaimsForScopes) と client 単位の ClaimMapping claim_policy\nをマージした追加 claim。標準 claim とキーが衝突した場合は標準 claim を\n優先する。\n"
   Audience:
     kind: value_object
     description: 文字列または1つ以上の文字列の配列（JWT RFC 7519 §4.1.3）。
@@ -2729,6 +2736,7 @@ models:
       claims:
         type: JSON
         optional: true
+        description: "scope 主導の属性 claim (ClaimsForScopes) と client 単位の ClaimMapping claim_policy\nをマージした追加 claim。標準 claim とキーが衝突した場合は標準 claim を優先する。\n"
   OAuthError:
     kind: error
     description: OAuth 2.0 / OIDC のエラー応答の共通形 (RFC 6749 §5.2)。具体的なエラー種別は error フィールドの OAuthErrorCode で識別される。
@@ -2744,6 +2752,20 @@ models:
   QuotaExceededError:
     kind: error
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
+  ClaimMappingPolicy:
+    kind: value_object
+    description: ClaimMapping context が publish する client 単位の claim 発行規則の最小 stub。
+    fields:
+      configuration:
+        type: JSON
+        optional: true
+  ClaimReleaseDeniedError:
+    kind: error
+    description: claim 解決が fail-closed で拒否された。ClaimMapping context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
   InvalidRequestError:
     kind: error
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。
@@ -3771,6 +3793,7 @@ interfaces:
       - AccessDeniedError
       - ExpiredTokenError
       - InvalidTargetError
+      - ClaimReleaseDeniedError
     requires:
       - signing_key_provider_healthy(context.tenant_id)
       - token_request_references_are_tenant_local(context.tenant_id, input.request)
@@ -3863,7 +3886,7 @@ interfaces:
         successful_status_codes:
           - "200"
   UserInfo:
-    description: UserInfo (OIDC Core §5.3)
+    description: "UserInfo (OIDC Core §5.3)。additional_claims は scope 主導の ClaimsForScopes と\nclient 単位の ClaimMapping claim_policy をマージする。\n"
     steps:
       - "トークン {access_token} でユーザー情報を取得する"
     output:
@@ -3872,6 +3895,7 @@ interfaces:
     errors:
       - InvalidTokenError
       - InsufficientScopeError
+      - ClaimReleaseDeniedError
     access:
       policies: [ActiveOpenidToken]
       resource:
@@ -3894,6 +3918,7 @@ interfaces:
     errors:
       - InvalidTokenError
       - InsufficientScopeError
+      - ClaimReleaseDeniedError
     access:
       policies: [ActiveOpenidToken]
       resource:

@@ -446,6 +446,7 @@ type Oauth2Client struct {
 	CreatedAt                          time.Time
 	UpdatedAt                          time.Time
 	FirstParty                         bool
+	ClaimPolicy                        []byte
 }
 
 type Oauth2ClientSecret struct {

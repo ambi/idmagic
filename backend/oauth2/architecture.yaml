@@ -34,6 +34,8 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
+      - module: claimmapping-domain
+        via: published_interface
       - module: idmanagement-user-domain
         via: published_interface
       - module: oauth2-domain
@@ -86,6 +88,10 @@ modules:
     depends_on:
       - module: apitoken-domain
         via: binding
+      - module: claimmapping-domain
+        via: published_interface
+      - module: claimmapping-usecases
+        via: published_interface
       - module: shared-security-certificates-mtls
         via: technical_shared
       - module: shared-security-tokens-jose
@@ -189,6 +195,8 @@ modules:
     layer: domain
     role: published_interface
     depends_on:
+      - module: claimmapping-domain
+        via: published_interface
       - module: shared-spec
         via: technical_shared
       - module: signingkeys-domain
@@ -389,6 +397,10 @@ modules:
     depends_on:
       - module: apitoken-domain
         via: published_interface
+      - module: claimmapping-domain
+        via: published_interface
+      - module: claimmapping-usecases
+        via: published_interface
       - module: idmanagement-agent-ports
         via: published_interface
       - module: idmanagement-user-domain
@@ -503,6 +515,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - module: claimmapping-domain
+        via: published_interface
       - module: oauth2-db-postgres
         via: binding
       - module: oauth2-domain

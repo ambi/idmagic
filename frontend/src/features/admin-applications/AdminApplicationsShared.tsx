@@ -6,8 +6,8 @@ import {
   IconServer,
   IconWorldShare,
 } from '@tabler/icons-react'
-import { type ReactNode, useState } from 'react'
-import { AuthenticationAPIError, tenantURL } from '../../api'
+import { type ReactNode, useEffect, useState } from 'react'
+import { AuthenticationAPIError, getTenantUserAttributeSchema, tenantURL } from '../../api'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
 import type { SelectOption } from '../../components/ui/select'
@@ -19,8 +19,10 @@ import {
 } from './AdminApplicationsPage.i18n'
 import type {
   AdminApplication,
+  AttrVisibility,
   RequiredAuthnStrength,
   SignInRule,
+  UserAttributeDef,
   WsFedTokenType,
 } from '../../types'
 
@@ -279,6 +281,82 @@ export function ReadonlyMeta({ label, value }: { label: string; value: string })
       <p className="mt-0.5 break-all font-mono text-slate-800">{value || '—'}</p>
     </div>
   )
+}
+
+// ClaimReleaseAttributesPreview は claim release rule / NameID・sub source の候補を示す
+// 非PII preview (wi-73, ADR-151)。実際の利用者の値は取得・表示せず、テナントの属性
+// 定義 (key / type / visibility) だけを一覧する。visibility=private は fail-closed floor で
+// 常に拒否されることを明示する。
+export function ClaimReleaseAttributesPreview() {
+  const t = useDictionary(adminApplicationsDictionary)
+  const [defs, setDefs] = useState<UserAttributeDef[] | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    getTenantUserAttributeSchema()
+      .then((schema) => {
+        if (cancelled) return
+        setDefs([...schema.builtin, ...schema.attributes])
+      })
+      .catch(() => {
+        if (!cancelled) setError('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  if (error) return null
+  return (
+    <details className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
+      <summary className="cursor-pointer font-semibold text-slate-600">
+        {t.claimReleasePreviewHeading}
+      </summary>
+      <p className="mt-2 text-slate-500">{t.claimReleasePreviewHelp}</p>
+      {defs ? (
+        <table className="mt-2 w-full text-left">
+          <thead>
+            <tr className="text-slate-400">
+              <th className="py-1 pr-2 font-semibold">{t.attributeKeyColumnLabel}</th>
+              <th className="py-1 pr-2 font-semibold">{t.attributeTypeColumnLabel}</th>
+              <th className="py-1 font-semibold">{t.attributeVisibilityColumnLabel}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {defs.map((def) => (
+              <tr key={def.key} className="border-t border-slate-200">
+                <td className="py-1 pr-2 font-mono">{def.key}</td>
+                <td className="py-1 pr-2 text-slate-500">{def.type}</td>
+                <td
+                  className={
+                    def.visibility === 'private'
+                      ? 'py-1 font-semibold text-red-600'
+                      : 'py-1 text-slate-600'
+                  }
+                >
+                  {visibilityLabel(def.visibility, t)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
+    </details>
+  )
+}
+
+function visibilityLabel(visibility: AttrVisibility, t: AdminApplicationsDictionary): string {
+  switch (visibility) {
+    case 'private':
+      return t.visibilityPrivate
+    case 'self_readable':
+      return t.visibilitySelfReadable
+    case 'admin_readable':
+      return t.visibilityAdminReadable
+    case 'claim_exposed':
+      return t.visibilityClaimExposed
+    default:
+      return visibility
+  }
 }
 
 export function UriList({ values }: { values: string[] }) {

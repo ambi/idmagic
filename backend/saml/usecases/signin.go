@@ -43,11 +43,12 @@ type ApplicationGate interface {
 
 // SignInService は SAML SSO の発行判断を所有する。
 type SignInService struct {
-	SPRepo      samlports.SamlServiceProviderRepository
-	ReplayStore samlports.AuthnRequestReplayStore
-	UserRepo    userports.UserRepository
-	Gate        ApplicationGate
-	Emit        func(spec.DomainEvent)
+	SPRepo         samlports.SamlServiceProviderRepository
+	ReplayStore    samlports.AuthnRequestReplayStore
+	UserRepo       userports.UserRepository
+	Gate           ApplicationGate
+	Emit           func(spec.DomainEvent)
+	AttrSchemaRepo claimusecases.TenantAttributeSchemaRepo
 }
 
 // SignInOutcomeKind は SSO 判断の分岐種別。
@@ -159,7 +160,11 @@ func (s SignInService) Issue(ctx context.Context, in SignInInput) (SignInOutcome
 		return SignInOutcome{Kind: SignInForbidden, Message: "The user does not meet the application's sign-in policy requirements."}, nil
 	}
 
-	result, err := claimusecases.IssueClaims(sp.ClaimPolicy, claimusecases.ResolveUserAttributes(*user))
+	defs, err := claimusecases.ResolveTenantAttributeDefs(ctx, in.TenantID, s.AttrSchemaRepo)
+	if err != nil {
+		return SignInOutcome{}, err
+	}
+	result, err := claimusecases.IssueClaimsWithFloor(sp.ClaimPolicy, claimusecases.ResolveUserAttributes(*user), defs)
 	if err != nil {
 		return s.rejected(in.TenantID, sp.EntityID, "claim issuance failed", err), nil
 	}

@@ -29,6 +29,7 @@ import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import { ClientSecretRotationPanel } from './ClientSecretRotationPanel'
 import {
   appRuleFromInputs,
+  ClaimReleaseAttributesPreview,
   CopyableField,
   DEFAULT_NAMEID_FORMAT,
   DEFAULT_NAMEID_SOURCE,
@@ -85,6 +86,12 @@ export function AdminApplicationEditPage({
     detail.oidc?.require_pushed_authorization_requests ?? false,
   )
   const [dpopBound, setDpopBound] = useState(detail.oidc?.dpop_bound_access_tokens ?? false)
+  const [oidcSubSource, setOidcSubSource] = useState(
+    detail.oidc?.sub_source_attribute || DEFAULT_NAMEID_SOURCE,
+  )
+  const [oidcRulesJSON, setOidcRulesJSON] = useState(
+    JSON.stringify(detail.oidc?.rules ?? [], null, 2),
+  )
   const [replies, setReplies] = useState((detail.wsfed?.reply_urls ?? []).join('\n'))
   const [audience, setAudience] = useState(detail.wsfed?.audience ?? '')
   const [tokenType, setTokenType] = useState<WsFedTokenType>(
@@ -193,6 +200,16 @@ export function AdminApplicationEditPage({
         await uploadApplicationIcon(csrfToken, app.application_id, iconFile)
       }
       if (detail.oidc) {
+        let nextOidcRules: WsFedClaimMappingRule[]
+        try {
+          const parsed = JSON.parse(oidcRulesJSON || '[]')
+          if (!Array.isArray(parsed)) throw new Error('not an array')
+          nextOidcRules = parsed
+        } catch {
+          setError(t.invalidClaimRulesJsonError)
+          setSaving(false)
+          return
+        }
         const nextRedirects = parseList(redirects)
         const nextGrants = parseList(grantTypes)
         const nextResponses = parseList(responseTypes)
@@ -203,13 +220,18 @@ export function AdminApplicationEditPage({
         const responsesChanged = nextResponses.join(',') !== detail.oidc.response_types.join(',')
         const parChanged = requirePAR !== detail.oidc.require_pushed_authorization_requests
         const dpopChanged = dpopBound !== detail.oidc.dpop_bound_access_tokens
+        const subSourceChanged = oidcSubSource.trim() !== (detail.oidc.sub_source_attribute || '')
+        const oidcRulesChanged =
+          JSON.stringify(nextOidcRules) !== JSON.stringify(detail.oidc.rules ?? [])
         if (
           redirectsChanged ||
           scopeChanged ||
           grantsChanged ||
           responsesChanged ||
           parChanged ||
-          dpopChanged
+          dpopChanged ||
+          subSourceChanged ||
+          oidcRulesChanged
         ) {
           await updateApplicationOidcConfig(csrfToken, app.application_id, {
             redirect_uris: redirectsChanged ? nextRedirects : undefined,
@@ -218,6 +240,8 @@ export function AdminApplicationEditPage({
             response_types: responsesChanged ? nextResponses : undefined,
             require_pushed_authorization_requests: parChanged ? requirePAR : undefined,
             dpop_bound_access_tokens: dpopChanged ? dpopBound : undefined,
+            sub_source_attribute: subSourceChanged ? oidcSubSource.trim() : undefined,
+            rules: oidcRulesChanged ? nextOidcRules : undefined,
           })
         }
       }
@@ -536,6 +560,30 @@ export function AdminApplicationEditPage({
                   />
                   <ReadonlyMeta label={t.fapiProfileMetaLabel} value={detail.oidc.fapi_profile} />
                 </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-oidc-sub-source">{t.subSourceAttributeFieldLabel}</Label>
+                  <Input
+                    id="edit-oidc-sub-source"
+                    value={oidcSubSource}
+                    onChange={(e) => setOidcSubSource(e.target.value)}
+                    placeholder={DEFAULT_NAMEID_SOURCE}
+                  />
+                  <p className="text-xs text-slate-500">{t.subSourceAttributeHelp}</p>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-oidc-rules">{t.claimMappingRulesJsonFieldLabel}</Label>
+                  <textarea
+                    id="edit-oidc-rules"
+                    value={oidcRulesJSON}
+                    onChange={(e) => setOidcRulesJSON(e.target.value)}
+                    rows={6}
+                    spellCheck={false}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-xs focus:border-blue-600 focus:outline-none focus:ring-3 focus:ring-blue-600/10"
+                    placeholder='[{"claim_type":"department","source":"user_attribute","source_key":"department"}]'
+                  />
+                  <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
+                </div>
+                <ClaimReleaseAttributesPreview />
               </section>
             ) : null}
             {detail.wsfed ? (
@@ -608,6 +656,7 @@ export function AdminApplicationEditPage({
                   />
                   <p className="text-xs text-slate-500">{t.claimMappingRulesHelp}</p>
                 </div>
+                <ClaimReleaseAttributesPreview />
               </section>
             ) : null}
             {detail.saml ? (

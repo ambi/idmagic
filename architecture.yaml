@@ -289,9 +289,9 @@ complexity:
     - id: wi45-ui-page-lines-admin-application-detail-page
       budget: ui-page-lines
       path: frontend/src/features/admin-applications/AdminApplicationDetailPage.tsx
-      ceiling: 410
+      ceiling: 413
       owner: maintainers
-      reason: wi-45 T007b でプロビジョニング導線ボタンを追加し、既に上限ちょうどだった 400 行を 2 行超過。ProvisioningNavButton は既に AdminApplicationProvisioningShared.tsx へ抽出済みで追加分はこれ以上圧縮できない。wi-234 の list/detail 分割と合わせて解消する。
+      reason: wi-45 T007b でプロビジョニング導線ボタンを追加し、既に上限ちょうどだった 400 行を 2 行超過。ProvisioningNavButton は既に AdminApplicationProvisioningShared.tsx へ抽出済みで追加分はこれ以上圧縮できない。wi-73 で OIDC の claim release 上書き (sub_source_attribute/rules) 表示を 3 行追加。wi-234 の list/detail 分割と合わせて解消する。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-lines-account-profile-page
@@ -401,9 +401,9 @@ complexity:
     - id: wi234-ui-page-local-state-admin-application-edit-page
       budget: ui-page-local-state
       path: frontend/src/features/admin-applications/AdminApplicationEditPage.tsx
-      ceiling: 34
+      ceiling: 36
       owner: maintainers
-      reason: wi-234 T002 で list/detail/edit へ分割済み。edit の残存超過はプロトコル単位のフォームセクション分割で解消する。
+      reason: wi-234 T002 で list/detail/edit へ分割済み。edit の残存超過はプロトコル単位のフォームセクション分割で解消する。wi-73 で OIDC の claim release 上書き (sub_source_attribute/rules) の state を 2 個追加。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-local-state-admin-group-edit-page

@@ -82,3 +82,51 @@ models:
         constraints:
           - non_empty
         description: claim の値群 (多値属性は複数値になる)。
+  AttrVisibility:
+    kind: enum
+    description: Tenancy context が publish する属性開示範囲の published language stub。Private だけが claim 発行の fail-closed floor で常に除外される。
+    values:
+      - Private
+      - SelfReadable
+      - AdminReadable
+      - ClaimExposed
+  UserAttributeDef:
+    kind: value_object
+    description: Tenancy context が publish する属性定義の published language stub。claim 発行時の属性可視性判定にのみ使う。
+    fields:
+      key:
+        type: String
+        constraints:
+          - non_empty
+      visibility:
+        type: AttrVisibility
+        default: Private
+  ClaimReleaseDeniedError:
+    kind: error
+    description: "claim 解決が fail-closed で拒否された。required source が解決できない、\nvisibility=Private の属性を rule / NameID の source に指定している、または reserved claim type\n(iss/sub/aud/exp/iat/nbf/jti/azp/nonce/at_hash/c_hash/acr/amr/sid) を claim_type に指定している\nのいずれか。\n"
+    payload:
+      reason:
+        type: String
+interfaces:
+  ResolveEffectiveClaims:
+    description: "tenant の属性可視性 (visibility != Private) と reserved claim type の固定集合を\nfail-closed floor として強制し、ClaimMappingPolicy と解決済み属性から NameID と IssuedClaim[] を\n組み立てる。WS-Fed / SAML / OIDC の各 issuer が共有する唯一の claim 解決経路。\nUser の core field (sub / email / name / given_name / family_name / preferred_username /\nemail_verified / roles) は UserAttributeDef に現れないため常に解決対象にする。custom attribute で\nattribute_defs に無い key、または visibility=Private の key を source に持つ rule は floor で拒否する。\n"
+    input:
+      policy:
+        type: ClaimMappingPolicy
+      attributes:
+        type: "Map<String, String[]>"
+        description: 解決済みの identity 属性値 (多値)。
+      attribute_defs:
+        type: "UserAttributeDef[]"
+        description: tenant の属性定義 (builtin + custom)。可視性判定に使う。
+    output:
+      name_id_format:
+        type: String
+      name_id_value:
+        type: String
+      claims:
+        type: "IssuedClaim[]"
+    errors:
+      - ClaimReleaseDeniedError
+    read_only: true
+    access: internal

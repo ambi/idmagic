@@ -1060,6 +1060,8 @@ export type UpdateApplicationOidcInput = {
   scope?: string
   require_pushed_authorization_requests?: boolean
   dpop_bound_access_tokens?: boolean
+  sub_source_attribute?: string
+  rules?: WsFedClaimMappingRule[]
 }
 
 export type UpdateApplicationWsFedInput = {

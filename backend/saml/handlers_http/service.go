@@ -12,11 +12,12 @@ import (
 // signInService は Deps の依存から SSO usecase を組み立てる。
 func (d Deps) signInService() samlusecases.SignInService {
 	return samlusecases.SignInService{
-		SPRepo:      d.SamlSPRepo,
-		ReplayStore: d.ReplayStore,
-		UserRepo:    d.UserRepo,
-		Gate:        gateAdapter{d.ApplicationGate},
-		Emit:        d.Emit,
+		SPRepo:         d.SamlSPRepo,
+		ReplayStore:    d.ReplayStore,
+		UserRepo:       d.UserRepo,
+		Gate:           gateAdapter{d.ApplicationGate},
+		Emit:           d.Emit,
+		AttrSchemaRepo: d.AttrSchemaRepo,
 	}
 }
 

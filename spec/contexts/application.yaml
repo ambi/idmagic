@@ -445,6 +445,13 @@ models:
       secret_credentials:
         type: "ApplicationClientSecretCredentialMetadata[]"
         description: hash・平文を含まない credential metadata。editor は rotation 状態と overlap expiry のみ表示する。
+      sub_source_attribute:
+        type: String
+        optional: true
+        description: "ID Token / UserInfo の sub claim に使う source 属性。未設定なら\nuser の内部 id (既定挙動) を使う。WS-Fed/SAML の name_id_source と同じ位置付けの subject\n識別子上書き。"
+      rules:
+        type: "ClaimMappingRule[]"
+        description: "このアプリ向けの claim release 上書き。scope 主導の標準 claim\n(profile/email 等) による開示可否とは独立に、開示範囲を絞る/写像するために追加する。\nvisibility=Private の属性や reserved claim type は floor により拒否される。"
   ApplicationClientSecretCredentialMetadata:
     kind: value_object
     description: Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出しない。
@@ -536,6 +543,14 @@ models:
       dpop_bound_access_tokens:
         type: Boolean
         optional: true
+      sub_source_attribute:
+        type: String
+        optional: true
+        description: 省略時は既存設定を維持する。空文字列を送ると既定 (user の内部 id) に戻す。
+      rules:
+        type: "ClaimMappingRule[]"
+        optional: true
+        description: 省略時は既存の claim release 上書きを維持する。空配列を送ると上書きなし (標準 claim のみ) に戻す。
   RotateApplicationClientSecretRequest:
     kind: value_object
     description: Application の OIDC protocol に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。
@@ -877,6 +892,20 @@ models:
       actorUserId:
         type: String
       applicationId:
+        type: String
+  ApplicationClaimMappingUpdated:
+    kind: event
+    description: Application の claim release 上書き (rules / sub または NameID の source 属性) を更新した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      applicationId:
+        type: String
+      protocol:
         type: String
   TenantDefaultSignInPolicyUpdated:
     kind: event
@@ -1236,7 +1265,7 @@ interfaces:
         successful_status_codes:
           - "204"
   UpdateApplicationOidcConfig:
-    description: 管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。
+    description: "管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。rules /\nsub_source_attribute は claim release 上書きであり、visibility=Private の\n属性や reserved claim type を参照する rule は拒否する。\n"
     input:
       application_id:
         type: String
@@ -1245,6 +1274,10 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - claim_release_rules_within_floor(context.tenant_id, input.request.rules)
+    emits:
+      - ApplicationClaimMappingUpdated
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1283,7 +1316,7 @@ interfaces:
         successful_status_codes:
           - "200"
   UpdateApplicationWsFedConfig:
-    description: 管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。
+    description: "管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。rules /\nname_id_source は claim release 上書きであり、visibility=Private の属性や\nreserved claim type を参照する rule は拒否する。\n"
     input:
       application_id:
         type: String
@@ -1292,6 +1325,10 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - claim_release_rules_within_floor(context.tenant_id, input.request.rules)
+    emits:
+      - ApplicationClaimMappingUpdated
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1305,7 +1342,7 @@ interfaces:
         successful_status_codes:
           - "204"
   UpdateApplicationSamlConfig:
-    description: 管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。
+    description: "管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを\n部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。rules / name_id_source は\nclaim release 上書きであり、visibility=Private の属性や reserved claim type\nを参照する rule は拒否する。\n"
     input:
       application_id:
         type: String
@@ -1314,6 +1351,10 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    requires:
+      - claim_release_rules_within_floor(context.tenant_id, input.request.rules)
+    emits:
+      - ApplicationClaimMappingUpdated
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1778,6 +1819,24 @@ scenarios:
         condition: AuthnRequest 署名必須だが検証可能な証明書がない
         steps:
           - 更新は InvalidRequestError で拒否される
+  管理者はApplication単位でclaim releaseを絞り込める:
+    actor: TenantAdministrator
+    given:
+      - "同一テナントに OIDC Application \"payroll\" と \"directory\" が存在し、いずれも employee_number (visibility=SelfReadable) を含む同じ User 属性を参照できる"
+    main_success:
+      - "管理者が \"payroll\" の claim release rule に claim_type=\"employee_number\"、source=user_attribute、source_key=\"employee_number\" を追加して保存する"
+      - "\"ApplicationClaimMappingUpdated\" が発行される"
+      - "\"payroll\" 向けに発行される ID Token / assertion には employee_number claim が含まれる"
+      - "\"directory\" は自身の rule を更新していないため employee_number claim を含まない"
+    extensions:
+      - at: 1
+        condition: 管理者が visibility=Private の属性 (例 password 関連の内部属性) を source_key に指定する
+        steps:
+          - "更新は InvalidRequestError で拒否される (claim_release_rules_within_floor)"
+      - at: 1
+        condition: 管理者が reserved claim type (例 \"sub\"、\"iss\") を claim_type に指定する
+        steps:
+          - "更新は InvalidRequestError で拒否される (claim_release_rules_within_floor)"
   管理者は管理画面でアプリケーションと単一protocolを構成できる:
     actor: TenantAdministrator
     given:

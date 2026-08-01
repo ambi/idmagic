@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 
@@ -52,6 +53,9 @@ type IDTokenInput struct {
 	// ResolveAttributeDefs はユーザのテナントに有効な属性定義 (builtin + custom) を
 	// 返す。nil の場合は属性ベースの claim 生成をスキップする (wi-19)。
 	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
+	// ClaimPolicy is Client's per-application claim release override (wi-73 / ADR-151).
+	// nil means no override.
+	ClaimPolicy *claimdomain.ClaimMappingPolicy
 }
 
 type TokenIssuer interface {

@@ -362,6 +362,8 @@ modules:
     layer: adapters
     role: technical_shared
     depends_on:
+      - module: claimmapping-usecases
+        via: published_interface
       - module: idmanagement-user-domain
         via: published_interface
       - module: oauth2-domain

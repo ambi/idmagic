@@ -57,6 +57,8 @@ modules:
         via: published_interface
       - module: application-ports
         via: published_interface
+      - module: claimmapping-usecases
+        via: published_interface
       - module: application-usecases
         via: published_interface
       - module: claimmapping-domain
@@ -112,6 +114,8 @@ modules:
       - module: application-adapters
         via: published_interface
       - module: application-domain
+        via: published_interface
+      - module: claimmapping-usecases
         via: published_interface
       - module: application-ports
         via: published_interface

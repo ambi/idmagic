@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"context"
 	"strings"
 
 	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
@@ -31,21 +32,29 @@ type TokenDecision struct {
 
 // IssueToken は claim を発行し、要求 token type を検証して有効 token type を確定する。
 // 挙動は旧 HTTP ハンドラ handleWsTrustUsernameMixed の claim / token type 決定部と一致する。
-func (WsTrustService) IssueToken(req TokenRequest) TokenDecision {
+// attrSchemaRepo は attribute visibility floor (ADR-151) を強制するための tenant custom
+// attribute schema 解決に使う。nil なら builtin 定義のみを floor とする。
+func (WsTrustService) IssueToken(ctx context.Context, tenantID string, attrSchemaRepo claimusecases.TenantAttributeSchemaRepo, req TokenRequest) (TokenDecision, error) {
 	attrs, err := feddomain.ApplyEntraProfile(claimusecases.ResolveUserAttributes(req.User), req.RP.EntraProfile)
 	if err != nil {
-		return TokenDecision{RejectReason: "entra profile failed", RejectStatus: 500}
+		//nolint:nilerr // entra profile 失敗は reject outcome へ変換し、呼び出し側には error を返さない。
+		return TokenDecision{RejectReason: "entra profile failed", RejectStatus: 500}, nil
 	}
-	result, err := claimusecases.IssueClaims(req.RP.ClaimPolicy, attrs)
+	defs, err := claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, attrSchemaRepo)
 	if err != nil {
-		return TokenDecision{RejectReason: "claim issuance failed", RejectStatus: 500}
+		return TokenDecision{}, err
+	}
+	result, err := claimusecases.IssueClaimsWithFloor(req.RP.ClaimPolicy, attrs, defs)
+	if err != nil {
+		//nolint:nilerr // claim 発行失敗 (fail-closed floor 違反を含む) は reject outcome へ変換し、呼び出し側には error を返さない。
+		return TokenDecision{RejectReason: "claim issuance failed", RejectStatus: 500}, nil
 	}
 	tokenType := req.RP.EffectiveTokenType()
 	if strings.TrimSpace(req.RequestedTokenType) != "" {
 		if req.RequestedTokenType != string(feddomain.TokenTypeSAML11) && req.RequestedTokenType != string(feddomain.TokenTypeSAML20) {
-			return TokenDecision{RejectReason: "unsupported token type", RejectStatus: 400}
+			return TokenDecision{RejectReason: "unsupported token type", RejectStatus: 400}, nil
 		}
 		tokenType = feddomain.WsFedTokenType(req.RequestedTokenType)
 	}
-	return TokenDecision{ClaimResult: result, TokenType: tokenType}
+	return TokenDecision{ClaimResult: result, TokenType: tokenType}, nil
 }

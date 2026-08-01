@@ -305,6 +305,9 @@ export type ApplicationOidcConfig = {
   fapi_profile: string
   client_secret_rotatable: boolean
   secret_credentials: ClientSecretCredentialMetadata[]
+  // sub_source_attribute / rules は claim release 上書き (wi-73, ADR-151)。
+  sub_source_attribute: string
+  rules: WsFedClaimMappingRule[]
 }
 
 export type ClientSecretCredentialMetadata = {

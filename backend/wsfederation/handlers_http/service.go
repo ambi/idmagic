@@ -12,10 +12,11 @@ import (
 // signInService は Deps の依存から passive sign-in usecase を組み立てる。
 func (d Deps) signInService() wsfedusecases.SignInService {
 	return wsfedusecases.SignInService{
-		RPRepo:   d.WsFedRPRepo,
-		UserRepo: d.UserRepo,
-		Gate:     gateAdapter{d.ApplicationGate},
-		Emit:     d.Emit,
+		RPRepo:         d.WsFedRPRepo,
+		UserRepo:       d.UserRepo,
+		Gate:           gateAdapter{d.ApplicationGate},
+		Emit:           d.Emit,
+		AttrSchemaRepo: d.AttrSchemaRepo,
 	}
 }
 

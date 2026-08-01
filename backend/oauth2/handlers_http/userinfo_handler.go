@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -21,18 +23,7 @@ import (
 // effectiveUserAttributeDefs はテナントに有効な属性定義 (組み込み + tenant custom)
 // を返す。AttrSchemaRepo 未設定時は組み込み定義のみ。
 func (d Deps) effectiveUserAttributeDefs(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error) {
-	defs := userdomain.BuiltinUserAttributeDefs()
-	if d.AttrSchemaRepo == nil {
-		return defs, nil
-	}
-	schema, err := d.AttrSchemaRepo.FindByTenant(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	if schema != nil {
-		defs = append(defs, schema.Attributes...)
-	}
-	return defs, nil
+	return claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)
 }
 
 func (d Deps) handleUserInfo(c *echo.Context) error {
@@ -91,9 +82,19 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 			}
 		}
 	}
+	var claimPolicy *claimdomain.ClaimMappingPolicy
+	if d.ClientRepo != nil {
+		client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), intro.ClientID)
+		if err != nil {
+			return writeOAuthError(c, err)
+		}
+		if client != nil {
+			claimPolicy = client.ClaimPolicy
+		}
+	}
 	res, err := tokenusecases.UserInfo(c.Request().Context(), d.UserRepo, d.Authorizer, tokenusecases.UserInfoInput{
 		Scopes: strings.Fields(intro.Scope), Sub: intro.Sub, Active: intro.Active, ClientID: intro.ClientID,
-		ResolveAttributeDefs: d.effectiveUserAttributeDefs,
+		ResolveAttributeDefs: d.effectiveUserAttributeDefs, ClaimPolicy: claimPolicy,
 	})
 	if err != nil {
 		return writeOAuthError(c, err)

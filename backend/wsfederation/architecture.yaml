@@ -118,6 +118,8 @@ modules:
     layer: infrastructure
     role: composition_root
     depends_on:
+      - module: claimmapping-usecases
+        via: published_interface
       - module: wsfederation-tokens-saml
         via: binding
       - module: authentication-password-ports

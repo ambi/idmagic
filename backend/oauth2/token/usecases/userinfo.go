@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	claimusecases "github.com/ambi/idmagic/backend/claimmapping/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
@@ -22,6 +24,10 @@ type UserInfoInput struct {
 	// 返す。nil の場合は属性ベースの claim 生成をスキップする。tenant_id は対象
 	// ユーザを読み込んだ後に確定するため、関数として遅延解決する。
 	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
+	// ClaimPolicy is the requesting OAuth2Client's per-application claim release
+	// override (wi-73 / ADR-151). nil means no override: only scope-gated standard
+	// claims and ClaimsForScopes are issued.
+	ClaimPolicy *claimdomain.ClaimMappingPolicy
 }
 
 type UserInfoResponse struct {
@@ -115,12 +121,38 @@ func UserInfo(
 		res.Email = *u.Email
 		res.EmailVerified = u.EmailVerified
 	}
+	var defs []userdomain.UserAttributeDef
 	if in.ResolveAttributeDefs != nil {
-		defs, err := in.ResolveAttributeDefs(ctx, u.TenantID)
+		var err error
+		defs, err = in.ResolveAttributeDefs(ctx, u.TenantID)
 		if err != nil {
 			return nil, err
 		}
 		res.Extra = userdomain.ClaimsForScopes(*u, defs, in.Scopes)
+	}
+	if in.ClaimPolicy != nil {
+		result, err := claimusecases.IssueClaimsWithFloor(*in.ClaimPolicy, claimusecases.ResolveUserAttributes(*u), defs)
+		if err != nil {
+			return nil, NewOAuthError("server_error", err.Error())
+		}
+		if result.NameIDValue != "" {
+			res.Sub = result.NameIDValue
+		}
+		if len(result.Claims) > 0 {
+			if res.Extra == nil {
+				res.Extra = map[string]any{}
+			}
+			for _, c := range result.Claims {
+				if _, exists := res.Extra[c.ClaimType]; exists {
+					continue
+				}
+				if len(c.Values) == 1 {
+					res.Extra[c.ClaimType] = c.Values[0]
+				} else {
+					res.Extra[c.ClaimType] = c.Values
+				}
+			}
+		}
 	}
 	return res, nil
 }

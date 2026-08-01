@@ -2896,6 +2896,36 @@
       ],
       "description": "ApplicationCategory を更新した。"
     },
+    "ApplicationClaimMappingUpdated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "applicationId": {
+          "type": "string"
+        },
+        "protocol": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "applicationId",
+        "protocol"
+      ],
+      "description": "Application の claim release 上書き (rules / sub または NameID の source 属性) を更新した。"
+    },
     "ApplicationClientSecretCredentialMetadata": {
       "type": "object",
       "properties": {
@@ -3079,6 +3109,17 @@
             "$ref": "#/$defs/ApplicationClientSecretCredentialMetadata"
           },
           "description": "hash・平文を含まない credential metadata。editor は rotation 状態と overlap expiry のみ表示する。"
+        },
+        "sub_source_attribute": {
+          "type": "string",
+          "description": "ID Token / UserInfo の sub claim に使う source 属性。未設定なら\nuser の内部 id (既定挙動) を使う。WS-Fed/SAML の name_id_source と同じ位置付けの subject\n識別子上書き。"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClaimMappingRule"
+          },
+          "description": "このアプリ向けの claim release 上書き。scope 主導の標準 claim\n(profile/email 等) による開示可否とは独立に、開示範囲を絞る/写像するために追加する。\nvisibility=Private の属性や reserved claim type は floor により拒否される。"
         }
       },
       "additionalProperties": false,
@@ -3094,7 +3135,8 @@
         "dpop_bound_access_tokens",
         "fapi_profile",
         "client_secret_rotatable",
-        "secret_credentials"
+        "secret_credentials",
+        "rules"
       ],
       "description": "Application の OIDC protocol が指す OAuth2 client の実設定 (アプリ詳細表示用)。advanced 項目を含む。token_endpoint_auth_method / client_type / fapi_profile は更新契約上の不変項目で 表示専用。"
     },
@@ -3127,6 +3169,17 @@
         },
         "dpop_bound_access_tokens": {
           "type": "boolean"
+        },
+        "sub_source_attribute": {
+          "type": "string",
+          "description": "省略時は既存設定を維持する。空文字列を送ると既定 (user の内部 id) に戻す。"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClaimMappingRule"
+          },
+          "description": "省略時は既存の claim release 上書きを維持する。空配列を送ると上書きなし (標準 claim のみ) に戻す。"
         }
       },
       "additionalProperties": false,
@@ -3510,7 +3563,7 @@
         "AdminReadable",
         "ClaimExposed"
       ],
-      "description": "属性の開示範囲。ClaimExposed のみ UserInfo / ID Token に出せる。"
+      "description": "Tenancy context が publish する属性開示範囲の published language stub。Private だけが claim 発行の fail-closed floor で常に除外される。"
     },
     "AttributeApplyOn": {
       "type": "string",
@@ -5108,6 +5161,12 @@
         "nameid"
       ],
       "description": "claim 値の供給元。user_attribute は identity principal の属性、fixed は静的な固定値、 nameid は NameIdConfiguration が解決した NameID 値を claim にも反映する場合に使う。"
+    },
+    "ClaimReleaseDeniedError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "claim 解決が fail-closed で拒否された。required source が解決できない、\nvisibility=Private の属性を rule / NameID の source に指定している、または reserved claim type\n(iss/sub/aud/exp/iat/nbf/jti/azp/nonce/at_hash/c_hash/acr/amr/sid) を claim_type に指定している\nのいずれか。\n"
     },
     "ClientRegistered": {
       "type": "object",
@@ -8172,6 +8231,10 @@
         },
         "email_verified": {
           "type": "boolean"
+        },
+        "additional_claims": {
+          "type": "object",
+          "description": "scope 主導の属性 claim (ClaimsForScopes) と client 単位の ClaimMapping claim_policy\nをマージした追加 claim。標準 claim とキーが衝突した場合は標準 claim を\n優先する。\n"
         }
       },
       "additionalProperties": false,
@@ -11044,6 +11107,10 @@
           "default": false,
           "description": "iframe URI に iss / sid クエリパラメータを付与するか。"
         },
+        "claim_policy": {
+          "$ref": "#/$defs/ClaimMappingPolicy",
+          "description": "この client 向けの claim 発行 policy (アプリ単位の release 上書き)。\nNameID 相当の source 属性を sub の source として使う。scope/consent による ClaimExposed 属性の\n開示可否判定 (openid/profile/email 等の標準 scope) はこの policy とは独立に先に適用され、\n本 policy はその範囲に対する追加の絞り込み・属性写像として ID Token / UserInfo にマージされる。\n"
+        },
         "created_at": {
           "type": "string",
           "format": "date-time"
@@ -11070,6 +11137,7 @@
         "first_party",
         "backchannel_logout_session_required",
         "frontchannel_logout_session_required",
+        "claim_policy",
         "created_at",
         "updated_at"
       ],
@@ -15294,54 +15362,19 @@
       "properties": {
         "key": {
           "type": "string",
-          "minLength": 1,
-          "pattern": "^[a-z][a-z0-9_]{0,62}$"
-        },
-        "label": {
-          "type": "string",
-          "maxLength": 100
-        },
-        "type": {
-          "$ref": "#/$defs/AttributeType"
-        },
-        "multi_valued": {
-          "type": "boolean",
-          "default": false
-        },
-        "required": {
-          "type": "boolean",
-          "default": false
-        },
-        "editable_by_user": {
-          "type": "boolean",
-          "default": false
-        },
-        "claim_name": {
-          "type": "string"
-        },
-        "oidc_scope": {
-          "type": "string"
+          "minLength": 1
         },
         "visibility": {
-          "type": "string",
+          "$ref": "#/$defs/AttrVisibility",
           "default": "Private"
-        },
-        "pii": {
-          "type": "boolean",
-          "default": true
         }
       },
       "additionalProperties": false,
       "required": [
         "key",
-        "type",
-        "multi_valued",
-        "required",
-        "editable_by_user",
-        "visibility",
-        "pii"
+        "visibility"
       ],
-      "description": "属性 1 件の定義。Tenancy context が所有する BuiltinUserAttributeDefs / TenantUserAttributeSchema の published language stub。"
+      "description": "Tenancy context が publish する属性定義の published language stub。claim 発行時の属性可視性判定にのみ使う。"
     },
     "UserAuthenticated": {
       "type": "object",
@@ -15655,7 +15688,8 @@
           "type": "string"
         },
         "claims": {
-          "type": "object"
+          "type": "object",
+          "description": "scope 主導の属性 claim (ClaimsForScopes) と client 単位の ClaimMapping claim_policy\nをマージした追加 claim。標準 claim とキーが衝突した場合は標準 claim を優先する。\n"
         }
       },
       "additionalProperties": false,

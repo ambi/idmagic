@@ -310,6 +310,19 @@ type AppSignInPolicyUpdated struct {
 func (e *AppSignInPolicyUpdated) EventType() string     { return "AppSignInPolicyUpdated" }
 func (e *AppSignInPolicyUpdated) OccurredAt() time.Time { return e.At }
 
+// ApplicationClaimMappingUpdated は Application の claim release 上書き (rules / sub
+// または NameID の source 属性) を更新した event (wi-73, ADR-151)。
+type ApplicationClaimMappingUpdated struct {
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ActorUserID   string    `json:"actorUserId"`
+	ApplicationID string    `json:"applicationId"`
+	Protocol      string    `json:"protocol"`
+}
+
+func (e *ApplicationClaimMappingUpdated) EventType() string     { return "ApplicationClaimMappingUpdated" }
+func (e *ApplicationClaimMappingUpdated) OccurredAt() time.Time { return e.At }
+
 // TenantDefaultSignInPolicyUpdated はテナント既定 sign-in policy を更新した event (ADR-081)。
 type TenantDefaultSignInPolicyUpdated struct {
 	At          time.Time `json:"-"`
