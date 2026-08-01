@@ -556,15 +556,6 @@ export function AdminApplicationEditPage({
                 <ClaimReleaseAttributesPreview />
               </section>
             ) : null}
-            {detail.oidc?.client_secret_rotatable ? (
-              <section className="border-t border-slate-200 pt-5">
-                <ClientSecretRotationPanel
-                  applicationID={app.application_id}
-                  csrfToken={csrfToken}
-                  onError={setError}
-                />
-              </section>
-            ) : null}
             {detail.wsfed ? (
               <section className="grid gap-4 border-t border-slate-200 pt-5">
                 <div className="flex items-center gap-2">
@@ -786,6 +777,17 @@ export function AdminApplicationEditPage({
             </div>
           </form>
         </Card>
+
+        {detail.oidc?.client_secret_rotatable ? (
+          <Card className="p-6" role="region" aria-labelledby="client-secret-management-heading">
+            <ClientSecretRotationPanel
+              applicationID={app.application_id}
+              csrfToken={csrfToken}
+              initialCredentials={detail.oidc.secret_credentials}
+              onError={setError}
+            />
+          </Card>
+        ) : null}
 
         {app.kind !== 'service' ? (
           <Card className="p-6">

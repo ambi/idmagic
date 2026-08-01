@@ -18,8 +18,26 @@ type ClientSecretCredential struct {
 	RevokedAt    *time.Time `json:"revoked_at,omitempty"`
 }
 
+type ClientSecretCredentialStatus string
+
+const (
+	ClientSecretCredentialActive  ClientSecretCredentialStatus = "Active"
+	ClientSecretCredentialExpired ClientSecretCredentialStatus = "Expired"
+	ClientSecretCredentialRevoked ClientSecretCredentialStatus = "Revoked"
+)
+
 func (c ClientSecretCredential) IsActiveAt(now time.Time) bool {
-	return c.RevokedAt == nil && (c.ExpiresAt == nil || now.Before(*c.ExpiresAt))
+	return c.StatusAt(now) == ClientSecretCredentialActive
+}
+
+func (c ClientSecretCredential) StatusAt(now time.Time) ClientSecretCredentialStatus {
+	if c.RevokedAt != nil {
+		return ClientSecretCredentialRevoked
+	}
+	if c.ExpiresAt != nil && !now.Before(*c.ExpiresAt) {
+		return ClientSecretCredentialExpired
+	}
+	return ClientSecretCredentialActive
 }
 
 func HashClientSecret(secret string) string {

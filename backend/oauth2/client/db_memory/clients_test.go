@@ -2,10 +2,13 @@ package db_memory
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
@@ -115,4 +118,56 @@ func TestOAuth2ClientRepository(t *testing.T) {
 			t.Error("expected client-1 to be deleted")
 		}
 	})
+}
+
+func TestIssueClientSecretCredentialEnforcesActiveLimitAtomically(t *testing.T) {
+	ctx := context.Background()
+	repo := NewClientRepository()
+	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	legacy := domain.ClientSecretCredential{
+		CredentialID: "legacy", ClientID: "client", SecretHash: "legacy-hash", CreatedAt: now.Add(-time.Hour),
+	}
+	if err := repo.SaveClientSecretCredential(ctx, legacy); err != nil {
+		t.Fatal(err)
+	}
+
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var ready sync.WaitGroup
+	ready.Add(2)
+	for _, id := range []string{"issued-1", "issued-2"} {
+		go func(credentialID string) {
+			ready.Done()
+			<-start
+			errs <- repo.IssueClientSecretCredential(ctx, nil, domain.ClientSecretCredential{
+				CredentialID: credentialID, ClientID: "client", SecretHash: credentialID, CreatedAt: now,
+			}, 2, now)
+		}(id)
+	}
+	ready.Wait()
+	close(start)
+
+	succeeded := 0
+	limited := 0
+	for range 2 {
+		err := <-errs
+		switch {
+		case err == nil:
+			succeeded++
+		case errors.Is(err, ports.ErrClientSecretCredentialLimitExceeded):
+			limited++
+		default:
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	if succeeded != 1 || limited != 1 {
+		t.Fatalf("succeeded=%d limited=%d", succeeded, limited)
+	}
+	credentials, err := repo.ListClientSecretCredentials(ctx, "client")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(credentials) != 2 {
+		t.Fatalf("credentials=%d, want 2", len(credentials))
+	}
 }

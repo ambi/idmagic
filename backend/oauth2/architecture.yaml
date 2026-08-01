@@ -521,6 +521,8 @@ modules:
         via: binding
       - module: oauth2-domain
         via: published_interface
+      - module: oauth2-ports
+        via: published_interface
       - module: shared-adapters
         via: technical_shared
       - module: shared-spec

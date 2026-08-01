@@ -20,6 +20,7 @@ const (
 type (
 	OAuth2Client                      = clientdomain.OAuth2Client
 	ClientSecretCredential            = clientdomain.ClientSecretCredential
+	ClientSecretCredentialStatus      = clientdomain.ClientSecretCredentialStatus
 	TokenEndpointAuthMethod           = clientdomain.TokenEndpointAuthMethod
 	FapiProfile                       = clientdomain.FapiProfile
 	ClientRegistered                  = clientdomain.ClientRegistered
@@ -27,6 +28,8 @@ type (
 	AdminOAuth2ClientUpdated          = clientdomain.AdminOAuth2ClientUpdated
 	AdminOAuth2ClientDeleted          = clientdomain.AdminOAuth2ClientDeleted
 	ClientSecretRotated               = clientdomain.ClientSecretRotated
+	ClientSecretIssued                = clientdomain.ClientSecretIssued
+	ClientSecretRevoked               = clientdomain.ClientSecretRevoked
 	Consent                           = consentdomain.Consent
 	ConsentState                      = consentdomain.ConsentState
 	ConsentGrantedEvent               = consentdomain.ConsentGrantedEvent
@@ -51,25 +54,28 @@ type (
 )
 
 const (
-	AuthMethodClientSecretBasic = clientdomain.AuthMethodClientSecretBasic
-	AuthMethodClientSecretPost  = clientdomain.AuthMethodClientSecretPost
-	AuthMethodPrivateKeyJwt     = clientdomain.AuthMethodPrivateKeyJwt
-	AuthMethodTlsClientAuth     = clientdomain.AuthMethodTlsClientAuth
-	AuthMethodNone              = clientdomain.AuthMethodNone
-	FapiNone                    = clientdomain.FapiNone
-	FapiSecurityProfileV2       = clientdomain.FapiSecurityProfileV2
-	ConsentGranted              = consentdomain.ConsentGranted
-	ConsentRevoked              = consentdomain.ConsentRevoked
-	ConsentExpired              = consentdomain.ConsentExpired
-	SenderConstraintDPoP        = tokendomain.SenderConstraintDPoP
-	SenderConstraintMTLS        = tokendomain.SenderConstraintMTLS
-	DetailTypeEnabled           = authorizationdomain.DetailTypeEnabled
-	DetailTypeDisabled          = authorizationdomain.DetailTypeDisabled
-	DetailFieldSet              = authorizationdomain.DetailFieldSet
-	DetailFieldAtMost           = authorizationdomain.DetailFieldAtMost
-	DetailFieldEnum             = authorizationdomain.DetailFieldEnum
-	DetailFieldExact            = authorizationdomain.DetailFieldExact
-	DeviceCodeTTL               = devicedomain.DeviceCodeTTL
+	AuthMethodClientSecretBasic   = clientdomain.AuthMethodClientSecretBasic
+	AuthMethodClientSecretPost    = clientdomain.AuthMethodClientSecretPost
+	AuthMethodPrivateKeyJwt       = clientdomain.AuthMethodPrivateKeyJwt
+	AuthMethodTlsClientAuth       = clientdomain.AuthMethodTlsClientAuth
+	AuthMethodNone                = clientdomain.AuthMethodNone
+	ClientSecretCredentialActive  = clientdomain.ClientSecretCredentialActive
+	ClientSecretCredentialExpired = clientdomain.ClientSecretCredentialExpired
+	ClientSecretCredentialRevoked = clientdomain.ClientSecretCredentialRevoked
+	FapiNone                      = clientdomain.FapiNone
+	FapiSecurityProfileV2         = clientdomain.FapiSecurityProfileV2
+	ConsentGranted                = consentdomain.ConsentGranted
+	ConsentRevoked                = consentdomain.ConsentRevoked
+	ConsentExpired                = consentdomain.ConsentExpired
+	SenderConstraintDPoP          = tokendomain.SenderConstraintDPoP
+	SenderConstraintMTLS          = tokendomain.SenderConstraintMTLS
+	DetailTypeEnabled             = authorizationdomain.DetailTypeEnabled
+	DetailTypeDisabled            = authorizationdomain.DetailTypeDisabled
+	DetailFieldSet                = authorizationdomain.DetailFieldSet
+	DetailFieldAtMost             = authorizationdomain.DetailFieldAtMost
+	DetailFieldEnum               = authorizationdomain.DetailFieldEnum
+	DetailFieldExact              = authorizationdomain.DetailFieldExact
+	DeviceCodeTTL                 = devicedomain.DeviceCodeTTL
 )
 
 var (

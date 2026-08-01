@@ -444,7 +444,7 @@ models:
         description: client_secret_basic / client_secret_post の confidential client のみ true。private_key_jwt、mTLS、public client は false。
       secret_credentials:
         type: "ApplicationClientSecretCredentialMetadata[]"
-        description: hash・平文を含まない credential metadata。editor は rotation 状態と overlap expiry のみ表示する。
+        description: hash・平文を含まない credential metadata。editor は作成日時・有効期限・Active/Expired/Revoked 状態を表示する。
       sub_source_attribute:
         type: String
         optional: true
@@ -454,7 +454,7 @@ models:
         description: "このアプリ向けの claim release 上書き。scope 主導の標準 claim\n(profile/email 等) による開示可否とは独立に、開示範囲を絞る/写像するために追加する。\nvisibility=Private の属性や reserved claim type は floor により拒否される。"
   ApplicationClientSecretCredentialMetadata:
     kind: value_object
-    description: Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出しない。
+    description: Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出せず、状態は revoked_at、expires_at、評価時刻から導出する。
     fields:
       credential_id:
         type: UUID
@@ -466,6 +466,8 @@ models:
       revoked_at:
         type: DateTime
         optional: true
+      status:
+        type: ClientSecretCredentialStatus
   ApplicationWsFedConfig:
     kind: value_object
     description: Application の WS-Fed protocol が指す relying party の実設定 (アプリ詳細表示用)。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は テナント単位の設定として別に扱う。
@@ -569,6 +571,31 @@ models:
       grace_until:
         type: DateTime
         optional: true
+      credentials:
+        type: "ApplicationClientSecretCredentialMetadata[]"
+  IssueApplicationClientSecretRequest:
+    kind: value_object
+    description: Application の OIDC protocol に対し、既存 credential を変更せず期限付き secret を追加発行する要求。expires_in_days は未指定時90、1..730日だけ受理する。
+    fields:
+      expires_in_days:
+        type: Integer
+        optional: true
+  IssueApplicationClientSecretResponse:
+    kind: value_object
+    description: 追加発行した secret を一度だけ返す。hash、既存 secret、平文の再取得経路は含まない。
+    fields:
+      client_secret:
+        type: String
+        annotations:
+          sensitive: true
+      credential:
+        type: ApplicationClientSecretCredentialMetadata
+      credentials:
+        type: "ApplicationClientSecretCredentialMetadata[]"
+  RevokeApplicationClientSecretResponse:
+    kind: value_object
+    description: 指定 credential の個別失効後に返す非機密 metadata 一覧。
+    fields:
       credentials:
         type: "ApplicationClientSecretCredentialMetadata[]"
   ApplicationWsFedConfigUpdateRequest:
@@ -907,6 +934,36 @@ models:
         type: String
       protocol:
         type: String
+  ClientSecretIssued:
+    kind: event
+    description: OAuth2 context が publish する client secret 追加発行イベントの published language stub。secret と hash は含めない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      clientId:
+        type: String
+      credentialId:
+        type: UUID
+      expiresAt:
+        type: DateTime
+  ClientSecretRevoked:
+    kind: event
+    description: OAuth2 context が publish する client secret 個別失効イベントの published language stub。secret と hash は含めない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      clientId:
+        type: String
+      credentialId:
+        type: UUID
   TenantDefaultSignInPolicyUpdated:
     kind: event
     description: テナントデフォルト sign-in policy を更新した (クリアを含む)。
@@ -977,6 +1034,13 @@ models:
     values:
       - Public
       - Confidential
+  ClientSecretCredentialStatus:
+    kind: enum
+    description: OAuth2 context が publish する client secret credential 状態の published language stub。
+    values:
+      - Active
+      - Expired
+      - Revoked
   GrantType:
     kind: enum
     description: OAuth2 context が publish するトークン発行方式の published language stub。
@@ -1044,6 +1108,9 @@ models:
   QuotaExceededError:
     kind: error
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
+  ClientSecretLimitExceededError:
+    kind: error
+    description: OAuth2 context が定義する Active client secret credential 最大2件の上限 error の published language stub。
 interfaces:
   AssignApplicationDesiredState:
     description: "呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (application_id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの application_id / user_id だけを渡す。\n"
@@ -1291,7 +1358,7 @@ interfaces:
         successful_status_codes:
           - "204"
   RotateApplicationClientSecret:
-    description: 管理者が Application の OIDC protocol の client secret を回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。secret-based でない client は拒否する。
+    description: 互換性のため、管理者が Application の OIDC protocol の client secret を従来方式で回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。新しい管理 UI は IssueApplicationClientSecret と RevokeApplicationClientSecret を使用する。
     input:
       application_id:
         type: String
@@ -1313,6 +1380,60 @@ interfaces:
         method: POST
         path: "/api/admin/applications/{application_id}/oidc/rotate-secret"
         request_form: body
+        successful_status_codes:
+          - "200"
+  IssueApplicationClientSecret:
+    description: 管理者が Application の secret-based OIDC client に期限付き credential を追加発行する。既存 credential は変更せず、Active credential が2件なら原子的に拒否する。secret-based でない client は拒否する。
+    input:
+      application_id:
+        type: String
+      request:
+        type: IssueApplicationClientSecretRequest
+    output:
+      response:
+        type: IssueApplicationClientSecretResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+      - ClientSecretLimitExceededError
+    emits:
+      - ClientSecretIssued
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/applications/{application_id}/oidc/client-secrets"
+        request_form: body
+        successful_status_codes:
+          - "201"
+  RevokeApplicationClientSecret:
+    description: 管理者が Application の secret-based OIDC client に属する指定 credential だけを即時失効する。既に失効済みなら冪等に成功し、別 client または存在しない credential は拒否する。
+    input:
+      application_id:
+        type: String
+      credential_id:
+        type: String
+    output:
+      response:
+        type: RevokeApplicationClientSecretResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - ClientSecretRevoked
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteApplications]
+      resource:
+        type: Application
+        id: input.application_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/applications/{application_id}/oidc/client-secrets/{credential_id}"
         successful_status_codes:
           - "200"
   UpdateApplicationWsFedConfig:
@@ -1773,7 +1894,27 @@ scenarios:
       - 画面は IdMagic に登録済みの RP / SP 情報と、相手側へ投入する IdMagic の discovery または metadata を区別して表示する
       - OIDC application には OpenID Discovery URL と client_id を表示する
       - SAML application には IdP metadata URL、entityID、SSO URL、SLO URL、署名証明書を表示する
-      - client secret は作成・ローテーション応答以外では表示しない
+      - client secret は作成・互換ローテーション・追加発行の成功応答以外では表示しない
+  管理者は通常設定と独立したセクションでclient secretを管理できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者が secret-based OIDC protocol を持つ Application の編集画面を開いている
+      - 期限なし legacy credential が1件 Active である
+    main_success:
+      - client_id は通常の OIDC 設定カード内に参照項目として表示される
+      - credential 一覧と追加発行・個別失効操作は通常設定の保存 form 外にある専用トップレベルセクションへ表示される
+      - 管理者が90日の期限を選んで新 secret を追加発行する
+      - 新 secret は一度だけ表示され、一覧には作成日・有効期限・Active 状態が表示される
+      - 管理者が旧 credential を個別失効すると、その行だけが Revoked 状態になる
+    extensions:
+      - at: 3
+        condition: Active credential が既に2件存在する
+        steps:
+          - 追加発行操作は利用不可となり、先に既存 credential を失効する案内を表示する
+      - at: 5
+        condition: credential が Expired または Revoked である
+        steps:
+          - 個別失効操作は表示しない
   API token発行者はaccount scope内で自身のportal applicationだけを操作できる:
     actor: SelfApiClient
     given:
@@ -2005,6 +2146,14 @@ flows:
           - action: update_oidc_config
             does: OIDC protocol が指す OAuth2 client の設定を編集して保存する
             interface: UpdateApplicationOidcConfig
+            to: AdminApplications
+          - action: issue_client_secret
+            does: 通常設定 form と独立した credential 管理セクションで期限付き client secret を追加発行する
+            interface: IssueApplicationClientSecret
+            to: AdminApplications
+          - action: revoke_client_secret
+            does: credential 管理セクションで指定 client secret credential だけを失効する
+            interface: RevokeApplicationClientSecret
             to: AdminApplications
           - action: update_wsfed_config
             does: WS-Fed protocol が指す relying party の設定を編集して保存する

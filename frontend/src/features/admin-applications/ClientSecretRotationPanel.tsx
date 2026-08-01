@@ -1,150 +1,224 @@
-import { IconAlertTriangle } from '@tabler/icons-react'
+import { IconKey } from '@tabler/icons-react'
 import { useState } from 'react'
-import { rotateApplicationClientSecret } from '../../api'
+import { issueApplicationClientSecret, revokeApplicationClientSecret } from '../../api'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Label } from '../../components/ui/label'
-import { useDictionary } from '../../lib/i18n'
+import { useDictionary, useLocale } from '../../lib/i18n'
+import type { ClientSecretCredentialMetadata } from '../../types'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import { CopyableField, messageOf } from './AdminApplicationsShared'
 
-const GRACE_DAY_OPTIONS = [0, 1, 7, 14, 30] as const
+const EXPIRY_DAY_OPTIONS = [30, 90, 180, 365] as const
 
-// ClientSecretRotationPanel はシークレット再発行という破壊的操作を、OIDC 設定本体
-// とは切り離した独立ブロックとして見せる。事故防止のため「猶予期間を選ぶ →
-// ローテーション → 確認 → 実行」の明示的な 2 段階にし、1 クリックでは適用しない。
 export function ClientSecretRotationPanel({
   applicationID,
   csrfToken,
+  initialCredentials,
   onError,
 }: {
   applicationID: string
   csrfToken: string
+  initialCredentials: ClientSecretCredentialMetadata[]
   onError: (message: string) => void
 }) {
-  const [graceDays, setGraceDays] = useState<number>(7)
-  const [confirming, setConfirming] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const [credentials, setCredentials] = useState(initialCredentials)
+  const [expiresInDays, setExpiresInDays] = useState(90)
+  const [issuing, setIssuing] = useState(false)
+  const [revokingID, setRevokingID] = useState('')
+  const [confirmingID, setConfirmingID] = useState('')
   const [secret, setSecret] = useState('')
   const [copied, setCopied] = useState(false)
   const t = useDictionary(adminApplicationsDictionary)
+  const { locale } = useLocale()
+  const activeCount = credentials.filter((credential) => credential.status === 'Active').length
+  const atLimit = activeCount >= 2
 
-  function graceOptionLabel(days: number): string {
-    return days === 0
-      ? t.secretRotationGraceImmediate
-      : t.secretRotationGraceDays.replace('{days}', String(days))
+  function formatDate(value: string): string {
+    return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value))
   }
 
-  const confirmMessage =
-    graceDays === 0
-      ? t.secretRotationConfirmImmediateMessage
-      : t.secretRotationConfirmDaysMessage.replace('{days}', String(graceDays))
+  function statusLabel(status: ClientSecretCredentialMetadata['status']): string {
+    if (status === 'Revoked') return t.secretStatusRevoked
+    if (status === 'Expired') return t.secretStatusExpired
+    return t.secretStatusActive
+  }
 
-  async function rotate() {
-    setBusy(true)
+  function statusClass(status: ClientSecretCredentialMetadata['status']): string {
+    if (status === 'Active') return 'bg-emerald-100 text-emerald-800'
+    if (status === 'Expired') return 'bg-amber-100 text-amber-800'
+    return 'bg-slate-200 text-slate-700'
+  }
+
+  async function issue() {
+    setIssuing(true)
+    setSecret('')
+    setCopied(false)
     onError('')
     try {
-      const result = await rotateApplicationClientSecret(csrfToken, applicationID, graceDays)
+      const result = await issueApplicationClientSecret(csrfToken, applicationID, expiresInDays)
+      setCredentials(result.credentials)
       setSecret(result.client_secret)
-      setCopied(false)
-      setConfirming(false)
     } catch (cause) {
-      onError(messageOf(cause, t.secretRotationError))
+      onError(messageOf(cause, t.secretIssueError))
     } finally {
-      setBusy(false)
+      setIssuing(false)
+    }
+  }
+
+  async function revoke(credentialID: string) {
+    setRevokingID(credentialID)
+    onError('')
+    try {
+      const result = await revokeApplicationClientSecret(csrfToken, applicationID, credentialID)
+      setCredentials(result.credentials)
+      setConfirmingID('')
+    } catch (cause) {
+      onError(messageOf(cause, t.secretRevokeError))
+    } finally {
+      setRevokingID('')
     }
   }
 
   return (
-    <section className="rounded-xl border border-amber-300 bg-amber-50/60 p-5">
-      <div className="flex items-start gap-2.5">
-        <IconAlertTriangle
-          size={18}
-          className="mt-0.5 shrink-0 text-amber-700"
-          aria-hidden="true"
-        />
+    <div>
+      <header className="flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+          <IconKey size={18} aria-hidden="true" />
+        </span>
         <div>
-          <h3 className="text-sm font-semibold text-amber-950">{t.secretRotationHeading}</h3>
-          <p className="mt-1 text-xs leading-5 text-amber-800">{t.secretRotationDescription}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-end gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="secret-rotation-grace" className="text-xs text-amber-900">
-            {t.secretRotationGraceLabel}
-          </Label>
-          <select
-            id="secret-rotation-grace"
-            value={graceDays}
-            onChange={(event) => {
-              setGraceDays(Number(event.target.value))
-              setConfirming(false)
-            }}
-            disabled={busy}
-            className="h-10 rounded-lg border border-amber-300 bg-white px-2 text-sm text-slate-800"
+          <h2
+            id="client-secret-management-heading"
+            className="text-base font-semibold text-slate-950"
           >
-            {GRACE_DAY_OPTIONS.map((days) => (
+            {t.secretManagementHeading}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">{t.secretManagementDescription}</p>
+        </div>
+      </header>
+
+      <div className="mt-6 flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <div className="grid gap-1.5">
+          <Label htmlFor="client-secret-expiry">{t.secretExpiryLabel}</Label>
+          <select
+            id="client-secret-expiry"
+            value={expiresInDays}
+            onChange={(event) => setExpiresInDays(Number(event.target.value))}
+            disabled={issuing || atLimit}
+            className="h-10 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-800"
+          >
+            {EXPIRY_DAY_OPTIONS.map((days) => (
               <option key={days} value={days}>
-                {graceOptionLabel(days)}
+                {t.secretExpiryDays.replace('{days}', String(days))}
               </option>
             ))}
           </select>
         </div>
-        {!confirming ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="h-10 border-amber-300 text-amber-900 hover:border-amber-400 hover:bg-amber-100"
-            disabled={busy}
-            onClick={() => setConfirming(true)}
-          >
-            {t.secretRotationButton}
-          </Button>
-        ) : null}
+        <Button type="button" disabled={issuing || atLimit} onClick={() => void issue()}>
+          {t.secretIssueButton}
+        </Button>
+        {atLimit ? <p className="w-full text-xs text-amber-700">{t.secretLimitNotice}</p> : null}
       </div>
 
-      {confirming ? (
-        <Alert
-          variant="destructive"
-          className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <span className="text-sm">{confirmMessage}</span>
-          <div className="flex shrink-0 gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => setConfirming(false)}
-            >
-              {t.secretRotationCancelButton}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={busy}
-              onClick={() => void rotate()}
-            >
-              {t.secretRotationConfirmButton}
-            </Button>
-          </div>
-        </Alert>
-      ) : null}
-
       {secret ? (
-        <div className="mt-4 grid gap-2 border-t border-amber-200 pt-4">
-          <CopyableField label={t.secretRotationNewSecretLabel} value={secret} />
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={copied} onChange={(e) => setCopied(e.target.checked)} />
-            {t.secretRotationCopiedLabel}
+        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <CopyableField label={t.secretNewSecretLabel} value={secret} />
+          <label className="mt-3 flex items-center gap-2 text-sm text-emerald-900">
+            <input
+              type="checkbox"
+              checked={copied}
+              onChange={(event) => setCopied(event.target.checked)}
+            />
+            {t.secretCopiedLabel}
           </label>
           {copied ? (
-            <Button type="button" variant="outline" onClick={() => setSecret('')}>
-              {t.secretRotationCloseButton}
+            <Button type="button" variant="outline" className="mt-3" onClick={() => setSecret('')}>
+              {t.secretCloseButton}
             </Button>
           ) : null}
         </div>
       ) : null}
-    </section>
+
+      {credentials.length === 0 ? (
+        <p className="mt-6 text-sm text-slate-500">{t.secretNoCredentialsNotice}</p>
+      ) : (
+        <div className="mt-6 overflow-x-auto rounded-lg border border-slate-200">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-sm text-slate-700">
+            <thead className="bg-slate-50 text-xs font-semibold text-slate-700">
+              <tr>
+                <th className="px-4 py-3">{t.secretCredentialIdHeader}</th>
+                <th className="px-4 py-3">{t.secretCreatedAtHeader}</th>
+                <th className="px-4 py-3">{t.secretExpiresAtHeader}</th>
+                <th className="px-4 py-3">{t.secretStatusHeader}</th>
+                <th className="px-4 py-3 text-right">{t.secretActionsHeader}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {credentials.map((credential) => (
+                <tr key={credential.credential_id}>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-800">
+                    {credential.credential_id}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    {formatDate(credential.created_at)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    {credential.expires_at
+                      ? formatDate(credential.expires_at)
+                      : t.secretNeverExpires}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass(credential.status)}`}
+                    >
+                      {statusLabel(credential.status)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {credential.status === 'Active' ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={revokingID !== ''}
+                        onClick={() => setConfirmingID(credential.credential_id)}
+                      >
+                        {t.secretRevokeButton}
+                      </Button>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {confirmingID ? (
+        <Alert variant="destructive" className="mt-4 grid gap-3">
+          <p>{t.secretRevokeConfirmMessage}</p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={revokingID !== ''}
+              onClick={() => setConfirmingID('')}
+            >
+              {t.secretRevokeCancelButton}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={revokingID !== ''}
+              onClick={() => void revoke(confirmingID)}
+            >
+              {t.secretRevokeConfirmButton}
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+    </div>
   )
 }

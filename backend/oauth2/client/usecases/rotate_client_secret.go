@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
@@ -45,17 +46,25 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 	if err != nil {
 		return nil, err
 	}
+	activeCredentials := 0
+	for i := range credentials {
+		if credentials[i].IsActiveAt(now) {
+			activeCredentials++
+		}
+	}
+	if activeCredentials >= MaxActiveClientSecrets {
+		return nil, ErrClientSecretLimitExceeded
+	}
 	// rollout 中に credential table が未 backfill の client は旧 hash を一度だけ移す。
+	legacyBackfill := false
 	if len(credentials) == 0 && client.ClientSecretHash != nil {
 		id, err := spec.NewUUIDv4()
 		if err != nil {
 			return nil, err
 		}
 		legacy := domain.ClientSecretCredential{CredentialID: id, ClientID: client.ClientID, SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt}
-		if err := deps.ClientRepo.SaveClientSecretCredential(ctx, legacy); err != nil {
-			return nil, err
-		}
 		credentials = append(credentials, legacy)
+		legacyBackfill = true
 	}
 	var graceUntil *time.Time
 	if in.GraceDays > 0 {
@@ -71,6 +80,9 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 		} else {
 			credentials[i].ExpiresAt = graceUntil
 		}
+		if legacyBackfill && i == 0 {
+			continue
+		}
 		if err := deps.ClientRepo.UpdateClientSecretCredential(ctx, credentials[i]); err != nil {
 			return nil, err
 		}
@@ -84,7 +96,14 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 		return nil, err
 	}
 	credential := domain.ClientSecretCredential{CredentialID: id, ClientID: client.ClientID, SecretHash: domain.HashClientSecret(secret), CreatedAt: now}
-	if err := deps.ClientRepo.SaveClientSecretCredential(ctx, credential); err != nil {
+	var legacy *domain.ClientSecretCredential
+	if legacyBackfill {
+		legacy = &credentials[0]
+	}
+	if err := deps.ClientRepo.IssueClientSecretCredential(ctx, legacy, credential, MaxActiveClientSecrets, now); err != nil {
+		if errors.Is(err, oauthports.ErrClientSecretCredentialLimitExceeded) {
+			return nil, ErrClientSecretLimitExceeded
+		}
 		return nil, err
 	}
 	credentials = append(credentials, credential)

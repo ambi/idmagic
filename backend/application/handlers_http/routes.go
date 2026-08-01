@@ -58,6 +58,8 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.DELETE("/api/admin/applications/:application_id/icon", d.handleDeleteApplicationIcon)
 	g.PATCH("/api/admin/applications/:application_id/oidc", d.handleUpdateOIDCConfig)
 	g.POST("/api/admin/applications/:application_id/oidc/rotate-secret", d.handleRotateOIDCClientSecret)
+	g.POST("/api/admin/applications/:application_id/oidc/client-secrets", d.handleIssueOIDCClientSecret)
+	g.DELETE("/api/admin/applications/:application_id/oidc/client-secrets/:credential_id", d.handleRevokeOIDCClientSecret)
 	g.PATCH("/api/admin/applications/:application_id/wsfed", d.handleUpdateWsFedConfig)
 	g.PATCH("/api/admin/applications/:application_id/saml", d.handleUpdateSamlConfig)
 	g.GET("/api/admin/applications/:application_id/assignments", d.handleListAssignments)

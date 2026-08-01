@@ -61,6 +61,7 @@ import type {
   ProvisioningScope,
   ProvisioningSourceType,
   ProvisioningTestConnectionResult,
+  ClientSecretCredentialMetadata,
 } from '../types'
 import { AuthenticationAPIError, adminRequest, request, tenantURL } from './core'
 
@@ -1152,6 +1153,34 @@ export async function rotateApplicationClientSecret(
   return request(
     `/api/admin/applications/${encodeURIComponent(id)}/oidc/rotate-secret`,
     adminRequest(csrfToken, 'POST', { grace_days: graceDays }),
+  )
+}
+
+export type IssueApplicationClientSecretResult = {
+  client_secret: string
+  credential: ClientSecretCredentialMetadata
+  credentials: ClientSecretCredentialMetadata[]
+}
+
+export async function issueApplicationClientSecret(
+  csrfToken: string,
+  id: string,
+  expiresInDays: number,
+): Promise<IssueApplicationClientSecretResult> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(id)}/oidc/client-secrets`,
+    adminRequest(csrfToken, 'POST', { expires_in_days: expiresInDays }),
+  )
+}
+
+export async function revokeApplicationClientSecret(
+  csrfToken: string,
+  id: string,
+  credentialID: string,
+): Promise<{ credentials: ClientSecretCredentialMetadata[] }> {
+  return request(
+    `/api/admin/applications/${encodeURIComponent(id)}/oidc/client-secrets/${encodeURIComponent(credentialID)}`,
+    adminRequest(csrfToken, 'DELETE'),
   )
 }
 

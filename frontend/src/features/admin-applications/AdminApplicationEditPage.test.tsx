@@ -71,4 +71,41 @@ describe('AdminApplicationEditPage', () => {
       '/admin/applications/app-1/provisioning',
     )
   })
+
+  it('places client secret management outside the settings form in its own top-level card', async () => {
+    const oidcDetail: AdminApplicationDetail = {
+      application: app,
+      oidc: {
+        client_id: 'client-1',
+        client_type: 'confidential',
+        redirect_uris: ['https://app.example/callback'],
+        grant_types: ['authorization_code'],
+        response_types: ['code'],
+        token_endpoint_auth_method: 'client_secret_basic',
+        scope: 'openid',
+        require_pushed_authorization_requests: false,
+        dpop_bound_access_tokens: false,
+        fapi_profile: 'none',
+        client_secret_rotatable: true,
+        secret_credentials: [
+          {
+            credential_id: 'credential-1',
+            created_at: '2026-08-01T00:00:00Z',
+            status: 'Active',
+          },
+        ],
+        sub_source_attribute: '',
+        rules: [],
+      },
+    }
+    await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={oidcDetail} />)
+
+    const secretRegion = screen.getByRole('region', { name: t.secretManagementHeading })
+    const settingsForm = screen.getByRole('button', { name: t.save }).closest('form')
+    const clientID = screen.getByText('client-1')
+
+    expect(settingsForm).not.toContainElement(secretRegion)
+    expect(clientID.closest('form')).toBe(settingsForm)
+    expect(secretRegion).not.toBe(settingsForm?.parentElement)
+  })
 })

@@ -3,9 +3,13 @@ package ports
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
+
+var ErrClientSecretCredentialLimitExceeded = errors.New("active client secret credential limit exceeded")
 
 type OAuth2ClientRepository interface {
 	FindByID(ctx context.Context, tenantID, clientID string) (*domain.OAuth2Client, error)
@@ -14,5 +18,6 @@ type OAuth2ClientRepository interface {
 	FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error)
 	SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
+	IssueClientSecretCredential(ctx context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error
 	UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
 }

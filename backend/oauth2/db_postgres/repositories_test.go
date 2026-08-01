@@ -2,6 +2,8 @@ package db_postgres_test
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	idmpg "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
@@ -128,6 +131,66 @@ func TestOAuth2ClientRepositoryRoundTrip(t *testing.T) {
 	got, err = repo.FindByID(ctx, tenant.ID, client.ClientID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted, got %v %+v", err, got)
+	}
+}
+
+func TestOAuth2ClientRepositoryIssuesSecretWithinActiveLimitAtomically(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &oauth2clientpostgres.OAuth2ClientRepository{Pool: db}
+	ctx := context.Background()
+	client := seedClient(t, db, tenant.ID)
+	now := testClock()
+	firstExpiry := now.Add(24 * time.Hour)
+	first := domain.ClientSecretCredential{
+		CredentialID: newUUID(t), ClientID: client.ClientID, SecretHash: "first",
+		CreatedAt: now, ExpiresAt: &firstExpiry,
+	}
+	if err := repo.IssueClientSecretCredential(ctx, nil, first, 2, now); err != nil {
+		t.Fatalf("issue first: %v", err)
+	}
+
+	credentialIDs := []string{newUUID(t), newUUID(t)}
+	start := make(chan struct{})
+	errs := make(chan error, 2)
+	var ready sync.WaitGroup
+	ready.Add(2)
+	for _, credentialID := range credentialIDs {
+		go func(id string) {
+			ready.Done()
+			<-start
+			expiresAt := now.Add(48 * time.Hour)
+			errs <- repo.IssueClientSecretCredential(ctx, nil, domain.ClientSecretCredential{
+				CredentialID: id, ClientID: client.ClientID, SecretHash: id,
+				CreatedAt: now, ExpiresAt: &expiresAt,
+			}, 2, now)
+		}(credentialID)
+	}
+	ready.Wait()
+	close(start)
+
+	succeeded := 0
+	limited := 0
+	for range 2 {
+		err := <-errs
+		switch {
+		case err == nil:
+			succeeded++
+		case errors.Is(err, oauthports.ErrClientSecretCredentialLimitExceeded):
+			limited++
+		default:
+			t.Fatalf("unexpected issue error: %v", err)
+		}
+	}
+	if succeeded != 1 || limited != 1 {
+		t.Fatalf("succeeded=%d limited=%d", succeeded, limited)
+	}
+	credentials, err := repo.ListClientSecretCredentials(ctx, client.ClientID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(credentials) != 2 {
+		t.Fatalf("credentials=%d, want 2", len(credentials))
 	}
 }
 

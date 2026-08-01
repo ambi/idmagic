@@ -220,3 +220,26 @@ type ClientSecretRotated struct {
 
 func (e *ClientSecretRotated) EventType() string     { return "ClientSecretRotated" }
 func (e *ClientSecretRotated) OccurredAt() time.Time { return e.At }
+
+type ClientSecretIssued struct {
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	ClientID     string    `json:"clientId"`
+	CredentialID string    `json:"credentialId"`
+	ExpiresAt    time.Time `json:"expiresAt"`
+}
+
+func (e *ClientSecretIssued) EventType() string     { return "ClientSecretIssued" }
+func (e *ClientSecretIssued) OccurredAt() time.Time { return e.At }
+
+type ClientSecretRevoked struct {
+	At           time.Time `json:"-"`
+	TenantID     string    `json:"tenantId"`
+	ActorUserID  string    `json:"actorUserId"`
+	ClientID     string    `json:"clientId"`
+	CredentialID string    `json:"credentialId"`
+}
+
+func (e *ClientSecretRevoked) EventType() string     { return "ClientSecretRevoked" }
+func (e *ClientSecretRevoked) OccurredAt() time.Time { return e.At }

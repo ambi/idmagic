@@ -315,6 +315,7 @@ export type ClientSecretCredentialMetadata = {
   created_at: string
   expires_at?: string
   revoked_at?: string
+  status: 'Active' | 'Expired' | 'Revoked'
 }
 
 export type ApplicationWsFedConfig = {

@@ -3,8 +3,10 @@ package db_memory
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/oauth2/ports"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
@@ -66,6 +68,26 @@ func (r *OAuth2ClientRepository) SaveClientSecretCredential(_ context.Context, c
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.credentials[credential.ClientID] = append(r.credentials[credential.ClientID], credential)
+	return nil
+}
+
+func (r *OAuth2ClientRepository) IssueClientSecretCredential(_ context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	credentials := r.credentials[credential.ClientID]
+	if len(credentials) == 0 && legacy != nil {
+		credentials = append(credentials, *legacy)
+	}
+	active := 0
+	for _, existing := range credentials {
+		if existing.IsActiveAt(now) {
+			active++
+		}
+	}
+	if active >= maxActive {
+		return ports.ErrClientSecretCredentialLimitExceeded
+	}
+	r.credentials[credential.ClientID] = append(credentials, credential)
 	return nil
 }
 

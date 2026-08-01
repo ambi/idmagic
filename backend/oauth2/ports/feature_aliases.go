@@ -19,3 +19,5 @@ type (
 	AccessTokenDenylist       = tokenports.AccessTokenDenylist
 	RefreshTokenStore         = tokenports.RefreshTokenStore
 )
+
+var ErrClientSecretCredentialLimitExceeded = clientports.ErrClientSecretCredentialLimitExceeded

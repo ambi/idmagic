@@ -94,6 +94,9 @@ var auditEventCategoryTypes = map[string][]string{
 		"AdminOAuth2ClientCreated",
 		"AdminOAuth2ClientUpdated",
 		"AdminOAuth2ClientDeleted",
+		"ClientSecretRotated",
+		"ClientSecretIssued",
+		"ClientSecretRevoked",
 	},
 	"consent": {
 		"ConsentGranted",

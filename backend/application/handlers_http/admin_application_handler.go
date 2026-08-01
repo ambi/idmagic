@@ -11,6 +11,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/application/domain"
 	appusecases "github.com/ambi/idmagic/backend/application/usecases"
+	clientusecases "github.com/ambi/idmagic/backend/oauth2/client/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -538,6 +539,9 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	}
 	if errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_sign_in_policy", err.Error())
+	}
+	if errors.Is(err, clientusecases.ErrClientSecretLimitExceeded) {
+		return support.WriteBrowserError(c, http.StatusConflict, "client_secret_limit_exceeded", "The client already has two active secrets.")
 	}
 	// QuotaExceededError (wi-160, ADR-134) falls through to support_http.ErrorHandler
 	// instead of being flattened into invalid_request/400 below, so it gets the same

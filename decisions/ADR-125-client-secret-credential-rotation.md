@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-07-18
+superseded_by: [ADR-152]  # 自動 sunset を標準管理方式とする判断のみ
 ---
 
 # ADR-125: client secret を重複期間付き credential として rotation する

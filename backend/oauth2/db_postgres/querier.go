@@ -58,6 +58,7 @@ type Querier interface {
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
+	LockClientForSecretIssuance(ctx context.Context, clientID string) (string, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
 	// 単発 redeem の CAS。state='issued' の行だけを redeemed にして 1 行返す。既 redeemed は 0 行。
 	RedeemAuthorizationCode(ctx context.Context, arg RedeemAuthorizationCodeParams) (*RedeemAuthorizationCodeRow, error)

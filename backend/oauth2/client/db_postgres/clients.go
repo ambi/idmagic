@@ -14,6 +14,7 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 	oauth2pg "github.com/ambi/idmagic/backend/oauth2/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
@@ -203,6 +204,49 @@ func (r *OAuth2ClientRepository) SaveClientSecretCredential(ctx context.Context,
 		CredentialID: credential.CredentialID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
 		CreatedAt: credential.CreatedAt, ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
 	})
+}
+
+func (r *OAuth2ClientRepository) IssueClientSecretCredential(ctx context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error {
+	tx, err := r.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	queries := oauth2pg.New(tx)
+	if _, err := queries.LockClientForSecretIssuance(ctx, credential.ClientID); err != nil {
+		return err
+	}
+	rows, err := queries.ListClientSecretCredentials(ctx, credential.ClientID)
+	if err != nil {
+		return err
+	}
+	active := 0
+	for _, row := range rows {
+		if credentialFromRow(row).IsActiveAt(now) {
+			active++
+		}
+	}
+	if len(rows) == 0 && legacy != nil {
+		if err := queries.InsertClientSecretCredential(ctx, oauth2pg.InsertClientSecretCredentialParams{
+			CredentialID: legacy.CredentialID, ClientID: legacy.ClientID, SecretHash: legacy.SecretHash,
+			CreatedAt: legacy.CreatedAt, ExpiresAt: timestamptzOrNil(legacy.ExpiresAt), RevokedAt: timestamptzOrNil(legacy.RevokedAt),
+		}); err != nil {
+			return err
+		}
+		if legacy.IsActiveAt(now) {
+			active++
+		}
+	}
+	if active >= maxActive {
+		return oauthports.ErrClientSecretCredentialLimitExceeded
+	}
+	if err := queries.InsertClientSecretCredential(ctx, oauth2pg.InsertClientSecretCredentialParams{
+		CredentialID: credential.CredentialID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
+		CreatedAt: credential.CreatedAt, ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
+	}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *OAuth2ClientRepository) UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {

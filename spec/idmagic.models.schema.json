@@ -2944,14 +2944,18 @@
         "revoked_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "status": {
+          "$ref": "#/$defs/ClientSecretCredentialStatus"
         }
       },
       "additionalProperties": false,
       "required": [
         "credential_id",
-        "created_at"
+        "created_at",
+        "status"
       ],
-      "description": "Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出しない。"
+      "description": "Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出せず、状態は revoked_at、expires_at、評価時刻から導出する。"
     },
     "ApplicationCreated": {
       "type": "object",
@@ -3108,7 +3112,7 @@
           "items": {
             "$ref": "#/$defs/ApplicationClientSecretCredentialMetadata"
           },
-          "description": "hash・平文を含まない credential metadata。editor は rotation 状態と overlap expiry のみ表示する。"
+          "description": "hash・平文を含まない credential metadata。editor は作成日時・有効期限・Active/Expired/Revoked 状態を表示する。"
         },
         "sub_source_attribute": {
           "type": "string",
@@ -5283,7 +5287,7 @@
         "expires_at": {
           "type": "string",
           "format": "date-time",
-          "description": "overlap の終了時刻。null は current credential を表す。"
+          "description": "credential の有効期限。新規追加発行では必須、null は移行前から存在する期限なし legacy credential または互換 rotation の current credential を表す。"
         },
         "revoked_at": {
           "type": "string",
@@ -5298,10 +5302,10 @@
         "secret_hash",
         "created_at"
       ],
-      "description": "secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。旧 credential は overlap expiry または revoke までのみ照合対象となる。",
+      "description": "secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。新規発行は既存 credential を変更せず、個別 revoke または expiry まで照合対象となる。既存の期限なし credential は無停止移行のため許容する。",
       "x-scl-untranslated-constraints": [
         "client_secret_credential_references_existing_client(client_id)",
-        "at_most_two_non_revoked_client_secret_credentials(client_id)"
+        "at_most_two_active_client_secret_credentials(client_id, now())"
       ]
     },
     "ClientSecretCredentialMetadata": {
@@ -5322,14 +5326,100 @@
         "revoked_at": {
           "type": "string",
           "format": "date-time"
+        },
+        "status": {
+          "$ref": "#/$defs/ClientSecretCredentialStatus"
         }
       },
       "additionalProperties": false,
       "required": [
         "credential_id",
-        "created_at"
+        "created_at",
+        "status"
       ],
-      "description": "Application editor が表示する secret credential の非機密メタデータ。"
+      "description": "Application editor が表示する secret credential の非機密メタデータ。状態は revoked_at、expires_at、評価時刻の順で導出する。"
+    },
+    "ClientSecretCredentialStatus": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Expired",
+        "Revoked"
+      ],
+      "description": "OAuth2 context が publish する client secret credential 状態の published language stub。"
+    },
+    "ClientSecretIssued": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "credentialId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "clientId",
+        "credentialId",
+        "expiresAt"
+      ],
+      "description": "OAuth2 context が publish する client secret 追加発行イベントの published language stub。secret と hash は含めない。"
+    },
+    "ClientSecretLimitExceededError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "OAuth2 context が定義する Active client secret credential 最大2件の上限 error の published language stub。"
+    },
+    "ClientSecretRevoked": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "clientId": {
+          "type": "string"
+        },
+        "credentialId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "clientId",
+        "credentialId"
+      ],
+      "description": "OAuth2 context が publish する client secret 個別失効イベントの published language stub。secret と hash は含めない。"
     },
     "ClientSecretRotated": {
       "type": "object",
@@ -5363,7 +5453,7 @@
         "clientId",
         "revokedImmediately"
       ],
-      "description": "管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。"
+      "description": "互換 interface で管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。"
     },
     "ClientSession": {
       "type": "object",
@@ -8569,6 +8659,74 @@
       "properties": {},
       "additionalProperties": false,
       "description": "アクセストークンが期限切れ、改ざん、不正、または失効済み (RFC 6750 §3.1 invalid_token)。"
+    },
+    "IssueApplicationClientSecretRequest": {
+      "type": "object",
+      "properties": {
+        "expires_in_days": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Application の OIDC protocol に対し、既存 credential を変更せず期限付き secret を追加発行する要求。expires_in_days は未指定時90、1..730日だけ受理する。"
+    },
+    "IssueApplicationClientSecretResponse": {
+      "type": "object",
+      "properties": {
+        "client_secret": {
+          "type": "string"
+        },
+        "credential": {
+          "$ref": "#/$defs/ApplicationClientSecretCredentialMetadata"
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationClientSecretCredentialMetadata"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "client_secret",
+        "credential",
+        "credentials"
+      ],
+      "description": "追加発行した secret を一度だけ返す。hash、既存 secret、平文の再取得経路は含まない。"
+    },
+    "IssueClientSecretRequest": {
+      "type": "object",
+      "properties": {
+        "expires_in_days": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "description": "既存 credential を変更せず、有効期限付き client secret を追加発行する要求。expires_in_days は未指定時90、1..730日だけ受理する。"
+    },
+    "IssueClientSecretResponse": {
+      "type": "object",
+      "properties": {
+        "client_secret": {
+          "type": "string"
+        },
+        "credential": {
+          "$ref": "#/$defs/ClientSecretCredentialMetadata"
+        },
+        "credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClientSecretCredentialMetadata"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "client_secret",
+        "credential",
+        "credentials"
+      ],
+      "description": "追加発行した secret を一度だけ返す応答。既存 secret、hash、平文の再取得経路は含めない。"
     },
     "IssueCode": {
       "type": "object",
@@ -12663,6 +12821,38 @@
         "Code"
       ],
       "description": "OAuth2 context が publish する /authorize 応答種別の published language stub。"
+    },
+    "RevokeApplicationClientSecretResponse": {
+      "type": "object",
+      "properties": {
+        "credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ApplicationClientSecretCredentialMetadata"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credentials"
+      ],
+      "description": "指定 credential の個別失効後に返す非機密 metadata 一覧。"
+    },
+    "RevokeClientSecretResponse": {
+      "type": "object",
+      "properties": {
+        "credentials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ClientSecretCredentialMetadata"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "credentials"
+      ],
+      "description": "個別失効後の非機密 credential metadata 一覧。secret と hash は含めない。"
     },
     "RevokeConsent": {
       "type": "object",

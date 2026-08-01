@@ -187,6 +187,20 @@ func (q *Queries) ListClientsByTenant(ctx context.Context, tenantID string) ([]*
 	return items, nil
 }
 
+const lockClientForSecretIssuance = `-- name: LockClientForSecretIssuance :one
+SELECT client_id
+FROM oauth2_clients
+WHERE client_id = $1
+FOR UPDATE
+`
+
+func (q *Queries) LockClientForSecretIssuance(ctx context.Context, clientID string) (string, error) {
+	row := q.db.QueryRow(ctx, lockClientForSecretIssuance, clientID)
+	var client_id string
+	err := row.Scan(&client_id)
+	return client_id, err
+}
+
 const updateClientSecretCredential = `-- name: UpdateClientSecretCredential :exec
 UPDATE oauth2_client_secrets
 SET expires_at = $2, revoked_at = $3

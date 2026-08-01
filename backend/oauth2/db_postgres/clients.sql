@@ -54,6 +54,12 @@ FROM oauth2_client_secrets
 WHERE client_id = $1
 ORDER BY created_at;
 
+-- name: LockClientForSecretIssuance :one
+SELECT client_id
+FROM oauth2_clients
+WHERE client_id = $1
+FOR UPDATE;
+
 -- name: InsertClientSecretCredential :exec
 INSERT INTO oauth2_client_secrets (credential_id, client_id, secret_hash, created_at, expires_at, revoked_at)
 VALUES ($1, $2, $3, $4, $5, $6);

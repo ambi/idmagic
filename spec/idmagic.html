@@ -17391,7 +17391,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       <div class="eyebrow">Bounded Context · contexts/oauth2.yaml</div>
       <h1>OAuth2</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">29</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">151</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">7</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">36</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">29</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">158</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">37</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-oauth2-standards">
     <h2>Standards <span class="count">29</span></h2>
@@ -19204,7 +19204,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
     </article></div>
   </section>
 <section id="context-oauth2-models">
-    <h2>Models <span class="count">151</span></h2>
+    <h2>Models <span class="count">158</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">16</span></h3>
@@ -19390,7 +19390,7 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
   </article>
 <article class="card" id="scl-OAuth2/model/ClientSecretCredential">
     <header><h3>ClientSecretCredential</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/ClientSecretCredential</code></header>
-    <p class="desc">secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。旧 credential は overlap expiry または revoke までのみ照合対象となる。</p>
+    <p class="desc">secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。新規発行は既存 credential を変更せず、個別 revoke または expiry まで照合対象となる。既存の期限なし credential は無停止移行のため許容する。</p>
     <dl class="kv"><dt>identity</dt><dd><code>credential_id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -19423,7 +19423,7 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
     <td><code class="type">DateTime</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>overlap の終了時刻。null は current credential を表す。</td>
+    <td>credential の有効期限。新規追加発行では必須、null は移行前から存在する期限なし legacy credential または互換 rotation の current credential を表す。</td>
   </tr><tr>
     <td><code class="name">revoked_at</code></td>
     <td><code class="type">DateTime</code></td>
@@ -19432,7 +19432,7 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
     <td>即時 revoke 時刻。revoked_at がある credential は expires_at に関わらず認証に使わない。</td>
   </tr></tbody>
   </table>
-    <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">client_secret_credential_references_existing_client(client_id)</code></li><li><code class="expr">at_most_two_non_revoked_client_secret_credentials(client_id)</code></li></ul></div>
+    <div class="sub"><div class="label">Model constraints</div><ul class="expr-list"><li><code class="expr">client_secret_credential_references_existing_client(client_id)</code></li><li><code class="expr">at_most_two_active_client_secret_credentials(client_id, now())</code></li></ul></div>
   </article>
 <article class="card" id="scl-OAuth2/model/Consent">
     <header><h3>Consent</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/Consent</code></header>
@@ -20393,7 +20393,7 @@ front/back-channel logout の相関に使う (wi-28)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">49</span></h3>
+      <h3 class="grp-title">value object <span class="count">52</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/AuthorizationDetail">
     <header><h3>AuthorizationDetail</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/AuthorizationDetail</code></header>
     <p class="desc">RFC 9396 authorization_details の 1 要素。type で識別される構造化された細粒度権限を表す。 要求・同意・トークン反映を通じて一貫して扱い、登録済み AuthorizationDetailType に対し fail-closed に検証する。</p>
@@ -21682,7 +21682,7 @@ front/back-channel logout の相関に使う (wi-28)。
   </article>
 <article class="card" id="scl-OAuth2/model/ClientSecretCredentialMetadata">
     <header><h3>ClientSecretCredentialMetadata</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/ClientSecretCredentialMetadata</code></header>
-    <p class="desc">Application editor が表示する secret credential の非機密メタデータ。</p>
+    <p class="desc">Application editor が表示する secret credential の非機密メタデータ。状態は revoked_at、expires_at、評価時刻の順で導出する。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -21708,6 +21708,72 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><code class="name">revoked_at</code></td>
     <td><code class="type">DateTime</code></td>
     <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">status</code></td>
+    <td><code class="type">ClientSecretCredentialStatus</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/IssueClientSecretRequest">
+    <header><h3>IssueClientSecretRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/IssueClientSecretRequest</code></header>
+    <p class="desc">既存 credential を変更せず、有効期限付き client secret を追加発行する要求。expires_in_days は未指定時90、1..730日だけ受理する。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">expires_in_days</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/IssueClientSecretResponse">
+    <header><h3>IssueClientSecretResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/IssueClientSecretResponse</code></header>
+    <p class="desc">追加発行した secret を一度だけ返す応答。既存 secret、hash、平文の再取得経路は含めない。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">client_secret</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credential</code></td>
+    <td><code class="type">ClientSecretCredentialMetadata</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credentials</code></td>
+    <td><code class="type">ClientSecretCredentialMetadata[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/RevokeClientSecretResponse">
+    <header><h3>RevokeClientSecretResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/RevokeClientSecretResponse</code></header>
+    <p class="desc">個別失効後の非機密 credential metadata 一覧。secret と hash は含めない。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">credentials</code></td>
+    <td><code class="type">ClientSecretCredentialMetadata[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
   </tr></tbody>
@@ -22600,12 +22666,19 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">22</span></h3>
+      <h3 class="grp-title">enum <span class="count">23</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/ClientType">
     <header><h3>ClientType</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">OAuth2/model/ClientType</code></header>
     <p class="desc">クライアントが client_secret を安全に保持できるかどうかの分類。Public はモバイル/SPA など秘匿不可、Confidential はサーバーサイドで秘密鍵を保持可能。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">Public</span> <span class="chip chip-enum">Confidential</span></div>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ClientSecretCredentialStatus">
+    <header><h3>ClientSecretCredentialStatus</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">OAuth2/model/ClientSecretCredentialStatus</code></header>
+    <p class="desc">client secret credential の現在状態。revoked_at を最優先し、次に expires_at と現在時刻から導出する。</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">Active</span> <span class="chip chip-enum">Expired</span> <span class="chip chip-enum">Revoked</span></div>
 
   </article>
 <article class="card" id="scl-OAuth2/model/GrantType">
@@ -22757,7 +22830,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">45</span></h3>
+      <h3 class="grp-title">event <span class="count">47</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/ClientRegistered">
     <header><h3>ClientRegistered</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientRegistered</code></header>
     <p class="desc">/register で新しいクライアントが動的登録された (RFC 7591)。クライアント登録監査の起点。</p>
@@ -22902,7 +22975,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article>
 <article class="card" id="scl-OAuth2/model/ClientSecretRotated">
     <header><h3>ClientSecretRotated</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientSecretRotated</code></header>
-    <p class="desc">管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。</p>
+    <p class="desc">互換 interface で管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -22939,6 +23012,92 @@ hint として送るのが通常の RP 実装であるため)。
   </tr><tr>
     <td><code class="name">revokedImmediately</code></td>
     <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ClientSecretIssued">
+    <header><h3>ClientSecretIssued</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientSecretIssued</code></header>
+    <p class="desc">管理者が secret-based client に有効期限付き credential を追加発行した。secret と hash は payload に含めない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credentialId</code></td>
+    <td><code class="type">UUID</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">expiresAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ClientSecretRevoked">
+    <header><h3>ClientSecretRevoked</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientSecretRevoked</code></header>
+    <p class="desc">管理者が secret-based client の指定 credential を個別失効した。secret と hash は payload に含めない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credentialId</code></td>
+    <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -24092,7 +24251,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">19</span></h3>
+      <h3 class="grp-title">error <span class="count">20</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/OAuthError">
     <header><h3>OAuthError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/OAuthError</code></header>
     <p class="desc">OAuth 2.0 / OIDC のエラー応答の共通形 (RFC 6749 §5.2)。具体的なエラー種別は error フィールドの OAuthErrorCode で識別される。</p>
@@ -24124,6 +24283,13 @@ hint として送るのが通常の RP 実装であるため)。
 <article class="card" id="scl-OAuth2/model/QuotaExceededError">
     <header><h3>QuotaExceededError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/QuotaExceededError</code></header>
     <p class="desc">テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ClientSecretLimitExceededError">
+    <header><h3>ClientSecretLimitExceededError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/ClientSecretLimitExceededError</code></header>
+    <p class="desc">secret-based client が同時に保持できる Active credential 2件の上限に達している。既存 credential を個別失効してから再試行できる。</p>
 
     <p class="muted">(no fields)</p>
 
@@ -25550,9 +25716,49 @@ actor.id == target.id に固定。次回その client の認可では consent �
   </article></div>
   </section>
 <section id="context-oauth2-states">
-    <h2>States <span class="count">7</span></h2>
+    <h2>States <span class="count">8</span></h2>
 
-    <div class="diagram-card" id="context-oauth2-diagram-state-authorizationcodeflow">
+    <div class="diagram-card" id="context-oauth2-diagram-state-clientsecretcredentiallifecycle">
+    <div class="diagram-head">
+      <div>
+        <div class="label">Diagram</div>
+        <h3>ClientSecretCredentialLifecycle transitions</h3>
+        <p class="desc">State node と transition edge は states.transitions から派生する。</p>
+      </div>
+      <div class="diagram-tools" aria-label="ClientSecretCredentialLifecycle transitions controls">
+        <button type="button" data-diagram-zoom="in" title="Zoom in">+</button>
+        <button type="button" data-diagram-zoom="out" title="Zoom out">-</button>
+        <button type="button" data-diagram-fit title="Fit to view">Fit</button>
+      </div>
+    </div>
+    <div class="diagram-viewport" data-diagram>
+      <svg viewBox="0 0 512 256" data-diagram-svg data-diagram-viewbox="0 0 512 256" role="img" aria-label="ClientSecretCredentialLifecycle transitions">
+        <defs>
+          <marker id="arrow-state-clientsecretcredentiallifecycle" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z"></path>
+          </marker>
+        </defs>
+        <a href="#scl-OAuth2/state/ClientSecretCredentialLifecycle"><g class="diagram-edge" id="context-oauth2-diagram-state-clientsecretcredentiallifecycle-edge-0">
+        <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-state-clientsecretcredentiallifecycle)"></line>
+        <text x="256.0" y="59.0">Expire</text>
+      </g></a><a href="#scl-OAuth2/state/ClientSecretCredentialLifecycle"><g class="diagram-edge" id="context-oauth2-diagram-state-clientsecretcredentiallifecycle-edge-1">
+        <line x1="128.0" y1="94.0" x2="128.0" y2="162.0" marker-end="url(#arrow-state-clientsecretcredentiallifecycle)"></line>
+        <text x="128.0" y="122.0">ClientSecretRevoked</text>
+      </g></a>
+        <a href="#scl-OAuth2/state/ClientSecretCredentialLifecycle"><g class="diagram-node diagram-node-initial" id="context-oauth2-diagram-state-clientsecretcredentiallifecycle-node-active">
+        <rect x="36" y="36" width="184" height="58" rx="8"></rect>
+        <text x="128" y="70">Active</text>
+      </g></a><a href="#scl-OAuth2/state/ClientSecretCredentialLifecycle"><g class="diagram-node diagram-node-terminal" id="context-oauth2-diagram-state-clientsecretcredentiallifecycle-node-expired">
+        <rect x="292" y="36" width="184" height="58" rx="8"></rect>
+        <text x="384" y="70">Expired</text>
+      </g></a><a href="#scl-OAuth2/state/ClientSecretCredentialLifecycle"><g class="diagram-node diagram-node-terminal" id="context-oauth2-diagram-state-clientsecretcredentiallifecycle-node-revoked">
+        <rect x="36" y="162" width="184" height="58" rx="8"></rect>
+        <text x="128" y="196">Revoked</text>
+      </g></a>
+      </svg>
+    </div>
+  </div>
+<div class="diagram-card" id="context-oauth2-diagram-state-authorizationcodeflow">
     <div class="diagram-head">
       <div>
         <div class="label">Diagram</div>
@@ -25924,7 +26130,30 @@ actor.id == target.id に固定。次回その client の認可では consent �
       </g></a>
       </svg>
     </div>
-  </div><div class="cards"><article class="card" id="scl-OAuth2/state/AuthorizationCodeFlow">
+  </div><div class="cards"><article class="card" id="scl-OAuth2/state/ClientSecretCredentialLifecycle">
+    <header><h3>ClientSecretCredentialLifecycle</h3><code class="canonical-ref">OAuth2/state/ClientSecretCredentialLifecycle</code></header>
+    <p class="desc">client secret credential は発行時に Active となり、期限到達で Expired、管理者の個別失効で Revoked となる。Revoked は期限より優先して表示する。</p>
+    <dl class="kv"><dt>target</dt><dd><code>ClientSecretCredential</code></dd><dt>initial</dt><dd><span class="chip chip-initial">Active</span></dd><dt>terminal</dt><dd><span class="chip chip-terminal">Expired</span> <span class="chip chip-terminal">Revoked</span></dd></dl>
+    <div class="sm-row"><div class="label">states (3)</div><div><span class="chip chip-initial">Active</span> <span class="chip chip-terminal">Expired</span> <span class="chip chip-terminal">Revoked</span></div></div>
+    <div class="sm-row"><div class="label">events (2)</div><div><span class="chip">Expire</span> <span class="chip">ClientSecretRevoked</span></div></div>
+    <div class="sub">
+      <div class="label">Transitions</div>
+      <table class="fields"><thead><tr><th>From</th><th>On</th><th>To</th><th>Guard</th><th>Effect</th></tr></thead><tbody><tr>
+    <td><code>Active</code></td>
+    <td><code>Expire</code></td>
+    <td><code>Expired</code></td>
+    <td><code class="expr">now() &gt;= expires_at</code></td>
+    <td></td>
+  </tr><tr>
+    <td><code>Active</code></td>
+    <td><code>ClientSecretRevoked</code></td>
+    <td><code>Revoked</code></td>
+    <td></td>
+    <td></td>
+  </tr></tbody></table>
+    </div>
+  </article>
+<article class="card" id="scl-OAuth2/state/AuthorizationCodeFlow">
     <header><h3>AuthorizationCodeFlow</h3><code class="canonical-ref">OAuth2/state/AuthorizationCodeFlow</code></header>
     <p class="desc">/authorize から /token に至る authorization request のライフサイクル。</p>
     <dl class="kv"><dt>target</dt><dd><code>AuthorizationRequest</code></dd><dt>initial</dt><dd><span class="chip chip-initial">Received</span></dd><dt>terminal</dt><dd><span class="chip chip-terminal">Exchanged</span> <span class="chip chip-terminal">Rejected</span> <span class="chip chip-terminal">Expired</span></dd></dl>
@@ -26625,7 +26854,7 @@ attempts のみ増やす (状態遷移ではない)。
       </article></div>
   </section>
 <section id="context-oauth2-scenarios">
-    <h2>Scenarios <span class="count">36</span></h2>
+    <h2>Scenarios <span class="count">37</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-OAuth2/scenario/user-bound~20OAuth~20grant~E3~81~AFaccount~20scope~E3~81~AEaccess~20token~E3~82~92~E7~99~BA~E8~A1~8C~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>user-bound OAuth grantはaccount scopeのaccess tokenを発行できる</h3><span class="chip chip-actor">RegisteredClient</span><code class="canonical-ref">OAuth2/scenario/user-bound OAuth grantはaccount scopeのaccess tokenを発行できる</code></header>
@@ -26948,8 +27177,29 @@ attempts のみ増やす (状態遷移ではない)。
             <header><span class="chip chip-hint">at 1</span><code class="name">別テナントの client を取得する</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">別テナントの管理者が client_id を指定して取得する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
           </article></div>
-      </article><article class="card scenario" id="scl-OAuth2/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AFApplication~E3~81~8B~E3~82~89client~20secret~E3~82~92~E7~84~A1~E5~81~9C~E6~AD~A2~E3~81~A7rotation~E3~81~A7~E3~81~8D~E3~82~8B">
-        <header><h3>管理者はApplicationからclient secretを無停止でrotationできる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">OAuth2/scenario/管理者はApplicationからclient secretを無停止でrotationできる</code></header>
+      </article><article class="card scenario" id="scl-OAuth2/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AFApplication~E3~81~8B~E3~82~89~E6~9C~9F~E9~99~90~E4~BB~98~E3~81~8Dclient~20secret~E3~82~92~E8~BF~BD~E5~8A~A0~E7~99~BA~E8~A1~8C~E3~81~97~E3~81~A6~E5~80~8B~E5~88~A5~E5~A4~B1~E5~8A~B9~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者はApplicationから期限付きclient secretを追加発行して個別失効できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">OAuth2/scenario/管理者はApplicationから期限付きclient secretを追加発行して個別失効できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_id &quot;acme&quot; の <a class="chip chip-ref" href="#scl-OAuth2/model/Application">Application</a> &quot;billing&quot; は client_secret_basic の confidential OIDC client を binding として持つ</li><li class="scn-step">期限なし legacy secret &quot;S1&quot; が Active である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が expires_in_days 90 で新 secret を追加発行する</li><li class="scn-step">応答で新 secret を一度だけ受け取り、metadata は90日後の expires_at と Active 状態を持つ</li><li class="scn-step">追加発行は既存 secret の期限と状態を変更しない</li><li class="scn-step">新 secret と旧 secret の両方が token endpoint 認証へ成功する</li><li class="scn-step">管理者が旧 credential だけを個別失効する</li><li class="scn-step">旧 secret は <a class="chip chip-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> で拒否され、新 secret は引き続き認証へ成功する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-OAuth2/model/ClientSecretIssued">ClientSecretIssued</a> と <a class="chip chip-ref" href="#scl-OAuth2/model/ClientSecretRevoked">ClientSecretRevoked</a> が actor、client、credential、expiry の非機密 metadata だけを含んで発行される</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">expires_in_days が1..730の範囲外である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">Active credential が既に2件存在する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">追加発行はエラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/ClientSecretLimitExceededError">ClientSecretLimitExceededError</a>&quot; で拒否され、既存 credential は変更されない</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">client が private_key_jwt、mTLS、または public client である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 5</span><code class="name">別 client の credential_id または存在しない credential_id を失効する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 5</span><code class="name">既に Revoked の credential を再び失効する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">冪等に成功し、<a class="chip chip-ref" href="#scl-OAuth2/model/ClientSecretRevoked">ClientSecretRevoked</a> は重複発行されない</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-OAuth2/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E4~BA~92~E6~8F~9Binterface~E3~81~A7client~20secret~E3~82~92~E7~84~A1~E5~81~9C~E6~AD~A2rotation~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者は互換interfaceでclient secretを無停止rotationできる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">OAuth2/scenario/管理者は互換interfaceでclient secretを無停止rotationできる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_id &quot;acme&quot; の <a class="chip chip-ref" href="#scl-OAuth2/model/Application">Application</a> &quot;billing&quot; は client_secret_basic の confidential OIDC client を binding として持つ</li><li class="scn-step">旧 secret &quot;S1&quot; が有効である</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が grace_days 7 で secret を rotation する</li><li class="scn-step">応答で新 secret を一度だけ受け取る</li><li class="scn-step">新 secret と旧 secret は grace_until より前に token endpoint 認証へ成功する</li><li class="scn-step">grace_until より後は旧 secret が <a class="chip chip-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> で拒否される</li><li class="scn-step"><a class="chip chip-ref" href="#scl-OAuth2/model/ClientSecretRotated">ClientSecretRotated</a> が actor、client、grace_until だけを含んで発行される</li></ol></div>
@@ -27881,7 +28131,7 @@ filter の field は registry allowlist のみ。
       <div class="eyebrow">Bounded Context · contexts/application.yaml</div>
       <h1>Application</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">76</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">29</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">13</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">83</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">31</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">14</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-application-glossary">
     <h2>Glossary <span class="count">2</span></h2>
@@ -27906,7 +28156,7 @@ filter の field は registry allowlist のみ。
     </article></div>
   </section>
 <section id="context-application-models">
-    <h2>Models <span class="count">76</span></h2>
+    <h2>Models <span class="count">83</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">8</span></h3>
@@ -28250,7 +28500,7 @@ filter の field は registry allowlist のみ。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">38</span></h3>
+      <h3 class="grp-title">value object <span class="count">41</span></h3>
       <div class="cards"><article class="card" id="scl-Application/model/ApplicationProtocol">
     <header><h3>ApplicationProtocol</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/ApplicationProtocol</code></header>
     <p class="desc">Application に紐づく単一 protocol 設定への参照。type に対応する key だけを持ち、protocol row の application_id から Application へ通常の外部キーで関連付ける。</p>
@@ -28812,7 +29062,7 @@ filter の field は registry allowlist のみ。
     <td><code class="type">ApplicationClientSecretCredentialMetadata[]</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>hash・平文を含まない credential metadata。editor は rotation 状態と overlap expiry のみ表示する。</td>
+    <td>hash・平文を含まない credential metadata。editor は作成日時・有効期限・Active/Expired/Revoked 状態を表示する。</td>
   </tr><tr>
     <td><code class="name">sub_source_attribute</code></td>
     <td><code class="type">String</code></td>
@@ -28835,7 +29085,7 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
   </article>
 <article class="card" id="scl-Application/model/ApplicationClientSecretCredentialMetadata">
     <header><h3>ApplicationClientSecretCredentialMetadata</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/ApplicationClientSecretCredentialMetadata</code></header>
-    <p class="desc">Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出しない。</p>
+    <p class="desc">Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出せず、状態は revoked_at、expires_at、評価時刻から導出する。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -28861,6 +29111,12 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
     <td><code class="name">revoked_at</code></td>
     <td><code class="type">DateTime</code></td>
     <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">status</code></td>
+    <td><code class="type">ClientSecretCredentialStatus</code></td>
+    <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
   </tr></tbody>
@@ -29128,6 +29384,66 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
+    <td><code class="name">credentials</code></td>
+    <td><code class="type">ApplicationClientSecretCredentialMetadata[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Application/model/IssueApplicationClientSecretRequest">
+    <header><h3>IssueApplicationClientSecretRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/IssueApplicationClientSecretRequest</code></header>
+    <p class="desc">Application の OIDC protocol に対し、既存 credential を変更せず期限付き secret を追加発行する要求。expires_in_days は未指定時90、1..730日だけ受理する。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">expires_in_days</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Application/model/IssueApplicationClientSecretResponse">
+    <header><h3>IssueApplicationClientSecretResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/IssueApplicationClientSecretResponse</code></header>
+    <p class="desc">追加発行した secret を一度だけ返す。hash、既存 secret、平文の再取得経路は含まない。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">client_secret</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-annotation">sensitive</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credential</code></td>
+    <td><code class="type">ApplicationClientSecretCredentialMetadata</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credentials</code></td>
+    <td><code class="type">ApplicationClientSecretCredentialMetadata[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Application/model/RevokeApplicationClientSecretResponse">
+    <header><h3>RevokeApplicationClientSecretResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/RevokeApplicationClientSecretResponse</code></header>
+    <p class="desc">指定 credential の個別失効後に返す非機密 metadata 一覧。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
     <td><code class="name">credentials</code></td>
     <td><code class="type">ApplicationClientSecretCredentialMetadata[]</code></td>
     <td><span class="badge badge-required">required</span></td>
@@ -29637,7 +29953,7 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">13</span></h3>
+      <h3 class="grp-title">enum <span class="count">14</span></h3>
       <div class="cards"><article class="card" id="scl-Application/model/ApplicationKind">
     <header><h3>ApplicationKind</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Application/model/ApplicationKind</code></header>
     <p class="desc">Application の種別。federated は SSO フェデレーションを束ねる業務アプリ、weblink は SSO しない外部リンク、service は M2M / client_credentials の API クライアント (Okta の API Services 相当。ポータルタイル・利用者割当を持たない)。</p>
@@ -29694,6 +30010,13 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
     <div class="enum-vals"><span class="chip chip-enum">Public</span> <span class="chip chip-enum">Confidential</span></div>
 
   </article>
+<article class="card" id="scl-Application/model/ClientSecretCredentialStatus">
+    <header><h3>ClientSecretCredentialStatus</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Application/model/ClientSecretCredentialStatus</code></header>
+    <p class="desc">OAuth2 context が publish する client secret credential 状態の published language stub。</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">Active</span> <span class="chip chip-enum">Expired</span> <span class="chip chip-enum">Revoked</span></div>
+
+  </article>
 <article class="card" id="scl-Application/model/GrantType">
     <header><h3>GrantType</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Application/model/GrantType</code></header>
     <p class="desc">OAuth2 context が publish するトークン発行方式の published language stub。</p>
@@ -29731,7 +30054,7 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">14</span></h3>
+      <h3 class="grp-title">event <span class="count">16</span></h3>
       <div class="cards"><article class="card" id="scl-Application/model/ApplicationCreated">
     <header><h3>ApplicationCreated</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Application/model/ApplicationCreated</code></header>
     <p class="desc">Application を作成した。</p>
@@ -30148,6 +30471,92 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </table>
 
   </article>
+<article class="card" id="scl-Application/model/ClientSecretIssued">
+    <header><h3>ClientSecretIssued</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Application/model/ClientSecretIssued</code></header>
+    <p class="desc">OAuth2 context が publish する client secret 追加発行イベントの published language stub。secret と hash は含めない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credentialId</code></td>
+    <td><code class="type">UUID</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">expiresAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Application/model/ClientSecretRevoked">
+    <header><h3>ClientSecretRevoked</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Application/model/ClientSecretRevoked</code></header>
+    <p class="desc">OAuth2 context が publish する client secret 個別失効イベントの published language stub。secret と hash は含めない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credentialId</code></td>
+    <td><code class="type">UUID</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
 <article class="card" id="scl-Application/model/TenantDefaultSignInPolicyUpdated">
     <header><h3>TenantDefaultSignInPolicyUpdated</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Application/model/TenantDefaultSignInPolicyUpdated</code></header>
     <p class="desc">テナントデフォルト sign-in policy を更新した (クリアを含む)。</p>
@@ -30264,7 +30673,7 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">3</span></h3>
+      <h3 class="grp-title">error <span class="count">4</span></h3>
       <div class="cards"><article class="card" id="scl-Application/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Application/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -30294,11 +30703,18 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
 
     <p class="muted">(no fields)</p>
 
+  </article>
+<article class="card" id="scl-Application/model/ClientSecretLimitExceededError">
+    <header><h3>ClientSecretLimitExceededError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Application/model/ClientSecretLimitExceededError</code></header>
+    <p class="desc">OAuth2 context が定義する Active client secret credential 最大2件の上限 error の published language stub。</p>
+
+    <p class="muted">(no fields)</p>
+
   </article></div>
     </div>
   </section>
 <section id="context-application-interfaces">
-    <h2>Interfaces <span class="count">29</span></h2>
+    <h2>Interfaces <span class="count">31</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Application/interface/AssignApplicationDesiredState">
     <header><h3>AssignApplicationDesiredState</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">Application/interface/AssignApplicationDesiredState</code></header>
@@ -30701,7 +31117,7 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
   </article>
 <article class="card" id="scl-Application/interface/RotateApplicationClientSecret">
     <header><h3>RotateApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/RotateApplicationClientSecret</code></header>
-    <p class="desc">管理者が Application の OIDC protocol の client secret を回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。secret-based でない client は拒否する。</p>
+    <p class="desc">互換性のため、管理者が Application の OIDC protocol の client secret を従来方式で回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。新しい管理 UI は IssueApplicationClientSecret と RevokeApplicationClientSecret を使用する。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -30736,6 +31152,86 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/oidc/rotate-secret</code> <span class="chip chip-hint">response: 200</span> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Application/interface/IssueApplicationClientSecret">
+    <header><h3>IssueApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/IssueApplicationClientSecret</code></header>
+    <p class="desc">管理者が Application の secret-based OIDC client に期限付き credential を追加発行する。既存 credential は変更せず、Active credential が2件なら原子的に拒否する。secret-based でない client は拒否する。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">application_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">IssueApplicationClientSecretRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">IssueApplicationClientSecretResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Application/model/ClientSecretLimitExceededError">ClientSecretLimitExceededError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ClientSecretIssued">ClientSecretIssued</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/oidc/client-secrets</code> <span class="chip chip-hint">response: 201</span> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-Application/interface/RevokeApplicationClientSecret">
+    <header><h3>RevokeApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/RevokeApplicationClientSecret</code></header>
+    <p class="desc">管理者が Application の secret-based OIDC client に属する指定 credential だけを即時失効する。既に失効済みなら冪等に成功し、別 client または存在しない credential は拒否する。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">application_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">credential_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">RevokeApplicationClientSecretResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ClientSecretRevoked">ClientSecretRevoked</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{application_id}/oidc/client-secrets/{credential_id}</code> <span class="chip chip-hint">response: 200</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UpdateApplicationWsFedConfig">
@@ -31362,14 +31858,26 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       </article></div></div>
   </section>
 <section id="context-application-scenarios">
-    <h2>Scenarios <span class="count">13</span></h2>
+    <h2>Scenarios <span class="count">14</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-Application/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~82~A2~E3~83~97~E3~83~AA~E8~A9~B3~E7~B4~B0~E3~81~A7IdMagic~E5~81~B4~E3~81~AE~E9~80~A3~E6~90~BA~E8~A8~AD~E5~AE~9A~E3~82~92~E7~A2~BA~E8~AA~8D~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者はアプリ詳細でIdMagic側の連携設定を確認できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Application/scenario/管理者はアプリ詳細でIdMagic側の連携設定を確認できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">管理者が OIDC または SAML protocol を持つ <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> の詳細画面を開いている</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">画面は IdMagic に登録済みの RP / SP 情報と、相手側へ投入する IdMagic の discovery または metadata を区別して表示する</li><li class="scn-step">OIDC application には OpenID Discovery URL と client_id を表示する</li><li class="scn-step">SAML application には IdP metadata URL、entityID、SSO URL、SLO URL、署名証明書を表示する</li><li class="scn-step">client secret は作成・ローテーション応答以外では表示しない</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">画面は IdMagic に登録済みの RP / SP 情報と、相手側へ投入する IdMagic の discovery または metadata を区別して表示する</li><li class="scn-step">OIDC application には OpenID Discovery URL と client_id を表示する</li><li class="scn-step">SAML application には IdP metadata URL、entityID、SSO URL、SLO URL、署名証明書を表示する</li><li class="scn-step">client secret は作成・互換ローテーション・追加発行の成功応答以外では表示しない</li></ol></div>
 
+      </article><article class="card scenario" id="scl-Application/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E9~80~9A~E5~B8~B8~E8~A8~AD~E5~AE~9A~E3~81~A8~E7~8B~AC~E7~AB~8B~E3~81~97~E3~81~9F~E3~82~BB~E3~82~AF~E3~82~B7~E3~83~A7~E3~83~B3~E3~81~A7client~20secret~E3~82~92~E7~AE~A1~E7~90~86~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者は通常設定と独立したセクションでclient secretを管理できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Application/scenario/管理者は通常設定と独立したセクションでclient secretを管理できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">管理者が secret-based OIDC protocol を持つ <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> の編集画面を開いている</li><li class="scn-step">期限なし legacy credential が1件 Active である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">client_id は通常の OIDC 設定カード内に参照項目として表示される</li><li class="scn-step">credential 一覧と追加発行・個別失効操作は通常設定の保存 form 外にある専用トップレベルセクションへ表示される</li><li class="scn-step">管理者が90日の期限を選んで新 secret を追加発行する</li><li class="scn-step">新 secret は一度だけ表示され、一覧には作成日・有効期限・Active 状態が表示される</li><li class="scn-step">管理者が旧 credential を個別失効すると、その行だけが Revoked 状態になる</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 3</span><code class="name">Active credential が既に2件存在する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">追加発行操作は利用不可となり、先に既存 credential を失効する案内を表示する</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 5</span><code class="name">credential が Expired または Revoked である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">個別失効操作は表示しない</li></ol></div>
+          </article></div>
       </article><article class="card scenario" id="scl-Application/scenario/API~20token~E7~99~BA~E8~A1~8C~E8~80~85~E3~81~AFaccount~20scope~E5~86~85~E3~81~A7~E8~87~AA~E8~BA~AB~E3~81~AEportal~20application~E3~81~A0~E3~81~91~E3~82~92~E6~93~8D~E4~BD~9C~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>API token発行者はaccount scope内で自身のportal applicationだけを操作できる</h3><span class="chip chip-actor">SelfApiClient</span><code class="canonical-ref">Application/scenario/API token発行者はaccount scope内で自身のportal applicationだけを操作できる</code></header>
 
@@ -31542,34 +32050,40 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       </g></a><a href="#scl-Application/interface/UpdateApplicationOidcConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-6">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_oidc_config</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationWsFedConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-7">
+      </g></a><a href="#scl-Application/interface/IssueApplicationClientSecret"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-7">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
+        <text x="128.0" y="59.0">issue_client_secret</text>
+      </g></a><a href="#scl-Application/interface/RevokeApplicationClientSecret"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-8">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
+        <text x="128.0" y="59.0">revoke_client_secret</text>
+      </g></a><a href="#scl-Application/interface/UpdateApplicationWsFedConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-9">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_wsfed_config</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationSamlConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-8">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationSamlConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-10">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_saml_config</text>
-      </g></a><a href="#scl-Application/interface/AssignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-9">
+      </g></a><a href="#scl-Application/interface/AssignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-11">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">assign</text>
-      </g></a><a href="#scl-Application/interface/UnassignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-10">
+      </g></a><a href="#scl-Application/interface/UnassignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-12">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">unassign</text>
-      </g></a><a href="#scl-Application/interface/UpdateAppSignInPolicy"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-11">
+      </g></a><a href="#scl-Application/interface/UpdateAppSignInPolicy"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-13">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_sign_in_policy</text>
-      </g></a><a href="#scl-Application/interface/CreateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-12">
+      </g></a><a href="#scl-Application/interface/CreateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-14">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">create_category</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-13">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-15">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_category</text>
-      </g></a><a href="#scl-Application/interface/DeleteApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-14">
+      </g></a><a href="#scl-Application/interface/DeleteApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-16">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">delete_category</text>
-      </g></a><a href="#scl-Application/interface/SetApplicationCategories"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-15">
+      </g></a><a href="#scl-Application/interface/SetApplicationCategories"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-17">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">set_categories</text>
-      </g></a><a href="#scl-Application/flow/AdminApplicationManagement"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-16">
+      </g></a><a href="#scl-Application/flow/AdminApplicationManagement"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-18">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="256.0" y="59.0">manage_users</text>
       </g></a>
@@ -31649,7 +32163,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
             <h4>AdminApplications<span class="chip chip-initial">entry</span></h4>
             <p class="desc">アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成) <code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateAdminApplication">CreateAdminApplication</a></td></tr><tr><td>アプリケーションのメタデータを編集して保存する <code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAdminApplication">UpdateAdminApplication</a></td></tr><tr><td>OIDC / SAML のアプリ詳細を開き、登録済み相手側設定とIdMagic側の連携情報を確認する <code>view_setup_guidance</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/GetAdminApplication">GetAdminApplication</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteAdminApplication">DeleteAdminApplication</a></td></tr><tr><td>アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする <code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UploadApplicationIcon">UploadApplicationIcon</a></td></tr><tr><td>保存済みアイコンを削除する <code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationIcon">DeleteApplicationIcon</a></td></tr><tr><td>OIDC protocol が指す OAuth2 client の設定を編集して保存する <code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationOidcConfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>WS-Fed protocol が指す relying party の設定を編集して保存する <code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationWsFedConfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>SAML service provider設定とIdP profile割当を編集して保存する <code>update_saml_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationSamlConfig">UpdateApplicationSamlConfig</a></td></tr><tr><td>ユーザーまたはグループを割当てる <code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/AssignApplication">AssignApplication</a></td></tr><tr><td>割当を解除する <code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UnassignApplication">UnassignApplication</a></td></tr><tr><td>sign-in policy を編集して保存する <code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAppSignInPolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>カテゴリ名を入力して作成する <code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateApplicationCategory">CreateApplicationCategory</a></td></tr><tr><td>カテゴリの名前または並び順を編集して保存する <code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationCategory">UpdateApplicationCategory</a></td></tr><tr><td>カテゴリを削除する <code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationCategory">DeleteApplicationCategory</a></td></tr><tr><td>アプリケーションに付与するカテゴリ集合を選び直して保存する <code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/SetApplicationCategories">SetApplicationCategories</a></td></tr><tr><td>ユーザー管理へのリンクをクリックする <code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
+                   <tbody><tr><td>種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成) <code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateAdminApplication">CreateAdminApplication</a></td></tr><tr><td>アプリケーションのメタデータを編集して保存する <code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAdminApplication">UpdateAdminApplication</a></td></tr><tr><td>OIDC / SAML のアプリ詳細を開き、登録済み相手側設定とIdMagic側の連携情報を確認する <code>view_setup_guidance</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/GetAdminApplication">GetAdminApplication</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteAdminApplication">DeleteAdminApplication</a></td></tr><tr><td>アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする <code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UploadApplicationIcon">UploadApplicationIcon</a></td></tr><tr><td>保存済みアイコンを削除する <code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationIcon">DeleteApplicationIcon</a></td></tr><tr><td>OIDC protocol が指す OAuth2 client の設定を編集して保存する <code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationOidcConfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>通常設定 form と独立した credential 管理セクションで期限付き client secret を追加発行する <code>issue_client_secret</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/IssueApplicationClientSecret">IssueApplicationClientSecret</a></td></tr><tr><td>credential 管理セクションで指定 client secret credential だけを失効する <code>revoke_client_secret</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/RevokeApplicationClientSecret">RevokeApplicationClientSecret</a></td></tr><tr><td>WS-Fed protocol が指す relying party の設定を編集して保存する <code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationWsFedConfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>SAML service provider設定とIdP profile割当を編集して保存する <code>update_saml_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationSamlConfig">UpdateApplicationSamlConfig</a></td></tr><tr><td>ユーザーまたはグループを割当てる <code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/AssignApplication">AssignApplication</a></td></tr><tr><td>割当を解除する <code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UnassignApplication">UnassignApplication</a></td></tr><tr><td>sign-in policy を編集して保存する <code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAppSignInPolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>カテゴリ名を入力して作成する <code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateApplicationCategory">CreateApplicationCategory</a></td></tr><tr><td>カテゴリの名前または並び順を編集して保存する <code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationCategory">UpdateApplicationCategory</a></td></tr><tr><td>カテゴリを削除する <code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationCategory">DeleteApplicationCategory</a></td></tr><tr><td>アプリケーションに付与するカテゴリ集合を選び直して保存する <code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/SetApplicationCategories">SetApplicationCategories</a></td></tr><tr><td>ユーザー管理へのリンクをクリックする <code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-Application/flow/AdminSignInPolicyManagement">
         <header><h3>AdminSignInPolicyManagement</h3><span class="chip chip-initial">entry: AdminSignInPolicy</span><code class="canonical-ref">Application/flow/AdminSignInPolicyManagement</code></header>

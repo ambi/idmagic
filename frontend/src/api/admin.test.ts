@@ -17,6 +17,7 @@ import {
   disableTenantKey,
   enableAdminAgent,
   killAdminAgent,
+  issueApplicationClientSecret,
   listAdminUserSessions,
   listApiTokens,
   removeAdminGroupMember,
@@ -24,6 +25,7 @@ import {
   revokeAdminUserSession,
   revokeAllAdminUserSessions,
   revokeApiToken,
+  revokeApplicationClientSecret,
   rotateTenantSigningKey,
   setAdminUserDisabled,
   setAdminUserRequiredAction,
@@ -49,6 +51,43 @@ const response = (status: number, body: unknown = {}) => ({
 describe('admin API client', () => {
   beforeEach(() => stubGlobal('fetch', mock().mockResolvedValue(response(204))))
   afterEach(() => restoreGlobals())
+
+  it('client secret の追加発行・個別失効契約を ID encode と CSRF 付きで送信する', async () => {
+    const credentials = [
+      {
+        credential_id: 'credential/a b',
+        created_at: '2026-08-01T00:00:00Z',
+        expires_at: '2026-10-30T00:00:00Z',
+        status: 'Active' as const,
+      },
+    ]
+    const fetchMock = mock()
+      .mockResolvedValueOnce(
+        response(201, {
+          client_secret: 'one-time-secret',
+          credential: credentials[0],
+          credentials,
+        }),
+      )
+      .mockResolvedValueOnce(response(200, { credentials }))
+    stubGlobal('fetch', fetchMock)
+
+    await issueApplicationClientSecret('csrf', 'app/a b', 90)
+    await revokeApplicationClientSecret('csrf', 'app/a b', 'credential/a b')
+
+    const calls = fetchMock.mock.calls
+    expect(calls[0][0]).toContain('/api/admin/applications/app%2Fa%20b/oidc/client-secrets')
+    expect(calls[0][1]).toEqual(
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ expires_in_days: 90 }),
+      }),
+    )
+    expect(calls[1][0]).toContain(
+      '/api/admin/applications/app%2Fa%20b/oidc/client-secrets/credential%2Fa%20b',
+    )
+    expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'DELETE' }))
+  })
 
   it('MCP resource server 管理契約を公開する', () => {
     expect(adminAPI).toEqual(

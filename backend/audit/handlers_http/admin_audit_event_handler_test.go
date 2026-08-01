@@ -322,6 +322,8 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 		auditEvent("acme", "AuthenticationFailed", "", now.Add(-time.Second)),
 		auditEvent("acme", "PasswordChanged", "alice", now.Add(-2*time.Second)),        // user カテゴリ
 		auditEvent("acme", "AdminOAuth2ClientCreated", "ops", now.Add(-3*time.Second)), // client カテゴリ
+		auditEvent("acme", "ClientSecretIssued", "ops", now.Add(-4*time.Second)),       // client credential lifecycle
+		auditEvent("acme", "ClientSecretRevoked", "ops", now.Add(-5*time.Second)),      // client credential lifecycle
 	}
 	e := newAuditAdminServer(t, user, events)
 
@@ -344,7 +346,8 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 	// 管理操作カテゴリ (認証以外) も絞り込めること。
 	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?category=client")
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if len(body.Events) != 1 || body.Events[0].Type != "AdminOAuth2ClientCreated" {
+	if len(body.Events) != 3 || body.Events[0].Type != "ClientSecretRevoked" ||
+		body.Events[1].Type != "ClientSecretIssued" || body.Events[2].Type != "AdminOAuth2ClientCreated" {
 		t.Fatalf("category=client mismatch: %+v", body.Events)
 	}
 

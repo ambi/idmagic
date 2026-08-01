@@ -983,6 +983,13 @@ models:
     values:
       - Public
       - Confidential
+  ClientSecretCredentialStatus:
+    kind: enum
+    description: client secret credential の現在状態。revoked_at を最優先し、次に expires_at と現在時刻から導出する。
+    values:
+      - Active
+      - Expired
+      - Revoked
   GrantType:
     kind: enum
     description: トークン発行の方式。本アプリがサポートする 5 種を列挙する。各値の意味は glossary を参照。
@@ -1225,12 +1232,12 @@ models:
         description: 作成時は created_at と同じ値を持ち、以後 client metadata の管理操作ごとに更新する。
   ClientSecretCredential:
     kind: entity
-    description: secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。旧 credential は overlap expiry または revoke までのみ照合対象となる。
+    description: secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。新規発行は既存 credential を変更せず、個別 revoke または expiry まで照合対象となる。既存の期限なし credential は無停止移行のため許容する。
     identity:
       - credential_id
     constraints:
       - client_secret_credential_references_existing_client(client_id)
-      - at_most_two_non_revoked_client_secret_credentials(client_id)
+      - at_most_two_active_client_secret_credentials(client_id, now())
     fields:
       credential_id:
         type: UUID
@@ -1245,7 +1252,7 @@ models:
       expires_at:
         type: DateTime
         optional: true
-        description: overlap の終了時刻。null は current credential を表す。
+        description: credential の有効期限。新規追加発行では必須、null は移行前から存在する期限なし legacy credential または互換 rotation の current credential を表す。
       revoked_at:
         type: DateTime
         optional: true
@@ -2348,7 +2355,7 @@ models:
         type: "AdminOAuth2ClientResponse[]"
   ClientSecretCredentialMetadata:
     kind: value_object
-    description: Application editor が表示する secret credential の非機密メタデータ。
+    description: Application editor が表示する secret credential の非機密メタデータ。状態は revoked_at、expires_at、評価時刻の順で導出する。
     fields:
       credential_id:
         type: UUID
@@ -2360,6 +2367,33 @@ models:
       revoked_at:
         type: DateTime
         optional: true
+      status:
+        type: ClientSecretCredentialStatus
+  IssueClientSecretRequest:
+    kind: value_object
+    description: 既存 credential を変更せず、有効期限付き client secret を追加発行する要求。expires_in_days は未指定時90、1..730日だけ受理する。
+    fields:
+      expires_in_days:
+        type: Integer
+        optional: true
+  IssueClientSecretResponse:
+    kind: value_object
+    description: 追加発行した secret を一度だけ返す応答。既存 secret、hash、平文の再取得経路は含めない。
+    fields:
+      client_secret:
+        type: String
+        annotations:
+          sensitive: true
+      credential:
+        type: ClientSecretCredentialMetadata
+      credentials:
+        type: "ClientSecretCredentialMetadata[]"
+  RevokeClientSecretResponse:
+    kind: value_object
+    description: 個別失効後の非機密 credential metadata 一覧。secret と hash は含めない。
+    fields:
+      credentials:
+        type: "ClientSecretCredentialMetadata[]"
   RotateClientSecretRequest:
     kind: value_object
     description: 既存 secret の overlap 日数を指定する rotation 要求。0 は即時 revoke rotation、1..30 は猶予付き rotation、未指定は7日。
@@ -2752,6 +2786,9 @@ models:
   QuotaExceededError:
     kind: error
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
+  ClientSecretLimitExceededError:
+    kind: error
+    description: secret-based client が同時に保持できる Active credential 2件の上限に達している。既存 credential を個別失効してから再試行できる。
   ClaimMappingPolicy:
     kind: value_object
     description: ClaimMapping context が publish する client 単位の claim 発行規則の最小 stub。
@@ -2883,7 +2920,7 @@ models:
         type: String
   ClientSecretRotated:
     kind: event
-    description: 管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。
+    description: 互換 interface で管理者が secret-based client の credential を rotation または即時 revoke した。secret と hash は payload に含めない。
     payload:
       occurredAt:
         type: DateTime
@@ -2898,6 +2935,36 @@ models:
         optional: true
       revokedImmediately:
         type: Boolean
+  ClientSecretIssued:
+    kind: event
+    description: 管理者が secret-based client に有効期限付き credential を追加発行した。secret と hash は payload に含めない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      clientId:
+        type: String
+      credentialId:
+        type: UUID
+      expiresAt:
+        type: DateTime
+  ClientSecretRevoked:
+    kind: event
+    description: 管理者が secret-based client の指定 credential を個別失効した。secret と hash は payload に含めない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      clientId:
+        type: String
+      credentialId:
+        type: UUID
   ConsentGranted:
     kind: event
     description: ResourceOwner がクライアントに対する scope の同意を与えた (GDPR Art.6 法的根拠の取得記録)。
@@ -3358,6 +3425,21 @@ models:
     description: LogoutNotification の配送が max_attempts に到達し dead-letter へ確定した lifecycle event。
     payload: { occurredAt: { type: DateTime } }
 states:
+  ClientSecretCredentialLifecycle:
+    description: client secret credential は発行時に Active となり、期限到達で Expired、管理者の個別失効で Revoked となる。Revoked は期限より優先して表示する。
+    target: ClientSecretCredential
+    initial: Active
+    terminal:
+      - Expired
+      - Revoked
+    transitions:
+      - from: Active
+        event: Expire
+        to: Expired
+        guard: now() >= expires_at
+      - from: Active
+        event: ClientSecretRevoked
+        to: Revoked
   AuthorizationCodeFlow:
     description: /authorize から /token に至る authorization request のライフサイクル。
     target: AuthorizationRequest
@@ -5247,7 +5329,41 @@ scenarios:
         steps:
           - 別テナントの管理者が client_id を指定して取得する
           - 'エラー "InvalidRequestError"'
-  管理者はApplicationからclient secretを無停止でrotationできる:
+  管理者はApplicationから期限付きclient secretを追加発行して個別失効できる:
+    actor: TenantAdministrator
+    given:
+      - 'tenant_id "acme" の Application "billing" は client_secret_basic の confidential OIDC client を binding として持つ'
+      - '期限なし legacy secret "S1" が Active である'
+    main_success:
+      - 管理者が expires_in_days 90 で新 secret を追加発行する
+      - 応答で新 secret を一度だけ受け取り、metadata は90日後の expires_at と Active 状態を持つ
+      - 追加発行は既存 secret の期限と状態を変更しない
+      - 新 secret と旧 secret の両方が token endpoint 認証へ成功する
+      - 管理者が旧 credential だけを個別失効する
+      - 旧 secret は InvalidClientError で拒否され、新 secret は引き続き認証へ成功する
+      - ClientSecretIssued と ClientSecretRevoked が actor、client、credential、expiry の非機密 metadata だけを含んで発行される
+    extensions:
+      - at: 1
+        condition: expires_in_days が1..730の範囲外である
+        steps:
+          - エラー "InvalidRequestError"
+      - at: 1
+        condition: Active credential が既に2件存在する
+        steps:
+          - 追加発行はエラー "ClientSecretLimitExceededError" で拒否され、既存 credential は変更されない
+      - at: 1
+        condition: client が private_key_jwt、mTLS、または public client である
+        steps:
+          - エラー "InvalidRequestError"
+      - at: 5
+        condition: 別 client の credential_id または存在しない credential_id を失効する
+        steps:
+          - エラー "InvalidRequestError"
+      - at: 5
+        condition: 既に Revoked の credential を再び失効する
+        steps:
+          - 冪等に成功し、ClientSecretRevoked は重複発行されない
+  管理者は互換interfaceでclient secretを無停止rotationできる:
     actor: TenantAdministrator
     given:
       - 'tenant_id "acme" の Application "billing" は client_secret_basic の confidential OIDC client を binding として持つ'

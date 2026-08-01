@@ -193,6 +193,63 @@ func TestClientAuthenticationFailuresAreUniform(t *testing.T) {
 	}
 }
 
+func TestClientAuthenticationUsesAnyActiveCredentialOnly(t *testing.T) {
+	now := time.Now().UTC()
+	repo := oauth2memory.NewClientRepository()
+	repo.Seed(&domain.OAuth2Client{
+		ClientID: "client", ClientType: spec.ClientConfidential,
+		GrantTypes:               []spec.GrantType{spec.GrantClientCredentials},
+		TokenEndpointAuthMethod:  domain.AuthMethodClientSecretBasic,
+		IDTokenSignedResponseAlg: signingdomain.SigAlgPS256, FapiProfile: domain.FapiNone,
+		CreatedAt: now,
+	})
+	future := now.Add(time.Hour)
+	past := now.Add(-time.Hour)
+	revokedAt := now.Add(-time.Minute)
+	credentials := []struct {
+		id        string
+		secret    string
+		expiresAt *time.Time
+		revokedAt *time.Time
+		want      int
+	}{
+		{"active-current", "active-current", nil, nil, http.StatusOK},
+		{"active-expiring", "active-expiring", &future, nil, http.StatusOK},
+		{"expired", "expired", &past, nil, http.StatusUnauthorized},
+		{"revoked", "revoked", &future, &revokedAt, http.StatusUnauthorized},
+	}
+	for _, credential := range credentials {
+		if err := repo.SaveClientSecretCredential(t.Context(), domain.ClientSecretCredential{
+			CredentialID: credential.id, ClientID: "client",
+			SecretHash: domain.HashClientSecret(credential.secret), CreatedAt: now.Add(-time.Hour),
+			ExpiresAt: credential.expiresAt, RevokedAt: credential.revokedAt,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deps := Deps{Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo}
+	e := echo.New()
+	e.POST("/test", func(c *echo.Context) error {
+		client, err := deps.authenticateTokenClient(c)
+		if err != nil {
+			return writeOAuthError(c, err)
+		}
+		return c.String(http.StatusOK, client.ID)
+	})
+
+	for _, credential := range credentials {
+		t.Run(credential.id, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/test", http.NoBody)
+			req.SetBasicAuth("client", credential.secret)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+			if rec.Code != credential.want {
+				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
 func TestPrivateKeyJWTAuthentication(t *testing.T) {
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
