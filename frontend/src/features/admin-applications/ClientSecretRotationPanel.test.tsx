@@ -7,6 +7,7 @@ import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import type { ClientSecretCredentialMetadata } from '../../types'
 
 const t = adminApplicationsDictionary.en
+const ja = adminApplicationsDictionary.ja
 const response = (status: number, body: unknown = {}) => ({
   ok: status >= 200 && status < 300,
   status,
@@ -53,6 +54,22 @@ describe('ClientSecretRotationPanel', () => {
     expect(screen.getByText(t.secretStatusRevoked)).toBeInTheDocument()
     expect(screen.getByText(t.secretNeverExpires)).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: t.secretRevokeButton })).toHaveLength(1)
+  })
+
+  it('日本語の状態バッジは内容に依存しない幅を持ち、失効済みを折り返さない', async () => {
+    await renderWithRouter(
+      <ClientSecretRotationPanel
+        applicationID="app-1"
+        csrfToken="csrf"
+        initialCredentials={credentials}
+        onError={mock()}
+      />,
+      { locale: 'ja' },
+    )
+
+    for (const label of [ja.secretStatusActive, ja.secretStatusRevoked]) {
+      expect(screen.getByText(label)).toHaveClass('min-w-20', 'justify-center', 'whitespace-nowrap')
+    }
   })
 
   it('期限付き secret を追加発行し、平文を一度限り表示して一覧を更新する', async () => {

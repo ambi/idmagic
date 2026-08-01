@@ -152,7 +152,7 @@ export function ClientSecretRotationPanel({
                 <th className="px-4 py-3">{t.secretCredentialIdHeader}</th>
                 <th className="px-4 py-3">{t.secretCreatedAtHeader}</th>
                 <th className="px-4 py-3">{t.secretExpiresAtHeader}</th>
-                <th className="px-4 py-3">{t.secretStatusHeader}</th>
+                <th className="whitespace-nowrap px-4 py-3">{t.secretStatusHeader}</th>
                 <th className="px-4 py-3 text-right">{t.secretActionsHeader}</th>
               </tr>
             </thead>
@@ -170,9 +170,9 @@ export function ClientSecretRotationPanel({
                       ? formatDate(credential.expires_at)
                       : t.secretNeverExpires}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass(credential.status)}`}
+                      className={`inline-flex min-w-20 justify-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${statusClass(credential.status)}`}
                     >
                       {statusLabel(credential.status)}
                     </span>

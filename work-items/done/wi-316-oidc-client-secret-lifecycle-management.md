@@ -110,6 +110,8 @@ UI 文言・ナビゲーション整理を扱う wi-314 の範囲からは明示
 5. 層別テスト、`just verify`、`just test-ui-e2e`、SCL/record 検査を通し、実機相当の DOM・視覚境界を
    確認する。
 6. Completion を記録して `work-items/done/` へ移し、差分を Conventional Commit にまとめる。
+7. 実機フィードバックで判明した日本語ステータスバッジの内容幅依存と折り返しを、共通最小幅・
+   中央揃え・折り返し禁止で修正し、表示回帰テストを追加する。
 
 ## Tasks
 
@@ -153,6 +155,10 @@ UI 文言・ナビゲーション整理を扱う wi-314 の範囲からは明示
 - [x] T011 [Verify] `just verify`、`just test-ui-e2e`、`just check` を通し、実機相当レビューを行う。
       全コマンド成功。DOM 境界テスト、24px の sibling Card 間隔、E2E 4 spec / 22 tests で
       視覚・構造境界と主要ブラウザー導線を実機相当確認した。
+- [x] T012 [App] 日本語ステータスバッジの幅を状態間で揃え、「失効済み」を1行に保つ。
+      RED: 日本語の「有効」「失効済み」に共通最小幅・中央揃え・折り返し禁止がないことを
+      component test で確認 → `min-w-20 justify-center whitespace-nowrap` と状態列の
+      `whitespace-nowrap` を追加して GREEN。`just verify-ui` も成功した。
 
 ## Verification
 
@@ -189,7 +195,8 @@ test、HTTP contract test、token endpoint 回帰テストで検証する。
   UI はクライアント ID を含む通常設定 Card と別のトップレベル Card にし、設定 `<form>` の外へ
   完全に分離した。専用 Card には見出し・説明・credential 一覧・発行・失効だけを置き、両 Card は
   `gap-6` の兄弟要素である。単なる下方向への移動や内側 section 化ではないことを DOM test で
-  固定した。
+  固定した。完了後の実機フィードバックで判明した状態バッジの内容幅依存も解消し、「有効」だけの
+  場合も十分な楕円幅を保ち、「失効済み」は折り返さない表示へ修正した。
 - **Affected Guarantees State**:
   新規発行は既存 credential を変更せず、repository transaction が同時 active 最大2件を原子的に
   保証する。token endpoint は active credential のどちらも受理し、`expires_at <= now` または
