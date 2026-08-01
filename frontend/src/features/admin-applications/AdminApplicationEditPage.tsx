@@ -1,4 +1,4 @@
-import { IconArrowLeft, IconKey, IconTrash, IconWorldShare } from '@tabler/icons-react'
+import { IconArrowLeft, IconKey, IconTrash, IconUpload, IconWorldShare } from '@tabler/icons-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import {
   deleteApplicationIcon,
@@ -78,6 +78,7 @@ export function AdminApplicationEditPage({
   const [iconPreviewURL, setIconPreviewURL] = useState('')
   const [removeIcon, setRemoveIcon] = useState(false)
   const iconSelectionToken = useRef(0)
+  const iconInputRef = useRef<HTMLInputElement>(null)
   const [launchURL, setLaunchURL] = useState(app.launch_url ?? '')
   const [status, setStatus] = useState<ApplicationStatus>(app.status)
   const [redirects, setRedirects] = useState((detail.oidc?.redirect_uris ?? []).join('\n'))
@@ -388,14 +389,27 @@ export function AdminApplicationEditPage({
                     </span>
                   )}
                   <div className="grid flex-1 gap-2 sm:flex sm:items-center">
-                    <Input
+                    <input
+                      ref={iconInputRef}
                       id="edit-icon-file"
                       type="file"
                       accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
                       onChange={(e) => {
                         void selectIconFile(e.target.files?.[0] ?? null)
                       }}
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => iconInputRef.current?.click()}
+                    >
+                      <IconUpload size={16} aria-hidden="true" />
+                      {t.chooseIconFile}
+                    </Button>
+                    <span className="text-sm text-slate-500">
+                      {iconFile?.name ?? t.noIconFileChosen}
+                    </span>
                     {app.icon_object_key || iconFile ? (
                       <Button
                         type="button"

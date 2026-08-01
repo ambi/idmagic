@@ -101,7 +101,7 @@ export function ConnectionSettingsForm({
     try {
       const conn = await updateAdminApplicationProvisioning(csrfToken, applicationID, {
         base_url: baseURL,
-        feature_flags: flags,
+        feature_flags: { ...flags, push_groups: groupPushEnabled },
         scope,
         group_push: groupPushEnabled
           ? {
@@ -149,7 +149,6 @@ export function ConnectionSettingsForm({
                 ['update_users', t.updateUsersLabel],
                 ['deactivate_users', t.deactivateUsersLabel],
                 ['delete_users', t.deleteUsersLabel],
-                ['push_groups', t.pushGroupsLabel],
               ] as [keyof ProvisioningFeatureFlags, string][]
             ).map(([key, label]) => (
               <label key={key} className="flex items-center gap-2 text-sm text-slate-700">

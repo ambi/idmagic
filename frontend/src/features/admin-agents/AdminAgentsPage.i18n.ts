@@ -46,7 +46,7 @@ export const adminAgentsDictionary = defineDictionary(
     disable: '無効化',
     enable: '有効化',
     kill: '緊急停止 (kill)',
-    deleteAgent: 'エージェントを削除',
+    deleteAgent: '削除',
     confirmKillPrompt:
       'このエージェントを緊急停止しますか？緊急停止は一方向の操作で、取り消せません。停止後は再有効化できず、すべての資格情報が無効になります。',
     dismissConfirm: '取消',
@@ -117,7 +117,7 @@ export const adminAgentsDictionary = defineDictionary(
     disable: 'Disable',
     enable: 'Enable',
     kill: 'Kill (emergency stop)',
-    deleteAgent: 'Delete agent',
+    deleteAgent: 'Delete',
     confirmKillPrompt:
       'Kill this agent? This is a one-way action and cannot be undone. Once killed, it cannot be re-enabled and all credentials are invalidated.',
     dismissConfirm: 'Cancel',

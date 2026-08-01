@@ -3,7 +3,7 @@ import { defineDictionary } from '../../lib/i18n'
 export const loginPageDictionary = defineDictionary(
   {
     eyebrow: 'サインイン',
-    title: 'アカウントにログイン',
+    title: 'ログイン',
     description: '組織から発行された認証情報を入力して、安全に続行してください。',
     errorTitle: 'ログインできません',
     usernameLabel: 'ユーザー名',
@@ -13,7 +13,7 @@ export const loginPageDictionary = defineDictionary(
     showPassword: 'パスワードを表示',
     hidePassword: 'パスワードを隠す',
     submitting: '確認しています…',
-    submit: 'ログインして続行',
+    submit: 'ログイン',
     forgotPassword: 'パスワードを忘れた場合',
     alternativeSignIn: 'または外部アカウントで続行',
     continueWith: '{provider} で続行',
@@ -22,7 +22,7 @@ export const loginPageDictionary = defineDictionary(
   },
   {
     eyebrow: 'Sign in',
-    title: 'Sign in to your account',
+    title: 'Sign in',
     description: 'Enter the credentials issued by your organization to continue securely.',
     errorTitle: "Can't sign in",
     usernameLabel: 'Username',

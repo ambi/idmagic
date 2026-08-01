@@ -58,7 +58,13 @@ export function ConsentPage({
     try {
       continueBrowserFlow(await submitConsent(csrfToken, action))
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.consentError)
+      if (cause instanceof AuthenticationAPIError) {
+        setError(cause.message)
+      } else {
+        // Non-API errors mean the request never reached the server, so the action
+        // was not recorded and retrying is safe.
+        setError(action === 'deny' ? t.denyError : t.consentError)
+      }
       setSubmitting(false)
     }
   }

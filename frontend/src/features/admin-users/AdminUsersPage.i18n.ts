@@ -7,7 +7,7 @@ export const adminUsersDictionary = defineDictionary(
     statusDisabled: '無効',
     statusPendingDeletion: '削除予約',
     pageTitle: 'ユーザー',
-    pageDescription: '組織のID、アクセスロール、アカウント状態を一元管理します。',
+    pageDescription: 'ユーザーアカウントを一覧・検索し、状態や割り当てられたロールを確認できます。',
     addUser: 'ユーザーを追加',
     genericActionError: '管理操作を完了できませんでした。',
     userDisabledNotice: 'ユーザーを無効化しました。',
@@ -237,8 +237,7 @@ export const adminUsersDictionary = defineDictionary(
     statusDisabled: 'Disabled',
     statusPendingDeletion: 'Pending deletion',
     pageTitle: 'Users',
-    pageDescription:
-      'Manage organization identities, access roles, and account status in one place.',
+    pageDescription: 'Search and review user accounts, along with their status and assigned roles.',
     addUser: 'Add user',
     genericActionError: 'Could not complete the admin action.',
     userDisabledNotice: 'The user has been disabled.',

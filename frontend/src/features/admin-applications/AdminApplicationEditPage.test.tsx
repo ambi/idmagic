@@ -48,4 +48,18 @@ describe('AdminApplicationEditPage', () => {
     expect(await screen.findByText('Could not update the name.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
+
+  it('shows the chosen icon file name instead of the native file input text', async () => {
+    await renderWithRouter(<AdminApplicationEditPage csrfToken="csrf" detail={detail} />)
+
+    expect(screen.getByText(t.noIconFileChosen)).toBeInTheDocument()
+
+    const pngSignature = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const file = new File([pngSignature], 'logo.png', { type: 'image/png' })
+    const fileInput = screen.getByLabelText(t.iconImageFieldLabel) as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [file] } })
+
+    expect(await screen.findByText('logo.png')).toBeInTheDocument()
+    expect(screen.queryByText(t.noIconFileChosen)).not.toBeInTheDocument()
+  })
 })

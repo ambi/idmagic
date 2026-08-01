@@ -3,11 +3,11 @@ import { defineDictionary } from '../../lib/i18n'
 export const informationalPagesDictionary = defineDictionary(
   {
     homeEyebrow: 'IDプロバイダー',
-    homeTitle: 'IdMagic は起動しています',
+    homeTitle: 'このページでは何も操作できません',
     homeDescription:
-      'ログイン画面は、接続するアプリケーションから認証要求を受けたときに表示されます。',
+      'ここは各アプリケーションのサインインを仲介する基盤のトップページです。ログイン画面は、利用するアプリケーションを経由してアクセスしたときに表示されます。',
     homeDirectLogin:
-      '/login を直接開くことはできません。OAuth 2.0 / OpenID Connect クライアントから /authorize を開始してください。',
+      'このアドレスへ直接アクセスした場合は、利用したいアプリケーションの画面に戻ってログインを始めてください。',
     startDemo: 'ローカルデモ認証を開始',
     startFromApplication: '利用するアプリケーションからログインを開始してください。',
     demoUser: 'デモユーザー:',
@@ -20,11 +20,11 @@ export const informationalPagesDictionary = defineDictionary(
   },
   {
     homeEyebrow: 'Identity provider',
-    homeTitle: 'IdMagic is running',
+    homeTitle: 'There is nothing to do on this page',
     homeDescription:
-      'The sign-in page appears when a connected application starts an authorization request.',
+      'This is the landing page for the sign-in service that connected applications use. The sign-in screen appears only when you reach it through the application you are using.',
     homeDirectLogin:
-      'You cannot open /login directly. Start /authorize from an OAuth 2.0 or OpenID Connect client.',
+      'If you reached this address directly, go back to the application you want to use and start signing in from there.',
     startDemo: 'Start local demo authorization',
     startFromApplication: 'Start signing in from the application you use.',
     demoUser: 'Demo user:',

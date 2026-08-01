@@ -195,6 +195,26 @@ describe('auth-flow pages', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Permission denied')
   })
 
+  it('redirects to the client when denying consent succeeds', async () => {
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue(response(200, { redirect_to: '/callback?error=access_denied' })),
+    )
+    render(<ConsentPage csrfToken="csrf" clientName="Portal" scopes={['openid']} />)
+    fireEvent.click(screen.getByRole('button', { name: consentT.deny }))
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith('/callback?error=access_denied'),
+    )
+  })
+
+  it('shows a deny-specific retry message when denying fails at the network level', async () => {
+    stubGlobal('fetch', mock().mockRejectedValue(new TypeError('network down')))
+    render(<ConsentPage csrfToken="csrf" clientName="Portal" scopes={['openid']} />)
+    fireEvent.click(screen.getByRole('button', { name: consentT.deny }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(consentT.denyError)
+    expect(screen.getByRole('button', { name: consentT.allow })).not.toBeDisabled()
+  })
+
   it('also exposes a failure when allowing consent fails', async () => {
     stubGlobal(
       'fetch',

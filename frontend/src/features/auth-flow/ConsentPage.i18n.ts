@@ -22,12 +22,12 @@ export const consentPageDictionary = defineDictionary(
     scopeUnknownDescription: 'このアプリケーションが要求する追加権限',
     fineGrainedPermissions: '細粒度の権限',
     fineGrainedPermissionsDescription: '以下の対象・上限に限定して許可します。',
-    retentionNote:
-      '許可は組織のポリシーに従って保存され、後から管理者またはアプリ側で取り消せます。',
+    retentionNote: '許可した内容は、後から取り消せます。',
     processing: '処理しています…',
-    allow: '許可して続行',
+    allow: '許可',
     deny: '許可しない',
     consentError: 'アクセス要求を処理できませんでした。',
+    denyError: '「許可しない」を送信できませんでした。もう一度お試しください。',
   },
   {
     asideTitle: 'Clear, minimal data sharing.',
@@ -50,11 +50,11 @@ export const consentPageDictionary = defineDictionary(
     scopeUnknownDescription: 'Additional permission requested by this application',
     fineGrainedPermissions: 'Fine-grained permissions',
     fineGrainedPermissionsDescription: 'Access will be limited to the targets and limits below.',
-    retentionNote:
-      "Approval is stored under your organization's policy and can later be revoked by an administrator or the application.",
+    retentionNote: 'You can revoke this later.',
     processing: 'Processing…',
-    allow: 'Allow and continue',
+    allow: 'Allow',
     deny: 'Deny',
     consentError: 'Could not process the access request.',
+    denyError: 'Could not send your denial. Please try again.',
   },
 )

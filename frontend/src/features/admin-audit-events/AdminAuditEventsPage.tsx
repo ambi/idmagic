@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import type { AdminAuditEvent } from '../../types'
+import { friendlyEventName } from '../admin-dashboard/AdminDashboardPage.i18n'
 import {
   adminAuditEventsDictionary,
   type AdminAuditEventsDictionary,
@@ -467,7 +468,7 @@ export function AdminAuditEventsPage({
                           {kindLabel(authEventKind(e.type) as EventKind, t)}
                         </span>
                       ) : null}
-                      {e.type}
+                      {friendlyEventName(e.type, locale)}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{e.tenant_id}</td>
@@ -499,7 +500,7 @@ export function AdminAuditEventsPage({
                 <dt className="text-slate-500">{t.idLabel}</dt>
                 <dd className="break-all font-mono">{selected.id}</dd>
                 <dt className="text-slate-500">{t.tableHeaderType}</dt>
-                <dd>{selected.type}</dd>
+                <dd>{friendlyEventName(selected.type, locale)}</dd>
                 <dt className="text-slate-500">{t.tableHeaderTenant}</dt>
                 <dd className="font-mono">{selected.tenant_id}</dd>
                 <dt className="text-slate-500">{t.dateTimeLabel}</dt>

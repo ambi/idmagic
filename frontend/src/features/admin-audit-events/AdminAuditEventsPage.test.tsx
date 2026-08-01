@@ -5,6 +5,7 @@ import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminAuditEventsPage } from './AdminAuditEventsPage'
 import { adminAuditEventsDictionary } from './AdminAuditEventsPage.i18n'
+import { friendlyEventName } from '../admin-dashboard/AdminDashboardPage.i18n'
 import type { AdminAuditEventsSearchParams } from '../../api'
 import type { AdminAuditEvent } from '../../types'
 
@@ -131,7 +132,7 @@ describe('AdminAuditEventsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: t.filterAction }))
 
     expect(await screen.findByText('Could not fetch audit events.')).toBeInTheDocument()
-    expect(screen.getAllByText(event.type).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(friendlyEventName(event.type, 'en')).length).toBeGreaterThan(0)
   })
 
   it('initializes the search conditions from the search prop (URL query init, wi-147)', async () => {
@@ -155,13 +156,15 @@ describe('AdminAuditEventsPage', () => {
     await renderWithRouter(<BrowserHistoryHarness />)
 
     expect(screen.getByDisplayValue('usr_current')).toBeInTheDocument()
-    expect(screen.getAllByText(event.type).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(friendlyEventName(event.type, 'en')).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: 'Simulate browser back' }))
 
     expect(await screen.findByDisplayValue('usr_previous')).toBeInTheDocument()
     expect(screen.queryByDisplayValue('usr_current')).not.toBeInTheDocument()
-    expect(screen.getAllByText(previousEvent.type).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(friendlyEventName(previousEvent.type, 'en')).length).toBeGreaterThan(
+      0,
+    )
     expect(screen.queryByText(event.type)).not.toBeInTheDocument()
   })
 

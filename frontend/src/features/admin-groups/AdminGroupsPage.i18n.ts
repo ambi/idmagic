@@ -4,7 +4,8 @@ export const adminGroupsDictionary = defineDictionary(
   {
     genericActionError: 'グループ操作を完了できませんでした。',
     pageTitle: 'グループ',
-    pageDescription: '複数のロールをまとめ、所属ユーザーに一括で付与します。',
+    pageDescription:
+      'ユーザーをまとめるグループの一覧です。所属メンバーや割り当てられたロールを確認できます。',
     reloadAriaLabel: '一覧を再読み込み',
     listRefreshedNotice: '一覧を更新しました。',
     newGroup: 'グループを追加',
@@ -33,7 +34,7 @@ export const adminGroupsDictionary = defineDictionary(
     removeMember: '除外',
     noMembers: 'メンバーはいません。',
     selectUserToAddAria: '追加するユーザー',
-    selectUserPlaceholder: 'ユーザーを選択…',
+    selectUserPlaceholder: 'ユーザーを選択して追加…',
     add: '追加',
     scimGroupManagedNotice:
       'このグループのメンバーは SCIM 同期により管理されているため、直接変更できません。',
@@ -111,7 +112,8 @@ export const adminGroupsDictionary = defineDictionary(
   {
     genericActionError: 'Could not complete the group action.',
     pageTitle: 'Groups',
-    pageDescription: 'Bundle multiple roles and grant them to members at once.',
+    pageDescription:
+      'A list of groups that bundle users together, along with their members and assigned roles.',
     reloadAriaLabel: 'Reload the list',
     listRefreshedNotice: 'The list has been refreshed.',
     newGroup: 'Add group',
@@ -140,7 +142,7 @@ export const adminGroupsDictionary = defineDictionary(
     removeMember: 'Remove',
     noMembers: 'No members.',
     selectUserToAddAria: 'User to add',
-    selectUserPlaceholder: 'Select a user…',
+    selectUserPlaceholder: 'Select a user to add…',
     add: 'Add',
     scimGroupManagedNotice:
       "This group's members are managed via SCIM sync, so they cannot be changed directly.",
