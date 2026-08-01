@@ -247,6 +247,13 @@ func TestMfaFactorReencryptor_TenantIsolation(t *testing.T) {
 // columns.
 func TestMfaFactorReencryptor_NoPlaintextSurvivesBackfillAcrossTenants(t *testing.T) {
 	db := pgtest.Require(t)
+	// This assertion intentionally scans the whole table. The package shares one
+	// embedded PostgreSQL instance across tests, so remove factor rows left by
+	// earlier isolation tests before this test establishes its own whole-table
+	// backfill fixture.
+	if _, err := db.Exec(context.Background(), "DELETE FROM mfa_factors"); err != nil {
+		t.Fatalf("isolate plaintext scan fixture: %v", err)
+	}
 	const tenantCount, usersPerTenant = 3, 2
 	for i := range tenantCount {
 		tenant := pgfixtures.SeedTenant(t, db)

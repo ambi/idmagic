@@ -294,14 +294,6 @@ complexity:
       reason: wi-45 T007b でプロビジョニング導線ボタンを追加し、既に上限ちょうどだった 400 行を 2 行超過。ProvisioningNavButton は既に AdminApplicationProvisioningShared.tsx へ抽出済みで追加分はこれ以上圧縮できない。wi-73 で OIDC の claim release 上書き (sub_source_attribute/rules) 表示を 3 行追加。wi-234 の list/detail 分割と合わせて解消する。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
-    - id: wi234-ui-page-lines-account-profile-page
-      budget: ui-page-lines
-      path: frontend/src/features/account/AccountProfilePage.tsx
-      ceiling: 499
-      owner: maintainers
-      reason: wi-234 で責務境界に沿って分割する既存超過。
-      work_item: wi-234-complexity-ratchet
-      expires_at: 2026-10-01
     - id: wi234-ui-page-lines-account-security-page
       budget: ui-page-lines
       path: frontend/src/features/account/AccountSecurityPage.tsx

@@ -9,6 +9,7 @@ import {
   textToValue,
   valueToText,
 } from './AccountProfilePage'
+import { EditableAttributeGroups } from './AccountProfileAttributes'
 import type { AccountProfile, AttributeValue, UserAttributeDef } from '../../types'
 
 const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
@@ -130,6 +131,23 @@ describe('AccountProfilePresentation', () => {
     expect(screen.getByText('確認済み')).toBeInTheDocument()
   })
 
+  it('renders readable custom attributes', async () => {
+    await renderWithRouter(
+      <AccountProfilePresentation
+        profile={{
+          ...profile,
+          attributes: { nickname: { type: 'string', string: 'たろう' } },
+          readable_attributes: [stringDef],
+        }}
+        isAdmin={false}
+        notice=""
+        onDismissNotice={mock()}
+      />,
+    )
+    expect(screen.getByText('nickname')).toBeInTheDocument()
+    expect(screen.getByText('たろう')).toBeInTheDocument()
+  })
+
   it('shows a notice toast when provided', async () => {
     await renderWithRouter(
       <AccountProfilePresentation
@@ -154,6 +172,22 @@ describe('AccountProfilePresentation', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /閉じる|dismiss/i }))
     expect(onDismissNotice).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('EditableAttributeGroups', () => {
+  it('reports edited custom attribute values', async () => {
+    const onChange = mock()
+    await renderWithRouter(
+      <EditableAttributeGroups
+        defs={[stringDef]}
+        values={{ nickname: 'before' }}
+        onChange={onChange}
+      />,
+    )
+
+    fireEvent.change(screen.getByLabelText('nickname'), { target: { value: 'after' } })
+    expect(onChange).toHaveBeenCalledWith('nickname', 'after')
   })
 })
 

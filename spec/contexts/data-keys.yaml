@@ -27,6 +27,8 @@ glossary:
     definition: 新規暗号化には使われないが、既存 ciphertext の復号にはまだ使われる状態。再暗号化 job ([[wi-126-async-job-runner]] 経由) が全参照を移行するまで維持する。
   Disabled:
     definition: 鍵材料の危殆化などにより手動で即時ロックアウトされた状態。この鍵で暗号化された ciphertext の復号は以後 fail-closed で拒否される。
+    aliases:
+      - disabled
   Destroyed:
     definition: wrapped_dek を破棄した終端状態。復号は恒久的に不能になる (crypto-shredding の前提)。不可逆。
   FailClosed:
