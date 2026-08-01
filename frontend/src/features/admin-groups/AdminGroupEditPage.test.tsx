@@ -1,10 +1,10 @@
 import { afterEach, describe, it, expect, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
-import { screen, fireEvent } from '@testing-library/react'
+import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminGroupEditPage } from './AdminGroupEditPage'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
-import type { AdminGroup, TenantUserAttributeSchema } from '../../types'
+import type { AdminGroup, AdminUser, TenantUserAttributeSchema } from '../../types'
 
 const t = adminGroupsDictionary.en
 
@@ -30,6 +30,18 @@ const group: AdminGroup = {
   roles: ['support'],
   member_count: 0,
   created_at: '2026-01-01T00:00:00Z',
+}
+
+const user: AdminUser = {
+  id: 'user-1',
+  preferred_username: 'taro',
+  name: 'Taro Yamada',
+  email: 'taro@example.com',
+  email_verified: true,
+  mfa_enrolled: false,
+  roles: [],
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
 }
 
 describe('AdminGroupEditPage', () => {
@@ -79,5 +91,36 @@ describe('AdminGroupEditPage', () => {
 
     expect(await screen.findByLabelText(t.selectUserToAddAria)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: t.add })).toBeInTheDocument()
+  })
+
+  it('adds the selected user as a group member', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string, init?: RequestInit) => {
+        if (init?.method === 'POST' && url.includes('/members/')) {
+          return Promise.resolve(response(204))
+        }
+        if (url.includes('/api/admin/groups/')) {
+          return Promise.resolve(response(200, { group, members: [] }))
+        }
+        if (url.includes('/api/admin/users')) {
+          return Promise.resolve(response(200, { users: [user] }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
+
+    fireEvent.change(await screen.findByLabelText(t.selectUserToAddAria), {
+      target: { value: user.id },
+    })
+    fireEvent.click(screen.getByRole('button', { name: t.add }))
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining(`/api/admin/groups/group-1/members/${user.id}`),
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    )
   })
 })

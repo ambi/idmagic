@@ -359,8 +359,14 @@ depends_on: []
       対象種別 (ユーザー/グループ) 切り替え時に選択をリセットする。
       新規テスト `AdminApplicationProvisioningOnDemand.test.tsx`
       （選択して送信・種別切り替えでリセット・一覧取得失敗時のエラー表示）。
-- [ ] T021 [App] 変更した各画面のコンポーネントテストを更新し、新規抽出した presentational
+- [x] T021 [App] 変更した各画面のコンポーネントテストを更新し、新規抽出した presentational
       component にユニットテストを追加する。
+      各 Task 実施時に随時テストを追加/移設済み。最終確認として不足していた実操作カバレッジを
+      追加: グループ編集画面のメンバー追加実行（選択→追加→POST 呼び出し確認）、ユーザー編集
+      画面のグループ離脱実行（DELETE 呼び出し確認）、ユーザー一覧の強制アクションが
+      読み取り専用バッジであることの明示的な回帰テスト。共有 presentational component
+      (`*FormFields`, `*Shared.tsx`) は既存コードベースの慣例 (`SamlIDPProfileFields.tsx` 等)
+      に倣い、消費元の Create/Edit ページテストを通じて間接的に検証する方針とした。
 - [ ] T022 [Verify] 下記 Verification を通す。
 
 ## Verification

@@ -22,6 +22,7 @@ const user: AdminUser = {
   email_verified: true,
   mfa_enrolled: false,
   roles: ['support'],
+  required_actions: ['verify_email'],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }
@@ -139,5 +140,12 @@ describe('AdminUsersPage', () => {
     fireEvent.click(screen.getByRole('button', { name: t.reloadAriaLabel }))
 
     expect(await screen.findByText('Could not fetch the list.')).toBeInTheDocument()
+  })
+
+  it('shows required actions as read-only badges, not toggle buttons (T009)', async () => {
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+
+    expect(screen.getByText('Verify email address')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Verify email address/i })).not.toBeInTheDocument()
   })
 })

@@ -104,4 +104,48 @@ describe('AdminUserEditPage', () => {
     expect(await screen.findByText(t.requiredActionSetNotice)).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
   })
+
+  it('lets an admin leave a group from the edit screen (T010: new leave action)', async () => {
+    stubGlobal('location', { ...originalLocation, assign: mock() })
+    stubGlobal(
+      'fetch',
+      mock((url: string, init?: RequestInit) => {
+        if (init?.method === 'DELETE' && url.includes('/members/')) {
+          return Promise.resolve(response(204))
+        }
+        if (url.includes('/groups')) {
+          return Promise.resolve(
+            response(200, {
+              groups: [
+                {
+                  id: 'group-1',
+                  tenant_id: 'tenant-1',
+                  name: 'Engineering',
+                  roles: [],
+                  member_count: 1,
+                  created_at: '2026-01-01T00:00:00Z',
+                },
+              ],
+              group_roles: [],
+              effective_roles: user.roles,
+            }),
+          )
+        }
+        if (url.includes('/sessions')) {
+          return Promise.resolve(response(200, { sessions: [] }))
+        }
+        return Promise.resolve(response(200, user))
+      }),
+    )
+    await renderWithRouter(<AdminUserEditPage csrfToken="csrf" user={user} schema={emptySchema} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: t.leaveGroup }))
+
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/admin/groups/group-1/members/user-1'),
+        expect.objectContaining({ method: 'DELETE' }),
+      ),
+    )
+  })
 })
