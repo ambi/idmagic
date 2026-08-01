@@ -1,4 +1,10 @@
-import { IconDeviceLaptop, IconShield, IconUserPlus, IconUsersGroup } from '@tabler/icons-react'
+import {
+  IconDeviceLaptop,
+  IconShield,
+  IconUserMinus,
+  IconUserPlus,
+  IconUsersGroup,
+} from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
   addAdminGroupMember,
@@ -6,6 +12,7 @@ import {
   getAdminUserGroups,
   listAdminGroups,
   listAdminUserSessions,
+  removeAdminGroupMember,
   revokeAdminUserSession,
   revokeAllAdminUserSessions,
   tenantURL,
@@ -58,6 +65,8 @@ export function groupedAttributeDefs(defs: UserAttributeDef[], t: DomainLabelsDi
     .filter((group) => group.defs.length > 0)
 }
 
+// onToggle が未指定のときは参照専用として描画する (一覧右ペイン / ユーザー詳細画面)。
+// 変更操作はユーザー編集画面 (onToggle 指定) に一本化する。
 export function UserRequiredActionsSection({
   user,
   busy,
@@ -65,11 +74,36 @@ export function UserRequiredActionsSection({
 }: {
   user: AdminUser
   busy: boolean
-  onToggle: (action: string, present: boolean) => void
+  onToggle?: (action: string, present: boolean) => void
 }) {
   const active = new Set(user.required_actions ?? [])
   const tLabels = useDictionary(domainLabelsDictionary)
   const t = useDictionary(adminUsersDictionary)
+  if (!onToggle) {
+    const activeActions = REQUIRED_ACTIONS.filter((action) => active.has(action))
+    return (
+      <section>
+        <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+          {t.requiredActionsHeading}
+        </h3>
+        <p className="mt-1 text-xs text-slate-500">{t.requiredActionsDescription}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {activeActions.length === 0 ? (
+            <span className="text-xs text-slate-400">{t.noRequiredActions}</span>
+          ) : (
+            activeActions.map((action) => (
+              <span
+                key={action}
+                className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800"
+              >
+                {requiredActionLabel(action, tLabels)}
+              </span>
+            ))
+          )}
+        </div>
+      </section>
+    )
+  }
   return (
     <section>
       <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
@@ -157,6 +191,7 @@ export function UserGroupsSection({
   const [allGroups, setAllGroups] = useState<AdminGroup[]>([])
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(false)
+  const [removingGroupId, setRemovingGroupId] = useState<string | null>(null)
   const [selectedGroup, setSelectedGroup] = useState('')
   const { id } = user
   const t = useDictionary(adminUsersDictionary)
@@ -189,6 +224,18 @@ export function UserGroupsSection({
       setError(err instanceof AuthenticationAPIError ? err.message : t.groupAddError)
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function handleRemove(groupId: string) {
+    setRemovingGroupId(groupId)
+    try {
+      await removeAdminGroupMember(csrfToken, groupId, user.id)
+      await load()
+    } catch (err) {
+      setError(err instanceof AuthenticationAPIError ? err.message : t.groupRemoveError)
+    } finally {
+      setRemovingGroupId(null)
     }
   }
 
@@ -238,7 +285,25 @@ export function UserGroupsSection({
                     >
                       {group.name}
                     </a>
-                    <RoleList roles={group.roles} />
+                    <div className="flex items-center gap-2">
+                      <RoleList roles={group.roles} />
+                      {allowEditing ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-8 px-2 text-xs text-rose-700 hover:bg-rose-50"
+                          disabled={
+                            removingGroupId === group.id ||
+                            !!group.scim_source ||
+                            group.membership_type === 'dynamic'
+                          }
+                          onClick={() => void handleRemove(group.id)}
+                        >
+                          <IconUserMinus size={14} aria-hidden="true" />
+                          {t.leaveGroup}
+                        </Button>
+                      ) : null}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -317,7 +382,7 @@ function AdminSessionRow({
 }: {
   session: AdminSessionRecord
   busy: boolean
-  onRevoke: () => void
+  onRevoke?: () => void
 }) {
   const t = useDictionary(adminUsersDictionary)
   const { locale } = useLocale()
@@ -332,31 +397,36 @@ function AdminSessionRow({
           {sessionLastSeenLabel(session.last_seen_at, t, locale)}
         </p>
       </div>
-      <Button
-        type="button"
-        variant="outline"
-        className="h-8 shrink-0 self-center px-3 text-xs"
-        disabled={busy}
-        onClick={onRevoke}
-      >
-        {busy ? t.endingSession : t.endSession}
-      </Button>
+      {onRevoke ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="h-8 shrink-0 self-center px-3 text-xs"
+          disabled={busy}
+          onClick={onRevoke}
+        >
+          {busy ? t.endingSession : t.endSession}
+        </Button>
+      ) : null}
     </li>
   )
 }
 
-// UserSessionsSection は admin がユーザー詳細画面から対象ユーザーの有効な
-// セッションを確認・個別終了・全終了できるようにする (wi-28 T007, ADR-127 決定9)。
+// allowEditing=false は参照専用の文脈 (ユーザー詳細画面) で使う。セッションの終了は
+// 編集画面 (allowEditing=true) に一本化する (wi-28 T007, ADR-127 決定9 の操作を、
+// 詳細/編集の分離ポリシーに合わせて移設)。
 // 終了 (revoke) はサーバー側で同じ sid を共有する RefreshTokenRecord も
 // family/client を横断して失効させる (T004 の RevokeTokensBySid)。
 export function UserSessionsSection({
   user,
   csrfToken,
   variant = 'section',
+  allowEditing = true,
 }: {
   user: AdminUser
   csrfToken: string
   variant?: SectionVariant
+  allowEditing?: boolean
 }) {
   const [sessions, setSessions] = useState<AdminSessionRecord[] | null>(null)
   const [error, setError] = useState('')
@@ -413,7 +483,7 @@ export function UserSessionsSection({
           <h3 className={sectionHeadingClassName[variant]}>{t.sessionsHeading}</h3>
           <p className="mt-0.5 text-xs text-slate-500">{t.sessionsDescription}</p>
         </div>
-        {sessions && sessions.length > 0 ? (
+        {allowEditing && sessions && sessions.length > 0 ? (
           <Button
             type="button"
             variant="outline"
@@ -445,7 +515,7 @@ export function UserSessionsSection({
                 key={session.id}
                 session={session}
                 busy={busyId === session.id}
-                onRevoke={() => void handleRevoke(session.id)}
+                onRevoke={allowEditing ? () => void handleRevoke(session.id) : undefined}
               />
             ))}
           </ul>

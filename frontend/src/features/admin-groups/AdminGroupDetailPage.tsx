@@ -111,6 +111,7 @@ export function AdminGroupDetailPage({
           csrfToken={csrfToken}
           busy={busy}
           showActions={false}
+          allowEditing={false}
           onDeleted={() => window.location.assign(tenantURL('/admin/groups'))}
         />
       </div>

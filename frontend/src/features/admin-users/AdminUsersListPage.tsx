@@ -20,12 +20,10 @@ import {
 import { useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
-  clearAdminUserRequiredAction,
   deleteAdminUser,
   listAdminUsers,
   restoreAdminUser,
   setAdminUserDisabled,
-  setAdminUserRequiredAction,
   tenantURL,
 } from '../../api'
 import { AdminPaneActions } from '../../components/AdminPaneActions'
@@ -140,20 +138,6 @@ export function AdminUsersPage({
     } else {
       setShowDisable(true)
     }
-  }
-
-  async function handleRequiredAction(user: AdminUser, action: string, present: boolean) {
-    await run(
-      async () => {
-        if (present) {
-          await clearAdminUserRequiredAction(csrfToken, user.id, action)
-        } else {
-          await setAdminUserRequiredAction(csrfToken, user.id, action)
-        }
-        await refresh(user.id)
-      },
-      present ? t.requiredActionClearedNotice : t.requiredActionSetNotice,
-    )
   }
 
   async function handleDelete(user: AdminUser) {
@@ -368,9 +352,6 @@ export function AdminUsersPage({
                   onDelete={() => setShowDelete(true)}
                   onRestore={() => void handleRestore(selected)}
                   onPurge={() => setShowPurge(true)}
-                  onRequiredAction={(action, present) =>
-                    void handleRequiredAction(selected, action, present)
-                  }
                 />
               ) : (
                 <div className="flex h-full min-h-80 items-center justify-center p-8 text-center text-sm text-slate-500">
@@ -430,7 +411,6 @@ function UserDetails({
   onDelete,
   onRestore,
   onPurge,
-  onRequiredAction,
 }: {
   user: AdminUser
   csrfToken: string
@@ -440,7 +420,6 @@ function UserDetails({
   onDelete: () => void
   onRestore: () => void
   onPurge: () => void
-  onRequiredAction: (action: string, present: boolean) => void
 }) {
   const pending = userLifecycleStatus(user) === 'pending_deletion'
   const t = useDictionary(adminUsersDictionary)
@@ -540,7 +519,7 @@ function UserDetails({
           </dl>
         </section>
 
-        <UserRequiredActionsSection user={user} busy={busy} onToggle={onRequiredAction} />
+        <UserRequiredActionsSection user={user} busy={busy} />
 
         <UserGroupsSection user={user} csrfToken={csrfToken} allowEditing={false} />
       </div>

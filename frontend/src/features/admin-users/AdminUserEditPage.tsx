@@ -2,6 +2,9 @@ import { IconAlertTriangle, IconArrowLeft, IconShield } from '@tabler/icons-reac
 import { type FormEvent, useState } from 'react'
 import {
   AuthenticationAPIError,
+  clearAdminUserRequiredAction,
+  getAdminUser,
+  setAdminUserRequiredAction,
   tenantURL,
   type UpdateAdminUserInput,
   updateAdminUser,
@@ -12,6 +15,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
+import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
 import { cn } from '../../lib/utils'
 import type { AdminUser, TenantUserAttributeSchema } from '../../types'
@@ -22,6 +26,11 @@ import {
 } from './AdminUserAttributeEditor'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import { parseRoles } from './AdminUsersPrimitives'
+import {
+  UserGroupsSection,
+  UserRequiredActionsSection,
+  UserSessionsSection,
+} from './AdminUsersShared'
 
 function RoleDiff({
   title,
@@ -75,7 +84,29 @@ export function AdminUserEditPage({
   const detailPath = tenantURL(`/admin/users/${encodeURIComponent(user.id)}`)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [liveUser, setLiveUser] = useState(user)
+  const [actionBusy, setActionBusy] = useState(false)
   const t = useDictionary(adminUsersDictionary)
+
+  async function handleRequiredAction(action: string, present: boolean) {
+    setActionBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      if (present) {
+        await clearAdminUserRequiredAction(csrfToken, user.id, action)
+      } else {
+        await setAdminUserRequiredAction(csrfToken, user.id, action)
+      }
+      setLiveUser(await getAdminUser(user.id))
+      setNotice(present ? t.requiredActionClearedNotice : t.requiredActionSetNotice)
+    } catch (cause) {
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
+    } finally {
+      setActionBusy(false)
+    }
+  }
 
   async function persist(input: UpdateAdminUserInput) {
     setBusy(true)
@@ -165,7 +196,8 @@ export function AdminUserEditPage({
       }
     >
       {error && <Alert>{error}</Alert>}
-      <Card className="w-full max-w-4xl overflow-hidden">
+      <Toast message={notice} onDismiss={() => setNotice('')} />
+      <Card className="w-full max-w-6xl overflow-hidden">
         <div className="border-b border-slate-200 px-6 py-5">
           <p className="text-xs font-bold uppercase tracking-[0.12em] text-blue-700">
             {t.profileAndAccessLabel}
@@ -205,132 +237,158 @@ export function AdminUserEditPage({
                 )}
               </div>
             ) : (
-              <div className="grid gap-6 p-6">
-                {user.scim_source && (
-                  <Alert>
-                    <div className="flex gap-3">
-                      <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
-                      <div>
-                        <p className="text-sm font-semibold text-blue-950">{t.scimSyncUserTitle}</p>
-                        <p className="mt-1 text-xs leading-5 text-blue-800">
-                          {t.scimSyncUserDescription.replace('{source}', user.scim_source)}
-                        </p>
+              <div className="grid gap-6 p-6 xl:grid-cols-3">
+                <div className="flex flex-col gap-6 xl:col-span-2">
+                  {user.scim_source && (
+                    <Alert>
+                      <div className="flex gap-3">
+                        <IconAlertTriangle className="mt-0.5 shrink-0 text-blue-700" size={19} />
+                        <div>
+                          <p className="text-sm font-semibold text-blue-950">
+                            {t.scimSyncUserTitle}
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-blue-800">
+                            {t.scimSyncUserDescription.replace('{source}', user.scim_source)}
+                          </p>
+                        </div>
+                      </div>
+                    </Alert>
+                  )}
+
+                  <section className="grid gap-4">
+                    <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+                      {t.profileHeading}
+                    </h3>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="user-editor-username">{t.username}</Label>
+                        <Input
+                          id="user-editor-username"
+                          value={username}
+                          onChange={(event) => setUsername(event.target.value)}
+                          autoFocus={!user.scim_source}
+                          required
+                          aria-invalid={usernameInvalid}
+                          readOnly={!!user.scim_source}
+                          className={user.scim_source ? 'bg-slate-50' : undefined}
+                        />
+                        <p className="text-xs leading-5 text-slate-500">{t.usernameHelp}</p>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="user-editor-name">{t.displayName}</Label>
+                        <Input
+                          id="user-editor-name"
+                          value={name}
+                          onChange={(event) => setName(event.target.value)}
+                          readOnly={!!user.scim_source}
+                          className={user.scim_source ? 'bg-slate-50' : undefined}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="user-editor-given-name">{t.givenName} (given_name)</Label>
+                        <Input
+                          id="user-editor-given-name"
+                          value={givenName}
+                          onChange={(event) => setGivenName(event.target.value)}
+                          readOnly={!!user.scim_source}
+                          className={user.scim_source ? 'bg-slate-50' : undefined}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="user-editor-family-name">
+                          {t.familyName} (family_name)
+                        </Label>
+                        <Input
+                          id="user-editor-family-name"
+                          value={familyName}
+                          onChange={(event) => setFamilyName(event.target.value)}
+                          readOnly={!!user.scim_source}
+                          className={user.scim_source ? 'bg-slate-50' : undefined}
+                        />
+                      </div>
+                      <div className="grid gap-2 sm:col-span-2">
+                        <Label htmlFor="user-editor-email">{t.emailFieldLabel}</Label>
+                        <Input
+                          id="user-editor-email"
+                          type="email"
+                          value={email}
+                          onChange={(event) => {
+                            setEmail(event.target.value)
+                            setEmailVerifiedTouched(false)
+                          }}
+                          readOnly={!!user.scim_source}
+                          className={user.scim_source ? 'bg-slate-50' : undefined}
+                        />
+                        {emailChanged && (
+                          <p className="text-xs leading-5 text-amber-700">
+                            {t.emailChangedVerificationNotice}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  </Alert>
-                )}
-
-                <section className="grid gap-4">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-                    {t.profileHeading}
-                  </h3>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-editor-username">{t.username}</Label>
-                      <Input
-                        id="user-editor-username"
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
-                        autoFocus={!user.scim_source}
-                        required
-                        aria-invalid={usernameInvalid}
-                        readOnly={!!user.scim_source}
-                        className={user.scim_source ? 'bg-slate-50' : undefined}
-                      />
-                      <p className="text-xs leading-5 text-slate-500">{t.usernameHelp}</p>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-editor-name">{t.displayName}</Label>
-                      <Input
-                        id="user-editor-name"
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        readOnly={!!user.scim_source}
-                        className={user.scim_source ? 'bg-slate-50' : undefined}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-editor-given-name">{t.givenName} (given_name)</Label>
-                      <Input
-                        id="user-editor-given-name"
-                        value={givenName}
-                        onChange={(event) => setGivenName(event.target.value)}
-                        readOnly={!!user.scim_source}
-                        className={user.scim_source ? 'bg-slate-50' : undefined}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="user-editor-family-name">{t.familyName} (family_name)</Label>
-                      <Input
-                        id="user-editor-family-name"
-                        value={familyName}
-                        onChange={(event) => setFamilyName(event.target.value)}
-                        readOnly={!!user.scim_source}
-                        className={user.scim_source ? 'bg-slate-50' : undefined}
-                      />
-                    </div>
-                    <div className="grid gap-2 sm:col-span-2">
-                      <Label htmlFor="user-editor-email">{t.emailFieldLabel}</Label>
-                      <Input
-                        id="user-editor-email"
-                        type="email"
-                        value={email}
+                    <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 size-4 rounded border-slate-300 disabled:opacity-50"
+                        checked={effectiveEmailVerified}
                         onChange={(event) => {
-                          setEmail(event.target.value)
-                          setEmailVerifiedTouched(false)
+                          setEmailVerified(event.target.checked)
+                          setEmailVerifiedTouched(true)
                         }}
-                        readOnly={!!user.scim_source}
-                        className={user.scim_source ? 'bg-slate-50' : undefined}
+                        disabled={!!user.scim_source}
                       />
-                      {emailChanged && (
-                        <p className="text-xs leading-5 text-amber-700">
-                          {t.emailChangedVerificationNotice}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 size-4 rounded border-slate-300 disabled:opacity-50"
-                      checked={effectiveEmailVerified}
-                      onChange={(event) => {
-                        setEmailVerified(event.target.checked)
-                        setEmailVerifiedTouched(true)
-                      }}
-                      disabled={!!user.scim_source}
-                    />
-                    <span>
-                      <span className="block font-semibold text-slate-900">{t.saveAsVerified}</span>
-                      <span className="mt-0.5 block text-xs leading-5 text-slate-500">
-                        {t.verifiedOwnershipNotice}
+                      <span>
+                        <span className="block font-semibold text-slate-900">
+                          {t.saveAsVerified}
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+                          {t.verifiedOwnershipNotice}
+                        </span>
                       </span>
-                    </span>
-                  </label>
-                </section>
+                    </label>
+                  </section>
 
-                <section className="grid gap-2 border-t border-slate-200 pt-5">
-                  <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
-                    {t.rolesHeading}
-                  </h3>
-                  <Label htmlFor="user-editor-roles" className="sr-only">
-                    {t.rolesHeading}
-                  </Label>
-                  <Input
-                    id="user-editor-roles"
-                    value={roles}
-                    onChange={(event) => setRoles(event.target.value)}
-                    placeholder="admin, support"
+                  <section className="grid gap-2 border-t border-slate-200 pt-5">
+                    <h3 className="text-xs font-bold uppercase tracking-[0.1em] text-slate-400">
+                      {t.rolesHeading}
+                    </h3>
+                    <Label htmlFor="user-editor-roles" className="sr-only">
+                      {t.rolesHeading}
+                    </Label>
+                    <Input
+                      id="user-editor-roles"
+                      value={roles}
+                      onChange={(event) => setRoles(event.target.value)}
+                      placeholder="admin, support"
+                    />
+                    <p className="text-xs leading-5 text-slate-500">{t.rolesHelp}</p>
+                  </section>
+
+                  <AdminAttributeEditorGroups
+                    defs={attributeDefs}
+                    values={attrDraft}
+                    onChange={(key, next) =>
+                      setAttrDraft((current) => ({ ...current, [key]: next }))
+                    }
+                    readOnly={!!user.scim_source}
                   />
-                  <p className="text-xs leading-5 text-slate-500">{t.rolesHelp}</p>
-                </section>
+                </div>
 
-                <AdminAttributeEditorGroups
-                  defs={attributeDefs}
-                  values={attrDraft}
-                  onChange={(key, next) => setAttrDraft((current) => ({ ...current, [key]: next }))}
-                  readOnly={!!user.scim_source}
-                />
+                <div className="flex flex-col gap-6">
+                  <section className="rounded-xl border border-slate-200 p-4">
+                    <UserGroupsSection user={user} csrfToken={csrfToken} variant="card" />
+                  </section>
+                  <section className="rounded-xl border border-slate-200 p-4">
+                    <UserRequiredActionsSection
+                      user={liveUser}
+                      busy={actionBusy}
+                      onToggle={(action, present) => void handleRequiredAction(action, present)}
+                    />
+                  </section>
+                  <section className="rounded-xl border border-slate-200 p-4">
+                    <UserSessionsSection user={user} csrfToken={csrfToken} variant="card" />
+                  </section>
+                </div>
               </div>
             )}
           </div>

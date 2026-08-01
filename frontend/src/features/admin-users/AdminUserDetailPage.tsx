@@ -19,14 +19,12 @@ import {
 import { useState } from 'react'
 import {
   AuthenticationAPIError,
-  clearAdminUserRequiredAction,
   deleteAdminUser,
   getAdminUser,
   issueMfaEnrollmentBypass,
   restoreAdminUser,
   revokeMfaEnrollmentBypass,
   setAdminUserDisabled,
-  setAdminUserRequiredAction,
   tenantURL,
 } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -166,20 +164,6 @@ export function AdminUserDetailPage({
     await run(async () => {
       await revokeMfaEnrollmentBypass(csrfToken, user.id)
     }, t.mfaEnrollmentBypassRevokedNotice)
-  }
-
-  async function handleRequiredAction(action: string, present: boolean) {
-    await run(
-      async () => {
-        if (present) {
-          await clearAdminUserRequiredAction(csrfToken, user.id, action)
-        } else {
-          await setAdminUserRequiredAction(csrfToken, user.id, action)
-        }
-        await reload()
-      },
-      present ? t.requiredActionClearedNotice : t.requiredActionSetNotice,
-    )
   }
 
   return (
@@ -354,7 +338,12 @@ export function AdminUserDetailPage({
             </Card>
 
             <Card className="p-5">
-              <UserGroupsSection user={user} csrfToken={csrfToken} variant="card" />
+              <UserGroupsSection
+                user={user}
+                csrfToken={csrfToken}
+                variant="card"
+                allowEditing={false}
+              />
             </Card>
           </div>
 
@@ -416,16 +405,17 @@ export function AdminUserDetailPage({
                 />
               </dl>
               <div className="mt-5 border-t border-slate-200 pt-5">
-                <UserRequiredActionsSection
-                  user={user}
-                  busy={busy}
-                  onToggle={handleRequiredAction}
-                />
+                <UserRequiredActionsSection user={user} busy={busy} />
               </div>
             </Card>
 
             <Card className="p-5">
-              <UserSessionsSection user={user} csrfToken={csrfToken} variant="card" />
+              <UserSessionsSection
+                user={user}
+                csrfToken={csrfToken}
+                variant="card"
+                allowEditing={false}
+              />
             </Card>
           </div>
         </div>

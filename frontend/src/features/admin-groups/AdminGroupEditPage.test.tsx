@@ -40,7 +40,18 @@ describe('AdminGroupEditPage', () => {
     stubGlobal('location', { ...originalLocation, assign: mock() })
     stubGlobal(
       'fetch',
-      mock(() => Promise.resolve(response(400, { message: 'Could not update the group.' }))),
+      mock((url: string, init?: RequestInit) => {
+        if (init?.method === 'PATCH') {
+          return Promise.resolve(response(400, { message: 'Could not update the group.' }))
+        }
+        if (url.includes('/api/admin/groups/')) {
+          return Promise.resolve(response(200, { group, members: [] }))
+        }
+        if (url.includes('/api/admin/users')) {
+          return Promise.resolve(response(200, { users: [] }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
     )
     await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
 
@@ -49,5 +60,24 @@ describe('AdminGroupEditPage', () => {
 
     expect(await screen.findByText('Could not update the group.')).toBeInTheDocument()
     expect(window.location.assign).not.toHaveBeenCalled()
+  })
+
+  it('shows a member add control on the edit screen (T011: moved from the detail screen)', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string) => {
+        if (url.includes('/api/admin/groups/')) {
+          return Promise.resolve(response(200, { group, members: [] }))
+        }
+        if (url.includes('/api/admin/users')) {
+          return Promise.resolve(response(200, { users: [] }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
+
+    expect(await screen.findByLabelText(t.selectUserToAddAria)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: t.add })).toBeInTheDocument()
   })
 })

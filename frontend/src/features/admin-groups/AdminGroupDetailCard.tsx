@@ -24,9 +24,8 @@ import { useDictionary } from '../../lib/i18n'
 import type { AdminGroup, AdminGroupMember, AdminUser } from '../../types'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 
-// allowEditing=false は一覧右ペインのような参照専用の文脈で使う。メンバーの追加・
-// 除外の操作 UI は出さず、読み取り表示のみとする。実際のメンバー編集は専用の
-// 詳細画面 (allowEditing=true) から行う。
+// allowEditing は内部の GroupMembersSection にそのまま渡す (参照専用文脈での
+// メンバー追加・除外 UI 抑止)。
 export function GroupDetailCard({
   group,
   csrfToken,
@@ -44,9 +43,6 @@ export function GroupDetailCard({
   allowEditing?: boolean
   onDeleted: () => void
 }) {
-  const [members, setMembers] = useState<AdminGroupMember[]>([])
-  const [allUsers, setAllUsers] = useState<AdminUser[]>([])
-  const [addSub, setAddSub] = useState('')
   const [localBusy, setLocalBusy] = useState(false)
   const [localError, setLocalError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -56,15 +52,10 @@ export function GroupDetailCard({
   useEffect(() => {
     setConfirmDelete(false)
     setLocalError('')
-    if (!group) {
-      setMembers([])
-      return
-    }
+    if (!group) return
     let cancelled = false
-    void Promise.all([getAdminGroup(group.id), listAdminUsers()]).then(([detail, users]) => {
+    void getAdminGroup(group.id).then((detail) => {
       if (cancelled) return
-      setMembers(detail.members)
-      setAllUsers(users)
       setRule(detail.group.dynamic_rule)
     })
     return () => {
@@ -92,14 +83,6 @@ export function GroupDetailCard({
       setLocalBusy(false)
     }
   }
-
-  async function reloadMembers() {
-    const detail = await getAdminGroup(activeGroup.id)
-    setMembers(detail.members)
-  }
-
-  const memberUserIds = new Set(members.map((m) => m.user_id))
-  const addableUsers = allUsers.filter((u) => !memberUserIds.has(u.id))
 
   return (
     <Card className="overflow-hidden">
@@ -226,107 +209,165 @@ export function GroupDetailCard({
         </section>
       ) : null}
 
-      <section className="border-t border-slate-100 p-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
-            {t.membersHeading.replace('{count}', String(members.length))}
-          </h3>
+      <GroupMembersSection group={group} csrfToken={csrfToken} allowEditing={allowEditing} />
+    </Card>
+  )
+}
+
+// allowEditing=false は参照専用の文脈 (一覧右ペイン / グループ詳細画面) で使う。
+// メンバーの追加・除外の操作 UI は出さず、読み取り表示のみとする。実際のメンバー
+// 編集は専用の編集画面 (allowEditing=true) から行う (ADR-086 policy #1)。
+export function GroupMembersSection({
+  group,
+  csrfToken,
+  allowEditing = true,
+}: {
+  group: AdminGroup
+  csrfToken: string
+  allowEditing?: boolean
+}) {
+  const [members, setMembers] = useState<AdminGroupMember[]>([])
+  const [allUsers, setAllUsers] = useState<AdminUser[]>([])
+  const [addSub, setAddSub] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const t = useDictionary(adminGroupsDictionary)
+
+  useEffect(() => {
+    setError('')
+    let cancelled = false
+    void Promise.all([getAdminGroup(group.id), listAdminUsers()]).then(([detail, users]) => {
+      if (cancelled) return
+      setMembers(detail.members)
+      setAllUsers(users)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [group.id])
+
+  async function withBusy(action: () => Promise<void>) {
+    setBusy(true)
+    setError('')
+    try {
+      await action()
+    } catch (cause) {
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericOpError)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function reloadMembers() {
+    const detail = await getAdminGroup(group.id)
+    setMembers(detail.members)
+  }
+
+  const memberUserIds = new Set(members.map((m) => m.user_id))
+  const addableUsers = allUsers.filter((u) => !memberUserIds.has(u.id))
+
+  return (
+    <section className="border-t border-slate-100 p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
+          {t.membersHeading.replace('{count}', String(members.length))}
+        </h3>
+        <Button
+          variant="outline"
+          className="h-8 px-2 text-xs"
+          nativeButton={false}
+          render={
+            <a href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/members/exports`)} />
+          }
+        >
+          <IconFileExport size={14} className="mr-1" aria-hidden="true" />
+          {t.exportMembers}
+        </Button>
+      </div>
+
+      {error ? (
+        <Alert variant="destructive" className="mt-3">
+          {error}
+        </Alert>
+      ) : null}
+
+      <ul className="mt-3 grid gap-2">
+        {members.map((member) => (
+          <li
+            key={member.user_id}
+            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+          >
+            <a
+              className="font-medium text-blue-700 hover:underline"
+              href={tenantURL(`/admin/users?role=${encodeURIComponent(member.preferred_username)}`)}
+            >
+              {member.preferred_username}
+            </a>
+            {member.source === 'dynamic_rule' ? (
+              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                {t.dynamicMembership}
+              </span>
+            ) : null}
+            {allowEditing ? (
+              <Button
+                variant="ghost"
+                className="text-rose-700 hover:bg-rose-50"
+                disabled={busy || !!group.scim_source || group.membership_type === 'dynamic'}
+                onClick={() =>
+                  withBusy(async () => {
+                    await removeAdminGroupMember(csrfToken, group.id, member.user_id)
+                    await reloadMembers()
+                  })
+                }
+              >
+                <IconUserMinus size={14} aria-hidden="true" />
+                {t.removeMember}
+              </Button>
+            ) : null}
+          </li>
+        ))}
+        {members.length === 0 ? <li className="text-xs text-slate-400">{t.noMembers}</li> : null}
+      </ul>
+
+      {allowEditing ? (
+        <div className="mt-3 flex items-center gap-2">
+          <select
+            value={addSub}
+            onChange={(e) => setAddSub(e.target.value)}
+            disabled={!!group.scim_source || group.membership_type === 'dynamic'}
+            className="h-10 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
+            aria-label={t.selectUserToAddAria}
+          >
+            <option value="">{t.selectUserPlaceholder}</option>
+            {addableUsers.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.preferred_username}
+              </option>
+            ))}
+          </select>
           <Button
-            variant="outline"
-            className="h-8 px-2 text-xs"
-            nativeButton={false}
-            render={
-              <a
-                href={tenantURL(`/admin/groups/${encodeURIComponent(group.id)}/members/exports`)}
-              />
+            className="h-10"
+            disabled={busy || !addSub || !!group.scim_source || group.membership_type === 'dynamic'}
+            onClick={() =>
+              withBusy(async () => {
+                await addAdminGroupMember(csrfToken, group.id, addSub)
+                setAddSub('')
+                await reloadMembers()
+              })
             }
           >
-            <IconFileExport size={14} className="mr-1" aria-hidden="true" />
-            {t.exportMembers}
+            <IconUserPlus size={14} aria-hidden="true" />
+            {t.add}
           </Button>
         </div>
-        <ul className="mt-3 grid gap-2">
-          {members.map((member) => (
-            <li
-              key={member.user_id}
-              className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-            >
-              <a
-                className="font-medium text-blue-700 hover:underline"
-                href={tenantURL(
-                  `/admin/users?role=${encodeURIComponent(member.preferred_username)}`,
-                )}
-              >
-                {member.preferred_username}
-              </a>
-              {member.source === 'dynamic_rule' ? (
-                <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                  {t.dynamicMembership}
-                </span>
-              ) : null}
-              {allowEditing ? (
-                <Button
-                  variant="ghost"
-                  className="text-rose-700 hover:bg-rose-50"
-                  disabled={localBusy || !!group.scim_source || group.membership_type === 'dynamic'}
-                  onClick={() =>
-                    withLocal(async () => {
-                      await removeAdminGroupMember(csrfToken, group.id, member.user_id)
-                      await reloadMembers()
-                    })
-                  }
-                >
-                  <IconUserMinus size={14} aria-hidden="true" />
-                  {t.removeMember}
-                </Button>
-              ) : null}
-            </li>
-          ))}
-          {members.length === 0 ? <li className="text-xs text-slate-400">{t.noMembers}</li> : null}
-        </ul>
+      ) : null}
 
-        {allowEditing ? (
-          <div className="mt-3 flex items-center gap-2">
-            <select
-              value={addSub}
-              onChange={(e) => setAddSub(e.target.value)}
-              disabled={!!group.scim_source || group.membership_type === 'dynamic'}
-              className="h-10 flex-1 rounded-md border border-slate-300 bg-white px-2 text-sm disabled:opacity-50 disabled:bg-slate-50"
-              aria-label={t.selectUserToAddAria}
-            >
-              <option value="">{t.selectUserPlaceholder}</option>
-              {addableUsers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.preferred_username}
-                </option>
-              ))}
-            </select>
-            <Button
-              className="h-10"
-              disabled={
-                localBusy || !addSub || !!group.scim_source || group.membership_type === 'dynamic'
-              }
-              onClick={() =>
-                withLocal(async () => {
-                  await addAdminGroupMember(csrfToken, group.id, addSub)
-                  setAddSub('')
-                  await reloadMembers()
-                })
-              }
-            >
-              <IconUserPlus size={14} aria-hidden="true" />
-              {t.add}
-            </Button>
-          </div>
-        ) : null}
-
-        {group.scim_source && (
-          <p className="mt-3 text-xs text-blue-700 flex items-center gap-1.5">
-            <IconAlertTriangle size={14} />
-            <span>{t.scimGroupManagedNotice}</span>
-          </p>
-        )}
-      </section>
-    </Card>
+      {group.scim_source && (
+        <p className="mt-3 text-xs text-blue-700 flex items-center gap-1.5">
+          <IconAlertTriangle size={14} />
+          <span>{t.scimGroupManagedNotice}</span>
+        </p>
+      )}
+    </section>
   )
 }

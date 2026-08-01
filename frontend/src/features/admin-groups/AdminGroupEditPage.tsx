@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
 import type { AdminGroup, TenantUserAttributeSchema } from '../../types'
+import { GroupMembersSection } from './AdminGroupDetailCard'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 import { parseRoles } from './AdminGroupsShared'
 import { DynamicRuleEditor } from './DynamicRuleEditor'
@@ -153,6 +154,12 @@ export function AdminGroupEditPage({
               </Button>
             </div>
           </form>
+        </Card>
+      </div>
+
+      <div className="mt-6 max-w-2xl">
+        <Card className="overflow-hidden">
+          <GroupMembersSection group={group} csrfToken={csrfToken} />
         </Card>
       </div>
 

@@ -276,10 +276,25 @@ depends_on: []
 - [x] T008 [App] 監査イベント画面の種別表示にダッシュボードと同じ `friendlyEventName` を適用する。
       一覧・詳細双方の `e.type` 表示を置き換え、既存テストの生の type 文字列アサーションも
       `friendlyEventName` 経由の期待値に更新 (`AdminAuditEventsPage.test.tsx`)。
-- [ ] T009 [App] ユーザー一覧右ペインの「強制アクション」変更操作を撤去し参照専用にする。
-- [ ] T010 [App] ユーザー詳細画面のグループ追加・強制アクション変更・セッション終了をユーザー
+- [x] T009 [App] ユーザー一覧右ペインの「強制アクション」変更操作を撤去し参照専用にする。
+      `UserRequiredActionsSection` の `onToggle` を任意化し、未指定時は付与済みアクションのみを
+      バッジ表示する参照専用モードを追加。一覧右ペインからは `onToggle` を渡さない。
+- [x] T010 [App] ユーザー詳細画面のグループ追加・強制アクション変更・セッション終了をユーザー
       編集画面へ移設し、グループ離脱操作を新設する。詳細画面は完全な読み取り専用にする。
-- [ ] T011 [App] グループ詳細画面のメンバー追加をグループ編集画面へ移設する。
+      `UserGroupsSection`/`UserSessionsSection` に既存の `allowEditing` を活用・拡張し、詳細画面は
+      すべて `allowEditing={false}` で参照専用化。編集画面 (`AdminUserEditPage.tsx`) に2列
+      グリッドで3セクションを追加し、強制アクション用の独自 busy/notice state を新設。
+      グループ離脱は既存の `removeAdminGroupMember` API を再利用して新設 (`leaveGroup` ボタン)。
+      RED: `AdminUserEditPage.test.tsx` に `lets an admin toggle a required action without
+      leaving the edit screen` を追加 → GREEN。回帰確認用に `AdminUserDetailPage.test.tsx`
+      を新規作成（読み取り専用であることを検証）。
+- [x] T011 [App] グループ詳細画面のメンバー追加をグループ編集画面へ移設する。
+      `AdminGroupDetailCard.tsx` からメンバー一覧/追加/除外ロジックを `GroupMembersSection` として
+      抽出し、詳細画面 (`AdminGroupDetailPage.tsx`) には `allowEditing={false}` を明示指定
+      （従来 default true のまま渡し忘れていたのが実際の違反箇所）。編集画面
+      (`AdminGroupEditPage.tsx`) に `GroupMembersSection` を追加。
+      回帰確認用に `AdminGroupDetailPage.test.tsx` を新規作成、`AdminGroupEditPage.test.tsx` に
+      メンバー追加コントロールの存在を確認するテストを追加。
 - [ ] T012 [App] エージェントの追加/編集モーダル (`AgentEditorDialog`) を廃止し、一覧
       (`agents.tsx`) / 詳細 (`agents_/$agentId.index.tsx`) / 編集
       (`agents_/$agentId.edit.tsx`) / 作成 (`agents_/new.tsx`) の専用ルートに分割する。
