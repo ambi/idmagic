@@ -33,6 +33,8 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-user-edit': `ユーザーを編集 | ${ADMIN}`,
   'admin-agents': `エージェント | ${ADMIN}`,
   'admin-agent-detail': `エージェント詳細 | ${ADMIN}`,
+  'admin-agent-create': `エージェントを登録 | ${ADMIN}`,
+  'admin-agent-edit': `エージェントを編集 | ${ADMIN}`,
   'admin-applications': `アプリケーション | ${ADMIN}`,
   'admin-application-detail': `アプリケーション詳細 | ${ADMIN}`,
   'admin-application-edit': `アプリケーション編集 | ${ADMIN}`,

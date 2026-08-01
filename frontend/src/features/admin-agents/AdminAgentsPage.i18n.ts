@@ -71,6 +71,10 @@ export const adminAgentsDictionary = defineDictionary(
     saving: '保存中…',
     save: '保存',
     agentUpdateFailedError: 'エージェントを更新できませんでした。',
+    agentDetail: 'エージェント詳細',
+    backToAgentListAria: 'エージェント一覧に戻る',
+    backToDetailAria: 'エージェント詳細に戻る',
+    registerAgentDescription: '新しいエージェントを登録します。',
   },
   {
     kindAutonomous: 'Autonomous',
@@ -141,6 +145,10 @@ export const adminAgentsDictionary = defineDictionary(
     saving: 'Saving…',
     save: 'Save',
     agentUpdateFailedError: 'Could not update the agent.',
+    agentDetail: 'Agent details',
+    backToAgentListAria: 'Back to agent list',
+    backToDetailAria: 'Back to agent details',
+    registerAgentDescription: 'Register a new agent.',
   },
 )
 

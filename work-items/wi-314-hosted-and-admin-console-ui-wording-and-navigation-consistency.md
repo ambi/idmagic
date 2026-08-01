@@ -295,10 +295,22 @@ depends_on: []
       (`AdminGroupEditPage.tsx`) に `GroupMembersSection` を追加。
       回帰確認用に `AdminGroupDetailPage.test.tsx` を新規作成、`AdminGroupEditPage.test.tsx` に
       メンバー追加コントロールの存在を確認するテストを追加。
-- [ ] T012 [App] エージェントの追加/編集モーダル (`AgentEditorDialog`) を廃止し、一覧
+- [x] T012 [App] エージェントの追加/編集モーダル (`AgentEditorDialog`) を廃止し、一覧
       (`agents.tsx`) / 詳細 (`agents_/$agentId.index.tsx`) / 編集
       (`agents_/$agentId.edit.tsx`) / 作成 (`agents_/new.tsx`) の専用ルートに分割する。
       一覧右ペインのバインド変更を参照専用にする。
+      `agents_/$agentId.tsx` を detail leaf からレイアウトルート (Outlet) に変換し、
+      groups と同じ index/edit 分割構成にした。`AgentEditorDialog.tsx` は削除し、
+      新設の `AdminAgentEditPage.tsx`（プロフィール編集 + 資格情報バインド/解除を統合）と
+      `AdminAgentCreatePage.tsx`（旧・一覧内インラインモーダルを移設）に展開。
+      `AgentDetailCard`（一覧右ペイン/詳細共用）から bind/unbind の書き込み UI を削除し
+      読み取り専用化、Edit ボタンは `editHref` によるルート遷移に変更。選択切り替え時の
+      ローカル state リセットは `useEffect` ではなく `key={agent?.id}` の再マウントに変更
+      (biome の exhaustive-deps 指摘を受けての設計変更)。
+      新規テスト: `AdminAgentCreatePage.test.tsx`、`AdminAgentEditPage.test.tsx`
+      （プロフィール更新・bind/unbind・失敗時表示）。既存
+      `AdminAgentsListPage.test.tsx` からモーダル前提のテストを移設し、参照専用である
+      ことを検証するテストに置き換え。
 - [ ] T013 [App] アプリケーション追加モーダル (`CreateApplicationDialog`) を廃止し
       `applications_/new.tsx` 専用ルートに分割する。
 - [ ] T014 [App] OAuth2 認可詳細タイプ・MCP リソースサーバー各画面のインラインフォームを、

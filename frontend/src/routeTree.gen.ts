@@ -55,6 +55,7 @@ import { Route as AccountEmailVerifyRouteImport } from './routes/account/email/v
 import { Route as AccountProfileIndexRouteImport } from './routes/account/profile_/index'
 import { Route as AccountProfileEditRouteImport } from './routes/account/profile_/edit'
 import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
+import { Route as AdminAgentsNewRouteImport } from './routes/admin/agents_/new'
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
 import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
@@ -70,6 +71,8 @@ import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminUsersExportsRouteImport } from './routes/admin/users_/exports'
 import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/import'
 import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
+import { Route as AdminAgentsAgentIdIndexRouteImport } from './routes/admin/agents_/$agentId.index'
+import { Route as AdminAgentsAgentIdEditRouteImport } from './routes/admin/agents_/$agentId.edit'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
 import { Route as AdminApplicationsApplicationIdEditRouteImport } from './routes/admin/applications_/$applicationId.edit'
 import { Route as AdminApplicationsApplicationIdProvisioningRouteImport } from './routes/admin/applications_/$applicationId.provisioning'
@@ -318,6 +321,11 @@ const AdminAgentsAgentIdRoute = AdminAgentsAgentIdRouteImport.update({
   path: '/agents/$agentId',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminAgentsNewRoute = AdminAgentsNewRouteImport.update({
+  id: '/agents_/new',
+  path: '/agents/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminApplicationsApplicationIdRoute =
   AdminApplicationsApplicationIdRouteImport.update({
     id: '/applications_/$applicationId',
@@ -397,6 +405,16 @@ const AdminUsersNewRoute = AdminUsersNewRouteImport.update({
   id: '/users_/new',
   path: '/users/new',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAgentsAgentIdIndexRoute = AdminAgentsAgentIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminAgentsAgentIdRoute,
+} as any)
+const AdminAgentsAgentIdEditRoute = AdminAgentsAgentIdEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => AdminAgentsAgentIdRoute,
 } as any)
 const AdminApplicationsApplicationIdIndexRoute =
   AdminApplicationsApplicationIdIndexRouteImport.update({
@@ -535,7 +553,8 @@ export interface FileRoutesByFullPath {
   '/system/': typeof SystemIndexRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
-  '/admin/agents/$agentId': typeof AdminAgentsAgentIdRoute
+  '/admin/agents/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
+  '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
@@ -552,6 +571,7 @@ export interface FileRoutesByFullPath {
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
   '/account/profile/': typeof AccountProfileIndexRoute
+  '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
@@ -561,6 +581,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
+  '/admin/agents/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers/$id/': typeof AdminIdentityProvidersIdIndexRoute
@@ -611,7 +632,7 @@ export interface FileRoutesByTo {
   '/system': typeof SystemIndexRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
-  '/admin/agents/$agentId': typeof AdminAgentsAgentIdRoute
+  '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
@@ -623,6 +644,7 @@ export interface FileRoutesByTo {
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
+  '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra/new': typeof AdminFederationEntraNewRoute
@@ -631,6 +653,7 @@ export interface FileRoutesByTo {
   '/admin/lifecycle-workflows/$workflowId/edit': typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
+  '/admin/agents/$agentId': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers/$id': typeof AdminIdentityProvidersIdIndexRoute
@@ -685,7 +708,8 @@ export interface FileRoutesById {
   '/system/': typeof SystemIndexRoute
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile_/edit': typeof AccountProfileEditRoute
-  '/admin/agents_/$agentId': typeof AdminAgentsAgentIdRoute
+  '/admin/agents_/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
+  '/admin/agents_/new': typeof AdminAgentsNewRoute
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
@@ -702,6 +726,7 @@ export interface FileRoutesById {
   '/admin/users_/import': typeof AdminUsersImportRoute
   '/admin/users_/new': typeof AdminUsersNewRoute
   '/account/profile_/': typeof AccountProfileIndexRoute
+  '/admin/agents_/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications_/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
   '/admin/federation/entra_/new': typeof AdminFederationEntraNewRoute
@@ -711,6 +736,7 @@ export interface FileRoutesById {
   '/admin/settings_/saml-idp-profiles_/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdRouteWithChildren
   '/admin/settings_/saml-idp-profiles_/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
+  '/admin/agents_/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers_/$id/': typeof AdminIdentityProvidersIdIndexRoute
@@ -767,6 +793,7 @@ export interface FileRouteTypes {
     | '/account/email/verify'
     | '/account/profile/edit'
     | '/admin/agents/$agentId'
+    | '/admin/agents/new'
     | '/admin/applications/$applicationId'
     | '/admin/federation/entra'
     | '/admin/groups/$groupId'
@@ -783,6 +810,7 @@ export interface FileRouteTypes {
     | '/admin/users/import'
     | '/admin/users/new'
     | '/account/profile/'
+    | '/admin/agents/$agentId/edit'
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/federation/entra/new'
@@ -792,6 +820,7 @@ export interface FileRouteTypes {
     | '/admin/settings/saml-idp-profiles/$profileId'
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/users/$id/edit'
+    | '/admin/agents/$agentId/'
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
     | '/admin/identity-providers/$id/'
@@ -842,7 +871,7 @@ export interface FileRouteTypes {
     | '/system'
     | '/account/email/verify'
     | '/account/profile/edit'
-    | '/admin/agents/$agentId'
+    | '/admin/agents/new'
     | '/admin/federation/entra'
     | '/admin/groups/exports'
     | '/admin/groups/new'
@@ -854,6 +883,7 @@ export interface FileRouteTypes {
     | '/admin/users/exports'
     | '/admin/users/import'
     | '/admin/users/new'
+    | '/admin/agents/$agentId/edit'
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/provisioning'
     | '/admin/federation/entra/new'
@@ -862,6 +892,7 @@ export interface FileRouteTypes {
     | '/admin/lifecycle-workflows/$workflowId/edit'
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/users/$id/edit'
+    | '/admin/agents/$agentId'
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
     | '/admin/identity-providers/$id'
@@ -916,6 +947,7 @@ export interface FileRouteTypes {
     | '/account/email/verify'
     | '/account/profile_/edit'
     | '/admin/agents_/$agentId'
+    | '/admin/agents_/new'
     | '/admin/applications_/$applicationId'
     | '/admin/federation/entra'
     | '/admin/groups_/$groupId'
@@ -932,6 +964,7 @@ export interface FileRouteTypes {
     | '/admin/users_/import'
     | '/admin/users_/new'
     | '/account/profile_/'
+    | '/admin/agents_/$agentId/edit'
     | '/admin/applications_/$applicationId/edit'
     | '/admin/applications_/$applicationId/provisioning'
     | '/admin/federation/entra_/new'
@@ -941,6 +974,7 @@ export interface FileRouteTypes {
     | '/admin/settings_/saml-idp-profiles_/$profileId'
     | '/admin/settings_/saml-idp-profiles_/new'
     | '/admin/users_/$id/edit'
+    | '/admin/agents_/$agentId/'
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
     | '/admin/identity-providers_/$id/'
@@ -1290,6 +1324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAgentsAgentIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/agents_/new': {
+      id: '/admin/agents_/new'
+      path: '/agents/new'
+      fullPath: '/admin/agents/new'
+      preLoaderRoute: typeof AdminAgentsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/applications_/$applicationId': {
       id: '/admin/applications_/$applicationId'
       path: '/applications/$applicationId'
@@ -1394,6 +1435,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/new'
       preLoaderRoute: typeof AdminUsersNewRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/agents_/$agentId/': {
+      id: '/admin/agents_/$agentId/'
+      path: '/'
+      fullPath: '/admin/agents/$agentId/'
+      preLoaderRoute: typeof AdminAgentsAgentIdIndexRouteImport
+      parentRoute: typeof AdminAgentsAgentIdRoute
+    }
+    '/admin/agents_/$agentId/edit': {
+      id: '/admin/agents_/$agentId/edit'
+      path: '/edit'
+      fullPath: '/admin/agents/$agentId/edit'
+      preLoaderRoute: typeof AdminAgentsAgentIdEditRouteImport
+      parentRoute: typeof AdminAgentsAgentIdRoute
     }
     '/admin/applications_/$applicationId/': {
       id: '/admin/applications_/$applicationId/'
@@ -1544,6 +1599,19 @@ const AccountRouteRouteWithChildren = AccountRouteRoute._addFileChildren(
   AccountRouteRouteChildren,
 )
 
+interface AdminAgentsAgentIdRouteChildren {
+  AdminAgentsAgentIdEditRoute: typeof AdminAgentsAgentIdEditRoute
+  AdminAgentsAgentIdIndexRoute: typeof AdminAgentsAgentIdIndexRoute
+}
+
+const AdminAgentsAgentIdRouteChildren: AdminAgentsAgentIdRouteChildren = {
+  AdminAgentsAgentIdEditRoute: AdminAgentsAgentIdEditRoute,
+  AdminAgentsAgentIdIndexRoute: AdminAgentsAgentIdIndexRoute,
+}
+
+const AdminAgentsAgentIdRouteWithChildren =
+  AdminAgentsAgentIdRoute._addFileChildren(AdminAgentsAgentIdRouteChildren)
+
 interface AdminApplicationsApplicationIdRouteChildren {
   AdminApplicationsApplicationIdEditRoute: typeof AdminApplicationsApplicationIdEditRoute
   AdminApplicationsApplicationIdProvisioningRoute: typeof AdminApplicationsApplicationIdProvisioningRoute
@@ -1645,7 +1713,8 @@ interface AdminRouteRouteChildren {
   AdminSignInPolicyRoute: typeof AdminSignInPolicyRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
-  AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRoute
+  AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRouteWithChildren
+  AdminAgentsNewRoute: typeof AdminAgentsNewRoute
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
   AdminFederationEntraRoute: typeof AdminFederationEntraRoute
   AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRouteWithChildren
@@ -1684,7 +1753,8 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSignInPolicyRoute: AdminSignInPolicyRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
-  AdminAgentsAgentIdRoute: AdminAgentsAgentIdRoute,
+  AdminAgentsAgentIdRoute: AdminAgentsAgentIdRouteWithChildren,
+  AdminAgentsNewRoute: AdminAgentsNewRoute,
   AdminApplicationsApplicationIdRoute:
     AdminApplicationsApplicationIdRouteWithChildren,
   AdminFederationEntraRoute: AdminFederationEntraRoute,

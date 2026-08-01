@@ -28,10 +28,10 @@ import {
 import { useDictionary } from '../../lib/i18n'
 import type { AdminAgent } from '../../types'
 import { AgentDetailCard } from './AdminAgentDetailCard'
-import { AgentEditorDialog } from './AgentEditorDialog'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 
-// AdminAgentDetailPage はエージェントの編集・状態操作・資格情報管理を扱う詳細画面 (wi-49)。
+// AdminAgentDetailPage はエージェントの状態操作を扱う参照専用の詳細画面 (wi-49)。
+// プロフィール編集・資格情報のバインド/解除は編集画面に一本化されている (wi-314 T012)。
 export function AdminAgentDetailPage({
   csrfToken,
   actorUsername,
@@ -42,7 +42,6 @@ export function AdminAgentDetailPage({
   agent: AdminAgent
 }) {
   const [agent, setAgent] = useState(initialAgent)
-  const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmKill, setConfirmKill] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -86,148 +85,132 @@ export function AdminAgentDetailPage({
   const killed = agent.status === 'killed'
 
   return (
-    <>
-      <AdminShell
-        active="agents"
-        actorUsername={actorUsername}
-        title={agent.name}
-        description={agent.description || agent.id}
-        actions={
-          <div className="flex items-center gap-2">
-            <a
-              href={tenantURL('/admin/agents')}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+    <AdminShell
+      active="agents"
+      actorUsername={actorUsername}
+      title={agent.name}
+      description={agent.description || agent.id}
+      actions={
+        <div className="flex items-center gap-2">
+          <a
+            href={tenantURL('/admin/agents')}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            <IconArrowLeft size={16} aria-hidden="true" />
+            {t.backToAgentList}
+          </a>
+          <Button
+            nativeButton={false}
+            disabled={killed}
+            render={<a href={tenantURL(`/admin/agents/${encodeURIComponent(agent.id)}/edit`)} />}
+          >
+            <IconPencil size={16} aria-hidden="true" />
+            {t.edit}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="size-9 px-0"
+                  aria-label={t.agentActionsAriaLabel}
+                  disabled={busy}
+                />
+              }
             >
-              <IconArrowLeft size={16} aria-hidden="true" />
-              {t.backToAgentList}
-            </a>
-            <Button type="button" disabled={busy || killed} onClick={() => setEditing(true)}>
-              <IconPencil size={16} aria-hidden="true" />
-              {t.edit}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="size-9 px-0"
-                    aria-label={t.agentActionsAriaLabel}
-                    disabled={busy}
-                  />
-                }
-              >
-                <IconDotsVertical size={18} aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {!killed && agent.status === 'active' ? (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      void run(async () => {
-                        await disableAdminAgent(csrfToken, agent.id)
-                        await reload(agent.id)
-                      })
-                    }
-                  >
-                    <IconPower size={17} aria-hidden="true" />
-                    {t.disable}
-                  </DropdownMenuItem>
-                ) : null}
-                {!killed && agent.status === 'disabled' ? (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      void run(async () => {
-                        await enableAdminAgent(csrfToken, agent.id)
-                        await reload(agent.id)
-                      })
-                    }
-                  >
-                    <IconPower size={17} aria-hidden="true" />
-                    {t.enable}
-                  </DropdownMenuItem>
-                ) : null}
-                {!killed ? (
-                  <DropdownMenuItem className="text-rose-700" onClick={() => setConfirmKill(true)}>
-                    <IconPlayerStop size={17} aria-hidden="true" />
-                    {t.kill}
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuItem className="text-red-700" onClick={() => setConfirmDelete(true)}>
-                  <IconTrash size={17} aria-hidden="true" />
-                  {t.deleteAgent}
+              <IconDotsVertical size={18} aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {!killed && agent.status === 'active' ? (
+                <DropdownMenuItem
+                  onClick={() =>
+                    void run(async () => {
+                      await disableAdminAgent(csrfToken, agent.id)
+                      await reload(agent.id)
+                    })
+                  }
+                >
+                  <IconPower size={17} aria-hidden="true" />
+                  {t.disable}
                 </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        }
-      >
-        {error ? <Alert variant="destructive">{error}</Alert> : null}
-        {confirmKill ? (
-          <Alert
-            variant="destructive"
-            className="flex flex-wrap items-center justify-between gap-2"
-          >
-            <span>{t.confirmKillPrompt}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setConfirmKill(false)} disabled={busy}>
-                {t.dismissConfirm}
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    await killAdminAgent(csrfToken, agent.id)
-                    setConfirmKill(false)
-                    await reload(agent.id)
-                  })
-                }
-              >
-                <IconPlayerStop size={14} aria-hidden="true" />
-                {t.confirmKill}
-              </Button>
-            </div>
-          </Alert>
-        ) : null}
-        {confirmDelete ? (
-          <Alert
-            variant="destructive"
-            className="flex flex-wrap items-center justify-between gap-2"
-          >
-            <span>{t.confirmDeleteAgentPrompt}</span>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>
-                {t.dismissConfirm}
-              </Button>
-              <Button variant="destructive" disabled={busy} onClick={() => void handleDelete()}>
-                <IconTrash size={14} aria-hidden="true" />
-                {t.confirmDelete}
-              </Button>
-            </div>
-          </Alert>
-        ) : null}
-        <div className="max-w-3xl">
-          <AgentDetailCard
-            agent={agent}
-            csrfToken={csrfToken}
-            busy={busy}
-            showActions={false}
-            onChanged={(id) => void reload(id)}
-            onDeleted={() => window.location.assign(tenantURL('/admin/agents'))}
-          />
+              ) : null}
+              {!killed && agent.status === 'disabled' ? (
+                <DropdownMenuItem
+                  onClick={() =>
+                    void run(async () => {
+                      await enableAdminAgent(csrfToken, agent.id)
+                      await reload(agent.id)
+                    })
+                  }
+                >
+                  <IconPower size={17} aria-hidden="true" />
+                  {t.enable}
+                </DropdownMenuItem>
+              ) : null}
+              {!killed ? (
+                <DropdownMenuItem className="text-rose-700" onClick={() => setConfirmKill(true)}>
+                  <IconPlayerStop size={17} aria-hidden="true" />
+                  {t.kill}
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem className="text-red-700" onClick={() => setConfirmDelete(true)}>
+                <IconTrash size={17} aria-hidden="true" />
+                {t.deleteAgent}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      </AdminShell>
-      {editing ? (
-        <AgentEditorDialog
+      }
+    >
+      {error ? <Alert variant="destructive">{error}</Alert> : null}
+      {confirmKill ? (
+        <Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-2">
+          <span>{t.confirmKillPrompt}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setConfirmKill(false)} disabled={busy}>
+              {t.dismissConfirm}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  await killAdminAgent(csrfToken, agent.id)
+                  setConfirmKill(false)
+                  await reload(agent.id)
+                })
+              }
+            >
+              <IconPlayerStop size={14} aria-hidden="true" />
+              {t.confirmKill}
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+      {confirmDelete ? (
+        <Alert variant="destructive" className="flex flex-wrap items-center justify-between gap-2">
+          <span>{t.confirmDeleteAgentPrompt}</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>
+              {t.dismissConfirm}
+            </Button>
+            <Button variant="destructive" disabled={busy} onClick={() => void handleDelete()}>
+              <IconTrash size={14} aria-hidden="true" />
+              {t.confirmDelete}
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
+      <div className="max-w-3xl">
+        <AgentDetailCard
           agent={agent}
           csrfToken={csrfToken}
-          onClose={() => setEditing(false)}
-          onSaved={(id) => {
-            setEditing(false)
-            void reload(id)
-          }}
+          busy={busy}
+          showActions={false}
+          onDeleted={() => window.location.assign(tenantURL('/admin/agents'))}
         />
-      ) : null}
-    </>
+      </div>
+    </AdminShell>
   )
 }

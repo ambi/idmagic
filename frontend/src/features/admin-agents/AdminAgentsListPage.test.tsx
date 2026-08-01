@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
-import { screen, fireEvent, within } from '@testing-library/react'
+import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminAgentsPage } from './AdminAgentsListPage'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
@@ -56,44 +56,30 @@ describe('locale', () => {
 describe('AdminAgentsPage', () => {
   afterEach(() => restoreGlobals())
 
-  it('registers an agent and refreshes the list on success', async () => {
+  it('links "add agent" to the dedicated create route instead of a modal', async () => {
     stubGlobal(
       'fetch',
-      mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/agents') && init?.method === 'POST') {
-          return Promise.resolve(response(201, { ...agent, id: 'agent-2', name: 'billing-bot' }))
-        }
-        if (url.includes('/api/admin/agents')) {
-          return Promise.resolve(response(200, { agents: [agent] }))
-        }
-        throw new Error(`unexpected fetch ${url}`)
-      }),
+      mock(() => Promise.resolve(response(200, { agents: [agent] }))),
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: t.addAgent }))
-    const nameInput = await screen.findByLabelText(t.agentNameLabel)
-    fireEvent.change(nameInput, { target: { value: 'billing-bot' } })
-    const form = nameInput.closest('form') as HTMLFormElement
-    fireEvent.click(within(form).getByRole('button', { name: t.register }))
-
-    expect(await screen.findByText(t.agentRegisteredNotice)).toBeInTheDocument()
+    const addLink = screen.getByRole('button', { name: new RegExp(t.addAgent) })
+    expect(addLink).toHaveAttribute('href', '/admin/agents/new')
   })
 
-  it('shows an error and keeps the dialog open when registration fails', async () => {
+  it('is read-only for credentials: no bind input on the list right pane (wi-314 T012)', async () => {
     stubGlobal(
       'fetch',
-      mock(() => Promise.resolve(response(409, { message: 'This agent name is already in use.' }))),
+      mock(() => Promise.resolve(response(200, { agents: [agent] }))),
     )
     await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
 
-    fireEvent.click(screen.getByRole('button', { name: t.addAgent }))
-    const nameInput = await screen.findByLabelText(t.agentNameLabel)
-    fireEvent.change(nameInput, { target: { value: 'billing-bot' } })
-    const form = nameInput.closest('form') as HTMLFormElement
-    fireEvent.click(within(form).getByRole('button', { name: t.register }))
-
-    expect(await screen.findByText('This agent name is already in use.')).toBeInTheDocument()
+    expect(screen.queryByLabelText(t.bindClientIdAria)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: t.bind })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: new RegExp(t.edit) })).toHaveAttribute(
+      'href',
+      '/admin/agents/agent-1/edit',
+    )
   })
 
   it('deletes an agent and refreshes the list on success', async () => {
@@ -116,37 +102,5 @@ describe('AdminAgentsPage', () => {
 
     expect(await screen.findByText(t.agentDeletedNotice)).toBeInTheDocument()
     expect(screen.getByText(t.selectAgentPrompt)).toBeInTheDocument()
-  })
-
-  it('shows an error when binding a credential fails', async () => {
-    stubGlobal(
-      'fetch',
-      mock(() => Promise.resolve(response(409, { message: 'This client_id is already in use.' }))),
-    )
-    await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
-
-    fireEvent.change(screen.getByLabelText(t.bindClientIdAria), {
-      target: { value: 'client-x' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: t.bind }))
-
-    expect(await screen.findByText('This client_id is already in use.')).toBeInTheDocument()
-  })
-
-  it('shows an error and keeps the dialog open when editing an agent fails', async () => {
-    stubGlobal(
-      'fetch',
-      mock(() => Promise.resolve(response(400, { message: 'Could not update the agent.' }))),
-    )
-    await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} />)
-
-    fireEvent.click(screen.getByRole('button', { name: t.edit }))
-    fireEvent.change(await screen.findByLabelText(t.agentNameLabel), {
-      target: { value: 'renamed-bot' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: t.save }))
-
-    expect(await screen.findByText('Could not update the agent.')).toBeInTheDocument()
-    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 })

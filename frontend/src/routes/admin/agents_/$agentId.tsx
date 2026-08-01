@@ -1,27 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { getAdminAgent } from '../../../api/admin'
-import { AdminAgentDetailPage } from '../../../features/admin-agents/AdminAgentDetailPage'
-import { requirePortalAccount } from '../../-guards'
-import { PageMarker } from '../../-page'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 
+// $agentId は詳細 (index) と編集 (edit) を束ねるレイアウトルート。
 export const Route = createFileRoute('/admin/agents_/$agentId')({
-  loader: async ({ location, params }) => {
-    const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const agent = await getAdminAgent(params.agentId)
-    return {
-      csrfToken: account.csrf_token,
-      actorUsername: account.preferred_username,
-      agent,
-    }
-  },
-  component: AdminAgentDetailRoute,
+  component: Outlet,
 })
-
-function AdminAgentDetailRoute() {
-  const data = Route.useLoaderData()
-  return (
-    <PageMarker kind="admin-agent-detail">
-      <AdminAgentDetailPage {...data} />
-    </PageMarker>
-  )
-}
