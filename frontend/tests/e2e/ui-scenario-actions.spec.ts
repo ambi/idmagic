@@ -188,19 +188,26 @@ test('admin MCP resource server lifecycle works from the browser', async () => {
     await navigateAndLogin(view, '/admin/mcp-resource-servers', 'admin-mcp-resource-servers')
 
     const resource = `https://mcp-${Date.now()}.example.com`
-    await clickButtonByText(view, 'Add resource server')
+    // wi-314 T014: register/edit now live on dedicated routes reached via links,
+    // not an inline form on the list page, so the resulting notice from the old
+    // same-page flow no longer carries across the redirect back to the list.
+    await clickLinkByText(view, 'Add resource server')
+    await waitForUrl(view, /\/admin\/mcp-resource-servers\/new$/)
     await setInputValue(view, '#resource', resource)
     await setInputValue(view, '#name', 'MCP E2E')
     await setInputValue(view, '#scopes', 'mcp.read, mcp.write')
     await clickButtonByText(view, 'Register')
-    await waitForText(view, `${resource} has been registered.`)
+    await waitForText(view, resource)
 
-    await clickButtonByText(view, 'Edit')
+    await clickLinkByText(view, 'Edit')
+    await waitForUrl(view, /\/admin\/mcp-resource-servers\/[^/]+\/edit$/)
     await setInputValue(view, '#name', 'MCP E2E updated')
     await setInputValue(view, '#scopes', 'mcp.read')
     await setSelectValue(view, '#state', 'Disabled')
     await clickButtonByText(view, 'Update')
-    await waitForText(view, `${resource} has been updated.`)
+    // 'Disabled' is also literal <option> text in the still-current edit form, so wait
+    // for the post-save redirect back to the list before asserting the committed state.
+    await waitForUrl(view, /\/admin\/mcp-resource-servers$/)
     await waitForText(view, 'Disabled')
 
     await clickElementByAriaLabel(view, `Delete: ${resource}`)
@@ -246,7 +253,7 @@ test('account connected application consent can be revoked from the browser', as
       }
       await Bun.sleep(150)
     }
-    if (needsConsent) await clickButtonByAnyText(view, ['許可して続行', 'Allow and continue'])
+    if (needsConsent) await clickButtonByAnyText(view, ['許可', 'Allow'])
     await waitForUrl(view, /localhost:3000\/callback/)
 
     await view.navigate(`${uiOrigin}/account/applications`)
@@ -396,7 +403,11 @@ test('admin user attribute schema can add and delete a custom attribute', async 
     await navigateAndLogin(view, '/admin/tenant/attributes', 'admin-tenant-attributes')
 
     const key = `e2e_attr_${Date.now()}`
-    await clickButtonByText(view, 'Add user attribute')
+    // wi-314 T015: adding an attribute now happens on a dedicated route reached via
+    // a link, redirecting back to the list on success rather than showing a
+    // same-page notice, so the new key showing up in the list is the success signal.
+    await clickLinkByText(view, 'Add user attribute')
+    await waitForUrl(view, /\/admin\/tenant\/attributes\/new$/)
     await setInputValue(view, '#attr-label', 'E2E attribute')
     await setInputValue(view, '#attr-key', key)
     await setSelectValue(view, '#attr-type', 'string')
@@ -404,7 +415,6 @@ test('admin user attribute schema can add and delete a custom attribute', async 
     await setCheckboxValue(view, '#attr-editable', true)
     await clickButtonByText(view, 'Save')
 
-    await waitForText(view, 'The attribute has been added.')
     await waitForText(view, key)
 
     await clickElementByAriaLabel(view, `Delete ${key}`)
@@ -504,7 +514,8 @@ test('admin application lifecycle and agent credential binding work from the bro
     const agentName = `e2e-agent-${suffix}`
 
     await navigateAndLogin(view, '/admin/applications', 'admin-applications')
-    await clickButtonByText(view, 'Add application')
+    await clickLinkByText(view, 'Add application')
+    await waitForUrl(view, /\/admin\/applications\/new$/)
     await setInputValue(view, '#app-name', appName)
     await setInputValue(view, '#app-redirects', `https://client.example.test/callback/${suffix}`)
     await setInputValue(view, '#app-oidc-scope', 'openid profile email')
@@ -522,7 +533,10 @@ test('admin application lifecycle and agent credential binding work from the bro
     expect(clientID).not.toBe('')
 
     await clickButtonByText(view, 'Stored')
-    await waitForUrl(view, /\/admin\/applications\/[^/]+$/)
+    // Excludes /new: that path also matches [^/]+$, so without the negative lookahead
+    // this would resolve immediately against the still-current create-page URL instead
+    // of waiting for the post-creation redirect to the real detail page.
+    await waitForUrl(view, /\/admin\/applications\/(?!new$)[^/]+$/)
     const appDetailURL = view.url
     await waitForText(view, appName)
     await waitForText(view, clientID)
@@ -535,15 +549,20 @@ test('admin application lifecycle and agent credential binding work from the bro
 
     await view.navigate(`${uiOrigin}/admin/agents`)
     await waitForPage(view, 'admin-agents')
-    await clickButtonByText(view, 'Add agent')
+    // wi-314 T012: registering redirects straight to the new agent's own detail
+    // page (no list-page notice to wait for), and credential bind/unbind moved
+    // off the detail page onto the edit page, so it must be reached explicitly.
+    await clickLinkByText(view, 'Add agent')
+    await waitForUrl(view, /\/admin\/agents\/new$/)
     await setInputValue(view, '#agent-name', agentName)
     await setInputValue(view, '#agent-description', 'E2E credential binding')
     await setSelectValue(view, '#agent-kind', 'supervised')
     await setInputValue(view, '#agent-roles', 'e2e:read, e2e:write')
     await view.click('form button[type="submit"]')
-    await waitForText(view, 'The agent has been registered.')
     await waitForText(view, agentName)
 
+    await clickLinkByText(view, 'Edit')
+    await waitForUrl(view, /\/admin\/agents\/[^/]+\/edit$/)
     await setInputValue(view, 'input[aria-label="client_id to bind"]', clientID)
     await clickButtonByText(view, 'Bind')
     await waitForText(view, clientID)

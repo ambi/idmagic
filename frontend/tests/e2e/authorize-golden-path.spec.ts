@@ -44,7 +44,7 @@ test('authorize golden path: login -> consent -> callback keeps code and iss', a
     // dispatcher 不変条件: 同意画面へ遷移する。
     await waitForPage(view, 'consent')
 
-    await clickButtonByAnyText(view, ['許可して続行', 'Allow and continue'])
+    await clickButtonByAnyText(view, ['許可', 'Allow'])
 
     // cross-origin redirect (5174 -> 3000) で code / iss が落ちないこと (RFC 9207)。
     await waitForUrl(view, /localhost:3000\/callback/)

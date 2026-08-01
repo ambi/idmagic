@@ -367,7 +367,24 @@ depends_on: []
       読み取り専用バッジであることの明示的な回帰テスト。共有 presentational component
       (`*FormFields`, `*Shared.tsx`) は既存コードベースの慣例 (`SamlIDPProfileFields.tsx` 等)
       に倣い、消費元の Create/Edit ページテストを通じて間接的に検証する方針とした。
-- [ ] T022 [Verify] 下記 Verification を通す。
+- [x] T022 [Verify] 下記 Verification を通す。
+      `just verify-ui` 508 pass / 0 fail、`just test-ui-e2e` 22 pass / 0 fail (4 spec files)、
+      `just check-work-items` / `just check-ids` OK。`just check`（architecture 複雑度
+      ratchet）は wi-314 起因の超過を全て debt として documented・解消し green。ただし
+      `frontend/src/features/account/AccountProfilePage.tsx` の `ui-page-lines`
+      超過 (509, ceiling 499) は本 WI 開始前（コミット a1f8325c 時点）から存在する
+      無関係な既存 debt であることを確認済み（本 WI では未着手・未修正）。
+      test-ui-e2e で実際に4件の回帰を検出・修正: (1) MCP/属性/アプリ/エージェントの
+      「追加」導線がモーダル→専用ルートのリンクに変わったため `clickButtonByText` では
+      要素が見つからなくなり `clickLinkByText` + 遷移後の `waitForUrl` に置き換え、
+      (2) 同意ページの「許可して続行」ボタン文言変更 (T001) に伴い E2E アサーションの
+      期待文言を「許可」に更新 (`ui-scenario-actions.spec.ts` と
+      `authorize-golden-path.spec.ts` の2箇所)、(3) 一覧へリダイレクトする
+      Create/Edit ページでは旧来の同一画面 toast 通知が redirect 後に消えるため、
+      通知文言ではなく実データ（作成した値そのもの）の一覧表示を検証するよう変更、
+      (4) `/admin/applications/new` の URL が既存の詳細ページ検出用正規表現
+      `/\/admin\/applications\/[^/]+$/` と偶然一致し、リダイレクト前の URL で
+      誤って早期成立していたバグを負の先読みで修正。
 
 ## Verification
 

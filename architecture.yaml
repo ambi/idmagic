@@ -318,12 +318,24 @@ complexity:
       reason: wi-234 T002 で list/detail/edit へ分割済み。edit は OIDC/WS-Fed/SAML/サインインポリシーの4プロトコル分岐フォームが同居し、残存超過はプロトコル単位のフォームセクション分割で解消する。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
+    - id: wi314-ui-page-lines-admin-application-create-page
+      budget: ui-page-lines
+      path: frontend/src/features/admin-applications/AdminApplicationCreatePage.tsx
+      ceiling: 471
+      owner: maintainers
+      reason: wi-314 T013 で CreateApplicationDialog.tsx (モーダル、*Page.tsx 命名規約外のため本
+        budget の対象外だった) を専用ルートの *Page.tsx へ移設し、ADR-086 の作成/編集はモーダル
+        禁止ポリシーに合わせた。フォーム本体 (OIDC/WS-Fed/SAML の種別分岐) は移設前と同一で、
+        本 WI はモーダル→専用ルートの構造変更のみが目的のため中身の分割は対象外とした。
+        AdminApplicationEditPage.tsx と同じくプロトコル単位のフォームセクション分割で解消する。
+      work_item: wi-314-hosted-and-admin-console-ui-wording-and-navigation-consistency
+      expires_at: 2026-11-01
     - id: wi234-ui-page-lines-admin-audit-events-page
       budget: ui-page-lines
       path: frontend/src/features/admin-audit-events/AdminAuditEventsPage.tsx
-      ceiling: 538
+      ceiling: 539
       owner: maintainers
-      reason: wi-234 で責務境界に沿って分割する既存超過。
+      reason: wi-234 で責務境界に沿って分割する既存超過。wi-314 T008 でダッシュボードと同じ friendlyEventName 表示に揃えるための import を 1 行追加。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-lines-admin-dashboard-page
@@ -406,6 +418,17 @@ complexity:
       reason: wi-234 T002 で list/detail/edit へ分割済み。edit の残存超過はプロトコル単位のフォームセクション分割で解消する。wi-73 で OIDC の claim release 上書き (sub_source_attribute/rules) の state を 2 個追加。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
+    - id: wi314-ui-page-local-state-admin-application-create-page
+      budget: ui-page-local-state
+      path: frontend/src/features/admin-applications/AdminApplicationCreatePage.tsx
+      ceiling: 24
+      owner: maintainers
+      reason: wi-314 T013 で CreateApplicationDialog.tsx (モーダル、budget 対象外) から専用ルート
+        の *Page.tsx へ移設。state 自体は移設前と同数で、OIDC/WS-Fed/SAML の種別分岐フォームが
+        同一 component に同居するため多い。AdminApplicationEditPage.tsx と同じくプロトコル単位
+        のフォームセクション分割で解消する。
+      work_item: wi-314-hosted-and-admin-console-ui-wording-and-navigation-consistency
+      expires_at: 2026-11-01
     - id: wi234-ui-page-local-state-admin-group-edit-page
       budget: ui-page-local-state
       path: frontend/src/features/admin-groups/AdminGroupEditPage.tsx
@@ -425,9 +448,9 @@ complexity:
     - id: wi234-ui-page-local-state-admin-user-edit-page
       budget: ui-page-local-state
       path: frontend/src/features/admin-users/AdminUserEditPage.tsx
-      ceiling: 12
+      ceiling: 15
       owner: maintainers
-      reason: wi-234 T002 で分割済み。残存超過はプロフィール/属性/ロール変更確認の状態が同一 component に残るため。
+      reason: wi-234 T002 で分割済み。残存超過はプロフィール/属性/ロール変更確認の状態が同一 component に残るため。wi-314 T010 で、ユーザー詳細画面から移設した所属グループ管理・強制アクション変更・セッション終了の状態 (liveUser/actionBusy/notice) を 3 個追加。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-local-state-system-tenants-page
