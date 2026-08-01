@@ -50,4 +50,16 @@ describe('AdminAuthorizationDetailTypesPage', () => {
       screen.getByText(adminAuthorizationDetailTypesDictionary.en.emptyNotice),
     ).toBeInTheDocument()
   })
+
+  it('links "register type" and "edit" to their dedicated routes instead of an inline form', async () => {
+    await renderWithRouterBase(
+      <AdminAuthorizationDetailTypesPage csrfToken="csrf" types={[detailType]} />,
+    )
+    expect(
+      screen.getByRole('button', { name: adminAuthorizationDetailTypesDictionary.en.registerType }),
+    ).toHaveAttribute('href', '/admin/authorization-detail-types/new')
+    expect(
+      screen.getByRole('button', { name: adminAuthorizationDetailTypesDictionary.en.edit }),
+    ).toHaveAttribute('href', '/admin/authorization-detail-types/payment_initiation/edit')
+  })
 })

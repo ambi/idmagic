@@ -24,6 +24,8 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     emptyNotice: 'まだ MCP リソースサーバーが登録されていません。',
     edit: '編集',
     delete: '削除',
+    backToList: '一覧に戻る',
+    editResource: '{resource} を編集',
   },
   {
     updatedNotice: '{resource} has been updated.',
@@ -48,5 +50,7 @@ export const adminMcpResourceServersDictionary = defineDictionary(
     emptyNotice: 'No MCP resource servers have been registered yet.',
     edit: 'Edit',
     delete: 'Delete',
+    backToList: 'Back to list',
+    editResource: 'Edit {resource}',
   },
 )

@@ -1,6 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, mock } from 'bun:test'
-import { restoreGlobals, stubGlobal } from '../../test/globals'
+import { screen } from '@testing-library/react'
+import { describe, expect, it } from 'bun:test'
 import type { McpResourceServer } from '../../types'
 import { renderWithRouter as renderWithRouterBase } from '../../test/renderWithRouter'
 import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage.i18n'
@@ -21,8 +20,6 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
   renderWithRouterBase(ui, { locale: 'ja' })
 
 describe('AdminMcpResourceServersPage', () => {
-  afterEach(() => restoreGlobals())
-
   it('renders the resource and scopes in English by default', async () => {
     await renderWithRouterBase(
       <AdminMcpResourceServersPage csrfToken="csrf" resourceServers={[resourceServer]} />,
@@ -60,43 +57,17 @@ describe('AdminMcpResourceServersPage', () => {
     expect(screen.getByText(adminMcpResourceServersDictionary.en.emptyNotice)).toBeInTheDocument()
   })
 
-  it('splits comma and whitespace separated scopes when registering', async () => {
-    stubGlobal(
-      'fetch',
-      mock().mockResolvedValue({
-        ok: true,
-        status: 201,
-        json: mock().mockResolvedValue(resourceServer),
-      }),
-    )
-    const t = adminMcpResourceServersDictionary.en
+  it('links "register resource server" to the dedicated create route instead of an inline form', async () => {
     await renderWithRouterBase(
-      <AdminMcpResourceServersPage csrfToken="csrf" resourceServers={[]} />,
+      <AdminMcpResourceServersPage csrfToken="csrf" resourceServers={[resourceServer]} />,
     )
-
-    fireEvent.click(screen.getByRole('button', { name: t.registerResourceServer }))
-    fireEvent.change(screen.getByLabelText(t.resourceLabel), {
-      target: { value: resourceServer.resource },
-    })
-    fireEvent.change(screen.getByLabelText(t.nameLabel), { target: { value: resourceServer.name } })
-    fireEvent.change(screen.getByLabelText(t.scopesLabel), {
-      target: { value: 'mcp.read,  mcp.write profile' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: t.register }))
-
-    await waitFor(() =>
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/mcp-resource-servers'),
-        expect.objectContaining({
-          method: 'POST',
-          body: JSON.stringify({
-            resource: resourceServer.resource,
-            name: resourceServer.name,
-            scopes: ['mcp.read', 'mcp.write', 'profile'],
-            state: 'Active',
-          }),
-        }),
-      ),
-    )
+    expect(
+      screen.getByRole('button', {
+        name: adminMcpResourceServersDictionary.en.registerResourceServer,
+      }),
+    ).toHaveAttribute('href', '/admin/mcp-resource-servers/new')
+    expect(
+      screen.getByRole('button', { name: adminMcpResourceServersDictionary.en.edit }),
+    ).toHaveAttribute('href', '/admin/mcp-resource-servers/resource-server-1/edit')
   })
 })

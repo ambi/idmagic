@@ -28,6 +28,8 @@ export const adminAuthorizationDetailTypesDictionary = defineDictionary(
     edit: '編集',
     footerLinkLabel: 'アプリケーション',
     footerText: 'が要求した詳細は、ここで定義した検証ルールで fail-closed に検査されます。',
+    backToList: '一覧に戻る',
+    editType: '{type} を編集',
   },
   {
     schemaInvalidError: 'The schema JSON is invalid.',
@@ -57,5 +59,7 @@ export const adminAuthorizationDetailTypesDictionary = defineDictionary(
     footerLinkLabel: 'Applications',
     footerText:
       "'s requested details are checked fail-closed against the validation rules defined here.",
+    backToList: 'Back to list',
+    editType: 'Edit {type}',
   },
 )
