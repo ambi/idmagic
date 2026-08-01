@@ -57,6 +57,7 @@ import { Route as AccountProfileEditRouteImport } from './routes/account/profile
 import { Route as AdminAgentsAgentIdRouteImport } from './routes/admin/agents_/$agentId'
 import { Route as AdminAgentsNewRouteImport } from './routes/admin/agents_/new'
 import { Route as AdminApplicationsApplicationIdRouteImport } from './routes/admin/applications_/$applicationId'
+import { Route as AdminApplicationsNewRouteImport } from './routes/admin/applications_/new'
 import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
 import { Route as AdminGroupsExportsRouteImport } from './routes/admin/groups_/exports'
@@ -332,6 +333,11 @@ const AdminApplicationsApplicationIdRoute =
     path: '/applications/$applicationId',
     getParentRoute: () => AdminRouteRoute,
   } as any)
+const AdminApplicationsNewRoute = AdminApplicationsNewRouteImport.update({
+  id: '/applications_/new',
+  path: '/applications/new',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminFederationEntraRoute = AdminFederationEntraRouteImport.update({
   id: '/federation/entra',
   path: '/federation/entra',
@@ -556,6 +562,7 @@ export interface FileRoutesByFullPath {
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
   '/admin/agents/new': typeof AdminAgentsNewRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
+  '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
@@ -633,6 +640,7 @@ export interface FileRoutesByTo {
   '/account/email/verify': typeof AccountEmailVerifyRoute
   '/account/profile/edit': typeof AccountProfileEditRoute
   '/admin/agents/new': typeof AdminAgentsNewRoute
+  '/admin/applications/new': typeof AdminApplicationsNewRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
@@ -711,6 +719,7 @@ export interface FileRoutesById {
   '/admin/agents_/$agentId': typeof AdminAgentsAgentIdRouteWithChildren
   '/admin/agents_/new': typeof AdminAgentsNewRoute
   '/admin/applications_/$applicationId': typeof AdminApplicationsApplicationIdRouteWithChildren
+  '/admin/applications_/new': typeof AdminApplicationsNewRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups_/exports': typeof AdminGroupsExportsRoute
@@ -795,6 +804,7 @@ export interface FileRouteTypes {
     | '/admin/agents/$agentId'
     | '/admin/agents/new'
     | '/admin/applications/$applicationId'
+    | '/admin/applications/new'
     | '/admin/federation/entra'
     | '/admin/groups/$groupId'
     | '/admin/groups/exports'
@@ -872,6 +882,7 @@ export interface FileRouteTypes {
     | '/account/email/verify'
     | '/account/profile/edit'
     | '/admin/agents/new'
+    | '/admin/applications/new'
     | '/admin/federation/entra'
     | '/admin/groups/exports'
     | '/admin/groups/new'
@@ -949,6 +960,7 @@ export interface FileRouteTypes {
     | '/admin/agents_/$agentId'
     | '/admin/agents_/new'
     | '/admin/applications_/$applicationId'
+    | '/admin/applications_/new'
     | '/admin/federation/entra'
     | '/admin/groups_/$groupId'
     | '/admin/groups_/exports'
@@ -1338,6 +1350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminApplicationsApplicationIdRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/applications_/new': {
+      id: '/admin/applications_/new'
+      path: '/applications/new'
+      fullPath: '/admin/applications/new'
+      preLoaderRoute: typeof AdminApplicationsNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/federation/entra': {
       id: '/admin/federation/entra'
       path: '/federation/entra'
@@ -1716,6 +1735,7 @@ interface AdminRouteRouteChildren {
   AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRouteWithChildren
   AdminAgentsNewRoute: typeof AdminAgentsNewRoute
   AdminApplicationsApplicationIdRoute: typeof AdminApplicationsApplicationIdRouteWithChildren
+  AdminApplicationsNewRoute: typeof AdminApplicationsNewRoute
   AdminFederationEntraRoute: typeof AdminFederationEntraRoute
   AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRouteWithChildren
   AdminGroupsExportsRoute: typeof AdminGroupsExportsRoute
@@ -1757,6 +1777,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAgentsNewRoute: AdminAgentsNewRoute,
   AdminApplicationsApplicationIdRoute:
     AdminApplicationsApplicationIdRouteWithChildren,
+  AdminApplicationsNewRoute: AdminApplicationsNewRoute,
   AdminFederationEntraRoute: AdminFederationEntraRoute,
   AdminGroupsGroupIdRoute: AdminGroupsGroupIdRouteWithChildren,
   AdminGroupsExportsRoute: AdminGroupsExportsRoute,

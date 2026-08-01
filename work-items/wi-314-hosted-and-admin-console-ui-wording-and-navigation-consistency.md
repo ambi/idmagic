@@ -311,8 +311,12 @@ depends_on: []
       （プロフィール更新・bind/unbind・失敗時表示）。既存
       `AdminAgentsListPage.test.tsx` からモーダル前提のテストを移設し、参照専用である
       ことを検証するテストに置き換え。
-- [ ] T013 [App] アプリケーション追加モーダル (`CreateApplicationDialog`) を廃止し
+- [x] T013 [App] アプリケーション追加モーダル (`CreateApplicationDialog`) を廃止し
       `applications_/new.tsx` 専用ルートに分割する。
+      `CreateApplicationDialog.tsx` を `AdminApplicationCreatePage.tsx`（フォーム内容は
+      同一のまま外枠のみモーダル→専用ページに変更）へ展開し削除。一覧の「追加」ボタンは
+      `/admin/applications/new` へのリンクに変更。
+      作成テストを `AdminApplicationCreatePage.test.tsx` へ移設。
 - [ ] T014 [App] OAuth2 認可詳細タイプ・MCP リソースサーバー各画面のインラインフォームを、
       一覧 (参照専用) + 追加 `/new` + 編集 `/$id/edit` の専用ルート構成に分割する。
 - [ ] T015 [App] ユーザー属性画面の追加モーダルを専用ルートに分割し、編集・削除ボタンを

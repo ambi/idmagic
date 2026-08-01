@@ -16,10 +16,10 @@ import {
   kindLabel,
   KindBadge,
   messageOf,
+  newURL,
   ReadOnlyField,
   StatusBadge,
 } from './AdminApplicationsShared'
-import { CreateApplicationDialog } from './CreateApplicationDialog'
 import type { AdminApplication } from '../../types'
 
 export function AdminApplicationsPage({
@@ -33,7 +33,6 @@ export function AdminApplicationsPage({
 }) {
   const [applications, setApplications] = useState(initial)
   const [selectedID, setSelectedID] = useState<string>(() => initial[0]?.application_id ?? '')
-  const [showCreate, setShowCreate] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -82,7 +81,7 @@ export function AdminApplicationsPage({
           >
             <IconRefresh size={16} aria-hidden="true" />
           </Button>
-          <Button onClick={() => setShowCreate(true)} disabled={busy}>
+          <Button disabled={busy} nativeButton={false} render={<a href={newURL()} />}>
             <IconPlus size={16} aria-hidden="true" />
             {t.addApplication}
           </Button>
@@ -139,16 +138,6 @@ export function AdminApplicationsPage({
           }
         />
       </div>
-
-      {showCreate ? (
-        <CreateApplicationDialog
-          csrfToken={csrfToken}
-          onClose={() => setShowCreate(false)}
-          onCreated={(id) => {
-            window.location.assign(detailURL(id))
-          }}
-        />
-      ) : null}
     </AdminShell>
   )
 }

@@ -185,6 +185,9 @@ export function signInRuleWeakerThanDefault(
 export function listURL(): string {
   return tenantURL('/admin/applications')
 }
+export function newURL(): string {
+  return tenantURL('/admin/applications/new')
+}
 export function detailURL(id: string): string {
   return tenantURL(`/admin/applications/${encodeURIComponent(id)}`)
 }
