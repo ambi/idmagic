@@ -1,5 +1,6 @@
-import { IconAlertTriangle, IconBan, IconTrash, IconX } from '@tabler/icons-react'
+import { IconAlertTriangle, IconBan, IconShieldX, IconTrash, IconX } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
+import type { AuthenticatorResetTarget } from '../../api'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
@@ -219,6 +220,136 @@ export function DisableUserDialog({
             {t.disableConfirm}
           </Button>
         </div>
+      </Card>
+    </div>
+  )
+}
+
+// ResetAuthenticatorDialog は管理者による認証器リセット (wi-143 / ADR-088 第2層) の
+// 確認ダイアログ。対象 factor を選んでもらい、削除のみ (代替 factor の登録はしない) で
+// あることと、TOTP / WebAuthn を両方失う場合の再登録強制を明示する。
+export function ResetAuthenticatorDialog({
+  user,
+  busy,
+  onClose,
+  onConfirm,
+}: {
+  user: AdminUser
+  busy: boolean
+  onClose: () => void
+  onConfirm: (targets: AuthenticatorResetTarget[]) => void
+}) {
+  const t = useDictionary(adminUsersDictionary)
+  const [selected, setSelected] = useState<Record<AuthenticatorResetTarget, boolean>>({
+    totp: false,
+    webauthn: false,
+    recovery_code: false,
+  })
+  const targets = (Object.keys(selected) as AuthenticatorResetTarget[]).filter(
+    (key) => selected[key],
+  )
+
+  function toggle(target: AuthenticatorResetTarget) {
+    setSelected((prev) => ({ ...prev, [target]: !prev[target] }))
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (targets.length === 0) return
+    onConfirm(targets)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 p-5 backdrop-blur-[2px]"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reset-authenticators-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label={t.close}
+        onClick={onClose}
+      />
+      <Card className="relative w-full max-w-lg overflow-hidden shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-5">
+          <div className="flex gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-700">
+              <IconShieldX size={18} aria-hidden="true" />
+            </span>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-red-700">
+                {t.resetAuthenticatorsBadge}
+              </p>
+              <h2 id="reset-authenticators-title" className="mt-1 text-xl font-semibold">
+                {t.resetAuthenticatorsTitle}
+              </h2>
+              <p className="mt-1 text-sm text-slate-500">
+                {user.name || user.preferred_username} (@{user.preferred_username})
+              </p>
+            </div>
+          </div>
+          <Button variant="ghost" className="px-2.5" onClick={onClose} aria-label={t.close}>
+            <IconX size={18} aria-hidden="true" />
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-5 p-6">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs leading-5 text-red-900">
+              <p className="font-semibold">{t.resetAuthenticatorsDescription}</p>
+              <p className="mt-1.5">{t.resetConsequenceReenrollment}</p>
+              <p className="mt-1.5">{t.resetConsequencePartial}</p>
+            </div>
+
+            <div className="grid gap-2">
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  id="reset-target-totp"
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={selected.totp}
+                  onChange={() => toggle('totp')}
+                />
+                {t.resetTargetTotp}
+              </label>
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  id="reset-target-webauthn"
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={selected.webauthn}
+                  onChange={() => toggle('webauthn')}
+                />
+                {t.resetTargetWebauthn}
+              </label>
+              <label className="flex items-start gap-2 text-sm text-slate-700">
+                <input
+                  id="reset-target-recovery-code"
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={selected.recovery_code}
+                  onChange={() => toggle('recovery_code')}
+                />
+                {t.resetTargetRecoveryCode}
+              </label>
+              {targets.length === 0 && (
+                <p className="text-xs text-amber-700">{t.resetTargetsRequired}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
+            <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+              {t.cancel}
+            </Button>
+            <Button type="submit" variant="destructive" disabled={busy || targets.length === 0}>
+              <IconShieldX size={16} aria-hidden="true" />
+              {t.resetConfirm}
+            </Button>
+          </div>
+        </form>
       </Card>
     </div>
   )

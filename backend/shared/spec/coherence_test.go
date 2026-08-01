@@ -78,6 +78,25 @@ func TestAgentKindMatchesSCL(t *testing.T) {
 	}
 }
 
+func TestAuthenticatorResetTargetMatchesSCL(t *testing.T) {
+	s, err := spec.LoadSCL()
+	if err != nil {
+		t.Fatalf("load scl: %v", err)
+	}
+	got, err := s.EnumWireValues("AuthenticatorResetTarget")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		string(spec.AuthenticatorResetTotp),
+		string(spec.AuthenticatorResetWebauthn),
+		string(spec.AuthenticatorResetRecoveryCode),
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("SCL AuthenticatorResetTarget=%v, Go=%v", got, want)
+	}
+}
+
 func TestGrantTypeTokenExchangeMatchesSCL(t *testing.T) {
 	s, err := spec.LoadSCL()
 	if err != nil {

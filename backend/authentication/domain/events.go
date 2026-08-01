@@ -365,3 +365,30 @@ type MfaEnrollmentBypassExpired struct {
 
 func (e *MfaEnrollmentBypassExpired) EventType() string     { return "MfaEnrollmentBypassExpired" }
 func (e *MfaEnrollmentBypassExpired) OccurredAt() time.Time { return e.At }
+
+// AuthenticatorResetRequested / AuthenticatorResetCompleted は管理者による認証器
+// リセット (ADR-088 第 2 層、wi-143) の監査イベント。
+
+type AuthenticatorResetRequested struct {
+	At          time.Time                       `json:"-"`
+	TenantID    string                          `json:"tenantId"`
+	ActorUserID string                          `json:"actorUserId"`
+	UserID      string                          `json:"userId"`
+	Targets     []spec.AuthenticatorResetTarget `json:"targets"`
+}
+
+func (e *AuthenticatorResetRequested) EventType() string     { return "AuthenticatorResetRequested" }
+func (e *AuthenticatorResetRequested) OccurredAt() time.Time { return e.At }
+
+type AuthenticatorResetCompleted struct {
+	At                   time.Time                       `json:"-"`
+	TenantID             string                          `json:"tenantId"`
+	ActorUserID          string                          `json:"actorUserId"`
+	UserID               string                          `json:"userId"`
+	Targets              []spec.AuthenticatorResetTarget `json:"targets"`
+	MfaEnrolled          bool                            `json:"mfaEnrolled"`
+	ReenrollmentRequired bool                            `json:"reenrollmentRequired"`
+}
+
+func (e *AuthenticatorResetCompleted) EventType() string     { return "AuthenticatorResetCompleted" }
+func (e *AuthenticatorResetCompleted) OccurredAt() time.Time { return e.At }

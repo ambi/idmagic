@@ -78,6 +78,8 @@ var auditEventCategoryTypes = map[string][]string{
 		"EmailChanged",
 		"MfaFactorEnrolled",
 		"MfaFactorRemoved",
+		"AuthenticatorResetRequested",
+		"AuthenticatorResetCompleted",
 		"MfaEnrollmentBypassIssued",
 		"MfaEnrollmentBypassRevoked",
 		"MfaEnrollmentBypassExpired",

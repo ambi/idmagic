@@ -379,6 +379,8 @@ modules:
         via: binding
       - module: shared-adapters
         via: technical_shared
+      - module: shared-spec
+        via: technical_shared
   authentication-session-domain:
     path: session/domain
     responsibility: Login session・pending request のドメイン型。

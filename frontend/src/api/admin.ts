@@ -1369,6 +1369,28 @@ export async function revokeMfaEnrollmentBypass(csrfToken: string, userID: strin
   )
 }
 
+// wi-143 / ADR-088 第2層: 管理者による認証器の緊急リセット。削除のみを行い、
+// 代わりの factor は登録しない。TOTP / WebAuthn が両方無くなった場合だけ
+// reenrollment_required=true になり、単発の enrollment bypass が自動発行される。
+export type AuthenticatorResetTarget = 'totp' | 'webauthn' | 'recovery_code'
+
+export type AuthenticatorResetResult = {
+  mfa_enrolled: boolean
+  reenrollment_required: boolean
+  bypass?: MfaEnrollmentBypass
+}
+
+export async function resetUserAuthenticators(
+  csrfToken: string,
+  userID: string,
+  targets: AuthenticatorResetTarget[],
+): Promise<AuthenticatorResetResult> {
+  return await request<AuthenticatorResetResult>(
+    `/api/admin/users/${encodeURIComponent(userID)}/authenticator-reset`,
+    adminRequest(csrfToken, 'POST', { targets }),
+  )
+}
+
 // Admin session management (wi-28 T007, ADR-127 決定9): view and revoke a
 // target user's sessions. Unlike self-service /api/account/sessions, these
 // have no `current` marker and session revoke also cascades to that

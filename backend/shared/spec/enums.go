@@ -66,6 +66,24 @@ func (m MfaFactorType) Valid() bool {
 	return false
 }
 
+// AuthenticatorResetTarget は管理者による認証器リセット (ADR-088 第 2 層) が
+// 対象にできる要素。
+type AuthenticatorResetTarget string
+
+const (
+	AuthenticatorResetTotp         AuthenticatorResetTarget = "totp"
+	AuthenticatorResetWebauthn     AuthenticatorResetTarget = "webauthn"
+	AuthenticatorResetRecoveryCode AuthenticatorResetTarget = "recovery_code"
+)
+
+func (a AuthenticatorResetTarget) Valid() bool {
+	switch a {
+	case AuthenticatorResetTotp, AuthenticatorResetWebauthn, AuthenticatorResetRecoveryCode:
+		return true
+	}
+	return false
+}
+
 // WebAuthnTransport は authenticator の接続方式のヒント (WebAuthn Level 3 §5.8.4)。
 type WebAuthnTransport string
 

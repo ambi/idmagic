@@ -9,6 +9,7 @@ import {
   clickButtonByText,
   clickElementByAriaLabel,
   clickLinkByText,
+  clickMenuItemByText,
   clickSummaryByText,
   demo,
   navigateAndLogin,
@@ -589,6 +590,48 @@ test('admin user list opens a user detail page', async () => {
     await waitForPage(view, 'admin-user-detail')
     await waitForUrl(view, /\/admin\/users\/[^/]+$/)
     await waitForText(view, 'User ID')
+  } finally {
+    view.close()
+  }
+}, 60_000)
+
+// wi-143 / ADR-088 第2層: 管理者による認証器リセット。alice (admin) は自身を対象に
+// self-service で TOTP を登録し、admin console からその TOTP をリセットする。
+// mfa_enrolled が false へ戻り、再登録を要求する通知が出て、ユーザー操作メニューが
+// (削除済みのため) 「MFA 登録を承認」側の選択肢へ切り替わることを確認する。
+// (Enrollment-required flow への実際の接続 = 次回ログインでの強制は、
+// backend/shared/http/server_http の Go E2E テストで固定済み。)
+test('admin can reset a user authenticator from the browser', async () => {
+  const view = new Bun.WebView({ width: 1280, height: 2200 })
+  try {
+    await navigateAndLogin(view, '/account/security', 'account-security')
+    await clickButtonByText(view, 'Set up authenticator app')
+    await waitForText(view, 'Setup key')
+    const secret = String(
+      await view.evaluate('document.querySelector("#totp-secret")?.value ?? ""'),
+    )
+    expect(secret).not.toBe('')
+    await setInputValue(view, '#totp-code', totpCode(secret))
+    await clickButtonByText(view, 'Complete enrollment')
+    await waitForText(view, 'Authenticator app enrolled.')
+
+    // alice の seed 済み UUID (seed/manifests/test.yaml) に直接遷移し、一覧の並びに
+    // 依存せず対象を確定する。
+    await view.navigate(`${uiOrigin}/admin/users/00000000-0000-4000-8000-000000000001`)
+    await waitForPage(view, 'admin-user-detail')
+    await waitForText(view, 'User ID')
+
+    await clickElementByAriaLabel(view, 'User actions')
+    await clickMenuItemByText(view, 'Reset authenticators')
+    await waitForText(view, 'Emergency recovery action')
+    // setCheckboxValue はこの base-ui 制御コンポーネントの onChange を確実に発火
+    // しないため、実クリックで切り替える。
+    await view.click('#reset-target-totp')
+    await clickButtonByText(view, 'Reset')
+    await waitForText(view, 'The authenticators have been reset.')
+
+    await clickElementByAriaLabel(view, 'User actions')
+    await waitForText(view, 'Approve MFA enrollment for 15 minutes')
   } finally {
     view.close()
   }

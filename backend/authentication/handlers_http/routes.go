@@ -54,4 +54,5 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/authentication_event_buckets", func(c *echo.Context) error { return handleListAuthEventBuckets(d, c) })
 	g.POST("/api/admin/users/:sub/mfa-enrollment-bypass", func(c *echo.Context) error { return mfahttp.HandleIssueMfaEnrollmentBypass(d, c) })
 	g.DELETE("/api/admin/users/:sub/mfa-enrollment-bypass", func(c *echo.Context) error { return mfahttp.HandleRevokeMfaEnrollmentBypass(d, c) })
+	g.POST("/api/admin/users/:sub/authenticator-reset", func(c *echo.Context) error { return mfahttp.HandleResetUserAuthenticators(d, c) })
 }

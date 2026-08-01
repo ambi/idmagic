@@ -12,16 +12,19 @@ import {
   IconRefresh,
   IconShield,
   IconShieldCheck,
+  IconShieldX,
   IconTrash,
   IconUser,
   IconX,
 } from '@tabler/icons-react'
 import { useState } from 'react'
 import {
+  type AuthenticatorResetTarget,
   AuthenticationAPIError,
   deleteAdminUser,
   getAdminUser,
   issueMfaEnrollmentBypass,
+  resetUserAuthenticators,
   restoreAdminUser,
   revokeMfaEnrollmentBypass,
   setAdminUserDisabled,
@@ -48,7 +51,7 @@ import type {
   TenantUserAttributeSchema,
   UserAttributeDef,
 } from '../../types'
-import { DeleteUserDialog, DisableUserDialog } from './AdminUserDialogs'
+import { DeleteUserDialog, DisableUserDialog, ResetAuthenticatorDialog } from './AdminUserDialogs'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import {
   daysUntil,
@@ -84,6 +87,7 @@ export function AdminUserDetailPage({
   const [showDelete, setShowDelete] = useState(false)
   const [showPurge, setShowPurge] = useState(false)
   const [showDisable, setShowDisable] = useState(false)
+  const [showResetAuthenticators, setShowResetAuthenticators] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -166,6 +170,26 @@ export function AdminUserDetailPage({
     }, t.mfaEnrollmentBypassRevokedNotice)
   }
 
+  async function handleResetAuthenticators(targets: AuthenticatorResetTarget[]) {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const result = await resetUserAuthenticators(csrfToken, user.id, targets)
+      setShowResetAuthenticators(false)
+      await reload()
+      setNotice(
+        result.reenrollment_required
+          ? t.authenticatorResetReenrollmentNotice
+          : t.authenticatorResetNotice,
+      )
+    } catch (cause) {
+      setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <>
       <AdminShell
@@ -230,7 +254,18 @@ export function AdminUserDetailPage({
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
                       </>
-                    ) : null}
+                    ) : (
+                      <>
+                        <DropdownMenuItem
+                          className="text-red-700"
+                          onClick={() => setShowResetAuthenticators(true)}
+                        >
+                          <IconShieldX size={17} aria-hidden="true" />
+                          {t.resetAuthenticators}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator className="my-1 h-px bg-slate-200" />
+                      </>
+                    )}
                     <DropdownMenuItem
                       className={user.disabled_at ? undefined : 'text-red-700'}
                       onClick={() => requestDisable()}
@@ -445,6 +480,14 @@ export function AdminUserDetailPage({
           busy={busy}
           onClose={() => setShowDisable(false)}
           onConfirm={() => void handleDisabled()}
+        />
+      )}
+      {showResetAuthenticators && (
+        <ResetAuthenticatorDialog
+          user={user}
+          busy={busy}
+          onClose={() => setShowResetAuthenticators(false)}
+          onConfirm={(targets) => void handleResetAuthenticators(targets)}
         />
       )}
     </>

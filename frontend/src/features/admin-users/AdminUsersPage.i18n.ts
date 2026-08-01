@@ -26,6 +26,22 @@ export const adminUsersDictionary = defineDictionary(
     revokeMfaEnrollmentBypass: 'MFA 登録承認を取消',
     mfaEnrollmentBypassIssuedNotice: '単発の MFA 登録承認を発行しました。',
     mfaEnrollmentBypassRevokedNotice: 'MFA 登録承認を取り消しました。',
+    resetAuthenticators: '認証器をリセット',
+    resetAuthenticatorsTitle: '認証器のリセット',
+    resetAuthenticatorsBadge: '緊急復旧操作',
+    resetAuthenticatorsDescription:
+      '選択した認証器を削除します。管理者が代わりの認証器を登録することはできません。',
+    resetTargetTotp: '認証アプリ (TOTP)',
+    resetTargetWebauthn: 'パスキー / セキュリティキー (WebAuthn)',
+    resetTargetRecoveryCode: 'バックアップリカバリコード',
+    resetTargetsRequired: '少なくとも1つの対象を選択してください。',
+    resetConsequenceReenrollment:
+      'TOTP とパスキーの両方が無くなった場合、次回ログイン時に新しい認証器の登録が必要になります。',
+    resetConsequencePartial: '一部のみ削除した場合、残りの認証器で引き続きログインできます。',
+    resetConfirm: 'リセットを実行',
+    authenticatorResetNotice: '認証器をリセットしました。',
+    authenticatorResetReenrollmentNotice:
+      '認証器をリセットしました。次回ログイン時に新しい認証器の登録が必要になります。',
     searchPlaceholder: '名前、メール、ID、ロールで検索',
     searchAriaLabel: 'ユーザーを検索',
     filterAll: 'すべて',
@@ -260,6 +276,23 @@ export const adminUsersDictionary = defineDictionary(
     revokeMfaEnrollmentBypass: 'Revoke MFA enrollment approval',
     mfaEnrollmentBypassIssuedNotice: 'Issued a one-time MFA enrollment approval.',
     mfaEnrollmentBypassRevokedNotice: 'Revoked the MFA enrollment approval.',
+    resetAuthenticators: 'Reset authenticators',
+    resetAuthenticatorsTitle: 'Reset authenticators',
+    resetAuthenticatorsBadge: 'Emergency recovery action',
+    resetAuthenticatorsDescription:
+      'This deletes the selected authenticators. An admin cannot enroll a replacement authenticator on the user’s behalf.',
+    resetTargetTotp: 'Authenticator app (TOTP)',
+    resetTargetWebauthn: 'Passkeys / security keys (WebAuthn)',
+    resetTargetRecoveryCode: 'Backup recovery codes',
+    resetTargetsRequired: 'Select at least one target.',
+    resetConsequenceReenrollment:
+      'If both TOTP and passkeys are removed, the user must enroll a new authenticator on their next login.',
+    resetConsequencePartial:
+      'If only some are removed, the user can keep signing in with what remains.',
+    resetConfirm: 'Reset',
+    authenticatorResetNotice: 'The authenticators have been reset.',
+    authenticatorResetReenrollmentNotice:
+      'The authenticators have been reset. The user must enroll a new authenticator on their next login.',
     searchPlaceholder: 'Search by name, email, ID, or role',
     searchAriaLabel: 'Search users',
     filterAll: 'All',

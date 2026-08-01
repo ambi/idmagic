@@ -147,6 +147,10 @@ glossary:
     definition: WebAuthn credential による認証。
     aliases:
       - webauthn
+  RecoveryCode:
+    definition: TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード (ADR-087)。
+    aliases:
+      - recovery_code
   EndUser:
     definition: 認証済みまたは認証を試みる一般利用者。ログイン・MFA継続・パスワードリセットなど、認証が未完了の操作の主体を指す。
   ResourceOwner:
@@ -512,6 +516,32 @@ models:
     constraints:
       - expires_at > issued_at
       - "count([consumed_at, revoked_at, expired_at], value != null) <= 1"
+  AuthenticatorResetTarget:
+    kind: enum
+    description: 管理者による認証器リセット (ADR-088 第 2 層) が対象にできる要素。Totp / Webauthn は MfaFactor / WebAuthnCredential の全件削除、RecoveryCode は backup recovery code 一式の削除を指す。
+    values:
+      - Totp
+      - Webauthn
+      - RecoveryCode
+  AuthenticatorResetRequest:
+    kind: value_object
+    description: 管理者が対象 user の認証器リセットで指定する削除対象の集合。
+    fields:
+      targets:
+        type: "AuthenticatorResetTarget[]"
+        constraints:
+          - non_empty
+  AuthenticatorResetResponse:
+    kind: value_object
+    description: 認証器リセットの結果。reenrollment_required は TOTP / WebAuthn の両方が無くなり、次回ログインで登録専用 pending flow (wi-127) へ入る単発 bypass を自動発行したことを示す。bypass は reenrollment_required の場合だけ存在する。
+    fields:
+      mfa_enrolled:
+        type: Boolean
+      reenrollment_required:
+        type: Boolean
+      bypass:
+        type: MfaEnrollmentBypass
+        optional: true
   LoginSession:
     kind: entity
     description: "ブラウザログインセッション。PostgreSQL を単一正本として永続化し (wi-253)、\nプロセス再起動を跨いで有効な session を維持する。Cookie には不透明な\nsession id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も\nここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は\nサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を\n遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加\nfactor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize\n完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。\nCookie は http_only かつ same_site=Lax で発行する。tenant_id は認証解決クエリに\n必ず含め、session id が tenant をまたいで推測・再利用されても別 tenant の行を返さない\nfail-closed な分離を DB 層で担保する。失効は revoked_at / revoke_reason を設定する\ntombstone であり、行を物理削除しない (再失効は idempotent に成功する)。認証解決は\nrevoked_at IS NULL AND expires_at > now の行だけを有効とみなす。\n"
@@ -1357,6 +1387,38 @@ models:
         type: String
       bypassId:
         type: String
+  AuthenticatorResetRequested:
+    kind: event
+    description: 管理者が対象 user の認証器リセットを要求した (ADR-088 第 2 層)。削除実行前に発行し、要求時点の対象を監査に残す。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      userId:
+        type: String
+      targets:
+        type: "AuthenticatorResetTarget[]"
+  AuthenticatorResetCompleted:
+    kind: event
+    description: 管理者による認証器リセットが完了した。対象 factor を削除し mfa_enrolled を再計算した結果を残す。TOTP / WebAuthn が両方無くなった場合は reenrollment_required=true になり、別途 MfaEnrollmentBypassIssued が発行される。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      actorUserId:
+        type: String
+      userId:
+        type: String
+      targets:
+        type: "AuthenticatorResetTarget[]"
+      mfaEnrolled:
+        type: Boolean
+      reenrollmentRequired:
+        type: Boolean
   BackupCodeConsumed:
     kind: event
     description: バックアップ/リカバリコードを 1 つ消費した (TOTP / WebAuthn 喪失時の復旧)。
@@ -2320,6 +2382,35 @@ interfaces:
         path: "/api/admin/users/{user_id}/mfa-enrollment-bypass"
         successful_status_codes:
           - "204"
+  ResetUserAuthenticators:
+    description: "テナント管理者が対象 user の認証器 (TOTP factor / WebAuthn credential /\nrecovery code) から選択した種別を削除し、mfa_enrolled を再計算する (ADR-088 第 2 層、緊急\nbackstop)。管理者は新しい factor を代わりに登録できず、削除と再登録要求に限定する。\nTOTP と WebAuthn が両方無くなった場合は既存の管理者承認 enrollment bypass\n(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを wi-127 の\nfail-closed な enrollment-required flow へ誘導する。片方の要素のみ削除するなど mfa_enrolled\nが true のまま残る場合は bypass を発行せず、残存要素で通常ログインを継続できる。\n"
+    input:
+      user_id:
+        type: String
+      request:
+        type: AuthenticatorResetRequest
+    output:
+      response:
+        type: AuthenticatorResetResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - AuthenticatorResetRequested
+      - AuthenticatorResetCompleted
+      - MfaEnrollmentBypassIssued
+      - MfaEnrollmentBypassRevoked
+      - MfaEnrollmentBypassExpired
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: User
+        id: input.user_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/users/{user_id}/authenticator-reset"
+        request_body: json
   RequestPasswordReset:
     description: "未認証ユーザーがパスワードリセットリンクの送信を要求する。\nanti-enumeration のため、email の存在有無に関わらず常に 204 を返し、\nverified email を持つ user が見つかった場合のみ token を発行して送信する。\n文面は Tenancy の通知テンプレートカタログ (template_key=PasswordReset) から\n解決する。locale は受信者 User の locale 属性 → テナントの default_locale →\nシステム既定 locale の順に決め、テナント上書きがあれば組込み既定より優先する。\nプレーンテキストと HTML の両方を必ず生成し、リセットリンクは\nリクエストの発行元 URL から組み立てる (テンプレート側に URL 結合をさせない)。\n"
     input:
@@ -3116,6 +3207,33 @@ scenarios:
         condition: 既に失効済みのセッションへ再度 RevokeSession を呼ぶ
         steps:
           - 204 が返り revoked_at は初回の値を保持する
+  管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる:
+    actor: TenantAdministrator
+    given:
+      - "ユーザー \"alice\" は TOTP factor を持ち、recovery code も生成済みである"
+    main_success:
+      - "管理者がユーザー \"alice\" の ResetUserAuthenticators を targets=[Totp, RecoveryCode] で呼ぶ"
+      - "\"AuthenticatorResetRequested\" が発行される"
+      - TOTP factor と recovery code が削除され、他に WebAuthn credential も無いため mfa_enrolled が false になる
+      - reenrollment_required=true の応答が返り、単発 enrollment bypass が自動発行される
+      - "\"AuthenticatorResetCompleted\" と \"MfaEnrollmentBypassIssued\" が発行される"
+      - alice が正しい password で次にログインすると、有効な bypass により同一 LoginSession が pending_purpose=Enrollment になる
+      - alice が新しい TOTP factor の登録を確定すると、同一 LoginSession が MFA 済みに昇格し元の authorization transaction が継続する
+    extensions:
+      - at: 1
+        condition: 他テナントの管理者、または admin ロールを持たない操作者が呼び出す
+        steps:
+          - "エラー \"AccessDeniedError\""
+          - 対象ユーザーの認証器は変更されない
+  管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる:
+    actor: TenantAdministrator
+    given:
+      - "ユーザー \"bob\" は TOTP factor と WebAuthn credential を両方持つ"
+    main_success:
+      - "管理者がユーザー \"bob\" の ResetUserAuthenticators を targets=[Webauthn] で呼ぶ"
+      - WebAuthn credential のみ削除され、TOTP factor は残るため mfa_enrolled は true のままである
+      - reenrollment_required=false の応答が返り、enrollment bypass は発行されない
+      - bob は次回ログインで引き続き TOTP コードによる第二要素検証を経てログインを完了できる
 flows:
   Login:
     entry: Login

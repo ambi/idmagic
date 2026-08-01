@@ -4104,6 +4104,126 @@
       ],
       "description": "多段認証フローの 1 ステップが失敗した。"
     },
+    "AuthenticatorResetCompleted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AuthenticatorResetTarget"
+          }
+        },
+        "mfaEnrolled": {
+          "type": "boolean"
+        },
+        "reenrollmentRequired": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "userId",
+        "targets",
+        "mfaEnrolled",
+        "reenrollmentRequired"
+      ],
+      "description": "管理者による認証器リセットが完了した。対象 factor を削除し mfa_enrolled を再計算した結果を残す。TOTP / WebAuthn が両方無くなった場合は reenrollment_required=true になり、別途 MfaEnrollmentBypassIssued が発行される。"
+    },
+    "AuthenticatorResetRequest": {
+      "type": "object",
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AuthenticatorResetTarget"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "targets"
+      ],
+      "description": "管理者が対象 user の認証器リセットで指定する削除対象の集合。"
+    },
+    "AuthenticatorResetRequested": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "actorUserId": {
+          "type": "string"
+        },
+        "userId": {
+          "type": "string"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AuthenticatorResetTarget"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "actorUserId",
+        "userId",
+        "targets"
+      ],
+      "description": "管理者が対象 user の認証器リセットを要求した (ADR-088 第 2 層)。削除実行前に発行し、要求時点の対象を監査に残す。"
+    },
+    "AuthenticatorResetResponse": {
+      "type": "object",
+      "properties": {
+        "mfa_enrolled": {
+          "type": "boolean"
+        },
+        "reenrollment_required": {
+          "type": "boolean"
+        },
+        "bypass": {
+          "$ref": "#/$defs/MfaEnrollmentBypass"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "mfa_enrolled",
+        "reenrollment_required"
+      ],
+      "description": "認証器リセットの結果。reenrollment_required は TOTP / WebAuthn の両方が無くなり、次回ログインで登録専用 pending flow (wi-127) へ入る単発 bypass を自動発行したことを示す。bypass は reenrollment_required の場合だけ存在する。"
+    },
+    "AuthenticatorResetTarget": {
+      "type": "string",
+      "enum": [
+        "Totp",
+        "Webauthn",
+        "RecoveryCode"
+      ],
+      "description": "管理者による認証器リセット (ADR-088 第 2 層) が対象にできる要素。Totp / Webauthn は MfaFactor / WebAuthnCredential の全件削除、RecoveryCode は backup recovery code 一式の削除を指す。"
+    },
     "AuthorizationCodeIssued": {
       "type": "object",
       "properties": {

@@ -11400,7 +11400,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
       <div class="eyebrow">Bounded Context · contexts/authentication.yaml</div>
       <h1>Authentication</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">8</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">101</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">50</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">20</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">8</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">106</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">51</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">22</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-authentication-standards">
     <h2>Standards <span class="count">6</span></h2>
@@ -11642,7 +11642,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
     </article></div>
   </section>
 <section id="context-authentication-models">
-    <h2>Models <span class="count">101</span></h2>
+    <h2>Models <span class="count">106</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">10</span></h3>
@@ -12339,7 +12339,7 @@ token は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">41</span></h3>
+      <h3 class="grp-title">value object <span class="count">43</span></h3>
       <div class="cards"><article class="card" id="scl-Authentication/model/ClaimMapping">
     <header><h3>ClaimMapping</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Authentication/model/ClaimMapping</code></header>
     <p class="desc">検証済み upstream claim / attribute を local identity field へ写像する tenant 管理設定。JIT provisioning には subject と username の mapping が必須。</p>
@@ -12599,6 +12599,50 @@ token は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-annotation">sensitive</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Authentication/model/AuthenticatorResetRequest">
+    <header><h3>AuthenticatorResetRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Authentication/model/AuthenticatorResetRequest</code></header>
+    <p class="desc">管理者が対象 user の認証器リセットで指定する削除対象の集合。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">targets</code></td>
+    <td><code class="type">AuthenticatorResetTarget[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Authentication/model/AuthenticatorResetResponse">
+    <header><h3>AuthenticatorResetResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Authentication/model/AuthenticatorResetResponse</code></header>
+    <p class="desc">認証器リセットの結果。reenrollment_required は TOTP / WebAuthn の両方が無くなり、次回ログインで登録専用 pending flow (wi-127) へ入る単発 bypass を自動発行したことを示す。bypass は reenrollment_required の場合だけ存在する。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">mfa_enrolled</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">reenrollment_required</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">bypass</code></td>
+    <td><code class="type">MfaEnrollmentBypass</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
     <td></td>
   </tr></tbody>
   </table>
@@ -13479,7 +13523,7 @@ modal に出す選択肢)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">8</span></h3>
+      <h3 class="grp-title">enum <span class="count">9</span></h3>
       <div class="cards"><article class="card" id="scl-Authentication/model/IdentityProviderProtocol">
     <header><h3>IdentityProviderProtocol</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Authentication/model/IdentityProviderProtocol</code></header>
     <p class="desc">upstream connection の wire protocol。social provider preset は Oidc の設定初期値として表す。</p>
@@ -13515,6 +13559,13 @@ modal に出す選択肢)。
     <div class="enum-vals"><span class="chip chip-enum">None</span> <span class="chip chip-enum">Challenge</span> <span class="chip chip-enum">Enrollment</span></div>
 
   </article>
+<article class="card" id="scl-Authentication/model/AuthenticatorResetTarget">
+    <header><h3>AuthenticatorResetTarget</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Authentication/model/AuthenticatorResetTarget</code></header>
+    <p class="desc">管理者による認証器リセット (ADR-088 第 2 層) が対象にできる要素。Totp / Webauthn は MfaFactor / WebAuthnCredential の全件削除、RecoveryCode は backup recovery code 一式の削除を指す。</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">Totp</span> <span class="chip chip-enum">Webauthn</span> <span class="chip chip-enum">RecoveryCode</span></div>
+
+  </article>
 <article class="card" id="scl-Authentication/model/WebAuthnTransport">
     <header><h3>WebAuthnTransport</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Authentication/model/WebAuthnTransport</code></header>
     <p class="desc">WebAuthn authenticator の接続方式のヒント (WebAuthn Level 3 §5.8.4 AuthenticatorTransport)。
@@ -13544,7 +13595,7 @@ recovery_code は有効な残数がある時のみ利用できる。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">39</span></h3>
+      <h3 class="grp-title">event <span class="count">41</span></h3>
       <div class="cards"><article class="card" id="scl-Authentication/model/UserAuthenticated">
     <header><h3>UserAuthenticated</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Authentication/model/UserAuthenticated</code></header>
     <p class="desc">ResourceOwner の認証が成功した。amr は実際に経由した認証手段の一覧 (OIDC Core §2)。</p>
@@ -14281,6 +14332,98 @@ keyHash は SHA-256 hex で平文を audit log に流さない (LoginThrottled �
   </tr><tr>
     <td><code class="name">bypassId</code></td>
     <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Authentication/model/AuthenticatorResetRequested">
+    <header><h3>AuthenticatorResetRequested</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Authentication/model/AuthenticatorResetRequested</code></header>
+    <p class="desc">管理者が対象 user の認証器リセットを要求した (ADR-088 第 2 層)。削除実行前に発行し、要求時点の対象を監査に残す。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">userId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">targets</code></td>
+    <td><code class="type">AuthenticatorResetTarget[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-Authentication/model/AuthenticatorResetCompleted">
+    <header><h3>AuthenticatorResetCompleted</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Authentication/model/AuthenticatorResetCompleted</code></header>
+    <p class="desc">管理者による認証器リセットが完了した。対象 factor を削除し mfa_enrolled を再計算した結果を残す。TOTP / WebAuthn が両方無くなった場合は reenrollment_required=true になり、別途 MfaEnrollmentBypassIssued が発行される。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">actorUserId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">userId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">targets</code></td>
+    <td><code class="type">AuthenticatorResetTarget[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">mfaEnrolled</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">reenrollmentRequired</code></td>
+    <td><code class="type">Boolean</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -15166,7 +15309,7 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
     </div>
   </section>
 <section id="context-authentication-interfaces">
-    <h2>Interfaces <span class="count">50</span></h2>
+    <h2>Interfaces <span class="count">51</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Authentication/interface/GetAccountContext">
     <header><h3>GetAccountContext</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/AuthenticatedSelf">AuthenticatedSelf</a> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/PortalClientReadAccountContext">PortalClientReadAccountContext</a> <code>User:subject.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Authentication/interface/GetAccountContext</code></header>
@@ -16066,6 +16209,53 @@ step_up_at を刻む。以降 recency 窓 (5 分) 内は step_up: required の
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/users/{user_id}/mfa-enrollment-bypass</code> <span class="chip chip-hint">response: 204</span></div></div>
   </div></div></div>
   </article>
+<article class="card" id="scl-Authentication/interface/ResetUserAuthenticators">
+    <header><h3>ResetUserAuthenticators</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>User:input.user_id</code><code class="canonical-ref">Authentication/interface/ResetUserAuthenticators</code></header>
+    <p class="desc">テナント管理者が対象 user の認証器 (TOTP factor / WebAuthn credential /
+recovery code) から選択した種別を削除し、mfa_enrolled を再計算する (ADR-088 第 2 層、緊急
+backstop)。管理者は新しい factor を代わりに登録できず、削除と再登録要求に限定する。
+TOTP と WebAuthn が両方無くなった場合は既存の管理者承認 enrollment bypass
+(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを wi-127 の
+fail-closed な enrollment-required flow へ誘導する。片方の要素のみ削除するなど mfa_enrolled
+が true のまま残る場合は bypass を発行せず、残存要素で通常ログインを継続できる。
+</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">user_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">request</code></td>
+    <td><code class="type">AuthenticatorResetRequest</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">response</code></td>
+    <td><code class="type">AuthenticatorResetResponse</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Authentication/model/AuthenticatorResetRequested">AuthenticatorResetRequested</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/AuthenticatorResetCompleted">AuthenticatorResetCompleted</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassIssued">MfaEnrollmentBypassIssued</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassRevoked">MfaEnrollmentBypassRevoked</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassExpired">MfaEnrollmentBypassExpired</a></div></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/users/{user_id}/authenticator-reset</code></div></div>
+  </div></div></div>
+  </article>
 <article class="card" id="scl-Authentication/interface/RequestPasswordReset">
     <header><h3>RequestPasswordReset</h3><span class="badge badge-access-public">public</span><code class="canonical-ref">Authentication/interface/RequestPasswordReset</code></header>
     <p class="desc">未認証ユーザーがパスワードリセットリンクの送信を要求する。
@@ -16782,7 +16972,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       </article></div>
   </section>
 <section id="context-authentication-scenarios">
-    <h2>Scenarios <span class="count">20</span></h2>
+    <h2>Scenarios <span class="count">22</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-Authentication/scenario/~E5~A4~96~E9~83~A8OIDC~E8~AA~8D~E8~A8~BC~E3~81~AF~E6~A4~9C~E8~A8~BC~E6~B8~88~E3~81~BFsubject~E3~82~92~E5~90~8C~E3~81~98local~20User~E3~81~B8~E7~9B~B8~E9~96~A2~E3~81~99~E3~82~8B">
         <header><h3>外部OIDC認証は検証済みsubjectを同じlocal Userへ相関する</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">Authentication/scenario/外部OIDC認証は検証済みsubjectを同じlocal Userへ相関する</code></header>
@@ -16991,6 +17181,21 @@ PostgreSQL keyset pagination index を使用、wi-253)。
             <header><span class="chip chip-hint">at 3</span><code class="name">既に失効済みのセッションへ再度 RevokeSession を呼ぶ</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">204 が返り revoked_at は初回の値を保持する</li></ol></div>
           </article></div>
+      </article><article class="card scenario" id="scl-Authentication/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E8~AA~8D~E8~A8~BC~E5~99~A8~E3~82~92~E5~85~A8~E3~83~AA~E3~82~BB~E3~83~83~E3~83~88~E3~81~97~E3~81~9F~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E3~81~AB~E6~AC~A1~E5~9B~9E~E3~83~AD~E3~82~B0~E3~82~A4~E3~83~B3~E3~81~A7~E5~86~8D~E7~99~BB~E9~8C~B2~E3~82~92~E5~BC~B7~E5~88~B6~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Authentication/scenario/管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">ユーザー &quot;alice&quot; は TOTP factor を持ち、recovery code も生成済みである</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者がユーザー &quot;alice&quot; の <a class="chip chip-ref" href="#scl-Authentication/interface/ResetUserAuthenticators">ResetUserAuthenticators</a> を targets=[<a class="chip chip-ref" href="#scl-Authentication/flow/Totp">Totp</a>, <a class="chip chip-ref" href="#scl-Authentication/model/RecoveryCode">RecoveryCode</a>] で呼ぶ</li><li class="scn-step">&quot;<a class="chip chip-ref" href="#scl-Authentication/model/AuthenticatorResetRequested">AuthenticatorResetRequested</a>&quot; が発行される</li><li class="scn-step">TOTP factor と recovery code が削除され、他に WebAuthn credential も無いため mfa_enrolled が false になる</li><li class="scn-step">reenrollment_required=true の応答が返り、単発 enrollment bypass が自動発行される</li><li class="scn-step">&quot;<a class="chip chip-ref" href="#scl-Authentication/model/AuthenticatorResetCompleted">AuthenticatorResetCompleted</a>&quot; と &quot;<a class="chip chip-ref" href="#scl-Authentication/model/MfaEnrollmentBypassIssued">MfaEnrollmentBypassIssued</a>&quot; が発行される</li><li class="scn-step">alice が正しい password で次にログインすると、有効な bypass により同一 <a class="chip chip-ref" href="#scl-Authentication/model/LoginSession">LoginSession</a> が pending_purpose=Enrollment になる</li><li class="scn-step">alice が新しい TOTP factor の登録を確定すると、同一 <a class="chip chip-ref" href="#scl-Authentication/model/LoginSession">LoginSession</a> が MFA 済みに昇格し元の authorization transaction が継続する</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">他テナントの管理者、または admin ロールを持たない操作者が呼び出す</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a>&quot;</li><li class="scn-step">対象ユーザーの認証器は変更されない</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Authentication/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~8C~E4~B8~80~E9~83~A8~E3~81~AE~E8~AA~8D~E8~A8~BC~E5~99~A8~E3~81~AE~E3~81~BF~E3~83~AA~E3~82~BB~E3~83~83~E3~83~88~E3~81~97~E3~81~9F~E5~A0~B4~E5~90~88~E3~81~AF~E6~AE~8B~E5~AD~98~E8~A6~81~E7~B4~A0~E3~81~A7~E3~83~AD~E3~82~B0~E3~82~A4~E3~83~B3~E3~82~92~E7~B6~99~E7~B6~9A~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Authentication/scenario/管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">ユーザー &quot;bob&quot; は TOTP factor と WebAuthn credential を両方持つ</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者がユーザー &quot;bob&quot; の <a class="chip chip-ref" href="#scl-Authentication/interface/ResetUserAuthenticators">ResetUserAuthenticators</a> を targets=[Webauthn] で呼ぶ</li><li class="scn-step">WebAuthn credential のみ削除され、TOTP factor は残るため mfa_enrolled は true のままである</li><li class="scn-step">reenrollment_required=false の応答が返り、enrollment bypass は発行されない</li><li class="scn-step">bob は次回ログインで引き続き TOTP コードによる第二要素検証を経てログインを完了できる</li></ol></div>
+
       </article></div>
   </section>
 <section id="context-authentication-flows">
@@ -32390,8 +32595,10 @@ visibility=Private の属性を rule / NameID の source に指定している�
     <p class="desc">tenant の属性可視性 (visibility != Private) と reserved claim type の固定集合を
 fail-closed floor として強制し、ClaimMappingPolicy と解決済み属性から NameID と IssuedClaim[] を
 組み立てる。WS-Fed / SAML / OIDC の各 issuer が共有する唯一の claim 解決経路。
-User の core field (sub / email / name / given_name / family_name / preferred_username /
-email_verified / roles) は UserAttributeDef に現れないため常に解決対象にする。custom attribute で
+User の core field (user_id / email / name / given_name / family_name / preferred_username /
+email_verified / roles) は UserAttributeDef に現れないため常に解決対象にする。user_id は User 集約の
+識別子を指す protocol-neutral な内部属性キーであり、OIDC ID Token/UserInfo が実際に発行する wire
+claim &quot;sub&quot; (RFC 7519 / OIDC Core が定める語彙) とは別物。custom attribute で
 attribute_defs に無い key、または visibility=Private の key を source に持つ rule は floor で拒否する。
 </p>
 
