@@ -275,6 +275,22 @@ check-compose:
 check-schema:
     ./infra/schema/check-convergence.sh
 
+# Take a pg_dump backup (custom format + sha256 checksum). Requires
+# PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE to be exported (wi-101, ADR-153).
+backup-postgres output_dir:
+    ./infra/backup/backup-postgres.sh {{output_dir}}
+
+# Restore a pg_dump backup into an empty target database. db_name must match
+# $PGDATABASE exactly (non-production guard, wi-101, ADR-153).
+restore-postgres backup_file db_name:
+    ./infra/backup/restore-postgres.sh {{backup_file}} --yes-restore-into-this-database {{db_name}}
+
+# Run a full local backup -> simulated db loss -> restore -> consistency-check
+# drill against a disposable compose project, and print elapsed time as a
+# local RPO/RTO estimate (wi-101, ADR-153).
+restore-drill:
+    ./infra/backup/restore-drill.sh
+
 # Render and schema-validate one Kubernetes environment overlay. Image digests
 # in production are release placeholders until the release pipeline supplies them.
 check-k8s overlay="dev":

@@ -19,7 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
-const usage = "usage: idmagic-batch <retention-sweep|signing-key-lifecycle|data-key-reencryption-sweep> [flags]"
+const usage = "usage: idmagic-batch <retention-sweep|signing-key-lifecycle|data-key-reencryption-sweep|restore-consistency-check> [flags]"
 
 func main() {
 	buildInfo := version.Get()
@@ -60,6 +60,11 @@ func run(ctx context.Context, args []string) error {
 		return withDependencies(ctx, func(deps *bootstrap.Dependencies) error {
 			return runDataKeyReencryptionSweep(ctx, deps, time.Now().UTC())
 		})
+	case "restore-consistency-check":
+		if len(args) != 1 {
+			return errors.New("restore-consistency-check accepts no flags")
+		}
+		return runRestoreConsistencyCheck(ctx)
 	default:
 		return fmt.Errorf("unknown batch %q; %s", args[0], usage)
 	}
