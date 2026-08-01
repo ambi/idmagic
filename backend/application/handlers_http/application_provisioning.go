@@ -32,7 +32,7 @@ const (
 	defaultOIDCScope    = "openid profile email"
 	defaultServiceScope = "openid"
 	defaultNameIDFormat = "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
-	defaultNameIDSource = "sub"
+	defaultNameIDSource = "user_id"
 )
 
 type createApplicationRequest struct {
@@ -138,7 +138,7 @@ func nonNilRules(rules []claimdomain.ClaimMappingRule) []claimdomain.ClaimMappin
 }
 
 // oidcSubSourceAttribute は OAuth2Client.ClaimPolicy から sub の source 属性を取り出す
-// (wi-73, ADR-151)。policy 未設定なら既定 (defaultNameIDSource = "sub") を返す。
+// (wi-73, ADR-151)。policy 未設定なら既定 (defaultNameIDSource = "user_id") を返す。
 func oidcSubSourceAttribute(policy *claimdomain.ClaimMappingPolicy) string {
 	if policy == nil || policy.NameID.SourceAttribute == "" {
 		return defaultNameIDSource

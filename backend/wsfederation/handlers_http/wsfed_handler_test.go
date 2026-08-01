@@ -85,7 +85,7 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
-				SourceAttribute: "sub",
+				SourceAttribute: "user_id",
 			},
 			Rules: []claimdomain.ClaimMappingRule{
 				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
@@ -475,7 +475,7 @@ func doJSON(e *echo.Echo, method, target, body string) *httptest.ResponseRecorde
 func TestAdminRelyingParty_CRUD(t *testing.T) {
 	e := newAdminServer(t)
 	const path = "/api/admin/wsfed/relying-parties"
-	body := `{"wtrealm":"urn:rp:a","reply_urls":["https://a.example/acs"],"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"sub"}}}`
+	body := `{"wtrealm":"urn:rp:a","reply_urls":["https://a.example/acs"],"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
 
 	if rec := doJSON(e, http.MethodPost, path, body); rec.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", rec.Code, rec.Body.String())
@@ -497,7 +497,7 @@ func TestAdminRelyingParty_CRUD(t *testing.T) {
 func TestAdminRelyingParty_RejectsInvalid(t *testing.T) {
 	e := newAdminServer(t)
 	// reply_urls 欠落。
-	body := `{"wtrealm":"urn:rp:b","claim_policy":{"name_id":{"format":"f","source_attribute":"sub"}}}`
+	body := `{"wtrealm":"urn:rp:b","claim_policy":{"name_id":{"format":"f","source_attribute":"user_id"}}}`
 	if rec := doJSON(e, http.MethodPost, "/api/admin/wsfed/relying-parties", body); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
 	}

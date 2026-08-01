@@ -13,7 +13,7 @@ import (
 // unconditionally. They do not appear in UserAttributeDef and are never gated by
 // tenant attribute visibility.
 var coreAttributeKeys = map[string]bool{
-	AttrSub:               true,
+	AttrUserID:            true,
 	AttrPreferredUsername: true,
 	AttrEmail:             true,
 	AttrEmailVerified:     true,

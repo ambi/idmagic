@@ -28,7 +28,7 @@ func SeedWsFedRelyingParty(ctx context.Context, repo wsfederationports.WsFedRely
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
-				SourceAttribute: "sub",
+				SourceAttribute: "user_id",
 			},
 			Rules: []claimdomain.ClaimMappingRule{
 				{ClaimType: "http://schemas.xmlsoap.org/claims/UPN", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "preferred_username", Required: true},
@@ -62,7 +62,7 @@ func SeedSamlServiceProvider(ctx context.Context, repo samlports.SamlServiceProv
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          samldomain.SamlNameIDFormatPersistent,
-				SourceAttribute: "sub",
+				SourceAttribute: "user_id",
 			},
 			Rules: []claimdomain.ClaimMappingRule{
 				{ClaimType: "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "email"},

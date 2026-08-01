@@ -334,7 +334,7 @@ func TestSamlApplicationDetailReturnsEmptyRulesNotNull(t *testing.T) {
 		"entity_id":      "https://sp.example.com",
 		"acs_urls":       []string{"https://sp.example.com/acs"},
 		"name_id_format": "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
-		"name_id_source": "sub",
+		"name_id_source": "user_id",
 	})
 	if create.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())

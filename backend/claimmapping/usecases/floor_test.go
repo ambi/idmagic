@@ -47,7 +47,7 @@ func TestIsAttributeReleasable_UnknownKeyRejected(t *testing.T) {
 
 func TestIsAttributeReleasable_CoreAttributesAlwaysAllowed(t *testing.T) {
 	for _, key := range []string{
-		claimusecases.AttrSub, claimusecases.AttrEmail, claimusecases.AttrName,
+		claimusecases.AttrUserID, claimusecases.AttrEmail, claimusecases.AttrName,
 		claimusecases.AttrGivenName, claimusecases.AttrFamilyName,
 		claimusecases.AttrPreferredUsername, claimusecases.AttrEmailVerified, claimusecases.AttrRoles,
 	} {
@@ -71,12 +71,12 @@ func TestIsReservedClaimType(t *testing.T) {
 
 func TestIssueClaimsWithFloor_AllowsSelfReadableOverride(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrSub},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "employee_number", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "employee_number", Required: true},
 		},
 	}
-	attrs := claimdomain.Attributes{claimusecases.AttrSub: {"user-1"}, "employee_number": {"E-123"}}
+	attrs := claimdomain.Attributes{claimusecases.AttrUserID: {"user-1"}, "employee_number": {"E-123"}}
 	defs := []userdomain.UserAttributeDef{employeeNumberDef()}
 
 	got, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs)
@@ -90,12 +90,12 @@ func TestIssueClaimsWithFloor_AllowsSelfReadableOverride(t *testing.T) {
 
 func TestIssueClaimsWithFloor_RejectsPrivateSourceAttribute(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrSub},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "ssn_claim", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "ssn"},
 		},
 	}
-	attrs := claimdomain.Attributes{claimusecases.AttrSub: {"user-1"}, "ssn": {"123-45-6789"}}
+	attrs := claimdomain.Attributes{claimusecases.AttrUserID: {"user-1"}, "ssn": {"123-45-6789"}}
 	defs := []userdomain.UserAttributeDef{ssnDef()}
 
 	if _, err := claimusecases.IssueClaimsWithFloor(policy, attrs, defs); err == nil {
@@ -105,12 +105,12 @@ func TestIssueClaimsWithFloor_RejectsPrivateSourceAttribute(t *testing.T) {
 
 func TestIssueClaimsWithFloor_RejectsUnknownSourceAttribute(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrSub},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "mystery", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "not_defined_anywhere"},
 		},
 	}
-	attrs := claimdomain.Attributes{claimusecases.AttrSub: {"user-1"}, "not_defined_anywhere": {"leak"}}
+	attrs := claimdomain.Attributes{claimusecases.AttrUserID: {"user-1"}, "not_defined_anywhere": {"leak"}}
 
 	if _, err := claimusecases.IssueClaimsWithFloor(policy, attrs, nil); err == nil {
 		t.Fatal("expected unknown attribute source to be rejected fail-closed")
@@ -119,12 +119,12 @@ func TestIssueClaimsWithFloor_RejectsUnknownSourceAttribute(t *testing.T) {
 
 func TestIssueClaimsWithFloor_RejectsReservedClaimType(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrSub},
+		NameID: claimdomain.NameIdConfiguration{Format: persistentFormat, SourceAttribute: claimusecases.AttrUserID},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "sub", Source: claimdomain.ClaimSourceFixed, FixedValue: "attacker-controlled"},
 		},
 	}
-	attrs := claimdomain.Attributes{claimusecases.AttrSub: {"user-1"}}
+	attrs := claimdomain.Attributes{claimusecases.AttrUserID: {"user-1"}}
 
 	if _, err := claimusecases.IssueClaimsWithFloor(policy, attrs, nil); err == nil {
 		t.Fatal("expected reserved claim_type rule to be rejected")

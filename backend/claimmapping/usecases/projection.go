@@ -20,7 +20,10 @@ type ClaimIssuanceResult struct {
 }
 
 const (
-	AttrSub               = "sub"
+	// AttrUserID is the protocol-neutral internal attrs key for the User aggregate's own
+	// identifier. It is distinct from the OIDC ID Token/UserInfo wire claim "sub"
+	// (RFC 7519 / OIDC Core), which this key's value feeds but does not name (wi-310).
+	AttrUserID            = "user_id"
 	AttrPreferredUsername = "preferred_username"
 	AttrEmail             = "email"
 	AttrEmailVerified     = "email_verified"
@@ -72,7 +75,7 @@ func ResolveUserAttributes(u userdomain.User) Attributes {
 			attrs[key] = filtered
 		}
 	}
-	put(AttrSub, u.ID)
+	put(AttrUserID, u.ID)
 	put(AttrPreferredUsername, u.PreferredUsername)
 	put(AttrEmailVerified, strconv.FormatBool(u.EmailVerified))
 	put(AttrRoles, u.Roles...)

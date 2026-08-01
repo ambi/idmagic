@@ -111,7 +111,7 @@ func newServerWithRepository(t *testing.T, authn *authdomain.AuthenticationConte
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
 			NameID: claimdomain.NameIdConfiguration{
 				Format:          samldomain.SamlNameIDFormatPersistent,
-				SourceAttribute: "sub",
+				SourceAttribute: "user_id",
 			},
 		},
 	})
@@ -294,7 +294,7 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 		WantAuthnRequestsSigned:           true,
 		AuthnRequestSigningCertificatePEM: certPEM(t),
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{NameID: claimdomain.NameIdConfiguration{
-			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub",
+			Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id",
 		}},
 	})
 	userRepo := usermemory.NewUserRepository()
@@ -324,7 +324,7 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 		ACSURLs:  []string{"https://sp.example.com/acs"},
 		SLOURL:   "https://sp.example.com/saml/slo",
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
-			NameID: claimdomain.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
+			NameID: claimdomain.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id"},
 		},
 	})
 	e := echo.New()
@@ -363,7 +363,7 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 		ACSURLs:  []string{"https://sp.example.com/acs"},
 		SLOURL:   "https://sp.example.com/saml/slo",
 		ClaimPolicy: claimdomain.ClaimMappingPolicy{
-			NameID: claimdomain.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "sub"},
+			NameID: claimdomain.NameIdConfiguration{Format: samldomain.SamlNameIDFormatPersistent, SourceAttribute: "user_id"},
 		},
 	})
 	e := echo.New()
@@ -601,13 +601,13 @@ func TestAdminServiceProvider_CRUD(t *testing.T) {
 	const path = "/api/admin/saml/service-providers"
 	body := `{"entity_id":"https://sp.example.com","idp_profile_id":"` + profileResponse.Profile.ProfileID +
 		`","acs_urls":["https://sp.example.com/acs"],` +
-		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"sub"}}}`
+		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
 
 	if rec := doJSON(e, http.MethodPost, path, body); rec.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	updateWithoutProfile := `{"entity_id":"https://sp.example.com","acs_urls":["https://sp.example.com/acs"],` +
-		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"sub"}}}`
+		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
 	if rec := doJSON(e, http.MethodPost, path, updateWithoutProfile); rec.Code != http.StatusOK {
 		t.Fatalf("update status=%d, want 200", rec.Code)
 	}
@@ -627,7 +627,7 @@ func TestAdminServiceProvider_CRUD(t *testing.T) {
 func TestAdminServiceProvider_RejectsInvalid(t *testing.T) {
 	e := newAdminServer(t)
 	// acs_urls 欠落。
-	body := `{"entity_id":"https://sp.example.com","claim_policy":{"name_id":{"format":"f","source_attribute":"sub"}}}`
+	body := `{"entity_id":"https://sp.example.com","claim_policy":{"name_id":{"format":"f","source_attribute":"user_id"}}}`
 	if rec := doJSON(e, http.MethodPost, "/api/admin/saml/service-providers", body); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
 	}
@@ -637,7 +637,7 @@ func TestAdminServiceProvider_RejectsUnsupportedSignedAuthnRequests(t *testing.T
 	e := newAdminServer(t)
 	body := `{"entity_id":"https://sp.example.com","acs_urls":["https://sp.example.com/acs"],` +
 		`"want_authn_requests_signed":true,` +
-		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"sub"}}}`
+		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
 	if rec := doJSON(e, http.MethodPost, "/api/admin/saml/service-providers", body); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
 	}

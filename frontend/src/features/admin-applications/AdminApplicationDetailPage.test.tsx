@@ -119,7 +119,7 @@ describe('AdminApplicationDetailPage', () => {
         fapi_profile: '',
         client_secret_rotatable: true,
         secret_credentials: [],
-        sub_source_attribute: 'sub',
+        sub_source_attribute: 'user_id',
         rules: [],
       },
     }
@@ -155,7 +155,7 @@ describe('AdminApplicationDetailPage', () => {
         slo_url: '',
         audience: '',
         name_id_format: 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent',
-        name_id_source: 'sub',
+        name_id_source: 'user_id',
         sign_assertion: true,
         sign_response: false,
         want_authn_requests_signed: false,

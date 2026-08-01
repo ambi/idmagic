@@ -96,7 +96,7 @@ func TestUserInfoOmitsAttributeClaimsWithoutScope(t *testing.T) {
 func TestUserInfo_ClaimPolicyAddsOverrideClaim(t *testing.T) {
 	repo := userInfoFixture(t)
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "sub"},
+		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "user_id"},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department", Required: true},
 		},
@@ -127,7 +127,7 @@ func TestUserInfo_ClaimPolicyAddsOverrideClaim(t *testing.T) {
 func TestUserInfo_ClaimPolicyRejectsPrivateAttribute(t *testing.T) {
 	repo := userInfoFixture(t)
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "sub"},
+		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "user_id"},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "leak", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "not_a_defined_attribute"},
 		},

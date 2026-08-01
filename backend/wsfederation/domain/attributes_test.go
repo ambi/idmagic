@@ -21,7 +21,7 @@ func TestResolveUserAttributes_StandardFields(t *testing.T) {
 	attrs := claimusecases.ResolveUserAttributes(u)
 
 	cases := map[string][]string{
-		claimusecases.AttrSub:               {"user-1"},
+		claimusecases.AttrUserID:            {"user-1"},
 		claimusecases.AttrPreferredUsername: {"alice"},
 		claimusecases.AttrEmail:             {"alice@contoso.com"},
 		claimusecases.AttrEmailVerified:     {"true"},

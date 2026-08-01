@@ -46,7 +46,7 @@ export const AUTH_METHODS: SelectOption[] = [
 export const DEFAULT_NAMEID_FORMAT = 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
 // SAML 2.0 の既定 NameID 形式は persistent (Okta / Entra の既定運用に合わせる)。
 export const SAML_DEFAULT_NAMEID_FORMAT = 'urn:oasis:names:tc:SAML:2.0:nameid-format:persistent'
-export const DEFAULT_NAMEID_SOURCE = 'sub'
+export const DEFAULT_NAMEID_SOURCE = 'user_id'
 
 export function wsfedTokenTypeOptions(t: AdminApplicationsDictionary): SelectOption[] {
   return [
@@ -293,7 +293,7 @@ export function ReadonlyMeta({ label, value }: { label: string; value: string })
 // coreAttributeKeys は User の型付きフィールドで、UserAttributeDef には現れないが常に
 // releasable な source (backend/claimmapping/usecases/floor.go の coreAttributeKeys と同じ集合)。
 const CORE_ATTRIBUTE_KEYS = [
-  'sub',
+  'user_id',
   'preferred_username',
   'email',
   'email_verified',
@@ -305,8 +305,8 @@ const CORE_ATTRIBUTE_KEYS = [
 
 function coreAttributeLabel(key: string, t: AdminApplicationsDictionary): string {
   switch (key) {
-    case 'sub':
-      return t.coreAttributeSubLabel
+    case 'user_id':
+      return t.coreAttributeUserIdLabel
     case 'preferred_username':
       return t.coreAttributePreferredUsernameLabel
     case 'email':
@@ -354,7 +354,7 @@ export function useReleasableAttributes(): {
       cancelled = true
     }
   }, [])
-  // 表示名を先頭にし、内部属性キー (sub 等、OIDC 由来の名前が SAML/WS-Fed 画面にも出る) は
+  // 表示名を先頭にし、内部属性キー (user_id 等、protocol-neutral な内部表現) は
   // 括弧書きの補足に留める。値そのものは変えない (プロトコル間で共有する内部表現)。
   const core: ReleasableAttributeOption[] = CORE_ATTRIBUTE_KEYS.map((key) => ({
     value: key,

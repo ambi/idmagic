@@ -209,7 +209,7 @@ export const adminApplicationsDictionary = defineDictionary(
     visibilityClaimExposed: 'claim として開示',
     invalidClaimRuleRejectedError:
       'claim 規則が拒否されました。visibility=非公開 の属性や、reserved claim type (iss/sub/aud 等) を指定していないか確認してください。',
-    coreAttributeSubLabel: 'ユーザー ID',
+    coreAttributeUserIdLabel: 'ユーザー ID',
     coreAttributePreferredUsernameLabel: 'ユーザー名',
     coreAttributeEmailLabel: 'メールアドレス',
     coreAttributeEmailVerifiedLabel: 'メール確認状態',
@@ -471,7 +471,7 @@ export const adminApplicationsDictionary = defineDictionary(
     visibilityClaimExposed: 'Exposed as claim',
     invalidClaimRuleRejectedError:
       'The claim rule was rejected. Check for Private-visibility attributes or reserved claim types (iss/sub/aud etc.).',
-    coreAttributeSubLabel: 'User ID',
+    coreAttributeUserIdLabel: 'User ID',
     coreAttributePreferredUsernameLabel: 'Username',
     coreAttributeEmailLabel: 'Email address',
     coreAttributeEmailVerifiedLabel: 'Email verified status',

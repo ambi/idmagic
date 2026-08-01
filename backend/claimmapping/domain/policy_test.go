@@ -9,7 +9,7 @@ import (
 
 func TestClaimMappingPolicyJSONContract(t *testing.T) {
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: "persistent", SourceAttribute: "sub"},
+		NameID: claimdomain.NameIdConfiguration{Format: "persistent", SourceAttribute: "user_id"},
 		Rules: []claimdomain.ClaimMappingRule{{
 			ClaimType: "email", Source: claimdomain.ClaimSourceUserAttribute,
 			SourceKey: "email", Required: true,
@@ -19,7 +19,7 @@ func TestClaimMappingPolicyJSONContract(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"name_id":{"format":"persistent","source_attribute":"sub"},"rules":[{"claim_type":"email","source":"user_attribute","source_key":"email","required":true}]}`
+	want := `{"name_id":{"format":"persistent","source_attribute":"user_id"},"rules":[{"claim_type":"email","source":"user_attribute","source_key":"email","required":true}]}`
 	if string(data) != want {
 		t.Fatalf("claim mapping wire changed:\n got: %s\nwant: %s", data, want)
 	}

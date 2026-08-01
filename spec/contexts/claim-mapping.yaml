@@ -109,7 +109,7 @@ models:
         type: String
 interfaces:
   ResolveEffectiveClaims:
-    description: "tenant の属性可視性 (visibility != Private) と reserved claim type の固定集合を\nfail-closed floor として強制し、ClaimMappingPolicy と解決済み属性から NameID と IssuedClaim[] を\n組み立てる。WS-Fed / SAML / OIDC の各 issuer が共有する唯一の claim 解決経路。\nUser の core field (sub / email / name / given_name / family_name / preferred_username /\nemail_verified / roles) は UserAttributeDef に現れないため常に解決対象にする。custom attribute で\nattribute_defs に無い key、または visibility=Private の key を source に持つ rule は floor で拒否する。\n"
+    description: "tenant の属性可視性 (visibility != Private) と reserved claim type の固定集合を\nfail-closed floor として強制し、ClaimMappingPolicy と解決済み属性から NameID と IssuedClaim[] を\n組み立てる。WS-Fed / SAML / OIDC の各 issuer が共有する唯一の claim 解決経路。\nUser の core field (user_id / email / name / given_name / family_name / preferred_username /\nemail_verified / roles) は UserAttributeDef に現れないため常に解決対象にする。user_id は User 集約の\n識別子を指す protocol-neutral な内部属性キーであり、OIDC ID Token/UserInfo が実際に発行する wire\nclaim \"sub\" (RFC 7519 / OIDC Core が定める語彙) とは別物。custom attribute で\nattribute_defs に無い key、または visibility=Private の key を source に持つ rule は floor で拒否する。\n"
     input:
       policy:
         type: ClaimMappingPolicy

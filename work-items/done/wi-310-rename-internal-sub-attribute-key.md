@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: medium
 created_at: 2026-08-01
@@ -76,15 +76,30 @@ reserved claim type 集合の一員としての "sub") とは明確に区別す�
 5. SCL の該当記述を更新し `just check` を通す。
 
 ## Tasks
-- [ ] T001 [Decision] 新キー名を確定し、既存 JSONB データの互換方針 (読み替え shim か
-      一括書き換えか) を決める。
-- [ ] T002 [SCL] claim-mapping.yaml / oauth2.yaml の内部キー言及を更新する。
-- [ ] T003 [Domain] `AttrSub` 定数値と `coreAttributeKeys` を変更し、
-      `floor_test.go` 等の対象テストを新キー名に合わせる。
-- [ ] T004 [Compat] 既存永続データ (saml_service_providers / wsfed_relying_parties /
-      oauth2_clients の claim_policy JSONB) に対する互換方針を実装する。
-- [ ] T005 [UI] `DEFAULT_NAMEID_SOURCE` とラベル表示を更新する。
-- [ ] T006 [Verify] `go test ./...`、`bun run typecheck/lint/test:unit/build`、`just check`。
+- [x] T001 [Decision] 新キー名を `user_id` に確定。互換方針: 本システムは未リリースであり
+      永続データの後方互換を考慮する必要がないため、読み替え shim / 一括書き換えのいずれも
+      実装しない (ユーザー判断、着手時に確認)。dev seed data (`backend/cmd/internal/bootstrap/federation.go`)
+      は新キー名に直接書き換えた。
+- [x] T002 [SCL] claim-mapping.yaml の `ResolveEffectiveClaims` 説明を `user_id` に更新した。
+      oauth2.yaml の "sub" 言及は全て ID Token/UserInfo wire claim を指しており内部キーの
+      言及はなかったため変更なし。
+- [x] T003 [Domain] `AttrSub` を `AttrUserID`（値 `"user_id"`）に改名し、`coreAttributeKeys` を
+      追随させた。`floor_test.go` / `attributes_test.go` は定数参照のため自動追随、
+      `policy_test.go` / `saml_handler_test.go` / `wsfed_handler_test.go` /
+      `application_handler_test.go` / `userinfo_test.go` / `jwt_signer_idtoken_test.go`
+      (Design 記載外だが影響範囲として発見) の直書きリテラルを `user_id` に更新した。
+      振る舞い変更ではなく値の張り替えのため red-green サイクルは適用せず、
+      `go test ./...` で green を確認した。
+- [x] T004 [Compat] 未リリースのため互換シムは実装しない方針に決定 (T001)。
+      当初実装した read-time shim (`IssueClaimsWithFloor` 手前での旧キー読み替え) は
+      ユーザー指示により削除し、単純なリネームとした。
+- [x] T005 [UI] `DEFAULT_NAMEID_SOURCE` / `CORE_ATTRIBUTE_KEYS` を `user_id` に更新し、
+      `coreAttributeSubLabel` を `coreAttributeUserIdLabel` に改名した (ラベル文言自体は
+      既に protocol-neutral な「ユーザー ID」/「User ID」だったため変更なし)。
+      `CreateApplicationDialog.tsx` は現行コードでは `AdminApplicationCreatePage.tsx` に
+      統合されており、`DEFAULT_NAMEID_SOURCE` 経由で追随した。
+- [x] T006 [Verify] `go test ./...`、`just lint-go`、`just verify-ui`
+      (format-check/lint/test:unit/build)、`just check` を実行しグリーンを確認した。
 
 ## Verification
 - `go test ./...`
@@ -94,11 +109,37 @@ reserved claim type 集合の一員としての "sub") とは明確に区別す�
 - `bun run test:unit`
 - `bun run build`
 - `just check`
-- 手動: 既存の (改名前に作成された) WS-Fed/SAML アプリの NameID 解決が改名後も壊れないことを
-  確認する。
 
 ## Risk Notes
 内部キー名は OIDC/SAML/WS-Federation の claim 発行の中核 (attrs map のルックアップキー) に
 使われており、改名を誤ると既存アプリの NameID / sub 解決が壊れ、サインインが失敗し得る
 (fail-closed の設計上、キー不一致は「値が見つからない」という形で顕在化し、
 `required: true` の場合は発行拒否になる)。テストと手動確認を通じてから適用する。
+
+未リリースであることを着手時に確認し、既存永続データとの互換性リスクは対象外と判断した
+(T001)。将来リリース後に同種のキー改名を行う場合は、この Risk Notes の懸念が再び有効になる
+ことに注意する。
+
+## Completion
+
+- **Completed At**: 2026-08-01
+- **Summary**:
+  `AttrSub`（値 `"sub"`）を `AttrUserID`（値 `"user_id"`）へ改名し、`ResolveUserAttributes` /
+  `coreAttributeKeys` / SCL (`claim-mapping.yaml`) / frontend (`DEFAULT_NAMEID_SOURCE`,
+  `CORE_ATTRIBUTE_KEYS`, `coreAttributeUserIdLabel`) / dev seed data
+  (`backend/cmd/internal/bootstrap/federation.go`) / 関連テストの直書きリテラルを一括で
+  更新した。OIDC の ID Token/UserInfo wire claim `"sub"` および `reservedClaimTypes["sub"]`
+  は Out of Scope のとおり変更していない。
+  本システムは未リリースのため、既存永続データ (JSONB) との後方互換は対象外と判断し、
+  当初実装した read-time 互換 shim (`IssueClaimsWithFloor` 手前での旧キー読み替え) は
+  ユーザー指示により削除し、単純なリネームとした (T001/T004、Design の互換方針からの逸脱)。
+  **対応していないこと**: `spec/contexts/oauth2.yaml` の `OAuth2Client.claim_policy` 説明文
+  ("NameID 相当の source 属性を sub の source として使う") は、内部キーではなく OIDC の
+  ID Token wire claim `sub` を指す記述であると判断し、変更していない。
+  test-first からの逸脱 (self-attest): T003 は振る舞い変更ではなく定数値とテストリテラルの
+  張り替えであり、新規の RED-GREEN サイクルは適用しなかった。
+- **Verification Results**:
+  - `go test ./...` - passed。
+  - `just lint-go` - passed (0 issues)。
+  - `just verify-ui` (format-check/lint/test:unit/build) - passed (523 tests)。
+  - `just check` - passed。

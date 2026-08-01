@@ -159,7 +159,7 @@ func TestSignIDTokenClaimPolicyAddsOverrideClaim(t *testing.T) {
 	user := idTokenTestUser()
 	user.Attributes["department"] = userdomain.AttributeValue{Type: idmdomain.AttributeTypeString, String: new("R&D")}
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "sub"},
+		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "user_id"},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "department", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "department", Required: true},
 		},
@@ -191,7 +191,7 @@ func TestSignIDTokenClaimPolicyRejectsPrivateAttribute(t *testing.T) {
 		return userdomain.BuiltinUserAttributeDefs(), nil
 	}
 	policy := claimdomain.ClaimMappingPolicy{
-		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "sub"},
+		NameID: claimdomain.NameIdConfiguration{Format: "sub", SourceAttribute: "user_id"},
 		Rules: []claimdomain.ClaimMappingRule{
 			{ClaimType: "leak", Source: claimdomain.ClaimSourceUserAttribute, SourceKey: "not_a_defined_attribute"},
 		},
