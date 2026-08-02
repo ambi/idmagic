@@ -18,19 +18,4 @@
 
 The `justfile` is the single command map for this repo. Run every basic command — verify, build, test, lint, format, dev servers, demos, codegen — through its `just` recipe, never by invoking the underlying tool (`bun`, `go`, `golangci-lint`, `docker`, a `*.sh` script, …) directly.
 
-- Verify: `just verify` (whole app), `just verify-ui` (format-check / lint / typecheck / build), `just verify-go`.
-- Build / test: `just build-go`, `just build-ui`, `just test-go`, `just test-ui-e2e`.
-- Dev / demo: `just dev` (API + UI stack), `just dev-api`, `just dev-ui`, `just demo`.
-- SCL / workspace records: `just check`, `just check-work-items`, `just check-ids`, `just scl-render`.
 - Run `just --list` to discover the recipe before reaching for a raw tool. If a common command has no recipe yet, add one to the `justfile` instead of running it ad hoc.
-
-## Repository Layout
-
-```text
-backend/            Go bounded contexts, shared adapters, and process entry points
-frontend/           React UI and gateway configuration
-spec/scl.yaml      Specification Core Language source
-decisions/         Architecture Decision Records
-work-items/        Work Items, with completed records in work-items/done/
-tools/             Embedded RA/SCL tools and packages
-```
