@@ -27,71 +27,46 @@ refresh token family・RP 通知への伝播経路、(4) access token の扱い�
 
 ## 決定
 
-1. **sid は `LoginSession.id` そのものであり、RP 間で単一・共通の値とする。**
-   Keycloak / Okta と同様、OIDC の `sid` claim は「ある RP に対する session」ではなく
-   「ブラウザの OP session」を指す。RP ごとに別の sid を発行すると、1 つのブラウザ
-   session を複数の相関不能な断片として扱うことになり、session revoke から
-   全 RP を辿れなくなる。`AuthorizationRequest.sid` は `authenticate_user` 完了時に
-   `AuthenticationContext.session_id` から一度だけ伝搬し、`AuthorizationCodeRecord.sid`
-   → `RefreshTokenRecord.sid` → `IdTokenClaims.sid` へそのまま引き継ぐ。session 状態
-   そのものは OAuth2 側に複製しない (Authentication が単一正本のまま)。
+1. **sid は `LoginSession.id` そのものであり、RP 間で単一・共通の値とする。** RP ごとに別の
+   sid を発行すると、1 つのブラウザ session を複数の相関不能な断片として扱うことになり、
+   session revoke から全 RP を辿れなくなる。session 状態そのものは OAuth2 側に複製しない
+   (Authentication が単一正本のまま)。
 
-2. **`ClientSession` は「どの RP に通知すべきか」を解決するための索引に限定する。**
-   `(sid, client_id)` を identity とする軽量な参加記録のみを持ち、session の
-   属性 (amr/acr/expires_at 等) は複製しない。目的は back/front-channel logout の
-   配送先解決であり、認証状態の第二正本にしない。
+2. **`ClientSession` は「どの RP に通知すべきか」を解決するための索引に限定する。** session の
+   属性 (amr/acr/expires_at 等) は複製せず、認証状態の第二正本にしない。
 
-3. **`RefreshTokenRecord.sid` で family を横断してユーザーの session 単位revoke を
-   解決する。** 1 つのブラウザ session から複数 RP (複数 client_id、複数
-   refresh token family) が生成されうるため、`family_id` 単位ではなく `sid` 単位で
-   `RevokeToken` を一括適用する。Rotate 後も親の `sid` をそのまま引き継ぐため、
-   ローテーション履歴に関わらず同一 session 由来の token を漏れなく失効できる。
+3. **`RefreshTokenRecord.sid` で family を横断してユーザーの session 単位 revoke を解決する。**
+   1 つのブラウザ session から複数 RP (複数 client_id、複数 refresh token family) が
+   生成されうるため、`family_id` 単位ではなく `sid` 単位で `RevokeToken` を一括適用する。
 
-4. **`id_token_hint` は本 OP が署名した ID Token だけを受理し、fail-closed で
-   検証する。** 検証する項目は署名 (登録済み signing key と算法一致)・`iss`・
-   `aud` (client_id パラメータが同時に与えられた場合は一致必須。矛盾する
-   hint は `invalid_request` で拒否し、cookie 単独の session へフォールバックしない)・
-   `sub`・`sid`。**`exp` は検証しない** — ログアウト時点で ID Token が期限切れに
-   なっているのが RP 実装として通常であり、多くの実装 (Keycloak 等) も logout 目的
-   では expiry を無視する。`id_token_hint` が無い場合は既存の `client_id` +
-   browser cookie による解決を fallback として維持する (後方互換)。
+4. **`id_token_hint` は本 OP が署名した ID Token だけを受理し、fail-closed で検証する。**
+   矛盾する hint は `invalid_request` で拒否し、cookie 単独の session へフォールバック
+   しない。`exp` は検証しない — ログアウト時点で ID Token が期限切れになっているのが RP
+   実装として通常であるため。`id_token_hint` が無い場合は既存の `client_id` + browser
+   cookie による解決を fallback として維持する (後方互換)。
 
 5. **back-channel logout の配送は Jobs bounded context の durable job に委譲する
-   (kind=`backchannel_logout_delivery`)。** `LogoutNotification` を outbox 行として
-   ローカル revoke 確定後に作成し、配送の成否に関わらずローカルの
-   session/refresh token 失効を取り消さない。これは [[wi-45-outbound-scim-provisioning]]
-   が提案する `ProvisioningDelivery` と同型の「配送は非同期・冪等・retry 可能」
-   という設計を踏襲するが、SCIM 側がまだ未実装であるのに対し本 WI は実装対象と
-   する。二重の queue 基盤を作らないため、既存の Jobs (EnqueueJob/ClaimJobs/…) を
-   そのまま使い、`JobKind` enum に値を 1 つ追加するに留める。
+   (kind=`backchannel_logout_delivery`)。** 配送の成否に関わらずローカルの
+   session/refresh token 失効を取り消さない。二重の queue 基盤を作らないため、既存の
+   Jobs (EnqueueJob/ClaimJobs/…) をそのまま使う。
 
-6. **front-channel logout は配送保証を持たない計算結果として扱う。** `FrontChannelLogout`
-   は `/end_session` 応答へ埋め込む iframe target の一覧を都度算出する internal
-   interface であり、job/outbox を介さない。RP 側 iframe の到達失敗は仕様上
-   許容されるものであり、ローカル revoke の成否に影響させない。
+6. **front-channel logout は配送保証を持たない計算結果として扱う。** RP 側 iframe の
+   到達失敗は仕様上許容されるものであり、ローカル revoke の成否に影響させない。
 
-7. **Access Token の即時失効 (denylist) は本 WI のスコープ外とする。** Access
-   Token は RFC 9068 準拠の自己完結 JWT で TTL 600 秒であり、signature のみで
-   検証する (introspection や denylist 参照を resource server 経路に追加していない)。
-   session revoke から access token を即時失効させるには、全 access token 検証を
-   ストア参照必須に変える大きな設計変更が必要になり、[[wi-253]] が採った
-   「計測で必要性が示されるまで cache/consistency 機構を追加しない」という方針と
-   矛盾する。本 WI では TTL 600 秒の残存露出を許容し、refresh token family の
-   即時失効と RP への logout 通知で実務上十分な保護とする。将来 introspection
-   ベースの access token 検証が必要になった場合は別 WI で扱う。
+7. **Access Token の即時失効 (denylist) は本 WI のスコープ外とする。** session revoke から
+   access token を即時失効させるには、全 access token 検証をストア参照必須に変える大きな
+   設計変更が必要になり、[[wi-253]] が採った「計測で必要性が示されるまで cache/consistency
+   機構を追加しない」という方針と矛盾する。TTL 600 秒の残存露出を許容し、refresh token
+   family の即時失効と RP への logout 通知で実務上十分な保護とする。
 
-8. **`check_session_iframe` (OIDC Session Management 1.0) は最小実装に留める。**
-   本仕様は Draft 28 のまま Final に到達しておらず、主要 IdP でも実装が割れている。
-   discovery 広告と「現在の browser cookie が有効な LoginSession に解決できるか」
-   だけを返す静的ページに限定し、`session_state` の salted hash 相関アルゴリズムは
-   実装しない (`standards.OpenIDConnectSessionManagement` は `adoption: optional`)。
+8. **`check_session_iframe` (OIDC Session Management 1.0) は最小実装に留める。** 本仕様は
+   Draft 28 のまま Final に到達しておらず、主要 IdP でも実装が割れているため。
 
 9. **admin 向け session 管理は self-service (`ListMySessions` 等, wi-253) と対で
-   `TenantAdministrator` policy の姉妹 interface として追加する。** 新しい
-   projection model を作らず既存の `AccountSession` 相当を admin 版
-   (`SessionRecord`、current マーカー無し) として複製する。既存の
-   `ListUserSignInActivity` (admin, `resource: User, id: input.user_id`) と同じ
-   アクセス制御パターンを踏襲する。
+   `TenantAdministrator` policy の姉妹 interface として追加する。**
+
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある
+(sid 伝播、`ClientSession`、`id_token_hint` 検証、logout 配送の詳細)。
 
 ## 却下した代替案
 

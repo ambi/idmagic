@@ -21,29 +21,16 @@ RA の観点では、これは「仕様核（状態機械・grant matrix・disco
 
 （ADR-001 の device-code 状態機械を実装に落とす）
 
-1. **エンドポイント**
-   - `POST /device_authorization` (§3.1): device_code / user_code を発行。クライアント認証
-     (`authenticateClient`) を適用。
-   - `GET /device` / `POST /device` (§3.3): verification_uri。ユーザーが user_code を入力し
-     承認 / 拒否する。ユーザー認証は本アプリでは X-User-Sub（authorize と同方針）。
-   - `/token` の `urn:ietf:params:oauth:grant-type:device_code` 分岐 (§3.4): ポーリング。
-2. **コードのエントロピーと保管**
-   - `device_code`: 32 バイト乱数。ベアラ秘密なので SHA-256 ハッシュのみ保存。
-   - `user_code`: 母音・紛らわしい文字を除いた 20 文字集合 × 8 桁（約 34 bit）。
-     `WDJB-MJHT` 形式で表示し、索引キーは正規化して保持（§6.1）。
-3. **状態遷移は仕様核に従う** — `spec/flows/device-code-flow.json` の遷移テーブルを
-   `transitionDeviceCode` 経由で消費。approve/deny/exchange を勝手に実装しない。
-4. **ポーリング動作 (§3.5)** — `authorization_pending` / `slow_down` / `access_denied` /
-   `expired_token` を返す。`interval` と slow_down 増分は仕様核 (`polling`) を権威とする。
-   interval より速いポーリングは `slow_down` で抑制する。
-5. **承認済みからの発行** — access_token + refresh_token + id_token(openid 時) を
-   exchange-code-for-token と同じ経路で発行。`approved → exchanged` に進めてから発行し、
-   二重発行を防ぐ。
-6. **volatile store** — `DeviceCodeStore` ポート + memory / valkey アダプタ。device_code
-   ハッシュと user_code の 2 索引を持ち、TTL は device_code 寿命 (600s)。
-7. **監査イベント** — `DeviceAuthorizationRequested` / `Approved` / `Denied` を
-   events.schema.json → asyncapi → outbox → Zod の全チェーンに追加。user_code は
-   推測攻撃の手掛かりにしないため監査ログに残さない。
+`POST /device_authorization` で device_code / user_code を発行し、`/device` で
+verification_uri（user_code の入力・承認・拒否）を提供し、`/token` に
+`urn:ietf:params:oauth:grant-type:device_code` のポーリング分岐を追加する。`device_code` は
+32 バイト乱数でベアラ秘密のため SHA-256 ハッシュのみ保存し、`user_code` は母音・紛らわしい
+文字を除いた 20 文字集合 × 8 桁で `WDJB-MJHT` 形式に表示する。状態遷移は
+`spec/flows/device-code-flow.json` の遷移テーブルに従い、approve/deny/exchange を勝手に
+実装しない。ポーリングは `authorization_pending` / `slow_down` / `access_denied` /
+`expired_token` を返し、interval と slow_down 増分は仕様核を権威とする。
+
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 影響
 

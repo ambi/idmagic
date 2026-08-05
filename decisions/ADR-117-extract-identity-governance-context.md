@@ -40,59 +40,19 @@ record-of-truth」へ痩せさせる。`IdGovernance` は policy/orchestration �
 ### 2. 境界を貫く 2 契約（ADR-113 決定2 を cross-context 版へ精緻化）
 
 ADR-113 決定2 の「User mutation と WorkflowRun 作成を同一 IdManagement transaction で
-commit する」原子性保証は、context 分離により 1 つの transaction では表せなくなる。これを 2 つの
-published 契約へ分解する:
-
-- **Read 契約（トリガ）— 既存 transactional outbox を再利用**: `IdManagement` は User
-  ライフサイクルイベント（`UserCreated`〈既存〉に加え `UserAttributesChanged` /
-  `UserStatusChanged` を新設）を、User mutation と**同一 Tx** で transactional outbox
-  （`oauth2/adapters/persistence/postgres/outbox.go`、`oauth2/ports/event_sink.go`、
-  `shared/adapters/eventsink/kafka_relay.go`、`idmagic-relay`）へ書く。`IdGovernance` が
-  outbox → relay 経由でこれを購読し `WorkflowRun` を生成する。これにより「User 更新は成功したが
-  run が二度と作られない」障害窓を、outbox の同一 Tx 書き込みが ADR-113 決定2 の共有 transaction に
-  代わって閉じる。at-least-once 配送のため、ADR-113 決定4 の
-  `(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` 重複排除は
-  cross-context でも維持され、`source_occurrence_id` はイベントの occurrence ID にマップする。
-
-- **Write 契約（アクション）— published command surface**: executor の 9 アクション
-  （add/remove_group_member、assign/unassign_application、enable/disable_user、
-  set/clear_required_action、send_email）は record context を書き換える。`IdManagement` と
-  `Application` に**冪等コマンド surface を published interface** として追加し、executor は
-  published interface 経由で呼ぶ（record context の domain を直呼びしない）。ADR-113 決定8 の
-  composition-root 配線先例（IdManagement が Application usecase adapter を action executor
-  port へ注入する ports-and-adapters）を、`IdGovernance → {IdManagement, Application}`
-  の cross-context published 依存へ引き上げる。冪等性（ADR-113 決定5 の desired-state action +
-  step checkpoint）は record context 側の command surface でも維持する。
-
-#### 2a. Read 契約の実装方式（本 WI では境界 port、outbox 配送は後続 WI）
-
-現行コードベースには domain event の in-process 購読機構が無く、outbox は relay→kafka の一方向
-配送のみ。決定2 の literal な outbox 購読を今実装するには IdGovernance 用の kafka consumer を
-新設する必要があり、本 WI に対して過大である。本 WI では既存の transactional capture の**挙動と
-原子性をそのまま維持**し、IM→LifecycleWorkflow の型依存だけを断つ最小変更として、IM に User
-domain 型のみを引数に取る境界 port（published interface）を 1 つ追加する。IdGovernance がこの port
-を実装し、従来どおり run の planning と User+run の同一 Tx capture を所有する。配線は composition
-root（ADR-113 決定8 の先例）で行う。literal な outbox/kafka 配送は、実際に IGA consumer
-（wi-213/214 等）を建てる後続 WI で置換する。
-
-永続化は本 WI では最小変更とし、IdGovernance の postgres アダプタは IdManagement の生成
-sqlcgen パッケージを import する（context DAG 上合法）。context-local な sqlc パッケージ分割
-（ADR-090）は後続 WI へ後回しする。
-
-> 追記（wi-254, ADR-130）: ここで後回しにした context-local sqlc パッケージ分割を実施した。
-> `lifecycle_workflows` の query/sqlcgen を `backend/idmanagement/adapters/persistence/postgres`
-> から `backend/idgovernance/adapters/persistence/postgres` へ物理移設し、IdGovernance が
-> 自身の sqlc パッケージを持つ。
-
-ADR-113 決定8 は `IdManagement.depends_on.Application` を追加すると
-`Application.depends_on.IdManagement`（UserRef/GroupRef）と cycle になるため、
-`AssignApplicationDesiredState` 等を Application 所有の internal interface に留め `context_map` に
-エッジを足さない、とした。context を分離した本 ADR では `IdGovernance` が新しい依存元となり、
-`IdGovernance.depends_on.{IdManagement, Application, Jobs}` を追加しても
-`Application`/`IdManagement` は `IdGovernance` に依存し返さないため **cycle は生じない**。
-よって command surface を Application / IdManagement の **published interface** に昇格でき、
-`just yaml-check` の context-map cycle 検出（`tools/yaml-check/src/context-map.ts`）と
-executable architecture map（ADR-116）の acyclic 検証を通す。
+commit する」原子性保証は、context 分離により 1 つの transaction では表せなくなる。これを Read
+契約（トリガ、既存 transactional outbox の同一 Tx 書き込みを再利用）と Write 契約（アクション、
+`IdManagement`/`Application` に追加する published な冪等コマンド surface）の 2 つへ分解する。
+ADR-113 決定8 が internal interface に留めた理由（context DAG の cycle 回避）は、依存元が
+`IdGovernance` になったことで解消し、command surface は published interface へ昇格できる
+（`IdGovernance` が新たな依存元になっても `Application`/`IdManagement` が依存し返さないため
+cycle が生じない）。本 WI では outbox の literal な購読までは実装せず、IM に User domain 型のみを
+引数に取る境界 port を追加し、IdGovernance がそれを実装して従来どおり run planning と同一 Tx
+capture を担う最小変更に留める（真の outbox/kafka 配送は後続の IGA consumer 構築 WI で置換）。
+永続化は当初 IdManagement の生成 sqlcgen パッケージを import する形で始めたが、wi-254 (ADR-130)
+で `lifecycle_workflows` の query/sqlcgen を `backend/idgovernance` へ物理移設し、IdGovernance が
+自身の sqlc パッケージを持つに至っている。メカニズムの詳細は
+[backend/idgovernance/ARCHITECTURE.md](../backend/idgovernance/ARCHITECTURE.md) に移した。
 
 ### 4. strangler で段階実行する
 

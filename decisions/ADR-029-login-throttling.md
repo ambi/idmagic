@@ -22,71 +22,19 @@ SCL には `rate_limit_per_minute` policy kind と `ClientAuthFailureRateLimit`
 
 ## 決定
 
-`spec/scl.yaml` `objectives.LoginThrottlePolicy` と
-`src/authentication/ports/login-attempt-throttle.ts` の双子に反映。
+per-account と per-IP を独立にカウントする二軸スロットリングを採用する (per-account: 10 失敗 /
+15 分 → 15 分ロック、per-IP: 30 失敗 / 15 分 → 15 分ロック)。どちらか一方でも NIST §5.2.2 の
+"consecutive failed authentication attempts" 要件を満たせないため両軸が要る — per-account のみでは
+credential stuffing（1 アカウントあたり数試行で次へ移る攻撃）を捕まえられない。ユーザー名列挙対策
+として、未存在 username でも固定 sentinel ハッシュで verify を回し、throttle counter は user 存在
+チェックの前に username 文字列で increment する。永続ロックは採用しない — NIST が明示的に
+"do not implement permanent lockouts" を推奨しており、攻撃者が任意の victim username を継続的に
+失敗させて恒久ロックへ追い込む DoS を防ぐため、時間で解けるロックに統一する。クライアント IP は
+デフォルトで `X-Forwarded-For` を信頼しない (`TRUSTED_FORWARDED_HOPS` opt-in) — 偽装による
+per-IP throttle 回避のほうが設定ミスによる IP 誤認より致命的なため。
 
-1. **二軸スロットリング**: per-account と per-IP の両方を独立にカウントする。
-   - per-account: 同一 username（小文字正規化）の失敗回数。攻撃者が単一アカウントに
-     対して辞書攻撃する経路を塞ぐ。
-   - per-IP: 同一クライアント IP からの失敗回数。credential stuffing（多数の
-     username × 漏洩 password を 1 IP から試行）を捉える。
-   - 両者は別カウンタ / 別 lockout window。どちらかが閾値に達すれば 429 を返す。
-
-2. **しきい値**:
-   - per-account: 10 失敗 / 15 分 → 15 分ロック。
-   - per-IP: 30 失敗 / 15 分 → 15 分ロック。
-   - 数字は NIST §5.2.2 の "limit to no more than 100 failed attempts per 30 days"
-     を上限とし、現場慣行 (OWASP ASVS / Auth0 / Okta の既定値) と合わせた範囲で
-     設定。テナント別ポリシー（将来）で上書き可能。
-
-3. **ロック表現**: counter + lock の二段。
-   - counter (`failures:{kind}:{key}`) は sliding window 内のインクリメント。
-     しきい値到達で lock キー (`lock:{kind}:{key}`) に `EX` 付きで書く。
-   - tryAcquire は lock キーの存在を見て allowed / retryAfterSeconds を返す。
-   - 単純な fixed-window counter で十分（攻撃者目線では window 跨ぎで 2 倍試行が
-     できるが、5 分 window だと UI 操作の誤入力を弾くので 15 分にする）。
-
-4. **成功時クリア**: ログイン成功時に該当 username の counter / lock を削除する。
-   - per-IP の counter は **クリアしない**: 1 IP に多数の正規ユーザが居る場合
-     (NAT / オフィス IP) でも、成功はその IP の正常性を保証しない。ただし
-     window 内で自動失効するので運用上のロックは時間で解ける。
-
-5. **ユーザー名列挙対策 (constant-time + 同一カウンタ)**:
-   - 現状の `findByUsername → verify` は user 未存在時に verify をスキップして
-     timing oracle (Argon2 ~50–200 ms の有無) で存在を漏らす。fix として、
-     未存在時に **固定 sentinel ハッシュ** で `passwordHasher.verify` を回す。
-   - throttle counter は **username 文字列** (lowercase) で集計し、user 存在
-     チェックの前に increment する。未存在 username の試行も同じ枠を消費し、
-     429 のタイミング / Retry-After ヘッダから存在有無を漏らさない。
-
-6. **イベント** `LoginThrottled`
-   - payload: `occurredAt`, `kind` (`account` | `ip`), `keyHash` (username
-     を SHA-256, IP を SHA-256 — 平文を audit log に流さない), `retryAfterSeconds`.
-   - `oauth2.authentication.v1` トピックに既存 auth event と同じレーンで流す。
-   - SIEM 側で IP 集計 / impossible travel と組み合わせる前提。
-
-7. **クライアント IP 解釈 (trusted proxy)**:
-   - デフォルトは直接 peer の IP (Hono `c.req.raw.remote_addr` 相当) を使い、
-     `X-Forwarded-For` は **信頼しない**。
-   - `TRUSTED_FORWARDED_HOPS=N` (整数) が設定されたとき、`X-Forwarded-For` の
-     右から N 番目 (= 末端の信頼境界の次の hop) を採用する。0 / 未設定は無効化。
-   - 設定誤りで本物の IP が見えなくなる事故より、攻撃者が `X-Forwarded-For` を
-     偽装して per-IP throttle を回避する事故のほうが致命的なので、デフォルトを
-     off にする。
-
-8. **適用範囲（本 ADR 時点）**:
-   - `/api/auth/login` (SPA JSON API) と `/login` (no-JS form)。
-   - TOTP (`/api/auth/totp`) は同 port を再利用するが本スライスでは触らない。
-     パスワード突破後の絞り込みであり、一次防御ではない。
-   - `/token` の client_secret 失敗 / code 交換失敗は別カウンタ
-     (`ClientAuthFailureRateLimit` / `AuthorizationCodeRedemptionFailureRateLimit`)
-     として enforcement する Phase は別 ADR。
-
-9. **CAPTCHA / 行動分析を本 ADR で採用しない理由**:
-   - 外部サービス依存 (reCAPTCHA / hCaptcha / 行動分析 SaaS) が入り、port を
-     切る前に脅威モデルとプライバシ影響評価が要る。レート制限は単体で
-     NIST 要件を満たし、CAPTCHA 無しでも価値が出る。`BotChallenge` port は
-     後続スライスで追加する。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Login throttling セクションにある。
 
 ## 影響
 

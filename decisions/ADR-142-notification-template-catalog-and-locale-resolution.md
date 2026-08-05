@@ -18,39 +18,11 @@ created_at: 2026-07-25
 
 `spec/contexts/tenancy.yaml` の `models.NotificationTemplate` / `models.NotificationTemplateKey` / `models.Tenant.default_locale` と `interfaces.ListNotificationTemplates` / `GetNotificationTemplate` / `UpdateNotificationTemplate` / `ResetNotificationTemplate` / `PreviewNotificationTemplate` / `SendTestNotification`、`spec/contexts/authentication.yaml` の `interfaces.RequestPasswordReset`、`spec/contexts/identity-management.yaml` の `interfaces.RequestEmailChange`、`spec/contexts/identity-governance.yaml` の `models.WorkflowAction.template_key` に反映。
 
-1. **文面は「組込み既定カタログ」と「テナント上書き」の 2 段でのみ解決し、版管理を持たない。** 組込み既定はシステムが同梱する ja / en の文面で、テナントは編集できない。テナント上書きは `(tenant_id, template_key, locale)` 単位の全置換で、削除 (`ResetNotificationTemplate`) すると常に組込み既定へ戻る。「直前の上書きへ戻す」履歴・ロールバックは持たない。復旧導線が壊れたときに管理者が最初に取れる行動が「確実に動く既定へ戻す」ことであり、そこに版選択という判断を挟ませない方が復旧が速い。履歴の需要が出たら別 ADR で足す。
+通知メールの文面は「組込み既定カタログ」と「テナント上書き」の 2 段のみで解決し、版管理を持たない。`template_key` は固定 enum でテナントは追加できず、送信経路と 1:1 対応させる。差し込み変数は key ごとの許可集合を宣言し、許可外は保存時に fail-closed で拒否する。レンダラは (件名, テキスト本文, HTML 本文) を常に 3 点セットで返し、エスケープの責務はレンダラ側に閉じてテンプレート側に生の文字列結合をさせない。上書き可能なのは件名 / HTML 本文 fragment / テキスト本文 / 差出人表示名のみで、HTML 文書の外枠と差出人メールアドレスはテナントから変更できない。locale は受信者 → テナントの `default_locale` → システム既定の順で解決する。テスト送信は操作者本人の検証済みアドレス宛に固定し、プレビューはサンプル値のみで保存・送信を行わない。カタログとレンダラは `backend/shared/notification` に置き、テナント上書きの永続化と管理 API は Tenancy が所有する。
 
-2. **template_key はシステムが持つ固定の enum で、テナントは key を追加できない。** key を増やせる設計は「どの key がどの経路から送られるか」を仕様から追えなくし、送信経路の無い孤児テンプレートを許す。key は送信経路と 1:1 で対応する語彙として SCL の `NotificationTemplateKey` に固定する。`AccountSecurityAlert` はまだどの経路からも送信されないが、カタログと編集面を先に用意する ([[wi-90-account-security-notification-emails]] が送信側を足す)。README でどの key が現在送信されるかを明記し、孤児を仕様外の偶然にしない。
+これらは、[却下した代替案](#却下した代替案) に挙げた対抗案 (テーマファイル差し替え、未知 placeholder の実行時空文字化、HTML のみの部分上書き、テスト送信の任意宛先、locale のテナント段を上書き有無から推定、ja/en の enum 化) がそれぞれ抱える障害モード — テンプレート言語評価による注入面の拡大、検知が遅れる復旧不能な問い合わせ、テナント管理者権限の踏み台化、非直感的な言語切り替え、翻訳追加のたびのマイグレーション — を避けるために選んだ。
 
-3. **差し込み変数 (placeholder) は `{{name}}` 記法で、template_key ごとの許可集合を宣言し、許可外の変数を含む上書きは保存時に拒否する (fail-closed)。** 実行時に未定義変数を空文字列へ潰す方式は採らない。潰すと「リンクが欠けたメール」が利用者へ配られ、管理者は送信後に初めて気づき、その時点では既に復旧不能な問い合わせが発生している。保存時に拒否すれば、失敗は編集者の画面に閉じる。許可集合は API (`GetNotificationTemplate.placeholders`) で返し、編集者が推測しなくてよい状態にする。
-
-4. **レンダラの契約は「(件名, テキスト本文, HTML 本文) を 3 つ同時に返す」とし、HTML だけ / テキストだけの状態を型で作れないようにする。** HTML 単独のメールはテキストクライアントで読めず、スパム判定も悪化する。上書きも 3 点セットの全置換とし、片方だけの保存を受け付けない。送信は `multipart/alternative` (ADR-035 §8 が既に確立した経路) に載せる。
-
-5. **エスケープはレンダラの責務に閉じ、テンプレート側に生の文字列結合をさせない。** HTML 側は差し込み値を必ず HTML エスケープして展開し、テキスト側は素で展開する。リンク URL は送信側 (usecase) がリクエストの発行元 URL から組み立てて placeholder 値として渡し、テンプレートには「URL を 1 個の値として置く」ことしか許さない。テンプレート内で `{{issuer}}/reset?token={{token}}` のような結合を許すと、エスケープ責務がテンプレート編集者に漏れる。
-
-6. **上書きできるのは件名 / HTML 本文 fragment / テキスト本文 / 差出人表示名の 4 つだけで、HTML 文書の外枠・差出人メールアドレスは上書きできない。** `body_html` は `<body>` 内に入る fragment として保存し、doctype / `<head>` / 文字エンコーディング / viewport / 本文コンテナのスタイルはレンダラが持つシステム所有の外枠が供給する。テナントが「文書ごと差し替える」経路を構造的に作らないためであり、ADR-096 が hosted UI で任意 CSS を構造的に拒否したのと同じ理由に立つ。fragment 内の markup 自体はテナント管理者が書ける (受信者はそのテナント自身の利用者であり、悪意ある管理者は上書き機構が無くても自テナントの利用者を騙せる) が、**差し込み値のエスケープは決定 5 によりレンダラ側に残る**。したがってテンプレート編集で起こしうる事故は「自テナントのメールの見た目が崩れる」に留まり、利用者データ由来の注入にはならない。差出人アドレスを可変にすると SPF / DKIM / DMARC の整合をテナント入力に依存させることになるため、上書きできるのは表示名だけとする。送信ドメインのテナント委任は独立の決定であり、本 ADR の範囲外。
-
-7. **locale は「受信者 User の locale 属性 → テナントの `default_locale` → システム既定 locale」の順に、カタログが同梱翻訳を持つ最初の locale を採る。** 未対応 locale は飛ばす。この 3 段のうちテナント段が設定できないと解決順序が実質 2 段になるため、`Tenant.default_locale` を本決定と同時に追加する (「設定できない段」を仕様に書き残さない)。システム既定は UI と同じ `FallbackLocale = en` を既定値とし、`DEFAULT_LOCALE` 環境変数で運用側が変えられる。UI の `ConfiguredDefaultLocale` (`VITE_DEFAULT_LOCALE`) と同じ役割をサーバ側に置く。同梱翻訳は ja / en に留めるが、locale は enum ではなく言語タグ文字列として扱い、翻訳を足すだけで locale を増やせる形にする。
-
-8. **テスト送信の宛先は操作した管理者本人の検証済みメールアドレスに固定し、リクエストで宛先を指定する手段を提供しない。** 任意宛先を許すと、テナント管理者権限が「認証済み SMTP 経由で任意の相手に自社ブランドのメールを送る」踏み台になる。テンプレート編集の目的 (自分の書いた文面が実際にどう届くか) は本人宛で満たせる。検証済みアドレスを持たない操作者は拒否する。
-
-9. **プレビューは保存も送信もしない読み取り操作とし、サンプル値で描画する。** 実データ (実在の利用者名やトークン) をプレビューに流すと、編集画面が利用者情報の閲覧経路になる。サンプル値はカタログが持つ固定値とする。
-
-10. **テンプレート本文に置いてよい値は placeholder 許可集合が列挙するものだけであり、資格情報 (パスワード・パスワードハッシュ・TOTP secret・API トークン)、単発トークン以外の機微値、生の IP アドレスは許可集合に入れない。** メールは転送・引用・長期保存され、受信側のメールボックス侵害でそのまま漏れる。復旧に必要な単発トークンは URL の一部として 1 個の placeholder に閉じ、それ自体を本文に平文表示しない。生 IP は「不審なサインイン」通知で入れたくなるが、位置情報の推定に使え、NAT 環境では誤って第三者を指す。
-
-11. **カタログとレンダラは `backend/shared/notification` に置き、テナント上書きの永続化は Tenancy が所有する。** 送信は Authentication / IdManagement / IdGovernance の 3 context から起きるため、文面解決を特定の context に置くと他 context がそれに依存する。一方でテナント単位の設定は Tenancy の既存責務 ([[ADR-096-tenant-branding-value-and-logo-storage]] の TenantBranding と同型) なので、上書き行と管理 API は Tenancy に置き、`shared/notification` は上書きの取得を port として受ける。
-
-12. **上書きは `notification_templates` テーブル ((tenant_id, template_key, locale) 一意) の個別列として持ち、JSONB にまとめない。** ADR-096 決定 7 と同じ理由 (列ごとの長さ制約を CHECK として書ける)。
-
-## テンプレートキーごとの placeholder 許可集合
-
-許可集合そのものは実装 (`backend/shared/notification/template`) が正本で、API が返す。ここに記録するのは**なぜその粒度か**だけである。
-
-- 全 key 共通: `product_name` / `tenant_display_name` / `user_display_name`。ブランディングと宛名は全通知で必要になり、key ごとに差を付ける理由がない。
-- 単発リンクを持つ key (`PasswordReset` / `EmailVerification` / `EmailChangeConfirmation`): リンクは `*_url` の 1 変数、有効期限は `expires_in_minutes` の 1 変数。トークン単体の placeholder は置かない (決定 10)。
-- `EmailChangeConfirmation` のみ `new_email` を持つ。確認先アドレスの取り違えを受信者が判断できる必要がある。
-- `LifecycleWorkflowNotification` のみ `notification_key` を持つ。workflow 作成者が付けたラベルを本文に出せるようにする。workflow ごとに別テンプレートを割り当てる機構は [[wi-227-lifecycle-workflow-notification-template-customization]] の範囲。
-- `AccountSecurityAlert` は `event_description` / `occurred_at` を持つ。生 IP・User-Agent は決定 10 により入れない。
+現在のメカニズムの詳細 (二段解決アルゴリズム、許可集合、レンダラ契約、エスケープ責務の分割、locale 解決順、テスト送信・プレビューの制約、key ごとの placeholder 表) は [ARCHITECTURE.md](../ARCHITECTURE.md) の Cross-cutting Concerns → Persistence → Database design policy「Notification template catalog and locale resolution」を参照。
 
 ## 却下した代替案
 

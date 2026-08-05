@@ -19,48 +19,15 @@ spec↔impl drift を防ぐためここで明文化する。
 
 ## 決定
 
-（Phase 0 — 認証の土台。`spec/scl.yaml` `objectives.PasswordPolicy.value.history_depth` /
-invariant `PasswordHistoryNoReuse` / interface `ChangePassword` / event `PasswordChanged` と
-`src/authentication/usecases/change-password.ts` の双子に反映）。
+直近 5 件のパスワードハッシュとの一致を拒否する (`history_depth=5`)。5 は NIST SP 800-63B-4 の
+禁止項目に該当しない範囲で、OWASP ASVS v4.0.3 §2.1.10 の "previously-used password" 検知要求と
+整合する最小値であり、これ以上深くしてもユーザーの不便さに対する効果は逓減する。履歴は
+`password_hash` と同じ Argon2id PHC エンコードのまま保存し、追加の暗号化は行わない — 本体と同じ
+攻撃耐性を持つため、別建て暗号化しても閾値が下がらない。履歴は registration でも書くが、チェックは
+change-password でのみ行う（初回登録時は照合対象がゼロ件のため）。
 
-1. **履歴深さ**: 直近 **5 件** のハッシュと一致する新パスワードを拒否する。
-   - SCL `objectives.PasswordPolicy.value.history_depth: 5` を権威源とし、
-     `PASSWORD_POLICY.historyDepth` を双子として持つ。
-   - 5 は NIST SP 800-63B-4 の禁止項目に該当しない範囲で、現場慣行
-     （OWASP ASVS v4.0.3 §2.1.10 が "previously-used password" の検知を要求）と
-     整合する最小値。これ以上深くしてもユーザーの不便さに対する効果は逓減する。
-
-2. **保存形式**: `password_hash` と同じ PHC エンコード文字列（Argon2id）を
-   そのまま履歴行に積む。
-   - 追加の暗号化は行わない。`password_hash` 本体と同じ攻撃耐性を持つため、
-     履歴のみを別建てで暗号化しても閾値が下がらない。
-   - 各履歴行は `{ sub, encoded, created_at }` の 3 フィールド。順序は
-     `created_at DESC` で `depth` 件を取り出し、`PasswordHasher.verify` で逐次照合する。
-
-3. **比較戦略**: ハッシュ照合 × 履歴件数。
-   - Argon2id verify はパラメータ次第で 50–200 ms / 回。固定 5 件であれば
-     最悪 1 秒の遅延に収まる。change-password は対話的な低頻度操作のため
-     許容範囲。
-   - 履歴件数を増やすと逐次照合のコストが線形に伸びる。テナント別ポリシーで
-     上限を設ける際は、本 ADR の遅延見積もりを再評価する。
-
-4. **カスケード削除**: ユーザー削除時に履歴も削除する。
-   - Postgres は `ON DELETE CASCADE` で `users(sub)` を参照。
-   - 履歴は単体で価値を持たない PII。残しても再認証材料にならず、漏洩面だけが
-     広がる。
-
-5. **タイミング**: change-password と registration の双方で履歴を **書く** が、
-   履歴チェックは change-password のみで実施する。
-   - 初回登録時の現パスは履歴ゼロ件のため照合不能。
-   - 登録時点で `[ encoded ]` を 1 件積むことで、登録直後の change-password で
-     「初期パスと同じ」が弾ける。
-
-6. **将来のテナント別ポリシー（Phase 4）**:
-   - `PASSWORD_POLICY.historyDepth` を constant ではなくテナント解決ポート
-     （`PasswordPolicyResolver.resolve(tenantId)`）の戻り値に置き換える。
-   - usecase `change-password.ts` は depth を引数経由で受け取る形に既に
-     設計してある（policy オブジェクトを直接読まない）。テナント解決の
-     追加は port 1 つ差し込むだけで済む。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Password lifecycle セクションにある。
 
 ## 影響
 

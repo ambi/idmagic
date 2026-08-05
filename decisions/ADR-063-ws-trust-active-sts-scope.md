@@ -23,24 +23,12 @@ replay・XML wrapping・認証方式混線のリスクが増える。初期対�
 [[ADR-060]] の SAML assertion 署名、[[ADR-062]] の MEX / federation metadata 公開を前提に、
 idmagic が WS-Trust 1.3 active requestor STS として扱う最小範囲を確定する。
 
-1. **WS-Trust 1.3 Issue binding のみ対応する。**
-   `Validate` / `Renew` / `Cancel` は対象外。`Action` / `RequestType` は
-   `http://docs.oasis-open.org/ws-sx/ws-trust/200512/Issue` のみ受理する。
-
-2. **認証方式は `usernamemixed` の UsernameToken のみ対応する。**
-   username/password は既存 `UserRepository`、`PasswordHasher`、`LoginAttemptThrottle` を使って
-   検証する。Kerberos/IWA の `windowstransport` は本シリーズの範囲外とし、必要なら別 WI とする。
-
-3. **WS-Addressing / WS-Security の必須要素を fail-closed に検証する。**
-   `MessageID`、`To`、`Action`、UsernameToken、Timestamp、`AppliesTo` は必須。Timestamp は
-   期限切れと大きな未来時刻を拒否し、`MessageID` は短期 replay store に記録する。
-
-4. **`AppliesTo` は登録済み WS-Fed relying party に解決する。**
-   未登録対象は拒否する。発行 assertion の Audience / Recipient は解決した RP に束縛し、claim は
-   RP の `ClaimMappingPolicy` で発行する。
-
-5. **RSTR は署名済み SAML assertion を SOAP 1.2 で返す。**
-   既定 token type は SAML 1.1。RST が SAML 1.1 / SAML 2.0 を明示した場合は対応し、それ以外は拒否する。
+対応は WS-Trust 1.3 Issue binding のみとし、`Validate` / `Renew` / `Cancel` は範囲外とする。認証方式も
+`usernamemixed` の UsernameToken に限り、Kerberos/IWA の `windowstransport` は別 WI に分ける。
+WS-Addressing / WS-Security の必須要素と `AppliesTo` の解決は fail-closed とし、未登録・不整合はすべて
+拒否側に倒す。SOAP/WS-Security を広く受理するより、相互運用性より replay / audience 混線防止を優先した
+判断であり、Kerberos 同時実装も信頼境界が異なるため見送った。具体的な binding・認証・検証・RSTR の
+仕様は [`backend/wsfederation/ARCHITECTURE.md`](../backend/wsfederation/ARCHITECTURE.md) に置く。
 
 ## 影響
 

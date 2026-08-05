@@ -1,6 +1,6 @@
 ---
 context: signingkeys
-updated_at: 2026-07-26
+updated_at: 2026-08-06
 ---
 
 # Architecture: signingkeys
@@ -42,7 +42,23 @@ Keys are created lazily for the resolved tenant, usage, and scope. No default te
 bootstrap key. This keeps tenant creation uniform and avoids special state that cannot be explained by
 the request-scoped lifecycle.
 
-Rotation atomically demotes the old active key to verifying and gives it an overlap expiry. Public key
-and certificate listing includes active and unexpired verifying records; archive removes expired records
-from publication. These mechanics extend the durable per-tenant provider design established by
+A tenant's active signing key rotates at least every 90 days, driven by a scheduled operational job
+independent of the manual, immediate `RotateTenantSigningKey` path. Rotation atomically demotes the
+old active key to verifying and gives it an overlap expiry of at least 7 days, so JWKS consumers and
+relying parties can still validate messages issued just before rotation. Key material reaching the
+terminal `Archived` state is retained for 7 years to support verification of audit tokens signed by
+already-retired keys; there is no separate purge/erase interface yet. These numbers, and the retention
+policy, are normative in
+[ADR-108](../../decisions/ADR-108-signing-key-rotation-and-retention-policy-configuration.md), which
+also extends the durable per-tenant provider design established by
 [ADR-075](../../decisions/ADR-075-per-tenant-signing-keys-and-key-provider.md).
+
+Public key and certificate listing includes active and unexpired verifying records; archive removes
+expired records from publication.
+
+Fail-closed behavior when a key provider is unreachable is not enforced inside `SigningKeys` — this
+context has no signing or issuance interface of its own. It only surfaces the observable
+`provider_healthy` signal (`TenantSigningKey.provider_healthy`, `ListTenantKeyHealth`); the actual
+fail-closed enforcement point is OAuth2's `Token` issuance interface, which is where an unreachable
+provider blocks new signatures
+([ADR-108](../../decisions/ADR-108-signing-key-rotation-and-retention-policy-configuration.md)).

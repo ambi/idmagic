@@ -15,36 +15,17 @@ created_at: 2026-07-04
 
 ## 決定
 
-[[wi-44-authentication-event-store-and-search]]。[[ADR-041]] が定めた認証イベントの
-2 系統モデルに対し、**種類別の保持期間と削除メカニズム**を確定する。[[ADR-036]] (user 削除と
-匿名化)・[[ADR-046]] (PII ポリシー) と整合させる。
+種類別に既定保持期間を定める: 成功イベント 365 日 (過去 1 年の正規ログイン傾向を調査可能にする)、
+失敗詳細の個別行 30 日 (短期調査に足り、平文粒度の PII を長く持たない)、bucket 集約・セッション
+記録・MFA チャレンジイベントは 90 日。各保持期間は `TenantSettings` で短縮・延長できるが
+`max_retention_days` の global cap を上限とする。削除は `internal/bootstrap` の周期 job が
+`occurred_at < now - retention` の行を消す idempotent な batched sweep で行う。impersonation
+イベントは本人保護のため tenant override による短縮の対象外とし、global cap までは保持する。
+partition / cold storage は将来の最適化として見送り、retention sweep による行数抑制 +
+`(tenant_id, occurred_at)` index + query `limit` で検索性能を担保する。
 
-1. **種類別の既定保持期間**。
-   - 成功イベント (`success`): **365 日**。過去 1 年の正規ログイン傾向を調査可能にする。
-   - 失敗詳細 (`fail` の個別行): **30 日**。攻撃の短期調査に足り、平文粒度の PII を長く持たない。
-   - bucket 集約 (`aggregated`): **90 日**。攻撃の発生事実と規模を四半期スパンで残す。
-   - セッション記録 (`sessions`): **90 日**。失効済みセッションの調査窓。
-   - MFA チャレンジイベント: **90 日**。
-
-2. **tenant override と global cap**。各保持期間は `TenantSettings` で短縮・延長できるが、
-   global cap (`max_retention_days`) を上限とし、どの tenant も cap を超えて保持できない。
-   cap はコンプライアンス上の「保持しすぎない」上限として運用する。
-
-3. **削除は時間単位 cron の sweep**。`internal/bootstrap` の周期 job が、種類ごとに
-   `occurred_at < now - retention` の行を削除する。sweep は idempotent で、1 回の実行で
-   全件削除できなくても次回で収束するよう上限件数つきバッチで回す。index (`tenant_id`,
-   `occurred_at`) が当たることを前提にする。
-
-4. **impersonation は短縮不可**。`SessionImpersonationStarted` / `SessionImpersonationEnded`
-   は「admin が user として操作した事実」であり、本人保護のため tenant override による**短縮の
-   対象外**とする ([[ADR-041]] / [[ADR-046]])。global cap までは保持し、それ未満へは縮めない。
-
-5. **partition / cold storage は本 WI では行わない**。declarative partitioning や cold storage
-   archive は将来の最適化として方針のみ残し、本 WI は retention sweep + index で運用する。
-   検索性能は **retention sweep による行数抑制 + `(tenant_id, occurred_at)` index + `limit`** で
-   担保する。当初は認証イベント専用検索で期間絞り込みを必須としたが、認証イベントを監査ログ検索
-   (`ListAdminAuditEvents`) に統合した際、監査ログ全体への一律必須は UX を損なうため**期間は任意**
-   とし、`limit` (既定 100 / 上限 1000) と sweep で全期間スキャンの負荷を抑える方針に改めた。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Authentication event logging セクションにある。
 
 ## 影響
 

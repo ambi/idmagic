@@ -19,42 +19,20 @@ Google ("確認のためもう一度ログイン")、Okta の re-authentication�
 
 ## 決定
 
-[[wi-43-account-portal-step-up-auth]]。[[ADR-042]] が account portal の trust
-boundary (self/admin) を定め、self mutation を CSRF + same-origin で保護したのを受け、
-**高 sensitivity な self-service 操作**に横断的な step-up 再認証ゲートを追加する。
+[[ADR-042]] が account portal の trust boundary (self/admin) を定め、self mutation を
+CSRF + same-origin で保護したのを受け、**高 sensitivity な self-service 操作**
+(`ChangePassword` / `RemoveTotpFactor` / `RequestEmailChange` / `RevokeMyOtherSessions`) に
+横断的な step-up 再認証ゲートを追加する。個別セッションの失効や TOTP の登録は対象外とする
+(相対的に低 sensitivity)。SCL では対象 interface に `annotations: { step_up: required }` を付け、
+実ハンドラとの一致をテストで機械照合し、対象表と実装の drift を防ぐ。recency 条件は「直近
+`StepUpRecencySeconds` (5 分) 以内に password または MFA で (再)認証済み」とし、新規ログイン
+直後はそのまま step-up 済みとして扱う (Google 同様、ログイン直後に再入力を求めない)。未通過時は
+401 ではなく 403 + `step_up_required` を返す — 認証済みだがこの操作には再認証が要る、という
+セマンティクスを表現するため。recency は `LoginSession.step_up_at` に永続化し、session に紐づく
+ため cookie が別端末へ移っても閉じたままになる。
 
-1. **対象表 (step-up を必須とする操作)**。以下の self-service mutation は step-up を
-   要求する。SCL では対象 interface に `annotations: { step_up: required }` を付け、
-   実ハンドラとの一致を機械照合する (テスト `TestStepUpAnnotatedInterfacesMatchGatedHandlers`)。
-   - `ChangePassword` (`POST /api/auth/change_password`)
-   - `RemoveTotpFactor` (`POST /api/account/mfa/totp/remove`)
-   - `RequestEmailChange` (`POST /api/account/email/change_request`)
-   - `RevokeMyOtherSessions` (`POST /api/account/sessions/revoke_others`)
-
-   個別セッションの失効 (`RevokeMySession`)・TOTP の登録 (enroll) は本表に含めない
-   (相対的に低 sensitivity / 登録は所持証明で完結)。将来 [[wi-26-webauthn-passkey-and-recovery-codes]]
-   の WebAuthn credential 解除など sensitive 操作を足す場合は本表に追記する。
-
-2. **recency 条件**。step-up は「直近 `StepUpRecencySeconds` (= 5 分) 以内に password
-   または MFA で (再)認証済み」を満たすときに通過する。判定の時刻ソースは
-   `max(session.auth_time, session.step_up_at)`。**新規ログイン直後はそのまま step-up
-   済み**として扱う (Google 同様、ログイン直後に再入力を求めない)。
-
-3. **未通過時の応答**。step-up 未通過は 401 ではなく **403 + `step_up_required`** で返す
-   (認証はされているが、この操作には再認証が要る、というセマンティクス)。UI はこれを受けて
-   再認証 modal を出し、成功後に元の操作を再試行する。
-
-4. **step-up の入口**。
-   - `POST /api/account/step_up/start` (`StartStepUpAuthentication`): 利用可能な factor
-     (`password` 常時 / `totp` は enrolled 時) を返す。`StepUpRequested` を emit。
-     **この interface 自体には step-up を要求しない** (再認証の入口のため)。
-   - `POST /api/account/step_up/complete` (`CompleteStepUpAuthentication`): 提示された
-     factor (password / totp コード) を検証し、成立すれば `session.step_up_at` を現在時刻で
-     刻む。`StepUpCompleted` (method 付き) を emit。検証材料は audit / log に残さない。
-
-5. **状態の置き場所**。recency は `LoginSession.step_up_at` (Unix 秒) に永続化し、
-   `AuthenticationContext.StepUpAt` で handler 層に運ぶ。session に紐づくため、cookie が
-   別端末へ移っても step_up_at はその session に閉じる。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Account portal trust boundary and step-up セクションにある。
 
 ## 影響
 

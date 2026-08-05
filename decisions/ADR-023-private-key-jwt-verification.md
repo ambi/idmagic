@@ -22,24 +22,15 @@ JWT (`client_assertion`) をトークンエンドポイント等に提示する�
 
 （ADR-008 を実装に落とす）
 
-`client_assertion` の検証規則を以下に固定する（`adapters/http/client-authentication.ts`
-の `verifyClientAssertion`）。
+`client_assertion` の検証規則を固定する。alg は PS256 / ES256 のみ（`alg: none` や HMAC は
+アルゴリズム混乱攻撃防止のため拒否）、`iss === sub === client_id` (RFC 7523 §3)、`aud` は
+このサーバーの issuer 識別子・エンドポイント URL のいずれかに一致、署名鍵はクライアント登録の
+インライン `jwks` を優先し無ければ `jwks_uri` から解決、`exp` は必須かつ寿命を有界化して
+リプレイ窓を確定させる、`jti` は単回使用（DPoP の jti とは別名前空間・別 TTL の独立ポート —
+責務が異なるため）、`client_assertion` と Basic/secret の同時提示は `invalid_request`
+(RFC 6749 §2.3) とする。
 
-1. **alg は PS256 / ES256 のみ** — ADR-003 の署名方針と一致。`alg: none` や HMAC は拒否
-   （アルゴリズム混乱攻撃の防止）。
-2. **iss === sub === client_id** (RFC 7523 §3) — `sub` から登録クライアントを引き、
-   jose の `issuer` / `subject` オプションで両クレームが client_id に一致することを強制。
-3. **aud はこのサーバーを指す** — issuer 識別子・各エンドポイント URL・実リクエスト URL の
-   いずれかに一致（`buildAcceptableAudiences`）。
-4. **署名鍵はクライアント登録鍵から解決** — インライン `jwks` を優先し、無ければ `jwks_uri`
-   を `createRemoteJWKSet` で取得。登録時に鍵の存在を必須化（`register-client.ts`）。
-5. **exp 必須かつ寿命を有界化** — `exp` が無い assertion は拒否。寿命が
-   `MAX_ASSERTION_LIFETIME_SECONDS`(=300) + クロックスキューを超えるものは拒否し、
-   リプレイ窓を確定させる。
-6. **jti 単回使用** — `ClientAssertionReplayStore` で jti のリプレイを検出。DPoP の jti
-   とは別名前空間・別 TTL の独立ポートとする（責務が異なる）。
-7. **複数認証方式の併用禁止** (RFC 6749 §2.3) — `client_assertion` と Basic/secret の
-   同時提示は `invalid_request`。
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 影響
 

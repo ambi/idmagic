@@ -90,107 +90,17 @@ outbox/queue を介した非同期・冪等・retry 付き」を満たせない�
 
 ## 決定
 
-### 1. 独立 bounded context `Provisioning` を新設する (outbound 専用)
-
-`Scim` context は inbound server 専用のまま責務・語彙を変えない。outbound (connection / mapping /
-delivery / remote link / deprovision) は新規 `Provisioning` context
-(`spec/contexts/provisioning.yaml`) に置く。`TenantRef` / `ApplicationRef` /
-`ApplicationAssignmentRef` / `UserRef` / `GroupRef` / `JobRef` を published language 経由で
-参照する。`spec/scl.yaml` の `context_map` に `Provisioning` を追加し、`depends_on` は
-`Tenancy` / `Application` / `IdManagement` / `Jobs`、すべて `via: published_language`
-(`IdGovernance` の `depends_on` 構造と同型)。命名は §コンテキスト (2) の通り capability 名を採る
-(`Outbound` でも可。symmetric 化は inbound taxonomy WI で再検討)。
-
-### 2. 内部構造 = protocol 非依存コア (context ルート) + protocol 別 feature slice
-
-outbound provisioning の振る舞いの**大半は protocol 非依存**である: connection の envelope
-(scope、feature flags、信頼性、通知)、`DeprovisionPolicy`、`AttributeMappingRule`、
-`ProvisioningDelivery` / `RemoteResourceLink` の lifecycle、配送エンジン (決定 4 の same-Tx
-capture、queue、retry/backoff、quarantine、順序保証、full resync、on-demand)。protocol 固有なのは
-wire client (resource marshal / endpoint / verb / filter) と一部の接続設定 (auth 方式、capability
-discovery の仕方、属性 schema 既定) のみ。
-
-したがって:
-
-- **protocol 非依存コア**を context ルート `backend/provisioning/{domain,ports,usecases,adapters}`
-  に置く。ここに neutral aggregates (`ProvisioningConnection` envelope / `ProvisioningDelivery` /
-  `RemoteResourceLink` / `DeprovisionPolicy` / `AttributeMappingRule`)、配送エンジン usecase、
-  `ProvisioningTargetClient` port (protocol の seam)、`provisioning_*` postgres adapter、
-  connection CRUD・delivery 一覧/retry の admin http を置く。
-- **protocol ごとに feature slice** `backend/provisioning/<protocol>/{domain,ports,usecases,adapters}`
-  を置き、`ProvisioningTargetClient` を実装する。本 WI は `provisioning/scim/` (SCIM wire client +
-  SCIM 固有の接続設定/capability discovery)。将来 `provisioning/entraid/` (MS Graph)、
-  `provisioning/googledir/` を並べる。新 protocol の追加はコアを触らず feature slice の追加で済む。
-- `module.go` は context ルートに 1 つ据え置く。package 名は各層名のまま (`domain`/`ports`/
-  `usecases`/`http`)、`provisioning/adapters/http/routes.go` のような集約点では named import
-  (`scimtarget` 等) を用いる。
-
-これは idmagic 自身の先例と同型である: `Application` (protocol 中立の上位概念) + OIDC/SAML/WsFed の
-protocol binding (各 protocol context が wire 挙動を所有し opaque key で参照)。ただし outbound の
-各 protocol target は OAuth2 ほど巨大でないため、別 context ではなく単一 `Provisioning` 内の
-**feature slice 粒度**にする。
-
-なお本構造は [[wi-254-backend-feature-vertical-slice-convention]] の feature-slice 規約に対する
-**明示的な variant** である: 通常は「fat な feature slice + thin な共有 root」だが、本 context は
-domain の形 (大半が protocol 非依存、protocol は driven-adapter 軸) ゆえに「fat な protocol 非依存
-コア (root) + protocol adapter の feature slice」を採る。この variant を `ARCHITECTURE.md` に
-記す。
-
-**却下**: (a) 単一 protocol のため flat で始め将来分割 — ディレクトリ/アーキテクチャの作り替えが
-高コストで、protocol 追加は近い将来 likely なので最初から protocol slice 構造で作る。(b)
-`connection`/`delivery` の関心軸 feature 分割 — 直感的でなく、両者は protocol 非依存コアの
-neutral aggregate であって feature ではない。feature 軸は protocol にする。
-
-### 3. 共有 SCIM wire kernel は作らない — outbound は自前の SCIM シリアライズを持つ
-
-wi-45 草案は「唯一の共通項は SCIM の marshal/unmarshal と filter 文法」とし、本 ADR の初稿も
-`scim_models.go` + `filter.go` を中立 kernel へ切り出す方針だったが、inbound コードを精査した結果、
-実際の再利用は小さく共有はむしろ有害と判断し、方針を反転する。
-
-- `backend/scim/domain/filter.go` (612 行) は inbound server 専用の **parse + 評価**エンジン
-  (`ParseFilter(...)` → `FilterExpr.Matches(attrs map[string]any) bool`)。外部が投げる
-  `?filter=userName eq "x"` を我々のデータに対して評価する、受信側だからこそ要る機能。outbound は
-  409 相関で `userName eq "x"` 程度の filter 文字列を**組み立てる**だけで、パーサ・評価器は要らない。
-- `backend/scim/domain/scim_models.go` の `UserResource` / `GroupResource` は inbound が**応答生成に
-  使う固定最小サブセット**で、`externalId` も enterprise 拡張も持たず (inbound コードに両者は登場
-  しない)、受信 body は `map[string]any` → `mutation.go` (`ParseUserWrite` 等) で別処理される
-  (これらの struct は marshal 専用)。outbound は wi-45 の要求 (externalId 相関、enterprise 拡張、
-  `AttributeMappingRule` 駆動の任意 `target_path`) を満たす**より柔軟な mapping 駆動シリアライズ**が
-  要り、inbound の固定 struct を共有すると outbound を縛る。
-- 実質的な重なりは discovery 系 struct (`ServiceProviderConfig` 等、inbound が生成 / outbound が
-  接続テストで parse) と RFC 固定の schema URN 定数程度で、小さい。今は各自定義でよい。
-
-よって outbound は `backend/provisioning/scim/` 配下に自前の SCIM シリアライズを持ち、inbound の
-`backend/scim` には手を入れない。共有 package の抽出は、実際に重複が現れた時点で on-demand で行う
-(rule of three)。この判断は decision 2 の「flat にしない」と矛盾しない: **構造 (context /
-protocol slice) は作り替えが高コストゆえ前もって決め、共有コードは未成熟な二表現の早期結合が有害で
-後からの抽出が安価ゆえ on-demand で切り出す**、という非対称に基づく。
-
-### 4. 配送は「outbox を読む」でなく「同一 Tx で `ProvisioningDelivery` を書く」
-
-既存 `outbox` (Relay drain) は観測経路として使わない。代わりに ADR-113/117 で確立済みの
-**same-Tx capture** パターン (`UserMutationCommitter` / `UserWorkflowCapture` 型の明示的
-トランザクション adapter) を Provisioning コア (決定 2) にも適用する。
-
-- `IdManagement` の User 変更経路 (`captureUserMutation` が呼ぶ commit 処理) と `Application` の
-  assignment 変更経路 (`assignments.go`) に、Provisioning が実装する published port
-  (`ProvisioningCapture` 相当) を追加する。この port は**呼び出し元の Postgres トランザクション
-  内**で、scope (`assigned_only` / `all_users`) に一致する有効な `ProvisioningConnection` ごとに
-  `ProvisioningDelivery` (`pending`) 行を挿入する。
-- これにより「User/Assignment の commit と provisioning delivery の生成が同一トランザクションで
-  確定する」という wi-45 の確実性要件を、既存 outbox の非原子性に依存せず満たす。二重 queue には
-  ならない — `ProvisioningDelivery` テーブル自体が Provisioning にとっての outbox 相当であり、
-  [[wi-126-async-job-runner]] がそこから配送する。idempotency key
-  `(tenant, connection, source_type, source_id, source_version)` は維持する。
-- `Deps.Emit` (`NewEmitFunc`) 経由の既存 outbox 書き込み / audit mirroring は監査目的で現状維持し、
-  本決定では変更しない。Provisioning はこれとは別経路 (same-Tx capture port) で確実性を得る。
-
-### 5. deprovision / 相関 / 信頼性の骨子は wi-45 §設計 のまま採用する
-
-connection の Application 帰属、scope=`ApplicationAssignment` 再利用、真実源=内部 aggregate /
-下流=mirror、`active=false`/delete の deprovision マトリクス (trigger×action、grace period、
-誤削除ガード)、`externalId` 相関と 409/404 冪等解決、SSRF/secret 保護は wi-45 本文の調査・設計を
-正としてそのまま SCL (T002) へ変換する。
+outbound (connection / mapping / delivery / remote link / deprovision) を独立 bounded context
+`Provisioning` として新設する (決定 1)。命名は §コンテキスト (2) の通り capability 名を採り、方向語
+(`Outbound`) には依存しない。内部構造は protocol 非依存コア (context ルート) + protocol 別
+feature slice とし (決定 2)、共有 SCIM wire kernel は作らず outbound は自前のシリアライズを持つ
+(決定 3、rule of three)。配送は既存 `outbox` の非原子性・未登録トピック・in-process consumer 不在
+という三重の欠落ゆえ流用できず、ADR-113/117 の same-Tx capture パターンを Provisioning コアにも
+適用し、`IdManagement`/`Application` の commit と同一トランザクションで `ProvisioningDelivery`
+(`pending`) 行を挿入する (決定 4)。deprovision / 相関 / 信頼性の骨子は wi-45 §設計のまま採用する
+(決定 5)。この決定 1〜5 は [[ADR-141-inbound-identity-sourcing-taxonomy]] によっても有効のまま
+維持されている (同 ADR が上書きしたのは inbound taxonomy に関する申し送り部分のみ)。メカニズムの
+詳細は [backend/provisioning/ARCHITECTURE.md](../backend/provisioning/ARCHITECTURE.md) に移した。
 
 ## 却下した代替案
 

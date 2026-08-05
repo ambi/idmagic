@@ -16,15 +16,10 @@ binary の変更が必要であり、運用設定と DI の責務が再び結合
 ## 決定
 
 `models.SeedManifest` を versioned、strictly decoded な YAML desired state とし、
-Seeding adapter が domain 型へ変換して既存 contributor へ渡す。root は CLI/startup から明示可能にし、
-未指定時は profile ごとの repository default を選ぶ。include は root directory 内のローカル相対 path
-だけを深さと総数の上限付きで解決する。YAML merge key、任意 template、remote URL、環境変数展開は
-manifest 文法に含めない。
-
-秘密値は `models.SeedSecretReference` だけで表し、manifest に値を置かない。初期 provider は env と
-file に絞り、staging/production は file のみ許可する。dry-run も参照の解決可能性を検証するが、
-materialized value は plan、log、error に渡さない。file resolver は regular file、size、NUL、
-末尾改行の扱いを固定する。
+Seeding adapter が domain 型へ変換して既存 contributor へ渡す。秘密値は manifest に値を直接置かず
+`models.SeedSecretReference` だけで表し、staging/production では file provider のみを許可する。
+include path の解決範囲、secret provider の詳細、dry-run 時の非 materialize 保証などのメカニズムは
+[backend/seeding/ARCHITECTURE.md](../backend/seeding/ARCHITECTURE.md) に移した。
 
 YAML は database fixture とせず、record context の公開 command surface を通す型付き入力とする。
 既存の idempotency、manual drift conflict、production profile policy、bounded performance generator は

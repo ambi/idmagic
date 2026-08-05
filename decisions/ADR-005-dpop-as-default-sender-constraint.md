@@ -20,37 +20,14 @@ FAPI 2.0 はどちらも許可する（§5.3）。
 
 ## 決定
 
-本アプリ IdP は以下を採用する:
+本アプリ IdP は DPoP をデフォルト推奨方式とし（WebApp / SPA / ネイティブアプリのいずれにも
+実装でき、TLS 終端プロキシの設定変更を要求しない）、mTLS をオプションで提供する（すでに PKI を
+運用している B2B / FAPI 系の組織に自然に統合できる）。FAPI プロファイル
+(`fapi_profile = "fapi_2_security_profile"`) を宣言したクライアントは少なくとも一方を必須とし、
+一般プロファイルではセンダー制約はオプション（クライアントメタデータの `dpop_bound_access_tokens`
+で宣言）とする。
 
-1. **DPoP をデフォルト推奨方式とする**: WebApp / SPA / ネイティブアプリのいずれにも
-   実装でき、TLS 終端プロキシの設定変更を要求しない。
-2. **mTLS をオプションで提供**: B2B / FAPI 系の銀行 API など、すでに PKI を運用している
-   組織には mTLS が自然に統合できる。
-3. **クライアントは少なくとも一方を選択**: FAPI プロファイル
-   (`fapi_profile = "fapi_2_security_profile"`) を宣言したクライアントは、必須。
-4. 一般プロファイルではセンダー制約はオプション（クライアントメタデータの
-   `dpop_bound_access_tokens` で宣言）。
-
-## DPoP 検証規則（spec/requirements.md §7 と整合）
-
-- 署名検証は `jwk` ヘッダーの公開鍵で行う
-- `htm` / `htu` / `iat` / `jti` クレームを検証
-- `iat` のクロックスキューは過去 60 秒 / 未来 5 秒
-- `jti` のリプレイ防止は直近 10 分（spec/slo.yaml）
-- 発行トークンの `cnf.jkt` に JWK サムプリント（RFC 9449 §6.1）を含める
-
-## mTLS 検証規則
-
-- TLS 終端プロキシが検証済み証明書を `X-Client-Certificate` ヘッダーで渡す前提
-  (本アプリ層では信頼チェイン検証はせず、プロキシ側で完結させる)
-- `tls_client_auth_subject_dn` をクライアントメタデータで宣言し、subject DN 一致を確認
-  (RFC 4514 文字列を whitespace / 大文字小文字を正規化して比較)
-- `tls_client_auth` で認証されたクライアントには発行トークンの `cnf.x5t#S256` に
-  証明書 DER の base64url(SHA-256) を含める (RFC 8705 §3)
-- protected resource (`/userinfo`) では AT の `cnf.x5t#S256` と提示証明書サムプリント
-  の一致を要求する。不一致は `WWW-Authenticate: ... error="invalid_token"` で拒否
-- refresh token も `sender_constraint` に保持し、再発行時に同一証明書で proof of
-  possession を要求 (`refresh-tokens.ts`)
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 却下した代替案
 

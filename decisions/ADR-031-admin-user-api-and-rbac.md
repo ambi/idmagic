@@ -15,18 +15,14 @@ Phase 4 の管理 API、テナント分離、管理 UI は、管理者主体と�
 
 ## 決定
 
-1. `User.roles` に RBAC role 名を保存し、最初の組み込み role として `admin`
-   を定義する。
-2. `/admin/*` は認証済み browser session の `sub` から User を解決し、
-   `admin in roles` かつ `disabled_at == null` の場合だけ許可する。
-3. 変更系 API は session 認証に加えて Origin と CSRF token を検証する。
-4. `disabled_at` は復活可能なアカウント停止であり、`deleted_at` と区別する。
-   無効ユーザーは新規ログイン、既存 session、token 再発行、UserInfo を拒否する。
-5. 管理 API のレスポンスは `AdminUserResponse` を使い、`password_hash` を
-   契約上含めない。
-6. 管理操作は actor sub と target sub を含む domain event を発行する。
-7. tenant role や tenant membership は次の増分で独立モデルとして追加する。
-   `roles` に tenant ID を埋め込まない。
+`User.roles` に RBAC role 名を保存し、`admin` role を持ち `disabled_at` が無いユーザーだけを
+`/admin/*` の認可対象とする。OAuth Client の scope は人間の管理権限とは別概念であり、既存の
+Client 向け AuthZEN ルールだけでは `/admin/*` を保護できないため、session ベースの独立した
+認可ゲートを設ける。tenant role や tenant membership は `roles` に埋め込まず、次の増分で独立
+モデルとして追加する — グローバルな RBAC role とテナント単位の権限を同じ列に混在させないため。
+
+現在の認可ゲート・CSRF/Origin 検証・`disabled_at`/`deleted_at` の区別・監査イベントの詳細は
+[`backend/tenancy/ARCHITECTURE.md`](../backend/tenancy/ARCHITECTURE.md) に置く。
 
 ## 影響
 

@@ -29,43 +29,16 @@ URL に現れる mutable slug であるため、単純な UUID 化はできず�
 （内部生成 id の UUID 型化）が本 WI に委ねた `tenants.id` の UUID 化を完了させ、
 [ADR-082](file:///Users/tn/src/idmagic/decisions/ADR-082-user-domain-id-and-tenant-key-policy.md)
 ／[ADR-083](file:///Users/tn/src/idmagic/decisions/ADR-083-globally-unique-client-id.md)
-の tenant key 方針と整合する。wi-140 で導入。
+の tenant key 方針と整合する。wi-140 で導入。「realm を主キーのまま可変にする」案は
+`ON UPDATE CASCADE` で子テーブルを追随させても発行済みトークンや監査ログに埋まった slug
+までは追随できず不変キー不在の根本問題が残るため、「realm を UUID にも別名でも参照できる
+二重キー」案は解決経路が二系統になり権限比較や seed の一貫性を壊しやすいため、いずれも
+却下した。
 
-### 1. UUID 代理キーと `realm` 識別子の分離
-
-`tenants` に不変の `id UUID PRIMARY KEY` を導入し、旧 `id` の slug 値を
-`realm TEXT NOT NULL UNIQUE` として分離する。書式 CHECK（`<> 'admin'` かつ
-`^[a-z0-9][a-z0-9-]{0,62}$`）は `realm` に移す。`id` はテナント生成時に
-`spec.NewUUIDv4()` で採番し、以後不変。`realm` は一意制約の範囲で変更可能（rename の
-データモデル的余地。管理 UI は本 WI の Out of Scope）。
-
-### 2. 2 語彙の写像: realm は URL、UUID は内部キー
-
-外部に露出する語彙（URL prefix `/realms/{realm}/`・OIDC issuer・metadata）は一貫して
-`realm` を用い、公開 contract の互換を保つ。内部のテナント参照（全 `tenant_id` FK・
-`spec.DefaultTenantID`・context の `TenantID`）は UUID を用いる。middleware は
-`FindByRealm(realm)` で URL の realm を UUID テナントへ解決し、issuer は
-`tenant.Realm` から組み立てる。admin API はテナントを URL 上 `realm` で指定し、内部で
-UUID へ解決してから usecase を呼ぶ。
-
-### 3. 既定テナントの二定数
-
-`spec.DefaultTenantID` を固定 UUID `00000000-0000-4000-8000-000000000000`（ADR-084 の
-seed UUID 系列に整合、非衝突）とし、URL 語彙用に `spec.DefaultRealm = "default"` を新設する。
-`tenant_id == DefaultTenantID` の比較・FK 保存は UUID 同士でそのまま成立し、URL に露出する
-2 箇所（control-plane group prefix / urlPrefix）のみ `DefaultRealm` を用いる。
-
-### 4. FK は UUID、tenant_id に SQL デフォルトを置かない
-
-`tenants(id)` を参照する全 FK 列（複合 FK の tenant 側を含む）を `UUID` へ張り替える。
-併せて `tenant_id` 列の SQL デフォルト（旧 `DEFAULT 'default'`）を撤廃し、常に明示指定を
-要求する。SQL デフォルトは、tenant_id の指定漏れが黙って既定テナントへ流れ込む
-cross-tenant 混入のリスクであり、全ての insert は既にドメイン値（ctx 由来の tenant）を
-束ねているため不要。`tenants.id` も同様にデフォルトを持たず、生成時に UUID を採番して明示
-insert する。FK を張らない append-only / throttling 列は tenant 値を UUID 文字列として
-保持しつつ `TEXT` に据え置く: `audit_events.tenant_id`（tenantless イベントは `''` を
-明示指定）と `authentication_event_buckets.tenant_id`（複合 PK・FK 無し）。Go 側はいずれも
-`string` で統一されるため、TEXT/UUID の別は書き込みコードに影響しない。
+UUID/realm の写像規則、既定テナントの二定数、FK と `tenant_id` の型・デフォルト方針の詳細は
+[`backend/tenancy/ARCHITECTURE.md`](../backend/tenancy/ARCHITECTURE.md) を正とし、
+[root `ARCHITECTURE.md` の `tenant_id` retention classes](../ARCHITECTURE.md#2-tenant_id-retention-classes)
+と合わせて読む。
 
 ## 却下した代替案
 

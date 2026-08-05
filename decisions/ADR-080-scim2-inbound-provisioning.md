@@ -18,46 +18,11 @@ SCIM 2.0 サーバーを公開するにあたり、以下の設計課題を決�
 
 ## 決定
 
-`scl.yaml` の `contexts/scim.yaml` および Go パッケージ `internal/scim` に反映。
-
-1. **SCIM 2.0 サーバーエンドポイント**:
-   - 各テナント (Realm) のパスプレフィックス配下に `/scim/v2` エンドポイントをマウントする（例: `/realms/{realm_id}/scim/v2`）。
-   - RFC 7644 に準拠し、以下のエンドポイントをサポートする：
-     - `/Users` (GET, POST, GET/{id}, PUT/{id}, PATCH/{id}, DELETE/{id})
-     - `/Groups` (GET, POST, GET/{id}, PUT/{id}, PATCH/{id}, DELETE/{id})
-     - `/ServiceProviderConfig` (GET)
-     - `/ResourceTypes` (GET)
-     - `/Schemas` (GET)
-
-2. **認証とマルチテナンシー**:
-   - 各テナントごとに SCIM プロビジョニング用の Bearer Token を管理する。
-   - `Authorization: Bearer <token>` ヘッダーによる認証を行い、トークンからテナント情報を解決する。トークンは管理画面から生成・ローテーション可能とする。
-
-3. **User/Group 属性マッピング**:
-   - **User**:
-     - SCIM `id` = `User.sub`
-     - SCIM `userName` = `User.preferred_username`
-     - SCIM `name.formatted` / `displayName` = `User.name`
-     - SCIM `emails[type=work].value` = `User.email`
-     - SCIM `active` = `UserLifecycle.status == Active`
-   - **Group**:
-     - SCIM `id` = `Group.id`
-     - SCIM `displayName` = `Group.name`
-     - SCIM `members` = `GroupMember` 経由の所属ユーザー一覧
-
-4. **`active` 属性とライフサイクル**:
-   - SCIM で `active` を `false` に更新する要求（PUT または PATCH）を受信した場合、`User.lifecycle.status` を `Disabled` に遷移させる。
-   - `active` を `true` に更新する要求を受信した場合、`User.lifecycle.status` を `Active` に遷移させる。
-
-5. **`DELETE` の取り扱い（削除ポリシーの統合）**:
-   - SCIM で `DELETE /scim/v2/Users/{id}` を受信した場合、即時の完全削除 (Purge) は行わず、**soft-delete**（`UserStatus.PendingDeletion` への遷移）を行う。
-   - これは、同期設定ミスや外部 IDP 側の操作ミスによる一括データ消失を防止するため、ADR-072 のユーザー削除ポリシー（既定は soft-delete）と統合するためである。
-   - soft-delete されたユーザーは 30 日間 (UserSoftDeleteGracePeriod) 保持され、その後自動的に `Purge` (anonymize cascade) される。
-   - `DELETE /scim/v2/Groups/{id}` が呼ばれた場合は、PII を含まないため、即時かつ完全にグループを削除しメンバーシップを解除する。
-
-6. **PATCH 操作のサポート**:
-   - SCIM PATCH (RFC 7644 §3.5.2) をサポートする。
-   - 特に、`active` のトグル（`/Users/{id}` に対する PATCH）および `members` の追加・削除（`/Groups/{id}` に対する PATCH）を適切にハンドリングする。
+`idmagic` は SCIM 2.0 (RFC 7643/7644) サーバーとして inbound provisioning を受け付ける。テナントごとに
+スコープされた Bearer Token で認証し（グローバル共有トークンは却下）、SCIM の `DELETE` は即時の完全削除
+ではなく既存の soft-delete ポリシー（ADR-072）に統合する。メカニズムの詳細（エンドポイント一覧、属性
+マッピング表、`active` とライフサイクルの対応、PATCH の扱い）は
+[backend/sourcing/ARCHITECTURE.md](../backend/sourcing/ARCHITECTURE.md) に移した。
 
 ## 却下した代替案
 

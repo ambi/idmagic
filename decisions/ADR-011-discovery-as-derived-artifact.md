@@ -21,49 +21,15 @@ OAuth 2.0 Authorization Server Metadata (RFC 8414) と OIDC Discovery (Discovery
 
 ## 決定
 
-Discovery 文書を「導出された成果物」として扱う。具体的には:
+Discovery 文書を「導出された成果物」として扱う。仕様核に Discovery テンプレートを置き
+(`spec/discovery.json`、issuer は `{{ISSUER}}` プレースホルダー)、その内容を他の仕様核ファイル
+（grant matrix、トークンスキーマの署名アルゴリズム、ADR-002 の PKCE メソッド等）と
+`spec/invariants.test.ts` で機械的に整合させる。アダプター層はテンプレートを読み `{{ISSUER}}`
+を置換して返すだけで、個別フィールドを書き換えない。ビルド時生成ではなくランタイムでの
+テンプレート読み込みを選んだのは、生成済みファイルのコミットがテンプレートとの二重管理・
+ビルド忘れによる乖離を招くため。
 
-1. **仕様核に Discovery テンプレートを置く** (`spec/discovery.json`):
-   - issuer プレースホルダーを `{{ISSUER}}` で表記
-   - 全エンドポイントパス・サポートアルゴリズム・サポートスコープを宣言
-
-2. **テンプレートの内容は他の仕様核ファイルと整合**する:
-   - `grant_types_supported` ↔ `grants/grant-types.json`
-   - `token_endpoint_auth_methods_supported` ↔ `grants/grant-types.json`
-   - `id_token_signing_alg_values_supported` ↔ `tokens/id-token.schema.json` の `x-signature-algorithms`
-   - `response_types_supported` ↔ `grants/grant-types.json` の `supported_response_types`
-   - `code_challenge_methods_supported` ↔ ADR-002
-
-   整合は `spec/invariants.test.ts` の「Discovery — Grant matrix との整合」スイートで
-   機械的に保証する。
-
-3. **アダプター層は Discovery テンプレートを読み、`{{ISSUER}}` を置換して返す** だけ。
-   個別フィールドをアダプターで書き換えない。新規エンドポイントを追加する場合は、
-   仕様核（テンプレート + ルーティング表）から修正する。
-
-## なぜ「導出されたファイル」を生成しないか
-
-選択肢として「ビルド時に Discovery JSON を生成する」もあるが:
-
-- 生成済みファイルをコミットすると、テンプレートと生成物の二重管理になる
-- ビルド忘れによる現実との乖離が再発生する
-
-代わりに、**ランタイムでテンプレートを読んで置換する** ことで、
-「仕様核に書かれた内容がそのまま配信される」状態を保つ。
-
-## 整合性検証
-
-仕様核内の複数ファイルが同じ事実を述べる以上、機械的な整合性検証が必須:
-
-```ts
-it('discovery.grant_types_supported が grant-types.json と一致する', () => {
-  expect([...discoverySpec.grant_types_supported].sort()).toEqual(
-    [...SUPPORTED_GRANT_TYPES].sort(),
-  )
-})
-```
-
-これにより、片方を変更してもう片方を忘れることを防ぐ。
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 却下した代替案
 

@@ -24,42 +24,18 @@ Google IAM (groups as principals) はいずれもグループによるロール�
 
 ## 決定
 
-1. **Group 集約**を新規導入する。フィールドは
-   `(id, tenant_id, name, description?, roles[], created_at, updated_at?)`。
-   `id` は生成される不変の `group_<uuid>`、`name` はテナント内で一意な
-   編集可能の表示名 (Keycloak の id=UUID / name 編集可に倣う)。
-2. **テナント境界**: Group は `tenant_id` を持ち、テナントに閉じる
-   (ADR-032〜034 と整合)。クロステナントのメンバーシップは拒否する
-   (`AddMember` は対象 User をロードし、不在・別テナントなら拒否)。
-3. **`name` のテナント内一意性**: `(tenant_id, name)` に unique index を張り、
-   `CreateGroup`/`UpdateGroup` は衝突時 `ErrGroupNameConflict` を返す
-   (`admin_users.go` の username 衝突と同じ扱い)。
-4. **実効ロール (effective roles)** を
-   `effective_roles(user) = user.roles ∪ ⋃_{g ∈ user.groups} g.roles`
-   と定義する。和集合のみ。`spec.EffectiveRoles` はソート済み・重複排除した
-   union を返す。グループが空なら `user.roles` と同一になり、既存挙動を保つ。
-5. **適用面 (surface)** は二つ:
-   - 管理コンソールの RBAC ゲート (`requireAdmin` / `requireSystemAdmin` /
-     `resolveAdminActor` / `requireAuditReader`) — 内部的に実効ロールへ切替。
-   - `/account` セルフビュー (`authorize_handler.go`, `resp.Roles`) —
-     ユーザー自身がグループ由来ロールを確認できる。
-   ワイヤフォーマットは不変。グループが空なら従来と完全に同一の挙動。
-6. **メンバーシップ操作は冪等**とする (Okta/Keycloak の membership API に倣う)。
-   既存メンバーへの `AddMember`、非メンバーへの `RemoveMember` は no-op で、
-   重複イベントを発行しない。
-7. **監査保証**: メンバーシップ操作とグループ CRUD は `AdminAuditEvent` と
-   ドメインイベント (`GroupCreated`/`GroupUpdated`/`GroupDeleted`/
-   `GroupMemberAdded`/`GroupMemberRemoved`) を発行する。`DeleteGroup` は
-   メンバーシップを cascade 削除し、削除メンバーごとに `GroupMemberRemoved`、
-   最後に `GroupDeleted` を発行する。
-8. **`admin.groups.read` / `admin.groups.write`** 権限で保護し、`admin` ロール
-   に束ねる (SCL `permissions`)。
-9. **`User.roles` は維持する**。グループに束ねられないユーザー個別の override
-   経路として残す。テナント ID は埋め込まない (ADR-031 §7 / ADR-032 §6 と整合)。
-10. **トークンへの groups/roles claim は既定で出さない**。本 IdP は現状
-    role→scope / role→claim マッピングを持たず、ロールは (a) 管理 RBAC ゲートと
-    (b) `/account` コンテキスト表示のみを駆動する。グループ由来ロールも
-    この二面で効く。token への claim 投入は opt-in として別 WI に送る。
+`Group` 集約を新規導入する。`(id, tenant_id, name, description?, roles[], created_at, updated_at?)`
+を持ち、テナントに閉じ、`(tenant_id, name)` がテナント内で一意である。実効ロールは
+`user.roles ∪ ⋃_{g ∈ user.groups} g.roles` (和集合のみ、階層・減算なし) と定義し、管理コンソールの
+RBAC ゲートと `/account` セルフビューの二面で適用する。メンバーシップ操作は冪等とし、`User.roles`
+は個別 override 経路として維持する。トークンへの groups/roles claim 投入は既定で行わない。
+
+グループによるロール集約を導入するのは、ロールをユーザーごとに個別管理すると組織変更のたびに
+全該当ユーザーを個別更新する必要があり監査も困難になるためで、Keycloak / Okta / Google IAM の
+グループ機能に倣う。和集合のみに限定するのは、階層・減算・動的メンバーシップ等で評価順序を複雑化
+させる機能を持ち込まずに要求を満たすためで、下表の見送った代替案はこの RA-minimal 方針に基づく。
+現在の集約フィールド・一意性制約・適用面・冪等性・監査イベントの詳細は
+[`backend/idmanagement/ARCHITECTURE.md`](../backend/idmanagement/ARCHITECTURE.md) に置く。
 
 ## 影響
 

@@ -46,40 +46,25 @@ durable job として実行する仕組みを要求する。関連する既存�
    「User 更新は成功したが run が二度と作られない」障害窓を、実装の作り込みではなく
    transaction 境界そのもので閉じる。
 
-3. **revision 固定と楽観ロック**: `LifecycleWorkflow` は `current_revision` (直近作成) と
-   `enabled_revision` (trigger 評価対象) を分離して持つ。意味の変わる update は
-   `current_revision` を増やすだけで `enabled_revision`/`status` は変えず、管理者が明示的に
-   `EnableLifecycleWorkflow` を呼ぶまで旧 revision の評価が続く。`UpdateLifecycleWorkflow` は
-   `expected_revision` が現在の `current_revision` と一致しない場合を
-   `WorkflowRevisionConflictError` で拒否する (lost update 防止)。`WorkflowRun` は作成時の
-   revision と展開済み action list を固定するため、実行中に definition を変更しても
-   進行中 run の意味は変わらない。
+3. **revision 固定と楽観ロック**: `current_revision`/`enabled_revision` の分離と
+   `WorkflowRevisionConflictError` による lost-update 防止で、definition の変更が進行中 run の意味を
+   変えないようにする。
 
-4. **重複排除**: `WorkflowRun` の一意制約
-   `(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` で
-   同一 trigger occurrence の再配送を一つの run に収束させる。Jobs へは
-   `dedup_key=lifecycle-workflow-run:{run_id}` で enqueue し、Jobs 自体の at-least-once 再配送
-   による重複 enqueue を防ぐ。`send_email` action は `(run_id, step_index)` を delivery key として
-   `LifecycleNotificationDelivery` に記録し、retry や at-least-once 実行下でも重複送信しない。
+4. **重複排除**: `WorkflowRun` の一意制約と `dedup_key` により、at-least-once な trigger 再配送・
+   Jobs 再配送・通知の重複送信をそれぞれ収束させる。
 
-5. **部分失敗と非補償**: 1 attempt では未完了 step を定義順にすべて試し、途中の failed step で
-   後続 action を止めない (アクセス剥奪が無関係な通知失敗で止まらないため)。attempt 上限到達時、
-   全 step 成功なら `succeeded`、混在なら `partially_failed`、成功が皆無なら `failed` に終端する
-   (no-op は成功として扱う)。context 跨ぎの補償 transaction は実装しない。desired-state な action
-   設計 (「存在させる/存在させない」を宣言的に指定する) と step 単位の checkpoint により、
-   retry は `changed`/`no_op` 済み step を飛ばし `failed` step だけを再実行することで収束させる。
+5. **部分失敗と非補償**: 1 attempt は失敗 step で後続を止めず、desired-state な action + step
+   checkpoint により retry は失敗分だけを再実行して収束させる。context 跨ぎの補償 transaction は
+   実装しない。
 
-6. **loop suppression**: `WorkflowRunTriggerSnapshot` は action 実行が発生させた User mutation の
-   origin run/step metadata を持ち、trigger 評価は origin metadata を持つ mutation を対象外にする。
-   これにより action → 新しい trigger → action の無限連鎖を、実行時のガードではなく trigger
-   evaluator の入力自体から構造的に排除する。
+6. **loop suppression**: action が発生させた User mutation は origin run/step metadata を持ち、
+   trigger 評価はそれを対象外にすることで action→trigger→action の無限連鎖を構造的に排除する。
 
-7. **保持期間**: `WorkflowRun`/`WorkflowStep`/`LifecycleNotificationDelivery` は Jobs の
-   `Job` (ADR-100, delete_after 30日) に合わせて 30 日保持する。`LifecycleWorkflow` と
-   `LifecycleWorkflowRevision` は archive 後も、参照中の run が retention 期間内にある間は
-   削除しない。保持期間の cleanup は tenant-safe な batch とし、`objectives` の SLO とは独立に
-   ADR で運用値として固定する (SCL `objectives` は比率ベースの SLO 表現に限られ、保持期間の
-   ような duration 値はモデル記述と ADR に置く)。
+7. **保持期間**: `WorkflowRun` 系は Jobs の `Job` (ADR-100) に合わせて 30 日保持する。
+
+決定 3〜7 のメカニズムの詳細は
+[backend/idgovernance/ARCHITECTURE.md](../backend/idgovernance/ARCHITECTURE.md) に移した
+(ADR-117 により `IdGovernance` context へ移設された後も、この決定 3〜7 自体は変更なく継承されている)。
 
 8. **Application 割当への経路と context 依存**: `spec/scl.yaml` の `context_map` は既に
    `Application.depends_on.IdentityManagement` を持つ (割当の subject が User/Group のため)。

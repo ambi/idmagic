@@ -26,59 +26,17 @@ ADR-031 で `/admin/users` の Disable / Enable は実装したが、削除経�
 
 ## 決定
 
-1. `User` aggregate に `deleted_at: Timestamp?` を導入する (DB スキーマには
-   既存)。`deleted_at != null` を **tombstone 状態** と呼び、SCL の
-   `UserLifecycle` 状態機械の `Deleted` 終端状態と対応させる。`Active` /
-   `Disabled` のいずれからも `Deleted` に遷移できるが、`Deleted` から戻る
-   遷移は持たない。
-2. 削除は **物理削除しない**。`sub` は audit 参照のため不変で残す。
-   削除時に以下の tombstone 置換を atomic に適用する。
-   - `preferred_username = "deleted:<sub>"`
-   - `name = nil` / `given_name = nil` / `family_name = nil`
-   - `email = nil` / `email_verified = false`
-   - `password_hash = ""` (login 不可)
-   - `mfa_enrolled = false`
-   - `roles = []`
-   - `deleted_at = now`
-   - `disabled_at` はそのまま (削除前が disabled なら disabled のまま、
-     再有効化はできない)
-3. 関連 aggregate を cascade で消す。
-   - `Consent` (DELETE all rows for `sub`)
-   - `RefreshTokenRecord` (DELETE all rows for `sub`)
-   - `LoginSession` (DELETE all sessions for `sub`)
-   - `PasswordHistory` (DELETE all entries for `sub`)
-   - `MfaFactor` (DELETE all factors for `sub`)
-   - `DeviceAuthorization` (DELETE active records bound to `sub`)
-   実装は use case 側で順次呼び出す。PostgreSQL 経路は `pgx.BeginTx` で
-   1 トランザクションに束ね、Valkey 経路は per-store 削除を順に呼ぶ
-   (Valkey は session / device code / replay 程度の volatile state なので
-   transactional 不整合の窓は短い)。
-4. `sub` の再利用は禁止する。新規 User 作成時に `sub` 生成器は既存衝突
-   チェックを継承する (本 ADR で新規制約は追加しないが、tombstone も
-   `users` テーブルに残るので結果的に衝突しない)。
-5. `preferred_username` は **削除後に再利用可** とする。`preferred_username =
-   "deleted:<sub>"` への置換と `users_preferred_username_active_idx`
-   (`WHERE deleted_at IS NULL` の部分一意 index) によって、生存中の user
-   とだけ unique になる。
-6. 削除済 user の認証・トークン経路は以下に固定する。
-   - login (`/api/auth/login`) は `invalid_credentials` (DisabledAt と同じ
-     uniformity を維持。anti-enumeration)。
-   - `/authorize` は session が無くなっているので login にリダイレクト。
-   - `/token` (refresh / authorization_code / device_code) は
-     `invalid_grant` ("ユーザーは利用できません")。
-   - `/introspect` は `active=false`。
-   - `/userinfo` は 401 `invalid_token`。
-   既発行 short-lived JWT は expiry まで RS で検証は通る。RP 通知
-   (Back-Channel Logout / CAEP) は Phase 3 のスコープで本 ADR の対象外。
-7. 削除は冪等。既に `deleted_at != null` の user に対して再度 `DeleteUser`
-   を呼んでも 200 / no-op (audit event は重複発行しない)。
-8. 自爆防止。actor.Sub == target.Sub かつ target.Roles に `admin` または
-   `system_admin` が含まれる場合は reject (`invalid_request`)。
-   tenant 内 admin が 0 になる削除を許す判断は本 ADR ではしない。
-9. 監査保全。`UserDeleted` event を `AdminAuditEvent` として永続化する。
-   payload は `actorSub` / `targetSub` / `reason` (任意 free-text) /
-   `occurredAt`。`sub` は anonymize で残るため、後続の調査で
-   「削除日時・削除者・対象 sub」を再現できる。
+`User` aggregate に tombstone 状態を導入する。削除は物理削除ではなく即時匿名化とし、`sub` は audit
+参照のため不変で残す。関連 aggregate (`Consent` / `RefreshTokenRecord` / `LoginSession` /
+`PasswordHistory` / `MfaFactor` / `DeviceAuthorization`) は cascade で削除し、操作は冪等とする。
+actor が自分自身の `admin` / `system_admin` アカウントを削除する操作は拒否する (自爆防止)。
+`UserDeleted` を `AdminAuditEvent` として永続化する。
+
+物理削除を採らないのは、`AdminAuditEvent` などの append-only ログが `sub` を参照しており hard
+delete が参照整合性を壊すこと、削除と無効化を運用上見分けたいこと、GDPR 文脈でも「anonymize で
+sub + 一意化トークンを残す」形が一般的であることによる。tombstone 置換アルゴリズム・cascade 対象の
+一覧・`preferred_username` の再利用可否・削除済 user のトークン経路・自爆防止と冪等性の詳細は
+[`backend/idmanagement/ARCHITECTURE.md`](../backend/idmanagement/ARCHITECTURE.md) に置く。
 
 ## 影響
 

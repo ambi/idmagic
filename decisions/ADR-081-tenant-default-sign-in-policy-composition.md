@@ -29,40 +29,20 @@ Application context の `models.TenantDefaultSignInPolicy`、
 更新した `invariants.AppPolicyEvaluatedAcrossProtocols`、`AppSignInPolicyResponse.weaker_than_default` に反映。
 wi-115 で導入。ADR-079 を前提とする。
 
-1. **所有と語彙。** ApplicationCatalog が tenant 単位で `TenantDefaultSignInPolicy` を所有する。
-   フィールドは既存の `SignInRule` (`RequiredAuthnLevel` / `AccessCondition`) をそのまま使い、
-   語彙・条件モデルは再設計しない (wi-115 Out of Scope)。デフォルトポリシーは Application の
-   sign-in policy に関する概念なので、tenancy context ではなく ADR-079 と同じ
-   ApplicationCatalog が所有する。DB テーブルは `tenant_default_sign_in_policies`、
-   監査イベントは `TenantDefaultSignInPolicyUpdated`。
+ApplicationCatalog が tenant 単位で `TenantDefaultSignInPolicy` を所有する (tenancy context では
+ない — デフォルトポリシーは Application の sign-in policy に関する概念であり、ADR-079 が定めた
+所有を分散させない)。デフォルトとアプリ個別ポリシーの関係は**上書き**とし、アプリが独自の有効
+ルールを持てばテナントデフォルトを完全に置換し、持たなければデフォルトをそのまま適用する。当初
+案は「合成 (floor)」でアプリ個別がデフォルトを下回れない設計だったが、実効ポリシーが二重に見え
+管理者が把握しづらく、低リスクアプリの緩和に別途「例外フラグ」が必要でモデルが複雑になるため、
+分かりやすさを優先して上書きへ改めた。上書きモデルではアプリ個別ポリシーがデフォルトより弱く
+なりうるため、`weaker_than_default` フラグで UI 側に警告するに留め、強制はしない — 低リスク
+アプリの明示的な緩和を単純な操作で行えるようにするため、また ADR-079 の「アプリ個別が最終決定
+権を持つ」原則とも整合するため。既存テナントの初期値は空 (allow-all) とし、移行時に安全側の
+既定 (MFA 必須等) を一括適用する案は大規模ログイン不能を招くため却下した。
 
-2. **関係 = 上書き (override)。** アプリが独自の sign-in policy (有効ルール) を持てば、それが
-   テナントデフォルトを**完全に置換**して評価される。持たなければデフォルトをそのまま適用する。
-   合成・連結はしない。実効ルールは `EffectiveSignInRules(default, app)` が
-   「アプリに有効ルールがあれば app.rules、なければ default.rules」を返し、
-   既存の `EvaluateSignInPolicy` に渡す。どちらの経路でも評価器は fail-closed のまま。
-   「合成後の二重表示」が無くなり、管理者は 1 つの実効ポリシーだけを見ればよい。
-
-3. **デフォルトより弱い上書きは許可し、警告する。** 上書きモデルではアプリ個別ポリシーは
-   デフォルトを下回れる。強制はせず、デフォルトより弱いとき (認証強度の引き下げ・再認証を求めるまでの時間の
-   延長や撤廃・許可ネットワークの緩和のいずれか) に `AppSignInPolicyResponse.weaker_than_default` を
-   true にして UI で警告する。判定は `AppPolicyWeakerThanDefault(default, app)` に集約する。
-   floor を強制しないのは、低リスクアプリの明示的な緩和を単純な操作 (アプリ側で上書き) で
-   行えるようにするため。ADR-079 の「アプリ個別が最終決定権を持つ」原則とも整合する。
-
-4. **既存テナントの初期値は空 (ルール無し)。** 空のデフォルトポリシーは allow-all で、導入時点では
-   挙動を変えない。管理者が明示的にルールを設定して初めて baseline が有効化される。移行時に
-   MFA 等の安全側デフォルトを一括適用すると大規模ログイン不能・認証強度の予期せぬ変化を招く
-   ため採らない。
-
-5. **評価点は既存の Application gate と同じ federation 開始経路。** OIDC authorize、WS-Fed sign-in、
-   SAML SSO は同じ gate を通し、gate が実効ポリシー (アプリ独自があればそれ、なければデフォルト) を
-   組み立てて評価器に渡す。クライアント IP も従来どおり全経路で渡す。protocol ごとの個別分岐で
-   迂回できない。
-
-6. **ロールバックはデータ操作で即時・可逆。** デフォルトポリシーはテーブル行であり、ルールを空に
-   するか行を削除すれば allow-all に戻る。スキーマ破壊的変更を伴わず、`TenantDefaultSignInPolicyUpdated`
-   で各変更 (クリアを含む) を監査追跡できる。個別アプリの緊急緩和はアプリ側ポリシーの上書きで即時に行える。
+実効ルールの合成規則、評価点の配置、ロールバック手順の詳細は
+[`backend/application/ARCHITECTURE.md`](../backend/application/ARCHITECTURE.md) に置く。
 
 ## 却下した代替案
 

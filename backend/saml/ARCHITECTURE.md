@@ -1,6 +1,6 @@
 ---
 context: saml
-updated_at: 2026-07-26
+updated_at: 2026-08-06
 ---
 
 # Architecture: saml
@@ -11,6 +11,32 @@ The `Saml` context owns SAML 2.0 IdP behavior: service-provider trust, AuthnRequ
 SSO/SLO use cases, response construction, IdP profiles, and IdP metadata. Protocol-neutral claim
 projection remains in `ClaimMapping`; XML signing is delegated through the shared federation signer
 provider.
+
+## SSO Profile scope
+
+The initial scope is the SAML 2.0 Web Browser SSO Profile only: HTTP-Redirect (deflate+base64) and
+HTTP-POST (base64) bindings, signed Response/Assertion, metadata publication, SP-initiated and
+IdP-initiated SSO, and Single Logout. SAML ECP, encrypted assertions, and idmagic acting as a SAML SP
+against an external IdP (inbound federation) are excluded and deferred to a separate slice if needed
+— narrowing scope keeps the well-known SAML signature-wrapping attack surface contained, per
+[ADR-067](../../decisions/ADR-067-saml2-idp-scope.md).
+
+Claim issuance and assertion signing reuse the protocol-agnostic builder and signer already shared
+with WS-Federation/WS-Trust (`internal/wsfederation/adapters/samltoken`), which already handles SAML
+version, bearer subject confirmation, and audience restriction. Only SP-initiated-specific input,
+such as `InResponseTo` round-tripping, is added on top rather than reimplementing signing for this
+context.
+
+Signing defaults to signing the Assertion, with Response signing available as an opt-in (the "Sign
+Response" behavior Okta/Entra also offer). `goxmldsig` appends an enveloped signature at the end of
+the element it signs; because the enveloped transform verifies independent of the signature element's
+position, the signed element is never repositioned afterward — moving it would redraw namespaces,
+change the digest, and break verification. This applies equally to Assertion and Response signing.
+
+Interop guards are fail-closed and centralized in the domain layer: Issuer must exactly match the
+registered SP's entityID, `AssertionConsumerServiceURL` is checked against that SP's allow-list (open
+redirect prevention), and audience restriction is scoped to the SP's entityID/Audience. Any
+indeterminate or mismatched check is rejected.
 
 ## Identity provider profiles
 

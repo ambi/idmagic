@@ -10,28 +10,16 @@ created_at: 2026-07-20
 idmagic はマルチテナント IdP として稼働する。一部のテナントによる過剰なリソース（User, Group, Client, Sessionなど）の生成が、システム全体の可用性・パフォーマンス・コストに悪影響を及ぼすのを防ぐ必要がある（Noisy Neighbor問題の防止）。現状はテナントごとのリソース作成数に上限がなく、無制限にリソースを作成できる。これを制限し、テナントごとの Budget を導入する必要がある。
 
 ## 決定
-テナントリソースクォータ（Tenant Resource Quotas）を以下のように導入・分類し、管理する。
+テナントリソースクォータ（Tenant Resource Quotas）を導入する。作成系リソースは同期的に拒否する
+Hard Quota と、超過しても操作は成功し非同期に警告する Soft Quota に分類する。API レート制限のみ
+では長期間にわたる継続的なリソース生成による DB 肥大化・コスト増を防げず、Soft Quota のみでは
+悪意ある呼び出しやバグによる短時間の DB 枯渇を事前に防げないため、両方を組み合わせる。新規
+テナントには固定の既定値を付与し、上限の変更権限は System Admin に限定してテナント自身には
+利用量の参照のみを許可する。既存テナントへの導入時は突然のロックアウトを避けるため十分大きい
+安全な上限値を一律付与し、バックグラウンドの reconciliation で実際の利用量に追随させる。
 
-1. **Quotaの分類**
-   - **Hard Quota**: トランザクション内で同期的に評価され、超過すると作成（Create/Register等）がエラーとなり拒否される厳格な制限。対象：`users`, `groups`, `agents`, `applications`, `oauth2_clients`, `active_sessions`, `consents`, `active_jobs`
-   - **Soft Quota**: 超過しても操作自体は成功するが、非同期的に警告（Warning/Audit Event）が通知される遅延評価の制限。対象：`audit_events_retained`, `export_artifacts_bytes`
-
-2. **既定値（Default Quotas）**
-   新規テナント作成時に自動付与される初期値。
-   - `users`: 10,000
-   - `groups`: 1,000
-   - `agents`: 100
-   - `applications`: 50
-   - `oauth2_clients`: 100
-   - `active_sessions`: 50,000
-   - `consents`: 10,000
-   - `active_jobs`: 10
-
-3. **System Admin Override (調整)**
-   System Admin は個別のテナントに対してクォータ上限値を個別に上書き（Override）できる。テナント管理者（Tenant Admin）は自テナントの利用量と上限を参照できるが、変更はできない。
-
-4. **既存テナントへの移行方針 (Migration)**
-   導入直後に既存テナントが突然のロックアウトや作成不能に陥ることを避けるため、移行時には「十分に大きい安全な上限値（例：既存の利用実績の2倍、または現在の既定値の10倍など）」を一律で割り当てる。その後、バックグラウンドの Backfill / Reconciliation ジョブで実際の利用量（Usage）を集計し、必要に応じて System Admin が手動で調整や警告を行う。
+Quota の分類・対象リソース・既定値・移行方針の詳細は
+[`backend/tenancy/ARCHITECTURE.md`](../backend/tenancy/ARCHITECTURE.md) に置く。
 
 ## 却下した代替案
 - 案 A: APIレート制限のみで防ぐ

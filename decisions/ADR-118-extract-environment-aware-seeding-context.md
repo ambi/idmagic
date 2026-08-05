@@ -14,13 +14,10 @@ created_at: 2026-07-18
 
 ## 決定
 
-`Seeding` を新しい operations bounded context とする。Seeding は `SeedProfile`、`SeedRequest`、`SeedPlan`、環境 policy、drift policy、適用順序を所有する。対象 resource の意味、validation、永続化、公開 command surface は IdManagement、Authentication、OAuth2、Application、Saml、WsFederation 等の record context に残す。
-
-profile は環境名から推測せず request/CLI で明示する。production では `bootstrap` だけを許可し、demo/test/performance を書き込み前に fail-closed で拒否する。dry-run と apply は同じ planner を使い、同じ manifest・generator seed・secret version の再適用は no-op とする。manual drift は既定で conflict とし、明示 reconcile を別契約として後続追加する。適用は単一の cross-context transaction にせず、依存順の bounded batch と idempotent command を使う。performance profile の batch size は request で明示可能で、未指定時は 250、最大 1,000 とする。CLI は集約済みの redacted plan を JSON で出し、performance user を 1 件ずつ plan に保持しない。
+`Seeding` を新しい operations bounded context とする。Seeding は `SeedProfile`、`SeedRequest`、`SeedPlan`、環境 policy、drift policy、適用順序を所有する。対象 resource の意味、validation、永続化、公開 command surface は IdManagement、Authentication、OAuth2、Application、Saml、WsFederation 等の record context に残す。profile は環境名から推測せず明示し、production は `bootstrap` のみを fail-closed で許可する。dry-run/apply の同一 planner、drift-as-conflict、bounded batch 適用、mutex/advisory lock による直列化などの policy の詳細は
+[backend/seeding/ARCHITECTURE.md](../backend/seeding/ARCHITECTURE.md) に移した。
 
 production の bootstrap は first-party client を必要とする場合、redirect URI を `SEED_FIRST_PARTY_REDIRECT_URIS` で明示する。空、`localhost`、非 HTTPS URI は拒否する。開発用 localhost URI を production manifest に持ち込まず、issuer は client metadata ではなく通常の runtime `ISSUER` 設定が所有する。
-
-部分失敗からの再開情報を専用テーブルへ永続化しない。profile と generator seed から決まる logical key / ID、および各 record context の冪等 command により、同じ request を先頭から再実行して収束する。実行履歴・checkpoint のためだけに運用テーブルを増やさない。同一 process 内では request key ごとの mutex で apply を直列化し、process をまたぐ PostgreSQL の排他が必要になった場合は既存接続上の advisory lock を追加する（専用 seed table は作らない）。
 
 初期実装は `backend/seeding/{domain,usecases}` の policy/planner に限る。既存の起動時 seed を削除せず、CLI、contributor、checkpoint、既存 seed の移設を段階的に進める。
 

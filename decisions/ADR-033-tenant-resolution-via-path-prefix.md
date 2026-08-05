@@ -25,58 +25,20 @@ idmagic はブラウザフロー (`/authorize` `/login` `/consent`) を扱うた
 
 ## 決定
 
-1. **すべてのプロトコルルートを `/realms/{tenant_id}/...` 配下に配置する**。
-   対象: `/authorize` `/token` `/par` `/device_authorization` `/device`
-   `/login` `/consent` `/totp` `/userinfo` `/introspect` `/revoke`
-   `/register` `/end_session` `/account/password` `/forgot_password`
-   `/reset_password` `/.well-known/openid-configuration`
-   `/.well-known/oauth-authorization-server` `/jwks` `/admin/users`。
-   テナント CRUD (`/admin/tenants/...`) は cross-tenant 操作だが、ADR-032 §6 で
-   `system_admin` が default control-plane tenant に所属することにしたため、
-   `/realms/default/admin/tenants/...` に配置する。default tenant の session cookie
-   path (`/realms/default`) がそのまま admin endpoint を覆い、root へ cookie path を
-   広げる必要がなくなる (cross-tenant cookie 漏れを避けるための選択)。
+すべてのプロトコルルートを `/realms/{tenant_id}/...` 配下に配置し、`iss` claim と Discovery の
+`issuer` はこの prefix から組み立てる。サブドメインは per-tenant TLS/DNS を要求して開発・CI・
+K8s ingress のセットアップを重くし、ヘッダはブラウザフロー (303 redirect) を跨いで伝搬できず
+`iss` claim との整合が崩れるため、いずれも不採用とした。`TenantResolver` は path / subdomain /
+ヘッダのいずれでも差し替え可能な interface とし、本 ADR はその初期実装として path-prefix
+resolver を採用する。テナント CRUD (`/admin/tenants/...`) は `system_admin` が default
+control-plane tenant に所属する (ADR-032 §6) ため `/realms/default/admin/tenants/...` に置き、
+root へ cookie path を広げずに済ませる。
 
-2. **未 prefix のルートは `default` テナントへ解決する**。
-   既存 RP / `demo.sh` / 既存 docs を破壊しないため。README の endpoint
-   テーブルでは prefix 形式を正、bare 形式を deprecated と明示する。
-
-   > この項は [[ADR-144-tenant-canonical-location-and-host-based-resolution]] で撤回した。
-   > 未 prefix 経路は `default` テナントの第 2 ロケーションであり、
-   > 「1 テナント = 1 正規ロケーション」の不変条件に反する。
-
-3. **`iss` claim は `{base}/realms/{tenant_id}` を発行する**。
-   token 発行・Discovery `issuer` フィールド・OIDC ID token の `iss`
-   は同一文字列となる。
-
-   **後方互換のための escape hatch:** 環境変数
-   `LEGACY_BARE_ISSUER=true` を設定すると `default` テナントの未 prefix
-   ルートが `iss = {base}` を発行する。1 リリース限定の暫定措置として
-   提供し、その後削除する。
-
-   > この escape hatch は [[ADR-144-tenant-canonical-location-and-host-based-resolution]]
-   > で削除した。未 prefix 経路そのものを廃止したため不要になった。
-   > `iss` の組み立て規則は `endpoint_style` 由来に変わっている。
-
-4. **`/realms/{tenant_id}/.well-known/openid-configuration`** は同 prefix の
-   endpoint URL を返す。JWKS URI は `{base}/realms/{tenant_id}/jwks` だが、
-   本フェーズでは同一の JWKS bytes を返す（per-tenant 鍵は Phase 8）。
-   `issuer` フィールドは `{base}/realms/{tenant_id}` と一致する。
-
-5. **`TenantResolver` middleware** が HTTP 境界で次を行う:
-   - path から `tenant_id` を抽出 (正規表現 `^/realms/([a-z0-9][a-z0-9-]{0,62})(/|$)`)
-   - 未 prefix は `defaultTenantId` (固定値 `default`) にフォールバック
-   - `TenantRepository.findById(tenant_id)` で解決
-   - 不在テナントは 404 + generic `tenant_not_found` を返す
-   - disabled テナントは protocol route で 400 + generic `invalid_request`
-     を返す。管理 API の GetTenant だけが status を取得できる
-   - どちらも tenant ID や存在・状態の詳細を説明文へ含めない
-   - Hono context に解決済み `Tenant` と `issuer` 文字列をセット
-
-6. **subdomain 戦略は将来差し替え可能な slot として残す**。
-   `TenantResolver` interface は path / subdomain / ヘッダ いずれの
-   実装でも置換可能とし、本 ADR はその初期実装として path-prefix
-   `PathPrefixTenantResolver` を採用する。
+> **ADR-144 による撤回:** 未 prefix ルートを `default` テナントへフォールバックさせる項と、
+> `LEGACY_BARE_ISSUER` escape hatch は [[ADR-144-tenant-canonical-location-and-host-based-resolution]]
+> で撤回した。未 prefix 経路は `default` テナントの第 2 ロケーションであり、「1 テナント = 1
+> 正規ロケーション」の不変条件に反すると判明したため。現在のテナント解決とルーティングの詳細は
+> [`backend/tenancy/ARCHITECTURE.md`](../backend/tenancy/ARCHITECTURE.md) を正とする。
 
 ## 影響
 

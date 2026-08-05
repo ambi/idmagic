@@ -28,26 +28,14 @@ Hybrid Azure AD Join の device registration は WS-Trust `windowstransport` と
 federation metadata 公開を前提に、Microsoft Entra ID / Microsoft 365 へ登録する WS-* profile を
 確定する。
 
-1. **Entra profile は `WsFederation` の RP preset として扱う。**
-   `EntraFederationProfile` は domain、IssuerUri、sourceAnchor 属性、passive / active / MEX endpoint を
-   持つ。設定時に同じ IssuerUri を wtrealm / audience とする `WsFedRelyingParty` を upsert する。
-
-2. **required claims は preset で固定し fail-closed にする。**
-   UPN は `http://schemas.xmlsoap.org/claims/UPN` として `preferred_username` から発行する。
-   ImmutableID は sourceAnchor を `entra_immutable_id` へ正規化し、persistent NameID と
-   `http://schemas.xmlsoap.org/claims/nameidentifier` の両方に載せる。
-
-3. **sourceAnchor は設定時と発行時の両方で検証する。**
-   設定時は既存 user の sourceAnchor 欠落・重複・変換不能を拒否する。発行時も、対象 user から
-   ImmutableID を作れない場合は claim issuance 前に拒否する。既存値が GUID なら Microsoft byte order
-   で base64 化し、既に base64 の値ならそのまま使う。
-
-4. **SAML 1.1 を Entra profile の既定 token type にする。**
-   Entra / AD FS 互換の WS-Fed 既定に合わせ、profile が作る RP は SAML 1.1 assertion を発行する。
-
-5. **Hybrid Azure AD Join device registration は未提供として明示する。**
-   `windowstransport` + コンピュータアカウント Kerberos は本 WI の範囲外。設定 API / UI は
-   managed/PHS または AD FS 併存を回避策として案内する。
+Entra profile は `WsFederation` の RP preset (`EntraFederationProfile`) として扱い、設定時に対応する
+`WsFedRelyingParty` を upsert する。required claims (UPN・ImmutableID) は preset で固定して
+fail-closed にし、sourceAnchor から ImmutableID を導出する byte-order 正規化を含めて設定時・発行時の
+両方で検証する。手作業の claim JSON 入力は誤設定が Entra 側で不透明になり sourceAnchor の安定性・
+一意性を保証できないため退けた。Hybrid Azure AD Join device registration はコンピュータアカウント
+Kerberos を伴わない擬似対応が cloud STS の境界を壊すため、明示的に未提供とする。具体的な preset の
+構造・claim 形状・GUID byte-order 正規化アルゴリズムは
+[`backend/wsfederation/ARCHITECTURE.md`](../backend/wsfederation/ARCHITECTURE.md) に置く。
 
 ## 影響
 

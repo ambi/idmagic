@@ -34,37 +34,12 @@ PKCE 必須としていたが、これは原仕様の互換範囲を狭めるた
 「public / FAPI クライアントは必須・confidential client は明示 opt-in」へ改訂)
 
 client metadata `require_pkce` を導入し、PKCE 要否を client 単位で決定する。
-未指定時のデフォルトは client_type / fapi_profile から派生する:
+未指定時のデフォルトは client_type / fapi_profile から派生する: public / FAPI 2.0 クライアント
+は `true`（PKCE が唯一の防御、または FAPI 2.0 §5.1 の MUST 要件）、legacy confidential クライアント
+は `false`（RFC 6749 互換。明示で `true` 化を推奨）。`code_challenge_method` は引き続き `S256`
+のみサポートする（plain は禁止）。認可コードは単一使用かつ短寿命 (TTL ≤ 60 秒) のまま変更しない。
 
-| クライアント分類 | default `require_pkce` | 根拠 |
-| ---------------- | ---------------------- | ---- |
-| public           | true                   | client_secret を保持できず、PKCE が唯一の防御 |
-| FAPI 2.0         | true                   | FAPI 2.0 §5.1 は MUST |
-| confidential (legacy) | false             | RFC 6749 互換、移行配慮。明示で true 化推奨 |
-
-`code_challenge_method` は引き続き `S256` のみサポート (plain は禁止)。
-
-### 実装
-
-- `spec/scl.yaml` `OAuth2Client.fields` および `ClientRegistrationRequest.fields` に
-  `require_pkce: Boolean (optional)`
-- `permissions.AuthorizeInitiate.allow_when` の PKCE 述語を
-  `(actor.require_pkce == false) or (context.code_challenge != null)` に変更
-- `src/oauth2/usecases/authorize-request.ts::resolveRequirePkce(client)` で
-  default を解決し、policy へ流す
-- `adapters/http/authorize-routes.ts` の事前 required 配列から `code_challenge` を
-  外し、policy 経由で判定 (二重検証の削除)
-- `src/oauth2/usecases/exchange-code-for-token.ts` で code に code_challenge が
-  ない場合 verifier 検証をスキップ。verifier が送られてきたら downgrade として拒否
-- migration 0003 で `clients.require_pkce` 列を追加 (NULL 許容)
-
-## 認可コードの単一使用と短寿命 (変更なし)
-
-認可コードは単一使用かつ短寿命 (TTL ≤ 60 秒)。理由は変わらず:
-
-- 再利用検出時、関連トークンをすべて失効させる動作 (RFC 9700 §4.10) が
-  「単一使用」の前提に依拠する
-- 短寿命にすることで、コード漏洩時の攻撃ウィンドウを最小化する
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 却下した代替案
 

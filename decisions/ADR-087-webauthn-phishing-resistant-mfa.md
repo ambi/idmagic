@@ -25,64 +25,26 @@ policy と enterprise attestation の厳格 enforcement、device trust は Out o
 
 ## 決定
 
-`spec/contexts/authentication.yaml` に SCL-first で反映し、`internal/authentication`
-配下と `ui/` に実装する。wi-26 で導入。既存の self-service TOTP MFA と step-up
-再認証（[ADR-043](file:///Users/tn/src/idmagic/decisions/ADR-043-account-portal-csrf-and-step-up.md)）
-を土台に、第二要素の選択肢として WebAuthn と recovery code を足す。全テーブルの
-tenant key 方針は [ADR-083](file:///Users/tn/src/idmagic/decisions/ADR-083-globally-unique-client-id.md)
-に従う。
+`WebAuthnCredential`（`webauthn_credentials`、identity=`credential_id`）を `MfaFactor` とは
+別の独立エンティティとして新設する — 既存 `MfaFactor` の `(user_id, type)` identity は 1 種別
+1 件しか持てず、1 ユーザーが複数 authenticator を登録できる WebAuthn の実態と構造的に合わない。
+ceremony（CBOR/COSE 解析・署名検証）は自前実装せず `go-webauthn/webauthn` に委ねる。RP ID /
+許可 origin は deployment config 由来とし起動時に検証、attestation は none（プライバシ優先）、
+user verification は preferred、resident key は discouraged（本ステージは password + 第二要素 /
+step-up に限り、passwordless は対象外）。assertion 検証で保存済み sign_count 以下の値が返った
+場合（0-to-0 を除く）は credential clone の疑いとして拒否する。challenge は専用ストアを増やさず
+既存の ephemeral `SessionStore` に束縛する。
 
-### 1. WebAuthn は独立エンティティ・独立 ceremony として追加する
+`RecoveryCode`（`recovery_codes`、identity=`(user_id, code_hash)`）は hash-only・single-use・
+再生成は全置換とし、TOTP / WebAuthn 喪失時の backup に限定して `User.mfa_enrolled` の真値には
+数えない — backup を独立した第二要素として数えると、ユーザーが TOTP / passkey 無しで recovery
+code のみに依存する運用を招くため。`mfa_enrolled` は TOTP factor または WebAuthn credential が
+1 件以上存在することで導出する。第二要素成立で acr は `urn:idmagic:acr:mfa` へ昇格し、amr には
+WebAuthn 成立時に `webauthn`（RFC 8176 登録値）、recovery code 消費時に `rc`（本アプリ固有の
+非 IANA 値）を加える。
 
-`MfaFactor` に押し込まず、`WebAuthnCredential`（identity=`credential_id`、新テーブル
-`webauthn_credentials`）を新設し、1 ユーザーが複数 credential を登録できるようにする。
-COSE 公開鍵・sign_count・transports・aaguid・backup_eligible / backup_state・label を保持
-する。登録（attestation）と認証（assertion）は TOTP と別の use case・別 HTTP endpoint と
-して独立に定義する（`Start/FinishWebAuthnRegistration`・`StartBrowserWebAuthn`・
-`SubmitBrowserWebAuthn`）。ceremony の実装は `go-webauthn/webauthn` を用い、自前では
-署名検証・CBOR 解析を書かない。
-
-### 2. RP ID / origin 検証と attestation 方針
-
-RP ID と許可 origin は deployment config（環境変数 `WEBAUTHN_RP_ID` /
-`WEBAUTHN_RP_ORIGINS` / `WEBAUTHN_RP_DISPLAY_NAME`）由来とし、起動時に検証する。
-ceremony ごとに challenge / origin / RP ID / user handle をサーバー側で検証する。
-attestation は **none**（プライバシ優先）とし、機種を強制する enterprise attestation の
-厳格 enforcement は行わない。user verification は **preferred**、resident key
-（discoverable credential）は **discouraged**（password + 第二要素 / step-up 用途に限り、
-passwordless は対象外）。
-
-### 3. sign count 逆行は clone として拒否する
-
-assertion 検証時、保存済み sign_count 以下の値が返った場合（0 と 0 を除く逆行）は
-credential clone の疑いとして当該認証を拒否する。成功時は sign_count と last_used_at を
-更新する。
-
-### 4. challenge は既存 SessionStore に束縛し、新ストアを増やさない
-
-登録・認証の challenge（go-webauthn の SessionData）は、専用ストアを増やさず既存の
-ephemeral な `SessionStore`（memory / Valkey）へ、登録は sub、ログインは pending login
-session id をキーに短命保存する。
-
-### 5. recovery code は hash-only・single-use・set 全置換
-
-`RecoveryCode`（identity=`(user_id, code_hash)`、新テーブル `recovery_codes`）を新設する。
-平文は生成時に一度だけ表示し、DB には SHA-256 hex のみ保存する。1 コードは single-use で
-`consumed_at` を立てて再利用不可にする。再生成は既存 set を全置換する。recovery code は
-TOTP / WebAuthn 喪失時の backup であり、**単独では第二要素にしない**（`User.mfa_enrolled`
-の真値には数えない）。生成・再生成・失効は step-up を必須とする。
-
-### 6. mfa_enrolled は TOTP または WebAuthn の存在で導出する
-
-`User.mfa_enrolled` は「TOTP factor **または** WebAuthn credential が 1 件以上存在する」で
-導出する。TOTP / WebAuthn の解除時は残存要素に応じて再計算する。ログインの第二要素は
-選択式とし、enrolled 状態に応じて TOTP / passkey / recovery code から選べる。
-
-### 7. acr / amr への反映
-
-第二要素成立で acr は `urn:idmagic:acr:mfa` へ昇格する。amr には WebAuthn 成立時に
-`webauthn`（RFC 8176 登録値）を、recovery code 消費時に `rc` を加える。`rc` は RFC 8176 に
-登録が無いため、本アプリ固有（非 IANA）の amr 値であることを SCL / 本 ADR で明記する。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の WebAuthn/passkey MFA and recovery codes セクションにある。
 
 ## 却下した代替案
 

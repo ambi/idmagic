@@ -16,30 +16,21 @@ policy/retention 設定は ADR または `ARCHITECTURE.md` へ移すことを決
 
 ## 決定
 
-### 1. 署名鍵の最大有効期間 (旧 `SigningKeyMaxAge`)
+署名鍵の最大有効期間 (旧 `SigningKeyMaxAge`)、JWKS 最小重複期間 (旧 `SigningKeyMinJwksOverlap`)、
+署名鍵の監査保持期間 (旧 `SigningKeyArchiveRetention`) は、値そのものを変更せず本 ADR を正本として
+移す。いずれも強制点となる単一の interface `requires` / `ensures` を持たない運用方針であり、
+`SigningKey` model の field constraint のような単一 entity の制約でも表現できない複数レコードに
+またがる要件のため、SCL の `objectives` ではなく ADR に置く ([[ADR-103]])。具体的な日数・年数は
+[`backend/signingkeys/ARCHITECTURE.md`](../backend/signingkeys/ARCHITECTURE.md) に置く。
 
-有効な署名鍵はテナントごとに 90 日を超えない間隔で回転する。回転は運用ジョブが行い、
-`RotateTenantSigningKey` (手動即時回転) とは独立した定期処理。強制点となる単一の interface
-`requires` / `ensures` は存在しないため、本 ADR を正本とする。
-
-### 2. JWKS 最小重複期間 (旧 `SigningKeyMinJwksOverlap`)
-
-鍵を Verifying から Retired へ移す (`SigningKeyLifecycle` の `Retire` transition) までに、
-最低 7 日は新旧両鍵を JWKS に並存させる。
-
-### 3. 署名鍵の監査保持期間 (旧 `SigningKeyArchiveRetention`)
-
-`Archived` (終端状態) に達した鍵材料は、旧鍵で署名された監査トークンの検証のため 7 年間保持する。
-削除・完全消去用の独立した interface は現時点で存在しない。
-
-### 4. KeyProviderFailClosed の強制点は OAuth2 context に置く
-
-旧 `invariants.KeyProviderFailClosed` (「KeyProvider が到達不能なテナントでは新規署名をしない」)
-が実際に強制される箇所は、トークン発行を行う OAuth2 context の `Token` interface であり、
-SigningKeys context 自体は署名・発行 interface を持たない。SigningKeys は `provider_healthy`
-という観測可能な信号 (`TenantSigningKey.provider_healthy`、`ListTenantKeyHealth`) だけを所有し、
-fail-closed という判断・強制点は wi-210 T004/T007 で `spec/contexts/oauth2.yaml` の `Token.requires`
-と対応 scenario へ移す。
+旧 `invariants.KeyProviderFailClosed` の強制点は OAuth2 context の `Token` interface であり、
+SigningKeys context 自体は署名・発行 interface を持たない。SigningKeys が所有するのは
+`provider_healthy` という観測可能な信号 (`TenantSigningKey.provider_healthy`、
+`ListTenantKeyHealth`) だけであり、fail-closed という判断・強制点は wi-210 T004/T007 で
+`spec/contexts/oauth2.yaml` の `Token.requires` と対応 scenario へ移す。強制点のない context に
+normative behavior を残すと所有 context と実装が乖離するため、SigningKeys 内の scenario として
+保持する案は退けた。この整理も
+[`backend/signingkeys/ARCHITECTURE.md`](../backend/signingkeys/ARCHITECTURE.md) に反映している。
 
 ## 却下した代替案
 

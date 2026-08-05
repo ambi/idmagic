@@ -15,16 +15,9 @@ created_at: 2026-07-04
 
 `scl.yaml` の `objectives.HealthProbe` / `objectives.ReadinessCheck` / `objectives.GracefulDrain` と該当ソースに反映。
 
-1. **プローブの分離**:
-   - `/livez`（Liveness）: 自己回復不能なデッドロック等のみで 500/503 エラーを返す。一時的な DB/Valkey 瞬断では 200 OK を返す。
-   - `/readyz`（Readiness）: PostgreSQL・Valkey 等の必須依存への到達性（Ping）を並列・短タイムアウト（既定 1s）で実行し、すべて接続可能なら 200 OK を返す。接続障害時は 503 を返す。
-   - `/startupz`（Startup）: アプリケーション初期化完了（シードデータ確認など）後に 200 OK を返す。
-   - 既存 `/health` は互換性のために起動構成ラベルを返すエンドポイントとして維持する。
-2. **Readiness の詳細表示**:
-   - `/readyz?verbose` クエリパラメータが指定された場合は、各依存関係（`postgres` や `valkey`）の状態語彙（`healthy` / `degraded` / `unavailable`）を含めた詳細 JSON を返す。
-3. **Graceful Drain の実装**:
-   - SIGTERM または SIGINT を受信した際、グローバルなシャットダウンフラグをセットし、`/readyz` プローブが即座に `503 Service Unavailable`（`unavailable`）を返すようにする。
-   - その後、ロードバランサが対象 Pod をトラフィックルーティングから外す時間を確保するため、ドレイン猶予期間（既定 5秒、`DRAIN_GRACE_PERIOD_SECONDS` 環境変数でカスタマイズ可能）だけ待機してから HTTP サーバのシャットダウン処理（`e.Shutdown`）を開始する。
+`/health` を liveness と readiness で共用するのをやめ、`/livez`（生存性）・`/readyz`（トラフィック受入可否、`?verbose` で依存ごとの状態語彙を返す）・`/startupz`（起動完了）に分離する。SIGTERM/SIGINT 受信時は `/readyz` を即座に unready へ落とし、ドレイン猶予期間（既定 5秒、`DRAIN_GRACE_PERIOD_SECONDS`）だけ待ってからサーバをシャットダウンする。一時的な DB/Valkey 瞬断が不要な再起動ループと、接続不全 Pod への継続的なトラフィックルーティングの両方を同時に引き起こしていたことが理由で、却下した代替案（`/health` の共用継続）はこの二重の障害を残す。
+
+現在のメカニズムの詳細（各エンドポイントの判定基準、ドレインの手順）は [ARCHITECTURE.md](../ARCHITECTURE.md) の Runtime Composition「Health probes and graceful drain」を参照。
 
 ## 却下した代替案
 - **`/health` エンドポイントを readiness と liveness で共用し続ける案**:

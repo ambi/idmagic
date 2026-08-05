@@ -23,68 +23,17 @@ verify と同じ部品を再利用しつつ、認証されていない攻撃者�
 
 ## 決定
 
-`spec/scl.yaml` の `objectives.PasswordResetTokenLifetime` /
-`events.PasswordResetRequested` / `interfaces.RequestPasswordReset` /
-`interfaces.ResetPasswordWithToken` と
-`src/authentication/usecases/request-password-reset.ts` /
-`src/authentication/usecases/reset-password-with-token.ts` の双子に反映。
+32 バイト乱数トークンを発行し、DB には SHA-256 hash のみ保管する (流出時に再現不可)。TTL は
+30 分 — OWASP "Forgot Password Cheat Sheet" / NIST の "short-lived" 条件と、email 確認の現実的な
+所要時間の中間。`consume(token)` は原子的に削除するシングルユースとする。認証されていない攻撃者の
+入口になるため anti-enumeration を徹底する: 要求エンドポイントは email の登録有無・verified 状態に
+関わらず常に 204 を返し、email 送信は best-effort（送信失敗をユーザに返さない fail-open）とする。
+`email_verified=true` の user にだけ送る — 検証されていない email に送ると self-registration 導入後
+に他人の email を使った乗っ取り経路になる。新パスワードは change-password と同じ検証パイプライン
+(履歴・漏洩チェック) を通す。
 
-1. **トークン**: 32 バイト乱数 → base64url 文字列。
-   - URL / email にだけ生 token を載せる。
-   - DB / store には SHA-256 hash で保管。流出時に再現できない。
-   - 1 件 1 sub。同 sub に未消費トークンが残っていれば古いものを失効させる。
-
-2. **TTL = 30 分**。OWASP "Forgot Password Cheat Sheet" / NIST SP 800-63B-4
-   の "short-lived" 条件と整合する。30 分は届いた email を確認して操作する
-   現実的な時間と、流出時の窓を狭める要求の中間。
-
-3. **シングルユース**: `consume(token)` は原子的に削除して record を返す。
-   再利用は無効。失敗時 (policy 違反など) は token も失効済みになるため、
-   ユーザは「新しい reset リンクを送る」操作からやり直す。
-
-4. **anti-enumeration**:
-   - `POST /api/auth/forgot_password` は **常に 204** で返す。email が
-     未登録 / `email_verified=false` / typo どれでも区別がつかない応答。
-   - `POST /api/auth/reset_password` は token の有効性のみ判定し、
-     username / email を露呈しない。
-   - email 送信は **best effort**: 送信失敗をユーザに直接返さない
-     (ConsoleEmailSender でも本物の SMTP でも同じ抽象)。送信は audit log
-     にだけ残す。
-
-5. **`email_verified=true` を要求**:
-   - 検証済み email を持つ user にだけリセットリンクを送る。
-   - self-registration のない現状でも、admin 経由 / seed の demo user は
-     `email_verified=true` で配布される。
-   - email verification flow が後で入った時点で同じガードが効く。
-
-6. **新パスワード適用パイプライン**:
-   - reset 時の new_password は change-password と同じ
-     `validatePasswordAsync` + `PasswordHistoryRepository.recent` +
-     `BreachedPasswordChecker` を通す。
-   - 成功時 `PasswordChanged` を emit (既存イベント再利用)。
-   - history への追加もまったく同じ。change-password との違いは
-     「current_password verify がなく token consume に置き換わる」点だけ。
-
-7. **EmailSender port**:
-   - `sendEmail({ to, subject, text, html? }): Promise<void>`
-   - 既定 adapter: `ConsoleEmailSender` (stdout + `EmailSent` event 発火で
-     demo / dev で email 内容を確認できる)。
-   - 失敗は use case に伝播させない (fail-open)。送信失敗は audit / metric
-     で監視。リセット token は失効まで再送可能。
-   - SMTP / HTTP プロバイダ adapter は別 ADR。本 ADR では port と Console
-     adapter のみ。
-
-8. **per-email rate limit**:
-   - 同一 email への過剰な reset 要求は spam・SIEM ノイズになる。
-   - 本 ADR では **入れない**。ADR-029 の `LoginAttemptThrottle` 再利用が
-     筋なので、独立の Phase で `password-reset` kind を足す。
-
-9. **トークン保管テーブル**:
-   - `password_reset_tokens(sub, token_hash, created_at, expires_at,
-     consumed_at)`。
-   - `ON DELETE CASCADE` で users(sub) に紐付け。
-   - 古い consumed/expired 行は GC ジョブで掃く (本 ADR では cron なし、
-     INSERT 時に同 sub の未消費を失効させる軽い掃除のみ)。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Password lifecycle セクションにある。
 
 ## 影響
 

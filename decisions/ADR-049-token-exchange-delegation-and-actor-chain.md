@@ -38,43 +38,22 @@ workload federation ([[wi-54-workload-identity-federation-spiffe]])・Cross-App 
 ([[wi-57-cross-app-access-identity-assertion-grant]]) すべての交換基盤となる。
 
 1. **token-exchange grant を実装する**。`/token` に `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`
-   (RFC 8693) を追加する。`subject_token` / `subject_token_type` を必須、`actor_token` /
-   `actor_token_type` を委譲時に受理する。対応 token type は `access_token` を主とし、
-   identity assertion 用に `id_token` / `urn:ietf:params:oauth:token-type:jwt` を subject に許可する
-   ([[wi-57-cross-app-access-identity-assertion-grant]] の起点)。
-
-2. **既定は delegation、impersonation は明示許可時のみ**。既定では交換後トークンの `sub` を
-   元ユーザーのまま保ち、現在の actor を `act` で表す。impersonation (actor を `sub` に置換し
-   `act` を残さない) は、client / agent が明示的に許可されている場合に限り行う。判定漏れは
-   delegation 側 (痕跡を残す側) に倒す。
-
-3. **`act` チェーンで委譲を表現する**。delegation 時、結果トークンの `act` claim に直近の actor を
-   置き、過去の actor を `act` のネストで連ねる (RFC 8693 §4.1: 最外が現在の actor、内側が過去)。
-   actor の主体は [[ADR-048]] の `Agent` を担い手とする。サブエージェントへの再交換では、元の
-   `act` を内側へ畳んで新しい actor を最外に積む。
-
-4. **`may_act` とポリシーで委譲を制御する**。subject token / 登録情報に `may_act` がある場合は、
-   要求 actor がそれに合致するときのみ交換を許す。加えて [[ADR-010]] の AuthZEN ポリシーで
-   「この client / agent が、この actor・audience・depth の交換を要求してよいか」を判定する。
-   いずれも満たさない交換は拒否する (fail-closed)。
-
-5. **Resource Indicators (RFC 8707) で audience を必須限定する**。交換要求は `resource` (または
-   `audience`) を必須とし、結果トークンの `aud` を 1 つの resource に限定する。最小権限のため
-   1 トークン = 1 resource を既定とし、別 resource では検証時に弾く。
-
-6. **最大委譲深さを設ける**。`act` のネスト深さに上限 (既定値を本 ADR で定め、`TenantSettings` で
-   override 可) を課し、超過する再交換は拒否する。
-
-7. **交換後トークンは短命・refresh なしを既定とする**。token-exchange は refresh token を発行せず、
-   継続が必要なら再交換させる ([[ADR-004]] の rotation とは別経路)。これにより委譲を時間的に
-   bounded に保ち、失効 ([[wi-58-continuous-access-evaluation-agent-revocation]]) を効かせやすくする。
-
-8. **sender constraint を引き継ぐ**。subject token / 要求元が DPoP 束縛されている場合 ([[ADR-005]])、
-   交換後トークンは要求元の鍵に `cnf` で束縛する。所有証明を交換で外さない。
-
+   (RFC 8693) を追加する。
+2. **既定は delegation、impersonation は明示許可時のみ**。判定漏れは delegation 側
+   (痕跡を残す側) に倒す。
+3. **`act` チェーンで委譲を表現する**。actor の主体は [[ADR-048]] の `Agent` を担い手とする。
+4. **`may_act` とポリシーで委譲を制御する**。いずれも満たさない交換は拒否する (fail-closed)。
+5. **Resource Indicators (RFC 8707) で audience を必須限定する**。最小権限のため 1 トークン =
+   1 resource を既定とする。
+6. **最大委譲深さを設ける**。既定値を本 ADR で定め、`TenantSettings` で override 可とする。
+7. **交換後トークンは短命・refresh なしを既定とする**。継続が必要なら再交換させる
+   ([[ADR-004]] の rotation とは別経路)。
+8. **sender constraint を引き継ぐ**。subject token が DPoP 束縛されている場合 ([[ADR-005]])、
+   交換後トークンも要求元の鍵に `cnf` で束縛する。
 9. **観測と監査**。`TokenExchanged` / `DelegationChainExtended` / `TokenExchangeRejected` を
-   emit し ([[ADR-018]])、`/introspect` / `/userinfo` は `act` チェーンを表示できるようにする。
-   新規 permission `TokenGrantTokenExchange`。
+   emit する ([[ADR-018]])。新規 permission `TokenGrantTokenExchange`。
+
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 影響
 

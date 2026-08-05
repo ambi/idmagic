@@ -37,12 +37,11 @@ idmagic は現状 `User` と `OAuth2Client` (machine 用の client_credentials �
 ([[wi-59-agent-governance-guardrails-audit-inventory]]) の土台となる。
 
 1. **`Agent` 集約を新規導入する**。`User` / `OAuth2Client` とは別の第一級プリンシパル種別とする。
-   フィールドは `(id, tenant_id, display_name, kind, status, owner, purpose, created_at,
-   updated_at, disabled_at?, killed_at?)`。`id` は URL-safe slug。`kind` は
-   `autonomous` | `supervised`。
+   現在のフィールド定義は
+   [`backend/idmanagement/ARCHITECTURE.md`](../backend/idmanagement/ARCHITECTURE.md) に置く。
 
 2. **資格情報は新設せず既存の `OAuth2Client` を流用する**。`Agent` は資格情報プリミティブを
-   持たず、1 つ以上の既存 `OAuth2Client` 登録に束縛する (`AgentCredentialBinding`)。
+   持たず、既存の `OAuth2Client` 登録に束縛する (束縛の設計は同ドキュメントに置く)。
    自律ワークロードとしての発行は `client_credentials` ([[ADR-008]]) を、ユーザー代行は
    token exchange の subject / actor ([[wi-50-token-exchange-delegation-actor-chain]]) を経路に使う。
    `Agent` は所有・統制・来歴の層に限定する。
@@ -56,11 +55,10 @@ idmagic は現状 `User` と `OAuth2Client` (machine 用の client_credentials �
    エージェント発行トークンを判別でき、委譲時は actor チェーン ([[wi-50]]) がエージェントを actor として担う。
    既存トークン消費側を壊さないため拡張は optional のみとする ([[ADR-012]])。
 
-5. **ライフサイクルと kill-switch を fail-closed に強制する**。`status` は
-   `active` | `disabled` | `killed`。トークン発行経路でエージェント status を確認し、
-   `disabled` / `killed` には新規トークンを発行しない。`disable` は可逆な運用停止、`kill` は
-   緊急停止の一方向操作で、既発行トークンの失効 ([[wi-58]]) を伴う。判定漏れがあっても
-   「発行しない」側へ倒す。
+5. **ライフサイクルと kill-switch を fail-closed に強制する**。`status` の定義、`disable` /
+   `kill` の意味、トークン発行経路での fail-closed ゲートの設計は
+   [`backend/idmanagement/ARCHITECTURE.md`](../backend/idmanagement/ARCHITECTURE.md) に置く。
+   既発行トークンの失効は [[wi-58]] が扱う。
 
 6. **テナントスコープに従う**。`Agent` の登録・参照・操作・束縛は tenant-scoped とする
    ([[ADR-032]] / [[ADR-034]])。cross-tenant なエージェント所有は認めない。
@@ -70,6 +68,10 @@ idmagic は現状 `User` と `OAuth2Client` (machine 用の client_credentials �
 
 8. **認可は AuthZEN とロールに従う**。エージェント CRUD と kill-switch は新規 permission
    `AdminAgentsManage` で保護し、判定は [[ADR-010]] の `authorize()` 経由とする。
+
+OAuth2 側（principal type marker、status のトークン発行ゲート、token exchange における actor
+としての扱い）の現在の設計は
+[`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 影響
 

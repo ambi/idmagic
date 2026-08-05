@@ -19,39 +19,15 @@ OAuth 2.0 はクライアント認証方式を複数定義しており、それ�
 
 ## 決定
 
-以下の 5 方式をすべてサポートする:
+以下の 5 方式をすべてサポートする: `private_key_jwt`（一般的な confidential クライアントに推奨）、
+`tls_client_auth`（FAPI / B2B、mTLS PKI を持つ組織に推奨）、`none`（public クライアントに必須）、
+`client_secret_post` / `client_secret_basic`（レガシー confidential 移行用、許容〜非推奨）。
+`client_secret_jwt`（HMAC-SHA256 共有鍵方式）は実装しない — `private_key_jwt` の非対称署名の
+ほうが鍵漏洩時の被害が小さく、両方を持つのは冗長なため。クライアント認証が失敗したときは
+常に `401 invalid_client` とし、`client_id` が登録されているかどうかを開示しない
+（`requirements.md §8`）。
 
-| 方式                   | 用途                             | 推奨度       |
-|-----------------------|----------------------------------|--------------|
-| `private_key_jwt`     | 一般的な confidential クライアント | ★★★ 推奨    |
-| `tls_client_auth`     | FAPI / B2B (mTLS PKI を持つ組織) | ★★★ 推奨    |
-| `none`                | public クライアント (SPA/native) | ★★★ 必須    |
-| `client_secret_post`  | レガシー confidential 移行用     | ★★ 許容    |
-| `client_secret_basic` | レガシー confidential 移行用     | ★ 非推奨   |
-
-## なぜ `client_secret_*` を残すか
-
-- 既存クライアントの段階的移行のため。すべてを `private_key_jwt` に移行するには
-  数年単位の運用変更が必要
-- ただし新規クライアントには `private_key_jwt` または `tls_client_auth` を強く推奨する
-
-## なぜ `client_secret_jwt` を実装しないか
-
-`client_secret_jwt` は HMAC-SHA256 を共有鍵で行う方式。
-非対称署名のほうが鍵漏洩時の被害が小さく、運用上の利点も大きい。
-`private_key_jwt` を採用するなら `client_secret_jwt` は冗長なので実装しない。
-
-## 認証失敗時の応答ポリシー
-
-クライアント認証が失敗したときは:
-
-- HTTP `401`
-- `error: invalid_client`
-- **client_id が登録されているかどうかを開示しない**
-
-これは `requirements.md §8` で EARS として記述する。
-タイミング攻撃を防ぐため、未登録 client_id でも認証検証のラウンドトリップを
-等価な時間かけて実行する（実装メモ）。
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 却下した代替案
 

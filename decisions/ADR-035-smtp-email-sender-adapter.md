@@ -19,90 +19,19 @@ hardcode しており、idmagic を本番環境にデプロイしても forgot-p
 
 ## 決定
 
-`idmagic/internal/adapters/notification/smtp_email_sender.go` と
-`internal/bootstrap` の `EMAIL_SENDER` / `SMTP_*` 環境変数で実装。`EmailSender`
-port の SCL バインディングは変更しない。
+`EmailSender` port の本番 adapter は SMTP のみを採用し、プロバイダ別 HTTP SDK は採用しない —
+主要プロバイダ (SendGrid / Resend / Mailgun / Postmark / AWS SES) は全て SMTP relay を公式提供して
+おり、SMTP 1 本で到達できる範囲に対して、プロバイダごとの依存・認証情報形・error 形の増加は
+port の抽象に見合わない。認証は PLAIN 1 方式のみを、TLS (implicit / starttls) の下でだけ許可する
+(CRAM-MD5 / LOGIN / OAUTHBEARER は非採用) — 複数 auth 方式のサポートは adapter を肥大化させる
+一方、主要プロバイダはすべて PLAIN over TLS で足りる。送信失敗は ADR-030 の fail-open 方針を継承し、
+use case には伝えず戻り値の bool で表現する。retry / queue は adapter 内に持たない — fail-open の
+方針上、失敗の吸収は use case 側の「再送リンク要求」UX に委ねる。メール本文は CRLF/NUL 除去・
+HTML エスケープ・件名 RFC 2047 エンコードで正規化し、利用者由来の文字列がヘッダ注入や内容注入の
+経路にならないようにする。
 
-1. **SMTP のみ採用。HTTP-only プロバイダ専用 SDK は採用しない。**
-   - SendGrid / Resend / Mailgun / Postmark / AWS SES は全て SMTP relay を
-     公式に提供する。SMTP 1 本で主要プロバイダ + 社内 SMTP まで到達できる。
-   - HTTP API (SendGrid REST 等) を 1 つ採用するごとに、(i) 依存・SDK の更新
-     負担、(ii) 認証情報の形 (API key の置き場所)、(iii) error 形が増える。
-     port の抽象 (`SendEmail(...) bool`) に対して便益が見合わない。
-   - 将来 HTTP-only な配送経路が必要になったら、本 ADR を上書きする ADR を
-     起こす。
-
-2. **TLS 戦略**: 環境変数 `SMTP_TLS` で 3 モードを選ぶ。
-   - `starttls` (既定): 平文で接続 → `EHLO` → `STARTTLS` で昇格 → 認証。
-     プロバイダ標準ポート 587 を想定。
-   - `implicit`: 接続時から TLS。ポート 465 を想定 (SMTPS)。
-   - `none`: 平文のまま。**開発用** だけを意図する。dev compose の mailpit
-     などローカル SMTP に向けるためのみ存在。
-
-3. **認証ポリシー**: `SMTP_USERNAME` を設定したときだけ AUTH を実行する。
-   - `smtp.PlainAuth` を使う。
-   - **PLAIN auth は TLS (implicit / starttls) の下でだけ許可する**。
-     `SMTP_TLS=none` かつ `SMTP_USERNAME` 指定の組み合わせは起動時には
-     reject せず実行時に Send を fail させる。設定ミスを早期に検知させる。
-   - CRAM-MD5 / LOGIN / OAUTHBEARER は採用しない。主要プロバイダはすべて
-     PLAIN over TLS をサポートし、複数 auth 方式をサポートすると adapter が
-     肥大化するため、PLAIN 1 本に絞る。
-
-4. **From / Reply-To の決め方**: `SMTP_FROM` を必須環境変数とし、RFC 5322
-   の `From:` ヘッダ・SMTP `MAIL FROM` の両方に同値を用いる。
-   - 値は bare address (`noreply@example.com`) を期待する。display name 付き
-     (`"idmagic" <noreply@example.com>`) はサポートしない (parse の余地を持たず
-     設定ミスを減らす)。
-   - `Reply-To` は提供しない (リセットメールに返信させる経路が無いため)。
-     必要になった ADR を改訂する。
-
-5. **送信失敗時の fail-open ポリシー**: ADR-030 §7 と整合させ、SMTP
-   エラーは use case に伝えず `SendEmail` の戻り値 `false` で表現する。
-   呼び出し側はそれを使い `EmailSent` event の `delivered` フィールドだけを
-   切り替える。ユーザ向け HTTP 応答は常に 204 で、送信成否を漏らさない。
-   失敗内容はサーバログに出す (構造化ログでも SMTP_PASSWORD は決して出さない)。
-
-6. **timeout / retry 方針**:
-   - 接続 + 各コマンドに統一の deadline を当てる。既定 10 秒。
-     `SMTP_TIMEOUT_SECONDS` で上書きできる。
-   - retry は adapter 内で**行わない**。fail-open の方針上、失敗は use case
-     側の「再送リンク要求」UX で吸収する。queue / outbox を adapter 内に
-     抱えると複雑化し、メール固有の冪等性 (Message-ID) 設計まで巻き込む。
-
-7. **`Message-ID` / `Date` ヘッダ**: adapter で都度生成する。
-   - `Date`: 送信時の UTC 時刻を RFC 1123Z 形式。
-   - `Message-ID`: ランダム 16 バイト hex + `@` + `SMTP_FROM` の domain 部。
-     receiving MTA で重複扱いされないよう毎送信ユニークにする。
-
-8. **multipart**:
-   - `EmailMessage.Text` のみ → `text/plain; charset=utf-8`。
-   - `EmailMessage.HTML` のみ → `text/html; charset=utf-8`。
-   - 両方 → `multipart/alternative` で plain → html の順に並べる
-     (RFC 2046 §5.1.4 で最後の part が推奨表示)。
-   - 添付ファイルはサポートしない (リセット / 検証メールに不要)。
-
-9. **件名の文字符号化**: `mime.QEncoding.Encode("utf-8", subject)` を使い
-   ASCII 範囲外を RFC 2047 encoded-word に変換する。本文は正規化後に
-   `base64` Content-Transfer-Encoding で配送する。SMTP DATA 上に利用者由来の
-   CRLF、ヘッダ風行、HTML 断片を直接出さず、メール内容注入の静的解析
-   (CodeQL `go/email-injection`) でも検証できる形にするため。
-
-10. **秘密情報の取り扱い**:
-    - `SMTP_PASSWORD` は環境変数だけで受け取る。設定ファイル経路は提供しない。
-    - SMTP_PASSWORD を含む config struct は構造化ログに渡さない (`%v` でも
-      展開しない設計とし、テストで担保する)。
-    - OTel 属性にも乗せない。
-
-11. **メール内容の正規化**:
-    - `From` / `To` ヘッダは `net/mail` で parse できる address のみ出力する。
-    - `Subject` は CR / LF を空白へ正規化し、ヘッダ注入を許さない。
-    - `Text` は CRLF へ改行を正規化し、NUL を除去する。
-    - `HTML` は任意 HTML を信頼して配送しない。本文文字列を
-      `html.EscapeString` でエスケープし、HTML メール上の表示テキストとして
-      扱う。将来、装飾済み HTML テンプレートを必要とする場合は、許可タグ /
-      許可属性ベースのサニタイザ導入を別 ADR で判断する。
-    - 正規化済み `Text` / `HTML` は MIME part ごとに Base64 化し、76 文字で
-      CRLF 折り返しする。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Password lifecycle セクションにある。
 
 ## 影響
 

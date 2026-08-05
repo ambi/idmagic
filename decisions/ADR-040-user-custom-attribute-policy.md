@@ -18,52 +18,20 @@ Keycloak UserProfile / Okta Custom Profile / Google customSchemas 相当。
 
 wi-19 の基盤 (PR i)。[[ADR-039]] の attribute bag を統治する。
 
-1. **2 階建ての属性定義**。属性は `UserAttributeDef` で定義し、出所を 2 つ持つ。
-   - **組み込みカタログ** `BuiltinUserAttributeDefs()` (コード、全テナント共通)。
-     OIDC §5.1 optional claim と SCIM enterprise:User 拡張相当の組織属性を
-     定義する。OIDC claim は `claim_name` + `oidc_scope` + `visibility:
-     ClaimExposed` を持ち、組織属性は `visibility: AdminReadable` で claim
-     露出しない。
-   - **tenant 定義** `TenantUserAttributeSchema` (独立 aggregate、identity:
-     `tenant_id`)。tenant 固有の custom 属性を足す。tenant aggregate には
-     embed せず別 aggregate とする理由は、(a) schema 変更が tenant 本体より
-     頻繁、(b) 後続 PR で別テーブル化したい、(c) tenant 削除時の cascade を
-     明示したい、ため。tenant 削除時は
-     `TenantUserAttributeSchemaRepository.Delete(tenantID)` で cascade する
-     ([[ADR-034]] のテナント境界に従い全テーブルが `tenant_id` を持つ)。
-   - 実効定義 = 組み込み ∪ tenant。custom key が組み込み key と衝突する schema
-     は拒否する。
+属性は `UserAttributeDef` で定義し、組み込みカタログ (コード、全テナント共通) とテナント定義
+`TenantUserAttributeSchema` (独立 aggregate、`tenant_id` をキーとする) の 2 階建てで持つ。実効定義は
+組み込み ∪ テナント定義とし、custom key が組み込み key と衝突する schema は拒否する。各定義は
+`key` / `type` / `required` / `editable_by_user` / `claim_name` / `oidc_scope` / `visibility`
+(`private` / `self_readable` / `admin_readable` / `claim_exposed`) / `pii` (省略時 true) を持つ。
+`ValidateAttributes` が実効定義に対して値を検証し、self-service 経路は `editable_by_user=true` の
+属性のみ key 単位で merge する。`pii=true` の属性値は [[ADR-018]] に従い SHA-256 hash 化する。
 
-2. **`UserAttributeDef` のフィールド**。
-   - `key`: **snake_case、英字始まり** (`^[a-z][a-z0-9_]{0,62}$`)。
-   - `type`: `string` / `number` / `boolean` / `date` / `string_array`
-     (`AttributeValue` の sum type discriminator と一致)。
-   - `multi_valued`: `type == string_array` のときのみ true になる規約。
-   - `required`: 必須か。
-   - `editable_by_user`: self-service 経路で end-user が編集できるか
-     (false なら admin 専用)。
-   - `claim_name` / `oidc_scope`: 露出する OIDC claim 名と、それを解禁する
-     scope。`visibility == ClaimExposed` のときに効く。
-   - `visibility`: `private` / `self_readable` / `admin_readable` /
-     `claim_exposed` の 4 段。**`claim_exposed` のみ** RP に開示できる。
-   - `pii`: PII 扱いするか。**省略時 true** (安全側 default)。
-
-3. **値検証フロー**。`User.attributes` を保存する際、実効定義に対して
-   `ValidateAttributes` で検証する。
-   - 定義に無い key は拒否。
-   - `required` な属性の欠落は拒否。
-   - 値の `type` が定義の `type` と一致しない場合は拒否。
-   - `AttributeValue` は Type が示すフィールドだけが設定されている
-     (sum type の単一充足) ことを保証する。
-   self-service 経路 (`UpdateUserProfile` / `/api/account/profile`) は加えて
-   `editable_by_user=true` の属性しか触れず、属性は key 単位の merge で admin
-   管理属性を保持する。`self_readable` / `claim_exposed` のみ self に開示する。
-
-4. **PII と監査の切り替え**。`pii=true` の属性値は [[ADR-018]] に従い保管・
-   監査で **SHA-256 hash 化**する。`pii=false` のみ平文を許す。default が
-   true なので、明示的に false にしない限り常に hash 化される。GDPR 上の
-   sensitive attribute を schema に定義するかは tenant 側の運用責任とし、
-   本システムは hash 化で最小限の防御を提供する。
+tenant aggregate に embed せず独立 aggregate とするのは、schema 変更が tenant 本体より頻繁で
+あること、後続 PR で別テーブル化したいこと、tenant 削除時の cascade を明示したいこと、による。
+`pii` を省略時 true とするのは、GDPR 上の sensitive attribute かどうかの判断は tenant の運用責任と
+しつつ、システム側は安全側 default で最小限の防御を提供するためである。属性定義フィールドの詳細と
+値検証フローは [`backend/idmanagement/ARCHITECTURE.md`](../backend/idmanagement/ARCHITECTURE.md) に
+置く。
 
 ## 影響
 

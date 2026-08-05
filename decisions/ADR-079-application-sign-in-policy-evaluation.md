@@ -13,14 +13,19 @@ idmagic は Application への割当を protocol binding ごとに fail-closed �
 
 ## 決定
 
-Application context の `models.AppSignInPolicy`、`models.RequiredAuthnStrength`、`interfaces.GetAppSignInPolicy`、`interfaces.UpdateAppSignInPolicy`、`invariants.AppPolicyFailClosed`、`invariants.AppPolicyEvaluatedAcrossProtocols` に反映。wi-114 で「サインオンポリシー」から「サインインポリシー」へ改称し、条件を実際に評価できる構造化条件へ制約した。
+Application context の `models.AppSignInPolicy`、`models.RequiredAuthnStrength`、`interfaces.GetAppSignInPolicy`、`interfaces.UpdateAppSignInPolicy`、`invariants.AppPolicyFailClosed`、`invariants.AppPolicyEvaluatedAcrossProtocols` に反映。wi-114 で「サインオンポリシー」から「サインインポリシー」へ改称し (UI 文言から DB テーブル名まで `SignOn` → `SignIn` へ統一)、条件を実際に評価できる構造化条件へ制約した。
 
-1. ApplicationCatalog が `AppSignInPolicy` を tenant/application 単位で所有する。「サインインポリシー」に改称し、UI 文言・API description に加えて内部識別子 (SCL entity / interface / DTO 名、HTTP パス `/sign-in-policy`、DB テーブル `application_sign_in_policies`、監査イベント `AppSignInPolicyUpdated`) まで `SignOn` → `SignIn` に統一する。
-2. policy は `SignInRule` の順序付き集合として保存する。要求認証強度は自由文字列ではなく制約 enum `RequiredAuthnStrength` (`Password` / `Mfa`) とし、内部の acr URN (`urn:idmagic:acr:pwd` / `urn:idmagic:acr:mfa`) と amr へ 1:1 で写像する。`Password` は追加要求なし、`Mfa` は第二要素必須。
-3. 静的アクセス条件は初期実装で実際に評価できる構造化条件のみとする。`reauth_max_age_seconds` は認証または step-up の recency として評価し、`network_allow_cidrs` はクライアント IP を許可 CIDR に突き合わせて評価する。CIDR の妥当性は保存時に検証する。
-4. 旧 `network` / `device` の自由入力は廃止する。device 条件の実体 (MDM / attestation) は将来 WI とし、入力点も設けない。
-5. 評価点は既存の Application 割当ゲートと同じ federation 開始経路に置き、token / assertion 発行前に必ず通す。クライアント IP も全経路 (OIDC / SAML / WS-Fed) で評価器に渡す。
-6. 評価は fail-closed とする。要求認証強度を step-up で満たせる不足は既存の step-up 導線へ誘導する (OIDC)。SAML / WS-Fed は初期実装では protocol transaction を停止し、明確な拒否理由を返す。許可 CIDR 非空でクライアント IP が一致しない、または IP を取得できない場合は step-up ではなく拒否する。
+ApplicationCatalog が `AppSignInPolicy` を tenant/application 単位で所有し、`SignInRule` の順序付き
+集合として保存する。要求認証強度は自由文字列ではなく制約 enum `RequiredAuthnStrength`
+(`Password` / `Mfa`) とし、アクセス条件は実際に評価できるもの (`reauth_max_age_seconds` の
+recency 評価、`network_allow_cidrs` の CIDR 突き合わせ) だけを残す。旧 `network` / `device` の
+自由文字列入力は、設定できるのに実際には評価されない見せかけの項目だったため廃止した ——
+free-text のまま残す代替案は fail-open/fail-closed いずれでも管理者の意図とズレるため却下し、
+各 protocol context が独自に policy を持つ代替案は評価条件や失敗挙動が分岐し迂回を招くため
+却下した。評価は既存の Application 割当ゲートと同じ federation 開始経路で fail-closed に行う。
+
+評価点の配置、OIDC/SAML/WS-Fed 各経路での挙動、CIDR 未一致時の扱いの詳細は
+[`backend/application/ARCHITECTURE.md`](../backend/application/ARCHITECTURE.md) に置く。
 
 ## 却下した代替案
 - 名称・識別子を "sign-on policy" のまま温存する: Okta / Ping レガシー寄りの語で、アプリの支配的語彙「ログイン / サインイン」とずれ、管理者の理解負荷が残る。

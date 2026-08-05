@@ -21,24 +21,20 @@ Registration や trust 管理 API から作られ、catalog に掲載されな�
 ## 決定
 
 一つの Application は weblink なら protocol を持たず、federated / service なら作成時に確定した
-一種類の protocol 設定を一つだけ持つ。後からの接続、解除、種別変更は提供しない。
-
+一種類の protocol 設定を一つだけ持つ。後からの接続、解除、種別変更は提供しない — 実際の
+作成・編集・利用フローで一つの Application が複数 protocol を持つユースケースがないため。
 OAuth2 client、SAML service provider、WS-Fed relying party は既存の protocol 固有 primary key を
-維持し、nullable かつ unique な `application_id` を持つ。非 NULL の値は tenant と固定
-protocol discriminator を含む複合外部キーで Application を参照する。これにより、同じ Application
-への複数設定、異なる protocol table からの重複参照、tenant / 種別の不一致をデータベース制約で
-拒否する。NULL は catalog 外設定を表す。
+維持したまま nullable かつ unique な `application_id` を追加し、tenant と protocol
+discriminator を含む複合外部キーで参照整合性をデータベース制約に落とす。汎用
+`application_protocol_bindings` テーブルで多対多をモデル化する代替案は、実在しない多対多と
+attach/detach lifecycle を持ち込み、単一・不変という業務制約に対して自由度が高すぎるため
+却下した。NULL は Dynamic Client Registration や trust 管理 API から作られる catalog 外設定を
+表す — protocol 設定すべてに Application を必須化する代替案は、そうした catalog 外設定に意味の
+薄い Application record を強制するため却下した。OAuth2 の物理テーブル名は汎用的な `clients` から
+`oauth2_clients` へ変更し、SAML / WS-Fed の protocol 固有な既存テーブル名と揃える。
 
-一括作成では protocol 設定をまず catalog 外 record として準備し、Application insert と
-`application_id` relation の設定を一つの transaction で commit して catalog へ公開する。後半が
-失敗しても意味のない Application は残らず、protocol record は正当な catalog 外設定として扱える。
-Application 削除は関連 protocol 設定へ cascade する。Application に所有された protocol 設定を
-低レベル管理 API から直接削除する操作は conflict として拒否する。
-
-OAuth2 の物理テーブル名は汎用的な `clients` から `oauth2_clients` へ変更する。SAML と WS-Fed は
-protocol 用語として一般的で既存 API / domain language と一致する
-`saml_service_providers` / `wsfed_relying_parties` を維持する。protocol 中立に設計された
-`provisioning_*` table も変更しない。
+二相コミットによる作成手順、cascade delete、低レベル API からの直接削除拒否の詳細は
+[`backend/application/ARCHITECTURE.md`](../backend/application/ARCHITECTURE.md) に置く。
 
 ## 却下した代替案
 

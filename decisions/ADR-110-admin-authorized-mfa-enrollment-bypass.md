@@ -15,20 +15,19 @@ MFA 必須ポリシーを有効にした時点で factor を持たないユー�
 
 ## 決定
 
-- MFA 強制開始前は password session を成立させ、通常の step-up 付き account security 画面で
-  事前登録を促す。
-- 強制開始後の未登録ユーザーは、ポリシーが管理者承認オンボーディングを許可し、猶予期限内で、
-  対象ユーザーに未消費・未取消・期限内の `MfaEnrollmentBypass` がある場合だけ登録専用 flow へ
-  進める。
-- bypass は管理者が対象 user に発行する短期・単発のサーバー側承認とする。password 成功時に
-  原子的に消費し、同じ `LoginSession` を `pending_purpose=Enrollment` に遷移させる。平文コードを
-  配布せず、MFA 必須ログインそのものを免除しない。
-- enrollment pending session は通常の account、admin、Application resource には未認証として扱い、
-  登録専用 API と元の authorization transaction だけに利用できる。
-- factor の所持証明が成功した後だけ同じ session に第二要素 AMR を追加し、MFA 済みとして元の
-  transaction を継続する。期限切れ、登録不能、取消、重複消費は fail closed とする。
-- 初期 enrollment factor は TOTP とする。WebAuthn は同じ pending/bypass 契約に従う後続 adapter とし、
-  ポリシーや session 状態を増やさず追加できるようにする。
+MFA 強制開始前は password session を成立させ通常の step-up 付き account security 画面で事前登録を
+促す。強制開始後の未登録ユーザーは、管理者が対象 user に発行した短期・単発のサーバー側承認
+`MfaEnrollmentBypass`（平文コードは配布しない）が未消費・未取消・期限内である場合だけ登録専用
+flow へ進める — 時刻ではなく、bypass の発行という管理者の能動的判断を trust anchor にする。
+bypass は password 成功時に原子的に消費し、同じ `LoginSession` を `pending_purpose=Enrollment` へ
+遷移させる。enrollment
+pending session は登録専用 API と元の authorization transaction だけに使え、account・admin・
+Application 等の他リソースには未認証として扱う。期限切れ・登録不能・取消・重複消費は fail closed
+とする。初期 enrollment factor は TOTP とし、WebAuthn は同じ pending/bypass 契約に従う後続 adapter
+として追加できるようにする。
+
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の MFA enrollment bypass セクションにある。
 
 ## 却下した代替案
 

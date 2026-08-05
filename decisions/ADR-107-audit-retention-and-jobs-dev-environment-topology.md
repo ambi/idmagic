@@ -18,7 +18,8 @@ wi-209 で `spec/contexts/audit.yaml` と `spec/contexts/jobs.yaml` (いずれ�
 ### 1. Audit ログの保持期間
 
 `AdminAuditEventResponse` が表す監査用 DomainEvent は、GDPR Article 30 (処理活動の記録) を根拠に
-append-only で 7 年保持する。削除・アーカイブ用の独立した interface は現時点で存在しない。
+append-only で 7 年保持する。詳細は
+[backend/audit/ARCHITECTURE.md](../backend/audit/ARCHITECTURE.md) に移した。
 
 ### 2. Jobs の標準開発環境トポロジ要件
 

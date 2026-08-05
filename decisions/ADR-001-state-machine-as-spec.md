@@ -22,29 +22,12 @@ OAuth2 / OIDC IdP では、複数のステートフルな対象が並走する:
 
 主要なステートフル対象のうち、状態数とイベント数が明確に列挙できるもの
 （認可リクエスト・デバイスコードフロー）は、宣言的な状態遷移テーブルとして
-仕様核に置く。具体的には:
+仕様核に置く（`spec/flows/authorization-code-flow.json` / `spec/flows/device-code-flow.json`）。
+リフレッシュトークンファミリーは対象外とする。状態が事実上 `{active, revoked, rotated}` の
+3 つしかなく、「ファミリーの祖先・子孫」を辿るグラフ構造のほうが本質であるため、状態機械では
+なく `RefreshTokenRecord` のフィールド集合と失効規則で表現する。
 
-- `spec/flows/authorization-code-flow.json`
-- `spec/flows/device-code-flow.json`
-
-両ファイルとも以下のフィールドを持つ:
-
-- `states`         — 全状態の列挙
-- `events`         — 全イベントの列挙
-- `initialState`   — 初期状態
-- `terminalStates` — 終端状態の集合
-- `transitions`    — `{ 状態: { イベント: 次状態 } }` のテーブル
-
-TypeScript からは `spec/flows/flows.ts` 経由でアクセスする。
-JSON と TypeScript の整合は `spec/invariants.test.ts` の「仕様整合性」スイートで
-機械的に保証する。
-
-## 仕様核に置かない対象
-
-リフレッシュトークンファミリーは、状態が事実上 `{active, revoked, rotated}` の 3 つしかなく、
-かつ「ファミリーの祖先・子孫」を辿るグラフ構造のほうが本質である。
-状態機械ではなく `RefreshTokenRecord` のフィールド集合と「ファミリー失効規則」を
-直接 `requirements.md` / `policy/client-authorization.json` で表現する。
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 却下した代替案
 
@@ -59,3 +42,4 @@ JSON と TypeScript の整合は `spec/invariants.test.ts` の「仕様整合性
 - 状態遷移を変更するときは JSON を変更し、`invariants.test.ts` が通ることを確認する
 - 新しいフローを追加するときは新しい JSON ファイルを `spec/flows/` に追加する
 - アダプター層を再生成する際、AI はこの JSON だけを参照して認可フローを実装できる
+

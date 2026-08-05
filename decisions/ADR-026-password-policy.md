@@ -22,40 +22,15 @@ SP 800-63B-4 §3.1.1.2 はそのうち 2 つ（文字種要件・periodic rotati
 
 ## 決定
 
-（Phase 0 — 認証の土台。`spec/scl.yaml` `objectives.PasswordPolicy` と
-`src/authentication/usecases/password-policy.ts` の双子に反映）。
+NIST SP 800-63B-4 §3.1.1.2 に整合させ、長さ (`min_length=12` / `max_length=128`)・ユーザー
+識別子との類似禁止・共通パスワード辞書のみを control として採用し、同節が明示的に非推奨とする
+文字種混在 (composition rule) と periodic rotation は採用しない。パスワード履歴の再利用禁止と
+外部漏洩データベース検査は、それぞれ別 port (`PasswordHistoryRepository` /
+`BreachedPasswordChecker`) を要する別関心事として本 ADR では保留し、後続の ADR-027 / ADR-028 で
+定める。
 
-1. **採用する control**
-   - 長さ: `min_length=12` / `max_length=128`（既存）。
-   - ユーザー識別子との類似禁止: `preferred_username` / `email` / `email`
-     の local-part を case-insensitive に substring 比較。識別子長 4 文字
-     未満は誤検知回避のためチェック対象外。
-   - 共通パスワード辞書: バンドル小規模リスト
-     (`src/authentication/usecases/common-passwords.ts`) を case-insensitive
-     に lookup。
-
-2. **採用しない control（理由付き）**
-   - **文字種混在 (composition rule)**: NIST §3.1.1.2 が明示的に非推奨。
-     ユーザーに `P@ssw0rd!` のような予測しやすいパターンを誘発し、長さや
-     エントロピーの実効向上にほぼ寄与しない。組織・規制要件で必要になった
-     場合は将来別 ADR で opt-in flag を導入する。
-   - **periodic rotation（定期変更強制）**: NIST §3.1.1.2 が同じく非推奨。
-   - **パスワード履歴の再利用禁止**: 直近 N 件のハッシュ保管は新規 port
-     `PasswordHistoryRepository` が必要で、change-password エンドポイント
-     未実装の現状ではテスト経由でしか検証できない。change-password を
-     導入する Phase で別 ADR と共に追加する。
-
-3. **外部漏洩データベース検査は別 port**
-   - HIBP k-anonymity 等は `BreachedPasswordChecker` port を経由する
-     （SCL `password_policy.description` に明記）。本 ADR の bundled
-     辞書は offline / 即時に弾けるベースラインであり、外部知識は port に
-     委ねる。
-
-4. **適用経路（現状）**
-   - `validatePassword(plain, context?)` は demo seed (`bootstrap/seed.ts`)
-     から呼ばれる。registration / change-password / admin user-create
-     エンドポイントは現時点で未実装であり、それらが追加された時点で同じ
-     関数を経由させる（適用経路追加時に SCL `description` を更新）。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Password lifecycle セクションにある。
 
 ## 影響
 

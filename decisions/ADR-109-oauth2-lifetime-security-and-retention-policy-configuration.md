@@ -16,18 +16,11 @@ DPoP clock skew・replay window、device polling interval、Consent retention �
 
 ## 決定
 
-- authorization code は最大 60 秒かつ single-use、PAR request URI は 600 秒かつ single-use とする。
-- access token は 600 秒、ID token は 3600 秒、refresh token は通常 14 日・絶対 30 日とする。
-  refresh rotation は絶対期限を延長しない。
-- device code と user code は 600 秒、既定 polling interval は 5 秒、`slow_down` ごとの増分は
-  5 秒とする。
-- client authentication failure は 1 分あたり 10 回、authorization code redemption failure は
-  1 分あたり 5 回を上限とする。
-- DPoP proof は過去方向 60 秒・未来方向 5 秒の clock skew を許容し、JTI replay window は 10 分、
-  nonce lifetime は 60 秒とする。
-- refresh token reuse alert window は 60 秒、Consent record retention は 7 年とする。
-- 強制可能な値は `models` constraint、`states` guard、`interfaces` requires/ensures と scenario に
-  置く。単一要素へ自然に所属しない運用設定は本 ADR を正本とする。
+token/code/PAR の TTL、rate limit、DPoP clock skew・replay window、device polling interval、
+Consent retention の具体的な値は現在 [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md)
+の「Lifetime, security, and retention configuration」に記載する。強制可能な値は `models`
+constraint、`states` guard、`interfaces` requires/ensures と scenario に置く。単一要素へ自然に
+所属しない運用設定は本 ADR を正本とする。
 
 ## 却下した代替案
 

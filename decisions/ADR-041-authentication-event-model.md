@@ -22,47 +22,19 @@ production IdP は「誰が・いつ・どの手段で・どこから認証し�
 
 ## 決定
 
-[[wi-44-authentication-event-store-and-search]]。[[wi-20-authentication-event-history]]
-では bucket 切替の挙動だけを in-memory で先に実装し、本 ADR を後追いで正式起草する。
-[[ADR-018]] (監査 / アプリログ分離)・[[ADR-029]] (ログイン試行スロットリング) を前提に、
-認証イベントの**データモデルと攻撃時の挙動**を確定する。
+認証イベントを 2 系統で持つ: 通常イベント (`authentication_events`、1 アクション = 1 行) と
+bucket 集約 (`authentication_event_buckets`、`(tenantId, kind, keyHash, 5 分窓)` 単位で畳み込んだ
+計数)。[[ADR-029]] の throttle lockout 閾値に到達したアクター由来の失敗は、以後 individual な
+`AuthenticationFailed` を emit せず bucket へ切り替える — throttle と bucket は同じ tenant-salt
+付き `keyHash` を共有し、平文は監査に流さない。1 窓につき `AuthenticationEventAggregated` を
+1 件だけ emit し、以後の増分はイベントを増やさず bucket 行の `count` を更新する。既定の集約閾値
+(per-account 10 / per-IP 50 / per-tenant 1000、窓 5 分) は per-account を ADR-029 の account
+lockout 閾値と揃え、正規ユーザの打ち間違いを個別に観察可能なまま残す。impersonation イベントは
+本人保護のため bucket 集約と retention 短縮の対象外とする。既存 `UserAuthenticated` /
+`AuthenticationFailed` の payload 拡張は破壊的変更を避けるため全て optional とする。
 
-1. **2 系統モデル**。認証イベントは次の 2 つの系統で表現する。
-   - **通常イベント** (`authentication_events`): 1 認証アクション = 1 行。成功・失敗・
-     MFA・federation・impersonation・session 開始などの個別事象を時系列で保持する。
-     poly kind = `success` | `fail` | `aggregated`。
-   - **bucket 集約** (`authentication_event_buckets`): 攻撃時に通常イベントへ落とさず、
-     `(tenantId, kind, keyHash, 5 分窓)` 単位の 1 行へ畳み込んだ計数。1 窓 = 1 行で、
-     以後の増分は行の `count` に積むだけで個別 INSERT を出さない。
-
-2. **bucket への切替条件**。per-account / per-IP の throttle が [[ADR-029]] の lockout 閾値に
-   到達したアクター由来の失敗は、以後 individual な `AuthenticationFailed` を emit せず
-   bucket へ集約する。throttle と bucket は同じ `keyHash` (username / IP の SHA-256、tenant
-   salt 付き) を共有し、平文は監査に流さない ([[ADR-046]])。
-
-3. **集約の閾値 (既定) と tenant override**。窓は 5 分。既定の集約発火閾値は次のとおりで、
-   `TenantSettings` で override できる。
-   - per-account: 10 失敗 / 窓
-   - per-ip: 50 失敗 / 窓
-   - per-tenant: 1000 失敗 / 窓 (テナント全体の floods に対する安全弁)
-
-   閾値の根拠: per-account 10 は [[ADR-029]] の account lockout と揃え、正規ユーザの打ち間違い
-   (数回) を individual に観察可能なまま残す。低すぎると正規失敗が bucket に隠れて MTTR が悪化し、
-   高すぎると爆発が止まらない。tenant ごとの運用差は override で吸収する。
-
-4. **bucket = 1 admin 監査イベント**。1 つの窓につき `AuthenticationEventAggregated` を
-   **1 件だけ** emit し ([[ADR-018]] の監査ストアへ)、以後の増分はイベントを増やさず bucket 行の
-   `count` を更新する。admin はこの 1 行から同 key の個別失敗サンプル (10 件) へドリルダウンできる。
-
-5. **impersonation はフィールドのみ**。「admin が user として操作した事実」(`SessionImpersonationStarted`
-   / `SessionImpersonationEnded`) は本人通知を前提とする監査事象である。本 WI ではイベント型と
-   ストレージ列のみを用意し、**機能本体の有効化は本人通知 WI 後**に行う。impersonation イベントは
-   retention 短縮の対象外とする ([[ADR-045]] / [[ADR-046]])。
-
-6. **後方互換**。既存 `UserAuthenticated` / `AuthenticationFailed` の payload は**拡張のみ**で
-   破壊しない (sessionId / clientId / acr / ipHash / ipTruncated / uaHash / countryCode /
-   deviceFingerprintHash / riskScore はすべて optional)。既存 SIEM connector が落ちないことを
-   wire スナップショットで確認する。
+現在の設計は [`backend/authentication/ARCHITECTURE.md`](../backend/authentication/ARCHITECTURE.md)
+の Authentication event logging セクションにある。
 
 ## 影響
 

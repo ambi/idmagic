@@ -23,27 +23,13 @@ FAPI 2.0 §5.2 は PAR を MUST とする。
 
 ## 決定
 
-本アプリ IdP は以下を採用する:
+本アプリ IdP はすべてのクライアントに `/par` エンドポイントを提供し、クライアントメタデータの
+`require_pushed_authorization_requests = true` を宣言したクライアント（FAPI プロファイル含む）
+には PAR を必須とする。それ以外のクライアントは PAR / 通常 `/authorize` の両方を選択できる。
+`request_uri` は TTL 600 秒以下・単一使用とし、`/authorize?request_uri=...` に追加のクエリ
+パラメータが付随しても保存されたパラメータを優先して追加分は無視する（RFC 9126 §4）。
 
-1. すべてのクライアントに対して `/par` エンドポイントを提供する
-2. クライアントメタデータの `require_pushed_authorization_requests = true` を
-   宣言したクライアント（FAPI プロファイル含む）は、PAR 必須
-3. それ以外のクライアントは PAR / 通常 `/authorize` の両方を選択できる
-4. `request_uri` の TTL は 600 秒以下、**単一使用**
-
-## 単一使用と短寿命の理由
-
-- 攻撃者が `request_uri` を盗んでも、すでに使用済みなら再利用できない
-- 失効した `request_uri` を保持し続けない（メモリ・ストレージのコスト管理）
-- 600 秒は「ユーザーが認証で時間を要する」現実的なケースをカバー
-- FAPI 2.0 推奨値も同程度
-
-## 認可リクエストのマージ規則
-
-`/authorize?request_uri=...` で `request_uri` を参照したリクエストに、追加の
-クエリパラメータが付随した場合、**保存されたパラメータを優先し、追加パラメータは無視** する。
-これは RFC 9126 §4 に従う動作。攻撃者が `request_uri` に追加パラメータを連結して
-リクエストを改竄することを防ぐ。
+現在の設計は [`backend/oauth2/ARCHITECTURE.md`](../backend/oauth2/ARCHITECTURE.md) にある。
 
 ## 却下した代替案
 

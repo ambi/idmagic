@@ -38,16 +38,14 @@ fail-closed な claim 発行エンジンの決定は引き続き有効。WS-Fede
    方針だった。現在は protocol context を `OAuth2` / `WsFederation` / 将来 `Saml` に分け、
    `Federation` という bounded context 名は使わない。
 
-2. **claim 発行は宣言的 mapping とする。** AD FS の claim rule language は採らない。
-   `ClaimMappingRule` は「出力 claim 型 (URI) ← source (user 属性 / 固定値 / NameID)」の
-   宣言で表し、`ClaimMappingPolicy` が RP ごとの規則集合と `NameIdConfiguration` を束ねる。
+2. **claim 発行は宣言的 mapping とし、protocol-agnostic かつ fail-closed なエンジンとする。**
+   AD FS の claim rule language は採らない。エンジンの語彙 (`ClaimMappingRule` /
+   `ClaimMappingPolicy`) と fail-closed の意味 (未マップ属性は出力しない、必須 source 欠如は
+   発行拒否) は
+   [backend/claimmapping/ARCHITECTURE.md](../backend/claimmapping/ARCHITECTURE.md) に移した。
+   WS-Fed / WS-Trust / SAML が同じエンジンを再利用する。
 
-3. **claim 発行エンジンは protocol-agnostic かつ fail-closed とする。** 入力は解決済みの
-   属性マップ (identity 集約から切り離す) と policy、出力は `IssuedClaim[]` (型 + 値群)。
-   mapping で明示した claim だけを出力し、未マップ属性は決して漏らさない。必須 source が
-   欠けた required rule は発行を拒否する。WS-Fed / WS-Trust / SAML が同じエンジンを再利用する。
-
-4. **XML 署名ライブラリ・metadata 署名・assertion 直列化は本 ADR の範囲外。** wi-61 着手時の
+3. **XML 署名ライブラリ・metadata 署名・assertion 直列化は本 ADR の範囲外。** wi-61 着手時の
    後続 ADR で「実績ある XML-dsig ライブラリを使い自前実装しない」前提のもと選定する。本スライスは
    claim という構造化中間表現までを確定する。
 

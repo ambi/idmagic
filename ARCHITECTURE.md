@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-07-29
+updated_at: 2026-08-06
 ---
 
 # Architecture: repo
@@ -461,8 +461,8 @@ schema-level design rationale that does not fit the policies above lives here in
   shape as `application_icons` (ADR-073), kept in a separate table and `object_key` space so branding
   asset ownership never crosses with Application icon storage. `notification_templates` (wi-288,
   ADR-142) holds tenant overrides of the notification email catalog keyed by
-  `(tenant_id, template_key, locale)`; absence of a row means the builtin default for that key/locale
-  applies, and deleting the row is how "reset to default" works (no version history, ADR-142 §1).
+  `(tenant_id, template_key, locale)`; see [Notification template catalog and locale
+  resolution](#5-notification-template-catalog-and-locale-resolution) for how resolution works.
   Individual columns rather than JSONB keep per-column length limits as `CHECK` constraints (ADR-084);
   `subject`/`body_text`/`body_html` are `NOT NULL` together so a half-overridden template cannot exist
   (ADR-142 §4), while `from_display_name` is nullable because the system default sender name is a valid
@@ -509,6 +509,58 @@ schema-level design rationale that does not fit the policies above lives here in
   column with no envelope encryption yet (wi-97); production deployments must not rely on it as-is,
   matching the `SigningKeys` PostgreSQL `KeyStore`'s own dev/test disclaimer.
 
+#### 5. Notification template catalog and locale resolution
+
+Notification email content resolves through exactly two tiers, with no version history: a built-in
+catalog (system-shipped ja/en copy) plus optional per-`(tenant_id, template_key, locale)` overrides.
+Deleting an override (`ResetNotificationTemplate`) always falls back to the built-in default; there is no
+"revert to previous override" step, because when a template breaks a recovery flow, the fastest fix for
+an admin is a known-good fallback, not a choice among versions
+([ADR-142](decisions/ADR-142-notification-template-catalog-and-locale-resolution.md) §1). `template_key`
+is a fixed SCL enum — tenants cannot add keys — so every key traces to exactly one send path and no
+orphaned template can exist without a sender (ADR-142 §2).
+
+Placeholders (`{{name}}`) are validated against a per-key allow-list at save time; an override that
+references an undeclared placeholder is rejected outright rather than rendered with the value blanked
+out, because a runtime-blanked link is only discovered when a user fails to recover their account
+(ADR-142 §3, fail-closed). The allow-list is defined in `backend/shared/notification/template` and
+returned by the API so editors do not have to guess it.
+
+| Key | Placeholders |
+| --- | --- |
+| all keys | `product_name`, `tenant_display_name`, `user_display_name` |
+| `PasswordReset`, `EmailVerification`, `EmailChangeConfirmation` | one `*_url` link, `expires_in_minutes` |
+| `EmailChangeConfirmation` (additional) | `new_email` |
+| `LifecycleWorkflowNotification` (additional) | `notification_key` |
+| `AccountSecurityAlert` (additional) | `event_description`, `occurred_at` |
+
+Credentials, hashes, TOTP secrets, API tokens, and raw IP addresses are never placeholders: mail is
+forwarded, quoted, and retained indefinitely by the recipient, so anything placed in it is exposed by any
+later mailbox compromise (ADR-142 §10).
+
+The renderer's contract returns subject, text body, and HTML body together as one unit — no state exists
+with only one or two of the three — and an override likewise replaces all three at once, sent as
+`multipart/alternative`; this rules out the two parts of one email silently disagreeing because only one
+was edited (ADR-142 §4). Escaping is the renderer's responsibility, not the template's: HTML output
+escapes interpolated values and text output does not, and link URLs are assembled by the calling usecase
+from the request's own issuer and passed in as a single placeholder value, so a template can place a URL
+but never concatenate one — the escaping obligation never reaches the tenant editor (ADR-142 §5).
+Overridable fields are limited to subject, HTML body fragment, text body, and sender display name; the
+HTML document shell and the sender address stay system-owned, so the worst a malicious tenant admin can
+do through the override mechanism is make their own tenant's mail look wrong, never inject into it
+(ADR-142 §6, the same split ADR-096 uses for hosted UI branding).
+
+Locale resolves recipient `User.locale` → tenant `default_locale` → system default
+(`DEFAULT_LOCALE` env var, default `en`), taking the first locale the catalog has a translation for.
+Making the tenant tier an explicit column rather than inferring it from which locales happen to have
+overrides keeps editing one template in one locale from silently changing every notification's language
+(ADR-142 §7).
+
+Test-send delivers only to the acting admin's own verified address — the endpoint accepts no destination
+parameter — because an arbitrary destination would turn tenant-admin access into a way to send
+tenant-branded mail to anyone (ADR-142 §8). Preview is read-only and renders with fixed sample values,
+never real user data, so the editor screen cannot become a way to read user data (ADR-142 §9).
+
 ## Runtime Composition
 
 The main package in `backend/cmd/idmagic/` performs startup, and `backend/cmd/internal/bootstrap` owns
@@ -539,6 +591,27 @@ repositories are bundled into each `Module`, and the central `Dependencies` and 
 the Module. After adding a port, check at least the context's `ports/`, the memory adapter, whether the
 postgres adapter and a schema diff are needed, `bootstrap.Dependencies`, `assembleMemory` /
 `assemblePostgres`, `support.Deps`, and the constructor of the HTTP handler or usecase involved.
+
+### Health probes and graceful drain
+
+Kubernetes-facing health is split into three endpoints rather than one shared between liveness and
+readiness: the original `/health` only echoed startup configuration labels, so using it for both meant a
+transient PostgreSQL or Valkey blip could both restart-loop the pod and keep traffic routed to a replica
+that could not actually serve it ([ADR-078](decisions/ADR-078-kubernetes-health-probes-and-graceful-drain.md)).
+
+- **`/livez`** fails only on an unrecoverable condition such as deadlock; a transient dependency outage
+  still returns `200`, so liveness does not restart a pod that would recover on its own.
+- **`/readyz`** pings required dependencies (PostgreSQL, Valkey) in parallel with a short timeout (`1s`
+  default) and returns `503` if any is unreachable; `?verbose` adds a per-dependency status vocabulary
+  (`healthy` / `degraded` / `unavailable`).
+- **`/startupz`** returns `200` once application initialization (including seed-data checks) completes.
+- **`/health`** is kept for backward compatibility, still returning only the startup configuration labels
+  it always has.
+
+On `SIGTERM` / `SIGINT`, a shutdown flag is set so `/readyz` immediately starts returning `503`
+(`unavailable`), giving the load balancer time to stop routing before the process stops accepting
+connections. The server then waits a drain grace period (`DRAIN_GRACE_PERIOD_SECONDS`, default `5s`)
+before starting the HTTP server's own shutdown.
 
 ### Availability and shared state
 
