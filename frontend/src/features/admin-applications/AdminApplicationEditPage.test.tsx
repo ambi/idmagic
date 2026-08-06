@@ -15,7 +15,7 @@ const response = (status: number, body: unknown = {}) => ({
 })
 
 const app: AdminApplication = {
-  application_id: 'app-1',
+  id: 'app-1',
   name: 'Payroll',
   kind: 'federated',
   status: 'active',

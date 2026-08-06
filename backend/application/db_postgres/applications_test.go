@@ -18,15 +18,15 @@ func seedApplication(t *testing.T, db sharedpg.DB, tenantID string) *domain.Appl
 	t.Helper()
 	now := pgfixtures.TestClock()
 	app := &domain.Application{
-		TenantID:      tenantID,
-		ApplicationID: pgfixtures.NewUUID(t),
-		Name:          pgfixtures.UniqueID("app-name"),
-		Kind:          domain.ApplicationWeblink,
-		Status:        domain.ApplicationActive,
-		LaunchURL:     "https://example.com",
-		CategoryIDs:   []string{},
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		TenantID:    tenantID,
+		ID:          pgfixtures.NewUUID(t),
+		Name:        pgfixtures.UniqueID("app-name"),
+		Kind:        domain.ApplicationWeblink,
+		Status:      domain.ApplicationActive,
+		LaunchURL:   "https://example.com",
+		CategoryIDs: []string{},
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := (&ApplicationRepository{Pool: db}).Save(context.Background(), app); err != nil {
 		t.Fatalf("seed application: %v", err)
@@ -44,22 +44,22 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	now := pgfixtures.TestClock()
 	categoryID := pgfixtures.NewUUID(t)
 	app := &domain.Application{
-		TenantID:      tenant.ID,
-		ApplicationID: pgfixtures.NewUUID(t),
-		Name:          "Portal App",
-		Kind:          domain.ApplicationFederated,
-		Status:        domain.ApplicationActive,
-		LaunchURL:     "https://app.example/launch",
-		Protocol:      &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: client.ClientID},
-		CategoryIDs:   []string{categoryID},
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		TenantID:    tenant.ID,
+		ID:          pgfixtures.NewUUID(t),
+		Name:        "Portal App",
+		Kind:        domain.ApplicationFederated,
+		Status:      domain.ApplicationActive,
+		LaunchURL:   "https://app.example/launch",
+		Protocol:    &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: client.ClientID},
+		CategoryIDs: []string{categoryID},
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := repo.Create(ctx, app); err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
-	got, err := repo.FindByID(ctx, tenant.ID, app.ApplicationID)
+	got, err := repo.FindByID(ctx, tenant.ID, app.ID)
 	if err != nil || got == nil {
 		t.Fatalf("find by id: %v %+v", err, got)
 	}
@@ -74,7 +74,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	}
 
 	byBinding, err := repo.FindByProtocol(ctx, tenant.ID, domain.ApplicationProtocolOIDC, client.ClientID)
-	if err != nil || byBinding == nil || byBinding.ApplicationID != app.ApplicationID {
+	if err != nil || byBinding == nil || byBinding.ID != app.ID {
 		t.Fatalf("find by binding: %v %+v", err, byBinding)
 	}
 
@@ -86,15 +86,15 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	if err := repo.RemoveCategory(ctx, tenant.ID, categoryID); err != nil {
 		t.Fatalf("remove category: %v", err)
 	}
-	got, err = repo.FindByID(ctx, tenant.ID, app.ApplicationID)
+	got, err = repo.FindByID(ctx, tenant.ID, app.ID)
 	if err != nil || got == nil || len(got.CategoryIDs) != 0 {
 		t.Fatalf("category not removed: %v %+v", err, got)
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, app.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	got, err = repo.FindByID(ctx, tenant.ID, app.ApplicationID)
+	got, err = repo.FindByID(ctx, tenant.ID, app.ID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}
@@ -109,7 +109,7 @@ func TestApplicationProtocolRelationConstraintsAndCascade(t *testing.T) {
 	repo := &ApplicationRepository{Pool: db}
 	now := pgfixtures.TestClock()
 	app := &domain.Application{
-		TenantID: tenant.ID, ApplicationID: pgfixtures.NewUUID(t), Name: "OIDC App",
+		TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: "OIDC App",
 		Kind: domain.ApplicationFederated, Status: domain.ApplicationActive,
 		Protocol:    &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: first.ClientID},
 		CategoryIDs: []string{}, CreatedAt: now, UpdatedAt: now,
@@ -118,18 +118,18 @@ func TestApplicationProtocolRelationConstraintsAndCascade(t *testing.T) {
 		t.Fatalf("create application with protocol: %v", err)
 	}
 
-	if _, err := db.Exec(ctx, `UPDATE oauth2_clients SET application_id = $1 WHERE client_id = $2`, app.ApplicationID, second.ClientID); err == nil {
+	if _, err := db.Exec(ctx, `UPDATE oauth2_clients SET application_id = $1 WHERE client_id = $2`, app.ID, second.ClientID); err == nil {
 		t.Fatal("expected unique application_id constraint to reject a second OAuth2 client")
 	}
 	if _, err := db.Exec(ctx, `
 		INSERT INTO saml_service_providers
 			(tenant_id, entity_id, application_id, display_name, acs_urls, claim_policy)
 		VALUES ($1, 'urn:test:sp', $2, 'SP', '[]'::jsonb, '{}'::jsonb)
-	`, tenant.ID, app.ApplicationID); err == nil {
+	`, tenant.ID, app.ID); err == nil {
 		t.Fatal("expected protocol discriminator foreign key to reject SAML row for OIDC application")
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, app.ID); err != nil {
 		t.Fatalf("delete application: %v", err)
 	}
 	var count int
@@ -151,7 +151,7 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 	now := pgfixtures.TestClock()
 	policy := &domain.AppSignInPolicy{
 		TenantID:      tenant.ID,
-		ApplicationID: app.ApplicationID,
+		ApplicationID: app.ID,
 		Rules: []domain.SignInRule{
 			{
 				RuleID:        "rule-1",
@@ -167,7 +167,7 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	got, err := repo.Get(ctx, tenant.ID, app.ApplicationID)
+	got, err := repo.Get(ctx, tenant.ID, app.ID)
 	if err != nil || got == nil {
 		t.Fatalf("get: %v %+v", err, got)
 	}
@@ -180,10 +180,10 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("list by tenant: %v len=%d", err, len(list))
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, app.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	got, err = repo.Get(ctx, tenant.ID, app.ApplicationID)
+	got, err = repo.Get(ctx, tenant.ID, app.ID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}
@@ -237,7 +237,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 	iconID := pgfixtures.NewUUID(t)
 	icon := &domain.ApplicationIcon{
 		TenantID:      tenant.ID,
-		ApplicationID: app.ApplicationID,
+		ApplicationID: app.ID,
 		ID:            iconID,
 		ContentType:   "image/png",
 		SizeBytes:     4,
@@ -249,7 +249,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	got, err := store.Find(ctx, tenant.ID, app.ApplicationID, iconID)
+	got, err := store.Find(ctx, tenant.ID, app.ID, iconID)
 	if err != nil || got == nil {
 		t.Fatalf("find: %v %+v", err, got)
 	}
@@ -257,10 +257,10 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 		t.Fatalf("icon not round-tripped: %+v", got)
 	}
 
-	if err := store.DeleteByApplication(ctx, tenant.ID, app.ApplicationID); err != nil {
+	if err := store.DeleteByApplication(ctx, tenant.ID, app.ID); err != nil {
 		t.Fatalf("delete by application: %v", err)
 	}
-	got, err = store.Find(ctx, tenant.ID, app.ApplicationID, iconID)
+	got, err = store.Find(ctx, tenant.ID, app.ID, iconID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}
@@ -278,7 +278,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	now := pgfixtures.TestClock()
 	userAssignment := &domain.ApplicationAssignment{
 		TenantID:      tenant.ID,
-		ApplicationID: app.ApplicationID,
+		ApplicationID: app.ID,
 		SubjectType:   domain.AssignmentSubjectUser,
 		SubjectID:     user.ID,
 		Visibility:    domain.AssignmentVisible,
@@ -287,7 +287,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 	}
 	groupAssignment := &domain.ApplicationAssignment{
 		TenantID:      tenant.ID,
-		ApplicationID: app.ApplicationID,
+		ApplicationID: app.ID,
 		SubjectType:   domain.AssignmentSubjectGroup,
 		SubjectID:     group.ID,
 		Visibility:    domain.AssignmentHidden,
@@ -306,7 +306,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("list by tenant: %v len=%d", err, len(byTenant))
 	}
 
-	byApp, err := repo.ListByApplication(ctx, tenant.ID, app.ApplicationID)
+	byApp, err := repo.ListByApplication(ctx, tenant.ID, app.ID)
 	if err != nil || len(byApp) != 2 {
 		t.Fatalf("list by application: %v len=%d", err, len(byApp))
 	}
@@ -318,18 +318,18 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("list by subjects: %v %+v", err, bySubjects)
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID, domain.AssignmentSubjectUser, user.ID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, app.ID, domain.AssignmentSubjectUser, user.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	byApp, err = repo.ListByApplication(ctx, tenant.ID, app.ApplicationID)
+	byApp, err = repo.ListByApplication(ctx, tenant.ID, app.ID)
 	if err != nil || len(byApp) != 1 {
 		t.Fatalf("after delete: %v len=%d", err, len(byApp))
 	}
 
-	if err := repo.DeleteByApplication(ctx, tenant.ID, app.ApplicationID); err != nil {
+	if err := repo.DeleteByApplication(ctx, tenant.ID, app.ID); err != nil {
 		t.Fatalf("delete by application: %v", err)
 	}
-	byApp, err = repo.ListByApplication(ctx, tenant.ID, app.ApplicationID)
+	byApp, err = repo.ListByApplication(ctx, tenant.ID, app.ID)
 	if err != nil || len(byApp) != 0 {
 		t.Fatalf("expected empty: %v len=%d", err, len(byApp))
 	}

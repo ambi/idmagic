@@ -171,7 +171,7 @@ type ApplicationProtocol struct {
 // Application は運用者向けの上位 aggregate (wi-69)。
 type Application struct {
 	TenantID      string               `json:"tenant_id"`
-	ApplicationID string               `json:"application_id"`
+	ID            string               `json:"id"`
 	Name          string               `json:"name"`
 	Kind          ApplicationKind      `json:"kind"`
 	Status        ApplicationStatus    `json:"status"`

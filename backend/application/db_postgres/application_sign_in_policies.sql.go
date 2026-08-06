@@ -12,7 +12,7 @@ import (
 
 const deleteAppSignInPolicy = `-- name: DeleteAppSignInPolicy :exec
 DELETE FROM application_sign_in_policies p WHERE p.application_id = $2
-  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.id = $2)
 `
 
 type DeleteAppSignInPolicyParams struct {
@@ -27,7 +27,7 @@ func (q *Queries) DeleteAppSignInPolicy(ctx context.Context, arg DeleteAppSignIn
 
 const getAppSignInPolicy = `-- name: GetAppSignInPolicy :one
 SELECT a.tenant_id, p.application_id, p.rules, p.created_at, p.updated_at
-FROM application_sign_in_policies p JOIN applications a ON a.application_id = p.application_id
+FROM application_sign_in_policies p JOIN applications a ON a.id = p.application_id
 WHERE a.tenant_id = $1 AND p.application_id = $2
 `
 
@@ -77,7 +77,7 @@ func (q *Queries) GetTenantDefaultSignInPolicy(ctx context.Context, tenantID str
 
 const listAppSignInPoliciesByTenant = `-- name: ListAppSignInPoliciesByTenant :many
 SELECT a.tenant_id, p.application_id, p.rules, p.created_at, p.updated_at
-FROM application_sign_in_policies p JOIN applications a ON a.application_id = p.application_id
+FROM application_sign_in_policies p JOIN applications a ON a.id = p.application_id
 WHERE a.tenant_id = $1
 `
 

@@ -118,7 +118,7 @@ func TestTokenDeviceCode_unregisteredResource_rejectedAsInvalidTarget(t *testing
 func TestTokenDeviceCode_registeredResource_boundAudience(t *testing.T) {
 	repo := oauth2memory.NewMcpResourceServerRepository()
 	repo.Seed(&domain.McpResourceServer{
-		ResourceServerID: "rs-1", Resource: "https://mcp.example.com/tools",
+		ID: "rs-1", Resource: "https://mcp.example.com/tools",
 		Name: "Tools", Scopes: []string{"openid"}, State: domain.McpResourceServerActive,
 	})
 	e, deviceCode := newApprovedDeviceCodeServer(t, repo)

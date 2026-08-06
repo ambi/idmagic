@@ -65,8 +65,8 @@ func TestAdminCreatesAndListsMcpResourceServer(t *testing.T) {
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
-	if createdBody["resource_server_id"] == "" || createdBody["resource_server_id"] == nil {
-		t.Fatalf("expected resource_server_id to be generated: %+v", createdBody)
+	if createdBody["id"] == "" || createdBody["id"] == nil {
+		t.Fatalf("expected id to be generated: %+v", createdBody)
 	}
 	if createdBody["state"] != "Active" {
 		t.Fatalf("expected default state Active, got %v", createdBody["state"])
@@ -113,7 +113,7 @@ func TestAdminUpdatesMcpResourceServerNameScopesState(t *testing.T) {
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
-	id := createdBody["resource_server_id"].(string)
+	id := createdBody["id"].(string)
 
 	update := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/mcp-resource-servers/"+id, csrf, cookie, map[string]any{
 		"name":   "GitHub Tools (renamed)",
@@ -145,7 +145,7 @@ func TestAdminDeletesMcpResourceServer(t *testing.T) {
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
-	id := createdBody["resource_server_id"].(string)
+	id := createdBody["id"].(string)
 
 	deleteRes := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/mcp-resource-servers/"+id, csrf, cookie, nil)
 	if deleteRes.Code != http.StatusNoContent {

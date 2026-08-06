@@ -21,7 +21,7 @@ type ApplicationRepository struct{ Pool sharedpg.DB }
 func applicationFromRow(row *Application) *domain.Application {
 	app := &domain.Application{
 		TenantID:      row.TenantID,
-		ApplicationID: row.ApplicationID,
+		ID:            row.ID,
 		Name:          row.Name,
 		Kind:          domain.ApplicationKind(row.Kind),
 		Status:        domain.ApplicationStatus(row.Status),
@@ -46,7 +46,7 @@ func (r *ApplicationRepository) hydrateProtocol(ctx context.Context, app *domain
 		return nil
 	}
 	row, err := New(r.Pool).GetApplicationProtocolKey(ctx, GetApplicationProtocolKeyParams{
-		TenantID: app.TenantID, ApplicationID: app.ApplicationID,
+		TenantID: app.TenantID, ID: app.ID,
 	})
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (r *ApplicationRepository) ListByTenant(ctx context.Context, tenantID strin
 
 func (r *ApplicationRepository) FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error) {
 	row, err := New(r.Pool).GetApplicationByID(ctx, GetApplicationByIDParams{
-		TenantID: tenantID, ApplicationID: applicationID,
+		TenantID: tenantID, ID: applicationID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -132,7 +132,7 @@ func saveApplication(ctx context.Context, queries *Queries, app *domain.Applicat
 	}
 	return queries.UpsertApplication(ctx, UpsertApplicationParams{
 		TenantID:      app.TenantID,
-		ApplicationID: app.ApplicationID,
+		ID:            app.ID,
 		Name:          app.Name,
 		Kind:          string(app.Kind),
 		Status:        string(app.Status),
@@ -151,7 +151,7 @@ func linkApplicationProtocol(ctx context.Context, queries *Queries, app *domain.
 		return nil
 	}
 	var applicationID pgtype.UUID
-	if err := applicationID.Scan(app.ApplicationID); err != nil {
+	if err := applicationID.Scan(app.ID); err != nil {
 		return err
 	}
 	var err error
@@ -179,7 +179,7 @@ func linkApplicationProtocol(ctx context.Context, queries *Queries, app *domain.
 		return err
 	}
 	linkedKey, err := queries.GetApplicationProtocolKey(ctx, GetApplicationProtocolKeyParams{
-		TenantID: app.TenantID, ApplicationID: app.ApplicationID,
+		TenantID: app.TenantID, ID: app.ID,
 	})
 	if err != nil {
 		return err
@@ -208,7 +208,7 @@ func (r *ApplicationRepository) Create(ctx context.Context, app *domain.Applicat
 
 func (r *ApplicationRepository) Delete(ctx context.Context, tenantID, applicationID string) error {
 	return New(r.Pool).DeleteApplication(ctx, DeleteApplicationParams{
-		TenantID: tenantID, ApplicationID: applicationID,
+		TenantID: tenantID, ID: applicationID,
 	})
 }
 
@@ -407,7 +407,7 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 	}
 	// (subject_type, subject_id) のペアを UNNEST で突き合わせる。subject_id は UUID 列の
 	// ため、パラメータは text[] のまま列側を text にキャストして比較する (ADR-084)。
-	const assignmentSelect = `SELECT a.tenant_id,aa.application_id,aa.subject_type,aa.subject_id,aa.visibility,aa.created_at,aa.updated_at FROM application_assignments aa JOIN applications a ON a.application_id=aa.application_id`
+	const assignmentSelect = `SELECT a.tenant_id,aa.application_id,aa.subject_type,aa.subject_id,aa.visibility,aa.created_at,aa.updated_at FROM application_assignments aa JOIN applications a ON a.id=aa.application_id`
 	rows, err := r.Pool.Query(ctx, assignmentSelect+`
  WHERE a.tenant_id=$1 AND (aa.subject_type,aa.subject_id::text) IN (
    SELECT subject_type, subject_id FROM UNNEST($2::text[], $3::text[]) AS s(subject_type, subject_id)

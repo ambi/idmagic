@@ -9,7 +9,7 @@ export const Route = createFileRoute('/admin/mcp-resource-servers_/$resourceServ
   loader: async ({ location, params }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const resourceServer = (await listMcpResourceServers()).find(
-      (item) => item.resource_server_id === params.resourceServerId,
+      (item) => item.id === params.resourceServerId,
     )
     if (!resourceServer) {
       throw new AuthenticationAPIError('MCP resource server not found.', 'not_found')

@@ -76,15 +76,15 @@ func CreateApplication(ctx context.Context, deps ApplicationDeps, in CreateAppli
 		return nil, err
 	}
 	app := &domain.Application{
-		TenantID:      tenantID,
-		ApplicationID: id,
-		Name:          strings.TrimSpace(in.Name),
-		Kind:          in.Kind,
-		Status:        domain.ApplicationActive,
-		LaunchURL:     strings.TrimSpace(in.LaunchURL),
-		Protocol:      cloneProtocol(in.Protocol),
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		TenantID:  tenantID,
+		ID:        id,
+		Name:      strings.TrimSpace(in.Name),
+		Kind:      in.Kind,
+		Status:    domain.ApplicationActive,
+		LaunchURL: strings.TrimSpace(in.LaunchURL),
+		Protocol:  cloneProtocol(in.Protocol),
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	if err := domain.ValidateApplication(app); err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func UpdateApplication(ctx context.Context, deps ApplicationDeps, in UpdateAppli
 		return nil, err
 	}
 	emit(deps.Emit, &domain.ApplicationUpdated{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, ChangedFields: changed,
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ID, ChangedFields: changed,
 	})
 	return &updated, nil
 }
@@ -218,7 +218,7 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 		}
 	}
 	icon := &domain.ApplicationIcon{
-		TenantID: tenantID, ApplicationID: app.ApplicationID, ID: objectKey,
+		TenantID: tenantID, ApplicationID: app.ID, ID: objectKey,
 		ContentType: contentType, SizeBytes: len(in.Data), Data: slices.Clone(in.Data), CreatedAt: now, UpdatedAt: now,
 	}
 	if err := deps.IconStore.Save(ctx, icon); err != nil {
@@ -234,7 +234,7 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 		return nil, err
 	}
 	emit(deps.Emit, &domain.ApplicationIconUpdated{
-		At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ApplicationID, Action: "uploaded",
+		At: now, TenantID: tenantID, ActorUserID: in.ActorUserID, ApplicationID: app.ID, Action: "uploaded",
 	})
 	return &updated, nil
 }

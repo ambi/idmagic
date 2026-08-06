@@ -106,7 +106,7 @@ export function AdminApplicationCreatePage({
         authn_request_signing_certificate_pem:
           type === 'saml' ? samlSigningCert.trim() || undefined : undefined,
       })
-      const id = result.application.application_id
+      const id = result.application.id
       if (result.client_secret && result.client_id) {
         // OIDC / サービスは client_secret を一度だけ提示し、確認後に詳細へ遷移する。
         setCreatedID(id)

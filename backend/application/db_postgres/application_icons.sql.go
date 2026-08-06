@@ -12,7 +12,7 @@ import (
 
 const deleteApplicationIconsByApplication = `-- name: DeleteApplicationIconsByApplication :exec
 DELETE FROM application_icons i WHERE i.application_id = $2
-  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.id = $2)
 `
 
 type DeleteApplicationIconsByApplicationParams struct {
@@ -27,7 +27,7 @@ func (q *Queries) DeleteApplicationIconsByApplication(ctx context.Context, arg D
 
 const getApplicationIcon = `-- name: GetApplicationIcon :one
 SELECT a.tenant_id, i.application_id, i.id, i.content_type, i.size_bytes, i.data, i.created_at, i.updated_at
-FROM application_icons i JOIN applications a ON a.application_id = i.application_id
+FROM application_icons i JOIN applications a ON a.id = i.application_id
 WHERE a.tenant_id = $1 AND i.application_id = $2 AND i.id = $3
 `
 

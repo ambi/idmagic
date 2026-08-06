@@ -53,7 +53,7 @@ func newTokenExchangeServer(t *testing.T) string {
 	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
 	resourceServers := oauth2memory.NewMcpResourceServerRepository()
 	resourceServers.Seed(&domain.McpResourceServer{
-		ResourceServerID: "rs-orders", Resource: "https://api.example/orders", Name: "Orders API",
+		ID: "rs-orders", Resource: "https://api.example/orders", Name: "Orders API",
 		Scopes: []string{"read", "write"}, State: domain.McpResourceServerActive,
 	})
 	e := echo.New()

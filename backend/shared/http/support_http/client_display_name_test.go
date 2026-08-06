@@ -35,7 +35,7 @@ func TestClientDisplayNameResolverFallbackOrder(t *testing.T) {
 		ClientName: &blank, ClientType: spec.ClientPublic, CreatedAt: now, UpdatedAt: now,
 	})
 	if err := apps.Save(ctx, &appdomain.Application{
-		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "Catalog App",
+		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "Catalog App",
 		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "client-catalog"},
 		CreatedAt: now, UpdatedAt: now,

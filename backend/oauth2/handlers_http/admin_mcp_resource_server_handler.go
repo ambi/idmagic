@@ -25,14 +25,14 @@ type mcpResourceServerRequest struct {
 
 func toMcpResourceServerResponse(m *oauthdomain.McpResourceServer) map[string]any {
 	return map[string]any{
-		"tenant_id":          m.TenantID,
-		"resource_server_id": m.ResourceServerID,
-		"resource":           m.Resource,
-		"name":               m.Name,
-		"scopes":             m.Scopes,
-		"state":              m.State,
-		"created_at":         m.CreatedAt,
-		"updated_at":         m.UpdatedAt,
+		"tenant_id":  m.TenantID,
+		"id":         m.ID,
+		"resource":   m.Resource,
+		"name":       m.Name,
+		"scopes":     m.Scopes,
+		"state":      m.State,
+		"created_at": m.CreatedAt,
+		"updated_at": m.UpdatedAt,
 	}
 }
 
@@ -56,7 +56,7 @@ func (d Deps) handleGetAdminMcpResourceServer(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	m, err := d.McpResourceServerRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), c.Param("resource_server_id"))
+	m, err := d.McpResourceServerRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 		state = oauthdomain.McpResourceServerActive
 	}
 	m := &oauthdomain.McpResourceServer{
-		TenantID: tenantID, ResourceServerID: id, Resource: req.Resource,
+		TenantID: tenantID, ID: id, Resource: req.Resource,
 		Name: req.Name, Scopes: req.Scopes, State: state,
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -116,7 +116,7 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	tenantID := support.RequestTenantID(c)
-	existing, err := d.McpResourceServerRepo.FindByID(c.Request().Context(), tenantID, c.Param("resource_server_id"))
+	existing, err := d.McpResourceServerRepo.FindByID(c.Request().Context(), tenantID, c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := d.McpResourceServerRepo.Delete(c.Request().Context(), support.RequestTenantID(c), c.Param("resource_server_id")); err != nil {
+	if err := d.McpResourceServerRepo.Delete(c.Request().Context(), support.RequestTenantID(c), c.Param("id")); err != nil {
 		return err
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")

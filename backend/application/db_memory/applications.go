@@ -153,7 +153,7 @@ func (r *ApplicationRepository) FindByProtocol(_ context.Context, tenantID strin
 func (r *ApplicationRepository) Save(_ context.Context, app *domain.Application) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.applications[sharedmem.TenantKey(app.TenantID, app.ApplicationID)] = cloneApplication(app)
+	r.applications[sharedmem.TenantKey(app.TenantID, app.ID)] = cloneApplication(app)
 	return nil
 }
 

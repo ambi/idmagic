@@ -168,16 +168,16 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 	}
 	var created struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Application.ApplicationID == "" {
-		t.Fatalf("missing application_id: %s", create.Body.String())
+	if created.Application.ID == "" {
+		t.Fatalf("missing application id: %s", create.Body.String())
 	}
-	appID := created.Application.ApplicationID
+	appID := created.Application.ID
 
 	// 未割当の regular はポータルに出ない。
 	if apps := myApplications(t, e, "regular"); len(apps) != 0 {
@@ -247,14 +247,14 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	}
 	var created struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
 
-	view := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+created.Application.ApplicationID+"/sign-in-policy", csrf, cookie, nil)
+	view := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+created.Application.ID+"/sign-in-policy", csrf, cookie, nil)
 	if view.Code != http.StatusOK {
 		t.Fatalf("get app policy status=%d body=%s", view.Code, view.Body.String())
 	}
@@ -285,7 +285,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	}
 
 	// アプリに弱い個別ポリシー (パスワードのみ) を設定するとデフォルトを上書きし、警告フラグが立つ。
-	upd := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+created.Application.ApplicationID+"/sign-in-policy", csrf, cookie, map[string]any{
+	upd := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+created.Application.ID+"/sign-in-policy", csrf, cookie, map[string]any{
 		"rules": []map[string]any{{"name": "Password", "enabled": true, "required_authn": map[string]any{"strength": "Password"}}},
 	})
 	if upd.Code != http.StatusOK {
@@ -341,7 +341,7 @@ func TestSamlApplicationDetailReturnsEmptyRulesNotNull(t *testing.T) {
 	}
 	var created struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
@@ -349,7 +349,7 @@ func TestSamlApplicationDetailReturnsEmptyRulesNotNull(t *testing.T) {
 	}
 
 	detail := adminJSON(t, e, http.MethodGet,
-		"/api/admin/applications/"+created.Application.ApplicationID, csrf, cookie, nil)
+		"/api/admin/applications/"+created.Application.ID, csrf, cookie, nil)
 	if detail.Code != http.StatusOK {
 		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
 	}
@@ -385,13 +385,13 @@ func TestApplicationIconUploadServeRejectAndDelete(t *testing.T) {
 	}
 	var created struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	appID := created.Application.ApplicationID
+	appID := created.Application.ID
 
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
 	upload := adminMultipart(t, e, "/api/admin/applications/"+appID+"/icon", csrf, cookie, "icon.png", png)

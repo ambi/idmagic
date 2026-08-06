@@ -21,13 +21,13 @@ func TestUpdateApplicationOidcConfig_RulesRoundtrip(t *testing.T) {
 	}
 	var createdBody struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
-	appID := createdBody.Application.ApplicationID
+	appID := createdBody.Application.ID
 
 	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/oidc", csrf, cookie, map[string]any{
 		"rules": []map[string]any{
@@ -73,13 +73,13 @@ func TestUpdateApplicationOidcConfig_RejectsUndefinedAttributeSource(t *testing.
 	}
 	var createdBody struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
-	appID := createdBody.Application.ApplicationID
+	appID := createdBody.Application.ID
 
 	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/oidc", csrf, cookie, map[string]any{
 		"rules": []map[string]any{
@@ -105,13 +105,13 @@ func TestUpdateApplicationWsFedConfig_RejectsReservedClaimType(t *testing.T) {
 	}
 	var createdBody struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
-	appID := createdBody.Application.ApplicationID
+	appID := createdBody.Application.ID
 
 	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/wsfed", csrf, cookie, map[string]any{
 		"rules": []map[string]any{
@@ -137,13 +137,13 @@ func TestUpdateApplicationSamlConfig_RejectsUndefinedAttributeSource(t *testing.
 	}
 	var createdBody struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
-	appID := createdBody.Application.ApplicationID
+	appID := createdBody.Application.ID
 
 	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/saml", csrf, cookie, map[string]any{
 		"rules": []map[string]any{

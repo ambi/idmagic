@@ -19779,7 +19779,7 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
 <article class="card" id="scl-OAuth2/model/McpResourceServer">
     <header><h3>McpResourceServer</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/McpResourceServer</code></header>
     <p class="desc">MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。</p>
-    <dl class="kv"><dt>identity</dt><dd><code>resource_server_id</code></dd></dl>
+    <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
@@ -19789,11 +19789,11 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
     <td><span class="chip chip-default">default: default</span></td>
     <td>所属テナント ID。</td>
   </tr><tr>
-    <td><code class="name">resource_server_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-constraint">non empty</span></td>
-    <td>登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。</td>
+    <td>登録の一意識別子 (UUID)。tenant を越えて globally unique。</td>
   </tr><tr>
     <td><code class="name">resource</code></td>
     <td><code class="type">ResourceIndicator</code></td>
@@ -20580,11 +20580,11 @@ front/back-channel logout の相関に使う (wi-28)。
 <article class="card" id="scl-OAuth2/model/Application">
     <header><h3>Application</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/Application</code></header>
     <p class="desc">Application context が publish する protocol assignment / sign-in policy 判定用 stub。</p>
-    <dl class="kv"><dt>identity</dt><dd><code>application_id</code></dd></dl>
+    <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -20813,7 +20813,7 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
-    <td><code class="name">resource_server_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -25648,7 +25648,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">resource_server_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -25670,7 +25670,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/mcp-resource-servers/{resource_server_id}</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/mcp-resource-servers/{id}</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-OAuth2/interface/CreateAdminMcpResourceServer">
@@ -25716,7 +25716,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">resource_server_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -25743,7 +25743,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/mcp-resource-servers/{resource_server_id}</code> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/mcp-resource-servers/{id}</code> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-OAuth2/interface/DeleteAdminMcpResourceServer">
@@ -25755,7 +25755,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">resource_server_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -25765,7 +25765,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/mcp-resource-servers/{resource_server_id}</code> <span class="chip chip-hint">response: 204</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/mcp-resource-servers/{id}</code> <span class="chip chip-hint">response: 204</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-OAuth2/interface/ListAdminConsents">
@@ -28377,7 +28377,7 @@ filter の field は registry allowlist のみ。
       <div class="cards"><article class="card" id="scl-Application/model/Application">
     <header><h3>Application</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Application/model/Application</code></header>
     <p class="desc">運用者が「接続する業務アプリケーション」として扱う上位 aggregate。表示名・アイコン・状態・割当と、不変な単一 protocol 種別を所有する。weblink は protocol を持たず、federated は oidc / saml / wsfed のいずれか1個、service は oidc 1個を持つ。protocol row は nullable application_id を持ち、NULL の catalog 外設定も許容する。</p>
-    <dl class="kv"><dt>identity</dt><dd><code>application_id</code></dd></dl>
+    <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
@@ -28387,7 +28387,7 @@ filter の field は registry allowlist のみ。
     <td><span class="chip chip-default">default: default</span></td>
     <td>所属テナント ID。</td>
   </tr><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -28868,7 +28868,7 @@ filter の field は registry allowlist のみ。
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -30008,7 +30008,7 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -30934,9 +30934,9 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
     <header><h3>AssignApplicationDesiredState</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">Application/interface/AssignApplicationDesiredState</code></header>
     <p class="desc">呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への
 user 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の
-Go 呼び出しとして各 context の usecase から使う。既に同じ (application_id, user_id) の割当が
+Go 呼び出しとして各 context の usecase から使う。既に同じ (id, user_id) の割当が
 指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は
-同一テナントの application_id / user_id だけを渡す。
+同一テナントの id / user_id だけを渡す。
 </p>
 
     <div class="io">
@@ -30949,7 +30949,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <td><span class="badge badge-required">required</span></td>
     <td></td>
   </tr><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31001,7 +31001,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <td><span class="badge badge-required">required</span></td>
     <td></td>
   </tr><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31050,7 +31050,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/GetAdminApplication">
-    <header><h3>GetAdminApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetAdminApplication</code></header>
+    <header><h3>GetAdminApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetAdminApplication</code></header>
     <p class="desc">管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。</p>
 
     <div class="io">
@@ -31058,7 +31058,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31080,7 +31080,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{application_id}</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{id}</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/CreateAdminApplication">
@@ -31119,7 +31119,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UpdateAdminApplication">
-    <header><h3>UpdateAdminApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/UpdateAdminApplication</code></header>
+    <header><h3>UpdateAdminApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/UpdateAdminApplication</code></header>
     <p class="desc">管理者が Application のメタデータを更新する。</p>
 
     <div class="io">
@@ -31127,7 +31127,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31155,11 +31155,11 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationUpdated">ApplicationUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{application_id}</code> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{id}</code> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UploadApplicationIcon">
-    <header><h3>UploadApplicationIcon</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/UploadApplicationIcon</code></header>
+    <header><h3>UploadApplicationIcon</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/UploadApplicationIcon</code></header>
     <p class="desc">管理者が Application のアイコン画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。</p>
 
     <div class="io">
@@ -31167,7 +31167,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31196,11 +31196,11 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">context.upload.content_type in [&quot;image/png&quot;, &quot;image/jpeg&quot;, &quot;image/webp&quot;, &quot;image/gif&quot;]</code></li><li><code class="expr">context.upload.magic_byte_matches_content_type</code></li><li><code class="expr">size(input.file) &lt;= 262144</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/icon</code> <span class="chip chip-hint">form: form</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/icon</code> <span class="chip chip-hint">form: form</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/DeleteApplicationIcon">
-    <header><h3>DeleteApplicationIcon</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/DeleteApplicationIcon</code></header>
+    <header><h3>DeleteApplicationIcon</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/DeleteApplicationIcon</code></header>
     <p class="desc">管理者が Application の保存済みアイコンを削除する。削除後は icon_url を返さない。</p>
 
     <div class="io">
@@ -31208,7 +31208,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31231,7 +31231,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationIconUpdated">ApplicationIconUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{application_id}/icon</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{id}/icon</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/GetApplicationIcon">
@@ -31275,7 +31275,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/DeleteAdminApplication">
-    <header><h3>DeleteAdminApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/DeleteAdminApplication</code></header>
+    <header><h3>DeleteAdminApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/DeleteAdminApplication</code></header>
     <p class="desc">管理者が Application を削除する (冪等)。関連する protocol row は同一 transaction で cascade delete される。</p>
 
     <div class="io">
@@ -31283,7 +31283,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31294,11 +31294,11 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationDeleted">ApplicationDeleted</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{application_id}</code> <span class="chip chip-hint">response: 204</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{id}</code> <span class="chip chip-hint">response: 204</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UpdateApplicationOidcConfig">
-    <header><h3>UpdateApplicationOidcConfig</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/UpdateApplicationOidcConfig</code></header>
+    <header><h3>UpdateApplicationOidcConfig</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/UpdateApplicationOidcConfig</code></header>
     <p class="desc">管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。rules /
 sub_source_attribute は claim release 上書きであり、visibility=Private の
 属性や reserved claim type を参照する rule は拒否する。
@@ -31309,7 +31309,7 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31326,11 +31326,11 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">claim_release_rules_within_floor(context.tenant_id, input.request.rules)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{application_id}/oidc</code> <span class="chip chip-hint">response: 204</span> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{id}/oidc</code> <span class="chip chip-hint">response: 204</span> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/RotateApplicationClientSecret">
-    <header><h3>RotateApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/RotateApplicationClientSecret</code></header>
+    <header><h3>RotateApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/RotateApplicationClientSecret</code></header>
     <p class="desc">互換性のため、管理者が Application の OIDC protocol の client secret を従来方式で回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。新しい管理 UI は IssueApplicationClientSecret と RevokeApplicationClientSecret を使用する。</p>
 
     <div class="io">
@@ -31338,7 +31338,7 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31365,11 +31365,11 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/oidc/rotate-secret</code> <span class="chip chip-hint">response: 200</span> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/oidc/rotate-secret</code> <span class="chip chip-hint">response: 200</span> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/IssueApplicationClientSecret">
-    <header><h3>IssueApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/IssueApplicationClientSecret</code></header>
+    <header><h3>IssueApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/IssueApplicationClientSecret</code></header>
     <p class="desc">管理者が Application の secret-based OIDC client に期限付き credential を追加発行する。既存 credential は変更せず、Active credential が2件なら原子的に拒否する。secret-based でない client は拒否する。</p>
 
     <div class="io">
@@ -31377,7 +31377,7 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31405,11 +31405,11 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ClientSecretIssued">ClientSecretIssued</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/oidc/client-secrets</code> <span class="chip chip-hint">response: 201</span> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/oidc/client-secrets</code> <span class="chip chip-hint">response: 201</span> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/RevokeApplicationClientSecret">
-    <header><h3>RevokeApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/RevokeApplicationClientSecret</code></header>
+    <header><h3>RevokeApplicationClientSecret</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/RevokeApplicationClientSecret</code></header>
     <p class="desc">管理者が Application の secret-based OIDC client に属する指定 credential だけを即時失効する。既に失効済みなら冪等に成功し、別 client または存在しない credential は拒否する。</p>
 
     <div class="io">
@@ -31417,7 +31417,7 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31445,11 +31445,11 @@ sub_source_attribute は claim release 上書きであり、visibility=Private �
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ClientSecretRevoked">ClientSecretRevoked</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{application_id}/oidc/client-secrets/{credential_id}</code> <span class="chip chip-hint">response: 200</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{id}/oidc/client-secrets/{credential_id}</code> <span class="chip chip-hint">response: 200</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UpdateApplicationWsFedConfig">
-    <header><h3>UpdateApplicationWsFedConfig</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/UpdateApplicationWsFedConfig</code></header>
+    <header><h3>UpdateApplicationWsFedConfig</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/UpdateApplicationWsFedConfig</code></header>
     <p class="desc">管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。rules /
 name_id_source は claim release 上書きであり、visibility=Private の属性や
 reserved claim type を参照する rule は拒否する。
@@ -31460,7 +31460,7 @@ reserved claim type を参照する rule は拒否する。
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31477,11 +31477,11 @@ reserved claim type を参照する rule は拒否する。
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">claim_release_rules_within_floor(context.tenant_id, input.request.rules)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{application_id}/wsfed</code> <span class="chip chip-hint">response: 204</span> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{id}/wsfed</code> <span class="chip chip-hint">response: 204</span> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UpdateApplicationSamlConfig">
-    <header><h3>UpdateApplicationSamlConfig</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/UpdateApplicationSamlConfig</code></header>
+    <header><h3>UpdateApplicationSamlConfig</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/UpdateApplicationSamlConfig</code></header>
     <p class="desc">管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを
 部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。rules / name_id_source は
 claim release 上書きであり、visibility=Private の属性や reserved claim type
@@ -31493,7 +31493,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31510,11 +31510,11 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">claim_release_rules_within_floor(context.tenant_id, input.request.rules)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{application_id}/saml</code> <span class="chip chip-hint">response: 204</span> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{id}/saml</code> <span class="chip chip-hint">response: 204</span> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/ListApplicationAssignments">
-    <header><h3>ListApplicationAssignments</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/ListApplicationAssignments</code></header>
+    <header><h3>ListApplicationAssignments</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/ListApplicationAssignments</code></header>
     <p class="desc">管理者が Application の割当を一覧する。</p>
 
     <div class="io">
@@ -31522,7 +31522,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31544,11 +31544,11 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{application_id}/assignments</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{id}/assignments</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/AssignApplication">
-    <header><h3>AssignApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/AssignApplication</code></header>
+    <header><h3>AssignApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/AssignApplication</code></header>
     <p class="desc">管理者が Application にユーザー / グループを割当てる。</p>
 
     <div class="io">
@@ -31556,7 +31556,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31585,11 +31585,11 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">subject_exists_in_tenant(input.request.subject_type, input.request.subject_id, context.tenant_id)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/assignments</code> <span class="chip chip-hint">response: 201</span> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/assignments</code> <span class="chip chip-hint">response: 201</span> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UnassignApplication">
-    <header><h3>UnassignApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/UnassignApplication</code></header>
+    <header><h3>UnassignApplication</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/UnassignApplication</code></header>
     <p class="desc">管理者が Application の割当を解除する (冪等)。</p>
 
     <div class="io">
@@ -31597,7 +31597,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31618,11 +31618,11 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationUnassigned">ApplicationUnassigned</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{application_id}/assignments/{subject_type}/{subject_id}</code> <span class="chip chip-hint">response: 204</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{id}/assignments/{subject_type}/{subject_id}</code> <span class="chip chip-hint">response: 204</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/GetAppSignInPolicy">
-    <header><h3>GetAppSignInPolicy</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetAppSignInPolicy</code></header>
+    <header><h3>GetAppSignInPolicy</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetAppSignInPolicy</code></header>
     <p class="desc">管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。</p>
 
     <div class="io">
@@ -31630,7 +31630,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31652,11 +31652,11 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{application_id}/sign-in-policy</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{id}/sign-in-policy</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UpdateAppSignInPolicy">
-    <header><h3>UpdateAppSignInPolicy</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/UpdateAppSignInPolicy</code></header>
+    <header><h3>UpdateAppSignInPolicy</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/UpdateAppSignInPolicy</code></header>
     <p class="desc">管理者が Application の sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。</p>
 
     <div class="io">
@@ -31664,7 +31664,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31692,7 +31692,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/AppSignInPolicyUpdated">AppSignInPolicyUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/applications/{application_id}/sign-in-policy</code> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/applications/{id}/sign-in-policy</code> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/GetTenantDefaultSignInPolicy">
@@ -31873,7 +31873,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/SetApplicationCategories">
-    <header><h3>SetApplicationCategories</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.application_id</code><code class="canonical-ref">Application/interface/SetApplicationCategories</code></header>
+    <header><h3>SetApplicationCategories</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>Application:input.id</code><code class="canonical-ref">Application/interface/SetApplicationCategories</code></header>
     <p class="desc">管理者が Application に付与するカテゴリ集合を置き換える。所属テナントの既存カテゴリのみ受け付ける。</p>
 
     <div class="io">
@@ -31881,7 +31881,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31909,7 +31909,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationUpdated">ApplicationUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/applications/{application_id}/categories</code> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-put">PUT</span> <code class="path">/api/admin/applications/{id}/categories</code> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/ListMyApplications">
@@ -32147,7 +32147,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">tenant_id &quot;acme&quot; の <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> に tenant_id &quot;default&quot; の <a class="chip chip-ref" href="#scl-Application/model/User">User</a> sub を指定する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">別テナントの管理者がアプリケーションを取得しようとする</code></header>
-            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">tenant_id &quot;acme&quot; に <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> &quot;portal&quot; が存在する</li><li class="scn-step">tenant_id &quot;default&quot; の管理者が同じ application_id を取得する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">tenant_id &quot;acme&quot; に <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> &quot;portal&quot; が存在する</li><li class="scn-step">tenant_id &quot;default&quot; の管理者が同じ id を取得する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-Application/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AFApplication~E3~82~A2~E3~82~A4~E3~82~B3~E3~83~B3~E3~82~92~E3~82~A2~E3~83~83~E3~83~97~E3~83~AD~E3~83~BC~E3~83~89~E5~89~8A~E9~99~A4~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者はApplicationアイコンをアップロード削除できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Application/scenario/管理者はApplicationアイコンをアップロード削除できる</code></header>
@@ -41020,7 +41020,7 @@ failed という非終端の中間状態は持たない — dead_letter は Job 
     <h2>Interfaces <span class="count">12</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Provisioning/interface/RegisterProvisioningConnection">
-    <header><h3>RegisterProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><code class="canonical-ref">Provisioning/interface/RegisterProvisioningConnection</code></header>
+    <header><h3>RegisterProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/RegisterProvisioningConnection</code></header>
     <p class="desc">管理者が Application に ProvisioningConnection を新規登録する。属性マッピングは SCIM core User の既定を自動 seed する。</p>
 
     <div class="io">
@@ -41028,7 +41028,7 @@ failed という非終端の中間状態は持たない — dead_letter は Job 
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41060,14 +41060,14 @@ failed という非終端の中間状態は持たない — dead_letter は Job 
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Provisioning/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Provisioning/model/ProvisioningConnectionAlreadyExistsError">ProvisioningConnectionAlreadyExistsError</a> <a class="chip chip-error-ref" href="#scl-Provisioning/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Provisioning/model/ProvisioningConnectionRegistered">ProvisioningConnectionRegistered</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">is_safe_outbound_url(input.base_url)</code></li><li><code class="expr">credential_matches_auth_method(input.credential)</code></li></ul></div>
-<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.connection.application_id == input.application_id</code></li><li><code class="expr">output.connection.status == &quot;active&quot;</code></li><li><code class="expr">emitted.exists(e, e is ProvisioningConnectionRegistered)</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.connection.application_id == input.id</code></li><li><code class="expr">output.connection.status == &quot;active&quot;</code></li><li><code class="expr">emitted.exists(e, e is ProvisioningConnectionRegistered)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/provisioning</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/provisioning</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/GetProvisioningConnection">
-    <header><h3>GetProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientReadProvisioning">ManagementApiClientReadProvisioning</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Provisioning/interface/GetProvisioningConnection</code></header>
+    <header><h3>GetProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientReadProvisioning">ManagementApiClientReadProvisioning</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Provisioning/interface/GetProvisioningConnection</code></header>
     <p class="desc">管理者が Application の ProvisioningConnection を取得する。別テナントは未存在として扱う。</p>
 
     <div class="io">
@@ -41075,7 +41075,7 @@ failed という非終端の中間状態は持たない — dead_letter は Job 
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41097,11 +41097,11 @@ failed という非終端の中間状態は持たない — dead_letter は Job 
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Provisioning/model/ProvisioningConnectionNotFoundError">ProvisioningConnectionNotFoundError</a> <a class="chip chip-error-ref" href="#scl-Provisioning/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{application_id}/provisioning</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{id}/provisioning</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/UpdateProvisioningConnection">
-    <header><h3>UpdateProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><code class="canonical-ref">Provisioning/interface/UpdateProvisioningConnection</code></header>
+    <header><h3>UpdateProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/UpdateProvisioningConnection</code></header>
     <p class="desc">管理者が ProvisioningConnection の設定を更新する。credential を含む更新は
 credential rotation として扱い ProvisioningCredentialRotated も発行する。
 </p>
@@ -41111,7 +41111,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41201,11 +41201,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">input.credential == null || emitted.exists(e, e is ProvisioningCredentialRotated)</code></li><li><code class="expr">input.status != &quot;disabled&quot; || emitted.exists(e, e is ProvisioningConnectionDisabled)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{application_id}/provisioning</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/applications/{id}/provisioning</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/DeleteProvisioningConnection">
-    <header><h3>DeleteProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><code class="canonical-ref">Provisioning/interface/DeleteProvisioningConnection</code></header>
+    <header><h3>DeleteProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/DeleteProvisioningConnection</code></header>
     <p class="desc">管理者が ProvisioningConnection を削除する (hard delete)。既存の RemoteResourceLink・ProvisioningDelivery は履歴として残す。</p>
 
     <div class="io">
@@ -41213,7 +41213,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41224,11 +41224,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Provisioning/model/ProvisioningConnectionDeleted">ProvisioningConnectionDeleted</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{application_id}/provisioning</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/applications/{id}/provisioning</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/TestProvisioningConnection">
-    <header><h3>TestProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span><code class="canonical-ref">Provisioning/interface/TestProvisioningConnection</code></header>
+    <header><h3>TestProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><span class="badge badge-idempotent">idempotent</span><code class="canonical-ref">Provisioning/interface/TestProvisioningConnection</code></header>
     <p class="desc">管理者が下流 /ServiceProviderConfig への到達性を確認し capabilities を再取得してキャッシュを更新する。</p>
 
     <div class="io">
@@ -41236,7 +41236,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41268,11 +41268,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Provisioning/model/ProvisioningConnectionNotFoundError">ProvisioningConnectionNotFoundError</a> <a class="chip chip-error-ref" href="#scl-Provisioning/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/provisioning/test</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/provisioning/test</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/ProvisionOnDemand">
-    <header><h3>ProvisionOnDemand</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><code class="canonical-ref">Provisioning/interface/ProvisionOnDemand</code></header>
+    <header><h3>ProvisionOnDemand</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/ProvisionOnDemand</code></header>
     <p class="desc">管理者が単一 subject を指定して即時に試験配送する ProvisioningDelivery を作成する。</p>
 
     <div class="io">
@@ -41280,7 +41280,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41313,11 +41313,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.delivery.status == &quot;pending&quot;</code></li><li><code class="expr">output.delivery.source_id == input.subject_id</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/provisioning/on-demand</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/provisioning/on-demand</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/StartFullResync">
-    <header><h3>StartFullResync</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><code class="canonical-ref">Provisioning/interface/StartFullResync</code></header>
+    <header><h3>StartFullResync</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/StartFullResync</code></header>
     <p class="desc">管理者が connection の scope 内 subject 全件を再走査し収束させる full resync を開始する。完了は非同期で FullResyncCompleted が発行される。</p>
 
     <div class="io">
@@ -41325,7 +41325,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41347,11 +41347,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Provisioning/model/ProvisioningConnectionNotFoundError">ProvisioningConnectionNotFoundError</a> <a class="chip chip-error-ref" href="#scl-Provisioning/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/provisioning/full-resync</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/provisioning/full-resync</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/ListProvisioningDeliveries">
-    <header><h3>ListProvisioningDeliveries</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientReadProvisioning">ManagementApiClientReadProvisioning</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Provisioning/interface/ListProvisioningDeliveries</code></header>
+    <header><h3>ListProvisioningDeliveries</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientReadProvisioning">ManagementApiClientReadProvisioning</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Provisioning/interface/ListProvisioningDeliveries</code></header>
     <p class="desc">管理者が connection の配送状況を一覧する。status/source_type で絞り込める。</p>
 
     <div class="io">
@@ -41359,7 +41359,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41406,11 +41406,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Provisioning/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{application_id}/provisioning/deliveries</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{id}/provisioning/deliveries</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/GetProvisioningDelivery">
-    <header><h3>GetProvisioningDelivery</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientReadProvisioning">ManagementApiClientReadProvisioning</a> <code>Application:input.application_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Provisioning/interface/GetProvisioningDelivery</code></header>
+    <header><h3>GetProvisioningDelivery</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientReadProvisioning">ManagementApiClientReadProvisioning</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Provisioning/interface/GetProvisioningDelivery</code></header>
     <p class="desc">管理者が配送 1 件の詳細を取得する。</p>
 
     <div class="io">
@@ -41418,7 +41418,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41445,11 +41445,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Provisioning/model/ProvisioningDeliveryNotFoundError">ProvisioningDeliveryNotFoundError</a> <a class="chip chip-error-ref" href="#scl-Provisioning/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/RetryProvisioningDelivery">
-    <header><h3>RetryProvisioningDelivery</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><code class="canonical-ref">Provisioning/interface/RetryProvisioningDelivery</code></header>
+    <header><h3>RetryProvisioningDelivery</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/RetryProvisioningDelivery</code></header>
     <p class="desc">管理者が dead_letter の配送を手動で再試行する。pending へ戻し dispatcher の再走査対象にする。</p>
 
     <div class="io">
@@ -41457,7 +41457,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41486,11 +41486,11 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.delivery.status == &quot;pending&quot;</code></li><li><code class="expr">output.delivery.job_id == null</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}/retry</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}/retry</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/ResumeProvisioningConnection">
-    <header><h3>ResumeProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.application_id</code><code class="canonical-ref">Provisioning/interface/ResumeProvisioningConnection</code></header>
+    <header><h3>ResumeProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/ResumeProvisioningConnection</code></header>
     <p class="desc">管理者が quarantine された ProvisioningConnection を解除し配送を再開する。wi-45 の運用手順一覧に quarantine 解除の経路が明記されていなかったため、SCL 化にあたり本 interface を追加した。</p>
 
     <div class="io">
@@ -41498,7 +41498,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">application_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -41523,7 +41523,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.connection.health != &quot;quarantined&quot;</code></li><li><code class="expr">emitted.exists(e, e is ProvisioningConnectionQuarantineCleared)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{application_id}/provisioning/resume</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/applications/{id}/provisioning/resume</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Provisioning/interface/ListTenantProvisioningConnections">
@@ -41832,7 +41832,7 @@ RetryProvisioningDelivery が pending へ戻す (管理者操作であり本状�
         <header><h3>他テナントのProvisioningConnectionと配送は越境しない</h3><span class="chip chip-actor">System</span><code class="canonical-ref">Provisioning/scenario/他テナントのProvisioningConnectionと配送は越境しない</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; の <a class="chip chip-ref" href="#scl-Provisioning/model/ProvisioningConnection">ProvisioningConnection</a> と <a class="chip chip-ref" href="#scl-Provisioning/model/ProvisioningDelivery">ProvisioningDelivery</a> が存在する</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-b&quot; の管理者が <a class="chip chip-ref" href="#scl-Provisioning/interface/GetProvisioningConnection">GetProvisioningConnection</a> または <a class="chip chip-ref" href="#scl-Provisioning/interface/GetProvisioningDelivery">GetProvisioningDelivery</a> を同じ application_id/delivery_id で呼ぶ</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Provisioning/model/ProvisioningConnectionNotFoundError">ProvisioningConnectionNotFoundError</a> または <a class="chip chip-ref" href="#scl-Provisioning/model/ProvisioningDeliveryNotFoundError">ProvisioningDeliveryNotFoundError</a> が返る</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-b&quot; の管理者が <a class="chip chip-ref" href="#scl-Provisioning/interface/GetProvisioningConnection">GetProvisioningConnection</a> または <a class="chip chip-ref" href="#scl-Provisioning/interface/GetProvisioningDelivery">GetProvisioningDelivery</a> を同じ id/delivery_id で呼ぶ</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Provisioning/model/ProvisioningConnectionNotFoundError">ProvisioningConnectionNotFoundError</a> または <a class="chip chip-ref" href="#scl-Provisioning/model/ProvisioningDeliveryNotFoundError">ProvisioningDeliveryNotFoundError</a> が返る</li></ol></div>
 
       </article><article class="card scenario" id="scl-Provisioning/scenario/~E5~90~8C~E4~B8~80idempotency~E3~82~AD~E3~83~BC~E3~81~AE~E9~87~8D~E8~A4~87~E9~85~8D~E9~80~81~E3~81~AF~E6~97~A2~E5~AD~98~E8~A1~8C~E3~81~B8~E3~81~AEno-op~E3~81~AB~E3~81~AA~E3~82~8B">
         <header><h3>同一idempotencyキーの重複配送は既存行へのno-opになる</h3><span class="chip chip-actor">System</span><code class="canonical-ref">Provisioning/scenario/同一idempotencyキーの重複配送は既存行へのno-opになる</code></header>

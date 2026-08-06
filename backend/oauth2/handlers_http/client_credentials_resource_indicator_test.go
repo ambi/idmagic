@@ -40,11 +40,11 @@ func TestTokenClientCredentials_unregisteredResource_rejectedAsInvalidTarget(t *
 func TestTokenClientCredentials_registeredResource_boundAudience(t *testing.T) {
 	f := newTokenServer(t)
 	f.mcpResourceServerRepo.Seed(&domain.McpResourceServer{
-		ResourceServerID: "rs-1",
-		Resource:         "https://mcp.example.com/tools",
-		Name:             "Tools",
-		Scopes:           []string{"openid", "profile"},
-		State:            domain.McpResourceServerActive,
+		ID:       "rs-1",
+		Resource: "https://mcp.example.com/tools",
+		Name:     "Tools",
+		Scopes:   []string{"openid", "profile"},
+		State:    domain.McpResourceServerActive,
 	})
 	form := url.Values{
 		"client_id":     {"client-conf"},

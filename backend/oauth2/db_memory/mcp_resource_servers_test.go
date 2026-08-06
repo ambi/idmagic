@@ -15,14 +15,14 @@ func TestMcpResourceServerRepository(t *testing.T) {
 
 	t.Run("Save and FindByID", func(t *testing.T) {
 		m := &domain.McpResourceServer{
-			TenantID:         "tenant-1",
-			ResourceServerID: "rs-1",
-			Resource:         "https://mcp.example.com/tools/github",
-			Name:             "GitHub MCP Tools",
-			Scopes:           []string{"mcp.read"},
-			State:            domain.McpResourceServerActive,
-			CreatedAt:        now,
-			UpdatedAt:        now,
+			TenantID:  "tenant-1",
+			ID:        "rs-1",
+			Resource:  "https://mcp.example.com/tools/github",
+			Name:      "GitHub MCP Tools",
+			Scopes:    []string{"mcp.read"},
+			State:     domain.McpResourceServerActive,
+			CreatedAt: now,
+			UpdatedAt: now,
 		}
 		if err := repo.Save(ctx, m); err != nil {
 			t.Fatal(err)
@@ -50,7 +50,7 @@ func TestMcpResourceServerRepository(t *testing.T) {
 
 	t.Run("FindByResource is tenant scoped", func(t *testing.T) {
 		m := &domain.McpResourceServer{
-			TenantID: "tenant-1", ResourceServerID: "rs-2",
+			TenantID: "tenant-1", ID: "rs-2",
 			Resource: "https://mcp.example.com/tools/slack", Name: "Slack MCP",
 			Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
 			CreatedAt: now, UpdatedAt: now,
@@ -63,7 +63,7 @@ func TestMcpResourceServerRepository(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if found == nil || found.ResourceServerID != "rs-2" {
+		if found == nil || found.ID != "rs-2" {
 			t.Fatal("expected to find rs-2 by resource within tenant-1")
 		}
 

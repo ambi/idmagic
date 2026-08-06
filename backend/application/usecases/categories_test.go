@@ -138,7 +138,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 
 	// 重複を含めても 1 件に正規化される。
 	updated, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.ID, work.ID},
+		ActorUserID: "admin", ApplicationID: app.ID, CategoryIDs: []string{work.ID, work.ID},
 	})
 	if err != nil {
 		t.Fatalf("set categories: %v", err)
@@ -149,7 +149,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 
 	// 未知のカテゴリは拒否する。
 	if _, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{"nope"},
+		ActorUserID: "admin", ApplicationID: app.ID, CategoryIDs: []string{"nope"},
 	}); !errors.Is(err, appusecases.ErrUnknownCategory) {
 		t.Fatalf("expected ErrUnknownCategory, got %v", err)
 	}
@@ -177,7 +177,7 @@ func TestDeleteCategoryScrubsFromApplications(t *testing.T) {
 		t.Fatalf("create app: %v", err)
 	}
 	if _, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.ID},
+		ActorUserID: "admin", ApplicationID: app.ID, CategoryIDs: []string{work.ID},
 	}); err != nil {
 		t.Fatalf("set categories: %v", err)
 	}
@@ -185,7 +185,7 @@ func TestDeleteCategoryScrubsFromApplications(t *testing.T) {
 	if err := appusecases.DeleteCategory(ctx, deps, "admin", work.ID, time.Time{}); err != nil {
 		t.Fatalf("delete category: %v", err)
 	}
-	got, err := appDeps.Repo.FindByID(ctx, "acme", app.ApplicationID)
+	got, err := appDeps.Repo.FindByID(ctx, "acme", app.ID)
 	if err != nil {
 		t.Fatalf("find app: %v", err)
 	}

@@ -24,7 +24,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
       mock(() =>
         Promise.resolve(
           response(201, {
-            resource_server_id: 'resource-server-1',
+            id: 'resource-server-1',
             resource: 'https://mcp.example.com',
             name: 'Example MCP',
             scopes: ['mcp.read', 'mcp.write', 'profile'],

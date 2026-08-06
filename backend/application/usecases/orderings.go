@@ -41,7 +41,7 @@ func ApplyManualOrder(apps []*domain.Application, order []string) []*domain.Appl
 	}
 	byID := make(map[string]*domain.Application, len(apps))
 	for _, app := range apps {
-		byID[app.ApplicationID] = app
+		byID[app.ID] = app
 	}
 	out := make([]*domain.Application, 0, len(apps))
 	placed := make(map[string]struct{}, len(apps))
@@ -57,7 +57,7 @@ func ApplyManualOrder(apps []*domain.Application, order []string) []*domain.Appl
 		out = append(out, app)
 	}
 	for _, app := range apps {
-		if _, done := placed[app.ApplicationID]; done {
+		if _, done := placed[app.ID]; done {
 			continue
 		}
 		out = append(out, app)
@@ -75,7 +75,7 @@ func SaveMyApplicationOrder(ctx context.Context, deps AssignmentDeps, userID str
 	}
 	allowed := make(map[string]struct{}, len(assigned))
 	for _, app := range assigned {
-		allowed[app.ApplicationID] = struct{}{}
+		allowed[app.ID] = struct{}{}
 	}
 	cleaned := make([]string, 0, len(applicationIDs))
 	seen := make(map[string]struct{}, len(applicationIDs))

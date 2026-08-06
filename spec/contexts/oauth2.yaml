@@ -1397,17 +1397,17 @@ models:
     kind: entity
     description: MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。
     identity:
-      - resource_server_id
+      - id
     fields:
       tenant_id:
         type: String
         default: default
         description: 所属テナント ID。
-      resource_server_id:
+      id:
         type: String
         constraints:
           - non_empty
-        description: 登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。
+        description: 登録の一意識別子 (UUID)。tenant を越えて globally unique。
       resource:
         type: ResourceIndicator
         description: 発行トークンの aud に厳格束縛される canonical resource URI。tenant 内で一意。
@@ -1481,7 +1481,7 @@ models:
     fields:
       tenant_id:
         type: String
-      resource_server_id:
+      id:
         type: String
       resource:
         type: URI
@@ -3340,9 +3340,9 @@ models:
   Application:
     kind: entity
     description: Application context が publish する protocol assignment / sign-in policy 判定用 stub。
-    identity: application_id
+    identity: id
     fields:
-      application_id:
+      id:
         type: UUID
       tenant_id:
         type: String
@@ -4331,7 +4331,7 @@ interfaces:
   GetAdminMcpResourceServer:
     description: 管理者が所属テナントの McpResourceServer を取得する。別テナントの登録は未存在として扱う。
     input:
-      resource_server_id:
+      id:
         type: String
     output:
       response:
@@ -4348,7 +4348,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/mcp-resource-servers/{resource_server_id}"
+        path: "/api/admin/mcp-resource-servers/{id}"
   CreateAdminMcpResourceServer:
     description: 管理者が所属テナントに McpResourceServer を登録する。resource は tenant 内で一意でなければならない。
     input:
@@ -4375,7 +4375,7 @@ interfaces:
   UpdateAdminMcpResourceServer:
     description: 管理者が McpResourceServer の name / scopes / state を更新する。resource (canonical URI) は不変。
     input:
-      resource_server_id:
+      id:
         type: String
       request:
         type: McpResourceServerRequest
@@ -4393,12 +4393,12 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/mcp-resource-servers/{resource_server_id}"
+        path: "/api/admin/mcp-resource-servers/{id}"
         request_form: body
   DeleteAdminMcpResourceServer:
     description: 管理者が McpResourceServer を削除する。以後この resource を指定する新規発行は invalid_target で拒否する (発行済みトークンは失効まで有効)。
     input:
-      resource_server_id:
+      id:
         type: String
     errors:
       - InvalidRequestError
@@ -4411,7 +4411,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/mcp-resource-servers/{resource_server_id}"
+        path: "/api/admin/mcp-resource-servers/{id}"
         successful_status_codes:
           - "204"
   ListAdminConsents:

@@ -9,13 +9,13 @@ const renderWithRouter = (ui: Parameters<typeof renderWithRouterBase>[0]) =>
   renderWithRouterBase(ui, { locale: 'ja' })
 
 const appA: MyApplication = {
-  application_id: 'app-a',
+  id: 'app-a',
   name: 'App A',
   kind: 'weblink',
   category_ids: ['cat-1'],
 }
 const appB: MyApplication = {
-  application_id: 'app-b',
+  id: 'app-b',
   name: 'App B',
   kind: 'weblink',
   category_ids: [],

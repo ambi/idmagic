@@ -13,7 +13,7 @@ import (
 const deleteApplicationAssignment = `-- name: DeleteApplicationAssignment :exec
 DELETE FROM application_assignments aa
 WHERE aa.application_id = $2 AND aa.subject_type = $3 AND aa.subject_id = $4
-  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.id = $2)
 `
 
 type DeleteApplicationAssignmentParams struct {
@@ -35,7 +35,7 @@ func (q *Queries) DeleteApplicationAssignment(ctx context.Context, arg DeleteApp
 
 const deleteApplicationAssignmentsByApplication = `-- name: DeleteApplicationAssignmentsByApplication :exec
 DELETE FROM application_assignments aa WHERE aa.application_id = $2
-  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.application_id = $2)
+  AND EXISTS (SELECT 1 FROM applications a WHERE a.tenant_id = $1 AND a.id = $2)
 `
 
 type DeleteApplicationAssignmentsByApplicationParams struct {
@@ -50,7 +50,7 @@ func (q *Queries) DeleteApplicationAssignmentsByApplication(ctx context.Context,
 
 const listApplicationAssignmentsByApplication = `-- name: ListApplicationAssignmentsByApplication :many
 SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
-FROM application_assignments aa JOIN applications a ON a.application_id = aa.application_id
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
 WHERE a.tenant_id = $1 AND aa.application_id = $2
 ORDER BY aa.subject_type, aa.subject_id
 `
@@ -100,7 +100,7 @@ func (q *Queries) ListApplicationAssignmentsByApplication(ctx context.Context, a
 
 const listApplicationAssignmentsByTenant = `-- name: ListApplicationAssignmentsByTenant :many
 SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
-FROM application_assignments aa JOIN applications a ON a.application_id = aa.application_id
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
 WHERE a.tenant_id = $1
 `
 

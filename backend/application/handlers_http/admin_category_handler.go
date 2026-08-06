@@ -121,7 +121,7 @@ func (d Deps) handleSetApplicationCategories(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	app, err := appusecases.SetApplicationCategories(c.Request().Context(), d.categoryDeps(), appusecases.SetApplicationCategoriesInput{
-		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), CategoryIDs: req.CategoryIDs, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, ApplicationID: c.Param("id"), CategoryIDs: req.CategoryIDs, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)

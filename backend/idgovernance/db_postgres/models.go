@@ -49,7 +49,7 @@ type ApiToken struct {
 
 type Application struct {
 	TenantID      string
-	ApplicationID string
+	ID            string
 	Name          string
 	Kind          string
 	Status        string
@@ -349,14 +349,14 @@ type LoginThrottleCounter struct {
 }
 
 type McpResourceServer struct {
-	TenantID         string
-	ResourceServerID string
-	Resource         string
-	Name             string
-	Scopes           []byte
-	State            string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	TenantID  string
+	ID        string
+	Resource  string
+	Name      string
+	Scopes    []byte
+	State     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type MfaEnrollmentBypass struct {

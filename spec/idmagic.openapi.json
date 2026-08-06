@@ -11254,7 +11254,7 @@
         }
       }
     },
-    "/api/admin/mcp-resource-servers/{resource_server_id}": {
+    "/api/admin/mcp-resource-servers/{id}": {
       "get": {
         "operationId": "GetAdminMcpResourceServer",
         "summary": "管理者が所属テナントの McpResourceServer を取得する。別テナントの登録は未存在として扱う。",
@@ -11275,7 +11275,7 @@
         },
         "parameters": [
           {
-            "name": "resource_server_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -11347,7 +11347,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "resource_server_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -11356,7 +11356,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "resource_server_id",
+                  "id",
                   "request"
                 ]
               }
@@ -11365,7 +11365,7 @@
         },
         "parameters": [
           {
-            "name": "resource_server_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -11432,7 +11432,7 @@
         },
         "parameters": [
           {
-            "name": "resource_server_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12234,7 +12234,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}": {
+    "/api/admin/applications/{id}": {
       "get": {
         "operationId": "GetAdminApplication",
         "summary": "管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。",
@@ -12250,12 +12250,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12317,7 +12317,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -12327,7 +12327,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -12336,7 +12336,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -12345,7 +12345,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12407,12 +12407,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12444,7 +12444,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/icon": {
+    "/api/admin/applications/{id}/icon": {
       "post": {
         "operationId": "UploadApplicationIcon",
         "summary": "管理者が Application のアイコン画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。",
@@ -12466,7 +12466,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -12476,7 +12476,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "file": {
@@ -12485,7 +12485,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "file"
                 ]
               }
@@ -12494,7 +12494,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12556,12 +12556,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12674,7 +12674,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/oidc": {
+    "/api/admin/applications/{id}/oidc": {
       "patch": {
         "operationId": "UpdateApplicationOidcConfig",
         "summary": "管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。rules /",
@@ -12694,7 +12694,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -12704,7 +12704,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -12713,7 +12713,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -12722,7 +12722,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12754,7 +12754,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/oidc/rotate-secret": {
+    "/api/admin/applications/{id}/oidc/rotate-secret": {
       "post": {
         "operationId": "RotateApplicationClientSecret",
         "summary": "互換性のため、管理者が Application の OIDC protocol の client secret を従来方式で回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。新しい管理 UI は IssueApplicationClientSecret と RevokeApplicationClientSecret を使用する。",
@@ -12770,7 +12770,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -12780,7 +12780,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -12789,7 +12789,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -12798,7 +12798,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12846,7 +12846,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/oidc/client-secrets": {
+    "/api/admin/applications/{id}/oidc/client-secrets": {
       "post": {
         "operationId": "IssueApplicationClientSecret",
         "summary": "管理者が Application の secret-based OIDC client に期限付き credential を追加発行する。既存 credential は変更せず、Active credential が2件なら原子的に拒否する。secret-based でない client は拒否する。",
@@ -12862,7 +12862,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -12872,7 +12872,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -12881,7 +12881,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -12890,7 +12890,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12941,7 +12941,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/oidc/client-secrets/{credential_id}": {
+    "/api/admin/applications/{id}/oidc/client-secrets/{credential_id}": {
       "delete": {
         "operationId": "RevokeApplicationClientSecret",
         "summary": "管理者が Application の secret-based OIDC client に属する指定 credential だけを即時失効する。既に失効済みなら冪等に成功し、別 client または存在しない credential は拒否する。",
@@ -12957,12 +12957,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13018,7 +13018,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/wsfed": {
+    "/api/admin/applications/{id}/wsfed": {
       "patch": {
         "operationId": "UpdateApplicationWsFedConfig",
         "summary": "管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。rules /",
@@ -13038,7 +13038,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -13048,7 +13048,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -13057,7 +13057,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -13066,7 +13066,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13098,7 +13098,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/saml": {
+    "/api/admin/applications/{id}/saml": {
       "patch": {
         "operationId": "UpdateApplicationSamlConfig",
         "summary": "管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを",
@@ -13118,7 +13118,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -13128,7 +13128,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -13137,7 +13137,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -13146,7 +13146,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13178,7 +13178,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/assignments": {
+    "/api/admin/applications/{id}/assignments": {
       "get": {
         "operationId": "ListApplicationAssignments",
         "summary": "管理者が Application の割当を一覧する。",
@@ -13194,12 +13194,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13265,7 +13265,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -13275,7 +13275,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -13284,7 +13284,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -13293,7 +13293,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13341,7 +13341,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/assignments/{subject_type}/{subject_id}": {
+    "/api/admin/applications/{id}/assignments/{subject_type}/{subject_id}": {
       "delete": {
         "operationId": "UnassignApplication",
         "summary": "管理者が Application の割当を解除する (冪等)。",
@@ -13357,12 +13357,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13410,7 +13410,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/sign-in-policy": {
+    "/api/admin/applications/{id}/sign-in-policy": {
       "get": {
         "operationId": "GetAppSignInPolicy",
         "summary": "管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。",
@@ -13426,12 +13426,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13493,7 +13493,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -13503,7 +13503,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -13512,7 +13512,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -13521,7 +13521,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13976,7 +13976,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/categories": {
+    "/api/admin/applications/{id}/categories": {
       "put": {
         "operationId": "SetApplicationCategories",
         "summary": "管理者が Application に付与するカテゴリ集合を置き換える。所属テナントの既存カテゴリのみ受け付ける。",
@@ -13992,7 +13992,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -14002,7 +14002,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -14011,7 +14011,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "request"
                 ]
               }
@@ -14020,7 +14020,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -16587,7 +16587,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning": {
+    "/api/admin/applications/{id}/provisioning": {
       "post": {
         "operationId": "RegisterProvisioningConnection",
         "summary": "管理者が Application に ProvisioningConnection を新規登録する。属性マッピングは SCIM core User の既定を自動 seed する。",
@@ -16596,11 +16596,11 @@
           "credential_matches_auth_method(input.credential)"
         ],
         "x-scl-ensures": [
-          "output.connection.application_id == input.application_id",
+          "output.connection.application_id == input.id",
           "output.connection.status == \"active\"",
           "emitted.exists(e, e is ProvisioningConnectionRegistered)"
         ],
-        "description": "Requires: is_safe_outbound_url(input.base_url); credential_matches_auth_method(input.credential)\n\nEnsures: output.connection.application_id == input.application_id; output.connection.status == \"active\"; emitted.exists(e, e is ProvisioningConnectionRegistered)",
+        "description": "Requires: is_safe_outbound_url(input.base_url); credential_matches_auth_method(input.credential)\n\nEnsures: output.connection.application_id == input.id; output.connection.status == \"active\"; emitted.exists(e, e is ProvisioningConnectionRegistered)",
         "security": [
           {
             "SclBearer": []
@@ -16613,7 +16613,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -16623,7 +16623,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "base_url": {
@@ -16636,7 +16636,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "base_url",
                   "credential"
                 ]
@@ -16646,7 +16646,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -16711,12 +16711,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -16787,7 +16787,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -16797,7 +16797,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "base_url": {
@@ -16846,7 +16846,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id"
+                  "id"
                 ]
               }
             }
@@ -16854,7 +16854,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -16919,12 +16919,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -16956,7 +16956,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning/test": {
+    "/api/admin/applications/{id}/provisioning/test": {
       "post": {
         "operationId": "TestProvisioningConnection",
         "summary": "管理者が下流 /ServiceProviderConfig への到達性を確認し capabilities を再取得してキャッシュを更新する。",
@@ -16972,7 +16972,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -16982,13 +16982,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id"
+                  "id"
                 ]
               }
             }
@@ -16996,7 +16996,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -17050,7 +17050,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning/on-demand": {
+    "/api/admin/applications/{id}/provisioning/on-demand": {
       "post": {
         "operationId": "ProvisionOnDemand",
         "summary": "管理者が単一 subject を指定して即時に試験配送する ProvisioningDelivery を作成する。",
@@ -17071,7 +17071,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -17081,7 +17081,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "subject_type": {
@@ -17093,7 +17093,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "subject_type",
                   "subject_id"
                 ]
@@ -17103,7 +17103,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -17154,7 +17154,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning/full-resync": {
+    "/api/admin/applications/{id}/provisioning/full-resync": {
       "post": {
         "operationId": "StartFullResync",
         "summary": "管理者が connection の scope 内 subject 全件を再走査し収束させる full resync を開始する。完了は非同期で FullResyncCompleted が発行される。",
@@ -17170,7 +17170,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -17180,13 +17180,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id"
+                  "id"
                 ]
               }
             }
@@ -17194,7 +17194,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -17242,7 +17242,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning/deliveries": {
+    "/api/admin/applications/{id}/provisioning/deliveries": {
       "get": {
         "operationId": "ListProvisioningDeliveries",
         "summary": "管理者が connection の配送状況を一覧する。status/source_type で絞り込める。",
@@ -17258,12 +17258,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -17346,7 +17346,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}": {
+    "/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}": {
       "get": {
         "operationId": "GetProvisioningDelivery",
         "summary": "管理者が配送 1 件の詳細を取得する。",
@@ -17362,12 +17362,12 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -17423,7 +17423,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}/retry": {
+    "/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}/retry": {
       "post": {
         "operationId": "RetryProvisioningDelivery",
         "summary": "管理者が dead_letter の配送を手動で再試行する。pending へ戻し dispatcher の再走査対象にする。",
@@ -17447,7 +17447,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -17457,7 +17457,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   },
                   "delivery_id": {
@@ -17466,7 +17466,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id",
+                  "id",
                   "delivery_id"
                 ]
               }
@@ -17475,7 +17475,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -17534,7 +17534,7 @@
         }
       }
     },
-    "/api/admin/applications/{application_id}/provisioning/resume": {
+    "/api/admin/applications/{id}/provisioning/resume": {
       "post": {
         "operationId": "ResumeProvisioningConnection",
         "summary": "管理者が quarantine された ProvisioningConnection を解除し配送を再開する。wi-45 の運用手順一覧に quarantine 解除の経路が明記されていなかったため、SCL 化にあたり本 interface を追加した。",
@@ -17558,7 +17558,7 @@
           ],
           "resource": {
             "type": "Application",
-            "id": "input.application_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -17568,13 +17568,13 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "application_id": {
+                  "id": {
                     "type": "string"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "application_id"
+                  "id"
                 ]
               }
             }
@@ -17582,7 +17582,7 @@
         },
         "parameters": [
           {
-            "name": "application_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -20518,7 +20518,7 @@
       "AdminApplicationResponse": {
         "type": "object",
         "properties": {
-          "application_id": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
@@ -20576,7 +20576,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "application_id",
+          "id",
           "name",
           "kind",
           "status",
@@ -29934,10 +29934,10 @@
             "default": "default",
             "description": "所属テナント ID。"
           },
-          "resource_server_id": {
+          "id": {
             "type": "string",
             "minLength": 1,
-            "description": "登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。"
+            "description": "登録の一意識別子 (UUID)。tenant を越えて globally unique。"
           },
           "resource": {
             "$ref": "#/components/schemas/ResourceIndicator",
@@ -29973,7 +29973,7 @@
         "additionalProperties": false,
         "required": [
           "tenant_id",
-          "resource_server_id",
+          "id",
           "resource",
           "name",
           "scopes",
@@ -30035,7 +30035,7 @@
           "tenant_id": {
             "type": "string"
           },
-          "resource_server_id": {
+          "id": {
             "type": "string"
           },
           "resource": {
@@ -30066,7 +30066,7 @@
         "additionalProperties": false,
         "required": [
           "tenant_id",
-          "resource_server_id",
+          "id",
           "resource",
           "name",
           "scopes",
@@ -30583,7 +30583,7 @@
       "MyApplication": {
         "type": "object",
         "properties": {
-          "application_id": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
@@ -30610,7 +30610,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "application_id",
+          "id",
           "name",
           "kind",
           "category_ids"
@@ -37841,7 +37841,7 @@
               "ManagementApiClientReadApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -37859,7 +37859,7 @@
               "ManagementApiClientReadApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -37895,7 +37895,7 @@
               "ManagementApiClientReadApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38075,7 +38075,7 @@
               "ManagementApiClientReadProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38093,7 +38093,7 @@
               "ManagementApiClientReadProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38111,7 +38111,7 @@
               "ManagementApiClientReadProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38255,7 +38255,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38309,7 +38309,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38345,7 +38345,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38363,7 +38363,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38381,7 +38381,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38399,7 +38399,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38417,7 +38417,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38435,7 +38435,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38453,7 +38453,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38489,7 +38489,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38507,7 +38507,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38525,7 +38525,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38543,7 +38543,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38561,7 +38561,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38777,7 +38777,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38795,7 +38795,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38813,7 +38813,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38831,7 +38831,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38849,7 +38849,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38867,7 +38867,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38885,7 +38885,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38903,7 +38903,7 @@
               "ManagementApiClientWriteProvisioning",
               "TenantAdministrator"
             ],
-            "resourceId": "input.application_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",

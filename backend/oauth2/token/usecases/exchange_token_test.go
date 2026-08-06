@@ -68,12 +68,12 @@ func newExchangeTokenDeps(t *testing.T, issuer *recordingIssuer, results map[str
 		Introspector: tokenIntrospector{results: results},
 		TokenIssuer:  issuer,
 		McpResourceServerRepo: newFakeMcpResourceServerRepo(&domain.McpResourceServer{
-			TenantID:         kernel.DefaultTenantID,
-			ResourceServerID: "rs-api-example",
-			Resource:         "https://api.example",
-			Name:             "API Example",
-			Scopes:           []string{"read", "write"},
-			State:            domain.McpResourceServerActive,
+			TenantID: kernel.DefaultTenantID,
+			ID:       "rs-api-example",
+			Resource: "https://api.example",
+			Name:     "API Example",
+			Scopes:   []string{"read", "write"},
+			State:    domain.McpResourceServerActive,
 		}),
 	}
 }
@@ -113,8 +113,8 @@ func TestExchangeTokenRejectsAccountScopeFromClientSubject(t *testing.T) {
 		"subj": {Active: true, Sub: "service-client", ClientID: "service-client", Scope: "account:read"},
 	})
 	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
-		TenantID:         kernel.DefaultTenantID,
-		ResourceServerID: "realm-api", Resource: "https://api.example", Name: "Realm API", Scopes: []string{"account:read"}, State: domain.McpResourceServerActive,
+		TenantID: kernel.DefaultTenantID,
+		ID:       "realm-api", Resource: "https://api.example", Name: "Realm API", Scopes: []string{"account:read"}, State: domain.McpResourceServerActive,
 	})
 	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{ClientID: "client", SubjectToken: "subj", Resource: []string{"https://api.example"}}, time.Now().UTC())
 	if err == nil {
@@ -253,7 +253,7 @@ func TestExchangeTokenRejectsDisabledResource(t *testing.T) {
 		"subj": {Active: true, Sub: "user-1", Scope: "read"},
 	})
 	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
-		TenantID: kernel.DefaultTenantID, ResourceServerID: "rs-1",
+		TenantID: kernel.DefaultTenantID, ID: "rs-1",
 		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
 		State: domain.McpResourceServerDisabled,
 	})
@@ -269,7 +269,7 @@ func TestExchangeTokenRejectsScopeExceedingResourceAllowlist(t *testing.T) {
 		"subj": {Active: true, Sub: "user-1", Scope: "read write"},
 	})
 	deps.McpResourceServerRepo = newFakeMcpResourceServerRepo(&domain.McpResourceServer{
-		TenantID: kernel.DefaultTenantID, ResourceServerID: "rs-1",
+		TenantID: kernel.DefaultTenantID, ID: "rs-1",
 		Resource: "https://api.example", Name: "API", Scopes: []string{"read"},
 		State: domain.McpResourceServerActive,
 	})

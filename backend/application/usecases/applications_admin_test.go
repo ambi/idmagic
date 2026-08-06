@@ -73,7 +73,7 @@ func TestDeleteApplication_decrementsQuotaUsage(t *testing.T) {
 		t.Fatalf("SetQuota: %v", err)
 	}
 	app := seedApp(ctx, t, deps, "app-one")
-	if err := appusecases.DeleteApplication(ctx, deps, "admin", app.ApplicationID, time.Time{}); err != nil {
+	if err := appusecases.DeleteApplication(ctx, deps, "admin", app.ID, time.Time{}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := appusecases.CreateApplication(ctx, deps, appusecases.CreateApplicationInput{
@@ -91,7 +91,7 @@ func TestUpdateApplicationChangesAndNoop(t *testing.T) {
 	// name を変更すると changed が立ち保存される。
 	newName := "Payroll v2"
 	updated, err := appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Name: &newName,
+		ActorUserID: "admin", ApplicationID: app.ID, Name: &newName,
 	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
@@ -103,7 +103,7 @@ func TestUpdateApplicationChangesAndNoop(t *testing.T) {
 	// 同じ値なら no-op (changed 無し) で updatedAt は据え置き。
 	same := "Payroll v2"
 	noop, err := appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Name: &same,
+		ActorUserID: "admin", ApplicationID: app.ID, Name: &same,
 	})
 	if err != nil {
 		t.Fatalf("noop update: %v", err)
@@ -115,7 +115,7 @@ func TestUpdateApplicationChangesAndNoop(t *testing.T) {
 	// status も更新できる。
 	disabled := domain.ApplicationDisabled
 	got, err := appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Status: &disabled,
+		ActorUserID: "admin", ApplicationID: app.ID, Status: &disabled,
 	})
 	if err != nil {
 		t.Fatalf("update status: %v", err)
@@ -143,25 +143,25 @@ func TestDeleteApplicationRemovesAssignmentsAndPolicy(t *testing.T) {
 
 	assignDeps := appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
+		ActorUserID: "admin", ApplicationID: app.ID,
 		SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
 
-	if err := appusecases.DeleteApplication(ctx, deps, "admin", app.ApplicationID, time.Time{}); err != nil {
+	if err := appusecases.DeleteApplication(ctx, deps, "admin", app.ID, time.Time{}); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	if got, _ := deps.Repo.FindByID(ctx, "acme", app.ApplicationID); got != nil {
+	if got, _ := deps.Repo.FindByID(ctx, "acme", app.ID); got != nil {
 		t.Fatalf("app not deleted: %+v", got)
 	}
-	remaining, _ := deps.AssignmentRepo.ListByApplication(ctx, "acme", app.ApplicationID)
+	remaining, _ := deps.AssignmentRepo.ListByApplication(ctx, "acme", app.ID)
 	if len(remaining) != 0 {
 		t.Fatalf("assignments not cascaded: %+v", remaining)
 	}
 
 	// 二重削除は not found。
-	if err := appusecases.DeleteApplication(ctx, deps, "admin", app.ApplicationID, time.Time{}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
+	if err := appusecases.DeleteApplication(ctx, deps, "admin", app.ID, time.Time{}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound on re-delete, got %v", err)
 	}
 }
@@ -173,7 +173,7 @@ func TestUploadAndDeleteApplicationIcon(t *testing.T) {
 
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
 	updated, err := appusecases.UploadApplicationIcon(ctx, deps, appusecases.UploadApplicationIconInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Data: png, IconURL: "/icons/x.png",
+		ActorUserID: "admin", ApplicationID: app.ID, Data: png, IconURL: "/icons/x.png",
 	})
 	if err != nil {
 		t.Fatalf("upload: %v", err)
@@ -184,7 +184,7 @@ func TestUploadAndDeleteApplicationIcon(t *testing.T) {
 
 	// フォーマット不正は拒否する。
 	if _, err := appusecases.UploadApplicationIcon(ctx, deps, appusecases.UploadApplicationIconInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Data: []byte("not-an-image"),
+		ActorUserID: "admin", ApplicationID: app.ID, Data: []byte("not-an-image"),
 	}); !errors.Is(err, appusecases.ErrApplicationIconFormat) {
 		t.Fatalf("expected ErrApplicationIconFormat, got %v", err)
 	}
@@ -196,7 +196,7 @@ func TestUploadAndDeleteApplicationIcon(t *testing.T) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
 	}
 
-	cleared, err := appusecases.DeleteApplicationIcon(ctx, deps, "admin", app.ApplicationID, time.Time{})
+	cleared, err := appusecases.DeleteApplicationIcon(ctx, deps, "admin", app.ID, time.Time{})
 	if err != nil {
 		t.Fatalf("delete icon: %v", err)
 	}
@@ -269,19 +269,19 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	}
 	// 不正な subject type。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: "nope", SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: "nope", SubjectID: "alice",
 	}); !errors.Is(err, appusecases.ErrInvalidSubjectType) {
 		t.Fatalf("expected ErrInvalidSubjectType, got %v", err)
 	}
 	// 空 subject id。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "  ",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "  ",
 	}); !errors.Is(err, appusecases.ErrSubjectRequired) {
 		t.Fatalf("expected ErrSubjectRequired, got %v", err)
 	}
 	// 不正な visibility。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: domain.AssignmentSubjectUser,
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser,
 		SubjectID: "alice", Visibility: "weird",
 	}); !errors.Is(err, appusecases.ErrInvalidVisibility) {
 		t.Fatalf("expected ErrInvalidVisibility, got %v", err)
@@ -289,11 +289,11 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 
 	// 正常割当のあと ListAssignments で確認。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
-	list, err := appusecases.ListAssignments(ctx, assignDeps, app.ApplicationID)
+	list, err := appusecases.ListAssignments(ctx, assignDeps, app.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list assignments = %d err=%v", len(list), err)
 	}
@@ -302,11 +302,11 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	}
 
 	// Unassign。
-	if err := appusecases.UnassignApplication(ctx, assignDeps, "admin", app.ApplicationID,
+	if err := appusecases.UnassignApplication(ctx, assignDeps, "admin", app.ID,
 		domain.AssignmentSubjectUser, "alice", time.Time{}); err != nil {
 		t.Fatalf("unassign: %v", err)
 	}
-	list, _ = appusecases.ListAssignments(ctx, assignDeps, app.ApplicationID)
+	list, _ = appusecases.ListAssignments(ctx, assignDeps, app.ID)
 	if len(list) != 0 {
 		t.Fatalf("unassign left %d assignments", len(list))
 	}
@@ -365,7 +365,7 @@ func TestUpdateApplicationValidationErrors(t *testing.T) {
 	// Update to empty name (validation error)
 	emptyName := "  "
 	_, err := appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Name: &emptyName,
+		ActorUserID: "admin", ApplicationID: app.ID, Name: &emptyName,
 	})
 	if err == nil {
 		t.Fatalf("expected validation error for empty name")
@@ -379,7 +379,7 @@ func TestUploadApplicationIconWithEmptyObjectKey(t *testing.T) {
 
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
 	updated, err := appusecases.UploadApplicationIcon(ctx, deps, appusecases.UploadApplicationIconInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, ObjectKey: "", Data: png, IconURL: "https://example.com/icon.png",
+		ActorUserID: "admin", ApplicationID: app.ID, ObjectKey: "", Data: png, IconURL: "https://example.com/icon.png",
 	})
 	if err != nil {
 		t.Fatalf("failed to upload icon: %v", err)
@@ -398,14 +398,14 @@ func TestApplicationIconUsecasesNilStoreErrors(t *testing.T) {
 	// Upload icon with nil store
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
 	_, err := appusecases.UploadApplicationIcon(ctx, deps, appusecases.UploadApplicationIconInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Data: png,
+		ActorUserID: "admin", ApplicationID: app.ID, Data: png,
 	})
 	if err == nil || err.Error() != "application icon store is not configured" {
 		t.Fatalf("expected store not configured error, got %v", err)
 	}
 
 	// Delete icon with nil store
-	_, err = appusecases.DeleteApplicationIcon(ctx, deps, "admin", app.ApplicationID, time.Time{})
+	_, err = appusecases.DeleteApplicationIcon(ctx, deps, "admin", app.ID, time.Time{})
 	if err == nil || err.Error() != "application icon store is not configured" {
 		t.Fatalf("expected store not configured error, got %v", err)
 	}
@@ -421,7 +421,7 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 		Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "service-client"},
 	})
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: serviceApp.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: serviceApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
 	// 2. Disabled App (should be excluded)
@@ -430,10 +430,10 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 	})
 	disabled := domain.ApplicationDisabled
 	_, _ = appusecases.UpdateApplication(ctx, deps, appusecases.UpdateApplicationInput{
-		ActorUserID: "admin", ApplicationID: disabledApp.ApplicationID, Status: &disabled,
+		ActorUserID: "admin", ApplicationID: disabledApp.ID, Status: &disabled,
 	})
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: disabledApp.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: disabledApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
 	// 3. Normal App with multiple assignments (should be deduped)
@@ -442,11 +442,11 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 	})
 	// assign to user "alice"
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: normalApp.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 	// assign to group "alice-group"
 	_, _ = appusecases.AssignApplication(ctx, appusecases.AssignmentDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo}, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: normalApp.ApplicationID, SubjectType: domain.AssignmentSubjectGroup, SubjectID: "alice-group",
+		ActorUserID: "admin", ApplicationID: normalApp.ID, SubjectType: domain.AssignmentSubjectGroup, SubjectID: "alice-group",
 	})
 	subjectsWithGroup := []ports.SubjectRef{
 		{Type: domain.AssignmentSubjectUser, ID: "alice"},
@@ -459,7 +459,7 @@ func TestListMyApplicationsFiltering(t *testing.T) {
 	}
 
 	// Should only contain normalApp (1 item)
-	if len(apps) != 1 || apps[0].ApplicationID != normalApp.ApplicationID {
+	if len(apps) != 1 || apps[0].ID != normalApp.ID {
 		t.Fatalf("expected only 1 normal app, got: %d apps", len(apps))
 	}
 }

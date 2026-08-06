@@ -220,7 +220,7 @@ func EvaluateLifecycleAction(ctx context.Context, deps LifecycleActionEvalDeps, 
 			if err != nil {
 				return "", "", err
 			}
-			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool { return a.ApplicationID == app.ApplicationID })
+			state.UserIsAssigned = slices.ContainsFunc(assignments, func(a *appdomain.ApplicationAssignment) bool { return a.ApplicationID == app.ID })
 		}
 	case igdomain.WorkflowActionSendEmail:
 		state.EmailSendable = deps.Notifier != nil && user.Email != nil && user.EmailVerified

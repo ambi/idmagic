@@ -13,20 +13,20 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 	repo := NewApplicationRepository()
 
 	app := &domain.Application{
-		TenantID:      "acme",
-		ApplicationID: "app-1",
-		Name:          "Zebra",
-		Kind:          domain.ApplicationFederated,
-		Status:        domain.ApplicationActive,
-		Protocol:      &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "client-1"},
-		CategoryIDs:   []string{"cat-1", "cat-2"},
+		TenantID:    "acme",
+		ID:          "app-1",
+		Name:        "Zebra",
+		Kind:        domain.ApplicationFederated,
+		Status:      domain.ApplicationActive,
+		Protocol:    &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "client-1"},
+		CategoryIDs: []string{"cat-1", "cat-2"},
 	}
 	if err := repo.Save(ctx, app); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
 	// 名前順ソートを確認するために 2 件目を追加する。
 	if err := repo.Save(ctx, &domain.Application{
-		TenantID: "acme", ApplicationID: "app-2", Name: "Alpha", Kind: domain.ApplicationWeblink,
+		TenantID: "acme", ID: "app-2", Name: "Alpha", Kind: domain.ApplicationWeblink,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestApplicationRepositoryFindByProtocol(t *testing.T) {
 	repo := NewApplicationRepository()
 
 	app := &domain.Application{
-		TenantID: "acme", ApplicationID: "app-1", Name: "SP",
+		TenantID: "acme", ID: "app-1", Name: "SP",
 		Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "cid"},
 	}
 	if err := repo.Save(ctx, app); err != nil {
@@ -112,7 +112,7 @@ func TestApplicationRepositoryRemoveCategory(t *testing.T) {
 	ctx := context.Background()
 	repo := NewApplicationRepository()
 	if err := repo.Save(ctx, &domain.Application{
-		TenantID: "acme", ApplicationID: "app-1", Name: "A",
+		TenantID: "acme", ID: "app-1", Name: "A",
 		CategoryIDs: []string{"cat-1", "cat-2"},
 	}); err != nil {
 		t.Fatal(err)

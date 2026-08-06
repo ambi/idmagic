@@ -262,7 +262,7 @@ export function WorkflowDefinitionForm({
   const applicationOptions = useMemo(
     () =>
       applications.map((application) => ({
-        value: application.application_id,
+        value: application.id,
         label: application.name,
       })),
     [applications],

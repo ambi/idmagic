@@ -51,8 +51,8 @@ func TestApplicationCategoryCRUDAndPortalGrouping(t *testing.T) {
 	}
 	var portal struct {
 		Applications []struct {
-			ApplicationID string   `json:"application_id"`
-			CategoryIDs   []string `json:"category_ids"`
+			ID          string   `json:"id"`
+			CategoryIDs []string `json:"category_ids"`
 		} `json:"applications"`
 		Categories []struct {
 			ID   string `json:"id"`

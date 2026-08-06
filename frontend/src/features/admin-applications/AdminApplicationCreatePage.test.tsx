@@ -25,7 +25,7 @@ describe('AdminApplicationCreatePage', () => {
         if (url.includes('/api/admin/applications') && init?.method === 'POST') {
           return Promise.resolve(
             response(201, {
-              application: { application_id: 'app-2', name: 'New App' },
+              application: { id: 'app-2', name: 'New App' },
               client_id: 'client-2',
               client_secret: 'secret-2',
             }),

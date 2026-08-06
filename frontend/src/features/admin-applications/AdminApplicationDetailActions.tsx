@@ -26,7 +26,7 @@ export function AdminApplicationDetailActions({
         {t.backToList}
       </a>
       <ProvisioningNavButton app={app} />
-      <Button nativeButton={false} render={<a href={editURL(app.application_id)} />}>
+      <Button nativeButton={false} render={<a href={editURL(app.id)} />}>
         <IconPencil size={16} aria-hidden="true" />
         {t.edit}
       </Button>

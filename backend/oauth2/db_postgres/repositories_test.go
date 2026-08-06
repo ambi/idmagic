@@ -304,14 +304,14 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 	now := testClock()
 	resourceServerID := newUUID(t)
 	m := &domain.McpResourceServer{
-		TenantID:         tenant.ID,
-		ResourceServerID: resourceServerID,
-		Resource:         "https://mcp.example.com/tools/github",
-		Name:             "GitHub MCP Tools",
-		Scopes:           []string{"mcp.read", "mcp.write"},
-		State:            domain.McpResourceServerActive,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		TenantID:  tenant.ID,
+		ID:        resourceServerID,
+		Resource:  "https://mcp.example.com/tools/github",
+		Name:      "GitHub MCP Tools",
+		Scopes:    []string{"mcp.read", "mcp.write"},
+		State:     domain.McpResourceServerActive,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	if err := repo.Save(ctx, m); err != nil {
 		t.Fatalf("save: %v", err)
@@ -329,7 +329,7 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 	}
 
 	byResource, err := repo.FindByResource(ctx, tenant.ID, "https://mcp.example.com/tools/github")
-	if err != nil || byResource == nil || byResource.ResourceServerID != resourceServerID {
+	if err != nil || byResource == nil || byResource.ID != resourceServerID {
 		t.Fatalf("find by resource: %v %+v", err, byResource)
 	}
 

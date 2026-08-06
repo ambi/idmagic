@@ -200,7 +200,7 @@ export type ApplicationProtocol = {
 }
 
 export type AdminApplication = {
-  application_id: string
+  id: string
   name: string
   kind: ApplicationKind
   status: ApplicationStatus
@@ -512,7 +512,7 @@ export type AuthorizationDetailType = {
 
 export type McpResourceServer = {
   tenant_id: string
-  resource_server_id: string
+  id: string
   resource: string
   name: string
   scopes: string[]
@@ -961,7 +961,7 @@ export type AccountConsent = {
 }
 
 export type MyApplication = {
-  application_id: string
+  id: string
   name: string
   kind: ApplicationKind
   icon_url?: string

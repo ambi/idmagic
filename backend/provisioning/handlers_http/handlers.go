@@ -55,7 +55,7 @@ func (d Deps) handleRegisterConnection(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	conn, err := usecases.RegisterConnection(c.Request().Context(), d.adminDeps(), usecases.RegisterConnectionInput{
-		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("application_id"),
+		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("id"),
 		BaseURL: req.BaseURL, Credential: req.Credential.toDomain(), Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -68,7 +68,7 @@ func (d Deps) handleGetConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	conn, err := usecases.GetConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"))
+	conn, err := usecases.GetConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -106,7 +106,7 @@ func (d Deps) handleUpdateConnection(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	in := usecases.UpdateConnectionInput{
-		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("application_id"),
+		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("id"),
 		BaseURL: req.BaseURL, Status: req.Status, FeatureFlags: req.FeatureFlags, Scope: req.Scope,
 		GroupPush: req.GroupPush, AttributeMappings: req.AttributeMappings, Matching: req.Matching,
 		DeprovisionPolicy: req.DeprovisionPolicy, RateLimitPerMinute: req.RateLimitPerMinute,
@@ -131,7 +131,7 @@ func (d Deps) handleDeleteConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if err := usecases.DeleteConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id")); err != nil {
+	if err := usecases.DeleteConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id")); err != nil {
 		return d.writeError(c, err)
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -144,7 +144,7 @@ func (d Deps) handleTestConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	result, err := usecases.TestConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), time.Now().UTC())
+	result, err := usecases.TestConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -167,7 +167,7 @@ func (d Deps) handleProvisionOnDemand(c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
-	delivery, err := usecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), req.SubjectType, req.SubjectID, time.Now().UTC())
+	delivery, err := usecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), req.SubjectType, req.SubjectID, time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -181,7 +181,7 @@ func (d Deps) handleStartFullResync(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	enqueued, err := usecases.StartFullResync(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), time.Now().UTC())
+	enqueued, err := usecases.StartFullResync(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -195,7 +195,7 @@ func (d Deps) handleResumeConnection(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	conn, err := usecases.ResumeConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), time.Now().UTC())
+	conn, err := usecases.ResumeConnection(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), time.Now().UTC())
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -211,7 +211,7 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 		s := domain.ProvisioningDeliveryStatus(raw)
 		status = &s
 	}
-	deliveries, err := usecases.ListDeliveries(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), status, 0)
+	deliveries, err := usecases.ListDeliveries(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), status, 0)
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -222,7 +222,7 @@ func (d Deps) handleGetDelivery(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	delivery, err := usecases.GetDelivery(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), c.Param("delivery_id"))
+	delivery, err := usecases.GetDelivery(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("delivery_id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}
@@ -236,7 +236,7 @@ func (d Deps) handleRetryDelivery(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	delivery, err := usecases.RetryDelivery(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("application_id"), c.Param("delivery_id"))
+	delivery, err := usecases.RetryDelivery(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), c.Param("delivery_id"))
 	if err != nil {
 		return d.writeError(c, err)
 	}

@@ -19,19 +19,19 @@ func createAndAssignWeblink(t *testing.T, e *echo.Echo, csrf string, cookie *htt
 	}
 	var created struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
 	assign := adminJSON(t, e, http.MethodPost,
-		"/api/admin/applications/"+created.Application.ApplicationID+"/assignments",
+		"/api/admin/applications/"+created.Application.ID+"/assignments",
 		csrf, cookie, map[string]any{"subject_type": "user", "subject_id": "admin"})
 	if assign.Code != http.StatusCreated {
 		t.Fatalf("assign %s status=%d body=%s", name, assign.Code, assign.Body.String())
 	}
-	return created.Application.ApplicationID
+	return created.Application.ID
 }
 
 func portalAppNames(t *testing.T, e *echo.Echo) []string {

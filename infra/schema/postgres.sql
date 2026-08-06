@@ -655,7 +655,7 @@ CREATE TABLE authorization_detail_types (
 
 CREATE TABLE mcp_resource_servers (
     tenant_id UUID NOT NULL,
-    resource_server_id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     resource TEXT NOT NULL,
     name TEXT NOT NULL,
     scopes JSONB NOT NULL,
@@ -671,7 +671,7 @@ CREATE TABLE mcp_resource_servers (
 
 CREATE TABLE applications (
     tenant_id UUID NOT NULL,
-    application_id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('federated', 'weblink', 'service')),
     status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
@@ -690,7 +690,7 @@ CREATE TABLE applications (
         OR (kind = 'federated' AND protocol_type IN ('oidc', 'saml', 'wsfed'))
     ),
     CONSTRAINT applications_protocol_identity_unique
-        UNIQUE (application_id, tenant_id, protocol_type)
+        UNIQUE (id, tenant_id, protocol_type)
 );
 
 CREATE TABLE application_icons (
@@ -703,7 +703,7 @@ CREATE TABLE application_icons (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT application_icons_application_fkey
         FOREIGN KEY (application_id)
-        REFERENCES applications (application_id) ON DELETE CASCADE
+        REFERENCES applications (id) ON DELETE CASCADE
 );
 
 CREATE INDEX application_icons_application_idx
@@ -716,7 +716,7 @@ CREATE TABLE application_sign_in_policies (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT application_sign_in_policies_application_fkey
         FOREIGN KEY (application_id)
-        REFERENCES applications (application_id) ON DELETE CASCADE
+        REFERENCES applications (id) ON DELETE CASCADE
 );
 
 CREATE TABLE tenant_default_sign_in_policies (
@@ -740,7 +740,7 @@ CREATE TABLE application_assignments (
     CHECK (visibility IN ('visible', 'hidden')),
     CONSTRAINT application_assignments_application_fkey
         FOREIGN KEY (application_id)
-        REFERENCES applications (application_id) ON DELETE CASCADE
+        REFERENCES applications (id) ON DELETE CASCADE
 );
 
 CREATE INDEX application_assignments_subject_idx
@@ -826,17 +826,17 @@ CREATE TABLE wsfed_relying_parties (
 ALTER TABLE oauth2_clients
 ADD CONSTRAINT oauth2_clients_application_fkey
     FOREIGN KEY (application_id, tenant_id, application_protocol_type)
-    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE;
+    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE;
 
 ALTER TABLE saml_service_providers
 ADD CONSTRAINT saml_service_providers_application_fkey
     FOREIGN KEY (application_id, tenant_id, application_protocol_type)
-    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE;
+    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE;
 
 ALTER TABLE wsfed_relying_parties
 ADD CONSTRAINT wsfed_relying_parties_application_fkey
     FOREIGN KEY (application_id, tenant_id, application_protocol_type)
-    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE;
+    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE;
 
 CREATE INDEX oauth2_clients_application_id_idx
     ON oauth2_clients (application_id) WHERE application_id IS NOT NULL;
@@ -1069,7 +1069,7 @@ CREATE TABLE provisioning_connections (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT provisioning_connections_application_fkey
-        FOREIGN KEY (application_id) REFERENCES applications(application_id) ON DELETE CASCADE,
+        FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
     CONSTRAINT provisioning_connections_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT provisioning_connections_quarantine_check

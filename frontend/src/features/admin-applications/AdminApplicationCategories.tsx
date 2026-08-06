@@ -61,7 +61,7 @@ export function CategoryManager({
     else next.add(categoryID)
     setAssigned(next)
     void run(async () => {
-      const updated = await setApplicationCategories(csrfToken, app.application_id, [...next])
+      const updated = await setApplicationCategories(csrfToken, app.id, [...next])
       setAssigned(new Set(updated.category_ids))
     })
   }

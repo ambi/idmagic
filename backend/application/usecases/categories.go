@@ -195,7 +195,7 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 	}
 	emit(deps.Emit, &domain.ApplicationUpdated{
 		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID,
-		ApplicationID: app.ApplicationID, ChangedFields: []string{"category_ids"},
+		ApplicationID: app.ID, ChangedFields: []string{"category_ids"},
 	})
 	return &updated, nil
 }

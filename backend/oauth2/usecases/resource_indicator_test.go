@@ -68,7 +68,7 @@ func TestResolveResourceIndicator_unregisteredResource_rejectedAsInvalidTarget(t
 
 func TestResolveResourceIndicator_disabledResource_rejectedAsInvalidTarget(t *testing.T) {
 	repo := newFakeMcpResourceServerRepo(&domain.McpResourceServer{
-		TenantID: "tenant-1", ResourceServerID: "rs-1",
+		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerDisabled,
 	})
@@ -79,7 +79,7 @@ func TestResolveResourceIndicator_disabledResource_rejectedAsInvalidTarget(t *te
 
 func TestResolveResourceIndicator_registeredActive_returnsResourceServer(t *testing.T) {
 	rs := &domain.McpResourceServer{
-		TenantID: "tenant-1", ResourceServerID: "rs-1",
+		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"mcp.read", "mcp.write"}, State: domain.McpResourceServerActive,
 	}
@@ -89,14 +89,14 @@ func TestResolveResourceIndicator_registeredActive_returnsResourceServer(t *test
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if got == nil || got.ResourceServerID != "rs-1" {
+	if got == nil || got.ID != "rs-1" {
 		t.Fatalf("expected rs-1 to be resolved, got %+v", got)
 	}
 }
 
 func TestResolveResourceIndicator_scopeExceedsResourceAllowlist_rejectedAsInvalidScope(t *testing.T) {
 	rs := &domain.McpResourceServer{
-		TenantID: "tenant-1", ResourceServerID: "rs-1",
+		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
 	}
@@ -108,7 +108,7 @@ func TestResolveResourceIndicator_scopeExceedsResourceAllowlist_rejectedAsInvali
 
 func TestResolveResourceIndicator_crossTenantResource_rejectedAsInvalidTarget(t *testing.T) {
 	rs := &domain.McpResourceServer{
-		TenantID: "tenant-other", ResourceServerID: "rs-1",
+		TenantID: "tenant-other", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
 	}

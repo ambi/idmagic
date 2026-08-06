@@ -35,7 +35,7 @@ export function AdminMcpResourceServerEditPage({
     setError('')
     setSaving(true)
     try {
-      await updateMcpResourceServer(csrfToken, resourceServer.resource_server_id, {
+      await updateMcpResourceServer(csrfToken, resourceServer.id, {
         name: form.name,
         scopes: parseScopes(form.scopes),
         state: form.state,

@@ -11,36 +11,36 @@ import (
 )
 
 const deleteMcpResourceServer = `-- name: DeleteMcpResourceServer :exec
-DELETE FROM mcp_resource_servers WHERE tenant_id = $1 AND resource_server_id = $2
+DELETE FROM mcp_resource_servers WHERE tenant_id = $1 AND id = $2
 `
 
 type DeleteMcpResourceServerParams struct {
-	TenantID         string
-	ResourceServerID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) DeleteMcpResourceServer(ctx context.Context, arg DeleteMcpResourceServerParams) error {
-	_, err := q.db.Exec(ctx, deleteMcpResourceServer, arg.TenantID, arg.ResourceServerID)
+	_, err := q.db.Exec(ctx, deleteMcpResourceServer, arg.TenantID, arg.ID)
 	return err
 }
 
 const getMcpResourceServer = `-- name: GetMcpResourceServer :one
-SELECT tenant_id, resource_server_id, resource, name, scopes, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, state, created_at, updated_at
 FROM mcp_resource_servers
-WHERE tenant_id = $1 AND resource_server_id = $2
+WHERE tenant_id = $1 AND id = $2
 `
 
 type GetMcpResourceServerParams struct {
-	TenantID         string
-	ResourceServerID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) GetMcpResourceServer(ctx context.Context, arg GetMcpResourceServerParams) (*McpResourceServer, error) {
-	row := q.db.QueryRow(ctx, getMcpResourceServer, arg.TenantID, arg.ResourceServerID)
+	row := q.db.QueryRow(ctx, getMcpResourceServer, arg.TenantID, arg.ID)
 	var i McpResourceServer
 	err := row.Scan(
 		&i.TenantID,
-		&i.ResourceServerID,
+		&i.ID,
 		&i.Resource,
 		&i.Name,
 		&i.Scopes,
@@ -52,7 +52,7 @@ func (q *Queries) GetMcpResourceServer(ctx context.Context, arg GetMcpResourceSe
 }
 
 const getMcpResourceServerByResource = `-- name: GetMcpResourceServerByResource :one
-SELECT tenant_id, resource_server_id, resource, name, scopes, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1 AND resource = $2
 `
@@ -67,7 +67,7 @@ func (q *Queries) GetMcpResourceServerByResource(ctx context.Context, arg GetMcp
 	var i McpResourceServer
 	err := row.Scan(
 		&i.TenantID,
-		&i.ResourceServerID,
+		&i.ID,
 		&i.Resource,
 		&i.Name,
 		&i.Scopes,
@@ -79,7 +79,7 @@ func (q *Queries) GetMcpResourceServerByResource(ctx context.Context, arg GetMcp
 }
 
 const listMcpResourceServersByTenant = `-- name: ListMcpResourceServersByTenant :many
-SELECT tenant_id, resource_server_id, resource, name, scopes, state, created_at, updated_at
+SELECT tenant_id, id, resource, name, scopes, state, created_at, updated_at
 FROM mcp_resource_servers
 WHERE tenant_id = $1
 ORDER BY resource
@@ -96,7 +96,7 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 		var i McpResourceServer
 		if err := rows.Scan(
 			&i.TenantID,
-			&i.ResourceServerID,
+			&i.ID,
 			&i.Resource,
 			&i.Name,
 			&i.Scopes,
@@ -115,9 +115,9 @@ func (q *Queries) ListMcpResourceServersByTenant(ctx context.Context, tenantID s
 }
 
 const upsertMcpResourceServer = `-- name: UpsertMcpResourceServer :exec
-INSERT INTO mcp_resource_servers (tenant_id, resource_server_id, resource, name, scopes, state, created_at, updated_at)
+INSERT INTO mcp_resource_servers (tenant_id, id, resource, name, scopes, state, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-ON CONFLICT (resource_server_id) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   scopes = EXCLUDED.scopes,
   state = EXCLUDED.state,
@@ -125,20 +125,20 @@ ON CONFLICT (resource_server_id) DO UPDATE SET
 `
 
 type UpsertMcpResourceServerParams struct {
-	TenantID         string
-	ResourceServerID string
-	Resource         string
-	Name             string
-	Scopes           []byte
-	State            string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	TenantID  string
+	ID        string
+	Resource  string
+	Name      string
+	Scopes    []byte
+	State     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (q *Queries) UpsertMcpResourceServer(ctx context.Context, arg UpsertMcpResourceServerParams) error {
 	_, err := q.db.Exec(ctx, upsertMcpResourceServer,
 		arg.TenantID,
-		arg.ResourceServerID,
+		arg.ID,
 		arg.Resource,
 		arg.Name,
 		arg.Scopes,

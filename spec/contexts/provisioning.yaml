@@ -776,7 +776,7 @@ interfaces:
   RegisterProvisioningConnection:
     description: 管理者が Application に ProvisioningConnection を新規登録する。属性マッピングは SCIM core User の既定を自動 seed する。
     input:
-      application_id:
+      id:
         type: String
       base_url:
         type: URL
@@ -795,22 +795,22 @@ interfaces:
       - is_safe_outbound_url(input.base_url)
       - credential_matches_auth_method(input.credential)
     ensures:
-      - output.connection.application_id == input.application_id
+      - output.connection.application_id == input.id
       - output.connection.status == "active"
       - emitted.exists(e, e is ProvisioningConnectionRegistered)
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/provisioning"
+        path: "/api/admin/applications/{id}/provisioning"
   GetProvisioningConnection:
     description: 管理者が Application の ProvisioningConnection を取得する。別テナントは未存在として扱う。
     input:
-      application_id:
+      id:
         type: String
     output:
       connection:
@@ -823,15 +823,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{application_id}/provisioning"
+        path: "/api/admin/applications/{id}/provisioning"
   UpdateProvisioningConnection:
     description: "管理者が ProvisioningConnection の設定を更新する。credential を含む更新は\ncredential rotation として扱い ProvisioningCredentialRotated も発行する。\n"
     input:
-      application_id:
+      id:
         type: String
       base_url:
         type: URL
@@ -893,15 +893,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{application_id}/provisioning"
+        path: "/api/admin/applications/{id}/provisioning"
   DeleteProvisioningConnection:
     description: 管理者が ProvisioningConnection を削除する (hard delete)。既存の RemoteResourceLink・ProvisioningDelivery は履歴として残す。
     input:
-      application_id:
+      id:
         type: String
     errors:
       - ProvisioningConnectionNotFoundError
@@ -912,15 +912,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{application_id}/provisioning"
+        path: "/api/admin/applications/{id}/provisioning"
   TestProvisioningConnection:
     description: 管理者が下流 /ServiceProviderConfig への到達性を確認し capabilities を再取得してキャッシュを更新する。
     input:
-      application_id:
+      id:
         type: String
     output:
       reachable:
@@ -940,15 +940,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/provisioning/test"
+        path: "/api/admin/applications/{id}/provisioning/test"
   ProvisionOnDemand:
     description: 管理者が単一 subject を指定して即時に試験配送する ProvisioningDelivery を作成する。
     input:
-      application_id:
+      id:
         type: String
       subject_type:
         type: ProvisioningSourceType
@@ -968,15 +968,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/provisioning/on-demand"
+        path: "/api/admin/applications/{id}/provisioning/on-demand"
   StartFullResync:
     description: 管理者が connection の scope 内 subject 全件を再走査し収束させる full resync を開始する。完了は非同期で FullResyncCompleted が発行される。
     input:
-      application_id:
+      id:
         type: String
     output:
       enqueued_count:
@@ -988,15 +988,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/provisioning/full-resync"
+        path: "/api/admin/applications/{id}/provisioning/full-resync"
   ListProvisioningDeliveries:
     description: 管理者が connection の配送状況を一覧する。status/source_type で絞り込める。
     input:
-      application_id:
+      id:
         type: String
       status:
         type: ProvisioningDeliveryStatus
@@ -1023,15 +1023,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{application_id}/provisioning/deliveries"
+        path: "/api/admin/applications/{id}/provisioning/deliveries"
   GetProvisioningDelivery:
     description: 管理者が配送 1 件の詳細を取得する。
     input:
-      application_id:
+      id:
         type: String
       delivery_id:
         type: String
@@ -1046,15 +1046,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}"
+        path: "/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}"
   RetryProvisioningDelivery:
     description: 管理者が dead_letter の配送を手動で再試行する。pending へ戻し dispatcher の再走査対象にする。
     input:
-      application_id:
+      id:
         type: String
       delivery_id:
         type: String
@@ -1074,15 +1074,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/provisioning/deliveries/{delivery_id}/retry"
+        path: "/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}/retry"
   ResumeProvisioningConnection:
     description: 管理者が quarantine された ProvisioningConnection を解除し配送を再開する。wi-45 の運用手順一覧に quarantine 解除の経路が明記されていなかったため、SCL 化にあたり本 interface を追加した。
     input:
-      application_id:
+      id:
         type: String
     output:
       connection:
@@ -1101,11 +1101,11 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/provisioning/resume"
+        path: "/api/admin/applications/{id}/provisioning/resume"
   ListTenantProvisioningConnections:
     description: 管理者がテナント内で有効な ProvisioningConnection を横断的に一覧する (テナント設定の read-only 集約ビュー)。書き込みは各 Application 側の interface へ誘導する。
     output:
@@ -1329,7 +1329,7 @@ scenarios:
     given:
       - "テナント \"tenant-a\" の ProvisioningConnection と ProvisioningDelivery が存在する"
     main_success:
-      - "テナント \"tenant-b\" の管理者が GetProvisioningConnection または GetProvisioningDelivery を同じ application_id/delivery_id で呼ぶ"
+      - "テナント \"tenant-b\" の管理者が GetProvisioningConnection または GetProvisioningDelivery を同じ id/delivery_id で呼ぶ"
       - ProvisioningConnectionNotFoundError または ProvisioningDeliveryNotFoundError が返る
   同一idempotencyキーの重複配送は既存行へのno-opになる:
     actor: System

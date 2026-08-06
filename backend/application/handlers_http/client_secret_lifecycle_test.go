@@ -28,13 +28,13 @@ func createSecretApplication(t *testing.T, e *echo.Echo, csrf string, cookie *ht
 	}
 	var body struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	return body.Application.ApplicationID
+	return body.Application.ID
 }
 
 func TestAdminApplicationClientSecretLifecycle(t *testing.T) {

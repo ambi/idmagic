@@ -263,11 +263,11 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 	if err := users.Save(ctx, user); err != nil {
 		t.Fatal(err)
 	}
-	app := &appdomain.Application{TenantID: "tenant-a", ApplicationID: "app-1", Name: "Payroll", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now}
+	app := &appdomain.Application{TenantID: "tenant-a", ID: "app-1", Name: "Payroll", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive, CreatedAt: now, UpdatedAt: now}
 	if err := apps.Save(ctx, app); err != nil {
 		t.Fatal(err)
 	}
-	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionUnassignApplication, ApplicationID: app.ApplicationID}
+	action := igdomain.WorkflowAction{Kind: igdomain.WorkflowActionUnassignApplication, ApplicationID: app.ID}
 	run := &igdomain.WorkflowRun{ID: "run-1", TenantID: "tenant-a", WorkflowID: "workflow-1", Revision: 1, SourceOccurrenceID: "source-1", TargetUserID: user.ID, TriggerKind: igdomain.WorkflowTriggerUserCreated, Actions: []igdomain.WorkflowAction{action}, Status: igdomain.WorkflowRunQueued, TriggeredAt: now}
 	steps := []igdomain.WorkflowStep{{RunID: run.ID, Index: 0, Action: action, Outcome: igdomain.WorkflowStepPending}}
 	if created, err := runs.SaveRun(ctx, run, steps); err != nil || !created {

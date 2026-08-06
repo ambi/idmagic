@@ -27,7 +27,7 @@ type applicationProtocolResponse struct {
 }
 
 type applicationResponse struct {
-	ApplicationID        string                       `json:"application_id"`
+	ID                   string                       `json:"id"`
 	Name                 string                       `json:"name"`
 	Kind                 domain.ApplicationKind       `json:"kind"`
 	Status               domain.ApplicationStatus     `json:"status"`
@@ -139,11 +139,11 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 		}
 
 		// 割当数
-		assignedCount := assignmentCountMap[app.ApplicationID]
+		assignedCount := assignmentCountMap[app.ID]
 
 		// ポリシー概要
 		var policySummary string
-		if p, ok := policyMap[app.ApplicationID]; ok && len(p.Rules) > 0 {
+		if p, ok := policyMap[app.ID]; ok && len(p.Rules) > 0 {
 			policySummary = fmt.Sprintf("Custom policy (%d rules)", len(p.Rules))
 		} else {
 			policySummary = fmt.Sprintf("Tenant default (%d rules)", defaultRuleCount)
@@ -156,7 +156,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 		}
 
 		out[i] = applicationResponse{
-			ApplicationID:        app.ApplicationID,
+			ID:                   app.ID,
 			Name:                 app.Name,
 			Kind:                 app.Kind,
 			Status:               app.Status,
@@ -181,7 +181,7 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	tenantID := support.RequestTenantID(c)
-	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), tenantID, c.Param("application_id"))
+	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), tenantID, c.Param("id"))
 	if err != nil {
 		return err
 	}
@@ -189,7 +189,7 @@ func (d Deps) handleGetApplication(c *echo.Context) error {
 		return d.writeApplicationError(c, appusecases.ErrApplicationNotFound)
 	}
 	oidc, wsfed, saml := d.resolveProtocolConfig(c, app)
-	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), app.ApplicationID)
+	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), app.ID)
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -215,7 +215,7 @@ func (d Deps) handleUpdateApplication(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	app, err := appusecases.UpdateApplication(c.Request().Context(), d.applicationDeps(), appusecases.UpdateApplicationInput{
-		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
+		ActorUserID: actor.ID, ApplicationID: c.Param("id"),
 		Name: req.Name, Status: req.Status, LaunchURL: req.LaunchURL, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -251,9 +251,9 @@ func (d Deps) handleUploadApplicationIcon(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
-	iconURL := support.TenantRoute(c, "/application-icons/"+c.Param("application_id")+"/"+objectKey)
+	iconURL := support.TenantRoute(c, "/application-icons/"+c.Param("id")+"/"+objectKey)
 	app, err := appusecases.UploadApplicationIcon(c.Request().Context(), d.applicationDeps(), appusecases.UploadApplicationIconInput{
-		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), ObjectKey: objectKey,
+		ActorUserID: actor.ID, ApplicationID: c.Param("id"), ObjectKey: objectKey,
 		Data: data, IconURL: iconURL, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -271,7 +271,7 @@ func (d Deps) handleDeleteApplicationIcon(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	app, err := appusecases.DeleteApplicationIcon(
-		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"), time.Now().UTC(),
+		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("id"), time.Now().UTC(),
 	)
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -311,7 +311,7 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 		return d.writeApplicationError(c, err)
 	}
 	if err := appusecases.DeleteApplication(
-		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("application_id"), time.Now().UTC(),
+		c.Request().Context(), d.applicationDeps(), actor.ID, c.Param("id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -340,7 +340,7 @@ func (d Deps) handleListAssignments(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	assignments, err := appusecases.ListAssignments(c.Request().Context(), d.assignmentDeps(), c.Param("application_id"))
+	assignments, err := appusecases.ListAssignments(c.Request().Context(), d.assignmentDeps(), c.Param("id"))
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -364,7 +364,7 @@ func (d Deps) handleAssignApplication(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	assignment, err := appusecases.AssignApplication(c.Request().Context(), d.assignmentDeps(), appusecases.AssignApplicationInput{
-		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"),
+		ActorUserID: actor.ID, ApplicationID: c.Param("id"),
 		SubjectType: req.SubjectType, SubjectID: req.SubjectID, Visibility: req.Visibility, Now: time.Now().UTC(),
 	})
 	if err != nil {
@@ -382,7 +382,7 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if err := appusecases.UnassignApplication(
-		c.Request().Context(), d.assignmentDeps(), actor.ID, c.Param("application_id"),
+		c.Request().Context(), d.assignmentDeps(), actor.ID, c.Param("id"),
 		domain.AssignmentSubjectType(c.Param("subject_type")), c.Param("subject_id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeApplicationError(c, err)
@@ -415,7 +415,7 @@ func (d Deps) handleGetSignInPolicy(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), c.Param("application_id"))
+	policy, err := appusecases.GetSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), c.Param("id"))
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
@@ -439,7 +439,7 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	policy, err := appusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateSignInPolicyInput{
-		ActorUserID: actor.ID, ApplicationID: c.Param("application_id"), Rules: req.Rules, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, ApplicationID: c.Param("id"), Rules: req.Rules, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeApplicationError(c, err)
@@ -568,7 +568,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 
 	assignedCount := 0
 	if d.ApplicationAssignmentRepo != nil {
-		assignments, err := d.ApplicationAssignmentRepo.ListByApplication(ctx, tenantID, app.ApplicationID)
+		assignments, err := d.ApplicationAssignmentRepo.ListByApplication(ctx, tenantID, app.ID)
 		if err == nil {
 			assignedCount = len(assignments)
 		}
@@ -586,7 +586,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 	var p *domain.AppSignInPolicy
 	var err error
 	if d.ApplicationSignInPolicyRepo != nil {
-		p, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
+		p, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ID)
 	}
 	if err == nil && p != nil && len(p.Rules) > 0 {
 		policySummary = fmt.Sprintf("Custom policy (%d rules)", len(p.Rules))
@@ -600,7 +600,7 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 		categoryIDs = []string{}
 	}
 	return applicationResponse{
-		ApplicationID:        app.ApplicationID,
+		ID:                   app.ID,
 		Name:                 app.Name,
 		Kind:                 app.Kind,
 		Status:               app.Status,

@@ -89,7 +89,7 @@ function AppTile({
     setNodeRef,
     transform,
     transition,
-  } = useSortable({ id: app.application_id })
+  } = useSortable({ id: app.id })
   const launchable = Boolean(app.launch_url)
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -137,7 +137,7 @@ function AppGrid({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
       {apps.map((app) => (
-        <AppTile key={app.application_id} app={app} onLaunch={onLaunch} />
+        <AppTile key={app.id} app={app} onLaunch={onLaunch} />
       ))}
     </div>
   )
@@ -200,7 +200,7 @@ export function AccountAppsPage({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   )
-  const appByID = useMemo(() => new Map(order.map((app) => [app.application_id, app])), [order])
+  const appByID = useMemo(() => new Map(order.map((app) => [app.id, app])), [order])
   const activeApp = activeID ? appByID.get(activeID) : null
 
   async function persistOrder(next: MyApplication[]) {
@@ -209,7 +209,7 @@ export function AccountAppsPage({
     try {
       await reorderMyApplications(
         csrfToken,
-        next.map((app) => app.application_id),
+        next.map((app) => app.id),
       )
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.saveFailed)
@@ -229,8 +229,8 @@ export function AccountAppsPage({
     setActiveID(null)
     if (!over || active === over) return
 
-    const oldIndex = order.findIndex((app) => app.application_id === active)
-    const newIndex = order.findIndex((app) => app.application_id === over)
+    const oldIndex = order.findIndex((app) => app.id === active)
+    const newIndex = order.findIndex((app) => app.id === over)
     if (oldIndex < 0 || newIndex < 0) return
 
     const next = arrayMove(order, oldIndex, newIndex)
@@ -297,7 +297,7 @@ export function AccountAppsPresentation({
   onLaunch: (app: MyApplication) => void
 }) {
   const t = useDictionary(accountAppsDictionary)
-  const itemIDs = useMemo(() => order.map((app) => app.application_id), [order])
+  const itemIDs = useMemo(() => order.map((app) => app.id), [order])
   const sections = useMemo(
     () => buildSections(order, categories, t.other),
     [order, categories, t.other],

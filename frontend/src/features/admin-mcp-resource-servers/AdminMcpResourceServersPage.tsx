@@ -30,10 +30,8 @@ export function AdminMcpResourceServersPage({
   async function handleDelete(resourceServer: McpResourceServer) {
     setError('')
     try {
-      await deleteMcpResourceServer(csrfToken, resourceServer.resource_server_id)
-      setItems((previous) =>
-        previous.filter((item) => item.resource_server_id !== resourceServer.resource_server_id),
-      )
+      await deleteMcpResourceServer(csrfToken, resourceServer.id)
+      setItems((previous) => previous.filter((item) => item.id !== resourceServer.id))
       setNotice(dict.deletedNotice.replace('{resource}', resourceServer.resource))
     } catch (cause) {
       setError(cause instanceof AuthenticationAPIError ? cause.message : dict.deleteFailedError)
@@ -61,7 +59,7 @@ export function AdminMcpResourceServersPage({
       ) : (
         <div className="flex flex-col gap-3">
           {items.map((item) => (
-            <Card key={item.resource_server_id} className="flex flex-col gap-3 p-4">
+            <Card key={item.id} className="flex flex-col gap-3 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -84,7 +82,7 @@ export function AdminMcpResourceServersPage({
                   <Button
                     variant="outline"
                     nativeButton={false}
-                    render={<a href={editURL(item.resource_server_id)} />}
+                    render={<a href={editURL(item.id)} />}
                   >
                     {dict.edit}
                   </Button>

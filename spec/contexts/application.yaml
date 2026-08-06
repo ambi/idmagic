@@ -81,13 +81,13 @@ models:
   Application:
     kind: entity
     description: "運用者が「接続する業務アプリケーション」として扱う上位 aggregate。表示名・アイコン・状態・割当と、不変な単一 protocol 種別を所有する。weblink は protocol を持たず、federated は oidc / saml / wsfed のいずれか1個、service は oidc 1個を持つ。protocol row は nullable application_id を持ち、NULL の catalog 外設定も許容する。"
-    identity: application_id
+    identity: id
     fields:
       tenant_id:
         type: String
         default: default
         description: 所属テナント ID。
-      application_id:
+      id:
         type: UUID
         description: PostgreSQL の global UUID primary key。tenant_id は所属境界であり、識別子の一部ではない。
       name:
@@ -260,7 +260,7 @@ models:
     kind: value_object
     description: 管理 API が返す Application 表現。
     fields:
-      application_id:
+      id:
         type: UUID
       name:
         type: String
@@ -731,7 +731,7 @@ models:
     kind: value_object
     description: 利用者ポータルに表示する割当済みアプリ 1 件。
     fields:
-      application_id:
+      id:
         type: UUID
       name:
         type: String
@@ -1113,11 +1113,11 @@ models:
     description: OAuth2 context が定義する Active client secret credential 最大2件の上限 error の published language stub。
 interfaces:
   AssignApplicationDesiredState:
-    description: "呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (application_id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの application_id / user_id だけを渡す。\n"
+    description: "呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの id / user_id だけを渡す。\n"
     input:
       tenant_id:
         type: String
-      application_id:
+      id:
         type: String
       user_id:
         type: String
@@ -1139,7 +1139,7 @@ interfaces:
     input:
       tenant_id:
         type: String
-      application_id:
+      id:
         type: String
       user_id:
         type: String
@@ -1169,7 +1169,7 @@ interfaces:
   GetAdminApplication:
     description: 管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。
     input:
-      application_id:
+      id:
         type: String
     output:
       response:
@@ -1182,11 +1182,11 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{application_id}"
+        path: "/api/admin/applications/{id}"
   CreateAdminApplication:
     description: 管理者が Application を一括作成する。種別に応じた protocol row を準備し、Application と application_id relation を同一 transaction で catalog へ公開する。protocol 種別は作成後に変更できない。
     input:
@@ -1216,7 +1216,7 @@ interfaces:
   UpdateAdminApplication:
     description: 管理者が Application のメタデータを更新する。
     input:
-      application_id:
+      id:
         type: String
       request:
         type: AdminApplicationUpdateRequest
@@ -1232,16 +1232,16 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{application_id}"
+        path: "/api/admin/applications/{id}"
         request_form: body
   UploadApplicationIcon:
     description: 管理者が Application のアイコン画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。
     input:
-      application_id:
+      id:
         type: String
       file:
         type: String
@@ -1261,16 +1261,16 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/icon"
+        path: "/api/admin/applications/{id}/icon"
         request_form: form
   DeleteApplicationIcon:
     description: 管理者が Application の保存済みアイコンを削除する。削除後は icon_url を返さない。
     input:
-      application_id:
+      id:
         type: String
     output:
       response:
@@ -1284,11 +1284,11 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{application_id}/icon"
+        path: "/api/admin/applications/{id}/icon"
   GetApplicationIcon:
     description: "保存済み Application アイコンを配信する公開 interface。Content-Type は検証済み形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。"
     input:
@@ -1313,7 +1313,7 @@ interfaces:
   DeleteAdminApplication:
     description: 管理者が Application を削除する (冪等)。関連する protocol row は同一 transaction で cascade delete される。
     input:
-      application_id:
+      id:
         type: String
     errors:
       - InvalidRequestError
@@ -1324,17 +1324,17 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{application_id}"
+        path: "/api/admin/applications/{id}"
         successful_status_codes:
           - "204"
   UpdateApplicationOidcConfig:
     description: "管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。rules /\nsub_source_attribute は claim release 上書きであり、visibility=Private の\n属性や reserved claim type を参照する rule は拒否する。\n"
     input:
-      application_id:
+      id:
         type: String
       request:
         type: ApplicationOidcConfigUpdateRequest
@@ -1349,18 +1349,18 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{application_id}/oidc"
+        path: "/api/admin/applications/{id}/oidc"
         request_form: body
         successful_status_codes:
           - "204"
   RotateApplicationClientSecret:
     description: 互換性のため、管理者が Application の OIDC protocol の client secret を従来方式で回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。新しい管理 UI は IssueApplicationClientSecret と RevokeApplicationClientSecret を使用する。
     input:
-      application_id:
+      id:
         type: String
       request:
         type: RotateApplicationClientSecretRequest
@@ -1374,18 +1374,18 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/oidc/rotate-secret"
+        path: "/api/admin/applications/{id}/oidc/rotate-secret"
         request_form: body
         successful_status_codes:
           - "200"
   IssueApplicationClientSecret:
     description: 管理者が Application の secret-based OIDC client に期限付き credential を追加発行する。既存 credential は変更せず、Active credential が2件なら原子的に拒否する。secret-based でない client は拒否する。
     input:
-      application_id:
+      id:
         type: String
       request:
         type: IssueApplicationClientSecretRequest
@@ -1402,18 +1402,18 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/oidc/client-secrets"
+        path: "/api/admin/applications/{id}/oidc/client-secrets"
         request_form: body
         successful_status_codes:
           - "201"
   RevokeApplicationClientSecret:
     description: 管理者が Application の secret-based OIDC client に属する指定 credential だけを即時失効する。既に失効済みなら冪等に成功し、別 client または存在しない credential は拒否する。
     input:
-      application_id:
+      id:
         type: String
       credential_id:
         type: String
@@ -1429,17 +1429,17 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{application_id}/oidc/client-secrets/{credential_id}"
+        path: "/api/admin/applications/{id}/oidc/client-secrets/{credential_id}"
         successful_status_codes:
           - "200"
   UpdateApplicationWsFedConfig:
     description: "管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。rules /\nname_id_source は claim release 上書きであり、visibility=Private の属性や\nreserved claim type を参照する rule は拒否する。\n"
     input:
-      application_id:
+      id:
         type: String
       request:
         type: ApplicationWsFedConfigUpdateRequest
@@ -1454,18 +1454,18 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{application_id}/wsfed"
+        path: "/api/admin/applications/{id}/wsfed"
         request_form: body
         successful_status_codes:
           - "204"
   UpdateApplicationSamlConfig:
     description: "管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを\n部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。rules / name_id_source は\nclaim release 上書きであり、visibility=Private の属性や reserved claim type\nを参照する rule は拒否する。\n"
     input:
-      application_id:
+      id:
         type: String
       request:
         type: ApplicationSamlConfigUpdateRequest
@@ -1480,18 +1480,18 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{application_id}/saml"
+        path: "/api/admin/applications/{id}/saml"
         request_form: body
         successful_status_codes:
           - "204"
   ListApplicationAssignments:
     description: 管理者が Application の割当を一覧する。
     input:
-      application_id:
+      id:
         type: String
     output:
       response:
@@ -1504,15 +1504,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{application_id}/assignments"
+        path: "/api/admin/applications/{id}/assignments"
   AssignApplication:
     description: 管理者が Application にユーザー / グループを割当てる。
     input:
-      application_id:
+      id:
         type: String
       request:
         type: ApplicationAssignmentRequest
@@ -1530,18 +1530,18 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{application_id}/assignments"
+        path: "/api/admin/applications/{id}/assignments"
         request_form: body
         successful_status_codes:
           - "201"
   UnassignApplication:
     description: 管理者が Application の割当を解除する (冪等)。
     input:
-      application_id:
+      id:
         type: String
       subject_type:
         type: String
@@ -1556,17 +1556,17 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{application_id}/assignments/{subject_type}/{subject_id}"
+        path: "/api/admin/applications/{id}/assignments/{subject_type}/{subject_id}"
         successful_status_codes:
           - "204"
   GetAppSignInPolicy:
     description: 管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。
     input:
-      application_id:
+      id:
         type: String
     output:
       response:
@@ -1579,15 +1579,15 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{application_id}/sign-in-policy"
+        path: "/api/admin/applications/{id}/sign-in-policy"
   UpdateAppSignInPolicy:
     description: 管理者が Application の sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。
     input:
-      application_id:
+      id:
         type: String
       request:
         type: AppSignInPolicyRequest
@@ -1603,11 +1603,11 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/applications/{application_id}/sign-in-policy"
+        path: "/api/admin/applications/{id}/sign-in-policy"
         request_form: body
   GetTenantDefaultSignInPolicy:
     description: 管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す (ADR-081)。
@@ -1740,7 +1740,7 @@ interfaces:
   SetApplicationCategories:
     description: 管理者が Application に付与するカテゴリ集合を置き換える。所属テナントの既存カテゴリのみ受け付ける。
     input:
-      application_id:
+      id:
         type: String
       request:
         type: ApplicationCategoriesRequest
@@ -1756,11 +1756,11 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: Application
-        id: input.application_id
+        id: input.id
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/applications/{application_id}/categories"
+        path: "/api/admin/applications/{id}/categories"
         request_form: body
   ListMyApplications:
     description: "利用者が自分に割当済み (visible) の Application を一覧する。hidden 割当は除外する。\n手動並び順 (ApplicationOrdering) があればそれを優先し、無ければ name 昇順。応答の categories は\ntenant のカテゴリ定義を position 昇順で含み、各アプリの category_ids でセクションに振り分ける (ADR-069)。\n"
@@ -1999,7 +1999,7 @@ scenarios:
         condition: 別テナントの管理者がアプリケーションを取得しようとする
         steps:
           - "tenant_id \"acme\" に Application \"portal\" が存在する"
-          - "tenant_id \"default\" の管理者が同じ application_id を取得する"
+          - "tenant_id \"default\" の管理者が同じ id を取得する"
           - "エラー \"InvalidRequestError\""
   管理者はApplicationアイコンをアップロード削除できる:
     actor: TenantAdministrator

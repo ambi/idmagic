@@ -74,7 +74,7 @@ func (r *McpResourceServerRepository) Save(_ context.Context, m *domain.McpResou
 	defer r.mu.Unlock()
 	sharedmem.DefaultTenant(&m.TenantID)
 	cloned := cloneMcpResourceServer(m)
-	r.byID[sharedmem.TenantKey(m.TenantID, m.ResourceServerID)] = cloned
+	r.byID[sharedmem.TenantKey(m.TenantID, m.ID)] = cloned
 	r.byRes[sharedmem.TenantKey(m.TenantID, m.Resource)] = cloned
 	return nil
 }

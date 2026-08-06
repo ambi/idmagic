@@ -21,7 +21,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 	var created struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	if err := json.Unmarshal(createOIDC.Body.Bytes(), &created); err != nil {
@@ -40,7 +40,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	if !ok || protocol["type"] != "oidc" {
 		t.Fatalf("single protocol projection missing: %#v", createdWire.Application["protocol"])
 	}
-	appID := created.Application.ApplicationID
+	appID := created.Application.ID
 
 	// Create WebLink App
 	createWeblink := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
@@ -333,11 +333,11 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	})
 	var oidcApp struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	_ = json.Unmarshal(createOIDC.Body.Bytes(), &oidcApp)
-	oidcID := oidcApp.Application.ApplicationID
+	oidcID := oidcApp.Application.ID
 
 	// Update OIDC Config
 	updateOIDC := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+oidcID+"/oidc", csrf, cookie, map[string]any{
@@ -359,11 +359,11 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	})
 	var wsfedApp struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	_ = json.Unmarshal(createWsFed.Body.Bytes(), &wsfedApp)
-	wsfedID := wsfedApp.Application.ApplicationID
+	wsfedID := wsfedApp.Application.ID
 
 	// Update WS-Fed Config
 	updateWsFed := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+wsfedID+"/wsfed", csrf, cookie, map[string]any{
@@ -385,11 +385,11 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	})
 	var samlApp struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	_ = json.Unmarshal(createSAML.Body.Bytes(), &samlApp)
-	samlID := samlApp.Application.ApplicationID
+	samlID := samlApp.Application.ID
 
 	// Update SAML Config
 	updateSAML := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+samlID+"/saml", csrf, cookie, map[string]any{
@@ -411,11 +411,11 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	})
 	var weblinkApp struct {
 		Application struct {
-			ApplicationID string `json:"application_id"`
+			ID string `json:"id"`
 		} `json:"application"`
 	}
 	_ = json.Unmarshal(createWeblink.Body.Bytes(), &weblinkApp)
-	weblinkID := weblinkApp.Application.ApplicationID
+	weblinkID := weblinkApp.Application.ID
 
 	updateWeblinkOIDC := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+weblinkID+"/oidc", csrf, cookie, map[string]any{
 		"redirect_uris": []string{"https://oidc-updated.example/callback"},

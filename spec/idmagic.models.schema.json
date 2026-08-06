@@ -777,7 +777,7 @@
     "AdminApplicationResponse": {
       "type": "object",
       "properties": {
-        "application_id": {
+        "id": {
           "type": "string",
           "format": "uuid"
         },
@@ -835,7 +835,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "application_id",
+        "id",
         "name",
         "kind",
         "status",
@@ -10193,10 +10193,10 @@
           "default": "default",
           "description": "所属テナント ID。"
         },
-        "resource_server_id": {
+        "id": {
           "type": "string",
           "minLength": 1,
-          "description": "登録の一意識別子 (UUID)。tenant を越えて globally unique (ADR-083 の client_id と同方針)。"
+          "description": "登録の一意識別子 (UUID)。tenant を越えて globally unique。"
         },
         "resource": {
           "$ref": "#/$defs/ResourceIndicator",
@@ -10232,7 +10232,7 @@
       "additionalProperties": false,
       "required": [
         "tenant_id",
-        "resource_server_id",
+        "id",
         "resource",
         "name",
         "scopes",
@@ -10294,7 +10294,7 @@
         "tenant_id": {
           "type": "string"
         },
-        "resource_server_id": {
+        "id": {
           "type": "string"
         },
         "resource": {
@@ -10325,7 +10325,7 @@
       "additionalProperties": false,
       "required": [
         "tenant_id",
-        "resource_server_id",
+        "id",
         "resource",
         "name",
         "scopes",
@@ -10842,7 +10842,7 @@
     "MyApplication": {
       "type": "object",
       "properties": {
-        "application_id": {
+        "id": {
           "type": "string",
           "format": "uuid"
         },
@@ -10869,7 +10869,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "application_id",
+        "id",
         "name",
         "kind",
         "category_ids"

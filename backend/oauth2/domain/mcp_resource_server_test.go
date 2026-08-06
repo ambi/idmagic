@@ -8,14 +8,14 @@ import (
 func validMcpResourceServer() McpResourceServer {
 	now := time.Now().UTC()
 	return McpResourceServer{
-		TenantID:         "tenant-1",
-		ResourceServerID: "11111111-1111-1111-1111-111111111111",
-		Resource:         "https://mcp.example.com/tools/github",
-		Name:             "GitHub MCP Tools",
-		Scopes:           []string{"mcp.read", "mcp.write"},
-		State:            McpResourceServerActive,
-		CreatedAt:        now,
-		UpdatedAt:        now,
+		TenantID:  "tenant-1",
+		ID:        "11111111-1111-1111-1111-111111111111",
+		Resource:  "https://mcp.example.com/tools/github",
+		Name:      "GitHub MCP Tools",
+		Scopes:    []string{"mcp.read", "mcp.write"},
+		State:     McpResourceServerActive,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
@@ -26,9 +26,9 @@ func TestMcpResourceServerValidate_valid(t *testing.T) {
 	}
 }
 
-func TestMcpResourceServerValidate_rejectsEmptyResourceServerID(t *testing.T) {
+func TestMcpResourceServerValidate_rejectsEmptyID(t *testing.T) {
 	m := validMcpResourceServer()
-	m.ResourceServerID = ""
+	m.ID = ""
 	if err := m.Validate(); err == nil {
 		t.Fatal("expected error for empty resource_server_id")
 	}

@@ -186,10 +186,10 @@ export function AdminApplicationEditPage({
       }
       if (status !== app.status) metaPatch.status = status
       if (Object.keys(metaPatch).length > 0) {
-        await updateAdminApplication(csrfToken, app.application_id, metaPatch)
+        await updateAdminApplication(csrfToken, app.id, metaPatch)
       }
       if (removeIcon && app.icon_object_key) {
-        await deleteApplicationIcon(csrfToken, app.application_id)
+        await deleteApplicationIcon(csrfToken, app.id)
       }
       if (iconFile) {
         if (iconFile.size > MAX_APPLICATION_ICON_BYTES) {
@@ -197,7 +197,7 @@ export function AdminApplicationEditPage({
           setSaving(false)
           return
         }
-        await uploadApplicationIcon(csrfToken, app.application_id, iconFile)
+        await uploadApplicationIcon(csrfToken, app.id, iconFile)
       }
       if (detail.oidc) {
         const nextRedirects = parseList(redirects)
@@ -223,7 +223,7 @@ export function AdminApplicationEditPage({
           subSourceChanged ||
           oidcRulesChanged
         ) {
-          await updateApplicationOidcConfig(csrfToken, app.application_id, {
+          await updateApplicationOidcConfig(csrfToken, app.id, {
             redirect_uris: redirectsChanged ? nextRedirects : undefined,
             scope: scopeChanged ? scope.trim() : undefined,
             grant_types: grantsChanged ? nextGrants : undefined,
@@ -245,7 +245,7 @@ export function AdminApplicationEditPage({
           nameIDSource.trim() !== detail.wsfed.name_id_source ||
           JSON.stringify(wsfedRules) !== JSON.stringify(detail.wsfed.rules ?? [])
         if (changed) {
-          await updateApplicationWsFedConfig(csrfToken, app.application_id, {
+          await updateApplicationWsFedConfig(csrfToken, app.id, {
             reply_urls: nextReplies,
             audience: audience.trim(),
             token_type: tokenType,
@@ -280,7 +280,7 @@ export function AdminApplicationEditPage({
             setSaving(false)
             return
           }
-          await updateApplicationSamlConfig(csrfToken, app.application_id, {
+          await updateApplicationSamlConfig(csrfToken, app.id, {
             idp_profile_id: samlIDPProfileID.current,
             acs_urls: nextACS,
             slo_url: samlSLO.trim(),
@@ -327,9 +327,9 @@ export function AdminApplicationEditPage({
         : []
       const prevSignInRules = signInView?.policy?.rules ?? []
       if (JSON.stringify(nextSignInRules) !== JSON.stringify(prevSignInRules)) {
-        await updateAppSignInPolicy(csrfToken, app.application_id, nextSignInRules)
+        await updateAppSignInPolicy(csrfToken, app.id, nextSignInRules)
       }
-      window.location.assign(detailURL(app.application_id))
+      window.location.assign(detailURL(app.id))
     } catch (cause) {
       setError(messageOf(cause, t.applicationUpdateFailedError))
       setSaving(false)
@@ -345,7 +345,7 @@ export function AdminApplicationEditPage({
       actions={
         <div className="flex items-center gap-2">
           <a
-            href={detailURL(app.application_id)}
+            href={detailURL(app.id)}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
           >
             <IconArrowLeft size={16} aria-hidden="true" />
@@ -767,7 +767,7 @@ export function AdminApplicationEditPage({
               <Button
                 variant="outline"
                 nativeButton={false}
-                render={<a href={detailURL(app.application_id)} />}
+                render={<a href={detailURL(app.id)} />}
               >
                 {t.cancel}
               </Button>
@@ -781,7 +781,7 @@ export function AdminApplicationEditPage({
         {detail.oidc?.client_secret_rotatable ? (
           <Card className="p-6" role="region" aria-labelledby="client-secret-management-heading">
             <ClientSecretRotationPanel
-              applicationID={app.application_id}
+              applicationID={app.id}
               csrfToken={csrfToken}
               initialCredentials={detail.oidc.secret_credentials}
               onError={setError}
@@ -791,11 +791,7 @@ export function AdminApplicationEditPage({
 
         {app.kind !== 'service' ? (
           <Card className="p-6">
-            <AssignmentManager
-              appID={app.application_id}
-              csrfToken={csrfToken}
-              onError={setError}
-            />
+            <AssignmentManager appID={app.id} csrfToken={csrfToken} onError={setError} />
           </Card>
         ) : null}
 

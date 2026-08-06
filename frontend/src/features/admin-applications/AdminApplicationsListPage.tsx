@@ -32,22 +32,18 @@ export function AdminApplicationsPage({
   applications: AdminApplication[]
 }) {
   const [applications, setApplications] = useState(initial)
-  const [selectedID, setSelectedID] = useState<string>(() => initial[0]?.application_id ?? '')
+  const [selectedID, setSelectedID] = useState<string>(() => initial[0]?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminApplicationsDictionary)
 
-  const selected = applications.find((a) => a.application_id === selectedID) ?? null
+  const selected = applications.find((a) => a.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
     const next = await listAdminApplications()
     setApplications(next)
-    setSelectedID(
-      next.find((a) => a.application_id === preferredID)?.application_id ??
-        next[0]?.application_id ??
-        '',
-    )
+    setSelectedID(next.find((a) => a.id === preferredID)?.id ?? next[0]?.id ?? '')
   }
 
   async function run(action: () => Promise<void>, success: string) {
@@ -101,12 +97,12 @@ export function AdminApplicationsPage({
           ) : (
             <ul>
               {applications.map((app) => (
-                <li key={app.application_id}>
+                <li key={app.id}>
                   <button
                     type="button"
-                    onClick={() => setSelectedID(app.application_id)}
+                    onClick={() => setSelectedID(app.id)}
                     className={`flex w-full items-center gap-3 border-t border-slate-100 px-4 py-3 text-left first:border-t-0 hover:bg-slate-50 ${
-                      selectedID === app.application_id ? 'bg-blue-50/60' : ''
+                      selectedID === app.id ? 'bg-blue-50/60' : ''
                     }`}
                   >
                     <AppIcon app={app} size="sm" />
@@ -180,8 +176,8 @@ function ApplicationSummaryCard({
         </div>
         <div className="mt-4">
           <AdminPaneActions
-            detailHref={detailURL(app.application_id)}
-            editHref={editURL(app.application_id)}
+            detailHref={detailURL(app.id)}
+            editHref={editURL(app.id)}
             busy={busy}
             actions={[
               {
@@ -204,11 +200,7 @@ function ApplicationSummaryCard({
             <Button variant="outline" onClick={() => setConfirmDelete(false)} disabled={busy}>
               {t.dismissConfirm}
             </Button>
-            <Button
-              variant="destructive"
-              disabled={busy}
-              onClick={() => onDelete(app.application_id)}
-            >
+            <Button variant="destructive" disabled={busy} onClick={() => onDelete(app.id)}>
               <IconTrash size={14} aria-hidden="true" />
               {t.confirmDelete}
             </Button>

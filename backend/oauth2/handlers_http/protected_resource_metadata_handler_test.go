@@ -22,7 +22,7 @@ import (
 func newProtectedResourceMetadataHandler() *echo.Echo {
 	servers := oauth2memory.NewMcpResourceServerRepository()
 	servers.Seed(&domain.McpResourceServer{
-		TenantID: tenancydomain.DefaultTenantID, ResourceServerID: "rs-1",
+		TenantID: tenancydomain.DefaultTenantID, ID: "rs-1",
 		Resource: "https://mcp.example.com/tools/github", Name: "GitHub MCP Tools",
 		Scopes: []string{"mcp.read", "mcp.write"}, State: domain.McpResourceServerActive,
 	})

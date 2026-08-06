@@ -80,10 +80,10 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 		return ApplicationAccessDecision{Allowed: true}, nil
 	}
 	if app.Status != appdomain.ApplicationActive {
-		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "application is disabled"}, nil
+		return ApplicationAccessDecision{ApplicationID: app.ID, Reason: "application is disabled"}, nil
 	}
 	if g.ApplicationAssignmentRepo == nil {
-		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "application assignments are unavailable"}, nil
+		return ApplicationAccessDecision{ApplicationID: app.ID, Reason: "application assignments are unavailable"}, nil
 	}
 	subjects := []appports.SubjectRef{{Type: appdomain.AssignmentSubjectUser, ID: sub}}
 	if g.GroupRepo != nil {
@@ -101,18 +101,18 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 	}
 	assigned := false
 	for _, a := range assignments {
-		if a.ApplicationID == app.ApplicationID {
+		if a.ApplicationID == app.ID {
 			assigned = true
 			break
 		}
 	}
 	if !assigned {
-		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: "subject not assigned to application"}, nil
+		return ApplicationAccessDecision{ApplicationID: app.ID, Reason: "subject not assigned to application"}, nil
 	}
 	if g.ApplicationSignInPolicyRepo == nil {
-		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ApplicationID}, nil
+		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
 	}
-	policy, err := g.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
+	policy, err := g.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ID)
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}
@@ -128,10 +128,10 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 	evaluation := appusecases.EvaluateSignInPolicy(effective, authn, clientIP, time.Now().UTC())
 	switch evaluation.Decision {
 	case appusecases.PolicyAllow:
-		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ApplicationID}, nil
+		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
 	case appusecases.PolicyStepUpRequired:
-		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, StepUpRequired: true, Reason: evaluation.Reason}, nil
+		return ApplicationAccessDecision{ApplicationID: app.ID, StepUpRequired: true, Reason: evaluation.Reason}, nil
 	default:
-		return ApplicationAccessDecision{ApplicationID: app.ApplicationID, Reason: evaluation.Reason}, nil
+		return ApplicationAccessDecision{ApplicationID: app.ID, Reason: evaluation.Reason}, nil
 	}
 }

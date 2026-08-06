@@ -27,15 +27,15 @@ func seedApplication(tb testing.TB, pool *pgxpool.Pool, tenantID string) *applic
 	tb.Helper()
 	now := pgfixtures.TestClock()
 	app := &applicationdomain.Application{
-		TenantID:      tenantID,
-		ApplicationID: pgfixtures.NewUUID(tb),
-		Name:          pgfixtures.UniqueID("app"),
-		Kind:          applicationdomain.ApplicationWeblink,
-		Status:        applicationdomain.ApplicationActive,
-		LaunchURL:     "https://example.com",
-		CategoryIDs:   []string{},
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		TenantID:    tenantID,
+		ID:          pgfixtures.NewUUID(tb),
+		Name:        pgfixtures.UniqueID("app"),
+		Kind:        applicationdomain.ApplicationWeblink,
+		Status:      applicationdomain.ApplicationActive,
+		LaunchURL:   "https://example.com",
+		CategoryIDs: []string{},
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 	if err := (&applicationpg.ApplicationRepository{Pool: pool}).Save(context.Background(), app); err != nil {
 		tb.Fatalf("seed application: %v", err)
@@ -75,10 +75,10 @@ func TestProvisioningConnectionRepository_Register_RejectsDuplicateApplication(t
 	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	ctx := context.Background()
 
-	if err := repo.Register(ctx, testConnection(t, app.ApplicationID, tenant.ID), "secret-1"); err != nil {
+	if err := repo.Register(ctx, testConnection(t, app.ID, tenant.ID), "secret-1"); err != nil {
 		t.Fatalf("first Register() error = %v", err)
 	}
-	if err := repo.Register(ctx, testConnection(t, app.ApplicationID, tenant.ID), "secret-2"); !errors.Is(err, ports.ErrConnectionAlreadyExists) {
+	if err := repo.Register(ctx, testConnection(t, app.ID, tenant.ID), "secret-2"); !errors.Is(err, ports.ErrConnectionAlreadyExists) {
 		t.Errorf("second Register() error = %v, want ErrConnectionAlreadyExists", err)
 	}
 }
@@ -89,32 +89,32 @@ func TestProvisioningConnectionRepository_RegisterFindDelete(t *testing.T) {
 	app := seedApplication(t, pool, tenant.ID)
 	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	ctx := context.Background()
-	conn := testConnection(t, app.ApplicationID, tenant.ID)
+	conn := testConnection(t, app.ID, tenant.ID)
 
 	if err := repo.Register(ctx, conn, "top-secret"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
-	found, err := repo.Find(ctx, tenant.ID, app.ApplicationID)
+	found, err := repo.Find(ctx, tenant.ID, app.ID)
 	if err != nil {
 		t.Fatalf("Find() error = %v", err)
 	}
 	if found == nil || found.BaseURL != conn.BaseURL || found.Scope != domain.ScopeAssignedOnly {
 		t.Errorf("Find() = %+v, want a connection matching %+v", found, conn)
 	}
-	secret, err := repo.CredentialSecret(ctx, tenant.ID, app.ApplicationID)
+	secret, err := repo.CredentialSecret(ctx, tenant.ID, app.ID)
 	if err != nil || secret != "top-secret" {
 		t.Errorf("CredentialSecret() = (%q, %v), want (top-secret, nil)", secret, err)
 	}
 
 	otherTenant := pgfixtures.SeedTenant(t, pool)
-	if found, err := repo.Find(ctx, otherTenant.ID, app.ApplicationID); err != nil || found != nil {
+	if found, err := repo.Find(ctx, otherTenant.ID, app.ID); err != nil || found != nil {
 		t.Errorf("Find() across tenants = (%+v, %v), want (nil, nil)", found, err)
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, app.ApplicationID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, app.ID); err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
-	if found, err := repo.Find(ctx, tenant.ID, app.ApplicationID); err != nil || found != nil {
+	if found, err := repo.Find(ctx, tenant.ID, app.ID); err != nil || found != nil {
 		t.Errorf("Find() after Delete() = (%+v, %v), want (nil, nil)", found, err)
 	}
 }
@@ -125,7 +125,7 @@ func TestProvisioningConnectionRepository_Update_RotatesSecretOnlyWhenProvided(t
 	app := seedApplication(t, pool, tenant.ID)
 	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	ctx := context.Background()
-	conn := testConnection(t, app.ApplicationID, tenant.ID)
+	conn := testConnection(t, app.ID, tenant.ID)
 	if err := repo.Register(ctx, conn, "secret-1"); err != nil {
 		t.Fatalf("Register() error = %v", err)
 	}
@@ -134,7 +134,7 @@ func TestProvisioningConnectionRepository_Update_RotatesSecretOnlyWhenProvided(t
 	if err := repo.Update(ctx, conn, nil); err != nil {
 		t.Fatalf("Update() without secret error = %v", err)
 	}
-	if secret, err := repo.CredentialSecret(ctx, tenant.ID, app.ApplicationID); err != nil || secret != "secret-1" {
+	if secret, err := repo.CredentialSecret(ctx, tenant.ID, app.ID); err != nil || secret != "secret-1" {
 		t.Errorf("CredentialSecret() after non-rotating update = (%q, %v), want (secret-1, nil)", secret, err)
 	}
 
@@ -142,10 +142,10 @@ func TestProvisioningConnectionRepository_Update_RotatesSecretOnlyWhenProvided(t
 	if err := repo.Update(ctx, conn, &rotated); err != nil {
 		t.Fatalf("Update() with secret error = %v", err)
 	}
-	if secret, err := repo.CredentialSecret(ctx, tenant.ID, app.ApplicationID); err != nil || secret != "secret-2" {
+	if secret, err := repo.CredentialSecret(ctx, tenant.ID, app.ID); err != nil || secret != "secret-2" {
 		t.Errorf("CredentialSecret() after rotation = (%q, %v), want (secret-2, nil)", secret, err)
 	}
-	found, err := repo.Find(ctx, tenant.ID, app.ApplicationID)
+	found, err := repo.Find(ctx, tenant.ID, app.ID)
 	if err != nil || found.BaseURL != conn.BaseURL {
 		t.Errorf("Find() after Update() = %+v, err=%v, want base_url %q", found, err, conn.BaseURL)
 	}
@@ -160,9 +160,9 @@ func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing
 	appB := seedApplication(t, pool, tenantB.ID)
 	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}
 	ctx := context.Background()
-	_ = repo.Register(ctx, testConnection(t, appA1.ApplicationID, tenantA.ID), "s1")
-	_ = repo.Register(ctx, testConnection(t, appA2.ApplicationID, tenantA.ID), "s2")
-	_ = repo.Register(ctx, testConnection(t, appB.ApplicationID, tenantB.ID), "s3")
+	_ = repo.Register(ctx, testConnection(t, appA1.ID, tenantA.ID), "s1")
+	_ = repo.Register(ctx, testConnection(t, appA2.ID, tenantA.ID), "s2")
+	_ = repo.Register(ctx, testConnection(t, appB.ID, tenantB.ID), "s3")
 
 	list, err := repo.ListByTenant(ctx, tenantA.ID)
 	if err != nil {
@@ -195,17 +195,17 @@ func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
-	_ = connRepo.Register(context.Background(), testConnection(t, app.ApplicationID, tenant.ID), "secret")
+	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
 	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
 	ctx := context.Background()
 
-	d1 := testDelivery(t, tenant.ID, app.ApplicationID, user.ID, 1)
+	d1 := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
 	created, err := repo.Save(ctx, d1)
 	if err != nil || !created {
 		t.Fatalf("first Save() = (%v, %v), want (true, nil)", created, err)
 	}
-	d2 := testDelivery(t, tenant.ID, app.ApplicationID, user.ID, 1)
+	d2 := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
 	created, err = repo.Save(ctx, d2)
 	if err != nil {
 		t.Fatalf("second Save() error = %v", err)
@@ -214,7 +214,7 @@ func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing
 		t.Error("second Save() with same idempotency key created = true, want false (dedup)")
 	}
 
-	d3 := testDelivery(t, tenant.ID, app.ApplicationID, user.ID, 2)
+	d3 := testDelivery(t, tenant.ID, app.ID, user.ID, 2)
 	created, err = repo.Save(ctx, d3)
 	if err != nil || !created {
 		t.Fatalf("Save() with a new source_version = (%v, %v), want (true, nil)", created, err)
@@ -226,12 +226,12 @@ func TestProvisioningDeliveryRepository_ListUnenqueuedAttachJobRetry(t *testing.
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
-	_ = connRepo.Register(context.Background(), testConnection(t, app.ApplicationID, tenant.ID), "secret")
+	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
 	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
 	ctx := context.Background()
 
-	d := testDelivery(t, tenant.ID, app.ApplicationID, user.ID, 1)
+	d := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
 	if _, err := repo.Save(ctx, d); err != nil {
 		t.Fatalf("Save() error = %v", err)
 	}
@@ -283,19 +283,19 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, pool)
 	app := seedApplication(t, pool, tenant.ID)
 	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
-	_ = connRepo.Register(context.Background(), testConnection(t, app.ApplicationID, tenant.ID), "secret")
+	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
 	user := pgfixtures.SeedUser(t, pool, tenant.ID)
 	repo := &postgres.RemoteResourceLinkRepository{Pool: pool}
 	ctx := context.Background()
 
-	link := domain.NewRemoteResourceLink(app.ApplicationID, tenant.ID, domain.SourceTypeUser, user.ID)
+	link := domain.NewRemoteResourceLink(app.ID, tenant.ID, domain.SourceTypeUser, user.ID)
 	if err := link.ApplySync(1, "remote-1", user.ID, nil, pgtest.Now()); err != nil {
 		t.Fatalf("ApplySync() error = %v", err)
 	}
 	if err := repo.Upsert(ctx, link); err != nil {
 		t.Fatalf("first Upsert() error = %v", err)
 	}
-	found, err := repo.Find(ctx, app.ApplicationID, domain.SourceTypeUser, user.ID)
+	found, err := repo.Find(ctx, app.ID, domain.SourceTypeUser, user.ID)
 	if err != nil || found == nil || found.RemoteID != "remote-1" || found.LastSyncedVersion != 1 {
 		t.Fatalf("Find() = %+v, err=%v, want remote_id=remote-1 version=1", found, err)
 	}
@@ -306,7 +306,7 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 	if err := repo.Upsert(ctx, link); err != nil {
 		t.Fatalf("second Upsert() error = %v", err)
 	}
-	found, err = repo.Find(ctx, app.ApplicationID, domain.SourceTypeUser, user.ID)
+	found, err = repo.Find(ctx, app.ID, domain.SourceTypeUser, user.ID)
 	if err != nil || found.LastSyncedVersion != 2 {
 		t.Errorf("Find() after second Upsert() = %+v, err=%v, want version=2", found, err)
 	}

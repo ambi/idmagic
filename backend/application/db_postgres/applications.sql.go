@@ -13,26 +13,26 @@ import (
 )
 
 const deleteApplication = `-- name: DeleteApplication :exec
-DELETE FROM applications WHERE tenant_id = $1 AND application_id = $2
+DELETE FROM applications WHERE tenant_id = $1 AND id = $2
 `
 
 type DeleteApplicationParams struct {
-	TenantID      string
-	ApplicationID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) DeleteApplication(ctx context.Context, arg DeleteApplicationParams) error {
-	_, err := q.db.Exec(ctx, deleteApplication, arg.TenantID, arg.ApplicationID)
+	_, err := q.db.Exec(ctx, deleteApplication, arg.TenantID, arg.ID)
 	return err
 }
 
 const findApplicationByProtocol = `-- name: FindApplicationByProtocol :one
-SELECT a.tenant_id, a.application_id, a.name, a.kind, a.status, a.protocol_type,
+SELECT a.tenant_id, a.id, a.name, a.kind, a.status, a.protocol_type,
        a.icon_url, a.icon_object_key, a.launch_url, a.category_ids, a.created_at, a.updated_at
 FROM applications a
-LEFT JOIN oauth2_clients c ON c.application_id = a.application_id
-LEFT JOIN saml_service_providers s ON s.application_id = a.application_id
-LEFT JOIN wsfed_relying_parties w ON w.application_id = a.application_id
+LEFT JOIN oauth2_clients c ON c.application_id = a.id
+LEFT JOIN saml_service_providers s ON s.application_id = a.id
+LEFT JOIN wsfed_relying_parties w ON w.application_id = a.id
 WHERE a.tenant_id = $1
   AND a.protocol_type = $2
   AND (
@@ -53,7 +53,7 @@ func (q *Queries) FindApplicationByProtocol(ctx context.Context, arg FindApplica
 	var i Application
 	err := row.Scan(
 		&i.TenantID,
-		&i.ApplicationID,
+		&i.ID,
 		&i.Name,
 		&i.Kind,
 		&i.Status,
@@ -69,22 +69,22 @@ func (q *Queries) FindApplicationByProtocol(ctx context.Context, arg FindApplica
 }
 
 const getApplicationByID = `-- name: GetApplicationByID :one
-SELECT tenant_id, application_id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
 FROM applications
-WHERE tenant_id = $1 AND application_id = $2
+WHERE tenant_id = $1 AND id = $2
 `
 
 type GetApplicationByIDParams struct {
-	TenantID      string
-	ApplicationID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) GetApplicationByID(ctx context.Context, arg GetApplicationByIDParams) (*Application, error) {
-	row := q.db.QueryRow(ctx, getApplicationByID, arg.TenantID, arg.ApplicationID)
+	row := q.db.QueryRow(ctx, getApplicationByID, arg.TenantID, arg.ID)
 	var i Application
 	err := row.Scan(
 		&i.TenantID,
-		&i.ApplicationID,
+		&i.ID,
 		&i.Name,
 		&i.Kind,
 		&i.Status,
@@ -102,19 +102,19 @@ func (q *Queries) GetApplicationByID(ctx context.Context, arg GetApplicationByID
 const getApplicationProtocolKey = `-- name: GetApplicationProtocolKey :one
 SELECT COALESCE(c.client_id::text, s.entity_id, w.wtrealm, '')::text AS protocol_key
 FROM applications a
-LEFT JOIN oauth2_clients c ON c.application_id = a.application_id
-LEFT JOIN saml_service_providers s ON s.application_id = a.application_id
-LEFT JOIN wsfed_relying_parties w ON w.application_id = a.application_id
-WHERE a.tenant_id = $1 AND a.application_id = $2
+LEFT JOIN oauth2_clients c ON c.application_id = a.id
+LEFT JOIN saml_service_providers s ON s.application_id = a.id
+LEFT JOIN wsfed_relying_parties w ON w.application_id = a.id
+WHERE a.tenant_id = $1 AND a.id = $2
 `
 
 type GetApplicationProtocolKeyParams struct {
-	TenantID      string
-	ApplicationID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) GetApplicationProtocolKey(ctx context.Context, arg GetApplicationProtocolKeyParams) (string, error) {
-	row := q.db.QueryRow(ctx, getApplicationProtocolKey, arg.TenantID, arg.ApplicationID)
+	row := q.db.QueryRow(ctx, getApplicationProtocolKey, arg.TenantID, arg.ID)
 	var protocol_key string
 	err := row.Scan(&protocol_key)
 	return protocol_key, err
@@ -172,7 +172,7 @@ func (q *Queries) LinkWsFedRelyingPartyToApplication(ctx context.Context, arg Li
 }
 
 const listApplicationsByTenant = `-- name: ListApplicationsByTenant :many
-SELECT tenant_id, application_id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
 FROM applications
 WHERE tenant_id = $1
 ORDER BY name
@@ -189,7 +189,7 @@ func (q *Queries) ListApplicationsByTenant(ctx context.Context, tenantID string)
 		var i Application
 		if err := rows.Scan(
 			&i.TenantID,
-			&i.ApplicationID,
+			&i.ID,
 			&i.Name,
 			&i.Kind,
 			&i.Status,
@@ -227,9 +227,9 @@ func (q *Queries) RemoveApplicationCategory(ctx context.Context, arg RemoveAppli
 }
 
 const upsertApplication = `-- name: UpsertApplication :exec
-INSERT INTO applications (tenant_id, application_id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at)
+INSERT INTO applications (tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-ON CONFLICT (application_id) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   status = EXCLUDED.status,
   icon_url = EXCLUDED.icon_url,
@@ -241,7 +241,7 @@ ON CONFLICT (application_id) DO UPDATE SET
 
 type UpsertApplicationParams struct {
 	TenantID      string
-	ApplicationID string
+	ID            string
 	Name          string
 	Kind          string
 	Status        string
@@ -257,7 +257,7 @@ type UpsertApplicationParams struct {
 func (q *Queries) UpsertApplication(ctx context.Context, arg UpsertApplicationParams) error {
 	_, err := q.db.Exec(ctx, upsertApplication,
 		arg.TenantID,
-		arg.ApplicationID,
+		arg.ID,
 		arg.Name,
 		arg.Kind,
 		arg.Status,

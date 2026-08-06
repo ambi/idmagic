@@ -38,7 +38,7 @@ func TestGetAndUpdateSignInPolicy(t *testing.T) {
 	policyDeps.AppRepo = appDeps.Repo
 
 	// 未設定なら空ポリシー。
-	empty, err := appusecases.GetSignInPolicy(ctx, policyDeps, app.ApplicationID)
+	empty, err := appusecases.GetSignInPolicy(ctx, policyDeps, app.ID)
 	if err != nil {
 		t.Fatalf("get empty: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestGetAndUpdateSignInPolicy(t *testing.T) {
 
 	// 更新して再取得すると 1 ルール。
 	saved, err := appusecases.UpdateSignInPolicy(ctx, policyDeps, appusecases.UpdateSignInPolicyInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, Rules: []domain.SignInRule{mfaRule()},
+		ActorUserID: "admin", ApplicationID: app.ID, Rules: []domain.SignInRule{mfaRule()},
 	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
@@ -56,7 +56,7 @@ func TestGetAndUpdateSignInPolicy(t *testing.T) {
 	if len(saved.Rules) != 1 || saved.Rules[0].RuleID == "" {
 		t.Fatalf("rule id not assigned: %+v", saved.Rules)
 	}
-	got, err := appusecases.GetSignInPolicy(ctx, policyDeps, app.ApplicationID)
+	got, err := appusecases.GetSignInPolicy(ctx, policyDeps, app.ID)
 	if err != nil || len(got.Rules) != 1 {
 		t.Fatalf("get after update = %+v err=%v", got, err)
 	}
@@ -72,7 +72,7 @@ func TestGetAndUpdateSignInPolicy(t *testing.T) {
 	}
 	// 名前空のルールは検証エラー。
 	if _, err := appusecases.UpdateSignInPolicy(ctx, policyDeps, appusecases.UpdateSignInPolicyInput{
-		ApplicationID: app.ApplicationID, Rules: []domain.SignInRule{{Enabled: true}},
+		ApplicationID: app.ID, Rules: []domain.SignInRule{{Enabled: true}},
 	}); !errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
 		t.Fatalf("expected ErrInvalidSignInPolicy, got %v", err)
 	}
@@ -118,7 +118,7 @@ func TestSignInPolicyNilRepoFallbacks(t *testing.T) {
 		t.Fatal(err)
 	}
 	// PolicyRepo nil -> 空ポリシー。
-	got, err := appusecases.GetSignInPolicy(ctx, deps, app.ApplicationID)
+	got, err := appusecases.GetSignInPolicy(ctx, deps, app.ID)
 	if err != nil || len(got.Rules) != 0 {
 		t.Fatalf("nil policy repo get = %+v err=%v", got, err)
 	}
@@ -129,7 +129,7 @@ func TestSignInPolicyNilRepoFallbacks(t *testing.T) {
 	}
 	// UpdateSignInPolicy は PolicyRepo nil でも event 発火して policy を返す。
 	if _, err := appusecases.UpdateSignInPolicy(ctx, deps, appusecases.UpdateSignInPolicyInput{
-		ApplicationID: app.ApplicationID, Rules: []domain.SignInRule{mfaRule()},
+		ApplicationID: app.ID, Rules: []domain.SignInRule{mfaRule()},
 	}); err != nil {
 		t.Fatalf("update with nil policy repo: %v", err)
 	}
@@ -200,7 +200,7 @@ func TestSignInPolicySettingsFromRulesAndClientIP(t *testing.T) {
 	// settingsFromRules: no enabled rules
 	weaker := appusecases.AppPolicyWeakerThanDefault(
 		&domain.TenantDefaultSignInPolicy{Rules: []domain.SignInRule{{Name: "MFA", Enabled: false}}},
-		&domain.AppSignInPolicy{ApplicationID: app.ApplicationID, Rules: []domain.SignInRule{{Name: "MFA", Enabled: false}}},
+		&domain.AppSignInPolicy{ApplicationID: app.ID, Rules: []domain.SignInRule{{Name: "MFA", Enabled: false}}},
 	)
 	if weaker {
 		t.Fatalf("should not be weaker because no enabled rules")
@@ -209,7 +209,7 @@ func TestSignInPolicySettingsFromRulesAndClientIP(t *testing.T) {
 	// evaluateSignInPolicy error cases
 	// clientIP parse error
 	policy := &domain.AppSignInPolicy{
-		ApplicationID: app.ApplicationID,
+		ApplicationID: app.ID,
 		Rules: []domain.SignInRule{{
 			Name: "Network Limit", Enabled: true,
 			Condition: domain.AccessCondition{NetworkAllowCIDRs: []string{"192.168.1.0/24"}},
@@ -227,7 +227,7 @@ func TestSignInPolicySettingsFromRulesAndClientIP(t *testing.T) {
 
 	// invalid CIDR format in rule
 	policyBadCIDR := &domain.AppSignInPolicy{
-		ApplicationID: app.ApplicationID,
+		ApplicationID: app.ID,
 		Rules: []domain.SignInRule{{
 			Name: "Network Limit", Enabled: true,
 			Condition: domain.AccessCondition{NetworkAllowCIDRs: []string{"invalid-cidr"}},

@@ -16,7 +16,7 @@ const response = (status: number, body: unknown = {}) => ({
 
 const resourceServer: McpResourceServer = {
   tenant_id: 'tenant-1',
-  resource_server_id: 'resource-server-1',
+  id: 'resource-server-1',
   resource: 'https://mcp.example.com',
   name: 'Example MCP',
   scopes: ['mcp.read', 'mcp.write'],

@@ -9,7 +9,7 @@ import (
 
 func TestBuildProtectedResourceMetadata_registeredActive(t *testing.T) {
 	rs := &domain.McpResourceServer{
-		TenantID: "tenant-1", ResourceServerID: "rs-1",
+		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"mcp.read", "mcp.write"}, State: domain.McpResourceServerActive,
 	}
@@ -40,7 +40,7 @@ func TestBuildProtectedResourceMetadata_unregistered_rejectedAsInvalidTarget(t *
 
 func TestBuildProtectedResourceMetadata_disabled_rejectedAsInvalidTarget(t *testing.T) {
 	rs := &domain.McpResourceServer{
-		TenantID: "tenant-1", ResourceServerID: "rs-1",
+		TenantID: "tenant-1", ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerDisabled,
 	}

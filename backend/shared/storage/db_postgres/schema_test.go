@@ -20,10 +20,10 @@ func TestPostgresSchemaReferentialIntegrityConstraints(t *testing.T) {
 		"CONSTRAINT agents_owner_fkey\n        FOREIGN KEY (owner_user_id)\n        REFERENCES users(id) ON DELETE RESTRICT",
 		"CONSTRAINT agent_credential_bindings_client_fkey\n        FOREIGN KEY (client_id)\n        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT",
 		"CONSTRAINT applications_tenant_id_fkey\n        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT",
-		"CONSTRAINT applications_protocol_identity_unique\n        UNIQUE (application_id, tenant_id, protocol_type)",
-		"CONSTRAINT oauth2_clients_application_fkey\n    FOREIGN KEY (application_id, tenant_id, application_protocol_type)\n    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE",
-		"CONSTRAINT saml_service_providers_application_fkey\n    FOREIGN KEY (application_id, tenant_id, application_protocol_type)\n    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE",
-		"CONSTRAINT wsfed_relying_parties_application_fkey\n    FOREIGN KEY (application_id, tenant_id, application_protocol_type)\n    REFERENCES applications(application_id, tenant_id, protocol_type) ON DELETE CASCADE",
+		"CONSTRAINT applications_protocol_identity_unique\n        UNIQUE (id, tenant_id, protocol_type)",
+		"CONSTRAINT oauth2_clients_application_fkey\n    FOREIGN KEY (application_id, tenant_id, application_protocol_type)\n    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE",
+		"CONSTRAINT saml_service_providers_application_fkey\n    FOREIGN KEY (application_id, tenant_id, application_protocol_type)\n    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE",
+		"CONSTRAINT wsfed_relying_parties_application_fkey\n    FOREIGN KEY (application_id, tenant_id, application_protocol_type)\n    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE",
 		"CONSTRAINT password_history_user_id_fkey\n        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
 	}
 	for _, want := range required {

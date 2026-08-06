@@ -21,7 +21,7 @@ func TestApplicationAccessAllowedGatesUnassignedSubjects(t *testing.T) {
 	assignments := appmemory.NewApplicationAssignmentRepository()
 	now := time.Now().UTC()
 	app := &appdomain.Application{
-		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "Payroll",
+		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "Payroll",
 		Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "c1"},
 		CreatedAt: now, UpdatedAt: now,
@@ -69,7 +69,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 	policies := appmemory.NewSignInPolicyRepository()
 	now := time.Now().UTC()
 	app := &appdomain.Application{
-		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "c1"},
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -111,7 +111,7 @@ func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	defaults := appmemory.NewDefaultSignInPolicyRepository()
 	now := time.Now().UTC()
 	app := &appdomain.Application{
-		TenantID: tenancydomain.DefaultTenantID, ApplicationID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
+		TenantID: tenancydomain.DefaultTenantID, ID: "app-1", Name: "App", Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 		Protocol:  &appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolOIDC, ClientID: "c1"},
 		CreatedAt: now, UpdatedAt: now,
 	}

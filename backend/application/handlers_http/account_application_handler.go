@@ -18,12 +18,12 @@ import (
 )
 
 type myApplicationResponse struct {
-	ApplicationID string                 `json:"application_id"`
-	Name          string                 `json:"name"`
-	Kind          domain.ApplicationKind `json:"kind"`
-	IconURL       string                 `json:"icon_url,omitempty"`
-	LaunchURL     string                 `json:"launch_url,omitempty"`
-	CategoryIDs   []string               `json:"category_ids"`
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Kind        domain.ApplicationKind `json:"kind"`
+	IconURL     string                 `json:"icon_url,omitempty"`
+	LaunchURL   string                 `json:"launch_url,omitempty"`
+	CategoryIDs []string               `json:"category_ids"`
 }
 
 type portalCategoryResponse struct {
@@ -61,7 +61,7 @@ func (d Deps) handleListMyApplications(c *echo.Context) error {
 			categoryIDs = []string{}
 		}
 		out[i] = myApplicationResponse{
-			ApplicationID: app.ApplicationID, Name: app.Name, Kind: app.Kind,
+			ID: app.ID, Name: app.Name, Kind: app.Kind,
 			IconURL: app.IconURL, LaunchURL: app.LaunchURL, CategoryIDs: categoryIDs,
 		}
 	}

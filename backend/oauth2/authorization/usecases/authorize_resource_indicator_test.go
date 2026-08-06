@@ -27,7 +27,7 @@ func TestAuthorize_noResource_unaffected(t *testing.T) {
 
 func TestAuthorize_registeredActiveResource_boundOnRequest(t *testing.T) {
 	rs := &domain.McpResourceServer{
-		TenantID: kernel.DefaultTenantID, ResourceServerID: "rs-1",
+		TenantID: kernel.DefaultTenantID, ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"openid"}, State: domain.McpResourceServerActive,
 	}

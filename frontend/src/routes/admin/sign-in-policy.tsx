@@ -16,7 +16,7 @@ export const Route = createFileRoute('/admin/sign-in-policy')({
     ])
     // service 種別はフェデレーション経路を持たずサインインポリシー対象外。
     const policyApps = applications.filter((app) => app.kind !== 'service')
-    const views = await Promise.all(policyApps.map((app) => getAppSignInPolicy(app.application_id)))
+    const views = await Promise.all(policyApps.map((app) => getAppSignInPolicy(app.id)))
     const apps: SignInPolicyAppRow[] = policyApps.map((app, index) => ({
       application: app,
       view: views[index],

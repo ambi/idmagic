@@ -413,7 +413,7 @@ function ApplicationPolicyList({ apps }: { apps: SignInPolicyAppRow[] }) {
                 {apps.map(({ application, view }) => {
                   const hasOverride = (view.policy.rules ?? []).some((rule) => rule.enabled)
                   return (
-                    <tr key={application.application_id}>
+                    <tr key={application.id}>
                       <td className="px-4 py-3 font-medium text-slate-900">{application.name}</td>
                       <td className="px-4 py-3">
                         {hasOverride ? (
@@ -437,7 +437,7 @@ function ApplicationPolicyList({ apps }: { apps: SignInPolicyAppRow[] }) {
                       <td className="px-4 py-3 text-right">
                         <a
                           href={tenantURL(
-                            `/admin/applications/${encodeURIComponent(application.application_id)}/edit`,
+                            `/admin/applications/${encodeURIComponent(application.id)}/edit`,
                           )}
                           className="text-xs font-medium text-blue-700 hover:underline"
                         >

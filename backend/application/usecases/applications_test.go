@@ -46,14 +46,14 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 	if len(mine) != 0 {
 		t.Fatalf("unassigned user should see no apps, got %d", len(mine))
 	}
-	assigned, err := appusecases.IsSubjectAssigned(ctx, assignDeps.AssignmentRepo, "acme", app.ApplicationID, userSubjects)
+	assigned, err := appusecases.IsSubjectAssigned(ctx, assignDeps.AssignmentRepo, "acme", app.ID, userSubjects)
 	if err != nil || assigned {
 		t.Fatalf("unassigned subject must fail the gate: assigned=%v err=%v", assigned, err)
 	}
 
 	// 割当後はポータルに出て、ゲートが開く。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
@@ -61,14 +61,14 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 	if err != nil || len(mine) != 1 {
 		t.Fatalf("assigned user should see 1 app, got %d err=%v", len(mine), err)
 	}
-	assigned, err = appusecases.IsSubjectAssigned(ctx, assignDeps.AssignmentRepo, "acme", app.ApplicationID, userSubjects)
+	assigned, err = appusecases.IsSubjectAssigned(ctx, assignDeps.AssignmentRepo, "acme", app.ID, userSubjects)
 	if err != nil || !assigned {
 		t.Fatalf("assigned subject must pass the gate: assigned=%v err=%v", assigned, err)
 	}
 
 	// hidden 割当はポータルから消えるが、ゲートは開いたまま。
 	if _, err := appusecases.AssignApplication(ctx, assignDeps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
+		ActorUserID: "admin", ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 		Visibility: domain.AssignmentHidden,
 	}); err != nil {
 		t.Fatalf("assign hidden: %v", err)
@@ -77,7 +77,7 @@ func TestCreateAndListMyApplicationsRespectsAssignmentAndVisibility(t *testing.T
 	if err != nil || len(mine) != 0 {
 		t.Fatalf("hidden assignment should hide app from portal, got %d err=%v", len(mine), err)
 	}
-	assigned, err = appusecases.IsSubjectAssigned(ctx, assignDeps.AssignmentRepo, "acme", app.ApplicationID, userSubjects)
+	assigned, err = appusecases.IsSubjectAssigned(ctx, assignDeps.AssignmentRepo, "acme", app.ID, userSubjects)
 	if err != nil || !assigned {
 		t.Fatalf("hidden assignment must still pass the gate: assigned=%v err=%v", assigned, err)
 	}

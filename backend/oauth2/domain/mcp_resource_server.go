@@ -29,14 +29,14 @@ func (s McpResourceServerState) Valid() bool {
 }
 
 type McpResourceServer struct {
-	TenantID         string                 `json:"tenant_id"`
-	ResourceServerID string                 `json:"resource_server_id"`
-	Resource         string                 `json:"resource"`
-	Name             string                 `json:"name"`
-	Scopes           []string               `json:"scopes"`
-	State            McpResourceServerState `json:"state"`
-	CreatedAt        time.Time              `json:"created_at"`
-	UpdatedAt        time.Time              `json:"updated_at"`
+	TenantID  string                 `json:"tenant_id"`
+	ID        string                 `json:"id"`
+	Resource  string                 `json:"resource"`
+	Name      string                 `json:"name"`
+	Scopes    []string               `json:"scopes"`
+	State     McpResourceServerState `json:"state"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
 }
 
 func (m McpResourceServer) IsActive() bool { return m.State == McpResourceServerActive }
@@ -50,7 +50,7 @@ func isAbsoluteURIWithoutFragment(value string) bool {
 }
 
 var mcpResourceServerSchema = z.Struct(z.Shape{
-	"ResourceServerID": z.String().Min(1).Required(),
+	"ID": z.String().Min(1).Required(),
 	"Resource": z.String().URL().TestFunc(
 		func(value *string, _ z.Ctx) bool { return value != nil && isAbsoluteURIWithoutFragment(*value) },
 		z.Message("resource must be an absolute URI without a fragment (RFC 8707 §2)"),

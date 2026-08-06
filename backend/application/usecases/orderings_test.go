@@ -20,9 +20,9 @@ func newOrderingDeps() appusecases.AssignmentDeps {
 
 func TestApplyManualOrderOverlaysAndAppendsRemainder(t *testing.T) {
 	apps := []*domain.Application{
-		{ApplicationID: "a", Name: "Alpha"},
-		{ApplicationID: "b", Name: "Beta"},
-		{ApplicationID: "g", Name: "Gamma"},
+		{ID: "a", Name: "Alpha"},
+		{ID: "b", Name: "Beta"},
+		{ID: "g", Name: "Gamma"},
 	}
 	got := appusecases.ApplyManualOrder(apps, []string{"g", "a"})
 	want := []string{"g", "a", "b"}
@@ -30,21 +30,21 @@ func TestApplyManualOrderOverlaysAndAppendsRemainder(t *testing.T) {
 		t.Fatalf("len=%d, want %d", len(got), len(want))
 	}
 	for i, id := range want {
-		if got[i].ApplicationID != id {
-			t.Fatalf("position %d: got %s, want %s", i, got[i].ApplicationID, id)
+		if got[i].ID != id {
+			t.Fatalf("position %d: got %s, want %s", i, got[i].ID, id)
 		}
 	}
 }
 
 func TestApplyManualOrderIgnoresUnknownAndEmpty(t *testing.T) {
-	apps := []*domain.Application{{ApplicationID: "a", Name: "Alpha"}, {ApplicationID: "b", Name: "Beta"}}
+	apps := []*domain.Application{{ID: "a", Name: "Alpha"}, {ID: "b", Name: "Beta"}}
 	// 空の order は元の並びを保つ。
-	if got := appusecases.ApplyManualOrder(apps, nil); len(got) != 2 || got[0].ApplicationID != "a" {
+	if got := appusecases.ApplyManualOrder(apps, nil); len(got) != 2 || got[0].ID != "a" {
 		t.Fatalf("empty order should keep input order")
 	}
 	// order の未知 id は無視され、現存アプリだけが並ぶ。
 	got := appusecases.ApplyManualOrder(apps, []string{"zzz", "b"})
-	if len(got) != 2 || got[0].ApplicationID != "b" || got[1].ApplicationID != "a" {
+	if len(got) != 2 || got[0].ID != "b" || got[1].ID != "a" {
 		t.Fatalf("unknown ids must be ignored: %+v", got)
 	}
 }
@@ -62,9 +62,9 @@ func TestSaveAndGetMyApplicationOrder(t *testing.T) {
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
 		}
-		ids[name] = app.ApplicationID
+		ids[name] = app.ID
 		if _, err := appusecases.AssignApplication(ctx, deps, appusecases.AssignApplicationInput{
-			ActorUserID: "admin", ApplicationID: app.ApplicationID,
+			ActorUserID: "admin", ApplicationID: app.ID,
 			SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 		}); err != nil {
 			t.Fatalf("assign %s: %v", name, err)
@@ -120,17 +120,17 @@ func TestSaveMyApplicationOrderUpdatesExisting(t *testing.T) {
 		appusecases.ApplicationDeps{Repo: deps.Repo, AssignmentRepo: deps.AssignmentRepo},
 		appusecases.CreateApplicationInput{ActorUserID: "admin", Name: "App", Kind: domain.ApplicationFederated, Protocol: &domain.ApplicationProtocol{Type: domain.ApplicationProtocolOIDC, ClientID: "test-client"}})
 	_, _ = appusecases.AssignApplication(ctx, deps, appusecases.AssignApplicationInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID,
+		ActorUserID: "admin", ApplicationID: app.ID,
 		SubjectType: domain.AssignmentSubjectUser, SubjectID: "alice",
 	})
 
 	// 1回目
-	_, err := appusecases.SaveMyApplicationOrder(ctx, deps, "alice", subjects, []string{app.ApplicationID}, time.Time{})
+	_, err := appusecases.SaveMyApplicationOrder(ctx, deps, "alice", subjects, []string{app.ID}, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	// 2回目 (existing に値が入る)
-	_, err = appusecases.SaveMyApplicationOrder(ctx, deps, "alice", subjects, []string{app.ApplicationID}, time.Time{})
+	_, err = appusecases.SaveMyApplicationOrder(ctx, deps, "alice", subjects, []string{app.ID}, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}

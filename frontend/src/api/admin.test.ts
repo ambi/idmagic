@@ -103,7 +103,7 @@ describe('admin API client', () => {
   it('MCP resource server 管理契約を正しい envelope・URL・CSRF で送受信する', async () => {
     const resourceServer = {
       tenant_id: 'tenant-1',
-      resource_server_id: 'resource/a b',
+      id: 'resource/a b',
       resource: 'https://mcp.example.com',
       name: 'Example MCP',
       scopes: ['mcp.read'],
@@ -127,12 +127,12 @@ describe('admin API client', () => {
       scopes: resourceServer.scopes,
       state: resourceServer.state,
     })
-    await adminAPI.updateMcpResourceServer('csrf', resourceServer.resource_server_id, {
+    await adminAPI.updateMcpResourceServer('csrf', resourceServer.id, {
       name: 'Renamed MCP',
       scopes: ['mcp.read', 'mcp.write'],
       state: 'Disabled',
     })
-    await adminAPI.deleteMcpResourceServer('csrf', resourceServer.resource_server_id)
+    await adminAPI.deleteMcpResourceServer('csrf', resourceServer.id)
 
     const calls = (fetch as any).mock.calls
     expect(calls.map(([url]: any[]) => url)).toEqual([

@@ -327,7 +327,7 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 			return nil, findErr
 		}
 		if client != nil {
-			client.ApplicationID = app.ApplicationID
+			client.ApplicationID = app.ID
 			if saveErr := d.ClientRepo.Save(ctx, client); saveErr != nil {
 				return nil, saveErr
 			}
@@ -338,7 +338,7 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 			return nil, findErr
 		}
 		if sp != nil {
-			sp.ApplicationID = app.ApplicationID
+			sp.ApplicationID = app.ID
 			if saveErr := d.SamlSPRepo.Save(ctx, sp); saveErr != nil {
 				return nil, saveErr
 			}
@@ -349,7 +349,7 @@ func (d Deps) createCatalogApp(ctx context.Context, actorUserID string, req crea
 			return nil, findErr
 		}
 		if rp != nil {
-			rp.ApplicationID = app.ApplicationID
+			rp.ApplicationID = app.ID
 			if saveErr := d.WsFedRPRepo.Save(ctx, rp); saveErr != nil {
 				return nil, saveErr
 			}
@@ -504,7 +504,7 @@ func (d Deps) handleUpdateOIDCConfig(c *echo.Context) error {
 			return err
 		}
 		d.Emit(&domain.ApplicationClaimMappingUpdated{
-			At: client.UpdatedAt, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ApplicationID, Protocol: string(domain.ApplicationProtocolOIDC),
+			At: client.UpdatedAt, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolOIDC),
 		})
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -582,7 +582,7 @@ func (d Deps) handleUpdateWsFedConfig(c *echo.Context) error {
 	}
 	if req.NameIDSource != nil || req.Rules != nil {
 		d.Emit(&domain.ApplicationClaimMappingUpdated{
-			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ApplicationID, Protocol: string(domain.ApplicationProtocolWsFed),
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolWsFed),
 		})
 	}
 	return c.NoContent(http.StatusNoContent)
@@ -685,14 +685,14 @@ func (d Deps) handleUpdateSamlConfig(c *echo.Context) error {
 	}
 	if req.NameIDSource != nil || req.Rules != nil {
 		d.Emit(&domain.ApplicationClaimMappingUpdated{
-			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ApplicationID, Protocol: string(domain.ApplicationProtocolSAML),
+			At: now, TenantID: tenantID, ActorUserID: actor.ID, ApplicationID: app.ID, Protocol: string(domain.ApplicationProtocolSAML),
 		})
 	}
 	return c.NoContent(http.StatusNoContent)
 }
 
 func (d Deps) requireApp(c *echo.Context) (*domain.Application, error) {
-	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), c.Param("application_id"))
+	app, err := d.ApplicationRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), c.Param("id"))
 	if err != nil {
 		return nil, err
 	}

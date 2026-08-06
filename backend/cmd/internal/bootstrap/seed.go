@@ -203,12 +203,12 @@ func SeedDemoApplications(
 			protocol = appdomain.ApplicationProtocol{Type: appdomain.ApplicationProtocolWsFed, Wtrealm: configured.BindingValue}
 		}
 		desired := &appdomain.Application{
-			TenantID: tenancydomain.DefaultTenantID, ApplicationID: configured.ID, Name: configured.Name,
+			TenantID: tenancydomain.DefaultTenantID, ID: configured.ID, Name: configured.Name,
 			Kind: appdomain.ApplicationFederated, Status: appdomain.ApplicationActive,
 			LaunchURL: configured.LaunchURL, Protocol: &protocol,
 			CreatedAt: now, UpdatedAt: now,
 		}
-		existing, err := apps.FindByID(ctx, desired.TenantID, desired.ApplicationID)
+		existing, err := apps.FindByID(ctx, desired.TenantID, desired.ID)
 		if err != nil {
 			return err
 		}
@@ -217,7 +217,7 @@ func SeedDemoApplications(
 				return err
 			}
 		} else if !sameApplication(existing, desired) {
-			return fmt.Errorf("seed drift at application:%s", desired.ApplicationID)
+			return fmt.Errorf("seed drift at application:%s", desired.ID)
 		}
 		if assignments == nil {
 			continue
@@ -236,7 +236,7 @@ func SeedDemoApplications(
 			if assignment.SubjectType == desiredAssignment.SubjectType && assignment.SubjectID == desiredAssignment.SubjectID {
 				found = true
 				if assignment.Visibility != desiredAssignment.Visibility {
-					return fmt.Errorf("seed drift at application-assignment:%s", desired.ApplicationID)
+					return fmt.Errorf("seed drift at application-assignment:%s", desired.ID)
 				}
 			}
 		}

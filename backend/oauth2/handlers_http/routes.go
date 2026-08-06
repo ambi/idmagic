@@ -123,10 +123,10 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.DELETE("/api/admin/consents/:sub/:client_id", d.handleRevokeAdminConsent)
 	g.GET("/api/admin/policy/roles", d.handleListAdminRolePolicies)
 	g.GET("/api/admin/mcp-resource-servers", d.handleListAdminMcpResourceServers)
-	g.GET("/api/admin/mcp-resource-servers/:resource_server_id", d.handleGetAdminMcpResourceServer)
+	g.GET("/api/admin/mcp-resource-servers/:id", d.handleGetAdminMcpResourceServer)
 	g.POST("/api/admin/mcp-resource-servers", d.handleCreateAdminMcpResourceServer)
-	g.PATCH("/api/admin/mcp-resource-servers/:resource_server_id", d.handleUpdateAdminMcpResourceServer)
-	g.DELETE("/api/admin/mcp-resource-servers/:resource_server_id", d.handleDeleteAdminMcpResourceServer)
+	g.PATCH("/api/admin/mcp-resource-servers/:id", d.handleUpdateAdminMcpResourceServer)
+	g.DELETE("/api/admin/mcp-resource-servers/:id", d.handleDeleteAdminMcpResourceServer)
 	g.GET("/.well-known/oauth-protected-resource", d.handleProtectedResourceMetadata)
 }
 

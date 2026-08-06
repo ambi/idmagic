@@ -17,13 +17,13 @@ type McpResourceServerRepository struct{ Pool sharedpg.DB }
 
 func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer, error) {
 	m := &domain.McpResourceServer{
-		TenantID:         row.TenantID,
-		ResourceServerID: row.ResourceServerID,
-		Resource:         row.Resource,
-		Name:             row.Name,
-		State:            domain.McpResourceServerState(row.State),
-		CreatedAt:        row.CreatedAt,
-		UpdatedAt:        row.UpdatedAt,
+		TenantID:  row.TenantID,
+		ID:        row.ID,
+		Resource:  row.Resource,
+		Name:      row.Name,
+		State:     domain.McpResourceServerState(row.State),
+		CreatedAt: row.CreatedAt,
+		UpdatedAt: row.UpdatedAt,
 	}
 	if len(row.Scopes) > 0 {
 		if err := json.Unmarshal(row.Scopes, &m.Scopes); err != nil {
@@ -51,7 +51,7 @@ func (r *McpResourceServerRepository) ListByTenant(ctx context.Context, tenantID
 
 func (r *McpResourceServerRepository) FindByID(ctx context.Context, tenantID, resourceServerID string) (*domain.McpResourceServer, error) {
 	row, err := New(r.Pool).GetMcpResourceServer(ctx, GetMcpResourceServerParams{
-		TenantID: tenantID, ResourceServerID: resourceServerID,
+		TenantID: tenantID, ID: resourceServerID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -81,19 +81,19 @@ func (r *McpResourceServerRepository) Save(ctx context.Context, m *domain.McpRes
 		return err
 	}
 	return New(r.Pool).UpsertMcpResourceServer(ctx, UpsertMcpResourceServerParams{
-		TenantID:         m.TenantID,
-		ResourceServerID: m.ResourceServerID,
-		Resource:         m.Resource,
-		Name:             m.Name,
-		Scopes:           scopes,
-		State:            string(m.State),
-		CreatedAt:        m.CreatedAt,
-		UpdatedAt:        m.UpdatedAt,
+		TenantID:  m.TenantID,
+		ID:        m.ID,
+		Resource:  m.Resource,
+		Name:      m.Name,
+		Scopes:    scopes,
+		State:     string(m.State),
+		CreatedAt: m.CreatedAt,
+		UpdatedAt: m.UpdatedAt,
 	})
 }
 
 func (r *McpResourceServerRepository) Delete(ctx context.Context, tenantID, resourceServerID string) error {
 	return New(r.Pool).DeleteMcpResourceServer(ctx, DeleteMcpResourceServerParams{
-		TenantID: tenantID, ResourceServerID: resourceServerID,
+		TenantID: tenantID, ID: resourceServerID,
 	})
 }

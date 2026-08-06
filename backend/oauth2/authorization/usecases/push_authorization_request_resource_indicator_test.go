@@ -41,7 +41,7 @@ func TestPushAuthorizationRequest_unregisteredResource_rejectedFailClosed(t *tes
 func TestPushAuthorizationRequest_registeredResource_accepted(t *testing.T) {
 	ctx := tenantContext()
 	rs := &domain.McpResourceServer{
-		TenantID: tenancydomain.DefaultTenantID, ResourceServerID: "rs-1",
+		TenantID: tenancydomain.DefaultTenantID, ID: "rs-1",
 		Resource: "https://mcp.example.com/tools", Name: "Tools",
 		Scopes: []string{"mcp.read"}, State: domain.McpResourceServerActive,
 	}

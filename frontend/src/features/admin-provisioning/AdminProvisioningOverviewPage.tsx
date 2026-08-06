@@ -22,7 +22,7 @@ export function AdminProvisioningOverviewPage({
 }) {
   const t = useDictionary(provisioningDictionary)
   const { locale } = useLocale()
-  const appNames = new Map(applications.map((a) => [a.application_id, a.name]))
+  const appNames = new Map(applications.map((a) => [a.id, a.name]))
 
   return (
     <AdminShell

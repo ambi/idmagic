@@ -57,7 +57,7 @@ export function AdminApplicationDetailPage({
     setBusy(true)
     setError('')
     try {
-      await deleteAdminApplication(csrfToken, app.application_id)
+      await deleteAdminApplication(csrfToken, app.id)
       window.location.assign(listURL())
     } catch (cause) {
       setError(messageOf(cause, t.applicationDeleteFailedError))
@@ -401,7 +401,7 @@ export function AdminApplicationDetailPage({
             {app.kind !== 'service' ? (
               <section className="grid gap-3 border-t border-slate-100 pt-5">
                 <SectionTitle>{t.assignmentsHeading}</SectionTitle>
-                <AssignmentList appID={app.application_id} onError={setError} />
+                <AssignmentList appID={app.id} onError={setError} />
               </section>
             ) : null}
           </div>
