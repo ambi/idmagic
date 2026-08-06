@@ -83,42 +83,42 @@ var builtinDefs = func() []UserAttributeDef {
 		org("termination_date", idmdomain.AttributeTypeDate),
 		org("employment_type", idmdomain.AttributeTypeString),
 	}
-	// 利用者向けの日本語表示名を付与する。英語 key は技術的接続として UI で併記する。
+	// 利用者向けの表示名を付与する。英語 key は技術的接続として UI で併記する。
 	for i := range defs {
 		defs[i].Label = builtinAttributeLabels[defs[i].Key]
 	}
 	return defs
 }()
 
-// builtinAttributeLabels は組み込み属性の日本語表示名。
+// builtinAttributeLabels は組み込み属性の表示名。
 var builtinAttributeLabels = map[string]string{
-	"middle_name":            "ミドルネーム",
-	"nickname":               "ニックネーム",
-	"profile":                "プロフィール URL",
-	"picture":                "プロフィール画像 URL",
-	"website":                "ウェブサイト",
-	"gender":                 "性別",
-	"birthdate":              "生年月日",
-	"zoneinfo":               "タイムゾーン",
-	"locale":                 "ロケール",
-	"phone_number":           "電話番号",
-	"phone_number_verified":  "電話番号の検証状態",
-	"address_formatted":      "住所（全体）",
-	"address_street_address": "番地・建物",
-	"address_locality":       "市区町村",
-	"address_region":         "都道府県",
-	"address_postal_code":    "郵便番号",
-	"address_country":        "国",
-	"title":                  "役職",
-	"department":             "部署",
-	"division":               "部門",
-	"organization_name":      "組織名",
-	"employee_number":        "社員番号",
-	"cost_center":            "コストセンター",
-	"manager_sub":            "上長",
-	"hire_date":              "入社日",
-	"termination_date":       "退職日",
-	"employment_type":        "雇用形態",
+	"middle_name":            "Middle name",
+	"nickname":               "Nickname",
+	"profile":                "Profile URL",
+	"picture":                "Profile picture URL",
+	"website":                "Website",
+	"gender":                 "Gender",
+	"birthdate":              "Birthdate",
+	"zoneinfo":               "Time zone",
+	"locale":                 "Locale",
+	"phone_number":           "Phone number",
+	"phone_number_verified":  "Phone number verified",
+	"address_formatted":      "Address (full)",
+	"address_street_address": "Street address",
+	"address_locality":       "City",
+	"address_region":         "State / province",
+	"address_postal_code":    "Postal code",
+	"address_country":        "Country",
+	"title":                  "Title",
+	"department":             "Department",
+	"division":               "Division",
+	"organization_name":      "Organization name",
+	"employee_number":        "Employee number",
+	"cost_center":            "Cost center",
+	"manager_sub":            "Manager",
+	"hire_date":              "Hire date",
+	"termination_date":       "Termination date",
+	"employment_type":        "Employment type",
 }
 
 // BuiltinUserAttributeDefs は全テナント共通の組み込み属性定義のコピーを返す。

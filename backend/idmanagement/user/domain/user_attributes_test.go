@@ -240,7 +240,7 @@ func TestClaimsForScopesCustomAttributeGatedByCustomScope(t *testing.T) {
 func TestBuiltinUserAttributeDefsHaveLabels(t *testing.T) {
 	for _, def := range userdomain.BuiltinUserAttributeDefs() {
 		if def.Label == "" {
-			t.Fatalf("builtin attribute %q has no Japanese label", def.Key)
+			t.Fatalf("builtin attribute %q has no label", def.Key)
 		}
 	}
 }
