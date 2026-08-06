@@ -259,7 +259,7 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 	desired := &oauthdomain.AuthorizationDetailType{
 		TenantID:    tenancydomain.DefaultTenantID,
 		Type:        typeName,
-		Description: "口座から指定上限までの送金開始 (RFC 9396 例)",
+		Description: "Initiate a transfer from an account up to a specified limit (RFC 9396 example)",
 		Schema: oauthdomain.AuthorizationDetailsSchema{
 			Rules: []oauthdomain.AuthorizationDetailFieldRule{
 				{Name: "actions", Semantics: oauthdomain.DetailFieldSet, Required: true, Allowed: []string{"initiate", "status", "cancel"}},
@@ -267,7 +267,7 @@ func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.Auth
 				{Name: "instructedAmount", Semantics: oauthdomain.DetailFieldAtMost, Required: true},
 			},
 		},
-		DisplayTemplate: "口座 {creditorAccount} に対して {actions} を、最大 {instructedAmount} まで",
+		DisplayTemplate: "For account {creditorAccount}: {actions}, up to {instructedAmount}",
 		State:           oauthdomain.DetailTypeEnabled,
 		CreatedAt:       now,
 		UpdatedAt:       now,
