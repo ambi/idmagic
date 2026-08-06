@@ -144,9 +144,9 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 		// ポリシー概要
 		var policySummary string
 		if p, ok := policyMap[app.ApplicationID]; ok && len(p.Rules) > 0 {
-			policySummary = fmt.Sprintf("個別ポリシー (%dルール)", len(p.Rules))
+			policySummary = fmt.Sprintf("Custom policy (%d rules)", len(p.Rules))
 		} else {
-			policySummary = fmt.Sprintf("テナントデフォルト (%dルール)", defaultRuleCount)
+			policySummary = fmt.Sprintf("Tenant default (%d rules)", defaultRuleCount)
 		}
 
 		protocol, protocolSummary := applicationProtocolProjection(app)
@@ -589,9 +589,9 @@ func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app
 		p, err = d.ApplicationSignInPolicyRepo.Get(ctx, tenantID, app.ApplicationID)
 	}
 	if err == nil && p != nil && len(p.Rules) > 0 {
-		policySummary = fmt.Sprintf("個別ポリシー (%dルール)", len(p.Rules))
+		policySummary = fmt.Sprintf("Custom policy (%d rules)", len(p.Rules))
 	} else {
-		policySummary = fmt.Sprintf("テナントデフォルト (%dルール)", defaultRuleCount)
+		policySummary = fmt.Sprintf("Tenant default (%d rules)", defaultRuleCount)
 	}
 
 	protocol, protocolSummary := applicationProtocolProjection(app)
