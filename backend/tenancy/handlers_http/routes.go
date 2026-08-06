@@ -47,7 +47,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.PUT("/api/admin/tenant/branding", d.handleUpdateBranding)
 	g.POST("/api/admin/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)
 	g.DELETE("/api/admin/tenant/branding/assets/:kind", d.handleDeleteBrandingAsset)
-	g.GET("/tenant-branding-assets/:kind/:object_key", d.handleGetBrandingAsset)
+	g.GET("/tenant-branding-assets/:kind/:id", d.handleGetBrandingAsset)
 	g.GET("/api/admin/tenant/notification_templates", d.handleListNotificationTemplates)
 	g.GET("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleGetNotificationTemplate)
 	g.PUT("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleUpdateNotificationTemplate)

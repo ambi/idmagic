@@ -220,7 +220,7 @@ func TestClientAuthenticationUsesAnyActiveCredentialOnly(t *testing.T) {
 	}
 	for _, credential := range credentials {
 		if err := repo.SaveClientSecretCredential(t.Context(), domain.ClientSecretCredential{
-			CredentialID: credential.id, ClientID: "client",
+			ID: credential.id, ClientID: "client",
 			SecretHash: domain.HashClientSecret(credential.secret), CreatedAt: now.Add(-time.Hour),
 			ExpiresAt: credential.expiresAt, RevokedAt: credential.revokedAt,
 		}); err != nil {

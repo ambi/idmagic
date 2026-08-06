@@ -26,21 +26,21 @@ func (q *Queries) DeleteApplicationIconsByApplication(ctx context.Context, arg D
 }
 
 const getApplicationIcon = `-- name: GetApplicationIcon :one
-SELECT a.tenant_id, i.application_id, i.object_key, i.content_type, i.size_bytes, i.data, i.created_at, i.updated_at
+SELECT a.tenant_id, i.application_id, i.id, i.content_type, i.size_bytes, i.data, i.created_at, i.updated_at
 FROM application_icons i JOIN applications a ON a.application_id = i.application_id
-WHERE a.tenant_id = $1 AND i.application_id = $2 AND i.object_key = $3
+WHERE a.tenant_id = $1 AND i.application_id = $2 AND i.id = $3
 `
 
 type GetApplicationIconParams struct {
 	TenantID      string
 	ApplicationID string
-	ObjectKey     string
+	ID            string
 }
 
 type GetApplicationIconRow struct {
 	TenantID      string
 	ApplicationID string
-	ObjectKey     string
+	ID            string
 	ContentType   string
 	SizeBytes     int32
 	Data          []byte
@@ -49,12 +49,12 @@ type GetApplicationIconRow struct {
 }
 
 func (q *Queries) GetApplicationIcon(ctx context.Context, arg GetApplicationIconParams) (*GetApplicationIconRow, error) {
-	row := q.db.QueryRow(ctx, getApplicationIcon, arg.TenantID, arg.ApplicationID, arg.ObjectKey)
+	row := q.db.QueryRow(ctx, getApplicationIcon, arg.TenantID, arg.ApplicationID, arg.ID)
 	var i GetApplicationIconRow
 	err := row.Scan(
 		&i.TenantID,
 		&i.ApplicationID,
-		&i.ObjectKey,
+		&i.ID,
 		&i.ContentType,
 		&i.SizeBytes,
 		&i.Data,
@@ -65,9 +65,9 @@ func (q *Queries) GetApplicationIcon(ctx context.Context, arg GetApplicationIcon
 }
 
 const upsertApplicationIcon = `-- name: UpsertApplicationIcon :exec
-INSERT INTO application_icons (application_id, object_key, content_type, size_bytes, data, created_at, updated_at)
+INSERT INTO application_icons (id, application_id, content_type, size_bytes, data, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-ON CONFLICT (application_id, object_key) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   content_type = EXCLUDED.content_type,
   size_bytes = EXCLUDED.size_bytes,
   data = EXCLUDED.data,
@@ -75,8 +75,8 @@ ON CONFLICT (application_id, object_key) DO UPDATE SET
 `
 
 type UpsertApplicationIconParams struct {
+	ID            string
 	ApplicationID string
-	ObjectKey     string
 	ContentType   string
 	SizeBytes     int32
 	Data          []byte
@@ -86,8 +86,8 @@ type UpsertApplicationIconParams struct {
 
 func (q *Queries) UpsertApplicationIcon(ctx context.Context, arg UpsertApplicationIconParams) error {
 	_, err := q.db.Exec(ctx, upsertApplicationIcon,
+		arg.ID,
 		arg.ApplicationID,
-		arg.ObjectKey,
 		arg.ContentType,
 		arg.SizeBytes,
 		arg.Data,

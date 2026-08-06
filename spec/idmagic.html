@@ -4072,7 +4072,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
     <td><span class="badge badge-required">required</span></td>
     <td></td>
   </tr><tr>
-    <td><code class="name">object_key</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -4095,7 +4095,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">response.headers[&quot;Content-Type&quot;] in [&quot;image/png&quot;, &quot;image/jpeg&quot;, &quot;image/webp&quot;, &quot;image/gif&quot;]</code></li><li><code class="expr">response.headers[&quot;X-Content-Type-Options&quot;] == &quot;nosniff&quot;</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/tenant-branding-assets/{kind}/{object_key}</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/tenant-branding-assets/{kind}/{id}</code></div></div>
   </div></div></div>
   </article></div>
   </section>
@@ -4277,7 +4277,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">admin ロールを持つ &quot;operator&quot; が認証済みである</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;operator&quot; が PNG ロゴをアップロードする</li><li class="scn-step">アップロード応答の logo_url を GET すると、同じ realm の検証済み PNG が返る</li><li class="scn-step">管理画面のロゴプレビューにアップロードした PNG が表示される</li><li class="scn-step">&quot;operator&quot; が primary_color / accent_color / footer_link_1={label: &quot;ヘルプ&quot;, url: &quot;https://help.example.test&quot;} / footer_text を設定する</li><li class="scn-step">管理画面は各設定済み色に現在値と「既定に戻す」操作を表示する</li><li class="scn-step">管理者がプライマリカラーを既定に戻して保存すると、<a class="chip chip-ref" href="#scl-Tenancy/interface/UpdateTenantBranding">UpdateTenantBranding</a> には primary_color の空文字列が送られる</li><li class="scn-step">未認証の利用者が login 画面を開く</li><li class="scn-step">login / consent / account portal に設定したロゴが表示され、login 画面にはプライマリカラーのシステム既定・設定済みアクセントカラー・指定ラベルの footer リンク・フッターテキストも表示される</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
-            <header><span class="chip chip-hint">at 2</span><code class="name">別テナントの object_key で同じ kind のアセット取得を試みる</code></header>
+            <header><span class="chip chip-hint">at 2</span><code class="name">別テナントの id で同じ kind のアセット取得を試みる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">アセットは存在しないものとして扱われ <a class="chip chip-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> で拒否される</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 8</span><code class="name">realm 配下の logo_url が gateway で backend に転送されない</code></header>
@@ -11400,7 +11400,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
       <div class="eyebrow">Bounded Context · contexts/authentication.yaml</div>
       <h1>Authentication</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">8</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">106</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">51</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">22</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">106</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">51</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">22</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-authentication-standards">
     <h2>Standards <span class="count">6</span></h2>
@@ -11566,7 +11566,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
       </article></div>
   </section>
 <section id="context-authentication-glossary">
-    <h2>Glossary <span class="count">8</span></h2>
+    <h2>Glossary <span class="count">9</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="context-authentication-glossary-identitybroker">
       <div class="vocab-name"><code class="name">IdentityBroker</code></div>
@@ -11618,6 +11618,15 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
       <div class="vocab-body">
         <p class="def">WebAuthn credential による認証。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">webauthn</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-authentication-glossary-recoverycode">
+      <div class="vocab-name"><code class="name">RecoveryCode</code></div>
+      <div class="vocab-body">
+        <p class="def">TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード (ADR-087)。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">recovery_code</span></div>
 
 
       </div>
@@ -19596,11 +19605,11 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
 <article class="card" id="scl-OAuth2/model/ClientSecretCredential">
     <header><h3>ClientSecretCredential</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/ClientSecretCredential</code></header>
     <p class="desc">secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。新規発行は既存 credential を変更せず、個別 revoke または expiry まで照合対象となる。既存の期限なし credential は無停止移行のため許容する。</p>
-    <dl class="kv"><dt>identity</dt><dd><code>credential_id</code></dd></dl>
+    <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">credential_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -21892,7 +21901,7 @@ front/back-channel logout の相関に使う (wi-28)。
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">credential_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -28453,7 +28462,7 @@ filter の field は registry allowlist のみ。
 付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。割当境界は越えず、
 セクションには利用者に割当済みのアプリだけが並ぶ。
 </p>
-    <dl class="kv"><dt>identity</dt><dd><code>tenant_id, category_id</code></dd></dl>
+    <dl class="kv"><dt>identity</dt><dd><code>tenant_id, id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
@@ -28463,7 +28472,7 @@ filter の field は registry allowlist のみ。
     <td><span class="chip chip-default">default: default</span></td>
     <td>所属テナント ID。</td>
   </tr><tr>
-    <td><code class="name">category_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -28997,7 +29006,7 @@ filter の field は registry allowlist のみ。
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">category_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -30045,7 +30054,7 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
     <tbody><tr>
-    <td><code class="name">category_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">UUID</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
@@ -31239,7 +31248,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
     <td><span class="badge badge-required">required</span></td>
     <td></td>
   </tr><tr>
-    <td><code class="name">object_key</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31262,7 +31271,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (app
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">response.headers[&quot;Content-Type&quot;] in [&quot;image/png&quot;, &quot;image/jpeg&quot;, &quot;image/webp&quot;, &quot;image/gif&quot;]</code></li><li><code class="expr">response.headers[&quot;X-Content-Type-Options&quot;] == &quot;nosniff&quot;</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/application-icons/{application_id}/{object_key}</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/application-icons/{application_id}/{id}</code></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/DeleteAdminApplication">
@@ -31801,7 +31810,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/UpdateApplicationCategory">
-    <header><h3>UpdateApplicationCategory</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>ApplicationCategory:input.category_id</code><code class="canonical-ref">Application/interface/UpdateApplicationCategory</code></header>
+    <header><h3>UpdateApplicationCategory</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>ApplicationCategory:input.id</code><code class="canonical-ref">Application/interface/UpdateApplicationCategory</code></header>
     <p class="desc">管理者が ApplicationCategory の名前 / 並び順を更新する。</p>
 
     <div class="io">
@@ -31809,7 +31818,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">category_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31837,11 +31846,11 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationCategoryUpdated">ApplicationCategoryUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/application-categories/{category_id}</code> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/application-categories/{id}</code> <span class="chip chip-hint">form: body</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/DeleteApplicationCategory">
-    <header><h3>DeleteApplicationCategory</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>ApplicationCategory:input.category_id</code><code class="canonical-ref">Application/interface/DeleteApplicationCategory</code></header>
+    <header><h3>DeleteApplicationCategory</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteApplications">ManagementApiClientWriteApplications</a> <code>ApplicationCategory:input.id</code><code class="canonical-ref">Application/interface/DeleteApplicationCategory</code></header>
     <p class="desc">管理者が ApplicationCategory を削除する (冪等)。付与済みの Application からも除く。</p>
 
     <div class="io">
@@ -31849,7 +31858,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
-    <td><code class="name">category_id</code></td>
+    <td><code class="name">id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -31860,7 +31869,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationCategoryDeleted">ApplicationCategoryDeleted</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/application-categories/{category_id}</code> <span class="chip chip-hint">response: 204</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-delete">DELETE</span> <code class="path">/api/admin/application-categories/{id}</code> <span class="chip chip-hint">response: 204</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-Application/interface/SetApplicationCategories">
@@ -32149,7 +32158,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
             <header><span class="chip chip-hint">at 1</span><code class="name">非画像または上限超過ファイルをアップロードする</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a>&quot;</li><li class="scn-step">既存アイコンは置き換わらない</li></ol></div>
           </article><article class="requirement">
-            <header><span class="chip chip-hint">at 1</span><code class="name">別テナントの application_id + object_key で同じアイコンの取得を試みる</code></header>
+            <header><span class="chip chip-hint">at 1</span><code class="name">別テナントの application_id + id で同じアイコンの取得を試みる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">アセットは存在しないものとして扱われ <a class="chip chip-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> で拒否される</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-Application/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~82~A2~E3~83~97~E3~83~AA~E3~82~B1~E3~83~BC~E3~82~B7~E3~83~A7~E3~83~B3~E5~88~A5~E3~82~B5~E3~82~A4~E3~83~B3~E3~82~A4~E3~83~B3~E3~83~9D~E3~83~AA~E3~82~B7~E3~83~BC~E3~82~92~E8~A8~AD~E5~AE~9A~E3~81~A7~E3~81~8D~E3~82~8B">

@@ -27,8 +27,8 @@ type myApplicationResponse struct {
 }
 
 type portalCategoryResponse struct {
-	CategoryID string `json:"category_id"`
-	Name       string `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 type reorderMyApplicationsRequest struct {
@@ -83,7 +83,7 @@ func (d Deps) portalCategories(ctx context.Context) ([]portalCategoryResponse, e
 	}
 	out := make([]portalCategoryResponse, len(categories))
 	for i, category := range categories {
-		out[i] = portalCategoryResponse{CategoryID: category.CategoryID, Name: category.Name}
+		out[i] = portalCategoryResponse{ID: category.ID, Name: category.Name}
 	}
 	return out, nil
 }

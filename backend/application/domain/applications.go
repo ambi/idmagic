@@ -188,7 +188,7 @@ type Application struct {
 type ApplicationIcon struct {
 	TenantID      string    `json:"tenant_id"`
 	ApplicationID string    `json:"application_id"`
-	ObjectKey     string    `json:"object_key"`
+	ID            string    `json:"id"`
 	ContentType   string    `json:"content_type"`
 	SizeBytes     int       `json:"size_bytes"`
 	Data          []byte    `json:"-"`
@@ -199,12 +199,12 @@ type ApplicationIcon struct {
 // ApplicationCategory は管理者が tenant 単位で定義するポータルの分類セクション (wi-70, ADR-069)。
 // Application に 0..N 個付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。
 type ApplicationCategory struct {
-	TenantID   string    `json:"tenant_id"`
-	CategoryID string    `json:"category_id"`
-	Name       string    `json:"name"`
-	Position   int       `json:"position"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	TenantID  string    `json:"tenant_id"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Position  int       `json:"position"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ApplicationAssignment は Application へのユーザー / グループ割当 (wi-69)。

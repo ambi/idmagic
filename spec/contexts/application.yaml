@@ -129,13 +129,13 @@ models:
     description: "管理者が tenant 単位で定義するポータルの分類セクション (ADR-069)。Application に 0..N 個\n付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。割当境界は越えず、\nセクションには利用者に割当済みのアプリだけが並ぶ。\n"
     identity:
       - tenant_id
-      - category_id
+      - id
     fields:
       tenant_id:
         type: String
         default: default
         description: 所属テナント ID。
-      category_id:
+      id:
         type: UUID
         description: カテゴリ識別子。
       name:
@@ -316,7 +316,7 @@ models:
     kind: value_object
     description: 管理 API が返す ApplicationCategory 表現。
     fields:
-      category_id:
+      id:
         type: UUID
       name:
         type: String
@@ -750,7 +750,7 @@ models:
     kind: value_object
     description: 利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す (ADR-069)。
     fields:
-      category_id:
+      id:
         type: UUID
       name:
         type: String
@@ -1294,7 +1294,7 @@ interfaces:
     input:
       application_id:
         type: String
-      object_key:
+      id:
         type: String
     output:
       file:
@@ -1309,7 +1309,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/application-icons/{application_id}/{object_key}"
+        path: "/application-icons/{application_id}/{id}"
   DeleteAdminApplication:
     description: 管理者が Application を削除する (冪等)。関連する protocol row は同一 transaction で cascade delete される。
     input:
@@ -1694,7 +1694,7 @@ interfaces:
   UpdateApplicationCategory:
     description: 管理者が ApplicationCategory の名前 / 並び順を更新する。
     input:
-      category_id:
+      id:
         type: String
       request:
         type: AdminApplicationCategoryRequest
@@ -1710,16 +1710,16 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: ApplicationCategory
-        id: input.category_id
+        id: input.id
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/application-categories/{category_id}"
+        path: "/api/admin/application-categories/{id}"
         request_form: body
   DeleteApplicationCategory:
     description: 管理者が ApplicationCategory を削除する (冪等)。付与済みの Application からも除く。
     input:
-      category_id:
+      id:
         type: String
     errors:
       - InvalidRequestError
@@ -1730,11 +1730,11 @@ interfaces:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
         type: ApplicationCategory
-        id: input.category_id
+        id: input.id
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/application-categories/{category_id}"
+        path: "/api/admin/application-categories/{id}"
         successful_status_codes:
           - "204"
   SetApplicationCategories:
@@ -2017,7 +2017,7 @@ scenarios:
           - エラー "InvalidRequestError"
           - 既存アイコンは置き換わらない
       - at: 1
-        condition: 別テナントの application_id + object_key で同じアイコンの取得を試みる
+        condition: 別テナントの application_id + id で同じアイコンの取得を試みる
         steps:
           - アセットは存在しないものとして扱われ InvalidRequestError で拒否される
   管理者はアプリケーション別サインインポリシーを設定できる:

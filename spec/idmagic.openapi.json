@@ -1838,7 +1838,7 @@
         }
       }
     },
-    "/tenant-branding-assets/{kind}/{object_key}": {
+    "/tenant-branding-assets/{kind}/{id}": {
       "get": {
         "operationId": "GetTenantBrandingAsset",
         "summary": "保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。アップロード後に返す URL は、",
@@ -1858,7 +1858,7 @@
             }
           },
           {
-            "name": "object_key",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -12609,7 +12609,7 @@
         }
       }
     },
-    "/application-icons/{application_id}/{object_key}": {
+    "/application-icons/{application_id}/{id}": {
       "get": {
         "operationId": "GetApplicationIcon",
         "summary": "保存済み Application アイコンを配信する公開 interface。Content-Type は検証済み形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。",
@@ -12629,7 +12629,7 @@
             }
           },
           {
-            "name": "object_key",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13833,7 +13833,7 @@
         }
       }
     },
-    "/api/admin/application-categories/{category_id}": {
+    "/api/admin/application-categories/{id}": {
       "patch": {
         "operationId": "UpdateApplicationCategory",
         "summary": "管理者が ApplicationCategory の名前 / 並び順を更新する。",
@@ -13849,7 +13849,7 @@
           ],
           "resource": {
             "type": "ApplicationCategory",
-            "id": "input.category_id"
+            "id": "input.id"
           }
         },
         "requestBody": {
@@ -13859,7 +13859,7 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "category_id": {
+                  "id": {
                     "type": "string"
                   },
                   "request": {
@@ -13868,7 +13868,7 @@
                 },
                 "additionalProperties": false,
                 "required": [
-                  "category_id",
+                  "id",
                   "request"
                 ]
               }
@@ -13877,7 +13877,7 @@
         },
         "parameters": [
           {
-            "name": "category_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -13939,12 +13939,12 @@
           ],
           "resource": {
             "type": "ApplicationCategory",
-            "id": "input.category_id"
+            "id": "input.id"
           }
         },
         "parameters": [
           {
-            "name": "category_id",
+            "name": "id",
             "in": "path",
             "required": true,
             "schema": {
@@ -20346,7 +20346,7 @@
       "AdminApplicationCategoryResponse": {
         "type": "object",
         "properties": {
-          "category_id": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
@@ -20367,7 +20367,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "category_id",
+          "id",
           "name",
           "position",
           "created_at",
@@ -22525,7 +22525,7 @@
             "default": "default",
             "description": "所属テナント ID。"
           },
-          "category_id": {
+          "id": {
             "type": "string",
             "format": "uuid",
             "description": "カテゴリ識別子。"
@@ -22551,7 +22551,7 @@
         "additionalProperties": false,
         "required": [
           "tenant_id",
-          "category_id",
+          "id",
           "name",
           "position",
           "created_at",
@@ -25131,7 +25131,7 @@
       "ClientSecretCredential": {
         "type": "object",
         "properties": {
-          "credential_id": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
@@ -25158,7 +25158,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "credential_id",
+          "id",
           "client_id",
           "secret_hash",
           "created_at"
@@ -25172,7 +25172,7 @@
       "ClientSecretCredentialMetadata": {
         "type": "object",
         "properties": {
-          "credential_id": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
@@ -25194,7 +25194,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "credential_id",
+          "id",
           "created_at",
           "status"
         ],
@@ -31422,7 +31422,7 @@
       "PortalApplicationCategory": {
         "type": "object",
         "properties": {
-          "category_id": {
+          "id": {
             "type": "string",
             "format": "uuid"
           },
@@ -31432,7 +31432,7 @@
         },
         "additionalProperties": false,
         "required": [
-          "category_id",
+          "id",
           "name"
         ],
         "description": "利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す (ADR-069)。"
@@ -38327,7 +38327,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.category_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",
@@ -38471,7 +38471,7 @@
               "ManagementApiClientWriteApplications",
               "TenantAdministrator"
             ],
-            "resourceId": "input.category_id",
+            "resourceId": "input.id",
             "appliesTo": {
               "principalTypes": [
                 "Agent",

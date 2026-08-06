@@ -61,7 +61,7 @@ func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProvi
 	}
 	return New(r.Pool).SaveIdentityProviderConnection(ctx, SaveIdentityProviderConnectionParams{
 		TenantID:                c.TenantID,
-		ProviderID:              c.ID,
+		ID:                      c.ID,
 		DisplayName:             c.DisplayName,
 		Protocol:                string(c.Protocol),
 		Status:                  string(c.Status),
@@ -132,13 +132,13 @@ func (r *ConnectionRepository) resolveStoredSecret(
 }
 
 func (r *ConnectionRepository) mapConnection(ctx context.Context, row *FindIdentityProviderConnectionRow) (*domain.IdentityProviderConnection, error) {
-	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ProviderID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
+	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
 	if err != nil {
 		return nil, err
 	}
 	c := &domain.IdentityProviderConnection{
 		TenantID:              row.TenantID,
-		ID:                    row.ProviderID,
+		ID:                    row.ID,
 		DisplayName:           row.DisplayName,
 		Protocol:              domain.Protocol(row.Protocol),
 		Status:                domain.ConnectionStatus(row.Status),
@@ -169,13 +169,13 @@ func (r *ConnectionRepository) mapConnection(ctx context.Context, row *FindIdent
 }
 
 func (r *ConnectionRepository) mapConnectionListRow(ctx context.Context, row *ListIdentityProviderConnectionsRow) (*domain.IdentityProviderConnection, error) {
-	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ProviderID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
+	secretReference, err := r.resolveStoredSecret(ctx, row.TenantID, row.ID, row.SecretReference, row.SecretKeyVersion, row.SecretCiphertext)
 	if err != nil {
 		return nil, err
 	}
 	c := &domain.IdentityProviderConnection{
 		TenantID:              row.TenantID,
-		ID:                    row.ProviderID,
+		ID:                    row.ID,
 		DisplayName:           row.DisplayName,
 		Protocol:              domain.Protocol(row.Protocol),
 		Status:                domain.ConnectionStatus(row.Status),
@@ -207,8 +207,8 @@ func (r *ConnectionRepository) mapConnectionListRow(ctx context.Context, row *Li
 
 func (r *ConnectionRepository) Find(ctx context.Context, tenantID, id string) (*domain.IdentityProviderConnection, error) {
 	row, err := New(r.Pool).FindIdentityProviderConnection(ctx, FindIdentityProviderConnectionParams{
-		TenantID:   tenantID,
-		ProviderID: id,
+		TenantID: tenantID,
+		ID:       id,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -237,8 +237,8 @@ func (r *ConnectionRepository) List(ctx context.Context, tenantID string) ([]*do
 
 func (r *ConnectionRepository) Delete(ctx context.Context, tenantID, id string) error {
 	return New(r.Pool).DeleteIdentityProviderConnection(ctx, DeleteIdentityProviderConnectionParams{
-		TenantID:   tenantID,
-		ProviderID: id,
+		TenantID: tenantID,
+		ID:       id,
 	})
 }
 

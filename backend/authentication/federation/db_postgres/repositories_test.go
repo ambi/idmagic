@@ -50,7 +50,7 @@ func TestConnectionRepositoryEncryptsRealSecretAtRest(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, pool)
 	ctx, now := context.Background(), pgtest.Now()
 	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: newTestCipher(t, tenant.ID)}
-	connection := testConnection(tenant.ID, now)
+	connection := testConnection(t, tenant.ID, now)
 	connection.SecretReference = "s3cr3t-client-secret"
 	if err := connections.Save(ctx, connection); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -62,7 +62,7 @@ func TestConnectionRepositoryEncryptsRealSecretAtRest(t *testing.T) {
 	}
 
 	row, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{
-		TenantID: tenant.ID, ProviderID: connection.ID,
+		TenantID: tenant.ID, ID: connection.ID,
 	})
 	if err != nil {
 		t.Fatalf("raw find: %v", err)
@@ -85,7 +85,7 @@ func TestConnectionRepositoryDualReadsLegacyEnvReference(t *testing.T) {
 	tenant := pgfixtures.SeedTenant(t, pool)
 	ctx, now := context.Background(), pgtest.Now()
 	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: newTestCipher(t, tenant.ID)}
-	connection := testConnection(tenant.ID, now)
+	connection := testConnection(t, tenant.ID, now)
 	if err := connections.Save(ctx, connection); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestConnectionRepositoryDualReadsLegacyEnvReference(t *testing.T) {
 		t.Fatalf("Find=(%+v,%v), want unchanged env: reference", found, err)
 	}
 	row, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{
-		TenantID: tenant.ID, ProviderID: connection.ID,
+		TenantID: tenant.ID, ID: connection.ID,
 	})
 	if err != nil {
 		t.Fatalf("raw find: %v", err)
@@ -115,7 +115,7 @@ func TestConnectionRepositoryPreservesLegacyReferenceAcrossUnrelatedSave(t *test
 	tenant := pgfixtures.SeedTenant(t, pool)
 	ctx, now := context.Background(), pgtest.Now()
 	connections := &db_postgres.ConnectionRepository{Pool: pool, Cipher: newTestCipher(t, tenant.ID)}
-	connection := testConnection(tenant.ID, now)
+	connection := testConnection(t, tenant.ID, now)
 	if err := connections.Save(ctx, connection); err != nil {
 		t.Fatalf("Save: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestConnectionAndIdentityRepositoriesRoundTrip(t *testing.T) {
 	ctx, now := context.Background(), pgtest.Now()
 	connections := &db_postgres.ConnectionRepository{Pool: pool}
 	identities := &db_postgres.IdentityRepository{Pool: pool}
-	connection := testConnection(tenant.ID, now)
+	connection := testConnection(t, tenant.ID, now)
 	if err := connections.Save(ctx, connection); err != nil {
 		t.Fatalf("Save connection: %v", err)
 	}
@@ -181,12 +181,13 @@ func TestAttemptStoreConsumesOnceAndScopesTenant(t *testing.T) {
 	tenantA, tenantB := pgfixtures.SeedTenant(t, pool), pgfixtures.SeedTenant(t, pool)
 	ctx, now := context.Background(), time.Now().UTC()
 	connections := &db_postgres.ConnectionRepository{Pool: pool}
-	if err := connections.Save(ctx, testConnection(tenantA.ID, now)); err != nil {
+	connection := testConnection(t, tenantA.ID, now)
+	if err := connections.Save(ctx, connection); err != nil {
 		t.Fatal(err)
 	}
 	attempts := &db_postgres.AttemptStore{Pool: pool}
 	attempt := &domain.FederatedLoginAttempt{
-		State: "state", TenantID: tenantA.ID, ProviderID: "oidc", Protocol: domain.ProtocolOIDC,
+		State: "state", TenantID: tenantA.ID, ProviderID: connection.ID, Protocol: domain.ProtocolOIDC,
 		CreatedAt: now, ExpiresAt: now.Add(time.Minute),
 	}
 	if err := attempts.Save(ctx, attempt); err != nil {
@@ -203,9 +204,10 @@ func TestAttemptStoreConsumesOnceAndScopesTenant(t *testing.T) {
 	}
 }
 
-func testConnection(tenantID string, now time.Time) *domain.IdentityProviderConnection {
+func testConnection(t *testing.T, tenantID string, now time.Time) *domain.IdentityProviderConnection {
+	t.Helper()
 	return &domain.IdentityProviderConnection{
-		ID: "oidc", TenantID: tenantID, DisplayName: "OIDC",
+		ID: pgfixtures.NewUUID(t), TenantID: tenantID, DisplayName: "OIDC",
 		Protocol: domain.ProtocolOIDC, Status: domain.ConnectionActive,
 		Issuer: "https://idp.example", ClientID: "client", SecretReference: "env:OIDC_SECRET",
 		AuthorizationEndpoint: "https://idp.example/auth", TokenEndpoint: "https://idp.example/token",

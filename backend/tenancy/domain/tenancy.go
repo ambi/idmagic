@@ -417,7 +417,7 @@ func validTenantFooterLink(link TenantFooterLink) bool {
 type TenantBrandingAsset struct {
 	TenantID    string                  `json:"tenant_id"`
 	Kind        TenantBrandingAssetKind `json:"kind"`
-	ObjectKey   string                  `json:"object_key"`
+	ID          string                  `json:"id"`
 	ContentType string                  `json:"content_type"`
 	SizeBytes   int                     `json:"size_bytes"`
 	Data        []byte                  `json:"-"`

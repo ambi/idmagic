@@ -91,7 +91,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 			return err
 		}
 		for _, cat := range categories {
-			categoryMap[cat.CategoryID] = cat.Name
+			categoryMap[cat.ID] = cat.Name
 		}
 	}
 
@@ -284,7 +284,7 @@ func (d Deps) handleGetApplicationIcon(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The icon image does not exist.")
 	}
 	icon, err := d.ApplicationIconStore.Find(
-		c.Request().Context(), support.RequestTenantID(c), c.Param("application_id"), c.Param("object_key"),
+		c.Request().Context(), support.RequestTenantID(c), c.Param("application_id"), c.Param("id"),
 	)
 	if err != nil {
 		return err

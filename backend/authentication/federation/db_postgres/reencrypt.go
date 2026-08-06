@@ -43,14 +43,14 @@ func (m *ConnectionSecretReencryptor) ReencryptBatch(ctx context.Context, tenant
 		}
 		version, ciphertext, err := m.Repo.Cipher.Encrypt(
 			ctx, tenantID, federationSecretRecordContext, federationSecretTable,
-			connectionRecordID(tenantID, row.ProviderID), federationSecretField, plaintext,
+			connectionRecordID(tenantID, row.ID), federationSecretField, plaintext,
 		)
 		if err != nil {
 			return migrated, err
 		}
 		if err := New(m.Repo.Pool).UpdateIdentityProviderConnectionSecretCiphertext(ctx, UpdateIdentityProviderConnectionSecretCiphertextParams{
 			TenantID:         tenantID,
-			ProviderID:       row.ProviderID,
+			ID:               row.ID,
 			SecretKeyVersion: pgtype.Int4{Int32: int32(version), Valid: true}, //nolint:gosec // G115: DEK version is a small monotonic counter, well under int32 max
 			SecretCiphertext: ciphertext,
 		}); err != nil {
@@ -67,7 +67,7 @@ func (m *ConnectionSecretReencryptor) resolvePlaintext(
 	if row.SecretKeyVersion.Valid && len(row.SecretCiphertext) > 0 {
 		plaintext, err = m.Repo.Cipher.Decrypt(
 			ctx, tenantID, federationSecretRecordContext, federationSecretTable,
-			connectionRecordID(tenantID, row.ProviderID), federationSecretField,
+			connectionRecordID(tenantID, row.ID), federationSecretField,
 			int(row.SecretKeyVersion.Int32), row.SecretCiphertext,
 		)
 		if err != nil {

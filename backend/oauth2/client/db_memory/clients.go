@@ -95,7 +95,7 @@ func (r *OAuth2ClientRepository) UpdateClientSecretCredential(_ context.Context,
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for i := range r.credentials[credential.ClientID] {
-		if r.credentials[credential.ClientID][i].CredentialID == credential.CredentialID {
+		if r.credentials[credential.ClientID][i].ID == credential.ID {
 			r.credentials[credential.ClientID][i] = credential
 			return nil
 		}

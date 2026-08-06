@@ -58,7 +58,7 @@ func CreateCategory(ctx context.Context, deps CategoryDeps, in CreateCategoryInp
 	}
 	now := adminNow(in.Now)
 	category := &domain.ApplicationCategory{
-		TenantID: tenantID, CategoryID: id, Name: name, Position: position,
+		TenantID: tenantID, ID: id, Name: name, Position: position,
 		CreatedAt: now, UpdatedAt: now,
 	}
 	if err := deps.Repo.Save(ctx, category); err != nil {
@@ -121,7 +121,7 @@ func UpdateCategory(ctx context.Context, deps CategoryDeps, in UpdateCategoryInp
 		return nil, err
 	}
 	emit(deps.Emit, &domain.ApplicationCategoryUpdated{
-		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: category.CategoryID,
+		At: updated.UpdatedAt, TenantID: tenantID, ActorUserID: in.ActorUserID, CategoryID: category.ID,
 	})
 	return &updated, nil
 }
@@ -169,7 +169,7 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 	}
 	known := make(map[string]struct{}, len(categories))
 	for _, category := range categories {
-		known[category.CategoryID] = struct{}{}
+		known[category.ID] = struct{}{}
 	}
 	cleaned := make([]string, 0, len(in.CategoryIDs))
 	seen := make(map[string]struct{}, len(in.CategoryIDs))

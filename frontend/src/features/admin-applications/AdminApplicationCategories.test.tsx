@@ -29,7 +29,7 @@ const app: AdminApplication = {
 }
 
 const category: ApplicationCategory = {
-  category_id: 'cat-1',
+  id: 'cat-1',
   name: 'Finance',
   position: 0,
   created_at: '2026-01-01T00:00:00Z',
@@ -84,7 +84,7 @@ describe('CategoryManager', () => {
   it('adds a new category from the input field', async () => {
     stubFetch((url, init) => {
       if (url.includes('/application-categories') && init?.method === 'POST') {
-        return response(201, { category: { ...category, category_id: 'cat-2', name: 'Sales' } })
+        return response(201, { category: { ...category, id: 'cat-2', name: 'Sales' } })
       }
       if (url.includes('/application-categories')) return response(200, { categories: [] })
       return undefined

@@ -16,7 +16,7 @@ type Querier interface {
 	FindTenantBrandingByTenant(ctx context.Context, tenantID string) (*TenantBranding, error)
 	FindTenantByID(ctx context.Context, id string) (*Tenant, error)
 	FindTenantByRealm(ctx context.Context, realm string) (*Tenant, error)
-	GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*TenantBrandingAsset, error)
+	GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*GetTenantBrandingAssetRow, error)
 	GetTenantQuota(ctx context.Context, tenantID string) (*TenantQuota, error)
 	GetTenantUsage(ctx context.Context, tenantID string) (*TenantUsage, error)
 	ListNotificationTemplatesByTenant(ctx context.Context, tenantID string) ([]*NotificationTemplate, error)

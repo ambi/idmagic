@@ -79,7 +79,7 @@ export function CategoryManager({
   function removeCategory(categoryID: string) {
     void run(async () => {
       await deleteApplicationCategory(csrfToken, categoryID)
-      setCategories((current) => current.filter((c) => c.category_id !== categoryID))
+      setCategories((current) => current.filter((c) => c.id !== categoryID))
       setAssigned((current) => {
         const next = new Set(current)
         next.delete(categoryID)
@@ -97,12 +97,12 @@ export function CategoryManager({
       ) : (
         <ul className="flex flex-col gap-2">
           {categories.map((category) => (
-            <li key={category.category_id} className="flex items-center gap-3">
+            <li key={category.id} className="flex items-center gap-3">
               <label className="flex flex-1 items-center gap-2 text-sm text-slate-800">
                 <input
                   type="checkbox"
-                  checked={assigned.has(category.category_id)}
-                  onChange={() => toggle(category.category_id)}
+                  checked={assigned.has(category.id)}
+                  onChange={() => toggle(category.id)}
                   disabled={busy}
                   className="size-4 rounded border-slate-300"
                 />
@@ -114,7 +114,7 @@ export function CategoryManager({
                 size="default"
                 className="size-9 px-0 text-slate-400 hover:text-red-600"
                 disabled={busy}
-                onClick={() => removeCategory(category.category_id)}
+                onClick={() => removeCategory(category.id)}
                 aria-label={t.deleteCategoryAria.replace('{name}', category.name)}
               >
                 <IconTrash size={16} aria-hidden="true" />

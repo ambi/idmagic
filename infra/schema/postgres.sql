@@ -99,18 +99,20 @@ CREATE TABLE notification_templates (
 );
 
 CREATE TABLE tenant_branding_assets (
+    id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
     kind TEXT NOT NULL CHECK (kind IN ('logo', 'favicon')),
-    object_key TEXT NOT NULL,
     content_type TEXT NOT NULL,
     size_bytes INTEGER NOT NULL,
     data BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (tenant_id, kind, object_key),
     CONSTRAINT tenant_branding_assets_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
+
+CREATE INDEX tenant_branding_assets_tenant_kind_idx
+    ON tenant_branding_assets (tenant_id, kind);
 
 CREATE TABLE oauth2_clients (
     tenant_id UUID NOT NULL,
@@ -142,7 +144,7 @@ CREATE TABLE oauth2_clients (
 );
 
 CREATE TABLE oauth2_client_secrets (
-    credential_id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY,
     client_id UUID NOT NULL,
     secret_hash TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
@@ -405,8 +407,8 @@ CREATE INDEX authentication_sessions_active_user_idx
 CREATE INDEX authentication_sessions_expires_at_idx ON authentication_sessions (expires_at);
 
 CREATE TABLE identity_provider_connections (
+    id TEXT NOT NULL,
     tenant_id UUID NOT NULL,
-    provider_id TEXT NOT NULL,
     display_name TEXT NOT NULL,
     protocol TEXT NOT NULL CHECK (protocol IN ('oidc', 'saml')),
     status TEXT NOT NULL CHECK (status IN ('active', 'disabled')),
@@ -428,10 +430,13 @@ CREATE TABLE identity_provider_connections (
     metadata_refreshed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (tenant_id, provider_id),
+    PRIMARY KEY (id),
     CONSTRAINT identity_provider_connections_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
+
+CREATE INDEX identity_provider_connections_tenant_idx
+    ON identity_provider_connections (tenant_id);
 
 CREATE TABLE federated_identities (
     tenant_id UUID NOT NULL,
@@ -444,8 +449,8 @@ CREATE TABLE federated_identities (
     CONSTRAINT federated_identities_tenant_id_provider_id_local_user_id_key
         UNIQUE (tenant_id, provider_id, local_user_id),
     CONSTRAINT federated_identities_provider_fkey
-        FOREIGN KEY (tenant_id, provider_id)
-        REFERENCES identity_provider_connections(tenant_id, provider_id) ON DELETE RESTRICT,
+        FOREIGN KEY (provider_id)
+        REFERENCES identity_provider_connections(id) ON DELETE RESTRICT,
     CONSTRAINT federated_identities_user_fkey
         FOREIGN KEY (local_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -465,8 +470,8 @@ CREATE TABLE federated_login_attempts (
     consumed_at TIMESTAMPTZ,
     PRIMARY KEY (tenant_id, state),
     CONSTRAINT federated_login_attempts_provider_fkey
-        FOREIGN KEY (tenant_id, provider_id)
-        REFERENCES identity_provider_connections(tenant_id, provider_id) ON DELETE CASCADE,
+        FOREIGN KEY (provider_id)
+        REFERENCES identity_provider_connections(id) ON DELETE CASCADE,
     CONSTRAINT federated_login_attempts_user_fkey
         FOREIGN KEY (link_user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -689,18 +694,20 @@ CREATE TABLE applications (
 );
 
 CREATE TABLE application_icons (
+    id UUID PRIMARY KEY,
     application_id UUID NOT NULL,
-    object_key TEXT NOT NULL,
     content_type TEXT NOT NULL,
     size_bytes INTEGER NOT NULL,
     data BYTEA NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (application_id, object_key),
     CONSTRAINT application_icons_application_fkey
         FOREIGN KEY (application_id)
         REFERENCES applications (application_id) ON DELETE CASCADE
 );
+
+CREATE INDEX application_icons_application_idx
+    ON application_icons (application_id);
 
 CREATE TABLE application_sign_in_policies (
     application_id UUID PRIMARY KEY,
@@ -849,12 +856,12 @@ CREATE TABLE application_orderings (
 
 CREATE TABLE application_categories (
     tenant_id UUID NOT NULL,
-    category_id UUID NOT NULL,
+    id UUID NOT NULL,
     name TEXT NOT NULL,
     position INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (tenant_id, category_id),
+    PRIMARY KEY (tenant_id, id),
     CONSTRAINT application_categories_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );

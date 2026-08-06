@@ -38,7 +38,7 @@ func TestConnectionSecretReencryptorMigratesResolvableLegacyReference(t *testing
 	ctx, now := context.Background(), pgtest.Now()
 	cipher := newTestCipher(t, tenant.ID)
 	connections := &db_postgres.ConnectionRepository{Pool: pool}
-	connection := testConnection(tenant.ID, now)
+	connection := testConnection(t, tenant.ID, now)
 	connection.ID = "resolvable"
 	connection.SecretReference = "env:OIDC_SECRET"
 	if err := connections.Save(ctx, connection); err != nil {
@@ -82,7 +82,7 @@ func TestConnectionSecretReencryptorMigratesResolvableLegacyReference(t *testing
 	}
 
 	row, err := db_postgres.New(pool).FindIdentityProviderConnection(ctx, db_postgres.FindIdentityProviderConnectionParams{
-		TenantID: tenant.ID, ProviderID: connection.ID,
+		TenantID: tenant.ID, ID: connection.ID,
 	})
 	if err != nil {
 		t.Fatalf("raw find: %v", err)
@@ -103,7 +103,7 @@ func TestConnectionSecretReencryptorSkipsUnresolvableLegacyReference(t *testing.
 	ctx, now := context.Background(), pgtest.Now()
 	cipher := newTestCipher(t, tenant.ID)
 	connections := &db_postgres.ConnectionRepository{Pool: pool}
-	connection := testConnection(tenant.ID, now)
+	connection := testConnection(t, tenant.ID, now)
 	connection.ID = "unresolvable"
 	connection.SecretReference = "env:MISSING_SECRET"
 	if err := connections.Save(ctx, connection); err != nil {
@@ -138,7 +138,7 @@ func TestConnectionSecretReencryptorSkipsRowsWithNoSecretConfigured(t *testing.T
 	ctx, now := context.Background(), pgtest.Now()
 	cipher := newTestCipher(t, tenant.ID)
 	connections := &db_postgres.ConnectionRepository{Pool: pool}
-	connection := testConnection(tenant.ID, now)
+	connection := testConnection(t, tenant.ID, now)
 	connection.ID = "no-secret"
 	connection.SecretReference = ""
 	if err := connections.Save(ctx, connection); err != nil {

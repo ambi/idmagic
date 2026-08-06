@@ -218,7 +218,7 @@ export type AdminApplication = {
 }
 
 export type ApplicationCategory = {
-  category_id: string
+  id: string
   name: string
   position: number
   created_at: string
@@ -970,7 +970,7 @@ export type MyApplication = {
 }
 
 export type PortalCategory = {
-  category_id: string
+  id: string
   name: string
 }
 

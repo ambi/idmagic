@@ -131,7 +131,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 	store := NewApplicationIconStore()
 
 	icon := &domain.ApplicationIcon{
-		TenantID: "acme", ApplicationID: "app-1", ObjectKey: "k1",
+		TenantID: "acme", ApplicationID: "app-1", ID: "k1",
 		ContentType: "image/png", SizeBytes: 3, Data: []byte{1, 2, 3},
 	}
 	if err := store.Save(ctx, icon); err != nil {
@@ -322,9 +322,9 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 	repo := NewApplicationCategoryRepository()
 
 	categories := []*domain.ApplicationCategory{
-		{TenantID: "acme", CategoryID: "c1", Name: "B", Position: 2},
-		{TenantID: "acme", CategoryID: "c2", Name: "A", Position: 1},
-		{TenantID: "acme", CategoryID: "c3", Name: "C", Position: 1},
+		{TenantID: "acme", ID: "c1", Name: "B", Position: 2},
+		{TenantID: "acme", ID: "c2", Name: "A", Position: 1},
+		{TenantID: "acme", ID: "c3", Name: "C", Position: 1},
 	}
 	for _, c := range categories {
 		if err := repo.Save(ctx, c); err != nil {
@@ -337,7 +337,7 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Position 昇順、同 Position は名前順 → c2(A,1), c3(C,1), c1(B,2)。
-	if len(list) != 3 || list[0].CategoryID != "c2" || list[1].CategoryID != "c3" || list[2].CategoryID != "c1" {
+	if len(list) != 3 || list[0].ID != "c2" || list[1].ID != "c3" || list[2].ID != "c1" {
 		t.Fatalf("ListByTenant order: %+v", list)
 	}
 

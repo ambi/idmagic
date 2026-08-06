@@ -66,7 +66,7 @@ func cloneIcon(icon *domain.ApplicationIcon) *domain.ApplicationIcon {
 func (s *ApplicationIconStore) Save(_ context.Context, icon *domain.ApplicationIcon) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	key := iconKey(icon.TenantID, icon.ApplicationID, icon.ObjectKey)
+	key := iconKey(icon.TenantID, icon.ApplicationID, icon.ID)
 	cloned := cloneIcon(icon)
 	if existing := s.icons[key]; existing != nil && !existing.CreatedAt.IsZero() {
 		cloned.CreatedAt = existing.CreatedAt
@@ -459,7 +459,7 @@ func (r *ApplicationCategoryRepository) Save(_ context.Context, category *domain
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	cloned := *category
-	r.categories[sharedmem.TenantKey(category.TenantID, category.CategoryID)] = &cloned
+	r.categories[sharedmem.TenantKey(category.TenantID, category.ID)] = &cloned
 	return nil
 }
 

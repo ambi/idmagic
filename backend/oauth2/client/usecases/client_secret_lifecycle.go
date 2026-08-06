@@ -56,7 +56,7 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 			return nil, idErr
 		}
 		legacy = &domain.ClientSecretCredential{
-			CredentialID: legacyID, ClientID: client.ClientID,
+			ID: legacyID, ClientID: client.ClientID,
 			SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt,
 		}
 	}
@@ -70,7 +70,7 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 	}
 	expiresAt := now.AddDate(0, 0, in.ExpiresInDays)
 	credential := domain.ClientSecretCredential{
-		CredentialID: credentialID, ClientID: client.ClientID,
+		ID: credentialID, ClientID: client.ClientID,
 		SecretHash: domain.HashClientSecret(secret), CreatedAt: now, ExpiresAt: &expiresAt,
 	}
 	if err := deps.ClientRepo.IssueClientSecretCredential(ctx, legacy, credential, MaxActiveClientSecrets, now); err != nil {
@@ -85,7 +85,7 @@ func IssueClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Issue
 	}
 	emit(deps.Emit, &domain.ClientSecretIssued{
 		At: now, TenantID: tenantID, ActorUserID: in.ActorUserID,
-		ClientID: client.ClientID, CredentialID: credential.CredentialID, ExpiresAt: expiresAt,
+		ClientID: client.ClientID, CredentialID: credential.ID, ExpiresAt: expiresAt,
 	})
 	return &IssueClientSecretResult{ClientSecret: secret, Credential: credential, Credentials: credentials}, nil
 }
@@ -119,7 +119,7 @@ func RevokeClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Revo
 		return nil, err
 	}
 	for i := range credentials {
-		if credentials[i].CredentialID != in.CredentialID {
+		if credentials[i].ID != in.CredentialID {
 			continue
 		}
 		if credentials[i].RevokedAt != nil {
@@ -134,7 +134,7 @@ func RevokeClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Revo
 		}
 		emit(deps.Emit, &domain.ClientSecretRevoked{
 			At: now, TenantID: tenantID, ActorUserID: in.ActorUserID,
-			ClientID: client.ClientID, CredentialID: credentials[i].CredentialID,
+			ClientID: client.ClientID, CredentialID: credentials[i].ID,
 		})
 		return &RevokeClientSecretResult{Credentials: credentials}, nil
 	}

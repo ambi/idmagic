@@ -161,11 +161,11 @@ export function buildSections(
   other = accountAppsDictionary.ja.other,
 ): Section[] {
   const sections: Section[] = categories.map((category) => ({
-    key: category.category_id,
+    key: category.id,
     name: category.name,
-    apps: apps.filter((app) => app.category_ids.includes(category.category_id)),
+    apps: apps.filter((app) => app.category_ids.includes(category.id)),
   }))
-  const known = new Set(categories.map((category) => category.category_id))
+  const known = new Set(categories.map((category) => category.id))
   const uncategorized = apps.filter((app) => !app.category_ids.some((id) => known.has(id)))
   if (uncategorized.length > 0) {
     sections.push({ key: '__uncategorized__', name: other, apps: uncategorized })

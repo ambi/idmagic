@@ -212,13 +212,13 @@ func TestAdminCategoryLifecycle(t *testing.T) {
 	}
 	var catCreated struct {
 		Category struct {
-			CategoryID string `json:"category_id"`
+			ID string `json:"id"`
 		} `json:"category"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &catCreated); err != nil {
 		t.Fatal(err)
 	}
-	catID := catCreated.Category.CategoryID
+	catID := catCreated.Category.ID
 
 	// Create Category (Invalid JSON)
 	createBad := adminJSON(t, e, http.MethodPost, "/api/admin/application-categories", csrf, cookie, "invalid-json")

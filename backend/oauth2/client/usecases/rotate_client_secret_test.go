@@ -19,7 +19,7 @@ func TestRotateClientSecretReplacesCurrentCredentialWithOverlap(t *testing.T) {
 	if err := repo.Save(ctx, client); err != nil {
 		t.Fatal(err)
 	}
-	if err := repo.SaveClientSecretCredential(ctx, oauthdomain.ClientSecretCredential{CredentialID: "old", ClientID: client.ClientID, SecretHash: oldHash, CreatedAt: now}); err != nil {
+	if err := repo.SaveClientSecretCredential(ctx, oauthdomain.ClientSecretCredential{ID: "old", ClientID: client.ClientID, SecretHash: oldHash, CreatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -52,7 +52,7 @@ func TestRotateClientSecretRejectsWhenTwoCredentialsAreActive(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, credentialID := range []string{"first", "second"} {
-		if err := repo.SaveClientSecretCredential(ctx, oauthdomain.ClientSecretCredential{CredentialID: credentialID, ClientID: client.ClientID, SecretHash: oldHash, CreatedAt: now}); err != nil {
+		if err := repo.SaveClientSecretCredential(ctx, oauthdomain.ClientSecretCredential{ID: credentialID, ClientID: client.ClientID, SecretHash: oldHash, CreatedAt: now}); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -4,7 +4,7 @@
 -- "keep the existing secret unchanged" by copying the previous value forward, so this
 -- query never needs to fall back to the stored row for those three columns.
 INSERT INTO identity_provider_connections (
-  tenant_id, provider_id, display_name, protocol, status, issuer, client_id, secret_reference,
+  tenant_id, id, display_name, protocol, status, issuer, client_id, secret_reference,
   secret_key_version, secret_ciphertext,
   authorization_endpoint, token_endpoint, jwks_uri, saml_sso_url, saml_entity_id,
   saml_signing_certificates, claim_mapping, linking_policy, jit_provisioning,
@@ -12,7 +12,7 @@ INSERT INTO identity_provider_connections (
 ) VALUES ($1,$2,$3,$4,$5,$6,NULLIF($7::text,''),NULLIF($8::text,''),$9,$10,NULLIF($11::text,''),
   NULLIF($12::text,''),NULLIF($13::text,''),NULLIF($14::text,''),NULLIF($15::text,''),
   $16,$17,$18,$19,$20,$21,$22,$23)
-ON CONFLICT (tenant_id, provider_id) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   display_name=EXCLUDED.display_name, protocol=EXCLUDED.protocol, status=EXCLUDED.status,
   issuer=EXCLUDED.issuer, client_id=EXCLUDED.client_id,
   secret_reference=EXCLUDED.secret_reference,
@@ -26,38 +26,38 @@ ON CONFLICT (tenant_id, provider_id) DO UPDATE SET
   metadata_refreshed_at=EXCLUDED.metadata_refreshed_at, updated_at=EXCLUDED.updated_at;
 
 -- name: FindIdentityProviderConnection :one
-SELECT tenant_id, provider_id, display_name, protocol, status, issuer,
+SELECT tenant_id, id, display_name, protocol, status, issuer,
 COALESCE(client_id,'') AS client_id, COALESCE(secret_reference,'') AS secret_reference,
 secret_key_version, secret_ciphertext,
 COALESCE(authorization_endpoint,'') AS authorization_endpoint,
 COALESCE(token_endpoint,'') AS token_endpoint, COALESCE(jwks_uri,'') AS jwks_uri, COALESCE(saml_sso_url,'') AS saml_sso_url,
 COALESCE(saml_entity_id,'') AS saml_entity_id, saml_signing_certificates, claim_mapping, linking_policy,
 jit_provisioning, allowed_email_domains, metadata_refreshed_at, created_at, updated_at
-FROM identity_provider_connections WHERE tenant_id=$1 AND provider_id=$2;
+FROM identity_provider_connections WHERE tenant_id=$1 AND id=$2;
 
 -- name: ListIdentityProviderConnections :many
-SELECT tenant_id, provider_id, display_name, protocol, status, issuer,
+SELECT tenant_id, id, display_name, protocol, status, issuer,
 COALESCE(client_id,'') AS client_id, COALESCE(secret_reference,'') AS secret_reference,
 secret_key_version, secret_ciphertext,
 COALESCE(authorization_endpoint,'') AS authorization_endpoint,
 COALESCE(token_endpoint,'') AS token_endpoint, COALESCE(jwks_uri,'') AS jwks_uri, COALESCE(saml_sso_url,'') AS saml_sso_url,
 COALESCE(saml_entity_id,'') AS saml_entity_id, saml_signing_certificates, claim_mapping, linking_policy,
 jit_provisioning, allowed_email_domains, metadata_refreshed_at, created_at, updated_at
-FROM identity_provider_connections WHERE tenant_id=$1 ORDER BY display_name, provider_id;
+FROM identity_provider_connections WHERE tenant_id=$1 ORDER BY display_name, id;
 
 -- name: DeleteIdentityProviderConnection :exec
-DELETE FROM identity_provider_connections WHERE tenant_id=$1 AND provider_id=$2;
+DELETE FROM identity_provider_connections WHERE tenant_id=$1 AND id=$2;
 
 -- name: ListIdentityProviderConnectionsPendingSecretReencryption :many
 -- Rows with secret material (legacy env: reference or ciphertext) not yet on
 -- activeVersion: never-migrated legacy reference (secret_key_version NULL) or an
 -- older DEK version. Rows with no secret configured at all are excluded.
-SELECT tenant_id, provider_id, secret_reference, secret_key_version, secret_ciphertext
+SELECT tenant_id, id, secret_reference, secret_key_version, secret_ciphertext
 FROM identity_provider_connections
 WHERE tenant_id = $1
   AND (secret_reference IS NOT NULL OR secret_ciphertext IS NOT NULL)
   AND (secret_key_version IS NULL OR secret_key_version <> $2)
-ORDER BY provider_id
+ORDER BY id
 LIMIT $3;
 
 -- name: CountIdentityProviderConnectionsPendingSecretReencryption :one
@@ -71,7 +71,7 @@ WHERE tenant_id = $1
 -- secret_reference column, mirroring UpdateMfaFactorCiphertext (ADR-148).
 UPDATE identity_provider_connections
 SET secret_reference = NULL, secret_key_version = $3, secret_ciphertext = $4, updated_at = now()
-WHERE tenant_id = $1 AND provider_id = $2;
+WHERE tenant_id = $1 AND id = $2;
 
 -- name: CreateFederatedIdentity :exec
 INSERT INTO federated_identities

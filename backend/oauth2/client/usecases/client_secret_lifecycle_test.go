@@ -33,7 +33,7 @@ func TestIssueClientSecretAddsExpiringCredentialWithoutChangingExisting(t *testi
 	repo := oauthmemory.NewClientRepository()
 	client := secretClient(ctx, t, repo, now)
 	legacy := domain.ClientSecretCredential{
-		CredentialID: "legacy", ClientID: client.ClientID,
+		ID: "legacy", ClientID: client.ClientID,
 		SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt,
 	}
 	if err := repo.SaveClientSecretCredential(ctx, legacy); err != nil {
@@ -62,7 +62,7 @@ func TestIssueClientSecretAddsExpiringCredentialWithoutChangingExisting(t *testi
 		t.Fatalf("events=%d, want 1", len(events))
 	}
 	event, ok := events[0].(*domain.ClientSecretIssued)
-	if !ok || event.ClientID != client.ClientID || event.CredentialID != result.Credential.CredentialID ||
+	if !ok || event.ClientID != client.ClientID || event.CredentialID != result.Credential.ID ||
 		!event.ExpiresAt.Equal(*result.Credential.ExpiresAt) {
 		t.Fatalf("unexpected event: %#v", events[0])
 	}
@@ -90,7 +90,7 @@ func TestIssueClientSecretValidatesExpiryAndActiveLimit(t *testing.T) {
 	future := now.Add(time.Hour)
 	for _, id := range []string{"one", "two"} {
 		if err := repo.SaveClientSecretCredential(ctx, domain.ClientSecretCredential{
-			CredentialID: id, ClientID: client.ClientID, SecretHash: domain.HashClientSecret(id),
+			ID: id, ClientID: client.ClientID, SecretHash: domain.HashClientSecret(id),
 			CreatedAt: now.Add(-time.Hour), ExpiresAt: &future,
 		}); err != nil {
 			t.Fatal(err)
@@ -143,7 +143,7 @@ func TestRevokeClientSecretIsScopedAndIdempotent(t *testing.T) {
 	repo := oauthmemory.NewClientRepository()
 	client := secretClient(ctx, t, repo, now)
 	if err := repo.SaveClientSecretCredential(ctx, domain.ClientSecretCredential{
-		CredentialID: "old", ClientID: client.ClientID, SecretHash: domain.HashClientSecret("old"), CreatedAt: now.Add(-time.Hour),
+		ID: "old", ClientID: client.ClientID, SecretHash: domain.HashClientSecret("old"), CreatedAt: now.Add(-time.Hour),
 	}); err != nil {
 		t.Fatal(err)
 	}

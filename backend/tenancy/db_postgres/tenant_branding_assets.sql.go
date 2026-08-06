@@ -25,24 +25,35 @@ func (q *Queries) DeleteTenantBrandingAssetsByKind(ctx context.Context, arg Dele
 }
 
 const getTenantBrandingAsset = `-- name: GetTenantBrandingAsset :one
-SELECT tenant_id, kind, object_key, content_type, size_bytes, data, created_at, updated_at
+SELECT tenant_id, kind, id, content_type, size_bytes, data, created_at, updated_at
 FROM tenant_branding_assets
-WHERE tenant_id = $1 AND kind = $2 AND object_key = $3
+WHERE tenant_id = $1 AND kind = $2 AND id = $3
 `
 
 type GetTenantBrandingAssetParams struct {
-	TenantID  string
-	Kind      string
-	ObjectKey string
+	TenantID string
+	Kind     string
+	ID       string
 }
 
-func (q *Queries) GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*TenantBrandingAsset, error) {
-	row := q.db.QueryRow(ctx, getTenantBrandingAsset, arg.TenantID, arg.Kind, arg.ObjectKey)
-	var i TenantBrandingAsset
+type GetTenantBrandingAssetRow struct {
+	TenantID    string
+	Kind        string
+	ID          string
+	ContentType string
+	SizeBytes   int32
+	Data        []byte
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrandingAssetParams) (*GetTenantBrandingAssetRow, error) {
+	row := q.db.QueryRow(ctx, getTenantBrandingAsset, arg.TenantID, arg.Kind, arg.ID)
+	var i GetTenantBrandingAssetRow
 	err := row.Scan(
 		&i.TenantID,
 		&i.Kind,
-		&i.ObjectKey,
+		&i.ID,
 		&i.ContentType,
 		&i.SizeBytes,
 		&i.Data,
@@ -53,9 +64,9 @@ func (q *Queries) GetTenantBrandingAsset(ctx context.Context, arg GetTenantBrand
 }
 
 const upsertTenantBrandingAsset = `-- name: UpsertTenantBrandingAsset :exec
-INSERT INTO tenant_branding_assets (tenant_id, kind, object_key, content_type, size_bytes, data, created_at, updated_at)
+INSERT INTO tenant_branding_assets (tenant_id, kind, id, content_type, size_bytes, data, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-ON CONFLICT (tenant_id, kind, object_key) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
     content_type = EXCLUDED.content_type,
     size_bytes = EXCLUDED.size_bytes,
     data = EXCLUDED.data,
@@ -65,7 +76,7 @@ ON CONFLICT (tenant_id, kind, object_key) DO UPDATE SET
 type UpsertTenantBrandingAssetParams struct {
 	TenantID    string
 	Kind        string
-	ObjectKey   string
+	ID          string
 	ContentType string
 	SizeBytes   int32
 	Data        []byte
@@ -77,7 +88,7 @@ func (q *Queries) UpsertTenantBrandingAsset(ctx context.Context, arg UpsertTenan
 	_, err := q.db.Exec(ctx, upsertTenantBrandingAsset,
 		arg.TenantID,
 		arg.Kind,
-		arg.ObjectKey,
+		arg.ID,
 		arg.ContentType,
 		arg.SizeBytes,
 		arg.Data,

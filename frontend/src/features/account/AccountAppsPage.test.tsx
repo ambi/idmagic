@@ -23,7 +23,7 @@ const appB: MyApplication = {
 }
 
 describe('buildSections', () => {
-  const categories: PortalCategory[] = [{ category_id: 'cat-1', name: 'カテゴリ1' }]
+  const categories: PortalCategory[] = [{ id: 'cat-1', name: 'カテゴリ1' }]
 
   it('groups apps by their assigned category, preserving order', async () => {
     const sections = buildSections([appA, appB], categories)

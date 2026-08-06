@@ -1234,12 +1234,12 @@ models:
     kind: entity
     description: secret-based OAuth2 client の認証 credential。平文は発行応答だけで返し、保存・イベント・一覧には含めない。新規発行は既存 credential を変更せず、個別 revoke または expiry まで照合対象となる。既存の期限なし credential は無停止移行のため許容する。
     identity:
-      - credential_id
+      - id
     constraints:
       - client_secret_credential_references_existing_client(client_id)
       - at_most_two_active_client_secret_credentials(client_id, now())
     fields:
-      credential_id:
+      id:
         type: UUID
       client_id:
         type: String
@@ -2357,7 +2357,7 @@ models:
     kind: value_object
     description: Application editor が表示する secret credential の非機密メタデータ。状態は revoked_at、expires_at、評価時刻の順で導出する。
     fields:
-      credential_id:
+      id:
         type: UUID
       created_at:
         type: DateTime

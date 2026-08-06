@@ -605,7 +605,7 @@
     "AdminApplicationCategoryResponse": {
       "type": "object",
       "properties": {
-        "category_id": {
+        "id": {
           "type": "string",
           "format": "uuid"
         },
@@ -626,7 +626,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "category_id",
+        "id",
         "name",
         "position",
         "created_at",
@@ -2784,7 +2784,7 @@
           "default": "default",
           "description": "所属テナント ID。"
         },
-        "category_id": {
+        "id": {
           "type": "string",
           "format": "uuid",
           "description": "カテゴリ識別子。"
@@ -2810,7 +2810,7 @@
       "additionalProperties": false,
       "required": [
         "tenant_id",
-        "category_id",
+        "id",
         "name",
         "position",
         "created_at",
@@ -5390,7 +5390,7 @@
     "ClientSecretCredential": {
       "type": "object",
       "properties": {
-        "credential_id": {
+        "id": {
           "type": "string",
           "format": "uuid"
         },
@@ -5417,7 +5417,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "credential_id",
+        "id",
         "client_id",
         "secret_hash",
         "created_at"
@@ -5431,7 +5431,7 @@
     "ClientSecretCredentialMetadata": {
       "type": "object",
       "properties": {
-        "credential_id": {
+        "id": {
           "type": "string",
           "format": "uuid"
         },
@@ -5453,7 +5453,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "credential_id",
+        "id",
         "created_at",
         "status"
       ],
@@ -11681,7 +11681,7 @@
     "PortalApplicationCategory": {
       "type": "object",
       "properties": {
-        "category_id": {
+        "id": {
           "type": "string",
           "format": "uuid"
         },
@@ -11691,7 +11691,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "category_id",
+        "id",
         "name"
       ],
       "description": "利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す (ADR-069)。"

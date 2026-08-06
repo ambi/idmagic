@@ -164,7 +164,7 @@ func RegisterClient(ctx context.Context, deps RegisterClientDeps, in RegisterCli
 			return nil, err
 		}
 		if err := deps.ClientRepo.SaveClientSecretCredential(ctx, domain.ClientSecretCredential{
-			CredentialID: credentialID, ClientID: clientID, SecretHash: *secretHash, CreatedAt: now,
+			ID: credentialID, ClientID: clientID, SecretHash: *secretHash, CreatedAt: now,
 		}); err != nil {
 			return nil, err
 		}

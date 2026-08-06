@@ -95,7 +95,7 @@ func clientSecretMetadata(credentials []oauthdomain.ClientSecretCredential, now 
 	metadata := make([]clientSecretCredentialMetadata, 0, len(credentials))
 	for _, credential := range credentials {
 		metadata = append(metadata, clientSecretCredentialMetadata{
-			CredentialID: credential.CredentialID, CreatedAt: credential.CreatedAt,
+			CredentialID: credential.ID, CreatedAt: credential.CreatedAt,
 			ExpiresAt: credential.ExpiresAt, RevokedAt: credential.RevokedAt,
 			Status: string(credential.StatusAt(now)),
 		})

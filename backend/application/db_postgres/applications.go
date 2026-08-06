@@ -327,15 +327,15 @@ type ApplicationIconStore struct{ Pool sharedpg.DB }
 
 func (s *ApplicationIconStore) Save(ctx context.Context, icon *domain.ApplicationIcon) error {
 	return New(s.Pool).UpsertApplicationIcon(ctx, UpsertApplicationIconParams{
-		ApplicationID: icon.ApplicationID, ObjectKey: icon.ObjectKey,
+		ApplicationID: icon.ApplicationID, ID: icon.ID,
 		ContentType: icon.ContentType, SizeBytes: int32(icon.SizeBytes), Data: icon.Data, //nolint:gosec // G115: icon size is bounded by upload limits, well under int32 max
 		CreatedAt: icon.CreatedAt, UpdatedAt: icon.UpdatedAt,
 	})
 }
 
-func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID, objectKey string) (*domain.ApplicationIcon, error) {
+func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID, id string) (*domain.ApplicationIcon, error) {
 	row, err := New(s.Pool).GetApplicationIcon(ctx, GetApplicationIconParams{
-		TenantID: tenantID, ApplicationID: applicationID, ObjectKey: objectKey,
+		TenantID: tenantID, ApplicationID: applicationID, ID: id,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -344,7 +344,7 @@ func (s *ApplicationIconStore) Find(ctx context.Context, tenantID, applicationID
 		return nil, err
 	}
 	return &domain.ApplicationIcon{
-		TenantID: row.TenantID, ApplicationID: row.ApplicationID, ObjectKey: row.ObjectKey,
+		TenantID: row.TenantID, ApplicationID: row.ApplicationID, ID: row.ID,
 		ContentType: row.ContentType, SizeBytes: int(row.SizeBytes), Data: row.Data,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
@@ -482,7 +482,7 @@ type ApplicationCategoryRepository struct{ Pool sharedpg.DB }
 
 func categoryFromRow(row *ApplicationCategory) *domain.ApplicationCategory {
 	return &domain.ApplicationCategory{
-		TenantID: row.TenantID, CategoryID: row.CategoryID, Name: row.Name,
+		TenantID: row.TenantID, ID: row.ID, Name: row.Name,
 		Position: int(row.Position), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
 }
@@ -501,7 +501,7 @@ func (r *ApplicationCategoryRepository) ListByTenant(ctx context.Context, tenant
 
 func (r *ApplicationCategoryRepository) FindByID(ctx context.Context, tenantID, categoryID string) (*domain.ApplicationCategory, error) {
 	row, err := New(r.Pool).GetApplicationCategoryByID(ctx, GetApplicationCategoryByIDParams{
-		TenantID: tenantID, CategoryID: categoryID,
+		TenantID: tenantID, ID: categoryID,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -514,13 +514,13 @@ func (r *ApplicationCategoryRepository) FindByID(ctx context.Context, tenantID, 
 
 func (r *ApplicationCategoryRepository) Save(ctx context.Context, c *domain.ApplicationCategory) error {
 	return New(r.Pool).UpsertApplicationCategory(ctx, UpsertApplicationCategoryParams{
-		TenantID: c.TenantID, CategoryID: c.CategoryID, Name: c.Name, Position: int32(c.Position), //nolint:gosec // G115: category position is a small manual-ordering index, well under int32 max
+		TenantID: c.TenantID, ID: c.ID, Name: c.Name, Position: int32(c.Position), //nolint:gosec // G115: category position is a small manual-ordering index, well under int32 max
 		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
 	})
 }
 
 func (r *ApplicationCategoryRepository) Delete(ctx context.Context, tenantID, categoryID string) error {
 	return New(r.Pool).DeleteApplicationCategory(ctx, DeleteApplicationCategoryParams{
-		TenantID: tenantID, CategoryID: categoryID,
+		TenantID: tenantID, ID: categoryID,
 	})
 }

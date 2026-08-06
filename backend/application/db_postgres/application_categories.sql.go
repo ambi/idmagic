@@ -11,36 +11,36 @@ import (
 )
 
 const deleteApplicationCategory = `-- name: DeleteApplicationCategory :exec
-DELETE FROM application_categories WHERE tenant_id = $1 AND category_id = $2
+DELETE FROM application_categories WHERE tenant_id = $1 AND id = $2
 `
 
 type DeleteApplicationCategoryParams struct {
-	TenantID   string
-	CategoryID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) DeleteApplicationCategory(ctx context.Context, arg DeleteApplicationCategoryParams) error {
-	_, err := q.db.Exec(ctx, deleteApplicationCategory, arg.TenantID, arg.CategoryID)
+	_, err := q.db.Exec(ctx, deleteApplicationCategory, arg.TenantID, arg.ID)
 	return err
 }
 
 const getApplicationCategoryByID = `-- name: GetApplicationCategoryByID :one
-SELECT tenant_id, category_id, name, position, created_at, updated_at
+SELECT tenant_id, id, name, position, created_at, updated_at
 FROM application_categories
-WHERE tenant_id = $1 AND category_id = $2
+WHERE tenant_id = $1 AND id = $2
 `
 
 type GetApplicationCategoryByIDParams struct {
-	TenantID   string
-	CategoryID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) GetApplicationCategoryByID(ctx context.Context, arg GetApplicationCategoryByIDParams) (*ApplicationCategory, error) {
-	row := q.db.QueryRow(ctx, getApplicationCategoryByID, arg.TenantID, arg.CategoryID)
+	row := q.db.QueryRow(ctx, getApplicationCategoryByID, arg.TenantID, arg.ID)
 	var i ApplicationCategory
 	err := row.Scan(
 		&i.TenantID,
-		&i.CategoryID,
+		&i.ID,
 		&i.Name,
 		&i.Position,
 		&i.CreatedAt,
@@ -50,7 +50,7 @@ func (q *Queries) GetApplicationCategoryByID(ctx context.Context, arg GetApplica
 }
 
 const listApplicationCategoriesByTenant = `-- name: ListApplicationCategoriesByTenant :many
-SELECT tenant_id, category_id, name, position, created_at, updated_at
+SELECT tenant_id, id, name, position, created_at, updated_at
 FROM application_categories
 WHERE tenant_id = $1
 ORDER BY position, name
@@ -67,7 +67,7 @@ func (q *Queries) ListApplicationCategoriesByTenant(ctx context.Context, tenantI
 		var i ApplicationCategory
 		if err := rows.Scan(
 			&i.TenantID,
-			&i.CategoryID,
+			&i.ID,
 			&i.Name,
 			&i.Position,
 			&i.CreatedAt,
@@ -84,27 +84,27 @@ func (q *Queries) ListApplicationCategoriesByTenant(ctx context.Context, tenantI
 }
 
 const upsertApplicationCategory = `-- name: UpsertApplicationCategory :exec
-INSERT INTO application_categories (tenant_id, category_id, name, position, created_at, updated_at)
+INSERT INTO application_categories (tenant_id, id, name, position, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (tenant_id, category_id) DO UPDATE SET
+ON CONFLICT (tenant_id, id) DO UPDATE SET
   name = EXCLUDED.name,
   position = EXCLUDED.position,
   updated_at = EXCLUDED.updated_at
 `
 
 type UpsertApplicationCategoryParams struct {
-	TenantID   string
-	CategoryID string
-	Name       string
-	Position   int32
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	TenantID  string
+	ID        string
+	Name      string
+	Position  int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (q *Queries) UpsertApplicationCategory(ctx context.Context, arg UpsertApplicationCategoryParams) error {
 	_, err := q.db.Exec(ctx, upsertApplicationCategory,
 		arg.TenantID,
-		arg.CategoryID,
+		arg.ID,
 		arg.Name,
 		arg.Position,
 		arg.CreatedAt,

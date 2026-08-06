@@ -143,7 +143,7 @@ func TestOAuth2ClientRepositoryIssuesSecretWithinActiveLimitAtomically(t *testin
 	now := testClock()
 	firstExpiry := now.Add(24 * time.Hour)
 	first := domain.ClientSecretCredential{
-		CredentialID: newUUID(t), ClientID: client.ClientID, SecretHash: "first",
+		ID: newUUID(t), ClientID: client.ClientID, SecretHash: "first",
 		CreatedAt: now, ExpiresAt: &firstExpiry,
 	}
 	if err := repo.IssueClientSecretCredential(ctx, nil, first, 2, now); err != nil {
@@ -161,7 +161,7 @@ func TestOAuth2ClientRepositoryIssuesSecretWithinActiveLimitAtomically(t *testin
 			<-start
 			expiresAt := now.Add(48 * time.Hour)
 			errs <- repo.IssueClientSecretCredential(ctx, nil, domain.ClientSecretCredential{
-				CredentialID: id, ClientID: client.ClientID, SecretHash: id,
+				ID: id, ClientID: client.ClientID, SecretHash: id,
 				CreatedAt: now, ExpiresAt: &expiresAt,
 			}, 2, now)
 		}(credentialID)

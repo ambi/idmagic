@@ -167,7 +167,7 @@ func (r *OAuth2ClientRepository) Delete(ctx context.Context, tenantID, clientID 
 
 func credentialFromRow(row *oauth2pg.Oauth2ClientSecret) domain.ClientSecretCredential {
 	credential := domain.ClientSecretCredential{
-		CredentialID: row.CredentialID, ClientID: row.ClientID, SecretHash: row.SecretHash, CreatedAt: row.CreatedAt,
+		ID: row.ID, ClientID: row.ClientID, SecretHash: row.SecretHash, CreatedAt: row.CreatedAt,
 	}
 	if row.ExpiresAt.Valid {
 		value := row.ExpiresAt.Time
@@ -201,7 +201,7 @@ func (r *OAuth2ClientRepository) ListClientSecretCredentials(ctx context.Context
 
 func (r *OAuth2ClientRepository) SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
 	return oauth2pg.New(r.Pool).InsertClientSecretCredential(ctx, oauth2pg.InsertClientSecretCredentialParams{
-		CredentialID: credential.CredentialID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
+		ID: credential.ID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
 		CreatedAt: credential.CreatedAt, ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
 	})
 }
@@ -228,7 +228,7 @@ func (r *OAuth2ClientRepository) IssueClientSecretCredential(ctx context.Context
 	}
 	if len(rows) == 0 && legacy != nil {
 		if err := queries.InsertClientSecretCredential(ctx, oauth2pg.InsertClientSecretCredentialParams{
-			CredentialID: legacy.CredentialID, ClientID: legacy.ClientID, SecretHash: legacy.SecretHash,
+			ID: legacy.ID, ClientID: legacy.ClientID, SecretHash: legacy.SecretHash,
 			CreatedAt: legacy.CreatedAt, ExpiresAt: timestamptzOrNil(legacy.ExpiresAt), RevokedAt: timestamptzOrNil(legacy.RevokedAt),
 		}); err != nil {
 			return err
@@ -241,7 +241,7 @@ func (r *OAuth2ClientRepository) IssueClientSecretCredential(ctx context.Context
 		return oauthports.ErrClientSecretCredentialLimitExceeded
 	}
 	if err := queries.InsertClientSecretCredential(ctx, oauth2pg.InsertClientSecretCredentialParams{
-		CredentialID: credential.CredentialID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
+		ID: credential.ID, ClientID: credential.ClientID, SecretHash: credential.SecretHash,
 		CreatedAt: credential.CreatedAt, ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
 	}); err != nil {
 		return err
@@ -251,7 +251,7 @@ func (r *OAuth2ClientRepository) IssueClientSecretCredential(ctx context.Context
 
 func (r *OAuth2ClientRepository) UpdateClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error {
 	return oauth2pg.New(r.Pool).UpdateClientSecretCredential(ctx, oauth2pg.UpdateClientSecretCredentialParams{
-		CredentialID: credential.CredentialID, ClientID: credential.ClientID,
+		ID: credential.ID, ClientID: credential.ClientID,
 		ExpiresAt: timestamptzOrNil(credential.ExpiresAt), RevokedAt: timestamptzOrNil(credential.RevokedAt),
 	})
 }

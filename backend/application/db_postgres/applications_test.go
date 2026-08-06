@@ -234,10 +234,11 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := pgfixtures.TestClock()
+	iconID := pgfixtures.NewUUID(t)
 	icon := &domain.ApplicationIcon{
 		TenantID:      tenant.ID,
 		ApplicationID: app.ApplicationID,
-		ObjectKey:     "icon-1",
+		ID:            iconID,
 		ContentType:   "image/png",
 		SizeBytes:     4,
 		Data:          []byte{0x1, 0x2, 0x3, 0x4},
@@ -248,7 +249,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	got, err := store.Find(ctx, tenant.ID, app.ApplicationID, "icon-1")
+	got, err := store.Find(ctx, tenant.ID, app.ApplicationID, iconID)
 	if err != nil || got == nil {
 		t.Fatalf("find: %v %+v", err, got)
 	}
@@ -259,7 +260,7 @@ func TestApplicationIconStoreRoundTrip(t *testing.T) {
 	if err := store.DeleteByApplication(ctx, tenant.ID, app.ApplicationID); err != nil {
 		t.Fatalf("delete by application: %v", err)
 	}
-	got, err = store.Find(ctx, tenant.ID, app.ApplicationID, "icon-1")
+	got, err = store.Find(ctx, tenant.ID, app.ApplicationID, iconID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}
@@ -384,18 +385,18 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 
 	now := pgfixtures.TestClock()
 	category := &domain.ApplicationCategory{
-		TenantID:   tenant.ID,
-		CategoryID: pgfixtures.NewUUID(t),
-		Name:       "Productivity",
-		Position:   2,
-		CreatedAt:  now,
-		UpdatedAt:  now,
+		TenantID:  tenant.ID,
+		ID:        pgfixtures.NewUUID(t),
+		Name:      "Productivity",
+		Position:  2,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 	if err := repo.Save(ctx, category); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 
-	got, err := repo.FindByID(ctx, tenant.ID, category.CategoryID)
+	got, err := repo.FindByID(ctx, tenant.ID, category.ID)
 	if err != nil || got == nil || got.Name != "Productivity" || got.Position != 2 {
 		t.Fatalf("find by id: %v %+v", err, got)
 	}
@@ -405,10 +406,10 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("list by tenant: %v len=%d", err, len(list))
 	}
 
-	if err := repo.Delete(ctx, tenant.ID, category.CategoryID); err != nil {
+	if err := repo.Delete(ctx, tenant.ID, category.ID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	got, err = repo.FindByID(ctx, tenant.ID, category.CategoryID)
+	got, err = repo.FindByID(ctx, tenant.ID, category.ID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}

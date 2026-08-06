@@ -152,7 +152,7 @@ func UploadBrandingAsset(
 		}
 	}
 	asset := &domain.TenantBrandingAsset{
-		TenantID: tenantID, Kind: in.Kind, ObjectKey: objectKey,
+		TenantID: tenantID, Kind: in.Kind, ID: objectKey,
 		ContentType: contentType, SizeBytes: len(in.Data), Data: slices.Clone(in.Data),
 		CreatedAt: now, UpdatedAt: now,
 	}

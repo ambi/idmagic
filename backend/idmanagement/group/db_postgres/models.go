@@ -72,17 +72,17 @@ type ApplicationAssignment struct {
 }
 
 type ApplicationCategory struct {
-	TenantID   string
-	CategoryID string
-	Name       string
-	Position   int32
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	TenantID  string
+	ID        string
+	Name      string
+	Position  int32
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type ApplicationIcon struct {
+	ID            string
 	ApplicationID string
-	ObjectKey     string
 	ContentType   string
 	SizeBytes     int32
 	Data          []byte
@@ -245,8 +245,8 @@ type GroupMember struct {
 }
 
 type IdentityProviderConnection struct {
+	ID                      string
 	TenantID                string
-	ProviderID              string
 	DisplayName             string
 	Protocol                string
 	Status                  string
@@ -450,12 +450,12 @@ type Oauth2Client struct {
 }
 
 type Oauth2ClientSecret struct {
-	CredentialID string
-	ClientID     string
-	SecretHash   string
-	CreatedAt    time.Time
-	ExpiresAt    pgtype.Timestamptz
-	RevokedAt    pgtype.Timestamptz
+	ID         string
+	ClientID   string
+	SecretHash string
+	CreatedAt  time.Time
+	ExpiresAt  pgtype.Timestamptz
+	RevokedAt  pgtype.Timestamptz
 }
 
 type Oauth2DeviceCode struct {
@@ -689,9 +689,9 @@ type TenantBranding struct {
 }
 
 type TenantBrandingAsset struct {
+	ID          string
 	TenantID    string
 	Kind        string
-	ObjectKey   string
 	ContentType string
 	SizeBytes   int32
 	Data        []byte

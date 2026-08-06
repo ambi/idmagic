@@ -72,10 +72,10 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.PUT("/api/admin/applications/:application_id/categories", d.handleSetApplicationCategories)
 	g.GET("/api/admin/application-categories", d.handleListCategories)
 	g.POST("/api/admin/application-categories", d.handleCreateCategory)
-	g.PATCH("/api/admin/application-categories/:category_id", d.handleUpdateCategory)
-	g.DELETE("/api/admin/application-categories/:category_id", d.handleDeleteCategory)
+	g.PATCH("/api/admin/application-categories/:id", d.handleUpdateCategory)
+	g.DELETE("/api/admin/application-categories/:id", d.handleDeleteCategory)
 	g.GET("/api/account/applications", d.handleListMyApplications)
 	g.GET("/api/account/applications/order", d.handleGetMyApplicationOrder)
 	g.PUT("/api/account/applications/order", d.handleReorderMyApplications)
-	g.GET("/application-icons/:application_id/:object_key", d.handleGetApplicationIcon)
+	g.GET("/application-icons/:application_id/:id", d.handleGetApplicationIcon)
 }

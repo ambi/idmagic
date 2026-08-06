@@ -218,7 +218,7 @@ func UploadApplicationIcon(ctx context.Context, deps ApplicationDeps, in UploadA
 		}
 	}
 	icon := &domain.ApplicationIcon{
-		TenantID: tenantID, ApplicationID: app.ApplicationID, ObjectKey: objectKey,
+		TenantID: tenantID, ApplicationID: app.ApplicationID, ID: objectKey,
 		ContentType: contentType, SizeBytes: len(in.Data), Data: slices.Clone(in.Data), CreatedAt: now, UpdatedAt: now,
 	}
 	if err := deps.IconStore.Save(ctx, icon); err != nil {

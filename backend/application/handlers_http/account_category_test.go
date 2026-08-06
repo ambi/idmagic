@@ -17,13 +17,13 @@ func createCategory(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie
 	}
 	var created struct {
 		Category struct {
-			CategoryID string `json:"category_id"`
+			ID string `json:"id"`
 		} `json:"category"`
 	}
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	return created.Category.CategoryID
+	return created.Category.ID
 }
 
 func TestApplicationCategoryCRUDAndPortalGrouping(t *testing.T) {
@@ -55,8 +55,8 @@ func TestApplicationCategoryCRUDAndPortalGrouping(t *testing.T) {
 			CategoryIDs   []string `json:"category_ids"`
 		} `json:"applications"`
 		Categories []struct {
-			CategoryID string `json:"category_id"`
-			Name       string `json:"name"`
+			ID   string `json:"id"`
+			Name string `json:"name"`
 		} `json:"categories"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &portal); err != nil {

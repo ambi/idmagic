@@ -139,16 +139,16 @@ func (q *Queries) DeleteFederatedIdentity(ctx context.Context, arg DeleteFederat
 }
 
 const deleteIdentityProviderConnection = `-- name: DeleteIdentityProviderConnection :exec
-DELETE FROM identity_provider_connections WHERE tenant_id=$1 AND provider_id=$2
+DELETE FROM identity_provider_connections WHERE tenant_id=$1 AND id=$2
 `
 
 type DeleteIdentityProviderConnectionParams struct {
-	TenantID   string
-	ProviderID string
+	TenantID string
+	ID       string
 }
 
 func (q *Queries) DeleteIdentityProviderConnection(ctx context.Context, arg DeleteIdentityProviderConnectionParams) error {
-	_, err := q.db.Exec(ctx, deleteIdentityProviderConnection, arg.TenantID, arg.ProviderID)
+	_, err := q.db.Exec(ctx, deleteIdentityProviderConnection, arg.TenantID, arg.ID)
 	return err
 }
 
@@ -203,24 +203,24 @@ func (q *Queries) FindFederatedIdentityByUserProvider(ctx context.Context, arg F
 }
 
 const findIdentityProviderConnection = `-- name: FindIdentityProviderConnection :one
-SELECT tenant_id, provider_id, display_name, protocol, status, issuer,
+SELECT tenant_id, id, display_name, protocol, status, issuer,
 COALESCE(client_id,'') AS client_id, COALESCE(secret_reference,'') AS secret_reference,
 secret_key_version, secret_ciphertext,
 COALESCE(authorization_endpoint,'') AS authorization_endpoint,
 COALESCE(token_endpoint,'') AS token_endpoint, COALESCE(jwks_uri,'') AS jwks_uri, COALESCE(saml_sso_url,'') AS saml_sso_url,
 COALESCE(saml_entity_id,'') AS saml_entity_id, saml_signing_certificates, claim_mapping, linking_policy,
 jit_provisioning, allowed_email_domains, metadata_refreshed_at, created_at, updated_at
-FROM identity_provider_connections WHERE tenant_id=$1 AND provider_id=$2
+FROM identity_provider_connections WHERE tenant_id=$1 AND id=$2
 `
 
 type FindIdentityProviderConnectionParams struct {
-	TenantID   string
-	ProviderID string
+	TenantID string
+	ID       string
 }
 
 type FindIdentityProviderConnectionRow struct {
 	TenantID                string
-	ProviderID              string
+	ID                      string
 	DisplayName             string
 	Protocol                string
 	Status                  string
@@ -245,11 +245,11 @@ type FindIdentityProviderConnectionRow struct {
 }
 
 func (q *Queries) FindIdentityProviderConnection(ctx context.Context, arg FindIdentityProviderConnectionParams) (*FindIdentityProviderConnectionRow, error) {
-	row := q.db.QueryRow(ctx, findIdentityProviderConnection, arg.TenantID, arg.ProviderID)
+	row := q.db.QueryRow(ctx, findIdentityProviderConnection, arg.TenantID, arg.ID)
 	var i FindIdentityProviderConnectionRow
 	err := row.Scan(
 		&i.TenantID,
-		&i.ProviderID,
+		&i.ID,
 		&i.DisplayName,
 		&i.Protocol,
 		&i.Status,
@@ -330,19 +330,19 @@ func (q *Queries) ListFederatedIdentitiesByUser(ctx context.Context, arg ListFed
 }
 
 const listIdentityProviderConnections = `-- name: ListIdentityProviderConnections :many
-SELECT tenant_id, provider_id, display_name, protocol, status, issuer,
+SELECT tenant_id, id, display_name, protocol, status, issuer,
 COALESCE(client_id,'') AS client_id, COALESCE(secret_reference,'') AS secret_reference,
 secret_key_version, secret_ciphertext,
 COALESCE(authorization_endpoint,'') AS authorization_endpoint,
 COALESCE(token_endpoint,'') AS token_endpoint, COALESCE(jwks_uri,'') AS jwks_uri, COALESCE(saml_sso_url,'') AS saml_sso_url,
 COALESCE(saml_entity_id,'') AS saml_entity_id, saml_signing_certificates, claim_mapping, linking_policy,
 jit_provisioning, allowed_email_domains, metadata_refreshed_at, created_at, updated_at
-FROM identity_provider_connections WHERE tenant_id=$1 ORDER BY display_name, provider_id
+FROM identity_provider_connections WHERE tenant_id=$1 ORDER BY display_name, id
 `
 
 type ListIdentityProviderConnectionsRow struct {
 	TenantID                string
-	ProviderID              string
+	ID                      string
 	DisplayName             string
 	Protocol                string
 	Status                  string
@@ -377,7 +377,7 @@ func (q *Queries) ListIdentityProviderConnections(ctx context.Context, tenantID 
 		var i ListIdentityProviderConnectionsRow
 		if err := rows.Scan(
 			&i.TenantID,
-			&i.ProviderID,
+			&i.ID,
 			&i.DisplayName,
 			&i.Protocol,
 			&i.Status,
@@ -411,12 +411,12 @@ func (q *Queries) ListIdentityProviderConnections(ctx context.Context, tenantID 
 }
 
 const listIdentityProviderConnectionsPendingSecretReencryption = `-- name: ListIdentityProviderConnectionsPendingSecretReencryption :many
-SELECT tenant_id, provider_id, secret_reference, secret_key_version, secret_ciphertext
+SELECT tenant_id, id, secret_reference, secret_key_version, secret_ciphertext
 FROM identity_provider_connections
 WHERE tenant_id = $1
   AND (secret_reference IS NOT NULL OR secret_ciphertext IS NOT NULL)
   AND (secret_key_version IS NULL OR secret_key_version <> $2)
-ORDER BY provider_id
+ORDER BY id
 LIMIT $3
 `
 
@@ -428,7 +428,7 @@ type ListIdentityProviderConnectionsPendingSecretReencryptionParams struct {
 
 type ListIdentityProviderConnectionsPendingSecretReencryptionRow struct {
 	TenantID         string
-	ProviderID       string
+	ID               string
 	SecretReference  pgtype.Text
 	SecretKeyVersion pgtype.Int4
 	SecretCiphertext []byte
@@ -448,7 +448,7 @@ func (q *Queries) ListIdentityProviderConnectionsPendingSecretReencryption(ctx c
 		var i ListIdentityProviderConnectionsPendingSecretReencryptionRow
 		if err := rows.Scan(
 			&i.TenantID,
-			&i.ProviderID,
+			&i.ID,
 			&i.SecretReference,
 			&i.SecretKeyVersion,
 			&i.SecretCiphertext,
@@ -525,7 +525,7 @@ func (q *Queries) SaveFederatedLoginAttempt(ctx context.Context, arg SaveFederat
 
 const saveIdentityProviderConnection = `-- name: SaveIdentityProviderConnection :exec
 INSERT INTO identity_provider_connections (
-  tenant_id, provider_id, display_name, protocol, status, issuer, client_id, secret_reference,
+  tenant_id, id, display_name, protocol, status, issuer, client_id, secret_reference,
   secret_key_version, secret_ciphertext,
   authorization_endpoint, token_endpoint, jwks_uri, saml_sso_url, saml_entity_id,
   saml_signing_certificates, claim_mapping, linking_policy, jit_provisioning,
@@ -533,7 +533,7 @@ INSERT INTO identity_provider_connections (
 ) VALUES ($1,$2,$3,$4,$5,$6,NULLIF($7::text,''),NULLIF($8::text,''),$9,$10,NULLIF($11::text,''),
   NULLIF($12::text,''),NULLIF($13::text,''),NULLIF($14::text,''),NULLIF($15::text,''),
   $16,$17,$18,$19,$20,$21,$22,$23)
-ON CONFLICT (tenant_id, provider_id) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   display_name=EXCLUDED.display_name, protocol=EXCLUDED.protocol, status=EXCLUDED.status,
   issuer=EXCLUDED.issuer, client_id=EXCLUDED.client_id,
   secret_reference=EXCLUDED.secret_reference,
@@ -549,7 +549,7 @@ ON CONFLICT (tenant_id, provider_id) DO UPDATE SET
 
 type SaveIdentityProviderConnectionParams struct {
 	TenantID                string
-	ProviderID              string
+	ID                      string
 	DisplayName             string
 	Protocol                string
 	Status                  string
@@ -580,7 +580,7 @@ type SaveIdentityProviderConnectionParams struct {
 func (q *Queries) SaveIdentityProviderConnection(ctx context.Context, arg SaveIdentityProviderConnectionParams) error {
 	_, err := q.db.Exec(ctx, saveIdentityProviderConnection,
 		arg.TenantID,
-		arg.ProviderID,
+		arg.ID,
 		arg.DisplayName,
 		arg.Protocol,
 		arg.Status,
@@ -609,12 +609,12 @@ func (q *Queries) SaveIdentityProviderConnection(ctx context.Context, arg SaveId
 const updateIdentityProviderConnectionSecretCiphertext = `-- name: UpdateIdentityProviderConnectionSecretCiphertext :exec
 UPDATE identity_provider_connections
 SET secret_reference = NULL, secret_key_version = $3, secret_ciphertext = $4, updated_at = now()
-WHERE tenant_id = $1 AND provider_id = $2
+WHERE tenant_id = $1 AND id = $2
 `
 
 type UpdateIdentityProviderConnectionSecretCiphertextParams struct {
 	TenantID         string
-	ProviderID       string
+	ID               string
 	SecretKeyVersion pgtype.Int4
 	SecretCiphertext []byte
 }
@@ -624,7 +624,7 @@ type UpdateIdentityProviderConnectionSecretCiphertextParams struct {
 func (q *Queries) UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) error {
 	_, err := q.db.Exec(ctx, updateIdentityProviderConnectionSecretCiphertext,
 		arg.TenantID,
-		arg.ProviderID,
+		arg.ID,
 		arg.SecretKeyVersion,
 		arg.SecretCiphertext,
 	)

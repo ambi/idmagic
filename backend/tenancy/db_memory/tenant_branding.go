@@ -68,7 +68,7 @@ func cloneBrandingAsset(asset *domain.TenantBrandingAsset) *domain.TenantBrandin
 func (s *TenantBrandingAssetStore) Save(_ context.Context, asset *domain.TenantBrandingAsset) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	key := brandingAssetKey(asset.TenantID, asset.Kind, asset.ObjectKey)
+	key := brandingAssetKey(asset.TenantID, asset.Kind, asset.ID)
 	cloned := cloneBrandingAsset(asset)
 	if existing := s.assets[key]; existing != nil && !existing.CreatedAt.IsZero() {
 		cloned.CreatedAt = existing.CreatedAt

@@ -1575,7 +1575,7 @@ interfaces:
     input:
       kind:
         type: TenantBrandingAssetKind
-      object_key:
+      id:
         type: String
     output:
       file:
@@ -1590,7 +1590,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/tenant-branding-assets/{kind}/{object_key}"
+        path: "/tenant-branding-assets/{kind}/{id}"
 authorization:
   resources:
     TenantDirectory:
@@ -1670,7 +1670,7 @@ scenarios:
       - login / consent / account portal に設定したロゴが表示され、login 画面にはプライマリカラーのシステム既定・設定済みアクセントカラー・指定ラベルの footer リンク・フッターテキストも表示される
     extensions:
       - at: 2
-        condition: 別テナントの object_key で同じ kind のアセット取得を試みる
+        condition: 別テナントの id で同じ kind のアセット取得を試みる
         steps:
           - アセットは存在しないものとして扱われ InvalidRequestError で拒否される
       - at: 8

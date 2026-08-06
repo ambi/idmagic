@@ -62,7 +62,7 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 		if err != nil {
 			return nil, err
 		}
-		legacy := domain.ClientSecretCredential{CredentialID: id, ClientID: client.ClientID, SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt}
+		legacy := domain.ClientSecretCredential{ID: id, ClientID: client.ClientID, SecretHash: *client.ClientSecretHash, CreatedAt: client.CreatedAt}
 		credentials = append(credentials, legacy)
 		legacyBackfill = true
 	}
@@ -95,7 +95,7 @@ func RotateClientSecret(ctx context.Context, deps AdminOAuth2ClientDeps, in Rota
 	if err != nil {
 		return nil, err
 	}
-	credential := domain.ClientSecretCredential{CredentialID: id, ClientID: client.ClientID, SecretHash: domain.HashClientSecret(secret), CreatedAt: now}
+	credential := domain.ClientSecretCredential{ID: id, ClientID: client.ClientID, SecretHash: domain.HashClientSecret(secret), CreatedAt: now}
 	var legacy *domain.ClientSecretCredential
 	if legacyBackfill {
 		legacy = &credentials[0]

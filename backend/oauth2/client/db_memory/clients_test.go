@@ -125,7 +125,7 @@ func TestIssueClientSecretCredentialEnforcesActiveLimitAtomically(t *testing.T) 
 	repo := NewClientRepository()
 	now := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
 	legacy := domain.ClientSecretCredential{
-		CredentialID: "legacy", ClientID: "client", SecretHash: "legacy-hash", CreatedAt: now.Add(-time.Hour),
+		ID: "legacy", ClientID: "client", SecretHash: "legacy-hash", CreatedAt: now.Add(-time.Hour),
 	}
 	if err := repo.SaveClientSecretCredential(ctx, legacy); err != nil {
 		t.Fatal(err)
@@ -140,7 +140,7 @@ func TestIssueClientSecretCredentialEnforcesActiveLimitAtomically(t *testing.T) 
 			ready.Done()
 			<-start
 			errs <- repo.IssueClientSecretCredential(ctx, nil, domain.ClientSecretCredential{
-				CredentialID: credentialID, ClientID: "client", SecretHash: credentialID, CreatedAt: now,
+				ID: credentialID, ClientID: "client", SecretHash: credentialID, CreatedAt: now,
 			}, 2, now)
 		}(id)
 	}

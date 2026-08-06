@@ -74,15 +74,15 @@ type TenantBrandingAssetStore struct{ Pool sharedpg.DB }
 
 func (s *TenantBrandingAssetStore) Save(ctx context.Context, asset *domain.TenantBrandingAsset) error {
 	return New(s.Pool).UpsertTenantBrandingAsset(ctx, UpsertTenantBrandingAssetParams{
-		TenantID: asset.TenantID, Kind: string(asset.Kind), ObjectKey: asset.ObjectKey,
+		TenantID: asset.TenantID, Kind: string(asset.Kind), ID: asset.ID,
 		ContentType: asset.ContentType, SizeBytes: int32(asset.SizeBytes), //nolint:gosec // G115: asset size is bounded by upload limits, well under int32 max
 		Data: asset.Data, CreatedAt: asset.CreatedAt, UpdatedAt: asset.UpdatedAt,
 	})
 }
 
-func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, kind domain.TenantBrandingAssetKind, objectKey string) (*domain.TenantBrandingAsset, error) {
+func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, kind domain.TenantBrandingAssetKind, id string) (*domain.TenantBrandingAsset, error) {
 	row, err := New(s.Pool).GetTenantBrandingAsset(ctx, GetTenantBrandingAssetParams{
-		TenantID: tenantID, Kind: string(kind), ObjectKey: objectKey,
+		TenantID: tenantID, Kind: string(kind), ID: id,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
@@ -91,7 +91,7 @@ func (s *TenantBrandingAssetStore) Find(ctx context.Context, tenantID string, ki
 		return nil, err
 	}
 	return &domain.TenantBrandingAsset{
-		TenantID: row.TenantID, Kind: domain.TenantBrandingAssetKind(row.Kind), ObjectKey: row.ObjectKey,
+		TenantID: row.TenantID, Kind: domain.TenantBrandingAssetKind(row.Kind), ID: row.ID,
 		ContentType: row.ContentType, SizeBytes: int(row.SizeBytes), Data: row.Data,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil

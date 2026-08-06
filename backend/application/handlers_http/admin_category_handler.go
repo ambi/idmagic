@@ -14,11 +14,11 @@ import (
 )
 
 type categoryResponse struct {
-	CategoryID string    `json:"category_id"`
-	Name       string    `json:"name"`
-	Position   int       `json:"position"`
-	CreatedAt  time.Time `json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Position  int       `json:"position"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type categoryRequest struct {
@@ -83,7 +83,7 @@ func (d Deps) handleUpdateCategory(c *echo.Context) error {
 		name = nil
 	}
 	category, err := appusecases.UpdateCategory(c.Request().Context(), d.categoryDeps(), appusecases.UpdateCategoryInput{
-		ActorUserID: actor.ID, CategoryID: c.Param("category_id"), Name: name, Position: req.Position, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, CategoryID: c.Param("id"), Name: name, Position: req.Position, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return d.writeCategoryError(c, err)
@@ -100,7 +100,7 @@ func (d Deps) handleDeleteCategory(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if err := appusecases.DeleteCategory(
-		c.Request().Context(), d.categoryDeps(), actor.ID, c.Param("category_id"), time.Now().UTC(),
+		c.Request().Context(), d.categoryDeps(), actor.ID, c.Param("id"), time.Now().UTC(),
 	); err != nil {
 		return d.writeCategoryError(c, err)
 	}
@@ -150,7 +150,7 @@ func (d Deps) writeCategoryError(c *echo.Context, err error) error {
 
 func toCategoryResponse(category *domain.ApplicationCategory) categoryResponse {
 	return categoryResponse{
-		CategoryID: category.CategoryID, Name: category.Name, Position: category.Position,
+		ID: category.ID, Name: category.Name, Position: category.Position,
 		CreatedAt: category.CreatedAt, UpdatedAt: category.UpdatedAt,
 	}
 }

@@ -85,7 +85,7 @@ func TestUpdateCategory(t *testing.T) {
 	newName := "Work Updated"
 	pos := 5
 	updated, err := appusecases.UpdateCategory(ctx, deps, appusecases.UpdateCategoryInput{
-		ActorUserID: "admin", CategoryID: cat.CategoryID, Name: &newName, Position: &pos,
+		ActorUserID: "admin", CategoryID: cat.ID, Name: &newName, Position: &pos,
 	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
@@ -96,7 +96,7 @@ func TestUpdateCategory(t *testing.T) {
 
 	// 名前の変更なし
 	updated2, err := appusecases.UpdateCategory(ctx, deps, appusecases.UpdateCategoryInput{
-		ActorUserID: "admin", CategoryID: cat.CategoryID, Name: nil, Position: nil,
+		ActorUserID: "admin", CategoryID: cat.ID, Name: nil, Position: nil,
 	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
@@ -115,7 +115,7 @@ func TestUpdateCategory(t *testing.T) {
 	// カテゴリ名を空にする
 	emptyName := "  "
 	if _, err := appusecases.UpdateCategory(ctx, deps, appusecases.UpdateCategoryInput{
-		ActorUserID: "admin", CategoryID: cat.CategoryID, Name: &emptyName,
+		ActorUserID: "admin", CategoryID: cat.ID, Name: &emptyName,
 	}); !errors.Is(err, appusecases.ErrCategoryNameRequired) {
 		t.Fatalf("expected ErrCategoryNameRequired, got %v", err)
 	}
@@ -138,12 +138,12 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 
 	// 重複を含めても 1 件に正規化される。
 	updated, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.CategoryID, work.CategoryID},
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.ID, work.ID},
 	})
 	if err != nil {
 		t.Fatalf("set categories: %v", err)
 	}
-	if len(updated.CategoryIDs) != 1 || updated.CategoryIDs[0] != work.CategoryID {
+	if len(updated.CategoryIDs) != 1 || updated.CategoryIDs[0] != work.ID {
 		t.Fatalf("category_ids should dedup to one: %v", updated.CategoryIDs)
 	}
 
@@ -156,7 +156,7 @@ func TestSetApplicationCategoriesValidatesAndDedups(t *testing.T) {
 
 	// 存在しないアプリ
 	if _, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorUserID: "admin", ApplicationID: "ghost", CategoryIDs: []string{work.CategoryID},
+		ActorUserID: "admin", ApplicationID: "ghost", CategoryIDs: []string{work.ID},
 	}); !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
 	}
@@ -177,12 +177,12 @@ func TestDeleteCategoryScrubsFromApplications(t *testing.T) {
 		t.Fatalf("create app: %v", err)
 	}
 	if _, err := appusecases.SetApplicationCategories(ctx, deps, appusecases.SetApplicationCategoriesInput{
-		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.CategoryID},
+		ActorUserID: "admin", ApplicationID: app.ApplicationID, CategoryIDs: []string{work.ID},
 	}); err != nil {
 		t.Fatalf("set categories: %v", err)
 	}
 
-	if err := appusecases.DeleteCategory(ctx, deps, "admin", work.CategoryID, time.Time{}); err != nil {
+	if err := appusecases.DeleteCategory(ctx, deps, "admin", work.ID, time.Time{}); err != nil {
 		t.Fatalf("delete category: %v", err)
 	}
 	got, err := appDeps.Repo.FindByID(ctx, "acme", app.ApplicationID)

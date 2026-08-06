@@ -67,10 +67,11 @@ func TestTenantBrandingAssetStoreRoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	now := time.Now().UTC().Truncate(time.Second)
+	assetID := "33333333-3333-3333-3333-333333333333"
 	asset := &domain.TenantBrandingAsset{
 		TenantID:    tenant.ID,
 		Kind:        domain.TenantBrandingAssetKindLogo,
-		ObjectKey:   "logo-1",
+		ID:          assetID,
 		ContentType: "image/png",
 		SizeBytes:   4,
 		Data:        []byte{0x1, 0x2, 0x3, 0x4},
@@ -81,7 +82,7 @@ func TestTenantBrandingAssetStoreRoundTrip(t *testing.T) {
 		t.Fatalf("save: %v", err)
 	}
 
-	got, err := store.Find(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo, "logo-1")
+	got, err := store.Find(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo, assetID)
 	if err != nil || got == nil {
 		t.Fatalf("find: %v %+v", err, got)
 	}
@@ -92,7 +93,7 @@ func TestTenantBrandingAssetStoreRoundTrip(t *testing.T) {
 	if err := store.DeleteByTenant(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo); err != nil {
 		t.Fatalf("delete by tenant: %v", err)
 	}
-	got, err = store.Find(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo, "logo-1")
+	got, err = store.Find(ctx, tenant.ID, domain.TenantBrandingAssetKindLogo, assetID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
 	}

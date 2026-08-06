@@ -86,7 +86,7 @@ func (d Deps) handleGetBrandingAsset(c *echo.Context) error {
 	if !kind.Valid() {
 		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The image does not exist.")
 	}
-	asset, err := d.BrandingAssetStore.Find(c.Request().Context(), support.RequestTenantID(c), kind, c.Param("object_key"))
+	asset, err := d.BrandingAssetStore.Find(c.Request().Context(), support.RequestTenantID(c), kind, c.Param("id"))
 	if err != nil {
 		return err
 	}
