@@ -29,31 +29,31 @@ func sanitizeAdminCopy(text string) string {
 // tombstone 等) を含むため、管理 UI には用語集を引いた user-facing コピーを返す。
 // 未登録の名前は SCL 由来の説明を ADR 除去のうえフォールバックする。
 var roleDescriptionCopy = map[string]string{
-	"admin":        "所属テナント内のユーザー・アプリケーション・グループ・設定を管理できる管理者ロールです。テナントをまたぐ操作はできません。",
-	"system_admin": "システム全体の管理者ロールです。テナントの作成・無効化など、テナントをまたぐ操作を行えます。",
+	"admin":        "An administrator role that can manage users, applications, groups, and settings within its own tenant. Cannot perform cross-tenant operations.",
+	"system_admin": "A system-wide administrator role. Can perform cross-tenant operations such as creating or disabling tenants.",
 }
 
 var permissionDescriptionCopy = map[string]string{
-	"AdminUserRead":            "ユーザーの一覧と詳細を閲覧します。",
-	"AdminUserCreate":          "ユーザーを新規作成します。",
-	"AdminUserImport":          "CSV を使ってユーザーを検証・一括登録します。",
-	"AdminUserUpdate":          "ユーザーのプロフィール・ロール・有効状態を更新します。",
-	"AdminUserDelete":          "ユーザーを削除予約します。復元可能期間内なら元に戻せます。",
-	"AdminUserRestore":         "削除予約中のユーザーを復元します。",
-	"AdminUserPurge":           "ユーザーを完全に削除し、個人情報を匿名化します。元に戻せません。",
-	"AdminOAuth2ClientsManage": "OAuth2/OIDC クライアントを登録・更新・削除します。",
-	"AdminConsentsManage":      "ユーザーが OAuth2/OIDC クライアントに与えた同意を閲覧・取り消します。",
-	"AdminTenantsManage":       "テナントの作成・更新・無効化・有効化を行います。",
-	"AdminSettingsRead":        "テナントの設定を閲覧します。",
-	"AdminSettingsUpdate":      "テナントの設定を更新します。",
-	"AdminAuditEventsRead":     "監査ログを閲覧します。",
-	"AdminKeysRead":            "署名鍵を閲覧します。",
-	"TenantKeysRotate":         "自テナントの署名鍵を更新（ローテーション）します。",
-	"TenantKeysDisable":        "自テナントの署名鍵を緊急無効化します。",
-	"SystemKeyHealthRead":      "テナント横断で署名鍵ヘルスを閲覧します。",
-	"AdminGroupsRead":          "グループの一覧と詳細を閲覧します。",
-	"AdminGroupsWrite":         "グループの作成・更新・削除とメンバー管理を行います。",
-	"AdminAgentsManage":        "AI エージェント (非人間 identity) の登録・更新・無効化・kill・削除と資格情報束縛を行います。",
+	"AdminUserRead":            "View the user list and user details.",
+	"AdminUserCreate":          "Create a new user.",
+	"AdminUserImport":          "Validate and bulk-register users via CSV.",
+	"AdminUserUpdate":          "Update a user's profile, roles, and enabled status.",
+	"AdminUserDelete":          "Schedule a user for deletion. Can be restored within the recovery window.",
+	"AdminUserRestore":         "Restore a user scheduled for deletion.",
+	"AdminUserPurge":           "Permanently delete a user and anonymize their personal information. Cannot be undone.",
+	"AdminOAuth2ClientsManage": "Register, update, and delete OAuth2/OIDC clients.",
+	"AdminConsentsManage":      "View and revoke consents users have granted to OAuth2/OIDC clients.",
+	"AdminTenantsManage":       "Create, update, disable, and enable tenants.",
+	"AdminSettingsRead":        "View tenant settings.",
+	"AdminSettingsUpdate":      "Update tenant settings.",
+	"AdminAuditEventsRead":     "View audit logs.",
+	"AdminKeysRead":            "View signing keys.",
+	"TenantKeysRotate":         "Rotate the signing key for your own tenant.",
+	"TenantKeysDisable":        "Emergency-disable the signing key for your own tenant.",
+	"SystemKeyHealthRead":      "View signing key health across tenants.",
+	"AdminGroupsRead":          "View the group list and group details.",
+	"AdminGroupsWrite":         "Create, update, and delete groups, and manage their members.",
+	"AdminAgentsManage":        "Register, update, disable, kill, and delete AI agents (non-human identities), and bind their credentials.",
 }
 
 func roleDescription(name, raw string) string {
