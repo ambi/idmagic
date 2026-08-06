@@ -21,7 +21,7 @@ func UserCoreSchema() Schema {
 			},
 			{
 				Name: "emails", Type: "complex", MultiValued: true, Mutability: "readWrite", Returned: "default",
-				Description: "最初の要素の value だけを永続化する (RFC7643-CORE-RESOURCES adoption:partial)。",
+				Description: "Only the value of the first element is persisted (RFC7643-CORE-RESOURCES adoption:partial).",
 				SubAttributes: []SchemaAttribute{
 					{Name: "value", Type: "string", Mutability: "readWrite", Returned: "default"},
 					{Name: "primary", Type: "boolean", Mutability: "readWrite", Returned: "default"},
@@ -45,7 +45,7 @@ func GroupCoreSchema() Schema {
 			{Name: "displayName", Type: "string", Required: true, Mutability: "readWrite", Returned: "default", Uniqueness: "server"},
 			{
 				Name: "members", Type: "complex", MultiValued: true, Mutability: "readWrite", Returned: "default",
-				Description: "User member のみ対応する。type=Group の nested group member は未対応 (RFC7643-CORE-RESOURCES adoption:partial)。",
+				Description: "Only User members are supported. Nested group members (type=Group) are not supported (RFC7643-CORE-RESOURCES adoption:partial).",
 				SubAttributes: []SchemaAttribute{
 					{Name: "value", Type: "string", Mutability: "immutable", Returned: "default"},
 					{Name: "display", Type: "string", Mutability: "readOnly", Returned: "default"},
