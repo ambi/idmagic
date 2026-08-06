@@ -114,50 +114,6 @@ CREATE TABLE tenant_branding_assets (
 CREATE INDEX tenant_branding_assets_tenant_kind_idx
     ON tenant_branding_assets (tenant_id, kind);
 
-CREATE TABLE oauth2_clients (
-    tenant_id UUID NOT NULL,
-    client_id UUID PRIMARY KEY,
-    application_id UUID UNIQUE,
-    application_protocol_type TEXT NOT NULL DEFAULT 'oidc'
-        CHECK (application_protocol_type = 'oidc'),
-    client_secret_hash TEXT,
-    client_name TEXT,
-    client_type TEXT NOT NULL CHECK (client_type IN ('public', 'confidential')),
-    redirect_uris JSONB NOT NULL,
-    grant_types JSONB NOT NULL,
-    response_types JSONB NOT NULL DEFAULT '[]'::jsonb,
-    token_endpoint_auth_method TEXT NOT NULL,
-    scope TEXT NOT NULL,
-    jwks_uri TEXT,
-    jwks JSONB,
-    tls_client_auth_subject_dn TEXT,
-    id_token_signed_response_alg TEXT NOT NULL DEFAULT 'PS256',
-    require_pushed_authorization_requests BOOLEAN NOT NULL DEFAULT FALSE,
-    dpop_bound_access_tokens BOOLEAN NOT NULL DEFAULT FALSE,
-    fapi_profile TEXT NOT NULL DEFAULT 'none',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    first_party BOOLEAN NOT NULL DEFAULT FALSE,
-    claim_policy JSONB,
-    CONSTRAINT oauth2_clients_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
-);
-
-CREATE TABLE oauth2_client_secrets (
-    id UUID PRIMARY KEY,
-    client_id UUID NOT NULL,
-    secret_hash TEXT NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL,
-    expires_at TIMESTAMPTZ,
-    revoked_at TIMESTAMPTZ,
-    CONSTRAINT oauth2_client_secrets_client_id_fkey
-        FOREIGN KEY (client_id) REFERENCES oauth2_clients(client_id) ON DELETE CASCADE,
-    CONSTRAINT oauth2_client_secrets_expiry_after_creation
-        CHECK (expires_at IS NULL OR expires_at > created_at)
-);
-
-CREATE INDEX oauth2_client_secrets_client_id_idx ON oauth2_client_secrets (client_id);
-
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -247,58 +203,6 @@ CREATE TABLE recovery_codes (
     CONSTRAINT recovery_codes_user_id_fkey
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
-CREATE TABLE consents (
-    user_id UUID NOT NULL,
-    client_id UUID NOT NULL,
-    scopes JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    revoked_at TIMESTAMPTZ,
-    PRIMARY KEY (user_id, client_id),
-    CONSTRAINT consents_client_fkey
-        FOREIGN KEY (client_id)
-        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT,
-    CONSTRAINT consents_user_fkey
-        FOREIGN KEY (user_id)
-        REFERENCES users(id) ON DELETE RESTRICT
-);
-
-CREATE TABLE refresh_tokens (
-    id UUID PRIMARY KEY,
-    hash TEXT NOT NULL,
-    family_id UUID NOT NULL,
-    parent_id UUID,
-    client_id UUID NOT NULL,
-    user_id UUID NOT NULL,
-    scopes JSONB NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    expires_at TIMESTAMPTZ NOT NULL,
-    absolute_expires_at TIMESTAMPTZ NOT NULL,
-    revoked BOOLEAN NOT NULL DEFAULT FALSE,
-    rotated BOOLEAN NOT NULL DEFAULT FALSE,
-    sender_constraint JSONB,
-    sid UUID,
-    resource TEXT,
-    CONSTRAINT refresh_tokens_hash_key UNIQUE (hash),
-    CONSTRAINT refresh_tokens_parent_id_fkey
-        FOREIGN KEY (parent_id) REFERENCES refresh_tokens(id) ON DELETE NO ACTION,
-    CONSTRAINT refresh_tokens_client_fkey
-        FOREIGN KEY (client_id)
-        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT,
-    CONSTRAINT refresh_tokens_user_fkey
-        FOREIGN KEY (user_id)
-        REFERENCES users(id) ON DELETE RESTRICT
-);
-
-CREATE INDEX refresh_tokens_family_id_idx ON refresh_tokens (family_id);
-CREATE INDEX refresh_tokens_user_id_idx ON refresh_tokens (user_id);
-CREATE INDEX refresh_tokens_client_id_idx ON refresh_tokens (client_id);
-CREATE INDEX refresh_tokens_sid_idx ON refresh_tokens (sid) WHERE sid IS NOT NULL;
 
 CREATE TABLE signing_keys (
     kid TEXT PRIMARY KEY,
@@ -403,7 +307,6 @@ CREATE TABLE authentication_sessions (
 CREATE INDEX authentication_sessions_active_user_idx
     ON authentication_sessions (tenant_id, user_id, auth_time DESC, id DESC)
     WHERE revoked_at IS NULL;
-
 CREATE INDEX authentication_sessions_expires_at_idx ON authentication_sessions (expires_at);
 
 CREATE TABLE identity_provider_connections (
@@ -622,22 +525,6 @@ CREATE TABLE agents (
     CONSTRAINT agents_tenant_name_key UNIQUE (tenant_id, name)
 );
 
-CREATE TABLE agent_credential_bindings (
-    agent_id UUID NOT NULL,
-    client_id UUID NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (agent_id, client_id),
-    CONSTRAINT agent_credential_bindings_client_id_key UNIQUE (client_id),
-    CONSTRAINT agent_credential_bindings_agent_id_fkey
-        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
-    CONSTRAINT agent_credential_bindings_client_fkey
-        FOREIGN KEY (client_id)
-        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT
-);
-
-CREATE INDEX agent_credential_bindings_client_idx
-    ON agent_credential_bindings (client_id);
-
 CREATE TABLE authorization_detail_types (
     tenant_id UUID NOT NULL,
     type TEXT NOT NULL,
@@ -692,6 +579,124 @@ CREATE TABLE applications (
     CONSTRAINT applications_protocol_identity_unique
         UNIQUE (id, tenant_id, protocol_type)
 );
+
+CREATE TABLE oauth2_clients (
+    tenant_id UUID NOT NULL,
+    client_id UUID PRIMARY KEY,
+    application_id UUID UNIQUE,
+    application_protocol_type TEXT NOT NULL DEFAULT 'oidc'
+        CHECK (application_protocol_type = 'oidc'),
+    client_secret_hash TEXT,
+    client_name TEXT,
+    client_type TEXT NOT NULL CHECK (client_type IN ('public', 'confidential')),
+    redirect_uris JSONB NOT NULL,
+    grant_types JSONB NOT NULL,
+    response_types JSONB NOT NULL DEFAULT '[]'::jsonb,
+    token_endpoint_auth_method TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    jwks_uri TEXT,
+    jwks JSONB,
+    tls_client_auth_subject_dn TEXT,
+    id_token_signed_response_alg TEXT NOT NULL DEFAULT 'PS256',
+    require_pushed_authorization_requests BOOLEAN NOT NULL DEFAULT FALSE,
+    dpop_bound_access_tokens BOOLEAN NOT NULL DEFAULT FALSE,
+    fapi_profile TEXT NOT NULL DEFAULT 'none',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    first_party BOOLEAN NOT NULL DEFAULT FALSE,
+    claim_policy JSONB,
+    CONSTRAINT oauth2_clients_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT oauth2_clients_application_fkey
+        FOREIGN KEY (application_id, tenant_id, application_protocol_type)
+        REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE
+);
+
+CREATE INDEX oauth2_clients_application_id_idx
+    ON oauth2_clients (application_id) WHERE application_id IS NOT NULL;
+
+CREATE TABLE oauth2_client_secrets (
+    id UUID PRIMARY KEY,
+    client_id UUID NOT NULL,
+    secret_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    CONSTRAINT oauth2_client_secrets_client_id_fkey
+        FOREIGN KEY (client_id) REFERENCES oauth2_clients(client_id) ON DELETE CASCADE,
+    CONSTRAINT oauth2_client_secrets_expiry_after_creation
+        CHECK (expires_at IS NULL OR expires_at > created_at)
+);
+
+CREATE INDEX oauth2_client_secrets_client_id_idx ON oauth2_client_secrets (client_id);
+
+CREATE TABLE consents (
+    user_id UUID NOT NULL,
+    client_id UUID NOT NULL,
+    scopes JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    granted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    PRIMARY KEY (user_id, client_id),
+    CONSTRAINT consents_client_fkey
+        FOREIGN KEY (client_id)
+        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT,
+    CONSTRAINT consents_user_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY,
+    hash TEXT NOT NULL,
+    family_id UUID NOT NULL,
+    parent_id UUID,
+    client_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    scopes JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    absolute_expires_at TIMESTAMPTZ NOT NULL,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    rotated BOOLEAN NOT NULL DEFAULT FALSE,
+    sender_constraint JSONB,
+    sid UUID,
+    resource TEXT,
+    CONSTRAINT refresh_tokens_hash_key UNIQUE (hash),
+    CONSTRAINT refresh_tokens_parent_id_fkey
+        FOREIGN KEY (parent_id) REFERENCES refresh_tokens(id) ON DELETE NO ACTION,
+    CONSTRAINT refresh_tokens_client_fkey
+        FOREIGN KEY (client_id)
+        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT,
+    CONSTRAINT refresh_tokens_user_fkey
+        FOREIGN KEY (user_id)
+        REFERENCES users(id) ON DELETE RESTRICT
+);
+
+CREATE INDEX refresh_tokens_family_id_idx ON refresh_tokens (family_id);
+CREATE INDEX refresh_tokens_user_id_idx ON refresh_tokens (user_id);
+CREATE INDEX refresh_tokens_client_id_idx ON refresh_tokens (client_id);
+CREATE INDEX refresh_tokens_sid_idx ON refresh_tokens (sid) WHERE sid IS NOT NULL;
+
+CREATE TABLE agent_credential_bindings (
+    agent_id UUID NOT NULL,
+    client_id UUID NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (agent_id, client_id),
+    CONSTRAINT agent_credential_bindings_client_id_key UNIQUE (client_id),
+    CONSTRAINT agent_credential_bindings_agent_id_fkey
+        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    CONSTRAINT agent_credential_bindings_client_fkey
+        FOREIGN KEY (client_id)
+        REFERENCES oauth2_clients(client_id) ON DELETE RESTRICT
+);
+
+CREATE INDEX agent_credential_bindings_client_idx
+    ON agent_credential_bindings (client_id);
 
 CREATE TABLE application_icons (
     id UUID PRIMARY KEY,
@@ -763,7 +768,6 @@ CREATE TABLE saml_identity_provider_profiles (
 
 CREATE UNIQUE INDEX saml_identity_provider_profiles_single_default_idx
     ON saml_identity_provider_profiles (tenant_id) WHERE is_default;
-
 CREATE FUNCTION create_default_saml_identity_provider_profile()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -773,7 +777,6 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
-
 CREATE TRIGGER tenants_create_default_saml_identity_provider_profile
 AFTER INSERT ON tenants
 FOR EACH ROW EXECUTE FUNCTION create_default_saml_identity_provider_profile();
@@ -801,8 +804,14 @@ CREATE TABLE saml_service_providers (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT saml_service_providers_idp_profile_fkey
         FOREIGN KEY (tenant_id, idp_profile_id)
-        REFERENCES saml_identity_provider_profiles (tenant_id, profile_id) ON DELETE RESTRICT
+        REFERENCES saml_identity_provider_profiles (tenant_id, profile_id) ON DELETE RESTRICT,
+    CONSTRAINT saml_service_providers_application_fkey
+        FOREIGN KEY (application_id, tenant_id, application_protocol_type)
+        REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE
 );
+
+CREATE INDEX saml_service_providers_application_id_idx
+    ON saml_service_providers (application_id) WHERE application_id IS NOT NULL;
 
 CREATE TABLE wsfed_relying_parties (
     tenant_id UUID NOT NULL,
@@ -820,28 +829,12 @@ CREATE TABLE wsfed_relying_parties (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, wtrealm),
     CONSTRAINT wsfed_relying_parties_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT wsfed_relying_parties_application_fkey
+        FOREIGN KEY (application_id, tenant_id, application_protocol_type)
+        REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE
 );
 
-ALTER TABLE oauth2_clients
-ADD CONSTRAINT oauth2_clients_application_fkey
-    FOREIGN KEY (application_id, tenant_id, application_protocol_type)
-    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE;
-
-ALTER TABLE saml_service_providers
-ADD CONSTRAINT saml_service_providers_application_fkey
-    FOREIGN KEY (application_id, tenant_id, application_protocol_type)
-    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE;
-
-ALTER TABLE wsfed_relying_parties
-ADD CONSTRAINT wsfed_relying_parties_application_fkey
-    FOREIGN KEY (application_id, tenant_id, application_protocol_type)
-    REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE;
-
-CREATE INDEX oauth2_clients_application_id_idx
-    ON oauth2_clients (application_id) WHERE application_id IS NOT NULL;
-CREATE INDEX saml_service_providers_application_id_idx
-    ON saml_service_providers (application_id) WHERE application_id IS NOT NULL;
 CREATE INDEX wsfed_relying_parties_application_id_idx
     ON wsfed_relying_parties (application_id) WHERE application_id IS NOT NULL;
 
@@ -989,6 +982,8 @@ CREATE TABLE lifecycle_workflows (
     )
 );
 
+CREATE INDEX lifecycle_workflows_tenant_status_idx ON lifecycle_workflows (tenant_id, status);
+
 CREATE TABLE lifecycle_workflow_revisions (
     workflow_id UUID NOT NULL,
     tenant_id UUID NOT NULL,
@@ -1002,8 +997,6 @@ CREATE TABLE lifecycle_workflow_revisions (
     CONSTRAINT lifecycle_workflow_revisions_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
-
-CREATE INDEX lifecycle_workflows_tenant_status_idx ON lifecycle_workflows (tenant_id, status);
 
 CREATE TABLE lifecycle_workflow_runs (
     id UUID PRIMARY KEY,
@@ -1026,6 +1019,8 @@ CREATE TABLE lifecycle_workflow_runs (
     CONSTRAINT lifecycle_workflow_runs_occurrence_unique UNIQUE (tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)
 );
 
+CREATE INDEX lifecycle_workflow_runs_unenqueued_idx ON lifecycle_workflow_runs (triggered_at) WHERE status = 'queued' AND job_id IS NULL;
+
 CREATE TABLE lifecycle_workflow_steps (
     run_id UUID NOT NULL,
     step_index INTEGER NOT NULL CHECK (step_index >= 0),
@@ -1037,8 +1032,6 @@ CREATE TABLE lifecycle_workflow_steps (
     PRIMARY KEY (run_id, step_index),
     CONSTRAINT lifecycle_workflow_steps_run_fkey FOREIGN KEY (run_id) REFERENCES lifecycle_workflow_runs(id) ON DELETE CASCADE
 );
-
-CREATE INDEX lifecycle_workflow_runs_unenqueued_idx ON lifecycle_workflow_runs (triggered_at) WHERE status = 'queued' AND job_id IS NULL;
 
 CREATE TABLE provisioning_connections (
     application_id UUID PRIMARY KEY,
