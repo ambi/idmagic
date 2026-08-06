@@ -268,7 +268,7 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 	case errors.Is(err, tenantusecases.ErrPolicyOverrideWeaker):
 		floor := d.tenantPolicyFloor()
 		message := fmt.Sprintf(
-			"パスワードポリシーは標準値より弱くできません (min_length≥%d / max_length≤%d / history_depth≥%d)",
+			"The password policy cannot be weaker than the baseline (min_length≥%d / max_length≤%d / history_depth≥%d)",
 			floor.MinLength, floor.MaxLength, floor.HistoryDepth,
 		)
 		return support.WriteBrowserError(c, http.StatusBadRequest, "policy_override_weaker", message)
