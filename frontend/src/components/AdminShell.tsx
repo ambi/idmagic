@@ -48,17 +48,14 @@ export function AdminShell({
               to="/admin"
               aria-current={active === 'dashboard' ? 'page' : undefined}
               aria-label={t.adminConsole}
-              className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+              className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
             >
               <Brand compact />
             </Link>
-            <div className="hidden h-6 w-px bg-slate-200/80 sm:block" />
-            <div className="hidden items-center gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-2.5 py-1.5 text-sm font-medium text-slate-700 shadow-xs sm:flex">
-              <span className="flex size-7 items-center justify-center rounded-md bg-slate-950 text-xs font-bold text-white">
-                RA
-              </span>
+            <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+            <span className="hidden text-sm font-medium text-slate-500 sm:inline">
               Default organization
-            </div>
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher className="hidden sm:flex" />
@@ -67,7 +64,7 @@ export function AdminShell({
                 render={
                   <button
                     type="button"
-                    className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+                    className="flex items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                     aria-label={t.accountMenu}
                   />
                 }
@@ -78,7 +75,7 @@ export function AdminShell({
                   </p>
                   <p className="text-xs text-slate-500">{t.organizationAdministrator}</p>
                 </div>
-                <span className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-sm font-semibold text-white shadow-sm">
+                <span className="flex size-9 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-white">
                   {(actorUsername ?? 'A').slice(0, 1).toUpperCase()}
                 </span>
                 <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />
@@ -128,10 +125,10 @@ export function AdminShell({
                 key={item.key}
                 to={tenantRouterPath(item.href)}
                 className={cn(
-                  'flex h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-[background-color,color,box-shadow]',
+                  'flex h-9 w-full items-center gap-3 rounded-md border-l-2 px-3 text-left text-sm transition-colors',
                   item.active
-                    ? 'bg-slate-950 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-xs',
+                    ? 'border-accent font-semibold text-slate-950'
+                    : 'border-transparent font-medium text-slate-600 hover:text-slate-950',
                 )}
                 aria-current={item.active ? 'page' : undefined}
               >
@@ -153,7 +150,7 @@ export function AdminShell({
                     ) : (
                       <>
                         <li>
-                          <Link to="/admin" className="hover:text-blue-700 hover:underline">
+                          <Link to="/admin" className="hover:text-accent hover:underline">
                             {t.adminConsole}
                           </Link>
                         </li>

@@ -8,7 +8,7 @@ describe('Alert Component', () => {
     const alert = screen.getByRole('alert')
     expect(alert).toBeInTheDocument()
     expect(alert).toHaveClass('border-red-200')
-    expect(alert).toHaveClass('bg-red-50/80')
+    expect(alert).toHaveClass('bg-red-50')
     expect(alert).toHaveTextContent('Something went wrong')
   })
 

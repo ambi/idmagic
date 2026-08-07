@@ -8,7 +8,7 @@ type AlertProps = HTMLAttributes<HTMLDivElement> & {
 }
 
 const variantStyles: Record<AlertVariant, string> = {
-  destructive: 'border-red-200 bg-red-50/80 text-red-950',
+  destructive: 'border-red-200 bg-red-50 text-red-950',
   success: 'border-emerald-200 bg-emerald-50 text-emerald-900',
 }
 
@@ -16,7 +16,7 @@ export function Alert({ className, variant = 'destructive', ...props }: AlertPro
   return (
     <div
       role={variant === 'destructive' ? 'alert' : 'status'}
-      className={cn('rounded-xl border p-4', variantStyles[variant], className)}
+      className={cn('rounded-md border p-3.5 text-sm', variantStyles[variant], className)}
       {...props}
     />
   )

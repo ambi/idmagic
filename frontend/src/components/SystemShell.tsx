@@ -42,7 +42,7 @@ export function SystemShell({
   const currentItem = items.find((item) => item.active)
   return (
     <div className="app-surface">
-      <header className="app-header border-b-2 border-amber-400/70">
+      <header className="app-header border-t-2 border-t-amber-500">
         <div className="flex h-16 items-center justify-between px-5 lg:px-7">
           <div className="flex items-center gap-5">
             <Link
@@ -52,13 +52,10 @@ export function SystemShell({
             >
               <Brand compact />
             </Link>
-            <div className="hidden h-6 w-px bg-slate-200/80 sm:block" />
-            <div className="hidden items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-sm font-semibold text-amber-800 sm:flex">
-              <span className="flex size-7 items-center justify-center rounded-md bg-amber-500 text-xs font-bold text-white">
-                SYS
-              </span>
+            <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+            <span className="hidden items-center gap-1.5 text-sm font-semibold text-amber-800 sm:flex">
               {t.systemConsole} ({t.allTenants})
-            </div>
+            </span>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -76,7 +73,7 @@ export function SystemShell({
                 </p>
                 <p className="text-xs text-slate-500">{t.systemAdministrator}</p>
               </div>
-              <span className="flex size-9 items-center justify-center rounded-lg bg-amber-500 text-sm font-semibold text-white shadow-sm">
+              <span className="flex size-9 items-center justify-center rounded-full bg-amber-500 text-sm font-semibold text-white">
                 {(actorUsername ?? 'S').slice(0, 1).toUpperCase()}
               </span>
               <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />
@@ -120,7 +117,7 @@ export function SystemShell({
             <Link
               to="/admin"
               preload={false}
-              className="mb-2 flex h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium text-slate-500 transition-colors hover:bg-white hover:text-slate-950"
+              className="mb-2 flex h-9 w-full items-center gap-3 rounded-md px-3 text-left text-sm font-medium text-slate-500 transition-colors hover:text-slate-950"
             >
               <IconArrowLeft size={18} stroke={1.8} aria-hidden="true" />
               {t.adminConsole}
@@ -130,10 +127,10 @@ export function SystemShell({
                 key={item.key}
                 to={item.href}
                 className={cn(
-                  'flex h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-[background-color,color,box-shadow]',
+                  'flex h-9 w-full items-center gap-3 rounded-md border-l-2 px-3 text-left text-sm transition-colors',
                   item.active
-                    ? 'bg-amber-500 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-xs',
+                    ? 'border-amber-500 font-semibold text-slate-950'
+                    : 'border-transparent font-medium text-slate-600 hover:text-slate-950',
                 )}
                 aria-current={item.active ? 'page' : undefined}
               >

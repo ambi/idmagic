@@ -8,6 +8,8 @@
 @theme {
   --font-sans:
     "Inter Variable", "Noto Sans JP", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-accent: #0f6f65;
+  --color-accent-soft: #eaf2f0;
 }
 
 @layer base {
@@ -16,7 +18,7 @@
   }
 
   html {
-    @apply bg-slate-50 font-sans;
+    @apply bg-background font-sans;
   }
 
   body {
@@ -31,54 +33,25 @@
   }
 
   ::selection {
-    @apply bg-blue-100 text-blue-950;
+    @apply bg-accent/15 text-slate-950;
   }
 }
 
 @layer components {
   .auth-background {
-    @apply relative min-h-screen overflow-hidden bg-[#f3f7fb];
-    background-image:
-      linear-gradient(135deg, rgb(37 99 235 / 9%), transparent 34%),
-      linear-gradient(315deg, rgb(13 148 136 / 8%), transparent 36%);
-  }
-
-  .auth-background::before {
-    @apply pointer-events-none absolute inset-0 content-[''];
-    background-image:
-      linear-gradient(rgb(15 23 42 / 3%) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(15 23 42 / 3%) 1px, transparent 1px);
-    background-size: 36px 36px;
-    mask-image: linear-gradient(to bottom, black, transparent 76%);
+    @apply relative min-h-screen bg-background;
   }
 
   .auth-container {
-    @apply relative z-10 mx-auto flex min-h-screen max-w-[1160px] items-center px-6 py-10;
+    @apply relative z-10 mx-auto flex min-h-screen max-w-[1120px] items-center px-6 py-10;
   }
 
   .auth-frame {
-    @apply grid min-h-[680px] w-full grid-cols-[minmax(0,0.92fr)_minmax(440px,1.08fr)] overflow-hidden rounded-2xl border border-white/80 bg-white/92 shadow-[0_28px_90px_-42px_rgb(15_23_42/42%)] backdrop-blur-xl;
+    @apply grid min-h-[620px] w-full grid-cols-[minmax(0,0.9fr)_minmax(420px,1fr)] overflow-hidden;
   }
 
   .auth-aside {
-    @apply relative isolate flex flex-col overflow-hidden bg-[#0a1020] p-11 text-white;
-    background-image:
-      linear-gradient(135deg, rgb(37 99 235 / 30%), transparent 42%),
-      linear-gradient(180deg, rgb(15 23 42 / 0%), rgb(8 13 26 / 82%));
-  }
-
-  .auth-aside::before {
-    @apply pointer-events-none absolute inset-x-0 top-0 -z-10 h-28 content-[''];
-    background: linear-gradient(90deg, rgb(45 212 191 / 20%), rgb(96 165 250 / 28%), transparent);
-  }
-
-  .auth-aside::after {
-    @apply pointer-events-none absolute inset-0 -z-10 content-[''];
-    background-image:
-      linear-gradient(rgb(255 255 255 / 4%) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(255 255 255 / 4%) 1px, transparent 1px);
-    background-size: 40px 40px;
-    mask-image: linear-gradient(to bottom right, black, transparent 72%);
+    @apply flex flex-col justify-between bg-slate-950 p-11 text-white;
   }
 
   .auth-aside-copy {
@@ -86,19 +59,19 @@
   }
 
   .aside-title {
-    @apply m-0 max-w-[27rem] text-[clamp(2rem,3.6vw,3.05rem)] font-semibold leading-[1.12] tracking-normal text-white;
+    @apply m-0 max-w-[25rem] text-[clamp(1.5rem,2.2vw,2rem)] font-semibold leading-[1.3] tracking-normal text-white;
   }
 
   .aside-text {
-    @apply max-w-[27rem] text-[0.95rem] leading-7 text-slate-300;
+    @apply max-w-[25rem] text-sm leading-7 text-slate-300;
   }
 
   .eyebrow {
-    @apply text-[0.7rem] font-bold uppercase tracking-normal text-blue-700;
+    @apply text-[0.6875rem] font-semibold uppercase tracking-normal text-accent;
   }
 
   .auth-main {
-    @apply mx-auto flex w-full max-w-[33rem] flex-col justify-center px-14 py-12;
+    @apply mx-auto flex w-full max-w-[29rem] flex-col justify-center px-10 py-12;
   }
 
   .mobile-brand {
@@ -120,11 +93,11 @@
 
   /* solo: 認証済み self-service 画面向け。プロモ枠の aside を出さない単一カラム。 */
   .auth-frame--solo {
-    @apply mx-auto min-h-0 w-full max-w-[34rem] grid-cols-1;
+    @apply mx-auto min-h-0 w-full max-w-[32rem] grid-cols-1;
   }
 
   .auth-frame--solo .auth-main {
-    @apply max-w-none px-10 py-10;
+    @apply max-w-none px-2 py-6;
   }
 
   .auth-frame--solo .mobile-brand {
@@ -132,27 +105,23 @@
   }
 
   .page-title {
-    @apply text-[1.7rem] font-semibold leading-tight tracking-normal text-slate-950;
+    @apply text-[1.25rem] font-semibold leading-tight tracking-normal text-slate-950;
   }
 
   .page-description {
-    @apply text-[0.925rem] leading-6 text-slate-600;
+    @apply text-[0.875rem] leading-6 text-slate-600;
   }
 
   .app-surface {
-    @apply min-h-screen text-slate-950;
-    background:
-      linear-gradient(180deg, rgb(248 251 255), rgb(242 246 251) 38%, rgb(248 250 252)),
-      linear-gradient(90deg, rgb(37 99 235 / 5%), transparent 32%, rgb(20 184 166 / 5%));
+    @apply min-h-screen bg-background text-slate-950;
   }
 
   .app-header {
-    @apply sticky top-0 z-30 border-b border-slate-200/70 bg-white/82 backdrop-blur-xl;
-    box-shadow: 0 1px 0 rgb(255 255 255 / 74%) inset;
+    @apply sticky top-0 z-30 border-b border-slate-200 bg-background;
   }
 
   .app-sidebar {
-    @apply hidden border-r border-slate-200/70 bg-white/72 backdrop-blur-xl lg:flex lg:flex-col;
+    @apply hidden border-r border-slate-200 lg:flex lg:flex-col;
   }
 
   .app-main {
@@ -160,16 +129,16 @@
   }
 
   .app-content {
-    @apply mx-auto flex flex-col gap-6;
+    @apply mx-auto flex flex-col gap-7;
   }
 
   .app-page-title {
-    @apply text-[1.9rem] font-semibold leading-tight tracking-normal text-slate-950;
+    @apply text-[1.375rem] font-semibold leading-tight tracking-normal text-slate-950;
   }
 
   @media (max-width: 900px) {
     .auth-container {
-      @apply max-w-[620px] px-5 py-6;
+      @apply max-w-[560px] px-5 py-6;
     }
 
     .auth-frame {
@@ -181,7 +150,7 @@
     }
 
     .auth-main {
-      @apply max-w-none px-10 py-10;
+      @apply max-w-none px-8 py-8;
     }
 
     .mobile-brand {
@@ -195,7 +164,7 @@
     }
 
     .auth-frame {
-      @apply min-h-screen rounded-none border-0;
+      @apply min-h-screen;
     }
 
     .auth-main {
@@ -262,30 +231,30 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --background: #faf9f6;
+  --foreground: #020617;
+  --card: #ffffff;
+  --card-foreground: #020617;
+  --popover: #ffffff;
+  --popover-foreground: #020617;
   --primary: #020617;
   --primary-foreground: #ffffff;
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: #f6f8fb;
+  --secondary: #f1efe8;
+  --secondary-foreground: #020617;
+  --muted: #f1efe8;
   --muted-foreground: #64748b;
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: #eaf2f0;
+  --accent-foreground: #0f6f65;
   --destructive: #dc2626;
-  --border: #d9e2ec;
+  --border: #e2e4e9;
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: #0f6f65;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -309,12 +278,12 @@
   --secondary-foreground: oklch(0.985 0 0);
   --muted: #1e293b;
   --muted-foreground: #94a3b8;
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --accent: #123330;
+  --accent-foreground: #5fbdae;
   --destructive: #f87171;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: #5fbdae;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

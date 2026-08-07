@@ -79,13 +79,13 @@ export function AccountShell({
             <Link
               to="/account"
               aria-label={t.account}
-              className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+              className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
             >
               <Brand compact productName={branding.product_name} logoURL={branding.logo_url} />
             </Link>
-            <div className="hidden h-6 w-px bg-slate-200/80 sm:block" />
-            <span className="hidden items-center gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-2.5 py-1.5 text-sm font-medium text-slate-600 shadow-xs sm:flex">
-              <IconShieldLock size={16} className="text-slate-400" aria-hidden="true" />
+            <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+            <span className="hidden items-center gap-1.5 text-sm font-medium text-slate-500 sm:flex">
+              <IconShieldLock size={15} className="text-slate-400" aria-hidden="true" />
               {t.accountPortal}
             </span>
           </div>
@@ -96,7 +96,7 @@ export function AccountShell({
                 render={
                   <button
                     type="button"
-                    className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600/30"
+                    className="flex items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
                     aria-label={t.accountMenu}
                   />
                 }
@@ -105,7 +105,7 @@ export function AccountShell({
                   <p className="text-sm font-semibold text-slate-800">{username}</p>
                   <p className="text-xs text-slate-500">{t.signedIn}</p>
                 </div>
-                <span className="flex size-9 items-center justify-center rounded-lg bg-slate-950 text-sm font-semibold text-white shadow-sm">
+                <span className="flex size-9 items-center justify-center rounded-full bg-slate-950 text-sm font-semibold text-white">
                   {username.slice(0, 1).toUpperCase()}
                 </span>
                 <IconChevronDown size={15} className="text-slate-400" aria-hidden="true" />
@@ -156,10 +156,10 @@ export function AccountShell({
                 key={item.key}
                 to={item.href}
                 className={cn(
-                  'flex h-10 w-full items-center gap-3 rounded-lg px-3 text-left text-sm font-medium transition-[background-color,color,box-shadow]',
+                  'flex h-9 w-full items-center gap-3 rounded-md border-l-2 px-3 text-left text-sm transition-colors',
                   item.key === active
-                    ? 'tenant-primary-cta bg-slate-950 text-white shadow-sm'
-                    : 'text-slate-600 hover:bg-white hover:text-slate-950 hover:shadow-xs',
+                    ? 'border-accent font-semibold text-slate-950'
+                    : 'border-transparent font-medium text-slate-600 hover:text-slate-950',
                 )}
                 aria-current={item.key === active ? 'page' : undefined}
               >

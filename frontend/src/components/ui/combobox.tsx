@@ -73,7 +73,7 @@ function SearchableSelect({
 
       <ComboboxPrimitive.Portal>
         <ComboboxPrimitive.Positioner className="z-50 outline-none" sideOffset={4}>
-          <ComboboxPrimitive.Popup className="max-h-(--available-height) w-(--anchor-width) min-w-48 overflow-y-auto rounded-md bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none">
+          <ComboboxPrimitive.Popup className="max-h-(--available-height) w-(--anchor-width) min-w-48 overflow-y-auto rounded-md bg-popover text-popover-foreground shadow-sm ring-1 ring-foreground/10 outline-none">
             <ComboboxPrimitive.Empty className="px-3 py-2 text-xs text-muted-foreground">
               {emptyMessage ?? t.noSearchResults}
             </ComboboxPrimitive.Empty>

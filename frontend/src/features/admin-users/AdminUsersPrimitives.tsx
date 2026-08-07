@@ -43,7 +43,7 @@ export function UserAvatar({ user, large = false }: { user: AdminUser; large?: b
   return (
     <span
       className={cn(
-        'flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 font-bold text-blue-800 ring-1 ring-inset ring-blue-200/70',
+        'flex shrink-0 items-center justify-center rounded-full bg-accent-soft font-semibold text-accent-foreground',
         large ? 'size-11 text-sm' : 'size-9 text-xs',
       )}
     >
@@ -91,10 +91,10 @@ export function daysUntil(value?: string): number | null {
   return Math.max(0, Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24)))
 }
 
-const STATUS_BADGE_STYLE: Record<UserLifecycleStatus, { dot: string; badge: string }> = {
-  active: { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700' },
-  disabled: { dot: 'bg-red-500', badge: 'bg-red-50 text-red-700' },
-  pending_deletion: { dot: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700' },
+const STATUS_BADGE_STYLE: Record<UserLifecycleStatus, { dot: string; text: string }> = {
+  active: { dot: 'bg-emerald-500', text: 'text-emerald-700' },
+  disabled: { dot: 'bg-red-500', text: 'text-red-700' },
+  pending_deletion: { dot: 'bg-amber-500', text: 'text-amber-700' },
 }
 
 export function StatusBadge({
@@ -114,12 +114,12 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full font-semibold',
-        compact ? 'px-2 py-0.5 text-[0.65rem]' : 'px-2.5 py-1 text-xs',
-        style.badge,
+        'inline-flex items-center gap-1.5 font-medium',
+        compact ? 'text-[0.7rem]' : 'text-xs',
+        style.text,
       )}
     >
-      <span className={cn('size-1.5 rounded-full', style.dot)} />
+      <span className={cn('size-1.5 shrink-0 rounded-full', style.dot)} />
       {label}
     </span>
   )

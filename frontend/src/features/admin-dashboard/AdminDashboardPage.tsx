@@ -1,5 +1,4 @@
 import {
-  IconActivity,
   IconArrowRight,
   IconCheckupList,
   IconKey,
@@ -8,9 +7,7 @@ import {
 } from '@tabler/icons-react'
 import { tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
-import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
-import { cn } from '../../lib/utils'
 import type { TenantQuota, TenantUsage } from '../../types'
 import { adminDashboardDictionary } from './AdminDashboardPage.i18n'
 
@@ -55,59 +52,8 @@ export function AdminDashboardPage({
       title={t.title}
       description={t.description}
     >
-      {/* テナント全体のセキュリティ・ヘルスステータス (Okta / Entra風の大規模カード) */}
-      <section className="mb-6">
-        <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950 p-6 text-white shadow-xl ring-1 ring-slate-800">
-          <div className="absolute -right-10 -top-10 opacity-10">
-            <IconShieldCheck size={200} className="text-white" />
-          </div>
-          <div className="grid gap-6 md:grid-cols-[1fr_220px]">
-            <div className="flex flex-col justify-between">
-              <div>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400 ring-1 ring-inset ring-blue-500/20">
-                  <IconShieldCheck size={14} />
-                  {t.securityBadge}
-                </span>
-                <h2 className="mt-3 text-2xl font-bold tracking-tight">{t.tenantConfigHeading}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">
-                  {t.tenantConfigSummary}
-                </p>
-              </div>
-
-              <div className="mt-6 flex flex-wrap gap-4 text-xs">
-                <div className="rounded-lg bg-white/5 px-3 py-2 border border-white/10">
-                  <span className="block text-slate-400">{t.tenantStatusLabel}</span>
-                  <span className="mt-0.5 block font-semibold text-emerald-400">
-                    {t.tenantStatusValue}
-                  </span>
-                </div>
-                <div className="rounded-lg bg-white/5 px-3 py-2 border border-white/10">
-                  <span className="block text-slate-400">{t.activeUserRateLabel}</span>
-                  <span className="mt-0.5 block font-semibold">{activeRate}%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-center justify-center border-t border-white/10 pt-6 md:border-l md:border-t-0 md:pt-0 md:pl-6">
-              <div className="relative flex size-32 items-center justify-center rounded-full border-4 border-slate-800">
-                {/* 円形の進捗ゲージを簡易表現 */}
-                <div className="text-center">
-                  <span className="block text-4xl font-extrabold tracking-tight text-white">
-                    {securityScore}
-                  </span>
-                  <span className="block text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">
-                    Security Score
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </section>
-
-      {/* システムサマリー (ビジュアルと価値を再検討した MetricCards) */}
       <section
-        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 mb-6"
+        className="grid gap-x-10 gap-y-6 border-b border-slate-100 pb-8 sm:grid-cols-2 xl:grid-cols-4"
         aria-label={t.summarySectionLabel}
       >
         <DashboardMetricCard
@@ -116,18 +62,10 @@ export function AdminDashboardPage({
           icon={IconUsers}
           tone="blue"
           extra={
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <div className="flex justify-between text-[0.68rem] font-semibold text-slate-500 mb-1">
-                <span>{t.activeRateLabel.replace('{rate}', String(activeRate))}</span>
-                <span>{t.disabledLabel.replace('{count}', String(disabledUserCount))}</span>
-              </div>
-              <div className="h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full bg-blue-600 rounded-full transition-all"
-                  style={{ width: `${activeRate}%` }}
-                />
-              </div>
-            </div>
+            <p className="mt-1.5 text-xs text-slate-500">
+              {t.activeRateLabel.replace('{rate}', String(activeRate))} ·{' '}
+              {t.disabledLabel.replace('{count}', String(disabledUserCount))}
+            </p>
           }
         />
         <DashboardMetricCard
@@ -135,119 +73,67 @@ export function AdminDashboardPage({
           value={clientCount}
           icon={IconKey}
           tone="violet"
-          extra={
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <div className="flex justify-between text-[0.68rem] text-slate-500">
-                <span>{t.connectedClientsLabel}</span>
-                <span className="font-semibold text-slate-900">
-                  {t.unitCount.replace('{count}', String(clientCount))}
-                </span>
-              </div>
-              <p className="mt-1 text-[0.625rem] text-slate-400">{t.clientDescription}</p>
-            </div>
-          }
+          extra={<p className="mt-1.5 text-xs text-slate-500">{t.clientDescription}</p>}
         />
         <DashboardMetricCard
           label={t.grantedConsentsLabel}
           value={grantedConsentCount}
           icon={IconCheckupList}
           tone="green"
-          extra={
-            <div className="mt-3 border-t border-slate-100 pt-3">
-              <div className="flex justify-between text-[0.68rem] text-slate-500">
-                <span>{t.authorizedConsentsLabel}</span>
-                <span className="font-semibold text-slate-900">
-                  {t.countSuffix.replace('{count}', String(grantedConsentCount))}
-                </span>
-              </div>
-              <p className="mt-1 text-[0.625rem] text-slate-400">{t.consentDescription}</p>
-            </div>
-          }
+          extra={<p className="mt-1.5 text-xs text-slate-500">{t.consentDescription}</p>}
+        />
+        <DashboardMetricCard
+          label="Security score"
+          value={securityScore}
+          icon={IconShieldCheck}
+          tone="amber"
+          extra={<p className="mt-1.5 text-xs text-slate-500">{t.tenantStatusValue}</p>}
         />
       </section>
 
-      <div className="grid gap-6">
-        {/* セキュリティ推奨タスク (Okta / IAM風) */}
-        <Card className="p-5 shadow-sm">
-          <div className="flex items-start gap-2.5">
-            <IconShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={20} />
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900">
-                {t.recommendedSecurityHeading}
-              </h2>
-              <p className="mt-0.5 text-xs text-slate-500">{t.recommendedSecurityDescription}</p>
-            </div>
-          </div>
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold text-slate-900">{t.recommendedSecurityHeading}</h2>
+        <p className="mt-0.5 text-xs text-slate-500">{t.recommendedSecurityDescription}</p>
+        <ul className="mt-3 divide-y divide-slate-100 border-t border-slate-100">
+          <SecurityTaskCard
+            title={t.mfaTaskTitle}
+            description={t.mfaTaskDescription}
+            href={tenantURL('/admin/sign-in-policy')}
+            actionLabel={t.setPolicyAction}
+          />
+          <SecurityTaskCard
+            title={t.federationTaskTitle}
+            description={t.federationTaskDescription}
+            href={tenantURL('/admin/federation/entra')}
+            actionLabel={t.configureFederationAction}
+          />
+        </ul>
+      </section>
 
-          <ul className="mt-4 grid gap-3.5 sm:grid-cols-2">
-            <SecurityTaskCard
-              title={t.mfaTaskTitle}
-              description={t.mfaTaskDescription}
-              href={tenantURL('/admin/sign-in-policy')}
-              actionLabel={t.setPolicyAction}
-            />
-            <SecurityTaskCard
-              title={t.federationTaskTitle}
-              description={t.federationTaskDescription}
-              href={tenantURL('/admin/federation/entra')}
-              actionLabel={t.configureFederationAction}
-            />
-          </ul>
-        </Card>
-
-        {/* Quota Usage */}
-        {usage && (
-          <Card className="p-5 shadow-sm">
-            <div className="flex items-start gap-2.5">
-              <IconActivity className="text-blue-600 shrink-0 mt-0.5" size={20} />
-              <div>
-                <h2 className="text-sm font-semibold text-slate-900">{t.quotaUsageHeading}</h2>
-                <p className="mt-0.5 text-xs text-slate-500">{t.quotaUsageDescription}</p>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-              <div className="rounded border border-slate-100 p-2">
-                <div className="text-xs text-slate-500">Users</div>
-                <div className="font-semibold">
-                  {usage.users}{' '}
-                  <span className="text-slate-400 font-normal">
-                    {quota?.users ? `/ ${quota.users}` : ''}
-                  </span>
-                </div>
-              </div>
-              <div className="rounded border border-slate-100 p-2">
-                <div className="text-xs text-slate-500">Groups</div>
-                <div className="font-semibold">
-                  {usage.groups}{' '}
-                  <span className="text-slate-400 font-normal">
-                    {quota?.groups ? `/ ${quota.groups}` : ''}
-                  </span>
-                </div>
-              </div>
-              <div className="rounded border border-slate-100 p-2">
-                <div className="text-xs text-slate-500">Apps</div>
-                <div className="font-semibold">
-                  {usage.applications}{' '}
-                  <span className="text-slate-400 font-normal">
-                    {quota?.applications ? `/ ${quota.applications}` : ''}
-                  </span>
-                </div>
-              </div>
-              <div className="rounded border border-slate-100 p-2">
-                <div className="text-xs text-slate-500">Clients</div>
-                <div className="font-semibold">
-                  {usage.oauth2_clients}{' '}
-                  <span className="text-slate-400 font-normal">
-                    {quota?.oauth2_clients ? `/ ${quota.oauth2_clients}` : ''}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-      </div>
+      {usage && (
+        <section className="mt-8">
+          <h2 className="text-sm font-semibold text-slate-900">{t.quotaUsageHeading}</h2>
+          <p className="mt-0.5 text-xs text-slate-500">{t.quotaUsageDescription}</p>
+          <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-4">
+            <QuotaItem label="Users" value={usage.users} limit={quota?.users} />
+            <QuotaItem label="Groups" value={usage.groups} limit={quota?.groups} />
+            <QuotaItem label="Apps" value={usage.applications} limit={quota?.applications} />
+            <QuotaItem label="Clients" value={usage.oauth2_clients} limit={quota?.oauth2_clients} />
+          </dl>
+        </section>
+      )}
     </AdminShell>
+  )
+}
+
+function QuotaItem({ label, value, limit }: { label: string; value: number; limit?: number }) {
+  return (
+    <div>
+      <dt className="text-xs text-slate-500">{label}</dt>
+      <dd className="font-semibold text-slate-900">
+        {value} <span className="font-normal text-slate-400">{limit ? `/ ${limit}` : ''}</span>
+      </dd>
+    </div>
   )
 }
 
@@ -265,29 +151,20 @@ export function DashboardMetricCard({
   extra?: React.ReactNode
 }) {
   const tones = {
-    blue: 'bg-blue-50 text-blue-700 ring-blue-100',
-    green: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
-    violet: 'bg-indigo-50 text-indigo-700 ring-indigo-100',
-    amber: 'bg-amber-50 text-amber-700 ring-amber-100',
+    blue: 'text-accent',
+    green: 'text-emerald-700',
+    violet: 'text-slate-500',
+    amber: 'text-amber-700',
   }
   return (
-    <Card className="group p-5 transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md">
-      <div className="flex items-center gap-4">
-        <span
-          className={cn(
-            'flex size-11 shrink-0 items-center justify-center rounded-xl ring-1',
-            tones[tone],
-          )}
-        >
-          <Icon size={22} stroke={1.8} aria-hidden="true" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-3xl font-bold tracking-tight text-slate-950">{value}</p>
-          <p className="truncate text-xs font-semibold text-slate-500">{label}</p>
-        </div>
+    <div>
+      <div className="flex items-center gap-2">
+        <Icon size={16} stroke={1.8} className={tones[tone]} aria-hidden="true" />
+        <p className="text-xs font-semibold text-slate-500">{label}</p>
       </div>
+      <p className="mt-1.5 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
       {extra}
-    </Card>
+    </div>
   )
 }
 
@@ -303,23 +180,18 @@ export function SecurityTaskCard({
   actionLabel: string
 }) {
   return (
-    <li className="flex flex-col justify-between rounded-lg border border-slate-200 bg-slate-50/50 p-4 transition-all hover:bg-slate-50">
+    <li className="flex flex-col gap-1 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div>
-        <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-          <span className="inline-block size-1.5 rounded-full bg-blue-600" />
-          {title}
-        </h3>
-        <p className="mt-1.5 text-[0.68rem] leading-relaxed text-slate-500">{description}</p>
+        <h3 className="text-sm font-medium text-slate-900">{title}</h3>
+        <p className="mt-0.5 text-xs text-slate-500">{description}</p>
       </div>
-      <div className="mt-4 flex justify-end">
-        <a
-          href={href}
-          className="inline-flex items-center gap-1 text-[0.68rem] font-bold text-blue-700 hover:text-blue-800"
-        >
-          {actionLabel}
-          <IconArrowRight size={12} />
-        </a>
-      </div>
+      <a
+        href={href}
+        className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-accent hover:underline"
+      >
+        {actionLabel}
+        <IconArrowRight size={12} aria-hidden="true" />
+      </a>
     </li>
   )
 }

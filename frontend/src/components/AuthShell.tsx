@@ -31,22 +31,19 @@ export function AuthShell({ children, asideTitle, asideText, aside = true }: Aut
               <Brand inverse productName={branding.product_name} logoURL={branding.logo_url} />
 
               <div className="auth-aside-copy">
-                <div className="flex w-fit items-center gap-2 rounded-lg border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-semibold text-blue-100 shadow-sm backdrop-blur-sm">
-                  <IconSparkles size={15} aria-hidden="true" />
+                <div className="flex w-fit items-center gap-2 text-xs font-semibold uppercase tracking-normal text-teal-300">
+                  <IconSparkles size={14} aria-hidden="true" />
                   {t.identityControl}
                 </div>
                 <div className="flex flex-col gap-4">
                   <h1 className="aside-title">{asideTitle ?? t.defaultAuthAsideTitle}</h1>
                   <p className="aside-text">{asideText ?? t.defaultAuthAsideText}</p>
                 </div>
-                <ul className="grid gap-3" aria-label={t.security}>
+                <ul className="grid gap-2.5" aria-label={t.security}>
                   {assuranceItems.map((item) => (
-                    <li
-                      key={item}
-                      className="flex items-center gap-3 rounded-lg border border-white/8 bg-white/6 px-3 py-2.5 text-sm text-slate-200 backdrop-blur-sm"
-                    >
+                    <li key={item} className="flex items-center gap-2.5 text-sm text-slate-300">
                       <IconCircleCheckFilled
-                        size={17}
+                        size={16}
                         className="shrink-0 text-teal-300"
                         aria-hidden="true"
                       />
@@ -70,17 +67,12 @@ export function AuthShell({ children, asideTitle, asideText, aside = true }: Aut
             <div className="mobile-brand text-slate-950">
               <Brand productName={branding.product_name} logoURL={branding.logo_url} />
             </div>
-            <div className="mb-7 flex items-center justify-between border-b border-slate-100 pb-4">
-              <span className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                <IconLock size={14} className="text-emerald-600" aria-hidden="true" />
+            <div className="mb-7 flex items-center justify-between">
+              <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                <IconLock size={14} aria-hidden="true" />
                 {t.secureAuthentication}
               </span>
-              <div className="flex items-center gap-2">
-                <LanguageSwitcher />
-                <span className="rounded-md bg-emerald-50 px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-normal text-emerald-700">
-                  {t.protected}
-                </span>
-              </div>
+              <LanguageSwitcher />
             </div>
 
             {children}
@@ -96,7 +88,7 @@ export function AuthShell({ children, asideTitle, asideText, aside = true }: Aut
                   href={link.url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="font-medium text-blue-700 hover:underline"
+                  className="font-medium text-accent hover:underline"
                 >
                   {link.label}
                 </a>
