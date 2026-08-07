@@ -3944,7 +3944,7 @@ interfaces:
             type: String
             optional: true
   Introspect:
-    description: 通常 OAuth token と管理発行 JWT access token の Token Introspection (RFC 7662)
+    description: 通常 OAuth token と管理発行 JWT access token の Token Introspection (RFC 7662)。Agent 主体の token は SharedSignals の revocation epoch (kill-switch・所有者オフボード・CAEP/SSF 経由の失効) と issued_at を比較し、epoch 以前に発行された token は fail-closed で active=false とする (wi-58, ADR-057)。
     steps:
       - "トークン {token} を検査する"
     input:
@@ -3956,6 +3956,8 @@ interfaces:
     errors:
       - InvalidClientError
       - InvalidTokenError
+    ensures:
+      - "!access_token_subject_is_agent(input.request.token) || access_token_issued_after_revocation_epoch(input.request.token) || output.response.active == false"
     emits:
       - TokenIntrospected
     access:
@@ -5065,6 +5067,19 @@ scenarios:
     main_success:
       - "トークン \"AT1\" を検査する"
       - 応答は active=false のみで他のフィールドを含まない
+  kill-switch後のAgentトークンはintrospectionでactive=falseになる:
+    actor: ResourceServer
+    given:
+      - "Agent \"A1\" に issued_at が古い access token \"AT1\" が発行済みである"
+      - "\"A1\" は kill-switch により revocation epoch が \"AT1\" の issued_at より後へ前進している (wi-58, ADR-057)"
+    main_success:
+      - "トークン \"AT1\" を検査する"
+      - 応答は active=false のみで他のフィールドを含まない
+    extensions:
+      - at: 1
+        condition: "\"AT1\" が revocation epoch より後に発行された (kill 後に再発行された) token である"
+        steps:
+          - 応答は通常どおり active=true と claim を返す
   UserInfo は openid スコープのトークンに sub を返す:
     actor: RegisteredClient
     given:

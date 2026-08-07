@@ -1284,3 +1284,106 @@ CREATE UNLOGGED TABLE saml_authnrequest_replays (
 );
 CREATE INDEX saml_authnrequest_replays_expires_at_idx
     ON saml_authnrequest_replays (expires_at);
+
+-- SharedSignals (ADR-057, wi-58): CAEP/SSF continuous access evaluation and
+-- near-real-time agent revocation.
+
+CREATE TABLE agent_revocation_epochs (
+    agent_id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    epoch TIMESTAMPTZ NOT NULL,
+    reason TEXT NOT NULL
+        CHECK (reason IN (
+            'AgentKilled', 'AgentDisabled', 'AgentCredentialUnbound',
+            'OwnerDisabled', 'OwnerDeleted', 'ManualAdmin', 'InboundSecurityEvent'
+        )),
+    advanced_at TIMESTAMPTZ NOT NULL,
+    source_event_id TEXT,
+    CONSTRAINT agent_revocation_epochs_agent_fkey
+        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE CASCADE,
+    CONSTRAINT agent_revocation_epochs_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE ssf_streams (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    direction TEXT NOT NULL CHECK (direction IN ('Transmit', 'Receive')),
+    event_types JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'enabled' CHECK (status IN ('enabled', 'disabled')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT ssf_streams_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+CREATE INDEX ssf_streams_tenant_idx ON ssf_streams (tenant_id);
+
+CREATE TABLE ssf_transmitter_configs (
+    stream_id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    delivery_endpoint TEXT NOT NULL,
+    audience TEXT NOT NULL,
+    delivery_authorization TEXT,
+    max_delivery_attempts INTEGER NOT NULL DEFAULT 8,
+    CONSTRAINT ssf_transmitter_configs_stream_fkey
+        FOREIGN KEY (stream_id) REFERENCES ssf_streams(id) ON DELETE CASCADE,
+    CONSTRAINT ssf_transmitter_configs_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+);
+
+CREATE TABLE ssf_receiver_configs (
+    stream_id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    trusted_issuer TEXT NOT NULL,
+    jwks_uri TEXT,
+    jwks JSONB,
+    accepted_audiences JSONB NOT NULL,
+    CONSTRAINT ssf_receiver_configs_stream_fkey
+        FOREIGN KEY (stream_id) REFERENCES ssf_streams(id) ON DELETE CASCADE,
+    CONSTRAINT ssf_receiver_configs_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT ssf_receiver_configs_jwks_source_chk
+        CHECK (jwks_uri IS NOT NULL OR jwks IS NOT NULL)
+);
+
+CREATE TABLE security_event_deliveries (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    stream_id UUID NOT NULL,
+    set_jti TEXT NOT NULL,
+    set_payload JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'delivered', 'failed', 'dead_letter')),
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    next_attempt_at TIMESTAMPTZ,
+    last_error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    delivered_at TIMESTAMPTZ,
+    CONSTRAINT security_event_deliveries_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT security_event_deliveries_stream_fkey
+        FOREIGN KEY (stream_id) REFERENCES ssf_streams(id) ON DELETE CASCADE
+);
+CREATE INDEX security_event_deliveries_stream_idx
+    ON security_event_deliveries (stream_id);
+CREATE INDEX security_event_deliveries_due_idx
+    ON security_event_deliveries (status, next_attempt_at)
+    WHERE status IN ('pending', 'failed');
+
+CREATE TABLE received_security_events (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    stream_id UUID NOT NULL,
+    set_jti TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    subject JSONB,
+    verification_result TEXT NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    reflected_at TIMESTAMPTZ,
+    CONSTRAINT received_security_events_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT received_security_events_stream_fkey
+        FOREIGN KEY (stream_id) REFERENCES ssf_streams(id) ON DELETE CASCADE,
+    CONSTRAINT received_security_events_stream_jti_key
+        UNIQUE (stream_id, set_jti)
+);

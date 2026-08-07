@@ -127,6 +127,11 @@ context_map:
         uses:
           - VerifyWorkloadAttestation
         reason: token-exchange grant は subject_token_type が workload 系のとき、外部 attestation の検証と Agent principal への写像を WorkloadIdentity の published interface に委譲する (wi-54, ADR-053)。
+      SharedSignals:
+        via: published_language
+        uses:
+          - CheckRevocationEpoch
+        reason: Introspect は access token の issued_at と Agent の revocation epoch を比較し、kill-switch/所有者オフボード後に既発行 token を fail-closed で無効と判定する (wi-58, ADR-057)。
   Audit:
     description: "authentication、identity-management、oauth2、tenancy、signing-keys、application、\nsaml / wsfederation など複数 bounded context から発火されるセキュリティ監査イベントの\n横断的な read model を所有する。監査イベントの検索・エクスポート管理 API、検索属性\nregistry、PII 変換方針、保持期間を集約する。イベントの発火元は各 context のままであり、\nAudit はそれらを横断して読む窓口を所有する。\n"
     path: contexts/audit.yaml
@@ -429,3 +434,27 @@ context_map:
         uses:
           - AgentRef
         reason: AgentWorkloadBinding は外部 subject を同一テナントの既存 Agent へ写す。写像先 Agent が Active でなければ fail-closed で拒否する。
+  SharedSignals:
+    description: "Shared Signals Framework (SSF) / Continuous Access Evaluation Profile (CAEP) による\nエージェントの近リアルタイム失効を所有する ([[ADR-057]])。Agent ごとの revocation epoch を保持し、\nKillAgent・DisableAgent・UnbindAgentCredential・所有者オフボード・検証済み inbound Security Event\nToken (SET, RFC 8417) のいずれかを起点に fail-closed で前進させる (LocalRevocation)。前進した epoch は\nOAuth2 の Introspect が access token の issued_at と比較し即時失効へ反映する。同時に SSF stream 経由で\nCAEP イベントを外部 receiver へ push し (EcosystemPropagation)、外部 transmitter からの検証済みイベントも\n受理してローカル失効へ収束させる。idmagic は transmitter と receiver の双方として振る舞う。\n"
+    path: contexts/sharedsignals.yaml
+    publishes:
+      - CheckRevocationEpoch
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: SsfStream・revocation epoch はテナント境界内に閉じ、cross-tenant な subject 解決は認めない。
+      IdManagement:
+        via: published_language
+        uses:
+          - AgentRef
+          - UserRef
+        reason: revocation epoch は Agent 単位で保持し、所有者 (owner_user_id) の Disable/Delete イベントを起点に配下 Agent 群を一括前進させる。
+      SigningKeys:
+        via: published_language
+        uses:
+          - SigningKey
+          - JWKS
+          - SignatureAlgorithm
+        reason: outbound Security Event Token (SET) の署名は新設の鍵管理を持たず、既存の JWT 署名鍵ローテーションと JWKS 配布に相乗りする ([[ADR-009]])。

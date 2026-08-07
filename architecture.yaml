@@ -61,6 +61,9 @@ contexts:
   WorkloadIdentity:
     spec: spec/contexts/workloadidentity.yaml
     summary: エージェントランタイム向け workload identity federation (WorkloadTrustBundle / AgentWorkloadBinding、ADR-053)。
+  SharedSignals:
+    spec: spec/contexts/sharedsignals.yaml
+    summary: CAEP/SSF によるエージェントの近リアルタイム失効 (AgentRevocationEpoch のローカル失効と SsfStream 経由の生態系伝播、ADR-057)。
   ra:
     spec: tools/ra/spec/scl.yaml
     summary: RA workspace orchestration。

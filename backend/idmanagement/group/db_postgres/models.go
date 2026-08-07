@@ -31,6 +31,15 @@ type AgentCredentialBinding struct {
 	CreatedAt time.Time
 }
 
+type AgentRevocationEpoch struct {
+	AgentID       string
+	TenantID      string
+	Epoch         time.Time
+	Reason        string
+	AdvancedAt    time.Time
+	SourceEventID pgtype.Text
+}
+
 type AgentWorkloadBinding struct {
 	ID             string
 	TenantID       string
@@ -572,6 +581,18 @@ type ProvisioningRemoteLink struct {
 	UpdatedAt         time.Time
 }
 
+type ReceivedSecurityEvent struct {
+	ID                 string
+	TenantID           string
+	StreamID           string
+	SetJti             string
+	EventType          string
+	Subject            []byte
+	VerificationResult string
+	ReceivedAt         time.Time
+	ReflectedAt        pgtype.Timestamptz
+}
+
 type RecoveryCode struct {
 	UserID      string
 	CodeHash    string
@@ -652,6 +673,20 @@ type ScimUserRef struct {
 	UpdatedAt time.Time
 }
 
+type SecurityEventDelivery struct {
+	ID            string
+	TenantID      string
+	StreamID      string
+	SetJti        string
+	SetPayload    []byte
+	Status        string
+	AttemptCount  int32
+	NextAttemptAt pgtype.Timestamptz
+	LastError     pgtype.Text
+	CreatedAt     time.Time
+	DeliveredAt   pgtype.Timestamptz
+}
+
 type SigningKey struct {
 	Kid            string
 	TenantID       string
@@ -668,6 +703,34 @@ type SigningKey struct {
 	RetiredAt      pgtype.Timestamptz
 	ExpiresAt      pgtype.Timestamptz
 	ArchivedAt     pgtype.Timestamptz
+}
+
+type SsfReceiverConfig struct {
+	StreamID          string
+	TenantID          string
+	TrustedIssuer     string
+	JwksUri           pgtype.Text
+	Jwks              []byte
+	AcceptedAudiences []byte
+}
+
+type SsfStream struct {
+	ID         string
+	TenantID   string
+	Direction  string
+	EventTypes []byte
+	Status     string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type SsfTransmitterConfig struct {
+	StreamID              string
+	TenantID              string
+	DeliveryEndpoint      string
+	Audience              string
+	DeliveryAuthorization pgtype.Text
+	MaxDeliveryAttempts   int32
 }
 
 type Tenant struct {
