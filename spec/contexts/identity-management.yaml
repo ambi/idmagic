@@ -1109,7 +1109,7 @@ models:
         description: 一方向終端 (kill) 時刻。
   AgentCredentialBinding:
     kind: entity
-    description: Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。束縛先 client_id は Agent と同一 tenant_id の OAuth2Client でなければならない (AgentReferencesStayTenantLocal)。
+    description: Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。束縛先 client_id は Agent と同一 tenant_id の OAuth2Client でなければならない (AgentReferencesStayTenantLocal)。client_id は他の Agent と重複して束縛できない (1 client_id につき Agent は最大 1 つ。BindAgentCredential の requires で検証)。
     identity:
       - agent_id
       - client_id
@@ -2803,7 +2803,7 @@ interfaces:
         successful_status_codes:
           - "204"
   DeleteAgent:
-    description: 管理者が Agent を削除する。束縛は cascade で解除する。
+    description: 管理者が Agent を削除する。束縛は cascade で解除する。Killed の Agent は削除できない (fail-closed。削除により束縛先 OAuth2Client が client_credentials で無制限に token を再取得できてしまうため)。
     input:
       agent_id:
         type: String
@@ -2812,6 +2812,8 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentDeleted
+    requires:
+      - resource.status != "Killed"
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2835,6 +2837,8 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentCredentialBound
+    requires:
+      - not agentCredentialBindingExistsForClient(context.tenant_id, input.request.client_id)
     access:
       policies: [TenantAdministrator]
       resource:
