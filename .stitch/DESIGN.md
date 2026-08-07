@@ -11,9 +11,11 @@ colors:
   foreground-secondary: '#475569'
   foreground-tertiary: '#64748b'
   foreground-faint: '#94a3b8'
-  primary: '#2563eb'
-  primary-hover: '#1d4ed8'
+  primary: '#020617'
+  primary-hover: '#353845'
   primary-foreground: '#ffffff'
+  link-accent: '#1d4ed8'
+  live-accent: '#2563eb'
   secondary-accent: '#2dd4bf'
   inverse-surface: '#0a1020'
   inverse-surface-deep: '#020617'
@@ -108,12 +110,25 @@ spacing:
 ## 1. Visual Theme & Atmosphere
 
 IdMagic is an identity & access management (IAM) admin console — a sibling to
-products like Okta or Microsoft Entra. The visual language is **clean
-enterprise SaaS**: a bright, cool-neutral canvas (slate-50/white) punctuated by
-a single confident **blue accent**, with functional color reserved strictly
-for status communication (success/warning/danger). The overall feel is
-trustworthy, precise, and quiet — the UI recedes so that identity data
-(users, roles, sessions, security posture) stays legible.
+products like Okta or Microsoft Entra. The visual language is **clean,
+monochrome-first enterprise SaaS**, closer to Linear, Vercel, or the Stripe
+Dashboard than to a "brand-blue everything" B2B template: a bright,
+cool-neutral canvas (slate-50/white), a single **ink-black** solid color for
+every primary action, and blue held back as a quiet supporting accent for
+text and interactive states only. Functional color (emerald/red/amber) is
+reserved strictly for status communication. The overall feel is trustworthy,
+precise, and quiet — the UI recedes so that identity data (users, roles,
+sessions, security posture) stays legible.
+
+Solid emphasis and interactive accent are deliberately different colors that
+never compete for the same job: **ink-black** (`#020617`) is the one color
+used for every "this is a solid action" surface — primary buttons, the
+tenant-branding CTA fallback, the active sidebar item, avatar badges — so a
+user never sees two different "primary" colors on the same screen. **Blue**
+is reserved for "this is text you can interact with" — links, the eyebrow
+label, focus rings, hover icons, progress bars — and never appears as a
+solid fill. This two-color discipline (one ink, one blue, each with exactly
+one job) is what reads as calm and considered rather than decorative.
 
 Two atmospheres coexist. The **light "operations" surface** (admin console,
 dashboards, tables) uses a soft slate-to-white gradient background, hairline
@@ -136,12 +151,13 @@ over minimalism.
 - **Soft Layered Gradient** `linear-gradient(180deg, #f8fbff, #f2f6fb 38%, #f8fafc)` — the `.app-surface` background behind the admin shell, giving depth without a flat fill.
 - **Pure White** `#ffffff` — card and panel surfaces, almost always at 90–92% opacity with `backdrop-blur` over the slate gradient.
 - **Hairline Border Slate** `#e2e8f0` (`slate-200`, often at 70–80% opacity) — the default border for cards, headers, sidebars, table rows.
-- **Deep Ink** `#020617` (`slate-950`) — primary text color and the default fill for high-emphasis UI chips (active nav item, avatar badges, sidebar "org" pill).
+- **Deep Ink** `#020617` (`slate-950`) — primary text color, and — via the `--primary` token — the one solid-fill color for every primary action in the product (see below).
 
 ### Accent & Interactive
 
-- **Confident Blue** `#2563eb` (`blue-600`) — the single primary accent: primary CTAs' intended color, links, focus rings (`ring-blue-600/10-30`), active icons, progress bars, the "eyebrow" label on auth screens.
-- **Blue Hover/Pressed** `#1d4ed8` (`blue-700`) — hover/active state for blue text and links.
+- **Ink Black — Primary/CTA** `#020617` (`slate-950`) — the single solid-fill color for *every* primary action: the `Button` "default" variant, the tenant-branding CTA fallback (`.tenant-primary-cta`, used whenever a tenant hasn't set custom branding), the active sidebar nav item, and avatar badge fills. Previously the shadcn `Button` resolved to a brighter blue while these other CTAs stayed ink-black — this was reconciled by moving `Button`'s `--primary` token to match the ink that was already dominant everywhere else, rather than the reverse. Hover lightens via `bg-primary/80` opacity (no separate pressed shade).
+- **Link Blue** `#1d4ed8` (`blue-700`) — the resting color for every text link, the `Button` "link" variant, and the "eyebrow" label on auth screens. Deliberately kept off the `--primary` token (which is now ink) so text accents stay legible and distinct from body copy.
+- **Confident Blue — Live Accent** `#2563eb` (`blue-600`) — the brighter blue hand-coded across feature screens for focus rings (`ring-blue-600/10-30`), hover-state icons, and progress bars — transient "you're interacting right now" feedback, never a solid fill.
 - **Teal Spark** `#2dd4bf` (`teal-400`) — a minimal secondary accent, used as a single "online/verified" indicator dot on the brand mark and in the auth aside's top glow gradient. Used sparingly, never as a fill.
 - **Ink Navy** `#0a1020` — the dark brand surface for the auth split-screen aside and dashboard hero card, with layered low-opacity blue/teal radial gradients for atmosphere.
 
@@ -160,17 +176,21 @@ over minimalism.
 - **Warning — Amber** bg `#fffbeb` / text `#b45309` / dot `#f59e0b` — pending states (e.g. pending deletion), caution.
 - **Info/Alt Accent — Violet** bg `#eef2ff`(-ish `indigo-50`) / text `#6d28d9` — a fourth metric "tone" used to differentiate dashboard tiles (applications) from the primary blue tone; not used for real alerts.
 
-> `src/styles.css` previously defined `--color-primary: #2563eb` in a plain
-> `@theme` block, but a later `@theme inline` block re-declared the same
-> variable as `var(--primary)`, and CSS's last-write-wins cascade made the
-> shadcn scaffold's near-black `:root` value win instead — so the base
-> `Button` "default"/"link" variants silently rendered near-black rather
-> than brand blue. This has been fixed by setting the underlying `--primary`
-> (and the matching `--muted`, `--border`, `--destructive`, `--radius`
-> tokens, which had the same dead-override problem) directly in `:root`/
-> `.dark`, and removing the now-redundant `@theme` overrides. **Blue-600
-> (`#2563eb`) is the confirmed brand primary**, both in the token system and
-> in hand-built screens.
+> **Why `--primary` is ink-black, not blue:** `src/styles.css` used to have
+> two duplicate, conflicting declarations of `--color-primary` (a plain
+> `@theme` block overridden by a later `@theme inline` block), and the one
+> that silently won was a generic shadcn scaffold value — so the `Button`
+> "default" variant rendered near-black by accident while the rest of the
+> product's CTAs (`.tenant-primary-cta`, active nav, avatars) were
+> hand-coded ink-black on purpose. Once that dedup bug was fixed, `Button`
+> briefly rendered a bright `blue-600`, which then exposed a second,
+> longer-standing problem: the product had *two* different "primary" colors
+> competing on the same screens (e.g. the login page's black submit button
+> next to admin pages' blue `Button`s). Rather than pick a new third color,
+> `--primary` was aligned to the ink-black that was already dominant
+> everywhere else, and blue was cleanly demoted to a text/interactive-only
+> role (`link-accent` / `live-accent` above). One ink, one blue, each with
+> exactly one job.
 
 ## 3. Typography Rules
 
@@ -207,14 +227,16 @@ compact.
 
 ### Buttons
 
-Rounded-`md` (0.5rem) corners, `h-9` (36px) default height, border-transparent
-by default. Variants: `default` (solid brand fill, white text),
-`outline` (bordered, transparent bg, hover fills muted), `secondary` (subtle
-gray fill), `ghost` (no fill until hover), `destructive` (low-opacity red
-fill, not solid — red-10%/20% tint rather than a hard red block), `link`
-(text-only, underline on hover). Active state nudges the button down 1px
-(`active:translate-y-px`) for tactile feedback instead of a shadow change.
-Focus is a 3px `ring-ring/50` halo, not an outline.
+Rounded-`md` (0.6rem) corners, `h-9` (36px) default height, border-transparent
+by default. Variants: `default` (solid **ink-black** `#020617` fill, white
+text — the same color as every other primary CTA in the product, deliberately
+not blue), `outline` (bordered, transparent bg, hover fills muted),
+`secondary` (subtle gray fill), `ghost` (no fill until hover), `destructive`
+(low-opacity red fill, not solid — red-10%/20% tint rather than a hard red
+block), `link` (blue-700 text, underline on hover — the one variant that
+*is* blue, since it's text, not a solid fill). Active state nudges the
+button down 1px (`active:translate-y-px`) for tactile feedback instead of a
+shadow change. Focus is a 3px `ring-ring/50` halo, not an outline.
 
 ### Cards & Panels
 
@@ -306,32 +328,41 @@ use rather than oversized touch targets.
 
 ### Language to Use
 
-Describe this system as: *"clean enterprise IAM console, cool slate-and-white
-canvas, one confident blue accent, functional-only color (emerald/red/amber),
-frosted-glass translucent cards over a soft gradient background, dark navy
-brand surfaces reserved for hero/promo moments, Inter typeface throughout,
-Tabler line icons."* Avoid describing it as colorful, playful, or
-warm — the palette is deliberately restrained.
+Describe this system as: *"clean, monochrome-first enterprise IAM console —
+cool slate-and-white canvas, one ink-black solid color for every primary
+button and CTA, blue held back strictly for text links, focus rings, and
+hover icons, functional-only status color (emerald/red/amber), frosted-glass
+translucent cards over a soft gradient background, dark navy brand surfaces
+reserved for hero/promo moments, Inter typeface throughout, Tabler line
+icons."* Avoid describing it as colorful, playful, warm, or "blue-branded" —
+solid fills should always read as ink, never blue.
 
 ### Color References
 
 - Background: Cool Barely-There Slate `#f8fafc`
 - Surface: White (90–92% opacity, blurred) `#ffffff`
 - Border: Hairline Slate `#e2e8f0`
-- Primary text: Deep Ink `#020617`
-- Primary accent: Confident Blue `#2563eb` (hover `#1d4ed8`)
+- Primary text & every solid CTA fill: Ink Black `#020617`
+- Link/text accent (links, eyebrow label, link-style buttons): Link Blue `#1d4ed8`
+- Live/interactive accent (focus rings, hover icons, progress): Confident Blue `#2563eb`
 - Secondary accent: Teal Spark `#2dd4bf` (sparing use only)
 - Dark brand surface: Ink Navy `#0a1020`
 - Success / Destructive / Warning: Emerald `#10b981` / Red `#dc2626` / Amber `#f59e0b`
 
 ### Component Prompts
 
+- *"A primary button: solid ink-black (#020617) fill, white text, rounded-md
+  corners, no heavy shadow, a subtle 1px pressed-down feel on click — calm
+  and confident, never blue."*
+- *"A text link or 'eyebrow' label: blue-700 (#1d4ed8), no background, bold
+  and understated — the only place blue appears as a real color rather than
+  a hover/focus flicker."*
 - *"A dashboard metric card: white rounded-xl card with a soft diffuse
   shadow, a rounded-xl icon badge tinted blue-50/blue-700, a large bold
   slate-950 number, a small slate-500 label beneath, and a thin progress bar
   in blue-600 at the bottom."*
 - *"An admin sidebar nav item: full-width rounded-lg row, 40px tall, Tabler
-  icon + label; active state solid deep-ink (#020617) fill with white text
+  icon + label; active state solid ink-black (#020617) fill with white text
   and a soft shadow, inactive state muted slate text turning white-on-hover."*
 - *"A status pill: rounded-full badge with a small colored dot and tinted
   background — emerald for active, red for disabled, amber for pending —
@@ -339,7 +370,9 @@ warm — the palette is deliberately restrained.
 
 ### Incremental Iteration
 
-When refining generated screens, push toward: less color (blue + slate should
-dominate; keep emerald/red/amber strictly functional), softer/larger shadows
-instead of hard drop-shadows, and translucent/blurred surfaces over solid
+When refining generated screens, push toward: never let a solid button or
+CTA render blue — if one does, it's a bug, repaint it ink-black; keep blue
+confined to text/interactive states; keep emerald/red/amber strictly
+functional; prefer softer/larger shadows over hard drop-shadows; and favor
+translucent/blurred surfaces over solid
 fills wherever a panel sits above the gradient page background.
