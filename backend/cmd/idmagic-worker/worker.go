@@ -29,6 +29,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
+	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	"github.com/ambi/idmagic/backend/sharedsignals/push_http"
+	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 )
 
@@ -128,6 +131,7 @@ func RunWorker() error {
 	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, provisioning.NewTargetClient)))
 	go provisioningDispatchLoop(ctx, deps)
 	go ephemeralSweepLoop(ctx, deps)
+	go sharedSignalsDeliveryLoop(ctx, deps)
 
 	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
 	lanes, err := resolveWorkerLanes()
@@ -317,6 +321,41 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies)
 	}
 }
 
+// sharedSignalsDeliveryLoop is the retry/backoff/dead-letter delivery worker
+// for outbound Security Event Tokens (ADR-057, wi-58 T004): it periodically
+// picks up due SecurityEventDelivery rows (SsfStream direction=Transmit) and
+// pushes each one, independent of the Jobs durable queue —
+// SecurityEventDelivery already owns its own attempt_count/next_attempt_at/
+// status state machine (SecurityEventDeliveryLifecycle), so it does not need
+// a second retry mechanism layered on top.
+func sharedSignalsDeliveryLoop(ctx context.Context, deps *bootstrap.Dependencies) {
+	logger := logging.Default()
+	// NewEmitFunc intentionally uses its own background+timeout context for
+	// audit writes rather than this loop's ctx, so an audit record isn't lost
+	// just because the process is shutting down mid-tick.
+	emit := deps.NewEmitFunc(logger) //nolint:contextcheck // see comment above
+	deliverDeps := sharedsignalsusecases.DeliverDeps{
+		DeliveryRepo: deps.SharedSignals.DeliveryRepo, TransmitterConfigRepo: deps.SharedSignals.TransmitterConfigRepo,
+		Pusher: push_http.NewHTTPSecurityEventPusher(),
+		Emit: func(event spec.DomainEvent) error {
+			emit(event)
+			return nil
+		},
+	}
+	ticker := time.NewTicker(bootstrap.EnvDuration("SHARED_SIGNALS_DELIVERY_INTERVAL", 5*time.Second))
+	defer ticker.Stop()
+	for {
+		if _, err := sharedsignalsusecases.ProcessDueDeliveries(ctx, deliverDeps, time.Now().UTC(), 100); err != nil {
+			logging.Warn(ctx, "security event delivery processing failed", "error", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
 // newAdminUserDeps builds the AdminUserDeps used by worker-run admin job
 // handlers (currently CSV user import). Emit is wired through
 // bootstrap.Dependencies.NewEmitFunc so business DomainEvents reach
@@ -326,19 +365,34 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies)
 // CSV import apply were silently dropped.
 func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) userusecases.AdminUserDeps {
 	emit := deps.NewEmitFunc(logger)
-	emitErr := func(event spec.DomainEvent) error {
-		emit(event)
-		return nil
+	// projectorDeps backs the reactor's best-effort EcosystemPropagation
+	// (SET fan-out to registered SSF Transmit streams) that runs after a
+	// successful local revocation epoch advance (ADR-057 decision 6, wi-58
+	// T004); see the reactor's Emit closure below.
+	projectorDeps := sharedsignalsusecases.ProjectorDeps{
+		StreamRepo: deps.SharedSignals.StreamRepo, TransmitterConfigRepo: deps.SharedSignals.TransmitterConfigRepo,
+		DeliveryRepo: deps.SharedSignals.DeliveryRepo, Signer: &sign_jose.Signer{KeyStore: deps.SigningKeys.KeyStore},
+		Issuer: bootstrap.EnvDefault("ISSUER", "http://localhost:8080"),
 	}
 	// reactor fail-closed advances SharedSignals' Agent revocation epoch when
 	// this Deps emits UserDisabled/UserSoftDeleted/UserDeleted (ADR-057,
 	// wi-58) — e.g. PurgeExpiredSoftDeleted's auto-purge DeleteUser call.
-	// Errors propagate through reactiveEmit, unlike emitErr's best-effort
-	// audit trail above.
+	// Errors propagate through reactiveEmit, unlike the best-effort audit
+	// trail emit(event) below.
 	reactor := &sharedsignalsusecases.AgentRevocationReactor{
 		EpochRepo: deps.SharedSignals.RevocationEpochRepo,
 		AgentRepo: deps.IdManagement.AgentRepo,
-		Emit:      emitErr,
+		Emit: func(event spec.DomainEvent) error {
+			emit(event)
+			if revoked, ok := event.(*ssdomain.AgentAccessRevoked); ok {
+				projectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := sharedsignalsusecases.ProjectAgentAccessRevoked(projectCtx, projectorDeps, revoked); err != nil {
+					logger.Error(projectCtx, "sharedsignals: SET projection failed", "error", err, "agent_id", revoked.AgentID, "tenant_id", revoked.TenantID)
+				}
+			}
+			return nil
+		},
 	}
 	reactiveEmit := func(event spec.DomainEvent) error {
 		emit(event)

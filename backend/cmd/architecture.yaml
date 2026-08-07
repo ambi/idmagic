@@ -36,6 +36,12 @@ modules:
         via: technical_shared
       - module: shared-security-passwords-argon2id
         via: technical_shared
+      - module: sharedsignals-domain
+        via: composition_root
+      - module: sharedsignals-push-http
+        via: composition_root
+      - module: sharedsignals-sign-jose
+        via: composition_root
       - module: sharedsignals-usecases
         via: composition_root
       - module: bootstrap

@@ -111,7 +111,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 		claims["agent_id"] = in.AgentID
 		claims["principal_type"] = "agent"
 	}
-	tok, err := signPS256(key, map[string]string{"typ": "at+jwt"}, claims)
+	tok, err := SignPS256(key, map[string]string{"typ": "at+jwt"}, claims)
 	if err != nil {
 		return "", "", err
 	}
@@ -191,7 +191,7 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 			}
 		}
 	}
-	return signPS256(key, nil, claims)
+	return SignPS256(key, nil, claims)
 }
 
 // VerifyIDTokenHint は /end_session の id_token_hint を検証する (OIDC RP-Initiated
@@ -328,7 +328,12 @@ func normalizeAudience(v any) []string {
 // PS256 署名・検証ヘルパ (jose ライブラリ非依存)
 // =====================================================================
 
-func signPS256(key *signingdomain.SigningKey, extraHeader map[string]string, claims map[string]any) (string, error) {
+// SignPS256 signs claims with key using PS256, returning the compact JWT.
+// Exported so other contexts can sign non-OAuth2 JWTs with the same key
+// management (e.g. SharedSignals' Security Event Tokens reuse SigningKeys'
+// rotation/JWKS instead of introducing separate key material, ADR-057
+// decision 7).
+func SignPS256(key *signingdomain.SigningKey, extraHeader map[string]string, claims map[string]any) (string, error) {
 	// crypto.Signer 経由で署名する。Local / Postgres provider の *rsa.PrivateKey は
 	// crypto.Signer を満たし、VaultTransit provider は署名を Vault へ委譲する Signer を渡す。
 	signer, ok := key.PrivateKey.(crypto.Signer)

@@ -78,6 +78,32 @@ modules:
         via: published_interface
       - module: shared-spec
         via: technical_shared
+  sharedsignals-push-http:
+    path: push_http
+    responsibility: ports.SecurityEventPusher の HTTP 実装。SSF push-based delivery (RFC 8417/RFC 9836 相当) で、SET を配送先 delivery_endpoint へ POST する。DNS-rebinding safe / redirect 再検証 (tokens_jose.JWKResolver・provisioning/client_scim と同じ per-context SSRF-safe transport の前例を踏襲、一元化はしない)。
+    context: SharedSignals
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: sharedsignals-ports
+        via: published_interface
+  sharedsignals-sign-jose:
+    path: sign_jose
+    responsibility: ports.SecurityEventTokenSigner の実装。SET (RFC 8417) の PS256 署名は SigningKeys の鍵ローテーション/JWKS 配布へ相乗りし、新規の鍵管理は持たない (ADR-057 決定3/7)。use_cases 層 (sharedsignals-usecases) を adapters 層の shared-security-tokens-jose / signingkeys-ports から隔離するための境界。
+    context: SharedSignals
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: sharedsignals-ports
+        via: published_interface
+      - module: signingkeys-ports
+        via: published_interface
+      - module: shared-security-tokens-jose
+        via: technical_shared
+      - module: tenancy-domain
+        via: published_interface
+      - module: tenancy-public
+        via: published_interface
   sharedsignals-composition:
     path: "."
     responsibility: SharedSignals の repository を束ねる composition module (bootstrap / http-server が使う)。

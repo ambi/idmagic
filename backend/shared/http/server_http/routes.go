@@ -41,11 +41,14 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
+	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
@@ -281,12 +284,31 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// UserSoftDeleted/UserDeleted) by advancing SharedSignals' Agent
 	// revocation epoch (ADR-057, wi-58). Composed into idmhttp.Deps.Reactor,
 	// which ReactiveEmit calls after every Emit.
+	//
+	// Its own Emit records the derived RevocationEpochAdvanced/
+	// AgentAccessRevoked events, and best-effort fans AgentAccessRevoked out
+	// to registered SSF Transmit streams (EcosystemPropagation, wi-58 T004).
+	// This projection step is deliberately non-propagating: ecosystem
+	// propagation must never block or delay the local revocation that just
+	// succeeded (ADR-057 decision 6), so a projection failure is logged, not
+	// returned.
+	projectorDeps := sharedsignalsusecases.ProjectorDeps{
+		StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
+		DeliveryRepo: d.SharedSignals.DeliveryRepo, Signer: &sign_jose.Signer{KeyStore: d.SigningKeys.KeyStore}, Issuer: d.Issuer,
+	}
 	revocationReactor := &sharedsignalsusecases.AgentRevocationReactor{
 		EpochRepo: d.SharedSignals.RevocationEpochRepo,
 		AgentRepo: d.IdManagement.AgentRepo,
 		Emit: func(event spec.DomainEvent) error {
 			if d.Emit != nil {
 				d.Emit(event)
+			}
+			if revoked, ok := event.(*ssdomain.AgentAccessRevoked); ok {
+				projectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := sharedsignalsusecases.ProjectAgentAccessRevoked(projectCtx, projectorDeps, revoked); err != nil {
+					logging.Error(projectCtx, "sharedsignals: SET projection failed", "error", err, "agent_id", revoked.AgentID, "tenant_id", revoked.TenantID)
+				}
 			}
 			return nil
 		},
