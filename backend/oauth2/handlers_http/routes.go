@@ -58,15 +58,19 @@ type Deps struct {
 	RefreshStore               oauthports.RefreshTokenStore
 	TokenIssuer                oauthports.TokenIssuer
 	AgentRepo                  agentports.AgentRepository
-	TokenIntrospector          oauthports.TokenIntrospector
-	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
-	AccessTokenDenylist        oauthports.AccessTokenDenylist
-	ManagedTokenRevoker        tokenusecases.ManagedTokenRevoker
-	AttrSchemaRepo             tenantports.TenantUserAttributeSchemaRepository
-	AuthEventBucketStore       authnports.AuthEventBucketStore
-	Authorizer                 oauthports.Authorizer
-	TenantSaltStore            auditports.TenantSaltStore
-	SentinelPasswordHash       string
+	// WorkloadVerifier is the composition-root wiring point for workload
+	// identity federation (ADR-053, [[wi-54-workload-identity-federation-spiffe]]).
+	// nil rejects subject_token_type=JWT URN token-exchange as unsupported.
+	WorkloadVerifier     oauthports.WorkloadTokenVerifier
+	TokenIntrospector    oauthports.TokenIntrospector
+	IDTokenHintVerifier  oauthports.IDTokenHintVerifier
+	AccessTokenDenylist  oauthports.AccessTokenDenylist
+	ManagedTokenRevoker  tokenusecases.ManagedTokenRevoker
+	AttrSchemaRepo       tenantports.TenantUserAttributeSchemaRepository
+	AuthEventBucketStore authnports.AuthEventBucketStore
+	Authorizer           oauthports.Authorizer
+	TenantSaltStore      auditports.TenantSaltStore
+	SentinelPasswordHash string
 	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (client
 	// registration) and consents (wi-160, ADR-134). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository

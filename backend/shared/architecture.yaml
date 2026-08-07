@@ -214,6 +214,16 @@ modules:
         via: composition_root
       - module: wsfederation-public
         via: composition_root
+      - module: workloadidentity-composition
+        via: composition_root
+      - module: workloadidentity-domain
+        via: composition_root
+      - module: workloadidentity-handlers-http
+        via: composition_root
+      - module: workloadidentity-usecases
+        via: composition_root
+      - module: workloadidentity-verification-jose
+        via: composition_root
   shared-services:
     path: "."
     responsibility: 共有 notification port、logging、resilience、media validation、version capability。

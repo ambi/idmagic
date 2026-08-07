@@ -1,0 +1,978 @@
+# idmagic WorkloadIdentity — SCL
+# SCL 3.0 context specification.
+# wi-54: エージェントランタイム向け workload identity federation。ADR-053 が設計を
+# 確定する。外部の attestation 発行者 (OIDC 互換 JWT を第一級とし、Kubernetes
+# projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID を
+# 対象とする) を検証し、テナントが事前登録した subject pattern → Agent の mapping に
+# 従って [[wi-49-agent-identity-first-class-principal]] の Agent へ federation する。
+# idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。
+# 交換機構そのものは新設せず、OAuth2 の token-exchange grant (RFC 8693, ADR-049) を
+# subject_token_type の差し替えで再利用する。
+
+system: idmagic
+spec_version: "3.0"
+context: WorkloadIdentity
+glossary:
+  WorkloadTrustBundle:
+    definition: テナントが登録する外部 attestation 発行者の信頼設定。trust domain・issuer・JWKS 取得元 (または inline JWKS)・受理する audience・受理する外部 SVID の最大 TTL を束ねる。登録済み issuer のみを信頼する (trust-on-first-use を許さない)。
+  AgentWorkloadBinding:
+    definition: WorkloadTrustBundle 配下で、外部 subject に対する glob pattern を同一テナントの既存 Agent へ写す 1 対多の mapping 行。pattern にマッチしない subject、または複数の Enabled binding に曖昧にマッチする subject は fail-closed で拒否する。
+  JwtSvid:
+    definition: OIDC 互換の JWT を wire 形式とする外部 attestation token。Kubernetes projected ServiceAccount token・クラウドの instance identity (OIDC) token・SPIFFE の JWT-SVID を包含する第一級の subject_token 種別 ([[ADR-053]])。X.509-SVID (mTLS) は将来の拡張。
+    aliases:
+      - JWT-SVID
+  TrustDomain:
+    definition: WorkloadTrustBundle が束ねる論理グループ名。SPIFFE trust domain、または運用者が定める発行者グループのラベル。
+  FailClosed:
+    definition: 未登録 issuer・署名不正・期限切れ・pattern 不一致・ambiguous match・束縛先 Agent が Active でない、のいずれかに該当する場合、常に交換を拒否する方針。判定漏れは「交換しない」側へ倒す ([[ADR-053]])。
+  System:
+    definition: WorkloadIdentity の検証 usecase そのものを指す、人間の操作者を伴わない技術的な主体。
+models:
+  User:
+    kind: entity
+    description: IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+      roles:
+        type: "String[]"
+  Agent:
+    kind: entity
+    description: API アクセストークンを提示する外部 client principal の最小 stub。
+    identity: id
+    fields:
+      id:
+        type: String
+  AgentRef:
+    kind: entity
+    description: IdManagement が publish する Agent principal を、束縛検証に必要な属性だけで表す published language stub。
+    identity: id
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      status:
+        type: String
+        description: "Active / Disabled / Killed。Active 以外への束縛は fail-closed で拒否する。"
+  InvalidRequestError:
+    kind: error
+    description: リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる (RFC 6749 §5.2 invalid_request 相当)。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      reason:
+        type: String
+        optional: true
+  AccessDeniedError:
+    kind: error
+    description: principal が対象操作の policy を満たさない。Authentication context が定義する共通 error の published language stub。
+  WorkloadAttestationRejectedError:
+    kind: error
+    description: 外部 attestation token の検証が fail-closed で失敗した (未登録 issuer・署名不正・期限切れ・audience 不一致・TTL 超過・pattern 不一致・ambiguous match・束縛先 Agent が Active でない)。
+    payload:
+      reason:
+        type: String
+  WorkloadTrustBundleStatus:
+    kind: enum
+    description: WorkloadTrustBundleLifecycle の状態。
+    values:
+      - enabled
+      - disabled
+  AgentWorkloadBindingStatus:
+    kind: enum
+    description: AgentWorkloadBindingLifecycle の状態。
+    values:
+      - enabled
+      - disabled
+  WorkloadTrustBundle:
+    kind: entity
+    description: テナントスコープの外部 attestation 発行者信頼設定。issuer は tenant 内で一意。jwks_uri と jwks (inline) は少なくとも一方が必須。
+    identity: id
+    constraints:
+      - "issuer != ''"
+      - "accepted_audiences.length > 0"
+      - "max_subject_token_ttl_seconds > 0"
+      - "jwks_uri != null || jwks != null"
+    fields:
+      id:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 64
+        description: 生成識別子。UUID v4。不変。
+      tenant_id:
+        type: String
+        default: default
+        description: 所属テナント ID。cross-tenant 参照は禁止。
+      name:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 100
+        description: テナント内で一意な管理用表示名。
+      trust_domain:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 255
+        description: SPIFFE trust domain、または運用者が定める発行者グループのラベル。
+      issuer:
+        type: URI
+        description: "外部 attestation token の iss claim と一致しなければならない発行者 URL。テナント内で一意。"
+      jwks_uri:
+        type: URI
+        optional: true
+        description: JWKS 取得元。https 必須。
+      jwks:
+        type: JSON
+        optional: true
+        description: inline JWKS。jwks_uri の代替。
+      accepted_audiences:
+        type: "String[]"
+        description: 外部 attestation token の aud claim が最低 1 つ一致しなければならない受理 audience 集合。
+      max_subject_token_ttl_seconds:
+        type: Integer
+        default: 3600
+        description: 外部 attestation token 自身の (exp - iat) に許容する上限。超過は fail-closed で拒否する。
+      status:
+        type: WorkloadTrustBundleStatus
+        default: enabled
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+        optional: true
+      jwks_cached_at:
+        type: DateTime
+        optional: true
+        description: JWKS の最終取得成功時刻。last-known-good キャッシュの鮮度判定に使う。
+  AgentWorkloadBinding:
+    kind: entity
+    description: WorkloadTrustBundle 配下で外部 subject の glob pattern を同一テナントの Agent へ写す mapping。agent_id は WorkloadTrustBundle と同一 tenant_id の既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。
+    identity: id
+    constraints:
+      - "subject_pattern != ''"
+      - "agent_id != ''"
+    fields:
+      id:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 64
+        description: 生成識別子。UUID v4。不変。
+      tenant_id:
+        type: String
+        default: default
+        description: 所属テナント ID。WorkloadTrustBundle.tenant_id と一致する。
+      trust_bundle_id:
+        type: String
+        description: 属する WorkloadTrustBundle の id。
+      subject_pattern:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 500
+        description: "外部 attestation token の sub claim に対する glob pattern (例: spiffe://example.org/ns/*/sa/agent-*、system:serviceaccount:prod-agents:*)。同一 trust_bundle_id 内で重複禁止。"
+      agent_id:
+        type: String
+        description: 写像先の Agent id。WorkloadTrustBundle と同一 tenant_id の既存 Agent でなければならない。
+      status:
+        type: AgentWorkloadBindingStatus
+        default: enabled
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+        optional: true
+      disabled_at:
+        type: DateTime
+        optional: true
+  WorkloadTrustBundleRegisterRequest:
+    kind: value_object
+    description: 管理者が WorkloadTrustBundle を登録する JSON リクエスト。
+    fields:
+      name:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 100
+      trust_domain:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 255
+      issuer:
+        type: URI
+      jwks_uri:
+        type: URI
+        optional: true
+      jwks:
+        type: JSON
+        optional: true
+      accepted_audiences:
+        type: "String[]"
+      max_subject_token_ttl_seconds:
+        type: Integer
+        optional: true
+  WorkloadTrustBundleUpdateRequest:
+    kind: value_object
+    description: 管理者が WorkloadTrustBundle の name / jwks_uri / jwks / accepted_audiences / max_subject_token_ttl_seconds を更新する JSON リクエスト。省略フィールドは現状維持。issuer / trust_domain は不変 (変更したい場合は登録し直す)。
+    fields:
+      name:
+        type: String
+        optional: true
+        constraints:
+          - non_empty
+          - max_length: 100
+      jwks_uri:
+        type: URI
+        optional: true
+      jwks:
+        type: JSON
+        optional: true
+      accepted_audiences:
+        type: "String[]"
+        optional: true
+      max_subject_token_ttl_seconds:
+        type: Integer
+        optional: true
+  WorkloadTrustBundleResponse:
+    kind: value_object
+    description: WorkloadTrustBundle 表現。管理 API の一覧・詳細で同じ表現を返す。jwks の秘密情報は含まない (公開鍵材料のみ)。
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      name:
+        type: String
+      trust_domain:
+        type: String
+      issuer:
+        type: URI
+      jwks_uri:
+        type: URI
+        optional: true
+      has_inline_jwks:
+        type: Boolean
+        description: inline jwks が設定されているかどうか (jwks 本体は返さない)。
+      accepted_audiences:
+        type: "String[]"
+      max_subject_token_ttl_seconds:
+        type: Integer
+      status:
+        type: WorkloadTrustBundleStatus
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+        optional: true
+      jwks_cached_at:
+        type: DateTime
+        optional: true
+  WorkloadTrustBundleListResponse:
+    kind: value_object
+    description: 管理 API の WorkloadTrustBundle 一覧。
+    fields:
+      trust_bundles:
+        type: "WorkloadTrustBundleResponse[]"
+  WorkloadTrustBundleRefreshResponse:
+    kind: value_object
+    description: RefreshWorkloadTrustBundleJWKS の応答。実際に JWKS を取得できたかどうかを返す (テナントが設定ミスを事前に発見するための test 操作)。
+    fields:
+      reachable:
+        type: Boolean
+      key_count:
+        type: Integer
+        optional: true
+      jwks_cached_at:
+        type: DateTime
+        optional: true
+  AgentWorkloadBindingCreateRequest:
+    kind: value_object
+    description: 管理者が AgentWorkloadBinding を作成する JSON リクエスト。
+    fields:
+      subject_pattern:
+        type: String
+        constraints:
+          - non_empty
+          - max_length: 500
+      agent_id:
+        type: String
+        constraints:
+          - non_empty
+  AgentWorkloadBindingResponse:
+    kind: value_object
+    description: AgentWorkloadBinding 表現。管理 API の一覧・詳細で同じ表現を返す。
+    fields:
+      id:
+        type: String
+      tenant_id:
+        type: String
+      trust_bundle_id:
+        type: String
+      subject_pattern:
+        type: String
+      agent_id:
+        type: String
+      status:
+        type: AgentWorkloadBindingStatus
+      created_at:
+        type: DateTime
+      updated_at:
+        type: DateTime
+        optional: true
+      disabled_at:
+        type: DateTime
+        optional: true
+  AgentWorkloadBindingListResponse:
+    kind: value_object
+    description: 管理 API の AgentWorkloadBinding 一覧。
+    fields:
+      bindings:
+        type: "AgentWorkloadBindingResponse[]"
+  WorkloadAttestation:
+    kind: value_object
+    description: "OAuth2 の token-exchange grant から渡す、外部 attestation token の生値と検証コンテキスト。VerifyWorkloadAttestation の input。"
+    fields:
+      subject_token:
+        type: String
+        description: 外部 attestation token (JWT-SVID 等) の生の文字列。
+      requested_audience:
+        type: String
+        description: "token-exchange の resource パラメータ (RFC 8707)。監査イベントに残す。"
+  WorkloadIdentityGrant:
+    kind: value_object
+    description: 検証を通過した外部 attestation を写した idmagic principal。OAuth2 の token-exchange usecase はこれを subject として扱い、client_id が指す束縛済み OAuth2Client を自身の repository で解決して scope / grant_types のダウンスコープ上限を得る (WorkloadIdentity は OAuth2Client の詳細を持たない)。
+    fields:
+      agent_id:
+        type: String
+      client_id:
+        type: String
+        description: 束縛先 Agent が保持する AgentCredentialBinding の client_id。発行トークンの sub になる。
+      trust_bundle_id:
+        type: String
+      binding_id:
+        type: String
+  WorkloadTrustBundleConfigured:
+    kind: event
+    description: 管理者が WorkloadTrustBundle を新規登録した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+      issuer:
+        type: String
+  WorkloadTrustBundleUpdated:
+    kind: event
+    description: 管理者が WorkloadTrustBundle のメタデータを更新した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+  WorkloadTrustBundleDisabled:
+    kind: event
+    description: 管理者が WorkloadTrustBundle を無効化した。以後この bundle 配下の binding は交換に使えない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+  WorkloadTrustBundleEnabled:
+    kind: event
+    description: 管理者が無効化済みの WorkloadTrustBundle を再有効化した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+  WorkloadTrustBundleDeleted:
+    kind: event
+    description: 管理者が WorkloadTrustBundle を削除した。配下の AgentWorkloadBinding は cascade で削除する。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+  WorkloadTrustBundleJWKSRefreshed:
+    kind: event
+    description: 管理者が RefreshWorkloadTrustBundleJWKS を呼び、JWKS の再取得を試みた。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+      reachable:
+        type: Boolean
+  AgentWorkloadBindingCreated:
+    kind: event
+    description: 管理者が AgentWorkloadBinding を作成した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+      bindingId:
+        type: String
+      agentId:
+        type: String
+  AgentWorkloadBindingDisabled:
+    kind: event
+    description: 管理者が AgentWorkloadBinding を無効化した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      bindingId:
+        type: String
+  AgentWorkloadBindingEnabled:
+    kind: event
+    description: 管理者が無効化済みの AgentWorkloadBinding を再有効化した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      bindingId:
+        type: String
+  AgentWorkloadBindingDeleted:
+    kind: event
+    description: 管理者が AgentWorkloadBinding を削除した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      bindingId:
+        type: String
+  WorkloadTokenExchanged:
+    kind: event
+    description: 外部 attestation の検証を通過し、束縛先 Agent の資格情報として idmagic token を発行した ([[ADR-053]])。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      trustBundleId:
+        type: String
+      bindingId:
+        type: String
+      agentId:
+        type: String
+      audience:
+        type: String
+  WorkloadAttestationRejected:
+    kind: event
+    description: 外部 attestation token の検証が fail-closed で拒否された ([[ADR-053]])。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+      reason:
+        type: String
+        description: "unregistered_issuer / trust_bundle_disabled / jwks_unavailable / invalid_signature / expired / audience_mismatch / ttl_exceeded / no_binding_match / ambiguous_match / agent_not_active / agent_unbound のいずれか。"
+      trustBundleId:
+        type: String
+        optional: true
+        description: issuer が登録済みだった場合のみ設定する。
+states:
+  WorkloadTrustBundleLifecycle:
+    description: 登録時に enabled として作成される。無効化で disabled に遷移し、以後配下の binding は交換に使えなくなる (fail-closed)。再有効化で enabled に戻せる。削除は状態遷移ではなく行そのものを取り除く終端操作で、配下の binding を cascade で削除する。
+    target: WorkloadTrustBundle
+    initial: enabled
+    transitions:
+      - from: enabled
+        event: WorkloadTrustBundleDisabled
+        to: disabled
+      - from: disabled
+        event: WorkloadTrustBundleEnabled
+        to: enabled
+  AgentWorkloadBindingLifecycle:
+    description: 作成時に enabled として作成される。無効化で disabled に遷移し以後の交換に使えなくなる。再有効化で enabled に戻せる。削除は状態遷移ではなく行そのものを取り除く終端操作。
+    target: AgentWorkloadBinding
+    initial: enabled
+    transitions:
+      - from: enabled
+        event: AgentWorkloadBindingDisabled
+        to: disabled
+      - from: disabled
+        event: AgentWorkloadBindingEnabled
+        to: enabled
+interfaces:
+  ListWorkloadTrustBundles:
+    description: 管理者が所属テナントの WorkloadTrustBundle を一覧する。
+    output:
+      response:
+        type: WorkloadTrustBundleListResponse
+    errors:
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator, ManagementApiClientReadWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundleDirectory
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: GET
+        path: /api/admin/workload-identity/trust-bundles
+  GetWorkloadTrustBundle:
+    description: 管理者が単一 WorkloadTrustBundle を取得する。別テナントの bundle は未存在として扱う。
+    input:
+      trust_bundle_id:
+        type: String
+    output:
+      response:
+        type: WorkloadTrustBundleResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator, ManagementApiClientReadWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}"
+  RegisterWorkloadTrustBundle:
+    description: 管理者が所属テナントに WorkloadTrustBundle を登録する。name はテナント内で一意、issuer もテナント内で一意でなければならない。
+    input:
+      request:
+        type: WorkloadTrustBundleRegisterRequest
+    output:
+      response:
+        type: WorkloadTrustBundleResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WorkloadTrustBundleConfigured
+    requires:
+      - "input.request.jwks_uri != null || input.request.jwks != null"
+      - trust_bundle_issuer_unique_in_tenant(context.tenant_id, input.request.issuer)
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundleDirectory
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: POST
+        path: /api/admin/workload-identity/trust-bundles
+        request_form: body
+        successful_status_codes:
+          - "201"
+  UpdateWorkloadTrustBundle:
+    description: 管理者が WorkloadTrustBundle の name / jwks_uri / jwks / accepted_audiences / max_subject_token_ttl_seconds を更新する。
+    input:
+      trust_bundle_id:
+        type: String
+      request:
+        type: WorkloadTrustBundleUpdateRequest
+    output:
+      response:
+        type: WorkloadTrustBundleResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WorkloadTrustBundleUpdated
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: PATCH
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}"
+        request_form: body
+  DisableWorkloadTrustBundle:
+    description: 管理者が WorkloadTrustBundle を無効化する。以後配下の全 binding が交換に使えなくなる (fail-closed)。
+    input:
+      trust_bundle_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WorkloadTrustBundleDisabled
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/disable"
+        successful_status_codes:
+          - "204"
+  EnableWorkloadTrustBundle:
+    description: 管理者が無効化済みの WorkloadTrustBundle を再有効化する。
+    input:
+      trust_bundle_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WorkloadTrustBundleEnabled
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/enable"
+        successful_status_codes:
+          - "204"
+  DeleteWorkloadTrustBundle:
+    description: 管理者が WorkloadTrustBundle を削除する。配下の AgentWorkloadBinding は cascade で削除する。
+    input:
+      trust_bundle_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WorkloadTrustBundleDeleted
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}"
+        successful_status_codes:
+          - "204"
+  RefreshWorkloadTrustBundleJWKS:
+    description: 管理者が WorkloadTrustBundle の JWKS 到達性を即時確認する (設定ミスの事前検知)。成功時は jwks_cached_at を更新する。
+    input:
+      trust_bundle_id:
+        type: String
+    output:
+      response:
+        type: WorkloadTrustBundleRefreshResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - WorkloadTrustBundleJWKSRefreshed
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/refresh"
+  ListAgentWorkloadBindings:
+    description: 管理者が WorkloadTrustBundle 配下の AgentWorkloadBinding を一覧する。
+    input:
+      trust_bundle_id:
+        type: String
+    output:
+      response:
+        type: AgentWorkloadBindingListResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    read_only: true
+    access:
+      policies: [TenantAdministrator, ManagementApiClientReadWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: GET
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/bindings"
+  CreateAgentWorkloadBinding:
+    description: 管理者が WorkloadTrustBundle 配下に AgentWorkloadBinding を作成する。agent_id は同一テナントの既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。同一 trust_bundle_id 内で subject_pattern の完全重複は拒否する。
+    input:
+      trust_bundle_id:
+        type: String
+      request:
+        type: AgentWorkloadBindingCreateRequest
+    output:
+      response:
+        type: AgentWorkloadBindingResponse
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - AgentWorkloadBindingCreated
+    requires:
+      - "input.request.agent_id in tenantAgentIds(context.tenant_id)"
+      - "!subject_pattern_duplicate_in_bundle(input.trust_bundle_id, input.request.subject_pattern)"
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: WorkloadTrustBundle
+        id: input.trust_bundle_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/bindings"
+        request_form: body
+        successful_status_codes:
+          - "201"
+  DisableAgentWorkloadBinding:
+    description: 管理者が AgentWorkloadBinding を無効化する。以後この binding は交換に使えなくなる。
+    input:
+      binding_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - AgentWorkloadBindingDisabled
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: AgentWorkloadBinding
+        id: input.binding_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/workload-identity/bindings/{binding_id}/disable"
+        successful_status_codes:
+          - "204"
+  EnableAgentWorkloadBinding:
+    description: 管理者が無効化済みの AgentWorkloadBinding を再有効化する。
+    input:
+      binding_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - AgentWorkloadBindingEnabled
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: AgentWorkloadBinding
+        id: input.binding_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/workload-identity/bindings/{binding_id}/enable"
+        successful_status_codes:
+          - "204"
+  DeleteAgentWorkloadBinding:
+    description: 管理者が AgentWorkloadBinding を削除する。
+    input:
+      binding_id:
+        type: String
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    emits:
+      - AgentWorkloadBindingDeleted
+    access:
+      policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
+      resource:
+        type: AgentWorkloadBinding
+        id: input.binding_id
+    bindings:
+      - kind: http
+        method: DELETE
+        path: "/api/admin/workload-identity/bindings/{binding_id}"
+        successful_status_codes:
+          - "204"
+  VerifyWorkloadAttestation:
+    description: "OAuth2 の token-exchange grant (subject_token_type=JWT-SVID URN) から呼ぶ published interface。外部 attestation token を登録済み WorkloadTrustBundle で検証し (署名・iss・aud・exp・TTL 上限)、テナント内の AgentWorkloadBinding で subject を一意に Agent へ写し、束縛先 Agent が Active であることを確認する。いずれかに失敗すれば fail-closed で拒否する。idmagic 自身は SPIRE server/agent を実装しない (relying party 側に徹する、[[ADR-053]])。"
+    input:
+      attestation:
+        type: WorkloadAttestation
+    output:
+      grant:
+        type: WorkloadIdentityGrant
+    errors:
+      - WorkloadAttestationRejectedError
+    requires:
+      - trust_bundle_registered_for_issuer(context.tenant_id, input.attestation.subject_token)
+      - workload_attestation_signature_and_claims_valid(context.tenant_id, input.attestation.subject_token)
+      - "!ambiguous_binding_match(context.tenant_id, input.attestation.subject_token)"
+      - bound_agent_is_active(context.tenant_id, input.attestation.subject_token)
+    ensures:
+      - output.grant == null || output.grant.client_id != ''
+    emits:
+      - WorkloadTokenExchanged
+      - WorkloadAttestationRejected
+    access: internal
+authorization:
+  resources:
+    WorkloadTrustBundleDirectory:
+      description: テナント内の WorkloadTrustBundle 一覧・作成対象を表す resource。
+    WorkloadTrustBundle:
+      description: 個々の WorkloadTrustBundle。
+    AgentWorkloadBinding:
+      description: 個々の AgentWorkloadBinding。
+  principals:
+    TenantAdministrator:
+      type: User
+      matches:
+        - context.authenticated
+        - principal.status == "Active"
+        - '"tenant_admin" in principal.roles'
+        - principal.tenant_id == context.tenant_id
+    ManagementApiClient:
+      type: Agent
+      matches:
+        - context.authenticated
+        - principal.tenant_id == context.tenant_id
+  policies:
+    TenantAdministrator:
+      effect: permit
+      principal: TenantAdministrator
+      when: principal.tenant_id == context.tenant_id
+    ManagementApiClientReadWorkloadIdentity:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"workload-identity:read" in context.token_scopes && principal.tenant_id == context.tenant_id'
+    ManagementApiClientWriteWorkloadIdentity:
+      effect: permit
+      principal: ManagementApiClient
+      when: '"workload-identity:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
+scenarios:
+  登録済みtrustbundle経由でワークロードトークンをAgent資格情報に交換できる:
+    actor: System
+    given:
+      - "テナント \"tenant-a\" に issuer \"https://issuer.example\" の WorkloadTrustBundle \"prod-cluster\" が Enabled で登録済みである"
+      - "\"prod-cluster\" 配下に subject pattern \"spiffe://example.org/ns/prod/sa/*\" を Agent \"checkout-bot\" へ写す AgentWorkloadBinding が Enabled で存在する"
+      - "Agent \"checkout-bot\" は Active で、AgentCredentialBinding 経由で OAuth2Client に束縛済みである"
+    main_success:
+      - "sub \"spiffe://example.org/ns/prod/sa/worker-1\" を持つ有効な JWT-SVID を subject_token として token-exchange を呼ぶ"
+      - VerifyWorkloadAttestation が Agent \"checkout-bot\" の束縛先 client_id を sub とする WorkloadIdentityGrant を返す
+      - WorkloadTokenExchanged が発火し、束縛先 Agent の資格情報として短命な idmagic access token が発行される
+  未登録issuerは拒否される:
+    actor: System
+    given:
+      - "テナント \"tenant-a\" に issuer \"https://issuer.example\" の WorkloadTrustBundle は登録されていない"
+    main_success:
+      - "iss \"https://unknown-issuer.example\" の JWT-SVID を subject_token として token-exchange を呼ぶ"
+    extensions:
+      - at: 1
+        condition: 常に (未登録 issuer)
+        steps:
+          - "VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=unregistered_issuer) で拒否する"
+          - "WorkloadAttestationRejected が reason=unregistered_issuer で発火する"
+  署名が不正なattestationは拒否される:
+    actor: System
+    given:
+      - "テナント \"tenant-a\" に issuer \"https://issuer.example\" の WorkloadTrustBundle \"prod-cluster\" が Enabled で登録済みである"
+    main_success:
+      - "iss \"https://issuer.example\" を詐称するが登録済み JWKS で検証できない署名を持つ JWT を subject_token として token-exchange を呼ぶ"
+    extensions:
+      - at: 1
+        condition: 常に (spoofed / 署名不正)
+        steps:
+          - "VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=invalid_signature) で拒否する"
+  期限切れのattestationは拒否される:
+    actor: System
+    given:
+      - "テナント \"tenant-a\" に issuer \"https://issuer.example\" の WorkloadTrustBundle \"prod-cluster\" が Enabled で登録済みである"
+    main_success:
+      - "exp が過去時刻の JWT-SVID を subject_token として token-exchange を呼ぶ"
+    extensions:
+      - at: 1
+        condition: 常に (期限切れ)
+        steps:
+          - "VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=expired) で拒否する"
+  複数bindingに曖昧にマッチするsubjectは拒否される:
+    actor: System
+    given:
+      - "\"prod-cluster\" 配下に \"spiffe://example.org/ns/prod/sa/*\" → Agent \"a\" と \"spiffe://example.org/ns/prod/sa/worker-*\" → Agent \"b\" の 2 つの Enabled AgentWorkloadBinding が存在する"
+    main_success:
+      - "sub \"spiffe://example.org/ns/prod/sa/worker-1\" を持つ有効な JWT-SVID で token-exchange を呼ぶ"
+    extensions:
+      - at: 1
+        condition: 常に (複数 Enabled binding にマッチする、binding collision)
+        steps:
+          - "VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=ambiguous_match) で拒否する"
+  束縛先AgentがKilled後は拒否される:
+    actor: System
+    given:
+      - "AgentWorkloadBinding の写像先 Agent \"checkout-bot\" が KillAgent により killed へ遷移済みである"
+    main_success:
+      - "sub がマッチする有効な JWT-SVID で token-exchange を呼ぶ"
+    extensions:
+      - at: 1
+        condition: 常に (kill 後)
+        steps:
+          - "VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=agent_not_active) で拒否する"
+  他テナントのtrustbundleは利用できない:
+    actor: System
+    given:
+      - "テナント \"tenant-b\" に issuer \"https://issuer.example\" の WorkloadTrustBundle が登録済みである"
+      - "テナント \"tenant-a\" には同じ issuer の WorkloadTrustBundle が存在しない"
+    main_success:
+      - "テナント \"tenant-a\" のコンテキストで iss \"https://issuer.example\" の JWT-SVID を subject_token として token-exchange を呼ぶ"
+    extensions:
+      - at: 1
+        condition: 常に (cross-tenant)
+        steps:
+          - "VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=unregistered_issuer) で拒否する (tenant-b の登録は見えない)"
+  管理者がtrustbundleを登録・無効化・再有効化できる:
+    actor: TenantAdministrator
+    given:
+      - 管理者としてテナントに認証済みである
+    main_success:
+      - "issuer \"https://issuer.example\" と JWKS 取得元を指定して RegisterWorkloadTrustBundle を呼ぶ"
+      - WorkloadTrustBundleConfigured が発火し、WorkloadTrustBundle が enabled として作成される
+      - "作成した WorkloadTrustBundle に対して DisableWorkloadTrustBundle を呼ぶ"
+      - WorkloadTrustBundleDisabled が発火し、以後この bundle 配下の binding は交換に使えなくなる
+      - "EnableWorkloadTrustBundle を呼ぶと WorkloadTrustBundleEnabled が発火し enabled に戻る"
+    extensions:
+      - at: 1
+        condition: jwks_uri と jwks のいずれも指定しない
+        steps:
+          - RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
+      - at: 1
+        condition: 同一テナント内に同じ issuer の WorkloadTrustBundle が既に存在する
+        steps:
+          - RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
+  管理者が他テナントのAgentへbindingを作成できない:
+    actor: TenantAdministrator
+    given:
+      - "テナント \"tenant-a\" に WorkloadTrustBundle \"prod-cluster\" が登録済みである"
+      - "Agent \"other-tenant-agent\" はテナント \"tenant-b\" に属する"
+    main_success:
+      - "\"prod-cluster\" 配下に agent_id=\"other-tenant-agent\" の CreateAgentWorkloadBinding を呼ぶ"
+    extensions:
+      - at: 1
+        condition: 常に (agent_id が別テナント)
+        steps:
+          - CreateAgentWorkloadBinding が InvalidRequestError で拒否され binding は作成されない

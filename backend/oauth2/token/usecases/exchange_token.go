@@ -27,6 +27,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
 // MaxDelegationDepth は発行トークンの act 入れ子の最大深さ (ADR-049)。
@@ -34,6 +35,10 @@ const MaxDelegationDepth = 3
 
 const (
 	tokenTypeAccessTokenURN = "urn:ietf:params:oauth:token-type:access_token"
+	// tokenTypeJWTURN は外部 workload attestation token (JWT-SVID / Kubernetes
+	// projected ServiceAccount token / クラウド instance identity token) を表す
+	// subject_token_type (RFC 8693 §3、[[wi-54-workload-identity-federation-spiffe]])。
+	tokenTypeJWTURN = "urn:ietf:params:oauth:token-type:jwt"
 )
 
 type ExchangeTokenInput struct {
@@ -66,7 +71,12 @@ type ExchangeTokenDeps struct {
 	Authorizer            ports.Authorizer
 	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo ports.McpResourceServerRepository
-	Emit                  func(spec.DomainEvent)
+	// WorkloadVerifier verifies external workload attestation tokens
+	// (subject_token_type=JWT URN) and maps them to a bound Agent's client
+	// (ADR-053, [[wi-54-workload-identity-federation-spiffe]]). nil rejects
+	// workload subject_token_type as unsupported.
+	WorkloadVerifier ports.WorkloadTokenVerifier
+	Emit             func(spec.DomainEvent)
 }
 
 func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeTokenInput, now time.Time) (*ExchangeTokenResult, error) {
@@ -100,16 +110,42 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	if in.SubjectToken == "" {
 		return reject("", NewOAuthError("invalid_request", "subject_token is required"))
 	}
-	if in.SubjectTokenType != "" && in.SubjectTokenType != tokenTypeAccessTokenURN {
-		// SELF-ISSUED access_token のみ対応 (外部トークンは対象外)。
+	var subject *ports.IntrospectionResult
+	var workloadGrant *workloaddomain.WorkloadIdentityGrant
+	switch in.SubjectTokenType {
+	case "", tokenTypeAccessTokenURN:
+		// SELF-ISSUED access_token: 本 IdP が発行し IntrospectAccessToken を通過した
+		// トークンの委任 (ADR-049)。
+		subject, err = deps.Introspector.IntrospectAccessToken(ctx, in.SubjectToken)
+		if err != nil {
+			return nil, err
+		}
+		if subject == nil || !subject.Active {
+			return reject("", NewOAuthError("invalid_grant", "The subject_token is invalid or expired."))
+		}
+	case tokenTypeJWTURN:
+		// 外部 workload attestation (JWT-SVID 等) — WorkloadIdentity の
+		// VerifyWorkloadAttestation を経由し、束縛先 Agent の client へ写す
+		// (ADR-053)。専用の資格情報経路は新設せず、以降のロジックは introspection
+		// 結果と同じ形へ正規化して再利用する。
+		if deps.WorkloadVerifier == nil {
+			return reject("", NewOAuthError("invalid_request", "unsupported subject_token_type"))
+		}
+		grant, werr := deps.WorkloadVerifier.VerifyWorkloadToken(ctx, tenantID, in.SubjectToken, now)
+		if werr != nil {
+			return reject("", NewOAuthError("invalid_grant", "The subject_token is invalid or expired."))
+		}
+		workloadClient, cerr := deps.ClientRepo.FindByID(ctx, tenantID, grant.ClientID)
+		if cerr != nil {
+			return nil, cerr
+		}
+		if workloadClient == nil {
+			return reject("", NewOAuthError("invalid_grant", "workload identity is not bound to a usable client"))
+		}
+		workloadGrant = grant
+		subject = &ports.IntrospectionResult{Active: true, Sub: workloadClient.ClientID, Scope: workloadClient.Scope}
+	default:
 		return reject("", NewOAuthError("invalid_request", "unsupported subject_token_type"))
-	}
-	subject, err := deps.Introspector.IntrospectAccessToken(ctx, in.SubjectToken)
-	if err != nil {
-		return nil, err
-	}
-	if subject == nil || !subject.Active {
-		return reject("", NewOAuthError("invalid_grant", "The subject_token is invalid or expired."))
 	}
 
 	// --- actor_token (任意) ---
@@ -218,11 +254,15 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 
 	// --- 発行 (DELEGATION ONLY: sub = subject.sub, aud = [resource], act 必須) ---
+	var agentID string
+	if workloadGrant != nil {
+		agentID = workloadGrant.AgentID
+	}
 	access, jti, err := deps.TokenIssuer.SignAccessToken(ctx, ports.AccessTokenInput{
 		Client: client, Sub: subject.Sub, Scopes: grantedScopes,
 		SenderConstraint: sc, AuthTime: now.Unix(),
 		Audiences: []string{resource}, Act: act,
-		AuthorizationDetails: grantedDetails,
+		AuthorizationDetails: grantedDetails, AgentID: agentID,
 	})
 	if err != nil {
 		return nil, err
@@ -236,6 +276,12 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		At: now, TenantID: tenantID, ActorUserID: currentActorSub, SubjectUserID: subject.Sub,
 		Audience: resource, DelegationDepth: depth,
 	})
+	if workloadGrant != nil {
+		emit(deps.Emit, &workloaddomain.WorkloadTokenExchanged{
+			At: now, TenantID: tenantID, TrustBundleID: workloadGrant.TrustBundleID,
+			BindingID: workloadGrant.BindingID, AgentID: workloadGrant.AgentID, Audience: resource,
+		})
+	}
 
 	tokenType := "Bearer"
 	if sc != nil && sc.Type == spec.SenderConstraintDPoP {

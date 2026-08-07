@@ -1,5 +1,5 @@
 ---
-status: suggested
+status: accepted
 authors: [tn]
 created_at: 2026-07-04
 ---
@@ -26,8 +26,14 @@ idmagic は `client_credentials` ([[ADR-008]]) を持つが、これは依然と
 
 ## 決定
 
-[[wi-54-workload-identity-federation-spiffe]] の意思決定を先行して起草する。
-wi-54 の実装着手とともに「採用」へ移す。[[ADR-048]] (エージェント一級プリンシパル)・
+[[wi-54-workload-identity-federation-spiffe]] の意思決定を先行して起草した。
+wi-54 の実装着手とともに「採用」へ移す。以下の決定内容は、起草時点のモデル名
+(`WorkloadIdentityProvider` / `TrustDomain` / `SubjectMapping`) を、実装設計
+(wi-54 Plan) で確定した 2 エンティティ構成 `WorkloadTrustBundle` (trust domain・
+issuer・JWKS・受理 audience・最大 SVID TTL を束ねる) / `AgentWorkloadBinding`
+(`WorkloadTrustBundle` 配下で subject pattern → `Agent` を写す 1 対多の mapping 行)
+に統合した表現で確定する。`AttestationClaim` は永続 model ではなく、検証を通過した
+JWT-SVID の claim を表す一時的な値として usecase 内に留める。[[ADR-048]] (エージェント一級プリンシパル)・
 [[ADR-049]] (token exchange による委譲・代行)・[[ADR-008]] (client 認証方式)・
 [[ADR-023]] (private_key_jwt の検証)・[[ADR-034]] (テナントスコープ永続化) を前提に、
 外部 workload attestation を idmagic の token に federation し、**エージェントランタイムが
@@ -42,10 +48,14 @@ wi-54 の実装着手とともに「採用」へ移す。[[ADR-048]] (エージ�
    ベースの bootstrap はより重く、まず JWT で federation を成立させ、X.509 は将来の拡張とする。
 
 2. **trust domain / issuer を登録し、外部 subject から idmagic principal への mapping を定義する**。
-   `WorkloadIdentityProvider` として trust domain / issuer / JWKS 取得元 / 受理する audience を
-   登録し、登録済みの issuer のみを信頼する。`SubjectMapping` で外部 subject (k8s の
-   `system:serviceaccount:ns:sa`、SPIFFE ID、cloud principal) を idmagic の [[ADR-048]]
-   `Agent` (およびそれに束縛された `OAuth2Client`) へ写す。mapping にない subject は受理しない。
+   `WorkloadTrustBundle` として trust domain / issuer / JWKS 取得元 (または inline JWKS) /
+   受理する audience / 最大 SVID TTL をテナントスコープで登録し、登録済みの issuer のみを
+   信頼する。`AgentWorkloadBinding` は `WorkloadTrustBundle` 配下に 1 対多で属し、外部 subject
+   (k8s の `system:serviceaccount:ns:sa`、SPIFFE ID、cloud principal) に対する glob pattern を
+   同一テナントの [[ADR-048]] `Agent` (およびそれに束縛された `OAuth2Client`) へ写す。
+   pattern にマッチしない subject、および複数の Enabled binding に曖昧にマッチする subject は
+   受理しない (fail-closed)。SPIFFE ID 文字列だけで Agent を自動作成せず、事前登録済み
+   binding を必須にする。
 
 3. **token exchange grant ([[ADR-049]], RFC 8693) を交換機構として再利用する**。専用の資格情報
    経路を新設しない。外部 workload token を `subject_token` として `/token` の
@@ -65,8 +75,8 @@ wi-54 の実装着手とともに「採用」へ移す。[[ADR-048]] (エージ�
    ([[wi-58-continuous-access-evaluation-agent-revocation]]) を効かせやすくする。federation の
    存在意義 (シークレットレス) を long-lived な発行で台無しにしない。
 
-6. **federation provider と subject mapping を tenant-scoped にする**。`WorkloadIdentityProvider` /
-   `TrustDomain` / `SubjectMapping` の登録・参照・操作は tenant-scoped とし ([[ADR-034]])、
+6. **federation provider と subject mapping を tenant-scoped にする**。`WorkloadTrustBundle` /
+   `AgentWorkloadBinding` の登録・参照・操作は tenant-scoped とし ([[ADR-034]])、
    ある tenant に登録した issuer が別 tenant のエージェントを発行できないようにする。
    cross-tenant な federation 信頼は認めない。
 
@@ -74,15 +84,18 @@ wi-54 の実装着手とともに「採用」へ移す。[[ADR-048]] (エージ�
    server / agent を idmagic に取り込まない。idmagic は外部の attestation 発行者を信頼し検証して
    token を交換する側であり、attestation を発行するインフラは利用者側の責務とする。
 
-8. **観測と監査**。`WorkloadIdentityProviderConfigured` / `WorkloadTokenExchanged` /
+8. **観測と監査**。`WorkloadTrustBundleConfigured` / `WorkloadTokenExchanged` /
    `WorkloadAttestationRejected` を emit し ([[ADR-018]])、拒否理由 (未登録 issuer・署名不正・
-   期限切れ・mapping なし) を残す。federation provider の管理は新規 permission
-   `AdminWorkloadIdentityManage` で保護する。
+   期限切れ・binding なし・ambiguous match・agent disabled/killed) を残す。federation provider
+   の管理は ApiTokens の scope 語彙に追加する新規 `workload-identity:read` /
+   `workload-identity:write` scope (既存の `ManagementApiClient` policy パターン、
+   通称 `AdminWorkloadIdentityManage`) で保護する。
 
 ## 影響
 
-- 新規 model `WorkloadIdentityProvider` / `TrustDomain` / `AttestationClaim` / `SubjectMapping` と
-  対応する tenant-scoped な Postgres テーブル ([[ADR-034]]) が加わる。
+- 新規 model `WorkloadTrustBundle` / `AgentWorkloadBinding` と対応する tenant-scoped な
+  Postgres テーブル ([[ADR-034]]) が加わる。新規 bounded context `WorkloadIdentity`
+  (`backend/workloadidentity`) がこれらを所有する。
 - `/token` の token-exchange 経路 ([[ADR-049]]) が workload 系 `subject_token_type` を受理するよう
   拡張される。交換機構そのものは再利用で、検証段に external issuer の attestation 検証が挿入される。
 - external issuer の JWKS 取得・キャッシュ・検証が [[ADR-023]] の検証基盤を共用する形で追加される。

@@ -52,6 +52,11 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/handlers_http"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
+	"github.com/ambi/idmagic/backend/workloadidentity"
+	workloadidentitydomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
+	workloadidentityhttp "github.com/ambi/idmagic/backend/workloadidentity/handlers_http"
+	workloadidentityusecases "github.com/ambi/idmagic/backend/workloadidentity/usecases"
+	workloadidentityverification "github.com/ambi/idmagic/backend/workloadidentity/verification_jose"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	samltoken "github.com/ambi/idmagic/backend/wsfederation/tokens_saml"
 
@@ -112,6 +117,7 @@ type Deps struct {
 	ApiTokens        apitoken.Module
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module
+	WorkloadIdentity workloadidentity.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -267,7 +273,26 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
 
+	// fetchWorkloadJWKS resolves a WorkloadTrustBundle's signing keys (inline
+	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (ADR-023 基盤の
+	// 再利用、ADR-053). Shared by the admin JWKS-refresh action and
+	// VerifyWorkloadAttestation's verification path.
+	fetchWorkloadJWKS := func(ctx context.Context, bundle *workloadidentitydomain.WorkloadTrustBundle) ([]map[string]any, error) {
+		return d.JWKResolver.ResolveJWKSSource(ctx, bundle.JWKSURI, bundle.JWKS)
+	}
+	workloadVerifier := workloadidentityusecases.WorkloadTokenVerifierAdapter{
+		Deps: workloadidentityusecases.VerifyWorkloadAttestationDeps{
+			TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo,
+			BindingRepo:     d.WorkloadIdentity.BindingRepo,
+			AgentRepo:       d.IdManagement.AgentRepo,
+			SVIDVerifier:    workloadidentityverification.NewVerifier(),
+			FetchJWKS:       fetchWorkloadJWKS,
+			Emit:            d.Emit,
+		},
+	}
+
 	oauth2http.RegisterRoutes(g, oauth2http.Deps{
+		WorkloadVerifier:           workloadVerifier,
 		Deps:                       d.Deps,
 		Authenticator:              authenticator,
 		ApplicationGate:            appGate,
@@ -307,6 +332,12 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnSessionStore:       d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
 		QuotaRepo:                  d.Tenancy.QuotaRepo,
+	})
+
+	workloadidentityhttp.RegisterRoutes(g, workloadidentityhttp.Deps{
+		Deps: d.Deps, Authenticator: authenticator,
+		TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo, BindingRepo: d.WorkloadIdentity.BindingRepo,
+		AgentRepo: d.IdManagement.AgentRepo, FetchJWKS: fetchWorkloadJWKS,
 	})
 
 	signinghttp.RegisterRoutes(g, signinghttp.Deps{

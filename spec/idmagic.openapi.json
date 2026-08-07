@@ -9856,6 +9856,7 @@
           "input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
           "input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
           "input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)",
+          "input.request.grant_type != TokenExchange || input.request.subject_token_type != \"urn:ietf:params:oauth:token-type:jwt\" || workload_attestation_verified(context.tenant_id, input.request.subject_token)",
           "!contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)"
         ],
         "x-scl-ensures": [
@@ -9869,7 +9870,7 @@
           "!contains_account_scope(output.response.scope) || access_token_subject_is_user(output.response.access_token)",
           "!contains_account_scope(output.response.scope) || access_token_audience_is_realm_api(output.response.access_token, context.issuer)"
         ],
-        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof); input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request); input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); !contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform(); !contains_account_scope(output.response.scope) || access_token_subject_is_user(output.response.access_token); !contains_account_scope(output.response.scope) || access_token_audience_is_realm_api(output.response.access_token, context.issuer)",
+        "description": "Requires: signing_key_provider_healthy(context.tenant_id); token_request_references_are_tenant_local(context.tenant_id, input.request); dpop_proof_is_fresh_and_unique(context.dpop_proof); input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request); input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope); input.request.grant_type != TokenExchange || input.request.subject_token_type != \"urn:ietf:params:oauth:token-type:jwt\" || workload_attestation_verified(context.tenant_id, input.request.subject_token); !contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)\n\nEnsures: output.response.access_token == null || access_token_audience_non_empty(output.response.access_token); input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request); input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request); input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token); input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token); !refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token); client_authentication_failures_are_uniform(); !contains_account_scope(output.response.scope) || access_token_subject_is_user(output.response.access_token); !contains_account_scope(output.response.scope) || access_token_audience_is_realm_api(output.response.access_token, context.issuer)",
         "security": [
           {
             "SclBearer": []
@@ -19741,6 +19742,946 @@
           }
         }
       }
+    },
+    "/api/admin/workload-identity/trust-bundles": {
+      "get": {
+        "operationId": "ListWorkloadTrustBundles",
+        "summary": "管理者が所属テナントの WorkloadTrustBundle を一覧する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientReadWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundleDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkloadTrustBundleListResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "RegisterWorkloadTrustBundle",
+        "summary": "管理者が所属テナントに WorkloadTrustBundle を登録する。name はテナント内で一意、issuer もテナント内で一意でなければならない。",
+        "x-scl-requires": [
+          "input.request.jwks_uri != null || input.request.jwks != null",
+          "trust_bundle_issuer_unique_in_tenant(context.tenant_id, input.request.issuer)"
+        ],
+        "description": "Requires: input.request.jwks_uri != null || input.request.jwks != null; trust_bundle_issuer_unique_in_tenant(context.tenant_id, input.request.issuer)",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundleDirectory",
+            "id": "context.tenant_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "$ref": "#/components/schemas/WorkloadTrustBundleRegisterRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkloadTrustBundleResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}": {
+      "get": {
+        "operationId": "GetWorkloadTrustBundle",
+        "summary": "管理者が単一 WorkloadTrustBundle を取得する。別テナントの bundle は未存在として扱う。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientReadWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkloadTrustBundleResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "UpdateWorkloadTrustBundle",
+        "summary": "管理者が WorkloadTrustBundle の name / jwks_uri / jwks / accepted_audiences / max_subject_token_ttl_seconds を更新する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trust_bundle_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/WorkloadTrustBundleUpdateRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "trust_bundle_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkloadTrustBundleResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteWorkloadTrustBundle",
+        "summary": "管理者が WorkloadTrustBundle を削除する。配下の AgentWorkloadBinding は cascade で削除する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/disable": {
+      "post": {
+        "operationId": "DisableWorkloadTrustBundle",
+        "summary": "管理者が WorkloadTrustBundle を無効化する。以後配下の全 binding が交換に使えなくなる (fail-closed)。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trust_bundle_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "trust_bundle_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/enable": {
+      "post": {
+        "operationId": "EnableWorkloadTrustBundle",
+        "summary": "管理者が無効化済みの WorkloadTrustBundle を再有効化する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trust_bundle_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "trust_bundle_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/refresh": {
+      "post": {
+        "operationId": "RefreshWorkloadTrustBundleJWKS",
+        "summary": "管理者が WorkloadTrustBundle の JWKS 到達性を即時確認する (設定ミスの事前検知)。成功時は jwks_cached_at を更新する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trust_bundle_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "trust_bundle_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/WorkloadTrustBundleRefreshResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/bindings": {
+      "get": {
+        "operationId": "ListAgentWorkloadBindings",
+        "summary": "管理者が WorkloadTrustBundle 配下の AgentWorkloadBinding を一覧する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientReadWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/AgentWorkloadBindingListResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "CreateAgentWorkloadBinding",
+        "summary": "管理者が WorkloadTrustBundle 配下に AgentWorkloadBinding を作成する。agent_id は同一テナントの既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。同一 trust_bundle_id 内で subject_pattern の完全重複は拒否する。",
+        "x-scl-requires": [
+          "input.request.agent_id in tenantAgentIds(context.tenant_id)",
+          "!subject_pattern_duplicate_in_bundle(input.trust_bundle_id, input.request.subject_pattern)"
+        ],
+        "description": "Requires: input.request.agent_id in tenantAgentIds(context.tenant_id); !subject_pattern_duplicate_in_bundle(input.trust_bundle_id, input.request.subject_pattern)",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "WorkloadTrustBundle",
+            "id": "input.trust_bundle_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "trust_bundle_id": {
+                    "type": "string"
+                  },
+                  "request": {
+                    "$ref": "#/components/schemas/AgentWorkloadBindingCreateRequest"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "trust_bundle_id",
+                  "request"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "trust_bundle_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "response": {
+                      "$ref": "#/components/schemas/AgentWorkloadBindingResponse"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "response"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/bindings/{binding_id}/disable": {
+      "post": {
+        "operationId": "DisableAgentWorkloadBinding",
+        "summary": "管理者が AgentWorkloadBinding を無効化する。以後この binding は交換に使えなくなる。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "AgentWorkloadBinding",
+            "id": "input.binding_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "binding_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "binding_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "binding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/bindings/{binding_id}/enable": {
+      "post": {
+        "operationId": "EnableAgentWorkloadBinding",
+        "summary": "管理者が無効化済みの AgentWorkloadBinding を再有効化する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "AgentWorkloadBinding",
+            "id": "input.binding_id"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "binding_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "binding_id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "binding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/workload-identity/bindings/{binding_id}": {
+      "delete": {
+        "operationId": "DeleteAgentWorkloadBinding",
+        "summary": "管理者が AgentWorkloadBinding を削除する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "ManagementApiClientWriteWorkloadIdentity",
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "AgentWorkloadBinding",
+            "id": "input.binding_id"
+          }
+        },
+        "parameters": [
+          {
+            "name": "binding_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "default": {
+            "description": "Errors: InvalidRequestError, AccessDeniedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -19769,7 +20710,7 @@
         "type": "object",
         "properties": {},
         "additionalProperties": false,
-        "description": "認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。"
+        "description": "principal が対象操作の policy を満たさない。Authentication context が定義する共通 error の published language stub。"
       },
       "AccessTokenClaims": {
         "type": "object",
@@ -21506,21 +22447,13 @@
         "properties": {
           "id": {
             "type": "string"
-          },
-          "tenant_id": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
           }
         },
         "additionalProperties": false,
         "required": [
-          "id",
-          "tenant_id",
-          "status"
+          "id"
         ],
-        "description": "有効な SCIM Bearer token から解決される provisioning principal。"
+        "description": "API アクセストークンを提示する外部 client principal の最小 stub。"
       },
       "AgentCredentialBindRequest": {
         "type": "object",
@@ -21787,6 +22720,28 @@
         ],
         "description": "管理者が Agent の所有者 (owner_user_id) を移転した。"
       },
+      "AgentRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Active / Disabled / Killed。Active 以外への束縛は fail-closed で拒否する。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "status"
+        ],
+        "description": "IdManagement が publish する Agent principal を、束縛検証に必要な属性だけで表す published language stub。"
+      },
       "AgentRegisterRequest": {
         "type": "object",
         "properties": {
@@ -21986,6 +22941,255 @@
         ],
         "description": "管理者が Agent の name / description / kind / roles を更新した。"
       },
+      "AgentWorkloadBinding": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "生成識別子。UUID v4。不変。"
+          },
+          "tenant_id": {
+            "type": "string",
+            "default": "default",
+            "description": "所属テナント ID。WorkloadTrustBundle.tenant_id と一致する。"
+          },
+          "trust_bundle_id": {
+            "type": "string",
+            "description": "属する WorkloadTrustBundle の id。"
+          },
+          "subject_pattern": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "description": "外部 attestation token の sub claim に対する glob pattern (例: spiffe://example.org/ns/*/sa/agent-*、system:serviceaccount:prod-agents:*)。同一 trust_bundle_id 内で重複禁止。",
+            "not": {
+              "const": ""
+            }
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "写像先の Agent id。WorkloadTrustBundle と同一 tenant_id の既存 Agent でなければならない。",
+            "not": {
+              "const": ""
+            }
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgentWorkloadBindingStatus",
+            "default": "enabled"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "trust_bundle_id",
+          "subject_pattern",
+          "agent_id",
+          "status",
+          "created_at"
+        ],
+        "description": "WorkloadTrustBundle 配下で外部 subject の glob pattern を同一テナントの Agent へ写す mapping。agent_id は WorkloadTrustBundle と同一 tenant_id の既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。"
+      },
+      "AgentWorkloadBindingCreateRequest": {
+        "type": "object",
+        "properties": {
+          "subject_pattern": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "agent_id": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "subject_pattern",
+          "agent_id"
+        ],
+        "description": "管理者が AgentWorkloadBinding を作成する JSON リクエスト。"
+      },
+      "AgentWorkloadBindingCreated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          },
+          "bindingId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId",
+          "bindingId",
+          "agentId"
+        ],
+        "description": "管理者が AgentWorkloadBinding を作成した。"
+      },
+      "AgentWorkloadBindingDeleted": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "bindingId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "bindingId"
+        ],
+        "description": "管理者が AgentWorkloadBinding を削除した。"
+      },
+      "AgentWorkloadBindingDisabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "bindingId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "bindingId"
+        ],
+        "description": "管理者が AgentWorkloadBinding を無効化した。"
+      },
+      "AgentWorkloadBindingEnabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "bindingId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "bindingId"
+        ],
+        "description": "管理者が無効化済みの AgentWorkloadBinding を再有効化した。"
+      },
+      "AgentWorkloadBindingListResponse": {
+        "type": "object",
+        "properties": {
+          "bindings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AgentWorkloadBindingResponse"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "bindings"
+        ],
+        "description": "管理 API の AgentWorkloadBinding 一覧。"
+      },
+      "AgentWorkloadBindingResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "trust_bundle_id": {
+            "type": "string"
+          },
+          "subject_pattern": {
+            "type": "string"
+          },
+          "agent_id": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgentWorkloadBindingStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabled_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "trust_bundle_id",
+          "subject_pattern",
+          "agent_id",
+          "status",
+          "created_at"
+        ],
+        "description": "AgentWorkloadBinding 表現。管理 API の一覧・詳細で同じ表現を返す。"
+      },
+      "AgentWorkloadBindingStatus": {
+        "type": "string",
+        "enum": [
+          "enabled",
+          "disabled"
+        ],
+        "description": "AgentWorkloadBindingLifecycle の状態。"
+      },
       "ApiToken": {
         "type": "object",
         "properties": {
@@ -22184,6 +23388,8 @@
           "wsfed:write",
           "provisioning:read",
           "provisioning:write",
+          "workload-identity:read",
+          "workload-identity:write",
           "scim:users:read",
           "scim:users:write",
           "scim:groups:read",
@@ -22195,7 +23401,7 @@
           "account:consents:write",
           "account:password:write"
         ],
-        "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理 account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent / password の sensitive facet を分離する。公開・プロトコル・step-up・email verification endpoint は scope 対象外。"
+        "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* / workload-identity:* に 分ける。アカウント自己管理 account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent / password の sensitive facet を分離する。公開・プロトコル・step-up・email verification endpoint は scope 対象外。"
       },
       "AppAccessDeniedByPolicy": {
         "type": "object",
@@ -28501,7 +29707,7 @@
         "type": "object",
         "properties": {},
         "additionalProperties": false,
-        "description": "リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。"
+        "description": "リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる (RFC 6749 §5.2 invalid_request 相当)。OAuth2 context が定義する共通 error の published language stub。"
       },
       "InvalidScopeError": {
         "type": "object",
@@ -35275,6 +36481,28 @@
           "scope": {
             "type": "string"
           },
+          "subject_token": {
+            "type": "string",
+            "description": "RFC 8693 token-exchange grant の subject_token。自己発行 access_token (urn:ietf:params:oauth:token-type:access_token)、または登録済み WorkloadTrustBundle の issuer から発行された外部 attestation JWT (urn:ietf:params:oauth:token-type:jwt、[[wi-54-workload-identity-federation-spiffe]]) のいずれか。"
+          },
+          "subject_token_type": {
+            "type": "string",
+            "description": "subject_token の種別を示す URN。省略時は self-issued access_token として扱う。"
+          },
+          "actor_token": {
+            "type": "string",
+            "description": "RFC 8693 token-exchange grant の actor_token (任意)。自己発行 access_token に限る。"
+          },
+          "actor_token_type": {
+            "type": "string"
+          },
+          "requested_token_type": {
+            "type": "string"
+          },
+          "authorization_details": {
+            "type": "string",
+            "description": "RFC 9396 — token-exchange でダウンスコープを要求する構造化詳細の JSON 文字列 (任意)。"
+          },
           "resource": {
             "$ref": "#/components/schemas/ResourceIndicator",
             "description": "RFC 8707 — authorization_code redemption・client_credentials・device_code・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。"
@@ -36678,6 +37906,532 @@
           "user_status_changed"
         ],
         "description": "WorkflowTrigger の発火条件種別。初期版は User mutation 起点の3種のみ (日付・cron・待機 step は対象外)。"
+      },
+      "WorkloadAttestation": {
+        "type": "object",
+        "properties": {
+          "subject_token": {
+            "type": "string",
+            "description": "外部 attestation token (JWT-SVID 等) の生の文字列。"
+          },
+          "requested_audience": {
+            "type": "string",
+            "description": "token-exchange の resource パラメータ (RFC 8707)。監査イベントに残す。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "subject_token",
+          "requested_audience"
+        ],
+        "description": "OAuth2 の token-exchange grant から渡す、外部 attestation token の生値と検証コンテキスト。VerifyWorkloadAttestation の input。"
+      },
+      "WorkloadAttestationRejected": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "unregistered_issuer / trust_bundle_disabled / jwks_unavailable / invalid_signature / expired / audience_mismatch / ttl_exceeded / no_binding_match / ambiguous_match / agent_not_active / agent_unbound のいずれか。"
+          },
+          "trustBundleId": {
+            "type": "string",
+            "description": "issuer が登録済みだった場合のみ設定する。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "reason"
+        ],
+        "description": "外部 attestation token の検証が fail-closed で拒否された ([[ADR-053]])。"
+      },
+      "WorkloadAttestationRejectedError": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": false,
+        "description": "外部 attestation token の検証が fail-closed で失敗した (未登録 issuer・署名不正・期限切れ・audience 不一致・TTL 超過・pattern 不一致・ambiguous match・束縛先 Agent が Active でない)。"
+      },
+      "WorkloadIdentityGrant": {
+        "type": "object",
+        "properties": {
+          "agent_id": {
+            "type": "string"
+          },
+          "client_id": {
+            "type": "string",
+            "description": "束縛先 Agent が保持する AgentCredentialBinding の client_id。発行トークンの sub になる。"
+          },
+          "trust_bundle_id": {
+            "type": "string"
+          },
+          "binding_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "agent_id",
+          "client_id",
+          "trust_bundle_id",
+          "binding_id"
+        ],
+        "description": "検証を通過した外部 attestation を写した idmagic principal。OAuth2 の token-exchange usecase はこれを subject として扱い、client_id が指す束縛済み OAuth2Client を自身の repository で解決して scope / grant_types のダウンスコープ上限を得る (WorkloadIdentity は OAuth2Client の詳細を持たない)。"
+      },
+      "WorkloadTokenExchanged": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          },
+          "bindingId": {
+            "type": "string"
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "audience": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId",
+          "bindingId",
+          "agentId",
+          "audience"
+        ],
+        "description": "外部 attestation の検証を通過し、束縛先 Agent の資格情報として idmagic token を発行した ([[ADR-053]])。"
+      },
+      "WorkloadTrustBundle": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64,
+            "description": "生成識別子。UUID v4。不変。"
+          },
+          "tenant_id": {
+            "type": "string",
+            "default": "default",
+            "description": "所属テナント ID。cross-tenant 参照は禁止。"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "テナント内で一意な管理用表示名。"
+          },
+          "trust_domain": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "SPIFFE trust domain、または運用者が定める発行者グループのラベル。"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri",
+            "description": "外部 attestation token の iss claim と一致しなければならない発行者 URL。テナント内で一意。",
+            "not": {
+              "const": ""
+            }
+          },
+          "jwks_uri": {
+            "type": "string",
+            "format": "uri",
+            "description": "JWKS 取得元。https 必須。"
+          },
+          "jwks": {
+            "type": "object",
+            "description": "inline JWKS。jwks_uri の代替。"
+          },
+          "accepted_audiences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "外部 attestation token の aud claim が最低 1 つ一致しなければならない受理 audience 集合。"
+          },
+          "max_subject_token_ttl_seconds": {
+            "type": "integer",
+            "default": 3600,
+            "description": "外部 attestation token 自身の (exp - iat) に許容する上限。超過は fail-closed で拒否する。",
+            "exclusiveMinimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkloadTrustBundleStatus",
+            "default": "enabled"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "jwks_cached_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "JWKS の最終取得成功時刻。last-known-good キャッシュの鮮度判定に使う。"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "trust_domain",
+          "issuer",
+          "accepted_audiences",
+          "max_subject_token_ttl_seconds",
+          "status",
+          "created_at"
+        ],
+        "description": "テナントスコープの外部 attestation 発行者信頼設定。issuer は tenant 内で一意。jwks_uri と jwks (inline) は少なくとも一方が必須。",
+        "x-scl-untranslated-constraints": [
+          "accepted_audiences.length > 0",
+          "jwks_uri != null || jwks != null"
+        ]
+      },
+      "WorkloadTrustBundleConfigured": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId",
+          "issuer"
+        ],
+        "description": "管理者が WorkloadTrustBundle を新規登録した。"
+      },
+      "WorkloadTrustBundleDeleted": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId"
+        ],
+        "description": "管理者が WorkloadTrustBundle を削除した。配下の AgentWorkloadBinding は cascade で削除する。"
+      },
+      "WorkloadTrustBundleDisabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId"
+        ],
+        "description": "管理者が WorkloadTrustBundle を無効化した。以後この bundle 配下の binding は交換に使えない。"
+      },
+      "WorkloadTrustBundleEnabled": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId"
+        ],
+        "description": "管理者が無効化済みの WorkloadTrustBundle を再有効化した。"
+      },
+      "WorkloadTrustBundleJWKSRefreshed": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          },
+          "reachable": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId",
+          "reachable"
+        ],
+        "description": "管理者が RefreshWorkloadTrustBundleJWKS を呼び、JWKS の再取得を試みた。"
+      },
+      "WorkloadTrustBundleListResponse": {
+        "type": "object",
+        "properties": {
+          "trust_bundles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkloadTrustBundleResponse"
+            }
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "trust_bundles"
+        ],
+        "description": "管理 API の WorkloadTrustBundle 一覧。"
+      },
+      "WorkloadTrustBundleRefreshResponse": {
+        "type": "object",
+        "properties": {
+          "reachable": {
+            "type": "boolean"
+          },
+          "key_count": {
+            "type": "integer"
+          },
+          "jwks_cached_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "reachable"
+        ],
+        "description": "RefreshWorkloadTrustBundleJWKS の応答。実際に JWKS を取得できたかどうかを返す (テナントが設定ミスを事前に発見するための test 操作)。"
+      },
+      "WorkloadTrustBundleRegisterRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "trust_domain": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri"
+          },
+          "jwks_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "jwks": {
+            "type": "object"
+          },
+          "accepted_audiences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "max_subject_token_ttl_seconds": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "trust_domain",
+          "issuer",
+          "accepted_audiences"
+        ],
+        "description": "管理者が WorkloadTrustBundle を登録する JSON リクエスト。"
+      },
+      "WorkloadTrustBundleResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "trust_domain": {
+            "type": "string"
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri"
+          },
+          "jwks_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "has_inline_jwks": {
+            "type": "boolean",
+            "description": "inline jwks が設定されているかどうか (jwks 本体は返さない)。"
+          },
+          "accepted_audiences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "max_subject_token_ttl_seconds": {
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkloadTrustBundleStatus"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "jwks_cached_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenant_id",
+          "name",
+          "trust_domain",
+          "issuer",
+          "has_inline_jwks",
+          "accepted_audiences",
+          "max_subject_token_ttl_seconds",
+          "status",
+          "created_at"
+        ],
+        "description": "WorkloadTrustBundle 表現。管理 API の一覧・詳細で同じ表現を返す。jwks の秘密情報は含まない (公開鍵材料のみ)。"
+      },
+      "WorkloadTrustBundleStatus": {
+        "type": "string",
+        "enum": [
+          "enabled",
+          "disabled"
+        ],
+        "description": "WorkloadTrustBundleLifecycle の状態。"
+      },
+      "WorkloadTrustBundleUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "jwks_uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "jwks": {
+            "type": "object"
+          },
+          "accepted_audiences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "max_subject_token_ttl_seconds": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "description": "管理者が WorkloadTrustBundle の name / jwks_uri / jwks / accepted_audiences / max_subject_token_ttl_seconds を更新する JSON リクエスト。省略フィールドは現状維持。issuer / trust_domain は不変 (変更したい場合は登録し直す)。"
+      },
+      "WorkloadTrustBundleUpdated": {
+        "type": "object",
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string"
+          },
+          "trustBundleId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "trustBundleId"
+        ],
+        "description": "管理者が WorkloadTrustBundle のメタデータを更新した。"
       },
       "WsFedRelyingParty": {
         "type": "object",
@@ -38215,6 +39969,69 @@
         ]
       },
       {
+        "name": "policy:ManagementApiClientReadWorkloadIdentity+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientReadWorkloadIdentity",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "GetWorkloadTrustBundle",
+            "memberOf": "policy:ManagementApiClientReadWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
+              ]
+            }
+          },
+          {
+            "name": "ListAgentWorkloadBindings",
+            "memberOf": "policy:ManagementApiClientReadWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
+              ]
+            }
+          },
+          {
+            "name": "ListWorkloadTrustBundles",
+            "memberOf": "policy:ManagementApiClientReadWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientReadWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundleDirectory"
+              ]
+            }
+          }
+        ]
+      },
+      {
         "name": "policy:ManagementApiClientReadWsFed+TenantAdministrator",
         "policies": [
           "ManagementApiClientReadWsFed",
@@ -39037,6 +40854,195 @@
               ],
               "resourceTypes": [
                 "TenantDefaultSignInPolicy"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "name": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+        "policies": [
+          "ManagementApiClientWriteWorkloadIdentity",
+          "TenantAdministrator"
+        ],
+        "actions": [
+          {
+            "name": "CreateAgentWorkloadBinding",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
+              ]
+            }
+          },
+          {
+            "name": "DeleteAgentWorkloadBinding",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.binding_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "AgentWorkloadBinding"
+              ]
+            }
+          },
+          {
+            "name": "DeleteWorkloadTrustBundle",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
+              ]
+            }
+          },
+          {
+            "name": "DisableAgentWorkloadBinding",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.binding_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "AgentWorkloadBinding"
+              ]
+            }
+          },
+          {
+            "name": "DisableWorkloadTrustBundle",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
+              ]
+            }
+          },
+          {
+            "name": "EnableAgentWorkloadBinding",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.binding_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "AgentWorkloadBinding"
+              ]
+            }
+          },
+          {
+            "name": "EnableWorkloadTrustBundle",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
+              ]
+            }
+          },
+          {
+            "name": "RefreshWorkloadTrustBundleJWKS",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
+              ]
+            }
+          },
+          {
+            "name": "RegisterWorkloadTrustBundle",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundleDirectory"
+              ]
+            }
+          },
+          {
+            "name": "UpdateWorkloadTrustBundle",
+            "memberOf": "policy:ManagementApiClientWriteWorkloadIdentity+TenantAdministrator",
+            "policies": [
+              "ManagementApiClientWriteWorkloadIdentity",
+              "TenantAdministrator"
+            ],
+            "resourceId": "input.trust_bundle_id",
+            "appliesTo": {
+              "principalTypes": [
+                "Agent",
+                "User"
+              ],
+              "resourceTypes": [
+                "WorkloadTrustBundle"
               ]
             }
           }

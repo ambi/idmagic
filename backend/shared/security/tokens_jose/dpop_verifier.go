@@ -194,6 +194,16 @@ func verifyJWTSignature(parts []string, alg string, pub crypto.PublicKey) error 
 			return errors.New("PS256 requires RSA public key")
 		}
 		return rsa.VerifyPSS(rsaPub, crypto.SHA256, digest[:], sig, &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
+	case "RS256":
+		// 外部 workload attestation issuer (Kubernetes projected ServiceAccount token、
+		// クラウド instance identity token) は既定で RS256 を使うことが多い。本アプリが
+		// 自己発行する JWT は PS256/ES256 に限定するが、外部 issuer の検証はその制約を
+		// 課さない ([[wi-54-workload-identity-federation-spiffe]])。
+		rsaPub, ok := pub.(*rsa.PublicKey)
+		if !ok {
+			return errors.New("RS256 requires RSA public key")
+		}
+		return rsa.VerifyPKCS1v15(rsaPub, crypto.SHA256, digest[:], sig)
 	case "ES256":
 		ecPub, ok := pub.(*ecdsa.PublicKey)
 		if !ok {

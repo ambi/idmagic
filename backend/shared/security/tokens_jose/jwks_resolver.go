@@ -88,6 +88,24 @@ func (r *JWKResolver) Resolve(ctx context.Context, client *oauthdomain.OAuth2Cli
 	return r.fetch(ctx, *client.JwksURI)
 }
 
+// ResolveJWKSSource fetches keys from an inline JWKS document if present,
+// otherwise from jwksURI (with the same cache/SSRF-safety as Resolve).
+// Shared by any registrant of an external JWKS source; used by workload
+// identity federation (ADR-053, [[wi-54-workload-identity-federation-spiffe]])
+// to resolve a WorkloadTrustBundle's signing keys without depending on the
+// OAuth2Client shape.
+func (r *JWKResolver) ResolveJWKSSource(ctx context.Context, jwksURI *string, inlineJWKS map[string]any) ([]map[string]any, error) {
+	if inlineJWKS != nil {
+		if keys, err := InlineJWKs(inlineJWKS); err == nil {
+			return keys, nil
+		}
+	}
+	if jwksURI == nil || *jwksURI == "" {
+		return nil, errors.New("no jwks or jwks_uri configured")
+	}
+	return r.fetch(ctx, *jwksURI)
+}
+
 func InlineJWKs(jwks map[string]any) ([]map[string]any, error) {
 	var raw []any
 	switch keys := jwks["keys"].(type) {

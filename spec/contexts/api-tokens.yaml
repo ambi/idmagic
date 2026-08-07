@@ -164,7 +164,8 @@ models:
       (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば
       参照できる。Application aggregate とその protocol binding は applications:*、独立した
       protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* /
-      mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* に分ける。アカウント自己管理
+      mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* / workload-identity:* に
+      分ける。アカウント自己管理
       account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent /
       password の sensitive facet を分離する。公開・プロトコル・step-up・email verification
       endpoint は scope 対象外。
@@ -202,6 +203,8 @@ models:
       - "wsfed:write"
       - "provisioning:read"
       - "provisioning:write"
+      - "workload-identity:read"
+      - "workload-identity:write"
       - "scim:users:read"
       - "scim:users:write"
       - "scim:groups:read"

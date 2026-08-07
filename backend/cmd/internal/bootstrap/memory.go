@@ -47,6 +47,8 @@ import (
 	scimmemory "github.com/ambi/idmagic/backend/sourcing/scim/db_memory"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	"github.com/ambi/idmagic/backend/workloadidentity"
+	workloadidentitymemory "github.com/ambi/idmagic/backend/workloadidentity/db_memory"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 )
@@ -166,7 +168,11 @@ func assembleMemory() (*Dependencies, error) {
 			ProvisioningNotifier:    provisioningModule.AssignmentNotifier(assignmentRepo),
 		},
 		Provisioning: provisioningModule,
-		Close:        func() {},
-		DbPing:       func(c context.Context) error { return nil },
+		WorkloadIdentity: workloadidentity.Module{
+			TrustBundleRepo: workloadidentitymemory.NewWorkloadTrustBundleRepository(),
+			BindingRepo:     workloadidentitymemory.NewAgentWorkloadBindingRepository(),
+		},
+		Close:  func() {},
+		DbPing: func(c context.Context) error { return nil },
 	}, nil
 }

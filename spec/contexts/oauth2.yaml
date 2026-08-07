@@ -610,7 +610,7 @@ glossary:
       - device_code
       - デバイスコード
   TokenExchange:
-    definition: 既存トークンを別トークンに交換するトークン交換グラント (RFC 8693)。本アプリは自己発行トークンの委任 (delegation) のみを扱い、subject_token / actor_token は本 IdP が発行したものに限る。grant_type は URN。
+    definition: "既存トークンを別トークンに交換するトークン交換グラント (RFC 8693)。本アプリは 2 種類の subject_token を扱う: (1) 自己発行トークンの委任 (delegation) — subject_token / actor_token は本 IdP が発行し IntrospectAccessToken を通過したものに限る、(2) workload identity federation ([[wi-54-workload-identity-federation-spiffe]], [[ADR-053]]) — subject_token_type が JwtSvid のとき、外部 attestation token を WorkloadIdentity の VerifyWorkloadAttestation で検証し、テナント登録済みの AgentWorkloadBinding で写した Agent の資格情報として発行する。grant_type は URN。\n"
     aliases:
       - urn:ietf:params:oauth:grant-type:token-exchange
       - token-exchange
@@ -2506,6 +2506,28 @@ models:
       scope:
         type: String
         optional: true
+      subject_token:
+        type: String
+        optional: true
+        description: "RFC 8693 token-exchange grant の subject_token。自己発行 access_token (urn:ietf:params:oauth:token-type:access_token)、または登録済み WorkloadTrustBundle の issuer から発行された外部 attestation JWT (urn:ietf:params:oauth:token-type:jwt、[[wi-54-workload-identity-federation-spiffe]]) のいずれか。"
+      subject_token_type:
+        type: String
+        optional: true
+        description: subject_token の種別を示す URN。省略時は self-issued access_token として扱う。
+      actor_token:
+        type: String
+        optional: true
+        description: RFC 8693 token-exchange grant の actor_token (任意)。自己発行 access_token に限る。
+      actor_token_type:
+        type: String
+        optional: true
+      requested_token_type:
+        type: String
+        optional: true
+      authorization_details:
+        type: String
+        optional: true
+        description: "RFC 9396 — token-exchange でダウンスコープを要求する構造化詳細の JSON 文字列 (任意)。"
       resource:
         type: ResourceIndicator
         optional: true
@@ -3857,6 +3879,7 @@ interfaces:
       - "device_code {device_code} を交換する"
       - "client_credentials で scope {scope} のトークンを取得する"
       - "subject_token {subject_token} を resource {resource} 向けに交換する"
+      - "外部 workload attestation {subject_token} (subject_token_type=JwtSvid) を登録済み AgentWorkloadBinding 経由で Agent の資格情報に交換する ([[wi-54-workload-identity-federation-spiffe]])"
     input:
       request:
         type: TokenRequest
@@ -3884,6 +3907,7 @@ interfaces:
       - input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)
       - input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)
       - input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)
+      - "input.request.grant_type != TokenExchange || input.request.subject_token_type != \"urn:ietf:params:oauth:token-type:jwt\" || workload_attestation_verified(context.tenant_id, input.request.subject_token)"
       - "!contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)"
     ensures:
       - output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)

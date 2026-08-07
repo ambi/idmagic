@@ -254,7 +254,8 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		res, err := tokenusecases.ExchangeToken(ctx, tokenusecases.ExchangeTokenDeps{
 			ClientRepo: d.ClientRepo, Introspector: d.TokenIntrospector,
 			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
-			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo, Emit: d.Emit,
+			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo,
+			WorkloadVerifier: d.WorkloadVerifier, Emit: d.Emit,
 		}, tokenusecases.ExchangeTokenInput{
 			ClientID:             clientStub.ID,
 			SubjectToken:         c.Request().PostFormValue("subject_token"),

@@ -22,6 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
+	"github.com/ambi/idmagic/backend/workloadidentity"
 	"github.com/ambi/idmagic/backend/wsfederation"
 
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
@@ -30,24 +31,25 @@ import (
 // Dependencies は HTTP 層に渡す全境界をまとめた DI コンテナ。
 // 永続層 (memory/postgres) や event sink の差分を本構造体で吸収する。
 type Dependencies struct {
-	Tenancy        tenancy.Module
-	IdManagement   idmanagement.Module
-	IdGovernance   idgovernance.Module
-	Authentication authentication.Module
-	OAuth2         oauth2.Module
-	SigningKeys    signingkeys.Module
-	DataKeys       datakeys.Module
-	Audit          audit.Module
-	WsFederation   wsfederation.Module
-	Saml           saml.Module
-	Sourcing       sourcing.Module
-	Application    application.Module
-	ApiTokens      apitoken.Module
-	Jobs           jobs.Module
-	Provisioning   provisioning.Module
-	Notification   notification.Module
-	Close          func()
-	DbPing         func(context.Context) error
+	Tenancy          tenancy.Module
+	IdManagement     idmanagement.Module
+	IdGovernance     idgovernance.Module
+	Authentication   authentication.Module
+	OAuth2           oauth2.Module
+	SigningKeys      signingkeys.Module
+	DataKeys         datakeys.Module
+	Audit            audit.Module
+	WsFederation     wsfederation.Module
+	Saml             saml.Module
+	Sourcing         sourcing.Module
+	Application      application.Module
+	ApiTokens        apitoken.Module
+	Jobs             jobs.Module
+	Provisioning     provisioning.Module
+	WorkloadIdentity workloadidentity.Module
+	Notification     notification.Module
+	Close            func()
+	DbPing           func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

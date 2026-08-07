@@ -201,6 +201,7 @@ func Run() error {
 		ApiTokens:        deps.ApiTokens,
 		Jobs:             deps.Jobs,
 		Provisioning:     deps.Provisioning,
+		WorkloadIdentity: deps.WorkloadIdentity,
 	})
 
 	// 起動準備がすべて完了したので、startupComplete を true に設定する

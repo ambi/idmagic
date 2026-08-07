@@ -698,6 +698,52 @@ CREATE TABLE agent_credential_bindings (
 CREATE INDEX agent_credential_bindings_client_idx
     ON agent_credential_bindings (client_id);
 
+-- Workload identity federation for agent runtimes (ADR-053, wi-54).
+CREATE TABLE workload_trust_bundles (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    name TEXT NOT NULL,
+    trust_domain TEXT NOT NULL,
+    issuer TEXT NOT NULL,
+    jwks_uri TEXT,
+    jwks JSONB,
+    accepted_audiences JSONB NOT NULL,
+    max_subject_token_ttl_seconds INTEGER NOT NULL DEFAULT 3600,
+    status TEXT NOT NULL DEFAULT 'enabled'
+        CHECK (status IN ('enabled', 'disabled')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    jwks_cached_at TIMESTAMPTZ,
+    CONSTRAINT workload_trust_bundles_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT workload_trust_bundles_tenant_name_key UNIQUE (tenant_id, name),
+    CONSTRAINT workload_trust_bundles_tenant_issuer_key UNIQUE (tenant_id, issuer)
+);
+
+CREATE TABLE agent_workload_bindings (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    trust_bundle_id UUID NOT NULL,
+    subject_pattern TEXT NOT NULL,
+    agent_id UUID NOT NULL,
+    status TEXT NOT NULL DEFAULT 'enabled'
+        CHECK (status IN ('enabled', 'disabled')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    disabled_at TIMESTAMPTZ,
+    CONSTRAINT agent_workload_bindings_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT agent_workload_bindings_trust_bundle_fkey
+        FOREIGN KEY (trust_bundle_id) REFERENCES workload_trust_bundles(id) ON DELETE CASCADE,
+    CONSTRAINT agent_workload_bindings_agent_fkey
+        FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE RESTRICT,
+    CONSTRAINT agent_workload_bindings_bundle_pattern_key
+        UNIQUE (trust_bundle_id, subject_pattern)
+);
+
+CREATE INDEX agent_workload_bindings_agent_idx
+    ON agent_workload_bindings (agent_id);
+
 CREATE TABLE application_icons (
     id UUID PRIMARY KEY,
     application_id UUID NOT NULL,

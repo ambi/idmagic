@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/kernel"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
 type denyAuthorizer struct {
@@ -363,3 +365,97 @@ func TestExchangeTokenActorTokenBecomesActor(t *testing.T) {
 		t.Fatalf("act.sub=%v, want svc-actor (actor_token.sub)", issuer.lastInput.Act["sub"])
 	}
 }
+
+// fakeWorkloadVerifier is a stub for ports.WorkloadTokenVerifier (ADR-053).
+type fakeWorkloadVerifier struct {
+	grant *workloaddomain.WorkloadIdentityGrant
+	err   error
+}
+
+func (f fakeWorkloadVerifier) VerifyWorkloadToken(context.Context, string, string, time.Time) (*workloaddomain.WorkloadIdentityGrant, error) {
+	return f.grant, f.err
+}
+
+// TestExchangeTokenWorkloadFederation — wi-54: subject_token_type=JWT URN の
+// workload attestation を、束縛先 Agent の client の資格情報として交換する。
+func TestExchangeTokenWorkloadFederation(t *testing.T) {
+	issuer := &recordingIssuer{}
+	deps := newExchangeTokenDeps(t, issuer, nil)
+	deps.ClientRepo.(*oauth2memory.OAuth2ClientRepository).Seed(&domain.OAuth2Client{
+		ClientID:   "agent-bound-client",
+		ClientType: spec.ClientConfidential,
+		GrantTypes: []spec.GrantType{spec.GrantClientCredentials},
+		Scope:      "read",
+		CreatedAt:  time.Now().UTC(),
+	})
+	deps.WorkloadVerifier = fakeWorkloadVerifier{grant: &workloaddomain.WorkloadIdentityGrant{
+		AgentID: "agent_1", ClientID: "agent-bound-client",
+		TrustBundleID: "bundle_1", BindingID: "binding_1",
+	}}
+
+	var events []spec.DomainEvent
+	deps.Emit = func(e spec.DomainEvent) { events = append(events, e) }
+
+	res, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+		ClientID: "client", SubjectToken: "external-svid",
+		SubjectTokenType: tokenTypeJWTURN, Resource: []string{"https://api.example"},
+	}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("ExchangeToken: %v", err)
+	}
+	if res.IssuedTokenType != tokenTypeAccessTokenURN {
+		t.Fatalf("issued_token_type=%q", res.IssuedTokenType)
+	}
+	if issuer.lastInput.Sub != "agent-bound-client" {
+		t.Fatalf("sub=%q, want agent-bound-client", issuer.lastInput.Sub)
+	}
+	if issuer.lastInput.AgentID != "agent_1" {
+		t.Fatalf("AgentID=%q, want agent_1", issuer.lastInput.AgentID)
+	}
+	found := false
+	for _, e := range events {
+		if we, ok := e.(*workloaddomain.WorkloadTokenExchanged); ok {
+			found = true
+			if we.AgentID != "agent_1" || we.TrustBundleID != "bundle_1" || we.BindingID != "binding_1" {
+				t.Fatalf("WorkloadTokenExchanged=%+v", we)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected WorkloadTokenExchanged to be emitted")
+	}
+}
+
+// TestExchangeTokenWorkloadFederationRequiresVerifier — WorkloadVerifier が
+// 未設定なら subject_token_type=JWT URN を fail-closed で拒否する。
+func TestExchangeTokenWorkloadFederationRequiresVerifier(t *testing.T) {
+	issuer := &recordingIssuer{}
+	deps := newExchangeTokenDeps(t, issuer, nil)
+	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+		ClientID: "client", SubjectToken: "external-svid",
+		SubjectTokenType: tokenTypeJWTURN, Resource: []string{"https://api.example"},
+	}, time.Now().UTC())
+	if err == nil {
+		t.Fatal("expected rejection when WorkloadVerifier is not configured")
+	}
+}
+
+// TestExchangeTokenWorkloadFederationRejectsFailedVerification — 検証失敗は
+// invalid_grant で fail-closed に拒否する。
+func TestExchangeTokenWorkloadFederationRejectsFailedVerification(t *testing.T) {
+	issuer := &recordingIssuer{}
+	deps := newExchangeTokenDeps(t, issuer, nil)
+	deps.WorkloadVerifier = fakeWorkloadVerifier{err: errWorkloadVerificationFailedForTest}
+	_, err := ExchangeToken(context.Background(), deps, ExchangeTokenInput{
+		ClientID: "client", SubjectToken: "external-svid",
+		SubjectTokenType: tokenTypeJWTURN, Resource: []string{"https://api.example"},
+	}, time.Now().UTC())
+	if err == nil {
+		t.Fatal("expected rejection on verification failure")
+	}
+	if issuer.calls != 0 {
+		t.Fatal("token must not be issued when verification fails")
+	}
+}
+
+var errWorkloadVerificationFailedForTest = errors.New("workload attestation rejected: expired")

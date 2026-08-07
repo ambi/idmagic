@@ -52,6 +52,8 @@ modules:
         via: published_interface
       - module: shared-spec
         via: technical_shared
+      - module: workloadidentity-domain
+        via: published_interface
   oauth2-usecases:
     path: usecases
     responsibility: OAuth2 feature 横断のエラー・イベント・resource indicator helper。
@@ -416,6 +418,8 @@ modules:
       - module: shared-spec
         via: technical_shared
       - module: tenancy-public
+        via: published_interface
+      - module: workloadidentity-domain
         via: published_interface
   oauth2-token-adapters:
     path: token/db_memory

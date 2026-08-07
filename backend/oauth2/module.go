@@ -31,4 +31,8 @@ type Module struct {
 	IDTokenHintVerifier        oauthports.IDTokenHintVerifier
 	Authorizer                 oauthports.Authorizer
 	EventSink                  oauthports.EventSink
+	// WorkloadVerifier verifies external workload attestation tokens for the
+	// token-exchange grant (ADR-053, [[wi-54-workload-identity-federation-spiffe]]).
+	// nil rejects subject_token_type=JWT URN as unsupported (fail-closed).
+	WorkloadVerifier oauthports.WorkloadTokenVerifier
 }

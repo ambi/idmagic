@@ -31,6 +31,18 @@ type AgentCredentialBinding struct {
 	CreatedAt time.Time
 }
 
+type AgentWorkloadBinding struct {
+	ID             string
+	TenantID       string
+	TrustBundleID  string
+	SubjectPattern string
+	AgentID        string
+	Status         string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DisabledAt     pgtype.Timestamptz
+}
+
 type ApiToken struct {
 	ID          string
 	TenantID    string
@@ -801,6 +813,22 @@ type WebauthnSession struct {
 	ExpiresAt  time.Time
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+}
+
+type WorkloadTrustBundle struct {
+	ID                        string
+	TenantID                  string
+	Name                      string
+	TrustDomain               string
+	Issuer                    string
+	JwksUri                   pgtype.Text
+	Jwks                      []byte
+	AcceptedAudiences         []byte
+	MaxSubjectTokenTtlSeconds int32
+	Status                    string
+	CreatedAt                 time.Time
+	UpdatedAt                 time.Time
+	JwksCachedAt              pgtype.Timestamptz
 }
 
 type WsfedRelyingParty struct {

@@ -58,6 +58,9 @@ contexts:
   Seeding:
     spec: spec/contexts/seeding.yaml
     summary: 環境別 seed profile、計画、安全な適用 orchestration。
+  WorkloadIdentity:
+    spec: spec/contexts/workloadidentity.yaml
+    summary: エージェントランタイム向け workload identity federation (WorkloadTrustBundle / AgentWorkloadBinding、ADR-053)。
   ra:
     spec: tools/ra/spec/scl.yaml
     summary: RA workspace orchestration。

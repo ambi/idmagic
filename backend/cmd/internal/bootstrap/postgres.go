@@ -55,6 +55,8 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancypostgres "github.com/ambi/idmagic/backend/tenancy/db_postgres"
 	tenantusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
+	"github.com/ambi/idmagic/backend/workloadidentity"
+	workloadidentitypostgres "github.com/ambi/idmagic/backend/workloadidentity/db_postgres"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/db_postgres"
 )
@@ -228,6 +230,10 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			ProvisioningNotifier:    provisioningModule.AssignmentNotifier(assignmentRepo),
 		},
 		Provisioning: provisioningModule,
+		WorkloadIdentity: workloadidentity.Module{
+			TrustBundleRepo: &workloadidentitypostgres.WorkloadTrustBundleRepository{Pool: resilientDB},
+			BindingRepo:     &workloadidentitypostgres.AgentWorkloadBindingRepository{Pool: resilientDB},
+		},
 		Close: func() {
 			pool.Close()
 		},

@@ -211,6 +211,12 @@ modules:
         via: composition_root
       - module: wsfederation-tokens-saml
         via: composition_root
+      - module: workloadidentity-db-memory
+        via: composition_root
+      - module: workloadidentity-db-postgres
+        via: composition_root
+      - module: workloadidentity-composition
+        via: composition_root
       - module: application-adapters
         via: composition_root
       - module: application-domain

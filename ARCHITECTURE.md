@@ -109,6 +109,7 @@ The main correspondence between SCL contexts and Go packages.
 | `DataKeys` | `backend/datakeys` | Per-tenant `DataEncryptionKey` (DEK) metadata and lifecycle (bootstrap/rotate/disable/destroy) for reversible secrets left in the app DB (e.g. MFA TOTP seeds). Does not own signing keys (`SigningKeys`) or the `EnvelopeCrypto` port itself, which lives in `backend/shared/security` as a technical shared adapter ([ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md)). |
 | `WsFederation` | `backend/wsfederation` | WS-Fed passive, WS-Trust active STS, federation metadata, MEX, RP trust, and request-tenant XML signing. Design: [`backend/wsfederation/ARCHITECTURE.md`](backend/wsfederation/ARCHITECTURE.md). |
 | `Saml` | `backend/saml` | SAML 2.0 IdP, SP trust, metadata, SSO/SLO, and request-tenant XML signing. Design: [`backend/saml/ARCHITECTURE.md`](backend/saml/ARCHITECTURE.md). |
+| `WorkloadIdentity` | `backend/workloadidentity` | Workload identity federation for agent runtimes: registered external attestation issuers (`WorkloadTrustBundle`) and the subject-pattern-to-`Agent` mapping (`AgentWorkloadBinding`) that OAuth2's token-exchange grant consumes to federate external JWT-SVIDs into idmagic tokens without long-lived secrets ([ADR-053](decisions/ADR-053-workload-identity-federation-for-agent-runtimes.md)). |
 
 The published vocabulary and dependencies between contexts are authoritative in `spec/scl.yaml`
 `context_map`. Before adding a direct import, revisit `depends_on` there.

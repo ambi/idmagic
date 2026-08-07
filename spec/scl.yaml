@@ -122,6 +122,11 @@ context_map:
         uses:
           - ApiTokenScope
         reason: OAuth2 の管理 API は ApiTokens が所有する resource 別 scope で操作を認可する。
+      WorkloadIdentity:
+        via: published_language
+        uses:
+          - VerifyWorkloadAttestation
+        reason: token-exchange grant は subject_token_type が workload 系のとき、外部 attestation の検証と Agent principal への写像を WorkloadIdentity の published interface に委譲する (wi-54, ADR-053)。
   Audit:
     description: "authentication、identity-management、oauth2、tenancy、signing-keys、application、\nsaml / wsfederation など複数 bounded context から発火されるセキュリティ監査イベントの\n横断的な read model を所有する。監査イベントの検索・エクスポート管理 API、検索属性\nregistry、PII 変換方針、保持期間を集約する。イベントの発火元は各 context のままであり、\nAudit はそれらを横断して読む窓口を所有する。\n"
     path: contexts/audit.yaml
@@ -408,3 +413,19 @@ context_map:
         uses:
           - JobRef
         reason: WorkflowRun は lifecycle_workflow_run kind の durable job として実行される。
+  WorkloadIdentity:
+    description: "自律エージェントランタイム向けの workload identity federation を所有する ([[ADR-053]])。テナントが登録した外部 attestation 発行者の信頼設定 (WorkloadTrustBundle) と、外部 subject を既存 Agent へ写す mapping (AgentWorkloadBinding) を管理する。OIDC 互換 JWT (Kubernetes projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID) を第一級の attestation 種別とし、idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。検証を通過した外部 attestation を OAuth2 の token-exchange grant (RFC 8693) へ subject として渡し、専用の資格情報経路は新設しない。\n"
+    path: contexts/workloadidentity.yaml
+    publishes:
+      - VerifyWorkloadAttestation
+    depends_on:
+      Tenancy:
+        via: published_language
+        uses:
+          - TenantRef
+        reason: WorkloadTrustBundle と AgentWorkloadBinding はテナント境界内に閉じ、cross-tenant な federation 信頼は認めない。
+      IdManagement:
+        via: published_language
+        uses:
+          - AgentRef
+        reason: AgentWorkloadBinding は外部 subject を同一テナントの既存 Agent へ写す。写像先 Agent が Active でなければ fail-closed で拒否する。
