@@ -45,6 +45,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/notification/template"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	"github.com/ambi/idmagic/backend/sharedsignals"
+	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
@@ -118,6 +120,7 @@ type Deps struct {
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module
 	WorkloadIdentity workloadidentity.Module
+	SharedSignals    sharedsignals.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -273,6 +276,22 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
 	clientDisplayNames := d.Application.ClientDisplayNames(d.OAuth2.ClientRepo)
 
+	// revocationReactor fail-closed reacts to already-emitted IdManagement
+	// events (AgentKilled/AgentDisabled/AgentCredentialUnbound/UserDisabled/
+	// UserSoftDeleted/UserDeleted) by advancing SharedSignals' Agent
+	// revocation epoch (ADR-057, wi-58). Composed into idmhttp.Deps.Reactor,
+	// which ReactiveEmit calls after every Emit.
+	revocationReactor := &sharedsignalsusecases.AgentRevocationReactor{
+		EpochRepo: d.SharedSignals.RevocationEpochRepo,
+		AgentRepo: d.IdManagement.AgentRepo,
+		Emit: func(event spec.DomainEvent) error {
+			if d.Emit != nil {
+				d.Emit(event)
+			}
+			return nil
+		},
+	}
+
 	// fetchWorkloadJWKS resolves a WorkloadTrustBundle's signing keys (inline
 	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (ADR-023 基盤の
 	// 再利用、ADR-053). Shared by the admin JWKS-refresh action and
@@ -319,6 +338,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		RefreshStore:               d.OAuth2.RefreshStore,
 		TokenIssuer:                d.OAuth2.TokenIssuer,
 		AgentRepo:                  d.IdManagement.AgentRepo,
+		RevocationEpochRepo:        d.SharedSignals.RevocationEpochRepo,
 		TokenIntrospector:          d.OAuth2.TokenIntrospector,
 		IDTokenHintVerifier:        d.OAuth2.IDTokenHintVerifier,
 		AccessTokenDenylist:        d.OAuth2.AccessTokenDenylist,
@@ -439,6 +459,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		AgentRepo:             d.IdManagement.AgentRepo,
 		UserMutationCommitter: d.IdManagement.UserMutationCommitter,
 		ProvisioningNotifier:  d.IdManagement.ProvisioningNotifier,
+		Reactor:               revocationReactor,
 		ClientRepo:            d.OAuth2.ClientRepo,
 		ScimRepo:              d.Sourcing.ScimRepo,
 		AttrSchemaRepo:        d.Tenancy.AttrSchemaRepo,

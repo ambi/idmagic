@@ -329,6 +329,7 @@ func (d Deps) handleIntrospect(c *echo.Context) error {
 	resp, err := tokenusecases.IntrospectToken(c.Request().Context(), tokenusecases.IntrospectDeps{
 		Introspector: d.TokenIntrospector, RefreshStore: d.RefreshStore,
 		AccessTokenDenylist: d.AccessTokenDenylist,
+		AgentRepo:           d.AgentRepo, RevocationEpochRepo: d.RevocationEpochRepo,
 	}, tokenusecases.IntrospectInput{
 		Token:         c.Request().PostFormValue("token"),
 		TokenTypeHint: c.Request().PostFormValue("token_type_hint"),

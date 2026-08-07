@@ -36,6 +36,8 @@ modules:
         via: technical_shared
       - module: shared-security-passwords-argon2id
         via: technical_shared
+      - module: sharedsignals-usecases
+        via: composition_root
       - module: bootstrap
         via: composition_root
       - module: datakeys-usecases
@@ -164,6 +166,12 @@ modules:
       - module: saml-db-memory
         via: composition_root
       - module: saml-db-postgres
+        via: composition_root
+      - module: sharedsignals-composition
+        via: composition_root
+      - module: sharedsignals-db-memory
+        via: composition_root
+      - module: sharedsignals-db-postgres
         via: composition_root
       - module: sourcing-scim-db-memory
         via: composition_root

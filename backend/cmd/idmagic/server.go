@@ -202,6 +202,7 @@ func Run() error {
 		Jobs:             deps.Jobs,
 		Provisioning:     deps.Provisioning,
 		WorkloadIdentity: deps.WorkloadIdentity,
+		SharedSignals:    deps.SharedSignals,
 	})
 
 	// 起動準備がすべて完了したので、startupComplete を true に設定する

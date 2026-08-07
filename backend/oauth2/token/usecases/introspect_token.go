@@ -6,9 +6,11 @@ import (
 	"strings"
 	"time"
 
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -37,6 +39,16 @@ type IntrospectDeps struct {
 	Introspector        ports.TokenIntrospector
 	RefreshStore        ports.RefreshTokenStore
 	AccessTokenDenylist ports.AccessTokenDenylist
+	// AgentRepo resolves the Agent bound to an access token's client_id
+	// (ADR-048), so RevocationEpochRepo can fail-closed check its issued_at
+	// against the Agent's revocation epoch (ADR-057, wi-58). nil skips the
+	// check.
+	AgentRepo agentports.AgentRepository
+	// RevocationEpochRepo backs the SCL internal interface CheckRevocationEpoch
+	// (spec/contexts/sharedsignals.yaml): an access token issued before the
+	// Agent's revocation epoch (kill-switch, owner offboard, inbound SET) is
+	// fail-closed reported as inactive. nil skips the check.
+	RevocationEpochRepo ssports.AgentRevocationEpochRepository
 }
 
 func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInput, now time.Time) (*IntrospectionResponse, error) {
@@ -92,6 +104,25 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 		}
 		if revoked {
 			return &IntrospectionResponse{Active: false}, nil
+		}
+	}
+	// ADR-057 (wi-58): Agent が subject の access token は、issued_at と
+	// SharedSignals の revocation epoch を比較し、kill-switch / 所有者オフボード /
+	// inbound SET のいずれかで epoch が前進していれば fail-closed で無効と判定する。
+	if r.Active && r.ClientID != "" && deps.AgentRepo != nil && deps.RevocationEpochRepo != nil {
+		tenantID := tenancy.TenantID(ctx)
+		agent, err := deps.AgentRepo.FindByClientID(ctx, tenantID, r.ClientID)
+		if err != nil {
+			return nil, err
+		}
+		if agent != nil {
+			epoch, err := deps.RevocationEpochRepo.FindByAgent(ctx, tenantID, agent.ID)
+			if err != nil {
+				return nil, err
+			}
+			if epoch != nil && epoch.Supersedes(time.Unix(r.Iat, 0)) {
+				return &IntrospectionResponse{Active: false}, nil
+			}
 		}
 	}
 	resp := &IntrospectionResponse{

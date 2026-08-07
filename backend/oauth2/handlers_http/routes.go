@@ -23,6 +23,7 @@ import (
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
@@ -58,6 +59,9 @@ type Deps struct {
 	RefreshStore               oauthports.RefreshTokenStore
 	TokenIssuer                oauthports.TokenIssuer
 	AgentRepo                  agentports.AgentRepository
+	// RevocationEpochRepo backs Introspect's fail-closed Agent revocation
+	// check (ADR-057, wi-58). nil skips the check.
+	RevocationEpochRepo ssports.AgentRevocationEpochRepository
 	// WorkloadVerifier is the composition-root wiring point for workload
 	// identity federation (ADR-053, [[wi-54-workload-identity-federation-spiffe]]).
 	// nil rejects subject_token_type=JWT URN token-exchange as unsupported.

@@ -61,6 +61,23 @@ modules:
         via: technical_shared
       - module: shared-spec
         via: technical_shared
+  sharedsignals-usecases:
+    path: usecases
+    responsibility: "SCL internal interface CheckRevocationEpoch/AdvanceRevocationEpoch と、\nIdManagement が既に emit する DomainEvent (AgentKilled/AgentDisabled/\nAgentCredentialUnbound/UserDisabled/UserSoftDeleted/UserDeleted) に反応して\nAgent revocation epoch を fail-closed に前進させる AgentRevocationReactor を所有する\n(ADR-057, wi-58)。IdManagement 側は SharedSignals に依存せず、\ndeps_http.EventReactor という自前の vocabulary で構造的に受ける\n(deps_http.Deps.ReactiveEmit が合成する)。\n"
+    context: SharedSignals
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      - module: sharedsignals-domain
+        via: published_interface
+      - module: sharedsignals-ports
+        via: published_interface
+      - module: idmanagement-agent-ports
+        via: published_interface
+      - module: idmanagement-domain
+        via: published_interface
+      - module: shared-spec
+        via: technical_shared
   sharedsignals-composition:
     path: "."
     responsibility: SharedSignals の repository を束ねる composition module (bootstrap / http-server が使う)。

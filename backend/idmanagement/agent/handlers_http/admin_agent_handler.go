@@ -209,7 +209,9 @@ func changeAgentStatus(d Deps, c *echo.Context, action func(actorUserID, id stri
 }
 
 func adminAgentDeps(d Deps) agentusecases.AdminAgentDeps {
-	return agentusecases.AdminAgentDeps{AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo}
+	return agentusecases.AdminAgentDeps{
+		AgentRepo: d.AgentRepo, ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo,
+	}
 }
 
 func toAgentSummaryResponse(agent *agentdomain.Agent, clientIDs []string) agentSummaryResponse {

@@ -19,6 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/sharedsignals"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/sourcing"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -47,6 +48,7 @@ type Dependencies struct {
 	Jobs             jobs.Module
 	Provisioning     provisioning.Module
 	WorkloadIdentity workloadidentity.Module
+	SharedSignals    sharedsignals.Module
 	Notification     notification.Module
 	Close            func()
 	DbPing           func(context.Context) error

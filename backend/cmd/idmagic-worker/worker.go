@@ -29,6 +29,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
+	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
 )
 
 // allLanes is the ADR-129 compat-mode default for JOB_WORKER_LANES: a single
@@ -325,6 +326,24 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies)
 // CSV import apply were silently dropped.
 func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) userusecases.AdminUserDeps {
 	emit := deps.NewEmitFunc(logger)
+	emitErr := func(event spec.DomainEvent) error {
+		emit(event)
+		return nil
+	}
+	// reactor fail-closed advances SharedSignals' Agent revocation epoch when
+	// this Deps emits UserDisabled/UserSoftDeleted/UserDeleted (ADR-057,
+	// wi-58) — e.g. PurgeExpiredSoftDeleted's auto-purge DeleteUser call.
+	// Errors propagate through reactiveEmit, unlike emitErr's best-effort
+	// audit trail above.
+	reactor := &sharedsignalsusecases.AgentRevocationReactor{
+		EpochRepo: deps.SharedSignals.RevocationEpochRepo,
+		AgentRepo: deps.IdManagement.AgentRepo,
+		Emit:      emitErr,
+	}
+	reactiveEmit := func(event spec.DomainEvent) error {
+		emit(event)
+		return reactor.React(context.Background(), event)
+	}
 	return userusecases.AdminUserDeps{
 		UserRepo:              deps.IdManagement.UserRepo,
 		GroupRepo:             deps.IdManagement.GroupRepo,
@@ -336,10 +355,7 @@ func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) useru
 		PasswordHasher:        passwords_argon2id.NewArgon2idPasswordHasher(),
 		PasswordHistoryRepo:   deps.Authentication.PasswordHistoryRepo,
 		UserMutationCommitter: deps.IdManagement.UserMutationCommitter,
-		Emit: func(event spec.DomainEvent) error {
-			emit(event)
-			return nil
-		},
+		Emit:                  reactiveEmit,
 	}
 }
 

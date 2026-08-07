@@ -41,6 +41,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
+	"github.com/ambi/idmagic/backend/sharedsignals"
+	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -171,6 +173,14 @@ func assembleMemory() (*Dependencies, error) {
 		WorkloadIdentity: workloadidentity.Module{
 			TrustBundleRepo: workloadidentitymemory.NewWorkloadTrustBundleRepository(),
 			BindingRepo:     workloadidentitymemory.NewAgentWorkloadBindingRepository(),
+		},
+		SharedSignals: sharedsignals.Module{
+			RevocationEpochRepo:   sharedsignalsmemory.NewAgentRevocationEpochRepository(),
+			StreamRepo:            sharedsignalsmemory.NewSsfStreamRepository(),
+			TransmitterConfigRepo: sharedsignalsmemory.NewSsfTransmitterConfigRepository(),
+			ReceiverConfigRepo:    sharedsignalsmemory.NewSsfReceiverConfigRepository(),
+			DeliveryRepo:          sharedsignalsmemory.NewSecurityEventDeliveryRepository(),
+			ReceivedEventRepo:     sharedsignalsmemory.NewReceivedSecurityEventRepository(),
 		},
 		Close:  func() {},
 		DbPing: func(c context.Context) error { return nil },

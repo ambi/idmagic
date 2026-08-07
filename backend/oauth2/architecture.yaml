@@ -148,6 +148,8 @@ modules:
         via: binding
       - module: idmanagement-user-ports
         via: binding
+      - module: sharedsignals-ports
+        via: binding
       - module: oauth2-domain
         via: published_interface
       - module: oauth2-ports
@@ -417,6 +419,8 @@ modules:
         via: published_interface
       - module: shared-spec
         via: technical_shared
+      - module: sharedsignals-ports
+        via: published_interface
       - module: tenancy-public
         via: published_interface
       - module: workloadidentity-domain

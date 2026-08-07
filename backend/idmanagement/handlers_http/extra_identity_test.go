@@ -28,6 +28,8 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/sharedsignals"
+	sharedsignalsmemory "github.com/ambi/idmagic/backend/sharedsignals/db_memory"
 
 	"github.com/labstack/echo/v5"
 
@@ -192,6 +194,58 @@ func TestAdminAgentLifecycle(t *testing.T) {
 	kill := adminJSONRequest(t, e, http.MethodPost, "/api/admin/agents/"+agentID2+"/kill", csrf, cookie, nil)
 	if kill.Code != http.StatusNoContent {
 		t.Fatalf("kill agent status=%d body=%s", kill.Code, kill.Body.String())
+	}
+}
+
+// TestAdminAgentKill_AdvancesRevocationEpoch — RED: composition-root wiring
+// end to end (KillAgent HTTP → deps_http.Deps.ReactiveEmit →
+// sharedsignalsusecases.AgentRevocationReactor.React →
+// AdvanceRevocationEpoch), not just the reactor unit in isolation. Confirms
+// the SCL scenario `kill-switchは既発行トークンをintrospectionで即時無効化する`'s
+// precondition actually gets wired when SharedSignals.Module is configured
+// (ADR-057, wi-58).
+func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
+	userRepo := usermemory.NewUserRepository()
+	now := time.Now().UTC()
+	userRepo.Seed(&userdomain.User{
+		ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
+		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
+		TenantID: tenancydomain.DefaultTenantID,
+	})
+	agentRepo := agentmemory.NewAgentRepository()
+	epochRepo := sharedsignalsmemory.NewAgentRevocationEpochRepository()
+
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: userRepo,
+		AuthnResolver: authusecases.DemoHeaderResolver{},
+		AgentRepo:     agentRepo,
+		GroupRepo:     groupmemory.NewGroupRepository(),
+		OAuth2:        oauth2.Module{ClientRepo: oauth2memory.NewClientRepository(), ConsentRepo: oauth2memory.NewConsentRepository()},
+		SharedSignals: sharedsignals.Module{RevocationEpochRepo: epochRepo},
+	})
+
+	csrf, cookie := adminCSRF(t, e)
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/agents", csrf, cookie, map[string]any{"name": "kill-me"})
+	if create.Code != http.StatusCreated {
+		t.Fatalf("register agent status=%d body=%s", create.Code, create.Body.String())
+	}
+	var created struct {
+		ID string `json:"id"`
+	}
+	_ = json.Unmarshal(create.Body.Bytes(), &created)
+
+	kill := adminJSONRequest(t, e, http.MethodPost, "/api/admin/agents/"+created.ID+"/kill", csrf, cookie, nil)
+	if kill.Code != http.StatusNoContent {
+		t.Fatalf("kill agent status=%d body=%s", kill.Code, kill.Body.String())
+	}
+
+	epoch, err := epochRepo.FindByAgent(context.Background(), tenancydomain.DefaultTenantID, created.ID)
+	if err != nil {
+		t.Fatalf("FindByAgent: %v", err)
+	}
+	if epoch == nil {
+		t.Fatal("expected KillAgent to advance the agent's revocation epoch via the composed reactor, got none")
 	}
 }
 

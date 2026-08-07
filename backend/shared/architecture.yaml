@@ -186,6 +186,10 @@ modules:
         via: composition_root
       - module: saml-public
         via: composition_root
+      - module: sharedsignals-composition
+        via: composition_root
+      - module: sharedsignals-usecases
+        via: composition_root
       - module: sourcing-public
         via: composition_root
       - module: shared-adapters

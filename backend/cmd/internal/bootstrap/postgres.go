@@ -48,6 +48,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
+	"github.com/ambi/idmagic/backend/sharedsignals"
+	sharedsignalspostgres "github.com/ambi/idmagic/backend/sharedsignals/db_postgres"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signingpostgres "github.com/ambi/idmagic/backend/signingkeys/db_postgres"
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -233,6 +235,14 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 		WorkloadIdentity: workloadidentity.Module{
 			TrustBundleRepo: &workloadidentitypostgres.WorkloadTrustBundleRepository{Pool: resilientDB},
 			BindingRepo:     &workloadidentitypostgres.AgentWorkloadBindingRepository{Pool: resilientDB},
+		},
+		SharedSignals: sharedsignals.Module{
+			RevocationEpochRepo:   &sharedsignalspostgres.AgentRevocationEpochRepository{Pool: resilientDB},
+			StreamRepo:            &sharedsignalspostgres.SsfStreamRepository{Pool: resilientDB},
+			TransmitterConfigRepo: &sharedsignalspostgres.SsfTransmitterConfigRepository{Pool: resilientDB},
+			ReceiverConfigRepo:    &sharedsignalspostgres.SsfReceiverConfigRepository{Pool: resilientDB},
+			DeliveryRepo:          &sharedsignalspostgres.SecurityEventDeliveryRepository{Pool: resilientDB},
+			ReceivedEventRepo:     &sharedsignalspostgres.ReceivedSecurityEventRepository{Pool: resilientDB},
 		},
 		Close: func() {
 			pool.Close()
