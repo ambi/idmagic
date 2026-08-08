@@ -44,7 +44,17 @@ identity assertion を起点にした app-to-app / agent-to-MCP のブローカ�
 - エンドユーザー個別同意フロー (本 WI は企業管理の app 間付与が対象)。
 
 ## Plan
-- depends_on の wi-50 と wi-56 が提供する actor-chain token exchange と MCP resource-bound audience を前提に、[[ADR-056-cross-app-access-identity-assertion-grant]] を accepted にする。新 grant を別 token pipeline にせず、token exchange の subject token profile として追加する。
+- **プロトコル形状の訂正 ([[wi-322-mcp-authorization-spec-repin-2026-07-audit]]、2026-08-08 監査)**:
+  ID-JAG は単一の token-exchange subject_token profile ではなく **2 ホップ**。(1) client → IdP
+  (idmagic が IdP 役のとき): RFC 8693 Token Exchange、`subject_token` = identity assertion
+  (id_token 等)、`requested_token_type` = `urn:ietf:params:oauth:token-type:id-jag` で ID-JAG を発行。
+  (2) client → 宛先 app の Authorization Server (idmagic が宛先 AS 役のとき): **RFC 7523
+  JWT-Bearer grant** (`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`、`assertion` = ID-JAG)
+  で access token を発行。(2) は token-exchange ではない。idmagic は現状 RFC 7523 を client 認証
+  (`client_assertion`) にのみ用いており、authorization grant としての JWT-Bearer (`grant_types` への
+  `urn:ietf:params:oauth:grant-type:jwt-bearer` 追加) は未対応 — ADR-056 と SCL 変更でこの grant_type
+  自体を新設する必要がある。
+- depends_on の wi-50 と wi-56 が提供する actor-chain token exchange と MCP resource-bound audience を前提に、[[ADR-056-cross-app-access-identity-assertion-grant]] を accepted にする。ID-JAG 発行 (IdP 役) は既存 token exchange の `requested_token_type` profile として追加し、ID-JAG 償還 (宛先 AS 役) は新設する RFC 7523 JWT-Bearer grant として追加する。
 - source app が署名する Identity Assertion は iss/sub/aud/exp/iat/jti、user authorization、source client/agent、actor chain を持ち、registered source key と destination resource policy で検証する。assertion audience は idmagic exchange endpoint、requested resource は destination app に分ける。
 - jti replay window、短い TTL、source/destination tenant一致、source app allowlist、user consent/enterprise policy、RAR downscope をすべて満たす場合だけ destination audience token を発行する。
 - managed authorization の設定・失効は Application context が所有し、token exchange result は既存 `act` chain に source app/agent を追加する。assertion 本文・user data は保存しない。

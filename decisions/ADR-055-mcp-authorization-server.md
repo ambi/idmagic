@@ -37,9 +37,27 @@ audience 限定を fail-closed の保証義務として確定する。
 MCP リソースサーバー群に対する **Authorization Server** として振る舞うときの境界と保証義務を確定する。
 
 1. **MCP authorization 仕様に準拠し、対象改訂を本 ADR で固定する**。準拠対象は MCP authorization
-   仕様の **2025-11-25 改訂** (OAuth 2.1 基盤) とする。仕様は版差が大きいため、改訂が進む場合は
-   本 ADR を更新し新たな対象改訂を pin し直す。実装は対象改訂が要求する OAuth 2.1 + PKCE(S256) /
-   RFC 9728 / RFC 8707 / RFC 8414 / RFC 7591 のサブセットを満たす。
+   仕様の **2026-07-28 改訂** (OAuth 2.1 基盤、2025-11-25 からの直接後継。間の改訂はない) とする。
+   仕様は版差が大きいため、改訂が進む場合は本 ADR を更新し新たな対象改訂を pin し直す。実装は
+   対象改訂が要求する OAuth 2.1 + PKCE(S256) / RFC 9728 / RFC 8707 / RFC 8414 / RFC 7591 のサブセットを
+   満たす。
+
+   2025-11-25 → 2026-07-28 の差分監査 ([[wi-322-mcp-authorization-spec-repin-2026-07-audit]]) の結論:
+   本 ADR が固定する OAuth 認可サブセットへの実質的な破壊的差分はない。
+   - **stateless core 化** (session / `initialize` handshake の廃止、`server/discover` 追加など) は
+     MCP プロトコル・トランスポート層の変更であり、idmagic は MCP の JSON-RPC セッションを一切
+     扱わない (認可サーバー / Protected Resource Metadata 提供に徹する)。`/.well-known/oauth-protected-resource`・
+     `McpResourceServer`・RFC 8707 resource indicator のいずれも session 概念に依存しないため影響なし。
+   - **RFC 9207 (`iss` パラメータ)** の必須化は、本 ADR 実装済みの `RFC9207-ISS` (`adoption: required`) が
+     既に満たしている。
+   - **RFC 7591 (DCR) の非推奨化** (Client ID Metadata Documents への移行方針。CIMD 自体はまだ
+     RFC 化されていない) は「後方互換のため引き続き利用可」とされており、決定 5 の DCR 依存を
+     直ちに変更する必要はない。CIMD の普及状況は今後の pin 更新時に再確認する。
+   - **Enterprise-Managed Authorization (ID-JAG)** は [[wi-57-cross-app-access-identity-assertion-grant]] が
+     対象とする IETF `draft-ietf-oauth-identity-assertion-authz-grant` (2026年8月時点で `-04`) と同一の
+     grant であり、本 ADR の audience 限定の上に積む設計方針 (本文末尾) は変更不要。ID-JAG の
+     具体的なプロトコル形状 (2 ホップ: IdP への RFC 8693 Token Exchange → 宛先 AS への RFC 7523
+     JWT-Bearer grant) は [[ADR-056]] (wi-57) 側で確定する。
 
 2. **Protected Resource Metadata (RFC 9728) を配信し、MCP リソースサーバー登録モデルを設ける**。
    `/.well-known/oauth-protected-resource` で、各 MCP リソースの `resource` 識別子・対応する
