@@ -86,9 +86,10 @@ ADR-055 の再ピン留めが必要か、[[wi-57-cross-app-access-identity-asser
   - **認可まわりのハードニング**(RFC 9207 `iss` 必須化、DCR の `application_type` 要求、client
     credential のイシュアー束縛、RFC 7591 DCR の非推奨化 → Client ID Metadata Documents への移行方針)
     のうち、RFC 9207 `iss` は idmagic 側で既に `adoption: required` として実装済みで差分なし。
-    DCR 非推奨化は「後方互換で RFC 7591 を使い続けてよい」とされており今は変更不要(将来の
-    pin 更新時に CIMD の普及状況を再確認する)。`application_type` は MCP client 側の要求であり
-    idmagic 側の即時対応は不要。**破壊的差分なし**。
+    DCR 非推奨化は「後方互換で RFC 7591 を使い続けてよい」とされており pin 更新の即時ブロッカーには
+    ならないが、CIMD 自体は MCP のクライアント登録優先順位で DCR より上位に格上げされた別機能の
+    追加であるため、追跡用に [[wi-341-oauth-client-id-metadata-document-cimd]] を新規起票した。
+    `application_type` は MCP client 側の要求であり idmagic 側の即時対応は不要。**破壊的差分なし**。
   - **Enterprise-Managed Authorization (ID-JAG)** は [[wi-57-cross-app-access-identity-assertion-grant]]
     が対象とする IETF `draft-ietf-oauth-identity-assertion-authz-grant`(2026-08 時点で `-04`、
     2026-05-21 リビジョン、Standards Track・未 RFC 化)と同一の grant であることを一次仕様で確認した。

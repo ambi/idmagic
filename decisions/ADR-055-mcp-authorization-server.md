@@ -52,7 +52,8 @@ MCP リソースサーバー群に対する **Authorization Server** として�
      既に満たしている。
    - **RFC 7591 (DCR) の非推奨化** (Client ID Metadata Documents への移行方針。CIMD 自体はまだ
      RFC 化されていない) は「後方互換のため引き続き利用可」とされており、決定 5 の DCR 依存を
-     直ちに変更する必要はない。CIMD の普及状況は今後の pin 更新時に再確認する。
+     直ちに変更する必要はない。CIMD 自体への対応は [[wi-341-oauth-client-id-metadata-document-cimd]]
+     で追跡する。
    - **Enterprise-Managed Authorization (ID-JAG)** は [[wi-57-cross-app-access-identity-assertion-grant]] が
      対象とする IETF `draft-ietf-oauth-identity-assertion-authz-grant` (2026年8月時点で `-04`) と同一の
      grant であり、本 ADR の audience 限定の上に積む設計方針 (本文末尾) は変更不要。ID-JAG の
