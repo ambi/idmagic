@@ -25,6 +25,17 @@ func caepEventTypeURI(t ssdomain.CaepEventType) string {
 	return string(t)
 }
 
+// caepEventTypeFromURI is the reverse of caepEventTypeURI, used when parsing
+// an inbound SET's `events` claim (usecases.ReceiveSecurityEvent).
+func caepEventTypeFromURI(uri string) ssdomain.CaepEventType {
+	for t, u := range caepEventTypeURIs {
+		if u == uri {
+			return t
+		}
+	}
+	return ssdomain.CaepEventType(uri)
+}
+
 // BuildAndSignSecurityEventToken builds a RFC 8417 Security Event Token for
 // event and signs it via signer, which reuses SigningKeys' existing
 // rotation/JWKS distribution instead of introducing separate SET key

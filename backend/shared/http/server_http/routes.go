@@ -48,8 +48,10 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
+	sharedsignalshttp "github.com/ambi/idmagic/backend/sharedsignals/handlers_http"
 	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	sharedsignalsverifyjose "github.com/ambi/idmagic/backend/sharedsignals/verify_jose"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	signinghttp "github.com/ambi/idmagic/backend/signingkeys/handlers_http"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
@@ -380,6 +382,20 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps: d.Deps, Authenticator: authenticator,
 		TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo, BindingRepo: d.WorkloadIdentity.BindingRepo,
 		AgentRepo: d.IdManagement.AgentRepo, FetchJWKS: fetchWorkloadJWKS,
+	})
+
+	sharedsignalshttp.RegisterRoutes(g, sharedsignalshttp.Deps{
+		Deps: d.Deps, Authenticator: authenticator,
+		StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
+		ReceiverConfigRepo: d.SharedSignals.ReceiverConfigRepo, DeliveryRepo: d.SharedSignals.DeliveryRepo,
+		ReceivedEventRepo: d.SharedSignals.ReceivedEventRepo, EpochRepo: d.SharedSignals.RevocationEpochRepo,
+		AgentRepo: d.IdManagement.AgentRepo, Verifier: &sharedsignalsverifyjose.Verifier{JWKResolver: d.JWKResolver},
+		Emit: func(event spec.DomainEvent) error {
+			if d.Emit != nil {
+				d.Emit(event)
+			}
+			return nil
+		},
 	})
 
 	signinghttp.RegisterRoutes(g, signinghttp.Deps{

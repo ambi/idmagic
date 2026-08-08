@@ -1765,13 +1765,51 @@
       "properties": {
         "id": {
           "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "owner_user_id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
         }
       },
       "additionalProperties": false,
       "required": [
-        "id"
+        "id",
+        "tenant_id",
+        "owner_user_id",
+        "status"
       ],
-      "description": "API アクセストークンを提示する外部 client principal の最小 stub。"
+      "description": "IdManagement が publish する Agent principal の最小 stub。"
+    },
+    "AgentAccessRevoked": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/RevocationReason"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "agentId",
+        "reason"
+      ],
+      "description": "kill-switch / 所有者オフボードを起点に Agent のアクセスが即時失効したことを表す、監査・ガバナンス向けの要約イベント ([[wi-59-agent-governance-guardrails-audit-inventory]] が読む)。"
     },
     "AgentCredentialBindRequest": {
       "type": "object",
@@ -1807,7 +1845,7 @@
         "client_id",
         "created_at"
       ],
-      "description": "Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。束縛先 client_id は Agent と同一 tenant_id の OAuth2Client でなければならない (AgentReferencesStayTenantLocal)。"
+      "description": "Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。束縛先 client_id は Agent と同一 tenant_id の OAuth2Client でなければならない (AgentReferencesStayTenantLocal)。client_id は他の Agent と重複して束縛できない (1 client_id につき Agent は最大 1 つ。BindAgentCredential の requires で検証)。"
     },
     "AgentCredentialBound": {
       "type": "object",
@@ -2118,6 +2156,44 @@
         "agentId"
       ],
       "description": "管理者が Agent を登録した。"
+    },
+    "AgentRevocationEpoch": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "epoch": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reason": {
+          "$ref": "#/$defs/RevocationReason"
+        },
+        "advanced_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "source_event_id": {
+          "type": "string",
+          "description": "epoch を前進させた domain event / inbound SET の jti など追跡用の参照。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "agent_id",
+        "tenant_id",
+        "epoch",
+        "reason",
+        "advanced_at"
+      ],
+      "description": "Agent ごとの revocation epoch を保持する 1 対 1 の付随レコード。epoch 以前に issued_at を持つ access token / session は無効とみなす (fail-closed)。KillAgent・DisableAgent・UnbindAgentCredential・所有者 (owner_user_id) の Disable/Delete・受理済み inbound SecurityEvent のいずれかで前進する。行が存在しない Agent は未失効を意味する。",
+      "x-scl-untranslated-constraints": [
+        "epoch_advances_monotonically(agent_id)"
+      ]
     },
     "AgentStatus": {
       "type": "string",
@@ -2708,6 +2784,8 @@
         "provisioning:write",
         "workload-identity:read",
         "workload-identity:write",
+        "shared-signals:read",
+        "shared-signals:write",
         "scim:users:read",
         "scim:users:write",
         "scim:groups:read",
@@ -2719,7 +2797,7 @@
         "account:consents:write",
         "account:password:write"
       ],
-      "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* / workload-identity:* に 分ける。アカウント自己管理 account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent / password の sensitive facet を分離する。公開・プロトコル・step-up・email verification endpoint は scope 対象外。"
+      "description": "API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* / workload-identity:* / shared-signals:* に分ける。アカウント自己管理 account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent / password の sensitive facet を分離する。公開・プロトコル・step-up・email verification endpoint は scope 対象外。"
     },
     "AppAccessDeniedByPolicy": {
       "type": "object",
@@ -5467,6 +5545,46 @@
         "assertion"
       ],
       "description": "SubmitBrowserWebAuthn の入力。navigator.credentials.get が返した assertion を\nJSON で送り返す。pending login session cookie が sub を、X-CSRF-Token が CSRF を解決する。\n"
+    },
+    "CaepEvent": {
+      "type": "object",
+      "properties": {
+        "event_type": {
+          "$ref": "#/$defs/CaepEventType"
+        },
+        "subject": {
+          "$ref": "#/$defs/SsfSubject"
+        },
+        "reason": {
+          "$ref": "#/$defs/RevocationReason"
+        },
+        "event_timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "initiating_entity": {
+          "type": "string",
+          "description": "\"policy\" | \"admin\" | \"user\" のいずれか。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "event_type",
+        "subject",
+        "event_timestamp",
+        "initiating_entity"
+      ],
+      "description": "SET へ署名して包む前の、CAEP イベントの意味内容。"
+    },
+    "CaepEventType": {
+      "type": "string",
+      "enum": [
+        "session-revoked",
+        "token-claims-change",
+        "credential-change",
+        "assurance-level-change"
+      ],
+      "description": "実装する CAEP イベント種別 ([[ADR-057]] 決定 2)。"
     },
     "ClaimMapping": {
       "type": "object",
@@ -9025,7 +9143,7 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false,
-      "description": "リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる (RFC 6749 §5.2 invalid_request 相当)。OAuth2 context が定義する共通 error の published language stub。"
+      "description": "リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる。OAuth2 context が定義する共通 error の published language stub。"
     },
     "InvalidScopeError": {
       "type": "object",
@@ -12630,6 +12748,58 @@
       "additionalProperties": false,
       "description": "テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。"
     },
+    "ReceivedSecurityEvent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "stream_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "set_jti": {
+          "type": "string"
+        },
+        "event_type": {
+          "$ref": "#/$defs/CaepEventType"
+        },
+        "subject": {
+          "$ref": "#/$defs/SsfSubject"
+        },
+        "verification_result": {
+          "$ref": "#/$defs/SecurityEventVerificationResult"
+        },
+        "received_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reflected_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "検証を通過し、ローカル revocation epoch へ反映した時刻。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "stream_id",
+        "set_jti",
+        "event_type",
+        "subject",
+        "verification_result",
+        "received_at"
+      ],
+      "description": "inbound SET の受理記録。set_jti は stream 内で一意とし、重複 (replay) を検知して拒否する。",
+      "x-scl-untranslated-constraints": [
+        "jti_unique_per_stream(stream_id, set_jti)"
+      ]
+    },
     "RecoveryCode": {
       "type": "object",
       "properties": {
@@ -13206,6 +13376,61 @@
         "Code"
       ],
       "description": "OAuth2 context が publish する /authorize 応答種別の published language stub。"
+    },
+    "RevocationEpochAdvanced": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "agentId": {
+          "type": "string"
+        },
+        "reason": {
+          "$ref": "#/$defs/RevocationReason"
+        },
+        "epoch": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "agentId",
+        "reason",
+        "epoch"
+      ],
+      "description": "Agent の revocation epoch が前進した (LocalRevocation の確定)。transmitter projector がこのイベントを起点に CaepEvent/SecurityEventDelivery を生成する。"
+    },
+    "RevocationEpochResponse": {
+      "type": "object",
+      "properties": {
+        "epoch": {
+          "type": "string",
+          "format": "date-time",
+          "description": "前進済みの epoch。未失効の Agent には存在しない。"
+        }
+      },
+      "additionalProperties": false
+    },
+    "RevocationReason": {
+      "type": "string",
+      "enum": [
+        "AgentKilled",
+        "AgentDisabled",
+        "AgentCredentialUnbound",
+        "OwnerDisabled",
+        "OwnerDeleted",
+        "ManualAdmin",
+        "InboundSecurityEvent"
+      ],
+      "description": "revocation epoch を前進させた起点。"
     },
     "RevokeApplicationClientSecretResponse": {
       "type": "object",
@@ -13854,6 +14079,301 @@
         "user_id"
       ],
       "description": "SCIM 2.0 の ID と IdP 内部の User (sub) を紐付けるマッピング。"
+    },
+    "SecurityEventDelivery": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "stream_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "set_jti": {
+          "type": "string"
+        },
+        "set": {
+          "$ref": "#/$defs/SecurityEventToken"
+        },
+        "status": {
+          "$ref": "#/$defs/SecurityEventDeliveryStatus",
+          "default": "pending"
+        },
+        "attempt_count": {
+          "type": "integer",
+          "default": 0
+        },
+        "next_attempt_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_error": {
+          "type": "string"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "delivered_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "stream_id",
+        "set_jti",
+        "set",
+        "status",
+        "attempt_count",
+        "created_at"
+      ],
+      "description": "outbound SET の配送状態。RevocationEpochAdvanced から projector が生成し、at-least-once で配送・再試行する。"
+    },
+    "SecurityEventDeliveryDeadLettered": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "setJti": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId",
+        "setJti"
+      ],
+      "description": "SecurityEventDelivery が max_delivery_attempts を使い切り dead_letter へ遷移した。"
+    },
+    "SecurityEventDeliveryFailed": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "setJti": {
+          "type": "string"
+        },
+        "attemptCount": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId",
+        "setJti",
+        "attemptCount"
+      ],
+      "description": "SecurityEventDelivery が配送に失敗し再試行をスケジュールした。"
+    },
+    "SecurityEventDeliveryRetried": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "setJti": {
+          "type": "string"
+        },
+        "attemptCount": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId",
+        "setJti",
+        "attemptCount"
+      ],
+      "description": "failed 状態の SecurityEventDelivery を再試行のため pending へ戻した。"
+    },
+    "SecurityEventDeliveryStatus": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "delivered",
+        "failed",
+        "dead_letter"
+      ],
+      "description": "outbound SET 配送の状態。"
+    },
+    "SecurityEventReceived": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "setJti": {
+          "type": "string"
+        },
+        "eventType": {
+          "$ref": "#/$defs/CaepEventType"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId",
+        "setJti",
+        "eventType"
+      ],
+      "description": "inbound SET を検証し、ローカル revocation として反映した。"
+    },
+    "SecurityEventRejected": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "issuer 解決前に拒否した場合は stream を特定できないことがある。"
+        },
+        "verificationResult": {
+          "$ref": "#/$defs/SecurityEventVerificationResult"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "verificationResult"
+      ],
+      "description": "inbound SET の検証が fail-closed で失敗し反映しなかった。"
+    },
+    "SecurityEventRejectedError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "受信した SET の検証が fail-closed で失敗した (未登録 issuer・署名不正・期限切れ・audience 不一致・jti 重複・subject 未解決)。"
+    },
+    "SecurityEventToken": {
+      "type": "object",
+      "properties": {
+        "jti": {
+          "type": "string"
+        },
+        "iss": {
+          "type": "string",
+          "format": "uri"
+        },
+        "aud": {
+          "type": "string"
+        },
+        "iat": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "event": {
+          "$ref": "#/$defs/CaepEvent"
+        },
+        "compact": {
+          "type": "string",
+          "description": "署名済み JWT の compact serialization。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "jti",
+        "iss",
+        "aud",
+        "iat",
+        "event",
+        "compact"
+      ],
+      "description": "RFC 8417 の Security Event Token。署名済み compact JWT と、そのデコード済み標準クレーム。"
+    },
+    "SecurityEventTransmitted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "setJti": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId",
+        "setJti"
+      ],
+      "description": "SecurityEventDelivery が配送に成功した。"
+    },
+    "SecurityEventVerificationResult": {
+      "type": "string",
+      "enum": [
+        "accepted",
+        "rejected_signature",
+        "rejected_unknown_issuer",
+        "rejected_replay",
+        "rejected_audience",
+        "rejected_subject_unresolved"
+      ],
+      "description": "inbound SET の検証結果。"
     },
     "SecurityTokenEndpoint": {
       "type": "object",
@@ -14568,6 +15088,365 @@
       "properties": {},
       "additionalProperties": false,
       "description": "Device Authorization Grant のポーリングが速すぎる。クライアントは interval を 5 秒延長する必要がある (RFC 8628 §3.5 slow_down)。"
+    },
+    "SsfReceiverConfig": {
+      "type": "object",
+      "properties": {
+        "stream_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "trusted_issuer": {
+          "type": "string",
+          "format": "uri",
+          "description": "外部 transmitter の SET iss claim と一致しなければならない発行者 URL。"
+        },
+        "jwks_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "jwks": {
+          "type": "object"
+        },
+        "accepted_audiences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "stream_id",
+        "trusted_issuer",
+        "accepted_audiences"
+      ],
+      "description": "direction=Receive の SsfStream に 1 対 1 で付随する、外部 transmitter の信頼設定。WorkloadTrustBundle ([[ADR-053]]) と同型の登録済み issuer 検証を再利用する。jwks_uri と jwks (inline) は少なくとも一方が必須。",
+      "x-scl-untranslated-constraints": [
+        "jwks_uri != null || jwks != null",
+        "accepted_audiences.length > 0"
+      ]
+    },
+    "SsfReceiverStreamRegisterRequest": {
+      "type": "object",
+      "properties": {
+        "event_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CaepEventType"
+          },
+          "minItems": 1
+        },
+        "trusted_issuer": {
+          "type": "string",
+          "format": "uri"
+        },
+        "jwks_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "jwks": {
+          "type": "object"
+        },
+        "accepted_audiences": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "event_types",
+        "trusted_issuer",
+        "accepted_audiences"
+      ],
+      "description": "管理者が direction=Receive の SsfStream を登録する JSON リクエスト。"
+    },
+    "SsfStream": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "direction": {
+          "$ref": "#/$defs/SsfStreamDirection"
+        },
+        "event_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CaepEventType"
+          },
+          "description": "この stream が送受信対象とするイベント種別の部分集合。"
+        },
+        "status": {
+          "$ref": "#/$defs/SsfStreamStatus",
+          "default": "enabled"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenant_id",
+        "direction",
+        "event_types",
+        "status",
+        "created_at"
+      ],
+      "description": "tenant が登録する SSF stream の共通メタデータ。direction ごとに SsfTransmitterConfig または SsfReceiverConfig が 1 対 1 で付随する。",
+      "x-scl-untranslated-constraints": [
+        "stream_references_are_tenant_local(tenant_id)"
+      ]
+    },
+    "SsfStreamDeleted": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId"
+      ],
+      "description": "管理者が SsfStream を削除した。付随する Transmitter/ReceiverConfig は cascade で削除する。"
+    },
+    "SsfStreamDirection": {
+      "type": "string",
+      "enum": [
+        "Transmit",
+        "Receive"
+      ],
+      "description": "idmagic からみた stream の向き。Transmit は idmagic が外部 receiver へ CAEP イベントを push する、Receive は idmagic が外部 transmitter からのイベントを受理する。"
+    },
+    "SsfStreamDisabled": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId"
+      ],
+      "description": "管理者が SsfStream を無効化した。以後配送/受理を行わない。"
+    },
+    "SsfStreamEnabled": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId"
+      ],
+      "description": "管理者が無効化済みの SsfStream を再有効化した。"
+    },
+    "SsfStreamRegistered": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "direction": {
+          "$ref": "#/$defs/SsfStreamDirection"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId",
+        "direction"
+      ],
+      "description": "管理者が SsfStream を新規登録した。"
+    },
+    "SsfStreamStatus": {
+      "type": "string",
+      "enum": [
+        "enabled",
+        "disabled"
+      ],
+      "description": "stream の稼働状態。"
+    },
+    "SsfStreamUpdateRequest": {
+      "type": "object",
+      "properties": {
+        "event_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CaepEventType"
+          },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "管理者が SsfStream の event_types を更新する JSON リクエスト。省略フィールドは現状維持。"
+    },
+    "SsfStreamUpdated": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "streamId": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "streamId"
+      ],
+      "description": "管理者が SsfStream のメタデータを更新した。"
+    },
+    "SsfSubject": {
+      "type": "object",
+      "properties": {
+        "subject_type": {
+          "type": "string",
+          "description": "\"Agent\" または \"User\"。"
+        },
+        "tenant_id": {
+          "type": "string"
+        },
+        "principal_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "subject_type",
+        "tenant_id",
+        "principal_id"
+      ],
+      "description": "CAEP イベントが指す対象。idmagic 自身が発行する access token の subject 表現 (tenant_id + principal_id) とそのまま対応させ、WorkloadIdentity のような別テーブルでの subject mapping を新設しない。"
+    },
+    "SsfTransmitterConfig": {
+      "type": "object",
+      "properties": {
+        "stream_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "delivery_endpoint": {
+          "type": "string",
+          "format": "uri",
+          "description": "外部 receiver の push 受理 endpoint。https 必須。"
+        },
+        "audience": {
+          "type": "string",
+          "description": "発行する SET の aud claim。"
+        },
+        "delivery_authorization": {
+          "type": "string",
+          "description": "receiver への push 時に Authorization header で提示する任意の bearer secret。"
+        },
+        "max_delivery_attempts": {
+          "type": "integer",
+          "default": 8
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "stream_id",
+        "delivery_endpoint",
+        "audience",
+        "max_delivery_attempts"
+      ],
+      "description": "direction=Transmit の SsfStream に 1 対 1 で付随する配送先設定。"
+    },
+    "SsfTransmitterStreamRegisterRequest": {
+      "type": "object",
+      "properties": {
+        "event_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CaepEventType"
+          },
+          "minItems": 1
+        },
+        "delivery_endpoint": {
+          "type": "string",
+          "format": "uri"
+        },
+        "audience": {
+          "type": "string"
+        },
+        "delivery_authorization": {
+          "type": "string"
+        },
+        "max_delivery_attempts": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "event_types",
+        "delivery_endpoint",
+        "audience"
+      ],
+      "description": "管理者が direction=Transmit の SsfStream を登録する JSON リクエスト。"
     },
     "StepUpCompleteRequest": {
       "type": "object",
@@ -15934,25 +16813,14 @@
         },
         "tenant_id": {
           "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "roles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "additionalProperties": false,
       "required": [
         "id",
-        "tenant_id",
-        "status",
-        "roles"
+        "tenant_id"
       ],
-      "description": "IdManagement が publish する identity principal を、認可判断に必要な属性だけで表す published language stub。"
+      "description": "IdManagement が publish する User principal の最小 stub。"
     },
     "UserAttributeDef": {
       "type": "object",

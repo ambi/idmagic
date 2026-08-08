@@ -78,6 +78,27 @@ modules:
         via: published_interface
       - module: shared-spec
         via: technical_shared
+      - module: tenancy-public
+        via: published_interface
+  sharedsignals-adapters:
+    path: handlers_http
+    responsibility: SsfStream (transmitter/receiver) の管理 CRUD と SecurityEventDelivery 一覧 (delivery health) を提供する admin HTTP API (ADR-057, wi-58 T005)。TenantAdministrator (RequireAdmin) のみ実装、ManagementApiClient (Agent principal の shared-signals:read/write scope) の実 enforcement は他 context 同様に未実装 (wi-274 の既知の保留事項と同じ扱い)。
+    context: SharedSignals
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: sharedsignals-domain
+        via: published_interface
+      - module: sharedsignals-ports
+        via: published_interface
+      - module: sharedsignals-usecases
+        via: published_interface
+      - module: idmanagement-agent-ports
+        via: binding
+      - module: http-support
+        via: binding
+      - module: shared-spec
+        via: technical_shared
   sharedsignals-push-http:
     path: push_http
     responsibility: ports.SecurityEventPusher の HTTP 実装。SSF push-based delivery (RFC 8417/RFC 9836 相当) で、SET を配送先 delivery_endpoint へ POST する。DNS-rebinding safe / redirect 再検証 (tokens_jose.JWKResolver・provisioning/client_scim と同じ per-context SSRF-safe transport の前例を踏襲、一元化はしない)。
@@ -104,6 +125,19 @@ modules:
         via: published_interface
       - module: tenancy-public
         via: published_interface
+  sharedsignals-verify-jose:
+    path: verify_jose
+    responsibility: ports.SecurityEventTokenVerifier の実装。inbound SET (RFC 8417) の署名・iss/aud を SsfReceiverConfig の trusted_issuer/jwks_uri/jwks に対して検証する (ADR-057 §ReceiveSecurityEvent)。JWKS 解決は tokens_jose.JWKResolver (SSRF-safe, WorkloadIdentity/OAuth2 と共有) を再利用する。use_cases 層を adapters 層の shared-security-tokens-jose から隔離するための境界 (sharedsignals-sign-jose と対称)。
+    context: SharedSignals
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: sharedsignals-domain
+        via: published_interface
+      - module: sharedsignals-ports
+        via: published_interface
+      - module: shared-security-tokens-jose
+        via: technical_shared
   sharedsignals-composition:
     path: "."
     responsibility: SharedSignals の repository を束ねる composition module (bootstrap / http-server が使う)。
