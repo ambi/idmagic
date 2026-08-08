@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-08-06
+updated_at: 2026-08-08
 ---
 
 # Architecture: repo
@@ -237,6 +237,29 @@ sanitizes) the header, which is what makes a single id shared across the proxy a
 worth having. A proxy that passes the client value through untouched must not be trusted. Either way, a
 reused inbound value is bounded in length and character set as defense in depth against header and log
 injection.
+
+### HTTP error responses
+
+Generic API error responses use RFC 9457 Problem Details (`application/problem+json`, with
+`type`/`title`/`status`/`detail`/`instance`) as the default envelope; `instance` carries the
+`request_id` from Request correlation above. Status codes follow RFC 9110: 400 means the request
+could not be parsed (malformed JSON, missing required framing), 422 means it parsed but its
+content violates a business rule (invalid role, referential mismatch, policy violation) — this
+distinguishes 400 from 422 more strictly than the historical practice of returning 400 for both.
+
+OAuth2 (`backend/oauth2/handlers_http`), SCIM (`backend/sourcing/scim/handlers_http`), and Dynamic
+Client Registration (RFC 7591, part of `backend/oauth2/handlers_http`) keep their own
+spec-mandated error bodies and are not migrated to Problem Details, since Problem Details would
+break interoperability with clients built against those standards. The SharedSignals inbound SET
+receiver (`POST /ssf/streams/:id/events`) is a pending case: whether RFC 8935 constrains its error
+format is unverified and must be settled before migrating it; the SharedSignals admin stream API
+has no such constraint and follows the generic convention. See ADR-154 for the full rationale and
+rejected alternatives.
+
+This convention is not yet implemented: `WriteBrowserError`
+(`backend/shared/http/support_http/response.go`) still returns the legacy `{error, message}` shape
+everywhere, and 422 is used in exactly one place today. The SCL language extension (status per
+error model, envelope per binding) and the handler migration are tracked as separate work items.
 
 ### Metrics
 
