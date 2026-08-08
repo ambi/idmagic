@@ -28605,7 +28605,7 @@ filter の field は registry allowlist のみ。
       <div class="eyebrow">Bounded Context · contexts/application.yaml</div>
       <h1>Application</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">83</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">31</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">14</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-application-glossary"><span class="stat-num">2</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-application-models"><span class="stat-num">85</span><span class="stat-label">models</span></a><a class="stat" href="#context-application-interfaces"><span class="stat-num">31</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-application-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-application-scenarios"><span class="stat-num">14</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-application-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-application-glossary">
     <h2>Glossary <span class="count">2</span></h2>
@@ -28630,7 +28630,7 @@ filter の field は registry allowlist のみ。
     </article></div>
   </section>
 <section id="context-application-models">
-    <h2>Models <span class="count">83</span></h2>
+    <h2>Models <span class="count">85</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">8</span></h3>
@@ -31147,7 +31147,7 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">4</span></h3>
+      <h3 class="grp-title">error <span class="count">6</span></h3>
       <div class="cards"><article class="card" id="scl-Application/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Application/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -31181,6 +31181,20 @@ categories は tenant のカテゴリ定義を position 昇順で含み、ポー
 <article class="card" id="scl-Application/model/ClientSecretLimitExceededError">
     <header><h3>ClientSecretLimitExceededError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Application/model/ClientSecretLimitExceededError</code></header>
     <p class="desc">OAuth2 context が定義する Active client secret credential 最大2件の上限 error の published language stub。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-Application/model/CategoryNameRequiredError">
+    <header><h3>CategoryNameRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Application/model/CategoryNameRequiredError</code></header>
+    <p class="desc">ApplicationCategory の name が空。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-Application/model/UnknownCategoryError">
+    <header><h3>UnknownCategoryError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Application/model/UnknownCategoryError</code></header>
+    <p class="desc">Application に付与しようとした category_id が所属テナントの ApplicationCategory に存在しない。</p>
 
     <p class="muted">(no fields)</p>
 
@@ -32062,7 +32076,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/CategoryNameRequiredError">CategoryNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationCategoryCreated">ApplicationCategoryCreated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -32102,7 +32116,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/CategoryNameRequiredError">CategoryNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationCategoryUpdated">ApplicationCategoryUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -32165,7 +32179,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Application/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Application/model/UnknownCategoryError">UnknownCategoryError</a> <a class="chip chip-error-ref" href="#scl-Application/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Application/model/ApplicationUpdated">ApplicationUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>

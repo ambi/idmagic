@@ -204,7 +204,7 @@ func TestAdminAuditEventsRequiresAdminRole(t *testing.T) {
 	e := newAuditAdminServer(t, user, nil)
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events")
 	if rec.Code != http.StatusForbidden ||
-		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"access_denied"`)) {
+		!bytes.Contains(rec.Body.Bytes(), []byte(`"type":"urn:idmagic:error:access_denied"`)) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }

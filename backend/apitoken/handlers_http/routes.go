@@ -86,13 +86,13 @@ func (h handler) issue(c *echo.Context) error {
 	}
 	var request issueRequest
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "invalid API token request")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "invalid API token request")
 	}
 	literal, metadata, err := h.deps.Service.Issue(
 		c.Request().Context(), support.RequestTenantID(c), actor.ID, request.Description, request.Scopes, request.ExpiryDays, request.DPoPJKT,
 	)
 	if errors.Is(err, usecases.ErrInvalidRequest) {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	if err != nil {
 		return err

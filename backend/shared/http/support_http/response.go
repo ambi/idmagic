@@ -21,12 +21,12 @@ func WriteBrowserError(c *echo.Context, status int, code, message string) error 
 	return NoStoreJSON(c, status, map[string]string{"error": code, "message": message})
 }
 
-// WriteServerError はサーバー内部エラー (5xx) をロギングし、クライアントに JSON エラーレスポンスを返す。
+// WriteServerError はサーバー内部エラー (5xx) をロギングし、クライアントに Problem Details エラーレスポンスを返す。
 func WriteServerError(c *echo.Context, err error) error {
 	logger := logging.Default()
 	req := c.Request()
 	logger.Error(req.Context(), "internal server error", "error", err.Error(), "method", req.Method, "path", req.URL.Path)
-	return WriteBrowserError(c, http.StatusInternalServerError, "internal_server_error", "Internal server error.")
+	return WriteProblem(c, http.StatusInternalServerError, "internal_server_error", "Internal server error.")
 }
 
 // DecodeJSON はリクエスト body を上限付き (64KiB) かつ未知フィールド拒否で復号する。

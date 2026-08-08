@@ -36,12 +36,12 @@ func WriteAccessTokenError(c *echo.Context, err error) (handled bool, result err
 	var tokenErr *InvalidTokenError
 	if errors.As(err, &tokenErr) {
 		c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
-		return true, WriteBrowserError(c, http.StatusUnauthorized, "invalid_token", "The access token is invalid.")
+		return true, WriteProblem(c, http.StatusUnauthorized, "invalid_token", "The access token is invalid.")
 	}
 	var scopeErr *InsufficientScopeError
 	if errors.As(err, &scopeErr) {
 		c.Response().Header().Set("WWW-Authenticate", `Bearer error="insufficient_scope", scope="`+scopeErr.Required+`"`)
-		return true, WriteBrowserError(c, http.StatusForbidden, "insufficient_scope", "The required scope is missing.")
+		return true, WriteProblem(c, http.StatusForbidden, "insufficient_scope", "The required scope is missing.")
 	}
 	return false, nil
 }
@@ -232,10 +232,10 @@ func (a *Authenticator) WriteAdminAccessError(c *echo.Context, err error) error 
 		return result
 	}
 	if errors.Is(err, ErrAdminAuthenticationRequired) {
-		return WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
+		return WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	if errors.Is(err, ErrAdminAccessDenied) {
-		return WriteBrowserError(c, http.StatusForbidden, "access_denied", "Administrator privileges are required.")
+		return WriteProblem(c, http.StatusForbidden, "access_denied", "Administrator privileges are required.")
 	}
 	return err
 }

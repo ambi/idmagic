@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/ambi/idmagic/backend/shared/logging"
 
@@ -27,7 +28,6 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 	if logger == nil {
 		logger = logging.Default()
 	}
-	fallback := echo.DefaultHTTPErrorHandler(false)
 	return func(c *echo.Context, err error) {
 		if handled, _ := WriteAccessTokenError(c, err); handled {
 			return
@@ -40,7 +40,7 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 			if metrics != nil {
 				metrics.RecordQuotaExceeded(qErr.GetResource())
 			}
-			_ = WriteBrowserError(c, http.StatusUnprocessableEntity, "quota_exceeded", err.Error())
+			_ = WriteProblem(c, http.StatusUnprocessableEntity, "quota_exceeded", err.Error())
 			return
 		}
 
@@ -59,6 +59,40 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 				"status", code,
 			)
 		}
-		fallback(c, err)
+		problemFallback(c, err, code)
 	}
+}
+
+// problemFallback replaces echo.DefaultHTTPErrorHandler so a handler error
+// that isn't otherwise classified (not a token/quota error) still gets the
+// RFC 9457 envelope (ADR-154) instead of echo's built-in `{"message": ...}`
+// shape. It mirrors DefaultHTTPErrorHandler's status/message derivation
+// (including the already-committed guard) but writes Problem Details.
+func problemFallback(c *echo.Context, err error, code int) {
+	if r, unwrapErr := echo.UnwrapResponse(c.Response()); unwrapErr == nil && r != nil && r.Committed {
+		return
+	}
+
+	detail := http.StatusText(code)
+	var httpErr *echo.HTTPError
+	if errors.As(err, &httpErr) && httpErr.Message != "" {
+		detail = httpErr.Message
+	}
+
+	if c.Request().Method == http.MethodHead {
+		_ = c.NoContent(code)
+		return
+	}
+	_ = WriteProblem(c, code, problemCodeForStatus(code), detail)
+}
+
+// problemCodeForStatus derives a stable error code slug from the HTTP status
+// text (e.g. 404 -> "not_found") for responses that have no more specific
+// business error code to report.
+func problemCodeForStatus(code int) string {
+	text := http.StatusText(code)
+	if text == "" {
+		return "error"
+	}
+	return strings.ToLower(strings.ReplaceAll(text, " ", "_"))
 }

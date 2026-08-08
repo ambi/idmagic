@@ -43,7 +43,7 @@ func RecoverMiddleware(logger logging.Logger) echo.MiddlewareFunc {
 					"path", req.URL.Path,
 					"stack", string(debug.Stack()),
 				)
-				err = c.JSON(http.StatusInternalServerError, map[string]string{"error": "internal_error"})
+				err = WriteProblem(c, http.StatusInternalServerError, "internal_error", "Internal server error.")
 			}()
 			return next(c)
 		}

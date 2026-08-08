@@ -865,8 +865,11 @@ func TestAccountContextRejectsStaleBearerToken(t *testing.T) {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("status=%d, want 401; body=%s", resp.StatusCode, body)
 	}
+	if got := resp.Header.Get("Content-Type"); got != "application/problem+json" {
+		t.Fatalf("Content-Type = %q, want application/problem+json", got)
+	}
 	body, _ := io.ReadAll(resp.Body)
-	if !bytes.Contains(body, []byte(`"error":"invalid_token"`)) {
+	if !bytes.Contains(body, []byte(`"type":"urn:idmagic:error:invalid_token"`)) {
 		t.Fatalf("unexpected body=%s", body)
 	}
 	if got := resp.Header.Get("WWW-Authenticate"); got != `Bearer error="invalid_token"` {

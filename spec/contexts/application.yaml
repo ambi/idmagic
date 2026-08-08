@@ -1115,6 +1115,14 @@ models:
     kind: error
     status: 422
     description: OAuth2 context が定義する Active client secret credential 最大2件の上限 error の published language stub。
+  CategoryNameRequiredError:
+    kind: error
+    status: 422
+    description: ApplicationCategory の name が空。
+  UnknownCategoryError:
+    kind: error
+    status: 422
+    description: Application に付与しようとした category_id が所属テナントの ApplicationCategory に存在しない。
 interfaces:
   AssignApplicationDesiredState:
     description: "呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への\nuser 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の\nGo 呼び出しとして各 context の usecase から使う。既に同じ (id, user_id) の割当が\n指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は\n同一テナントの id / user_id だけを渡す。\n"
@@ -1680,6 +1688,7 @@ interfaces:
         type: AdminApplicationCategoryResponse
     errors:
       - InvalidRequestError
+      - CategoryNameRequiredError
       - AccessDeniedError
     emits:
       - ApplicationCategoryCreated
@@ -1707,6 +1716,7 @@ interfaces:
         type: AdminApplicationCategoryResponse
     errors:
       - InvalidRequestError
+      - CategoryNameRequiredError
       - AccessDeniedError
     emits:
       - ApplicationCategoryUpdated
@@ -1753,6 +1763,7 @@ interfaces:
         type: AdminApplicationResponse
     errors:
       - InvalidRequestError
+      - UnknownCategoryError
       - AccessDeniedError
     emits:
       - ApplicationUpdated

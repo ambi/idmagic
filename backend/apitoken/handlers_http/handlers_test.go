@@ -122,3 +122,35 @@ func TestIssueApiTokenRejectsInvalidRequest(t *testing.T) {
 		}
 	}
 }
+
+// wi-326 T004 pilot: apitoken is the first context migrated from
+// WriteBrowserError's legacy {error,message} envelope to RFC 9457 Problem
+// Details (ADR-154). Both invalid_request paths (malformed JSON body and
+// usecases.ErrInvalidRequest) must return application/problem+json.
+func TestIssueApiToken_InvalidRequestIsProblemDetails(t *testing.T) {
+	e := newHandler(t)
+	for name, body := range map[string]map[string]any{
+		"malformed json (unknown field)": {"description": "x", "scopes": []string{}, "expiry_days": 7, "unknown_field": true},
+		"business rule (bad expiry)":     {"description": "x", "scopes": []string{"scim:users:read"}, "expiry_days": 0},
+	} {
+		t.Run(name, func(t *testing.T) {
+			rec := request(t, e, http.MethodPost, "/api/admin/api-tokens", body, true)
+			if rec.Code != http.StatusBadRequest {
+				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+			}
+			if ct := rec.Header().Get("Content-Type"); ct != support.ProblemContentType {
+				t.Fatalf("Content-Type = %q, want %q", ct, support.ProblemContentType)
+			}
+			var problem support.Problem
+			if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+				t.Fatalf("unmarshal body: %v (body=%s)", err, rec.Body.String())
+			}
+			if problem.Type != "urn:idmagic:error:invalid_request" {
+				t.Errorf("type = %q, want %q", problem.Type, "urn:idmagic:error:invalid_request")
+			}
+			if problem.Status != http.StatusBadRequest {
+				t.Errorf("status field = %d, want %d", problem.Status, http.StatusBadRequest)
+			}
+		})
+	}
+}

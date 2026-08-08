@@ -5622,6 +5622,12 @@
       ],
       "description": "実装する CAEP イベント種別 ([[ADR-057]] 決定 2)。"
     },
+    "CategoryNameRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "ApplicationCategory の name が空。"
+    },
     "ClaimMapping": {
       "type": "object",
       "properties": {
@@ -16970,6 +16976,12 @@
       "properties": {},
       "additionalProperties": false,
       "description": "クライアントがこの grant_type を使用する権限を持たない (RFC 6749 §5.2 unauthorized_client)。"
+    },
+    "UnknownCategoryError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "Application に付与しようとした category_id が所属テナントの ApplicationCategory に存在しない。"
     },
     "UnsupportedGrantTypeError": {
       "type": "object",

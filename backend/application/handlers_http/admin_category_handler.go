@@ -140,9 +140,12 @@ func (d Deps) writeCategoryError(c *echo.Context, err error) error {
 	case errors.Is(err, appusecases.ErrApplicationNotFound):
 		return support.WriteBrowserError(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
 	case errors.Is(err, appusecases.ErrCategoryNameRequired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The category name is required.")
+		// status stays 400 (SCL declares 422) until the application context's
+		// WriteBrowserError call sites migrate to Problem Details (wi-326 T004),
+		// same deferred pairing wi-325 used for its 37 granular error models.
+		return support.WriteBrowserError(c, http.StatusBadRequest, "category_name_required", "The category name is required.")
 	case errors.Is(err, appusecases.ErrUnknownCategory):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A nonexistent category cannot be assigned.")
+		return support.WriteBrowserError(c, http.StatusBadRequest, "unknown_category", "A nonexistent category cannot be assigned.")
 	default:
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
