@@ -9,11 +9,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"time"
 
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/security/safehttp"
 )
 
 const maxJWKSBytes = 1 << 20
@@ -32,35 +32,13 @@ type JWKResolver struct {
 
 func NewJWKResolver() *JWKResolver {
 	r := &JWKResolver{cache: map[string]cachedJWKS{}, resolver: net.DefaultResolver}
-	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-			host, port, err := net.SplitHostPort(address)
-			if err != nil {
-				return nil, err
-			}
-			ips, err := r.safeIPs(ctx, host)
-			if err != nil {
-				return nil, err
-			}
-			return (&net.Dialer{Timeout: 2 * time.Second}).DialContext(
-				ctx,
-				network,
-				net.JoinHostPort(ips[0].String(), port),
-			)
-		},
-		TLSHandshakeTimeout: 2 * time.Second,
-	}
-	r.client = &http.Client{
-		Transport: transport,
-		Timeout:   3 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 3 {
-				return errors.New("jwks_uri: too many redirects")
-			}
-			return ValidateJWKSURI(req.URL.String())
-		},
-	}
+	r.client = safehttp.NewClient(safehttp.Config{
+		DialTimeout:    2 * time.Second,
+		TLSTimeout:     2 * time.Second,
+		RequestTimeout: 3 * time.Second,
+		MaxRedirects:   3,
+		ValidateURL:    ValidateJWKSURI,
+	})
 	return r
 }
 
@@ -182,37 +160,9 @@ func (r *JWKResolver) fetch(ctx context.Context, raw string) ([]map[string]any, 
 	return keys, nil
 }
 
+// safeIPs delegates to safehttp.SafeIPs; kept as a method (rather than
+// calling safehttp directly at call sites) so existing tests and the
+// pre-fetch check in fetch() don't need to know about the shared resolver.
 func (r *JWKResolver) safeIPs(ctx context.Context, host string) ([]net.IP, error) {
-	if ip := net.ParseIP(host); ip != nil {
-		if !isPublicIP(ip) {
-			return nil, errors.New("jwks_uri resolves to a non-public address")
-		}
-		return []net.IP{ip}, nil
-	}
-	addresses, err := r.resolver.LookupIPAddr(ctx, host)
-	if err != nil {
-		return nil, fmt.Errorf("resolve jwks_uri host: %w", err)
-	}
-	var out []net.IP
-	for _, address := range addresses {
-		if !isPublicIP(address.IP) {
-			return nil, errors.New("jwks_uri resolves to a non-public address")
-		}
-		out = append(out, address.IP)
-	}
-	if len(out) == 0 {
-		return nil, errors.New("jwks_uri host has no addresses")
-	}
-	return out, nil
-}
-
-func isPublicIP(ip net.IP) bool {
-	return ip != nil &&
-		!ip.IsPrivate() &&
-		!ip.IsLoopback() &&
-		!ip.IsLinkLocalUnicast() &&
-		!ip.IsLinkLocalMulticast() &&
-		!ip.IsUnspecified() &&
-		!ip.IsMulticast() &&
-		!strings.HasPrefix(ip.String(), "100.64.")
+	return safehttp.SafeIPs(ctx, r.resolver, host)
 }

@@ -16,6 +16,7 @@ import (
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	cimdhttp "github.com/ambi/idmagic/backend/oauth2/client/cimd_http"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	httpsupport "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -161,6 +162,11 @@ func Run() error {
 	emit := deps.NewEmitFunc(logger)
 	sessionManager.QuotaRepo = deps.Tenancy.QuotaRepo
 	sessionManager.Emit = emit
+	// ClientRepo is wrapped with CIMD resolution in bootstrap (ADR-155); Emit can only
+	// be wired here, after NewEmitFunc exists (same reason as sessionManager.Emit above).
+	if cimdRepo, ok := deps.OAuth2.ClientRepo.(*cimdhttp.ClientRepositoryWithCIMD); ok {
+		cimdRepo.Emit = emit
+	}
 	httpadapter.Register(e, httpadapter.Deps{
 		MetricsHandler: appMetrics.Handler(),
 		Deps: httpsupport.Deps{

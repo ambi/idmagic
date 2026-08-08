@@ -33,6 +33,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2"
+	cimdhttp "github.com/ambi/idmagic/backend/oauth2/client/cimd_http"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/provisioning"
 	provisioningmemory "github.com/ambi/idmagic/backend/provisioning/db_memory"
@@ -131,7 +132,15 @@ func assembleMemory() (*Dependencies, error) {
 			AuthEventBucketStore: authnmemory.NewAuthEventBucketStore(),
 		},
 		OAuth2: oauth2.Module{
-			ClientRepo:                 oauth2memory.NewClientRepository(),
+			// ClientRepo は CIMD (Client ID Metadata Document) 解決をデコレータで足す (ADR-155)。
+			// 登録済みクライアントの挙動は完全にそのまま (FindByID がヒットすればデコレータは委譲する
+			// だけ)。Emit は起動シーケンス上 NewEmitFunc より前にしか組み立てられないため、
+			// cmd/idmagic/server.go 側で deps.OAuth2.ClientRepo を型アサートして事後設定する
+			// (sessionManager.Emit と同じ配線パターン)。
+			ClientRepo: &cimdhttp.ClientRepositoryWithCIMD{
+				OAuth2ClientRepository: oauth2memory.NewClientRepository(),
+				Fetcher:                cimdhttp.NewFetcher(),
+			},
 			ConsentRepo:                oauth2memory.NewConsentRepository(),
 			AuthzDetailTypeRepo:        oauth2memory.NewAuthorizationDetailTypeRepository(),
 			McpResourceServerRepo:      oauth2memory.NewMcpResourceServerRepository(),

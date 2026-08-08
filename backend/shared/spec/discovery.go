@@ -76,6 +76,9 @@ func (s *SCL) BuildDiscoveryDocument(issuer string) (map[string]any, error) {
 	doc["require_pushed_authorization_requests"] = false
 	doc["require_pkce"] = true
 	doc["tls_client_certificate_bound_access_tokens"] = true
+	// Client ID Metadata Documents (ADR-155): client_id resolved live from a
+	// client-hosted https URL, as an alternative to Dynamic Client Registration.
+	doc["client_id_metadata_document_supported"] = true
 	// RFC 9207 §3。AS は authorize response に iss を必ず付与する。
 	doc["authorization_response_iss_parameter_supported"] = true
 	doc["claims_supported"] = s.discoveryDefault("claims_supported")

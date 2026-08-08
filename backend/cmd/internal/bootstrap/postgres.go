@@ -36,6 +36,7 @@ import (
 	"github.com/ambi/idmagic/backend/jobs"
 	jobspostgres "github.com/ambi/idmagic/backend/jobs/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2"
+	cimdhttp "github.com/ambi/idmagic/backend/oauth2/client/cimd_http"
 	oauth2clientpostgres "github.com/ambi/idmagic/backend/oauth2/client/db_postgres"
 	oauth2consentpostgres "github.com/ambi/idmagic/backend/oauth2/consent/db_postgres"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
@@ -192,7 +193,12 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			AuthEventBucketStore: &authnpostgres.AuthEventBucketStore{Pool: resilientDB},
 		},
 		OAuth2: oauth2.Module{
-			ClientRepo:                 &oauth2clientpostgres.OAuth2ClientRepository{Pool: resilientDB},
+			// See memory.go for why CIMD resolution is wired as a decorator here and
+			// Emit is set post-hoc in cmd/idmagic/server.go (ADR-155).
+			ClientRepo: &cimdhttp.ClientRepositoryWithCIMD{
+				OAuth2ClientRepository: &oauth2clientpostgres.OAuth2ClientRepository{Pool: resilientDB},
+				Fetcher:                cimdhttp.NewFetcher(),
+			},
 			ConsentRepo:                &oauth2consentpostgres.ConsentRepository{Pool: resilientDB},
 			AuthzDetailTypeRepo:        &oauth2postgres.AuthorizationDetailTypeRepository{Pool: resilientDB},
 			McpResourceServerRepo:      &oauth2postgres.McpResourceServerRepository{Pool: resilientDB},

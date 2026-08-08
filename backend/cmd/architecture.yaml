@@ -85,6 +85,8 @@ modules:
     depends_on:
       - module: apitoken-public
         via: composition_root
+      - module: oauth2-client-cimd-http
+        via: composition_root
       - module: oauth2-client-db-postgres
         via: composition_root
       - module: oauth2-consent-db-postgres

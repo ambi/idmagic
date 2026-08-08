@@ -377,6 +377,14 @@ modules:
     depends_on:
       - module: tenancy-public
         via: published_interface
+  shared-security-safehttp:
+    path: security/safehttp
+    responsibility: backend/shared/security/safehttp の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      []
   shared-security-tokens-jose:
     path: security/tokens_jose
     responsibility: backend/shared/security/tokens_jose の Flat Architecture adapter。
@@ -392,6 +400,8 @@ modules:
         via: published_interface
       - module: oauth2-ports
         via: published_interface
+      - module: shared-security-safehttp
+        via: technical_shared
       - module: shared-spec
         via: technical_shared
       - module: signingkeys-domain

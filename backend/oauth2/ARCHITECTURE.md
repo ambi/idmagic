@@ -71,6 +71,32 @@ store separate from DPoP's replay store because the two have different TTLs and 
 with Basic/secret authentication on the same request is rejected as `invalid_request` per RFC 6749
 §2.3.
 
+## Client ID Metadata Documents (CIMD): registry-less client resolution
+
+Alongside RFC 7591 Dynamic Client Registration, `client_id` values shaped as an `https` URL with a
+path resolve live from a client-hosted Client ID Metadata Document instead of the `OAuth2Client`
+repository ([ADR-155](../../decisions/ADR-155-client-id-metadata-documents.md)). Resolution is
+never persisted — the document is fetched (and cached 5 minutes) each time a `client_id` isn't
+found in the repository, then mapped into the same `OAuth2Client` shape every other code path
+already understands, so redirect_uri matching, consent rendering, PKCE, and scope handling need no
+CIMD-specific branches. The integration point is `client/cimd_http.ClientRepositoryWithCIMD`, a
+decorator that embeds `OAuth2ClientRepository` and overrides only `FindByID`: a repository hit
+short-circuits before any fetch, and every other method (`Save`, `Delete`, `FindAll`, credential
+listing) passes straight through untouched. It is wired once at the composition root
+(`cmd/internal/bootstrap`), so `authorize.go`, `push_authorization_request.go`, and
+`client_auth.go` require no changes.
+
+The fetch itself goes through `shared/security/safehttp`, the same SSRF-hardened dialer
+`tokens_jose.JWKResolver` uses for `jwks_uri` (https-only, DNS-resolved-then-public-IP-only,
+capped redirects, short timeouts, a body size cap) — extracted into a shared package so both
+fetchers stay behind one hardened implementation rather than two. MVP only accepts documents that
+omit `token_endpoint_auth_method` or declare `none`; anything else is rejected fail-closed, and a
+document's `client_id` field must match the URL it was fetched from exactly. A resolved client's
+`scope` is whatever the document self-declares (default `openid`) — the same self-declared trust
+model RFC 7591 DCR already uses, not a new admin-curated catalog. A CIMD-resolved client is never
+linked to an `Application`, matching the existing behavior for self-registered DCR clients: the
+`ApplicationGate` already treats "no Application record" as allowed, not fail-closed.
+
 ## Token formats: JWT access tokens, opaque refresh tokens
 
 Access tokens are issued as self-contained JWTs (RFC 9068) by default, refresh tokens as opaque,

@@ -91,6 +91,8 @@ modules:
         via: technical_shared
       - module: shared-observability-telemetry-otlp
         via: technical_shared
+      - module: oauth2-client-cimd-http
+        via: composition_root
       - module: shared-security-passwords-argon2id
         via: technical_shared
       - module: shared-security-tokens-jose

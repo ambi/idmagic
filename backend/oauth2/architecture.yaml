@@ -258,6 +258,21 @@ modules:
         via: binding
       - module: signingkeys-domain
         via: published_interface
+  oauth2-client-cimd-http:
+    path: client/cimd_http
+    responsibility: Client ID Metadata Document (CIMD) の SSRF-safe fetch と、OAuth2ClientRepository への解決フォールバックの decorator (ADR-155)。
+    context: OAuth2
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: oauth2-client-domain
+        via: published_interface
+      - module: oauth2-client-ports
+        via: published_interface
+      - module: shared-security-safehttp
+        via: technical_shared
+      - module: shared-spec
+        via: technical_shared
   oauth2-consent-domain:
     path: consent/domain
     responsibility: Consent のドメインモデルとイベント。

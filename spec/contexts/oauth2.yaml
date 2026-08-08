@@ -143,6 +143,51 @@ standards:
         strength: MUST
         adoption: required
         statement: Authorization Code Grantを利用するClientにはredirect_uri登録を要求する。
+  ClientIDMetadataDocumentDraft00:
+    title: OAuth Client ID Metadata Document
+    version: draft-ietf-oauth-client-id-metadata-document-00
+    url: https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-00.html
+    roles:
+      - AuthorizationServer
+    scope: 事前登録なしにclient_idをclient自己ホストのHTTPS URLとして扱い、都度metadataを解決するクライアント識別方式。RFC 7591 DCRの代替経路。
+    requirements:
+      - id: CIMD00-URL-SHAPE
+        section: §2
+        strength: MUST
+        adoption: required
+        statement: client_idはhttps schemeかつ非空pathを持つURLでなければならない。
+      - id: CIMD00-FETCH
+        section: §4
+        strength: SHOULD
+        adoption: required
+        statement: URL形式のclient_idを検出したらそのURLからmetadata documentをfetchする。
+      - id: CIMD00-CLIENT-ID-MATCH
+        section: §4
+        strength: MUST
+        adoption: required
+        statement: fetchしたdocument内のclient_idフィールドがfetch元URLと厳密一致することを検証する。
+      - id: CIMD00-REDIRECT-VALIDATE
+        section: §4
+        strength: MUST
+        adoption: required
+        statement: 認可リクエストのredirect_uriがdocumentのredirect_uris一覧に含まれることを検証する。
+      - id: CIMD00-STRUCTURE
+        section: §4
+        strength: MUST
+        adoption: required
+        statement: documentが valid JSON であり client_id・client_name・redirect_uris (非空) を含むことを検証する。不正な場合はfail-closedで拒否する。
+      - id: CIMD00-CACHE
+        section: §4
+        strength: SHOULD
+        adoption: partial
+        reason: HTTP cache header (Cache-Control等) は解釈せず、固定5分TTLでキャッシュする。document更新の反映が最大5分遅延しうる。header準拠のキャッシュ制御は別途対応する。
+        statement: HTTP cache headerに従いdocumentをcacheする。
+      - id: CIMD00-PRIVATE-KEY-JWT
+        section: §6.2
+        strength: MAY
+        adoption: excluded
+        reason: MVPはtoken_endpoint_auth_methodが未指定またはnoneのdocumentのみ受理する。private_key_jwt (documentのjwks/jwks_uri経由の追加fetchを要する) はSSRF経路の複合を避けるため対象外とし、別途対応する。
+        statement: private_key_jwtクライアント認証をinline jwksまたはjwks_uri経由でサポートしてよい。
   RFC7636:
     title: Proof Key for Code Exchange by OAuth Public Clients
     version: RFC 7636
@@ -557,7 +602,7 @@ glossary:
       - term: Client
         reason: Client はアプリケーション、ResourceOwner は人間。OAuth では明確に区別される。
   Client:
-    definition: ResourceOwner に代わって保護リソースへのアクセスを要求するアプリケーション。client_id で識別される。
+    definition: ResourceOwner に代わって保護リソースへのアクセスを要求するアプリケーション。client_id で識別される。client_id が Client ID Metadata Document (CIMD) の URL 形状の場合、永続登録なしに認可リクエストごとにドキュメントを解決する。
     aliases:
       - client
       - クライアント
@@ -2072,6 +2117,10 @@ models:
       tls_client_certificate_bound_access_tokens:
         type: Boolean
         optional: true
+      client_id_metadata_document_supported:
+        type: Boolean
+        default: true
+        description: client_idをHTTPS URL (Client ID Metadata Document) として都度解決する経路をサポートすることの広告。
       subject_types_supported:
         type: "String[]"
         default:
@@ -2164,6 +2213,39 @@ models:
       dpop_bound_access_tokens:
         type: Boolean
         optional: true
+  ClientIDMetadataDocument:
+    kind: value_object
+    description: client が自己ホストする HTTPS URL から fetch する Client ID Metadata Document。client_id 自体が fetch 元 URL であり document 内 client_id と厳密一致する必要がある。token_endpoint_auth_method が未指定または none 以外の document は拒否する。
+    fields:
+      client_id:
+        type: URI
+        description: fetch 元 URL と厳密一致する必要がある。
+      client_name:
+        type: String
+      client_uri:
+        type: URI
+        optional: true
+      logo_uri:
+        type: URI
+        optional: true
+      redirect_uris:
+        type: "URI[]"
+        constraints:
+          - non_empty
+      grant_types:
+        type: "GrantType[]"
+        optional: true
+      response_types:
+        type: "ResponseType[]"
+        optional: true
+      token_endpoint_auth_method:
+        type: TokenEndpointAuthMethod
+        optional: true
+        description: 未指定は none として扱う。none 以外の値を宣言する document は拒否する。
+      scope:
+        type: String
+        optional: true
+        description: 未指定時は openid のみを許可する。
   AuthorizationDetailTypeRequest:
     kind: value_object
     description: 管理者が authorization_details type を登録・更新する JSON リクエスト (RFC 9396)。type は作成時のみ。
@@ -2923,6 +3005,33 @@ models:
       clientType:
         type: ClientType
         optional: true
+  ClientIdMetadataDocumentResolved:
+    kind: event
+    description: URL形式のclient_idについてClient ID Metadata Documentのfetch・検証に成功し、認可リクエストの処理を継続した。永続登録は伴わない。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+        description: 認可リクエストが属するテナント ID。
+      clientId:
+        type: String
+        description: fetch元のURL。
+  ClientIdMetadataDocumentRejected:
+    kind: event
+    description: URL形式のclient_idについてClient ID Metadata Documentのfetch・検証が失敗し、fail-closedでリクエストを拒否した。
+    payload:
+      occurredAt:
+        type: DateTime
+      tenantId:
+        type: String
+        description: 認可リクエストが属するテナント ID。
+      clientId:
+        type: String
+        description: fetch元のURL。
+      reason:
+        type: String
+        description: 拒否理由 (fetch失敗・JSON不正・client_id不一致・redirect_uris欠落・非対応token_endpoint_auth_method等) の分類。
   AdminOAuth2ClientCreated:
     kind: event
     description: 管理者が所属テナントに OAuth client を作成した。秘密情報は含めない。
@@ -3675,7 +3784,7 @@ interfaces:
         path: /register
         error_format: oauth2
   Authorize:
-    description: Authorization endpoint (RFC 6749 §4.1.1)
+    description: Authorization endpoint (RFC 6749 §4.1.1)。client_id は登録済み Client、または Client ID Metadata Document の URL を都度解決したものを受理する。
     steps:
       - "{client_id} として scope {scope} で認可リクエストを送る"
       - "{client_id} として redirect_uri {redirect_uri} で認可リクエストを送る"
@@ -3692,7 +3801,7 @@ interfaces:
     requires:
       - every_authorization_parameter_has_single_value(input.params)
       - prompt_tokens_supported_and_unambiguous(input.params.prompt)
-      - registered_client(input.params.client_id)
+      - client_resolvable(input.params.client_id)
       - redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)
       - requested_scopes_allowed(input.params.client_id, input.params.scope)
       - pkce_s256_present(input.params)
@@ -3705,6 +3814,8 @@ interfaces:
       - AuthorizationCodeIssued
       - ConsentGranted
       - ResourceAudienceRejected
+      - ClientIdMetadataDocumentResolved
+      - ClientIdMetadataDocumentRejected
     access: public
     bindings:
       - kind: http
@@ -3871,7 +3982,7 @@ interfaces:
         successful_status_codes:
           - "200"
   PushAuthorizationRequest:
-    description: Pushed Authorization Request (RFC 9126)
+    description: Pushed Authorization Request (RFC 9126)。client_id は登録済み Client、または Client ID Metadata Document の URL を都度解決したものを受理する。
     steps:
       - "{client_id} として認可リクエストを事前送信する"
     input:
@@ -3889,6 +4000,8 @@ interfaces:
     emits:
       - PARStored
       - ResourceAudienceRejected
+      - ClientIdMetadataDocumentResolved
+      - ClientIdMetadataDocumentRejected
     access:
       policies: [AuthenticatedClient]
       resource:
@@ -3958,6 +4071,8 @@ interfaces:
       - TokenExchangeRejected
       - ResourceScopedTokenIssued
       - ResourceAudienceRejected
+      - ClientIdMetadataDocumentResolved
+      - ClientIdMetadataDocumentRejected
     access:
       policies: [TokenAuthorizationCode, TokenRefresh, TokenClientCredentials, TokenDeviceCode, TokenExchange]
       resource:
