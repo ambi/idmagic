@@ -59,6 +59,7 @@ interfaces:
       groups: { type: List<AuthorizationActionGroup> }
     ensures:
       - output.groups.size() >= 0
+    stability: internal
     access: internal
     read_only: true
     idempotent: true
@@ -83,6 +84,7 @@ interfaces:
       - bindings_with_the_same_path_and_different_methods_share_one_path_item(input.request, output.document)
       - internal_interfaces_are_not_exposed(input.request, output.document)
       - access_and_contract_metadata_are_preserved(input.request, output.document)
+    stability: internal
     access: public
     idempotent: true
     read_only: true

@@ -1761,6 +1761,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [AuthenticatedSelf, PortalClientReadAccountContext]
       resource:
@@ -1776,6 +1777,7 @@ interfaces:
       context:
         type: BrowserCsrfContext
     read_only: true
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -1789,6 +1791,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [AuthenticatedSelf]
       resource:
@@ -1828,6 +1831,7 @@ interfaces:
       - MfaEnrollmentBypassExpired
     requires:
       - "!context.login_throttled"
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -1842,6 +1846,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -1862,6 +1867,7 @@ interfaces:
       - MfaFactorEnrolled
       - MfaEnrollmentCompleted
       - UserAuthenticated
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -1882,6 +1888,7 @@ interfaces:
     emits:
       - UserAuthenticated
       - AuthenticationFailed
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -1905,6 +1912,7 @@ interfaces:
       - "!passwordHistoryContains(subject.id, input.request.new_password)"
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWritePassword]
       resource:
@@ -1923,6 +1931,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -1940,6 +1949,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -1961,6 +1971,7 @@ interfaces:
       - MfaFactorEnrolled
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -1983,6 +1994,7 @@ interfaces:
       - MfaFactorRemoved
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -2001,6 +2013,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -2020,6 +2033,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - WebAuthnCredentialRegistered
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -2041,6 +2055,7 @@ interfaces:
       - WebAuthnCredentialRemoved
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -2059,6 +2074,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2078,6 +2094,7 @@ interfaces:
     emits:
       - UserAuthenticated
       - AuthenticationFailed
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2099,6 +2116,7 @@ interfaces:
       - UserAuthenticated
       - AuthenticationFailed
       - BackupCodeConsumed
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2117,6 +2135,7 @@ interfaces:
       - RecoveryCodesGenerated
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -2135,6 +2154,7 @@ interfaces:
       - RecoveryCodesRevoked
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteMfa]
       resource:
@@ -2152,6 +2172,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -2172,6 +2193,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2189,6 +2211,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2206,6 +2229,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -2222,6 +2246,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - SessionEnded
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteSessions]
       resource:
@@ -2241,6 +2266,7 @@ interfaces:
       - SessionEnded
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteSessions]
       resource:
@@ -2263,6 +2289,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2282,6 +2309,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - SessionEnded
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2302,6 +2330,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - SessionEnded
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2322,6 +2351,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - StepUpRequested
+    stability: internal
     access:
       policies: [AuthenticatedSelf]
       resource:
@@ -2342,6 +2372,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - StepUpCompleted
+    stability: internal
     access:
       policies: [AuthenticatedSelf]
       resource:
@@ -2369,6 +2400,7 @@ interfaces:
     emits:
       - MfaEnrollmentBypassIssued
       - MfaEnrollmentBypassRevoked
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2388,6 +2420,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - MfaEnrollmentBypassRevoked
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2419,6 +2452,7 @@ interfaces:
       - MfaEnrollmentBypassIssued
       - MfaEnrollmentBypassRevoked
       - MfaEnrollmentBypassExpired
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2437,6 +2471,7 @@ interfaces:
     emits:
       - PasswordResetRequested
       - EmailSent
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2459,6 +2494,7 @@ interfaces:
       - size(input.request.new_password) <= 128
       - "!passwordResetTokenConsumed(input.request.token)"
       - "!passwordHistoryContainsForToken(input.request.token, input.request.new_password)"
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2475,6 +2511,7 @@ interfaces:
       providers:
         type: "ExternalIdentityProviderSummary[]"
     read_only: true
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2498,6 +2535,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2528,6 +2566,7 @@ interfaces:
       - FederatedAuthenticated
       - FederatedIdentityLinked
       - FederatedLoginRejected
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -2546,6 +2585,7 @@ interfaces:
     read_only: true
     errors:
       - AccessDeniedError
+    stability: internal
     access:
       policies: [AuthenticatedSelf]
       resource:
@@ -2570,6 +2610,7 @@ interfaces:
       - FederatedIdentityLinked
     annotations:
       step_up: required
+    stability: internal
     access:
       policies: [AuthenticatedSelf]
       resource:
@@ -2591,6 +2632,7 @@ interfaces:
       - FederatedIdentityUnlinked
     annotations:
       step_up: required
+    stability: internal
     access:
       policies: [AuthenticatedSelf]
       resource:
@@ -2610,6 +2652,7 @@ interfaces:
     read_only: true
     errors:
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2632,6 +2675,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - IdentityProviderConnectionCreated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2657,6 +2701,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2675,6 +2720,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2696,6 +2742,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - IdentityProviderConnectionActivated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2716,6 +2763,7 @@ interfaces:
       - IdentityProviderConnectionDisabled
     errors:
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2738,6 +2786,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2758,6 +2807,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2782,6 +2832,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:

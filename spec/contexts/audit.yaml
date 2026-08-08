@@ -193,6 +193,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -214,6 +215,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -231,6 +233,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -254,6 +257,7 @@ interfaces:
     ensures:
       - output.event.tenant_id == context.tenant_id
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:

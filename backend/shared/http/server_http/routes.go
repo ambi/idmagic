@@ -131,6 +131,8 @@ type Deps struct {
 }
 
 func Register(e *echo.Echo, d Deps) {
+	support.RegisterVersionAliases(e)
+	e.Use(support.DeprecationHeadersMiddleware(d.SCL))
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)
 	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)

@@ -80,6 +80,7 @@ interfaces:
       - output.config.apps.size() > 0 || output.config.tool_specs.size() > 0 || output.config.repository_work_items != null
       - output.config.tool_specs.size() >= 0
       - standard_layout_requires_no_registry(input.cwd, output.config)
+    stability: internal
     access: internal
     read_only: true
   RunWorkspaceCommand:
@@ -92,6 +93,7 @@ interfaces:
     ensures:
       - output.exit_code >= 0
       - public_command_name_is_ra(input.command)
+    stability: internal
     access: internal
   InitializeWorkspace:
     description: 現在の作業ディレクトリに標準 RA レイアウトを作成する。
@@ -102,6 +104,7 @@ interfaces:
     ensures:
       - output.created_layout implies input.cwd != ""
       - existing_scl_is_not_overwritten(input.cwd)
+    stability: internal
     access: internal
   CheckTraceability:
     description: workspace の四層追跡グラフを構築し、参照、coverage、evidence の新鮮さを検査する。
@@ -115,6 +118,7 @@ interfaces:
       - output.report.strict == input.strict
       - output.report.passed implies output.report.findings.size() == 0 || input.strict == false
       - successful_evidence_targets_revision(input.source_revision)
+    stability: internal
     access: internal
     read_only: true
   CheckArchitecture:
@@ -132,6 +136,7 @@ interfaces:
       - production_imports_match_declared_dependencies(input.workspace, output.report)
       - runtime_entrypoints_belong_to_composed_modules(input.workspace, output.report)
       - complexity_debt_is_bounded_and_not_expired(input.workspace, output.report)
+    stability: internal
     access: internal
     read_only: true
 

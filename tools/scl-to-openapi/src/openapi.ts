@@ -33,6 +33,20 @@ import { buildAuthorizationMetadata } from './authorization.ts'
 const DEFS = '#/$defs/'
 const COMPONENTS = '#/components/schemas/'
 
+// Management API path prefixes that carry a "v1" alias (ADR-156). Mirrors
+// backend/shared/http/support_http.VersionedPrefixes, which installs the
+// same alias at runtime via an Echo.OnAddRoute hook.
+const VERSIONED_PREFIXES = ['/api/admin', '/api/account']
+
+/** Returns the "v1" alias for path if it falls under a versioned prefix. */
+function versionAliasPath(path: string): string | undefined {
+  for (const prefix of VERSIONED_PREFIXES) {
+    if (path === prefix) return `${prefix}/v1`
+    if (path.startsWith(`${prefix}/`)) return `${prefix}/v1${path.slice(prefix.length)}`
+  }
+  return undefined
+}
+
 type RequestStyle = 'query' | 'form' | 'xml' | 'json'
 
 function firstLine(s: string | undefined): string | undefined {
@@ -105,6 +119,16 @@ function buildOperation(
       resource: { ...iface.access.resource },
     }
   }
+
+  // ADR-156: stability tier and deprecation schedule, machine-readable for
+  // clients and for tools/check-api-compat's breaking-change detection.
+  if (iface.stability) operation['x-scl-stability'] = iface.stability
+  if (iface.deprecated_since) {
+    operation.deprecated = true
+    operation['x-scl-deprecated-since'] = iface.deprecated_since
+  }
+  if (iface.sunset_at) operation['x-scl-sunset-at'] = iface.sunset_at
+  if (iface.successor) operation['x-scl-successor'] = iface.successor
 
   const parameters: JsonSchema[] = []
   const pathParameterNames = new Set(pathParams(path))
@@ -202,6 +226,22 @@ export function generateOpenApi(bundle: SclBundle | SclDocument): JsonSchema {
         )
       }
       item[method] = operation
+
+      // ADR-156: every exposed interface under a versioned prefix is
+      // reachable at both its current (v1) path and the explicit v1 alias,
+      // matching the runtime RegisterVersionAliases hook (which aliases by
+      // path alone, without consulting SCL stability at boot). `stability`
+      // governs the compat-check breaking-change contract (T007), not
+      // whether the alias URL exists.
+      const aliasPath = versionAliasPath(path)
+      if (aliasPath) {
+        let aliasItem = paths[aliasPath]
+        if (!aliasItem) {
+          aliasItem = {}
+          paths[aliasPath] = aliasItem
+        }
+        aliasItem[method] = operation
+      }
     }
   }
 

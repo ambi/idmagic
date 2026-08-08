@@ -79,6 +79,9 @@ contexts:
   scl-to-openapi:
     spec: tools/scl-to-openapi/spec/scl.yaml
     summary: SCL OpenAPI generator。
+  check-api-compat:
+    spec: tools/check-api-compat/spec/scl.yaml
+    summary: OpenAPI 破壊的変更検知 (ADR-156)。
 modules:
   backend:
     path: backend
@@ -182,6 +185,12 @@ modules:
         via: technical_shared
       - module: scl-to-jsonschema-tool
         via: technical_shared
+  check-api-compat-tool:
+    path: tools/check-api-compat
+    responsibility: 前回リリース OpenAPI ベースラインと現行 OpenAPI の破壊的差分検知 (ADR-156)。
+    context: check-api-compat
+    layer: adapters
+    role: technical_shared
   ra-tools:
     path: tools/ra
     responsibility: workspace 発見、検証、派生物生成の composition root。

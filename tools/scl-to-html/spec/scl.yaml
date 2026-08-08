@@ -120,6 +120,7 @@ interfaces:
       - reading_position_is_indicated(output.html)
       - color_scheme_adapts_to_reader(output.html)
       - diagrams_are_derived_from_owned_relations(input.input.scl, output.html)
+    stability: internal
     access: internal
     idempotent: true
     read_only: true
@@ -136,10 +137,12 @@ interfaces:
       - input.scl_path != ""
     ensures:
       - output.input.scl.spec_version == "3.0"
+    stability: internal
     access: internal
     read_only: true
   RenderCli:
     description: LoadSite と Render を呼び、HTML を file または stdout に出力する。
+    stability: internal
     access: public
     bindings:
       - kind: cli

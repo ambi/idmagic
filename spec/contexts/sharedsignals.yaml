@@ -634,6 +634,7 @@ interfaces:
     output:
       response:
         type: RevocationEpochResponse
+    stability: internal
     access: internal
 
   AdvanceRevocationEpoch:
@@ -653,6 +654,7 @@ interfaces:
     emits:
       - RevocationEpochAdvanced
       - AgentAccessRevoked
+    stability: internal
     access: internal
 
   # --- admin: stream management ---
@@ -663,6 +665,7 @@ interfaces:
         type: "SsfStream[]"
     errors:
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadSharedSignals]
       resource:
@@ -684,6 +687,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadSharedSignals]
       resource:
@@ -712,6 +716,7 @@ interfaces:
       - SsfTransmitterAudienceRequiredError
     emits:
       - SsfStreamRegistered
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSharedSignals]
       resource:
@@ -744,6 +749,7 @@ interfaces:
       - SsfReceiverAcceptedAudiencesRequiredError
     emits:
       - SsfStreamRegistered
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSharedSignals]
       resource:
@@ -774,6 +780,7 @@ interfaces:
       - SsfStreamEventTypeInvalidError
     emits:
       - SsfStreamUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSharedSignals]
       resource:
@@ -795,6 +802,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - SsfStreamDisabled
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSharedSignals]
       resource:
@@ -817,6 +825,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - SsfStreamEnabled
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSharedSignals]
       resource:
@@ -839,6 +848,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - SsfStreamDeleted
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSharedSignals]
       resource:
@@ -862,6 +872,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadSharedSignals]
       resource:
@@ -891,6 +902,7 @@ interfaces:
     emits:
       - SecurityEventReceived
       - SecurityEventRejected
+    stability: stable
     access: public
     bindings:
       - kind: http

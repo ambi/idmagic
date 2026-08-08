@@ -150,6 +150,7 @@ interfaces:
       - "reapply_same_request_is_noop(input.request)"
       - "input.request.environment == 'production' && input.request.profile == 'bootstrap' implies production_safe_redirect_uris(input.request.first_party_redirect_uris)"
       - "seed_plan_and_diagnostics_exclude_secret_values(output.plan)"
+    stability: internal
     access: internal
 objectives:
   SeedScalability:

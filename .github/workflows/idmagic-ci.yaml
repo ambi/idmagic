@@ -27,6 +27,7 @@ jobs:
       - name: Verify Core (Tools & Configs)
         run: |
           just check
+          just check-api-compat
           just traceability-strict
           just test-tools
           just typecheck-tools

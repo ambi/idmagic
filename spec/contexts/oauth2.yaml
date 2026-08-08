@@ -3777,6 +3777,7 @@ interfaces:
       - QuotaExceededError
     emits:
       - ClientRegistered
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -3816,6 +3817,7 @@ interfaces:
       - ResourceAudienceRejected
       - ClientIdMetadataDocumentResolved
       - ClientIdMetadataDocumentRejected
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -3837,6 +3839,7 @@ interfaces:
     emits:
       - AuthorizationCodeIssued
       - ConsentGranted
+    stability: stable
     access:
       policies: [AuthenticatedResourceOwner]
       resource:
@@ -3856,6 +3859,7 @@ interfaces:
     errors:
       - InvalidRequestError
     read_only: true
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -3878,6 +3882,7 @@ interfaces:
     emits:
       - ConsentGranted
       - AuthorizationCodeIssued
+    stability: internal
     access:
       policies: [AuthenticatedResourceOwner]
       resource:
@@ -3902,6 +3907,7 @@ interfaces:
     emits:
       - DeviceAuthorizationApproved
       - DeviceAuthorizationDenied
+    stability: internal
     access:
       policies: [AuthenticatedResourceOwner]
       resource:
@@ -3918,6 +3924,7 @@ interfaces:
       response:
         type: BrowserDeviceContextResponse
     read_only: true
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -3936,6 +3943,7 @@ interfaces:
       - id_token_hint_signature_valid_or_absent(input.params.id_token_hint)
       - id_token_hint_client_matches(input.params.id_token_hint, input.params.client_id)
       - registered_post_logout_redirect_uri(input.params.client_id, input.params.post_logout_redirect_uri)
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -3962,6 +3970,7 @@ interfaces:
     output:
       targets:
         type: "FrontChannelLogoutTarget[]"
+    stability: internal
     access: internal
   BackChannelLogout:
     description: "1 件の LogoutNotification を配送する job handler (OpenID Connect Back-Channel\nLogout 1.0)。署名済み logout token (iss, sub, aud, iat, jti, events, sid) を\ntarget_uri へ POST し、2xx を成功、それ以外・timeout・接続失敗を再試行対象とする。\nJobs context の kind=backchannel_logout_delivery job から呼ばれ、max_attempts 到達で\nLogoutNotification は Failed (dead-letter) に確定する。ローカル revoke は本 interface の\n成否に関わらず既に確定済みである (wi-28 Plan)。\n"
@@ -3971,9 +3980,11 @@ interfaces:
     output:
       state:
         type: LogoutNotificationState
+    stability: internal
     access: internal
   CheckSessionIframe:
     description: "OP session の変化をポーリングする RP 用 hidden iframe (OIDC Session Management\n1.0、Draft のまま Final に達していない仕様のため adoption は optional。ADR-127)。\n静的な HTML/JS を返し、RP からの postMessage に対し現在の browser cookie が有効な\nLoginSession に解決できるかどうかだけを応答する。session_state の salted hash 比較\nなど仕様の詳細な相関アルゴリズムは実装しない。\n"
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -4002,6 +4013,7 @@ interfaces:
       - ResourceAudienceRejected
       - ClientIdMetadataDocumentResolved
       - ClientIdMetadataDocumentRejected
+    stability: stable
     access:
       policies: [AuthenticatedClient]
       resource:
@@ -4073,6 +4085,7 @@ interfaces:
       - ResourceAudienceRejected
       - ClientIdMetadataDocumentResolved
       - ClientIdMetadataDocumentRejected
+    stability: stable
     access:
       policies: [TokenAuthorizationCode, TokenRefresh, TokenClientCredentials, TokenDeviceCode, TokenExchange]
       resource:
@@ -4105,6 +4118,7 @@ interfaces:
       - "!access_token_subject_is_agent(input.request.token) || access_token_issued_after_revocation_epoch(input.request.token) || output.response.active == false"
     emits:
       - TokenIntrospected
+    stability: stable
     access:
       policies: [AuthenticatedClient]
       resource:
@@ -4127,6 +4141,7 @@ interfaces:
       - InvalidClientError
     emits:
       - TokenRevoked
+    stability: stable
     access:
       policies: [AuthenticatedClient]
       resource:
@@ -4151,6 +4166,7 @@ interfaces:
       - InvalidTokenError
       - InsufficientScopeError
       - ClaimReleaseDeniedError
+    stability: stable
     access:
       policies: [ActiveOpenidToken]
       resource:
@@ -4175,6 +4191,7 @@ interfaces:
       - InvalidTokenError
       - InsufficientScopeError
       - ClaimReleaseDeniedError
+    stability: stable
     access:
       policies: [ActiveOpenidToken]
       resource:
@@ -4203,6 +4220,7 @@ interfaces:
       - InvalidClientError
     emits:
       - DeviceAuthorizationRequested
+    stability: stable
     access:
       policies: [RegisteredClient]
       resource:
@@ -4222,6 +4240,7 @@ interfaces:
       discovery:
         type: DiscoveryDocument
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -4236,6 +4255,7 @@ interfaces:
       discovery:
         type: DiscoveryDocument
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -4259,6 +4279,7 @@ interfaces:
     emits:
       - ProtectedResourceMetadataServed
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -4269,6 +4290,7 @@ interfaces:
   Health:
     description: Health check
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -4284,6 +4306,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadAuthorizationDetailTypes]
       resource:
@@ -4306,6 +4329,7 @@ interfaces:
       - AccessDeniedError
       - InvalidAuthorizationDetailTypeError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadAuthorizationDetailTypes]
       resource:
@@ -4327,6 +4351,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - InvalidAuthorizationDetailTypeError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:
@@ -4353,6 +4378,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - InvalidAuthorizationDetailTypeError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:
@@ -4371,6 +4397,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:
@@ -4390,6 +4417,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadOAuthClients]
       resource:
@@ -4411,6 +4439,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadOAuthClients]
       resource:
@@ -4434,6 +4463,7 @@ interfaces:
       - QuotaExceededError
     emits:
       - AdminOAuth2ClientCreated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteOAuthClients]
       resource:
@@ -4461,6 +4491,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AdminOAuth2ClientUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteOAuthClients]
       resource:
@@ -4482,6 +4513,7 @@ interfaces:
       - ApplicationOwnedProtocolError
     emits:
       - AdminOAuth2ClientDeleted
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteOAuthClients]
       resource:
@@ -4501,6 +4533,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadMcpResourceServers]
       resource:
@@ -4522,6 +4555,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadMcpResourceServers]
       resource:
@@ -4542,6 +4576,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteMcpResourceServers]
       resource:
@@ -4567,6 +4602,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteMcpResourceServers]
       resource:
@@ -4585,6 +4621,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteMcpResourceServers]
       resource:
@@ -4604,6 +4641,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -4627,6 +4665,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -4648,6 +4687,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ConsentRevoked
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -4667,6 +4707,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -4684,6 +4725,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -4703,6 +4745,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ConsentRevoked
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteConsents]
       resource:

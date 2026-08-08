@@ -273,6 +273,84 @@ describe('generateOpenApi — unit', () => {
       ),
     ).toThrow('duplicate HTTP binding GET /resources: First, Second')
   })
+
+  // ADR-156 / wi-297 T006: stable/beta interfaces under a versioned prefix
+  // (/api/admin, /api/account) gain a "v1" alias path mirroring the runtime
+  // RegisterVersionAliases hook (backend/shared/http/support_http).
+  it('mirrors stable interfaces under /api/admin and /api/account at their v1 alias path', () => {
+    const out = generateOpenApi(
+      doc(undefined, {
+        ListWidgets: {
+          access: 'public',
+          stability: 'stable',
+          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/widgets' }],
+        },
+        GetProfile: {
+          access: 'public',
+          stability: 'stable',
+          bindings: [{ kind: 'http', method: 'GET', path: '/api/account/profile' }],
+        },
+      }),
+    )
+    expect(op(out, '/api/admin/widgets', 'get').operationId).toBe('ListWidgets')
+    expect(op(out, '/api/admin/v1/widgets', 'get').operationId).toBe('ListWidgets')
+    expect(op(out, '/api/account/profile', 'get').operationId).toBe('GetProfile')
+    expect(op(out, '/api/account/v1/profile', 'get').operationId).toBe('GetProfile')
+  })
+
+  it('aliases internal-stability interfaces too, matching the path-only runtime hook', () => {
+    const out = generateOpenApi(
+      doc(undefined, {
+        AdminConsoleOnly: {
+          access: {
+            policies: ['TenantAdministrator'],
+            resource: { type: 'Tenant', id: 'context.tenant_id' },
+          },
+          stability: 'internal',
+          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/console-only' }],
+        },
+      }),
+    )
+    expect(op(out, '/api/admin/console-only', 'get').operationId).toBe('AdminConsoleOnly')
+    expect(op(out, '/api/admin/v1/console-only', 'get').operationId).toBe('AdminConsoleOnly')
+  })
+
+  it('does not alias paths outside a versioned prefix', () => {
+    const out = generateOpenApi(
+      doc(undefined, {
+        Login: {
+          access: 'public',
+          stability: 'internal',
+          bindings: [{ kind: 'http', method: 'POST', path: '/api/auth/login' }],
+        },
+      }),
+    )
+    expect((out.paths as Record<string, unknown>)['/api/auth/v1/login']).toBeUndefined()
+  })
+
+  it('reflects stability and deprecation metadata on the operation', () => {
+    const out = generateOpenApi(
+      doc(undefined, {
+        OldWidgets: {
+          access: 'public',
+          stability: 'stable',
+          deprecated_since: '2026-01-01',
+          sunset_at: '2027-01-01',
+          successor: 'NewWidgets',
+          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/old-widgets' }],
+        },
+      }),
+    )
+    const operation = op(out, '/api/admin/old-widgets', 'get')
+    expect(operation.deprecated).toBe(true)
+    expect(operation['x-scl-stability']).toBe('stable')
+    expect(operation['x-scl-deprecated-since']).toBe('2026-01-01')
+    expect(operation['x-scl-sunset-at']).toBe('2027-01-01')
+    expect(operation['x-scl-successor']).toBe('NewWidgets')
+
+    const alias = op(out, '/api/admin/v1/old-widgets', 'get')
+    expect(alias.deprecated).toBe(true)
+  })
 })
 
 describe('generateOpenApi — tool-spec conformance', () => {

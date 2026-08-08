@@ -227,7 +227,7 @@
     },
     "Interface": {
       "type": "object",
-      "required": ["access"],
+      "required": ["access", "stability"],
       "additionalProperties": false,
       "properties": {
         "description": { "type": "string" },
@@ -239,6 +239,20 @@
         "requires": { "$ref": "#/$defs/ExpressionList" },
         "ensures": { "$ref": "#/$defs/ExpressionList" },
         "access": { "$ref": "#/$defs/Access" },
+        "stability": { "enum": ["stable", "beta", "internal"] },
+        "deprecated_since": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "sunset_at": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "successor": { "$ref": "#/$defs/NonEmptyString" },
         "idempotent": { "type": "boolean" },
         "read_only": { "type": "boolean" },
         "bindings": { "type": "array", "items": { "$ref": "#/$defs/Binding" } },

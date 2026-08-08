@@ -1823,6 +1823,7 @@ interfaces:
         annotations:
           sensitive: true
     read_only: true
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -1836,6 +1837,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -1853,6 +1855,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -1875,6 +1878,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserUpdated
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteAccount]
       resource:
@@ -1899,6 +1903,7 @@ interfaces:
       - EmailChangeRequested
     annotations:
       step_up: required
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteAccount]
       resource:
@@ -1918,6 +1923,7 @@ interfaces:
       - InvalidRequestError
     emits:
       - EmailChanged
+    stability: internal
     access: public
     bindings:
       - kind: http
@@ -1932,6 +1938,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -1949,6 +1956,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1970,6 +1978,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1994,6 +2003,7 @@ interfaces:
       - InvalidRoleError
     emits:
       - UserCreated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2033,6 +2043,7 @@ interfaces:
     ensures:
       - output.user.password_hash == null
       - output.user.lifecycle.status == Active
+    stability: internal
     access: internal
   ImportAdminUsers:
     description: 管理者が CSV を dry_run または apply ジョブへ投入する。入力は UTF-8 (BOM 可)、最大 1 MiB・1,000 行・64 KiB/field とし、password/hash 列は拒否する。
@@ -2051,6 +2062,7 @@ interfaces:
       - size(input.csv) <= 1048576
     ensures:
       - "input.mode != 'dry_run' || usersUnchanged(context.tenant_id)"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2075,6 +2087,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2094,6 +2107,7 @@ interfaces:
     requires:
       - size(input.request.columns) >= 1
     emits: [DataExportRequested]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: UserDirectory, id: context.tenant_id }
@@ -2105,6 +2119,7 @@ interfaces:
       exports: { type: "DataExportJob[]" }
     errors: [AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: UserDirectory, id: context.tenant_id }
@@ -2118,6 +2133,7 @@ interfaces:
       job: { type: DataExportJob }
     errors: [InvalidRequestError, AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2131,6 +2147,7 @@ interfaces:
       file: { type: DataExportFile }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DataExportDownloaded]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2144,6 +2161,7 @@ interfaces:
       job: { type: DataExportJob }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DataExportCanceled]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2159,6 +2177,7 @@ interfaces:
     requires:
       - size(input.request.columns) >= 1
     emits: [DataExportRequested]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: GroupDirectory, id: context.tenant_id }
@@ -2170,6 +2189,7 @@ interfaces:
       exports: { type: "DataExportJob[]" }
     errors: [AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: GroupDirectory, id: context.tenant_id }
@@ -2183,6 +2203,7 @@ interfaces:
       job: { type: DataExportJob }
     errors: [InvalidRequestError, AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2196,6 +2217,7 @@ interfaces:
       file: { type: DataExportFile }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DataExportDownloaded]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2209,6 +2231,7 @@ interfaces:
       job: { type: DataExportJob }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DataExportCanceled]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2225,6 +2248,7 @@ interfaces:
     requires:
       - size(input.request.columns) >= 1
     emits: [DataExportRequested]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: GroupDirectory, id: context.tenant_id }
@@ -2238,6 +2262,7 @@ interfaces:
       exports: { type: "DataExportJob[]" }
     errors: [AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: GroupDirectory, id: context.tenant_id }
@@ -2252,6 +2277,7 @@ interfaces:
       job: { type: DataExportJob }
     errors: [InvalidRequestError, AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2266,6 +2292,7 @@ interfaces:
       file: { type: DataExportFile }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DataExportDownloaded]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2280,6 +2307,7 @@ interfaces:
       job: { type: DataExportJob }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DataExportCanceled]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: DataExportJob, id: input.export_id }
@@ -2302,6 +2330,7 @@ interfaces:
       - InvalidUserAttributeError
     emits:
       - UserUpdated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2323,6 +2352,7 @@ interfaces:
       - SelfDisableForbiddenError
     emits:
       - UserDisabled
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2344,6 +2374,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserEnabled
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2377,6 +2408,7 @@ interfaces:
       - UserDeleted
     requires:
       - subject.id != resource.id
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2406,6 +2438,7 @@ interfaces:
       - UserRestored
     requires:
       - subject.id != resource.id
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2433,6 +2466,7 @@ interfaces:
       - InvalidRequiredActionError
     emits:
       - UserRequiredActionSet
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2456,6 +2490,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - UserRequiredActionCleared
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2473,6 +2508,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2496,6 +2532,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2524,6 +2561,7 @@ interfaces:
       - GroupCreated
     ensures:
       - emitted.exists(e, e is GroupCreated)
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2555,6 +2593,7 @@ interfaces:
       - GroupUpdated
     ensures:
       - "changedFields(input.request).size() > 0 ? emitted.exists(e, e is GroupUpdated) : !emitted.exists(e, e is GroupUpdated)"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2579,6 +2618,7 @@ interfaces:
     ensures:
       - emitted.exists(e, e is GroupDeleted)
       - emitted.filter(e, e is GroupMemberRemoved).size() == membersOf(input.group_id).size()
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2605,6 +2645,7 @@ interfaces:
     idempotent: true
     ensures:
       - "alreadyMember(input.group_id, input.user_id) ? !emitted.exists(e, e is GroupMemberAdded) : emitted.exists(e, e is GroupMemberAdded)"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2631,6 +2672,7 @@ interfaces:
     idempotent: true
     ensures:
       - "alreadyMember(input.group_id, input.user_id) ? emitted.exists(e, e is GroupMemberRemoved) : !emitted.exists(e, e is GroupMemberRemoved)"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2653,6 +2695,7 @@ interfaces:
     emits: [DynamicGroupRuleUpdated]
     requires:
       - group(input.group_id).membership_type == dynamic
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: Group, id: input.group_id }
@@ -2672,6 +2715,7 @@ interfaces:
     read_only: true
     requires:
       - input.request.user_ids.size() <= 100
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: Group, id: input.group_id }
@@ -2688,6 +2732,7 @@ interfaces:
       rule: { type: DynamicGroupRule }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DynamicGroupRuleEnabled]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: Group, id: input.group_id }
@@ -2703,6 +2748,7 @@ interfaces:
       rule: { type: DynamicGroupRule }
     errors: [InvalidRequestError, AccessDeniedError]
     emits: [DynamicGroupRuleDisabled]
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource: { type: Group, id: input.group_id }
@@ -2722,6 +2768,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2739,6 +2786,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2760,6 +2808,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2789,6 +2838,7 @@ interfaces:
       - AgentRegistered
     requires:
       - "input.request.owner_user_id == null || input.request.owner_user_id in tenantUserIds(context.tenant_id)"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2823,6 +2873,7 @@ interfaces:
       - AgentOwnerChanged
     requires:
       - "input.request.owner_user_id == null || input.request.owner_user_id in tenantUserIds(context.tenant_id)"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2843,6 +2894,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentDisabled
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2864,6 +2916,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentEnabled
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2885,6 +2938,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentKilled
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2908,6 +2962,7 @@ interfaces:
       - AgentDeleted
     requires:
       - resource.status != "Killed"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2933,6 +2988,7 @@ interfaces:
       - AgentCredentialBound
     requires:
       - not agentCredentialBindingExistsForClient(context.tenant_id, input.request.client_id)
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -2957,6 +3013,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentCredentialUnbound
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:

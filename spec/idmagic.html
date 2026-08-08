@@ -513,7 +513,7 @@ CAEP イベントを外部 receiver へ push し (EcosystemPropagation)、外部
       <div class="eyebrow">Bounded Context · contexts/system.yaml</div>
       <h1>System</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-glossary"><span class="stat-num">12</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-system-interfaces"><span class="stat-num">5</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-system-scenarios"><span class="stat-num">13</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-system-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-system-standards"><span class="stat-num">2</span><span class="stat-label">standards</span></a><a class="stat" href="#context-system-glossary"><span class="stat-num">14</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-system-interfaces"><span class="stat-num">5</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-system-scenarios"><span class="stat-num">14</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-system-flows"><span class="stat-num">1</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-system-standards">
     <h2>Standards <span class="count">2</span></h2>
@@ -614,7 +614,7 @@ CAEP イベントを外部 receiver へ push し (EcosystemPropagation)、外部
       </article></div>
   </section>
 <section id="context-system-glossary">
-    <h2>Glossary <span class="count">12</span></h2>
+    <h2>Glossary <span class="count">14</span></h2>
     <p class="lead">曖昧語、別名、翻訳、外部標準語を説明する補助用語集。</p>
     <div class="vocab-list"><article class="vocab-entry" id="context-system-glossary-locale">
       <div class="vocab-name"><code class="name">Locale</code></div>
@@ -729,6 +729,24 @@ CAEP イベントを外部 receiver へ push し (EcosystemPropagation)、外部
       <div class="vocab-body">
         <p class="def">HTTP API を直接呼び出す外部クライアント。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-system-glossary-interfacestability">
+      <div class="vocab-name"><code class="name">InterfaceStability</code></div>
+      <div class="vocab-body">
+        <p class="def">interface の外部契約としての性質を表す区分。stable は互換を保証する外部契約、beta は互換保証前の外部契約、internal は browser session 専用または domain-internal で外部契約に含めない区分。stable/beta は同時 2 版までパス版で提供し、非推奨表明から最低 12 か月は維持する。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">stability tier</span> <span class="chip chip-alias">安定性区分</span></div>
+
+
+      </div>
+    </article>
+<article class="vocab-entry" id="context-system-glossary-deprecation">
+      <div class="vocab-name"><code class="name">Deprecation</code></div>
+      <div class="vocab-body">
+        <p class="def">stable/beta の interface を将来削除する予告。deprecated_since 以降は応答に Deprecation ヘッダを付与し、sunset_at が定まれば Sunset ヘッダも付与する。sunset_at は deprecated_since から最低 12 か月後でなければならない。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">非推奨化</span></div>
 
 
       </div>
@@ -885,7 +903,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
   </article></div>
   </section>
 <section id="context-system-scenarios">
-    <h2>Scenarios <span class="count">13</span></h2>
+    <h2>Scenarios <span class="count">14</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-System/scenario/Operator~E3~81~AF~E5~88~86~E9~9B~A2~E3~81~95~E3~82~8C~E3~81~9F~E9~81~8B~E7~94~A8~E8~B3~87~E7~94~A3~E3~81~A7SLO~E3~82~92~E6~A4~9C~E8~A8~BC~E3~81~99~E3~82~8B">
         <header><h3>Operatorは分離された運用資産でSLOを検証する</h3><span class="chip chip-actor">Operator</span><code class="canonical-ref">System/scenario/Operatorは分離された運用資産でSLOを検証する</code></header>
@@ -997,6 +1015,18 @@ outcome class、lane などの有限集合だけを label とする。applicatio
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">未知の内部エラーが発生する</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">System は既存の error code と HTTP status を維持する</li><li class="scn-step">System は英語のエラー本文を返す</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-System/scenario/~E9~9D~9E~E6~8E~A8~E5~A5~A8~E3~81~AEinterface~E3~82~92~E5~91~BC~E3~81~B6~E3~81~A8Deprecation~2FSunset~E3~83~98~E3~83~83~E3~83~80~E3~81~8C~E8~BF~94~E3~82~8B">
+        <header><h3>非推奨のinterfaceを呼ぶとDeprecation/Sunsetヘッダが返る</h3><span class="chip chip-actor">APIConsumer</span><code class="canonical-ref">System/scenario/非推奨のinterfaceを呼ぶとDeprecation~1Sunsetヘッダが返る</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">stable な interface に deprecated_since が設定されている</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">APIConsumer が非推奨マークされた interface を呼び出す</li><li class="scn-step">応答に Deprecation ヘッダが付与される</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">interface に sunset_at も設定されている</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">応答に Sunset ヘッダも付与される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">interface が deprecated_since を設定していない</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">応答に Deprecation ヘッダは付与されない</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-System/scenario/~E7~AE~A1~E7~90~86~E3~82~B3~E3~83~B3~E3~82~BD~E3~83~BC~E3~83~AB~E3~81~A8~E3~82~A2~E3~82~AB~E3~82~A6~E3~83~B3~E3~83~88~E3~83~9D~E3~83~BC~E3~82~BF~E3~83~AB~E3~81~AF~E5~A4~B1~E5~8A~B9~E3~82~BB~E3~83~83~E3~82~B7~E3~83~A7~E3~83~B3~E3~81~8B~E3~82~89~E5~90~8C~E4~B8~80~E7~94~BB~E9~9D~A2~E3~81~AB~E5~BE~A9~E5~B8~B0~E3~81~99~E3~82~8B">
         <header><h3>管理コンソールとアカウントポータルは失効セッションから同一画面に復帰する</h3><span class="chip chip-actor">Administrator</span><code class="canonical-ref">System/scenario/管理コンソールとアカウントポータルは失効セッションから同一画面に復帰する</code></header>
@@ -17810,11 +17840,11 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       <div class="eyebrow">Bounded Context · contexts/oauth2.yaml</div>
       <h1>OAuth2</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">29</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">159</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">38</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">30</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">162</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">38</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-oauth2-standards">
-    <h2>Standards <span class="count">29</span></h2>
-    <p class="lead">適用する外部標準と規範要件。60 requirements。採用方針であり実装状態ではない。</p>
+    <h2>Standards <span class="count">30</span></h2>
+    <p class="lead">適用する外部標準と規範要件。67 requirements。採用方針であり実装状態ではない。</p>
     <div class="cards"><article class="card standard" id="context-oauth2-std-rfc6749">
         <header><h3>RFC6749</h3><span class="badge badge-version">RFC 6749</span></header>
         <p class="desc"><strong>The OAuth 2.0 Authorization Framework</strong> — Authorization Code、Refresh Token、Client Credentialsと共通エラー処理。</p>
@@ -18031,6 +18061,91 @@ PostgreSQL keyset pagination index を使用、wi-253)。
             </header>
             <p>Authorization Code Grantを利用するClientにはredirect_uri登録を要求する。</p>
 
+
+          </article></div>
+      </article><article class="card standard" id="context-oauth2-std-clientidmetadatadocumentdraft00">
+        <header><h3>ClientIDMetadataDocumentDraft00</h3><span class="badge badge-version">draft-ietf-oauth-client-id-metadata-document-00</span></header>
+        <p class="desc"><strong>OAuth Client ID Metadata Document</strong> — 事前登録なしにclient_idをclient自己ホストのHTTPS URLとして扱い、都度metadataを解決するクライアント識別方式。RFC 7591 DCRの代替経路。</p>
+        <dl class="kv">
+          <dt>source</dt><dd><a href="https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-00.html">https://www.ietf.org/archive/id/draft-ietf-oauth-client-id-metadata-document-00.html</a></dd>
+          <dt>roles</dt><dd><span class="chip">AuthorizationServer</span></dd>
+        </dl>
+        <div class="requirements"><article class="requirement" id="scl-OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-URL-SHAPE">
+            <header>
+              <code class="name">CIMD00-URL-SHAPE</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§2</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-URL-SHAPE</code>
+            </header>
+            <p>client_idはhttps schemeかつ非空pathを持つURLでなければならない。</p>
+
+
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-FETCH">
+            <header>
+              <code class="name">CIMD00-FETCH</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">SHOULD</span>
+              <span class="chip chip-hint">§4</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-FETCH</code>
+            </header>
+            <p>URL形式のclient_idを検出したらそのURLからmetadata documentをfetchする。</p>
+
+
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-CLIENT-ID-MATCH">
+            <header>
+              <code class="name">CIMD00-CLIENT-ID-MATCH</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§4</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-CLIENT-ID-MATCH</code>
+            </header>
+            <p>fetchしたdocument内のclient_idフィールドがfetch元URLと厳密一致することを検証する。</p>
+
+
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-REDIRECT-VALIDATE">
+            <header>
+              <code class="name">CIMD00-REDIRECT-VALIDATE</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§4</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-REDIRECT-VALIDATE</code>
+            </header>
+            <p>認可リクエストのredirect_uriがdocumentのredirect_uris一覧に含まれることを検証する。</p>
+
+
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-STRUCTURE">
+            <header>
+              <code class="name">CIMD00-STRUCTURE</code>
+              <span class="badge badge-adoption-required">required</span>
+              <span class="badge badge-strength">MUST</span>
+              <span class="chip chip-hint">§4</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-STRUCTURE</code>
+            </header>
+            <p>documentが valid JSON であり client_id・client_name・redirect_uris (非空) を含むことを検証する。不正な場合はfail-closedで拒否する。</p>
+
+
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-CACHE">
+            <header>
+              <code class="name">CIMD00-CACHE</code>
+              <span class="badge badge-adoption-partial">partial</span>
+              <span class="badge badge-strength">SHOULD</span>
+              <span class="chip chip-hint">§4</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-CACHE</code>
+            </header>
+            <p>HTTP cache headerに従いdocumentをcacheする。</p>
+            <p class="exclusion-reason"><strong>reason:</strong> HTTP cache header (Cache-Control等) は解釈せず、固定5分TTLでキャッシュする。document更新の反映が最大5分遅延しうる。header準拠のキャッシュ制御は別途対応する。</p>
+
+          </article><article class="requirement" id="scl-OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-PRIVATE-KEY-JWT">
+            <header>
+              <code class="name">CIMD00-PRIVATE-KEY-JWT</code>
+              <span class="badge badge-adoption-excluded">excluded</span>
+              <span class="badge badge-strength">MAY</span>
+              <span class="chip chip-hint">§6.2</span>
+              <code class="canonical-ref">OAuth2/standard_requirement/ClientIDMetadataDocumentDraft00/CIMD00-PRIVATE-KEY-JWT</code>
+            </header>
+            <p>private_key_jwtクライアント認証をinline jwksまたはjwks_uri経由でサポートしてよい。</p>
+            <p class="exclusion-reason"><strong>reason:</strong> MVPはtoken_endpoint_auth_methodが未指定またはnoneのdocumentのみ受理する。private_key_jwt (documentのjwks/jwks_uri経由の追加fetchを要する) はSSRF経路の複合を避けるため対象外とし、別途対応する。</p>
 
           </article></div>
       </article><article class="card standard" id="context-oauth2-std-rfc7636">
@@ -18727,7 +18842,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
 <article class="vocab-entry" id="context-oauth2-glossary-client">
       <div class="vocab-name"><code class="name">Client</code></div>
       <div class="vocab-body">
-        <p class="def">ResourceOwner に代わって保護リソースへのアクセスを要求するアプリケーション。client_id で識別される。</p>
+        <p class="def">ResourceOwner に代わって保護リソースへのアクセスを要求するアプリケーション。client_id で識別される。client_id が Client ID Metadata Document (CIMD) の URL 形状の場合、永続登録なしに認可リクエストごとにドキュメントを解決する。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">client</span> <span class="chip chip-alias">クライアント</span> <span class="chip chip-alias">RelyingParty</span></div>
 
 
@@ -19624,7 +19739,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
     </article></div>
   </section>
 <section id="context-oauth2-models">
-    <h2>Models <span class="count">159</span></h2>
+    <h2>Models <span class="count">162</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">16</span></h3>
@@ -20813,7 +20928,7 @@ front/back-channel logout の相関に使う (wi-28)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">52</span></h3>
+      <h3 class="grp-title">value object <span class="count">53</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/AuthorizationDetail">
     <header><h3>AuthorizationDetail</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/AuthorizationDetail</code></header>
     <p class="desc">RFC 9396 authorization_details の 1 要素。type で識別される構造化された細粒度権限を表す。 要求・同意・トークン反映を通じて一貫して扱い、登録済み AuthorizationDetailType に対し fail-closed に検証する。</p>
@@ -21563,6 +21678,12 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
+    <td><code class="name">client_id_metadata_document_supported</code></td>
+    <td><code class="type">Boolean</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-default">default: true</span></td>
+    <td>client_idをHTTPS URL (Client ID Metadata Document) として都度解決する経路をサポートすることの広告。</td>
+  </tr><tr>
     <td><code class="name">subject_types_supported</code></td>
     <td><code class="type">String[]</code></td>
     <td><span class="badge badge-required">required</span></td>
@@ -21692,6 +21813,70 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ClientIDMetadataDocument">
+    <header><h3>ClientIDMetadataDocument</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/ClientIDMetadataDocument</code></header>
+    <p class="desc">client が自己ホストする HTTPS URL から fetch する Client ID Metadata Document。client_id 自体が fetch 元 URL であり document 内 client_id と厳密一致する必要がある。token_endpoint_auth_method が未指定または none 以外の document は拒否する。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">client_id</code></td>
+    <td><code class="type">URI</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>fetch 元 URL と厳密一致する必要がある。</td>
+  </tr><tr>
+    <td><code class="name">client_name</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">client_uri</code></td>
+    <td><code class="type">URI</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">logo_uri</code></td>
+    <td><code class="type">URI</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">redirect_uris</code></td>
+    <td><code class="type">URI[]</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="chip chip-constraint">non empty</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">grant_types</code></td>
+    <td><code class="type">GrantType[]</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">response_types</code></td>
+    <td><code class="type">ResponseType[]</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">token_endpoint_auth_method</code></td>
+    <td><code class="type">TokenEndpointAuthMethod</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>未指定は none として扱う。none 以外の値を宣言する document は拒否する。</td>
+  </tr><tr>
+    <td><code class="name">scope</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>未指定時は openid のみを許可する。</td>
   </tr></tbody>
   </table>
 
@@ -23286,7 +23471,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">event <span class="count">47</span></h3>
+      <h3 class="grp-title">event <span class="count">49</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/ClientRegistered">
     <header><h3>ClientRegistered</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientRegistered</code></header>
     <p class="desc">/register で新しいクライアントが動的登録された (RFC 7591)。クライアント登録監査の起点。</p>
@@ -23317,6 +23502,68 @@ hint として送るのが通常の RP 実装であるため)。
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ClientIdMetadataDocumentResolved">
+    <header><h3>ClientIdMetadataDocumentResolved</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientIdMetadataDocumentResolved</code></header>
+    <p class="desc">URL形式のclient_idについてClient ID Metadata Documentのfetch・検証に成功し、認可リクエストの処理を継続した。永続登録は伴わない。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>認可リクエストが属するテナント ID。</td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>fetch元のURL。</td>
+  </tr></tbody>
+  </table>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/ClientIdMetadataDocumentRejected">
+    <header><h3>ClientIdMetadataDocumentRejected</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ClientIdMetadataDocumentRejected</code></header>
+    <p class="desc">URL形式のclient_idについてClient ID Metadata Documentのfetch・検証が失敗し、fail-closedでリクエストを拒否した。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">occurredAt</code></td>
+    <td><code class="type">DateTime</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">tenantId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>認可リクエストが属するテナント ID。</td>
+  </tr><tr>
+    <td><code class="name">clientId</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>fetch元のURL。</td>
+  </tr><tr>
+    <td><code class="name">reason</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>拒否理由 (fetch失敗・JSON不正・client_id不一致・redirect_uris欠落・非対応token_endpoint_auth_method等) の分類。</td>
   </tr></tbody>
   </table>
 
@@ -24954,7 +25201,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article>
 <article class="card" id="scl-OAuth2/interface/Authorize">
     <header><h3>Authorize</h3><span class="badge badge-access-public">public</span><code class="canonical-ref">OAuth2/interface/Authorize</code></header>
-    <p class="desc">Authorization endpoint (RFC 6749 §4.1.1)</p>
+    <p class="desc">Authorization endpoint (RFC 6749 §4.1.1)。client_id は登録済み Client、または Client ID Metadata Document の URL を都度解決したものを受理する。</p>
     <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">{client_id} として scope {scope} で認可リクエストを送る</code></div>
 <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">{client_id} として redirect_uri {redirect_uri} で認可リクエストを送る</code></div>
 <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">{client_id} として prompt {prompt} で認可リクエストを送る</code></div>
@@ -24972,8 +25219,8 @@ hint として送るのが通常の RP 実装であるため)。
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
-<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeIssued">AuthorizationCodeIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ConsentGranted">ConsentGranted</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">every_authorization_parameter_has_single_value(input.params)</code></li><li><code class="expr">prompt_tokens_supported_and_unambiguous(input.params.prompt)</code></li><li><code class="expr">registered_client(input.params.client_id)</code></li><li><code class="expr">redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)</code></li><li><code class="expr">requested_scopes_allowed(input.params.client_id, input.params.scope)</code></li><li><code class="expr">pkce_s256_present(input.params)</code></li><li><code class="expr">par_requirement_satisfied(input.params.client_id, input.params.request_uri)</code></li><li><code class="expr">request_uri_is_the_only_authorization_request_source_when_present(input.params)</code></li><li><code class="expr">application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)</code></li></ul></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeIssued">AuthorizationCodeIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ConsentGranted">ConsentGranted</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentResolved">ClientIdMetadataDocumentResolved</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentRejected">ClientIdMetadataDocumentRejected</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">every_authorization_parameter_has_single_value(input.params)</code></li><li><code class="expr">prompt_tokens_supported_and_unambiguous(input.params.prompt)</code></li><li><code class="expr">client_resolvable(input.params.client_id)</code></li><li><code class="expr">redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)</code></li><li><code class="expr">requested_scopes_allowed(input.params.client_id, input.params.scope)</code></li><li><code class="expr">pkce_s256_present(input.params)</code></li><li><code class="expr">par_requirement_satisfied(input.params.client_id, input.params.request_uri)</code></li><li><code class="expr">request_uri_is_the_only_authorization_request_source_when_present(input.params)</code></li><li><code class="expr">application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/authorize</code> <span class="chip chip-hint">response: 302</span> <span class="chip chip-hint">form: query</span></div></div>
@@ -25225,7 +25472,7 @@ LoginSession に解決できるかどうかだけを応答する。session_state
   </article>
 <article class="card" id="scl-OAuth2/interface/PushAuthorizationRequest">
     <header><h3>PushAuthorizationRequest</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/AuthenticatedClient">AuthenticatedClient</a> <code>OAuth2AuthorizationService:context.client_id</code><code class="canonical-ref">OAuth2/interface/PushAuthorizationRequest</code></header>
-    <p class="desc">Pushed Authorization Request (RFC 9126)</p>
+    <p class="desc">Pushed Authorization Request (RFC 9126)。client_id は登録済み Client、または Client ID Metadata Document の URL を都度解決したものを受理する。</p>
     <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">{client_id} として認可リクエストを事前送信する</code></div>
     <div class="io">
     <div class="label">Input</div>
@@ -25252,7 +25499,7 @@ LoginSession に解決できるかどうかだけを応答する。session_state
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
-<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/PARStored">PARStored</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/PARStored">PARStored</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentResolved">ClientIdMetadataDocumentResolved</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentRejected">ClientIdMetadataDocumentRejected</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -25293,7 +25540,7 @@ LoginSession に解決できるかどうかだけを応答する。session_state
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidGrantError">InvalidGrantError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/UnsupportedGrantTypeError">UnsupportedGrantTypeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidScopeError">InvalidScopeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidDpopProofError">InvalidDpopProofError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AuthorizationPendingError">AuthorizationPendingError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/SlowDownError">SlowDownError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ExpiredTokenError">ExpiredTokenError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ClaimReleaseDeniedError">ClaimReleaseDeniedError</a></div></div>
-<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AccessTokenIssued">AccessTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenIssued">RefreshTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenRotated">RefreshTokenRotated</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenReuseDetected">RefreshTokenReuseDetected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeRedeemed">AuthorizationCodeRedeemed</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchanged">TokenExchanged</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchangeRejected">TokenExchangeRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceScopedTokenIssued">ResourceScopedTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a></div></div>
+<div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AccessTokenIssued">AccessTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenIssued">RefreshTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenRotated">RefreshTokenRotated</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenReuseDetected">RefreshTokenReuseDetected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeRedeemed">AuthorizationCodeRedeemed</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchanged">TokenExchanged</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchangeRejected">TokenExchangeRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceScopedTokenIssued">ResourceScopedTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentResolved">ClientIdMetadataDocumentResolved</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentRejected">ClientIdMetadataDocumentRejected</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">signing_key_provider_healthy(context.tenant_id)</code></li><li><code class="expr">token_request_references_are_tenant_local(context.tenant_id, input.request)</code></li><li><code class="expr">dpop_proof_is_fresh_and_unique(context.dpop_proof)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)</code></li><li><code class="expr">input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != TokenExchange || input.request.subject_token_type != &quot;urn:ietf:params:oauth:token-type:jwt&quot; || workload_attestation_verified(context.tenant_id, input.request.subject_token)</code></li><li><code class="expr">!contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)</code></li></ul></div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request)</code></li><li><code class="expr">input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token)</code></li><li><code class="expr">input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token)</code></li><li><code class="expr">!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)</code></li><li><code class="expr">client_authentication_failures_are_uniform()</code></li><li><code class="expr">!contains_account_scope(output.response.scope) || access_token_subject_is_user(output.response.access_token)</code></li><li><code class="expr">!contains_account_scope(output.response.scope) || access_token_audience_is_realm_api(output.response.access_token, context.issuer)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">

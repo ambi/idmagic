@@ -325,6 +325,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - QuotaExceededError
+    stability: internal
     access: internal
   ClaimJobs:
     description: "worker が指定した lane 内で claim 可能な (status=queued かつ run_at <= now、\nまたはリース失効済みの running) Job をバッチで取得し、同一トランザクション内で Running に\n遷移させ、自分を lease_owner として lease_expires_at を設定する内部インターフェース。\n対象 lane 以外の Job は取得しない (ADR-129)。\n"
@@ -342,6 +343,7 @@ interfaces:
       - all_jobs_leased_by(output.jobs, input.worker_id)
       - single_worker_holds_active_lease(output.jobs)
       - all_jobs_in_lane(output.jobs, input.lane)
+    stability: internal
     access: internal
   HeartbeatJob:
     description: worker が実行中の Job のリースを延長する。
@@ -355,6 +357,7 @@ interfaces:
         type: DateTime
     errors:
       - JobLeaseLostError
+    stability: internal
     access: internal
   CompleteJob:
     description: worker がハンドラの正常終了を報告し、Job を Succeeded に確定する。
@@ -368,6 +371,7 @@ interfaces:
         optional: true
     errors:
       - JobLeaseLostError
+    stability: internal
     access: internal
   FailJob:
     description: "worker がハンドラの失敗を報告する。attempts < max_attempts なら backoff 後の\nrun_at を設定して Queued (Retry) へ、attempts >= max_attempts なら Failed\n(dead-letter) へ確定する。\n"
@@ -385,6 +389,7 @@ interfaces:
       - JobLeaseLostError
     ensures:
       - "output.status == 'failed' || output.status == 'queued'"
+    stability: internal
     access: internal
   CancelJob:
     description: 終端状態に達していない Job を取消す。既に終端状態の Job には作用しない (不可逆)。
@@ -393,6 +398,7 @@ interfaces:
         type: String
     errors:
       - InvalidRequestError
+    stability: internal
     access: internal
 scenarios:
   Dockerなしの標準開発環境でworkerがジョブを完了する:

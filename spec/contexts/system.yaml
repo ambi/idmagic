@@ -57,6 +57,15 @@ glossary:
     definition: テナント内または横断のリソースを管理する権限を持つ利用者。
   APIConsumer:
     definition: HTTP API を直接呼び出す外部クライアント。
+  InterfaceStability:
+    definition: interface の外部契約としての性質を表す区分。stable は互換を保証する外部契約、beta は互換保証前の外部契約、internal は browser session 専用または domain-internal で外部契約に含めない区分。stable/beta は同時 2 版までパス版で提供し、非推奨表明から最低 12 か月は維持する。
+    aliases:
+      - stability tier
+      - 安定性区分
+  Deprecation:
+    definition: stable/beta の interface を将来削除する予告。deprecated_since 以降は応答に Deprecation ヘッダを付与し、sunset_at が定まれば Sunset ヘッダも付与する。sunset_at は deprecated_since から最低 12 か月後でなければならない。
+    aliases:
+      - 非推奨化
 standards:
   WCAG22:
     title: Web Content Accessibility Guidelines 2.2
@@ -115,6 +124,7 @@ interfaces:
     output:
       status: { type: String }
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -128,6 +138,7 @@ interfaces:
       status: { type: String }
       dependencies: { type: JSON, optional: true }
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -139,6 +150,7 @@ interfaces:
     output:
       status: { type: String }
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -159,6 +171,7 @@ interfaces:
       - text_is_english(output.message)
       - text_is_english(output.error_description)
       - text_is_english(output.detail)
+    stability: stable
     access: internal
   MetricsExposition:
     description: |
@@ -173,6 +186,7 @@ interfaces:
     output:
       body: { type: String, description: "OpenMetrics text format" }
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -337,6 +351,22 @@ scenarios:
         steps:
           - System は既存の error code と HTTP status を維持する
           - System は英語のエラー本文を返す
+  非推奨のinterfaceを呼ぶとDeprecation/Sunsetヘッダが返る:
+    actor: APIConsumer
+    given:
+      - stable な interface に deprecated_since が設定されている
+    main_success:
+      - APIConsumer が非推奨マークされた interface を呼び出す
+      - 応答に Deprecation ヘッダが付与される
+    extensions:
+      - at: 1
+        condition: interface に sunset_at も設定されている
+        steps:
+          - 応答に Sunset ヘッダも付与される
+      - at: 1
+        condition: interface が deprecated_since を設定していない
+        steps:
+          - 応答に Deprecation ヘッダは付与されない
   管理コンソールとアカウントポータルは失効セッションから同一画面に復帰する:
     actor: Administrator
     given:

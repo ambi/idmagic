@@ -91,6 +91,7 @@ interfaces:
       - architecture_schema_and_workspace_semantics_are_checked(input.files, output.summary)
       - warnings_do_not_fail(output.summary, output.exit_code)
       - finding_locations_are_within_source(output.summary)
+    stability: internal
     access: public
     idempotent: true
     read_only: true
@@ -111,6 +112,7 @@ interfaces:
       schemas: { type: List<SchemaName> }
     ensures:
       - output.schemas.size() > 0
+    stability: internal
     access: public
     read_only: true
     bindings:

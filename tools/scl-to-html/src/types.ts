@@ -120,6 +120,11 @@ export interface Interface {
   requires?: string[]
   ensures?: string[]
   access?: Access
+  /** External-contract classification (ADR-156): "stable" | "beta" | "internal". */
+  stability?: string
+  deprecated_since?: string
+  sunset_at?: string
+  successor?: string
   idempotent?: boolean
   read_only?: boolean
   bindings?: Binding[]

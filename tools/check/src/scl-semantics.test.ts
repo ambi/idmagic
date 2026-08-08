@@ -4,6 +4,9 @@ import brokenFlow from './fixtures/scl-v3/invalid/broken-flow.json' with { type:
 import invalidCelScope from './fixtures/scl-v3/invalid/invalid-cel-scope.json' with { type: 'json' }
 import legacySection from './fixtures/scl-v3/invalid/legacy-section.json' with { type: 'json' }
 import missingAccess from './fixtures/scl-v3/invalid/missing-access.json' with { type: 'json' }
+import missingStability from './fixtures/scl-v3/invalid/missing-stability.json' with {
+  type: 'json',
+}
 import unresolvedAuthorization from './fixtures/scl-v3/invalid/unresolved-authorization.json' with {
   type: 'json',
 }
@@ -25,6 +28,50 @@ describe('SCL 3.0 validation', () => {
   it('requires every interface to classify access', () => {
     const findings = validateAgainstSchema('scl', missingAccess, '')
     expect(findings.some((finding) => finding.message.includes('access'))).toBe(true)
+  })
+
+  it('requires every interface to declare stability (ADR-156)', () => {
+    const findings = validateAgainstSchema('scl', missingStability, '')
+    expect(findings.some((finding) => finding.message.includes('stability'))).toBe(true)
+  })
+
+  it('resolves successor references and enforces the minimum deprecation period (ADR-156)', () => {
+    const invalid = {
+      system: 'demo',
+      spec_version: '3.0',
+      interfaces: {
+        Old: {
+          access: 'public',
+          stability: 'stable',
+          successor: 'Missing',
+          deprecated_since: '2026-01-01',
+          sunset_at: '2026-03-01',
+          bindings: [{ kind: 'http', method: 'GET', path: '/old' }],
+        },
+        Dangling: {
+          access: 'public',
+          stability: 'stable',
+          sunset_at: '2027-01-01',
+          bindings: [{ kind: 'http', method: 'GET', path: '/dangling' }],
+        },
+      },
+    }
+    const messages = verifySclSemantics(invalid).map((finding) => finding.message)
+    expect(
+      messages.some((message) =>
+        message.includes("successor references unknown interface 'Missing'"),
+      ),
+    ).toBe(true)
+    expect(
+      messages.some((message) =>
+        message.includes("'Old' sunset_at is less than the minimum 12-month"),
+      ),
+    ).toBe(true)
+    expect(
+      messages.some((message) =>
+        message.includes("'Dangling' declares sunset_at without deprecated_since"),
+      ),
+    ).toBe(true)
   })
 
   it('resolves policy, principal, and protected resource references', () => {

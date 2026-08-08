@@ -755,6 +755,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -779,6 +780,7 @@ interfaces:
       - LifecycleWorkflowCreated
     ensures:
       - emitted.exists(e, e is LifecycleWorkflowCreated)
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -803,6 +805,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -828,6 +831,7 @@ interfaces:
       - WorkflowRevisionConflictError
     emits:
       - LifecycleWorkflowUpdated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -853,6 +857,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - LifecycleWorkflowEnabled
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -877,6 +882,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - LifecycleWorkflowDisabled
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -900,6 +906,7 @@ interfaces:
       - LifecycleWorkflowDeleted
     ensures:
       - emitted.exists(e, e is LifecycleWorkflowDeleted)
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -925,6 +932,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -947,6 +955,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -968,6 +977,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -988,6 +998,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:

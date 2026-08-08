@@ -1145,6 +1145,7 @@ interfaces:
         description: 割当を新規作成または visibility を変更した場合 true、既に目的状態だった場合 false。
     errors:
       - InvalidRequestError
+    stability: internal
     access: internal
   UnassignApplicationDesiredState:
     description: "呼び出し元 bounded context が Application への user 割当を desired-state で解除する内部\nインターフェース。割当が存在しない場合も no-op (changed=false) で正常終了する (冪等)。\n"
@@ -1160,6 +1161,7 @@ interfaces:
         type: Boolean
     errors:
       - InvalidRequestError
+    stability: internal
     access: internal
   ListAdminApplications:
     description: 管理者が所属テナントの Application を一覧する。
@@ -1169,6 +1171,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
@@ -1190,6 +1193,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
@@ -1213,6 +1217,7 @@ interfaces:
       - QuotaExceededError
     emits:
       - ApplicationCreated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1240,6 +1245,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1269,6 +1275,7 @@ interfaces:
       - context.upload.content_type in ["image/png", "image/jpeg", "image/webp", "image/gif"]
       - context.upload.magic_byte_matches_content_type
       - size(input.file) <= 262144
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1292,6 +1299,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationIconUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1317,6 +1325,7 @@ interfaces:
       - response.headers["Content-Type"] in ["image/png", "image/jpeg", "image/webp", "image/gif"]
       - response.headers["X-Content-Type-Options"] == "nosniff"
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -1332,6 +1341,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationDeleted
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1357,6 +1367,7 @@ interfaces:
       - claim_release_rules_within_floor(context.tenant_id, input.request.rules)
     emits:
       - ApplicationClaimMappingUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1382,6 +1393,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1410,6 +1422,7 @@ interfaces:
       - ClientSecretLimitExceededError
     emits:
       - ClientSecretIssued
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1437,6 +1450,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ClientSecretRevoked
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1462,6 +1476,7 @@ interfaces:
       - claim_release_rules_within_floor(context.tenant_id, input.request.rules)
     emits:
       - ApplicationClaimMappingUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1488,6 +1503,7 @@ interfaces:
       - claim_release_rules_within_floor(context.tenant_id, input.request.rules)
     emits:
       - ApplicationClaimMappingUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1512,6 +1528,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
@@ -1538,6 +1555,7 @@ interfaces:
       - ApplicationAssigned
     requires:
       - subject_exists_in_tenant(input.request.subject_type, input.request.subject_id, context.tenant_id)
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1564,6 +1582,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationUnassigned
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1587,6 +1606,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
@@ -1611,6 +1631,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AppSignInPolicyUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1629,6 +1650,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadSettings]
       resource:
@@ -1651,6 +1673,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantDefaultSignInPolicyUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSettings]
       resource:
@@ -1669,6 +1692,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadApplications]
       resource:
@@ -1692,6 +1716,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationCategoryCreated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1720,6 +1745,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationCategoryUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1740,6 +1766,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationCategoryDeleted
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1767,6 +1794,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ApplicationUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteApplications]
       resource:
@@ -1787,6 +1815,7 @@ interfaces:
     ensures:
       - output.response.applications.all(a, is_visible_assignment(subject.id, a))
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -1804,6 +1833,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientReadAccount]
       resource:
@@ -1826,6 +1856,7 @@ interfaces:
       - AccessDeniedError
     requires:
       - input.request.application_ids.all(id, is_visible_assignment(subject.id, id))
+    stability: stable
     access:
       policies: [AuthenticatedSelf, SelfApiClientWriteAccount]
       resource:

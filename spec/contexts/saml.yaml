@@ -474,6 +474,7 @@ interfaces:
       - relay_state_round_tripped(input.relay_state)
       - saml_response_matches_request(input.saml_request, context.tenant_id)
       - assertion_issued_at_most_once_per_tenant_sp_and_request_id(input.saml_request, context.tenant_id)
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -529,6 +530,7 @@ interfaces:
       - local_session_cleared
       - logout_response_destination_is_registered(input.entity_id, context.tenant_id)
       - no_unregistered_redirect
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -562,6 +564,7 @@ interfaces:
   PublishSamlMetadata:
     description: SAML 2.0 IdP metadata の公開。default routeはrealmのdefault profile、profile routeは指定profileのentityID、SSO / SLO endpoint、対応 NameID format、profile scopeのXmlFederationSigning証明書を <EntityDescriptor><IDPSSODescriptor> として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -577,6 +580,7 @@ interfaces:
   DownloadSamlSigningCertificate:
     description: SAML SP への手動 trust 設定用に、request tenant の active XmlFederationSigning X.509 証明書を PEM で公開する。rotation overlap 中の verifying 証明書を含む trust 正本は PublishSamlMetadata とし、このエンドポイントは新規設定用 active 証明書だけを返す。秘密鍵は返さない。
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -604,6 +608,7 @@ interfaces:
       - input.profile.tenant_id == context.tenant_id
       - input.profile.profile_id != "default"
       - not input.profile.is_default
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:
@@ -624,6 +629,7 @@ interfaces:
     read_only: true
     errors:
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadSaml]
       resource:
@@ -647,6 +653,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - DefaultIdPProfileError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:
@@ -669,6 +676,7 @@ interfaces:
       - AccessDeniedError
       - DefaultIdPProfileError
       - IdPProfileInUseError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:
@@ -695,6 +703,7 @@ interfaces:
       - input.service_provider.tenant_id == context.tenant_id
       - input.service_provider.acs_urls.size > 0
       - not input.service_provider.want_authn_requests_signed or input.service_provider.authn_request_signing_certificate_pem != null
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:
@@ -718,6 +727,7 @@ interfaces:
       - AccessDeniedError
     ensures:
       - service_providers_belong_to_tenant(output.service_providers, context.tenant_id)
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadSaml]
       resource:
@@ -739,6 +749,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - ApplicationOwnedProtocolError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteSaml]
       resource:

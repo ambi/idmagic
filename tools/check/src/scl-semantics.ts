@@ -227,6 +227,37 @@ export function verifySclSemantics(document: unknown, text = ''): Finding[] {
         `internal interface '${interfaceName}' must not declare an external binding`,
       )
     }
+
+    if (typeof operation.successor === 'string' && !(operation.successor in interfaces)) {
+      addFinding(
+        findings,
+        text,
+        `/interfaces/${interfaceName}/successor`,
+        `interface '${interfaceName}' successor references unknown interface '${operation.successor}'`,
+      )
+    }
+    if (operation.sunset_at !== undefined && operation.deprecated_since === undefined) {
+      addFinding(
+        findings,
+        text,
+        `/interfaces/${interfaceName}/sunset_at`,
+        `interface '${interfaceName}' declares sunset_at without deprecated_since`,
+      )
+    }
+    if (typeof operation.deprecated_since === 'string' && typeof operation.sunset_at === 'string') {
+      const deprecatedSince = new Date(operation.deprecated_since)
+      const sunsetAt = new Date(operation.sunset_at)
+      const minimumSunset = new Date(deprecatedSince)
+      minimumSunset.setUTCFullYear(minimumSunset.getUTCFullYear() + 1)
+      if (!Number.isNaN(sunsetAt.getTime()) && sunsetAt.getTime() < minimumSunset.getTime()) {
+        addFinding(
+          findings,
+          text,
+          `/interfaces/${interfaceName}/sunset_at`,
+          `interface '${interfaceName}' sunset_at is less than the minimum 12-month deprecation period (ADR-156)`,
+        )
+      }
+    }
     if (access !== 'public' && access !== 'internal') {
       const protectedAccess = dict(access)
       strings(protectedAccess.policies).forEach((name, index) => {

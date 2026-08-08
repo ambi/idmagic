@@ -331,6 +331,7 @@ interfaces:
         type: ApiTokenPrincipal
     errors: [AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [AuthenticateApiTokens]
       resource: {type: ApiToken, id: input.token}
@@ -344,6 +345,7 @@ interfaces:
         type: "ApiTokenMetadata[]"
     errors: [AccessDeniedError]
     read_only: true
+    stability: internal
     access:
       policies: [ManageApiTokens]
       resource: {type: Tenant, id: context.tenant_id}
@@ -383,6 +385,7 @@ interfaces:
     ensures:
       - output.meta.user_id == context.actor_user_id
       - output.meta.audience == context.issuer
+    stability: internal
     access:
       policies: [ManageApiTokens]
       resource: {type: Tenant, id: context.tenant_id}
@@ -400,6 +403,7 @@ interfaces:
     errors: [InvalidRequestError, AccessDeniedError]
     requires:
       - input.tenant_id == context.tenant_id
+    stability: internal
     access:
       policies: [ManageApiTokens]
       resource: {type: Tenant, id: context.tenant_id}

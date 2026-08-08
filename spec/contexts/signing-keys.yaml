@@ -315,6 +315,7 @@ interfaces:
     ensures:
       - output.jwks.keys.all(k, tenant_owns_signing_key(context.tenant_id, k))
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -331,6 +332,7 @@ interfaces:
     ensures:
       - output.jwks.keys.all(k, tenant_owns_signing_key(input.tenant_id, k))
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -344,6 +346,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -365,6 +368,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -383,6 +387,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - SigningKeyRotated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -407,6 +412,7 @@ interfaces:
       - AccessDeniedError
     requires:
       - signing_key_is_not_active(input.kid)
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -426,6 +432,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:

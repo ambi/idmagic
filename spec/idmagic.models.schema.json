@@ -5717,6 +5717,115 @@
       "additionalProperties": false,
       "description": "claim 解決が fail-closed で拒否された。required source が解決できない、\nvisibility=Private の属性を rule / NameID の source に指定している、または reserved claim type\n(iss/sub/aud/exp/iat/nbf/jti/azp/nonce/at_hash/c_hash/acr/amr/sid) を claim_type に指定している\nのいずれか。\n"
     },
+    "ClientIDMetadataDocument": {
+      "type": "object",
+      "properties": {
+        "client_id": {
+          "type": "string",
+          "format": "uri",
+          "description": "fetch 元 URL と厳密一致する必要がある。"
+        },
+        "client_name": {
+          "type": "string"
+        },
+        "client_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "logo_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "redirect_uris": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          },
+          "minItems": 1
+        },
+        "grant_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GrantType"
+          }
+        },
+        "response_types": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResponseType"
+          }
+        },
+        "token_endpoint_auth_method": {
+          "$ref": "#/$defs/TokenEndpointAuthMethod",
+          "description": "未指定は none として扱う。none 以外の値を宣言する document は拒否する。"
+        },
+        "scope": {
+          "type": "string",
+          "description": "未指定時は openid のみを許可する。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "client_id",
+        "client_name",
+        "redirect_uris"
+      ],
+      "description": "client が自己ホストする HTTPS URL から fetch する Client ID Metadata Document。client_id 自体が fetch 元 URL であり document 内 client_id と厳密一致する必要がある。token_endpoint_auth_method が未指定または none 以外の document は拒否する。"
+    },
+    "ClientIdMetadataDocumentRejected": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "認可リクエストが属するテナント ID。"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "fetch元のURL。"
+        },
+        "reason": {
+          "type": "string",
+          "description": "拒否理由 (fetch失敗・JSON不正・client_id不一致・redirect_uris欠落・非対応token_endpoint_auth_method等) の分類。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "clientId",
+        "reason"
+      ],
+      "description": "URL形式のclient_idについてClient ID Metadata Documentのfetch・検証が失敗し、fail-closedでリクエストを拒否した。"
+    },
+    "ClientIdMetadataDocumentResolved": {
+      "type": "object",
+      "properties": {
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "認可リクエストが属するテナント ID。"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "fetch元のURL。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "occurredAt",
+        "tenantId",
+        "clientId"
+      ],
+      "description": "URL形式のclient_idについてClient ID Metadata Documentのfetch・検証に成功し、認可リクエストの処理を継続した。永続登録は伴わない。"
+    },
     "ClientRegistered": {
       "type": "object",
       "properties": {
@@ -7192,6 +7301,11 @@
         "tls_client_certificate_bound_access_tokens": {
           "type": "boolean"
         },
+        "client_id_metadata_document_supported": {
+          "type": "boolean",
+          "default": true,
+          "description": "client_idをHTTPS URL (Client ID Metadata Document) として都度解決する経路をサポートすることの広告。"
+        },
         "subject_types_supported": {
           "type": "array",
           "items": {
@@ -7280,6 +7394,7 @@
         "code_challenge_methods_supported",
         "require_pushed_authorization_requests",
         "require_pkce",
+        "client_id_metadata_document_supported",
         "subject_types_supported"
       ],
       "description": "RFC 8414 / OIDC Discovery 1.0 メタデータ。"

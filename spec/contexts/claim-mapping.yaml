@@ -130,4 +130,5 @@ interfaces:
     errors:
       - ClaimReleaseDeniedError
     read_only: true
+    stability: internal
     access: internal

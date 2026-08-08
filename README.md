@@ -277,6 +277,41 @@ SMTP_FROM=noreply@idmagic.test \
 ./dev.sh
 ```
 
+## API Stability, Versioning & Deprecation
+
+IdMagic's management API and self-service account API are external contracts: tenants build automation, provisioning, and IaC against them (see [ADR-137](decisions/ADR-137-unify-api-access-token-wire-format.md) for the API access token that authenticates these calls). [ADR-156](decisions/ADR-156-api-versioning-and-deprecation-policy.md) defines how they are versioned and deprecated; this section is the operational summary.
+
+**Stability tiers.** Every SCL interface declares a `stability`:
+
+- `stable` — a versioned external contract, covered by the compatibility guarantee below.
+- `beta` — an external contract not yet covered by the compatibility guarantee; reserved for future endpoints.
+- `internal` — not part of the external contract. This covers browser-only interactive flows (login, MFA enrollment, consent — anything reachable only by a first-party browser session, not by an API access token) and admin-console screens that currently have no API-access-token path. `internal` interfaces can change without notice.
+
+An interface counts as `stable`/`beta` only if it is reachable by an API access token (`ManagementApiClient*`/`SelfApiClient*`/SCIM scopes), is a protocol endpoint governed by an external standard (OAuth2/OIDC, SAML, WS-Federation, SCIM, SSF — see below), or is an unauthenticated public asset/operational endpoint (health probes, metrics, branding assets).
+
+**Compatibility definition.** Backward-compatible: adding a field, adding an optional parameter, adding a new endpoint. Breaking: removing or renaming a field, changing a field's type, making a field required, changing an error code, changing a default value. Error codes returned via `BackendErrorResponse` are part of the contract.
+
+**Versioning.** The management (`/api/admin/...`) and self-service (`/api/account/...`) APIs are versioned by path. The current unversioned path is the `v1` route; every route under those two prefixes is also reachable at its explicit `<prefix>/v1/...` alias (`backend/shared/http/support_http.RegisterVersionAliases` mirrors this at runtime; `tools/scl-to-openapi` mirrors it in the generated spec). A breaking change is introduced as a new `/v2/` prefix, never by mutating an existing path. At most 2 versions are supported concurrently.
+
+**Out of IdMagic's versioning scheme**: OAuth2/OIDC, SAML, WS-Federation, SCIM, and SharedSignals (SSF) protocol endpoints. Their compatibility and versioning is governed by the standards themselves; discovery documents (`/.well-known/...`, `/scim/v2/ServiceProviderConfig`, SAML/WS-Fed metadata) are the source of truth for those, not this scheme.
+
+**Deprecation.** A deprecated interface is marked in SCL with `deprecated_since`, and once a removal date is set, `sunset_at` (minimum 12 months after `deprecated_since`) and `successor`. Responses from a deprecated interface carry a `Deprecation` header (and a `Sunset` header once `sunset_at` is set), added uniformly by `backend/shared/http/support_http.DeprecationHeadersMiddleware`. The same fields are reflected in the generated OpenAPI document as `deprecated: true`, `x-scl-deprecated-since`, `x-scl-sunset-at`, and `x-scl-successor`.
+
+**Currently deprecated APIs** (machine-generated from `spec/idmagic.openapi.json`, itself generated from SCL — do not hand-maintain a separate list):
+
+```bash
+jq '[.paths[][] | select(.deprecated == true) | {operationId, "x-scl-deprecated-since", "x-scl-sunset-at", "x-scl-successor"}]' spec/idmagic.openapi.json
+```
+
+**Breaking-change detection.** `just check-api-compat` compares the generated `spec/idmagic.openapi.json` against the frozen release baseline `spec/idmagic.openapi.baseline.json` and fails on any breaking difference (field removal/rename, type change, new required field, changed default, removed error code, removed path/operation/parameter/response). It runs in CI (`.github/workflows/idmagic-ci.yaml`) and in `just verify`. **After cutting a release**, refresh the baseline so future PRs are compared against what actually shipped:
+
+```bash
+just scl-render
+cp spec/idmagic.openapi.json spec/idmagic.openapi.baseline.json
+```
+
+Skipping this step lets the baseline go stale and the check stops catching real regressions; committing a baseline update without an actual release makes the check stop catching real ones too, so only refresh it as part of cutting a release.
+
 ## Documentation Guide
 
 For deep dives into specific areas, consult the following guides:

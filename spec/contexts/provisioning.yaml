@@ -805,6 +805,7 @@ interfaces:
       - output.connection.application_id == input.id
       - output.connection.status == "active"
       - emitted.exists(e, e is ProvisioningConnectionRegistered)
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -826,6 +827,7 @@ interfaces:
       - ProvisioningConnectionNotFoundError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
@@ -896,6 +898,7 @@ interfaces:
     ensures:
       - input.credential == null || emitted.exists(e, e is ProvisioningCredentialRotated)
       - "input.status != \"disabled\" || emitted.exists(e, e is ProvisioningConnectionDisabled)"
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -915,6 +918,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - ProvisioningConnectionDeleted
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -943,6 +947,7 @@ interfaces:
       - AccessDeniedError
     read_only: true
     idempotent: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -971,6 +976,7 @@ interfaces:
     ensures:
       - output.delivery.status == "pending"
       - output.delivery.source_id == input.subject_id
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -991,6 +997,7 @@ interfaces:
     errors:
       - ProvisioningConnectionNotFoundError
       - AccessDeniedError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -1026,6 +1033,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
@@ -1049,6 +1057,7 @@ interfaces:
       - ProvisioningDeliveryNotFoundError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:
@@ -1077,6 +1086,7 @@ interfaces:
     ensures:
       - output.delivery.status == "pending"
       - output.delivery.job_id == null
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -1104,6 +1114,7 @@ interfaces:
     ensures:
       - "output.connection.health != \"quarantined\""
       - emitted.exists(e, e is ProvisioningConnectionQuarantineCleared)
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteProvisioning]
       resource:
@@ -1121,6 +1132,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadProvisioning]
       resource:

@@ -439,6 +439,7 @@ interfaces:
       - requested_authentication_method_satisfied(input.wauth)
       - subject_assigned_to_application(input.wtrealm, context.tenant_id)
       - wctx_round_tripped(input.wctx)
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -468,6 +469,7 @@ interfaces:
     ensures:
       - local_session_cleared
       - no_unregistered_redirect
+    stability: internal
     access: internal
   WsTrustIssue:
     description: WS-Trust 1.3 active STS Issue endpoint。UsernameToken を検証し、 To を現在 realm の active STS endpoint、Action / RequestType を Issue、KeyType を Bearer に限定し、AppliesTo を登録済み WsFedRelyingParty に解決する。RP の claim policy で組み立てた claim を署名済み SAML assertion に載せ、RSTR として返す。未登録 AppliesTo、期限切れ Timestamp、不正な To / Action / RequestType / KeyType / TokenType は fail-closed で拒否する。
@@ -494,6 +496,7 @@ interfaces:
     ensures:
       - output.response.relates_to == input.request.message_id
       - output.response.applies_to == input.request.applies_to
+    stability: stable
     access:
       policies: [UsernameTokenSubject]
       resource:
@@ -510,6 +513,7 @@ interfaces:
       endpoint:
         type: SecurityTokenEndpoint
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -523,6 +527,7 @@ interfaces:
       endpoint:
         type: SecurityTokenEndpoint
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -559,6 +564,7 @@ interfaces:
       - EntraFederationConfigured
     requires:
       - source_anchor_is_unique_and_normalizable(input.source_anchor_attribute, context.tenant_id)
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWsFed]
       resource:
@@ -583,6 +589,7 @@ interfaces:
     requires:
       - input.relying_party.tenant_id == context.tenant_id
       - input.relying_party.reply_urls.size > 0
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWsFed]
       resource:
@@ -606,6 +613,7 @@ interfaces:
       - AccessDeniedError
     ensures:
       - relying_parties_belong_to_tenant(output.relying_parties, context.tenant_id)
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadWsFed]
       resource:
@@ -626,6 +634,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - ApplicationOwnedProtocolError
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWsFed]
       resource:

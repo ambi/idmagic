@@ -560,6 +560,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadWorkloadIdentity]
       resource:
@@ -581,6 +582,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadWorkloadIdentity]
       resource:
@@ -611,6 +613,7 @@ interfaces:
     requires:
       - "input.request.jwks_uri != null || input.request.jwks != null"
       - trust_bundle_issuer_unique_in_tenant(context.tenant_id, input.request.issuer)
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -641,6 +644,7 @@ interfaces:
       - WorkloadTrustBundleInvalidTtlError
     emits:
       - WorkloadTrustBundleUpdated
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -661,6 +665,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - WorkloadTrustBundleDisabled
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -682,6 +687,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - WorkloadTrustBundleEnabled
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -703,6 +709,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - WorkloadTrustBundleDeleted
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -727,6 +734,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - WorkloadTrustBundleJWKSRefreshed
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -748,6 +756,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientReadWorkloadIdentity]
       resource:
@@ -777,6 +786,7 @@ interfaces:
     requires:
       - "input.request.agent_id in tenantAgentIds(context.tenant_id)"
       - "!subject_pattern_duplicate_in_bundle(input.trust_bundle_id, input.request.subject_pattern)"
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -799,6 +809,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentWorkloadBindingDisabled
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -820,6 +831,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentWorkloadBindingEnabled
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -841,6 +853,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - AgentWorkloadBindingDeleted
+    stability: stable
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteWorkloadIdentity]
       resource:
@@ -872,6 +885,7 @@ interfaces:
     emits:
       - WorkloadTokenExchanged
       - WorkloadAttestationRejected
+    stability: internal
     access: internal
 authorization:
   resources:

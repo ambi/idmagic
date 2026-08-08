@@ -136,10 +136,18 @@ type Interface struct {
 	Requires    []string            `yaml:"requires"`
 	Ensures     []string            `yaml:"ensures"`
 	Access      any                 `yaml:"access"`
-	Idempotent  bool                `yaml:"idempotent"`
-	ReadOnly    bool                `yaml:"read_only"`
-	Bindings    []Binding           `yaml:"bindings"`
-	Annotations map[string]any      `yaml:"annotations"`
+	// Stability classifies the interface as an external contract (ADR-156):
+	// "stable" | "beta" | "internal".
+	Stability string `yaml:"stability"`
+	// DeprecatedSince and SunsetAt drive the Deprecation/Sunset response
+	// headers (ADR-156) once set; Successor names the replacement interface.
+	DeprecatedSince string         `yaml:"deprecated_since"`
+	SunsetAt        string         `yaml:"sunset_at"`
+	Successor       string         `yaml:"successor"`
+	Idempotent      bool           `yaml:"idempotent"`
+	ReadOnly        bool           `yaml:"read_only"`
+	Bindings        []Binding      `yaml:"bindings"`
+	Annotations     map[string]any `yaml:"annotations"`
 }
 
 type ProtectedAccess struct {

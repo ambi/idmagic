@@ -229,6 +229,7 @@ interfaces:
       - DataKeyUnavailableError
     ensures:
       - active_key_count(input.tenant_id) <= 1
+    stability: internal
     access: internal
   RotateTenantDataKey:
     description: テナントに新しい DataEncryptionKey (version + 1) を生成して active に切り替え、旧 active を retiring に遷移させる。旧バージョンは即座に destroy せず、復号は継続できる。
@@ -247,6 +248,7 @@ interfaces:
       - active_key_count(input.tenant_id) <= 1
     emits:
       - DataEncryptionKeyRotated
+    stability: internal
     access: internal
   DisableTenantDataKey:
     description: "回転済み (retiring) の DataEncryptionKey 1 本を即時ロックアウトする。危殆化対応など、destroy (crypto-shredding) の前に先行して復号を止めたい場合に使う。active な version はこの操作の対象にできない (先に RotateTenantDataKey で退避させる)。\n"
@@ -262,6 +264,7 @@ interfaces:
       - data_key_is_not_active(input.tenant_id, input.version)
     emits:
       - DataEncryptionKeyDisabled
+    stability: internal
     access: internal
   DestroyTenantDataKey:
     description: "retiring または disabled の DataEncryptionKey 1 本の wrapped_dek を破棄し destroyed (crypto-shredding) にする。所有 context ごとに登録された再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) が全参照を active バージョンへ移行済みであることを呼び出し前に検証し、未移行の参照が残っていれば DataKeyStillReferencedError で拒否する (fail-closed)。不可逆。\n"
@@ -278,6 +281,7 @@ interfaces:
       - no_pending_reencryption_references(input.tenant_id)
     emits:
       - DataEncryptionKeyDestroyed
+    stability: internal
     access: internal
   ListTenantDataKeyHealth:
     description: "system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。\n"
@@ -287,6 +291,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:

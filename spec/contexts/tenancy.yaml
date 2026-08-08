@@ -1067,6 +1067,7 @@ interfaces:
         type: Tenant
     errors:
       - InvalidRequestError
+    stability: internal
     access: internal
   ListTenants:
     description: "system_admin がテナント一覧を取得する。テナント横断操作のため system_admin\nロールでゲートし、システムコンソール (/system) から呼ぶ。default テナントに解決する\nbare path と control-plane path (/realms/default 配下、cookie session 整合) の両方から\n同じ handler に入る。"
@@ -1076,6 +1077,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1097,6 +1099,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1119,6 +1122,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantCreated
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1147,6 +1151,7 @@ interfaces:
       - PolicyOverrideWeakerError
     emits:
       - TenantUpdated
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1167,6 +1172,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantDisabled
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1188,6 +1194,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantEnabled
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1209,6 +1216,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1235,6 +1243,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantQuotaUpdated
+    stability: internal
     access:
       policies: [SystemAdministrator]
       resource:
@@ -1253,6 +1262,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1270,6 +1280,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1292,6 +1303,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantUpdated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1310,6 +1322,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1333,6 +1346,7 @@ interfaces:
       - InvalidUserAttributeSchemaError
     emits:
       - TenantUserAttributeSchemaUpdated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1351,6 +1365,7 @@ interfaces:
     ensures:
       - output.branding != null
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http
@@ -1369,6 +1384,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantBrandingUpdated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1398,6 +1414,7 @@ interfaces:
       - context.upload.content_type in ["image/png", "image/jpeg", "image/webp", "image/gif"]
       - context.upload.magic_byte_matches_content_type
       - size(input.file) <= 262144
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1421,6 +1438,7 @@ interfaces:
       - AccessDeniedError
     emits:
       - TenantBrandingUpdated
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1438,6 +1456,7 @@ interfaces:
     errors:
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1461,6 +1480,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1493,6 +1513,7 @@ interfaces:
       - placeholdersWithin(input.request.body_html, allowedPlaceholders(input.template_key))
     ensures:
       - output.template.customized
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1520,6 +1541,7 @@ interfaces:
       - NotificationTemplateReset
     ensures:
       - "!output.template.customized"
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1545,6 +1567,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     read_only: true
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1572,6 +1595,7 @@ interfaces:
       - EmailSent
     ensures:
       - output.result.to == context.actor.email
+    stability: internal
     access:
       policies: [TenantAdministrator]
       resource:
@@ -1599,6 +1623,7 @@ interfaces:
       - response.headers["Content-Type"] in ["image/png", "image/jpeg", "image/webp", "image/gif"]
       - response.headers["X-Content-Type-Options"] == "nosniff"
     read_only: true
+    stability: stable
     access: public
     bindings:
       - kind: http

@@ -51,6 +51,7 @@ interfaces:
       - all_model_references_resolve(output.schema)
       - supported_constraints_are_enforced(input.request, output.schema)
       - unsupported_constraints_are_annotated(input.request, output.schema)
+    stability: internal
     access: public
     idempotent: true
     read_only: true

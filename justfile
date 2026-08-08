@@ -35,7 +35,7 @@ install-ui:
 verify:
     #!/usr/bin/env sh
     set -u
-    checks="check traceability-strict test-tools typecheck-tools lint-go test-go format-check-ui lint-ui test-ui-unit build-ui"
+    checks="check check-api-compat traceability-strict test-tools typecheck-tools lint-go test-go format-check-ui lint-ui test-ui-unit build-ui"
     tmp=$(mktemp -d)
     t0=$(date +%s)
     for c in $checks; do
@@ -72,7 +72,7 @@ verify:
     exit $rc
 
 # Run the full verification suite serially (clean ordered output; slower, no timings).
-verify-serial: check traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-unit build-ui
+verify-serial: check check-api-compat traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-unit build-ui
 
 # Validate specs and traceability, then test and type-check embedded tooling.
 verify-spec: check traceability-strict test-tools typecheck-tools
@@ -224,6 +224,11 @@ check-architecture:
 # Validate traceability manifest and execution evidence YAML.
 check-traceability:
     {{ra_cmd}} check --traceability
+
+# Detect breaking changes vs the frozen OpenAPI release baseline (ADR-156). Run
+# `just scl-render` first so spec/idmagic.openapi.json reflects the working tree.
+check-api-compat:
+    cd tools && bun run check-api-compat/src/main.ts --baseline ../spec/idmagic.openapi.baseline.json --current ../spec/idmagic.openapi.json
 
 # Regenerate SCL-derived artifacts.
 scl-render:
