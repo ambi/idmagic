@@ -56,6 +56,34 @@ func TestAgentRevocationEpochRepository_AdvanceIsMonotonic(t *testing.T) {
 	}
 }
 
+// TestAgentRevocationEpochRepository_MultiReplicaConsistency — T006 検証:
+// AgentRevocationEpochRepository は process-local な状態を持たず、Advance/FindByAgent
+// を都度 PostgreSQL へ直接発行する。2つの独立した repository インスタンス (idmagic の
+// 別 replica を模す、同一 PostgreSQL を共有) の一方が Advance すれば、もう一方が
+// 直後の FindByAgent で同じ epoch を読める (多 replica 環境でも epoch 判定が分岐しない)。
+func TestAgentRevocationEpochRepository_MultiReplicaConsistency(t *testing.T) {
+	db := pgtest.Require(t)
+	replicaA := &AgentRevocationEpochRepository{Pool: db}
+	replicaB := &AgentRevocationEpochRepository{Pool: db}
+	tenant := seedTenant(t, db)
+	agent := seedAgent(t, db, tenant.ID)
+	now := testClock()
+
+	if err := replicaA.Advance(context.Background(), ssdomain.AgentRevocationEpoch{
+		AgentID: agent.ID, TenantID: tenant.ID, Epoch: now, Reason: ssdomain.RevocationReasonAgentKilled, AdvancedAt: now,
+	}); err != nil {
+		t.Fatalf("replicaA Advance: %v", err)
+	}
+
+	got, err := replicaB.FindByAgent(context.Background(), tenant.ID, agent.ID)
+	if err != nil {
+		t.Fatalf("replicaB FindByAgent: %v", err)
+	}
+	if got == nil || !got.Epoch.Equal(now) {
+		t.Fatalf("replicaB did not observe replicaA's Advance: %+v", got)
+	}
+}
+
 func TestAgentRevocationEpochRepository_FindByAgentUnknownReturnsNil(t *testing.T) {
 	db := pgtest.Require(t)
 	repo := &AgentRevocationEpochRepository{Pool: db}
