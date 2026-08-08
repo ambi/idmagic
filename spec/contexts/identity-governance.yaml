@@ -764,7 +764,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/lifecycle_workflows
+        path: /api/admin/v1/lifecycle_workflows
   CreateLifecycleWorkflow:
     description: 管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。
     input:
@@ -789,7 +789,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/lifecycle_workflows
+        path: /api/admin/v1/lifecycle_workflows
         request_form: body
         successful_status_codes:
           - "201"
@@ -814,7 +814,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/lifecycle_workflows/{workflow_id}"
+        path: "/api/admin/v1/lifecycle_workflows/{workflow_id}"
   UpdateLifecycleWorkflow:
     description: "管理者が LifecycleWorkflow の trigger/actions/表示情報を更新する。expected_revision が\ncurrent_revision と一致しない場合は WorkflowRevisionConflictError で拒否する (lost update 防止)。\ntrigger または actions が変わる場合は current_revision を 1 増やすが status/enabled_revision は\n変えない (再度 EnableLifecycleWorkflow を呼ぶまで旧 revision の trigger 評価が続く)。archived\nworkflow は拒否する。\n"
     input:
@@ -840,7 +840,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/lifecycle_workflows/{workflow_id}"
+        path: "/api/admin/v1/lifecycle_workflows/{workflow_id}"
         request_form: body
   EnableLifecycleWorkflow:
     description: "管理者が current_revision を validation し、成功すれば enabled_revision に設定して\nstatus=enabled にする。以後この revision が trigger 評価対象になる。validation 失敗または\narchived workflow は拒否する。\n"
@@ -866,7 +866,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/lifecycle_workflows/{workflow_id}/enable"
+        path: "/api/admin/v1/lifecycle_workflows/{workflow_id}/enable"
   DisableLifecycleWorkflow:
     description: "管理者が LifecycleWorkflow を disable する。新規 trigger を止め、未開始の queued run を\ncanceled にする。running run は現在 step の checkpoint 後、次 step の前で停止する。\n"
     input:
@@ -891,7 +891,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/lifecycle_workflows/{workflow_id}/disable"
+        path: "/api/admin/v1/lifecycle_workflows/{workflow_id}/disable"
   DeleteLifecycleWorkflow:
     description: 管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。
     input:
@@ -915,7 +915,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/lifecycle_workflows/{workflow_id}"
+        path: "/api/admin/v1/lifecycle_workflows/{workflow_id}"
         successful_status_codes:
           - "204"
   DryRunLifecycleWorkflow:
@@ -941,7 +941,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/lifecycle_workflows/{workflow_id}/dry_run"
+        path: "/api/admin/v1/lifecycle_workflows/{workflow_id}/dry_run"
         request_form: body
   ListLifecycleWorkflowRuns:
     description: 管理者が特定 LifecycleWorkflow の run 履歴を新しい順に一覧する。
@@ -964,7 +964,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/lifecycle_workflows/{workflow_id}/runs"
+        path: "/api/admin/v1/lifecycle_workflows/{workflow_id}/runs"
   GetLifecycleWorkflowRun:
     description: 管理者が WorkflowRun 1 件の詳細 (trigger、revision、target user、Job attempt、各 step) を取得する。別テナントの run は未存在として扱う。
     input:
@@ -986,7 +986,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/lifecycle_workflow_runs/{run_id}"
+        path: "/api/admin/v1/lifecycle_workflow_runs/{run_id}"
   RetryLifecycleWorkflowRun:
     description: "管理者が partially_failed または failed の WorkflowRun を再試行する。未完了 (failed) step\nだけを対象に新しい Job を関連付ける。changed / no_op 済み step は変更しない。disable と競合する\n場合は新しい step を開始しない。\n"
     input:
@@ -1007,7 +1007,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/lifecycle_workflow_runs/{run_id}/retry"
+        path: "/api/admin/v1/lifecycle_workflow_runs/{run_id}/retry"
 authorization:
   resources:
     LifecycleWorkflowDirectory:

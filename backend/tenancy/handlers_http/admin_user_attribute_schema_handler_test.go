@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "テナント内 admin は所属テナントの custom 属性定義を読み・更新できる"
-// を /api/admin/tenant/user_attribute_schema 経由で検証する (ADR-040 / wi-19)。
+// を /api/admin/v1/tenant/user_attribute_schema 経由で検証する (ADR-040 / wi-19)。
 
 import (
 	"bytes"
@@ -83,7 +83,7 @@ func putUserAttributeSchema(t *testing.T, e *echo.Echo, path string, body any) *
 func TestUserAttributeSchemaGetReturnsBuiltinForUndefinedTenant(t *testing.T) {
 	e, _, _ := newUserAttributeSchemaServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/tenant/user_attribute_schema", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenant/user_attribute_schema", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -102,7 +102,7 @@ func TestUserAttributeSchemaGetReturnsBuiltinForUndefinedTenant(t *testing.T) {
 func TestUserAttributeSchemaGetRejectsNonAdmin(t *testing.T) {
 	e, _, _ := newUserAttributeSchemaServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/tenant/user_attribute_schema", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenant/user_attribute_schema", http.NoBody))
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -112,7 +112,7 @@ func TestUserAttributeSchemaPutPersistsAndEmitsEvent(t *testing.T) {
 	e, schemaRepo, events := newUserAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
 	)
-	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/tenant/user_attribute_schema", map[string]any{
+	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/v1/tenant/user_attribute_schema", map[string]any{
 		"attributes": []map[string]any{
 			{"key": "region", "type": "string", "visibility": "claim_exposed", "claim_name": "region"},
 		},
@@ -142,7 +142,7 @@ func TestUserAttributeSchemaPutRejectsBuiltinCollision(t *testing.T) {
 	e, _, _ := newUserAttributeSchemaServer(
 		t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"),
 	)
-	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/tenant/user_attribute_schema", map[string]any{
+	rec := putUserAttributeSchema(t, e, "/realms/acme/api/admin/v1/tenant/user_attribute_schema", map[string]any{
 		"attributes": []map[string]any{
 			{"key": "nickname", "type": "string", "visibility": "claim_exposed"},
 		},

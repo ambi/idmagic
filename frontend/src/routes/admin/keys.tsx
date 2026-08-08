@@ -10,7 +10,7 @@ type AdminKeyListResponse = { keys: AdminKey[] }
 export const Route = createFileRoute('/admin/keys')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const keys = await request<AdminKeyListResponse>('/api/admin/keys')
+    const keys = await request<AdminKeyListResponse>('/api/admin/v1/keys')
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,

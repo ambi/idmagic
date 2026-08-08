@@ -291,7 +291,7 @@ An interface counts as `stable`/`beta` only if it is reachable by an API access 
 
 **Compatibility definition.** Backward-compatible: adding a field, adding an optional parameter, adding a new endpoint. Breaking: removing or renaming a field, changing a field's type, making a field required, changing an error code, changing a default value. Error codes returned via `BackendErrorResponse` are part of the contract.
 
-**Versioning.** The management (`/api/admin/...`) and self-service (`/api/account/...`) APIs are versioned by path. The current unversioned path is the `v1` route; every route under those two prefixes is also reachable at its explicit `<prefix>/v1/...` alias (`backend/shared/http/support_http.RegisterVersionAliases` mirrors this at runtime; `tools/scl-to-openapi` mirrors it in the generated spec). A breaking change is introduced as a new `/v2/` prefix, never by mutating an existing path. At most 2 versions are supported concurrently.
+**Versioning.** The management (`/api/admin/v1/...`) and self-service (`/api/account/v1/...`) APIs are versioned by path. `/v1/` is the only path — there is no unversioned form. A breaking change is introduced as a new `/v2/` prefix, never by mutating an existing path. At most 2 versions are supported concurrently.
 
 **Out of IdMagic's versioning scheme**: OAuth2/OIDC, SAML, WS-Federation, SCIM, and SharedSignals (SSF) protocol endpoints. Their compatibility and versioning is governed by the standards themselves; discovery documents (`/.well-known/...`, `/scim/v2/ServiceProviderConfig`, SAML/WS-Fed metadata) are the source of truth for those, not this scheme.
 

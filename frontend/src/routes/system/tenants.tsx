@@ -10,7 +10,7 @@ type AdminTenantListResponse = { tenants: AdminTenant[] }
 export const Route = createFileRoute('/system/tenants')({
   loader: async ({ location }) => {
     const account = await requireSystemAccount(location.pathname, location.searchStr)
-    const tenants = await request<AdminTenantListResponse>('/api/admin/tenants')
+    const tenants = await request<AdminTenantListResponse>('/api/admin/v1/tenants')
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,

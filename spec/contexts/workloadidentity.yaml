@@ -569,7 +569,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/workload-identity/trust-bundles
+        path: /api/admin/v1/workload-identity/trust-bundles
   GetWorkloadTrustBundle:
     description: 管理者が単一 WorkloadTrustBundle を取得する。別テナントの bundle は未存在として扱う。
     input:
@@ -591,7 +591,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}"
   RegisterWorkloadTrustBundle:
     description: 管理者が所属テナントに WorkloadTrustBundle を登録する。name はテナント内で一意、issuer もテナント内で一意でなければならない。
     input:
@@ -622,7 +622,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/workload-identity/trust-bundles
+        path: /api/admin/v1/workload-identity/trust-bundles
         request_form: body
         successful_status_codes:
           - "201"
@@ -653,7 +653,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}"
         request_form: body
   DisableWorkloadTrustBundle:
     description: 管理者が WorkloadTrustBundle を無効化する。以後配下の全 binding が交換に使えなくなる (fail-closed)。
@@ -674,7 +674,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/disable"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/disable"
         successful_status_codes:
           - "204"
   EnableWorkloadTrustBundle:
@@ -696,7 +696,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/enable"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/enable"
         successful_status_codes:
           - "204"
   DeleteWorkloadTrustBundle:
@@ -718,7 +718,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}"
         successful_status_codes:
           - "204"
   RefreshWorkloadTrustBundleJWKS:
@@ -743,7 +743,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/refresh"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh"
   ListAgentWorkloadBindings:
     description: 管理者が WorkloadTrustBundle 配下の AgentWorkloadBinding を一覧する。
     input:
@@ -765,7 +765,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/bindings"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings"
   CreateAgentWorkloadBinding:
     description: 管理者が WorkloadTrustBundle 配下に AgentWorkloadBinding を作成する。agent_id は同一テナントの既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。同一 trust_bundle_id 内で subject_pattern の完全重複は拒否する。
     input:
@@ -795,7 +795,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/workload-identity/trust-bundles/{trust_bundle_id}/bindings"
+        path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings"
         request_form: body
         successful_status_codes:
           - "201"
@@ -818,7 +818,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/workload-identity/bindings/{binding_id}/disable"
+        path: "/api/admin/v1/workload-identity/bindings/{binding_id}/disable"
         successful_status_codes:
           - "204"
   EnableAgentWorkloadBinding:
@@ -840,7 +840,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/workload-identity/bindings/{binding_id}/enable"
+        path: "/api/admin/v1/workload-identity/bindings/{binding_id}/enable"
         successful_status_codes:
           - "204"
   DeleteAgentWorkloadBinding:
@@ -862,7 +862,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/workload-identity/bindings/{binding_id}"
+        path: "/api/admin/v1/workload-identity/bindings/{binding_id}"
         successful_status_codes:
           - "204"
   VerifyWorkloadAttestation:

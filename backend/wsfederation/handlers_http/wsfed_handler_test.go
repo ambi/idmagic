@@ -474,7 +474,7 @@ func doJSON(e *echo.Echo, method, target, body string) *httptest.ResponseRecorde
 
 func TestAdminRelyingParty_CRUD(t *testing.T) {
 	e := newAdminServer(t)
-	const path = "/api/admin/wsfed/relying-parties"
+	const path = "/api/admin/v1/wsfed/relying-parties"
 	body := `{"wtrealm":"urn:rp:a","reply_urls":["https://a.example/acs"],"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
 
 	if rec := doJSON(e, http.MethodPost, path, body); rec.Code != http.StatusCreated {
@@ -498,14 +498,14 @@ func TestAdminRelyingParty_RejectsInvalid(t *testing.T) {
 	e := newAdminServer(t)
 	// reply_urls 欠落。
 	body := `{"wtrealm":"urn:rp:b","claim_policy":{"name_id":{"format":"f","source_attribute":"user_id"}}}`
-	if rec := doJSON(e, http.MethodPost, "/api/admin/wsfed/relying-parties", body); rec.Code != http.StatusBadRequest {
+	if rec := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/relying-parties", body); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
 	}
 }
 
 func TestAdminRelyingParty_ForbiddenForNonAdmin(t *testing.T) {
 	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"}) // 非 admin
-	if rec := get(e, "/api/admin/wsfed/relying-parties"); rec.Code != http.StatusForbidden {
+	if rec := get(e, "/api/admin/v1/wsfed/relying-parties"); rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d, want 403", rec.Code)
 	}
 }
@@ -513,7 +513,7 @@ func TestAdminRelyingParty_ForbiddenForNonAdmin(t *testing.T) {
 func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 	e := newAdminServer(t)
 	body := `{"domain":"contoso.com","source_anchor_attribute":"object_guid"}`
-	rec := doJSON(e, http.MethodPost, "/api/admin/wsfed/entra-federation", body)
+	rec := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", body)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -529,7 +529,7 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 			t.Fatalf("response missing %q:\n%s", want, rec.Body.String())
 		}
 	}
-	list := get(e, "/api/admin/wsfed/relying-parties")
+	list := get(e, "/api/admin/v1/wsfed/relying-parties")
 	if !strings.Contains(list.Body.String(), `"entra_profile"`) {
 		t.Fatalf("configured RP missing entra_profile: %s", list.Body.String())
 	}
@@ -538,7 +538,7 @@ func TestAdminConfigureEntraFederation_CreatesPresetRelyingParty(t *testing.T) {
 func TestAdminConfigureEntraFederation_RejectsMissingSourceAnchor(t *testing.T) {
 	e := newAdminServer(t)
 	body := `{"domain":"contoso.com","source_anchor_attribute":"missing_anchor"}`
-	rec := doJSON(e, http.MethodPost, "/api/admin/wsfed/entra-federation", body)
+	rec := doJSON(e, http.MethodPost, "/api/admin/v1/wsfed/entra-federation", body)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}

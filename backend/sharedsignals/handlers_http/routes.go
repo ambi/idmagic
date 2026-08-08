@@ -56,15 +56,15 @@ func (d Deps) receiveDeps() usecases.ReceiveDeps {
 // RegisterRoutes はテナント解決済みグループに SharedSignals 管理 API と、
 // 外部 transmitter からの inbound SET を受理する public エンドポイントを登録する。
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/shared-signals/streams", d.handleListStreams)
-	g.POST("/api/admin/shared-signals/streams/transmitter", d.handleRegisterTransmitterStream)
-	g.POST("/api/admin/shared-signals/streams/receiver", d.handleRegisterReceiverStream)
-	g.GET("/api/admin/shared-signals/streams/:stream_id", d.handleGetStream)
-	g.PATCH("/api/admin/shared-signals/streams/:stream_id", d.handleUpdateStream)
-	g.POST("/api/admin/shared-signals/streams/:stream_id/disable", d.handleDisableStream)
-	g.POST("/api/admin/shared-signals/streams/:stream_id/enable", d.handleEnableStream)
-	g.DELETE("/api/admin/shared-signals/streams/:stream_id", d.handleDeleteStream)
-	g.GET("/api/admin/shared-signals/streams/:stream_id/deliveries", d.handleListDeliveries)
+	g.GET("/api/admin/v1/shared-signals/streams", d.handleListStreams)
+	g.POST("/api/admin/v1/shared-signals/streams/transmitter", d.handleRegisterTransmitterStream)
+	g.POST("/api/admin/v1/shared-signals/streams/receiver", d.handleRegisterReceiverStream)
+	g.GET("/api/admin/v1/shared-signals/streams/:stream_id", d.handleGetStream)
+	g.PATCH("/api/admin/v1/shared-signals/streams/:stream_id", d.handleUpdateStream)
+	g.POST("/api/admin/v1/shared-signals/streams/:stream_id/disable", d.handleDisableStream)
+	g.POST("/api/admin/v1/shared-signals/streams/:stream_id/enable", d.handleEnableStream)
+	g.DELETE("/api/admin/v1/shared-signals/streams/:stream_id", d.handleDeleteStream)
+	g.GET("/api/admin/v1/shared-signals/streams/:stream_id/deliveries", d.handleListDeliveries)
 	g.POST("/ssf/streams/:stream_id/events", d.handleReceiveSecurityEvent)
 }
 

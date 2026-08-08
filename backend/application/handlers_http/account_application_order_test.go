@@ -11,7 +11,7 @@ import (
 
 func createAndAssignWeblink(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie, name string) string {
 	t.Helper()
-	create := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": name, "type": "weblink", "launch_url": "https://" + name + ".example",
 	})
 	if create.Code != http.StatusCreated {
@@ -26,7 +26,7 @@ func createAndAssignWeblink(t *testing.T, e *echo.Echo, csrf string, cookie *htt
 		t.Fatal(err)
 	}
 	assign := adminJSON(t, e, http.MethodPost,
-		"/api/admin/applications/"+created.Application.ID+"/assignments",
+		"/api/admin/v1/applications/"+created.Application.ID+"/assignments",
 		csrf, cookie, map[string]any{"subject_type": "user", "subject_id": "admin"})
 	if assign.Code != http.StatusCreated {
 		t.Fatalf("assign %s status=%d body=%s", name, assign.Code, assign.Body.String())
@@ -57,7 +57,7 @@ func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	}
 
 	// 手動順 [Beta, Alpha] を保存。
-	reorder := adminJSON(t, e, http.MethodPut, "/api/account/applications/order", csrf, cookie, map[string]any{
+	reorder := adminJSON(t, e, http.MethodPut, "/api/account/v1/applications/order", csrf, cookie, map[string]any{
 		"application_ids": []string{idBeta, idAlpha},
 	})
 	if reorder.Code != http.StatusOK {
@@ -70,7 +70,7 @@ func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	}
 
 	// GET order が保存済み順を返す。
-	getOrder := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications/order", http.NoBody)
+	getOrder := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/applications/order", http.NoBody)
 	getOrder.Header.Set("X-Demo-Sub", "admin")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, getOrder)
@@ -88,7 +88,7 @@ func TestAccountApplicationReorderAndDefaultSort(t *testing.T) {
 	}
 
 	// 割当外の id を含む順序は 400 で拒否する。
-	bad := adminJSON(t, e, http.MethodPut, "/api/account/applications/order", csrf, cookie, map[string]any{
+	bad := adminJSON(t, e, http.MethodPut, "/api/account/v1/applications/order", csrf, cookie, map[string]any{
 		"application_ids": []string{"not-assigned"},
 	})
 	if bad.Code != http.StatusBadRequest {

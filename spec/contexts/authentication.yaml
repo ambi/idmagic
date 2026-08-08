@@ -1800,7 +1800,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/step_up/webauthn/challenge
+        path: /api/account/v1/step_up/webauthn/challenge
   SubmitBrowserLogin:
     description: SPA JSON API から browser password step を処理する。MFA 必須かつ factor 未登録の場合、強制開始前は password session でログインを許可して事前登録を促し、開始後は有効な単発 enrollment bypass と猶予期限の両方を満たすときだけ同一 LoginSession を Enrollment pending にする。それ以外は fail closed でログインを完了しない。per-account (10 回 / 900 秒窓、900 秒ロックアウト) と per-IP (30 回 / 900 秒窓、900 秒ロックアウト) のスロットリングを cluster_wide カウンタで適用し、共有カウンタストア到達不能時も fail_closed とする。
     input:
@@ -1940,7 +1940,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/account/security
+        path: /api/account/v1/security
   StartTotpEnrollment:
     description: "認証済みユーザーが TOTP 登録を開始する (self-service)。新しい secret (20 バイト) と\notpauth URI を返すだけで永続化はしない。既に TOTP factor がある場合は拒否する。\n"
     output:
@@ -1958,7 +1958,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/totp/enroll/start
+        path: /api/account/v1/mfa/totp/enroll/start
   ConfirmTotpEnrollment:
     description: "secret に対するコードの所持証明を検証し、TOTP factor を永続化する (self-service)。\nsubject.id に固定し、確定時に User.mfa_enrolled を true にする。\n"
     input:
@@ -1980,7 +1980,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/totp/enroll/confirm
+        path: /api/account/v1/mfa/totp/enroll/confirm
         request_form: body
   RemoveTotpFactor:
     description: "有効な TOTP コード (所持証明) を検証してから TOTP factor を解除する (self-service)。\nsubject.id に固定し、解除時に User.mfa_enrolled を false に戻す。\n"
@@ -2003,7 +2003,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/totp/remove
+        path: /api/account/v1/mfa/totp/remove
         request_form: body
   StartWebAuthnRegistration:
     description: "認証済みユーザーが WebAuthn / Passkey 登録を開始する (self-service)。\nPublicKeyCredentialCreationOptions を返し、challenge をサーバー側セッションに束縛する。\n永続化はまだ行わない。\n"
@@ -2022,7 +2022,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/webauthn/register/start
+        path: /api/account/v1/mfa/webauthn/register/start
   FinishWebAuthnRegistration:
     description: "attestation を検証して WebAuthn credential を永続化する (self-service)。subject.id に\n固定し、最初の 1 件で User.mfa_enrolled を true にする。RP ID / origin / challenge を検証する。\n"
     input:
@@ -2042,7 +2042,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/webauthn/register/finish
+        path: /api/account/v1/mfa/webauthn/register/finish
   RemoveWebAuthnCredential:
     description: "指定した WebAuthn credential を解除する (self-service, step-up 必須)。subject.id に固定し、\n残る第二要素が無くなれば User.mfa_enrolled を false に戻す。\n"
     input:
@@ -2064,7 +2064,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/webauthn/remove
+        path: /api/account/v1/mfa/webauthn/remove
         request_form: body
   StartBrowserWebAuthn:
     description: "SPA JSON API から WebAuthn assertion challenge を発行する。pending login session が\nsub を解決し、PublicKeyCredentialRequestOptions を返す。challenge はそのセッションに束縛する。\n"
@@ -2144,7 +2144,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/recovery-codes/generate
+        path: /api/account/v1/mfa/recovery-codes/generate
   RevokeRecoveryCodes:
     description: "認証済みユーザーが backup recovery code を明示的に失効する (self-service, step-up 必須)。\nsubject.id に固定し、有効な code をすべて削除する。\n"
     errors:
@@ -2163,7 +2163,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/mfa/recovery-codes/revoke
+        path: /api/account/v1/mfa/recovery-codes/revoke
   ListMySignInActivity:
     description: "認証済みユーザーが自身の直近サインイン履歴を取得する (self-service)。対象は\nsubject.id に固定。既存の監査イベントストア (UserAuthenticated) から発生時刻の降順で\n最大 limit 件を返す。limit 既定 10 / 上限 50。\n"
     output:
@@ -2181,7 +2181,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/account/signin_activity
+        path: /api/account/v1/signin_activity
   ListUserSignInActivity:
     description: "admin が対象ユーザーのサインイン履歴を取得する。tenant 境界内に限定し、\nパス sub のユーザーの UserAuthenticated を発生時刻の降順で最大 limit 件返す。\n"
     input:
@@ -2202,7 +2202,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/users/{user_id}/signin_activity"
+        path: "/api/admin/v1/users/{user_id}/signin_activity"
   ListAuthenticationEventBuckets:
     description: "admin が認証イベント集約 (bucket) を一覧する。攻撃時に個別行へ\n落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で window_start の\n降順に返す。limit 既定 50 / 上限 200。\n"
     output:
@@ -2220,7 +2220,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/authentication_event_buckets
+        path: /api/admin/v1/authentication_event_buckets
   ListMySessions:
     description: "認証済みユーザーが自身の有効なセッションを取得する (self-service)。対象は\nsubject.id に固定。現在のセッションを current=true でマークし、開始時刻の降順で返す。\n"
     output:
@@ -2238,7 +2238,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/account/sessions
+        path: /api/account/v1/sessions
   RevokeMySession:
     description: "認証済みユーザーが自身のセッション 1 件を失効する (self-service)。対象が本人の\nものでなければ拒否する。失効は LoginSession に revoked_at / revoke_reason=self_revoke を\n設定する tombstone であり、物理削除しない。既に失効済みの対象への再失効は idempotent に\n成功する (revoked_at は初回の値を保持する)。\n"
     errors:
@@ -2255,7 +2255,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/account/sessions/{id}/revoke"
+        path: "/api/account/v1/sessions/{id}/revoke"
         successful_status_codes:
           - "204"
   RevokeMyOtherSessions:
@@ -2275,7 +2275,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/sessions/revoke_others
+        path: /api/account/v1/sessions/revoke_others
         successful_status_codes:
           - "204"
   ListSessions:
@@ -2298,7 +2298,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/users/{user_id}/sessions"
+        path: "/api/admin/v1/users/{user_id}/sessions"
   RevokeSession:
     description: "admin が対象ユーザーのセッション1件を失効する (wi-28)。RevokeMySession と同じ\ntombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削除しない)。\n既に失効済みの対象への再失効は idempotent に成功する。\n"
     input:
@@ -2318,7 +2318,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{user_id}/sessions/{id}/revoke"
+        path: "/api/admin/v1/users/{user_id}/sessions/{id}/revoke"
         successful_status_codes:
           - "204"
   RevokeUserSessions:
@@ -2339,7 +2339,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{user_id}/sessions/revoke_all"
+        path: "/api/admin/v1/users/{user_id}/sessions/revoke_all"
         successful_status_codes:
           - "204"
   StartStepUpAuthentication:
@@ -2360,7 +2360,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/step_up/start
+        path: /api/account/v1/step_up/start
         request_form: body
   CompleteStepUpAuthentication:
     description: "提示された factor (password または totp コード) を検証し、成立すればセッションに\nstep_up_at を刻む。以降 recency 窓 (5 分) 内は step_up: required の\n操作を許可する。検証失敗は AccessDeniedError。\n"
@@ -2381,7 +2381,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/account/step_up/complete
+        path: /api/account/v1/step_up/complete
         request_form: body
   IssueMfaEnrollmentBypass:
     description: テナント管理者が同一テナントの MFA 未登録 active user に短期・単発の enrollment bypass を発行する。同一 user の既存未消費 bypass は取り消して置換する。ログイン免除ではなく登録専用 pending flow への承認である。
@@ -2409,7 +2409,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{user_id}/mfa-enrollment-bypass"
+        path: "/api/admin/v1/users/{user_id}/mfa-enrollment-bypass"
         request_body: json
   RevokeMfaEnrollmentBypass:
     description: テナント管理者が対象 user の未消費 enrollment bypass を取り消す。既に消費・期限切れの場合もログインを許可せず冪等に終了する。
@@ -2429,7 +2429,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/users/{user_id}/mfa-enrollment-bypass"
+        path: "/api/admin/v1/users/{user_id}/mfa-enrollment-bypass"
         successful_status_codes:
           - "204"
   ResetUserAuthenticators:
@@ -2461,7 +2461,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/users/{user_id}/authenticator-reset"
+        path: "/api/admin/v1/users/{user_id}/authenticator-reset"
         request_body: json
   RequestPasswordReset:
     description: "未認証ユーザーがパスワードリセットリンクの送信を要求する。\nanti-enumeration のため、email の存在有無に関わらず常に 204 を返し、\nverified email を持つ user が見つかった場合のみ token を発行して送信する。\n文面は Tenancy の通知テンプレートカタログ (template_key=PasswordReset) から\n解決する。locale は受信者 User の locale 属性 → テナントの default_locale →\nシステム既定 locale の順に決め、テナント上書きがあれば組込み既定より優先する。\nプレーンテキストと HTML の両方を必ず生成し、リセットリンクは\nリクエストの発行元 URL から組み立てる (テンプレート側に URL 結合をさせない)。\n"
@@ -2594,7 +2594,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/account/linked-identities
+        path: /api/account/v1/linked-identities
   LinkExternalIdentity:
     description: 直近5分以内に step-up 済みの ResourceOwner が provider の外部認証を開始し、callback で得た subject を自身へ明示 link する。既に他 user に link 済みの subject は付け替えない。
     input:
@@ -2619,7 +2619,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/account/linked-identities/{provider_id}"
+        path: "/api/account/v1/linked-identities/{provider_id}"
   UnlinkExternalIdentity:
     description: 直近5分以内に step-up 済みの ResourceOwner が自身の provider link を解除する。利用可能な password credential も他の link も無い場合は account lockout 防止のため拒否する。
     input:
@@ -2641,7 +2641,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/account/linked-identities/{provider_id}"
+        path: "/api/account/v1/linked-identities/{provider_id}"
         successful_status_codes:
           - "204"
   ListIdentityProviderConnections:
@@ -2661,7 +2661,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/identity-providers
+        path: /api/admin/v1/identity-providers
   CreateIdentityProviderConnection:
     description: tenant administrator が connection を作る。作成直後の初期状態は Disabled ([[ADR-149]])。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす ([[ADR-150]])。
     input:
@@ -2684,7 +2684,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/identity-providers
+        path: /api/admin/v1/identity-providers
         request_body: json
         successful_status_codes:
           - "201"
@@ -2710,7 +2710,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/identity-providers/{provider_id}"
+        path: "/api/admin/v1/identity-providers/{provider_id}"
         request_body: json
   DeleteIdentityProviderConnection:
     description: tenant administrator が connection を状態を問わずいつでも削除する ([[ADR-149]])。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。
@@ -2729,7 +2729,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/identity-providers/{provider_id}"
+        path: "/api/admin/v1/identity-providers/{provider_id}"
         successful_status_codes:
           - "204"
   ActivateIdentityProviderConnection:
@@ -2751,7 +2751,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/identity-providers/{provider_id}/activate"
+        path: "/api/admin/v1/identity-providers/{provider_id}/activate"
         successful_status_codes:
           - "204"
   DisableIdentityProviderConnection:
@@ -2772,7 +2772,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/identity-providers/{provider_id}/disable"
+        path: "/api/admin/v1/identity-providers/{provider_id}/disable"
         successful_status_codes:
           - "204"
   RefreshIdentityProviderMetadata:
@@ -2795,7 +2795,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/identity-providers/{provider_id}/refresh"
+        path: "/api/admin/v1/identity-providers/{provider_id}/refresh"
   TestIdentityProviderConnection:
     description: 保存済み last-known-good trust source に対して実際に到達性・解決可能性を検査する。OIDC は authorization_endpoint/token_endpoint/jwks_uri への到達性と secret_reference の解決可能性を、SAML は保存済み証明書の X.509 パース可否と有効期限を確認する。secret の実値、token、certificate 本文は返さない。
     input:
@@ -2816,7 +2816,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/identity-providers/{provider_id}/test"
+        path: "/api/admin/v1/identity-providers/{provider_id}/test"
   PreviewIdentityProviderMapping:
     description: tenant administrator が保存済み test response の検証済み claim を mapping し、token/assertionを含まない正規化 preview を取得する。
     input:
@@ -2841,7 +2841,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/identity-providers/{provider_id}/mapping-preview"
+        path: "/api/admin/v1/identity-providers/{provider_id}/mapping-preview"
         request_body: json
 states:
   IdentityProviderConnectionLifecycle:

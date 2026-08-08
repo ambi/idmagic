@@ -21,28 +21,28 @@ func TestDeprecationHeadersMiddleware(t *testing.T) {
 				SunsetAt:        "2027-01-01",
 				Successor:       "NewWidgets",
 				Bindings: []spec.Binding{
-					{"kind": "http", "method": "GET", "path": "/api/admin/old-widgets"},
+					{"kind": "http", "method": "GET", "path": "/api/admin/v1/old-widgets"},
 				},
 			},
 			"NewWidgets": {
 				Stability: "stable",
 				Bindings: []spec.Binding{
-					{"kind": "http", "method": "GET", "path": "/api/admin/new-widgets"},
+					{"kind": "http", "method": "GET", "path": "/api/admin/v1/new-widgets"},
 				},
 			},
 		},
 	}
 
 	e := echo.New()
-	RegisterVersionAliases(e)
 	e.Use(DeprecationHeadersMiddleware(scl))
+	handler := func(c *echo.Context) error { return c.NoContent(http.StatusOK) }
+	// Mirrors production: registerTenantRoutes runs once for host-style tenant
+	// resolution (bare group) and once for path-style ("/realms/:tenant_id").
+	e.GET("/api/admin/v1/old-widgets", handler)
+	e.GET("/api/admin/v1/new-widgets", handler)
 	tenantGroup := e.Group("/realms/:tenant_id")
-	tenantGroup.GET("/api/admin/old-widgets", func(c *echo.Context) error {
-		return c.NoContent(http.StatusOK)
-	})
-	e.GET("/api/admin/new-widgets", func(c *echo.Context) error {
-		return c.NoContent(http.StatusOK)
-	})
+	tenantGroup.GET("/api/admin/v1/old-widgets", handler)
+	tenantGroup.GET("/api/admin/v1/new-widgets", handler)
 
 	cases := []struct {
 		name           string
@@ -50,9 +50,9 @@ func TestDeprecationHeadersMiddleware(t *testing.T) {
 		wantDeprecated string
 		wantSunset     string
 	}{
-		{"canonical path", "/realms/acme/api/admin/old-widgets", "Thu, 01 Jan 2026 00:00:00 GMT", "Fri, 01 Jan 2027 00:00:00 GMT"},
-		{"v1 alias path", "/realms/acme/api/admin/v1/old-widgets", "Thu, 01 Jan 2026 00:00:00 GMT", "Fri, 01 Jan 2027 00:00:00 GMT"},
-		{"non-deprecated interface", "/api/admin/new-widgets", "", ""},
+		{"tenant path-style routing", "/realms/acme/api/admin/v1/old-widgets", "Thu, 01 Jan 2026 00:00:00 GMT", "Fri, 01 Jan 2027 00:00:00 GMT"},
+		{"host-style tenant routing", "/api/admin/v1/old-widgets", "Thu, 01 Jan 2026 00:00:00 GMT", "Fri, 01 Jan 2027 00:00:00 GMT"},
+		{"non-deprecated interface", "/api/admin/v1/new-widgets", "", ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -71,12 +71,12 @@ func TestDeprecationHeadersMiddleware(t *testing.T) {
 func TestDeprecationHeadersMiddleware_NilSCLIsNoop(t *testing.T) {
 	e := echo.New()
 	e.Use(DeprecationHeadersMiddleware(nil))
-	e.GET("/api/admin/widgets", func(c *echo.Context) error {
+	e.GET("/api/admin/v1/widgets", func(c *echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
 
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/admin/widgets", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/admin/v1/widgets", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}

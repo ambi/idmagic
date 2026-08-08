@@ -46,7 +46,7 @@ describe('AdminMcpResourceServerCreatePage', () => {
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/mcp-resource-servers'),
+        expect.stringContaining('/api/admin/v1/mcp-resource-servers'),
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({

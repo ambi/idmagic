@@ -573,7 +573,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/wsfed/entra-federation
+        path: /api/admin/v1/wsfed/entra-federation
         request_body: json
   RegisterWsFedRelyingParty:
     description: 管理者が WS-Federation relying party trust を登録または更新する。wtrealm、reply_urls、audience、token_type、claim_policy を契約として保存し、reply_urls は空でない閉集合にする。管理操作は AdminFederationTrustsManage で保護する。
@@ -598,7 +598,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/wsfed/relying-parties
+        path: /api/admin/v1/wsfed/relying-parties
         request_body: json
         successful_status_codes:
           - "201"
@@ -622,7 +622,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/wsfed/relying-parties
+        path: /api/admin/v1/wsfed/relying-parties
         successful_status_codes:
           - "200"
   DeleteWsFedRelyingParty:
@@ -643,7 +643,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: /api/admin/wsfed/relying-parties
+        path: /api/admin/v1/wsfed/relying-parties
         request_form: query
         successful_status_codes:
           - "204"

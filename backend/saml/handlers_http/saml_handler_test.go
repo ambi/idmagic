@@ -552,7 +552,7 @@ func doAdminJSON(e *echo.Echo, method, target, body string) *httptest.ResponseRe
 
 func TestAdminIDPProfileCRUDAndCanonicalEndpoints(t *testing.T) {
 	e := newAdminServer(t)
-	const path = "/api/admin/saml/idp-profiles"
+	const path = "/api/admin/v1/saml/idp-profiles"
 	create := doAdminJSON(e, http.MethodPost, path, `{"name":"Partner trust","mode":"dedicated"}`)
 	if create.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", create.Code, create.Body.String())
@@ -587,7 +587,7 @@ func TestAdminIDPProfileCRUDAndCanonicalEndpoints(t *testing.T) {
 
 func TestAdminServiceProvider_CRUD(t *testing.T) {
 	e := newAdminServer(t)
-	profileCreate := doAdminJSON(e, http.MethodPost, "/api/admin/saml/idp-profiles", `{"name":"Partner trust","mode":"shared"}`)
+	profileCreate := doAdminJSON(e, http.MethodPost, "/api/admin/v1/saml/idp-profiles", `{"name":"Partner trust","mode":"shared"}`)
 	if profileCreate.Code != http.StatusCreated {
 		t.Fatalf("create profile status=%d body=%s", profileCreate.Code, profileCreate.Body.String())
 	}
@@ -598,7 +598,7 @@ func TestAdminServiceProvider_CRUD(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	const path = "/api/admin/saml/service-providers"
+	const path = "/api/admin/v1/saml/service-providers"
 	body := `{"entity_id":"https://sp.example.com","idp_profile_id":"` + profileResponse.Profile.ProfileID +
 		`","acs_urls":["https://sp.example.com/acs"],` +
 		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
@@ -628,7 +628,7 @@ func TestAdminServiceProvider_RejectsInvalid(t *testing.T) {
 	e := newAdminServer(t)
 	// acs_urls 欠落。
 	body := `{"entity_id":"https://sp.example.com","claim_policy":{"name_id":{"format":"f","source_attribute":"user_id"}}}`
-	if rec := doJSON(e, http.MethodPost, "/api/admin/saml/service-providers", body); rec.Code != http.StatusBadRequest {
+	if rec := doJSON(e, http.MethodPost, "/api/admin/v1/saml/service-providers", body); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
 	}
 }
@@ -638,14 +638,14 @@ func TestAdminServiceProvider_RejectsUnsupportedSignedAuthnRequests(t *testing.T
 	body := `{"entity_id":"https://sp.example.com","acs_urls":["https://sp.example.com/acs"],` +
 		`"want_authn_requests_signed":true,` +
 		`"claim_policy":{"name_id":{"format":"urn:oasis:names:tc:SAML:2.0:nameid-format:persistent","source_attribute":"user_id"}}}`
-	if rec := doJSON(e, http.MethodPost, "/api/admin/saml/service-providers", body); rec.Code != http.StatusBadRequest {
+	if rec := doJSON(e, http.MethodPost, "/api/admin/v1/saml/service-providers", body); rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
 	}
 }
 
 func TestAdminServiceProvider_ForbiddenForNonAdmin(t *testing.T) {
 	e, _ := newServer(t, &authdomain.AuthenticationContext{UserID: "user-1"}) // 非 admin
-	if rec := get(e, "/api/admin/saml/service-providers"); rec.Code != http.StatusForbidden {
+	if rec := get(e, "/api/admin/v1/saml/service-providers"); rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d, want 403", rec.Code)
 	}
 }

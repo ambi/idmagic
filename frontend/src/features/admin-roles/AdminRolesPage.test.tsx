@@ -14,7 +14,7 @@ const role: AdminRole = {
       name: 'ListAdminUsers',
       action: 'read',
       description: 'List users',
-      interfaces: [{ method: 'GET', path: '/api/admin/users', name: 'ListAdminUsers' }],
+      interfaces: [{ method: 'GET', path: '/api/admin/v1/users', name: 'ListAdminUsers' }],
     },
   ],
 }

@@ -814,7 +814,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/provisioning"
+        path: "/api/admin/v1/applications/{id}/provisioning"
   GetProvisioningConnection:
     description: 管理者が Application の ProvisioningConnection を取得する。別テナントは未存在として扱う。
     input:
@@ -836,7 +836,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{id}/provisioning"
+        path: "/api/admin/v1/applications/{id}/provisioning"
   UpdateProvisioningConnection:
     description: "管理者が ProvisioningConnection の設定を更新する。credential を含む更新は\ncredential rotation として扱い ProvisioningCredentialRotated も発行する。\n"
     input:
@@ -907,7 +907,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{id}/provisioning"
+        path: "/api/admin/v1/applications/{id}/provisioning"
   DeleteProvisioningConnection:
     description: 管理者が ProvisioningConnection を削除する (hard delete)。既存の RemoteResourceLink・ProvisioningDelivery は履歴として残す。
     input:
@@ -927,7 +927,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{id}/provisioning"
+        path: "/api/admin/v1/applications/{id}/provisioning"
   TestProvisioningConnection:
     description: 管理者が下流 /ServiceProviderConfig への到達性を確認し capabilities を再取得してキャッシュを更新する。
     input:
@@ -956,7 +956,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/provisioning/test"
+        path: "/api/admin/v1/applications/{id}/provisioning/test"
   ProvisionOnDemand:
     description: 管理者が単一 subject を指定して即時に試験配送する ProvisioningDelivery を作成する。
     input:
@@ -985,7 +985,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/provisioning/on-demand"
+        path: "/api/admin/v1/applications/{id}/provisioning/on-demand"
   StartFullResync:
     description: 管理者が connection の scope 内 subject 全件を再走査し収束させる full resync を開始する。完了は非同期で FullResyncCompleted が発行される。
     input:
@@ -1006,7 +1006,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/provisioning/full-resync"
+        path: "/api/admin/v1/applications/{id}/provisioning/full-resync"
   ListProvisioningDeliveries:
     description: 管理者が connection の配送状況を一覧する。status/source_type で絞り込める。
     input:
@@ -1042,7 +1042,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{id}/provisioning/deliveries"
+        path: "/api/admin/v1/applications/{id}/provisioning/deliveries"
   GetProvisioningDelivery:
     description: 管理者が配送 1 件の詳細を取得する。
     input:
@@ -1066,7 +1066,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}"
+        path: "/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}"
   RetryProvisioningDelivery:
     description: 管理者が dead_letter の配送を手動で再試行する。pending へ戻し dispatcher の再走査対象にする。
     input:
@@ -1095,7 +1095,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/provisioning/deliveries/{delivery_id}/retry"
+        path: "/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}/retry"
   ResumeProvisioningConnection:
     description: 管理者が quarantine された ProvisioningConnection を解除し配送を再開する。wi-45 の運用手順一覧に quarantine 解除の経路が明記されていなかったため、SCL 化にあたり本 interface を追加した。
     input:
@@ -1123,7 +1123,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/provisioning/resume"
+        path: "/api/admin/v1/applications/{id}/provisioning/resume"
   ListTenantProvisioningConnections:
     description: 管理者がテナント内で有効な ProvisioningConnection を横断的に一覧する (テナント設定の read-only 集約ビュー)。書き込みは各 Application 側の interface へ誘導する。
     output:
@@ -1141,7 +1141,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/provisioning/connections"
+        path: "/api/admin/v1/provisioning/connections"
 authorization:
   resources:
     ProvisioningDirectory:

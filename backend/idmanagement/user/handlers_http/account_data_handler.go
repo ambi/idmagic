@@ -1,4 +1,4 @@
-// /api/account/data_export — エンドユーザー自身の個人データを JSON で取得する
+// /api/account/v1/data_export — エンドユーザー自身の個人データを JSON で取得する
 // (self-service, GDPR 第15条 right of access, wi-21)。本ステージは同期生成で、
 // 現状 API から得られる profile と接続済みアプリ (consents) をまとめる。
 package handlers_http

@@ -31,7 +31,7 @@ describe('AdminGroupDetailPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {
-        if (url.includes('/api/admin/groups/')) {
+        if (url.includes('/api/admin/v1/groups/')) {
           return Promise.resolve(
             response(200, {
               group,
@@ -39,7 +39,7 @@ describe('AdminGroupDetailPage', () => {
             }),
           )
         }
-        if (url.includes('/api/admin/users')) {
+        if (url.includes('/api/admin/v1/users')) {
           return Promise.resolve(response(200, { users: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)

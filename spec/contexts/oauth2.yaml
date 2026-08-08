@@ -4315,7 +4315,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/authorization-detail-types
+        path: /api/admin/v1/authorization-detail-types
   GetAuthorizationDetailType:
     description: 管理者が単一 type を取得する。別テナントの type は未存在として扱う。
     input:
@@ -4338,7 +4338,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/authorization-detail-types/{type}"
+        path: "/api/admin/v1/authorization-detail-types/{type}"
   CreateAuthorizationDetailType:
     description: 管理者が所属テナントに authorization_details type を登録する。
     input:
@@ -4360,7 +4360,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/authorization-detail-types
+        path: /api/admin/v1/authorization-detail-types
         request_form: body
         successful_status_codes:
           - "201"
@@ -4387,7 +4387,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/authorization-detail-types/{type}"
+        path: "/api/admin/v1/authorization-detail-types/{type}"
         request_form: body
   DeleteAuthorizationDetailType:
     description: 管理者が type を削除する。発行済みトークンは失効まで有効。
@@ -4406,7 +4406,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/authorization-detail-types/{type}"
+        path: "/api/admin/v1/authorization-detail-types/{type}"
         successful_status_codes:
           - "204"
   ListAdminOAuth2Clients:
@@ -4426,7 +4426,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/clients
+        path: /api/admin/v1/clients
   GetAdminOAuth2Client:
     description: 管理者が所属テナントの client を取得する。別テナントの client は未存在として扱う。
     input:
@@ -4448,7 +4448,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/clients/{client_id}"
+        path: "/api/admin/v1/clients/{client_id}"
   CreateAdminOAuth2Client:
     description: 管理者が所属テナントに client を作成する。
     input:
@@ -4472,7 +4472,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/clients
+        path: /api/admin/v1/clients
         request_form: body
         successful_status_codes:
           - "201"
@@ -4500,7 +4500,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/clients/{client_id}"
+        path: "/api/admin/v1/clients/{client_id}"
         request_form: body
   DeleteAdminOAuth2Client:
     description: 管理者が所属テナントの catalog 外 client を削除する。application_id が非 NULL の client は ApplicationOwnedProtocolError (HTTP 409) で拒否し、Application 削除へ誘導する。
@@ -4522,7 +4522,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/clients/{client_id}"
+        path: "/api/admin/v1/clients/{client_id}"
         successful_status_codes:
           - "204"
   ListAdminMcpResourceServers:
@@ -4542,7 +4542,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/mcp-resource-servers
+        path: /api/admin/v1/mcp-resource-servers
   GetAdminMcpResourceServer:
     description: 管理者が所属テナントの McpResourceServer を取得する。別テナントの登録は未存在として扱う。
     input:
@@ -4564,7 +4564,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/mcp-resource-servers/{id}"
+        path: "/api/admin/v1/mcp-resource-servers/{id}"
   CreateAdminMcpResourceServer:
     description: 管理者が所属テナントに McpResourceServer を登録する。resource は tenant 内で一意でなければならない。
     input:
@@ -4585,7 +4585,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/mcp-resource-servers
+        path: /api/admin/v1/mcp-resource-servers
         request_form: body
         successful_status_codes:
           - "201"
@@ -4611,7 +4611,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/mcp-resource-servers/{id}"
+        path: "/api/admin/v1/mcp-resource-servers/{id}"
         request_form: body
   DeleteAdminMcpResourceServer:
     description: 管理者が McpResourceServer を削除する。以後この resource を指定する新規発行は invalid_target で拒否する (発行済みトークンは失効まで有効)。
@@ -4630,7 +4630,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/mcp-resource-servers/{id}"
+        path: "/api/admin/v1/mcp-resource-servers/{id}"
         successful_status_codes:
           - "204"
   ListAdminConsents:
@@ -4650,7 +4650,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/consents
+        path: /api/admin/v1/consents
   GetAdminConsent:
     description: 管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。
     input:
@@ -4674,7 +4674,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/consents/{user_id}/{client_id}"
+        path: "/api/admin/v1/consents/{user_id}/{client_id}"
   RevokeAdminConsent:
     description: 管理者が所属テナントの Consent を論理撤回する。管理者による Consent の作成・scope 拡張は許可しない。
     input:
@@ -4696,7 +4696,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/consents/{user_id}/{client_id}"
+        path: "/api/admin/v1/consents/{user_id}/{client_id}"
         successful_status_codes:
           - "204"
   ListAdminRolePolicies:
@@ -4716,7 +4716,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/policy/roles
+        path: /api/admin/v1/policy/roles
   ListMyConsents:
     description: "認証済みユーザーが自身の接続済みアプリ (active な Consent) 一覧を取得する\n(self-service)。対象は actor.id に固定し、他人の Consent は返さない。\n"
     output:
@@ -4734,7 +4734,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/account/consents
+        path: /api/account/v1/consents
   RevokeMyConsent:
     description: "認証済みユーザーが自身の Consent を client_id 指定で論理撤回する (self-service)。\nactor.id == target.id に固定。次回その client の認可では consent が再要求される。\n"
     input:
@@ -4754,7 +4754,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/account/consents/{client_id}/revoke"
+        path: "/api/account/v1/consents/{client_id}/revoke"
         successful_status_codes:
           - "204"
 authorization:

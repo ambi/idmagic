@@ -274,58 +274,27 @@ describe('generateOpenApi — unit', () => {
     ).toThrow('duplicate HTTP binding GET /resources: First, Second')
   })
 
-  // ADR-156 / wi-297 T006: stable/beta interfaces under a versioned prefix
-  // (/api/admin, /api/account) gain a "v1" alias path mirroring the runtime
-  // RegisterVersionAliases hook (backend/shared/http/support_http).
-  it('mirrors stable interfaces under /api/admin and /api/account at their v1 alias path', () => {
+  // ADR-156 / wi-343: /api/admin and /api/account bindings carry their "v1"
+  // segment directly in the SCL path (no unversioned form, no generator-side
+  // aliasing — see backend/shared/http/support_http.Register, which registers
+  // handlers at the literal /v1/ path).
+  it('passes stable interfaces under /api/admin and /api/account through as-is', () => {
     const out = generateOpenApi(
       doc(undefined, {
         ListWidgets: {
           access: 'public',
           stability: 'stable',
-          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/widgets' }],
+          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/v1/widgets' }],
         },
         GetProfile: {
           access: 'public',
           stability: 'stable',
-          bindings: [{ kind: 'http', method: 'GET', path: '/api/account/profile' }],
+          bindings: [{ kind: 'http', method: 'GET', path: '/api/account/v1/profile' }],
         },
       }),
     )
-    expect(op(out, '/api/admin/widgets', 'get').operationId).toBe('ListWidgets')
     expect(op(out, '/api/admin/v1/widgets', 'get').operationId).toBe('ListWidgets')
-    expect(op(out, '/api/account/profile', 'get').operationId).toBe('GetProfile')
     expect(op(out, '/api/account/v1/profile', 'get').operationId).toBe('GetProfile')
-  })
-
-  it('aliases internal-stability interfaces too, matching the path-only runtime hook', () => {
-    const out = generateOpenApi(
-      doc(undefined, {
-        AdminConsoleOnly: {
-          access: {
-            policies: ['TenantAdministrator'],
-            resource: { type: 'Tenant', id: 'context.tenant_id' },
-          },
-          stability: 'internal',
-          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/console-only' }],
-        },
-      }),
-    )
-    expect(op(out, '/api/admin/console-only', 'get').operationId).toBe('AdminConsoleOnly')
-    expect(op(out, '/api/admin/v1/console-only', 'get').operationId).toBe('AdminConsoleOnly')
-  })
-
-  it('does not alias paths outside a versioned prefix', () => {
-    const out = generateOpenApi(
-      doc(undefined, {
-        Login: {
-          access: 'public',
-          stability: 'internal',
-          bindings: [{ kind: 'http', method: 'POST', path: '/api/auth/login' }],
-        },
-      }),
-    )
-    expect((out.paths as Record<string, unknown>)['/api/auth/v1/login']).toBeUndefined()
   })
 
   it('reflects stability and deprecation metadata on the operation', () => {
@@ -337,19 +306,16 @@ describe('generateOpenApi — unit', () => {
           deprecated_since: '2026-01-01',
           sunset_at: '2027-01-01',
           successor: 'NewWidgets',
-          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/old-widgets' }],
+          bindings: [{ kind: 'http', method: 'GET', path: '/api/admin/v1/old-widgets' }],
         },
       }),
     )
-    const operation = op(out, '/api/admin/old-widgets', 'get')
+    const operation = op(out, '/api/admin/v1/old-widgets', 'get')
     expect(operation.deprecated).toBe(true)
     expect(operation['x-scl-stability']).toBe('stable')
     expect(operation['x-scl-deprecated-since']).toBe('2026-01-01')
     expect(operation['x-scl-sunset-at']).toBe('2027-01-01')
     expect(operation['x-scl-successor']).toBe('NewWidgets')
-
-    const alias = op(out, '/api/admin/v1/old-widgets', 'get')
-    expect(alias.deprecated).toBe(true)
   })
 })
 

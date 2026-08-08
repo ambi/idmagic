@@ -102,7 +102,7 @@ describe('NotificationTemplatesTab', () => {
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
     const [url, init] = (fetch as any).mock.calls[2]
-    expect(url).toBe('/api/admin/tenant/notification_templates/password_reset/ja')
+    expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja')
     expect(init.method).toBe('PUT')
     expect(JSON.parse(init.body)).toEqual({
       subject: 'New',
@@ -173,7 +173,7 @@ describe('NotificationTemplatesTab', () => {
     expect(await screen.findByText(t.previewHeading)).toBeInTheDocument()
     expect(screen.getByText('IdMagic のパスワード再設定')).toBeInTheDocument()
     const [url, init] = (fetch as any).mock.calls[2]
-    expect(url).toBe('/api/admin/tenant/notification_templates/password_reset/ja/preview')
+    expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja/preview')
     expect(init.method).toBe('POST')
   })
 
@@ -190,7 +190,7 @@ describe('NotificationTemplatesTab', () => {
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
     const [url, init] = (fetch as any).mock.calls[2]
-    expect(url).toBe('/api/admin/tenant/notification_templates/password_reset/ja/test')
+    expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja/test')
     expect(init.method).toBe('POST')
     // 宛先を送る手段が無いことを固定する。
     expect(init.body).toBeUndefined()
@@ -213,7 +213,7 @@ describe('NotificationTemplatesTab', () => {
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
     const [url, init] = (fetch as any).mock.calls[2]
-    expect(url).toBe('/api/admin/tenant/notification_templates/password_reset/ja')
+    expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja')
     expect(init.method).toBe('DELETE')
     expect(await screen.findByText(t.resetNotice)).toBeInTheDocument()
   })

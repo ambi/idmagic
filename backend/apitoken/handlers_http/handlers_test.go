@@ -75,11 +75,11 @@ func request(t *testing.T, e *echo.Echo, method, path string, body any, admin bo
 // SCL scenario: 管理者はAPIアクセストークンを発行・失効できる。
 func TestAdminApiTokenLifecycle(t *testing.T) {
 	e := newHandler(t)
-	if rec := request(t, e, http.MethodGet, "/api/admin/api-tokens", nil, false); rec.Code != http.StatusUnauthorized {
+	if rec := request(t, e, http.MethodGet, "/api/admin/v1/api-tokens", nil, false); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated status = %d body=%s", rec.Code, rec.Body.String())
 	}
 
-	issued := request(t, e, http.MethodPost, "/api/admin/api-tokens", map[string]any{
+	issued := request(t, e, http.MethodPost, "/api/admin/v1/api-tokens", map[string]any{
 		"description": "SCIM", "scopes": []string{"scim:users:read"}, "expiry_days": 7,
 	}, true)
 	if issued.Code != http.StatusCreated || issued.Header().Get("Cache-Control") != "no-store" {
@@ -99,12 +99,12 @@ func TestAdminApiTokenLifecycle(t *testing.T) {
 		t.Fatalf("issue response = %+v", issueBody)
 	}
 
-	listed := request(t, e, http.MethodGet, "/api/admin/api-tokens", nil, true)
+	listed := request(t, e, http.MethodGet, "/api/admin/v1/api-tokens", nil, true)
 	if listed.Code != http.StatusOK || bytes.Contains(listed.Body.Bytes(), []byte("token_hash")) || bytes.Contains(listed.Body.Bytes(), []byte(issueBody.Token)) {
 		t.Fatalf("list status=%d body=%s", listed.Code, listed.Body.String())
 	}
 
-	revoked := request(t, e, http.MethodDelete, "/api/admin/api-tokens/"+issueBody.Meta.ID, nil, true)
+	revoked := request(t, e, http.MethodDelete, "/api/admin/v1/api-tokens/"+issueBody.Meta.ID, nil, true)
 	if revoked.Code != http.StatusNoContent {
 		t.Fatalf("revoke status=%d body=%s", revoked.Code, revoked.Body.String())
 	}
@@ -116,7 +116,7 @@ func TestIssueApiTokenRejectsInvalidRequest(t *testing.T) {
 		{"description": "bad expiry", "scopes": []string{"scim:users:read"}, "expiry_days": 0},
 		{"description": "bad scope", "scopes": []string{"scim:unknown"}, "expiry_days": 7},
 	} {
-		rec := request(t, e, http.MethodPost, "/api/admin/api-tokens", body, true)
+		rec := request(t, e, http.MethodPost, "/api/admin/v1/api-tokens", body, true)
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 		}
@@ -134,7 +134,7 @@ func TestIssueApiToken_InvalidRequestIsProblemDetails(t *testing.T) {
 		"business rule (bad expiry)":     {"description": "x", "scopes": []string{"scim:users:read"}, "expiry_days": 0},
 	} {
 		t.Run(name, func(t *testing.T) {
-			rec := request(t, e, http.MethodPost, "/api/admin/api-tokens", body, true)
+			rec := request(t, e, http.MethodPost, "/api/admin/v1/api-tokens", body, true)
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 			}

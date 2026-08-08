@@ -202,7 +202,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/audit_events
+        path: /api/admin/v1/audit_events
   ExportAdminAuditEvents:
     description: "管理者が監査イベント (認証イベントを含む) を期間 / フィルタ指定でエクスポートする。\nSIEM への streaming は別 WI で、本 interface は 1 回分のダウンロードを返すのみ。\nフィルタは ListAdminAuditEvents と同じ AuditEventQuery (q / filter / category / type / 期間)。\nfilter の field は registry allowlist のみ。\n"
     input:
@@ -224,7 +224,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/audit_events/export
+        path: /api/admin/v1/audit_events/export
   GetAdminAuditEventSearchOptions:
     description: "管理者が監査イベント検索フォームの event.type / outcome を選択式にするための選択肢一覧を取得する。\n値は AuditSearchRegistry / auditEventCategoryTypes と同じ Go 側の単一の正から導出し、UI 側で\nハードコードした allowlist との drift を防ぐ。\n"
     output:
@@ -242,7 +242,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/audit_events/search_options
+        path: /api/admin/v1/audit_events/search_options
   GetAdminAuditEvent:
     description: 管理者が監査イベント 1 件を ID で取得する。別テナントのイベントは未存在として扱う。
     input:
@@ -266,7 +266,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/audit_events/{id}"
+        path: "/api/admin/v1/audit_events/{id}"
 authorization:
   resources:
     AuditEventLog:

@@ -43,18 +43,18 @@ func (d Deps) adminDeps() usecases.AdminDeps {
 // the tenant-wide read-only aggregate view
 // (spec/contexts/provisioning.yaml §設定の置き場所).
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.POST("/api/admin/applications/:id/provisioning", d.handleRegisterConnection)
-	g.GET("/api/admin/applications/:id/provisioning", d.handleGetConnection)
-	g.PATCH("/api/admin/applications/:id/provisioning", d.handleUpdateConnection)
-	g.DELETE("/api/admin/applications/:id/provisioning", d.handleDeleteConnection)
-	g.POST("/api/admin/applications/:id/provisioning/test", d.handleTestConnection)
-	g.POST("/api/admin/applications/:id/provisioning/on-demand", d.handleProvisionOnDemand)
-	g.POST("/api/admin/applications/:id/provisioning/full-resync", d.handleStartFullResync)
-	g.POST("/api/admin/applications/:id/provisioning/resume", d.handleResumeConnection)
-	g.GET("/api/admin/applications/:id/provisioning/deliveries", d.handleListDeliveries)
-	g.GET("/api/admin/applications/:id/provisioning/deliveries/:delivery_id", d.handleGetDelivery)
-	g.POST("/api/admin/applications/:id/provisioning/deliveries/:delivery_id/retry", d.handleRetryDelivery)
-	g.GET("/api/admin/provisioning/connections", d.handleListTenantConnections)
+	g.POST("/api/admin/v1/applications/:id/provisioning", d.handleRegisterConnection)
+	g.GET("/api/admin/v1/applications/:id/provisioning", d.handleGetConnection)
+	g.PATCH("/api/admin/v1/applications/:id/provisioning", d.handleUpdateConnection)
+	g.DELETE("/api/admin/v1/applications/:id/provisioning", d.handleDeleteConnection)
+	g.POST("/api/admin/v1/applications/:id/provisioning/test", d.handleTestConnection)
+	g.POST("/api/admin/v1/applications/:id/provisioning/on-demand", d.handleProvisionOnDemand)
+	g.POST("/api/admin/v1/applications/:id/provisioning/full-resync", d.handleStartFullResync)
+	g.POST("/api/admin/v1/applications/:id/provisioning/resume", d.handleResumeConnection)
+	g.GET("/api/admin/v1/applications/:id/provisioning/deliveries", d.handleListDeliveries)
+	g.GET("/api/admin/v1/applications/:id/provisioning/deliveries/:delivery_id", d.handleGetDelivery)
+	g.POST("/api/admin/v1/applications/:id/provisioning/deliveries/:delivery_id/retry", d.handleRetryDelivery)
+	g.GET("/api/admin/v1/provisioning/connections", d.handleListTenantConnections)
 }
 
 func (d Deps) writeError(c *echo.Context, err error) error {

@@ -32,11 +32,11 @@ describe('DataExportPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.endsWith('/api/admin/users/exports') && init?.method === 'POST') {
+        if (url.endsWith('/api/admin/v1/users/exports') && init?.method === 'POST') {
           started = true
           return Promise.resolve(response(202, queuedJob))
         }
-        if (url.endsWith('/api/admin/users/exports')) {
+        if (url.endsWith('/api/admin/v1/users/exports')) {
           return Promise.resolve(response(200, { exports: started ? [queuedJob] : [] }))
         }
         return Promise.resolve(response(404))

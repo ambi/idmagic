@@ -28,8 +28,8 @@ type Deps struct {
 // RegisterRoutes はテナント解決済みグループに audit コンテキストのエンドポイントを
 // 登録する。パス・メソッド・middleware は分割前と一致する。
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/audit_events", d.handleListAdminAuditEvents)
-	g.GET("/api/admin/audit_events/export", d.handleExportAdminAuditEvents)
-	g.GET("/api/admin/audit_events/search_options", d.handleAdminAuditEventSearchOptions)
-	g.GET("/api/admin/audit_events/:id", d.handleGetAdminAuditEvent)
+	g.GET("/api/admin/v1/audit_events", d.handleListAdminAuditEvents)
+	g.GET("/api/admin/v1/audit_events/export", d.handleExportAdminAuditEvents)
+	g.GET("/api/admin/v1/audit_events/search_options", d.handleAdminAuditEventSearchOptions)
+	g.GET("/api/admin/v1/audit_events/:id", d.handleGetAdminAuditEvent)
 }

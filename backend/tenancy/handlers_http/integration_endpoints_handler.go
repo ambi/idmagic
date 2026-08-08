@@ -118,9 +118,9 @@ func buildAdminIntegrationEndpointCatalog(issuer string, cert *x509.Certificate)
 			MetadataExchangeURL: url("/trust/mex"),
 		},
 		APIs: AdminAPIEndpointSet{
-			ManagementAPIBaseURL: url("/api/admin"),
+			ManagementAPIBaseURL: url("/api/admin/v1"),
 			SCIMBaseURL:          url("/scim/v2"),
-			AccountAPIBaseURL:    url("/api/account"),
+			AccountAPIBaseURL:    url("/api/account/v1"),
 		},
 	}
 }

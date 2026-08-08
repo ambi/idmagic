@@ -21,10 +21,9 @@ type deprecationEntry struct {
 // Deprecation (RFC 9745) and, when sunset_at is also set, Sunset (RFC 8594)
 // response headers for interfaces the SCL document marks deprecated_since
 // (ADR-156). Matching is by HTTP method and a path canonicalized to strip
-// both tenant routing styles ("/realms/:tenant_id" prefix) and the "/v1/"
-// alias segment, so it applies uniformly regardless of which route the
-// request actually hit. A nil scl (e.g. in tests that build a bare Deps{})
-// is a no-op.
+// the tenant routing group prefix ("/realms/:tenant_id"), so it applies
+// uniformly regardless of which tenant routing style the request hit. A nil
+// scl (e.g. in tests that build a bare Deps{}) is a no-op.
 func DeprecationHeadersMiddleware(scl *spec.SCL) echo.MiddlewareFunc {
 	index := buildDeprecationIndex(scl)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -76,29 +75,19 @@ func deprecationKey(method, path string) string {
 }
 
 // canonicalizeRuntimePath normalizes an Echo route pattern or SCL binding
-// path to a form comparable across tenant routing styles and version
-// aliases: path parameters become "*", a leading tenant group prefix is
-// stripped, and a "/v1" segment right after a VersionedPrefixes entry is
-// stripped.
+// path to a form comparable across tenant routing styles: path parameters
+// become "*" and a leading tenant group prefix is stripped.
 func canonicalizeRuntimePath(path string) string {
 	path = pathParamToken.ReplaceAllString(path, "*")
 	switch {
 	case path == "/realms/*":
-		path = "/"
+		return "/"
 	case strings.HasPrefix(path, "/realms/*/"):
-		path = strings.TrimPrefix(path, "/realms/*")
+		return strings.TrimPrefix(path, "/realms/*")
 	case path == "/realms/default":
-		path = "/"
+		return "/"
 	case strings.HasPrefix(path, "/realms/default/"):
-		path = strings.TrimPrefix(path, "/realms/default")
-	}
-	for _, prefix := range VersionedPrefixes {
-		if path == prefix+"/v1" {
-			return prefix
-		}
-		if rest, ok := strings.CutPrefix(path, prefix+"/v1/"); ok {
-			return prefix + "/" + rest
-		}
+		return strings.TrimPrefix(path, "/realms/default")
 	}
 	return path
 }

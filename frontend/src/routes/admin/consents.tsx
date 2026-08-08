@@ -10,7 +10,7 @@ type AdminConsentListResponse = { consents: AdminConsent[] }
 export const Route = createFileRoute('/admin/consents')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const consents = await request<AdminConsentListResponse>('/api/admin/consents')
+    const consents = await request<AdminConsentListResponse>('/api/admin/v1/consents')
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,

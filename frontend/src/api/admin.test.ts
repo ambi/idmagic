@@ -76,7 +76,7 @@ describe('admin API client', () => {
     await revokeApplicationClientSecret('csrf', 'app/a b', 'credential/a b')
 
     const calls = fetchMock.mock.calls
-    expect(calls[0][0]).toContain('/api/admin/applications/app%2Fa%20b/oidc/client-secrets')
+    expect(calls[0][0]).toContain('/api/admin/v1/applications/app%2Fa%20b/oidc/client-secrets')
     expect(calls[0][1]).toEqual(
       expect.objectContaining({
         method: 'POST',
@@ -84,7 +84,7 @@ describe('admin API client', () => {
       }),
     )
     expect(calls[1][0]).toContain(
-      '/api/admin/applications/app%2Fa%20b/oidc/client-secrets/credential%2Fa%20b',
+      '/api/admin/v1/applications/app%2Fa%20b/oidc/client-secrets/credential%2Fa%20b',
     )
     expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'DELETE' }))
   })
@@ -136,10 +136,10 @@ describe('admin API client', () => {
 
     const calls = (fetch as any).mock.calls
     expect(calls.map(([url]: any[]) => url)).toEqual([
-      expect.stringContaining('/api/admin/mcp-resource-servers'),
-      expect.stringContaining('/api/admin/mcp-resource-servers'),
-      expect.stringContaining('/api/admin/mcp-resource-servers/resource%2Fa%20b'),
-      expect.stringContaining('/api/admin/mcp-resource-servers/resource%2Fa%20b'),
+      expect.stringContaining('/api/admin/v1/mcp-resource-servers'),
+      expect.stringContaining('/api/admin/v1/mcp-resource-servers'),
+      expect.stringContaining('/api/admin/v1/mcp-resource-servers/resource%2Fa%20b'),
+      expect.stringContaining('/api/admin/v1/mcp-resource-servers/resource%2Fa%20b'),
     ])
     expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'POST' }))
     expect(calls[2][1]).toEqual(
@@ -179,12 +179,12 @@ describe('admin API client', () => {
     const calls = (fetch as any).mock.calls
     expect(calls.map(([url]: any[]) => url)).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('/api/admin/users/user%2Fa%20b'),
+        expect.stringContaining('/api/admin/v1/users/user%2Fa%20b'),
         expect.stringContaining('/required_actions/reset%2Fpassword'),
-        expect.stringContaining('/api/admin/users/user%2Fa%20b/disable'),
-        expect.stringContaining('/api/admin/users/user%2Fa%20b/enable'),
-        expect.stringContaining('/api/admin/users/user%2Fa%20b?purge=true'),
-        expect.stringContaining('/api/admin/groups/group%2Fa%20b/members/user%2Fa%20b'),
+        expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/disable'),
+        expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/enable'),
+        expect.stringContaining('/api/admin/v1/users/user%2Fa%20b?purge=true'),
+        expect.stringContaining('/api/admin/v1/groups/group%2Fa%20b/members/user%2Fa%20b'),
       ]),
     )
     expect(
@@ -203,9 +203,9 @@ describe('admin API client', () => {
 
     const calls = (fetch as any).mock.calls
     expect(calls.map(([url]: any[]) => url)).toEqual([
-      expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions'),
-      expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions/session%2F1/revoke'),
-      expect.stringContaining('/api/admin/users/user%2Fa%20b/sessions/revoke_all'),
+      expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/sessions'),
+      expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/sessions/session%2F1/revoke'),
+      expect.stringContaining('/api/admin/v1/users/user%2Fa%20b/sessions/revoke_all'),
     ])
     expect(new Headers(calls[0][1]?.headers).get('X-CSRF-Token')).toBeNull()
     expect(calls[1][1]).toEqual(expect.objectContaining({ method: 'POST' }))
@@ -242,10 +242,10 @@ describe('admin API client', () => {
     const calls = (fetch as any).mock.calls
     expect(calls.map(([url]: any[]) => url)).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('/api/admin/agents/agent%2Fa%20b/credentials/client%2Fa%20b'),
-        expect.stringContaining('/api/admin/applications/app%2Falpha%20beta/oidc'),
-        expect.stringContaining('/api/admin/applications/app%2Falpha%20beta/wsfed'),
-        expect.stringContaining('/api/admin/applications/app%2Falpha%20beta/saml'),
+        expect.stringContaining('/api/admin/v1/agents/agent%2Fa%20b/credentials/client%2Fa%20b'),
+        expect.stringContaining('/api/admin/v1/applications/app%2Falpha%20beta/oidc'),
+        expect.stringContaining('/api/admin/v1/applications/app%2Falpha%20beta/wsfed'),
+        expect.stringContaining('/api/admin/v1/applications/app%2Falpha%20beta/saml'),
         expect.stringContaining('/assignments/user/user%2Fa%20b'),
       ]),
     )
@@ -269,14 +269,14 @@ describe('admin API client', () => {
     await revokeApiToken('csrf', 'token/a b')
 
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/admin/keys/kid%2Fa%20b/disable'),
+      expect.stringContaining('/api/admin/v1/keys/kid%2Fa%20b/disable'),
       expect.objectContaining({
         method: 'POST',
         headers: expect.objectContaining({ 'X-CSRF-Token': 'csrf' }),
       }),
     )
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/admin/tenant/user_attribute_schema'),
+      expect.stringContaining('/api/admin/v1/tenant/user_attribute_schema'),
       expect.objectContaining({ method: 'PUT', body: JSON.stringify({ attributes: [] }) }),
     )
 
@@ -318,9 +318,9 @@ describe('admin API client', () => {
 
     const calls = (fetch as any).mock.calls
     expect(calls.map(([url]: any[]) => String(url))).toEqual([
-      expect.stringContaining('/api/admin/api-tokens'),
-      expect.stringContaining('/api/admin/api-tokens'),
-      expect.stringContaining('/api/admin/api-tokens/token%2Fa%20b'),
+      expect.stringContaining('/api/admin/v1/api-tokens'),
+      expect.stringContaining('/api/admin/v1/api-tokens'),
+      expect.stringContaining('/api/admin/v1/api-tokens/token%2Fa%20b'),
     ])
     expect(calls[1][1]).toEqual(
       expect.objectContaining({

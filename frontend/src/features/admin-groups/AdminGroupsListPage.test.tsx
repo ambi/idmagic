@@ -58,19 +58,19 @@ describe('AdminGroupsPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/groups/group-1/members')) {
+        if (url.includes('/api/admin/v1/groups/group-1/members')) {
           return Promise.resolve(response(200, { members: [] }))
         }
-        if (url.includes('/api/admin/groups/group-1') && init?.method === 'DELETE') {
+        if (url.includes('/api/admin/v1/groups/group-1') && init?.method === 'DELETE') {
           return Promise.resolve(response(204))
         }
-        if (url.includes('/api/admin/groups/group-1')) {
+        if (url.includes('/api/admin/v1/groups/group-1')) {
           return Promise.resolve(response(200, { group, members: [] }))
         }
-        if (url.includes('/api/admin/users')) {
+        if (url.includes('/api/admin/v1/users')) {
           return Promise.resolve(response(200, { users: [] }))
         }
-        if (url.includes('/api/admin/groups')) {
+        if (url.includes('/api/admin/v1/groups')) {
           return Promise.resolve(response(200, { groups: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -89,13 +89,13 @@ describe('AdminGroupsPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/groups/group-1') && init?.method === 'DELETE') {
+        if (url.includes('/api/admin/v1/groups/group-1') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the group.' }))
         }
-        if (url.includes('/api/admin/groups/group-1')) {
+        if (url.includes('/api/admin/v1/groups/group-1')) {
           return Promise.resolve(response(200, { group, members: [] }))
         }
-        if (url.includes('/api/admin/users')) {
+        if (url.includes('/api/admin/v1/users')) {
           return Promise.resolve(response(200, { users: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)

@@ -8,7 +8,7 @@ import { PageMarker } from '../../-page'
 export const Route = createFileRoute('/account/profile_/edit')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('account', location.pathname, location.searchStr)
-    const profile = await request<AccountProfile>('/api/account/profile')
+    const profile = await request<AccountProfile>('/api/account/v1/profile')
     return {
       csrfToken: account.csrf_token,
       profile,

@@ -674,7 +674,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/shared-signals/streams
+        path: /api/admin/v1/shared-signals/streams
 
   GetSsfStream:
     description: 管理者が個々の SsfStream を参照する。
@@ -696,7 +696,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/shared-signals/streams/{stream_id}"
+        path: "/api/admin/v1/shared-signals/streams/{stream_id}"
 
   RegisterSsfTransmitterStream:
     description: 管理者が direction=Transmit の SsfStream と配送先 (SsfTransmitterConfig) を登録する。
@@ -725,7 +725,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/shared-signals/streams/transmitter
+        path: /api/admin/v1/shared-signals/streams/transmitter
         request_form: body
         successful_status_codes:
           - "201"
@@ -758,7 +758,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/shared-signals/streams/receiver
+        path: /api/admin/v1/shared-signals/streams/receiver
         request_form: body
         successful_status_codes:
           - "201"
@@ -789,7 +789,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/shared-signals/streams/{stream_id}"
+        path: "/api/admin/v1/shared-signals/streams/{stream_id}"
         request_form: body
 
   DisableSsfStream:
@@ -811,7 +811,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/shared-signals/streams/{stream_id}/disable"
+        path: "/api/admin/v1/shared-signals/streams/{stream_id}/disable"
         successful_status_codes:
           - "204"
 
@@ -834,7 +834,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/shared-signals/streams/{stream_id}/enable"
+        path: "/api/admin/v1/shared-signals/streams/{stream_id}/enable"
         successful_status_codes:
           - "204"
 
@@ -857,7 +857,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/shared-signals/streams/{stream_id}"
+        path: "/api/admin/v1/shared-signals/streams/{stream_id}"
         successful_status_codes:
           - "204"
 
@@ -881,7 +881,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/shared-signals/streams/{stream_id}/deliveries"
+        path: "/api/admin/v1/shared-signals/streams/{stream_id}/deliveries"
 
   # --- receiver: inbound push ---
   ReceiveSecurityEvent:

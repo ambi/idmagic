@@ -710,7 +710,7 @@ func TestDirectAdminLoginRequiresTOTPWhenDefaultPolicyRequiresMFA(t *testing.T) 
 			Current bool     `json:"current"`
 			AMR     []string `json:"amr"`
 		} `json:"sessions"`
-	}](t, client, srv.URL+"/realms/default/api/account/sessions")
+	}](t, client, srv.URL+"/realms/default/api/account/v1/sessions")
 	if len(sessions.Sessions) != 1 {
 		t.Fatalf("sessions=%+v, want exactly one completed MFA session", sessions.Sessions)
 	}

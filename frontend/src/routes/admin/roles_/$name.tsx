@@ -12,8 +12,8 @@ export const Route = createFileRoute('/admin/roles_/$name')({
   loader: async ({ location, params }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [roles, users] = await Promise.all([
-      request<AdminRoleListResponse>('/api/admin/policy/roles'),
-      request<AdminUserListResponse>('/api/admin/users'),
+      request<AdminRoleListResponse>('/api/admin/v1/policy/roles'),
+      request<AdminUserListResponse>('/api/admin/v1/users'),
     ])
     const role = roles.roles.find((r) => r.name === params.name)
     if (!role) throw new AuthenticationAPIError('Role not found.', 'not_found')

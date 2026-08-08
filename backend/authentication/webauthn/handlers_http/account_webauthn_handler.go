@@ -1,4 +1,4 @@
-// /api/account/mfa/webauthn/* — エンドユーザー自身の WebAuthn / Passkey の self-service
+// /api/account/v1/mfa/webauthn/* — エンドユーザー自身の WebAuthn / Passkey の self-service
 // 登録・解除 (wi-26 / ADR-087)。登録は attestation 検証 (RP ID / origin / challenge) を所持
 // 証明とし、解除は step-up 再認証 (ADR-043) を要求する。
 package handlers_http

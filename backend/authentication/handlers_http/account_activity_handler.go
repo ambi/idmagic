@@ -1,6 +1,6 @@
-// /api/account/signin_activity — エンドユーザー自身のサインイン履歴 (self-service, wi-20)。
+// /api/account/v1/signin_activity — エンドユーザー自身のサインイン履歴 (self-service, wi-20)。
 // 既存の監査イベントストアに蓄積済みの UserAuthenticated を発生時刻の降順で返す。
-// admin 向けの /api/admin/users/{sub}/signin_activity も同じ射影を返す。
+// admin 向けの /api/admin/v1/users/{sub}/signin_activity も同じ射影を返す。
 package handlers_http
 
 import (

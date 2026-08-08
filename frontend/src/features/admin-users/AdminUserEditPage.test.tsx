@@ -143,7 +143,7 @@ describe('AdminUserEditPage', () => {
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/groups/group-1/members/user-1'),
+        expect.stringContaining('/api/admin/v1/groups/group-1/members/user-1'),
         expect.objectContaining({ method: 'DELETE' }),
       ),
     )

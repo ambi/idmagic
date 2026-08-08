@@ -12,8 +12,8 @@ export const Route = createFileRoute('/admin/roles')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [roles, users] = await Promise.all([
-      request<AdminRoleListResponse>('/api/admin/policy/roles'),
-      request<AdminUserListResponse>('/api/admin/users'),
+      request<AdminRoleListResponse>('/api/admin/v1/policy/roles'),
+      request<AdminUserListResponse>('/api/admin/v1/users'),
     ])
     return {
       actorUsername: account.preferred_username,

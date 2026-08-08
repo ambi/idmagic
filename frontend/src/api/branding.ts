@@ -15,7 +15,7 @@ export async function updateBranding(
   csrfToken: string,
   input: BrandingUpdateInput,
 ): Promise<Branding> {
-  return request('/api/admin/tenant/branding', adminRequest(csrfToken, 'PUT', input))
+  return request('/api/admin/v1/tenant/branding', adminRequest(csrfToken, 'PUT', input))
 }
 
 export async function uploadTenantBrandingAsset(
@@ -25,7 +25,7 @@ export async function uploadTenantBrandingAsset(
 ): Promise<Branding> {
   const form = new FormData()
   form.set('file', file)
-  const response = await fetch(tenantURL(`/api/admin/tenant/branding/assets/${kind}`), {
+  const response = await fetch(tenantURL(`/api/admin/v1/tenant/branding/assets/${kind}`), {
     method: 'POST',
     credentials: 'same-origin',
     cache: 'no-store',
@@ -56,7 +56,7 @@ export async function deleteTenantBrandingAsset(
 ): Promise<Branding> {
   return (
     await request<{ branding: Branding }>(
-      `/api/admin/tenant/branding/assets/${kind}`,
+      `/api/admin/v1/tenant/branding/assets/${kind}`,
       adminRequest(csrfToken, 'DELETE'),
     )
   ).branding

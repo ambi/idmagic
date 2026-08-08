@@ -1,4 +1,4 @@
-// /api/account/profile — エンドユーザ自身のプロフィール参照・編集 (self-service)。
+// /api/account/v1/profile — エンドユーザ自身のプロフィール参照・編集 (self-service)。
 package handlers_http
 
 import (

@@ -39,8 +39,8 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/federationmetadata/2007-06/federationmetadata.xml", d.handleFederationMetadata)
 	g.GET("/trust/mex", d.handleTrustMEX)
 	g.POST("/trust/usernamemixed", d.handleWsTrustUsernameMixed)
-	g.GET("/api/admin/wsfed/relying-parties", d.handleListRelyingParties)
-	g.POST("/api/admin/wsfed/relying-parties", d.handleUpsertRelyingParty)
-	g.DELETE("/api/admin/wsfed/relying-parties", d.handleDeleteRelyingParty)
-	g.POST("/api/admin/wsfed/entra-federation", d.handleConfigureEntraFederation)
+	g.GET("/api/admin/v1/wsfed/relying-parties", d.handleListRelyingParties)
+	g.POST("/api/admin/v1/wsfed/relying-parties", d.handleUpsertRelyingParty)
+	g.DELETE("/api/admin/v1/wsfed/relying-parties", d.handleDeleteRelyingParty)
+	g.POST("/api/admin/v1/wsfed/entra-federation", d.handleConfigureEntraFederation)
 }

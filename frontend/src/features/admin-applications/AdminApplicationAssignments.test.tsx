@@ -79,8 +79,8 @@ describe('AssignmentList', () => {
   it('shows the empty state when there are no assignments', async () => {
     stubFetch((url) => {
       if (url.includes('/assignments')) return response(200, { assignments: [] })
-      if (url.includes('/api/admin/users')) return response(200, { users: [] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [] })
       return undefined
     })
     await renderWithRouter(<AssignmentList appID="app-1" onError={() => {}} />)
@@ -90,8 +90,8 @@ describe('AssignmentList', () => {
   it('resolves the assigned user to a display name', async () => {
     stubFetch((url) => {
       if (url.includes('/assignments')) return response(200, { assignments: [assignment] })
-      if (url.includes('/api/admin/users')) return response(200, { users: [user] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [user] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [] })
       return undefined
     })
     await renderWithRouter(<AssignmentList appID="app-1" onError={() => {}} />)
@@ -103,8 +103,8 @@ describe('AssignmentList', () => {
     stubFetch((url) => {
       if (url.includes('/assignments'))
         return response(500, { message: 'Could not load assignments.' })
-      if (url.includes('/api/admin/users')) return response(200, { users: [] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [] })
       return undefined
     })
     const onError = mock()
@@ -122,8 +122,8 @@ describe('AssignmentManager', () => {
         return response(201, assignment)
       }
       if (url.includes('/assignments')) return response(200, { assignments: [] })
-      if (url.includes('/api/admin/users')) return response(200, { users: [user] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [user] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [] })
       return undefined
     })
     await renderWithRouter(<AssignmentManager appID="app-1" csrfToken="csrf" onError={() => {}} />)
@@ -141,8 +141,8 @@ describe('AssignmentManager', () => {
         return response(204)
       }
       if (url.includes('/assignments')) return response(200, { assignments: [assignment] })
-      if (url.includes('/api/admin/users')) return response(200, { users: [user] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [user] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [] })
       return undefined
     })
     await renderWithRouter(<AssignmentManager appID="app-1" csrfToken="csrf" onError={() => {}} />)
@@ -159,8 +159,8 @@ describe('AssignmentManager', () => {
         return response(409, { message: 'This user is already assigned.' })
       }
       if (url.includes('/assignments')) return response(200, { assignments: [] })
-      if (url.includes('/api/admin/users')) return response(200, { users: [user] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [user] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [] })
       return undefined
     })
     const onError = mock()
@@ -176,8 +176,8 @@ describe('AssignmentManager', () => {
   it('offers the group target type and lists the group as an assignable target', async () => {
     stubFetch((url) => {
       if (url.includes('/assignments')) return response(200, { assignments: [] })
-      if (url.includes('/api/admin/users')) return response(200, { users: [] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [group] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [group] })
       return undefined
     })
     await renderWithRouter(<AssignmentManager appID="app-1" csrfToken="csrf" onError={() => {}} />)

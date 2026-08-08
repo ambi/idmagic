@@ -1,4 +1,4 @@
-// /api/account/mfa/totp/* — エンドユーザー自身の TOTP の self-service 登録・解除
+// /api/account/v1/mfa/totp/* — エンドユーザー自身の TOTP の self-service 登録・解除
 // (wi-21 / ADR-042)。登録は確認コード、解除は有効な TOTP コードによる所持証明に加え、
 // 解除は step-up 再認証 (ADR-043) を要求する。
 package handlers_http

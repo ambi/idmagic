@@ -2,7 +2,7 @@ package handlers_http_test
 
 // SCL scenario "管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に
 // 反映される" / "不正な branding 入力は拒否されシステム既定にフォールバックする" を
-// /api/branding, /api/admin/tenant/branding, /api/admin/tenant/branding/assets/{kind}
+// /api/branding, /api/admin/v1/tenant/branding, /api/admin/v1/tenant/branding/assets/{kind}
 // 経由で検証する (wi-89, ADR-096)。GetTenantBranding / GetTenantBrandingAsset は
 // public、更新系のみ tenant admin に制限される。
 
@@ -188,7 +188,7 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 	e, repo, assetStore, events := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
 
-	uploadResp := uploadBrandingAsset(t, e, "/realms/acme/api/admin/tenant/branding/assets/logo", png)
+	uploadResp := uploadBrandingAsset(t, e, "/realms/acme/api/admin/v1/tenant/branding/assets/logo", png)
 	if uploadResp.Code != http.StatusOK {
 		t.Fatalf("upload status=%d body=%s", uploadResp.Code, uploadResp.Body.String())
 	}
@@ -209,7 +209,7 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 		t.Fatal("expected nosniff header on asset serving")
 	}
 
-	deleteResp := deleteBrandingAsset(t, e, "/realms/acme/api/admin/tenant/branding/assets/logo")
+	deleteResp := deleteBrandingAsset(t, e, "/realms/acme/api/admin/v1/tenant/branding/assets/logo")
 	if deleteResp.Code != http.StatusOK {
 		t.Fatalf("delete status=%d body=%s", deleteResp.Code, deleteResp.Body.String())
 	}
@@ -224,7 +224,7 @@ func TestUploadAndDeleteBrandingLogoAsset(t *testing.T) {
 
 func TestUploadBrandingAssetRejectsSVG(t *testing.T) {
 	e, _, _, _ := newBrandingServer(t, settingsActor("admin", "acme", []string{"admin"}), activeTenant("acme", "Acme"))
-	resp := uploadBrandingAsset(t, e, "/realms/acme/api/admin/tenant/branding/assets/logo", []byte("<svg onload=alert(1)></svg>"))
+	resp := uploadBrandingAsset(t, e, "/realms/acme/api/admin/v1/tenant/branding/assets/logo", []byte("<svg onload=alert(1)></svg>"))
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -232,7 +232,7 @@ func TestUploadBrandingAssetRejectsSVG(t *testing.T) {
 
 func patchBranding(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecorder {
 	t.Helper()
-	const path = "/realms/acme/api/admin/tenant/branding"
+	const path = "/realms/acme/api/admin/v1/tenant/branding"
 	csrf, cookie := passwordResetContextCSRF(t, e, "/realms/acme/api/auth/password_reset_context")
 	payload, err := json.Marshal(body)
 	if err != nil {

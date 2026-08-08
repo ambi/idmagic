@@ -19,7 +19,7 @@ type applicationSecretCredential struct {
 
 func createSecretApplication(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie) string {
 	t.Helper()
-	response := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	response := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "Secret App", "type": "oidc", "redirect_uris": []string{"https://secret.example/callback"},
 		"client_type": "confidential", "token_endpoint_auth_method": "client_secret_post",
 	})
@@ -42,7 +42,7 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	csrf, cookie := appCSRF(t, e)
 	applicationID := createSecretApplication(t, e, csrf, cookie)
 
-	detail := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+applicationID, csrf, cookie, nil)
+	detail := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+applicationID, csrf, cookie, nil)
 	if detail.Code != http.StatusOK {
 		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
 	}
@@ -59,7 +59,7 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	}
 	legacyID := detailBody.OIDC.Credentials[0].CredentialID
 
-	issued := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+applicationID+"/oidc/client-secrets", csrf, cookie, map[string]any{
+	issued := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+applicationID+"/oidc/client-secrets", csrf, cookie, map[string]any{
 		"expires_in_days": 90,
 	})
 	if issued.Code != http.StatusCreated {
@@ -81,14 +81,14 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 		t.Fatalf("issued body=%#v", issuedBody)
 	}
 
-	limited := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+applicationID+"/oidc/client-secrets", csrf, cookie, map[string]any{
+	limited := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+applicationID+"/oidc/client-secrets", csrf, cookie, map[string]any{
 		"expires_in_days": 90,
 	})
 	if limited.Code != http.StatusConflict {
 		t.Fatalf("limit status=%d body=%s", limited.Code, limited.Body.String())
 	}
 
-	revoked := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/"+applicationID+"/oidc/client-secrets/"+legacyID, csrf, cookie, nil)
+	revoked := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+applicationID+"/oidc/client-secrets/"+legacyID, csrf, cookie, nil)
 	if revoked.Code != http.StatusOK {
 		t.Fatalf("revoke status=%d body=%s", revoked.Code, revoked.Body.String())
 	}
@@ -102,7 +102,7 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 		t.Fatalf("revoked credentials=%#v", revokedBody.Credentials)
 	}
 
-	repeated := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/"+applicationID+"/oidc/client-secrets/"+legacyID, csrf, cookie, nil)
+	repeated := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+applicationID+"/oidc/client-secrets/"+legacyID, csrf, cookie, nil)
 	if repeated.Code != http.StatusOK {
 		t.Fatalf("repeated revoke status=%d body=%s", repeated.Code, repeated.Body.String())
 	}

@@ -86,10 +86,10 @@ describe('AdminAgentsPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/agents/agent-1') && init?.method === 'DELETE') {
+        if (url.includes('/api/admin/v1/agents/agent-1') && init?.method === 'DELETE') {
           return Promise.resolve(response(204))
         }
-        if (url.includes('/api/admin/agents')) {
+        if (url.includes('/api/admin/v1/agents')) {
           return Promise.resolve(response(200, { agents: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)

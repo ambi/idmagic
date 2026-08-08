@@ -79,10 +79,10 @@ describe('AdminApplicationsPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/applications') && init?.method === 'DELETE') {
+        if (url.includes('/api/admin/v1/applications') && init?.method === 'DELETE') {
           return Promise.resolve(response(204))
         }
-        if (url.includes('/api/admin/applications')) {
+        if (url.includes('/api/admin/v1/applications')) {
           return Promise.resolve(response(200, { applications: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -101,7 +101,7 @@ describe('AdminApplicationsPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/applications') && init?.method === 'DELETE') {
+        if (url.includes('/api/admin/v1/applications') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the application.' }))
         }
         throw new Error(`unexpected fetch ${url}`)

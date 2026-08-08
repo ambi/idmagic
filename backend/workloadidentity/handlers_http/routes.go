@@ -45,19 +45,19 @@ func (d Deps) adminBindingDeps() usecases.AdminAgentWorkloadBindingDeps {
 
 // RegisterRoutes はテナント解決済みグループに WorkloadIdentity 管理 API を登録する。
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/workload-identity/trust-bundles", d.handleListTrustBundles)
-	g.POST("/api/admin/workload-identity/trust-bundles", d.handleRegisterTrustBundle)
-	g.GET("/api/admin/workload-identity/trust-bundles/:trust_bundle_id", d.handleGetTrustBundle)
-	g.PATCH("/api/admin/workload-identity/trust-bundles/:trust_bundle_id", d.handleUpdateTrustBundle)
-	g.POST("/api/admin/workload-identity/trust-bundles/:trust_bundle_id/disable", d.handleDisableTrustBundle)
-	g.POST("/api/admin/workload-identity/trust-bundles/:trust_bundle_id/enable", d.handleEnableTrustBundle)
-	g.DELETE("/api/admin/workload-identity/trust-bundles/:trust_bundle_id", d.handleDeleteTrustBundle)
-	g.POST("/api/admin/workload-identity/trust-bundles/:trust_bundle_id/refresh", d.handleRefreshTrustBundleJWKS)
-	g.GET("/api/admin/workload-identity/trust-bundles/:trust_bundle_id/bindings", d.handleListBindings)
-	g.POST("/api/admin/workload-identity/trust-bundles/:trust_bundle_id/bindings", d.handleCreateBinding)
-	g.POST("/api/admin/workload-identity/bindings/:binding_id/disable", d.handleDisableBinding)
-	g.POST("/api/admin/workload-identity/bindings/:binding_id/enable", d.handleEnableBinding)
-	g.DELETE("/api/admin/workload-identity/bindings/:binding_id", d.handleDeleteBinding)
+	g.GET("/api/admin/v1/workload-identity/trust-bundles", d.handleListTrustBundles)
+	g.POST("/api/admin/v1/workload-identity/trust-bundles", d.handleRegisterTrustBundle)
+	g.GET("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id", d.handleGetTrustBundle)
+	g.PATCH("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id", d.handleUpdateTrustBundle)
+	g.POST("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id/disable", d.handleDisableTrustBundle)
+	g.POST("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id/enable", d.handleEnableTrustBundle)
+	g.DELETE("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id", d.handleDeleteTrustBundle)
+	g.POST("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id/refresh", d.handleRefreshTrustBundleJWKS)
+	g.GET("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id/bindings", d.handleListBindings)
+	g.POST("/api/admin/v1/workload-identity/trust-bundles/:trust_bundle_id/bindings", d.handleCreateBinding)
+	g.POST("/api/admin/v1/workload-identity/bindings/:binding_id/disable", d.handleDisableBinding)
+	g.POST("/api/admin/v1/workload-identity/bindings/:binding_id/enable", d.handleEnableBinding)
+	g.DELETE("/api/admin/v1/workload-identity/bindings/:binding_id", d.handleDeleteBinding)
 }
 
 // ---- WorkloadTrustBundle ----

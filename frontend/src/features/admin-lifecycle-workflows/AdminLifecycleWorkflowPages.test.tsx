@@ -62,7 +62,7 @@ describe('lifecycle workflow page separation', () => {
     })
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/admin/lifecycle_workflows/workflow-1',
+      '/api/admin/v1/lifecycle_workflows/workflow-1',
       expect.objectContaining({ method: 'DELETE' }),
     )
     expect(screen.queryByText('入社処理')).not.toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('lifecycle workflow page separation', () => {
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        '/api/admin/lifecycle_workflows/workflow-1/dry_run',
+        '/api/admin/v1/lifecycle_workflows/workflow-1/dry_run',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ target_user_id: 'user-123' }),

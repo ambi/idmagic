@@ -1,6 +1,6 @@
 // Package http: identity governance bounded context の HTTP アダプタ。
 //
-// LifecycleWorkflow (JML 自動化) の管理 API (/api/admin/lifecycle_workflows) を
+// LifecycleWorkflow (JML 自動化) の管理 API (/api/admin/v1/lifecycle_workflows) を
 // 所有する。管理者認証・CSRF・エラー整形は shared/handlers_http/support を再利用し、
 // dry-run が参照する User/Group/Application は record context の port を注入で受け取る。
 package handlers_http
@@ -42,15 +42,15 @@ type Deps struct {
 
 // RegisterRoutes wires the 11 lifecycle workflow admin endpoints.
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/lifecycle_workflows", d.handleListLifecycleWorkflows)
-	g.GET("/api/admin/lifecycle_workflows/:workflow_id", d.handleGetLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows", d.handleCreateLifecycleWorkflow)
-	g.PUT("/api/admin/lifecycle_workflows/:workflow_id", d.handleUpdateLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows/:workflow_id/enable", d.handleEnableLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows/:workflow_id/disable", d.handleDisableLifecycleWorkflow)
-	g.DELETE("/api/admin/lifecycle_workflows/:workflow_id", d.handleDeleteLifecycleWorkflow)
-	g.POST("/api/admin/lifecycle_workflows/:workflow_id/dry_run", d.handleDryRunLifecycleWorkflow)
-	g.GET("/api/admin/lifecycle_workflows/:workflow_id/runs", d.handleListLifecycleWorkflowRuns)
-	g.GET("/api/admin/lifecycle_workflow_runs/:run_id", d.handleGetLifecycleWorkflowRun)
-	g.POST("/api/admin/lifecycle_workflow_runs/:run_id/retry", d.handleRetryLifecycleWorkflowRun)
+	g.GET("/api/admin/v1/lifecycle_workflows", d.handleListLifecycleWorkflows)
+	g.GET("/api/admin/v1/lifecycle_workflows/:workflow_id", d.handleGetLifecycleWorkflow)
+	g.POST("/api/admin/v1/lifecycle_workflows", d.handleCreateLifecycleWorkflow)
+	g.PUT("/api/admin/v1/lifecycle_workflows/:workflow_id", d.handleUpdateLifecycleWorkflow)
+	g.POST("/api/admin/v1/lifecycle_workflows/:workflow_id/enable", d.handleEnableLifecycleWorkflow)
+	g.POST("/api/admin/v1/lifecycle_workflows/:workflow_id/disable", d.handleDisableLifecycleWorkflow)
+	g.DELETE("/api/admin/v1/lifecycle_workflows/:workflow_id", d.handleDeleteLifecycleWorkflow)
+	g.POST("/api/admin/v1/lifecycle_workflows/:workflow_id/dry_run", d.handleDryRunLifecycleWorkflow)
+	g.GET("/api/admin/v1/lifecycle_workflows/:workflow_id/runs", d.handleListLifecycleWorkflowRuns)
+	g.GET("/api/admin/v1/lifecycle_workflow_runs/:run_id", d.handleGetLifecycleWorkflowRun)
+	g.POST("/api/admin/v1/lifecycle_workflow_runs/:run_id/retry", d.handleRetryLifecycleWorkflowRun)
 }

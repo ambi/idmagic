@@ -64,7 +64,7 @@ describe('AdminIdentityProvidersPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     await screen.findByText(t.empty)
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/admin/identity-providers/google'),
+      expect.stringContaining('/api/admin/v1/identity-providers/google'),
       expect.objectContaining({ method: 'DELETE' }),
     )
   })
@@ -92,7 +92,7 @@ describe('AdminIdentityProvidersPage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: t.deleteConfirmButton }))
     await screen.findByText(t.empty)
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining('/api/admin/identity-providers/google'),
+      expect.stringContaining('/api/admin/v1/identity-providers/google'),
       expect.objectContaining({ method: 'DELETE' }),
     )
   })

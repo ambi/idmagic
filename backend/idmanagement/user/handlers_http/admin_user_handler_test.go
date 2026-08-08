@@ -31,7 +31,7 @@ import (
 
 func TestAdminUserAPIRequiresAdminRole(t *testing.T) {
 	e, _ := newAdminUserHandler(t)
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "regular")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -42,7 +42,7 @@ func TestAdminUserAPIRequiresAdminRole(t *testing.T) {
 
 func TestAdminUserAPIIsAvailableUnderAPIPath(t *testing.T) {
 	e, _ := newAdminUserHandler(t)
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -55,7 +55,7 @@ func TestAdminUserAPICreatesAndDisablesUser(t *testing.T) {
 	e, repo := newAdminUserHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
 		"preferred_username": "bob",
 		"password":           "initial-password-9182",
 		"email":              "bob@example.com",
@@ -78,7 +78,7 @@ func TestAdminUserAPICreatesAndDisablesUser(t *testing.T) {
 	}
 
 	disable := adminJSONRequest(
-		t, e, http.MethodPost, "/api/admin/users/"+created.ID+"/disable", csrf, cookie, nil,
+		t, e, http.MethodPost, "/api/admin/v1/users/"+created.ID+"/disable", csrf, cookie, nil,
 	)
 	if disable.Code != http.StatusNoContent {
 		t.Fatalf("disable status=%d body=%s", disable.Code, disable.Body.String())
@@ -104,7 +104,7 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	e, repo := newAdminUserHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
 		"preferred_username": "carol",
 		"password":           "initial-password-9182",
 		"email":              "carol@example.com",
@@ -120,7 +120,7 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	}
 
 	set := adminJSONRequest(t, e, http.MethodPost,
-		"/api/admin/users/"+created.ID+"/required_actions", csrf, cookie,
+		"/api/admin/v1/users/"+created.ID+"/required_actions", csrf, cookie,
 		map[string]any{"action": "update_password"})
 	if set.Code != http.StatusOK {
 		t.Fatalf("set status=%d body=%s", set.Code, set.Body.String())
@@ -143,14 +143,14 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	}
 
 	bad := adminJSONRequest(t, e, http.MethodPost,
-		"/api/admin/users/"+created.ID+"/required_actions", csrf, cookie,
+		"/api/admin/v1/users/"+created.ID+"/required_actions", csrf, cookie,
 		map[string]any{"action": "teleport"})
 	if bad.Code != http.StatusBadRequest {
 		t.Fatalf("invalid action status=%d body=%s", bad.Code, bad.Body.String())
 	}
 
 	cleared := adminJSONRequest(t, e, http.MethodDelete,
-		"/api/admin/users/"+created.ID+"/required_actions/update_password", csrf, cookie, nil)
+		"/api/admin/v1/users/"+created.ID+"/required_actions/update_password", csrf, cookie, nil)
 	if cleared.Code != http.StatusOK {
 		t.Fatalf("clear status=%d body=%s", cleared.Code, cleared.Body.String())
 	}
@@ -167,7 +167,7 @@ func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
 	e, repo := newAdminUserHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
 		"preferred_username": "alice",
 		"password":           "initial-password-9182",
 		"email":              "alice@example.com",
@@ -185,7 +185,7 @@ func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
 
 	// purge=true で完全削除 (anonymize cascade) パスを検証する。既定 DELETE は
 	// soft-delete で、その挙動は TestAdminUserAPISoftDeletesAndRestores が検証する。
-	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.ID+"?purge=true", csrf, cookie,
+	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/"+created.ID+"?purge=true", csrf, cookie,
 		map[string]any{"reason": "leaving company"})
 	if del.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d body=%s", del.Code, del.Body.String())
@@ -207,7 +207,7 @@ func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
 	}
 
 	// Listing no longer shows the user.
-	list := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users", http.NoBody)
+	list := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users", http.NoBody)
 	list.Header.Set("X-Demo-Sub", "admin")
 	listResp := httptest.NewRecorder()
 	e.ServeHTTP(listResp, list)
@@ -216,7 +216,7 @@ func TestAdminUserAPIDeletesUserWithCascade(t *testing.T) {
 	}
 
 	// Idempotent.
-	again := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.ID+"?purge=true", csrf, cookie, nil)
+	again := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/"+created.ID+"?purge=true", csrf, cookie, nil)
 	if again.Code != http.StatusNoContent {
 		t.Fatalf("idempotent delete status=%d body=%s", again.Code, again.Body.String())
 	}
@@ -226,7 +226,7 @@ func TestAdminUserAPISoftDeletesAndRestores(t *testing.T) {
 	e, repo := newAdminUserHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users", csrf, cookie, map[string]any{
 		"preferred_username": "alice",
 		"password":           "initial-password-9182",
 		"email":              "alice@example.com",
@@ -243,7 +243,7 @@ func TestAdminUserAPISoftDeletesAndRestores(t *testing.T) {
 	}
 
 	// 既定 DELETE は soft-delete: PII は温存され status は pending_deletion。
-	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/"+created.ID, csrf, cookie,
+	del := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/"+created.ID, csrf, cookie,
 		map[string]any{"reason": "maybe leaving"})
 	if del.Code != http.StatusNoContent {
 		t.Fatalf("soft-delete status=%d body=%s", del.Code, del.Body.String())
@@ -254,7 +254,7 @@ func TestAdminUserAPISoftDeletesAndRestores(t *testing.T) {
 	}
 
 	// 復元: status は Active に戻り、PII は温存されたまま。
-	restore := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users/"+created.ID+"/restore", csrf, cookie, nil)
+	restore := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users/"+created.ID+"/restore", csrf, cookie, nil)
 	if restore.Code != http.StatusOK {
 		t.Fatalf("restore status=%d body=%s", restore.Code, restore.Body.String())
 	}
@@ -267,7 +267,7 @@ func TestAdminUserAPISoftDeletesAndRestores(t *testing.T) {
 func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
 	e, _ := newAdminUserHandler(t)
 	csrf, cookie := adminCSRF(t, e)
-	resp := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/users/admin", csrf, cookie, nil)
+	resp := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/admin", csrf, cookie, nil)
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}

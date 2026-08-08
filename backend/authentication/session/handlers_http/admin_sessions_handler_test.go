@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL interfaces "ListSessions"/"RevokeSession"/"RevokeUserSessions" (admin, wi-28 T007,
-// ADR-127 決定9) を /api/admin/users/{sub}/sessions 経由で検証する。
+// ADR-127 決定9) を /api/admin/v1/users/{sub}/sessions 経由で検証する。
 
 import (
 	"context"
@@ -143,7 +143,7 @@ func TestAdminListSessionsReturnsTargetUserSessions(t *testing.T) {
 	f.seedSession(t, "s2", "bob", base)
 
 	rec := httptest.NewRecorder()
-	f.e.ServeHTTP(rec, adminRequest(http.MethodGet, "/api/admin/users/alice/sessions"))
+	f.e.ServeHTTP(rec, adminRequest(http.MethodGet, "/api/admin/v1/users/alice/sessions"))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -161,7 +161,7 @@ func TestAdminRevokeSessionCascadesToRefreshTokens(t *testing.T) {
 	f.seedSession(t, "s1", "alice", base)
 	f.seedRefreshToken(t, "s1", "web-app")
 
-	req := adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/users/alice/sessions/s1/revoke")
+	req := adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/v1/users/alice/sessions/s1/revoke")
 	rec := httptest.NewRecorder()
 	f.e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNoContent {
@@ -183,7 +183,7 @@ func TestAdminRevokeSessionRejectsMismatchedUser(t *testing.T) {
 
 	// bob という URL に対して alice のセッション id を指定しても 404 になる。
 	rec := httptest.NewRecorder()
-	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/users/bob/sessions/s1/revoke"))
+	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/v1/users/bob/sessions/s1/revoke"))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -200,7 +200,7 @@ func TestAdminRevokeAllSessionsRevokesEveryTargetSession(t *testing.T) {
 	f.seedSession(t, "s3", "bob", base)
 
 	rec := httptest.NewRecorder()
-	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/users/alice/sessions/revoke_all"))
+	f.e.ServeHTTP(rec, adminMutationRequest(t, f.e, http.MethodPost, "/api/admin/v1/users/alice/sessions/revoke_all"))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -220,7 +220,7 @@ func TestAdminSessionEndpointsRequireAdminRole(t *testing.T) {
 	base := time.Now().UTC().Truncate(time.Second)
 	f.seedSession(t, "s1", "alice", base)
 
-	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/alice/sessions", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users/alice/sessions", http.NoBody)
 	req.Header.Set("X-Demo-Sub", "alice")
 	rec := httptest.NewRecorder()
 	f.e.ServeHTTP(rec, req)

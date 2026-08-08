@@ -300,7 +300,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/data-keys/health
+        path: /api/admin/v1/data-keys/health
 authorization:
   resources:
     DataKeyDirectory:

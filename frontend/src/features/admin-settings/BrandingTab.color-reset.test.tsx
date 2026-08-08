@@ -44,7 +44,7 @@ describe('BrandingTab color reset', () => {
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
     expect((fetch as any).mock.calls[1]).toEqual([
-      '/api/admin/tenant/branding',
+      '/api/admin/v1/tenant/branding',
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({

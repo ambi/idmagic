@@ -95,7 +95,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	e := newAdminLifecycleWorkflowHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	group := adminJSONRequest(t, e, "/api/admin/groups", csrf, cookie, map[string]any{"name": "engineering"})
+	group := adminJSONRequest(t, e, "/api/admin/v1/groups", csrf, cookie, map[string]any{"name": "engineering"})
 	if group.Code != http.StatusCreated {
 		t.Fatalf("create group status=%d body=%s", group.Code, group.Body.String())
 	}
@@ -105,11 +105,11 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	if err := json.Unmarshal(group.Body.Bytes(), &createdGroup); err != nil {
 		t.Fatal(err)
 	}
-	if add := adminJSONRequest(t, e, "/api/admin/groups/"+createdGroup.ID+"/members/alice", csrf, cookie, nil); add.Code != http.StatusNoContent {
+	if add := adminJSONRequest(t, e, "/api/admin/v1/groups/"+createdGroup.ID+"/members/alice", csrf, cookie, nil); add.Code != http.StatusNoContent {
 		t.Fatalf("add member status=%d body=%s", add.Code, add.Body.String())
 	}
 
-	create := adminJSONRequest(t, e, "/api/admin/lifecycle_workflows", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, "/api/admin/v1/lifecycle_workflows", csrf, cookie, map[string]any{
 		"name":    "Joiner",
 		"trigger": map[string]any{"kind": "user_created"},
 		"actions": []map[string]any{{"kind": "add_group_member", "group_id": createdGroup.ID}},
@@ -124,7 +124,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dryRun := adminJSONRequest(t, e, "/api/admin/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "alice"})
+	dryRun := adminJSONRequest(t, e, "/api/admin/v1/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "alice"})
 	if dryRun.Code != http.StatusOK {
 		t.Fatalf("dry_run status=%d body=%s", dryRun.Code, dryRun.Body.String())
 	}
@@ -142,7 +142,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	}
 
 	// alice's membership must be untouched by the dry-run.
-	groupsRequest := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/alice/groups", http.NoBody)
+	groupsRequest := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users/alice/groups", http.NoBody)
 	groupsRequest.Header.Set("X-Demo-Sub", "admin")
 	groupsResponse := httptest.NewRecorder()
 	e.ServeHTTP(groupsResponse, groupsRequest)
@@ -161,7 +161,7 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 		t.Fatalf("dry-run must not mutate membership: groups=%#v", view.Groups)
 	}
 
-	missingUser := adminJSONRequest(t, e, "/api/admin/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "no-such-user"})
+	missingUser := adminJSONRequest(t, e, "/api/admin/v1/lifecycle_workflows/"+createdWorkflow.ID+"/dry_run", csrf, cookie, map[string]any{"target_user_id": "no-such-user"})
 	if missingUser.Code != http.StatusBadRequest {
 		t.Fatalf("dry_run for missing user status=%d body=%s", missingUser.Code, missingUser.Body.String())
 	}

@@ -160,7 +160,7 @@ func adminRequest(t *testing.T, method, path string, body any) *http.Request {
 func TestCreateAdminInitialStatusIsDisabled(t *testing.T) {
 	e, _ := newAdminServer(t, nil)
 	response := httptest.NewRecorder()
-	e.ServeHTTP(response, adminRequest(t, http.MethodPost, "/api/admin/identity-providers", map[string]any{
+	e.ServeHTTP(response, adminRequest(t, http.MethodPost, "/api/admin/v1/identity-providers", map[string]any{
 		"display_name": "Google", "protocol": "oidc", "issuer": "https://accounts.example.com",
 		"client_id": "client-1", "authorization_endpoint": "https://accounts.example.com/authorize",
 		"token_endpoint": "https://accounts.example.com/token", "jwks_uri": "https://accounts.example.com/jwks",
@@ -204,7 +204,7 @@ func TestUpdateAdminDegradesOnlyOnTrustSourceChange(t *testing.T) {
 		"claim_mapping": map[string]string{"subject": "sub", "username": "email"}, "linking_policy": "none",
 	}
 	response := httptest.NewRecorder()
-	e.ServeHTTP(response, adminRequest(t, http.MethodPut, "/api/admin/identity-providers/google", body))
+	e.ServeHTTP(response, adminRequest(t, http.MethodPut, "/api/admin/v1/identity-providers/google", body))
 	var updated federationdomain.IdentityProviderConnection
 	if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
 		t.Fatalf("status=%d body=%s err=%v", response.Code, response.Body.String(), err)
@@ -215,7 +215,7 @@ func TestUpdateAdminDegradesOnlyOnTrustSourceChange(t *testing.T) {
 
 	body["issuer"] = "https://other.example.com"
 	response = httptest.NewRecorder()
-	e.ServeHTTP(response, adminRequest(t, http.MethodPut, "/api/admin/identity-providers/google", body))
+	e.ServeHTTP(response, adminRequest(t, http.MethodPut, "/api/admin/v1/identity-providers/google", body))
 	if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
 		t.Fatalf("status=%d body=%s err=%v", response.Code, response.Body.String(), err)
 	}
@@ -242,7 +242,7 @@ func TestDeleteAdminSucceedsForActiveConnection(t *testing.T) {
 		t.Fatal(err)
 	}
 	response := httptest.NewRecorder()
-	e.ServeHTTP(response, adminRequest(t, http.MethodDelete, "/api/admin/identity-providers/google", nil))
+	e.ServeHTTP(response, adminRequest(t, http.MethodDelete, "/api/admin/v1/identity-providers/google", nil))
 	if response.Code != http.StatusNoContent {
 		t.Fatalf("status=%d body=%s, want 204 without a status guard", response.Code, response.Body.String())
 	}
@@ -272,7 +272,7 @@ func TestTestAdminReportsStructuredReachabilityResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	response := httptest.NewRecorder()
-	e.ServeHTTP(response, adminRequest(t, http.MethodPost, "/api/admin/identity-providers/google/test", nil))
+	e.ServeHTTP(response, adminRequest(t, http.MethodPost, "/api/admin/v1/identity-providers/google/test", nil))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}

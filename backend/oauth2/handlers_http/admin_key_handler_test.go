@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "管理者は自テナントの署名鍵を参照し、admin / system_admin が
-// 自テナントの鍵をローテートできる (per-tenant)" を /api/admin/keys 経由で検証する。
+// 自テナントの鍵をローテートできる (per-tenant)" を /api/admin/v1/keys 経由で検証する。
 // - AdminKeysRead: admin / system_admin どちらでも自テナントの List/Get 可能
 // - TenantKeysRotate: admin / system_admin が自テナントに対して実行できる
 
@@ -117,7 +117,7 @@ func passwordResetContextCSRF(t *testing.T, e *echo.Echo, path string) (string, 
 func TestAdminKeysListRequiresAdminRole(t *testing.T) {
 	plain := keyAdminUser("user_alice", "acme", []string{})
 	e, _, _ := newKeyAdminServer(t, plain)
-	rec := getAdminKeys(e, "/realms/acme/api/admin/keys")
+	rec := getAdminKeys(e, "/realms/acme/api/admin/v1/keys")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -135,7 +135,7 @@ func TestAdminKeysListReturnsAllKeys(t *testing.T) {
 	if _, err := keyStore.Rotate(acmeCtx, time.Now().UTC(), 7*24*time.Hour); err != nil {
 		t.Fatal(err)
 	}
-	rec := getAdminKeys(e, "/realms/acme/api/admin/keys")
+	rec := getAdminKeys(e, "/realms/acme/api/admin/v1/keys")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -165,7 +165,7 @@ func TestAdminKeysListReturnsAllKeys(t *testing.T) {
 func TestAdminKeysGetUnknownKidReturns404(t *testing.T) {
 	user := keyAdminUser("user_admin", "acme", []string{"admin"})
 	e, _, _ := newKeyAdminServer(t, user)
-	rec := getAdminKeys(e, "/realms/acme/api/admin/keys/unknown-kid")
+	rec := getAdminKeys(e, "/realms/acme/api/admin/v1/keys/unknown-kid")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -175,7 +175,7 @@ func TestAdminKeysRotateAllowsTenantAdmin(t *testing.T) {
 	// per-tenant 鍵のため、admin は自テナントの鍵を回転できる。
 	admin := keyAdminUser("user_admin", tenancydomain.DefaultTenantID, []string{"admin"})
 	e, _, _ := newKeyAdminServer(t, admin)
-	rec := postRotate(t, e, "/realms/default/api/admin/keys/rotate")
+	rec := postRotate(t, e, "/realms/default/api/admin/v1/keys/rotate")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -185,7 +185,7 @@ func TestAdminKeysRotateRejectsNonAdmin(t *testing.T) {
 	// admin / system_admin いずれのロールも持たないユーザーは回転できない。
 	plain := keyAdminUser("user_alice", tenancydomain.DefaultTenantID, []string{})
 	e, _, _ := newKeyAdminServer(t, plain)
-	rec := postRotate(t, e, "/realms/default/api/admin/keys/rotate")
+	rec := postRotate(t, e, "/realms/default/api/admin/v1/keys/rotate")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -200,7 +200,7 @@ func TestAdminKeysRotateRejectsSystemAdminOutsideDefaultPath(t *testing.T) {
 	// 期待される挙動は (1) が先に発火するため 401。
 	sysAdmin := keyAdminUser("user_sys", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	e, _, _ := newKeyAdminServer(t, sysAdmin)
-	rec := postRotate(t, e, "/realms/acme/api/admin/keys/rotate")
+	rec := postRotate(t, e, "/realms/acme/api/admin/v1/keys/rotate")
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -213,7 +213,7 @@ func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rec := postRotate(t, e, "/realms/default/api/admin/keys/rotate")
+	rec := postRotate(t, e, "/realms/default/api/admin/v1/keys/rotate")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -246,7 +246,7 @@ func TestAdminKeysRotateSucceedsAndEmitsEvent(t *testing.T) {
 func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 	sysAdmin := keyAdminUser("user_sys", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	e, _, _ := newKeyAdminServer(t, sysAdmin)
-	rec := getAdminKeys(e, "/realms/default/api/admin/keys/health")
+	rec := getAdminKeys(e, "/realms/default/api/admin/v1/keys/health")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -269,7 +269,7 @@ func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 func TestAdminKeysHealthRejectsPlainAdmin(t *testing.T) {
 	admin := keyAdminUser("user_admin", tenancydomain.DefaultTenantID, []string{"admin"})
 	e, _, _ := newKeyAdminServer(t, admin)
-	rec := getAdminKeys(e, "/realms/default/api/admin/keys/health")
+	rec := getAdminKeys(e, "/realms/default/api/admin/v1/keys/health")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}

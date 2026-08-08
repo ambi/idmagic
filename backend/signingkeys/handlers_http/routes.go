@@ -23,11 +23,11 @@ var jwksCache sync.Map
 
 func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/jwks", d.handleJWKS)
-	g.GET("/api/admin/keys", d.handleListAdminKeys)
-	g.GET("/api/admin/keys/health", d.handleListTenantKeyHealth)
-	g.GET("/api/admin/keys/:kid", d.handleGetAdminKey)
-	g.POST("/api/admin/keys/rotate", d.handleRotateTenantKey)
-	g.POST("/api/admin/keys/:kid/disable", d.handleDisableTenantKey)
+	g.GET("/api/admin/v1/keys", d.handleListAdminKeys)
+	g.GET("/api/admin/v1/keys/health", d.handleListTenantKeyHealth)
+	g.GET("/api/admin/v1/keys/:kid", d.handleGetAdminKey)
+	g.POST("/api/admin/v1/keys/rotate", d.handleRotateTenantKey)
+	g.POST("/api/admin/v1/keys/:kid/disable", d.handleDisableTenantKey)
 }
 
 func (d Deps) handleJWKS(c *echo.Context) error {

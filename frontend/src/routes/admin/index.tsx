@@ -13,10 +13,10 @@ export const Route = createFileRoute('/admin/')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [users, clients, consents, settings] = await Promise.all([
-      request<AdminUserListResponse>('/api/admin/users'),
-      request<AdminOAuth2ClientListResponse>('/api/admin/clients'),
-      request<AdminConsentListResponse>('/api/admin/consents'),
-      request<AdminSettings>('/api/admin/settings'),
+      request<AdminUserListResponse>('/api/admin/v1/users'),
+      request<AdminOAuth2ClientListResponse>('/api/admin/v1/clients'),
+      request<AdminConsentListResponse>('/api/admin/v1/consents'),
+      request<AdminSettings>('/api/admin/v1/settings'),
     ])
     const activeUserCount = users.users.filter((u) => !u.disabled_at).length
     return {

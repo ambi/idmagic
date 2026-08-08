@@ -234,7 +234,7 @@ func TestAdminResetUserAuthenticatorsFullResetForcesReenrollment(t *testing.T) {
 	csrf := adminCSRFToken(t, adminClient, srv)
 
 	resetResult := postJSON[map[string]any](
-		t, adminClient, srv.URL+"/realms/default/api/admin/users/user_alice/authenticator-reset", csrf,
+		t, adminClient, srv.URL+"/realms/default/api/admin/v1/users/user_alice/authenticator-reset", csrf,
 		map[string]any{"targets": []string{"totp", "recovery_code"}},
 	)
 	if enrolled, _ := resetResult["mfa_enrolled"].(bool); enrolled {
@@ -295,7 +295,7 @@ func TestAdminResetUserAuthenticatorsPartialResetKeepsLoginWorking(t *testing.T)
 	csrf := adminCSRFToken(t, adminClient, srv)
 
 	resetResult := postJSON[map[string]any](
-		t, adminClient, srv.URL+"/realms/default/api/admin/users/user_alice/authenticator-reset", csrf,
+		t, adminClient, srv.URL+"/realms/default/api/admin/v1/users/user_alice/authenticator-reset", csrf,
 		map[string]any{"targets": []string{"recovery_code"}},
 	)
 	if enrolled, _ := resetResult["mfa_enrolled"].(bool); !enrolled {
@@ -368,7 +368,7 @@ func TestAdminResetUserAuthenticatorsRejectsNonAdmin(t *testing.T) {
 
 	csrf := adminCSRFToken(t, aliceClient, srv)
 	payload := mustJSONBytes(t, map[string]any{"targets": []string{"totp"}})
-	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/admin/users/user_alice/authenticator-reset", bytes.NewReader(payload))
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/admin/v1/users/user_alice/authenticator-reset", bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://test")
 	req.Header.Set("X-Csrf-Token", csrf)

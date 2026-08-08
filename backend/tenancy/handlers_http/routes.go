@@ -38,26 +38,26 @@ type Deps struct {
 // (GetTenantBranding / GetTenantBrandingAsset) は未認証の login 画面等が読むため
 // public とする (wi-89, ADR-096)。
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/settings", d.handleGetAdminSettings)
-	g.GET("/api/admin/integration-endpoints", d.handleGetAdminIntegrationEndpoints)
-	g.PATCH("/api/admin/settings", d.handleUpdateAdminSettings)
-	g.GET("/api/admin/tenant/user_attribute_schema", d.handleGetUserAttributeSchema)
-	g.PUT("/api/admin/tenant/user_attribute_schema", d.handleUpdateUserAttributeSchema)
+	g.GET("/api/admin/v1/settings", d.handleGetAdminSettings)
+	g.GET("/api/admin/v1/integration-endpoints", d.handleGetAdminIntegrationEndpoints)
+	g.PATCH("/api/admin/v1/settings", d.handleUpdateAdminSettings)
+	g.GET("/api/admin/v1/tenant/user_attribute_schema", d.handleGetUserAttributeSchema)
+	g.PUT("/api/admin/v1/tenant/user_attribute_schema", d.handleUpdateUserAttributeSchema)
 	g.GET("/api/branding", d.handleGetBranding)
-	g.PUT("/api/admin/tenant/branding", d.handleUpdateBranding)
-	g.POST("/api/admin/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)
-	g.DELETE("/api/admin/tenant/branding/assets/:kind", d.handleDeleteBrandingAsset)
+	g.PUT("/api/admin/v1/tenant/branding", d.handleUpdateBranding)
+	g.POST("/api/admin/v1/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)
+	g.DELETE("/api/admin/v1/tenant/branding/assets/:kind", d.handleDeleteBrandingAsset)
 	g.GET("/tenant-branding-assets/:kind/:id", d.handleGetBrandingAsset)
-	g.GET("/api/admin/tenant/notification_templates", d.handleListNotificationTemplates)
-	g.GET("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleGetNotificationTemplate)
-	g.PUT("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleUpdateNotificationTemplate)
-	g.DELETE("/api/admin/tenant/notification_templates/:template_key/:locale", d.handleResetNotificationTemplate)
-	g.POST("/api/admin/tenant/notification_templates/:template_key/:locale/preview", d.handlePreviewNotificationTemplate)
-	g.POST("/api/admin/tenant/notification_templates/:template_key/:locale/test", d.handleSendTestNotification)
+	g.GET("/api/admin/v1/tenant/notification_templates", d.handleListNotificationTemplates)
+	g.GET("/api/admin/v1/tenant/notification_templates/:template_key/:locale", d.handleGetNotificationTemplate)
+	g.PUT("/api/admin/v1/tenant/notification_templates/:template_key/:locale", d.handleUpdateNotificationTemplate)
+	g.DELETE("/api/admin/v1/tenant/notification_templates/:template_key/:locale", d.handleResetNotificationTemplate)
+	g.POST("/api/admin/v1/tenant/notification_templates/:template_key/:locale/preview", d.handlePreviewNotificationTemplate)
+	g.POST("/api/admin/v1/tenant/notification_templates/:template_key/:locale/test", d.handleSendTestNotification)
 }
 
 // RegisterControlPlaneRoutes はテナント CRUD (system_admin 専用のテナント横断操作)
-// を登録する。パスは他の admin API と揃えて `/api/admin/tenants` とする (dev proxy /
+// を登録する。パスは他の admin API と揃えて `/api/admin/v1/tenants` とする (dev proxy /
 // リバースプロキシは `/api` 配下を IdP へ転送する)。共有のテナント汎用グループ
 // (/realms/:tenant_id) にそのまま登録し、default テナントへの限定は
 // requireSystemAdmin (user.TenantID == DefaultTenantID) が担う (ADR-032)。
@@ -65,12 +65,12 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 // `:tenant_id` (リクエスト自身の realm) とは別物 — 同名にすると echo の
 // Context.Param が外側の値を返してしまうため名前を分けている。
 func RegisterControlPlaneRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/tenants", d.handleListTenants)
-	g.GET("/api/admin/tenants/:target_tenant_id", d.handleGetTenant)
-	g.POST("/api/admin/tenants", d.handleCreateTenant)
-	g.PATCH("/api/admin/tenants/:target_tenant_id", d.handleUpdateTenant)
-	g.PUT("/api/admin/tenants/:target_tenant_id/endpoint_style", d.handleSetTenantEndpointStyle)
-	g.POST("/api/admin/tenants/:target_tenant_id/disable", d.handleDisableTenant)
-	g.POST("/api/admin/tenants/:target_tenant_id/enable", d.handleEnableTenant)
-	g.PUT("/api/admin/tenants/:target_tenant_id/quota", d.handleUpdateTenantQuota)
+	g.GET("/api/admin/v1/tenants", d.handleListTenants)
+	g.GET("/api/admin/v1/tenants/:target_tenant_id", d.handleGetTenant)
+	g.POST("/api/admin/v1/tenants", d.handleCreateTenant)
+	g.PATCH("/api/admin/v1/tenants/:target_tenant_id", d.handleUpdateTenant)
+	g.PUT("/api/admin/v1/tenants/:target_tenant_id/endpoint_style", d.handleSetTenantEndpointStyle)
+	g.POST("/api/admin/v1/tenants/:target_tenant_id/disable", d.handleDisableTenant)
+	g.POST("/api/admin/v1/tenants/:target_tenant_id/enable", d.handleEnableTenant)
+	g.PUT("/api/admin/v1/tenants/:target_tenant_id/quota", d.handleUpdateTenantQuota)
 }

@@ -5,7 +5,7 @@ import { PageMarker } from '../../-page'
 
 export const Route = createFileRoute('/account/email/verify')({
   loader: async ({ location }) => {
-    const ctx = await request<{ csrf_token: string }>('/api/account/email/verify_context')
+    const ctx = await request<{ csrf_token: string }>('/api/account/v1/email/verify_context')
     const token = new URLSearchParams(location.searchStr).get('token') ?? ''
     return { csrfToken: ctx.csrf_token, token }
   },

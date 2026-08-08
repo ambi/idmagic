@@ -22,7 +22,7 @@ describe('AdminApplicationCreatePage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/applications') && init?.method === 'POST') {
+        if (url.includes('/api/admin/v1/applications') && init?.method === 'POST') {
           return Promise.resolve(
             response(201, {
               application: { id: 'app-2', name: 'New App' },

@@ -49,14 +49,14 @@ export type UserImportResult = {
   errors?: UserImportRowError[]
 }
 
-// POST /api/admin/users/imports の応答。ジョブはまだ処理されておらず result は含まない。
+// POST /api/admin/v1/users/imports の応答。ジョブはまだ処理されておらず result は含まない。
 export type UserImportJobSummary = {
   id: string
   status: UserImportJobStatus
   mode: UserImportMode
 }
 
-// GET /api/admin/users/imports/{id} の応答。result はジョブが終端状態になるまで未設定。
+// GET /api/admin/v1/users/imports/{id} の応答。result はジョブが終端状態になるまで未設定。
 export type UserImportJob = {
   id: string
   status: UserImportJobStatus

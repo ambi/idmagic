@@ -24,22 +24,22 @@ export type UpdateAccountProfileInput = {
 }
 
 export async function getAccountProfile(): Promise<AccountProfile> {
-  return request<AccountProfile>('/api/account/profile')
+  return request<AccountProfile>('/api/account/v1/profile')
 }
 
 export async function updateAccountProfile(
   csrfToken: string,
   input: UpdateAccountProfileInput,
 ): Promise<AccountProfile> {
-  return request('/api/account/profile', adminRequest(csrfToken, 'PATCH', input))
+  return request('/api/account/v1/profile', adminRequest(csrfToken, 'PATCH', input))
 }
 
 export async function getAccountSummary(): Promise<AccountSummary> {
-  return request<AccountSummary>('/api/account/summary')
+  return request<AccountSummary>('/api/account/v1/summary')
 }
 
 export async function requestEmailChange(csrfToken: string, newEmail: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/email/change_request'), {
+  const response = await fetch(tenantURL('/api/account/v1/email/change_request'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ new_email: newEmail }),
@@ -52,16 +52,16 @@ export async function requestEmailChange(csrfToken: string, newEmail: string): P
 }
 
 export async function exportAccountData(): Promise<unknown> {
-  return request<unknown>('/api/account/data_export')
+  return request<unknown>('/api/account/v1/data_export')
 }
 
 export async function listAccountConsents(): Promise<AccountConsent[]> {
-  return (await request<{ consents: AccountConsent[] }>('/api/account/consents')).consents
+  return (await request<{ consents: AccountConsent[] }>('/api/account/v1/consents')).consents
 }
 
 export async function revokeAccountConsent(csrfToken: string, clientId: string): Promise<void> {
   const response = await fetch(
-    tenantURL(`/api/account/consents/${encodeURIComponent(clientId)}/revoke`),
+    tenantURL(`/api/account/v1/consents/${encodeURIComponent(clientId)}/revoke`),
     {
       method: 'POST',
       headers: { 'X-CSRF-Token': csrfToken },
@@ -75,7 +75,7 @@ export async function revokeAccountConsent(csrfToken: string, clientId: string):
 }
 
 export async function getAccountSecurity(): Promise<AccountSecurity> {
-  return request<AccountSecurity>('/api/account/security')
+  return request<AccountSecurity>('/api/account/v1/security')
 }
 
 export type LinkedIdentity = {
@@ -86,13 +86,15 @@ export type LinkedIdentity = {
 }
 
 export async function listLinkedIdentities(): Promise<LinkedIdentity[]> {
-  const response = await request<{ identities: LinkedIdentity[] }>('/api/account/linked-identities')
+  const response = await request<{ identities: LinkedIdentity[] }>(
+    '/api/account/v1/linked-identities',
+  )
   return response.identities ?? []
 }
 
 export async function unlinkIdentity(csrfToken: string, providerId: string): Promise<void> {
   const response = await fetch(
-    tenantURL(`/api/account/linked-identities/${encodeURIComponent(providerId)}`),
+    tenantURL(`/api/account/v1/linked-identities/${encodeURIComponent(providerId)}`),
     {
       method: 'DELETE',
       headers: { 'X-CSRF-Token': csrfToken },
@@ -106,17 +108,17 @@ export async function unlinkIdentity(csrfToken: string, providerId: string): Pro
 }
 
 export async function getSignInActivity(): Promise<AccountSignInActivity[]> {
-  return (await request<{ activities: AccountSignInActivity[] }>('/api/account/signin_activity'))
+  return (await request<{ activities: AccountSignInActivity[] }>('/api/account/v1/signin_activity'))
     .activities
 }
 
 export async function listAccountSessions(): Promise<AccountSession[]> {
-  return (await request<{ sessions: AccountSession[] }>('/api/account/sessions')).sessions
+  return (await request<{ sessions: AccountSession[] }>('/api/account/v1/sessions')).sessions
 }
 
 export async function revokeAccountSession(csrfToken: string, id: string): Promise<void> {
   const response = await fetch(
-    tenantURL(`/api/account/sessions/${encodeURIComponent(id)}/revoke`),
+    tenantURL(`/api/account/v1/sessions/${encodeURIComponent(id)}/revoke`),
     {
       method: 'POST',
       headers: { 'X-CSRF-Token': csrfToken },
@@ -130,7 +132,7 @@ export async function revokeAccountSession(csrfToken: string, id: string): Promi
 }
 
 export async function revokeOtherAccountSessions(csrfToken: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/sessions/revoke_others'), {
+  const response = await fetch(tenantURL('/api/account/v1/sessions/revoke_others'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -151,7 +153,7 @@ export function isStepUpRequired(cause: unknown): boolean {
 
 // step-up 再認証用の WebAuthn assertion challenge を取得し、パスキーで署名した結果を返す。
 async function stepUpWebAuthnAssertion(csrfToken: string): Promise<unknown> {
-  const response = await fetch(tenantURL('/api/account/step_up/webauthn/challenge'), {
+  const response = await fetch(tenantURL('/api/account/v1/step_up/webauthn/challenge'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -165,7 +167,7 @@ async function stepUpWebAuthnAssertion(csrfToken: string): Promise<unknown> {
 }
 
 export async function startStepUp(csrfToken: string): Promise<StepUpMethod[]> {
-  const response = await fetch(tenantURL('/api/account/step_up/start'), {
+  const response = await fetch(tenantURL('/api/account/v1/step_up/start'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -193,7 +195,7 @@ export async function completeStepUp(
     // totp / recovery_code はコード入力型。
     payload = { method, code: credential }
   }
-  const response = await fetch(tenantURL('/api/account/step_up/complete'), {
+  const response = await fetch(tenantURL('/api/account/v1/step_up/complete'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify(payload),
@@ -206,7 +208,7 @@ export async function completeStepUp(
 }
 
 export async function startTotpEnrollment(csrfToken: string): Promise<TotpEnrollmentStart> {
-  const response = await fetch(tenantURL('/api/account/mfa/totp/enroll/start'), {
+  const response = await fetch(tenantURL('/api/account/v1/mfa/totp/enroll/start'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -222,7 +224,7 @@ export async function confirmTotpEnrollment(
   secret: string,
   code: string,
 ): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/mfa/totp/enroll/confirm'), {
+  const response = await fetch(tenantURL('/api/account/v1/mfa/totp/enroll/confirm'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ secret, code }),
@@ -235,7 +237,7 @@ export async function confirmTotpEnrollment(
 }
 
 export async function removeTotpFactor(csrfToken: string, code: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/mfa/totp/remove'), {
+  const response = await fetch(tenantURL('/api/account/v1/mfa/totp/remove'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ code }),
@@ -250,7 +252,7 @@ export async function removeTotpFactor(csrfToken: string, code: string): Promise
 // registerPasskey は登録 challenge を取得し、navigator.credentials.create で作成した
 // パスキーを attestation としてサーバーに登録する (wi-26 / ADR-087)。
 export async function registerPasskey(csrfToken: string, label?: string): Promise<void> {
-  const startResponse = await fetch(tenantURL('/api/account/mfa/webauthn/register/start'), {
+  const startResponse = await fetch(tenantURL('/api/account/v1/mfa/webauthn/register/start'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -261,7 +263,7 @@ export async function registerPasskey(csrfToken: string, label?: string): Promis
     throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
   }
   const attestation = await createPasskey((await startResponse.json()) as { publicKey: never })
-  const finishResponse = await fetch(tenantURL('/api/account/mfa/webauthn/register/finish'), {
+  const finishResponse = await fetch(tenantURL('/api/account/v1/mfa/webauthn/register/finish'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ attestation, label: label?.trim() ? label.trim() : undefined }),
@@ -274,7 +276,7 @@ export async function registerPasskey(csrfToken: string, label?: string): Promis
 }
 
 export async function removePasskey(csrfToken: string, credentialId: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/mfa/webauthn/remove'), {
+  const response = await fetch(tenantURL('/api/account/v1/mfa/webauthn/remove'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ credential_id: credentialId }),
@@ -292,7 +294,7 @@ export type RecoveryCodesResult = {
 }
 
 export async function generateRecoveryCodes(csrfToken: string): Promise<RecoveryCodesResult> {
-  const response = await fetch(tenantURL('/api/account/mfa/recovery-codes/generate'), {
+  const response = await fetch(tenantURL('/api/account/v1/mfa/recovery-codes/generate'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -304,7 +306,7 @@ export async function generateRecoveryCodes(csrfToken: string): Promise<Recovery
 }
 
 export async function revokeRecoveryCodes(csrfToken: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/mfa/recovery-codes/revoke'), {
+  const response = await fetch(tenantURL('/api/account/v1/mfa/recovery-codes/revoke'), {
     method: 'POST',
     headers: { 'X-CSRF-Token': csrfToken },
     credentials: 'same-origin',
@@ -316,7 +318,7 @@ export async function revokeRecoveryCodes(csrfToken: string): Promise<void> {
 }
 
 export async function confirmEmailChange(csrfToken: string, token: string): Promise<void> {
-  const response = await fetch(tenantURL('/api/account/email/verify'), {
+  const response = await fetch(tenantURL('/api/account/v1/email/verify'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
     body: JSON.stringify({ token }),
@@ -337,14 +339,14 @@ export type MyPortal = {
 
 export async function listMyApplications(): Promise<MyPortal> {
   const body = await request<{ applications: MyApplication[]; categories: PortalCategory[] }>(
-    '/api/account/applications',
+    '/api/account/v1/applications',
   )
   return { applications: body.applications, categories: body.categories ?? [] }
 }
 
 // 利用者ごとの手動並び順 (wi-70)。未保存なら空配列が返る。
 export async function getMyApplicationOrder(): Promise<string[]> {
-  return (await request<{ application_ids: string[] }>('/api/account/applications/order'))
+  return (await request<{ application_ids: string[] }>('/api/account/v1/applications/order'))
     .application_ids
 }
 
@@ -354,7 +356,7 @@ export async function reorderMyApplications(
 ): Promise<string[]> {
   return (
     await request<{ application_ids: string[] }>(
-      '/api/account/applications/order',
+      '/api/account/v1/applications/order',
       adminRequest(csrfToken, 'PUT', { application_ids: applicationIds }),
     )
   ).application_ids

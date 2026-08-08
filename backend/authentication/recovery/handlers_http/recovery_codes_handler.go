@@ -1,4 +1,4 @@
-// /api/account/mfa/recovery-codes/* — backup recovery code の self-service 生成・失効
+// /api/account/v1/mfa/recovery-codes/* — backup recovery code の self-service 生成・失効
 // (wi-26 / ADR-087)。生成は平文を一度だけ返し、DB には hash のみ保存する。生成・失効はいずれも
 // 高 sensitivity 操作として step-up 再認証 (ADR-043) を要求する。
 package handlers_http

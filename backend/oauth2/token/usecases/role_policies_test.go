@@ -62,7 +62,7 @@ func TestListRolePoliciesIncludesHTTPInterfaces(t *testing.T) {
 		permission.Action != spec.ActionAdminUserCreate ||
 		permission.Interfaces[0].Name != "CreateAdminUser" ||
 		permission.Interfaces[0].Method != "POST" ||
-		permission.Interfaces[0].Path != "/api/admin/users" {
+		permission.Interfaces[0].Path != "/api/admin/v1/users" {
 		t.Fatalf("unexpected interfaces: %+v", permission.Interfaces)
 	}
 }

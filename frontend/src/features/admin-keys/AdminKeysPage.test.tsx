@@ -84,7 +84,7 @@ describe('AdminKeysPage', () => {
 
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining(`/api/admin/keys/${inactiveKey.kid}/disable`),
+        expect.stringContaining(`/api/admin/v1/keys/${inactiveKey.kid}/disable`),
         expect.objectContaining({ method: 'POST' }),
       )
     })

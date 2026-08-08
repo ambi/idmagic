@@ -48,7 +48,7 @@ describe('AdminAuthorizationDetailTypeEditPage', () => {
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/authorization-detail-types/payment_initiation'),
+        expect.stringContaining('/api/admin/v1/authorization-detail-types/payment_initiation'),
         expect.objectContaining({ method: 'PATCH' }),
       ),
     )

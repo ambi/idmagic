@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "systemAdminがテナント横断でDEK健全性を一覧する"
-// (spec/contexts/data-keys.yaml) を /api/admin/data-keys/health 経由で検証する
+// (spec/contexts/data-keys.yaml) を /api/admin/v1/data-keys/health 経由で検証する
 // (wi-97 T007)。
 
 import (
@@ -68,7 +68,7 @@ func newDataKeyAdminServer(t *testing.T, actor *userdomain.User) *echo.Echo {
 func TestAdminDataKeysHealthListsBootstrappedTenants(t *testing.T) {
 	sysAdmin := keyAdminUser("user_sys", tenancydomain.DefaultTenantID, []string{"system_admin"})
 	e := newDataKeyAdminServer(t, sysAdmin)
-	rec := getAdminKeys(e, "/realms/default/api/admin/data-keys/health")
+	rec := getAdminKeys(e, "/realms/default/api/admin/v1/data-keys/health")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -90,7 +90,7 @@ func TestAdminDataKeysHealthListsBootstrappedTenants(t *testing.T) {
 func TestAdminDataKeysHealthRejectsPlainAdmin(t *testing.T) {
 	admin := keyAdminUser("user_admin", tenancydomain.DefaultTenantID, []string{"admin"})
 	e := newDataKeyAdminServer(t, admin)
-	rec := getAdminKeys(e, "/realms/default/api/admin/data-keys/health")
+	rec := getAdminKeys(e, "/realms/default/api/admin/v1/data-keys/health")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}

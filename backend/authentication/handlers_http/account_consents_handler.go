@@ -1,4 +1,4 @@
-// /api/account/consents — エンドユーザー自身の接続済みアプリ (Consent) の参照と取り消し
+// /api/account/v1/consents — エンドユーザー自身の接続済みアプリ (Consent) の参照と取り消し
 // (self-service, wi-21)。
 package handlers_http
 

@@ -92,7 +92,7 @@ func (s stubIntegrationAuthnResolver) Resolve(context.Context, authdomain.Header
 func TestAdminIntegrationEndpointsUseCanonicalPathIssuer(t *testing.T) {
 	e := integrationEndpointServer(t, tenantdomain.TenantEndpointStylePath)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/integration-endpoints", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/integration-endpoints", http.NoBody)
 	req.Host = "idp.example"
 	e.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -121,7 +121,7 @@ func TestAdminIntegrationEndpointsUseCanonicalPathIssuer(t *testing.T) {
 func TestAdminIntegrationEndpointsUseCanonicalSubdomainIssuer(t *testing.T) {
 	e := integrationEndpointServer(t, tenantdomain.TenantEndpointStyleSubdomain)
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/api/admin/integration-endpoints", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/v1/integration-endpoints", http.NoBody)
 	req.Host = "acme.idp.example"
 	req.Header.Set("X-Forwarded-Proto", "https")
 	e.ServeHTTP(rec, req)

@@ -227,7 +227,7 @@ describe('AccountProfileEditPage', () => {
       ),
     )
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/account/profile'),
+      expect.stringContaining('/api/account/v1/profile'),
       expect.objectContaining({ body: expect.stringContaining('Jiro Yamada') }),
     )
   })

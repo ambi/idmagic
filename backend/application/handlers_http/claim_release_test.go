@@ -12,7 +12,7 @@ func TestUpdateApplicationOidcConfig_RulesRoundtrip(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	created := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	created := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "OIDC App", "type": "oidc", "redirect_uris": []string{"https://oidc.example/callback"},
 		"client_type": "confidential", "token_endpoint_auth_method": "client_secret_post",
 	})
@@ -29,7 +29,7 @@ func TestUpdateApplicationOidcConfig_RulesRoundtrip(t *testing.T) {
 	}
 	appID := createdBody.Application.ID
 
-	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/oidc", csrf, cookie, map[string]any{
+	update := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+appID+"/oidc", csrf, cookie, map[string]any{
 		"rules": []map[string]any{
 			{"claim_type": "department", "source": "user_attribute", "source_key": "department"},
 		},
@@ -38,7 +38,7 @@ func TestUpdateApplicationOidcConfig_RulesRoundtrip(t *testing.T) {
 		t.Fatalf("update oidc config status=%d body=%s", update.Code, update.Body.String())
 	}
 
-	detail := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+appID, csrf, cookie, nil)
+	detail := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+appID, csrf, cookie, nil)
 	if detail.Code != http.StatusOK {
 		t.Fatalf("get application status=%d body=%s", detail.Code, detail.Body.String())
 	}
@@ -64,7 +64,7 @@ func TestUpdateApplicationOidcConfig_RejectsUndefinedAttributeSource(t *testing.
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	created := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	created := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "OIDC App", "type": "oidc", "redirect_uris": []string{"https://oidc.example/callback"},
 		"client_type": "confidential", "token_endpoint_auth_method": "client_secret_post",
 	})
@@ -81,7 +81,7 @@ func TestUpdateApplicationOidcConfig_RejectsUndefinedAttributeSource(t *testing.
 	}
 	appID := createdBody.Application.ID
 
-	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/oidc", csrf, cookie, map[string]any{
+	update := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+appID+"/oidc", csrf, cookie, map[string]any{
 		"rules": []map[string]any{
 			{"claim_type": "leak", "source": "user_attribute", "source_key": "totally_undefined_attribute"},
 		},
@@ -97,7 +97,7 @@ func TestUpdateApplicationWsFedConfig_RejectsReservedClaimType(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	created := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	created := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "WsFed App", "type": "wsfed", "wtrealm": "urn:wsfed:claim-release", "reply_urls": []string{"https://wsfed.example/reply"},
 	})
 	if created.Code != http.StatusCreated {
@@ -113,7 +113,7 @@ func TestUpdateApplicationWsFedConfig_RejectsReservedClaimType(t *testing.T) {
 	}
 	appID := createdBody.Application.ID
 
-	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/wsfed", csrf, cookie, map[string]any{
+	update := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+appID+"/wsfed", csrf, cookie, map[string]any{
 		"rules": []map[string]any{
 			{"claim_type": "sub", "source": "fixed", "fixed_value": "attacker-controlled"},
 		},
@@ -129,7 +129,7 @@ func TestUpdateApplicationSamlConfig_RejectsUndefinedAttributeSource(t *testing.
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	created := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	created := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "SAML App", "type": "saml", "entity_id": "https://saml.example/claim-release", "acs_urls": []string{"https://saml.example/acs"},
 	})
 	if created.Code != http.StatusCreated {
@@ -145,7 +145,7 @@ func TestUpdateApplicationSamlConfig_RejectsUndefinedAttributeSource(t *testing.
 	}
 	appID := createdBody.Application.ID
 
-	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID+"/saml", csrf, cookie, map[string]any{
+	update := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+appID+"/saml", csrf, cookie, map[string]any{
 		"rules": []map[string]any{
 			{"claim_type": "leak", "source": "user_attribute", "source_key": "totally_undefined_attribute"},
 		},

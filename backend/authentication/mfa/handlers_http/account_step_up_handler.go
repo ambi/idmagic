@@ -1,4 +1,4 @@
-// /api/account/step_up — 高 sensitivity な self-service 操作のための step-up 再認証
+// /api/account/v1/step_up — 高 sensitivity な self-service 操作のための step-up 再認証
 // (ADR-043 / wi-43)。start は利用可能な factor を返し、complete は password / TOTP を
 // 検証して session に step_up_at を刻む。sensitive ハンドラは httpdeps.RequireStepUpSub /
 // httpdeps.RequireStepUpSession を前段ゲートに使い、recency 窓を外れていれば

@@ -11,7 +11,7 @@ import (
 
 func createCategory(t *testing.T, e *echo.Echo, csrf string, cookie *http.Cookie, name string) string {
 	t.Helper()
-	create := adminJSON(t, e, http.MethodPost, "/api/admin/application-categories", csrf, cookie, map[string]any{"name": name})
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/v1/application-categories", csrf, cookie, map[string]any{"name": name})
 	if create.Code != http.StatusCreated {
 		t.Fatalf("create category %s status=%d body=%s", name, create.Code, create.Body.String())
 	}
@@ -34,7 +34,7 @@ func TestApplicationCategoryCRUDAndPortalGrouping(t *testing.T) {
 	appID := createAndAssignWeblink(t, e, csrf, cookie, "Payroll")
 
 	// カテゴリを付与する。
-	set := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+appID+"/categories", csrf, cookie, map[string]any{
+	set := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+appID+"/categories", csrf, cookie, map[string]any{
 		"category_ids": []string{catID},
 	})
 	if set.Code != http.StatusOK {
@@ -42,7 +42,7 @@ func TestApplicationCategoryCRUDAndPortalGrouping(t *testing.T) {
 	}
 
 	// ポータル応答にカテゴリ定義とアプリの category_ids が含まれる。
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/applications", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, request)
@@ -70,7 +70,7 @@ func TestApplicationCategoryCRUDAndPortalGrouping(t *testing.T) {
 	}
 
 	// カテゴリを削除するとアプリの category_ids からも除かれる。
-	del := adminJSON(t, e, http.MethodDelete, "/api/admin/application-categories/"+catID, csrf, cookie, nil)
+	del := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/application-categories/"+catID, csrf, cookie, nil)
 	if del.Code != http.StatusNoContent {
 		t.Fatalf("delete category status=%d body=%s", del.Code, del.Body.String())
 	}

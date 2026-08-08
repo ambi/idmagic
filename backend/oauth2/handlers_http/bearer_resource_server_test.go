@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // ADR-061 / wi-66: OIDC RP 化した portal が提示する Bearer access token を
-// resource server として受理する経路を /api/admin/policy/roles 経由で検証する。
+// resource server として受理する経路を /api/admin/v1/policy/roles 経由で検証する。
 // セッション resolver を配線せず、Bearer のみで admin 認可が成立すること、
 // 無効トークン・非 admin・トークン無しの fail-closed を確認する。
 
@@ -55,7 +55,7 @@ func newBearerAdminServer(t *testing.T, actor *userdomain.User, introspector oau
 }
 
 // adminRolePoliciesPath は RequireAdmin/ResolveAdminActor を通る代表的な admin GET。
-const adminRolePoliciesPath = "/realms/acme/api/admin/policy/roles"
+const adminRolePoliciesPath = "/realms/acme/api/admin/v1/policy/roles"
 
 func getWithBearer(e *echo.Echo, token string) *httptest.ResponseRecorder {
 	req := httptest.NewRequest(http.MethodGet, adminRolePoliciesPath, http.NoBody)

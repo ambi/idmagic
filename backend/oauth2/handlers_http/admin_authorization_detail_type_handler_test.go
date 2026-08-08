@@ -64,12 +64,12 @@ func TestAdminCreatesAndListsAuthorizationDetailType(t *testing.T) {
 	e := newAdminAuthzTypeHandler()
 	csrf, cookie := adminCSRF(t, e)
 
-	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/authorization-detail-types", csrf, cookie, validTypePayload())
+	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/authorization-detail-types", csrf, cookie, validTypePayload())
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
 	}
 
-	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/authorization-detail-types", http.NoBody)
+	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/authorization-detail-types", http.NoBody)
 	listReq.Header.Set("X-Demo-Sub", "admin")
 	listRes := httptest.NewRecorder()
 	e.ServeHTTP(listRes, listReq)
@@ -93,7 +93,7 @@ func TestAdminRejectsInvalidTypeSchema(t *testing.T) {
 	payload := validTypePayload()
 	// 空の rules はスキーマ違反 (Min(1)) で fail-closed。
 	payload["schema"] = map[string]any{"rules": []map[string]any{}}
-	res := adminJSONRequest(t, e, http.MethodPost, "/api/admin/authorization-detail-types", csrf, cookie, payload)
+	res := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/authorization-detail-types", csrf, cookie, payload)
 	if res.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400 for empty schema, got %d body=%s", res.Code, res.Body.String())
 	}
@@ -101,7 +101,7 @@ func TestAdminRejectsInvalidTypeSchema(t *testing.T) {
 
 func TestAdminAuthorizationDetailTypeRequiresAdmin(t *testing.T) {
 	e := newAdminAuthzTypeHandler()
-	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/authorization-detail-types", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/authorization-detail-types", http.NoBody)
 	req.Header.Set("X-Demo-Sub", "regular")
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)

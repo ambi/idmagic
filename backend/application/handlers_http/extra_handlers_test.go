@@ -12,7 +12,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	csrf, cookie := appCSRF(t, e)
 
 	// Create OIDC App
-	createOIDC := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createOIDC := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "OIDC App", "type": "oidc", "redirect_uris": []string{"https://oidc.example/callback"},
 		"client_type": "confidential", "token_endpoint_auth_method": "client_secret_post",
 	})
@@ -43,7 +43,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	appID := created.Application.ID
 
 	// Create WebLink App
-	createWeblink := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createWeblink := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "WebLink App", "type": "weblink", "launch_url": "https://weblink.example",
 	})
 	if createWeblink.Code != http.StatusCreated {
@@ -51,7 +51,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Create WS-Fed App
-	createWsFed := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createWsFed := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "WsFed App", "type": "wsfed", "wtrealm": "urn:wsfed:app", "reply_urls": []string{"https://wsfed.example/reply"},
 	})
 	if createWsFed.Code != http.StatusCreated {
@@ -59,7 +59,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Create SAML App
-	createSAML := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createSAML := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "SAML App", "type": "saml", "entity_id": "https://saml.example", "acs_urls": []string{"https://saml.example/acs"},
 	})
 	if createSAML.Code != http.StatusCreated {
@@ -67,7 +67,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Create Service App
-	createService := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createService := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "Service App", "type": "service",
 	})
 	if createService.Code != http.StatusCreated {
@@ -75,7 +75,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// OIDC Bad Request (no redirect_uris)
-	createOIDCBad := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createOIDCBad := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "OIDC App Bad", "type": "oidc",
 	})
 	if createOIDCBad.Code != http.StatusBadRequest {
@@ -83,7 +83,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// WSFed Bad Request (no wtrealm)
-	createWsFedBad := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createWsFedBad := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "WsFed App Bad", "type": "wsfed",
 	})
 	if createWsFedBad.Code != http.StatusBadRequest {
@@ -91,7 +91,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// SAML Bad Request (no entity_id)
-	createSAMLBad := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createSAMLBad := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "SAML App Bad", "type": "saml",
 	})
 	if createSAMLBad.Code != http.StatusBadRequest {
@@ -99,7 +99,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Invalid Type Bad Request
-	createBadType := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createBadType := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "Bad Type App", "type": "unknown",
 	})
 	if createBadType.Code != http.StatusBadRequest {
@@ -107,19 +107,19 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Get (Normal)
-	getApp := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+appID, csrf, cookie, nil)
+	getApp := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+appID, csrf, cookie, nil)
 	if getApp.Code != http.StatusOK {
 		t.Fatalf("get app status=%d body=%s", getApp.Code, getApp.Body.String())
 	}
 
 	// Get (Not Found)
-	getAppNotFound := adminJSON(t, e, http.MethodGet, "/api/admin/applications/non-existent-id", csrf, cookie, nil)
+	getAppNotFound := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/non-existent-id", csrf, cookie, nil)
 	if getAppNotFound.Code != http.StatusNotFound {
 		t.Fatalf("get app not found status=%d body=%s", getAppNotFound.Code, getAppNotFound.Body.String())
 	}
 
 	// List
-	list := adminJSON(t, e, http.MethodGet, "/api/admin/applications", csrf, cookie, nil)
+	list := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications", csrf, cookie, nil)
 	if list.Code != http.StatusOK {
 		t.Fatalf("list status=%d body=%s", list.Code, list.Body.String())
 	}
@@ -134,7 +134,7 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	name := "App A Updated"
 	status := "disabled"
 	launchURL := "https://a-updated.example"
-	update := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID, csrf, cookie, map[string]any{
+	update := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+appID, csrf, cookie, map[string]any{
 		"name": &name, "status": &status, "launch_url": &launchURL,
 	})
 	if update.Code != http.StatusOK {
@@ -142,25 +142,25 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Update (Invalid JSON)
-	updateBad := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+appID, csrf, cookie, "invalid-json")
+	updateBad := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+appID, csrf, cookie, "invalid-json")
 	if updateBad.Code != http.StatusBadRequest {
 		t.Fatalf("update bad json status=%d body=%s", updateBad.Code, updateBad.Body.String())
 	}
 
 	// protocol は作成時に不変であり、旧 attach / detach route は存在しない。
-	attach := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+appID+"/bindings", csrf, cookie, map[string]any{
+	attach := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+appID+"/bindings", csrf, cookie, map[string]any{
 		"type": "oidc", "client_id": "client-123",
 	})
 	if attach.Code != http.StatusNotFound {
 		t.Fatalf("attach protocol route status=%d body=%s", attach.Code, attach.Body.String())
 	}
-	detach := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/"+appID+"/bindings/oidc", csrf, cookie, nil)
+	detach := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+appID+"/bindings/oidc", csrf, cookie, nil)
 	if detach.Code != http.StatusNotFound {
 		t.Fatalf("detach protocol route status=%d body=%s", detach.Code, detach.Body.String())
 	}
 
 	// Assign
-	assign := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+appID+"/assignments", csrf, cookie, map[string]any{
+	assign := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+appID+"/assignments", csrf, cookie, map[string]any{
 		"subject_type": "user", "subject_id": "regular", "visibility": "visible",
 	})
 	if assign.Code != http.StatusCreated {
@@ -168,13 +168,13 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Assign (Invalid JSON)
-	assignBad := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+appID+"/assignments", csrf, cookie, "invalid-json")
+	assignBad := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+appID+"/assignments", csrf, cookie, "invalid-json")
 	if assignBad.Code != http.StatusBadRequest {
 		t.Fatalf("assign bad json status=%d body=%s", assignBad.Code, assignBad.Body.String())
 	}
 
 	// List Assignments
-	listAssigns := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+appID+"/assignments", csrf, cookie, nil)
+	listAssigns := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+appID+"/assignments", csrf, cookie, nil)
 	if listAssigns.Code != http.StatusOK {
 		t.Fatalf("list assignments status=%d body=%s", listAssigns.Code, listAssigns.Body.String())
 	}
@@ -186,13 +186,13 @@ func TestAdminApplicationLifecycle(t *testing.T) {
 	}
 
 	// Unassign
-	unassign := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/"+appID+"/assignments/user/regular", csrf, cookie, nil)
+	unassign := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+appID+"/assignments/user/regular", csrf, cookie, nil)
 	if unassign.Code != http.StatusNoContent {
 		t.Fatalf("unassign status=%d body=%s", unassign.Code, unassign.Body.String())
 	}
 
 	// Delete
-	deleteApp := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/"+appID, csrf, cookie, nil)
+	deleteApp := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+appID, csrf, cookie, nil)
 	if deleteApp.Code != http.StatusNoContent {
 		t.Fatalf("delete app status=%d body=%s", deleteApp.Code, deleteApp.Body.String())
 	}
@@ -204,7 +204,7 @@ func TestAdminCategoryLifecycle(t *testing.T) {
 
 	// Create Category
 	pos := 1
-	create := adminJSON(t, e, http.MethodPost, "/api/admin/application-categories", csrf, cookie, map[string]any{
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/v1/application-categories", csrf, cookie, map[string]any{
 		"name": "Cat A", "position": &pos,
 	})
 	if create.Code != http.StatusCreated {
@@ -221,20 +221,20 @@ func TestAdminCategoryLifecycle(t *testing.T) {
 	catID := catCreated.Category.ID
 
 	// Create Category (Invalid JSON)
-	createBad := adminJSON(t, e, http.MethodPost, "/api/admin/application-categories", csrf, cookie, "invalid-json")
+	createBad := adminJSON(t, e, http.MethodPost, "/api/admin/v1/application-categories", csrf, cookie, "invalid-json")
 	if createBad.Code != http.StatusBadRequest {
 		t.Fatalf("create category bad json status=%d body=%s", createBad.Code, createBad.Body.String())
 	}
 
 	// List Categories
-	list := adminJSON(t, e, http.MethodGet, "/api/admin/application-categories", csrf, cookie, nil)
+	list := adminJSON(t, e, http.MethodGet, "/api/admin/v1/application-categories", csrf, cookie, nil)
 	if list.Code != http.StatusOK {
 		t.Fatalf("list categories status=%d body=%s", list.Code, list.Body.String())
 	}
 
 	// Update Category
 	pos2 := 2
-	update := adminJSON(t, e, http.MethodPatch, "/api/admin/application-categories/"+catID, csrf, cookie, map[string]any{
+	update := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/application-categories/"+catID, csrf, cookie, map[string]any{
 		"name": "Cat A Updated", "position": &pos2,
 	})
 	if update.Code != http.StatusOK {
@@ -242,14 +242,14 @@ func TestAdminCategoryLifecycle(t *testing.T) {
 	}
 
 	// Update Category (Invalid JSON)
-	updateBad := adminJSON(t, e, http.MethodPatch, "/api/admin/application-categories/"+catID, csrf, cookie, "invalid-json")
+	updateBad := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/application-categories/"+catID, csrf, cookie, "invalid-json")
 	if updateBad.Code != http.StatusBadRequest {
 		t.Fatalf("update category bad json status=%d body=%s", updateBad.Code, updateBad.Body.String())
 	}
 
 	// Create App and set categories
 	appID := createAndAssignWeblink(t, e, csrf, cookie, "App B")
-	setCat := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+appID+"/categories", csrf, cookie, map[string]any{
+	setCat := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+appID+"/categories", csrf, cookie, map[string]any{
 		"category_ids": []string{catID},
 	})
 	if setCat.Code != http.StatusOK {
@@ -257,13 +257,13 @@ func TestAdminCategoryLifecycle(t *testing.T) {
 	}
 
 	// Set categories (Invalid JSON)
-	setCatBad := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+appID+"/categories", csrf, cookie, "invalid-json")
+	setCatBad := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+appID+"/categories", csrf, cookie, "invalid-json")
 	if setCatBad.Code != http.StatusBadRequest {
 		t.Fatalf("set categories bad json status=%d body=%s", setCatBad.Code, setCatBad.Body.String())
 	}
 
 	// Delete Category
-	deleteCat := adminJSON(t, e, http.MethodDelete, "/api/admin/application-categories/"+catID, csrf, cookie, nil)
+	deleteCat := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/application-categories/"+catID, csrf, cookie, nil)
 	if deleteCat.Code != http.StatusNoContent {
 		t.Fatalf("delete category status=%d body=%s", deleteCat.Code, deleteCat.Body.String())
 	}
@@ -273,32 +273,32 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	// GET /api/account/applications without X-Demo-Sub
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications", http.NoBody)
+	// GET /api/account/v1/applications without X-Demo-Sub
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/applications", http.NoBody)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, request)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
 	}
 
-	// GET /api/account/applications/order without X-Demo-Sub
-	request2 := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications/order", http.NoBody)
+	// GET /api/account/v1/applications/order without X-Demo-Sub
+	request2 := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/applications/order", http.NoBody)
 	rec2 := httptest.NewRecorder()
 	e.ServeHTTP(rec2, request2)
 	if rec2.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec2.Code)
 	}
 
-	// PUT /api/account/applications/order without X-Demo-Sub -> This will fail on CSRF validation first (403), because no CSRF cookie/header is sent.
-	request3 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/applications/order", http.NoBody)
+	// PUT /api/account/v1/applications/order without X-Demo-Sub -> This will fail on CSRF validation first (403), because no CSRF cookie/header is sent.
+	request3 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/v1/applications/order", http.NoBody)
 	rec3 := httptest.NewRecorder()
 	e.ServeHTTP(rec3, request3)
 	if rec3.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", rec3.Code)
 	}
 
-	// PUT /api/account/applications/order with CSRF but without X-Demo-Sub -> This should pass CSRF but fail authentication (401).
-	request4 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/applications/order", http.NoBody)
+	// PUT /api/account/v1/applications/order with CSRF but without X-Demo-Sub -> This should pass CSRF but fail authentication (401).
+	request4 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/v1/applications/order", http.NoBody)
 	request4.Header.Set("X-Csrf-Token", csrf)
 	request4.Header.Set("Origin", "http://idp.test")
 	request4.AddCookie(cookie)
@@ -308,8 +308,8 @@ func TestAccountApplicationUnauthorized(t *testing.T) {
 		t.Fatalf("expected 401, got %d", rec4.Code)
 	}
 
-	// PUT /api/account/applications/order with bad json
-	request5 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/applications/order", http.NoBody)
+	// PUT /api/account/v1/applications/order with bad json
+	request5 := httptest.NewRequest(http.MethodPut, "/realms/default/api/account/v1/applications/order", http.NoBody)
 	request5.Header.Set("X-Demo-Sub", "admin")
 	request5.Header.Set("Content-Type", "application/json")
 	request5.Header.Set("Origin", "http://idp.test")
@@ -327,7 +327,7 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	csrf, cookie := appCSRF(t, e)
 
 	// OIDC App Config Update
-	createOIDC := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createOIDC := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "OIDC App", "type": "oidc", "redirect_uris": []string{"https://oidc.example/callback"},
 		"client_type": "confidential", "token_endpoint_auth_method": "client_secret_post",
 	})
@@ -340,7 +340,7 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	oidcID := oidcApp.Application.ID
 
 	// Update OIDC Config
-	updateOIDC := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+oidcID+"/oidc", csrf, cookie, map[string]any{
+	updateOIDC := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+oidcID+"/oidc", csrf, cookie, map[string]any{
 		"redirect_uris": []string{"https://oidc-updated.example/callback"},
 	})
 	if updateOIDC.Code != http.StatusNoContent {
@@ -348,13 +348,13 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	}
 
 	// Update OIDC (Invalid JSON)
-	updateOIDCBad := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+oidcID+"/oidc", csrf, cookie, "invalid-json")
+	updateOIDCBad := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+oidcID+"/oidc", csrf, cookie, "invalid-json")
 	if updateOIDCBad.Code != http.StatusBadRequest {
 		t.Fatalf("update oidc config bad json status=%d body=%s", updateOIDCBad.Code, updateOIDCBad.Body.String())
 	}
 
 	// WS-Fed App Config Update
-	createWsFed := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createWsFed := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "WsFed App", "type": "wsfed", "wtrealm": "urn:wsfed:app", "reply_urls": []string{"https://wsfed.example/reply"},
 	})
 	var wsfedApp struct {
@@ -366,7 +366,7 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	wsfedID := wsfedApp.Application.ID
 
 	// Update WS-Fed Config
-	updateWsFed := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+wsfedID+"/wsfed", csrf, cookie, map[string]any{
+	updateWsFed := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+wsfedID+"/wsfed", csrf, cookie, map[string]any{
 		"reply_urls": []string{"https://wsfed-updated.example/reply"},
 	})
 	if updateWsFed.Code != http.StatusNoContent {
@@ -374,13 +374,13 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	}
 
 	// Update WS-Fed (Invalid JSON)
-	updateWsFedBad := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+wsfedID+"/wsfed", csrf, cookie, "invalid-json")
+	updateWsFedBad := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+wsfedID+"/wsfed", csrf, cookie, "invalid-json")
 	if updateWsFedBad.Code != http.StatusBadRequest {
 		t.Fatalf("update wsfed config bad json status=%d body=%s", updateWsFedBad.Code, updateWsFedBad.Body.String())
 	}
 
 	// SAML App Config Update
-	createSAML := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createSAML := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "SAML App", "type": "saml", "entity_id": "https://saml.example", "acs_urls": []string{"https://saml.example/acs"},
 	})
 	var samlApp struct {
@@ -392,7 +392,7 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	samlID := samlApp.Application.ID
 
 	// Update SAML Config
-	updateSAML := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+samlID+"/saml", csrf, cookie, map[string]any{
+	updateSAML := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+samlID+"/saml", csrf, cookie, map[string]any{
 		"acs_urls": []string{"https://saml-updated.example/acs"},
 	})
 	if updateSAML.Code != http.StatusNoContent {
@@ -400,13 +400,13 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	}
 
 	// Update SAML (Invalid JSON)
-	updateSAMLBad := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+samlID+"/saml", csrf, cookie, "invalid-json")
+	updateSAMLBad := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+samlID+"/saml", csrf, cookie, "invalid-json")
 	if updateSAMLBad.Code != http.StatusBadRequest {
 		t.Fatalf("update saml config bad json status=%d body=%s", updateSAMLBad.Code, updateSAMLBad.Body.String())
 	}
 
 	// Update OIDC Config (No Binding)
-	createWeblink := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	createWeblink := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "WebLink App", "type": "weblink", "launch_url": "https://weblink.example",
 	})
 	var weblinkApp struct {
@@ -417,7 +417,7 @@ func TestAdminProtocolConfigLifecycle(t *testing.T) {
 	_ = json.Unmarshal(createWeblink.Body.Bytes(), &weblinkApp)
 	weblinkID := weblinkApp.Application.ID
 
-	updateWeblinkOIDC := adminJSON(t, e, http.MethodPatch, "/api/admin/applications/"+weblinkID+"/oidc", csrf, cookie, map[string]any{
+	updateWeblinkOIDC := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/applications/"+weblinkID+"/oidc", csrf, cookie, map[string]any{
 		"redirect_uris": []string{"https://oidc-updated.example/callback"},
 	})
 	if updateWeblinkOIDC.Code != http.StatusBadRequest {
@@ -430,61 +430,61 @@ func TestAdminApplicationExtraErrors(t *testing.T) {
 	csrf, cookie := appCSRF(t, e)
 
 	// Create Category with empty name -> 400
-	badCat := adminJSON(t, e, http.MethodPost, "/api/admin/application-categories", csrf, cookie, map[string]any{"name": ""})
+	badCat := adminJSON(t, e, http.MethodPost, "/api/admin/v1/application-categories", csrf, cookie, map[string]any{"name": ""})
 	if badCat.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", badCat.Code)
 	}
 
 	// Update non-existent category -> 404
-	badUpdateCat := adminJSON(t, e, http.MethodPatch, "/api/admin/application-categories/non-existent", csrf, cookie, map[string]any{"name": "New Name"})
+	badUpdateCat := adminJSON(t, e, http.MethodPatch, "/api/admin/v1/application-categories/non-existent", csrf, cookie, map[string]any{"name": "New Name"})
 	if badUpdateCat.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badUpdateCat.Code)
 	}
 
 	// Delete non-existent category -> 404
-	badDeleteCat := adminJSON(t, e, http.MethodDelete, "/api/admin/application-categories/non-existent", csrf, cookie, nil)
+	badDeleteCat := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/application-categories/non-existent", csrf, cookie, nil)
 	if badDeleteCat.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badDeleteCat.Code)
 	}
 
 	// Set categories on non-existent app -> 404
-	badSetCat := adminJSON(t, e, http.MethodPut, "/api/admin/applications/non-existent/categories", csrf, cookie, map[string]any{"category_ids": []string{"some-cat"}})
+	badSetCat := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/non-existent/categories", csrf, cookie, map[string]any{"category_ids": []string{"some-cat"}})
 	if badSetCat.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badSetCat.Code)
 	}
 
 	// Upload icon without file -> 400
-	badUpload := adminJSON(t, e, http.MethodPost, "/api/admin/applications/some-app/icon", csrf, cookie, nil)
+	badUpload := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/some-app/icon", csrf, cookie, nil)
 	if badUpload.Code != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", badUpload.Code)
 	}
 
 	// Delete icon on non-existent app -> 404
-	badDeleteIcon := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/non-existent/icon", csrf, cookie, nil)
+	badDeleteIcon := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/non-existent/icon", csrf, cookie, nil)
 	if badDeleteIcon.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badDeleteIcon.Code)
 	}
 
 	// Detach binding on non-existent app -> 404
-	badDetach := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/non-existent/bindings/oidc", csrf, cookie, nil)
+	badDetach := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/non-existent/bindings/oidc", csrf, cookie, nil)
 	if badDetach.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badDetach.Code)
 	}
 
 	// List assignments on non-existent app -> 404
-	badListAssign := adminJSON(t, e, http.MethodGet, "/api/admin/applications/non-existent/assignments", csrf, cookie, nil)
+	badListAssign := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/non-existent/assignments", csrf, cookie, nil)
 	if badListAssign.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badListAssign.Code)
 	}
 
 	// Get sign-in policy on non-existent app -> 404
-	badGetPolicy := adminJSON(t, e, http.MethodGet, "/api/admin/applications/non-existent/sign-in-policy", csrf, cookie, nil)
+	badGetPolicy := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/non-existent/sign-in-policy", csrf, cookie, nil)
 	if badGetPolicy.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badGetPolicy.Code)
 	}
 
 	// Update sign-in policy on non-existent app -> 404
-	badUpdatePolicy := adminJSON(t, e, http.MethodPut, "/api/admin/applications/non-existent/sign-in-policy", csrf, cookie, map[string]any{"rules": []any{}})
+	badUpdatePolicy := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/non-existent/sign-in-policy", csrf, cookie, map[string]any{"rules": []any{}})
 	if badUpdatePolicy.Code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", badUpdatePolicy.Code)
 	}

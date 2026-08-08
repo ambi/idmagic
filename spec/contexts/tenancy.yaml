@@ -1086,7 +1086,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/tenants
+        path: /api/admin/v1/tenants
   GetTenant:
     description: system_admin が単一テナントを取得する。
     input:
@@ -1108,7 +1108,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/tenants/{tenant_id}"
+        path: "/api/admin/v1/tenants/{tenant_id}"
   CreateTenant:
     description: system_admin が新規テナントを作成する。
     input:
@@ -1131,7 +1131,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/tenants
+        path: /api/admin/v1/tenants
         request_form: body
         successful_status_codes:
           - "201"
@@ -1160,7 +1160,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/tenants/{tenant_id}"
+        path: "/api/admin/v1/tenants/{tenant_id}"
         request_form: body
   DisableTenant:
     description: system_admin が default 以外のテナントを無効化する。/authorize / /token / /login 等は一律 invalid_request になる。
@@ -1181,7 +1181,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/tenants/{tenant_id}/disable"
+        path: "/api/admin/v1/tenants/{tenant_id}/disable"
         successful_status_codes:
           - "204"
   EnableTenant:
@@ -1203,7 +1203,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/tenants/{tenant_id}/enable"
+        path: "/api/admin/v1/tenants/{tenant_id}/enable"
         successful_status_codes:
           - "204"
   SetTenantEndpointStyle:
@@ -1225,7 +1225,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/tenants/{tenant_id}/endpoint_style"
+        path: "/api/admin/v1/tenants/{tenant_id}/endpoint_style"
         successful_status_codes:
           - "204"
   UpdateTenantQuota:
@@ -1252,7 +1252,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/tenants/{tenant_id}/quota"
+        path: "/api/admin/v1/tenants/{tenant_id}/quota"
         request_form: body
   GetAdminSettings:
     description: "テナント内 admin が自身のテナントの設定 (表示名 / 既定 locale / パスワードポリシー上書き) を取得する。\n対象テナントは context.tenant_id (解決済みテナント) に固定するため cross-tenant 読み出しは構造的に発生しない。\n`/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。\nレスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) と、\nカタログが同梱翻訳を持つ locale 一覧 (supported_locales) を含め、UI が「上書きしないときに\n実際に適用される値」と既定 locale の選択肢を具体的に示せるようにする。\n"
@@ -1271,7 +1271,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/settings
+        path: /api/admin/v1/settings
   GetAdminIntegrationEndpoints:
     description: "テナント内 admin が、外部の OIDC RP / SAML SP / WS-Federation RP / SCIM client / management client に投入する IdMagic の正規連携情報を一括取得する。全 URL は解決済み request tenant の canonical issuer から server が導出し、frontend は realm や origin を連結しない。秘密情報は含めず Cache-Control: no-store で返す。"
     output:
@@ -1289,7 +1289,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/integration-endpoints
+        path: /api/admin/v1/integration-endpoints
   UpdateAdminSettings:
     description: "テナント内 admin が自身のテナントの設定を更新する。display_name、default_locale、\npassword_policy_override のいずれかを任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) は use case\n側で拒否する。default_locale はカタログが同梱翻訳を持つ locale のみ受け付け、\n空文字列でシステム既定へ戻す。\n"
     input:
@@ -1312,7 +1312,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: /api/admin/settings
+        path: /api/admin/v1/settings
         request_form: body
   GetTenantUserAttributeSchema:
     description: "テナント内 admin が自身のテナントの custom 属性定義を取得する。\n対象テナントは context.tenant_id に固定し cross-tenant 読み出しを構造的に排除する。\nレスポンスには tenant 固有の custom 定義に加えて組み込みカタログ (builtin) も\n含め、UI が全属性を一覧しつつ key 衝突を避けられるようにする。\n"
@@ -1331,7 +1331,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/tenant/user_attribute_schema
+        path: /api/admin/v1/tenant/user_attribute_schema
   UpdateTenantUserAttributeSchema:
     description: "テナント内 admin が custom 属性定義を全置換する。context.tenant_id に\n固定した上で、各 UserAttributeDef を検証し、組み込み属性との key 衝突・重複 key を\n拒否する。DynamicGroupRule が参照中の key は削除または型変更できない。値そのものは保持せず定義のみを扱う。\n"
     input:
@@ -1355,7 +1355,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: /api/admin/tenant/user_attribute_schema
+        path: /api/admin/v1/tenant/user_attribute_schema
         request_form: body
   GetTenantBranding:
     description: "解決済みテナントの hosted UI ブランディングを取得する公開 interface。認証を要求しない\n(login / consent / device 画面が未認証のうちに読む)。branding 未設定・値不正・アセット欠損の\nいずれでもシステム既定にフォールバックし、常に成功する。対象テナントは realm 解決 (ResolveTenant)\nで既に確定しているため入力を取らない。\n"
@@ -1393,7 +1393,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: /api/admin/tenant/branding
+        path: /api/admin/v1/tenant/branding
         request_form: body
   UploadTenantBrandingAsset:
     description: 管理者が branding のロゴまたは favicon 画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。
@@ -1423,7 +1423,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/tenant/branding/assets/{kind}"
+        path: "/api/admin/v1/tenant/branding/assets/{kind}"
         request_form: form
   DeleteTenantBrandingAsset:
     description: 管理者が branding の保存済みロゴまたは favicon を削除する。削除後は該当アセットの URL を返さない。
@@ -1447,7 +1447,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/tenant/branding/assets/{kind}"
+        path: "/api/admin/v1/tenant/branding/assets/{kind}"
   ListNotificationTemplates:
     description: "テナント内 admin が通知テンプレートの一覧を取得する。カタログの全 template_key × 全サポート locale を、上書きの有無 (customized) と現在有効な件名つきで返す。対象テナントは context.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。\n"
     output:
@@ -1465,7 +1465,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/tenant/notification_templates
+        path: /api/admin/v1/tenant/notification_templates
   GetNotificationTemplate:
     description: "テナント内 admin がテンプレート 1 件を編集用に取得する。現在有効な文面、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。カタログに無い template_key / locale は InvalidRequestError で拒否する。\n"
     input:
@@ -1489,7 +1489,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}"
+        path: "/api/admin/v1/tenant/notification_templates/{template_key}/{locale}"
   UpdateNotificationTemplate:
     description: "テナント内 admin がテンプレート上書きを保存する。件名 / テキスト本文 / HTML 本文を必須の組として全置換し、テキストだけ・HTML だけの上書きは作れない。本文と件名に含まれる差し込み変数が template_key の許可集合に収まらない場合は、実行時に空文字列へ潰れる前に保存時点で拒否する (fail-closed)。差出人メールアドレスはサーバ設定であり上書きできず、表示名だけを上書きできる。\n"
     input:
@@ -1522,7 +1522,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}"
+        path: "/api/admin/v1/tenant/notification_templates/{template_key}/{locale}"
         request_form: body
   ResetNotificationTemplate:
     description: "テナント内 admin がテンプレート上書きを削除し組込み既定へ戻す。上書きが無いテンプレートに対しても成功する冪等操作。版管理は持たないため、戻り先は直前の上書きではなく常に組込み既定である。\n"
@@ -1550,7 +1550,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}"
+        path: "/api/admin/v1/tenant/notification_templates/{template_key}/{locale}"
   PreviewNotificationTemplate:
     description: "テナント内 admin が保存前の文面をサンプル値で描画する。省略したフィールドは現在有効な文面を使う。HTML 側の差し込み値は必ずエスケープして展開し、リンク URL はサンプルの発行元 URL から組み立てる。メールは送信せず、上書きも保存しない。\n"
     input:
@@ -1576,7 +1576,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}/preview"
+        path: "/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/preview"
         request_form: body
   SendTestNotification:
     description: "テナント内 admin が現在有効な文面のテストメールを受け取る。宛先は操作した管理者本人の検証済みメールアドレスに固定し、リクエストでは指定できない。任意宛先を許すと管理者権限がメール送信の踏み台になるため、この固定は仕様である。操作者に検証済みアドレスが無い場合は InvalidRequestError で拒否する。\n"
@@ -1604,7 +1604,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/tenant/notification_templates/{template_key}/{locale}/test"
+        path: "/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/test"
         successful_status_codes:
           - "200"
   GetTenantBrandingAsset:

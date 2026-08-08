@@ -140,7 +140,7 @@ func adminMultipart(t *testing.T, e *echo.Echo, path, csrf string, cookie *http.
 
 func myApplications(t *testing.T, e *echo.Echo, sub string) []map[string]any {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/applications", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/applications", http.NoBody)
 	request.Header.Set("X-Demo-Sub", sub)
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -160,7 +160,7 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	create := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "Payroll", "type": "weblink", "launch_url": "https://payroll.example",
 	})
 	if create.Code != http.StatusCreated {
@@ -185,7 +185,7 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 	}
 
 	// 割当すると出る。
-	assign := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+appID+"/assignments", csrf, cookie, map[string]any{
+	assign := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+appID+"/assignments", csrf, cookie, map[string]any{
 		"subject_type": "user", "subject_id": "regular",
 	})
 	if assign.Code != http.StatusCreated {
@@ -196,7 +196,7 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 	}
 
 	// hidden 割当に上書きするとポータルから消える。
-	hidden := adminJSON(t, e, http.MethodPost, "/api/admin/applications/"+appID+"/assignments", csrf, cookie, map[string]any{
+	hidden := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+appID+"/assignments", csrf, cookie, map[string]any{
 		"subject_type": "user", "subject_id": "regular", "visibility": "hidden",
 	})
 	if hidden.Code != http.StatusCreated {
@@ -215,14 +215,14 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	csrf, cookie := appCSRF(t, e)
 
 	// テナントデフォルトで MFA 必須を設定。
-	put := adminJSON(t, e, http.MethodPut, "/api/admin/default-sign-in-policy", csrf, cookie, map[string]any{
+	put := adminJSON(t, e, http.MethodPut, "/api/admin/v1/default-sign-in-policy", csrf, cookie, map[string]any{
 		"rules": []map[string]any{{"name": "MFA", "enabled": true, "required_authn": map[string]any{"strength": "Mfa"}}},
 	})
 	if put.Code != http.StatusOK {
 		t.Fatalf("put default status=%d body=%s", put.Code, put.Body.String())
 	}
 
-	get := adminJSON(t, e, http.MethodGet, "/api/admin/default-sign-in-policy", csrf, cookie, nil)
+	get := adminJSON(t, e, http.MethodGet, "/api/admin/v1/default-sign-in-policy", csrf, cookie, nil)
 	if get.Code != http.StatusOK {
 		t.Fatalf("get default status=%d body=%s", get.Code, get.Body.String())
 	}
@@ -239,7 +239,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	}
 
 	// アプリを作成し、個別ポリシー未設定なら effective はデフォルトになる。
-	create := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "Payroll", "type": "weblink", "launch_url": "https://payroll.example",
 	})
 	if create.Code != http.StatusCreated {
@@ -254,7 +254,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	view := adminJSON(t, e, http.MethodGet, "/api/admin/applications/"+created.Application.ID+"/sign-in-policy", csrf, cookie, nil)
+	view := adminJSON(t, e, http.MethodGet, "/api/admin/v1/applications/"+created.Application.ID+"/sign-in-policy", csrf, cookie, nil)
 	if view.Code != http.StatusOK {
 		t.Fatalf("get app policy status=%d body=%s", view.Code, view.Body.String())
 	}
@@ -285,7 +285,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	}
 
 	// アプリに弱い個別ポリシー (パスワードのみ) を設定するとデフォルトを上書きし、警告フラグが立つ。
-	upd := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+created.Application.ID+"/sign-in-policy", csrf, cookie, map[string]any{
+	upd := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+created.Application.ID+"/sign-in-policy", csrf, cookie, map[string]any{
 		"rules": []map[string]any{{"name": "Password", "enabled": true, "required_authn": map[string]any{"strength": "Password"}}},
 	})
 	if upd.Code != http.StatusOK {
@@ -309,7 +309,7 @@ func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	}
 
 	// 非管理者はデフォルトポリシーを更新できない。
-	req := httptest.NewRequest(http.MethodPut, "/realms/default/api/admin/default-sign-in-policy", bytes.NewReader([]byte(`{"rules":[]}`)))
+	req := httptest.NewRequest(http.MethodPut, "/realms/default/api/admin/v1/default-sign-in-policy", bytes.NewReader([]byte(`{"rules":[]}`)))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")
 	req.Header.Set("X-Csrf-Token", csrf)
@@ -328,7 +328,7 @@ func TestSamlApplicationDetailReturnsEmptyRulesNotNull(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	create := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name":           "SAML App",
 		"type":           "saml",
 		"entity_id":      "https://sp.example.com",
@@ -349,7 +349,7 @@ func TestSamlApplicationDetailReturnsEmptyRulesNotNull(t *testing.T) {
 	}
 
 	detail := adminJSON(t, e, http.MethodGet,
-		"/api/admin/applications/"+created.Application.ID, csrf, cookie, nil)
+		"/api/admin/v1/applications/"+created.Application.ID, csrf, cookie, nil)
 	if detail.Code != http.StatusOK {
 		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
 	}
@@ -377,7 +377,7 @@ func TestApplicationIconUploadServeRejectAndDelete(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	create := adminJSON(t, e, http.MethodPost, "/api/admin/applications", csrf, cookie, map[string]any{
+	create := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications", csrf, cookie, map[string]any{
 		"name": "Payroll", "type": "weblink", "launch_url": "https://payroll.example",
 	})
 	if create.Code != http.StatusCreated {
@@ -394,7 +394,7 @@ func TestApplicationIconUploadServeRejectAndDelete(t *testing.T) {
 	appID := created.Application.ID
 
 	png := []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n', 0, 0, 0, 0}
-	upload := adminMultipart(t, e, "/api/admin/applications/"+appID+"/icon", csrf, cookie, "icon.png", png)
+	upload := adminMultipart(t, e, "/api/admin/v1/applications/"+appID+"/icon", csrf, cookie, "icon.png", png)
 	if upload.Code != http.StatusOK {
 		t.Fatalf("upload status=%d body=%s", upload.Code, upload.Body.String())
 	}
@@ -427,12 +427,12 @@ func TestApplicationIconUploadServeRejectAndDelete(t *testing.T) {
 		t.Fatalf("icon body mismatch: %v", response.Body.Bytes())
 	}
 
-	reject := adminMultipart(t, e, "/api/admin/applications/"+appID+"/icon", csrf, cookie, "icon.txt", []byte("not an image"))
+	reject := adminMultipart(t, e, "/api/admin/v1/applications/"+appID+"/icon", csrf, cookie, "icon.txt", []byte("not an image"))
 	if reject.Code != http.StatusBadRequest {
 		t.Fatalf("reject status=%d body=%s", reject.Code, reject.Body.String())
 	}
 
-	deleted := adminJSON(t, e, http.MethodDelete, "/api/admin/applications/"+appID+"/icon", csrf, cookie, nil)
+	deleted := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+appID+"/icon", csrf, cookie, nil)
 	if deleted.Code != http.StatusOK {
 		t.Fatalf("delete icon status=%d body=%s", deleted.Code, deleted.Body.String())
 	}
@@ -446,7 +446,7 @@ func TestApplicationIconUploadServeRejectAndDelete(t *testing.T) {
 func TestApplicationCreateRejectsNonAdmin(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
-	request := httptest.NewRequest(http.MethodPost, "/realms/default/api/admin/applications", bytes.NewReader([]byte(`{"name":"X","kind":"federated"}`)))
+	request := httptest.NewRequest(http.MethodPost, "/realms/default/api/admin/v1/applications", bytes.NewReader([]byte(`{"name":"X","kind":"federated"}`)))
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Origin", "http://idp.test")
 	request.Header.Set("X-Csrf-Token", csrf)

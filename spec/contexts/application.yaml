@@ -1180,7 +1180,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/applications
+        path: /api/admin/v1/applications
   GetAdminApplication:
     description: 管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。
     input:
@@ -1202,7 +1202,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{id}"
+        path: "/api/admin/v1/applications/{id}"
   CreateAdminApplication:
     description: 管理者が Application を一括作成する。種別に応じた protocol row を準備し、Application と application_id relation を同一 transaction で catalog へ公開する。protocol 種別は作成後に変更できない。
     input:
@@ -1226,7 +1226,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/applications
+        path: /api/admin/v1/applications
         request_form: body
         successful_status_codes:
           - "201"
@@ -1254,7 +1254,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{id}"
+        path: "/api/admin/v1/applications/{id}"
         request_form: body
   UploadApplicationIcon:
     description: 管理者が Application のアイコン画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。
@@ -1284,7 +1284,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/icon"
+        path: "/api/admin/v1/applications/{id}/icon"
         request_form: form
   DeleteApplicationIcon:
     description: 管理者が Application の保存済みアイコンを削除する。削除後は icon_url を返さない。
@@ -1308,7 +1308,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{id}/icon"
+        path: "/api/admin/v1/applications/{id}/icon"
   GetApplicationIcon:
     description: "保存済み Application アイコンを配信する公開 interface。Content-Type は検証済み形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。"
     input:
@@ -1350,7 +1350,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{id}"
+        path: "/api/admin/v1/applications/{id}"
         successful_status_codes:
           - "204"
   UpdateApplicationOidcConfig:
@@ -1376,7 +1376,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{id}/oidc"
+        path: "/api/admin/v1/applications/{id}/oidc"
         request_form: body
         successful_status_codes:
           - "204"
@@ -1402,7 +1402,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/oidc/rotate-secret"
+        path: "/api/admin/v1/applications/{id}/oidc/rotate-secret"
         request_form: body
         successful_status_codes:
           - "200"
@@ -1431,7 +1431,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/oidc/client-secrets"
+        path: "/api/admin/v1/applications/{id}/oidc/client-secrets"
         request_form: body
         successful_status_codes:
           - "201"
@@ -1459,7 +1459,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{id}/oidc/client-secrets/{credential_id}"
+        path: "/api/admin/v1/applications/{id}/oidc/client-secrets/{credential_id}"
         successful_status_codes:
           - "200"
   UpdateApplicationWsFedConfig:
@@ -1485,7 +1485,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{id}/wsfed"
+        path: "/api/admin/v1/applications/{id}/wsfed"
         request_form: body
         successful_status_codes:
           - "204"
@@ -1512,7 +1512,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/applications/{id}/saml"
+        path: "/api/admin/v1/applications/{id}/saml"
         request_form: body
         successful_status_codes:
           - "204"
@@ -1537,7 +1537,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{id}/assignments"
+        path: "/api/admin/v1/applications/{id}/assignments"
   AssignApplication:
     description: 管理者が Application にユーザー / グループを割当てる。
     input:
@@ -1564,7 +1564,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: "/api/admin/applications/{id}/assignments"
+        path: "/api/admin/v1/applications/{id}/assignments"
         request_form: body
         successful_status_codes:
           - "201"
@@ -1591,7 +1591,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/applications/{id}/assignments/{subject_type}/{subject_id}"
+        path: "/api/admin/v1/applications/{id}/assignments/{subject_type}/{subject_id}"
         successful_status_codes:
           - "204"
   GetAppSignInPolicy:
@@ -1615,7 +1615,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: "/api/admin/applications/{id}/sign-in-policy"
+        path: "/api/admin/v1/applications/{id}/sign-in-policy"
   UpdateAppSignInPolicy:
     description: 管理者が Application の sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。
     input:
@@ -1640,7 +1640,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/applications/{id}/sign-in-policy"
+        path: "/api/admin/v1/applications/{id}/sign-in-policy"
         request_form: body
   GetTenantDefaultSignInPolicy:
     description: 管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す (ADR-081)。
@@ -1659,7 +1659,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/default-sign-in-policy
+        path: /api/admin/v1/default-sign-in-policy
   UpdateTenantDefaultSignInPolicy:
     description: 管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。
     input:
@@ -1682,7 +1682,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: /api/admin/default-sign-in-policy
+        path: /api/admin/v1/default-sign-in-policy
         request_form: body
   ListApplicationCategories:
     description: 管理者が所属テナントの ApplicationCategory を position 昇順で一覧する。
@@ -1701,7 +1701,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/application-categories
+        path: /api/admin/v1/application-categories
   CreateApplicationCategory:
     description: 管理者が ApplicationCategory を作成する。
     input:
@@ -1725,7 +1725,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/application-categories
+        path: /api/admin/v1/application-categories
         request_form: body
         successful_status_codes:
           - "201"
@@ -1754,7 +1754,7 @@ interfaces:
     bindings:
       - kind: http
         method: PATCH
-        path: "/api/admin/application-categories/{id}"
+        path: "/api/admin/v1/application-categories/{id}"
         request_form: body
   DeleteApplicationCategory:
     description: 管理者が ApplicationCategory を削除する (冪等)。付与済みの Application からも除く。
@@ -1775,7 +1775,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/application-categories/{id}"
+        path: "/api/admin/v1/application-categories/{id}"
         successful_status_codes:
           - "204"
   SetApplicationCategories:
@@ -1803,7 +1803,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/applications/{id}/categories"
+        path: "/api/admin/v1/applications/{id}/categories"
         request_form: body
   ListMyApplications:
     description: "利用者が自分に割当済み (visible) の Application を一覧する。hidden 割当は除外する。\n手動並び順 (ApplicationOrdering) があればそれを優先し、無ければ name 昇順。応答の categories は\ntenant のカテゴリ定義を position 昇順で含み、各アプリの category_ids でセクションに振り分ける (ADR-069)。\n"
@@ -1824,7 +1824,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/account/applications
+        path: /api/account/v1/applications
   GetMyApplicationOrder:
     description: 利用者が保存済みのポータル手動並び順を取得する。未保存なら空配列を返す (ADR-069)。
     output:
@@ -1842,7 +1842,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/account/applications/order
+        path: /api/account/v1/applications/order
   ReorderMyApplications:
     description: "利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible な\nアプリのみを含み、それ以外を含むと拒否する (ADR-069)。\n"
     input:
@@ -1865,7 +1865,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: /api/account/applications/order
+        path: /api/account/v1/applications/order
         request_form: body
 authorization:
   resources:

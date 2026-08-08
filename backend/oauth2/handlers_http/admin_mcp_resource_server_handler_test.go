@@ -57,7 +57,7 @@ func TestAdminCreatesAndListsMcpResourceServer(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
 	csrf, cookie := adminCSRF(t, e)
 
-	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
+	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", created.Code, created.Body.String())
 	}
@@ -72,7 +72,7 @@ func TestAdminCreatesAndListsMcpResourceServer(t *testing.T) {
 		t.Fatalf("expected default state Active, got %v", createdBody["state"])
 	}
 
-	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/mcp-resource-servers", http.NoBody)
+	listReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers", http.NoBody)
 	listReq.Header.Set("X-Demo-Sub", "admin")
 	listRes := httptest.NewRecorder()
 	e.ServeHTTP(listRes, listReq)
@@ -94,11 +94,11 @@ func TestAdminRejectsDuplicateResource(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
 	csrf, cookie := adminCSRF(t, e)
 
-	first := adminJSONRequest(t, e, http.MethodPost, "/api/admin/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
+	first := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
 	if first.Code != http.StatusCreated {
 		t.Fatalf("first create status=%d body=%s", first.Code, first.Body.String())
 	}
-	second := adminJSONRequest(t, e, http.MethodPost, "/api/admin/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
+	second := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
 	if second.Code != http.StatusConflict {
 		t.Fatalf("expected 409 for duplicate resource, got %d body=%s", second.Code, second.Body.String())
 	}
@@ -108,14 +108,14 @@ func TestAdminUpdatesMcpResourceServerNameScopesState(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
 	csrf, cookie := adminCSRF(t, e)
 
-	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
+	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
 	var createdBody map[string]any
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
 	id := createdBody["id"].(string)
 
-	update := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/mcp-resource-servers/"+id, csrf, cookie, map[string]any{
+	update := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/mcp-resource-servers/"+id, csrf, cookie, map[string]any{
 		"name":   "GitHub Tools (renamed)",
 		"scopes": []string{"mcp.read"},
 		"state":  "Disabled",
@@ -140,19 +140,19 @@ func TestAdminDeletesMcpResourceServer(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
 	csrf, cookie := adminCSRF(t, e)
 
-	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
+	created := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/mcp-resource-servers", csrf, cookie, validMcpResourceServerPayload())
 	var createdBody map[string]any
 	if err := json.Unmarshal(created.Body.Bytes(), &createdBody); err != nil {
 		t.Fatal(err)
 	}
 	id := createdBody["id"].(string)
 
-	deleteRes := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/mcp-resource-servers/"+id, csrf, cookie, nil)
+	deleteRes := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/mcp-resource-servers/"+id, csrf, cookie, nil)
 	if deleteRes.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d body=%s", deleteRes.Code, deleteRes.Body.String())
 	}
 
-	getReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/mcp-resource-servers/"+id, http.NoBody)
+	getReq := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers/"+id, http.NoBody)
 	getReq.Header.Set("X-Demo-Sub", "admin")
 	getRes := httptest.NewRecorder()
 	e.ServeHTTP(getRes, getReq)
@@ -163,7 +163,7 @@ func TestAdminDeletesMcpResourceServer(t *testing.T) {
 
 func TestAdminMcpResourceServerRequiresAdmin(t *testing.T) {
 	e := newAdminMcpResourceServerHandler()
-	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/mcp-resource-servers", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/mcp-resource-servers", http.NoBody)
 	req.Header.Set("X-Demo-Sub", "regular")
 	res := httptest.NewRecorder()
 	e.ServeHTTP(res, req)

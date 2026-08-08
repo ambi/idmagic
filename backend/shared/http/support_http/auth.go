@@ -152,9 +152,9 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 // resolveAuthnContext で idmagic.admin も明示的に許可する。
 func requiredPortalScope(path string) string {
 	switch {
-	case strings.Contains(path, "/api/admin/"):
+	case strings.Contains(path, "/api/admin/v1/"):
 		return "idmagic.admin"
-	case strings.Contains(path, "/api/account/") || strings.HasSuffix(path, "/api/auth/account") || strings.HasSuffix(path, "/api/auth/change_password"):
+	case strings.Contains(path, "/api/account/v1/") || strings.HasSuffix(path, "/api/auth/account") || strings.HasSuffix(path, "/api/auth/change_password"):
 		return "idmagic.account"
 	default:
 		return ""
@@ -163,15 +163,15 @@ func requiredPortalScope(path string) string {
 
 func requiredAccountScope(method, path string) (string, bool) {
 	switch {
-	case strings.Contains(path, "/api/account/step_up/"),
-		strings.HasSuffix(path, "/api/account/email/verify"),
-		strings.HasSuffix(path, "/api/account/email/verify_context"):
+	case strings.Contains(path, "/api/account/v1/step_up/"),
+		strings.HasSuffix(path, "/api/account/v1/email/verify"),
+		strings.HasSuffix(path, "/api/account/v1/email/verify_context"):
 		return "", false
-	case strings.Contains(path, "/api/account/mfa/"):
+	case strings.Contains(path, "/api/account/v1/mfa/"):
 		return "account:mfa:write", true
-	case strings.Contains(path, "/api/account/sessions/") && method != http.MethodGet:
+	case strings.Contains(path, "/api/account/v1/sessions/") && method != http.MethodGet:
 		return "account:sessions:write", true
-	case strings.Contains(path, "/api/account/consents/") && method != http.MethodGet:
+	case strings.Contains(path, "/api/account/v1/consents/") && method != http.MethodGet:
 		return "account:consents:write", true
 	case strings.HasSuffix(path, "/api/auth/change_password"):
 		return "account:password:write", true

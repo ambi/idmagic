@@ -32,7 +32,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	e, clients, events := newAdminOAuth2ClientHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/clients", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/clients", csrf, cookie, map[string]any{
 		"client_name":                "Portal",
 		"client_type":                "confidential",
 		"redirect_uris":              []string{"https://portal.example/callback"},
@@ -59,7 +59,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 		t.Fatalf("secret hash leaked: %s", create.Body.String())
 	}
 
-	get := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/clients/"+created.Client.ClientID, http.NoBody)
+	get := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/clients/"+created.Client.ClientID, http.NoBody)
 	get.Header.Set("X-Demo-Sub", "admin")
 	getResponse := httptest.NewRecorder()
 	e.ServeHTTP(getResponse, get)
@@ -78,7 +78,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	}
 
 	update := adminJSONRequest(
-		t, e, http.MethodPatch, "/api/admin/clients/"+created.Client.ClientID, csrf, cookie,
+		t, e, http.MethodPatch, "/api/admin/v1/clients/"+created.Client.ClientID, csrf, cookie,
 		map[string]any{"redirect_uris": []string{"https://portal.example/new-callback"}},
 	)
 	if update.Code != http.StatusOK {
@@ -94,7 +94,7 @@ func TestAdminOAuth2ClientCRUD(t *testing.T) {
 	}
 
 	deleted := adminJSONRequest(
-		t, e, http.MethodDelete, "/api/admin/clients/"+created.Client.ClientID, csrf, cookie, nil,
+		t, e, http.MethodDelete, "/api/admin/v1/clients/"+created.Client.ClientID, csrf, cookie, nil,
 	)
 	if deleted.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d body=%s", deleted.Code, deleted.Body.String())
@@ -127,7 +127,7 @@ func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 		TokenEndpointAuthMethod: oauthdomain.AuthMethodNone, IDTokenSignedResponseAlg: signingdomain.SigAlgPS256,
 		FapiProfile: oauthdomain.FapiNone, CreatedAt: now,
 	})
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/clients/portal", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/clients/portal", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "admin")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -135,7 +135,7 @@ func TestAdminOAuth2ClientCannotCrossTenantBoundary(t *testing.T) {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
 
-	request = httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/clients", http.NoBody)
+	request = httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/clients", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "regular")
 	response = httptest.NewRecorder()
 	e.ServeHTTP(response, request)

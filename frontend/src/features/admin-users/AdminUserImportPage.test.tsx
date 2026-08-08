@@ -42,17 +42,17 @@ describe('AdminUserImportPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.endsWith('/api/admin/users/imports') && init?.method === 'POST') {
+        if (url.endsWith('/api/admin/v1/users/imports') && init?.method === 'POST') {
           const mode = (JSON.parse(String(init.body)) as { mode: string }).mode
           const id = mode === 'apply' ? 'job-apply' : 'job-dry-run'
           return Promise.resolve(response(202, { id, status: 'queued', mode }))
         }
-        if (url.endsWith('/api/admin/users/imports/job-dry-run')) {
+        if (url.endsWith('/api/admin/v1/users/imports/job-dry-run')) {
           return Promise.resolve(
             response(200, { id: 'job-dry-run', status: 'succeeded', result: dryRunResult }),
           )
         }
-        if (url.endsWith('/api/admin/users/imports/job-apply')) {
+        if (url.endsWith('/api/admin/v1/users/imports/job-apply')) {
           return Promise.resolve(
             response(200, { id: 'job-apply', status: 'succeeded', result: applyResult }),
           )

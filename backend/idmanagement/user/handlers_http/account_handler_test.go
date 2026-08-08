@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "認証済みユーザーは自身のプロフィールを読み・編集できる" を
-// /api/account/profile 経由で検証する (ADR-040 / wi-19)。
+// /api/account/v1/profile 経由で検証する (ADR-040 / wi-19)。
 
 import (
 	"bytes"
@@ -75,7 +75,7 @@ func accountUser() *userdomain.User {
 func TestAccountProfileGetRequiresAuth(t *testing.T) {
 	e := newAccountServer(t, nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/profile", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/profile", http.NoBody))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -84,7 +84,7 @@ func TestAccountProfileGetRequiresAuth(t *testing.T) {
 func TestAccountProfileGetReturnsSelfView(t *testing.T) {
 	e := newAccountServer(t, accountUser())
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/profile", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/profile", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -109,7 +109,7 @@ func TestAccountProfileGetReturnsSelfView(t *testing.T) {
 func TestAccountSummaryRequiresAuth(t *testing.T) {
 	e := newAccountServer(t, nil)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/summary", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/summary", http.NoBody))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -123,7 +123,7 @@ func TestAccountSummaryReturnsLifecycleAndOmitsRoles(t *testing.T) {
 	user.Roles = []string{"admin"}
 	e := newAccountServer(t, user)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/summary", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/summary", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -145,7 +145,7 @@ func TestAccountSummaryReturnsLifecycleAndOmitsRoles(t *testing.T) {
 
 func TestAccountProfilePatchUpdatesEditableAttribute(t *testing.T) {
 	e := newAccountServer(t, accountUser())
-	rec := patchSettings(t, e, "/realms/default/api/account/profile", map[string]any{
+	rec := patchSettings(t, e, "/realms/default/api/account/v1/profile", map[string]any{
 		"given_name": "Dave",
 		"attributes": map[string]any{
 			"nickname": map[string]any{"type": "string", "string": "newnick"},
@@ -168,7 +168,7 @@ func TestAccountProfilePatchUpdatesEditableAttribute(t *testing.T) {
 
 func TestAccountProfilePatchRejectsAdminManagedAttribute(t *testing.T) {
 	e := newAccountServer(t, accountUser())
-	rec := patchSettings(t, e, "/realms/default/api/account/profile", map[string]any{
+	rec := patchSettings(t, e, "/realms/default/api/account/v1/profile", map[string]any{
 		"attributes": map[string]any{
 			"department": map[string]any{"type": "string", "string": "Sales"},
 		},

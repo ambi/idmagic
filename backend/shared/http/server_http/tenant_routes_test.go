@@ -116,14 +116,14 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
 
 	allowed := httptest.NewRecorder()
-	e.ServeHTTP(allowed, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/tenants", http.NoBody))
+	e.ServeHTTP(allowed, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/tenants", http.NoBody))
 	if allowed.Code != http.StatusOK {
 		t.Fatalf("system_admin status = %d, body = %s", allowed.Code, allowed.Body.String())
 	}
 
 	resolver.sub = "admin"
 	denied := httptest.NewRecorder()
-	e.ServeHTTP(denied, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/tenants", http.NoBody))
+	e.ServeHTTP(denied, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/tenants", http.NoBody))
 	if denied.Code != http.StatusForbidden {
 		t.Fatalf("admin status = %d, body = %s", denied.Code, denied.Body.String())
 	}
@@ -152,7 +152,7 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
 
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/tenants", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/tenants", http.NoBody))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("cross-tenant session status = %d, body = %s", rec.Code, rec.Body.String())
 	}
@@ -188,14 +188,14 @@ func TestControlPlaneRoutesUnreachableFromOtherRealm(t *testing.T) {
 	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
 
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/tenants", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenants", http.NoBody))
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("acme realm control-plane status = %d, body = %s", rec.Code, rec.Body.String())
 	}
 }
 
 // tenancy/handlers_http の control-plane ルートは、外側 (/realms/:tenant_id, リクエスト
-// 自身の realm) と内側 (/api/admin/tenants/:target_tenant_id, CRUD 対象) の 2 つの
+// 自身の realm) と内側 (/api/admin/v1/tenants/:target_tenant_id, CRUD 対象) の 2 つの
 // パスパラメータを持つ。両方を同じ名前 (tenant_id) にすると、echo の
 // Context.Param が外側の値を返してしまい、ハンドラーが誤ったテナントを操作する
 // (wi: echo v5.3.1 対応時に発見)。このテストはパラメータが正しく分離されている
@@ -221,7 +221,7 @@ func TestControlPlaneGetTenantResolvesPathParamNotRequestRealm(t *testing.T) {
 	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
 
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/tenants/acme", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/tenants/acme", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
 	}

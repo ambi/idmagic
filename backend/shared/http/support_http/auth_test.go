@@ -35,14 +35,14 @@ func TestRequiredAccountScope(t *testing.T) {
 		method, path, scope string
 		allowed             bool
 	}{
-		{http.MethodGet, "/realms/acme/api/account/profile", "account:read", true},
-		{http.MethodPatch, "/realms/acme/api/account/profile", "account:write", true},
-		{http.MethodPost, "/realms/acme/api/account/mfa/totp/remove", "account:mfa:write", true},
-		{http.MethodPost, "/realms/acme/api/account/sessions/s1/revoke", "account:sessions:write", true},
-		{http.MethodPost, "/realms/acme/api/account/consents/c1/revoke", "account:consents:write", true},
+		{http.MethodGet, "/realms/acme/api/account/v1/profile", "account:read", true},
+		{http.MethodPatch, "/realms/acme/api/account/v1/profile", "account:write", true},
+		{http.MethodPost, "/realms/acme/api/account/v1/mfa/totp/remove", "account:mfa:write", true},
+		{http.MethodPost, "/realms/acme/api/account/v1/sessions/s1/revoke", "account:sessions:write", true},
+		{http.MethodPost, "/realms/acme/api/account/v1/consents/c1/revoke", "account:consents:write", true},
 		{http.MethodPost, "/realms/acme/api/auth/change_password", "account:password:write", true},
-		{http.MethodPost, "/realms/acme/api/account/step_up/start", "", false},
-		{http.MethodGet, "/realms/acme/api/account/email/verify_context", "", false},
+		{http.MethodPost, "/realms/acme/api/account/v1/step_up/start", "", false},
+		{http.MethodGet, "/realms/acme/api/account/v1/email/verify_context", "", false},
 	} {
 		got, allowed := requiredAccountScope(tc.method, tc.path)
 		if got != tc.scope || allowed != tc.allowed {
@@ -60,7 +60,7 @@ func TestAccountContextAcceptsBothPortalScopes(t *testing.T) {
 		{name: "account portal", path: "/api/auth/account", scope: "openid profile idmagic.account", allowed: true},
 		{name: "account API client", path: "/api/auth/account", scope: "account:read", allowed: true},
 		{name: "unrelated scope", path: "/api/auth/account", scope: "openid profile"},
-		{name: "admin scope remains rejected from account API", path: "/api/account/profile", scope: "idmagic.admin"},
+		{name: "admin scope remains rejected from account API", path: "/api/account/v1/profile", scope: "idmagic.admin"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()
@@ -96,9 +96,9 @@ func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
 		principal          apitokendomain.Principal
 		authenticated      bool
 	}{
-		{name: "read", method: http.MethodGet, path: "/api/account/profile", principal: apitokendomain.Principal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}, authenticated: true},
-		{name: "write lacks scope", method: http.MethodPatch, path: "/api/account/profile", principal: apitokendomain.Principal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}},
-		{name: "missing lifecycle record", method: http.MethodGet, path: "/api/account/profile"},
+		{name: "read", method: http.MethodGet, path: "/api/account/v1/profile", principal: apitokendomain.Principal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}, authenticated: true},
+		{name: "write lacks scope", method: http.MethodPatch, path: "/api/account/v1/profile", principal: apitokendomain.Principal{UserID: "user-1", ClientID: apitokendomain.BuiltinClientID}},
+		{name: "missing lifecycle record", method: http.MethodGet, path: "/api/account/v1/profile"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			e := echo.New()

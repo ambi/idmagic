@@ -14,7 +14,7 @@ import (
 
 func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {
 	e, _, _ := newKeyAdminServer(t, keyAdminUser("admin", "acme", []string{"admin"}))
-	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/policy/roles")
+	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/v1/policy/roles")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -46,7 +46,7 @@ func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {
 
 func TestAdminRolePoliciesRequireAdminRole(t *testing.T) {
 	e, _, _ := newKeyAdminServer(t, keyAdminUser("plain", "acme", nil))
-	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/policy/roles")
+	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/v1/policy/roles")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -54,7 +54,7 @@ func TestAdminRolePoliciesRequireAdminRole(t *testing.T) {
 
 func TestAdminRolePoliciesHideSystemAdminPermissionsFromAdmin(t *testing.T) {
 	e, _, _ := newKeyAdminServer(t, keyAdminUser("admin", "acme", []string{"admin"}))
-	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/policy/roles")
+	rec := getAdminRolePolicies(e, "/realms/acme/api/admin/v1/policy/roles")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -72,7 +72,7 @@ func TestAdminRolePoliciesIncludeControlPlanePermissionsForSystemAdmin(t *testin
 		t,
 		keyAdminUser("ops", tenancydomain.DefaultTenantID, []string{"system_admin"}),
 	)
-	rec := getAdminRolePolicies(e, "/realms/default/api/admin/policy/roles")
+	rec := getAdminRolePolicies(e, "/realms/default/api/admin/v1/policy/roles")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}

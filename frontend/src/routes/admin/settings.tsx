@@ -10,7 +10,7 @@ export const Route = createFileRoute('/admin/settings')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [settings, integrationEndpoints, samlIDPProfiles] = await Promise.all([
-      request<AdminSettings>('/api/admin/settings'),
+      request<AdminSettings>('/api/admin/v1/settings'),
       getAdminIntegrationEndpoints(),
       listSamlIDPProfiles(),
     ])

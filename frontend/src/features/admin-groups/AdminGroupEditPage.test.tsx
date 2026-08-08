@@ -56,10 +56,10 @@ describe('AdminGroupEditPage', () => {
         if (init?.method === 'PATCH') {
           return Promise.resolve(response(400, { message: 'Could not update the group.' }))
         }
-        if (url.includes('/api/admin/groups/')) {
+        if (url.includes('/api/admin/v1/groups/')) {
           return Promise.resolve(response(200, { group, members: [] }))
         }
-        if (url.includes('/api/admin/users')) {
+        if (url.includes('/api/admin/v1/users')) {
           return Promise.resolve(response(200, { users: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -78,10 +78,10 @@ describe('AdminGroupEditPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {
-        if (url.includes('/api/admin/groups/')) {
+        if (url.includes('/api/admin/v1/groups/')) {
           return Promise.resolve(response(200, { group, members: [] }))
         }
-        if (url.includes('/api/admin/users')) {
+        if (url.includes('/api/admin/v1/users')) {
           return Promise.resolve(response(200, { users: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -100,10 +100,10 @@ describe('AdminGroupEditPage', () => {
         if (init?.method === 'POST' && url.includes('/members/')) {
           return Promise.resolve(response(204))
         }
-        if (url.includes('/api/admin/groups/')) {
+        if (url.includes('/api/admin/v1/groups/')) {
           return Promise.resolve(response(200, { group, members: [] }))
         }
-        if (url.includes('/api/admin/users')) {
+        if (url.includes('/api/admin/v1/users')) {
           return Promise.resolve(response(200, { users: [user] }))
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -119,7 +119,7 @@ describe('AdminGroupEditPage', () => {
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining(`/api/admin/groups/group-1/members/${user.id}`),
+        expect.stringContaining(`/api/admin/v1/groups/group-1/members/${user.id}`),
         expect.objectContaining({ method: 'POST' }),
       ),
     )

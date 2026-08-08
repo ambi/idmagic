@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "テナント内 admin は所属テナントの設定を読み・更新できる"
-// を /api/admin/settings 経由で検証する。AdminSettingsRead は admin /
+// を /api/admin/v1/settings 経由で検証する。AdminSettingsRead は admin /
 // system_admin の両方で許可、AdminSettingsUpdate は actor.tenant_id に
 // 固定する。password_policy_override の弱化は use case 側で reject される。
 
@@ -83,7 +83,7 @@ func activeTenant(id, displayName string) *domain.Tenant {
 func TestAdminSettingsGetRejectsNonAdmin(t *testing.T) {
 	e, _, _ := newSettingsServer(t, settingsActor("alice", "acme", nil), activeTenant("acme", "Acme"))
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/settings", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/settings", http.NoBody))
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -95,7 +95,7 @@ func TestAdminSettingsGetReturnsCurrentTenant(t *testing.T) {
 	tenant.PasswordPolicyOverride = &domain.PasswordPolicyOverride{MinLength: &minLength}
 	e, _, _ := newSettingsServer(t, settingsActor("admin", "acme", []string{"admin"}), tenant)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/settings", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/settings", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -124,7 +124,7 @@ func TestAdminSettingsGetAllowsSystemAdmin(t *testing.T) {
 		activeTenant(domain.DefaultTenantID, "Default"),
 	)
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/settings", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/settings", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -186,7 +186,7 @@ func TestAdminSettingsPatchRejectsWeakerPolicy(t *testing.T) {
 	}
 }
 
-// admin が /realms/{自テナント}/api/admin/settings から触れるのは自テナントのみで、
+// admin が /realms/{自テナント}/api/admin/v1/settings から触れるのは自テナントのみで、
 // 別テナントを書き換える経路は存在しない。
 func TestAdminSettingsPatchStaysWithinActorTenant(t *testing.T) {
 	e, repo, _ := newSettingsServer(
@@ -220,7 +220,7 @@ func TestAdminSettingsPatchRequiresCSRF(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	req := httptest.NewRequest(http.MethodPatch, "/realms/acme/api/admin/settings", bytes.NewReader(body))
+	req := httptest.NewRequest(http.MethodPatch, "/realms/acme/api/admin/v1/settings", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Origin", "http://idp.test")
 	rec := httptest.NewRecorder()
@@ -230,11 +230,11 @@ func TestAdminSettingsPatchRequiresCSRF(t *testing.T) {
 	}
 }
 
-// patchSettings は /api/admin/settings への PATCH。この endpoint は解決済みテナントに
+// patchSettings は /api/admin/v1/settings への PATCH。この endpoint は解決済みテナントに
 // 固定されるため、path は呼び出し側で選ぶ余地が無い。
 func patchSettings(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecorder {
 	t.Helper()
-	const path = "/realms/acme/api/admin/settings"
+	const path = "/realms/acme/api/admin/v1/settings"
 	// CSRF token / cookie を tenant local の password_reset_context 経由で発行する。
 	tenant := tenantPrefix(path)
 	csrf, cookie := passwordResetContextCSRF(t, e, tenant+"/api/auth/password_reset_context")
@@ -262,7 +262,7 @@ func TestAdminSettingsExposeDefaultLocale(t *testing.T) {
 	)
 
 	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/settings", http.NoBody))
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/settings", http.NoBody))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -299,7 +299,7 @@ func TestAdminSettingsExposeDefaultLocale(t *testing.T) {
 }
 
 func tenantPrefix(path string) string {
-	// "/realms/acme/api/admin/settings" -> "/realms/acme"
+	// "/realms/acme/api/admin/v1/settings" -> "/realms/acme"
 	const prefix = "/realms/"
 	if len(path) < len(prefix) || path[:len(prefix)] != prefix {
 		return ""

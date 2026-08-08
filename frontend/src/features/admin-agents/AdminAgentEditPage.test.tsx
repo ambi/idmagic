@@ -85,7 +85,7 @@ describe('AdminAgentEditPage', () => {
       'fetch',
       mock((url: string, init?: RequestInit) => {
         if (init?.method === 'DELETE') return Promise.resolve(response(204))
-        if (url.includes('/api/admin/agents/agent-1')) {
+        if (url.includes('/api/admin/v1/agents/agent-1')) {
           return Promise.resolve(response(200, { ...agent, client_ids: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)

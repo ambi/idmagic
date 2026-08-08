@@ -1,4 +1,4 @@
-// /api/account/email/* — primary email の変更と新アドレスの再検証 (self-service, wi-21)。
+// /api/account/v1/email/* — primary email の変更と新アドレスの再検証 (self-service, wi-21)。
 package handlers_http
 
 import (

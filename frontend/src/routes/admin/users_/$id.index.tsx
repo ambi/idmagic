@@ -11,7 +11,7 @@ export const Route = createFileRoute('/admin/users_/$id/')({
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [user, schema] = await Promise.all([
       getAdminUser(params.id),
-      request<TenantUserAttributeSchema>('/api/admin/tenant/user_attribute_schema'),
+      request<TenantUserAttributeSchema>('/api/admin/v1/tenant/user_attribute_schema'),
     ])
     return {
       csrfToken: account.csrf_token,

@@ -617,7 +617,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/saml/idp-profiles
+        path: /api/admin/v1/saml/idp-profiles
         request_body: json
         successful_status_codes:
           - "201"
@@ -638,7 +638,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/saml/idp-profiles
+        path: /api/admin/v1/saml/idp-profiles
         successful_status_codes:
           - "200"
   UpdateSamlIdentityProviderProfile:
@@ -662,7 +662,7 @@ interfaces:
     bindings:
       - kind: http
         method: PUT
-        path: "/api/admin/saml/idp-profiles/{profile_id}"
+        path: "/api/admin/v1/saml/idp-profiles/{profile_id}"
         request_body: json
         successful_status_codes:
           - "200"
@@ -685,7 +685,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/saml/idp-profiles/{profile_id}"
+        path: "/api/admin/v1/saml/idp-profiles/{profile_id}"
         successful_status_codes:
           - "204"
   RegisterSamlServiceProvider:
@@ -712,7 +712,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/saml/service-providers
+        path: /api/admin/v1/saml/service-providers
         request_body: json
         successful_status_codes:
           - "200"
@@ -736,7 +736,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/saml/service-providers
+        path: /api/admin/v1/saml/service-providers
         successful_status_codes:
           - "200"
   DeleteSamlServiceProvider:
@@ -758,7 +758,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: /api/admin/saml/service-providers
+        path: /api/admin/v1/saml/service-providers
         request_form: query
         successful_status_codes:
           - "204"

@@ -44,7 +44,7 @@ func newAdminGroupHandler(t *testing.T) (*echo.Echo, *groupmemory.GroupRepositor
 
 func TestAdminGroupAPIRequiresAdminRole(t *testing.T) {
 	e, _ := newAdminGroupHandler(t)
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/groups", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/groups", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "alice")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -57,7 +57,7 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 	e, _ := newAdminGroupHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups", csrf, cookie, map[string]any{
 		"name": "engineering", "roles": []string{"catalog:read"},
 	})
 	if create.Code != http.StatusCreated {
@@ -71,21 +71,21 @@ func TestAdminGroupAPICreateAddMemberAndEffectiveRoles(t *testing.T) {
 	}
 
 	// 名前一意性: 409
-	conflict := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups", csrf, cookie, map[string]any{"name": "engineering"})
+	conflict := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups", csrf, cookie, map[string]any{"name": "engineering"})
 	if conflict.Code != http.StatusConflict {
 		t.Fatalf("conflict status=%d body=%s", conflict.Code, conflict.Body.String())
 	}
 
-	add := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/members/alice", csrf, cookie, nil)
+	add := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/"+created.ID+"/members/alice", csrf, cookie, nil)
 	if add.Code != http.StatusNoContent {
 		t.Fatalf("add member status=%d body=%s", add.Code, add.Body.String())
 	}
 	// 冪等な再追加も 204
-	if again := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/members/alice", csrf, cookie, nil); again.Code != http.StatusNoContent {
+	if again := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/"+created.ID+"/members/alice", csrf, cookie, nil); again.Code != http.StatusNoContent {
 		t.Fatalf("idempotent add status=%d", again.Code)
 	}
 
-	groupsResp := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/alice/groups", http.NoBody)
+	groupsResp := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users/alice/groups", http.NoBody)
 	groupsResp.Header.Set("X-Demo-Sub", "admin")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, groupsResp)
@@ -119,7 +119,7 @@ func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 	if _, err := groupRepo.AddMember(ctx, &groupdomain.GroupMember{GroupID: group.ID, UserID: "alice", CreatedAt: time.Now().UTC()}); err != nil {
 		t.Fatal(err)
 	}
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/groups", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/groups", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "alice")
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
@@ -131,7 +131,7 @@ func TestGroupDerivedAdminRolePassesRBAC(t *testing.T) {
 func TestDynamicGroupRulePreviewEnableAndManualMembershipRejection(t *testing.T) {
 	e, _ := newAdminGroupHandler(t)
 	csrf, cookie := adminCSRF(t, e)
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups", csrf, cookie, map[string]any{
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups", csrf, cookie, map[string]any{
 		"name": "alice-only", "membership_type": "dynamic",
 		"dynamic_rule": map[string]any{"expression": `user.preferred_username == "alice"`},
 	})
@@ -144,24 +144,24 @@ func TestDynamicGroupRulePreviewEnableAndManualMembershipRejection(t *testing.T)
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	preview := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/dynamic-rule/preview", csrf, cookie, map[string]any{
+	preview := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/"+created.ID+"/dynamic-rule/preview", csrf, cookie, map[string]any{
 		"expression": `user.preferred_username == "alice"`, "user_ids": []string{"alice"},
 	})
 	if preview.Code != http.StatusOK || !containsJSON(preview.Body.Bytes(), `"matched":true`) {
 		t.Fatalf("preview status=%d body=%s", preview.Code, preview.Body.String())
 	}
-	enable := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/dynamic-rule/enable", csrf, cookie, nil)
+	enable := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/"+created.ID+"/dynamic-rule/enable", csrf, cookie, nil)
 	if enable.Code != http.StatusOK {
 		t.Fatalf("enable status=%d body=%s", enable.Code, enable.Body.String())
 	}
-	detailRequest := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/groups/"+created.ID, http.NoBody)
+	detailRequest := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/groups/"+created.ID, http.NoBody)
 	detailRequest.Header.Set("X-Demo-Sub", "admin")
 	detail := httptest.NewRecorder()
 	e.ServeHTTP(detail, detailRequest)
 	if detail.Code != http.StatusOK || !containsJSON(detail.Body.Bytes(), `"preferred_username":"alice"`) {
 		t.Fatalf("detail status=%d body=%s", detail.Code, detail.Body.String())
 	}
-	manual := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/"+created.ID+"/members/admin", csrf, cookie, nil)
+	manual := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/"+created.ID+"/members/admin", csrf, cookie, nil)
 	if manual.Code != http.StatusConflict {
 		t.Fatalf("manual membership status=%d body=%s", manual.Code, manual.Body.String())
 	}

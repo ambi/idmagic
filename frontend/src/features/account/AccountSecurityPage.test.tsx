@@ -346,7 +346,7 @@ describe('AccountSecurityPage', () => {
       'fetch',
       mock((url: string) =>
         Promise.resolve(
-          url.includes('/api/account/linked-identities') ? response(204) : response(200, {}),
+          url.includes('/api/account/v1/linked-identities') ? response(204) : response(200, {}),
         ),
       ),
     )
@@ -371,7 +371,7 @@ describe('AccountSecurityPage', () => {
 
     expect(await screen.findByText(t.noLinkedIdentities)).toBeInTheDocument()
     expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/account/linked-identities/contoso'),
+      expect.stringContaining('/api/account/v1/linked-identities/contoso'),
       expect.objectContaining({ method: 'DELETE' }),
     )
   })

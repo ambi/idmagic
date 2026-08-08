@@ -73,10 +73,10 @@ describe('AdminUsersPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/users') && init?.method === 'DELETE') {
+        if (url.includes('/api/admin/v1/users') && init?.method === 'DELETE') {
           return Promise.resolve(response(204))
         }
-        if (url.includes('/api/admin/users')) {
+        if (url.includes('/api/admin/v1/users')) {
           return Promise.resolve(response(200, { users: [] }))
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -96,7 +96,7 @@ describe('AdminUsersPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
-        if (url.includes('/api/admin/users') && init?.method === 'DELETE') {
+        if (url.includes('/api/admin/v1/users') && init?.method === 'DELETE') {
           return Promise.resolve(response(409, { message: 'Could not delete the user.' }))
         }
         throw new Error(`unexpected fetch ${url}`)

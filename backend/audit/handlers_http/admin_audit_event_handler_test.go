@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "管理者は所属テナントの監査イベントを参照できるが別テナントは公開しない" を
-// /api/admin/audit_events 経由で検証する。requireAdmin と異なり requireAuditReader は
+// /api/admin/v1/audit_events 経由で検証する。requireAdmin と異なり requireAuditReader は
 // admin / system_admin 両方を許可し、system_admin の default-tenant 経路では
 // all_tenants=true で横断検索できる。
 
@@ -155,7 +155,7 @@ func TestAdminAuditEventsResolvesUsernameToUserID(t *testing.T) {
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},
 	})
 
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?username=alice")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?username=alice")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -185,7 +185,7 @@ func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},
 	})
 
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?username=no-such-user")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?username=no-such-user")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -202,7 +202,7 @@ func TestAdminAuditEventsRequiresAdminRole(t *testing.T) {
 	// 認証はあるが admin/system_admin ロールが無い → 403。
 	user := auditUser("user_alice", "acme", []string{})
 	e := newAuditAdminServer(t, user, nil)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events")
 	if rec.Code != http.StatusForbidden ||
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"type":"urn:idmagic:error:access_denied"`)) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
@@ -218,7 +218,7 @@ func TestAdminAuditEventsScopesToOwnTenant(t *testing.T) {
 		auditEvent("acme", "AccessTokenIssued", "alice", now),
 	}
 	e := newAuditAdminServer(t, user, events)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -247,7 +247,7 @@ func TestAdminAuditEventsAllTenantsRequiresSystemAdminOnDefaultTenant(t *testing
 		auditEvent(tenancydomain.DefaultTenantID, "X", "b", now),
 	}
 	e := newAuditAdminServer(t, admin, events)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?all_tenants=true")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?all_tenants=true")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -268,7 +268,7 @@ func TestAdminAuditEventsAllTenantsHonoredForSystemAdminAtDefault(t *testing.T) 
 		auditEvent(tenancydomain.DefaultTenantID, "X", "b", now),
 	}
 	e := newAuditAdminServer(t, sysAdmin, events)
-	rec := getAdminAuditEvents(e, "/realms/default/api/admin/audit_events?all_tenants=true")
+	rec := getAdminAuditEvents(e, "/realms/default/api/admin/v1/audit_events?all_tenants=true")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -286,7 +286,7 @@ func TestAdminAuditEventsGetReturns404ForCrossTenant(t *testing.T) {
 	now := time.Now().UTC()
 	foreign := auditEvent(tenancydomain.DefaultTenantID, "X", "alice", now)
 	e := newAuditAdminServer(t, user, []*auditports.AuditEventRecord{foreign})
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/"+foreign.ID)
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events/"+foreign.ID)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected 404 for cross-tenant event, got %d body=%s", rec.Code, rec.Body.String())
 	}
@@ -301,7 +301,7 @@ func TestAdminAuditEventsFilterByTypeAndSub(t *testing.T) {
 		auditEvent("acme", "AccessTokenIssued", "alice", now.Add(-2*time.Second)),
 	}
 	e := newAuditAdminServer(t, user, events)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?type=UserAuthenticated&user_id=alice")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?type=UserAuthenticated&user_id=alice")
 	var body struct {
 		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
@@ -330,28 +330,28 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 	var body struct {
 		Events []audithttp.AdminAuditEventResponse `json:"events"`
 	}
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?category=fail")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?category=fail")
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 1 || body.Events[0].Type != "AuthenticationFailed" {
 		t.Fatalf("category=fail mismatch: %+v", body.Events)
 	}
 
 	// authentication は成功 + 失敗 (PasswordChanged / AdminOAuth2ClientCreated は対象外)。
-	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?category=authentication")
+	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?category=authentication")
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 2 {
 		t.Fatalf("category=authentication must return 2, got %d: %+v", len(body.Events), body.Events)
 	}
 
 	// 管理操作カテゴリ (認証以外) も絞り込めること。
-	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?category=client")
+	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?category=client")
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if len(body.Events) != 3 || body.Events[0].Type != "ClientSecretRevoked" ||
 		body.Events[1].Type != "ClientSecretIssued" || body.Events[2].Type != "AdminOAuth2ClientCreated" {
 		t.Fatalf("category=client mismatch: %+v", body.Events)
 	}
 
-	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?category=bogus")
+	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?category=bogus")
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("unknown category must be 400, got %d", rec.Code)
 	}
@@ -367,7 +367,7 @@ func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
 	}
 	e := newAuditAdminServer(t, user, events)
 
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=outcome:eq:failure")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?filter=outcome:eq:failure")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -379,7 +379,7 @@ func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
 		t.Fatalf("filter outcome mismatch: %+v", body.Events)
 	}
 
-	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?q=access")
+	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?q=access")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("q status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -401,7 +401,7 @@ func TestAdminAuditEventsFiltersPlaintextUsernameAndIP(t *testing.T) {
 	ev.SearchAttributes = auditusecases.ExtractSearchAttributes(ev)
 	e := newAuditAdminServer(t, user, []*auditports.AuditEventRecord{ev})
 
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=actor.username:eq:alice&filter=client.ip:eq:203.0.113.9")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?filter=actor.username:eq:alice&filter=client.ip:eq:203.0.113.9")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -417,7 +417,7 @@ func TestAdminAuditEventsFiltersPlaintextUsernameAndIP(t *testing.T) {
 func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	e := newAuditAdminServer(t, user, nil)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events?filter=payload.any:eq:value")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?filter=payload.any:eq:value")
 	if rec.Code != http.StatusBadRequest ||
 		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_request"`)) {
 		t.Fatalf("unknown filter must be 400 invalid_request, got %d body=%s", rec.Code, rec.Body.String())
@@ -427,7 +427,7 @@ func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
 func TestAdminAuditEventSearchOptionsRequiresAuditReader(t *testing.T) {
 	user := auditUser("user_alice", "acme", []string{})
 	e := newAuditAdminServer(t, user, nil)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/search_options")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events/search_options")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -438,7 +438,7 @@ func TestAdminAuditEventSearchOptionsReturnsAllowlist(t *testing.T) {
 	// eventOutcome) から機械的に導出され、UI のハードコードとの drift を防ぐ。
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	e := newAuditAdminServer(t, user, nil)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/search_options")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events/search_options")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -467,7 +467,7 @@ func TestAdminAuditEventsExportSetsAttachment(t *testing.T) {
 		auditEvent("acme", "UserAuthenticated", "alice", now),
 	}
 	e := newAuditAdminServer(t, user, events)
-	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/audit_events/export?category=authentication")
+	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events/export?category=authentication")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("export status=%d body=%s", rec.Code, rec.Body.String())
 	}

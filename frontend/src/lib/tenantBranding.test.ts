@@ -39,7 +39,7 @@ describe('tenant branding guards', () => {
     expect(
       safeTenantBrandingAssetURL('https://evil.example/tenant-branding-assets/logo/key-1'),
     ).toBe('')
-    expect(safeTenantBrandingAssetURL('/api/admin/tenant/branding')).toBe('')
+    expect(safeTenantBrandingAssetURL('/api/admin/v1/tenant/branding')).toBe('')
   })
 
   it('accepts only supported raster image file types', () => {

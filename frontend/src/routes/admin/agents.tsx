@@ -8,7 +8,7 @@ import { PageMarker } from '../-page'
 export const Route = createFileRoute('/admin/agents')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const agents = await request<{ agents: AdminAgent[] }>('/api/admin/agents')
+    const agents = await request<{ agents: AdminAgent[] }>('/api/admin/v1/agents')
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,

@@ -177,15 +177,15 @@ var stepUpGatedEndpoints = []struct {
 	path   string
 }{
 	{"change_password", http.MethodPost, "/realms/default/api/auth/change_password"},
-	{"totp_enroll_confirm", http.MethodPost, "/realms/default/api/account/mfa/totp/enroll/confirm"},
-	{"totp_remove", http.MethodPost, "/realms/default/api/account/mfa/totp/remove"},
-	{"email_change", http.MethodPost, "/realms/default/api/account/email/change_request"},
-	{"revoke_others", http.MethodPost, "/realms/default/api/account/sessions/revoke_others"},
-	{"webauthn_remove", http.MethodPost, "/realms/default/api/account/mfa/webauthn/remove"},
-	{"recovery_codes_generate", http.MethodPost, "/realms/default/api/account/mfa/recovery-codes/generate"},
-	{"recovery_codes_revoke", http.MethodPost, "/realms/default/api/account/mfa/recovery-codes/revoke"},
-	{"link_external_identity", http.MethodPost, "/realms/default/api/account/linked-identities/{provider_id}"},
-	{"unlink_external_identity", http.MethodDelete, "/realms/default/api/account/linked-identities/{provider_id}"},
+	{"totp_enroll_confirm", http.MethodPost, "/realms/default/api/account/v1/mfa/totp/enroll/confirm"},
+	{"totp_remove", http.MethodPost, "/realms/default/api/account/v1/mfa/totp/remove"},
+	{"email_change", http.MethodPost, "/realms/default/api/account/v1/email/change_request"},
+	{"revoke_others", http.MethodPost, "/realms/default/api/account/v1/sessions/revoke_others"},
+	{"webauthn_remove", http.MethodPost, "/realms/default/api/account/v1/mfa/webauthn/remove"},
+	{"recovery_codes_generate", http.MethodPost, "/realms/default/api/account/v1/mfa/recovery-codes/generate"},
+	{"recovery_codes_revoke", http.MethodPost, "/realms/default/api/account/v1/mfa/recovery-codes/revoke"},
+	{"link_external_identity", http.MethodPost, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
+	{"unlink_external_identity", http.MethodDelete, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
 }
 
 // TestStepUpAnnotatedInterfacesMatchGatedHandlers は ADR-043 の対象表を機械照合する:
@@ -255,7 +255,7 @@ func TestStepUpGateAllowsFreshSession(t *testing.T) {
 func TestStepUpStartReturnsAvailableMethods(t *testing.T) {
 	e, store, _ := newStepUpServer(t)
 	fresh := seedSession(t, store, "sess-fresh", time.Now())
-	rec := postAccount(t, e, "/realms/default/api/account/step_up/start", fresh, map[string]any{})
+	rec := postAccount(t, e, "/realms/default/api/account/v1/step_up/start", fresh, map[string]any{})
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -273,20 +273,20 @@ func TestStepUpCompleteFlipsGateForStaleSession(t *testing.T) {
 	stale := seedSession(t, store, "sess-stale", time.Now().Add(-10*time.Minute))
 
 	// 1. stale なので gate に弾かれる。
-	rec := postAccount(t, e, "/realms/default/api/account/mfa/totp/remove", stale, map[string]any{"code": "000000"})
+	rec := postAccount(t, e, "/realms/default/api/account/v1/mfa/totp/remove", stale, map[string]any{"code": "000000"})
 	if code := errorCode(t, rec); code != "step_up_required" {
 		t.Fatalf("precondition: error=%q, want step_up_required", code)
 	}
 
 	// 2. パスワードで step-up を成立させる。
-	rec = postAccount(t, e, "/realms/default/api/account/step_up/complete", stale,
+	rec = postAccount(t, e, "/realms/default/api/account/v1/step_up/complete", stale,
 		map[string]any{"method": "password", "password": stepUpTestPassword})
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("complete: status=%d body=%s", rec.Code, rec.Body.String())
 	}
 
 	// 3. 同一セッションで gate を通過し、step-up 由来ではないエラー (不正コード) に進む。
-	rec = postAccount(t, e, "/realms/default/api/account/mfa/totp/remove", stale, map[string]any{"code": "000000"})
+	rec = postAccount(t, e, "/realms/default/api/account/v1/mfa/totp/remove", stale, map[string]any{"code": "000000"})
 	if code := errorCode(t, rec); code == "step_up_required" {
 		t.Fatalf("gate did not flip after step-up: status=%d", rec.Code)
 	}
@@ -306,7 +306,7 @@ func TestStepUpCompleteFlipsGateForStaleSession(t *testing.T) {
 func TestStepUpCompleteWrongPasswordFails(t *testing.T) {
 	e, store, _ := newStepUpServer(t)
 	stale := seedSession(t, store, "sess-stale", time.Now().Add(-10*time.Minute))
-	rec := postAccount(t, e, "/realms/default/api/account/step_up/complete", stale,
+	rec := postAccount(t, e, "/realms/default/api/account/v1/step_up/complete", stale,
 		map[string]any{"method": "password", "password": "wrong"})
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())

@@ -352,7 +352,7 @@ interfaces:
     bindings:
       - kind: http
         method: GET
-        path: /api/admin/api-tokens
+        path: /api/admin/v1/api-tokens
   IssueApiToken:
     description: >-
       テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を
@@ -392,7 +392,7 @@ interfaces:
     bindings:
       - kind: http
         method: POST
-        path: /api/admin/api-tokens
+        path: /api/admin/v1/api-tokens
   RevokeApiToken:
     description: テナントの API アクセストークンを失効する。存在しない id への呼び出しも冪等に成功する。
     input:
@@ -410,7 +410,7 @@ interfaces:
     bindings:
       - kind: http
         method: DELETE
-        path: "/api/admin/api-tokens/{id}"
+        path: "/api/admin/v1/api-tokens/{id}"
 
 authorization:
   principals:

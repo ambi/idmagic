@@ -86,7 +86,7 @@ func TestDataExportHTTP_UserFullFlow(t *testing.T) {
 	csrf, cookie := adminCSRF(t, e)
 
 	// Start (202, queued). Target is the /users/ path, not a body field.
-	start := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users/exports", csrf, cookie, map[string]any{
+	start := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users/exports", csrf, cookie, map[string]any{
 		"columns": []string{"preferred_username", "email"},
 	})
 	if start.Code != http.StatusAccepted {
@@ -104,30 +104,30 @@ func TestDataExportHTTP_UserFullFlow(t *testing.T) {
 	}
 
 	// List under /users/exports contains it.
-	list := adminJSONRequest(t, e, http.MethodGet, "/api/admin/users/exports", csrf, cookie, nil)
+	list := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/users/exports", csrf, cookie, nil)
 	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), started.ID) {
 		t.Fatalf("list status=%d body=%s", list.Code, list.Body.String())
 	}
 
 	// A user export id must not resolve under /groups/exports (per-type isolation).
-	cross := adminJSONRequest(t, e, http.MethodGet, "/api/admin/groups/exports/"+started.ID, csrf, cookie, nil)
+	cross := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/groups/exports/"+started.ID, csrf, cookie, nil)
 	if cross.Code != http.StatusNotFound {
 		t.Fatalf("cross-type get status=%d, want 404", cross.Code)
 	}
 
 	// Download before completion is rejected.
-	early := adminJSONRequest(t, e, http.MethodGet, "/api/admin/users/exports/"+started.ID+"/file", csrf, cookie, nil)
+	early := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/users/exports/"+started.ID+"/file", csrf, cookie, nil)
 	if early.Code != http.StatusConflict {
 		t.Fatalf("early download status=%d, want 409", early.Code)
 	}
 
 	// Drive the job to succeeded, then download.
 	h.runExportJob(t, started.ID)
-	get := adminJSONRequest(t, e, http.MethodGet, "/api/admin/users/exports/"+started.ID, csrf, cookie, nil)
+	get := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/users/exports/"+started.ID, csrf, cookie, nil)
 	if get.Code != http.StatusOK || !strings.Contains(get.Body.String(), `"status":"succeeded"`) || !strings.Contains(get.Body.String(), `"downloadable":true`) {
 		t.Fatalf("get status=%d body=%s", get.Code, get.Body.String())
 	}
-	dl := adminJSONRequest(t, e, http.MethodGet, "/api/admin/users/exports/"+started.ID+"/file", csrf, cookie, nil)
+	dl := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/users/exports/"+started.ID+"/file", csrf, cookie, nil)
 	if dl.Code != http.StatusOK {
 		t.Fatalf("download status=%d body=%s", dl.Code, dl.Body.String())
 	}
@@ -148,7 +148,7 @@ func TestDataExportHTTP_GroupMemberFlow(t *testing.T) {
 	csrf, cookie := adminCSRF(t, e)
 
 	// Member export is nested under a specific group; group_id comes from the path.
-	start := adminJSONRequest(t, e, http.MethodPost, "/api/admin/groups/g1/members/exports", csrf, cookie, map[string]any{
+	start := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups/g1/members/exports", csrf, cookie, map[string]any{
 		"columns": []string{"user_id", "source"},
 	})
 	if start.Code != http.StatusAccepted {
@@ -164,13 +164,13 @@ func TestDataExportHTTP_GroupMemberFlow(t *testing.T) {
 	}
 
 	// The same export must not resolve under a different group.
-	cross := adminJSONRequest(t, e, http.MethodGet, "/api/admin/groups/other/members/exports/"+started.ID, csrf, cookie, nil)
+	cross := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/groups/other/members/exports/"+started.ID, csrf, cookie, nil)
 	if cross.Code != http.StatusNotFound {
 		t.Fatalf("cross-group member get status=%d, want 404", cross.Code)
 	}
 
 	h.runExportJob(t, started.ID)
-	dl := adminJSONRequest(t, e, http.MethodGet, "/api/admin/groups/g1/members/exports/"+started.ID+"/file", csrf, cookie, nil)
+	dl := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/groups/g1/members/exports/"+started.ID+"/file", csrf, cookie, nil)
 	if dl.Code != http.StatusOK {
 		t.Fatalf("member download status=%d body=%s", dl.Code, dl.Body.String())
 	}
@@ -180,7 +180,7 @@ func TestDataExportHTTP_RejectsInvalidColumns(t *testing.T) {
 	h := newExportTestHandler(t)
 	e := h.echo
 	csrf, cookie := adminCSRF(t, e)
-	resp := adminJSONRequest(t, e, http.MethodPost, "/api/admin/users/exports", csrf, cookie, map[string]any{
+	resp := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users/exports", csrf, cookie, map[string]any{
 		"columns": []string{"password_hash"},
 	})
 	if resp.Code != http.StatusBadRequest || !strings.Contains(resp.Body.String(), "invalid_columns") {
@@ -192,7 +192,7 @@ func TestDataExportHTTP_NotFoundForUnknownID(t *testing.T) {
 	h := newExportTestHandler(t)
 	e := h.echo
 	csrf, cookie := adminCSRF(t, e)
-	resp := adminJSONRequest(t, e, http.MethodGet, "/api/admin/users/exports/00000000-0000-0000-0000-000000000000", csrf, cookie, nil)
+	resp := adminJSONRequest(t, e, http.MethodGet, "/api/admin/v1/users/exports/00000000-0000-0000-0000-000000000000", csrf, cookie, nil)
 	if resp.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
@@ -201,7 +201,7 @@ func TestDataExportHTTP_NotFoundForUnknownID(t *testing.T) {
 func TestDataExportHTTP_RequiresAdmin(t *testing.T) {
 	h := newExportTestHandler(t)
 	// A non-admin authenticated user must be denied (u1 is a regular user).
-	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/users/exports", http.NoBody)
+	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/users/exports", http.NoBody)
 	request.Header.Set("X-Demo-Sub", "u1")
 	resp := httptest.NewRecorder()
 	h.echo.ServeHTTP(resp, request)

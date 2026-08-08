@@ -46,7 +46,7 @@ describe('AdminMcpResourceServerEditPage', () => {
 
     await waitFor(() =>
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/admin/mcp-resource-servers/resource-server-1'),
+        expect.stringContaining('/api/admin/v1/mcp-resource-servers/resource-server-1'),
         expect.objectContaining({ method: 'PATCH' }),
       ),
     )

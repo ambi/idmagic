@@ -65,8 +65,8 @@ describe('OnDemandAndResyncPanel', () => {
 
   it('lets an admin pick a user from a list instead of typing a raw subject ID', async () => {
     stubFetch((url) => {
-      if (url.includes('/api/admin/users')) return response(200, { users: [user] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [user] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [] })
       return response(200, {})
     })
     await renderWithRouter(<OnDemandAndResyncPanel csrfToken="csrf" applicationID="app-1" />)
@@ -87,8 +87,8 @@ describe('OnDemandAndResyncPanel', () => {
 
   it('switches to the group list and resets the selection when the subject type changes', async () => {
     stubFetch((url) => {
-      if (url.includes('/api/admin/users')) return response(200, { users: [user] })
-      if (url.includes('/api/admin/groups')) return response(200, { groups: [group] })
+      if (url.includes('/api/admin/v1/users')) return response(200, { users: [user] })
+      if (url.includes('/api/admin/v1/groups')) return response(200, { groups: [group] })
       return response(200, {})
     })
     await renderWithRouter(<OnDemandAndResyncPanel csrfToken="csrf" applicationID="app-1" />)

@@ -50,9 +50,9 @@ func metadataJSON(metadata domain.Metadata) metadataResponse {
 
 func RegisterRoutes(group *echo.Group, deps Deps) {
 	handler := handler{deps: deps}
-	group.GET("/api/admin/api-tokens", handler.list)
-	group.POST("/api/admin/api-tokens", handler.issue)
-	group.DELETE("/api/admin/api-tokens/:id", handler.revoke)
+	group.GET("/api/admin/v1/api-tokens", handler.list)
+	group.POST("/api/admin/v1/api-tokens", handler.issue)
+	group.DELETE("/api/admin/v1/api-tokens/:id", handler.revoke)
 }
 
 type handler struct{ deps Deps }

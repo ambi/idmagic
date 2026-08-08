@@ -10,7 +10,7 @@ type AdminUserListResponse = { users: AdminUser[] }
 export const Route = createFileRoute('/admin/users')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const users = await request<AdminUserListResponse>('/api/admin/users')
+    const users = await request<AdminUserListResponse>('/api/admin/v1/users')
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,

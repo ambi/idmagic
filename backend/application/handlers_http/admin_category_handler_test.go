@@ -14,7 +14,7 @@ func TestCreateApplicationCategory_EmptyNameYieldsDistinguishableCode(t *testing
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	rec := adminJSON(t, e, http.MethodPost, "/api/admin/application-categories", csrf, cookie, map[string]any{"name": "  "})
+	rec := adminJSON(t, e, http.MethodPost, "/api/admin/v1/application-categories", csrf, cookie, map[string]any{"name": "  "})
 
 	var body struct {
 		Error string `json:"error"`
@@ -32,7 +32,7 @@ func TestSetApplicationCategories_UnknownCategoryYieldsDistinguishableCode(t *te
 	csrf, cookie := appCSRF(t, e)
 	appID := createAndAssignWeblink(t, e, csrf, cookie, "Payroll")
 
-	rec := adminJSON(t, e, http.MethodPut, "/api/admin/applications/"+appID+"/categories", csrf, cookie, map[string]any{
+	rec := adminJSON(t, e, http.MethodPut, "/api/admin/v1/applications/"+appID+"/categories", csrf, cookie, map[string]any{
 		"category_ids": []string{"does-not-exist"},
 	})
 

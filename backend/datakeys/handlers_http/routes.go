@@ -21,5 +21,5 @@ type Deps struct {
 }
 
 func RegisterRoutes(g *echo.Group, d Deps) {
-	g.GET("/api/admin/data-keys/health", d.handleListTenantDataKeyHealth)
+	g.GET("/api/admin/v1/data-keys/health", d.handleListTenantDataKeyHealth)
 }
