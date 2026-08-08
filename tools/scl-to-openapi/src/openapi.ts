@@ -15,6 +15,7 @@ import type {
   Binding,
   Field,
   Interface,
+  Model,
   SclBundle,
   SclDocument,
 } from '../../scl-to-html/src/types.ts'
@@ -64,11 +65,21 @@ function stringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
 }
 
+/** Media type for an error response body, keyed by `Binding.error_format` (SPECIFICATION_CORE_LANGUAGE.md §3.3.1). */
+const DEFAULT_ERROR_CONTENT_TYPE = 'application/problem+json'
+const ERROR_CONTENT_TYPE: Record<string, string> = {
+  problem_details: DEFAULT_ERROR_CONTENT_TYPE,
+  oauth2: 'application/json',
+  scim: 'application/scim+json',
+  set_delivery: 'application/json',
+}
+
 function buildOperation(
   name: string,
   iface: Interface,
   binding: Binding,
   modelNames: ReadonlySet<string>,
+  models: Record<string, Model>,
 ): { method: string; operation: JsonSchema } {
   const method = String(binding.method ?? 'GET').toLowerCase()
   const path = String(binding.path ?? '')
@@ -137,13 +148,23 @@ function buildOperation(
   }
   const errors = stringArray(iface.errors)
   if (errors.length > 0) {
-    responses.default = {
-      description: `Errors: ${errors.join(', ')}`,
-      content: {
-        'application/json': {
-          schema: { oneOf: errors.map((e) => ({ $ref: `${DEFS}${e}` })) },
+    const errorFormat =
+      typeof binding.error_format === 'string' ? binding.error_format : 'problem_details'
+    const contentType = ERROR_CONTENT_TYPE[errorFormat] ?? DEFAULT_ERROR_CONTENT_TYPE
+    const byStatus = new Map<number, string[]>()
+    for (const e of errors) {
+      const status = models[e]?.status ?? 500
+      const names = byStatus.get(status)
+      if (names) names.push(e)
+      else byStatus.set(status, [e])
+    }
+    for (const [status, names] of byStatus) {
+      responses[String(status)] = {
+        description: `Errors: ${names.join(', ')}`,
+        content: {
+          [contentType]: { schema: { oneOf: names.map((e) => ({ $ref: `${DEFS}${e}` })) } },
         },
-      },
+      }
     }
   }
   operation.responses = responses
@@ -168,7 +189,7 @@ export function generateOpenApi(bundle: SclBundle | SclDocument): JsonSchema {
     for (const binding of iface.bindings ?? []) {
       if (binding.kind !== 'http' || !binding.path) continue
       const path = String(binding.path)
-      const { method, operation } = buildOperation(name, iface, binding, modelNames)
+      const { method, operation } = buildOperation(name, iface, binding, modelNames, models)
       let item = paths[path]
       if (!item) {
         item = {}

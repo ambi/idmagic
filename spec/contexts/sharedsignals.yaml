@@ -65,22 +65,54 @@ models:
   # --- errors ---
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
         type: String
   AccessDeniedError:
     kind: error
+    status: 403
     description: principal が対象操作の policy を満たさない。Authentication context が定義する共通 error の published language stub。
   SecurityEventRejectedError:
     kind: error
+    status: 400
     description: 受信した SET の検証が fail-closed で失敗した (未登録 issuer・署名不正・期限切れ・audience 不一致・jti 重複・subject 未解決)。
     payload:
       reason:
         type: String
   QuotaExceededError:
     kind: error
+    status: 422
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
+  SsfStreamEventTypesRequiredError:
+    kind: error
+    status: 422
+    description: event_types が空である。
+  SsfStreamEventTypeInvalidError:
+    kind: error
+    status: 422
+    description: event_types に未知の CAEP event type が含まれる。
+  SsfTransmitterDeliveryEndpointInvalidError:
+    kind: error
+    status: 422
+    description: delivery_endpoint が未指定、または https URL でない。
+  SsfTransmitterAudienceRequiredError:
+    kind: error
+    status: 422
+    description: audience が未指定である。
+  SsfReceiverTrustedIssuerInvalidError:
+    kind: error
+    status: 422
+    description: trusted_issuer が未指定、または https URL でない。
+  SsfReceiverJwksRequiredError:
+    kind: error
+    status: 422
+    description: jwks_uri と jwks のいずれも指定されていない。
+  SsfReceiverAcceptedAudiencesRequiredError:
+    kind: error
+    status: 422
+    description: accepted_audiences が空である。
 
   # --- enums ---
   SsfStreamDirection:
@@ -674,6 +706,10 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - QuotaExceededError
+      - SsfStreamEventTypesRequiredError
+      - SsfStreamEventTypeInvalidError
+      - SsfTransmitterDeliveryEndpointInvalidError
+      - SsfTransmitterAudienceRequiredError
     emits:
       - SsfStreamRegistered
     access:
@@ -701,6 +737,11 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - QuotaExceededError
+      - SsfStreamEventTypesRequiredError
+      - SsfStreamEventTypeInvalidError
+      - SsfReceiverTrustedIssuerInvalidError
+      - SsfReceiverJwksRequiredError
+      - SsfReceiverAcceptedAudiencesRequiredError
     emits:
       - SsfStreamRegistered
     access:
@@ -729,6 +770,8 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - SsfStreamEventTypesRequiredError
+      - SsfStreamEventTypeInvalidError
     emits:
       - SsfStreamUpdated
     access:
@@ -854,6 +897,7 @@ interfaces:
         method: POST
         path: "/ssf/streams/{stream_id}/events"
         request_form: body
+        error_format: set_delivery
         successful_status_codes:
           - "202"
 

@@ -62,6 +62,7 @@ models:
         description: "Active / Disabled / Killed。Active 以外への束縛は fail-closed で拒否する。"
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる (RFC 6749 §5.2 invalid_request 相当)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -69,13 +70,43 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: principal が対象操作の policy を満たさない。Authentication context が定義する共通 error の published language stub。
   WorkloadAttestationRejectedError:
     kind: error
+    status: 401
     description: 外部 attestation token の検証が fail-closed で失敗した (未登録 issuer・署名不正・期限切れ・audience 不一致・TTL 超過・pattern 不一致・ambiguous match・束縛先 Agent が Active でない)。
     payload:
       reason:
         type: String
+  WorkloadTrustBundleJwksRequiredError:
+    kind: error
+    status: 422
+    description: jwks_uri と jwks のいずれも指定されていない。
+  WorkloadTrustBundleNameRequiredError:
+    kind: error
+    status: 422
+    description: name が空である。
+  WorkloadTrustBundleIssuerRequiredError:
+    kind: error
+    status: 422
+    description: issuer が空である。
+  WorkloadTrustBundleAudiencesRequiredError:
+    kind: error
+    status: 422
+    description: accepted_audiences が空である。
+  WorkloadTrustBundleInvalidTtlError:
+    kind: error
+    status: 422
+    description: max_subject_token_ttl_seconds が正の値でない。
+  AgentWorkloadBindingAgentNotFoundError:
+    kind: error
+    status: 422
+    description: 指定した agent_id がテナント内の Agent に解決できない。
+  AgentWorkloadBindingPatternRequiredError:
+    kind: error
+    status: 422
+    description: subject_pattern が空である。
   WorkloadTrustBundleStatus:
     kind: enum
     description: WorkloadTrustBundleLifecycle の状態。
@@ -570,6 +601,11 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - WorkloadTrustBundleJwksRequiredError
+      - WorkloadTrustBundleNameRequiredError
+      - WorkloadTrustBundleIssuerRequiredError
+      - WorkloadTrustBundleAudiencesRequiredError
+      - WorkloadTrustBundleInvalidTtlError
     emits:
       - WorkloadTrustBundleConfigured
     requires:
@@ -600,6 +636,9 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - WorkloadTrustBundleNameRequiredError
+      - WorkloadTrustBundleAudiencesRequiredError
+      - WorkloadTrustBundleInvalidTtlError
     emits:
       - WorkloadTrustBundleUpdated
     access:
@@ -731,6 +770,8 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - AgentWorkloadBindingAgentNotFoundError
+      - AgentWorkloadBindingPatternRequiredError
     emits:
       - AgentWorkloadBindingCreated
     requires:

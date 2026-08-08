@@ -36,7 +36,7 @@
       "constraints": ["name != id"]
     },
     "TenantUpdated": { "kind": "event", "payload": { "tenant_id": { "type": "UUID" } } },
-    "InvalidTenant": { "kind": "error", "fields": { "reason": { "type": "String" } } }
+    "InvalidTenant": { "kind": "error", "status": 422, "fields": { "reason": { "type": "String" } } }
   },
   "interfaces": {
     "UpdateTenant": {

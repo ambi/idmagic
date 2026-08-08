@@ -106,6 +106,8 @@ export interface Model {
   fields?: Record<string, Field>
   payload?: Record<string, Field>
   constraints?: string[]
+  /** HTTP status code for `kind: error` models (SPECIFICATION_CORE_LANGUAGE.md §3.2). */
+  status?: number
 }
 
 export interface Interface {

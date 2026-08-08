@@ -192,6 +192,7 @@ models:
       - Supervised
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -199,10 +200,80 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。
   QuotaExceededError:
     kind: error
+    status: 422
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
+  InvalidRoleError:
+    kind: error
+    status: 422
+    description: roles に未知のロールが含まれる。
+  SelfDeleteForbiddenError:
+    kind: error
+    status: 422
+    description: 操作者が自分自身の User を削除しようとした。
+  SelfDisableForbiddenError:
+    kind: error
+    status: 422
+    description: 操作者が自分自身の User を無効化しようとした。
+  UserNotPendingDeletionError:
+    kind: error
+    status: 409
+    description: RestoreAdminUser の対象 User が PendingDeletion 状態でない。
+  RestoreGracePeriodExpiredError:
+    kind: error
+    status: 409
+    description: RestoreAdminUser が削除猶予期間の経過後に呼ばれた。
+  InvalidUserAttributeError:
+    kind: error
+    status: 422
+    description: カスタム属性値がテナントの属性スキーマを満たさない。
+  InvalidRequiredActionError:
+    kind: error
+    status: 422
+    description: SetUserRequiredAction に未知の RequiredAction 値が指定された。
+  GroupNameRequiredError:
+    kind: error
+    status: 422
+    description: Group の name が空である。
+  InvalidDynamicGroupRuleError:
+    kind: error
+    status: 422
+    description: dynamic group rule (CEL 式) がコンパイル・検証に失敗した (未知の属性・非Boolean・構文エラー等)。
+  AgentNameRequiredError:
+    kind: error
+    status: 422
+    description: Agent の name が空である。
+  AgentOwnerRequiredError:
+    kind: error
+    status: 422
+    description: owner が必須な Agent 種別で owner_user_id が指定されていない。
+  AgentOwnerNotFoundError:
+    kind: error
+    status: 422
+    description: 指定した owner_user_id がテナント内の User に解決できない。
+  InvalidEmailError:
+    kind: error
+    status: 422
+    description: 指定された email がメールアドレスの形式を満たさない。
+  EmailUnchangedError:
+    kind: error
+    status: 422
+    description: 指定された新しい email が現在の email と同一である。
+  InvalidExportColumnsError:
+    kind: error
+    status: 422
+    description: 指定した export column が対象の許可リストに含まれない。
+  InvalidExportTargetError:
+    kind: error
+    status: 422
+    description: export target の種別がサポートされていない。
+  InvalidExportFilterError:
+    kind: error
+    status: 422
+    description: 指定した status filter が対象の export target に許可されていない。
   AttributeType:
     kind: enum
     description: 属性値の sum type discriminator。Tenancy context が所有する定義の published language stub。
@@ -1822,6 +1893,8 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - InvalidEmailError
+      - EmailUnchangedError
     emits:
       - EmailChangeRequested
     annotations:
@@ -1918,6 +1991,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - QuotaExceededError
+      - InvalidRoleError
     emits:
       - UserCreated
     access:
@@ -2016,7 +2090,7 @@ interfaces:
       request: { type: DataExportRequest }
     output:
       job: { type: DataExportJob }
-    errors: [InvalidRequestError, AccessDeniedError]
+    errors: [InvalidRequestError, AccessDeniedError, InvalidExportColumnsError, InvalidExportTargetError, InvalidExportFilterError]
     requires:
       - size(input.request.columns) >= 1
     emits: [DataExportRequested]
@@ -2081,7 +2155,7 @@ interfaces:
       request: { type: DataExportRequest }
     output:
       job: { type: DataExportJob }
-    errors: [InvalidRequestError, AccessDeniedError]
+    errors: [InvalidRequestError, AccessDeniedError, InvalidExportColumnsError, InvalidExportTargetError, InvalidExportFilterError]
     requires:
       - size(input.request.columns) >= 1
     emits: [DataExportRequested]
@@ -2147,7 +2221,7 @@ interfaces:
       request: { type: DataExportRequest }
     output:
       job: { type: DataExportJob }
-    errors: [InvalidRequestError, AccessDeniedError]
+    errors: [InvalidRequestError, AccessDeniedError, InvalidExportColumnsError, InvalidExportTargetError, InvalidExportFilterError]
     requires:
       - size(input.request.columns) >= 1
     emits: [DataExportRequested]
@@ -2224,6 +2298,8 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - InvalidRoleError
+      - InvalidUserAttributeError
     emits:
       - UserUpdated
     access:
@@ -2244,6 +2320,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - SelfDisableForbiddenError
     emits:
       - UserDisabled
     access:
@@ -2294,6 +2371,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - SelfDeleteForbiddenError
     emits:
       - UserSoftDeleted
       - UserDeleted
@@ -2322,6 +2400,8 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - UserNotPendingDeletionError
+      - RestoreGracePeriodExpiredError
     emits:
       - UserRestored
     requires:
@@ -2350,6 +2430,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - InvalidRequiredActionError
     emits:
       - UserRequiredActionSet
     access:
@@ -2435,6 +2516,9 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - GroupNameRequiredError
+      - InvalidRoleError
+      - InvalidDynamicGroupRuleError
       - QuotaExceededError
     emits:
       - GroupCreated
@@ -2465,6 +2549,8 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - GroupNameRequiredError
+      - InvalidRoleError
     emits:
       - GroupUpdated
     ensures:
@@ -2563,7 +2649,7 @@ interfaces:
       request: { type: DynamicGroupRuleRequest }
     output:
       rule: { type: DynamicGroupRule }
-    errors: [InvalidRequestError, AccessDeniedError]
+    errors: [InvalidRequestError, AccessDeniedError, InvalidDynamicGroupRuleError]
     emits: [DynamicGroupRuleUpdated]
     requires:
       - group(input.group_id).membership_type == dynamic
@@ -2582,7 +2668,7 @@ interfaces:
       request: { type: DynamicGroupPreviewRequest }
     output:
       results: { type: "DynamicGroupPreviewResult[]" }
-    errors: [InvalidRequestError, AccessDeniedError]
+    errors: [InvalidRequestError, AccessDeniedError, InvalidDynamicGroupRuleError]
     read_only: true
     requires:
       - input.request.user_ids.size() <= 100
@@ -2695,6 +2781,10 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - QuotaExceededError
+      - AgentNameRequiredError
+      - AgentOwnerRequiredError
+      - AgentOwnerNotFoundError
+      - InvalidRoleError
     emits:
       - AgentRegistered
     requires:
@@ -2724,6 +2814,10 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - AgentNameRequiredError
+      - AgentOwnerRequiredError
+      - AgentOwnerNotFoundError
+      - InvalidRoleError
     emits:
       - AgentUpdated
       - AgentOwnerChanged

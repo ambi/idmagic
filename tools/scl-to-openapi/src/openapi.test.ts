@@ -97,10 +97,13 @@ describe('generateOpenApi — unit', () => {
     })
   })
 
-  it('emits success status codes and an error default response', () => {
+  it('emits success status codes and groups errors by their model status', () => {
     const out = generateOpenApi(
       doc(
-        { E: { kind: 'error' }, Resp: { kind: 'value_object', fields: { x: { type: 'String' } } } },
+        {
+          E: { kind: 'error', status: 400 },
+          Resp: { kind: 'value_object', fields: { x: { type: 'String' } } },
+        },
         {
           Op: {
             output: { response: { type: 'Resp' } },
@@ -120,7 +123,62 @@ describe('generateOpenApi — unit', () => {
     const o = op(out, '/op', 'post')
     const responses = o.responses as Record<string, Record<string, unknown>>
     expect(responses['201']).toBeDefined()
-    expect(responses.default?.description).toContain('E')
+    expect(responses.default).toBeUndefined()
+    const errorResponse = responses['400'] as { description: string; content: JsonSchema }
+    expect(errorResponse.description).toContain('E')
+    expect(errorResponse.content['application/problem+json']).toBeDefined()
+  })
+
+  it('groups multiple errors that share a status under one response', () => {
+    const out = generateOpenApi(
+      doc(
+        { A: { kind: 'error', status: 422 }, B: { kind: 'error', status: 422 } },
+        {
+          Op: {
+            errors: ['A', 'B'],
+            bindings: [{ kind: 'http', method: 'POST', path: '/op' }],
+          },
+        },
+      ),
+    )
+    const o = op(out, '/op', 'post')
+    const responses = o.responses as Record<string, Record<string, unknown>>
+    const errorResponse = responses['422'] as {
+      description: string
+      content: Record<string, { schema: Record<string, unknown> }>
+    }
+    expect(errorResponse.description).toContain('A')
+    expect(errorResponse.description).toContain('B')
+    const schema = errorResponse.content['application/problem+json']?.schema
+    expect(schema?.oneOf).toEqual([
+      { $ref: '#/components/schemas/A' },
+      { $ref: '#/components/schemas/B' },
+    ])
+  })
+
+  it('uses the binding error_format to pick the error content-type', () => {
+    const cases: Array<[string, string]> = [
+      ['oauth2', 'application/json'],
+      ['scim', 'application/scim+json'],
+      ['set_delivery', 'application/json'],
+    ]
+    for (const [errorFormat, contentType] of cases) {
+      const out = generateOpenApi(
+        doc(
+          { E: { kind: 'error', status: 400 } },
+          {
+            Op: {
+              errors: ['E'],
+              bindings: [{ kind: 'http', method: 'POST', path: '/op', error_format: errorFormat }],
+            },
+          },
+        ),
+      )
+      const o = op(out, '/op', 'post')
+      const responses = o.responses as Record<string, Record<string, unknown>>
+      const errorResponse = responses['400'] as { content: Record<string, unknown> }
+      expect(Object.keys(errorResponse.content)).toEqual([contentType])
+    }
   })
 
   it('emits public and protected security metadata with local contracts', () => {

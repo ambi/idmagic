@@ -127,12 +127,15 @@ models:
         optional: true
   InvalidRequestError:
     kind: error
+    status: 400
     description: WS-Federation、WS-Trust、または管理入力が契約を満たさない。
   AccessDeniedError:
     kind: error
+    status: 403
     description: credential または認可 principal が要求された操作を許可されない。
   ApplicationOwnedProtocolError:
     kind: error
+    status: 409
     description: WS-Fed relying party が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。
   WsFedTokenType:
     kind: enum

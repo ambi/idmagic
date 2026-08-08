@@ -49,6 +49,7 @@ models:
         type: "String[]"
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -56,6 +57,7 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。
   UserStatus:
     kind: enum
@@ -140,6 +142,7 @@ models:
       - canceled
   WorkflowRevisionConflictError:
     kind: error
+    status: 409
     description: "UpdateLifecycleWorkflow が input.request.expected_revision と現在の\nLifecycleWorkflow.current_revision の不一致を検出した (lost update の拒否)。呼び出し側は\n最新 revision を再取得してから再試行する。\n"
   WorkflowFilter:
     kind: value_object

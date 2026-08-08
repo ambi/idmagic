@@ -1057,7 +1057,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
       <div class="eyebrow">Bounded Context · contexts/tenancy.yaml</div>
       <h1>Tenancy</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">17</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">54</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">25</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">19</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-tenancy-glossary"><span class="stat-num">17</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-tenancy-models"><span class="stat-num">56</span><span class="stat-label">models</span></a><a class="stat" href="#context-tenancy-interfaces"><span class="stat-num">25</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-tenancy-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-tenancy-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-tenancy-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-tenancy-scenarios"><span class="stat-num">19</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-tenancy-flows"><span class="stat-num">3</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-tenancy-glossary">
     <h2>Glossary <span class="count">17</span></h2>
@@ -1223,7 +1223,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
     </article></div>
   </section>
 <section id="context-tenancy-models">
-    <h2>Models <span class="count">54</span></h2>
+    <h2>Models <span class="count">56</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">5</span></h3>
@@ -3196,7 +3196,7 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">3</span></h3>
+      <h3 class="grp-title">error <span class="count">5</span></h3>
       <div class="cards"><article class="card" id="scl-Tenancy/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Tenancy/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -3246,6 +3246,20 @@ UI が key 衝突を避けつつ全属性を一覧できるようにする。
     <td></td>
   </tr></tbody>
   </table>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/PolicyOverrideWeakerError">
+    <header><h3>PolicyOverrideWeakerError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Tenancy/model/PolicyOverrideWeakerError</code></header>
+    <p class="desc">テナントの password_policy_override がグローバルな下限ポリシーより弱い。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-Tenancy/model/InvalidUserAttributeSchemaError">
+    <header><h3>InvalidUserAttributeSchemaError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Tenancy/model/InvalidUserAttributeSchemaError</code></header>
+    <p class="desc">user_attribute_schema の定義が不正 (型不正、キー重複、組込み属性との衝突等)。</p>
+
+    <p class="muted">(no fields)</p>
 
   </article></div>
     </div>
@@ -3438,7 +3452,7 @@ bare path と control-plane path (/realms/default 配下、cookie session 整合
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/PolicyOverrideWeakerError">PolicyOverrideWeakerError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Tenancy/model/TenantUpdated">TenantUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -3715,7 +3729,7 @@ password_policy_override が Authentication context の PasswordPolicy の標準
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Tenancy/model/InvalidUserAttributeSchemaError">InvalidUserAttributeSchemaError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Tenancy/model/TenantUserAttributeSchemaUpdated">TenantUserAttributeSchemaUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -4682,7 +4696,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       <div class="eyebrow">Bounded Context · contexts/identity-management.yaml</div>
       <h1>IdManagement</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-idmanagement-glossary"><span class="stat-num">23</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-idmanagement-models"><span class="stat-num">99</span><span class="stat-label">models</span></a><a class="stat" href="#context-idmanagement-interfaces"><span class="stat-num">57</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-idmanagement-states"><span class="stat-num">4</span><span class="stat-label">states</span></a><a class="stat" href="#context-idmanagement-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-idmanagement-scenarios"><span class="stat-num">21</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-idmanagement-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-idmanagement-glossary"><span class="stat-num">23</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-idmanagement-models"><span class="stat-num">116</span><span class="stat-label">models</span></a><a class="stat" href="#context-idmanagement-interfaces"><span class="stat-num">57</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-idmanagement-states"><span class="stat-num">4</span><span class="stat-label">states</span></a><a class="stat" href="#context-idmanagement-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-idmanagement-scenarios"><span class="stat-num">21</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-idmanagement-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-idmanagement-glossary">
     <h2>Glossary <span class="count">23</span></h2>
@@ -4911,7 +4925,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
     </article></div>
   </section>
 <section id="context-idmanagement-models">
-    <h2>Models <span class="count">99</span></h2>
+    <h2>Models <span class="count">116</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">8</span></h3>
@@ -8431,7 +8445,7 @@ required action があれば自動解除する。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">3</span></h3>
+      <h3 class="grp-title">error <span class="count">20</span></h3>
       <div class="cards"><article class="card" id="scl-IdManagement/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -8458,6 +8472,125 @@ required action があれば自動解除する。
 <article class="card" id="scl-IdManagement/model/QuotaExceededError">
     <header><h3>QuotaExceededError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/QuotaExceededError</code></header>
     <p class="desc">テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidRoleError">
+    <header><h3>InvalidRoleError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidRoleError</code></header>
+    <p class="desc">roles に未知のロールが含まれる。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/SelfDeleteForbiddenError">
+    <header><h3>SelfDeleteForbiddenError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/SelfDeleteForbiddenError</code></header>
+    <p class="desc">操作者が自分自身の User を削除しようとした。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/SelfDisableForbiddenError">
+    <header><h3>SelfDisableForbiddenError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/SelfDisableForbiddenError</code></header>
+    <p class="desc">操作者が自分自身の User を無効化しようとした。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/UserNotPendingDeletionError">
+    <header><h3>UserNotPendingDeletionError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/UserNotPendingDeletionError</code></header>
+    <p class="desc">RestoreAdminUser の対象 User が PendingDeletion 状態でない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/RestoreGracePeriodExpiredError">
+    <header><h3>RestoreGracePeriodExpiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/RestoreGracePeriodExpiredError</code></header>
+    <p class="desc">RestoreAdminUser が削除猶予期間の経過後に呼ばれた。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidUserAttributeError">
+    <header><h3>InvalidUserAttributeError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidUserAttributeError</code></header>
+    <p class="desc">カスタム属性値がテナントの属性スキーマを満たさない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidRequiredActionError">
+    <header><h3>InvalidRequiredActionError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidRequiredActionError</code></header>
+    <p class="desc">SetUserRequiredAction に未知の RequiredAction 値が指定された。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/GroupNameRequiredError">
+    <header><h3>GroupNameRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/GroupNameRequiredError</code></header>
+    <p class="desc">Group の name が空である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidDynamicGroupRuleError">
+    <header><h3>InvalidDynamicGroupRuleError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidDynamicGroupRuleError</code></header>
+    <p class="desc">dynamic group rule (CEL 式) がコンパイル・検証に失敗した (未知の属性・非Boolean・構文エラー等)。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/AgentNameRequiredError">
+    <header><h3>AgentNameRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/AgentNameRequiredError</code></header>
+    <p class="desc">Agent の name が空である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/AgentOwnerRequiredError">
+    <header><h3>AgentOwnerRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/AgentOwnerRequiredError</code></header>
+    <p class="desc">owner が必須な Agent 種別で owner_user_id が指定されていない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/AgentOwnerNotFoundError">
+    <header><h3>AgentOwnerNotFoundError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/AgentOwnerNotFoundError</code></header>
+    <p class="desc">指定した owner_user_id がテナント内の User に解決できない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidEmailError">
+    <header><h3>InvalidEmailError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidEmailError</code></header>
+    <p class="desc">指定された email がメールアドレスの形式を満たさない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/EmailUnchangedError">
+    <header><h3>EmailUnchangedError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/EmailUnchangedError</code></header>
+    <p class="desc">指定された新しい email が現在の email と同一である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidExportColumnsError">
+    <header><h3>InvalidExportColumnsError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidExportColumnsError</code></header>
+    <p class="desc">指定した export column が対象の許可リストに含まれない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidExportTargetError">
+    <header><h3>InvalidExportTargetError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidExportTargetError</code></header>
+    <p class="desc">export target の種別がサポートされていない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/InvalidExportFilterError">
+    <header><h3>InvalidExportFilterError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">IdManagement/model/InvalidExportFilterError</code></header>
+    <p class="desc">指定した status filter が対象の export target に許可されていない。</p>
 
     <p class="muted">(no fields)</p>
 
@@ -8603,7 +8736,7 @@ admin 専用で本経路では扱わない。
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidEmailError">InvalidEmailError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/EmailUnchangedError">EmailUnchangedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/EmailChangeRequested">EmailChangeRequested</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -8747,7 +8880,7 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/QuotaExceededError">QuotaExceededError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/QuotaExceededError">QuotaExceededError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRoleError">InvalidRoleError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/UserCreated">UserCreated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -8909,7 +9042,7 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportColumnsError">InvalidExportColumnsError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportTargetError">InvalidExportTargetError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportFilterError">InvalidExportFilterError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/DataExportRequested">DataExportRequested</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">size(input.request.columns) &gt;= 1</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9071,7 +9204,7 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportColumnsError">InvalidExportColumnsError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportTargetError">InvalidExportTargetError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportFilterError">InvalidExportFilterError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/DataExportRequested">DataExportRequested</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">size(input.request.columns) &gt;= 1</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9238,7 +9371,7 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportColumnsError">InvalidExportColumnsError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportTargetError">InvalidExportTargetError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidExportFilterError">InvalidExportFilterError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/DataExportRequested">DataExportRequested</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">size(input.request.columns) &gt;= 1</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9432,7 +9565,7 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRoleError">InvalidRoleError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidUserAttributeError">InvalidUserAttributeError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/UserUpdated">UserUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -9455,7 +9588,7 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/SelfDisableForbiddenError">SelfDisableForbiddenError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/UserDisabled">UserDisabled</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -9517,7 +9650,7 @@ user への再呼び出しは no-op として 204 を返す。自分自身は削
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/SelfDeleteForbiddenError">SelfDeleteForbiddenError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/UserSoftDeleted">UserSoftDeleted</a> <a class="chip chip-event-ref" href="#scl-IdManagement/model/UserDeleted">UserDeleted</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">subject.id != resource.id</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9558,7 +9691,7 @@ user を返す。自分自身への操作は use case 側で reject する (自�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/UserNotPendingDeletionError">UserNotPendingDeletionError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/RestoreGracePeriodExpiredError">RestoreGracePeriodExpiredError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/UserRestored">UserRestored</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">subject.id != resource.id</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9603,7 +9736,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequiredActionError">InvalidRequiredActionError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/UserRequiredActionSet">UserRequiredActionSet</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -9737,7 +9870,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/QuotaExceededError">QuotaExceededError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/GroupNameRequiredError">GroupNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRoleError">InvalidRoleError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidDynamicGroupRuleError">InvalidDynamicGroupRuleError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/QuotaExceededError">QuotaExceededError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/GroupCreated">GroupCreated</a></div></div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">emitted.exists(e, e is GroupCreated)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9778,7 +9911,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/GroupNameRequiredError">GroupNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRoleError">InvalidRoleError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/GroupUpdated">GroupUpdated</a></div></div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">changedFields(input.request).size() &gt; 0 ? emitted.exists(e, e is GroupUpdated) : !emitted.exists(e, e is GroupUpdated)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9901,7 +10034,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidDynamicGroupRuleError">InvalidDynamicGroupRuleError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/DynamicGroupRuleUpdated">DynamicGroupRuleUpdated</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">group(input.group_id).membership_type == dynamic</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -9942,7 +10075,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidDynamicGroupRuleError">InvalidDynamicGroupRuleError</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.request.user_ids.size() &lt;= 100</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -10137,7 +10270,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/QuotaExceededError">QuotaExceededError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/QuotaExceededError">QuotaExceededError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AgentNameRequiredError">AgentNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AgentOwnerRequiredError">AgentOwnerRequiredError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AgentOwnerNotFoundError">AgentOwnerNotFoundError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRoleError">InvalidRoleError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/AgentRegistered">AgentRegistered</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.request.owner_user_id == null || input.request.owner_user_id in tenantUserIds(context.tenant_id)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -10178,7 +10311,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AgentNameRequiredError">AgentNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AgentOwnerRequiredError">AgentOwnerRequiredError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AgentOwnerNotFoundError">AgentOwnerNotFoundError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRoleError">InvalidRoleError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-IdManagement/model/AgentUpdated">AgentUpdated</a> <a class="chip chip-event-ref" href="#scl-IdManagement/model/AgentOwnerChanged">AgentOwnerChanged</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.request.owner_user_id == null || input.request.owner_user_id in tenantUserIds(context.tenant_id)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -11451,7 +11584,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
       <div class="eyebrow">Bounded Context · contexts/authentication.yaml</div>
       <h1>Authentication</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">106</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">51</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">22</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">109</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">51</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">22</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-authentication-standards">
     <h2>Standards <span class="count">6</span></h2>
@@ -11702,7 +11835,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
     </article></div>
   </section>
 <section id="context-authentication-models">
-    <h2>Models <span class="count">106</span></h2>
+    <h2>Models <span class="count">109</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">10</span></h3>
@@ -15335,7 +15468,7 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">3</span></h3>
+      <h3 class="grp-title">error <span class="count">6</span></h3>
       <div class="cards"><article class="card" id="scl-Authentication/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Authentication/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -15362,6 +15495,27 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
 <article class="card" id="scl-Authentication/model/QuotaExceededError">
     <header><h3>QuotaExceededError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Authentication/model/QuotaExceededError</code></header>
     <p class="desc">テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-Authentication/model/PasswordReuseError">
+    <header><h3>PasswordReuseError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Authentication/model/PasswordReuseError</code></header>
+    <p class="desc">新しいパスワードが直近のパスワード履歴と一致する。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-Authentication/model/MfaEnrollmentNotAllowedError">
+    <header><h3>MfaEnrollmentNotAllowedError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Authentication/model/MfaEnrollmentNotAllowedError</code></header>
+    <p class="desc">対象ユーザーが MFA enrollment bypass の対象条件を満たさない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-Authentication/model/AuthenticatorResetNotAllowedError">
+    <header><h3>AuthenticatorResetNotAllowedError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Authentication/model/AuthenticatorResetNotAllowedError</code></header>
+    <p class="desc">指定した reset target の組み合わせが対象ユーザーの現在の MFA 状態に対して無効である。</p>
 
     <p class="muted">(no fields)</p>
 
@@ -15602,7 +15756,7 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/PasswordReuseError">PasswordReuseError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Authentication/model/PasswordChanged">PasswordChanged</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">size(input.request.new_password) &gt;= 12</code></li><li><code class="expr">size(input.request.new_password) &lt;= 128</code></li><li><code class="expr">!passwordHistoryContains(subject.id, input.request.new_password)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -16239,7 +16393,7 @@ step_up_at を刻む。以降 recency 窓 (5 分) 内は step_up: required の
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/MfaEnrollmentNotAllowedError">MfaEnrollmentNotAllowedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassIssued">MfaEnrollmentBypassIssued</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassRevoked">MfaEnrollmentBypassRevoked</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -16309,7 +16463,7 @@ fail-closed な enrollment-required flow へ誘導する。片方の要素のみ
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AuthenticatorResetNotAllowedError">AuthenticatorResetNotAllowedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Authentication/model/AuthenticatorResetRequested">AuthenticatorResetRequested</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/AuthenticatorResetCompleted">AuthenticatorResetCompleted</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassIssued">MfaEnrollmentBypassIssued</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassRevoked">MfaEnrollmentBypassRevoked</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassExpired">MfaEnrollmentBypassExpired</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -16366,7 +16520,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/PasswordReuseError">PasswordReuseError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Authentication/model/PasswordChanged">PasswordChanged</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">size(input.request.new_password) &gt;= 12</code></li><li><code class="expr">size(input.request.new_password) &lt;= 128</code></li><li><code class="expr">!passwordResetTokenConsumed(input.request.token)</code></li><li><code class="expr">!passwordHistoryContainsForToken(input.request.token, input.request.new_password)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -17656,7 +17810,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       <div class="eyebrow">Bounded Context · contexts/oauth2.yaml</div>
       <h1>OAuth2</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">29</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">158</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">38</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">29</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">159</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">38</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-oauth2-standards">
     <h2>Standards <span class="count">29</span></h2>
@@ -19470,7 +19624,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
     </article></div>
   </section>
 <section id="context-oauth2-models">
-    <h2>Models <span class="count">158</span></h2>
+    <h2>Models <span class="count">159</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">16</span></h3>
@@ -24553,7 +24707,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">20</span></h3>
+      <h3 class="grp-title">error <span class="count">21</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/OAuthError">
     <header><h3>OAuthError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/OAuthError</code></header>
     <p class="desc">OAuth 2.0 / OIDC のエラー応答の共通形 (RFC 6749 §5.2)。具体的なエラー種別は error フィールドの OAuthErrorCode で識別される。</p>
@@ -24719,6 +24873,13 @@ hint として送るのが通常の RP 実装であるため)。
 <article class="card" id="scl-OAuth2/model/ApplicationOwnedProtocolError">
     <header><h3>ApplicationOwnedProtocolError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/ApplicationOwnedProtocolError</code></header>
     <p class="desc">OAuth2 client が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-OAuth2/model/InvalidAuthorizationDetailTypeError">
+    <header><h3>InvalidAuthorizationDetailTypeError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/InvalidAuthorizationDetailTypeError</code></header>
+    <p class="desc">AuthorizationDetailType のスキーマ定義が不正 (検証失敗、または未知の Semantics 値の参照)。</p>
 
     <p class="muted">(no fields)</p>
 
@@ -25452,7 +25613,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidAuthorizationDetailTypeError">InvalidAuthorizationDetailTypeError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/authorization-detail-types/{type}</code></div></div>
@@ -25486,7 +25647,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidAuthorizationDetailTypeError">InvalidAuthorizationDetailTypeError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/authorization-detail-types</code> <span class="chip chip-hint">response: 201</span> <span class="chip chip-hint">form: body</span></div></div>
@@ -25525,7 +25686,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidAuthorizationDetailTypeError">InvalidAuthorizationDetailTypeError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-patch">PATCH</span> <code class="path">/api/admin/authorization-detail-types/{type}</code> <span class="chip chip-hint">form: body</span></div></div>
@@ -45677,7 +45838,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
       <div class="eyebrow">Bounded Context · contexts/workloadidentity.yaml</div>
       <h1>WorkloadIdentity</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-workloadidentity-glossary"><span class="stat-num">6</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-workloadidentity-models"><span class="stat-num">32</span><span class="stat-label">models</span></a><a class="stat" href="#context-workloadidentity-interfaces"><span class="stat-num">14</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-workloadidentity-states"><span class="stat-num">2</span><span class="stat-label">states</span></a><a class="stat" href="#context-workloadidentity-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-workloadidentity-scenarios"><span class="stat-num">9</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#context-workloadidentity-glossary"><span class="stat-num">6</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-workloadidentity-models"><span class="stat-num">39</span><span class="stat-label">models</span></a><a class="stat" href="#context-workloadidentity-interfaces"><span class="stat-num">14</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-workloadidentity-states"><span class="stat-num">2</span><span class="stat-label">states</span></a><a class="stat" href="#context-workloadidentity-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-workloadidentity-scenarios"><span class="stat-num">9</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="context-workloadidentity-glossary">
     <h2>Glossary <span class="count">6</span></h2>
@@ -45738,7 +45899,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
     </article></div>
   </section>
 <section id="context-workloadidentity-models">
-    <h2>Models <span class="count">32</span></h2>
+    <h2>Models <span class="count">39</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">5</span></h3>
@@ -46763,7 +46924,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">3</span></h3>
+      <h3 class="grp-title">error <span class="count">10</span></h3>
       <div class="cards"><article class="card" id="scl-WorkloadIdentity/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる (RFC 6749 §5.2 invalid_request 相当)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -46801,6 +46962,55 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
     <td></td>
   </tr></tbody>
   </table>
+
+  </article>
+<article class="card" id="scl-WorkloadIdentity/model/WorkloadTrustBundleJwksRequiredError">
+    <header><h3>WorkloadTrustBundleJwksRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/WorkloadTrustBundleJwksRequiredError</code></header>
+    <p class="desc">jwks_uri と jwks のいずれも指定されていない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-WorkloadIdentity/model/WorkloadTrustBundleNameRequiredError">
+    <header><h3>WorkloadTrustBundleNameRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/WorkloadTrustBundleNameRequiredError</code></header>
+    <p class="desc">name が空である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-WorkloadIdentity/model/WorkloadTrustBundleIssuerRequiredError">
+    <header><h3>WorkloadTrustBundleIssuerRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/WorkloadTrustBundleIssuerRequiredError</code></header>
+    <p class="desc">issuer が空である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-WorkloadIdentity/model/WorkloadTrustBundleAudiencesRequiredError">
+    <header><h3>WorkloadTrustBundleAudiencesRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/WorkloadTrustBundleAudiencesRequiredError</code></header>
+    <p class="desc">accepted_audiences が空である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-WorkloadIdentity/model/WorkloadTrustBundleInvalidTtlError">
+    <header><h3>WorkloadTrustBundleInvalidTtlError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/WorkloadTrustBundleInvalidTtlError</code></header>
+    <p class="desc">max_subject_token_ttl_seconds が正の値でない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-WorkloadIdentity/model/AgentWorkloadBindingAgentNotFoundError">
+    <header><h3>AgentWorkloadBindingAgentNotFoundError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/AgentWorkloadBindingAgentNotFoundError</code></header>
+    <p class="desc">指定した agent_id がテナント内の Agent に解決できない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-WorkloadIdentity/model/AgentWorkloadBindingPatternRequiredError">
+    <header><h3>AgentWorkloadBindingPatternRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">WorkloadIdentity/model/AgentWorkloadBindingPatternRequiredError</code></header>
+    <p class="desc">subject_pattern が空である。</p>
+
+    <p class="muted">(no fields)</p>
 
   </article></div>
     </div>
@@ -46892,7 +47102,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleJwksRequiredError">WorkloadTrustBundleJwksRequiredError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleNameRequiredError">WorkloadTrustBundleNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleIssuerRequiredError">WorkloadTrustBundleIssuerRequiredError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleAudiencesRequiredError">WorkloadTrustBundleAudiencesRequiredError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleInvalidTtlError">WorkloadTrustBundleInvalidTtlError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleConfigured">WorkloadTrustBundleConfigured</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.request.jwks_uri != null || input.request.jwks != null</code></li><li><code class="expr">trust_bundle_issuer_unique_in_tenant(context.tenant_id, input.request.issuer)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -46933,7 +47143,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleNameRequiredError">WorkloadTrustBundleNameRequiredError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleAudiencesRequiredError">WorkloadTrustBundleAudiencesRequiredError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleInvalidTtlError">WorkloadTrustBundleInvalidTtlError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-WorkloadIdentity/model/WorkloadTrustBundleUpdated">WorkloadTrustBundleUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -47111,7 +47321,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AgentWorkloadBindingAgentNotFoundError">AgentWorkloadBindingAgentNotFoundError</a> <a class="chip chip-error-ref" href="#scl-WorkloadIdentity/model/AgentWorkloadBindingPatternRequiredError">AgentWorkloadBindingPatternRequiredError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-WorkloadIdentity/model/AgentWorkloadBindingCreated">AgentWorkloadBindingCreated</a></div></div>
 <div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">input.request.agent_id in tenantAgentIds(context.tenant_id)</code></li><li><code class="expr">!subject_pattern_duplicate_in_bundle(input.trust_bundle_id, input.request.subject_pattern)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
@@ -47479,7 +47689,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
       <div class="eyebrow">Bounded Context · contexts/sharedsignals.yaml</div>
       <h1>SharedSignals</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-sharedsignals-standards"><span class="stat-num">1</span><span class="stat-label">standards</span></a><a class="stat" href="#context-sharedsignals-glossary"><span class="stat-num">7</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-sharedsignals-models"><span class="stat-num">38</span><span class="stat-label">models</span></a><a class="stat" href="#context-sharedsignals-interfaces"><span class="stat-num">12</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-sharedsignals-states"><span class="stat-num">2</span><span class="stat-label">states</span></a><a class="stat" href="#context-sharedsignals-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-sharedsignals-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-sharedsignals-scenarios"><span class="stat-num">8</span><span class="stat-label">scenarios</span></a></div>
+    <div class="stats"><a class="stat" href="#context-sharedsignals-standards"><span class="stat-num">1</span><span class="stat-label">standards</span></a><a class="stat" href="#context-sharedsignals-glossary"><span class="stat-num">7</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-sharedsignals-models"><span class="stat-num">45</span><span class="stat-label">models</span></a><a class="stat" href="#context-sharedsignals-interfaces"><span class="stat-num">12</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-sharedsignals-states"><span class="stat-num">2</span><span class="stat-label">states</span></a><a class="stat" href="#context-sharedsignals-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-sharedsignals-objectives"><span class="stat-num">1</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-sharedsignals-scenarios"><span class="stat-num">8</span><span class="stat-label">scenarios</span></a></div>
   </section>
   <section id="context-sharedsignals-standards">
     <h2>Standards <span class="count">1</span></h2>
@@ -47584,7 +47794,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
     </article></div>
   </section>
 <section id="context-sharedsignals-models">
-    <h2>Models <span class="count">38</span></h2>
+    <h2>Models <span class="count">45</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">8</span></h3>
@@ -48683,7 +48893,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">4</span></h3>
+      <h3 class="grp-title">error <span class="count">11</span></h3>
       <div class="cards"><article class="card" id="scl-SharedSignals/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -48726,6 +48936,55 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
 <article class="card" id="scl-SharedSignals/model/QuotaExceededError">
     <header><h3>QuotaExceededError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/QuotaExceededError</code></header>
     <p class="desc">テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-SharedSignals/model/SsfStreamEventTypesRequiredError">
+    <header><h3>SsfStreamEventTypesRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/SsfStreamEventTypesRequiredError</code></header>
+    <p class="desc">event_types が空である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-SharedSignals/model/SsfStreamEventTypeInvalidError">
+    <header><h3>SsfStreamEventTypeInvalidError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/SsfStreamEventTypeInvalidError</code></header>
+    <p class="desc">event_types に未知の CAEP event type が含まれる。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-SharedSignals/model/SsfTransmitterDeliveryEndpointInvalidError">
+    <header><h3>SsfTransmitterDeliveryEndpointInvalidError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/SsfTransmitterDeliveryEndpointInvalidError</code></header>
+    <p class="desc">delivery_endpoint が未指定、または https URL でない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-SharedSignals/model/SsfTransmitterAudienceRequiredError">
+    <header><h3>SsfTransmitterAudienceRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/SsfTransmitterAudienceRequiredError</code></header>
+    <p class="desc">audience が未指定である。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-SharedSignals/model/SsfReceiverTrustedIssuerInvalidError">
+    <header><h3>SsfReceiverTrustedIssuerInvalidError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/SsfReceiverTrustedIssuerInvalidError</code></header>
+    <p class="desc">trusted_issuer が未指定、または https URL でない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-SharedSignals/model/SsfReceiverJwksRequiredError">
+    <header><h3>SsfReceiverJwksRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/SsfReceiverJwksRequiredError</code></header>
+    <p class="desc">jwks_uri と jwks のいずれも指定されていない。</p>
+
+    <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-SharedSignals/model/SsfReceiverAcceptedAudiencesRequiredError">
+    <header><h3>SsfReceiverAcceptedAudiencesRequiredError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">SharedSignals/model/SsfReceiverAcceptedAudiencesRequiredError</code></header>
+    <p class="desc">accepted_audiences が空である。</p>
 
     <p class="muted">(no fields)</p>
 
@@ -48887,7 +49146,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-SharedSignals/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/QuotaExceededError">QuotaExceededError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-SharedSignals/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/QuotaExceededError">QuotaExceededError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfStreamEventTypesRequiredError">SsfStreamEventTypesRequiredError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfStreamEventTypeInvalidError">SsfStreamEventTypeInvalidError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfTransmitterDeliveryEndpointInvalidError">SsfTransmitterDeliveryEndpointInvalidError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfTransmitterAudienceRequiredError">SsfTransmitterAudienceRequiredError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-SharedSignals/model/SsfStreamRegistered">SsfStreamRegistered</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -48922,7 +49181,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-SharedSignals/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/QuotaExceededError">QuotaExceededError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-SharedSignals/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/QuotaExceededError">QuotaExceededError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfStreamEventTypesRequiredError">SsfStreamEventTypesRequiredError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfStreamEventTypeInvalidError">SsfStreamEventTypeInvalidError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfReceiverTrustedIssuerInvalidError">SsfReceiverTrustedIssuerInvalidError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfReceiverJwksRequiredError">SsfReceiverJwksRequiredError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfReceiverAcceptedAudiencesRequiredError">SsfReceiverAcceptedAudiencesRequiredError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-SharedSignals/model/SsfStreamRegistered">SsfStreamRegistered</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -48962,7 +49221,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-SharedSignals/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-SharedSignals/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfStreamEventTypesRequiredError">SsfStreamEventTypesRequiredError</a> <a class="chip chip-error-ref" href="#scl-SharedSignals/model/SsfStreamEventTypeInvalidError">SsfStreamEventTypeInvalidError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-SharedSignals/model/SsfStreamUpdated">SsfStreamUpdated</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>

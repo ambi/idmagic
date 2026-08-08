@@ -48,6 +48,7 @@ models:
     values: [init, verify, check, render]
   NoWorkspaceTargets:
     kind: error
+    status: 400
     fields:
       root: { type: String }
   TraceabilityFindingKind:

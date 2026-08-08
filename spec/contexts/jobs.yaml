@@ -70,6 +70,7 @@ glossary:
 models:
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -77,9 +78,11 @@ models:
         optional: true
   JobLeaseLostError:
     kind: error
+    status: 409
     description: worker が heartbeat / 完了報告 / 失敗報告を行った時点で、既にリースが失効しているか別 worker に奪われている。呼び出し元 worker はハンドラ実行を中断すべきである。
   QuotaExceededError:
     kind: error
+    status: 422
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
   Job:
     kind: entity

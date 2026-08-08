@@ -2041,6 +2041,12 @@
       ],
       "description": "管理 API の Agent 一覧。"
     },
+    "AgentNameRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "Agent の name が空である。"
+    },
     "AgentOwnerChanged": {
       "type": "object",
       "properties": {
@@ -2075,6 +2081,18 @@
         "newOwnerUserId"
       ],
       "description": "管理者が Agent の所有者 (owner_user_id) を移転した。"
+    },
+    "AgentOwnerNotFoundError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定した owner_user_id がテナント内の User に解決できない。"
+    },
+    "AgentOwnerRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "owner が必須な Agent 種別で owner_user_id が指定されていない。"
     },
     "AgentRef": {
       "type": "object",
@@ -2398,6 +2416,12 @@
       ],
       "description": "WorkloadTrustBundle 配下で外部 subject の glob pattern を同一テナントの Agent へ写す mapping。agent_id は WorkloadTrustBundle と同一 tenant_id の既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。"
     },
+    "AgentWorkloadBindingAgentNotFoundError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定した agent_id がテナント内の Agent に解決できない。"
+    },
     "AgentWorkloadBindingCreateRequest": {
       "type": "object",
       "properties": {
@@ -2529,6 +2553,12 @@
         "bindings"
       ],
       "description": "管理 API の AgentWorkloadBinding 一覧。"
+    },
+    "AgentWorkloadBindingPatternRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "subject_pattern が空である。"
     },
     "AgentWorkloadBindingResponse": {
       "type": "object",
@@ -4487,6 +4517,12 @@
         "reenrollmentRequired"
       ],
       "description": "管理者による認証器リセットが完了した。対象 factor を削除し mfa_enrolled を再計算した結果を残す。TOTP / WebAuthn が両方無くなった場合は reenrollment_required=true になり、別途 MfaEnrollmentBypassIssued が発行される。"
+    },
+    "AuthenticatorResetNotAllowedError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定した reset target の組み合わせが対象ユーザーの現在の MFA 状態に対して無効である。"
     },
     "AuthenticatorResetRequest": {
       "type": "object",
@@ -7684,6 +7720,12 @@
       ],
       "description": "EmailSender port 経由でメールを送信した。fail-open の port なので\n送信失敗時も use case 層には伝播しないが、本イベントの有無で\nSIEM 側からは観測できる。to は SHA-256 hash で記録する。\n"
     },
+    "EmailUnchangedError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定された新しい email が現在の email と同一である。"
+    },
     "EncryptedSecret": {
       "type": "object",
       "properties": {
@@ -8591,6 +8633,12 @@
       ],
       "description": "Group の所属管理方式。作成後は変更できない。"
     },
+    "GroupNameRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "Group の name が空である。"
+    },
     "GroupPushConfig": {
       "type": "object",
       "properties": {
@@ -9121,6 +9169,12 @@
       ],
       "description": "/introspect レスポンス (RFC 7662 §2.2)。トークンの active 状態と有効時のメタデータを返す。"
     },
+    "InvalidAuthorizationDetailTypeError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "AuthorizationDetailType のスキーマ定義が不正 (検証失敗、または未知の Semantics 値の参照)。"
+    },
     "InvalidClientError": {
       "type": "object",
       "properties": {},
@@ -9133,6 +9187,36 @@
       "additionalProperties": false,
       "description": "DPoP Proof JWT の検証に失敗した（署名・jti・htu/htm・nonce・clock skew 等、RFC 9449 §7.1 invalid_dpop_proof）。"
     },
+    "InvalidDynamicGroupRuleError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "dynamic group rule (CEL 式) がコンパイル・検証に失敗した (未知の属性・非Boolean・構文エラー等)。"
+    },
+    "InvalidEmailError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定された email がメールアドレスの形式を満たさない。"
+    },
+    "InvalidExportColumnsError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定した export column が対象の許可リストに含まれない。"
+    },
+    "InvalidExportFilterError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "指定した status filter が対象の export target に許可されていない。"
+    },
+    "InvalidExportTargetError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "export target の種別がサポートされていない。"
+    },
     "InvalidGrantError": {
       "type": "object",
       "properties": {},
@@ -9144,6 +9228,18 @@
       "properties": {},
       "additionalProperties": false,
       "description": "リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる。OAuth2 context が定義する共通 error の published language stub。"
+    },
+    "InvalidRequiredActionError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "SetUserRequiredAction に未知の RequiredAction 値が指定された。"
+    },
+    "InvalidRoleError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "roles に未知のロールが含まれる。"
     },
     "InvalidScopeError": {
       "type": "object",
@@ -9162,6 +9258,18 @@
       "properties": {},
       "additionalProperties": false,
       "description": "アクセストークンが期限切れ、改ざん、不正、または失効済み (RFC 6750 §3.1 invalid_token)。"
+    },
+    "InvalidUserAttributeError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "カスタム属性値がテナントの属性スキーマを満たさない。"
+    },
+    "InvalidUserAttributeSchemaError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "user_attribute_schema の定義が不正 (型不正、キー重複、組込み属性との衝突等)。"
     },
     "IssueApplicationClientSecretRequest": {
       "type": "object",
@@ -11050,6 +11158,12 @@
       ],
       "description": "login enrollment flow で factor 登録と所持証明が完了し、同一 LoginSession が MFA 済みに昇格した。"
     },
+    "MfaEnrollmentNotAllowedError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "対象ユーザーが MFA enrollment bypass の対象条件を満たさない。"
+    },
     "MfaEnrollmentPolicy": {
       "type": "object",
       "properties": {
@@ -12060,6 +12174,18 @@
         "expires_at"
       ],
       "description": "パスワードリセット用の単発消費トークン。\ntoken は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ。\n有効期間は発行から 1800 秒 (30 分) とし、単発消費 (consumed_at 設定後は再利用不可)。\n期限切れ / consume 済みの行は GC するが、INSERT 時に同 sub の未消費を\n失効させる軽い掃除も行う。\n"
+    },
+    "PasswordReuseError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "新しいパスワードが直近のパスワード履歴と一致する。"
+    },
+    "PolicyOverrideWeakerError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "テナントの password_policy_override がグローバルな下限ポリシーより弱い。"
     },
     "PortalApplicationCategory": {
       "type": "object",
@@ -13377,6 +13503,12 @@
       ],
       "description": "OAuth2 context が publish する /authorize 応答種別の published language stub。"
     },
+    "RestoreGracePeriodExpiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "RestoreAdminUser が削除猶予期間の経過後に呼ばれた。"
+    },
     "RevocationEpochAdvanced": {
       "type": "object",
       "properties": {
@@ -14593,6 +14725,18 @@
       ],
       "description": "秘密値を materialize するための opaque reference。version は同一 secret の意図した rotation を識別する。"
     },
+    "SelfDeleteForbiddenError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "操作者が自分自身の User を削除しようとした。"
+    },
+    "SelfDisableForbiddenError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "操作者が自分自身の User を無効化しようとした。"
+    },
     "SenderConstraintCnf": {
       "type": "object",
       "properties": {
@@ -15089,6 +15233,12 @@
       "additionalProperties": false,
       "description": "Device Authorization Grant のポーリングが速すぎる。クライアントは interval を 5 秒延長する必要がある (RFC 8628 §3.5 slow_down)。"
     },
+    "SsfReceiverAcceptedAudiencesRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "accepted_audiences が空である。"
+    },
     "SsfReceiverConfig": {
       "type": "object",
       "properties": {
@@ -15127,6 +15277,12 @@
         "accepted_audiences.length > 0"
       ]
     },
+    "SsfReceiverJwksRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "jwks_uri と jwks のいずれも指定されていない。"
+    },
     "SsfReceiverStreamRegisterRequest": {
       "type": "object",
       "properties": {
@@ -15163,6 +15319,12 @@
         "accepted_audiences"
       ],
       "description": "管理者が direction=Receive の SsfStream を登録する JSON リクエスト。"
+    },
+    "SsfReceiverTrustedIssuerInvalidError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "trusted_issuer が未指定、または https URL でない。"
     },
     "SsfStream": {
       "type": "object",
@@ -15288,6 +15450,18 @@
       ],
       "description": "管理者が無効化済みの SsfStream を再有効化した。"
     },
+    "SsfStreamEventTypeInvalidError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "event_types に未知の CAEP event type が含まれる。"
+    },
+    "SsfStreamEventTypesRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "event_types が空である。"
+    },
     "SsfStreamRegistered": {
       "type": "object",
       "properties": {
@@ -15382,6 +15556,12 @@
       ],
       "description": "CAEP イベントが指す対象。idmagic 自身が発行する access token の subject 表現 (tenant_id + principal_id) とそのまま対応させ、WorkloadIdentity のような別テーブルでの subject mapping を新設しない。"
     },
+    "SsfTransmitterAudienceRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "audience が未指定である。"
+    },
     "SsfTransmitterConfig": {
       "type": "object",
       "properties": {
@@ -15415,6 +15595,12 @@
         "max_delivery_attempts"
       ],
       "description": "direction=Transmit の SsfStream に 1 対 1 で付随する配送先設定。"
+    },
+    "SsfTransmitterDeliveryEndpointInvalidError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "delivery_endpoint が未指定、または https URL でない。"
     },
     "SsfTransmitterStreamRegisterRequest": {
       "type": "object",
@@ -17196,6 +17382,12 @@
       ],
       "description": "User の運用ライフサイクル属性。status は状態機械 UserLifecycle\n(states セクション) と一致する唯一の真実で、旧 disabled_at / deleted_at は\nstatus + status_changed_at に統合した。tombstone は status == Deleted。\n"
     },
+    "UserNotPendingDeletionError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "RestoreAdminUser の対象 User が PendingDeletion 状態でない。"
+    },
     "UserProvisioned": {
       "type": "object",
       "properties": {
@@ -18297,6 +18489,12 @@
         "jwks_uri != null || jwks != null"
       ]
     },
+    "WorkloadTrustBundleAudiencesRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "accepted_audiences が空である。"
+    },
     "WorkloadTrustBundleConfigured": {
       "type": "object",
       "properties": {
@@ -18389,6 +18587,18 @@
       ],
       "description": "管理者が無効化済みの WorkloadTrustBundle を再有効化した。"
     },
+    "WorkloadTrustBundleInvalidTtlError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "max_subject_token_ttl_seconds が正の値でない。"
+    },
+    "WorkloadTrustBundleIssuerRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "issuer が空である。"
+    },
     "WorkloadTrustBundleJWKSRefreshed": {
       "type": "object",
       "properties": {
@@ -18415,6 +18625,12 @@
       ],
       "description": "管理者が RefreshWorkloadTrustBundleJWKS を呼び、JWKS の再取得を試みた。"
     },
+    "WorkloadTrustBundleJwksRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "jwks_uri と jwks のいずれも指定されていない。"
+    },
     "WorkloadTrustBundleListResponse": {
       "type": "object",
       "properties": {
@@ -18430,6 +18646,12 @@
         "trust_bundles"
       ],
       "description": "管理 API の WorkloadTrustBundle 一覧。"
+    },
+    "WorkloadTrustBundleNameRequiredError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "name が空である。"
     },
     "WorkloadTrustBundleRefreshResponse": {
       "type": "object",

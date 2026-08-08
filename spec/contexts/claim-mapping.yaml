@@ -103,6 +103,7 @@ models:
         default: Private
   ClaimReleaseDeniedError:
     kind: error
+    status: 422
     description: "claim 解決が fail-closed で拒否された。required source が解決できない、\nvisibility=Private の属性を rule / NameID の source に指定している、または reserved claim type\n(iss/sub/aud/exp/iat/nbf/jti/azp/nonce/at_hash/c_hash/acr/amr/sid) を claim_type に指定している\nのいずれか。\n"
     payload:
       reason:

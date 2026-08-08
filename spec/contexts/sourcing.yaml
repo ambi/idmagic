@@ -257,6 +257,7 @@ models:
         type: String
   ScimProtocolError:
     kind: error
+    status: 400
     description: RFC 7644 §3.12 に従う SCIM protocol error response。
     payload:
       status:
@@ -312,6 +313,7 @@ interfaces:
       - kind: http
         method: GET
         path: /scim/v2/ServiceProviderConfig
+        error_format: scim
   GetScimResourceTypes:
     description: |
       SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type
@@ -331,6 +333,7 @@ interfaces:
       - kind: http
         method: GET
         path: /scim/v2/ResourceTypes
+        error_format: scim
   GetScimSchemas:
     description: |
       SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の
@@ -351,6 +354,7 @@ interfaces:
       - kind: http
         method: GET
         path: /scim/v2/Schemas
+        error_format: scim
   CreateScimUser:
     description: |
       SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、
@@ -377,6 +381,7 @@ interfaces:
       - kind: http
         method: POST
         path: /scim/v2/Users
+        error_format: scim
   ListScimUsers:
     description: |
       SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。
@@ -424,6 +429,7 @@ interfaces:
       - kind: http
         method: GET
         path: /scim/v2/Users
+        error_format: scim
         request_form: query
   GetScimUser:
     description: |
@@ -448,6 +454,7 @@ interfaces:
       - kind: http
         method: GET
         path: "/scim/v2/Users/{id}"
+        error_format: scim
   PatchScimUser:
     description: |
       SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の
@@ -477,6 +484,7 @@ interfaces:
       - kind: http
         method: PATCH
         path: "/scim/v2/Users/{id}"
+        error_format: scim
   UpdateScimUser:
     description: |
       SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する
@@ -504,6 +512,7 @@ interfaces:
       - kind: http
         method: PUT
         path: "/scim/v2/Users/{id}"
+        error_format: scim
   DeleteScimUser:
     description: SCIM 2.0 /Users/{id} に対する DELETE 要求。内部 User を soft-delete する。
     input:
@@ -521,6 +530,7 @@ interfaces:
       - kind: http
         method: DELETE
         path: "/scim/v2/Users/{id}"
+        error_format: scim
   CreateScimGroup:
     description: |
       SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は
@@ -549,6 +559,7 @@ interfaces:
       - kind: http
         method: POST
         path: /scim/v2/Groups
+        error_format: scim
   ListScimGroups:
     description: |
       SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。
@@ -595,6 +606,7 @@ interfaces:
       - kind: http
         method: GET
         path: /scim/v2/Groups
+        error_format: scim
         request_form: query
   GetScimGroup:
     description: |
@@ -619,6 +631,7 @@ interfaces:
       - kind: http
         method: GET
         path: "/scim/v2/Groups/{id}"
+        error_format: scim
   PatchScimGroup:
     description: |
       SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は
@@ -648,6 +661,7 @@ interfaces:
       - kind: http
         method: PATCH
         path: "/scim/v2/Groups/{id}"
+        error_format: scim
   UpdateScimGroup:
     description: |
       SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する
@@ -676,6 +690,7 @@ interfaces:
       - kind: http
         method: PUT
         path: "/scim/v2/Groups/{id}"
+        error_format: scim
   DeleteScimGroup:
     description: SCIM 2.0 /Groups/{id} に対する DELETE 要求。
     input:
@@ -693,6 +708,7 @@ interfaces:
       - kind: http
         method: DELETE
         path: "/scim/v2/Groups/{id}"
+        error_format: scim
 authorization:
   principals:
     # discovery endpoint 用。scim:* のいずれかの scope を持てば足りる。

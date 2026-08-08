@@ -307,9 +307,11 @@ models:
         optional: true
   InvalidRequestError:
     kind: error
+    status: 400
     description: API アクセストークン発行・失効の入力が不正である。
   AccessDeniedError:
     kind: error
+    status: 403
     description: 呼び出し元が API アクセストークン管理操作を許可されない。
 
 interfaces:

@@ -124,9 +124,11 @@ models:
         description: logical key、operation kind、redacted summary の streamable な表現。
   SeedRejectedError:
     kind: error
+    status: 422
     description: 環境 policy、profile、件数上限、または unknown key が安全規則に違反した。
   SeedConflictError:
     kind: error
+    status: 409
     description: seed 管理対象に manual drift があり、明示 reconcile なしに上書きできない。
 interfaces:
   SeedData:

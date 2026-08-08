@@ -392,6 +392,7 @@ models:
         optional: true
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -399,10 +400,24 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。OAuth2 context が定義する共通 error の published language stub。
   QuotaExceededError:
     kind: error
+    status: 422
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
+  PasswordReuseError:
+    kind: error
+    status: 422
+    description: 新しいパスワードが直近のパスワード履歴と一致する。
+  MfaEnrollmentNotAllowedError:
+    kind: error
+    status: 422
+    description: 対象ユーザーが MFA enrollment bypass の対象条件を満たさない。
+  AuthenticatorResetNotAllowedError:
+    kind: error
+    status: 422
+    description: 指定した reset target の組み合わせが対象ユーザーの現在の MFA 状態に対して無効である。
   BrowserFlowResponse:
     kind: value_object
     description: SPA の認証操作後に表示する次画面またはクライアント redirect URI。OAuth2 context が定義する共通 response の published language stub。
@@ -1881,6 +1896,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - PasswordReuseError
     emits:
       - PasswordChanged
     requires:
@@ -2349,6 +2365,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - MfaEnrollmentNotAllowedError
     emits:
       - MfaEnrollmentBypassIssued
       - MfaEnrollmentBypassRevoked
@@ -2395,6 +2412,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - AuthenticatorResetNotAllowedError
     emits:
       - AuthenticatorResetRequested
       - AuthenticatorResetCompleted
@@ -2433,6 +2451,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - PasswordReuseError
     emits:
       - PasswordChanged
     requires:

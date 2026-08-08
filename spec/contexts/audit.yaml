@@ -47,6 +47,7 @@ models:
         type: "String[]"
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -54,6 +55,7 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
   AuditEventQuery:
     kind: value_object

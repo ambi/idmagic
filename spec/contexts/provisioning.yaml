@@ -147,6 +147,7 @@ models:
   # --- errors ---
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -154,21 +155,27 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: 認証済みだが認可条件を満たさない。OAuth2 context が定義する共通 error の published language stub。
   ProvisioningConnectionNotFoundError:
     kind: error
+    status: 404
     description: 指定 application_id に有効な ProvisioningConnection が存在しない、または別テナントに属する (別テナントは未存在として扱う)。
   ProvisioningConnectionAlreadyExistsError:
     kind: error
+    status: 409
     description: 指定 Application に既に ProvisioningConnection が存在する (1 Application 1 connection の一意制約)。
   ProvisioningDeliveryNotFoundError:
     kind: error
+    status: 404
     description: 指定 delivery_id の ProvisioningDelivery が存在しない、または指定 connection に属さない。
   ProvisioningDeliveryNotRetryableError:
     kind: error
+    status: 409
     description: dead_letter 以外の状態の ProvisioningDelivery に対して RetryProvisioningDelivery が呼ばれた。
   ProvisioningSubjectNotInScopeError:
     kind: error
+    status: 422
     description: ProvisionOnDemand が指定した subject が connection の scope (assigned_only の場合は割当) に含まれない。
   # --- enums ---
   ProvisioningAuthMethod:

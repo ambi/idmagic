@@ -181,7 +181,8 @@
         "fields": { "$ref": "#/$defs/FieldMap" },
         "constraints": { "$ref": "#/$defs/ExpressionList" },
         "values": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/NonEmptyString" } },
-        "payload": { "$ref": "#/$defs/FieldMap" }
+        "payload": { "$ref": "#/$defs/FieldMap" },
+        "status": { "type": "integer", "minimum": 100, "maximum": 599 }
       },
       "allOf": [
         {
@@ -195,6 +196,10 @@
         {
           "if": { "properties": { "kind": { "const": "enum" } }, "required": ["kind"] },
           "then": { "required": ["values"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "error" } }, "required": ["kind"] },
+          "then": { "required": ["status"] }
         }
       ]
     },
@@ -257,7 +262,8 @@
               "path": { "$ref": "#/$defs/NonEmptyString" },
               "successful_status_codes": { "type": "array", "items": { "type": "string" } },
               "request_form": { "enum": ["body", "query", "form"] },
-              "headers": { "$ref": "#/$defs/FieldMap" }
+              "headers": { "$ref": "#/$defs/FieldMap" },
+              "error_format": { "enum": ["problem_details", "oauth2", "scim", "set_delivery"] }
             }
           }
         },

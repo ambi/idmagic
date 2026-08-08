@@ -127,18 +127,23 @@ models:
         type: String
   InvalidRequestError:
     kind: error
+    status: 400
     description: SAML request または管理入力が契約を満たさない。
   AccessDeniedError:
     kind: error
+    status: 403
     description: 認証済み principal が対象テナントの管理権限を持たない。
   ApplicationOwnedProtocolError:
     kind: error
+    status: 409
     description: SAML service provider が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。
   IdPProfileInUseError:
     kind: error
+    status: 409
     description: SAML IdP profileがSPから参照されているため削除できない。HTTP 409とする。
   DefaultIdPProfileError:
     kind: error
+    status: 409
     description: テナントのdefault SAML IdP profileは変更または削除できない。
   ClaimMappingPolicy:
     kind: value_object

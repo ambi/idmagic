@@ -1009,6 +1009,7 @@ models:
         type: String
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -1016,9 +1017,11 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
   QuotaExceededError:
     kind: error
+    status: 422
     description: テナントの Hard Quota を超過したため、リソース作成が拒否された。
     payload:
       resource_type:
@@ -1027,6 +1030,14 @@ models:
         type: Integer
       usage:
         type: Integer
+  PolicyOverrideWeakerError:
+    kind: error
+    status: 422
+    description: テナントの password_policy_override がグローバルな下限ポリシーより弱い。
+  InvalidUserAttributeSchemaError:
+    kind: error
+    status: 422
+    description: user_attribute_schema の定義が不正 (型不正、キー重複、組込み属性との衝突等)。
 states:
   TenantLifecycle:
     description: テナント のライフサイクル。Active で通常稼働、Disable で全プロトコルルートを停止、Enable で復帰。物理削除は本フェーズ対象外。
@@ -1133,6 +1144,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - PolicyOverrideWeakerError
     emits:
       - TenantUpdated
     access:
@@ -1318,6 +1330,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - InvalidUserAttributeSchemaError
     emits:
       - TenantUserAttributeSchemaUpdated
     access:

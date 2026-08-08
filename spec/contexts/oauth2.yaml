@@ -2795,6 +2795,7 @@ models:
         description: "scope 主導の属性 claim (ClaimsForScopes) と client 単位の ClaimMapping claim_policy\nをマージした追加 claim。標準 claim とキーが衝突した場合は標準 claim を優先する。\n"
   OAuthError:
     kind: error
+    status: 400
     description: OAuth 2.0 / OIDC のエラー応答の共通形 (RFC 6749 §5.2)。具体的なエラー種別は error フィールドの OAuthErrorCode で識別される。
     payload:
       error:
@@ -2807,9 +2808,11 @@ models:
         optional: true
   QuotaExceededError:
     kind: error
+    status: 422
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
   ClientSecretLimitExceededError:
     kind: error
+    status: 422
     description: secret-based client が同時に保持できる Active credential 2件の上限に達している。既存 credential を個別失効してから再試行できる。
   ClaimMappingPolicy:
     kind: value_object
@@ -2820,6 +2823,7 @@ models:
         optional: true
   ClaimReleaseDeniedError:
     kind: error
+    status: 422
     description: claim 解決が fail-closed で拒否された。ClaimMapping context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -2827,6 +2831,7 @@ models:
         optional: true
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。
     payload:
       reason:
@@ -2834,9 +2839,11 @@ models:
         optional: true
   InvalidClientError:
     kind: error
+    status: 401
     description: クライアント認証が失敗した、または未登録のクライアント (RFC 6749 §5.2 invalid_client)。client_id の存在有無を開示しないため詳細は返さない。
   InvalidGrantError:
     kind: error
+    status: 400
     description: 認可コード・リフレッシュトークン・device_code 等の付与が無効、期限切れ、再利用、あるいは redirect_uri/PKCE 不一致 (RFC 6749 §5.2 invalid_grant)。
     payload:
       reason:
@@ -2844,15 +2851,19 @@ models:
         optional: true
   UnauthorizedClientError:
     kind: error
+    status: 400
     description: クライアントがこの grant_type を使用する権限を持たない (RFC 6749 §5.2 unauthorized_client)。
   UnsupportedGrantTypeError:
     kind: error
+    status: 400
     description: AuthorizationServer がこの grant_type をサポートしていない (RFC 6749 §5.2 unsupported_grant_type)。
   InvalidScopeError:
     kind: error
+    status: 400
     description: 要求された scope が不正、未知、またはクライアントに許可されていない (RFC 6749 §5.2 invalid_scope)。
   InvalidTargetError:
     kind: error
+    status: 400
     description: resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target、ADR-055)。fail-closed で拒否する。
     payload:
       reason:
@@ -2860,30 +2871,43 @@ models:
         optional: true
   InvalidTokenError:
     kind: error
+    status: 401
     description: アクセストークンが期限切れ、改ざん、不正、または失効済み (RFC 6750 §3.1 invalid_token)。
   InvalidDpopProofError:
     kind: error
+    status: 401
     description: DPoP Proof JWT の検証に失敗した（署名・jti・htu/htm・nonce・clock skew 等、RFC 9449 §7.1 invalid_dpop_proof）。
   InsufficientScopeError:
     kind: error
+    status: 403
     description: 提示されたトークンの scope では要求された操作に不足している (RFC 6750 §3.1 insufficient_scope)。
   AccessDeniedError:
     kind: error
+    status: 403
     description: ResourceOwner が認可を拒否した、またはサーバーポリシーが許可しなかった (RFC 6749 §4.1.2.1 access_denied)。
   ApplicationOwnedProtocolError:
     kind: error
+    status: 409
     description: OAuth2 client が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。
+  InvalidAuthorizationDetailTypeError:
+    kind: error
+    status: 422
+    description: AuthorizationDetailType のスキーマ定義が不正 (検証失敗、または未知の Semantics 値の参照)。
   ExpiredTokenError:
     kind: error
+    status: 400
     description: Device Authorization Grant において device_code が有効期限を過ぎた (RFC 8628 §3.5 expired_token)。
   SlowDownError:
     kind: error
+    status: 400
     description: Device Authorization Grant のポーリングが速すぎる。クライアントは interval を 5 秒延長する必要がある (RFC 8628 §3.5 slow_down)。
   AuthorizationPendingError:
     kind: error
+    status: 400
     description: Device Authorization Grant においてユーザーがまだ承認していない (RFC 8628 §3.5 authorization_pending)。クライアントは interval 秒待ってから再試行する。
   ServerError:
     kind: error
+    status: 500
     description: AuthorizationServer 側の予期せぬ内部エラー (RFC 6749 §4.1.2.1 server_error)。
   ClientRegistered:
     kind: event
@@ -3649,6 +3673,7 @@ interfaces:
       - kind: http
         method: POST
         path: /register
+        error_format: oauth2
   Authorize:
     description: Authorization endpoint (RFC 6749 §4.1.1)
     steps:
@@ -3685,6 +3710,7 @@ interfaces:
       - kind: http
         method: GET
         path: /authorize
+        error_format: oauth2
         request_form: query
         successful_status_codes:
           - "302"
@@ -3804,6 +3830,7 @@ interfaces:
       - kind: http
         method: GET
         path: /end_session
+        error_format: oauth2
         request_form: query
         successful_status_codes:
           - "200"
@@ -3811,6 +3838,7 @@ interfaces:
       - kind: http
         method: POST
         path: /end_session
+        error_format: oauth2
         request_form: form
         successful_status_codes:
           - "200"
@@ -3870,6 +3898,7 @@ interfaces:
       - kind: http
         method: POST
         path: /par
+        error_format: oauth2
         request_form: form
   Token:
     description: Token endpoint (RFC 6749 §3.2 + 9068 + 9449)
@@ -3938,6 +3967,7 @@ interfaces:
       - kind: http
         method: POST
         path: /token
+        error_format: oauth2
         request_form: form
         headers:
           dpop:
@@ -3969,6 +3999,7 @@ interfaces:
       - kind: http
         method: POST
         path: /introspect
+        error_format: oauth2
         request_form: form
   Revoke:
     description: 通常 OAuth token と管理発行 JWT access token の Token Revocation (RFC 7009)
@@ -3990,6 +4021,7 @@ interfaces:
       - kind: http
         method: POST
         path: /revoke
+        error_format: oauth2
         request_form: form
         successful_status_codes:
           - "200"
@@ -4013,6 +4045,7 @@ interfaces:
       - kind: http
         method: GET
         path: /userinfo
+        error_format: oauth2
         headers:
           authorization:
             type: String
@@ -4036,6 +4069,7 @@ interfaces:
       - kind: http
         method: POST
         path: /userinfo
+        error_format: oauth2
         headers:
           authorization:
             type: String
@@ -4063,6 +4097,7 @@ interfaces:
       - kind: http
         method: POST
         path: /device_authorization
+        error_format: oauth2
         request_form: form
   GetOpenidConfiguration:
     description: OIDC Discovery
@@ -4077,6 +4112,7 @@ interfaces:
       - kind: http
         method: GET
         path: /.well-known/openid-configuration
+        error_format: oauth2
   GetOauthAuthorizationServer:
     description: OAuth 2.0 Authorization Server Metadata (RFC 8414)
     steps:
@@ -4090,6 +4126,7 @@ interfaces:
       - kind: http
         method: GET
         path: /.well-known/oauth-authorization-server
+        error_format: oauth2
   GetProtectedResourceMetadata:
     description: "Protected Resource Metadata (RFC 9728)。resource 未指定時は realm の IdMagic API と\nApiTokenScope を、resource 指定時は登録済み Active な McpResourceServer の metadata を返す。\n未登録・Disabled は invalid_target として拒否する (ADR-055)。\n"
     steps:
@@ -4112,6 +4149,7 @@ interfaces:
       - kind: http
         method: GET
         path: /.well-known/oauth-protected-resource
+        error_format: oauth2
         request_form: query
   Health:
     description: Health check
@@ -4151,6 +4189,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - InvalidAuthorizationDetailTypeError
     read_only: true
     access:
       policies: [TenantAdministrator, ManagementApiClientReadAuthorizationDetailTypes]
@@ -4172,6 +4211,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - InvalidAuthorizationDetailTypeError
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:
@@ -4197,6 +4237,7 @@ interfaces:
     errors:
       - InvalidRequestError
       - AccessDeniedError
+      - InvalidAuthorizationDetailTypeError
     access:
       policies: [TenantAdministrator, ManagementApiClientWriteAuthorizationDetailTypes]
       resource:

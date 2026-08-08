@@ -51,6 +51,7 @@ models:
         type: "String[]"
   InvalidRequestError:
     kind: error
+    status: 400
     description: リクエストに必須パラメータの欠落・不正値がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。
     payload:
       reason:
@@ -58,9 +59,11 @@ models:
         optional: true
   AccessDeniedError:
     kind: error
+    status: 403
     description: principal が対象操作の policy を満たさない。Authentication context が定義する共通 error の published language stub。
   DataKeyUnavailableError:
     kind: error
+    status: 503
     description: MasterKey provider への到達不能、wrap/unwrap 失敗、または AAD/tamper 不一致により鍵操作が完了できない。呼び出し元は fail-closed としてアクセスを拒否しなければならない。
     payload:
       reason:
@@ -68,6 +71,7 @@ models:
         optional: true
   DataKeyStillReferencedError:
     kind: error
+    status: 409
     description: "DestroyTenantDataKey の対象バージョンについて、所有 context の再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) がまだ全参照を active バージョンへ移行し終えていない。先に再暗号化を完了させてから destroy する。\n"
     payload:
       pendingCount:

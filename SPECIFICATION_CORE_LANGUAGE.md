@@ -218,7 +218,7 @@ glossary:
 | `value_object` | `fields` | field 値で同一性が決まる model。 |
 | `event` | なし (`payload` MAY) | 発生済みの事実。 |
 | `enum` | `values` | 閉じた値集合。 |
-| `error` | なし (`fields` MAY) | interface が返す typed error。 |
+| `error` | `status` (`fields` MAY) | interface が返す typed error。 |
 
 ```yaml
 models:
@@ -232,6 +232,17 @@ models:
       valid_until: { type: DateTime, optional: true }
     constraints:
       - valid_until == null || valid_until > valid_from
+
+  TenantNotFound:
+    kind: error
+    status: 404
+    description: 指定した id の Tenant が存在しない。
+
+  InvalidTenant:
+    kind: error
+    status: 422
+    fields:
+      reason: { type: String }
 ```
 
 `Model` の field 全体:
@@ -244,6 +255,7 @@ models:
 | `constraints` | MAY | 非空 CEL 文字列の配列 (`ExpressionList`)。 |
 | `values` | kind: enum で MUST | 非空文字列配列。 |
 | `payload` | MAY (kind: event で主に使用) | `FieldMap`。 |
+| `status` | kind: error で MUST | 100 以上 599 以下の整数。この error を返す HTTP レスポンスの status code。RFC 9110 の意味論に従う (例: 構文的に解釈できないリクエストは 400、解釈はできたが内容が処理できない場合は 422)。 |
 | `description` | MAY | 文字列。 |
 | `annotations` | MAY | object。 |
 
@@ -336,7 +348,7 @@ input:
 
 | kind | 必須 | 任意 |
 | --- | --- | --- |
-| `http` | `method`, `path` | `successful_status_codes`, `request_form` (`body \| query \| form`), `headers` |
+| `http` | `method`, `path` | `successful_status_codes`, `request_form` (`body \| query \| form`), `headers`, `error_format` (`problem_details \| oauth2 \| scim \| set_delivery`、既定 `problem_details`) |
 | `grpc` | `service`, `method` | `streaming` (`unary \| client \| server \| bidi`) |
 | `cli` | `command` | `args`, `flags`, `exit_codes` |
 | `event` | `channel`, `direction` (`produce \| consume`) | `delivery` (`at_most_once \| at_least_once \| exactly_once`), `ordering` (`none \| per_key \| global`), `partition_key` |
@@ -345,6 +357,13 @@ input:
 | `schedule` | `cron` または `every` のいずれか一方 | — |
 
 すべての `kind` で `description` は任意。
+
+`error_format` は、この binding が返すエラーレスポンスの envelope 形式を表す。
+`problem_details` (既定) は RFC 9457 (`application/problem+json`)。それ以外は
+その binding が従う外部プロトコル仕様がエラー形式を固定している場合に使う:
+`oauth2` は RFC 6749 §5.2 (`{error, error_description}`)、`scim` は RFC 7644 の
+`scimType`、`set_delivery` は RFC 8935 §2.3 (`{err, description}`、
+`application/json`、status 400 固定) を表す。
 
 #### 3.3.2 access — interface の公開範囲
 

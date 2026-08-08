@@ -41,6 +41,7 @@ models:
       actions: { type: List<AuthorizationAction>, constraints: [non_empty] }
   DuplicateHttpBindingError:
     kind: error
+    status: 400
     description: 複数の interface が同一 path と同一 HTTP method を所有しており、operationId を一意に決定できない。
     payload:
       path: { type: String }

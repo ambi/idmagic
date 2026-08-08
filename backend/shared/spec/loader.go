@@ -111,6 +111,8 @@ type Model struct {
 	Payload     map[string]FieldDef `yaml:"payload"`
 	Constraints []string            `yaml:"constraints"`
 	Annotations map[string]any      `yaml:"annotations"`
+	// Status is the canonical HTTP status code for kind: error models (SPECIFICATION_CORE_LANGUAGE.md §3.2).
+	Status int `yaml:"status"`
 }
 
 type FieldDef struct {
