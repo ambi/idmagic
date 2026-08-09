@@ -1,34 +1,40 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { listAdminConsents, listAdminUsers } from '../../api'
 import { request } from '../../api/core'
 import { AdminDashboardPage } from '../../features/admin-dashboard/AdminDashboardPage'
-import type { AdminOAuth2Client, AdminConsent, AdminUser, AdminSettings } from '../../types'
+import type { AdminOAuth2Client, AdminSettings } from '../../types'
 import { requirePortalAccount } from '../-guards'
 import { PageMarker } from '../-page'
 
-type AdminUserListResponse = { users: AdminUser[] }
 type AdminOAuth2ClientListResponse = { clients: AdminOAuth2Client[] }
-type AdminConsentListResponse = { consents: AdminConsent[] }
 
+// Dashboard タイル用の一覧 API はどれも大規模テナントで全件取得できない (ADR-158)。
+// userCount/clientCount は settings.usage (tenant usage summary、専用の集計クエリ) を優先し、
+// usage が無い場合のみ読み込み済み件数にフォールバックする。activeUserCount/
+// disabledUserCount/grantedConsentCount は breakdown 用の summary endpoint が無いため、
+// listAdminUsers/listAdminConsents (PICKER_LIST_LIMIT=200 で capped) から計算する近似値
+// ("capped query" — WI Design が dashboard 向けに明示的に許容する方式)。200 件を超える
+// テナントではこれらのタイルは総数と一致しない。
 export const Route = createFileRoute('/admin/')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     const [users, clients, consents, settings] = await Promise.all([
-      request<AdminUserListResponse>('/api/admin/v1/users'),
-      request<AdminOAuth2ClientListResponse>('/api/admin/v1/clients'),
-      request<AdminConsentListResponse>('/api/admin/v1/consents'),
+      listAdminUsers(),
+      request<AdminOAuth2ClientListResponse>('/api/admin/v1/clients?limit=200'),
+      listAdminConsents(),
       request<AdminSettings>('/api/admin/v1/settings'),
     ])
-    const activeUserCount = users.users.filter((u) => !u.disabled_at).length
+    const activeUserCount = users.filter((u) => !u.disabled_at).length
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
       actorRoles: account.roles ?? [],
       actorRealm: account.realm ?? '',
-      userCount: users.users.length,
+      userCount: settings.usage?.users ?? users.length,
       activeUserCount,
-      disabledUserCount: users.users.length - activeUserCount,
-      clientCount: clients.clients.length,
-      grantedConsentCount: consents.consents.filter((c) => c.state === 'granted').length,
+      disabledUserCount: users.length - activeUserCount,
+      clientCount: settings.usage?.oauth2_clients ?? clients.clients.length,
+      grantedConsentCount: consents.filter((c) => c.state === 'granted').length,
       quota: settings.quota,
       usage: settings.usage,
     }

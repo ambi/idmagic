@@ -5,16 +5,19 @@ import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminAuditEventsPage } from './AdminAuditEventsPage'
 import { adminAuditEventsDictionary } from './AdminAuditEventsPage.i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { friendlyEventName } from '../admin-dashboard/AdminDashboardPage.i18n'
 import type { AdminAuditEventsSearchParams } from '../../api'
 import type { AdminAuditEvent } from '../../types'
 
 const t = adminAuditEventsDictionary.en
+const tCommon = commonDictionary.en
 
-const response = (status: number, body: unknown = {}) => ({
+const response = (status: number, body: unknown = {}, headers: Record<string, string> = {}) => ({
   ok: status >= 200 && status < 300,
   status,
   json: mock().mockResolvedValue(body),
+  headers: new Headers(headers),
 })
 
 const event: AdminAuditEvent = {
@@ -50,6 +53,7 @@ function BrowserHistoryHarness() {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={routeData.events}
+        nextCursor={null}
         search={routeData.search}
       />
     </>
@@ -66,6 +70,7 @@ describe('locale', () => {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={[]}
+        nextCursor={null}
       />,
     )
     expect(
@@ -83,6 +88,7 @@ describe('locale', () => {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={[]}
+        nextCursor={null}
       />,
       { locale: 'ja' },
     )
@@ -106,6 +112,7 @@ describe('AdminAuditEventsPage', () => {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={[event]}
+        nextCursor={null}
       />,
     )
 
@@ -126,6 +133,7 @@ describe('AdminAuditEventsPage', () => {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={[event]}
+        nextCursor={null}
       />,
     )
 
@@ -142,6 +150,7 @@ describe('AdminAuditEventsPage', () => {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={[event]}
+        nextCursor={null}
         search={{ category: 'authentication', sub: 'usr_from_url' }}
       />,
     )
@@ -180,6 +189,7 @@ describe('AdminAuditEventsPage', () => {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={[event]}
+        nextCursor={null}
         onSearch={onSearch}
       />,
     )
@@ -208,6 +218,7 @@ describe('AdminAuditEventsPage', () => {
         actorRoles={[]}
         actorRealm="tenant-1"
         events={[event]}
+        nextCursor={null}
         onSearch={onSearch}
       />,
     )
@@ -221,5 +232,32 @@ describe('AdminAuditEventsPage', () => {
 
     expect(onSearch).toHaveBeenCalledWith(expect.objectContaining({ username: 'alice' }))
     await screen.findByText(t.noMatchingEventsNotice)
+  })
+
+  it('loads and appends the next page using the same query as the loaded page', async () => {
+    const nextEvent: AdminAuditEvent = { ...event, id: 'evt-2', type: 'SessionStarted' }
+    stubGlobal(
+      'fetch',
+      mock((url: string) => {
+        if (url.includes('cursor=abc') && url.includes('user_id=usr_current')) {
+          return Promise.resolve(response(200, { events: [nextEvent] }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(
+      <AdminAuditEventsPage
+        actorUsername="admin"
+        actorRoles={[]}
+        actorRealm="tenant-1"
+        events={[event]}
+        nextCursor="abc"
+        search={{ sub: 'usr_current' }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+
+    expect(await screen.findAllByText(friendlyEventName(nextEvent.type, 'en'))).not.toHaveLength(0)
   })
 })

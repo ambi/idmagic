@@ -63,7 +63,7 @@ import type {
   ProvisioningTestConnectionResult,
   ClientSecretCredentialMetadata,
 } from '../types'
-import { AuthenticationAPIError, adminRequest, request, tenantURL } from './core'
+import { AuthenticationAPIError, adminRequest, request, requestPage, tenantURL } from './core'
 
 type AdminUserListResponse = { users: AdminUser[] }
 type AdminConsentListResponse = { consents: AdminConsent[] }
@@ -83,8 +83,40 @@ export type CreateAdminUserInput = {
   roles: string[]
 }
 
+// 一覧 API は大規模テナントでのコスト削減のため既定 50 件・最大 200 件の keyset
+// pagination になっている (ADR-158)。PICKER_LIST_LIMIT はプライマリの一覧画面ではなく
+// picker/lookup 用途 (グループ追加候補、割り当て対象選択、id→name 解決など) の呼び出し元が
+// 既定値 (50件) に事故で切り詰められないよう明示する上限。200 件を超えるテナントでは
+// picker が一部の候補を表示できなくなるが、これは Design が許容する「capped query」の範囲
+// (全件を検索可能にする UI は wi-161 の対象)。
+const PICKER_LIST_LIMIT = 200
+
+function pageQueryString(params?: { cursor?: string; limit?: number }): string {
+  if (!params) return ''
+  const query = new URLSearchParams()
+  if (params.cursor) query.set('cursor', params.cursor)
+  if (params.limit) query.set('limit', String(params.limit))
+  const qs = query.toString()
+  return qs ? `?${qs}` : ''
+}
+
+export type AdminUserPage = { users: AdminUser[]; nextCursor: string | null }
+
 export async function listAdminUsers(): Promise<AdminUser[]> {
-  return (await request<AdminUserListResponse>('/api/admin/v1/users')).users
+  return (await request<AdminUserListResponse>(`/api/admin/v1/users?limit=${PICKER_LIST_LIMIT}`))
+    .users
+}
+
+// listAdminUsersPage はユーザー一覧画面専用の cursor pagination 版。「さらに読み込む」操作で
+// 前回の nextCursor を渡して次ページを取得する (ADR-158)。
+export async function listAdminUsersPage(params?: {
+  cursor?: string
+  limit?: number
+}): Promise<AdminUserPage> {
+  const page = await requestPage<AdminUserListResponse>(
+    `/api/admin/v1/users${pageQueryString(params)}`,
+  )
+  return { users: page.body.users, nextCursor: page.nextCursor }
 }
 
 export async function getAdminUser(id: string): Promise<AdminUser> {
@@ -436,8 +468,12 @@ export async function configureEntraFederation(
   return request('/api/admin/v1/wsfed/entra-federation', adminRequest(csrfToken, 'POST', input))
 }
 
+// Consents 一覧画面はまだ「さらに読み込む」UI に移行しておらず (T007 follow-up)、当面は
+// PICKER_LIST_LIMIT で切り詰めた1ページのみを表示する。
 export async function listAdminConsents(): Promise<AdminConsent[]> {
-  return (await request<AdminConsentListResponse>('/api/admin/v1/consents')).consents
+  return (
+    await request<AdminConsentListResponse>(`/api/admin/v1/consents?limit=${PICKER_LIST_LIMIT}`)
+  ).consents
 }
 
 export async function revokeAdminConsent(
@@ -476,13 +512,16 @@ export type AdminAuditEventQuery = {
   after?: string
   before?: string
   limit?: number
+  // cursor (ADR-158): 前ページの nextCursor をそのまま渡すと続きを取得する。フィルタ変更時は
+  // 呼び出し側で cursor を落として先頭ページに戻す。
+  cursor?: string
   allTenants?: boolean
   filter?: string[]
 }
 
-// 監査イベント検索フォームが URL query string と同期する部分 (wi-147)。type は
-// 機械向け低レベルフィルタで UI からは設定しないため除く。
-export type AdminAuditEventsSearchParams = Omit<AdminAuditEventQuery, 'type'>
+// 監査イベント検索フォームが URL query string と同期する部分 (wi-147)。type と cursor は
+// 検索フォームの入力ではないため除く (cursor は「さらに読み込む」操作専用)。
+export type AdminAuditEventsSearchParams = Omit<AdminAuditEventQuery, 'type' | 'cursor'>
 
 function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   const params = new URLSearchParams()
@@ -493,6 +532,7 @@ function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   if (query.after) params.set('after', query.after)
   if (query.before) params.set('before', query.before)
   if (query.limit !== undefined) params.set('limit', String(query.limit))
+  if (query.cursor) params.set('cursor', query.cursor)
   if (query.allTenants) params.set('all_tenants', 'true')
   for (const filter of query.filter ?? []) {
     if (filter) params.append('filter', filter)
@@ -500,15 +540,18 @@ function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   return params
 }
 
+export type AdminAuditEventPage = { events: AdminAuditEvent[]; nextCursor: string | null }
+
 export async function listAdminAuditEvents(
   query: AdminAuditEventQuery,
-): Promise<AdminAuditEvent[]> {
+): Promise<AdminAuditEventPage> {
   const params = auditEventParams(query)
   const url =
     params.size > 0
       ? `/api/admin/v1/audit_events?${params.toString()}`
       : '/api/admin/v1/audit_events'
-  return (await request<AdminAuditEventListResponse>(url)).events
+  const page = await requestPage<AdminAuditEventListResponse>(url)
+  return { events: page.body.events, nextCursor: page.nextCursor }
 }
 
 // 監査イベントのエクスポート URL (認証イベント含む)。新規タブで開いてダウンロードする。
@@ -838,7 +881,22 @@ export async function setAdminTenantEndpointStyle(
 }
 
 export async function listAdminGroups(): Promise<AdminGroup[]> {
-  return (await request<{ groups: AdminGroup[] }>('/api/admin/v1/groups')).groups
+  return (
+    await request<{ groups: AdminGroup[] }>(`/api/admin/v1/groups?limit=${PICKER_LIST_LIMIT}`)
+  ).groups
+}
+
+export type AdminGroupPage = { groups: AdminGroup[]; nextCursor: string | null }
+
+// listAdminGroupsPage はグループ一覧画面専用の cursor pagination 版 (ADR-158)。
+export async function listAdminGroupsPage(params?: {
+  cursor?: string
+  limit?: number
+}): Promise<AdminGroupPage> {
+  const page = await requestPage<{ groups: AdminGroup[] }>(
+    `/api/admin/v1/groups${pageQueryString(params)}`,
+  )
+  return { groups: page.body.groups, nextCursor: page.nextCursor }
 }
 
 export async function getAdminGroup(
@@ -936,7 +994,22 @@ export async function getAdminUserGroups(id: string): Promise<AdminUserGroups> {
 }
 
 export async function listAdminAgents(): Promise<AdminAgent[]> {
-  return (await request<{ agents: AdminAgent[] }>('/api/admin/v1/agents')).agents
+  return (
+    await request<{ agents: AdminAgent[] }>(`/api/admin/v1/agents?limit=${PICKER_LIST_LIMIT}`)
+  ).agents
+}
+
+export type AdminAgentPage = { agents: AdminAgent[]; nextCursor: string | null }
+
+// listAdminAgentsPage はエージェント一覧画面専用の cursor pagination 版 (ADR-158)。
+export async function listAdminAgentsPage(params?: {
+  cursor?: string
+  limit?: number
+}): Promise<AdminAgentPage> {
+  const page = await requestPage<{ agents: AdminAgent[] }>(
+    `/api/admin/v1/agents${pageQueryString(params)}`,
+  )
+  return { agents: page.body.agents, nextCursor: page.nextCursor }
 }
 
 export async function getAdminAgent(id: string): Promise<AdminAgent> {
@@ -1130,8 +1203,24 @@ export async function deleteSamlIDPProfile(csrfToken: string, profileID: string)
 }
 
 export async function listAdminApplications(): Promise<AdminApplication[]> {
-  return (await request<{ applications: AdminApplication[] }>('/api/admin/v1/applications'))
-    .applications
+  return (
+    await request<{ applications: AdminApplication[] }>(
+      `/api/admin/v1/applications?limit=${PICKER_LIST_LIMIT}`,
+    )
+  ).applications
+}
+
+export type AdminApplicationPage = { applications: AdminApplication[]; nextCursor: string | null }
+
+// listAdminApplicationsPage はアプリケーション一覧画面専用の cursor pagination 版 (ADR-158)。
+export async function listAdminApplicationsPage(params?: {
+  cursor?: string
+  limit?: number
+}): Promise<AdminApplicationPage> {
+  const page = await requestPage<{ applications: AdminApplication[] }>(
+    `/api/admin/v1/applications${pageQueryString(params)}`,
+  )
+  return { applications: page.body.applications, nextCursor: page.nextCursor }
 }
 
 export async function getAdminApplication(id: string): Promise<AdminApplicationDetail> {
@@ -1282,10 +1371,12 @@ export async function deleteAdminApplication(csrfToken: string, id: string): Pro
   )
 }
 
+// Assignments 一覧はまだ「さらに読み込む」UI に移行しておらず (T007 follow-up)、当面は
+// PICKER_LIST_LIMIT で切り詰めた1ページのみを表示する。
 export async function listApplicationAssignments(id: string): Promise<ApplicationAssignment[]> {
   return (
     await request<{ assignments: ApplicationAssignment[] }>(
-      `/api/admin/v1/applications/${encodeURIComponent(id)}/assignments`,
+      `/api/admin/v1/applications/${encodeURIComponent(id)}/assignments?limit=${PICKER_LIST_LIMIT}`,
     )
   ).assignments
 }
@@ -1620,14 +1711,17 @@ export async function resumeAdminApplicationProvisioning(
   )
 }
 
+// Deliveries 一覧はまだ「さらに読み込む」UI に移行しておらず (T007 follow-up)、当面は
+// PICKER_LIST_LIMIT で切り詰めた1ページのみを表示する。
 export async function listAdminApplicationProvisioningDeliveries(
   applicationID: string,
   status?: ProvisioningDeliveryStatus,
 ): Promise<ProvisioningDelivery[]> {
-  const query = status ? `?status=${encodeURIComponent(status)}` : ''
+  const params = new URLSearchParams({ limit: String(PICKER_LIST_LIMIT) })
+  if (status) params.set('status', status)
   return (
     await request<{ deliveries: ProvisioningDelivery[] }>(
-      `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries${query}`,
+      `/api/admin/v1/applications/${encodeURIComponent(applicationID)}/provisioning/deliveries?${params.toString()}`,
     )
   ).deliveries
 }

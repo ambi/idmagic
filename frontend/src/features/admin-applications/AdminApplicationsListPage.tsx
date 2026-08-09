@@ -1,13 +1,16 @@
 import { IconApps, IconExternalLink, IconPlus, IconRefresh, IconTrash } from '@tabler/icons-react'
 import { useState } from 'react'
-import { deleteAdminApplication, listAdminApplications } from '../../api'
+import { deleteAdminApplication, listAdminApplicationsPage } from '../../api'
 import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { LoadMoreButton } from '../../components/ui/load-more'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { usePaginatedList } from '../../lib/usePaginatedList'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import {
   AppIcon,
@@ -26,24 +29,35 @@ export function AdminApplicationsPage({
   csrfToken,
   actorUsername,
   applications: initial,
+  nextCursor: initialNextCursor,
 }: {
   csrfToken: string
   actorUsername?: string
   applications: AdminApplication[]
+  nextCursor: string | null
 }) {
-  const [applications, setApplications] = useState(initial)
+  const {
+    items: applications,
+    hasMore,
+    loadingMore,
+    loadMore,
+    reset: resetApplications,
+  } = usePaginatedList<AdminApplication>({ items: initial, nextCursor: initialNextCursor })
   const [selectedID, setSelectedID] = useState<string>(() => initial[0]?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminApplicationsDictionary)
+  const tCommon = useDictionary(commonDictionary)
 
   const selected = applications.find((a) => a.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
-    const next = await listAdminApplications()
-    setApplications(next)
-    setSelectedID(next.find((a) => a.id === preferredID)?.id ?? next[0]?.id ?? '')
+    const next = await listAdminApplicationsPage()
+    resetApplications({ items: next.applications, nextCursor: next.nextCursor })
+    setSelectedID(
+      next.applications.find((a) => a.id === preferredID)?.id ?? next.applications[0]?.id ?? '',
+    )
   }
 
   async function run(action: () => Promise<void>, success: string) {
@@ -57,6 +71,18 @@ export function AdminApplicationsPage({
       setError(messageOf(cause, t.genericOpError))
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleLoadMore() {
+    setError('')
+    try {
+      await loadMore(async (cursor) => {
+        const page = await listAdminApplicationsPage({ cursor })
+        return { items: page.applications, nextCursor: page.nextCursor }
+      })
+    } catch (cause) {
+      setError(messageOf(cause, tCommon.loadMoreFailedError))
     }
   }
 
@@ -120,6 +146,7 @@ export function AdminApplicationsPage({
               ))}
             </ul>
           )}
+          <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={handleLoadMore} />
         </Card>
 
         <ApplicationSummaryCard

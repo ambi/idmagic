@@ -94,11 +94,21 @@ created_at: 2026-07-10
 - [x] T006 [Persistence] PostgreSQL / memory repository を keyset pagination 化し、必要な index / migration を追加する。
   - 全 10 interface に対応する複合 index を `infra/schema/postgres.sql` に追加 (`just check-schema` convergence green)。うち Groups/Agents/Consents/OAuth2Clients(条件次第)は既存の UNIQUE 制約/PK が range scan を十分にカバーするため新規 index 不要と判断し追加しなかった。
   - sqlc query は各 `*.sql` に `*Page`/`*PageAfter` (2 クエリ方式、`ListProvisioningDeliveriesByConnectionAndStatusPage(After)` のみ status 分岐で4クエリ) を追加。
-- [ ] T007 [UI] 主要 admin / account 一覧を `Link` header ベースのページング (next URL 履歴による「戻る」を含む) に移行する。→ 未着手 (別セッションで継続)。
+- [x] T007 [UI] 主要 admin / account 一覧を `Link` header ベースのページング (next URL 履歴による「戻る」を含む) に移行する。
+  - 共有基盤: `src/api/core.ts` に `requestPage<T>()` (Link `rel="next"` から cursor を抽出、`request()` と `doFetch` を共有) を追加。`src/lib/usePaginatedList.ts` (蓄積・二重読み込み防止のみを持つ hook、エラー処理は各画面の既存慣習に委譲) と `src/components/ui/load-more.tsx` (`LoadMoreButton`、次ページが無ければ非表示) を追加。`commonDictionary` に `loadMore`/`loadingMore`/`loadMoreFailedError` を追加 (横断文言)。すべて test-first (RED→GREEN、`usePaginatedList.test.ts` 7 tests、`load-more.test.tsx` 4 tests)。
+  - Plan の優先順 (監査イベント、ユーザー、グループ、エージェント、アプリケーション) の通りに5画面を「さらに読み込む」方式 (Scope が明示的に許容する代替、next/prev の URL 履歴 stack は未実装) へ移行。各画面のルート loader は `listXxxPage()` を呼び、コンポーネントは `usePaginatedList` + `LoadMoreButton` で次ページを蓄積する。監査イベントのみ「同じ検索条件でしか cursor を続けられない」(ADR-158: cursor は query_hash 署名) ため、フォームの未確定入力とは別に `activeQuery` state で「ロード済みページが使った条件」を保持する設計にした。
+  - `src/api/admin.ts`: 各画面用に `listAdminUsersPage`/`listAdminGroupsPage`/`listAdminAgentsPage`/`listAdminApplicationsPage` を新設し、`listAdminAuditEvents` は返り値を `{ events, nextCursor }` に変更 (呼び出し元 2 箇所のみだったため直接変更)。
+  - **picker/lookup 用途の温存**: `listAdminUsers`/`listAdminGroups`/`listAdminAgents`/`listAdminApplications`/`listAdminConsents` は約 12 箇所の picker/dropdown/id→name lookup (グループ追加候補、割り当て対象選択、ワークフロー条件の選択肢など) から今も同じ関数名・返り値型で呼ばれている。ページング API 化で既定 limit が 50 件に落ちて picker が静かに壊れるのを防ぐため、これらの関数は内部で `limit=200` (各 interface の max) を明示指定するよう変更した (`PICKER_LIST_LIMIT`)。200 件を超えるテナントでは picker の選択肢が不完全になるが、これは Design が dashboard 向けに明示した「summary endpoint または capped query」の代替を picker にも適用したもの。全件を検索可能にする真の対応 (typeahead 検索等) は wi-161 (横断検索/集計 read model) の範囲。
+  - **この WI では「さらに読み込む」UI に移行しなかったもの (未着手ではなく明示的な範囲判断)**: Consents・ApplicationAssignments・ProvisioningDeliveries の一覧は `listAdminConsents`/`listApplicationAssignments`/`listAdminApplicationProvisioningDeliveries` のまま (`limit=200` capped のみ)。sign-in-policy 画面の application 一覧テーブルも `listAdminApplications` (capped) のまま — Applications の主一覧画面 (`/admin/applications`) のみ `listAdminApplicationsPage` に移行した。理由: WI の `## Plan` が優先順として明記したのは監査イベント/ユーザー/グループ/エージェント/アプリケーションの5画面のみで、この3画面はセッション内の時間予算の都合で後続対応とした。200 件を超える app/連携を持つテナントではこれらの一覧が不完全になる。
+  - OAuth2Clients・AuthenticationEventBuckets は元々対応する admin SPA 画面が存在しないため UI 移行の対象外 (SCL/Go 層の contract のみ T003/T005/T006 で対応済み)。
+  - Dashboard (`routes/admin/index.tsx`) の tile 集計 (Scope が名指しした既知の regression 元): `userCount`/`clientCount` は `settings.usage` (専用の tenant usage summary、正確) を優先し、無ければ読み込み済み件数へフォールバック。`activeUserCount`/`disabledUserCount`/`grantedConsentCount` は breakdown 用の summary endpoint が無いため `listAdminUsers`/`listAdminConsents` (200 件 capped) からの近似値のまま (200 件を超えるテナントでは不正確)。
+  - `AdminUsersListPage` の概要タイル (総ユーザー数/有効/管理者/MFA登録) は読み込み済み行のみの集計になった (ADR-158: 一覧 API は `total_count` を返さない) 旨をコード上に明記。正確な総数が必要なら Dashboard 同様 summary endpoint 拡張が要るが本 WI の範囲外。
+  - architecture ratchet: `AdminAuditEventsPage.tsx` が `ui-page-lines` の既存超過エントリ (wi-234 起票) の ceiling (539) を新規コードで超過したため 572 へ更新 (`architecture.yaml`)。
 - [ ] T008 [Test] cursor 改ざん、tenant 境界、filter 変更、同一 sort key、削除を挟む遷移の test を追加する。
   - handler レベルで Link header 有無・cursor 拒否・別テナント cursor 拒否・次ページ重複なしの test を `ListAdminUsers`/`ListGroups` に追加済み。他 8 interface は memory/postgres repository レベルの keyset pagination test のみ (handler レベルの境界 test は未追加)。
+  - UI 側: T007 で移行した5画面 + 共有基盤 (`usePaginatedList`/`LoadMoreButton`/`requestPage`) の component test (load-more の append・エラー表示・最終ページでの非表示) を追加済み。`just test-ui-e2e` (browser 挙動を含む e2e) は未追加。
 - [ ] T009 [Verify] `just check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
-  - `just check` / `just verify-go` (build, vet, lint, test, gofumpt) は green 確認済み。`just verify-ui`/`just test-ui-e2e` は T007 (UI) 未着手のため未実行。
+  - `just check` / `just verify-go` (build, vet, lint, test, gofumpt) / `just verify-ui` (format, lint, typecheck, unit test, build) は green 確認済み。`just test-ui-e2e` は未実行。
 
 ## Verification
 - `just check`

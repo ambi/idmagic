@@ -12,6 +12,7 @@ import {
   setBearerTokenProvider,
   adminRequest,
   request,
+  requestPage,
 } from './core'
 
 describe('core api utils', () => {
@@ -207,6 +208,48 @@ describe('core api utils', () => {
       stubGlobal('fetch', mockFetch)
 
       await expect(request('/error-api')).rejects.toThrow(AuthenticationAPIError)
+    })
+  })
+
+  describe('requestPage', () => {
+    it('extracts the cursor from a Link rel="next" header', async () => {
+      const mockData = { users: [{ id: '1' }] }
+      const mockFetch = mock().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockData),
+        headers: new Headers({
+          Link: '<http://localhost/realms/test-tenant/api/admin/v1/users?limit=50&cursor=abc123>; rel="next"',
+        }),
+      })
+      stubGlobal('fetch', mockFetch)
+
+      const page = await requestPage('/api/admin/v1/users')
+      expect(page.body).toEqual(mockData)
+      expect(page.nextCursor).toBe('abc123')
+    })
+
+    it('returns null nextCursor when there is no Link header', async () => {
+      const mockFetch = mock().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ users: [] }),
+        headers: new Headers(),
+      })
+      stubGlobal('fetch', mockFetch)
+
+      const page = await requestPage('/api/admin/v1/users')
+      expect(page.nextCursor).toBeNull()
+    })
+
+    it('returns null nextCursor when the Link header has no rel="next"', async () => {
+      const mockFetch = mock().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ users: [] }),
+        headers: new Headers({ Link: '<http://localhost/whatever>; rel="prev"' }),
+      })
+      stubGlobal('fetch', mockFetch)
+
+      const page = await requestPage('/api/admin/v1/users')
+      expect(page.nextCursor).toBeNull()
     })
   })
 })

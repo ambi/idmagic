@@ -47,6 +47,9 @@ export const commonDictionary = defineDictionary(
     openAccount: 'マイページを開く',
     openAdmin: '管理コンソールを開く',
     signInAgain: '再ログイン',
+    loadMore: 'さらに読み込む',
+    loadingMore: '読み込み中…',
+    loadMoreFailedError: '追加の読み込みに失敗しました。',
   },
   {
     languageSwitcherLabel: 'Display language',
@@ -92,5 +95,8 @@ export const commonDictionary = defineDictionary(
     openAccount: 'Open account portal',
     openAdmin: 'Open admin console',
     signInAgain: 'Sign in again',
+    loadMore: 'Load more',
+    loadingMore: 'Loading…',
+    loadMoreFailedError: 'Could not load more items.',
   },
 )

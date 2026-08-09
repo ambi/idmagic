@@ -4,14 +4,17 @@ import { screen, fireEvent, within } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminUsersPage } from './AdminUsersListPage'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 import type { AdminUser } from '../../types'
 
 const t = adminUsersDictionary.en
+const tCommon = commonDictionary.en
 
-const response = (status: number, body: unknown = {}) => ({
+const response = (status: number, body: unknown = {}, headers: Record<string, string> = {}) => ({
   ok: status >= 200 && status < 300,
   status,
   json: mock().mockResolvedValue(body),
+  headers: new Headers(headers),
 })
 
 const user: AdminUser = {
@@ -42,7 +45,7 @@ describe('locale', () => {
         return Promise.resolve(response(200, { users: [] }))
       }),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
     expect(screen.getByRole('heading', { name: t.pageTitle })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: t.disableAccount })).toBeInTheDocument()
   })
@@ -59,7 +62,9 @@ describe('locale', () => {
         return Promise.resolve(response(200, { users: [] }))
       }),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />, { locale: 'ja' })
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />, {
+      locale: 'ja',
+    })
     expect(
       screen.getByRole('heading', { name: adminUsersDictionary.ja.pageTitle }),
     ).toBeInTheDocument()
@@ -82,7 +87,7 @@ describe('AdminUsersPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
 
     fireEvent.click(screen.getByRole('button', { name: t.deleteAccount }))
     const dialog = await screen.findByRole('dialog')
@@ -102,7 +107,7 @@ describe('AdminUsersPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
 
     fireEvent.click(screen.getByRole('button', { name: t.deleteAccount }))
     const dialog = await screen.findByRole('dialog')
@@ -121,7 +126,7 @@ describe('AdminUsersPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
 
     fireEvent.click(screen.getByRole('button', { name: t.disableAccount }))
     const dialog = await screen.findByRole('dialog')
@@ -135,7 +140,7 @@ describe('AdminUsersPage', () => {
       'fetch',
       mock(() => Promise.resolve(response(500, { message: 'Could not fetch the list.' }))),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
 
     fireEvent.click(screen.getByRole('button', { name: t.reloadAriaLabel }))
 
@@ -143,9 +148,77 @@ describe('AdminUsersPage', () => {
   })
 
   it('shows required actions as read-only badges, not toggle buttons (T009)', async () => {
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} />)
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
 
     expect(screen.getByText('Verify email address')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Verify email address/i })).not.toBeInTheDocument()
+  })
+
+  it('does not show a load-more button on the last page', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string) => {
+        if (url.includes('/groups')) {
+          return Promise.resolve(
+            response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
+          )
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
+    expect(screen.queryByRole('button', { name: tCommon.loadMore })).not.toBeInTheDocument()
+  })
+
+  it('loads and appends the next page when "load more" is clicked', async () => {
+    const nextUser: AdminUser = {
+      ...user,
+      id: 'user-2',
+      preferred_username: 'jiro',
+      name: 'Jiro Suzuki',
+      email: 'jiro@example.com',
+    }
+    stubGlobal(
+      'fetch',
+      mock((url: string) => {
+        if (url.includes('/groups')) {
+          return Promise.resolve(
+            response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
+          )
+        }
+        if (url.includes('cursor=abc')) {
+          return Promise.resolve(response(200, { users: [nextUser] }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor="abc" />)
+
+    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+
+    expect(await screen.findByText('Jiro Suzuki')).toBeInTheDocument()
+    expect(screen.getAllByText('Taro Yamada').length).toBeGreaterThan(0)
+  })
+
+  it('shows an error when loading more fails', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string) => {
+        if (url.includes('/groups')) {
+          return Promise.resolve(
+            response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
+          )
+        }
+        if (url.includes('cursor=abc')) {
+          return Promise.resolve(response(500, { message: 'Could not load more.' }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor="abc" />)
+
+    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+
+    expect(await screen.findByText('Could not load more.')).toBeInTheDocument()
   })
 })

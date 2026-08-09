@@ -1,12 +1,15 @@
 import { IconPlus, IconRefresh, IconRobot } from '@tabler/icons-react'
 import { useState } from 'react'
-import { AuthenticationAPIError, listAdminAgents, tenantURL } from '../../api'
+import { AuthenticationAPIError, listAdminAgentsPage, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
+import { LoadMoreButton } from '../../components/ui/load-more'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { usePaginatedList } from '../../lib/usePaginatedList'
 import type { AdminAgent } from '../../types'
 import { AgentDetailCard } from './AdminAgentDetailCard'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
@@ -16,12 +19,20 @@ export function AdminAgentsPage({
   csrfToken,
   actorUsername,
   agents: initial,
+  nextCursor: initialNextCursor,
 }: {
   csrfToken: string
   actorUsername?: string
   agents: AdminAgent[]
+  nextCursor: string | null
 }) {
-  const [agents, setAgents] = useState(initial)
+  const {
+    items: agents,
+    hasMore,
+    loadingMore,
+    loadMore,
+    reset: resetAgents,
+  } = usePaginatedList<AdminAgent>({ items: initial, nextCursor: initialNextCursor })
   const initialID = new URLSearchParams(window.location.search).get('agent')
   const [selectedID, setSelectedID] = useState<string>(
     () => initial.find((a) => a.id === initialID)?.id ?? initial[0]?.id ?? '',
@@ -30,13 +41,14 @@ export function AdminAgentsPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminAgentsDictionary)
+  const tCommon = useDictionary(commonDictionary)
 
   const selected = agents.find((a) => a.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
-    const next = await listAdminAgents()
-    setAgents(next)
-    setSelectedID(next.find((a) => a.id === preferredID)?.id ?? next[0]?.id ?? '')
+    const next = await listAdminAgentsPage()
+    resetAgents({ items: next.agents, nextCursor: next.nextCursor })
+    setSelectedID(next.agents.find((a) => a.id === preferredID)?.id ?? next.agents[0]?.id ?? '')
   }
 
   async function run(action: () => Promise<void>, success: string) {
@@ -50,6 +62,20 @@ export function AdminAgentsPage({
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleLoadMore() {
+    setError('')
+    try {
+      await loadMore(async (cursor) => {
+        const page = await listAdminAgentsPage({ cursor })
+        return { items: page.agents, nextCursor: page.nextCursor }
+      })
+    } catch (cause) {
+      setError(
+        cause instanceof AuthenticationAPIError ? cause.message : tCommon.loadMoreFailedError,
+      )
     }
   }
 
@@ -131,6 +157,7 @@ export function AdminAgentsPage({
               <p className="mt-3">{t.emptyAgentsNotice}</p>
             </div>
           ) : null}
+          <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={handleLoadMore} />
         </Card>
 
         <AgentDetailCard

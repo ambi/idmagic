@@ -1,18 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { request } from '../../api/core'
+import { listAdminGroupsPage } from '../../api'
 import { AdminGroupsPage } from '../../features/admin-groups/AdminGroupsListPage'
-import type { AdminGroup } from '../../types'
 import { requirePortalAccount } from '../-guards'
 import { PageMarker } from '../-page'
 
 export const Route = createFileRoute('/admin/groups')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
-    const groups = await request<{ groups: AdminGroup[] }>('/api/admin/v1/groups')
+    const page = await listAdminGroupsPage()
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
-      groups: groups.groups,
+      groups: page.groups,
+      nextCursor: page.nextCursor,
     }
   },
   component: AdminGroupsRoute,

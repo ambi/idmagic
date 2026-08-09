@@ -21,7 +21,7 @@ import { useMemo, useState } from 'react'
 import {
   AuthenticationAPIError,
   deleteAdminUser,
-  listAdminUsers,
+  listAdminUsersPage,
   restoreAdminUser,
   setAdminUserDisabled,
   tenantURL,
@@ -32,8 +32,11 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
+import { LoadMoreButton } from '../../components/ui/load-more'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
+import { usePaginatedList } from '../../lib/usePaginatedList'
 import { cn } from '../../lib/utils'
 import type { AdminUser } from '../../types'
 import { DeleteUserDialog, DisableUserDialog } from './AdminUserDialogs'
@@ -60,12 +63,21 @@ export function AdminUsersPage({
   csrfToken,
   actorUsername,
   users: initialUsers,
+  nextCursor: initialNextCursor,
 }: {
   csrfToken: string
   actorUsername?: string
   users: AdminUser[]
+  nextCursor: string | null
 }) {
-  const [users, setUsers] = useState(initialUsers)
+  const {
+    items: users,
+    setItems: setUsers,
+    hasMore,
+    loadingMore,
+    loadMore,
+    reset: resetUsers,
+  } = usePaginatedList<AdminUser>({ items: initialUsers, nextCursor: initialNextCursor })
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
   const [query, setQuery] = useState(
     () => new URLSearchParams(window.location.search).get('role') ?? '',
@@ -78,9 +90,14 @@ export function AdminUsersPage({
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const t = useDictionary(adminUsersDictionary)
+  const tCommon = useDictionary(commonDictionary)
   const { locale } = useLocale()
 
   const selected = users.find((user) => user.id === selectedUserId)
+  // これらの集計は「読み込み済みの行」に対するものであり、テナントの総数ではない
+  // (ADR-158: 一覧 API は total_count を返さない)。先頭ページのみロードした状態では
+  // 大規模テナントで正確な総数と一致しない — 正確な総数が必要な場面は Dashboard の
+  // ように専用の summary (tenant usage) を使う。
   const activeCount = users.filter((user) => userLifecycleStatus(user) === 'active').length
   const adminCount = users.filter((user) => user.roles.includes('admin')).length
   const mfaCount = users.filter((user) => user.mfa_enrolled).length
@@ -98,10 +115,24 @@ export function AdminUsersPage({
   }, [query, status, users])
 
   async function refresh(preferredUserId = selectedUserId) {
-    const next = await listAdminUsers()
-    setUsers(next)
-    const nextSelected = next.find((user) => user.id === preferredUserId) ?? next[0]
+    const next = await listAdminUsersPage()
+    resetUsers({ items: next.users, nextCursor: next.nextCursor })
+    const nextSelected = next.users.find((user) => user.id === preferredUserId) ?? next.users[0]
     setSelectedUserId(nextSelected?.id ?? '')
+  }
+
+  async function handleLoadMore() {
+    setError('')
+    try {
+      await loadMore(async (cursor) => {
+        const page = await listAdminUsersPage({ cursor })
+        return { items: page.users, nextCursor: page.nextCursor }
+      })
+    } catch (cause) {
+      setError(
+        cause instanceof AuthenticationAPIError ? cause.message : tCommon.loadMoreFailedError,
+      )
+    }
   }
 
   async function run(action: () => Promise<void>, success: string) {
@@ -339,6 +370,7 @@ export function AdminUsersPage({
                   <p className="mt-1 text-sm text-slate-500">{t.emptyStateDescription}</p>
                 </div>
               )}
+              <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={handleLoadMore} />
             </div>
 
             <aside className="border-t border-slate-200 bg-slate-50/40 xl:border-l xl:border-t-0">

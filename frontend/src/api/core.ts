@@ -35,7 +35,10 @@ export function setBearerTokenProvider(provider: () => string | null) {
   bearerTokenProvider = provider
 }
 
-export async function request<T>(url: string, init?: RequestInit): Promise<T> {
+async function doFetch<T>(
+  url: string,
+  init?: RequestInit,
+): Promise<{ body: T; response: Response }> {
   const token = bearerTokenProvider()
   const headers = token
     ? { ...(init?.headers ?? {}), Authorization: `Bearer ${token}` }
@@ -55,7 +58,37 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
     }
     throw new AuthenticationAPIError(message, body.error, body.retry_after_seconds)
   }
+  return { body, response }
+}
+
+export async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const { body } = await doFetch<T>(url, init)
   return body
+}
+
+// Page ラップは cursor pagination (ADR-158) の応答: body は素のドメインデータのまま、
+// 次ページの有無・cursor は Link レスポンスヘッダ (rel="next") にしか出てこない。
+export type Page<T> = {
+  body: T
+  nextCursor: string | null
+}
+
+// requestPage は request() と同じ fetch/エラー処理を共有しつつ、Link ヘッダから
+// rel="next" の cursor query param を抜き出して返す (ADR-158)。
+export async function requestPage<T>(url: string, init?: RequestInit): Promise<Page<T>> {
+  const { body, response } = await doFetch<T>(url, init)
+  return { body, nextCursor: parseNextCursor(response.headers.get('Link')) }
+}
+
+function parseNextCursor(link: string | null): string | null {
+  if (!link) return null
+  const match = link.match(/<([^>]+)>;\s*rel="next"/)
+  if (!match) return null
+  try {
+    return new URL(match[1], window.location.origin).searchParams.get('cursor')
+  } catch {
+    return null
+  }
 }
 
 export function adminRequest(csrfToken: string, method: string, body?: unknown): RequestInit {

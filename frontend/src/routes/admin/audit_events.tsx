@@ -7,6 +7,7 @@ import {
   listAdminAuditEventSearchOptions,
 } from '../../api'
 import { AdminAuditEventsPage } from '../../features/admin-audit-events/AdminAuditEventsPage'
+import type { AdminAuditEvent } from '../../types'
 import { requirePortalAccount } from '../-guards'
 import { PageMarker } from '../-page'
 
@@ -58,10 +59,13 @@ export const Route = createFileRoute('/admin/audit_events')({
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     // 検索条件 (URL) に起因する取得失敗 (例: 不正な値による 4xx) はページ全体を壊さず、
     // ページ内のエラー表示に留める。認証そのものの失敗は requirePortalAccount 側で扱う (wi-147)。
-    let events: Awaited<ReturnType<typeof listAdminAuditEvents>> = []
+    let events: AdminAuditEvent[] = []
+    let nextCursor: string | null = null
     let searchError = ''
     try {
-      events = await listAdminAuditEvents(deps)
+      const page = await listAdminAuditEvents(deps)
+      events = page.events
+      nextCursor = page.nextCursor
     } catch (cause) {
       searchError = cause instanceof AuthenticationAPIError ? cause.message : String(cause)
     }
@@ -72,6 +76,7 @@ export const Route = createFileRoute('/admin/audit_events')({
       actorRoles: account.roles ?? [],
       actorRealm: account.realm ?? '',
       events,
+      nextCursor,
       search: deps,
       searchOptions,
       initialError: searchError,

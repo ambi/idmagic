@@ -344,9 +344,9 @@ complexity:
     - id: wi234-ui-page-lines-admin-audit-events-page
       budget: ui-page-lines
       path: frontend/src/features/admin-audit-events/AdminAuditEventsPage.tsx
-      ceiling: 539
+      ceiling: 572
       owner: maintainers
-      reason: wi-234 で責務境界に沿って分割する既存超過。wi-314 T008 でダッシュボードと同じ friendlyEventName 表示に揃えるための import を 1 行追加。
+      reason: wi-234 で責務境界に沿って分割する既存超過。wi-314 T008 でダッシュボードと同じ friendlyEventName 表示に揃えるための import を 1 行追加。wi-159 T007 で cursor pagination の「さらに読み込む」導線 (usePaginatedList 連携、activeQuery 保持、handleLoadMore) を追加。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-lines-admin-dashboard-page

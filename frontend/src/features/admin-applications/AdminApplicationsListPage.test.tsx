@@ -4,14 +4,17 @@ import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminApplicationsPage } from './AdminApplicationsListPage'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
+import { commonDictionary } from '../../lib/i18n/common.i18n'
 import type { AdminApplication } from '../../types'
 
 const t = adminApplicationsDictionary.en
+const tCommon = commonDictionary.en
 
-const response = (status: number, body: unknown = {}) => ({
+const response = (status: number, body: unknown = {}, headers: Record<string, string> = {}) => ({
   ok: status >= 200 && status < 300,
   status,
   json: mock().mockResolvedValue(body),
+  headers: new Headers(headers),
 })
 
 const app: AdminApplication = {
@@ -36,7 +39,9 @@ describe('locale', () => {
       'fetch',
       mock(() => Promise.resolve(response(200, { applications: [] }))),
     )
-    await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[]} />)
+    await renderWithRouter(
+      <AdminApplicationsPage csrfToken="csrf" applications={[]} nextCursor={null} />,
+    )
     expect(
       screen.getByRole('heading', { name: adminApplicationsDictionary.en.pageTitle }),
     ).toBeInTheDocument()
@@ -50,9 +55,12 @@ describe('locale', () => {
       'fetch',
       mock(() => Promise.resolve(response(200, { applications: [] }))),
     )
-    await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[]} />, {
-      locale: 'ja',
-    })
+    await renderWithRouter(
+      <AdminApplicationsPage csrfToken="csrf" applications={[]} nextCursor={null} />,
+      {
+        locale: 'ja',
+      },
+    )
     expect(
       screen.getByRole('heading', { name: adminApplicationsDictionary.ja.pageTitle }),
     ).toBeInTheDocument()
@@ -67,7 +75,9 @@ describe('AdminApplicationsPage', () => {
       'fetch',
       mock(() => Promise.resolve(response(200, { applications: [app] }))),
     )
-    await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
+    await renderWithRouter(
+      <AdminApplicationsPage csrfToken="csrf" applications={[app]} nextCursor={null} />,
+    )
 
     expect(screen.getByRole('button', { name: new RegExp(t.addApplication) })).toHaveAttribute(
       'href',
@@ -88,7 +98,9 @@ describe('AdminApplicationsPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
+    await renderWithRouter(
+      <AdminApplicationsPage csrfToken="csrf" applications={[app]} nextCursor={null} />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: t.deleteApplication }))
     fireEvent.click(screen.getByRole('button', { name: t.confirmDelete }))
@@ -107,11 +119,34 @@ describe('AdminApplicationsPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminApplicationsPage csrfToken="csrf" applications={[app]} />)
+    await renderWithRouter(
+      <AdminApplicationsPage csrfToken="csrf" applications={[app]} nextCursor={null} />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: t.deleteApplication }))
     fireEvent.click(screen.getByRole('button', { name: t.confirmDelete }))
 
     expect(await screen.findByText('Could not delete the application.')).toBeInTheDocument()
+  })
+
+  it('loads and appends the next page when "load more" is clicked', async () => {
+    const nextApp: AdminApplication = { ...app, id: 'app-2', name: 'Expenses' }
+    stubGlobal(
+      'fetch',
+      mock((url: string) => {
+        if (url.includes('cursor=abc')) {
+          return Promise.resolve(response(200, { applications: [nextApp] }))
+        }
+        throw new Error(`unexpected fetch ${url}`)
+      }),
+    )
+    await renderWithRouter(
+      <AdminApplicationsPage csrfToken="csrf" applications={[app]} nextCursor="abc" />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+
+    expect(await screen.findByText('Expenses')).toBeInTheDocument()
+    expect(screen.getAllByText('Payroll').length).toBeGreaterThan(0)
   })
 })
