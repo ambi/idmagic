@@ -18232,7 +18232,7 @@ PostgreSQL keyset pagination index を使用)。
       <div class="eyebrow">Bounded Context · contexts/oauth2.yaml</div>
       <h1>OAuth2</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">30</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">164</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">39</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">30</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">164</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">40</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-oauth2-standards">
     <h2>Standards <span class="count">30</span></h2>
@@ -28069,7 +28069,7 @@ attempts のみ増やす (状態遷移ではない)。
       </article></div>
   </section>
 <section id="context-oauth2-scenarios">
-    <h2>Scenarios <span class="count">39</span></h2>
+    <h2>Scenarios <span class="count">40</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-OAuth2/scenario/user-bound~20OAuth~20grant~E3~81~AFaccount~20scope~E3~81~AEaccess~20token~E3~82~92~E7~99~BA~E8~A1~8C~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>user-bound OAuth grantはaccount scopeのaccess tokenを発行できる</h3><span class="chip chip-actor">RegisteredClient</span><code class="canonical-ref">OAuth2/scenario/user-bound OAuth grantはaccount scopeのaccess tokenを発行できる</code></header>
@@ -28238,6 +28238,15 @@ attempts のみ増やす (状態遷移ではない)。
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">redirect_uri を持たない登録要求である</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">confidential クライアント &quot;web-app&quot; を redirect_uri &quot;&quot; で登録する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-OAuth2/scenario/Client~20metadata~20fetch~E3~81~AF~E5~85~AC~E9~96~8BIP~E3~81~B8~E7~9B~B4~E6~8E~A5~E6~8E~A5~E7~B6~9A~E3~81~99~E3~82~8B">
+        <header><h3>Client metadata fetchは公開IPへ直接接続する</h3><span class="chip chip-actor">RegisteredClient</span><code class="canonical-ref">OAuth2/scenario/Client metadata fetchは公開IPへ直接接続する</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">client_id は public IP に解決される client 所有の HTTPS metadata URL である</li><li class="scn-step"><a class="chip chip-ref" href="#scl-OAuth2/flow/Authorization">Authorization</a> Server の環境に HTTPS proxy が設定されている</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-OAuth2/flow/Authorization">Authorization</a> Server は環境 proxy を使用せず、DNS 検査済みの public IP へ直接接続する</li><li class="scn-step">metadata document の fetch と検証に成功する</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">metadata host が private、loopback、link-local、または CGNAT 100.64.0.0/10 の IP に解決される</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-OAuth2/flow/Authorization">Authorization</a> Server は対象 IP へ接続しない</li><li class="scn-step">client metadata の解決を fail-closed で拒否する</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-OAuth2/scenario/absolute_expires_at~20~E3~82~92~E8~B6~85~E3~81~88~E3~81~9F~20refresh~20token~20~E3~81~AF~E3~83~AD~E3~83~BC~E3~83~86~E3~83~BC~E3~82~B7~E3~83~A7~E3~83~B3~E4~B8~8D~E5~8F~AF">
         <header><h3>absolute_expires_at を超えた refresh token はローテーション不可</h3><span class="chip chip-actor">RegisteredClient</span><code class="canonical-ref">OAuth2/scenario/absolute_expires_at を超えた refresh token はローテーション不可</code></header>

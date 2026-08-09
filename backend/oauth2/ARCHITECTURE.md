@@ -1,6 +1,6 @@
 ---
 context: oauth2
-updated_at: 2026-08-09
+updated_at: 2026-08-10
 ---
 
 # Architecture: oauth2
@@ -85,8 +85,10 @@ listing) passes straight through untouched. It is wired once at the composition 
 
 The fetch itself goes through `shared/security/safehttp`, the same SSRF-hardened dialer
 `tokens_jose.JWKResolver` uses for `jwks_uri` (https-only, DNS-resolved-then-public-IP-only,
-capped redirects, short timeouts, a body size cap) — extracted into a shared package so both
-fetchers stay behind one hardened implementation rather than two. MVP only accepts documents that
+validated-IP direct dialing, no environment proxy, capped redirects, short timeouts, and a body
+size cap). Direct dialing is required because a proxy would resolve and connect to the final target
+outside the checked dial path, bypassing the transport's SSRF boundary. The shared package keeps
+both fetchers behind one hardened implementation rather than two. MVP only accepts documents that
 omit `token_endpoint_auth_method` or declare `none`; anything else is rejected fail-closed, and a
 document's `client_id` field must match the URL it was fetched from exactly. A resolved client's
 `scope` is whatever the document self-declares (default `openid`) — the same self-declared trust

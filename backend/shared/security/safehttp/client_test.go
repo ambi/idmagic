@@ -2,6 +2,7 @@ package safehttp
 
 import (
 	"net"
+	"net/http"
 	"testing"
 )
 
@@ -27,6 +28,29 @@ func TestIsPublicIPAcceptsPublicAddresses(t *testing.T) {
 		if !IsPublicIP(mustParseIP(t, host)) {
 			t.Errorf("%s rejected, want accepted", host)
 		}
+	}
+}
+
+func TestIsPublicIPRejectsEntireCGNATRange(t *testing.T) {
+	for _, host := range []string{"100.64.0.0", "100.127.255.255"} {
+		if IsPublicIP(mustParseIP(t, host)) {
+			t.Errorf("%s accepted, want rejected as CGNAT", host)
+		}
+	}
+	if !IsPublicIP(mustParseIP(t, "100.128.0.1")) {
+		t.Error("100.128.0.1 rejected, want accepted outside CGNAT range")
+	}
+}
+
+func TestNewClientDoesNotUseEnvironmentProxy(t *testing.T) {
+	t.Setenv("HTTPS_PROXY", "http://proxy.example.com:8443")
+	client := NewClient(Config{})
+	transport, ok := client.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("Transport = %T, want *http.Transport", client.Transport)
+	}
+	if transport.Proxy != nil {
+		t.Fatal("Transport.Proxy is configured, want direct connections only")
 	}
 }
 

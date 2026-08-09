@@ -11,9 +11,13 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"time"
 )
+
+var cgnatNetwork = &net.IPNet{
+	IP:   net.IPv4(100, 64, 0, 0),
+	Mask: net.CIDRMask(10, 32),
+}
 
 // IsPublicIP reports whether ip is routable on the public internet: not
 // private, loopback, link-local, multicast, unspecified, or CGNAT
@@ -26,7 +30,7 @@ func IsPublicIP(ip net.IP) bool {
 		!ip.IsLinkLocalMulticast() &&
 		!ip.IsUnspecified() &&
 		!ip.IsMulticast() &&
-		!strings.HasPrefix(ip.String(), "100.64.")
+		!cgnatNetwork.Contains(ip)
 }
 
 // SafeIPs resolves host and returns its addresses, failing if host is
@@ -78,7 +82,9 @@ type Config struct {
 func NewClient(cfg Config) *http.Client {
 	resolver := net.DefaultResolver
 	transport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
+		// A proxy would resolve and connect to the final target outside this
+		// transport's checked dial path, bypassing its SSRF boundary.
+		Proxy: nil,
 		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
 			host, port, err := net.SplitHostPort(address)
 			if err != nil {

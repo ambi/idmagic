@@ -5380,6 +5380,20 @@ scenarios:
         steps:
           - "confidential クライアント \"web-app\" を redirect_uri \"\" で登録する"
           - "エラー \"InvalidRequestError\""
+  Client metadata fetchは公開IPへ直接接続する:
+    actor: RegisteredClient
+    given:
+      - client_id は public IP に解決される client 所有の HTTPS metadata URL である
+      - Authorization Server の環境に HTTPS proxy が設定されている
+    main_success:
+      - Authorization Server は環境 proxy を使用せず、DNS 検査済みの public IP へ直接接続する
+      - metadata document の fetch と検証に成功する
+    extensions:
+      - at: 1
+        condition: metadata host が private、loopback、link-local、または CGNAT 100.64.0.0/10 の IP に解決される
+        steps:
+          - Authorization Server は対象 IP へ接続しない
+          - client metadata の解決を fail-closed で拒否する
   absolute_expires_at を超えた refresh token はローテーション不可:
     actor: RegisteredClient
     given:
