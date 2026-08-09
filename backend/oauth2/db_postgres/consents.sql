@@ -20,6 +20,15 @@ WHERE u.tenant_id = $1
 ORDER BY c.user_id, c.client_id
 LIMIT sqlc.arg(page_limit);
 
+-- name: ListConsentsByTenantPageBefore :many
+SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+WHERE u.tenant_id = $1
+  AND (c.user_id, c.client_id) < (sqlc.arg(before_user_id)::uuid, sqlc.arg(before_client_id)::uuid)
+ORDER BY c.user_id DESC, c.client_id DESC
+LIMIT sqlc.arg(page_limit);
+
 -- name: ListConsentsByTenantPageAfter :many
 -- Continuation page: resumes strictly after the (user_id, client_id) keyset
 -- of the last row the caller saw.

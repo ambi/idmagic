@@ -65,6 +65,16 @@ type AgentView struct {
 func ListAgents(ctx context.Context, deps AdminAgentDeps, afterName, afterID string, limit int) ([]AgentView, error) {
 	tenantID := tenancy.TenantID(ctx)
 	agents, err := deps.AgentRepo.ListPage(ctx, tenantID, afterName, afterID, limit)
+	return agentViews(ctx, deps, tenantID, agents, err)
+}
+
+func ListAgentsBefore(ctx context.Context, deps AdminAgentDeps, beforeName, beforeID string, limit int) ([]AgentView, error) {
+	tenantID := tenancy.TenantID(ctx)
+	agents, err := deps.AgentRepo.ListPageBefore(ctx, tenantID, beforeName, beforeID, limit)
+	return agentViews(ctx, deps, tenantID, agents, err)
+}
+
+func agentViews(ctx context.Context, deps AdminAgentDeps, tenantID string, agents []*agentdomain.Agent, err error) ([]AgentView, error) {
 	if err != nil {
 		return nil, err
 	}

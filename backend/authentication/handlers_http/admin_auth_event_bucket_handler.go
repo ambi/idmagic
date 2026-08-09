@@ -42,16 +42,20 @@ func handleListAuthEventBuckets(d Deps, c *echo.Context) error {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid or expired.")
 		}
 	}
-	buckets, err := authusecases.ListAuthEventBuckets(
-		c.Request().Context(), d.AuthEventBucketStore, actor.TenantID, afterWindowStart, page.AfterID, page.Limit+1,
-	)
+	var buckets []authusecases.AuthEventBucketView
+	if page.Direction == support.PageBackward {
+		buckets, err = authusecases.ListAuthEventBucketsBefore(
+			c.Request().Context(), d.AuthEventBucketStore, actor.TenantID, afterWindowStart, page.AfterID, page.Limit+1,
+		)
+	} else {
+		buckets, err = authusecases.ListAuthEventBuckets(
+			c.Request().Context(), d.AuthEventBucketStore, actor.TenantID, afterWindowStart, page.AfterID, page.Limit+1,
+		)
+	}
 	if err != nil {
 		return err
 	}
-	hasMore := len(buckets) > page.Limit
-	if hasMore {
-		buckets = buckets[:page.Limit]
-	}
+	buckets, hasPrevious, hasNext := support.TrimPage(buckets, page)
 	response := make([]authEventBucketResponse, len(buckets))
 	for i, bucket := range buckets {
 		response[i] = authEventBucketResponse{
@@ -63,10 +67,12 @@ func handleListAuthEventBuckets(d Deps, c *echo.Context) error {
 			LastSeen:    bucket.LastSeen,
 		}
 	}
-	if hasMore {
+	if len(buckets) > 0 {
+		first := buckets[0]
 		last := buckets[len(buckets)-1]
-		afterKey := last.Kind + "|" + last.KeyHash
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, actor.TenantID, listAuthenticationEventBucketsQuery, last.WindowStart.UTC().Format(time.RFC3339Nano), afterKey, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, actor.TenantID, listAuthenticationEventBucketsQuery,
+			first.WindowStart.UTC().Format(time.RFC3339Nano), first.Kind+"|"+first.KeyHash,
+			last.WindowStart.UTC().Format(time.RFC3339Nano), last.Kind+"|"+last.KeyHash, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

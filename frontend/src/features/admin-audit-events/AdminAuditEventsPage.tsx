@@ -1,8 +1,7 @@
 import { IconDownload, IconPlus, IconRefresh, IconSearch, IconTrash } from '@tabler/icons-react'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import {
   type AdminAuditEventCategory,
-  type AdminAuditEventQuery,
   type AdminAuditEventSearchOptions,
   type AdminAuditEventsSearchParams,
   adminAuditEventsExportURL,
@@ -15,10 +14,10 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { LoadMoreButton } from '../../components/ui/load-more'
+import { PageNavigation } from '../../components/ui/page-navigation'
+import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
-import { usePaginatedList } from '../../lib/usePaginatedList'
 import type { AdminAuditEvent } from '../../types'
 import { friendlyEventName } from '../admin-dashboard/AdminDashboardPage.i18n'
 import {
@@ -170,46 +169,47 @@ export function AdminAuditEventsPage({
   actorRoles,
   actorRealm,
   events: initial,
+  previousCursor = null,
   nextCursor: initialNextCursor,
   search,
   searchOptions,
   onSearch,
+  onPage,
+  cursorReset = false,
   initialError,
 }: {
   actorUsername?: string
   actorRoles: string[]
   actorRealm: string
   events: AdminAuditEvent[]
+  previousCursor?: string | null
   nextCursor: string | null
   search?: AdminAuditEventsSearchParams
   searchOptions?: AdminAuditEventSearchOptions
   onSearch?: (search: AdminAuditEventsSearchParams) => void
+  onPage?: (cursor: string) => void
+  cursorReset?: boolean
   // 初期表示 (loader) 側の取得失敗。URL の検索条件が壊れていてもページ自体は表示し、
   // ページ内のエラー表示に留める (wi-147)。
   initialError?: string
 }) {
-  const {
-    items: events,
-    hasMore,
-    loadingMore,
-    loadMore,
-    reset: resetEvents,
-  } = usePaginatedList<AdminAuditEvent>({ items: initial, nextCursor: initialNextCursor })
+  const [events, setEvents] = useState(initial)
   const [selected, setSelected] = useState<AdminAuditEvent | null>(initial[0] ?? null)
   const [after, setAfter] = useState(isoToDatetimeLocal(search?.after))
   const [before, setBefore] = useState(isoToDatetimeLocal(search?.before))
   const [limit, setLimit] = useState(search?.limit !== undefined ? String(search.limit) : '100')
   const [filters, setFilters] = useState<AuditFilterRow[]>(filtersFromSearch(search))
   const [allTenants, setAllTenants] = useState(search?.allTenants ?? false)
-  // activeQuery は「現在ロード済みのページ列が使った検索条件」。cursor による
-  // 「さらに読み込む」は同じ条件でしか続けられない (ADR-158: cursor は query_hash を
-  // 含めて署名される) ため、フォームの未確定入力とは別に保持する。
-  const [activeQuery, setActiveQuery] = useState<AdminAuditEventQuery>(() => ({ ...search }))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(initialError ?? '')
+  const [notice, setNotice] = useState('')
   const t = useDictionary(adminAuditEventsDictionary)
   const tCommon = useDictionary(commonDictionary)
   const { locale } = useLocale()
+
+  useEffect(() => {
+    if (cursorReset) setNotice(tCommon.cursorResetNotice)
+  }, [cursorReset, tCommon.cursorResetNotice])
 
   const canCrossTenant = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
   const eventTypeChoices = searchOptions?.event_types ?? []
@@ -269,29 +269,14 @@ export function AdminAuditEventsPage({
     onSearch?.(query)
     try {
       const next = await listAdminAuditEvents(query)
-      resetEvents({ items: next.events, nextCursor: next.nextCursor })
+      setEvents(next.events)
       setSelected(next.events[0] ?? null)
-      setActiveQuery(query)
     } catch (cause) {
       setError(
         cause instanceof AuthenticationAPIError ? cause.message : t.auditEventsFetchFailedError,
       )
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function handleLoadMore() {
-    setError('')
-    try {
-      await loadMore(async (cursor) => {
-        const page = await listAdminAuditEvents({ ...activeQuery, cursor })
-        return { items: page.events, nextCursor: page.nextCursor }
-      })
-    } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError ? cause.message : tCommon.loadMoreFailedError,
-      )
     }
   }
 
@@ -307,6 +292,7 @@ export function AdminAuditEventsPage({
       description={t.pageDescription}
     >
       {error ? <Alert variant="destructive">{error}</Alert> : null}
+      <Toast message={notice} onDismiss={() => setNotice('')} />
 
       <Card className="p-5">
         <form onSubmit={handleQuery} className="grid gap-4 lg:grid-cols-3">
@@ -508,7 +494,13 @@ export function AdminAuditEventsPage({
               ))}
             </tbody>
           </table>
-          <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={handleLoadMore} />
+          {onPage ? (
+            <PageNavigation
+              previousCursor={previousCursor}
+              nextCursor={initialNextCursor}
+              onNavigate={onPage}
+            />
+          ) : null}
         </Card>
 
         <Card className="p-5">

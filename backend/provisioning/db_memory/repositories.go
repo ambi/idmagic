@@ -245,7 +245,7 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(_ context.Context, ten
 // ListPageByConnection implements ports.ProvisioningDeliveryRepository.ListPageByConnection
 // (wi-159, ADR-158): keyset pagination ordered by (CreatedAt, ID) descending
 // — matching ListByConnection's pre-existing "most recent first" order.
-func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := []*domain.ProvisioningDelivery{}
@@ -254,6 +254,9 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context,
 			continue
 		}
 		if status != nil && d.Status != *status {
+			continue
+		}
+		if sourceType != nil && d.SourceType != *sourceType {
 			continue
 		}
 		out = append(out, cloneDelivery(d))
@@ -266,6 +269,32 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context,
 		afterPrimary = afterCreatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	return sharedmem.KeysetPage(out, key, true, afterPrimary, afterID, limit), nil
+}
+
+func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*domain.ProvisioningDelivery{}
+	for _, d := range r.deliveries {
+		if d.TenantID != tenantID || d.ConnectionID != connectionID {
+			continue
+		}
+		if status != nil && d.Status != *status {
+			continue
+		}
+		if sourceType != nil && d.SourceType != *sourceType {
+			continue
+		}
+		out = append(out, cloneDelivery(d))
+	}
+	key := func(d *domain.ProvisioningDelivery) (string, string) {
+		return d.CreatedAt.UTC().Format(time.RFC3339Nano), d.ID
+	}
+	beforePrimary := ""
+	if !beforeCreatedAt.IsZero() {
+		beforePrimary = beforeCreatedAt.UTC().Format(time.RFC3339Nano)
+	}
+	return sharedmem.KeysetPageBefore(out, key, true, beforePrimary, beforeID, limit), nil
 }
 
 func (r *ProvisioningDeliveryRepository) ListUnenqueued(_ context.Context, limit int) ([]*domain.ProvisioningDelivery, error) {

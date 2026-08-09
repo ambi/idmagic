@@ -19,6 +19,7 @@ type Querier interface {
 	// PRIMARY KEY (tenant_id, kind, key_hash, window_start); all three columns
 	// sort DESC so the row-value comparison below matches ORDER BY exactly.
 	ListAuthEventBucketsAfter(ctx context.Context, arg ListAuthEventBucketsAfterParams) ([]*ListAuthEventBucketsAfterRow, error)
+	ListAuthEventBucketsBefore(ctx context.Context, arg ListAuthEventBucketsBeforeParams) ([]*ListAuthEventBucketsBeforeRow, error)
 	RecordAuthEventBucket(ctx context.Context, arg RecordAuthEventBucketParams) (*RecordAuthEventBucketRow, error)
 }
 

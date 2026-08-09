@@ -28,3 +28,11 @@ WHERE ($1::text = '' OR tenant_id = $1::text)
   AND (window_start, kind, key_hash) < (sqlc.arg(after_window_start)::timestamptz, sqlc.arg(after_kind)::text, sqlc.arg(after_key_hash)::text)
 ORDER BY window_start DESC, kind DESC, key_hash DESC
 LIMIT sqlc.arg(page_limit);
+
+-- name: ListAuthEventBucketsBefore :many
+SELECT tenant_id, kind, key_hash, window_start, count, first_seen, last_seen
+FROM authentication_event_buckets
+WHERE ($1::text = '' OR tenant_id = $1::text)
+  AND (window_start, kind, key_hash) > (sqlc.arg(before_window_start)::timestamptz, sqlc.arg(before_kind)::text, sqlc.arg(before_key_hash)::text)
+ORDER BY window_start ASC, kind ASC, key_hash ASC
+LIMIT sqlc.arg(page_limit);

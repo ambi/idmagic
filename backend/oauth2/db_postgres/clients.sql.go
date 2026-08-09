@@ -316,6 +316,69 @@ func (q *Queries) ListClientsByTenantPageAfter(ctx context.Context, arg ListClie
 	return items, nil
 }
 
+const listClientsByTenantPageBefore = `-- name: ListClientsByTenantPageBefore :many
+SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
+  grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
+  tls_client_auth_subject_dn, id_token_signed_response_alg,
+  require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  created_at, updated_at, first_party, claim_policy
+FROM oauth2_clients
+WHERE tenant_id = $1
+  AND client_id < $2::uuid
+ORDER BY client_id DESC
+LIMIT $3
+`
+
+type ListClientsByTenantPageBeforeParams struct {
+	TenantID       string
+	BeforeClientID string
+	PageLimit      int32
+}
+
+func (q *Queries) ListClientsByTenantPageBefore(ctx context.Context, arg ListClientsByTenantPageBeforeParams) ([]*Oauth2Client, error) {
+	rows, err := q.db.Query(ctx, listClientsByTenantPageBefore, arg.TenantID, arg.BeforeClientID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Oauth2Client
+	for rows.Next() {
+		var i Oauth2Client
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ClientID,
+			&i.ApplicationID,
+			&i.ApplicationProtocolType,
+			&i.ClientSecretHash,
+			&i.ClientName,
+			&i.ClientType,
+			&i.RedirectUris,
+			&i.GrantTypes,
+			&i.ResponseTypes,
+			&i.TokenEndpointAuthMethod,
+			&i.Scope,
+			&i.JwksUri,
+			&i.Jwks,
+			&i.TlsClientAuthSubjectDn,
+			&i.IDTokenSignedResponseAlg,
+			&i.RequirePushedAuthorizationRequests,
+			&i.DpopBoundAccessTokens,
+			&i.FapiProfile,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.FirstParty,
+			&i.ClaimPolicy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockClientForSecretIssuance = `-- name: LockClientForSecretIssuance :one
 SELECT client_id
 FROM oauth2_clients

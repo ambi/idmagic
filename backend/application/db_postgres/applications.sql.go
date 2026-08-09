@@ -317,6 +317,60 @@ func (q *Queries) ListApplicationsByTenantPageAfter(ctx context.Context, arg Lis
 	return items, nil
 }
 
+const listApplicationsByTenantPageBefore = `-- name: ListApplicationsByTenantPageBefore :many
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+FROM applications
+WHERE tenant_id = $1
+  AND (name, id) < ($2::text, $3::uuid)
+ORDER BY name DESC, id DESC
+LIMIT $4
+`
+
+type ListApplicationsByTenantPageBeforeParams struct {
+	TenantID   string
+	BeforeName string
+	BeforeID   string
+	PageLimit  int32
+}
+
+func (q *Queries) ListApplicationsByTenantPageBefore(ctx context.Context, arg ListApplicationsByTenantPageBeforeParams) ([]*Application, error) {
+	rows, err := q.db.Query(ctx, listApplicationsByTenantPageBefore,
+		arg.TenantID,
+		arg.BeforeName,
+		arg.BeforeID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Application
+	for rows.Next() {
+		var i Application
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.Status,
+			&i.ProtocolType,
+			&i.IconUrl,
+			&i.IconObjectKey,
+			&i.LaunchUrl,
+			&i.CategoryIds,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeApplicationCategory = `-- name: RemoveApplicationCategory :exec
 UPDATE applications SET category_ids = array_remove(category_ids, $2), updated_at = now()
 WHERE tenant_id = $1 AND $2 = ANY(category_ids)

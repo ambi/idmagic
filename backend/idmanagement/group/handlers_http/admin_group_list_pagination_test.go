@@ -42,6 +42,25 @@ func TestAdminGroupListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
 	}
 }
 
+func TestAdminGroupListSecondPageExposesPreviousDirection(t *testing.T) {
+	e, repo := newAdminGroupHandler(t)
+	now := time.Now().UTC()
+	for _, name := range []string{"Charlie", "Delta", "Echo"} {
+		_ = repo.Save(t.Context(), &groupdomain.Group{
+			ID: name + "-id", TenantID: tenancydomain.DefaultTenantID, Name: name, Roles: []string{},
+			CreatedAt: now, UpdatedAt: now,
+		})
+	}
+	first := adminGroupListRequest(e, "/api/admin/v1/groups?limit=2")
+	link := first.Header().Get("Link")
+	nextPath := link[strings.Index(link, "<")+1 : strings.Index(link, ">")]
+	nextPath = strings.TrimPrefix(nextPath, "http://idp.test")
+	second := adminGroupListRequest(e, nextPath)
+	if second.Code != http.StatusOK || !strings.Contains(second.Header().Get("Link"), `rel="prev"`) {
+		t.Fatalf("second status=%d Link=%q body=%s", second.Code, second.Header().Get("Link"), second.Body.String())
+	}
+}
+
 func TestAdminGroupListOmitsLinkHeaderOnLastPage(t *testing.T) {
 	e, _ := newAdminGroupHandler(t)
 	resp := adminGroupListRequest(e, "/api/admin/v1/groups?limit=200")

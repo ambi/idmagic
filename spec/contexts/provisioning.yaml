@@ -1008,7 +1008,7 @@ interfaces:
         method: POST
         path: "/api/admin/v1/applications/{id}/provisioning/full-resync"
   ListProvisioningDeliveries:
-    description: "管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の keyset\npagination で一覧する。status/source_type で絞り込める。cursor は前回応答の Link response header\n(rel=\"next\") から取得する。\n"
+    description: "管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。status/source_type で絞り込める。cursor は応答の Link response header\n(rel=\"prev\" / rel=\"next\") から取得する。\n"
     input:
       id:
         type: String
@@ -1021,7 +1021,7 @@ interfaces:
       cursor:
         type: String
         optional: true
-        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
       limit:
         type: Integer
         optional: true
@@ -1047,7 +1047,7 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
   GetProvisioningDelivery:
     description: 管理者が配送 1 件の詳細を取得する。
     input:
@@ -1185,7 +1185,7 @@ objectives:
     window: 30d
     budgeting: occurrences
   ListProvisioningDeliveriesLatency:
-    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, connection_id, created_at, id) の複合 index を\n使う keyset pagination で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。\nsort key は created_at 降順 (id で tie-break) で安定させる)。\n"
+    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, connection_id, created_at, id) の複合 index\nを forward/reverse scan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと\n同程度の latency を保つ。sort key は created_at 降順 (id で tie-break) で安定させる)。\n"
     interface: ListProvisioningDeliveries
     indicator: measurement.latency < duration("200ms")
     target: 0.95

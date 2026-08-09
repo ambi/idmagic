@@ -4440,12 +4440,12 @@ interfaces:
         successful_status_codes:
           - "204"
   ListAdminOAuth2Clients:
-    description: "管理者が所属テナントの client を client_id 昇順の keyset pagination で一覧する。cursor は\n前回応答の Link response header (rel=\"next\") から取得する。\n"
+    description: "管理者が所属テナントの client を client_id 昇順の双方向 keyset pagination で一覧する。\ncursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。\n"
     input:
       cursor:
         type: String
         optional: true
-        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
       limit:
         type: Integer
         optional: true
@@ -4471,7 +4471,7 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
   GetAdminOAuth2Client:
     description: 管理者が所属テナントの client を取得する。別テナントの client は未存在として扱う。
     input:
@@ -4679,12 +4679,12 @@ interfaces:
         successful_status_codes:
           - "204"
   ListAdminConsents:
-    description: "管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の keyset pagination で\n一覧する。cursor は前回応答の Link response header (rel=\"next\") から取得する。\n"
+    description: "管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の双方向 keyset\npagination で一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。\n"
     input:
       cursor:
         type: String
         optional: true
-        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
       limit:
         type: Integer
         optional: true
@@ -4710,7 +4710,7 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
   GetAdminConsent:
     description: 管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。
     input:

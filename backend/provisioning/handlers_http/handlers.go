@@ -226,7 +226,18 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 	var status *domain.ProvisioningDeliveryStatus
 	if raw := c.QueryParam("status"); raw != "" {
 		s := domain.ProvisioningDeliveryStatus(raw)
+		if !s.Valid() {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "status is invalid")
+		}
 		status = &s
+	}
+	var sourceType *domain.ProvisioningSourceType
+	if raw := c.QueryParam("source_type"); raw != "" {
+		s := domain.ProvisioningSourceType(raw)
+		if !s.Valid() {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "source_type is invalid")
+		}
+		sourceType = &s
 	}
 	tenantID := support.RequestTenantID(c)
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, provisioningDeliveriesQueryHash(c), listProvisioningDeliveriesDefaultLimit, listProvisioningDeliveriesMaxLimit)
@@ -240,17 +251,22 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
 		}
 	}
-	deliveries, err := usecases.ListDeliveries(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, afterCreatedAt, page.AfterID, page.Limit+1)
+	var deliveries []*domain.ProvisioningDelivery
+	if page.Direction == support.PageBackward {
+		deliveries, err = usecases.ListDeliveriesBefore(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
+	} else {
+		deliveries, err = usecases.ListDeliveries(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, sourceType, afterCreatedAt, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return d.writeError(c, err)
 	}
-	hasMore := len(deliveries) > page.Limit
-	if hasMore {
-		deliveries = deliveries[:page.Limit]
-	}
-	if hasMore {
+	deliveries, hasPrevious, hasNext := support.TrimPage(deliveries, page)
+	if len(deliveries) > 0 {
+		first := deliveries[0]
 		last := deliveries[len(deliveries)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, provisioningDeliveriesQueryHash(c), last.CreatedAt.UTC().Format(time.RFC3339Nano), last.ID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, provisioningDeliveriesQueryHash(c),
+			first.CreatedAt.UTC().Format(time.RFC3339Nano), first.ID,
+			last.CreatedAt.UTC().Format(time.RFC3339Nano), last.ID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

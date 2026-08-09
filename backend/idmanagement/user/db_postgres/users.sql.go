@@ -14,7 +14,7 @@ import (
 
 const findUserByEmail = `-- name: FindUserByEmail :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
 WHERE tenant_id=$1 AND lower(email)=lower($2) AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 LIMIT 1
 `
@@ -43,13 +43,14 @@ func (q *Queries) FindUserByEmail(ctx context.Context, arg FindUserByEmailParams
 		&i.Roles,
 		&i.Lifecycle,
 		&i.Attributes,
+		&i.SearchText,
 	)
 	return &i, err
 }
 
 const findUserBySub = `-- name: FindUserBySub :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
 WHERE id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 `
 
@@ -72,13 +73,14 @@ func (q *Queries) FindUserBySub(ctx context.Context, id string) (*User, error) {
 		&i.Roles,
 		&i.Lifecycle,
 		&i.Attributes,
+		&i.SearchText,
 	)
 	return &i, err
 }
 
 const findUserBySubIncludingDeleted = `-- name: FindUserBySubIncludingDeleted :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
 WHERE id=$1
 `
 
@@ -101,13 +103,14 @@ func (q *Queries) FindUserBySubIncludingDeleted(ctx context.Context, id string) 
 		&i.Roles,
 		&i.Lifecycle,
 		&i.Attributes,
+		&i.SearchText,
 	)
 	return &i, err
 }
 
 const findUserByUsername = `-- name: FindUserByUsername :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
 WHERE tenant_id=$1 AND preferred_username=$2 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 `
 
@@ -135,13 +138,14 @@ func (q *Queries) FindUserByUsername(ctx context.Context, arg FindUserByUsername
 		&i.Roles,
 		&i.Lifecycle,
 		&i.Attributes,
+		&i.SearchText,
 	)
 	return &i, err
 }
 
 const listUsersByTenant = `-- name: ListUsersByTenant :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 ORDER BY preferred_username
 `
@@ -171,6 +175,7 @@ func (q *Queries) ListUsersByTenant(ctx context.Context, tenantID string) ([]*Us
 			&i.Roles,
 			&i.Lifecycle,
 			&i.Attributes,
+			&i.SearchText,
 		); err != nil {
 			return nil, err
 		}
@@ -184,7 +189,7 @@ func (q *Queries) ListUsersByTenant(ctx context.Context, tenantID string) ([]*Us
 
 const listUsersByTenantPage = `-- name: ListUsersByTenantPage :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 ORDER BY preferred_username, id
 LIMIT $2
@@ -223,6 +228,7 @@ func (q *Queries) ListUsersByTenantPage(ctx context.Context, arg ListUsersByTena
 			&i.Roles,
 			&i.Lifecycle,
 			&i.Attributes,
+			&i.SearchText,
 		); err != nil {
 			return nil, err
 		}
@@ -236,7 +242,7 @@ func (q *Queries) ListUsersByTenantPage(ctx context.Context, arg ListUsersByTena
 
 const listUsersByTenantPageAfter = `-- name: ListUsersByTenantPageAfter :many
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
-email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
 WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
   AND (preferred_username, id) > ($2::text, $3::uuid)
 ORDER BY preferred_username, id
@@ -282,6 +288,252 @@ func (q *Queries) ListUsersByTenantPageAfter(ctx context.Context, arg ListUsersB
 			&i.Roles,
 			&i.Lifecycle,
 			&i.Attributes,
+			&i.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByTenantPageAfterFiltered = `-- name: ListUsersByTenantPageAfterFiltered :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+  AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
+  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+  AND (preferred_username, id) > ($4::text, $5::uuid)
+ORDER BY preferred_username, id
+LIMIT $6
+`
+
+type ListUsersByTenantPageAfterFilteredParams struct {
+	TenantID      string
+	FilterQuery   string
+	FilterStatus  string
+	AfterUsername string
+	AfterID       string
+	PageLimit     int32
+}
+
+func (q *Queries) ListUsersByTenantPageAfterFiltered(ctx context.Context, arg ListUsersByTenantPageAfterFilteredParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPageAfterFiltered,
+		arg.TenantID,
+		arg.FilterQuery,
+		arg.FilterStatus,
+		arg.AfterUsername,
+		arg.AfterID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+			&i.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByTenantPageBefore = `-- name: ListUsersByTenantPageBefore :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+  AND (preferred_username, id) < ($2::text, $3::uuid)
+ORDER BY preferred_username DESC, id DESC
+LIMIT $4
+`
+
+type ListUsersByTenantPageBeforeParams struct {
+	TenantID       string
+	BeforeUsername string
+	BeforeID       string
+	PageLimit      int32
+}
+
+func (q *Queries) ListUsersByTenantPageBefore(ctx context.Context, arg ListUsersByTenantPageBeforeParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPageBefore,
+		arg.TenantID,
+		arg.BeforeUsername,
+		arg.BeforeID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+			&i.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByTenantPageBeforeFiltered = `-- name: ListUsersByTenantPageBeforeFiltered :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+  AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
+  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+  AND (preferred_username, id) < ($4::text, $5::uuid)
+ORDER BY preferred_username DESC, id DESC
+LIMIT $6
+`
+
+type ListUsersByTenantPageBeforeFilteredParams struct {
+	TenantID       string
+	FilterQuery    string
+	FilterStatus   string
+	BeforeUsername string
+	BeforeID       string
+	PageLimit      int32
+}
+
+func (q *Queries) ListUsersByTenantPageBeforeFiltered(ctx context.Context, arg ListUsersByTenantPageBeforeFilteredParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPageBeforeFiltered,
+		arg.TenantID,
+		arg.FilterQuery,
+		arg.FilterStatus,
+		arg.BeforeUsername,
+		arg.BeforeID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+			&i.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByTenantPageFiltered = `-- name: ListUsersByTenantPageFiltered :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+  AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
+  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+ORDER BY preferred_username, id
+LIMIT $4
+`
+
+type ListUsersByTenantPageFilteredParams struct {
+	TenantID     string
+	FilterQuery  string
+	FilterStatus string
+	PageLimit    int32
+}
+
+func (q *Queries) ListUsersByTenantPageFiltered(ctx context.Context, arg ListUsersByTenantPageFilteredParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPageFiltered,
+		arg.TenantID,
+		arg.FilterQuery,
+		arg.FilterStatus,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+			&i.SearchText,
 		); err != nil {
 			return nil, err
 		}

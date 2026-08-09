@@ -9,8 +9,10 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/audit/ports"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 const (
@@ -68,18 +70,30 @@ func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*p
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	// OccurredAt 降順 (新しい順) で limit 件まで集める。
+	// Filter first, then apply the signed keyset boundary in canonical
+	// (occurred_at DESC, id DESC) order.
 	result := make([]*ports.AuditEventRecord, 0, auditMaxListLimit)
-	for _, v := range slices.Backward(s.events) {
-		rec := v
+	for _, rec := range s.events {
 		if !auditEventMatches(rec, q) {
 			continue
 		}
 		result = append(result, rec)
-		if len(result) >= limit {
-			break
-		}
 	}
+	key := func(rec *ports.AuditEventRecord) (string, string) {
+		return rec.OccurredAt.UTC().Format(time.RFC3339Nano), rec.ID
+	}
+	if !q.BeforeOccurredAt.IsZero() || q.BeforeID != "" {
+		beforePrimary := ""
+		if !q.BeforeOccurredAt.IsZero() {
+			beforePrimary = q.BeforeOccurredAt.UTC().Format(time.RFC3339Nano)
+		}
+		return sharedmem.KeysetPageBefore(result, key, true, beforePrimary, q.BeforeID, limit), nil
+	}
+	afterPrimary := ""
+	if !q.AfterOccurredAt.IsZero() {
+		afterPrimary = q.AfterOccurredAt.UTC().Format(time.RFC3339Nano)
+	}
+	result = sharedmem.KeysetPage(result, key, true, afterPrimary, q.AfterID, limit)
 	return result, nil
 }
 
@@ -137,15 +151,6 @@ func auditEventMatches(rec *ports.AuditEventRecord, q ports.AuditEventQuery) boo
 	}
 	if !q.Before.IsZero() && rec.OccurredAt.After(q.Before) {
 		return false
-	}
-	if !q.AfterOccurredAt.IsZero() || q.AfterID != "" {
-		// keyset continuation (wi-159, ADR-158): keep only rows strictly
-		// before the cursor in the OccurredAt DESC, ID DESC order.
-		isAfterCursor := rec.OccurredAt.Before(q.AfterOccurredAt) ||
-			(rec.OccurredAt.Equal(q.AfterOccurredAt) && rec.ID < q.AfterID)
-		if !isAfterCursor {
-			return false
-		}
 	}
 	// wi-145: registry allowlist の filter 式 (連言) と q フリーテキスト。
 	for _, expr := range q.Filters {

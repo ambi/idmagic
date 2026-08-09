@@ -236,6 +236,9 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	for i := range ids {
 		user := pgfixtures.SeedUser(t, pool, tenant.ID)
 		d := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
+		if i == 2 {
+			d.SourceType = domain.SourceTypeGroup
+		}
 		d.CreatedAt = base.Add(time.Duration(i) * time.Minute)
 		if _, err := repo.Save(ctx, d); err != nil {
 			t.Fatalf("save #%d: %v", i, err)
@@ -244,7 +247,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	}
 
 	// created_at DESC: ids[4] (newest) first.
-	first, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, time.Time{}, "", 2)
+	first, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, nil, time.Time{}, "", 2)
 	if err != nil {
 		t.Fatalf("list page 1: %v", err)
 	}
@@ -253,7 +256,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	}
 
 	last := first[len(first)-1]
-	next, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, last.CreatedAt, last.ID, 2)
+	next, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, nil, last.CreatedAt, last.ID, 2)
 	if err != nil {
 		t.Fatalf("list page 2: %v", err)
 	}
@@ -261,12 +264,17 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 		t.Fatalf("unexpected continuation page: %+v", next)
 	}
 
-	all, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, time.Time{}, "", 100)
+	all, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, nil, time.Time{}, "", 100)
 	if err != nil {
 		t.Fatalf("list page all: %v", err)
 	}
 	if len(all) != 5 {
 		t.Fatalf("expected 5, got %d", len(all))
+	}
+	group := domain.SourceTypeGroup
+	groups, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, &group, time.Time{}, "", 100)
+	if err != nil || len(groups) != 1 || groups[0].ID != ids[2] {
+		t.Fatalf("source_type filter=%+v err=%v", groups, err)
 	}
 }
 

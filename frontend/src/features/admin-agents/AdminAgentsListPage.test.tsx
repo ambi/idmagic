@@ -109,22 +109,15 @@ describe('AdminAgentsPage', () => {
     expect(screen.getByText(t.selectAgentPrompt)).toBeInTheDocument()
   })
 
-  it('loads and appends the next page when "load more" is clicked', async () => {
-    const nextAgent: AdminAgent = { ...agent, id: 'agent-2', name: 'reports-bot' }
-    stubGlobal(
-      'fetch',
-      mock((url: string) => {
-        if (url.includes('cursor=abc')) {
-          return Promise.resolve(response(200, { agents: [nextAgent] }))
-        }
-        throw new Error(`unexpected fetch ${url}`)
-      }),
+  it('navigates to the next addressable page without appending rows', async () => {
+    const onPage = mock()
+    await renderWithRouter(
+      <AdminAgentsPage csrfToken="csrf" agents={[agent]} nextCursor="abc" onPage={onPage} />,
     )
-    await renderWithRouter(<AdminAgentsPage csrfToken="csrf" agents={[agent]} nextCursor="abc" />)
 
-    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+    fireEvent.click(screen.getByRole('button', { name: tCommon.nextPage }))
 
-    expect(await screen.findByText('reports-bot')).toBeInTheDocument()
+    expect(onPage).toHaveBeenCalledWith('abc')
     expect(screen.getAllByText('invoice-bot').length).toBeGreaterThan(0)
   })
 })

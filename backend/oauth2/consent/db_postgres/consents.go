@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -100,6 +101,26 @@ func (r *ConsentRepository) ListPage(ctx context.Context, tenantID, afterUserID,
 			return nil, err
 		}
 		out = append(out, c)
+	}
+	return out, nil
+}
+
+func (r *ConsentRepository) ListPageBefore(ctx context.Context, tenantID, beforeUserID, beforeClientID string, limit int) ([]*domain.Consent, error) {
+	rows, err := oauth2pg.New(r.Pool).ListConsentsByTenantPageBefore(ctx, oauth2pg.ListConsentsByTenantPageBeforeParams{
+		TenantID: tenantID, BeforeUserID: beforeUserID, BeforeClientID: beforeClientID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
+	out := make([]*domain.Consent, 0, len(rows))
+	for _, row := range rows {
+		consent, err := consentFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, consent)
 	}
 	return out, nil
 }

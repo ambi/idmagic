@@ -274,6 +274,21 @@ describe('core api utils', () => {
       expect(page.nextCursor).toBe('abc123')
     })
 
+    it('extracts previous and next cursors from a bidirectional Link header', async () => {
+      const mockFetch = mock().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ users: [] }),
+        headers: new Headers({
+          Link: '<http://localhost/api/users?cursor=before>; rel="prev", <http://localhost/api/users?cursor=after>; rel="next"',
+        }),
+      })
+      stubGlobal('fetch', mockFetch)
+
+      const page = await requestPage('/api/admin/v1/users')
+      expect(page.previousCursor).toBe('before')
+      expect(page.nextCursor).toBe('after')
+    })
+
     it('returns null nextCursor when there is no Link header', async () => {
       const mockFetch = mock().mockResolvedValue({
         ok: true,

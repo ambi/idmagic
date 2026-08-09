@@ -104,6 +104,37 @@ func (s *AuthEventBucketStore) List(
 	return out, nil
 }
 
+func (s *AuthEventBucketStore) ListBefore(
+	ctx context.Context,
+	tenantID string,
+	beforeWindowStart time.Time,
+	beforeKey string,
+	limit int,
+) ([]authnports.AuthEventBucket, error) {
+	if limit <= 0 {
+		limit = authEventBucketDefaultListLimit
+	}
+	if limit > authEventBucketMaxListLimit {
+		limit = authEventBucketMaxListLimit
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]authnports.AuthEventBucket, 0, len(s.buckets))
+	for _, bucket := range s.buckets {
+		if tenantID == "" || bucket.TenantID == tenantID {
+			out = append(out, *bucket)
+		}
+	}
+	key := func(b authnports.AuthEventBucket) (string, string) {
+		return b.WindowStart.UTC().Format(time.RFC3339Nano), bucketKeysetKey(b)
+	}
+	beforePrimary := ""
+	if !beforeWindowStart.IsZero() {
+		beforePrimary = beforeWindowStart.UTC().Format(time.RFC3339Nano)
+	}
+	return sharedmem.KeysetPageBefore(out, key, true, beforePrimary, beforeKey, limit), nil
+}
+
 // DeleteOlderThan は windowStart が before より前の bucket を物理削除し、削除件数を返す
 // (ADR-045 の保持期間 sweep / 既定 90 日)。idempotent。
 func (s *AuthEventBucketStore) DeleteOlderThan(_ context.Context, before time.Time) (int64, error) {

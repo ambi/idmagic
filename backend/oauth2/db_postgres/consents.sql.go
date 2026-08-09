@@ -183,6 +183,57 @@ func (q *Queries) ListConsentsByTenantPageAfter(ctx context.Context, arg ListCon
 	return items, nil
 }
 
+const listConsentsByTenantPageBefore = `-- name: ListConsentsByTenantPageBefore :many
+SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+WHERE u.tenant_id = $1
+  AND (c.user_id, c.client_id) < ($2::uuid, $3::uuid)
+ORDER BY c.user_id DESC, c.client_id DESC
+LIMIT $4
+`
+
+type ListConsentsByTenantPageBeforeParams struct {
+	TenantID       string
+	BeforeUserID   string
+	BeforeClientID string
+	PageLimit      int32
+}
+
+func (q *Queries) ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*Consent, error) {
+	rows, err := q.db.Query(ctx, listConsentsByTenantPageBefore,
+		arg.TenantID,
+		arg.BeforeUserID,
+		arg.BeforeClientID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Consent
+	for rows.Next() {
+		var i Consent
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ClientID,
+			&i.Scopes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeConsent = `-- name: RevokeConsent :exec
 UPDATE consents SET revoked_at = now(), updated_at = now()
 WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL

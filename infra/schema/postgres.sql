@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE tenants (
     id UUID PRIMARY KEY,
     realm TEXT NOT NULL,
@@ -130,6 +132,10 @@ CREATE TABLE users (
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
     lifecycle JSONB NOT NULL DEFAULT jsonb_build_object('status', 'active'),
     attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
+    search_text TEXT GENERATED ALWAYS AS (
+        lower(preferred_username || ' ' || coalesce(name, '') || ' ' ||
+              coalesce(email, '') || ' ' || id::text || ' ' || roles::text)
+    ) STORED,
     CONSTRAINT users_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT users_tenant_id_unique UNIQUE (tenant_id, id)
@@ -145,6 +151,10 @@ CREATE UNIQUE INDEX users_preferred_username_active_idx
 -- partial index qualifies for both queries.
 CREATE INDEX users_tenant_username_id_active_idx
     ON users (tenant_id, preferred_username, id)
+    WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
+
+CREATE INDEX users_search_text_trgm_idx
+    ON users USING gin (search_text gin_trgm_ops)
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
 CREATE TABLE mfa_factors (

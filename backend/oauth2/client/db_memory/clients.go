@@ -75,6 +75,19 @@ func (r *OAuth2ClientRepository) ListPage(_ context.Context, tenantID, afterClie
 	return sharedmem.KeysetPage(out, key, false, afterClientID, afterClientID, limit), nil
 }
 
+func (r *OAuth2ClientRepository) ListPageBefore(_ context.Context, tenantID, beforeClientID string, limit int) ([]*domain.OAuth2Client, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.OAuth2Client, 0, len(r.clients))
+	for _, c := range r.clients {
+		if c.TenantID == tenantID {
+			out = append(out, c)
+		}
+	}
+	key := func(c *domain.OAuth2Client) (string, string) { return c.ClientID, c.ClientID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeClientID, beforeClientID, limit), nil
+}
+
 func (r *OAuth2ClientRepository) ListClientSecretCredentials(_ context.Context, clientID string) ([]domain.ClientSecretCredential, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

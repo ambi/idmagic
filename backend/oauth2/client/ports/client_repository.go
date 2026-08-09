@@ -21,6 +21,7 @@ type OAuth2ClientRepository interface {
 	// FindAll's rows — strictly after afterClientID ("" for the first page).
 	// Backs ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158).
 	ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error)
+	ListPageBefore(ctx context.Context, tenantID, beforeClientID string, limit int) ([]*domain.OAuth2Client, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error)
 	SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
 	IssueClientSecretCredential(ctx context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error

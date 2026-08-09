@@ -35,6 +35,7 @@ type Querier interface {
 	// Continuation page: resumes strictly after the (subject_type, subject_id)
 	// keyset of the last row the caller saw.
 	ListApplicationAssignmentsByApplicationPageAfter(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageAfterParams) ([]*ListApplicationAssignmentsByApplicationPageAfterRow, error)
+	ListApplicationAssignmentsByApplicationPageBefore(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageBeforeParams) ([]*ListApplicationAssignmentsByApplicationPageBeforeRow, error)
 	ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ListApplicationAssignmentsByTenantRow, error)
 	ListApplicationCategoriesByTenant(ctx context.Context, tenantID string) ([]*ApplicationCategory, error)
 	ListApplicationsByTenant(ctx context.Context, tenantID string) ([]*Application, error)
@@ -46,6 +47,7 @@ type Querier interface {
 	// Continuation page: resumes strictly after the (name, id) keyset of the
 	// last row the caller saw.
 	ListApplicationsByTenantPageAfter(ctx context.Context, arg ListApplicationsByTenantPageAfterParams) ([]*Application, error)
+	ListApplicationsByTenantPageBefore(ctx context.Context, arg ListApplicationsByTenantPageBeforeParams) ([]*Application, error)
 	RemoveApplicationCategory(ctx context.Context, arg RemoveApplicationCategoryParams) error
 	UpsertAppSignInPolicy(ctx context.Context, arg UpsertAppSignInPolicyParams) error
 	UpsertApplication(ctx context.Context, arg UpsertApplicationParams) error

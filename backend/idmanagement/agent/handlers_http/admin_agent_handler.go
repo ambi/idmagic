@@ -66,21 +66,25 @@ func HandleListAgents(d Deps, c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	views, err := agentusecases.ListAgents(c.Request().Context(), adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	var views []agentusecases.AgentView
+	if page.Direction == support.PageBackward {
+		views, err = agentusecases.ListAgentsBefore(c.Request().Context(), adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	} else {
+		views, err = agentusecases.ListAgents(c.Request().Context(), adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return err
 	}
-	hasMore := len(views) > page.Limit
-	if hasMore {
-		views = views[:page.Limit]
-	}
+	views, hasPrevious, hasNext := support.TrimPage(views, page)
 	agents := make([]agentSummaryResponse, len(views))
 	for i, view := range views {
 		agents[i] = toAgentSummaryResponse(view.Agent, view.ClientIDs)
 	}
-	if hasMore {
+	if len(views) > 0 {
+		first := views[0]
 		last := views[len(views)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAgentsQuery, last.Agent.Name, last.Agent.ID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAgentsQuery,
+			first.Agent.Name, first.Agent.ID, last.Agent.Name, last.Agent.ID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

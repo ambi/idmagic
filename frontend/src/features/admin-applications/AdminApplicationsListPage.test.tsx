@@ -129,24 +129,20 @@ describe('AdminApplicationsPage', () => {
     expect(await screen.findByText('Could not delete the application.')).toBeInTheDocument()
   })
 
-  it('loads and appends the next page when "load more" is clicked', async () => {
-    const nextApp: AdminApplication = { ...app, id: 'app-2', name: 'Expenses' }
-    stubGlobal(
-      'fetch',
-      mock((url: string) => {
-        if (url.includes('cursor=abc')) {
-          return Promise.resolve(response(200, { applications: [nextApp] }))
-        }
-        throw new Error(`unexpected fetch ${url}`)
-      }),
-    )
+  it('navigates to the next addressable page without appending rows', async () => {
+    const onPage = mock()
     await renderWithRouter(
-      <AdminApplicationsPage csrfToken="csrf" applications={[app]} nextCursor="abc" />,
+      <AdminApplicationsPage
+        csrfToken="csrf"
+        applications={[app]}
+        nextCursor="abc"
+        onPage={onPage}
+      />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+    fireEvent.click(screen.getByRole('button', { name: tCommon.nextPage }))
 
-    expect(await screen.findByText('Expenses')).toBeInTheDocument()
+    expect(onPage).toHaveBeenCalledWith('abc')
     expect(screen.getAllByText('Payroll').length).toBeGreaterThan(0)
   })
 })

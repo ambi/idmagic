@@ -65,21 +65,25 @@ func (d Deps) handleListAdminOAuth2Clients(c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	clients, err := d.ClientRepo.ListPage(c.Request().Context(), tenantID, page.AfterID, page.Limit+1)
+	var clients []*oauthdomain.OAuth2Client
+	if page.Direction == support.PageBackward {
+		clients, err = d.ClientRepo.ListPageBefore(c.Request().Context(), tenantID, page.AfterID, page.Limit+1)
+	} else {
+		clients, err = d.ClientRepo.ListPage(c.Request().Context(), tenantID, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return err
 	}
-	hasMore := len(clients) > page.Limit
-	if hasMore {
-		clients = clients[:page.Limit]
-	}
+	clients, hasPrevious, hasNext := support.TrimPage(clients, page)
 	response := make([]adminClientResponse, len(clients))
 	for i, client := range clients {
 		response[i] = toAdminOAuth2ClientResponse(client)
 	}
-	if hasMore {
+	if len(clients) > 0 {
+		first := clients[0]
 		last := clients[len(clients)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminOAuth2ClientsQuery, last.ClientID, last.ClientID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAdminOAuth2ClientsQuery,
+			first.ClientID, first.ClientID, last.ClientID, last.ClientID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

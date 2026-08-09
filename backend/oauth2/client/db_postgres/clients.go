@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
@@ -132,6 +133,26 @@ func (r *OAuth2ClientRepository) ListPage(ctx context.Context, tenantID, afterCl
 			return nil, err
 		}
 		out = append(out, c)
+	}
+	return out, nil
+}
+
+func (r *OAuth2ClientRepository) ListPageBefore(ctx context.Context, tenantID, beforeClientID string, limit int) ([]*domain.OAuth2Client, error) {
+	rows, err := oauth2pg.New(r.Pool).ListClientsByTenantPageBefore(ctx, oauth2pg.ListClientsByTenantPageBeforeParams{
+		TenantID: tenantID, BeforeClientID: beforeClientID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
+	out := make([]*domain.OAuth2Client, 0, len(rows))
+	for _, row := range rows {
+		client, err := clientFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, client)
 	}
 	return out, nil
 }

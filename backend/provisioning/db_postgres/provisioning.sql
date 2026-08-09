@@ -79,35 +79,33 @@ FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 AND status=
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
 FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 ORDER BY created_at DESC LIMIT $3;
 
--- name: ListProvisioningDeliveriesByConnectionAndStatusPage :many
--- First page of ListProvisioningDeliveries keyset pagination (wi-159,
--- ADR-158): id is the tie-break, matching ListProvisioningDeliveriesByConnectionAndStatus's
--- pre-existing "most recent first" order.
-SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 AND status=$3 ORDER BY created_at DESC, id DESC LIMIT sqlc.arg(page_limit);
-
--- name: ListProvisioningDeliveriesByConnectionAndStatusPageAfter :many
--- Continuation page: resumes strictly after the (created_at, id) keyset of
--- the last row the caller saw.
-SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 AND status=$3
-  AND (created_at, id) < (sqlc.arg(after_created_at)::timestamptz, sqlc.arg(after_id)::uuid)
-ORDER BY created_at DESC, id DESC LIMIT sqlc.arg(page_limit);
-
 -- name: ListProvisioningDeliveriesByConnectionPage :many
 -- First page of ListProvisioningDeliveries keyset pagination (wi-159,
--- ADR-158), no status filter: id is the tie-break, matching
--- ListProvisioningDeliveriesByConnection's pre-existing "most recent first" order.
+-- ADR-159). Empty status/source_type arguments disable that filter.
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
-FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 ORDER BY created_at DESC, id DESC LIMIT sqlc.arg(page_limit);
+FROM provisioning_deliveries
+WHERE tenant_id=sqlc.arg(tenant_id) AND connection_id=sqlc.arg(connection_id)
+  AND (sqlc.arg(filter_status)::text = '' OR status=sqlc.arg(filter_status)::text)
+  AND (sqlc.arg(filter_source_type)::text = '' OR source_type=sqlc.arg(filter_source_type)::text)
+ORDER BY created_at DESC, id DESC LIMIT sqlc.arg(page_limit);
 
 -- name: ListProvisioningDeliveriesByConnectionPageAfter :many
 -- Continuation page: resumes strictly after the (created_at, id) keyset of
 -- the last row the caller saw.
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
 FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2
+  AND (sqlc.arg(filter_status)::text = '' OR status=sqlc.arg(filter_status)::text)
+  AND (sqlc.arg(filter_source_type)::text = '' OR source_type=sqlc.arg(filter_source_type)::text)
   AND (created_at, id) < (sqlc.arg(after_created_at)::timestamptz, sqlc.arg(after_id)::uuid)
 ORDER BY created_at DESC, id DESC LIMIT sqlc.arg(page_limit);
+
+-- name: ListProvisioningDeliveriesByConnectionPageBefore :many
+SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
+FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2
+  AND (sqlc.arg(filter_status)::text = '' OR status=sqlc.arg(filter_status)::text)
+  AND (sqlc.arg(filter_source_type)::text = '' OR source_type=sqlc.arg(filter_source_type)::text)
+  AND (created_at, id) > (sqlc.arg(before_created_at)::timestamptz, sqlc.arg(before_id)::uuid)
+ORDER BY created_at ASC, id ASC LIMIT sqlc.arg(page_limit);
 
 -- name: ListUnenqueuedProvisioningDeliveries :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at

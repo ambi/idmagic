@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
@@ -91,11 +92,58 @@ func TestUserRepositoryListPage(t *testing.T) {
 		t.Fatalf("unexpected continuation page: %+v", next)
 	}
 
+	previous, err := repo.ListPageBefore(ctx, tenant.ID, next[0].PreferredUsername, next[0].ID, 2)
+	if err != nil {
+		t.Fatalf("list previous page: %v", err)
+	}
+	if len(previous) != 2 || previous[0].PreferredUsername != "alice" || previous[1].PreferredUsername != "bob" {
+		t.Fatalf("unexpected previous page: %+v", previous)
+	}
+
 	all, err := repo.ListPage(ctx, tenant.ID, "", "", 100)
 	if err != nil {
 		t.Fatalf("list page all: %v", err)
 	}
 	if len(all) != 5 {
 		t.Fatalf("expected 5, got %d", len(all))
+	}
+}
+
+func TestUserRepositoryListPageFiltered(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	otherTenant := seedTenant(t, db)
+	repo := &UserRepository{Pool: db}
+	ctx := context.Background()
+	now := testClock()
+	active := idmdomain.UserStatusActive
+	disabled := idmdomain.UserStatusDisabled
+	for _, fixture := range []struct {
+		tenantID, username, name, email string
+		roles                           []string
+		status                          idmdomain.UserStatus
+	}{
+		{tenant.ID, "alpha", "Alice Example", "alice@example.com", []string{"billing-admin"}, active},
+		{tenant.ID, "bravo", "Bob Example", "bob@example.com", []string{"reader"}, disabled},
+		{otherTenant.ID, "other", "Alice Other", "other@example.com", []string{"billing-admin"}, active},
+	} {
+		name, email := fixture.name, fixture.email
+		u := &userdomain.User{
+			ID: newUUID(t), TenantID: fixture.tenantID, PreferredUsername: fixture.username,
+			PasswordHash: "hash", Name: &name, Email: &email, Roles: fixture.roles,
+			Lifecycle: userdomain.UserLifecycle{Status: fixture.status}, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := repo.Save(ctx, u); err != nil {
+			t.Fatalf("save %s: %v", fixture.username, err)
+		}
+	}
+
+	page, err := repo.ListPageFiltered(ctx, tenant.ID, "ALICE EXAMPLE", &active, "", "", 10)
+	if err != nil || len(page) != 1 || page[0].PreferredUsername != "alpha" {
+		t.Fatalf("filtered page=%+v err=%v", page, err)
+	}
+	literalWildcard, err := repo.ListPageFiltered(ctx, tenant.ID, "%", nil, "", "", 10)
+	if err != nil || len(literalWildcard) != 0 {
+		t.Fatalf("wildcard must be treated literally: page=%+v err=%v", literalWildcard, err)
 	}
 }

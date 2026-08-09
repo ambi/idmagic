@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -103,6 +104,26 @@ func (r *AgentRepository) ListPage(ctx context.Context, tenantID, afterName, aft
 	if err != nil {
 		return nil, err
 	}
+	out := make([]*agentdomain.Agent, 0, len(rows))
+	for _, row := range rows {
+		agent, err := agentFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, agent)
+	}
+	return out, nil
+}
+
+func (r *AgentRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*agentdomain.Agent, error) {
+	rows, err := New(r.Pool).ListAgentsByTenantPageBefore(ctx, ListAgentsByTenantPageBeforeParams{
+		TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
 	out := make([]*agentdomain.Agent, 0, len(rows))
 	for _, row := range rows {
 		agent, err := agentFromRow(row)

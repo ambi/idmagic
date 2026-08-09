@@ -2224,12 +2224,12 @@ interfaces:
         method: GET
         path: "/api/admin/v1/users/{user_id}/signin_activity"
   ListAuthenticationEventBuckets:
-    description: "admin が認証イベント集約 (bucket) を window_start の降順で一覧する。攻撃時に個別行へ\n落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で keyset pagination により\n取得する。cursor は前回応答の Link response header (rel=\"next\") から取得する。limit 既定 50 / 上限 200。\n"
+    description: "admin が認証イベント集約 (bucket) を window_start の降順で一覧する。攻撃時に個別行へ\n落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で双方向 keyset pagination により\n取得する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。limit 既定\n50 / 上限 200。\n"
     input:
       cursor:
         type: String
         optional: true
-        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
       limit:
         type: Integer
         optional: true
@@ -2255,7 +2255,7 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
   ListMySessions:
     description: "認証済みユーザーが自身の有効なセッションを取得する (self-service)。対象は\nsubject.id に固定。現在のセッションを current=true でマークし、開始時刻の降順で返す。\n"
     output:

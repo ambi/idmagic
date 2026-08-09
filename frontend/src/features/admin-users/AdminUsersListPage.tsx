@@ -2,14 +2,12 @@ import {
   IconAdjustments,
   IconBan,
   IconCheck,
-  IconCircleCheck,
   IconClock,
   IconKey,
   IconMail,
   IconRefresh,
   IconFileExport,
   IconSearch,
-  IconShield,
   IconShieldCheck,
   IconTrash,
   IconUpload,
@@ -17,7 +15,7 @@ import {
   IconUserPlus,
   IconUsers,
 } from '@tabler/icons-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AuthenticationAPIError,
   deleteAdminUser,
@@ -32,11 +30,10 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
-import { LoadMoreButton } from '../../components/ui/load-more'
+import { PageNavigation } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
-import { usePaginatedList } from '../../lib/usePaginatedList'
 import { cn } from '../../lib/utils'
 import type { AdminUser } from '../../types'
 import { DeleteUserDialog, DisableUserDialog } from './AdminUserDialogs'
@@ -63,26 +60,37 @@ export function AdminUsersPage({
   csrfToken,
   actorUsername,
   users: initialUsers,
+  previousCursor = null,
   nextCursor: initialNextCursor,
+  query: initialQuery = '',
+  status: initialStatus = '',
+  usageUsers,
+  onPage,
+  onFilter,
+  cursorReset = false,
 }: {
   csrfToken: string
   actorUsername?: string
   users: AdminUser[]
+  previousCursor?: string | null
   nextCursor: string | null
+  query?: string
+  status?: string
+  usageUsers?: number
+  onPage?: (cursor: string) => void
+  onFilter?: (filter: { query?: string; status?: string }) => void
+  cursorReset?: boolean
 }) {
-  const {
-    items: users,
-    setItems: setUsers,
-    hasMore,
-    loadingMore,
-    loadMore,
-    reset: resetUsers,
-  } = usePaginatedList<AdminUser>({ items: initialUsers, nextCursor: initialNextCursor })
+  const [users, setUsers] = useState(initialUsers)
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
-  const [query, setQuery] = useState(
-    () => new URLSearchParams(window.location.search).get('role') ?? '',
+  const [query, setQuery] = useState(initialQuery)
+  const [status, setStatus] = useState<StatusFilter>(
+    initialStatus === 'active' ||
+      initialStatus === 'disabled' ||
+      initialStatus === 'pending_deletion'
+      ? initialStatus
+      : 'all',
   )
-  const [status, setStatus] = useState<StatusFilter>('all')
   const [showDelete, setShowDelete] = useState(false)
   const [showPurge, setShowPurge] = useState(false)
   const [showDisable, setShowDisable] = useState(false)
@@ -93,46 +101,20 @@ export function AdminUsersPage({
   const tCommon = useDictionary(commonDictionary)
   const { locale } = useLocale()
 
+  useEffect(() => {
+    if (cursorReset) setNotice(tCommon.cursorResetNotice)
+  }, [cursorReset, tCommon.cursorResetNotice])
+
   const selected = users.find((user) => user.id === selectedUserId)
-  // これらの集計は「読み込み済みの行」に対するものであり、テナントの総数ではない
-  // (ADR-158: 一覧 API は total_count を返さない)。先頭ページのみロードした状態では
-  // 大規模テナントで正確な総数と一致しない — 正確な総数が必要な場面は Dashboard の
-  // ように専用の summary (tenant usage) を使う。
-  const activeCount = users.filter((user) => userLifecycleStatus(user) === 'active').length
-  const adminCount = users.filter((user) => user.roles.includes('admin')).length
-  const mfaCount = users.filter((user) => user.mfa_enrolled).length
-  const filteredUsers = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    return users.filter((user) => {
-      const matchesStatus = status === 'all' || userLifecycleStatus(user) === status
-      const matchesQuery =
-        !needle ||
-        [user.preferred_username, user.name, user.email, user.id, ...user.roles]
-          .filter(Boolean)
-          .some((value) => value?.toLowerCase().includes(needle))
-      return matchesStatus && matchesQuery
-    })
-  }, [query, status, users])
 
   async function refresh(preferredUserId = selectedUserId) {
-    const next = await listAdminUsersPage()
-    resetUsers({ items: next.users, nextCursor: next.nextCursor })
+    const next = await listAdminUsersPage({
+      query: initialQuery || undefined,
+      status: initialStatus || undefined,
+    })
+    setUsers(next.users)
     const nextSelected = next.users.find((user) => user.id === preferredUserId) ?? next.users[0]
     setSelectedUserId(nextSelected?.id ?? '')
-  }
-
-  async function handleLoadMore() {
-    setError('')
-    try {
-      await loadMore(async (cursor) => {
-        const page = await listAdminUsersPage({ cursor })
-        return { items: page.users, nextCursor: page.nextCursor }
-      })
-    } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError ? cause.message : tCommon.loadMoreFailedError,
-      )
-    }
   }
 
   async function run(action: () => Promise<void>, success: string) {
@@ -230,20 +212,11 @@ export function AdminUsersPage({
           </div>
         }
       >
-        <section
-          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
-          aria-label={t.overviewSectionLabel}
-        >
-          <Metric label={t.totalUsers} value={users.length} icon={IconUsers} tone="blue" />
-          <Metric
-            label={t.activeAccounts}
-            value={activeCount}
-            icon={IconCircleCheck}
-            tone="green"
-          />
-          <Metric label={t.admins} value={adminCount} icon={IconShield} tone="violet" />
-          <Metric label={t.mfaEnrolled} value={mfaCount} icon={IconKey} tone="amber" />
-        </section>
+        {usageUsers !== undefined ? (
+          <section aria-label={t.overviewSectionLabel}>
+            <Metric label={t.totalUsers} value={usageUsers} icon={IconUsers} tone="blue" />
+          </section>
+        ) : null}
 
         {error && <Alert>{error}</Alert>}
         <Toast message={notice} onDismiss={() => setNotice('')} />
@@ -259,6 +232,19 @@ export function AdminUsersPage({
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
+                onBlur={() => {
+                  onFilter?.({
+                    query: query.trim() || undefined,
+                    status: status === 'all' ? undefined : status,
+                  })
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return
+                  onFilter?.({
+                    query: query.trim() || undefined,
+                    status: status === 'all' ? undefined : status,
+                  })
+                }}
                 className="h-10 pl-10"
                 placeholder={t.searchPlaceholder}
                 aria-label={t.searchAriaLabel}
@@ -271,7 +257,13 @@ export function AdminUsersPage({
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setStatus(value)}
+                    onClick={() => {
+                      setStatus(value)
+                      onFilter?.({
+                        query: query.trim() || undefined,
+                        status: value === 'all' ? undefined : value,
+                      })
+                    }}
                     className={cn(
                       'rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
                       status === value
@@ -314,7 +306,7 @@ export function AdminUsersPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredUsers.map((user) => (
+                  {users.map((user) => (
                     <tr
                       key={user.id}
                       onClick={() => selectUser(user)}
@@ -361,7 +353,7 @@ export function AdminUsersPage({
                   ))}
                 </tbody>
               </table>
-              {filteredUsers.length === 0 && (
+              {users.length === 0 && (
                 <div className="flex min-h-64 flex-col items-center justify-center px-6 text-center">
                   <span className="flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-400">
                     <IconSearch size={22} aria-hidden="true" />
@@ -370,7 +362,13 @@ export function AdminUsersPage({
                   <p className="mt-1 text-sm text-slate-500">{t.emptyStateDescription}</p>
                 </div>
               )}
-              <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={handleLoadMore} />
+              {onPage ? (
+                <PageNavigation
+                  previousCursor={previousCursor}
+                  nextCursor={initialNextCursor}
+                  onNavigate={onPage}
+                />
+              ) : null}
             </div>
 
             <aside className="border-t border-slate-200 bg-slate-50/40 xl:border-l xl:border-t-0">
@@ -393,7 +391,7 @@ export function AdminUsersPage({
             </aside>
           </div>
           <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50/70 px-5 py-3 text-xs text-slate-500">
-            <span>{t.countDisplayed.replace('{count}', String(filteredUsers.length))}</span>
+            <span>{t.countDisplayed.replace('{count}', String(users.length))}</span>
             <span>
               {t.lastUpdated.replace('{date}', formatDateTime(new Date().toISOString(), locale))}
             </span>

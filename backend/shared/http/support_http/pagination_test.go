@@ -38,3 +38,15 @@ func TestBuildNextLinkOverridesExistingCursorParam(t *testing.T) {
 		t.Fatalf("got %q, want %q", got, want)
 	}
 }
+
+func TestBuildPageLinksIncludesPreviousAndNext(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/v1/users?cursor=current&limit=50&status=active", http.NoBody)
+	c := e.NewContext(req, httptest.NewRecorder())
+	got := BuildPageLinks(c, "https://example.com", "previous-cursor", "next-cursor")
+	want := `<https://example.com/api/admin/v1/users?cursor=previous-cursor&limit=50&status=active>; rel="prev", ` +
+		`<https://example.com/api/admin/v1/users?cursor=next-cursor&limit=50&status=active>; rel="next"`
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}

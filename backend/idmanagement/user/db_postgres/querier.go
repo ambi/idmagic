@@ -26,6 +26,10 @@ type Querier interface {
 	// Continuation page: resumes strictly after the (preferred_username, id) keyset
 	// of the last row the caller saw.
 	ListUsersByTenantPageAfter(ctx context.Context, arg ListUsersByTenantPageAfterParams) ([]*User, error)
+	ListUsersByTenantPageAfterFiltered(ctx context.Context, arg ListUsersByTenantPageAfterFilteredParams) ([]*User, error)
+	ListUsersByTenantPageBefore(ctx context.Context, arg ListUsersByTenantPageBeforeParams) ([]*User, error)
+	ListUsersByTenantPageBeforeFiltered(ctx context.Context, arg ListUsersByTenantPageBeforeFilteredParams) ([]*User, error)
+	ListUsersByTenantPageFiltered(ctx context.Context, arg ListUsersByTenantPageFilteredParams) ([]*User, error)
 	SaveTenantUserAttributeSchema(ctx context.Context, arg SaveTenantUserAttributeSchemaParams) error
 	SaveUser(ctx context.Context, arg SaveUserParams) error
 }

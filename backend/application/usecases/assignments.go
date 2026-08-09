@@ -123,6 +123,10 @@ func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, af
 	return deps.AssignmentRepo.ListPageByApplication(ctx, tenantID, applicationID, afterSubjectType, afterSubjectID, limit)
 }
 
+func ListAssignmentsBefore(ctx context.Context, deps AssignmentDeps, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+	return deps.AssignmentRepo.ListPageBeforeByApplication(ctx, tenancy.TenantID(ctx), applicationID, beforeSubjectType, beforeSubjectID, limit)
+}
+
 // ListMyApplications は subjects (利用者本人 + 所属グループ) に割当済みで visible な
 // active Application を name 昇順・重複排除して返す。hidden 割当は除外する (wi-69)。
 func ListMyApplications(ctx context.Context, deps AssignmentDeps, subjects []ports.SubjectRef) ([]*domain.Application, error) {

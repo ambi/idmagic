@@ -1,15 +1,14 @@
 import { IconFileExport, IconRefresh, IconUsersGroup, IconUsersPlus } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AuthenticationAPIError, listAdminGroupsPage, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { LoadMoreButton } from '../../components/ui/load-more'
+import { PageNavigation } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
-import { usePaginatedList } from '../../lib/usePaginatedList'
 import type { AdminGroup } from '../../types'
 import { GroupDetailCard } from './AdminGroupDetailCard'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
@@ -18,20 +17,20 @@ export function AdminGroupsPage({
   csrfToken,
   actorUsername,
   groups: initial,
+  previousCursor = null,
   nextCursor: initialNextCursor,
+  onPage,
+  cursorReset = false,
 }: {
   csrfToken: string
   actorUsername?: string
   groups: AdminGroup[]
+  previousCursor?: string | null
   nextCursor: string | null
+  onPage?: (cursor: string) => void
+  cursorReset?: boolean
 }) {
-  const {
-    items: groups,
-    hasMore,
-    loadingMore,
-    loadMore,
-    reset: resetGroups,
-  } = usePaginatedList<AdminGroup>({ items: initial, nextCursor: initialNextCursor })
+  const [groups, setGroups] = useState(initial)
   const initialID = new URLSearchParams(window.location.search).get('group')
   const [selectedID, setSelectedID] = useState<string>(
     () => initial.find((g) => g.id === initialID)?.id ?? initial[0]?.id ?? '',
@@ -42,11 +41,15 @@ export function AdminGroupsPage({
   const t = useDictionary(adminGroupsDictionary)
   const tCommon = useDictionary(commonDictionary)
 
+  useEffect(() => {
+    if (cursorReset) setNotice(tCommon.cursorResetNotice)
+  }, [cursorReset, tCommon.cursorResetNotice])
+
   const selected = groups.find((g) => g.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
     const next = await listAdminGroupsPage()
-    resetGroups({ items: next.groups, nextCursor: next.nextCursor })
+    setGroups(next.groups)
     setSelectedID(next.groups.find((g) => g.id === preferredID)?.id ?? next.groups[0]?.id ?? '')
   }
 
@@ -61,20 +64,6 @@ export function AdminGroupsPage({
       setError(cause instanceof AuthenticationAPIError ? cause.message : t.genericActionError)
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function handleLoadMore() {
-    setError('')
-    try {
-      await loadMore(async (cursor) => {
-        const page = await listAdminGroupsPage({ cursor })
-        return { items: page.groups, nextCursor: page.nextCursor }
-      })
-    } catch (cause) {
-      setError(
-        cause instanceof AuthenticationAPIError ? cause.message : tCommon.loadMoreFailedError,
-      )
     }
   }
 
@@ -159,7 +148,13 @@ export function AdminGroupsPage({
               <p className="mt-3">{t.emptyGroupsNotice}</p>
             </div>
           ) : null}
-          <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={handleLoadMore} />
+          {onPage ? (
+            <PageNavigation
+              previousCursor={previousCursor}
+              nextCursor={initialNextCursor}
+              onNavigate={onPage}
+            />
+          ) : null}
         </Card>
 
         <GroupDetailCard

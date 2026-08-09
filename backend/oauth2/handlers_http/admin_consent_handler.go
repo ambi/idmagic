@@ -42,14 +42,16 @@ func (d Deps) handleListAdminConsents(c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	consents, err := consentusecases.ListConsents(ctx, d.ConsentDeps(), page.AfterPrimary, page.AfterID, page.Limit+1)
+	var consents []*oauthdomain.Consent
+	if page.Direction == support.PageBackward {
+		consents, err = consentusecases.ListConsentsBefore(ctx, d.ConsentDeps(), page.AfterPrimary, page.AfterID, page.Limit+1)
+	} else {
+		consents, err = consentusecases.ListConsents(ctx, d.ConsentDeps(), page.AfterPrimary, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return err
 	}
-	hasMore := len(consents) > page.Limit
-	if hasMore {
-		consents = consents[:page.Limit]
-	}
+	consents, hasPrevious, hasNext := support.TrimPage(consents, page)
 	clientIDs := make([]string, len(consents))
 	for i, consent := range consents {
 		clientIDs[i] = consent.ClientID
@@ -62,9 +64,11 @@ func (d Deps) handleListAdminConsents(c *echo.Context) error {
 			consent, clientNames[consent.ClientID], d.resolveUsername(ctx, usernames, consent.UserID),
 		)
 	}
-	if hasMore {
+	if len(consents) > 0 {
+		first := consents[0]
 		last := consents[len(consents)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminConsentsQuery, last.UserID, last.ClientID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAdminConsentsQuery,
+			first.UserID, first.ClientID, last.UserID, last.ClientID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

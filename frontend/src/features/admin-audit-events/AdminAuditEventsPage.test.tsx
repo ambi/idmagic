@@ -234,17 +234,8 @@ describe('AdminAuditEventsPage', () => {
     await screen.findByText(t.noMatchingEventsNotice)
   })
 
-  it('loads and appends the next page using the same query as the loaded page', async () => {
-    const nextEvent: AdminAuditEvent = { ...event, id: 'evt-2', type: 'SessionStarted' }
-    stubGlobal(
-      'fetch',
-      mock((url: string) => {
-        if (url.includes('cursor=abc') && url.includes('user_id=usr_current')) {
-          return Promise.resolve(response(200, { events: [nextEvent] }))
-        }
-        throw new Error(`unexpected fetch ${url}`)
-      }),
-    )
+  it('navigates to the next addressable page without appending rows', async () => {
+    const onPage = mock()
     await renderWithRouter(
       <AdminAuditEventsPage
         actorUsername="admin"
@@ -253,11 +244,13 @@ describe('AdminAuditEventsPage', () => {
         events={[event]}
         nextCursor="abc"
         search={{ sub: 'usr_current' }}
+        onPage={onPage}
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+    fireEvent.click(screen.getByRole('button', { name: tCommon.nextPage }))
 
-    expect(await screen.findAllByText(friendlyEventName(nextEvent.type, 'en'))).not.toHaveLength(0)
+    expect(onPage).toHaveBeenCalledWith('abc')
+    expect(await screen.findAllByText(friendlyEventName(event.type, 'en'))).not.toHaveLength(0)
   })
 })

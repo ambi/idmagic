@@ -2,7 +2,7 @@
 # この context が所有する module 台帳。path はこのファイルからの相対。
 # 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
 context: idmanagement
-updated_at: 2026-07-26
+updated_at: 2026-08-09
 modules:
   idmanagement-domain:
     path: domain
@@ -54,6 +54,8 @@ modules:
     layer: use_cases
     role: published_interface
     depends_on:
+      - module: idmanagement-domain
+        via: published_interface
       - module: idmanagement-user-domain
         via: published_interface
   idmanagement-group-ports:
@@ -444,6 +446,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - module: idmanagement-domain
+        via: published_interface
       - module: idmanagement-user-domain
         via: published_interface
       - module: idmanagement-user-ports
@@ -457,6 +461,8 @@ modules:
     layer: adapters
     role: binding
     depends_on:
+      - module: idmanagement-domain
+        via: published_interface
       - module: idmanagement-user-domain
         via: published_interface
       - module: idmanagement-user-ports

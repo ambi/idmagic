@@ -83,21 +83,25 @@ func HandleListGroups(d Deps, c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	views, err := groupusecases.ListGroups(c.Request().Context(), adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	var views []groupusecases.GroupView
+	if page.Direction == support.PageBackward {
+		views, err = groupusecases.ListGroupsBefore(c.Request().Context(), adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	} else {
+		views, err = groupusecases.ListGroups(c.Request().Context(), adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return err
 	}
-	hasMore := len(views) > page.Limit
-	if hasMore {
-		views = views[:page.Limit]
-	}
+	views, hasPrevious, hasNext := support.TrimPage(views, page)
 	groups := make([]groupSummaryResponse, len(views))
 	for i, view := range views {
 		groups[i] = toGroupSummaryResponse(view.Group, view.MemberCount)
 	}
-	if hasMore {
+	if len(views) > 0 {
+		first := views[0]
 		last := views[len(views)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listGroupsQuery, last.Group.Name, last.Group.ID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listGroupsQuery,
+			first.Group.Name, first.Group.ID, last.Group.Name, last.Group.ID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

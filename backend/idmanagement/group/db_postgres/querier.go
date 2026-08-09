@@ -23,6 +23,7 @@ type Querier interface {
 	// Continuation page: resumes strictly after the (name, id) keyset of the last
 	// row the caller saw.
 	ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroupsByTenantPageAfterParams) ([]*Group, error)
+	ListGroupsByTenantPageBefore(ctx context.Context, arg ListGroupsByTenantPageBeforeParams) ([]*Group, error)
 	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*Group, error)
 	RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberParams) (int64, error)
 	SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroupRuleParams) error

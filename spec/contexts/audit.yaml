@@ -87,7 +87,7 @@ models:
       cursor:
         type: String
         optional: true
-        description: "ページング継続トークン。前回応答の Link response header (rel=\"next\") の URL に\n埋め込まれた値をそのまま渡す。tenant・sort・filter を含めて署名された opaque token。\n"
+        description: "応答の Link response header (rel=\"prev\" / rel=\"next\") の URL に埋め込まれた値を\nそのまま渡す。tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token\nは時刻で失効せず、旧 expiry 付き token は expiry まで有効。\n"
       limit:
         type: Integer
         optional: true
@@ -182,7 +182,7 @@ models:
         description: "選択可能な outcome の値一覧。現時点では success / failure の 2 値 (認証系イベントのみ分類対象)。"
 interfaces:
   ListAdminAuditEvents:
-    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス\n用途を想定し、期間絞り込み (after / before) と件数上限 (limit)、継続取得 (cursor、Link response\nheader の rel=\"next\" 経由) と type / user_id / username (操作者) による\n絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、\ncategory (authentication / success / fail / aggregated / user / group / client / consent / token /\ntenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と\nfilter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は\nAuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nuser_id と filter の actor.id は操作者を指し、username は操作者のログイン名を検索時に user_id へ\n解決する (hash 化せず、該当ユーザーが無ければ 0 件)。filter の actor.username は実在しない\nアカウント名も追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象\nユーザーを指す別概念 (AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント\n横断、admin は所属テナント内に閉じる (クエリが tenant_id 入力を取らないため所属テナントに構造的に\n閉じ、system_admin だけが専用経路から横断できる)。\n"
+    description: "管理者が所属テナントの監査用 DomainEvent を時系列降順の双方向 keyset pagination で取得する。\nSOC / コンプライアンス用途を想定し、期間絞り込み (after / before) と件数上限 (limit)、継続取得\n(cursor、Link response header の rel=\"prev\" / rel=\"next\" 経由) と type / user_id / username\n(操作者) による絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も\n同一ストアに属し、category (authentication / success / fail / aggregated / user / group / client /\nconsent / token / tenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text\n部分一致) と filter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の\nfield は AuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nuser_id と filter の actor.id は操作者を指し、username は操作者のログイン名を検索時に user_id へ\n解決する (hash 化せず、該当ユーザーが無ければ 0 件)。filter の actor.username は実在しないアカウント名も\n追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象ユーザーを指す別概念\n(AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント横断、admin は所属テナント内に\n閉じる (クエリが tenant_id 入力を取らないため所属テナントに構造的に閉じ、system_admin だけが専用経路から\n横断できる)。\n"
     input:
       query:
         type: AuditEventQuery
@@ -207,7 +207,7 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
   ExportAdminAuditEvents:
     description: "管理者が監査イベント (認証イベントを含む) を期間 / フィルタ指定でエクスポートする。\nSIEM への streaming は別 WI で、本 interface は 1 回分のダウンロードを返すのみ。\nフィルタは ListAdminAuditEvents と同じ AuditEventQuery (q / filter / category / type / 期間)。\nfilter の field は registry allowlist のみ。\n"
     input:
@@ -289,7 +289,7 @@ authorization:
       principal: TenantAdministrator
 objectives:
   ListAdminAuditEventsLatency:
-    description: "応答の 95% 以上を 300ms 未満で返す (id/occurred_at の複合 index を使う keyset\npagination で、limit 上限 (1000) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は\noccurred_at desc, id desc で安定させ、途中の追加・削除でも重複・欠落なく次ページを取得できる)。\n"
+    description: "応答の 95% 以上を 300ms 未満で返す (id/occurred_at の複合 index を forward/reverse scan\nする keyset pagination で、limit 上限 (1000) 付近の深い前後ページでも先頭ページと同程度の latency を\n保つ。sort key は occurred_at desc, id desc で安定させる)。\n"
     interface: ListAdminAuditEvents
     indicator: measurement.latency < duration("300ms")
     target: 0.95
@@ -329,6 +329,8 @@ scenarios:
       - 応答の Link response header (rel="next") から次ページの cursor を取得する
       - 管理者が取得済みの cursor で次ページを取得する
       - 直前のページと重複や欠落なく後続のイベントが返る
+      - 応答の Link response header (rel="prev") の cursor で前ページへ戻る
+      - 前ページのイベントが canonical な時系列降順で返る
     extensions:
       - at: 3
         condition: 次ページ取得前に category や filter などの絞り込み条件を変更する
@@ -336,7 +338,7 @@ scenarios:
           - cursor は元の絞り込み条件に紐づくため ListAdminAuditEvents は InvalidRequestError を返す
           - 管理者は先頭ページへ戻って検索し直す
       - at: 3
-        condition: cursor が別テナントで発行されたものである、または改ざん・失効している
+        condition: cursor が別テナントで発行された、改ざんされた、または legacy expiry を超過している
         steps:
           - ListAdminAuditEvents は InvalidRequestError を返す
       - at: 1
@@ -348,14 +350,18 @@ flows:
     entry: AdminAuditEvents
     views:
       AdminAuditEvents:
-        sees: 監査イベント一覧画面(時系列降順の DomainEvent、種別/操作者/期間の絞り込み、テキスト検索、次ページ読み込み)
+        sees: 監査イベント一覧画面(時系列降順の DomainEvent、URL に同期した絞り込み・cursor、前後ページ移動)
         does:
           - action: list
             does: 絞り込み条件を指定して一覧を検索する
             interface: ListAdminAuditEvents
             to: AdminAuditEvents
           - action: next_page
-            does: 「次へ」をクリックして次ページを読み込む
+            does: 「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える
+            interface: ListAdminAuditEvents
+            to: AdminAuditEvents
+          - action: previous_page
+            does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
             interface: ListAdminAuditEvents
             to: AdminAuditEvents
           - action: view

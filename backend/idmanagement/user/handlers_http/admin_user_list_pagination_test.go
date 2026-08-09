@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +33,17 @@ func decodeAdminUserListBody(t *testing.T, body []byte) []map[string]any {
 		t.Fatalf("unmarshal users body: %v (body=%s)", err, body)
 	}
 	return parsed.Users
+}
+
+func linkURLForRel(t *testing.T, header, rel string) string {
+	t.Helper()
+	for part := range strings.SplitSeq(header, ", ") {
+		if strings.Contains(part, `rel="`+rel+`"`) {
+			return strings.TrimPrefix(part[strings.Index(part, "<")+1:strings.Index(part, ">")], "http://idp.test")
+		}
+	}
+	t.Fatalf("Link header missing rel=%s: %q", rel, header)
+	return ""
 }
 
 func TestAdminUserListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
@@ -113,6 +125,72 @@ func TestAdminUserListNextPageContinuesWithoutOverlap(t *testing.T) {
 	}
 	if len(secondUsers) == 0 {
 		t.Fatal("expected the second page to return at least one user")
+	}
+}
+
+func TestAdminUserListPreviousLinkReturnsPriorPage(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	now := time.Now().UTC()
+	for _, name := range []string{"charlie", "delta", "echo"} {
+		repo.Seed(&userdomain.User{ID: name + "-id", PreferredUsername: name, PasswordHash: "unused", CreatedAt: now, UpdatedAt: now})
+	}
+	first := adminUserListRequest(e, "/api/admin/v1/users?limit=2")
+	second := adminUserListRequest(e, linkURLForRel(t, first.Header().Get("Link"), "next"))
+	if second.Code != http.StatusOK {
+		t.Fatalf("second status=%d body=%s", second.Code, second.Body.String())
+	}
+	previous := adminUserListRequest(e, linkURLForRel(t, second.Header().Get("Link"), "prev"))
+	if previous.Code != http.StatusOK {
+		t.Fatalf("previous status=%d body=%s", previous.Code, previous.Body.String())
+	}
+	firstUsers := decodeAdminUserListBody(t, first.Body.Bytes())
+	previousUsers := decodeAdminUserListBody(t, previous.Body.Bytes())
+	if len(firstUsers) != len(previousUsers) {
+		t.Fatalf("previous page length=%d, want %d", len(previousUsers), len(firstUsers))
+	}
+	for i := range firstUsers {
+		if firstUsers[i]["id"] != previousUsers[i]["id"] {
+			t.Fatalf("previous page differs at %d: got=%v want=%v", i, previousUsers[i], firstUsers[i])
+		}
+	}
+}
+
+func TestAdminUserListSearchAndStatusApplyBeforePaging(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	now := time.Now().UTC()
+	repo.Seed(&userdomain.User{
+		ID: "alice-id", PreferredUsername: "alice", Name: new("Alice Example"),
+		PasswordHash: "unused", CreatedAt: now, UpdatedAt: now,
+	})
+
+	resp := adminUserListRequest(e, "/api/admin/v1/users?query=EXAMPLE&status=active&limit=1")
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	users := decodeAdminUserListBody(t, resp.Body.Bytes())
+	if len(users) != 1 || users[0]["preferred_username"] != "alice" {
+		t.Fatalf("unexpected filtered users: %+v", users)
+	}
+}
+
+func TestAdminUserListRejectsCursorAfterQueryChanges(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	now := time.Now().UTC()
+	for _, name := range []string{"charlie", "delta", "echo"} {
+		repo.Seed(&userdomain.User{ID: name + "-id", PreferredUsername: name, PasswordHash: "unused", CreatedAt: now, UpdatedAt: now})
+	}
+	first := adminUserListRequest(e, "/api/admin/v1/users?query=a&limit=1")
+	nextURL, err := url.Parse(linkURLForRel(t, first.Header().Get("Link"), "next"))
+	if err != nil {
+		t.Fatalf("parse next link: %v", err)
+	}
+	query := nextURL.Query()
+	query.Set("query", "e")
+	nextURL.RawQuery = query.Encode()
+
+	changed := adminUserListRequest(e, nextURL.String())
+	if changed.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d body=%s", changed.Code, changed.Body.String())
 	}
 }
 

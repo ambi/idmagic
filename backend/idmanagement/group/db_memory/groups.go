@@ -63,6 +63,19 @@ func (r *GroupRepository) ListPage(_ context.Context, tenantID, afterName, after
 	return sharedmem.KeysetPage(out, key, false, afterName, afterID, limit), nil
 }
 
+func (r *GroupRepository) ListPageBefore(_ context.Context, tenantID, beforeName, beforeID string, limit int) ([]*groupdomain.Group, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*groupdomain.Group, 0)
+	for _, group := range r.groups {
+		if group.TenantID == tenantID {
+			out = append(out, cloneGroup(group))
+		}
+	}
+	key := func(g *groupdomain.Group) (string, string) { return g.Name, g.ID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeName, beforeID, limit), nil
+}
+
 func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*groupdomain.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

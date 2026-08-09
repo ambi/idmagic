@@ -318,6 +318,55 @@ func (q *Queries) ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroup
 	return items, nil
 }
 
+const listGroupsByTenantPageBefore = `-- name: ListGroupsByTenantPageBefore :many
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+WHERE tenant_id=$1
+  AND (name, id) < ($2::text, $3::uuid)
+ORDER BY name DESC, id DESC
+LIMIT $4
+`
+
+type ListGroupsByTenantPageBeforeParams struct {
+	TenantID   string
+	BeforeName string
+	BeforeID   string
+	PageLimit  int32
+}
+
+func (q *Queries) ListGroupsByTenantPageBefore(ctx context.Context, arg ListGroupsByTenantPageBeforeParams) ([]*Group, error) {
+	rows, err := q.db.Query(ctx, listGroupsByTenantPageBefore,
+		arg.TenantID,
+		arg.BeforeName,
+		arg.BeforeID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Group
+	for rows.Next() {
+		var i Group
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Description,
+			&i.Roles,
+			&i.MembershipType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGroupsByUser = `-- name: ListGroupsByUser :many
 SELECT g.id,g.tenant_id,g.name,g.description,g.roles,g.membership_type,g.created_at,g.updated_at
 FROM groups g JOIN group_members gm ON gm.group_id=g.id

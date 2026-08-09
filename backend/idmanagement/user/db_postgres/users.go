@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
+	"strings"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
@@ -14,6 +17,10 @@ import (
 // UserRepository (IdManagement)。クエリは sqlc 生成 (wi-178, ADR-090);
 // Pool は DBTX を構造的に満たす。
 type UserRepository struct{ Pool sharedpg.DB }
+
+func escapeLikePattern(value string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
+}
 
 func userFromRow(row *User) (*userdomain.User, error) {
 	u := &userdomain.User{
@@ -155,6 +162,80 @@ func (r *UserRepository) ListPage(ctx context.Context, tenantID, afterUsername, 
 			return nil, err
 		}
 		out = append(out, u)
+	}
+	return out, nil
+}
+
+func (r *UserRepository) ListPageBefore(ctx context.Context, tenantID, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error) {
+	rows, err := New(r.Pool).ListUsersByTenantPageBefore(ctx, ListUsersByTenantPageBeforeParams{
+		TenantID: tenantID, BeforeUsername: beforeUsername, BeforeID: beforeID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
+	out := make([]*userdomain.User, 0, len(rows))
+	for _, row := range rows {
+		u, err := userFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, nil
+}
+
+func (r *UserRepository) ListPageFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, afterUsername, afterID string, limit int) ([]*userdomain.User, error) {
+	q := New(r.Pool)
+	filterStatus := ""
+	if status != nil {
+		filterStatus = string(*status)
+	}
+	var rows []*User
+	var err error
+	if afterUsername == "" && afterID == "" {
+		rows, err = q.ListUsersByTenantPageFiltered(ctx, ListUsersByTenantPageFilteredParams{
+			TenantID: tenantID, FilterQuery: escapeLikePattern(query), FilterStatus: filterStatus,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListUsersByTenantPageAfterFiltered(ctx, ListUsersByTenantPageAfterFilteredParams{
+			TenantID: tenantID, FilterQuery: escapeLikePattern(query), FilterStatus: filterStatus,
+			AfterUsername: afterUsername, AfterID: afterID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
+	return usersFromRows(rows, err)
+}
+
+func (r *UserRepository) ListPageBeforeFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error) {
+	filterStatus := ""
+	if status != nil {
+		filterStatus = string(*status)
+	}
+	rows, err := New(r.Pool).ListUsersByTenantPageBeforeFiltered(ctx, ListUsersByTenantPageBeforeFilteredParams{
+		TenantID: tenantID, FilterQuery: escapeLikePattern(query), FilterStatus: filterStatus,
+		BeforeUsername: beforeUsername, BeforeID: beforeID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err == nil {
+		slices.Reverse(rows)
+	}
+	return usersFromRows(rows, err)
+}
+
+func usersFromRows(rows []*User, err error) ([]*userdomain.User, error) {
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*userdomain.User, 0, len(rows))
+	for _, row := range rows {
+		user, err := userFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, user)
 	}
 	return out, nil
 }

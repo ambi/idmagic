@@ -15,6 +15,7 @@ type GroupRepository interface {
 	// ascending, strictly after the keyset (afterName, afterID). Pass "", ""
 	// for the first page. Backs ListGroups keyset pagination (wi-159, ADR-158).
 	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*groupdomain.Group, error)
+	ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*groupdomain.Group, error)
 	FindByID(ctx context.Context, tenantID, id string) (*groupdomain.Group, error)
 	Save(ctx context.Context, group *groupdomain.Group) error
 	Delete(ctx context.Context, tenantID, id string) error

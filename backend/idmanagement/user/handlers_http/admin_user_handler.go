@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
@@ -90,25 +91,39 @@ func HandleListAdminUsers(d Deps, c *echo.Context) error {
 		return err
 	}
 	tenantID := support.RequestTenantID(c)
-	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminUsersQuery, listAdminUsersDefaultLimit, listAdminUsersMaxLimit)
+	query := strings.TrimSpace(c.QueryParam("query"))
+	var status *idmdomain.UserStatus
+	if rawStatus := strings.TrimSpace(c.QueryParam("status")); rawStatus != "" {
+		parsed := idmdomain.UserStatus(rawStatus)
+		if !parsed.Valid() {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "status is invalid")
+		}
+		status = &parsed
+	}
+	queryHash := listAdminUsersQuery + ";query=" + strings.ToLower(query) + ";status=" + c.QueryParam("status")
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, queryHash, listAdminUsersDefaultLimit, listAdminUsersMaxLimit)
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	users, err := d.UserRepo.ListPage(c.Request().Context(), tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
+	var users []*userdomain.User
+	if page.Direction == support.PageBackward {
+		users, err = d.UserRepo.ListPageBeforeFiltered(c.Request().Context(), tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
+	} else {
+		users, err = d.UserRepo.ListPageFiltered(c.Request().Context(), tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return err
 	}
-	hasMore := len(users) > page.Limit
-	if hasMore {
-		users = users[:page.Limit]
-	}
+	users, hasPrevious, hasNext := support.TrimPage(users, page)
 	response := make([]adminUserResponse, len(users))
 	for i, user := range users {
 		response[i] = toAdminUserResponse(user)
 	}
-	if hasMore {
+	if len(users) > 0 {
+		first := users[0]
 		last := users[len(users)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminUsersQuery, last.PreferredUsername, last.ID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, queryHash,
+			first.PreferredUsername, first.ID, last.PreferredUsername, last.ID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

@@ -8866,7 +8866,9 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
 <article class="card" id="scl-IdManagement/interface/ListAdminUsers">
     <header><h3>ListAdminUsers</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>UserDirectory:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">IdManagement/interface/ListAdminUsers</code></header>
     <p class="desc">管理者が削除されていないユーザーを preferred_username 昇順 (同値は id で tie-break) の
-keyset pagination で一覧する。cursor は前回応答の Link response header (rel=&quot;next&quot;) から取得する。
+双方向 keyset pagination で一覧する。query は username、name、email、id、roles を tenant 全体で
+case-insensitive contains 検索し、status とともに絞り込む。cursor は応答の Link response header
+(rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -8874,10 +8876,20 @@ keyset pagination で一覧する。cursor は前回応答の Link response head
     <table class="fields">
       <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
       <tbody><tr>
+    <td><code class="name">query</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td>username、name、email、id、roles に対する case-insensitive contains 検索。</td>
+  </tr><tr>
+    <td><code class="name">status</code></td>
+    <td><code class="type">UserStatus</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td>User status の完全一致 filter。</td>
+  </tr><tr>
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -8909,7 +8921,7 @@ keyset pagination で一覧する。cursor は前回応答の Link response head
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -9880,9 +9892,9 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </article>
 <article class="card" id="scl-IdManagement/interface/ListGroups">
     <header><h3>ListGroups</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>GroupDirectory:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">IdManagement/interface/ListGroups</code></header>
-    <p class="desc">管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の keyset pagination で
-一覧する。各グループは member_count を含む。cursor は前回応答の Link response header (rel=&quot;next&quot;)
-から取得する。
+    <p class="desc">管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の双方向 keyset
+pagination で一覧する。各グループは member_count を含む。cursor は応答の Link response header
+(rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -9893,7 +9905,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -9925,7 +9937,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -10316,8 +10328,8 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
   </article>
 <article class="card" id="scl-IdManagement/interface/ListAgents">
     <header><h3>ListAgents</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>AgentDirectory:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">IdManagement/interface/ListAgents</code></header>
-    <p class="desc">管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の keyset pagination で
-一覧する。cursor は前回応答の Link response header (rel=&quot;next&quot;) から取得する。
+    <p class="desc">管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の双方向 keyset
+pagination で一覧する。cursor は応答の Link response header (rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -10328,7 +10340,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -10360,7 +10372,7 @@ change-password 画面へ強制誘導される (本人の変更で自動解除)�
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -11089,10 +11101,10 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
     <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
     <div class="cards"><article class="card" id="scl-IdManagement/objective/ListAdminUsersLatency">
         <header><h3>ListAdminUsersLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">IdManagement/objective/ListAdminUsersLatency</code></header>
-        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, preferred_username, id) の複合 index を使う
-keyset pagination で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。
-sort key は preferred_username 昇順 (id で tie-break) で安定させ、途中の追加・削除でも重複・欠落
-なく次ページを取得できる)。
+        <p class="desc">応答の 95% 以上を 200ms 未満で返す。無条件一覧は (tenant_id, preferred_username, id) の
+複合 index、query 指定時は tenant predicate と normalized search の trigram index を使う。limit 上限
+(200) 付近の深い forward/backward page でも先頭ページと同程度の latency を保ち、途中の追加・削除でも
+同じ方向の走査で重複なく取得できる。
 </p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></dd>
@@ -11104,9 +11116,9 @@ sort key は preferred_username 昇順 (id で tie-break) で安定させ、途�
         </dl>
       </article><article class="card" id="scl-IdManagement/objective/ListGroupsLatency">
         <header><h3>ListGroupsLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">IdManagement/objective/ListGroupsLatency</code></header>
-        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を使う keyset pagination
-で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は name 昇順
-(id で tie-break) で安定させる)。
+        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を forward/reverse
+scan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency
+を保つ。sort key は name 昇順 (id で tie-break) で安定させる)。
 </p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroups">ListGroups</a></dd>
@@ -11118,9 +11130,9 @@ sort key は preferred_username 昇順 (id で tie-break) で安定させ、途�
         </dl>
       </article><article class="card" id="scl-IdManagement/objective/ListAgentsLatency">
         <header><h3>ListAgentsLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">IdManagement/objective/ListAgentsLatency</code></header>
-        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を使う keyset pagination
-で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は name 昇順
-(id で tie-break) で安定させる)。
+        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を forward/reverse
+scan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency
+を保つ。sort key は name 昇順 (id で tie-break) で安定させる)。
 </p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAgents">ListAgents</a></dd>
@@ -11181,10 +11193,13 @@ sort key は preferred_username 昇順 (id で tie-break) で安定させ、途�
         <header><h3>管理者はユーザー一覧をページングしながら安定して閲覧できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">IdManagement/scenario/管理者はユーザー一覧をページングしながら安定して閲覧できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">所属テナントに limit を超えるユーザーが存在する</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が <a class="chip chip-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a> を limit のみで実行して先頭ページを取得する</li><li class="scn-step">応答の Link response header (rel=&quot;next&quot;) から次ページの cursor を取得する</li><li class="scn-step">一覧の途中で他の管理者がユーザーを1件削除する</li><li class="scn-step">管理者が取得済みの cursor で次ページを取得する</li><li class="scn-step">削除された行を除き、既に返却済みの行との重複なく残りのユーザーが返る</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が <a class="chip chip-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a> を limit のみで実行して先頭ページを取得する</li><li class="scn-step">応答の Link response header (rel=&quot;next&quot;) から次ページの cursor を取得する</li><li class="scn-step">一覧の途中で他の管理者がユーザーを1件削除する</li><li class="scn-step">管理者が取得済みの cursor で次ページを取得する</li><li class="scn-step">削除された行を除き、既に返却済みの行との重複なく残りのユーザーが返る</li><li class="scn-step">応答の Link response header (rel=&quot;prev&quot;) から前ページの cursor を取得する</li><li class="scn-step">管理者が前ページへ戻り、そのページの canonical order でユーザーを閲覧する</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
-            <header><span class="chip chip-hint">at 4</span><code class="name">cursor が別テナントで発行されたものである、または改ざん・失効している</code></header>
+            <header><span class="chip chip-hint">at 4</span><code class="name">cursor が別テナントで発行された、改ざんされた、または query/status が発行時と異なる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a> は <a class="chip chip-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> を返す</li><li class="scn-step">管理者は先頭ページへ戻って再取得する</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">query または status を指定する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a> は tenant 全体を対象に条件へ一致する <a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> だけを返す</li><li class="scn-step">query/status を変更した管理者は cursor を破棄して先頭ページから取得する</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">実行者が TenantAdministrator ロールを持たない</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a> は <a class="chip chip-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> で拒否される</li></ol></div>
@@ -11358,61 +11373,67 @@ sort key は preferred_username 昇順 (id で tie-break) で安定させ、途�
       </g></a><a href="#scl-IdManagement/interface/ListAdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-1">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">next_page</text>
-      </g></a><a href="#scl-IdManagement/interface/GetAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-2">
+      </g></a><a href="#scl-IdManagement/interface/ListAdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-2">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
+        <text x="128.0" y="59.0">previous_page</text>
+      </g></a><a href="#scl-IdManagement/interface/ListAdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-3">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
+        <text x="128.0" y="59.0">filter</text>
+      </g></a><a href="#scl-IdManagement/interface/GetAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-4">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">view</text>
-      </g></a><a href="#scl-IdManagement/interface/CreateAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-3">
+      </g></a><a href="#scl-IdManagement/interface/CreateAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-5">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">create</text>
-      </g></a><a href="#scl-IdManagement/interface/UpdateAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-4">
+      </g></a><a href="#scl-IdManagement/interface/UpdateAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-6">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">update</text>
-      </g></a><a href="#scl-IdManagement/interface/DisableAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-5">
+      </g></a><a href="#scl-IdManagement/interface/DisableAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-7">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">disable</text>
-      </g></a><a href="#scl-IdManagement/interface/EnableAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-6">
+      </g></a><a href="#scl-IdManagement/interface/EnableAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-8">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">enable</text>
-      </g></a><a href="#scl-IdManagement/interface/DeleteAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-7">
+      </g></a><a href="#scl-IdManagement/interface/DeleteAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-9">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">delete</text>
-      </g></a><a href="#scl-IdManagement/interface/RestoreAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-8">
+      </g></a><a href="#scl-IdManagement/interface/RestoreAdminUser"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-10">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">restore</text>
-      </g></a><a href="#scl-IdManagement/interface/SetUserRequiredAction"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-9">
+      </g></a><a href="#scl-IdManagement/interface/SetUserRequiredAction"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-11">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">set_required_action</text>
-      </g></a><a href="#scl-IdManagement/interface/ClearUserRequiredAction"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-10">
+      </g></a><a href="#scl-IdManagement/interface/ClearUserRequiredAction"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-12">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">clear_required_action</text>
-      </g></a><a href="#scl-IdManagement/interface/ImportAdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-11">
+      </g></a><a href="#scl-IdManagement/interface/ImportAdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-13">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">import</text>
-      </g></a><a href="#scl-IdManagement/interface/GetAdminUserImport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-12">
+      </g></a><a href="#scl-IdManagement/interface/GetAdminUserImport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-14">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">view_import</text>
-      </g></a><a href="#scl-IdManagement/interface/StartUserCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-13">
+      </g></a><a href="#scl-IdManagement/interface/StartUserCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-15">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">export</text>
-      </g></a><a href="#scl-IdManagement/interface/ListUserExports"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-14">
+      </g></a><a href="#scl-IdManagement/interface/ListUserExports"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-16">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">list_exports</text>
-      </g></a><a href="#scl-IdManagement/interface/GetUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-15">
+      </g></a><a href="#scl-IdManagement/interface/GetUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-17">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">view_export</text>
-      </g></a><a href="#scl-IdManagement/interface/DownloadUserExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-16">
+      </g></a><a href="#scl-IdManagement/interface/DownloadUserExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-18">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">download_export</text>
-      </g></a><a href="#scl-IdManagement/interface/CancelUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-17">
+      </g></a><a href="#scl-IdManagement/interface/CancelUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-19">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">cancel_export</text>
-      </g></a><a href="#scl-IdManagement/interface/ListUserGroups"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-18">
+      </g></a><a href="#scl-IdManagement/interface/ListUserGroups"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-20">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">view_groups</text>
-      </g></a><a href="#scl-IdManagement/interface/AddGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-19">
+      </g></a><a href="#scl-IdManagement/interface/AddGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-21">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">add_to_group</text>
-      </g></a><a href="#scl-IdManagement/flow/AdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-21">
+      </g></a><a href="#scl-IdManagement/flow/AdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-23">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="256.0" y="59.0">application_management_selected</text>
       </g></a>
@@ -11451,49 +11472,52 @@ sort key は preferred_username 昇順 (id で tie-break) で安定させ、途�
       </g></a><a href="#scl-IdManagement/interface/ListGroups"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-1">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">next_page</text>
-      </g></a><a href="#scl-IdManagement/interface/GetGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-2">
+      </g></a><a href="#scl-IdManagement/interface/ListGroups"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-2">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
+        <text x="128.0" y="59.0">previous_page</text>
+      </g></a><a href="#scl-IdManagement/interface/GetGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-3">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">view</text>
-      </g></a><a href="#scl-IdManagement/interface/CreateGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-3">
+      </g></a><a href="#scl-IdManagement/interface/CreateGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-4">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">create</text>
-      </g></a><a href="#scl-IdManagement/interface/UpdateGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-4">
+      </g></a><a href="#scl-IdManagement/interface/UpdateGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-5">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">update</text>
-      </g></a><a href="#scl-IdManagement/interface/DeleteGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-5">
+      </g></a><a href="#scl-IdManagement/interface/DeleteGroup"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-6">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">delete</text>
-      </g></a><a href="#scl-IdManagement/interface/AddGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-6">
+      </g></a><a href="#scl-IdManagement/interface/AddGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-7">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">add_member</text>
-      </g></a><a href="#scl-IdManagement/interface/RemoveGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-7">
+      </g></a><a href="#scl-IdManagement/interface/RemoveGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-8">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">remove_member</text>
-      </g></a><a href="#scl-IdManagement/interface/UpdateDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-8">
+      </g></a><a href="#scl-IdManagement/interface/UpdateDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-9">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">update_dynamic_rule</text>
-      </g></a><a href="#scl-IdManagement/interface/PreviewDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-9">
+      </g></a><a href="#scl-IdManagement/interface/PreviewDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-10">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">preview_dynamic_rule</text>
-      </g></a><a href="#scl-IdManagement/interface/EnableDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-10">
+      </g></a><a href="#scl-IdManagement/interface/EnableDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-11">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">enable_dynamic_rule</text>
-      </g></a><a href="#scl-IdManagement/interface/DisableDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-11">
+      </g></a><a href="#scl-IdManagement/interface/DisableDynamicGroupRule"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-12">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">disable_dynamic_rule</text>
-      </g></a><a href="#scl-IdManagement/interface/StartGroupCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-13">
+      </g></a><a href="#scl-IdManagement/interface/StartGroupCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-14">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">export</text>
-      </g></a><a href="#scl-IdManagement/interface/ListGroupExports"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-14">
+      </g></a><a href="#scl-IdManagement/interface/ListGroupExports"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-15">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">list_exports</text>
-      </g></a><a href="#scl-IdManagement/interface/DownloadGroupExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-15">
+      </g></a><a href="#scl-IdManagement/interface/DownloadGroupExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-16">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">download_export</text>
-      </g></a><a href="#scl-IdManagement/interface/StartGroupMemberCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-16">
+      </g></a><a href="#scl-IdManagement/interface/StartGroupMemberCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-17">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">export_members</text>
-      </g></a><a href="#scl-IdManagement/interface/DownloadGroupMemberExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-17">
+      </g></a><a href="#scl-IdManagement/interface/DownloadGroupMemberExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-admingroups-edge-18">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-admingroups)"></line>
         <text x="128.0" y="59.0">download_member_export</text>
       </g></a>
@@ -11529,31 +11553,34 @@ sort key は preferred_username 昇順 (id で tie-break) で安定させ、途�
       </g></a><a href="#scl-IdManagement/interface/ListAgents"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-1">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">next_page</text>
-      </g></a><a href="#scl-IdManagement/interface/GetAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-2">
+      </g></a><a href="#scl-IdManagement/interface/ListAgents"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-2">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
+        <text x="128.0" y="59.0">previous_page</text>
+      </g></a><a href="#scl-IdManagement/interface/GetAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-3">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">view</text>
-      </g></a><a href="#scl-IdManagement/interface/RegisterAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-3">
+      </g></a><a href="#scl-IdManagement/interface/RegisterAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-4">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">register</text>
-      </g></a><a href="#scl-IdManagement/interface/UpdateAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-4">
+      </g></a><a href="#scl-IdManagement/interface/UpdateAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-5">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">update</text>
-      </g></a><a href="#scl-IdManagement/interface/DisableAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-5">
+      </g></a><a href="#scl-IdManagement/interface/DisableAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-6">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">disable</text>
-      </g></a><a href="#scl-IdManagement/interface/EnableAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-6">
+      </g></a><a href="#scl-IdManagement/interface/EnableAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-7">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">enable</text>
-      </g></a><a href="#scl-IdManagement/interface/KillAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-7">
+      </g></a><a href="#scl-IdManagement/interface/KillAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-8">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">kill</text>
-      </g></a><a href="#scl-IdManagement/interface/DeleteAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-8">
+      </g></a><a href="#scl-IdManagement/interface/DeleteAgent"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-9">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">delete</text>
-      </g></a><a href="#scl-IdManagement/interface/BindAgentCredential"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-9">
+      </g></a><a href="#scl-IdManagement/interface/BindAgentCredential"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-10">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">bind_credential</text>
-      </g></a><a href="#scl-IdManagement/interface/UnbindAgentCredential"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-10">
+      </g></a><a href="#scl-IdManagement/interface/UnbindAgentCredential"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminagents-edge-11">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminagents)"></line>
         <text x="128.0" y="59.0">unbind_credential</text>
       </g></a>
@@ -11730,27 +11757,27 @@ sort key は preferred_username 昇順 (id で tie-break) で安定させ、途�
 
         <div class="flow-view">
             <h4>AdminUsers<span class="chip chip-initial">entry</span></h4>
-            <p class="desc">ユーザー管理画面(ユーザー一覧、詳細、所属グループ、CSV インポート、次ページ読み込み)</p>
+            <p class="desc">ユーザー管理画面(ユーザー一覧、詳細、所属グループ、CSV インポート、URL に同期した検索・status・cursor、前後ページ移動)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「次へ」をクリックして次ページを読み込む <code>next_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>一覧からユーザーを1件クリックして詳細を表示する <code>view</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUser">GetAdminUser</a></td></tr><tr><td>ユーザー名・初期パスワード等を入力して作成する <code>create</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CreateAdminUser">CreateAdminUser</a></td></tr><tr><td>プロフィール・email_verified・roles を編集して保存する <code>update</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateAdminUser">UpdateAdminUser</a></td></tr><tr><td>無効化ボタンをクリックする <code>disable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableAdminUser">DisableAdminUser</a></td></tr><tr><td>有効化ボタンをクリックする <code>enable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableAdminUser">EnableAdminUser</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteAdminUser">DeleteAdminUser</a></td></tr><tr><td>復元ボタンをクリックする <code>restore</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RestoreAdminUser">RestoreAdminUser</a></td></tr><tr><td>次回ログイン時の強制アクションを選んで付与する <code>set_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/SetUserRequiredAction">SetUserRequiredAction</a></td></tr><tr><td>付与済みの強制アクションを解除する <code>clear_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ClearUserRequiredAction">ClearUserRequiredAction</a></td></tr><tr><td>CSV ファイルを選択して、dry_run または apply を実行する <code>import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ImportAdminUsers">ImportAdminUsers</a></td></tr><tr><td>インポートジョブを選んで、行ごとの検証・適用結果を表示する <code>view_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUserImport">GetAdminUserImport</a></td></tr><tr><td>現在のフィルタと列を選んで、ユーザー一覧の CSV エクスポートを開始する <code>export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartUserCsvExport">StartUserCsvExport</a></td></tr><tr><td>ユーザーエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する <code>list_exports</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserExports">ListUserExports</a></td></tr><tr><td>エクスポートを選んで、進捗・失敗理由・期限を表示する <code>view_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetUserExport">GetUserExport</a></td></tr><tr><td>完成済みエクスポートファイルをダウンロードする <code>download_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadUserExportFile">DownloadUserExportFile</a></td></tr><tr><td>終端前のエクスポートを取消す <code>cancel_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CancelUserExport">CancelUserExport</a></td></tr><tr><td>ユーザーの所属グループとロール内訳を表示する <code>view_groups</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserGroups">ListUserGroups</a></td></tr><tr><td>所属させるグループを選んで追加する <code>add_to_group</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/AddGroupMember">AddGroupMember</a></td></tr><tr><td>グループ管理タブをクリックする <code>group_management_selected</code></td><td>AdminGroups</td><td></td></tr><tr><td>アプリケーション管理へのリンクをクリックする <code>application_management_selected</code></td><td>external</td><td></td></tr></tbody></table>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える <code>next_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える <code>previous_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>query または status を変更して cursor の無い先頭 URL へ移動する <code>filter</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>一覧からユーザーを1件クリックして詳細を表示する <code>view</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUser">GetAdminUser</a></td></tr><tr><td>ユーザー名・初期パスワード等を入力して作成する <code>create</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CreateAdminUser">CreateAdminUser</a></td></tr><tr><td>プロフィール・email_verified・roles を編集して保存する <code>update</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateAdminUser">UpdateAdminUser</a></td></tr><tr><td>無効化ボタンをクリックする <code>disable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableAdminUser">DisableAdminUser</a></td></tr><tr><td>有効化ボタンをクリックする <code>enable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableAdminUser">EnableAdminUser</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteAdminUser">DeleteAdminUser</a></td></tr><tr><td>復元ボタンをクリックする <code>restore</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RestoreAdminUser">RestoreAdminUser</a></td></tr><tr><td>次回ログイン時の強制アクションを選んで付与する <code>set_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/SetUserRequiredAction">SetUserRequiredAction</a></td></tr><tr><td>付与済みの強制アクションを解除する <code>clear_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ClearUserRequiredAction">ClearUserRequiredAction</a></td></tr><tr><td>CSV ファイルを選択して、dry_run または apply を実行する <code>import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ImportAdminUsers">ImportAdminUsers</a></td></tr><tr><td>インポートジョブを選んで、行ごとの検証・適用結果を表示する <code>view_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUserImport">GetAdminUserImport</a></td></tr><tr><td>現在のフィルタと列を選んで、ユーザー一覧の CSV エクスポートを開始する <code>export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartUserCsvExport">StartUserCsvExport</a></td></tr><tr><td>ユーザーエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する <code>list_exports</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserExports">ListUserExports</a></td></tr><tr><td>エクスポートを選んで、進捗・失敗理由・期限を表示する <code>view_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetUserExport">GetUserExport</a></td></tr><tr><td>完成済みエクスポートファイルをダウンロードする <code>download_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadUserExportFile">DownloadUserExportFile</a></td></tr><tr><td>終端前のエクスポートを取消す <code>cancel_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CancelUserExport">CancelUserExport</a></td></tr><tr><td>ユーザーの所属グループとロール内訳を表示する <code>view_groups</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserGroups">ListUserGroups</a></td></tr><tr><td>所属させるグループを選んで追加する <code>add_to_group</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/AddGroupMember">AddGroupMember</a></td></tr><tr><td>グループ管理タブをクリックする <code>group_management_selected</code></td><td>AdminGroups</td><td></td></tr><tr><td>アプリケーション管理へのリンクをクリックする <code>application_management_selected</code></td><td>external</td><td></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-IdManagement/flow/AdminGroups">
         <header><h3>AdminGroups</h3><span class="chip chip-initial">entry: AdminGroups</span><code class="canonical-ref">IdManagement/flow/AdminGroups</code></header>
 
         <div class="flow-view">
             <h4>AdminGroups<span class="chip chip-initial">entry</span></h4>
-            <p class="desc">グループ管理画面(グループ一覧、メンバー、動的グループルール、次ページ読み込み)</p>
+            <p class="desc">グループ管理画面(グループ一覧、メンバー、動的グループルール、URL に同期した前後ページ移動)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroups">ListGroups</a></td></tr><tr><td>「次へ」をクリックして次ページを読み込む <code>next_page</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroups">ListGroups</a></td></tr><tr><td>一覧からグループを1件クリックして詳細を表示する <code>view</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetGroup">GetGroup</a></td></tr><tr><td>グループ名を入力して作成する <code>create</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CreateGroup">CreateGroup</a></td></tr><tr><td>名前・説明・roles を編集して保存する <code>update</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateGroup">UpdateGroup</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteGroup">DeleteGroup</a></td></tr><tr><td>追加するユーザーを選ぶ <code>add_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/AddGroupMember">AddGroupMember</a></td></tr><tr><td>メンバーを選んで、外すボタンをクリックする <code>remove_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RemoveGroupMember">RemoveGroupMember</a></td></tr><tr><td>属性・演算子・値を選ぶビルダーで条件を AND 結合して組み立てるか、詳細設定で CEL を直接編集し、制限 CEL ルールを保存する <code>update_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateDynamicGroupRule">UpdateDynamicGroupRule</a></td></tr><tr><td>ビルダーまたは詳細設定で組み立てた未保存の CEL ルールをプレビューして、現在所属との差分を確認する <code>preview_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/PreviewDynamicGroupRule">PreviewDynamicGroupRule</a></td></tr><tr><td>動的グループルールを有効化する <code>enable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableDynamicGroupRule">EnableDynamicGroupRule</a></td></tr><tr><td>動的グループルールを無効化する <code>disable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableDynamicGroupRule">DisableDynamicGroupRule</a></td></tr><tr><td>グループのメンバー一覧からユーザー管理へ移動する <code>view_users</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>列を選んで、グループ一覧の CSV エクスポートを開始する <code>export</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartGroupCsvExport">StartGroupCsvExport</a></td></tr><tr><td>グループエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する <code>list_exports</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroupExports">ListGroupExports</a></td></tr><tr><td>完成済みグループエクスポートをダウンロードする <code>download_export</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadGroupExportFile">DownloadGroupExportFile</a></td></tr><tr><td>特定グループのメンバー一覧の CSV エクスポートを開始する <code>export_members</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartGroupMemberCsvExport">StartGroupMemberCsvExport</a></td></tr><tr><td>完成済みメンバーエクスポートをダウンロードする <code>download_member_export</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadGroupMemberExportFile">DownloadGroupMemberExportFile</a></td></tr></tbody></table>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroups">ListGroups</a></td></tr><tr><td>「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える <code>next_page</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroups">ListGroups</a></td></tr><tr><td>「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える <code>previous_page</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroups">ListGroups</a></td></tr><tr><td>一覧からグループを1件クリックして詳細を表示する <code>view</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetGroup">GetGroup</a></td></tr><tr><td>グループ名を入力して作成する <code>create</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CreateGroup">CreateGroup</a></td></tr><tr><td>名前・説明・roles を編集して保存する <code>update</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateGroup">UpdateGroup</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteGroup">DeleteGroup</a></td></tr><tr><td>追加するユーザーを選ぶ <code>add_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/AddGroupMember">AddGroupMember</a></td></tr><tr><td>メンバーを選んで、外すボタンをクリックする <code>remove_member</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RemoveGroupMember">RemoveGroupMember</a></td></tr><tr><td>属性・演算子・値を選ぶビルダーで条件を AND 結合して組み立てるか、詳細設定で CEL を直接編集し、制限 CEL ルールを保存する <code>update_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateDynamicGroupRule">UpdateDynamicGroupRule</a></td></tr><tr><td>ビルダーまたは詳細設定で組み立てた未保存の CEL ルールをプレビューして、現在所属との差分を確認する <code>preview_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/PreviewDynamicGroupRule">PreviewDynamicGroupRule</a></td></tr><tr><td>動的グループルールを有効化する <code>enable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableDynamicGroupRule">EnableDynamicGroupRule</a></td></tr><tr><td>動的グループルールを無効化する <code>disable_dynamic_rule</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableDynamicGroupRule">DisableDynamicGroupRule</a></td></tr><tr><td>グループのメンバー一覧からユーザー管理へ移動する <code>view_users</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>列を選んで、グループ一覧の CSV エクスポートを開始する <code>export</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartGroupCsvExport">StartGroupCsvExport</a></td></tr><tr><td>グループエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する <code>list_exports</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListGroupExports">ListGroupExports</a></td></tr><tr><td>完成済みグループエクスポートをダウンロードする <code>download_export</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadGroupExportFile">DownloadGroupExportFile</a></td></tr><tr><td>特定グループのメンバー一覧の CSV エクスポートを開始する <code>export_members</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartGroupMemberCsvExport">StartGroupMemberCsvExport</a></td></tr><tr><td>完成済みメンバーエクスポートをダウンロードする <code>download_member_export</code></td><td>AdminGroups</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadGroupMemberExportFile">DownloadGroupMemberExportFile</a></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-IdManagement/flow/AdminAgents">
         <header><h3>AdminAgents</h3><span class="chip chip-initial">entry: AdminAgents</span><code class="canonical-ref">IdManagement/flow/AdminAgents</code></header>
 
         <div class="flow-view">
             <h4>AdminAgents<span class="chip chip-initial">entry</span></h4>
-            <p class="desc">エージェント管理画面(エージェント一覧、詳細、資格情報の束縛、次ページ読み込み)</p>
+            <p class="desc">エージェント管理画面(エージェント一覧、詳細、資格情報の束縛、URL に同期した前後ページ移動)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAgents">ListAgents</a></td></tr><tr><td>「次へ」をクリックして次ページを読み込む <code>next_page</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAgents">ListAgents</a></td></tr><tr><td>一覧からエージェントを1件クリックして詳細を表示する <code>view</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAgent">GetAgent</a></td></tr><tr><td>名前等を入力して登録する <code>register</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RegisterAgent">RegisterAgent</a></td></tr><tr><td>名前・説明・種別・所有者・roles を編集して保存する <code>update</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateAgent">UpdateAgent</a></td></tr><tr><td>停止ボタンをクリックする <code>disable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableAgent">DisableAgent</a></td></tr><tr><td>再開ボタンをクリックする <code>enable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableAgent">EnableAgent</a></td></tr><tr><td>緊急停止ボタンをクリックする <code>kill</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/KillAgent">KillAgent</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteAgent">DeleteAgent</a></td></tr><tr><td>束縛する OAuth2 client を選ぶ <code>bind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/BindAgentCredential">BindAgentCredential</a></td></tr><tr><td>束縛を解除するボタンをクリックする <code>unbind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UnbindAgentCredential">UnbindAgentCredential</a></td></tr></tbody></table>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAgents">ListAgents</a></td></tr><tr><td>「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える <code>next_page</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAgents">ListAgents</a></td></tr><tr><td>「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える <code>previous_page</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAgents">ListAgents</a></td></tr><tr><td>一覧からエージェントを1件クリックして詳細を表示する <code>view</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAgent">GetAgent</a></td></tr><tr><td>名前等を入力して登録する <code>register</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RegisterAgent">RegisterAgent</a></td></tr><tr><td>名前・説明・種別・所有者・roles を編集して保存する <code>update</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateAgent">UpdateAgent</a></td></tr><tr><td>停止ボタンをクリックする <code>disable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableAgent">DisableAgent</a></td></tr><tr><td>再開ボタンをクリックする <code>enable</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableAgent">EnableAgent</a></td></tr><tr><td>緊急停止ボタンをクリックする <code>kill</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/KillAgent">KillAgent</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteAgent">DeleteAgent</a></td></tr><tr><td>束縛する OAuth2 client を選ぶ <code>bind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/BindAgentCredential">BindAgentCredential</a></td></tr><tr><td>束縛を解除するボタンをクリックする <code>unbind_credential</code></td><td>AdminAgents</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UnbindAgentCredential">UnbindAgentCredential</a></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-IdManagement/flow/AdminRoles">
         <header><h3>AdminRoles</h3><span class="chip chip-initial">entry: AdminRoles</span><code class="canonical-ref">IdManagement/flow/AdminRoles</code></header>
@@ -16404,8 +16431,9 @@ limit 既定 10 / 上限 50。
 <article class="card" id="scl-Authentication/interface/ListAuthenticationEventBuckets">
     <header><h3>ListAuthenticationEventBuckets</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>AuthenticationEventLog:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Authentication/interface/ListAuthenticationEventBuckets</code></header>
     <p class="desc">admin が認証イベント集約 (bucket) を window_start の降順で一覧する。攻撃時に個別行へ
-落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で keyset pagination により
-取得する。cursor は前回応答の Link response header (rel=&quot;next&quot;) から取得する。limit 既定 50 / 上限 200。
+落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で双方向 keyset pagination により
+取得する。cursor は応答の Link response header (rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。limit 既定
+50 / 上限 200。
 </p>
 
     <div class="io">
@@ -16416,7 +16444,7 @@ limit 既定 10 / 上限 50。
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -16448,7 +16476,7 @@ limit 既定 10 / 上限 50。
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -26287,8 +26315,8 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
   </article>
 <article class="card" id="scl-OAuth2/interface/ListAdminOAuth2Clients">
     <header><h3>ListAdminOAuth2Clients</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/ManagementApiClientReadOAuthClients">ManagementApiClientReadOAuthClients</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">OAuth2/interface/ListAdminOAuth2Clients</code></header>
-    <p class="desc">管理者が所属テナントの client を client_id 昇順の keyset pagination で一覧する。cursor は
-前回応答の Link response header (rel=&quot;next&quot;) から取得する。
+    <p class="desc">管理者が所属テナントの client を client_id 昇順の双方向 keyset pagination で一覧する。
+cursor は応答の Link response header (rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -26299,7 +26327,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -26331,7 +26359,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -26622,8 +26650,8 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
   </article>
 <article class="card" id="scl-OAuth2/interface/ListAdminConsents">
     <header><h3>ListAdminConsents</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">OAuth2/interface/ListAdminConsents</code></header>
-    <p class="desc">管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の keyset pagination で
-一覧する。cursor は前回応答の Link response header (rel=&quot;next&quot;) から取得する。
+    <p class="desc">管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の双方向 keyset
+pagination で一覧する。cursor は応答の Link response header (rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -26634,7 +26662,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -26666,7 +26694,7 @@ ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServ
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -28768,8 +28796,9 @@ user_id 経路で絞り込む。実在しないアカウント名も追跡する
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>ページング継続トークン。前回応答の Link response header (rel=&quot;next&quot;) の URL に
-埋め込まれた値をそのまま渡す。tenant・sort・filter を含めて署名された opaque token。
+    <td>応答の Link response header (rel=&quot;prev&quot; / rel=&quot;next&quot;) の URL に埋め込まれた値を
+そのまま渡す。tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token
+は時刻で失効せず、旧 expiry 付き token は expiry まで有効。
 </td>
   </tr><tr>
     <td><code class="name">limit</code></td>
@@ -29015,20 +29044,20 @@ none (raw 保存) のみ存在する。
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-Audit/interface/ListAdminAuditEvents">
     <header><h3>ListAdminAuditEvents</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Audit/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>AuditEventLog:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Audit/interface/ListAdminAuditEvents</code></header>
-    <p class="desc">管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス
-用途を想定し、期間絞り込み (after / before) と件数上限 (limit)、継続取得 (cursor、Link response
-header の rel=&quot;next&quot; 経由) と type / user_id / username (操作者) による
-絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も同一ストアに属し、
-category (authentication / success / fail / aggregated / user / group / client / consent / token /
-tenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text 部分一致) と
-filter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の field は
-AuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。
+    <p class="desc">管理者が所属テナントの監査用 DomainEvent を時系列降順の双方向 keyset pagination で取得する。
+SOC / コンプライアンス用途を想定し、期間絞り込み (after / before) と件数上限 (limit)、継続取得
+(cursor、Link response header の rel=&quot;prev&quot; / rel=&quot;next&quot; 経由) と type / user_id / username
+(操作者) による絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も
+同一ストアに属し、category (authentication / success / fail / aggregated / user / group / client /
+consent / token / tenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text
+部分一致) と filter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の
+field は AuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。
 user_id と filter の actor.id は操作者を指し、username は操作者のログイン名を検索時に user_id へ
-解決する (hash 化せず、該当ユーザーが無ければ 0 件)。filter の actor.username は実在しない
-アカウント名も追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象
-ユーザーを指す別概念 (AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント
-横断、admin は所属テナント内に閉じる (クエリが tenant_id 入力を取らないため所属テナントに構造的に
-閉じ、system_admin だけが専用経路から横断できる)。
+解決する (hash 化せず、該当ユーザーが無ければ 0 件)。filter の actor.username は実在しないアカウント名も
+追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象ユーザーを指す別概念
+(AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント横断、admin は所属テナント内に
+閉じる (クエリが tenant_id 入力を取らないため所属テナントに構造的に閉じ、system_admin だけが専用経路から
+横断できる)。
 </p>
 
     <div class="io">
@@ -29066,7 +29095,7 @@ user_id と filter の actor.id は操作者を指し、username は操作者の
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -29196,9 +29225,9 @@ filter の field は registry allowlist のみ。
     <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
     <div class="cards"><article class="card" id="scl-Audit/objective/ListAdminAuditEventsLatency">
         <header><h3>ListAdminAuditEventsLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">Audit/objective/ListAdminAuditEventsLatency</code></header>
-        <p class="desc">応答の 95% 以上を 300ms 未満で返す (id/occurred_at の複合 index を使う keyset
-pagination で、limit 上限 (1000) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は
-occurred_at desc, id desc で安定させ、途中の追加・削除でも重複・欠落なく次ページを取得できる)。
+        <p class="desc">応答の 95% 以上を 300ms 未満で返す (id/occurred_at の複合 index を forward/reverse scan
+する keyset pagination で、limit 上限 (1000) 付近の深い前後ページでも先頭ページと同程度の latency を
+保つ。sort key は occurred_at desc, id desc で安定させる)。
 </p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a></dd>
@@ -29235,12 +29264,12 @@ occurred_at desc, id desc で安定させ、途中の追加・削除でも重複
         <header><h3>管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Audit/scenario/管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">所属テナントに limit を超える監査イベントが存在する</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が <a class="chip chip-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a> を limit のみで実行して先頭ページを取得する</li><li class="scn-step">応答の Link response header (rel=&quot;next&quot;) から次ページの cursor を取得する</li><li class="scn-step">管理者が取得済みの cursor で次ページを取得する</li><li class="scn-step">直前のページと重複や欠落なく後続のイベントが返る</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が <a class="chip chip-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a> を limit のみで実行して先頭ページを取得する</li><li class="scn-step">応答の Link response header (rel=&quot;next&quot;) から次ページの cursor を取得する</li><li class="scn-step">管理者が取得済みの cursor で次ページを取得する</li><li class="scn-step">直前のページと重複や欠落なく後続のイベントが返る</li><li class="scn-step">応答の Link response header (rel=&quot;prev&quot;) の cursor で前ページへ戻る</li><li class="scn-step">前ページのイベントが canonical な時系列降順で返る</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 3</span><code class="name">次ページ取得前に category や filter などの絞り込み条件を変更する</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">cursor は元の絞り込み条件に紐づくため <a class="chip chip-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a> は <a class="chip chip-ref" href="#scl-Audit/model/InvalidRequestError">InvalidRequestError</a> を返す</li><li class="scn-step">管理者は先頭ページへ戻って検索し直す</li></ol></div>
           </article><article class="requirement">
-            <header><span class="chip chip-hint">at 3</span><code class="name">cursor が別テナントで発行されたものである、または改ざん・失効している</code></header>
+            <header><span class="chip chip-hint">at 3</span><code class="name">cursor が別テナントで発行された、改ざんされた、または legacy expiry を超過している</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a> は <a class="chip chip-ref" href="#scl-Audit/model/InvalidRequestError">InvalidRequestError</a> を返す</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">実行者が TenantAdministrator ロールを持たない</code></header>
@@ -29277,10 +29306,13 @@ occurred_at desc, id desc で安定させ、途中の追加・削除でも重複
       </g></a><a href="#scl-Audit/interface/ListAdminAuditEvents"><g class="diagram-edge" id="context-audit-diagram-flow-adminauditevents-edge-1">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminauditevents)"></line>
         <text x="128.0" y="59.0">next_page</text>
-      </g></a><a href="#scl-Audit/interface/GetAdminAuditEvent"><g class="diagram-edge" id="context-audit-diagram-flow-adminauditevents-edge-2">
+      </g></a><a href="#scl-Audit/interface/ListAdminAuditEvents"><g class="diagram-edge" id="context-audit-diagram-flow-adminauditevents-edge-2">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminauditevents)"></line>
+        <text x="128.0" y="59.0">previous_page</text>
+      </g></a><a href="#scl-Audit/interface/GetAdminAuditEvent"><g class="diagram-edge" id="context-audit-diagram-flow-adminauditevents-edge-3">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminauditevents)"></line>
         <text x="128.0" y="59.0">view</text>
-      </g></a><a href="#scl-Audit/interface/ExportAdminAuditEvents"><g class="diagram-edge" id="context-audit-diagram-flow-adminauditevents-edge-3">
+      </g></a><a href="#scl-Audit/interface/ExportAdminAuditEvents"><g class="diagram-edge" id="context-audit-diagram-flow-adminauditevents-edge-4">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminauditevents)"></line>
         <text x="128.0" y="59.0">export</text>
       </g></a>
@@ -29295,9 +29327,9 @@ occurred_at desc, id desc で安定させ、途中の追加・削除でも重複
 
         <div class="flow-view">
             <h4>AdminAuditEvents<span class="chip chip-initial">entry</span></h4>
-            <p class="desc">監査イベント一覧画面(時系列降順の DomainEvent、種別/操作者/期間の絞り込み、テキスト検索、次ページ読み込み)</p>
+            <p class="desc">監査イベント一覧画面(時系列降順の DomainEvent、URL に同期した絞り込み・cursor、前後ページ移動)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>絞り込み条件を指定して一覧を検索する <code>list</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a></td></tr><tr><td>「次へ」をクリックして次ページを読み込む <code>next_page</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a></td></tr><tr><td>一覧からイベントを1件クリックして詳細を表示する <code>view</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/GetAdminAuditEvent">GetAdminAuditEvent</a></td></tr><tr><td>絞り込み条件を指定してエクスポートボタンをクリックする <code>export</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/ExportAdminAuditEvents">ExportAdminAuditEvents</a></td></tr></tbody></table>
+                   <tbody><tr><td>絞り込み条件を指定して一覧を検索する <code>list</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a></td></tr><tr><td>「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える <code>next_page</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a></td></tr><tr><td>「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える <code>previous_page</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/ListAdminAuditEvents">ListAdminAuditEvents</a></td></tr><tr><td>一覧からイベントを1件クリックして詳細を表示する <code>view</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/GetAdminAuditEvent">GetAdminAuditEvent</a></td></tr><tr><td>絞り込み条件を指定してエクスポートボタンをクリックする <code>export</code></td><td>AdminAuditEvents</td><td><a class="chip chip-iface-ref" href="#scl-Audit/interface/ExportAdminAuditEvents">ExportAdminAuditEvents</a></td></tr></tbody></table>
           </div>
       </article></div>
   </section>
@@ -32006,8 +32038,8 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (id,
   </article>
 <article class="card" id="scl-Application/interface/ListAdminApplications">
     <header><h3>ListAdminApplications</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>ApplicationDirectory:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/ListAdminApplications</code></header>
-    <p class="desc">管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の keyset pagination
-で一覧する。cursor は前回応答の Link response header (rel=&quot;next&quot;) から取得する。
+    <p class="desc">管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の双方向 keyset
+pagination で一覧する。cursor は応答の Link response header (rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -32018,7 +32050,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (id,
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -32050,7 +32082,7 @@ Go 呼び出しとして各 context の usecase から使う。既に同じ (id,
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -32522,8 +32554,8 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </article>
 <article class="card" id="scl-Application/interface/ListApplicationAssignments">
     <header><h3>ListApplicationAssignments</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/ListApplicationAssignments</code></header>
-    <p class="desc">管理者が Application の割当を subject_type, subject_id 昇順の keyset pagination で一覧する。
-cursor は前回応答の Link response header (rel=&quot;next&quot;) から取得する。
+    <p class="desc">管理者が Application の割当を subject_type, subject_id 昇順の双方向 keyset pagination で
+一覧する。cursor は応答の Link response header (rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -32539,7 +32571,7 @@ cursor は前回応答の Link response header (rel=&quot;next&quot;) から取�
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -32571,7 +32603,7 @@ cursor は前回応答の Link response header (rel=&quot;next&quot;) から取�
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -33106,9 +33138,9 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
     <p class="lead">観測可能な indicator、target、window を持つ SLO。</p>
     <div class="cards"><article class="card" id="scl-Application/objective/ListAdminApplicationsLatency">
         <header><h3>ListAdminApplicationsLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">Application/objective/ListAdminApplicationsLatency</code></header>
-        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を使う keyset pagination
-で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は name 昇順
-(id で tie-break) で安定させる)。
+        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を forward/reverse
+scan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency
+を保つ。sort key は name 昇順 (id で tie-break) で安定させる)。
 </p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-Application/interface/ListAdminApplications">ListAdminApplications</a></dd>
@@ -33298,67 +33330,70 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
       </g></a><a href="#scl-Application/interface/ListAdminApplications"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-1">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">next_page</text>
-      </g></a><a href="#scl-Application/interface/CreateAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-2">
+      </g></a><a href="#scl-Application/interface/ListAdminApplications"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-2">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
+        <text x="128.0" y="59.0">previous_page</text>
+      </g></a><a href="#scl-Application/interface/CreateAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-3">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">create</text>
-      </g></a><a href="#scl-Application/interface/UpdateAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-3">
+      </g></a><a href="#scl-Application/interface/UpdateAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-4">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update</text>
-      </g></a><a href="#scl-Application/interface/GetAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-4">
+      </g></a><a href="#scl-Application/interface/GetAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-5">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">view_setup_guidance</text>
-      </g></a><a href="#scl-Application/interface/DeleteAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-5">
+      </g></a><a href="#scl-Application/interface/DeleteAdminApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-6">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">delete</text>
-      </g></a><a href="#scl-Application/interface/UploadApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-6">
+      </g></a><a href="#scl-Application/interface/UploadApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-7">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">upload_icon</text>
-      </g></a><a href="#scl-Application/interface/DeleteApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-7">
+      </g></a><a href="#scl-Application/interface/DeleteApplicationIcon"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-8">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">delete_icon</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationOidcConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-8">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationOidcConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-9">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_oidc_config</text>
-      </g></a><a href="#scl-Application/interface/IssueApplicationClientSecret"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-9">
+      </g></a><a href="#scl-Application/interface/IssueApplicationClientSecret"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-10">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">issue_client_secret</text>
-      </g></a><a href="#scl-Application/interface/RevokeApplicationClientSecret"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-10">
+      </g></a><a href="#scl-Application/interface/RevokeApplicationClientSecret"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-11">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">revoke_client_secret</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationWsFedConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-11">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationWsFedConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-12">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_wsfed_config</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationSamlConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-12">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationSamlConfig"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-13">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_saml_config</text>
-      </g></a><a href="#scl-Application/interface/ListApplicationAssignments"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-13">
-        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
-        <text x="128.0" y="59.0">list_assignments</text>
       </g></a><a href="#scl-Application/interface/ListApplicationAssignments"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-14">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
+        <text x="128.0" y="59.0">list_assignments</text>
+      </g></a><a href="#scl-Application/interface/ListApplicationAssignments"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-15">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">next_page_assignments</text>
-      </g></a><a href="#scl-Application/interface/AssignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-15">
+      </g></a><a href="#scl-Application/interface/AssignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-16">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">assign</text>
-      </g></a><a href="#scl-Application/interface/UnassignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-16">
+      </g></a><a href="#scl-Application/interface/UnassignApplication"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-17">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">unassign</text>
-      </g></a><a href="#scl-Application/interface/UpdateAppSignInPolicy"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-17">
+      </g></a><a href="#scl-Application/interface/UpdateAppSignInPolicy"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-18">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_sign_in_policy</text>
-      </g></a><a href="#scl-Application/interface/CreateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-18">
+      </g></a><a href="#scl-Application/interface/CreateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-19">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">create_category</text>
-      </g></a><a href="#scl-Application/interface/UpdateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-19">
+      </g></a><a href="#scl-Application/interface/UpdateApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-20">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">update_category</text>
-      </g></a><a href="#scl-Application/interface/DeleteApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-20">
+      </g></a><a href="#scl-Application/interface/DeleteApplicationCategory"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-21">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">delete_category</text>
-      </g></a><a href="#scl-Application/interface/SetApplicationCategories"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-21">
+      </g></a><a href="#scl-Application/interface/SetApplicationCategories"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-22">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="128.0" y="59.0">set_categories</text>
-      </g></a><a href="#scl-Application/flow/AdminApplicationManagement"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-22">
+      </g></a><a href="#scl-Application/flow/AdminApplicationManagement"><g class="diagram-edge" id="context-application-diagram-flow-adminapplicationmanagement-edge-23">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminapplicationmanagement)"></line>
         <text x="256.0" y="59.0">manage_users</text>
       </g></a>
@@ -33436,9 +33471,9 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
 
         <div class="flow-view">
             <h4>AdminApplications<span class="chip chip-initial">entry</span></h4>
-            <p class="desc">アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy、次ページ読み込み)</p>
+            <p class="desc">アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy、URL に同期した前後ページ移動)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListAdminApplications">ListAdminApplications</a></td></tr><tr><td>「次へ」をクリックして次ページを読み込む <code>next_page</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListAdminApplications">ListAdminApplications</a></td></tr><tr><td>種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成) <code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateAdminApplication">CreateAdminApplication</a></td></tr><tr><td>アプリケーションのメタデータを編集して保存する <code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAdminApplication">UpdateAdminApplication</a></td></tr><tr><td>OIDC / SAML のアプリ詳細を開き、登録済み相手側設定とIdMagic側の連携情報を確認する <code>view_setup_guidance</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/GetAdminApplication">GetAdminApplication</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteAdminApplication">DeleteAdminApplication</a></td></tr><tr><td>アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする <code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UploadApplicationIcon">UploadApplicationIcon</a></td></tr><tr><td>保存済みアイコンを削除する <code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationIcon">DeleteApplicationIcon</a></td></tr><tr><td>OIDC protocol が指す OAuth2 client の設定を編集して保存する <code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationOidcConfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>通常設定 form と独立した credential 管理セクションで期限付き client secret を追加発行する <code>issue_client_secret</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/IssueApplicationClientSecret">IssueApplicationClientSecret</a></td></tr><tr><td>credential 管理セクションで指定 client secret credential だけを失効する <code>revoke_client_secret</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/RevokeApplicationClientSecret">RevokeApplicationClientSecret</a></td></tr><tr><td>WS-Fed protocol が指す relying party の設定を編集して保存する <code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationWsFedConfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>SAML service provider設定とIdP profile割当を編集して保存する <code>update_saml_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationSamlConfig">UpdateApplicationSamlConfig</a></td></tr><tr><td>割当タブを開いて割当済みユーザー/グループを一覧する <code>list_assignments</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListApplicationAssignments">ListApplicationAssignments</a></td></tr><tr><td>割当一覧で「次へ」をクリックして次ページを読み込む <code>next_page_assignments</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListApplicationAssignments">ListApplicationAssignments</a></td></tr><tr><td>ユーザーまたはグループを割当てる <code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/AssignApplication">AssignApplication</a></td></tr><tr><td>割当を解除する <code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UnassignApplication">UnassignApplication</a></td></tr><tr><td>sign-in policy を編集して保存する <code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAppSignInPolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>カテゴリ名を入力して作成する <code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateApplicationCategory">CreateApplicationCategory</a></td></tr><tr><td>カテゴリの名前または並び順を編集して保存する <code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationCategory">UpdateApplicationCategory</a></td></tr><tr><td>カテゴリを削除する <code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationCategory">DeleteApplicationCategory</a></td></tr><tr><td>アプリケーションに付与するカテゴリ集合を選び直して保存する <code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/SetApplicationCategories">SetApplicationCategories</a></td></tr><tr><td>ユーザー管理へのリンクをクリックする <code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListAdminApplications">ListAdminApplications</a></td></tr><tr><td>「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える <code>next_page</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListAdminApplications">ListAdminApplications</a></td></tr><tr><td>「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える <code>previous_page</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListAdminApplications">ListAdminApplications</a></td></tr><tr><td>種別を選んでアプリケーションを作成する(OAuth2 client / WS-Fed RP を同時に作成) <code>create</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateAdminApplication">CreateAdminApplication</a></td></tr><tr><td>アプリケーションのメタデータを編集して保存する <code>update</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAdminApplication">UpdateAdminApplication</a></td></tr><tr><td>OIDC / SAML のアプリ詳細を開き、登録済み相手側設定とIdMagic側の連携情報を確認する <code>view_setup_guidance</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/GetAdminApplication">GetAdminApplication</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteAdminApplication">DeleteAdminApplication</a></td></tr><tr><td>アイコン画像(PNG/JPEG/WebP/GIF、最大256KiB)をアップロードする <code>upload_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UploadApplicationIcon">UploadApplicationIcon</a></td></tr><tr><td>保存済みアイコンを削除する <code>delete_icon</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationIcon">DeleteApplicationIcon</a></td></tr><tr><td>OIDC protocol が指す OAuth2 client の設定を編集して保存する <code>update_oidc_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationOidcConfig">UpdateApplicationOidcConfig</a></td></tr><tr><td>通常設定 form と独立した credential 管理セクションで期限付き client secret を追加発行する <code>issue_client_secret</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/IssueApplicationClientSecret">IssueApplicationClientSecret</a></td></tr><tr><td>credential 管理セクションで指定 client secret credential だけを失効する <code>revoke_client_secret</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/RevokeApplicationClientSecret">RevokeApplicationClientSecret</a></td></tr><tr><td>WS-Fed protocol が指す relying party の設定を編集して保存する <code>update_wsfed_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationWsFedConfig">UpdateApplicationWsFedConfig</a></td></tr><tr><td>SAML service provider設定とIdP profile割当を編集して保存する <code>update_saml_config</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationSamlConfig">UpdateApplicationSamlConfig</a></td></tr><tr><td>割当タブを開いて割当済みユーザー/グループを一覧する <code>list_assignments</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListApplicationAssignments">ListApplicationAssignments</a></td></tr><tr><td>割当一覧で「次へ」をクリックして次ページを読み込む <code>next_page_assignments</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/ListApplicationAssignments">ListApplicationAssignments</a></td></tr><tr><td>ユーザーまたはグループを割当てる <code>assign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/AssignApplication">AssignApplication</a></td></tr><tr><td>割当を解除する <code>unassign</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UnassignApplication">UnassignApplication</a></td></tr><tr><td>sign-in policy を編集して保存する <code>update_sign_in_policy</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateAppSignInPolicy">UpdateAppSignInPolicy</a></td></tr><tr><td>カテゴリ名を入力して作成する <code>create_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/CreateApplicationCategory">CreateApplicationCategory</a></td></tr><tr><td>カテゴリの名前または並び順を編集して保存する <code>update_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/UpdateApplicationCategory">UpdateApplicationCategory</a></td></tr><tr><td>カテゴリを削除する <code>delete_category</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/DeleteApplicationCategory">DeleteApplicationCategory</a></td></tr><tr><td>アプリケーションに付与するカテゴリ集合を選び直して保存する <code>set_categories</code></td><td>AdminApplications</td><td><a class="chip chip-iface-ref" href="#scl-Application/interface/SetApplicationCategories">SetApplicationCategories</a></td></tr><tr><td>ユーザー管理へのリンクをクリックする <code>manage_users</code></td><td>external</td><td></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-Application/flow/AdminSignInPolicyManagement">
         <header><h3>AdminSignInPolicyManagement</h3><span class="chip chip-initial">entry: AdminSignInPolicy</span><code class="canonical-ref">Application/flow/AdminSignInPolicyManagement</code></header>
@@ -42413,9 +42448,9 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
   </article>
 <article class="card" id="scl-Provisioning/interface/ListProvisioningDeliveries">
     <header><h3>ListProvisioningDeliveries</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientReadProvisioning">ManagementApiClientReadProvisioning</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Provisioning/interface/ListProvisioningDeliveries</code></header>
-    <p class="desc">管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の keyset
-pagination で一覧する。status/source_type で絞り込める。cursor は前回応答の Link response header
-(rel=&quot;next&quot;) から取得する。
+    <p class="desc">管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の双方向 keyset
+pagination で一覧する。status/source_type で絞り込める。cursor は応答の Link response header
+(rel=&quot;prev&quot; / rel=&quot;next&quot;) から取得する。
 </p>
 
     <div class="io">
@@ -42441,7 +42476,7 @@ pagination で一覧する。status/source_type で絞り込める。cursor は�
     <td><code class="name">cursor</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。</td>
+    <td>tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。</td>
   </tr><tr>
     <td><code class="name">limit</code></td>
     <td><code class="type">Integer</code></td>
@@ -42473,7 +42508,7 @@ pagination で一覧する。status/source_type で絞り込める。cursor は�
     <td><code class="name">Link</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
-    <td>RFC 8288 Web Linking。次ページが存在する場合のみ rel=&quot;next&quot; を返す。</td>
+    <td>RFC 8288 Web Linking。存在する方向だけ rel=&quot;prev&quot; / rel=&quot;next&quot; を返す。</td>
   </tr></tbody>
     </table>
   </div></div>
@@ -42784,9 +42819,9 @@ RetryProvisioningDelivery が pending へ戻す (管理者操作であり本状�
         </dl>
       </article><article class="card" id="scl-Provisioning/objective/ListProvisioningDeliveriesLatency">
         <header><h3>ListProvisioningDeliveriesLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">Provisioning/objective/ListProvisioningDeliveriesLatency</code></header>
-        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, connection_id, created_at, id) の複合 index を
-使う keyset pagination で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。
-sort key は created_at 降順 (id で tie-break) で安定させる)。
+        <p class="desc">応答の 95% 以上を 200ms 未満で返す ((tenant_id, connection_id, created_at, id) の複合 index
+を forward/reverse scan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと
+同程度の latency を保つ。sort key は created_at 降順 (id で tie-break) で安定させる)。
 </p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-Provisioning/interface/ListProvisioningDeliveries">ListProvisioningDeliveries</a></dd>

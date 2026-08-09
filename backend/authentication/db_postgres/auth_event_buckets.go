@@ -8,6 +8,7 @@ package db_postgres
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"time"
 
@@ -110,6 +111,38 @@ func (s *AuthEventBucketStore) List(
 			Count:       int(row.Count),
 			FirstSeen:   row.FirstSeen.UTC(),
 			LastSeen:    row.LastSeen.UTC(),
+		})
+	}
+	return out, nil
+}
+
+func (s *AuthEventBucketStore) ListBefore(
+	ctx context.Context,
+	tenantID string,
+	beforeWindowStart time.Time,
+	beforeKey string,
+	limit int,
+) ([]authnports.AuthEventBucket, error) {
+	if limit <= 0 {
+		limit = authEventBucketDefaultListLimit
+	}
+	if limit > authEventBucketMaxListLimit {
+		limit = authEventBucketMaxListLimit
+	}
+	beforeKind, beforeKeyHash, _ := strings.Cut(beforeKey, "|")
+	rows, err := s.queries().ListAuthEventBucketsBefore(ctx, ListAuthEventBucketsBeforeParams{
+		Column1: tenantID, BeforeWindowStart: beforeWindowStart, BeforeKind: beforeKind,
+		BeforeKeyHash: beforeKeyHash, PageLimit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
+	out := make([]authnports.AuthEventBucket, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, authnports.AuthEventBucket{
+			TenantID: row.TenantID, Kind: authnports.AuthEventBucketKind(row.Kind), KeyHash: row.KeyHash,
+			WindowStart: row.WindowStart.UTC(), Count: int(row.Count), FirstSeen: row.FirstSeen.UTC(), LastSeen: row.LastSeen.UTC(),
 		})
 	}
 	return out, nil

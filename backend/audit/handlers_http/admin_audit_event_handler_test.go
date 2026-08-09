@@ -346,8 +346,8 @@ func TestAdminAuditEventsFilterByCategory(t *testing.T) {
 	// 管理操作カテゴリ (認証以外) も絞り込めること。
 	rec = getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?category=client")
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
-	if len(body.Events) != 3 || body.Events[0].Type != "ClientSecretRevoked" ||
-		body.Events[1].Type != "ClientSecretIssued" || body.Events[2].Type != "AdminOAuth2ClientCreated" {
+	if len(body.Events) != 3 || body.Events[0].Type != "AdminOAuth2ClientCreated" ||
+		body.Events[1].Type != "ClientSecretIssued" || body.Events[2].Type != "ClientSecretRevoked" {
 		t.Fatalf("category=client mismatch: %+v", body.Events)
 	}
 

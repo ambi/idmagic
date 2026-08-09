@@ -29,26 +29,39 @@ func ParseLimit(c *echo.Context, def, maxLimit int) (int, error) {
 	return n, nil
 }
 
-// BuildNextLink builds the RFC 8288 Link response header value (rel="next")
-// for a keyset-paginated list response (ADR-158). It returns "" when there is
-// no next page (nextCursor == ""), signaling the caller not to set the header
-// at all — the absence of a Link header marks the last page.
+// BuildPageLinks builds RFC 8288 rel="prev" / rel="next" links for the
+// directions that exist. It returns an empty value when neither direction is
+// available.
 //
-// The next URL reuses the current request's query parameters (limit, sort,
+// Each URL reuses the current request's query parameters (limit, sort,
 // filter, ...) so a client that just follows the URL never needs to
 // reconstruct them, and only the cursor is replaced.
-func BuildNextLink(c *echo.Context, issuerFallback, nextCursor string) string {
-	if nextCursor == "" {
-		return ""
+func BuildPageLinks(c *echo.Context, issuerFallback, previousCursor, nextCursor string) string {
+	links := make([]string, 0, 2)
+	if previousCursor != "" {
+		links = append(links, buildPageLink(c, issuerFallback, previousCursor, "prev"))
 	}
+	if nextCursor != "" {
+		links = append(links, buildPageLink(c, issuerFallback, nextCursor, "next"))
+	}
+	return strings.Join(links, ", ")
+}
+
+// BuildNextLink is retained for forward-only callers during the bidirectional
+// migration. New handlers should use BuildPageLinks.
+func BuildNextLink(c *echo.Context, issuerFallback, nextCursor string) string {
+	return BuildPageLinks(c, issuerFallback, "", nextCursor)
+}
+
+func buildPageLink(c *echo.Context, issuerFallback, cursor, rel string) string {
 	q := url.Values{}
 	for k, vs := range c.Request().URL.Query() {
 		q[k] = append([]string(nil), vs...)
 	}
-	q.Set("cursor", nextCursor)
+	q.Set("cursor", cursor)
 	// path style では RequestIssuer 自体が /realms/{realm} を含むため、request path
 	// からもテナント prefix を落としてから継ぐ (TenantURL の doc 参照、二重 prefix 防止)。
 	path := strings.TrimPrefix(c.Request().URL.Path, tenancy.URLPrefix(c.Request().Context()))
-	next := TenantURL(c, path, issuerFallback) + "?" + q.Encode()
-	return `<` + next + `>; rel="next"`
+	pageURL := TenantURL(c, path, issuerFallback) + "?" + q.Encode()
+	return `<` + pageURL + `>; rel="` + rel + `"`
 }

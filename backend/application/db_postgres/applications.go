@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
@@ -101,6 +102,26 @@ func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterNam
 	if err != nil {
 		return nil, err
 	}
+	out := make([]*domain.Application, 0, len(rows))
+	for _, row := range rows {
+		app := applicationFromRow(row)
+		if err := r.hydrateProtocol(ctx, app); err != nil {
+			return nil, err
+		}
+		out = append(out, app)
+	}
+	return out, nil
+}
+
+func (r *ApplicationRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*domain.Application, error) {
+	rows, err := New(r.Pool).ListApplicationsByTenantPageBefore(ctx, ListApplicationsByTenantPageBeforeParams{
+		TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
 	out := make([]*domain.Application, 0, len(rows))
 	for _, row := range rows {
 		app := applicationFromRow(row)
@@ -455,6 +476,23 @@ func (r *ApplicationAssignmentRepository) ListPageByApplication(ctx context.Cont
 	}
 	for _, r := range rows {
 		out = append(out, assignmentFromFields(r.TenantID, r.ApplicationID, r.SubjectType, r.SubjectID, r.Visibility, r.CreatedAt, r.UpdatedAt))
+	}
+	return out, nil
+}
+
+func (r *ApplicationAssignmentRepository) ListPageBeforeByApplication(ctx context.Context, tenantID, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+	rows, err := New(r.Pool).ListApplicationAssignmentsByApplicationPageBefore(ctx, ListApplicationAssignmentsByApplicationPageBeforeParams{
+		TenantID: tenantID, ApplicationID: applicationID, BeforeSubjectType: beforeSubjectType,
+		BeforeSubjectID: beforeSubjectID,
+		PageLimit:       int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
+	out := make([]*domain.ApplicationAssignment, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
 	}
 	return out, nil
 }

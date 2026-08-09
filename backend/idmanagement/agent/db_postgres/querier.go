@@ -21,6 +21,7 @@ type Querier interface {
 	// Continuation page: resumes strictly after the (name, id) keyset of the
 	// last row the caller saw.
 	ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgentsByTenantPageAfterParams) ([]*Agent, error)
+	ListAgentsByTenantPageBefore(ctx context.Context, arg ListAgentsByTenantPageBeforeParams) ([]*Agent, error)
 	RemoveAgentBinding(ctx context.Context, arg RemoveAgentBindingParams) (int64, error)
 	SaveAgent(ctx context.Context, arg SaveAgentParams) error
 }

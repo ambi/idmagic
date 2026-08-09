@@ -99,32 +99,48 @@ export type CreateAdminUserInput = {
 // (全件を検索可能にする UI は wi-161 の対象)。
 const PICKER_LIST_LIMIT = 200
 
-function pageQueryString(params?: { cursor?: string; limit?: number }): string {
+function pageQueryString(params?: {
+  cursor?: string
+  limit?: number
+  query?: string
+  status?: string
+}): string {
   if (!params) return ''
   const query = new URLSearchParams()
   if (params.cursor) query.set('cursor', params.cursor)
   if (params.limit) query.set('limit', String(params.limit))
+  if (params.query) query.set('query', params.query)
+  if (params.status) query.set('status', params.status)
   const qs = query.toString()
   return qs ? `?${qs}` : ''
 }
 
-export type AdminUserPage = { users: AdminUser[]; nextCursor: string | null }
+export type AdminUserPage = {
+  users: AdminUser[]
+  previousCursor: string | null
+  nextCursor: string | null
+}
 
 export async function listAdminUsers(): Promise<AdminUser[]> {
   return (await request<AdminUserListResponse>(`/api/admin/v1/users?limit=${PICKER_LIST_LIMIT}`))
     .users
 }
 
-// listAdminUsersPage はユーザー一覧画面専用の cursor pagination 版。「さらに読み込む」操作で
-// 前回の nextCursor を渡して次ページを取得する (ADR-158)。
+// listAdminUsersPage はユーザー一覧画面専用の addressable cursor pagination 版 (ADR-159)。
 export async function listAdminUsersPage(params?: {
   cursor?: string
   limit?: number
+  query?: string
+  status?: string
 }): Promise<AdminUserPage> {
   const page = await requestPage<AdminUserListResponse>(
     `/api/admin/v1/users${pageQueryString(params)}`,
   )
-  return { users: page.body.users, nextCursor: page.nextCursor }
+  return {
+    users: page.body.users,
+    previousCursor: page.previousCursor,
+    nextCursor: page.nextCursor,
+  }
 }
 
 export async function getAdminUser(id: string): Promise<AdminUser> {
@@ -520,7 +536,7 @@ export type AdminAuditEventQuery = {
   after?: string
   before?: string
   limit?: number
-  // cursor (ADR-158): 前ページの nextCursor をそのまま渡すと続きを取得する。フィルタ変更時は
+  // cursor (ADR-159): Link の prev/next cursor を渡して隣接ページを取得する。フィルタ変更時は
   // 呼び出し側で cursor を落として先頭ページに戻す。
   cursor?: string
   allTenants?: boolean
@@ -528,8 +544,8 @@ export type AdminAuditEventQuery = {
 }
 
 // 監査イベント検索フォームが URL query string と同期する部分 (wi-147)。type と cursor は
-// 検索フォームの入力ではないため除く (cursor は「さらに読み込む」操作専用)。
-export type AdminAuditEventsSearchParams = Omit<AdminAuditEventQuery, 'type' | 'cursor'>
+// 検索フォームの入力ではないため除く (cursor はページ位置を表す URL 状態)。
+export type AdminAuditEventsSearchParams = Omit<AdminAuditEventQuery, 'type'>
 
 function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   const params = new URLSearchParams()
@@ -548,7 +564,11 @@ function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   return params
 }
 
-export type AdminAuditEventPage = { events: AdminAuditEvent[]; nextCursor: string | null }
+export type AdminAuditEventPage = {
+  events: AdminAuditEvent[]
+  previousCursor: string | null
+  nextCursor: string | null
+}
 
 export async function listAdminAuditEvents(
   query: AdminAuditEventQuery,
@@ -559,7 +579,11 @@ export async function listAdminAuditEvents(
       ? `/api/admin/v1/audit_events?${params.toString()}`
       : '/api/admin/v1/audit_events'
   const page = await requestPage<AdminAuditEventListResponse>(url)
-  return { events: page.body.events, nextCursor: page.nextCursor }
+  return {
+    events: page.body.events,
+    previousCursor: page.previousCursor,
+    nextCursor: page.nextCursor,
+  }
 }
 
 // 監査イベントのエクスポート URL (認証イベント含む)。新規タブで開いてダウンロードする。
@@ -894,9 +918,13 @@ export async function listAdminGroups(): Promise<AdminGroup[]> {
   ).groups
 }
 
-export type AdminGroupPage = { groups: AdminGroup[]; nextCursor: string | null }
+export type AdminGroupPage = {
+  groups: AdminGroup[]
+  previousCursor: string | null
+  nextCursor: string | null
+}
 
-// listAdminGroupsPage はグループ一覧画面専用の cursor pagination 版 (ADR-158)。
+// listAdminGroupsPage はグループ一覧画面専用の addressable cursor pagination 版 (ADR-159)。
 export async function listAdminGroupsPage(params?: {
   cursor?: string
   limit?: number
@@ -904,7 +932,11 @@ export async function listAdminGroupsPage(params?: {
   const page = await requestPage<{ groups: AdminGroup[] }>(
     `/api/admin/v1/groups${pageQueryString(params)}`,
   )
-  return { groups: page.body.groups, nextCursor: page.nextCursor }
+  return {
+    groups: page.body.groups,
+    previousCursor: page.previousCursor,
+    nextCursor: page.nextCursor,
+  }
 }
 
 export async function getAdminGroup(
@@ -1007,9 +1039,13 @@ export async function listAdminAgents(): Promise<AdminAgent[]> {
   ).agents
 }
 
-export type AdminAgentPage = { agents: AdminAgent[]; nextCursor: string | null }
+export type AdminAgentPage = {
+  agents: AdminAgent[]
+  previousCursor: string | null
+  nextCursor: string | null
+}
 
-// listAdminAgentsPage はエージェント一覧画面専用の cursor pagination 版 (ADR-158)。
+// listAdminAgentsPage はエージェント一覧画面専用の addressable cursor pagination 版 (ADR-159)。
 export async function listAdminAgentsPage(params?: {
   cursor?: string
   limit?: number
@@ -1017,7 +1053,11 @@ export async function listAdminAgentsPage(params?: {
   const page = await requestPage<{ agents: AdminAgent[] }>(
     `/api/admin/v1/agents${pageQueryString(params)}`,
   )
-  return { agents: page.body.agents, nextCursor: page.nextCursor }
+  return {
+    agents: page.body.agents,
+    previousCursor: page.previousCursor,
+    nextCursor: page.nextCursor,
+  }
 }
 
 export async function getAdminAgent(id: string): Promise<AdminAgent> {
@@ -1218,9 +1258,13 @@ export async function listAdminApplications(): Promise<AdminApplication[]> {
   ).applications
 }
 
-export type AdminApplicationPage = { applications: AdminApplication[]; nextCursor: string | null }
+export type AdminApplicationPage = {
+  applications: AdminApplication[]
+  previousCursor: string | null
+  nextCursor: string | null
+}
 
-// listAdminApplicationsPage はアプリケーション一覧画面専用の cursor pagination 版 (ADR-158)。
+// listAdminApplicationsPage はアプリケーション一覧画面専用の addressable cursor pagination 版 (ADR-159)。
 export async function listAdminApplicationsPage(params?: {
   cursor?: string
   limit?: number
@@ -1228,7 +1272,11 @@ export async function listAdminApplicationsPage(params?: {
   const page = await requestPage<{ applications: AdminApplication[] }>(
     `/api/admin/v1/applications${pageQueryString(params)}`,
   )
-  return { applications: page.body.applications, nextCursor: page.nextCursor }
+  return {
+    applications: page.body.applications,
+    previousCursor: page.previousCursor,
+    nextCursor: page.nextCursor,
+  }
 }
 
 export async function getAdminApplication(id: string): Promise<AdminApplicationDetail> {

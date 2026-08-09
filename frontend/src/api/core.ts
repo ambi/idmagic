@@ -103,23 +103,29 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return body
 }
 
-// Page ラップは cursor pagination (ADR-158) の応答: body は素のドメインデータのまま、
-// 次ページの有無・cursor は Link レスポンスヘッダ (rel="next") にしか出てこない。
+// Page ラップは cursor pagination (ADR-159) の応答: body は素のドメインデータのまま、
+// 前後ページの有無・cursor は Link レスポンスヘッダにだけ出てくる。
 export type Page<T> = {
   body: T
+  previousCursor: string | null
   nextCursor: string | null
 }
 
 // requestPage は request() と同じ fetch/エラー処理を共有しつつ、Link ヘッダから
-// rel="next" の cursor query param を抜き出して返す (ADR-158)。
+// rel="prev" / rel="next" の cursor query param を抜き出して返す (ADR-159)。
 export async function requestPage<T>(url: string, init?: RequestInit): Promise<Page<T>> {
   const { body, response } = await doFetch<T>(url, init)
-  return { body, nextCursor: parseNextCursor(response.headers.get('Link')) }
+  const link = response.headers.get('Link')
+  return {
+    body,
+    previousCursor: parseCursorForRel(link, 'prev'),
+    nextCursor: parseCursorForRel(link, 'next'),
+  }
 }
 
-function parseNextCursor(link: string | null): string | null {
+function parseCursorForRel(link: string | null, rel: 'prev' | 'next'): string | null {
   if (!link) return null
-  const match = link.match(/<([^>]+)>;\s*rel="next"/)
+  const match = link.match(new RegExp(`<([^>]+)>;\\s*rel="${rel}"`))
   if (!match) return null
   try {
     return new URL(match[1], window.location.origin).searchParams.get('cursor')

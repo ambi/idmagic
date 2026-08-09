@@ -2,7 +2,7 @@
 # この context が所有する module 台帳。path はこのファイルからの相対。
 # 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
 context: audit
-updated_at: 2026-07-26
+updated_at: 2026-08-09
 modules:
   audit-ports:
     path: ports
@@ -74,6 +74,8 @@ modules:
     depends_on:
       - module: audit-ports
         via: published_interface
+      - module: shared-storage-db-memory
+        via: technical_shared
   audit-db-postgres:
     path: db_postgres
     responsibility: backend/audit/db_postgres の Flat Architecture adapter。

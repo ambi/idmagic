@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import {
   type AdminAuditEventCategory,
   type AdminAuditEventsSearchParams,
@@ -44,6 +45,7 @@ export function validateAuditEventsSearch(
   if (typeof search.limit === 'number' && Number.isFinite(search.limit)) {
     result.limit = search.limit
   }
+  if (typeof search.cursor === 'string' && search.cursor) result.cursor = search.cursor
   if (search.allTenants === true) result.allTenants = true
   if (Array.isArray(search.filter)) {
     const filter = search.filter.filter((v): v is string => typeof v === 'string')
@@ -61,13 +63,29 @@ export const Route = createFileRoute('/admin/audit_events')({
     // ページ内のエラー表示に留める。認証そのものの失敗は requirePortalAccount 側で扱う (wi-147)。
     let events: AdminAuditEvent[] = []
     let nextCursor: string | null = null
+    let previousCursor: string | null = null
+    let cursorReset = false
     let searchError = ''
     try {
       const page = await listAdminAuditEvents(deps)
       events = page.events
+      previousCursor = page.previousCursor
       nextCursor = page.nextCursor
     } catch (cause) {
-      searchError = cause instanceof AuthenticationAPIError ? cause.message : String(cause)
+      if (
+        deps.cursor &&
+        cause instanceof AuthenticationAPIError &&
+        cause.code === 'invalid_request'
+      ) {
+        const { cursor: _cursor, ...withoutCursor } = deps
+        const page = await listAdminAuditEvents(withoutCursor)
+        events = page.events
+        previousCursor = page.previousCursor
+        nextCursor = page.nextCursor
+        cursorReset = true
+      } else {
+        searchError = cause instanceof AuthenticationAPIError ? cause.message : String(cause)
+      }
     }
     const searchOptions = await listAdminAuditEventSearchOptions().catch(() => undefined)
     return {
@@ -76,10 +94,12 @@ export const Route = createFileRoute('/admin/audit_events')({
       actorRoles: account.roles ?? [],
       actorRealm: account.realm ?? '',
       events,
+      previousCursor,
       nextCursor,
       search: deps,
       searchOptions,
       initialError: searchError,
+      cursorReset,
     }
   },
   component: AdminAuditEventsRoute,
@@ -89,12 +109,18 @@ function AdminAuditEventsRoute() {
   const data = Route.useLoaderData()
   const navigate = Route.useNavigate()
   const search = Route.useSearch()
+  useEffect(() => {
+    if (!data.cursorReset || !search.cursor) return
+    const { cursor: _cursor, ...withoutCursor } = search
+    void navigate({ replace: true, search: withoutCursor })
+  }, [data.cursorReset, navigate, search])
   return (
     <PageMarker kind="admin-audit-events">
       <AdminAuditEventsPage
         key={JSON.stringify(search)}
         {...data}
         onSearch={(next) => navigate({ search: next })}
+        onPage={(cursor) => navigate({ search: { ...search, cursor } })}
       />
     </PageMarker>
   )

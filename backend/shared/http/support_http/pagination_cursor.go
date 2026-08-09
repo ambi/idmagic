@@ -1,12 +1,14 @@
 package support_http
 
-// Opaque keyset pagination cursor codec (ADR-158): encode/verify a cursor as
+// Opaque keyset pagination cursor codec (ADR-159): encode/verify a cursor as
 // HMAC-SHA256(payload) over a base64url JSON payload. The cursor binds
-// tenant_id, a caller-supplied query fingerprint (sort/filter), the last-row
-// keyset value, and an expiry, so a cursor cannot be replayed against a
-// different tenant or a changed sort/filter. Colocated with pagination.go /
+// tenant_id, a caller-supplied query fingerprint (sort/filter), the boundary
+// keyset value, a direction, and a format version, so a cursor cannot be
+// replayed against a different tenant or a changed sort/filter. New cursors do
+// not expire; version-zero cursors retain their legacy expiry during migration.
+// Colocated with pagination.go /
 // pagination_request.go rather than split into its own package: this codec
-// has exactly one caller (ParsePageRequest/SetNextLink below) and isn't a
+// has exactly one caller (ParsePageRequest/SetPageLinks below) and isn't a
 // general-purpose crypto primitive reused across bounded contexts the way
 // security/tokens_jose or security/passwords_argon2id are.
 
@@ -29,11 +31,44 @@ var ErrInvalidCursor = errors.New("support_http: invalid cursor")
 
 // Cursor is the decoded, unsigned content of a keyset pagination cursor.
 type Cursor struct {
-	TenantID  string    `json:"tid"`
-	QueryHash string    `json:"q"`
-	After     string    `json:"a"`
-	ExpiresAt time.Time `json:"exp"`
+	Version   int           `json:"v,omitempty"`
+	TenantID  string        `json:"tid"`
+	QueryHash string        `json:"q"`
+	After     string        `json:"a"`
+	Direction PageDirection `json:"d,omitempty"`
+	ExpiresAt time.Time     `json:"exp"`
 }
+
+// MarshalJSON omits a zero expiry. time.Time's own marshaler otherwise emits
+// year-one even with omitempty, which would make new cursors look expiring.
+func (cur Cursor) MarshalJSON() ([]byte, error) {
+	type cursorWire struct {
+		Version   int           `json:"v,omitempty"`
+		TenantID  string        `json:"tid"`
+		QueryHash string        `json:"q"`
+		After     string        `json:"a"`
+		Direction PageDirection `json:"d,omitempty"`
+		ExpiresAt *time.Time    `json:"exp,omitempty"`
+	}
+	var expiresAt *time.Time
+	if !cur.ExpiresAt.IsZero() {
+		expiresAt = &cur.ExpiresAt
+	}
+	return json.Marshal(cursorWire{
+		Version: cur.Version, TenantID: cur.TenantID, QueryHash: cur.QueryHash,
+		After: cur.After, Direction: cur.Direction, ExpiresAt: expiresAt,
+	})
+}
+
+const cursorVersion = 2
+
+// PageDirection says which side of the signed keyset boundary to read.
+type PageDirection string
+
+const (
+	PageForward  PageDirection = "forward"
+	PageBackward PageDirection = "backward"
+)
 
 // CursorCodec signs and verifies Cursor values with a single symmetric secret.
 type CursorCodec struct {
@@ -79,7 +114,30 @@ func (c *CursorCodec) Decode(token string) (Cursor, error) {
 	if !cur.ExpiresAt.IsZero() && time.Now().After(cur.ExpiresAt) {
 		return Cursor{}, fmt.Errorf("%w: expired", ErrInvalidCursor)
 	}
+	if err := normalizeCursorVersion(&cur); err != nil {
+		return Cursor{}, err
+	}
 	return cur, nil
+}
+
+func normalizeCursorVersion(cur *Cursor) error {
+	switch cur.Version {
+	case 0:
+		if cur.Direction != "" {
+			return fmt.Errorf("%w: legacy cursor has direction", ErrInvalidCursor)
+		}
+		cur.Direction = PageForward
+	case cursorVersion:
+		if !cur.ExpiresAt.IsZero() {
+			return fmt.Errorf("%w: version %d cursor has expiry", ErrInvalidCursor, cursorVersion)
+		}
+		if cur.Direction != PageForward && cur.Direction != PageBackward {
+			return fmt.Errorf("%w: invalid direction", ErrInvalidCursor)
+		}
+	default:
+		return fmt.Errorf("%w: unsupported version", ErrInvalidCursor)
+	}
+	return nil
 }
 
 // DecodeForQuery decodes token and additionally requires it to match tenantID
@@ -87,17 +145,27 @@ func (c *CursorCodec) Decode(token string) (Cursor, error) {
 // cursors issued for a different tenant or a since-changed query. On success it
 // returns the embedded keyset ("after") value.
 func (c *CursorCodec) DecodeForQuery(token, tenantID, queryHash string) (string, error) {
-	cur, err := c.Decode(token)
+	cur, err := c.DecodeCursorForQuery(token, tenantID, queryHash)
 	if err != nil {
 		return "", err
 	}
+	return cur.After, nil
+}
+
+// DecodeCursorForQuery returns the full validated cursor, including its
+// normalized direction. Legacy version-zero cursors are forward cursors.
+func (c *CursorCodec) DecodeCursorForQuery(token, tenantID, queryHash string) (Cursor, error) {
+	cur, err := c.Decode(token)
+	if err != nil {
+		return Cursor{}, err
+	}
 	if cur.TenantID != tenantID {
-		return "", fmt.Errorf("%w: tenant mismatch", ErrInvalidCursor)
+		return Cursor{}, fmt.Errorf("%w: tenant mismatch", ErrInvalidCursor)
 	}
 	if cur.QueryHash != queryHash {
-		return "", fmt.Errorf("%w: query mismatch", ErrInvalidCursor)
+		return Cursor{}, fmt.Errorf("%w: query mismatch", ErrInvalidCursor)
 	}
-	return cur.After, nil
+	return cur, nil
 }
 
 func (c *CursorCodec) sign(encodedPayload string) []byte {

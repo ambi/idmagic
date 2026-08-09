@@ -1,16 +1,15 @@
 import { IconApps, IconExternalLink, IconPlus, IconRefresh, IconTrash } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { deleteAdminApplication, listAdminApplicationsPage } from '../../api'
 import { AdminPaneActions } from '../../components/AdminPaneActions'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { LoadMoreButton } from '../../components/ui/load-more'
+import { PageNavigation } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
-import { usePaginatedList } from '../../lib/usePaginatedList'
 import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import {
   AppIcon,
@@ -29,20 +28,20 @@ export function AdminApplicationsPage({
   csrfToken,
   actorUsername,
   applications: initial,
+  previousCursor = null,
   nextCursor: initialNextCursor,
+  onPage,
+  cursorReset = false,
 }: {
   csrfToken: string
   actorUsername?: string
   applications: AdminApplication[]
+  previousCursor?: string | null
   nextCursor: string | null
+  onPage?: (cursor: string) => void
+  cursorReset?: boolean
 }) {
-  const {
-    items: applications,
-    hasMore,
-    loadingMore,
-    loadMore,
-    reset: resetApplications,
-  } = usePaginatedList<AdminApplication>({ items: initial, nextCursor: initialNextCursor })
+  const [applications, setApplications] = useState(initial)
   const [selectedID, setSelectedID] = useState<string>(() => initial[0]?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -50,11 +49,15 @@ export function AdminApplicationsPage({
   const t = useDictionary(adminApplicationsDictionary)
   const tCommon = useDictionary(commonDictionary)
 
+  useEffect(() => {
+    if (cursorReset) setNotice(tCommon.cursorResetNotice)
+  }, [cursorReset, tCommon.cursorResetNotice])
+
   const selected = applications.find((a) => a.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
     const next = await listAdminApplicationsPage()
-    resetApplications({ items: next.applications, nextCursor: next.nextCursor })
+    setApplications(next.applications)
     setSelectedID(
       next.applications.find((a) => a.id === preferredID)?.id ?? next.applications[0]?.id ?? '',
     )
@@ -71,18 +74,6 @@ export function AdminApplicationsPage({
       setError(messageOf(cause, t.genericOpError))
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function handleLoadMore() {
-    setError('')
-    try {
-      await loadMore(async (cursor) => {
-        const page = await listAdminApplicationsPage({ cursor })
-        return { items: page.applications, nextCursor: page.nextCursor }
-      })
-    } catch (cause) {
-      setError(messageOf(cause, tCommon.loadMoreFailedError))
     }
   }
 
@@ -146,7 +137,13 @@ export function AdminApplicationsPage({
               ))}
             </ul>
           )}
-          <LoadMoreButton hasMore={hasMore} loading={loadingMore} onClick={handleLoadMore} />
+          {onPage ? (
+            <PageNavigation
+              previousCursor={previousCursor}
+              nextCursor={initialNextCursor}
+              onNavigate={onPage}
+            />
+          ) : null}
         </Card>
 
         <ApplicationSummaryCard

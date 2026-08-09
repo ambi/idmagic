@@ -56,6 +56,16 @@ type GroupView struct {
 func ListGroups(ctx context.Context, deps AdminGroupDeps, afterName, afterID string, limit int) ([]GroupView, error) {
 	tenantID := tenancy.TenantID(ctx)
 	groups, err := deps.GroupRepo.ListPage(ctx, tenantID, afterName, afterID, limit)
+	return groupViews(ctx, deps, tenantID, groups, err)
+}
+
+func ListGroupsBefore(ctx context.Context, deps AdminGroupDeps, beforeName, beforeID string, limit int) ([]GroupView, error) {
+	tenantID := tenancy.TenantID(ctx)
+	groups, err := deps.GroupRepo.ListPageBefore(ctx, tenantID, beforeName, beforeID, limit)
+	return groupViews(ctx, deps, tenantID, groups, err)
+}
+
+func groupViews(ctx context.Context, deps AdminGroupDeps, tenantID string, groups []*groupdomain.Group, err error) ([]GroupView, error) {
 	if err != nil {
 		return nil, err
 	}

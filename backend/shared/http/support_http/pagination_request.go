@@ -5,13 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/labstack/echo/v5"
 )
-
-// cursorTTL is how long an issued pagination cursor stays valid (ADR-158).
-const cursorTTL = 1 * time.Hour
 
 // ErrBadPageRequest wraps any page-request validation failure (invalid
 // limit, invalid/expired/tenant-or-query-mismatched cursor) that a handler
@@ -27,7 +23,27 @@ type PageRequest struct {
 	// caller already saw.
 	AfterPrimary string
 	AfterID      string
+	Direction    PageDirection
 	Limit        int
+}
+
+// TrimPage removes the repository lookahead row and reports which navigation
+// directions exist. Backward repositories return canonical order, so their
+// farthest lookahead is the first row rather than the last.
+func TrimPage[T any](items []T, page PageRequest) ([]T, bool, bool) {
+	hasBoundary := page.AfterPrimary != "" || page.AfterID != ""
+	hasLookahead := len(items) > page.Limit
+	if hasLookahead {
+		if page.Direction == PageBackward {
+			items = items[1:]
+		} else {
+			items = items[:page.Limit]
+		}
+	}
+	if page.Direction == PageBackward {
+		return items, hasLookahead, hasBoundary
+	}
+	return items, hasBoundary, hasLookahead
 }
 
 // ParsePageRequest parses "limit" (ParseLimit) and "cursor" for a keyset-
@@ -41,41 +57,60 @@ func ParsePageRequest(c *echo.Context, codec *CursorCodec, tenantID, queryHash s
 	if err != nil {
 		return PageRequest{}, fmt.Errorf("%w: %w", ErrBadPageRequest, err)
 	}
-	page := PageRequest{Limit: limit}
+	page := PageRequest{Direction: PageForward, Limit: limit}
 	cursor := c.QueryParam("cursor")
 	if cursor == "" {
 		return page, nil
 	}
-	after, err := codec.DecodeForQuery(cursor, tenantID, queryHash)
+	decoded, err := codec.DecodeCursorForQuery(cursor, tenantID, queryHash)
 	if err != nil {
 		return PageRequest{}, fmt.Errorf("%w: %w", ErrBadPageRequest, err)
 	}
-	page.AfterPrimary, page.AfterID, err = splitKeyset(after)
+	page.Direction = decoded.Direction
+	page.AfterPrimary, page.AfterID, err = splitKeyset(decoded.After)
 	if err != nil {
 		return PageRequest{}, fmt.Errorf("%w: %w", ErrBadPageRequest, err)
 	}
 	return page, nil
 }
 
-// SetNextLink encodes a fresh cursor for the (primary, id) keyset of the last
-// row the caller saw and sets the Link response header (rel="next") via
-// BuildNextLink — but only when hasMore is true; otherwise it is a no-op
-// (the absence of a Link header marks the last page).
-func SetNextLink(c *echo.Context, codec *CursorCodec, issuerFallback, tenantID, queryHash, lastPrimary, lastID string, hasMore bool) error {
-	if !hasMore {
-		return nil
-	}
-	nextCursor, err := codec.Encode(Cursor{
-		TenantID: tenantID, QueryHash: queryHash,
-		After: joinKeyset(lastPrimary, lastID), ExpiresAt: time.Now().Add(cursorTTL),
-	})
+// SetPageLinks signs the first/last row boundaries and emits only the
+// directions that exist. A previous cursor reads before the first row; a next
+// cursor reads after the last row.
+func SetPageLinks(
+	c *echo.Context,
+	codec *CursorCodec,
+	issuerFallback, tenantID, queryHash string,
+	firstPrimary, firstID, lastPrimary, lastID string,
+	hasPrevious, hasNext bool,
+) error {
+	previousCursor, err := encodePageCursor(codec, tenantID, queryHash, firstPrimary, firstID, PageBackward, hasPrevious)
 	if err != nil {
 		return err
 	}
-	if link := BuildNextLink(c, issuerFallback, nextCursor); link != "" {
+	nextCursor, err := encodePageCursor(codec, tenantID, queryHash, lastPrimary, lastID, PageForward, hasNext)
+	if err != nil {
+		return err
+	}
+	if link := BuildPageLinks(c, issuerFallback, previousCursor, nextCursor); link != "" {
 		c.Response().Header().Set("Link", link)
 	}
 	return nil
+}
+
+func encodePageCursor(codec *CursorCodec, tenantID, queryHash, primary, id string, direction PageDirection, present bool) (string, error) {
+	if !present {
+		return "", nil
+	}
+	return codec.Encode(Cursor{
+		Version: cursorVersion, TenantID: tenantID, QueryHash: queryHash,
+		After: joinKeyset(primary, id), Direction: direction,
+	})
+}
+
+// SetNextLink is retained for forward-only handlers during migration.
+func SetNextLink(c *echo.Context, codec *CursorCodec, issuerFallback, tenantID, queryHash, lastPrimary, lastID string, hasMore bool) error {
+	return SetPageLinks(c, codec, issuerFallback, tenantID, queryHash, "", "", lastPrimary, lastID, false, hasMore)
 }
 
 // joinKeyset/splitKeyset encode a (primary, id) keyset into Cursor.After as

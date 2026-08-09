@@ -862,6 +862,7 @@ type User struct {
 	Roles             []byte
 	Lifecycle         []byte
 	Attributes        []byte
+	SearchText        pgtype.Text
 }
 
 type WebauthnCredential struct {

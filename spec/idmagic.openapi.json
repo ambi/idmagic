@@ -2592,12 +2592,30 @@
         "x-scl-stability": "internal",
         "parameters": [
           {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "username、name、email、id、roles に対する case-insensitive contains 検索。"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UserStatus",
+              "description": "User status の完全一致 filter。"
+            }
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -2633,7 +2651,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -5105,7 +5123,7 @@
     "/api/admin/v1/groups": {
       "get": {
         "operationId": "ListGroups",
-        "summary": "管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の keyset pagination で",
+        "summary": "管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の双方向 keyset",
         "security": [
           {
             "SclBearer": []
@@ -5128,7 +5146,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -5164,7 +5182,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -6289,7 +6307,7 @@
     "/api/admin/v1/agents": {
       "get": {
         "operationId": "ListAgents",
-        "summary": "管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の keyset pagination で",
+        "summary": "管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の双方向 keyset",
         "security": [
           {
             "SclBearer": []
@@ -6312,7 +6330,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -6348,7 +6366,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -8799,7 +8817,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -8835,7 +8853,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -12988,7 +13006,7 @@
     "/api/admin/v1/clients": {
       "get": {
         "operationId": "ListAdminOAuth2Clients",
-        "summary": "管理者が所属テナントの client を client_id 昇順の keyset pagination で一覧する。cursor は",
+        "summary": "管理者が所属テナントの client を client_id 昇順の双方向 keyset pagination で一覧する。",
         "security": [
           {
             "SclBearer": []
@@ -13012,7 +13030,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -13048,7 +13066,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -13840,7 +13858,7 @@
     "/api/admin/v1/consents": {
       "get": {
         "operationId": "ListAdminConsents",
-        "summary": "管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の keyset pagination で",
+        "summary": "管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の双方向 keyset",
         "security": [
           {
             "SclBearer": []
@@ -13863,7 +13881,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -13899,7 +13917,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -14293,7 +14311,7 @@
     "/api/admin/v1/audit_events": {
       "get": {
         "operationId": "ListAdminAuditEvents",
-        "summary": "管理者が所属テナントの監査用 DomainEvent を時系列降順で取得する。SOC / コンプライアンス",
+        "summary": "管理者が所属テナントの監査用 DomainEvent を時系列降順の双方向 keyset pagination で取得する。",
         "security": [
           {
             "SclBearer": []
@@ -14342,7 +14360,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -14601,7 +14619,7 @@
     "/api/admin/v1/applications": {
       "get": {
         "operationId": "ListAdminApplications",
-        "summary": "管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の keyset pagination",
+        "summary": "管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の双方向 keyset",
         "security": [
           {
             "SclBearer": []
@@ -14625,7 +14643,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -14661,7 +14679,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -15890,7 +15908,7 @@
     "/api/admin/v1/applications/{id}/assignments": {
       "get": {
         "operationId": "ListApplicationAssignments",
-        "summary": "管理者が Application の割当を subject_type, subject_id 昇順の keyset pagination で一覧する。",
+        "summary": "管理者が Application の割当を subject_type, subject_id 昇順の双方向 keyset pagination で",
         "security": [
           {
             "SclBearer": []
@@ -15922,7 +15940,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -15958,7 +15976,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -20500,7 +20518,7 @@
     "/api/admin/v1/applications/{id}/provisioning/deliveries": {
       "get": {
         "operationId": "ListProvisioningDeliveries",
-        "summary": "管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の keyset",
+        "summary": "管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の双方向 keyset",
         "security": [
           {
             "SclBearer": []
@@ -20548,7 +20566,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
             }
           },
           {
@@ -20587,7 +20605,7 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
                 }
               }
             }
@@ -29361,7 +29379,7 @@
           },
           "cursor": {
             "type": "string",
-            "description": "ページング継続トークン。前回応答の Link response header (rel=\"next\") の URL に\n埋め込まれた値をそのまま渡す。tenant・sort・filter を含めて署名された opaque token。\n"
+            "description": "応答の Link response header (rel=\"prev\" / rel=\"next\") の URL に埋め込まれた値を\nそのまま渡す。tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token\nは時刻で失効せず、旧 expiry 付き token は expiry まで有効。\n"
           },
           "limit": {
             "type": "integer",

@@ -19,6 +19,14 @@ WHERE a.tenant_id = $1 AND aa.application_id = $2
 ORDER BY aa.subject_type, aa.subject_id
 LIMIT sqlc.arg(page_limit);
 
+-- name: ListApplicationAssignmentsByApplicationPageBefore :many
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = $1 AND aa.application_id = $2
+  AND (aa.subject_type, aa.subject_id) < (sqlc.arg(before_subject_type)::text, sqlc.arg(before_subject_id)::uuid)
+ORDER BY aa.subject_type DESC, aa.subject_id DESC
+LIMIT sqlc.arg(page_limit);
+
 -- name: ListApplicationAssignmentsByApplicationPageAfter :many
 -- Continuation page: resumes strictly after the (subject_type, subject_id)
 -- keyset of the last row the caller saw.

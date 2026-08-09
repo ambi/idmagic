@@ -1164,12 +1164,12 @@ interfaces:
     stability: internal
     access: internal
   ListAdminApplications:
-    description: "管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の keyset pagination\nで一覧する。cursor は前回応答の Link response header (rel=\"next\") から取得する。\n"
+    description: "管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。\n"
     input:
       cursor:
         type: String
         optional: true
-        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
       limit:
         type: Integer
         optional: true
@@ -1195,7 +1195,7 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
   GetAdminApplication:
     description: 管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。
     input:
@@ -1532,14 +1532,14 @@ interfaces:
         successful_status_codes:
           - "204"
   ListApplicationAssignments:
-    description: "管理者が Application の割当を subject_type, subject_id 昇順の keyset pagination で一覧する。\ncursor は前回応答の Link response header (rel=\"next\") から取得する。\n"
+    description: "管理者が Application の割当を subject_type, subject_id 昇順の双方向 keyset pagination で\n一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。\n"
     input:
       id:
         type: String
       cursor:
         type: String
         optional: true
-        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
       limit:
         type: Integer
         optional: true
@@ -1565,7 +1565,7 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
   AssignApplication:
     description: 管理者が Application にユーザー / グループを割当てる。
     input:
@@ -1961,7 +1961,7 @@ authorization:
       when: '"account:write" in context.token_scopes && principal.id == resource.id'
 objectives:
   ListAdminApplicationsLatency:
-    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を使う keyset pagination\nで、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は name 昇順\n(id で tie-break) で安定させる)。\n"
+    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を forward/reverse\nscan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency\nを保つ。sort key は name 昇順 (id で tie-break) で安定させる)。\n"
     interface: ListAdminApplications
     indicator: measurement.latency < duration("200ms")
     target: 0.95
@@ -2199,14 +2199,18 @@ flows:
     entry: AdminApplications
     views:
       AdminApplications:
-        sees: アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy、次ページ読み込み)
+        sees: アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy、URL に同期した前後ページ移動)
         does:
           - action: list
             does: 画面を開く
             interface: ListAdminApplications
             to: AdminApplications
           - action: next_page
-            does: 「次へ」をクリックして次ページを読み込む
+            does: 「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える
+            interface: ListAdminApplications
+            to: AdminApplications
+          - action: previous_page
+            does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
             interface: ListAdminApplications
             to: AdminApplications
           - action: create

@@ -373,6 +373,9 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	for i, sourceID := range []string{"user-1", "user-2", "user-3", "user-4", "user-5"} {
 		d := testDelivery(sourceID, 1)
+		if sourceID == "user-3" {
+			d.SourceType = domain.SourceTypeGroup
+		}
 		d.ID = "delivery-" + sourceID
 		d.CreatedAt = base.Add(time.Duration(i) * time.Minute)
 		if _, err := repo.Save(ctx, d); err != nil {
@@ -381,7 +384,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	}
 
 	// created_at DESC: user-5 (newest) first.
-	first, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, time.Time{}, "", 2)
+	first, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, nil, time.Time{}, "", 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +393,7 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 	}
 
 	last := first[len(first)-1]
-	next, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, last.CreatedAt, last.ID, 2)
+	next, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, nil, last.CreatedAt, last.ID, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -398,11 +401,16 @@ func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
 		t.Fatalf("unexpected continuation page: %+v", next)
 	}
 
-	all, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, time.Time{}, "", 100)
+	all, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, nil, time.Time{}, "", 100)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(all) != 5 {
 		t.Fatalf("expected 5, got %d", len(all))
+	}
+	group := domain.SourceTypeGroup
+	groups, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, &group, time.Time{}, "", 100)
+	if err != nil || len(groups) != 1 || groups[0].SourceID != "user-3" {
+		t.Fatalf("source_type filter=%+v err=%v", groups, err)
 	}
 }

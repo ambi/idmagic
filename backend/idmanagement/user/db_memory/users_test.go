@@ -69,6 +69,36 @@ func TestUserRepositoryListPage(t *testing.T) {
 	})
 }
 
+func TestUserRepositoryListPageFilteredSearchesTenantWideAndSupportsPrevious(t *testing.T) {
+	ctx := context.Background()
+	repo := NewUserRepository()
+	name := "Alice Example"
+	email := "Alice@Example.COM"
+	for _, user := range []*userdomain.User{
+		{ID: "00000000-0000-4000-8000-000000000001", TenantID: "tenant-1", PreferredUsername: "alpha", Name: &name, Email: &email, Roles: []string{"billing-admin"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}},
+		{ID: "00000000-0000-4000-8000-000000000002", TenantID: "tenant-1", PreferredUsername: "bravo", Roles: []string{"reader"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDisabled}},
+		{ID: "00000000-0000-4000-8000-000000000003", TenantID: "tenant-2", PreferredUsername: "alice-other", Roles: []string{"billing-admin"}, Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}},
+	} {
+		repo.Seed(user)
+	}
+	active := idmdomain.UserStatusActive
+	page, err := repo.ListPageFiltered(ctx, "tenant-1", "EXAMPLE.com", &active, "", "", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page) != 1 || page[0].PreferredUsername != "alpha" {
+		t.Fatalf("unexpected tenant-wide filtered result: %+v", page)
+	}
+	rolePage, err := repo.ListPageFiltered(ctx, "tenant-1", "BILLING", nil, "", "", 10)
+	if err != nil || len(rolePage) != 1 || rolePage[0].PreferredUsername != "alpha" {
+		t.Fatalf("role search result=%+v err=%v", rolePage, err)
+	}
+	previous, err := repo.ListPageBeforeFiltered(ctx, "tenant-1", "", nil, "bravo", "00000000-0000-4000-8000-000000000002", 10)
+	if err != nil || len(previous) != 1 || previous[0].PreferredUsername != "alpha" {
+		t.Fatalf("previous filtered page=%+v err=%v", previous, err)
+	}
+}
+
 func TestUserRepository(t *testing.T) {
 	ctx := context.Background()
 	repo := NewUserRepository()

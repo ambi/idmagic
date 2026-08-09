@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -84,6 +85,26 @@ func (r *GroupRepository) ListPage(ctx context.Context, tenantID, afterName, aft
 	if err != nil {
 		return nil, err
 	}
+	out := make([]*groupdomain.Group, 0, len(rows))
+	for _, row := range rows {
+		group, err := groupFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, group)
+	}
+	return out, nil
+}
+
+func (r *GroupRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*groupdomain.Group, error) {
+	rows, err := New(r.Pool).ListGroupsByTenantPageBefore(ctx, ListGroupsByTenantPageBeforeParams{
+		TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
 	out := make([]*groupdomain.Group, 0, len(rows))
 	for _, row := range rows {
 		group, err := groupFromRow(row)

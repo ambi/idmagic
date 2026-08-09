@@ -16,6 +16,7 @@ type ApplicationRepository interface {
 	// Pass "", "" for the first page. Backs ListAdminApplications keyset
 	// pagination (wi-159, ADR-158).
 	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error)
+	ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*domain.Application, error)
 	// FindByID は application_id に一致する Application を返す。存在しなければ (nil, nil)。
 	FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error)
 	// FindByProtocol は protocol table の application_id relation を索引で逆引きする。
@@ -76,6 +77,7 @@ type AssignmentRepository interface {
 	// page. Backs ListApplicationAssignments keyset pagination (wi-159,
 	// ADR-158).
 	ListPageByApplication(ctx context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error)
+	ListPageBeforeByApplication(ctx context.Context, tenantID, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error)
 	// ListBySubjects は指定 subject 群に一致する割当を返す (ポータル一覧・割当ゲート用)。
 	ListBySubjects(ctx context.Context, tenantID string, subjects []SubjectRef) ([]*domain.ApplicationAssignment, error)
 	// ListAll はテナント内のすべての Application 割当を返す。

@@ -126,6 +126,19 @@ func (r *ApplicationRepository) ListPage(_ context.Context, tenantID, afterName,
 	return sharedmem.KeysetPage(out, key, false, afterName, afterID, limit), nil
 }
 
+func (r *ApplicationRepository) ListPageBefore(_ context.Context, tenantID, beforeName, beforeID string, limit int) ([]*domain.Application, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.Application, 0)
+	for _, app := range r.applications {
+		if app.TenantID == tenantID {
+			out = append(out, cloneApplication(app))
+		}
+	}
+	key := func(a *domain.Application) (string, string) { return a.Name, a.ID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeName, beforeID, limit), nil
+}
+
 func (r *ApplicationRepository) FindByID(_ context.Context, tenantID, applicationID string) (*domain.Application, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -341,6 +354,20 @@ func (r *ApplicationAssignmentRepository) ListPageByApplication(_ context.Contex
 	}
 	key := func(a *domain.ApplicationAssignment) (string, string) { return string(a.SubjectType), a.SubjectID }
 	return sharedmem.KeysetPage(out, key, false, afterSubjectType, afterSubjectID, limit), nil
+}
+
+func (r *ApplicationAssignmentRepository) ListPageBeforeByApplication(_ context.Context, tenantID, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.ApplicationAssignment, 0)
+	for _, assignment := range r.assignments {
+		if assignment.TenantID == tenantID && assignment.ApplicationID == applicationID {
+			cloned := *assignment
+			out = append(out, &cloned)
+		}
+	}
+	key := func(a *domain.ApplicationAssignment) (string, string) { return string(a.SubjectType), a.SubjectID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeSubjectType, beforeSubjectID, limit), nil
 }
 
 func (r *ApplicationAssignmentRepository) ListAll(_ context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {

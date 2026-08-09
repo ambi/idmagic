@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/ambi/idmagic/backend/audit/ports"
@@ -143,6 +144,14 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 		idIdx := len(args)
 		conds = append(conds, fmt.Sprintf("(occurred_at, id) < ($%d, $%d)", occIdx, idIdx))
 	}
+	backward := !q.BeforeOccurredAt.IsZero() || q.BeforeID != ""
+	if backward {
+		args = append(args, q.BeforeOccurredAt)
+		occIdx := len(args)
+		args = append(args, q.BeforeID)
+		idIdx := len(args)
+		conds = append(conds, fmt.Sprintf("(occurred_at, id) > ($%d, $%d)", occIdx, idIdx))
+	}
 	// wi-145: registry allowlist の filter 式 (連言)。各式は sidecar への EXISTS 照合。
 	for _, expr := range q.Filters {
 		switch expr.Operator {
@@ -177,7 +186,11 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 		where = " WHERE " + strings.Join(conds, " AND ")
 	}
 	args = append(args, limit)
-	query := auditEventSelect + where + fmt.Sprintf(" ORDER BY occurred_at DESC, id DESC LIMIT $%d", len(args))
+	order := " ORDER BY occurred_at DESC, id DESC"
+	if backward {
+		order = " ORDER BY occurred_at ASC, id ASC"
+	}
+	query := auditEventSelect + where + order + fmt.Sprintf(" LIMIT $%d", len(args))
 	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return handleAuditListError(err)
@@ -193,6 +206,9 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 	}
 	if err := rows.Err(); err != nil {
 		return handleAuditListError(err)
+	}
+	if backward {
+		slices.Reverse(out)
 	}
 	return out, nil
 }

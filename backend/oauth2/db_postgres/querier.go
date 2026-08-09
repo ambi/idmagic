@@ -61,6 +61,7 @@ type Querier interface {
 	// Continuation page: resumes strictly after the client_id of the last row
 	// the caller saw.
 	ListClientsByTenantPageAfter(ctx context.Context, arg ListClientsByTenantPageAfterParams) ([]*Oauth2Client, error)
+	ListClientsByTenantPageBefore(ctx context.Context, arg ListClientsByTenantPageBeforeParams) ([]*Oauth2Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
 	// First page of ListAdminConsents keyset pagination (wi-159, ADR-158): the
 	// (user_id, client_id) primary key already backs this range scan.
@@ -68,6 +69,7 @@ type Querier interface {
 	// Continuation page: resumes strictly after the (user_id, client_id) keyset
 	// of the last row the caller saw.
 	ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*Consent, error)
+	ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*Consent, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)

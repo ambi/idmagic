@@ -216,6 +216,67 @@ func (q *Queries) ListApplicationAssignmentsByApplicationPageAfter(ctx context.C
 	return items, nil
 }
 
+const listApplicationAssignmentsByApplicationPageBefore = `-- name: ListApplicationAssignmentsByApplicationPageBefore :many
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = $1 AND aa.application_id = $2
+  AND (aa.subject_type, aa.subject_id) < ($3::text, $4::uuid)
+ORDER BY aa.subject_type DESC, aa.subject_id DESC
+LIMIT $5
+`
+
+type ListApplicationAssignmentsByApplicationPageBeforeParams struct {
+	TenantID          string
+	ApplicationID     string
+	BeforeSubjectType string
+	BeforeSubjectID   string
+	PageLimit         int32
+}
+
+type ListApplicationAssignmentsByApplicationPageBeforeRow struct {
+	TenantID      string
+	ApplicationID string
+	SubjectType   string
+	SubjectID     string
+	Visibility    string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+func (q *Queries) ListApplicationAssignmentsByApplicationPageBefore(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageBeforeParams) ([]*ListApplicationAssignmentsByApplicationPageBeforeRow, error) {
+	rows, err := q.db.Query(ctx, listApplicationAssignmentsByApplicationPageBefore,
+		arg.TenantID,
+		arg.ApplicationID,
+		arg.BeforeSubjectType,
+		arg.BeforeSubjectID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListApplicationAssignmentsByApplicationPageBeforeRow
+	for rows.Next() {
+		var i ListApplicationAssignmentsByApplicationPageBeforeRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ApplicationID,
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listApplicationAssignmentsByTenant = `-- name: ListApplicationAssignmentsByTenant :many
 SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
 FROM application_assignments aa JOIN applications a ON a.id = aa.application_id

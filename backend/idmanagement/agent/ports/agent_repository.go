@@ -16,6 +16,7 @@ type AgentRepository interface {
 	// ascending, strictly after the keyset (afterName, afterID). Pass "", ""
 	// for the first page. Backs ListAgents keyset pagination (wi-159, ADR-158).
 	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*agentdomain.Agent, error)
+	ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*agentdomain.Agent, error)
 	FindByID(ctx context.Context, tenantID, id string) (*agentdomain.Agent, error)
 	Save(ctx context.Context, agent *agentdomain.Agent) error
 	Delete(ctx context.Context, tenantID, id string) error

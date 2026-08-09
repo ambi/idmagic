@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -502,31 +503,26 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(ctx context.Context, t
 // ports.ProvisioningDeliveryRepository.ListPageByConnection (wi-159,
 // ADR-158): keyset pagination ordered by (created_at, id) descending —
 // matching ListByConnection's pre-existing "most recent first" order.
-func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
 	q := New(r.Pool)
+	filterStatus, filterSourceType := "", ""
+	if status != nil {
+		filterStatus = string(*status)
+	}
+	if sourceType != nil {
+		filterSourceType = string(*sourceType)
+	}
 	var rows []*ProvisioningDelivery
 	var err error
 	first := afterCreatedAt.IsZero() && afterID == ""
-	switch {
-	case status != nil && first:
-		rows, err = q.ListProvisioningDeliveriesByConnectionAndStatusPage(ctx, ListProvisioningDeliveriesByConnectionAndStatusPageParams{
-			TenantID: tenantID, ConnectionID: connectionID, Status: string(*status),
-			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
-		})
-	case status != nil:
-		rows, err = q.ListProvisioningDeliveriesByConnectionAndStatusPageAfter(ctx, ListProvisioningDeliveriesByConnectionAndStatusPageAfterParams{
-			TenantID: tenantID, ConnectionID: connectionID, Status: string(*status),
-			AfterCreatedAt: afterCreatedAt, AfterID: afterID,
-			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
-		})
-	case first:
+	if first {
 		rows, err = q.ListProvisioningDeliveriesByConnectionPage(ctx, ListProvisioningDeliveriesByConnectionPageParams{
-			TenantID: tenantID, ConnectionID: connectionID,
+			TenantID: tenantID, ConnectionID: connectionID, FilterStatus: filterStatus, FilterSourceType: filterSourceType,
 			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
 		})
-	default:
+	} else {
 		rows, err = q.ListProvisioningDeliveriesByConnectionPageAfter(ctx, ListProvisioningDeliveriesByConnectionPageAfterParams{
-			TenantID: tenantID, ConnectionID: connectionID,
+			TenantID: tenantID, ConnectionID: connectionID, FilterStatus: filterStatus, FilterSourceType: filterSourceType,
 			AfterCreatedAt: afterCreatedAt, AfterID: afterID,
 			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
 		})
@@ -541,6 +537,34 @@ func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Contex
 			return nil, err
 		}
 		out = append(out, d)
+	}
+	return out, nil
+}
+
+func (r *ProvisioningDeliveryRepository) ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+	filterStatus, filterSourceType := "", ""
+	if status != nil {
+		filterStatus = string(*status)
+	}
+	if sourceType != nil {
+		filterSourceType = string(*sourceType)
+	}
+	rows, err := New(r.Pool).ListProvisioningDeliveriesByConnectionPageBefore(ctx, ListProvisioningDeliveriesByConnectionPageBeforeParams{
+		TenantID: tenantID, ConnectionID: connectionID, FilterStatus: filterStatus, FilterSourceType: filterSourceType,
+		BeforeCreatedAt: beforeCreatedAt, BeforeID: beforeID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	slices.Reverse(rows)
+	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	for _, row := range rows {
+		delivery, err := mapDelivery(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, delivery)
 	}
 	return out, nil
 }

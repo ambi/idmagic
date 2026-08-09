@@ -86,13 +86,13 @@ func adminDeliveryListRequest(e interface {
 	return response
 }
 
-func seedDelivery(t *testing.T, repo *provisioningmemory.ProvisioningDeliveryRepository, id, connectionID string, now time.Time) {
+func seedDelivery(t *testing.T, repo *provisioningmemory.ProvisioningDeliveryRepository, id string, now time.Time) {
 	t.Helper()
 	// SourceID を id ごとに変える: Save の idempotency key は
 	// (TenantID, ConnectionID, SourceType, SourceID, SourceVersion) なので、同一 SourceID/
 	// SourceVersion で複数件シードすると 2件目以降が無視される (IdempotencyKey 参照)。
 	if _, err := repo.Save(context.Background(), &provisioningdomain.ProvisioningDelivery{
-		ID: id, TenantID: tenancydomain.DefaultTenantID, ConnectionID: connectionID,
+		ID: id, TenantID: tenancydomain.DefaultTenantID, ConnectionID: "app-1",
 		SourceType: provisioningdomain.SourceTypeUser, SourceID: id, SourceVersion: 1,
 		Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.DeliveryPending,
 		CreatedAt: now, UpdatedAt: now,
@@ -116,7 +116,7 @@ func TestAdminDeliveryListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
 	e, repo := newAdminDeliveryPaginationHandler(t)
 	base := time.Now().UTC().Add(-time.Hour)
 	for i, id := range []string{"charlie", "delta", "echo"} {
-		seedDelivery(t, repo, id, "app-1", base.Add(time.Duration(i)*time.Minute))
+		seedDelivery(t, repo, id, base.Add(time.Duration(i)*time.Minute))
 	}
 
 	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?limit=2")
@@ -131,7 +131,7 @@ func TestAdminDeliveryListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
 
 func TestAdminDeliveryListOmitsLinkHeaderOnLastPage(t *testing.T) {
 	e, repo := newAdminDeliveryPaginationHandler(t)
-	seedDelivery(t, repo, "solo", "app-1", time.Now().UTC())
+	seedDelivery(t, repo, "solo", time.Now().UTC())
 
 	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?limit=200")
 	if resp.Code != http.StatusOK {
@@ -146,7 +146,7 @@ func TestAdminDeliveryListNextPageContinuesWithoutOverlap(t *testing.T) {
 	e, repo := newAdminDeliveryPaginationHandler(t)
 	base := time.Now().UTC().Add(-time.Hour)
 	for i, id := range []string{"charlie", "delta", "echo"} {
-		seedDelivery(t, repo, id, "app-1", base.Add(time.Duration(i)*time.Minute))
+		seedDelivery(t, repo, id, base.Add(time.Duration(i)*time.Minute))
 	}
 
 	first := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?limit=2")
@@ -160,6 +160,9 @@ func TestAdminDeliveryListNextPageContinuesWithoutOverlap(t *testing.T) {
 	second := adminDeliveryListRequest(e, nextPath)
 	if second.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", second.Code, second.Body.String())
+	}
+	if !strings.Contains(second.Header().Get("Link"), `rel="prev"`) {
+		t.Fatalf("second page missing rel=prev: %q", second.Header().Get("Link"))
 	}
 	firstBody := decodeDeliveryListBody(t, first.Body.Bytes())
 	secondBody := decodeDeliveryListBody(t, second.Body.Bytes())
@@ -175,6 +178,29 @@ func TestAdminDeliveryListNextPageContinuesWithoutOverlap(t *testing.T) {
 	}
 	if len(secondBody) == 0 {
 		t.Fatal("expected the second page to return at least one delivery")
+	}
+}
+
+func TestAdminDeliveryListFiltersBySourceType(t *testing.T) {
+	e, repo := newAdminDeliveryPaginationHandler(t)
+	now := time.Now().UTC()
+	seedDelivery(t, repo, "user-delivery", now)
+	if _, err := repo.Save(context.Background(), &provisioningdomain.ProvisioningDelivery{
+		ID: "group-delivery", TenantID: tenancydomain.DefaultTenantID, ConnectionID: "app-1",
+		SourceType: provisioningdomain.SourceTypeGroup, SourceID: "group-1", SourceVersion: 1,
+		Operation: provisioningdomain.OperationCreate, Status: provisioningdomain.DeliveryPending,
+		CreatedAt: now.Add(time.Minute), UpdatedAt: now.Add(time.Minute),
+	}); err != nil {
+		t.Fatalf("seed group delivery: %v", err)
+	}
+
+	resp := adminDeliveryListRequest(e, "/api/admin/v1/applications/app-1/provisioning/deliveries?source_type=group")
+	if resp.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	deliveries := decodeDeliveryListBody(t, resp.Body.Bytes())
+	if len(deliveries) != 1 || deliveries[0]["id"] != "group-delivery" {
+		t.Fatalf("unexpected source_type result: %+v", deliveries)
 	}
 }
 

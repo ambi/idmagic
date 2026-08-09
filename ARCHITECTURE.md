@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-08-08
+updated_at: 2026-08-09
 ---
 
 # Architecture: repo
@@ -234,6 +234,14 @@ sanitizes) the header, which is what makes a single id shared across the proxy a
 worth having. A proxy that passes the client value through untouched must not be trusted. Either way, a
 reused inbound value is bounded in length and character set as defense in depth against header and log
 injection.
+
+### Cursor pagination
+
+Administrative list APIs use signed, versioned keyset cursors carried in RFC 8288 `Link` response
+headers. A cursor binds its tenant, query and sort identity, direction, and row boundary; new cursors do
+not expire because they represent an addressable list position rather than an authorization capability.
+Handlers emit only the available `prev` and `next` directions, while every request still passes through
+normal authentication, authorization, and tenant isolation.
 
 ### HTTP error responses
 
@@ -748,6 +756,9 @@ The `memory` runtime keeps this state in process and is therefore **single-repli
   central router only calls the Module ([ADR-091](decisions/ADR-091-module-pattern-di-routing.md)).
 - Error response bodies migrate to RFC 9457 Problem Details except where a protocol spec mandates its own
   error shape (OAuth2, SCIM, DCR) ([ADR-154](decisions/ADR-154-rfc-9457-problem-details-for-http-errors.md)).
+- Addressable administrative list positions use non-expiring, bidirectional signed keyset cursors rather
+  than offsets or short-lived continuation tokens
+  ([ADR-159](decisions/ADR-159-addressable-bidirectional-cursor-pages.md)).
 - Audit log (immutable, long-retention, legal/SIEM evidence) and application log (operational, stdout
   JSON Lines with `trace_id`/`span_id`/`request_id`) are kept as two separate tracks with different
   storage and retention, rather than one shared log stream

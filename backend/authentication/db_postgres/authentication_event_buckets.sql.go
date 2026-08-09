@@ -140,6 +140,67 @@ func (q *Queries) ListAuthEventBucketsAfter(ctx context.Context, arg ListAuthEve
 	return items, nil
 }
 
+const listAuthEventBucketsBefore = `-- name: ListAuthEventBucketsBefore :many
+SELECT tenant_id, kind, key_hash, window_start, count, first_seen, last_seen
+FROM authentication_event_buckets
+WHERE ($1::text = '' OR tenant_id = $1::text)
+  AND (window_start, kind, key_hash) > ($2::timestamptz, $3::text, $4::text)
+ORDER BY window_start ASC, kind ASC, key_hash ASC
+LIMIT $5
+`
+
+type ListAuthEventBucketsBeforeParams struct {
+	Column1           string
+	BeforeWindowStart time.Time
+	BeforeKind        string
+	BeforeKeyHash     string
+	PageLimit         int32
+}
+
+type ListAuthEventBucketsBeforeRow struct {
+	TenantID    string
+	Kind        string
+	KeyHash     string
+	WindowStart time.Time
+	Count       int64
+	FirstSeen   time.Time
+	LastSeen    time.Time
+}
+
+func (q *Queries) ListAuthEventBucketsBefore(ctx context.Context, arg ListAuthEventBucketsBeforeParams) ([]*ListAuthEventBucketsBeforeRow, error) {
+	rows, err := q.db.Query(ctx, listAuthEventBucketsBefore,
+		arg.Column1,
+		arg.BeforeWindowStart,
+		arg.BeforeKind,
+		arg.BeforeKeyHash,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAuthEventBucketsBeforeRow
+	for rows.Next() {
+		var i ListAuthEventBucketsBeforeRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.Kind,
+			&i.KeyHash,
+			&i.WindowStart,
+			&i.Count,
+			&i.FirstSeen,
+			&i.LastSeen,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const recordAuthEventBucket = `-- name: RecordAuthEventBucket :one
 INSERT INTO authentication_event_buckets (tenant_id, kind, key_hash, window_start, count, first_seen, last_seen)
 VALUES ($1, $2, $3, $4, 1, $5, $5)

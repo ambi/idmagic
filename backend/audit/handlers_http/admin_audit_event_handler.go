@@ -185,24 +185,29 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 		if err != nil {
 			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
 		}
-		query.AfterOccurredAt = afterOccurredAt
-		query.AfterID = page.AfterID
+		if page.Direction == support.PageBackward {
+			query.BeforeOccurredAt = afterOccurredAt
+			query.BeforeID = page.AfterID
+		} else {
+			query.AfterOccurredAt = afterOccurredAt
+			query.AfterID = page.AfterID
+		}
 	}
 	records, err := d.AuditEventRepo.List(c.Request().Context(), query)
 	if err != nil {
 		return support.WriteServerError(c, err)
 	}
-	hasMore := len(records) > page.Limit
-	if hasMore {
-		records = records[:page.Limit]
-	}
+	records, hasPrevious, hasNext := support.TrimPage(records, page)
 	response := make([]AdminAuditEventResponse, len(records))
 	for i, rec := range records {
 		response[i] = toAdminAuditEventResponse(rec)
 	}
-	if hasMore {
+	if len(records) > 0 {
+		first := records[0]
 		last := records[len(records)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, actor.TenantID, auditEventQueryHash(c), last.OccurredAt.UTC().Format(time.RFC3339Nano), last.ID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, actor.TenantID, auditEventQueryHash(c),
+			first.OccurredAt.UTC().Format(time.RFC3339Nano), first.ID,
+			last.OccurredAt.UTC().Format(time.RFC3339Nano), last.ID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

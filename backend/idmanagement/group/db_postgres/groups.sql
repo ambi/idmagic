@@ -10,6 +10,13 @@ WHERE tenant_id=$1
 ORDER BY name, id
 LIMIT sqlc.arg(page_limit);
 
+-- name: ListGroupsByTenantPageBefore :many
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+WHERE tenant_id=$1
+  AND (name, id) < (sqlc.arg(before_name)::text, sqlc.arg(before_id)::uuid)
+ORDER BY name DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
 -- name: ListGroupsByTenantPageAfter :many
 -- Continuation page: resumes strictly after the (name, id) keyset of the last
 -- row the caller saw.

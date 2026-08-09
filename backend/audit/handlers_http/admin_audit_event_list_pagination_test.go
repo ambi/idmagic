@@ -114,6 +114,9 @@ func TestAdminAuditEventListNextPageContinuesWithoutOverlap(t *testing.T) {
 	if second.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", second.Code, second.Body.String())
 	}
+	if !strings.Contains(second.Header().Get("Link"), `rel="prev"`) {
+		t.Fatalf("second page missing rel=prev: %q", second.Header().Get("Link"))
+	}
 	firstBody := decodeAuditEventListBody(t, first.Body.Bytes())
 	secondBody := decodeAuditEventListBody(t, second.Body.Bytes())
 	seen := map[string]bool{}

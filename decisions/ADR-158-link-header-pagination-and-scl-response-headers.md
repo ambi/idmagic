@@ -2,6 +2,7 @@
 status: accepted
 authors: [tn]
 created_at: 2026-08-09
+superseded_by: [ADR-159]
 ---
 
 # ADR-158: 一覧 API のページングは RFC 8288 `Link` ヘッダで表現する
@@ -15,6 +16,8 @@ wi-159 で admin/API の主要一覧 (User、Group、Agent、Application、Conse
 - 一覧 API のページング状態は body ではなく RFC 8288 `Link` レスポンスヘッダ (`rel="next"`、GitHub REST API と同型) で表す。body は常に純粋なドメインデータのみとし、`next_cursor`/`has_more` は持たせない。`rel="first"/"prev"/"last"` は返さない。
 - 共通契約: input は `cursor: String, optional` + `limit: Integer, optional` (+ interface 固有の sort/filter)。output は `<items>: T[]` のみ。`limit` の既定値・上限は interface ごとに明記する。命名は `page_size` ではなく既存 `ListProvisioningDeliveries`/`AuditEventQuery` にある `limit` に一本化する。
 - cursor は opaque token とし、tenant_id・filter/sort・最終行の keyset (sort key + id)・expiry を含めて署名する (HMAC-SHA256 + base64url)。検証失敗は既存の `InvalidRequestError` を返す。
+
+cursor の expiry と `rel="prev"` 非対応は [ADR-159](ADR-159-addressable-bidirectional-cursor-pages.md) が部分的に上書きする。body ではなく RFC 8288 `Link` ヘッダを使う決定は引き続き有効である。
 - `SPECIFICATION_CORE_LANGUAGE.md` に `output.headers` のレスポンスヘッダ宣言語彙を新設し、`tools/scl-to-openapi` (`responses.headers`)・`tools/scl-to-jsonschema`・`tools/check` を対応させる。
 - `ListProvisioningDeliveries` (`stability: stable`) を含め、対象の全 list interface をこの契約に合わせて改修する。pre-release のため互換維持は理由にならない。
 - 絶対 URL の組み立ては `backend/shared/http/support_http` の `Deps.CanonicalLocation` を再利用する。

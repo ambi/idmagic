@@ -4118,7 +4118,7 @@
         },
         "cursor": {
           "type": "string",
-          "description": "ページング継続トークン。前回応答の Link response header (rel=\"next\") の URL に\n埋め込まれた値をそのまま渡す。tenant・sort・filter を含めて署名された opaque token。\n"
+          "description": "応答の Link response header (rel=\"prev\" / rel=\"next\") の URL に埋め込まれた値を\nそのまま渡す。tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token\nは時刻で失効せず、旧 expiry 付き token は expiry まで有効。\n"
         },
         "limit": {
           "type": "integer",

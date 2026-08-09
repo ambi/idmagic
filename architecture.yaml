@@ -2,7 +2,7 @@
 # 横断台帳。context 台帳・実行単位・複雑度 budget と、どの context にも属さない module。
 # 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
 context: repo
-updated_at: 2026-07-29
+updated_at: 2026-08-09
 contexts:
   System:
     spec: spec/contexts/system.yaml

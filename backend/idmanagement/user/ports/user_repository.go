@@ -3,6 +3,7 @@ package ports
 import (
 	"context"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
@@ -22,5 +23,8 @@ type UserRepository interface {
 	// (afterUsername, afterID). Pass "", "" for the first page. Backs
 	// ListAdminUsers keyset pagination (wi-159, ADR-158).
 	ListPage(ctx context.Context, tenantID, afterUsername, afterID string, limit int) ([]*userdomain.User, error)
+	ListPageBefore(ctx context.Context, tenantID, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error)
+	ListPageFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, afterUsername, afterID string, limit int) ([]*userdomain.User, error)
+	ListPageBeforeFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error)
 	Save(ctx context.Context, user *userdomain.User) error
 }

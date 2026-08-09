@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-08-09
@@ -11,13 +11,27 @@ initial_context:
       - interfaces.ListAdminUsers
       - interfaces.ListGroups
       - interfaces.ListAgents
+      - objectives.ListAdminUsersLatency
+      - objectives.ListGroupsLatency
+      - objectives.ListAgentsLatency
       - scenarios.管理者はユーザー一覧をページングしながら安定して閲覧できる
       - flows.AdminUsers
-    Application: [interfaces.ListAdminApplications, interfaces.ListApplicationAssignments]
-    Audit: [interfaces.ListAdminAuditEvents]
+      - flows.AdminGroups
+      - flows.AdminAgents
+    Application:
+      - interfaces.ListAdminApplications
+      - interfaces.ListApplicationAssignments
+      - objectives.ListAdminApplicationsLatency
+      - flows.AdminApplicationManagement
+    Audit:
+      - models.AuditEventQuery
+      - interfaces.ListAdminAuditEvents
+      - objectives.ListAdminAuditEventsLatency
+      - scenarios.管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される
+      - flows.AdminAuditEvents
     Authentication: [interfaces.ListAuthenticationEventBuckets]
     OAuth2: [interfaces.ListAdminOAuth2Clients, interfaces.ListAdminConsents]
-    Provisioning: [interfaces.ListProvisioningDeliveries]
+    Provisioning: [interfaces.ListProvisioningDeliveries, objectives.ListProvisioningDeliveriesLatency]
   source:
     - backend/shared/http/support_http/pagination_cursor.go
     - backend/shared/http/support_http/pagination_request.go
@@ -35,14 +49,27 @@ affected_spec:
   - { context: IdManagement, kind: interface, element: ListAdminUsers }
   - { context: IdManagement, kind: interface, element: ListGroups }
   - { context: IdManagement, kind: interface, element: ListAgents }
+  - { context: IdManagement, kind: objective, element: ListAdminUsersLatency }
+  - { context: IdManagement, kind: objective, element: ListGroupsLatency }
+  - { context: IdManagement, kind: objective, element: ListAgentsLatency }
+  - { context: IdManagement, kind: scenario, element: 管理者はユーザー一覧をページングしながら安定して閲覧できる }
   - { context: IdManagement, kind: flow, element: AdminUsers }
+  - { context: IdManagement, kind: flow, element: AdminGroups }
+  - { context: IdManagement, kind: flow, element: AdminAgents }
   - { context: Application, kind: interface, element: ListAdminApplications }
   - { context: Application, kind: interface, element: ListApplicationAssignments }
+  - { context: Application, kind: objective, element: ListAdminApplicationsLatency }
+  - { context: Application, kind: flow, element: AdminApplicationManagement }
+  - { context: Audit, kind: model, element: AuditEventQuery }
   - { context: Audit, kind: interface, element: ListAdminAuditEvents }
+  - { context: Audit, kind: objective, element: ListAdminAuditEventsLatency }
+  - { context: Audit, kind: scenario, element: 管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される }
+  - { context: Audit, kind: flow, element: AdminAuditEvents }
   - { context: Authentication, kind: interface, element: ListAuthenticationEventBuckets }
   - { context: OAuth2, kind: interface, element: ListAdminOAuth2Clients }
   - { context: OAuth2, kind: interface, element: ListAdminConsents }
   - { context: Provisioning, kind: interface, element: ListProvisioningDeliveries }
+  - { context: Provisioning, kind: objective, element: ListProvisioningDeliveriesLatency }
 ---
 
 # 管理一覧を正確な集計と共有可能な双方向 cursor URL で閲覧できるようにする
@@ -117,24 +144,35 @@ tenant では「総ユーザー」「有効」「管理者」「MFA」や検索�
 7. contract、adapter、component、E2E、query plan を検証し、completion 後 done へ移す。
 
 ## Tasks
-- [ ] T001 [ADR] ADR-159 を作成し、ADR-158 の expiry と prev 非対応だけを相互参照付きで部分 supersede する。
-- [ ] T002 [SCL] 10 list interfaces の prev/next Link・無期限 cursor、User query/status、代表 scenario/flow/
-  objective を更新し、派生物と OpenAPI baseline を同期する。
-- [ ] T003 [Shared] versioned cursor と bidirectional Link contract を実装する。RED: no-expiry、legacy exp、
-  direction、tamper/tenant/query mismatch、prev+next parsing tests を先に fail 確認（各 list interface contract）→ GREEN。
-- [ ] T004 [Persistence] 10 interfaces の reverse page repository contract を実装する。RED: first/middle/last、
-  same sort key、途中 insert/delete、tenant isolation tests を先に fail 確認（scenario
-  `管理者はユーザー一覧をページングしながら安定して閲覧できる` 等）→ GREEN。
-- [ ] T005 [Search] User query/status と PostgreSQL search column/trigram index、memory adapter を実装する。
-  RED: tenant-wide match、case folding、roles/status、cursor query binding tests を先に fail 確認（interface
-  `ListAdminUsers`）→ GREEN。
-- [ ] T006 [HTTP] 10 list handlers で rel prev/next を返す。RED: header directions、invalid cursor、別 tenant、
-  query変更 tests を先に fail 確認（各 list interface）→ GREEN。
-- [ ] T007 [UI] shared page hook/controls と 5 画面を一ページ置換・URL navigation に移行する。
-  component tests で next/prev、reload、browser history、invalid cursor recovery、最終ページを先に固定する。
-- [ ] T008 [Users UI] server search/status と usage.users の単一 cardへ移行し、page-local 3 metrics と fallback を削除する。
-  component/route tests で 50 件超、usage missing、filter cursor reset、URL復元を確認する。
-- [ ] T009 [Verify] 全 context contract、query plan、UI E2E、共有 URL の手動確認を実施する。
+- [x] T001 [ADR] ADR-159 を作成し、ADR-158 の expiry と prev 非対応だけを相互参照付きで部分 supersede する。
+- [x] T002 [SCL] 10 list interfaces の prev/next Link・無期限 cursor、User query/status、代表 scenario/flow/
+  objective を更新し、`just check-scl` / `just scl-render` / `just check-api-compat` を通して派生物と OpenAPI
+  baseline を同期した。
+- [x] T003 [Shared] versioned cursor と bidirectional Link contract を実装した。RED: 新規 token に version /
+  direction がなく expiry が残る `TestSetNextLinkIssuesVersionedForwardCursorWithoutExpiry`、backward direction を
+  `PageRequest` が失う `TestParsePageRequestPreservesBackwardDirection`、prev+next builder/issuer が未実装の
+  `TestBuildPageLinksIncludesPreviousAndNext` / `TestSetPageLinksSignsPreviousAndNextBoundaries` を先に fail 確認。
+  legacy expiry、tamper、tenant/query mismatch を含む shared HTTP package を GREEN（10 list interface contract）。
+- [x] T004 [Persistence] 10 interfaces の repository/use-case に canonical order を保つ reverse keyset contract を実装した。
+  RED: `TestKeysetPageBeforeAscendingReturnsNearestPageInCanonicalOrder` 等が未定義で fail、GREEN: first/middle/last、
+  same-key ID tie-break、途中 insert/delete を shared memory contract で、User/Provisioning の memory/PostgreSQL
+  adapter と全 Go suite で tenant isolation を確認した。
+- [x] T005 [Search] User query/status と generated normalized search column / partial trigram GIN、memory/PostgreSQL
+  adapter を実装した。RED: `TestUserRepositoryListPageFilteredSearchesTenantWideAndSupportsPrevious` が未定義で fail。
+  GREEN: case-insensitive name/email/role、status、literal LIKE wildcard、tenant-wide isolation、cursor query binding と
+  `TestUserSearchQueryPlanUsesTenantAndTrigramIndex` の `EXPLAIN (ANALYZE, BUFFERS)` を確認した。
+- [x] T006 [HTTP] 10 list handlers で存在する方向だけ rel prev/next を返す。RED:
+  `TestAdminUserListPreviousLinkReturnsPriorPage` が prev 不在で fail。GREEN: 全10 interface の second-page rel=prev、
+  User の実往復、invalid/tampered/別 tenant/query変更、Provisioning status/source_type filter を handler tests で確認した。
+- [x] T007 [UI] 共通 `PageNavigation` と5 route/pageを一ページ置換・URL cursor navigationへ移行した。
+  `requestPage` の prev/next parse と共通 control の両方向/終端、各 loader のURL復元・invalid cursor先頭復帰、既存
+  browser-history testsを含む558 component/unit testsをGREENにした。
+- [x] T008 [Users UI] server query/status と `AdminSettings.usage.users` の単一 cardへ移行し、page-local 3 metrics と
+  page-size fallbackを削除した。usage missing時の非表示、filter変更時cursor非継承、URL初期値、無効cursor通知を
+  component/type testsで確認した。
+- [x] T009 [Verify] 全 context contract、query plan、UI E2E、共有 URL の確認を実施した。50件超の手動 seed は
+  全10 interface の `limit=2` handler往復テスト、5画面の一ページ置換/URL/history component testで同じ境界を
+  決定的に検証した。1時間の実時間待機は、新規token payloadに `exp` が存在しないcodec testで置き換えた。
 
 ## Verification
 - `just check`
@@ -154,3 +192,24 @@ HMAC に tenant/query/sort/direction/keyset を含め、改ざん・横断利用
 一括無効化できる。reverse paging と同時更新では「固定された第 N ページ」を保証せず、keyset 境界から見た
 重複なしの navigation を保証する。User contains search は index と tenant predicate を必須にし、WI-161 の
 大規模 scale profile でも query cost を検証可能な形にする。
+
+cursor / Link は再帰や組み合わせ文法を持たず認可判断も行わない固定形式 parser なので、本 WI では fuzz test を
+追加しない。攻撃面は署名改ざん、tenant/query mismatch、legacy expiry、未知 version/direction の例示テストで覆う。
+
+## Completion
+- **Completed At**: 2026-08-09
+- **Summary**:
+  管理一覧10 interfaceをversioned・無期限・双方向の署名付きkeyset cursorへ統一し、5つの管理画面を
+  URLで共有・復元可能な一ページ置換型navigationへ移行した。ユーザー一覧はtenant全体のquery/status検索、
+  PostgreSQL trigram index、正確なusage totalを使用し、page-localの不正確な集計を廃止した。ADR-159、SCL、
+  OpenAPI派生物、architecture design record/ledgerも同期した。
+- **Verification Results**:
+  - `just verify` - passed（check、API compatibility、traceability、tools、Go、UIの11標準ゲート）
+  - `just scl-render` - passed
+  - `just check-schema` - passed（空DB適用、dry-run、再適用のschema convergence）
+  - `just verify-go` - passed（lint 0 issues、全package race tests）
+  - `just verify-ui` - passed（format、lint、558 unit/component tests、typecheck/build）
+  - `just test-ui-e2e` - passed（23 browser scenarios）
+  - `TestUserSearchQueryPlanUsesTenantAndTrigramIndex` - passed（tenant predicateと`users_search_text_trgm_idx`）
+  - pagination contract tests - passed（10 interfaceのprev/next、往復、改ざん、別tenant/query、legacy expiry、
+    新規tokenのexpiry非保持）

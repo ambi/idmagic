@@ -114,14 +114,11 @@ describe('AdminGroupsPage', () => {
     expect(await screen.findByText('Could not delete the group.')).toBeInTheDocument()
   })
 
-  it('loads and appends the next page when "load more" is clicked', async () => {
-    const nextGroup: AdminGroup = { ...group, id: 'group-2', name: 'Sales' }
+  it('navigates to the next addressable page without appending rows', async () => {
+    const onPage = mock()
     stubGlobal(
       'fetch',
       mock((url: string) => {
-        if (url.includes('cursor=abc')) {
-          return Promise.resolve(response(200, { groups: [nextGroup] }))
-        }
         if (url.includes('/api/admin/v1/groups/group-1')) {
           return Promise.resolve(response(200, { group, members: [] }))
         }
@@ -131,11 +128,13 @@ describe('AdminGroupsPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminGroupsPage csrfToken="csrf" groups={[group]} nextCursor="abc" />)
+    await renderWithRouter(
+      <AdminGroupsPage csrfToken="csrf" groups={[group]} nextCursor="abc" onPage={onPage} />,
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+    fireEvent.click(screen.getByRole('button', { name: tCommon.nextPage }))
 
-    expect(await screen.findByText('Sales')).toBeInTheDocument()
+    expect(onPage).toHaveBeenCalledWith('abc')
     expect(screen.getAllByText('Engineering').length).toBeGreaterThan(0)
   })
 })

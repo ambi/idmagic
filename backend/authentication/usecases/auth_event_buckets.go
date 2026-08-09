@@ -62,6 +62,32 @@ func ListAuthEventBuckets(
 	return views, nil
 }
 
+func ListAuthEventBucketsBefore(
+	ctx context.Context,
+	store authnports.AuthEventBucketStore,
+	tenantID string,
+	beforeWindowStart time.Time,
+	beforeKey string,
+	limit int,
+) ([]AuthEventBucketView, error) {
+	if store == nil {
+		return []AuthEventBucketView{}, nil
+	}
+	limit = clampAuthEventBucketLimit(limit)
+	buckets, err := store.ListBefore(ctx, tenantID, beforeWindowStart, beforeKey, limit)
+	if err != nil {
+		return nil, err
+	}
+	views := make([]AuthEventBucketView, 0, len(buckets))
+	for _, bucket := range buckets {
+		views = append(views, AuthEventBucketView{
+			Kind: string(bucket.Kind), KeyHash: bucket.KeyHash, WindowStart: bucket.WindowStart,
+			Count: bucket.Count, FirstSeen: bucket.FirstSeen, LastSeen: bucket.LastSeen,
+		})
+	}
+	return views, nil
+}
+
 func clampAuthEventBucketLimit(limit int) int {
 	if limit <= 0 {
 		return AuthEventBucketDefaultLimit

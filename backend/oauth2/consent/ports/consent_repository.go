@@ -15,6 +15,7 @@ type ConsentRepository interface {
 	// afterClientID). Pass "", "" for the first page. Backs ListAdminConsents
 	// keyset pagination (wi-159, ADR-158).
 	ListPage(ctx context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*consentdomain.Consent, error)
+	ListPageBefore(ctx context.Context, tenantID, beforeUserID, beforeClientID string, limit int) ([]*consentdomain.Consent, error)
 	Save(ctx context.Context, tenantID string, c *consentdomain.Consent) error
 	Revoke(ctx context.Context, tenantID, sub, clientID string) error
 	// DeleteAllForSub は ADR-036 の anonymize cascade から呼ばれる。

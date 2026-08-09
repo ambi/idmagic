@@ -61,6 +61,19 @@ func (r *AgentRepository) ListPage(_ context.Context, tenantID, afterName, after
 	return sharedmem.KeysetPage(out, key, false, afterName, afterID, limit), nil
 }
 
+func (r *AgentRepository) ListPageBefore(_ context.Context, tenantID, beforeName, beforeID string, limit int) ([]*agentdomain.Agent, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*agentdomain.Agent, 0)
+	for _, agent := range r.agents {
+		if agent.TenantID == tenantID {
+			out = append(out, cloneAgent(agent))
+		}
+	}
+	key := func(a *agentdomain.Agent) (string, string) { return a.Name, a.ID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeName, beforeID, limit), nil
+}
+
 func (r *AgentRepository) FindByID(_ context.Context, tenantID, id string) (*agentdomain.Agent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

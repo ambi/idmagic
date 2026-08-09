@@ -58,4 +58,5 @@ type AuthEventBucketStore interface {
 	// "kind|keyHash" 形式で、直近応答の最終行の Kind/KeyHash から組み立てる。
 	// ゼロ値/空文字列なら先頭ページ。
 	List(ctx context.Context, tenantID string, afterWindowStart time.Time, afterKey string, limit int) ([]AuthEventBucket, error)
+	ListBefore(ctx context.Context, tenantID string, beforeWindowStart time.Time, beforeKey string, limit int) ([]AuthEventBucket, error)
 }

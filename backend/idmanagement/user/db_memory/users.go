@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
@@ -110,4 +111,60 @@ func (r *UserRepository) ListPage(_ context.Context, tenantID, afterUsername, af
 	}
 	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
 	return sharedmem.KeysetPage(out, key, false, afterUsername, afterID, limit), nil
+}
+
+func (r *UserRepository) ListPageBefore(_ context.Context, tenantID, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*userdomain.User, 0, len(r.bySub))
+	for _, user := range r.bySub {
+		if user.TenantID == tenantID && !user.IsDeleted() {
+			out = append(out, user)
+		}
+	}
+	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeUsername, beforeID, limit), nil
+}
+
+func (r *UserRepository) ListPageFiltered(_ context.Context, tenantID, query string, status *idmdomain.UserStatus, afterUsername, afterID string, limit int) ([]*userdomain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := r.filteredUsers(tenantID, query, status)
+	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
+	return sharedmem.KeysetPage(out, key, false, afterUsername, afterID, limit), nil
+}
+
+func (r *UserRepository) ListPageBeforeFiltered(_ context.Context, tenantID, query string, status *idmdomain.UserStatus, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := r.filteredUsers(tenantID, query, status)
+	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeUsername, beforeID, limit), nil
+}
+
+func (r *UserRepository) filteredUsers(tenantID, query string, status *idmdomain.UserStatus) []*userdomain.User {
+	query = strings.ToLower(strings.TrimSpace(query))
+	out := make([]*userdomain.User, 0, len(r.bySub))
+	for _, user := range r.bySub {
+		if user.TenantID != tenantID || user.IsDeleted() {
+			continue
+		}
+		if status != nil && user.Lifecycle.EffectiveStatus() != *status {
+			continue
+		}
+		if query != "" {
+			fields := []string{user.PreferredUsername, user.ID, strings.Join(user.Roles, " ")}
+			if user.Name != nil {
+				fields = append(fields, *user.Name)
+			}
+			if user.Email != nil {
+				fields = append(fields, *user.Email)
+			}
+			if !strings.Contains(strings.ToLower(strings.Join(fields, " ")), query) {
+				continue
+			}
+		}
+		out = append(out, user)
+	}
+	return out
 }

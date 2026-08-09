@@ -88,14 +88,16 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	apps, err := d.ApplicationRepo.ListPage(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
+	var apps []*domain.Application
+	if page.Direction == support.PageBackward {
+		apps, err = d.ApplicationRepo.ListPageBefore(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
+	} else {
+		apps, err = d.ApplicationRepo.ListPage(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return err
 	}
-	hasMore := len(apps) > page.Limit
-	if hasMore {
-		apps = apps[:page.Limit]
-	}
+	apps, hasPrevious, hasNext := support.TrimPage(apps, page)
 
 	// Bulkロード：カテゴリ
 	categoryMap := make(map[string]string)
@@ -187,9 +189,11 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 			UpdatedAt:            app.UpdatedAt,
 		}
 	}
-	if hasMore {
+	if len(apps) > 0 {
+		first := apps[0]
 		last := apps[len(apps)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminApplicationsQuery, last.Name, last.ID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAdminApplicationsQuery,
+			first.Name, first.ID, last.Name, last.ID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}
@@ -371,21 +375,25 @@ func (d Deps) handleListAssignments(c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
-	assignments, err := appusecases.ListAssignments(c.Request().Context(), d.assignmentDeps(), c.Param("id"), page.AfterPrimary, page.AfterID, page.Limit+1)
+	var assignments []*domain.ApplicationAssignment
+	if page.Direction == support.PageBackward {
+		assignments, err = appusecases.ListAssignmentsBefore(c.Request().Context(), d.assignmentDeps(), c.Param("id"), page.AfterPrimary, page.AfterID, page.Limit+1)
+	} else {
+		assignments, err = appusecases.ListAssignments(c.Request().Context(), d.assignmentDeps(), c.Param("id"), page.AfterPrimary, page.AfterID, page.Limit+1)
+	}
 	if err != nil {
 		return d.writeApplicationError(c, err)
 	}
-	hasMore := len(assignments) > page.Limit
-	if hasMore {
-		assignments = assignments[:page.Limit]
-	}
+	assignments, hasPrevious, hasNext := support.TrimPage(assignments, page)
 	out := make([]assignmentResponse, len(assignments))
 	for i, a := range assignments {
 		out[i] = toAssignmentResponse(a)
 	}
-	if hasMore {
+	if len(assignments) > 0 {
+		first := assignments[0]
 		last := assignments[len(assignments)-1]
-		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listApplicationAssignmentsQuery, string(last.SubjectType), last.SubjectID, hasMore); err != nil {
+		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listApplicationAssignmentsQuery,
+			string(first.SubjectType), first.SubjectID, string(last.SubjectType), last.SubjectID, hasPrevious, hasNext); err != nil {
 			return err
 		}
 	}

@@ -79,6 +79,22 @@ func (r *ConsentRepository) ListPage(_ context.Context, tenantID, afterUserID, a
 	return sharedmem.KeysetPage(out, key, false, afterUserID, afterClientID, limit), nil
 }
 
+func (r *ConsentRepository) ListPageBefore(_ context.Context, tenantID, beforeUserID, beforeClientID string, limit int) ([]*domain.Consent, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.Consent, 0)
+	for _, mc := range r.consents {
+		if mc.TenantID != tenantID {
+			continue
+		}
+		cloned := mc.Consent
+		cloned.Scopes = slices.Clone(mc.Scopes)
+		out = append(out, &cloned)
+	}
+	key := func(c *domain.Consent) (string, string) { return c.UserID, c.ClientID }
+	return sharedmem.KeysetPageBefore(out, key, false, beforeUserID, beforeClientID, limit), nil
+}
+
 func (r *ConsentRepository) Save(_ context.Context, tenantID string, c *domain.Consent) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

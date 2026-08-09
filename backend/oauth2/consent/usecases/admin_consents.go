@@ -37,6 +37,10 @@ func ListConsents(ctx context.Context, deps ConsentDeps, afterUserID, afterClien
 	return deps.ConsentRepo.ListPage(ctx, tenancy.TenantID(ctx), afterUserID, afterClientID, limit)
 }
 
+func ListConsentsBefore(ctx context.Context, deps ConsentDeps, beforeUserID, beforeClientID string, limit int) ([]*domain.Consent, error) {
+	return deps.ConsentRepo.ListPageBefore(ctx, tenancy.TenantID(ctx), beforeUserID, beforeClientID, limit)
+}
+
 func GetConsent(
 	ctx context.Context,
 	deps ConsentDeps,

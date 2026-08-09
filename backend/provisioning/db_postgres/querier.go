@@ -21,19 +21,12 @@ type Querier interface {
 	ListProvisioningDeliveriesByConnection(ctx context.Context, arg ListProvisioningDeliveriesByConnectionParams) ([]*ProvisioningDelivery, error)
 	ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusParams) ([]*ProvisioningDelivery, error)
 	// First page of ListProvisioningDeliveries keyset pagination (wi-159,
-	// ADR-158): id is the tie-break, matching ListProvisioningDeliveriesByConnectionAndStatus's
-	// pre-existing "most recent first" order.
-	ListProvisioningDeliveriesByConnectionAndStatusPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusPageParams) ([]*ProvisioningDelivery, error)
-	// Continuation page: resumes strictly after the (created_at, id) keyset of
-	// the last row the caller saw.
-	ListProvisioningDeliveriesByConnectionAndStatusPageAfter(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusPageAfterParams) ([]*ProvisioningDelivery, error)
-	// First page of ListProvisioningDeliveries keyset pagination (wi-159,
-	// ADR-158), no status filter: id is the tie-break, matching
-	// ListProvisioningDeliveriesByConnection's pre-existing "most recent first" order.
+	// ADR-159). Empty status/source_type arguments disable that filter.
 	ListProvisioningDeliveriesByConnectionPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageParams) ([]*ProvisioningDelivery, error)
 	// Continuation page: resumes strictly after the (created_at, id) keyset of
 	// the last row the caller saw.
 	ListProvisioningDeliveriesByConnectionPageAfter(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageAfterParams) ([]*ProvisioningDelivery, error)
+	ListProvisioningDeliveriesByConnectionPageBefore(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageBeforeParams) ([]*ProvisioningDelivery, error)
 	ListUnenqueuedProvisioningDeliveries(ctx context.Context, limit int32) ([]*ProvisioningDelivery, error)
 	RetryDeadLetterProvisioningDelivery(ctx context.Context, arg RetryDeadLetterProvisioningDeliveryParams) (int64, error)
 	UpdateProvisioningConnection(ctx context.Context, arg UpdateProvisioningConnectionParams) error

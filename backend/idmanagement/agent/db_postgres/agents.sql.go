@@ -284,6 +284,60 @@ func (q *Queries) ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgent
 	return items, nil
 }
 
+const listAgentsByTenantPageBefore = `-- name: ListAgentsByTenantPageBefore :many
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at FROM agents
+WHERE tenant_id=$1
+  AND (name, id) < ($2::text, $3::uuid)
+ORDER BY name DESC, id DESC
+LIMIT $4
+`
+
+type ListAgentsByTenantPageBeforeParams struct {
+	TenantID   string
+	BeforeName string
+	BeforeID   string
+	PageLimit  int32
+}
+
+func (q *Queries) ListAgentsByTenantPageBefore(ctx context.Context, arg ListAgentsByTenantPageBeforeParams) ([]*Agent, error) {
+	rows, err := q.db.Query(ctx, listAgentsByTenantPageBefore,
+		arg.TenantID,
+		arg.BeforeName,
+		arg.BeforeID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Agent
+	for rows.Next() {
+		var i Agent
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Description,
+			&i.Kind,
+			&i.OwnerUserID,
+			&i.Status,
+			&i.Roles,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DisabledAt,
+			&i.KilledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeAgentBinding = `-- name: RemoveAgentBinding :execrows
 DELETE FROM agent_credential_bindings
 WHERE agent_id=$2 AND client_id=$3

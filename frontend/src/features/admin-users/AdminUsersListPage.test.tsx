@@ -74,6 +74,67 @@ describe('locale', () => {
 describe('AdminUsersPage', () => {
   afterEach(() => restoreGlobals())
 
+  it('uses the tenant usage summary without page-local metric fallbacks', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, { groups: [], group_roles: [] }))),
+    )
+    await renderWithRouter(
+      <AdminUsersPage
+        csrfToken="csrf"
+        users={[user]}
+        nextCursor={null}
+        usageUsers={73}
+        onFilter={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('73')).toBeInTheDocument()
+    expect(screen.getByText(t.totalUsers)).toBeInTheDocument()
+    expect(screen.queryByText(t.activeAccounts)).toBeNull()
+    expect(screen.queryByText(t.admins)).toBeNull()
+    expect(screen.queryByText(t.mfaEnrolled)).toBeNull()
+  })
+
+  it('omits the total metric when tenant usage is unavailable', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, { groups: [], group_roles: [] }))),
+    )
+    await renderWithRouter(
+      <AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} onFilter={() => {}} />,
+    )
+
+    expect(screen.queryByText(t.totalUsers)).toBeNull()
+  })
+
+  it('resets addressable paging when a server-side filter changes', async () => {
+    const onFilter = mock()
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, { groups: [], group_roles: [] }))),
+    )
+    await renderWithRouter(
+      <AdminUsersPage
+        csrfToken="csrf"
+        users={[user]}
+        previousCursor="before"
+        nextCursor="after"
+        query="old"
+        status="active"
+        onFilter={onFilter}
+        onPage={() => {}}
+      />,
+    )
+
+    fireEvent.change(screen.getByRole('textbox', { name: t.searchAriaLabel }), {
+      target: { value: 'Alice' },
+    })
+    fireEvent.blur(screen.getByRole('textbox', { name: t.searchAriaLabel }))
+    expect(onFilter).toHaveBeenLastCalledWith({ query: 'Alice', status: 'active' })
+    expect(onFilter.mock.calls.at(-1)?.[0]).not.toHaveProperty('cursor')
+  })
+
   it('deletes a user and refreshes the list on success', async () => {
     stubGlobal(
       'fetch',
@@ -154,7 +215,7 @@ describe('AdminUsersPage', () => {
     expect(screen.queryByRole('button', { name: /Verify email address/i })).not.toBeInTheDocument()
   })
 
-  it('does not show a load-more button on the last page', async () => {
+  it('does not show page navigation on the only page', async () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {
@@ -166,18 +227,15 @@ describe('AdminUsersPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
-    expect(screen.queryByRole('button', { name: tCommon.loadMore })).not.toBeInTheDocument()
+    await renderWithRouter(
+      <AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} onPage={() => {}} />,
+    )
+    expect(screen.queryByRole('button', { name: tCommon.previousPage })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: tCommon.nextPage })).not.toBeInTheDocument()
   })
 
-  it('loads and appends the next page when "load more" is clicked', async () => {
-    const nextUser: AdminUser = {
-      ...user,
-      id: 'user-2',
-      preferred_username: 'jiro',
-      name: 'Jiro Suzuki',
-      email: 'jiro@example.com',
-    }
+  it('navigates in both addressable directions without appending rows', async () => {
+    const onPage = mock()
     stubGlobal(
       'fetch',
       mock((url: string) => {
@@ -186,39 +244,24 @@ describe('AdminUsersPage', () => {
             response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
           )
         }
-        if (url.includes('cursor=abc')) {
-          return Promise.resolve(response(200, { users: [nextUser] }))
-        }
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor="abc" />)
+    await renderWithRouter(
+      <AdminUsersPage
+        csrfToken="csrf"
+        users={[user]}
+        previousCursor="before"
+        nextCursor="after"
+        onPage={onPage}
+      />,
+    )
 
-    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
+    fireEvent.click(screen.getByRole('button', { name: tCommon.previousPage }))
+    fireEvent.click(screen.getByRole('button', { name: tCommon.nextPage }))
 
-    expect(await screen.findByText('Jiro Suzuki')).toBeInTheDocument()
+    expect(onPage).toHaveBeenNthCalledWith(1, 'before')
+    expect(onPage).toHaveBeenNthCalledWith(2, 'after')
     expect(screen.getAllByText('Taro Yamada').length).toBeGreaterThan(0)
-  })
-
-  it('shows an error when loading more fails', async () => {
-    stubGlobal(
-      'fetch',
-      mock((url: string) => {
-        if (url.includes('/groups')) {
-          return Promise.resolve(
-            response(200, { groups: [], group_roles: [], effective_roles: user.roles }),
-          )
-        }
-        if (url.includes('cursor=abc')) {
-          return Promise.resolve(response(500, { message: 'Could not load more.' }))
-        }
-        throw new Error(`unexpected fetch ${url}`)
-      }),
-    )
-    await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor="abc" />)
-
-    fireEvent.click(screen.getByRole('button', { name: tCommon.loadMore }))
-
-    expect(await screen.findByText('Could not load more.')).toBeInTheDocument()
   })
 })
