@@ -296,7 +296,7 @@ function applyAlias(specifier: string, aliases: Record<string, string[]>): strin
     if (star < 0 && specifier !== pattern) continue
     const capture = specifier.slice(prefix.length, specifier.length - suffix.length)
     const target = targets[0]
-    if (target) return slash(target.replace('*', capture))
+    if (target) return slash(target.replaceAll('*', () => capture))
   }
   return undefined
 }

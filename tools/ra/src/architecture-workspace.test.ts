@@ -44,6 +44,50 @@ describe('architecture production import graph', () => {
     expect(findings).toEqual([])
   })
 
+  it('expands every wildcard in a TypeScript alias target', () => {
+    const findings = evaluateArchitectureWorkspace(
+      {
+        modules: {
+          source: { path: 'frontend/src', depends_on: ['generated'] },
+          generated: { path: 'frontend/widgets/generated/widgets', depends_on: [] },
+        },
+      },
+      {
+        tsAliases: { '@generated/*': ['frontend/*/generated/*'] },
+        files: [
+          {
+            path: 'frontend/src/page.ts',
+            content: "import { widget } from '@generated/widgets'\n",
+          },
+        ],
+      },
+    )
+
+    expect(findings).toEqual([])
+  })
+
+  it('treats replacement syntax in a TypeScript alias capture literally', () => {
+    const findings = evaluateArchitectureWorkspace(
+      {
+        modules: {
+          source: { path: 'frontend/src', depends_on: ['generated'] },
+          generated: { path: 'frontend/generated/$&', depends_on: [] },
+        },
+      },
+      {
+        tsAliases: { '@generated/*': ['frontend/generated/*'] },
+        files: [
+          {
+            path: 'frontend/src/page.ts',
+            content: "import { widget } from '@generated/$&'\n",
+          },
+        ],
+      },
+    )
+
+    expect(findings).toEqual([])
+  })
+
   it('reports a production import missing from depends_on', () => {
     const findings = evaluateArchitectureWorkspace(architecture, {
       goModulePath: 'example.test/app',
