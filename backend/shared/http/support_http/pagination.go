@@ -47,6 +47,26 @@ func BuildPageLinks(c *echo.Context, issuerFallback, previousCursor, nextCursor 
 	return strings.Join(links, ", ")
 }
 
+// BuildPaginationLinks builds the four-direction contract used by management
+// list UIs. A first link deliberately removes cursor while the other relations
+// replace it with a signed cursor.
+func BuildPaginationLinks(c *echo.Context, issuerFallback string, first bool, previousCursor, nextCursor, lastCursor string) string {
+	links := make([]string, 0, 4)
+	if first {
+		links = append(links, buildFirstPageLink(c, issuerFallback))
+	}
+	if previousCursor != "" {
+		links = append(links, buildPageLink(c, issuerFallback, previousCursor, "prev"))
+	}
+	if nextCursor != "" {
+		links = append(links, buildPageLink(c, issuerFallback, nextCursor, "next"))
+	}
+	if lastCursor != "" {
+		links = append(links, buildPageLink(c, issuerFallback, lastCursor, "last"))
+	}
+	return strings.Join(links, ", ")
+}
+
 // BuildNextLink is retained for forward-only callers during the bidirectional
 // migration. New handlers should use BuildPageLinks.
 func BuildNextLink(c *echo.Context, issuerFallback, nextCursor string) string {
@@ -59,6 +79,19 @@ func buildPageLink(c *echo.Context, issuerFallback, cursor, rel string) string {
 		q[k] = append([]string(nil), vs...)
 	}
 	q.Set("cursor", cursor)
+	return buildPageLinkURL(c, issuerFallback, q, rel)
+}
+
+func buildFirstPageLink(c *echo.Context, issuerFallback string) string {
+	q := url.Values{}
+	for k, vs := range c.Request().URL.Query() {
+		q[k] = append([]string(nil), vs...)
+	}
+	q.Del("cursor")
+	return buildPageLinkURL(c, issuerFallback, q, "first")
+}
+
+func buildPageLinkURL(c *echo.Context, issuerFallback string, q url.Values, rel string) string {
 	// path style では RequestIssuer 自体が /realms/{realm} を含むため、request path
 	// からもテナント prefix を落としてから継ぐ (TenantURL の doc 参照、二重 prefix 防止)。
 	path := strings.TrimPrefix(c.Request().URL.Path, tenancy.URLPrefix(c.Request().Context()))

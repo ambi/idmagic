@@ -290,4 +290,12 @@ func TestAgentRepositoryListPage(t *testing.T) {
 	if len(all) != 4 {
 		t.Fatalf("expected 4 tenant-1 agents, got %d", len(all))
 	}
+	total, err := repo.Count(ctx, "tenant-1")
+	if err != nil || total != 4 {
+		t.Fatalf("Count = %d, err=%v", total, err)
+	}
+	lastPage, err := repo.ListPageBefore(ctx, "tenant-1", "", "", 2)
+	if err != nil || len(lastPage) != 2 || lastPage[0].Name != "Charlie" || lastPage[1].Name != "Delta" {
+		t.Fatalf("last page = %+v, err=%v", lastPage, err)
+	}
 }

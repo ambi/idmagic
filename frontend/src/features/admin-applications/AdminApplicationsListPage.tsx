@@ -6,7 +6,7 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { PageNavigation } from '../../components/ui/page-navigation'
+import { PageNavigation, type PageNavigationData } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
@@ -28,20 +28,35 @@ export function AdminApplicationsPage({
   csrfToken,
   actorUsername,
   applications: initial,
+  pagination,
+  cursor,
+  hasFirst = false,
   previousCursor = null,
   nextCursor: initialNextCursor,
+  lastCursor = null,
+  totalItems = initial.length,
+  totalPages = initial.length > 0 ? 1 : 0,
+  currentPage = initial.length > 0 ? 1 : 0,
   onPage,
   cursorReset = false,
 }: {
   csrfToken: string
   actorUsername?: string
   applications: AdminApplication[]
+  pagination?: PageNavigationData
+  cursor?: string
+  hasFirst?: boolean
   previousCursor?: string | null
   nextCursor: string | null
-  onPage?: (cursor: string) => void
+  lastCursor?: string | null
+  totalItems?: number
+  totalPages?: number
+  currentPage?: number
+  onPage?: (cursor: string | null) => void
   cursorReset?: boolean
 }) {
   const [applications, setApplications] = useState(initial)
+  const [page, setPage] = useState(pagination)
   const [selectedID, setSelectedID] = useState<string>(() => initial[0]?.id ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -56,8 +71,9 @@ export function AdminApplicationsPage({
   const selected = applications.find((a) => a.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
-    const next = await listAdminApplicationsPage()
+    const next = await listAdminApplicationsPage({ cursor })
     setApplications(next.applications)
+    setPage(next)
     setSelectedID(
       next.applications.find((a) => a.id === preferredID)?.id ?? next.applications[0]?.id ?? '',
     )
@@ -139,8 +155,14 @@ export function AdminApplicationsPage({
           )}
           {onPage ? (
             <PageNavigation
+              hasFirst={hasFirst}
               previousCursor={previousCursor}
               nextCursor={initialNextCursor}
+              lastCursor={lastCursor}
+              totalItems={totalItems}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              {...page}
               onNavigate={onPage}
             />
           ) : null}

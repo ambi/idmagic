@@ -878,7 +878,7 @@
       "required": [
         "events"
       ],
-      "description": "監査イベントの検索結果。ページング継続は body ではなく Link response header (rel=\"next\") で表現する。"
+      "description": "監査イベントの検索結果。ページング navigation は body ではなく Link response header で表現する。"
     },
     "AdminAuditEventResponse": {
       "type": "object",
@@ -1613,13 +1613,17 @@
           "items": {
             "$ref": "#/$defs/AdminUserResponse"
           }
+        },
+        "total_users": {
+          "type": "integer",
+          "description": "tenant 内で lifecycle status が deleted ではない User の正確な件数。query / status の影響を受けない。"
         }
       },
       "additionalProperties": false,
       "required": [
         "users"
       ],
-      "description": "管理 API のユーザー一覧。"
+      "description": "管理 API のユーザー一覧と、query / status に依存せず削除済みを除いた tenant 内の正確な総ユーザー数。"
     },
     "AdminUserResponse": {
       "type": "object",
@@ -4118,7 +4122,7 @@
         },
         "cursor": {
           "type": "string",
-          "description": "応答の Link response header (rel=\"prev\" / rel=\"next\") の URL に埋め込まれた値を\nそのまま渡す。tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token\nは時刻で失効せず、旧 expiry 付き token は expiry まで有効。\n"
+          "description": "応答の Link response header の URL に埋め込まれた値をそのまま渡す。direction・anchor・\n遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として\n署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。\n"
         },
         "limit": {
           "type": "integer",

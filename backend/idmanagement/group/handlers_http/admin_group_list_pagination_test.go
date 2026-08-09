@@ -40,6 +40,9 @@ func TestAdminGroupListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
 	if link == "" || !strings.Contains(link, `rel="next"`) {
 		t.Fatalf("expected a rel=next Link header, got %q", link)
 	}
+	if !strings.Contains(link, `rel="last"`) || resp.Header().Get("Pagination-Total-Items") != "3" || resp.Header().Get("Pagination-Total-Pages") != "2" || resp.Header().Get("Pagination-Current-Page") != "1" || resp.Header().Get("Pagination-Page-Size") != "2" {
+		t.Fatalf("unexpected pagination contract: Link=%q headers=%#v", link, resp.Header())
+	}
 }
 
 func TestAdminGroupListSecondPageExposesPreviousDirection(t *testing.T) {

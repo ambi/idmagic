@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"sync"
 	"time"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
@@ -83,27 +84,46 @@ func HandleListGroups(d Deps, c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
+	ctx := c.Request().Context()
 	var views []groupusecases.GroupView
-	if page.Direction == support.PageBackward {
-		views, err = groupusecases.ListGroupsBefore(c.Request().Context(), adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
-	} else {
-		views, err = groupusecases.ListGroups(c.Request().Context(), adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	var pageErr, countErr error
+	var totalItems int64
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		if page.Direction == support.PageBackward {
+			views, pageErr = groupusecases.ListGroupsBefore(ctx, adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+		} else {
+			views, pageErr = groupusecases.ListGroups(ctx, adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+		}
+	})
+	wg.Go(func() { totalItems, countErr = d.GroupRepo.Count(ctx, tenantID) })
+	wg.Wait()
+	if pageErr != nil {
+		return pageErr
 	}
-	if err != nil {
-		return err
+	if countErr != nil {
+		return countErr
 	}
 	views, hasPrevious, hasNext := support.TrimPage(views, page)
+	if page.Anchor == support.PageAnchorEnd {
+		views = support.TrimEndPage(views, totalItems, page.Limit)
+	}
+	metadata := support.CalculatePaginationMetadata(totalItems, page)
+	support.SetPaginationHeaders(c, metadata)
 	groups := make([]groupSummaryResponse, len(views))
 	for i, view := range views {
 		groups[i] = toGroupSummaryResponse(view.Group, view.MemberCount)
 	}
+	var firstPrimary, firstID, lastPrimary, lastID string
 	if len(views) > 0 {
 		first := views[0]
 		last := views[len(views)-1]
-		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listGroupsQuery,
-			first.Group.Name, first.Group.ID, last.Group.Name, last.Group.ID, hasPrevious, hasNext); err != nil {
-			return err
-		}
+		firstPrimary, firstID = first.Group.Name, first.Group.ID
+		lastPrimary, lastID = last.Group.Name, last.Group.ID
+	}
+	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, tenantID, listGroupsQuery, page,
+		firstPrimary, firstID, lastPrimary, lastID, hasPrevious, hasNext, metadata.TotalPages); err != nil {
+		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"groups": groups})
 }

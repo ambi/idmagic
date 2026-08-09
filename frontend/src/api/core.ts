@@ -107,8 +107,14 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
 // 前後ページの有無・cursor は Link レスポンスヘッダにだけ出てくる。
 export type Page<T> = {
   body: T
+  hasFirst: boolean
   previousCursor: string | null
   nextCursor: string | null
+  lastCursor: string | null
+  totalItems: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
 }
 
 // requestPage は request() と同じ fetch/エラー処理を共有しつつ、Link ヘッダから
@@ -118,20 +124,50 @@ export async function requestPage<T>(url: string, init?: RequestInit): Promise<P
   const link = response.headers.get('Link')
   return {
     body,
+    hasFirst: hasLinkRel(link, 'first'),
     previousCursor: parseCursorForRel(link, 'prev'),
     nextCursor: parseCursorForRel(link, 'next'),
+    lastCursor: parseCursorForRel(link, 'last'),
+    totalItems: parsePaginationHeader(response, 'Pagination-Total-Items'),
+    totalPages: parsePaginationHeader(response, 'Pagination-Total-Pages'),
+    currentPage: parsePaginationHeader(response, 'Pagination-Current-Page'),
+    pageSize: parsePaginationHeader(response, 'Pagination-Page-Size'),
   }
 }
 
-function parseCursorForRel(link: string | null, rel: 'prev' | 'next'): string | null {
+type PageRel = 'first' | 'prev' | 'next' | 'last'
+
+function linkURLForRel(link: string | null, rel: PageRel): URL | null {
   if (!link) return null
-  const match = link.match(new RegExp(`<([^>]+)>;\\s*rel="${rel}"`))
-  if (!match) return null
-  try {
-    return new URL(match[1], window.location.origin).searchParams.get('cursor')
-  } catch {
-    return null
+  for (const entry of link.split(/,\s*(?=<)/)) {
+    const target = entry.match(/^\s*<([^>]+)>/)
+    const relation = entry.match(/(?:^|;)\s*rel\s*=\s*(?:"([^"]*)"|([^;\s,]+))/i)
+    if (!target || !(relation?.[1] ?? relation?.[2] ?? '').split(/\s+/).includes(rel)) continue
+    try {
+      return new URL(target[1], window.location.origin)
+    } catch {
+      return null
+    }
   }
+  return null
+}
+
+function hasLinkRel(link: string | null, rel: PageRel): boolean {
+  return linkURLForRel(link, rel) !== null
+}
+
+function parseCursorForRel(link: string | null, rel: PageRel): string | null {
+  return linkURLForRel(link, rel)?.searchParams.get('cursor') ?? null
+}
+
+function parsePaginationHeader(response: Response, name: string): number {
+  const value = response.headers.get(name)
+  if (value === null || !/^\d+$/.test(value)) {
+    throw new Error(`Missing or invalid ${name} response header`)
+  }
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed)) throw new Error(`Invalid ${name} response header`)
+  return parsed
 }
 
 export function adminRequest(csrfToken: string, method: string, body?: unknown): RequestInit {

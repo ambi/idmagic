@@ -26,6 +26,15 @@ WHERE tenant_id=$1
 ORDER BY name, id
 LIMIT sqlc.arg(page_limit);
 
+-- name: ListGroupsByTenantPageEnd :many
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+WHERE tenant_id=$1
+ORDER BY name DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: CountGroupsByTenant :one
+SELECT count(*) FROM groups WHERE tenant_id=$1;
+
 -- name: FindGroupByID :one
 SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 AND id=$2;

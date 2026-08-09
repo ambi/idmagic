@@ -12,6 +12,38 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUsersByTenant = `-- name: CountUsersByTenant :one
+SELECT count(*) FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+`
+
+func (q *Queries) CountUsersByTenant(ctx context.Context, tenantID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersByTenant, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countUsersByTenantFiltered = `-- name: CountUsersByTenantFiltered :one
+SELECT count(*) FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+  AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
+  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+`
+
+type CountUsersByTenantFilteredParams struct {
+	TenantID     string
+	FilterQuery  string
+	FilterStatus string
+}
+
+func (q *Queries) CountUsersByTenantFiltered(ctx context.Context, arg CountUsersByTenantFilteredParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countUsersByTenantFiltered, arg.TenantID, arg.FilterQuery, arg.FilterStatus)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const findUserByEmail = `-- name: FindUserByEmail :one
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
 email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
@@ -449,6 +481,115 @@ func (q *Queries) ListUsersByTenantPageBeforeFiltered(ctx context.Context, arg L
 		arg.FilterStatus,
 		arg.BeforeUsername,
 		arg.BeforeID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+			&i.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByTenantPageEnd = `-- name: ListUsersByTenantPageEnd :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+ORDER BY preferred_username DESC, id DESC
+LIMIT $2
+`
+
+type ListUsersByTenantPageEndParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+func (q *Queries) ListUsersByTenantPageEnd(ctx context.Context, arg ListUsersByTenantPageEndParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPageEnd, arg.TenantID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+			&i.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByTenantPageEndFiltered = `-- name: ListUsersByTenantPageEndFiltered :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes,search_text FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+  AND ($2::text = '' OR search_text ILIKE '%' || lower($2::text) || '%' ESCAPE '\')
+  AND ($3::text = '' OR coalesce(lifecycle->>'status', 'active') = $3::text)
+ORDER BY preferred_username DESC, id DESC
+LIMIT $4
+`
+
+type ListUsersByTenantPageEndFilteredParams struct {
+	TenantID     string
+	FilterQuery  string
+	FilterStatus string
+	PageLimit    int32
+}
+
+func (q *Queries) ListUsersByTenantPageEndFiltered(ctx context.Context, arg ListUsersByTenantPageEndFilteredParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPageEndFiltered,
+		arg.TenantID,
+		arg.FilterQuery,
+		arg.FilterStatus,
 		arg.PageLimit,
 	)
 	if err != nil {

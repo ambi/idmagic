@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -165,21 +166,21 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.AuditEventRepo == nil {
-		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": []AdminAuditEventResponse{}})
-	}
 	query, noMatch, err := d.parseAuditEventQuery(c, actor)
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
-	}
-	if noMatch {
-		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": []AdminAuditEventResponse{}})
 	}
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, actor.TenantID, auditEventQueryHash(c), listAdminAuditEventsDefaultLimit, listAdminAuditEventsMaxLimit)
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
+	if d.AuditEventRepo == nil || noMatch {
+		metadata := support.CalculatePaginationMetadata(0, page)
+		support.SetPaginationHeaders(c, metadata)
+		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": []AdminAuditEventResponse{}})
+	}
 	query.Limit = page.Limit + 1
+	query.FromEnd = page.Anchor == support.PageAnchorEnd
 	if page.AfterPrimary != "" {
 		afterOccurredAt, err := time.Parse(time.RFC3339Nano, page.AfterPrimary)
 		if err != nil {
@@ -193,23 +194,40 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 			query.AfterID = page.AfterID
 		}
 	}
-	records, err := d.AuditEventRepo.List(c.Request().Context(), query)
-	if err != nil {
-		return support.WriteServerError(c, err)
+	ctx := c.Request().Context()
+	var records []*auditports.AuditEventRecord
+	var pageErr, countErr error
+	var totalItems int64
+	var wg sync.WaitGroup
+	wg.Go(func() { records, pageErr = d.AuditEventRepo.List(ctx, query) })
+	wg.Go(func() { totalItems, countErr = d.AuditEventRepo.Count(ctx, query) })
+	wg.Wait()
+	if pageErr != nil {
+		return support.WriteServerError(c, pageErr)
+	}
+	if countErr != nil {
+		return support.WriteServerError(c, countErr)
 	}
 	records, hasPrevious, hasNext := support.TrimPage(records, page)
+	if page.Anchor == support.PageAnchorEnd {
+		records = support.TrimEndPage(records, totalItems, page.Limit)
+	}
+	metadata := support.CalculatePaginationMetadata(totalItems, page)
+	support.SetPaginationHeaders(c, metadata)
 	response := make([]AdminAuditEventResponse, len(records))
 	for i, rec := range records {
 		response[i] = toAdminAuditEventResponse(rec)
 	}
+	var firstPrimary, firstID, lastPrimary, lastID string
 	if len(records) > 0 {
 		first := records[0]
 		last := records[len(records)-1]
-		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, actor.TenantID, auditEventQueryHash(c),
-			first.OccurredAt.UTC().Format(time.RFC3339Nano), first.ID,
-			last.OccurredAt.UTC().Format(time.RFC3339Nano), last.ID, hasPrevious, hasNext); err != nil {
-			return err
-		}
+		firstPrimary, firstID = first.OccurredAt.UTC().Format(time.RFC3339Nano), first.ID
+		lastPrimary, lastID = last.OccurredAt.UTC().Format(time.RFC3339Nano), last.ID
+	}
+	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, actor.TenantID, auditEventQueryHash(c), page,
+		firstPrimary, firstID, lastPrimary, lastID, hasPrevious, hasNext, metadata.TotalPages); err != nil {
+		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": response})
 }

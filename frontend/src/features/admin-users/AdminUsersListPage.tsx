@@ -30,7 +30,7 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
-import { PageNavigation } from '../../components/ui/page-navigation'
+import { PageNavigation, type PageNavigationData } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
@@ -60,11 +60,12 @@ export function AdminUsersPage({
   csrfToken,
   actorUsername,
   users: initialUsers,
+  pagination,
   previousCursor = null,
   nextCursor: initialNextCursor,
+  totalUsers = initialUsers.length,
   query: initialQuery = '',
   status: initialStatus = '',
-  usageUsers,
   onPage,
   onFilter,
   cursorReset = false,
@@ -72,24 +73,24 @@ export function AdminUsersPage({
   csrfToken: string
   actorUsername?: string
   users: AdminUser[]
+  pagination?: PageNavigationData
   previousCursor?: string | null
   nextCursor: string | null
+  totalUsers?: number
   query?: string
   status?: string
-  usageUsers?: number
-  onPage?: (cursor: string) => void
+  onPage?: (cursor: string | null) => void
   onFilter?: (filter: { query?: string; status?: string }) => void
   cursorReset?: boolean
 }) {
-  const [users, setUsers] = useState(initialUsers)
+  const [result, setResult] = useState({ users: initialUsers, page: pagination, totalUsers })
+  const { users, page, totalUsers: displayTotalUsers } = result
   const [selectedUserId, setSelectedUserId] = useState(initialUsers[0]?.id ?? '')
   const [query, setQuery] = useState(initialQuery)
   const [status, setStatus] = useState<StatusFilter>(
-    initialStatus === 'active' ||
-      initialStatus === 'disabled' ||
-      initialStatus === 'pending_deletion'
-      ? initialStatus
-      : 'all',
+    ['all', 'active', 'disabled', 'pending_deletion'].includes(initialStatus)
+      ? (initialStatus as StatusFilter)
+      : 'active',
   )
   const [showDelete, setShowDelete] = useState(false)
   const [showPurge, setShowPurge] = useState(false)
@@ -109,10 +110,11 @@ export function AdminUsersPage({
 
   async function refresh(preferredUserId = selectedUserId) {
     const next = await listAdminUsersPage({
+      cursor: new URLSearchParams(window.location.search).get('cursor') ?? undefined,
       query: initialQuery || undefined,
-      status: initialStatus || undefined,
+      status: initialStatus === 'all' ? undefined : initialStatus || 'active',
     })
-    setUsers(next.users)
+    setResult({ users: next.users, page: next, totalUsers: next.totalUsers })
     const nextSelected = next.users.find((user) => user.id === preferredUserId) ?? next.users[0]
     setSelectedUserId(nextSelected?.id ?? '')
   }
@@ -212,11 +214,9 @@ export function AdminUsersPage({
           </div>
         }
       >
-        {usageUsers !== undefined ? (
-          <section aria-label={t.overviewSectionLabel}>
-            <Metric label={t.totalUsers} value={usageUsers} icon={IconUsers} tone="blue" />
-          </section>
-        ) : null}
+        <section aria-label={t.overviewSectionLabel}>
+          <Metric label={t.totalUsers} value={displayTotalUsers} icon={IconUsers} tone="blue" />
+        </section>
 
         {error && <Alert>{error}</Alert>}
         <Toast message={notice} onDismiss={() => setNotice('')} />
@@ -235,14 +235,14 @@ export function AdminUsersPage({
                 onBlur={() => {
                   onFilter?.({
                     query: query.trim() || undefined,
-                    status: status === 'all' ? undefined : status,
+                    status: status === 'active' ? undefined : status,
                   })
                 }}
                 onKeyDown={(event) => {
                   if (event.key !== 'Enter') return
                   onFilter?.({
                     query: query.trim() || undefined,
-                    status: status === 'all' ? undefined : status,
+                    status: status === 'active' ? undefined : status,
                   })
                 }}
                 className="h-10 pl-10"
@@ -261,7 +261,7 @@ export function AdminUsersPage({
                       setStatus(value)
                       onFilter?.({
                         query: query.trim() || undefined,
-                        status: value === 'all' ? undefined : value,
+                        status: value === 'active' ? undefined : value,
                       })
                     }}
                     className={cn(
@@ -364,8 +364,9 @@ export function AdminUsersPage({
               )}
               {onPage ? (
                 <PageNavigation
-                  previousCursor={previousCursor}
-                  nextCursor={initialNextCursor}
+                  {...page}
+                  previousCursor={page?.previousCursor ?? previousCursor}
+                  nextCursor={page?.nextCursor ?? initialNextCursor}
                   onNavigate={onPage}
                 />
               ) : null}

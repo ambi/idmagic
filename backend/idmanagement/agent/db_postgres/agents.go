@@ -116,10 +116,17 @@ func (r *AgentRepository) ListPage(ctx context.Context, tenantID, afterName, aft
 }
 
 func (r *AgentRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*agentdomain.Agent, error) {
-	rows, err := New(r.Pool).ListAgentsByTenantPageBefore(ctx, ListAgentsByTenantPageBeforeParams{
-		TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
-		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
-	})
+	q := New(r.Pool)
+	var rows []*Agent
+	var err error
+	if beforeName == "" && beforeID == "" {
+		rows, err = q.ListAgentsByTenantPageEnd(ctx, ListAgentsByTenantPageEndParams{TenantID: tenantID, PageLimit: int32(limit)}) //nolint:gosec // caller clamps limit to a small positive bound
+	} else {
+		rows, err = q.ListAgentsByTenantPageBefore(ctx, ListAgentsByTenantPageBeforeParams{
+			TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +140,10 @@ func (r *AgentRepository) ListPageBefore(ctx context.Context, tenantID, beforeNa
 		out = append(out, agent)
 	}
 	return out, nil
+}
+
+func (r *AgentRepository) Count(ctx context.Context, tenantID string) (int64, error) {
+	return New(r.Pool).CountAgentsByTenant(ctx, tenantID)
 }
 
 func (r *AgentRepository) FindByID(ctx context.Context, tenantID, id string) (*agentdomain.Agent, error) {

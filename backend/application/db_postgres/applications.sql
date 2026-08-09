@@ -33,6 +33,16 @@ WHERE tenant_id = $1
 ORDER BY name, id
 LIMIT sqlc.arg(page_limit);
 
+-- name: ListApplicationsByTenantPageEnd :many
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+FROM applications
+WHERE tenant_id = $1
+ORDER BY name DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: CountApplicationsByTenant :one
+SELECT count(*) FROM applications WHERE tenant_id=$1;
+
 -- name: GetApplicationByID :one
 SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
 FROM applications

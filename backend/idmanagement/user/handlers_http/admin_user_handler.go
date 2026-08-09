@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
@@ -105,29 +106,62 @@ func HandleListAdminUsers(d Deps, c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
+	ctx := c.Request().Context()
 	var users []*userdomain.User
-	if page.Direction == support.PageBackward {
-		users, err = d.UserRepo.ListPageBeforeFiltered(c.Request().Context(), tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
-	} else {
-		users, err = d.UserRepo.ListPageFiltered(c.Request().Context(), tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
+	var pageErr, filteredCountErr, totalCountErr error
+	var totalItems, totalUsers int64
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		if page.Direction == support.PageBackward {
+			users, pageErr = d.UserRepo.ListPageBeforeFiltered(ctx, tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
+		} else {
+			users, pageErr = d.UserRepo.ListPageFiltered(ctx, tenantID, query, status, page.AfterPrimary, page.AfterID, page.Limit+1)
+		}
+	})
+	wg.Go(func() {
+		totalItems, filteredCountErr = d.UserRepo.CountFiltered(ctx, tenantID, query, status)
+	})
+	countsMatch := query == "" && status == nil
+	if !countsMatch {
+		wg.Go(func() {
+			totalUsers, totalCountErr = d.UserRepo.Count(ctx, tenantID)
+		})
 	}
-	if err != nil {
-		return err
+	wg.Wait()
+	if pageErr != nil {
+		return pageErr
+	}
+	if filteredCountErr != nil {
+		return filteredCountErr
+	}
+	if totalCountErr != nil {
+		return totalCountErr
+	}
+	if countsMatch {
+		totalUsers = totalItems
 	}
 	users, hasPrevious, hasNext := support.TrimPage(users, page)
+	if page.Anchor == support.PageAnchorEnd {
+		users = support.TrimEndPage(users, totalItems, page.Limit)
+	}
+	metadata := support.CalculatePaginationMetadata(totalItems, page)
+	support.SetPaginationHeaders(c, metadata)
 	response := make([]adminUserResponse, len(users))
 	for i, user := range users {
 		response[i] = toAdminUserResponse(user)
 	}
+	var firstPrimary, firstID, lastPrimary, lastID string
 	if len(users) > 0 {
 		first := users[0]
 		last := users[len(users)-1]
-		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, queryHash,
-			first.PreferredUsername, first.ID, last.PreferredUsername, last.ID, hasPrevious, hasNext); err != nil {
-			return err
-		}
+		firstPrimary, firstID = first.PreferredUsername, first.ID
+		lastPrimary, lastID = last.PreferredUsername, last.ID
 	}
-	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"users": response})
+	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, tenantID, queryHash, page,
+		firstPrimary, firstID, lastPrimary, lastID, hasPrevious, hasNext, metadata.TotalPages); err != nil {
+		return err
+	}
+	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"users": response, "total_users": totalUsers})
 }
 
 func HandleGetAdminUser(d Deps, c *echo.Context) error {

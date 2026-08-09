@@ -154,4 +154,12 @@ func TestAuditEventStoreKeysetPagination(t *testing.T) {
 	if len(next) != 2 || next[0].ID != "e2" || next[1].ID != "e1" {
 		t.Fatalf("unexpected continuation page: %+v", next)
 	}
+	total, err := store.Count(context.Background(), ports.AuditEventQuery{TenantID: "acme", Type: "X"})
+	if err != nil || total != 5 {
+		t.Fatalf("Count = %d, err=%v", total, err)
+	}
+	fromEnd, err := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme", Limit: 2, FromEnd: true})
+	if err != nil || len(fromEnd) != 2 || fromEnd[0].ID != "e1" || fromEnd[1].ID != "e0" {
+		t.Fatalf("end page = %+v, err=%v", fromEnd, err)
+	}
 }

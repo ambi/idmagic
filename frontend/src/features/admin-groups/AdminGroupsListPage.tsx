@@ -5,7 +5,7 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { PageNavigation } from '../../components/ui/page-navigation'
+import { PageNavigation, type PageNavigationData } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
@@ -17,20 +17,35 @@ export function AdminGroupsPage({
   csrfToken,
   actorUsername,
   groups: initial,
+  pagination,
+  cursor,
+  hasFirst = false,
   previousCursor = null,
   nextCursor: initialNextCursor,
+  lastCursor = null,
+  totalItems = initial.length,
+  totalPages = initial.length > 0 ? 1 : 0,
+  currentPage = initial.length > 0 ? 1 : 0,
   onPage,
   cursorReset = false,
 }: {
   csrfToken: string
   actorUsername?: string
   groups: AdminGroup[]
+  pagination?: PageNavigationData
+  cursor?: string
+  hasFirst?: boolean
   previousCursor?: string | null
   nextCursor: string | null
-  onPage?: (cursor: string) => void
+  lastCursor?: string | null
+  totalItems?: number
+  totalPages?: number
+  currentPage?: number
+  onPage?: (cursor: string | null) => void
   cursorReset?: boolean
 }) {
   const [groups, setGroups] = useState(initial)
+  const [page, setPage] = useState(pagination)
   const initialID = new URLSearchParams(window.location.search).get('group')
   const [selectedID, setSelectedID] = useState<string>(
     () => initial.find((g) => g.id === initialID)?.id ?? initial[0]?.id ?? '',
@@ -48,8 +63,9 @@ export function AdminGroupsPage({
   const selected = groups.find((g) => g.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
-    const next = await listAdminGroupsPage()
+    const next = await listAdminGroupsPage({ cursor })
     setGroups(next.groups)
+    setPage(next)
     setSelectedID(next.groups.find((g) => g.id === preferredID)?.id ?? next.groups[0]?.id ?? '')
   }
 
@@ -150,8 +166,14 @@ export function AdminGroupsPage({
           ) : null}
           {onPage ? (
             <PageNavigation
+              hasFirst={hasFirst}
               previousCursor={previousCursor}
               nextCursor={initialNextCursor}
+              lastCursor={lastCursor}
+              totalItems={totalItems}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              {...page}
               onNavigate={onPage}
             />
           ) : null}

@@ -17,6 +17,7 @@ type ApplicationRepository interface {
 	// pagination (wi-159, ADR-158).
 	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error)
 	ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*domain.Application, error)
+	Count(ctx context.Context, tenantID string) (int64, error)
 	// FindByID は application_id に一致する Application を返す。存在しなければ (nil, nil)。
 	FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error)
 	// FindByProtocol は protocol table の application_id relation を索引で逆引きする。

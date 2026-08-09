@@ -142,6 +142,24 @@ func (r *UserRepository) ListPageBeforeFiltered(_ context.Context, tenantID, que
 	return sharedmem.KeysetPageBefore(out, key, false, beforeUsername, beforeID, limit), nil
 }
 
+func (r *UserRepository) Count(_ context.Context, tenantID string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var count int64
+	for _, user := range r.bySub {
+		if user.TenantID == tenantID && !user.IsDeleted() {
+			count++
+		}
+	}
+	return count, nil
+}
+
+func (r *UserRepository) CountFiltered(_ context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return int64(len(r.filteredUsers(tenantID, query, status))), nil
+}
+
 func (r *UserRepository) filteredUsers(tenantID, query string, status *idmdomain.UserStatus) []*userdomain.User {
 	query = strings.ToLower(strings.TrimSpace(query))
 	out := make([]*userdomain.User, 0, len(r.bySub))

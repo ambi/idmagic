@@ -69,4 +69,35 @@ func TestUserSearchQueryPlanUsesTenantAndTrigramIndex(t *testing.T) {
 	if !strings.Contains(plan.String(), "tenant_id") {
 		t.Fatalf("expected tenant predicate in user-search plan:\n%s", plan.String())
 	}
+	rows.Close()
+
+	if _, err := db.Exec(ctx, `UPDATE users SET lifecycle='{"status":"disabled"}'::jsonb
+		WHERE tenant_id=$1 AND preferred_username < 'user-0010'`, tenant.ID); err != nil {
+		t.Fatalf("seed disabled users: %v", err)
+	}
+	if _, err := db.Exec(ctx, "VACUUM ANALYZE users"); err != nil {
+		t.Fatalf("vacuum analyze users after status update: %v", err)
+	}
+	rows, err = db.Query(ctx, `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)
+		SELECT count(*) FROM users
+		WHERE tenant_id=$1
+		  AND lifecycle->>'status' IS DISTINCT FROM 'deleted'
+		  AND coalesce(lifecycle->>'status', 'active')='disabled'`, tenant.ID)
+	if err != nil {
+		t.Fatalf("explain exact status count: %v", err)
+	}
+	defer rows.Close()
+	plan.Reset()
+	for rows.Next() {
+		var line string
+		if err := rows.Scan(&line); err != nil {
+			t.Fatalf("scan count plan: %v", err)
+		}
+		plan.WriteString(line)
+		plan.WriteByte('\n')
+	}
+	t.Log(plan.String())
+	if !strings.Contains(plan.String(), "users_tenant_lifecycle_status_active_idx") {
+		t.Fatalf("expected lifecycle status index in exact-count plan:\n%s", plan.String())
+	}
 }

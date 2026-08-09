@@ -3,6 +3,7 @@ status: accepted
 authors: [tn]
 created_at: 2026-08-09
 supersedes: [ADR-158]
+superseded_by: [ADR-160]
 ---
 
 # ADR-159: 管理一覧の cursor URL は無期限かつ双方向にする
@@ -14,6 +15,8 @@ cursor は通常の認証・tenant authorization を置き換える capability �
 
 ## 決定
 新規 cursor は expiry を持たない versioned token とし、一覧 API は存在する方向の `rel="prev"` / `rel="next"` を返す。既存の expiry 付き token は移行期間中も従来どおり検証し、署名鍵の rotation を新 token の一括無効化手段とする。
+
+cursor wire format と管理 UI 向け Link relation は ADR-160 が部分的に上書きする。本 ADR の無期限・双方向 keyset pagination と認証・tenant authorization を維持する判断は引き続き有効である。
 
 規範契約は対象 list interface、scenario、flow、objective に置く。cursor の署名対象と通常の認証・tenant authorization は維持する。ADR-158 の RFC 8288 `Link` header 採用、domain-only response body、offset/ページ番号を採用しない判断は上書きしない。
 

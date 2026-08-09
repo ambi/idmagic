@@ -73,7 +73,7 @@ import {
   type APIError,
 } from './core'
 
-type AdminUserListResponse = { users: AdminUser[] }
+type AdminUserListResponse = { users: AdminUser[]; total_users: number }
 type AdminConsentListResponse = { consents: AdminConsent[] }
 type AdminAuditEventListResponse = { events: AdminAuditEvent[] }
 type AdminKeyListResponse = { keys: AdminKey[] }
@@ -115,10 +115,20 @@ function pageQueryString(params?: {
   return qs ? `?${qs}` : ''
 }
 
-export type AdminUserPage = {
-  users: AdminUser[]
+type PaginationPageMetadata = {
+  hasFirst: boolean
   previousCursor: string | null
   nextCursor: string | null
+  lastCursor: string | null
+  totalItems: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+}
+
+export type AdminUserPage = PaginationPageMetadata & {
+  users: AdminUser[]
+  totalUsers: number
 }
 
 export async function listAdminUsers(): Promise<AdminUser[]> {
@@ -138,8 +148,15 @@ export async function listAdminUsersPage(params?: {
   )
   return {
     users: page.body.users,
+    totalUsers: page.body.total_users,
+    hasFirst: page.hasFirst,
     previousCursor: page.previousCursor,
     nextCursor: page.nextCursor,
+    lastCursor: page.lastCursor,
+    totalItems: page.totalItems,
+    totalPages: page.totalPages,
+    currentPage: page.currentPage,
+    pageSize: page.pageSize,
   }
 }
 
@@ -564,10 +581,8 @@ function auditEventParams(query: AdminAuditEventQuery): URLSearchParams {
   return params
 }
 
-export type AdminAuditEventPage = {
+export type AdminAuditEventPage = PaginationPageMetadata & {
   events: AdminAuditEvent[]
-  previousCursor: string | null
-  nextCursor: string | null
 }
 
 export async function listAdminAuditEvents(
@@ -581,8 +596,14 @@ export async function listAdminAuditEvents(
   const page = await requestPage<AdminAuditEventListResponse>(url)
   return {
     events: page.body.events,
+    hasFirst: page.hasFirst,
     previousCursor: page.previousCursor,
     nextCursor: page.nextCursor,
+    lastCursor: page.lastCursor,
+    totalItems: page.totalItems,
+    totalPages: page.totalPages,
+    currentPage: page.currentPage,
+    pageSize: page.pageSize,
   }
 }
 
@@ -918,10 +939,8 @@ export async function listAdminGroups(): Promise<AdminGroup[]> {
   ).groups
 }
 
-export type AdminGroupPage = {
+export type AdminGroupPage = PaginationPageMetadata & {
   groups: AdminGroup[]
-  previousCursor: string | null
-  nextCursor: string | null
 }
 
 // listAdminGroupsPage はグループ一覧画面専用の addressable cursor pagination 版 (ADR-159)。
@@ -934,8 +953,14 @@ export async function listAdminGroupsPage(params?: {
   )
   return {
     groups: page.body.groups,
+    hasFirst: page.hasFirst,
     previousCursor: page.previousCursor,
     nextCursor: page.nextCursor,
+    lastCursor: page.lastCursor,
+    totalItems: page.totalItems,
+    totalPages: page.totalPages,
+    currentPage: page.currentPage,
+    pageSize: page.pageSize,
   }
 }
 
@@ -1039,10 +1064,8 @@ export async function listAdminAgents(): Promise<AdminAgent[]> {
   ).agents
 }
 
-export type AdminAgentPage = {
+export type AdminAgentPage = PaginationPageMetadata & {
   agents: AdminAgent[]
-  previousCursor: string | null
-  nextCursor: string | null
 }
 
 // listAdminAgentsPage はエージェント一覧画面専用の addressable cursor pagination 版 (ADR-159)。
@@ -1055,8 +1078,14 @@ export async function listAdminAgentsPage(params?: {
   )
   return {
     agents: page.body.agents,
+    hasFirst: page.hasFirst,
     previousCursor: page.previousCursor,
     nextCursor: page.nextCursor,
+    lastCursor: page.lastCursor,
+    totalItems: page.totalItems,
+    totalPages: page.totalPages,
+    currentPage: page.currentPage,
+    pageSize: page.pageSize,
   }
 }
 
@@ -1258,10 +1287,8 @@ export async function listAdminApplications(): Promise<AdminApplication[]> {
   ).applications
 }
 
-export type AdminApplicationPage = {
+export type AdminApplicationPage = PaginationPageMetadata & {
   applications: AdminApplication[]
-  previousCursor: string | null
-  nextCursor: string | null
 }
 
 // listAdminApplicationsPage はアプリケーション一覧画面専用の addressable cursor pagination 版 (ADR-159)。
@@ -1274,8 +1301,14 @@ export async function listAdminApplicationsPage(params?: {
   )
   return {
     applications: page.body.applications,
+    hasFirst: page.hasFirst,
     previousCursor: page.previousCursor,
     nextCursor: page.nextCursor,
+    lastCursor: page.lastCursor,
+    totalItems: page.totalItems,
+    totalPages: page.totalPages,
+    currentPage: page.currentPage,
+    pageSize: page.pageSize,
   }
 }
 

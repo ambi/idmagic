@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	AddAgentBinding(ctx context.Context, arg AddAgentBindingParams) (int64, error)
+	CountAgentsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteAgent(ctx context.Context, arg DeleteAgentParams) error
 	FindAgentByClientID(ctx context.Context, arg FindAgentByClientIDParams) (*Agent, error)
 	FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*Agent, error)
@@ -22,6 +23,7 @@ type Querier interface {
 	// last row the caller saw.
 	ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgentsByTenantPageAfterParams) ([]*Agent, error)
 	ListAgentsByTenantPageBefore(ctx context.Context, arg ListAgentsByTenantPageBeforeParams) ([]*Agent, error)
+	ListAgentsByTenantPageEnd(ctx context.Context, arg ListAgentsByTenantPageEndParams) ([]*Agent, error)
 	RemoveAgentBinding(ctx context.Context, arg RemoveAgentBindingParams) (int64, error)
 	SaveAgent(ctx context.Context, arg SaveAgentParams) error
 }

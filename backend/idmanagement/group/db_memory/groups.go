@@ -76,6 +76,18 @@ func (r *GroupRepository) ListPageBefore(_ context.Context, tenantID, beforeName
 	return sharedmem.KeysetPageBefore(out, key, false, beforeName, beforeID, limit), nil
 }
 
+func (r *GroupRepository) Count(_ context.Context, tenantID string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var count int64
+	for _, group := range r.groups {
+		if group.TenantID == tenantID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*groupdomain.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

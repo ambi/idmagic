@@ -230,4 +230,15 @@ func TestGroupRepositoryListPage(t *testing.T) {
 			t.Fatalf("expected 5, got %d", len(page))
 		}
 	})
+
+	t.Run("counts tenant rows and reads from end", func(t *testing.T) {
+		total, err := repo.Count(ctx, "tenant-1")
+		if err != nil || total != 5 {
+			t.Fatalf("Count = %d, err=%v", total, err)
+		}
+		last, err := repo.ListPageBefore(ctx, "tenant-1", "", "", 2)
+		if err != nil || len(last) != 2 || last[0].Name != "Delta" || last[1].Name != "Echo" {
+			t.Fatalf("last page = %+v, err=%v", last, err)
+		}
+	})
 }

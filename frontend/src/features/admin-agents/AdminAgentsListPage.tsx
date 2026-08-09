@@ -5,7 +5,7 @@ import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
-import { PageNavigation } from '../../components/ui/page-navigation'
+import { PageNavigation, type PageNavigationData } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
@@ -18,20 +18,35 @@ export function AdminAgentsPage({
   csrfToken,
   actorUsername,
   agents: initial,
+  pagination,
+  cursor,
+  hasFirst = false,
   previousCursor = null,
   nextCursor: initialNextCursor,
+  lastCursor = null,
+  totalItems = initial.length,
+  totalPages = initial.length > 0 ? 1 : 0,
+  currentPage = initial.length > 0 ? 1 : 0,
   onPage,
   cursorReset = false,
 }: {
   csrfToken: string
   actorUsername?: string
   agents: AdminAgent[]
+  pagination?: PageNavigationData
+  cursor?: string
+  hasFirst?: boolean
   previousCursor?: string | null
   nextCursor: string | null
-  onPage?: (cursor: string) => void
+  lastCursor?: string | null
+  totalItems?: number
+  totalPages?: number
+  currentPage?: number
+  onPage?: (cursor: string | null) => void
   cursorReset?: boolean
 }) {
   const [agents, setAgents] = useState(initial)
+  const [page, setPage] = useState(pagination)
   const initialID = new URLSearchParams(window.location.search).get('agent')
   const [selectedID, setSelectedID] = useState<string>(
     () => initial.find((a) => a.id === initialID)?.id ?? initial[0]?.id ?? '',
@@ -49,8 +64,9 @@ export function AdminAgentsPage({
   const selected = agents.find((a) => a.id === selectedID) ?? null
 
   async function refresh(preferredID = selectedID) {
-    const next = await listAdminAgentsPage()
+    const next = await listAdminAgentsPage({ cursor })
     setAgents(next.agents)
+    setPage(next)
     setSelectedID(next.agents.find((a) => a.id === preferredID)?.id ?? next.agents[0]?.id ?? '')
   }
 
@@ -148,8 +164,14 @@ export function AdminAgentsPage({
           ) : null}
           {onPage ? (
             <PageNavigation
+              hasFirst={hasFirst}
               previousCursor={previousCursor}
               nextCursor={initialNextCursor}
+              lastCursor={lastCursor}
+              totalItems={totalItems}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              {...page}
               onNavigate={onPage}
             />
           ) : null}

@@ -258,12 +258,21 @@ describe('core api utils', () => {
   })
 
   describe('requestPage', () => {
+    const paginationHeaders = (headers?: HeadersInit) =>
+      new Headers({
+        'Pagination-Total-Items': '0',
+        'Pagination-Total-Pages': '0',
+        'Pagination-Current-Page': '0',
+        'Pagination-Page-Size': '50',
+        ...headers,
+      })
+
     it('extracts the cursor from a Link rel="next" header', async () => {
       const mockData = { users: [{ id: '1' }] }
       const mockFetch = mock().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockData),
-        headers: new Headers({
+        headers: paginationHeaders({
           Link: '<http://localhost/realms/test-tenant/api/admin/v1/users?limit=50&cursor=abc123>; rel="next"',
         }),
       })
@@ -278,7 +287,7 @@ describe('core api utils', () => {
       const mockFetch = mock().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ users: [] }),
-        headers: new Headers({
+        headers: paginationHeaders({
           Link: '<http://localhost/api/users?cursor=before>; rel="prev", <http://localhost/api/users?cursor=after>; rel="next"',
         }),
       })
@@ -289,11 +298,34 @@ describe('core api utils', () => {
       expect(page.nextCursor).toBe('after')
     })
 
+    it('extracts first/last targets and exact pagination metadata', async () => {
+      const mockFetch = mock().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ users: [] }),
+        headers: paginationHeaders({
+          Link: '<http://localhost/api/users?limit=50>; title="start"; rel="first next", </api/users?limit=50&cursor=end>; rel=last',
+          'Pagination-Total-Items': '105',
+          'Pagination-Total-Pages': '3',
+          'Pagination-Current-Page': '2',
+          'Pagination-Page-Size': '50',
+        }),
+      })
+      stubGlobal('fetch', mockFetch)
+
+      const page = await requestPage('/api/admin/v1/users')
+      expect(page.hasFirst).toBeTrue()
+      expect(page.lastCursor).toBe('end')
+      expect(page.totalItems).toBe(105)
+      expect(page.totalPages).toBe(3)
+      expect(page.currentPage).toBe(2)
+      expect(page.pageSize).toBe(50)
+    })
+
     it('returns null nextCursor when there is no Link header', async () => {
       const mockFetch = mock().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ users: [] }),
-        headers: new Headers(),
+        headers: paginationHeaders(),
       })
       stubGlobal('fetch', mockFetch)
 
@@ -305,12 +337,34 @@ describe('core api utils', () => {
       const mockFetch = mock().mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ users: [] }),
-        headers: new Headers({ Link: '<http://localhost/whatever>; rel="prev"' }),
+        headers: paginationHeaders({ Link: '<http://localhost/whatever>; rel="prev"' }),
       })
       stubGlobal('fetch', mockFetch)
 
       const page = await requestPage('/api/admin/v1/users')
       expect(page.nextCursor).toBeNull()
+    })
+
+    it('rejects missing or malformed required pagination metadata', async () => {
+      const mockFetch = mock()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ users: [] }),
+          headers: new Headers(),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ users: [] }),
+          headers: paginationHeaders({ 'Pagination-Total-Items': '-1' }),
+        })
+      stubGlobal('fetch', mockFetch)
+
+      await expect(requestPage('/api/admin/v1/users')).rejects.toThrow(
+        'Missing or invalid Pagination-Total-Items',
+      )
+      await expect(requestPage('/api/admin/v1/users')).rejects.toThrow(
+        'Missing or invalid Pagination-Total-Items',
+      )
     })
   })
 })

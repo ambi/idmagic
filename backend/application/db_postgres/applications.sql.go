@@ -12,6 +12,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countApplicationsByTenant = `-- name: CountApplicationsByTenant :one
+SELECT count(*) FROM applications WHERE tenant_id=$1
+`
+
+func (q *Queries) CountApplicationsByTenant(ctx context.Context, tenantID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countApplicationsByTenant, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteApplication = `-- name: DeleteApplication :exec
 DELETE FROM applications WHERE tenant_id = $1 AND id = $2
 `
@@ -340,6 +351,52 @@ func (q *Queries) ListApplicationsByTenantPageBefore(ctx context.Context, arg Li
 		arg.BeforeID,
 		arg.PageLimit,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Application
+	for rows.Next() {
+		var i Application
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.Status,
+			&i.ProtocolType,
+			&i.IconUrl,
+			&i.IconObjectKey,
+			&i.LaunchUrl,
+			&i.CategoryIds,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listApplicationsByTenantPageEnd = `-- name: ListApplicationsByTenantPageEnd :many
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+FROM applications
+WHERE tenant_id = $1
+ORDER BY name DESC, id DESC
+LIMIT $2
+`
+
+type ListApplicationsByTenantPageEndParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+func (q *Queries) ListApplicationsByTenantPageEnd(ctx context.Context, arg ListApplicationsByTenantPageEndParams) ([]*Application, error) {
+	rows, err := q.db.Query(ctx, listApplicationsByTenantPageEnd, arg.TenantID, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}

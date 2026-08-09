@@ -153,6 +153,11 @@ CREATE INDEX users_tenant_username_id_active_idx
     ON users (tenant_id, preferred_username, id)
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
+-- Backs exact status-filtered pagination counts (wi-347, ADR-160).
+CREATE INDEX users_tenant_lifecycle_status_active_idx
+    ON users (tenant_id, (coalesce(lifecycle->>'status', 'active')))
+    WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
+
 CREATE INDEX users_search_text_trgm_idx
     ON users USING gin (search_text gin_trgm_ops)
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';

@@ -437,4 +437,12 @@ func TestApplicationRepositoryListPage(t *testing.T) {
 	if len(all) != 5 {
 		t.Fatalf("expected 5, got %d", len(all))
 	}
+	total, err := repo.Count(ctx, "acme")
+	if err != nil || total != 5 {
+		t.Fatalf("Count = %d, err=%v", total, err)
+	}
+	lastPage, err := repo.ListPageBefore(ctx, "acme", "", "", 2)
+	if err != nil || len(lastPage) != 2 || lastPage[0].Name != "Delta" || lastPage[1].Name != "Echo" {
+		t.Fatalf("last page = %+v, err=%v", lastPage, err)
+	}
 }

@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { PageNavigation } from '../../components/ui/page-navigation'
+import { PageNavigation, type PageNavigationData } from '../../components/ui/page-navigation'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary, useLocale } from '../../lib/i18n'
 import { commonDictionary } from '../../lib/i18n/common.i18n'
@@ -169,6 +169,7 @@ export function AdminAuditEventsPage({
   actorRoles,
   actorRealm,
   events: initial,
+  pagination,
   previousCursor = null,
   nextCursor: initialNextCursor,
   search,
@@ -182,12 +183,13 @@ export function AdminAuditEventsPage({
   actorRoles: string[]
   actorRealm: string
   events: AdminAuditEvent[]
+  pagination?: Omit<PageNavigationData, 'nextCursor' | 'previousCursor'>
   previousCursor?: string | null
   nextCursor: string | null
   search?: AdminAuditEventsSearchParams
   searchOptions?: AdminAuditEventSearchOptions
   onSearch?: (search: AdminAuditEventsSearchParams) => void
-  onPage?: (cursor: string) => void
+  onPage?: (cursor: string | null) => void
   cursorReset?: boolean
   // 初期表示 (loader) 側の取得失敗。URL の検索条件が壊れていてもページ自体は表示し、
   // ページ内のエラー表示に留める (wi-147)。
@@ -496,6 +498,7 @@ export function AdminAuditEventsPage({
           </table>
           {onPage ? (
             <PageNavigation
+              {...pagination}
               previousCursor={previousCursor}
               nextCursor={initialNextCursor}
               onNavigate={onPage}

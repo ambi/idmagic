@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	CountApplicationsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteAppSignInPolicy(ctx context.Context, arg DeleteAppSignInPolicyParams) error
 	DeleteApplication(ctx context.Context, arg DeleteApplicationParams) error
 	DeleteApplicationAssignment(ctx context.Context, arg DeleteApplicationAssignmentParams) error
@@ -48,6 +49,7 @@ type Querier interface {
 	// last row the caller saw.
 	ListApplicationsByTenantPageAfter(ctx context.Context, arg ListApplicationsByTenantPageAfterParams) ([]*Application, error)
 	ListApplicationsByTenantPageBefore(ctx context.Context, arg ListApplicationsByTenantPageBeforeParams) ([]*Application, error)
+	ListApplicationsByTenantPageEnd(ctx context.Context, arg ListApplicationsByTenantPageEndParams) ([]*Application, error)
 	RemoveApplicationCategory(ctx context.Context, arg RemoveApplicationCategoryParams) error
 	UpsertAppSignInPolicy(ctx context.Context, arg UpsertAppSignInPolicyParams) error
 	UpsertApplication(ctx context.Context, arg UpsertApplicationParams) error

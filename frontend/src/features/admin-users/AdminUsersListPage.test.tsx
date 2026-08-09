@@ -14,7 +14,13 @@ const response = (status: number, body: unknown = {}, headers: Record<string, st
   ok: status >= 200 && status < 300,
   status,
   json: mock().mockResolvedValue(body),
-  headers: new Headers(headers),
+  headers: new Headers({
+    'Pagination-Total-Items': '0',
+    'Pagination-Total-Pages': '0',
+    'Pagination-Current-Page': '0',
+    'Pagination-Page-Size': '50',
+    ...headers,
+  }),
 })
 
 const user: AdminUser = {
@@ -74,7 +80,7 @@ describe('locale', () => {
 describe('AdminUsersPage', () => {
   afterEach(() => restoreGlobals())
 
-  it('uses the tenant usage summary without page-local metric fallbacks', async () => {
+  it('uses the exact non-deleted total without page-local metric fallbacks', async () => {
     stubGlobal(
       'fetch',
       mock(() => Promise.resolve(response(200, { groups: [], group_roles: [] }))),
@@ -84,7 +90,7 @@ describe('AdminUsersPage', () => {
         csrfToken="csrf"
         users={[user]}
         nextCursor={null}
-        usageUsers={73}
+        totalUsers={73}
         onFilter={() => {}}
       />,
     )
@@ -96,7 +102,7 @@ describe('AdminUsersPage', () => {
     expect(screen.queryByText(t.mfaEnrolled)).toBeNull()
   })
 
-  it('omits the total metric when tenant usage is unavailable', async () => {
+  it('always renders the exact total metric', async () => {
     stubGlobal(
       'fetch',
       mock(() => Promise.resolve(response(200, { groups: [], group_roles: [] }))),
@@ -105,7 +111,8 @@ describe('AdminUsersPage', () => {
       <AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} onFilter={() => {}} />,
     )
 
-    expect(screen.queryByText(t.totalUsers)).toBeNull()
+    expect(screen.getByText(t.totalUsers)).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
   })
 
   it('resets addressable paging when a server-side filter changes', async () => {
@@ -131,7 +138,7 @@ describe('AdminUsersPage', () => {
       target: { value: 'Alice' },
     })
     fireEvent.blur(screen.getByRole('textbox', { name: t.searchAriaLabel }))
-    expect(onFilter).toHaveBeenLastCalledWith({ query: 'Alice', status: 'active' })
+    expect(onFilter).toHaveBeenLastCalledWith({ query: 'Alice', status: undefined })
     expect(onFilter.mock.calls.at(-1)?.[0]).not.toHaveProperty('cursor')
   })
 
@@ -215,7 +222,7 @@ describe('AdminUsersPage', () => {
     expect(screen.queryByRole('button', { name: /Verify email address/i })).not.toBeInTheDocument()
   })
 
-  it('does not show page navigation on the only page', async () => {
+  it('shows disabled page navigation on the only page', async () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {
@@ -230,8 +237,8 @@ describe('AdminUsersPage', () => {
     await renderWithRouter(
       <AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} onPage={() => {}} />,
     )
-    expect(screen.queryByRole('button', { name: tCommon.previousPage })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: tCommon.nextPage })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: tCommon.previousPage })).toBeDisabled()
+    expect(screen.getByRole('button', { name: tCommon.nextPage })).toBeDisabled()
   })
 
   it('navigates in both addressable directions without appending rows', async () => {

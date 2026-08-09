@@ -102,6 +102,55 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 	if limit > auditMaxListLimit {
 		limit = auditMaxListLimit
 	}
+	conds, args := auditEventPredicate(q)
+	if !q.AfterOccurredAt.IsZero() || q.AfterID != "" {
+		args = append(args, q.AfterOccurredAt)
+		occIdx := len(args)
+		args = append(args, q.AfterID)
+		idIdx := len(args)
+		conds = append(conds, fmt.Sprintf("(occurred_at, id) < ($%d, $%d)", occIdx, idIdx))
+	}
+	backward := q.FromEnd || !q.BeforeOccurredAt.IsZero() || q.BeforeID != ""
+	if !q.FromEnd && backward {
+		args = append(args, q.BeforeOccurredAt)
+		occIdx := len(args)
+		args = append(args, q.BeforeID)
+		idIdx := len(args)
+		conds = append(conds, fmt.Sprintf("(occurred_at, id) > ($%d, $%d)", occIdx, idIdx))
+	}
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	args = append(args, limit)
+	order := " ORDER BY occurred_at DESC, id DESC"
+	if backward {
+		order = " ORDER BY occurred_at ASC, id ASC"
+	}
+	query := auditEventSelect + where + order + fmt.Sprintf(" LIMIT $%d", len(args))
+	rows, err := r.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return handleAuditListError(err)
+	}
+	defer rows.Close()
+	out := []*ports.AuditEventRecord{}
+	for rows.Next() {
+		rec, err := scanAuditEvent(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, rec)
+	}
+	if err := rows.Err(); err != nil {
+		return handleAuditListError(err)
+	}
+	if backward {
+		slices.Reverse(out)
+	}
+	return out, nil
+}
+
+func auditEventPredicate(q ports.AuditEventQuery) ([]string, []any) {
 	var conds []string
 	var args []any
 	add := func(expr string, val any) {
@@ -137,21 +186,6 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 	if !q.Before.IsZero() {
 		add("occurred_at <= $%d", q.Before)
 	}
-	if !q.AfterOccurredAt.IsZero() || q.AfterID != "" {
-		args = append(args, q.AfterOccurredAt)
-		occIdx := len(args)
-		args = append(args, q.AfterID)
-		idIdx := len(args)
-		conds = append(conds, fmt.Sprintf("(occurred_at, id) < ($%d, $%d)", occIdx, idIdx))
-	}
-	backward := !q.BeforeOccurredAt.IsZero() || q.BeforeID != ""
-	if backward {
-		args = append(args, q.BeforeOccurredAt)
-		occIdx := len(args)
-		args = append(args, q.BeforeID)
-		idIdx := len(args)
-		conds = append(conds, fmt.Sprintf("(occurred_at, id) > ($%d, $%d)", occIdx, idIdx))
-	}
 	// wi-145: registry allowlist の filter 式 (連言)。各式は sidecar への EXISTS 照合。
 	for _, expr := range q.Filters {
 		switch expr.Operator {
@@ -181,36 +215,24 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 			nameIdx, valIdx,
 		))
 	}
+	return conds, args
+}
+
+func (r *AuditEventRepository) Count(ctx context.Context, q ports.AuditEventQuery) (int64, error) {
+	conds, args := auditEventPredicate(q)
 	where := ""
 	if len(conds) > 0 {
 		where = " WHERE " + strings.Join(conds, " AND ")
 	}
-	args = append(args, limit)
-	order := " ORDER BY occurred_at DESC, id DESC"
-	if backward {
-		order = " ORDER BY occurred_at ASC, id ASC"
-	}
-	query := auditEventSelect + where + order + fmt.Sprintf(" LIMIT $%d", len(args))
-	rows, err := r.Pool.Query(ctx, query, args...)
-	if err != nil {
-		return handleAuditListError(err)
-	}
-	defer rows.Close()
-	out := []*ports.AuditEventRecord{}
-	for rows.Next() {
-		rec, err := scanAuditEvent(rows)
-		if err != nil {
-			return nil, err
+	var count int64
+	if err := r.Pool.QueryRow(ctx, "SELECT count(*) FROM audit_events"+where, args...).Scan(&count); err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgInvalidTextRepresentation {
+			return 0, nil
 		}
-		out = append(out, rec)
+		return 0, err
 	}
-	if err := rows.Err(); err != nil {
-		return handleAuditListError(err)
-	}
-	if backward {
-		slices.Reverse(out)
-	}
-	return out, nil
+	return count, nil
 }
 
 // handleAuditListError は List のクエリ実行 / 走査で起きたエラーを扱う。pgx v5 の Query は

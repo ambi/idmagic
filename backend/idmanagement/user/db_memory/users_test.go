@@ -99,6 +99,28 @@ func TestUserRepositoryListPageFilteredSearchesTenantWideAndSupportsPrevious(t *
 	}
 }
 
+func TestUserRepositoryCountsMatchFiltersAndEndPage(t *testing.T) {
+	ctx := context.Background()
+	repo := NewUserRepository()
+	for i, status := range []idmdomain.UserStatus{idmdomain.UserStatusActive, idmdomain.UserStatusActive, idmdomain.UserStatusDisabled, idmdomain.UserStatusDeleted} {
+		repo.Seed(&userdomain.User{ID: fmt.Sprintf("user-%d", i), TenantID: "tenant-1", PreferredUsername: fmt.Sprintf("user-%d", i), Lifecycle: userdomain.UserLifecycle{Status: status}})
+	}
+	repo.Seed(&userdomain.User{ID: "other", TenantID: "tenant-2", PreferredUsername: "user-other", Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}})
+	active := idmdomain.UserStatusActive
+	total, err := repo.Count(ctx, "tenant-1")
+	if err != nil || total != 3 {
+		t.Fatalf("Count = %d, err=%v; want 3 non-deleted", total, err)
+	}
+	filtered, err := repo.CountFiltered(ctx, "tenant-1", "USER", &active)
+	if err != nil || filtered != 2 {
+		t.Fatalf("CountFiltered = %d, err=%v; want 2", filtered, err)
+	}
+	last, err := repo.ListPageBeforeFiltered(ctx, "tenant-1", "", nil, "", "", 2)
+	if err != nil || len(last) != 2 || last[0].PreferredUsername != "user-1" || last[1].PreferredUsername != "user-2" {
+		t.Fatalf("last page = %+v, err=%v", last, err)
+	}
+}
+
 func TestUserRepository(t *testing.T) {
 	ctx := context.Background()
 	repo := NewUserRepository()

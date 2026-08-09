@@ -64,6 +64,12 @@ export const Route = createFileRoute('/admin/audit_events')({
     let events: AdminAuditEvent[] = []
     let nextCursor: string | null = null
     let previousCursor: string | null = null
+    let lastCursor: string | null = null
+    let hasFirst = false
+    let totalItems = 0
+    let totalPages = 0
+    let currentPage = 0
+    let pageSize = deps.limit ?? 100
     let cursorReset = false
     let searchError = ''
     try {
@@ -71,6 +77,12 @@ export const Route = createFileRoute('/admin/audit_events')({
       events = page.events
       previousCursor = page.previousCursor
       nextCursor = page.nextCursor
+      lastCursor = page.lastCursor
+      hasFirst = page.hasFirst
+      totalItems = page.totalItems
+      totalPages = page.totalPages
+      currentPage = page.currentPage
+      pageSize = page.pageSize
     } catch (cause) {
       if (
         deps.cursor &&
@@ -82,6 +94,12 @@ export const Route = createFileRoute('/admin/audit_events')({
         events = page.events
         previousCursor = page.previousCursor
         nextCursor = page.nextCursor
+        lastCursor = page.lastCursor
+        hasFirst = page.hasFirst
+        totalItems = page.totalItems
+        totalPages = page.totalPages
+        currentPage = page.currentPage
+        pageSize = page.pageSize
         cursorReset = true
       } else {
         searchError = cause instanceof AuthenticationAPIError ? cause.message : String(cause)
@@ -96,6 +114,12 @@ export const Route = createFileRoute('/admin/audit_events')({
       events,
       previousCursor,
       nextCursor,
+      lastCursor,
+      hasFirst,
+      totalItems,
+      totalPages,
+      currentPage,
+      pageSize,
       search: deps,
       searchOptions,
       initialError: searchError,
@@ -114,13 +138,19 @@ function AdminAuditEventsRoute() {
     const { cursor: _cursor, ...withoutCursor } = search
     void navigate({ replace: true, search: withoutCursor })
   }, [data.cursorReset, navigate, search])
+  const navigatePage = (cursor: string | null) => {
+    if (cursor) return navigate({ search: { ...search, cursor } })
+    const { cursor: _cursor, ...withoutCursor } = search
+    return navigate({ search: withoutCursor })
+  }
   return (
     <PageMarker kind="admin-audit-events">
       <AdminAuditEventsPage
         key={JSON.stringify(search)}
         {...data}
+        pagination={data}
         onSearch={(next) => navigate({ search: next })}
-        onPage={(cursor) => navigate({ search: { ...search, cursor } })}
+        onPage={navigatePage}
       />
     </PageMarker>
   )

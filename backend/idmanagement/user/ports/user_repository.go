@@ -26,5 +26,7 @@ type UserRepository interface {
 	ListPageBefore(ctx context.Context, tenantID, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error)
 	ListPageFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, afterUsername, afterID string, limit int) ([]*userdomain.User, error)
 	ListPageBeforeFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error)
+	Count(ctx context.Context, tenantID string) (int64, error)
+	CountFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error)
 	Save(ctx context.Context, user *userdomain.User) error
 }

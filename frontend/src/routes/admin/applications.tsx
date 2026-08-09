@@ -30,9 +30,7 @@ export const Route = createFileRoute('/admin/applications')({
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
-      applications: page.applications,
-      previousCursor: page.previousCursor,
-      nextCursor: page.nextCursor,
+      ...page,
       cursorReset,
     }
   },
@@ -46,12 +44,15 @@ function AdminApplicationsRoute() {
   useEffect(() => {
     if (data.cursorReset && search.cursor) void navigate({ replace: true, search: {} })
   }, [data.cursorReset, navigate, search.cursor])
+  const navigatePage = (cursor: string | null) => navigate({ search: cursor ? { cursor } : {} })
   return (
     <PageMarker kind="admin-applications">
       <AdminApplicationsPage
         {...data}
+        pagination={data}
+        cursor={search.cursor}
         key={search.cursor ?? ''}
-        onPage={(cursor) => navigate({ search: { cursor } })}
+        onPage={navigatePage}
       />
     </PageMarker>
   )

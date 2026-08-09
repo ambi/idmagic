@@ -67,12 +67,24 @@ func TestAdminUserListSetsLinkHeaderWhenMorePagesExist(t *testing.T) {
 	if !strings.Contains(link, `rel="next"`) {
 		t.Fatalf("Link header missing rel=next: %q", link)
 	}
+	if !strings.Contains(link, `rel="last"`) {
+		t.Fatalf("Link header missing rel=last: %q", link)
+	}
+	if resp.Header().Get("Pagination-Total-Items") != "5" || resp.Header().Get("Pagination-Total-Pages") != "3" || resp.Header().Get("Pagination-Current-Page") != "1" || resp.Header().Get("Pagination-Page-Size") != "2" {
+		t.Fatalf("unexpected pagination headers: %#v", resp.Header())
+	}
 	if !strings.Contains(link, "cursor=") {
 		t.Fatalf("Link header missing cursor param: %q", link)
 	}
 	users := decodeAdminUserListBody(t, resp.Body.Bytes())
 	if len(users) != 2 {
 		t.Fatalf("expected 2 users on a limit=2 first page, got %d", len(users))
+	}
+	var body struct {
+		TotalUsers int64 `json:"total_users"`
+	}
+	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil || body.TotalUsers != 5 {
+		t.Fatalf("total_users=%d err=%v body=%s", body.TotalUsers, err, resp.Body.String())
 	}
 }
 
@@ -170,6 +182,39 @@ func TestAdminUserListSearchAndStatusApplyBeforePaging(t *testing.T) {
 	users := decodeAdminUserListBody(t, resp.Body.Bytes())
 	if len(users) != 1 || users[0]["preferred_username"] != "alice" {
 		t.Fatalf("unexpected filtered users: %+v", users)
+	}
+	if resp.Header().Get("Pagination-Total-Items") != "1" {
+		t.Fatalf("filtered total items = %q, want 1", resp.Header().Get("Pagination-Total-Items"))
+	}
+	var body struct {
+		TotalUsers int64 `json:"total_users"`
+	}
+	if err := json.Unmarshal(resp.Body.Bytes(), &body); err != nil || body.TotalUsers != 3 {
+		t.Fatalf("total_users=%d err=%v body=%s", body.TotalUsers, err, resp.Body.String())
+	}
+}
+
+func TestAdminUserListLastLinkReturnsOnlyRemainder(t *testing.T) {
+	e, repo := newAdminUserHandler(t)
+	now := time.Now().UTC()
+	for _, name := range []string{"charlie", "delta", "echo"} {
+		repo.Seed(&userdomain.User{ID: name + "-id", PreferredUsername: name, PasswordHash: "unused", CreatedAt: now, UpdatedAt: now})
+	}
+	first := adminUserListRequest(e, "/api/admin/v1/users?limit=2")
+	last := adminUserListRequest(e, linkURLForRel(t, first.Header().Get("Link"), "last"))
+	if last.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", last.Code, last.Body.String())
+	}
+	users := decodeAdminUserListBody(t, last.Body.Bytes())
+	if len(users) != 1 {
+		t.Fatalf("last page length=%d, want 1: %+v", len(users), users)
+	}
+	if last.Header().Get("Pagination-Current-Page") != "3" || last.Header().Get("Pagination-Total-Pages") != "3" {
+		t.Fatalf("last page metadata: %#v", last.Header())
+	}
+	link := last.Header().Get("Link")
+	if !strings.Contains(link, `rel="first"`) || !strings.Contains(link, `rel="prev"`) || strings.Contains(link, `rel="last"`) {
+		t.Fatalf("last page links=%q", link)
 	}
 }
 

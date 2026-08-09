@@ -519,10 +519,14 @@ models:
         optional: true
   AdminUserListResponse:
     kind: value_object
-    description: 管理 API のユーザー一覧。
+    description: 管理 API のユーザー一覧と、query / status に依存せず削除済みを除いた tenant 内の正確な総ユーザー数。
     fields:
       users:
         type: "AdminUserResponse[]"
+      total_users:
+        type: Integer
+        optional: true
+        description: tenant 内で lifecycle status が deleted ではない User の正確な件数。query / status の影響を受けない。
   AdminUserResponse:
     kind: value_object
     description: 管理 API が返すユーザー表現。password_hash は契約上含めない。
@@ -1962,7 +1966,7 @@ interfaces:
       cursor:
         type: String
         optional: true
-        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+        description: "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
       limit:
         type: Integer
         optional: true
@@ -1988,7 +1992,19 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。first は cursor の無い先頭、last は end anchor cursor を使う。"
+          Pagination-Total-Items:
+            type: Integer
+            description: query / status と tenant 境界に一致する committed User の正確な件数。
+          Pagination-Total-Pages:
+            type: Integer
+            description: total items を requested limit で切り上げた総ページ数。空結果は 0。
+          Pagination-Current-Page:
+            type: Integer
+            description: v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。
+          Pagination-Page-Size:
+            type: Integer
+            description: requested limit。最終ページの実返却件数とは独立する。
   GetAdminUser:
     description: 管理者が id を指定してユーザーを取得する。
     input:
@@ -2529,7 +2545,7 @@ interfaces:
       cursor:
         type: String
         optional: true
-        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+        description: "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
       limit:
         type: Integer
         optional: true
@@ -2555,7 +2571,19 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。"
+          Pagination-Total-Items:
+            type: Integer
+            description: tenant 境界と一覧 filter に一致する committed Group の正確な件数。
+          Pagination-Total-Pages:
+            type: Integer
+            description: total items を requested limit で切り上げた総ページ数。空結果は 0。
+          Pagination-Current-Page:
+            type: Integer
+            description: v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。
+          Pagination-Page-Size:
+            type: Integer
+            description: requested limit。最終ページの実返却件数とは独立する。
   GetGroup:
     description: 管理者が単一グループとそのメンバー一覧を取得する。別テナントのグループは未存在として扱う。
     input:
@@ -2822,7 +2850,7 @@ interfaces:
       cursor:
         type: String
         optional: true
-        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+        description: "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
       limit:
         type: Integer
         optional: true
@@ -2848,7 +2876,19 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。"
+          Pagination-Total-Items:
+            type: Integer
+            description: tenant 境界と一覧 filter に一致する committed Agent の正確な件数。
+          Pagination-Total-Pages:
+            type: Integer
+            description: total items を requested limit で切り上げた総ページ数。空結果は 0。
+          Pagination-Current-Page:
+            type: Integer
+            description: v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。
+          Pagination-Page-Size:
+            type: Integer
+            description: requested limit。最終ページの実返却件数とは独立する。
   GetAgent:
     description: 管理者が単一 Agent を取得する。別テナントの Agent は未存在として扱う。
     input:
@@ -3124,21 +3164,21 @@ authorization:
       when: '"account:write" in context.token_scopes && principal.id == resource.id'
 objectives:
   ListAdminUsersLatency:
-    description: "応答の 95% 以上を 200ms 未満で返す。無条件一覧は (tenant_id, preferred_username, id) の\n複合 index、query 指定時は tenant predicate と normalized search の trigram index を使う。limit 上限\n(200) 付近の深い forward/backward page でも先頭ページと同程度の latency を保ち、途中の追加・削除でも\n同じ方向の走査で重複なく取得できる。\n"
+    description: "page data、filter に一致する exact count、filter 非依存の non-deleted exact count を合わせた\n応答の 95% 以上を 200ms 未満で返す。無条件一覧は (tenant_id, preferred_username, id) の複合 index、\nstatus は tenant と normalized lifecycle status の index、query 指定時は tenant predicate と normalized\nsearch の trigram index を使う。独立した page / count query は並列実行し、同一 predicate の count は再利用する。\nlimit 上限 (200) 付近の深い forward/backward page でも先頭ページと同程度の latency を保つ。\n"
     interface: ListAdminUsers
     indicator: measurement.latency < duration("200ms")
     target: 0.95
     window: 30d
     budgeting: occurrences
   ListGroupsLatency:
-    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を forward/reverse\nscan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency\nを保つ。sort key は name 昇順 (id で tie-break) で安定させる)。\n"
+    description: "page data と exact count を合わせた応答の 95% 以上を 200ms 未満で返す。\n(tenant_id, name, id) の複合 index を forward/reverse scan する keyset pagination と tenant-first count を\n独立して並列実行し、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency を保つ。\n"
     interface: ListGroups
     indicator: measurement.latency < duration("200ms")
     target: 0.95
     window: 30d
     budgeting: occurrences
   ListAgentsLatency:
-    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を forward/reverse\nscan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency\nを保つ。sort key は name 昇順 (id で tie-break) で安定させる)。\n"
+    description: "page data と exact count を合わせた応答の 95% 以上を 200ms 未満で返す。\n(tenant_id, name, id) の複合 index を forward/reverse scan する keyset pagination と tenant-first count を\n独立して並列実行し、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency を保つ。\n"
     interface: ListAgents
     indicator: measurement.latency < duration("200ms")
     target: 0.95
@@ -3210,12 +3250,15 @@ scenarios:
       - 所属テナントに limit を超えるユーザーが存在する
     main_success:
       - 管理者が ListAdminUsers を limit のみで実行して先頭ページを取得する
-      - 応答の Link response header (rel="next") から次ページの cursor を取得する
+      - 応答は filter に一致する exact total items / total pages / current page / page size と filter 非依存の total_users を返す
+      - 応答の Link response header (rel="next") から compact cursor を取得する
       - 一覧の途中で他の管理者がユーザーを1件削除する
       - 管理者が取得済みの cursor で次ページを取得する
       - 削除された行を除き、既に返却済みの行との重複なく残りのユーザーが返る
       - 応答の Link response header (rel="prev") から前ページの cursor を取得する
       - 管理者が前ページへ戻り、そのページの canonical order でユーザーを閲覧する
+      - 管理者が rel="last" の end anchor cursor で端数を含む最終ページへ移動する
+      - 管理者が rel="first" の cursor を含まない URL で先頭ページへ戻る
     extensions:
       - at: 4
         condition: cursor が別テナントで発行された、改ざんされた、または query/status が発行時と異なる
@@ -3226,7 +3269,17 @@ scenarios:
         condition: query または status を指定する
         steps:
           - ListAdminUsers は tenant 全体を対象に条件へ一致する User だけを返す
+          - pagination total_items は条件一致件数、total_users は削除済みを除く filter 非依存件数を返す
           - query/status を変更した管理者は cursor を破棄して先頭ページから取得する
+      - at: 1
+        condition: 条件に一致する User が 0 件である
+        steps:
+          - users は空で total items / total pages / current page は 0 / 0 / 0 を返す
+          - first / prev / next / last Link は返さない
+      - at: 1
+        condition: exact count の取得に失敗する
+        steps:
+          - 0 件として成功させず request 全体を server error で失敗させる
       - at: 1
         condition: 実行者が TenantAdministrator ロールを持たない
         steps:
@@ -3445,7 +3498,7 @@ flows:
     entry: AdminUsers
     views:
       AdminUsers:
-        sees: ユーザー管理画面(ユーザー一覧、詳細、所属グループ、CSV インポート、URL に同期した検索・status・cursor、前後ページ移動)
+        sees: ユーザー管理画面(正確な総ユーザー数、active 既定の一覧、件数・現在ページ、詳細、所属グループ、CSV インポート、URL に同期した検索・status・compact cursor、先頭/前/次/末尾移動)
         does:
           - action: list
             does: 画面を開く
@@ -3459,8 +3512,16 @@ flows:
             does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
             interface: ListAdminUsers
             to: AdminUsers
+          - action: first_page
+            does: 「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える
+            interface: ListAdminUsers
+            to: AdminUsers
+          - action: last_page
+            does: 「最後へ」をクリックして end anchor cursor の Link URL へ移動し、端数を含む末尾ページで一覧を置き換える
+            interface: ListAdminUsers
+            to: AdminUsers
           - action: filter
-            does: query または status を変更して cursor の無い先頭 URL へ移動する
+            does: query または status を変更して cursor の無い先頭 URL へ移動する。status 未指定は active を API に明示し、「すべて」は URL の status=all と API の status 省略で表す
             interface: ListAdminUsers
             to: AdminUsers
           - action: view
@@ -3545,7 +3606,7 @@ flows:
     entry: AdminGroups
     views:
       AdminGroups:
-        sees: グループ管理画面(グループ一覧、メンバー、動的グループルール、URL に同期した前後ページ移動)
+        sees: グループ管理画面(グループ一覧、正確な件数・現在ページ、メンバー、動的グループルール、URL に同期した先頭/前/次/末尾移動)
         does:
           - action: list
             does: 画面を開く
@@ -3557,6 +3618,14 @@ flows:
             to: AdminGroups
           - action: previous_page
             does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
+            interface: ListGroups
+            to: AdminGroups
+          - action: first_page
+            does: 「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える
+            interface: ListGroups
+            to: AdminGroups
+          - action: last_page
+            does: 「最後へ」をクリックして end anchor cursor の Link URL へ移動し、末尾ページで一覧を置き換える
             interface: ListGroups
             to: AdminGroups
           - action: view
@@ -3627,7 +3696,7 @@ flows:
     entry: AdminAgents
     views:
       AdminAgents:
-        sees: エージェント管理画面(エージェント一覧、詳細、資格情報の束縛、URL に同期した前後ページ移動)
+        sees: エージェント管理画面(エージェント一覧、正確な件数・現在ページ、詳細、資格情報の束縛、URL に同期した先頭/前/次/末尾移動)
         does:
           - action: list
             does: 画面を開く
@@ -3639,6 +3708,14 @@ flows:
             to: AdminAgents
           - action: previous_page
             does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
+            interface: ListAgents
+            to: AdminAgents
+          - action: first_page
+            does: 「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える
+            interface: ListAgents
+            to: AdminAgents
+          - action: last_page
+            does: 「最後へ」をクリックして end anchor cursor の Link URL へ移動し、末尾ページで一覧を置き換える
             interface: ListAgents
             to: AdminAgents
           - action: view

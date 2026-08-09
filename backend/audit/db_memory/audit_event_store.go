@@ -82,6 +82,9 @@ func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*p
 	key := func(rec *ports.AuditEventRecord) (string, string) {
 		return rec.OccurredAt.UTC().Format(time.RFC3339Nano), rec.ID
 	}
+	if q.FromEnd {
+		return sharedmem.KeysetPageBefore(result, key, true, "", "", limit), nil
+	}
 	if !q.BeforeOccurredAt.IsZero() || q.BeforeID != "" {
 		beforePrimary := ""
 		if !q.BeforeOccurredAt.IsZero() {
@@ -95,6 +98,18 @@ func (s *AuditEventStore) List(_ context.Context, q ports.AuditEventQuery) ([]*p
 	}
 	result = sharedmem.KeysetPage(result, key, true, afterPrimary, q.AfterID, limit)
 	return result, nil
+}
+
+func (s *AuditEventStore) Count(_ context.Context, q ports.AuditEventQuery) (int64, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var count int64
+	for _, rec := range s.events {
+		if auditEventMatches(rec, q) {
+			count++
+		}
+	}
+	return count, nil
 }
 
 func (s *AuditEventStore) FindByID(_ context.Context, id string) (*ports.AuditEventRecord, error) {

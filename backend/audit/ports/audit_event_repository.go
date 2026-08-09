@@ -49,6 +49,7 @@ type AuditEventQuery struct {
 	AfterID          string
 	BeforeOccurredAt time.Time
 	BeforeID         string
+	FromEnd          bool
 	// Q は raw 保存された text 属性への部分一致フリーテキスト (wi-145)。PII 属性は対象外。
 	Q string
 	// Filters は registry allowlist の field/operator による構造化検索式の連言 (AND)。
@@ -61,6 +62,7 @@ type AuditEventRepository interface {
 	Append(ctx context.Context, rec *AuditEventRecord) error
 	// List は OccurredAt 降順で検索結果を返す。
 	List(ctx context.Context, q AuditEventQuery) ([]*AuditEventRecord, error)
+	Count(ctx context.Context, q AuditEventQuery) (int64, error)
 	// FindByID は ID で 1 件取得。テナント境界フィルタは呼び出し側の責務。
 	FindByID(ctx context.Context, id string) (*AuditEventRecord, error)
 }

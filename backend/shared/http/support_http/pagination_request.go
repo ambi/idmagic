@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v5"
@@ -24,7 +25,10 @@ type PageRequest struct {
 	AfterPrimary string
 	AfterID      string
 	Direction    PageDirection
+	Anchor       PageAnchor
 	Limit        int
+	CurrentPage  int
+	LegacyCursor bool
 }
 
 // TrimPage removes the repository lookahead row and reports which navigation
@@ -57,7 +61,7 @@ func ParsePageRequest(c *echo.Context, codec *CursorCodec, tenantID, queryHash s
 	if err != nil {
 		return PageRequest{}, fmt.Errorf("%w: %w", ErrBadPageRequest, err)
 	}
-	page := PageRequest{Direction: PageForward, Limit: limit}
+	page := PageRequest{Direction: PageForward, Anchor: PageAnchorKeyset, Limit: limit, CurrentPage: 1}
 	cursor := c.QueryParam("cursor")
 	if cursor == "" {
 		return page, nil
@@ -67,6 +71,21 @@ func ParsePageRequest(c *echo.Context, codec *CursorCodec, tenantID, queryHash s
 		return PageRequest{}, fmt.Errorf("%w: %w", ErrBadPageRequest, err)
 	}
 	page.Direction = decoded.Direction
+	page.Anchor = decoded.Anchor
+	page.CurrentPage = decoded.Page
+	if decoded.Version != cursorVersion {
+		page.LegacyCursor = true
+		// Legacy cursors carry no navigation position. Preserve their keyset
+		// behavior and start newly issued v3 links from the nearest useful page.
+		if page.Direction == PageForward {
+			page.CurrentPage = 2
+		} else {
+			page.CurrentPage = 1
+		}
+	}
+	if page.Anchor == PageAnchorEnd {
+		return page, nil
+	}
 	page.AfterPrimary, page.AfterID, err = splitKeyset(decoded.After)
 	if err != nil {
 		return PageRequest{}, fmt.Errorf("%w: %w", ErrBadPageRequest, err)
@@ -83,12 +102,17 @@ func SetPageLinks(
 	issuerFallback, tenantID, queryHash string,
 	firstPrimary, firstID, lastPrimary, lastID string,
 	hasPrevious, hasNext bool,
+	currentPage ...int,
 ) error {
-	previousCursor, err := encodePageCursor(codec, tenantID, queryHash, firstPrimary, firstID, PageBackward, hasPrevious)
+	page := 1
+	if len(currentPage) > 0 && currentPage[0] > 0 {
+		page = currentPage[0]
+	}
+	previousCursor, err := encodePageCursor(codec, tenantID, queryHash, firstPrimary, firstID, PageBackward, max(1, page-1), PageAnchorKeyset, hasPrevious)
 	if err != nil {
 		return err
 	}
-	nextCursor, err := encodePageCursor(codec, tenantID, queryHash, lastPrimary, lastID, PageForward, hasNext)
+	nextCursor, err := encodePageCursor(codec, tenantID, queryHash, lastPrimary, lastID, PageForward, page+1, PageAnchorKeyset, hasNext)
 	if err != nil {
 		return err
 	}
@@ -98,14 +122,112 @@ func SetPageLinks(
 	return nil
 }
 
-func encodePageCursor(codec *CursorCodec, tenantID, queryHash, primary, id string, direction PageDirection, present bool) (string, error) {
+func encodePageCursor(codec *CursorCodec, tenantID, queryHash, primary, id string, direction PageDirection, page int, anchor PageAnchor, present bool) (string, error) {
 	if !present {
 		return "", nil
 	}
+	after := ""
+	if anchor == PageAnchorKeyset {
+		after = joinKeyset(primary, id)
+	}
 	return codec.Encode(Cursor{
 		Version: cursorVersion, TenantID: tenantID, QueryHash: queryHash,
-		After: joinKeyset(primary, id), Direction: direction,
+		After: after, Direction: direction, Anchor: anchor, Page: page,
 	})
+}
+
+// PaginationMetadata is emitted as response headers so existing body contracts
+// and picker clients remain backward compatible.
+type PaginationMetadata struct {
+	TotalItems  int64
+	TotalPages  int
+	CurrentPage int
+	PageSize    int
+}
+
+func CalculatePaginationMetadata(totalItems int64, page PageRequest) PaginationMetadata {
+	metadata := PaginationMetadata{TotalItems: totalItems, PageSize: page.Limit}
+	if totalItems <= 0 || page.Limit <= 0 {
+		return metadata
+	}
+	metadata.TotalPages = int((totalItems + int64(page.Limit) - 1) / int64(page.Limit))
+	metadata.CurrentPage = page.CurrentPage
+	if metadata.CurrentPage <= 0 {
+		metadata.CurrentPage = 1
+	}
+	if page.Anchor == PageAnchorEnd {
+		metadata.CurrentPage = metadata.TotalPages
+	}
+	return metadata
+}
+
+func SetPaginationHeaders(c *echo.Context, metadata PaginationMetadata) {
+	header := c.Response().Header()
+	header.Set("Pagination-Total-Items", strconv.FormatInt(metadata.TotalItems, 10))
+	header.Set("Pagination-Total-Pages", strconv.Itoa(metadata.TotalPages))
+	header.Set("Pagination-Current-Page", strconv.Itoa(metadata.CurrentPage))
+	header.Set("Pagination-Page-Size", strconv.Itoa(metadata.PageSize))
+}
+
+// SetPaginationLinks emits first/prev/next/last links for an exact-count page.
+func SetPaginationLinks(
+	c *echo.Context,
+	codec *CursorCodec,
+	issuerFallback, tenantID, queryHash string,
+	page PageRequest,
+	firstPrimary, firstID, lastPrimary, lastID string,
+	hasPrevious, hasNext bool,
+	totalPages int,
+) error {
+	if totalPages <= 0 {
+		c.Response().Header().Del("Link")
+		return nil
+	}
+	currentPage := page.CurrentPage
+	if page.Anchor == PageAnchorEnd {
+		currentPage = totalPages
+	}
+	if currentPage <= 0 {
+		currentPage = 1
+	}
+	previousCursor, err := encodePageCursor(codec, tenantID, queryHash, firstPrimary, firstID, PageBackward, max(1, currentPage-1), PageAnchorKeyset, hasPrevious)
+	if err != nil {
+		return err
+	}
+	nextCursor, err := encodePageCursor(codec, tenantID, queryHash, lastPrimary, lastID, PageForward, currentPage+1, PageAnchorKeyset, hasNext)
+	if err != nil {
+		return err
+	}
+	lastCursor, err := encodePageCursor(codec, tenantID, queryHash, "", "", PageBackward, totalPages, PageAnchorEnd, currentPage != totalPages)
+	if err != nil {
+		return err
+	}
+	link := BuildPaginationLinks(c, issuerFallback, currentPage > 1, previousCursor, nextCursor, lastCursor)
+	if link == "" {
+		c.Response().Header().Del("Link")
+	} else {
+		c.Response().Header().Set("Link", link)
+	}
+	return nil
+}
+
+// TrimEndPage converts a reverse scan of the final limit rows into the true
+// remainder page without serializing count before the page query.
+func TrimEndPage[T any](items []T, totalItems int64, limit int) []T {
+	if limit <= 0 || totalItems <= 0 {
+		return nil
+	}
+	if len(items) > limit {
+		items = items[len(items)-limit:]
+	}
+	want := int(totalItems % int64(limit))
+	if want == 0 {
+		want = limit
+	}
+	if len(items) > want {
+		items = items[len(items)-want:]
+	}
+	return items
 }
 
 // SetNextLink is retained for forward-only handlers during migration.

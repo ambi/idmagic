@@ -167,10 +167,17 @@ func (r *UserRepository) ListPage(ctx context.Context, tenantID, afterUsername, 
 }
 
 func (r *UserRepository) ListPageBefore(ctx context.Context, tenantID, beforeUsername, beforeID string, limit int) ([]*userdomain.User, error) {
-	rows, err := New(r.Pool).ListUsersByTenantPageBefore(ctx, ListUsersByTenantPageBeforeParams{
-		TenantID: tenantID, BeforeUsername: beforeUsername, BeforeID: beforeID,
-		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
-	})
+	q := New(r.Pool)
+	var rows []*User
+	var err error
+	if beforeUsername == "" && beforeID == "" {
+		rows, err = q.ListUsersByTenantPageEnd(ctx, ListUsersByTenantPageEndParams{TenantID: tenantID, PageLimit: int32(limit)}) //nolint:gosec // caller clamps limit to a small positive bound
+	} else {
+		rows, err = q.ListUsersByTenantPageBefore(ctx, ListUsersByTenantPageBeforeParams{
+			TenantID: tenantID, BeforeUsername: beforeUsername, BeforeID: beforeID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -214,15 +221,39 @@ func (r *UserRepository) ListPageBeforeFiltered(ctx context.Context, tenantID, q
 	if status != nil {
 		filterStatus = string(*status)
 	}
-	rows, err := New(r.Pool).ListUsersByTenantPageBeforeFiltered(ctx, ListUsersByTenantPageBeforeFilteredParams{
-		TenantID: tenantID, FilterQuery: escapeLikePattern(query), FilterStatus: filterStatus,
-		BeforeUsername: beforeUsername, BeforeID: beforeID,
-		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
-	})
+	q := New(r.Pool)
+	var rows []*User
+	var err error
+	if beforeUsername == "" && beforeID == "" {
+		rows, err = q.ListUsersByTenantPageEndFiltered(ctx, ListUsersByTenantPageEndFilteredParams{
+			TenantID: tenantID, FilterQuery: escapeLikePattern(query), FilterStatus: filterStatus,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListUsersByTenantPageBeforeFiltered(ctx, ListUsersByTenantPageBeforeFilteredParams{
+			TenantID: tenantID, FilterQuery: escapeLikePattern(query), FilterStatus: filterStatus,
+			BeforeUsername: beforeUsername, BeforeID: beforeID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err == nil {
 		slices.Reverse(rows)
 	}
 	return usersFromRows(rows, err)
+}
+
+func (r *UserRepository) Count(ctx context.Context, tenantID string) (int64, error) {
+	return New(r.Pool).CountUsersByTenant(ctx, tenantID)
+}
+
+func (r *UserRepository) CountFiltered(ctx context.Context, tenantID, query string, status *idmdomain.UserStatus) (int64, error) {
+	filterStatus := ""
+	if status != nil {
+		filterStatus = string(*status)
+	}
+	return New(r.Pool).CountUsersByTenantFiltered(ctx, CountUsersByTenantFilteredParams{
+		TenantID: tenantID, FilterQuery: escapeLikePattern(query), FilterStatus: filterStatus,
+	})
 }
 
 func usersFromRows(rows []*User, err error) ([]*userdomain.User, error) {

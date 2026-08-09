@@ -52,6 +52,9 @@ export const commonDictionary = defineDictionary(
     loadMoreFailedError: '追加の読み込みに失敗しました。',
     previousPage: '前へ',
     nextPage: '次へ',
+    firstPage: '最初へ',
+    lastPage: '最後へ',
+    paginationItems: '件',
     cursorResetNotice: 'ページ位置が無効になったため、先頭ページを表示しました。',
   },
   {
@@ -103,6 +106,9 @@ export const commonDictionary = defineDictionary(
     loadMoreFailedError: 'Could not load more items.',
     previousPage: 'Previous',
     nextPage: 'Next',
+    firstPage: 'First',
+    lastPage: 'Last',
+    paginationItems: 'items',
     cursorResetNotice: 'The page position was no longer valid, so the first page is shown.',
   },
 )

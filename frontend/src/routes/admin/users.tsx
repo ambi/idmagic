@@ -1,27 +1,35 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { AuthenticationAPIError, getAdminSettings, listAdminUsersPage } from '../../api'
+import { AuthenticationAPIError, listAdminUsersPage } from '../../api'
 import { AdminUsersPage } from '../../features/admin-users/AdminUsersListPage'
 import { requirePortalAccount } from '../-guards'
 import { PageMarker } from '../-page'
 
-export const Route = createFileRoute('/admin/users')({
-  validateSearch: (search: Record<string, unknown>) => ({
+export function validateAdminUsersSearch(search: Record<string, unknown>) {
+  return {
     ...(typeof search.cursor === 'string' && search.cursor ? { cursor: search.cursor } : {}),
     ...(typeof search.query === 'string' && search.query ? { query: search.query } : {}),
     ...(typeof search.status === 'string' &&
-    ['active', 'disabled', 'pending_deletion'].includes(search.status)
+    ['all', 'active', 'disabled', 'pending_deletion'].includes(search.status)
       ? { status: search.status }
       : {}),
-  }),
+  }
+}
+
+export function adminUsersAPIStatus(status?: string): string | undefined {
+  return status === 'all' ? undefined : (status ?? 'active')
+}
+
+export const Route = createFileRoute('/admin/users')({
+  validateSearch: validateAdminUsersSearch,
   loaderDeps: ({ search }) => search,
   loader: async ({ deps, location }) => {
     const account = await requirePortalAccount('admin', location.pathname, location.searchStr)
     let cursorReset = false
-    const settingsPromise = getAdminSettings().catch(() => undefined)
+    const apiStatus = adminUsersAPIStatus(deps.status)
     let page: Awaited<ReturnType<typeof listAdminUsersPage>>
     try {
-      page = await listAdminUsersPage(deps)
+      page = await listAdminUsersPage({ ...deps, status: apiStatus })
     } catch (cause) {
       if (
         !deps.cursor ||
@@ -30,18 +38,14 @@ export const Route = createFileRoute('/admin/users')({
       )
         throw cause
       cursorReset = true
-      page = await listAdminUsersPage({ query: deps.query, status: deps.status })
+      page = await listAdminUsersPage({ query: deps.query, status: apiStatus })
     }
-    const settings = await settingsPromise
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
-      users: page.users,
-      previousCursor: page.previousCursor,
-      nextCursor: page.nextCursor,
+      ...page,
       query: deps.query ?? '',
-      status: deps.status ?? '',
-      usageUsers: settings?.usage?.users,
+      status: deps.status ?? 'active',
       cursorReset,
     }
   },
@@ -59,12 +63,22 @@ function AdminUsersRoute() {
       search: { query: search.query, status: search.status },
     })
   }, [data.cursorReset, navigate, search.cursor, search.query, search.status])
+  useEffect(() => {
+    if (search.status !== 'active') return
+    void navigate({ replace: true, search: { query: search.query, cursor: search.cursor } })
+  }, [navigate, search.cursor, search.query, search.status])
+  const navigatePage = (cursor: string | null) => {
+    if (cursor) return navigate({ search: { ...search, cursor } })
+    const { cursor: _cursor, ...withoutCursor } = search
+    return navigate({ search: withoutCursor })
+  }
   return (
     <PageMarker kind="admin-users">
       <AdminUsersPage
         {...data}
+        pagination={data}
         key={`${search.cursor ?? ''}:${search.query ?? ''}:${search.status ?? ''}`}
-        onPage={(cursor) => navigate({ search: { ...search, cursor } })}
+        onPage={navigatePage}
         onFilter={(next) => navigate({ search: { ...next } })}
       />
     </PageMarker>

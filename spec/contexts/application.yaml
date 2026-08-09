@@ -1169,7 +1169,7 @@ interfaces:
       cursor:
         type: String
         optional: true
-        description: "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+        description: "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
       limit:
         type: Integer
         optional: true
@@ -1195,7 +1195,19 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。"
+          Pagination-Total-Items:
+            type: Integer
+            description: tenant 境界と一覧 filter に一致する committed Application の正確な件数。
+          Pagination-Total-Pages:
+            type: Integer
+            description: total items を requested limit で切り上げた総ページ数。空結果は 0。
+          Pagination-Current-Page:
+            type: Integer
+            description: v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。
+          Pagination-Page-Size:
+            type: Integer
+            description: requested limit。最終ページの実返却件数とは独立する。
   GetAdminApplication:
     description: 管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。
     input:
@@ -1961,7 +1973,7 @@ authorization:
       when: '"account:write" in context.token_scopes && principal.id == resource.id'
 objectives:
   ListAdminApplicationsLatency:
-    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を forward/reverse\nscan する keyset pagination で、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency\nを保つ。sort key は name 昇順 (id で tie-break) で安定させる)。\n"
+    description: "page data と exact count を合わせた応答の 95% 以上を 200ms 未満で返す。\n(tenant_id, name, id) の複合 index を forward/reverse scan する keyset pagination と tenant-first count を\n独立して並列実行し、limit 上限 (200) 付近の深い前後ページでも先頭ページと同程度の latency を保つ。\n"
     interface: ListAdminApplications
     indicator: measurement.latency < duration("200ms")
     target: 0.95
@@ -2199,7 +2211,7 @@ flows:
     entry: AdminApplications
     views:
       AdminApplications:
-        sees: アプリケーション管理画面(アプリケーション一覧、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy、URL に同期した前後ページ移動)
+        sees: アプリケーション管理画面(アプリケーション一覧、正確な件数・現在ページ、アイコン、プロトコル種別、カテゴリ、割当ユーザー/グループ、sign-in policy、URL に同期した先頭/前/次/末尾移動)
         does:
           - action: list
             does: 画面を開く
@@ -2211,6 +2223,14 @@ flows:
             to: AdminApplications
           - action: previous_page
             does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
+            interface: ListAdminApplications
+            to: AdminApplications
+          - action: first_page
+            does: 「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える
+            interface: ListAdminApplications
+            to: AdminApplications
+          - action: last_page
+            does: 「最後へ」をクリックして end anchor cursor の Link URL へ移動し、末尾ページで一覧を置き換える
             interface: ListAdminApplications
             to: AdminApplications
           - action: create

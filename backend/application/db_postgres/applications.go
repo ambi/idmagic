@@ -114,10 +114,17 @@ func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterNam
 }
 
 func (r *ApplicationRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*domain.Application, error) {
-	rows, err := New(r.Pool).ListApplicationsByTenantPageBefore(ctx, ListApplicationsByTenantPageBeforeParams{
-		TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
-		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
-	})
+	q := New(r.Pool)
+	var rows []*Application
+	var err error
+	if beforeName == "" && beforeID == "" {
+		rows, err = q.ListApplicationsByTenantPageEnd(ctx, ListApplicationsByTenantPageEndParams{TenantID: tenantID, PageLimit: int32(limit)}) //nolint:gosec // caller clamps limit to a small positive bound
+	} else {
+		rows, err = q.ListApplicationsByTenantPageBefore(ctx, ListApplicationsByTenantPageBeforeParams{
+			TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +138,10 @@ func (r *ApplicationRepository) ListPageBefore(ctx context.Context, tenantID, be
 		out = append(out, app)
 	}
 	return out, nil
+}
+
+func (r *ApplicationRepository) Count(ctx context.Context, tenantID string) (int64, error) {
+	return New(r.Pool).CountApplicationsByTenant(ctx, tenantID)
 }
 
 func (r *ApplicationRepository) FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error) {

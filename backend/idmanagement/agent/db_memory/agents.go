@@ -74,6 +74,18 @@ func (r *AgentRepository) ListPageBefore(_ context.Context, tenantID, beforeName
 	return sharedmem.KeysetPageBefore(out, key, false, beforeName, beforeID, limit), nil
 }
 
+func (r *AgentRepository) Count(_ context.Context, tenantID string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var count int64
+	for _, agent := range r.agents {
+		if agent.TenantID == tenantID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (r *AgentRepository) FindByID(_ context.Context, tenantID, id string) (*agentdomain.Agent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

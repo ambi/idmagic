@@ -59,6 +59,25 @@ function decodeBase32(value: string): Buffer {
   return Buffer.from(bytes)
 }
 
+async function waitForPaginationPage(
+  view: Bun.WebView,
+  expected: number,
+  timeoutMs = 15_000,
+): Promise<number> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    const position = String(
+      await view.evaluate(`(() => [...document.querySelectorAll('span')]
+        .map((element) => (element.textContent ?? '').trim())
+        .find((text) => /^\\d+ \\/ \\d+$/.test(text)) ?? '')()`),
+    )
+    const match = position.match(/^(\d+) \/ (\d+)$/)
+    if (match && Number(match[1]) === expected) return Number(match[2])
+    await Bun.sleep(150)
+  }
+  throw new Error(`timeout waiting for pagination page ${expected}`)
+}
+
 beforeAll(async () => {
   await startE2EEnvironment()
 }, 180_000)
@@ -397,6 +416,43 @@ test('admin audit log can be filtered and export can be triggered', async () => 
     view.close()
   }
 }, 60_000)
+
+test('admin audit pagination preserves addressable history and supports both ends', async () => {
+  const view = new Bun.WebView({ width: 1280, height: 2000 })
+  try {
+    await navigateAndLogin(view, '/admin/audit_events?limit=1', 'admin-audit-events')
+    const totalPages = await waitForPaginationPage(view, 1)
+    expect(totalPages).toBeGreaterThan(1)
+
+    await clickEnabledButtonByText(view, 'Next')
+    const secondURL = await waitForLocationHref(view, /limit=1.*cursor=/)
+    await waitForPaginationPage(view, 2)
+
+    await view.evaluate('history.back()')
+    await waitForLocationHref(view, /\/admin\/audit_events\?limit=1$/)
+    await waitForPaginationPage(view, 1)
+    await view.evaluate('history.forward()')
+    await waitForLocationHref(view, /limit=1.*cursor=/)
+    await waitForPaginationPage(view, 2)
+
+    await view.navigate(secondURL)
+    await waitForPage(view, 'admin-audit-events', 30_000)
+    await waitForPaginationPage(view, 2)
+
+    await clickEnabledButtonByText(view, 'First')
+    await waitForLocationHref(view, /\/admin\/audit_events\?limit=1$/)
+    await waitForPaginationPage(view, 1)
+
+    await clickEnabledButtonByText(view, 'Last')
+    await waitForLocationHref(view, /limit=1.*cursor=/)
+    await waitForPaginationPage(view, totalPages)
+    const lastDisabled = await view.evaluate(`(() => [...document.querySelectorAll('button')]
+      .find((button) => (button.textContent ?? '').trim() === 'Last')?.disabled ?? false)()`)
+    expect(lastDisabled).toBe(true)
+  } finally {
+    view.close()
+  }
+}, 90_000)
 
 test('admin user attribute schema can add and delete a custom attribute', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2200 })

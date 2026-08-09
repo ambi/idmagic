@@ -14,7 +14,13 @@ const response = (status: number, body: unknown = {}, headers: Record<string, st
   ok: status >= 200 && status < 300,
   status,
   json: mock().mockResolvedValue(body),
-  headers: new Headers(headers),
+  headers: new Headers({
+    'Pagination-Total-Items': '0',
+    'Pagination-Total-Pages': '0',
+    'Pagination-Current-Page': '0',
+    'Pagination-Page-Size': '50',
+    ...headers,
+  }),
 })
 
 const app: AdminApplication = {

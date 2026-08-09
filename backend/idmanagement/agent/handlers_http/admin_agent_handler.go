@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"sync"
 	"time"
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
@@ -66,27 +67,46 @@ func HandleListAgents(d Deps, c *echo.Context) error {
 	if err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
+	ctx := c.Request().Context()
 	var views []agentusecases.AgentView
-	if page.Direction == support.PageBackward {
-		views, err = agentusecases.ListAgentsBefore(c.Request().Context(), adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
-	} else {
-		views, err = agentusecases.ListAgents(c.Request().Context(), adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+	var pageErr, countErr error
+	var totalItems int64
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		if page.Direction == support.PageBackward {
+			views, pageErr = agentusecases.ListAgentsBefore(ctx, adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+		} else {
+			views, pageErr = agentusecases.ListAgents(ctx, adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
+		}
+	})
+	wg.Go(func() { totalItems, countErr = d.AgentRepo.Count(ctx, tenantID) })
+	wg.Wait()
+	if pageErr != nil {
+		return pageErr
 	}
-	if err != nil {
-		return err
+	if countErr != nil {
+		return countErr
 	}
 	views, hasPrevious, hasNext := support.TrimPage(views, page)
+	if page.Anchor == support.PageAnchorEnd {
+		views = support.TrimEndPage(views, totalItems, page.Limit)
+	}
+	metadata := support.CalculatePaginationMetadata(totalItems, page)
+	support.SetPaginationHeaders(c, metadata)
 	agents := make([]agentSummaryResponse, len(views))
 	for i, view := range views {
 		agents[i] = toAgentSummaryResponse(view.Agent, view.ClientIDs)
 	}
+	var firstPrimary, firstID, lastPrimary, lastID string
 	if len(views) > 0 {
 		first := views[0]
 		last := views[len(views)-1]
-		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAgentsQuery,
-			first.Agent.Name, first.Agent.ID, last.Agent.Name, last.Agent.ID, hasPrevious, hasNext); err != nil {
-			return err
-		}
+		firstPrimary, firstID = first.Agent.Name, first.Agent.ID
+		lastPrimary, lastID = last.Agent.Name, last.Agent.ID
+	}
+	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAgentsQuery, page,
+		firstPrimary, firstID, lastPrimary, lastID, hasPrevious, hasNext, metadata.TotalPages); err != nil {
+		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"agents": agents})
 }

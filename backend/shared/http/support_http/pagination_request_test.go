@@ -1,8 +1,6 @@
 package support_http
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -99,7 +97,7 @@ func TestSetNextLinkNoopWithoutMore(t *testing.T) {
 	}
 }
 
-func TestSetNextLinkIssuesVersionedForwardCursorWithoutExpiry(t *testing.T) {
+func TestSetNextLinkIssuesVersionThreeForwardCursorWithoutExpiry(t *testing.T) {
 	codec := NewCursorCodec([]byte("secret"))
 	c := newPageCtx(t, "limit=2")
 	if err := SetNextLink(c, codec, "http://idp.test", "tenant-1", "ListThings", "bravo", "id-2", true); err != nil {
@@ -113,26 +111,15 @@ func TestSetNextLinkIssuesVersionedForwardCursorWithoutExpiry(t *testing.T) {
 		t.Fatalf("parse Link URL: %v", err)
 	}
 	token := parsed.Query().Get("cursor")
-	payloadPart, _, ok := strings.Cut(token, ".")
-	if !ok {
-		t.Fatalf("cursor has no signed payload: %q", token)
+	if !strings.HasPrefix(token, "v3.") {
+		t.Fatalf("cursor = %q, want v3 prefix", token)
 	}
-	payload, err := base64.RawURLEncoding.DecodeString(payloadPart)
+	decoded, err := codec.DecodeCursorForQuery(token, "tenant-1", "ListThings")
 	if err != nil {
-		t.Fatalf("decode cursor payload: %v", err)
+		t.Fatalf("decode v3 cursor: %v", err)
 	}
-	var claims map[string]any
-	if err := json.Unmarshal(payload, &claims); err != nil {
-		t.Fatalf("unmarshal cursor payload: %v", err)
-	}
-	if claims["v"] != float64(2) {
-		t.Fatalf("cursor version = %#v, want 2", claims["v"])
-	}
-	if claims["d"] != "forward" {
-		t.Fatalf("cursor direction = %#v, want forward", claims["d"])
-	}
-	if _, exists := claims["exp"]; exists {
-		t.Fatalf("new cursor unexpectedly contains expiry: %s", payload)
+	if decoded.Version != cursorVersion || decoded.Direction != PageForward || !decoded.ExpiresAt.IsZero() {
+		t.Fatalf("decoded cursor = %+v, want v3 forward without expiry", decoded)
 	}
 }
 
@@ -140,7 +127,7 @@ func TestParsePageRequestPreservesBackwardDirection(t *testing.T) {
 	codec := NewCursorCodec([]byte("secret"))
 	cursor, err := codec.Encode(Cursor{
 		Version: cursorVersion, TenantID: "tenant-1", QueryHash: "ListThings",
-		After: joinKeyset("bravo", "id-2"), Direction: PageBackward,
+		After: joinKeyset("bravo", "id-2"), Direction: PageBackward, Page: 2,
 	})
 	if err != nil {
 		t.Fatalf("encode backward cursor: %v", err)
@@ -206,5 +193,62 @@ func TestTrimPageBackwardDropsFarthestLookaheadAndKeepsCanonicalOrder(t *testing
 	items, hasPrevious, hasNext := TrimPage([]string{"alpha", "bravo", "charlie"}, page)
 	if strings.Join(items, ",") != "bravo,charlie" || !hasPrevious || !hasNext {
 		t.Fatalf("items=%v previous=%v next=%v", items, hasPrevious, hasNext)
+	}
+}
+
+func TestParsePageRequestPreservesV3PageAndEndAnchor(t *testing.T) {
+	codec := NewCursorCodec([]byte("secret"))
+	cursor, err := codec.Encode(Cursor{
+		Version: cursorVersion, TenantID: "tenant-1", QueryHash: "ListThings",
+		Direction: PageBackward, Anchor: PageAnchorEnd, Page: 3,
+	})
+	if err != nil {
+		t.Fatalf("encode end cursor: %v", err)
+	}
+	c := newPageCtx(t, "cursor="+url.QueryEscape(cursor)+"&limit=50")
+	page, err := ParsePageRequest(c, codec, "tenant-1", "ListThings", 50, 200)
+	if err != nil {
+		t.Fatalf("ParsePageRequest: %v", err)
+	}
+	if page.Anchor != PageAnchorEnd || page.CurrentPage != 3 || page.AfterPrimary != "" || page.AfterID != "" {
+		t.Fatalf("page = %+v, want end anchor page 3", page)
+	}
+}
+
+func TestPaginationMetadataAndHeadersCoverEmptyAndRemainderPage(t *testing.T) {
+	if got := CalculatePaginationMetadata(0, PageRequest{Limit: 50, CurrentPage: 1}); got.TotalItems != 0 || got.TotalPages != 0 || got.CurrentPage != 0 || got.PageSize != 50 {
+		t.Fatalf("empty metadata = %+v", got)
+	}
+	got := CalculatePaginationMetadata(105, PageRequest{Limit: 50, CurrentPage: 3, Anchor: PageAnchorEnd})
+	if got.TotalItems != 105 || got.TotalPages != 3 || got.CurrentPage != 3 || got.PageSize != 50 {
+		t.Fatalf("remainder metadata = %+v", got)
+	}
+	c := newPageCtx(t, "limit=50")
+	SetPaginationHeaders(c, got)
+	if c.Response().Header().Get("Pagination-Total-Items") != "105" ||
+		c.Response().Header().Get("Pagination-Total-Pages") != "3" ||
+		c.Response().Header().Get("Pagination-Current-Page") != "3" ||
+		c.Response().Header().Get("Pagination-Page-Size") != "50" {
+		t.Fatalf("pagination headers = %#v", c.Response().Header())
+	}
+}
+
+func TestSetPaginationLinksEmitsFirstPreviousNextLast(t *testing.T) {
+	codec := NewCursorCodec([]byte("secret"))
+	c := newPageCtx(t, "cursor=current&limit=50&status=active")
+	page := PageRequest{Direction: PageForward, Anchor: PageAnchorKeyset, Limit: 50, CurrentPage: 2}
+	if err := SetPaginationLinks(c, codec, "http://idp.test", "tenant-1", "ListThings;status=active", page,
+		"alpha", "id-1", "bravo", "id-2", true, true, 3); err != nil {
+		t.Fatalf("SetPaginationLinks: %v", err)
+	}
+	link := c.Response().Header().Get("Link")
+	for _, rel := range []string{"first", "prev", "next", "last"} {
+		if !strings.Contains(link, `rel="`+rel+`"`) {
+			t.Fatalf("Link missing rel=%s: %q", rel, link)
+		}
+	}
+	firstPart := strings.Split(link, ", ")[0]
+	if strings.Contains(firstPart, "cursor=") {
+		t.Fatalf("first link contains cursor: %q", firstPart)
 	}
 }

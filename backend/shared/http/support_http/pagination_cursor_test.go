@@ -1,6 +1,7 @@
 package support_http
 
 import (
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -125,4 +126,98 @@ func TestDecodeForQueryReturnsAfterOnMatch(t *testing.T) {
 	if after != "keyset-value" {
 		t.Fatalf("got after=%q, want %q", after, "keyset-value")
 	}
+}
+
+func TestV3CursorRoundTripsCompactPageAndEndAnchor(t *testing.T) {
+	codec := NewCursorCodec([]byte("test-secret"))
+	cur := Cursor{
+		Version: cursorVersion, TenantID: "tenant-1", QueryHash: "ListThings;status=active",
+		After:     joinKeyset(strings.Repeat("primary-value-", 12), "018f0d4e-7b5a-7c21-9d0a-123456789abc"),
+		Direction: PageBackward, Anchor: PageAnchorKeyset, Page: 42,
+	}
+	token, err := codec.Encode(cur)
+	if err != nil {
+		t.Fatalf("Encode v3: %v", err)
+	}
+	if !strings.HasPrefix(token, "v3.") {
+		t.Fatalf("token = %q, want v3 prefix", token)
+	}
+	got, err := codec.DecodeCursorForQuery(token, cur.TenantID, cur.QueryHash)
+	if err != nil {
+		t.Fatalf("DecodeCursorForQuery v3: %v", err)
+	}
+	if got.After != cur.After || got.Direction != cur.Direction || got.Anchor != cur.Anchor || got.Page != cur.Page {
+		t.Fatalf("decoded cursor = %+v, want %+v", got, cur)
+	}
+}
+
+func TestV3CursorIsAtMostSixtyPercentOfV2Fixture(t *testing.T) {
+	codec := NewCursorCodec([]byte("test-secret"))
+	boundary := joinKeyset(strings.Repeat("max-primary-", 24), "018f0d4e-7b5a-7c21-9d0a-123456789abc")
+	v2, err := codec.Encode(Cursor{
+		Version: 2, TenantID: "tenant-with-a-realistically-long-identifier", QueryHash: strings.Repeat("filter-fingerprint-", 4),
+		After: boundary, Direction: PageForward,
+	})
+	if err != nil {
+		t.Fatalf("Encode v2: %v", err)
+	}
+	v3, err := codec.Encode(Cursor{
+		Version: cursorVersion, TenantID: "tenant-with-a-realistically-long-identifier", QueryHash: strings.Repeat("filter-fingerprint-", 4),
+		After: boundary, Direction: PageForward, Anchor: PageAnchorKeyset, Page: 12,
+	})
+	if err != nil {
+		t.Fatalf("Encode v3: %v", err)
+	}
+	if len(v3)*100 > len(v2)*60 {
+		t.Fatalf("v3 length = %d, v2 length = %d; want v3 <= 60%%", len(v3), len(v2))
+	}
+}
+
+func TestV3CursorRejectsTamperTenantQueryAndUnknownVersion(t *testing.T) {
+	codec := NewCursorCodec([]byte("test-secret"))
+	token, err := codec.Encode(Cursor{
+		Version: cursorVersion, TenantID: "tenant-1", QueryHash: "query-1",
+		After:     joinKeyset("alpha", "018f0d4e-7b5a-7c21-9d0a-123456789abc"),
+		Direction: PageForward, Anchor: PageAnchorKeyset, Page: 2,
+	})
+	if err != nil {
+		t.Fatalf("Encode v3: %v", err)
+	}
+	if _, err := codec.DecodeCursorForQuery(token, "tenant-2", "query-1"); err == nil {
+		t.Fatal("expected tenant mismatch rejection")
+	}
+	if _, err := codec.DecodeCursorForQuery(token, "tenant-1", "query-2"); err == nil {
+		t.Fatal("expected query mismatch rejection")
+	}
+	parts := strings.Split(token, ".")
+	replacement := "A"
+	if strings.HasSuffix(parts[1], replacement) {
+		replacement = "B"
+	}
+	parts[1] = parts[1][:len(parts[1])-1] + replacement
+	if _, err := codec.DecodeCursorForQuery(strings.Join(parts, "."), "tenant-1", "query-1"); err == nil {
+		t.Fatal("expected payload tamper rejection")
+	}
+	unknown := "v4." + url.PathEscape(parts[1]) + "." + parts[2]
+	if _, err := codec.DecodeCursorForQuery(unknown, "tenant-1", "query-1"); err == nil {
+		t.Fatal("expected unknown version rejection")
+	}
+}
+
+func FuzzCursorDecodeForQueryNeverPanics(f *testing.F) {
+	codec := NewCursorCodec([]byte("test-secret"))
+	valid, err := codec.Encode(Cursor{
+		Version: cursorVersion, TenantID: "tenant-1", QueryHash: "query-1",
+		After:     joinKeyset("alpha", "018f0d4e-7b5a-7c21-9d0a-123456789abc"),
+		Direction: PageForward, Anchor: PageAnchorKeyset, Page: 2,
+	})
+	if err != nil {
+		f.Fatalf("encode seed: %v", err)
+	}
+	for _, seed := range []string{"", "v3..", "v4.a.b", "legacy.invalid", valid} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, token string) {
+		_, _ = codec.DecodeCursorForQuery(token, "tenant-1", "query-1")
+	})
 }

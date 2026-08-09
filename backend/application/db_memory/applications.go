@@ -139,6 +139,18 @@ func (r *ApplicationRepository) ListPageBefore(_ context.Context, tenantID, befo
 	return sharedmem.KeysetPageBefore(out, key, false, beforeName, beforeID, limit), nil
 }
 
+func (r *ApplicationRepository) Count(_ context.Context, tenantID string) (int64, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var count int64
+	for _, app := range r.applications {
+		if app.TenantID == tenantID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (r *ApplicationRepository) FindByID(_ context.Context, tenantID, applicationID string) (*domain.Application, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

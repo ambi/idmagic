@@ -2615,7 +2615,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+              "description": "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
             }
           },
           {
@@ -2651,8 +2651,36 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。first は cursor の無い先頭、last は end anchor cursor を使う。"
                 }
+              },
+              "Pagination-Total-Items": {
+                "schema": {
+                  "type": "integer",
+                  "description": "query / status と tenant 境界に一致する committed User の正確な件数。"
+                },
+                "required": true
+              },
+              "Pagination-Total-Pages": {
+                "schema": {
+                  "type": "integer",
+                  "description": "total items を requested limit で切り上げた総ページ数。空結果は 0。"
+                },
+                "required": true
+              },
+              "Pagination-Current-Page": {
+                "schema": {
+                  "type": "integer",
+                  "description": "v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。"
+                },
+                "required": true
+              },
+              "Pagination-Page-Size": {
+                "schema": {
+                  "type": "integer",
+                  "description": "requested limit。最終ページの実返却件数とは独立する。"
+                },
+                "required": true
               }
             }
           },
@@ -5146,7 +5174,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+              "description": "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
             }
           },
           {
@@ -5182,8 +5210,36 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。"
                 }
+              },
+              "Pagination-Total-Items": {
+                "schema": {
+                  "type": "integer",
+                  "description": "tenant 境界と一覧 filter に一致する committed Group の正確な件数。"
+                },
+                "required": true
+              },
+              "Pagination-Total-Pages": {
+                "schema": {
+                  "type": "integer",
+                  "description": "total items を requested limit で切り上げた総ページ数。空結果は 0。"
+                },
+                "required": true
+              },
+              "Pagination-Current-Page": {
+                "schema": {
+                  "type": "integer",
+                  "description": "v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。"
+                },
+                "required": true
+              },
+              "Pagination-Page-Size": {
+                "schema": {
+                  "type": "integer",
+                  "description": "requested limit。最終ページの実返却件数とは独立する。"
+                },
+                "required": true
               }
             }
           },
@@ -6330,7 +6386,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+              "description": "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
             }
           },
           {
@@ -6366,8 +6422,36 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。"
                 }
+              },
+              "Pagination-Total-Items": {
+                "schema": {
+                  "type": "integer",
+                  "description": "tenant 境界と一覧 filter に一致する committed Agent の正確な件数。"
+                },
+                "required": true
+              },
+              "Pagination-Total-Pages": {
+                "schema": {
+                  "type": "integer",
+                  "description": "total items を requested limit で切り上げた総ページ数。空結果は 0。"
+                },
+                "required": true
+              },
+              "Pagination-Current-Page": {
+                "schema": {
+                  "type": "integer",
+                  "description": "v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。"
+                },
+                "required": true
+              },
+              "Pagination-Page-Size": {
+                "schema": {
+                  "type": "integer",
+                  "description": "requested limit。最終ページの実返却件数とは独立する。"
+                },
+                "required": true
               }
             }
           },
@@ -14360,8 +14444,36 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。first は cursor の無い先頭、last は end anchor cursor を使う。"
                 }
+              },
+              "Pagination-Total-Items": {
+                "schema": {
+                  "type": "integer",
+                  "description": "tenant 境界と AuditEventQuery の全 filter に一致する committed event の正確な件数。"
+                },
+                "required": true
+              },
+              "Pagination-Total-Pages": {
+                "schema": {
+                  "type": "integer",
+                  "description": "total items を requested limit で切り上げた総ページ数。空結果は 0。"
+                },
+                "required": true
+              },
+              "Pagination-Current-Page": {
+                "schema": {
+                  "type": "integer",
+                  "description": "v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。"
+                },
+                "required": true
+              },
+              "Pagination-Page-Size": {
+                "schema": {
+                  "type": "integer",
+                  "description": "requested limit。最終ページの実返却件数とは独立する。"
+                },
+                "required": true
               }
             }
           },
@@ -14643,7 +14755,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "description": "tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token は時刻で失効せず、旧 expiry 付き token は expiry まで有効。"
+              "description": "direction・anchor・遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。"
             }
           },
           {
@@ -14679,8 +14791,36 @@
               "Link": {
                 "schema": {
                   "type": "string",
-                  "description": "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+                  "description": "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。"
                 }
+              },
+              "Pagination-Total-Items": {
+                "schema": {
+                  "type": "integer",
+                  "description": "tenant 境界と一覧 filter に一致する committed Application の正確な件数。"
+                },
+                "required": true
+              },
+              "Pagination-Total-Pages": {
+                "schema": {
+                  "type": "integer",
+                  "description": "total items を requested limit で切り上げた総ページ数。空結果は 0。"
+                },
+                "required": true
+              },
+              "Pagination-Current-Page": {
+                "schema": {
+                  "type": "integer",
+                  "description": "v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。"
+                },
+                "required": true
+              },
+              "Pagination-Page-Size": {
+                "schema": {
+                  "type": "integer",
+                  "description": "requested limit。最終ページの実返却件数とは独立する。"
+                },
+                "required": true
               }
             }
           },
@@ -26139,7 +26279,7 @@
         "required": [
           "events"
         ],
-        "description": "監査イベントの検索結果。ページング継続は body ではなく Link response header (rel=\"next\") で表現する。"
+        "description": "監査イベントの検索結果。ページング navigation は body ではなく Link response header で表現する。"
       },
       "AdminAuditEventResponse": {
         "type": "object",
@@ -26874,13 +27014,17 @@
             "items": {
               "$ref": "#/components/schemas/AdminUserResponse"
             }
+          },
+          "total_users": {
+            "type": "integer",
+            "description": "tenant 内で lifecycle status が deleted ではない User の正確な件数。query / status の影響を受けない。"
           }
         },
         "additionalProperties": false,
         "required": [
           "users"
         ],
-        "description": "管理 API のユーザー一覧。"
+        "description": "管理 API のユーザー一覧と、query / status に依存せず削除済みを除いた tenant 内の正確な総ユーザー数。"
       },
       "AdminUserResponse": {
         "type": "object",
@@ -29379,7 +29523,7 @@
           },
           "cursor": {
             "type": "string",
-            "description": "応答の Link response header (rel=\"prev\" / rel=\"next\") の URL に埋め込まれた値を\nそのまま渡す。tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token\nは時刻で失効せず、旧 expiry 付き token は expiry まで有効。\n"
+            "description": "応答の Link response header の URL に埋め込まれた値をそのまま渡す。direction・anchor・\n遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として\n署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。\n"
           },
           "limit": {
             "type": "integer",

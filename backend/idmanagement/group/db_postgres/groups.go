@@ -97,10 +97,17 @@ func (r *GroupRepository) ListPage(ctx context.Context, tenantID, afterName, aft
 }
 
 func (r *GroupRepository) ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*groupdomain.Group, error) {
-	rows, err := New(r.Pool).ListGroupsByTenantPageBefore(ctx, ListGroupsByTenantPageBeforeParams{
-		TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
-		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
-	})
+	q := New(r.Pool)
+	var rows []*Group
+	var err error
+	if beforeName == "" && beforeID == "" {
+		rows, err = q.ListGroupsByTenantPageEnd(ctx, ListGroupsByTenantPageEndParams{TenantID: tenantID, PageLimit: int32(limit)}) //nolint:gosec // caller clamps limit to a small positive bound
+	} else {
+		rows, err = q.ListGroupsByTenantPageBefore(ctx, ListGroupsByTenantPageBeforeParams{
+			TenantID: tenantID, BeforeName: beforeName, BeforeID: beforeID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +121,10 @@ func (r *GroupRepository) ListPageBefore(ctx context.Context, tenantID, beforeNa
 		out = append(out, group)
 	}
 	return out, nil
+}
+
+func (r *GroupRepository) Count(ctx context.Context, tenantID string) (int64, error) {
+	return New(r.Pool).CountGroupsByTenant(ctx, tenantID)
 }
 
 func (r *GroupRepository) FindByID(ctx context.Context, tenantID, id string) (*groupdomain.Group, error) {

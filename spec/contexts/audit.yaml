@@ -87,7 +87,7 @@ models:
       cursor:
         type: String
         optional: true
-        description: "応答の Link response header (rel=\"prev\" / rel=\"next\") の URL に埋め込まれた値を\nそのまま渡す。tenant・sort・filter・direction・keyset を署名した versioned opaque token。新規 token\nは時刻で失効せず、旧 expiry 付き token は expiry まで有効。\n"
+        description: "応答の Link response header の URL に埋め込まれた値をそのまま渡す。direction・anchor・\n遷移先 page number・keyset を compact binary payload に持ち、tenant・sort・filter を associated data として\n署名した stateless versioned opaque token。新規 v3 token は時刻で失効せず、legacy v0/v2 token も既存規則で受理する。\n"
       limit:
         type: Integer
         optional: true
@@ -165,8 +165,7 @@ models:
         description: イベント本体 (SCL events セクションの payload 形状)。
   AdminAuditEventListResponse:
     kind: value_object
-    description: 監査イベントの検索結果。ページング継続は body ではなく Link response header
-      (rel="next") で表現する。
+    description: 監査イベントの検索結果。ページング navigation は body ではなく Link response header で表現する。
     fields:
       events:
         type: "AdminAuditEventResponse[]"
@@ -207,7 +206,19 @@ interfaces:
           Link:
             type: String
             optional: true
-            description: "RFC 8288 Web Linking。存在する方向だけ rel=\"prev\" / rel=\"next\" を返す。"
+            description: "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。first は cursor の無い先頭、last は end anchor cursor を使う。"
+          Pagination-Total-Items:
+            type: Integer
+            description: tenant 境界と AuditEventQuery の全 filter に一致する committed event の正確な件数。
+          Pagination-Total-Pages:
+            type: Integer
+            description: total items を requested limit で切り上げた総ページ数。空結果は 0。
+          Pagination-Current-Page:
+            type: Integer
+            description: v3 cursor が表す navigation 上の正確な現在ページ。空結果は 0。page number を持たない legacy v0/v2 cursor を直接受理した1応答だけは、keyset 境界を維持して v3 へ移行するため forward は2、backward は1を返す。
+          Pagination-Page-Size:
+            type: Integer
+            description: requested limit。最終ページの実返却件数とは独立する。
   ExportAdminAuditEvents:
     description: "管理者が監査イベント (認証イベントを含む) を期間 / フィルタ指定でエクスポートする。\nSIEM への streaming は別 WI で、本 interface は 1 回分のダウンロードを返すのみ。\nフィルタは ListAdminAuditEvents と同じ AuditEventQuery (q / filter / category / type / 期間)。\nfilter の field は registry allowlist のみ。\n"
     input:
@@ -289,7 +300,7 @@ authorization:
       principal: TenantAdministrator
 objectives:
   ListAdminAuditEventsLatency:
-    description: "応答の 95% 以上を 300ms 未満で返す (id/occurred_at の複合 index を forward/reverse scan\nする keyset pagination で、limit 上限 (1000) 付近の深い前後ページでも先頭ページと同程度の latency を\n保つ。sort key は occurred_at desc, id desc で安定させる)。\n"
+    description: "page data と全 AuditEventQuery predicate に一致する exact count を合わせた応答の 95% 以上を\n300ms 未満で返す。id/occurred_at の複合 index を forward/reverse scan する keyset pagination と既存の\ntime/type/user/structured filter index を使う count を独立して並列実行し、limit 上限 (1000) 付近の深い\n前後ページでも先頭ページと同程度の latency を保つ。\n"
     interface: ListAdminAuditEvents
     indicator: measurement.latency < duration("300ms")
     target: 0.95
@@ -326,11 +337,14 @@ scenarios:
       - 所属テナントに limit を超える監査イベントが存在する
     main_success:
       - 管理者が ListAdminAuditEvents を limit のみで実行して先頭ページを取得する
-      - 応答の Link response header (rel="next") から次ページの cursor を取得する
+      - 応答は絞り込みに一致する exact total items / total pages / current page / page size を返す
+      - 応答の Link response header (rel="next") から compact cursor を取得する
       - 管理者が取得済みの cursor で次ページを取得する
       - 直前のページと重複や欠落なく後続のイベントが返る
       - 応答の Link response header (rel="prev") の cursor で前ページへ戻る
       - 前ページのイベントが canonical な時系列降順で返る
+      - 管理者が rel="last" の end anchor cursor で端数を含む最終ページへ移動する
+      - 管理者が rel="first" の cursor を含まない URL で先頭ページへ戻る
     extensions:
       - at: 3
         condition: 次ページ取得前に category や filter などの絞り込み条件を変更する
@@ -342,6 +356,15 @@ scenarios:
         steps:
           - ListAdminAuditEvents は InvalidRequestError を返す
       - at: 1
+        condition: 絞り込みに一致する event が 0 件である
+        steps:
+          - events は空で total items / total pages / current page は 0 / 0 / 0 を返す
+          - first / prev / next / last Link は返さない
+      - at: 1
+        condition: exact count の取得に失敗する
+        steps:
+          - 0 件として成功させず request 全体を server error で失敗させる
+      - at: 1
         condition: 実行者が TenantAdministrator ロールを持たない
         steps:
           - ListAdminAuditEvents は AccessDeniedError で拒否される
@@ -350,7 +373,7 @@ flows:
     entry: AdminAuditEvents
     views:
       AdminAuditEvents:
-        sees: 監査イベント一覧画面(時系列降順の DomainEvent、URL に同期した絞り込み・cursor、前後ページ移動)
+        sees: 監査イベント一覧画面(時系列降順の DomainEvent、正確な件数・現在ページ、URL に同期した絞り込み・compact cursor、先頭/前/次/末尾移動)
         does:
           - action: list
             does: 絞り込み条件を指定して一覧を検索する
@@ -362,6 +385,14 @@ flows:
             to: AdminAuditEvents
           - action: previous_page
             does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
+            interface: ListAdminAuditEvents
+            to: AdminAuditEvents
+          - action: first_page
+            does: 「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える
+            interface: ListAdminAuditEvents
+            to: AdminAuditEvents
+          - action: last_page
+            does: 「最後へ」をクリックして end anchor cursor の Link URL へ移動し、末尾ページで一覧を置き換える
             interface: ListAdminAuditEvents
             to: AdminAuditEvents
           - action: view

@@ -32,6 +32,17 @@ func (q *Queries) AddAgentBinding(ctx context.Context, arg AddAgentBindingParams
 	return result.RowsAffected(), nil
 }
 
+const countAgentsByTenant = `-- name: CountAgentsByTenant :one
+SELECT count(*) FROM agents WHERE tenant_id=$1
+`
+
+func (q *Queries) CountAgentsByTenant(ctx context.Context, tenantID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countAgentsByTenant, tenantID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteAgent = `-- name: DeleteAgent :exec
 DELETE FROM agents WHERE tenant_id=$1 AND id=$2
 `
@@ -307,6 +318,52 @@ func (q *Queries) ListAgentsByTenantPageBefore(ctx context.Context, arg ListAgen
 		arg.BeforeID,
 		arg.PageLimit,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Agent
+	for rows.Next() {
+		var i Agent
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Description,
+			&i.Kind,
+			&i.OwnerUserID,
+			&i.Status,
+			&i.Roles,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DisabledAt,
+			&i.KilledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAgentsByTenantPageEnd = `-- name: ListAgentsByTenantPageEnd :many
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at FROM agents
+WHERE tenant_id=$1
+ORDER BY name DESC, id DESC
+LIMIT $2
+`
+
+type ListAgentsByTenantPageEndParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+func (q *Queries) ListAgentsByTenantPageEnd(ctx context.Context, arg ListAgentsByTenantPageEndParams) ([]*Agent, error) {
+	rows, err := q.db.Query(ctx, listAgentsByTenantPageEnd, arg.TenantID, arg.PageLimit)
 	if err != nil {
 		return nil, err
 	}

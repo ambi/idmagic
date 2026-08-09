@@ -29,9 +29,7 @@ export const Route = createFileRoute('/admin/agents')({
     return {
       csrfToken: account.csrf_token,
       actorUsername: account.preferred_username,
-      agents: page.agents,
-      previousCursor: page.previousCursor,
-      nextCursor: page.nextCursor,
+      ...page,
       cursorReset,
     }
   },
@@ -45,12 +43,15 @@ function AdminAgentsRoute() {
   useEffect(() => {
     if (data.cursorReset && search.cursor) void navigate({ replace: true, search: {} })
   }, [data.cursorReset, navigate, search.cursor])
+  const navigatePage = (cursor: string | null) => navigate({ search: cursor ? { cursor } : {} })
   return (
     <PageMarker kind="admin-agents">
       <AdminAgentsPage
         {...data}
+        pagination={data}
+        cursor={search.cursor}
         key={search.cursor ?? ''}
-        onPage={(cursor) => navigate({ search: { cursor } })}
+        onPage={navigatePage}
       />
     </PageMarker>
   )

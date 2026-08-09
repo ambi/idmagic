@@ -30,6 +30,16 @@ WHERE tenant_id=$1
 ORDER BY name, id
 LIMIT sqlc.arg(page_limit);
 
+-- name: ListAgentsByTenantPageEnd :many
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at FROM agents
+WHERE tenant_id=$1
+ORDER BY name DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
+-- name: CountAgentsByTenant :one
+SELECT count(*) FROM agents WHERE tenant_id=$1;
+
 -- name: FindAgentByID :one
 SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at FROM agents

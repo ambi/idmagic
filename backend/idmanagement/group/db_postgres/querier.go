@@ -11,6 +11,7 @@ import (
 type Querier interface {
 	AddGroupMember(ctx context.Context, arg AddGroupMemberParams) (int64, error)
 	CountGroupMembers(ctx context.Context, arg CountGroupMembersParams) (int64, error)
+	CountGroupsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteGroup(ctx context.Context, arg DeleteGroupParams) error
 	FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroupRuleParams) (*DynamicGroupRule, error)
 	FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*Group, error)
@@ -24,6 +25,7 @@ type Querier interface {
 	// row the caller saw.
 	ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroupsByTenantPageAfterParams) ([]*Group, error)
 	ListGroupsByTenantPageBefore(ctx context.Context, arg ListGroupsByTenantPageBeforeParams) ([]*Group, error)
+	ListGroupsByTenantPageEnd(ctx context.Context, arg ListGroupsByTenantPageEndParams) ([]*Group, error)
 	ListGroupsByUser(ctx context.Context, arg ListGroupsByUserParams) ([]*Group, error)
 	RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberParams) (int64, error)
 	SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroupRuleParams) error

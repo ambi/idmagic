@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/ambi/idmagic/backend/application/domain"
@@ -89,15 +90,30 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	var apps []*domain.Application
-	if page.Direction == support.PageBackward {
-		apps, err = d.ApplicationRepo.ListPageBefore(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
-	} else {
-		apps, err = d.ApplicationRepo.ListPage(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
+	var pageErr, countErr error
+	var totalItems int64
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		if page.Direction == support.PageBackward {
+			apps, pageErr = d.ApplicationRepo.ListPageBefore(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
+		} else {
+			apps, pageErr = d.ApplicationRepo.ListPage(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
+		}
+	})
+	wg.Go(func() { totalItems, countErr = d.ApplicationRepo.Count(ctx, tenantID) })
+	wg.Wait()
+	if pageErr != nil {
+		return pageErr
 	}
-	if err != nil {
-		return err
+	if countErr != nil {
+		return countErr
 	}
 	apps, hasPrevious, hasNext := support.TrimPage(apps, page)
+	if page.Anchor == support.PageAnchorEnd {
+		apps = support.TrimEndPage(apps, totalItems, page.Limit)
+	}
+	metadata := support.CalculatePaginationMetadata(totalItems, page)
+	support.SetPaginationHeaders(c, metadata)
 
 	// Bulkロード：カテゴリ
 	categoryMap := make(map[string]string)
@@ -189,13 +205,16 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 			UpdatedAt:            app.UpdatedAt,
 		}
 	}
+	var firstPrimary, firstID, lastPrimary, lastID string
 	if len(apps) > 0 {
 		first := apps[0]
 		last := apps[len(apps)-1]
-		if err := support.SetPageLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAdminApplicationsQuery,
-			first.Name, first.ID, last.Name, last.ID, hasPrevious, hasNext); err != nil {
-			return err
-		}
+		firstPrimary, firstID = first.Name, first.ID
+		lastPrimary, lastID = last.Name, last.ID
+	}
+	if err := support.SetPaginationLinks(c, d.PaginationCodec, d.Issuer, tenantID, listAdminApplicationsQuery, page,
+		firstPrimary, firstID, lastPrimary, lastID, hasPrevious, hasNext, metadata.TotalPages); err != nil {
+		return err
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"applications": out})
 }
