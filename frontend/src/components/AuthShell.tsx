@@ -64,37 +64,39 @@ export function AuthShell({ children, asideTitle, asideText, aside = true }: Aut
           ) : null}
 
           <main className="auth-main">
-            <div className="mobile-brand text-slate-950">
-              <Brand productName={branding.product_name} logoURL={branding.logo_url} />
-            </div>
-            <div className="mb-7 flex items-center justify-between">
-              <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
-                <IconLock size={14} aria-hidden="true" />
-                {t.secureAuthentication}
-              </span>
-              <LanguageSwitcher />
-            </div>
+            <div className="auth-main-body">
+              <div className="mobile-brand text-slate-950">
+                <Brand productName={branding.product_name} logoURL={branding.logo_url} />
+              </div>
+              <div className="mb-7 flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs font-medium text-slate-500">
+                  <IconLock size={14} aria-hidden="true" />
+                  {t.secureAuthentication}
+                </span>
+                <LanguageSwitcher />
+              </div>
 
-            {children}
+              {children}
 
-            <footer className="mt-9 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-slate-100 pt-5 text-xs text-slate-500">
-              <span className="flex items-center gap-1.5">
-                <IconHelpCircle size={14} aria-hidden="true" />
-                {t.contactAdministrator}
-              </span>
-              {footerLinks.map((link) => (
-                <a
-                  key={`${link.label}:${link.url}`}
-                  href={link.url}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="font-medium text-accent-foreground hover:underline"
-                >
-                  {link.label}
-                </a>
-              ))}
-              {branding.footer_text ? <span>{branding.footer_text}</span> : null}
-            </footer>
+              <footer className="mt-9 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 border-t border-slate-100 pt-5 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <IconHelpCircle size={14} aria-hidden="true" />
+                  {t.contactAdministrator}
+                </span>
+                {footerLinks.map((link) => (
+                  <a
+                    key={`${link.label}:${link.url}`}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="font-medium text-accent-foreground hover:underline"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+                {branding.footer_text ? <span>{branding.footer_text}</span> : null}
+              </footer>
+            </div>
           </main>
         </div>
       </div>

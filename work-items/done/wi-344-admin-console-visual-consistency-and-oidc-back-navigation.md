@@ -59,6 +59,17 @@ depends_on: []
 （`styles.css:49-51`）にも列間の仕切りがない。`.auth-main` に `bg-white`（または `bg-card`）を
 指定し、`.auth-frame` に `border-l border-slate-200` を追加して2ペインを視覚的に分離する。
 
+**実装後の追加訂正（実機レビュー再指摘）**: 上記の第一実装は `.auth-main` に直接
+`bg-card` を付けたが、`.auth-main` には元々 `max-w-[29rem] mx-auto`（フォーム幅を464pxに
+制限し中央寄せ）が付いており、背景がなかった間は見えていなかったこの内側の余白が、
+`bg-card` を付けたことで「余白付きの小さい白い箱」としてそのまま可視化されてしまい、
+`auth-aside` と非対称に見える回帰を生んだ。修正として `.auth-main`（列いっぱいに広がる
+背景サーフェス、`flex items-center justify-center bg-card px-10 py-12`）と、新設した
+内側ラッパー `.auth-main-body`（`max-w-[29rem]` の幅制限のみを持つ）に責務を分離した。
+`AuthShell.tsx` の `<main className="auth-main">` 直下の子要素を `<div
+className="auth-main-body">` で包み直し、solo モード（`.auth-frame--solo`）と
+900px 以下のメディアクエリの `max-w-none` 上書きも `.auth-main-body` 側へ移設した。
+
 ### 系統2: ダッシュボードのカード/セクションの仕切り
 
 `AdminDashboardPage.tsx` は共通の `Card` コンポーネント（`components/ui/card.tsx`、
@@ -222,6 +233,14 @@ shadcn 標準のペアで正しく使っており、`--color-accent` はこの�
   debt の追加ではない）。
   Out of Scope とした管理コンソール全体のデザインシステム刷新、per-application override 行の
   `text-blue-700` ハードコード解消、OIDC RP フロー全体の再設計は本 WI では未実施。
+
+  **完了後の追加訂正**: 完了報告後、実機レビューで (1) の `auth-main` が
+  「余白がついて aside より小さく見える」と再指摘された。原因は `.auth-main` に元々あった
+  `max-w-[29rem] mx-auto`（背景が無かった間は不可視だった内側の幅制限）が `bg-card` 追加で
+  可視化されたことだった。`.auth-main`（列いっぱいの背景サーフェス）と新設
+  `.auth-main-body`（`max-w-[29rem]` の内容幅制限）に責務を分離し、`auth-aside` と対称な
+  半々のレイアウトに修正した。solo モード・900px メディアクエリの `max-w-none` 上書きも
+  追随して移設し、両方をスクリーンショットで目視確認して回帰がないことを確認した。
 - **Verification Results**:
   - `just verify-ui` - passed（528 unit tests、build 含む）。
   - `just check` - passed（`ui-page-lines` debt ceiling 更新後）。
