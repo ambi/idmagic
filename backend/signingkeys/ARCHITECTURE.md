@@ -1,6 +1,6 @@
 ---
 context: signingkeys
-updated_at: 2026-08-06
+updated_at: 2026-08-09
 ---
 
 # Architecture: signingkeys
@@ -22,8 +22,7 @@ one SAML profile cannot select another profile's credential.
 The local, PostgreSQL, and Vault adapters all maintain one active key per tenant, usage, and scope.
 PostgreSQL enforces the same invariant with a partial unique index, and Vault includes the scope in its
 key-set identity. This compound key exists because rotating one SAML profile must not rotate another
-profile or every JWT verification key. The SAML profile model that supplies the scope is described in
-[ADR-145](../../decisions/ADR-145-shareable-saml-idp-profiles.md).
+profile or every JWT verification key.
 
 ## XML federation credentials
 
@@ -47,11 +46,7 @@ independent of the manual, immediate `RotateTenantSigningKey` path. Rotation ato
 old active key to verifying and gives it an overlap expiry of at least 7 days, so JWKS consumers and
 relying parties can still validate messages issued just before rotation. Key material reaching the
 terminal `Archived` state is retained for 7 years to support verification of audit tokens signed by
-already-retired keys; there is no separate purge/erase interface yet. These numbers, and the retention
-policy, are normative in
-[ADR-108](../../decisions/ADR-108-signing-key-rotation-and-retention-policy-configuration.md), which
-also extends the durable per-tenant provider design established by
-[ADR-075](../../decisions/ADR-075-per-tenant-signing-keys-and-key-provider.md).
+already-retired keys; there is no separate purge/erase interface yet.
 
 Public key and certificate listing includes active and unexpired verifying records; archive removes
 expired records from publication.
@@ -60,5 +55,17 @@ Fail-closed behavior when a key provider is unreachable is not enforced inside `
 context has no signing or issuance interface of its own. It only surfaces the observable
 `provider_healthy` signal (`TenantSigningKey.provider_healthy`, `ListTenantKeyHealth`); the actual
 fail-closed enforcement point is OAuth2's `Token` issuance interface, which is where an unreachable
-provider blocks new signatures
-([ADR-108](../../decisions/ADR-108-signing-key-rotation-and-retention-policy-configuration.md)).
+provider blocks new signatures.
+
+## Design Decisions
+
+- SAML IdP profiles are modeled as shareable (a profile can back more than one SP trust), with
+  dedicated-use profiles expressed as the one-consumer case of the same model rather than a separate
+  type ([ADR-145](../../decisions/ADR-145-shareable-saml-idp-profiles.md)).
+- Signing keys are scoped per tenant behind a pluggable `KeyProvider`, rather than a shared
+  system-wide key or a provider baked into each protocol adapter
+  ([ADR-075](../../decisions/ADR-075-per-tenant-signing-keys-and-key-provider.md)).
+- Key rotation cadence (90-day minimum), overlap expiry (7-day minimum), and archive retention
+  (7 years) are fixed, normative policy values that live in this design record rather than being
+  left as undocumented configuration
+  ([ADR-108](../../decisions/ADR-108-signing-key-rotation-and-retention-policy-configuration.md)).

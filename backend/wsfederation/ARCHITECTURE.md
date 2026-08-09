@@ -1,6 +1,6 @@
 ---
 context: wsfederation
-updated_at: 2026-08-06
+updated_at: 2026-08-09
 ---
 
 # Architecture: wsfederation
@@ -18,9 +18,7 @@ the point of issuance. Federation metadata publishes both the active certificate
 verifying certificates in each advertised role, so relying parties can survive a planned rotation.
 
 The signer provider is backed by `SigningKeys`, not by process startup state. This keeps WS-Fed and
-SAML on one XML credential lifecycle while preserving its separation from OAuth2/JWT keys, consistent
-with the metadata boundary in
-[ADR-062](../../decisions/ADR-062-federation-metadata-publication.md).
+SAML on one XML credential lifecycle while preserving its separation from OAuth2/JWT keys.
 
 ## Federation metadata
 
@@ -28,8 +26,7 @@ The context publishes an AD FS-compatible `federationmetadata.xml` under each re
 `/{realm}/federationmetadata/2007-06/federationmetadata.xml`, advertising the tenant issuer
 (`/realms/default` for the default tenant) as entityID. This lets WS-Fed relying parties and
 Microsoft Entra domain federation discover issuer, endpoints, and signing certificates without a
-separate onboarding channel, per
-[ADR-062](../../decisions/ADR-062-federation-metadata-publication.md).
+separate onboarding channel.
 
 The `EntityDescriptor` carries both a `SecurityTokenServiceType` and an `ApplicationServiceType`
 `RoleDescriptor`, advertising `PassiveRequestorEndpoint`, `SecurityTokenServiceEndpoint`,
@@ -49,8 +46,7 @@ cost the mapped claim set doesn't need. Unmapped attributes are never emitted.
 Active WS-Trust support targets Microsoft 365-style rich-client sign-in rather than general
 interoperability. SOAP, WS-Security, WS-Addressing, and SAML signing overlap enough that broad
 binding coverage would materially raise replay and XML-wrapping risk, so the initial scope is
-deliberately narrow, per
-[ADR-063](../../decisions/ADR-063-ws-trust-active-sts-scope.md).
+deliberately narrow.
 
 `/trust/usernamemixed` is the only active STS endpoint and accepts WS-Trust 1.3 `Issue` only —
 `Validate`, `Renew`, and `Cancel` are not implemented. Authentication is UsernameToken-only, verified
@@ -72,8 +68,7 @@ An `EntraFederationProfile` is a WS-Federation relying-party preset: it captures
 the sourceAnchor attribute, and passive/active/MEX endpoints, and upserts a `WsFedRelyingParty` whose
 wtrealm/audience is that same IssuerUri. Presetting avoids hand-authored claim JSON, whose
 misconfiguration surfaces opaquely on the Entra side and can't guarantee sourceAnchor stability or
-uniqueness at setup time, per
-[ADR-065](../../decisions/ADR-065-entra-domain-federation-profile.md).
+uniqueness at setup time.
 
 Required claims are fixed by the preset and fail closed: UPN is issued from `preferred_username` as
 `http://schemas.xmlsoap.org/claims/UPN`; ImmutableID is derived from the normalized sourceAnchor
@@ -89,3 +84,17 @@ user, producing duplicate accounts or sign-in failures. The profile's default to
 matching Entra/AD FS's WS-Fed default. Hybrid Azure AD Join device registration (`windowstransport`
 plus computer-account Kerberos) is explicitly out of scope; setup guides tenants toward managed/PHS
 or a coexisting AD FS deployment instead.
+
+## Design Decisions
+
+- Federation metadata publication and claim-mapping ownership are scoped so `WsFederation` publishes
+  discovery (issuer, endpoints, signing certificates) while `ClaimMapping` owns the shared claim
+  release policy across WS-Fed, WS-Trust, and SAML
+  ([ADR-062](../../decisions/ADR-062-federation-metadata-publication.md)).
+- Active WS-Trust STS support is scoped to `/trust/usernamemixed` with `Issue` only, targeting
+  Microsoft 365-style rich-client sign-in rather than general WS-Trust interoperability
+  ([ADR-063](../../decisions/ADR-063-ws-trust-active-sts-scope.md)).
+- The Microsoft Entra domain federation profile is a fixed relying-party preset (UPN/ImmutableID
+  claim shape, sourceAnchor validation) rather than hand-authored claim configuration, so
+  misconfiguration cannot surface opaquely on the Entra side
+  ([ADR-065](../../decisions/ADR-065-entra-domain-federation-profile.md)).

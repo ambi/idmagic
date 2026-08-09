@@ -48,8 +48,11 @@ description: Create or synchronize the second-layer Architecture — the prose d
      Conventions / Cross-cutting Concerns / Runtime Composition / Structural Decisions /
      Documentation Policy。
    - コンテキスト単位は `## Overview` だけ必須。以降は話題別の H2 を自由に置く。
-   - **根拠をインラインで添える**（`§3.3`）: 設計記述には、その形になった理由を1〜2文書き、ADR へ
-     リンクする。**ADR 本文を転記しない**——複製は必ず drift する。
+   - **根拠をインラインで添える**（`§3.3`）: 設計記述には、その形になった理由を自己完結した1〜2文で
+     書く。**`ADR-NNN` / `wi-NN` への参照は本文中のどこにも書かない**——唯一の置き場所は
+     「Structural Decisions」/「Design Decisions」節。依存の向きは ADR → Architecture であり、逆向き
+     （本文各所が ADR 番号の実在に依存する）は作らない。**ADR 本文を転記しない**——複製は必ず drift
+     する。
 4. 両ファイルの `updated_at` を更新する。
 5. **検証**: `just check`。台帳スキーマ・設計正本スキーマ・横断整合検査（module path 実在、
    realizes の SCL 要素解決、contexts 整合、依存方向、実 import、複雑度 ratchet、ADR リンク実在）を

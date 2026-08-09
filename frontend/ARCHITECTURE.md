@@ -13,7 +13,7 @@ the hosted authentication surfaces (login, consent, device), the admin console, 
 This document is the design record for that boundary: how the SPA and the API divide responsibility,
 which browser protections apply, how routing and UI conventions are fixed, and why. The machine-checked
 module ledger lives beside it in `architecture.yaml`; run instructions and verification commands live in
-`README.md` (ADR-143).
+`README.md`.
 
 ## Deployment boundary
 
@@ -63,9 +63,9 @@ transaction APIs.
 
 The admin console (`/admin/*`) and account portal (`/account/*`) authenticate as OIDC relying
 parties of the IdP itself, using `authorization_code` + PKCE against the IdP's own `/authorize`
-and `/token` (ADR-061). They are registered as first-party public clients with fixed UUID
-`client_id`s (ADR-084; admin `…0022`, account `…0023`, mirrored in `src/api/oidc.ts` and the
-bootstrap seed) whose consent screen is skipped because the resource owner is the IdP user.
+and `/token`. They are registered as first-party public clients with fixed UUID `client_id`s
+(admin `…0022`, account `…0023`, mirrored in `src/api/oidc.ts` and the bootstrap seed) whose
+consent screen is skipped because the resource owner is the IdP user.
 
 Because they are pure SPA RPs, the access token is held in the browser (`sessionStorage`) and sent
 as `Authorization: Bearer` to `/api/{admin,account}/*`, which validate it as RFC 9068 resource
@@ -81,7 +81,7 @@ The SPA uses TanStack Router for client-side navigation with file-based routes u
 splitting, including route loaders and components. Route files follow the request path structure:
 `admin/route.tsx` and `account/route.tsx` are thin layout routes that render `<Outlet>`, while
 `admin/index.tsx`, `account/index.tsx`, and leaf route files own their own `loader`, API requests,
-page component, and path params (ADR-061, wi-67). Detail pages that should not render through a
+page component, and path params. Detail pages that should not render through a
 list page use TanStack Router's trailing underscore convention, for example
 `admin/users_/$sub.tsx` for `/admin/users/$sub`. Files prefixed with `-` are route-local helpers
 and are excluded from route generation. Internal admin/account navigation uses `<Link>`, so moving
@@ -141,7 +141,7 @@ Priorities are accessibility, bundle size, maintainability, design ownership, an
 
 ## UI navigation and consistency policy
 
-The admin console and account portal follow a set of strict UI consistency and navigation guidelines (ADR-086, wi-126). Applied to Entra federation (wi-126 §8) and, as of wi-309, to external identity providers (`/admin/identity-providers`).
+The admin console and account portal follow a set of strict UI consistency and navigation guidelines, applied to Entra federation and to external identity providers (`/admin/identity-providers`).
 
 1. **Detail-then-Edit Navigation Policy**
    - For resource creation or editing, the UI must separate the read-only view (detail) from the write/edit view.
@@ -157,10 +157,30 @@ The admin console and account portal follow a set of strict UI consistency and n
 
 ## Container / Presentation component split
 
-New `*Page.tsx` files (and refactors of existing ones) follow a container/presentation split so that UI rendering can be unit-tested apart from data fetching and side effects (ADR-081 precedent in wi-115, formalized in wi-132/wi-133):
+New `*Page.tsx` files (and refactors of existing ones) follow a container/presentation split so that UI rendering can be unit-tested apart from data fetching and side effects:
 
 1. **Split by meaning, not by file.** The exported `XxxPage` function stays a thin container: it owns `useState`, API calls, and effects, and lays out the page's `*Shell` wrapper directly. Do not wrap an entire page in a single `XxxPresentation` twin that re-receives every piece of container state as a prop — that only relocates the same complexity behind an extra layer.
 2. **Extract at the section boundary.** Pull out a presentational component for each self-contained unit that benefits from isolated testing — a form with its own validation (e.g. `DefaultPolicyFormPresentation` in `AdminSignInPolicyPage.tsx`), an item list (`PasskeyList`), or a card with interactive state (`TotpEnrollmentForm` in `AccountSecurityPage.tsx`). Purely static, read-only markup can stay inline in the container; it does not need its own component.
 3. **Keep presentational props small.** A presentational component should take only the props its own section needs (typically well under 10), plus callbacks for the actions it triggers — never the container's entire state object. If a component's prop list balloons because a page has several independent sections, split it further into one component per section instead of widening the props.
 4. **No side effects in presentational components.** They receive data and callbacks and render; `fetch`/`api.*` calls, `useEffect`, and navigation stay in the container (or in a small section-local container, e.g. `DefaultPolicyCard`, when a section manages its own state before delegating to a pure form).
 5. **Test what was extracted.** Each extracted presentational component and any pure helper function (date formatting, validation, derived-value calculators) gets a Vitest/Testing Library unit test. Components that wrap `AccountShell`/`AdminShell`/`AuthShell` need a router context to render (those shells use TanStack Router's `Link`); use the `renderWithRouter` test helper (`src/test/renderWithRouter.tsx`) for those instead of skipping the test.
+
+## Design Decisions
+
+- Design rationale, the machine-checked module ledger, and run/verification instructions are kept in
+  three separate files — this document, `architecture.yaml`, and `README.md` — rather than one combined
+  document ([ADR-143](../decisions/ADR-143-second-layer-design-ledger-decision-split.md)).
+- The admin console and account portal are first-party OIDC relying parties of the IdP itself, as pure
+  SPA RPs holding the access token in the browser rather than behind a BFF
+  ([ADR-061](../decisions/ADR-061-first-party-portals-as-oidc-rp.md)).
+- Internally generated id columns, including the admin/account portals' fixed `client_id`s, are typed as
+  `UUID` rather than `TEXT`
+  ([ADR-084](../decisions/ADR-084-postgres-column-type-policy.md)).
+- The admin console and account portal follow a fixed set of UI consistency rules: detail-then-edit
+  navigation instead of inline/modal editing, in-row list actions instead of kebab menus, dynamic
+  per-page browser tab titles, and "監査イベント" instead of "監査ログ" as the audit terminology
+  ([ADR-086](../decisions/ADR-086-ui-navigation-consistency-and-page-title-policy.md)).
+- The tenant-wide default sign-in policy applies to an application as an override, not a composed floor,
+  of that application's own policy — the precedent that motivated this file's container/presentation
+  component split, first applied to the admin UI built for that decision
+  ([ADR-081](../decisions/ADR-081-tenant-default-sign-in-policy-composition.md)).

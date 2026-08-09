@@ -38,8 +38,7 @@ idmagic-worker                    │ poll (independent per lane)
 A `JobKind` carries exactly one `ExecutionLane` (`latency_sensitive`, `default`, or `bulk`), fixed at
 registration by `domain.RegisterKind(kind, lane)`. The enqueue caller cannot choose it: `Job.Lane` is
 derived from the kind's registration, and a claim only considers jobs within its own lane. The caller is
-deliberately excluded because a lane is a unit of capacity isolation, not a per-call priority
-([ADR-129](../../decisions/ADR-129-job-execution-lanes.md)).
+deliberately excluded because a lane is a unit of capacity isolation, not a per-call priority.
 
 Each lane has an independent `Runner` with its own concurrency semaphore, batch-claiming as many jobs as
 it has free slots and running handlers concurrently (four slots by default). One process can start
@@ -60,9 +59,10 @@ order is guaranteed.
 `ClaimBatch` picks up, within its lane only, the `queued` jobs that are due and the `running` jobs whose
 lease has expired. On PostgreSQL, a
 `WHERE lane = $lane AND (...) ORDER BY run_at FOR UPDATE SKIP LOCKED` combined with the `running` update
-in the same statement prevents two workers from holding a valid lease on the same job. Putting the
-durable queue in PostgreSQL rather than a dedicated broker is
-[ADR-098](../../decisions/ADR-098-durable-job-queue-skip-locked-lease.md).
+in the same statement prevents two workers from holding a valid lease on the same job. The durable queue
+lives in PostgreSQL rather than a dedicated broker, reusing the same `FOR UPDATE SKIP LOCKED` claim
+pattern already used elsewhere in the codebase for safe concurrent claiming instead of introducing
+additional middleware.
 
 The execution guarantee is **at-least-once**. Each claim increments `attempts` and sets `lease_owner`
 and `lease_expires_at`. A running handler heartbeats every third of the lease period, and only the lease
@@ -81,7 +81,7 @@ ordering or rate limits.
 On SIGTERM/SIGINT the worker stops claiming and waits for in-flight handlers up to the drain grace
 period. After the grace period it exits and recovery happens through natural lease expiry rather than an
 explicit re-enqueue — explicit re-enqueue is avoided because it would open a double-execution window
-when drain cutoff races handler completion (ADR-099).
+when drain cutoff races handler completion.
 
 ## Metrics
 
@@ -94,8 +94,7 @@ per-lane `jobs_claim_latency_seconds`, `jobs_outcome_total`, `jobs_retry_total`,
 
 Periodic all-tenant retention and signing-key lifecycle work is not mixed into durable jobs; an external
 scheduler starts `idmagic-batch` one-shot instead. A cross-cutting sweep has no per-tenant unit of work,
-so pushing it through a tenant-owned queue would make both queue depth and lane isolation meaningless
-([ADR-124](../../decisions/ADR-124-scheduled-batch-execution-boundary.md)).
+so pushing it through a tenant-owned queue would make both queue depth and lane isolation meaningless.
 
 The lifecycle workflow dispatcher inside the worker is not a periodic batch that performs business work
 directly. It is a recovery path: it re-scans WorkflowRuns that were committed in the same transaction
@@ -107,10 +106,11 @@ but never associated with a Job, and hands them off safely to the durable queue.
 `ARCHITECTURE.md` [`tenant_id` retention classes](../../ARCHITECTURE.md#2-tenant_id-retention-classes)
 tenant-owned-aggregate category. `status` and `kind` are closed vocabularies normative in
 `spec/contexts/jobs.yaml`; the `CHECK` constraints are defense in depth alongside that, not the source of
-truth. `params`/`result` are opaque per-`JobKind` JSONB payloads (ADR-100: no at-rest encryption in this
-WI); terminal rows are purged after a TTL by the worker's retention sweep, not by a dedicated Job.
-`lane`'s `DEFAULT 'default'` backfills pre-lane rows in place when the column was added to an existing
-table, part of ADR-129 decision 5's zero-downtime rollout. `dedup_key` backs `JobHandlerIdempotency`: the
+truth. `params`/`result` are opaque per-`JobKind` JSONB payloads stored without at-rest encryption; terminal rows
+are purged after a TTL by the worker's retention sweep, not by a dedicated Job. `lane`'s
+`DEFAULT 'default'` backfills pre-lane rows in place when the column was added to an existing table, as
+part of a zero-downtime rollout that needed no migration outage. `dedup_key` backs
+`JobHandlerIdempotency`: the
 partial unique index allows at most one non-terminal Job per `(tenant_id, dedup_key)`.
 
 ## Design Decisions
@@ -123,3 +123,6 @@ partial unique index allows at most one non-terminal Job per `(tenant_id, dedup_
   [ADR-124](../../decisions/ADR-124-scheduled-batch-execution-boundary.md)
 - Capacity isolation through execution lanes:
   [ADR-129](../../decisions/ADR-129-job-execution-lanes.md)
+- No at-rest encryption for `params`/`result` in this WI; retention purge runs from the worker rather
+  than as a dedicated Job:
+  [ADR-100](../../decisions/ADR-100-job-data-retention-and-pii.md)

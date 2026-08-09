@@ -1,6 +1,6 @@
 ---
 context: sourcing
-updated_at: 2026-08-06
+updated_at: 2026-08-09
 ---
 
 # Architecture: sourcing
@@ -9,12 +9,11 @@ updated_at: 2026-08-06
 
 The `Sourcing` context owns identity ingestion from upstream systems that hold durable authority
 over an identity population: source binding, external-id correlation, ingestion runs, attribute
-mapping, and deletion authority (`ADR-141`). The classification axis is authority and durable
-binding, not transport direction or runtime shape — a distinction that ruled out an `Inbound`
-context name and keeps admin CSV import and login-time federation out of this context (see
-[ADR-141](../../decisions/ADR-141-inbound-identity-sourcing-taxonomy.md)). The context root stays
-thin (facade and composition only); shared ingestion mechanics get pulled up once a second source
-slice exists, not speculated in advance. Today the only member is the `scim` slice
+mapping, and deletion authority. The classification axis is authority and durable binding, not
+transport direction or runtime shape — a distinction that ruled out an `Inbound` context name and
+keeps admin CSV import and login-time federation out of this context. The context root stays thin
+(facade and composition only); shared ingestion mechanics get pulled up once a second source slice
+exists, not speculated in advance. Today the only member is the `scim` slice
 (`scim/domain`, `scim/ports`, `scim/usecases`, `scim/handlers_http`, `scim/db_memory`,
 `scim/db_postgres`), a SCIM 2.0 (RFC 7643/7644) inbound server.
 
@@ -43,6 +42,15 @@ it to `true` transitions it back to `Active`. `DELETE /Users/{id}` does not purg
 same soft-delete (`PendingDeletion`, 30-day grace period, then anonymize-cascade purge) as the rest
 of the platform, so a misconfigured or erroneous external sync cannot cause unrecoverable PII loss —
 this integrates SCIM deletion into the existing soft-delete policy rather than bypassing it.
-`DELETE /Groups/{id}` is immediate and complete, since groups carry no PII. Rationale and the
-rejected immediate-purge alternative are recorded in
-[ADR-080](../../decisions/ADR-080-scim2-inbound-provisioning.md).
+`DELETE /Groups/{id}` is immediate and complete, since groups carry no PII.
+
+## Design Decisions
+
+- Inbound identity intake is grouped into `Sourcing` by whether there is an upstream authority with
+  a durable source binding, not by transport direction or runtime shape — a distinction that keeps
+  admin CSV import and login-time federation out of this context and rules out naming it `Inbound`
+  ([ADR-141](../../decisions/ADR-141-inbound-identity-sourcing-taxonomy.md)).
+- SCIM `DELETE /Users/{id}` integrates into the platform's existing soft-delete policy
+  (`PendingDeletion`, 30-day grace period, then anonymize-cascade purge) rather than purging
+  immediately, so a misconfigured or erroneous external sync cannot cause unrecoverable PII loss
+  ([ADR-080](../../decisions/ADR-080-scim2-inbound-provisioning.md)).

@@ -145,7 +145,7 @@ Frontmatter は `context` と `updated_at` **だけ**を持つ。台帳は隣の
 | `## Conventions` | package 規約、Adapter 命名、feature 垂直スライスなどの構造規約。 |
 | `## Cross-cutting Concerns` | 認可・エラー処理・観測・routing・セキュリティ・永続化方針など層やモジュールをまたぐ方針。 |
 | `## Runtime Composition` | bootstrap、DI、実行単位、可用性と共有状態。 |
-| `## Structural Decisions` | 現在の構成を形づくった主要な構造判断の要点と、根拠となる ADR へのリンク。 |
+| `## Structural Decisions` | 現在の構成を形づくった主要な構造判断の要点と、根拠となる ADR へのリンク。**本文中で唯一 `ADR-NNN` / `wi-NN` を参照してよい節**（§3.3）。 |
 | `## Documentation Policy` | どこに何を書くかの判断表。 |
 
 `## Diagrams`（Mermaid 等のテキスト図）は任意で追加してよい。
@@ -161,13 +161,22 @@ Frontmatter は `context` と `updated_at` **だけ**を持つ。台帳は隣の
 ## Overview          このコンテキストが何を所有し、どう分割されているか
 ## <メカニズム名>     主要フロー・プロトコルの動作（複数可）
 ## Conventions       このコンテキスト固有の規約
-## Design Decisions  主要判断の要点と根拠 ADR へのリンク
+## Design Decisions  主要判断の要点と根拠 ADR へのリンク（本文中で唯一 ADR/wi を参照してよい節、§3.3）
 ```
 
-### 3.3 根拠のインライン化
+### 3.3 根拠のインライン化と ADR 参照の置き場所
 
 設計記述には、**その形になった理由を1〜2文で添える**。読み手が設計を理解するために ADR を開かなくて
-よい状態を保つのが目的である。却下した選択肢と当時の前提の全文は ADR に置き、そこへリンクする。
+よい状態を保つのが目的である。ただし、その1〜2文は理由そのものを自己完結した文で書き、
+**`ADR-NNN` / `wi-NN` への参照は含めない。**
+
+**ADR / work item への参照は、本文中のどこにも書かない。** 唯一の置き場所は「Structural Decisions」節
+（横断）または「Design Decisions」節（コンテキスト単位）で、そこに構造判断ごとの要点1行と根拠 ADR
+へのリンクをまとめる。依存の向きは「ADR が Architecture を指す」（`ADR_FORMAT.md`「役割の境界」:
+ADR はそこへリンクする）が正である。Architecture 本文の各所が個々の記述の裏付けとして ADR 番号を
+引用する構造は、この向きを逆転させる——Architecture は ADR を辿らなくても単独で成立する現状の記述
+でなければならない。却下した選択肢と当時の前提の全文を読みたい読者は、決定節から ADR へ 1 回辿れば
+十分であり、本文の各所に同じリンクを繰り返し埋め込む必要はない。
 
 **ADR 本文を転記しない。** 複製は必ず drift する（`ARCHITECTURE.md` が ADR-082 の tenant_id ルールを
 複製し、ADR-083 が置き換えた後も古い方を載せ続けた実例がある）。移送するなら移送し、ADR 側には

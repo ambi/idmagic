@@ -1,6 +1,6 @@
 ---
 context: audit
-updated_at: 2026-08-06
+updated_at: 2026-08-09
 ---
 
 # Architecture: audit
@@ -16,5 +16,9 @@ Audit records are kept append-only for 7 years, on the basis of GDPR Article 30 
 processing activities); no deletion or archival interface exists for them today. This is a fixed
 operational value rather than an SLO, so it lives here rather than as an SCL `objectives` entry —
 `spec/contexts/audit.yaml` deliberately carries no retention objective and points here instead.
-Rationale in
-[ADR-107](../../decisions/ADR-107-audit-retention-and-jobs-dev-environment-topology.md) §1.
+
+## Design Decisions
+
+- Audit event retention is fixed at 7 years under GDPR Article 30 record-keeping, documented as an
+  operational value here rather than as an SCL objective
+  ([ADR-107](../../decisions/ADR-107-audit-retention-and-jobs-dev-environment-topology.md)).

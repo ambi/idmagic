@@ -1,6 +1,6 @@
 ---
 context: oauth2
-updated_at: 2026-08-06
+updated_at: 2026-08-09
 ---
 
 # Architecture: oauth2
@@ -22,8 +22,7 @@ requests, and session/logout binding.
 The `AuthorizationRequest` and device-code lifecycles are expressed as declarative
 state-transition tables in `spec/flows/` (states, events, transitions) instead of being scattered
 across `if`/`switch` logic, so that regenerating the adapter layer cannot silently drift the set of
-transitions a client is allowed to make
-([ADR-001](../../decisions/ADR-001-state-machine-as-spec.md)). Refresh token families are
+transitions a client is allowed to make. Refresh token families are
 deliberately excluded from this treatment: their state space is effectively just
 `{active, revoked, rotated}`, and the parent/child rotation graph matters more than transition
 legality, so they are expressed as record fields and revocation rules instead (see Refresh token
@@ -34,16 +33,15 @@ rather than re-implementing transition logic.
 
 PKCE requirement is per-client (`require_pkce` client metadata), defaulting to required for public
 and FAPI 2.0 clients and opt-in for legacy confidential clients, so RFC 6749-era confidential
-deployments are not forced to migrate while public/FAPI clients keep the strongest default
-([ADR-002](../../decisions/ADR-002-pkce-required-for-all-clients.md)). Only `S256` is supported as
+deployments are not forced to migrate while public/FAPI clients keep the strongest default. Only
+`S256` is supported as
 `code_challenge_method`; `plain` is rejected because it lets an interceptor recover the verifier
 from logs. Authorization codes stay single-use and short-lived (≤60s) independent of PKCE, since
 both reuse detection and replay-window minimization depend on that.
 
 Pushed Authorization Requests (`/par`) let a client submit authorization parameters over an
 authenticated back channel and reference them from `/authorize` via `request_uri`, closing off URL
-tampering, open-redirect abuse, and unauthenticated request forgery at `/authorize`
-([ADR-006](../../decisions/ADR-006-par-mandatory-fapi-clients.md)). FAPI 2.0 clients
+tampering, open-redirect abuse, and unauthenticated request forgery at `/authorize`. FAPI 2.0 clients
 (`require_pushed_authorization_requests`) must use PAR; other clients may use either path.
 `request_uri` values are single-use with a ≤600s TTL, and once `/authorize` resolves a
 `request_uri`, any additional query parameters on that request are ignored in favor of the pushed
@@ -55,8 +53,7 @@ request.
 Five `token_endpoint_auth_method`s are supported — `private_key_jwt`, `tls_client_auth`, `none`,
 `client_secret_post`, `client_secret_basic` — spanning FAPI-grade asymmetric authentication down to
 legacy shared-secret methods, so new clients can be steered toward the strongest options while
-existing deployments keep migrating ([ADR-008](../../decisions/ADR-008-client-authentication-methods.md)).
-`client_secret_jwt` (HMAC) is deliberately not implemented: once `private_key_jwt` is available, a
+existing deployments keep migrating. `client_secret_jwt` (HMAC) is deliberately not implemented: once `private_key_jwt` is available, a
 symmetric-key alternative only adds risk without adding capability. A failed client authentication
 always returns `401 invalid_client` without revealing whether the `client_id` is registered, and an
 unregistered `client_id` still pays the same verification round-trip cost, to avoid a timing oracle.
@@ -66,8 +63,8 @@ Discovery advertises is what the server actually checks: signature algorithm res
 `PS256`/`ES256` (never `none` or HMAC), `iss == sub == client_id`, audience matching this server's
 issuer or endpoint URLs, signing keys resolved from the client's registered inline `jwks` or
 `jwks_uri`, a bounded assertion lifetime, and single-use `jti` replay protection kept in its own
-store separate from DPoP's replay store because the two have different TTLs and audit semantics
-([ADR-023](../../decisions/ADR-023-private-key-jwt-verification.md)). Combining `client_assertion`
+store separate from DPoP's replay store because the two have different TTLs and audit semantics.
+Combining `client_assertion`
 with Basic/secret authentication on the same request is rejected as `invalid_request` per RFC 6749
 §2.3.
 
@@ -75,7 +72,7 @@ with Basic/secret authentication on the same request is rejected as `invalid_req
 
 Alongside RFC 7591 Dynamic Client Registration, `client_id` values shaped as an `https` URL with a
 path resolve live from a client-hosted Client ID Metadata Document instead of the `OAuth2Client`
-repository ([ADR-155](../../decisions/ADR-155-client-id-metadata-documents.md)). Resolution is
+repository. Resolution is
 never persisted — the document is fetched (and cached 5 minutes) each time a `client_id` isn't
 found in the repository, then mapped into the same `OAuth2Client` shape every other code path
 already understands, so redirect_uri matching, consent rendering, PKCE, and scope handling need no
@@ -100,8 +97,7 @@ linked to an `Application`, matching the existing behavior for self-registered D
 ## Token formats: JWT access tokens, opaque refresh tokens
 
 Access tokens are issued as self-contained JWTs (RFC 9068) by default, refresh tokens as opaque,
-database-backed references ([ADR-012](../../decisions/ADR-012-opaque-vs-jwt-access-tokens.md)). The
-asymmetry is deliberate: with many resource servers, an `/introspect` round-trip per request
+database-backed references. The asymmetry is deliberate: with many resource servers, an `/introspect` round-trip per request
 doesn't scale, so a JWT a resource server can verify from JWKS alone is the better default, with a
 short (600s) TTL bounding the exposure of not being able to revoke it instantly. Refresh tokens need
 rotation and family-wide revocation (see below), which is naturally a database-record operation, so
@@ -114,8 +110,7 @@ verification path for JWT access tokens.
 
 Every refresh token use rotates it: the presented token is marked `rotated`, a new one is issued
 carrying `parent_id`, and every token descending from one authorization code exchange shares a
-`family_id` ([ADR-004](../../decisions/ADR-004-refresh-token-rotation.md)). Presenting an
-already-rotated token is treated as reuse: the request is rejected, every token in that `family_id`
+`family_id`. Presenting an already-rotated token is treated as reuse: the request is rejected, every token in that `family_id`
 is revoked, and a `RefreshTokenReuseDetected` audit event fires. This applies uniformly to public
 and confidential clients, to keep the operational and audit story simple. Genuinely concurrent
 legitimate use (e.g., two open tabs) is not distinguished from replay — one succeeds and the other
@@ -128,8 +123,8 @@ and rotation never extends it.
 DPoP (RFC 9449) is the default sender-constraint mechanism because it works identically for web
 apps, SPAs, and native clients without requiring any change to a TLS-terminating proxy; mTLS
 (RFC 8705) is offered as an option for organizations that already run client PKI, particularly
-FAPI/banking clients ([ADR-005](../../decisions/ADR-005-dpop-as-default-sender-constraint.md)).
-Clients declaring the FAPI 2.0 profile must use at least one of the two; general-profile clients opt
+FAPI/banking clients. Clients declaring the FAPI 2.0 profile must use at least one of the two;
+general-profile clients opt
 in via `dpop_bound_access_tokens`. DPoP proof validation checks the `jwk`-header signature plus
 `htm`/`htu`/`iat`/`jti`, with a bounded clock skew and a replay window on `jti`, and issued tokens
 carry the JWK thumbprint in `cnf.jkt`. mTLS validation trusts a TLS-terminating proxy to pass a
@@ -143,7 +138,7 @@ the request level.
 ## Consent
 
 Consent is persisted per `(subject, client_id)` as a set of granted scopes — not per-client and not
-per-interaction ([ADR-007](../../decisions/ADR-007-consent-model.md)). A per-client grant would
+per-interaction. A per-client grant would
 silently extend to newly requested high-privilege scopes added later, which conflicts with
 purpose-specific consent; asking on every interaction would create consent fatigue and pressure
 toward ad hoc "remember me" shortcuts. The consent UI is skipped only when every requested scope is
@@ -160,8 +155,8 @@ Every authorization decision in this context — client/redirect_uri checks, gra
 refresh token validity, sender-constraint/proof matching, `/userinfo` scope checks, `/introspect`
 caller authentication — is declared in `spec/policy/client-authorization.json` and evaluated through
 an AuthZEN-style `authorize({subject, action, resource, context})` interface, rather than scattered
-as inline conditionals across adapters where a check could silently drop on regeneration
-([ADR-010](../../decisions/ADR-010-authzen-policy-as-spec.md)). The current evaluator is a local
+as inline conditionals across adapters where a check could silently drop on regeneration. The
+current evaluator is a local
 pure-function adapter over that same policy document; swapping in an external AuthZEN service, OPA,
 or Cedar later only touches the adapter, not the usecases that call `authorize()`. Every `rules[].id`
 declared in the policy JSON must have a matching implementation, which an invariants test enforces
@@ -173,9 +168,8 @@ The OAuth 2.0 Authorization Server Metadata / OIDC Discovery document is a deriv
 hand-maintained one: a template in `spec/discovery.json` is read at runtime with the issuer
 placeholder substituted in, and its content (supported grants, auth methods, signing algorithms,
 response types, PKCE methods) is cross-checked against the other specification-core files
-authoritative for those facts, such as `grants/grant-types.json`, the token schemas, and
-[ADR-002](../../decisions/ADR-002-pkce-required-for-all-clients.md)'s PKCE methods
-([ADR-011](../../decisions/ADR-011-discovery-as-derived-artifact.md)). This avoids both failure
+authoritative for those facts, such as `grants/grant-types.json`, the token schemas, and the
+configured PKCE method requirements. This avoids both failure
 modes of the alternatives: a hand-maintained document drifting from the implementation, and a
 build-time-generated document creating a second copy that goes stale if the build step is skipped.
 
@@ -184,7 +178,7 @@ build-time-generated document creating a second copy that goes stale if the buil
 The device flow (RFC 8628) — `POST /device_authorization`, the `/device` verification UI, and the
 `device_code` grant at `/token` — consumes the state-transition table already declared in
 `spec/flows/device-code-flow.json` rather than reimplementing approve/deny/exchange transitions ad
-hoc ([ADR-025](../../decisions/ADR-025-device-authorization-grant.md)). `device_code` is a 32-byte
+hoc. `device_code` is a 32-byte
 random value stored only as a SHA-256 hash (bearer secret); `user_code` uses a reduced, unambiguous
 20-character alphabet (excludes vowels and visually confusable characters) rendered in
 `WDJB-MJHT`-style groups. Polling honors `authorization_pending`/`slow_down`/`access_denied`/
@@ -197,30 +191,28 @@ Protocol timing and security parameters — authorization code TTL (60s, single-
 `request_uri` TTL (600s, single-use), access token TTL (600s), ID token TTL (3600s), refresh token
 TTL (14 days sliding / 30 days absolute), device and user code TTL (600s), default polling interval
 (5s, +5s per `slow_down`), client-authentication and code-redemption rate limits, DPoP clock skew and
-replay window, and consent record retention (7 years) — are kept together in one ADR rather than as
-SCL `objectives`, because they are protocol/security/operational settings, not availability or
-latency SLOs with error-budget semantics
-([ADR-109](../../decisions/ADR-109-oauth2-lifetime-security-and-retention-policy-configuration.md)).
-Values a single model, state, or interface can naturally enforce are expressed there as
-constraints/guards/contracts; values that don't belong to one element — a rate limit spanning
-multiple requests, a retention window spanning a lifecycle — stay authoritative in that ADR instead.
+replay window, and consent record retention (7 years) — are recorded together in one place rather
+than as SCL `objectives`, because they are protocol/security/operational settings, not availability
+or latency SLOs with error-budget semantics. Values a single model, state, or interface can
+naturally enforce are expressed there as constraints/guards/contracts; values that don't belong to
+one element — a rate limit spanning multiple requests, a retention window spanning a lifecycle —
+stay authoritative in that shared configuration record instead.
 
 ## Agent principals and token-exchange delegation
 
 `Agent` is a first-class principal distinct from `User` and `OAuth2Client`: it owns identity,
 ownership, purpose, and lifecycle (including a kill-switch), but deliberately holds no credential
 primitives of its own — it binds to one or more existing `OAuth2Client` registrations instead, so
-agent governance doesn't require a second, redundant set of credential/crypto machinery
-([ADR-048](../../decisions/ADR-048-agent-as-first-class-non-human-principal.md)). Every agent has a
+agent governance doesn't require a second, redundant set of credential/crypto machinery. Every
+agent has a
 required owner (a `User` or group), so offboarding an owner can cascade to the agent's access;
 `status` (`active`/`disabled`/`killed`) is checked fail-closed on every token-issuance path, meaning
 an unresolved status blocks issuance rather than allowing it. Access token claims carry an optional
 principal-type marker so resource servers and the AuthZEN policy layer can distinguish agent-issued
 tokens without breaking existing token consumers.
 
-Acting on a user's behalf is implemented as OAuth 2.0 Token Exchange (RFC 8693) at `/token`
-([ADR-049](../../decisions/ADR-049-token-exchange-delegation-and-actor-chain.md)). The default
-outcome is delegation, not impersonation: the exchanged token keeps the original user as `sub` and
+Acting on a user's behalf is implemented as OAuth 2.0 Token Exchange (RFC 8693) at `/token`. The
+default outcome is delegation, not impersonation: the exchanged token keeps the original user as `sub` and
 records the agent as current actor in the `act` claim, nesting prior actors inward per RFC 8693
 §4.1 so a chain of sub-agent delegation stays traceable; impersonation (`act` dropped, `sub`
 replaced) is available only where a client/agent is explicitly permitted, and any unresolved case
@@ -236,8 +228,7 @@ lost in the exchange.
 
 Coarse OAuth scopes cannot express "transfer up to $100 from account X," so `/authorize`, `/par`,
 and `/token` (including the token-exchange grant above) accept RFC 9396 `authorization_details`,
-letting a request declare structured, bounded permissions instead of a broad scope
-([ADR-050](../../decisions/ADR-050-rich-authorization-requests-for-agent-scopes.md)). Only `type`s
+letting a request declare structured, bounded permissions instead of a broad scope. Only `type`s
 pre-registered per tenant are accepted, and each detail is schema-validated fail-closed — an
 unregistered type or a schema mismatch is rejected outright rather than partially accepted. Issued
 and exchanged tokens may carry only a subset of what the user consented to, and — composing with
@@ -255,8 +246,7 @@ bound wins; a request that would let `scope` re-widen an area already bounded by
 The `sid` claim is `LoginSession.id` itself — one value shared across every relying party for a
 given browser session, not a per-RP value — because OIDC's `sid` semantics describe the OP session,
 and a per-RP `sid` would make it impossible to walk from a single session revoke to every affected
-RP ([ADR-127](../../decisions/ADR-127-oidc-session-binding-and-logout-propagation.md)). `sid`
-propagates once, at `authenticate_user` completion, into `AuthorizationRequest`, then straight
+RP. `sid` propagates once, at `authenticate_user` completion, into `AuthorizationRequest`, then straight
 through `AuthorizationCodeRecord` → `RefreshTokenRecord` → `IdTokenClaims`; Authentication's
 `LoginSession` stays the single source of truth and none of its attributes are duplicated into
 OAuth2. `ClientSession` exists purely as a `(sid, client_id)` delivery index for logout
@@ -282,12 +272,70 @@ the underlying spec never reached Final status and major IdPs implement it incon
 ## Conventions
 
 Protocol-critical behavior that has an unambiguous, enumerable shape is declared once in `spec/`
-and consumed by usecases/adapters rather than re-implemented: state transitions
-([ADR-001](../../decisions/ADR-001-state-machine-as-spec.md)), authorization rules
-([ADR-010](../../decisions/ADR-010-authzen-policy-as-spec.md)), discovery metadata
-([ADR-011](../../decisions/ADR-011-discovery-as-derived-artifact.md)), and device-flow transitions
-([ADR-025](../../decisions/ADR-025-device-authorization-grant.md)) all follow this shape, so
-regenerating the adapter layer cannot silently diverge from the specification. Feature slices
+and consumed by usecases/adapters rather than re-implemented: state transitions, authorization
+rules, discovery metadata, and device-flow transitions all follow this shape, so regenerating the
+adapter layer cannot silently diverge from the specification. Feature slices
 (`authorization/`, `client/`, `consent/`, `device/`, `token/`) each own their `domain`/`ports`/
 `usecases`/`db_memory`/`db_postgres` layers; the context-level `domain`/`ports`/`usecases` packages
 are compatibility facades over the slices, and `module.go` is the sole composition root.
+
+## Design Decisions
+
+- Authorization request and device-code lifecycles are expressed as declarative state-transition
+  tables in `spec/flows/` rather than ad hoc conditional logic, so regeneration cannot silently
+  drift the transitions a client is allowed to make
+  ([ADR-001](../../decisions/ADR-001-state-machine-as-spec.md)).
+- PKCE requirement is staged per client type — required by default for public and FAPI 2.0 clients,
+  opt-in for legacy confidential clients — rather than mandated uniformly
+  ([ADR-002](../../decisions/ADR-002-pkce-required-for-all-clients.md)).
+- Pushed Authorization Requests are mandatory for FAPI 2.0 clients and optional for everyone else,
+  closing off URL tampering and unauthenticated request forgery at `/authorize` for the clients that
+  need the strongest guarantee
+  ([ADR-006](../../decisions/ADR-006-par-mandatory-fapi-clients.md)).
+- Five client authentication methods are supported, spanning FAPI-grade asymmetric authentication
+  down to legacy shared-secret methods, with `client_secret_jwt` deliberately excluded
+  ([ADR-008](../../decisions/ADR-008-client-authentication-methods.md)).
+- `private_key_jwt` verification is pinned to a fixed rule set — algorithm allowlist, issuer/
+  subject/audience checks, bounded assertion lifetime, replay protection — so what Discovery
+  advertises is what the server actually enforces
+  ([ADR-023](../../decisions/ADR-023-private-key-jwt-verification.md)).
+- Client ID Metadata Documents are supported as a non-persisted, registry-less alternative to
+  Dynamic Client Registration for resolving `client_id`s shaped as HTTPS URLs
+  ([ADR-155](../../decisions/ADR-155-client-id-metadata-documents.md)).
+- Access tokens are issued as self-contained JWTs by default while refresh tokens stay opaque,
+  database-backed references, since the two need different revocation and verification-scaling
+  properties ([ADR-012](../../decisions/ADR-012-opaque-vs-jwt-access-tokens.md)).
+- Refresh tokens rotate on every use, and presenting an already-rotated token revokes the entire
+  token family, uniformly for public and confidential clients
+  ([ADR-004](../../decisions/ADR-004-refresh-token-rotation.md)).
+- DPoP is the default sender-constraint mechanism, with mTLS offered as an option for clients that
+  already run client PKI ([ADR-005](../../decisions/ADR-005-dpop-as-default-sender-constraint.md)).
+- Consent is persisted per `(subject, client_id)` as a set of granted scopes, not per-client and not
+  per-interaction, to avoid silent scope creep and consent fatigue
+  ([ADR-007](../../decisions/ADR-007-consent-model.md)).
+- Authorization decisions are declared as policy in `spec/policy/client-authorization.json` and
+  evaluated through an AuthZEN-style `authorize()` interface rather than scattered as inline
+  conditionals ([ADR-010](../../decisions/ADR-010-authzen-policy-as-spec.md)).
+- The Discovery document is generated at runtime from `spec/discovery.json` rather than
+  hand-maintained or build-time generated, so it cannot drift from the implementation
+  ([ADR-011](../../decisions/ADR-011-discovery-as-derived-artifact.md)).
+- The Device Authorization Grant reuses the state-transition table already declared in
+  `spec/flows/device-code-flow.json` rather than reimplementing approve/deny/exchange transitions
+  ad hoc ([ADR-025](../../decisions/ADR-025-device-authorization-grant.md)).
+- Protocol timing and security parameters (token/code/PAR TTLs, rate limits, DPoP replay window,
+  consent retention) are kept together in one place rather than modeled as SCL `objectives`, since
+  they are protocol/security settings, not availability SLOs
+  ([ADR-109](../../decisions/ADR-109-oauth2-lifetime-security-and-retention-policy-configuration.md)).
+- `Agent` is a first-class principal that owns identity and lifecycle but holds no credentials of
+  its own, binding instead to existing `OAuth2Client` registrations
+  ([ADR-048](../../decisions/ADR-048-agent-as-first-class-non-human-principal.md)).
+- Acting on a user's behalf is implemented as OAuth 2.0 Token Exchange, defaulting to delegation
+  (original `sub`, agent recorded in `act`) rather than impersonation
+  ([ADR-049](../../decisions/ADR-049-token-exchange-delegation-and-actor-chain.md)).
+- Agent-scoped permissions are expressed as RFC 9396 `authorization_details` rather than coarse
+  scopes, so bounds like a transfer limit can be declared and only ever narrowed, never widened, on
+  a subsequent token exchange
+  ([ADR-050](../../decisions/ADR-050-rich-authorization-requests-for-agent-scopes.md)).
+- The `sid` claim is `LoginSession.id` itself, shared across every relying party for a browser
+  session, so a single session revoke can be walked to every affected RP
+  ([ADR-127](../../decisions/ADR-127-oidc-session-binding-and-logout-propagation.md)).

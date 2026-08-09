@@ -1,6 +1,6 @@
 ---
 context: seeding
-updated_at: 2026-08-06
+updated_at: 2026-08-09
 ---
 
 # Architecture: seeding
@@ -13,8 +13,7 @@ validation, or persistence of seeded resources — those stay in each record con
 Authentication, OAuth2, Application, Saml, WsFederation), reached through their existing idempotent
 command surfaces. This split keeps environment safety and application order centralized while
 avoiding duplicated invariant checks; the rejected alternative of scattering profiles across record
-contexts loses that single point of cross-context safety verification. Rationale in
-[ADR-118](../../decisions/ADR-118-extract-environment-aware-seeding-context.md).
+contexts loses that single point of cross-context safety verification.
 
 ## Environment policy and planning
 
@@ -41,6 +40,16 @@ traversal and injection surfaces. Secret values are never written into a manifes
 referenced through `models.SeedSecretReference`, whose `env` provider is available everywhere but
 whose `file` provider is the only one permitted in staging/production. Dry-run validates that a
 reference resolves without ever passing the materialized value into a plan, log, or error.
-Rationale, including the rejected options of literal `${ENV}` templating and DB-persisted seed
-checkpoints, is in
-[ADR-132](../../decisions/ADR-132-use-versioned-seed-manifests-and-secret-references.md).
+
+## Design Decisions
+
+- `Seeding` is a separate operations context that owns environment policy, drift policy, and
+  application order across record contexts through their existing idempotent command surfaces,
+  rather than scattering seed profiles across each record context and losing the single point of
+  cross-context safety verification
+  ([ADR-118](../../decisions/ADR-118-extract-environment-aware-seeding-context.md)).
+- Seed manifests are versioned, strictly-decoded YAML with a restricted `include`/secret-reference
+  grammar (no merge keys, templating, remote URLs, or literal `${ENV}` expansion), and re-applying
+  the same manifest/generator-seed/secret version replays deterministically rather than relying on a
+  dedicated checkpoint table
+  ([ADR-132](../../decisions/ADR-132-use-versioned-seed-manifests-and-secret-references.md)).
