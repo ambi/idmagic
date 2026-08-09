@@ -386,7 +386,7 @@ test('admin audit log can be filtered and export can be triggered', async () => 
 
     await clickButtonByText(view, 'Export')
     const exportURL = await view.evaluate('window.__raAuditExportURL ?? ""')
-    expect(String(exportURL)).toContain('/api/admin/audit_events/export')
+    expect(String(exportURL)).toContain('/api/admin/v1/audit_events/export')
     expect(String(exportURL)).toContain('category=authentication')
     expect(String(exportURL)).toContain('user_id=00000000-0000-4000-8000-000000000001')
 

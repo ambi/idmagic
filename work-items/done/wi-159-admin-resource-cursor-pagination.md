@@ -1,6 +1,6 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: ["tn"]
 risk: high
 created_at: 2026-07-10
@@ -109,9 +109,10 @@ created_at: 2026-07-10
     - `idmanagement/handlers_http/admin_agent_list_pagination_test.go`、`application/handlers_http/admin_application_list_pagination_test.go`、`application/handlers_http/admin_application_assignment_pagination_test.go`、`oauth2/handlers_http/admin_consent_list_pagination_test.go`、`oauth2/handlers_http/admin_client_list_pagination_test.go`、`audit/handlers_http/admin_audit_event_list_pagination_test.go`、`authentication/handlers_http/admin_auth_event_bucket_list_pagination_test.go` (この package には admin 系 test helper が一つも無かったため新規)、`provisioning/handlers_http/admin_delivery_list_pagination_test.go` (同じく新規、既存 test file が無かった package)。
     - 実装中に見つけた実バグではなく test 側の罠2件: (1) AuditEvents/ProvisioningDeliveries は cursor の query_hash がフィルタ無しリクエストでは空文字列になる (`auditEventQueryHash`/`provisioningDeliveriesQueryHash` が cursor/limit を除いた残り query をそのまま hash にするため) ので、他テナント cursor の偽造には `QueryHash: ""` を使う必要がある。(2) `ProvisioningDeliveryRepository.Save` の idempotency key が `(TenantID, ConnectionID, SourceType, SourceID, SourceVersion)` で ID や CreatedAt を含まないため、同じ SourceID/SourceVersion で複数件シードすると 2件目以降が無視される (SourceID を行ごとに変えて回避)。
     - `just verify-go` (build, vet, lint, race test) green。
-  - UI 側: T007 で移行した5画面 + 共有基盤 (`usePaginatedList`/`LoadMoreButton`/`requestPage`) の component test (load-more の append・エラー表示・最終ページでの非表示) を追加済み。`just test-ui-e2e` (browser 挙動を含む e2e) は未追加 (別 follow-up)。
-- [ ] T009 [Verify] `just check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
-  - `just check` / `just verify-go` (build, vet, lint, test, gofumpt) / `just verify-ui` (format, lint, typecheck, unit test, build) は green 確認済み。`just test-ui-e2e` は未実行 (T008 に開示済みの follow-up と同じ理由)。
+  - UI 側: T007 で移行した5画面 + 共有基盤 (`usePaginatedList`/`LoadMoreButton`/`requestPage`) の component test (load-more の append・エラー表示・最終ページでの非表示) を追加済み。e2e (`tests/e2e/ui-scenario-smoke.spec.ts`) には `/admin/groups` の到達性チェックを追加し (Applications/Agents/AuditEvents は既存カバレッジで route loader の実サーバー往復を検証済みだったため、未カバーだった Groups のみ追加)、T007 で `route loader` の返り値形状を変えた5画面すべてが実バックエンド相手に route loader → render まで通ることを確認した。「さらに読み込む」クリック→次ページ表示までを検証する専用シナリオ (50件超のデータ seed が必要) は追加していない — 別 follow-up。
+    - e2e 実行中に本 WI と無関係な既存の壊れた assertion (`ui-scenario-actions.spec.ts` の監査イベント export URL チェックが `/api/admin/audit_events/export` を期待していたが実際は `/api/admin/v1/audit_events/export`、`v1` 抜けの古い assertion) を発見。`d77b095e` (本 WI の直前コミット) の時点で既に同じ内容だったため本 WI の変更起因ではないが、`just test-ui-e2e` を green にする1行修正として合わせて直した。
+- [x] T009 [Verify] `just check`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
+  - `just check` / `just verify-go` (build, vet, lint, test, gofumpt) / `just verify-ui` (format, lint, typecheck, unit test, build) / `just test-ui-e2e` (4 spec file、全 green) すべて確認済み。
 
 ## Verification
 - `just check`
@@ -128,3 +129,33 @@ created_at: 2026-07-10
 ページネーションは単なる UI 変更ではなく、外部契約、tenant isolation、DB index、削除や同時追加時の整合性に影響する。
 offset pagination は深いページで遅く、同時更新で重複・欠落が起きやすいため、keyset cursor を標準にする。
 Cursor に tenant や filter を含めないと情報漏えいまたは境界越えの探索に使われるため、opaque かつ検証可能な token として扱う。
+
+## Completion
+- **Completed At**: 2026-08-09
+- **Summary**:
+  RFC 8288 `Link` ヘッダによる keyset pagination (ADR-158) を対象 10 interface すべてに Go 層
+  (handler/usecase/repository、memory + Postgres) で実装した。SCL コア言語に response header
+  宣言語彙 (`bindings.http.response_headers`) を追加。監査イベント/ユーザー/グループ/エージェント/
+  アプリケーションの5画面 (Plan が優先指定した順) を「さらに読み込む」UI へ移行し、共有基盤
+  (`requestPage`/`usePaginatedList`/`LoadMoreButton`) を新設した。全 10 interface に handler レベルの
+  cursor 境界テスト (Link header 有無、改ざん cursor 拒否、他テナント cursor 拒否、次ページ重複なし)
+  を追加した。
+
+  この WI の範囲内で意図的に対応しなかったこと (すべて Tasks に開示済み、隠れた欠落ではない):
+  Consents・ApplicationAssignments・ProvisioningDeliveries の一覧画面、および sign-in-policy 画面の
+  application テーブルは「さらに読み込む」UI へ未移行 (`limit=200` capped の単一ページ表示のまま)。
+  「戻る」の URL 履歴 stack 方式は未実装 (前方の「さらに読み込む」のみ、Design が明示的に許容する
+  代替方式)。一覧 API を picker/dropdown/id→name lookup に流用している約12箇所は `limit=200` に
+  capped したのみ (全件検索可能な picker は wi-161 の範囲)。Dashboard の
+  `activeUserCount`/`disabledUserCount`/`grantedConsentCount` と Users 一覧画面自身の概要タイルは
+  breakdown 用の summary endpoint が無いため `limit=200` capped な近似値のまま
+  (`userCount`/`clientCount` のみ正確な tenant usage summary に切り替えた)。e2e は既存 smoke test に
+  Groups の到達性チェックを追加したのみで、「さらに読み込む」クリック→次ページ表示の専用シナリオ
+  (50件超のデータ seed が必要) は未追加。いずれも該当リソースが 200 件を超える大規模テナントでのみ
+  顕在化する制約で、別 follow-up とする。
+- **Verification Results**:
+  - `just check` — passed
+  - `just verify-go` — passed
+  - `just verify-ui` — passed
+  - `just test-ui-e2e` — passed
+- これらはいずれも大規模テナント (該当リソースが 200 件超) でのみ顕在化する制約であり、別 follow-up (本文中に個別記載、一部は wi-161 が引き取る) とする。

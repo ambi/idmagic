@@ -74,6 +74,7 @@ test('admin console scenarios are reachable after admin-audience login', async (
 
     const pages = [
       [['アプリケーション', 'Applications'], '/admin/applications', 'admin-applications'],
+      [['グループ', 'Groups'], '/admin/groups', 'admin-groups'],
       [['エージェント', 'Agents'], '/admin/agents', 'admin-agents'],
       [['監査イベント', 'Audit events'], '/admin/audit_events', 'admin-audit-events'],
       [
