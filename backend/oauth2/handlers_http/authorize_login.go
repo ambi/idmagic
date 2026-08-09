@@ -48,6 +48,11 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 
 	normalizedUsername := strings.ToLower(input.Username)
 	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "login", clientIP); err != nil {
+		return err
+	} else if blocked {
+		return nil
+	}
 	if result, err := d.acquireLoginThrottle(c, authnports.LoginThrottleAccount, normalizedUsername); err != nil {
 		return err
 	} else if !result.Allowed {

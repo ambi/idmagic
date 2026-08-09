@@ -10,6 +10,7 @@ import (
 
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 )
 
 // ephemeralPurger は期限切れ行の一括削除境界。DeleteExpiredBatch を実装するのは postgres
@@ -42,13 +43,21 @@ func RunEphemeralSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 		{"webauthn_sessions", deps.Authentication.WebAuthnSessionStore},
 		{"saml_authnrequest_replays", deps.Saml.ReplayStore},
 	}
-	// login throttle は factory 経由なので instance を作って加える (GC は configs 非依存)。
+	// login throttle / endpoint rate limiter は factory 経由なので instance を作って加える
+	// (GC は configs 非依存)。
 	if deps.Authentication.NewLoginAttemptThrottle != nil {
 		throttle := deps.Authentication.NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{})
 		stores = append(stores, struct {
 			name  string
 			store any
 		}{"login_throttle", throttle})
+	}
+	if deps.RateLimit.NewRateLimiter != nil {
+		limiter := deps.RateLimit.NewRateLimiter(rlports.RateLimitConfigs{})
+		stores = append(stores, struct {
+			name  string
+			store any
+		}{"endpoint_rate_limit", limiter})
 	}
 
 	total := 0

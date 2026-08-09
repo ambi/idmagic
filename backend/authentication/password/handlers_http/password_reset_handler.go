@@ -68,6 +68,12 @@ func HandleForgotPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
+	clientIP := support.ExtractClientIP(c.Request(), d.TrustedForwardedHops)
+	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "password_reset", strings.ToLower(input.Email)+"|"+clientIP); err != nil {
+		return err
+	} else if blocked {
+		return nil
+	}
 	ttl := time.Duration(authusecases.PasswordResetTokenTTLSeconds) * time.Second
 	if err := authusecases.RequestPasswordReset(
 		c.Request().Context(),

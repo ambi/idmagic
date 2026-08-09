@@ -64,7 +64,7 @@ export function LoginPage({ csrfToken, returnTo }: { csrfToken: string; returnTo
     } catch (cause) {
       setError(
         cause instanceof AuthenticationAPIError
-          ? localizedErrorMessage(locale, cause.code, cause.message)
+          ? localizedErrorMessage(locale, cause.code, cause.message, cause.retryAfterSeconds)
           : tCommon.networkError,
       )
       setSubmitting(false)

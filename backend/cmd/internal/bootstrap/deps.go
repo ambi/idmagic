@@ -19,6 +19,7 @@ import (
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	notification "github.com/ambi/idmagic/backend/shared/notification/ports"
+	ratelimit "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals"
 	"github.com/ambi/idmagic/backend/signingkeys"
 	"github.com/ambi/idmagic/backend/sourcing"
@@ -50,6 +51,7 @@ type Dependencies struct {
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
 	Notification     notification.Module
+	RateLimit        ratelimit.Module
 	Close            func()
 	DbPing           func(context.Context) error
 }

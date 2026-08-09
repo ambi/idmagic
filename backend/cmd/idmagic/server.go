@@ -22,6 +22,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 	metricsPrometheus "github.com/ambi/idmagic/backend/shared/observability/metrics_prometheus"
 	telemetryOTLP "github.com/ambi/idmagic/backend/shared/observability/telemetry_otlp"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -95,6 +96,32 @@ func Run() error {
 			LockoutSeconds: 900,
 		},
 	})
+	rateLimiter := deps.RateLimit.NewRateLimiter(rlports.RateLimitConfigs{
+		"token": {
+			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_TOKEN_MAX_REQUESTS", 60),
+			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_TOKEN_WINDOW_SECONDS", 60),
+		},
+		"authorize": {
+			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_AUTHORIZE_MAX_REQUESTS", 30),
+			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_AUTHORIZE_WINDOW_SECONDS", 60),
+		},
+		"par": {
+			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_PAR_MAX_REQUESTS", 30),
+			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_PAR_WINDOW_SECONDS", 60),
+		},
+		"device_authorization": {
+			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS", 20),
+			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS", 60),
+		},
+		"password_reset": {
+			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS", 5),
+			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS", 900),
+		},
+		"login": {
+			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_LOGIN_MAX_REQUESTS", 20),
+			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_LOGIN_WINDOW_SECONDS", 60),
+		},
+	})
 	authorizer, err := bootstrap.AssembleAuthorizer()
 	if err != nil {
 		return err
@@ -115,6 +142,7 @@ func Run() error {
 	deps.Authentication.PasswordHasher = hasher
 	deps.Authentication.BreachedPasswordChecker = breachedChecker
 	deps.Authentication.LoginAttemptThrottle = loginThrottle
+	deps.RateLimit.RateLimiter = rateLimiter
 	deps.Authentication.SentinelPasswordHash = sentinelPasswordHash
 	deps.Authentication.SessionManager = sessionManager
 	deps.Authentication.AuthnResolver = sessionManager
@@ -174,6 +202,7 @@ func Run() error {
 			SCL:                       sclDoc,
 			TenantBaseDomain:          bootstrap.EnvDefault("TENANT_BASE_DOMAIN", ""),
 			TrustedForwardedHops:      bootstrap.EnvInt("TRUSTED_FORWARDED_HOPS", 0),
+			RateLimiter:               deps.RateLimit.RateLimiter,
 			OperationTimeout:          0, // 必要なら設定
 			DetachedCompletionTimeout: 0,
 			AbortMetrics:              appMetrics,

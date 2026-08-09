@@ -22,6 +22,12 @@ func (d Deps) handlePAR(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
+	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "par", clientIP+"|"+clientStub.ID); err != nil {
+		return err
+	} else if blocked {
+		return nil
+	}
 	params := map[string]string{}
 	for k, v := range c.Request().PostForm {
 		if k == "client_id" || k == "client_secret" ||

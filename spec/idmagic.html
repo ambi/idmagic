@@ -11614,7 +11614,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
       <div class="eyebrow">Bounded Context · contexts/authentication.yaml</div>
       <h1>Authentication</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">109</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">51</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">22</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-authentication-standards"><span class="stat-num">6</span><span class="stat-label">standards</span></a><a class="stat" href="#context-authentication-glossary"><span class="stat-num">9</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-authentication-models"><span class="stat-num">110</span><span class="stat-label">models</span></a><a class="stat" href="#context-authentication-interfaces"><span class="stat-num">51</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-authentication-states"><span class="stat-num">1</span><span class="stat-label">states</span></a><a class="stat" href="#context-authentication-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-authentication-objectives"><span class="stat-num">4</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-authentication-scenarios"><span class="stat-num">23</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-authentication-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-authentication-standards">
     <h2>Standards <span class="count">6</span></h2>
@@ -11865,7 +11865,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
     </article></div>
   </section>
 <section id="context-authentication-models">
-    <h2>Models <span class="count">109</span></h2>
+    <h2>Models <span class="count">110</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">10</span></h3>
@@ -15498,7 +15498,7 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">6</span></h3>
+      <h3 class="grp-title">error <span class="count">7</span></h3>
       <div class="cards"><article class="card" id="scl-Authentication/model/InvalidRequestError">
     <header><h3>InvalidRequestError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Authentication/model/InvalidRequestError</code></header>
     <p class="desc">リクエストに必須パラメータの欠落・不正値・重複等がある (RFC 6749 §5.2 invalid_request)。OAuth2 context が定義する共通 error の published language stub。</p>
@@ -15527,6 +15527,22 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
     <p class="desc">テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。</p>
 
     <p class="muted">(no fields)</p>
+
+  </article>
+<article class="card" id="scl-Authentication/model/RateLimitedError">
+    <header><h3>RateLimitedError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">Authentication/model/RateLimitedError</code></header>
+    <p class="desc">EndpointRateLimitPolicy の閾値を超えた。login throttle (per-account/per-IP の失敗回数ベース) とは別の、要求到達時ベースの汎用 endpoint rate limit。OAuth2 context が定義する共通 error の published language stub。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">retry_after_seconds</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
 
   </article>
 <article class="card" id="scl-Authentication/model/PasswordReuseError">
@@ -15622,7 +15638,7 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
   </article>
 <article class="card" id="scl-Authentication/interface/SubmitBrowserLogin">
     <header><h3>SubmitBrowserLogin</h3><span class="badge badge-access-public">public</span><code class="canonical-ref">Authentication/interface/SubmitBrowserLogin</code></header>
-    <p class="desc">SPA JSON API から browser password step を処理する。MFA 必須かつ factor 未登録の場合、強制開始前は password session でログインを許可して事前登録を促し、開始後は有効な単発 enrollment bypass と猶予期限の両方を満たすときだけ同一 LoginSession を Enrollment pending にする。それ以外は fail closed でログインを完了しない。per-account (10 回 / 900 秒窓、900 秒ロックアウト) と per-IP (30 回 / 900 秒窓、900 秒ロックアウト) のスロットリングを cluster_wide カウンタで適用し、共有カウンタストア到達不能時も fail_closed とする。</p>
+    <p class="desc">SPA JSON API から browser password step を処理する。MFA 必須かつ factor 未登録の場合、強制開始前は password session でログインを許可して事前登録を促し、開始後は有効な単発 enrollment bypass と猶予期限の両方を満たすときだけ同一 LoginSession を Enrollment pending にする。それ以外は fail closed でログインを完了しない。per-account (10 回 / 900 秒窓、900 秒ロックアウト) と per-IP (30 回 / 900 秒窓、900 秒ロックアウト) のスロットリングを cluster_wide カウンタで適用し、共有カウンタストア到達不能時も fail_closed とする。この失敗回数ベースの login throttle とは別に、成功/失敗を問わず全リクエストを消費する EndpointRateLimitPolicy (IP+tenant ベース) も適用する。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -15669,9 +15685,9 @@ Access Token 自体は本イベントで即時失効しない (短命 TTL に委
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/QuotaExceededError">QuotaExceededError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/QuotaExceededError">QuotaExceededError</a> <a class="chip chip-error-ref" href="#scl-Authentication/model/RateLimitedError">RateLimitedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Authentication/model/UserAuthenticated">UserAuthenticated</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/AuthenticationFailed">AuthenticationFailed</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentRequired">MfaEnrollmentRequired</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassConsumed">MfaEnrollmentBypassConsumed</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/MfaEnrollmentBypassExpired">MfaEnrollmentBypassExpired</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">!context.login_throttled</code></li></ul></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">!context.login_throttled</code></li><li><code class="expr">!context.rate_limited</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/auth/login</code></div></div>
@@ -16524,7 +16540,9 @@ verified email を持つ user が見つかった場合のみ token を発行し�
   </tr></tbody>
     </table>
   </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-Authentication/model/RateLimitedError">RateLimitedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-Authentication/model/PasswordResetRequested">PasswordResetRequested</a> <a class="chip chip-event-ref" href="#scl-Authentication/model/EmailSent">EmailSent</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">!context.rate_limited</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/auth/forgot_password</code></div></div>
@@ -17216,7 +17234,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       </article></div>
   </section>
 <section id="context-authentication-scenarios">
-    <h2>Scenarios <span class="count">22</span></h2>
+    <h2>Scenarios <span class="count">23</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-Authentication/scenario/~E5~A4~96~E9~83~A8OIDC~E8~AA~8D~E8~A8~BC~E3~81~AF~E6~A4~9C~E8~A8~BC~E6~B8~88~E3~81~BFsubject~E3~82~92~E5~90~8C~E3~81~98local~20User~E3~81~B8~E7~9B~B8~E9~96~A2~E3~81~99~E3~82~8B">
         <header><h3>外部OIDC認証は検証済みsubjectを同じlocal Userへ相関する</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">Authentication/scenario/外部OIDC認証は検証済みsubjectを同じlocal Userへ相関する</code></header>
@@ -17297,7 +17315,19 @@ PostgreSQL keyset pagination index を使用、wi-253)。
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">csrf 値を改ざんして browser login API を送信する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Authentication/model/InvalidRequestError">InvalidRequestError</a>&quot;</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">直近 900 秒窓で per-account の失敗回数が 10 回に達している</code></header>
-            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">正しい password で browser login API を送信する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Authentication/model/AccessDeniedError">AccessDeniedError</a>&quot;</li><li class="scn-step">&quot;<a class="chip chip-ref" href="#scl-Authentication/model/LoginThrottled">LoginThrottled</a>&quot; が発行される</li></ol></div>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">正しい password で browser login API を送信する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Authentication/model/RateLimitedError">RateLimitedError</a>&quot;</li><li class="scn-step">&quot;<a class="chip chip-ref" href="#scl-Authentication/model/LoginThrottled">LoginThrottled</a>&quot; が発行される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">失敗回数に関わらず同一 IP からの login API リクエストが EndpointRateLimitPolicy の window 内で max_requests に達している</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">正しい password で browser login API を送信する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Authentication/model/RateLimitedError">RateLimitedError</a>&quot;</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-Authentication/scenario/~E3~83~91~E3~82~B9~E3~83~AF~E3~83~BC~E3~83~89~E3~83~AA~E3~82~BB~E3~83~83~E3~83~88~E8~A6~81~E6~B1~82~E3~81~AF~E8~AD~98~E5~88~A5~E5~AD~90~E3~81~A8IP~E3~81~AE~E7~B5~84~E3~81~A7rate~20limit~E3~81~95~E3~82~8C~E3~82~8B">
+        <header><h3>パスワードリセット要求は識別子とIPの組でrate limitされる</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">Authentication/scenario/パスワードリセット要求は識別子とIPの組でrate limitされる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">未認証である</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;alice&quot; 宛のパスワードリセットを要求する</li><li class="scn-step">user の存在有無に関わらず 204 を返す</li><li class="scn-step">&quot;<a class="chip chip-ref" href="#scl-Authentication/model/PasswordResetRequested">PasswordResetRequested</a>&quot; が発行される</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">同一 identifier と IP の組で EndpointRateLimitPolicy の window 内の max_requests に達している</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">&quot;alice&quot; 宛のパスワードリセットを再度要求する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-Authentication/model/RateLimitedError">RateLimitedError</a>&quot;</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-Authentication/scenario/~E7~84~A1~E5~8A~B9~E5~8C~96~E3~81~95~E3~82~8C~E3~81~9F~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E3~81~AF~E6~96~B0~E8~A6~8F~E3~83~AD~E3~82~B0~E3~82~A4~E3~83~B3~E3~82~82~E6~97~A2~E5~AD~98~E3~82~BB~E3~83~83~E3~82~B7~E3~83~A7~E3~83~B3~E3~82~82~E6~8B~92~E5~90~A6~E3~81~95~E3~82~8C~E3~82~8B">
         <header><h3>無効化されたユーザーは新規ログインも既存セッションも拒否される</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Authentication/scenario/無効化されたユーザーは新規ログインも既存セッションも拒否される</code></header>
@@ -17840,7 +17870,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
       <div class="eyebrow">Bounded Context · contexts/oauth2.yaml</div>
       <h1>OAuth2</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">30</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">162</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">38</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-oauth2-standards"><span class="stat-num">30</span><span class="stat-label">standards</span></a><a class="stat" href="#context-oauth2-glossary"><span class="stat-num">99</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-oauth2-models"><span class="stat-num">164</span><span class="stat-label">models</span></a><a class="stat" href="#context-oauth2-interfaces"><span class="stat-num">43</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-oauth2-states"><span class="stat-num">8</span><span class="stat-label">states</span></a><a class="stat" href="#context-oauth2-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-oauth2-objectives"><span class="stat-num">23</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-oauth2-scenarios"><span class="stat-num">39</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-oauth2-flows"><span class="stat-num">5</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-oauth2-standards">
     <h2>Standards <span class="count">30</span></h2>
@@ -19739,7 +19769,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
     </article></div>
   </section>
 <section id="context-oauth2-models">
-    <h2>Models <span class="count">162</span></h2>
+    <h2>Models <span class="count">164</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">16</span></h3>
@@ -20928,7 +20958,7 @@ front/back-channel logout の相関に使う (wi-28)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">53</span></h3>
+      <h3 class="grp-title">value object <span class="count">54</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/AuthorizationDetail">
     <header><h3>AuthorizationDetail</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/AuthorizationDetail</code></header>
     <p class="desc">RFC 9396 authorization_details の 1 要素。type で識別される構造化された細粒度権限を表す。 要求・同意・トークン反映を通じて一貫して扱い、登録済み AuthorizationDetailType に対し fail-closed に検証する。</p>
@@ -23304,6 +23334,40 @@ hint として送るのが通常の RP 実装であるため)。
   </tr></tbody>
   </table>
 
+  </article>
+<article class="card" id="scl-OAuth2/model/EndpointRateLimitPolicy">
+    <header><h3>EndpointRateLimitPolicy</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/EndpointRateLimitPolicy</code></header>
+    <p class="desc">route ごとの fixed-window rate limit 設定。閾値・窓は環境変数で運用者が調整する (このモデルは形だけを固定し、具体値は仕様に埋め込まない)。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">policy_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>対象 route の識別子 (例: token、authorize、par、device_authorization、password_reset、login)。</td>
+  </tr><tr>
+    <td><code class="name">max_requests</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">window_seconds</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">fail_mode</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td>共有カウンタストア到達不能時の挙動。fail_closed 固定。</td>
+  </tr></tbody>
+  </table>
+
   </article></div>
     </div>
 <div class="group">
@@ -24954,7 +25018,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">error <span class="count">21</span></h3>
+      <h3 class="grp-title">error <span class="count">22</span></h3>
       <div class="cards"><article class="card" id="scl-OAuth2/model/OAuthError">
     <header><h3>OAuthError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/OAuthError</code></header>
     <p class="desc">OAuth 2.0 / OIDC のエラー応答の共通形 (RFC 6749 §5.2)。具体的なエラー種別は error フィールドの OAuthErrorCode で識別される。</p>
@@ -25158,6 +25222,22 @@ hint として送るのが通常の RP 実装であるため)。
 
     <p class="muted">(no fields)</p>
 
+  </article>
+<article class="card" id="scl-OAuth2/model/RateLimitedError">
+    <header><h3>RateLimitedError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/RateLimitedError</code></header>
+    <p class="desc">EndpointRateLimitPolicy の閾値を超えた。login throttle (per-account/per-IP の失敗回数ベース) とは別の、要求到達時ベースの汎用 endpoint rate limit。fail-closed (共有カウンタストア到達不能時も拒否)。</p>
+
+    <div class="label">Payload</div><table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">retry_after_seconds</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
   </article></div>
     </div>
   </section>
@@ -25218,9 +25298,9 @@ hint として送るのが通常の RP 実装であるため)。
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeIssued">AuthorizationCodeIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ConsentGranted">ConsentGranted</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentResolved">ClientIdMetadataDocumentResolved</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentRejected">ClientIdMetadataDocumentRejected</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">every_authorization_parameter_has_single_value(input.params)</code></li><li><code class="expr">prompt_tokens_supported_and_unambiguous(input.params.prompt)</code></li><li><code class="expr">client_resolvable(input.params.client_id)</code></li><li><code class="expr">redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)</code></li><li><code class="expr">requested_scopes_allowed(input.params.client_id, input.params.scope)</code></li><li><code class="expr">pkce_s256_present(input.params)</code></li><li><code class="expr">par_requirement_satisfied(input.params.client_id, input.params.request_uri)</code></li><li><code class="expr">request_uri_is_the_only_authorization_request_source_when_present(input.params)</code></li><li><code class="expr">application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)</code></li></ul></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">!context.rate_limited</code></li><li><code class="expr">every_authorization_parameter_has_single_value(input.params)</code></li><li><code class="expr">prompt_tokens_supported_and_unambiguous(input.params.prompt)</code></li><li><code class="expr">client_resolvable(input.params.client_id)</code></li><li><code class="expr">redirect_uri_exact_match(input.params.client_id, input.params.redirect_uri)</code></li><li><code class="expr">requested_scopes_allowed(input.params.client_id, input.params.scope)</code></li><li><code class="expr">pkce_s256_present(input.params)</code></li><li><code class="expr">par_requirement_satisfied(input.params.client_id, input.params.request_uri)</code></li><li><code class="expr">request_uri_is_the_only_authorization_request_source_when_present(input.params)</code></li><li><code class="expr">application_assignment_permits(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">application_sign_in_policy_satisfied(context.tenant_id, subject.id, input.params.client_id)</code></li><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.params.resource, input.params.scope)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/authorize</code> <span class="chip chip-hint">response: 302</span> <span class="chip chip-hint">form: query</span></div></div>
@@ -25498,9 +25578,9 @@ LoginSession に解決できるかどうかだけを応答する。session_state
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/PARStored">PARStored</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentResolved">ClientIdMetadataDocumentResolved</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentRejected">ClientIdMetadataDocumentRejected</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)</code></li></ul></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">!context.rate_limited</code></li><li><code class="expr">resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/par</code> <span class="chip chip-hint">form: form</span></div></div>
@@ -25539,9 +25619,9 @@ LoginSession に解決できるかどうかだけを応答する。session_state
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidGrantError">InvalidGrantError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/UnsupportedGrantTypeError">UnsupportedGrantTypeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidScopeError">InvalidScopeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidDpopProofError">InvalidDpopProofError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AuthorizationPendingError">AuthorizationPendingError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/SlowDownError">SlowDownError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ExpiredTokenError">ExpiredTokenError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ClaimReleaseDeniedError">ClaimReleaseDeniedError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidGrantError">InvalidGrantError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/UnsupportedGrantTypeError">UnsupportedGrantTypeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidScopeError">InvalidScopeError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidDpopProofError">InvalidDpopProofError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AuthorizationPendingError">AuthorizationPendingError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/SlowDownError">SlowDownError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/AccessDeniedError">AccessDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ExpiredTokenError">ExpiredTokenError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidTargetError">InvalidTargetError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/ClaimReleaseDeniedError">ClaimReleaseDeniedError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/AccessTokenIssued">AccessTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenIssued">RefreshTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenRotated">RefreshTokenRotated</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/RefreshTokenReuseDetected">RefreshTokenReuseDetected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/AuthorizationCodeRedeemed">AuthorizationCodeRedeemed</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchanged">TokenExchanged</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/TokenExchangeRejected">TokenExchangeRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceScopedTokenIssued">ResourceScopedTokenIssued</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ResourceAudienceRejected">ResourceAudienceRejected</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentResolved">ClientIdMetadataDocumentResolved</a> <a class="chip chip-event-ref" href="#scl-OAuth2/model/ClientIdMetadataDocumentRejected">ClientIdMetadataDocumentRejected</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">signing_key_provider_healthy(context.tenant_id)</code></li><li><code class="expr">token_request_references_are_tenant_local(context.tenant_id, input.request)</code></li><li><code class="expr">dpop_proof_is_fresh_and_unique(context.dpop_proof)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)</code></li><li><code class="expr">input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != TokenExchange || input.request.subject_token_type != &quot;urn:ietf:params:oauth:token-type:jwt&quot; || workload_attestation_verified(context.tenant_id, input.request.subject_token)</code></li><li><code class="expr">!contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)</code></li></ul></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">!context.rate_limited</code></li><li><code class="expr">signing_key_provider_healthy(context.tenant_id)</code></li><li><code class="expr">token_request_references_are_tenant_local(context.tenant_id, input.request)</code></li><li><code class="expr">dpop_proof_is_fresh_and_unique(context.dpop_proof)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || resource_indicator_matches_authorization_request(context.tenant_id, input.request)</code></li><li><code class="expr">input.request.grant_type != ClientCredentials || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != DeviceCode || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != TokenExchange || resource_indicator_registered_and_active(context.tenant_id, input.request.resource, input.request.scope)</code></li><li><code class="expr">input.request.grant_type != TokenExchange || input.request.subject_token_type != &quot;urn:ietf:params:oauth:token-type:jwt&quot; || workload_attestation_verified(context.tenant_id, input.request.subject_token)</code></li><li><code class="expr">!contains_account_scope(input.request.scope) || grant_has_user_subject(input.request)</code></li></ul></div>
 <div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">output.response.access_token == null || access_token_audience_non_empty(output.response.access_token)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || consent_covers_issued_scopes(input.request)</code></li><li><code class="expr">input.request.grant_type != AuthorizationCode || pkce_verifier_matches_authorization_code(input.request)</code></li><li><code class="expr">input.request.grant_type != RefreshToken || rotated_refresh_preserves_parent_family_and_absolute_expiry(input.request.refresh_token, output.response.refresh_token)</code></li><li><code class="expr">input.request.grant_type != RefreshToken || rotated_refresh_preserves_resource_binding(input.request.refresh_token, output.response.access_token)</code></li><li><code class="expr">!refresh_token_reuse_detected(input.request) || refresh_family_is_revoked(input.request.refresh_token)</code></li><li><code class="expr">client_authentication_failures_are_uniform()</code></li><li><code class="expr">!contains_account_scope(output.response.scope) || access_token_subject_is_user(output.response.access_token)</code></li><li><code class="expr">!contains_account_scope(output.response.scope) || access_token_audience_is_realm_api(output.response.access_token, context.issuer)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
@@ -25714,8 +25794,9 @@ client 単位の ClaimMapping claim_policy をマージする。
   </tr></tbody>
     </table>
   </div>
-<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a></div></div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/InvalidClientError">InvalidClientError</a> <a class="chip chip-error-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a></div></div>
 <div class="io"><div class="label">Emits</div><div class="chip-row"><a class="chip chip-event-ref" href="#scl-OAuth2/model/DeviceAuthorizationRequested">DeviceAuthorizationRequested</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">!context.rate_limited</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
     <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/device_authorization</code> <span class="chip chip-hint">form: form</span></div></div>
@@ -27566,7 +27647,7 @@ attempts のみ増やす (状態遷移ではない)。
       </article></div>
   </section>
 <section id="context-oauth2-scenarios">
-    <h2>Scenarios <span class="count">38</span></h2>
+    <h2>Scenarios <span class="count">39</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-OAuth2/scenario/user-bound~20OAuth~20grant~E3~81~AFaccount~20scope~E3~81~AEaccess~20token~E3~82~92~E7~99~BA~E8~A1~8C~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>user-bound OAuth grantはaccount scopeのaccess tokenを発行できる</h3><span class="chip chip-actor">RegisteredClient</span><code class="canonical-ref">OAuth2/scenario/user-bound OAuth grantはaccount scopeのaccess tokenを発行できる</code></header>
@@ -27943,6 +28024,24 @@ attempts のみ増やす (状態遷移ではない)。
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">tenant_id &quot;acme&quot; の KeyProvider が到達不能である</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">tenant_id &quot;acme&quot; の client が token 発行を要求する</li><li class="scn-step">新規署名は行われずエラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/ServerError">ServerError</a>&quot; で拒否される</li></ol></div>
 
+      </article><article class="card scenario" id="scl-OAuth2/scenario/protocol~20endpoint~E3~81~AF~E9~96~BE~E5~80~A4~E8~B6~85~E9~81~8E~E3~83~AA~E3~82~AF~E3~82~A8~E3~82~B9~E3~83~88~E3~82~92rate~20limit~E3~81~A7~E6~8B~92~E5~90~A6~E3~81~99~E3~82~8B">
+        <header><h3>protocol endpointは閾値超過リクエストをrate limitで拒否する</h3><span class="chip chip-actor">RegisteredClient</span><code class="canonical-ref">OAuth2/scenario/protocol endpointは閾値超過リクエストをrate limitで拒否する</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">client がある endpoint の <a class="chip chip-ref" href="#scl-OAuth2/model/EndpointRateLimitPolicy">EndpointRateLimitPolicy</a> の window 内で許容 max_requests に到達している</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">同一 window 内で追加リクエストを送る</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a>&quot; (HTTP 429、Retry-After ヘッダ付き)</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">対象 endpoint が /token である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">client_id と IP の組で閾値超過している状態で token を要求する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a>&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">対象 endpoint が /authorize または /par である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">IP と client_id の組で閾値超過している状態で認可リクエストを送る</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a>&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">対象 endpoint が /device_authorization である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">client_id と IP の組で閾値超過している状態でデバイス認可を開始する</li><li class="scn-step">エラー &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a>&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">共有カウンタストアに到達できない</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">リクエストは fail-closed で &quot;<a class="chip chip-ref" href="#scl-OAuth2/model/RateLimitedError">RateLimitedError</a>&quot; として拒否される</li></ol></div>
+          </article></div>
       </article></div>
   </section>
 <section id="context-oauth2-flows">

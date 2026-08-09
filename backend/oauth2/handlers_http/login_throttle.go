@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
@@ -141,27 +140,15 @@ func failedLoginBucketKey(bucket authnports.AuthEventBucket) string {
 		strconv.FormatInt(bucket.WindowStart.Unix(), 10)
 }
 
+// extractClientIP delegates to the shared support.ExtractClientIP (used beyond login throttle by
+// the endpoint rate limiter and other contexts) so the proxy-trust logic has one source of truth.
 func extractClientIP(request *http.Request, trustedHops int) string {
-	if request == nil || trustedHops <= 0 {
-		return ""
-	}
-	parts := strings.Split(request.Header.Get("X-Forwarded-For"), ",")
-	ips := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if ip := strings.TrimSpace(part); ip != "" {
-			ips = append(ips, ip)
-		}
-	}
-	index := len(ips) - 1 - trustedHops
-	if index < 0 || index >= len(ips) {
-		return ""
-	}
-	return ips[index]
+	return support.ExtractClientIP(request, trustedHops)
 }
 
+// writeLoginThrottled renders the login throttle's 429 through the same SCL RateLimitedError
+// shape the endpoint rate limiter uses (ADR-157), reconciling what was previously an
+// undeclared ad hoc "too_many_requests" body.
 func writeLoginThrottled(c *echo.Context, retryAfterSeconds int) error {
-	c.Response().Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
-	return support.NoStoreJSON(c, http.StatusTooManyRequests, map[string]any{
-		"error": "too_many_requests", "retry_after_seconds": retryAfterSeconds,
-	})
+	return support.WriteRateLimited(c, retryAfterSeconds)
 }

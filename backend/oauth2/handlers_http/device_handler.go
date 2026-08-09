@@ -26,6 +26,12 @@ func (d Deps) handleDeviceAuthorization(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
+	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "device_authorization", client.ID+"|"+clientIP); err != nil {
+		return err
+	} else if blocked {
+		return nil
+	}
 	in := deviceusecases.DeviceAuthorizationInput{
 		ClientID: client.ID,
 		Scope:    c.Request().PostFormValue("scope"),

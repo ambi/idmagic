@@ -45,7 +45,7 @@ self-service registration を標準機能として持つ:
 
 ## Out of Scope
 - 外部 IdP / ソーシャル経由の JIT 登録 ([[wi-30-inbound-federation-and-identity-broker]])。
-- CAPTCHA / bot mitigation ([[wi-27-endpoint-rate-limit-and-bot-mitigation]])。
+- rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]])。CAPTCHA / bot mitigation は wi-27 の対象外となったため、現時点でどの WI の対象でもない（必要になれば改めて起票する）。
 - 招待ベースのオンボーディング (invite flow)。
 - progressive profiling / 多段の追加属性収集。
 

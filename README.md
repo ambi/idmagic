@@ -147,6 +147,13 @@ Local defaults use in-memory persistence and console email output. Production ad
 | `SEED_MANIFEST` | local YAML path | optional root manifest; defaults to `seed/manifests/<profile>.yaml` |
 | `SEED_SECRET_ROOT` | local directory | root for relative `file` secret locators |
 | `SEED_FIRST_PARTY_REDIRECT_URIS` | comma-separated HTTPS URIs | required for production bootstrap first-party clients |
+| `TRUSTED_FORWARDED_HOPS` | integer, default `0` | number of trusted `X-Forwarded-For` hops in front of this process; used by the login throttle and the endpoint rate limiter below to resolve the real client IP. `0` (default) distrusts the header entirely |
+| `RATE_LIMIT_TOKEN_MAX_REQUESTS` / `RATE_LIMIT_TOKEN_WINDOW_SECONDS` | integers, default `60` / `60` | `/token` fixed-window limit, keyed by client_id+IP |
+| `RATE_LIMIT_AUTHORIZE_MAX_REQUESTS` / `RATE_LIMIT_AUTHORIZE_WINDOW_SECONDS` | integers, default `30` / `60` | `/authorize` fixed-window limit, keyed by IP+client_id |
+| `RATE_LIMIT_PAR_MAX_REQUESTS` / `RATE_LIMIT_PAR_WINDOW_SECONDS` | integers, default `30` / `60` | `/par` fixed-window limit, keyed by IP+client_id |
+| `RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS` / `RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS` | integers, default `20` / `60` | `/device_authorization` fixed-window limit, keyed by client_id+IP |
+| `RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS` / `RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS` | integers, default `5` / `900` | `/api/auth/forgot_password` fixed-window limit, keyed by the submitted identifier+IP |
+| `RATE_LIMIT_LOGIN_MAX_REQUESTS` / `RATE_LIMIT_LOGIN_WINDOW_SECONDS` | integers, default `20` / `60` | `/api/auth/login` fixed-window limit, keyed by IP; separate from and in addition to the per-account/per-IP login throttle above |
 
 ### Job Worker & Scheduled Batches
 

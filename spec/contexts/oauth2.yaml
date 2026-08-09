@@ -2991,6 +2991,27 @@ models:
     kind: error
     status: 500
     description: AuthorizationServer 側の予期せぬ内部エラー (RFC 6749 §4.1.2.1 server_error)。
+  RateLimitedError:
+    kind: error
+    status: 429
+    description: EndpointRateLimitPolicy の閾値を超えた。login throttle (per-account/per-IP の失敗回数ベース) とは別の、要求到達時ベースの汎用 endpoint rate limit。fail-closed (共有カウンタストア到達不能時も拒否)。
+    payload:
+      retry_after_seconds:
+        type: Integer
+  EndpointRateLimitPolicy:
+    kind: value_object
+    description: route ごとの fixed-window rate limit 設定。閾値・窓は環境変数で運用者が調整する (このモデルは形だけを固定し、具体値は仕様に埋め込まない)。
+    fields:
+      policy_id:
+        type: String
+        description: "対象 route の識別子 (例: token、authorize、par、device_authorization、password_reset、login)。"
+      max_requests:
+        type: Integer
+      window_seconds:
+        type: Integer
+      fail_mode:
+        type: String
+        description: 共有カウンタストア到達不能時の挙動。fail_closed 固定。
   ClientRegistered:
     kind: event
     description: /register で新しいクライアントが動的登録された (RFC 7591)。クライアント登録監査の起点。
@@ -3799,7 +3820,9 @@ interfaces:
       - InvalidClientError
       - AccessDeniedError
       - InvalidTargetError
+      - RateLimitedError
     requires:
+      - "!context.rate_limited"
       - every_authorization_parameter_has_single_value(input.params)
       - prompt_tokens_supported_and_unambiguous(input.params.prompt)
       - client_resolvable(input.params.client_id)
@@ -4006,7 +4029,9 @@ interfaces:
       - InvalidRequestError
       - InvalidClientError
       - InvalidTargetError
+      - RateLimitedError
     requires:
+      - "!context.rate_limited"
       - resource_indicator_registered_and_active(context.tenant_id, input.request.parameters.resource, input.request.parameters.scope)
     emits:
       - PARStored
@@ -4053,7 +4078,9 @@ interfaces:
       - ExpiredTokenError
       - InvalidTargetError
       - ClaimReleaseDeniedError
+      - RateLimitedError
     requires:
+      - "!context.rate_limited"
       - signing_key_provider_healthy(context.tenant_id)
       - token_request_references_are_tenant_local(context.tenant_id, input.request)
       - dpop_proof_is_fresh_and_unique(context.dpop_proof)
@@ -4218,6 +4245,9 @@ interfaces:
     errors:
       - InvalidRequestError
       - InvalidClientError
+      - RateLimitedError
+    requires:
+      - "!context.rate_limited"
     emits:
       - DeviceAuthorizationRequested
     stability: stable
@@ -5635,6 +5665,33 @@ scenarios:
     main_success:
       - 'tenant_id "acme" の client が token 発行を要求する'
       - '新規署名は行われずエラー "ServerError" で拒否される'
+  protocol endpointは閾値超過リクエストをrate limitで拒否する:
+    actor: RegisteredClient
+    given:
+      - "client がある endpoint の EndpointRateLimitPolicy の window 内で許容 max_requests に到達している"
+    main_success:
+      - "同一 window 内で追加リクエストを送る"
+      - "エラー \"RateLimitedError\" (HTTP 429、Retry-After ヘッダ付き)"
+    extensions:
+      - at: 1
+        condition: 対象 endpoint が /token である
+        steps:
+          - "client_id と IP の組で閾値超過している状態で token を要求する"
+          - "エラー \"RateLimitedError\""
+      - at: 1
+        condition: 対象 endpoint が /authorize または /par である
+        steps:
+          - "IP と client_id の組で閾値超過している状態で認可リクエストを送る"
+          - "エラー \"RateLimitedError\""
+      - at: 1
+        condition: 対象 endpoint が /device_authorization である
+        steps:
+          - "client_id と IP の組で閾値超過している状態でデバイス認可を開始する"
+          - "エラー \"RateLimitedError\""
+      - at: 1
+        condition: 共有カウンタストアに到達できない
+        steps:
+          - "リクエストは fail-closed で \"RateLimitedError\" として拒否される"
 flows:
   Authorization:
     entry: Home

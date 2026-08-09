@@ -91,6 +91,8 @@ modules:
         via: published_interface
       - module: shared-kernel
         via: technical_shared
+      - module: shared-ratelimit-ports
+        via: published_interface
       - module: shared-security-tokens-jose
         via: technical_shared
       - module: shared-services
@@ -352,6 +354,36 @@ modules:
     role: technical_shared
     depends_on:
       []
+  shared-ratelimit-ports:
+    path: ratelimit/ports
+    responsibility: 汎用 endpoint rate limiter の公開 port (fixed-window Allow)。
+    context: System
+    layer: use_cases
+    role: published_interface
+    depends_on:
+      []
+  shared-ratelimit-db-memory:
+    path: ratelimit/db_memory
+    responsibility: backend/shared/ratelimit/db_memory の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-ratelimit-ports
+        via: published_interface
+  shared-ratelimit-db-postgres:
+    path: ratelimit/db_postgres
+    responsibility: backend/shared/ratelimit/db_postgres の Flat Architecture adapter。
+    context: System
+    layer: adapters
+    role: technical_shared
+    depends_on:
+      - module: shared-ratelimit-ports
+        via: published_interface
+      - module: shared-adapters
+        via: technical_shared
+      - module: tenancy-public
+        via: published_interface
   shared-security-certificates-mtls:
     path: security/certificates_mtls
     responsibility: backend/shared/security/certificates_mtls の Flat Architecture adapter。

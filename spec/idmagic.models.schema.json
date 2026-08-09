@@ -7886,6 +7886,33 @@
       "additionalProperties": false,
       "description": "RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で\npost_logout_redirect_uri を検証する。id_token_hint は本 OP が発行した ID Token の\nみ受理し、署名・iss・aud (client_id と矛盾する場合は拒否)・sub・sid を検証する\n(ADR-127)。exp は検証しない (ログアウト時点で期限切れになっている ID Token を\nhint として送るのが通常の RP 実装であるため)。\n"
     },
+    "EndpointRateLimitPolicy": {
+      "type": "object",
+      "properties": {
+        "policy_id": {
+          "type": "string",
+          "description": "対象 route の識別子 (例: token、authorize、par、device_authorization、password_reset、login)。"
+        },
+        "max_requests": {
+          "type": "integer"
+        },
+        "window_seconds": {
+          "type": "integer"
+        },
+        "fail_mode": {
+          "type": "string",
+          "description": "共有カウンタストア到達不能時の挙動。fail_closed 固定。"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "max_requests",
+        "window_seconds",
+        "fail_mode"
+      ],
+      "description": "route ごとの fixed-window rate limit 設定。閾値・窓は環境変数で運用者が調整する (このモデルは形だけを固定し、具体値は仕様に埋め込まない)。"
+    },
     "EnterUserCode": {
       "type": "object",
       "properties": {
@@ -12994,6 +13021,12 @@
       "properties": {},
       "additionalProperties": false,
       "description": "テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。"
+    },
+    "RateLimitedError": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false,
+      "description": "EndpointRateLimitPolicy の閾値を超えた。login throttle (per-account/per-IP の失敗回数ベース) とは別の、要求到達時ベースの汎用 endpoint rate limit。fail-closed (共有カウンタストア到達不能時も拒否)。"
     },
     "ReceivedSecurityEvent": {
       "type": "object",

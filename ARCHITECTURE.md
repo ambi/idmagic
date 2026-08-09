@@ -10,11 +10,12 @@ updated_at: 2026-08-08
 This document is the cross-cutting design record for `idmagic`: how the system is currently built and why
 it took that shape, in prose a human can read. The machine-checked module ledger lives beside it in
 `architecture.yaml`; design that belongs to a single bounded context lives in that context's own
-`ARCHITECTURE.md` ([ADR-143](decisions/ADR-143-second-layer-design-ledger-decision-split.md)).
+`ARCHITECTURE.md`.
 
 Normative requirements are in SCL, rejected options and the premises they were weighed against are in
-ADRs, and one-off implementation records are in work items. Design statements here carry a short reason
-for their shape and link to the ADR that holds the full comparison. See
+ADRs, and one-off implementation records are in work items. Design statements here carry a short,
+self-contained reason for their shape; the [Structural Decisions](#structural-decisions) section is the
+only place that links out to the ADR holding the full comparison. See
 [Documentation Policy](#documentation-policy) for the routing table.
 
 Lists that churn — endpoints, fields, screens — are not kept here. Code, `spec/contexts/*.yaml`, and the
@@ -82,8 +83,7 @@ core itself. Do not adjust the Go binding in place of changing SCL.
   k6.
 - Dynamic Group membership expressions over User attributes evaluate through a restricted CEL
   environment (`cel-go`). The environment is narrowed so unsafe expressions cannot be accepted, and a
-  rule-version mismatch fails closed
-  ([ADR-111](decisions/ADR-111-cel-dynamic-group-membership-rules.md)).
+  rule-version mismatch fails closed.
 
 ## Context Map
 
@@ -94,22 +94,22 @@ The main correspondence between SCL contexts and Go packages.
 | `System` | `backend/cmd/internal/bootstrap`, `backend/shared/http/server_http`, `frontend/` | Cross-cutting UX, startup, routing composition, health. |
 | `Tenancy` | `backend/tenancy` | Tenant / realm, tenant-scoped settings, user attribute schema, control-plane tenant administration. |
 | `IdManagement` | `backend/idmanagement` | User, Group, Agent, self profile, identity lifecycle, CEL dynamic membership rules and re-evaluation. |
-| `IdGovernance` | `backend/idgovernance` | LifecycleWorkflow policy and orchestration; the record of truth stays in IdManagement ([ADR-117](decisions/ADR-117-extract-identity-governance-context.md)). |
+| `IdGovernance` | `backend/idgovernance` | LifecycleWorkflow policy and orchestration; the record of truth stays in IdManagement. |
 | `Authentication` | `backend/authentication` | Credential verification, MFA, login sessions, step-up, password change and reset, authentication events. |
 | `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC protocol endpoints, clients, consent, tokens, role policy. |
 | `Application` | `backend/application` | Application catalog, protocol bindings, assignment, portal ordering and categories. |
 | `Audit` | `backend/audit` | Read model of audit events across every context. Owns the search-attribute registry, PII transformation, admin API, and retention. |
 | `ClaimMapping` | `backend/claimmapping` | Protocol-neutral claim release policy, identity attribute projection, fail-closed validation. |
-| `Provisioning` | `backend/provisioning` | SCIM 2.0 outbound provisioning: the push lifecycle toward downstream SaaS. idmagic's User/Group is the source of truth and the downstream is a mirror ([ADR-128](decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md)). |
-| `Sourcing` | `backend/sourcing` | Inbound identity intake from an upstream authority. Owns source bindings, correlation with the external immutable id, and deletion/deactivation that follows the upstream authority. Organized as one feature slice per source; currently `sourcing/scim` only ([ADR-141](decisions/ADR-141-inbound-identity-sourcing-taxonomy.md)). |
-| `ApiTokens` | `backend/apitoken` | Tenant-scoped API access tokens (`idmagic_pat_` prefix) that authenticate the management and SCIM APIs: issuance, revocation, listing, and the scope vocabulary ([ADR-135](decisions/ADR-135-unify-scim-and-management-api-tokens.md)). |
+| `Provisioning` | `backend/provisioning` | SCIM 2.0 outbound provisioning: the push lifecycle toward downstream SaaS. idmagic's User/Group is the source of truth and the downstream is a mirror. |
+| `Sourcing` | `backend/sourcing` | Inbound identity intake from an upstream authority. Owns source bindings, correlation with the external immutable id, and deletion/deactivation that follows the upstream authority. Organized as one feature slice per source; currently `sourcing/scim` only. |
+| `ApiTokens` | `backend/apitoken` | Tenant-scoped API access tokens (`idmagic_pat_` prefix) that authenticate the management and SCIM APIs: issuance, revocation, listing, and the scope vocabulary. |
 | `Jobs` | `backend/jobs` | Generic asynchronous job infrastructure that preserves the tenant boundary. Design: [`backend/jobs/ARCHITECTURE.md`](backend/jobs/ARCHITECTURE.md). |
-| `Seeding` | `backend/seeding` | Environment profiles, dry-run, redacted plans, and apply policy. Business data and its persistence stay in each record context ([ADR-118](decisions/ADR-118-extract-environment-aware-seeding-context.md)). |
+| `Seeding` | `backend/seeding` | Environment profiles, dry-run, redacted plans, and apply policy. Business data and its persistence stay in each record context. |
 | `SigningKeys` | `backend/signingkeys` | Tenant-and-usage-scoped key metadata, X.509 credentials, rotation, repository port, admin/JWKS HTTP, and memory/PostgreSQL/Vault adapters. JWT and XML wire signers stay in the protocol adapters. Design: [`backend/signingkeys/ARCHITECTURE.md`](backend/signingkeys/ARCHITECTURE.md). |
-| `DataKeys` | `backend/datakeys` | Per-tenant `DataEncryptionKey` (DEK) metadata and lifecycle (bootstrap/rotate/disable/destroy) for reversible secrets left in the app DB (e.g. MFA TOTP seeds). Does not own signing keys (`SigningKeys`) or the `EnvelopeCrypto` port itself, which lives in `backend/shared/security` as a technical shared adapter ([ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md)). |
+| `DataKeys` | `backend/datakeys` | Per-tenant `DataEncryptionKey` (DEK) metadata and lifecycle (bootstrap/rotate/disable/destroy) for reversible secrets left in the app DB (e.g. MFA TOTP seeds). Does not own signing keys (`SigningKeys`) or the `EnvelopeCrypto` port itself, which lives in `backend/shared/security` as a technical shared adapter. |
 | `WsFederation` | `backend/wsfederation` | WS-Fed passive, WS-Trust active STS, federation metadata, MEX, RP trust, and request-tenant XML signing. Design: [`backend/wsfederation/ARCHITECTURE.md`](backend/wsfederation/ARCHITECTURE.md). |
 | `Saml` | `backend/saml` | SAML 2.0 IdP, SP trust, metadata, SSO/SLO, and request-tenant XML signing. Design: [`backend/saml/ARCHITECTURE.md`](backend/saml/ARCHITECTURE.md). |
-| `WorkloadIdentity` | `backend/workloadidentity` | Workload identity federation for agent runtimes: registered external attestation issuers (`WorkloadTrustBundle`) and the subject-pattern-to-`Agent` mapping (`AgentWorkloadBinding`) that OAuth2's token-exchange grant consumes to federate external JWT-SVIDs into idmagic tokens without long-lived secrets ([ADR-053](decisions/ADR-053-workload-identity-federation-for-agent-runtimes.md)). |
+| `WorkloadIdentity` | `backend/workloadidentity` | Workload identity federation for agent runtimes: registered external attestation issuers (`WorkloadTrustBundle`) and the subject-pattern-to-`Agent` mapping (`AgentWorkloadBinding`) that OAuth2's token-exchange grant consumes to federate external JWT-SVIDs into idmagic tokens without long-lived secrets. |
 | `SharedSignals` | `backend/sharedsignals` | Continuous access evaluation (CAEP) and near-real-time agent revocation via the OpenID Shared Signals Framework (SSF, RFC 8417 Security Event Tokens). Owns the per-agent `AgentRevocationEpoch` that OAuth2's `Introspect` checks against a token's `issued_at` for fail-closed local revocation, and `SsfStream`/`SsfTransmitterConfig`/`SsfReceiverConfig` for pushing/receiving CAEP events to/from external parties. Local revocation always precedes and does not wait on ecosystem propagation. `AgentRevocationReactor` reacts to IdManagement's already-emitted lifecycle events (kill/disable/credential-unbind, owner disable/soft-delete/delete) via `idmanagement/deps_http.EventReactor` — IdManagement's usecases carry no SharedSignals dependency or explicit call. The outbound SET transmitter pipeline is implemented: `AgentRevocationReactor`'s best-effort projection (`ProjectAgentAccessRevoked`) fans a local revocation out to every enabled Transmit `SsfStream` subscribed to `session-revoked`, signs a RFC 8417 Security Event Token via `ports.SecurityEventTokenSigner` (implemented by `sign_jose`, reusing SigningKeys' rotation/JWKS rather than separate key material), and enqueues a `SecurityEventDelivery`; a periodic worker (`ProcessDueDeliveries`, `sharedsignals/push_http` for the SSRF-safe HTTP push) retries with exponential backoff and dead-letters once `max_delivery_attempts` is exhausted. Domain model, memory/PostgreSQL persistence, `Introspect` enforcement wiring, Agent revocation enforcement, and the SET transmitter are implemented; the SSF receiver (inbound `ReceiveSecurityEvent`) and admin UI (stream CRUD, delivery status) are not yet implemented. |
 
 The published vocabulary and dependencies between contexts are authoritative in `spec/scl.yaml`
@@ -141,12 +141,11 @@ in `saml` and `wsfederation`.
 Adapters sit directly under the context or feature that owns them, named `<role>_<technology>` in
 snake_case, with no `adapters/` or `persistence/` classification directory in between. A package name
 alone should reveal whether the role is handler, repository, publisher, or client, and whether they represent technical adapters—HTTP, PostgreSQL, S3, or SCIM. A classification directory destroys exactly that: the
-package name stops saying what the thing does
-([ADR-133](decisions/ADR-133-flat-wikipedia-architecture.md)).
+package name stops saying what the thing does.
 
 Whether a context has `domain/` and `usecases/` follows from whether it has logic of its own; the
-packages are not placed mechanically. Shared SCL Go bindings stay in `backend/shared/spec` (ADR-070),
-while context-specific business types are owned by that context's `domain/` (ADR-089). A context such as
+packages are not placed mechanically. Shared SCL Go bindings stay in `backend/shared/spec`, while
+context-specific business types are owned by that context's `domain/`. A context such as
 `tenancy`, which has no domain logic beyond the bindings, has no per-context `domain/`. Contexts that do
 have their own logic — `idmanagement` (User/Group/Agent aggregates, attribute schema, field validation)
 or `saml` / `wsfederation` (protocol-specific parsing and claim mapping) — have `domain/`, and contexts
@@ -163,8 +162,7 @@ Audit classifies on a stable event type discriminator rather than a registry of 
 ### Feature vertical slices
 
 A context with two or more independent sub-domains (features) may add a feature vertical slice layer to
-the four-layer grid: `backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/`
-([ADR-130](decisions/ADR-130-idmanagement-feature-vertical-slice.md)). A single-feature context does not
+the four-layer grid: `backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/`. A single-feature context does not
 get one — a `<context>/<context>/` stutter stops the directory structure from screaming its purpose, and
 is harmful for that reason. The pilot is `idmanagement`, split into `user`, `group`, and `agent`:
 
@@ -179,7 +177,7 @@ backend/idmanagement/
 ```
 
 `handlers_http` and `db_postgres` could not be split naively, because of Go's language rules and the
-unit of code generation; they needed a different design from `domain`/`ports`/`usecases` (ADR-130).
+unit of code generation; they needed a different design from `domain`/`ports`/`usecases`.
 
 - **handlers_http**: handlers were originally methods on a `Deps` struct (`func (d Deps) handleX`). Go
   only allows a method to be defined in the same package as its receiver type, so splitting `Deps` into
@@ -196,14 +194,13 @@ unit of code generation; they needed a different design from `domain`/`ports`/`u
   `queries/*.sql` together with the generated `sqlcgen/` moved into the feature directories.
   Cross-feature test fixture helpers (`seedTenant`, `seedUser`) were duplicated into each feature
   package, because Go's `_test.go` files cannot span packages. The `lifecycle_workflows` queries and
-  `sqlcgen` belong to the IdGovernance context and therefore live in `backend/idgovernance/db_postgres/`
-  (ADR-090, ADR-117).
+  `sqlcgen` belong to the IdGovernance context and therefore live in `backend/idgovernance/db_postgres/`.
 
 Core package names stay as the layer names (`domain`/`ports`/`usecases`); adapter package names stay
 `<role>_<technology>` (`handlers_http`, `db_memory`, `db_postgres`). Where several features of one
 context are imported together, named imports (`userDomain`, `groupDomain`) disambiguate them. Resolving
 the collision with an import alias preserves the shared vocabulary of the core packages, which
-lengthening the directory names would not (ADR-133).
+lengthening the directory names would not.
 
 ### Frontend Component Structure
 
@@ -222,7 +219,7 @@ administration under `/realms/default/admin/tenants`.
 Each context's routes live in `backend/<context>/handlers_http/routes.go`; read that file for the exact
 endpoint list. A new HTTP API is registered in the owning context's `routes.go` with its handler under
 the same `handlers_http`. Context-specific repositories and route wiring are collected in
-`backend/<context>/module.go` so the central router only calls the Module (ADR-091).
+`backend/<context>/module.go` so the central router only calls the Module.
 
 ### Request correlation
 
@@ -253,8 +250,7 @@ spec-mandated error bodies and are not migrated to Problem Details, since Proble
 break interoperability with clients built against those standards. The SharedSignals inbound SET
 receiver (`POST /ssf/streams/:id/events`) is a pending case: whether RFC 8935 constrains its error
 format is unverified and must be settled before migrating it; the SharedSignals admin stream API
-has no such constraint and follows the generic convention. See ADR-154 for the full rationale and
-rejected alternatives.
+has no such constraint and follows the generic convention.
 
 This convention is not yet implemented: `WriteBrowserError`
 (`backend/shared/http/support_http/response.go`) still returns the legacy `{error, message}` shape
@@ -272,6 +268,7 @@ SLO and alerting.
 | `http_requests_total`, `http_request_duration_seconds`, `http_requests_in_flight` | `route`, `method`, `status_code` | per-interface latency and error-rate objectives |
 | `authn_login_attempts_total` | `outcome`, `reason_class`, `method` | login success/failure golden signal |
 | `authn_login_throttle_total` | `policy`, `outcome` | login throttle hit rate |
+| `endpoint_rate_limit_total` | `policy`, `outcome` | endpoint rate limiter hit rate |
 | `oauth2_token_issuance_total`, `oauth2_token_issuance_duration_seconds` | `grant_type`, `outcome` | `/token` issuance rate and latency by grant |
 | `http_request_aborts_total`, `operation_detached_completion_failures_total` | `kind` | cancellation policy |
 
@@ -285,21 +282,21 @@ only on a loopback/management network or behind an authenticating proxy.
 ### Logging
 
 Application logs are structured JSON Lines on stdout (`timestamp`, `level`, `service`, `message`, plus
-`trace_id` / `span_id` / `request_id` for correlation — `backend/shared/logging`, ADR-018). This process
+`trace_id` / `span_id` / `request_id` for correlation — `backend/shared/logging`). This process
 never writes them anywhere else; aggregating and searching them across replicas and nodes is a separate,
 externally-observing concern, kept independent of the OpenTelemetry Collector so a logging outage cannot
 affect trace/metric export.
 
 **Local** (`infra/docker/docker-compose.dev.yaml`): Promtail discovers every container through the Docker
 Engine API (`docker_sd_configs`) and ships its logs to Loki, so no host log directory needs to be
-bind-mounted — only the Docker socket. Grafana is provisioned on first boot with both Prometheus (wi-11)
+bind-mounted — only the Docker socket. Grafana is provisioned on first boot with both Prometheus
 and Loki as datasources and with the existing golden-signals dashboard, so `docker compose up` is enough
 to browse metrics and logs together.
 
 **Kubernetes** (`infra/k8s/monitoring/loki/`): Promtail runs as a DaemonSet, discovering pods via
 `kubernetes_sd_configs` and tailing `/var/log/pods`; Loki runs as a single-replica StatefulSet with PVC
-storage (ADR-102 placement; filesystem storage is a dev-shaped default, replaced by an overlay for
-object-store-backed retention in a real production cluster, per the work item's Risk Notes). Grafana
+storage (filesystem storage is a dev-shaped default, replaced by an overlay for
+object-store-backed retention in a real production cluster). Grafana
 itself is not deployed by this repo — the Loki datasource is registered against whatever Grafana instance
 already exists, using the same ConfigMap-sidecar convention `grafana-dashboard.yaml` already relies on
 (a label the cluster's Grafana sidecar watches), rather than the `grafana-dashboard.yaml` dashboard content
@@ -357,11 +354,10 @@ switch back to enforce.
 
 Persistence ports and repository implementations belong to the owning context. Context-specific memory
 and PostgreSQL adapters go in `backend/<context>/{db_memory,db_postgres}`; the shared DB pool, row
-scanner, and transaction helpers go in `backend/shared/storage/db_postgres` (ADR-090, ADR-133).
-Ephemeral state is consolidated into PostgreSQL as well, so no second class of datastore is operated
-([ADR-139](decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)).
+scanner, and transaction helpers go in `backend/shared/storage/db_postgres`.
+Ephemeral state is consolidated into PostgreSQL as well, so no second class of datastore is operated.
 
-All static SQL statements in `db_postgres` must use `sqlc` to generate type-safe queries. Raw `Pool.Query`/`Pool.Exec` with strings are only permitted for highly dynamic queries where `sqlc` provides no benefit, serving as an escape hatch rather than the default (ADR-090).
+All static SQL statements in `db_postgres` must use `sqlc` to generate type-safe queries. Raw `Pool.Query`/`Pool.Exec` with strings are only permitted for highly dynamic queries where `sqlc` provides no benefit, serving as an escape hatch rather than the default.
 
 To add structure to PostgreSQL, first update the current-state schema in `infra/schema/postgres.sql`.
 Structural diffs are inspected with a `psqldef` dry-run and applied by a pre-deploy job (the procedure is
@@ -382,13 +378,11 @@ on an empty database (`infra/schema/README.md` Rules has the detail and upstream
 
 #### 1. Column type selection
 
-The selection rules are fixed so the judgement is reproducible each time a table is added
-([ADR-084](decisions/ADR-084-postgres-column-type-policy.md)).
+The selection rules are fixed so the judgement is reproducible each time a table is added.
 
 - **Free-form strings, unbounded**: use `TEXT`. Never use unconstrained `varchar`.
-- **Bounded strings**: `TEXT` + `CHECK (char_length(col) <= N)`, or `varchar(N)`, consistently. Which one
-  and the specific `N` follow `wi-128-string-length-limits-policy`. Fixed-format identifiers are guarded
-  with `CHECK (... ~ regex)`.
+- **Bounded strings**: `TEXT` + `CHECK (char_length(col) <= N)`, or `varchar(N)`, consistently, following
+  a fixed per-column length limit policy. Fixed-format identifiers are guarded with `CHECK (... ~ regex)`.
 - **Internally generated ids**: columns idmagic generates with `spec.NewUUIDv4()` are `UUID`. Go keeps
   them as `string`; the pgx text codec registration (`RegisterUUIDAsText`) bridges the two.
 - **Externally decided ids**: ids whose value an external party decides (`entity_id`, `wtrealm`,
@@ -404,11 +398,9 @@ The selection rules are fixed so the judgement is reproducible each time a table
 #### 2. tenant_id retention classes
 
 `users.id` and `oauth2_clients.client_id` are system-generated, globally unique identifiers, so child
-rows reference their parent by that global key and **tenant-scoped composite foreign keys are not used**
-([ADR-082](decisions/ADR-082-user-domain-id-and-tenant-key-policy.md), simplified by
-[ADR-083](decisions/ADR-083-globally-unique-client-id.md)). Do not add `tenant_id` merely because the
-tenant is reachable through a globally unique parent; add it when it serves search, a constraint,
-retention, or audit.
+rows reference their parent by that global key and **tenant-scoped composite foreign keys are not used**.
+Do not add `tenant_id` merely because the tenant is reachable through a globally unique parent; add it
+when it serves search, a constraint, retention, or audit.
 
 - **Tenant-owned aggregate / tenant-scoped config**: carries `tenant_id`, usually as part of the primary
   or a unique key (`users`, `groups`, `oauth2_clients`, `applications`, `agents`, `signing_keys`,
@@ -420,14 +412,12 @@ retention, or audit.
   `mfa_factors`, `password_history`, `password_reset_tokens`, `email_change_tokens`, `group_members`).
   Two exceptions keep it. `authentication_sessions`: the session id is an opaque cookie value resolved on
   every request, so `tenant_id` is a fail-closed defense-in-depth predicate on that lookup as well as the
-  per-tenant active-session listing index
-  ([ADR-126](decisions/ADR-126-postgresql-as-login-session-source-of-truth.md)). The ephemeral
-  auth/OAuth2 stores keyed by an opaque token, code, or challenge
-  (`oauth2_authorization_requests`, `oauth2_authorization_codes`, `oauth2_par_requests`,
+  per-tenant active-session listing index. The ephemeral auth/OAuth2 stores keyed by an opaque token, code,
+  or challenge (`oauth2_authorization_requests`, `oauth2_authorization_codes`, `oauth2_par_requests`,
   `oauth2_device_codes`, `oauth2_replay_jtis`, `oauth2_access_token_denylist`, `webauthn_sessions`,
-  `login_throttle_counters`, `saml_authnrequest_replays`) keep it for the same reason: each lookup is a
-  high-frequency, fail-closed resolution of an attacker-influenced opaque key, so the tenant boundary is
-  enforced in the DB layer (ADR-139; the ADR-082 §4 exception).
+  `login_throttle_counters`, `saml_authnrequest_replays`, `endpoint_rate_limit_counters`) keep it for the
+  same reason: each lookup is a high-frequency, fail-closed resolution of an attacker-influenced opaque
+  key, so the tenant boundary is enforced in the DB layer.
 - **Append-only / audit / throttling**: decided by emit-time tenant, query boundary, and
   retention (`audit_events`, `authentication_event_buckets`).
 
@@ -449,7 +439,7 @@ table, or field boundaries fails to decrypt rather than silently succeeding.
   `transit/sign` separate from this `encrypt`/`decrypt`/`datakey` capability.
 - Rotation activates a new DEK version for new writes while the previous version stays `retiring` (still
   decryptable) until a resumable re-encryption job, registered through `backend/jobs`'
-  `JobKind`/`HandlerRegistry` (`wi-126-async-job-runner`), migrates every reference; only then can the old
+  `JobKind`/`HandlerRegistry`, migrates every reference; only then can the old
   version be destroyed. A `FieldMigrator` port (`backend/datakeys/ports`) lets each owning context
   register its own batch re-encryption/pending-count logic without `DataKeys` depending on any consumer's
   schema, mirroring how `Jobs`' `HandlerRegistry` stays decoupled from consumer business logic; Rotate
@@ -464,10 +454,6 @@ table, or field boundaries fails to decrypt rather than silently succeeding.
   provider name/reachability — never key material. There is no rotate/disable/destroy admin endpoint;
   those lifecycle operations are internal-only for now.
 
-The full rationale — including why OpenBao over HashiCorp Vault CE, and why this is not merged into the
-`SigningKeys` `KeyStore` port — is in
-[ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md).
-
 `tenant_data_encryption_keys.wrapped_dek` is erased (set `NULL`) on destroy rather than the row being
 deleted — crypto-shredding — so DEK lifecycle history (`status` moving through `active` / `retiring` /
 `disabled` / `destroyed`) stays queryable after the key material itself is gone.
@@ -478,39 +464,39 @@ The contexts below have no `<context>/ARCHITECTURE.md` of their own (see [Contex
 schema-level design rationale that does not fit the policies above lives here instead of in
 `infra/schema/postgres.sql` (which carries no comments, see [Persistence](#persistence)).
 
-- **Tenancy** — `tenant_brandings` (wi-89, ADR-096) is 1:1 hosted UI branding config kept in its own
+- **Tenancy** — `tenant_brandings` is 1:1 hosted UI branding config kept in its own
   table rather than columns on `tenants` so per-feature config growth does not bloat the core tenant row;
   `tenant_branding_assets` and `tenant_user_attribute_schemas` follow the same reasoning. Absence of a
   `tenant_brandings` row, or all-`NULL` columns, means branding is unset and callers fall back to system
-  defaults. `tenant_branding_assets` (wi-89, ADR-096) validates and stores logo/favicon blobs in the same
-  shape as `application_icons` (ADR-073), kept in a separate table and `object_key` space so branding
-  asset ownership never crosses with Application icon storage. `notification_templates` (wi-288,
-  ADR-142) holds tenant overrides of the notification email catalog keyed by
+  defaults. `tenant_branding_assets` validates and stores logo/favicon blobs in the same
+  shape as `application_icons`, kept in a separate table and `object_key` space so branding
+  asset ownership never crosses with Application icon storage. `notification_templates` holds tenant
+  overrides of the notification email catalog keyed by
   `(tenant_id, template_key, locale)`; see [Notification template catalog and locale
   resolution](#5-notification-template-catalog-and-locale-resolution) for how resolution works.
-  Individual columns rather than JSONB keep per-column length limits as `CHECK` constraints (ADR-084);
-  `subject`/`body_text`/`body_html` are `NOT NULL` together so a half-overridden template cannot exist
-  (ADR-142 §4), while `from_display_name` is nullable because the system default sender name is a valid
-  choice. `tenants.default_locale` (wi-288, ADR-142 §7) is the tenant tier of notification locale
+  Individual columns rather than JSONB keep per-column length limits as `CHECK` constraints;
+  `subject`/`body_text`/`body_html` are `NOT NULL` together so a half-overridden template cannot exist,
+  while `from_display_name` is nullable because the system default sender name is a valid
+  choice. `tenants.default_locale` is the tenant tier of notification locale
   resolution (recipient → tenant → system); `NULL` means "use the system default".
-  `tenants.endpoint_style` (wi-285, ADR-144) fixes the shape of a tenant's canonical location (its
+  `tenants.endpoint_style` fixes the shape of a tenant's canonical location (its
   issuer, cookie scope, and WebAuthn RP ID all derive from it); `'path'` is the default because it needs
   neither wildcard DNS nor a wildcard certificate.
-- **OAuth2** — `oauth2_client_secrets` (wi-25) separates the `client_secret` credential from the client
+- **OAuth2** — `oauth2_client_secrets` separates the `client_secret` credential from the client
   row itself; `oauth2_clients.client_secret_hash` is kept only for dual-read/backfill during that
-  rollout. `refresh_tokens.sid` (ADR-127) is the OIDC session id, equal to
+  rollout. `refresh_tokens.sid` is the OIDC session id, equal to
   `authentication_sessions.id`, `NULL` when issuance has no browser session (`client_credentials` etc.);
   there is no FK to `authentication_sessions` because housekeeping retention's physical deletes there run
-  independent of a refresh token's own revoke state (the ADR-082 §4 opaque-cross-context-reference
-  exception). `refresh_tokens.resource` (RFC 8707, ADR-055, wi-262) is the resource indicator bound at
-  authorization-code redemption, retained across rotation; `NULL` means no resource was specified.
-  `mcp_resource_servers` (ADR-055) is the tenant-scoped registration of an MCP resource server (a
-  tool/data source); `resource` is the tenant-unique canonical resource URI that Protected Resource
-  Metadata (RFC 9728) and resource-indicator (RFC 8707) verification are checked against. Within the
-  ephemeral protocol-state tables already listed under [tenant_id retention
+  independent of a refresh token's own revoke state (the opaque-cross-context-reference
+  exception noted under tenant_id retention classes above). `refresh_tokens.resource` (RFC 8707) is the
+  resource indicator bound at authorization-code redemption, retained across rotation; `NULL` means no
+  resource was specified. `mcp_resource_servers` is the tenant-scoped registration of an MCP resource
+  server (a tool/data source); `resource` is the tenant-unique canonical resource URI that Protected
+  Resource Metadata (RFC 9728) and resource-indicator (RFC 8707) verification are checked against. Within
+  the ephemeral protocol-state tables already listed under [tenant_id retention
   classes](#2-tenant_id-retention-classes): `oauth2_authorization_requests` keeps the whole `/authorize`
   mid-flow state in `payload` JSONB and serializes its transitions with `SELECT ... FOR UPDATE` in one
-  transaction (ADR-139 §3); `oauth2_authorization_codes` is single-redeem, promoting `state` to a CAS
+  transaction; `oauth2_authorization_codes` is single-redeem, promoting `state` to a CAS
   predicate (`UPDATE ... WHERE state = 'issued' RETURNING`); `oauth2_par_requests` is likewise
   single-consume through a `used` CAS predicate; `oauth2_device_codes` keys on `device_code_hash` with
   `user_code` as a tenant-unique secondary lookup, approval sets `user_id`, and `state` is the Exchange
@@ -518,20 +504,20 @@ schema-level design rationale that does not fit the policies above lives here in
   recorded via `INSERT ... ON CONFLICT DO NOTHING` (a new row means new-use); `oauth2_access_token_denylist`
   stays `LOGGED` (replicated to a physical standby) because losing a revocation on failover would be a
   defense-in-depth regression.
-- **Audit** — `audit_event_search_attributes` (wi-145) is a sidecar search index: one row per
+- **Audit** — `audit_event_search_attributes` is a sidecar search index: one row per
   `(event, attr_name, transformed value)`, where `attr_name` is a `Field` from the `AuditSearchRegistry`.
   PII attributes are hashed or rounded before being stored here; plaintext exists only in
   `audit_events.payload`, and only for failure events under short-lived retention. It cascades on
   `audit_events` deletion, and its lookup index orders `(tenant_id, attr_name, attr_value)` for equality
   matches with `occurred_at DESC` for the scan.
-- **ApiTokens** — `api_tokens` (wi-273, wi-275) holds lifecycle records for managed RFC 9068 JWT access
+- **ApiTokens** — `api_tokens` holds lifecycle records for managed RFC 9068 JWT access
   tokens; JWT bodies are never stored, `jti` is the lookup key. `scopes` lists the granted
   `<resource>:<action>` permissions (`ApiTokenScope` in `spec/contexts/api-tokens.yaml`); the table's
   `CHECK` mirrors that enum as defense in depth alongside Go-side validation.
 - **IdGovernance** — `lifecycle_workflow_revisions` are append-only; execution records
   (`lifecycle_workflow_runs`/`_steps`) reference the revision they expand rather than mutable JSON.
-- **Provisioning** — `provisioning_connections.credential_secret` (ADR-128) is a dev/test-grade plaintext
-  column with no envelope encryption yet (wi-97); production deployments must not rely on it as-is,
+- **Provisioning** — `provisioning_connections.credential_secret` is a dev/test-grade plaintext
+  column with no envelope encryption yet; production deployments must not rely on it as-is,
   matching the `SigningKeys` PostgreSQL `KeyStore`'s own dev/test disclaimer.
 
 #### 5. Notification template catalog and locale resolution
@@ -540,15 +526,14 @@ Notification email content resolves through exactly two tiers, with no version h
 catalog (system-shipped ja/en copy) plus optional per-`(tenant_id, template_key, locale)` overrides.
 Deleting an override (`ResetNotificationTemplate`) always falls back to the built-in default; there is no
 "revert to previous override" step, because when a template breaks a recovery flow, the fastest fix for
-an admin is a known-good fallback, not a choice among versions
-([ADR-142](decisions/ADR-142-notification-template-catalog-and-locale-resolution.md) §1). `template_key`
+an admin is a known-good fallback, not a choice among versions. `template_key`
 is a fixed SCL enum — tenants cannot add keys — so every key traces to exactly one send path and no
-orphaned template can exist without a sender (ADR-142 §2).
+orphaned template can exist without a sender.
 
 Placeholders (`{{name}}`) are validated against a per-key allow-list at save time; an override that
 references an undeclared placeholder is rejected outright rather than rendered with the value blanked
 out, because a runtime-blanked link is only discovered when a user fails to recover their account
-(ADR-142 §3, fail-closed). The allow-list is defined in `backend/shared/notification/template` and
+(fail-closed). The allow-list is defined in `backend/shared/notification/template` and
 returned by the API so editors do not have to guess it.
 
 | Key | Placeholders |
@@ -561,54 +546,84 @@ returned by the API so editors do not have to guess it.
 
 Credentials, hashes, TOTP secrets, API tokens, and raw IP addresses are never placeholders: mail is
 forwarded, quoted, and retained indefinitely by the recipient, so anything placed in it is exposed by any
-later mailbox compromise (ADR-142 §10).
+later mailbox compromise.
 
 The renderer's contract returns subject, text body, and HTML body together as one unit — no state exists
 with only one or two of the three — and an override likewise replaces all three at once, sent as
 `multipart/alternative`; this rules out the two parts of one email silently disagreeing because only one
-was edited (ADR-142 §4). Escaping is the renderer's responsibility, not the template's: HTML output
+was edited. Escaping is the renderer's responsibility, not the template's: HTML output
 escapes interpolated values and text output does not, and link URLs are assembled by the calling usecase
 from the request's own issuer and passed in as a single placeholder value, so a template can place a URL
-but never concatenate one — the escaping obligation never reaches the tenant editor (ADR-142 §5).
+but never concatenate one — the escaping obligation never reaches the tenant editor.
 Overridable fields are limited to subject, HTML body fragment, text body, and sender display name; the
 HTML document shell and the sender address stay system-owned, so the worst a malicious tenant admin can
-do through the override mechanism is make their own tenant's mail look wrong, never inject into it
-(ADR-142 §6, the same split ADR-096 uses for hosted UI branding).
+do through the override mechanism is make their own tenant's mail look wrong, never inject into it (the
+same split hosted UI branding uses).
 
 Locale resolves recipient `User.locale` → tenant `default_locale` → system default
 (`DEFAULT_LOCALE` env var, default `en`), taking the first locale the catalog has a translation for.
 Making the tenant tier an explicit column rather than inferring it from which locales happen to have
-overrides keeps editing one template in one locale from silently changing every notification's language
-(ADR-142 §7).
+overrides keeps editing one template in one locale from silently changing every notification's language.
 
 Test-send delivers only to the acting admin's own verified address — the endpoint accepts no destination
 parameter — because an arbitrary destination would turn tenant-admin access into a way to send
-tenant-branded mail to anyone (ADR-142 §8). Preview is read-only and renders with fixed sample values,
-never real user data, so the editor screen cannot become a way to read user data (ADR-142 §9).
+tenant-branded mail to anyone. Preview is read-only and renders with fixed sample values,
+never real user data, so the editor screen cannot become a way to read user data.
+
+#### 6. Endpoint rate limiting
+
+`backend/shared/ratelimit` (`ports`, `db_memory`, `db_postgres`) is a technical capability, not a business
+aggregate — the same placement as `EnvelopeCrypto` in `backend/shared/security` — because it protects
+endpoints across both the OAuth2 and Authentication contexts (`/authorize`, `/token`, `/par`,
+`/device_authorization`, `/api/auth/password_reset/*`). It is separate from, and does not replace, the
+per-account/per-IP login throttle above.
+
+The port is a single `Allow(ctx, tenantID, policyID, key, now)` call: a fixed-window counter keyed on
+`(tenant_id, policy_id, key_hash)`, incremented once per request regardless of outcome (unlike the login
+throttle, which only counts failures). `endpoint_rate_limit_counters` is `UNLOGGED` — every request counts
+against it, making it the highest-churn ephemeral table, and losing counters on failover only resets a
+window rather than weakening a security guarantee (contrast with `login_throttle_counters` and the
+access-token denylist, which stay `LOGGED` because losing them would). Fail-closed applies uniformly:
+PostgreSQL is already a hard dependency of every protected endpoint, so denying on an unreachable store
+adds no new failure mode.
+
+Thresholds are fixed-window `(max requests, window seconds)` per policy, environment-configurable (unlike
+the login throttle's, which are still hardcoded in `server.go`) so operators can retune without a deploy:
+
+| Policy | Env (max / window) | Default |
+| --- | --- | --- |
+| `token` | `RATE_LIMIT_TOKEN_MAX_REQUESTS` / `RATE_LIMIT_TOKEN_WINDOW_SECONDS` | 60 / 60s |
+| `authorize` | `RATE_LIMIT_AUTHORIZE_MAX_REQUESTS` / `RATE_LIMIT_AUTHORIZE_WINDOW_SECONDS` | 30 / 60s |
+| `par` | `RATE_LIMIT_PAR_MAX_REQUESTS` / `RATE_LIMIT_PAR_WINDOW_SECONDS` | 30 / 60s |
+| `device_authorization` | `RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS` / `RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS` | 20 / 60s |
+| `password_reset` | `RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS` / `RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS` | 5 / 900s |
+
+Keys are `client_id`/IP/`identifier_hash` composites; `client_id` is not secret, while IP and
+password-reset identifiers are SHA-256 hashed before storage, matching the login throttle's
+`hashThrottleIdentifier` convention. Exceeding a threshold returns HTTP 429 with `Retry-After` and the SCL
+`RateLimitedError`, which also now covers the login throttle's own 429 response (previously an undeclared
+ad hoc body).
 
 ## Runtime Composition
 
 The main package in `backend/cmd/idmagic/` performs startup, and `backend/cmd/internal/bootstrap` owns
 startup-time DI. `backend/cmd/idmagic-worker/` only claims durable
-jobs and runs handlers, scaling horizontally independently of the API
-([ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)).
+jobs and runs handlers, scaling horizontally independently of the API.
 `backend/cmd/idmagic-batch/` is started one-shot by an external scheduler, performs a single retention
-sweep or signing-key lifecycle pass, and exits
-([ADR-124](decisions/ADR-124-scheduled-batch-execution-boundary.md)). Every runtime unit reuses the same
+sweep or signing-key lifecycle pass, and exits. Every runtime unit reuses the same
 Go module and bounded context implementations. The ledger of these units is `runtime_units` in
 `architecture.yaml`.
 
 This shape — every bounded context implementation in a single Go module, with several runtime units as
 thin entry points reusing that shared implementation — is currently a **modular monolith**. Context
-boundaries are kept strict as logical boundaries (contexts couple through published language and ports,
-ADR-091), and by default several contexts compose into one process. The runtime splits that do exist
+boundaries are kept strict as logical boundaries (contexts couple through published language and ports),
+and by default several contexts compose into one process. The runtime splits that do exist
 keep the synchronous dependencies of authentication and OAuth2 inside the API process, and are limited
 to what the triggers in [REGENERATIVE_ARCHITECTURE.md §3.9](REGENERATIVE_ARCHITECTURE.md) justify:
-resource and latency characteristics (per-lane workers,
-[ADR-129](decisions/ADR-129-job-execution-lanes.md)), and the execution boundary of cross-cutting batches
-(ADR-124). The organizational
+resource and latency characteristics (per-lane workers), and the execution boundary of cross-cutting
+batches. The organizational
 trigger has not fired, so no service split happens until independent data ownership, teams, and SLOs
-exist (ADR-099). This describes the present state; it does not prescribe a future style.
+exist. This describes the present state; it does not prescribe a future style.
 
 `Dependencies` in `backend/cmd/internal/bootstrap/deps.go` is the boundary aggregate handed to the HTTP
 layer, absorbing runtime choices such as memory / postgres / console / otel. Context-specific
@@ -621,14 +636,14 @@ postgres adapter and a schema diff are needed, `bootstrap.Dependencies`, `assemb
 
 Kubernetes-facing health is split into three endpoints rather than one shared between liveness and
 readiness: the original `/health` only echoed startup configuration labels, so using it for both meant a
-transient PostgreSQL or Valkey blip could both restart-loop the pod and keep traffic routed to a replica
-that could not actually serve it ([ADR-078](decisions/ADR-078-kubernetes-health-probes-and-graceful-drain.md)).
+transient PostgreSQL blip could both restart-loop the pod and keep traffic routed to a replica that could
+not actually serve it. Readiness pinged a shared Valkey store as well before that dependency was removed.
 
 - **`/livez`** fails only on an unrecoverable condition such as deadlock; a transient dependency outage
   still returns `200`, so liveness does not restart a pod that would recover on its own.
-- **`/readyz`** pings required dependencies (PostgreSQL, Valkey) in parallel with a short timeout (`1s`
-  default) and returns `503` if any is unreachable; `?verbose` adds a per-dependency status vocabulary
-  (`healthy` / `degraded` / `unavailable`).
+- **`/readyz`** pings required dependencies (PostgreSQL) in parallel with a short timeout (`1s` default)
+  and returns `503` if unreachable; `?verbose` adds a per-dependency status vocabulary (`healthy` /
+  `degraded` / `unavailable`).
 - **`/startupz`** returns `200` once application initialization (including seed-data checks) completes.
 - **`/health`** is kept for backward compatibility, still returning only the startup configuration labels
   it always has.
@@ -642,7 +657,7 @@ before starting the HTTP server's own shutdown.
 
 Running more than one replica requires the `postgres` runtime (`PERSISTENCE=postgres`, `DATABASE_URL`).
 All shared state, durable and ephemeral alike, lives in PostgreSQL rather than in per-replica process
-memory (ADR-139).
+memory.
 
 - **Durable**: refresh tokens, audit events, authentication-event aggregation buckets, and **login
   sessions**. A logged-in browser session has `authentication_sessions` as its single source of truth,
@@ -650,8 +665,9 @@ memory (ADR-139).
   logout, or an account being disabled) tombstones the row (`revoked_at` / `revoke_reason`) instead of
   deleting it, so a repeated revoke request is a safe no-op.
 - **Ephemeral** (short-lived auth/OAuth2 rows): authorization request, authorization code, PAR, device
-  code, DPoP and client-assertion replay guards, access-token denylist, WebAuthn ceremony challenges,
-  and the login brute-force throttle. All are short-lived and retry-safe. Every row carries `expires_at`
+  code, DPoP and client-assertion replay guards, access-token denylist, WebAuthn ceremony challenges, the
+  login brute-force throttle, and endpoint rate limit counters. All are short-lived and
+  retry-safe. Every row carries `expires_at`
   and every read filters on `expires_at > now()`, so TTL correctness is independent of the best-effort
   GC sweep that `idmagic-worker` runs to reclaim space.
 
@@ -683,6 +699,9 @@ The `memory` runtime keeps this state in process and is therefore **single-repli
   widens the reading surface of every later change
   ([ADR-070](decisions/ADR-070-technical-shared-context-for-cross-context-adapters.md),
   [ADR-090](decisions/ADR-090-context-local-persistence-and-sqlc.md)).
+- Endpoint rate limiting is a shared technical capability rather than a business aggregate, uses a fixed
+  window rather than token-bucket/sliding-window counters, and stays fail-closed and PostgreSQL-only
+  ([ADR-157](decisions/ADR-157-endpoint-rate-limit-policy.md)).
 - SCL normative elements, Architecture modules, declared checks, and revision-stamped evidence are
   directly traceable — not only for audit, but so an AI can fetch the minimum context a change needs
   ([ADR-115](decisions/ADR-115-direct-workspace-traceability-graph.md)).
@@ -709,6 +728,71 @@ The `memory` runtime keeps this state in process and is therefore **single-repli
   split `SigningKeys` uses for `transit/sign`; the port lives in `backend/shared/security`, the lifecycle
   in the new `DataKeys` context, and neither is merged into `SigningKeys`, whose `KeyStore` port has a
   different operation shape and lifecycle ([ADR-148](decisions/ADR-148-envelope-encryption-and-datakeys-context.md)).
+- Dynamic Group membership rules evaluate through a restricted CEL environment rather than a bespoke
+  expression language or full script engine
+  ([ADR-111](decisions/ADR-111-cel-dynamic-group-membership-rules.md)).
+- `ApiTokens` unifies SCIM and management API access tokens under one issuance/scope model instead of two
+  parallel token types ([ADR-135](decisions/ADR-135-unify-scim-and-management-api-tokens.md)).
+- `WorkloadIdentity` federates external workload attestation (JWT-SVIDs) into idmagic tokens via
+  OAuth2 token-exchange rather than a parallel credential system
+  ([ADR-053](decisions/ADR-053-workload-identity-federation-for-agent-runtimes.md)).
+- Adapter packages sit flat under the owning context/feature, named `<role>_<technology>`, with no
+  `adapters/`/`persistence/` classification directory, so the package name alone states the role
+  ([ADR-133](decisions/ADR-133-flat-wikipedia-architecture.md)).
+- Context-specific business types are owned by that context's `domain/` rather than a shared package
+  ([ADR-089](decisions/ADR-089-context-local-domain-models.md)).
+- A context with independent sub-domains may add a feature vertical slice layer
+  (`backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/`), piloted on `idmanagement`
+  ([ADR-130](decisions/ADR-130-idmanagement-feature-vertical-slice.md)).
+- Context-specific repositories and route wiring are collected in `backend/<context>/module.go` so the
+  central router only calls the Module ([ADR-091](decisions/ADR-091-module-pattern-di-routing.md)).
+- Error response bodies migrate to RFC 9457 Problem Details except where a protocol spec mandates its own
+  error shape (OAuth2, SCIM, DCR) ([ADR-154](decisions/ADR-154-rfc-9457-problem-details-for-http-errors.md)).
+- Audit log (immutable, long-retention, legal/SIEM evidence) and application log (operational, stdout
+  JSON Lines with `trace_id`/`span_id`/`request_id`) are kept as two separate tracks with different
+  storage and retention, rather than one shared log stream
+  ([ADR-018](decisions/ADR-018-audit-vs-application-log-separation.md)).
+- PostgreSQL column type selection follows a fixed rule set (`TEXT` for free-form/bounded strings with
+  `CHECK`, `UUID` for internally generated ids, `TIMESTAMPTZ`, `TEXT`+`CHECK` over enums, JSONB only for
+  spec-derived/append-only payloads) so the choice is reproducible each time a table is added
+  ([ADR-084](decisions/ADR-084-postgres-column-type-policy.md)).
+- `users.id`/`oauth2_clients.client_id` are globally unique, so child rows reference them directly and
+  tenant-scoped composite foreign keys are not used
+  ([ADR-082](decisions/ADR-082-user-domain-id-and-tenant-key-policy.md), simplified by
+  [ADR-083](decisions/ADR-083-globally-unique-client-id.md)).
+- `authentication_sessions` and the ephemeral auth/OAuth2 opaque-key stores keep `tenant_id` as a
+  fail-closed defense-in-depth predicate even though their parent key is already globally unique
+  ([ADR-126](decisions/ADR-126-postgresql-as-login-session-source-of-truth.md);
+  [ADR-139](decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md); the ADR-082 §4 exception).
+- Volatile auth/OAuth2 state (authorization requests/codes, PAR, device codes, replay guards, the
+  denylist, WebAuthn challenges, login throttle) is consolidated into PostgreSQL rather than a second
+  stateful store, so only one datastore is operated
+  ([ADR-139](decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)).
+- Notification email content resolves through exactly two tiers (built-in catalog, optional per-tenant
+  override) with no version history, and overridable fields are limited to subject/body/sender-display-name
+  so a malicious tenant admin can only make their own mail look wrong, never inject into the shared shell
+  ([ADR-142](decisions/ADR-142-notification-template-catalog-and-locale-resolution.md)), the same
+  system-shell/tenant-content split hosted UI branding uses
+  ([ADR-096](decisions/ADR-096-tenant-branding-value-and-logo-storage.md)).
+- `application_icons` and tenant branding assets are kept in separate tables and `object_key` spaces so
+  the two never cross ownership ([ADR-073](decisions/ADR-073-application-icon-upload-storage.md)).
+- A tenant has exactly one canonical location, chosen between path-prefix and subdomain, which fixes its
+  issuer, cookie scope, and WebAuthn RP ID; `'path'` is the default so no wildcard DNS/certificate is
+  required ([ADR-144](decisions/ADR-144-tenant-canonical-location-and-host-based-resolution.md)).
+- `refresh_tokens.sid` links a refresh token to its OIDC browser session without an FK, because session
+  housekeeping deletes independently of token revoke state
+  ([ADR-127](decisions/ADR-127-oidc-session-binding-and-logout-propagation.md)); `refresh_tokens.resource` and
+  `mcp_resource_servers` implement RFC 8707 resource indicators as part of idmagic acting as an MCP
+  authorization server ([ADR-055](decisions/ADR-055-mcp-authorization-server.md)).
+- `idmagic-worker` only claims durable jobs and scales independently of the API
+  ([ADR-099](decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)); `idmagic-batch` runs
+  one-shot retention/key-lifecycle sweeps and exits
+  ([ADR-124](decisions/ADR-124-scheduled-batch-execution-boundary.md)); job execution uses per-lane
+  workers for resource/latency isolation ([ADR-129](decisions/ADR-129-job-execution-lanes.md)).
+- Kubernetes health is split into `/livez`/`/readyz`/`/startupz` instead of one shared liveness/readiness
+  endpoint, so a transient dependency blip cannot both restart-loop a pod and keep traffic routed to a
+  replica that cannot serve it
+  ([ADR-078](decisions/ADR-078-kubernetes-health-probes-and-graceful-drain.md)).
 
 ## Documentation Policy
 

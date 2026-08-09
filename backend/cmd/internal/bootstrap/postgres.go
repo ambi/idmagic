@@ -46,6 +46,8 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	samlpostgres "github.com/ambi/idmagic/backend/saml/db_postgres"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
+	ratelimitpostgres "github.com/ambi/idmagic/backend/shared/ratelimit/db_postgres"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/resilience"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	postgres "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
@@ -249,6 +251,11 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			ReceiverConfigRepo:    &sharedsignalspostgres.SsfReceiverConfigRepository{Pool: resilientDB},
 			DeliveryRepo:          &sharedsignalspostgres.SecurityEventDeliveryRepository{Pool: resilientDB},
 			ReceivedEventRepo:     &sharedsignalspostgres.ReceivedSecurityEventRepository{Pool: resilientDB},
+		},
+		RateLimit: rlports.Module{
+			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {
+				return &ratelimitpostgres.RateLimiter{Pool: resilientDB, Configs: configs}
+			},
 		},
 		Close: func() {
 			pool.Close()

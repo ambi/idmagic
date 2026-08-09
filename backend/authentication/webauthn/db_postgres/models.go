@@ -216,6 +216,16 @@ type EmailChangeToken struct {
 	ExpiresAt time.Time
 }
 
+type EndpointRateLimitCounter struct {
+	TenantID        string
+	PolicyID        string
+	KeyHash         string
+	Count           int32
+	WindowExpiresAt time.Time
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type FederatedIdentity struct {
 	TenantID        string
 	ProviderID      string

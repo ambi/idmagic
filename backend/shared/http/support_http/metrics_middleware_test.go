@@ -23,6 +23,7 @@ func (m *httpMetricsSpy) BeginHTTPRequest(route, method string) func(statusCode 
 
 func (m *httpMetricsSpy) RecordLoginOutcome(string, string, string)                             {}
 func (m *httpMetricsSpy) RecordLoginThrottle(string, string)                                    {}
+func (m *httpMetricsSpy) RecordEndpointRateLimit(string, string)                                {}
 func (m *httpMetricsSpy) RecordTokenIssuance(grantType, outcome string, duration time.Duration) {}
 func (m *httpMetricsSpy) RecordQuotaExceeded(resource string)                                   {}
 

@@ -24,6 +24,12 @@ type Metrics interface {
 	// "account" or "ip"; outcome is "allowed", "throttled", or
 	// "store_unavailable".
 	RecordLoginThrottle(policy, outcome string)
+	// RecordEndpointRateLimit records one endpoint rate limiter evaluation
+	// (ADR-157), distinct from RecordLoginThrottle. policy is the
+	// EndpointRateLimitPolicy id ("token", "authorize", "par",
+	// "device_authorization", "password_reset", "login"); outcome is
+	// "allowed", "rate_limited", or "store_unavailable".
+	RecordEndpointRateLimit(policy, outcome string)
 	// RecordTokenIssuance records one confirmed /token grant outcome.
 	// grantType is the OAuth2 grant_type value; outcome is "success" or the
 	// bounded error class returned to the caller.

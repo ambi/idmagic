@@ -1272,6 +1272,21 @@ CREATE TABLE login_throttle_counters (
 CREATE INDEX login_throttle_counters_gc_idx
     ON login_throttle_counters (window_expires_at);
 
+CREATE UNLOGGED TABLE endpoint_rate_limit_counters (
+    tenant_id UUID NOT NULL,
+    policy_id TEXT NOT NULL,
+    key_hash TEXT NOT NULL,
+    count INTEGER NOT NULL DEFAULT 0,
+    window_expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (tenant_id, policy_id, key_hash),
+    CONSTRAINT endpoint_rate_limit_counters_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+) WITH (fillfactor = 80);
+CREATE INDEX endpoint_rate_limit_counters_gc_idx
+    ON endpoint_rate_limit_counters (window_expires_at);
+
 CREATE UNLOGGED TABLE saml_authnrequest_replays (
     tenant_id UUID NOT NULL,
     entity_id TEXT NOT NULL,

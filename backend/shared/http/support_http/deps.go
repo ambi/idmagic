@@ -13,6 +13,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
@@ -25,8 +26,12 @@ type Deps struct {
 	// 空なら host ベースのテナント解決そのものが無効になり、path prefix 経路だけが
 	// 残る。ワイルドカード DNS / 証明書を用意できない配備を一級市民として保つための
 	// 既定であり、この値が空の間はどのテナントも subdomain style を選べない。
-	TenantBaseDomain          string
-	TrustedForwardedHops      int
+	TenantBaseDomain     string
+	TrustedForwardedHops int
+	// RateLimiter is the shared endpoint rate limiter (ADR-157), distinct from the
+	// per-account/per-IP login throttle. nil-safe: callers must check before use, matching
+	// LoginAttemptThrottle's optional-by-construction convention in tests that don't wire it.
+	RateLimiter               rlports.RateLimiter
 	OperationTimeout          time.Duration
 	DetachedCompletionTimeout time.Duration
 	AbortMetrics              HTTPAbortMetrics

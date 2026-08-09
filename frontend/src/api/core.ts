@@ -5,15 +5,18 @@ type APIError = {
   error?: string
   message?: string
   error_description?: string
+  retry_after_seconds?: number
 }
 
 export class AuthenticationAPIError extends Error {
   code?: string
+  retryAfterSeconds?: number
 
-  constructor(message: string, code?: string) {
+  constructor(message: string, code?: string, retryAfterSeconds?: number) {
     super(message)
     this.name = 'AuthenticationAPIError'
     this.code = code
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -50,7 +53,7 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
     if (response.status === 401) {
       throw new UnauthenticatedError(message, body.error)
     }
-    throw new AuthenticationAPIError(message, body.error)
+    throw new AuthenticationAPIError(message, body.error, body.retry_after_seconds)
   }
   return body
 }

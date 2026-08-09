@@ -49,6 +49,12 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
+	clientIP := extractClientIP(c.Request(), d.TrustedForwardedHops)
+	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "token", clientStub.ID+"|"+clientIP); err != nil {
+		return err
+	} else if blocked {
+		return nil
+	}
 	grantType := c.Request().PostFormValue("grant_type")
 	if grantType == "" {
 		return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_request", "grant_type is required"))

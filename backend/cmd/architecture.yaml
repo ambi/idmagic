@@ -385,3 +385,9 @@ modules:
         via: composition_root
       - module: wsfederation-public
         via: composition_root
+      - module: shared-ratelimit-ports
+        via: composition_root
+      - module: shared-ratelimit-db-memory
+        via: composition_root
+      - module: shared-ratelimit-db-postgres
+        via: composition_root

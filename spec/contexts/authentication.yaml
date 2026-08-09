@@ -406,6 +406,13 @@ models:
     kind: error
     status: 422
     description: テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。
+  RateLimitedError:
+    kind: error
+    status: 429
+    description: EndpointRateLimitPolicy の閾値を超えた。login throttle (per-account/per-IP の失敗回数ベース) とは別の、要求到達時ベースの汎用 endpoint rate limit。OAuth2 context が定義する共通 error の published language stub。
+    payload:
+      retry_after_seconds:
+        type: Integer
   PasswordReuseError:
     kind: error
     status: 422
@@ -1802,7 +1809,7 @@ interfaces:
         method: POST
         path: /api/account/v1/step_up/webauthn/challenge
   SubmitBrowserLogin:
-    description: SPA JSON API から browser password step を処理する。MFA 必須かつ factor 未登録の場合、強制開始前は password session でログインを許可して事前登録を促し、開始後は有効な単発 enrollment bypass と猶予期限の両方を満たすときだけ同一 LoginSession を Enrollment pending にする。それ以外は fail closed でログインを完了しない。per-account (10 回 / 900 秒窓、900 秒ロックアウト) と per-IP (30 回 / 900 秒窓、900 秒ロックアウト) のスロットリングを cluster_wide カウンタで適用し、共有カウンタストア到達不能時も fail_closed とする。
+    description: SPA JSON API から browser password step を処理する。MFA 必須かつ factor 未登録の場合、強制開始前は password session でログインを許可して事前登録を促し、開始後は有効な単発 enrollment bypass と猶予期限の両方を満たすときだけ同一 LoginSession を Enrollment pending にする。それ以外は fail closed でログインを完了しない。per-account (10 回 / 900 秒窓、900 秒ロックアウト) と per-IP (30 回 / 900 秒窓、900 秒ロックアウト) のスロットリングを cluster_wide カウンタで適用し、共有カウンタストア到達不能時も fail_closed とする。この失敗回数ベースの login throttle とは別に、成功/失敗を問わず全リクエストを消費する EndpointRateLimitPolicy (IP+tenant ベース) も適用する。
     input:
       body:
         fields:
@@ -1823,6 +1830,7 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
       - QuotaExceededError
+      - RateLimitedError
     emits:
       - UserAuthenticated
       - AuthenticationFailed
@@ -1831,6 +1839,7 @@ interfaces:
       - MfaEnrollmentBypassExpired
     requires:
       - "!context.login_throttled"
+      - "!context.rate_limited"
     stability: internal
     access: public
     bindings:
@@ -2468,9 +2477,13 @@ interfaces:
     input:
       request:
         type: BrowserForgotPasswordRequest
+    errors:
+      - RateLimitedError
     emits:
       - PasswordResetRequested
       - EmailSent
+    requires:
+      - "!context.rate_limited"
     stability: internal
     access: public
     bindings:
@@ -3065,8 +3078,27 @@ scenarios:
         condition: 直近 900 秒窓で per-account の失敗回数が 10 回に達している
         steps:
           - "正しい password で browser login API を送信する"
-          - "エラー \"AccessDeniedError\""
+          - "エラー \"RateLimitedError\""
           - "\"LoginThrottled\" が発行される"
+      - at: 1
+        condition: 失敗回数に関わらず同一 IP からの login API リクエストが EndpointRateLimitPolicy の window 内で max_requests に達している
+        steps:
+          - "正しい password で browser login API を送信する"
+          - "エラー \"RateLimitedError\""
+  パスワードリセット要求は識別子とIPの組でrate limitされる:
+    actor: EndUser
+    given:
+      - 未認証である
+    main_success:
+      - "\"alice\" 宛のパスワードリセットを要求する"
+      - "user の存在有無に関わらず 204 を返す"
+      - "\"PasswordResetRequested\" が発行される"
+    extensions:
+      - at: 1
+        condition: 同一 identifier と IP の組で EndpointRateLimitPolicy の window 内の max_requests に達している
+        steps:
+          - "\"alice\" 宛のパスワードリセットを再度要求する"
+          - "エラー \"RateLimitedError\""
   無効化されたユーザーは新規ログインも既存セッションも拒否される:
     actor: TenantAdministrator
     given:

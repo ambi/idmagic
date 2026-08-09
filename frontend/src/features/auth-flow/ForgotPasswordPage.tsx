@@ -7,11 +7,12 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useDictionary } from '../../lib/i18n'
+import { localizedErrorMessage, useDictionary, useLocale } from '../../lib/i18n'
 import { passwordRecoveryDictionary } from './PasswordRecoveryPages.i18n'
 
 export function ForgotPasswordPage({ csrfToken }: { csrfToken: string }) {
   const t = useDictionary(passwordRecoveryDictionary)
+  const { locale } = useLocale()
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
@@ -25,7 +26,11 @@ export function ForgotPasswordPage({ csrfToken }: { csrfToken: string }) {
       await requestPasswordReset(csrfToken, email)
       setSubmitted(true)
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.networkError)
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? localizedErrorMessage(locale, cause.code, cause.message, cause.retryAfterSeconds)
+          : t.networkError,
+      )
     } finally {
       setSubmitting(false)
     }

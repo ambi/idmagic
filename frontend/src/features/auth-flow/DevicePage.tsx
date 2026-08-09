@@ -11,11 +11,12 @@ import { AuthShell } from '../../components/AuthShell'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import { useDictionary } from '../../lib/i18n'
+import { localizedErrorMessage, useDictionary, useLocale } from '../../lib/i18n'
 import { devicePageDictionary } from './DevicePage.i18n'
 
 export function DevicePage({ csrfToken, userCode }: { csrfToken: string; userCode: string }) {
   const t = useDictionary(devicePageDictionary)
+  const { locale } = useLocale()
   const normalizedCode = userCode.replace(/-/g, '').toUpperCase()
   const [code, setCode] = useState(normalizedCode)
   const [error, setError] = useState('')
@@ -31,7 +32,11 @@ export function DevicePage({ csrfToken, userCode }: { csrfToken: string; userCod
         window.location.assign('/status?state=authentication-required')
         return
       }
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.deviceError)
+      setError(
+        cause instanceof AuthenticationAPIError
+          ? localizedErrorMessage(locale, cause.code, cause.message, cause.retryAfterSeconds)
+          : t.deviceError,
+      )
       setSubmitting(false)
     }
   }

@@ -40,6 +40,8 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
+	ratelimitmemory "github.com/ambi/idmagic/backend/shared/ratelimit/db_memory"
+	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/security/salts_memory"
 	"github.com/ambi/idmagic/backend/sharedsignals"
@@ -190,6 +192,11 @@ func assembleMemory() (*Dependencies, error) {
 			ReceiverConfigRepo:    sharedsignalsmemory.NewSsfReceiverConfigRepository(),
 			DeliveryRepo:          sharedsignalsmemory.NewSecurityEventDeliveryRepository(),
 			ReceivedEventRepo:     sharedsignalsmemory.NewReceivedSecurityEventRepository(),
+		},
+		RateLimit: rlports.Module{
+			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {
+				return ratelimitmemory.NewRateLimiter(configs)
+			},
 		},
 		Close:  func() {},
 		DbPing: func(c context.Context) error { return nil },

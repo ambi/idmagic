@@ -39,6 +39,7 @@ type Metrics struct {
 	detachedFailed metric.Int64Counter
 	loginAttempts  metric.Int64Counter
 	loginThrottle  metric.Int64Counter
+	rateLimit      metric.Int64Counter
 	tokenIssuance  metric.Int64Counter
 	tokenDuration  metric.Float64Histogram
 
@@ -115,6 +116,9 @@ func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 	if m.loginThrottle, err = meter.Int64Counter("authn_login_throttle_total"); err != nil {
 		return nil, err
 	}
+	if m.rateLimit, err = meter.Int64Counter("endpoint_rate_limit_total"); err != nil {
+		return nil, err
+	}
 	if m.tokenIssuance, err = meter.Int64Counter("oauth2_token_issuance_total"); err != nil {
 		return nil, err
 	}
@@ -176,6 +180,13 @@ func (m *Metrics) RecordLoginOutcome(outcome, reasonClass, method string) {
 
 func (m *Metrics) RecordLoginThrottle(policy, outcome string) {
 	m.loginThrottle.Add(context.Background(), 1, metric.WithAttributes(
+		attribute.String("policy", policy),
+		attribute.String("outcome", outcome),
+	))
+}
+
+func (m *Metrics) RecordEndpointRateLimit(policy, outcome string) {
+	m.rateLimit.Add(context.Background(), 1, metric.WithAttributes(
 		attribute.String("policy", policy),
 		attribute.String("outcome", outcome),
 	))
