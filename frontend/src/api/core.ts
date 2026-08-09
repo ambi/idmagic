@@ -1,12 +1,19 @@
 import { commonDictionary } from '../lib/i18n/common.i18n'
 import { getCurrentLocale } from '../lib/i18n/currentLocale'
 
-type APIError = {
+export type APIError = {
   error?: string
   message?: string
   error_description?: string
   retry_after_seconds?: number
+  type?: string
+  title?: string
+  status?: number
+  detail?: string
+  instance?: string
 }
+
+const PROBLEM_TYPE_PREFIX = 'urn:idmagic:error:'
 
 export class AuthenticationAPIError extends Error {
   code?: string
@@ -25,6 +32,36 @@ export class UnauthenticatedError extends AuthenticationAPIError {
     super(message, code)
     this.name = 'UnauthenticatedError'
   }
+}
+
+export function apiErrorCode(body: APIError): string | undefined {
+  if (body.error) return body.error
+  if (!body.type?.startsWith(PROBLEM_TYPE_PREFIX)) return undefined
+  const code = body.type.slice(PROBLEM_TYPE_PREFIX.length)
+  return code || undefined
+}
+
+export function apiErrorMessage(
+  body: APIError,
+  fallback = commonDictionary[getCurrentLocale()].networkError,
+): string {
+  return body.message ?? body.error_description ?? body.detail ?? body.title ?? fallback
+}
+
+export function authenticationAPIError(body: APIError, fallback?: string): AuthenticationAPIError {
+  return new AuthenticationAPIError(
+    apiErrorMessage(body, fallback),
+    apiErrorCode(body),
+    body.retry_after_seconds,
+  )
+}
+
+export async function responseAPIError(
+  response: Response,
+  fallback?: string,
+): Promise<AuthenticationAPIError> {
+  const body = (await response.json().catch(() => ({}))) as APIError
+  return authenticationAPIError(body, fallback)
 }
 
 // bearerTokenProvider は OIDC RP モジュール (api/oidc) が登録する access token 取得関数。
@@ -51,12 +88,12 @@ async function doFetch<T>(
   })
   const body = (await response.json().catch(() => ({}))) as T & APIError
   if (!response.ok) {
-    const message =
-      body.message ?? body.error_description ?? commonDictionary[getCurrentLocale()].networkError
+    const message = apiErrorMessage(body)
+    const code = apiErrorCode(body)
     if (response.status === 401) {
-      throw new UnauthenticatedError(message, body.error)
+      throw new UnauthenticatedError(message, code)
     }
-    throw new AuthenticationAPIError(message, body.error, body.retry_after_seconds)
+    throw new AuthenticationAPIError(message, code, body.retry_after_seconds)
   }
   return { body, response }
 }
@@ -158,5 +195,3 @@ export function base64URL(value: Uint8Array) {
   }
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '')
 }
-
-export type { APIError }

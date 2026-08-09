@@ -209,6 +209,52 @@ describe('core api utils', () => {
 
       await expect(request('/error-api')).rejects.toThrow(AuthenticationAPIError)
     })
+
+    it('uses RFC 9457 detail and type suffix for API errors', async () => {
+      stubGlobal(
+        'fetch',
+        mock().mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: () =>
+            Promise.resolve({
+              type: 'urn:idmagic:error:internal_server_error',
+              title: 'Internal server error',
+              status: 500,
+              detail: 'The import result could not be loaded.',
+            }),
+        }),
+      )
+
+      await expect(request('/problem-api')).rejects.toMatchObject({
+        name: 'AuthenticationAPIError',
+        message: 'The import result could not be loaded.',
+        code: 'internal_server_error',
+      })
+    })
+
+    it('uses RFC 9457 Problem Details for unauthenticated errors', async () => {
+      stubGlobal(
+        'fetch',
+        mock().mockResolvedValue({
+          ok: false,
+          status: 401,
+          json: () =>
+            Promise.resolve({
+              type: 'urn:idmagic:error:unauthorized',
+              title: 'Unauthorized',
+              status: 401,
+              detail: 'The session has expired.',
+            }),
+        }),
+      )
+
+      await expect(request('/problem-auth-api')).rejects.toMatchObject({
+        name: 'UnauthenticatedError',
+        message: 'The session has expired.',
+        code: 'unauthorized',
+      })
+    })
   })
 
   describe('requestPage', () => {

@@ -63,7 +63,15 @@ import type {
   ProvisioningTestConnectionResult,
   ClientSecretCredentialMetadata,
 } from '../types'
-import { AuthenticationAPIError, adminRequest, request, requestPage, tenantURL } from './core'
+import {
+  authenticationAPIError,
+  AuthenticationAPIError,
+  adminRequest,
+  request,
+  requestPage,
+  tenantURL,
+  type APIError,
+} from './core'
 
 type AdminUserListResponse = { users: AdminUser[] }
 type AdminConsentListResponse = { consents: AdminConsent[] }
@@ -1334,17 +1342,11 @@ export async function uploadApplicationIcon(
       body: form,
     },
   )
-  const body = (await response.json().catch(() => ({}))) as {
+  const body = (await response.json().catch(() => ({}))) as APIError & {
     application?: AdminApplication
-    error?: string
-    message?: string
-    error_description?: string
   }
   if (!response.ok) {
-    throw new AuthenticationAPIError(
-      body.message ?? body.error_description ?? 'Could not upload the icon.',
-      body.error,
-    )
+    throw authenticationAPIError(body, 'Could not upload the icon.')
   }
   if (!body.application) {
     throw new AuthenticationAPIError('Could not upload the icon.')

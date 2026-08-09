@@ -160,12 +160,18 @@ interfaces:
       バックエンドの HTTP API とプロトコル endpoint がエラー時に返す共通の外部契約。
       message、error_description、detail、またはプレーンテキスト本文のいずれも
       BackendErrorText であり、表示言語 (DisplayLanguage) に関わらず常に英語で固定する。
+      RFC 9457 Problem Details では type の urn:idmagic:error: suffix を stable error code として
+      解釈でき、UI は detail または title を人間可読な fallback として利用できる。
       個別 endpoint の error code と HTTP status はこの契約によって変更しない。
     output:
       error: { type: String, optional: true }
       message: { type: String, optional: true }
       error_description: { type: String, optional: true }
+      type: { type: String, optional: true }
+      title: { type: String, optional: true }
+      status: { type: Integer, optional: true }
       detail: { type: String, optional: true }
+      instance: { type: String, optional: true }
     ensures:
       - text_is_english(output.message)
       - text_is_english(output.error_description)
@@ -330,9 +336,35 @@ scenarios:
       - UIが選択済みDisplayLanguageの辞書にあるerror codeの文言を表示する
     extensions:
       - at: 1
-        condition: error codeが未知、またはbackendが任意のmessageだけを返す
+        condition: error codeが未知、またはbackendが任意のmessageかProblem Detailsだけを返す
         steps:
-          - UIはバックエンドmessageを英語のまま表示する
+          - UIはバックエンドのmessage、error_description、detail、titleのうち利用可能な人間可読文を英語のまま表示する
+          - バックエンドから有効なエラー応答を受信した場合は通信障害用fallbackを表示しない
+      - at: 1
+        condition: RFC 9457 Problem Detailsのtypeが既知のstable error codeを表す
+        steps:
+          - "UIはtypeのurn:idmagic:error: suffixをerror codeとして解釈する"
+          - UIが選択済みDisplayLanguageの辞書にあるerror codeの文言を表示する
+  PostgreSQLクエリの期限は結果読取完了まで維持される:
+    actor: Operator
+    given:
+      - PostgreSQL persistenceとquery timeoutが構成されている
+    main_success:
+      - Systemが共通persistence adapterで単一行または複数行queryを開始する
+      - queryがRowまたはRowsを返す
+      - 呼び出し側が期限内にScanまたはiterationを完了する
+      - 結果がcontext canceledにならず返され、connectionが解放される
+    extensions:
+      - at: 3
+        condition: 結果読取中にquery timeoutの期限へ到達する
+        steps:
+          - 読取はdeadline exceededで中断される
+          - 結果をcloseするとconnectionとtimeout resourceが解放される
+      - at: 3
+        condition: 単一行queryに該当する行が存在しない
+        steps:
+          - Scanはno rowsを返す
+          - no rowsは正常なquery応答として扱われcircuit breakerの失敗率を増加させない
   バックエンドAPIエラーは英語で返る:
     actor: APIConsumer
     main_success:

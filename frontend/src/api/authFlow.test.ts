@@ -77,10 +77,21 @@ describe('auth flow API client', () => {
   })
 
   it('reports ordinary failed password-reset requests as API errors', async () => {
-    stubGlobal('fetch', mock().mockResolvedValue(response(500, { error: 'unavailable' })))
-    await expect(requestPasswordReset('csrf', 'alice@example.com')).rejects.toBeInstanceOf(
-      AuthenticationAPIError,
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue(
+        response(500, {
+          type: 'urn:idmagic:error:internal_server_error',
+          title: 'Internal server error',
+          detail: 'Password reset is temporarily unavailable.',
+        }),
+      ),
     )
+    await expect(requestPasswordReset('csrf', 'alice@example.com')).rejects.toMatchObject({
+      name: 'AuthenticationAPIError',
+      message: 'Password reset is temporarily unavailable.',
+      code: 'internal_server_error',
+    })
   })
 
   it('redirects to next or redirect_to and rejects a malformed result', () => {

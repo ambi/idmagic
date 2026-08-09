@@ -86,20 +86,35 @@ func NewCircuitBreaker(settings Settings) *CircuitBreaker {
 }
 
 func (cb *CircuitBreaker) Execute(run func() error) error {
-	if err := cb.beforeRequest(); err != nil {
+	complete, err := cb.BeginRequest()
+	if err != nil {
 		return err
 	}
 
 	defer func() {
 		if err := recover(); err != nil {
-			cb.afterRequest(false)
+			complete(errors.New("circuit breaker operation panicked"))
 			panic(err)
 		}
 	}()
 
-	err := run()
-	cb.afterRequest(err == nil)
+	err = run()
+	complete(err)
 	return err
+}
+
+// BeginRequest admits an operation and returns an idempotent completion hook.
+// It supports APIs such as pgx Query/QueryRow whose outcome is only known after
+// the returned Rows/Row has been consumed.
+func (cb *CircuitBreaker) BeginRequest() (complete func(error), err error) {
+	if err := cb.beforeRequest(); err != nil {
+		return nil, err
+	}
+
+	var once sync.Once
+	return func(err error) {
+		once.Do(func() { cb.afterRequest(err == nil) })
+	}, nil
 }
 
 func (cb *CircuitBreaker) beforeRequest() error {

@@ -1,5 +1,14 @@
 import type { BrowserFlowResponse } from '../types'
-import { AuthenticationAPIError, base64URL, request, tenantURL, type APIError } from './core'
+import {
+  apiErrorCode,
+  apiErrorMessage,
+  AuthenticationAPIError,
+  base64URL,
+  request,
+  responseAPIError,
+  tenantURL,
+  type APIError,
+} from './core'
 import { getPasskeyAssertion } from './webauthn'
 import { commonDictionary } from '../lib/i18n/common.i18n'
 import { getCurrentLocale } from '../lib/i18n/currentLocale'
@@ -77,8 +86,7 @@ export async function loginWithPasskey(
     cache: 'no-store',
   })
   if (!challengeResponse.ok) {
-    const body = (await challengeResponse.json().catch(() => ({}))) as APIError
-    throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
+    throw await responseAPIError(challengeResponse)
   }
   const assertion = await getPasskeyAssertion(
     (await challengeResponse.json()) as { publicKey: never },
@@ -163,10 +171,10 @@ export async function changePassword(
     message?: string
     violations?: string[]
   }
-  if (body.error === 'password_policy') {
-    throw new PasswordPolicyError(body.message ?? uiFallback(), body.violations ?? [])
+  if (apiErrorCode(body) === 'password_policy') {
+    throw new PasswordPolicyError(apiErrorMessage(body), body.violations ?? [])
   }
-  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
+  throw new AuthenticationAPIError(apiErrorMessage(body), apiErrorCode(body))
 }
 
 export async function requestPasswordReset(csrfToken: string, email: string): Promise<void> {
@@ -178,8 +186,7 @@ export async function requestPasswordReset(csrfToken: string, email: string): Pr
     cache: 'no-store',
   })
   if (response.status === 204) return
-  const body = (await response.json().catch(() => ({}))) as APIError
-  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
+  throw await responseAPIError(response)
 }
 
 export async function resetPassword(
@@ -196,10 +203,10 @@ export async function resetPassword(
   })
   if (response.ok) return
   const body = (await response.json().catch(() => ({}))) as APIError & { violations?: string[] }
-  if (body.error === 'password_policy') {
-    throw new PasswordPolicyError(body.message ?? uiFallback(), body.violations ?? [])
+  if (apiErrorCode(body) === 'password_policy') {
+    throw new PasswordPolicyError(apiErrorMessage(body), body.violations ?? [])
   }
-  throw new AuthenticationAPIError(body.message ?? uiFallback(), body.error)
+  throw new AuthenticationAPIError(apiErrorMessage(body), apiErrorCode(body))
 }
 
 export async function submitDevice(

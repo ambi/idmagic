@@ -1,5 +1,12 @@
 import type { Branding, BrandingUpdateInput, TenantBrandingAssetKind } from '../types'
-import { AuthenticationAPIError, adminRequest, request, tenantURL } from './core'
+import {
+  authenticationAPIError,
+  AuthenticationAPIError,
+  adminRequest,
+  request,
+  tenantURL,
+  type APIError,
+} from './core'
 import { commonDictionary } from '../lib/i18n/common.i18n'
 import { getCurrentLocale } from '../lib/i18n/currentLocale'
 
@@ -32,17 +39,9 @@ export async function uploadTenantBrandingAsset(
     headers: { 'X-CSRF-Token': csrfToken },
     body: form,
   })
-  const body = (await response.json().catch(() => ({}))) as {
-    branding?: Branding
-    error?: string
-    message?: string
-    error_description?: string
-  }
+  const body = (await response.json().catch(() => ({}))) as APIError & { branding?: Branding }
   if (!response.ok) {
-    throw new AuthenticationAPIError(
-      body.message ?? body.error_description ?? uiFallback(),
-      body.error,
-    )
+    throw authenticationAPIError(body)
   }
   if (!body.branding) {
     throw new AuthenticationAPIError(uiFallback())

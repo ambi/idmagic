@@ -5,6 +5,8 @@ package db_postgres
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"time"
 
 	"github.com/ambi/idmagic/backend/shared/resilience"
@@ -45,12 +47,12 @@ type DB interface {
 
 // ResilientDB は DB インターフェースを実装し、サーキットブレイカーとタイムアウトを提供する。
 type ResilientDB struct {
-	pool    *pgxpool.Pool
+	pool    DB
 	cb      *resilience.CircuitBreaker
 	timeout time.Duration
 }
 
-func NewResilientDB(pool *pgxpool.Pool, cb *resilience.CircuitBreaker, timeout time.Duration) *ResilientDB {
+func NewResilientDB(pool DB, cb *resilience.CircuitBreaker, timeout time.Duration) *ResilientDB {
 	return &ResilientDB{
 		pool:    pool,
 		cb:      cb,
@@ -63,32 +65,31 @@ func (db *ResilientDB) Ping(ctx context.Context) error {
 }
 
 func (db *ResilientDB) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
-	var rows pgx.Rows
-	err := db.cb.Execute(func() error { //nolint:contextcheck // CB state machine does not rely on request context
-		qctx, cancel := db.withTimeout(ctx)
-		defer cancel()
-
-		var qerr error
-		rows, qerr = db.pool.Query(qctx, sql, args...) //nolint:sqlclosecheck // Rows are closed by repository callers
-		return qerr
-	})
-	return rows, err
+	complete, err := db.cb.BeginRequest() //nolint:contextcheck // Global breaker state does not rely on request context
+	if err != nil {
+		return nil, err
+	}
+	qctx, cancel := db.withTimeout(ctx)
+	rows, err := db.pool.Query(qctx, sql, args...)
+	if err != nil {
+		complete(err)
+		cancel()
+		return rows, err
+	}
+	return &resilientRows{Rows: rows, cancel: cancel, complete: complete}, nil
 }
 
 func (db *ResilientDB) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
-	var row pgx.Row
-	err := db.cb.Execute(func() error { //nolint:contextcheck // CB state machine does not rely on request context
-		// QueryRow 自体は即座にエラーを返さないが、接続確保などを Execute 内で行わせる。
-		qctx, cancel := db.withTimeout(ctx)
-		defer cancel()
-
-		row = db.pool.QueryRow(qctx, sql, args...)
-		return nil
-	})
+	complete, err := db.cb.BeginRequest() //nolint:contextcheck // Global breaker state does not rely on request context
 	if err != nil {
 		return &resilientRow{err: err}
 	}
-	return row
+	qctx, cancel := db.withTimeout(ctx)
+	return &resilientRow{
+		row:      db.pool.QueryRow(qctx, sql, args...),
+		cancel:   cancel,
+		complete: complete,
+	}
 }
 
 func (db *ResilientDB) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
@@ -125,15 +126,59 @@ func (db *ResilientDB) withTimeout(ctx context.Context) (context.Context, contex
 }
 
 type resilientRow struct {
-	row pgx.Row
-	err error
+	row      pgx.Row
+	err      error
+	cancel   context.CancelFunc
+	complete func(error)
 }
 
 func (r *resilientRow) Scan(dest ...any) error {
 	if r.err != nil {
 		return r.err
 	}
-	return r.row.Scan(dest...)
+	err := r.row.Scan(dest...)
+	breakerErr := err
+	if errors.Is(err, pgx.ErrNoRows) {
+		breakerErr = nil
+	}
+	r.complete(breakerErr)
+	r.cancel()
+	return err
+}
+
+type resilientRows struct {
+	pgx.Rows
+	cancel   context.CancelFunc
+	complete func(error)
+	once     sync.Once
+}
+
+func (r *resilientRows) Close() {
+	r.Rows.Close()
+	r.finish(r.Err())
+}
+
+func (r *resilientRows) Next() bool {
+	ok := r.Rows.Next()
+	if !ok {
+		r.finish(r.Err())
+	}
+	return ok
+}
+
+func (r *resilientRows) Scan(dest ...any) error {
+	err := r.Rows.Scan(dest...)
+	if err != nil {
+		r.finish(err)
+	}
+	return err
+}
+
+func (r *resilientRows) finish(err error) {
+	r.once.Do(func() {
+		r.complete(err)
+		r.cancel()
+	})
 }
 
 // Open は指定された DSN と設定で接続プールを構築し、リトライ付きで疎通確認を行う。

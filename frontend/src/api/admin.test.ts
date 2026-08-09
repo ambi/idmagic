@@ -39,6 +39,7 @@ import {
   updateApplicationOidcConfig,
   updateApplicationSamlConfig,
   updateApplicationWsFedConfig,
+  uploadApplicationIcon,
   updateTenantUserAttributeSchema,
 } from './admin'
 
@@ -291,6 +292,26 @@ describe('admin API client', () => {
         message: 'denied',
       }),
     )
+  })
+
+  it('multipart uploadでもProblem Detailsのdetailとtypeを伝える', async () => {
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue(
+        response(422, {
+          type: 'urn:idmagic:error:invalid_icon',
+          title: 'Invalid icon',
+          detail: 'The icon format is not supported.',
+        }),
+      ),
+    )
+
+    await expect(
+      uploadApplicationIcon('csrf', 'app', new File(['icon'], 'icon.png')),
+    ).rejects.toMatchObject({
+      message: 'The icon format is not supported.',
+      code: 'invalid_icon',
+    })
   })
 
   it('API token 管理契約を scopes 付きで新 endpoint へ送受信する', async () => {

@@ -133,8 +133,20 @@ describe('account API client', () => {
   })
 
   it('turns API failures into a typed error and identifies step-up requirements', async () => {
-    stubGlobal('fetch', mock().mockResolvedValue(response(400, { error: 'step_up_required' })))
-    await expect(startStepUp('csrf')).rejects.toBeInstanceOf(AuthenticationAPIError)
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue(
+        response(403, {
+          type: 'urn:idmagic:error:step_up_required',
+          title: 'Step up required',
+          detail: 'Reauthentication is required.',
+        }),
+      ),
+    )
+    await expect(startStepUp('csrf')).rejects.toMatchObject({
+      message: 'Reauthentication is required.',
+      code: 'step_up_required',
+    })
     expect(isStepUpRequired(new AuthenticationAPIError('step up', 'step_up_required'))).toBe(true)
     expect(isStepUpRequired(new Error('other'))).toBe(false)
   })
