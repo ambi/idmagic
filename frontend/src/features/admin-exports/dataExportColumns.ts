@@ -4,7 +4,8 @@ import type { dataExportDictionary } from './DataExportPage.i18n'
 // domain/data_export.go) と一致させ、labelKey は i18n dict の key、pii は個人情報を含むか。
 export type ExportColumn = {
   key: string
-  labelKey: keyof typeof dataExportDictionary.ja
+  labelKey?: keyof typeof dataExportDictionary.ja
+  label?: string
   pii?: boolean
 }
 
@@ -26,6 +27,7 @@ export const EXPORT_COLUMNS: Record<ExportTarget, ExportColumn[]> = {
     { key: 'mfa_enrolled', labelKey: 'colMfaEnrolled' },
     { key: 'status', labelKey: 'colStatus' },
     { key: 'roles', labelKey: 'colRoles' },
+    { key: 'required_actions', labelKey: 'colRequiredActions' },
     { key: 'created_at', labelKey: 'colCreatedAt' },
     { key: 'updated_at', labelKey: 'colUpdatedAt' },
   ],

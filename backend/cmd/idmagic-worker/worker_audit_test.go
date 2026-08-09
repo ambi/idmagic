@@ -9,14 +9,13 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ambi/idmagic/backend/audit"
 	auditpostgres "github.com/ambi/idmagic/backend/audit/db_postgres"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
-	"github.com/ambi/idmagic/backend/authentication"
-	passwordpostgres "github.com/ambi/idmagic/backend/authentication/password/db_postgres"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
@@ -27,6 +26,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	"github.com/ambi/idmagic/backend/shared/events/sinks_console"
 	"github.com/ambi/idmagic/backend/shared/logging"
+	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -36,6 +36,12 @@ import (
 
 func TestMain(m *testing.M) {
 	os.Exit(pgtest.Main(m))
+}
+
+type workerImportOwnershipGuard struct{}
+
+func (workerImportOwnershipGuard) SourceManagedUserIDs(context.Context, string, []string) (map[string]bool, error) {
+	return map[string]bool{}, nil
 }
 
 // TestUserImportApplyRecordsUserCreatedAuditEvent は wi-205 の回帰テスト:
@@ -65,47 +71,17 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	}
 
 	auditRepo := &auditpostgres.AuditEventRepository{Pool: db}
-	deps := &bootstrap.Dependencies{
-		IdManagement: idmanagement.Module{
-			UserRepo: &userpostgres.UserRepository{Pool: db},
-		},
-		Authentication: authentication.Module{
-			PasswordHistoryRepo: &passwordpostgres.PasswordHistoryRepository{Pool: db},
-		},
-		OAuth2: oauth2.Module{
-			EventSink: sinks_console.NewConsoleSink(),
-		},
-		Audit: audit.Module{
-			AuditEventRepo: auditRepo,
-		},
+	userRepo := &userpostgres.UserRepository{Pool: db}
+	planDeps := userusecases.UserImportPlanDeps{
+		UserRepo: userRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, OwnershipGuard: workerImportOwnershipGuard{},
 	}
-	logger := logging.New(os.Stderr, logging.ParseLevel("error"), "idmagic-worker-test", "test")
-	adminDeps := newAdminUserDeps(deps, logger)
-
-	params, err := json.Marshal(userusecases.UserImportParams{
-		CSV:         "preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n",
-		ActorUserID: "admin-actor",
-	})
-	if err != nil {
-		t.Fatalf("marshal params: %v", err)
-	}
-	job := &domain.Job{
-		ID:       "job-" + tenantID,
-		TenantID: tenant.ID,
-		Kind:     domain.KindUserImportApply,
-		Params:   params,
-	}
-
-	handler := userusecases.UserImportHandler(adminDeps, true)
-	rawResult, err := handler(ctx, job)
+	result, err := userusecases.ApplyUserImport(tenancy.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
+		Plan: planDeps, Committer: userpostgres.UserImportRowCommitter{Pool: db}, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), userdomain.DefaultUserCSVTransferPolicy(), "admin-actor", now, nil)
 	if err != nil {
 		t.Fatalf("run user import apply: %v", err)
 	}
-	var result userusecases.UserImportResult
-	if err := json.Unmarshal(rawResult, &result); err != nil {
-		t.Fatalf("unmarshal result: %v", err)
-	}
-	if result.AcceptedRows != 1 || result.RejectedRows != 0 {
+	if result.CreatedRows != 1 || result.RejectedRows != 0 {
 		t.Fatalf("unexpected import result: %+v", result)
 	}
 
@@ -152,8 +128,9 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 	}
 
 	auditRepo := &auditpostgres.AuditEventRepository{Pool: db}
+	artifacts := &userpostgres.UserCSVArtifactStore{Pool: db}
 	deps := &bootstrap.Dependencies{
-		IdManagement: idmanagement.Module{UserRepo: &userpostgres.UserRepository{Pool: db}},
+		IdManagement: idmanagement.Module{UserRepo: &userpostgres.UserRepository{Pool: db}, UserCSVArtifacts: artifacts},
 		OAuth2:       oauth2.Module{EventSink: sinks_console.NewConsoleSink()},
 		Audit:        audit.Module{AuditEventRepo: auditRepo},
 	}
@@ -164,7 +141,13 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 		t.Fatalf("marshal params: %v", err)
 	}
 	handler := idmusecases.DataExportHandler(idmusecases.DataExportDeps{
-		UserRepo: deps.IdManagement.UserRepo,
+		UserRepo: deps.IdManagement.UserRepo, UserCSVArtifacts: artifacts,
+		UserCSVExporter: userusecases.UserCSVExporter{
+			Deps: userusecases.UserCSVExportDeps{
+				UserRepo: deps.IdManagement.UserRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: artifacts,
+			},
+			Policy: userdomain.DefaultUserCSVTransferPolicy(),
+		},
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
 			return nil

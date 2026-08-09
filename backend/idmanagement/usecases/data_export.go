@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -71,14 +71,16 @@ type DataExportParams struct {
 	ActorUserID string            `json:"actor_user_id"`
 }
 
-// DataExportResult is the data_export Job's result payload. CSVBase64
-// holds the generated file (ADR-140: the file lives in the Job result); it is
-// never surfaced in the public DataExportView, only served by download.
+// DataExportResult is metadata only for User exports. CSVBase64 remains a
+// compatibility field for Group exports until their follow-up work items move
+// them to the same immutable artifact contract.
 type DataExportResult struct {
-	Filename  string `json:"filename"`
-	TotalRows int    `json:"total_rows"`
-	ByteSize  int    `json:"byte_size"`
-	CSVBase64 string `json:"csv_base64"`
+	Filename    string `json:"filename"`
+	TotalRows   int    `json:"total_rows"`
+	ByteSize    int    `json:"byte_size"`
+	ArtifactRef string `json:"artifact_ref,omitempty"`
+	SHA256      string `json:"sha256,omitempty"`
+	CSVBase64   string `json:"csv_base64,omitempty"`
 }
 
 // DataExportView is the PII-free public projection of an export
@@ -106,19 +108,27 @@ type DataExportFile struct {
 	ContentType string
 	ByteSize    int
 	Content     []byte
+	Reader      io.ReadCloser
 }
 
 // DataExportDeps are the dependencies for the data export usecases.
 type DataExportDeps struct {
-	UserRepo  userports.UserRepository
-	GroupRepo groupports.GroupRepository
-	JobRepo   jobsports.JobRepository
-	Emit      func(spec.DomainEvent) error
+	UserRepo         userports.UserRepository
+	GroupRepo        groupports.GroupRepository
+	JobRepo          jobsports.JobRepository
+	UserCSVExporter  UserCSVExporter
+	UserCSVArtifacts userports.UserCSVArtifactStore
+	Emit             func(spec.DomainEvent) error
 	// QuotaRepo enforces the tenant's active_jobs Hard Quota at enqueue
 	// (wi-160, ADR-134). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	Now func() time.Time
+}
+
+type UserCSVExporter interface {
+	ValidateUserCSVColumns(ctx context.Context, columns []string) error
+	ExportUserCSV(ctx context.Context, columns []string, status string) (userports.UserCSVArtifact, int, error)
 }
 
 func (d DataExportDeps) now() time.Time {
@@ -134,8 +144,18 @@ func (d DataExportDeps) now() time.Time {
 // DataExportRequested and returns the queued export's view.
 func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, target string, columns []string, filter map[string]string, now time.Time) (*DataExportView, error) {
 	kind := idmdomain.DataExportTargetKind(target)
-	if err := idmdomain.ValidateExportColumns(kind, columns); err != nil {
-		return nil, err
+	if kind == idmdomain.ExportTargetUser && deps.UserCSVExporter != nil {
+		if err := deps.UserCSVExporter.ValidateUserCSVColumns(ctx, columns); err != nil {
+			var csvErr *userdomain.UserCSVError
+			if errors.As(err, &csvErr) {
+				return nil, fmt.Errorf("%w: %s", idmdomain.ErrInvalidExportColumns, csvErr.Code)
+			}
+			return nil, err
+		}
+	} else {
+		if err := idmdomain.ValidateExportColumns(kind, columns); err != nil {
+			return nil, err
+		}
 	}
 	if err := validateExportFilter(kind, filter); err != nil {
 		return nil, err
@@ -261,16 +281,34 @@ func DownloadDataExport(ctx context.Context, deps DataExportDeps, scope ExportSc
 	if err := json.Unmarshal(job.Result, &result); err != nil {
 		return nil, err
 	}
-	content, err := base64.StdEncoding.DecodeString(result.CSVBase64)
-	if err != nil {
-		return nil, err
+	var content []byte
+	var contentReader io.ReadCloser
+	if result.ArtifactRef != "" {
+		if deps.UserCSVArtifacts == nil {
+			return nil, ErrExportNotDownloadable
+		}
+		reader, artifact, err := deps.UserCSVArtifacts.OpenUserCSVArtifact(ctx, job.TenantID, result.ArtifactRef)
+		if err != nil {
+			return nil, ErrExportNotDownloadable
+		}
+		if artifact.SHA256 != result.SHA256 || artifact.ByteSize != int64(result.ByteSize) {
+			_ = reader.Close()
+			return nil, ErrExportNotDownloadable
+		}
+		contentReader = reader
+	} else {
+		var err error
+		content, err = base64.StdEncoding.DecodeString(result.CSVBase64)
+		if err != nil {
+			return nil, err
+		}
 	}
 	var p DataExportParams
 	_ = json.Unmarshal(job.Params, &p)
 	if err := adminEmitExport(deps.Emit, &idmdomain.DataExportDownloaded{At: now, TenantID: job.TenantID, ActorUserID: actorUserID, ExportID: job.ID, Target: p.Target}); err != nil {
 		return nil, err
 	}
-	return &DataExportFile{Filename: result.Filename, ContentType: "text/csv; charset=utf-8", ByteSize: len(content), Content: content}, nil
+	return &DataExportFile{Filename: result.Filename, ContentType: "text/csv; charset=utf-8", ByteSize: result.ByteSize, Content: content, Reader: contentReader}, nil
 }
 
 // CancelDataExport cancels a non-terminal export and emits
@@ -340,7 +378,7 @@ func exportViewFromJob(job *jobsdomain.Job, now time.Time) *DataExportView {
 			view.ByteSize = &byteSize
 			completed := job.UpdatedAt
 			view.CompletedAt = &completed
-			view.Downloadable = status == idmdomain.ExportStatusSucceeded && result.CSVBase64 != ""
+			view.Downloadable = status == idmdomain.ExportStatusSucceeded && (result.ArtifactRef != "" || result.CSVBase64 != "")
 		}
 	}
 	return view
@@ -368,14 +406,25 @@ func mapExportStatus(s jobsdomain.JobStatus, expiresAt, now time.Time) idmdomain
 // generateExport builds the CSV for the requested target and filter.
 func generateExport(ctx context.Context, deps DataExportDeps, tenantID string, p DataExportParams) (*DataExportResult, error) {
 	kind := idmdomain.DataExportTargetKind(p.Target)
+	if kind == idmdomain.ExportTargetUser {
+		if deps.UserCSVExporter == nil {
+			return nil, errors.New("user CSV exporter is unavailable")
+		}
+		artifact, totalRows, err := deps.UserCSVExporter.ExportUserCSV(ctx, p.Columns, p.Filter["status"])
+		if err != nil {
+			return nil, err
+		}
+		return &DataExportResult{
+			Filename:  fmt.Sprintf("%s-export-%s.csv", p.Target, deps.now().Format("20060102-150405")),
+			TotalRows: totalRows, ByteSize: int(artifact.ByteSize), ArtifactRef: artifact.Ref, SHA256: artifact.SHA256,
+		}, nil
+	}
 	header := idmdomain.LabelsForColumns(kind, p.Columns)
 	var (
 		rows [][]string
 		err  error
 	)
 	switch kind {
-	case idmdomain.ExportTargetUser:
-		rows, err = userExportRows(ctx, deps, tenantID, p.Columns, p.Filter)
 	case idmdomain.ExportTargetGroup:
 		rows, err = groupExportRows(ctx, deps, tenantID, p.Columns)
 	case idmdomain.ExportTargetGroupMembership:
@@ -405,57 +454,6 @@ func generateExport(ctx context.Context, deps DataExportDeps, tenantID string, p
 }
 
 var errExportTooLarge = errors.New("export_too_large")
-
-func userExportRows(ctx context.Context, deps DataExportDeps, tenantID string, columns []string, filter map[string]string) ([][]string, error) {
-	users, err := deps.UserRepo.FindAll(ctx, tenantID)
-	if err != nil {
-		return nil, err
-	}
-	statusFilter := strings.ToLower(strings.TrimSpace(filter["status"]))
-	sort.Slice(users, func(i, j int) bool { return users[i].PreferredUsername < users[j].PreferredUsername })
-	rows := make([][]string, 0, len(users))
-	for _, u := range users {
-		if statusFilter != "" && string(u.Lifecycle.EffectiveStatus()) != statusFilter {
-			continue
-		}
-		row := make([]string, len(columns))
-		for i, col := range columns {
-			row[i] = userColumnValue(u, col)
-		}
-		rows = append(rows, row)
-	}
-	return rows, nil
-}
-
-func userColumnValue(u *userdomain.User, col string) string {
-	switch col {
-	case "id":
-		return u.ID
-	case "preferred_username":
-		return u.PreferredUsername
-	case "email":
-		return derefString(u.Email)
-	case "name":
-		return derefString(u.Name)
-	case "given_name":
-		return derefString(u.GivenName)
-	case "family_name":
-		return derefString(u.FamilyName)
-	case "email_verified":
-		return strconv.FormatBool(u.EmailVerified)
-	case "mfa_enrolled":
-		return strconv.FormatBool(u.MfaEnrolled)
-	case "status":
-		return string(u.Lifecycle.EffectiveStatus())
-	case "roles":
-		return strings.Join(u.Roles, "|")
-	case "created_at":
-		return u.CreatedAt.UTC().Format(time.RFC3339)
-	case "updated_at":
-		return u.UpdatedAt.UTC().Format(time.RFC3339)
-	}
-	return ""
-}
 
 func groupExportRows(ctx context.Context, deps DataExportDeps, tenantID string, columns []string) ([][]string, error) {
 	groups, err := deps.GroupRepo.ListAll(ctx, tenantID)

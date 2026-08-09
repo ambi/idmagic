@@ -10,12 +10,14 @@ import (
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -28,10 +30,11 @@ import (
 )
 
 type exportTestHandler struct {
-	echo    *echo.Echo
-	users   *usermemory.UserRepository
-	groups  *groupmemory.GroupRepository
-	jobRepo *jobsmemory.JobRepository
+	echo      *echo.Echo
+	users     *usermemory.UserRepository
+	groups    *groupmemory.GroupRepository
+	jobRepo   *jobsmemory.JobRepository
+	artifacts *usermemory.UserCSVArtifactStore
 }
 
 func newExportTestHandler(t *testing.T) exportTestHandler {
@@ -39,6 +42,7 @@ func newExportTestHandler(t *testing.T) exportTestHandler {
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
 	jobRepo := jobsmemory.NewJobRepository()
+	artifacts := usermemory.NewUserCSVArtifactStore()
 	now := time.Now().UTC()
 	email := "alice@example.com"
 	users.Seed(&userdomain.User{ID: "admin", PreferredUsername: "admin", PasswordHash: "unused", Roles: []string{"admin"}, TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now})
@@ -53,9 +57,10 @@ func newExportTestHandler(t *testing.T) exportTestHandler {
 		AgentRepo:     agentmemory.NewAgentRepository(),
 		GroupRepo:     groups,
 		Jobs:          jobs.Module{Repo: jobRepo},
+		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, UserCSVArtifacts: artifacts},
 		EmailSender:   mockEmailSender{},
 	})
-	return exportTestHandler{echo: e, users: users, groups: groups, jobRepo: jobRepo}
+	return exportTestHandler{echo: e, users: users, groups: groups, jobRepo: jobRepo, artifacts: artifacts}
 }
 
 // runExportJob drives the queued export Job to succeeded the way the worker
@@ -67,7 +72,13 @@ func (h exportTestHandler) runExportJob(t *testing.T, exportID string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	deps := idmusecases.DataExportDeps{UserRepo: h.users, GroupRepo: h.groups, JobRepo: h.jobRepo}
+	deps := idmusecases.DataExportDeps{
+		UserRepo: h.users, GroupRepo: h.groups, JobRepo: h.jobRepo, UserCSVArtifacts: h.artifacts,
+		UserCSVExporter: userusecases.UserCSVExporter{
+			Deps:   userusecases.UserCSVExportDeps{UserRepo: h.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: h.artifacts},
+			Policy: userdomain.DefaultUserCSVTransferPolicy(),
+		},
+	}
 	raw, err := idmusecases.DataExportHandler(deps)(ctx, job)
 	if err != nil {
 		t.Fatalf("run export job: %v", err)

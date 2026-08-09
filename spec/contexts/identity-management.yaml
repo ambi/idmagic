@@ -35,12 +35,11 @@ glossary:
     aliases:
       - disable user
   UserImport:
-    definition: 管理者が UTF-8 CSV を使ってユーザーを検証または作成する非同期操作。CSV は preferred_username,email,name,roles ヘッダーを持ち、パスワードや password_hash を含めない。
+    definition: 管理者が UTF-8 CSV を使ってユーザーの作成・部分更新を事前検証し、成功済み preview に結合して非同期適用する操作。CSV は安定した機械キーのヘッダーを任意順・任意部分集合で持ち、パスワードや password_hash を含めない。
     aliases:
       - CSV user import
       - bulk user import
       - ユーザー一括インポート
-      - アカウント無効化
   UserDeletion:
     definition: "User の tombstone 化と関連 aggregate の cascade 削除。`status` を Deleted に遷移させ PII フィールドを匿名化、`id` のみを audit のため保持する。`Deleted` は終端で復元できない。"
     aliases:
@@ -651,22 +650,42 @@ models:
         optional: true
   UserImportJob:
     kind: value_object
-    description: CSV ユーザーインポートジョブの公開ビュー。結果は行番号と stable error code を持ち、入力の password/hash は保存しない。
+    description: CSV ユーザーインポートジョブの公開ビュー。preview は副作用を起こさず、apply は同一 tenant の成功済み preview と source_sha256 に結合する。結果は操作別件数と値を含まない stable row error を持ち、password/hash は入力・保存しない。
     fields:
       id:
         type: String
       status:
         type: String
       mode:
+        type: UserImportMode
+      source_sha256:
         type: String
+        optional: true
+      preview_job_id:
+        type: String
+        optional: true
       total_rows:
         type: Integer
+      created_rows:
+        type: Integer
+        optional: true
+      updated_rows:
+        type: Integer
+        optional: true
+      unchanged_rows:
+        type: Integer
+        optional: true
       accepted_rows:
         type: Integer
+        optional: true
+        description: 旧クライアント移行用の互換フィールド。created_rows + updated_rows + unchanged_rows。新規クライアントは操作別件数を使う。
       rejected_rows:
         type: Integer
       errors:
         type: "UserImportRowError[]"
+        optional: true
+      error_total:
+        type: Integer
         optional: true
   UserImportRowError:
     kind: value_object
@@ -676,8 +695,23 @@ models:
         type: Integer
       column:
         type: String
+        optional: true
       code:
         type: String
+  UserImportMode:
+    kind: enum
+    description: CSV ユーザーインポートジョブの段階。preview は read-only な計画、apply は成功済み preview payload の現在状態に対する再計画と適用。
+    values: [dry_run, preview, apply]
+  UserCsvTransferPolicy:
+    kind: value_object
+    description: User export/import が共有する configurable safety policy。既定は 100,000 data rows・64 MiB/file・64 KiB/field。成功した User export は常に同じ policy 内にあり、そのまま preview できる。上限は tenant 容量の意味ではなく、一つの非同期 artifact に対する運用上の境界である。
+    fields:
+      max_rows:
+        type: Integer
+      max_bytes:
+        type: Integer
+      max_field_bytes:
+        type: Integer
   DataExportTargetKind:
     kind: enum
     description: CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。
@@ -692,7 +726,7 @@ models:
     values: [queued, running, succeeded, failed, canceled, expired]
   DataExportColumn:
     kind: value_object
-    description: エクスポート対象種別の allowlist に含まれる 1 列。key は安定した機械名、label は画面表示名、pii は個人情報を含むか。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。
+    description: エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の custom:<key> は実効 TenantUserAttributeSchema から tenant ごとに解決する。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。
     fields:
       key:
         type: String
@@ -2085,12 +2119,14 @@ interfaces:
     stability: internal
     access: internal
   ImportAdminUsers:
-    description: 管理者が CSV を dry_run または apply ジョブへ投入する。入力は UTF-8 (BOM 可)、最大 1 MiB・1,000 行・64 KiB/field とし、password/hash 列は拒否する。
+    description: 管理者が UTF-8 (BOM 可) CSV を streaming upload して副作用のない preview ジョブへ投入する。User export と共有する configurable transfer policy の既定は 100,000 data rows・64 MiB/file・64 KiB/field。payload は immutable artifact store に保存し、job params には tenant-scoped reference・server-computed SHA-256・size だけを保持する。ヘッダーは安定した機械キーの任意順・任意部分集合を許可し、未知・重複・password/hash 列をファイル単位で拒否する。
     input:
       csv:
         type: String
       mode:
-        type: String
+        type: UserImportMode
+        optional: true
+        description: 旧 JSON クライアント移行用。新しい streaming preview では Content-Type と endpoint semantics が preview を固定する。
     output:
       job:
         type: UserImportJob
@@ -2098,9 +2134,9 @@ interfaces:
       - InvalidRequestError
       - AccessDeniedError
     requires:
-      - size(input.csv) <= 1048576
+      - withinUserCsvTransferPolicy(input.csv)
     ensures:
-      - "input.mode != 'dry_run' || usersUnchanged(context.tenant_id)"
+      - usersUnchanged(context.tenant_id)
     stability: internal
     access:
       policies: [TenantAdministrator]
@@ -2114,11 +2150,48 @@ interfaces:
         request_form: body
         successful_status_codes:
           - "202"
+  ApplyAdminUserImport:
+    description: 管理者が同一 tenant の成功済み preview job を指定して CSV を適用する。CSV は再送せず、preview payload と source_sha256 を読み、現在の repository 状態に対して同じ deterministic planner で再計画する。ファイル全体は行単位部分成功、各行の profile・roles・required actions・custom attributes は単一 aggregate mutation として原子的に確定する。
+    input:
+      preview_job_id:
+        type: String
+    output:
+      job:
+        type: UserImportJob
+    errors:
+      - InvalidRequestError
+      - AccessDeniedError
+    requires:
+      - previewJobTenant(input.preview_job_id) == context.tenant_id
+      - previewJobStatus(input.preview_job_id) == 'succeeded'
+      - previewJobDigestMatchesPayload(input.preview_job_id)
+    ensures:
+      - everyAppliedImportRowIsAtomic(output.job.id)
+    stability: internal
+    access:
+      policies: [TenantAdministrator]
+      resource:
+        type: UserDirectory
+        id: context.tenant_id
+    bindings:
+      - kind: http
+        method: POST
+        path: "/api/admin/v1/users/imports/{preview_job_id}/apply"
+        successful_status_codes:
+          - "202"
   GetAdminUserImport:
-    description: 管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。
+    description: 管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。row error は immutable result artifact に固定件数の page chunk として保存し、tenant・job・error ordinal に結合した署名付き opaque cursor と limit（既定 100、最大 200）で双方向取得する。job result JSON は操作別件数、result artifact metadata、error_total だけを保持する。
     input:
       job_id:
         type: String
+      cursor:
+        type: String
+        optional: true
+        description: tenant・job・error ordinal に結合した署名付き opaque cursor。
+      limit:
+        type: Integer
+        optional: true
+        description: 返却する row error 件数（default 100、max 200）。
     output:
       job:
         type: UserImportJob
@@ -2136,8 +2209,25 @@ interfaces:
       - kind: http
         method: GET
         path: "/api/admin/v1/users/imports/{job_id}"
+        response_headers:
+          Link:
+            type: String
+            optional: true
+            description: RFC 8288 Web Linking。存在する方向の rel="first" / rel="prev" / rel="next" / rel="last" を返す。
+          Pagination-Total-Items:
+            type: Integer
+            description: この import job の row error 総数。
+          Pagination-Total-Pages:
+            type: Integer
+            description: error_total を requested limit で切り上げた総ページ数。空結果は 0。
+          Pagination-Current-Page:
+            type: Integer
+            description: cursor が表す現在ページ。空結果は 0。
+          Pagination-Page-Size:
+            type: Integer
+            description: requested limit。最終ページの実返却件数とは独立する。
   StartUserCsvExport:
-    description: 管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。列は User allowlist の部分集合に限り、status フィルタを引き継げる。202 とエクスポート id を返す。
+    description: 管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。CSV ヘッダーは表示 label ではなく要求した machine key と一致する。列は組み込み User allowlist と実効 TenantUserAttributeSchema の custom:<key> の部分集合に限り、status フィルタを引き継げる。生成 payload は import と同じ UserCsvTransferPolicy と immutable artifact store を使うため、成功した User export は無編集で preview できる。202 とエクスポート id を返す。
     input:
       request: { type: DataExportRequest }
     output:
@@ -3229,21 +3319,42 @@ scenarios:
     given:
       - "roles=[\"admin\"] のユーザー \"operator\" が管理画面のユーザー一覧を開いている"
     main_success:
-      - "管理者が CSV を dry_run で投入する"
-      - "job result に行番号と error code が表示され、User は作成されない"
-      - "管理者が修正済み CSV を apply で投入する"
-      - "有効行だけが UserCreated として作成され、無効行は結果に残る"
+      - "管理者が machine-key header [id,email,roles,custom:department] を任意順で含む CSV を事前検証へ投入する"
+      - "preview job は created / updated / unchanged / rejected と行番号・stable error code を返し、User は変更されない"
+      - "管理者が同一 tenant の成功済み preview job id を指定して apply を開始し、CSV は再送しない"
+      - "apply は preview payload と SHA-256 を検証し、現在の repository 状態に対して同じ planner で再計画する"
+      - "有効行は create または update され、無効行は rejected として残り、各行の profile・roles・required actions・custom attributes は原子的に保存される"
     extensions:
       - at: 1
-        condition: CSV が 1 MiB、1,000 行、64 KiB/field のいずれかを超える
+        condition: CSV が実効 UserCsvTransferPolicy の max_bytes、max_rows、max_field_bytes のいずれかを超える
         steps:
           - "インポート投入は拒否される"
           - "エラー \"csv_too_large\" または \"too_many_rows\" または \"field_too_large\""
       - at: 1
-        condition: CSV のヘッダー列が preferred_username,email,name,roles と一致しない (password 列を含む場合を含む)
+        condition: CSV のヘッダーに未知列、重複列、password または password_hash が含まれる
         steps:
           - "インポート投入は拒否される"
           - "エラー \"invalid_header\""
+      - at: 2
+        condition: 行の id と preferred_username が別 User を示す、識別子が無い、同一対象または同一最終 username を複数行が示す
+        steps:
+          - "対象行は rejected となり、stable error code を返す"
+      - at: 3
+        condition: preview job が存在しない、queued/failed、別 tenant、または保存 payload と digest が一致しない
+        steps:
+          - "apply は User を変更せず InvalidRequestError または AccessDeniedError で拒否される"
+      - at: 4
+        condition: preview 後に対象 User の状態が別操作で変更されている
+        steps:
+          - "apply は stale な preview plan を実行せず、現在状態から updated / unchanged / rejected を再判定する"
+      - at: 5
+        condition: 対象 User が source-managed である
+        steps:
+          - "対象行は source_managed の stable error code で rejected となり、User は変更されない"
+      - at: 5
+        condition: 1 行の validation、保存、または監査処理が途中で失敗する
+        steps:
+          - "その行の profile・roles・required actions・custom attributes は一部も保存されず、別の有効行は適用を継続する"
   管理者はユーザー一覧をページングしながら安定して閲覧できる:
     actor: TenantAdministrator
     given:
@@ -3295,7 +3406,7 @@ scenarios:
       - "worker が生成を開始し DataExportStarted が発行される"
       - "生成が完了して status は succeeded、downloadable は true、total_rows と byte_size が記録される"
       - "DataExportSucceeded が発行される"
-      - "管理者がファイルをダウンロードすると RFC 4180 の CSV が content-disposition attachment で返り、DataExportDownloaded が発行される"
+      - "管理者がファイルをダウンロードすると選択した machine key と一致する header の RFC 4180 CSV が content-disposition attachment で返り、DataExportDownloaded が発行される"
     extensions:
       - at: 1
         condition: 選択列に User allowlist 外の key (例 password_hash) が含まれる
@@ -3305,7 +3416,7 @@ scenarios:
       - at: 6
         condition: セル値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる
         steps:
-          - "値は formula injection を避けるためエスケープされて出力される"
+          - "値は formula injection を避ける可逆 prefix で出力され、import decoder は規定どおり prefix 1 文字だけを戻す"
       - at: 4
         condition: 生成が失敗する
         steps:
@@ -3325,6 +3436,35 @@ scenarios:
         condition: User エクスポートの id を /groups/exports や別テナントで指定する
         steps:
           - "取得・ダウンロード・取消は AccessDeniedError または InvalidRequestError で拒否される (per-type / per-tenant 分離)"
+  管理者はエクスポートしたユーザー CSV を安全に再適用できる:
+    actor: TenantAdministrator
+    given:
+      - "実効 TenantUserAttributeSchema に custom:department があり、10,000 User を含む一覧が実効 UserCsvTransferPolicy 内に収まる"
+    main_success:
+      - "管理者が import-compatible な組み込み列、required_actions、custom:department を machine-key header でエクスポートする"
+      - "worker は CSV を immutable artifact store へ streaming 出力し、job result には tenant-scoped payload reference、server-computed SHA-256、size、row count を保持する"
+      - "管理者が同じ 10,000 行 artifact を無編集で preview すると全行 unchanged となり、User は変更されない"
+      - "管理者が 1 行の email と custom:department だけを編集して再度 preview する"
+      - "変更行だけが updated、残りは unchanged と計画される"
+      - "管理者が成功済み preview job id を apply すると、指定した writable 列だけが更新され、未指定列は維持される"
+    extensions:
+      - at: 1
+        condition: 値が危険な先頭文字、既存 apostrophe、comma、quote、または改行を含む
+        steps:
+          - "reversible formula-safe codec と RFC 4180 quoting により decode(encode(value)) は元の値と一致する"
+      - at: 1
+        condition: 生成結果が実効 UserCsvTransferPolicy のいずれかの上限を超える
+        steps:
+          - "User export は csv_transfer_limit_exceeded で失敗し、再 import 不能な成功 artifact を作らない"
+          - "管理者は filter または列を絞って複数 artifact に分割できる"
+      - at: 4
+        condition: status、mfa_enrolled、created_at、updated_at、または id の値だけを編集する
+        steps:
+          - "読み取り専用列は受理して無視し、writable 列に差分がなければ unchanged とする"
+      - at: 4
+        condition: custom 属性の型、boolean、number、date、required custom 属性、または required_actions が不正である
+        steps:
+          - "対象行は stable error code で rejected となり、値を job view、error、audit event に含めない"
   管理者は特定グループのメンバー一覧を CSV にエクスポートできる:
     actor: TenantAdministrator
     given:
@@ -3498,7 +3638,7 @@ flows:
     entry: AdminUsers
     views:
       AdminUsers:
-        sees: ユーザー管理画面(正確な総ユーザー数、active 既定の一覧、件数・現在ページ、詳細、所属グループ、CSV インポート、URL に同期した検索・status・compact cursor、先頭/前/次/末尾移動)
+        sees: ユーザー管理画面(正確な総ユーザー数、active 既定の一覧、件数・現在ページ、詳細、所属グループ、CSV 事前検証・適用、URL に同期した検索・status・compact cursor、先頭/前/次/末尾移動)
         does:
           - action: list
             does: 画面を開く
@@ -3560,9 +3700,13 @@ flows:
             does: 付与済みの強制アクションを解除する
             interface: ClearUserRequiredAction
             to: AdminUsers
-          - action: import
-            does: CSV ファイルを選択して、dry_run または apply を実行する
+          - action: preview_import
+            does: CSV ファイルを選択して、副作用のない事前検証を実行する
             interface: ImportAdminUsers
+            to: AdminUsers
+          - action: apply_import
+            does: 成功済み事前検証の結果を確認し、CSV を再送せず現在状態へ適用する
+            interface: ApplyAdminUserImport
             to: AdminUsers
           - action: view_import
             does: インポートジョブを選んで、行ごとの検証・適用結果を表示する

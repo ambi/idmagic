@@ -20,6 +20,7 @@ type ScimRepository interface {
 	SaveUserRef(ctx context.Context, ref *ScimUserRef) error
 	FindUserRefByScimID(ctx context.Context, tenantID, scimID string) (*ScimUserRef, error)
 	FindUserRefByUserID(ctx context.Context, tenantID, userID string) (*ScimUserRef, error)
+	FindUserRefsByUserIDs(ctx context.Context, tenantID string, userIDs []string) ([]*ScimUserRef, error)
 	DeleteUserRef(ctx context.Context, tenantID, scimID string) error
 
 	SaveGroupRef(ctx context.Context, ref *ScimGroupRef) error

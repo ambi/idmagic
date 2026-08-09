@@ -32,6 +32,28 @@ describe('DataExportPage', () => {
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
+        if (url.endsWith('/api/admin/v1/tenant/user_attribute_schema')) {
+          return Promise.resolve(
+            response(200, {
+              tenant_id: 'tenant-1',
+              attributes: [
+                {
+                  key: 'department',
+                  label: 'Department',
+                  type: 'string',
+                  multi_valued: false,
+                  required: false,
+                  editable_by_user: false,
+                  visibility: 'private',
+                  pii: false,
+                },
+              ],
+              builtin: [],
+              created_at: '2026-08-10T00:00:00Z',
+              updated_at: '2026-08-10T00:00:00Z',
+            }),
+          )
+        }
         if (url.endsWith('/api/admin/v1/users/exports') && init?.method === 'POST') {
           started = true
           return Promise.resolve(response(202, queuedJob))
@@ -49,6 +71,8 @@ describe('DataExportPage', () => {
     expect(screen.queryByText('password_hash')).toBeNull()
     // The username column is offered and PII columns are badged.
     expect(screen.getByText(t.colUsername)).toBeInTheDocument()
+    expect(screen.getByText(t.colRequiredActions)).toBeInTheDocument()
+    expect(await screen.findByText('Department (custom:department)')).toBeInTheDocument()
     expect(screen.getAllByText(t.piiBadge).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: t.startExport }))

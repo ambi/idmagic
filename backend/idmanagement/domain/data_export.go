@@ -63,6 +63,7 @@ var exportColumns = map[DataExportTargetKind][]DataExportColumn{
 		{Key: "mfa_enrolled", Label: "MFA enrolled"},
 		{Key: "status", Label: "Status"},
 		{Key: "roles", Label: "Roles"},
+		{Key: "required_actions", Label: "Required actions"},
 		{Key: "created_at", Label: "Created at"},
 		{Key: "updated_at", Label: "Updated at"},
 	},

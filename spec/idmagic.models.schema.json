@@ -6476,7 +6476,7 @@
         "label",
         "pii"
       ],
-      "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は安定した機械名、label は画面表示名、pii は個人情報を含むか。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
+      "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の custom:<key> は実効 TenantUserAttributeSchema から tenant ごとに解決する。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
     },
     "DataExportDownloaded": {
       "type": "object",
@@ -17277,6 +17277,27 @@
       ],
       "description": "管理者がユーザーを作成した。初期パスワードと password_hash は監査イベントに含めない。"
     },
+    "UserCsvTransferPolicy": {
+      "type": "object",
+      "properties": {
+        "max_rows": {
+          "type": "integer"
+        },
+        "max_bytes": {
+          "type": "integer"
+        },
+        "max_field_bytes": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "max_rows",
+        "max_bytes",
+        "max_field_bytes"
+      ],
+      "description": "User export/import が共有する configurable safety policy。既定は 100,000 data rows・64 MiB/file・64 KiB/field。成功した User export は常に同じ policy 内にあり、そのまま preview できる。上限は tenant 容量の意味ではなく、一つの非同期 artifact に対する運用上の境界である。"
+    },
     "UserDeleted": {
       "type": "object",
       "properties": {
@@ -17445,13 +17466,29 @@
           "type": "string"
         },
         "mode": {
+          "$ref": "#/$defs/UserImportMode"
+        },
+        "source_sha256": {
+          "type": "string"
+        },
+        "preview_job_id": {
           "type": "string"
         },
         "total_rows": {
           "type": "integer"
         },
-        "accepted_rows": {
+        "created_rows": {
           "type": "integer"
+        },
+        "updated_rows": {
+          "type": "integer"
+        },
+        "unchanged_rows": {
+          "type": "integer"
+        },
+        "accepted_rows": {
+          "type": "integer",
+          "description": "旧クライアント移行用の互換フィールド。created_rows + updated_rows + unchanged_rows。新規クライアントは操作別件数を使う。"
         },
         "rejected_rows": {
           "type": "integer"
@@ -17461,6 +17498,9 @@
           "items": {
             "$ref": "#/$defs/UserImportRowError"
           }
+        },
+        "error_total": {
+          "type": "integer"
         }
       },
       "additionalProperties": false,
@@ -17469,10 +17509,18 @@
         "status",
         "mode",
         "total_rows",
-        "accepted_rows",
         "rejected_rows"
       ],
-      "description": "CSV ユーザーインポートジョブの公開ビュー。結果は行番号と stable error code を持ち、入力の password/hash は保存しない。"
+      "description": "CSV ユーザーインポートジョブの公開ビュー。preview は副作用を起こさず、apply は同一 tenant の成功済み preview と source_sha256 に結合する。結果は操作別件数と値を含まない stable row error を持ち、password/hash は入力・保存しない。"
+    },
+    "UserImportMode": {
+      "type": "string",
+      "enum": [
+        "dry_run",
+        "preview",
+        "apply"
+      ],
+      "description": "CSV ユーザーインポートジョブの段階。preview は read-only な計画、apply は成功済み preview payload の現在状態に対する再計画と適用。"
     },
     "UserImportRowError": {
       "type": "object",
@@ -17490,7 +17538,6 @@
       "additionalProperties": false,
       "required": [
         "row",
-        "column",
         "code"
       ],
       "description": "CSV の 1 行に対する安全な検証または適用エラー。値そのものは返さず、列名と stable code のみを返す。"

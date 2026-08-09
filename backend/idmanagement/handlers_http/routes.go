@@ -33,6 +33,7 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/admin/v1/users/:sub", func(c *echo.Context) error { return userhttp.HandleGetAdminUser(d, c) })
 	g.POST("/api/admin/v1/users", func(c *echo.Context) error { return userhttp.HandleCreateAdminUser(d, c) })
 	g.POST("/api/admin/v1/users/imports", func(c *echo.Context) error { return userhttp.HandleImportAdminUsers(d, c) })
+	g.POST("/api/admin/v1/users/imports/:preview_job_id/apply", func(c *echo.Context) error { return userhttp.HandleApplyAdminUserImport(d, c) })
 	g.GET("/api/admin/v1/users/imports/:job_id", func(c *echo.Context) error { return userhttp.HandleGetAdminUserImport(d, c) })
 	g.POST("/api/admin/v1/users/exports", func(c *echo.Context) error { return HandleStartUserExport(d, c) })
 	g.GET("/api/admin/v1/users/exports", func(c *echo.Context) error { return HandleListUserExports(d, c) })

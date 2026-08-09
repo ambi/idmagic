@@ -1,6 +1,6 @@
 ---
 context: idmanagement
-updated_at: 2026-08-09
+updated_at: 2026-08-10
 ---
 
 # Architecture: idmanagement
@@ -98,6 +98,71 @@ self-service edit cannot overwrite admin-managed attributes it has no business t
 discloses only `self_readable`/`claim_exposed` attributes back to the user. On deletion, the entire
 `attributes` map is cleared along with the typed core, so the sparse bag never outlives the tombstone.
 
+## User CSV Round Trip
+
+User CSV is an IdManagement-owned partial-upsert surface rather than a second provisioning authority.
+Its machine-key column vocabulary and reversible cell codec live in the user domain so export and
+import share one definition without depending on HTTP labels or UI locale. Built-in writable,
+read-only, and forbidden columns are closed sets; tenant-defined columns are added as
+`custom:<key>` only after resolving the effective attribute schema through a user use-case port. This
+keeps parsing deterministic while allowing tenant schemas to evolve independently of the CSV code.
+
+The domain parser preserves column presence separately from cell content because an absent column
+means "leave the aggregate unchanged", while an empty present column may mean "clear this field".
+It rejects unknown, duplicate, and secret-bearing headers before planning any row. The formula-safe
+codec prefixes dangerous spreadsheet-leading characters and pre-existing leading apostrophes in a
+reversible way, then delegates record quoting to the RFC 4180 CSV codec. Export and import therefore
+share the invariant `decode(encode(value)) == value`, including commas, quotes, and multiline values,
+instead of accepting the lossy apostrophe escaping used by report-only exports.
+
+User export and import share one configurable transfer policy rather than maintaining unrelated
+limits. Its default boundary is 100,000 data rows, 64 MiB per artifact, and 64 KiB per field. These are
+resource-safety limits for one asynchronous artifact, not a limit on tenant population. A User export
+that would cross the effective policy fails instead of producing a successful artifact that import
+cannot accept. The capacity contract includes an integration fixture with 10,000 users and the full
+built-in column set, so the round-trip guarantee is exercised above small migration-batch sizes.
+
+Parsing and serialization operate on `io.Reader` and `io.Writer`; they do not materialize the complete
+CSV as a string, a two-dimensional record slice, or base64 in job JSON. The parser enforces byte, row,
+and field limits incrementally. Planning builds bounded ID and username indexes from paged repository
+reads, and apply advances in bounded chunks while retaining a transaction boundary per row. This keeps
+worker memory independent of the total artifact size and avoids one repository query per CSV row.
+
+The user use-case layer owns one deterministic planner for preview and apply. It resolves an existing
+aggregate by immutable ID first and preferred username second, validates typed custom attributes and
+cross-row collisions, and produces `created`, `updated`, `unchanged`, or `rejected` without mutating
+state. Apply runs that same planner again against current repository state rather than executing the
+preview's stale mutation plan. This makes concurrent changes visible at apply time and prevents a
+preview from becoming an implicit optimistic-lock bypass.
+
+Preview accepts the CSV exactly once. A tenant-scoped immutable artifact store receives the stream and
+returns an opaque reference, server-computed SHA-256, byte size, and row count. Job params and results
+store that metadata and summaries only; they never contain CSV text or base64. The durable adapter uses
+bounded chunks so persistence and reads do not require one database value or process buffer as large as
+the artifact, while the memory adapter provides the same port for tests and local composition.
+
+Apply accepts only the successful preview job ID: it does not accept another CSV or a client-asserted
+digest. The job supplies the authorization, tenant, and lifecycle boundary; SHA-256 is an internal
+integrity check binding execution to the exact stored payload that was previewed. It is not a signature
+and does not replace authorization. An apply job records both the preview reference and digest so a
+worker also detects payload replacement or corruption after enqueueing. The payload is fixed, but the
+mutation plan is intentionally regenerated from current state. Large row-error sets are serialized into
+fixed-count pages in the same immutable chunked artifact store, never into a resource-specific error
+table or job JSON. The public result API uses the management API's tenant/query-bound signed cursor,
+`limit`, RFC 8288 `Link`, and `Pagination-*` headers. Its error ordinal maps directly to an artifact page
+and in-page position, so deep forward and backward reads do not scan preceding errors.
+
+Each accepted row crosses one aggregate-level mutation boundary covering profile fields, direct roles,
+required actions, custom attributes, persistence, and audit emission. A failure inside that boundary
+rejects the row without preserving an earlier sub-mutation, while failures in one row do not roll back
+other accepted rows. This combines row-level recoverability with predictable retries.
+
+Two use-case ports keep cross-context knowledge outside the CSV domain: an effective user-attribute
+schema reader supplies typed tenant definitions, and a source-ownership guard reports whether an
+existing User is externally managed. Their adapters are composed at the application boundary. Any
+missing or failed ownership answer is treated as managed for updates, because a CSV convenience path
+must not silently override a stronger upstream authority.
+
 ## Group Aggregate and Effective Roles
 
 `Group` is a tenant-scoped aggregate — `(id, tenant_id, name, description?, roles[], created_at,
@@ -172,6 +237,9 @@ gated by a dedicated `AdminAgentsManage` permission rather than reusing generic 
   (builtin catalog ∪ tenant schema) instead of two separate systems, with `pii` defaulting to `true`
   for safe-by-default handling of sensitive values
   ([ADR-040](../../decisions/ADR-040-user-custom-attribute-policy.md)).
+- User CSV uses a reversible partial-upsert dialect and applies only a server-held successful preview
+  payload, while replanning mutations against current state
+  ([ADR-161](../../decisions/ADR-161-reversible-user-csv-partial-upsert.md)).
 - `Group` was introduced as a tenant-scoped aggregate so roles can be granted and revoked as a bundle,
   with effective roles computed as a plain union of `user.roles` and group roles rather than a
   hierarchy with precedence or subtraction rules

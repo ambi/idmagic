@@ -1,6 +1,6 @@
 import { IconArrowLeft, IconClock, IconDownload, IconFileExport, IconX } from '@tabler/icons-react'
 import { useEffect, useMemo, useState } from 'react'
-import { type ExportCollection, tenantURL } from '../../api'
+import { type ExportCollection, getTenantUserAttributeSchema, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
 import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
@@ -8,7 +8,7 @@ import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
 import type { DataExportJob, DataExportStatus } from '../../types'
 import { dataExportDictionary } from './DataExportPage.i18n'
-import { EXPORT_COLUMNS, type ExportTarget } from './dataExportColumns'
+import { EXPORT_COLUMNS, type ExportColumn, type ExportTarget } from './dataExportColumns'
 
 const EXPORT_POLL_INTERVAL_MS = 2000
 
@@ -66,9 +66,13 @@ export function DataExportPage({
   backPath?: string
 }) {
   const t = useDictionary(dataExportDictionary)
-  const columns = EXPORT_COLUMNS[target]
+  const baseColumns = EXPORT_COLUMNS[target]
   const listPath = backPath || tenantURL(target === 'users' ? '/admin/users' : '/admin/groups')
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(columns.map((c) => c.key)))
+  const [customColumns, setCustomColumns] = useState<ExportColumn[]>([])
+  const columns = useMemo(() => [...baseColumns, ...customColumns], [baseColumns, customColumns])
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(baseColumns.map((c) => c.key)),
+  )
   const [exports, setExports] = useState<DataExportJob[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -89,6 +93,27 @@ export function DataExportPage({
   useEffect(() => {
     void refresh()
   }, [])
+
+  // User CSV の custom:<key> は固定 allowlist ではなく tenant の実効 schema から解決する。
+  // biome-ignore lint/correctness/useExhaustiveDependencies: target の画面マウント時だけ解決する
+  useEffect(() => {
+    if (target !== 'users') return
+    void getTenantUserAttributeSchema()
+      .then((schema) => {
+        const resolved = schema.attributes.map((attribute) => ({
+          key: `custom:${attribute.key}`,
+          label: `${attribute.label} (custom:${attribute.key})`,
+          pii: attribute.pii,
+        }))
+        setCustomColumns(resolved)
+        setSelected((previous) => {
+          const next = new Set(previous)
+          for (const column of resolved) next.add(column.key)
+          return next
+        })
+      })
+      .catch(() => setError(t.genericError))
+  }, [target])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: hasPendingExport の変化でのみ polling を張り直す
   useEffect(() => {
@@ -177,6 +202,13 @@ export function DataExportPage({
         {error && <Alert>{error}</Alert>}
         {notice && <Alert variant="success">{notice}</Alert>}
 
+        {target === 'users' && (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs leading-5 text-slate-600">
+            <p>{t.userTransferPolicyNotice}</p>
+            <p>{t.userRoundTripNotice}</p>
+          </div>
+        )}
+
         <Card className="shadow-[0_1px_2px_rgb(15_23_42/4%)]">
           <div className="grid gap-4 p-6">
             <h2 className="text-sm font-semibold text-slate-900">{t.selectColumnsHeading}</h2>
@@ -191,7 +223,7 @@ export function DataExportPage({
                     checked={selected.has(column.key)}
                     onChange={() => toggleColumn(column.key)}
                   />
-                  <span>{t[column.labelKey]}</span>
+                  <span>{column.label ?? (column.labelKey ? t[column.labelKey] : column.key)}</span>
                   {column.pii && (
                     <span className="ml-auto rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                       {t.piiBadge}

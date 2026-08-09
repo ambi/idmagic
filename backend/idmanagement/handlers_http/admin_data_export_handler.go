@@ -15,6 +15,8 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -23,12 +25,16 @@ import (
 )
 
 func exportUsecaseDeps(d Deps) idmusecases.DataExportDeps {
+	exporter := userusecases.UserCSVExporter{
+		Deps: userusecases.UserCSVExportDeps{
+			UserRepo: d.UserRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{Repository: d.AttrSchemaRepo}, Artifacts: d.UserCSVArtifacts,
+		},
+		Policy: userdomain.DefaultUserCSVTransferPolicy(),
+	}
 	return idmusecases.DataExportDeps{
-		UserRepo:  d.UserRepo,
-		GroupRepo: d.GroupRepo,
-		JobRepo:   d.JobRepo,
-		Emit:      d.LegacyEmit(),
-		QuotaRepo: d.QuotaRepo,
+		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, JobRepo: d.JobRepo,
+		UserCSVExporter: exporter, UserCSVArtifacts: d.UserCSVArtifacts,
+		Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo,
 	}
 }
 
@@ -163,6 +169,10 @@ func handleDownloadExport(d Deps, c *echo.Context, target idmdomain.DataExportTa
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename=\""+file.Filename+"\"")
+	if file.Reader != nil {
+		defer func() { _ = file.Reader.Close() }()
+		return c.Stream(http.StatusOK, file.ContentType, file.Reader)
+	}
 	return c.Blob(http.StatusOK, file.ContentType, file.Content)
 }
 

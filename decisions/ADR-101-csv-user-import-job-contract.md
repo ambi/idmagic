@@ -1,7 +1,8 @@
 ---
-status: accepted
+status: superseded
 authors: [tn]
 created_at: 2026-07-12
+superseded_by: [ADR-161]
 ---
 
 # ADR-101: CSV ユーザーインポートは検証・適用を別ジョブとして部分成功で処理する
@@ -11,6 +12,8 @@ created_at: 2026-07-12
 
 ## 決定
 UTF-8 (BOM 可) の CSV を API でサイズ・ヘッダー・行数を検証して `Jobs` の tenant-scoped job に格納する。`dry_run` と `apply` は別ジョブとし、どちらも行ごとの stable error code を結果へ記録する。apply は有効行だけを既存 `CreateUser` use case 経由で作成し、既存 username はエラーとして残す部分成功方式を採る。CSV は `preferred_username,email,name,roles` を必須ヘッダー順で受け付け、password/hash は受け付けない。
+
+この決定は、CSV を reversible partial upsert と successful preview-bound apply に拡張する ADR-161 により置き換えられた。
 
 ## 却下した代替案
 - HTTP 内で全件を同期作成する: リクエストのタイムアウトとクライアント再試行による重複を安全に扱えない。

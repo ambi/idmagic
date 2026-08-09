@@ -2,10 +2,10 @@ package usecases_test
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"io"
 	"strings"
 	"sync"
 	"testing"
@@ -17,6 +17,7 @@ import (
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -78,12 +79,17 @@ func seededExportDeps(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder)
 		t.Fatal(err)
 	}
 	rec := &eventRecorder{}
+	artifacts := usermemory.NewUserCSVArtifactStore()
+	exporter := userusecases.UserCSVExporter{
+		Deps: userusecases.UserCSVExportDeps{
+			UserRepo: users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: artifacts,
+		},
+		Policy: userdomain.DefaultUserCSVTransferPolicy(),
+	}
 	deps := idmusecases.DataExportDeps{
-		UserRepo:  users,
-		GroupRepo: groups,
-		JobRepo:   jobsmemory.NewJobRepository(),
-		Emit:      rec.emit,
-		Now:       func() time.Time { return now },
+		UserRepo: users, GroupRepo: groups, JobRepo: jobsmemory.NewJobRepository(),
+		UserCSVExporter: exporter, UserCSVArtifacts: artifacts,
+		Emit: rec.emit, Now: func() time.Time { return now },
 	}
 	return deps, rec
 }
@@ -130,10 +136,15 @@ func TestDataExportHandler_User_GeneratesInjectionSafeCSV(t *testing.T) {
 	if err := json.Unmarshal(raw, &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.TotalRows != 2 || result.ByteSize == 0 || result.CSVBase64 == "" {
+	if result.TotalRows != 2 || result.ByteSize == 0 || result.ArtifactRef == "" || result.SHA256 == "" || result.CSVBase64 != "" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
-	csvBytes, err := base64.StdEncoding.DecodeString(result.CSVBase64)
+	reader, _, err := deps.UserCSVArtifacts.OpenUserCSVArtifact(context.Background(), "acme", result.ArtifactRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	csvBytes, err := io.ReadAll(reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +152,7 @@ func TestDataExportHandler_User_GeneratesInjectionSafeCSV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("output not RFC4180: %v", err)
 	}
-	if len(records) != 3 || records[0][0] != "Preferred username" {
+	if len(records) != 3 || records[0][0] != "preferred_username" {
 		t.Fatalf("unexpected records: %+v", records)
 	}
 	// The =cmd|calc username must be neutralized after round-trip.

@@ -40,7 +40,6 @@ import type {
   DataExportJob,
   UserImportJob,
   UserImportJobSummary,
-  UserImportMode,
   WsFedClaimMappingRule,
   WsFedRelyingParty,
   WsFedTokenType,
@@ -259,17 +258,34 @@ export async function restoreAdminUser(csrfToken: string, id: string): Promise<A
   )
 }
 
-// importAdminUsers は CSV を dry_run (検証のみ) または apply (作成) ジョブとして投入する。
-// 202 応答はジョブ受理のみを表し、結果は getAdminUserImport の polling で取得する。
-export async function importAdminUsers(
+// preview へ CSV を一度だけ送信し、apply は成功した preview ID だけを参照する。
+export async function previewAdminUsers(
   csrfToken: string,
-  input: { csv: string; mode: UserImportMode },
+  file: File,
 ): Promise<UserImportJobSummary> {
-  return request('/api/admin/v1/users/imports', adminRequest(csrfToken, 'POST', input))
+  return request('/api/admin/v1/users/imports', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'text/csv', 'X-CSRF-Token': csrfToken },
+    body: file,
+  })
 }
 
-export async function getAdminUserImport(jobId: string): Promise<UserImportJob> {
-  return request(`/api/admin/v1/users/imports/${encodeURIComponent(jobId)}`)
+export async function applyAdminUserImport(
+  csrfToken: string,
+  previewJobId: string,
+): Promise<UserImportJobSummary> {
+  return request(
+    `/api/admin/v1/users/imports/${encodeURIComponent(previewJobId)}/apply`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function getAdminUserImport(jobId: string, cursor?: string) {
+  const query = new URLSearchParams({ limit: '100' })
+  if (cursor) query.set('cursor', cursor)
+  return requestPage<UserImportJob>(
+    `/api/admin/v1/users/imports/${encodeURIComponent(jobId)}?${query.toString()}`,
+  )
 }
 
 // wi-148: 管理者向け CSV データエクスポート (per-type)。各リソース種別ごとに同じ形の

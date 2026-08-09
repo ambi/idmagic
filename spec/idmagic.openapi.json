@@ -3127,14 +3127,14 @@
     "/api/admin/v1/users/imports": {
       "post": {
         "operationId": "ImportAdminUsers",
-        "summary": "管理者が CSV を dry_run または apply ジョブへ投入する。入力は UTF-8 (BOM 可)、最大 1 MiB・1,000 行・64 KiB/field とし、password/hash 列は拒否する。",
+        "summary": "管理者が UTF-8 (BOM 可) CSV を streaming upload して副作用のない preview ジョブへ投入する。User export と共有する configurable transfer policy の既定は 100,000 data rows・64 MiB/file・64 KiB/field。payload は immutable artifact store に保存し、job params には tenant-scoped reference・server-computed SHA-256・size だけを保持する。ヘッダーは安定した機械キーの任意順・任意部分集合を許可し、未知・重複・password/hash 列をファイル単位で拒否する。",
         "x-scl-requires": [
-          "size(input.csv) <= 1048576"
+          "withinUserCsvTransferPolicy(input.csv)"
         ],
         "x-scl-ensures": [
-          "input.mode != 'dry_run' || usersUnchanged(context.tenant_id)"
+          "usersUnchanged(context.tenant_id)"
         ],
-        "description": "Requires: size(input.csv) <= 1048576\n\nEnsures: input.mode != 'dry_run' || usersUnchanged(context.tenant_id)",
+        "description": "Requires: withinUserCsvTransferPolicy(input.csv)\n\nEnsures: usersUnchanged(context.tenant_id)",
         "security": [
           {
             "SclBearer": []
@@ -3161,13 +3161,13 @@
                     "type": "string"
                   },
                   "mode": {
-                    "type": "string"
+                    "$ref": "#/components/schemas/UserImportMode",
+                    "description": "旧 JSON クライアント移行用。新しい streaming preview では Content-Type と endpoint semantics が preview を固定する。"
                   }
                 },
                 "additionalProperties": false,
                 "required": [
-                  "csv",
-                  "mode"
+                  "csv"
                 ]
               }
             }
@@ -3224,10 +3224,19 @@
         }
       }
     },
-    "/api/admin/v1/users/imports/{job_id}": {
-      "get": {
-        "operationId": "GetAdminUserImport",
-        "summary": "管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。",
+    "/api/admin/v1/users/imports/{preview_job_id}/apply": {
+      "post": {
+        "operationId": "ApplyAdminUserImport",
+        "summary": "管理者が同一 tenant の成功済み preview job を指定して CSV を適用する。CSV は再送せず、preview payload と source_sha256 を読み、現在の repository 状態に対して同じ deterministic planner で再計画する。ファイル全体は行単位部分成功、各行の profile・roles・required actions・custom attributes は単一 aggregate mutation として原子的に確定する。",
+        "x-scl-requires": [
+          "previewJobTenant(input.preview_job_id) == context.tenant_id",
+          "previewJobStatus(input.preview_job_id) == 'succeeded'",
+          "previewJobDigestMatchesPayload(input.preview_job_id)"
+        ],
+        "x-scl-ensures": [
+          "everyAppliedImportRowIsAtomic(output.job.id)"
+        ],
+        "description": "Requires: previewJobTenant(input.preview_job_id) == context.tenant_id; previewJobStatus(input.preview_job_id) == 'succeeded'; previewJobDigestMatchesPayload(input.preview_job_id)\n\nEnsures: everyAppliedImportRowIsAtomic(output.job.id)",
         "security": [
           {
             "SclBearer": []
@@ -3238,14 +3247,33 @@
             "TenantAdministrator"
           ],
           "resource": {
-            "type": "UserImportJob",
-            "id": "input.job_id"
+            "type": "UserDirectory",
+            "id": "context.tenant_id"
           }
         },
         "x-scl-stability": "internal",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "preview_job_id": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false,
+                "required": [
+                  "preview_job_id"
+                ]
+              }
+            }
+          }
+        },
         "parameters": [
           {
-            "name": "job_id",
+            "name": "preview_job_id",
             "in": "path",
             "required": true,
             "schema": {
@@ -3254,7 +3282,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "202": {
             "description": "Success",
             "content": {
               "application/json": {
@@ -3304,10 +3332,144 @@
         }
       }
     },
+    "/api/admin/v1/users/imports/{job_id}": {
+      "get": {
+        "operationId": "GetAdminUserImport",
+        "summary": "管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。row error は immutable result artifact に固定件数の page chunk として保存し、tenant・job・error ordinal に結合した署名付き opaque cursor と limit（既定 100、最大 200）で双方向取得する。job result JSON は操作別件数、result artifact metadata、error_total だけを保持する。",
+        "security": [
+          {
+            "SclBearer": []
+          }
+        ],
+        "x-scl-access": {
+          "policies": [
+            "TenantAdministrator"
+          ],
+          "resource": {
+            "type": "UserImportJob",
+            "id": "input.job_id"
+          }
+        },
+        "x-scl-stability": "internal",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "tenant・job・error ordinal に結合した署名付き opaque cursor。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却する row error 件数（default 100、max 200）。"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "$ref": "#/components/schemas/UserImportJob"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "job"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。存在する方向の rel=\"first\" / rel=\"prev\" / rel=\"next\" / rel=\"last\" を返す。"
+                }
+              },
+              "Pagination-Total-Items": {
+                "schema": {
+                  "type": "integer",
+                  "description": "この import job の row error 総数。"
+                },
+                "required": true
+              },
+              "Pagination-Total-Pages": {
+                "schema": {
+                  "type": "integer",
+                  "description": "error_total を requested limit で切り上げた総ページ数。空結果は 0。"
+                },
+                "required": true
+              },
+              "Pagination-Current-Page": {
+                "schema": {
+                  "type": "integer",
+                  "description": "cursor が表す現在ページ。空結果は 0。"
+                },
+                "required": true
+              },
+              "Pagination-Page-Size": {
+                "schema": {
+                  "type": "integer",
+                  "description": "requested limit。最終ページの実返却件数とは独立する。"
+                },
+                "required": true
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Errors: AccessDeniedError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AccessDeniedError"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/admin/v1/users/exports": {
       "post": {
         "operationId": "StartUserCsvExport",
-        "summary": "管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。列は User allowlist の部分集合に限り、status フィルタを引き継げる。202 とエクスポート id を返す。",
+        "summary": "管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。CSV ヘッダーは表示 label ではなく要求した machine key と一致する。列は組み込み User allowlist と実効 TenantUserAttributeSchema の custom:<key> の部分集合に限り、status フィルタを引き継げる。生成 payload は import と同じ UserCsvTransferPolicy と immutable artifact store を使うため、成功した User export は無編集で preview できる。202 とエクスポート id を返す。",
         "x-scl-requires": [
           "size(input.request.columns) >= 1"
         ],
@@ -31877,7 +32039,7 @@
           "label",
           "pii"
         ],
-        "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は安定した機械名、label は画面表示名、pii は個人情報を含むか。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
+        "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の custom:<key> は実効 TenantUserAttributeSchema から tenant ごとに解決する。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
       },
       "DataExportDownloaded": {
         "type": "object",
@@ -42678,6 +42840,27 @@
         ],
         "description": "管理者がユーザーを作成した。初期パスワードと password_hash は監査イベントに含めない。"
       },
+      "UserCsvTransferPolicy": {
+        "type": "object",
+        "properties": {
+          "max_rows": {
+            "type": "integer"
+          },
+          "max_bytes": {
+            "type": "integer"
+          },
+          "max_field_bytes": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false,
+        "required": [
+          "max_rows",
+          "max_bytes",
+          "max_field_bytes"
+        ],
+        "description": "User export/import が共有する configurable safety policy。既定は 100,000 data rows・64 MiB/file・64 KiB/field。成功した User export は常に同じ policy 内にあり、そのまま preview できる。上限は tenant 容量の意味ではなく、一つの非同期 artifact に対する運用上の境界である。"
+      },
       "UserDeleted": {
         "type": "object",
         "properties": {
@@ -42846,13 +43029,29 @@
             "type": "string"
           },
           "mode": {
+            "$ref": "#/components/schemas/UserImportMode"
+          },
+          "source_sha256": {
+            "type": "string"
+          },
+          "preview_job_id": {
             "type": "string"
           },
           "total_rows": {
             "type": "integer"
           },
-          "accepted_rows": {
+          "created_rows": {
             "type": "integer"
+          },
+          "updated_rows": {
+            "type": "integer"
+          },
+          "unchanged_rows": {
+            "type": "integer"
+          },
+          "accepted_rows": {
+            "type": "integer",
+            "description": "旧クライアント移行用の互換フィールド。created_rows + updated_rows + unchanged_rows。新規クライアントは操作別件数を使う。"
           },
           "rejected_rows": {
             "type": "integer"
@@ -42862,6 +43061,9 @@
             "items": {
               "$ref": "#/components/schemas/UserImportRowError"
             }
+          },
+          "error_total": {
+            "type": "integer"
           }
         },
         "additionalProperties": false,
@@ -42870,10 +43072,18 @@
           "status",
           "mode",
           "total_rows",
-          "accepted_rows",
           "rejected_rows"
         ],
-        "description": "CSV ユーザーインポートジョブの公開ビュー。結果は行番号と stable error code を持ち、入力の password/hash は保存しない。"
+        "description": "CSV ユーザーインポートジョブの公開ビュー。preview は副作用を起こさず、apply は同一 tenant の成功済み preview と source_sha256 に結合する。結果は操作別件数と値を含まない stable row error を持ち、password/hash は入力・保存しない。"
+      },
+      "UserImportMode": {
+        "type": "string",
+        "enum": [
+          "dry_run",
+          "preview",
+          "apply"
+        ],
+        "description": "CSV ユーザーインポートジョブの段階。preview は read-only な計画、apply は成功済み preview payload の現在状態に対する再計画と適用。"
       },
       "UserImportRowError": {
         "type": "object",
@@ -42891,7 +43101,6 @@
         "additionalProperties": false,
         "required": [
           "row",
-          "column",
           "code"
         ],
         "description": "CSV の 1 行に対する安全な検証または適用エラー。値そのものは返さず、列名と stable code のみを返す。"
@@ -47770,6 +47979,22 @@
               ],
               "resourceTypes": [
                 "Group"
+              ]
+            }
+          },
+          {
+            "name": "ApplyAdminUserImport",
+            "memberOf": "policy:TenantAdministrator",
+            "policies": [
+              "TenantAdministrator"
+            ],
+            "resourceId": "context.tenant_id",
+            "appliesTo": {
+              "principalTypes": [
+                "User"
+              ],
+              "resourceTypes": [
+                "UserDirectory"
               ]
             }
           },

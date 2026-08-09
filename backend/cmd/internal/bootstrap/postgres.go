@@ -139,6 +139,8 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 	})
 
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
+	userCSVArtifacts := &userpostgres.UserCSVArtifactStore{Pool: resilientDB}
+	userImportCommitter := userpostgres.UserImportRowCommitter{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
 	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}
 	workflowCapture := &igpostgres.UserWorkflowCapture{Pool: resilientDB}
@@ -166,6 +168,8 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			GroupRepo:             &grouppostgres.GroupRepository{Pool: resilientDB},
 			AgentRepo:             &agentpostgres.AgentRepository{Pool: resilientDB},
 			EmailChangeTokenStore: &userpostgres.EmailChangeTokenStore{Pool: resilientDB},
+			UserCSVArtifacts:      userCSVArtifacts,
+			UserImportCommitter:   userImportCommitter,
 			UserMutationCommitter: userMutationCommitter,
 			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},

@@ -41,6 +41,27 @@ func (r *ScimRepository) FindUserRefByUserID(ctx context.Context, tenantID, user
 	return &ports.ScimUserRef{TenantID: row.TenantID, ScimID: row.ScimID, UserID: row.UserID}, nil
 }
 
+func (r *ScimRepository) FindUserRefsByUserIDs(ctx context.Context, tenantID string, userIDs []string) ([]*ports.ScimUserRef, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.Pool.Query(ctx, `SELECT tenant_id, scim_id, user_id FROM scim_user_refs
+        WHERE tenant_id = $1 AND user_id = ANY($2::uuid[])`, tenantID, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]*ports.ScimUserRef, 0, len(userIDs))
+	for rows.Next() {
+		ref := &ports.ScimUserRef{}
+		if err := rows.Scan(&ref.TenantID, &ref.ScimID, &ref.UserID); err != nil {
+			return nil, err
+		}
+		result = append(result, ref)
+	}
+	return result, rows.Err()
+}
+
 func (r *ScimRepository) DeleteUserRef(ctx context.Context, tenantID, scimID string) error {
 	return New(r.Pool).DeleteScimUserRef(ctx, DeleteScimUserRefParams{TenantID: tenantID, ScimID: scimID})
 }

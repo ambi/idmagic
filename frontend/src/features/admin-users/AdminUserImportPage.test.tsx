@@ -7,10 +7,18 @@ import { adminUsersDictionary } from './AdminUsersPage.i18n'
 
 const t = adminUsersDictionary.en
 
-const response = (status: number, body: unknown = {}) => ({
+const response = (status: number, body: unknown = {}, headers: Record<string, string> = {}) => ({
   ok: status >= 200 && status < 300,
   status,
+  headers: new Headers(headers),
   json: mock().mockResolvedValue(body),
+})
+
+const paginationHeaders = (totalItems: number) => ({
+  'Pagination-Total-Items': String(totalItems),
+  'Pagination-Total-Pages': totalItems === 0 ? '0' : '1',
+  'Pagination-Current-Page': totalItems === 0 ? '0' : '1',
+  'Pagination-Page-Size': '100',
 })
 
 describe('AdminUserImportPage', () => {
@@ -32,29 +40,67 @@ describe('AdminUserImportPage', () => {
   }
 
   it('previews row errors from dry run and applies only after explicit confirmation', async () => {
-    const dryRunResult = {
+    const previewResult = {
       total_rows: 2,
-      accepted_rows: 1,
+      created_rows: 1,
+      updated_rows: 0,
+      unchanged_rows: 0,
       rejected_rows: 1,
-      errors: [{ row: 3, column: 'email', code: 'invalid_email' }],
+      error_total: 1,
     }
-    const applyResult = { total_rows: 2, accepted_rows: 1, rejected_rows: 1, errors: [] }
+    const applyResult = {
+      total_rows: 2,
+      created_rows: 1,
+      updated_rows: 0,
+      unchanged_rows: 0,
+      rejected_rows: 1,
+      error_total: 0,
+    }
+    let previewBody: BodyInit | null | undefined
+    let applyBody: BodyInit | null | undefined
     stubGlobal(
       'fetch',
       mock((url: string, init?: RequestInit) => {
         if (url.endsWith('/api/admin/v1/users/imports') && init?.method === 'POST') {
-          const mode = (JSON.parse(String(init.body)) as { mode: string }).mode
-          const id = mode === 'apply' ? 'job-apply' : 'job-dry-run'
-          return Promise.resolve(response(202, { id, status: 'queued', mode }))
-        }
-        if (url.endsWith('/api/admin/v1/users/imports/job-dry-run')) {
+          previewBody = init.body
           return Promise.resolve(
-            response(200, { id: 'job-dry-run', status: 'succeeded', result: dryRunResult }),
+            response(202, { id: 'job-preview', status: 'queued', mode: 'preview' }),
           )
         }
-        if (url.endsWith('/api/admin/v1/users/imports/job-apply')) {
+        if (url.endsWith('/api/admin/v1/users/imports/job-preview/apply')) {
+          applyBody = init?.body
           return Promise.resolve(
-            response(200, { id: 'job-apply', status: 'succeeded', result: applyResult }),
+            response(202, { id: 'job-apply', status: 'queued', mode: 'apply' }),
+          )
+        }
+        if (url.includes('/api/admin/v1/users/imports/job-preview')) {
+          return Promise.resolve(
+            response(
+              200,
+              {
+                id: 'job-preview',
+                status: 'succeeded',
+                mode: 'preview',
+                result: previewResult,
+                errors: [{ row: 3, column: 'email', code: 'invalid_email' }],
+              },
+              paginationHeaders(1),
+            ),
+          )
+        }
+        if (url.includes('/api/admin/v1/users/imports/job-apply')) {
+          return Promise.resolve(
+            response(
+              200,
+              {
+                id: 'job-apply',
+                status: 'succeeded',
+                mode: 'apply',
+                result: applyResult,
+                errors: [],
+              },
+              paginationHeaders(0),
+            ),
           )
         }
         throw new Error(`unexpected fetch ${url}`)
@@ -64,21 +110,18 @@ describe('AdminUserImportPage', () => {
     await renderWithRouter(<AdminUserImportPage csrfToken="csrf" />)
     await selectFile('preferred_username,email,name,roles\njiro,not-an-email,Jiro,\n')
 
-    fireEvent.click(screen.getByRole('button', { name: t.runDryRun }))
+    fireEvent.click(screen.getByRole('button', { name: t.runPreview }))
     expect(await screen.findByText(t.importErrorInvalidEmail)).toBeInTheDocument()
+    expect(previewBody).toBeInstanceOf(File)
 
     fireEvent.click(screen.getByRole('button', { name: t.applyImport }))
     const dialog = await screen.findByRole('dialog')
-    expect(fetch).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ body: expect.stringContaining('"apply"') }),
-    )
-
     fireEvent.click(within(dialog).getByRole('button', { name: t.applyImportConfirmButton }))
 
     expect(
       await screen.findByText(t.importApplySuccessNotice.replace('{count}', '1')),
     ).toBeInTheDocument()
+    expect(applyBody).toBeUndefined()
   })
 
   it('shows a translated message when the CSV is rejected before a job is created', async () => {
@@ -90,7 +133,7 @@ describe('AdminUserImportPage', () => {
     await renderWithRouter(<AdminUserImportPage csrfToken="csrf" />)
     await selectFile('preferred_username,email,name,roles,password\njiro,a@b.com,Jiro,,secret\n')
 
-    fireEvent.click(screen.getByRole('button', { name: t.runDryRun }))
+    fireEvent.click(screen.getByRole('button', { name: t.runPreview }))
 
     expect(await screen.findByText(t.importErrorInvalidHeader)).toBeInTheDocument()
   })

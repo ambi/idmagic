@@ -75,6 +75,13 @@ func assembleMemory() (*Dependencies, error) {
 	// data_key_reencryption job to migrate (dev/test only, ADR-139).
 	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
 	userRepo := usermemory.NewUserRepository()
+	userCSVArtifacts := usermemory.NewUserCSVArtifactStore()
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
+	auditEventRepo := auditmemory.NewAuditEventStore(0)
+	userImportCommitter := usermemory.UserImportRowCommitter{
+		Users: userRepo, PasswordHistory: passwordHistoryRepo, Quota: quotaRepo, Audit: auditEventRepo,
+	}
 	workflowRepo := igmemory.NewLifecycleWorkflowRepository()
 	workflowRunRepo := igmemory.NewLifecycleWorkflowRunRepository()
 	workflowCapture := &igmemory.UserWorkflowCapture{Users: userRepo, Runs: workflowRunRepo}
@@ -98,13 +105,15 @@ func assembleMemory() (*Dependencies, error) {
 			BrandingRepo:          tenancymemory.NewTenantBrandingRepository(),
 			BrandingAssetStore:    tenancymemory.NewTenantBrandingAssetStore(),
 			NotificationTemplates: tenancymemory.NewNotificationTemplateRepository(),
-			QuotaRepo:             tenancymemory.NewQuotaRepository(),
+			QuotaRepo:             quotaRepo,
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,
 			GroupRepo:             groupmemory.NewGroupRepository(),
 			AgentRepo:             agentmemory.NewAgentRepository(),
 			EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(),
+			UserCSVArtifacts:      userCSVArtifacts,
+			UserImportCommitter:   userImportCommitter,
 			UserMutationCommitter: userMutationCommitter,
 			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},
@@ -122,7 +131,7 @@ func assembleMemory() (*Dependencies, error) {
 			FederationSecretResolver: federationsecrets.Resolver{},
 			MfaFactorRepo:            totpmemory.NewMfaFactorRepository(),
 			MfaEnrollmentBypassRepo:  mfamemory.NewMfaEnrollmentBypassRepository(),
-			PasswordHistoryRepo:      passwordmemory.NewPasswordHistoryRepository(),
+			PasswordHistoryRepo:      passwordHistoryRepo,
 			PasswordResetTokenStore:  passwordmemory.NewPasswordResetTokenStore(),
 			SessionStore:             sessionmemory.NewSessionStore(),
 			WebAuthnCredentialRepo:   webauthnmemory.NewWebAuthnCredentialRepository(),
@@ -159,7 +168,7 @@ func assembleMemory() (*Dependencies, error) {
 		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
 		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
 		Audit: audit.Module{
-			AuditEventRepo:  auditmemory.NewAuditEventStore(0),
+			AuditEventRepo:  auditEventRepo,
 			TenantSaltStore: salts_memory.NewInMemoryTenantSaltStore(),
 		},
 		WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},

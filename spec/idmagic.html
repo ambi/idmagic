@@ -4763,7 +4763,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
       <div class="eyebrow">Bounded Context · contexts/identity-management.yaml</div>
       <h1>IdManagement</h1>
     </header>
-    <div class="stats"><a class="stat" href="#context-idmanagement-glossary"><span class="stat-num">23</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-idmanagement-models"><span class="stat-num">116</span><span class="stat-label">models</span></a><a class="stat" href="#context-idmanagement-interfaces"><span class="stat-num">57</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-idmanagement-states"><span class="stat-num">4</span><span class="stat-label">states</span></a><a class="stat" href="#context-idmanagement-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-idmanagement-objectives"><span class="stat-num">3</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-idmanagement-scenarios"><span class="stat-num">22</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-idmanagement-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
+    <div class="stats"><a class="stat" href="#context-idmanagement-glossary"><span class="stat-num">23</span><span class="stat-label">glossary</span></a><a class="stat" href="#context-idmanagement-models"><span class="stat-num">118</span><span class="stat-label">models</span></a><a class="stat" href="#context-idmanagement-interfaces"><span class="stat-num">58</span><span class="stat-label">interfaces</span></a><a class="stat" href="#context-idmanagement-states"><span class="stat-num">4</span><span class="stat-label">states</span></a><a class="stat" href="#context-idmanagement-authorization"><span class="stat-num">3</span><span class="stat-label">authorization</span></a><a class="stat" href="#context-idmanagement-objectives"><span class="stat-num">3</span><span class="stat-label">objectives</span></a><a class="stat" href="#context-idmanagement-scenarios"><span class="stat-num">23</span><span class="stat-label">scenarios</span></a><a class="stat" href="#context-idmanagement-flows"><span class="stat-num">8</span><span class="stat-label">flows</span></a></div>
   </section>
   <section id="context-idmanagement-glossary">
     <h2>Glossary <span class="count">23</span></h2>
@@ -4813,8 +4813,8 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
 <article class="vocab-entry" id="context-idmanagement-glossary-userimport">
       <div class="vocab-name"><code class="name">UserImport</code></div>
       <div class="vocab-body">
-        <p class="def">管理者が UTF-8 CSV を使ってユーザーを検証または作成する非同期操作。CSV は preferred_username,email,name,roles ヘッダーを持ち、パスワードや password_hash を含めない。</p>
-        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">CSV user import</span> <span class="chip chip-alias">bulk user import</span> <span class="chip chip-alias">ユーザー一括インポート</span> <span class="chip chip-alias">アカウント無効化</span></div>
+        <p class="def">管理者が UTF-8 CSV を使ってユーザーの作成・部分更新を事前検証し、成功済み preview に結合して非同期適用する操作。CSV は安定した機械キーのヘッダーを任意順・任意部分集合で持ち、パスワードや password_hash を含めない。</p>
+        <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">CSV user import</span> <span class="chip chip-alias">bulk user import</span> <span class="chip chip-alias">ユーザー一括インポート</span></div>
 
 
       </div>
@@ -4992,7 +4992,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
     </article></div>
   </section>
 <section id="context-idmanagement-models">
-    <h2>Models <span class="count">116</span></h2>
+    <h2>Models <span class="count">118</span></h2>
 
     <div class="group">
       <h3 class="grp-title">entity <span class="count">8</span></h3>
@@ -5551,7 +5551,7 @@ WS-Fed subject / SCIM リソース参照。protocol vocabulary (`sub` 等) を s
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">value object <span class="count">36</span></h3>
+      <h3 class="grp-title">value object <span class="count">37</span></h3>
       <div class="cards"><article class="card" id="scl-IdManagement/model/UserAttributeDef">
     <header><h3>UserAttributeDef</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">IdManagement/model/UserAttributeDef</code></header>
     <p class="desc">属性 1 件の定義。Tenancy context が所有する BuiltinUserAttributeDefs / TenantUserAttributeSchema の published language stub。</p>
@@ -6095,7 +6095,7 @@ editable_attributes は editable_by_user=true の定義一覧で、UI のフォ�
   </article>
 <article class="card" id="scl-IdManagement/model/UserImportJob">
     <header><h3>UserImportJob</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">IdManagement/model/UserImportJob</code></header>
-    <p class="desc">CSV ユーザーインポートジョブの公開ビュー。結果は行番号と stable error code を持ち、入力の password/hash は保存しない。</p>
+    <p class="desc">CSV ユーザーインポートジョブの公開ビュー。preview は副作用を起こさず、apply は同一 tenant の成功済み preview と source_sha256 に結合する。結果は操作別件数と値を含まない stable row error を持ち、password/hash は入力・保存しない。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -6113,8 +6113,20 @@ editable_attributes は editable_by_user=true の定義一覧で、UI のフォ�
     <td></td>
   </tr><tr>
     <td><code class="name">mode</code></td>
-    <td><code class="type">String</code></td>
+    <td><code class="type">UserImportMode</code></td>
     <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">source_sha256</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">preview_job_id</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
@@ -6124,11 +6136,29 @@ editable_attributes は editable_by_user=true の定義一覧で、UI のフォ�
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
-    <td><code class="name">accepted_rows</code></td>
+    <td><code class="name">created_rows</code></td>
     <td><code class="type">Integer</code></td>
-    <td><span class="badge badge-required">required</span></td>
+    <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">updated_rows</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">unchanged_rows</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">accepted_rows</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td>旧クライアント移行用の互換フィールド。created_rows + updated_rows + unchanged_rows。新規クライアントは操作別件数を使う。</td>
   </tr><tr>
     <td><code class="name">rejected_rows</code></td>
     <td><code class="type">Integer</code></td>
@@ -6138,6 +6168,12 @@ editable_attributes は editable_by_user=true の定義一覧で、UI のフォ�
   </tr><tr>
     <td><code class="name">errors</code></td>
     <td><code class="type">UserImportRowError[]</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">error_total</code></td>
+    <td><code class="type">Integer</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
@@ -6160,7 +6196,7 @@ editable_attributes は editable_by_user=true の定義一覧で、UI のフォ�
   </tr><tr>
     <td><code class="name">column</code></td>
     <td><code class="type">String</code></td>
-    <td><span class="badge badge-required">required</span></td>
+    <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td></td>
   </tr><tr>
@@ -6173,9 +6209,37 @@ editable_attributes は editable_by_user=true の定義一覧で、UI のフォ�
   </table>
 
   </article>
+<article class="card" id="scl-IdManagement/model/UserCsvTransferPolicy">
+    <header><h3>UserCsvTransferPolicy</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">IdManagement/model/UserCsvTransferPolicy</code></header>
+    <p class="desc">User export/import が共有する configurable safety policy。既定は 100,000 data rows・64 MiB/file・64 KiB/field。成功した User export は常に同じ policy 内にあり、そのまま preview できる。上限は tenant 容量の意味ではなく、一つの非同期 artifact に対する運用上の境界である。</p>
+
+    <table class="fields">
+    <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
+    <tbody><tr>
+    <td><code class="name">max_rows</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">max_bytes</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr><tr>
+    <td><code class="name">max_field_bytes</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td><span class="muted">—</span></td>
+    <td></td>
+  </tr></tbody>
+  </table>
+
+  </article>
 <article class="card" id="scl-IdManagement/model/DataExportColumn">
     <header><h3>DataExportColumn</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">IdManagement/model/DataExportColumn</code></header>
-    <p class="desc">エクスポート対象種別の allowlist に含まれる 1 列。key は安定した機械名、label は画面表示名、pii は個人情報を含むか。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。</p>
+    <p class="desc">エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の custom:&lt;key&gt; は実効 TenantUserAttributeSchema から tenant ごとに解決する。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -6930,7 +6994,7 @@ required actions を portal home の summary card 用に返す。
   </article></div>
     </div>
 <div class="group">
-      <h3 class="grp-title">enum <span class="count">12</span></h3>
+      <h3 class="grp-title">enum <span class="count">13</span></h3>
       <div class="cards"><article class="card" id="scl-IdManagement/model/GroupMembershipType">
     <header><h3>GroupMembershipType</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">IdManagement/model/GroupMembershipType</code></header>
     <p class="desc">Group の所属管理方式。作成後は変更できない。</p>
@@ -6992,6 +7056,13 @@ required actions を portal home の summary card 用に返す。
     <p class="desc">属性値の sum type discriminator。Tenancy context が所有する定義の published language stub。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">String</span> <span class="chip chip-enum">Number</span> <span class="chip chip-enum">Boolean</span> <span class="chip chip-enum">Date</span> <span class="chip chip-enum">StringArray</span></div>
+
+  </article>
+<article class="card" id="scl-IdManagement/model/UserImportMode">
+    <header><h3>UserImportMode</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">IdManagement/model/UserImportMode</code></header>
+    <p class="desc">CSV ユーザーインポートジョブの段階。preview は read-only な計画、apply は成功済み preview payload の現在状態に対する再計画と適用。</p>
+
+    <div class="enum-vals"><span class="chip chip-enum">dry_run</span> <span class="chip chip-enum">preview</span> <span class="chip chip-enum">apply</span></div>
 
   </article>
 <article class="card" id="scl-IdManagement/model/DataExportTargetKind">
@@ -8671,7 +8742,7 @@ required action があれば自動解除する。
     </div>
   </section>
 <section id="context-idmanagement-interfaces">
-    <h2>Interfaces <span class="count">57</span></h2>
+    <h2>Interfaces <span class="count">58</span></h2>
     <p class="lead">外部との契約。入力・出力・エラー・発行イベントと、それを露出する複数のトランスポート (bindings)。</p>
     <div class="cards"><article class="card" id="scl-IdManagement/interface/GetEmailVerificationContext">
     <header><h3>GetEmailVerificationContext</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">IdManagement/interface/GetEmailVerificationContext</code></header>
@@ -9076,7 +9147,7 @@ case-insensitive contains 検索し、status とともに絞り込む。cursor �
   </article>
 <article class="card" id="scl-IdManagement/interface/ImportAdminUsers">
     <header><h3>ImportAdminUsers</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>UserDirectory:context.tenant_id</code><code class="canonical-ref">IdManagement/interface/ImportAdminUsers</code></header>
-    <p class="desc">管理者が CSV を dry_run または apply ジョブへ投入する。入力は UTF-8 (BOM 可)、最大 1 MiB・1,000 行・64 KiB/field とし、password/hash 列は拒否する。</p>
+    <p class="desc">管理者が UTF-8 (BOM 可) CSV を streaming upload して副作用のない preview ジョブへ投入する。User export と共有する configurable transfer policy の既定は 100,000 data rows・64 MiB/file・64 KiB/field。payload は immutable artifact store に保存し、job params には tenant-scoped reference・server-computed SHA-256・size だけを保持する。ヘッダーは安定した機械キーの任意順・任意部分集合を許可し、未知・重複・password/hash 列をファイル単位で拒否する。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -9089,6 +9160,42 @@ case-insensitive contains 検索し、status とともに絞り込む。cursor �
     <td></td>
   </tr><tr>
     <td><code class="name">mode</code></td>
+    <td><code class="type">UserImportMode</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td>旧 JSON クライアント移行用。新しい streaming preview では Content-Type と endpoint semantics が preview を固定する。</td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io">
+    <div class="label">Output</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">job</code></td>
+    <td><code class="type">UserImportJob</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td></td>
+  </tr></tbody>
+    </table>
+  </div>
+<div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">withinUserCsvTransferPolicy(input.csv)</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">usersUnchanged(context.tenant_id)</code></li></ul></div>
+<div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
+    <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/v1/users/imports</code> <span class="chip chip-hint">response: 202</span> <span class="chip chip-hint">form: body</span></div></div>
+  </div></div></div>
+  </article>
+<article class="card" id="scl-IdManagement/interface/ApplyAdminUserImport">
+    <header><h3>ApplyAdminUserImport</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>UserDirectory:context.tenant_id</code><code class="canonical-ref">IdManagement/interface/ApplyAdminUserImport</code></header>
+    <p class="desc">管理者が同一 tenant の成功済み preview job を指定して CSV を適用する。CSV は再送せず、preview payload と source_sha256 を読み、現在の repository 状態に対して同じ deterministic planner で再計画する。ファイル全体は行単位部分成功、各行の profile・roles・required actions・custom attributes は単一 aggregate mutation として原子的に確定する。</p>
+
+    <div class="io">
+    <div class="label">Input</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">preview_job_id</code></td>
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
@@ -9108,16 +9215,16 @@ case-insensitive contains 検索し、status とともに絞り込む。cursor �
     </table>
   </div>
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
-<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">size(input.csv) &lt;= 1048576</code></li></ul></div>
-<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">input.mode != 'dry_run' || usersUnchanged(context.tenant_id)</code></li></ul></div>
+<div class="clause"><div class="clause-label muted">requires</div><ul class="expr-list"><li><code class="expr">previewJobTenant(input.preview_job_id) == context.tenant_id</code></li><li><code class="expr">previewJobStatus(input.preview_job_id) == 'succeeded'</code></li><li><code class="expr">previewJobDigestMatchesPayload(input.preview_job_id)</code></li></ul></div>
+<div class="clause"><div class="clause-label ok">ensures</div><ul class="expr-list"><li><code class="expr">everyAppliedImportRowIsAtomic(output.job.id)</code></li></ul></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/v1/users/imports</code> <span class="chip chip-hint">response: 202</span> <span class="chip chip-hint">form: body</span></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-post">POST</span> <code class="path">/api/admin/v1/users/imports/{preview_job_id}/apply</code> <span class="chip chip-hint">response: 202</span></div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-IdManagement/interface/GetAdminUserImport">
     <header><h3>GetAdminUserImport</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>UserImportJob:input.job_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">IdManagement/interface/GetAdminUserImport</code></header>
-    <p class="desc">管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。</p>
+    <p class="desc">管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。row error は immutable result artifact に固定件数の page chunk として保存し、tenant・job・error ordinal に結合した署名付き opaque cursor と limit（既定 100、最大 200）で双方向取得する。job result JSON は操作別件数、result artifact metadata、error_total だけを保持する。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -9128,6 +9235,16 @@ case-insensitive contains 検索し、status とともに絞り込む。cursor �
     <td><code class="type">String</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td></td>
+  </tr><tr>
+    <td><code class="name">cursor</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td>tenant・job・error ordinal に結合した署名付き opaque cursor。</td>
+  </tr><tr>
+    <td><code class="name">limit</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td>返却する row error 件数（default 100、max 200）。</td>
   </tr></tbody>
     </table>
   </div>
@@ -9146,12 +9263,43 @@ case-insensitive contains 検索し、status とともに絞り込む。cursor �
 <div class="io"><div class="label">Errors</div><div class="chip-row"><a class="chip chip-error-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> <a class="chip chip-error-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a></div></div>
 <div class="io"><div class="label">Bindings (1)</div><div class="bindings"><div class="binding binding-http">
     <div class="binding-kind"><span class="badge badge-bkind-http">http</span></div>
-    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/v1/users/imports/{job_id}</code></div></div>
+    <div class="binding-body"><div class="binding-head"><span class="badge badge-method-get">GET</span> <code class="path">/api/admin/v1/users/imports/{job_id}</code></div><div class="io">
+    <div class="label">HTTP Response Headers</div>
+    <table class="fields">
+      <thead><tr><th>Slot</th><th>Type</th><th>Presence</th><th>Description</th></tr></thead>
+      <tbody><tr>
+    <td><code class="name">Link</code></td>
+    <td><code class="type">String</code></td>
+    <td><span class="badge badge-optional">optional</span></td>
+    <td>RFC 8288 Web Linking。存在する方向の rel=&quot;first&quot; / rel=&quot;prev&quot; / rel=&quot;next&quot; / rel=&quot;last&quot; を返す。</td>
+  </tr><tr>
+    <td><code class="name">Pagination-Total-Items</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td>この import job の row error 総数。</td>
+  </tr><tr>
+    <td><code class="name">Pagination-Total-Pages</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td>error_total を requested limit で切り上げた総ページ数。空結果は 0。</td>
+  </tr><tr>
+    <td><code class="name">Pagination-Current-Page</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td>cursor が表す現在ページ。空結果は 0。</td>
+  </tr><tr>
+    <td><code class="name">Pagination-Page-Size</code></td>
+    <td><code class="type">Integer</code></td>
+    <td><span class="badge badge-required">required</span></td>
+    <td>requested limit。最終ページの実返却件数とは独立する。</td>
+  </tr></tbody>
+    </table>
+  </div></div>
   </div></div></div>
   </article>
 <article class="card" id="scl-IdManagement/interface/StartUserCsvExport">
     <header><h3>StartUserCsvExport</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>UserDirectory:context.tenant_id</code><code class="canonical-ref">IdManagement/interface/StartUserCsvExport</code></header>
-    <p class="desc">管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。列は User allowlist の部分集合に限り、status フィルタを引き継げる。202 とエクスポート id を返す。</p>
+    <p class="desc">管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。CSV ヘッダーは表示 label ではなく要求した machine key と一致する。列は組み込み User allowlist と実効 TenantUserAttributeSchema の custom:&lt;key&gt; の部分集合に限り、status フィルタを引き継げる。生成 payload は import と同じ UserCsvTransferPolicy と immutable artifact store を使うため、成功した User export は無編集で preview できる。202 とエクスポート id を返す。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -11212,7 +11360,7 @@ limit 上限 (200) 付近の深い forward/backward page でも先頭ページ�
       </article></div>
   </section>
 <section id="context-idmanagement-scenarios">
-    <h2>Scenarios <span class="count">22</span></h2>
+    <h2>Scenarios <span class="count">23</span></h2>
     <p class="lead">主成功経路と extension で表す black-box の受け入れ例。</p>
     <div class="cards"><article class="card scenario" id="scl-IdManagement/scenario/federated~20JIT~E3~81~AFpassword~20credential~E3~82~92~E4~BD~9C~E3~82~89~E3~81~9Aactive~20User~E3~82~92~E4~BD~9C~E6~88~90~E3~81~99~E3~82~8B">
         <header><h3>federated JITはpassword credentialを作らずactive Userを作成する</h3><span class="chip chip-actor">EndUser</span><code class="canonical-ref">IdManagement/scenario/federated JITはpassword credentialを作らずactive Userを作成する</code></header>
@@ -11248,13 +11396,28 @@ limit 上限 (200) 付近の深い forward/backward page でも先頭ページ�
         <header><h3>管理者は CSV を検証して有効な行だけをインポートできる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">IdManagement/scenario/管理者は CSV を検証して有効な行だけをインポートできる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">roles=[&quot;admin&quot;] のユーザー &quot;operator&quot; が管理画面のユーザー一覧を開いている</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が CSV を dry_run で投入する</li><li class="scn-step">job result に行番号と error code が表示され、<a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> は作成されない</li><li class="scn-step">管理者が修正済み CSV を apply で投入する</li><li class="scn-step">有効行だけが <a class="chip chip-ref" href="#scl-IdManagement/model/UserCreated">UserCreated</a> として作成され、無効行は結果に残る</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が machine-key header [id,email,roles,custom:department] を任意順で含む CSV を事前検証へ投入する</li><li class="scn-step">preview job は created / updated / unchanged / rejected と行番号・stable error code を返し、<a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> は変更されない</li><li class="scn-step">管理者が同一 tenant の成功済み preview job id を指定して apply を開始し、CSV は再送しない</li><li class="scn-step">apply は preview payload と SHA-256 を検証し、現在の repository 状態に対して同じ planner で再計画する</li><li class="scn-step">有効行は create または update され、無効行は rejected として残り、各行の profile・roles・required actions・custom attributes は原子的に保存される</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
-            <header><span class="chip chip-hint">at 1</span><code class="name">CSV が 1 MiB、1,000 行、64 KiB/field のいずれかを超える</code></header>
+            <header><span class="chip chip-hint">at 1</span><code class="name">CSV が実効 UserCsvTransferPolicy の max_bytes、max_rows、max_field_bytes のいずれかを超える</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">インポート投入は拒否される</li><li class="scn-step">エラー &quot;csv_too_large&quot; または &quot;too_many_rows&quot; または &quot;field_too_large&quot;</li></ol></div>
           </article><article class="requirement">
-            <header><span class="chip chip-hint">at 1</span><code class="name">CSV のヘッダー列が preferred_username,email,name,roles と一致しない (password 列を含む場合を含む)</code></header>
+            <header><span class="chip chip-hint">at 1</span><code class="name">CSV のヘッダーに未知列、重複列、password または password_hash が含まれる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">インポート投入は拒否される</li><li class="scn-step">エラー &quot;invalid_header&quot;</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 2</span><code class="name">行の id と preferred_username が別 User を示す、識別子が無い、同一対象または同一最終 username を複数行が示す</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">対象行は rejected となり、stable error code を返す</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 3</span><code class="name">preview job が存在しない、queued/failed、別 tenant、または保存 payload と digest が一致しない</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">apply は <a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> を変更せず <a class="chip chip-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> または <a class="chip chip-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> で拒否される</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 4</span><code class="name">preview 後に対象 User の状態が別操作で変更されている</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">apply は stale な preview plan を実行せず、現在状態から updated / unchanged / rejected を再判定する</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 5</span><code class="name">対象 User が source-managed である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">対象行は source_managed の stable error code で rejected となり、<a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> は変更されない</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 5</span><code class="name">1 行の validation、保存、または監査処理が途中で失敗する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">その行の profile・roles・required actions・custom attributes は一部も保存されず、別の有効行は適用を継続する</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-IdManagement/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~E4~B8~80~E8~A6~A7~E3~82~92~E3~83~9A~E3~83~BC~E3~82~B8~E3~83~B3~E3~82~B0~E3~81~97~E3~81~AA~E3~81~8C~E3~82~89~E5~AE~89~E5~AE~9A~E3~81~97~E3~81~A6~E9~96~B2~E8~A6~A7~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者はユーザー一覧をページングしながら安定して閲覧できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">IdManagement/scenario/管理者はユーザー一覧をページングしながら安定して閲覧できる</code></header>
@@ -11281,13 +11444,13 @@ limit 上限 (200) 付近の深い forward/backward page でも先頭ページ�
         <header><h3>管理者はユーザー一覧を CSV に安全にエクスポートできる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">IdManagement/scenario/管理者はユーザー一覧を CSV に安全にエクスポートできる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">roles=[&quot;admin&quot;] のユーザー &quot;operator&quot; が管理画面のユーザー一覧を開いている</li><li class="scn-step">一覧には自テナントのユーザーが存在する</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が列 [preferred_username, email] と status フィルタで /users/exports へエクスポートを開始する</li><li class="scn-step">エクスポートは 202 とエクスポート id を返し、ジョブは queued である</li><li class="scn-step">worker が生成を開始し <a class="chip chip-ref" href="#scl-IdManagement/model/DataExportStarted">DataExportStarted</a> が発行される</li><li class="scn-step">生成が完了して status は succeeded、downloadable は true、total_rows と byte_size が記録される</li><li class="scn-step"><a class="chip chip-ref" href="#scl-IdManagement/model/DataExportSucceeded">DataExportSucceeded</a> が発行される</li><li class="scn-step">管理者がファイルをダウンロードすると RFC 4180 の CSV が content-disposition attachment で返り、<a class="chip chip-ref" href="#scl-IdManagement/model/DataExportDownloaded">DataExportDownloaded</a> が発行される</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が列 [preferred_username, email] と status フィルタで /users/exports へエクスポートを開始する</li><li class="scn-step">エクスポートは 202 とエクスポート id を返し、ジョブは queued である</li><li class="scn-step">worker が生成を開始し <a class="chip chip-ref" href="#scl-IdManagement/model/DataExportStarted">DataExportStarted</a> が発行される</li><li class="scn-step">生成が完了して status は succeeded、downloadable は true、total_rows と byte_size が記録される</li><li class="scn-step"><a class="chip chip-ref" href="#scl-IdManagement/model/DataExportSucceeded">DataExportSucceeded</a> が発行される</li><li class="scn-step">管理者がファイルをダウンロードすると選択した machine key と一致する header の RFC 4180 CSV が content-disposition attachment で返り、<a class="chip chip-ref" href="#scl-IdManagement/model/DataExportDownloaded">DataExportDownloaded</a> が発行される</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">選択列に User allowlist 外の key (例 password_hash) が含まれる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">エクスポート開始は <a class="chip chip-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> で拒否される</li><li class="scn-step">エラー &quot;invalid_columns&quot;</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 6</span><code class="name">セル値が \&quot;=\&quot;, \&quot;+\&quot;, \&quot;-\&quot;, \&quot;@\&quot;, タブ, CR, LF のいずれかで始まる</code></header>
-            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">値は formula injection を避けるためエスケープされて出力される</li></ol></div>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">値は formula injection を避ける可逆 prefix で出力され、import decoder は規定どおり prefix 1 文字だけを戻す</li></ol></div>
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 4</span><code class="name">生成が失敗する</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">status は failed、downloadable は false、error_code が記録される</li><li class="scn-step"><a class="chip chip-ref" href="#scl-IdManagement/model/DataExportFailed">DataExportFailed</a> が発行される</li><li class="scn-step">不完全ファイルはダウンロードできない</li></ol></div>
@@ -11300,6 +11463,24 @@ limit 上限 (200) 付近の深い forward/backward page でも先頭ページ�
           </article><article class="requirement">
             <header><span class="chip chip-hint">at 6</span><code class="name">User エクスポートの id を /groups/exports や別テナントで指定する</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">取得・ダウンロード・取消は <a class="chip chip-ref" href="#scl-IdManagement/model/AccessDeniedError">AccessDeniedError</a> または <a class="chip chip-ref" href="#scl-IdManagement/model/InvalidRequestError">InvalidRequestError</a> で拒否される (per-type / per-tenant 分離)</li></ol></div>
+          </article></div>
+      </article><article class="card scenario" id="scl-IdManagement/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E3~82~A8~E3~82~AF~E3~82~B9~E3~83~9D~E3~83~BC~E3~83~88~E3~81~97~E3~81~9F~E3~83~A6~E3~83~BC~E3~82~B6~E3~83~BC~20CSV~20~E3~82~92~E5~AE~89~E5~85~A8~E3~81~AB~E5~86~8D~E9~81~A9~E7~94~A8~E3~81~A7~E3~81~8D~E3~82~8B">
+        <header><h3>管理者はエクスポートしたユーザー CSV を安全に再適用できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">IdManagement/scenario/管理者はエクスポートしたユーザー CSV を安全に再適用できる</code></header>
+
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">実効 Tenant<a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a>AttributeSchema に custom:department があり、10,000 <a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> を含む一覧が実効 <a class="chip chip-ref" href="#scl-IdManagement/model/UserCsvTransferPolicy">UserCsvTransferPolicy</a> 内に収まる</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が import-compatible な組み込み列、required_actions、custom:department を machine-key header でエクスポートする</li><li class="scn-step">worker は CSV を immutable artifact store へ streaming 出力し、job result には tenant-scoped payload reference、server-computed SHA-256、size、row count を保持する</li><li class="scn-step">管理者が同じ 10,000 行 artifact を無編集で preview すると全行 unchanged となり、<a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> は変更されない</li><li class="scn-step">管理者が 1 行の email と custom:department だけを編集して再度 preview する</li><li class="scn-step">変更行だけが updated、残りは unchanged と計画される</li><li class="scn-step">管理者が成功済み preview job id を apply すると、指定した writable 列だけが更新され、未指定列は維持される</li></ol></div>
+        <div class="sub"><div class="label">Extensions</div><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">値が危険な先頭文字、既存 apostrophe、comma、quote、または改行を含む</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">reversible formula-safe codec と RFC 4180 quoting により decode(encode(value)) は元の値と一致する</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 1</span><code class="name">生成結果が実効 UserCsvTransferPolicy のいずれかの上限を超える</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-IdManagement/model/User">User</a> export は csv_transfer_limit_exceeded で失敗し、再 import 不能な成功 artifact を作らない</li><li class="scn-step">管理者は filter または列を絞って複数 artifact に分割できる</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 4</span><code class="name">status、mfa_enrolled、created_at、updated_at、または id の値だけを編集する</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">読み取り専用列は受理して無視し、writable 列に差分がなければ unchanged とする</li></ol></div>
+          </article><article class="requirement">
+            <header><span class="chip chip-hint">at 4</span><code class="name">custom 属性の型、boolean、number、date、required custom 属性、または required_actions が不正である</code></header>
+            <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">対象行は stable error code で rejected となり、値を job view、error、audit event に含めない</li></ol></div>
           </article></div>
       </article><article class="card scenario" id="scl-IdManagement/scenario/~E7~AE~A1~E7~90~86~E8~80~85~E3~81~AF~E7~89~B9~E5~AE~9A~E3~82~B0~E3~83~AB~E3~83~BC~E3~83~97~E3~81~AE~E3~83~A1~E3~83~B3~E3~83~90~E3~83~BC~E4~B8~80~E8~A6~A7~E3~82~92~20CSV~20~E3~81~AB~E3~82~A8~E3~82~AF~E3~82~B9~E3~83~9D~E3~83~BC~E3~83~88~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>管理者は特定グループのメンバー一覧を CSV にエクスポートできる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">IdManagement/scenario/管理者は特定グループのメンバー一覧を CSV にエクスポートできる</code></header>
@@ -11487,32 +11668,35 @@ limit 上限 (200) 付近の深い forward/backward page でも先頭ページ�
         <text x="128.0" y="59.0">clear_required_action</text>
       </g></a><a href="#scl-IdManagement/interface/ImportAdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-15">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
-        <text x="128.0" y="59.0">import</text>
-      </g></a><a href="#scl-IdManagement/interface/GetAdminUserImport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-16">
+        <text x="128.0" y="59.0">preview_import</text>
+      </g></a><a href="#scl-IdManagement/interface/ApplyAdminUserImport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-16">
+        <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
+        <text x="128.0" y="59.0">apply_import</text>
+      </g></a><a href="#scl-IdManagement/interface/GetAdminUserImport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-17">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">view_import</text>
-      </g></a><a href="#scl-IdManagement/interface/StartUserCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-17">
+      </g></a><a href="#scl-IdManagement/interface/StartUserCsvExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-18">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">export</text>
-      </g></a><a href="#scl-IdManagement/interface/ListUserExports"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-18">
+      </g></a><a href="#scl-IdManagement/interface/ListUserExports"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-19">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">list_exports</text>
-      </g></a><a href="#scl-IdManagement/interface/GetUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-19">
+      </g></a><a href="#scl-IdManagement/interface/GetUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-20">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">view_export</text>
-      </g></a><a href="#scl-IdManagement/interface/DownloadUserExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-20">
+      </g></a><a href="#scl-IdManagement/interface/DownloadUserExportFile"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-21">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">download_export</text>
-      </g></a><a href="#scl-IdManagement/interface/CancelUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-21">
+      </g></a><a href="#scl-IdManagement/interface/CancelUserExport"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-22">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">cancel_export</text>
-      </g></a><a href="#scl-IdManagement/interface/ListUserGroups"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-22">
+      </g></a><a href="#scl-IdManagement/interface/ListUserGroups"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-23">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">view_groups</text>
-      </g></a><a href="#scl-IdManagement/interface/AddGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-23">
+      </g></a><a href="#scl-IdManagement/interface/AddGroupMember"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-24">
         <line x1="128.0" y1="65.0" x2="128.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="128.0" y="59.0">add_to_group</text>
-      </g></a><a href="#scl-IdManagement/flow/AdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-25">
+      </g></a><a href="#scl-IdManagement/flow/AdminUsers"><g class="diagram-edge" id="context-idmanagement-diagram-flow-adminusers-edge-26">
         <line x1="220.0" y1="65.0" x2="292.0" y2="65.0" marker-end="url(#arrow-flow-adminusers)"></line>
         <text x="256.0" y="59.0">application_management_selected</text>
       </g></a>
@@ -11848,9 +12032,9 @@ limit 上限 (200) 付近の深い forward/backward page でも先頭ページ�
 
         <div class="flow-view">
             <h4>AdminUsers<span class="chip chip-initial">entry</span></h4>
-            <p class="desc">ユーザー管理画面(正確な総ユーザー数、active 既定の一覧、件数・現在ページ、詳細、所属グループ、CSV インポート、URL に同期した検索・status・compact cursor、先頭/前/次/末尾移動)</p>
+            <p class="desc">ユーザー管理画面(正確な総ユーザー数、active 既定の一覧、件数・現在ページ、詳細、所属グループ、CSV 事前検証・適用、URL に同期した検索・status・compact cursor、先頭/前/次/末尾移動)</p>
             <table class="fields"><thead><tr><th>Does</th><th>To</th><th>Interface</th></tr></thead>
-                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える <code>next_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える <code>previous_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える <code>first_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「最後へ」をクリックして end anchor cursor の Link URL へ移動し、端数を含む末尾ページで一覧を置き換える <code>last_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>query または status を変更して cursor の無い先頭 URL へ移動する。status 未指定は active を API に明示し、「すべて」は URL の status=all と API の status 省略で表す <code>filter</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>一覧からユーザーを1件クリックして詳細を表示する <code>view</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUser">GetAdminUser</a></td></tr><tr><td>ユーザー名・初期パスワード等を入力して作成する <code>create</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CreateAdminUser">CreateAdminUser</a></td></tr><tr><td>プロフィール・email_verified・roles を編集して保存する <code>update</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateAdminUser">UpdateAdminUser</a></td></tr><tr><td>無効化ボタンをクリックする <code>disable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableAdminUser">DisableAdminUser</a></td></tr><tr><td>有効化ボタンをクリックする <code>enable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableAdminUser">EnableAdminUser</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteAdminUser">DeleteAdminUser</a></td></tr><tr><td>復元ボタンをクリックする <code>restore</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RestoreAdminUser">RestoreAdminUser</a></td></tr><tr><td>次回ログイン時の強制アクションを選んで付与する <code>set_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/SetUserRequiredAction">SetUserRequiredAction</a></td></tr><tr><td>付与済みの強制アクションを解除する <code>clear_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ClearUserRequiredAction">ClearUserRequiredAction</a></td></tr><tr><td>CSV ファイルを選択して、dry_run または apply を実行する <code>import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ImportAdminUsers">ImportAdminUsers</a></td></tr><tr><td>インポートジョブを選んで、行ごとの検証・適用結果を表示する <code>view_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUserImport">GetAdminUserImport</a></td></tr><tr><td>現在のフィルタと列を選んで、ユーザー一覧の CSV エクスポートを開始する <code>export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartUserCsvExport">StartUserCsvExport</a></td></tr><tr><td>ユーザーエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する <code>list_exports</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserExports">ListUserExports</a></td></tr><tr><td>エクスポートを選んで、進捗・失敗理由・期限を表示する <code>view_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetUserExport">GetUserExport</a></td></tr><tr><td>完成済みエクスポートファイルをダウンロードする <code>download_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadUserExportFile">DownloadUserExportFile</a></td></tr><tr><td>終端前のエクスポートを取消す <code>cancel_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CancelUserExport">CancelUserExport</a></td></tr><tr><td>ユーザーの所属グループとロール内訳を表示する <code>view_groups</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserGroups">ListUserGroups</a></td></tr><tr><td>所属させるグループを選んで追加する <code>add_to_group</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/AddGroupMember">AddGroupMember</a></td></tr><tr><td>グループ管理タブをクリックする <code>group_management_selected</code></td><td>AdminGroups</td><td></td></tr><tr><td>アプリケーション管理へのリンクをクリックする <code>application_management_selected</code></td><td>external</td><td></td></tr></tbody></table>
+                   <tbody><tr><td>画面を開く <code>list</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える <code>next_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える <code>previous_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える <code>first_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>「最後へ」をクリックして end anchor cursor の Link URL へ移動し、端数を含む末尾ページで一覧を置き換える <code>last_page</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>query または status を変更して cursor の無い先頭 URL へ移動する。status 未指定は active を API に明示し、「すべて」は URL の status=all と API の status 省略で表す <code>filter</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListAdminUsers">ListAdminUsers</a></td></tr><tr><td>一覧からユーザーを1件クリックして詳細を表示する <code>view</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUser">GetAdminUser</a></td></tr><tr><td>ユーザー名・初期パスワード等を入力して作成する <code>create</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CreateAdminUser">CreateAdminUser</a></td></tr><tr><td>プロフィール・email_verified・roles を編集して保存する <code>update</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/UpdateAdminUser">UpdateAdminUser</a></td></tr><tr><td>無効化ボタンをクリックする <code>disable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DisableAdminUser">DisableAdminUser</a></td></tr><tr><td>有効化ボタンをクリックする <code>enable</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/EnableAdminUser">EnableAdminUser</a></td></tr><tr><td>削除ボタンをクリックする <code>delete</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DeleteAdminUser">DeleteAdminUser</a></td></tr><tr><td>復元ボタンをクリックする <code>restore</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/RestoreAdminUser">RestoreAdminUser</a></td></tr><tr><td>次回ログイン時の強制アクションを選んで付与する <code>set_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/SetUserRequiredAction">SetUserRequiredAction</a></td></tr><tr><td>付与済みの強制アクションを解除する <code>clear_required_action</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ClearUserRequiredAction">ClearUserRequiredAction</a></td></tr><tr><td>CSV ファイルを選択して、副作用のない事前検証を実行する <code>preview_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ImportAdminUsers">ImportAdminUsers</a></td></tr><tr><td>成功済み事前検証の結果を確認し、CSV を再送せず現在状態へ適用する <code>apply_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ApplyAdminUserImport">ApplyAdminUserImport</a></td></tr><tr><td>インポートジョブを選んで、行ごとの検証・適用結果を表示する <code>view_import</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetAdminUserImport">GetAdminUserImport</a></td></tr><tr><td>現在のフィルタと列を選んで、ユーザー一覧の CSV エクスポートを開始する <code>export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/StartUserCsvExport">StartUserCsvExport</a></td></tr><tr><td>ユーザーエクスポート一覧を開き、状態・件数・期限・ダウンロード可否を確認する <code>list_exports</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserExports">ListUserExports</a></td></tr><tr><td>エクスポートを選んで、進捗・失敗理由・期限を表示する <code>view_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/GetUserExport">GetUserExport</a></td></tr><tr><td>完成済みエクスポートファイルをダウンロードする <code>download_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/DownloadUserExportFile">DownloadUserExportFile</a></td></tr><tr><td>終端前のエクスポートを取消す <code>cancel_export</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/CancelUserExport">CancelUserExport</a></td></tr><tr><td>ユーザーの所属グループとロール内訳を表示する <code>view_groups</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/ListUserGroups">ListUserGroups</a></td></tr><tr><td>所属させるグループを選んで追加する <code>add_to_group</code></td><td>AdminUsers</td><td><a class="chip chip-iface-ref" href="#scl-IdManagement/interface/AddGroupMember">AddGroupMember</a></td></tr><tr><td>グループ管理タブをクリックする <code>group_management_selected</code></td><td>AdminGroups</td><td></td></tr><tr><td>アプリケーション管理へのリンクをクリックする <code>application_management_selected</code></td><td>external</td><td></td></tr></tbody></table>
           </div>
       </article><article class="card" id="scl-IdManagement/flow/AdminGroups">
         <header><h3>AdminGroups</h3><span class="chip chip-initial">entry: AdminGroups</span><code class="canonical-ref">IdManagement/flow/AdminGroups</code></header>

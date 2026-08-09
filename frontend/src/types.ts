@@ -31,7 +31,7 @@ export type AdminUser = {
   scim_source?: string
 }
 
-export type UserImportMode = 'dry_run' | 'apply'
+export type UserImportMode = 'preview' | 'apply'
 
 export type UserImportJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled'
 
@@ -44,9 +44,11 @@ export type UserImportRowError = {
 
 export type UserImportResult = {
   total_rows: number
-  accepted_rows: number
+  created_rows: number
+  updated_rows: number
+  unchanged_rows: number
   rejected_rows: number
-  errors?: UserImportRowError[]
+  error_total: number
 }
 
 // POST /api/admin/v1/users/imports の応答。ジョブはまだ処理されておらず result は含まない。
@@ -60,7 +62,9 @@ export type UserImportJobSummary = {
 export type UserImportJob = {
   id: string
   status: UserImportJobStatus
+  mode: UserImportMode
   result?: UserImportResult
+  errors: UserImportRowError[]
 }
 
 // wi-148: 管理者向け CSV データエクスポート (per-type)。

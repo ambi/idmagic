@@ -62,6 +62,23 @@ func (r *ScimRepository) FindUserRefByUserID(_ context.Context, tenantID, userID
 	return nil, nil
 }
 
+func (r *ScimRepository) FindUserRefsByUserIDs(_ context.Context, tenantID string, userIDs []string) ([]*ports.ScimUserRef, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	wanted := make(map[string]struct{}, len(userIDs))
+	for _, userID := range userIDs {
+		wanted[userID] = struct{}{}
+	}
+	var out []*ports.ScimUserRef
+	for _, ref := range r.userRefs[tenantID] {
+		if _, ok := wanted[ref.UserID]; ok {
+			cloned := *ref
+			out = append(out, &cloned)
+		}
+	}
+	return out, nil
+}
+
 func (r *ScimRepository) DeleteUserRef(_ context.Context, tenantID, scimID string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

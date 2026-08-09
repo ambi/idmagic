@@ -2,7 +2,7 @@
 # この context が所有する module 台帳。path はこのファイルからの相対。
 # 散文の設計正本は ARCHITECTURE.md。書式は ARCHITECTURE_FORMAT.md (ADR-143)。
 context: sourcing
-updated_at: 2026-07-26
+updated_at: 2026-08-10
 modules:
   sourcing-scim-domain:
     path: scim/domain
@@ -119,3 +119,14 @@ modules:
         via: published_interface
       - module: shared-adapters
         via: technical_shared
+  sourcing-scim-source-idmanagement:
+    path: scim/source_idmanagement
+    responsibility: IdManagement が所有する source ownership guard port を SCIM source repository で実装する内向き adapter。
+    context: Sourcing
+    layer: adapters
+    role: binding
+    depends_on:
+      - module: idmanagement-user-ports
+        via: binding
+      - module: sourcing-scim-ports
+        via: published_interface

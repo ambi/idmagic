@@ -61,6 +61,7 @@ type Deps struct {
 	PasswordHasher        passwordports.PasswordHasher
 	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore userports.EmailChangeTokenStore
+	UserCSVArtifacts      userports.UserCSVArtifactStore
 	EmailSender           sharednotification.EmailSender
 	Notifier              sharednotification.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents

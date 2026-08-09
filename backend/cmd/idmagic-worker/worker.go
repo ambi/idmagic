@@ -16,6 +16,7 @@ import (
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -29,10 +30,9 @@ import (
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/shared/version"
-	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	"github.com/ambi/idmagic/backend/sharedsignals/push_http"
-	"github.com/ambi/idmagic/backend/sharedsignals/sign_jose"
 	sharedsignalsusecases "github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	scimsource "github.com/ambi/idmagic/backend/sourcing/scim/source_idmanagement"
 )
 
 // allLanes is the ADR-129 compat-mode default for JOB_WORKER_LANES: a single
@@ -91,9 +91,22 @@ func RunWorker() error {
 
 	handlers := usecases.NewHandlerRegistry()
 	handlers.Register(domain.KindNoopEcho, jobs.NoopEchoHandler)
-	adminDeps := newAdminUserDeps(deps, logger)
-	handlers.Register(domain.KindUserImportPreview, userusecases.UserImportHandler(adminDeps, false))
-	handlers.Register(domain.KindUserImportApply, userusecases.UserImportHandler(adminDeps, true))
+	importPlanDeps := userusecases.UserImportPlanDeps{
+		UserRepo:       deps.IdManagement.UserRepo,
+		SchemaReader:   userusecases.TenantUserCSVSchemaReader{Repository: deps.Tenancy.AttrSchemaRepo},
+		OwnershipGuard: scimsource.UserOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+	}
+	importJobDeps := userusecases.UserImportJobDeps{
+		Artifacts: deps.IdManagement.UserCSVArtifacts, Jobs: deps.Jobs.Repo,
+		Plan: importPlanDeps,
+		Apply: userusecases.UserImportApplyDeps{
+			Plan: importPlanDeps, Committer: deps.IdManagement.UserImportCommitter,
+			PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		},
+		Policy: userdomain.DefaultUserCSVTransferPolicy(),
+	}
+	handlers.Register(domain.KindUserImportPreview, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModePreview))
+	handlers.Register(domain.KindUserImportApply, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModeApply))
 	handlers.Register(domain.KindDynamicGroupReconcile, groupusecases.DynamicGroupReconcileHandler(groupusecases.DynamicGroupDeps{
 		GroupRepo:  deps.IdManagement.GroupRepo,
 		UserRepo:   deps.IdManagement.UserRepo,
@@ -104,9 +117,16 @@ func RunWorker() error {
 		},
 	}))
 	handlers.Register(idmusecases.KindDataExport, idmusecases.DataExportHandler(idmusecases.DataExportDeps{
-		UserRepo:  deps.IdManagement.UserRepo,
-		GroupRepo: deps.IdManagement.GroupRepo,
-		JobRepo:   deps.Jobs.Repo,
+		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo, JobRepo: deps.Jobs.Repo,
+		UserCSVArtifacts: deps.IdManagement.UserCSVArtifacts,
+		UserCSVExporter: userusecases.UserCSVExporter{
+			Deps: userusecases.UserCSVExportDeps{
+				UserRepo:     deps.IdManagement.UserRepo,
+				SchemaReader: userusecases.TenantUserCSVSchemaReader{Repository: deps.Tenancy.AttrSchemaRepo},
+				Artifacts:    deps.IdManagement.UserCSVArtifacts,
+			},
+			Policy: userdomain.DefaultUserCSVTransferPolicy(),
+		},
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)
 			return nil
@@ -353,63 +373,6 @@ func sharedSignalsDeliveryLoop(ctx context.Context, deps *bootstrap.Dependencies
 			return
 		case <-ticker.C:
 		}
-	}
-}
-
-// newAdminUserDeps builds the AdminUserDeps used by worker-run admin job
-// handlers (currently CSV user import). Emit is wired through
-// bootstrap.Dependencies.NewEmitFunc so business DomainEvents reach
-// AuditEventRepo the same way HTTP handlers' legacyEmit does
-// (audit.DomainEventsAreAuditedRegardlessOfProcess invariant, wi-205); before
-// this wiring existed, Emit was left nil and UserCreated events emitted by
-// CSV import apply were silently dropped.
-func newAdminUserDeps(deps *bootstrap.Dependencies, logger logging.Logger) userusecases.AdminUserDeps {
-	emit := deps.NewEmitFunc(logger)
-	// projectorDeps backs the reactor's best-effort EcosystemPropagation
-	// (SET fan-out to registered SSF Transmit streams) that runs after a
-	// successful local revocation epoch advance (ADR-057 decision 6, wi-58
-	// T004); see the reactor's Emit closure below.
-	projectorDeps := sharedsignalsusecases.ProjectorDeps{
-		StreamRepo: deps.SharedSignals.StreamRepo, TransmitterConfigRepo: deps.SharedSignals.TransmitterConfigRepo,
-		DeliveryRepo: deps.SharedSignals.DeliveryRepo, Signer: &sign_jose.Signer{KeyStore: deps.SigningKeys.KeyStore},
-		Issuer: bootstrap.EnvDefault("ISSUER", "http://localhost:8080"),
-	}
-	// reactor fail-closed advances SharedSignals' Agent revocation epoch when
-	// this Deps emits UserDisabled/UserSoftDeleted/UserDeleted (ADR-057,
-	// wi-58) — e.g. PurgeExpiredSoftDeleted's auto-purge DeleteUser call.
-	// Errors propagate through reactiveEmit, unlike the best-effort audit
-	// trail emit(event) below.
-	reactor := &sharedsignalsusecases.AgentRevocationReactor{
-		EpochRepo: deps.SharedSignals.RevocationEpochRepo,
-		AgentRepo: deps.IdManagement.AgentRepo,
-		Emit: func(event spec.DomainEvent) error {
-			emit(event)
-			if revoked, ok := event.(*ssdomain.AgentAccessRevoked); ok {
-				projectCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				if err := sharedsignalsusecases.ProjectAgentAccessRevoked(projectCtx, projectorDeps, revoked); err != nil {
-					logger.Error(projectCtx, "sharedsignals: SET projection failed", "error", err, "agent_id", revoked.AgentID, "tenant_id", revoked.TenantID)
-				}
-			}
-			return nil
-		},
-	}
-	reactiveEmit := func(event spec.DomainEvent) error {
-		emit(event)
-		return reactor.React(context.Background(), event)
-	}
-	return userusecases.AdminUserDeps{
-		UserRepo:              deps.IdManagement.UserRepo,
-		GroupRepo:             deps.IdManagement.GroupRepo,
-		AttrSchemaRepo:        deps.Tenancy.AttrSchemaRepo,
-		ConsentRepo:           deps.OAuth2.ConsentRepo,
-		RefreshStore:          deps.OAuth2.RefreshStore,
-		DeviceCodeStore:       deps.OAuth2.DeviceCodeStore,
-		MfaFactorRepo:         deps.Authentication.MfaFactorRepo,
-		PasswordHasher:        passwords_argon2id.NewArgon2idPasswordHasher(),
-		PasswordHistoryRepo:   deps.Authentication.PasswordHistoryRepo,
-		UserMutationCommitter: deps.IdManagement.UserMutationCommitter,
-		Emit:                  reactiveEmit,
 	}
 }
 
