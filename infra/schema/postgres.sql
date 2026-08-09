@@ -139,6 +139,14 @@ CREATE UNIQUE INDEX users_preferred_username_active_idx
     ON users (tenant_id, preferred_username)
     WHERE lifecycle->>'status' <> 'deleted';
 
+-- Backs ListAdminUsers keyset pagination (wi-159, ADR-158): tenant_id equality +
+-- (preferred_username, id) range scan matching ListUsersByTenantPage/-PageAfter's
+-- WHERE/ORDER BY exactly, including the IS DISTINCT FROM predicate so the
+-- partial index qualifies for both queries.
+CREATE INDEX users_tenant_username_id_active_idx
+    ON users (tenant_id, preferred_username, id)
+    WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
+
 CREATE TABLE mfa_factors (
     user_id UUID NOT NULL,
     type TEXT NOT NULL,
@@ -463,8 +471,11 @@ CREATE TABLE audit_events (
     payload JSONB NOT NULL DEFAULT '{}'::jsonb
 );
 
+-- (tenant_id, occurred_at DESC, id DESC) backs ListAdminAuditEvents keyset
+-- pagination (wi-159, ADR-158): id is the tie-break for the rare case of
+-- multiple events sharing the same occurred_at.
 CREATE INDEX audit_events_tenant_occurred_idx
-    ON audit_events (tenant_id, occurred_at DESC);
+    ON audit_events (tenant_id, occurred_at DESC, id DESC);
 CREATE INDEX audit_events_type_idx ON audit_events (type);
 CREATE INDEX audit_events_user_id_idx ON audit_events (user_id) WHERE user_id IS NOT NULL;
 
@@ -481,8 +492,11 @@ CREATE TABLE authentication_event_buckets (
     PRIMARY KEY (tenant_id, kind, key_hash, window_start)
 );
 
+-- (tenant_id, window_start DESC, kind DESC, key_hash DESC) backs
+-- ListAuthenticationEventBuckets keyset pagination (wi-159, ADR-158);
+-- kind/key_hash is the tie-break (not count, which isn't unique).
 CREATE INDEX authentication_event_buckets_window_idx
-    ON authentication_event_buckets (tenant_id, window_start DESC);
+    ON authentication_event_buckets (tenant_id, window_start DESC, kind DESC, key_hash DESC);
 
 CREATE TABLE tenant_correlation_salts (
     tenant_id TEXT PRIMARY KEY,
@@ -580,6 +594,12 @@ CREATE TABLE applications (
         UNIQUE (id, tenant_id, protocol_type)
 );
 
+-- Backs ListAdminApplications keyset pagination (wi-159, ADR-158): tenant_id
+-- equality + (name, id) range scan matching ListApplicationsByTenantPage/
+-- -PageAfter's WHERE/ORDER BY. Application names aren't unique per tenant
+-- (unlike users/groups/agents), so id is a load-bearing tie-break here.
+CREATE INDEX applications_tenant_name_id_idx ON applications (tenant_id, name, id);
+
 CREATE TABLE oauth2_clients (
     tenant_id UUID NOT NULL,
     client_id UUID PRIMARY KEY,
@@ -614,6 +634,13 @@ CREATE TABLE oauth2_clients (
 
 CREATE INDEX oauth2_clients_application_id_idx
     ON oauth2_clients (application_id) WHERE application_id IS NOT NULL;
+
+-- Backs ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158): tenant_id
+-- equality + client_id range scan matching ListClientsByTenantPage/
+-- -PageAfter's WHERE/ORDER BY (the admin handler has always displayed
+-- clients in client_id order, layered on top of FindAll's created_at order).
+CREATE INDEX oauth2_clients_tenant_client_id_idx
+    ON oauth2_clients (tenant_id, client_id);
 
 CREATE TABLE oauth2_client_secrets (
     id UUID PRIMARY KEY,
@@ -1151,7 +1178,9 @@ CREATE TABLE provisioning_deliveries (
 );
 
 CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (created_at) WHERE status = 'pending' AND job_id IS NULL;
-CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC);
+-- id DESC tie-break backs ListProvisioningDeliveries keyset pagination
+-- (wi-159, ADR-158): created_at alone isn't unique enough for a stable cursor.
+CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC, id DESC);
 
 CREATE UNLOGGED TABLE oauth2_authorization_requests (
     id TEXT PRIMARY KEY,

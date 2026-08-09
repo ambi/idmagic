@@ -3,6 +3,8 @@ package db_postgres
 import (
 	"bytes"
 	"context"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/ambi/idmagic/backend/application/domain"
@@ -78,7 +80,7 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("find by binding: %v %+v", err, byBinding)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list by tenant: %v len=%d", err, len(list))
 	}
@@ -175,7 +177,7 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("rules not round-tripped: %+v", got.Rules)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list by tenant: %v len=%d", err, len(list))
 	}
@@ -301,7 +303,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("save group assignment: %v", err)
 	}
 
-	byTenant, err := repo.ListByTenant(ctx, tenant.ID)
+	byTenant, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(byTenant) != 2 {
 		t.Fatalf("list by tenant: %v len=%d", err, len(byTenant))
 	}
@@ -401,7 +403,7 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("find by id: %v %+v", err, got)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list by tenant: %v len=%d", err, len(list))
 	}
@@ -412,5 +414,95 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 	got, err = repo.FindByID(ctx, tenant.ID, category.ID)
 	if err != nil || got != nil {
 		t.Fatalf("expected deleted: %v %+v", err, got)
+	}
+}
+
+func TestApplicationAssignmentRepositoryListPage(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	app := seedApplication(t, db, tenant.ID)
+	repo := &ApplicationAssignmentRepository{Pool: db}
+	ctx := context.Background()
+
+	userIDs := make([]string, 0, 5)
+	for range 5 {
+		u := pgfixtures.SeedUser(t, db, tenant.ID)
+		userIDs = append(userIDs, u.ID)
+		if err := repo.Save(ctx, &domain.ApplicationAssignment{
+			TenantID: tenant.ID, ApplicationID: app.ID, SubjectType: domain.AssignmentSubjectUser,
+			SubjectID: u.ID, Visibility: domain.AssignmentVisible,
+		}); err != nil {
+			t.Fatalf("save assignment: %v", err)
+		}
+	}
+	slices.SortFunc(userIDs, strings.Compare)
+
+	first, err := repo.ListPageByApplication(ctx, tenant.ID, app.ID, "", "", 2)
+	if err != nil {
+		t.Fatalf("list page 1: %v", err)
+	}
+	if len(first) != 2 || first[0].SubjectID != userIDs[0] || first[1].SubjectID != userIDs[1] {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := repo.ListPageByApplication(ctx, tenant.ID, app.ID, string(last.SubjectType), last.SubjectID, 2)
+	if err != nil {
+		t.Fatalf("list page 2: %v", err)
+	}
+	if len(next) != 2 || next[0].SubjectID != userIDs[2] || next[1].SubjectID != userIDs[3] {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := repo.ListPageByApplication(ctx, tenant.ID, app.ID, "", "", 100)
+	if err != nil {
+		t.Fatalf("list page all: %v", err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
+	}
+}
+
+func TestApplicationRepositoryListPage(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, db)
+	repo := &ApplicationRepository{Pool: db}
+	ctx := context.Background()
+	now := pgfixtures.TestClock()
+
+	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
+		app := &domain.Application{
+			TenantID: tenant.ID, ID: pgfixtures.NewUUID(t), Name: name, Kind: domain.ApplicationWeblink,
+			Status: domain.ApplicationActive, LaunchURL: "https://example.com", CategoryIDs: []string{},
+			CreatedAt: now, UpdatedAt: now,
+		}
+		if err := repo.Save(ctx, app); err != nil {
+			t.Fatalf("save %s: %v", name, err)
+		}
+	}
+
+	first, err := repo.ListPage(ctx, tenant.ID, "", "", 2)
+	if err != nil {
+		t.Fatalf("list page 1: %v", err)
+	}
+	if len(first) != 2 || first[0].Name != "Alpha" || first[1].Name != "Bravo" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, tenant.ID, last.Name, last.ID, 2)
+	if err != nil {
+		t.Fatalf("list page 2: %v", err)
+	}
+	if len(next) != 2 || next[0].Name != "Charlie" || next[1].Name != "Delta" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := repo.ListPage(ctx, tenant.ID, "", "", 100)
+	if err != nil {
+		t.Fatalf("list page all: %v", err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
 	}
 }

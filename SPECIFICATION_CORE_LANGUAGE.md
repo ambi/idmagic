@@ -348,7 +348,7 @@ input:
 
 | kind | 必須 | 任意 |
 | --- | --- | --- |
-| `http` | `method`, `path` | `successful_status_codes`, `request_form` (`body \| query \| form`), `headers`, `error_format` (`problem_details \| oauth2 \| scim \| set_delivery`、既定 `problem_details`) |
+| `http` | `method`, `path` | `successful_status_codes`, `request_form` (`body \| query \| form`), `headers`, `response_headers`, `error_format` (`problem_details \| oauth2 \| scim \| set_delivery`、既定 `problem_details`) |
 | `grpc` | `service`, `method` | `streaming` (`unary \| client \| server \| bidi`) |
 | `cli` | `command` | `args`, `flags`, `exit_codes` |
 | `event` | `channel`, `direction` (`produce \| consume`) | `delivery` (`at_most_once \| at_least_once \| exactly_once`), `ordering` (`none \| per_key \| global`), `partition_key` |
@@ -364,6 +364,14 @@ input:
 `oauth2` は RFC 6749 §5.2 (`{error, error_description}`)、`scim` は RFC 7644 の
 `scimType`、`set_delivery` は RFC 8935 §2.3 (`{err, description}`、
 `application/json`、status 400 固定) を表す。
+
+`headers` が入力 (request) header の型付き契約であるのに対し、`response_headers` は
+成功応答 header の型付き契約を宣言する (`FieldMap`、field 定義は §3.3.0 の
+`FieldDef` と同じ)。body には現れない状態をここに載せてよい (例:
+`Link: { type: String, optional: true }` で RFC 8288 Web Linking による
+ページング次ページ表現)。`response_headers` の値は `requires`/`ensures` の CEL から
+`response.headers[...]` (§5.1) として参照できるが、値そのものの導出ロジックは
+実装層の責務であり SCL は型と有無のみを規定する。
 
 #### 3.3.2 access — interface の公開範囲
 

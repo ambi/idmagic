@@ -293,11 +293,11 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("assign: %v", err)
 	}
-	list, err := appusecases.ListAssignments(ctx, assignDeps, app.ID)
+	list, err := appusecases.ListAssignments(ctx, assignDeps, app.ID, "", "", 100)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list assignments = %d err=%v", len(list), err)
 	}
-	if _, err := appusecases.ListAssignments(ctx, assignDeps, "ghost"); !errors.Is(err, appusecases.ErrApplicationNotFound) {
+	if _, err := appusecases.ListAssignments(ctx, assignDeps, "ghost", "", "", 100); !errors.Is(err, appusecases.ErrApplicationNotFound) {
 		t.Fatalf("expected ErrApplicationNotFound, got %v", err)
 	}
 
@@ -306,7 +306,7 @@ func TestAssignmentErrorPathsAndListing(t *testing.T) {
 		domain.AssignmentSubjectUser, "alice", time.Time{}); err != nil {
 		t.Fatalf("unassign: %v", err)
 	}
-	list, _ = appusecases.ListAssignments(ctx, assignDeps, app.ID)
+	list, _ = appusecases.ListAssignments(ctx, assignDeps, app.ID, "", "", 100)
 	if len(list) != 0 {
 		t.Fatalf("unassign left %d assignments", len(list))
 	}
@@ -541,7 +541,7 @@ func TestUsecaseDatabaseErrors(t *testing.T) {
 	}
 
 	// 5. ListAssignments find error
-	_, err = appusecases.ListAssignments(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, "app-1")
+	_, err = appusecases.ListAssignments(ctx, appusecases.AssignmentDeps{Repo: errRepo, AssignmentRepo: errAssignRepo}, "app-1", "", "", 100)
 	if err == nil || err.Error() != "database error" {
 		t.Fatalf("expected database error, got %v", err)
 	}

@@ -2,6 +2,23 @@
 SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 ORDER BY name;
 
+-- name: ListGroupsByTenantPage :many
+-- First page of ListGroups keyset pagination (wi-159, ADR-158): stable sort by
+-- (name, id) so admins see the pre-existing alphabetical order.
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+WHERE tenant_id=$1
+ORDER BY name, id
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListGroupsByTenantPageAfter :many
+-- Continuation page: resumes strictly after the (name, id) keyset of the last
+-- row the caller saw.
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+WHERE tenant_id=$1
+  AND (name, id) > (sqlc.arg(after_name)::text, sqlc.arg(after_id)::uuid)
+ORDER BY name, id
+LIMIT sqlc.arg(page_limit);
+
 -- name: FindGroupByID :one
 SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 AND id=$2;

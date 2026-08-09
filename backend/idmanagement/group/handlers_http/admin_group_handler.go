@@ -68,17 +68,38 @@ type userGroupsResponse struct {
 	EffectiveRoles []string               `json:"effective_roles"`
 }
 
+const (
+	listGroupsQuery        = "ListGroups"
+	listGroupsDefaultLimit = 50
+	listGroupsMaxLimit     = 200
+)
+
 func HandleListGroups(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	views, err := groupusecases.ListGroups(c.Request().Context(), adminGroupDeps(d))
+	tenantID := support.RequestTenantID(c)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listGroupsQuery, listGroupsDefaultLimit, listGroupsMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	views, err := groupusecases.ListGroups(c.Request().Context(), adminGroupDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
 	if err != nil {
 		return err
+	}
+	hasMore := len(views) > page.Limit
+	if hasMore {
+		views = views[:page.Limit]
 	}
 	groups := make([]groupSummaryResponse, len(views))
 	for i, view := range views {
 		groups[i] = toGroupSummaryResponse(view.Group, view.MemberCount)
+	}
+	if hasMore {
+		last := views[len(views)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listGroupsQuery, last.Group.Name, last.Group.ID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"groups": groups})
 }

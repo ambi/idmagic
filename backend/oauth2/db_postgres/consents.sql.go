@@ -85,6 +85,104 @@ func (q *Queries) ListConsentsByTenant(ctx context.Context, tenantID string) ([]
 	return items, nil
 }
 
+const listConsentsByTenantPage = `-- name: ListConsentsByTenantPage :many
+SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+WHERE u.tenant_id = $1
+ORDER BY c.user_id, c.client_id
+LIMIT $2
+`
+
+type ListConsentsByTenantPageParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+// First page of ListAdminConsents keyset pagination (wi-159, ADR-158): the
+// (user_id, client_id) primary key already backs this range scan.
+func (q *Queries) ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*Consent, error) {
+	rows, err := q.db.Query(ctx, listConsentsByTenantPage, arg.TenantID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Consent
+	for rows.Next() {
+		var i Consent
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ClientID,
+			&i.Scopes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listConsentsByTenantPageAfter = `-- name: ListConsentsByTenantPageAfter :many
+SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
+FROM consents c
+JOIN users u ON c.user_id = u.id
+WHERE u.tenant_id = $1
+  AND (c.user_id, c.client_id) > ($2::uuid, $3::uuid)
+ORDER BY c.user_id, c.client_id
+LIMIT $4
+`
+
+type ListConsentsByTenantPageAfterParams struct {
+	TenantID      string
+	AfterUserID   string
+	AfterClientID string
+	PageLimit     int32
+}
+
+// Continuation page: resumes strictly after the (user_id, client_id) keyset
+// of the last row the caller saw.
+func (q *Queries) ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*Consent, error) {
+	rows, err := q.db.Query(ctx, listConsentsByTenantPageAfter,
+		arg.TenantID,
+		arg.AfterUserID,
+		arg.AfterClientID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Consent
+	for rows.Next() {
+		var i Consent
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ClientID,
+			&i.Scopes,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.GrantedAt,
+			&i.ExpiresAt,
+			&i.RevokedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const revokeConsent = `-- name: RevokeConsent :exec
 UPDATE consents SET revoked_at = now(), updated_at = now()
 WHERE user_id = $1 AND client_id = $2 AND revoked_at IS NULL

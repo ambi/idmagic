@@ -51,7 +51,7 @@ func TestGroupRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("ListByTenant", func(t *testing.T) {
+	t.Run("ListAll", func(t *testing.T) {
 		// すでに group-1 が tenant-1 に存在する
 		g2 := &groupdomain.Group{ID: "group-2", TenantID: "tenant-1", Name: "Developers"}
 		g3 := &groupdomain.Group{ID: "group-3", TenantID: "tenant-1", Name: "Auditors"}
@@ -61,7 +61,7 @@ func TestGroupRepository(t *testing.T) {
 		_ = repo.Save(ctx, g3)
 		_ = repo.Save(ctx, gOther)
 
-		list, err := repo.ListByTenant(ctx, "tenant-1")
+		list, err := repo.ListAll(ctx, "tenant-1")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -182,6 +182,52 @@ func TestGroupRepository(t *testing.T) {
 		keyFallback := repo.memberKey("non-existent-group-id")
 		if keyFallback != "non-existent-group-id" {
 			t.Errorf("expected fallback to return original groupID, got %q", keyFallback)
+		}
+	})
+}
+
+func TestGroupRepositoryListPage(t *testing.T) {
+	ctx := context.Background()
+	repo := NewGroupRepository()
+	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
+		_ = repo.Save(ctx, &groupdomain.Group{
+			ID: "group-" + name, TenantID: "tenant-1", Name: name, CreatedAt: time.Now(),
+		})
+	}
+	_ = repo.Save(ctx, &groupdomain.Group{ID: "group-other", TenantID: "tenant-2", Name: "Zulu", CreatedAt: time.Now()})
+
+	t.Run("first page respects limit and (name, id) order", func(t *testing.T) {
+		page, err := repo.ListPage(ctx, "tenant-1", "", "", 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) != 2 || page[0].Name != "Alpha" || page[1].Name != "Bravo" {
+			t.Fatalf("unexpected first page: %+v", page)
+		}
+	})
+
+	t.Run("continuation page resumes strictly after the keyset", func(t *testing.T) {
+		first, err := repo.ListPage(ctx, "tenant-1", "", "", 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		last := first[len(first)-1]
+		next, err := repo.ListPage(ctx, "tenant-1", last.Name, last.ID, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(next) != 2 || next[0].Name != "Charlie" || next[1].Name != "Delta" {
+			t.Fatalf("unexpected continuation page: %+v", next)
+		}
+	})
+
+	t.Run("excludes other tenants", func(t *testing.T) {
+		page, err := repo.ListPage(ctx, "tenant-1", "", "", 100)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) != 5 {
+			t.Fatalf("expected 5, got %d", len(page))
 		}
 	})
 }

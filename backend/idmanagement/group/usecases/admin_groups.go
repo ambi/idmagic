@@ -50,9 +50,12 @@ type GroupView struct {
 	MemberCount int
 }
 
-func ListGroups(ctx context.Context, deps AdminGroupDeps) ([]GroupView, error) {
+// ListGroups returns up to limit+1 groups after the given keyset (wi-159,
+// ADR-158) — callers pass limit+1 to detect whether a next page exists, then
+// trim to limit before responding.
+func ListGroups(ctx context.Context, deps AdminGroupDeps, afterName, afterID string, limit int) ([]GroupView, error) {
 	tenantID := tenancy.TenantID(ctx)
-	groups, err := deps.GroupRepo.ListByTenant(ctx, tenantID)
+	groups, err := deps.GroupRepo.ListPage(ctx, tenantID, afterName, afterID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +338,7 @@ func UserGroups(ctx context.Context, deps AdminGroupDeps, sub string) (*UserGrou
 }
 
 func ensureGroupNameAvailable(ctx context.Context, deps AdminGroupDeps, tenantID, name, excludeID string) error {
-	groups, err := deps.GroupRepo.ListByTenant(ctx, tenantID)
+	groups, err := deps.GroupRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return err
 	}

@@ -17,5 +17,10 @@ type UserRepository interface {
 	FindByUsername(ctx context.Context, tenantID, username string) (*userdomain.User, error)
 	FindByEmail(ctx context.Context, tenantID, email string) (*userdomain.User, error)
 	FindAll(ctx context.Context, tenantID string) ([]*userdomain.User, error)
+	// ListPage returns up to limit non-deleted users for tenantID ordered by
+	// (preferred_username, id) ascending, strictly after the keyset
+	// (afterUsername, afterID). Pass "", "" for the first page. Backs
+	// ListAdminUsers keyset pagination (wi-159, ADR-158).
+	ListPage(ctx context.Context, tenantID, afterUsername, afterID string, limit int) ([]*userdomain.User, error)
 	Save(ctx context.Context, user *userdomain.User) error
 }

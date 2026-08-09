@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -164,12 +165,12 @@ func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing
 	_ = repo.Register(ctx, testConnection(t, appA2.ID, tenantA.ID), "s2")
 	_ = repo.Register(ctx, testConnection(t, appB.ID, tenantB.ID), "s3")
 
-	list, err := repo.ListByTenant(ctx, tenantA.ID)
+	list, err := repo.ListAll(ctx, tenantA.ID)
 	if err != nil {
-		t.Fatalf("ListByTenant() error = %v", err)
+		t.Fatalf("ListAll() error = %v", err)
 	}
 	if len(list) != 2 {
-		t.Errorf("ListByTenant() returned %d connections, want 2", len(list))
+		t.Errorf("ListAll() returned %d connections, want 2", len(list))
 	}
 }
 
@@ -218,6 +219,54 @@ func TestProvisioningDeliveryRepository_Save_IdempotentOnDuplicateKey(t *testing
 	created, err = repo.Save(ctx, d3)
 	if err != nil || !created {
 		t.Fatalf("Save() with a new source_version = (%v, %v), want (true, nil)", created, err)
+	}
+}
+
+func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	connRepo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	_ = connRepo.Register(context.Background(), testConnection(t, app.ID, tenant.ID), "secret")
+	repo := &postgres.ProvisioningDeliveryRepository{Pool: pool}
+	ctx := context.Background()
+	base := pgtest.Now()
+
+	ids := make([]string, 5)
+	for i := range ids {
+		user := pgfixtures.SeedUser(t, pool, tenant.ID)
+		d := testDelivery(t, tenant.ID, app.ID, user.ID, 1)
+		d.CreatedAt = base.Add(time.Duration(i) * time.Minute)
+		if _, err := repo.Save(ctx, d); err != nil {
+			t.Fatalf("save #%d: %v", i, err)
+		}
+		ids[i] = d.ID
+	}
+
+	// created_at DESC: ids[4] (newest) first.
+	first, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, time.Time{}, "", 2)
+	if err != nil {
+		t.Fatalf("list page 1: %v", err)
+	}
+	if len(first) != 2 || first[0].ID != ids[4] || first[1].ID != ids[3] {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, last.CreatedAt, last.ID, 2)
+	if err != nil {
+		t.Fatalf("list page 2: %v", err)
+	}
+	if len(next) != 2 || next[0].ID != ids[2] || next[1].ID != ids[1] {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := repo.ListPageByConnection(ctx, tenant.ID, app.ID, nil, time.Time{}, "", 100)
+	if err != nil {
+		t.Fatalf("list page all: %v", err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
 	}
 }
 

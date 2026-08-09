@@ -9,6 +9,26 @@ FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
 WHERE a.tenant_id = $1 AND aa.application_id = $2
 ORDER BY aa.subject_type, aa.subject_id;
 
+-- name: ListApplicationAssignmentsByApplicationPage :many
+-- First page of ListApplicationAssignments keyset pagination (wi-159,
+-- ADR-158): the (application_id, subject_type, subject_id) primary key
+-- already backs this range scan.
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = $1 AND aa.application_id = $2
+ORDER BY aa.subject_type, aa.subject_id
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListApplicationAssignmentsByApplicationPageAfter :many
+-- Continuation page: resumes strictly after the (subject_type, subject_id)
+-- keyset of the last row the caller saw.
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = $1 AND aa.application_id = $2
+  AND (aa.subject_type, aa.subject_id) > (sqlc.arg(after_subject_type)::text, sqlc.arg(after_subject_id)::uuid)
+ORDER BY aa.subject_type, aa.subject_id
+LIMIT sqlc.arg(page_limit);
+
 -- ListApplicationAssignmentsBySubjects は (subject_type, subject_id) ペア配列との
 -- UNNEST 突き合わせが必要で、sqlc の静的解析が UNNEST の引数型を解決できない
 -- (動的クエリのエスケープハッチ、ADR-090)。手書き pgx として applications.go に残す。

@@ -136,7 +136,7 @@ func TestRegisterAgent_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	if qErr.Resource != tenancydomain.ResourceAgents {
 		t.Fatalf("unexpected resource: %s", qErr.Resource)
 	}
-	list, err := agentusecases.ListAgents(ctx, deps)
+	list, err := agentusecases.ListAgents(ctx, deps, "", "", 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestListAgentsAndUpdateDetails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := agentusecases.ListAgents(ctx, deps)
+	list, err := agentusecases.ListAgents(ctx, deps, "", "", 100)
 	if err != nil {
 		t.Fatal(err)
 	}

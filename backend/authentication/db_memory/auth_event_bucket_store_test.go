@@ -38,7 +38,7 @@ func TestAuthEventBucketStoreAggregatesWithinWindow(t *testing.T) {
 		}
 	}
 
-	buckets, err := store.List(ctx, "acme", 0)
+	buckets, err := store.List(ctx, "acme", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestAuthEventBucketStoreNewWindowIsSeparate(t *testing.T) {
 	if !res.FirstInWindow {
 		t.Fatalf("new window should be FirstInWindow")
 	}
-	buckets, err := store.List(ctx, "acme", 0)
+	buckets, err := store.List(ctx, "acme", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,18 +98,59 @@ func TestAuthEventBucketStoreIsolatesTenantsAndKeys(t *testing.T) {
 		}
 	}
 
-	acme, err := store.List(ctx, "acme", 0)
+	acme, err := store.List(ctx, "acme", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(acme) != 2 {
 		t.Fatalf("expected 2 acme buckets, got %d", len(acme))
 	}
-	other, err := store.List(ctx, "other", 0)
+	other, err := store.List(ctx, "other", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(other) != 1 || other[0].Count != 1 {
 		t.Fatalf("expected 1 other bucket with count 1, got %+v", other)
+	}
+}
+
+func TestAuthEventBucketStoreListKeysetPagination(t *testing.T) {
+	store := NewAuthEventBucketStore()
+	ctx := context.Background()
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	for i := range 5 {
+		if _, err := store.Record(
+			ctx, authnports.AuthEventBucketFailedLogin, "acme", "k"+string(rune('0'+i)),
+			base.Add(time.Duration(i)*20*time.Minute),
+		); err != nil {
+			t.Fatalf("record #%d: %v", i, err)
+		}
+	}
+
+	first, err := store.List(ctx, "acme", time.Time{}, "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 2 || !first[0].WindowStart.After(first[1].WindowStart) {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	afterKey := string(last.Kind) + "|" + last.KeyHash
+	next, err := store.List(ctx, "acme", last.WindowStart, afterKey, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || !next[0].WindowStart.Before(last.WindowStart) {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := store.List(ctx, "acme", time.Time{}, "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
 	}
 }

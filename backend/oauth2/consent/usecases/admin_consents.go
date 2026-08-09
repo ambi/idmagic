@@ -30,8 +30,11 @@ type ConsentDeps struct {
 	QuotaRepo tenantports.QuotaRepository
 }
 
-func ListConsents(ctx context.Context, deps ConsentDeps) ([]*domain.Consent, error) {
-	return deps.ConsentRepo.FindAll(ctx, tenancy.TenantID(ctx))
+// ListConsents returns up to limit+1 consents after the given keyset
+// (wi-159, ADR-158) — callers pass limit+1 to detect whether a next page
+// exists, then trim to limit before responding.
+func ListConsents(ctx context.Context, deps ConsentDeps, afterUserID, afterClientID string, limit int) ([]*domain.Consent, error) {
+	return deps.ConsentRepo.ListPage(ctx, tenancy.TenantID(ctx), afterUserID, afterClientID, limit)
 }
 
 func GetConsent(

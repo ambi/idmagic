@@ -6,6 +6,7 @@ package ports
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 )
@@ -31,7 +32,7 @@ type ProvisioningConnectionRepository interface {
 	// CredentialSecret returns the plaintext/opaque secret for outbound calls.
 	CredentialSecret(ctx context.Context, tenantID, applicationID string) (string, error)
 	Delete(ctx context.Context, tenantID, applicationID string) error
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error)
+	ListAll(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error)
 }
 
 // RemoteResourceLinkRepository persists the correlation between an idmagic
@@ -54,6 +55,12 @@ type ProvisioningDeliveryRepository interface {
 	// ListByConnection lists deliveries for a connection, most recent first.
 	// status filters to a single status when non-nil.
 	ListByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, limit int) ([]*domain.ProvisioningDelivery, error)
+	// ListPageByConnection returns up to limit deliveries for a connection
+	// ordered by (created_at, id) descending — matching ListByConnection's
+	// pre-existing "most recent first" order, with id as tie-break — status
+	// filters to a single status when non-nil. afterCreatedAt/afterID are the
+	// keyset continuation cursor (wi-159, ADR-158); zero/"" for the first page.
+	ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error)
 	// ListUnenqueued returns pending deliveries with no Jobs.Job associated yet
 	// (dispatcher recovery, LifecycleWorkflowRunLifecycle precedent).
 	ListUnenqueued(ctx context.Context, limit int) ([]*domain.ProvisioningDelivery, error)

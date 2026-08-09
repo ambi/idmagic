@@ -56,3 +56,46 @@ func TestUserRepositorySaveAndFind(t *testing.T) {
 		t.Fatalf("find all len=%d, want 1", len(all))
 	}
 }
+
+func TestUserRepositoryListPage(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &UserRepository{Pool: db}
+	ctx := context.Background()
+	now := testClock()
+
+	for _, name := range []string{"charlie", "alice", "bob", "delta", "echo"} {
+		u := &userdomain.User{
+			ID: newUUID(t), TenantID: tenant.ID, PreferredUsername: name,
+			PasswordHash: "hash", CreatedAt: now, UpdatedAt: now,
+		}
+		if err := repo.Save(ctx, u); err != nil {
+			t.Fatalf("save %s: %v", name, err)
+		}
+	}
+
+	first, err := repo.ListPage(ctx, tenant.ID, "", "", 2)
+	if err != nil {
+		t.Fatalf("list page 1: %v", err)
+	}
+	if len(first) != 2 || first[0].PreferredUsername != "alice" || first[1].PreferredUsername != "bob" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, tenant.ID, last.PreferredUsername, last.ID, 2)
+	if err != nil {
+		t.Fatalf("list page 2: %v", err)
+	}
+	if len(next) != 2 || next[0].PreferredUsername != "charlie" || next[1].PreferredUsername != "delta" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := repo.ListPage(ctx, tenant.ID, "", "", 100)
+	if err != nil {
+		t.Fatalf("list page all: %v", err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
+	}
+}

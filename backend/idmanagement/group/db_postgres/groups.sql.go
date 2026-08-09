@@ -224,6 +224,100 @@ func (q *Queries) ListGroupsByTenant(ctx context.Context, tenantID string) ([]*G
 	return items, nil
 }
 
+const listGroupsByTenantPage = `-- name: ListGroupsByTenantPage :many
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+WHERE tenant_id=$1
+ORDER BY name, id
+LIMIT $2
+`
+
+type ListGroupsByTenantPageParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+// First page of ListGroups keyset pagination (wi-159, ADR-158): stable sort by
+// (name, id) so admins see the pre-existing alphabetical order.
+func (q *Queries) ListGroupsByTenantPage(ctx context.Context, arg ListGroupsByTenantPageParams) ([]*Group, error) {
+	rows, err := q.db.Query(ctx, listGroupsByTenantPage, arg.TenantID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Group
+	for rows.Next() {
+		var i Group
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Description,
+			&i.Roles,
+			&i.MembershipType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listGroupsByTenantPageAfter = `-- name: ListGroupsByTenantPageAfter :many
+SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+WHERE tenant_id=$1
+  AND (name, id) > ($2::text, $3::uuid)
+ORDER BY name, id
+LIMIT $4
+`
+
+type ListGroupsByTenantPageAfterParams struct {
+	TenantID  string
+	AfterName string
+	AfterID   string
+	PageLimit int32
+}
+
+// Continuation page: resumes strictly after the (name, id) keyset of the last
+// row the caller saw.
+func (q *Queries) ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroupsByTenantPageAfterParams) ([]*Group, error) {
+	rows, err := q.db.Query(ctx, listGroupsByTenantPageAfter,
+		arg.TenantID,
+		arg.AfterName,
+		arg.AfterID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Group
+	for rows.Next() {
+		var i Group
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Description,
+			&i.Roles,
+			&i.MembershipType,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listGroupsByUser = `-- name: ListGroupsByUser :many
 SELECT g.id,g.tenant_id,g.name,g.description,g.roles,g.membership_type,g.created_at,g.updated_at
 FROM groups g JOIN group_members gm ON gm.group_id=g.id

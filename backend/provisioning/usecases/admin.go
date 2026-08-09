@@ -351,11 +351,13 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 }
 
 // ListDeliveries lists a connection's deliveries, most recent first.
-func ListDeliveries(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningDeliveryStatus, limit int) ([]*domain.ProvisioningDelivery, error) {
+// afterCreatedAt/afterID are the keyset continuation cursor (wi-159,
+// ADR-158); zero/"" for the first page.
+func ListDeliveries(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningDeliveryStatus, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	return deps.DeliveryRepo.ListByConnection(ctx, tenantID, applicationID, status, limit)
+	return deps.DeliveryRepo.ListPageByConnection(ctx, tenantID, applicationID, status, afterCreatedAt, afterID, limit)
 }
 
 // GetDelivery returns one delivery, verifying it belongs to applicationID.
@@ -414,5 +416,5 @@ func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, application
 // ListTenantConnections lists every connection in the tenant
 // (spec/contexts/provisioning.yaml interfaces.ListTenantProvisioningConnections).
 func ListTenantConnections(ctx context.Context, deps AdminDeps, tenantID string) ([]*domain.ProvisioningConnection, error) {
-	return deps.ConnectionRepo.ListByTenant(ctx, tenantID)
+	return deps.ConnectionRepo.ListAll(ctx, tenantID)
 }

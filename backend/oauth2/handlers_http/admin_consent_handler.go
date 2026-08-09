@@ -26,16 +26,30 @@ type adminConsentResponse struct {
 	RevokedAt         *time.Time               `json:"revoked_at,omitempty"`
 }
 
+const (
+	listAdminConsentsQuery        = "ListAdminConsents"
+	listAdminConsentsDefaultLimit = 50
+	listAdminConsentsMaxLimit     = 200
+)
+
 func (d Deps) handleListAdminConsents(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	ctx := c.Request().Context()
-	consents, err := consentusecases.ListConsents(ctx, d.ConsentDeps())
+	tenantID := support.RequestTenantID(c)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminConsentsQuery, listAdminConsentsDefaultLimit, listAdminConsentsMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	consents, err := consentusecases.ListConsents(ctx, d.ConsentDeps(), page.AfterPrimary, page.AfterID, page.Limit+1)
 	if err != nil {
 		return err
 	}
-	tenantID := support.RequestTenantID(c)
+	hasMore := len(consents) > page.Limit
+	if hasMore {
+		consents = consents[:page.Limit]
+	}
 	clientIDs := make([]string, len(consents))
 	for i, consent := range consents {
 		clientIDs[i] = consent.ClientID
@@ -47,6 +61,12 @@ func (d Deps) handleListAdminConsents(c *echo.Context) error {
 		response[i] = toAdminConsentResponse(
 			consent, clientNames[consent.ClientID], d.resolveUsername(ctx, usernames, consent.UserID),
 		)
+	}
+	if hasMore {
+		last := consents[len(consents)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminConsentsQuery, last.UserID, last.ClientID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"consents": response})
 }

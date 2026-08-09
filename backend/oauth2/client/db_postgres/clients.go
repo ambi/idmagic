@@ -102,6 +102,40 @@ func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) (
 	return out, nil
 }
 
+// ListPage implements ports.OAuth2ClientRepository.ListPage (wi-159,
+// ADR-158): keyset pagination ordered by client_id ascending — matching the
+// admin handler's pre-existing re-sort of FindAll's rows — strictly after
+// afterClientID ("" for the first page).
+func (r *OAuth2ClientRepository) ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error) {
+	q := oauth2pg.New(r.Pool)
+	var rows []*oauth2pg.Oauth2Client
+	var err error
+	if afterClientID == "" {
+		rows, err = q.ListClientsByTenantPage(ctx, oauth2pg.ListClientsByTenantPageParams{
+			TenantID:  tenantID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListClientsByTenantPageAfter(ctx, oauth2pg.ListClientsByTenantPageAfterParams{
+			TenantID:      tenantID,
+			AfterClientID: afterClientID,
+			PageLimit:     int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.OAuth2Client, 0, len(rows))
+	for _, row := range rows {
+		c, err := clientFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
+
 func textOrNil(s *string) pgtype.Text {
 	if s == nil {
 		return pgtype.Text{}

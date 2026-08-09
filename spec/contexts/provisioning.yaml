@@ -1008,7 +1008,7 @@ interfaces:
         method: POST
         path: "/api/admin/v1/applications/{id}/provisioning/full-resync"
   ListProvisioningDeliveries:
-    description: 管理者が connection の配送状況を一覧する。status/source_type で絞り込める。
+    description: "管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の keyset\npagination で一覧する。status/source_type で絞り込める。cursor は前回応答の Link response header\n(rel=\"next\") から取得する。\n"
     input:
       id:
         type: String
@@ -1021,17 +1021,17 @@ interfaces:
       cursor:
         type: String
         optional: true
+        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
       limit:
         type: Integer
         optional: true
+        description: "返却件数の上限 (default 50, max 200)。"
     output:
       deliveries:
         type: "ProvisioningDelivery[]"
-      next_cursor:
-        type: String
-        optional: true
     errors:
       - AccessDeniedError
+      - InvalidRequestError
     read_only: true
     stability: stable
     access:
@@ -1043,6 +1043,11 @@ interfaces:
       - kind: http
         method: GET
         path: "/api/admin/v1/applications/{id}/provisioning/deliveries"
+        response_headers:
+          Link:
+            type: String
+            optional: true
+            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
   GetProvisioningDelivery:
     description: 管理者が配送 1 件の詳細を取得する。
     input:
@@ -1177,6 +1182,13 @@ objectives:
     description: "User/Assignment の commit から ProvisioningDelivery (pending) 作成までの遅延の\n99% 以上を 5 秒未満に収める。API process の即時 dispatch が失敗しても、periodic dispatcher が\n同じ目標内に未 enqueue delivery を回収することを含む (LifecycleWorkflowTriggerHandoffLatency と\n同じ仕組みを再利用する)。\n"
     indicator: measurement.capture_to_pending_delivery_latency < duration("5s")
     target: 0.99
+    window: 30d
+    budgeting: occurrences
+  ListProvisioningDeliveriesLatency:
+    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, connection_id, created_at, id) の複合 index を\n使う keyset pagination で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。\nsort key は created_at 降順 (id で tie-break) で安定させる)。\n"
+    interface: ListProvisioningDeliveries
+    indicator: measurement.latency < duration("200ms")
+    target: 0.95
     window: 30d
     budgeting: occurrences
 scenarios:
@@ -1411,8 +1423,16 @@ flows:
             interface: DeleteProvisioningConnection
             to: ConnectionSettings
       DeliveryList:
-        sees: 直近の配送一覧 (status・source_type でフィルタ可能)
+        sees: 直近の配送一覧 (status・source_type でフィルタ可能、次ページ読み込み)
         does:
+          - action: list
+            does: 配送状況タブを開く
+            interface: ListProvisioningDeliveries
+            to: DeliveryList
+          - action: next_page
+            does: 「次へ」をクリックして次ページを読み込む
+            interface: ListProvisioningDeliveries
+            to: DeliveryList
           - action: open_detail
             does: 配送行をクリックする
             interface: ListProvisioningDeliveries

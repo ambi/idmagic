@@ -19,6 +19,13 @@ type Querier interface {
 	FindUserByUsername(ctx context.Context, arg FindUserByUsernameParams) (*User, error)
 	InsertEmailChangeToken(ctx context.Context, arg InsertEmailChangeTokenParams) error
 	ListUsersByTenant(ctx context.Context, tenantID string) ([]*User, error)
+	// First page of ListAdminUsers keyset pagination (wi-159, ADR-158): stable
+	// sort by (preferred_username, id) so admins see the pre-existing alphabetical
+	// order, with id as tie-break for uniqueness.
+	ListUsersByTenantPage(ctx context.Context, arg ListUsersByTenantPageParams) ([]*User, error)
+	// Continuation page: resumes strictly after the (preferred_username, id) keyset
+	// of the last row the caller saw.
+	ListUsersByTenantPageAfter(ctx context.Context, arg ListUsersByTenantPageAfterParams) ([]*User, error)
 	SaveTenantUserAttributeSchema(ctx context.Context, arg SaveTenantUserAttributeSchemaParams) error
 	SaveUser(ctx context.Context, arg SaveUserParams) error
 }

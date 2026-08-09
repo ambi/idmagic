@@ -97,7 +97,7 @@ func (s *ApplicationIconStore) DeleteByApplication(_ context.Context, tenantID, 
 	return nil
 }
 
-func (r *ApplicationRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.Application, error) {
+func (r *ApplicationRepository) ListAll(_ context.Context, tenantID string) ([]*domain.Application, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.Application, 0)
@@ -108,6 +108,22 @@ func (r *ApplicationRepository) ListByTenant(_ context.Context, tenantID string)
 	}
 	slices.SortFunc(out, func(a, b *domain.Application) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
+}
+
+// ListPage implements ports.ApplicationRepository.ListPage (wi-159, ADR-158):
+// keyset pagination ordered by (Name, ID) ascending, strictly after the
+// given keyset.
+func (r *ApplicationRepository) ListPage(_ context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.Application, 0)
+	for _, app := range r.applications {
+		if app.TenantID == tenantID {
+			out = append(out, cloneApplication(app))
+		}
+	}
+	key := func(a *domain.Application) (string, string) { return a.Name, a.ID }
+	return sharedmem.KeysetPage(out, key, false, afterName, afterID, limit), nil
 }
 
 func (r *ApplicationRepository) FindByID(_ context.Context, tenantID, applicationID string) (*domain.Application, error) {
@@ -203,7 +219,7 @@ func (r *SignInPolicyRepository) Get(_ context.Context, tenantID, applicationID 
 	return cloneSignInPolicy(policy), nil
 }
 
-func (r *SignInPolicyRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) ListAll(_ context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.AppSignInPolicy, 0)
@@ -310,7 +326,24 @@ func (r *ApplicationAssignmentRepository) ListByApplication(_ context.Context, t
 	return out, nil
 }
 
-func (r *ApplicationAssignmentRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {
+// ListPageByApplication implements ports.AssignmentRepository.ListPageByApplication
+// (wi-159, ADR-158): keyset pagination ordered by (SubjectType, SubjectID)
+// ascending, strictly after the given keyset.
+func (r *ApplicationAssignmentRepository) ListPageByApplication(_ context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*domain.ApplicationAssignment, 0)
+	for _, assignment := range r.assignments {
+		if assignment.TenantID == tenantID && assignment.ApplicationID == applicationID {
+			cloned := *assignment
+			out = append(out, &cloned)
+		}
+	}
+	key := func(a *domain.ApplicationAssignment) (string, string) { return string(a.SubjectType), a.SubjectID }
+	return sharedmem.KeysetPage(out, key, false, afterSubjectType, afterSubjectID, limit), nil
+}
+
+func (r *ApplicationAssignmentRepository) ListAll(_ context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.ApplicationAssignment, 0)
@@ -425,7 +458,7 @@ func NewApplicationCategoryRepository() *ApplicationCategoryRepository {
 	return &ApplicationCategoryRepository{categories: map[string]*domain.ApplicationCategory{}}
 }
 
-func (r *ApplicationCategoryRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.ApplicationCategory, error) {
+func (r *ApplicationCategoryRepository) ListAll(_ context.Context, tenantID string) ([]*domain.ApplicationCategory, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.ApplicationCategory, 0)

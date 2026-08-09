@@ -53,7 +53,7 @@ func TestAgentRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("ListByTenant", func(t *testing.T) {
+	t.Run("ListAll", func(t *testing.T) {
 		// すでに agent-1 (tenant-a, Name: Agent A) がいる
 		agent2 := &agentdomain.Agent{
 			ID:          "agent-2",
@@ -81,7 +81,7 @@ func TestAgentRepository(t *testing.T) {
 		_ = repo.Save(ctx, agent3)
 		_ = repo.Save(ctx, agentOther)
 
-		list, err := repo.ListByTenant(ctx, "tenant-a")
+		list, err := repo.ListAll(ctx, "tenant-a")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -258,4 +258,36 @@ func TestAgentRepository(t *testing.T) {
 			t.Errorf("expected bindings to be deleted, got %d", len(list))
 		}
 	})
+}
+
+func TestAgentRepositoryListPage(t *testing.T) {
+	ctx := context.Background()
+	repo := NewAgentRepository()
+	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta"} {
+		_ = repo.Save(ctx, &agentdomain.Agent{ID: "agent-" + name, TenantID: "tenant-1", Name: name, CreatedAt: time.Now()})
+	}
+	_ = repo.Save(ctx, &agentdomain.Agent{ID: "agent-other", TenantID: "tenant-2", Name: "Zulu", CreatedAt: time.Now()})
+
+	first, err := repo.ListPage(ctx, "tenant-1", "", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 2 || first[0].Name != "Alpha" || first[1].Name != "Bravo" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, "tenant-1", last.Name, last.ID, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || next[0].Name != "Charlie" || next[1].Name != "Delta" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+	all, err := repo.ListPage(ctx, "tenant-1", "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 4 {
+		t.Fatalf("expected 4 tenant-1 agents, got %d", len(all))
+	}
 }

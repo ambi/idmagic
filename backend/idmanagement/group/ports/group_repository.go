@@ -10,7 +10,11 @@ import (
 // (ADR-038)。すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
 // reject する。
 type GroupRepository interface {
-	ListByTenant(ctx context.Context, tenantID string) ([]*groupdomain.Group, error)
+	ListAll(ctx context.Context, tenantID string) ([]*groupdomain.Group, error)
+	// ListPage returns up to limit groups for tenantID ordered by (name, id)
+	// ascending, strictly after the keyset (afterName, afterID). Pass "", ""
+	// for the first page. Backs ListGroups keyset pagination (wi-159, ADR-158).
+	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*groupdomain.Group, error)
 	FindByID(ctx context.Context, tenantID, id string) (*groupdomain.Group, error)
 	Save(ctx context.Context, group *groupdomain.Group) error
 	Delete(ctx context.Context, tenantID, id string) error

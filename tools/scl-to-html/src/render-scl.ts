@@ -571,8 +571,13 @@ const renderBindingBody = (b: Binding): string => {
         head.push(chip(`response: ${status.join(', ')}`, 'hint'))
       if (form) head.push(chip(`form: ${form}`, 'hint'))
       const headers = get('headers')
+      const responseHeaders = get('response_headers')
       return `<div class="binding-head">${head.join(' ')}</div>${
         isObj(headers) ? ioTable(headers as Record<string, Field>, 'HTTP Headers') : ''
+      }${
+        isObj(responseHeaders)
+          ? ioTable(responseHeaders as Record<string, Field>, 'HTTP Response Headers')
+          : ''
       }`
     }
     case 'grpc': {

@@ -51,17 +51,38 @@ type agentSummaryResponse struct {
 	KilledAt    *time.Time            `json:"killed_at,omitempty"`
 }
 
+const (
+	listAgentsQuery        = "ListAgents"
+	listAgentsDefaultLimit = 50
+	listAgentsMaxLimit     = 200
+)
+
 func HandleListAgents(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	views, err := agentusecases.ListAgents(c.Request().Context(), adminAgentDeps(d))
+	tenantID := support.RequestTenantID(c)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAgentsQuery, listAgentsDefaultLimit, listAgentsMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	views, err := agentusecases.ListAgents(c.Request().Context(), adminAgentDeps(d), page.AfterPrimary, page.AfterID, page.Limit+1)
 	if err != nil {
 		return err
+	}
+	hasMore := len(views) > page.Limit
+	if hasMore {
+		views = views[:page.Limit]
 	}
 	agents := make([]agentSummaryResponse, len(views))
 	for i, view := range views {
 		agents[i] = toAgentSummaryResponse(view.Agent, view.ClientIDs)
+	}
+	if hasMore {
+		last := views[len(views)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAgentsQuery, last.Agent.Name, last.Agent.ID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"agents": agents})
 }

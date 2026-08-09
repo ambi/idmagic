@@ -121,3 +121,37 @@ func TestAuditEventStoreLimitCapsAt1000(t *testing.T) {
 		t.Fatalf("limit must cap at 1000, got %d", len(out))
 	}
 }
+
+func TestAuditEventStoreKeysetPagination(t *testing.T) {
+	store := NewAuditEventStore(0)
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i := range 5 {
+		if err := store.Append(context.Background(), &ports.AuditEventRecord{
+			ID: "e" + string(rune('0'+i)), TenantID: "acme", Type: "X",
+			OccurredAt: base.Add(time.Duration(i) * time.Second),
+			Payload:    map[string]any{"userId": "u"},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	first, err := store.List(context.Background(), ports.AuditEventQuery{TenantID: "acme", Limit: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// OccurredAt DESC: e4, e3, e2, e1, e0
+	if len(first) != 2 || first[0].ID != "e4" || first[1].ID != "e3" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := store.List(context.Background(), ports.AuditEventQuery{
+		TenantID: "acme", Limit: 2, AfterOccurredAt: last.OccurredAt, AfterID: last.ID,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || next[0].ID != "e2" || next[1].ID != "e1" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+}

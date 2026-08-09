@@ -2,12 +2,72 @@ package db_memory
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
+
+func TestUserRepositoryListPage(t *testing.T) {
+	ctx := context.Background()
+	repo := NewUserRepository()
+	for i, name := range []string{"charlie", "alice", "bob", "delta", "echo"} {
+		repo.Seed(&userdomain.User{
+			ID: fmt.Sprintf("user-%d", i), TenantID: "tenant-1", PreferredUsername: name,
+			Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: time.Now(),
+		})
+	}
+	repo.Seed(&userdomain.User{
+		ID: "user-deleted", TenantID: "tenant-1", PreferredUsername: "banana",
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusDeleted}, CreatedAt: time.Now(),
+	})
+	repo.Seed(&userdomain.User{
+		ID: "user-other-tenant", TenantID: "tenant-2", PreferredUsername: "zzz",
+		Lifecycle: userdomain.UserLifecycle{Status: idmdomain.UserStatusActive}, CreatedAt: time.Now(),
+	})
+
+	t.Run("first page respects limit and (preferred_username, id) order", func(t *testing.T) {
+		page, err := repo.ListPage(ctx, "tenant-1", "", "", 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) != 2 || page[0].PreferredUsername != "alice" || page[1].PreferredUsername != "bob" {
+			t.Fatalf("unexpected first page: %+v", page)
+		}
+	})
+
+	t.Run("continuation page resumes strictly after the keyset", func(t *testing.T) {
+		first, err := repo.ListPage(ctx, "tenant-1", "", "", 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		last := first[len(first)-1]
+		next, err := repo.ListPage(ctx, "tenant-1", last.PreferredUsername, last.ID, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(next) != 2 || next[0].PreferredUsername != "charlie" || next[1].PreferredUsername != "delta" {
+			t.Fatalf("unexpected continuation page: %+v", next)
+		}
+	})
+
+	t.Run("excludes deleted users and other tenants", func(t *testing.T) {
+		page, err := repo.ListPage(ctx, "tenant-1", "", "", 100)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(page) != 5 {
+			t.Fatalf("expected 5 active tenant-1 users, got %d", len(page))
+		}
+		for _, u := range page {
+			if u.TenantID != "tenant-1" {
+				t.Fatalf("leaked cross-tenant user %s", u.ID)
+			}
+		}
+	})
+}
 
 func TestUserRepository(t *testing.T) {
 	ctx := context.Background()

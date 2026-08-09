@@ -4,6 +4,27 @@ FROM applications
 WHERE tenant_id = $1
 ORDER BY name;
 
+-- name: ListApplicationsByTenantPage :many
+-- First page of ListAdminApplications keyset pagination (wi-159, ADR-158):
+-- stable sort by (name, id) so admins see the pre-existing alphabetical
+-- order. id is a load-bearing tie-break since application names aren't
+-- unique per tenant.
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+FROM applications
+WHERE tenant_id = $1
+ORDER BY name, id
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListApplicationsByTenantPageAfter :many
+-- Continuation page: resumes strictly after the (name, id) keyset of the
+-- last row the caller saw.
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+FROM applications
+WHERE tenant_id = $1
+  AND (name, id) > (sqlc.arg(after_name)::text, sqlc.arg(after_id)::uuid)
+ORDER BY name, id
+LIMIT sqlc.arg(page_limit);
+
 -- name: GetApplicationByID :one
 SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
 FROM applications

@@ -16,6 +16,12 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+const (
+	listAdminUsersQuery        = "ListAdminUsers"
+	listAdminUsersDefaultLimit = 50
+	listAdminUsersMaxLimit     = 200
+)
+
 type adminUserCreateRequest struct {
 	PreferredUsername string   `json:"preferred_username"`
 	Password          string   `json:"password"`
@@ -83,13 +89,28 @@ func HandleListAdminUsers(d Deps, c *echo.Context) error {
 	if err := userusecases.PurgeExpiredSoftDeleted(c.Request().Context(), adminUserDeps(d), time.Now().UTC()); err != nil {
 		return err
 	}
-	users, err := d.UserRepo.FindAll(c.Request().Context(), support.RequestTenantID(c))
+	tenantID := support.RequestTenantID(c)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminUsersQuery, listAdminUsersDefaultLimit, listAdminUsersMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	users, err := d.UserRepo.ListPage(c.Request().Context(), tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
 	if err != nil {
 		return err
+	}
+	hasMore := len(users) > page.Limit
+	if hasMore {
+		users = users[:page.Limit]
 	}
 	response := make([]adminUserResponse, len(users))
 	for i, user := range users {
 		response[i] = toAdminUserResponse(user)
+	}
+	if hasMore {
+		last := users[len(users)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminUsersQuery, last.PreferredUsername, last.ID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"users": response})
 }

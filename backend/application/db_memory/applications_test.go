@@ -47,14 +47,14 @@ func TestApplicationRepositoryRoundTrip(t *testing.T) {
 		t.Fatal("mutation leaked into stored application")
 	}
 
-	list, err := repo.ListByTenant(ctx, "acme")
+	list, err := repo.ListAll(ctx, "acme")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(list) != 2 || list[0].Name != "Alpha" || list[1].Name != "Zebra" {
-		t.Fatalf("ListByTenant not sorted by name: %+v", list)
+		t.Fatalf("ListAll not sorted by name: %+v", list)
 	}
-	if other, _ := repo.ListByTenant(ctx, "unknown"); len(other) != 0 {
+	if other, _ := repo.ListAll(ctx, "unknown"); len(other) != 0 {
 		t.Fatalf("expected empty list for unknown tenant, got %d", len(other))
 	}
 
@@ -183,9 +183,9 @@ func TestSignInPolicyRepositoryRoundTrip(t *testing.T) {
 		t.Fatal("rule mutation leaked")
 	}
 
-	list, err := repo.ListByTenant(ctx, "acme")
+	list, err := repo.ListAll(ctx, "acme")
 	if err != nil || len(list) != 1 {
-		t.Fatalf("ListByTenant: %v len=%d", err, len(list))
+		t.Fatalf("ListAll: %v len=%d", err, len(list))
 	}
 
 	if missing, _ := repo.Get(ctx, "acme", "nope"); missing != nil {
@@ -256,9 +256,9 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("ListByApplication order: %+v", byApp)
 	}
 
-	byTenant, _ := repo.ListByTenant(ctx, "acme")
+	byTenant, _ := repo.ListAll(ctx, "acme")
 	if len(byTenant) != 4 {
-		t.Fatalf("ListByTenant len=%d want 4", len(byTenant))
+		t.Fatalf("ListAll len=%d want 4", len(byTenant))
 	}
 
 	bySubjects, err := repo.ListBySubjects(ctx, "acme", []appports.SubjectRef{
@@ -286,7 +286,7 @@ func TestApplicationAssignmentRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("after DeleteByApplication len=%d want 0", len(got))
 	}
 	// app-2 は残る。
-	if got, _ := repo.ListByTenant(ctx, "acme"); len(got) != 1 {
+	if got, _ := repo.ListAll(ctx, "acme"); len(got) != 1 {
 		t.Fatalf("app-2 assignment should remain, got %d", len(got))
 	}
 }
@@ -332,13 +332,13 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 		}
 	}
 
-	list, err := repo.ListByTenant(ctx, "acme")
+	list, err := repo.ListAll(ctx, "acme")
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Position 昇順、同 Position は名前順 → c2(A,1), c3(C,1), c1(B,2)。
 	if len(list) != 3 || list[0].ID != "c2" || list[1].ID != "c3" || list[2].ID != "c1" {
-		t.Fatalf("ListByTenant order: %+v", list)
+		t.Fatalf("ListAll order: %+v", list)
 	}
 
 	got, err := repo.FindByID(ctx, "acme", "c1")
@@ -354,5 +354,87 @@ func TestApplicationCategoryRepositoryRoundTrip(t *testing.T) {
 	}
 	if gone, _ := repo.FindByID(ctx, "acme", "c1"); gone != nil {
 		t.Fatal("category not deleted")
+	}
+}
+
+func TestApplicationAssignmentRepositoryListPage(t *testing.T) {
+	ctx := context.Background()
+	repo := NewApplicationAssignmentRepository()
+	for _, sid := range []string{"u3", "u1", "u2", "u4", "u5"} {
+		if err := repo.Save(ctx, &domain.ApplicationAssignment{
+			TenantID: "acme", ApplicationID: "app-1", SubjectType: domain.AssignmentSubjectUser, SubjectID: sid,
+			Visibility: domain.AssignmentVisible,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repo.Save(ctx, &domain.ApplicationAssignment{
+		TenantID: "acme", ApplicationID: "app-2", SubjectType: domain.AssignmentSubjectUser, SubjectID: "other-app",
+		Visibility: domain.AssignmentVisible,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := repo.ListPageByApplication(ctx, "acme", "app-1", "", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 2 || first[0].SubjectID != "u1" || first[1].SubjectID != "u2" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+	last := first[len(first)-1]
+	next, err := repo.ListPageByApplication(ctx, "acme", "app-1", string(last.SubjectType), last.SubjectID, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || next[0].SubjectID != "u3" || next[1].SubjectID != "u4" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+	all, err := repo.ListPageByApplication(ctx, "acme", "app-1", "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
+	}
+}
+
+func TestApplicationRepositoryListPage(t *testing.T) {
+	ctx := context.Background()
+	repo := NewApplicationRepository()
+	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
+		if err := repo.Save(ctx, &domain.Application{
+			TenantID: "acme", ID: name + "-id", Name: name, Kind: domain.ApplicationWeblink,
+		}); err != nil {
+			t.Fatalf("save %s: %v", name, err)
+		}
+	}
+	if err := repo.Save(ctx, &domain.Application{
+		TenantID: "other-tenant", ID: "zulu-id", Name: "Zulu", Kind: domain.ApplicationWeblink,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := repo.ListPage(ctx, "acme", "", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 2 || first[0].Name != "Alpha" || first[1].Name != "Bravo" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, "acme", last.Name, last.ID, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || next[0].Name != "Charlie" || next[1].Name != "Delta" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+	all, err := repo.ListPage(ctx, "acme", "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
 	}
 }

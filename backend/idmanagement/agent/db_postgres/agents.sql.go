@@ -180,6 +180,110 @@ func (q *Queries) ListAgentsByTenant(ctx context.Context, tenantID string) ([]*A
 	return items, nil
 }
 
+const listAgentsByTenantPage = `-- name: ListAgentsByTenantPage :many
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at FROM agents
+WHERE tenant_id=$1
+ORDER BY name, id
+LIMIT $2
+`
+
+type ListAgentsByTenantPageParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+// First page of ListAgents keyset pagination (wi-159, ADR-158): stable sort
+// by (name, id) so admins see the pre-existing alphabetical order.
+func (q *Queries) ListAgentsByTenantPage(ctx context.Context, arg ListAgentsByTenantPageParams) ([]*Agent, error) {
+	rows, err := q.db.Query(ctx, listAgentsByTenantPage, arg.TenantID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Agent
+	for rows.Next() {
+		var i Agent
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Description,
+			&i.Kind,
+			&i.OwnerUserID,
+			&i.Status,
+			&i.Roles,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DisabledAt,
+			&i.KilledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAgentsByTenantPageAfter = `-- name: ListAgentsByTenantPageAfter :many
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at FROM agents
+WHERE tenant_id=$1
+  AND (name, id) > ($2::text, $3::uuid)
+ORDER BY name, id
+LIMIT $4
+`
+
+type ListAgentsByTenantPageAfterParams struct {
+	TenantID  string
+	AfterName string
+	AfterID   string
+	PageLimit int32
+}
+
+// Continuation page: resumes strictly after the (name, id) keyset of the
+// last row the caller saw.
+func (q *Queries) ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgentsByTenantPageAfterParams) ([]*Agent, error) {
+	rows, err := q.db.Query(ctx, listAgentsByTenantPageAfter,
+		arg.TenantID,
+		arg.AfterName,
+		arg.AfterID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Agent
+	for rows.Next() {
+		var i Agent
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.Name,
+			&i.Description,
+			&i.Kind,
+			&i.OwnerUserID,
+			&i.Status,
+			&i.Roles,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DisabledAt,
+			&i.KilledAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeAgentBinding = `-- name: RemoveAgentBinding :execrows
 DELETE FROM agent_credential_bindings
 WHERE agent_id=$2 AND client_id=$3

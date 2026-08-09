@@ -202,6 +202,23 @@ func (d Deps) handleResumeConnection(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, conn)
 }
 
+const (
+	listProvisioningDeliveriesQuery        = "ListProvisioningDeliveries"
+	listProvisioningDeliveriesDefaultLimit = 50
+	listProvisioningDeliveriesMaxLimit     = 200
+)
+
+// provisioningDeliveriesQueryHash fingerprints every filter/sort query param
+// (everything except cursor/limit, which are pagination controls, not filter
+// identity) so a cursor issued for one filter combination (e.g. status) is
+// rejected if the caller changes it before following it (wi-159, ADR-158).
+func provisioningDeliveriesQueryHash(c *echo.Context) string {
+	q := c.Request().URL.Query()
+	q.Del("cursor")
+	q.Del("limit")
+	return q.Encode()
+}
+
 func (d Deps) handleListDeliveries(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
@@ -211,9 +228,31 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 		s := domain.ProvisioningDeliveryStatus(raw)
 		status = &s
 	}
-	deliveries, err := usecases.ListDeliveries(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), status, 0)
+	tenantID := support.RequestTenantID(c)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, provisioningDeliveriesQueryHash(c), listProvisioningDeliveriesDefaultLimit, listProvisioningDeliveriesMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	afterCreatedAt := time.Time{}
+	if page.AfterPrimary != "" {
+		afterCreatedAt, err = time.Parse(time.RFC3339Nano, page.AfterPrimary)
+		if err != nil {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
+		}
+	}
+	deliveries, err := usecases.ListDeliveries(c.Request().Context(), d.adminDeps(), tenantID, c.Param("id"), status, afterCreatedAt, page.AfterID, page.Limit+1)
 	if err != nil {
 		return d.writeError(c, err)
+	}
+	hasMore := len(deliveries) > page.Limit
+	if hasMore {
+		deliveries = deliveries[:page.Limit]
+	}
+	if hasMore {
+		last := deliveries[len(deliveries)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, provisioningDeliveriesQueryHash(c), last.CreatedAt.UTC().Format(time.RFC3339Nano), last.ID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"deliveries": deliveries})
 }

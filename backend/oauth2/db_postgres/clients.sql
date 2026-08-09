@@ -17,6 +17,34 @@ FROM oauth2_clients
 WHERE tenant_id = $1
 ORDER BY created_at;
 
+-- name: ListClientsByTenantPage :many
+-- First page of ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158):
+-- client_id order matches the admin handler's pre-existing re-sort of
+-- ListClientsByTenant's rows.
+SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
+  grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
+  tls_client_auth_subject_dn, id_token_signed_response_alg,
+  require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  created_at, updated_at, first_party, claim_policy
+FROM oauth2_clients
+WHERE tenant_id = $1
+ORDER BY client_id
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListClientsByTenantPageAfter :many
+-- Continuation page: resumes strictly after the client_id of the last row
+-- the caller saw.
+SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,
+  grant_types, response_types, token_endpoint_auth_method, scope, jwks_uri, jwks,
+  tls_client_auth_subject_dn, id_token_signed_response_alg,
+  require_pushed_authorization_requests, dpop_bound_access_tokens, fapi_profile,
+  created_at, updated_at, first_party, claim_policy
+FROM oauth2_clients
+WHERE tenant_id = $1
+  AND client_id > sqlc.arg(after_client_id)::uuid
+ORDER BY client_id
+LIMIT sqlc.arg(page_limit);
+
 -- name: UpsertClient :exec
 INSERT INTO oauth2_clients (
   tenant_id, client_id, client_secret_hash, client_name, client_type, redirect_uris,

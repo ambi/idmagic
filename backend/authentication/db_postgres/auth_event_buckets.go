@@ -8,6 +8,7 @@ package db_postgres
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
@@ -60,6 +61,8 @@ func (s *AuthEventBucketStore) DeleteOlderThan(ctx context.Context, before time.
 func (s *AuthEventBucketStore) List(
 	ctx context.Context,
 	tenantID string,
+	afterWindowStart time.Time,
+	afterKey string,
 	limit int,
 ) ([]authnports.AuthEventBucket, error) {
 	if limit <= 0 {
@@ -68,8 +71,31 @@ func (s *AuthEventBucketStore) List(
 	if limit > authEventBucketMaxListLimit {
 		limit = authEventBucketMaxListLimit
 	}
-	rows, err := s.queries().ListAuthEventBuckets(ctx, ListAuthEventBucketsParams{
-		Column1: tenantID, Limit: int32(limit),
+	if afterWindowStart.IsZero() && afterKey == "" {
+		rows, err := s.queries().ListAuthEventBuckets(ctx, ListAuthEventBucketsParams{
+			Column1: tenantID, Limit: int32(limit),
+		})
+		if err != nil {
+			return nil, err
+		}
+		out := make([]authnports.AuthEventBucket, 0, len(rows))
+		for _, row := range rows {
+			out = append(out, authnports.AuthEventBucket{
+				TenantID:    row.TenantID,
+				Kind:        authnports.AuthEventBucketKind(row.Kind),
+				KeyHash:     row.KeyHash,
+				WindowStart: row.WindowStart.UTC(),
+				Count:       int(row.Count),
+				FirstSeen:   row.FirstSeen.UTC(),
+				LastSeen:    row.LastSeen.UTC(),
+			})
+		}
+		return out, nil
+	}
+	afterKind, afterKeyHash, _ := strings.Cut(afterKey, "|")
+	rows, err := s.queries().ListAuthEventBucketsAfter(ctx, ListAuthEventBucketsAfterParams{
+		Column1: tenantID, AfterWindowStart: afterWindowStart,
+		AfterKind: afterKind, AfterKeyHash: afterKeyHash, PageLimit: int32(limit),
 	})
 	if err != nil {
 		return nil, err

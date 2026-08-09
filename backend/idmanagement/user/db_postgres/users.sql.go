@@ -182,6 +182,117 @@ func (q *Queries) ListUsersByTenant(ctx context.Context, tenantID string) ([]*Us
 	return items, nil
 }
 
+const listUsersByTenantPage = `-- name: ListUsersByTenantPage :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+ORDER BY preferred_username, id
+LIMIT $2
+`
+
+type ListUsersByTenantPageParams struct {
+	TenantID string
+	Limit    int32
+}
+
+// First page of ListAdminUsers keyset pagination (wi-159, ADR-158): stable
+// sort by (preferred_username, id) so admins see the pre-existing alphabetical
+// order, with id as tie-break for uniqueness.
+func (q *Queries) ListUsersByTenantPage(ctx context.Context, arg ListUsersByTenantPageParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPage, arg.TenantID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByTenantPageAfter = `-- name: ListUsersByTenantPageAfter :many
+SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
+email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes FROM users
+WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
+  AND (preferred_username, id) > ($2::text, $3::uuid)
+ORDER BY preferred_username, id
+LIMIT $4
+`
+
+type ListUsersByTenantPageAfterParams struct {
+	TenantID      string
+	AfterUsername string
+	AfterID       string
+	PageLimit     int32
+}
+
+// Continuation page: resumes strictly after the (preferred_username, id) keyset
+// of the last row the caller saw.
+func (q *Queries) ListUsersByTenantPageAfter(ctx context.Context, arg ListUsersByTenantPageAfterParams) ([]*User, error) {
+	rows, err := q.db.Query(ctx, listUsersByTenantPageAfter,
+		arg.TenantID,
+		arg.AfterUsername,
+		arg.AfterID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.PreferredUsername,
+			&i.PasswordHash,
+			&i.Name,
+			&i.GivenName,
+			&i.FamilyName,
+			&i.Email,
+			&i.EmailVerified,
+			&i.MfaEnrolled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Roles,
+			&i.Lifecycle,
+			&i.Attributes,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const saveUser = `-- name: SaveUser :exec
 INSERT INTO users (id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,
  email_verified,mfa_enrolled,created_at,updated_at,roles,lifecycle,attributes)

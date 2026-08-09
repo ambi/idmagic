@@ -171,3 +171,39 @@ func TestIssueClientSecretCredentialEnforcesActiveLimitAtomically(t *testing.T) 
 		t.Fatalf("credentials=%d, want 2", len(credentials))
 	}
 }
+
+func TestOAuth2ClientRepositoryListPage(t *testing.T) {
+	ctx := context.Background()
+	repo := NewClientRepository()
+	for _, id := range []string{"c3", "c1", "c2", "c4", "c5"} {
+		if err := repo.Save(ctx, &domain.OAuth2Client{TenantID: "tenant-1", ClientID: id, ClientType: spec.ClientConfidential}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repo.Save(ctx, &domain.OAuth2Client{TenantID: "tenant-2", ClientID: "other", ClientType: spec.ClientConfidential}); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := repo.ListPage(ctx, "tenant-1", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 2 || first[0].ClientID != "c1" || first[1].ClientID != "c2" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, "tenant-1", last.ClientID, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || next[0].ClientID != "c3" || next[1].ClientID != "c4" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+	all, err := repo.ListPage(ctx, "tenant-1", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
+	}
+}

@@ -155,7 +155,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	if res.Buckets != 1 {
 		t.Fatalf("deleted buckets=%d, want 1", res.Buckets)
 	}
-	buckets, err := store.List(ctx, tenancydomain.DefaultTenantID, 0)
+	buckets, err := store.List(ctx, tenancydomain.DefaultTenantID, time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

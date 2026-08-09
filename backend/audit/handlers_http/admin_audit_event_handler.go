@@ -138,7 +138,27 @@ func init() {
 	auditEventCategoryTypes["authentication"] = authn
 }
 
-const adminAuditEventExportMaxLimit = 10000
+const (
+	adminAuditEventExportMaxLimit    = 10000
+	listAdminAuditEventsQuery        = "ListAdminAuditEvents"
+	listAdminAuditEventsDefaultLimit = 100
+	// listAdminAuditEventsMaxLimit is one less than the repository's own
+	// max (1000, audit_event_store.go/audit_events.go auditMaxListLimit) so
+	// requesting limit+1 rows to detect a next page never exceeds — and so
+	// never gets silently re-clamped by — the repository's own limit.
+	listAdminAuditEventsMaxLimit = 999
+)
+
+// auditEventQueryHash fingerprints every filter/sort query param (everything
+// except cursor/limit, which are pagination controls, not filter identity)
+// so a cursor issued for one filter/sort combination is rejected if the
+// caller changes filters before following it (wi-159, ADR-158).
+func auditEventQueryHash(c *echo.Context) string {
+	q := c.Request().URL.Query()
+	q.Del("cursor")
+	q.Del("limit")
+	return q.Encode()
+}
 
 func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	actor, err := d.RequireAuditReader(c)
@@ -155,13 +175,36 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	if noMatch {
 		return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": []AdminAuditEventResponse{}})
 	}
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, actor.TenantID, auditEventQueryHash(c), listAdminAuditEventsDefaultLimit, listAdminAuditEventsMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	query.Limit = page.Limit + 1
+	if page.AfterPrimary != "" {
+		afterOccurredAt, err := time.Parse(time.RFC3339Nano, page.AfterPrimary)
+		if err != nil {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
+		}
+		query.AfterOccurredAt = afterOccurredAt
+		query.AfterID = page.AfterID
+	}
 	records, err := d.AuditEventRepo.List(c.Request().Context(), query)
 	if err != nil {
 		return support.WriteServerError(c, err)
 	}
+	hasMore := len(records) > page.Limit
+	if hasMore {
+		records = records[:page.Limit]
+	}
 	response := make([]AdminAuditEventResponse, len(records))
 	for i, rec := range records {
 		response[i] = toAdminAuditEventResponse(rec)
+	}
+	if hasMore {
+		last := records[len(records)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, actor.TenantID, auditEventQueryHash(c), last.OccurredAt.UTC().Format(time.RFC3339Nano), last.ID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"events": response})
 }

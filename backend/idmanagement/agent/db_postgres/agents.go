@@ -64,8 +64,42 @@ func agentFromRow(row *Agent) (*agentdomain.Agent, error) {
 	return a, a.Validate()
 }
 
-func (r *AgentRepository) ListByTenant(ctx context.Context, tenantID string) ([]*agentdomain.Agent, error) {
+func (r *AgentRepository) ListAll(ctx context.Context, tenantID string) ([]*agentdomain.Agent, error) {
 	rows, err := New(r.Pool).ListAgentsByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*agentdomain.Agent, 0, len(rows))
+	for _, row := range rows {
+		agent, err := agentFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, agent)
+	}
+	return out, nil
+}
+
+// ListPage implements ports.AgentRepository.ListPage (wi-159, ADR-158): keyset
+// pagination ordered by (name, id) ascending, strictly after the given
+// keyset ("", "" for the first page).
+func (r *AgentRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*agentdomain.Agent, error) {
+	q := New(r.Pool)
+	var rows []*Agent
+	var err error
+	if afterName == "" && afterID == "" {
+		rows, err = q.ListAgentsByTenantPage(ctx, ListAgentsByTenantPageParams{
+			TenantID:  tenantID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListAgentsByTenantPageAfter(ctx, ListAgentsByTenantPageAfterParams{
+			TenantID:  tenantID,
+			AfterName: afterName,
+			AfterID:   afterID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err != nil {
 		return nil, err
 	}

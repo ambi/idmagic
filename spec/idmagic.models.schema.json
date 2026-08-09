@@ -872,18 +872,13 @@
           "items": {
             "$ref": "#/$defs/AdminAuditEventResponse"
           }
-        },
-        "next_after": {
-          "type": "string",
-          "format": "date-time",
-          "description": "ページング継続用カーソル。"
         }
       },
       "additionalProperties": false,
       "required": [
         "events"
       ],
-      "description": "監査イベントの検索結果。"
+      "description": "監査イベントの検索結果。ページング継続は body ではなく Link response header (rel=\"next\") で表現する。"
     },
     "AdminAuditEventResponse": {
       "type": "object",
@@ -4120,6 +4115,10 @@
           "type": "string",
           "format": "date-time",
           "description": "occurred_at がこの時刻以前。"
+        },
+        "cursor": {
+          "type": "string",
+          "description": "ページング継続トークン。前回応答の Link response header (rel=\"next\") の URL に\n埋め込まれた値をそのまま渡す。tenant・sort・filter を含めて署名された opaque token。\n"
         },
         "limit": {
           "type": "integer",

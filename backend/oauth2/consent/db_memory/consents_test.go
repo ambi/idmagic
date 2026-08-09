@@ -140,3 +140,46 @@ func TestConsentRepository(t *testing.T) {
 		}
 	})
 }
+
+func TestConsentRepositoryListPageByTenant(t *testing.T) {
+	ctx := context.Background()
+	repo := NewConsentRepository()
+	pairs := [][2]string{{"u3", "c1"}, {"u1", "c1"}, {"u2", "c1"}, {"u4", "c1"}, {"u5", "c1"}}
+	for _, p := range pairs {
+		if err := repo.Save(ctx, "tenant-1", &domain.Consent{
+			UserID: p[0], ClientID: p[1], Scopes: []string{"read"}, State: domain.ConsentGranted,
+			GrantedAt: time.Now(), ExpiresAt: time.Now().Add(24 * time.Hour),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := repo.Save(ctx, "tenant-2", &domain.Consent{
+		UserID: "other", ClientID: "c1", Scopes: []string{"read"}, State: domain.ConsentGranted,
+		GrantedAt: time.Now(), ExpiresAt: time.Now().Add(24 * time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := repo.ListPage(ctx, "tenant-1", "", "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 2 || first[0].UserID != "u1" || first[1].UserID != "u2" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, "tenant-1", last.UserID, last.ClientID, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || next[0].UserID != "u3" || next[1].UserID != "u4" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+	all, err := repo.ListPage(ctx, "tenant-1", "", "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
+	}
+}

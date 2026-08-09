@@ -33,7 +33,7 @@ func cloneAgent(agent *agentdomain.Agent) *agentdomain.Agent {
 	return &cloned
 }
 
-func (r *AgentRepository) ListByTenant(_ context.Context, tenantID string) ([]*agentdomain.Agent, error) {
+func (r *AgentRepository) ListAll(_ context.Context, tenantID string) ([]*agentdomain.Agent, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*agentdomain.Agent, 0)
@@ -44,6 +44,21 @@ func (r *AgentRepository) ListByTenant(_ context.Context, tenantID string) ([]*a
 	}
 	slices.SortFunc(out, func(a, b *agentdomain.Agent) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
+}
+
+// ListPage implements ports.AgentRepository.ListPage (wi-159, ADR-158): keyset
+// pagination ordered by (Name, ID) ascending, strictly after the given keyset.
+func (r *AgentRepository) ListPage(_ context.Context, tenantID, afterName, afterID string, limit int) ([]*agentdomain.Agent, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*agentdomain.Agent, 0)
+	for _, agent := range r.agents {
+		if agent.TenantID == tenantID {
+			out = append(out, cloneAgent(agent))
+		}
+	}
+	key := func(a *agentdomain.Agent) (string, string) { return a.Name, a.ID }
+	return sharedmem.KeysetPage(out, key, false, afterName, afterID, limit), nil
 }
 
 func (r *AgentRepository) FindByID(_ context.Context, tenantID, id string) (*agentdomain.Agent, error) {

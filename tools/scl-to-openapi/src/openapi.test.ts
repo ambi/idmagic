@@ -129,6 +129,35 @@ describe('generateOpenApi — unit', () => {
     expect(errorResponse.content['application/problem+json']).toBeDefined()
   })
 
+  it('emits binding response_headers as OpenAPI response headers on success codes only', () => {
+    const out = generateOpenApi(
+      doc(
+        { E: { kind: 'error', status: 400 } },
+        {
+          Op: {
+            errors: ['E'],
+            bindings: [
+              {
+                kind: 'http',
+                method: 'GET',
+                path: '/op',
+                response_headers: { Link: { type: 'String', optional: true, description: 'RFC 8288 next-page link' } },
+              },
+            ],
+          },
+        },
+      ),
+    )
+    const o = op(out, '/op', 'get')
+    const responses = o.responses as Record<string, Record<string, unknown>>
+    const success = responses['200'] as { headers: Record<string, Record<string, unknown>> }
+    expect(success.headers.Link).toEqual({
+      schema: { type: 'string', description: 'RFC 8288 next-page link' },
+    })
+    const errorResponse = responses['400'] as { headers?: unknown }
+    expect(errorResponse.headers).toBeUndefined()
+  })
+
   it('groups multiple errors that share a status under one response', () => {
     const out = generateOpenApi(
       doc(

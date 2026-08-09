@@ -143,12 +143,12 @@ func TestProvisioningConnectionRepository_ListByTenant_ScopesToTenant(t *testing
 	_ = repo.Register(ctx, testConnection("app-1", "tenant-a"), "s1")
 	_ = repo.Register(ctx, testConnection("app-2", "tenant-a"), "s2")
 	_ = repo.Register(ctx, testConnection("app-3", "tenant-b"), "s3")
-	list, err := repo.ListByTenant(ctx, "tenant-a")
+	list, err := repo.ListAll(ctx, "tenant-a")
 	if err != nil {
-		t.Fatalf("ListByTenant() error = %v", err)
+		t.Fatalf("ListAll() error = %v", err)
 	}
 	if len(list) != 2 {
-		t.Errorf("ListByTenant() returned %d connections, want 2", len(list))
+		t.Errorf("ListAll() returned %d connections, want 2", len(list))
 	}
 }
 
@@ -364,5 +364,45 @@ func TestRemoteResourceLinkRepository_Find_NotFoundReturnsNil(t *testing.T) {
 	}
 	if found != nil {
 		t.Error("Find() for a missing link should return nil, nil")
+	}
+}
+
+func TestProvisioningDeliveryRepository_ListPageByConnection(t *testing.T) {
+	repo := NewProvisioningDeliveryRepository()
+	ctx := context.Background()
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i, sourceID := range []string{"user-1", "user-2", "user-3", "user-4", "user-5"} {
+		d := testDelivery(sourceID, 1)
+		d.ID = "delivery-" + sourceID
+		d.CreatedAt = base.Add(time.Duration(i) * time.Minute)
+		if _, err := repo.Save(ctx, d); err != nil {
+			t.Fatalf("save %s: %v", sourceID, err)
+		}
+	}
+
+	// created_at DESC: user-5 (newest) first.
+	first, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, time.Time{}, "", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(first) != 2 || first[0].SourceID != "user-5" || first[1].SourceID != "user-4" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, last.CreatedAt, last.ID, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next) != 2 || next[0].SourceID != "user-3" || next[1].SourceID != "user-2" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := repo.ListPageByConnection(ctx, testDeliveryTenantID, testDeliveryConnectionID, nil, time.Time{}, "", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
 	}
 }

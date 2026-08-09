@@ -25,7 +25,7 @@ func TestListAuthEventBucketsProjectsAndScopesByTenant(t *testing.T) {
 		}
 	}
 
-	views, err := usecases.ListAuthEventBuckets(ctx, store, "acme", 0)
+	views, err := usecases.ListAuthEventBuckets(ctx, store, "acme", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestListAuthEventBucketsProjectsAndScopesByTenant(t *testing.T) {
 }
 
 func TestListAuthEventBucketsNilStoreReturnsEmpty(t *testing.T) {
-	views, err := usecases.ListAuthEventBuckets(context.Background(), nil, "acme", 0)
+	views, err := usecases.ListAuthEventBuckets(context.Background(), nil, "acme", time.Time{}, "", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

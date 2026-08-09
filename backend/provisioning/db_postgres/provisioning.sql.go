@@ -498,6 +498,224 @@ func (q *Queries) ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Co
 	return items, nil
 }
 
+const listProvisioningDeliveriesByConnectionAndStatusPage = `-- name: ListProvisioningDeliveriesByConnectionAndStatusPage :many
+SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
+FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 AND status=$3 ORDER BY created_at DESC, id DESC LIMIT $4
+`
+
+type ListProvisioningDeliveriesByConnectionAndStatusPageParams struct {
+	TenantID     string
+	ConnectionID string
+	Status       string
+	PageLimit    int32
+}
+
+// First page of ListProvisioningDeliveries keyset pagination (wi-159,
+// ADR-158): id is the tie-break, matching ListProvisioningDeliveriesByConnectionAndStatus's
+// pre-existing "most recent first" order.
+func (q *Queries) ListProvisioningDeliveriesByConnectionAndStatusPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusPageParams) ([]*ProvisioningDelivery, error) {
+	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionAndStatusPage,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.Status,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ProvisioningDelivery
+	for rows.Next() {
+		var i ProvisioningDelivery
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ConnectionID,
+			&i.SourceType,
+			&i.SourceID,
+			&i.SourceVersion,
+			&i.Operation,
+			&i.Status,
+			&i.JobID,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProvisioningDeliveriesByConnectionAndStatusPageAfter = `-- name: ListProvisioningDeliveriesByConnectionAndStatusPageAfter :many
+SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
+FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 AND status=$3
+  AND (created_at, id) < ($4::timestamptz, $5::uuid)
+ORDER BY created_at DESC, id DESC LIMIT $6
+`
+
+type ListProvisioningDeliveriesByConnectionAndStatusPageAfterParams struct {
+	TenantID       string
+	ConnectionID   string
+	Status         string
+	AfterCreatedAt time.Time
+	AfterID        string
+	PageLimit      int32
+}
+
+// Continuation page: resumes strictly after the (created_at, id) keyset of
+// the last row the caller saw.
+func (q *Queries) ListProvisioningDeliveriesByConnectionAndStatusPageAfter(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusPageAfterParams) ([]*ProvisioningDelivery, error) {
+	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionAndStatusPageAfter,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.Status,
+		arg.AfterCreatedAt,
+		arg.AfterID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ProvisioningDelivery
+	for rows.Next() {
+		var i ProvisioningDelivery
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ConnectionID,
+			&i.SourceType,
+			&i.SourceID,
+			&i.SourceVersion,
+			&i.Operation,
+			&i.Status,
+			&i.JobID,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProvisioningDeliveriesByConnectionPage = `-- name: ListProvisioningDeliveriesByConnectionPage :many
+SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
+FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 ORDER BY created_at DESC, id DESC LIMIT $3
+`
+
+type ListProvisioningDeliveriesByConnectionPageParams struct {
+	TenantID     string
+	ConnectionID string
+	PageLimit    int32
+}
+
+// First page of ListProvisioningDeliveries keyset pagination (wi-159,
+// ADR-158), no status filter: id is the tie-break, matching
+// ListProvisioningDeliveriesByConnection's pre-existing "most recent first" order.
+func (q *Queries) ListProvisioningDeliveriesByConnectionPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageParams) ([]*ProvisioningDelivery, error) {
+	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionPage, arg.TenantID, arg.ConnectionID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ProvisioningDelivery
+	for rows.Next() {
+		var i ProvisioningDelivery
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ConnectionID,
+			&i.SourceType,
+			&i.SourceID,
+			&i.SourceVersion,
+			&i.Operation,
+			&i.Status,
+			&i.JobID,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProvisioningDeliveriesByConnectionPageAfter = `-- name: ListProvisioningDeliveriesByConnectionPageAfter :many
+SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
+FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2
+  AND (created_at, id) < ($3::timestamptz, $4::uuid)
+ORDER BY created_at DESC, id DESC LIMIT $5
+`
+
+type ListProvisioningDeliveriesByConnectionPageAfterParams struct {
+	TenantID       string
+	ConnectionID   string
+	AfterCreatedAt time.Time
+	AfterID        string
+	PageLimit      int32
+}
+
+// Continuation page: resumes strictly after the (created_at, id) keyset of
+// the last row the caller saw.
+func (q *Queries) ListProvisioningDeliveriesByConnectionPageAfter(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageAfterParams) ([]*ProvisioningDelivery, error) {
+	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionPageAfter,
+		arg.TenantID,
+		arg.ConnectionID,
+		arg.AfterCreatedAt,
+		arg.AfterID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ProvisioningDelivery
+	for rows.Next() {
+		var i ProvisioningDelivery
+		if err := rows.Scan(
+			&i.ID,
+			&i.TenantID,
+			&i.ConnectionID,
+			&i.SourceType,
+			&i.SourceID,
+			&i.SourceVersion,
+			&i.Operation,
+			&i.Status,
+			&i.JobID,
+			&i.LastError,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CompletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUnenqueuedProvisioningDeliveries = `-- name: ListUnenqueuedProvisioningDeliveries :many
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
 FROM provisioning_deliveries WHERE status='pending' AND job_id IS NULL ORDER BY created_at LIMIT $1

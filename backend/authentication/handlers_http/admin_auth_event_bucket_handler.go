@@ -24,17 +24,33 @@ type authEventBucketResponse struct {
 	LastSeen    time.Time `json:"last_seen"`
 }
 
+const listAuthenticationEventBucketsQuery = "ListAuthenticationEventBuckets"
+
 func handleListAuthEventBuckets(d Deps, c *echo.Context) error {
 	actor, err := d.RequireAuditReader(c)
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	limit := parseLimitParam(c, authusecases.AuthEventBucketDefaultLimit)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, actor.TenantID, listAuthenticationEventBucketsQuery, authusecases.AuthEventBucketDefaultLimit, authusecases.AuthEventBucketMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	afterWindowStart := time.Time{}
+	if page.AfterPrimary != "" {
+		afterWindowStart, err = time.Parse(time.RFC3339Nano, page.AfterPrimary)
+		if err != nil {
+			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid or expired.")
+		}
+	}
 	buckets, err := authusecases.ListAuthEventBuckets(
-		c.Request().Context(), d.AuthEventBucketStore, actor.TenantID, limit,
+		c.Request().Context(), d.AuthEventBucketStore, actor.TenantID, afterWindowStart, page.AfterID, page.Limit+1,
 	)
 	if err != nil {
 		return err
+	}
+	hasMore := len(buckets) > page.Limit
+	if hasMore {
+		buckets = buckets[:page.Limit]
 	}
 	response := make([]authEventBucketResponse, len(buckets))
 	for i, bucket := range buckets {
@@ -45,6 +61,13 @@ func handleListAuthEventBuckets(d Deps, c *echo.Context) error {
 			Count:       bucket.Count,
 			FirstSeen:   bucket.FirstSeen,
 			LastSeen:    bucket.LastSeen,
+		}
+	}
+	if hasMore {
+		last := buckets[len(buckets)-1]
+		afterKey := last.Kind + "|" + last.KeyHash
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, actor.TenantID, listAuthenticationEventBucketsQuery, last.WindowStart.UTC().Format(time.RFC3339Nano), afterKey, hasMore); err != nil {
+			return err
 		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"buckets": response})

@@ -50,26 +50,38 @@ type adminClientResponse struct {
 	UpdatedAt                          time.Time                           `json:"updated_at"`
 }
 
+const (
+	listAdminOAuth2ClientsQuery        = "ListAdminOAuth2Clients"
+	listAdminOAuth2ClientsDefaultLimit = 50
+	listAdminOAuth2ClientsMaxLimit     = 200
+)
+
 func (d Deps) handleListAdminOAuth2Clients(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	clients, err := d.ClientRepo.FindAll(c.Request().Context(), support.RequestTenantID(c))
+	tenantID := support.RequestTenantID(c)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminOAuth2ClientsQuery, listAdminOAuth2ClientsDefaultLimit, listAdminOAuth2ClientsMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	clients, err := d.ClientRepo.ListPage(c.Request().Context(), tenantID, page.AfterID, page.Limit+1)
 	if err != nil {
 		return err
 	}
-	slices.SortFunc(clients, func(a, b *oauthdomain.OAuth2Client) int {
-		if a.ClientID < b.ClientID {
-			return -1
-		}
-		if a.ClientID > b.ClientID {
-			return 1
-		}
-		return 0
-	})
+	hasMore := len(clients) > page.Limit
+	if hasMore {
+		clients = clients[:page.Limit]
+	}
 	response := make([]adminClientResponse, len(clients))
 	for i, client := range clients {
 		response[i] = toAdminOAuth2ClientResponse(client)
+	}
+	if hasMore {
+		last := clients[len(clients)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminOAuth2ClientsQuery, last.ClientID, last.ClientID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"clients": response})
 }

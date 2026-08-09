@@ -22,7 +22,7 @@ func TestGroupRepositoryRoundTripAndMembers(t *testing.T) {
 		t.Fatalf("find group: %v %+v", err, got)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list groups: %v len=%d", err, len(list))
 	}
@@ -56,5 +56,48 @@ func TestGroupRepositoryRoundTripAndMembers(t *testing.T) {
 
 	if err := repo.Delete(ctx, tenant.ID, group.ID); err != nil {
 		t.Fatalf("delete group: %v", err)
+	}
+}
+
+func TestGroupRepositoryListPage(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &GroupRepository{Pool: db}
+	ctx := context.Background()
+	now := testClock()
+
+	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
+		g := &groupdomain.Group{
+			ID: newUUID(t), TenantID: tenant.ID, Name: name, Roles: []string{},
+			CreatedAt: now, UpdatedAt: now,
+		}
+		if err := repo.Save(ctx, g); err != nil {
+			t.Fatalf("save %s: %v", name, err)
+		}
+	}
+
+	first, err := repo.ListPage(ctx, tenant.ID, "", "", 2)
+	if err != nil {
+		t.Fatalf("list page 1: %v", err)
+	}
+	if len(first) != 2 || first[0].Name != "Alpha" || first[1].Name != "Bravo" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, tenant.ID, last.Name, last.ID, 2)
+	if err != nil {
+		t.Fatalf("list page 2: %v", err)
+	}
+	if len(next) != 2 || next[0].Name != "Charlie" || next[1].Name != "Delta" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := repo.ListPage(ctx, tenant.ID, "", "", 100)
+	if err != nil {
+		t.Fatalf("list page all: %v", err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
 	}
 }

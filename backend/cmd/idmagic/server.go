@@ -212,6 +212,7 @@ func Run() error {
 			ShuttingDown:              shuttingDown,
 			StartupComplete:           startupComplete,
 			TenantRepo:                deps.Tenancy.TenantRepo,
+			PaginationCodec:           httpsupport.NewCursorCodec(bootstrap.LoadPaginationCursorSecret()),
 			HealthInfo: httpsupport.HealthInfo{
 				Persistence:   runtime.Persistence,
 				Observability: runtime.Observability,

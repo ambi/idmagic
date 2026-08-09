@@ -16,6 +16,11 @@ type OAuth2ClientRepository interface {
 	Save(ctx context.Context, c *domain.OAuth2Client) error
 	Delete(ctx context.Context, tenantID, clientID string) error
 	FindAll(ctx context.Context, tenantID string) ([]*domain.OAuth2Client, error)
+	// ListPage returns up to limit clients for tenantID ordered by client_id
+	// ascending — matching the admin handler's pre-existing re-sort of
+	// FindAll's rows — strictly after afterClientID ("" for the first page).
+	// Backs ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158).
+	ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error)
 	SaveClientSecretCredential(ctx context.Context, credential domain.ClientSecretCredential) error
 	IssueClientSecretCredential(ctx context.Context, legacy *domain.ClientSecretCredential, credential domain.ClientSecretCredential, maxActive int, now time.Time) error

@@ -15,6 +15,12 @@ type Querier interface {
 	FindAgentByID(ctx context.Context, arg FindAgentByIDParams) (*Agent, error)
 	ListAgentBindingsByAgent(ctx context.Context, arg ListAgentBindingsByAgentParams) ([]*AgentCredentialBinding, error)
 	ListAgentsByTenant(ctx context.Context, tenantID string) ([]*Agent, error)
+	// First page of ListAgents keyset pagination (wi-159, ADR-158): stable sort
+	// by (name, id) so admins see the pre-existing alphabetical order.
+	ListAgentsByTenantPage(ctx context.Context, arg ListAgentsByTenantPageParams) ([]*Agent, error)
+	// Continuation page: resumes strictly after the (name, id) keyset of the
+	// last row the caller saw.
+	ListAgentsByTenantPageAfter(ctx context.Context, arg ListAgentsByTenantPageAfterParams) ([]*Agent, error)
 	RemoveAgentBinding(ctx context.Context, arg RemoveAgentBindingParams) (int64, error)
 	SaveAgent(ctx context.Context, arg SaveAgentParams) error
 }

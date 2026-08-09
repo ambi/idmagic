@@ -1949,12 +1949,22 @@ interfaces:
         method: GET
         path: /api/account/v1/data_export
   ListAdminUsers:
-    description: 管理者が削除されていないユーザーを一覧する。
+    description: "管理者が削除されていないユーザーを preferred_username 昇順 (同値は id で tie-break) の\nkeyset pagination で一覧する。cursor は前回応答の Link response header (rel=\"next\") から取得する。\n"
+    input:
+      cursor:
+        type: String
+        optional: true
+        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+      limit:
+        type: Integer
+        optional: true
+        description: "返却件数の上限 (default 50, max 200)。"
     output:
       response:
         type: AdminUserListResponse
     errors:
       - AccessDeniedError
+      - InvalidRequestError
     read_only: true
     stability: internal
     access:
@@ -1966,6 +1976,11 @@ interfaces:
       - kind: http
         method: GET
         path: /api/admin/v1/users
+        response_headers:
+          Link:
+            type: String
+            optional: true
+            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
   GetAdminUser:
     description: 管理者が id を指定してユーザーを取得する。
     input:
@@ -2501,12 +2516,22 @@ interfaces:
         method: DELETE
         path: "/api/admin/v1/users/{user_id}/required_actions/{action}"
   ListGroups:
-    description: 管理者が所属テナントのグループを一覧する。各グループは member_count を含む。
+    description: "管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の keyset pagination で\n一覧する。各グループは member_count を含む。cursor は前回応答の Link response header (rel=\"next\")\nから取得する。\n"
+    input:
+      cursor:
+        type: String
+        optional: true
+        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+      limit:
+        type: Integer
+        optional: true
+        description: "返却件数の上限 (default 50, max 200)。"
     output:
       response:
         type: GroupListResponse
     errors:
       - AccessDeniedError
+      - InvalidRequestError
     read_only: true
     stability: internal
     access:
@@ -2518,6 +2543,11 @@ interfaces:
       - kind: http
         method: GET
         path: /api/admin/v1/groups
+        response_headers:
+          Link:
+            type: String
+            optional: true
+            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
   GetGroup:
     description: 管理者が単一グループとそのメンバー一覧を取得する。別テナントのグループは未存在として扱う。
     input:
@@ -2779,12 +2809,22 @@ interfaces:
         method: GET
         path: "/api/admin/v1/users/{user_id}/groups"
   ListAgents:
-    description: 管理者が所属テナントの Agent を一覧する。
+    description: "管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の keyset pagination で\n一覧する。cursor は前回応答の Link response header (rel=\"next\") から取得する。\n"
+    input:
+      cursor:
+        type: String
+        optional: true
+        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+      limit:
+        type: Integer
+        optional: true
+        description: "返却件数の上限 (default 50, max 200)。"
     output:
       response:
         type: AgentListResponse
     errors:
       - AccessDeniedError
+      - InvalidRequestError
     read_only: true
     stability: internal
     access:
@@ -2796,6 +2836,11 @@ interfaces:
       - kind: http
         method: GET
         path: /api/admin/v1/agents
+        response_headers:
+          Link:
+            type: String
+            optional: true
+            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
   GetAgent:
     description: 管理者が単一 Agent を取得する。別テナントの Agent は未存在として扱う。
     input:
@@ -3069,6 +3114,28 @@ authorization:
       effect: permit
       principal: SelfApiClient
       when: '"account:write" in context.token_scopes && principal.id == resource.id'
+objectives:
+  ListAdminUsersLatency:
+    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, preferred_username, id) の複合 index を使う\nkeyset pagination で、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。\nsort key は preferred_username 昇順 (id で tie-break) で安定させ、途中の追加・削除でも重複・欠落\nなく次ページを取得できる)。\n"
+    interface: ListAdminUsers
+    indicator: measurement.latency < duration("200ms")
+    target: 0.95
+    window: 30d
+    budgeting: occurrences
+  ListGroupsLatency:
+    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を使う keyset pagination\nで、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は name 昇順\n(id で tie-break) で安定させる)。\n"
+    interface: ListGroups
+    indicator: measurement.latency < duration("200ms")
+    target: 0.95
+    window: 30d
+    budgeting: occurrences
+  ListAgentsLatency:
+    description: "応答の 95% 以上を 200ms 未満で返す ((tenant_id, name, id) の複合 index を使う keyset pagination\nで、limit 上限 (200) 付近の深いページでも先頭ページと同程度の latency を保つ。sort key は name 昇順\n(id で tie-break) で安定させる)。\n"
+    interface: ListAgents
+    indicator: measurement.latency < duration("200ms")
+    target: 0.95
+    window: 30d
+    budgeting: occurrences
 scenarios:
   federated JITはpassword credentialを作らずactive Userを作成する:
     actor: EndUser
@@ -3129,6 +3196,26 @@ scenarios:
         steps:
           - "インポート投入は拒否される"
           - "エラー \"invalid_header\""
+  管理者はユーザー一覧をページングしながら安定して閲覧できる:
+    actor: TenantAdministrator
+    given:
+      - 所属テナントに limit を超えるユーザーが存在する
+    main_success:
+      - 管理者が ListAdminUsers を limit のみで実行して先頭ページを取得する
+      - 応答の Link response header (rel="next") から次ページの cursor を取得する
+      - 一覧の途中で他の管理者がユーザーを1件削除する
+      - 管理者が取得済みの cursor で次ページを取得する
+      - 削除された行を除き、既に返却済みの行との重複なく残りのユーザーが返る
+    extensions:
+      - at: 4
+        condition: cursor が別テナントで発行されたものである、または改ざん・失効している
+        steps:
+          - ListAdminUsers は InvalidRequestError を返す
+          - 管理者は先頭ページへ戻って再取得する
+      - at: 1
+        condition: 実行者が TenantAdministrator ロールを持たない
+        steps:
+          - ListAdminUsers は AccessDeniedError で拒否される
   管理者はユーザー一覧を CSV に安全にエクスポートできる:
     actor: TenantAdministrator
     given:
@@ -3343,10 +3430,14 @@ flows:
     entry: AdminUsers
     views:
       AdminUsers:
-        sees: ユーザー管理画面(ユーザー一覧、詳細、所属グループ、CSV インポート)
+        sees: ユーザー管理画面(ユーザー一覧、詳細、所属グループ、CSV インポート、次ページ読み込み)
         does:
           - action: list
             does: 画面を開く
+            interface: ListAdminUsers
+            to: AdminUsers
+          - action: next_page
+            does: 「次へ」をクリックして次ページを読み込む
             interface: ListAdminUsers
             to: AdminUsers
           - action: view
@@ -3431,10 +3522,14 @@ flows:
     entry: AdminGroups
     views:
       AdminGroups:
-        sees: グループ管理画面(グループ一覧、メンバー、動的グループルール)
+        sees: グループ管理画面(グループ一覧、メンバー、動的グループルール、次ページ読み込み)
         does:
           - action: list
             does: 画面を開く
+            interface: ListGroups
+            to: AdminGroups
+          - action: next_page
+            does: 「次へ」をクリックして次ページを読み込む
             interface: ListGroups
             to: AdminGroups
           - action: view
@@ -3505,10 +3600,14 @@ flows:
     entry: AdminAgents
     views:
       AdminAgents:
-        sees: エージェント管理画面(エージェント一覧、詳細、資格情報の束縛)
+        sees: エージェント管理画面(エージェント一覧、詳細、資格情報の束縛、次ページ読み込み)
         does:
           - action: list
             does: 画面を開く
+            interface: ListAgents
+            to: AdminAgents
+          - action: next_page
+            does: 「次へ」をクリックして次ページを読み込む
             interface: ListAgents
             to: AdminAgents
           - action: view

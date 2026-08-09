@@ -71,7 +71,7 @@ func TestAdminConsents(t *testing.T) {
 
 	t.Run("ListConsents", func(t *testing.T) {
 		// 初期は空
-		list, err := ListConsents(ctx, deps)
+		list, err := ListConsents(ctx, deps, "", "", 100)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,7 +87,7 @@ func TestAdminConsents(t *testing.T) {
 		}
 		_ = consentRepo.Save(ctx, tenancydomain.DefaultTenantID, consent)
 
-		list, err = ListConsents(ctx, deps)
+		list, err = ListConsents(ctx, deps, "", "", 100)
 		if err != nil {
 			t.Fatal(err)
 		}

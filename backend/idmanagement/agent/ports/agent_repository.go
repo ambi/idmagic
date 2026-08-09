@@ -11,7 +11,11 @@ import (
 // reject する。Agent は自身の資格情報を持たず、AgentCredentialBinding で既存
 // OAuth2Client に束縛してトークンを得る。
 type AgentRepository interface {
-	ListByTenant(ctx context.Context, tenantID string) ([]*agentdomain.Agent, error)
+	ListAll(ctx context.Context, tenantID string) ([]*agentdomain.Agent, error)
+	// ListPage returns up to limit agents for tenantID ordered by (name, id)
+	// ascending, strictly after the keyset (afterName, afterID). Pass "", ""
+	// for the first page. Backs ListAgents keyset pagination (wi-159, ADR-158).
+	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*agentdomain.Agent, error)
 	FindByID(ctx context.Context, tenantID, id string) (*agentdomain.Agent, error)
 	Save(ctx context.Context, agent *agentdomain.Agent) error
 	Delete(ctx context.Context, tenantID, id string) error

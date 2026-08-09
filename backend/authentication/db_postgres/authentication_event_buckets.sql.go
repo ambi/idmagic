@@ -26,7 +26,7 @@ const listAuthEventBuckets = `-- name: ListAuthEventBuckets :many
 SELECT tenant_id, kind, key_hash, window_start, count, first_seen, last_seen
 FROM authentication_event_buckets
 WHERE ($1::text = '' OR tenant_id = $1::text)
-ORDER BY window_start DESC, count DESC
+ORDER BY window_start DESC, kind DESC, key_hash DESC
 LIMIT $2
 `
 
@@ -54,6 +54,73 @@ func (q *Queries) ListAuthEventBuckets(ctx context.Context, arg ListAuthEventBuc
 	var items []*ListAuthEventBucketsRow
 	for rows.Next() {
 		var i ListAuthEventBucketsRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.Kind,
+			&i.KeyHash,
+			&i.WindowStart,
+			&i.Count,
+			&i.FirstSeen,
+			&i.LastSeen,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAuthEventBucketsAfter = `-- name: ListAuthEventBucketsAfter :many
+SELECT tenant_id, kind, key_hash, window_start, count, first_seen, last_seen
+FROM authentication_event_buckets
+WHERE ($1::text = '' OR tenant_id = $1::text)
+  AND (window_start, kind, key_hash) < ($2::timestamptz, $3::text, $4::text)
+ORDER BY window_start DESC, kind DESC, key_hash DESC
+LIMIT $5
+`
+
+type ListAuthEventBucketsAfterParams struct {
+	Column1          string
+	AfterWindowStart time.Time
+	AfterKind        string
+	AfterKeyHash     string
+	PageLimit        int32
+}
+
+type ListAuthEventBucketsAfterRow struct {
+	TenantID    string
+	Kind        string
+	KeyHash     string
+	WindowStart time.Time
+	Count       int64
+	FirstSeen   time.Time
+	LastSeen    time.Time
+}
+
+// Continuation page for ListAuthenticationEventBuckets keyset pagination
+// (wi-159, ADR-158): resumes strictly after the (window_start, kind,
+// key_hash) keyset of the last row the caller saw. kind/key_hash (not
+// count, which isn't unique) is the tie-break matching the table's own
+// PRIMARY KEY (tenant_id, kind, key_hash, window_start); all three columns
+// sort DESC so the row-value comparison below matches ORDER BY exactly.
+func (q *Queries) ListAuthEventBucketsAfter(ctx context.Context, arg ListAuthEventBucketsAfterParams) ([]*ListAuthEventBucketsAfterRow, error) {
+	rows, err := q.db.Query(ctx, listAuthEventBucketsAfter,
+		arg.Column1,
+		arg.AfterWindowStart,
+		arg.AfterKind,
+		arg.AfterKeyHash,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAuthEventBucketsAfterRow
+	for rows.Next() {
+		var i ListAuthEventBucketsAfterRow
 		if err := rows.Scan(
 			&i.TenantID,
 			&i.Kind,

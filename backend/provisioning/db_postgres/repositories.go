@@ -341,7 +341,7 @@ func (r *ProvisioningConnectionRepository) Delete(ctx context.Context, tenantID,
 	})
 }
 
-func (r *ProvisioningConnectionRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error) {
+func (r *ProvisioningConnectionRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.ProvisioningConnection, error) {
 	rows, err := New(r.Pool).ListProvisioningConnectionsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
@@ -482,6 +482,53 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(ctx context.Context, t
 			TenantID:     tenantID,
 			ConnectionID: connectionID,
 			Limit:        int32(limit), //nolint:gosec // safe downcast
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.ProvisioningDelivery, 0, len(rows))
+	for _, row := range rows {
+		d, err := mapDelivery(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, d)
+	}
+	return out, nil
+}
+
+// ListPageByConnection implements
+// ports.ProvisioningDeliveryRepository.ListPageByConnection (wi-159,
+// ADR-158): keyset pagination ordered by (created_at, id) descending —
+// matching ListByConnection's pre-existing "most recent first" order.
+func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+	q := New(r.Pool)
+	var rows []*ProvisioningDelivery
+	var err error
+	first := afterCreatedAt.IsZero() && afterID == ""
+	switch {
+	case status != nil && first:
+		rows, err = q.ListProvisioningDeliveriesByConnectionAndStatusPage(ctx, ListProvisioningDeliveriesByConnectionAndStatusPageParams{
+			TenantID: tenantID, ConnectionID: connectionID, Status: string(*status),
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	case status != nil:
+		rows, err = q.ListProvisioningDeliveriesByConnectionAndStatusPageAfter(ctx, ListProvisioningDeliveriesByConnectionAndStatusPageAfterParams{
+			TenantID: tenantID, ConnectionID: connectionID, Status: string(*status),
+			AfterCreatedAt: afterCreatedAt, AfterID: afterID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	case first:
+		rows, err = q.ListProvisioningDeliveriesByConnectionPage(ctx, ListProvisioningDeliveriesByConnectionPageParams{
+			TenantID: tenantID, ConnectionID: connectionID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	default:
+		rows, err = q.ListProvisioningDeliveriesByConnectionPageAfter(ctx, ListProvisioningDeliveriesByConnectionPageAfterParams{
+			TenantID: tenantID, ConnectionID: connectionID,
+			AfterCreatedAt: afterCreatedAt, AfterID: afterID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
 		})
 	}
 	if err != nil {

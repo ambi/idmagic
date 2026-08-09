@@ -2574,7 +2574,7 @@
     "/api/admin/v1/users": {
       "get": {
         "operationId": "ListAdminUsers",
-        "summary": "管理者が削除されていないユーザーを一覧する。",
+        "summary": "管理者が削除されていないユーザーを preferred_username 昇順 (同値は id で tie-break) の",
         "security": [
           {
             "SclBearer": []
@@ -2590,6 +2590,26 @@
           }
         },
         "x-scl-stability": "internal",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -2605,6 +2625,28 @@
                   "additionalProperties": false,
                   "required": [
                     "response"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -5063,7 +5105,7 @@
     "/api/admin/v1/groups": {
       "get": {
         "operationId": "ListGroups",
-        "summary": "管理者が所属テナントのグループを一覧する。各グループは member_count を含む。",
+        "summary": "管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の keyset pagination で",
         "security": [
           {
             "SclBearer": []
@@ -5079,6 +5121,26 @@
           }
         },
         "x-scl-stability": "internal",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -5094,6 +5156,28 @@
                   "additionalProperties": false,
                   "required": [
                     "response"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -6205,7 +6289,7 @@
     "/api/admin/v1/agents": {
       "get": {
         "operationId": "ListAgents",
-        "summary": "管理者が所属テナントの Agent を一覧する。",
+        "summary": "管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の keyset pagination で",
         "security": [
           {
             "SclBearer": []
@@ -6221,6 +6305,26 @@
           }
         },
         "x-scl-stability": "internal",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -6236,6 +6340,28 @@
                   "additionalProperties": false,
                   "required": [
                     "response"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -8496,6 +8622,17 @@
           }
         },
         "x-scl-stability": "stable",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 10, max 50)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -8511,6 +8648,20 @@
                   "additionalProperties": false,
                   "required": [
                     "activity"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -8560,6 +8711,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 10, max 50)。"
+            }
           }
         ],
         "responses": {
@@ -8577,6 +8737,20 @@
                   "additionalProperties": false,
                   "required": [
                     "activity"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -8602,7 +8776,7 @@
     "/api/admin/v1/authentication_event_buckets": {
       "get": {
         "operationId": "ListAuthenticationEventBuckets",
-        "summary": "admin が認証イベント集約 (bucket) を一覧する。攻撃時に個別行へ",
+        "summary": "admin が認証イベント集約 (bucket) を window_start の降順で一覧する。攻撃時に個別行へ",
         "security": [
           {
             "SclBearer": []
@@ -8618,6 +8792,26 @@
           }
         },
         "x-scl-stability": "internal",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -8633,6 +8827,28 @@
                   "additionalProperties": false,
                   "required": [
                     "buckets"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -12772,7 +12988,7 @@
     "/api/admin/v1/clients": {
       "get": {
         "operationId": "ListAdminOAuth2Clients",
-        "summary": "管理者が所属テナントの client を一覧する。",
+        "summary": "管理者が所属テナントの client を client_id 昇順の keyset pagination で一覧する。cursor は",
         "security": [
           {
             "SclBearer": []
@@ -12789,6 +13005,26 @@
           }
         },
         "x-scl-stability": "stable",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -12804,6 +13040,28 @@
                   "additionalProperties": false,
                   "required": [
                     "response"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -13582,7 +13840,7 @@
     "/api/admin/v1/consents": {
       "get": {
         "operationId": "ListAdminConsents",
-        "summary": "管理者が所属テナントの Consent を監査目的で一覧する。",
+        "summary": "管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の keyset pagination で",
         "security": [
           {
             "SclBearer": []
@@ -13598,6 +13856,26 @@
           }
         },
         "x-scl-stability": "internal",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -13613,6 +13891,28 @@
                   "additionalProperties": false,
                   "required": [
                     "response"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -14037,6 +14337,14 @@
                   ]
                 }
               }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
             }
           },
           "400": {
@@ -14293,7 +14601,7 @@
     "/api/admin/v1/applications": {
       "get": {
         "operationId": "ListAdminApplications",
-        "summary": "管理者が所属テナントの Application を一覧する。",
+        "summary": "管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の keyset pagination",
         "security": [
           {
             "SclBearer": []
@@ -14310,6 +14618,26 @@
           }
         },
         "x-scl-stability": "stable",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -14325,6 +14653,28 @@
                   "additionalProperties": false,
                   "required": [
                     "response"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -15540,7 +15890,7 @@
     "/api/admin/v1/applications/{id}/assignments": {
       "get": {
         "operationId": "ListApplicationAssignments",
-        "summary": "管理者が Application の割当を一覧する。",
+        "summary": "管理者が Application の割当を subject_type, subject_id 昇順の keyset pagination で一覧する。",
         "security": [
           {
             "SclBearer": []
@@ -15565,6 +15915,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
+            }
           }
         ],
         "responses": {
@@ -15583,6 +15951,14 @@
                   "required": [
                     "response"
                   ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
                 }
               }
             }
@@ -20124,7 +20500,7 @@
     "/api/admin/v1/applications/{id}/provisioning/deliveries": {
       "get": {
         "operationId": "ListProvisioningDeliveries",
-        "summary": "管理者が connection の配送状況を一覧する。status/source_type で絞り込める。",
+        "summary": "管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の keyset",
         "security": [
           {
             "SclBearer": []
@@ -20171,7 +20547,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "string",
+              "description": "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
             }
           },
           {
@@ -20179,7 +20556,8 @@
             "in": "query",
             "required": false,
             "schema": {
-              "type": "integer"
+              "type": "integer",
+              "description": "返却件数の上限 (default 50, max 200)。"
             }
           }
         ],
@@ -20196,14 +20574,33 @@
                       "items": {
                         "$ref": "#/components/schemas/ProvisioningDelivery"
                       }
-                    },
-                    "next_cursor": {
-                      "type": "string"
                     }
                   },
                   "additionalProperties": false,
                   "required": [
                     "deliveries"
+                  ]
+                }
+              }
+            },
+            "headers": {
+              "Link": {
+                "schema": {
+                  "type": "string",
+                  "description": "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Errors: InvalidRequestError",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/InvalidRequestError"
+                    }
                   ]
                 }
               }
@@ -25718,18 +26115,13 @@
             "items": {
               "$ref": "#/components/schemas/AdminAuditEventResponse"
             }
-          },
-          "next_after": {
-            "type": "string",
-            "format": "date-time",
-            "description": "ページング継続用カーソル。"
           }
         },
         "additionalProperties": false,
         "required": [
           "events"
         ],
-        "description": "監査イベントの検索結果。"
+        "description": "監査イベントの検索結果。ページング継続は body ではなく Link response header (rel=\"next\") で表現する。"
       },
       "AdminAuditEventResponse": {
         "type": "object",
@@ -28966,6 +29358,10 @@
             "type": "string",
             "format": "date-time",
             "description": "occurred_at がこの時刻以前。"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "ページング継続トークン。前回応答の Link response header (rel=\"next\") の URL に\n埋め込まれた値をそのまま渡す。tenant・sort・filter を含めて署名された opaque token。\n"
           },
           "limit": {
             "type": "integer",

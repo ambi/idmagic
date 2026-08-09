@@ -138,6 +138,15 @@ func auditEventMatches(rec *ports.AuditEventRecord, q ports.AuditEventQuery) boo
 	if !q.Before.IsZero() && rec.OccurredAt.After(q.Before) {
 		return false
 	}
+	if !q.AfterOccurredAt.IsZero() || q.AfterID != "" {
+		// keyset continuation (wi-159, ADR-158): keep only rows strictly
+		// before the cursor in the OccurredAt DESC, ID DESC order.
+		isAfterCursor := rec.OccurredAt.Before(q.AfterOccurredAt) ||
+			(rec.OccurredAt.Equal(q.AfterOccurredAt) && rec.ID < q.AfterID)
+		if !isAfterCursor {
+			return false
+		}
+	}
 	// wi-145: registry allowlist の filter 式 (連言) と q フリーテキスト。
 	for _, expr := range q.Filters {
 		if !auditFilterExprMatches(rec, expr) {

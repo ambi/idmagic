@@ -115,7 +115,8 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 		valIdx := len(args)
 		conds = append(conds, fmt.Sprintf(
 			"EXISTS (SELECT 1 FROM audit_event_search_attributes a WHERE a.event_id = audit_events.id AND "+condFmt+")",
-			fieldIdx, valIdx))
+			fieldIdx, valIdx,
+		))
 	}
 	if !q.AllTenants && q.TenantID != "" {
 		add("tenant_id = $%d", q.TenantID)
@@ -134,6 +135,13 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 	}
 	if !q.Before.IsZero() {
 		add("occurred_at <= $%d", q.Before)
+	}
+	if !q.AfterOccurredAt.IsZero() || q.AfterID != "" {
+		args = append(args, q.AfterOccurredAt)
+		occIdx := len(args)
+		args = append(args, q.AfterID)
+		idIdx := len(args)
+		conds = append(conds, fmt.Sprintf("(occurred_at, id) < ($%d, $%d)", occIdx, idIdx))
 	}
 	// wi-145: registry allowlist の filter 式 (連言)。各式は sidecar への EXISTS 照合。
 	for _, expr := range q.Filters {
@@ -161,14 +169,15 @@ func (r *AuditEventRepository) List(ctx context.Context, q ports.AuditEventQuery
 		valIdx := len(args)
 		conds = append(conds, fmt.Sprintf(
 			"EXISTS (SELECT 1 FROM audit_event_search_attributes a WHERE a.event_id = audit_events.id AND a.attr_name = ANY($%d) AND a.attr_value ILIKE $%d)",
-			nameIdx, valIdx))
+			nameIdx, valIdx,
+		))
 	}
 	where := ""
 	if len(conds) > 0 {
 		where = " WHERE " + strings.Join(conds, " AND ")
 	}
 	args = append(args, limit)
-	query := auditEventSelect + where + fmt.Sprintf(" ORDER BY occurred_at DESC LIMIT $%d", len(args))
+	query := auditEventSelect + where + fmt.Sprintf(" ORDER BY occurred_at DESC, id DESC LIMIT $%d", len(args))
 	rows, err := r.Pool.Query(ctx, query, args...)
 	if err != nil {
 		return handleAuditListError(err)

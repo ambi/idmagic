@@ -72,21 +72,35 @@ type defaultSignInPolicyRequest struct {
 	Rules []domain.SignInRule `json:"rules"`
 }
 
+const (
+	listAdminApplicationsQuery        = "ListAdminApplications"
+	listAdminApplicationsDefaultLimit = 50
+	listAdminApplicationsMaxLimit     = 200
+)
+
 func (d Deps) handleListApplications(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
 	tenantID := support.RequestTenantID(c)
 	ctx := c.Request().Context()
-	apps, err := d.ApplicationRepo.ListByTenant(ctx, tenantID)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminApplicationsQuery, listAdminApplicationsDefaultLimit, listAdminApplicationsMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	apps, err := d.ApplicationRepo.ListPage(ctx, tenantID, page.AfterPrimary, page.AfterID, page.Limit+1)
 	if err != nil {
 		return err
+	}
+	hasMore := len(apps) > page.Limit
+	if hasMore {
+		apps = apps[:page.Limit]
 	}
 
 	// Bulkロード：カテゴリ
 	categoryMap := make(map[string]string)
 	if d.ApplicationCategoryRepo != nil {
-		categories, err := d.ApplicationCategoryRepo.ListByTenant(ctx, tenantID)
+		categories, err := d.ApplicationCategoryRepo.ListAll(ctx, tenantID)
 		if err != nil {
 			return err
 		}
@@ -98,7 +112,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	// Bulkロード：割当
 	assignmentCountMap := make(map[string]int)
 	if d.ApplicationAssignmentRepo != nil {
-		assignments, err := d.ApplicationAssignmentRepo.ListByTenant(ctx, tenantID)
+		assignments, err := d.ApplicationAssignmentRepo.ListAll(ctx, tenantID)
 		if err != nil {
 			return err
 		}
@@ -110,7 +124,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	// Bulkロード：個別ログインポリシー
 	policyMap := make(map[string]*domain.AppSignInPolicy)
 	if d.ApplicationSignInPolicyRepo != nil {
-		policies, err := d.ApplicationSignInPolicyRepo.ListByTenant(ctx, tenantID)
+		policies, err := d.ApplicationSignInPolicyRepo.ListAll(ctx, tenantID)
 		if err != nil {
 			return err
 		}
@@ -171,6 +185,12 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 			SignInPolicySummary:  policySummary,
 			CreatedAt:            app.CreatedAt,
 			UpdatedAt:            app.UpdatedAt,
+		}
+	}
+	if hasMore {
+		last := apps[len(apps)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listAdminApplicationsQuery, last.Name, last.ID, hasMore); err != nil {
+			return err
 		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"applications": out})
@@ -336,17 +356,38 @@ func (d Deps) handleDeleteApplication(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+const (
+	listApplicationAssignmentsQuery        = "ListApplicationAssignments"
+	listApplicationAssignmentsDefaultLimit = 50
+	listApplicationAssignmentsMaxLimit     = 200
+)
+
 func (d Deps) handleListAssignments(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	assignments, err := appusecases.ListAssignments(c.Request().Context(), d.assignmentDeps(), c.Param("id"))
+	tenantID := support.RequestTenantID(c)
+	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listApplicationAssignmentsQuery, listApplicationAssignmentsDefaultLimit, listApplicationAssignmentsMaxLimit)
+	if err != nil {
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	}
+	assignments, err := appusecases.ListAssignments(c.Request().Context(), d.assignmentDeps(), c.Param("id"), page.AfterPrimary, page.AfterID, page.Limit+1)
 	if err != nil {
 		return d.writeApplicationError(c, err)
+	}
+	hasMore := len(assignments) > page.Limit
+	if hasMore {
+		assignments = assignments[:page.Limit]
 	}
 	out := make([]assignmentResponse, len(assignments))
 	for i, a := range assignments {
 		out[i] = toAssignmentResponse(a)
+	}
+	if hasMore {
+		last := assignments[len(assignments)-1]
+		if err := support.SetNextLink(c, d.PaginationCodec, d.Issuer, tenantID, listApplicationAssignmentsQuery, string(last.SubjectType), last.SubjectID, hasMore); err != nil {
+			return err
+		}
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"assignments": out})
 }

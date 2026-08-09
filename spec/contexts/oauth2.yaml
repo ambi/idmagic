@@ -4440,12 +4440,22 @@ interfaces:
         successful_status_codes:
           - "204"
   ListAdminOAuth2Clients:
-    description: 管理者が所属テナントの client を一覧する。
+    description: "管理者が所属テナントの client を client_id 昇順の keyset pagination で一覧する。cursor は\n前回応答の Link response header (rel=\"next\") から取得する。\n"
+    input:
+      cursor:
+        type: String
+        optional: true
+        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+      limit:
+        type: Integer
+        optional: true
+        description: "返却件数の上限 (default 50, max 200)。"
     output:
       response:
         type: AdminOAuth2ClientListResponse
     errors:
       - AccessDeniedError
+      - InvalidRequestError
     read_only: true
     stability: stable
     access:
@@ -4457,6 +4467,11 @@ interfaces:
       - kind: http
         method: GET
         path: /api/admin/v1/clients
+        response_headers:
+          Link:
+            type: String
+            optional: true
+            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
   GetAdminOAuth2Client:
     description: 管理者が所属テナントの client を取得する。別テナントの client は未存在として扱う。
     input:
@@ -4664,12 +4679,22 @@ interfaces:
         successful_status_codes:
           - "204"
   ListAdminConsents:
-    description: 管理者が所属テナントの Consent を監査目的で一覧する。
+    description: "管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の keyset pagination で\n一覧する。cursor は前回応答の Link response header (rel=\"next\") から取得する。\n"
+    input:
+      cursor:
+        type: String
+        optional: true
+        description: "ページング継続トークン。tenant・sort・filter を含めて署名された opaque token。"
+      limit:
+        type: Integer
+        optional: true
+        description: "返却件数の上限 (default 50, max 200)。"
     output:
       response:
         type: AdminConsentListResponse
     errors:
       - AccessDeniedError
+      - InvalidRequestError
     read_only: true
     stability: internal
     access:
@@ -4681,6 +4706,11 @@ interfaces:
       - kind: http
         method: GET
         path: /api/admin/v1/consents
+        response_headers:
+          Link:
+            type: String
+            optional: true
+            description: "RFC 8288 Web Linking。次ページが存在する場合のみ rel=\"next\" を返す。"
   GetAdminConsent:
     description: 管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。
     input:
@@ -5756,10 +5786,14 @@ flows:
     entry: AdminConsents
     views:
       AdminConsents:
-        sees: Consent 監査一覧画面
+        sees: Consent 監査一覧画面(次ページ読み込み)
         does:
           - action: list
             does: 画面を開く
+            interface: ListAdminConsents
+            to: AdminConsents
+          - action: next_page
+            does: 「次へ」をクリックして次ページを読み込む
             interface: ListAdminConsents
             to: AdminConsents
           - action: revoke

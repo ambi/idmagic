@@ -54,7 +54,20 @@ type Querier interface {
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)
 	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Oauth2Client, error)
+	// First page of ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158):
+	// client_id order matches the admin handler's pre-existing re-sort of
+	// ListClientsByTenant's rows.
+	ListClientsByTenantPage(ctx context.Context, arg ListClientsByTenantPageParams) ([]*Oauth2Client, error)
+	// Continuation page: resumes strictly after the client_id of the last row
+	// the caller saw.
+	ListClientsByTenantPageAfter(ctx context.Context, arg ListClientsByTenantPageAfterParams) ([]*Oauth2Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
+	// First page of ListAdminConsents keyset pagination (wi-159, ADR-158): the
+	// (user_id, client_id) primary key already backs this range scan.
+	ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*Consent, error)
+	// Continuation page: resumes strictly after the (user_id, client_id) keyset
+	// of the last row the caller saw.
+	ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*Consent, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)

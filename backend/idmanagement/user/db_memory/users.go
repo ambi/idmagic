@@ -95,3 +95,19 @@ func (r *UserRepository) FindAll(_ context.Context, tenantID string) ([]*userdom
 	})
 	return out, nil
 }
+
+// ListPage implements ports.UserRepository.ListPage (wi-159, ADR-158): keyset
+// pagination ordered by (PreferredUsername, ID) ascending, strictly after the
+// given keyset.
+func (r *UserRepository) ListPage(_ context.Context, tenantID, afterUsername, afterID string, limit int) ([]*userdomain.User, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*userdomain.User, 0, len(r.bySub))
+	for _, user := range r.bySub {
+		if user.TenantID == tenantID && !user.IsDeleted() {
+			out = append(out, user)
+		}
+	}
+	key := func(u *userdomain.User) (string, string) { return u.PreferredUsername, u.ID }
+	return sharedmem.KeysetPage(out, key, false, afterUsername, afterID, limit), nil
+}

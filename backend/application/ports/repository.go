@@ -9,8 +9,13 @@ import (
 
 // ApplicationRepository は Application aggregate の永続境界 (wi-69)。
 type ApplicationRepository interface {
-	// ListByTenant はテナント内の Application を name 昇順で返す。
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.Application, error)
+	// ListAll はテナント内の Application を name 昇順で返す。
+	ListAll(ctx context.Context, tenantID string) ([]*domain.Application, error)
+	// ListPage returns up to limit applications for tenantID ordered by
+	// (name, id) ascending, strictly after the keyset (afterName, afterID).
+	// Pass "", "" for the first page. Backs ListAdminApplications keyset
+	// pagination (wi-159, ADR-158).
+	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error)
 	// FindByID は application_id に一致する Application を返す。存在しなければ (nil, nil)。
 	FindByID(ctx context.Context, tenantID, applicationID string) (*domain.Application, error)
 	// FindByProtocol は protocol table の application_id relation を索引で逆引きする。
@@ -37,8 +42,8 @@ type ApplicationIconStore interface {
 
 // ApplicationCategoryRepository は ApplicationCategory の永続境界 (wi-70, ADR-069)。
 type ApplicationCategoryRepository interface {
-	// ListByTenant はテナント内のカテゴリを position 昇順 (同値は name 昇順) で返す。
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.ApplicationCategory, error)
+	// ListAll はテナント内のカテゴリを position 昇順 (同値は name 昇順) で返す。
+	ListAll(ctx context.Context, tenantID string) ([]*domain.ApplicationCategory, error)
 	// FindByID は category_id に一致するカテゴリを返す。存在しなければ (nil, nil)。
 	FindByID(ctx context.Context, tenantID, categoryID string) (*domain.ApplicationCategory, error)
 	// Save はカテゴリを upsert する。
@@ -65,10 +70,16 @@ type ApplicationOrderingRepository interface {
 type AssignmentRepository interface {
 	// ListByApplication は Application の割当を subject 昇順で返す。
 	ListByApplication(ctx context.Context, tenantID, applicationID string) ([]*domain.ApplicationAssignment, error)
+	// ListPageByApplication returns up to limit assignments for (tenantID, applicationID)
+	// ordered by (subject_type, subject_id) ascending, strictly after the
+	// keyset (afterSubjectType, afterSubjectID). Pass "", "" for the first
+	// page. Backs ListApplicationAssignments keyset pagination (wi-159,
+	// ADR-158).
+	ListPageByApplication(ctx context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error)
 	// ListBySubjects は指定 subject 群に一致する割当を返す (ポータル一覧・割当ゲート用)。
 	ListBySubjects(ctx context.Context, tenantID string, subjects []SubjectRef) ([]*domain.ApplicationAssignment, error)
-	// ListByTenant はテナント内のすべての Application 割当を返す。
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.ApplicationAssignment, error)
+	// ListAll はテナント内のすべての Application 割当を返す。
+	ListAll(ctx context.Context, tenantID string) ([]*domain.ApplicationAssignment, error)
 	// Save は割当を upsert する。
 	Save(ctx context.Context, assignment *domain.ApplicationAssignment) error
 	// Delete は 1 件の割当を削除する (冪等)。
@@ -81,8 +92,8 @@ type AssignmentRepository interface {
 type SignInPolicyRepository interface {
 	// Get は application_id に一致する policy を返す。未設定なら (nil, nil)。
 	Get(ctx context.Context, tenantID, applicationID string) (*domain.AppSignInPolicy, error)
-	// ListByTenant はテナント内のすべての Application sign-in policy を返す。
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.AppSignInPolicy, error)
+	// ListAll はテナント内のすべての Application sign-in policy を返す。
+	ListAll(ctx context.Context, tenantID string) ([]*domain.AppSignInPolicy, error)
 	// Save は policy を upsert する。
 	Save(ctx context.Context, policy *domain.AppSignInPolicy) error
 	// Delete は application_id に一致する policy を削除する (冪等)。

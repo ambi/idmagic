@@ -70,6 +70,40 @@ func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*do
 	return out, nil
 }
 
+// ListPage implements ports.ConsentRepository.ListPage
+// (wi-159, ADR-158): keyset pagination ordered by (user_id, client_id)
+// ascending, strictly after the given keyset ("", "" for the first page).
+func (r *ConsentRepository) ListPage(ctx context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*domain.Consent, error) {
+	q := oauth2pg.New(r.Pool)
+	var rows []*oauth2pg.Consent
+	var err error
+	if afterUserID == "" && afterClientID == "" {
+		rows, err = q.ListConsentsByTenantPage(ctx, oauth2pg.ListConsentsByTenantPageParams{
+			TenantID:  tenantID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListConsentsByTenantPageAfter(ctx, oauth2pg.ListConsentsByTenantPageAfterParams{
+			TenantID:      tenantID,
+			AfterUserID:   afterUserID,
+			AfterClientID: afterClientID,
+			PageLimit:     int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.Consent, 0, len(rows))
+	for _, row := range rows {
+		c, err := consentFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
+
 func (r *ConsentRepository) Save(ctx context.Context, tenantID string, c *domain.Consent) error {
 	scopes, err := json.Marshal(c.Scopes)
 	if err != nil {

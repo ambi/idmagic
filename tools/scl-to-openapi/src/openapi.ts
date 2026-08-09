@@ -65,6 +65,22 @@ function stringArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
 }
 
+/** OpenAPI `responses[code].headers` from `Binding.response_headers` (SPECIFICATION_CORE_LANGUAGE.md §3.3.1). */
+function responseHeadersSchema(
+  binding: Binding,
+  modelNames: ReadonlySet<string>,
+): JsonSchema | undefined {
+  const headers = binding.response_headers as Record<string, Field> | undefined
+  if (!headers || Object.keys(headers).length === 0) return undefined
+  const result: JsonSchema = {}
+  for (const [name, field] of Object.entries(headers)) {
+    const header: JsonSchema = { schema: fieldToSchema(field, modelNames) }
+    if (!field.optional) header.required = true
+    result[name] = header
+  }
+  return result
+}
+
 /** Media type for an error response body, keyed by `Binding.error_format` (SPECIFICATION_CORE_LANGUAGE.md §3.3.1). */
 const DEFAULT_ERROR_CONTENT_TYPE = 'application/problem+json'
 const ERROR_CONTENT_TYPE: Record<string, string> = {
@@ -149,10 +165,14 @@ function buildOperation(
   const successCodes = codes.length > 0 ? codes : ['200']
   const output: Record<string, Field> = iface.output ?? {}
   const hasOutput = Object.keys(output).length > 0
+  const responseHeaders = responseHeadersSchema(binding, modelNames)
   for (const code of successCodes) {
     const response: JsonSchema = { description: 'Success' }
     if (hasOutput && code.startsWith('2')) {
       response.content = { 'application/json': { schema: fieldsToSchema(output, modelNames) } }
+    }
+    if (responseHeaders && code.startsWith('2')) {
+      response.headers = responseHeaders
     }
     responses[code] = response
   }

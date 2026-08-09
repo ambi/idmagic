@@ -6,11 +6,11 @@ package db_memory
 
 import (
 	"context"
-	"sort"
 	"sync"
 	"time"
 
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
+	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
 const (
@@ -63,9 +63,15 @@ func (s *AuthEventBucketStore) Record(
 	return authnports.AuthEventBucketResult{Bucket: *bucket, FirstInWindow: first}, nil
 }
 
+func bucketKeysetKey(bucket authnports.AuthEventBucket) string {
+	return string(bucket.Kind) + "|" + bucket.KeyHash
+}
+
 func (s *AuthEventBucketStore) List(
 	_ context.Context,
 	tenantID string,
+	afterWindowStart time.Time,
+	afterKey string,
 	limit int,
 ) ([]authnports.AuthEventBucket, error) {
 	if limit <= 0 {
@@ -83,16 +89,18 @@ func (s *AuthEventBucketStore) List(
 		}
 		out = append(out, *bucket)
 	}
-	// windowStart 降順 (新しい窓が先)、同窓は count 降順で安定化。
-	sort.Slice(out, func(i, j int) bool {
-		if !out[i].WindowStart.Equal(out[j].WindowStart) {
-			return out[i].WindowStart.After(out[j].WindowStart)
-		}
-		return out[i].Count > out[j].Count
-	})
-	if len(out) > limit {
-		out = out[:limit]
+	// windowStart 降順 (新しい窓が先)、同窓は "kind|keyHash" (DESC、Postgres 側の
+	// tuple 比較と方向を揃える) で安定化 (wi-159, ADR-158: keyset pagination には
+	// count のような非一意キーではなく、PRIMARY KEY (tenant_id, kind, key_hash,
+	// window_start) 相当の一意キーが要る)。
+	key := func(b authnports.AuthEventBucket) (string, string) {
+		return b.WindowStart.UTC().Format(time.RFC3339Nano), bucketKeysetKey(b)
 	}
+	afterPrimary := ""
+	if !afterWindowStart.IsZero() {
+		afterPrimary = afterWindowStart.UTC().Format(time.RFC3339Nano)
+	}
+	out = sharedmem.KeysetPage(out, key, true, afterPrimary, afterKey, limit)
 	return out, nil
 }
 

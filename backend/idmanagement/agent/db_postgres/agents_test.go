@@ -38,7 +38,7 @@ func TestAgentRepositoryRoundTripAndBindings(t *testing.T) {
 		t.Fatalf("find agent: %v %+v", err, got)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list agents: %v len=%d", err, len(list))
 	}
@@ -74,5 +74,50 @@ func TestAgentRepositoryRoundTripAndBindings(t *testing.T) {
 
 	if err := repo.Delete(ctx, tenant.ID, agent.ID); err != nil {
 		t.Fatalf("delete agent: %v", err)
+	}
+}
+
+func TestAgentRepositoryListPage(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	owner := seedUser(t, db, tenant.ID)
+	repo := &AgentRepository{Pool: db}
+	ctx := context.Background()
+	now := testClock()
+
+	for _, name := range []string{"Charlie", "Alpha", "Bravo", "Delta", "Echo"} {
+		a := &agentdomain.Agent{
+			ID: newUUID(t), TenantID: tenant.ID, Name: name, Kind: idmdomain.AgentKindAutonomous,
+			OwnerUserID: owner.ID, Status: idmdomain.AgentStatusActive, Roles: []string{},
+			CreatedAt: now, UpdatedAt: now,
+		}
+		if err := repo.Save(ctx, a); err != nil {
+			t.Fatalf("save %s: %v", name, err)
+		}
+	}
+
+	first, err := repo.ListPage(ctx, tenant.ID, "", "", 2)
+	if err != nil {
+		t.Fatalf("list page 1: %v", err)
+	}
+	if len(first) != 2 || first[0].Name != "Alpha" || first[1].Name != "Bravo" {
+		t.Fatalf("unexpected first page: %+v", first)
+	}
+
+	last := first[len(first)-1]
+	next, err := repo.ListPage(ctx, tenant.ID, last.Name, last.ID, 2)
+	if err != nil {
+		t.Fatalf("list page 2: %v", err)
+	}
+	if len(next) != 2 || next[0].Name != "Charlie" || next[1].Name != "Delta" {
+		t.Fatalf("unexpected continuation page: %+v", next)
+	}
+
+	all, err := repo.ListPage(ctx, tenant.ID, "", "", 100)
+	if err != nil {
+		t.Fatalf("list page all: %v", err)
+	}
+	if len(all) != 5 {
+		t.Fatalf("expected 5, got %d", len(all))
 	}
 }

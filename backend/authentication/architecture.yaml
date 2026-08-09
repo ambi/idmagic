@@ -717,6 +717,8 @@ modules:
     depends_on:
       - module: authentication-ports
         via: published_interface
+      - module: shared-storage-db-memory
+        via: technical_shared
   authentication-db-postgres:
     path: db_postgres
     responsibility: backend/authentication/db_postgres の Flat Architecture adapter。

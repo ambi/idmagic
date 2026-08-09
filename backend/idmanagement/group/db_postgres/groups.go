@@ -45,8 +45,42 @@ func textOrNil(s *string) pgtype.Text {
 	return pgtype.Text{String: *s, Valid: true}
 }
 
-func (r *GroupRepository) ListByTenant(ctx context.Context, tenantID string) ([]*groupdomain.Group, error) {
+func (r *GroupRepository) ListAll(ctx context.Context, tenantID string) ([]*groupdomain.Group, error) {
 	rows, err := New(r.Pool).ListGroupsByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*groupdomain.Group, 0, len(rows))
+	for _, row := range rows {
+		group, err := groupFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, group)
+	}
+	return out, nil
+}
+
+// ListPage implements ports.GroupRepository.ListPage (wi-159, ADR-158): keyset
+// pagination ordered by (name, id) ascending, strictly after the given
+// keyset ("", "" for the first page).
+func (r *GroupRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*groupdomain.Group, error) {
+	q := New(r.Pool)
+	var rows []*Group
+	var err error
+	if afterName == "" && afterID == "" {
+		rows, err = q.ListGroupsByTenantPage(ctx, ListGroupsByTenantPageParams{
+			TenantID:  tenantID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListGroupsByTenantPageAfter(ctx, ListGroupsByTenantPageAfterParams{
+			TenantID:  tenantID,
+			AfterName: afterName,
+			AfterID:   afterID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err != nil {
 		return nil, err
 	}

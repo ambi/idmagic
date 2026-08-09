@@ -10,6 +10,11 @@ import (
 type ConsentRepository interface {
 	Find(ctx context.Context, tenantID, sub, clientID string) (*consentdomain.Consent, error)
 	FindAll(ctx context.Context, tenantID string) ([]*consentdomain.Consent, error)
+	// ListPage returns up to limit consents for tenantID ordered by
+	// (user_id, client_id) ascending, strictly after the keyset (afterUserID,
+	// afterClientID). Pass "", "" for the first page. Backs ListAdminConsents
+	// keyset pagination (wi-159, ADR-158).
+	ListPage(ctx context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*consentdomain.Consent, error)
 	Save(ctx context.Context, tenantID string, c *consentdomain.Consent) error
 	Revoke(ctx context.Context, tenantID, sub, clientID string) error
 	// DeleteAllForSub は ADR-036 の anonymize cascade から呼ばれる。

@@ -211,6 +211,112 @@ func (q *Queries) ListApplicationsByTenant(ctx context.Context, tenantID string)
 	return items, nil
 }
 
+const listApplicationsByTenantPage = `-- name: ListApplicationsByTenantPage :many
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+FROM applications
+WHERE tenant_id = $1
+ORDER BY name, id
+LIMIT $2
+`
+
+type ListApplicationsByTenantPageParams struct {
+	TenantID  string
+	PageLimit int32
+}
+
+// First page of ListAdminApplications keyset pagination (wi-159, ADR-158):
+// stable sort by (name, id) so admins see the pre-existing alphabetical
+// order. id is a load-bearing tie-break since application names aren't
+// unique per tenant.
+func (q *Queries) ListApplicationsByTenantPage(ctx context.Context, arg ListApplicationsByTenantPageParams) ([]*Application, error) {
+	rows, err := q.db.Query(ctx, listApplicationsByTenantPage, arg.TenantID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Application
+	for rows.Next() {
+		var i Application
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.Status,
+			&i.ProtocolType,
+			&i.IconUrl,
+			&i.IconObjectKey,
+			&i.LaunchUrl,
+			&i.CategoryIds,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listApplicationsByTenantPageAfter = `-- name: ListApplicationsByTenantPageAfter :many
+SELECT tenant_id, id, name, kind, status, protocol_type, icon_url, icon_object_key, launch_url, category_ids, created_at, updated_at
+FROM applications
+WHERE tenant_id = $1
+  AND (name, id) > ($2::text, $3::uuid)
+ORDER BY name, id
+LIMIT $4
+`
+
+type ListApplicationsByTenantPageAfterParams struct {
+	TenantID  string
+	AfterName string
+	AfterID   string
+	PageLimit int32
+}
+
+// Continuation page: resumes strictly after the (name, id) keyset of the
+// last row the caller saw.
+func (q *Queries) ListApplicationsByTenantPageAfter(ctx context.Context, arg ListApplicationsByTenantPageAfterParams) ([]*Application, error) {
+	rows, err := q.db.Query(ctx, listApplicationsByTenantPageAfter,
+		arg.TenantID,
+		arg.AfterName,
+		arg.AfterID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*Application
+	for rows.Next() {
+		var i Application
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ID,
+			&i.Name,
+			&i.Kind,
+			&i.Status,
+			&i.ProtocolType,
+			&i.IconUrl,
+			&i.IconObjectKey,
+			&i.LaunchUrl,
+			&i.CategoryIds,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeApplicationCategory = `-- name: RemoveApplicationCategory :exec
 UPDATE applications SET category_ids = array_remove(category_ids, $2), updated_at = now()
 WHERE tenant_id = $1 AND $2 = ANY(category_ids)

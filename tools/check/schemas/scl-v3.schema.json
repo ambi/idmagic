@@ -277,6 +277,7 @@
               "successful_status_codes": { "type": "array", "items": { "type": "string" } },
               "request_form": { "enum": ["body", "query", "form"] },
               "headers": { "$ref": "#/$defs/FieldMap" },
+              "response_headers": { "$ref": "#/$defs/FieldMap" },
               "error_format": { "enum": ["problem_details", "oauth2", "scim", "set_delivery"] }
             }
           }

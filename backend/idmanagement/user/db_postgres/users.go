@@ -125,6 +125,40 @@ func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*userd
 	return out, nil
 }
 
+// ListPage implements ports.UserRepository.ListPage (wi-159, ADR-158): keyset
+// pagination ordered by (preferred_username, id) ascending, strictly after
+// the given keyset ("", "" for the first page).
+func (r *UserRepository) ListPage(ctx context.Context, tenantID, afterUsername, afterID string, limit int) ([]*userdomain.User, error) {
+	q := New(r.Pool)
+	var rows []*User
+	var err error
+	if afterUsername == "" && afterID == "" {
+		rows, err = q.ListUsersByTenantPage(ctx, ListUsersByTenantPageParams{
+			TenantID: tenantID,
+			Limit:    int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListUsersByTenantPageAfter(ctx, ListUsersByTenantPageAfterParams{
+			TenantID:      tenantID,
+			AfterUsername: afterUsername,
+			AfterID:       afterID,
+			PageLimit:     int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*userdomain.User, 0, len(rows))
+	for _, row := range rows {
+		u, err := userFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, nil
+}
+
 func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
 	return internalSaveUser(ctx, r.Pool, u)
 }

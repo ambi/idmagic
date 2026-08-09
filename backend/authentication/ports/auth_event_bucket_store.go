@@ -52,6 +52,10 @@ type AuthEventBucketStore interface {
 		tenantID, keyHash string,
 		now time.Time,
 	) (AuthEventBucketResult, error)
-	// List は tenant 境界内の bucket を新しい窓順 (windowStart 降順) で最大 limit 件返す。
-	List(ctx context.Context, tenantID string, limit int) ([]AuthEventBucket, error)
+	// List は tenant 境界内の bucket を新しい窓順 (windowStart 降順、同窓は
+	// "kind|keyHash" 昇順で安定化) で最大 limit 件返す。afterWindowStart/afterKey
+	// は keyset pagination の継続カーソル (wi-159, ADR-158)。afterKey は
+	// "kind|keyHash" 形式で、直近応答の最終行の Kind/KeyHash から組み立てる。
+	// ゼロ値/空文字列なら先頭ページ。
+	List(ctx context.Context, tenantID string, afterWindowStart time.Time, afterKey string, limit int) ([]AuthEventBucket, error)
 }

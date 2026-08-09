@@ -41,6 +41,12 @@ type AuditEventQuery struct {
 	After  time.Time
 	Before time.Time
 	Limit  int
+	// AfterOccurredAt/AfterID are the keyset continuation cursor (wi-159,
+	// ADR-158), distinct from After/Before (time-range filters): resume
+	// strictly after this (occurred_at, id) row in the OccurredAt DESC
+	// order. Zero/"" for the first page.
+	AfterOccurredAt time.Time
+	AfterID         string
 	// Q は raw 保存された text 属性への部分一致フリーテキスト (wi-145)。PII 属性は対象外。
 	Q string
 	// Filters は registry allowlist の field/operator による構造化検索式の連言 (AND)。

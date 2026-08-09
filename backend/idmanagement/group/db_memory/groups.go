@@ -35,7 +35,7 @@ func cloneGroup(group *groupdomain.Group) *groupdomain.Group {
 	return &cloned
 }
 
-func (r *GroupRepository) ListByTenant(_ context.Context, tenantID string) ([]*groupdomain.Group, error) {
+func (r *GroupRepository) ListAll(_ context.Context, tenantID string) ([]*groupdomain.Group, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*groupdomain.Group, 0)
@@ -46,6 +46,21 @@ func (r *GroupRepository) ListByTenant(_ context.Context, tenantID string) ([]*g
 	}
 	slices.SortFunc(out, func(a, b *groupdomain.Group) int { return strings.Compare(a.Name, b.Name) })
 	return out, nil
+}
+
+// ListPage implements ports.GroupRepository.ListPage (wi-159, ADR-158): keyset
+// pagination ordered by (Name, ID) ascending, strictly after the given keyset.
+func (r *GroupRepository) ListPage(_ context.Context, tenantID, afterName, afterID string, limit int) ([]*groupdomain.Group, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]*groupdomain.Group, 0)
+	for _, group := range r.groups {
+		if group.TenantID == tenantID {
+			out = append(out, cloneGroup(group))
+		}
+	}
+	key := func(g *groupdomain.Group) (string, string) { return g.Name, g.ID }
+	return sharedmem.KeysetPage(out, key, false, afterName, afterID, limit), nil
 }
 
 func (r *GroupRepository) FindByID(_ context.Context, tenantID, id string) (*groupdomain.Group, error) {

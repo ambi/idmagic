@@ -28,9 +28,24 @@ type Querier interface {
 	LinkWsFedRelyingPartyToApplication(ctx context.Context, arg LinkWsFedRelyingPartyToApplicationParams) error
 	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error)
 	ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ListApplicationAssignmentsByApplicationRow, error)
+	// First page of ListApplicationAssignments keyset pagination (wi-159,
+	// ADR-158): the (application_id, subject_type, subject_id) primary key
+	// already backs this range scan.
+	ListApplicationAssignmentsByApplicationPage(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageParams) ([]*ListApplicationAssignmentsByApplicationPageRow, error)
+	// Continuation page: resumes strictly after the (subject_type, subject_id)
+	// keyset of the last row the caller saw.
+	ListApplicationAssignmentsByApplicationPageAfter(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageAfterParams) ([]*ListApplicationAssignmentsByApplicationPageAfterRow, error)
 	ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ListApplicationAssignmentsByTenantRow, error)
 	ListApplicationCategoriesByTenant(ctx context.Context, tenantID string) ([]*ApplicationCategory, error)
 	ListApplicationsByTenant(ctx context.Context, tenantID string) ([]*Application, error)
+	// First page of ListAdminApplications keyset pagination (wi-159, ADR-158):
+	// stable sort by (name, id) so admins see the pre-existing alphabetical
+	// order. id is a load-bearing tie-break since application names aren't
+	// unique per tenant.
+	ListApplicationsByTenantPage(ctx context.Context, arg ListApplicationsByTenantPageParams) ([]*Application, error)
+	// Continuation page: resumes strictly after the (name, id) keyset of the
+	// last row the caller saw.
+	ListApplicationsByTenantPageAfter(ctx context.Context, arg ListApplicationsByTenantPageAfterParams) ([]*Application, error)
 	RemoveApplicationCategory(ctx context.Context, arg RemoveApplicationCategoryParams) error
 	UpsertAppSignInPolicy(ctx context.Context, arg UpsertAppSignInPolicyParams) error
 	UpsertApplication(ctx context.Context, arg UpsertApplicationParams) error

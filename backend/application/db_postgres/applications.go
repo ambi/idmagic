@@ -62,8 +62,42 @@ func (r *ApplicationRepository) hydrateProtocol(ctx context.Context, app *domain
 	return nil
 }
 
-func (r *ApplicationRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.Application, error) {
+func (r *ApplicationRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.Application, error) {
 	rows, err := New(r.Pool).ListApplicationsByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*domain.Application, 0, len(rows))
+	for _, row := range rows {
+		app := applicationFromRow(row)
+		if err := r.hydrateProtocol(ctx, app); err != nil {
+			return nil, err
+		}
+		out = append(out, app)
+	}
+	return out, nil
+}
+
+// ListPage implements ports.ApplicationRepository.ListPage (wi-159, ADR-158):
+// keyset pagination ordered by (name, id) ascending, strictly after the
+// given keyset ("", "" for the first page).
+func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error) {
+	q := New(r.Pool)
+	var rows []*Application
+	var err error
+	if afterName == "" && afterID == "" {
+		rows, err = q.ListApplicationsByTenantPage(ctx, ListApplicationsByTenantPageParams{
+			TenantID:  tenantID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	} else {
+		rows, err = q.ListApplicationsByTenantPageAfter(ctx, ListApplicationsByTenantPageAfterParams{
+			TenantID:  tenantID,
+			AfterName: afterName,
+			AfterID:   afterID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +282,7 @@ func (r *SignInPolicyRepository) Get(ctx context.Context, tenantID, applicationI
 	return signInPolicyFromFields(row.TenantID, row.ApplicationID, row.Rules, row.CreatedAt, row.UpdatedAt)
 }
 
-func (r *SignInPolicyRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
+func (r *SignInPolicyRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.AppSignInPolicy, error) {
 	rows, err := New(r.Pool).ListAppSignInPoliciesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
@@ -366,7 +400,7 @@ func assignmentFromFields(tenantID, applicationID, subjectType, subjectID, visib
 	}
 }
 
-func (r *ApplicationAssignmentRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {
+func (r *ApplicationAssignmentRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.ApplicationAssignment, error) {
 	rows, err := New(r.Pool).ListApplicationAssignmentsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err
@@ -388,6 +422,39 @@ func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context,
 	out := make([]*domain.ApplicationAssignment, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, assignmentFromFields(row.TenantID, row.ApplicationID, row.SubjectType, row.SubjectID, row.Visibility, row.CreatedAt, row.UpdatedAt))
+	}
+	return out, nil
+}
+
+// ListPageByApplication implements ports.AssignmentRepository.ListPageByApplication
+// (wi-159, ADR-158): keyset pagination ordered by (subject_type, subject_id)
+// ascending, strictly after the given keyset ("", "" for the first page).
+func (r *ApplicationAssignmentRepository) ListPageByApplication(ctx context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
+	q := New(r.Pool)
+	var out []*domain.ApplicationAssignment
+	if afterSubjectType == "" && afterSubjectID == "" {
+		rows, err := q.ListApplicationAssignmentsByApplicationPage(ctx, ListApplicationAssignmentsByApplicationPageParams{
+			TenantID: tenantID, ApplicationID: applicationID,
+			PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, r := range rows {
+			out = append(out, assignmentFromFields(r.TenantID, r.ApplicationID, r.SubjectType, r.SubjectID, r.Visibility, r.CreatedAt, r.UpdatedAt))
+		}
+		return out, nil
+	}
+	rows, err := q.ListApplicationAssignmentsByApplicationPageAfter(ctx, ListApplicationAssignmentsByApplicationPageAfterParams{
+		TenantID: tenantID, ApplicationID: applicationID,
+		AfterSubjectType: afterSubjectType, AfterSubjectID: afterSubjectID,
+		PageLimit: int32(limit), //nolint:gosec // caller clamps limit to a small positive bound
+	})
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		out = append(out, assignmentFromFields(r.TenantID, r.ApplicationID, r.SubjectType, r.SubjectID, r.Visibility, r.CreatedAt, r.UpdatedAt))
 	}
 	return out, nil
 }
@@ -487,7 +554,7 @@ func categoryFromRow(row *ApplicationCategory) *domain.ApplicationCategory {
 	}
 }
 
-func (r *ApplicationCategoryRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.ApplicationCategory, error) {
+func (r *ApplicationCategoryRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.ApplicationCategory, error) {
 	rows, err := New(r.Pool).ListApplicationCategoriesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

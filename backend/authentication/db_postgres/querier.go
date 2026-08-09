@@ -12,6 +12,13 @@ import (
 type Querier interface {
 	DeleteAuthEventBucketsOlderThan(ctx context.Context, windowStart time.Time) (int64, error)
 	ListAuthEventBuckets(ctx context.Context, arg ListAuthEventBucketsParams) ([]*ListAuthEventBucketsRow, error)
+	// Continuation page for ListAuthenticationEventBuckets keyset pagination
+	// (wi-159, ADR-158): resumes strictly after the (window_start, kind,
+	// key_hash) keyset of the last row the caller saw. kind/key_hash (not
+	// count, which isn't unique) is the tie-break matching the table's own
+	// PRIMARY KEY (tenant_id, kind, key_hash, window_start); all three columns
+	// sort DESC so the row-value comparison below matches ORDER BY exactly.
+	ListAuthEventBucketsAfter(ctx context.Context, arg ListAuthEventBucketsAfterParams) ([]*ListAuthEventBucketsAfterRow, error)
 	RecordAuthEventBucket(ctx context.Context, arg RecordAuthEventBucketParams) (*RecordAuthEventBucketRow, error)
 }
 

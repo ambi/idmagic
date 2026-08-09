@@ -59,9 +59,12 @@ type AgentView struct {
 	ClientIDs []string
 }
 
-func ListAgents(ctx context.Context, deps AdminAgentDeps) ([]AgentView, error) {
+// ListAgents returns up to limit+1 agents after the given keyset (wi-159,
+// ADR-158) — callers pass limit+1 to detect whether a next page exists, then
+// trim to limit before responding.
+func ListAgents(ctx context.Context, deps AdminAgentDeps, afterName, afterID string, limit int) ([]AgentView, error) {
 	tenantID := tenancy.TenantID(ctx)
-	agents, err := deps.AgentRepo.ListByTenant(ctx, tenantID)
+	agents, err := deps.AgentRepo.ListPage(ctx, tenantID, afterName, afterID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -464,7 +467,7 @@ func agentClientIDs(ctx context.Context, deps AdminAgentDeps, tenantID, agentID 
 }
 
 func ensureAgentNameAvailable(ctx context.Context, deps AdminAgentDeps, tenantID, name, excludeID string) error {
-	agents, err := deps.AgentRepo.ListByTenant(ctx, tenantID)
+	agents, err := deps.AgentRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return err
 	}

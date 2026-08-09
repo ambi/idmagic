@@ -298,7 +298,10 @@ func newAdminUserHandler(
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
+		Deps: support.Deps{
+			Issuer:          "http://idp.test",
+			PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
+		}, UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
 		AgentRepo: agentmemory.NewAgentRepository(),
 		GroupRepo: groupmemory.NewGroupRepository(),

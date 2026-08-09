@@ -98,6 +98,124 @@ func (q *Queries) ListApplicationAssignmentsByApplication(ctx context.Context, a
 	return items, nil
 }
 
+const listApplicationAssignmentsByApplicationPage = `-- name: ListApplicationAssignmentsByApplicationPage :many
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = $1 AND aa.application_id = $2
+ORDER BY aa.subject_type, aa.subject_id
+LIMIT $3
+`
+
+type ListApplicationAssignmentsByApplicationPageParams struct {
+	TenantID      string
+	ApplicationID string
+	PageLimit     int32
+}
+
+type ListApplicationAssignmentsByApplicationPageRow struct {
+	TenantID      string
+	ApplicationID string
+	SubjectType   string
+	SubjectID     string
+	Visibility    string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// First page of ListApplicationAssignments keyset pagination (wi-159,
+// ADR-158): the (application_id, subject_type, subject_id) primary key
+// already backs this range scan.
+func (q *Queries) ListApplicationAssignmentsByApplicationPage(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageParams) ([]*ListApplicationAssignmentsByApplicationPageRow, error) {
+	rows, err := q.db.Query(ctx, listApplicationAssignmentsByApplicationPage, arg.TenantID, arg.ApplicationID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListApplicationAssignmentsByApplicationPageRow
+	for rows.Next() {
+		var i ListApplicationAssignmentsByApplicationPageRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ApplicationID,
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listApplicationAssignmentsByApplicationPageAfter = `-- name: ListApplicationAssignmentsByApplicationPageAfter :many
+SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
+FROM application_assignments aa JOIN applications a ON a.id = aa.application_id
+WHERE a.tenant_id = $1 AND aa.application_id = $2
+  AND (aa.subject_type, aa.subject_id) > ($3::text, $4::uuid)
+ORDER BY aa.subject_type, aa.subject_id
+LIMIT $5
+`
+
+type ListApplicationAssignmentsByApplicationPageAfterParams struct {
+	TenantID         string
+	ApplicationID    string
+	AfterSubjectType string
+	AfterSubjectID   string
+	PageLimit        int32
+}
+
+type ListApplicationAssignmentsByApplicationPageAfterRow struct {
+	TenantID      string
+	ApplicationID string
+	SubjectType   string
+	SubjectID     string
+	Visibility    string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+}
+
+// Continuation page: resumes strictly after the (subject_type, subject_id)
+// keyset of the last row the caller saw.
+func (q *Queries) ListApplicationAssignmentsByApplicationPageAfter(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageAfterParams) ([]*ListApplicationAssignmentsByApplicationPageAfterRow, error) {
+	rows, err := q.db.Query(ctx, listApplicationAssignmentsByApplicationPageAfter,
+		arg.TenantID,
+		arg.ApplicationID,
+		arg.AfterSubjectType,
+		arg.AfterSubjectID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListApplicationAssignmentsByApplicationPageAfterRow
+	for rows.Next() {
+		var i ListApplicationAssignmentsByApplicationPageAfterRow
+		if err := rows.Scan(
+			&i.TenantID,
+			&i.ApplicationID,
+			&i.SubjectType,
+			&i.SubjectID,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listApplicationAssignmentsByTenant = `-- name: ListApplicationAssignmentsByTenant :many
 SELECT a.tenant_id, aa.application_id, aa.subject_type, aa.subject_id, aa.visibility, aa.created_at, aa.updated_at
 FROM application_assignments aa JOIN applications a ON a.id = aa.application_id

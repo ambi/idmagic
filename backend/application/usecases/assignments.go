@@ -108,7 +108,10 @@ func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, 
 	return nil
 }
 
-func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID string) ([]*domain.ApplicationAssignment, error) {
+// ListAssignments returns up to limit+1 assignments after the given keyset
+// (wi-159, ADR-158) — callers pass limit+1 to detect whether a next page
+// exists, then trim to limit before responding.
+func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
 	tenantID := tenancy.TenantID(ctx)
 	app, err := deps.Repo.FindByID(ctx, tenantID, applicationID)
 	if err != nil {
@@ -117,7 +120,7 @@ func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID str
 	if app == nil {
 		return nil, ErrApplicationNotFound
 	}
-	return deps.AssignmentRepo.ListByApplication(ctx, tenantID, applicationID)
+	return deps.AssignmentRepo.ListPageByApplication(ctx, tenantID, applicationID, afterSubjectType, afterSubjectID, limit)
 }
 
 // ListMyApplications は subjects (利用者本人 + 所属グループ) に割当済みで visible な

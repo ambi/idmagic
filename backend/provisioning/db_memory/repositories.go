@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
@@ -117,7 +118,7 @@ func (r *ProvisioningConnectionRepository) Delete(_ context.Context, tenantID, a
 	return nil
 }
 
-func (r *ProvisioningConnectionRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.ProvisioningConnection, error) {
+func (r *ProvisioningConnectionRepository) ListAll(_ context.Context, tenantID string) ([]*domain.ProvisioningConnection, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := []*domain.ProvisioningConnection{}
@@ -239,6 +240,32 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(_ context.Context, ten
 		out = out[:limit]
 	}
 	return out, nil
+}
+
+// ListPageByConnection implements ports.ProvisioningDeliveryRepository.ListPageByConnection
+// (wi-159, ADR-158): keyset pagination ordered by (CreatedAt, ID) descending
+// — matching ListByConnection's pre-existing "most recent first" order.
+func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := []*domain.ProvisioningDelivery{}
+	for _, d := range r.deliveries {
+		if d.TenantID != tenantID || d.ConnectionID != connectionID {
+			continue
+		}
+		if status != nil && d.Status != *status {
+			continue
+		}
+		out = append(out, cloneDelivery(d))
+	}
+	key := func(d *domain.ProvisioningDelivery) (string, string) {
+		return d.CreatedAt.UTC().Format(time.RFC3339Nano), d.ID
+	}
+	afterPrimary := ""
+	if !afterCreatedAt.IsZero() {
+		afterPrimary = afterCreatedAt.UTC().Format(time.RFC3339Nano)
+	}
+	return sharedmem.KeysetPage(out, key, true, afterPrimary, afterID, limit), nil
 }
 
 func (r *ProvisioningDeliveryRepository) ListUnenqueued(_ context.Context, limit int) ([]*domain.ProvisioningDelivery, error) {

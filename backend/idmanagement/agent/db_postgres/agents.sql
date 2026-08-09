@@ -3,6 +3,25 @@ SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at FROM agents
 WHERE tenant_id=$1 ORDER BY name;
 
+-- name: ListAgentsByTenantPage :many
+-- First page of ListAgents keyset pagination (wi-159, ADR-158): stable sort
+-- by (name, id) so admins see the pre-existing alphabetical order.
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at FROM agents
+WHERE tenant_id=$1
+ORDER BY name, id
+LIMIT sqlc.arg(page_limit);
+
+-- name: ListAgentsByTenantPageAfter :many
+-- Continuation page: resumes strictly after the (name, id) keyset of the
+-- last row the caller saw.
+SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
+created_at,updated_at,disabled_at,killed_at FROM agents
+WHERE tenant_id=$1
+  AND (name, id) > (sqlc.arg(after_name)::text, sqlc.arg(after_id)::uuid)
+ORDER BY name, id
+LIMIT sqlc.arg(page_limit);
+
 -- name: FindAgentByID :one
 SELECT id,tenant_id,name,description,kind,owner_user_id,status,roles,
 created_at,updated_at,disabled_at,killed_at FROM agents

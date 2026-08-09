@@ -119,7 +119,7 @@ func TestListGetUpdateAndRemoveGroupMember(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := groupusecases.ListGroups(ctx, deps)
+	list, err := groupusecases.ListGroups(ctx, deps, "", "", 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestCreateGroup_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	if qErr.Resource != tenancydomain.ResourceGroups {
 		t.Fatalf("unexpected resource: %s", qErr.Resource)
 	}
-	list, err := groupusecases.ListGroups(ctx, deps)
+	list, err := groupusecases.ListGroups(ctx, deps, "", "", 100)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -42,6 +42,9 @@ type Deps struct {
 	ShuttingDown              *atomic.Bool
 	StartupComplete           *atomic.Bool
 	TenantRepo                tenantports.TenantRepository
+	// PaginationCodec signs/verifies keyset pagination cursors (ADR-158).
+	// nil-safe: handlers that don't paginate never touch it.
+	PaginationCodec *CursorCodec
 }
 
 // Authenticator は認証・認可の共通ロジックに必要な依存を保持する。
