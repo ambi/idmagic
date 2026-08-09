@@ -96,7 +96,7 @@ models:
       - XmlFederationSigning
   SigningKey:
     kind: entity
-    description: トークン署名用の非対称鍵。テナント・用途・scopeごとに Active 1本＋Verifying 過去鍵 0本以上を公開する（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id / usage / scope_id で絞る。tenant_id は既存 Tenant を指す。scope_id は既定で default とし、SAML追加IdP profileではprofile IDを用いてXML署名資格情報を分離する。
+    description: トークン署名用の非対称鍵。テナント・用途・scopeごとに Active 1本＋Verifying 過去鍵 0本以上を公開する（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id / usage / scope_id で絞る。tenant_id は既存 Tenant を指す。scope_id は既定で default とし、SAML追加IdP profileではprofile IDを用いてXML署名資格情報を分離する。
     identity: kid
     constraints:
       - usage != "XmlFederationSigning" || certificate_der != null
@@ -189,7 +189,7 @@ models:
         description: true は現在新規 ID Token / Access Token を署名する鍵。false は回転後の移行期間に既発行トークンを検証するためだけに JWKS へ残る鍵。
       created_at:
         type: DateTime
-        description: 鍵生成時刻 ([[ADR-108]] の SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。
+        description: 鍵生成時刻 (SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。
       public_jwk:
         type: JSON
         description: 公開鍵 JWK。JWKS と同じ表現。
@@ -239,7 +239,7 @@ models:
         description: KeyProvider が到達可能か。false のとき FailClosed で新規発行を止める (強制点は OAuth2.Token)。
   SigningKeyRotated:
     kind: event
-    description: JWKS の署名鍵が回転した（[[ADR-108]] の既定 90 日ごと、または緊急回転）。
+    description: JWKS の署名鍵が回転した（既定 90 日ごと、または緊急回転）。
     payload:
       occurredAt:
         type: DateTime
@@ -253,7 +253,7 @@ models:
         optional: true
   SigningKeyRetired:
     kind: event
-    description: "署名鍵が Verifying から Retired に移り JWKS から除去された\n([[ADR-108]] の SigningKeyMinJwksOverlap 経過、または緊急無効化)。\n"
+    description: "署名鍵が Verifying から Retired に移り JWKS から除去された\n(SigningKeyMinJwksOverlap 経過、または緊急無効化)。\n"
     payload:
       occurredAt:
         type: DateTime
@@ -291,7 +291,7 @@ models:
     description: 認証済みだが認可条件を満たさない、またはサーバーポリシーが許可しなかった。OAuth2 context が定義する共通 error の published language stub。
 states:
   SigningKeyLifecycle:
-    description: 署名鍵のライフサイクル ([[ADR-108]] の SigningKeyMinJwksOverlap)。Active から Rotate で Verifying に降り、Retire で JWKS から外し、Archive で監査保管に入る。
+    description: 署名鍵のライフサイクル (SigningKeyMinJwksOverlap)。Active から Rotate で Verifying に降り、Retire で JWKS から外し、Archive で監査保管に入る。
     target: SigningKey
     initial: Active
     terminal:
@@ -379,7 +379,7 @@ interfaces:
         method: GET
         path: "/api/admin/v1/keys/{kid}"
   RotateTenantSigningKey:
-    description: "テナント内 admin が自テナントに新しい署名鍵を生成し active を切り替える。旧 active 鍵は\nJWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap 期間後に Retire される\n(Retire 処理は別の運用ジョブ)。テナント単位のため回転の影響範囲は当該テナントに\n閉じる。\n"
+    description: "テナント内 admin が自テナントに新しい署名鍵を生成し active を切り替える。旧 active 鍵は\nJWKS に verifying として残存し、SigningKeyMinJwksOverlap 期間後に Retire される\n(Retire 処理は別の運用ジョブ)。テナント単位のため回転の影響範囲は当該テナントに\n閉じる。\n"
     output:
       response:
         type: AdminRotateKeyResponse

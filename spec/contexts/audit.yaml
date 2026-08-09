@@ -1,7 +1,6 @@
 # idmagic Audit — SCL
-# Split from OAuth2 (wi-146): audit events are a cross-context security read
-# model, not an OAuth2-owned concept.
-# Migrated to SCL 3.0 by wi-209 (ADR-103).
+# Audit events are a cross-context security read model, not an
+# OAuth2-owned concept.
 
 system: idmagic
 spec_version: "3.0"
@@ -144,7 +143,7 @@ models:
         description: "operator に応じた値の並び (eq=1 / in=N / time_range=2)。PII 属性は平文入力をサーバ側で transform してから照合する。"
   AdminAuditEventResponse:
     kind: value_object
-    description: "管理者向けに公開する DomainEvent。payload は構造化 JSON。\n返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。\nappend_only で 7 年保持する (GDPR Art. 30、ADR-107)。\n"
+    description: "管理者向けに公開する DomainEvent。payload は構造化 JSON。\n返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。\nappend_only で 7 年保持する (GDPR Art. 30)。\n"
     fields:
       id:
         type: String

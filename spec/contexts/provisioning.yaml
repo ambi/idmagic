@@ -1,6 +1,6 @@
 # idmagic Provisioning — SCL
-# wi-45: idmagic を SCIM 2.0 client にし、下流 SaaS へ user/group を push する outbound
-# lifecycle management を実装する。ADR-128 の決定:
+# idmagic を SCIM 2.0 client にし、下流 SaaS へ user/group を push する outbound
+# lifecycle management を実装する。設計判断:
 #   - outbound を独立 context として切り出す (Scim は inbound server 専用のまま)。
 #   - context 内部は protocol 非依存コア (本ファイル) + protocol 別 feature slice
 #     (backend/provisioning/scim/ など) で構成する。SCL は protocol 非依存の契約だけを持ち、
@@ -25,7 +25,7 @@ glossary:
       - remote link
       - 相関
   ProvisioningDelivery:
-    definition: 内部の lifecycle event 1 件を下流へ反映するための配送単位。idempotency key (tenant_id, connection_id, source_type, source_id, source_version) で重複 enqueue を no-op にする。実行は Jobs (wi-126) 上の Job に委譲する。
+    definition: 内部の lifecycle event 1 件を下流へ反映するための配送単位。idempotency key (tenant_id, connection_id, source_type, source_id, source_version) で重複 enqueue を no-op にする。実行は Jobs 上の Job に委譲する。
     aliases:
       - delivery
       - 配送
@@ -525,7 +525,7 @@ models:
         type: DateTime
   ProvisioningDelivery:
     kind: entity
-    description: "内部 lifecycle event 1 件分の配送単位。idempotency key\n(tenant_id, connection_id, source_type, source_id, source_version) は一意制約であり、\n同一 key の重複 enqueue は既存行への no-op とする。job_id は dispatcher が Jobs (wi-126)\nへ enqueue した後に関連付ける (未 enqueue の間は未設定)。\n"
+    description: "内部 lifecycle event 1 件分の配送単位。idempotency key\n(tenant_id, connection_id, source_type, source_id, source_version) は一意制約であり、\n同一 key の重複 enqueue は既存行への no-op とする。job_id は dispatcher が Jobs\nへ enqueue した後に関連付ける (未 enqueue の間は未設定)。\n"
     identity: id
     fields:
       id:
@@ -724,7 +724,7 @@ models:
         type: Integer
   ProvisioningConnectionQuarantineCleared:
     kind: event
-    description: 管理者が ResumeProvisioningConnection で quarantine を解除した。SCL 化にあたり wi-45 のイベント一覧へ追加した (quarantine を解除する経路が無いと復旧不能になるため)。
+    description: 管理者が ResumeProvisioningConnection で quarantine を解除した。quarantine を解除する経路が無いと復旧不能になるため、イベント一覧へ追加した。
     payload:
       occurredAt:
         type: DateTime
@@ -1097,7 +1097,7 @@ interfaces:
         method: POST
         path: "/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}/retry"
   ResumeProvisioningConnection:
-    description: 管理者が quarantine された ProvisioningConnection を解除し配送を再開する。wi-45 の運用手順一覧に quarantine 解除の経路が明記されていなかったため、SCL 化にあたり本 interface を追加した。
+    description: 管理者が quarantine された ProvisioningConnection を解除し配送を再開する。運用手順に quarantine 解除の経路が明記されていなかったため、本 interface を追加した。
     input:
       id:
         type: String

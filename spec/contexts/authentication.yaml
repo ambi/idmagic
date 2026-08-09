@@ -1,5 +1,5 @@
 # idmagic Authentication — SCL
-# Migrated to SCL 3.0 by wi-209 (ADR-103).
+# SCL 3.0 context specification.
 
 system: idmagic
 spec_version: "3.0"
@@ -148,7 +148,7 @@ glossary:
     aliases:
       - webauthn
   RecoveryCode:
-    definition: TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード (ADR-087)。
+    definition: TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード。
     aliases:
       - recovery_code
   EndUser:
@@ -177,7 +177,7 @@ models:
       - Saml
   IdentityProviderConnectionStatus:
     kind: enum
-    description: connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。作成直後の初期状態は Disabled ([[ADR-149]])。
+    description: connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。作成直後の初期状態は Disabled。
     values:
       - Active
       - Disabled
@@ -209,7 +209,7 @@ models:
       - size(username) > 0
   IdentityProviderConnection:
     kind: entity
-    description: tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で受け取り、DataKeys の per-tenant DEK でエンベロープ暗号化して保持する ([[ADR-150]])。
+    description: tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で受け取り、DataKeys の per-tenant DEK でエンベロープ暗号化して保持する。
     identity:
       - tenant_id
       - id
@@ -232,7 +232,7 @@ models:
       secret_reference:
         type: String
         optional: true
-        description: "client secret の実値を書き込み専用で受け取るフィールド。DB には DataKeys の per-tenant DEK でエンベロープ暗号化した ciphertext のみを保存し、API レスポンスには実値・ciphertext のいずれも含めない ([[ADR-150]])。フィールド名は移行元の env: 参照方式から維持している。\n"
+        description: "client secret の実値を書き込み専用で受け取るフィールド。DB には DataKeys の per-tenant DEK でエンベロープ暗号化した ciphertext のみを保存し、API レスポンスには実値・ciphertext のいずれも含めない。フィールド名は移行元の env: 参照方式から維持している。\n"
         annotations:
           sensitive: true
       client_secret_configured:
@@ -488,7 +488,7 @@ models:
       secret:
         type: String
         optional: true
-        description: "Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。DB 永続化時は DataKeys の per-tenant DEK でエンベロープ暗号化し、平文を保存しない ([[ADR-148]])。\n"
+        description: "Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。DB 永続化時は DataKeys の per-tenant DEK でエンベロープ暗号化し、平文を保存しない。\n"
         annotations:
           sensitive: true
       label:
@@ -540,7 +540,7 @@ models:
       - "count([consumed_at, revoked_at, expired_at], value != null) <= 1"
   AuthenticatorResetTarget:
     kind: enum
-    description: 管理者による認証器リセット (ADR-088 第 2 層) が対象にできる要素。Totp / Webauthn は MfaFactor / WebAuthnCredential の全件削除、RecoveryCode は backup recovery code 一式の削除を指す。
+    description: 管理者による認証器リセットが対象にできる要素。Totp / Webauthn は MfaFactor / WebAuthnCredential の全件削除、RecoveryCode は backup recovery code 一式の削除を指す。
     values:
       - Totp
       - Webauthn
@@ -555,7 +555,7 @@ models:
           - non_empty
   AuthenticatorResetResponse:
     kind: value_object
-    description: 認証器リセットの結果。reenrollment_required は TOTP / WebAuthn の両方が無くなり、次回ログインで登録専用 pending flow (wi-127) へ入る単発 bypass を自動発行したことを示す。bypass は reenrollment_required の場合だけ存在する。
+    description: 認証器リセットの結果。reenrollment_required は TOTP / WebAuthn の両方が無くなり、次回ログインで登録専用 pending flow へ入る単発 bypass を自動発行したことを示す。bypass は reenrollment_required の場合だけ存在する。
     fields:
       mfa_enrolled:
         type: Boolean
@@ -566,7 +566,7 @@ models:
         optional: true
   LoginSession:
     kind: entity
-    description: "ブラウザログインセッション。PostgreSQL を単一正本として永続化し (wi-253)、\nプロセス再起動を跨いで有効な session を維持する。Cookie には不透明な\nsession id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も\nここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は\nサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を\n遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加\nfactor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize\n完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。\nCookie は http_only かつ same_site=Lax で発行する。tenant_id は認証解決クエリに\n必ず含め、session id が tenant をまたいで推測・再利用されても別 tenant の行を返さない\nfail-closed な分離を DB 層で担保する。失効は revoked_at / revoke_reason を設定する\ntombstone であり、行を物理削除しない (再失効は idempotent に成功する)。認証解決は\nrevoked_at IS NULL AND expires_at > now の行だけを有効とみなす。\n"
+    description: "ブラウザログインセッション。PostgreSQL を単一正本として永続化し、\nプロセス再起動を跨いで有効な session を維持する。Cookie には不透明な\nsession id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も\nここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は\nサインインポリシーまたは step-up が追加 factor を要求した場合だけ同一 LoginSession を\n遷移させる中間状態で、MFA factor 登録済みという事実だけでは pending にしない。追加\nfactor 待ちへ進むときに別の完了済み pwd セッションを残してはならない。/authorize\n完了経路は pending セッションを未認証扱いとし対応する factor challenge に誘導する。\nCookie は http_only かつ same_site=Lax で発行する。tenant_id は認証解決クエリに\n必ず含め、session id が tenant をまたいで推測・再利用されても別 tenant の行を返さない\nfail-closed な分離を DB 層で担保する。失効は revoked_at / revoke_reason を設定する\ntombstone であり、行を物理削除しない (再失効は idempotent に成功する)。認証解決は\nrevoked_at IS NULL AND expires_at > now の行だけを有効とみなす。\n"
     identity: id
     fields:
       id:
@@ -607,7 +607,7 @@ models:
       step_up_at:
         type: Integer
         default: 0
-        description: 直近で password / MFA による step-up 再認証が成立した Unix 秒 (未実施は 0)。高 sensitivity な self-service 操作の recency 判定に使う (ADR-043)。
+        description: 直近で password / MFA による step-up 再認証が成立した Unix 秒 (未実施は 0)。高 sensitivity な self-service 操作の recency 判定に使う。
       expires_at:
         type: DateTime
       last_seen_at:
@@ -1411,7 +1411,7 @@ models:
         type: String
   AuthenticatorResetRequested:
     kind: event
-    description: 管理者が対象 user の認証器リセットを要求した (ADR-088 第 2 層)。削除実行前に発行し、要求時点の対象を監査に残す。
+    description: 管理者が対象 user の認証器リセットを要求した。削除実行前に発行し、要求時点の対象を監査に残す。
     payload:
       occurredAt:
         type: DateTime
@@ -1710,7 +1710,7 @@ models:
         type: String
   SessionEnded:
     kind: event
-    description: "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。sessionId は OIDC sid と同値であり、\nOAuth2 bounded context はこの sessionId をキーに RefreshTokenRecord.sid が一致する\nfamily を失効し、登録済み RP へ front/back-channel logout を通知する (wi-28)。\nAccess Token 自体は本イベントで即時失効しない (短命 TTL に委ねる、ADR-127)。\n"
+    description: "LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、\nreason が self_revoke / admin_revoke になる。sessionId は OIDC sid と同値であり、\nOAuth2 bounded context はこの sessionId をキーに RefreshTokenRecord.sid が一致する\nfamily を失効し、登録済み RP へ front/back-channel logout を通知する。\nAccess Token 自体は本イベントで即時失効しない (短命 TTL に委ねる)。\n"
     payload:
       occurredAt:
         type: DateTime
@@ -2288,7 +2288,7 @@ interfaces:
         successful_status_codes:
           - "204"
   ListSessions:
-    description: "admin が対象ユーザーの有効なセッションを一覧する (wi-28)。tenant 境界内に\n限定し、開始時刻の降順で返す。ListMySessions と異なり対象は任意の user_id で、\ncurrent マーカーは持たない。\n"
+    description: "admin が対象ユーザーの有効なセッションを一覧する。tenant 境界内に\n限定し、開始時刻の降順で返す。ListMySessions と異なり対象は任意の user_id で、\ncurrent マーカーは持たない。\n"
     input:
       user_id:
         type: String
@@ -2309,7 +2309,7 @@ interfaces:
         method: GET
         path: "/api/admin/v1/users/{user_id}/sessions"
   RevokeSession:
-    description: "admin が対象ユーザーのセッション1件を失効する (wi-28)。RevokeMySession と同じ\ntombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削除しない)。\n既に失効済みの対象への再失効は idempotent に成功する。\n"
+    description: "admin が対象ユーザーのセッション1件を失効する。RevokeMySession と同じ\ntombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削除しない)。\n既に失効済みの対象への再失効は idempotent に成功する。\n"
     input:
       user_id:
         type: String
@@ -2331,7 +2331,7 @@ interfaces:
         successful_status_codes:
           - "204"
   RevokeUserSessions:
-    description: "admin が対象ユーザーの全セッションを失効する (wi-28)。\"全セッションを終了\"\n操作。RevokeMyOtherSessions と異なり操作者自身のセッションではないため除外対象は\n無く、対象ユーザーの有効な全セッションを tombstone にする。各対象は idempotent に\n失効する。\n"
+    description: "admin が対象ユーザーの全セッションを失効する。\"全セッションを終了\"\n操作。RevokeMyOtherSessions と異なり操作者自身のセッションではないため除外対象は\n無く、対象ユーザーの有効な全セッションを tombstone にする。各対象は idempotent に\n失効する。\n"
     input:
       user_id:
         type: String
@@ -2442,7 +2442,7 @@ interfaces:
         successful_status_codes:
           - "204"
   ResetUserAuthenticators:
-    description: "テナント管理者が対象 user の認証器 (TOTP factor / WebAuthn credential /\nrecovery code) から選択した種別を削除し、mfa_enrolled を再計算する (ADR-088 第 2 層、緊急\nbackstop)。管理者は新しい factor を代わりに登録できず、削除と再登録要求に限定する。\nTOTP と WebAuthn が両方無くなった場合は既存の管理者承認 enrollment bypass\n(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを wi-127 の\nfail-closed な enrollment-required flow へ誘導する。片方の要素のみ削除するなど mfa_enrolled\nが true のまま残る場合は bypass を発行せず、残存要素で通常ログインを継続できる。\n"
+    description: "テナント管理者が対象 user の認証器 (TOTP factor / WebAuthn credential /\nrecovery code) から選択した種別を削除し、mfa_enrolled を再計算する (緊急\nbackstop)。管理者は新しい factor を代わりに登録できず、削除と再登録要求に限定する。\nTOTP と WebAuthn が両方無くなった場合は既存の管理者承認 enrollment bypass\n(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを\nfail-closed な enrollment-required flow へ誘導する。片方の要素のみ削除するなど mfa_enrolled\nが true のまま残る場合は bypass を発行せず、残存要素で通常ログインを継続できる。\n"
     input:
       user_id:
         type: String
@@ -2676,7 +2676,7 @@ interfaces:
         method: GET
         path: /api/admin/v1/identity-providers
   CreateIdentityProviderConnection:
-    description: tenant administrator が connection を作る。作成直後の初期状態は Disabled ([[ADR-149]])。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす ([[ADR-150]])。
+    description: tenant administrator が connection を作る。作成直後の初期状態は Disabled。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす。
     input:
       connection:
         type: IdentityProviderConnection
@@ -2726,7 +2726,7 @@ interfaces:
         path: "/api/admin/v1/identity-providers/{provider_id}"
         request_body: json
   DeleteIdentityProviderConnection:
-    description: tenant administrator が connection を状態を問わずいつでも削除する ([[ADR-149]])。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。
+    description: tenant administrator が connection を状態を問わずいつでも削除する。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。
     input:
       provider_id:
         type: String
@@ -2858,7 +2858,7 @@ interfaces:
         request_body: json
 states:
   IdentityProviderConnectionLifecycle:
-    description: upstream connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する ([[ADR-149]])。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。
+    description: upstream connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。
     target: IdentityProviderConnection
     initial: Disabled
     terminal: []
@@ -2946,7 +2946,7 @@ objectives:
     window: 30d
     budgeting: occurrences
   SessionListLatency:
-    description: "/api/account/sessions 応答の95%以上を100ms未満で返す (先頭ページ、\nPostgreSQL keyset pagination index を使用、wi-253)。\n"
+    description: "/api/account/sessions 応答の95%以上を100ms未満で返す (先頭ページ、\nPostgreSQL keyset pagination index を使用)。\n"
     interface: ListMySessions
     indicator: measurement.latency < duration("100ms")
     target: 0.95

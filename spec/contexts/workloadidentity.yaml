@@ -1,12 +1,12 @@
 # idmagic WorkloadIdentity — SCL
 # SCL 3.0 context specification.
-# wi-54: エージェントランタイム向け workload identity federation。ADR-053 が設計を
-# 確定する。外部の attestation 発行者 (OIDC 互換 JWT を第一級とし、Kubernetes
-# projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID を
-# 対象とする) を検証し、テナントが事前登録した subject pattern → Agent の mapping に
-# 従って [[wi-49-agent-identity-first-class-principal]] の Agent へ federation する。
+# エージェントランタイム向け workload identity federation。外部の attestation
+# 発行者 (OIDC 互換 JWT を第一級とし、Kubernetes projected ServiceAccount
+# token・クラウド instance identity token・SPIFFE JWT-SVID を対象とする) を
+# 検証し、テナントが事前登録した subject pattern → Agent の mapping に
+# 従って Agent (第一級 principal) へ federation する。
 # idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。
-# 交換機構そのものは新設せず、OAuth2 の token-exchange grant (RFC 8693, ADR-049) を
+# 交換機構そのものは新設せず、OAuth2 の token-exchange grant (RFC 8693) を
 # subject_token_type の差し替えで再利用する。
 
 system: idmagic
@@ -18,13 +18,13 @@ glossary:
   AgentWorkloadBinding:
     definition: WorkloadTrustBundle 配下で、外部 subject に対する glob pattern を同一テナントの既存 Agent へ写す 1 対多の mapping 行。pattern にマッチしない subject、または複数の Enabled binding に曖昧にマッチする subject は fail-closed で拒否する。
   JwtSvid:
-    definition: OIDC 互換の JWT を wire 形式とする外部 attestation token。Kubernetes projected ServiceAccount token・クラウドの instance identity (OIDC) token・SPIFFE の JWT-SVID を包含する第一級の subject_token 種別 ([[ADR-053]])。X.509-SVID (mTLS) は将来の拡張。
+    definition: OIDC 互換の JWT を wire 形式とする外部 attestation token。Kubernetes projected ServiceAccount token・クラウドの instance identity (OIDC) token・SPIFFE の JWT-SVID を包含する第一級の subject_token 種別。X.509-SVID (mTLS) は将来の拡張。
     aliases:
       - JWT-SVID
   TrustDomain:
     definition: WorkloadTrustBundle が束ねる論理グループ名。SPIFFE trust domain、または運用者が定める発行者グループのラベル。
   FailClosed:
-    definition: 未登録 issuer・署名不正・期限切れ・pattern 不一致・ambiguous match・束縛先 Agent が Active でない、のいずれかに該当する場合、常に交換を拒否する方針。判定漏れは「交換しない」側へ倒す ([[ADR-053]])。
+    definition: 未登録 issuer・署名不正・期限切れ・pattern 不一致・ambiguous match・束縛先 Agent が Active でない、のいずれかに該当する場合、常に交換を拒否する方針。判定漏れは「交換しない」側へ倒す。
   System:
     definition: WorkloadIdentity の検証 usecase そのものを指す、人間の操作者を伴わない技術的な主体。
 models:
@@ -499,7 +499,7 @@ models:
         type: String
   WorkloadTokenExchanged:
     kind: event
-    description: 外部 attestation の検証を通過し、束縛先 Agent の資格情報として idmagic token を発行した ([[ADR-053]])。
+    description: 外部 attestation の検証を通過し、束縛先 Agent の資格情報として idmagic token を発行した。
     payload:
       occurredAt:
         type: DateTime
@@ -515,7 +515,7 @@ models:
         type: String
   WorkloadAttestationRejected:
     kind: event
-    description: 外部 attestation token の検証が fail-closed で拒否された ([[ADR-053]])。
+    description: 外部 attestation token の検証が fail-closed で拒否された。
     payload:
       occurredAt:
         type: DateTime
@@ -866,7 +866,7 @@ interfaces:
         successful_status_codes:
           - "204"
   VerifyWorkloadAttestation:
-    description: "OAuth2 の token-exchange grant (subject_token_type=JWT-SVID URN) から呼ぶ published interface。外部 attestation token を登録済み WorkloadTrustBundle で検証し (署名・iss・aud・exp・TTL 上限)、テナント内の AgentWorkloadBinding で subject を一意に Agent へ写し、束縛先 Agent が Active であることを確認する。いずれかに失敗すれば fail-closed で拒否する。idmagic 自身は SPIRE server/agent を実装しない (relying party 側に徹する、[[ADR-053]])。"
+    description: "OAuth2 の token-exchange grant (subject_token_type=JWT-SVID URN) から呼ぶ published interface。外部 attestation token を登録済み WorkloadTrustBundle で検証し (署名・iss・aud・exp・TTL 上限)、テナント内の AgentWorkloadBinding で subject を一意に Agent へ写し、束縛先 Agent が Active であることを確認する。いずれかに失敗すれば fail-closed で拒否する。idmagic 自身は SPIRE server/agent を実装しない (relying party 側に徹する)。"
     input:
       attestation:
         type: WorkloadAttestation

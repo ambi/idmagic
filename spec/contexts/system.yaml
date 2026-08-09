@@ -1,6 +1,5 @@
 # idmagic System — SCL
-# Migrated to SCL 3.0 by wi-209 (ADR-103). Runtime hardening / i18n tooling
-# configuration formerly under `objectives` now lives in ADR-105.
+# SCL 3.0 context specification.
 
 system: idmagic
 spec_version: "3.0"
@@ -178,7 +177,7 @@ interfaces:
       Prometheus/OpenMetrics 形式でスクレイプ可能な集約メトリクスを公開する management endpoint。
       idmagic-api は HTTP RED (リクエスト数・エラー率・レイテンシ) と認証ドメインのゴールデンシグナル
       (login 成否、token 発行、throttle ヒット) を、idmagic-worker は Jobs の実行レーン別ゴールデンシグナル
-      (queue depth、claim latency、成功・失敗、retry。lane は ExecutionLane の有限集合、ADR-129) を公開する
+      (queue depth、claim latency、成功・失敗、retry。lane は ExecutionLane の有限集合) を公開する
       independent な endpoint インスタンスであり、両者は同一プロセスを共有しない。tenant_id、user_id、
       client_id、job_id、path 実値など高カーディナリティな値は label に含めず、route template や
       outcome class、lane などの有限集合だけを label とする。application API の tenant middleware から

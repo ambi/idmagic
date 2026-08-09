@@ -323,7 +323,7 @@ standards:
         section: §2
         strength: MUST
         adoption: required
-        statement: "resource パラメータで指定された McpResourceServer へ Access Token の audience を厳格に限定し、未登録・無効・複数指定の resource は fail-closed で拒否する (ADR-055)。Authorize / PushAuthorizationRequest / Token(authorization_code redemption・refresh rotation・client_credentials・device_code・token-exchange) の全経路で resource 指定時に一様に適用する (wi-262, wi-264)。resource 未指定時は従来どおり client_id を audience とする後方互換を保つ。"
+        statement: "resource パラメータで指定された McpResourceServer へ Access Token の audience を厳格に限定し、未登録・無効・複数指定の resource は fail-closed で拒否する。Authorize / PushAuthorizationRequest / Token(authorization_code redemption・refresh rotation・client_credentials・device_code・token-exchange) の全経路で resource 指定時に一様に適用する。resource 未指定時は従来どおり client_id を audience とする後方互換を保つ。"
   RFC9068:
     title: JSON Web Token Profile for OAuth 2.0 Access Tokens
     version: RFC 9068
@@ -426,7 +426,7 @@ standards:
     url: https://www.rfc-editor.org/rfc/rfc9728.html
     roles:
       - AuthorizationServer
-    scope: MCP resource server (Protected Resource) のメタデータ発見 (ADR-055)。
+    scope: MCP resource server (Protected Resource) のメタデータ発見。
     requirements:
       - id: RFC9728-METADATA
         section: §3
@@ -562,7 +562,7 @@ standards:
         strength: MAY
         adoption: optional
         statement: check_session_iframeを公開し、RPからのpostMessageに対しOP session状態を応答する。
-        reason: 本仕様はDraft 28のままFinalに到達しておらず、主要IdPの実装状況もまちまちである。discovery広告とbrowser cookie解決の最小実装に留め、session_stateのsalted hash相関アルゴリズムは仕様の詳細規定まで実装しない (ADR-127)。
+        reason: 本仕様はDraft 28のままFinalに到達しておらず、主要IdPの実装状況もまちまちである。discovery広告とbrowser cookie解決の最小実装に留め、session_stateのsalted hash相関アルゴリズムは仕様の詳細規定まで実装しない。
   FAPI2SecurityProfile:
     title: FAPI 2.0 Security Profile
     version: Final
@@ -618,11 +618,11 @@ glossary:
     aliases:
       - resource_server
   McpResourceServer:
-    definition: MCP エコシステムでツール/データソースを提供する ResourceServer の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata と resource indicator 検証の基準になる。
+    definition: MCP エコシステムでツール/データソースを提供する ResourceServer の tenant-scoped 登録。canonical resource URI と許可 scope を所有し、Protected Resource Metadata と resource indicator 検証の基準になる。
     aliases:
       - mcp_resource_server
   ResourceIndicator:
-    definition: RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定・未登録・無効は fail-closed で拒否する。
+    definition: RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。1 トークンにつき 1 個のみを許可し、複数指定・未登録・無効は fail-closed で拒否する。
     aliases:
       - resource_indicator
   Public:
@@ -655,7 +655,7 @@ glossary:
       - device_code
       - デバイスコード
   TokenExchange:
-    definition: "既存トークンを別トークンに交換するトークン交換グラント (RFC 8693)。本アプリは 2 種類の subject_token を扱う: (1) 自己発行トークンの委任 (delegation) — subject_token / actor_token は本 IdP が発行し IntrospectAccessToken を通過したものに限る、(2) workload identity federation ([[wi-54-workload-identity-federation-spiffe]], [[ADR-053]]) — subject_token_type が JwtSvid のとき、外部 attestation token を WorkloadIdentity の VerifyWorkloadAttestation で検証し、テナント登録済みの AgentWorkloadBinding で写した Agent の資格情報として発行する。grant_type は URN。\n"
+    definition: "既存トークンを別トークンに交換するトークン交換グラント (RFC 8693)。本アプリは 2 種類の subject_token を扱う: (1) 自己発行トークンの委任 (delegation) — subject_token / actor_token は本 IdP が発行し IntrospectAccessToken を通過したものに限る、(2) workload identity federation — subject_token_type が JwtSvid のとき、外部 attestation token を WorkloadIdentity の VerifyWorkloadAttestation で検証し、テナント登録済みの AgentWorkloadBinding で写した Agent の資格情報として発行する。grant_type は URN。\n"
     aliases:
       - urn:ietf:params:oauth:grant-type:token-exchange
       - token-exchange
@@ -1254,7 +1254,7 @@ models:
       backchannel_logout_uri:
         type: URI
         optional: true
-        description: "OpenID Connect Back-Channel Logout 1.0 の通知先。設定時、session revoke ごとに\n署名済み logout token をこの URI へ POST する (wi-28)。\n"
+        description: "OpenID Connect Back-Channel Logout 1.0 の通知先。設定時、session revoke ごとに\n署名済み logout token をこの URI へ POST する。\n"
       backchannel_logout_session_required:
         type: Boolean
         default: false
@@ -1262,7 +1262,7 @@ models:
       frontchannel_logout_uri:
         type: URI
         optional: true
-        description: "OpenID Connect Front-Channel Logout 1.0 の通知先。/end_session 応答にこの URI への\niframe を含める (wi-28)。\n"
+        description: "OpenID Connect Front-Channel Logout 1.0 の通知先。/end_session 応答にこの URI への\niframe を含める。\n"
       frontchannel_logout_session_required:
         type: Boolean
         default: false
@@ -1440,7 +1440,7 @@ models:
       - Disabled
   McpResourceServer:
     kind: entity
-    description: MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。
+    description: MCP resource server (ツール/データソース) の tenant-scoped 登録。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。
     identity:
       - id
     fields:
@@ -1476,7 +1476,7 @@ models:
         type: DateTime
   ResourceIndicator:
     kind: value_object
-    description: RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。
+    description: RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。
     fields:
       value:
         type: URI
@@ -1594,14 +1594,14 @@ models:
       sid:
         type: String
         optional: true
-        description: "発行元 AuthorizationCodeRecord.sid (OIDC session id)。Rotate では親の値を\nそのまま引き継ぐ。null は client_credentials 等 browser session を持たない発行。\nAuthentication の SessionEnded.sessionId と一致する全 family (複数 client を含みうる)\nを本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる (wi-28)。\n"
+        description: "発行元 AuthorizationCodeRecord.sid (OIDC session id)。Rotate では親の値を\nそのまま引き継ぐ。null は client_credentials 等 browser session を持たない発行。\nAuthentication の SessionEnded.sessionId と一致する全 family (複数 client を含みうる)\nを本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる。\n"
       resource:
         type: ResourceIndicator
         optional: true
-        description: "発行元 (AuthorizationCodeRecord.resource) の resource indicator (ADR-055)。\nRotate では親の値をそのまま引き継ぎ、ローテーション後も同じ McpResourceServer へ\naudience を厳格限定する (wi-262)。null は resource 未指定の発行。\n"
+        description: "発行元 (AuthorizationCodeRecord.resource) の resource indicator。\nRotate では親の値をそのまま引き継ぎ、ローテーション後も同じ McpResourceServer へ\naudience を厳格限定する。null は resource 未指定の発行。\n"
   ClientSession:
     kind: entity
-    description: "ある browser session (sid) が特定の OAuth2Client (RP) に対して認証結果を\n発行した記録 (RP participation)。sid は Authentication の LoginSession.id と同値で\nRP 間で共通。session 状態そのものはここに複製せず、session revoke 時にどの RP へ\nfront/back-channel logout を通知するかを解決する索引としてのみ使う (wi-28)。\n"
+    description: "ある browser session (sid) が特定の OAuth2Client (RP) に対して認証結果を\n発行した記録 (RP participation)。sid は Authentication の LoginSession.id と同値で\nRP 間で共通。session 状態そのものはここに複製せず、session revoke 時にどの RP へ\nfront/back-channel logout を通知するかを解決する索引としてのみ使う。\n"
     identity:
       - sid
       - client_id
@@ -1624,7 +1624,7 @@ models:
         description: 同一 RP への再発行 (再認可) ごとに更新する。通知先解決には影響しない。
   LogoutNotification:
     kind: entity
-    description: "back-channel logout の1配送試行を表すレコード。ローカル session/refresh token\nの失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない\n(wi-28 Plan)。配送実行は Jobs bounded context の durable job\n(kind=backchannel_logout_delivery) に委譲する。\n"
+    description: "back-channel logout の1配送試行を表すレコード。ローカル session/refresh token\nの失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない。\n配送実行は Jobs bounded context の durable job\n(kind=backchannel_logout_delivery) に委譲する。\n"
     identity: id
     constraints:
       - logout_notification_references_existing_client(client_id)
@@ -1737,7 +1737,7 @@ models:
       sid:
         type: String
         optional: true
-        description: "advance(authenticate_user) で AuthenticationContext.session_id から伝搬する\nOIDC session id (Authentication context の LoginSession.id と同値)。AuthorizationCodeRecord /\nRefreshTokenRecord / IdTokenClaims へ引き継ぎ、session revoke 起点の family 失効と\nfront/back-channel logout の相関に使う (wi-28)。\n"
+        description: "advance(authenticate_user) で AuthenticationContext.session_id から伝搬する\nOIDC session id (Authentication context の LoginSession.id と同値)。AuthorizationCodeRecord /\nRefreshTokenRecord / IdTokenClaims へ引き継ぎ、session revoke 起点の family 失効と\nfront/back-channel logout の相関に使う。\n"
       authorization_details:
         type: "AuthorizationDetail[]"
         optional: true
@@ -1791,7 +1791,7 @@ models:
       sid:
         type: String
         optional: true
-        description: 認可リクエストから引き継いだ OIDC session id。id_token の sid claim と発行 RefreshTokenRecord.sid に伝播する (wi-28)。
+        description: 認可リクエストから引き継いだ OIDC session id。id_token の sid claim と発行 RefreshTokenRecord.sid に伝播する。
       authorization_details:
         type: "AuthorizationDetail[]"
         optional: true
@@ -2591,7 +2591,7 @@ models:
       subject_token:
         type: String
         optional: true
-        description: "RFC 8693 token-exchange grant の subject_token。自己発行 access_token (urn:ietf:params:oauth:token-type:access_token)、または登録済み WorkloadTrustBundle の issuer から発行された外部 attestation JWT (urn:ietf:params:oauth:token-type:jwt、[[wi-54-workload-identity-federation-spiffe]]) のいずれか。"
+        description: "RFC 8693 token-exchange grant の subject_token。自己発行 access_token (urn:ietf:params:oauth:token-type:access_token)、または登録済み WorkloadTrustBundle の issuer から発行された外部 attestation JWT (urn:ietf:params:oauth:token-type:jwt) のいずれか。"
       subject_token_type:
         type: String
         optional: true
@@ -2613,7 +2613,7 @@ models:
       resource:
         type: ResourceIndicator
         optional: true
-        description: "RFC 8707 — authorization_code redemption・client_credentials・device_code・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。"
+        description: "RFC 8707 — authorization_code redemption・client_credentials・device_code・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。"
   TokenResponse:
     kind: value_object
     description: /token 成功時のレスポンスボディ (RFC 6749 §5.1)。発行されたトークン一式と種別を返す。
@@ -2785,7 +2785,7 @@ models:
       resource:
         type: ResourceIndicator
         optional: true
-        description: "RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する (ADR-055)。同名parameterの複数指定も invalid_target。"
+        description: "RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する。同名parameterの複数指定も invalid_target。"
   BrowserConsentRequest:
     kind: value_object
     description: SPA が POST /api/auth/consent に送る同意判断。
@@ -2842,7 +2842,7 @@ models:
         optional: true
   EndSessionParameters:
     kind: value_object
-    description: "RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で\npost_logout_redirect_uri を検証する。id_token_hint は本 OP が発行した ID Token の\nみ受理し、署名・iss・aud (client_id と矛盾する場合は拒否)・sub・sid を検証する\n(ADR-127)。exp は検証しない (ログアウト時点で期限切れになっている ID Token を\nhint として送るのが通常の RP 実装であるため)。\n"
+    description: "RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で\npost_logout_redirect_uri を検証する。id_token_hint は本 OP が発行した ID Token の\nみ受理し、署名・iss・aud (client_id と矛盾する場合は拒否)・sub・sid を検証する。\nexp は検証しない (ログアウト時点で期限切れになっている ID Token を\nhint として送るのが通常の RP 実装であるため)。\n"
     fields:
       client_id:
         type: String
@@ -2946,7 +2946,7 @@ models:
   InvalidTargetError:
     kind: error
     status: 400
-    description: resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target、ADR-055)。fail-closed で拒否する。
+    description: resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target)。fail-closed で拒否する。
     payload:
       reason:
         type: String
@@ -3373,7 +3373,7 @@ models:
         description: 拒否理由 (OAuth error code 等)。
   ProtectedResourceMetadataServed:
     kind: event
-    description: RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した (ADR-055)。
+    description: RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した。
     payload:
       occurredAt:
         type: DateTime
@@ -3385,7 +3385,7 @@ models:
         description: 配信対象の resource URI。
   ResourceScopedTokenIssued:
     kind: event
-    description: RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。
+    description: RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。
     payload:
       occurredAt:
         type: DateTime
@@ -3401,7 +3401,7 @@ models:
         type: "String[]"
   ResourceAudienceRejected:
     kind: event
-    description: RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。
+    description: RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。
     payload:
       occurredAt:
         type: DateTime
@@ -3954,7 +3954,7 @@ interfaces:
         method: GET
         path: /api/auth/device
   EndSession:
-    description: "RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は\nOAuth2/OIDC bounded context が行い、session revocation は Authentication bounded\ncontext の SessionManager に委譲する。id_token_hint が与えられれば署名・iss・aud・sub・\nsid を検証して対象 session と client を hint から解決し (ADR-127)、client_id と\n矛盾する hint は拒否する。id_token_hint が無ければ client_id + browser cookie による\n既存の解決方法を fallback として維持する。ローカル revoke 確定後、対象 sid に紐づく\nClientSession から前段の FrontChannelLogout target 一覧を応答へ含め、\nBackChannelLogout 配送を非同期に起動する。\n"
+    description: "RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は\nOAuth2/OIDC bounded context が行い、session revocation は Authentication bounded\ncontext の SessionManager に委譲する。id_token_hint が与えられれば署名・iss・aud・sub・\nsid を検証して対象 session と client を hint から解決し、client_id と\n矛盾する hint は拒否する。id_token_hint が無ければ client_id + browser cookie による\n既存の解決方法を fallback として維持する。ローカル revoke 確定後、対象 sid に紐づく\nClientSession から前段の FrontChannelLogout target 一覧を応答へ含め、\nBackChannelLogout 配送を非同期に起動する。\n"
     steps:
       - "{client_id} として post_logout_redirect_uri {post_logout_redirect_uri} でログアウトする"
     input:
@@ -3996,7 +3996,7 @@ interfaces:
     stability: internal
     access: internal
   BackChannelLogout:
-    description: "1 件の LogoutNotification を配送する job handler (OpenID Connect Back-Channel\nLogout 1.0)。署名済み logout token (iss, sub, aud, iat, jti, events, sid) を\ntarget_uri へ POST し、2xx を成功、それ以外・timeout・接続失敗を再試行対象とする。\nJobs context の kind=backchannel_logout_delivery job から呼ばれ、max_attempts 到達で\nLogoutNotification は Failed (dead-letter) に確定する。ローカル revoke は本 interface の\n成否に関わらず既に確定済みである (wi-28 Plan)。\n"
+    description: "1 件の LogoutNotification を配送する job handler (OpenID Connect Back-Channel\nLogout 1.0)。署名済み logout token (iss, sub, aud, iat, jti, events, sid) を\ntarget_uri へ POST し、2xx を成功、それ以外・timeout・接続失敗を再試行対象とする。\nJobs context の kind=backchannel_logout_delivery job から呼ばれ、max_attempts 到達で\nLogoutNotification は Failed (dead-letter) に確定する。ローカル revoke は本 interface の\n成否に関わらず既に確定済みである。\n"
     input:
       notification_id:
         type: String
@@ -4006,7 +4006,7 @@ interfaces:
     stability: internal
     access: internal
   CheckSessionIframe:
-    description: "OP session の変化をポーリングする RP 用 hidden iframe (OIDC Session Management\n1.0、Draft のまま Final に達していない仕様のため adoption は optional。ADR-127)。\n静的な HTML/JS を返し、RP からの postMessage に対し現在の browser cookie が有効な\nLoginSession に解決できるかどうかだけを応答する。session_state の salted hash 比較\nなど仕様の詳細な相関アルゴリズムは実装しない。\n"
+    description: "OP session の変化をポーリングする RP 用 hidden iframe (OIDC Session Management\n1.0、Draft のまま Final に達していない仕様のため adoption は optional)。\n静的な HTML/JS を返し、RP からの postMessage に対し現在の browser cookie が有効な\nLoginSession に解決できるかどうかだけを応答する。session_state の salted hash 比較\nなど仕様の詳細な相関アルゴリズムは実装しない。\n"
     stability: stable
     access: public
     bindings:
@@ -4058,7 +4058,7 @@ interfaces:
       - "device_code {device_code} を交換する"
       - "client_credentials で scope {scope} のトークンを取得する"
       - "subject_token {subject_token} を resource {resource} 向けに交換する"
-      - "外部 workload attestation {subject_token} (subject_token_type=JwtSvid) を登録済み AgentWorkloadBinding 経由で Agent の資格情報に交換する ([[wi-54-workload-identity-federation-spiffe]])"
+      - "外部 workload attestation {subject_token} (subject_token_type=JwtSvid) を登録済み AgentWorkloadBinding 経由で Agent の資格情報に交換する"
     input:
       request:
         type: TokenRequest
@@ -4129,7 +4129,7 @@ interfaces:
             type: String
             optional: true
   Introspect:
-    description: 通常 OAuth token と管理発行 JWT access token の Token Introspection (RFC 7662)。Agent 主体の token は SharedSignals の revocation epoch (kill-switch・所有者オフボード・CAEP/SSF 経由の失効) と issued_at を比較し、epoch 以前に発行された token は fail-closed で active=false とする (wi-58, ADR-057)。
+    description: 通常 OAuth token と管理発行 JWT access token の Token Introspection (RFC 7662)。Agent 主体の token は SharedSignals の revocation epoch (kill-switch・所有者オフボード・CAEP/SSF 経由の失効) と issued_at を比較し、epoch 以前に発行された token は fail-closed で active=false とする。
     steps:
       - "トークン {token} を検査する"
     input:
@@ -4293,7 +4293,7 @@ interfaces:
         path: /.well-known/oauth-authorization-server
         error_format: oauth2
   GetProtectedResourceMetadata:
-    description: "Protected Resource Metadata (RFC 9728)。resource 未指定時は realm の IdMagic API と\nApiTokenScope を、resource 指定時は登録済み Active な McpResourceServer の metadata を返す。\n未登録・Disabled は invalid_target として拒否する (ADR-055)。\n"
+    description: "Protected Resource Metadata (RFC 9728)。resource 未指定時は realm の IdMagic API と\nApiTokenScope を、resource 指定時は登録済み Active な McpResourceServer の metadata を返す。\n未登録・Disabled は invalid_target として拒否する。\n"
     steps:
       - resource {resource} の Protected Resource Metadata を取得する
     input:
@@ -5300,7 +5300,7 @@ scenarios:
     actor: ResourceServer
     given:
       - "Agent \"A1\" に issued_at が古い access token \"AT1\" が発行済みである"
-      - "\"A1\" は kill-switch により revocation epoch が \"AT1\" の issued_at より後へ前進している (wi-58, ADR-057)"
+      - "\"A1\" は kill-switch により revocation epoch が \"AT1\" の issued_at より後へ前進している"
     main_success:
       - "トークン \"AT1\" を検査する"
       - 応答は active=false のみで他のフィールドを含まない

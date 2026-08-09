@@ -333,7 +333,7 @@ Authorization Server Metadata / 健全性報告
 を本 bounded context に集約する。
 </p>
     <div class="reference-row"><span class="reference-label">publishes</span><span class="chip chip-ref">Authorize</span> <span class="chip chip-ref">Token</span> <span class="chip chip-ref">UserInfo</span> <span class="chip chip-ref">OAuth2ClientRef</span> <span class="chip chip-ref">AccessTokenClaims</span></div>
-    <div class="io"><div class="label">Depends on</div><ul class="vlist"><li><a class="chip chip-ref" href="#ctx-tenancy">Tenancy</a> <span class="badge badge-hint">published_language</span> <span class="chip">TenantRef</span> <span class="chip">QuotaExceededError</span> <span class="muted">— クライアント・コード・トークン・鍵はテナント境界内に閉じる。</span></li><li><a class="chip chip-ref" href="#ctx-authentication">Authentication</a> <span class="badge badge-hint">published_language</span> <span class="chip">AuthenticationContext</span> <span class="muted">— Authorize は AuthenticationContext を Authentication から解決する。</span></li><li><a class="chip chip-ref" href="#ctx-idmanagement">IdManagement</a> <span class="badge badge-hint">published_language</span> <span class="chip">UserRef</span> <span class="chip">AgentRef</span> <span class="muted">— UserInfo / ID Token claim と Agent client_credentials は identity principal 情報を参照する。</span></li><li><a class="chip chip-ref" href="#ctx-signingkeys">SigningKeys</a> <span class="badge badge-hint">published_language</span> <span class="chip">SigningKey</span> <span class="chip">JWKS</span> <span class="chip">SignatureAlgorithm</span> <span class="muted">— ID Token / access token / JWK Set の署名鍵ライフサイクルと公開は SigningKeys が所有する。</span></li><li><a class="chip chip-ref" href="#ctx-jobs">Jobs</a> <span class="badge badge-hint">published_language</span> <span class="chip">JobRef</span> <span class="muted">— back-channel logout の配送 (LogoutNotification) を再試行可能な durable job (kind=backchannel_logout_delivery) として実行する (wi-28)。</span></li><li><a class="chip chip-ref" href="#ctx-application">Application</a> <span class="badge badge-hint">published_language</span> <span class="chip">ApplicationAssignmentRef</span> <span class="muted">— authorize は client が属する Application への割当を fail-closed で確認する。</span></li><li><a class="chip chip-ref" href="#ctx-claimmapping">ClaimMapping</a> <span class="badge badge-hint">published_language</span> <span class="chip">ClaimMappingPolicy</span> <span class="chip">IssuedClaim</span> <span class="muted">— ID Token / UserInfo の追加 claim は client 単位の ClaimMapping policy で組み立て、fail-closed な属性可視性・reserved claim floor を共有する。</span></li><li><a class="chip chip-ref" href="#ctx-apitokens">ApiTokens</a> <span class="badge badge-hint">published_language</span> <span class="chip">ApiTokenScope</span> <span class="muted">— OAuth2 の管理 API は ApiTokens が所有する resource 別 scope で操作を認可する。</span></li><li><a class="chip chip-ref" href="#ctx-workloadidentity">WorkloadIdentity</a> <span class="badge badge-hint">published_language</span> <span class="chip">VerifyWorkloadAttestation</span> <span class="muted">— token-exchange grant は subject_token_type が workload 系のとき、外部 attestation の検証と Agent principal への写像を WorkloadIdentity の published interface に委譲する (wi-54, ADR-053)。</span></li><li><a class="chip chip-ref" href="#ctx-sharedsignals">SharedSignals</a> <span class="badge badge-hint">published_language</span> <span class="chip">CheckRevocationEpoch</span> <span class="muted">— Introspect は access token の issued_at と Agent の revocation epoch を比較し、kill-switch/所有者オフボード後に既発行 token を fail-closed で無効と判定する (wi-58, ADR-057)。</span></li></ul></div>
+    <div class="io"><div class="label">Depends on</div><ul class="vlist"><li><a class="chip chip-ref" href="#ctx-tenancy">Tenancy</a> <span class="badge badge-hint">published_language</span> <span class="chip">TenantRef</span> <span class="chip">QuotaExceededError</span> <span class="muted">— クライアント・コード・トークン・鍵はテナント境界内に閉じる。</span></li><li><a class="chip chip-ref" href="#ctx-authentication">Authentication</a> <span class="badge badge-hint">published_language</span> <span class="chip">AuthenticationContext</span> <span class="muted">— Authorize は AuthenticationContext を Authentication から解決する。</span></li><li><a class="chip chip-ref" href="#ctx-idmanagement">IdManagement</a> <span class="badge badge-hint">published_language</span> <span class="chip">UserRef</span> <span class="chip">AgentRef</span> <span class="muted">— UserInfo / ID Token claim と Agent client_credentials は identity principal 情報を参照する。</span></li><li><a class="chip chip-ref" href="#ctx-signingkeys">SigningKeys</a> <span class="badge badge-hint">published_language</span> <span class="chip">SigningKey</span> <span class="chip">JWKS</span> <span class="chip">SignatureAlgorithm</span> <span class="muted">— ID Token / access token / JWK Set の署名鍵ライフサイクルと公開は SigningKeys が所有する。</span></li><li><a class="chip chip-ref" href="#ctx-jobs">Jobs</a> <span class="badge badge-hint">published_language</span> <span class="chip">JobRef</span> <span class="muted">— back-channel logout の配送 (LogoutNotification) を再試行可能な durable job (kind=backchannel_logout_delivery) として実行する。</span></li><li><a class="chip chip-ref" href="#ctx-application">Application</a> <span class="badge badge-hint">published_language</span> <span class="chip">ApplicationAssignmentRef</span> <span class="muted">— authorize は client が属する Application への割当を fail-closed で確認する。</span></li><li><a class="chip chip-ref" href="#ctx-claimmapping">ClaimMapping</a> <span class="badge badge-hint">published_language</span> <span class="chip">ClaimMappingPolicy</span> <span class="chip">IssuedClaim</span> <span class="muted">— ID Token / UserInfo の追加 claim は client 単位の ClaimMapping policy で組み立て、fail-closed な属性可視性・reserved claim floor を共有する。</span></li><li><a class="chip chip-ref" href="#ctx-apitokens">ApiTokens</a> <span class="badge badge-hint">published_language</span> <span class="chip">ApiTokenScope</span> <span class="muted">— OAuth2 の管理 API は ApiTokens が所有する resource 別 scope で操作を認可する。</span></li><li><a class="chip chip-ref" href="#ctx-workloadidentity">WorkloadIdentity</a> <span class="badge badge-hint">published_language</span> <span class="chip">VerifyWorkloadAttestation</span> <span class="muted">— token-exchange grant は subject_token_type が workload 系のとき、外部 attestation の検証と Agent principal への写像を WorkloadIdentity の published interface に委譲する。</span></li><li><a class="chip chip-ref" href="#ctx-sharedsignals">SharedSignals</a> <span class="badge badge-hint">published_language</span> <span class="chip">CheckRevocationEpoch</span> <span class="muted">— Introspect は access token の issued_at と Agent の revocation epoch を比較し、kill-switch/所有者オフボード後に既発行 token を fail-closed で無効と判定する。</span></li></ul></div>
 
   </article>
 <article class="card" id="ctx-audit">
@@ -387,7 +387,7 @@ protocol 横断で所有する。OAuth2/OIDC は JWK/JWKS と JWT signer、SAML 
     <p class="desc">テナントごとの DataEncryptionKey (DEK) のライフサイクル (bootstrap/rotate/
 disable/destroy) とメタデータを所有する。DEK は master key provider (OpenBao Transit
 互換、dev/local は Tink cleartext keyset) が wrap し、DB に残る可逆秘密 (TOTP シード等) の
-エンベロープ暗号化に使う ([[ADR-148]])。EnvelopeCrypto port 自体は Go 側の
+エンベロープ暗号化に使う。EnvelopeCrypto port 自体は Go 側の
 shared technical adapter に置き、SCL への露出は EncryptedSecret / 鍵ライフサイクルの
 メタデータに留める。署名鍵 (private_jwk) の鍵管理は所有しない (SigningKeys の範囲)。
 </p>
@@ -425,7 +425,7 @@ XML signing capability だけを共有する。
     <p class="desc">テナント境界を保つ汎用非同期ジョブ基盤の durable queue と worker runtime を所有する。
 各ジョブの業務ロジックは呼び出し元の bounded context の usecase に残り、Jobs は
 enqueue・claim・リース・リトライ・進捗可視化という技術的能力だけを提供する。管理者向け
-一覧/詳細/キャンセル API と運用 metrics は wi-157-job-admin-operations-surface が別途所有する。
+一覧/詳細/キャンセル API と運用 metrics は別 feature slice が所有する。
 </p>
     <div class="reference-row"><span class="reference-label">publishes</span><span class="chip chip-ref">JobRef</span></div>
     <div class="io"><div class="label">Depends on</div><ul class="vlist"><li><a class="chip chip-ref" href="#ctx-tenancy">Tenancy</a> <span class="badge badge-hint">published_language</span> <span class="chip">TenantRef</span> <span class="chip">QuotaExceededError</span> <span class="muted">— Job は tenant_id を必須とし、worker はテナント境界内でのみ副作用を起こす。</span></li></ul></div>
@@ -464,7 +464,7 @@ feature slice を並べる。現在の slice は scim (SCIM 2.0 server。/scim/v
 directory (閉域 Directory Connector) と将来の feed (scheduled file feed) を同 context に並べる。
 分類軸は方向でも runtime 形状でもなく権威と source binding の有無であり、管理者 CSV import
 (IdManagement)、login-time federation (Authentication)、downstream target の台帳照合
-(Application/Provisioning 側) は本 context の対象ではない (ADR-141)。
+(Application/Provisioning 側) は本 context の対象ではない。
 </p>
 
     <div class="io"><div class="label">Depends on</div><ul class="vlist"><li><a class="chip chip-ref" href="#ctx-tenancy">Tenancy</a> <span class="badge badge-hint">published_language</span> <span class="chip">TenantRef</span> <span class="muted">— IdentitySource・SourceCorrelation と取り込むデータはテナント境界内に閉じる。</span></li><li><a class="chip chip-ref" href="#ctx-idmanagement">IdManagement</a> <span class="badge badge-hint">published_language</span> <span class="chip">UserRef</span> <span class="chip">GroupRef</span> <span class="muted">— 取り込みは IdManagement の published な冪等 command surface 経由で principal を作成・更新・無効化する。逆向きの依存 (IdManagement が Sourcing を知る) は作らない。</span></li><li><a class="chip chip-ref" href="#ctx-apitokens">ApiTokens</a> <span class="badge badge-hint">published_language</span> <span class="chip">ApiTokenScope</span> <span class="muted">— source が叩く取り込み endpoint は ApiTokens が発行・認証する token の scope (scim slice は scim:*) で操作を認可する。</span></li></ul></div>
@@ -485,7 +485,7 @@ identity principal の record-of-truth は IdManagement が、Application 割当
   </article>
 <article class="card" id="ctx-workloadidentity">
     <header><h3>WorkloadIdentity</h3><span class="chip chip-hint">contexts/workloadidentity.yaml</span></header>
-    <p class="desc">自律エージェントランタイム向けの workload identity federation を所有する ([[ADR-053]])。テナントが登録した外部 attestation 発行者の信頼設定 (WorkloadTrustBundle) と、外部 subject を既存 Agent へ写す mapping (AgentWorkloadBinding) を管理する。OIDC 互換 JWT (Kubernetes projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID) を第一級の attestation 種別とし、idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。検証を通過した外部 attestation を OAuth2 の token-exchange grant (RFC 8693) へ subject として渡し、専用の資格情報経路は新設しない。
+    <p class="desc">自律エージェントランタイム向けの workload identity federation を所有する。テナントが登録した外部 attestation 発行者の信頼設定 (WorkloadTrustBundle) と、外部 subject を既存 Agent へ写す mapping (AgentWorkloadBinding) を管理する。OIDC 互換 JWT (Kubernetes projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID) を第一級の attestation 種別とし、idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。検証を通過した外部 attestation を OAuth2 の token-exchange grant (RFC 8693) へ subject として渡し、専用の資格情報経路は新設しない。
 </p>
     <div class="reference-row"><span class="reference-label">publishes</span><span class="chip chip-ref">VerifyWorkloadAttestation</span></div>
     <div class="io"><div class="label">Depends on</div><ul class="vlist"><li><a class="chip chip-ref" href="#ctx-tenancy">Tenancy</a> <span class="badge badge-hint">published_language</span> <span class="chip">TenantRef</span> <span class="muted">— WorkloadTrustBundle と AgentWorkloadBinding はテナント境界内に閉じ、cross-tenant な federation 信頼は認めない。</span></li><li><a class="chip chip-ref" href="#ctx-idmanagement">IdManagement</a> <span class="badge badge-hint">published_language</span> <span class="chip">AgentRef</span> <span class="muted">— AgentWorkloadBinding は外部 subject を同一テナントの既存 Agent へ写す。写像先 Agent が Active でなければ fail-closed で拒否する。</span></li></ul></div>
@@ -494,7 +494,7 @@ identity principal の record-of-truth は IdManagement が、Application 割当
 <article class="card" id="ctx-sharedsignals">
     <header><h3>SharedSignals</h3><span class="chip chip-hint">contexts/sharedsignals.yaml</span></header>
     <p class="desc">Shared Signals Framework (SSF) / Continuous Access Evaluation Profile (CAEP) による
-エージェントの近リアルタイム失効を所有する ([[ADR-057]])。Agent ごとの revocation epoch を保持し、
+エージェントの近リアルタイム失効を所有する。Agent ごとの revocation epoch を保持し、
 KillAgent・DisableAgent・UnbindAgentCredential・所有者オフボード・検証済み inbound Security Event
 Token (SET, RFC 8417) のいずれかを起点に fail-closed で前進させる (LocalRevocation)。前進した epoch は
 OAuth2 の Introspect が access token の issued_at と比較し即時失効へ反映する。同時に SSF stream 経由で
@@ -502,7 +502,7 @@ CAEP イベントを外部 receiver へ push し (EcosystemPropagation)、外部
 受理してローカル失効へ収束させる。idmagic は transmitter と receiver の双方として振る舞う。
 </p>
     <div class="reference-row"><span class="reference-label">publishes</span><span class="chip chip-ref">CheckRevocationEpoch</span></div>
-    <div class="io"><div class="label">Depends on</div><ul class="vlist"><li><a class="chip chip-ref" href="#ctx-tenancy">Tenancy</a> <span class="badge badge-hint">published_language</span> <span class="chip">TenantRef</span> <span class="muted">— SsfStream・revocation epoch はテナント境界内に閉じ、cross-tenant な subject 解決は認めない。</span></li><li><a class="chip chip-ref" href="#ctx-idmanagement">IdManagement</a> <span class="badge badge-hint">published_language</span> <span class="chip">AgentRef</span> <span class="chip">UserRef</span> <span class="muted">— revocation epoch は Agent 単位で保持し、所有者 (owner_user_id) の Disable/Delete イベントを起点に配下 Agent 群を一括前進させる。</span></li><li><a class="chip chip-ref" href="#ctx-signingkeys">SigningKeys</a> <span class="badge badge-hint">published_language</span> <span class="chip">SigningKey</span> <span class="chip">JWKS</span> <span class="chip">SignatureAlgorithm</span> <span class="muted">— outbound Security Event Token (SET) の署名は新設の鍵管理を持たず、既存の JWT 署名鍵ローテーションと JWKS 配布に相乗りする ([[ADR-009]])。</span></li></ul></div>
+    <div class="io"><div class="label">Depends on</div><ul class="vlist"><li><a class="chip chip-ref" href="#ctx-tenancy">Tenancy</a> <span class="badge badge-hint">published_language</span> <span class="chip">TenantRef</span> <span class="muted">— SsfStream・revocation epoch はテナント境界内に閉じ、cross-tenant な subject 解決は認めない。</span></li><li><a class="chip chip-ref" href="#ctx-idmanagement">IdManagement</a> <span class="badge badge-hint">published_language</span> <span class="chip">AgentRef</span> <span class="chip">UserRef</span> <span class="muted">— revocation epoch は Agent 単位で保持し、所有者 (owner_user_id) の Disable/Delete イベントを起点に配下 Agent 群を一括前進させる。</span></li><li><a class="chip chip-ref" href="#ctx-signingkeys">SigningKeys</a> <span class="badge badge-hint">published_language</span> <span class="chip">SigningKey</span> <span class="chip">JWKS</span> <span class="chip">SignatureAlgorithm</span> <span class="muted">— outbound Security Event Token (SET) の署名は新設の鍵管理を持たず、既存の JWT 署名鍵ローテーションと JWKS 配布に相乗りする。</span></li></ul></div>
 
   </article></div>
   </section>
@@ -877,7 +877,7 @@ BackendErrorText であり、表示言語 (DisplayLanguage) に関わらず常�
     <p class="desc">Prometheus/OpenMetrics 形式でスクレイプ可能な集約メトリクスを公開する management endpoint。
 idmagic-api は HTTP RED (リクエスト数・エラー率・レイテンシ) と認証ドメインのゴールデンシグナル
 (login 成否、token 発行、throttle ヒット) を、idmagic-worker は Jobs の実行レーン別ゴールデンシグナル
-(queue depth、claim latency、成功・失敗、retry。lane は ExecutionLane の有限集合、ADR-129) を公開する
+(queue depth、claim latency、成功・失敗、retry。lane は ExecutionLane の有限集合) を公開する
 independent な endpoint インスタンスであり、両者は同一プロセスを共有しない。tenant_id、user_id、
 client_id、job_id、path 実値など高カーディナリティな値は label に含めず、route template や
 outcome class、lane などの有限集合だけを label とする。application API の tenant middleware から
@@ -1397,7 +1397,7 @@ outcome class、lane などの有限集合だけを label とする。applicatio
   </article>
 <article class="card" id="scl-Tenancy/model/TenantBranding">
     <header><h3>TenantBranding</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Tenancy/model/TenantBranding</code></header>
-    <p class="desc">テナント単位の hosted UI ブランディング設定 (wi-89, ADR-096)。Tenant 集約には埋め込まず、
+    <p class="desc">テナント単位の hosted UI ブランディング設定。Tenant 集約には埋め込まず、
 TenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tenant 本体から分離する) で
 独立 entity として持つ。全フィールド optional で、行が存在しない、または全フィールドが未設定なら
 「branding 未設定」を意味し、GetTenantBranding はシステム既定にフォールバックする。
@@ -4842,7 +4842,7 @@ X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済
 <article class="vocab-entry" id="context-idmanagement-glossary-purge">
       <div class="vocab-name"><code class="name">Purge</code></div>
       <div class="vocab-body">
-        <p class="def">User を Active / Disabled / PendingDeletion から Deleted に遷移させる確定削除操作。ADR-036 の anonymize cascade を実行し、猶予期間経過後の自動 purge と admin の明示的完全削除の双方から呼ばれる。</p>
+        <p class="def">User を Active / Disabled / PendingDeletion から Deleted に遷移させる確定削除操作。anonymize cascade を実行し、猶予期間経過後の自動 purge と admin の明示的完全削除の双方から呼ばれる。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">purge</span></div>
 
 
@@ -9652,7 +9652,7 @@ token-possession-authenticated)、AuthenticatedSelf/session ベースの access 
     <header><h3>DeleteAdminUser</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-IdManagement/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>User:input.user_id</code><code class="canonical-ref">IdManagement/interface/DeleteAdminUser</code></header>
     <p class="desc">管理者がユーザーを削除する。既定は SoftDelete で、status を
 PendingDeletion に遷移させ PII / Consent / RefreshToken / Session を温存する
-(猶予期間内は Restore 可能)。`purge=true` の場合は ADR-036 の anonymize
+(猶予期間内は Restore 可能)。`purge=true` の場合は anonymize
 cascade を即時実施し tombstone 化する。いずれも冪等で、既に同じ終着状態の
 user への再呼び出しは no-op として 204 を返す。自分自身は削除できない
 (admin / system_admin の自爆防止)。
@@ -11839,7 +11839,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
 <article class="vocab-entry" id="context-authentication-glossary-recoverycode">
       <div class="vocab-name"><code class="name">RecoveryCode</code></div>
       <div class="vocab-body">
-        <p class="def">TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード (ADR-087)。</p>
+        <p class="def">TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">recovery_code</span></div>
 
 
@@ -11905,7 +11905,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
   </article>
 <article class="card" id="scl-Authentication/model/IdentityProviderConnection">
     <header><h3>IdentityProviderConnection</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Authentication/model/IdentityProviderConnection</code></header>
-    <p class="desc">tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で受け取り、DataKeys の per-tenant DEK でエンベロープ暗号化して保持する ([[ADR-150]])。</p>
+    <p class="desc">tenant-scoped upstream trust 設定。request 中に入力された任意 URL は取得せず、管理時に検証した metadata の last-known-good endpoint / key / certificate だけを使う。client secret は write-only の secret_reference で受け取り、DataKeys の per-tenant DEK でエンベロープ暗号化して保持する。</p>
     <dl class="kv"><dt>identity</dt><dd><code>tenant_id, id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -11956,7 +11956,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="chip chip-annotation">sensitive</span></td>
-    <td>client secret の実値を書き込み専用で受け取るフィールド。DB には DataKeys の per-tenant DEK でエンベロープ暗号化した ciphertext のみを保存し、API レスポンスには実値・ciphertext のいずれも含めない ([[ADR-150]])。フィールド名は移行元の env: 参照方式から維持している。
+    <td>client secret の実値を書き込み専用で受け取るフィールド。DB には DataKeys の per-tenant DEK でエンベロープ暗号化した ciphertext のみを保存し、API レスポンスには実値・ciphertext のいずれも含めない。フィールド名は移行元の env: 参照方式から維持している。
 </td>
   </tr><tr>
     <td><code class="name">client_secret_configured</code></td>
@@ -12191,7 +12191,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="chip chip-annotation">sensitive</span></td>
-    <td>Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。DB 永続化時は DataKeys の per-tenant DEK でエンベロープ暗号化し、平文を保存しない ([[ADR-148]])。
+    <td>Totp の場合は base32 シークレット。他要素は credential JSON 等を別フィールド化する余地として残す。DB 永続化時は DataKeys の per-tenant DEK でエンベロープ暗号化し、平文を保存しない。
 </td>
   </tr><tr>
     <td><code class="name">label</code></td>
@@ -12281,7 +12281,7 @@ canceled で取消せる。succeeded は保持期限を経過すると expired �
   </article>
 <article class="card" id="scl-Authentication/model/LoginSession">
     <header><h3>LoginSession</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Authentication/model/LoginSession</code></header>
-    <p class="desc">ブラウザログインセッション。PostgreSQL を単一正本として永続化し (wi-253)、
+    <p class="desc">ブラウザログインセッション。PostgreSQL を単一正本として永続化し、
 プロセス再起動を跨いで有効な session を維持する。Cookie には不透明な
 session id のみを置き、sub と auth_time はサーバー側ストアに保持する。amr / acr も
 ここに残し、後続の /authorize で step-up 判定に使う。authentication_pending=true は
@@ -12363,7 +12363,7 @@ revoked_at IS NULL AND expires_at &gt; now の行だけを有効とみなす。
     <td><code class="type">Integer</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="chip chip-default">default: 0</span></td>
-    <td>直近で password / MFA による step-up 再認証が成立した Unix 秒 (未実施は 0)。高 sensitivity な self-service 操作の recency 判定に使う (ADR-043)。</td>
+    <td>直近で password / MFA による step-up 再認証が成立した Unix 秒 (未実施は 0)。高 sensitivity な self-service 操作の recency 判定に使う。</td>
   </tr><tr>
     <td><code class="name">expires_at</code></td>
     <td><code class="type">DateTime</code></td>
@@ -12845,7 +12845,7 @@ token は base64url の 32 バイト乱数で、保存時は SHA-256 hash のみ
   </article>
 <article class="card" id="scl-Authentication/model/AuthenticatorResetResponse">
     <header><h3>AuthenticatorResetResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Authentication/model/AuthenticatorResetResponse</code></header>
-    <p class="desc">認証器リセットの結果。reenrollment_required は TOTP / WebAuthn の両方が無くなり、次回ログインで登録専用 pending flow (wi-127) へ入る単発 bypass を自動発行したことを示す。bypass は reenrollment_required の場合だけ存在する。</p>
+    <p class="desc">認証器リセットの結果。reenrollment_required は TOTP / WebAuthn の両方が無くなり、次回ログインで登録専用 pending flow へ入る単発 bypass を自動発行したことを示す。bypass は reenrollment_required の場合だけ存在する。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -13756,7 +13756,7 @@ modal に出す選択肢)。
   </article>
 <article class="card" id="scl-Authentication/model/IdentityProviderConnectionStatus">
     <header><h3>IdentityProviderConnectionStatus</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Authentication/model/IdentityProviderConnectionStatus</code></header>
-    <p class="desc">connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。作成直後の初期状態は Disabled ([[ADR-149]])。</p>
+    <p class="desc">connection の lifecycle 状態。Active の connection だけを discovery と login routing に使用できる。作成直後の初期状態は Disabled。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">Active</span> <span class="chip chip-enum">Disabled</span></div>
 
@@ -13784,7 +13784,7 @@ modal に出す選択肢)。
   </article>
 <article class="card" id="scl-Authentication/model/AuthenticatorResetTarget">
     <header><h3>AuthenticatorResetTarget</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Authentication/model/AuthenticatorResetTarget</code></header>
-    <p class="desc">管理者による認証器リセット (ADR-088 第 2 層) が対象にできる要素。Totp / Webauthn は MfaFactor / WebAuthnCredential の全件削除、RecoveryCode は backup recovery code 一式の削除を指す。</p>
+    <p class="desc">管理者による認証器リセットが対象にできる要素。Totp / Webauthn は MfaFactor / WebAuthnCredential の全件削除、RecoveryCode は backup recovery code 一式の削除を指す。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">Totp</span> <span class="chip chip-enum">Webauthn</span> <span class="chip chip-enum">RecoveryCode</span></div>
 
@@ -14564,7 +14564,7 @@ keyHash は SHA-256 hex で平文を audit log に流さない (LoginThrottled �
   </article>
 <article class="card" id="scl-Authentication/model/AuthenticatorResetRequested">
     <header><h3>AuthenticatorResetRequested</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Authentication/model/AuthenticatorResetRequested</code></header>
-    <p class="desc">管理者が対象 user の認証器リセットを要求した (ADR-088 第 2 層)。削除実行前に発行し、要求時点の対象を監査に残す。</p>
+    <p class="desc">管理者が対象 user の認証器リセットを要求した。削除実行前に発行し、要求時点の対象を監査に残す。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -15372,8 +15372,8 @@ audit に流さず、発行件数のみ残す。再生成は既存 set を全置
     <p class="desc">LoginSession が終了した。本人 / admin の明示的な失効では actorUserId が操作者、
 reason が self_revoke / admin_revoke になる。sessionId は OIDC sid と同値であり、
 OAuth2 bounded context はこの sessionId をキーに RefreshTokenRecord.sid が一致する
-family を失効し、登録済み RP へ front/back-channel logout を通知する (wi-28)。
-Access Token 自体は本イベントで即時失効しない (短命 TTL に委ねる、ADR-127)。
+family を失効し、登録済み RP へ front/back-channel logout を通知する。
+Access Token 自体は本イベントで即時失効しない (短命 TTL に委ねる)。
 </p>
 
     <div class="label">Payload</div><table class="fields">
@@ -16267,7 +16267,7 @@ tombstone であり、既に失効済みの対象は idempotent にスキップ�
   </article>
 <article class="card" id="scl-Authentication/interface/ListSessions">
     <header><h3>ListSessions</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>User:input.user_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Authentication/interface/ListSessions</code></header>
-    <p class="desc">admin が対象ユーザーの有効なセッションを一覧する (wi-28)。tenant 境界内に
+    <p class="desc">admin が対象ユーザーの有効なセッションを一覧する。tenant 境界内に
 限定し、開始時刻の降順で返す。ListMySessions と異なり対象は任意の user_id で、
 current マーカーは持たない。
 </p>
@@ -16304,7 +16304,7 @@ current マーカーは持たない。
   </article>
 <article class="card" id="scl-Authentication/interface/RevokeSession">
     <header><h3>RevokeSession</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>User:input.user_id</code><code class="canonical-ref">Authentication/interface/RevokeSession</code></header>
-    <p class="desc">admin が対象ユーザーのセッション1件を失効する (wi-28)。RevokeMySession と同じ
+    <p class="desc">admin が対象ユーザーのセッション1件を失効する。RevokeMySession と同じ
 tombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削除しない)。
 既に失効済みの対象への再失効は idempotent に成功する。
 </p>
@@ -16330,7 +16330,7 @@ tombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削�
   </article>
 <article class="card" id="scl-Authentication/interface/RevokeUserSessions">
     <header><h3>RevokeUserSessions</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>User:input.user_id</code><code class="canonical-ref">Authentication/interface/RevokeUserSessions</code></header>
-    <p class="desc">admin が対象ユーザーの全セッションを失効する (wi-28)。&quot;全セッションを終了&quot;
+    <p class="desc">admin が対象ユーザーの全セッションを失効する。&quot;全セッションを終了&quot;
 操作。RevokeMyOtherSessions と異なり操作者自身のセッションではないため除外対象は
 無く、対象ユーザーの有効な全セッションを tombstone にする。各対象は idempotent に
 失効する。
@@ -16472,10 +16472,10 @@ step_up_at を刻む。以降 recency 窓 (5 分) 内は step_up: required の
 <article class="card" id="scl-Authentication/interface/ResetUserAuthenticators">
     <header><h3>ResetUserAuthenticators</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>User:input.user_id</code><code class="canonical-ref">Authentication/interface/ResetUserAuthenticators</code></header>
     <p class="desc">テナント管理者が対象 user の認証器 (TOTP factor / WebAuthn credential /
-recovery code) から選択した種別を削除し、mfa_enrolled を再計算する (ADR-088 第 2 層、緊急
+recovery code) から選択した種別を削除し、mfa_enrolled を再計算する (緊急
 backstop)。管理者は新しい factor を代わりに登録できず、削除と再登録要求に限定する。
 TOTP と WebAuthn が両方無くなった場合は既存の管理者承認 enrollment bypass
-(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを wi-127 の
+(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを
 fail-closed な enrollment-required flow へ誘導する。片方の要素のみ削除するなど mfa_enrolled
 が true のまま残る場合は bypass を発行せず、残存要素で通常ログインを継続できる。
 </p>
@@ -16808,7 +16808,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
   </article>
 <article class="card" id="scl-Authentication/interface/CreateIdentityProviderConnection">
     <header><h3>CreateIdentityProviderConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>IdentityProviderDirectory:context.tenant_id</code><code class="canonical-ref">Authentication/interface/CreateIdentityProviderConnection</code></header>
-    <p class="desc">tenant administrator が connection を作る。作成直後の初期状態は Disabled ([[ADR-149]])。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす ([[ADR-150]])。</p>
+    <p class="desc">tenant administrator が connection を作る。作成直後の初期状態は Disabled。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -16882,7 +16882,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
   </article>
 <article class="card" id="scl-Authentication/interface/DeleteIdentityProviderConnection">
     <header><h3>DeleteIdentityProviderConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Authentication/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>IdentityProviderConnection:input.provider_id</code><code class="canonical-ref">Authentication/interface/DeleteIdentityProviderConnection</code></header>
-    <p class="desc">tenant administrator が connection を状態を問わずいつでも削除する ([[ADR-149]])。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。</p>
+    <p class="desc">tenant administrator が connection を状態を問わずいつでも削除する。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -17097,7 +17097,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
     </div>
   </div><div class="cards"><article class="card" id="scl-Authentication/state/IdentityProviderConnectionLifecycle">
     <header><h3>IdentityProviderConnectionLifecycle</h3><code class="canonical-ref">Authentication/state/IdentityProviderConnectionLifecycle</code></header>
-    <p class="desc">upstream connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する ([[ADR-149]])。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。</p>
+    <p class="desc">upstream connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。</p>
     <dl class="kv"><dt>target</dt><dd><code>IdentityProviderConnection</code></dd><dt>initial</dt><dd><span class="chip chip-initial">Disabled</span></dd></dl>
     <div class="sm-row"><div class="label">states (2)</div><div><span class="chip">Active</span> <span class="chip chip-initial">Disabled</span></div></div>
     <div class="sm-row"><div class="label">events (2)</div><div><span class="chip">IdentityProviderConnectionDisabled</span> <span class="chip">IdentityProviderConnectionActivated</span></div></div>
@@ -17221,7 +17221,7 @@ token を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用
       </article><article class="card" id="scl-Authentication/objective/SessionListLatency">
         <header><h3>SessionListLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">Authentication/objective/SessionListLatency</code></header>
         <p class="desc">/api/account/sessions 応答の95%以上を100ms未満で返す (先頭ページ、
-PostgreSQL keyset pagination index を使用、wi-253)。
+PostgreSQL keyset pagination index を使用)。
 </p>
         <dl class="kv">
           <dt>interface</dt><dd><a class="chip chip-iface-ref" href="#scl-Authentication/interface/ListMySessions">ListMySessions</a></dd>
@@ -18392,7 +18392,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
               <span class="chip chip-hint">§2</span>
               <code class="canonical-ref">OAuth2/standard_requirement/RFC8707/RFC8707-MCP-RESOURCE-BINDING</code>
             </header>
-            <p>resource パラメータで指定された McpResourceServer へ Access Token の audience を厳格に限定し、未登録・無効・複数指定の resource は fail-closed で拒否する (ADR-055)。Authorize / PushAuthorizationRequest / Token(authorization_code redemption・refresh rotation・client_credentials・device_code・token-exchange) の全経路で resource 指定時に一様に適用する (wi-262, wi-264)。resource 未指定時は従来どおり client_id を audience とする後方互換を保つ。</p>
+            <p>resource パラメータで指定された McpResourceServer へ Access Token の audience を厳格に限定し、未登録・無効・複数指定の resource は fail-closed で拒否する。Authorize / PushAuthorizationRequest / Token(authorization_code redemption・refresh rotation・client_credentials・device_code・token-exchange) の全経路で resource 指定時に一様に適用する。resource 未指定時は従来どおり client_id を audience とする後方互換を保つ。</p>
 
 
           </article></div>
@@ -18559,7 +18559,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
           </article></div>
       </article><article class="card standard" id="context-oauth2-std-rfc9728">
         <header><h3>RFC9728</h3><span class="badge badge-version">RFC 9728</span></header>
-        <p class="desc"><strong>OAuth 2.0 Protected Resource Metadata</strong> — MCP resource server (Protected Resource) のメタデータ発見 (ADR-055)。</p>
+        <p class="desc"><strong>OAuth 2.0 Protected Resource Metadata</strong> — MCP resource server (Protected Resource) のメタデータ発見。</p>
         <dl class="kv">
           <dt>source</dt><dd><a href="https://www.rfc-editor.org/rfc/rfc9728.html">https://www.rfc-editor.org/rfc/rfc9728.html</a></dd>
           <dt>roles</dt><dd><span class="chip">AuthorizationServer</span></dd>
@@ -18797,7 +18797,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
               <code class="canonical-ref">OAuth2/standard_requirement/OpenIDConnectSessionManagement/OIDC-SESSION-MGMT-CHECK-IFRAME</code>
             </header>
             <p>check_session_iframeを公開し、RPからのpostMessageに対しOP session状態を応答する。</p>
-            <p class="exclusion-reason"><strong>reason:</strong> 本仕様はDraft 28のままFinalに到達しておらず、主要IdPの実装状況もまちまちである。discovery広告とbrowser cookie解決の最小実装に留め、session_stateのsalted hash相関アルゴリズムは仕様の詳細規定まで実装しない (ADR-127)。</p>
+            <p class="exclusion-reason"><strong>reason:</strong> 本仕様はDraft 28のままFinalに到達しておらず、主要IdPの実装状況もまちまちである。discovery広告とbrowser cookie解決の最小実装に留め、session_stateのsalted hash相関アルゴリズムは仕様の詳細規定まで実装しない。</p>
 
           </article></div>
       </article><article class="card standard" id="context-oauth2-std-fapi2securityprofile">
@@ -18899,7 +18899,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
 <article class="vocab-entry" id="context-oauth2-glossary-mcpresourceserver">
       <div class="vocab-name"><code class="name">McpResourceServer</code></div>
       <div class="vocab-body">
-        <p class="def">MCP エコシステムでツール/データソースを提供する ResourceServer の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata と resource indicator 検証の基準になる。</p>
+        <p class="def">MCP エコシステムでツール/データソースを提供する ResourceServer の tenant-scoped 登録。canonical resource URI と許可 scope を所有し、Protected Resource Metadata と resource indicator 検証の基準になる。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">mcp_resource_server</span></div>
 
 
@@ -18908,7 +18908,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
 <article class="vocab-entry" id="context-oauth2-glossary-resourceindicator">
       <div class="vocab-name"><code class="name">ResourceIndicator</code></div>
       <div class="vocab-body">
-        <p class="def">RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定・未登録・無効は fail-closed で拒否する。</p>
+        <p class="def">RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。1 トークンにつき 1 個のみを許可し、複数指定・未登録・無効は fail-closed で拒否する。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">resource_indicator</span></div>
 
 
@@ -18971,7 +18971,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
 <article class="vocab-entry" id="context-oauth2-glossary-tokenexchange">
       <div class="vocab-name"><code class="name">TokenExchange</code></div>
       <div class="vocab-body">
-        <p class="def">既存トークンを別トークンに交換するトークン交換グラント (RFC 8693)。本アプリは 2 種類の subject_token を扱う: (1) 自己発行トークンの委任 (delegation) — subject_token / actor_token は本 IdP が発行し IntrospectAccessToken を通過したものに限る、(2) workload identity federation ([[wi-54-workload-identity-federation-spiffe]], [[ADR-053]]) — subject_token_type が JwtSvid のとき、外部 attestation token を WorkloadIdentity の VerifyWorkloadAttestation で検証し、テナント登録済みの AgentWorkloadBinding で写した Agent の資格情報として発行する。grant_type は URN。
+        <p class="def">既存トークンを別トークンに交換するトークン交換グラント (RFC 8693)。本アプリは 2 種類の subject_token を扱う: (1) 自己発行トークンの委任 (delegation) — subject_token / actor_token は本 IdP が発行し IntrospectAccessToken を通過したものに限る、(2) workload identity federation — subject_token_type が JwtSvid のとき、外部 attestation token を WorkloadIdentity の VerifyWorkloadAttestation で検証し、テナント登録済みの AgentWorkloadBinding で写した Agent の資格情報として発行する。grant_type は URN。
 </p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">urn:ietf:params:oauth:grant-type:token-exchange</span> <span class="chip chip-alias">token-exchange</span> <span class="chip chip-alias">トークン交換</span></div>
 
@@ -19905,7 +19905,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td>OpenID Connect Back-Channel Logout 1.0 の通知先。設定時、session revoke ごとに
-署名済み logout token をこの URI へ POST する (wi-28)。
+署名済み logout token をこの URI へ POST する。
 </td>
   </tr><tr>
     <td><code class="name">backchannel_logout_session_required</code></td>
@@ -19919,7 +19919,7 @@ PostgreSQL keyset pagination index を使用、wi-253)。
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
     <td>OpenID Connect Front-Channel Logout 1.0 の通知先。/end_session 応答にこの URI への
-iframe を含める (wi-28)。
+iframe を含める。
 </td>
   </tr><tr>
     <td><code class="name">frontchannel_logout_session_required</code></td>
@@ -20129,7 +20129,7 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
   </article>
 <article class="card" id="scl-OAuth2/model/McpResourceServer">
     <header><h3>McpResourceServer</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/McpResourceServer</code></header>
-    <p class="desc">MCP resource server (ツール/データソース) の tenant-scoped 登録 (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。</p>
+    <p class="desc">MCP resource server (ツール/データソース) の tenant-scoped 登録。canonical resource URI と許可 scope を所有し、Protected Resource Metadata (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。管理は AdminMcpResourcesManage で保護する。</p>
     <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -20283,16 +20283,16 @@ NameID 相当の source 属性を sub の source として使う。scope/consent
     <td>発行元 AuthorizationCodeRecord.sid (OIDC session id)。Rotate では親の値を
 そのまま引き継ぐ。null は client_credentials 等 browser session を持たない発行。
 Authentication の SessionEnded.sessionId と一致する全 family (複数 client を含みうる)
-を本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる (wi-28)。
+を本フィールドで解決し、session revoke から一括で RevokeToken へ遷移させる。
 </td>
   </tr><tr>
     <td><code class="name">resource</code></td>
     <td><code class="type">ResourceIndicator</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>発行元 (AuthorizationCodeRecord.resource) の resource indicator (ADR-055)。
+    <td>発行元 (AuthorizationCodeRecord.resource) の resource indicator。
 Rotate では親の値をそのまま引き継ぎ、ローテーション後も同じ McpResourceServer へ
-audience を厳格限定する (wi-262)。null は resource 未指定の発行。
+audience を厳格限定する。null は resource 未指定の発行。
 </td>
   </tr></tbody>
   </table>
@@ -20303,7 +20303,7 @@ audience を厳格限定する (wi-262)。null は resource 未指定の発行�
     <p class="desc">ある browser session (sid) が特定の OAuth2Client (RP) に対して認証結果を
 発行した記録 (RP participation)。sid は Authentication の LoginSession.id と同値で
 RP 間で共通。session 状態そのものはここに複製せず、session revoke 時にどの RP へ
-front/back-channel logout を通知するかを解決する索引としてのみ使う (wi-28)。
+front/back-channel logout を通知するかを解決する索引としてのみ使う。
 </p>
     <dl class="kv"><dt>identity</dt><dd><code>sid, client_id</code></dd></dl>
     <table class="fields">
@@ -20345,8 +20345,8 @@ front/back-channel logout を通知するかを解決する索引としてのみ
 <article class="card" id="scl-OAuth2/model/LogoutNotification">
     <header><h3>LogoutNotification</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">OAuth2/model/LogoutNotification</code></header>
     <p class="desc">back-channel logout の1配送試行を表すレコード。ローカル session/refresh token
-の失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない
-(wi-28 Plan)。配送実行は Jobs bounded context の durable job
+の失効は本レコード作成前に確定済みであり、配送の成否で失効を取り消さない。
+配送実行は Jobs bounded context の durable job
 (kind=backchannel_logout_delivery) に委譲する。
 </p>
     <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
@@ -20556,7 +20556,7 @@ front/back-channel logout を通知するかを解決する索引としてのみ
     <td>advance(authenticate_user) で AuthenticationContext.session_id から伝搬する
 OIDC session id (Authentication context の LoginSession.id と同値)。AuthorizationCodeRecord /
 RefreshTokenRecord / IdTokenClaims へ引き継ぎ、session revoke 起点の family 失効と
-front/back-channel logout の相関に使う (wi-28)。
+front/back-channel logout の相関に使う。
 </td>
   </tr><tr>
     <td><code class="name">authorization_details</code></td>
@@ -20669,7 +20669,7 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>認可リクエストから引き継いだ OIDC session id。id_token の sid claim と発行 RefreshTokenRecord.sid に伝播する (wi-28)。</td>
+    <td>認可リクエストから引き継いだ OIDC session id。id_token の sid claim と発行 RefreshTokenRecord.sid に伝播する。</td>
   </tr><tr>
     <td><code class="name">authorization_details</code></td>
     <td><code class="type">AuthorizationDetail[]</code></td>
@@ -21063,7 +21063,7 @@ front/back-channel logout の相関に使う (wi-28)。
   </article>
 <article class="card" id="scl-OAuth2/model/ResourceIndicator">
     <header><h3>ResourceIndicator</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/ResourceIndicator</code></header>
-    <p class="desc">RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。ADR-055 では 1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。</p>
+    <p class="desc">RFC 8707 の resource パラメータ。要求 audience を表す絶対 URI で fragment を含まない。1 トークンにつき 1 個のみを許可し、複数指定は invalid_target で拒否する。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -22685,7 +22685,7 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><code class="type">String</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>RFC 8693 token-exchange grant の subject_token。自己発行 access_token (urn:ietf:params:oauth:token-type:access_token)、または登録済み WorkloadTrustBundle の issuer から発行された外部 attestation JWT (urn:ietf:params:oauth:token-type:jwt、[[wi-54-workload-identity-federation-spiffe]]) のいずれか。</td>
+    <td>RFC 8693 token-exchange grant の subject_token。自己発行 access_token (urn:ietf:params:oauth:token-type:access_token)、または登録済み WorkloadTrustBundle の issuer から発行された外部 attestation JWT (urn:ietf:params:oauth:token-type:jwt) のいずれか。</td>
   </tr><tr>
     <td><code class="name">subject_token_type</code></td>
     <td><code class="type">String</code></td>
@@ -22721,7 +22721,7 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><code class="type">ResourceIndicator</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>RFC 8707 — authorization_code redemption・client_credentials・device_code・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target (ADR-055)。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。</td>
+    <td>RFC 8707 — authorization_code redemption・client_credentials・device_code・token-exchange の resource indicator。同名パラメータの複数指定は invalid_target。refresh_token grant では明示指定せず、初回発行時に束縛された resource を rotation を跨いで自動的に保持する。</td>
   </tr></tbody>
   </table>
 
@@ -23111,7 +23111,7 @@ front/back-channel logout の相関に使う (wi-28)。
     <td><code class="type">ResourceIndicator</code></td>
     <td><span class="badge badge-optional">optional</span></td>
     <td><span class="muted">—</span></td>
-    <td>RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する (ADR-055)。同名parameterの複数指定も invalid_target。</td>
+    <td>RFC 8707 resource indicator。登録済み Active な McpResourceServer と一致しない場合は invalid_target で拒否する。同名parameterの複数指定も invalid_target。</td>
   </tr></tbody>
   </table>
 
@@ -23238,8 +23238,8 @@ Application カタログ名 → client_id の順で解決する (client_id は U
     <header><h3>EndSessionParameters</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">OAuth2/model/EndSessionParameters</code></header>
     <p class="desc">RP-Initiated Logout v1 のクエリ / form パラメータ。client_id で
 post_logout_redirect_uri を検証する。id_token_hint は本 OP が発行した ID Token の
-み受理し、署名・iss・aud (client_id と矛盾する場合は拒否)・sub・sid を検証する
-(ADR-127)。exp は検証しない (ログアウト時点で期限切れになっている ID Token を
+み受理し、署名・iss・aud (client_id と矛盾する場合は拒否)・sub・sid を検証する。
+exp は検証しない (ログアウト時点で期限切れになっている ID Token を
 hint として送るのが通常の RP 実装であるため)。
 </p>
 
@@ -24452,7 +24452,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article>
 <article class="card" id="scl-OAuth2/model/ProtectedResourceMetadataServed">
     <header><h3>ProtectedResourceMetadataServed</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ProtectedResourceMetadataServed</code></header>
-    <p class="desc">RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した (ADR-055)。</p>
+    <p class="desc">RFC 9728 — /.well-known/oauth-protected-resource が登録済み McpResourceServer の metadata を配信した。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -24480,7 +24480,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article>
 <article class="card" id="scl-OAuth2/model/ResourceScopedTokenIssued">
     <header><h3>ResourceScopedTokenIssued</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ResourceScopedTokenIssued</code></header>
-    <p class="desc">RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。</p>
+    <p class="desc">RFC 8707 — resource indicator に基づき audience を単一 McpResourceServer へ厳格限定した Access Token を発行した。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange 経由の resource 限定発行は TokenExchanged.audience で表現し、本イベントは emit しない。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -24520,7 +24520,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article>
 <article class="card" id="scl-OAuth2/model/ResourceAudienceRejected">
     <header><h3>ResourceAudienceRejected</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">OAuth2/model/ResourceAudienceRejected</code></header>
-    <p class="desc">RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。</p>
+    <p class="desc">RFC 8707 — resource indicator が未登録・Disabled・複数指定のため fail-closed で拒否した。Authorize/PAR/Token(authorization_code) 経路が対象。token-exchange の拒否は TokenExchangeRejected.reason で表現し、本イベントは emit しない。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -25139,7 +25139,7 @@ hint として送るのが通常の RP 実装であるため)。
   </article>
 <article class="card" id="scl-OAuth2/model/InvalidTargetError">
     <header><h3>InvalidTargetError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">OAuth2/model/InvalidTargetError</code></header>
-    <p class="desc">resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target、ADR-055)。fail-closed で拒否する。</p>
+    <p class="desc">resource パラメータが未登録・Disabled・複数指定 (RFC 8707 §2 invalid_target)。fail-closed で拒否する。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -25437,7 +25437,7 @@ hint として送るのが通常の RP 実装であるため)。
     <p class="desc">RP-Initiated Logout endpoint (OIDC RP-Initiated Logout 1.0)。redirect 検証は
 OAuth2/OIDC bounded context が行い、session revocation は Authentication bounded
 context の SessionManager に委譲する。id_token_hint が与えられれば署名・iss・aud・sub・
-sid を検証して対象 session と client を hint から解決し (ADR-127)、client_id と
+sid を検証して対象 session と client を hint から解決し、client_id と
 矛盾する hint は拒否する。id_token_hint が無ければ client_id + browser cookie による
 既存の解決方法を fallback として維持する。ローカル revoke 確定後、対象 sid に紐づく
 ClientSession から前段の FrontChannelLogout target 一覧を応答へ含め、
@@ -25508,7 +25508,7 @@ Logout 1.0)。署名済み logout token (iss, sub, aud, iat, jti, events, sid) �
 target_uri へ POST し、2xx を成功、それ以外・timeout・接続失敗を再試行対象とする。
 Jobs context の kind=backchannel_logout_delivery job から呼ばれ、max_attempts 到達で
 LogoutNotification は Failed (dead-letter) に確定する。ローカル revoke は本 interface の
-成否に関わらず既に確定済みである (wi-28 Plan)。
+成否に関わらず既に確定済みである。
 </p>
 
     <div class="io">
@@ -25539,7 +25539,7 @@ LogoutNotification は Failed (dead-letter) に確定する。ローカル revok
 <article class="card" id="scl-OAuth2/interface/CheckSessionIframe">
     <header><h3>CheckSessionIframe</h3><span class="badge badge-access-public">public</span><code class="canonical-ref">OAuth2/interface/CheckSessionIframe</code></header>
     <p class="desc">OP session の変化をポーリングする RP 用 hidden iframe (OIDC Session Management
-1.0、Draft のまま Final に達していない仕様のため adoption は optional。ADR-127)。
+1.0、Draft のまま Final に達していない仕様のため adoption は optional)。
 静的な HTML/JS を返し、RP からの postMessage に対し現在の browser cookie が有効な
 LoginSession に解決できるかどうかだけを応答する。session_state の salted hash 比較
 など仕様の詳細な相関アルゴリズムは実装しない。
@@ -25594,7 +25594,7 @@ LoginSession に解決できるかどうかだけを応答する。session_state
 <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">device_code {device_code} を交換する</code></div>
 <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">client_credentials で scope {scope} のトークンを取得する</code></div>
 <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">subject_token {subject_token} を resource {resource} 向けに交換する</code></div>
-<div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">外部 workload attestation {subject_token} (subject_token_type=JwtSvid) を登録済み AgentWorkloadBinding 経由で Agent の資格情報に交換する ([[wi-54-workload-identity-federation-spiffe]])</code></div>
+<div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">外部 workload attestation {subject_token} (subject_token_type=JwtSvid) を登録済み AgentWorkloadBinding 経由で Agent の資格情報に交換する</code></div>
     <div class="io">
     <div class="label">Input</div>
     <table class="fields">
@@ -25641,7 +25641,7 @@ LoginSession に解決できるかどうかだけを応答する。session_state
   </article>
 <article class="card" id="scl-OAuth2/interface/Introspect">
     <header><h3>Introspect</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-OAuth2/authorization_policy/AuthenticatedClient">AuthenticatedClient</a> <code>OAuth2TokenService:context.client_id</code><code class="canonical-ref">OAuth2/interface/Introspect</code></header>
-    <p class="desc">通常 OAuth token と管理発行 JWT access token の Token Introspection (RFC 7662)。Agent 主体の token は SharedSignals の revocation epoch (kill-switch・所有者オフボード・CAEP/SSF 経由の失効) と issued_at を比較し、epoch 以前に発行された token は fail-closed で active=false とする (wi-58, ADR-057)。</p>
+    <p class="desc">通常 OAuth token と管理発行 JWT access token の Token Introspection (RFC 7662)。Agent 主体の token は SharedSignals の revocation epoch (kill-switch・所有者オフボード・CAEP/SSF 経由の失効) と issued_at を比較し、epoch 以前に発行された token は fail-closed で active=false とする。</p>
     <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">トークン {token} を検査する</code></div>
     <div class="io">
     <div class="label">Input</div>
@@ -25848,7 +25848,7 @@ client 単位の ClaimMapping claim_policy をマージする。
     <header><h3>GetProtectedResourceMetadata</h3><span class="badge badge-access-public">public</span><span class="badge badge-readonly">read-only</span><code class="canonical-ref">OAuth2/interface/GetProtectedResourceMetadata</code></header>
     <p class="desc">Protected Resource Metadata (RFC 9728)。resource 未指定時は realm の IdMagic API と
 ApiTokenScope を、resource 指定時は登録済み Active な McpResourceServer の metadata を返す。
-未登録・Disabled は invalid_target として拒否する (ADR-055)。
+未登録・Disabled は invalid_target として拒否する。
 </p>
     <div class="iface-step"><span class="step-kind-label">STEP</span> <code class="step-tpl">resource {resource} の Protected Resource Metadata を取得する</code></div>
     <div class="io">
@@ -27781,7 +27781,7 @@ attempts のみ増やす (状態遷移ではない)。
       </article><article class="card scenario" id="scl-OAuth2/scenario/kill-switch~E5~BE~8C~E3~81~AEAgent~E3~83~88~E3~83~BC~E3~82~AF~E3~83~B3~E3~81~AFintrospection~E3~81~A7active~3Dfalse~E3~81~AB~E3~81~AA~E3~82~8B">
         <header><h3>kill-switch後のAgentトークンはintrospectionでactive=falseになる</h3><span class="chip chip-actor">ResourceServer</span><code class="canonical-ref">OAuth2/scenario/kill-switch後のAgentトークンはintrospectionでactive=falseになる</code></header>
 
-        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-OAuth2/model/Agent">Agent</a> &quot;A1&quot; に issued_at が古い access token &quot;AT1&quot; が発行済みである</li><li class="scn-step">&quot;A1&quot; は kill-switch により revocation epoch が &quot;AT1&quot; の issued_at より後へ前進している (wi-58, ADR-057)</li></ol></div>
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step"><a class="chip chip-ref" href="#scl-OAuth2/model/Agent">Agent</a> &quot;A1&quot; に issued_at が古い access token &quot;AT1&quot; が発行済みである</li><li class="scn-step">&quot;A1&quot; は kill-switch により revocation epoch が &quot;AT1&quot; の issued_at より後へ前進している</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">トークン &quot;AT1&quot; を検査する</li><li class="scn-step">応答は active=false のみで他のフィールドを含まない</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">&quot;AT1&quot; が revocation epoch より後に発行された (kill 後に再発行された) token である</code></header>
@@ -28569,7 +28569,7 @@ Go 側 eventOutcome() が返す success / failure の 2 値 (該当しないイ�
     <header><h3>AdminAuditEventResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Audit/model/AdminAuditEventResponse</code></header>
     <p class="desc">管理者向けに公開する DomainEvent。payload は構造化 JSON。
 返却時に PII フィールド (email / IP 等) は EventSink 側で redact 済み前提。
-append_only で 7 年保持する (GDPR Art. 30、ADR-107)。
+append_only で 7 年保持する (GDPR Art. 30)。
 </p>
 
     <table class="fields">
@@ -29045,7 +29045,7 @@ filter の field は registry allowlist のみ。
     <td><code class="type">UUID[]</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>付与された ApplicationCategory の id 群 (0..N)。ポータルのセクション分類に使う (ADR-069)。</td>
+    <td>付与された ApplicationCategory の id 群 (0..N)。ポータルのセクション分類に使う。</td>
   </tr><tr>
     <td><code class="name">created_at</code></td>
     <td><code class="type">DateTime</code></td>
@@ -29064,7 +29064,7 @@ filter の field は registry allowlist のみ。
   </article>
 <article class="card" id="scl-Application/model/ApplicationCategory">
     <header><h3>ApplicationCategory</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Application/model/ApplicationCategory</code></header>
-    <p class="desc">管理者が tenant 単位で定義するポータルの分類セクション (ADR-069)。Application に 0..N 個
+    <p class="desc">管理者が tenant 単位で定義するポータルの分類セクション。Application に 0..N 個
 付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。割当境界は越えず、
 セクションには利用者に割当済みのアプリだけが並ぶ。
 </p>
@@ -29153,7 +29153,7 @@ filter の field は registry allowlist のみ。
   </article>
 <article class="card" id="scl-Application/model/AppSignInPolicy">
     <header><h3>AppSignInPolicy</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Application/model/AppSignInPolicy</code></header>
-    <p class="desc">Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル, ADR-081)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。</p>
+    <p class="desc">Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。</p>
     <dl class="kv"><dt>identity</dt><dd><code>application_id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -29187,7 +29187,7 @@ filter の field は registry allowlist のみ。
   </article>
 <article class="card" id="scl-Application/model/TenantDefaultSignInPolicy">
     <header><h3>TenantDefaultSignInPolicy</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Application/model/TenantDefaultSignInPolicy</code></header>
-    <p class="desc">テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする (ADR-081)。</p>
+    <p class="desc">テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする。</p>
     <dl class="kv"><dt>identity</dt><dd><code>tenant_id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -29221,7 +29221,7 @@ filter の field は registry allowlist のみ。
   </article>
 <article class="card" id="scl-Application/model/ApplicationOrdering">
     <header><h3>ApplicationOrdering</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Application/model/ApplicationOrdering</code></header>
-    <p class="desc">利用者ポータルでの手動並び順 (ADR-069)。user_id をキーに、Application の
+    <p class="desc">利用者ポータルでの手動並び順。user_id をキーに、Application の
 表示順を application_id の順序列として持つ。user_id は global unique な既存 User を指す。
 順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、本人に割当済み visible な Application のみに制限する。
 </p>
@@ -29585,7 +29585,7 @@ filter の field は registry allowlist のみ。
   </article>
 <article class="card" id="scl-Application/model/AdminApplicationCategoryRequest">
     <header><h3>AdminApplicationCategoryRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/AdminApplicationCategoryRequest</code></header>
-    <p class="desc">ApplicationCategory の作成 / 更新リクエスト。position 省略時は末尾扱い (ADR-069)。</p>
+    <p class="desc">ApplicationCategory の作成 / 更新リクエスト。position 省略時は末尾扱い。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -29663,7 +29663,7 @@ filter の field は registry allowlist のみ。
   </article>
 <article class="card" id="scl-Application/model/ApplicationCategoriesRequest">
     <header><h3>ApplicationCategoriesRequest</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/ApplicationCategoriesRequest</code></header>
-    <p class="desc">Application に付与するカテゴリ集合を置き換えるリクエスト。category_ids は所属テナントの 既存カテゴリのみを含む (ADR-069)。</p>
+    <p class="desc">Application に付与するカテゴリ集合を置き換えるリクエスト。category_ids は所属テナントの 既存カテゴリのみを含む。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -30536,7 +30536,7 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
 <article class="card" id="scl-Application/model/AppSignInPolicyResponse">
     <header><h3>AppSignInPolicyResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/AppSignInPolicyResponse</code></header>
     <p class="desc">Application の sign-in policy 表現。アプリ詳細で「このアプリの上書き (policy)」「テナントデフォルト (tenant_default)」
-「実際に適用される effective ルール列」を区別して表示できるようにする (ADR-081)。
+「実際に適用される effective ルール列」を区別して表示できるようにする。
 </p>
 
     <table class="fields">
@@ -30564,7 +30564,7 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
     <td><code class="type">Boolean</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない (ADR-081)。</td>
+    <td>アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない。</td>
   </tr></tbody>
   </table>
 
@@ -30648,14 +30648,14 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
     <td><code class="type">UUID[]</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>付与カテゴリの id 群。ポータルはこれでタイルをセクションに振り分ける (ADR-069)。</td>
+    <td>付与カテゴリの id 群。ポータルはこれでタイルをセクションに振り分ける。</td>
   </tr></tbody>
   </table>
 
   </article>
 <article class="card" id="scl-Application/model/PortalApplicationCategory">
     <header><h3>PortalApplicationCategory</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/PortalApplicationCategory</code></header>
-    <p class="desc">利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す (ADR-069)。</p>
+    <p class="desc">利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す。</p>
 
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -30678,7 +30678,7 @@ visibility=Private の属性や reserved claim type は floor により拒否さ
 <article class="card" id="scl-Application/model/MyApplicationListResponse">
     <header><h3>MyApplicationListResponse</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">Application/model/MyApplicationListResponse</code></header>
     <p class="desc">利用者ポータルの割当済みアプリ一覧。手動並び順があればそれを優先し、無ければ name 昇順。
-categories は tenant のカテゴリ定義を position 昇順で含み、ポータルはこれをセクション見出しに使う (ADR-069)。
+categories は tenant のカテゴリ定義を position 昇順で含み、ポータルはこれをセクション見出しに使う。
 </p>
 
     <table class="fields">
@@ -32243,7 +32243,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </article>
 <article class="card" id="scl-Application/interface/GetAppSignInPolicy">
     <header><h3>GetAppSignInPolicy</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadApplications">ManagementApiClientReadApplications</a> <code>Application:input.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetAppSignInPolicy</code></header>
-    <p class="desc">管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。</p>
+    <p class="desc">管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -32317,7 +32317,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </article>
 <article class="card" id="scl-Application/interface/GetTenantDefaultSignInPolicy">
     <header><h3>GetTenantDefaultSignInPolicy</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientReadSettings">ManagementApiClientReadSettings</a> <code>TenantDefaultSignInPolicy:context.tenant_id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetTenantDefaultSignInPolicy</code></header>
-    <p class="desc">管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す (ADR-081)。</p>
+    <p class="desc">管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す。</p>
 
     <div class="io">
     <div class="label">Output</div>
@@ -32339,7 +32339,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
   </article>
 <article class="card" id="scl-Application/interface/UpdateTenantDefaultSignInPolicy">
     <header><h3>UpdateTenantDefaultSignInPolicy</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/ManagementApiClientWriteSettings">ManagementApiClientWriteSettings</a> <code>TenantDefaultSignInPolicy:context.tenant_id</code><code class="canonical-ref">Application/interface/UpdateTenantDefaultSignInPolicy</code></header>
-    <p class="desc">管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。</p>
+    <p class="desc">管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -32536,7 +32536,7 @@ claim release 上書きであり、visibility=Private の属性や reserved clai
     <header><h3>ListMyApplications</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/AuthenticatedSelf">AuthenticatedSelf</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/SelfApiClientReadAccount">SelfApiClientReadAccount</a> <code>User:subject.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/ListMyApplications</code></header>
     <p class="desc">利用者が自分に割当済み (visible) の Application を一覧する。hidden 割当は除外する。
 手動並び順 (ApplicationOrdering) があればそれを優先し、無ければ name 昇順。応答の categories は
-tenant のカテゴリ定義を position 昇順で含み、各アプリの category_ids でセクションに振り分ける (ADR-069)。
+tenant のカテゴリ定義を position 昇順で含み、各アプリの category_ids でセクションに振り分ける。
 </p>
 
     <div class="io">
@@ -32560,7 +32560,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
   </article>
 <article class="card" id="scl-Application/interface/GetMyApplicationOrder">
     <header><h3>GetMyApplicationOrder</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/AuthenticatedSelf">AuthenticatedSelf</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/SelfApiClientReadAccount">SelfApiClientReadAccount</a> <code>User:subject.id</code><span class="badge badge-readonly">read-only</span><code class="canonical-ref">Application/interface/GetMyApplicationOrder</code></header>
-    <p class="desc">利用者が保存済みのポータル手動並び順を取得する。未保存なら空配列を返す (ADR-069)。</p>
+    <p class="desc">利用者が保存済みのポータル手動並び順を取得する。未保存なら空配列を返す。</p>
 
     <div class="io">
     <div class="label">Output</div>
@@ -32583,7 +32583,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
 <article class="card" id="scl-Application/interface/ReorderMyApplications">
     <header><h3>ReorderMyApplications</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/AuthenticatedSelf">AuthenticatedSelf</a> <a class="chip chip-policy-ref" href="#scl-Application/authorization_policy/SelfApiClientWriteAccount">SelfApiClientWriteAccount</a> <code>User:subject.id</code><code class="canonical-ref">Application/interface/ReorderMyApplications</code></header>
     <p class="desc">利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible な
-アプリのみを含み、それ以外を含むと拒否する (ADR-069)。
+アプリのみを含み、それ以外を含むと拒否する。
 </p>
 
     <div class="io">
@@ -32785,7 +32785,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
         <header><h3>管理者はアプリケーション別サインインポリシーを設定できる</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Application/scenario/管理者はアプリケーション別サインインポリシーを設定できる</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">管理者が <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> 編集画面を開いている</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> は OIDC / SAML / WS-Fed のいずれか単一の protocol を持つ</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が MFA 必須と再認証を求めるまでの時間 (秒) を要求する sign-in policy を保存する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Application/model/AppSignInPolicyUpdated">AppSignInPolicyUpdated</a> が発行される</li><li class="scn-step">単要素セッションの利用者が対象 <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> にアクセスする</li><li class="scn-step">システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する</li><li class="scn-step">システムは token / assertion 発行前に policy を評価する (強制点は OAuth2.Authorize、[[ADR-103]])</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">管理者が MFA 必須と再認証を求めるまでの時間 (秒) を要求する sign-in policy を保存する</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Application/model/AppSignInPolicyUpdated">AppSignInPolicyUpdated</a> が発行される</li><li class="scn-step">単要素セッションの利用者が対象 <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> にアクセスする</li><li class="scn-step">システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する</li><li class="scn-step">システムは token / assertion 発行前に policy を評価する (強制点は OAuth2.Authorize)</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 5</span><code class="name">許可 CIDR に含まれないクライアント IP、またはクライアント IP を取得できない</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">対象 <a class="chip chip-ref" href="#scl-Application/model/Application">Application</a> への federation は拒否される</li><li class="scn-step"><a class="chip chip-ref" href="#scl-Application/model/AppAccessDeniedByPolicy">AppAccessDeniedByPolicy</a> が発行される</li></ol></div>
@@ -32812,7 +32812,7 @@ tenant のカテゴリ定義を position 昇順で含み、各アプリの categ
         <header><h3>未割当のsubjectはprotocol経由でアプリケーションへフェデレーションできない</h3><span class="chip chip-actor">TenantAdministrator</span><code class="canonical-ref">Application/scenario/未割当のsubjectはprotocol経由でアプリケーションへフェデレーションできない</code></header>
 
         <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">アプリケーション &quot;portal&quot; にユーザー &quot;alice&quot; は割り当てられていない</li></ol></div>
-        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;alice&quot; が &quot;portal&quot; への federation を試みる (強制点は OAuth2.Authorize、[[ADR-103]])</li><li class="scn-step">未割当のため federation は拒否される</li></ol></div>
+        <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">&quot;alice&quot; が &quot;portal&quot; への federation を試みる (強制点は OAuth2.Authorize)</li><li class="scn-step">未割当のため federation は拒否される</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">管理者が事後に visible で割り当てる</code></header>
             <div class="sub"><div class="label">Steps</div><ol class="scn-steps"><li class="scn-step">管理者が &quot;portal&quot; に &quot;alice&quot; を visibility=visible で割り当てる</li><li class="scn-step">&quot;alice&quot; は &quot;portal&quot; への federation を完了できる</li></ol></div>
@@ -33429,7 +33429,7 @@ attribute_defs に無い key、または visibility=Private の key を source �
   </article>
 <article class="card" id="scl-SigningKeys/model/SigningKey">
     <header><h3>SigningKey</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">SigningKeys/model/SigningKey</code></header>
-    <p class="desc">トークン署名用の非対称鍵。テナント・用途・scopeごとに Active 1本＋Verifying 過去鍵 0本以上を公開する（SigningKeyMinJwksOverlap、[[ADR-108]]）。列挙・検索・回転・署名鍵選択はすべて tenant_id / usage / scope_id で絞る。tenant_id は既存 Tenant を指す。scope_id は既定で default とし、SAML追加IdP profileではprofile IDを用いてXML署名資格情報を分離する。</p>
+    <p class="desc">トークン署名用の非対称鍵。テナント・用途・scopeごとに Active 1本＋Verifying 過去鍵 0本以上を公開する（SigningKeyMinJwksOverlap）。列挙・検索・回転・署名鍵選択はすべて tenant_id / usage / scope_id で絞る。tenant_id は既存 Tenant を指す。scope_id は既定で default とし、SAML追加IdP profileではprofile IDを用いてXML署名資格情報を分離する。</p>
     <dl class="kv"><dt>identity</dt><dd><code>kid</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -33618,7 +33618,7 @@ JWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転�
     <td><code class="type">DateTime</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>鍵生成時刻 ([[ADR-108]] の SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。</td>
+    <td>鍵生成時刻 (SigningKeyMaxAge / SigningKeyMinJwksOverlap 評価の起点)。</td>
   </tr><tr>
     <td><code class="name">public_jwk</code></td>
     <td><code class="type">JSON</code></td>
@@ -33758,7 +33758,7 @@ JWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転�
       <h3 class="grp-title">event <span class="count">3</span></h3>
       <div class="cards"><article class="card" id="scl-SigningKeys/model/SigningKeyRotated">
     <header><h3>SigningKeyRotated</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">SigningKeys/model/SigningKeyRotated</code></header>
-    <p class="desc">JWKS の署名鍵が回転した（[[ADR-108]] の既定 90 日ごと、または緊急回転）。</p>
+    <p class="desc">JWKS の署名鍵が回転した（既定 90 日ごと、または緊急回転）。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -33793,7 +33793,7 @@ JWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転�
 <article class="card" id="scl-SigningKeys/model/SigningKeyRetired">
     <header><h3>SigningKeyRetired</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">SigningKeys/model/SigningKeyRetired</code></header>
     <p class="desc">署名鍵が Verifying から Retired に移り JWKS から除去された
-([[ADR-108]] の SigningKeyMinJwksOverlap 経過、または緊急無効化)。
+(SigningKeyMinJwksOverlap 経過、または緊急無効化)。
 </p>
 
     <div class="label">Payload</div><table class="fields">
@@ -34019,7 +34019,7 @@ JWKS と同じ公開鍵 JWK のみを含める。現在の署名鍵か、回転�
 <article class="card" id="scl-SigningKeys/interface/RotateTenantSigningKey">
     <header><h3>RotateTenantSigningKey</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-SigningKeys/authorization_policy/TenantAdministrator">TenantAdministrator</a> <code>Tenant:context.tenant_id</code><code class="canonical-ref">SigningKeys/interface/RotateTenantSigningKey</code></header>
     <p class="desc">テナント内 admin が自テナントに新しい署名鍵を生成し active を切り替える。旧 active 鍵は
-JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap 期間後に Retire される
+JWKS に verifying として残存し、SigningKeyMinJwksOverlap 期間後に Retire される
 (Retire 処理は別の運用ジョブ)。テナント単位のため回転の影響範囲は当該テナントに
 閉じる。
 </p>
@@ -34157,7 +34157,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     </div>
   </div><div class="cards"><article class="card" id="scl-SigningKeys/state/SigningKeyLifecycle">
     <header><h3>SigningKeyLifecycle</h3><code class="canonical-ref">SigningKeys/state/SigningKeyLifecycle</code></header>
-    <p class="desc">署名鍵のライフサイクル ([[ADR-108]] の SigningKeyMinJwksOverlap)。Active から Rotate で Verifying に降り、Retire で JWKS から外し、Archive で監査保管に入る。</p>
+    <p class="desc">署名鍵のライフサイクル (SigningKeyMinJwksOverlap)。Active から Rotate で Verifying に降り、Retire で JWKS から外し、Archive で監査保管に入る。</p>
     <dl class="kv"><dt>target</dt><dd><code>SigningKey</code></dd><dt>initial</dt><dd><span class="chip chip-initial">Active</span></dd><dt>terminal</dt><dd><span class="chip chip-terminal">Archived</span></dd></dl>
     <div class="sm-row"><div class="label">states (4)</div><div><span class="chip chip-initial">Active</span> <span class="chip">Verifying</span> <span class="chip">Retired</span> <span class="chip chip-terminal">Archived</span></div></div>
     <div class="sm-row"><div class="label">events (3)</div><div><span class="chip">SigningKeyRotated</span> <span class="chip">SigningKeyRetired</span> <span class="chip">SigningKeyArchived</span></div></div>
@@ -34419,7 +34419,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
 <article class="vocab-entry" id="context-datakeys-glossary-retiring">
       <div class="vocab-name"><code class="name">Retiring</code></div>
       <div class="vocab-body">
-        <p class="def">新規暗号化には使われないが、既存 ciphertext の復号にはまだ使われる状態。再暗号化 job ([[wi-126-async-job-runner]] 経由) が全参照を移行するまで維持する。</p>
+        <p class="def">新規暗号化には使われないが、既存 ciphertext の復号にはまだ使われる状態。再暗号化 job (Jobs 経由) が全参照を移行するまで維持する。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -34446,7 +34446,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
 <article class="vocab-entry" id="context-datakeys-glossary-failclosed">
       <div class="vocab-name"><code class="name">FailClosed</code></div>
       <div class="vocab-body">
-        <p class="def">unwrap 失敗・provider 到達不能・AAD/tamper 不一致など復号不能な場合に、平文へのフォールバックをせずアクセスを拒否する方針 ([[ADR-148]])。</p>
+        <p class="def">unwrap 失敗・provider 到達不能・AAD/tamper 不一致など復号不能な場合に、平文へのフォールバックをせずアクセスを拒否する方針。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -34503,7 +34503,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-DataKeys/model/TenantDataEncryptionKey">
     <header><h3>TenantDataEncryptionKey</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">DataKeys/model/TenantDataEncryptionKey</code></header>
-    <p class="desc">テナントごとの DEK 1 バージョン。MasterKey provider が wrap した鍵材料 (wrapped_dek) だけを保持し、平文 DEK は保存しない。テナントにつき Active は高々 1 本 ([[ADR-148]])。
+    <p class="desc">テナントごとの DEK 1 バージョン。MasterKey provider が wrap した鍵材料 (wrapped_dek) だけを保持し、平文 DEK は保存しない。テナントにつき Active は高々 1 本。
 </p>
     <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
     <table class="fields">
@@ -34577,7 +34577,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       <h3 class="grp-title">value object <span class="count">2</span></h3>
       <div class="cards"><article class="card" id="scl-DataKeys/model/EncryptedSecret">
     <header><h3>EncryptedSecret</h3><span class="badge badge-kind-value_object">value object</span><code class="canonical-ref">DataKeys/model/EncryptedSecret</code></header>
-    <p class="desc">可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。ciphertext は Tink の AEAD primitive がそのまま出力する不透明な bytes で、nonce/tag は Tink 内部管理のため別フィールドとして持たない (自前で nonce を組み立てない、[[ADR-148]])。
+    <p class="desc">可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない。ciphertext は Tink の AEAD primitive がそのまま出力する不透明な bytes で、nonce/tag は Tink 内部管理のため別フィールドとして持たない (自前で nonce を組み立てない)。
 </p>
 
     <table class="fields">
@@ -34825,7 +34825,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-DataKeys/model/DataKeyStillReferencedError">
     <header><h3>DataKeyStillReferencedError</h3><span class="badge badge-kind-error">error</span><code class="canonical-ref">DataKeys/model/DataKeyStillReferencedError</code></header>
-    <p class="desc">DestroyTenantDataKey の対象バージョンについて、所有 context の再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) がまだ全参照を active バージョンへ移行し終えていない。先に再暗号化を完了させてから destroy する。
+    <p class="desc">DestroyTenantDataKey の対象バージョンについて、所有 context の再暗号化 job (Jobs 経由の data_key_reencryption) がまだ全参照を active バージョンへ移行し終えていない。先に再暗号化を完了させてから destroy する。
 </p>
 
     <div class="label">Payload</div><table class="fields">
@@ -34937,7 +34937,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
   </article>
 <article class="card" id="scl-DataKeys/interface/DestroyTenantDataKey">
     <header><h3>DestroyTenantDataKey</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">DataKeys/interface/DestroyTenantDataKey</code></header>
-    <p class="desc">retiring または disabled の DataEncryptionKey 1 本の wrapped_dek を破棄し destroyed (crypto-shredding) にする。所有 context ごとに登録された再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) が全参照を active バージョンへ移行済みであることを呼び出し前に検証し、未移行の参照が残っていれば DataKeyStillReferencedError で拒否する (fail-closed)。不可逆。
+    <p class="desc">retiring または disabled の DataEncryptionKey 1 本の wrapped_dek を破棄し destroyed (crypto-shredding) にする。所有 context ごとに登録された再暗号化 job (Jobs 経由の data_key_reencryption) が全参照を active バージョンへ移行済みであることを呼び出し前に検証し、未移行の参照が残っていれば DataKeyStillReferencedError で拒否する (fail-closed)。不可逆。
 </p>
 
     <div class="io">
@@ -35038,7 +35038,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
     </div>
   </div><div class="cards"><article class="card" id="scl-DataKeys/state/DataEncryptionKeyLifecycle">
     <header><h3>DataEncryptionKeyLifecycle</h3><code class="canonical-ref">DataKeys/state/DataEncryptionKeyLifecycle</code></header>
-    <p class="desc">bootstrap で active として生成される。rotation で新バージョンが active になると旧バージョンは retiring へ遷移する。retiring は disable で即時ロックアウトでき、retiring/disabled は全参照の再暗号化 ([[wi-126-async-job-runner]] 経由) 確認後にのみ destroy で終端 (destroyed) へ進む。active を直接 disable/destroy することはできない (先に rotation で退避させる)。
+    <p class="desc">bootstrap で active として生成される。rotation で新バージョンが active になると旧バージョンは retiring へ遷移する。retiring は disable で即時ロックアウトでき、retiring/disabled は全参照の再暗号化 (Jobs 経由) 確認後にのみ destroy で終端 (destroyed) へ進む。active を直接 disable/destroy することはできない (先に rotation で退避させる)。
 </p>
     <dl class="kv"><dt>target</dt><dd><code>TenantDataEncryptionKey</code></dd><dt>initial</dt><dd><span class="chip chip-initial">active</span></dd><dt>terminal</dt><dd><span class="chip chip-terminal">destroyed</span></dd></dl>
     <div class="sm-row"><div class="label">states (4)</div><div><span class="chip chip-initial">active</span> <span class="chip">retiring</span> <span class="chip">disabled</span> <span class="chip chip-terminal">destroyed</span></div></div>
@@ -35129,7 +35129,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
       </article><article class="card scenario" id="scl-DataKeys/scenario/~E5~85~A8~E5~8F~82~E7~85~A7~E3~81~AE~E5~86~8D~E6~9A~97~E5~8F~B7~E5~8C~96~E5~BE~8C~E3~81~ABDEK~E3~82~92destroy~E3~81~A7~E3~81~8D~E3~82~8B">
         <header><h3>全参照の再暗号化後にDEKをdestroyできる</h3><span class="chip chip-actor">System</span><code class="canonical-ref">DataKeys/scenario/全参照の再暗号化後にDEKをdestroyできる</code></header>
 
-        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; の version 1 が retiring で、[[wi-126-async-job-runner]] 経由の再暗号化 job が version 1 参照をすべて version 2 へ移行済みである</li></ol></div>
+        <div class="sub"><div class="label">Given</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; の version 1 が retiring で、Jobs 経由の再暗号化 job が version 1 参照をすべて version 2 へ移行済みである</li></ol></div>
         <div class="sub"><div class="label">Main success</div><ol class="scn-steps"><li class="scn-step">テナント &quot;tenant-a&quot; の version 1 に対して <a class="chip chip-ref" href="#scl-DataKeys/interface/DestroyTenantDataKey">DestroyTenantDataKey</a> を呼ぶ</li><li class="scn-step">version 1 が destroyed に遷移し wrapped_dek が破棄される</li><li class="scn-step">version 1 での復号は恒久的に不能になる</li></ol></div>
         <div class="sub"><div class="label">Extensions</div><article class="requirement">
             <header><span class="chip chip-hint">at 1</span><code class="name">登録済みの所有 context に未移行の参照が残っている</code></header>
@@ -38666,7 +38666,7 @@ JWKS に verifying として残存し、[[ADR-108]] の SigningKeyMinJwksOverlap
 <article class="vocab-entry" id="context-jobs-glossary-executionlane">
       <div class="vocab-name"><code class="name">ExecutionLane</code></div>
       <div class="vocab-body">
-        <p class="def">JobKind の登録情報が一意に決める実行枠の区分 (ADR-129)。異なる
+        <p class="def">JobKind の登録情報が一意に決める実行枠の区分。異なる
 レイテンシ・資源特性を持つ JobKind 間で claim と worker 実行枠を隔離するために使う。
 enqueue 呼び出し元は lane を指定できない。latency_sensitive / default / bulk の3種。
 </p>
@@ -38703,7 +38703,7 @@ enqueue 呼び出し元は lane を指定できない。latency_sensitive / defa
     <header><h3>Job</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Jobs/model/Job</code></header>
     <p class="desc">enqueue された非同期処理の実行単位。worker がリースを確保して Running にし、
 ハンドラが handler_context.tenant_id == job.tenant_id の境界内だけで副作用を起こす。
-レコードの保持期間は ADR-100-job-data-retention-and-pii が定める (delete_after 30日)。
+レコードの保持期間は delete_after 30日とする。
 </p>
     <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
     <table class="fields">
@@ -38731,7 +38731,7 @@ enqueue 呼び出し元は lane を指定できない。latency_sensitive / defa
     <td><code class="type">ExecutionLane</code></td>
     <td><span class="badge badge-required">required</span></td>
     <td><span class="muted">—</span></td>
-    <td>kind の登録情報から enqueue 時に一意に決まる実行レーン (ADR-129)。
+    <td>kind の登録情報から enqueue 時に一意に決まる実行レーン。
 呼び出し元は指定できず、Job 作成後は不変。claim は対象 lane の Job だけを対象にする。
 </td>
   </tr><tr>
@@ -38896,10 +38896,10 @@ language。Job aggregate 全体ではなく、外部公開してよい最小の�
 <article class="card" id="scl-Jobs/model/JobKind">
     <header><h3>JobKind</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Jobs/model/JobKind</code></header>
     <p class="desc">worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を
-追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を
-同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを
-追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。data_key_reencryption は
-wi-97 (エンベロープ暗号化) が DataKeys の再暗号化 job 用に追加する。
+追加する consumer 機能は、実装前にこの enum へ自分の種別を足し、ExecutionLane を
+同時に宣言する (SCL-first)。core runtime は疎通確認用の noop_echo のみを
+追加する。backchannel_logout_delivery は未実装機能向けの先行宣言。data_key_reencryption は
+DataKeys がエンベロープ暗号化の再暗号化 job 用に追加する。
 </p>
 
     <div class="enum-vals"><span class="chip chip-enum">noop_echo</span> <span class="chip chip-enum">user_import_preview</span> <span class="chip chip-enum">user_import_apply</span> <span class="chip chip-enum">dynamic_group_reconcile</span> <span class="chip chip-enum">lifecycle_workflow_run</span> <span class="chip chip-enum">backchannel_logout_delivery</span> <span class="chip chip-enum">provisioning_delivery</span> <span class="chip chip-enum">data_key_reencryption</span></div>
@@ -38907,7 +38907,7 @@ wi-97 (エンベロープ暗号化) が DataKeys の再暗号化 job 用に追�
   </article>
 <article class="card" id="scl-Jobs/model/ExecutionLane">
     <header><h3>ExecutionLane</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">Jobs/model/ExecutionLane</code></header>
-    <p class="desc">Job の実行枠を隔離する区分 (ADR-129)。JobKind の登録情報が lane を一意に決め、
+    <p class="desc">Job の実行枠を隔離する区分。JobKind の登録情報が lane を一意に決め、
 enqueue 呼び出し元は指定できない。latency_sensitive は低遅延配送を専用実行枠で保証し、
 bulk backlog の滞留から隔離される。bulk は長時間・大量ジョブ、default はそのいずれでもない
 ジョブに使う。
@@ -39179,7 +39179,7 @@ bulk backlog の滞留から隔離される。bulk は長時間・大量ジョ�
 HTTP には公開せず、同一プロセス内の Go 呼び出しとして各 context の usecase から使う。
 dedup_key を指定すると (tenant_id, dedup_key) が既存の未終端 Job と一致する場合は
 新規作成せず既存 JobRef を返す。作成される Job の lane は kind の登録情報から一意に
-決まり、呼び出し元は指定できない (ADR-129)。
+決まり、呼び出し元は指定できない。
 </p>
 
     <div class="io">
@@ -39233,7 +39233,7 @@ dedup_key を指定すると (tenant_id, dedup_key) が既存の未終端 Job �
     <p class="desc">worker が指定した lane 内で claim 可能な (status=queued かつ run_at &lt;= now、
 またはリース失効済みの running) Job をバッチで取得し、同一トランザクション内で Running に
 遷移させ、自分を lease_owner として lease_expires_at を設定する内部インターフェース。
-対象 lane 以外の Job は取得しない (ADR-129)。
+対象 lane 以外の Job は取得しない。
 </p>
 
     <div class="io">
@@ -40063,7 +40063,7 @@ attempts が max_attempts に達した dead-letter 確定、running → queued (
 <article class="vocab-entry" id="context-provisioning-glossary-provisioningdelivery">
       <div class="vocab-name"><code class="name">ProvisioningDelivery</code></div>
       <div class="vocab-body">
-        <p class="def">内部の lifecycle event 1 件を下流へ反映するための配送単位。idempotency key (tenant_id, connection_id, source_type, source_id, source_version) で重複 enqueue を no-op にする。実行は Jobs (wi-126) 上の Job に委譲する。</p>
+        <p class="def">内部の lifecycle event 1 件を下流へ反映するための配送単位。idempotency key (tenant_id, connection_id, source_type, source_id, source_version) で重複 enqueue を no-op にする。実行は Jobs 上の Job に委譲する。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">delivery</span> <span class="chip chip-alias">配送</span></div>
 
 
@@ -40540,7 +40540,7 @@ idmagic 側の User/Group aggregate、下流は mirror。scope は既存 Applica
     <header><h3>ProvisioningDelivery</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">Provisioning/model/ProvisioningDelivery</code></header>
     <p class="desc">内部 lifecycle event 1 件分の配送単位。idempotency key
 (tenant_id, connection_id, source_type, source_id, source_version) は一意制約であり、
-同一 key の重複 enqueue は既存行への no-op とする。job_id は dispatcher が Jobs (wi-126)
+同一 key の重複 enqueue は既存行への no-op とする。job_id は dispatcher が Jobs
 へ enqueue した後に関連付ける (未 enqueue の間は未設定)。
 </p>
     <dl class="kv"><dt>identity</dt><dd><code>id</code></dd></dl>
@@ -41501,7 +41501,7 @@ failed という非終端の中間状態は持たない — dead_letter は Job 
   </article>
 <article class="card" id="scl-Provisioning/model/ProvisioningConnectionQuarantineCleared">
     <header><h3>ProvisioningConnectionQuarantineCleared</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">Provisioning/model/ProvisioningConnectionQuarantineCleared</code></header>
-    <p class="desc">管理者が ResumeProvisioningConnection で quarantine を解除した。SCL 化にあたり wi-45 のイベント一覧へ追加した (quarantine を解除する経路が無いと復旧不能になるため)。</p>
+    <p class="desc">管理者が ResumeProvisioningConnection で quarantine を解除した。quarantine を解除する経路が無いと復旧不能になるため、イベント一覧へ追加した。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -42111,7 +42111,7 @@ credential rotation として扱い ProvisioningCredentialRotated も発行す�
   </article>
 <article class="card" id="scl-Provisioning/interface/ResumeProvisioningConnection">
     <header><h3>ResumeProvisioningConnection</h3><span class="badge badge-access-protected">protected</span> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/TenantAdministrator">TenantAdministrator</a> <a class="chip chip-policy-ref" href="#scl-Provisioning/authorization_policy/ManagementApiClientWriteProvisioning">ManagementApiClientWriteProvisioning</a> <code>Application:input.id</code><code class="canonical-ref">Provisioning/interface/ResumeProvisioningConnection</code></header>
-    <p class="desc">管理者が quarantine された ProvisioningConnection を解除し配送を再開する。wi-45 の運用手順一覧に quarantine 解除の経路が明記されていなかったため、SCL 化にあたり本 interface を追加した。</p>
+    <p class="desc">管理者が quarantine された ProvisioningConnection を解除し配送を再開する。運用手順に quarantine 解除の経路が明記されていなかったため、本 interface を追加した。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -42716,12 +42716,12 @@ RetryProvisioningDelivery が pending へ戻す (管理者操作であり本状�
     <div class="vocab-list"><article class="vocab-entry" id="context-sourcing-glossary-identitysource">
       <div class="vocab-name"><code class="name">IdentitySource</code></div>
       <div class="vocab-body">
-        <p class="def">ある identity 集団に対して idmagic の外側で権威を持つ外部システムと、その関係を表す tenant-scoped な binding。どの source か、credential / enrollment、有効・無効、属性 mapping、 削除・無効化を上流権威にどこまで従わせるかを束ねる。source binding を持たない取り込み経路は 本 context の対象ではない (ADR-141 決定 1)。</p>
+        <p class="def">ある identity 集団に対して idmagic の外側で権威を持つ外部システムと、その関係を表す tenant-scoped な binding。どの source か、credential / enrollment、有効・無効、属性 mapping、 削除・無効化を上流権威にどこまで従わせるかを束ねる。source binding を持たない取り込み経路は 本 context の対象ではない。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">source</span> <span class="chip chip-alias">identity source</span> <span class="chip chip-alias">取り込み元</span></div>
 
         <div class="ntcw">
         <div class="ntcw-label">do not confuse with</div>
-        <ul><li><strong>ProvisioningConnection</strong> — <span class="muted">IdentitySource は idmagic が mirror 側になる上流権威への binding。ProvisioningConnection は idmagic が真実源で下流 target を mirror にする outbound の接続 (Provisioning context)。 権威の向きが逆で、動詞と invariant も反転する。</span></li><li><strong>ExternalIdentityProvider</strong> — <span class="muted">login-time federation / broker の upstream IdP (wi-30、Authentication 所有) は認証してきた 1 人を JIT で扱い、集団の inventory も drift も持たない。IdentitySource は集団に対する 権威関係を持続的に保持する。</span></li></ul>
+        <ul><li><strong>ProvisioningConnection</strong> — <span class="muted">IdentitySource は idmagic が mirror 側になる上流権威への binding。ProvisioningConnection は idmagic が真実源で下流 target を mirror にする outbound の接続 (Provisioning context)。 権威の向きが逆で、動詞と invariant も反転する。</span></li><li><strong>ExternalIdentityProvider</strong> — <span class="muted">login-time federation / broker の upstream IdP (Authentication 所有) は認証してきた 1 人を JIT で扱い、集団の inventory も drift も持たない。IdentitySource は集団に対する 権威関係を持続的に保持する。</span></li></ul>
       </div>
       </div>
     </article>
@@ -42740,19 +42740,19 @@ RetryProvisioningDelivery が pending へ戻す (管理者操作であり本状�
 <article class="vocab-entry" id="context-sourcing-glossary-ingestion">
       <div class="vocab-name"><code class="name">Ingestion</code></div>
       <div class="vocab-body">
-        <p class="def">IdentitySource が権威を持つ状態を idmagic 内部の principal へ反映する行為。作成・更新・ 無効化・削除は IdManagement の published な冪等 command surface を経由して適用し、 record-of-truth 側に source 固有の関心を持ち込まない (ADR-141 決定 7)。</p>
+        <p class="def">IdentitySource が権威を持つ状態を idmagic 内部の principal へ反映する行為。作成・更新・ 無効化・削除は IdManagement の published な冪等 command surface を経由して適用し、 record-of-truth 側に source 固有の関心を持ち込まない。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">ingest</span> <span class="chip chip-alias">取り込み</span></div>
 
         <div class="ntcw">
         <div class="ntcw-label">do not confuse with</div>
-        <ul><li><strong>UserImport</strong> — <span class="muted">管理者の CSV upload (IdManagement 所有、ADR-140 の CSV export と対称) は権威が idmagic 自身に あり source binding を持たないため Ingestion ではない。scheduled file feed になった時点で 初めて本 context の source slice になる (ADR-141 決定 5)。</span></li><li><strong>Seeding</strong> — <span class="muted">Seeding は環境構築のための内部起点の投入で、外部権威も correlation も持たない。</span></li></ul>
+        <ul><li><strong>UserImport</strong> — <span class="muted">管理者の CSV upload (IdManagement 所有、CSV export と対称) は権威が idmagic 自身に あり source binding を持たないため Ingestion ではない。scheduled file feed になった時点で 初めて本 context の source slice になる。</span></li><li><strong>Seeding</strong> — <span class="muted">Seeding は環境構築のための内部起点の投入で、外部権威も correlation も持たない。</span></li></ul>
       </div>
       </div>
     </article>
 <article class="vocab-entry" id="context-sourcing-glossary-ingestionrun">
       <div class="vocab-name"><code class="name">IngestionRun</code></div>
       <div class="vocab-body">
-        <p class="def">1 回の取り込み実行の観測単位。対象 source、開始・終了、適用件数と失敗、再開位置を持つ。 実行は Jobs の durable job に委譲し、失敗しても再開できる粒度で観測できるようにする。 scim slice は外部 IdP からの request 単位で適用するため run を持たず、directory (wi-95) 以降で 実体が入る。</p>
+        <p class="def">1 回の取り込み実行の観測単位。対象 source、開始・終了、適用件数と失敗、再開位置を持つ。 実行は Jobs の durable job に委譲し、失敗しても再開できる粒度で観測できるようにする。 scim slice は外部 IdP からの request 単位で適用するため run を持たず、directory 以降で 実体が入る。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">ingestion run</span> <span class="chip chip-alias">取り込み実行</span></div>
 
 
@@ -42775,7 +42775,7 @@ RetryProvisioningDelivery が pending へ戻す (管理者操作であり本状�
 
         <div class="ntcw">
         <div class="ntcw-label">do not confuse with</div>
-        <ul><li><strong>ReconciliationMatch</strong> — <span class="muted">wi-156 の orphan 照合は idmagic が書いた downstream target 台帳との突き合わせ (Application / Provisioning 側)。SourceDrift は上流権威との乖離であり、向きが逆。</span></li></ul>
+        <ul><li><strong>ReconciliationMatch</strong> — <span class="muted">orphan 照合は idmagic が書いた downstream target 台帳との突き合わせ (Application / Provisioning 側)。SourceDrift は上流権威との乖離であり、向きが逆。</span></li></ul>
       </div>
       </div>
     </article>
@@ -46224,7 +46224,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
 <article class="vocab-entry" id="context-workloadidentity-glossary-jwtsvid">
       <div class="vocab-name"><code class="name">JwtSvid</code></div>
       <div class="vocab-body">
-        <p class="def">OIDC 互換の JWT を wire 形式とする外部 attestation token。Kubernetes projected ServiceAccount token・クラウドの instance identity (OIDC) token・SPIFFE の JWT-SVID を包含する第一級の subject_token 種別 ([[ADR-053]])。X.509-SVID (mTLS) は将来の拡張。</p>
+        <p class="def">OIDC 互換の JWT を wire 形式とする外部 attestation token。Kubernetes projected ServiceAccount token・クラウドの instance identity (OIDC) token・SPIFFE の JWT-SVID を包含する第一級の subject_token 種別。X.509-SVID (mTLS) は将来の拡張。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="chip chip-alias">JWT-SVID</span></div>
 
 
@@ -46242,7 +46242,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
 <article class="vocab-entry" id="context-workloadidentity-glossary-failclosed">
       <div class="vocab-name"><code class="name">FailClosed</code></div>
       <div class="vocab-body">
-        <p class="def">未登録 issuer・署名不正・期限切れ・pattern 不一致・ambiguous match・束縛先 Agent が Active でない、のいずれかに該当する場合、常に交換を拒否する方針。判定漏れは「交換しない」側へ倒す ([[ADR-053]])。</p>
+        <p class="def">未登録 issuer・署名不正・期限切れ・pattern 不一致・ambiguous match・束縛先 Agent が Active でない、のいずれかに該当する場合、常に交換を拒否する方針。判定漏れは「交換しない」側へ倒す。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -47204,7 +47204,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article>
 <article class="card" id="scl-WorkloadIdentity/model/WorkloadTokenExchanged">
     <header><h3>WorkloadTokenExchanged</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">WorkloadIdentity/model/WorkloadTokenExchanged</code></header>
-    <p class="desc">外部 attestation の検証を通過し、束縛先 Agent の資格情報として idmagic token を発行した ([[ADR-053]])。</p>
+    <p class="desc">外部 attestation の検証を通過し、束縛先 Agent の資格情報として idmagic token を発行した。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -47250,7 +47250,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article>
 <article class="card" id="scl-WorkloadIdentity/model/WorkloadAttestationRejected">
     <header><h3>WorkloadAttestationRejected</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">WorkloadIdentity/model/WorkloadAttestationRejected</code></header>
-    <p class="desc">外部 attestation token の検証が fail-closed で拒否された ([[ADR-053]])。</p>
+    <p class="desc">外部 attestation token の検証が fail-closed で拒否された。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -47760,7 +47760,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article>
 <article class="card" id="scl-WorkloadIdentity/interface/VerifyWorkloadAttestation">
     <header><h3>VerifyWorkloadAttestation</h3><span class="badge badge-access-internal">internal</span><code class="canonical-ref">WorkloadIdentity/interface/VerifyWorkloadAttestation</code></header>
-    <p class="desc">OAuth2 の token-exchange grant (subject_token_type=JWT-SVID URN) から呼ぶ published interface。外部 attestation token を登録済み WorkloadTrustBundle で検証し (署名・iss・aud・exp・TTL 上限)、テナント内の AgentWorkloadBinding で subject を一意に Agent へ写し、束縛先 Agent が Active であることを確認する。いずれかに失敗すれば fail-closed で拒否する。idmagic 自身は SPIRE server/agent を実装しない (relying party 側に徹する、[[ADR-053]])。</p>
+    <p class="desc">OAuth2 の token-exchange grant (subject_token_type=JWT-SVID URN) から呼ぶ published interface。外部 attestation token を登録済み WorkloadTrustBundle で検証し (署名・iss・aud・exp・TTL 上限)、テナント内の AgentWorkloadBinding で subject を一意に Agent へ写し、束縛先 Agent が Active であることを確認する。いずれかに失敗すれば fail-closed で拒否する。idmagic 自身は SPIRE server/agent を実装しない (relying party 側に徹する)。</p>
 
     <div class="io">
     <div class="label">Input</div>
@@ -48092,7 +48092,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
     <div class="vocab-list"><article class="vocab-entry" id="context-sharedsignals-glossary-ssf">
       <div class="vocab-name"><code class="name">SSF</code></div>
       <div class="vocab-body">
-        <p class="def">OpenID Shared Signals Framework。Security Event Token (SET) を transport にセキュリティイベントを push/受信する標準。idmagic は transmitter と receiver の双方として振る舞う ([[ADR-057]])。</p>
+        <p class="def">OpenID Shared Signals Framework。Security Event Token (SET) を transport にセキュリティイベントを push/受信する標準。idmagic は transmitter と receiver の双方として振る舞う。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -48119,7 +48119,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
 <article class="vocab-entry" id="context-sharedsignals-glossary-localrevocation">
       <div class="vocab-name"><code class="name">LocalRevocation</code></div>
       <div class="vocab-body">
-        <p class="def">idmagic 自身の Introspect / 保護 API が revocation epoch と access token の issued_at を比較して行う、当該 IdP 内で完結する失効判定。CAEP/SSF イベント配送より常に先行して確定させる ([[ADR-057]] 決定 5)。</p>
+        <p class="def">idmagic 自身の Introspect / 保護 API が revocation epoch と access token の issued_at を比較して行う、当該 IdP 内で完結する失効判定。CAEP/SSF イベント配送より常に先行して確定させる。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -48128,7 +48128,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
 <article class="vocab-entry" id="context-sharedsignals-glossary-ecosystempropagation">
       <div class="vocab-name"><code class="name">EcosystemPropagation</code></div>
       <div class="vocab-body">
-        <p class="def">LocalRevocation で確定した失効を、SSF stream 経由で外部 receiver (別 IdP・resource server・ガバナンス基盤) へ CAEP イベントとして伝える層。receiver 障害・遅延は LocalRevocation を遅らせない ([[ADR-057]] 決定 5)。</p>
+        <p class="def">LocalRevocation で確定した失効を、SSF stream 経由で外部 receiver (別 IdP・resource server・ガバナンス基盤) へ CAEP イベントとして伝える層。receiver 障害・遅延は LocalRevocation を遅らせない。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -48137,7 +48137,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
 <article class="vocab-entry" id="context-sharedsignals-glossary-failclosed">
       <div class="vocab-name"><code class="name">FailClosed</code></div>
       <div class="vocab-body">
-        <p class="def">SET の署名検証失敗・鍵不明・改竄検知・issuer 未登録・重複 (replay) 検知・revocation epoch 判定不能のいずれかに該当する場合、常に「反映しない/無効とみなす」側へ倒す方針 ([[ADR-057]])。</p>
+        <p class="def">SET の署名検証失敗・鍵不明・改竄検知・issuer 未登録・重複 (replay) 検知・revocation epoch 判定不能のいずれかに該当する場合、常に「反映しない/無効とみなす」側へ倒す方針。</p>
         <div class="aliases"><span class="aliases-label">aliases</span> <span class="muted">—</span></div>
 
 
@@ -48354,7 +48354,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article>
 <article class="card" id="scl-SharedSignals/model/SsfReceiverConfig">
     <header><h3>SsfReceiverConfig</h3><span class="badge badge-kind-entity">entity</span><code class="canonical-ref">SharedSignals/model/SsfReceiverConfig</code></header>
-    <p class="desc">direction=Receive の SsfStream に 1 対 1 で付随する、外部 transmitter の信頼設定。WorkloadTrustBundle ([[ADR-053]]) と同型の登録済み issuer 検証を再利用する。jwks_uri と jwks (inline) は少なくとも一方が必須。</p>
+    <p class="desc">direction=Receive の SsfStream に 1 対 1 で付随する、外部 transmitter の信頼設定。WorkloadTrustBundle と同型の登録済み issuer 検証を再利用する。jwks_uri と jwks (inline) は少なくとも一方が必須。</p>
     <dl class="kv"><dt>identity</dt><dd><code>stream_id</code></dd></dl>
     <table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -48780,7 +48780,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article>
 <article class="card" id="scl-SharedSignals/model/CaepEventType">
     <header><h3>CaepEventType</h3><span class="badge badge-kind-enum">enum</span><code class="canonical-ref">SharedSignals/model/CaepEventType</code></header>
-    <p class="desc">実装する CAEP イベント種別 ([[ADR-057]] 決定 2)。</p>
+    <p class="desc">実装する CAEP イベント種別。</p>
 
     <div class="enum-vals"><span class="chip chip-enum">session-revoked</span> <span class="chip chip-enum">token-claims-change</span> <span class="chip chip-enum">credential-change</span> <span class="chip chip-enum">assurance-level-change</span></div>
 
@@ -48851,7 +48851,7 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
   </article>
 <article class="card" id="scl-SharedSignals/model/AgentAccessRevoked">
     <header><h3>AgentAccessRevoked</h3><span class="badge badge-kind-event">event</span><code class="canonical-ref">SharedSignals/model/AgentAccessRevoked</code></header>
-    <p class="desc">kill-switch / 所有者オフボードを起点に Agent のアクセスが即時失効したことを表す、監査・ガバナンス向けの要約イベント ([[wi-59-agent-governance-guardrails-audit-inventory]] が読む)。</p>
+    <p class="desc">kill-switch / 所有者オフボードを起点に Agent のアクセスが即時失効したことを表す、監査・ガバナンス向けの要約イベント。</p>
 
     <div class="label">Payload</div><table class="fields">
     <thead><tr><th>Field</th><th>Type</th><th>Presence</th><th>Constraints / Annotations</th><th>Description</th></tr></thead>
@@ -49913,8 +49913,8 @@ API process の即時 dispatch が失敗しても、periodic dispatcher が同�
         <header><h3>RevocationPropagationLatency</h3><span class="badge badge-kind-slo">SLO</span><code class="canonical-ref">SharedSignals/objective/RevocationPropagationLatency</code></header>
         <p class="desc">AgentAccessRevoked (LocalRevocation, kill-switch/所有者オフボード/inbound SET のいずれが
 起点でも) から、購読中の SsfStream 向け SecurityEventDelivery が delivered になるまでの遅延の
-99% 以上を 30 秒未満に収める。LocalRevocation 自体はこの目標を待たずに即時完了し
-(ADR-057 決定6)、この目標は EcosystemPropagation (外部 receiver への SET 配送) だけを対象とする。
+99% 以上を 30 秒未満に収める。LocalRevocation 自体はこの目標を待たずに即時完了し、
+この目標は EcosystemPropagation (外部 receiver への SET 配送) だけを対象とする。
 </p>
         <dl class="kv">
 

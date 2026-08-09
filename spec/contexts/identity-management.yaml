@@ -1,5 +1,5 @@
 # idmagic IdManagement — SCL
-# Migrated to SCL 3.0 by wi-209 (ADR-103).
+# SCL 3.0 context specification.
 
 system: idmagic
 spec_version: "3.0"
@@ -73,7 +73,7 @@ glossary:
     aliases:
       - restore
   Purge:
-    definition: User を Active / Disabled / PendingDeletion から Deleted に遷移させる確定削除操作。ADR-036 の anonymize cascade を実行し、猶予期間経過後の自動 purge と admin の明示的完全削除の双方から呼ばれる。
+    definition: User を Active / Disabled / PendingDeletion から Deleted に遷移させる確定削除操作。anonymize cascade を実行し、猶予期間経過後の自動 purge と admin の明示的完全削除の双方から呼ばれる。
     aliases:
       - purge
   Group:
@@ -2387,7 +2387,7 @@ interfaces:
         successful_status_codes:
           - "204"
   DeleteAdminUser:
-    description: "管理者がユーザーを削除する。既定は SoftDelete で、status を\nPendingDeletion に遷移させ PII / Consent / RefreshToken / Session を温存する\n(猶予期間内は Restore 可能)。`purge=true` の場合は ADR-036 の anonymize\ncascade を即時実施し tombstone 化する。いずれも冪等で、既に同じ終着状態の\nuser への再呼び出しは no-op として 204 を返す。自分自身は削除できない\n(admin / system_admin の自爆防止)。\n"
+    description: "管理者がユーザーを削除する。既定は SoftDelete で、status を\nPendingDeletion に遷移させ PII / Consent / RefreshToken / Session を温存する\n(猶予期間内は Restore 可能)。`purge=true` の場合は anonymize\ncascade を即時実施し tombstone 化する。いずれも冪等で、既に同じ終着状態の\nuser への再呼び出しは no-op として 204 を返す。自分自身は削除できない\n(admin / system_admin の自爆防止)。\n"
     input:
       user_id:
         type: String

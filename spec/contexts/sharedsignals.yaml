@@ -23,17 +23,17 @@ standards:
 
 glossary:
   SSF:
-    definition: OpenID Shared Signals Framework。Security Event Token (SET) を transport にセキュリティイベントを push/受信する標準。idmagic は transmitter と receiver の双方として振る舞う ([[ADR-057]])。
+    definition: OpenID Shared Signals Framework。Security Event Token (SET) を transport にセキュリティイベントを push/受信する標準。idmagic は transmitter と receiver の双方として振る舞う。
   CAEP:
     definition: OpenID Continuous Access Evaluation Profile。SSF 上で session-revoked / token-claims-change / credential-change / assurance-level-change を表現するイベント種別の規約。
   RevocationEpoch:
     definition: Agent ごとに保持する単調増加のタイムスタンプ。これより前に発行された access token / session は無効とみなす (fail-closed)。KillAgent・DisableAgent・UnbindAgentCredential・所有者 (owner_user_id) の Disable/Delete・受理した inbound SecurityEvent のいずれでも前進する。所有者オフボードは配下の全 Agent の epoch を一括で前進させる。
   LocalRevocation:
-    definition: idmagic 自身の Introspect / 保護 API が revocation epoch と access token の issued_at を比較して行う、当該 IdP 内で完結する失効判定。CAEP/SSF イベント配送より常に先行して確定させる ([[ADR-057]] 決定 5)。
+    definition: idmagic 自身の Introspect / 保護 API が revocation epoch と access token の issued_at を比較して行う、当該 IdP 内で完結する失効判定。CAEP/SSF イベント配送より常に先行して確定させる。
   EcosystemPropagation:
-    definition: LocalRevocation で確定した失効を、SSF stream 経由で外部 receiver (別 IdP・resource server・ガバナンス基盤) へ CAEP イベントとして伝える層。receiver 障害・遅延は LocalRevocation を遅らせない ([[ADR-057]] 決定 5)。
+    definition: LocalRevocation で確定した失効を、SSF stream 経由で外部 receiver (別 IdP・resource server・ガバナンス基盤) へ CAEP イベントとして伝える層。receiver 障害・遅延は LocalRevocation を遅らせない。
   FailClosed:
-    definition: SET の署名検証失敗・鍵不明・改竄検知・issuer 未登録・重複 (replay) 検知・revocation epoch 判定不能のいずれかに該当する場合、常に「反映しない/無効とみなす」側へ倒す方針 ([[ADR-057]])。
+    definition: SET の署名検証失敗・鍵不明・改竄検知・issuer 未登録・重複 (replay) 検知・revocation epoch 判定不能のいずれかに該当する場合、常に「反映しない/無効とみなす」側へ倒す方針。
   System:
     definition: SharedSignals の revocation 反映・SET 送受信 usecase そのものを指す、人間の操作者を伴わない技術的な主体。KillAgent 等のドメインイベントを起点に revocation epoch を前進させ、CAEP イベントを生成する。
 
@@ -129,7 +129,7 @@ models:
       - disabled
   CaepEventType:
     kind: enum
-    description: 実装する CAEP イベント種別 ([[ADR-057]] 決定 2)。
+    description: 実装する CAEP イベント種別。
     values:
       - session-revoked
       - token-claims-change
@@ -346,7 +346,7 @@ models:
 
   SsfReceiverConfig:
     kind: entity
-    description: direction=Receive の SsfStream に 1 対 1 で付随する、外部 transmitter の信頼設定。WorkloadTrustBundle ([[ADR-053]]) と同型の登録済み issuer 検証を再利用する。jwks_uri と jwks (inline) は少なくとも一方が必須。
+    description: direction=Receive の SsfStream に 1 対 1 で付随する、外部 transmitter の信頼設定。WorkloadTrustBundle と同型の登録済み issuer 検証を再利用する。jwks_uri と jwks (inline) は少なくとも一方が必須。
     identity: stream_id
     constraints:
       - "jwks_uri != null || jwks != null"
@@ -446,7 +446,7 @@ models:
         type: DateTime
   AgentAccessRevoked:
     kind: event
-    description: kill-switch / 所有者オフボードを起点に Agent のアクセスが即時失効したことを表す、監査・ガバナンス向けの要約イベント ([[wi-59-agent-governance-guardrails-audit-inventory]] が読む)。
+    description: kill-switch / 所有者オフボードを起点に Agent のアクセスが即時失効したことを表す、監査・ガバナンス向けの要約イベント。
     payload:
       occurredAt:
         type: DateTime
@@ -948,7 +948,7 @@ authorization:
 
 objectives:
   RevocationPropagationLatency:
-    description: "AgentAccessRevoked (LocalRevocation, kill-switch/所有者オフボード/inbound SET のいずれが\n起点でも) から、購読中の SsfStream 向け SecurityEventDelivery が delivered になるまでの遅延の\n99% 以上を 30 秒未満に収める。LocalRevocation 自体はこの目標を待たずに即時完了し\n(ADR-057 決定6)、この目標は EcosystemPropagation (外部 receiver への SET 配送) だけを対象とする。\n"
+    description: "AgentAccessRevoked (LocalRevocation, kill-switch/所有者オフボード/inbound SET のいずれが\n起点でも) から、購読中の SsfStream 向け SecurityEventDelivery が delivered になるまでの遅延の\n99% 以上を 30 秒未満に収める。LocalRevocation 自体はこの目標を待たずに即時完了し、\nこの目標は EcosystemPropagation (外部 receiver への SET 配送) だけを対象とする。\n"
     indicator: measurement.revocation_to_delivery_latency < duration("30s")
     target: 0.99
     window: 30d

@@ -105,7 +105,7 @@ context_map:
         via: published_language
         uses:
           - JobRef
-        reason: back-channel logout の配送 (LogoutNotification) を再試行可能な durable job (kind=backchannel_logout_delivery) として実行する (wi-28)。
+        reason: back-channel logout の配送 (LogoutNotification) を再試行可能な durable job (kind=backchannel_logout_delivery) として実行する。
       Application:
         via: published_language
         uses:
@@ -126,12 +126,12 @@ context_map:
         via: published_language
         uses:
           - VerifyWorkloadAttestation
-        reason: token-exchange grant は subject_token_type が workload 系のとき、外部 attestation の検証と Agent principal への写像を WorkloadIdentity の published interface に委譲する (wi-54, ADR-053)。
+        reason: token-exchange grant は subject_token_type が workload 系のとき、外部 attestation の検証と Agent principal への写像を WorkloadIdentity の published interface に委譲する。
       SharedSignals:
         via: published_language
         uses:
           - CheckRevocationEpoch
-        reason: Introspect は access token の issued_at と Agent の revocation epoch を比較し、kill-switch/所有者オフボード後に既発行 token を fail-closed で無効と判定する (wi-58, ADR-057)。
+        reason: Introspect は access token の issued_at と Agent の revocation epoch を比較し、kill-switch/所有者オフボード後に既発行 token を fail-closed で無効と判定する。
   Audit:
     description: "authentication、identity-management、oauth2、tenancy、signing-keys、application、\nsaml / wsfederation など複数 bounded context から発火されるセキュリティ監査イベントの\n横断的な read model を所有する。監査イベントの検索・エクスポート管理 API、検索属性\nregistry、PII 変換方針、保持期間を集約する。イベントの発火元は各 context のままであり、\nAudit はそれらを横断して読む窓口を所有する。\n"
     path: contexts/audit.yaml
@@ -205,7 +205,7 @@ context_map:
           - TenantRef
         reason: 署名鍵と証明書は tenant / realm 境界内に閉じる。
   DataKeys:
-    description: "テナントごとの DataEncryptionKey (DEK) のライフサイクル (bootstrap/rotate/\ndisable/destroy) とメタデータを所有する。DEK は master key provider (OpenBao Transit\n互換、dev/local は Tink cleartext keyset) が wrap し、DB に残る可逆秘密 (TOTP シード等) の\nエンベロープ暗号化に使う ([[ADR-148]])。EnvelopeCrypto port 自体は Go 側の\nshared technical adapter に置き、SCL への露出は EncryptedSecret / 鍵ライフサイクルの\nメタデータに留める。署名鍵 (private_jwk) の鍵管理は所有しない (SigningKeys の範囲)。\n"
+    description: "テナントごとの DataEncryptionKey (DEK) のライフサイクル (bootstrap/rotate/\ndisable/destroy) とメタデータを所有する。DEK は master key provider (OpenBao Transit\n互換、dev/local は Tink cleartext keyset) が wrap し、DB に残る可逆秘密 (TOTP シード等) の\nエンベロープ暗号化に使う。EnvelopeCrypto port 自体は Go 側の\nshared technical adapter に置き、SCL への露出は EncryptedSecret / 鍵ライフサイクルの\nメタデータに留める。署名鍵 (private_jwk) の鍵管理は所有しない (SigningKeys の範囲)。\n"
     path: contexts/data-keys.yaml
     publishes:
       - EncryptedSecret
@@ -313,7 +313,7 @@ context_map:
           - TenantRef
         reason: API アクセストークンはテナント境界内に閉じ、tenant_id を必須とする。
   Jobs:
-    description: "テナント境界を保つ汎用非同期ジョブ基盤の durable queue と worker runtime を所有する。\n各ジョブの業務ロジックは呼び出し元の bounded context の usecase に残り、Jobs は\nenqueue・claim・リース・リトライ・進捗可視化という技術的能力だけを提供する。管理者向け\n一覧/詳細/キャンセル API と運用 metrics は wi-157-job-admin-operations-surface が別途所有する。\n"
+    description: "テナント境界を保つ汎用非同期ジョブ基盤の durable queue と worker runtime を所有する。\n各ジョブの業務ロジックは呼び出し元の bounded context の usecase に残り、Jobs は\nenqueue・claim・リース・リトライ・進捗可視化という技術的能力だけを提供する。管理者向け\n一覧/詳細/キャンセル API と運用 metrics は別 feature slice が所有する。\n"
     path: contexts/jobs.yaml
     publishes:
       - JobRef
@@ -369,7 +369,7 @@ context_map:
           - ApiTokenScope
         reason: Provisioning 管理 API は ApiTokens が所有する provisioning:* scope で操作を認可する。
   Sourcing:
-    description: "上流の外部権威から idmagic へ identity を取り込む責務を所有する (inbound)。真実源は\n外部 source 側で、idmagic 内部の principal はその mirror。source binding・外部不変 ID との\ncorrelation・取り込み実行と cursor・上流権威に従う削除/無効化規則を集約し、source ごとに\nfeature slice を並べる。現在の slice は scim (SCIM 2.0 server。/scim/v2/Users、/scim/v2/Groups\nなどを提供し、外部 IdP (Okta, Google IAM, Entra ID) からの user/group 同期を受ける) のみで、\ndirectory (閉域 Directory Connector) と将来の feed (scheduled file feed) を同 context に並べる。\n分類軸は方向でも runtime 形状でもなく権威と source binding の有無であり、管理者 CSV import\n(IdManagement)、login-time federation (Authentication)、downstream target の台帳照合\n(Application/Provisioning 側) は本 context の対象ではない (ADR-141)。\n"
+    description: "上流の外部権威から idmagic へ identity を取り込む責務を所有する (inbound)。真実源は\n外部 source 側で、idmagic 内部の principal はその mirror。source binding・外部不変 ID との\ncorrelation・取り込み実行と cursor・上流権威に従う削除/無効化規則を集約し、source ごとに\nfeature slice を並べる。現在の slice は scim (SCIM 2.0 server。/scim/v2/Users、/scim/v2/Groups\nなどを提供し、外部 IdP (Okta, Google IAM, Entra ID) からの user/group 同期を受ける) のみで、\ndirectory (閉域 Directory Connector) と将来の feed (scheduled file feed) を同 context に並べる。\n分類軸は方向でも runtime 形状でもなく権威と source binding の有無であり、管理者 CSV import\n(IdManagement)、login-time federation (Authentication)、downstream target の台帳照合\n(Application/Provisioning 側) は本 context の対象ではない。\n"
     path: contexts/sourcing.yaml
     publishes:
       []
@@ -419,7 +419,7 @@ context_map:
           - JobRef
         reason: WorkflowRun は lifecycle_workflow_run kind の durable job として実行される。
   WorkloadIdentity:
-    description: "自律エージェントランタイム向けの workload identity federation を所有する ([[ADR-053]])。テナントが登録した外部 attestation 発行者の信頼設定 (WorkloadTrustBundle) と、外部 subject を既存 Agent へ写す mapping (AgentWorkloadBinding) を管理する。OIDC 互換 JWT (Kubernetes projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID) を第一級の attestation 種別とし、idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。検証を通過した外部 attestation を OAuth2 の token-exchange grant (RFC 8693) へ subject として渡し、専用の資格情報経路は新設しない。\n"
+    description: "自律エージェントランタイム向けの workload identity federation を所有する。テナントが登録した外部 attestation 発行者の信頼設定 (WorkloadTrustBundle) と、外部 subject を既存 Agent へ写す mapping (AgentWorkloadBinding) を管理する。OIDC 互換 JWT (Kubernetes projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID) を第一級の attestation 種別とし、idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。検証を通過した外部 attestation を OAuth2 の token-exchange grant (RFC 8693) へ subject として渡し、専用の資格情報経路は新設しない。\n"
     path: contexts/workloadidentity.yaml
     publishes:
       - VerifyWorkloadAttestation
@@ -435,7 +435,7 @@ context_map:
           - AgentRef
         reason: AgentWorkloadBinding は外部 subject を同一テナントの既存 Agent へ写す。写像先 Agent が Active でなければ fail-closed で拒否する。
   SharedSignals:
-    description: "Shared Signals Framework (SSF) / Continuous Access Evaluation Profile (CAEP) による\nエージェントの近リアルタイム失効を所有する ([[ADR-057]])。Agent ごとの revocation epoch を保持し、\nKillAgent・DisableAgent・UnbindAgentCredential・所有者オフボード・検証済み inbound Security Event\nToken (SET, RFC 8417) のいずれかを起点に fail-closed で前進させる (LocalRevocation)。前進した epoch は\nOAuth2 の Introspect が access token の issued_at と比較し即時失効へ反映する。同時に SSF stream 経由で\nCAEP イベントを外部 receiver へ push し (EcosystemPropagation)、外部 transmitter からの検証済みイベントも\n受理してローカル失効へ収束させる。idmagic は transmitter と receiver の双方として振る舞う。\n"
+    description: "Shared Signals Framework (SSF) / Continuous Access Evaluation Profile (CAEP) による\nエージェントの近リアルタイム失効を所有する。Agent ごとの revocation epoch を保持し、\nKillAgent・DisableAgent・UnbindAgentCredential・所有者オフボード・検証済み inbound Security Event\nToken (SET, RFC 8417) のいずれかを起点に fail-closed で前進させる (LocalRevocation)。前進した epoch は\nOAuth2 の Introspect が access token の issued_at と比較し即時失効へ反映する。同時に SSF stream 経由で\nCAEP イベントを外部 receiver へ push し (EcosystemPropagation)、外部 transmitter からの検証済みイベントも\n受理してローカル失効へ収束させる。idmagic は transmitter と receiver の双方として振る舞う。\n"
     path: contexts/sharedsignals.yaml
     publishes:
       - CheckRevocationEpoch
@@ -457,4 +457,4 @@ context_map:
           - SigningKey
           - JWKS
           - SignatureAlgorithm
-        reason: outbound Security Event Token (SET) の署名は新設の鍵管理を持たず、既存の JWT 署名鍵ローテーションと JWKS 配布に相乗りする ([[ADR-009]])。
+        reason: outbound Security Event Token (SET) の署名は新設の鍵管理を持たず、既存の JWT 署名鍵ローテーションと JWKS 配布に相乗りする。

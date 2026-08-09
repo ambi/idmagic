@@ -119,14 +119,14 @@ models:
         description: 作成時に確定する単一 protocol。weblink は未設定で、作成後の接続・解除・種別変更はできない。
       category_ids:
         type: "UUID[]"
-        description: 付与された ApplicationCategory の id 群 (0..N)。ポータルのセクション分類に使う (ADR-069)。
+        description: 付与された ApplicationCategory の id 群 (0..N)。ポータルのセクション分類に使う。
       created_at:
         type: DateTime
       updated_at:
         type: DateTime
   ApplicationCategory:
     kind: entity
-    description: "管理者が tenant 単位で定義するポータルの分類セクション (ADR-069)。Application に 0..N 個\n付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。割当境界は越えず、\nセクションには利用者に割当済みのアプリだけが並ぶ。\n"
+    description: "管理者が tenant 単位で定義するポータルの分類セクション。Application に 0..N 個\n付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。割当境界は越えず、\nセクションには利用者に割当済みのアプリだけが並ぶ。\n"
     identity:
       - tenant_id
       - id
@@ -229,7 +229,7 @@ models:
         optional: true
   AppSignInPolicy:
     kind: entity
-    description: Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル, ADR-081)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。
+    description: Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。
     identity: application_id
     fields:
       application_id:
@@ -243,7 +243,7 @@ models:
         type: DateTime
   TenantDefaultSignInPolicy:
     kind: entity
-    description: テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする (ADR-081)。
+    description: テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする。
     identity:
       - tenant_id
     fields:
@@ -303,7 +303,7 @@ models:
         type: "AdminApplicationResponse[]"
   AdminApplicationCategoryRequest:
     kind: value_object
-    description: ApplicationCategory の作成 / 更新リクエスト。position 省略時は末尾扱い (ADR-069)。
+    description: ApplicationCategory の作成 / 更新リクエスト。position 省略時は末尾扱い。
     fields:
       name:
         type: String
@@ -334,7 +334,7 @@ models:
         type: "AdminApplicationCategoryResponse[]"
   ApplicationCategoriesRequest:
     kind: value_object
-    description: Application に付与するカテゴリ集合を置き換えるリクエスト。category_ids は所属テナントの 既存カテゴリのみを含む (ADR-069)。
+    description: Application に付与するカテゴリ集合を置き換えるリクエスト。category_ids は所属テナントの 既存カテゴリのみを含む。
     fields:
       category_ids:
         type: "UUID[]"
@@ -700,7 +700,7 @@ models:
         type: "SignInRule[]"
   AppSignInPolicyResponse:
     kind: value_object
-    description: "Application の sign-in policy 表現。アプリ詳細で「このアプリの上書き (policy)」「テナントデフォルト (tenant_default)」\n「実際に適用される effective ルール列」を区別して表示できるようにする (ADR-081)。\n"
+    description: "Application の sign-in policy 表現。アプリ詳細で「このアプリの上書き (policy)」「テナントデフォルト (tenant_default)」\n「実際に適用される effective ルール列」を区別して表示できるようにする。\n"
     fields:
       policy:
         type: AppSignInPolicy
@@ -711,7 +711,7 @@ models:
         description: 上書きモデルで実際に評価されるルール列。アプリが有効ルールを持てば policy.rules、持たなければ tenant_default.rules。
       weaker_than_default:
         type: Boolean
-        description: アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない (ADR-081)。
+        description: アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない。
   TenantDefaultSignInPolicyRequest:
     kind: value_object
     description: 管理者がテナントデフォルト sign-in policy を置き換えるリクエスト。
@@ -745,10 +745,10 @@ models:
         optional: true
       category_ids:
         type: "UUID[]"
-        description: 付与カテゴリの id 群。ポータルはこれでタイルをセクションに振り分ける (ADR-069)。
+        description: 付与カテゴリの id 群。ポータルはこれでタイルをセクションに振り分ける。
   PortalApplicationCategory:
     kind: value_object
-    description: 利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す (ADR-069)。
+    description: 利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す。
     fields:
       id:
         type: UUID
@@ -756,7 +756,7 @@ models:
         type: String
   MyApplicationListResponse:
     kind: value_object
-    description: "利用者ポータルの割当済みアプリ一覧。手動並び順があればそれを優先し、無ければ name 昇順。\ncategories は tenant のカテゴリ定義を position 昇順で含み、ポータルはこれをセクション見出しに使う (ADR-069)。\n"
+    description: "利用者ポータルの割当済みアプリ一覧。手動並び順があればそれを優先し、無ければ name 昇順。\ncategories は tenant のカテゴリ定義を position 昇順で含み、ポータルはこれをセクション見出しに使う。\n"
     fields:
       applications:
         type: "MyApplication[]"
@@ -764,7 +764,7 @@ models:
         type: "PortalApplicationCategory[]"
   ApplicationOrdering:
     kind: entity
-    description: "利用者ポータルでの手動並び順 (ADR-069)。user_id をキーに、Application の\n表示順を application_id の順序列として持つ。user_id は global unique な既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、本人に割当済み visible な Application のみに制限する。\n"
+    description: "利用者ポータルでの手動並び順。user_id をキーに、Application の\n表示順を application_id の順序列として持つ。user_id は global unique な既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、本人に割当済み visible な Application のみに制限する。\n"
     identity:
       - user_id
     fields:
@@ -1595,7 +1595,7 @@ interfaces:
         successful_status_codes:
           - "204"
   GetAppSignInPolicy:
-    description: 管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す (ADR-081)。
+    description: 管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す。
     input:
       id:
         type: String
@@ -1643,7 +1643,7 @@ interfaces:
         path: "/api/admin/v1/applications/{id}/sign-in-policy"
         request_form: body
   GetTenantDefaultSignInPolicy:
-    description: 管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す (ADR-081)。
+    description: 管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す。
     output:
       response:
         type: TenantDefaultSignInPolicyResponse
@@ -1661,7 +1661,7 @@ interfaces:
         method: GET
         path: /api/admin/v1/default-sign-in-policy
   UpdateTenantDefaultSignInPolicy:
-    description: 管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る (ADR-081)。
+    description: 管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る。
     input:
       request:
         type: TenantDefaultSignInPolicyRequest
@@ -1806,7 +1806,7 @@ interfaces:
         path: "/api/admin/v1/applications/{id}/categories"
         request_form: body
   ListMyApplications:
-    description: "利用者が自分に割当済み (visible) の Application を一覧する。hidden 割当は除外する。\n手動並び順 (ApplicationOrdering) があればそれを優先し、無ければ name 昇順。応答の categories は\ntenant のカテゴリ定義を position 昇順で含み、各アプリの category_ids でセクションに振り分ける (ADR-069)。\n"
+    description: "利用者が自分に割当済み (visible) の Application を一覧する。hidden 割当は除外する。\n手動並び順 (ApplicationOrdering) があればそれを優先し、無ければ name 昇順。応答の categories は\ntenant のカテゴリ定義を position 昇順で含み、各アプリの category_ids でセクションに振り分ける。\n"
     output:
       response:
         type: MyApplicationListResponse
@@ -1826,7 +1826,7 @@ interfaces:
         method: GET
         path: /api/account/v1/applications
   GetMyApplicationOrder:
-    description: 利用者が保存済みのポータル手動並び順を取得する。未保存なら空配列を返す (ADR-069)。
+    description: 利用者が保存済みのポータル手動並び順を取得する。未保存なら空配列を返す。
     output:
       response:
         type: MyApplicationOrderResponse
@@ -1844,7 +1844,7 @@ interfaces:
         method: GET
         path: /api/account/v1/applications/order
   ReorderMyApplications:
-    description: "利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible な\nアプリのみを含み、それ以外を含むと拒否する (ADR-069)。\n"
+    description: "利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible な\nアプリのみを含み、それ以外を含むと拒否する。\n"
     input:
       request:
         type: ReorderMyApplicationsRequest
@@ -2076,7 +2076,7 @@ scenarios:
       - "AppSignInPolicyUpdated が発行される"
       - 単要素セッションの利用者が対象 Application にアクセスする
       - システムは step-up が可能な経路では step-up を要求し、昇格後に federation を完了する
-      - システムは token / assertion 発行前に policy を評価する (強制点は OAuth2.Authorize、[[ADR-103]])
+      - システムは token / assertion 発行前に policy を評価する (強制点は OAuth2.Authorize)
     extensions:
       - at: 5
         condition: 許可 CIDR に含まれないクライアント IP、またはクライアント IP を取得できない
@@ -2121,7 +2121,7 @@ scenarios:
     given:
       - "アプリケーション \"portal\" にユーザー \"alice\" は割り当てられていない"
     main_success:
-      - "\"alice\" が \"portal\" への federation を試みる (強制点は OAuth2.Authorize、[[ADR-103]])"
+      - "\"alice\" が \"portal\" への federation を試みる (強制点は OAuth2.Authorize)"
       - 未割当のため federation は拒否される
     extensions:
       - at: 1

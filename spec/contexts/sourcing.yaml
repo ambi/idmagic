@@ -1,15 +1,15 @@
 # idmagic Sourcing — SCL
-# wi-258 / ADR-141: 上流の外部権威から idmagic へ identity を取り込む責務を単一 context に束ねる。
+# 上流の外部権威から idmagic へ identity を取り込む責務を単一 context に束ねる。
 #   - 分類軸は方向 (inbound/outbound) でも runtime 形状 (server/upload/pull) でもなく、
 #     「外部システムが identity 集団に対して権威を持ち、その関係が durable な source binding として
-#     存在するか」(ADR-141 決定 1)。
+#     存在するか」。
 #   - source ごとに feature slice を並べる。本ファイルの standards / models / interfaces /
 #     authorization / scenarios は現時点で唯一の source slice である scim (SCIM 2.0 server、
-#     外部 IdP が push する) のもので、wi-259 が Scim context から移設した。directory (wi-95) と
+#     外部 IdP が push する) のもの。directory と
 #     将来の feed は同ファイルへ追加する。
 #   - source 非依存コアは今作らない。2 つ目の source が着地した時点で、実際に重複した要素
-#     (correlation / ingestion run / cursor / mapping / 削除権威) を on-demand で切り出す
-#     (ADR-141 決定 3)。ScimUserRef / ScimGroupRef は SourceCorrelation の scim 実体である。
+#     (correlation / ingestion run / cursor / mapping / 削除権威) を on-demand で切り出す。
+#     ScimUserRef / ScimGroupRef は SourceCorrelation の scim 実体である。
 
 system: idmagic
 spec_version: "3.0"
@@ -145,7 +145,7 @@ glossary:
       ある identity 集団に対して idmagic の外側で権威を持つ外部システムと、その関係を表す
       tenant-scoped な binding。どの source か、credential / enrollment、有効・無効、属性 mapping、
       削除・無効化を上流権威にどこまで従わせるかを束ねる。source binding を持たない取り込み経路は
-      本 context の対象ではない (ADR-141 決定 1)。
+      本 context の対象ではない。
     aliases:
       - source
       - identity source
@@ -158,7 +158,7 @@ glossary:
           権威の向きが逆で、動詞と invariant も反転する。
       - term: ExternalIdentityProvider
         reason: >-
-          login-time federation / broker の upstream IdP (wi-30、Authentication 所有) は認証してきた
+          login-time federation / broker の upstream IdP (Authentication 所有) は認証してきた
           1 人を JIT で扱い、集団の inventory も drift も持たない。IdentitySource は集団に対する
           権威関係を持続的に保持する。
   SourceCorrelation:
@@ -179,16 +179,16 @@ glossary:
     definition: >-
       IdentitySource が権威を持つ状態を idmagic 内部の principal へ反映する行為。作成・更新・
       無効化・削除は IdManagement の published な冪等 command surface を経由して適用し、
-      record-of-truth 側に source 固有の関心を持ち込まない (ADR-141 決定 7)。
+      record-of-truth 側に source 固有の関心を持ち込まない。
     aliases:
       - ingest
       - 取り込み
     not_to_confuse_with:
       - term: UserImport
         reason: >-
-          管理者の CSV upload (IdManagement 所有、ADR-140 の CSV export と対称) は権威が idmagic 自身に
+          管理者の CSV upload (IdManagement 所有、CSV export と対称) は権威が idmagic 自身に
           あり source binding を持たないため Ingestion ではない。scheduled file feed になった時点で
-          初めて本 context の source slice になる (ADR-141 決定 5)。
+          初めて本 context の source slice になる。
       - term: Seeding
         reason: >-
           Seeding は環境構築のための内部起点の投入で、外部権威も correlation も持たない。
@@ -196,7 +196,7 @@ glossary:
     definition: >-
       1 回の取り込み実行の観測単位。対象 source、開始・終了、適用件数と失敗、再開位置を持つ。
       実行は Jobs の durable job に委譲し、失敗しても再開できる粒度で観測できるようにする。
-      scim slice は外部 IdP からの request 単位で適用するため run を持たず、directory (wi-95) 以降で
+      scim slice は外部 IdP からの request 単位で適用するため run を持たず、directory 以降で
       実体が入る。
     aliases:
       - ingestion run
@@ -218,7 +218,7 @@ glossary:
     not_to_confuse_with:
       - term: ReconciliationMatch
         reason: >-
-          wi-156 の orphan 照合は idmagic が書いた downstream target 台帳との突き合わせ
+          orphan 照合は idmagic が書いた downstream target 台帳との突き合わせ
           (Application / Provisioning 側)。SourceDrift は上流権威との乖離であり、向きが逆。
   ScimClient:
     definition: tenant-scoped Bearer token を提示して SCIM provisioning API を呼び出す外部 agent。scim source slice における IdentitySource の駆動側。

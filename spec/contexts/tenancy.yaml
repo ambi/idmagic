@@ -1,5 +1,5 @@
 # idmagic Tenancy — SCL
-# Migrated to SCL 3.0 by wi-209 (ADR-103).
+# SCL 3.0 context specification.
 
 system: idmagic
 spec_version: "3.0"
@@ -519,7 +519,7 @@ models:
         description: 遷移先。https scheme のみ許可する allowlist。
   TenantBranding:
     kind: entity
-    description: "テナント単位の hosted UI ブランディング設定 (wi-89, ADR-096)。Tenant 集約には埋め込まず、\nTenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tenant 本体から分離する) で\n独立 entity として持つ。全フィールド optional で、行が存在しない、または全フィールドが未設定なら\n「branding 未設定」を意味し、GetTenantBranding はシステム既定にフォールバックする。\n色・リンク・テキストは限定トークンのみを受け付け、任意 CSS / HTML は構造的に受け付けない。\n"
+    description: "テナント単位の hosted UI ブランディング設定。Tenant 集約には埋め込まず、\nTenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tenant 本体から分離する) で\n独立 entity として持つ。全フィールド optional で、行が存在しない、または全フィールドが未設定なら\n「branding 未設定」を意味し、GetTenantBranding はシステム既定にフォールバックする。\n色・リンク・テキストは限定トークンのみを受け付け、任意 CSS / HTML は構造的に受け付けない。\n"
     identity: tenant_id
     fields:
       tenant_id:

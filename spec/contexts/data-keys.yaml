@@ -1,9 +1,9 @@
 # idmagic DataKeys — SCL
 # SCL 3.0 context specification.
-# wi-97: 保存時のエンベロープ暗号化 (per-tenant DEK / KMS master key)。ADR-148 が
-# 設計を確定する。EnvelopeCrypto port (Tink AEAD/keyset, OpenBao/cleartext provider)
-# は Go 側の shared technical adapter (backend/shared/security) にとどめ、この
-# context は per-tenant DEK のメタデータ・ライフサイクルだけを所有する。実際の
+# 保存時のエンベロープ暗号化 (per-tenant DEK / KMS master key)。EnvelopeCrypto
+# port (Tink AEAD/keyset, OpenBao/cleartext provider) は Go 側の shared
+# technical adapter (backend/shared/security) にとどめ、この context は
+# per-tenant DEK のメタデータ・ライフサイクルだけを所有する。実際の
 # encrypt/decrypt 呼び出しは各所有 context の repository が行う (SCL への露出は
 # 最小限)。
 
@@ -24,7 +24,7 @@ glossary:
   Active:
     definition: 新規の暗号化操作に使われる、テナントにつき高々1本の DataEncryptionKey の状態。
   Retiring:
-    definition: 新規暗号化には使われないが、既存 ciphertext の復号にはまだ使われる状態。再暗号化 job ([[wi-126-async-job-runner]] 経由) が全参照を移行するまで維持する。
+    definition: 新規暗号化には使われないが、既存 ciphertext の復号にはまだ使われる状態。再暗号化 job (Jobs 経由) が全参照を移行するまで維持する。
   Disabled:
     definition: 鍵材料の危殆化などにより手動で即時ロックアウトされた状態。この鍵で暗号化された ciphertext の復号は以後 fail-closed で拒否される。
     aliases:
@@ -32,7 +32,7 @@ glossary:
   Destroyed:
     definition: wrapped_dek を破棄した終端状態。復号は恒久的に不能になる (crypto-shredding の前提)。不可逆。
   FailClosed:
-    definition: unwrap 失敗・provider 到達不能・AAD/tamper 不一致など復号不能な場合に、平文へのフォールバックをせずアクセスを拒否する方針 ([[ADR-148]])。
+    definition: unwrap 失敗・provider 到達不能・AAD/tamper 不一致など復号不能な場合に、平文へのフォールバックをせずアクセスを拒否する方針。
   System:
     definition: DataKeys のライフサイクル usecase と再暗号化 job そのものを指す、人間の操作者を伴わない技術的な主体。
 models:
@@ -72,7 +72,7 @@ models:
   DataKeyStillReferencedError:
     kind: error
     status: 409
-    description: "DestroyTenantDataKey の対象バージョンについて、所有 context の再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) がまだ全参照を active バージョンへ移行し終えていない。先に再暗号化を完了させてから destroy する。\n"
+    description: "DestroyTenantDataKey の対象バージョンについて、所有 context の再暗号化 job (Jobs 経由の data_key_reencryption) がまだ全参照を active バージョンへ移行し終えていない。先に再暗号化を完了させてから destroy する。\n"
     payload:
       pendingCount:
         type: Integer
@@ -88,7 +88,7 @@ models:
   TenantDataEncryptionKey:
     kind: entity
     identity: id
-    description: "テナントごとの DEK 1 バージョン。MasterKey provider が wrap した鍵材料 (wrapped_dek) だけを保持し、平文 DEK は保存しない。テナントにつき Active は高々 1 本 ([[ADR-148]])。\n"
+    description: "テナントごとの DEK 1 バージョン。MasterKey provider が wrap した鍵材料 (wrapped_dek) だけを保持し、平文 DEK は保存しない。テナントにつき Active は高々 1 本。\n"
     constraints:
       - active_key_count(tenant_id) <= 1
     fields:
@@ -124,7 +124,7 @@ models:
         optional: true
   EncryptedSecret:
     kind: value_object
-    description: "可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない ([[ADR-148]])。ciphertext は Tink の AEAD primitive がそのまま出力する不透明な bytes で、nonce/tag は Tink 内部管理のため別フィールドとして持たない (自前で nonce を組み立てない、[[ADR-148]])。\n"
+    description: "可逆秘密を Active または Retiring の TenantDataEncryptionKey で暗号化した封筒。所有 context (例: Authentication の MFA シード) はこれを永続化し、平文を保存しない。ciphertext は Tink の AEAD primitive がそのまま出力する不透明な bytes で、nonce/tag は Tink 内部管理のため別フィールドとして持たない (自前で nonce を組み立てない)。\n"
     fields:
       key_version:
         type: Integer
@@ -197,7 +197,7 @@ models:
         type: Integer
 states:
   DataEncryptionKeyLifecycle:
-    description: "bootstrap で active として生成される。rotation で新バージョンが active になると旧バージョンは retiring へ遷移する。retiring は disable で即時ロックアウトでき、retiring/disabled は全参照の再暗号化 ([[wi-126-async-job-runner]] 経由) 確認後にのみ destroy で終端 (destroyed) へ進む。active を直接 disable/destroy することはできない (先に rotation で退避させる)。\n"
+    description: "bootstrap で active として生成される。rotation で新バージョンが active になると旧バージョンは retiring へ遷移する。retiring は disable で即時ロックアウトでき、retiring/disabled は全参照の再暗号化 (Jobs 経由) 確認後にのみ destroy で終端 (destroyed) へ進む。active を直接 disable/destroy することはできない (先に rotation で退避させる)。\n"
     target: TenantDataEncryptionKey
     initial: active
     terminal:
@@ -267,7 +267,7 @@ interfaces:
     stability: internal
     access: internal
   DestroyTenantDataKey:
-    description: "retiring または disabled の DataEncryptionKey 1 本の wrapped_dek を破棄し destroyed (crypto-shredding) にする。所有 context ごとに登録された再暗号化 job ([[wi-126-async-job-runner]] 経由の data_key_reencryption) が全参照を active バージョンへ移行済みであることを呼び出し前に検証し、未移行の参照が残っていれば DataKeyStillReferencedError で拒否する (fail-closed)。不可逆。\n"
+    description: "retiring または disabled の DataEncryptionKey 1 本の wrapped_dek を破棄し destroyed (crypto-shredding) にする。所有 context ごとに登録された再暗号化 job (Jobs 経由の data_key_reencryption) が全参照を active バージョンへ移行済みであることを呼び出し前に検証し、未移行の参照が残っていれば DataKeyStillReferencedError で拒否する (fail-closed)。不可逆。\n"
     input:
       tenant_id:
         type: String
@@ -361,7 +361,7 @@ scenarios:
   全参照の再暗号化後にDEKをdestroyできる:
     actor: System
     given:
-      - "テナント \"tenant-a\" の version 1 が retiring で、[[wi-126-async-job-runner]] 経由の再暗号化 job が version 1 参照をすべて version 2 へ移行済みである"
+      - "テナント \"tenant-a\" の version 1 が retiring で、Jobs 経由の再暗号化 job が version 1 参照をすべて version 2 へ移行済みである"
     main_success:
       - "テナント \"tenant-a\" の version 1 に対して DestroyTenantDataKey を呼ぶ"
       - version 1 が destroyed に遷移し wrapped_dek が破棄される

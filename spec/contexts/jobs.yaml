@@ -1,9 +1,8 @@
 # idmagic Jobs — SCL
-# wi-126: テナント境界を保つ汎用非同期ジョブ基盤の core runtime。
+# テナント境界を保つ汎用非同期ジョブ基盤の core runtime。
 # durable queue と worker runtime という技術的能力を所有し、各ジョブの業務ロジックは
 # 呼び出し元の bounded context の usecase に残す。管理者向け一覧/詳細/キャンセル API は
-# wi-157-job-admin-operations-surface に分離する。
-# Migrated to SCL 3.0 by wi-209 (ADR-103).
+# 別 feature slice に分離する。
 
 system: idmagic
 spec_version: "3.0"
@@ -59,7 +58,7 @@ glossary:
     aliases:
       - cancel
   ExecutionLane:
-    definition: "JobKind の登録情報が一意に決める実行枠の区分 (ADR-129)。異なる\nレイテンシ・資源特性を持つ JobKind 間で claim と worker 実行枠を隔離するために使う。\nenqueue 呼び出し元は lane を指定できない。latency_sensitive / default / bulk の3種。\n"
+    definition: "JobKind の登録情報が一意に決める実行枠の区分。異なる\nレイテンシ・資源特性を持つ JobKind 間で claim と worker 実行枠を隔離するために使う。\nenqueue 呼び出し元は lane を指定できない。latency_sensitive / default / bulk の3種。\n"
     aliases:
       - lane
       - 実行レーン
@@ -87,7 +86,7 @@ models:
   Job:
     kind: entity
     identity: id
-    description: "enqueue された非同期処理の実行単位。worker がリースを確保して Running にし、\nハンドラが handler_context.tenant_id == job.tenant_id の境界内だけで副作用を起こす。\nレコードの保持期間は ADR-100-job-data-retention-and-pii が定める (delete_after 30日)。\n"
+    description: "enqueue された非同期処理の実行単位。worker がリースを確保して Running にし、\nハンドラが handler_context.tenant_id == job.tenant_id の境界内だけで副作用を起こす。\nレコードの保持期間は delete_after 30日とする。\n"
     fields:
       id:
         type: String
@@ -100,7 +99,7 @@ models:
         description: 実行するハンドラを決めるジョブ種別。
       lane:
         type: ExecutionLane
-        description: "kind の登録情報から enqueue 時に一意に決まる実行レーン (ADR-129)。\n呼び出し元は指定できず、Job 作成後は不変。claim は対象 lane の Job だけを対象にする。\n"
+        description: "kind の登録情報から enqueue 時に一意に決まる実行レーン。\n呼び出し元は指定できず、Job 作成後は不変。claim は対象 lane の Job だけを対象にする。\n"
       status:
         type: JobStatus
       params:
@@ -154,7 +153,7 @@ models:
       - canceled
   JobKind:
     kind: enum
-    description: "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能側の WI は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first、ADR-129)。本 WI (core runtime) は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は wi-257 (未実装) 向けの先行宣言。data_key_reencryption は\nwi-97 (エンベロープ暗号化) が DataKeys の再暗号化 job 用に追加する。\n"
+    description: "worker の handler registry に登録されたジョブ種別の allowlist。新しいジョブ種別を\n追加する consumer 機能は、実装前にこの enum へ自分の種別を足し、ExecutionLane を\n同時に宣言する (SCL-first)。core runtime は疎通確認用の noop_echo のみを\n追加する。backchannel_logout_delivery は未実装機能向けの先行宣言。data_key_reencryption は\nDataKeys がエンベロープ暗号化の再暗号化 job 用に追加する。\n"
     values:
       - noop_echo
       - user_import_preview
@@ -166,7 +165,7 @@ models:
       - data_key_reencryption
   ExecutionLane:
     kind: enum
-    description: "Job の実行枠を隔離する区分 (ADR-129)。JobKind の登録情報が lane を一意に決め、\nenqueue 呼び出し元は指定できない。latency_sensitive は低遅延配送を専用実行枠で保証し、\nbulk backlog の滞留から隔離される。bulk は長時間・大量ジョブ、default はそのいずれでもない\nジョブに使う。\n"
+    description: "Job の実行枠を隔離する区分。JobKind の登録情報が lane を一意に決め、\nenqueue 呼び出し元は指定できない。latency_sensitive は低遅延配送を専用実行枠で保証し、\nbulk backlog の滞留から隔離される。bulk は長時間・大量ジョブ、default はそのいずれでもない\nジョブに使う。\n"
     values:
       - latency_sensitive
       - default
@@ -305,7 +304,7 @@ states:
         to: canceled
 interfaces:
   EnqueueJob:
-    description: "呼び出し元 bounded context が非同期処理を queue に投入する内部インターフェース。\nHTTP には公開せず、同一プロセス内の Go 呼び出しとして各 context の usecase から使う。\ndedup_key を指定すると (tenant_id, dedup_key) が既存の未終端 Job と一致する場合は\n新規作成せず既存 JobRef を返す。作成される Job の lane は kind の登録情報から一意に\n決まり、呼び出し元は指定できない (ADR-129)。\n"
+    description: "呼び出し元 bounded context が非同期処理を queue に投入する内部インターフェース。\nHTTP には公開せず、同一プロセス内の Go 呼び出しとして各 context の usecase から使う。\ndedup_key を指定すると (tenant_id, dedup_key) が既存の未終端 Job と一致する場合は\n新規作成せず既存 JobRef を返す。作成される Job の lane は kind の登録情報から一意に\n決まり、呼び出し元は指定できない。\n"
     input:
       tenant_id:
         type: String
@@ -328,7 +327,7 @@ interfaces:
     stability: internal
     access: internal
   ClaimJobs:
-    description: "worker が指定した lane 内で claim 可能な (status=queued かつ run_at <= now、\nまたはリース失効済みの running) Job をバッチで取得し、同一トランザクション内で Running に\n遷移させ、自分を lease_owner として lease_expires_at を設定する内部インターフェース。\n対象 lane 以外の Job は取得しない (ADR-129)。\n"
+    description: "worker が指定した lane 内で claim 可能な (status=queued かつ run_at <= now、\nまたはリース失効済みの running) Job をバッチで取得し、同一トランザクション内で Running に\n遷移させ、自分を lease_owner として lease_expires_at を設定する内部インターフェース。\n対象 lane 以外の Job は取得しない。\n"
     input:
       worker_id:
         type: String
