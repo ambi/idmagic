@@ -141,7 +141,9 @@ describe('generateOpenApi — unit', () => {
                 kind: 'http',
                 method: 'GET',
                 path: '/op',
-                response_headers: { Link: { type: 'String', optional: true, description: 'RFC 8288 next-page link' } },
+                response_headers: {
+                  Link: { type: 'String', optional: true, description: 'RFC 8288 next-page link' },
+                },
               },
             ],
           },
