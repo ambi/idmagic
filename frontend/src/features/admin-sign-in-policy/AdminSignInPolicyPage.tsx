@@ -1,3 +1,4 @@
+import { IconPencil } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, tenantURL, updateTenantDefaultSignInPolicy } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -125,6 +126,7 @@ function DefaultPolicyCard({
         </div>
         {!editing ? (
           <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+            <IconPencil size={16} aria-hidden="true" />
             {t.edit}
           </Button>
         ) : null}
@@ -439,8 +441,9 @@ function ApplicationPolicyList({ apps }: { apps: SignInPolicyAppRow[] }) {
                           href={tenantURL(
                             `/admin/applications/${encodeURIComponent(application.id)}/edit`,
                           )}
-                          className="text-xs font-medium text-blue-700 hover:underline"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:underline"
                         >
+                          <IconPencil size={14} aria-hidden="true" />
                           {t.edit}
                         </a>
                       </td>

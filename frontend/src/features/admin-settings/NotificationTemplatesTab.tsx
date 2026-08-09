@@ -1,3 +1,4 @@
+import { IconPencil } from '@tabler/icons-react'
 import { useCallback, useEffect, useState } from 'react'
 import {
   AuthenticationAPIError,
@@ -291,6 +292,7 @@ function TemplateList({
               <td className="max-w-xs truncate px-3 py-2.5 text-slate-600">{summary.subject}</td>
               <td className="px-3 py-2.5 text-right">
                 <Button type="button" variant="outline" onClick={() => onEdit(summary)}>
+                  <IconPencil size={16} aria-hidden="true" />
                   {t.edit}
                 </Button>
               </td>

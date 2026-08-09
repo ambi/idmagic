@@ -134,7 +134,7 @@ async function beginLogin(audience: PortalAudience, returnTo: string): Promise<n
     code_challenge: await pkceChallenge(verifier),
     code_challenge_method: 'S256',
   })
-  window.location.assign(`${tenantURL('/authorize')}?${params.toString()}`)
+  window.location.replace(`${tenantURL('/authorize')}?${params.toString()}`)
   return new Promise<never>(() => {})
 }
 
@@ -247,7 +247,7 @@ export async function completeLoginFromCallback(): Promise<boolean> {
     login.returnTo.startsWith('/') && !login.returnTo.includes('\\')
       ? login.returnTo
       : tenantURL('/admin')
-  window.location.assign(target)
+  window.location.replace(target)
   return true
 }
 

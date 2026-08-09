@@ -7,6 +7,7 @@ import {
 } from '@tabler/icons-react'
 import { tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
+import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
 import type { TenantQuota, TenantUsage } from '../../types'
 import { adminDashboardDictionary } from './AdminDashboardPage.i18n'
@@ -53,7 +54,7 @@ export function AdminDashboardPage({
       description={t.description}
     >
       <section
-        className="grid gap-x-10 gap-y-6 border-b border-slate-100 pb-8 sm:grid-cols-2 xl:grid-cols-4"
+        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
         aria-label={t.summarySectionLabel}
       >
         <DashboardMetricCard
@@ -91,7 +92,7 @@ export function AdminDashboardPage({
         />
       </section>
 
-      <section className="mt-8">
+      <Card className="mt-8 p-6">
         <h2 className="text-sm font-semibold text-slate-900">{t.recommendedSecurityHeading}</h2>
         <p className="mt-0.5 text-xs text-slate-500">{t.recommendedSecurityDescription}</p>
         <ul className="mt-3 divide-y divide-slate-100 border-t border-slate-100">
@@ -108,10 +109,10 @@ export function AdminDashboardPage({
             actionLabel={t.configureFederationAction}
           />
         </ul>
-      </section>
+      </Card>
 
       {usage && (
-        <section className="mt-8">
+        <Card className="mt-8 p-6">
           <h2 className="text-sm font-semibold text-slate-900">{t.quotaUsageHeading}</h2>
           <p className="mt-0.5 text-xs text-slate-500">{t.quotaUsageDescription}</p>
           <dl className="mt-3 grid grid-cols-2 gap-x-8 gap-y-4 border-t border-slate-100 pt-4 text-sm sm:grid-cols-4">
@@ -120,7 +121,7 @@ export function AdminDashboardPage({
             <QuotaItem label="Apps" value={usage.applications} limit={quota?.applications} />
             <QuotaItem label="Clients" value={usage.oauth2_clients} limit={quota?.oauth2_clients} />
           </dl>
-        </section>
+        </Card>
       )}
     </AdminShell>
   )
@@ -151,20 +152,20 @@ export function DashboardMetricCard({
   extra?: React.ReactNode
 }) {
   const tones = {
-    blue: 'text-accent',
+    blue: 'text-accent-foreground',
     green: 'text-emerald-700',
     violet: 'text-slate-500',
     amber: 'text-amber-700',
   }
   return (
-    <div>
+    <Card className="p-5">
       <div className="flex items-center gap-2">
         <Icon size={16} stroke={1.8} className={tones[tone]} aria-hidden="true" />
         <p className="text-xs font-semibold text-slate-500">{label}</p>
       </div>
       <p className="mt-1.5 text-3xl font-semibold tracking-tight text-slate-950">{value}</p>
       {extra}
-    </div>
+    </Card>
   )
 }
 
@@ -187,7 +188,7 @@ export function SecurityTaskCard({
       </div>
       <a
         href={href}
-        className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-accent hover:underline"
+        className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-accent-foreground hover:underline"
       >
         {actionLabel}
         <IconArrowRight size={12} aria-hidden="true" />

@@ -360,9 +360,10 @@ complexity:
     - id: wi234-ui-page-lines-admin-sign-in-policy-page
       budget: ui-page-lines
       path: frontend/src/features/admin-sign-in-policy/AdminSignInPolicyPage.tsx
-      ceiling: 457
+      ceiling: 460
       owner: maintainers
-      reason: wi-234 で責務境界に沿って分割する既存超過。
+      reason: wi-234 で責務境界に沿って分割する既存超過。wi-344 で編集ボタンのアイコン統一のため
+        IconPencil の import と2箇所の使用行を追加し3行増加。
       work_item: wi-234-complexity-ratchet
       expires_at: 2026-10-01
     - id: wi234-ui-page-lines-admin-tenant-attributes-page

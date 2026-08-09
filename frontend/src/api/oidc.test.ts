@@ -33,6 +33,7 @@ describe('portal OIDC client', () => {
       pathname: '/realms/acme/account',
       search: '',
       assign: mock(),
+      replace: mock(),
     })
   })
 
@@ -81,10 +82,11 @@ describe('portal OIDC client', () => {
       pathname: '/realms/acme/callback',
       search: '?code=code&state=expected',
       assign: mock(),
+      replace: mock(),
     })
     await expect(completeLoginFromCallback()).resolves.toBe(true)
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/token'), expect.anything())
-    expect(window.location.assign).toHaveBeenCalledWith('/account/profile')
+    expect(window.location.replace).toHaveBeenCalledWith('/account/profile')
   })
 
   it('recognizes non-portal callbacks, including a mismatched stale login state', async () => {

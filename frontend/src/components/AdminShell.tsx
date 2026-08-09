@@ -150,7 +150,10 @@ export function AdminShell({
                     ) : (
                       <>
                         <li>
-                          <Link to="/admin" className="hover:text-accent hover:underline">
+                          <Link
+                            to="/admin"
+                            className="hover:text-accent-foreground hover:underline"
+                          >
                             {t.adminConsole}
                           </Link>
                         </li>

@@ -88,7 +88,7 @@ export function AuthShell({ children, asideTitle, asideText, aside = true }: Aut
                   href={link.url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="font-medium text-accent hover:underline"
+                  className="font-medium text-accent-foreground hover:underline"
                 >
                   {link.label}
                 </a>

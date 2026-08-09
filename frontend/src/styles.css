@@ -54,6 +54,10 @@
     @apply flex flex-col justify-between bg-slate-950 p-11 text-white;
   }
 
+  .auth-aside + .auth-main {
+    @apply border-l border-slate-200;
+  }
+
   .auth-aside-copy {
     @apply my-auto flex flex-col gap-6 py-12;
   }
@@ -67,11 +71,11 @@
   }
 
   .eyebrow {
-    @apply text-[0.6875rem] font-semibold uppercase tracking-normal text-accent;
+    @apply text-[0.6875rem] font-semibold uppercase tracking-normal text-accent-foreground;
   }
 
   .auth-main {
-    @apply mx-auto flex w-full max-w-[29rem] flex-col justify-center px-10 py-12;
+    @apply mx-auto flex w-full max-w-[29rem] flex-col justify-center bg-card px-10 py-12;
   }
 
   .mobile-brand {

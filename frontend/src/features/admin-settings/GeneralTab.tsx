@@ -1,3 +1,4 @@
+import { IconPencil } from '@tabler/icons-react'
 import { type FormEvent, useState } from 'react'
 import { AuthenticationAPIError, updateAdminSettings } from '../../api'
 import { Alert } from '../../components/ui/alert'
@@ -88,6 +89,7 @@ export function GeneralTab({
           </div>
           {!editing ? (
             <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+              <IconPencil size={16} aria-hidden="true" />
               {t.edit}
             </Button>
           ) : null}
