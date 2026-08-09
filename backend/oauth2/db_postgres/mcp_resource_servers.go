@@ -33,7 +33,7 @@ func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer
 	return m, m.Validate()
 }
 
-func (r *McpResourceServerRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.McpResourceServer, error) {
 	rows, err := New(r.Pool).ListMcpResourceServersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

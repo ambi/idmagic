@@ -12,8 +12,8 @@ import (
 type SamlServiceProviderRepository interface {
 	// FindByEntityID は entityID に一致する SP を返す。存在しなければ (nil, nil)。
 	FindByEntityID(ctx context.Context, tenantID, entityID string) (*domain.SamlServiceProvider, error)
-	// ListByTenant はテナント内の SP を entityID 昇順で返す。
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.SamlServiceProvider, error)
+	// ListAll はテナント内の SP を entityID 昇順で返す。
+	ListAll(ctx context.Context, tenantID string) ([]*domain.SamlServiceProvider, error)
 	// Save は SP を upsert する。
 	Save(ctx context.Context, sp *domain.SamlServiceProvider) error
 	// Delete は entityID に一致する SP を削除する (冪等)。

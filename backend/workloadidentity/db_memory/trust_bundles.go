@@ -25,7 +25,7 @@ func cloneTrustBundle(b *workloaddomain.WorkloadTrustBundle) *workloaddomain.Wor
 	return &cloned
 }
 
-func (r *WorkloadTrustBundleRepository) ListByTenant(_ context.Context, tenantID string) ([]*workloaddomain.WorkloadTrustBundle, error) {
+func (r *WorkloadTrustBundleRepository) ListAll(_ context.Context, tenantID string) ([]*workloaddomain.WorkloadTrustBundle, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*workloaddomain.WorkloadTrustBundle, 0)

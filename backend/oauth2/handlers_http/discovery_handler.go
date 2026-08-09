@@ -26,7 +26,7 @@ func (d Deps) handleDiscovery(c *echo.Context) error {
 	}
 	// RFC 9396 — テナントで Enabled な authorization_details type を広告する (ADR-050)。
 	if d.AuthzDetailTypeRepo != nil {
-		types, err := d.AuthzDetailTypeRepo.ListByTenant(c.Request().Context(), tenantID)
+		types, err := d.AuthzDetailTypeRepo.ListAll(c.Request().Context(), tenantID)
 		if err != nil {
 			// DBエラー時はメモリキャッシュからフォールバック
 			if cachedDoc, ok := discoveryCache.Load(tenantID); ok {

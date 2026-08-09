@@ -44,7 +44,7 @@ func (r *WsFedRelyingPartyRepository) FindByWtrealm(_ context.Context, tenantID,
 	return cloneRelyingParty(rp), nil
 }
 
-func (r *WsFedRelyingPartyRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error) {
+func (r *WsFedRelyingPartyRepository) ListAll(_ context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.WsFedRelyingParty, 0)

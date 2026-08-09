@@ -27,7 +27,7 @@ type AdminStreamDeps struct {
 }
 
 func ListSsfStreams(ctx context.Context, deps AdminStreamDeps) ([]*ssdomain.SsfStream, error) {
-	return deps.StreamRepo.ListByTenant(ctx, tenancy.TenantID(ctx))
+	return deps.StreamRepo.ListAll(ctx, tenancy.TenantID(ctx))
 }
 
 // GetSsfStream は別テナントの stream を未存在として扱う。

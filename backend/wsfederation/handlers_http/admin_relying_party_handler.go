@@ -46,7 +46,7 @@ func (d Deps) handleListRelyingParties(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	parts, err := d.WsFedRPRepo.ListByTenant(c.Request().Context(), support.RequestTenantID(c))
+	parts, err := d.WsFedRPRepo.ListAll(c.Request().Context(), support.RequestTenantID(c))
 	if err != nil {
 		return err
 	}

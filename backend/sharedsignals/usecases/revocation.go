@@ -126,7 +126,7 @@ func (r *AgentRevocationReactor) notifyOwner(ctx context.Context, deps Revocatio
 	if r.AgentRepo == nil {
 		return nil
 	}
-	agents, err := r.AgentRepo.ListByTenant(ctx, tenantID)
+	agents, err := r.AgentRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return err
 	}

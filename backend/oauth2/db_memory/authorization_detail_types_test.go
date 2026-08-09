@@ -75,7 +75,7 @@ func TestAuthorizationDetailTypeRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("ListByTenant", func(t *testing.T) {
+	t.Run("ListAll", func(t *testing.T) {
 		// すでに payment と seed-type が tenant-1 に存在する
 		// さらに追加してソート順を確認する
 		dtC := &domain.AuthorizationDetailType{
@@ -98,7 +98,7 @@ func TestAuthorizationDetailTypeRepository(t *testing.T) {
 		_ = repo.Save(ctx, dtB)
 		_ = repo.Save(ctx, dtOther)
 
-		list, err := repo.ListByTenant(ctx, "tenant-1")
+		list, err := repo.ListAll(ctx, "tenant-1")
 		if err != nil {
 			t.Fatal(err)
 		}

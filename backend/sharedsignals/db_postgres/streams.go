@@ -26,7 +26,7 @@ func streamFromRow(row *SsfStream) (*ssdomain.SsfStream, error) {
 	return s, s.Validate()
 }
 
-func (r *SsfStreamRepository) ListByTenant(ctx context.Context, tenantID string) ([]*ssdomain.SsfStream, error) {
+func (r *SsfStreamRepository) ListAll(ctx context.Context, tenantID string) ([]*ssdomain.SsfStream, error) {
 	rows, err := New(r.Pool).ListSsfStreamsByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

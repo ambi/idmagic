@@ -12,8 +12,8 @@ import (
 type WsFedRelyingPartyRepository interface {
 	// FindByWtrealm は wtrealm に一致する RP を返す。存在しなければ (nil, nil)。
 	FindByWtrealm(ctx context.Context, tenantID, wtrealm string) (*domain.WsFedRelyingParty, error)
-	// ListByTenant はテナント内の RP を wtrealm 昇順で返す。
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error)
+	// ListAll はテナント内の RP を wtrealm 昇順で返す。
+	ListAll(ctx context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error)
 	// Save は RP を upsert する。
 	Save(ctx context.Context, rp *domain.WsFedRelyingParty) error
 	// Delete は wtrealm に一致する RP を削除する (冪等)。

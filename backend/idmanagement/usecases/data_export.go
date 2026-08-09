@@ -458,7 +458,7 @@ func userColumnValue(u *userdomain.User, col string) string {
 }
 
 func groupExportRows(ctx context.Context, deps DataExportDeps, tenantID string, columns []string) ([][]string, error) {
-	groups, err := deps.GroupRepo.ListByTenant(ctx, tenantID)
+	groups, err := deps.GroupRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -495,7 +495,7 @@ func groupColumnValue(g *groupdomain.Group, col string) string {
 }
 
 func groupMembershipExportRows(ctx context.Context, deps DataExportDeps, tenantID string, columns []string, filter map[string]string) ([][]string, error) {
-	groups, err := deps.GroupRepo.ListByTenant(ctx, tenantID)
+	groups, err := deps.GroupRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}

@@ -187,9 +187,9 @@ func TestListByTenantReturnsNewestFirst(t *testing.T) {
 		t.Fatalf("Rotate failed: %v", err)
 	}
 
-	all, err := repo.ListByTenant(ctx, "tenant-a")
+	all, err := repo.ListAll(ctx, "tenant-a")
 	if err != nil {
-		t.Fatalf("ListByTenant failed: %v", err)
+		t.Fatalf("ListAll failed: %v", err)
 	}
 	if len(all) != 2 || all[0].Version != 2 || all[1].Version != 1 {
 		t.Fatalf("expected [v2, v1], got %+v", all)

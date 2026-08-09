@@ -32,7 +32,7 @@ type CategoryDeps struct {
 }
 
 func ListCategories(ctx context.Context, deps CategoryDeps) ([]*domain.ApplicationCategory, error) {
-	return deps.Repo.ListByTenant(ctx, tenancy.TenantID(ctx))
+	return deps.Repo.ListAll(ctx, tenancy.TenantID(ctx))
 }
 
 type CreateCategoryInput struct {
@@ -73,7 +73,7 @@ func resolvePosition(ctx context.Context, deps CategoryDeps, tenantID string, re
 	if requested != nil {
 		return *requested, nil
 	}
-	existing, err := deps.Repo.ListByTenant(ctx, tenantID)
+	existing, err := deps.Repo.ListAll(ctx, tenantID)
 	if err != nil {
 		return 0, err
 	}
@@ -163,7 +163,7 @@ func SetApplicationCategories(ctx context.Context, deps CategoryDeps, in SetAppl
 	if app == nil {
 		return nil, ErrApplicationNotFound
 	}
-	categories, err := deps.Repo.ListByTenant(ctx, tenantID)
+	categories, err := deps.Repo.ListAll(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}

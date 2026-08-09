@@ -201,7 +201,7 @@ func (r *DataKeyRepository) FindByVersion(ctx context.Context, tenantID string, 
 	return byVersionRowToDomain(row), nil
 }
 
-func (r *DataKeyRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error) {
 	rows, err := New(r.Pool).ListDataKeysByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

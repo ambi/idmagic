@@ -76,8 +76,8 @@ func TestMcpResourceServerRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("ListByTenant", func(t *testing.T) {
-		list, err := repo.ListByTenant(ctx, "tenant-1")
+	t.Run("ListAll", func(t *testing.T) {
+		list, err := repo.ListAll(ctx, "tenant-1")
 		if err != nil {
 			t.Fatal(err)
 		}

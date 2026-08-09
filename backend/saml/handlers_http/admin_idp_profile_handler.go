@@ -64,7 +64,7 @@ func (d Deps) profileBindingCounts(c *echo.Context) (map[string]int, error) {
 	if d.SamlSPRepo == nil {
 		return counts, nil
 	}
-	sps, err := d.SamlSPRepo.ListByTenant(c.Request().Context(), support.RequestTenantID(c))
+	sps, err := d.SamlSPRepo.ListAll(c.Request().Context(), support.RequestTenantID(c))
 	if err != nil {
 		return nil, err
 	}

@@ -51,7 +51,7 @@ func NewCapture(deps CaptureDeps) ports.ProvisioningCapture {
 // runs in its own transaction rather than the caller's (wi-45 T006 scoped
 // simplification of ADR-128 decision 4; see ports.ProvisioningCapture doc).
 func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID string, sourceType domain.ProvisioningSourceType, subjectID string, trigger ports.ProvisioningTrigger, applicationID string, now time.Time) error {
-	connections, err := deps.ConnectionRepo.ListByTenant(ctx, tenantID)
+	connections, err := deps.ConnectionRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return err
 	}

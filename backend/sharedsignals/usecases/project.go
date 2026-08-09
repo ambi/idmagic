@@ -47,7 +47,7 @@ func ProjectAgentAccessRevoked(ctx context.Context, deps ProjectorDeps, event *s
 	if deps.StreamRepo == nil {
 		return nil
 	}
-	streams, err := deps.StreamRepo.ListByTenant(ctx, event.TenantID)
+	streams, err := deps.StreamRepo.ListAll(ctx, event.TenantID)
 	if err != nil {
 		return err
 	}

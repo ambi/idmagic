@@ -281,7 +281,7 @@ func TestAuthorizationDetailTypeRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("schema not round-tripped: %+v", got.Schema)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list by tenant: %v len=%d", err, len(list))
 	}
@@ -333,7 +333,7 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 		t.Fatalf("find by resource: %v %+v", err, byResource)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(list) != 1 {
 		t.Fatalf("list by tenant: %v len=%d", err, len(list))
 	}

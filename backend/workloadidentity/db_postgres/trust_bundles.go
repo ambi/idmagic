@@ -67,7 +67,7 @@ func trustBundleFromRow(row *WorkloadTrustBundle) (*workloaddomain.WorkloadTrust
 	return b, b.Validate()
 }
 
-func (r *WorkloadTrustBundleRepository) ListByTenant(ctx context.Context, tenantID string) ([]*workloaddomain.WorkloadTrustBundle, error) {
+func (r *WorkloadTrustBundleRepository) ListAll(ctx context.Context, tenantID string) ([]*workloaddomain.WorkloadTrustBundle, error) {
 	rows, err := New(r.Pool).ListWorkloadTrustBundlesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

@@ -32,7 +32,7 @@ type AdminWorkloadIdentityDeps struct {
 }
 
 func ListWorkloadTrustBundles(ctx context.Context, deps AdminWorkloadIdentityDeps) ([]*domain.WorkloadTrustBundle, error) {
-	return deps.TrustBundleRepo.ListByTenant(ctx, tenancy.TenantID(ctx))
+	return deps.TrustBundleRepo.ListAll(ctx, tenancy.TenantID(ctx))
 }
 
 // GetWorkloadTrustBundle は別テナントの bundle を未存在として扱う。
@@ -271,7 +271,7 @@ func RefreshWorkloadTrustBundleJWKS(ctx context.Context, deps AdminWorkloadIdent
 }
 
 func ensureTrustBundleNameAndIssuerAvailable(ctx context.Context, deps AdminWorkloadIdentityDeps, tenantID, name, issuer, excludeID string) error {
-	bundles, err := deps.TrustBundleRepo.ListByTenant(ctx, tenantID)
+	bundles, err := deps.TrustBundleRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return err
 	}

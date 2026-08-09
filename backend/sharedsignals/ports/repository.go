@@ -19,7 +19,7 @@ type AgentRevocationEpochRepository interface {
 
 // SsfStreamRepository は SsfStream を永続化する。
 type SsfStreamRepository interface {
-	ListByTenant(ctx context.Context, tenantID string) ([]*ssdomain.SsfStream, error)
+	ListAll(ctx context.Context, tenantID string) ([]*ssdomain.SsfStream, error)
 	FindByID(ctx context.Context, tenantID, id string) (*ssdomain.SsfStream, error)
 	Save(ctx context.Context, stream *ssdomain.SsfStream) error
 	Delete(ctx context.Context, tenantID, id string) error

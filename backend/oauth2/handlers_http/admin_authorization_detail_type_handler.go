@@ -40,7 +40,7 @@ func (d Deps) handleListAuthorizationDetailTypes(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	types, err := d.AuthzDetailTypeRepo.ListByTenant(c.Request().Context(), support.RequestTenantID(c))
+	types, err := d.AuthzDetailTypeRepo.ListAll(c.Request().Context(), support.RequestTenantID(c))
 	if err != nil {
 		return err
 	}

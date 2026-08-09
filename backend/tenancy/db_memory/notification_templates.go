@@ -38,7 +38,7 @@ func (r *NotificationTemplateRepository) FindByKey(
 	return &cloned, nil
 }
 
-func (r *NotificationTemplateRepository) ListByTenant(
+func (r *NotificationTemplateRepository) ListAll(
 	_ context.Context, tenantID string,
 ) ([]*notificationports.TemplateOverride, error) {
 	r.mu.RLock()

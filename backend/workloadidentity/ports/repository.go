@@ -10,7 +10,7 @@ import (
 // (ADR-053)。すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
 // reject する。
 type WorkloadTrustBundleRepository interface {
-	ListByTenant(ctx context.Context, tenantID string) ([]*workloaddomain.WorkloadTrustBundle, error)
+	ListAll(ctx context.Context, tenantID string) ([]*workloaddomain.WorkloadTrustBundle, error)
 	FindByID(ctx context.Context, tenantID, id string) (*workloaddomain.WorkloadTrustBundle, error)
 	// FindByIssuer はテナント内で issuer に一致する WorkloadTrustBundle を返す (issuer は
 	// テナント内で一意)。無ければ nil を返す。VerifyWorkloadAttestation の起点となる

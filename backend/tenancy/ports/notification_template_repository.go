@@ -14,9 +14,9 @@ import (
 // 行の削除がそのまま「既定へのリセット」になる。版管理は持たない (ADR-142 決定 1)。
 type NotificationTemplateRepository interface {
 	FindByKey(ctx context.Context, tenantID string, key notificationports.TemplateKey, locale string) (*notificationports.TemplateOverride, error)
-	// ListByTenant は tenant の全上書きを返す。カタログの全 key × locale は呼び出し側が
+	// ListAll は tenant の全上書きを返す。カタログの全 key × locale は呼び出し側が
 	// 知っているため、ここでは存在する行だけを返す。
-	ListByTenant(ctx context.Context, tenantID string) ([]*notificationports.TemplateOverride, error)
+	ListAll(ctx context.Context, tenantID string) ([]*notificationports.TemplateOverride, error)
 	Save(ctx context.Context, override *notificationports.TemplateOverride) error
 	// Delete は上書きを削除し、削除した行があったかを返す。上書きが無い場合も成功する
 	// (冪等)。

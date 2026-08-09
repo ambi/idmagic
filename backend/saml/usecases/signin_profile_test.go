@@ -15,7 +15,7 @@ func (r profileTestSPRepository) FindByEntityID(context.Context, string, string)
 	return r.sp, nil
 }
 
-func (profileTestSPRepository) ListByTenant(context.Context, string) ([]*samldomain.SamlServiceProvider, error) {
+func (profileTestSPRepository) ListAll(context.Context, string) ([]*samldomain.SamlServiceProvider, error) {
 	return nil, nil
 }
 

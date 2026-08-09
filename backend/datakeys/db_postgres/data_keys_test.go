@@ -106,9 +106,9 @@ func TestBootstrapRotateDisableDestroyLifecycle(t *testing.T) {
 		t.Fatalf("expected destroyed status with erased wrapped_dek, got status=%s wrapped_dek=%v", destroyed.Status, destroyed.WrappedDEK)
 	}
 
-	all, err := repo.ListByTenant(ctx, tenant.ID)
+	all, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil || len(all) != 2 || all[0].Version != 2 || all[1].Version != 1 {
-		t.Fatalf("ListByTenant unexpected result: %v %+v", err, all)
+		t.Fatalf("ListAll unexpected result: %v %+v", err, all)
 	}
 }
 

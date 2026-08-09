@@ -35,7 +35,7 @@ func cloneDetailType(t *domain.AuthorizationDetailType) *domain.AuthorizationDet
 	return &cloned
 }
 
-func (r *AuthorizationDetailTypeRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) ListAll(_ context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.AuthorizationDetailType, 0)

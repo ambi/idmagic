@@ -48,7 +48,7 @@ func (r *WsFedRelyingPartyRepository) FindByWtrealm(ctx context.Context, tenantI
 	return relyingPartyFromRow(row)
 }
 
-func (r *WsFedRelyingPartyRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error) {
+func (r *WsFedRelyingPartyRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.WsFedRelyingParty, error) {
 	rows, err := New(r.Pool).ListWsFedRelyingPartiesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

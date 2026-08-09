@@ -68,7 +68,7 @@ func TestSamlServiceProviderRepository(t *testing.T) {
 		}
 	})
 
-	t.Run("ListByTenant", func(t *testing.T) {
+	t.Run("ListAll", func(t *testing.T) {
 		// すでに urn:sp-1, urn:sp-seeded が tenant-1 に存在する
 		spC := &domain.SamlServiceProvider{TenantID: "tenant-1", EntityID: "urn:sp-c"}
 		spB := &domain.SamlServiceProvider{TenantID: "tenant-1", EntityID: "urn:sp-b"}
@@ -78,7 +78,7 @@ func TestSamlServiceProviderRepository(t *testing.T) {
 		_ = repo.Save(ctx, spB)
 		_ = repo.Save(ctx, spOther)
 
-		list, err := repo.ListByTenant(ctx, "tenant-1")
+		list, err := repo.ListAll(ctx, "tenant-1")
 		if err != nil {
 			t.Fatal(err)
 		}

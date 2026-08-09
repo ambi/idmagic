@@ -28,9 +28,9 @@ func TestWsFedRelyingPartyRepository(t *testing.T) {
 	if err := repo.Save(ctx, &domain.WsFedRelyingParty{Wtrealm: "urn:federation:Another"}); err != nil {
 		t.Fatal(err)
 	}
-	list, err := repo.ListByTenant(ctx, tenancydomain.DefaultTenantID)
+	list, err := repo.ListAll(ctx, tenancydomain.DefaultTenantID)
 	if err != nil || len(list) != 2 || list[0].Wtrealm != "urn:federation:Another" {
-		t.Fatalf("ListByTenant = %+v, %v", list, err)
+		t.Fatalf("ListAll = %+v, %v", list, err)
 	}
 	if err := repo.Delete(ctx, tenancydomain.DefaultTenantID, "urn:federation:Another"); err != nil {
 		t.Fatal(err)

@@ -25,7 +25,7 @@ func cloneStream(s *ssdomain.SsfStream) *ssdomain.SsfStream {
 	return &cloned
 }
 
-func (r *SsfStreamRepository) ListByTenant(_ context.Context, tenantID string) ([]*ssdomain.SsfStream, error) {
+func (r *SsfStreamRepository) ListAll(_ context.Context, tenantID string) ([]*ssdomain.SsfStream, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*ssdomain.SsfStream, 0)

@@ -99,7 +99,7 @@ func (u *Usecases) GetGroup(ctx context.Context, tenantID, scimID string) (map[s
 }
 
 func (u *Usecases) ListGroups(ctx context.Context, tenantID string, query ListQuery) (ListResult, error) {
-	groups, err := u.GroupRepo.ListByTenant(ctx, tenantID)
+	groups, err := u.GroupRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return ListResult{}, err
 	}
@@ -153,7 +153,7 @@ func groupFilterAttrs(group *groupdomain.Group, scimID string) map[string]any {
 // O(n) in tenant group count; acceptable at the usecase layer (ListGroups
 // already does a full tenant scan for every request).
 func (u *Usecases) findGroupByDisplayName(ctx context.Context, tenantID, displayName string) (*groupdomain.Group, error) {
-	groups, err := u.GroupRepo.ListByTenant(ctx, tenantID)
+	groups, err := u.GroupRepo.ListAll(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}

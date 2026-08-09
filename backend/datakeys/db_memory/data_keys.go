@@ -129,7 +129,7 @@ func (r *DataKeyRepository) FindByVersion(_ context.Context, tenantID string, ve
 	return cloneKey(key), nil
 }
 
-func (r *DataKeyRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error) {
+func (r *DataKeyRepository) ListAll(_ context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

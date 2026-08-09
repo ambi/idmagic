@@ -36,7 +36,7 @@ func cloneMcpResourceServer(m *domain.McpResourceServer) *domain.McpResourceServ
 	return &cloned
 }
 
-func (r *McpResourceServerRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.McpResourceServer, error) {
+func (r *McpResourceServerRepository) ListAll(_ context.Context, tenantID string) ([]*domain.McpResourceServer, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.McpResourceServer, 0)

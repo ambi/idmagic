@@ -93,7 +93,7 @@ type TestNotificationResult struct {
 func ListNotificationTemplates(
 	ctx context.Context, deps NotificationTemplateDeps, tenantID string,
 ) ([]NotificationTemplateSummary, error) {
-	stored, err := deps.Repo.ListByTenant(ctx, tenantID)
+	stored, err := deps.Repo.ListAll(ctx, tenantID)
 	if err != nil {
 		return nil, err
 	}

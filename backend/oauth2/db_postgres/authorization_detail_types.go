@@ -43,7 +43,7 @@ func authorizationDetailTypeFromRow(row *AuthorizationDetailType) (*domain.Autho
 	return t, t.Validate()
 }
 
-func (r *AuthorizationDetailTypeRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error) {
+func (r *AuthorizationDetailTypeRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error) {
 	rows, err := New(r.Pool).ListAuthorizationDetailTypesByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

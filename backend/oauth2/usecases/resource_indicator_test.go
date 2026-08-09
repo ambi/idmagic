@@ -21,7 +21,7 @@ func newFakeMcpResourceServerRepo(servers ...*domain.McpResourceServer) *fakeMcp
 	return r
 }
 
-func (r *fakeMcpResourceServerRepo) ListByTenant(context.Context, string) ([]*domain.McpResourceServer, error) {
+func (r *fakeMcpResourceServerRepo) ListAll(context.Context, string) ([]*domain.McpResourceServer, error) {
 	return nil, nil
 }
 

@@ -41,7 +41,7 @@ func (r *SamlServiceProviderRepository) FindByEntityID(ctx context.Context, tena
 	return samlServiceProviderFromRow(row)
 }
 
-func (r *SamlServiceProviderRepository) ListByTenant(ctx context.Context, tenantID string) ([]*domain.SamlServiceProvider, error) {
+func (r *SamlServiceProviderRepository) ListAll(ctx context.Context, tenantID string) ([]*domain.SamlServiceProvider, error) {
 	rows, err := New(r.Pool).ListSamlServiceProvidersByTenant(ctx, tenantID)
 	if err != nil {
 		return nil, err

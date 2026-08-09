@@ -10,7 +10,7 @@ import (
 // type 定義 (RFC 9396 / ADR-050) の永続境界。受理する type のスキーマ・表示
 // テンプレート・運用状態を保持する。
 type AuthorizationDetailTypeRepository interface {
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error)
+	ListAll(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error)
 	FindByType(ctx context.Context, tenantID, detailType string) (*domain.AuthorizationDetailType, error)
 	Save(ctx context.Context, t *domain.AuthorizationDetailType) error
 	Delete(ctx context.Context, tenantID, detailType string) error

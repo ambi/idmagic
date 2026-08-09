@@ -159,7 +159,7 @@ func (r *SamlServiceProviderRepository) FindByEntityID(_ context.Context, tenant
 	return cloneServiceProvider(sp), nil
 }
 
-func (r *SamlServiceProviderRepository) ListByTenant(_ context.Context, tenantID string) ([]*domain.SamlServiceProvider, error) {
+func (r *SamlServiceProviderRepository) ListAll(_ context.Context, tenantID string) ([]*domain.SamlServiceProvider, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	out := make([]*domain.SamlServiceProvider, 0)

@@ -53,12 +53,12 @@ func TestSsfStreamRepository_ListByTenantIsScoped(t *testing.T) {
 		t.Fatalf("Save b: %v", err)
 	}
 
-	list, err := repo.ListByTenant(context.Background(), tenantA.ID)
+	list, err := repo.ListAll(context.Background(), tenantA.ID)
 	if err != nil {
-		t.Fatalf("ListByTenant: %v", err)
+		t.Fatalf("ListAll: %v", err)
 	}
 	if len(list) != 1 || list[0].ID != a.ID {
-		t.Fatalf("ListByTenant(tenantA) = %+v, want only %q", list, a.ID)
+		t.Fatalf("ListAll(tenantA) = %+v, want only %q", list, a.ID)
 	}
 }
 

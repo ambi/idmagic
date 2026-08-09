@@ -63,7 +63,7 @@ func TestNotificationTemplateRepositorySaveFindListDelete(t *testing.T) {
 		t.Errorf("created_at moved on upsert: %v", stored.CreatedAt)
 	}
 
-	list, err := repo.ListByTenant(ctx, tenant.ID)
+	list, err := repo.ListAll(ctx, tenant.ID)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestNotificationTemplateRepositoryIsolatesTenants(t *testing.T) {
 	if stored, err := repo.FindByKey(ctx, second.ID, notificationports.TemplateKeyAccountSecurityAlert, "en"); err != nil || stored != nil {
 		t.Fatalf("cross-tenant read returned %+v (%v)", stored, err)
 	}
-	list, err := repo.ListByTenant(ctx, second.ID)
+	list, err := repo.ListAll(ctx, second.ID)
 	if err != nil || len(list) != 0 {
 		t.Fatalf("cross-tenant list returned %+v (%v)", list, err)
 	}

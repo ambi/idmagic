@@ -40,7 +40,7 @@ func (d Deps) handleListAdminMcpResourceServers(c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	servers, err := d.McpResourceServerRepo.ListByTenant(c.Request().Context(), support.RequestTenantID(c))
+	servers, err := d.McpResourceServerRepo.ListAll(c.Request().Context(), support.RequestTenantID(c))
 	if err != nil {
 		return err
 	}

@@ -41,6 +41,6 @@ type DataKeyRepository interface {
 	// FindByVersion returns a specific version, or (nil, ErrDataKeyNotFound).
 	FindByVersion(ctx context.Context, tenantID string, version int) (*domain.TenantDataEncryptionKey, error)
 
-	// ListByTenant returns every version for a tenant, newest first.
-	ListByTenant(ctx context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error)
+	// ListAll returns every version for a tenant, newest first.
+	ListAll(ctx context.Context, tenantID string) ([]*domain.TenantDataEncryptionKey, error)
 }

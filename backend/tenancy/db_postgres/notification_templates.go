@@ -30,7 +30,7 @@ func (r *NotificationTemplateRepository) FindByKey(
 	return notificationTemplateFromRow(row), nil
 }
 
-func (r *NotificationTemplateRepository) ListByTenant(
+func (r *NotificationTemplateRepository) ListAll(
 	ctx context.Context, tenantID string,
 ) ([]*notificationports.TemplateOverride, error) {
 	rows, err := New(r.Pool).ListNotificationTemplatesByTenant(ctx, tenantID)
