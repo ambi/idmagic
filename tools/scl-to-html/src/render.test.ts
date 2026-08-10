@@ -205,6 +205,75 @@ describe('renderSclTab', () => {
   })
 })
 
+// wi-353: the flow diagram derived from `views`/`does` must place nodes by
+// edge topology (not index order), so self-loops and cross-flow transitions
+// stay legible instead of collapsing onto identical coordinates or being
+// silently dropped from the SVG.
+const topologyScl = (): SclDocument => ({
+  system: 'demo',
+  spec_version: '3.0',
+  flows: {
+    Primary: {
+      entry: 'Hub',
+      views: {
+        Hub: {
+          sees: 'ハブ画面(作成・更新・詳細画面への遷移)',
+          does: [
+            { action: 'create', does: '新規作成する', to: 'Hub' },
+            { action: 'update', does: '更新する', to: 'Hub' },
+            { action: 'open_detail', does: '詳細画面を開く', to: 'Detail' },
+            { action: 'jump_detail', does: '詳細画面へ直接進む', to: 'Detail' },
+          ],
+        },
+      },
+    },
+    Secondary: {
+      entry: 'Detail',
+      views: {
+        Detail: { sees: '詳細画面' },
+      },
+    },
+  },
+})
+
+const extractGroup = (html: string, idSuffix: string): string => {
+  const re = new RegExp(`<g[^>]*id="[^"]*${idSuffix}"[^>]*>([\\s\\S]*?)</g>`)
+  const match = html.match(re)
+  if (!match?.[1]) throw new Error(`diagram group not found: ${idSuffix}`)
+  return match[1]
+}
+
+describe('flow diagram topology (wi-353)', () => {
+  const html = renderSclTab(topologyScl())
+
+  it('does not collapse self-loop edges onto identical coordinates', () => {
+    const create = extractGroup(html, 'diagram-flow-primary-edge-0')
+    const update = extractGroup(html, 'diagram-flow-primary-edge-1')
+    expect(create).not.toBe(update)
+    const lineOrPath = /<(?:line|path)[^>]*>/
+    expect(create.match(lineOrPath)?.[0]).not.toBe(update.match(lineOrPath)?.[0])
+  })
+
+  it('draws cross-flow transitions instead of silently dropping them', () => {
+    expect(html).toContain('diagram-flow-primary-node-detail')
+    const openDetail = extractGroup(html, 'diagram-flow-primary-edge-2')
+    const jumpDetail = extractGroup(html, 'diagram-flow-primary-edge-3')
+    expect(openDetail).toContain('open_detail')
+    expect(jumpDetail).toContain('jump_detail')
+  })
+
+  it('offsets parallel edges between the same view pair', () => {
+    const openDetail = extractGroup(html, 'diagram-flow-primary-edge-2')
+    const jumpDetail = extractGroup(html, 'diagram-flow-primary-edge-3')
+    const lineOrPath = /<(?:line|path)[^>]*>/
+    expect(openDetail.match(lineOrPath)?.[0]).not.toBe(jumpDetail.match(lineOrPath)?.[0])
+  })
+
+  it('links the does-table To column for cross-flow navigation', () => {
+    expect(html).toMatch(/<td><a[^>]*href="[^"]*flow\/Secondary[^"]*"[^>]*>Detail<\/a><\/td>/)
+  })
+})
+
 describe('renderSclTab canonical authorization anchors', () => {
   const html = renderSclTab({
     system: 'demo',

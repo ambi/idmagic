@@ -412,7 +412,7 @@ table.fields tbody tr:last-child td { border-bottom: none; }
 }
 .diagram-viewport.dragging { cursor: grabbing; }
 .diagram-viewport svg { display: block; width: 100%; height: 320px; touch-action: none; }
-.diagram-edge line { stroke: var(--muted); stroke-width: 1.6; }
+.diagram-edge line, .diagram-edge path { fill: none; stroke: var(--muted); stroke-width: 1.6; }
 .diagram-edge text {
   fill: var(--fg-soft); font-size: 11px; text-anchor: middle;
   paint-order: stroke; stroke: var(--surface-2); stroke-width: 5px; stroke-linejoin: round;
@@ -428,6 +428,7 @@ table.fields tbody tr:last-child td { border-bottom: none; }
 .diagram-node-initial rect { stroke: var(--accent); fill: var(--accent-soft); }
 .diagram-node-terminal rect { stroke: var(--warn); fill: var(--warn-soft); }
 .diagram-node-external rect { stroke-dasharray: 5 4; fill: var(--surface-2); }
+.diagram-node-cross-flow rect { stroke-dasharray: 2 3; fill: var(--surface-2); }
 .diagram-card a:hover .diagram-node rect { stroke: var(--accent); }
 .diagram-card a:hover .diagram-node text { fill: var(--accent); }
 .diagram-card marker path { fill: var(--muted); }
