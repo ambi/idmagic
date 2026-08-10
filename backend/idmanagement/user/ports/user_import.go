@@ -8,8 +8,8 @@ import (
 )
 
 // EffectiveUserAttributeSchemaReader supplies the attribute definitions that
-// may appear as custom:<key> columns without exposing Tenancy internals to the
-// User import use case.
+// may appear as attr:<key> (builtin) or custom:<key> (tenant-defined) columns
+// without exposing Tenancy internals to the User import use case.
 type EffectiveUserAttributeSchemaReader interface {
 	EffectiveUserAttributeDefs(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
 }

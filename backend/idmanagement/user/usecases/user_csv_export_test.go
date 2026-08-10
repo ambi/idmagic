@@ -107,14 +107,14 @@ func TestExportUserCSVUsesRequestedMachineColumnsAndPolicy(t *testing.T) {
 		UserRepo:     repo,
 		SchemaReader: importSchemaReader{defs: []userdomain.UserAttributeDef{{Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate}}},
 		Artifacts:    artifacts,
-	}, []string{"id", "preferred_username", "required_actions", "custom:department"}, "active", policy)
+	}, []string{"id", "preferred_username", "required_actions", "attr:department"}, "active", policy)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if result.TotalRows != 1 {
 		t.Fatalf("result=%+v", result)
 	}
-	if got := string(artifacts.content); got != "id,preferred_username,required_actions,custom:department\nuser-alice,alice,,Old\n" {
+	if got := string(artifacts.content); got != "id,preferred_username,required_actions,attr:department\nuser-alice,alice,,Old\n" {
 		t.Fatalf("csv=%q", got)
 	}
 

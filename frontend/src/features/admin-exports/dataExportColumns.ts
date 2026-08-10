@@ -14,7 +14,10 @@ export type ExportColumn = {
 export type ExportTarget = 'users' | 'groups' | 'group_members'
 
 // backend の allowlist と一致した、種別ごとの選択可能な列。sensitive 値 (password_hash 等)
-// は backend にも UI にも存在しない。
+// は backend にも UI にも存在しない。User の組み込み拡張属性 27 種 (attr:<key>) と
+// tenant custom 属性 (custom:<key>) は固定リストではなく DataExportPage が
+// getTenantUserAttributeSchema() の schema.builtin / schema.attributes から動的に
+// 解決する (wi-352)。
 export const EXPORT_COLUMNS: Record<ExportTarget, ExportColumn[]> = {
   users: [
     { key: 'id', labelKey: 'colId' },

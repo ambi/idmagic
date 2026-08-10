@@ -68,8 +68,11 @@ export function DataExportPage({
   const t = useDictionary(dataExportDictionary)
   const baseColumns = EXPORT_COLUMNS[target]
   const listPath = backPath || tenantURL(target === 'users' ? '/admin/users' : '/admin/groups')
-  const [customColumns, setCustomColumns] = useState<ExportColumn[]>([])
-  const columns = useMemo(() => [...baseColumns, ...customColumns], [baseColumns, customColumns])
+  const [attributeColumns, setAttributeColumns] = useState<ExportColumn[]>([])
+  const columns = useMemo(
+    () => [...baseColumns, ...attributeColumns],
+    [baseColumns, attributeColumns],
+  )
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(baseColumns.map((c) => c.key)),
   )
@@ -94,18 +97,27 @@ export function DataExportPage({
     void refresh()
   }, [])
 
-  // User CSV の custom:<key> は固定 allowlist ではなく tenant の実効 schema から解決する。
+  // User CSV の attr:<key> (組み込み拡張属性) と custom:<key> (tenant custom 属性) は
+  // 固定 allowlist ではなく、schema.builtin / schema.attributes からそれぞれ解決する
+  // (wi-352)。
   // biome-ignore lint/correctness/useExhaustiveDependencies: target の画面マウント時だけ解決する
   useEffect(() => {
     if (target !== 'users') return
     void getTenantUserAttributeSchema()
       .then((schema) => {
-        const resolved = schema.attributes.map((attribute) => ({
-          key: `custom:${attribute.key}`,
-          label: attribute.label,
-          pii: attribute.pii,
-        }))
-        setCustomColumns(resolved)
+        const resolved = [
+          ...schema.builtin.map((attribute) => ({
+            key: `attr:${attribute.key}`,
+            label: attribute.label,
+            pii: attribute.pii,
+          })),
+          ...schema.attributes.map((attribute) => ({
+            key: `custom:${attribute.key}`,
+            label: attribute.label,
+            pii: attribute.pii,
+          })),
+        ]
+        setAttributeColumns(resolved)
         setSelected((previous) => {
           const next = new Set(previous)
           for (const column of resolved) next.add(column.key)
@@ -224,7 +236,9 @@ export function DataExportPage({
                     onChange={() => toggleColumn(column.key)}
                   />
                   <span className="flex flex-col">
-                    <span>{column.label ?? (column.labelKey ? t[column.labelKey] : column.key)}</span>
+                    <span>
+                      {column.label ?? (column.labelKey ? t[column.labelKey] : column.key)}
+                    </span>
                     <span className="font-mono text-[11px] text-slate-400">({column.key})</span>
                   </span>
                   {column.pii && (

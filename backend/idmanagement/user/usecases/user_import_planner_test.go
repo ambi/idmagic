@@ -86,7 +86,7 @@ func TestPlanUserImportCreateUpdateUnchangedAndFieldPresence(t *testing.T) {
 	repo.Seed(alice)
 	repo.Seed(charlie)
 
-	csv := "id,preferred_username,email,required_actions,custom:department\n" +
+	csv := "id,preferred_username,email,required_actions,attr:department\n" +
 		"user-alice,alice,,update_password,Engineering\n" +
 		",bob,bob@example.com,,Sales\n" +
 		"user-charlie,charlie,charlie@example.com,,Old\n"
@@ -117,7 +117,7 @@ func TestPlanUserImportRejectsIdentifierMismatchInvalidTypesAndMissingIdentifier
 	repo.Seed(importPlannerUser("user-alice", "alice"))
 	repo.Seed(importPlannerUser("user-bob", "bob"))
 	repo.Seed(importPlannerUser("user-carol", "carol"))
-	csv := "id,preferred_username,email_verified,custom:department\n" +
+	csv := "id,preferred_username,email_verified,attr:department\n" +
 		"user-alice,bob,true,Engineering\n" +
 		"user-carol,carol,TRUE,Engineering\n" +
 		",,,Engineering\n"

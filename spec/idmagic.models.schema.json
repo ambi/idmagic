@@ -6476,7 +6476,7 @@
         "label",
         "pii"
       ],
-      "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の custom:<key> は実効 TenantUserAttributeSchema から tenant ごとに解決する。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
+      "description": "エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の allowlist は 13 個の組み込みコア列に加え、attr:<key> (OIDC profile/phone/address 相当と SCIM enterprise 相当の組織属性からなる、全 tenant 共通の組み込み拡張属性 27 種) と custom:<key> (実効 TenantUserAttributeSchema から tenant ごとに解決するテナント定義属性) を含む。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。"
     },
     "DataExportDownloaded": {
       "type": "object",

@@ -726,7 +726,7 @@ models:
     values: [queued, running, succeeded, failed, canceled, expired]
   DataExportColumn:
     kind: value_object
-    description: エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の custom:<key> は実効 TenantUserAttributeSchema から tenant ごとに解決する。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。
+    description: エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の allowlist は 13 個の組み込みコア列に加え、attr:<key> (OIDC profile/phone/address 相当と SCIM enterprise 相当の組織属性からなる、全 tenant 共通の組み込み拡張属性 27 種) と custom:<key> (実効 TenantUserAttributeSchema から tenant ごとに解決するテナント定義属性) を含む。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。
     fields:
       key:
         type: String
@@ -2227,7 +2227,7 @@ interfaces:
             type: Integer
             description: requested limit。最終ページの実返却件数とは独立する。
   StartUserCsvExport:
-    description: 管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。CSV ヘッダーは表示 label ではなく要求した machine key と一致する。列は組み込み User allowlist と実効 TenantUserAttributeSchema の custom:<key> の部分集合に限り、status フィルタを引き継げる。生成 payload は import と同じ UserCsvTransferPolicy と immutable artifact store を使うため、成功した User export は無編集で preview できる。202 とエクスポート id を返す。
+    description: 管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。CSV ヘッダーは表示 label ではなく要求した machine key と一致する。列は組み込み User allowlist (13 個のコア列 + attr:<key> の組み込み拡張属性 27 種) と実効 TenantUserAttributeSchema の custom:<key> (テナント定義属性) の部分集合に限り、status フィルタを引き継げる。生成 payload は import と同じ UserCsvTransferPolicy と immutable artifact store を使うため、成功した User export は無編集で preview できる。202 とエクスポート id を返す。
     input:
       request: { type: DataExportRequest }
     output:

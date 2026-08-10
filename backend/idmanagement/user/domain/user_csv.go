@@ -65,7 +65,8 @@ const (
 )
 
 // UserCSVColumn is a machine-key column definition shared by import and export.
-// Attribute is non-nil only for schema-backed custom:<key> columns.
+// Attribute is non-nil only for schema-backed attr:<key> (builtin extended
+// attribute) or custom:<key> (tenant-defined attribute) columns.
 type UserCSVColumn struct {
 	Key       string
 	Mode      UserCSVColumnMode
@@ -93,18 +94,37 @@ var builtinUserCSVColumns = []UserCSVColumn{
 	{Key: "updated_at", Mode: UserCSVColumnReadOnly},
 }
 
-func NewUserCSVSchema(custom []UserAttributeDef) (UserCSVSchema, error) {
-	columns := make(map[string]UserCSVColumn, len(builtinUserCSVColumns)+len(custom))
-	ordered := make([]UserCSVColumn, 0, len(builtinUserCSVColumns)+len(custom))
+// builtinUserCSVAttributeKeys is the set of builtin extended attribute keys
+// (attributes.go builtinDefs) that resolve to attr:<key> columns instead of
+// custom:<key> (wi-352).
+var builtinUserCSVAttributeKeys = func() map[string]struct{} {
+	set := make(map[string]struct{}, len(builtinDefs))
+	for _, d := range builtinDefs {
+		set[d.Key] = struct{}{}
+	}
+	return set
+}()
+
+// NewUserCSVSchema builds the CSV column schema from the effective attribute
+// defs (builtin extended attributes + tenant custom attributes, as returned
+// by EffectiveUserAttributeSchemaReader). Builtin extended attributes resolve
+// to attr:<key> columns; tenant-defined attributes resolve to custom:<key>.
+func NewUserCSVSchema(defs []UserAttributeDef) (UserCSVSchema, error) {
+	columns := make(map[string]UserCSVColumn, len(builtinUserCSVColumns)+len(defs))
+	ordered := make([]UserCSVColumn, 0, len(builtinUserCSVColumns)+len(defs))
 	for _, column := range builtinUserCSVColumns {
 		columns[column.Key] = column
 		ordered = append(ordered, column)
 	}
-	for _, def := range custom {
+	for _, def := range defs {
 		if err := def.Validate(); err != nil {
 			return UserCSVSchema{}, err
 		}
-		key := "custom:" + def.Key
+		prefix := "custom:"
+		if _, isBuiltin := builtinUserCSVAttributeKeys[def.Key]; isBuiltin {
+			prefix = "attr:"
+		}
+		key := prefix + def.Key
 		if _, exists := columns[key]; exists {
 			return UserCSVSchema{}, fmt.Errorf("duplicate user CSV column %q", key)
 		}

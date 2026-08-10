@@ -1,5 +1,5 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-08-10
@@ -162,17 +162,37 @@ CSV で扱えない」という設計上のギャップを解消する。
 
 ## Tasks
 
-- [ ] T001 [SCL] `models.DataExportColumn` と `interfaces.StartUserCsvExport` /
+- [x] T001 [SCL] `models.DataExportColumn` と `interfaces.StartUserCsvExport` /
       `interfaces.ImportAdminUsers` の説明を、組み込み拡張属性27種を含む
-      列選択の仕様に更新する。
-- [ ] T002 [Domain] `user_csv.go` の CSV スキーマ生成に組み込み拡張属性の
-      列解決を追加する。RED: 既存の `user_csv_test.go` に27種のいずれかを
-      要求してエラーになるケースを先に追加(scenario 要参照)→ GREEN。
-- [ ] T003 [App] `user_csv_export.go` / `user_import_planner.go` の
-      export/import 双方で新しい列を読み書きできるようにする。
-- [ ] T004 [UI] `dataExportColumns.ts` / `DataExportPage.tsx` の列選択に
-      27種を追加する。
-- [ ] T005 [Verify] `just verify` を通す。
+      列選択の仕様に更新する。→ `attr:<key>` (組み込み拡張属性) と
+      `custom:<key>` (tenant custom 属性) を明記。
+- [x] T002 [Domain] `user_csv.go` の CSV スキーマ生成に組み込み拡張属性の
+      列解決を追加する。RED: `user_csv_test.go` に
+      `TestParseUserCSVResolvesBuiltinAttributeAsAttrPrefixedColumn` を追加し、
+      `schema.Column("attr:department")` が見つからず fail することを確認
+      (models.DataExportColumn, interfaces.StartUserCsvExport) → GREEN:
+      `NewUserCSVSchema` が def.Key を `builtinUserCSVAttributeKeys` (27種) と
+      照合し、`attr:` / `custom:` を振り分けるよう変更。
+      既存の `TestParseUserCSVAcceptsPermutedPartialHeadersAndPreservesPresence`
+      は built-in と衝突しない `cost_code` に例のキーを差し替えて維持。
+- [x] T003 [App] `user_csv_export.go` / `user_import_planner.go` の
+      export/import 双方で新しい列を読み書きできるようにする。→
+      両方とも `UserCSVColumn.Attribute != nil` を汎用的に扱う既存実装のため
+      コード変更は不要と判明。`custom:department` を使っていた既存テスト
+      (`user_csv_export_test.go` / `user_import_planner_test.go` /
+      `user_import_apply_test.go`) を `attr:department` に更新して green を確認。
+- [x] T004 [UI] `dataExportColumns.ts` / `DataExportPage.tsx` の列選択に
+      27種を追加する。→ 27種を静的にハードコードする代わりに、既存の
+      `getTenantUserAttributeSchema()` レスポンスに既にあった
+      `schema.builtin` (backend `toUserAttributeSchemaResponse` が
+      `userdomain.BuiltinUserAttributeDefs()` を返す) を `attr:<key>` として
+      動的にマッピングする方式を採用 (custom 属性と同じパターン)。3箇所目の
+      重複を作らずに済み、Risk Notes の重複懸念を実質的に解消。
+      `DataExportPage.test.tsx` に `schema.builtin` 経由で `attr:department`
+      チェックボックスが表示されることのアサーションを追加。
+- [x] T005 [Verify] `just verify` を通す。→ green
+      (test-go/test-ui-unit/lint-go/lint-ui/format-check-ui/check/
+      check-api-compat/typecheck-tools/test-tools/traceability-strict)。
 
 ## Verification
 
@@ -182,12 +202,64 @@ CSV で扱えない」という設計上のギャップを解消する。
 - 手動確認: Admin Users で `department` に値を設定 → CSV エクスポートに
   含めてダウンロード → 同じファイルをインポート preview にかけて
   unchanged と判定されることを確認。
+  → `TestExportUserCSVSucceedsWithBuiltinAttributeValue` /
+  `TestExportUserCSVTenThousandRowsRoundTripAsUnchanged`
+  (`backend/idmanagement/user/usecases`) が実 `TenantUserCSVSchemaReader` 経由で
+  この export→import unchanged 往復を自動検証している。ブラウザでの手動操作は
+  実施していない (ブラウザ拡張が未接続のため): `just dev` でフル dev stack
+  (embedded Postgres + worker + UI) を起動しサーバー正常応答を確認したが、
+  ログイン〜画面操作までは検証できていない。UI 側は
+  `DataExportPage.test.tsx` の新規アサーションで実バックエンドのレスポンス
+  形状 (`schema.builtin`) に対する描画を検証している。
 
 ## Risk Notes
 
 - 3箇所に重複した13列 allowlist を拡張する際、同期漏れが起きやすい
   (現状のバグもこの重複構造が遠因)。実装時にこの重複自体を解消する
   リファクタリングを検討する価値がある。
+  → 実装の結果: `attr:<key>` 27種は `dataExportColumns.ts` に静的追加せず、
+  既存の `schema.builtin` API レスポンスを動的に使う方式にしたため、
+  フロントエンドは重複を増やさなかった。バックエンドの
+  `backend/idmanagement/domain/data_export.go` の `exportColumns[ExportTargetUser]`
+  (13列) は今回あえて手を付けていない: これは `UserCSVExporter` 未設定時の
+  fallback 専用パスで、production の wiring
+  (`cmd/idmagic-worker/worker.go` / `admin_data_export_handler.go`) では常に
+  `UserCSVExporter` が設定され実質使われないため。
 - 列キーの命名方針次第で、既存にエクスポート済みの CSV ファイルとの
   互換性(再インポート時の列解釈)に影響しうるため、命名は SCL 更新時に
   慎重に決める。
+  → `attr:<key>` を採用。従来 `EffectiveUserAttributeDefs` のマージバグ修正
+  (525aeafc) 以降、builtin 拡張属性はすでに `custom:<key>` として (意図せず)
+  export/import 可能になっていたため、既にそれを使っていた運用があれば
+  `attr:<key>` への破壊的変更になる。ただし当時 UI には未露出だったため、
+  管理者が実際に `custom:department` 等を使っていた可能性は低いと判断した。
+
+## Completion
+
+- **Completed At**: 2026-08-10
+- **Summary**:
+  組み込み拡張属性27種 (`middle_name` / `department` など) を User CSV
+  エクスポート/インポートの対象に追加した。CSV 列キーは `attr:<key>`
+  (組み込み拡張属性) と `custom:<key>` (tenant custom 属性) を区別する形に
+  統一し (`NewUserCSVSchema`)、export/import の use case 層は既存の汎用実装
+  (`UserCSVColumn.Attribute != nil`) のままで新列を読み書きできることを確認
+  した。UI (`DataExportPage.tsx`) は27種を静的にハードコードせず、既存の
+  `getTenantUserAttributeSchema()` レスポンスの `schema.builtin` を
+  `attr:<key>` 列として動的に描画する方式を採用し、3箇所目の allowlist 重複
+  を避けた。SCL (`models.DataExportColumn` / `interfaces.StartUserCsvExport`)
+  を先に更新し、派生物を再生成済み。
+  対応していないこと (Out of Scope どおり): Group / GroupMembership の CSV
+  対応 (wi-350, wi-351)、新しい組み込み属性の追加、password/secret 系列の
+  allowlist 追加公開。手動確認はブラウザ拡張が未接続のため画面操作では
+  実施できておらず、`just dev` によるフル dev stack 起動確認と、実
+  `TenantUserCSVSchemaReader` を使った export→import unchanged 往復の自動
+  テストで代替した。
+- **Verification Results**:
+  - `just check` - passed(SCL、work item、ID、Architecture、traceability)
+  - `just test-go` - passed(全 Go パッケージ)
+  - `just test-ui-unit` - passed(562 tests)
+  - `just verify` - passed(test-go, test-ui-unit, lint-go, lint-ui,
+    format-check-ui, check-api-compat, typecheck-tools, test-tools,
+    traceability-strict, build-ui, check)
+  - `just dev` でフル dev stack (embedded Postgres + worker + UI) 起動確認
+    (画面操作による手動確認は未実施)

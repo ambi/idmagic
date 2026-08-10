@@ -38,8 +38,8 @@ describe('DataExportPage', () => {
               tenant_id: 'tenant-1',
               attributes: [
                 {
-                  key: 'department',
-                  label: 'Department',
+                  key: 'cost_code',
+                  label: 'Cost code',
                   type: 'string',
                   multi_valued: false,
                   required: false,
@@ -48,7 +48,18 @@ describe('DataExportPage', () => {
                   pii: false,
                 },
               ],
-              builtin: [],
+              builtin: [
+                {
+                  key: 'department',
+                  label: 'Department',
+                  type: 'string',
+                  multi_valued: false,
+                  required: false,
+                  editable_by_user: false,
+                  visibility: 'self_readable',
+                  pii: false,
+                },
+              ],
               created_at: '2026-08-10T00:00:00Z',
               updated_at: '2026-08-10T00:00:00Z',
             }),
@@ -73,7 +84,9 @@ describe('DataExportPage', () => {
     expect(screen.getByText(t.colUsername)).toBeInTheDocument()
     expect(screen.getByText(t.colRequiredActions)).toBeInTheDocument()
     expect(await screen.findByText('Department')).toBeInTheDocument()
-    expect(screen.getByText('(custom:department)')).toBeInTheDocument()
+    expect(screen.getByText('(attr:department)')).toBeInTheDocument()
+    expect(await screen.findByText('Cost code')).toBeInTheDocument()
+    expect(screen.getByText('(custom:cost_code)')).toBeInTheDocument()
     expect(screen.getAllByText(t.piiBadge).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: t.startExport }))

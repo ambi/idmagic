@@ -55,7 +55,7 @@ func TestApplyUserImportCommitsEachRowAtomicallyAndContinuesAfterFailure(t *test
 		Committer:      committer,
 		PasswordHasher: importTestHasher{},
 	}
-	csv := "id,email,roles,required_actions,custom:department\n" +
+	csv := "id,email,roles,required_actions,attr:department\n" +
 		"user-alice,new-alice@example.com,admin|support,verify_email,Engineering\n" +
 		"user-bob,new-bob@example.com,admin,update_password,Sales\n"
 

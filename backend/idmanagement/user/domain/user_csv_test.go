@@ -37,17 +37,17 @@ func collectUserCSV(t *testing.T, input io.Reader, schema UserCSVSchema, policy 
 // scenario: 管理者はエクスポートしたユーザー CSV を安全に再適用できる
 func TestParseUserCSVAcceptsPermutedPartialHeadersAndPreservesPresence(t *testing.T) {
 	schema, err := NewUserCSVSchema([]UserAttributeDef{{
-		Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate,
+		Key: "cost_code", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate,
 	}})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	header, rows, csvErr := collectUserCSV(t, strings.NewReader("custom:department,email,id\nEngineering,,user-1\n"), schema, DefaultUserCSVTransferPolicy())
+	header, rows, csvErr := collectUserCSV(t, strings.NewReader("custom:cost_code,email,id\nEngineering,,user-1\n"), schema, DefaultUserCSVTransferPolicy())
 	if csvErr != nil {
 		t.Fatalf("ParseUserCSV() error = %+v", csvErr)
 	}
-	if got, want := header, []string{"custom:department", "email", "id"}; !reflect.DeepEqual(got, want) {
+	if got, want := header, []string{"custom:cost_code", "email", "id"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("header = %v, want %v", got, want)
 	}
 	if len(rows) != 1 {
@@ -62,6 +62,42 @@ func TestParseUserCSVAcceptsPermutedPartialHeadersAndPreservesPresence(t *testin
 	}
 	if id, code := row.Identifier(); code != "" || id.ID != "user-1" || id.PreferredUsername != "" {
 		t.Fatalf("identifier = %+v, code=%q", id, code)
+	}
+}
+
+// scenario: 管理者は組み込み拡張属性 (department など) を CSV エクスポート/インポートの
+// 対象に含められる (models.DataExportColumn, wi-352)。builtin defs は attr:<key> で
+// tenant custom 属性の custom:<key> と区別する。
+func TestParseUserCSVResolvesBuiltinAttributeAsAttrPrefixedColumn(t *testing.T) {
+	defs := append(BuiltinUserAttributeDefs(), UserAttributeDef{
+		Key: "cost_code", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate,
+	})
+	schema, err := NewUserCSVSchema(defs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := schema.Column("attr:department"); !ok {
+		t.Fatal("expected builtin attribute department to resolve as attr:department")
+	}
+	if _, ok := schema.Column("custom:department"); ok {
+		t.Fatal("builtin attribute department must not also resolve as custom:department")
+	}
+	if _, ok := schema.Column("custom:cost_code"); !ok {
+		t.Fatal("expected tenant custom attribute cost_code to resolve as custom:cost_code")
+	}
+
+	header, rows, csvErr := collectUserCSV(t, strings.NewReader("id,attr:department\nuser-1,Engineering\n"), schema, DefaultUserCSVTransferPolicy())
+	if csvErr != nil {
+		t.Fatalf("ParseUserCSV() error = %+v", csvErr)
+	}
+	if got, want := header, []string{"id", "attr:department"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("header = %v, want %v", got, want)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("rows = %d, want 1", len(rows))
+	}
+	if cell, ok := rows[0].Cell("attr:department"); !ok || cell.Raw != "Engineering" {
+		t.Fatalf("attr:department cell = %+v", cell)
 	}
 }
 
