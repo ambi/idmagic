@@ -19,6 +19,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
+	"github.com/ambi/idmagic/backend/shared/logging"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -204,6 +205,7 @@ func DataExportHandler(deps DataExportDeps) func(context.Context, *jobsdomain.Jo
 		result, err := generateExport(ctx, deps, job.TenantID, p)
 		if err != nil {
 			code := exportErrorCode(err)
+			logging.Error(ctx, "data export failed", "error", err, "export_id", job.ID, "target", p.Target, "error_code", code)
 			_ = adminEmitExport(deps.Emit, &idmdomain.DataExportFailed{At: deps.now(), TenantID: job.TenantID, ExportID: job.ID, Target: p.Target, ErrorCode: code})
 			return nil, fmt.Errorf("%s", code)
 		}

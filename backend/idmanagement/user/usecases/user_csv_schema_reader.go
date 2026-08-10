@@ -18,8 +18,11 @@ func (r TenantUserCSVSchemaReader) EffectiveUserAttributeDefs(ctx context.Contex
 		return nil, nil
 	}
 	schema, err := r.Repository.FindByTenant(ctx, tenantID)
-	if err != nil || schema == nil {
+	if err != nil {
 		return nil, err
 	}
-	return append([]userdomain.UserAttributeDef(nil), schema.Attributes...), nil
+	if schema == nil {
+		return userdomain.BuiltinUserAttributeDefs(), nil
+	}
+	return schema.EffectiveDefs(), nil
 }
