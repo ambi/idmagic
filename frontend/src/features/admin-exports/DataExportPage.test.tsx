@@ -72,7 +72,8 @@ describe('DataExportPage', () => {
     // The username column is offered and PII columns are badged.
     expect(screen.getByText(t.colUsername)).toBeInTheDocument()
     expect(screen.getByText(t.colRequiredActions)).toBeInTheDocument()
-    expect(await screen.findByText('Department (custom:department)')).toBeInTheDocument()
+    expect(await screen.findByText('Department')).toBeInTheDocument()
+    expect(screen.getByText('(custom:department)')).toBeInTheDocument()
     expect(screen.getAllByText(t.piiBadge).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: t.startExport }))

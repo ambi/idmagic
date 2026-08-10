@@ -190,7 +190,7 @@ export const adminUsersDictionary = defineDictionary(
     exportUsers: 'CSV エクスポート',
     importUsersDescription: 'CSV から複数ユーザーを事前検証して、作成・更新します。',
     importInstructions:
-      'ヘッダーには安定した機械キーを使います。列の順序と部分集合は任意で、roles と required_actions は "|" 区切りです。',
+      'ヘッダー行には固定の列名(id、email など)を使います。列の順序を入れ替えたり、一部の列だけを使ったりできます。roles と required_actions は "|" で区切ります。',
     importPasswordColumnRejectedNotice:
       'password などの秘密情報列は含められません。新規ユーザーには初期パスワードとパスワード更新要求が安全に設定されます。',
     importTransferPolicyNotice:
@@ -460,7 +460,7 @@ export const adminUsersDictionary = defineDictionary(
     exportUsers: 'Export CSV',
     importUsersDescription: 'Preview, create, and update multiple users from a CSV file.',
     importInstructions:
-      'Headers use stable machine keys. Column order and subsets are allowed; separate roles and required_actions with "|".',
+      'Headers use fixed column names (like id, email). You can reorder columns or include only some of them; separate roles and required_actions with "|".',
     importPasswordColumnRejectedNotice:
       'Password and other secret columns are not allowed. New users receive a safe initial password and password-update action.',
     importTransferPolicyNotice:

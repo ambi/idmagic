@@ -102,7 +102,7 @@ export function DataExportPage({
       .then((schema) => {
         const resolved = schema.attributes.map((attribute) => ({
           key: `custom:${attribute.key}`,
-          label: `${attribute.label} (custom:${attribute.key})`,
+          label: attribute.label,
           pii: attribute.pii,
         }))
         setCustomColumns(resolved)
@@ -223,7 +223,10 @@ export function DataExportPage({
                     checked={selected.has(column.key)}
                     onChange={() => toggleColumn(column.key)}
                   />
-                  <span>{column.label ?? (column.labelKey ? t[column.labelKey] : column.key)}</span>
+                  <span className="flex flex-col">
+                    <span>{column.label ?? (column.labelKey ? t[column.labelKey] : column.key)}</span>
+                    <span className="font-mono text-[11px] text-slate-400">({column.key})</span>
+                  </span>
                   {column.pii && (
                     <span className="ml-auto rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
                       {t.piiBadge}

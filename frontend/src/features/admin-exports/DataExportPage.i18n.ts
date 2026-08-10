@@ -16,7 +16,7 @@ export const dataExportDictionary = defineDictionary(
     userTransferPolicyNotice:
       'ユーザー CSV の既定上限は 1 ファイル 100,000 行・64 MiB・1 フィールド 64 KiB です。上限を超える場合はフィルターで重複しない複数ファイルに分割してください。',
     userRoundTripNotice:
-      '機械キーの列を維持したままエクスポートすると、同じファイルを事前検証して安全に再適用できます。custom:<key> 列は現在のテナント属性スキーマから選択できます。',
+      '列名を変更せずにエクスポートすると、同じファイルをそのままインポートの事前検証にかけて安全に再適用できます。custom:<key> 列は現在のテナント属性スキーマから選べます。',
     startExport: 'エクスポートを開始',
     exporting: 'エクスポートを開始しています…',
     noColumnsSelected: '少なくとも 1 つの列を選んでください。',
@@ -77,7 +77,7 @@ export const dataExportDictionary = defineDictionary(
     userTransferPolicyNotice:
       'Default user CSV limits are 100,000 rows, 64 MiB per file, and 64 KiB per field. Above the limit, use filters to create non-overlapping files.',
     userRoundTripNotice:
-      'Keep the machine-key columns to preview and safely reapply the exported file. custom:<key> columns come from the current tenant attribute schema.',
+      'Keep the column names unchanged to preview and safely reapply the exported file for import. custom:<key> columns come from the current tenant attribute schema.',
     startExport: 'Start export',
     exporting: 'Starting export…',
     noColumnsSelected: 'Select at least one column.',
