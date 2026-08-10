@@ -33,7 +33,7 @@
   }
 
   ::selection {
-    @apply bg-accent/15 text-slate-950;
+    @apply bg-accent-foreground/25 text-foreground;
   }
 }
 
