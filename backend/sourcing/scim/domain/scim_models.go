@@ -108,12 +108,20 @@ type AuthenticationScheme struct {
 }
 
 type ResourceType struct {
-	Schemas     []string `json:"schemas"`
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Endpoint    string   `json:"endpoint"`
-	Description string   `json:"description,omitempty"`
-	Schema      string   `json:"schema"`
+	Schemas          []string          `json:"schemas"`
+	ID               string            `json:"id"`
+	Name             string            `json:"name"`
+	Endpoint         string            `json:"endpoint"`
+	Description      string            `json:"description,omitempty"`
+	Schema           string            `json:"schema"`
+	SchemaExtensions []SchemaExtension `json:"schemaExtensions,omitempty"`
+}
+
+// SchemaExtension advertises a schema this resource type extends beyond its
+// core schema (RFC 7643 §6, e.g. the enterprise User extension).
+type SchemaExtension struct {
+	Schema   string `json:"schema"`
+	Required bool   `json:"required"`
 }
 
 type SchemaAttribute struct {

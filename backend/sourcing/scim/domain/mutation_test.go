@@ -157,6 +157,79 @@ func TestParseUserWriteRejectsUnsupportedComplexAttributes(t *testing.T) {
 	}
 }
 
+// REQ-SOURCING-007: enterprise extension の employeeNumber/department/manager を
+// POST/PUT body から解析する。manager は value オブジェクトと文字列の両方を許可する。
+func TestParseUserWriteEnterpriseExtension(t *testing.T) {
+	t.Run("value object form", func(t *testing.T) {
+		body := map[string]any{
+			"userName": "bjensen",
+			domain.EnterpriseUserSchemaURN: map[string]any{
+				"employeeNumber": "701984",
+				"department":     "Tour Operations",
+				"manager":        map[string]any{"value": "scim_manager1"},
+			},
+		}
+		w, err := domain.ParseUserWrite(body)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if w.EmployeeNumber != "701984" || w.Department != "Tour Operations" || w.ManagerValue != "scim_manager1" {
+			t.Errorf("unexpected enterprise extension fields: %+v", w)
+		}
+	})
+
+	t.Run("manager as bare string (Entra quirk)", func(t *testing.T) {
+		body := map[string]any{
+			"userName": "bjensen",
+			domain.EnterpriseUserSchemaURN: map[string]any{
+				"manager": "scim_manager1",
+			},
+		}
+		w, err := domain.ParseUserWrite(body)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if w.ManagerValue != "scim_manager1" {
+			t.Errorf("ManagerValue = %q, want scim_manager1", w.ManagerValue)
+		}
+	})
+
+	t.Run("omitted extension defaults empty", func(t *testing.T) {
+		w, err := domain.ParseUserWrite(map[string]any{"userName": "bjensen"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if w.EmployeeNumber != "" || w.Department != "" || w.ManagerValue != "" {
+			t.Errorf("expected omitted enterprise extension to default empty, got %+v", w)
+		}
+	})
+}
+
+// REQ-SOURCING-007: 不正な enterprise extension は invalidValue で拒否する。
+func TestParseUserWriteRejectsInvalidEnterpriseExtension(t *testing.T) {
+	tests := []struct {
+		name string
+		ext  any
+	}{
+		{"extension not an object", "not-an-object"},
+		{"employeeNumber not a string", map[string]any{"employeeNumber": 42}},
+		{"department not a string", map[string]any{"department": 42}},
+		{"manager missing value", map[string]any{"manager": map[string]any{}}},
+		{"manager blank string", map[string]any{"manager": "  "}},
+		{"manager wrong type", map[string]any{"manager": 42}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := map[string]any{
+				"userName":                     "bjensen",
+				domain.EnterpriseUserSchemaURN: tt.ext,
+			}
+			_, err := domain.ParseUserWrite(body)
+			assertMutationError(t, err, "invalidValue")
+		})
+	}
+}
+
 // REQ-SOURCING-006: PATCH emails は domain validation 中に canonical value へ解決する。
 func TestParseUserPatchOpsProjectsCanonicalEmail(t *testing.T) {
 	body := map[string]any{
@@ -227,6 +300,96 @@ func TestParseUserPatchOpsRejectsUnknownOp(t *testing.T) {
 	}
 	_, err := domain.ParseUserPatchOps(body)
 	assertMutationError(t, err, "invalidValue")
+}
+
+// REQ-SOURCING-007: enterprise extension PATCH path は bare 名と URN 修飾済みの
+// 完全パスの両方を受け付ける。
+func TestParseUserPatchOpsEnterpriseExtensionPaths(t *testing.T) {
+	tests := []struct {
+		name string
+		path string
+		attr domain.UserAttr
+	}{
+		{"bare employeeNumber", "employeeNumber", domain.UserAttrEmployeeNumber},
+		{"urn-qualified employeeNumber", domain.EnterpriseUserSchemaURN + ":employeeNumber", domain.UserAttrEmployeeNumber},
+		{"bare department", "department", domain.UserAttrDepartment},
+		{"urn-qualified department", domain.EnterpriseUserSchemaURN + ":department", domain.UserAttrDepartment},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := map[string]any{
+				"Operations": []any{
+					map[string]any{"op": "replace", "path": tt.path, "value": "x"},
+				},
+			}
+			ops, err := domain.ParseUserPatchOps(body)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if len(ops) != 1 || ops[0].Attr != tt.attr {
+				t.Fatalf("unexpected ops: %+v", ops)
+			}
+		})
+	}
+}
+
+// REQ-SOURCING-007: PATCH manager は value オブジェクトと文字列の両方を canonical
+// scim id 文字列へ投影する。
+func TestParseUserPatchOpsProjectsManagerValue(t *testing.T) {
+	t.Run("value object form", func(t *testing.T) {
+		body := map[string]any{
+			"Operations": []any{
+				map[string]any{"op": "replace", "path": "manager", "value": map[string]any{"value": "scim_manager1"}},
+			},
+		}
+		ops, err := domain.ParseUserPatchOps(body)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got, ok := ops[0].Value.(string); !ok || got != "scim_manager1" || ops[0].Attr != domain.UserAttrManager {
+			t.Fatalf("unexpected op: %+v", ops[0])
+		}
+	})
+
+	t.Run("bare string form", func(t *testing.T) {
+		body := map[string]any{
+			"Operations": []any{
+				map[string]any{"op": "replace", "path": domain.EnterpriseUserSchemaURN + ":manager", "value": "scim_manager1"},
+			},
+		}
+		ops, err := domain.ParseUserPatchOps(body)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got, ok := ops[0].Value.(string); !ok || got != "scim_manager1" {
+			t.Fatalf("unexpected op: %+v", ops[0])
+		}
+	})
+
+	t.Run("remove does not require a value", func(t *testing.T) {
+		body := map[string]any{
+			"Operations": []any{
+				map[string]any{"op": "remove", "path": "manager"},
+			},
+		}
+		ops, err := domain.ParseUserPatchOps(body)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(ops) != 1 || ops[0].Attr != domain.UserAttrManager || ops[0].Op != "remove" {
+			t.Fatalf("unexpected ops: %+v", ops)
+		}
+	})
+
+	t.Run("invalid manager value is invalidValue", func(t *testing.T) {
+		body := map[string]any{
+			"Operations": []any{
+				map[string]any{"op": "replace", "path": "manager", "value": map[string]any{}},
+			},
+		}
+		_, err := domain.ParseUserPatchOps(body)
+		assertMutationError(t, err, "invalidValue")
+	})
 }
 
 // active の value は bool でなければならない。

@@ -1,6 +1,6 @@
 ---
 context: sourcing
-updated_at: 2026-08-11
+updated_at: 2026-08-12
 ---
 
 # Sourcing Specification
@@ -49,6 +49,7 @@ RFC 7643 — https://www.rfc-editor.org/rfc/rfc7643.html
 |---|---|---|---|
 | RFC7643-SERVICE-PROVIDER-CONFIG | required | MUST | ServiceProviderConfig は authenticationSchemes を含み Bearer token 方式を広告する。 |
 | RFC7643-CORE-RESOURCES | partial | MUST | User と Group resource を SCIM core schema に従って表現する。 |
+| RFC7643-ENTERPRISE-EXTENSION | partial | SHOULD | User resource は enterprise extension (`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`) の employeeNumber、department、manager 部分集合を discovery と CRUD/PATCH で対応する。 |
 
 ### System for Cross-domain Identity Management Protocol
 
@@ -87,6 +88,9 @@ Attributes map directly onto the User/Group aggregates:
 | `Groups.id` | `Group.id` |
 | `Groups.displayName` | `Group.name` |
 | `Groups.members` | `GroupMember` memberships |
+| enterprise extension `employeeNumber` | `User.Attributes["employee_number"]` |
+| enterprise extension `department` | `User.Attributes["department"]` |
+| enterprise extension `manager.value` | `User.Attributes["manager_sub"]`(内部 `User.sub`。SCIM id 経由で解決) |
 
 SCIM の `emails` は multi-valued transport だが、IdMagic の canonical User は認証・通知で使う
 単一 email だけを持つ。User mutation は全 email element を検証してから、`primary=true`、
@@ -98,6 +102,16 @@ Schema discovery は実装済み subset だけを広告する。`phoneNumbers` �
 POST/PUT body では `invalidValue`、PATCH path では `invalidPath` として silent data loss を防ぐ。
 Group membership は直接 User member だけを表し、member type は省略または `User` のみを受け付け、
 response では常に `type=User` を返す。認可上の意味を持たない Group-in-Group graph は保存しない。
+
+enterprise extension は `employeeNumber`、`department`、`manager` の 3 属性だけを対応する
+(costCenter、division、organization は Out of Scope)。値は `idmanagement.User.Attributes` の
+既存 builtin キー (`employee_number`、`department`、`manager_sub`) を再利用し、idmanagement 側の
+モデル変更は不要にする。`manager` は SCIM id 参照として受け取り、`ScimUserRef` を介して同一
+tenant 内の内部 `User.sub` へ解決する。tenant をまたぐ参照や存在しない SCIM id は
+`invalidValue` にして拒否し、tenant 境界を越えた参照が保存されないようにする。response の
+`schemas` は、いずれかの enterprise extension 属性を保持する場合だけ enterprise extension URN を
+含め、対応する属性オブジェクトを返す。PATCH の `path` は bare 名 (`employeeNumber` など) と
+enterprise extension URN で修飾した完全パスの両方を受け付ける。
 
 A PATCH/PUT toggling `active` to `false` transitions `User.lifecycle.status` to `Disabled`; toggling
 it to `true` transitions it back to `Active`. `DELETE /Users/{id}` does not purge: it performs the
@@ -188,3 +202,14 @@ this integrates SCIM deletion into the existing soft-delete policy rather than b
   - THEN invalidPath の ScimProtocolError を返し User を変更しない
 - WHEN SCIMクライアントが GetScimSchemas を呼び出す
 - THEN server は対応する単一 email projection と User member だけを広告し、phoneNumbers、addresses、Group member を広告しない
+
+### REQ-SOURCING-007: SCIM enterprise extensionのUser組織属性に対応する
+- ACTOR ScimBearerClient
+- GIVEN 有効な SCIM アクセストークンが発行されている
+- WHEN SCIMクライアントが CreateScimUser、UpdateScimUser、または PatchScimUser で enterprise extension 配下の employeeNumber、department、manager を送る
+  - ALT employeeNumber または department が string でない → invalidValue の ScimProtocolError を返し User を変更しない
+  - ALT manager の値(value オブジェクトまたは文字列)が空、あるいは同一 tenant 内に存在しない SCIM User を指す → invalidValue の ScimProtocolError を返し User を変更しない
+- THEN 対応する値は `idmanagement.User.Attributes` の employee_number、department、manager_sub に永続化される(manager は解決した内部 User.sub)
+- THEN User response は、いずれかの enterprise extension 属性を保持する場合だけ schemas に enterprise extension URN を含み、対応する属性オブジェクトを返す
+- WHEN SCIMクライアントが GetScimSchemas または GetScimResourceTypes を呼び出す
+- THEN server は enterprise extension schema を /Schemas に、/ResourceTypes の User エントリの schemaExtensions に広告する

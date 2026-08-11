@@ -64,6 +64,10 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		UpdatedAt:  now,
 	}
 
+	if err := u.applyEnterpriseExtension(ctx, tenantID, user, w); err != nil {
+		return nil, err
+	}
+
 	if err := u.UserRepo.Save(ctx, user); err != nil {
 		return nil, err
 	}
@@ -73,7 +77,7 @@ func (u *Usecases) CreateUser(ctx context.Context, tenantID string, body map[str
 		return nil, err
 	}
 
-	return u.toScimUser(user, scimID), nil
+	return u.toScimUser(ctx, tenantID, user, scimID)
 }
 
 func userStatusFromActive(active bool) idmdomain.UserStatus {
@@ -100,7 +104,7 @@ func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[st
 		return nil, ErrNotFound
 	}
 
-	return u.toScimUser(user, scimID), nil
+	return u.toScimUser(ctx, tenantID, user, scimID)
 }
 
 // UpdateUser implements PUT full-replace semantics: every
@@ -143,13 +147,16 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 	user.Name = &w.Formatted
 	user.Email = &w.Email
 	u.setUserActive(user, w.Active)
+	if err := u.applyEnterpriseExtension(ctx, tenantID, user, w); err != nil {
+		return nil, err
+	}
 	user.UpdatedAt = time.Now()
 
 	if err := u.UserRepo.Save(ctx, user); err != nil {
 		return nil, err
 	}
 
-	return u.toScimUser(user, scimID), nil
+	return u.toScimUser(ctx, tenantID, user, scimID)
 }
 
 // PatchUser applies RFC 7644 §3.5.2 operations validated by
@@ -189,7 +196,7 @@ func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body 
 		return nil, err
 	}
 
-	return u.toScimUser(user, scimID), nil
+	return u.toScimUser(ctx, tenantID, user, scimID)
 }
 
 func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *userdomain.User, op domain.UserPatchOp) error {
@@ -249,7 +256,102 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 		}
 		active, _ := op.Value.(bool)
 		u.setUserActive(user, active)
+	case domain.UserAttrEmployeeNumber:
+		ensureAttributes(user)
+		if isRemoveOp {
+			delete(user.Attributes, "employee_number")
+			return nil
+		}
+		v, _ := op.Value.(string)
+		setOrDeleteStringAttr(user.Attributes, "employee_number", v)
+	case domain.UserAttrDepartment:
+		ensureAttributes(user)
+		if isRemoveOp {
+			delete(user.Attributes, "department")
+			return nil
+		}
+		v, _ := op.Value.(string)
+		setOrDeleteStringAttr(user.Attributes, "department", v)
+	case domain.UserAttrManager:
+		ensureAttributes(user)
+		if isRemoveOp {
+			delete(user.Attributes, "manager_sub")
+			return nil
+		}
+		managerScimID, _ := op.Value.(string)
+		managerSub, err := u.resolveManagerSub(ctx, tenantID, managerScimID)
+		if err != nil {
+			return err
+		}
+		setOrDeleteStringAttr(user.Attributes, "manager_sub", managerSub)
 	}
+	return nil
+}
+
+// ensureAttributes guarantees user.Attributes is non-nil before a sparse
+// key is written; User.Attributes is a `map[string]AttributeValue,omitempty`
+// so a User loaded without any set attribute has a nil map.
+func ensureAttributes(user *userdomain.User) {
+	if user.Attributes == nil {
+		user.Attributes = make(map[string]userdomain.AttributeValue)
+	}
+}
+
+// setOrDeleteStringAttr sets attrs[key] to value, or deletes the key when
+// value is blank so an attribute reset by PUT/PATCH doesn't leave a stale
+// value behind.
+func setOrDeleteStringAttr(attrs map[string]userdomain.AttributeValue, key, value string) {
+	if strings.TrimSpace(value) == "" {
+		delete(attrs, key)
+		return
+	}
+	v := value
+	attrs[key] = userdomain.AttributeValue{Type: idmdomain.AttributeTypeString, String: &v}
+}
+
+// stringAttrValue reads a string-typed User.Attributes entry.
+func stringAttrValue(attrs map[string]userdomain.AttributeValue, key string) (string, bool) {
+	v, ok := attrs[key]
+	if !ok || v.Type != idmdomain.AttributeTypeString || v.String == nil {
+		return "", false
+	}
+	return *v.String, true
+}
+
+// resolveManagerSub resolves an enterprise extension "manager" SCIM id to
+// the manager's internal User.sub, scoped to tenantID so a reference can
+// never cross a tenant boundary (wi-247 Risk Notes). An empty
+// managerScimID (manager omitted/cleared) resolves to "". An unresolvable
+// id is a *domain.MutationError (invalidValue), returned before any
+// persistence write (validate-first).
+func (u *Usecases) resolveManagerSub(ctx context.Context, tenantID, managerScimID string) (string, error) {
+	if strings.TrimSpace(managerScimID) == "" {
+		return "", nil
+	}
+	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, managerScimID)
+	if err != nil {
+		return "", err
+	}
+	if ref == nil {
+		return "", domain.NewMutationError("invalidValue", "manager %q does not resolve to a User in this tenant", managerScimID)
+	}
+	return ref.UserID, nil
+}
+
+// applyEnterpriseExtension applies the RFC7643-ENTERPRISE-EXTENSION
+// adoption:partial subset (employee_number/department/manager_sub) onto
+// User.Attributes. w's fields already reflect PUT full-replace/PATCH
+// semantics (empty means "clear"), so this only needs to resolve manager
+// and write or delete each sparse key.
+func (u *Usecases) applyEnterpriseExtension(ctx context.Context, tenantID string, user *userdomain.User, w domain.UserWrite) error {
+	managerSub, err := u.resolveManagerSub(ctx, tenantID, w.ManagerValue)
+	if err != nil {
+		return err
+	}
+	ensureAttributes(user)
+	setOrDeleteStringAttr(user.Attributes, "employee_number", w.EmployeeNumber)
+	setOrDeleteStringAttr(user.Attributes, "department", w.Department)
+	setOrDeleteStringAttr(user.Attributes, "manager_sub", managerSub)
 	return nil
 }
 
@@ -328,7 +430,11 @@ func (u *Usecases) ListUsers(ctx context.Context, tenantID string, query ListQue
 			continue
 		}
 
-		matched = append(matched, u.toScimUser(user, scimID))
+		scimUser, err := u.toScimUser(ctx, tenantID, user, scimID)
+		if err != nil {
+			return ListResult{}, err
+		}
+		matched = append(matched, scimUser)
 	}
 
 	return paginate(matched, query)
@@ -359,7 +465,12 @@ func userFilterAttrs(user *userdomain.User, scimID string) map[string]any {
 	return attrs
 }
 
-func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]any {
+// toScimUser projects a User onto its SCIM representation. The enterprise
+// extension object (and its URN in schemas) is included only when the User
+// carries at least one employee_number/department/manager_sub Attributes
+// entry (RFC7643-ENTERPRISE-EXTENSION adoption:partial), matching how emails
+// is already omitted when there is no canonical email.
+func (u *Usecases) toScimUser(ctx context.Context, tenantID string, user *userdomain.User, scimID string) (map[string]any, error) {
 	var givenName, familyName, formattedName string
 	if user.GivenName != nil {
 		givenName = *user.GivenName
@@ -373,8 +484,29 @@ func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]a
 
 	active := user.Lifecycle.Status == idmdomain.UserStatusActive
 
+	schemas := []string{"urn:ietf:params:scim:schemas:core:2.0:User"}
+	ext := map[string]any{}
+	if v, ok := stringAttrValue(user.Attributes, "employee_number"); ok {
+		ext["employeeNumber"] = v
+	}
+	if v, ok := stringAttrValue(user.Attributes, "department"); ok {
+		ext["department"] = v
+	}
+	if managerSub, ok := stringAttrValue(user.Attributes, "manager_sub"); ok {
+		managerRef, err := u.ScimRepo.FindUserRefByUserID(ctx, tenantID, managerSub)
+		if err != nil {
+			return nil, err
+		}
+		if managerRef != nil {
+			ext["manager"] = map[string]any{"value": managerRef.ScimID}
+		}
+	}
+	if len(ext) > 0 {
+		schemas = append(schemas, domain.EnterpriseUserSchemaURN)
+	}
+
 	resource := map[string]any{
-		"schemas":  []string{"urn:ietf:params:scim:schemas:core:2.0:User"},
+		"schemas":  schemas,
 		"id":       scimID,
 		"userName": user.PreferredUsername,
 		"name": map[string]any{
@@ -397,5 +529,8 @@ func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]a
 			"primary": true,
 		}}
 	}
-	return resource
+	if len(ext) > 0 {
+		resource[domain.EnterpriseUserSchemaURN] = ext
+	}
+	return resource, nil
 }

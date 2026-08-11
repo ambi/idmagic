@@ -33,6 +33,36 @@ func UserCoreSchema() Schema {
 	}
 }
 
+// EnterpriseUserSchemaURN identifies the SCIM enterprise User extension (RFC
+// 7643 §4.3) this server supports a small subset of (RFC7643-ENTERPRISE-
+// EXTENSION adoption:partial): employeeNumber, department, manager.
+// costCenter, division, and organization are out of scope (wi-247).
+const EnterpriseUserSchemaURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+
+// EnterpriseUserSchema describes the RFC7643-ENTERPRISE-EXTENSION
+// adoption:partial attribute subset this server implements, for
+// GetScimSchemas.
+func EnterpriseUserSchema() Schema {
+	return Schema{
+		Schemas:     []string{"urn:ietf:params:scim:schemas:core:2.0:Schema"},
+		ID:          EnterpriseUserSchemaURN,
+		Name:        "EnterpriseUser",
+		Description: "Enterprise User",
+		Attributes: []SchemaAttribute{
+			{Name: "employeeNumber", Type: "string", Mutability: "readWrite", Returned: "default"},
+			{Name: "department", Type: "string", Mutability: "readWrite", Returned: "default"},
+			{
+				Name: "manager", Type: "complex", Mutability: "readWrite", Returned: "default",
+				Description: "value is the SCIM id of the manager's User resource, resolved to a tenant-scoped internal reference (RFC7643-ENTERPRISE-EXTENSION adoption:partial).",
+				SubAttributes: []SchemaAttribute{
+					{Name: "value", Type: "string", Mutability: "readWrite", Returned: "default"},
+					{Name: "$ref", Type: "reference", Mutability: "readOnly", Returned: "default", ReferenceTypes: []string{"User"}},
+				},
+			},
+		},
+	}
+}
+
 // GroupCoreSchema describes the RFC7643-CORE-RESOURCES adoption:partial
 // Group attribute subset this server implements, for GetScimSchemas.
 func GroupCoreSchema() Schema {

@@ -136,6 +136,9 @@ func (h *Handler) handleGetResourceTypes(c *echo.Context) error {
 			Endpoint:    "/Users",
 			Description: "User Account",
 			Schema:      "urn:ietf:params:scim:schemas:core:2.0:User",
+			SchemaExtensions: []domain.SchemaExtension{
+				{Schema: domain.EnterpriseUserSchemaURN, Required: false},
+			},
 		},
 		{
 			Schemas:     []string{"urn:ietf:params:scim:schemas:core:2.0:ResourceType"},
@@ -156,7 +159,7 @@ func (h *Handler) handleGetSchemas(c *echo.Context) error {
 		return h.writeScimAuthError(c, err)
 	}
 
-	schemas := []domain.Schema{domain.UserCoreSchema(), domain.GroupCoreSchema()}
+	schemas := []domain.Schema{domain.UserCoreSchema(), domain.EnterpriseUserSchema(), domain.GroupCoreSchema()}
 
 	c.Response().Header().Set("Content-Type", "application/scim+json")
 	return c.JSON(http.StatusOK, schemas)

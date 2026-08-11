@@ -152,6 +152,189 @@ func TestScimCreateUserResourceContract(t *testing.T) {
 	}
 }
 
+// REQ-SOURCING-007: enterprise extension の employeeNumber/department/manager を
+// CreateScimUser で対応する。
+func TestScimCreateUserEnterpriseExtension(t *testing.T) {
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
+	const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+
+	t.Run("employeeNumber and department round-trip", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName": "enterprise1@example.com",
+			enterpriseURN: map[string]any{
+				"employeeNumber": "701984",
+				"department":     "Tour Operations",
+			},
+		})
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d body=%v", rec.Code, body)
+		}
+		schemas, _ := body["schemas"].([]any)
+		found := false
+		for _, s := range schemas {
+			if s == enterpriseURN {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("expected schemas to include enterprise extension URN, got %v", schemas)
+		}
+		ext, ok := body[enterpriseURN].(map[string]any)
+		if !ok {
+			t.Fatalf("expected enterprise extension object in response, got %v", body[enterpriseURN])
+		}
+		if ext["employeeNumber"] != "701984" || ext["department"] != "Tour Operations" {
+			t.Errorf("unexpected enterprise extension: %+v", ext)
+		}
+
+		// GET must round-trip the same values a separate code path (GetUser,
+		// not CreateUser) than the create response just asserted above.
+		getRec, getBody := doScimGet(t, e, tokenStr, "/scim/v2/Users/"+body["id"].(string))
+		if getRec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", getRec.Code, getBody)
+		}
+		getExt, ok := getBody[enterpriseURN].(map[string]any)
+		if !ok || getExt["employeeNumber"] != "701984" || getExt["department"] != "Tour Operations" {
+			t.Errorf("GET did not round-trip enterprise extension: %+v", getBody[enterpriseURN])
+		}
+	})
+
+	t.Run("manager resolves to an existing tenant User and round-trips its scim id", func(t *testing.T) {
+		mgrRec, mgr := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{"userName": "manager1@example.com"})
+		if mgrRec.Code != http.StatusCreated {
+			t.Fatalf("setup manager create failed: %d", mgrRec.Code)
+		}
+		mgrScimID := mgr["id"].(string)
+
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName":    "report1@example.com",
+			enterpriseURN: map[string]any{"manager": map[string]any{"value": mgrScimID}},
+		})
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d body=%v", rec.Code, body)
+		}
+		ext, _ := body[enterpriseURN].(map[string]any)
+		manager, _ := ext["manager"].(map[string]any)
+		if manager["value"] != mgrScimID {
+			t.Errorf("manager.value = %v, want %v", manager["value"], mgrScimID)
+		}
+	})
+
+	t.Run("manager referencing an unknown scim id is invalidValue and creates nothing", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName":    "orphan1@example.com",
+			enterpriseURN: map[string]any{"manager": map[string]any{"value": "does-not-exist"}},
+		})
+		if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
+			t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)
+		}
+		_, listBody := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`userName eq "orphan1@example.com"`))
+		if int(listBody["totalResults"].(float64)) != 0 {
+			t.Errorf("expected invalid user not to be created, got %v", listBody)
+		}
+	})
+
+	t.Run("employeeNumber wrong type is invalidValue", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName":    "badtype1@example.com",
+			enterpriseURN: map[string]any{"employeeNumber": 42},
+		})
+		if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
+			t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)
+		}
+	})
+
+	t.Run("without enterprise extension attributes, schemas omits the URN", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{"userName": "plain1@example.com"})
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d body=%v", rec.Code, body)
+		}
+		if _, exists := body[enterpriseURN]; exists {
+			t.Errorf("expected no enterprise extension object, got %v", body[enterpriseURN])
+		}
+		schemas, _ := body["schemas"].([]any)
+		for _, s := range schemas {
+			if s == enterpriseURN {
+				t.Errorf("expected schemas to omit enterprise extension URN, got %v", schemas)
+			}
+		}
+	})
+}
+
+// REQ-SOURCING-007: PATCH は bare 名と URN 修飾済みパスの両方で enterprise
+// extension 属性を対応する。
+func TestScimPatchUserEnterpriseExtension(t *testing.T) {
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
+	const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+
+	createRec, created := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{"userName": "patchee@example.com"})
+	if createRec.Code != http.StatusCreated {
+		t.Fatalf("setup create failed: %d", createRec.Code)
+	}
+	scimID := created["id"].(string)
+
+	t.Run("bare employeeNumber path", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("replace", "employeeNumber", "12345"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+		}
+		ext, _ := body[enterpriseURN].(map[string]any)
+		if ext["employeeNumber"] != "12345" {
+			t.Errorf("employeeNumber = %v, want 12345", ext["employeeNumber"])
+		}
+	})
+
+	t.Run("urn-qualified department path", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID,
+			patchOp("replace", enterpriseURN+":department", "Engineering"))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+		}
+		ext, _ := body[enterpriseURN].(map[string]any)
+		if ext["department"] != "Engineering" {
+			t.Errorf("department = %v, want Engineering", ext["department"])
+		}
+	})
+
+	t.Run("manager as bare string value (Entra quirk)", func(t *testing.T) {
+		mgrRec, mgr := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{"userName": "manager2@example.com"})
+		if mgrRec.Code != http.StatusCreated {
+			t.Fatalf("setup manager create failed: %d", mgrRec.Code)
+		}
+		mgrScimID := mgr["id"].(string)
+
+		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("replace", "manager", mgrScimID))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+		}
+		ext, _ := body[enterpriseURN].(map[string]any)
+		manager, _ := ext["manager"].(map[string]any)
+		if manager["value"] != mgrScimID {
+			t.Errorf("manager.value = %v, want %v", manager["value"], mgrScimID)
+		}
+	})
+
+	t.Run("remove clears the attribute", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("remove", "employeeNumber", nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+		}
+		ext, _ := body[enterpriseURN].(map[string]any)
+		if _, exists := ext["employeeNumber"]; exists {
+			t.Errorf("expected employeeNumber removed, got %v", ext["employeeNumber"])
+		}
+	})
+
+	t.Run("manager referencing an unknown scim id is invalidValue", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID, patchOp("replace", "manager", "does-not-exist"))
+		if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
+			t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)
+		}
+	})
+}
+
 // interfaces.UpdateScimUser: PUT は完全置換 (省略した属性は既定値にリセット)。
 func TestScimUpdateUserFullReplace(t *testing.T) {
 	e, _, apiTokens := newScimTestHarness()
@@ -198,6 +381,26 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 		}
 		if _, exists := body["emails"]; exists {
 			t.Errorf("expected omitted emails to clear canonical email, got %v", body["emails"])
+		}
+	})
+
+	// REQ-SOURCING-007: PUT の完全置換は enterprise extension 属性にも適用される。
+	t.Run("omitted enterprise extension resets to defaults", func(t *testing.T) {
+		const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+		setRec, setBody := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID,
+			patchOp("replace", "employeeNumber", "999"))
+		if setRec.Code != http.StatusOK {
+			t.Fatalf("setup patch failed: %d body=%v", setRec.Code, setBody)
+		}
+
+		rec, body := doScimJSON(t, e, http.MethodPut, tokenStr, "/scim/v2/Users/"+scimID, map[string]any{
+			"userName": "bjensen@example.com",
+		})
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+		}
+		if _, exists := body[enterpriseURN]; exists {
+			t.Errorf("expected enterprise extension cleared by omission, got %v", body[enterpriseURN])
 		}
 	})
 }
@@ -489,4 +692,63 @@ func TestScimGetSchemasReturnsRealAttributes(t *testing.T) {
 			t.Errorf("schema %v has empty attributes", schema["id"])
 		}
 	}
+}
+
+// REQ-SOURCING-007: GetScimSchemas は enterprise extension schema を、
+// GetScimResourceTypes は User の schemaExtensions を広告する。
+func TestScimEnterpriseExtensionDiscovery(t *testing.T) {
+	e, _, apiTokens := newScimTestHarness()
+	tokenStr := issueAllScimToken(t, apiTokens)
+	const enterpriseURN = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+
+	t.Run("Schemas includes the enterprise extension", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/scim/v2/Schemas", http.NoBody)
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		var schemas []map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &schemas); err != nil {
+			t.Fatalf("failed to decode schemas: %v", err)
+		}
+		found := false
+		for _, schema := range schemas {
+			if schema["id"] == enterpriseURN {
+				found = true
+				attrs, _ := schema["attributes"].([]any)
+				if len(attrs) == 0 {
+					t.Errorf("enterprise extension schema has empty attributes")
+				}
+			}
+		}
+		if !found {
+			t.Errorf("expected enterprise extension schema in %v", schemas)
+		}
+	})
+
+	t.Run("ResourceTypes advertises the extension on User", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/scim/v2/ResourceTypes", http.NoBody)
+		req.Header.Set("Authorization", "Bearer "+tokenStr)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		var types []map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &types); err != nil {
+			t.Fatalf("failed to decode resource types: %v", err)
+		}
+		for _, rt := range types {
+			if rt["id"] != "User" {
+				continue
+			}
+			exts, _ := rt["schemaExtensions"].([]any)
+			found := false
+			for _, e := range exts {
+				ext, _ := e.(map[string]any)
+				if ext["schema"] == enterpriseURN {
+					found = true
+				}
+			}
+			if !found {
+				t.Errorf("expected User schemaExtensions to include %q, got %v", enterpriseURN, exts)
+			}
+		}
+	})
 }

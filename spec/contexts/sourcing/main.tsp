@@ -54,7 +54,7 @@ model GetScimResourceTypesError400 {
   @body body: GetScimResourceTypesError400Body;
 }
 
-@doc("SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type\nだけを返す(schema URN、endpoint、schema extension は空)。")
+@doc("SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type\nだけを返す(schema URN、endpoint)。User は対応する enterprise extension\n(urn:ietf:params:scim:schemas:extension:enterprise:2.0:User)を schemaExtensions に\n広告する。")
 @TypeSpec.OpenAPI.operationId("GetScimResourceTypes")
 @route("/scim/v2/ResourceTypes")
 @get
@@ -81,7 +81,7 @@ model GetScimSchemasError400 {
   @body body: GetScimSchemasError400Body;
 }
 
-@doc("SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の\n属性だけを、各属性の type、multiValued、required、mutability(readOnly/readWrite)、\nreturned、uniqueness とともに広告する。User emails は単一 canonical email への\nprojection、Group members の referenceTypes は User のみと明記し、未対応の\nphoneNumbers、addresses、Group member は広告しない。空の attribute 配列を返さない。")
+@doc("SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の\n属性、および RFC7643-ENTERPRISE-EXTENSION が対応する enterprise extension\n(urn:ietf:params:scim:schemas:extension:enterprise:2.0:User)の employeeNumber、\ndepartment、manager を、各属性の type、multiValued、required、\nmutability(readOnly/readWrite)、returned、uniqueness とともに広告する。User emails は\n単一 canonical email への projection、Group members の referenceTypes は User のみと\n明記し、未対応の phoneNumbers、addresses、Group member、costCenter、division、\norganization は広告しない。空の attribute 配列を返さない。")
 @TypeSpec.OpenAPI.operationId("GetScimSchemas")
 @route("/scim/v2/Schemas")
 @get
@@ -113,7 +113,7 @@ model CreateScimUserError400 {
   @body body: CreateScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。emails は全 element を検証後、\nprimary=true、type=work(case-insensitive)、wire order の順で単一 email へ投影する。\n不正 emails、phoneNumbers、addresses は invalidValue にする。`id` は常に server が\n生成し、body に含まれていても無視する(readOnly)。`active` 省略時は true。作成した\nresource は canonical email がある場合だけ単一 type=work、primary=true entry と、\n`id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location` を返す。\n同一 tenant 内で `userName` が既存 User と重複する場合は 409 `uniqueness` にする。")
+@doc("SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。emails は全 element を検証後、\nprimary=true、type=work(case-insensitive)、wire order の順で単一 email へ投影する。\n不正 emails、phoneNumbers、addresses は invalidValue にする。\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User 配下の employeeNumber、\ndepartment、manager(オブジェクトの value または文字列)も対応する。employeeNumber・\ndepartment が string でない、または manager が同一 tenant 内に存在しない SCIM User を\n指す場合は invalidValue にする。`id` は常に server が生成し、body に含まれていても\n無視する(readOnly)。`active` 省略時は true。作成した resource は canonical email が\nある場合だけ単一 type=work、primary=true entry を、enterprise extension 属性を1つ以上\n持つ場合だけ schemas に enterprise extension URN と対応する属性オブジェクトを含め、\n`id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location` を返す。\n同一 tenant 内で `userName` が既存 User と重複する場合は 409 `uniqueness` にする。")
 @TypeSpec.OpenAPI.operationId("CreateScimUser")
 @route("/scim/v2/Users")
 @post
@@ -204,7 +204,7 @@ model PatchScimUserError400 {
   @body body: PatchScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の\n各要素は `op`(add/replace/remove のいずれか)と `path` を持つ。`path` は\nRFC7644-PATCH が対応する User 属性(userName、name、name.formatted、\nname.givenName、name.familyName、emails、active)のいずれかでなければならず、\nphoneNumbers、addresses を含むそれ以外は invalidPath にする。emails の\nadd/replace は全 element を検証後、primary=true、type=work(case-insensitive)、\nwire order の順で単一 email へ投影し、不正値は invalidValue にする。`op` が\nadd/replace/remove 以外、または value の型が対象属性と不整合な場合も\ninvalidValue にする。`id`、`meta`、`schemas` への書込みは mutability エラーにする。")
+@doc("SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の\n各要素は `op`(add/replace/remove のいずれか)と `path` を持つ。`path` は\nRFC7644-PATCH が対応する User 属性(userName、name、name.formatted、\nname.givenName、name.familyName、emails、active、employeeNumber、department、\nmanager。enterprise extension 属性は bare 名または\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User で修飾した完全パスの\nどちらでも指定できる)のいずれかでなければならず、phoneNumbers、addresses を\n含むそれ以外は invalidPath にする。emails の add/replace は全 element を検証後、\nprimary=true、type=work(case-insensitive)、wire order の順で単一 email へ投影し、\n不正値は invalidValue にする。manager の add/replace は value オブジェクトまたは\n文字列を受け付け、同一 tenant 内に存在しない SCIM User を指す場合は invalidValue\nにする。`op` が add/replace/remove 以外、または value の型が対象属性と不整合な\n場合も invalidValue にする。`id`、`meta`、`schemas` への書込みは mutability エラー\nにする。")
 @TypeSpec.OpenAPI.operationId("PatchScimUser")
 @route("/scim/v2/Users/{id}")
 @patch
@@ -238,7 +238,7 @@ model UpdateScimUserError400 {
   @body body: UpdateScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。省略された他の mutable\n属性(name.*、emails、active)は既定値にリセットする(name/emails は空、\nactive は true)。emails は全 element を検証後、primary=true、type=work\n(case-insensitive)、wire order の順で単一 email へ投影する。不正 emails、\nphoneNumbers、addresses は invalidValue にする。`id`、`meta` への書込みは\n無視する(readOnly)。")
+@doc("SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。省略された他の mutable\n属性(name.*、emails、active、enterprise extension の employeeNumber、\ndepartment、manager)は既定値にリセットする(name/emails/enterprise extension\n属性は空、active は true)。emails は全 element を検証後、primary=true、type=work\n(case-insensitive)、wire order の順で単一 email へ投影する。不正 emails、\nphoneNumbers、addresses は invalidValue にする。\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User 配下の employeeNumber、\ndepartment が string でない、または manager が同一 tenant 内に存在しない SCIM User\nを指す場合も invalidValue にする。`id`、`meta` への書込みは無視する(readOnly)。")
 @TypeSpec.OpenAPI.operationId("UpdateScimUser")
 @route("/scim/v2/Users/{id}")
 @put

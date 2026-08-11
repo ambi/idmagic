@@ -77,6 +77,52 @@ func TestUserCoreSchemaAttributes(t *testing.T) {
 	}
 }
 
+// REQ-SOURCING-007: EnterpriseUserSchema advertises exactly the employeeNumber /
+// department / manager subset (costCenter / division / organization stay
+// unadvertised, matching the WI's Out of Scope).
+// interfaces.GetScimSchemas
+func TestEnterpriseUserSchemaAttributes(t *testing.T) {
+	schema := domain.EnterpriseUserSchema()
+	if schema.ID != domain.EnterpriseUserSchemaURN {
+		t.Errorf("ID = %q, want %q", schema.ID, domain.EnterpriseUserSchemaURN)
+	}
+	if len(schema.Attributes) == 0 {
+		t.Fatal("expected non-empty attribute list")
+	}
+
+	byName := make(map[string]domain.SchemaAttribute, len(schema.Attributes))
+	for _, attr := range schema.Attributes {
+		byName[attr.Name] = attr
+	}
+
+	if byName["employeeNumber"].Type != "string" {
+		t.Errorf("employeeNumber.Type = %q, want string", byName["employeeNumber"].Type)
+	}
+	if byName["department"].Type != "string" {
+		t.Errorf("department.Type = %q, want string", byName["department"].Type)
+	}
+	manager, ok := byName["manager"]
+	if !ok {
+		t.Fatal("expected manager complex attribute")
+	}
+	if len(manager.SubAttributes) == 0 {
+		t.Error("expected manager to declare subAttributes")
+	}
+	managerSubAttrs := make(map[string]domain.SchemaAttribute, len(manager.SubAttributes))
+	for _, attr := range manager.SubAttributes {
+		managerSubAttrs[attr.Name] = attr
+	}
+	if managerSubAttrs["value"].Type != "string" {
+		t.Errorf("manager.value.Type = %q, want string", managerSubAttrs["value"].Type)
+	}
+
+	for _, unsupported := range []string{"costCenter", "division", "organization"} {
+		if _, exists := byName[unsupported]; exists {
+			t.Errorf("out-of-scope attribute %q must not be advertised", unsupported)
+		}
+	}
+}
+
 func TestGroupCoreSchemaAttributes(t *testing.T) {
 	schema := domain.GroupCoreSchema()
 	byName := make(map[string]domain.SchemaAttribute, len(schema.Attributes))

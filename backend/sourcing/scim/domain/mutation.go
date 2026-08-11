@@ -39,6 +39,13 @@ type UserWrite struct {
 	Formatted  string
 	Email      string
 	Active     bool
+	// EmployeeNumber, Department, and ManagerValue are the
+	// RFC7643-ENTERPRISE-EXTENSION adoption:partial subset (wi-247).
+	// ManagerValue is the manager's SCIM id as given on the wire; usecases
+	// resolve it to a tenant-scoped internal User reference.
+	EmployeeNumber string
+	Department     string
+	ManagerValue   string
 }
 
 // ProjectCanonicalEmail validates every SCIM emails element and projects the
@@ -139,7 +146,67 @@ func ParseUserWrite(body map[string]any) (UserWrite, error) {
 		w.Active = active
 	}
 
+	if extRaw, exists := body[EnterpriseUserSchemaURN]; exists {
+		ext, ok := extRaw.(map[string]any)
+		if !ok {
+			return UserWrite{}, newMutationError("invalidValue", "%s must be an object", EnterpriseUserSchemaURN)
+		}
+		if v, exists := ext["employeeNumber"]; exists {
+			s, err := parseEnterpriseStringAttr(v, "employeeNumber")
+			if err != nil {
+				return UserWrite{}, err
+			}
+			w.EmployeeNumber = s
+		}
+		if v, exists := ext["department"]; exists {
+			s, err := parseEnterpriseStringAttr(v, "department")
+			if err != nil {
+				return UserWrite{}, err
+			}
+			w.Department = s
+		}
+		if v, exists := ext["manager"]; exists {
+			s, err := parseManagerScimID(v)
+			if err != nil {
+				return UserWrite{}, err
+			}
+			w.ManagerValue = s
+		}
+	}
+
 	return w, nil
+}
+
+// parseEnterpriseStringAttr validates an enterprise extension string
+// attribute (employeeNumber, department).
+func parseEnterpriseStringAttr(raw any, field string) (string, error) {
+	s, ok := raw.(string)
+	if !ok {
+		return "", newMutationError("invalidValue", "%s must be a string", field)
+	}
+	return s, nil
+}
+
+// parseManagerScimID normalizes the enterprise extension "manager" value to
+// the manager's SCIM id. RFC 7643 §4.3 defines manager as a complex
+// attribute with a "value" sub-attribute, but some IdPs (e.g. Entra ID) send
+// a bare string in PATCH/PUT bodies; both forms are accepted.
+func parseManagerScimID(raw any) (string, error) {
+	switch v := raw.(type) {
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return "", newMutationError("invalidValue", "manager value must be a non-empty string")
+		}
+		return v, nil
+	case map[string]any:
+		value, ok := v["value"].(string)
+		if !ok || strings.TrimSpace(value) == "" {
+			return "", newMutationError("invalidValue", "manager.value must be a non-empty string")
+		}
+		return value, nil
+	default:
+		return "", newMutationError("invalidValue", "manager must be a string or an object with a value field")
+	}
 }
 
 // UserAttr enumerates the RFC7643-CORE-RESOURCES User attribute paths this
@@ -147,13 +214,16 @@ func ParseUserWrite(body map[string]any) (UserWrite, error) {
 type UserAttr string
 
 const (
-	UserAttrUserName   UserAttr = "userName"
-	UserAttrName       UserAttr = "name"
-	UserAttrGivenName  UserAttr = "name.givenName"
-	UserAttrFamilyName UserAttr = "name.familyName"
-	UserAttrFormatted  UserAttr = "name.formatted"
-	UserAttrEmails     UserAttr = "emails"
-	UserAttrActive     UserAttr = "active"
+	UserAttrUserName       UserAttr = "userName"
+	UserAttrName           UserAttr = "name"
+	UserAttrGivenName      UserAttr = "name.givenName"
+	UserAttrFamilyName     UserAttr = "name.familyName"
+	UserAttrFormatted      UserAttr = "name.formatted"
+	UserAttrEmails         UserAttr = "emails"
+	UserAttrActive         UserAttr = "active"
+	UserAttrEmployeeNumber UserAttr = "employeeNumber"
+	UserAttrDepartment     UserAttr = "department"
+	UserAttrManager        UserAttr = "manager"
 )
 
 var userPatchAttrs = map[string]UserAttr{
@@ -164,6 +234,14 @@ var userPatchAttrs = map[string]UserAttr{
 	"name.formatted":  UserAttrFormatted,
 	"emails":          UserAttrEmails,
 	"active":          UserAttrActive,
+	// enterprise extension attributes accept both the bare name and the
+	// URN-qualified path RFC 7644 §3.10 recommends for extension schemas.
+	"employeenumber": UserAttrEmployeeNumber,
+	"urn:ietf:params:scim:schemas:extension:enterprise:2.0:user:employeenumber": UserAttrEmployeeNumber,
+	"department": UserAttrDepartment,
+	"urn:ietf:params:scim:schemas:extension:enterprise:2.0:user:department": UserAttrDepartment,
+	"manager": UserAttrManager,
+	"urn:ietf:params:scim:schemas:extension:enterprise:2.0:user:manager": UserAttrManager,
 }
 
 var readOnlyResourceAttrs = map[string]bool{"id": true, "meta": true, "schemas": true}
@@ -220,6 +298,18 @@ func ParseUserPatchOps(body map[string]any) ([]UserPatchOp, error) {
 				return nil, newMutationError("invalidValue", "emails value must be a non-empty array")
 			}
 			projected, err := ProjectCanonicalEmail(emails)
+			if err != nil {
+				return nil, err
+			}
+			value = projected
+		}
+		if (attr == UserAttrEmployeeNumber || attr == UserAttrDepartment) && op != "remove" {
+			if _, isString := value.(string); !isString {
+				return nil, newMutationError("invalidValue", "%s value must be a string", attr)
+			}
+		}
+		if attr == UserAttrManager && op != "remove" {
+			projected, err := parseManagerScimID(value)
 			if err != nil {
 				return nil, err
 			}
