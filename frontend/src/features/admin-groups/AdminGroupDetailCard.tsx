@@ -167,6 +167,12 @@ export function GroupDetailCard({
         </div>
         <div>
           <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
+            {t.emailLabel}
+          </dt>
+          <dd className="mt-1 text-sm text-slate-700">{group.email || '—'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-bold uppercase tracking-normal text-slate-400">
             {t.rolesLabel}
           </dt>
           <dd className="mt-1 flex flex-wrap gap-1.5">

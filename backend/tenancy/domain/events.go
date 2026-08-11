@@ -33,6 +33,18 @@ func (e *TenantUserAttributeSchemaUpdated) EventType() string {
 }
 func (e *TenantUserAttributeSchemaUpdated) OccurredAt() time.Time { return e.At }
 
+type TenantGroupAttributeSchemaUpdated struct {
+	At            time.Time `json:"-"`
+	ActorUserID   string    `json:"actorUserId"`
+	TenantID      string    `json:"tenantId"`
+	AttributeKeys []string  `json:"attributeKeys"`
+}
+
+func (e *TenantGroupAttributeSchemaUpdated) EventType() string {
+	return "TenantGroupAttributeSchemaUpdated"
+}
+func (e *TenantGroupAttributeSchemaUpdated) OccurredAt() time.Time { return e.At }
+
 type TenantBrandingUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`

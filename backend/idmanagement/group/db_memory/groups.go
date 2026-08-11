@@ -2,6 +2,7 @@ package db_memory
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -32,6 +33,7 @@ func NewGroupRepository() *GroupRepository {
 func cloneGroup(group *groupdomain.Group) *groupdomain.Group {
 	cloned := *group
 	cloned.Roles = slices.Clone(group.Roles)
+	cloned.Attributes = maps.Clone(group.Attributes)
 	return &cloned
 }
 

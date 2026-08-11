@@ -32,10 +32,11 @@ func newGroupDeps(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.DomainEve
 	})
 	events := &[]spec.DomainEvent{}
 	deps := groupusecases.AdminGroupDeps{
-		GroupRepo: groupmemory.NewGroupRepository(),
-		UserRepo:  userRepo,
-		Emit:      func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
-		QuotaRepo: tenancymemory.NewQuotaRepository(),
+		GroupRepo:           groupmemory.NewGroupRepository(),
+		UserRepo:            userRepo,
+		Emit:                func(e spec.DomainEvent) error { *events = append(*events, e); return nil },
+		QuotaRepo:           tenancymemory.NewQuotaRepository(),
+		GroupAttrSchemaRepo: groupmemory.NewTenantGroupAttributeSchemaRepository(),
 	}
 	return deps, events
 }

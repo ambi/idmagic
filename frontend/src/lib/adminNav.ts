@@ -37,6 +37,7 @@ export type AdminNavKey =
   | 'audit-events'
   | 'keys'
   | 'tenant-attributes'
+  | 'tenant-group-attributes'
   | 'settings'
 
 export type AdminNavItem = {
@@ -158,6 +159,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
     icon: IconForms,
     href: tenantURL('/admin/tenant/attributes'),
     active: active === 'tenant-attributes',
+  })
+  items.push({
+    key: 'tenant-group-attributes',
+    label: t.groupAttributes,
+    icon: IconForms,
+    href: tenantURL('/admin/tenant/group_attributes'),
+    active: active === 'tenant-group-attributes',
   })
   items.push({
     key: 'entra-federation',

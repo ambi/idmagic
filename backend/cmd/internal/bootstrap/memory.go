@@ -102,6 +102,7 @@ func assembleMemory() (*Dependencies, error) {
 		Tenancy: tenancy.Module{
 			TenantRepo:            tenancymemory.NewTenantRepository(),
 			AttrSchemaRepo:        usermemory.NewTenantUserAttributeSchemaRepository(),
+			GroupAttrSchemaRepo:   groupmemory.NewTenantGroupAttributeSchemaRepository(),
 			BrandingRepo:          tenancymemory.NewTenantBrandingRepository(),
 			BrandingAssetStore:    tenancymemory.NewTenantBrandingAssetStore(),
 			NotificationTemplates: tenancymemory.NewNotificationTemplateRepository(),

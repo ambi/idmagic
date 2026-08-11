@@ -70,6 +70,7 @@ import { Route as AdminMcpResourceServersNewRouteImport } from './routes/admin/m
 import { Route as AdminRolesNameRouteImport } from './routes/admin/roles_/$name'
 import { Route as AdminSettingsSamlIdpProfilesRouteImport } from './routes/admin/settings_/saml-idp-profiles'
 import { Route as AdminTenantAttributesRouteImport } from './routes/admin/tenant/attributes'
+import { Route as AdminTenantGroup_attributesRouteImport } from './routes/admin/tenant/group_attributes'
 import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminUsersExportsRouteImport } from './routes/admin/users_/exports'
 import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/import'
@@ -409,6 +410,12 @@ const AdminTenantAttributesRoute = AdminTenantAttributesRouteImport.update({
   path: '/tenant/attributes',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminTenantGroup_attributesRoute =
+  AdminTenantGroup_attributesRouteImport.update({
+    id: '/tenant/group_attributes',
+    path: '/tenant/group_attributes',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminUsersIdRoute = AdminUsersIdRouteImport.update({
   id: '/users_/$id',
   path: '/users/$id',
@@ -610,6 +617,7 @@ export interface FileRoutesByFullPath {
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
+  '/admin/tenant/group_attributes': typeof AdminTenantGroup_attributesRoute
   '/admin/users/$id': typeof AdminUsersIdRouteWithChildren
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
@@ -691,6 +699,7 @@ export interface FileRoutesByTo {
   '/admin/roles/$name': typeof AdminRolesNameRoute
   '/admin/settings/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
+  '/admin/tenant/group_attributes': typeof AdminTenantGroup_attributesRoute
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
@@ -777,6 +786,7 @@ export interface FileRoutesById {
   '/admin/roles_/$name': typeof AdminRolesNameRoute
   '/admin/settings_/saml-idp-profiles': typeof AdminSettingsSamlIdpProfilesRoute
   '/admin/tenant/attributes': typeof AdminTenantAttributesRoute
+  '/admin/tenant/group_attributes': typeof AdminTenantGroup_attributesRoute
   '/admin/users_/$id': typeof AdminUsersIdRouteWithChildren
   '/admin/users_/exports': typeof AdminUsersExportsRoute
   '/admin/users_/import': typeof AdminUsersImportRoute
@@ -867,6 +877,7 @@ export interface FileRouteTypes {
     | '/admin/roles/$name'
     | '/admin/settings/saml-idp-profiles'
     | '/admin/tenant/attributes'
+    | '/admin/tenant/group_attributes'
     | '/admin/users/$id'
     | '/admin/users/exports'
     | '/admin/users/import'
@@ -948,6 +959,7 @@ export interface FileRouteTypes {
     | '/admin/roles/$name'
     | '/admin/settings/saml-idp-profiles'
     | '/admin/tenant/attributes'
+    | '/admin/tenant/group_attributes'
     | '/admin/users/exports'
     | '/admin/users/import'
     | '/admin/users/new'
@@ -1033,6 +1045,7 @@ export interface FileRouteTypes {
     | '/admin/roles_/$name'
     | '/admin/settings_/saml-idp-profiles'
     | '/admin/tenant/attributes'
+    | '/admin/tenant/group_attributes'
     | '/admin/users_/$id'
     | '/admin/users_/exports'
     | '/admin/users_/import'
@@ -1506,6 +1519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTenantAttributesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/tenant/group_attributes': {
+      id: '/admin/tenant/group_attributes'
+      path: '/tenant/group_attributes'
+      fullPath: '/admin/tenant/group_attributes'
+      preLoaderRoute: typeof AdminTenantGroup_attributesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/users_/$id': {
       id: '/admin/users_/$id'
       path: '/users/$id'
@@ -1848,6 +1868,7 @@ interface AdminRouteRouteChildren {
   AdminRolesNameRoute: typeof AdminRolesNameRoute
   AdminSettingsSamlIdpProfilesRoute: typeof AdminSettingsSamlIdpProfilesRoute
   AdminTenantAttributesRoute: typeof AdminTenantAttributesRoute
+  AdminTenantGroup_attributesRoute: typeof AdminTenantGroup_attributesRoute
   AdminUsersIdRoute: typeof AdminUsersIdRouteWithChildren
   AdminUsersExportsRoute: typeof AdminUsersExportsRoute
   AdminUsersImportRoute: typeof AdminUsersImportRoute
@@ -1895,6 +1916,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminRolesNameRoute: AdminRolesNameRoute,
   AdminSettingsSamlIdpProfilesRoute: AdminSettingsSamlIdpProfilesRoute,
   AdminTenantAttributesRoute: AdminTenantAttributesRoute,
+  AdminTenantGroup_attributesRoute: AdminTenantGroup_attributesRoute,
   AdminUsersIdRoute: AdminUsersIdRouteWithChildren,
   AdminUsersExportsRoute: AdminUsersExportsRoute,
   AdminUsersImportRoute: AdminUsersImportRoute,

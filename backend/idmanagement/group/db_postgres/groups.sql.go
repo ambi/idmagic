@@ -107,7 +107,7 @@ func (q *Queries) FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroup
 }
 
 const findGroupByID = `-- name: FindGroupByID :one
-SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 AND id=$2
 `
 
@@ -124,6 +124,8 @@ func (q *Queries) FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*
 		&i.TenantID,
 		&i.Name,
 		&i.Description,
+		&i.Email,
+		&i.Attributes,
 		&i.Roles,
 		&i.MembershipType,
 		&i.CreatedAt,
@@ -202,7 +204,7 @@ func (q *Queries) ListGroupMembersByGroup(ctx context.Context, arg ListGroupMemb
 }
 
 const listGroupsByTenant = `-- name: ListGroupsByTenant :many
-SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1 ORDER BY name
 `
 
@@ -220,6 +222,8 @@ func (q *Queries) ListGroupsByTenant(ctx context.Context, tenantID string) ([]*G
 			&i.TenantID,
 			&i.Name,
 			&i.Description,
+			&i.Email,
+			&i.Attributes,
 			&i.Roles,
 			&i.MembershipType,
 			&i.CreatedAt,
@@ -236,7 +240,7 @@ func (q *Queries) ListGroupsByTenant(ctx context.Context, tenantID string) ([]*G
 }
 
 const listGroupsByTenantPage = `-- name: ListGroupsByTenantPage :many
-SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1
 ORDER BY name, id
 LIMIT $2
@@ -263,6 +267,8 @@ func (q *Queries) ListGroupsByTenantPage(ctx context.Context, arg ListGroupsByTe
 			&i.TenantID,
 			&i.Name,
 			&i.Description,
+			&i.Email,
+			&i.Attributes,
 			&i.Roles,
 			&i.MembershipType,
 			&i.CreatedAt,
@@ -279,7 +285,7 @@ func (q *Queries) ListGroupsByTenantPage(ctx context.Context, arg ListGroupsByTe
 }
 
 const listGroupsByTenantPageAfter = `-- name: ListGroupsByTenantPageAfter :many
-SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1
   AND (name, id) > ($2::text, $3::uuid)
 ORDER BY name, id
@@ -314,6 +320,8 @@ func (q *Queries) ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroup
 			&i.TenantID,
 			&i.Name,
 			&i.Description,
+			&i.Email,
+			&i.Attributes,
 			&i.Roles,
 			&i.MembershipType,
 			&i.CreatedAt,
@@ -330,7 +338,7 @@ func (q *Queries) ListGroupsByTenantPageAfter(ctx context.Context, arg ListGroup
 }
 
 const listGroupsByTenantPageBefore = `-- name: ListGroupsByTenantPageBefore :many
-SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1
   AND (name, id) < ($2::text, $3::uuid)
 ORDER BY name DESC, id DESC
@@ -363,6 +371,8 @@ func (q *Queries) ListGroupsByTenantPageBefore(ctx context.Context, arg ListGrou
 			&i.TenantID,
 			&i.Name,
 			&i.Description,
+			&i.Email,
+			&i.Attributes,
 			&i.Roles,
 			&i.MembershipType,
 			&i.CreatedAt,
@@ -379,7 +389,7 @@ func (q *Queries) ListGroupsByTenantPageBefore(ctx context.Context, arg ListGrou
 }
 
 const listGroupsByTenantPageEnd = `-- name: ListGroupsByTenantPageEnd :many
-SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
+SELECT id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1
 ORDER BY name DESC, id DESC
 LIMIT $2
@@ -404,6 +414,8 @@ func (q *Queries) ListGroupsByTenantPageEnd(ctx context.Context, arg ListGroupsB
 			&i.TenantID,
 			&i.Name,
 			&i.Description,
+			&i.Email,
+			&i.Attributes,
 			&i.Roles,
 			&i.MembershipType,
 			&i.CreatedAt,
@@ -420,7 +432,7 @@ func (q *Queries) ListGroupsByTenantPageEnd(ctx context.Context, arg ListGroupsB
 }
 
 const listGroupsByUser = `-- name: ListGroupsByUser :many
-SELECT g.id,g.tenant_id,g.name,g.description,g.roles,g.membership_type,g.created_at,g.updated_at
+SELECT g.id,g.tenant_id,g.name,g.description,g.email,g.attributes,g.roles,g.membership_type,g.created_at,g.updated_at
 FROM groups g JOIN group_members gm ON gm.group_id=g.id
 LEFT JOIN dynamic_group_rules dgr ON dgr.group_id=g.id AND dgr.tenant_id=g.tenant_id
 WHERE g.tenant_id=$1 AND gm.user_id=$2
@@ -448,6 +460,8 @@ func (q *Queries) ListGroupsByUser(ctx context.Context, arg ListGroupsByUserPara
 			&i.TenantID,
 			&i.Name,
 			&i.Description,
+			&i.Email,
+			&i.Attributes,
 			&i.Roles,
 			&i.MembershipType,
 			&i.CreatedAt,
@@ -513,9 +527,10 @@ func (q *Queries) SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroup
 }
 
 const saveGroup = `-- name: SaveGroup :exec
-INSERT INTO groups (id,tenant_id,name,description,roles,membership_type,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+INSERT INTO groups (id,tenant_id,name,description,email,attributes,roles,membership_type,created_at,updated_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,description=EXCLUDED.description,
+ email=EXCLUDED.email,attributes=EXCLUDED.attributes,
  roles=EXCLUDED.roles,updated_at=EXCLUDED.updated_at
 `
 
@@ -524,6 +539,8 @@ type SaveGroupParams struct {
 	TenantID       string
 	Name           string
 	Description    pgtype.Text
+	Email          pgtype.Text
+	Attributes     []byte
 	Roles          []byte
 	MembershipType string
 	CreatedAt      time.Time
@@ -536,6 +553,8 @@ func (q *Queries) SaveGroup(ctx context.Context, arg SaveGroupParams) error {
 		arg.TenantID,
 		arg.Name,
 		arg.Description,
+		arg.Email,
+		arg.Attributes,
 		arg.Roles,
 		arg.MembershipType,
 		arg.CreatedAt,

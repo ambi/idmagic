@@ -30,6 +30,9 @@ import type {
   AuthorizationDetailType,
   McpResourceServer,
   TenantUserAttributeSchema,
+  GroupAttributeDef,
+  TenantGroupAttributeSchema,
+  AttributeValue,
   NotificationTemplateDetail,
   NotificationTemplateInput,
   NotificationTemplateList,
@@ -895,6 +898,20 @@ export async function updateTenantUserAttributeSchema(
   )
 }
 
+export async function getTenantGroupAttributeSchema(): Promise<TenantGroupAttributeSchema> {
+  return request<TenantGroupAttributeSchema>('/api/admin/v1/tenant/group_attribute_schema')
+}
+
+export async function updateTenantGroupAttributeSchema(
+  csrfToken: string,
+  attributes: GroupAttributeDef[],
+): Promise<TenantGroupAttributeSchema> {
+  return request(
+    '/api/admin/v1/tenant/group_attribute_schema',
+    adminRequest(csrfToken, 'PUT', { attributes }),
+  )
+}
+
 export async function listAdminTenants(): Promise<AdminTenant[]> {
   return (await request<AdminTenantListResponse>('/api/admin/v1/tenants')).tenants
 }
@@ -989,6 +1006,8 @@ export async function getAdminGroup(
 export type CreateAdminGroupInput = {
   name: string
   description?: string
+  email?: string
+  attributes?: Record<string, AttributeValue>
   roles?: string[]
   membership_type?: AdminGroup['membership_type']
   dynamic_rule?: { expression: string }
@@ -1023,6 +1042,8 @@ export async function setDynamicGroupRuleEnabled(csrfToken: string, id: string, 
 export type UpdateAdminGroupInput = {
   name?: string
   description?: string
+  email?: string
+  attributes?: Record<string, AttributeValue>
   roles?: string[]
 }
 

@@ -9,10 +9,11 @@ import (
 
 // Module は tenancy context が所有する永続化 port の束。
 type Module struct {
-	TenantRepo         ports.TenantRepository
-	AttrSchemaRepo     ports.TenantUserAttributeSchemaRepository
-	BrandingRepo       ports.TenantBrandingRepository
-	BrandingAssetStore ports.TenantBrandingAssetStore
+	TenantRepo          ports.TenantRepository
+	AttrSchemaRepo      ports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo ports.TenantGroupAttributeSchemaRepository
+	BrandingRepo        ports.TenantBrandingRepository
+	BrandingAssetStore  ports.TenantBrandingAssetStore
 	// NotificationTemplates はテナントによる通知テンプレート上書き (wi-288)。
 	NotificationTemplates ports.NotificationTemplateRepository
 	QuotaRepo             ports.QuotaRepository

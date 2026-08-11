@@ -416,6 +416,8 @@ CREATE TABLE groups (
     tenant_id UUID NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
+    email TEXT,
+    attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
     roles JSONB NOT NULL DEFAULT '[]'::jsonb,
     membership_type TEXT NOT NULL DEFAULT 'manual' CHECK (membership_type IN ('manual','dynamic')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -460,6 +462,15 @@ CREATE TABLE tenant_user_attribute_schemas (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT tenant_user_attribute_schemas_tenant_id_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
+CREATE TABLE tenant_group_attribute_schemas (
+    tenant_id UUID PRIMARY KEY,
+    attributes JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT tenant_group_attribute_schemas_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 

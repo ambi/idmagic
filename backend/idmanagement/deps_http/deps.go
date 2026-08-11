@@ -54,6 +54,7 @@ type Deps struct {
 	ClientRepo            oauthports.OAuth2ClientRepository
 	ScimRepo              scimports.ScimRepository
 	AttrSchemaRepo        tenantports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo   tenantports.TenantGroupAttributeSchemaRepository
 	ConsentRepo           oauthports.ConsentRepository
 	RefreshStore          oauthports.RefreshTokenStore
 	DeviceCodeStore       oauthports.DeviceCodeStore

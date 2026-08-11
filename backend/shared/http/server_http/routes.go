@@ -502,6 +502,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ClientRepo:            d.OAuth2.ClientRepo,
 		ScimRepo:              d.Sourcing.ScimRepo,
 		AttrSchemaRepo:        d.Tenancy.AttrSchemaRepo,
+		GroupAttrSchemaRepo:   d.Tenancy.GroupAttrSchemaRepo,
 		ConsentRepo:           d.OAuth2.ConsentRepo,
 		RefreshStore:          d.OAuth2.RefreshStore,
 		DeviceCodeStore:       d.OAuth2.DeviceCodeStore,
@@ -528,12 +529,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	})
 
 	tenancyhttp.RegisterRoutes(g, tenancyhttp.Deps{
-		Deps:               d.Deps,
-		Authenticator:      authenticator,
-		TenantRepo:         d.TenantRepo,
-		AttrSchemaRepo:     d.Tenancy.AttrSchemaRepo,
-		BrandingRepo:       d.Tenancy.BrandingRepo,
-		BrandingAssetStore: d.Tenancy.BrandingAssetStore,
+		Deps:                d.Deps,
+		Authenticator:       authenticator,
+		TenantRepo:          d.TenantRepo,
+		AttrSchemaRepo:      d.Tenancy.AttrSchemaRepo,
+		GroupAttrSchemaRepo: d.Tenancy.GroupAttrSchemaRepo,
+		BrandingRepo:        d.Tenancy.BrandingRepo,
+		BrandingAssetStore:  d.Tenancy.BrandingAssetStore,
 
 		NotificationTemplateRepo: d.Tenancy.NotificationTemplates,
 		Notifier:                 d.Notification.Notifier,

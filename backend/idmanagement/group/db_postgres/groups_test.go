@@ -4,7 +4,9 @@ import (
 	"context"
 	"testing"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
@@ -56,6 +58,38 @@ func TestGroupRepositoryRoundTripAndMembers(t *testing.T) {
 
 	if err := repo.Delete(ctx, tenant.ID, group.ID); err != nil {
 		t.Fatalf("delete group: %v", err)
+	}
+}
+
+func TestGroupRepositoryRoundTripsEmailAndAttributes(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	repo := &GroupRepository{Pool: db}
+	ctx := context.Background()
+
+	now := testClock()
+	email := "sales@example.test"
+	group := &groupdomain.Group{
+		ID: newUUID(t), TenantID: tenant.ID, Name: uniqueID("group-name"),
+		Email: &email,
+		Attributes: map[string]userdomain.AttributeValue{
+			"cost_center": {Type: idmdomain.AttributeTypeString, String: new("CC-100")},
+		},
+		Roles: []string{}, CreatedAt: now, UpdatedAt: now,
+	}
+	if err := repo.Save(ctx, group); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, err := repo.FindByID(ctx, tenant.ID, group.ID)
+	if err != nil || got == nil {
+		t.Fatalf("find group: %v %+v", err, got)
+	}
+	if got.Email == nil || *got.Email != email {
+		t.Fatalf("email not round-tripped: %+v", got.Email)
+	}
+	if got.Attributes["cost_center"].String == nil || *got.Attributes["cost_center"].String != "CC-100" {
+		t.Fatalf("attributes not round-tripped: %+v", got.Attributes)
 	}
 }
 

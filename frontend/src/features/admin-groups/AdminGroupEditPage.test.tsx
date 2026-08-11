@@ -4,7 +4,12 @@ import { screen, fireEvent, waitFor } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { AdminGroupEditPage } from './AdminGroupEditPage'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
-import type { AdminGroup, AdminUser, TenantUserAttributeSchema } from '../../types'
+import type {
+  AdminGroup,
+  AdminUser,
+  TenantGroupAttributeSchema,
+  TenantUserAttributeSchema,
+} from '../../types'
 
 const t = adminGroupsDictionary.en
 
@@ -12,6 +17,13 @@ const schema: TenantUserAttributeSchema = {
   tenant_id: 'tenant-1',
   attributes: [],
   builtin: [],
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
+const groupAttributeSchema: TenantGroupAttributeSchema = {
+  tenant_id: 'tenant-1',
+  attributes: [],
   created_at: '2026-01-01T00:00:00Z',
   updated_at: '2026-01-01T00:00:00Z',
 }
@@ -65,7 +77,14 @@ describe('AdminGroupEditPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
+    await renderWithRouter(
+      <AdminGroupEditPage
+        csrfToken="csrf"
+        group={group}
+        schema={schema}
+        groupAttributeSchema={groupAttributeSchema}
+      />,
+    )
 
     fireEvent.change(screen.getByLabelText(t.groupNameLabel), { target: { value: 'Platform' } })
     fireEvent.click(screen.getByRole('button', { name: t.save }))
@@ -87,7 +106,14 @@ describe('AdminGroupEditPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
+    await renderWithRouter(
+      <AdminGroupEditPage
+        csrfToken="csrf"
+        group={group}
+        schema={schema}
+        groupAttributeSchema={groupAttributeSchema}
+      />,
+    )
 
     expect(await screen.findByLabelText(t.selectUserToAddAria)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: t.add })).toBeInTheDocument()
@@ -109,7 +135,14 @@ describe('AdminGroupEditPage', () => {
         throw new Error(`unexpected fetch ${url}`)
       }),
     )
-    await renderWithRouter(<AdminGroupEditPage csrfToken="csrf" group={group} schema={schema} />)
+    await renderWithRouter(
+      <AdminGroupEditPage
+        csrfToken="csrf"
+        group={group}
+        schema={schema}
+        groupAttributeSchema={groupAttributeSchema}
+      />,
+    )
 
     const input = await screen.findByRole('combobox', { name: t.selectUserToAddAria })
     fireEvent.mouseDown(input)

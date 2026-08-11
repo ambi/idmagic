@@ -18,11 +18,13 @@ import (
 )
 
 type groupCreateRequest struct {
-	Name           string                          `json:"name"`
-	Description    *string                         `json:"description"`
-	Roles          []string                        `json:"roles"`
-	MembershipType groupdomain.GroupMembershipType `json:"membership_type"`
-	DynamicRule    *dynamicRuleRequest             `json:"dynamic_rule"`
+	Name           string                               `json:"name"`
+	Description    *string                              `json:"description"`
+	Email          *string                              `json:"email"`
+	Attributes     map[string]userdomain.AttributeValue `json:"attributes"`
+	Roles          []string                             `json:"roles"`
+	MembershipType groupdomain.GroupMembershipType      `json:"membership_type"`
+	DynamicRule    *dynamicRuleRequest                  `json:"dynamic_rule"`
 }
 
 type dynamicRuleRequest struct {
@@ -35,23 +37,27 @@ type dynamicRulePreviewRequest struct {
 }
 
 type groupUpdateRequest struct {
-	Name        *string   `json:"name"`
-	Description *string   `json:"description"`
-	Roles       *[]string `json:"roles"`
+	Name        *string                               `json:"name"`
+	Description *string                               `json:"description"`
+	Email       *string                               `json:"email"`
+	Attributes  *map[string]userdomain.AttributeValue `json:"attributes"`
+	Roles       *[]string                             `json:"roles"`
 }
 
 type groupSummaryResponse struct {
-	ID             string                          `json:"id"`
-	TenantID       string                          `json:"tenant_id"`
-	Name           string                          `json:"name"`
-	Description    *string                         `json:"description,omitempty"`
-	Roles          []string                        `json:"roles"`
-	MemberCount    int                             `json:"member_count"`
-	CreatedAt      time.Time                       `json:"created_at"`
-	UpdatedAt      time.Time                       `json:"updated_at"`
-	ScimSource     *string                         `json:"scim_source,omitempty"`
-	MembershipType groupdomain.GroupMembershipType `json:"membership_type"`
-	DynamicRule    *groupdomain.DynamicGroupRule   `json:"dynamic_rule,omitempty"`
+	ID             string                               `json:"id"`
+	TenantID       string                               `json:"tenant_id"`
+	Name           string                               `json:"name"`
+	Description    *string                              `json:"description,omitempty"`
+	Email          *string                              `json:"email,omitempty"`
+	Attributes     map[string]userdomain.AttributeValue `json:"attributes"`
+	Roles          []string                             `json:"roles"`
+	MemberCount    int                                  `json:"member_count"`
+	CreatedAt      time.Time                            `json:"created_at"`
+	UpdatedAt      time.Time                            `json:"updated_at"`
+	ScimSource     *string                              `json:"scim_source,omitempty"`
+	MembershipType groupdomain.GroupMembershipType      `json:"membership_type"`
+	DynamicRule    *groupdomain.DynamicGroupRule        `json:"dynamic_rule,omitempty"`
 }
 
 type groupMemberResponse struct {
@@ -184,7 +190,9 @@ func HandleCreateGroup(d Deps, c *echo.Context) error {
 		}
 	}
 	group, err := groupusecases.CreateGroup(c.Request().Context(), adminGroupDeps(d), groupusecases.CreateGroupInput{
-		ActorUserID: actor.ID, Name: input.Name, Description: input.Description, Roles: input.Roles, MembershipType: input.MembershipType, Now: time.Now().UTC(),
+		ActorUserID: actor.ID, Name: input.Name, Description: input.Description,
+		Email: input.Email, Attributes: input.Attributes,
+		Roles: input.Roles, MembershipType: input.MembershipType, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return writeAdminGroupError(c, err)
@@ -271,7 +279,9 @@ func HandleUpdateGroup(d Deps, c *echo.Context) error {
 	}
 	group, err := groupusecases.UpdateGroup(c.Request().Context(), adminGroupDeps(d), groupusecases.UpdateGroupInput{
 		ActorUserID: actor.ID, ID: c.Param("group_id"),
-		Name: input.Name, Description: input.Description, Roles: input.Roles, Now: time.Now().UTC(),
+		Name: input.Name, Description: input.Description,
+		Email: input.Email, Attributes: input.Attributes,
+		Roles: input.Roles, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return writeAdminGroupError(c, err)
@@ -353,7 +363,10 @@ func HandleListUserGroups(d Deps, c *echo.Context) error {
 }
 
 func adminGroupDeps(d Deps) groupusecases.AdminGroupDeps {
-	return groupusecases.AdminGroupDeps{GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo}
+	return groupusecases.AdminGroupDeps{
+		GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo,
+		GroupAttrSchemaRepo: d.GroupAttrSchemaRepo,
+	}
 }
 
 func dynamicGroupDeps(d Deps) groupusecases.DynamicGroupDeps {
@@ -376,8 +389,13 @@ func toGroupMemberResponses(ctx context.Context, d Deps, members []*groupdomain.
 }
 
 func toGroupSummaryResponse(group *groupdomain.Group, memberCount int) groupSummaryResponse {
+	attributes := group.Attributes
+	if attributes == nil {
+		attributes = map[string]userdomain.AttributeValue{}
+	}
 	return groupSummaryResponse{
 		ID: group.ID, TenantID: group.TenantID, Name: group.Name, Description: group.Description,
+		Email: group.Email, Attributes: attributes,
 		Roles: slices.Clone(group.Roles), MemberCount: memberCount,
 		MembershipType: group.MembershipType.Effective(), CreatedAt: group.CreatedAt, UpdatedAt: group.UpdatedAt,
 	}
@@ -399,6 +417,10 @@ func writeAdminGroupError(c *echo.Context, err error) error {
 		return support.WriteBrowserError(c, http.StatusConflict, "dynamic_membership_managed_by_rule", "Dynamic group membership is managed by its rule.")
 	case errors.Is(err, groupusecases.ErrInvalidDynamicGroupRule):
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_dynamic_group_rule", err.Error())
+	case errors.Is(err, groupusecases.ErrInvalidEmail):
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_email", "The email address is not valid.")
+	case errors.Is(err, groupusecases.ErrInvalidAttribute):
+		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "The attribute does not conform to the schema.")
 	default:
 		return err
 	}

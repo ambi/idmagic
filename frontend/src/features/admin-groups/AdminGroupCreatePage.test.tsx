@@ -4,7 +4,7 @@ import { renderWithRouter } from '../../test/renderWithRouter'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { AdminGroupCreatePage } from './AdminGroupCreatePage'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
-import type { AdminGroup } from '../../types'
+import type { AdminGroup, TenantGroupAttributeSchema } from '../../types'
 
 const t = adminGroupsDictionary.en
 
@@ -24,6 +24,13 @@ const group: AdminGroup = {
   created_at: '2026-01-01T00:00:00Z',
 }
 
+const groupAttributeSchema: TenantGroupAttributeSchema = {
+  tenant_id: 'tenant-1',
+  attributes: [],
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
 describe('AdminGroupCreatePage', () => {
   const originalLocation = window.location
   afterEach(() => restoreGlobals())
@@ -34,7 +41,9 @@ describe('AdminGroupCreatePage', () => {
       'fetch',
       mock(() => Promise.resolve(response(201, { ...group, id: 'group-2' }))),
     )
-    await renderWithRouter(<AdminGroupCreatePage csrfToken="csrf" />)
+    await renderWithRouter(
+      <AdminGroupCreatePage csrfToken="csrf" groupAttributeSchema={groupAttributeSchema} />,
+    )
 
     fireEvent.change(screen.getByLabelText(new RegExp(t.groupNameLabel)), {
       target: { value: 'Support' },
@@ -52,7 +61,9 @@ describe('AdminGroupCreatePage', () => {
       'fetch',
       mock(() => Promise.resolve(response(409, { message: 'This group name is already in use.' }))),
     )
-    await renderWithRouter(<AdminGroupCreatePage csrfToken="csrf" />)
+    await renderWithRouter(
+      <AdminGroupCreatePage csrfToken="csrf" groupAttributeSchema={groupAttributeSchema} />,
+    )
 
     fireEvent.change(screen.getByLabelText(new RegExp(t.groupNameLabel)), {
       target: { value: 'Support' },

@@ -21,6 +21,7 @@ type Deps struct {
 	*support.Authenticator
 	TenantRepo               tenantports.TenantRepository
 	AttrSchemaRepo           tenantports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo      tenantports.TenantGroupAttributeSchemaRepository
 	BrandingRepo             tenantports.TenantBrandingRepository
 	BrandingAssetStore       tenantports.TenantBrandingAssetStore
 	NotificationTemplateRepo tenantports.NotificationTemplateRepository
@@ -43,6 +44,8 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.PATCH("/api/admin/v1/settings", d.handleUpdateAdminSettings)
 	g.GET("/api/admin/v1/tenant/user_attribute_schema", d.handleGetUserAttributeSchema)
 	g.PUT("/api/admin/v1/tenant/user_attribute_schema", d.handleUpdateUserAttributeSchema)
+	g.GET("/api/admin/v1/tenant/group_attribute_schema", d.handleGetGroupAttributeSchema)
+	g.PUT("/api/admin/v1/tenant/group_attribute_schema", d.handleUpdateGroupAttributeSchema)
 	g.GET("/api/branding", d.handleGetBranding)
 	g.PUT("/api/admin/v1/tenant/branding", d.handleUpdateBranding)
 	g.POST("/api/admin/v1/tenant/branding/assets/:kind", d.handleUploadBrandingAsset)

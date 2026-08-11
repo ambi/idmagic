@@ -261,6 +261,8 @@ type Group struct {
 	TenantID       string
 	Name           string
 	Description    pgtype.Text
+	Email          pgtype.Text
+	Attributes     []byte
 	Roles          []byte
 	MembershipType string
 	CreatedAt      time.Time
@@ -809,6 +811,13 @@ type TenantDefaultSignInPolicy struct {
 	Rules     []byte
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type TenantGroupAttributeSchema struct {
+	TenantID   string
+	Attributes []byte
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type TenantQuota struct {

@@ -126,6 +126,12 @@ linters:
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
+      # normalizeGroupEmail's (nil, nil) is the valid "no email set" case, not a
+      # suppressed error (wi-315).
+      - path: backend/idmanagement/group/usecases/admin_groups\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
       # Test repositories mirror production Find* not-found contracts.
       - path: backend/oauth2/handlers_http/userinfo_handler_test\.go
         text: "return both a `nil` error and an invalid value"

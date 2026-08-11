@@ -1516,6 +1516,8 @@ union CreateGroupError422Body {
   IdMagic.Contract.InvalidRoleError,
   IdMagic.Contract.InvalidDynamicGroupRuleError,
   IdMagic.Contract.QuotaExceededError,
+  IdMagic.Contract.InvalidEmailError,
+  IdMagic.Contract.InvalidGroupAttributeError,
 }
 
 model CreateGroupError422 {
@@ -1524,7 +1526,7 @@ model CreateGroupError422 {
   @body body: CreateGroupError422Body;
 }
 
-@doc("管理者が所属テナントにグループを作成する。name はテナント内で一意。")
+@doc("管理者が所属テナントにグループを作成する。name はテナント内で一意。email は形式検証のみ (一意制約なし)、attributes はテナントの TenantGroupAttributeSchema に対して検証する。")
 @TypeSpec.OpenAPI.operationId("CreateGroup")
 @route("/api/admin/v1/groups")
 @post
@@ -1569,6 +1571,8 @@ model UpdateGroupError403 {
 union UpdateGroupError422Body {
   IdMagic.Contract.GroupNameRequiredError,
   IdMagic.Contract.InvalidRoleError,
+  IdMagic.Contract.InvalidEmailError,
+  IdMagic.Contract.InvalidGroupAttributeError,
 }
 
 model UpdateGroupError422 {
@@ -1577,7 +1581,7 @@ model UpdateGroupError422 {
   @body body: UpdateGroupError422Body;
 }
 
-@doc("管理者がグループの name / description / roles を更新する。")
+@doc("管理者がグループの name / description / email / attributes / roles を更新する。")
 @TypeSpec.OpenAPI.operationId("UpdateGroup")
 @route("/api/admin/v1/groups/{group_id}")
 @patch

@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,6 +30,14 @@ func groupFromRow(row *Group) (*groupdomain.Group, error) {
 	}
 	if row.Description.Valid {
 		g.Description = &row.Description.String
+	}
+	if row.Email.Valid {
+		g.Email = &row.Email.String
+	}
+	if len(row.Attributes) > 0 {
+		if err := json.Unmarshal(row.Attributes, &g.Attributes); err != nil {
+			return nil, err
+		}
 	}
 	if err := json.Unmarshal(row.Roles, &g.Roles); err != nil {
 		return nil, err
@@ -147,11 +156,21 @@ func (r *GroupRepository) Save(ctx context.Context, group *groupdomain.Group) er
 	if err != nil {
 		return err
 	}
+	attributes := group.Attributes
+	if attributes == nil {
+		attributes = map[string]userdomain.AttributeValue{}
+	}
+	attributesJSON, err := json.Marshal(attributes)
+	if err != nil {
+		return err
+	}
 	return New(r.Pool).SaveGroup(ctx, SaveGroupParams{
 		ID:             group.ID,
 		TenantID:       group.TenantID,
 		Name:           group.Name,
 		Description:    textOrNil(group.Description),
+		Email:          textOrNil(group.Email),
+		Attributes:     attributesJSON,
 		Roles:          rolesJSON,
 		MembershipType: string(group.MembershipType.Effective()),
 		CreatedAt:      group.CreatedAt,

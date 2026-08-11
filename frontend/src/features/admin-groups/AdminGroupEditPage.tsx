@@ -8,7 +8,12 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
-import type { AdminGroup, TenantUserAttributeSchema } from '../../types'
+import type { AdminGroup, TenantGroupAttributeSchema, TenantUserAttributeSchema } from '../../types'
+import {
+  AdminGroupAttributeEditor,
+  groupAttributeDraft,
+  groupAttributeMapFromDraft,
+} from './AdminGroupAttributeEditor'
 import { GroupMembersSection } from './AdminGroupDetailCard'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 import { parseRoles } from './AdminGroupsShared'
@@ -19,15 +24,21 @@ export function AdminGroupEditPage({
   actorUsername,
   group,
   schema,
+  groupAttributeSchema,
 }: {
   csrfToken: string
   actorUsername?: string
   group: AdminGroup
   schema: TenantUserAttributeSchema
+  groupAttributeSchema: TenantGroupAttributeSchema
 }) {
   const detailPath = tenantURL(`/admin/groups/${encodeURIComponent(group.id)}`)
   const [name, setName] = useState(group.name)
   const [description, setDescription] = useState(group.description ?? '')
+  const [email, setEmail] = useState(group.email ?? '')
+  const [attributeDraft, setAttributeDraft] = useState(() =>
+    groupAttributeDraft(group, groupAttributeSchema.attributes),
+  )
   const [roles, setRoles] = useState(group.roles.join(', '))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -36,10 +47,15 @@ export function AdminGroupEditPage({
   const trimmedName = name.trim()
   const nextRoles = parseRoles(roles)
   const nameInvalid = trimmedName === ''
+  const nextAttributes = groupAttributeMapFromDraft(attributeDraft, groupAttributeSchema.attributes)
+  const attributesChanged =
+    JSON.stringify(nextAttributes) !== JSON.stringify(group.attributes ?? {})
   const changed =
     trimmedName !== group.name ||
     description.trim() !== (group.description ?? '') ||
-    nextRoles.join(',') !== group.roles.join(',')
+    email.trim() !== (group.email ?? '') ||
+    nextRoles.join(',') !== group.roles.join(',') ||
+    attributesChanged
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -51,6 +67,8 @@ export function AdminGroupEditPage({
         name: trimmedName !== group.name ? trimmedName : undefined,
         description:
           description.trim() !== (group.description ?? '') ? description.trim() : undefined,
+        email: email.trim() !== (group.email ?? '') ? email.trim() : undefined,
+        attributes: attributesChanged ? nextAttributes : undefined,
         roles: nextRoles.join(',') !== group.roles.join(',') ? nextRoles : undefined,
       })
       window.location.assign(detailPath)
@@ -124,7 +142,24 @@ export function AdminGroupEditPage({
                     className={group.scim_source ? 'bg-slate-50' : undefined}
                   />
                 </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="group-editor-email">{t.emailLabel}</Label>
+                  <Input
+                    id="group-editor-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                  <p className="text-xs text-slate-500">{t.emailHelp}</p>
+                </div>
               </section>
+              <AdminGroupAttributeEditor
+                defs={groupAttributeSchema.attributes}
+                values={attributeDraft}
+                onChange={(key, next) =>
+                  setAttributeDraft((current) => ({ ...current, [key]: next }))
+                }
+              />
               <section className="grid gap-3 border-t border-slate-200 pt-5">
                 <h3 className="text-xs font-bold uppercase tracking-normal text-slate-400">
                   {t.rolesLabel}

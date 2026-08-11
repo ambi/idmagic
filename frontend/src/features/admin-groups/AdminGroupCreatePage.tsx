@@ -8,20 +8,25 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
+import type { TenantGroupAttributeSchema } from '../../types'
+import { AdminGroupAttributeEditor, groupAttributeMapFromDraft } from './AdminGroupAttributeEditor'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 import { optionalValue, parseRoles } from './AdminGroupsShared'
 
 export function AdminGroupCreatePage({
   csrfToken,
   actorUsername,
+  groupAttributeSchema,
 }: {
   csrfToken: string
   actorUsername?: string
+  groupAttributeSchema: TenantGroupAttributeSchema
 }) {
   const listPath = tenantURL('/admin/groups')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [membershipType, setMembershipType] = useState<'manual' | 'dynamic'>('manual')
+  const [attributeDraft, setAttributeDraft] = useState<Record<string, string>>({})
   const t = useDictionary(adminGroupsDictionary)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -37,6 +42,8 @@ export function AdminGroupCreatePage({
       const created = await createAdminGroup(csrfToken, {
         name,
         description: optionalValue(data.get('description')),
+        email: optionalValue(data.get('email')),
+        attributes: groupAttributeMapFromDraft(attributeDraft, groupAttributeSchema.attributes),
         roles: parseRoles(String(data.get('roles') ?? '')),
         membership_type: membershipType,
         dynamic_rule:
@@ -119,6 +126,20 @@ export function AdminGroupCreatePage({
                   placeholder={t.groupDescriptionPlaceholder}
                 />
               </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="group-email">{t.emailOptionalLabel}</Label>
+                <Input id="group-email" name="email" type="email" />
+                <p className="text-xs text-slate-500">{t.emailHelp}</p>
+              </div>
+
+              <AdminGroupAttributeEditor
+                defs={groupAttributeSchema.attributes}
+                values={attributeDraft}
+                onChange={(key, next) =>
+                  setAttributeDraft((current) => ({ ...current, [key]: next }))
+                }
+              />
 
               <div className="grid gap-1.5">
                 <Label htmlFor="group-roles">{t.rolesLabel}</Label>

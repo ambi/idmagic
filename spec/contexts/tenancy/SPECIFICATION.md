@@ -228,6 +228,11 @@ counters against actual row counts, after which a System Admin can tighten limit
 - Tenant resource quotas split into synchronously-enforced Hard quotas and asynchronously-warned Soft
   quotas, with fixed defaults, System-Admin-only limit changes, and a generous safe-ceiling migration
   for tenants that predate quotas.
+- `TenantGroupAttributeSchema` follows `TenantUserAttributeSchema`'s placement: tenant-scoped custom
+  attribute schemas live in `Tenancy` regardless of which `IdManagement` principal (`User` or `Group`)
+  they govern, since schema churn and cascade-on-tenant-delete are `Tenancy` concerns. It is a distinct
+  aggregate from `TenantUserAttributeSchema` rather than a unified one, because `Group` has no builtin
+  catalog to union against (see IdManagement's design record for why).
 
 ## Scenarios
 
@@ -411,3 +416,10 @@ counters against actual row counts, after which a System Admin can tighten limit
 - GIVEN roles=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - WHEN 管理者 "operator" がパスワードの最小長を更新する
 - THEN 更新後の設定に新しい最小長が反映される
+
+### REQ-TENANCY-020: 管理者はテナント固有のグループ属性スキーマを定義できる
+- ACTOR TenantAdministrator
+- GIVEN admin ロールを持つ "operator" が認証済みである
+- WHEN "operator" が group custom attribute "cost_center" (type=string, required=false) を追加する
+  - ALT 既存 key と重複する key を追加する → 更新は InvalidGroupAttributeSchemaError で拒否される
+- THEN 更新後のスキーマに追加した属性が含まれ "TenantGroupAttributeSchemaUpdated" が発行される

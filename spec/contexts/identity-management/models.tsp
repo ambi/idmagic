@@ -23,7 +23,7 @@ enum GroupMembershipSource {
   dynamic_rule: "dynamic_rule",
 }
 
-@doc("tenant-scoped ロール束集約。所属 User に roles を一斉付与する。id は不変の生成識別子、name はテナント内で一意な編集可能ラベル。")
+@doc("tenant-scoped ロール束集約。所属 User に roles を一斉付与する。id は不変の生成識別子、name はテナント内で一意な編集可能ラベル。email は連絡先メールアドレス (認証には使わない)、attributes はテナント定義の TenantGroupAttributeSchema に対して検証される sparse な custom 属性 bag。")
 model Group {
   @minLength(1)
   @maxLength(64)
@@ -34,10 +34,25 @@ model Group {
   name: string;
   @maxLength(500)
   description?: string;
+  @doc("グループ宛の連絡先メールアドレス。User.email と異なり認証・検証フローは持たない。")
+  email?: string;
+  @doc("テナント定義の TenantGroupAttributeSchema に対して検証される custom 属性。")
+  attributes?: Record<AttributeValue>;
   roles: string[];
   membership_type: GroupMembershipType = GroupMembershipType.manual;
   created_at: utcDateTime;
   updated_at?: utcDateTime;
+}
+
+
+@doc("Group の custom 属性 1 件の定義。User の UserAttributeDef と異なり、Group には builtin OIDC/SCIM カタログ・self-service 編集主体・claim 露出が存在しないため、型と要否だけを持つ簡略版。")
+model GroupAttributeDef {
+  @minLength(1)
+  key: string;
+  label?: string;
+  type: AttributeType;
+  multi_valued: boolean = false;
+  required: boolean = false;
 }
 
 
@@ -97,6 +112,12 @@ model RestoreGracePeriodExpiredError {
 
 @doc("カスタム属性値がテナントの属性スキーマを満たさない。")
 model InvalidUserAttributeError {
+
+}
+
+
+@doc("Group のカスタム属性値がテナントの Group 属性スキーマ (TenantGroupAttributeSchema) を満たさない。")
+model InvalidGroupAttributeError {
 
 }
 
@@ -596,19 +617,23 @@ model GroupCreateRequest {
   name: string;
   @maxLength(500)
   description?: string;
+  email?: string;
+  attributes?: Record<AttributeValue>;
   roles?: string[];
   membership_type?: GroupMembershipType;
   dynamic_rule?: DynamicGroupRuleRequest;
 }
 
 
-@doc("管理者がグループの name / description / roles を更新する JSON リクエスト。省略フィールドは現状維持。")
+@doc("管理者がグループの name / description / email / attributes / roles を更新する JSON リクエスト。省略フィールドは現状維持。")
 model GroupUpdateRequest {
   @minLength(1)
   @maxLength(100)
   name?: string;
   @maxLength(500)
   description?: string;
+  email?: string;
+  attributes?: Record<AttributeValue>;
   roles?: string[];
 }
 
@@ -619,6 +644,8 @@ model GroupSummaryResponse {
   tenant_id: string;
   name: string;
   description?: string;
+  email?: string;
+  attributes?: Record<AttributeValue>;
   roles: string[];
   member_count: int64;
   membership_type: GroupMembershipType;

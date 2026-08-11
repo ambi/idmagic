@@ -621,6 +621,8 @@ export type AdminGroup = {
   tenant_id: string
   name: string
   description?: string
+  email?: string
+  attributes?: Record<string, AttributeValue>
   roles: string[]
   member_count: number
   created_at: string
@@ -922,6 +924,23 @@ export type TenantUserAttributeSchema = {
   tenant_id: string
   attributes: UserAttributeDef[]
   builtin: UserAttributeDef[]
+  created_at: string
+  updated_at: string
+}
+
+// GroupAttributeDef is intentionally smaller than UserAttributeDef: Group has no
+// self-service editor, OIDC claim exposure, or builtin catalog to union against.
+export type GroupAttributeDef = {
+  key: string
+  label?: string
+  type: AttributeType
+  multi_valued: boolean
+  required: boolean
+}
+
+export type TenantGroupAttributeSchema = {
+  tenant_id: string
+  attributes: GroupAttributeDef[]
   created_at: string
   updated_at: string
 }

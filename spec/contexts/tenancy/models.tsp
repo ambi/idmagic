@@ -102,6 +102,17 @@ model TenantUserAttributeSchema {
 }
 
 
+@doc("tenant 単位の Group custom 属性定義集合。Group には TenantUserAttributeSchema の builtin catalog に相当するものが無いため、本集合が実効定義そのものになる。tenant aggregate には埋め込まず独立 aggregate として持ち、tenant 削除時に cascade する。")
+model TenantGroupAttributeSchema {
+  @doc("所属テナント ID。")
+  tenant_id: string = "default";
+  @doc("key が一意な定義の並び。")
+  attributes: GroupAttributeDef[];
+  created_at: utcDateTime;
+  updated_at: utcDateTime;
+}
+
+
 @doc("Authentication context の PasswordPolicy の現行値。テナント設定 UI が「テナント上書きが\n無いときに実際に適用される値」をユーザに具体数字で示せるよう、API レスポンスに\n埋め込む。同時に override がこの値より弱い場合の reject 閾値でもある。")
 model PasswordPolicyDefaults {
   @doc("Authentication context の PasswordPolicy.min_length。")
@@ -212,6 +223,23 @@ model TenantUserAttributeSchemaResponse {
 model TenantUserAttributeSchemaUpdateRequest {
   @doc("新しい custom 定義一覧。空配列で全削除。")
   attributes: UserAttributeDef[];
+}
+
+
+@doc("`/api/admin/tenant/group_attribute_schema` の返り値。Group には builtin catalog が無いため、User 版と異なり builtin フィールドを持たない。")
+model TenantGroupAttributeSchemaResponse {
+  tenant_id: string;
+  @doc("tenant が編集可能な Group custom 定義。")
+  attributes: GroupAttributeDef[];
+  created_at: utcDateTime;
+  updated_at: utcDateTime;
+}
+
+
+@doc("tenant の Group custom 属性定義を全置換する JSON リクエスト。重複 key は use case 側で拒否する。")
+model TenantGroupAttributeSchemaUpdateRequest {
+  @doc("新しい custom 定義一覧。空配列で全削除。")
+  attributes: GroupAttributeDef[];
 }
 
 
@@ -533,6 +561,15 @@ model TenantUserAttributeSchemaUpdated {
 }
 
 
+@doc("テナント内 admin が Group custom 属性定義 (TenantGroupAttributeSchema) を更新した。値は持たず、変更後の custom 属性 key 一覧のみを記録する。")
+model TenantGroupAttributeSchemaUpdated {
+  occurredAt: utcDateTime;
+  actorUserId: string;
+  tenantId: string;
+  attributeKeys: string[];
+}
+
+
 @doc("system_admin がテナントを無効化した。当該テナントのすべてのプロトコルルートは invalid_request で拒否される。")
 model TenantDisabled {
   occurredAt: utcDateTime;
@@ -557,6 +594,12 @@ model PolicyOverrideWeakerError {
 
 @doc("user_attribute_schema の定義が不正 (型不正、キー重複、組込み属性との衝突等)。")
 model InvalidUserAttributeSchemaError {
+
+}
+
+
+@doc("group_attribute_schema の定義が不正 (型不正、キー重複等)。")
+model InvalidGroupAttributeSchemaError {
 
 }
 

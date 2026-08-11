@@ -45,9 +45,6 @@ func adminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	return body.CSRFToken, cookies[0]
 }
 
-// this package's own tests happen to only exercise POST today.
-//
-//nolint:unparam // generic helper duplicated from user/handlers_http;
 func adminJSONRequest(
 	t *testing.T,
 	e *echo.Echo,

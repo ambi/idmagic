@@ -11,6 +11,8 @@ package usecases
 import (
 	"context"
 	"errors"
+	"net/mail"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -19,6 +21,7 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -32,6 +35,11 @@ var (
 	ErrGroupNameConflict        = errors.New("group name already exists")
 	ErrGroupNameEmpty           = errors.New("group name is required")
 	ErrDynamicMembershipManaged = errors.New("dynamic membership is managed by rule")
+	// ErrInvalidEmail is returned when Group.Email does not parse as a mail address.
+	ErrInvalidEmail = errors.New("email is not a valid address")
+	// ErrInvalidAttribute is returned when Group.Attributes does not conform to the
+	// tenant's effective TenantGroupAttributeSchema.
+	ErrInvalidAttribute = errors.New("attribute does not conform to schema")
 )
 
 type AdminGroupDeps struct {
@@ -42,6 +50,65 @@ type AdminGroupDeps struct {
 	// nil skips enforcement (e.g. wiring gaps in tests/tools not yet updated);
 	// production bootstrap always sets it.
 	QuotaRepo tenantports.QuotaRepository
+	// GroupAttrSchemaRepo validates Group.Attributes against the tenant's
+	// TenantGroupAttributeSchema. nil rejects any non-empty Attributes (there is no
+	// builtin catalog to fall back to, unlike User's AttrSchemaRepo).
+	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+}
+
+// normalizeGroupEmail trims and lowercases in.Email, treating an empty/whitespace-only
+// value as "no email" (nil). A non-empty value that does not parse as a mail address
+// returns ErrInvalidEmail.
+func normalizeGroupEmail(email *string) (*string, error) {
+	if email == nil {
+		return nil, nil
+	}
+	trimmed := strings.TrimSpace(*email)
+	if trimmed == "" {
+		return nil, nil
+	}
+	addr, err := mail.ParseAddress(trimmed)
+	if err != nil {
+		return nil, ErrInvalidEmail
+	}
+	lower := strings.ToLower(addr.Address)
+	return &lower, nil
+}
+
+// effectiveGroupAttributeDefs returns the tenant's Group attribute definitions. Unlike
+// User, Group has no builtin catalog, so an unwired repo or an undefined tenant schema
+// resolves to an empty definition set rather than falling back to defaults.
+func effectiveGroupAttributeDefs(ctx context.Context, repo tenantports.TenantGroupAttributeSchemaRepository, tenantID string) ([]groupdomain.GroupAttributeDef, error) {
+	if repo == nil {
+		return nil, nil
+	}
+	schema, err := repo.FindByTenant(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if schema == nil {
+		return nil, nil
+	}
+	return schema.EffectiveDefs(), nil
+}
+
+// validateGroupAttributesInput validates attributes against the tenant's effective
+// GroupAttributeDef set, including required-attribute enforcement. It is called
+// unconditionally on create (so a tenant-defined required attribute is enforced even
+// when the caller omits attributes) and only when the caller supplies a replacement
+// map on update.
+func validateGroupAttributesInput(ctx context.Context, deps AdminGroupDeps, tenantID string, attributes map[string]userdomain.AttributeValue) error {
+	defs, err := effectiveGroupAttributeDefs(ctx, deps.GroupAttrSchemaRepo, tenantID)
+	if err != nil {
+		return err
+	}
+	if len(defs) == 0 && len(attributes) == 0 {
+		return nil
+	}
+	if err := groupdomain.ValidateGroupAttributes(attributes, defs); err != nil {
+		return errors.Join(ErrInvalidAttribute, err)
+	}
+	return nil
 }
 
 // GroupView は一覧・詳細でグループとメンバー数をまとめて返す。
@@ -102,6 +169,8 @@ type CreateGroupInput struct {
 	ActorUserID    string
 	Name           string
 	Description    *string
+	Email          *string
+	Attributes     map[string]userdomain.AttributeValue
 	Roles          []string
 	MembershipType groupdomain.GroupMembershipType
 	Now            time.Time
@@ -120,6 +189,13 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err != nil {
 		return nil, err
 	}
+	email, err := normalizeGroupEmail(in.Email)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateGroupAttributesInput(ctx, deps, tenantID, in.Attributes); err != nil {
+		return nil, err
+	}
 	if err := idmusecases.CheckQuotaAndAudit(ctx, deps.QuotaRepo, deps.Emit, tenantID, tenancydomain.ResourceGroups, idmusecases.NormalizedNow(in.Now)); err != nil {
 		return nil, err
 	}
@@ -130,6 +206,7 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	now := idmusecases.NormalizedNow(in.Now)
 	group := &groupdomain.Group{
 		ID: id, TenantID: tenantID, Name: name, Description: idmusecases.NormalizeDescription(in.Description),
+		Email: email, Attributes: in.Attributes,
 		Roles: roles, MembershipType: in.MembershipType.Effective(), CreatedAt: now, UpdatedAt: now,
 	}
 	if err := group.Validate(); err != nil {
@@ -149,8 +226,11 @@ type UpdateGroupInput struct {
 	ID          string
 	Name        *string
 	Description *string
-	Roles       *[]string
-	Now         time.Time
+	Email       *string
+	// Attributes は指定時に attributes 全体を置換する (実効スキーマで検証)。
+	Attributes *map[string]userdomain.AttributeValue
+	Roles      *[]string
+	Now        time.Time
 }
 
 func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) (*groupdomain.Group, error) {
@@ -182,6 +262,25 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 		if !idmusecases.EqualOptionalString(group.Description, desc) {
 			updated.Description = desc
 			changed = append(changed, "description")
+		}
+	}
+	if in.Email != nil {
+		email, err := normalizeGroupEmail(in.Email)
+		if err != nil {
+			return nil, err
+		}
+		if !idmusecases.EqualOptionalString(group.Email, email) {
+			updated.Email = email
+			changed = append(changed, "email")
+		}
+	}
+	if in.Attributes != nil {
+		if err := validateGroupAttributesInput(ctx, deps, tenantID, *in.Attributes); err != nil {
+			return nil, err
+		}
+		if !reflect.DeepEqual(group.Attributes, *in.Attributes) {
+			updated.Attributes = *in.Attributes
+			changed = append(changed, "attributes")
 		}
 	}
 	if in.Roles != nil {

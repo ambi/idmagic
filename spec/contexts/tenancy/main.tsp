@@ -494,6 +494,84 @@ op UpdateTenantUserAttributeSchema(
   @body body: UpdateTenantUserAttributeSchemaHttpRequest
 ): UpdateTenantUserAttributeSchemaSuccess_200 | UpdateTenantUserAttributeSchemaError400 | UpdateTenantUserAttributeSchemaError403 | UpdateTenantUserAttributeSchemaError422;
 
+model GetTenantGroupAttributeSchemaHttpResponse {
+  schema: IdMagic.Contract.TenantGroupAttributeSchemaResponse;
+}
+
+model GetTenantGroupAttributeSchemaSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: GetTenantGroupAttributeSchemaHttpResponse;
+}
+
+union GetTenantGroupAttributeSchemaError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model GetTenantGroupAttributeSchemaError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: GetTenantGroupAttributeSchemaError403Body;
+}
+
+@doc("テナント内 admin が自身のテナントの Group custom 属性定義を取得する。\n対象テナントは context.tenant_id に固定し cross-tenant 読み出しを構造的に排除する。\nGroup には builtin catalog が無いため、レスポンスは tenant 固有の custom 定義だけを返す。")
+@TypeSpec.OpenAPI.operationId("GetTenantGroupAttributeSchema")
+@route("/api/admin/v1/tenant/group_attribute_schema")
+@get
+op GetTenantGroupAttributeSchema(
+
+): GetTenantGroupAttributeSchemaSuccess_200 | GetTenantGroupAttributeSchemaError403;
+
+model UpdateTenantGroupAttributeSchemaHttpRequest {
+  request: IdMagic.Contract.TenantGroupAttributeSchemaUpdateRequest;
+}
+
+model UpdateTenantGroupAttributeSchemaHttpResponse {
+  schema: IdMagic.Contract.TenantGroupAttributeSchemaResponse;
+}
+
+model UpdateTenantGroupAttributeSchemaSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: UpdateTenantGroupAttributeSchemaHttpResponse;
+}
+
+union UpdateTenantGroupAttributeSchemaError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model UpdateTenantGroupAttributeSchemaError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: UpdateTenantGroupAttributeSchemaError400Body;
+}
+
+union UpdateTenantGroupAttributeSchemaError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model UpdateTenantGroupAttributeSchemaError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: UpdateTenantGroupAttributeSchemaError403Body;
+}
+
+union UpdateTenantGroupAttributeSchemaError422Body {
+  IdMagic.Contract.InvalidGroupAttributeSchemaError,
+}
+
+model UpdateTenantGroupAttributeSchemaError422 {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: UpdateTenantGroupAttributeSchemaError422Body;
+}
+
+@doc("テナント内 admin が Group custom 属性定義を全置換する。context.tenant_id に\n固定した上で、各 GroupAttributeDef を検証し、重複 key を拒否する。値そのものは保持せず定義のみを扱う。")
+@TypeSpec.OpenAPI.operationId("UpdateTenantGroupAttributeSchema")
+@route("/api/admin/v1/tenant/group_attribute_schema")
+@put
+op UpdateTenantGroupAttributeSchema(
+  @body body: UpdateTenantGroupAttributeSchemaHttpRequest
+): UpdateTenantGroupAttributeSchemaSuccess_200 | UpdateTenantGroupAttributeSchemaError400 | UpdateTenantGroupAttributeSchemaError403 | UpdateTenantGroupAttributeSchemaError422;
+
 model GetTenantBrandingHttpResponse {
   branding: IdMagic.Contract.TenantBrandingResponse;
 }

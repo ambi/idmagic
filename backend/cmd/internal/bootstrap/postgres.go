@@ -158,6 +158,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 		Tenancy: tenancy.Module{
 			TenantRepo:            tenantRepo,
 			AttrSchemaRepo:        &userpostgres.TenantUserAttributeSchemaRepository{Pool: resilientDB},
+			GroupAttrSchemaRepo:   &grouppostgres.TenantGroupAttributeSchemaRepository{Pool: resilientDB},
 			BrandingRepo:          &tenancypostgres.TenantBrandingRepository{Pool: resilientDB},
 			BrandingAssetStore:    &tenancypostgres.TenantBrandingAssetStore{Pool: resilientDB},
 			NotificationTemplates: &tenancypostgres.NotificationTemplateRepository{Pool: resilientDB},

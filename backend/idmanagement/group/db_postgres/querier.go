@@ -13,8 +13,10 @@ type Querier interface {
 	CountGroupMembers(ctx context.Context, arg CountGroupMembersParams) (int64, error)
 	CountGroupsByTenant(ctx context.Context, tenantID string) (int64, error)
 	DeleteGroup(ctx context.Context, arg DeleteGroupParams) error
+	DeleteTenantGroupAttributeSchema(ctx context.Context, tenantID string) error
 	FindDynamicGroupRule(ctx context.Context, arg FindDynamicGroupRuleParams) (*DynamicGroupRule, error)
 	FindGroupByID(ctx context.Context, arg FindGroupByIDParams) (*Group, error)
+	FindTenantGroupAttributeSchemaByTenant(ctx context.Context, tenantID string) (*TenantGroupAttributeSchema, error)
 	ListDynamicGroupRules(ctx context.Context, tenantID string) ([]string, error)
 	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error)
 	ListGroupsByTenant(ctx context.Context, tenantID string) ([]*Group, error)
@@ -30,6 +32,7 @@ type Querier interface {
 	RemoveGroupMember(ctx context.Context, arg RemoveGroupMemberParams) (int64, error)
 	SaveDynamicGroupRule(ctx context.Context, arg SaveDynamicGroupRuleParams) error
 	SaveGroup(ctx context.Context, arg SaveGroupParams) error
+	SaveTenantGroupAttributeSchema(ctx context.Context, arg SaveTenantGroupAttributeSchemaParams) error
 }
 
 var _ Querier = (*Queries)(nil)

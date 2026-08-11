@@ -33,7 +33,7 @@ the attribute model user profiles are built from, then `Group`, then `Agent`.
 | SoftDelete | User を Active / Disabled から PendingDeletion に遷移させる管理操作。PII / Consent / RefreshToken / Session を残したまま削除を予約し、誤操作を 猶予期間内で救済できる。 | soft_delete, soft-delete |
 | Restore | PendingDeletion の User を Active に戻す管理操作。猶予期間内でのみ可能で、PII や credential は温存されているためログインは通常どおり再開する。 | restore |
 | Purge | User を Active / Disabled / PendingDeletion から Deleted に遷移させる確定削除操作。anonymize cascade を実行し、猶予期間経過後の自動 purge と admin の明示的完全削除の双方から呼ばれる。 | purge |
-| Group | tenant-scoped 集約。再利用可能なロール束 (roles[]) を持ち、所属する User にそのロールを一斉付与する。階層・deny ルール・属性自動所属は持たない (union のみ)。 | group, グループ, role group, ロールグループ |
+| Group | tenant-scoped 集約。再利用可能なロール束 (roles[]) を持ち、所属する User にそのロールを一斉付与する。階層・deny ルール・属性自動所属は持たない (union のみ)。連絡先 email と、TenantGroupAttributeSchema に対して検証される custom attributes も持つ。 | group, グループ, role group, ロールグループ |
 | GroupMembership | User と Group の所属関係 (GroupMember)。manual は管理者操作、dynamic は有効な CEL rule の評価結果だけから変更される。effective_roles(user) = user.roles ∪ ⋃ membership.group.roles。 | group membership, グループ所属, membership |
 | DynamicGroupRule | User の core 属性と TenantUserAttributeSchema で定義された属性だけを参照し、所属可否を Boolean で返す制限 CEL 式。rule version が一致する dynamic membership だけが有効になる。 | dynamic membership rule, 動的グループルール |
 | EffectiveRoles | 認可判断で用いる User の有効ロール集合。user.roles と所属 Group の roles の和集合。admin RBAC ゲートと /account 自己コンテキストで参照する。 | effective roles, 有効ロール |
@@ -309,6 +309,32 @@ CRUD and membership changes emit both an `AdminAuditEvent` and one of
 `GroupCreated`/`GroupUpdated`/`GroupDeleted`/`GroupMemberAdded`/`GroupMemberRemoved`; deleting a group
 cascades its memberships, emitting `GroupMemberRemoved` per member before the final `GroupDeleted`.
 
+### Group Contact and Custom Attributes
+
+`Group` also carries an optional `email` (a plain contact address, e.g. for a department distribution
+list) and a sparse `attributes` bag for tenant-defined custom metadata, following Okta's and Microsoft
+Entra ID's approach of extending the group profile through an admin-defined schema, rather than
+Keycloak's schema-less free-form key/value model — the same posture the existing `User` attribute
+mechanism already takes. `email` is validated for format only (the same address-format check as
+`User.email`); unlike `User.email` it has no verification flag, no change-request flow, and no
+uniqueness constraint, because a group has no self-service actor to prove control of an inbox and no
+authentication path that depends on it.
+
+`Group.attributes` is validated against `TenantGroupAttributeSchema`, a tenant-scoped aggregate owned by
+`Tenancy` (mirroring where `TenantUserAttributeSchema` lives, since tenant-scoped schema management is a
+`Tenancy` concern regardless of which principal the schema governs) and defined in terms of
+`GroupAttributeDef`. Unlike `UserAttributeDef`, `GroupAttributeDef` carries only `key`, `label`, `type`,
+`multi_valued`, and `required` — it has no `editable_by_user`, `claim_name`/`oidc_scope`, or `visibility`,
+because a `Group` has no self-service editor and its attributes are never projected into OIDC/SAML
+claims. There is also no builtin catalog to union against: `User`'s builtin tier exists because OIDC
+§5.1 and SCIM `enterprise:User` impose a large fixed set of optional profile claims, and no analogous
+standard vocabulary exists for groups, so `TenantGroupAttributeSchema.attributes` is the effective
+definition set by itself. `ValidateAttributes`-style checking (undefined-key rejection, type match,
+`multi_valued` consistency, `required` satisfaction) is reused conceptually but implemented as a
+Group-specific pass over `GroupAttributeDef`, since the two definition shapes no longer share every
+field. Admins manage the schema through `GetTenantGroupAttributeSchema`/`UpdateTenantGroupAttributeSchema`
+(`/api/admin/v1/tenant/group_attribute_schema`), the same shape of endpoint pair as the user schema's.
+
 ### Agent Principal
 
 `Agent` is a third first-class principal type alongside `User` and the credential primitives `OAuth2`
@@ -360,6 +386,11 @@ gated by a dedicated `AdminAgentsManage` permission rather than reusing generic 
 - `Group` was introduced as a tenant-scoped aggregate so roles can be granted and revoked as a bundle,
   with effective roles computed as a plain union of `user.roles` and group roles rather than a
   hierarchy with precedence or subtraction rules.
+- `Group.attributes` reuses `User`'s schema-driven (Okta/Entra ID-style) governance posture rather than
+  Keycloak's schema-less free-form key/value model, but through a separate `GroupAttributeDef` /
+  `TenantGroupAttributeSchema` mechanism instead of unifying with `UserAttributeDef` /
+  `TenantUserAttributeSchema`, since `Group` has no builtin OIDC/SCIM catalog, self-service editor, or
+  claim-exposure tier to share.
 - `Agent` is a third first-class principal type distinct from `User` and `OAuth2Client`, binding to an
   existing `OAuth2Client` registration rather than owning its own credential and cryptographic surface,
   so autonomous and supervised agents stay distinguishable from generic M2M clients without doubling
@@ -601,3 +632,14 @@ gated by a dedicated `AdminAgentsManage` permission rather than reusing generic 
 - WHEN system が新 version の dynamic rule を再評価する
 - THEN 旧 version の membership は直ちに effective roles から除外される
 - THEN 再評価が失敗した User は新 version の membership を取得しない
+
+### REQ-IDMANAGEMENT-024: 管理者はグループの連絡先メールとカスタム属性を、テナント定義のスキーマに従って設定できる
+- ACTOR TenantAdministrator
+- GIVEN admin ロールを持つ "operator" が認証済みである
+- GIVEN テナントの Group 属性スキーマに "cost_center" (string, required=false) が定義されている
+- WHEN "operator" が email="sales@example.test" と attributes={cost_center: "CC-100"} を指定してグループ "sales" を作成する
+  - ALT email がメールアドレスの形式を満たさない → 作成は InvalidEmailError で拒否される
+  - ALT attributes に未定義の key を指定する、または定義済み key と型が一致しない → 作成は InvalidGroupAttributeError で拒否される
+- THEN 作成されたグループの email と attributes が指定どおりに保存され "GroupCreated" が発行される
+- WHEN "operator" が同グループの email と attributes を更新する
+- THEN 更新後のグループに新しい email と attributes が反映され "GroupUpdated" の changed_fields に "email"/"attributes" が含まれる
