@@ -16,10 +16,10 @@ depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 ものではないため先送りしたが、いずれも「fail-closed / 迷ったら失効する側に倒す」という
 ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消しておく価値がある。
 
-1. **Hard Quota 未実装**: `spec/contexts/sharedsignals.yaml` の `RegisterSsfTransmitterStream`/
+1. **Hard Quota 未実装**: `spec/contexts/sharedsignals/requirements.md` の `RegisterSsfTransmitterStream`/
    `RegisterSsfReceiverStream` は T001 時点で `QuotaExceededError` を宣言しているが、
    Tenancy 側に新規 quota resource を追加する作業が stream CRUD 単体 (T005) の範囲を大きく
-   超えるため実装を見送った。SCL の宣言と実装が乖離した状態が残っている。
+   超えるため実装を見送った。specification の宣言と実装が乖離した状態が残っている。
 2. **所有者オフボード後も新規 token 発行が止まらない**: kill-switch ([[ADR-048]]) は
    `Agent.Status` を変更し `IsActive()` (`backend/idmanagement/agent/domain/agents.go:62`) を
    fail-closed にするため新規発行を防ぐが、所有者オフボード (`UserDisabled`/`UserSoftDeleted`/
@@ -34,7 +34,7 @@ ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消
    UUIDv4 で交差しないため**現状は悪用不可能**と確認済みだが、revocation 判定を通らない
    コードパスが存在すること自体は defense-in-depth の観点で望ましくない。
 4. **`ManagementApiClient` (Agent 主体の API scope) の実 enforcement が無い**: SharedSignals の
-   admin API は SCL 上 `ManagementApiClientReadSharedSignals`/`WriteSharedSignals` policy を
+   admin API は specification 上 `ManagementApiClientReadSharedSignals`/`WriteSharedSignals` policy を
    宣言しているが (T005)、このリポジトリには `ManagementApiClient` principal を実装している
    context が一つも無い ([[wi-274-application-admin-api-restructure-and-scopes]] の Risk Notes
    に「管理 API の PAT 解決は監査 actor 帰属と CSRF 除外を含む横断認証カーネルを要する」と
@@ -48,11 +48,11 @@ ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消
 
 ## Scope
 
-- `spec/contexts/tenancy.yaml`: `TenantQuota`/`TenantUsage` に `SsfStream` を Hard Quota resource
+- `spec/contexts/tenancy/requirements.md`: `TenantQuota`/`TenantUsage` に `SsfStream` を Hard Quota resource
   として追加する (既定値は ADR-134 の他リソースと同じ桁感で検討)。
-- `spec/contexts/sharedsignals.yaml`: `RegisterSsfTransmitterStream`/`RegisterSsfReceiverStream` の
+- `spec/contexts/sharedsignals/requirements.md`: `RegisterSsfTransmitterStream`/`RegisterSsfReceiverStream` の
   `QuotaExceededError` に対応する `requires` を実装可能な形に確認・調整する。
-- `spec/contexts/identity-management.yaml` または `spec/contexts/oauth2.yaml`: 所有者オフボード時に
+- `spec/contexts/identity-management/requirements.md` または `spec/contexts/oauth2/requirements.md`: 所有者オフボード時に
   配下 Agent の新規 token 発行を止める `ensures`/`requires` (Agent 側で明示的な状態遷移を新設する
   か、client_credentials 発行時に owner の Active 状態を確認するガードを追加するかは `## Design`
   で判断する)。
@@ -68,7 +68,7 @@ ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消
   帰属と CSRF 除外を含む横断認証カーネルを要する」と評価した通り、これは SharedSignals 固有では
   なく全 admin API に共通する、本 WI 単体の範囲を大きく超えるアーキテクチャ投資である。優先度が
   上がった時点で専用の WI を別途立てるべきで、本 WI では着手しない (SharedSignals の
-  `ManagementApiClient` policy は SCL 宣言済みのまま、他 context と足並みを揃えて未実装で残す)。
+  `ManagementApiClient` policy は specification 宣言済みのまま、他 context と足並みを揃えて未実装で残す)。
   同種の scope 未配線は [[wi-320-agent-management-api-scope-wiring]] (`agents:read`/`write`) でも
   個別に扱われているが、そちらも IdManagement 単体の scope 配線可否を決めるだけで、横断カーネル
   自体は解決していない。
@@ -103,16 +103,16 @@ ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消
 
 ## Plan
 
-- 4項目は互いに独立した変更なので、SCL 変更を伴うもの (Hard Quota、新規発行停止) から先に
+- 4項目は互いに独立した変更なので、specification 変更を伴うもの (Hard Quota、新規発行停止) から先に
   着手し、認証経路統一は影響範囲が広いため単独 PR で慎重に進める。RFC 9493 対応は優先度が
   最も低く、外部相互運用の具体的なニーズが出てから着手でも良い。
 - 各項目は独立に完了・レビューできるため、`## Tasks` は項目ごとに RED→GREEN で進める。
 
 ## Tasks
 
-- [ ] T001 [SCL/Quota] `SsfStream` を Hard Quota resource として追加し、
+- [ ] T001 [specification/Quota] `SsfStream` を Hard Quota resource として追加し、
       `RegisterSsfTransmitterStream`/`RegisterSsfReceiverStream` の `QuotaExceededError` を実装する。
-- [ ] T002 [SCL/Enforcement] 所有者オフボード後に配下 Agent の新規 token 発行を止める
+- [ ] T002 [specification/Enforcement] 所有者オフボード後に配下 Agent の新規 token 発行を止める
       (`## Design` の (a)/(b) を確定し実装する)。
 - [ ] T003 [Auth] `support_http/auth.go` の `resolveAuthnContext` を `IntrospectToken` 経由に統一し、
       admin/account portal の Bearer 認証でも epoch/denylist が一貫して効くようにする。
@@ -123,7 +123,7 @@ ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消
 
 ## Verification
 
-- `just check` (SCL/architecture/work-items)
+- `just check` (specification/architecture/work-items)
 - `just build-go` / `just verify-go`
   - reason: quota 判定・token 発行拒否・認証経路統一・RFC 9493 subject 解決のいずれも
     fail-closed 境界を持つため、race-enabled test と lint を通す。

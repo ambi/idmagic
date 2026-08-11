@@ -39,7 +39,7 @@ func hostRoutingFixture(t *testing.T, baseDomain string) *echo.Echo {
 	}
 	e := echo.New()
 	Register(e, Deps{Deps: support.Deps{
-		Issuer: "https://idp.example", SCL: spec.MustLoadSCL(),
+		Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenants, TenantBaseDomain: baseDomain,
 	}})
 	return e

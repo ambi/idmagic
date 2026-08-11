@@ -22,9 +22,9 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
-  - { context: Sourcing, kind: interface, element: ListScimUsers }
-  - { context: Sourcing, kind: interface, element: PatchScimUser }
+  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7644-PATCH }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.PatchScimUser }
 ---
 
 # SCIM 複合 value フィルタ (bracket 構文) を LIST filter と PATCH path の両方に対応する
@@ -67,7 +67,7 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
 
 ## Tasks
 
-- [ ] T001 [SCL] bracket 構文の対応範囲を `spec/contexts/scim.yaml` に明記する。
+- [ ] T001 [Spec] bracket 構文の対応範囲を `spec/contexts/sourcing/requirements.md` に明記する。
 - [ ] T002 [Domain] RED: bracket 構文 parser/evaluator の test (複合条件、資源上限、
       allowlist 外属性の拒否)を先に失敗させて実装する(未信頼入力を parse する
       複雑な文法のため、fuzz/property test 採用の要否を検討し判断根拠を Risk Notes に

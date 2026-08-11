@@ -20,8 +20,8 @@ import (
 
 // Deps は全 HTTP ハンドラが共有する依存集約のうち、HTTP 横断設定とライフサイクルに関連するもの。
 type Deps struct {
-	Issuer string
-	SCL    *spec.SCL
+	Issuer   string
+	Contract *spec.RuntimeContract
 	// TenantBaseDomain は subdomain style のテナントが載る親ドメイン (ADR-144)。
 	// 空なら host ベースのテナント解決そのものが無効になり、path prefix 経路だけが
 	// 残る。ワイルドカード DNS / 証明書を用意できない配備を一級市民として保つための

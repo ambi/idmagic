@@ -1,0 +1,4 @@
+namespace IdMagic.Contract {
+
+
+}

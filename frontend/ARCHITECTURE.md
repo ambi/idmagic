@@ -12,7 +12,7 @@ the hosted authentication surfaces (login, consent, device), the admin console, 
 
 This document is the design record for that boundary: how the SPA and the API divide responsibility,
 which browser protections apply, how routing and UI conventions are fixed, and why. The machine-checked
-module ledger lives beside it in `architecture.yaml`; run instructions and verification commands live in
+module boundaries are inferred from paths and forbidden imports; run instructions and verification commands live in
 `README.md`.
 
 ## Deployment boundary
@@ -153,7 +153,7 @@ The admin console and account portal follow a set of strict UI consistency and n
 3. **Dynamic Page Titles**
    - Every page must have a dynamic and context-aware browser tab title (e.g., "ユーザー | IdMagic 管理コンソール") defined via the `PAGE_TITLES` map in `src/routes/-page.tsx` and evaluated by the `PageMarker` component.
 4. **Terminology Unification**
-   - The UI must use the term "監査イベント" (Audit Event) instead of "監査ログ" (Audit Log) to maintain consistency with the underlying SCL definition (`AuditEvent`/`audit_events`).
+   - The UI must use the term "監査イベント" (Audit Event) instead of "監査ログ" (Audit Log) to maintain consistency with the underlying specification (`AuditEvent`/`audit_events`).
 
 ## Container / Presentation component split
 
@@ -168,7 +168,7 @@ New `*Page.tsx` files (and refactors of existing ones) follow a container/presen
 ## Design Decisions
 
 - Design rationale, the machine-checked module ledger, and run/verification instructions are kept in
-  three separate files — this document, `architecture.yaml`, and `README.md` — rather than one combined
+  Architecture and run instructions are kept separate because they answer different questions, rather than one combined
   document ([ADR-143](../decisions/ADR-143-second-layer-design-ledger-decision-split.md)).
 - The admin console and account portal are first-party OIDC relying parties of the IdP itself, as pure
   SPA RPs holding the access token in the browser rather than behind a BFF

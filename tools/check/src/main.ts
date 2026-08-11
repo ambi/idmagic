@@ -6,9 +6,9 @@
  *   check --schema=<name> <file>...          # parse + lint + schema
  *   check --list-schemas                     # list available schema names
  *
- * Three layers:
+ * Two layers:
  *   1. Parse via Bun's built-in YAML loader (dynamic import) — same engine
- *      used by scl-to-html, so anything that parses here will parse there.
+ *      used across the repository tools.
  *   2. Lint on the raw text: no tab indent, no trailing whitespace, must
  *      end with a single trailing newline.
  *   3. (opt-in) JSON Schema 2020-12 validation via Ajv. Schemas are
@@ -26,9 +26,7 @@ import { readFile } from 'node:fs/promises'
 import { basename, isAbsolute, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArchitectureDoc } from './arch-check.ts'
-import { verifyContextMap } from './context-map.ts'
 import { type Finding, SCHEMAS, lintRawText, parseArgs, validateAgainstSchema } from './lib.ts'
-import { verifySclSemantics } from './scl-semantics.ts'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
 
@@ -308,17 +306,6 @@ for (const path of targets) {
 
   if (parseResult.ok && opts.schema !== null) {
     findings.push(...validateAgainstSchema(opts.schema, parseResult.data, text))
-    if (opts.schema === 'scl') {
-      findings.push(...verifySclSemantics(parseResult.data, text))
-    }
-  }
-
-  // Context-map semantics are checked whenever a context_map is present,
-  // independent of --schema. Errors fail the run; warnings do not.
-  if (parseResult.ok) {
-    const report = verifyContextMap(parseResult.data, text)
-    findings.push(...report.errors)
-    warnings.push(...report.warnings)
   }
 
   const rel = relative(process.cwd(), path) || path

@@ -121,16 +121,7 @@ describe('locatePointer', () => {
 
 describe('SCHEMAS', () => {
   it('exposes exactly the documented schemas', () => {
-    expect(Object.keys(SCHEMAS).sort()).toEqual(
-      [
-        'architecture-map',
-        'architecture-doc',
-        'scl',
-        'work-item',
-        'verification-manifest',
-        'verification-evidence',
-      ].sort(),
-    )
+    expect(Object.keys(SCHEMAS).sort()).toEqual(['architecture-doc', 'work-item'])
   })
 })
 
@@ -176,7 +167,7 @@ describe('validateAgainstSchema — work-item', () => {
     expect(validateAgainstSchema('work-item', validWorkItem, '')).toEqual([])
   })
 
-  it('requires direct SCL targets and initial context for feature work', () => {
+  it('requires direct specification targets and initial context for feature work', () => {
     const feature = { ...validWorkItem, change_kind: 'feature' }
     expect(validateAgainstSchema('work-item', feature, '')).not.toEqual([])
     expect(
@@ -185,14 +176,16 @@ describe('validateAgainstSchema — work-item', () => {
         {
           ...feature,
           initial_context: { source: ['tools/ra/src'] },
-          affected_spec: [{ context: 'ra', kind: 'interface', element: 'CheckTraceability' }],
+          affected_spec: [
+            { path: 'spec/contexts/ra/requirements.md', requirement: 'REQ-RA-CHECK' },
+          ],
         },
         '',
       ),
     ).toEqual([])
   })
 
-  it('requires a concrete no-impact reason for maintenance without SCL targets', () => {
+  it('requires a concrete no-impact reason for maintenance without specification targets', () => {
     const maintenance = { ...validWorkItem, change_kind: 'maintenance' }
     expect(validateAgainstSchema('work-item', maintenance, '')).not.toEqual([])
     expect(
@@ -329,68 +322,6 @@ describe('validateAgainstSchema — work-item', () => {
     const { affected_guarantees_state: _omitted, ...completion } = validCompletion
     const data = { ...validWorkItem, status: 'completed', completion }
     expect(validateAgainstSchema('work-item', data, '')).toEqual([])
-  })
-})
-
-describe('validateAgainstSchema — scl', () => {
-  it('accepts a minimal SCL 3.0 document', () => {
-    expect(validateAgainstSchema('scl', { system: 'demo', spec_version: '3.0' }, '')).toEqual([])
-  })
-
-  it('rejects a missing system field', () => {
-    const f = validateAgainstSchema('scl', { spec_version: '3.0' }, '')
-    expect(f.some((x) => x.message.includes('system'))).toBe(true)
-  })
-
-  it('requires entity models to provide identity and fields', () => {
-    const f = validateAgainstSchema(
-      'scl',
-      {
-        system: 'demo',
-        spec_version: '3.0',
-        models: { Foo: { kind: 'entity' } },
-      },
-      '',
-    )
-    expect(f.some((x) => x.message.includes('identity'))).toBe(true)
-    expect(f.some((x) => x.message.includes('fields'))).toBe(true)
-  })
-
-  it('accepts a composite identity (array)', () => {
-    const f = validateAgainstSchema(
-      'scl',
-      {
-        system: 'demo',
-        spec_version: '3.0',
-        models: {
-          Foo: { kind: 'entity', identity: ['a', 'b'], fields: { a: { type: 'String' } } },
-        },
-      },
-      '',
-    )
-    expect(f).toEqual([])
-  })
-
-  it('requires http bindings to declare method and path', () => {
-    const f = validateAgainstSchema(
-      'scl',
-      {
-        system: 'demo',
-        spec_version: '3.0',
-        interfaces: { Op: { bindings: [{ kind: 'http' }] } },
-      },
-      '',
-    )
-    expect(f.some((x) => x.message.includes('method'))).toBe(true)
-    expect(f.some((x) => x.message.includes('path'))).toBe(true)
-  })
-
-  it('rejects pre-3.0 SCL documents', () => {
-    const text = 'system: demo\nspec_version: "2.0"\n'
-    const f = validateAgainstSchema('scl', { system: 'demo', spec_version: '2.0' }, text)
-    expect(f.some((x) => x.line === 2 && x.message.includes('must be equal to constant'))).toBe(
-      true,
-    )
   })
 })
 

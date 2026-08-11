@@ -34,7 +34,7 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
     採用するかを `wi-127-postgres-column-type-policy` の型ポリシーと整合させる。
 - **spec**:
   - 最大文字数が公開 contract、管理 UI 入力制約、または保証義務に関わる場合は、
-    SCL-first で `spec/scl.yaml` を最小限更新し、derived artifacts を再生成する。
+    specification-first で `spec/requirements.md` を最小限更新し、derived artifacts を再生成する。
 - **implementation**:
   - 決定した上限を、HTTP request validation、domain/service validation、UI form validation、
     OpenAPI/JSON Schema など該当する境界に反映する。
@@ -53,15 +53,15 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
 - 表示上の省略や折り返しだけで十分な値に、永続化上限を過剰に導入すること。
 
 ## Plan
-- `infra/schema/postgres.sql` の現行policy（unconstrained varchar禁止、limitはTEXT+CHECKまたはvarchar）を基礎に、SCL model fieldごとにprotocol limit、security/resource limit、UI usability limitを分類したregistryを作る。一律255文字にはしない。
+- `infra/schema/postgres.sql` の現行policy（unconstrained varchar禁止、limitはTEXT+CHECKまたはvarchar）を基礎に、specification model fieldごとにprotocol limit、security/resource limit、UI usability limitを分類したregistryを作る。一律255文字にはしない。
 - 文字数の単位はfieldごとにUTF-8 bytes、Unicode code points、protocol-defined bytesを明示する。Goの`len`とPostgreSQL`char_length`の差を放置せず、正規化が必要なidentifier/email/URIはnormalize後に測る。
 - validationはdomain/value constructorまたはusecase commandで正本化し、HTTP/UIは同じlimit metadata/error codeを表示する。DB CHECKはrace/bypassへの最後の防壁で、DB errorを500にしない。
 - 既存schema/data/API inputをinventoryし、現存最大値と違反行をreportしてからconstraintを追加する。自動truncateはせず、互換が必要なexternal protocol fieldはより広い上限かmigrationを選ぶ。
 - unbounded body/JSON/array/mapは文字列fieldとは別にHTTP body limit、element count、nesting depthで制限し、wi-110のbody limitsと重複実装しない。
 
 ## Tasks
-- [ ] T001 [Inventory] SCL fields、Go structs/validators、HTTP forms、frontend inputs、Postgres text columnsを対応付け、現行/外部仕様/実data最大値をreportする。
-- [ ] T002 [Policy/SCL] field別limit/unit/normalization/error codeを定義し、models/interfaces/constraints/contractsへ反映して再生成する。
+- [ ] T001 [Inventory] specification fields、Go structs/validators、HTTP forms、frontend inputs、Postgres text columnsを対応付け、現行/外部仕様/実data最大値をreportする。
+- [ ] T002 [Policy/specification] field別limit/unit/normalization/error codeを定義し、models/interfaces/constraints/contractsへ反映して再生成する。
 - [ ] T003 [Validation Core] code-point/byte/normalized length helpersとtyped errorsを追加し、各contextのvalue/commandへowner単位で適用する。
 - [ ] T004 [HTTP/UI] typed error→400/SCIM/OAuth protocol error mapping、OpenAPI maxLength（単位が一致するfieldのみ）、form max/remaining表示を追加する。
 - [ ] T005 [Postgres] data audit queryを通した後にCHECK/varchar制約をcontextごとに追加し、constraint error mappingとindex size影響を検証する。
@@ -71,13 +71,13 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
 ## Verification
 - `just yaml-check-work-items`
 - `just check-ids`
-- `just yaml-check`（SCL を変更した場合）
-- `just scl-render`（SCL を変更した場合）
+- `just yaml-check`（specification を変更した場合）
+- `just spec-render`（specification を変更した場合）
 - `just verify-go`
 - `just verify-ui`（UI validation / 表示を変更した場合）
 - `just verify`
 - 手動確認: 文字列値カテゴリごとに、最大文字数を「置く / 置かない」とその根拠が
-  ドキュメント、SCL、または ADR に残っている。
+  ドキュメント、specification、または ADR に残っている。
 - 手動確認: 上限を置いた値について、API / UI / DB の各境界で同じ制限が適用され、
   違反時のエラーが利用者に理解できる。
 

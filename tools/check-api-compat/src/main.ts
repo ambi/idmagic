@@ -54,7 +54,7 @@ for (const finding of findings) {
 }
 process.stderr.write(
   '\nIf this break is intentional: version the path, add a new interface, and mark the old one\n' +
-    'deprecated_since/sunset_at in SCL instead of changing it in place (ADR-156). If the baseline\n' +
+    'deprecated with its sunset policy instead of changing it in place. If the baseline\n' +
     'itself is simply out of date after a release, refresh spec/idmagic.openapi.baseline.json.\n',
 )
 process.exit(1)

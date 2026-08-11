@@ -10,13 +10,13 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
 
 ## Motivation
 現在の `send_email` action は固定の `template_key` + locale fallback のみを使い
-(`spec/contexts/identity-management.yaml` L1642-1645)、テナントごとの件名・本文・変数のカスタマイズ
+(`spec/contexts/identity-management/requirements.md` L1642-1645)、テナントごとの件名・本文・変数のカスタマイズ
 ができない。Okta / Entra ID / midPoint はいずれもテナント (組織) ごとに通知文面を編集できる仕組みを
 持ち、実運用では「退職時の通知文面を自社の言い回しに合わせたい」「入社時の歓迎メールに社内ポータルの
 リンクを含めたい」といった要求が高頻度で発生する。固定テンプレートのままでは実運用に耐えない。
 
 ## Scope
-- `spec/contexts/identity-management.yaml` (または既存の通知/email を扱う context) に
+- `spec/contexts/identity-management/requirements.md` (または既存の通知/email を扱う context) に
   `NotificationTemplate` (tenant-scoped、locale 別の件名・本文、許可された変数の集合) を追加する。
 - `send_email` action の `template_key` を、テナント定義の `NotificationTemplate` または製品固定
   template のいずれかを参照できるようにする。
@@ -36,7 +36,7 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
   する。
 
 ## Tasks
-- [ ] T001 [SCL] `NotificationTemplate` モデル、authorization、scenarios を追加する。
+- [ ] T001 [Spec] `NotificationTemplate` モデル、authorization、scenarios を追加する。
 - [ ] T002 [Decision] placeholder 許可リストと sanitization 方針を ADR に記録する。
 - [ ] T003 [App] テンプレート管理 usecase と `send_email` action の参照解決を実装する。
 - [ ] T004 [UI] テンプレート編集・プレビュー画面を追加する。

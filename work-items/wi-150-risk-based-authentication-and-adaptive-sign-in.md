@@ -47,12 +47,12 @@ MFA 要求、ブロック、パスワード変更要求に反映できる adapti
 - AuthenticationEvent の既存検索と整合し、リスク算出値は後から再計算できるよう signal の根拠も保存する。
 
 ## Tasks
-- [ ] T001 [SCL] RiskSignal / RiskAssessment と policy condition / action を追加する。
+- [ ] T001 [Spec] RiskSignal / RiskAssessment と policy condition / action を追加する。
 - [ ] T002 [Decision] risk signal、score 境界、初期 action、監査保持方針を ADR に記録する。
 - [ ] T003 [App] risk evaluator と login / authorize への適用を実装する。
 - [ ] T004 [HTTP] risk policy と risky sign-in report API を追加する。
 - [ ] T005 [UI] risk 条件の policy editor と report 画面を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

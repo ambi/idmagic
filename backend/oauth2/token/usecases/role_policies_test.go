@@ -8,7 +8,7 @@ import (
 )
 
 func TestListRolePoliciesFiltersControlPlanePermissions(t *testing.T) {
-	scl := spec.MustLoadSCL()
+	scl := spec.CurrentRuntimeContract()
 
 	adminRoles, err := ListRolePolicies(scl, []string{"admin"}, false)
 	if err != nil {
@@ -46,7 +46,7 @@ func TestListRolePoliciesFiltersControlPlanePermissions(t *testing.T) {
 }
 
 func TestListRolePoliciesIncludesHTTPInterfaces(t *testing.T) {
-	roles, err := ListRolePolicies(spec.MustLoadSCL(), []string{"admin"}, false)
+	roles, err := ListRolePolicies(spec.CurrentRuntimeContract(), []string{"admin"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

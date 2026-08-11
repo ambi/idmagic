@@ -55,7 +55,7 @@ func newBrandingServer(t *testing.T, actor *userdomain.User, tenants ...*domain.
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "http://idp.test", SCL: spec.MustLoadSCL(),
+			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
 			TenantRepo: tenantRepo,
 			Emit:       emit,
 		},

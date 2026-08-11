@@ -31,8 +31,8 @@ initial_context:
     - backend/oauth2
     - backend/saml
 affected_spec:
-  - { context: Authentication, kind: model, element: MfaFactorType }
-  - { context: Authentication, kind: interface, element: StartBrowserMfaEnrollment }
+  - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.MfaFactorType }
+  - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Contract.StartBrowserMfaEnrollment }
 ---
 
 # Email OTP と SMS OTP の MFA factor を、ポリシーで制御された restricted factor として追加する
@@ -40,7 +40,7 @@ affected_spec:
 ## Motivation
 
 現在の MFA factor は `MfaFactorType` = `Totp` / `Webauthn` / `Hwk` / `Swk` のみである
-(`spec/contexts/authentication.yaml`)。強い factor は揃っているが、**低摩擦な代替が無い**。
+(`spec/contexts/authentication/requirements.md`)。強い factor は揃っているが、**低摩擦な代替が無い**。
 
 これは 2 つの実務的な壁になる:
 
@@ -158,7 +158,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
 
 ## Tasks
 
-- [ ] T001 [SCL] `MfaFactorType` に EmailOtp / SmsOtp、宛先検証済み要件、
+- [ ] T001 [Spec] `MfaFactorType` に EmailOtp / SmsOtp、宛先検証済み要件、
       `allowed_mfa_factor_types`、interface 6 件、event 3 件、
       NISTSP80063B4 の restricted 要件、scenario 7 件を追加し `just check-scl` を通す。
 - [ ] T002 [ADR] restricted MFA factor の位置付けの ADR を起票する (既定無効・防御パラメータ・
@@ -184,7 +184,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
       (残り試行・再送・待ち時間)、管理コンソールの `allowed_mfa_factor_types` 設定と
       注意書きを追加する。RED: presentation logic の unit test → GREEN。
 - [ ] T012 [Docs] README に SMS adapter 設定、既定無効、NIST の位置付けを追記する。
-- [ ] T013 [Verify] 下記 Verification を緑にする。`just scl-render` を実行する。
+- [ ] T013 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
 
 ## Verification
 

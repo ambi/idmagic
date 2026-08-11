@@ -12,47 +12,35 @@ afterAll(async () => {
 async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'ra-workspace-test-'))
   cleanup.push(root)
-  await mkdir(join(root, 'spec', 'contexts'), { recursive: true })
+  await mkdir(join(root, 'spec', 'contexts', 'demo'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
   await mkdir(join(root, 'decisions'), { recursive: true })
-  await writeFile(join(root, 'spec', 'scl.yaml'), 'system: demo\nspec_version: "3.0"\n')
+  await writeFile(join(root, 'spec', 'main.tsp'), 'namespace Demo;\n')
+  await writeFile(join(root, 'spec', 'requirements.md'), '# Requirements\n')
+  await writeFile(join(root, 'spec', 'contexts', 'demo', 'requirements.md'), '# Demo\n')
+  await writeFile(join(root, 'ARCHITECTURE.md'), '# Architecture\n')
   return root
 }
 
 describe('discoverWorkspaceConfig', () => {
-  it('discovers the standard app layout without a registry file', async () => {
+  it('discovers the standard layout without a registry file', async () => {
     const root = await workspace()
     const config = await discoverWorkspaceConfig(root)
-
-    expect(config.apps).toEqual([
-      expect.objectContaining({
-        name: 'demo',
-        root: '.',
-        scl: 'spec/scl.yaml',
-        contextGlob: 'spec/contexts/*.yaml',
-        workItems: 'work-items',
-        decisions: 'decisions',
-      }),
+    expect(config.specification).toBe('spec/main.tsp')
+    expect(config.requirements).toEqual([
+      'spec/contexts/demo/requirements.md',
+      'spec/requirements.md',
     ])
-  })
-
-  it('discovers and sorts every embedded tool SCL 3.0 spec', async () => {
-    const root = await workspace()
-    for (const tool of ['zeta', 'alpha']) {
-      await mkdir(join(root, 'tools', tool, 'spec'), { recursive: true })
-      await writeFile(
-        join(root, 'tools', tool, 'spec', 'scl.yaml'),
-        `system: ${tool}\nspec_version: "3.0"\n`,
-      )
-    }
-
-    const config = await discoverWorkspaceConfig(root)
-    expect(config.toolSpecs).toEqual(['tools/alpha/spec/scl.yaml', 'tools/zeta/spec/scl.yaml'])
+    expect(config.workItems).toBe('work-items')
+    expect(config.decisions).toBe('decisions')
+    expect(config.architectureDocs).toEqual(['ARCHITECTURE.md'])
   })
 
   it('rejects an empty directory with no RA targets', async () => {
     const root = await mkdtemp(join(tmpdir(), 'ra-workspace-test-'))
     cleanup.push(root)
-    await expect(discoverWorkspaceConfig(root)).rejects.toThrow('no RA workspace targets')
+    await expect(discoverWorkspaceConfig(root)).rejects.toThrow(
+      'no Regenerative Architecture workspace targets',
+    )
   })
 })

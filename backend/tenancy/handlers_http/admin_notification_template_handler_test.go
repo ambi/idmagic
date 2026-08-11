@@ -52,7 +52,7 @@ func newNotificationTemplateServer(t *testing.T, actor *userdomain.User) (*echo.
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "http://idp.test", SCL: spec.MustLoadSCL(),
+			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
 			TenantRepo: tenantRepo,
 			Emit:       func(event spec.DomainEvent) { events = append(events, event) },
 		},

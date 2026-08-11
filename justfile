@@ -1,6 +1,6 @@
 # App repository command map for humans and AI agents.
 #
-# This app repo consumes RA/SCL tools from the embedded tools/ directory.
+# This app repo consumes RA tools from the embedded tools/ directory.
 
 
 ra_cmd := env("RA_CMD", "bun run tools/ra/src/main.ts")
@@ -20,9 +20,22 @@ setup: setup-ra install-ui
 # Setup RA tools dependencies and link agent skills.
 setup-ra:
     cd tools && bun install
+    ln -sfn tools/node_modules node_modules
     mkdir -p .agents/skills
     mkdir -p .claude
     ln -sfn ../.agents/skills .claude/skills
+
+# Compile the TypeSpec product contract and emit OpenAPI.
+compile-spec:
+    cd tools && bunx tsp compile ../spec/main.tsp --config ../spec/tspconfig.yaml
+
+# Generate runtime route metadata from the compiled TypeSpec OpenAPI document.
+generate-contract:
+    cd tools && bun run generate-contract/src/main.ts
+
+# Check that generated runtime route metadata matches TypeSpec.
+check-generated-contract:
+    cd tools && bun run generate-contract/src/main.ts --check
 
 
 # Install UI dependencies.
@@ -35,7 +48,7 @@ install-ui:
 verify:
     #!/usr/bin/env sh
     set -u
-    checks="check check-api-compat traceability-strict test-tools typecheck-tools lint-go test-go format-check-ui lint-ui test-ui-unit build-ui"
+    checks="check check-api-compat test-tools typecheck-tools lint-go test-go format-check-ui lint-ui test-ui-unit build-ui"
     tmp=$(mktemp -d)
     t0=$(date +%s)
     for c in $checks; do
@@ -72,32 +85,24 @@ verify:
     exit $rc
 
 # Run the full verification suite serially (clean ordered output; slower, no timings).
-verify-serial: check check-api-compat traceability-strict test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-unit build-ui
+verify-serial: check check-api-compat test-tools typecheck-tools lint-go test-go-race format-check-ui lint-ui test-ui-unit build-ui
 
-# Validate specs and traceability, then test and type-check embedded tooling.
-verify-spec: check traceability-strict test-tools typecheck-tools
+# Validate specifications, then test and type-check embedded tooling.
+verify-spec: check test-tools typecheck-tools
 
-# Report workspace traceability findings without failing on unbaselined debt.
-traceability-report:
-    {{ra_cmd}} traceability --json --revision={{git_commit}}
-
-# Reject unbaselined traceability drift and expired debt baselines.
-traceability-strict:
-    {{ra_cmd}} traceability --strict --json --revision={{git_commit}}
-
-# Run embedded RA/SCL tooling tests.
+# Run embedded RA tooling tests.
 test-tools:
     cd tools && bun test
 
-# Type-check embedded RA/SCL tooling.
+# Type-check embedded RA tooling.
 typecheck-tools:
     cd tools && bun run typecheck
 
-# Format embedded RA/SCL tooling.
+# Format embedded RA tooling.
 format-tools:
     cd tools && bun run format
 
-# Lint embedded RA/SCL tooling.
+# Lint embedded RA tooling.
 lint-tools:
     cd tools && bun run lint
 
@@ -202,12 +207,12 @@ build-ui:
 test-ui-e2e:
     cd frontend && bun run test:e2e
 
-# Validate all workspace records: SCL, work items, change-record ids, architecture, traceability.
-check: check-scl check-work-items check-ids check-architecture check-traceability
+# Validate specification sources, records, architecture prose, and forbidden dependencies.
+check: check-spec check-work-items check-ids check-architecture check-boundaries
 
-# Validate SCL YAML files.
-check-scl:
-    {{ra_cmd}} check --scl
+# Compile TypeSpec and validate language-independent requirements.
+check-spec: compile-spec check-generated-contract
+    {{ra_cmd}} check --requirements
 
 # Validate work-item records (Markdown with YAML frontmatter).
 check-work-items:
@@ -221,22 +226,16 @@ check-ids:
 check-architecture:
     {{ra_cmd}} check --architecture
 
-# Validate traceability manifest and execution evidence YAML.
-check-traceability:
-    {{ra_cmd}} check --traceability
+# Reject outward source dependencies inferred directly from repository paths.
+check-boundaries:
+    cd tools && bun run check/src/check-boundaries.ts
 
-# Detect breaking changes vs the frozen OpenAPI release baseline (ADR-156). Run
-# `just scl-render` first so spec/idmagic.openapi.json reflects the working tree.
+# Detect breaking changes vs the frozen OpenAPI release baseline.
 check-api-compat:
-    cd tools && bun run check-api-compat/src/main.ts --baseline ../spec/idmagic.openapi.baseline.json --current ../spec/idmagic.openapi.json
+    cd tools && bun run check-api-compat/src/main.ts --baseline ../spec/idmagic.openapi.baseline.json --current ../spec/generated/openapi/idmagic.openapi.json
 
-# Regenerate SCL-derived artifacts.
-scl-render:
-    {{ra_cmd}} render
-
-# Regenerate only embedded tool SCL HTML artifacts.
-scl-render-tools:
-    {{ra_cmd}} render --tools-only
+# Regenerate standard artifacts from TypeSpec. Generated files are untracked.
+spec-render: compile-spec generate-contract
 
 # Start the local dev stack (Go API + React UI together with live reload).
 dev:

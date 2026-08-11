@@ -49,7 +49,7 @@ idmagic は AuthZEN スタイルの PDP を持つ (ADR-010) が、判定はク�
 - decision audit は許可/拒否、model version、relation path の非PII要約を記録し、tuple 全量や機密 resource name を event に複製しない。
 
 ## Tasks
-- [ ] T001 [ADR/SCL] ADR-052 の relation language、AuthZEN 合成順、consistency/fail mode を確定し、models/interfaces/events/constraints/contracts を再生成する。
+- [ ] T001 [Design/Spec] ADR-052 の relation language、AuthZEN 合成順、consistency/fail mode を確定し、models/interfaces/events/constraints/contracts を再生成する。
 - [ ] T002 [Domain] tuple、model version、subject set と bounded graph evaluator を実装し、循環・深さ・unknown relation をテストする。
 - [ ] T003 [Postgres] tenant-scoped tuple/model schema、query/index、transactional write と consistency token を追加し、memory contract test と揃える。
 - [ ] T004 [Policy] ReBAC facts provider を既存 AuthZEN evaluator に接続し、RBAC、RAR、actor chain、agent status との fail-closed 合成を実装する。

@@ -67,12 +67,12 @@ no-response 時の既定失効、campaign 結果のレポートを提供する�
   [[wi-148-admin-resource-csv-export]] の CSV export 機構を再利用する。
 
 ## Tasks
-- [ ] T001 [SCL] Campaign / CertificationItem / Decision model、events、scenarios を追加する。
+- [ ] T001 [Spec] Campaign / CertificationItem / Decision model、events、scenarios を追加する。
 - [ ] T002 [Decision] レビュー対象範囲の初期選定、reviewer 解決規則、no-response 既定動作を ADR に記録する。
 - [ ] T003 [App] scheduler / 対象抽出 / decision usecase / auto-revoke executor を実装する。
 - [ ] T004 [HTTP] campaign 管理 API と reviewer 向け決定 API を追加する。
 - [ ] T005 [UI] campaign 管理画面と reviewer 決定画面を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

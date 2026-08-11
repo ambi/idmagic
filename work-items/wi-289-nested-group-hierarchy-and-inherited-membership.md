@@ -30,9 +30,9 @@ initial_context:
     - backend/oauth2
     - backend/saml
 affected_spec:
-  - { context: IdManagement, kind: model, element: Group }
-  - { context: IdManagement, kind: interface, element: CreateGroup }
-  - { context: IdManagement, kind: interface, element: ListUserGroups }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.CreateGroup }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.ListUserGroups }
 ---
 
 # グループ階層 (入れ子グループ) と継承メンバーシップを導入する
@@ -85,7 +85,7 @@ affected_spec:
   - `states` に GroupParentChanged event を追加する。
   - `EffectiveRoles` の published language の定義を「直接ロール ∪ 所属グループとその祖先の
     ロール」に更新する (Authentication / OAuth2 / ClaimMapping が参照する published 値なので
-    影響範囲を SCL で明示する)。
+    影響範囲を specification で明示する)。
   - `objectives` に「深さ N・グループ数 M における effective roles 解決レイテンシ」目標を追加する。
   - `scenarios`: 子グループ所属者が親グループのロールを得る / 循環する親設定が拒否される /
     最大深さ超過が拒否される / 親グループへのアプリ割当が子の所属者に効く /
@@ -134,7 +134,7 @@ affected_spec:
   親変更・削除) に閉包を更新し、読み取りを単純 JOIN にする。書き込み頻度は読み取りに比べて
   桁違いに低いので、この非対称性を利用する。
 - **深さ上限を仕様にする**。無制限にすると閉包テーブルが爆発し、UI も破綻する。
-  既定 8 段程度を上限とし、SCL の constraint として固定する。
+  既定 8 段程度を上限とし、specification の constraint として固定する。
 - **既存データの移行は無変更で済む**。`parent_id` を optional にすれば既存グループは
   すべて根グループになり、`effective_roles` の結果も変わらない。これを移行テストで固定する。
 - **ApplicationAssignment への継承適用は権限拡大なので慎重に扱う**。割当は fail-closed で
@@ -149,7 +149,7 @@ affected_spec:
 
 ## Tasks
 
-- [ ] T001 [SCL] `Group` に parent_id / depth、GroupHierarchyError、MoveGroup、
+- [ ] T001 [Spec] `Group` に parent_id / depth、GroupHierarchyError、MoveGroup、
       GroupParentChanged、ListGroups/ListUserGroups の拡張、EffectiveRoles の定義更新、
       objective、scenario 6 件を追加し `just check-scl` を通す。
 - [ ] T002 [ADR] グループ階層と継承の意味の ADR を起票し、[[ADR-038-group-aggregate-and-effective-roles]]
@@ -176,7 +176,7 @@ affected_spec:
 - [ ] T010 [Perf] 深さ上限・グループ数の想定上限で effective roles 解決の計測を行い、
       objective を満たすことを確認する (満たさない場合は closure のインデックスを見直す)。
 - [ ] T011 [Docs] README に階層の意味と運用上の注意を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`just scl-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
 
 ## Verification
 
@@ -198,4 +198,4 @@ ApplicationAssignment に継承を効かせるのは**権限が広がる方向**
 UI でも明示する。
 closure table は書き込み時の整合性が壊れると継承が静かに間違う (権限事故になる)。
 親変更をトランザクション内の再構築に限定し、race テストで固定する。
-深さ無制限は閉包爆発を招くため、SCL の constraint として上限を持ち、超過を fail-closed で拒否する。
+深さ無制限は閉包爆発を招くため、specification の constraint として上限を持ち、超過を fail-closed で拒否する。

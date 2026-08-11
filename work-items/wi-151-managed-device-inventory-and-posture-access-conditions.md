@@ -46,12 +46,12 @@ sign-in policy で「管理済み端末のみ」「承認済み端末のみ」�
 - 将来 MDM connector を追加できるよう、posture 更新を port 経由にする。
 
 ## Tasks
-- [ ] T001 [SCL] Device model、posture、policy condition、events / scenarios を追加する。
+- [ ] T001 [Spec] Device model、posture、policy condition、events / scenarios を追加する。
 - [ ] T002 [Decision] device identity、posture 信頼境界、MDM 連携余地を ADR に記録する。
 - [ ] T003 [App] device repository と posture evaluator を実装する。
 - [ ] T004 [HTTP] account/admin device API を追加する。
 - [ ] T005 [UI] account/admin の device 管理画面を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

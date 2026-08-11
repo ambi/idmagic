@@ -56,7 +56,7 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 - account disabled/deleted、email変更、password/credential global revoke で未消費 challenge を無効化する。
 
 ## Tasks
-- [ ] T001 [SCL] EmailLoginChallenge states、tenant method policy、Start/Complete interfaces、amr/acr、events/constraints/contracts/scenarios を追加して再生成する。
+- [ ] T001 [Spec] EmailLoginChallenge states、tenant method policy、Start/Complete interfaces、amr/acr、events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T002 [Domain/Store] challenge、OTP/token hash、attempt/resend/expiry と memory/Valkey adapter を実装する。
 - [ ] T003 [Usecases] uniform start、EmailSender template、magic-link/OTP consume、login session handoff、credential-change revoke を実装する。
 - [ ] T004 [HTTP/UI] realm-aware email start、check-email、OTP入力、cross-browser confirmation、expired/restart 導線を追加する。

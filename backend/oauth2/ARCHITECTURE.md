@@ -194,7 +194,7 @@ Protocol timing and security parameters — authorization code TTL (60s, single-
 TTL (14 days sliding / 30 days absolute), device and user code TTL (600s), default polling interval
 (5s, +5s per `slow_down`), client-authentication and code-redemption rate limits, DPoP clock skew and
 replay window, and consent record retention (7 years) — are recorded together in one place rather
-than as SCL `objectives`, because they are protocol/security/operational settings, not availability
+than as product objectives, because they are protocol/security/operational settings, not availability
 or latency SLOs with error-budget semantics. Values a single model, state, or interface can
 naturally enforce are expressed there as constraints/guards/contracts; values that don't belong to
 one element — a rate limit spanning multiple requests, a retention window spanning a lifecycle —
@@ -325,7 +325,7 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
   `spec/flows/device-code-flow.json` rather than reimplementing approve/deny/exchange transitions
   ad hoc ([ADR-025](../../decisions/ADR-025-device-authorization-grant.md)).
 - Protocol timing and security parameters (token/code/PAR TTLs, rate limits, DPoP replay window,
-  consent retention) are kept together in one place rather than modeled as SCL `objectives`, since
+  consent retention) are kept together in one place rather than modeled as product objectives, since
   they are protocol/security settings, not availability SLOs
   ([ADR-109](../../decisions/ADR-109-oauth2-lifetime-security-and-retention-policy-configuration.md)).
 - `Agent` is a first-class principal that owns identity and lifecycle but holds no credentials of

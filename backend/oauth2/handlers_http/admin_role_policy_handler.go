@@ -99,7 +99,7 @@ func (d Deps) handleListAdminRolePolicies(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, support.ErrAdminAccessDenied)
 	}
 	roles, err := tokenusecases.ListRolePolicies(
-		d.SCL,
+		d.Contract,
 		actor.Roles,
 		support.RequestTenantID(c) == tenancydomain.DefaultTenantID && actor.TenantID == tenancydomain.DefaultTenantID,
 	)

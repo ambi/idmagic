@@ -6,13 +6,16 @@
 - The main `README.md` file must be written in English only.
 - `ARCHITECTURE.md` (root and per-context design records) must be written in English only.
 - Develop according to Regenerative Architecture.
-  - Keep feature and behavior changes SCL-first: update `spec/scl.yaml` before implementation.
-  - Treat RA/SCL meta-documents ([REGENERATIVE_ARCHITECTURE.md](file:///Users/tn/src/idmagic/REGENERATIVE_ARCHITECTURE.md), [SPECIFICATION_CORE_LANGUAGE.md](file:///Users/tn/src/idmagic/SPECIFICATION_CORE_LANGUAGE.md)) as section-addressable references, not required reading.
-  - Use RA/SCL skills for work items, SCL changes, ADRs, rendering, implementation, and commits.
+  - Keep feature and behavior changes specification-first.
+  - Put models, API interfaces, and authentication mechanisms in `spec/**/*.tsp`.
+  - Put requirements, scenarios, glossary, standards, and language-independent state-transition tables in `spec/**/requirements.md`.
+  - Use stable `REQ-<CONTEXT>-NNN` requirement IDs and TypeSpec symbols in work-item references.
+  - Treat [REGENERATIVE_ARCHITECTURE.md](REGENERATIVE_ARCHITECTURE.md), [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md), and [ARCHITECTURE_FORMAT.md](ARCHITECTURE_FORMAT.md) as section-addressable references, not required reading.
   - Expect the `ra` CLI to discover the standard repository layout without a registry file.
-  - Regenerate derived artifacts after SCL changes.
-  - If bounded contexts, global directory structures, or core architecture rules are added or modified, synchronize the design record ([ARCHITECTURE.md](file:///Users/tn/src/idmagic/ARCHITECTURE.md)) and the ledger beside it (`architecture.yaml`).
-  - Write design in `ARCHITECTURE.md`, not in an ADR. Open an ADR only when a real fork existed and a rejected option is on record (ADR-143).
+  - Regenerate untracked TypeSpec artifacts after specification changes.
+  - If bounded contexts, global directory structures, adopted technologies, or core architecture rules change, synchronize the relevant `ARCHITECTURE.md`.
+  - Do not create new ADRs. Put durable current design and rationale in `ARCHITECTURE.md`; put change-specific analysis, alternatives, and implementation history in the work item. Existing ADRs are read-only history.
+  - Do not add `architecture.yaml`. Architectural checks infer structure from paths and reject forbidden dependencies only.
 
 ## Commands via just
 

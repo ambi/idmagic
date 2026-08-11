@@ -52,16 +52,16 @@ worker 実行モデルとは分け、ユーザー操作面と運用面の品質�
 - metrics は Prometheus の既存方針に合わせ、ラベルに tenant_id や PII を載せない。
 
 ## Tasks
-- [ ] T001 [SCL] 管理 API、authorization/access、read model、UX を `Jobs` context に追加する。
+- [ ] T001 [Spec] 管理 API、authorization/access、read model、UX を `Jobs` context に追加する。
 - [ ] T002 [Go/HTTP] `ListJobs` / `GetJob` / `CancelJob` を実装し、RBAC・tenant 境界・状態遷移をテストする。
 - [ ] T003 [UI] ジョブ一覧 / 詳細 / キャンセル操作を admin に追加する。
 - [ ] T004 [Obs] queue metrics と structured log を追加し、PII を載せないことを検証する。
 - [ ] T005 [Ops] worker deployment、drain、スケール、失敗調査の runbook を追加する。
-- [ ] T006 [Verify] `just yaml-check`、`just scl-render`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
+- [ ] T006 [Verify] `just yaml-check`、`just spec-render`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
 
 ## Verification
 - `just yaml-check`
-- `just scl-render`
+- `just spec-render`
 - `just verify-go`
 - `just verify-ui`
 - `just test-ui-e2e`

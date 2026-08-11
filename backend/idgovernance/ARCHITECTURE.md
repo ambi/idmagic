@@ -10,7 +10,7 @@ updated_at: 2026-08-09
 The `IdGovernance` context owns `LifecycleWorkflow` policy and orchestration — trigger definitions,
 action definitions, and run/step execution — while record contexts (`IdManagement`, `Application`)
 keep owning the state those actions change. This context was split out of `IdManagement` once the
-lifecycle-workflow slice had grown large enough (~20 backend files, ~166 SCL lines) to smear across
+lifecycle-workflow slice had grown large enough to smear across
 layers of a context whose primary job is being the identity-principal record of truth; the rejected
 alternative of leaving it module-local inside `IdManagement` would not provide a home for the
 broader IGA roadmap (access campaigns, entitlements, JIT elevation).

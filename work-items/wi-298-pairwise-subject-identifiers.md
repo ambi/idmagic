@@ -33,16 +33,16 @@ initial_context:
     - frontend
     - backend/provisioning
 affected_spec:
-  - { context: OAuth2, kind: interface, element: UserInfo }
-  - { context: OAuth2, kind: interface, element: GetOpenidConfiguration }
-  - { context: OAuth2, kind: model, element: OAuth2Client }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.UserInfo }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.GetOpenidConfiguration }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.OAuth2Client }
 ---
 
 # pairwise subject identifier (相関防止のための per-client sub) に対応する
 
 ## Motivation
 
-現在の `sub` は User の canonical な domain 識別子そのものである。SCL の
+現在の `sub` は User の canonical な domain 識別子そのものである。specification の
 `IdManagement.models.User.id` の記述は「protocol 境界ではこの id を写像して表現する:
 OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」とし、
 「pairwise subject など写像を差し替える場合も id 自体は不変」と将来の余地に言及しているが、
@@ -163,7 +163,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
       分けて一覧化する。内部利用があれば内部 ID へ置換する対象として記録する。
 - [ ] T002 [ADR] subject identifier の写像の ADR を起票する (算出方式・sector の単位・
       salt の不変性・逆引き・SAML NameID との対応・切り替えの不可逆性)。
-- [ ] T003 [SCL] `OAuth2Client.subject_type`、`subject_types_supported` への pairwise 追加、
+- [ ] T003 [Spec] `OAuth2Client.subject_type`、`subject_types_supported` への pairwise 追加、
       Token / UserInfo / ID Token の写像記述、ClaimMapping / Saml への追記、event、
       scenario 6 件を追加し `just check-scl` を通す。
 - [ ] T004 [Domain] subject 写像関数 (public / pairwise) を実装する。RED: 同一 sector で
@@ -187,7 +187,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 - [ ] T012 [UI] Application の OIDC 詳細設定に `subject_type` と切り替え警告を追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T013 [Docs] README に pairwise の設定・sector の決め方・切り替えの影響を追記する。
-- [ ] T014 [Verify] 下記 Verification を緑にする。`just scl-render` を実行する。
+- [ ] T014 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
 
 ## Verification
 

@@ -19,13 +19,13 @@ type deprecationEntry struct {
 
 // DeprecationHeadersMiddleware returns an Echo middleware that adds the
 // Deprecation (RFC 9745) and, when sunset_at is also set, Sunset (RFC 8594)
-// response headers for interfaces the SCL document marks deprecated_since
-// (ADR-156). Matching is by HTTP method and a path canonicalized to strip
+// response headers for operations with deprecation metadata. Matching is by
+// HTTP method and a path canonicalized to strip
 // the tenant routing group prefix ("/realms/:tenant_id"), so it applies
 // uniformly regardless of which tenant routing style the request hit. A nil
-// scl (e.g. in tests that build a bare Deps{}) is a no-op.
-func DeprecationHeadersMiddleware(scl *spec.SCL) echo.MiddlewareFunc {
-	index := buildDeprecationIndex(scl)
+// contract (e.g. in tests that build a bare Deps{}) is a no-op.
+func DeprecationHeadersMiddleware(contract *spec.RuntimeContract) echo.MiddlewareFunc {
+	index := buildDeprecationIndex(contract)
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			if entry, ok := index[deprecationKey(c.Request().Method, c.RouteInfo().Path)]; ok {
@@ -43,28 +43,22 @@ func DeprecationHeadersMiddleware(scl *spec.SCL) echo.MiddlewareFunc {
 	}
 }
 
-func buildDeprecationIndex(scl *spec.SCL) map[string]deprecationEntry {
+func buildDeprecationIndex(contract *spec.RuntimeContract) map[string]deprecationEntry {
 	index := make(map[string]deprecationEntry)
-	if scl == nil {
+	if contract == nil {
 		return index
 	}
-	for _, iface := range scl.Interfaces {
-		if iface.DeprecatedSince == "" {
+	for name, deprecation := range contract.Deprecations {
+		if deprecation.Since == "" {
 			continue
 		}
-		for _, binding := range iface.Bindings {
-			if binding.Kind() != "http" {
-				continue
-			}
-			method := binding.String("method")
-			path := binding.String("path")
-			if method == "" || path == "" {
-				continue
-			}
-			index[deprecationKey(method, path)] = deprecationEntry{
-				deprecatedSince: iface.DeprecatedSince,
-				sunsetAt:        iface.SunsetAt,
-			}
+		operation, ok := contract.Operation(name)
+		if !ok {
+			continue
+		}
+		index[deprecationKey(operation.Method, operation.Path)] = deprecationEntry{
+			deprecatedSince: deprecation.Since,
+			sunsetAt:        deprecation.Sunset,
 		}
 	}
 	return index
@@ -74,7 +68,7 @@ func deprecationKey(method, path string) string {
 	return strings.ToUpper(method) + " " + canonicalizeRuntimePath(path)
 }
 
-// canonicalizeRuntimePath normalizes an Echo route pattern or SCL binding
+// canonicalizeRuntimePath normalizes an Echo route pattern or contract path
 // path to a form comparable across tenant routing styles: path parameters
 // become "*" and a leading tenant group prefix is stripped.
 func canonicalizeRuntimePath(path string) string {
@@ -92,7 +86,7 @@ func canonicalizeRuntimePath(path string) string {
 	return path
 }
 
-// httpDate parses value (an SCL "date" or "date-time" field) and formats it
+// httpDate parses a date or date-time value and formats it
 // as an HTTP-date (RFC 7231 IMF-fixdate) for use in the Deprecation/Sunset
 // headers.
 func httpDate(value string) (string, bool) {

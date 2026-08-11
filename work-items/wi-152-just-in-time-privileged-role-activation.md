@@ -45,12 +45,12 @@ created_at: 2026-07-10
 - 初期は自己 activation + 監査から始め、承認必須 role は同一 model の policy で表現する。
 
 ## Tasks
-- [ ] T001 [SCL] Eligibility / Activation model、state、events、effective role invariant を追加する。
+- [ ] T001 [Spec] Eligibility / Activation model、state、events、effective role invariant を追加する。
 - [ ] T002 [Decision] activation 条件、期限上限、承認要否、break-glass 境界を ADR に記録する。
 - [ ] T003 [App] activation usecase と effective roles 評価を実装する。
 - [ ] T004 [HTTP] activation / approval API を追加する。
 - [ ] T005 [UI] activation と承認 queue の UI を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

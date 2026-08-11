@@ -37,7 +37,7 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 - 検証用 Entra tenant、verified test domain、test users、sourceAnchor、federation certificate を専用化し、Global Administrator 操作と domain federation 切替は時間窓・承認者・rollback command を記録する。
 - Microsoft Graph/Entra の現在の federation 設定を開始前に export し、idmagic metadata/profile の issuer/passive/active/MEX/certificate と機械的に比較する。credential・domain・実 user PII は evidence 本文に埋めない。
 - シナリオを passive browser、WS-Trust usernamemixed/MEX、metadata refresh/cert、複数domain routing、domain-joined SPNEGO に分け、各々 correlation ID、idmagic audit、Entra sign-in log、token claim 要約を証跡にする。
-- 失敗は environment/configuration/product defect に triage し、製品修正は SCL-first の別 WI に切り出す。最後に元の managed/federated 設定へ必ず rollback して確認する。
+- 失敗は environment/configuration/product defect に triage し、製品修正は specification-first の別 WI に切り出す。最後に元の managed/federated 設定へ必ず rollback して確認する。
 
 ## Tasks
 - [ ] T001 [Gate] wi-61〜65 の completion/verification を確認し、未完機能を試験結果の代替で済ませない。
@@ -48,7 +48,7 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 - [ ] T006 [Routing] 複数 verified domain が各 profile/issuerUriへ解決され、別 tenant/domain に混線しないことを確認する。
 - [ ] T007 [Silent SSO] domain-joined test machine から SPNEGO→passive flow を実行し、fallback と未提供 Hybrid Join 診断も確認する。
 - [ ] T008 [Evidence/Restore] version、時刻、主体、手順、要約値、artifact hash を記録し、設定を rollback して managed/federated 状態とサインインを再確認する。
-- [ ] T009 [Triage] product defect は該当 SCL節・再現証跡を付けた別 WI として起票し、本 WI の手順書に既知の落とし穴を反映する。
+- [ ] T009 [Triage] product defect は該当 specification節・再現証跡を付けた別 WI として起票し、本 WI の手順書に既知の落とし穴を反映する。
 
 ## Verification
 - 手動 (実テナント): test Entra テナントの検証済みドメインを idmagic に federation 設定し、 ブラウザサインイン (passive) が成功し、token に UPN / ImmutableID が含まれることを確認する。

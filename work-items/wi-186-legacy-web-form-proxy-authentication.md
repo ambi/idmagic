@@ -25,10 +25,10 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
   - `wi-151-managed-device-inventory-and-posture-access-conditions` 完了後に、検証済み
     管理端末向けの認証freshness緩和を利用する。完了前は全端末を未管理として扱う。
 - **scl**:
-  - `spec/scl.yaml` の context map に `LegacyAccess` を追加する。
-  - `spec/contexts/legacy-access.yaml` の glossary、models、interfaces、states、constraints/contracts、
+  - `spec/requirements.md` の context map に `LegacyAccess` を追加する。
+  - `spec/contexts/legacy-access/requirements.md` の glossary、models、interfaces、states、constraints/contracts、
     scenarios、authorization/access、objectives、flows/scenarios を追加する。
-  - `spec/contexts/application.yaml` に `legacy_form` protocol binding と、代理認証を使う
+  - `spec/contexts/application/requirements.md` に `legacy_form` protocol binding と、代理認証を使う
     Application のポータル起動情報を追加する。
 - **decision**:
   - 新規 ADR で、標準フェデレーションを優先する境界、秘密情報の保管/発行境界、
@@ -72,13 +72,13 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 
 ## Tasks
 - [ ] T001 [Dependency] wi-97 の暗号化基盤を完了し、可逆秘密を安全に保存できる状態にする。
-- [ ] T002 [SCL] LegacyAccess と Application binding の規範仕様、scenario、不変条件、権限、UX を追加する。
+- [ ] T002 [Spec] LegacyAccess と Application binding の規範仕様、scenario、不変条件、権限、UX を追加する。
 - [ ] T003 [Decision] 代理認証の安全境界と運用例外を ADR に記録する。
 - [ ] T004 [Domain] credential、grant、binding、発行判定を実装し、unit test を追加する。
 - [ ] T005 [Adapter] memory/postgres/Vault persistence、HTTP API、監査、DI/route を実装する。
 - [ ] T006 [UI] admin/account UI と Chrome/Edge/Firefox 拡張を実装する。
 - [ ] T007 [Dependency] wi-151 完了後に端末posture連動の freshness policy を有効化する。
-- [ ] T008 [Verify] SCL、Go、UI、各ブラウザE2E、Vault障害と拒否シナリオを検証する。
+- [ ] T008 [Verify] specification、Go、UI、各ブラウザE2E、Vault障害と拒否シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

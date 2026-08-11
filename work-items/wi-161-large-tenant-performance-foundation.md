@@ -46,7 +46,7 @@ created_at: 2026-07-10
 - CSV / bulk operation のジョブ化。
 
 ## Plan
-- まず SCL objective で「大規模テナント」を具体化する。例: users 100k、groups 20k、agents 10k、applications 10k、audit events 10M retained など、ADR で検証用 scale profile を決める。
+- まず specification objective で「大規模テナント」を具体化する。例: users 100k、groups 20k、agents 10k、applications 10k、audit events 10M retained など、ADR で検証用 scale profile を決める。
 - 既存 UI の全件取得・list endpoint 集計パターンを棚卸しし、summary が必要な画面とページングで十分な画面を分ける。
 - PostgreSQL を主対象に query plan と index を整える。memory persistence は contract 検証に留め、大規模性能保証の主対象にはしない。
 - Read model は freshness を明示する。認可や quota enforcement に必要な値は強整合、dashboard 表示は短時間 stale を許容する。
@@ -54,8 +54,8 @@ created_at: 2026-07-10
 
 ## Tasks
 - [ ] T001 [ADR] 大規模テナント scale profile、read model 方針、freshness、検索制約、性能検証方式を記録する。
-- [ ] T002 [SCL] performance objectives、large-tenant scenarios、UX の全件取得禁止・summary freshness を追加する。
-- [ ] T003 [Render] `just scl-render` で派生物を更新する。
+- [ ] T002 [Spec] performance objectives、large-tenant scenarios、UX の全件取得禁止・summary freshness を追加する。
+- [ ] T003 [Render] `just spec-render` で派生物を更新する。
 - [ ] T004 [Audit] 既存 UI / API の全件取得、list endpoint 集計、未制限検索を棚卸しして置換対象を確定する。
 - [ ] T005 [Persistence] 主要 query の index / read model / counter cache / migration を実装する。
 - [ ] T006 [Go] summary endpoint、検索 validation、slow query metrics / structured log を追加する。
@@ -65,7 +65,7 @@ created_at: 2026-07-10
 
 ## Verification
 - `just yaml-check`
-- `just scl-render`
+- `just spec-render`
 - `just verify-go`
 - `just verify-ui`
 - `just test-ui-e2e`

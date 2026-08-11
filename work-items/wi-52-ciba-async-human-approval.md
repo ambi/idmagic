@@ -50,7 +50,7 @@ delivery) を実装し、エージェントが行動前に人間承認を得る�
 - poll 状態は Valkey の短命共有 store、最終 decision/監査 event は durable event log に残す。ping delivery は adapter とし、初期実装は poll を必須、ping は追加可能な構成にする。
 
 ## Tasks
-- [ ] T001 [ADR/SCL] ADR-051 を既存 Agent/TokenExchange/RAR 型へ確定し、request lifecycle、CIBA endpoints/errors、approval interfaces/events/constraints/contracts/scenarios を追加して再生成する。
+- [ ] T001 [Design/Spec] ADR-051 を既存 Agent/TokenExchange/RAR 型へ確定し、request lifecycle、CIBA endpoints/errors、approval interfaces/events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T002 [Domain] request/decision model と transition を実装し、agent/client/user binding、poll interval、expiry、一回消費を単体テストする。
 - [ ] T003 [Store/Usecases] Valkey/memory request store、Start/Poll/Approve/Deny/Expire use case と durable audit event を実装する。
 - [ ] T004 [OAuth HTTP] client-authenticated `/bc-authorize` と token grant を追加し、既存 token exchange/authorization_details の downscope と token issuer を再利用する。

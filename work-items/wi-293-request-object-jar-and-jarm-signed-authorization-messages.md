@@ -31,9 +31,9 @@ initial_context:
     - frontend
     - backend/saml
 affected_spec:
-  - { context: OAuth2, kind: interface, element: Authorize }
-  - { context: OAuth2, kind: interface, element: PushAuthorizationRequest }
-  - { context: OAuth2, kind: model, element: AuthorizationRequest }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.Authorize }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.PushAuthorizationRequest }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.AuthorizationRequest }
 ---
 
 # 署名付き認可リクエスト (JAR / RFC 9101) と署名付き認可レスポンス (JARM) に対応する
@@ -43,7 +43,7 @@ affected_spec:
 OAuth2 context の `standards` は FAPI 2.0 Security Profile を宣言し、PAR / DPoP /
 PKCE / private_key_jwt / mTLS を実装済みである。しかし **JWT-Secured Authorization
 Request (JAR, RFC 9101) と JWT Secured Authorization Response Mode (JARM) が無い**。
-SCL 全体を grep しても `request_object` / `JARM` / `RFC9101` が存在せず、
+specification 全体を grep しても `request_object` / `JARM` / `RFC9101` が存在せず、
 `/authorize` の `request` / `request_uri` パラメータ (OIDC Core §6 の request object) も
 未対応である (`request_uri` は PAR 発行のものだけで、外部参照の request object ではない)。
 
@@ -157,7 +157,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 
 ## Tasks
 
-- [ ] T001 [SCL] `standards` に RFC9101 / JARM、client メタデータ 3 件、`request` パラメータ、
+- [ ] T001 [Spec] `standards` に RFC9101 / JARM、client メタデータ 3 件、`request` パラメータ、
       Authorize / PAR の requires、discovery メタデータ、event、scenario 8 件を追加し
       `just check-scl` を通す。
 - [ ] T002 [ADR] 署名付き認可メッセージの ADR を起票する (request_uri 非対応の理由・
@@ -182,7 +182,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 - [ ] T009 [UI] Application の OIDC 詳細設定に 3 つのメタデータを追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T010 [Docs] README に JAR / JARM の設定と `request_uri` 非対応の理由を追記する。
-- [ ] T011 [Verify] 下記 Verification を緑にする。`just scl-render` を実行する。
+- [ ] T011 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
 
 ## Verification
 

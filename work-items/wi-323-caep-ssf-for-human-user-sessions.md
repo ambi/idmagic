@@ -10,8 +10,8 @@ depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 
 ## Motivation
 
-[[wi-58-continuous-access-evaluation-agent-revocation]] / [[ADR-057]] は Motivation・SCL
-(`spec/contexts/sharedsignals.yaml`)・実装のいずれも Agent プリンシパル限定でスコープされている。
+[[wi-58-continuous-access-evaluation-agent-revocation]] / [[ADR-057]] は Motivation・specification
+(`spec/contexts/sharedsignals/requirements.md`)・実装のいずれも Agent プリンシパル限定でスコープされている。
 `AgentRevocationEpoch` は `agent_id` をキーに `agents` テーブルへ直接 FK する専用テーブルで、
 OAuth2 `Introspect` への `ensures` 節も `access_token_subject_is_agent(...)` というガード付きで
 Agent 主体の token にしか revocation epoch 判定をかけない。
@@ -34,7 +34,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
 
 ## Scope
 
-- `spec/contexts/sharedsignals.yaml`:
+- `spec/contexts/sharedsignals/requirements.md`:
   - `AgentRevocationEpoch` と対称な新規 model `UserRevocationEpoch` (`user_id` をキーに `users`
     テーブルへ FK する専用テーブル) を追加する。
   - `CheckUserRevocationEpoch` / `AdvanceUserRevocationEpoch` (`access: internal`) interface を
@@ -45,10 +45,10 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
     (`UserRevocationReason`) にするかは `## Design` で判断する。
   - `ReceiveSecurityEvent` の subject 解決を Agent だけでなく User にも対応させる (現状は
     `security_event_subject_resolves_to_tenant_local_principal` が Agent のみを解決する前提)。
-- `spec/contexts/oauth2.yaml`:
+- `spec/contexts/oauth2/requirements.md`:
   - `Introspect` の `ensures` 節に、`access_token_subject_is_user(...)` の場合も同様に revocation
     epoch を判定する節を追加する (現状の Agent 向け節と対称)。
-- SCL 変更なしで既存イベントをトリガーとして利用する対象 (`SharedSignals` が構造的に反応する、
+- specification 変更なしで既存イベントをトリガーとして利用する対象 (`SharedSignals` が構造的に反応する、
   wi-58 と同じパターン):
   - `identity-management.yaml`: `UserDisabled` (`identity-management.yaml:1304`)、
     `UserSoftDeleted` (`:1330`)、`UserDeleted` (`:1359`)。
@@ -91,7 +91,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
 ## Plan
 
 - 未定。最低限のステップ:
-  1. `UserRevocationEpoch` の SCL 追加、`ReceiveSecurityEvent`/`Introspect` の拡張。
+  1. `UserRevocationEpoch` の specification 追加、`ReceiveSecurityEvent`/`Introspect` の拡張。
   2. Go 実装 (domain/ports/db_memory/db_postgres) を `AgentRevocationEpoch` と並行する形で追加。
   3. Authentication/IdManagement 側の各トリガーを棚卸しし、`AdvanceUserRevocationEpoch` への
      接続を実装する。
@@ -101,7 +101,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
 
 ## Tasks
 
-- [ ] T001 [SCL] `UserRevocationEpoch`・`CheckUserRevocationEpoch`/`AdvanceUserRevocationEpoch`
+- [ ] T001 [Spec] `UserRevocationEpoch`・`CheckUserRevocationEpoch`/`AdvanceUserRevocationEpoch`
       を追加し、`Introspect` の `ensures` を拡張し、`ReceiveSecurityEvent` の subject 解決を
       User にも対応させる。
 - [ ] T002 [Domain/Persistence] `UserRevocationEpoch` の domain/ports/db_memory/db_postgres を

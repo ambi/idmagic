@@ -21,9 +21,9 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Sourcing, kind: interface, element: ListScimUsers }
-  - { context: Sourcing, kind: interface, element: UpdateScimUser }
-  - { context: Sourcing, kind: interface, element: GetScimServiceProviderConfig }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }
 ---
 
 # SCIM sortBy/sortOrder と ETag (楽観的並行性制御) に対応する
@@ -58,7 +58,7 @@ lost update を防ぐ。
 
 ## Tasks
 
-- [ ] T001 [SCL] sortBy/sortOrder と ETag/If-Match の契約を `spec/contexts/scim.yaml` に追加する。
+- [ ] T001 [Spec] sortBy/sortOrder と ETag/If-Match の契約を `spec/contexts/sourcing/requirements.md` に追加する。
 - [ ] T002 [Domain] RED: sort と version 比較の test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: sort 付き LIST と If-Match 付き PUT/PATCH の
       HTTP contract test (412 を含む) を先に失敗させて実装する。

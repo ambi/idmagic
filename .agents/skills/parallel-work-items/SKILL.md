@@ -8,7 +8,7 @@ description: Set up and coordinate parallel git worktrees and branches for multi
 ## Overview
 
 複数の work item を別々の git worktree + branch で進める。各 worktree では
-`implement-work-item` Skill を使い、統合地点では `scl-render` Skill を使って派生物を一度だけ
+`implement-work-item` Skill を使い、統合地点では `spec-render` Skill を使って派生物を一度だけ
 再生成する。
 
 ## 0. 前提を確認
@@ -64,9 +64,9 @@ move it to done, and commit the branch. Do not push.
 
 各 branch では `implement-work-item` Skill の順序に従う。
 
-- SCL 変更がある場合は `scl-change` Skill を先に使う。
-- work-item branch では HTML / JSON Schema / OpenAPI などの SCL 派生物を原則 commit しない。
-- 検査用に `just scl-render` を実行してよいが、生成差分は統合 branch で作り直す。
+- 仕様変更がある場合は `spec-change` Skill を先に使う。
+- work-item branch では OpenAPI などの TypeSpec 派生物を commit しない。
+- 検査用に `just spec-render` を実行してよいが、生成物は untracked のままにする。
 - 完了時は work item に `completion` を追記し、`work-items/done/` へ移して commit する。
 - push はユーザの明示指示があるまでしない。
 
@@ -74,9 +74,9 @@ move it to done, and commit the branch. Do not push.
 
 衝突を早く見つけるため、各 branch の作業範囲を work item の `scope` に寄せる。
 
-- 同じ `spec/scl.yaml` の同じ section を複数 branch が触る場合は、先に順序を決める。
+- 同じ requirements ID または TypeSpec symbol を複数 branch が触る場合は、先に順序を決める。
 - 同じ id / ファイル名を作った場合は `just check-ids` の結果に従って片方を採番し直す。
-- 生成物の衝突は手で解かず、統合済み SCL から再生成する。
+- 生成物の衝突は手で解かず、統合済み TypeSpec から再生成する。
 
 ## 4. 統合する
 
@@ -90,16 +90,15 @@ git merge --no-ff work-item/wi-42-example
 git merge --no-ff work-item/wi-43-example
 ```
 
-統合後は SCL 派生物を同期する。
+統合後は TypeSpec 派生物を検証する。
 
 ```sh
 just check
-just scl-render
+just spec-render
 just verify
 ```
 
-`just scl-render` で出た派生物差分は、統合 branch の commit に含める。work-item branch 側へ
-逆流させない。
+`spec/generated/` は commit せず、release baseline は通常の統合で更新しない。
 
 ## 5. 片付け
 

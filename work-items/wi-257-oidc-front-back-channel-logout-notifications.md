@@ -35,17 +35,17 @@ initial_context:
     - backend/saml
     - backend/wsfederation
 affected_spec:
-  - { context: OAuth2, kind: model, element: OAuth2Client }
-  - { context: OAuth2, kind: model, element: ClientSession }
-  - { context: OAuth2, kind: model, element: LogoutNotification }
-  - { context: OAuth2, kind: model, element: FrontChannelLogoutTarget }
-  - { context: OAuth2, kind: model, element: DiscoveryDocument }
-  - { context: OAuth2, kind: interface, element: FrontChannelLogout }
-  - { context: OAuth2, kind: interface, element: BackChannelLogout }
-  - { context: OAuth2, kind: interface, element: CheckSessionIframe }
-  - { context: OAuth2, kind: standard_requirement, standard: OpenIDConnectFrontChannelLogout, requirement: OIDC-FRONTCHANNEL-IFRAME }
-  - { context: OAuth2, kind: standard_requirement, standard: OpenIDConnectBackChannelLogout, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
-  - { context: Jobs, kind: model, element: JobKind }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.OAuth2Client }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.ClientSession }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.LogoutNotification }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.FrontChannelLogoutTarget }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DiscoveryDocument }
+  - { path: spec/contexts/oauth2/requirements.md, requirement: REQ-OAUTH2-049 }
+  - { path: spec/contexts/oauth2/requirements.md, requirement: REQ-OAUTH2-050 }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.CheckSessionIframe }
+  - { path: spec/contexts/oauth2/requirements.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
+  - { path: spec/contexts/oauth2/requirements.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
+  - { path: spec/contexts/jobs/models.tsp, symbol: IdMagic.Contract.JobKind }
 ---
 
 # OIDC Front-Channel / Back-Channel Logout の通知配送を実装する
@@ -55,7 +55,7 @@ affected_spec:
 revoke に伴う refresh token family の失効と `/end_session` の `id_token_hint`
 検証は実運用相当まで完成した。しかし、接続済み RP (Relying Party) へ「ユーザーが
 ログアウトしたこと」を伝播する OpenID Connect Front-Channel Logout 1.0 /
-Back-Channel Logout 1.0 は未実装であり、`spec/contexts/oauth2.yaml` の
+Back-Channel Logout 1.0 は未実装であり、`spec/contexts/oauth2/requirements.md` の
 `standards.OpenIDConnectFrontChannelLogout` / `OpenIDConnectBackChannelLogout` は
 既に `adoption: required` として宣言済みである (wi-28 T001)。宣言した標準と実装の
 不一致を解消するため、通知配送を実装する。
@@ -65,9 +65,9 @@ Keycloak / Okta / Google 相当の IdP では、ユーザーが idmagic から�
 idmagic 上ではログアウト済みでも RP 側では認証済みのまま残り続ける。
 
 ## Scope
-以下は wi-28 の T001 (SCL-first) で既に `spec/contexts/oauth2.yaml` /
-`spec/contexts/jobs.yaml` に追加・コミット済みであり、本 WI はそれらに対する
-Go 実装を担当する (追加の SCL 変更が必要になった場合のみ `scl-change` に戻る)。
+以下は wi-28 の T001 (specification-first) で既に `spec/contexts/oauth2/requirements.md` /
+`spec/contexts/jobs/requirements.md` に追加・コミット済みであり、本 WI はそれらに対する
+Go 実装を担当する (追加の specification 変更が必要になった場合のみ `spec-change` に戻る)。
 
 - `models.ClientSession` — sid が発行結果を渡した RP (client_id) の参加記録。
 - `models.LogoutNotification` / `models.LogoutNotificationState` /
@@ -82,7 +82,7 @@ Go 実装を担当する (追加の SCL 変更が必要になった場合のみ 
   `backchannel_logout_session_supported` / `check_session_iframe`。
 - `interfaces.FrontChannelLogout` (internal) / `interfaces.BackChannelLogout`
   (internal) / `interfaces.CheckSessionIframe` (public)。
-- `spec/contexts/jobs.yaml` の `models.JobKind.backchannel_logout_delivery`。
+- `spec/contexts/jobs/requirements.md` の `models.JobKind.backchannel_logout_delivery`。
 
 Go 実装スコープ:
 - 管理者向けクライアント編集 (`RegisterClient` / `UpdateAdminOAuth2Client` /
@@ -117,7 +117,7 @@ Go 実装スコープ:
   保証なしの計算結果、決定8: check_session_iframe は最小実装)。本 WI では
   ADR-127 と矛盾しない実装のみを行い、新規の設計判断が必要になった場合のみ
   ADR-127 に追記するか新規 ADR を起こす。
-- `LogoutNotification` の SCL モデルは `sub` (対象ユーザー) を持たない
+- `LogoutNotification` の specification モデルは `sub` (対象ユーザー) を持たない
   (session 状態の複製を避けるため)。しかし logout token は `sub` claim を
   必須とする (`OIDC-BACKCHANNEL-LOGOUT-TOKEN`)。ワーカープロセス内でテナント別
   issuer やユーザーを再解決する複雑さを避けるため、`sub` と `iss` は
@@ -172,7 +172,7 @@ Go 実装スコープ:
       route を `backend/oauth2/handlers_http/routes.go` に登録し、
       `TestAssembledRoutesMatchGeneratedOpenAPI` の `GET /session/check` 差分を
       解消した (T007 verification の一部を前倒しで満たす)。wi-56 のブランチ作業中に
-      発見した SCL/実装 drift の修正として先行実装。
+      発見した specification/実装 drift の修正として先行実装。
 - [ ] T007 [Verify] 複数 RP への配送、一時的配送失敗からの再試行、
       max_attempts 到達による dead-letter、同一 `LogoutNotification` の
       retry を跨いだ jti 不変性、ワーカー再起動後の配送継続を検証する。

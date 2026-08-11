@@ -28,11 +28,11 @@ initial_context:
     - backend/oauth2/token
     - backend/provisioning
 affected_spec:
-  - { context: Tenancy, kind: model, element: TenantEndpointStyle }
-  - { context: Tenancy, kind: model, element: Tenant }
-  - { context: Tenancy, kind: model, element: TenantQuota }
-  - { context: Tenancy, kind: interface, element: ResolveTenant }
-  - { context: Tenancy, kind: interface, element: SetTenantEndpointStyle }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantEndpointStyle }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.Tenant }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuota }
+  - { path: spec/contexts/tenancy/requirements.md, requirement: REQ-TENANCY-020 }
+  - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Contract.SetTenantEndpointStyle }
 ---
 
 # 顧客が所有するカスタムドメインを DNS TXT で検証し、テナントの正規ロケーションにする
@@ -124,7 +124,7 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
 
 ## Tasks
 
-- [ ] T001 [SCL] `TenantDomain` / `TenantDomainState` / interface 5 件 / event 4 件 /
+- [ ] T001 [Spec] `TenantDomain` / `TenantDomainState` / interface 5 件 / event 4 件 /
       `TenantEndpointStyle.CustomDomain` / quota `custom_domains` / scenario 4 件を追加し
       `just check-scl` を通す。
 - [ ] T002 [ADR] 所有権検証方式・`Pending` 非予約・apex 拒否・quota・一意制約の範囲を
@@ -147,7 +147,7 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
       削除確認を含める。RED: presentation logic の unit test → GREEN。
 - [ ] T008 [Docs] README と `infra/README.md` に独自ドメイン運用手順 (DNS / TLS /
       WebAuthn / issuer 移行) を追記する。
-- [ ] T009 [Verify] 下記 Verification を緑にする。`just scl-render` で派生物を再生成する。
+- [ ] T009 [Verify] 下記 Verification を緑にする。`just spec-render` で派生物を再生成する。
 
 ## Verification
 

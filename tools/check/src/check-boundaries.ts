@@ -1,0 +1,57 @@
+#!/usr/bin/env bun
+
+import { readdir, readFile } from 'node:fs/promises'
+import { extname, relative, resolve } from 'node:path'
+
+const root = resolve(import.meta.dir, '../../..')
+const excluded = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', 'generated'])
+
+async function walk(dir: string, result: string[] = []): Promise<string[]> {
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.isDirectory() && excluded.has(entry.name)) continue
+    const path = resolve(dir, entry.name)
+    if (entry.isDirectory()) await walk(path, result)
+    else if (entry.isFile()) result.push(path)
+  }
+  return result
+}
+
+const files = await walk(root)
+let failed = false
+for (const file of files) {
+  const rel = relative(root, file)
+  if (rel === 'architecture.yaml' || rel.endsWith('/architecture.yaml')) {
+    console.error(
+      `${rel}: exhaustive architecture ledgers are retired; enforce only forbidden imports`,
+    )
+    failed = true
+    continue
+  }
+  const extension = extname(file)
+  if (extension === '.go' && rel.startsWith('backend/') && !rel.endsWith('_test.go')) {
+    const source = await readFile(file, 'utf8')
+    const imports = [...source.matchAll(/"(github\.com\/ambi\/idmagic\/backend\/[^"\n]+)"/g)].map(
+      (match) => match[1] ?? '',
+    )
+    const isDomain = rel.split('/').includes('domain')
+    const isUseCase = rel.split('/').includes('usecases')
+    for (const imported of imports) {
+      const outward = /\/(?:handlers?_[^/]+|db_[^/]+|delivery|cmd)(?:\/|$)/.test(imported)
+      const useCase = /\/usecases(?:\/|$)/.test(imported)
+      if ((isDomain && (outward || useCase)) || (isUseCase && outward)) {
+        console.error(`${rel}: forbidden outward dependency ${imported}`)
+        failed = true
+      }
+    }
+  }
+  if (['.ts', '.tsx'].includes(extension) && rel.startsWith('frontend/src/')) {
+    const source = await readFile(file, 'utf8')
+    if (/from\s+['"](?:\.\.\/)+(?:backend|tools)\//.test(source)) {
+      console.error(`${rel}: frontend source must not import backend or repository tooling`)
+      failed = true
+    }
+  }
+}
+
+if (failed) process.exit(1)
+console.log('ok  forbidden dependency boundaries')

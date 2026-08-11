@@ -60,7 +60,7 @@ PostgreSQL への直結コネクションが線形に増え `max_connections` �
 ## Tasks
 - [ ] T001 [ADR] PostgreSQL パーティション / read-write 分離 / 接続プール方針を記録する。
 - [ ] T002 [ADR] Valkey クラスタ / シャーディング / 縮退方針を記録する。
-- [ ] T003 [SCL] 読み取り一貫性境界と tenant isolation guarantee を追記し、`just scl-render` を通す。
+- [ ] T003 [Spec] 読み取り一貫性境界と tenant isolation guarantee を追記し、`just spec-render` を通す。
 - [ ] T004 [Persistence] declarative schema に append-heavy テーブルのパーティションを導入する。
 - [ ] T005 [Persistence/Go] read/write ルーティング抽象を追加し、既存 usecase を write=primary 既定で移行する。
 - [ ] T006 [Persistence] pooler 経由での動作制約（prepared statement / session 依存）を点検・修正する。
@@ -69,7 +69,7 @@ PostgreSQL への直結コネクションが線形に増え `max_connections` �
 
 ## Verification
 - `just yaml-check`
-- `just scl-render`
+- `just spec-render`
 - `just verify-go`
 - `just check-ids`
 - perf smoke 用 `just` recipe

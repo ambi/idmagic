@@ -59,7 +59,7 @@ idmagic は IdP として、ダウンすると全依存システムのログイ�
 ## Tasks
 - [ ] T001 [ADR] HA / フェイルオーバートポロジ（マルチAZ・自動昇格・LB 連携・リージョン分界）を記録する。
 - [ ] T002 [ADR] 縮退マトリクスと load shedding / backpressure / 統一 retry-timeout-breaker 方針を記録する。
-- [ ] T003 [SCL] 可用性トポロジ objective、fail-safe/fail-closed 縮退 guarantee、前後方互換 constraint、障害 scenarios を追加し `just scl-render` を通す。
+- [ ] T003 [Spec] 可用性トポロジ objective、fail-safe/fail-closed 縮退 guarantee、前後方互換 constraint、障害 scenarios を追加し `just spec-render` を通す。
 - [ ] T004 [Go/HTTP] 過負荷保護ミドルウェア（同時実行上限・503+Retry-After・経路優先度 load shedding）を追加する。
 - [ ] T005 [Go] 依存縮退 state を readiness / metrics に反映する。
 - [ ] T006 [Migration] スキーマ移行を expand/contract 2 段に分ける規約を適用する。
@@ -68,7 +68,7 @@ idmagic は IdP として、ダウンすると全依存システムのログイ�
 
 ## Verification
 - `just yaml-check`
-- `just scl-render`
+- `just spec-render`
 - `just verify-go`
 - `just check-ids`
 - failover / chaos / zero-downtime drill 用 `just` recipe

@@ -108,8 +108,8 @@ func newServer(t *testing.T, authn *authdomain.AuthenticationContext) (*echo.Ech
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example",
-			SCL:    spec.MustLoadSCL(),
+			Issuer:   "https://idp.example",
+			Contract: spec.CurrentRuntimeContract(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, WsFederation: wsfederation.Module{RPRepo: rpRepo},
@@ -455,8 +455,8 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example",
-			SCL:    spec.MustLoadSCL(),
+			Issuer:   "https://idp.example",
+			Contract: spec.CurrentRuntimeContract(),
 		}, WsFederation: wsfederation.Module{RPRepo: wsfedmemory.NewWsFedRelyingPartyRepository()},
 		UserRepo:      userRepo,
 		AuthnResolver: stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},

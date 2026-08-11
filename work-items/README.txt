@@ -13,4 +13,4 @@ While the Work Item YAML files are the canonical records, AI agents should initi
 
 Access large `completion` fields or validation evidence only when historical audits or past verification results are required.
 For `initial_context`, prioritize directory-based `features` and feature directories rather than long lists of individual files. List specific file paths only when they represent exceptional entry points located outside the feature directories.
-Resolve every `affected_spec` entry as a context-qualified SCL element reference before reading implementation. Treat `affected_guarantees` as completed-record history only.
+Resolve every `affected_spec` entry as a requirement ID or TypeSpec symbol before reading implementation. An `initial_context.scl` block in an older pending record is only a navigation hint inherited from the retired format; the direct `affected_spec` references are authoritative. Treat `affected_guarantees` as completed-record history only.

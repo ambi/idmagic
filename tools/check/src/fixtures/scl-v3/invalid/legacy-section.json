@@ -1,5 +1,0 @@
-{
-  "system": "demo",
-  "spec_version": "3.0",
-  "invariants": { "Legacy": { "always": true } }
-}

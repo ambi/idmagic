@@ -12,12 +12,12 @@ created_at: 2026-07-10
 既存の非機能目標はエンドポイント単位の p99 レイテンシ・5xx 比率・可用性 (99.9% / 99.95%) と
 `/token` 等のピーク throughput までは定義しているが、**フリート全体がどの規模まで耐える設計なのか**
 ——同時アクティブテナント数、総ユーザ数、総オブジェクト数 (client / application / group / session / token /
-audit event)、ストレージ成長、集中ログイン時の総 rps——という「スケールの上限と根拠」が SCL に存在しない。
+audit event)、ストレージ成長、集中ログイン時の総 rps——という「スケールの上限と根拠」が specification に存在しない。
 数字が無いままだと、レプリカを増やしても実際に 1000万ユーザ・10万テナントで詰まるのは
 共有状態ストア、DB 接続、コネクションプール、鍵解決キャッシュのいずれかであり、
 どこがボトルネックかを事前に語れない。
 
-この WI は「idmagic を 1000万ユーザ・10万テナントで運用する」という **capacity target を SCL objective として明文化**し、
+この WI は「idmagic を 1000万ユーザ・10万テナントで運用する」という **capacity target を specification objective として明文化**し、
 それを満たす**水平スケール参照アーキテクチャ**（stateless app レプリカ、共有状態ストア、データ層のトポロジと責務分界）を
 ADR で確定する。実際のデータ層改修は [[wi-164-data-tier-scalability-partitioning-read-replica-pooling]]、
 可用性・フェイルオーバートポロジは [[wi-165-high-availability-and-failover-resilience-topology]] が受け持つ。
@@ -55,14 +55,14 @@ ADR で確定する。実際のデータ層改修は [[wi-164-data-tier-scalabil
 
 ## Tasks
 - [ ] T001 [ADR] 水平スケール参照アーキテクチャと容量計画の算出根拠を記録する。
-- [ ] T002 [SCL] `System.objectives` に fleet-scale capacity 目標、stateless / 共有ストア constraints、大規模クラスタ scenarios を追加する。
-- [ ] T003 [Render] `just scl-render` で派生物を更新する。
+- [ ] T002 [Spec] `System.objectives` に fleet-scale capacity 目標、stateless / 共有ストア constraints、大規模クラスタ scenarios を追加する。
+- [ ] T003 [Render] `just spec-render` で派生物を更新する。
 - [ ] T004 [Doc] `ARCHITECTURE.md` に参照トポロジと容量前提を追記する。
 - [ ] T005 [Verify] `just yaml-check`、`just check-ids` を通す。
 
 ## Verification
 - `just yaml-check`
-- `just scl-render`
+- `just spec-render`
 - `just check-ids`
 - 手動: capacity target の数字が既存の throughput / availability SLO と矛盾しないこと、
   後続 2 WI が参照する分界（データ層 / 可用性）が ADR で一意に読めることをレビューで確認する。

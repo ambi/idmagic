@@ -13,28 +13,18 @@ import (
 // Deprecation header (RFC 9745), and Sunset (RFC 8594) when sunset_at is
 // also set. Non-deprecated interfaces must not gain either header.
 func TestDeprecationHeadersMiddleware(t *testing.T) {
-	scl := &spec.SCL{
-		Interfaces: map[string]spec.Interface{
-			"OldWidgets": {
-				Stability:       "stable",
-				DeprecatedSince: "2026-01-01",
-				SunsetAt:        "2027-01-01",
-				Successor:       "NewWidgets",
-				Bindings: []spec.Binding{
-					{"kind": "http", "method": "GET", "path": "/api/admin/v1/old-widgets"},
-				},
-			},
-			"NewWidgets": {
-				Stability: "stable",
-				Bindings: []spec.Binding{
-					{"kind": "http", "method": "GET", "path": "/api/admin/v1/new-widgets"},
-				},
-			},
+	contract := &spec.RuntimeContract{
+		Operations: map[string]spec.Operation{
+			"OldWidgets": {Method: "GET", Path: "/api/admin/v1/old-widgets"},
+			"NewWidgets": {Method: "GET", Path: "/api/admin/v1/new-widgets"},
+		},
+		Deprecations: map[string]spec.Deprecation{
+			"OldWidgets": {Since: "2026-01-01", Sunset: "2027-01-01"},
 		},
 	}
 
 	e := echo.New()
-	e.Use(DeprecationHeadersMiddleware(scl))
+	e.Use(DeprecationHeadersMiddleware(contract))
 	handler := func(c *echo.Context) error { return c.NoContent(http.StatusOK) }
 	// Mirrors production: registerTenantRoutes runs once for host-style tenant
 	// resolution (bare group) and once for path-style ("/realms/:tenant_id").
@@ -68,7 +58,7 @@ func TestDeprecationHeadersMiddleware(t *testing.T) {
 	}
 }
 
-func TestDeprecationHeadersMiddleware_NilSCLIsNoop(t *testing.T) {
+func TestDeprecationHeadersMiddleware_NilContractIsNoop(t *testing.T) {
 	e := echo.New()
 	e.Use(DeprecationHeadersMiddleware(nil))
 	e.GET("/api/admin/v1/widgets", func(c *echo.Context) error {

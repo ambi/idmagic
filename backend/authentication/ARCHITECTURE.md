@@ -192,7 +192,7 @@ CSRF and same-origin checks protect every self mutation, but they don't help onc
 itself is stolen — an attacker holding it can still take the account over outright (change the password,
 drop MFA, redirect where notifications go). High-sensitivity self-service operations therefore require a
 recent re-authentication ("step-up") on top of CSRF: `ChangePassword`, `RemoveTotpFactor`,
-`RequestEmailChange`, and `RevokeMyOtherSessions` are annotated `step_up: required` in SCL, with a test
+`RequestEmailChange`, and `RevokeMyOtherSessions` require step-up in the requirements, with a test
 (`TestStepUpAnnotatedInterfacesMatchGatedHandlers`) keeping the annotation and the gated handlers from
 drifting apart. A session counts as stepped-up if `max(session.auth_time, session.step_up_at)` is within
 `StepUpRecencySeconds` (5 minutes) — so a session is stepped-up immediately after login, matching the
@@ -287,7 +287,7 @@ without new policy or session states.
   ([ADR-026](../../decisions/ADR-026-password-policy.md)).
 - Authentication and identity-management configuration values (password history depth, breach-check
   defaults, TOTP/WebAuthn/recovery-code parameters, reset-token TTL, login-throttle thresholds) are
-  centralized in one policy-configuration ADR rather than scattered across SCL objectives
+  centralized in this policy section rather than scattered across product objectives
   ([ADR-106](../../decisions/ADR-106-identity-and-credential-policy-configuration.md)).
 - `change-password` rejects reuse of the last 5 password hashes, checked only on change-password (not on
   initial registration) since a first registration has nothing to compare against

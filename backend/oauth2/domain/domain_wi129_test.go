@@ -150,7 +150,7 @@ func TestParsePrompt(t *testing.T) {
 	}
 }
 
-// SCL: OIDC-CORE-CODE-FLOW の prompt token grammar。
+// Contract: OIDC-CORE-CODE-FLOW の prompt token grammar。
 func TestParsePromptTokens(t *testing.T) {
 	for _, tt := range []struct {
 		input   string

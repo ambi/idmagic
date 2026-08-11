@@ -52,7 +52,7 @@ identity assertion を起点にした app-to-app / agent-to-MCP のブローカ�
   JWT-Bearer grant** (`grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`、`assertion` = ID-JAG)
   で access token を発行。(2) は token-exchange ではない。idmagic は現状 RFC 7523 を client 認証
   (`client_assertion`) にのみ用いており、authorization grant としての JWT-Bearer (`grant_types` への
-  `urn:ietf:params:oauth:grant-type:jwt-bearer` 追加) は未対応 — ADR-056 と SCL 変更でこの grant_type
+  `urn:ietf:params:oauth:grant-type:jwt-bearer` 追加) は未対応 — ADR-056 と specification 変更でこの grant_type
   自体を新設する必要がある。
 - depends_on の wi-50 と wi-56 が提供する actor-chain token exchange と MCP resource-bound audience を前提に、[[ADR-056-cross-app-access-identity-assertion-grant]] を accepted にする。ID-JAG 発行 (IdP 役) は既存 token exchange の `requested_token_type` profile として追加し、ID-JAG 償還 (宛先 AS 役) は新設する RFC 7523 JWT-Bearer grant として追加する。
 - source app が署名する Identity Assertion は iss/sub/aud/exp/iat/jti、user authorization、source client/agent、actor chain を持ち、registered source key と destination resource policy で検証する。assertion audience は idmagic exchange endpoint、requested resource は destination app に分ける。
@@ -61,7 +61,7 @@ identity assertion を起点にした app-to-app / agent-to-MCP のブローカ�
 
 ## Tasks
 - [ ] T001 [Dependency/ADR] wi-50/wi-56 の実装 contract を確認し、ADR-056 の assertion profile、policy ownership、token-exchange mapping を確定する。
-- [ ] T002 [SCL] assertion model、managed cross-app policy、exchange interface/errors/events/constraints/contracts/scenarios を追加して再生成する。
+- [ ] T002 [Spec] assertion model、managed cross-app policy、exchange interface/errors/events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T003 [Application] source→destination resource allowlist、user/agent policy、key metadata と管理 use case を実装する。
 - [ ] T004 [OAuth2] assertion verifier、jti replay store、subject-token dispatch、RAR/actor-chain downscope を既存 token exchange に追加する。
 - [ ] T005 [Admin/Consent UI] cross-app policy 管理と、必要な場合の user consent に source/destination/agent/action を表示する。

@@ -93,7 +93,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
 
 ## Tasks
 - [ ] T001 [ADR/Architecture] connector deployment/trust/secret/bootstrap、sync保証、interactive auth範囲を決定しARCHITECTUREを同期する。
-- [ ] T002 [SCL] DirectoryConnection、cursor/link/quarantine lifecycle、connector/admin interfaces/events/constraints/contracts/scenariosを追加して再生成する。
+- [ ] T002 [Spec] DirectoryConnection、cursor/link/quarantine lifecycle、connector/admin interfaces/events/constraints/contracts/scenariosを追加して再生成する。
 - [ ] T003 [Server Domain] connection/mapping/link/sync batch use caseとmemory/PostgreSQL repositoryを実装し、Identity Management commandsへ接続する。
 - [ ] T004 [Connector] LDAPS/StartTLS、paged search、AD DirSyncまたはmodifyTimestamp cursor、objectGUID/entryUUID、nested group解決を実装する。
 - [ ] T005 [Transport/Security] connector registration、credential rotation、mTLS/short-lived token、batch upload/ack/resumeを実装する。

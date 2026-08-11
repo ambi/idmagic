@@ -5,12 +5,9 @@ import (
 	"slices"
 )
 
-// Discovery 文書 (OIDC Discovery 1.0 / RFC 8414) を SCL から派生する。
-// TS src/spec-bindings/discovery.ts に対応。
-
 type discoveryEndpoint struct {
 	Field         string
-	InterfaceName string
+	OperationName string
 }
 
 var discoveryEndpoints = []discoveryEndpoint{
@@ -26,79 +23,54 @@ var discoveryEndpoints = []discoveryEndpoint{
 	{"end_session_endpoint", "EndSession"},
 }
 
-func (s *SCL) BuildDiscoveryDocument(issuer string) (map[string]any, error) {
+var discoveryScopes = []string{
+	"openid", "profile", "email", "phone", "address", "custom_attribute", "offline_access",
+	"idmagic.admin", "idmagic.account", "account:read", "account:write", "account:mfa:write",
+	"account:sessions:write", "account:consents:write", "account:password:write",
+}
+
+var discoveryClaims = []string{
+	"sub", "iss", "aud", "exp", "iat", "auth_time", "nonce", "acr", "amr", "azp",
+	"name", "given_name", "family_name", "preferred_username", "email", "email_verified", "updated_at",
+}
+
+// BuildDiscoveryDocument derives protocol metadata from the TypeSpec-generated
+// operation catalog and runtime protocol capabilities.
+func (c *RuntimeContract) BuildDiscoveryDocument(issuer string) (map[string]any, error) {
 	doc := map[string]any{"issuer": issuer}
-	for _, e := range discoveryEndpoints {
-		iface, ok := s.Interfaces[e.InterfaceName]
+	for _, endpoint := range discoveryEndpoints {
+		operation, ok := c.Operation(endpoint.OperationName)
 		if !ok {
-			return nil, fmt.Errorf("interface %s not found", e.InterfaceName)
+			return nil, fmt.Errorf("operation %s not found", endpoint.OperationName)
 		}
-		b, ok := s.HTTPBinding(iface)
-		if !ok {
-			return nil, fmt.Errorf("interface %s has no http binding", e.InterfaceName)
-		}
-		path := b.String("path")
-		if path == "" {
-			return nil, fmt.Errorf("interface %s http binding has no path", e.InterfaceName)
-		}
-		doc[e.Field] = issuer + path
+		doc[endpoint.Field] = issuer + operation.Path
 	}
 
-	for _, e := range []struct {
-		field string
-		model string
-	}{
-		{"response_types_supported", "ResponseType"},
-		{"response_modes_supported", "ResponseMode"},
-		{"grant_types_supported", "GrantType"},
-		{"id_token_signing_alg_values_supported", "SignatureAlgorithm"},
-		{"token_endpoint_auth_signing_alg_values_supported", "SignatureAlgorithm"},
-		{"code_challenge_methods_supported", "CodeChallengeMethod"},
-		{"dpop_signing_alg_values_supported", "SignatureAlgorithm"},
-	} {
-		v, err := s.EnumWireValues(e.model)
-		if err != nil {
-			return nil, err
-		}
-		doc[e.field] = v
+	doc["response_types_supported"] = []string{"code"}
+	doc["response_modes_supported"] = []string{"query", "form_post"}
+	doc["grant_types_supported"] = []string{
+		string(GrantAuthorizationCode), string(GrantRefreshToken), string(GrantClientCredentials),
+		string(GrantDeviceCode), string(GrantTokenExchange),
 	}
-
-	authMethods, err := s.EnumWireValues("TokenEndpointAuthMethod")
-	if err != nil {
-		return nil, err
+	doc["id_token_signing_alg_values_supported"] = []string{"PS256", "ES256"}
+	doc["token_endpoint_auth_signing_alg_values_supported"] = []string{"PS256", "ES256"}
+	doc["code_challenge_methods_supported"] = []string{string(CodeChallengeMethodS256)}
+	doc["dpop_signing_alg_values_supported"] = []string{"PS256", "ES256"}
+	doc["token_endpoint_auth_methods_supported"] = []string{
+		"client_secret_basic", "client_secret_post", "private_key_jwt", "tls_client_auth",
 	}
-	doc["token_endpoint_auth_methods_supported"] = slices.DeleteFunc(slices.Clone(authMethods), func(m string) bool { return m == "none" })
-
-	doc["scopes_supported"] = s.discoveryDefault("scopes_supported")
-	doc["subject_types_supported"] = s.discoveryDefault("subject_types_supported")
-	doc["introspection_endpoint_auth_methods_supported"] = s.ToWireAll(s.discoveryDefault("introspection_endpoint_auth_methods_supported"))
-	doc["revocation_endpoint_auth_methods_supported"] = s.ToWireAll(s.discoveryDefault("revocation_endpoint_auth_methods_supported"))
+	doc["scopes_supported"] = slices.Clone(discoveryScopes)
+	doc["subject_types_supported"] = []string{"public"}
+	doc["introspection_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth"}
+	doc["revocation_endpoint_auth_methods_supported"] = []string{"client_secret_basic", "private_key_jwt", "tls_client_auth", "none"}
 	doc["require_pushed_authorization_requests"] = false
 	doc["require_pkce"] = true
 	doc["tls_client_certificate_bound_access_tokens"] = true
-	// Client ID Metadata Documents (ADR-155): client_id resolved live from a
-	// client-hosted https URL, as an alternative to Dynamic Client Registration.
 	doc["client_id_metadata_document_supported"] = true
-	// RFC 9207 §3。AS は authorize response に iss を必ず付与する。
 	doc["authorization_response_iss_parameter_supported"] = true
-	doc["claims_supported"] = s.discoveryDefault("claims_supported")
-	doc["acr_values_supported"] = s.discoveryDefault("acr_values_supported")
+	doc["claims_supported"] = slices.Clone(discoveryClaims)
+	doc["acr_values_supported"] = []string{"urn:idmagic:acr:pwd", "urn:idmagic:acr:mfa"}
 	doc["service_documentation"] = issuer + "/docs"
-	doc["ui_locales_supported"] = s.discoveryDefault("ui_locales_supported")
+	doc["ui_locales_supported"] = []string{"en", "ja"}
 	return doc, nil
-}
-
-func (s *SCL) discoveryDefault(field string) []string {
-	model := s.Models["DiscoveryDocument"]
-	values, ok := model.Fields[field].Default.([]any)
-	if !ok {
-		return nil
-	}
-	result := make([]string, 0, len(values))
-	for _, value := range values {
-		if text, ok := value.(string); ok {
-			result = append(result, text)
-		}
-	}
-	return result
 }

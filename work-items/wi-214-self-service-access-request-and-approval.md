@@ -67,12 +67,12 @@ group membership / application assignment を反映する access request workflo
   [[wi-153-identity-lifecycle-workflows]] と同様に job runner 経由の期限監視で行う。
 
 ## Tasks
-- [ ] T001 [SCL] Catalog / AccessRequest / Approval model、状態遷移、events、scenarios を追加する。
+- [ ] T001 [Spec] Catalog / AccessRequest / Approval model、状態遷移、events、scenarios を追加する。
 - [ ] T002 [Decision] catalog 登録方針、approver 解決規則、期限付き付与の失効方針を ADR に記録する。
 - [ ] T003 [App] catalog 管理 / request submission / approval / 自動付与・失効 executor を実装する。
 - [ ] T004 [HTTP] catalog、request、approval API を追加する。
 - [ ] T005 [UI] account portal の request 導線と approval queue UI を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

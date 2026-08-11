@@ -31,9 +31,9 @@ initial_context:
     - backend/idmanagement/user/db_postgres/user_import_committer.go
     - backend/idmanagement/group/handlers_http/group_members_handler.go
 affected_spec:
-  - { context: IdManagement, kind: model, element: Group }
-  - { context: IdManagement, kind: model, element: DataExportColumn }
-  - { context: IdManagement, kind: interface, element: StartGroupCsvExport }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.DataExportColumn }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.StartGroupCsvExport }
 ---
 
 # Group CSV を安全に往復できる部分 upsert へ拡張する
@@ -51,7 +51,7 @@ artifact・pagination・UI の知見だけを共有する。
 
 ## Scope
 
-- Group CSV の SCL model、preview/apply/result interfaces、round-trip scenario、`AdminGroups` flow。
+- Group CSV の specification model、preview/apply/result interfaces、round-trip scenario、`AdminGroups` flow。
 - machine-key header、任意順・部分集合、presence/empty、可逆 codec、configurable transfer policy。
 - `id` 優先・`name` fallback の create/update/unchanged/rejected planner。
 - `membership_type` の作成時指定と既存 Group での immutable guard。
@@ -85,7 +85,7 @@ artifact・pagination・UI の知見だけを共有する。
 
 ## Plan
 
-1. SCL-firstでGroup CSV dialect、preview/apply、immutable field、source guard、round-tripを定義する。
+1. specification-firstでGroup CSV dialect、preview/apply、immutable field、source guard、round-tripを定義する。
 2. User CSVから共有可能なcodec/policy/artifactをfeature-neutralな内側moduleへ抽出する。
 3. Group parser/planner/applyをtest-firstで実装し、adapter・worker・HTTPを内側から外側へ接続する。
 4. Group exportをshared artifactへ移し、大量Groupのexport→preview unchangedを検証する。
@@ -93,7 +93,7 @@ artifact・pagination・UI の知見だけを共有する。
 
 ## Tasks
 
-- [ ] T001 [SCL] Group CSV models、preview/apply/get interfaces、round-trip・immutable membership type・source拒否 scenarios、AdminGroups flowを更新し、`just check-scl`を通す。
+- [ ] T001 [Spec] Group CSV models、preview/apply/get interfaces、round-trip・immutable membership type・source拒否 scenarios、AdminGroups flowを更新し、`just check-scl`を通す。
 - [ ] T002 [Architecture] User固有名のCSV policy/artifact portをfeature-neutralな共有moduleへ一般化し、設計正本とledgerの依存方向を同期する。CSV種別ごとのartifact/error tableは増やさない。
 - [ ] T003 [Domain] machine-key schema、presence/empty、可逆codec、Group typed rowとtransfer policyをtest-firstで実装する。fuzz対象は外部入力がroles/dynamic ruleを駆動する範囲に置く。
 - [ ] T004 [UseCase] ID/name解決、create/update/unchanged/rejected、immutable membership type、dynamic rule最終状態検証、source-managed fail-closed plannerを実装する。
@@ -101,12 +101,12 @@ artifact・pagination・UI の知見だけを共有する。
 - [ ] T006 [Export] 全import-compatible列をstreaming artifactへ出力し、10,000 Groupの無編集export→previewが全行unchangedになることを検証する。
 - [ ] T007 [Adapter] preview/apply job binding、汎用artifact adapter、paged errors、worker/bootstrap/HTTPを実装し、payload/valueがjob/auditへ露出しないcontract testを通す。
 - [ ] T008 [UI] file picker、事前検証、操作別件数、apply確認、共通cursor error pager、上限・分割案内をcomponent test先行で実装する。
-- [ ] T009 [Verify] current-state replan、tenant/source isolation、行原子性、10,000行往復、race、SCL/OpenAPI/API互換、全Go/UI/E2E gateをgreenにする。
+- [ ] T009 [Verify] current-state replan、tenant/source isolation、行原子性、10,000行往復、race、specification/OpenAPI/API互換、全Go/UI/E2E gateをgreenにする。
 
 ## Verification
 
 - `just check`
-- `just scl-render`
+- `just spec-render`
 - `just check-api-compat`
 - `just verify-go`
 - `just verify-ui`

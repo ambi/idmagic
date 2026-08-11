@@ -57,7 +57,7 @@ self-service registration を標準機能として持つ:
 - frontend は realm-aware signup→check-email→verify→password/enrollment→login の導線を既存 auth shell/branding 上に置き、管理 UI は tenant settings で policy を編集する。
 
 ## Tasks
-- [ ] T001 [SCL] PendingRegistration lifecycle、tenant RegistrationPolicy、Start/Verify/Approve interfaces、events/constraints/contracts/scenarios を追加して再生成する。
+- [ ] T001 [Spec] PendingRegistration lifecycle、tenant RegistrationPolicy、Start/Verify/Approve interfaces、events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T002 [Domain/Store] registration/token model、normalization、memory/ValkeyまたはPostgreSQL store、TTL/one-time consume を実装する。
 - [ ] T003 [Usecases] start/resend/verify/approve/expire を EmailSender、limiter、password policy、Identity Management user creationへ接続する。
 - [ ] T004 [HTTP] realm-scoped signup/verify endpoints と uniform response、CSRF/browser transaction、secure cookie を追加する。

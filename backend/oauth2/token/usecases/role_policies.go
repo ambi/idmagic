@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"strings"
 
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -69,30 +68,39 @@ var rolePermissionInterfaces = map[string][]string{
 	},
 }
 
-func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]RolePolicy, error) {
-	if scl == nil {
-		return nil, fmt.Errorf("SCL is required")
+func ListRolePolicies(contract *spec.RuntimeContract, actorRoles []string, controlPlane bool) ([]RolePolicy, error) {
+	if contract == nil {
+		return nil, fmt.Errorf("runtime contract is required")
 	}
 	roleDefinitions := []struct {
-		name       string
-		vocabulary string
+		name        string
+		description string
+		aliases     []string
 	}{
-		{name: "admin", vocabulary: "Administrator"},
-		{name: "system_admin", vocabulary: "SystemAdministrator"},
+		{
+			name:        "admin",
+			description: "User.roles に admin を持ち、所属テナント内の管理 API を許可された認証済みユーザー。",
+			aliases:     []string{"admin", "管理者", "TenantAdmin"},
+		},
+		{
+			name:        "system_admin",
+			description: "User.roles に system_admin を持ち、テナント境界を越える管理操作を許可された認証済みユーザー。",
+			aliases:     []string{"system_admin", "システム管理者"},
+		},
 	}
 	roles := make([]RolePolicy, 0, len(roleDefinitions))
 	for _, definition := range roleDefinitions {
-		vocabulary, ok := scl.Vocabulary[definition.vocabulary]
-		if !ok {
-			return nil, fmt.Errorf("vocabulary %s is missing", definition.vocabulary)
-		}
 		role := RolePolicy{
 			Name:        definition.name,
-			Description: vocabulary.Definition,
-			Aliases:     slices.Clone(vocabulary.Aliases),
+			Description: definition.description,
+			Aliases:     slices.Clone(definition.aliases),
 		}
 		for permissionName := range rolePermissionInterfaces {
-			requirements, applies := capabilityRequirements(scl, permissionName, definition.name)
+			action, ok := spec.ActionNameForCapability(permissionName)
+			if !ok {
+				return nil, fmt.Errorf("action for permission %s is not mapped", permissionName)
+			}
+			requirements, applies := capabilityRequirements(action, definition.name)
 			if !applies {
 				continue
 			}
@@ -100,13 +108,9 @@ func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]
 				(!slices.Contains(actorRoles, "system_admin") || !controlPlane) {
 				continue
 			}
-			interfaces, err := rolePolicyInterfaces(scl, permissionName)
+			interfaces, err := rolePolicyInterfaces(contract, permissionName)
 			if err != nil {
 				return nil, err
-			}
-			action, ok := spec.ActionNameForCapability(permissionName)
-			if !ok {
-				return nil, fmt.Errorf("action for permission %s is not mapped", permissionName)
 			}
 			role.Permissions = append(role.Permissions, RolePermission{
 				Name:         permissionName,
@@ -123,76 +127,42 @@ func ListRolePolicies(scl *spec.SCL, actorRoles []string, controlPlane bool) ([]
 	return roles, nil
 }
 
-func capabilityRequirements(scl *spec.SCL, capabilityName, role string) ([]string, bool) {
-	var requirements []string
-	for _, interfaceName := range rolePermissionInterfaces[capabilityName] {
-		iface, ok := scl.Interfaces[interfaceName]
-		if !ok {
-			continue
-		}
-		access, protected := spec.ProtectedInterfaceAccess(iface)
-		if !protected {
-			continue
-		}
-		authorization := scl.AuthorizationByContext[scl.InterfaceContexts[interfaceName]]
-		for _, policyName := range access.Policies {
-			policy, ok := authorization.Policies[policyName]
-			if !ok || policy.Effect != "permit" {
-				continue
-			}
-			principal, ok := authorization.Principals[policy.Principal]
-			if !ok || !principalAppliesToRole(principal.Matches, role) {
-				continue
-			}
-			requirements = append(requirements, principal.Matches...)
-			if policy.When != "" {
-				requirements = append(requirements, policy.When)
-			}
+func capabilityRequirements(action, role string) ([]string, bool) {
+	requirements, ok := spec.RulesForAction(action)
+	if !ok {
+		return nil, false
+	}
+	applies := false
+	for _, requirement := range requirements {
+		switch role {
+		case "admin":
+			applies = applies || requirement == "actor_is_admin" || requirement == "actor_is_admin_or_system_admin"
+		case "system_admin":
+			applies = applies || requirement == "actor_is_system_admin" || requirement == "actor_is_admin_or_system_admin"
 		}
 	}
-	if len(requirements) == 0 {
+	if !applies {
 		return nil, false
 	}
 	sort.Strings(requirements)
 	return slices.Compact(requirements), true
 }
 
-func principalAppliesToRole(requirements []string, role string) bool {
-	for _, requirement := range requirements {
-		switch role {
-		case "admin":
-			clean := strings.ReplaceAll(requirement, "system_admin", "")
-			if strings.Contains(clean, "admin") && strings.Contains(requirement, "principal.roles") {
-				return true
-			}
-		case "system_admin":
-			if strings.Contains(requirement, "system_admin") && strings.Contains(requirement, "principal.roles") {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func rolePolicyInterfaces(scl *spec.SCL, permissionName string) ([]RoleInterface, error) {
+func rolePolicyInterfaces(contract *spec.RuntimeContract, permissionName string) ([]RoleInterface, error) {
 	names, ok := rolePermissionInterfaces[permissionName]
 	if !ok {
 		return nil, fmt.Errorf("interfaces for permission %s are not mapped", permissionName)
 	}
 	interfaces := make([]RoleInterface, 0, len(names))
 	for _, name := range names {
-		iface, ok := scl.Interfaces[name]
+		operation, ok := contract.Operation(name)
 		if !ok {
 			return nil, fmt.Errorf("interface %s for permission %s is missing", name, permissionName)
 		}
-		binding, ok := scl.HTTPBinding(iface)
-		if !ok {
-			return nil, fmt.Errorf("HTTP binding for interface %s is missing", name)
-		}
 		interfaces = append(interfaces, RoleInterface{
 			Name:   name,
-			Method: binding.String("method"),
-			Path:   binding.String("path"),
+			Method: operation.Method,
+			Path:   operation.Path,
 		})
 	}
 	return interfaces, nil

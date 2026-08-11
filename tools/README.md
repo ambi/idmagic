@@ -1,22 +1,10 @@
-# RA/SCL tools
+# Repository tools
 
-This workspace contains deterministic tools used by Regenerative Architecture
-repositories:
+This workspace contains deterministic tooling for the repository:
 
-- `check`: YAML linting, schema validation, context-map checks, and record id checks.
-- `scl-to-html`: HTML views for SCL, ADRs, and Work Items.
-- `scl-to-jsonschema`: JSON Schema generation from SCL models.
-- `scl-to-openapi`: OpenAPI generation from SCL HTTP interfaces.
-- `ra`: workspace discovery, validation, initialization, and rendering.
+- `ra` discovers and validates TypeSpec, requirements, architecture records, and work items.
+- `check` validates Markdown frontmatter and the remaining YAML formats.
+- `check-api-compat` compares the TypeSpec-generated OpenAPI contract with the released baseline.
+- `generate-contract` derives the small Go runtime operation catalog from TypeSpec OpenAPI.
 
-Run from the repository root through `just`, or directly from this directory:
-
-```bash
-bun install --frozen-lockfile
-bun run typecheck
-bun run lint
-bun test
-bun run ra -- --help
-bun run check:all
-bun run scl-render:workspace
-```
+Run all routine operations from the repository root through `just`.

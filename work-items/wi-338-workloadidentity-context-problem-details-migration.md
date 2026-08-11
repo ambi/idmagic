@@ -21,7 +21,7 @@ status を揃える。
 
 - `backend/workloadidentity/handlers_http/routes.go` (15 箇所)
 
-現状 400 で SCL は 422 を宣言している code (実装時に status も変更する、
+現状 400 で specification は 422 を宣言している code (実装時に status も変更する、
 `routes.go` 341〜357行):
 - `workload_trust_bundle_jwks_required`
 - `workload_trust_bundle_name_required`

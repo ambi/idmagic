@@ -180,6 +180,14 @@ func ActionNameForCapability(capabilityName string) (string, bool) {
 	return action, ok
 }
 
+// RulesForAction returns the application-owned authorization requirements for
+// an action. Policy engines such as Cedar may replace this representation in a
+// future work item; callers must not mutate the returned slice.
+func RulesForAction(action string) ([]string, bool) {
+	rules, ok := actionRules[action]
+	return slices.Clone(rules), ok
+}
+
 var actionRules = map[string][]string{
 	ActionTokenGrantAuthorizationCode: {
 		"client_must_declare_grant",

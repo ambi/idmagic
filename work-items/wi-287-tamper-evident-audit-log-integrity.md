@@ -30,8 +30,8 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Audit, kind: interface, element: ExportAdminAuditEvents }
-  - { context: Audit, kind: interface, element: GetAdminAuditEvent }
+  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.ExportAdminAuditEvents }
+  - { path: spec/contexts/audit/main.tsp, symbol: IdMagic.Contract.GetAdminAuditEvent }
 ---
 
 # 監査ログの改ざん検知 (ハッシュチェーンと署名付きチェックポイント) を導入する
@@ -145,7 +145,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 
 ## Tasks
 
-- [ ] T001 [SCL] `Audit` に sequence_no / prev_hash / entry_hash、AuditCheckpoint、
+- [ ] T001 [Spec] `Audit` に sequence_no / prev_hash / entry_hash、AuditCheckpoint、
       AuditIntegrityStatus、interface 3 件、event 2 件、guarantee、scenario 5 件を追加し
       `just check-scl` を通す。
 - [ ] T002 [ADR] 監査ログ完全性の ADR を起票する (正規化規則・チェーン単位・チェックポイント
@@ -171,7 +171,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 - [ ] T009 [UI] 監査ログ画面に完全性ステータス、検証実行、検証可能エクスポートを追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T010 [Docs] README に外部検証手順と検証失敗時のエスカレーションを追記する。
-- [ ] T011 [Verify] 下記 Verification を緑にする。`just scl-render` を実行する。
+- [ ] T011 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
 
 ## Verification
 

@@ -22,11 +22,11 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 
 ## Scope
 
-- `spec/contexts/authentication.yaml`:
+- `spec/contexts/authentication/requirements.md`:
   - 「復旧手段が単一（single point of failure）」を表す派生状態（例: 認証器 1 個のみ / 同期不可
     passkey のみ / recovery code のみ）と、その account security への提示。
   - 2 個目認証器登録の推奨状態と、任意強制ポリシー（推奨 / 必須）の表現。
-- `spec/contexts/application.yaml` および管理 UI: テナント既定 / アプリ単位で「2 個目認証器を
+- `spec/contexts/application/requirements.md` および管理 UI: テナント既定 / アプリ単位で「2 個目認証器を
   推奨するか必須にするか」を設定する項目。
 - Account UI（`AccountSecurityPage`）: 復旧手段が単一のときの警告と、2 個目登録への導線。
 - 登録オンボーディング（wi-127）: 初回 MFA 登録完了直後に 2 個目認証器登録を促すステップ。
@@ -56,7 +56,7 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 
 ## Tasks
 
-- [ ] T001 [SCL] 復旧手段の単一性を表す派生状態、2 個目推奨状態、任意強制ポリシー、提示 UX を仕様化する。
+- [ ] T001 [Spec] 復旧手段の単一性を表す派生状態、2 個目推奨状態、任意強制ポリシー、提示 UX を仕様化する。
 - [ ] T002 [Domain] 認証器数・同期 passkey 有無から「復旧手段が単一か」を判定する関数を追加する。
 - [ ] T003 [UseCase] 2 個目登録推奨状態の算出と、強制ポリシー時の enrollment-required flow 接続を追加する。
 - [ ] T004 [Account/UI] 単一時の警告と 2 個目登録導線を account security に追加する。

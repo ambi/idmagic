@@ -15,7 +15,7 @@ The API process enqueues jobs but never runs them, and the worker process runs j
 HTTP.
 
 Business logic is kept out of the substrate so that touching the job infrastructure does not require
-re-reading every consumer context. The module ledger is in `architecture.yaml` beside this file.
+re-reading every consumer context. Module boundaries are inferred from paths and checked for forbidden imports.
 
 ```text
 API / consumer usecase
@@ -105,7 +105,7 @@ but never associated with a Job, and hands them off safely to the durable queue.
 `jobs.tenant_id` is required even though a `Job` has no natural-key parent, following the root
 `ARCHITECTURE.md` [`tenant_id` retention classes](../../ARCHITECTURE.md#2-tenant_id-retention-classes)
 tenant-owned-aggregate category. `status` and `kind` are closed vocabularies normative in
-`spec/contexts/jobs.yaml`; the `CHECK` constraints are defense in depth alongside that, not the source of
+`spec/contexts/jobs/requirements.md`; the `CHECK` constraints are defense in depth alongside that, not the source of
 truth. `params`/`result` are opaque per-`JobKind` JSONB payloads stored without at-rest encryption; terminal rows
 are purged after a TTL by the worker's retention sweep, not by a dedicated Job. `lane`'s
 `DEFAULT 'default'` backfills pre-lane rows in place when the column was added to an existing table, as

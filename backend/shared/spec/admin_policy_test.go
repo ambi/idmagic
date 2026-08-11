@@ -35,13 +35,3 @@ func TestAdminConsentPolicyRequiresRoleAuthenticationAndTenantMatch(t *testing.T
 		t.Fatal("disabled admin was permitted")
 	}
 }
-
-func TestSCLAuthorizationAndInterfaceAccessAreCoherent(t *testing.T) {
-	scl, err := LoadSCL()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := scl.ValidateCoherence(); err != nil {
-		t.Fatal(err)
-	}
-}

@@ -52,7 +52,7 @@ factor をスキップできるようにする。ただし MFA を条件付き�
 - auditはdevice ID、created/last-used/revoked reasonを記録し、raw cookie/user-agent/IPを保存しない。
 
 ## Tasks
-- [ ] T001 [SCL] TrustedDevice lifecycle、tenant/application remember policy、issue/evaluate/revoke interfaces、events/constraints/contracts/scenarios を追加して再生成する。
+- [ ] T001 [Spec] TrustedDevice lifecycle、tenant/application remember policy、issue/evaluate/revoke interfaces、events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T002 [Domain/Persistence] selector/verifier credential、expiry/rotation/revoke と memory/PostgreSQL repository/indexを実装する。
 - [ ] T003 [Authentication] MFA success時issue、login時constant-time verify/rotation、policy evaluationへのamr/acr結果を実装する。
 - [ ] T004 [Revocation] password/MFA/account/session/risk eventsからuser全deviceをrevokeする購読/use caseを追加する。

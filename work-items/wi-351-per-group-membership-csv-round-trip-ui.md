@@ -30,9 +30,9 @@ initial_context:
     - backend/idmanagement/group/usecases/dynamic_groups.go
     - backend/sourcing
 affected_spec:
-  - { context: IdManagement, kind: model, element: GroupMember }
-  - { context: IdManagement, kind: model, element: GroupMembershipSource }
-  - { context: IdManagement, kind: interface, element: StartGroupMemberCsvExport }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMember }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.GroupMembershipSource }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.StartGroupMemberCsvExport }
 ---
 
 # グループ単位のMembership CSVを安全に往復できるUIまで実装する
@@ -81,7 +81,7 @@ Membershipは「CSVに無い行を削除」と解釈すると、分割ファイ�
 
 ## Plan
 
-1. SCL-firstでexplicit desired-state semanticsとper-group境界を固定する。
+1. specification-firstでexplicit desired-state semanticsとper-group境界を固定する。
 2. Group/User/membership ownership guardをbatch解決するplannerをtest-firstで作る。
 3. row-atomic add/remove、shared artifact job、HTTPを内側から外側へ接続する。
 4. 既存exportを対称化し、分割ファイルでも欠落行を削除しないことを統合テストで固定する。
@@ -89,7 +89,7 @@ Membershipは「CSVに無い行を削除」と解釈すると、分割ファイ�
 
 ## Tasks
 
-- [ ] T001 [SCL] Membership CSV dialect、desired state、preview/apply/get interfaces、manual/dynamic/source isolation scenarios、AdminGroups flowを更新する。
+- [ ] T001 [Spec] Membership CSV dialect、desired state、preview/apply/get interfaces、manual/dynamic/source isolation scenarios、AdminGroups flowを更新する。
 - [ ] T002 [Domain] machine-key schema、`present|absent`、ID/username整合、duplicate target、read-only列検証をtest-firstで実装する。
 - [ ] T003 [UseCase] current membershipをbatch読取し、add/remove/unchanged/rejectedをstreaming計画する。CSV欠落行を変更しないテストを先に固定する。
 - [ ] T004 [Apply] membershipと監査を1行1 transactionで確定し、競合時は現在状態からreplanして行間partial successを維持する。
@@ -102,7 +102,7 @@ Membershipは「CSVに無い行を削除」と解釈すると、分割ファイ�
 ## Verification
 
 - `just check`
-- `just scl-render`
+- `just spec-render`
 - `just check-api-compat`
 - `just verify-go`
 - `just verify-ui`

@@ -2,13 +2,13 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://regenerative-architecture/schemas/architecture-doc.json",
   "title": "Architecture document",
-  "description": "ARCHITECTURE_FORMAT.md を正本とする設計正本（ARCHITECTURE.md）のスキーマ（同文書からの派生物）。機械検証される台帳は architecture.yaml が持ち、この文書は散文だけを持つ（ADR-143）。",
+  "description": "ARCHITECTURE_FORMAT.md を正本とする設計正本（ARCHITECTURE.md）のスキーマ。構造は実在するパスと import 境界から検査し、別 ledger は持たない。",
   "type": "object",
   "additionalProperties": false,
   "required": ["context", "updated_at", "overview"],
   "properties": {
     "context": {
-      "description": "この文書が記述するコンテキスト接頭辞。横断はルートで repo。隣接する architecture.yaml および SCL の context map と一致する。",
+      "description": "この文書が記述するコンテキスト接頭辞。横断はルートで repo。",
       "type": "string",
       "pattern": "^[a-z0-9][a-z0-9-]*$"
     },
@@ -32,7 +32,7 @@
       "minLength": 1
     },
     "context_map": {
-      "description": "本文 ## Context Map。SCL context と実装 package の対応。",
+      "description": "本文 ## Context Map。TypeSpec/requirements context と実装 package の対応。",
       "type": "string",
       "minLength": 1
     },
@@ -52,7 +52,7 @@
       "minLength": 1
     },
     "structural_decisions": {
-      "description": "本文 ## Structural Decisions。主要な構造判断の要点と根拠 ADR。",
+      "description": "本文 ## Structural Decisions。現在有効な主要構造判断と根拠。",
       "type": "string",
       "minLength": 1
     },

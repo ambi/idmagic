@@ -28,10 +28,10 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Sourcing, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
-  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-PATCH }
-  - { context: Sourcing, kind: interface, element: CreateScimUser }
-  - { context: Sourcing, kind: interface, element: CreateScimGroup }
+  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7644-PATCH }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimGroup }
 ---
 
 # SCIM core 属性を multi-valued emails・phoneNumbers・addresses・nested group member まで広げる
@@ -58,7 +58,7 @@ silently に切り捨てる(`emails` は最初の要素以外破棄、`phoneNumb
 - Group の `members[].type` に `"Group"` を許可し、`GroupRepository` が入れ子構造を
   安全に扱えるか(循環参照防止、深さ上限)を調査した上で対応する。既存
   `GroupMember` モデル・`ListGroupsByUser` 等への影響を洗い出す。
-- `spec/contexts/scim.yaml` の `RFC7643-CORE-RESOURCES` の `reason` を、対応範囲拡大に
+- `spec/contexts/sourcing/requirements.md` の `RFC7643-CORE-RESOURCES` の `reason` を、対応範囲拡大に
   合わせて更新する([[ADR-121-scope-narrowing-disclosure-obligation]])。
 
 ## Out of Scope
@@ -89,7 +89,7 @@ silently に切り捨てる(`emails` は最初の要素以外破棄、`phoneNumb
       roles への反映要否を判断し、ADR化する。
       → [[ADR-162-scim-multivalued-attributes-stay-in-scim-context]]、
       [[ADR-163-scim-nested-group-member-is-representational-only]]。
-- [ ] T001 [SCL] 対応する新規属性・nested member の契約を `spec/contexts/scim.yaml` に明記し、
+- [ ] T001 [Spec] 対応する新規属性・nested member の契約を `spec/contexts/sourcing/requirements.md` に明記し、
       `RFC7643-CORE-RESOURCES` の `reason` を更新する。ADR-162/163 の決定を前提にする。
 - [ ] T002 [Domain] RED: emails 配列・phoneNumbers・addresses・nested member の
       parse/validation test を先に失敗させて実装する。

@@ -7,11 +7,8 @@ import (
 )
 
 func TestBuildDiscoveryDocument_AdvertisesClientIDMetadataDocumentSupport(t *testing.T) {
-	s, err := spec.LoadSCL()
-	if err != nil {
-		t.Fatal(err)
-	}
-	doc, err := s.BuildDiscoveryDocument("https://idp.example.com")
+	contract := spec.CurrentRuntimeContract()
+	doc, err := contract.BuildDiscoveryDocument("https://idp.example.com")
 	if err != nil {
 		t.Fatal(err)
 	}

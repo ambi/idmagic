@@ -24,7 +24,7 @@ initial_context:
     - backend
     - frontend
 affected_spec:
-  - { context: System, kind: interface, element: MetricsExposition }
+  - { path: spec/contexts/system/main.tsp, symbol: IdMagic.Contract.MetricsExposition }
 ---
 
 # アラートごとの運用 runbook を整備し、アラートから手順へ辿れるようにする
@@ -80,7 +80,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
     署名鍵プロバイダ (Vault) 到達不能による fail-closed、DB 接続枯渇 /
     circuit breaker open、ジョブ queue 滞留、テナント quota 超過 (既存文書を統合)。
   - `prometheus-rule.yaml` と `infra/docker/prometheus-rules.yml` の各アラートに
-    `runbook_url` annotation と対応する SCL objective 名を付ける。
+    `runbook_url` annotation と対応する specification objective 名を付ける。
   - `infra/runbooks/README.md` に索引 (アラート名 → runbook) と runbook の書式規約を置く。
 - **tooling**:
   - `just check-monitoring` を拡張し、(1) すべての `alert:` が `runbook_url` を持つこと、
@@ -121,7 +121,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 
 ## Tasks
 
-- [ ] T001 [SCL] `System.interfaces.MetricsExposition` に runbook 参照要件を追記し、
+- [ ] T001 [Spec] `System.interfaces.MetricsExposition` に runbook 参照要件を追記し、
       対応する scenario を追加して `just check-scl` を通す。
 - [ ] T002 [Format] `infra/runbooks/README.md` に索引と書式規約 (必須見出し 7 項目) を作る。
       既存 `tenant-quotas.md` を新書式に書き換えて参照実装にする。

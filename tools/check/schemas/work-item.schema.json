@@ -111,12 +111,14 @@
       "pattern": "- \\[[ xX]\\] T[0-9]{3}"
     },
     "initial_context": {
-      "description": "AI が作業開始時に読むべき最小文脈。SCL 要素、ADR、実装、テスト、読まない範囲を記録する。",
+      "description": "AI が作業開始時に読むべき最小文脈。requirements、TypeSpec、設計記録、実装、テスト、読まない範囲を記録する。",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "features": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "scl": { "type": "object" },
+        "scl": { "type": "object", "description": "Legacy completed-record field." },
+        "requirements": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "typespec": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "decisions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "source": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "tests": { "type": "array", "items": { "type": "string", "minLength": 1 } },
@@ -124,13 +126,35 @@
       }
     },
     "affected_spec": {
-      "description": "影響する SCL 規範要素への direct reference。",
+      "description": "影響する requirement ID または TypeSpec symbol への direct reference。完了済み履歴では legacy SCL reference も許容する。",
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/sclElementReference" }
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["path", "requirement"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string", "pattern": "^spec/.+requirements\\.md$" },
+              "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["path", "symbol"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string", "pattern": "^spec/.+\\.tsp$" },
+              "symbol": { "type": "string", "minLength": 1 }
+            }
+          },
+          { "$ref": "#/$defs/sclElementReference" }
+        ]
+      }
     },
     "spec_impact": {
-      "description": "SCL 非影響変更の例外宣言。",
+      "description": "仕様非影響変更の例外宣言。",
       "type": "object",
       "required": ["kind", "reason"],
       "additionalProperties": false,
@@ -140,7 +164,7 @@
       }
     },
     "affected_guarantees": {
-      "description": "影響する保証義務 (SCL assurance の文脈)。",
+      "description": "影響する保証義務。",
       "type": "array"
     },
     "verification": {

@@ -1,81 +1,16 @@
 ---
 name: implement-work-item
-description: Implement a chosen Regenerative Architecture work item end to end — inner layers to outer, tests per layer, then UI, verify green, add completion, move to done, commit. Use when starting to build a selected work item, or when the user asks to implement / build a work item — e.g. "implement wi-NN", "wi-NN を実装して", "wi-NN をやって", "ワークアイテムを実装". Companion to scl-change (spec first).
+description: "Implement a chosen Regenerative Architecture work item end to end: specification first, inner behavior to outer adapters, tests per layer, verification, completion, move to done, and commit."
 ---
 
-# ワークアイテムの実装フロー
+# Work item 実装フロー
 
-対象ワークアイテムが決まってから、SCL の内層から外層・UI・完了記録・コミットまでを一定の順序で回す。**手順を毎回考え直さない**——この順序と検証ゲートに従う。
+1. 対象 work item、参照された requirements / TypeSpec symbol、該当 Architecture、最小のコード範囲だけを読む。
+2. `spec-change` Skill で仕様を先に更新し `just check-spec` を通す。
+3. Domain → Use Cases → Adapters → Infrastructure / UI の順で実装する。振る舞い層は RED を先に確認し、task にテスト名と requirement ID を記録する。
+4. 構造・技術・規約が変わる場合は `new-architecture` Skill で `ARCHITECTURE.md` を同期する。ADR や architecture ledger は作らない。
+5. task を完了ごとに更新し、局所検証の後 `just verify` を通す。
+6. `Completion` に意味差分と検証結果を記録し、status を completed にして `work-items/done/` へ移す。
+7. `commit` Skill で Conventional Commit を作る。push は明示指示まで行わない。
 
-## 0. コンテキスト衛生（最初に決める）
-
-大きなトークン消費と思考の遅さは、たいてい「無駄な全文読み」と「1 セッションに文脈を積み過ぎ」で起きる。着手前に次を徹底する。
-
-- **メタドキュメントは全文で読まない。** RA / SCL は節単位のリファレンス。必要な節だけを `rg '^#{2,3} ' <file>` で探し、その行域だけ読む（節マップは `CLAUDE.md §1`）。
-- **feature の現状仕様は該当 `scl.yaml` だけ読む**（例 `<app>/spec/scl.yaml`）。リポジトリ全体を舐めない。
-- **コードベース横断の探索はサブエージェント（`Explore`）に委譲し、結論だけ受け取る。** 検索の生出力で本スレッドの文脈を埋めない。
-- **中規模以上なら実装前に Plan / Tasks を正本化する。** 複数 scenario、RA 3 層以上、DB migration / 認可 / 外部契約 / 破壊的変更、1 セッションで終わる確信がない作業、複数サブシステム検証は中規模以上として扱う。ワークアイテムに `# Plan` と `# Tasks` がなければ先に追記し、過大なら work-item 分割を提案する。
-- **Tasks のチェックリストは進捗正本。** タスクを完了したら同じ work-item のチェックリストを更新する。途中でセッションが切れても、次の AI は `# Tasks` と直近の検証結果から再開する。
-- **層の区切りは自然なコンパクト点。** 1 つの層を実装・検証してグリーンにしたら、必要に応じ `/clear` して次の層に入ると、文脈が単調増加しない。
-
-## 1. 内層から外層へ（各層でテストを書く）
-
-RA の 7 層（`REGENERATIVE_ARCHITECTURE.md §3`）を内側から。**先に SCL、後で実装**。
-
-1. **Spec Core (SCL)** — `scl-change` Skill に従い `scl.yaml` を先に更新。触れた節をワークアイテムの `scope` に列挙。`just check` で検証する。並列 worktree の work-item branch では派生物を commit せず、必要な場合だけ確認用に `just scl-render` を実行する。生成物の同期 commit は integration branch / merge queue / main 直前で行う。
-2. **Decision Record & Architecture** — 次のいずれかに該当したら `new-adr` Skill で ADR を残す（ADR-121。「非自明だと思ったら」という裁量任せにしない具体基準）:
-   - SCL の `standards.requirements[].adoption` を `partial` または `excluded` にした。
-   - work item の Motivation / Scope / タイトルが示唆する範囲より狭い範囲だけを実装した（例:「〜conformance」「RFC 準拠」を謳いながら仕様の一部だけを実装する）。
-
-   `adoption: partial` にする場合は、実装した範囲と実装しなかった範囲を `reason` に具体的に書く（自由記述の interface description に埋もれさせない）。
-
-   **ADR は分岐があったときだけ**書く。設計を記述したいだけなら ADR を起こさず設計正本を更新する（ADR-143、`ADR_FORMAT.md`「ADR を書く条件」）。
-
-   コア構造（コンテキスト・モジュール・スタック・ディレクトリ規約）または context の設計に触れたら、`new-architecture` Skill に従い該当 `architecture.yaml`（台帳）と `ARCHITECTURE.md`（設計正本、English）を現状へ同期する（書式は `ARCHITECTURE_FORMAT.md`）。同期は努力目標ではなく検証ゲートであり、`just check` の Architecture 整合検査（台帳合成・modules パス実在・realizes の SCL 要素解決・contexts 整合・依存方向・実 import・複雑度 ratchet・ADR リンク実在）を通すこと。
-
-   **移送の完了ゲート（ADR-143）**: その context の設計に触れたなら、対象 ADR や README に設計本文が残っていないか確認する。残っていれば設計正本へ移し、ADR にはポインタと「なぜ」だけを、README には手順だけを残す。ADR ファイルは削除しない。139 本を一括で棚卸しはせず、触れた context の分だけ片付ける。
-3. **Domain** — ドメインモデルや状態定義。SCL から機械的に導出されて特定の言語に変換した層。**test-first 必須層**。
-4. **Use Cases** — ユースケース実装。**test-first 必須層**。
-5. **Adapters** — HTTP / 永続化などの境界実装。**test-first 必須層**。
-6. **Infrastructure** — プログラムのエントリポイント、依存の注入。test-first は免除（下記）。
-7. **Deploy Pipeline** — Dockerfile、compose.yml、Ansible、Terraform、CI/CD、デプロイ関連。test-first は免除（下記）。
-
-各層を終えたらその層のテストを green にしてから次へ進む（層をまたいで未検証を溜めない）。`Tasks` がある場合は、層の完了ごとに対応チェックリストを更新する。
-
-### 1.1 test-first の規律（ADR-119）
-
-**振る舞いを持つ層——Domain / Use Cases / Adapters——では test-first を必須**とする。実装コードを先に書かない。
-
-1. **RED** — 先にテストを書き、実行して**意図した理由で落ちることを目視**する。落ちない／別の理由（import エラー・タイポ等）で落ちるテストは、まだ何も検証していない。テストは対応する SCL 要素（`scenario` / `constraint` / `state guard`）に紐づける。
-2. **GREEN** — その失敗テストを通す最小の実装を書く。
-3. **REFACTOR** — green を保ったまま整える。
-
-- **テストは SCL から導く。テスト側で新しい振る舞いを創作しない**（正本の二重化を避ける）。SCL に無い振る舞いが要るなら、テストを書く前に `scl-change` に戻って SCL を更新する。テストは SCL の受け入れ条件を実行可能にした従属物であり、SCL と競合する第二のオラクルではない。
-- **Infrastructure / Deploy Pipeline は単体 red-green を免除**し、contract / E2E テストで代替する。ここでは配線とデプロイ経路の検証が本質で、失敗する単体テストを先に書く意味が薄い。
-- **外部の未信頼入力を解釈する層で、文法が複雑（再帰・組み合わせ爆発を伴う）、または認証・認可判定に関わるなど攻撃面として高リスクと判断される場合は、fuzz/property test 採用の要否を明示的に検討し、判断（採用する/しないとその理由）を Tasks か Risk Notes に記す**（ADR-121）。単純な固定フォーマットのパーサーへの一律義務ではない。
-
-### 1.2 test-first 証跡（self-attest）
-
-強制は self-attest ＋ レビュー抜き取り（ADR-119）。**振る舞いを持つ層の Tasks チェックリストに、先に落としたテストと、それが参照する SCL 要素を証跡として残す**。例:
-
-```markdown
-- [x] UseCase: RevokeCredential — RED: `TestRevoke_alreadyRevoked` を先に fail 確認（scenario `credential.revoke.idempotent`）→ GREEN
-```
-
-`# Tasks` が無い規模でも、振る舞い層に触れる場合はこの証跡を Tasks に足してから進む。レビューはこの証跡を抜き取りで検証する。
-
-## 2. 検証ゲート（全部グリーンで完了）
-
-コマンドは `just`（`justfile` = 人間 / AI 共通のコマンドマップ）を使う。
-
-- SCL / YAML: `just check`
-- Go: app repo / app recipe の lint + race テスト
-- UI: app repo / app recipe の format / lint / typecheck / build
-- 一括: `just verify`
-
-## 3. 完了処理（手順 5〜6）
-
-1. **ユーザーへの完了報告に開示を含める**（ADR-121）。対象範囲に `adoption: partial` / `excluded` の requirement、または work item の `## Out of Scope` があれば、それらを要約した「対応していないこと」を最終報告に明記する。「全部グリーン」だけで完了を報告しない。
-2. ワークアイテムの Markdown 本文末尾に `## Completion` を追記し `status: completed` にする。frontmatter に `completion` は置かない。証跡の粒度は `new-work-item` Skill の「完了時」に従う。
-3. ファイルを `work-items/done/`（または該当コンテキストの `.../work-items/done/`）へ移す。
-4. `commit` Skill でコミット（Conventional Commits・subject / body とも英語）。ユーザから指示があるまで push しない。
+最終報告では Out of Scope と未対応事項も明示する。

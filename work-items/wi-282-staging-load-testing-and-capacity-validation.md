@@ -10,7 +10,7 @@ depends_on: []
 
 ## Motivation
 
-idmagic には SCL の非機能 objective（login 応答成功率・latency、introspection の p99 等）と、
+idmagic には specification の非機能 objective（login 応答成功率・latency、introspection の p99 等）と、
 実測で確定すべき暫定の実装判断が複数ある。特に wi-278（揮発性状態の PostgreSQL 統合、
 ADR-139）は、高 churn テーブルの **UNLOGGED / LOGGED 選択**と **GC（ephemeral sweep）間隔**を
 「staging 実測で確定する」暫定のまま実装を完了しており、この検証だけが未了で残っている。
@@ -23,21 +23,21 @@ ADR-139）は、高 churn テーブルの **UNLOGGED / LOGGED 選択**と **GC�
 
 ## Scope
 
-機能変更ではなく検証・測定であり、SCL の feature は変更しない（既存 objective に対する
+機能変更ではなく検証・測定であり、specification の feature は変更しない（既存 objective に対する
 実測検証）。整備・記録する対象:
 
 - 負荷テストシナリオ（k6 等）: `/authorize`→code→token 交換、introspection 高 RPS、
   device flow、PAR、WebAuthn 登録/認証、ログイン失敗連打（throttle）。
 - 測定手順とダッシュボード用クエリ（`pg_stat_user_tables` / `pg_stat_statements` /
   `pg_stat_wal` / `pgstattuple` / アプリの p99 metric）。
-- 結果の記録先: 本 WI の `## Completion` の `Evidence` と `verification/evidence.yaml`。
+- 結果の記録先: 本 WI の `## Completion` の `Evidence` と `the work item Completion`。
 - 確定に伴う調整があれば: `infra/schema/postgres.sql` の storage param（UNLOGGED/LOGGED、
   fillfactor、per-table autovacuum 設定）、ephemeral sweep 既定間隔
   （`EPHEMERAL_SWEEP_INTERVAL` / batch）。
 
 ## Out of Scope
 
-- SCL objective（SLO 値そのもの）の変更。閾値を見直す必要が判明したら別 WI で SCL を更新する。
+- specification objective（SLO 値そのもの）の変更。閾値を見直す必要が判明したら別 WI で specification を更新する。
 - 恒常的な性能回帰 CI ゲートの構築（本 WI はシナリオと手順の整備＋一度の実測確定まで。CI 常設は将来 WI）。
 - 機能追加・アダプタ実装（wi-278 で完了済み）。
 
@@ -71,14 +71,14 @@ ADR-139）は、高 churn テーブルの **UNLOGGED / LOGGED 選択**と **GC�
   再開で回復し、LOGGED 群（denylist/throttle）が残ることを確認する。
 - [ ] T005 [DB] 確定結果で必要なら `infra/schema/postgres.sql` の storage param / autovacuum、
   sweep 既定値を調整しコミットする（不要なら「暫定どおり」を Evidence に記録）。
-- [ ] T006 [Verify] OAuth2/OIDC クリティカルパスの性能ベースラインと SCL objective 適合を
+- [ ] T006 [Verify] OAuth2/OIDC クリティカルパスの性能ベースラインと specification objective 適合を
   Evidence に記録する。
 
 ## Verification
 
 - 実測メトリクス（dead tuple / autovacuum / bloat / WAL / p99）を Evidence に記録。
 - failover 後の回復・残存を実挙動で確認。
-- SCL objective（login 応答成功率・latency、introspection p99）への適合を数値で確認。
+- specification objective（login 応答成功率・latency、introspection p99）への適合を数値で確認。
 - 調整コミットがあれば `just verify` green。
 
 ## Risk Notes

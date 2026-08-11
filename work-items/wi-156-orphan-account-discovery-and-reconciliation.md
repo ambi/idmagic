@@ -47,12 +47,12 @@ unmatched / ambiguous / disabled mismatch を管理者が確認・解決でき�
 - reconciliation decision は監査イベントに残し、後から match rule を変えて再評価できるよう raw inventory snapshot を保持する。
 
 ## Tasks
-- [ ] T001 [SCL] ExternalAccountInventory、match 状態、events / scenarios を追加する。
+- [ ] T001 [Spec] ExternalAccountInventory、match 状態、events / scenarios を追加する。
 - [ ] T002 [Decision] inventory 形式、matching 優先順位、危険 action の境界を ADR に記録する。
 - [ ] T003 [App] import / matching / reconciliation store を実装する。
 - [ ] T004 [HTTP] inventory import と reconciliation API を追加する。
 - [ ] T005 [UI] orphan account discovery / reconciliation UI を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

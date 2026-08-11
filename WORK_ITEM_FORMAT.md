@@ -1,99 +1,74 @@
 # ワークアイテム
 
-一つの意味変更として説明・実装・検証できる作業単位。配置は `work-items/` に置く。
+一つの意味変更を説明・設計・実装・検証できる作業単位。未完了は `work-items/`、完了・中止は `work-items/done/` に置く。ファイル名は `wi-<連番>-<kebab-title>.md`。
 
-- ファイル名は `work-items/wi-<連番>-<kebab-title>.md`。 `<連番>` はユニークな連番。
-- **未着手・進行中（`pending` / `in_progress`）は `work-items/` 直下に置く。**
-  **完了・中止（`completed` / `cancelled`）は同じ `work-items/` 下の `done/` サブディレクトリに移す**
-  （例 `work-items/done/<id>.md`）。これで「まだ動きのある作業」と「終わった作業」を、ファイルを開いて `status` を読まなくても配置だけで区別できる。
-
-Work Item は単なるタスクチケット（Issue）ではなく、**機能追加や変更時の「Design Doc」兼「実装計画」**としての役割も担う。設計の考慮事項や代替案は実装前にここに書き出し、吟味する。
-
-work-item は次のような構成となる。
+Work item はタスク、変更固有の Design Doc、実装履歴を兼ねる。現在も有効な結論は、完了時に TypeSpec、requirements Markdown、または `ARCHITECTURE.md` へ反映する。新しい ADR は作らない。
 
 ```markdown
 ---
-status: pending  # pending | in_progress | completed | cancelled
+status: pending
 authors: [name]
-risk: low        # low | medium | high | critical
-created_at: 2026-01-01  # YYYY-MM-DD
-depends_on: []   # 完了前提の WI ID（完全 slug。例 [wi-49-agent-identity-first-class-principal]）。無ければ []
-change_kind: feature  # feature | bugfix | operations | refactor | docs | tooling | maintenance
+risk: low
+created_at: 2026-01-01
+depends_on: []
+change_kind: feature
 initial_context:
-  scl: { System: [interfaces.StartTask] }
-  source: [src/usecase]
-  tests: [src/usecase]
+  requirements: [spec/contexts/system/requirements.md#REQ-SYSTEM-001]
+  typespec: [IdMagic.System.Operations.StartTask]
+  source: [backend/system]
+  tests: [backend/system]
   stop_before_reading: [frontend]
 affected_spec:
-  - { context: System, kind: interface, element: StartTask }
+  - { path: spec/contexts/system/requirements.md, requirement: REQ-SYSTEM-001 }
+  - { path: spec/contexts/system/main.tsp, symbol: IdMagic.System.Operations.StartTask }
 ---
 
 # 一文で表す意味変更
 
 ## Motivation
-なぜこの変更が必要か（What ではなく Why）の背景。
+なぜ必要か。
 
 ## Scope
-- `spec/scl.yaml` の `interfaces.StartTask`
-- `src/usecase/` への実装
+- 対象仕様と実装。
 
 ## Out of Scope
-- 明示的にやらないこと。
+- 明示的に行わないこと。
 
 ## Design
-- 変更の技術的な設計方針、データモデルやインターフェースの変更点。
-- 依存関係、セキュリティやパフォーマンス上の考慮事項。
-- 検討したが採用しなかった代替案（重要なものは ADR へ）。
+採用する設計、考慮事項、却下した代替案。
 
 ## Plan
-- 実装手順、触れる層、デプロイやマイグレーションの移行ステップ、未決定事項。
+実装順、移行、未決定事項。
 
 ## Tasks
-- [ ] T001 [SCL] 仕様を更新する。
-- [ ] T002 [App] 実装する。RED: 先に落ちるテストを確認（scenario `xxx.yyy`）→ GREEN。
+- [ ] T001 [Spec] 仕様を更新する。
+- [ ] T002 [App] RED を確認して実装する。
 - [ ] T003 [Verify] 検証する。
 
 ## Verification
-- 予定する検証コマンド（例：`go test ./...`）や手動手順。
+- `just verify`
 
 ## Risk Notes
-リスクの根拠と軽減方法。
+リスクと軽減策。
+```
 
+`feature` / `bugfix` / `operations` は `initial_context` と `affected_spec` が必須。`affected_spec` は requirement ID または TypeSpec symbol を直接参照する。仕様非影響の `refactor` / `docs` / `tooling` / `maintenance` は次を使える。
+
+```yaml
+spec_impact: { kind: none, reason: "具体的な理由" }
+```
+
+`depends_on` は完了前提だけを完全 slug で列挙する。関連・後続候補は本文に書く。
+
+中規模以上では `Design` と `Plan` を具体化する。Domain / Use Cases / Adapters の task は先に落としたテストと対応する requirement ID を自己証跡として残す。
+
+完了時は status を `completed` にし、本文末尾へ次を追記して `done/` へ移す。
+
+```markdown
 ## Completion
 - **Completed At**: 2026-01-01
 - **Summary**:
-  実装した変更の意味上の差分の要約。
+  意味上の差分。
 - **Verification Results**:
   - `just verify` - passed
 ```
-
-**`## Completion` の `- **Completed At**:` と `- **Summary**:` は自由記述の見出しではなく、
-上記の太字ラベルのまま構造化フィールドとして機械抽出される**（`completed_at` と `summary` が必須）。
-`### 実施内容` のような独自見出しを本体にすると必須フィールドが抽出できず検証に落ちる。
-保証状態が変わる場合は `### Affected Guarantees State`、証跡は `### Evidence` を任意で足せるが、
-必須は `Completed At` と `Summary` のみ。
-
-`depends_on` はこの work-item の**完了前提**だけを列挙する。**ID は連番だけの短縮形（`wi-49`）ではなく、
-参照先ファイル名の stem と一致する完全 slug（`wi-49-agent-identity-first-class-principal`）で書く。**
-参照先は同じ work-items 名前空間（`done/` を含む）にある WI ID とし、自己参照・循環参照は許可しない。
-本文中の関連リンク、範囲外への委譲、後続候補は `depends_on` に入れず、従来どおり本文で記す。
-未着手・進行中の WI では `depends_on` を必ず明記し、依存がなければ `[]` とする。
-
-`feature` / `bugfix` / `operations` は `initial_context` と `affected_spec` を必須とし、
-`affected_spec` は `context`、`kind`、`element` （standard requirement だけは
-`standard` + `requirement`）の direct SCL element reference を使う。仕様非影響の
-`refactor` / `docs` / `tooling` / `maintenance` は、`affected_spec` の代わりに
-`spec_impact: { kind: none, reason: "..." }` と具体的理由を宣言できる。新規入力で
-`affected_guarantees` は使用しない（完了済み履歴は書き換えない）。
-
-`## Tasks` はすべての規模のワークアイテムで記述する。
-次のいずれかに該当するワークアイテムは中規模以上として扱い、さらに `## Design` と `## Plan` を詳細に書く（小規模な変更の場合は `Design`, `Plan` は簡略化または省略してよい）。
-
-- 複数のシナリオ、ユーザーストーリー、または独立した利用者価値を含む
-- RA の 3 層以上にまたがる
-- DB migration、認可、外部契約、破壊的変更、不可逆な移行を含む
-- 予定する作業が 1 セッションで終わる確信を持てない
-- 検証が複数サブシステムにまたがる
-
-振る舞いを持つ層（Domain / Use Cases / Adapters）に触れる Task は、test-first の証跡——先に落とした
-テストと参照する SCL 要素——を Task 行に self-attest として残す（ADR-119）。

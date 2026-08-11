@@ -48,12 +48,12 @@ rule を導入し、将来の access request / access review / outbound provisio
 - 将来の provisioning 連携のため、entitlement projection は protocol-neutral にする。
 
 ## Tasks
-- [ ] T001 [SCL] Entitlement catalog、assignment、SoD rule、events / scenarios を追加する。
+- [ ] T001 [Spec] Entitlement catalog、assignment、SoD rule、events / scenarios を追加する。
 - [ ] T002 [Decision] entitlement と application assignment の関係、SoD 例外方針を ADR に記録する。
 - [ ] T003 [App] catalog / assignment / SoD evaluator を実装する。
 - [ ] T004 [HTTP] entitlement と SoD 管理 API を追加する。
 - [ ] T005 [UI] Application detail に entitlement 管理 UI を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -99,7 +98,7 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "http://idp.test", SCL: spec.MustLoadSCL(),
+			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
 			TenantRepo: tenantRepo,
 
 			Emit: func(ev spec.DomainEvent) { events = append(events, ev) },
@@ -186,44 +185,6 @@ var stepUpGatedEndpoints = []struct {
 	{"recovery_codes_revoke", http.MethodPost, "/realms/default/api/account/v1/mfa/recovery-codes/revoke"},
 	{"link_external_identity", http.MethodPost, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
 	{"unlink_external_identity", http.MethodDelete, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
-}
-
-// TestStepUpAnnotatedInterfacesMatchGatedHandlers は ADR-043 の対象表を機械照合する:
-// SCL で step_up: required と注記した interface の http path 集合が、実装でゲートを
-// 掛けたエンドポイント集合と完全に一致することを確認する。どちらかにズレが出れば失敗する。
-func TestStepUpAnnotatedInterfacesMatchGatedHandlers(t *testing.T) {
-	scl := spec.MustLoadSCL()
-	sclPaths := map[string]bool{}
-	for _, iface := range scl.Interfaces {
-		if v, _ := iface.Annotations["step_up"].(string); v != "required" {
-			continue
-		}
-		for _, b := range iface.Bindings {
-			if kind, _ := b["kind"].(string); kind != "http" {
-				continue
-			}
-			if p, _ := b["path"].(string); p != "" {
-				sclPaths[p] = true
-			}
-		}
-	}
-	implPaths := map[string]bool{}
-	for _, ep := range stepUpGatedEndpoints {
-		implPaths[strings.TrimPrefix(ep.path, "/realms/default")] = true
-	}
-	if len(sclPaths) != len(implPaths) {
-		t.Fatalf("step_up path count mismatch: scl=%v impl=%v", sclPaths, implPaths)
-	}
-	for p := range implPaths {
-		if !sclPaths[p] {
-			t.Fatalf("impl gates %q but SCL has no step_up annotation for it", p)
-		}
-	}
-	for p := range sclPaths {
-		if !implPaths[p] {
-			t.Fatalf("SCL annotates %q step_up: required but no handler enforces it", p)
-		}
-	}
 }
 
 func TestStepUpGateBlocksStaleSessionOnAllSensitiveEndpoints(t *testing.T) {

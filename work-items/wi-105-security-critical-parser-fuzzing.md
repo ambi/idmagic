@@ -42,7 +42,7 @@ Go プロジェクト自身が stdlib のパーサをファジングしている
 ## Plan
 - targetは現行実装の境界へ置く: SAML AuthnRequest/LogoutRequest/metadata/XML signature、WS-Trust SOAP、JWT/JWE/DPoP/client assertion、OAuth redirect URI/PAR/authorization_details/PKCE。HTTP server全体をfuzzして原因を曖昧にしない。
 - 各targetは「panicしない」だけでなく、parse→serialize→parseの保持、既知valid acceptance、署名/issuer/audience/destination/redirect strictness、size/depth/time上限をoracleにする。暗号署名自体をランダムinputごとに生成して速度を浪費しない。
-- corpusはSCL scenario/既存unit fixture、最小valid、過去のmalformed regression、protocol official vectorから作り、secret/実tenant dataを含めない。crash inputは最小化して通常regression testへ昇格する。
+- corpusはspecification scenario/既存unit fixture、最小valid、過去のmalformed regression、protocol official vectorから作り、secret/実tenant dataを含めない。crash inputは最小化して通常regression testへ昇格する。
 - PR CIは各targetのseed replayと短時間fuzz、nightlyはtargetごとの時間budget、週次は長時間/raceを回す。Go version/corpus/artifact hashを記録し、failure artifactを信頼できないinputとして扱う。
 - XML/entity expansion、JWT segment、JSON nesting、URL length等のpre-parse body limitもtargetに含め、OOM/hangをprocess timeoutだけに頼らずguardで防ぐ。
 

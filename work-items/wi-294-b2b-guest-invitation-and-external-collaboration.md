@@ -33,9 +33,9 @@ initial_context:
     - backend/saml
     - backend/wsfederation
 affected_spec:
-  - { context: IdManagement, kind: model, element: User }
-  - { context: IdManagement, kind: interface, element: CreateAdminUser }
-  - { context: Application, kind: interface, element: AssignApplication }
+  - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.User }
+  - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.CreateAdminUser }
+  - { path: spec/contexts/application/main.tsp, symbol: IdMagic.Contract.AssignApplication }
 ---
 
 # 外部協業者を招待するゲストユーザー (B2B collaboration) を導入する
@@ -140,7 +140,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
   グループ所属・アプリ割当・監査・SCIM・ライフサイクルワークフローがそのまま効く。
   別 aggregate にすると、それら全てにゲスト用の分岐が生えて維持できなくなる。
   代償として「ゲストに見せない / 与えない」を認可側で fail-closed に書く必要があるので、
-  そこを SCL の authorization に明記する。
+  そこを specification の authorization に明記する。
 - **wi-30 に依存させる**。ゲストの本質は「認証を相手側に委ねる」ことなので、
   inbound federation が無いとゲストにローカルパスワードを持たせることになり、
   動機で挙げた問題を解決できない。依存を明示し、順序を守る。
@@ -159,7 +159,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 
 ## Tasks
 
-- [ ] T001 [SCL] `User` に user_kind / guest_metadata、Invitation / InvitationState、
+- [ ] T001 [Spec] `User` に user_kind / guest_metadata、Invitation / InvitationState、
       interface 7 件、event 5 件、authorization 規則 2 件、scenario 7 件を追加し
       `just check-scl` を通す。
 - [ ] T002 [ADR] ゲストユーザーと招待の ADR を起票する (種別方式の理由・認証経路・既定権限・
@@ -185,7 +185,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 - [ ] T010 [UI] 招待画面 (作成 / 一覧 / 再送 / 失効)、ユーザー一覧の Member/Guest 区別と絞り込み、
       アクセス期限の表示・変更、受諾画面を追加する。RED: presentation logic の unit test → GREEN。
 - [ ] T011 [Docs] README に招待運用・ゲスト既定権限・期限・外部 IdP 前提を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`just scl-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
 
 ## Verification
 

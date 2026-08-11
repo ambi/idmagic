@@ -126,8 +126,8 @@ func newServerWithRepository(t *testing.T, authn *authdomain.AuthenticationConte
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example",
-			SCL:    spec.MustLoadSCL(),
+			Issuer:   "https://idp.example",
+			Contract: spec.CurrentRuntimeContract(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
@@ -302,8 +302,8 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example",
-			SCL:    spec.MustLoadSCL(),
+			Issuer:   "https://idp.example",
+			Contract: spec.CurrentRuntimeContract(),
 		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
@@ -330,8 +330,8 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example",
-			SCL:    spec.MustLoadSCL(),
+			Issuer:   "https://idp.example",
+			Contract: spec.CurrentRuntimeContract(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
@@ -369,8 +369,8 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example",
-			SCL:    spec.MustLoadSCL(),
+			Issuer:   "https://idp.example",
+			Contract: spec.CurrentRuntimeContract(),
 
 			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
 		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
@@ -521,8 +521,8 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example",
-			SCL:    spec.MustLoadSCL(),
+			Issuer:   "https://idp.example",
+			Contract: spec.CurrentRuntimeContract(),
 		}, Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
 		UserRepo:         userRepo,
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},

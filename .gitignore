@@ -11,6 +11,7 @@ coverage.out
 frontend/node_modules/
 frontend/dist/
 node_modules/
+/node_modules
 frontend/coverage/
 
 # Env / secrets
@@ -22,7 +23,8 @@ frontend/coverage/
 .DS_Store
 *.swp
 
-# SCL rendered artifacts
+# Generated specification artifacts
+spec/generated/
 spec/idmagic.full.html
 
 # Local dev state (persistent embedded PostgreSQL cluster for `just dev`)

@@ -27,7 +27,7 @@ status: 422) に対応する Go 呼び出し箇所も、この移行と同時に
 - `backend/tenancy/handlers_http/integration_endpoints_handler.go` (2 箇所)
 - `backend/tenancy/handlers_http/admin_settings_handler.go` (2 箇所)
 
-現状 400 で SCL は 422 を宣言している code (実装時に status も変更する):
+現状 400 で specification は 422 を宣言している code (実装時に status も変更する):
 - `admin_tenant_handler.go` の `policy_override_weaker`
   (→ `PolicyOverrideWeakerError`)。
 - `admin_user_attribute_schema_handler.go` の `invalid_attribute_schema`

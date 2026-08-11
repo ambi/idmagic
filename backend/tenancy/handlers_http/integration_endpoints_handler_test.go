@@ -71,7 +71,7 @@ func integrationEndpointServer(t *testing.T, endpointStyle tenantdomain.TenantEn
 		Deps: support.Deps{
 			Issuer:           "https://idp.example",
 			TenantBaseDomain: "idp.example",
-			SCL:              spec.MustLoadSCL(),
+			Contract:         spec.CurrentRuntimeContract(),
 			TenantRepo:       tenantRepo,
 		},
 		UserRepo:         userRepo,

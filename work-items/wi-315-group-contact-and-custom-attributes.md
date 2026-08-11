@@ -22,7 +22,7 @@ depends_on: []
 
 ## Scope
 
-- `spec/scl.yaml`（`Group` モデルへのフィールド追加。対象コンテキストは要確認だが
+- `spec/requirements.md`（`Group` モデルへのフィールド追加。対象コンテキストは要確認だが
   `models.Group` 相当）
 - グループ集約のドメイン・ユースケース・永続化層（Postgres スキーマ変更を含む）
 - `frontend/src/features/admin-groups/`（グループ詳細・編集画面への属性入力欄追加）
@@ -54,7 +54,7 @@ depends_on: []
 
 ## Tasks
 
-- [ ] T001 [SCL] `Group` モデルにメールアドレス・カスタム属性フィールドを追加する。
+- [ ] T001 [Spec] `Group` モデルにメールアドレス・カスタム属性フィールドを追加する。
 - [ ] T002 [Go] ドメイン・ユースケース・Postgres スキーマを更新する。
 - [ ] T003 [App] グループ詳細・編集画面に属性入力欄を追加する。
 - [ ] T004 [Verify] 検証する。

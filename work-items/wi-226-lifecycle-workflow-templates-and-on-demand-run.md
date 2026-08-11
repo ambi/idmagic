@@ -20,7 +20,7 @@ IdMagic の wi-153 は意図的に「workflow enable 時の全 User への遡及
 trigger/filter/action から構築する必要があり、導入コストが高い。
 
 ## Scope
-- `spec/contexts/identity-management.yaml` に `LifecycleWorkflowTemplate` (読み取り専用のカタログ、
+- `spec/contexts/identity-management/requirements.md` に `LifecycleWorkflowTemplate` (読み取り専用のカタログ、
   trigger/action の雛形) を追加し、新規 workflow 作成時にテンプレートから初期値を埋められるように
   する。
 - 初期テンプレート例として「入社時の標準グループ付与」「退職時のアクセス剥奪」「部署異動時のグループ
@@ -47,11 +47,11 @@ trigger/filter/action から構築する必要があり、導入コストが高�
   trigger occurrence」として、既存の `WorkflowRun` 一意制約・重複排除の枠組みに載せる。
 
 ## Tasks
-- [ ] T001 [SCL] `LifecycleWorkflowTemplate` モデルと on-demand run interface を追加する。
+- [ ] T001 [Spec] `LifecycleWorkflowTemplate` モデルと on-demand run interface を追加する。
 - [ ] T002 [Decision] on-demand run の対象選定方針と trigger 評価バイパスの整合性を ADR に記録する。
 - [ ] T003 [App] テンプレートカタログと on-demand run usecase (大量対象の非同期化含む) を実装する。
 - [ ] T004 [UI] workflow 作成画面へのテンプレート選択、run 対象選択 UI を追加する。
-- [ ] T005 [Verify] SCL/Go/UI および大量対象時の非同期化を検証する。
+- [ ] T005 [Verify] specification/Go/UI および大量対象時の非同期化を検証する。
 
 ## Verification
 - `just yaml-check`

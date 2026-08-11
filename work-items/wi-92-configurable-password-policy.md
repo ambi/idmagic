@@ -52,7 +52,7 @@ breach チェックを中心に据える。本 WI は**モダンなガイドラ�
 - policy変更は既存userを即lockoutせず、effective_at/grace期間を持たせる。管理UIに影響人数previewと安全なvalidationを出す。
 
 ## Tasks
-- [ ] T001 [ADR/SCL] ADR-026/027とwi-24の重複を整理し、tenant policy bounds、effective/grace、expiry lifecycle/interfaces/scenariosを追加して再生成する。
+- [ ] T001 [Design/Spec] ADR-026/027とwi-24の重複を整理し、tenant policy bounds、effective/grace、expiry lifecycle/interfaces/scenariosを追加して再生成する。
 - [ ] T002 [Domain] PasswordPolicy validation/evaluation と violation code、user password_changed_at/required-action transitionを実装する。
 - [ ] T003 [Usecases] registration/change/reset/admin-setの全経路を共通 policy + HIBP + history evaluatorへ移し、history writeをtransactionに含める。
 - [ ] T004 [Persistence] tenant policy/effective_at と user password_changed_at migration、history retention queryをmemory/PostgreSQLへ追加する。

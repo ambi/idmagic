@@ -14,7 +14,7 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 `backend/shared/http/support_http/problem.go`、参照実装
 `backend/apitoken/handlers_http/routes.go`) を SharedSignals の admin stream
 管理 API に適用する。inbound SET receiver (`POST /ssf/streams/:id/events`) は
-`spec/contexts/sharedsignals.yaml` の `error_format: set_delivery`
+`spec/contexts/sharedsignals/requirements.md` の `error_format: set_delivery`
 (RFC 8935 §2.3 が `{err, description}` 固定形式を MUST で規定、`wi-325` で
 確認済み) のため対象外 (ADR-154、`wi-326` Scope)。`wi-325` で新設した 7 個の
 granular error model (いずれも 422) に対応する Go 呼び出し箇所も、admin API
@@ -29,7 +29,7 @@ granular error model (いずれも 422) に対応する Go 呼び出し箇所も
 - `ssf_stream_event_types_required`・`ssf_stream_event_type_invalid`・
   `ssf_transmitter_delivery_endpoint_invalid`・`ssf_transmitter_audience_required`・
   `ssf_receiver_trusted_issuer_invalid`・`ssf_receiver_jwks_required`・
-  `ssf_receiver_accepted_audiences_required` (7 箇所、現状 400 → SCL 宣言値 422
+  `ssf_receiver_accepted_audiences_required` (7 箇所、現状 400 → specification 宣言値 422
   へ揃える)
 - `handleRegisterTransmitterStream`/`handleRegisterReceiverStream`/
   `handleUpdateStream` の `invalid_request` (3 箇所、status 変更なし)
@@ -80,7 +80,7 @@ granular error model (いずれも 422) に対応する Go 呼び出し箇所も
 - 実装調査で判明: `handleReceiveSecurityEvent` が現在使っている
   `WriteBrowserError` の body は `{error, message}` であり、RFC 8935 §2.3 が
   MUST で要求する `{err, description}` フィールド名とは既に一致していない
-  (SCL は `error_format: set_delivery` を正しく宣言しているが Go 実装が
+  (specification は `error_format: set_delivery` を正しく宣言しているが Go 実装が
   追従していない、`wi-325` 完了時点からの既知の乖離)。この修正は RFC 8935
   形式そのものへの対応であり Problem Details 移行とは別種の変更のため
   **本 work item のスコープ外**。気づいた時点で記録に残す — 別途 work item

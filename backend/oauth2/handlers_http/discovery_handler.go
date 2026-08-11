@@ -16,11 +16,11 @@ import (
 var discoveryCache sync.Map // tenantID -> map[string]any
 
 func (d Deps) handleDiscovery(c *echo.Context) error {
-	if d.SCL == nil {
-		return writeOAuthError(c, usecases.NewOAuthError("server_error", "SCL not loaded"))
+	if d.Contract == nil {
+		return writeOAuthError(c, usecases.NewOAuthError("server_error", "runtime contract not loaded"))
 	}
 	tenantID := support.RequestTenantID(c)
-	doc, err := d.SCL.BuildDiscoveryDocument(support.RequestIssuer(c, d.Issuer))
+	doc, err := d.Contract.BuildDiscoveryDocument(support.RequestIssuer(c, d.Issuer))
 	if err != nil {
 		return writeOAuthError(c, err)
 	}

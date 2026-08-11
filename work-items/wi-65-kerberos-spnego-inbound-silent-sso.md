@@ -68,7 +68,7 @@ Okta も cloud STS では正面提供しておらず (managed/PHS や AD FS 併�
 
 ## Tasks
 - [ ] T001 [ADR] direct SPNEGO/proxy方式、Kerberos library、keytab rotation、channel binding、fallback/error semantics を決定する。
-- [ ] T002 [SCL] authentication/ws-federation の authenticator、principal mapping、wauth requirement、events/constraints/contracts/scenarios を追加して再生成する。
+- [ ] T002 [Spec] authentication/ws-federation の authenticator、principal mapping、wauth requirement、events/constraints/contracts/scenarios を追加して再生成する。
 - [ ] T003 [Domain/Port] KerberosPrincipal、realm mapping、SPNEGOVerifier port と verified principal→user resolution use case を実装する。
 - [ ] T004 [Adapter] 選定方式の Negotiate token verifier、keytab/secret loader、clock/replay guard と diagnostic を実装する。
 - [ ] T005 [HTTP] realm-scoped passive login に challenge/fallback/loop guard を接続し、verified auth method を wi-61 flow へ渡す。

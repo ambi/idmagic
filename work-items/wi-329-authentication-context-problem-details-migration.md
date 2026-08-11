@@ -32,7 +32,7 @@ model (`PasswordReuseError`、`MfaEnrollmentNotAllowedError`、
 - `backend/authentication/mfa/handlers_http/account_totp_enrollment_handler.go` (2 箇所)
 - `backend/authentication/handlers_http/account_context_handler.go` (1 箇所)
 
-status 実装済み確認 (現状 → SCL 宣言値 422 への実装時変更対象):
+status 実装済み確認 (現状 → specification 宣言値 422 への実装時変更対象):
 - `change_password_handler.go:67`、`password_reset_handler.go:117` の
   `"password_reuse"` (現状 400)。
 - `admin_mfa_enrollment_handler.go:72` の `"mfa_enrollment_not_allowed"` (現状 400)。

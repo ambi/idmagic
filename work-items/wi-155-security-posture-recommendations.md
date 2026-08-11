@@ -46,12 +46,12 @@ recommendations を導入する。
 - severity は `info` / `low` / `medium` / `high` のような固定 enum とし、危険度と実装優先度を混同しない。
 
 ## Tasks
-- [ ] T001 [SCL] Recommendation model、status、events、初期 check scenarios を追加する。
+- [ ] T001 [Spec] Recommendation model、status、events、初期 check scenarios を追加する。
 - [ ] T002 [Decision] check registry、severity 基準、dismiss / resolved 方針を ADR に記録する。
 - [ ] T003 [App] posture evaluator と dismissed state を実装する。
 - [ ] T004 [HTTP] recommendation API を追加する。
 - [ ] T005 [UI] security posture 画面を追加する。
-- [ ] T006 [Verify] SCL、Go、UI、手動シナリオを検証する。
+- [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
 - `just yaml-check`

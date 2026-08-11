@@ -1,0 +1,49 @@
+import "@typespec/http";
+import "@typespec/openapi";
+import "@typespec/openapi3";
+import "./contexts/system/models.tsp";
+import "./contexts/system/main.tsp";
+import "./contexts/tenancy/models.tsp";
+import "./contexts/tenancy/main.tsp";
+import "./contexts/identity-management/models.tsp";
+import "./contexts/identity-management/main.tsp";
+import "./contexts/authentication/models.tsp";
+import "./contexts/authentication/main.tsp";
+import "./contexts/oauth2/models.tsp";
+import "./contexts/oauth2/main.tsp";
+import "./contexts/audit/models.tsp";
+import "./contexts/audit/main.tsp";
+import "./contexts/application/models.tsp";
+import "./contexts/application/main.tsp";
+import "./contexts/claim-mapping/models.tsp";
+import "./contexts/claim-mapping/main.tsp";
+import "./contexts/signing-keys/models.tsp";
+import "./contexts/signing-keys/main.tsp";
+import "./contexts/data-keys/models.tsp";
+import "./contexts/data-keys/main.tsp";
+import "./contexts/ws-federation/models.tsp";
+import "./contexts/ws-federation/main.tsp";
+import "./contexts/saml/models.tsp";
+import "./contexts/saml/main.tsp";
+import "./contexts/api-tokens/models.tsp";
+import "./contexts/api-tokens/main.tsp";
+import "./contexts/jobs/models.tsp";
+import "./contexts/jobs/main.tsp";
+import "./contexts/seeding/models.tsp";
+import "./contexts/seeding/main.tsp";
+import "./contexts/provisioning/models.tsp";
+import "./contexts/provisioning/main.tsp";
+import "./contexts/sourcing/models.tsp";
+import "./contexts/sourcing/main.tsp";
+import "./contexts/identity-governance/models.tsp";
+import "./contexts/identity-governance/main.tsp";
+import "./contexts/workloadidentity/models.tsp";
+import "./contexts/workloadidentity/main.tsp";
+import "./contexts/sharedsignals/models.tsp";
+import "./contexts/sharedsignals/main.tsp";
+
+using TypeSpec.Http;
+
+@service(#{ title: "IdMagic API" })
+@useAuth(BearerAuth)
+namespace IdMagic;

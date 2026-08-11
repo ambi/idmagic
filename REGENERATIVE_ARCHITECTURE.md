@@ -1,286 +1,45 @@
 # Regenerative Architecture
 
-*変化を前提とする時代のソフトウェア設計*
+## 1. Purpose
 
----
+Regenerative Architecture keeps the product specification, current design, implementation, and verification mutually recoverable without forcing every concern into one custom language. The repository prefers established formats and small checks over exhaustive registries.
 
-> **この文書の読み方**: 本書は通し読み用ではなく、節単位で参照する section-addressable なリファレンスである。必要な節だけを見出しから引けばよく、AI が常時読み込む対象にはしない。
+## 2. Sources of truth
 
-過去数十年間、我々は多くの設計上のアイデアを目にしてきた。
+| Concern | Source of truth |
+|---|---|
+| Models, API interfaces, HTTP bindings, authentication | TypeSpec (`spec/**/*.tsp`) |
+| Requirements, scenarios, glossary, standards, state transitions | Markdown (`spec/**/requirements.md`) |
+| Current technical design and durable rationale | Root or context `ARCHITECTURE.md` |
+| One change's motivation, alternatives, plan, and history | `work-items/wi-*.md` |
+| Executable behavior | Application code and tests |
+| Released HTTP compatibility | `spec/idmagic.openapi.baseline.json` |
 
-アーキテクチャ手法:
+Generated OpenAPI is untracked and reproducible with `just spec-render`. Authorization policy evaluation remains application behavior; adopting Cedar or another policy language requires a separate work item.
 
-- Ports & Adapters (Alistair Cockburn)
-- Screaming Architecture
-- Clean Architecture (Robert C. Martin)
+## 3. Specification-first development
 
-これらは細部の違いこそあれ、すべて同じ目的を共有している。**関心の分離**である。フレームワークから独立し、テスト可能で、UIから独立し、データベースから独立し、外部エージェントから独立した設計を作ること。
+Before changing behavior, update the smallest relevant specification source:
 
-開発手法:
+- Change a model, API, or authentication scheme in the owning context's TypeSpec.
+- Change a requirement, scenario, term, standard, or state transition in its `requirements.md`.
+- Give each normative requirement a stable `REQ-<CONTEXT>-NNN` ID.
+- Express state machines as language-independent transition tables with `From`, `Event`, `Guard`, `To`, and `Effects` columns. Implementation code is executable evidence, not the only documentation.
 
-- Domain-Driven Design (Eric Evans)
-- Test-Driven Development (Kent Beck)
-- Behavior-Driven Development (Dan North)
-- Type-First Development
-- Spec-Driven Development
+Then implement from inner behavior to outer adapters, writing failing tests first for domain, use-case, and adapter behavior. Run `just check` after specification changes and `just verify` before completion.
 
-これらが共通して追求してきたのは、**正しさと意図を構造として表現すること**である。ドメインの語彙を関係者で共有し、振る舞いをテストとして先に書き、型で不正状態を排除し、仕様を一級の成果物として扱う。
+## 4. Architecture
 
-Regenerative Architecture はこれら両系統の遺産の上に立つ。しかし2020年代の半ばに入り、我々はこれらが想定していなかった新しい現実に直面している。
+Architecture documentation records the current design and the reason it is appropriate now. Root design belongs in root `ARCHITECTURE.md`; bounded-context design belongs beside that context's code. Directory layout and imports are themselves the module map, so no exhaustive module or edge ledger is maintained.
 
-## 1 新しい現実
+The boundary check infers layers from paths and rejects outward dependencies. Adding a permitted edge requires no registry edit. Complexity and style limits belong in language tool configuration.
 
-第一に、**AIによる攻撃の加速**。脆弱性発見とエクスプロイト生成のスピードは、防御側の修正・デプロイのスピードを容易に上回るようになった。「脆弱性を作らない」だけでは足りない。脆弱性が発見されてから本番に修正が届くまでの時間が、勝負を分ける。
+## 5. Work items and decision history
 
-第二に、**競争速度の加速**。AIによって誰でも速く作れる。先行優位は短くなり、追従できない者は退場する。
+A work item is the design and implementation record for one meaningful change. It holds motivation, scope, rejected alternatives, plan, tasks, verification, and completion evidence. Durable current-state conclusions are copied into the relevant specification or Architecture document when the work lands.
 
-第三に、**依存先の変化の加速**。ライブラリ、ランタイム、OS、クラウドサービスはかつてないペースで変わる。追従し続けないと、気づけば技術的負債の山に埋もれている。
+Do not create new ADRs. The existing `decisions/` directory is retained as read-only history so old links remain useful. A future change that revisits an old decision records the new analysis in its work item and updates current documentation directly.
 
-第四に、そしておそらく最も重要なのは、**AI自体の進化**である。半年前のAIで書かれたコードは、現在のAIから見れば最適ではない。来年のAIから見ればさらに劣後する。ソフトウェアは静的な資産ではなく、継続的に再生成され続ける動的なプロセスになりつつある。
+## 6. Context economy
 
-この前提に立つなら、設計の目的は「一度きれいに作ること」ではない。**仕様を核にして、実装・境界・実行環境を繰り返し再生成できること**である。
-
-## 2 中心原則: 再生成可能性
-
-Regenerative Architecture が従来のアーキテクチャ手法に加える、ただ一つの規則がある。
-
-> **任意の外側の層は、その内側の層すべてが保持されていれば、再生成可能でなければならない。**
-
-これは Clean Architecture の依存性の規則——外側は内側に依存し、内側は外側を知らない——をそのまま引き継いだ上で、もう一歩を要求する。「内側を守る」だけでなく、「内側が保たれれば外側を**作り直せる**」ことを設計の要件として明示する。
-
-AI時代に問うべきは「**何を保存しておけば、実装を失っても再生成できるか**」である。実装、フレームワーク、ランタイムは捨てられてよいが、現実世界の要求を記述した仕様と、そこから導出できない判断は保存しなければならない。
-
-再生成が成り立つために、仕様と検証は次を満たさなければならない。
-
-- **単一上流ソース**: 仕様は単一の論理的な上流ソースに集約し、下流のインタフェース・スキーマは派生物として扱う。単一上流ソースは単一巨大ファイルを意味しない。
-- **検証可能性**: 仕様は機械実行可能でなければならない。自然言語の仕様は、AIが再生成するたびに解釈が揺れる。仕様が「再生されたコードの合否を判定できる形式」を取って初めて、再生はテスト可能になり、書き直しと区別される。
-- **追跡可能性**: 仕様、実装、テスト、検証結果を相互にたどれるようにし、仕様に根拠のない変更を残さない。この対応関係は監査だけでなく、AI が変更に必要な最小文脈を取得するためにも使う。
-- **未確認事項の明示**: 失敗した検証、未実施の検証、期限切れの検証結果、未解決事項を合格扱いせず、人間の承認または期限付きの例外承認を求める。
-
-## 3 7つの層
-
-内側から順に、7つの層を置く。
-
-### 3.1 第1層：Specification Core（仕様核）
-
-最も内側。ここに置かれるものは、**機械実行可能かつ曖昧性のない形式**で表現された、システムの本質的な振る舞いである。特定のプログラミング言語に依存せず、かつ「自然言語で書かれたドキュメント」でもない。「実行すれば合否が判定できる形式」で記述される。なぜなら、自然言語の仕様は解釈で揺れ、AIが再生成するたびに微妙に振る舞いが変わるからだ。
-
-第1層は **Specification Core Language (SCL)** によって記述される。SCL は実装言語・フレームワーク・データベース・ランタイムに依存せず、AI が解釈・生成可能で、人間が読め、長期保存可能な、単一の規範的上流ソースである。仕様核に必要な多面性——契約・状態機械・行動仕様・制約・認可・非機能目標——を一つの整合した形式で保持し、多形式の手書き並行保守を排除する。詳細は `SPECIFICATION_CORE_LANGUAGE.md` を参照のこと。
-
-仕様核は SCL 本体——特定の言語に依存しないデータ——のみで構成される。SCL は単一の上流ソースであり、下流の形式・コード・図・ルールはすべて SCL から派生する。
-
-- インタフェース・スキーマ：OpenAPI / JSON Schema / Protobuf / AsyncAPI（`interfaces` `models` から）
-- ポリシー・認可 API：Cedar / OPA Rego / Cerbos / AuthZEN（`authorization` と `interfaces.access` から）
-- 監視・SLO：OpenSLO・Prometheus アラート・負荷テスト合否（`objectives` から）
-- 図：状態機械図・シーケンス図（`states` `scenarios` から）
-- テスト：プロパティテスト・受け入れ E2E テスト（model constraints、interface contracts、state guards、`scenarios` から）
-- UI：Penpot / React / HTML / CSS（`flows` `scenarios` から）
-- 仕様バインディング：Zod / Pydantic / Go 構造体（`models` から）
-
-### 3.2 第2層：Decision Record と Architecture（決定記録と設計）
-
-第2層は、SCL（第1層）が意図的に持たない情報を二つの役割で引き受ける。**なぜその設計になったか**を追記型で記録する ADR（決定記録）と、**いまシステムがどういう設計でできているか**を単一の正本として保つ Architecture（設計）である。両者は「イベントとその射影」の関係にある。
-
-文書種を増やさず、各文書が**答える問い**で境界を引く。設計は Architecture だけが持つ。
-
-| 文書 | 答える問い |
-| --- | --- |
-| SCL（第1層） | 何を満たすべきか |
-| Architecture | いまどうなっているか / なぜそうなっているか |
-| Decision Record | 何を却下してそう決めたか |
-| README | どう使うか / どう動かすか |
-| Runbook | 何か起きたらどうするか |
-| ワークアイテム | 今回何をやったか / どのような設計と計画で変更を行うか (Design Doc) |
-
-**指針**: 包括的な開発ガイドを新設して情報を集約するよりも、ディレクトリ構造や命名規約は Architecture に、コマンドや起動方法は README に、プロセスルールは `AGENTS.md` に分散させ、単一の問いに答える文書境界を維持することを優先する。
-
-仕様だけでは、なぜその設計になったかは分からない。そこで、重要な決定とその理由を ADR に残す。記法は `ADR_FORMAT.md` に定める。また、廃止されたADRは削除しない。「なぜ一度そう決めたのか」という経緯も、将来の再生成において重要な文脈である。
-
-ADR に記録する内容:
-
-- 採用した選択肢
-- 捨てた選択肢
-- 判断の前提
-- 判断時点での制約
-- 将来見直す条件
-- 障害時の運用判断
-- マイグレーションの知見
-- フォールバック戦略
-- リトライやタイムアウトの調整理由
-- ポストモーテムやインシデントの学習結果
-
-Architecture は、「技術実現と構造」を単一の現状正本として持つ。具体的には、採用スタック、モジュール／パッケージの台帳とそれが実現する SCL 要素、許される依存方向、ディレクトリ・命名規約、境界づけられたコンテキストの一覧、横断的関心の方針に加え、次を持つ。
-
-- コンテキスト内部の構造と責務分担
-- 主要なフロー・プロトコルの動作
-- データモデル設計と、SCL の契約では表現しきれない不変条件・運用上の制約
-
-Architecture は二つの成果物に分かれる。**散文の設計正本**（`ARCHITECTURE.md`）と、**機械検証される台帳**（`architecture.yaml`）である。前者は人間が読む設計、後者は依存方向・実 import・複雑度上限を検査できる宣言であり、同じファイルに混ぜない。台帳が文書を埋めると、設計として読めなくなる（ADR-143）。いずれもリポジトリ横断のものをルートに、境界づけられたコンテキスト固有のものをそのコンテキスト配下に置く。記法は `ARCHITECTURE_FORMAT.md` に定める。
-
-**根拠のインライン化**: 設計記述には、その形になった理由を1〜2文で添える。却下した選択肢と当時の前提の全文は ADR に置き、設計文書からはリンクする。ADR 本文を設計文書へ転記しない——複製は必ず drift する。逆に、設計を記述したいだけなら ADR を起こさない。ADR は実際に分岐があり、却下した選択肢が実在するときだけ書く。
-
-### 3.3 第3層：Domain（ドメイン）
-
-ドメインモデルや状態定義。SCL から機械的に導出されて特定の言語に変換した層。
-
-### 3.4 第4層：Use Cases（ユースケース）
-
-従来のClean Architectureで言うところのユースケース層、DDDのサービス層。特定の言語で書かれるが、フレームワークには依存しない。Hexagonal Architectureのポートもここで定義される。
-
-### 3.5 第5層：Adapters（アダプター）
-
-外部世界との接続。データベース、HTTP、メッセージング、UI、外部API。Hexagonal Architectureのアダプターの概念をそのまま借りる。
-
-物理配置には **Flat (Wikipedia) Architecture** を採用する。`adapters/` や
-`persistence/` のような分類だけを目的とする中継ぎディレクトリは作らず、Adapter を所有する
-context または feature の直下に `<役割>_<技術詳細>` の snake_case 名で置く。
-Wikipedia の記事名のように package 名だけで役割と実装技術を判別できることを優先する
-（例: `handlers_http`、`db_postgres`、`publishers_log`）。
-
-### 3.6 第6層：Infrastructure（インフラストラクチャ）
-
-従来のClean Architecture/ DDDで言うところのインフラストラクチャ層。`main` 関数と依存の注入を含む。
-
-### 3.7 第7層：Deploy Pipeline（デプロイパイプライン）
-
-最も外側。システムが**乗る土台**（OS、コンテナ、クラウドサービス、CDN）と、変化を**本番へ届ける経路**（CI/CD、デプロイ基盤）。どちらも常に最新へ置き換えられる前提のコモディティであり、同心円の最外周に位置する。
-
-### 3.8 分割軸：境界づけられたコンテキスト
-
-上記の7層は**水平**の軸（技術的関心・抽象段階）である。機能が増えると、もう一つの**直交する垂直の軸**（バーティカルスライス）が要る。この垂直軸を DDD に倣って **境界づけられたコンテキスト** と呼ぶ。すなわち、ユビキタス言語とドメインモデルの意味が一貫し、所有するモデル・状態・インターフェース・制約・認可・目標を内側に閉じる境界である。
-
-SCL では root の `context_map` と各文書の `context` でこの境界を宣言する。複数コンテキスト化したシステムは (層 × コンテキスト) の格子になる。トップでコンテキストに分割し、各コンテキストの内部で7層を繰り返す。コンテキスト間は、相手の内部モデルではなく公開面のみを介して接続する。
-
-この格子は物理配置にそのまま写す。**ディレクトリ構造はドメイン・仕様の構造をそのまま表現し反映し叫ばなければならない**。SCL のセクション（`models`・`interfaces`・`states` …）は、そのコンテキストのデータ型とパッケージにそのまま対応する——`models` は仕様バインディングを経て言語の型（Zod・Pydantic・Go 構造体）になり、コンテキスト名はディレクトリ名になる。
-
-```text
-spec/scl.yaml                  # 第1層  root context map
-spec/contexts/<context>.yaml   # 第1層  この context の SCL（models・interfaces・states …）
-architecture.yaml              # 第2層  横断台帳（contexts・runtime_units・complexity）
-ARCHITECTURE.md                # 第2層  横断の設計正本（散文）
-decisions/                     # 第2層  決定記録
-backend/
-  <context>/
-    architecture.yaml          # 第2層  この context の module 台帳
-    ARCHITECTURE.md            # 第2層  この context の設計正本（必要なもののみ）
-    domain/                    # 第3層  models・states・所有要素の constraints に対応する型と純粋ロジック
-    ports/                     # 第4層  interfaces が要求する境界の抽象
-    usecases/                  # 第4層  scenarios・interfaces に対応する手続き
-    handlers_http/             # 第5層  inbound HTTP handler
-    db_memory/                 # 第5層  memory repository 実装
-    db_postgres/               # 第5層  PostgreSQL repository 実装
-  cmd/                         # 第6層  プログラムのエントリポイント、ブートストラップ
-```
-
-context が複数の独立した sub-domain（**feature**）を抱えると、この格子だけでは
-`domain/`・`usecases/` 等の各層ディレクトリに無関係な feature のファイルが平積みされ、
-物理配置が叫ばなくなる。そこで層 × context の格子に、任意の **feature 垂直スライス層**
-を足せる（ADR-130）。
-
-```text
-backend/
-  <context>/
-    module.go                  # 第6層  context 単位の DI 束（feature に分割しない）
-    domain/                    # 第3層  feature 横断で共有される型（enum・DomainEvent 等）のみ
-    <feature>/
-      domain/                  # 第3層  この feature 固有の型と純粋ロジック
-      ports/                   # 第4層  この feature 固有の境界抽象
-      usecases/                # 第4層  この feature 固有の手続き
-      handlers_http/           # 第5層  (feature 単位に分割できる場合のみ)
-      db_memory/               # 第5層  (feature 単位に分割できる場合のみ)
-      db_postgres/             # 第5層  (feature 単位に分割できる場合のみ)
-```
-
-feature 層は次の規約に従う（詳細は ADR-130）。
-
-- **条件付き導入**: feature 層は 2 つ以上の feature を持つ context にのみ導入する。単一
-  feature の context に `<context>/<context>/` のような stutter を作ってはならない——
-  ディレクトリ構造が「叫ぶ」ことにならず RA 的に有害である。
-- **成長トリガー**: context が 2 つ目の feature を獲得した時点で feature 層を導入する。
-- **分割しにくい層がある**: ある層を feature ごとに分割できるかは、Go であれば「メソッドは
-  receiver 型と同一パッケージにしか定義できない」といった言語制約や、sqlc のような
-  コード生成ツールの単位、複数 feature 間で共有されるテストフィクスチャの有無に左右される。
-  「共有 struct のメソッド」として実装された層（例: HTTP handler が `Deps` のメソッド）は、
-  素朴に struct を feature ごとの embedded 部分構造体へ分割すると feature 横断の
-  依存フィールドが重複しがちなので、先に「共有 struct はそのまま、メソッドをフリー関数
-  （`func handleX(deps Deps, ...) ...`）へ変換して feature パッケージへ移す」設計を検討する
-  （ADR-130）。それでも codegen 単位や共有テストフィクスチャの複製コストが decluttering の
-  効果に見合わない場合は、その層を context ルート共有のまま残してよい
-  （機械的な物理配置変更の範囲を超える再設計を、この規約は一律には要求しない）。
-- **共有型・共有ヘルパー**: feature 横断で使われる型・エラー変数・小さい utility 関数は、
-  無理に 1 feature へ寄せず context ルートの共有パッケージに残す。
-- **Core package 名は各層名のまま**（`domain`/`ports`/`usecases`）。Adapter package は
-  `<役割>_<技術詳細>`（`handlers_http`/`db_memory`/`db_postgres` 等）とする。同一 context
-  の複数 feature にある同名 package を同時に import する箇所では、ディレクトリ名を冗長化せず
-  lowerCamelCase の named import（例 `userDomain`, `groupDomain`）で区別する。
-
-### 3.9 実行単位の分割トリガー
-
-7つの層（技術的関心）と境界づけられたコンテキスト（§3.8）は、いずれも**論理的**な分割軸である。
-これらをどの**実行単位**（プロセス／デプロイ境界）へ配置・合成するかは、論理境界そのものとは別の
-判断であり、どのスタイル（単一プロセスへの合成か、複数サービスへの分割か）を既定とするかを RA は
-一律に規定しない。ただし、ある論理境界を独立した実行単位へ**物理分割**することは、ネットワーク契約・
-分散障害・運用面が固まる高コストかつ元に戻しにくい判断である。したがって物理分割は、次の少なくとも
-1つで正当化されるときに行い、根拠をトリガーと却下案（＝非分割）とともに ADR に残す。
-
-1. **可用性境界**：同期的に依存しなくても成立し、かつコア機能の SLA を守るために障害を隔離する
-   必要がある場合。
-2. **リソース特性**：CPU バウンド・メモリバウンド等のノイジー・ネイバー（うるさい隣人）となり、
-   全体のパフォーマンスを阻害する特殊な処理がある場合。
-3. **性能・遅延特性**：高速な同期応答が求められるコア機能（interactive）と、遅延が許容される
-   非同期機能（background）を区別する。処理時間が長くスレッドを占有する遅延許容機能が、高速応答
-   機能の性能を劣化（スレッドプール枯渇等）させるリスクがある場合、実行コンテキスト（ワーカー
-   スレッドやプロセス）の分離を正当化する。
-4. **組織的境界**：開発組織が拡大し、単一のリポジトリやデプロイパイプラインではリリースの競合や
-   認知負荷の限界を超える場合。
-
-これらのトリガーが働くまで物理分割を急ぐ理由はない。物理分割は不可逆・高コストな判断として、
-§4.1 の人間承認の対象になり得る。
-
-## 4 コンセプションから検証まで
-
-### 4.1 コンセプション
-
-RA に則って開発するとき、人間は SCL を白紙から直接書かない。「どのような世界を実現し、どの損失を避けたいか」を AI に渡し、AI が質問、反例、選択肢を返しながら SCL を起草する。この最初の入力を**コンセプション（構想）**と呼ぶ。
-
-コンセプションは自由文だけでなく、少なくとも次の見出しを持つ。
-
-1. **期待する成果**：利用者や現実世界に起こしたい観測可能な変化。
-2. **主体と境界**：主体、信頼境界、含む範囲、明示的な対象外。
-3. **必須事項と禁止事項**：守るべき鉄則と、してはならないこと。
-4. **制約**：外部標準、法令、既存システム、規模、期限、予算。
-5. **優先順位とトレードオフ**：何を優先し、何を犠牲にしてよいか。
-6. **具体例と反例**：期待する例と、似ているが許されない例。
-7. **未決定事項と仮定**：未決定事項、仮定、確信度、決定者。
-8. **受け入れの指標**：成功・失敗を人間が観測できる指標。
-
-AI は空欄を黙って補完しない。可逆で局所的な仮定は明示して起草できるが、認可、金銭、個人情報、データ破壊、外部契約、規制、不可逆な移行に関する未決定事項は、SCL の規範要件にする前に人間の承認を求める。
-
-### 4.2 開発フロー
-
-開発フローは次の閉ループで行う。
-
-1. **聞き出す**：AI がコンセプションを整理し、曖昧語、欠落、矛盾、反例、危険な仮定を質問として返す。
-2. **基準を確定する**：人間が意図、優先順位、未解決事項、仮定の許容範囲を承認する。
-3. **仕様化する**：AI が SCL と保証義務を生成し、各要素をコンセプションまたは ADR に追跡可能にする。
-4. **反証を試みる**：別の文脈または手法で、反例、脅威、境界条件、仕様間矛盾を探索する。重大な未解決事項があれば実装へ進まない。
-5. **作業に分ける**：AI が変更をワークアイテムに分割し、範囲、非目標、リスク等級、必要な検証、人間の承認条件を確定する。
-6. **計画する**：中規模以上のワークアイテムでは、AI が Plan と Tasks を作成し、技術方針、実装順序、並列可能性、未決定事項を人間が確認できる状態にする。過大なワークアイテムはこの時点で分割する。
-7. **実装し検証する**：AI が Tasks を順に実装し、進捗チェックリストを更新する。実装中は各層を内側から外側へ進める。振る舞いを持つ層（Domain / Use Cases / Adapters）では、SCL 由来の失敗テストを先に目視してから最小実装する test-first を必須とし（ADR-119）、層ごとにローカルでテストを回して即座に自己修正する。
-8. **レビューし判断する**：人間は意味上の差分、仕様上の選択、未充足、例外承認、高リスク箇所、無作為に選んだ箇所をレビューする。
-9. **運用から学ぶ**：本番観測、事故、誤検知を SCL、保証義務、テスト、ADR へ還流する。
-
-## 参考文献
-
-- Robert C. Martin, *Clean Architecture: A Craftsman's Guide to Software Structure and Design* (2017)
-- Alistair Cockburn, "Hexagonal Architecture" (2005)
-- Eric Evans, *Domain-Driven Design* (2003)
-- Nicole Forsgren, Jez Humble, Gene Kim, *Accelerate* (2018)
-- Ben Moseley, Peter Marks, "Out of the Tar Pit" (2006)
-- Mary Poppendieck, Tom Poppendieck, *Lean Software Development* (2003)
-- Michael Nygard, "Documenting Architecture Decisions" (2011)
-- Open Policy Agent, https://www.openpolicyagent.org/
-- AuthZEN (OpenID Foundation Authorization API), https://openid.net/wg/authzen/
-- Amazon Cedar, https://www.cedarpolicy.com/
-- OpenSLO Specification, https://github.com/openslo/openslo
-- AsyncAPI Specification, https://www.asyncapi.com/
+Read only the owning context's `requirements.md`, TypeSpec files, `ARCHITECTURE.md`, work item, and implementation slice. Search by requirement ID or TypeSpec symbol. Do not preload repository-wide meta-documents, generated OpenAPI, historical ADRs, or unrelated contexts.

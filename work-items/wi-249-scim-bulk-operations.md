@@ -24,9 +24,9 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Sourcing, kind: standard_requirement, standard: RFC7644, requirement: RFC7644-RESOURCE-OPERATIONS }
-  - { context: Sourcing, kind: interface, element: GetScimServiceProviderConfig }
-  - { context: Sourcing, kind: interface, element: CreateScimUser }
+  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7644-RESOURCE-OPERATIONS }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
 ---
 
 # SCIM Bulk operations (/Bulk) に対応する
@@ -66,8 +66,8 @@ Bulk を対象外とした。
 
 ## Tasks
 
-- [ ] T001 [SCL] `/Bulk` の契約(request/response 形状、`bulkId` 解決、
-      `failOnErrors`、`ServiceProviderConfig.bulk` 広告値)を `spec/contexts/scim.yaml` に追加する。
+- [ ] T001 [Spec] `/Bulk` の契約(request/response 形状、`bulkId` 解決、
+      `failOnErrors`、`ServiceProviderConfig.bulk` 広告値)を `spec/contexts/sourcing/requirements.md` に追加する。
 - [ ] T002 [Domain] RED: bulkId 参照解決・operation validation の test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: `/Bulk` の HTTP contract test(部分失敗、`failOnErrors`、
       上限超過)を先に失敗させて実装する。

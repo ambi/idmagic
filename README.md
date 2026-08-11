@@ -5,8 +5,8 @@
 IdMagic is a Go-based Identity Provider delivering robust implementations of OAuth 2.0,
 OpenID Connect, SAML, WS-Federation, tenant isolation, application portals, and
 identity administration. It is built with Regenerative Architecture practices:
-the durable product model lives in SCL, architectural reasoning lives in ADRs,
-and implementation is kept close to bounded contexts.
+the durable product model lives in TypeSpec and requirements Markdown, current design lives in
+Architecture documents, and implementation is kept close to bounded contexts.
 
 The project is built to serve as a highly reliable real-world identity platform
 capable of handling complex enterprise authentication flows.
@@ -25,8 +25,9 @@ IdMagic follows Regenerative Architecture. The main bounded contexts are `tenanc
 
 | Layer | Location |
 | --- | --- |
-| Specification Core | `spec/scl.yaml`, `spec/contexts/*.yaml` |
-| Decisions | `decisions/*.md` |
+| Specification Core | `spec/**/*.tsp`, `spec/**/requirements.md` |
+| Change design and history | `work-items/*.md` |
+| Historical decisions | `decisions/*.md` (read-only archive) |
 | Application logic | `backend/<context>/domain`, `backend/<context>/usecases` |
 | Core and adapters | `backend/<context>/{domain,usecases,ports}`, `backend/<context>/{handlers_http,db_postgres,...}` |
 | Runtime and infra | `backend/cmd/`, `backend/bootstrap`, `infra/`, `frontend/` |
@@ -288,7 +289,7 @@ SMTP_FROM=noreply@idmagic.test \
 
 IdMagic's management API and self-service account API are external contracts: tenants build automation, provisioning, and IaC against them (see [ADR-137](decisions/ADR-137-unify-api-access-token-wire-format.md) for the API access token that authenticates these calls). [ADR-156](decisions/ADR-156-api-versioning-and-deprecation-policy.md) defines how they are versioned and deprecated; this section is the operational summary.
 
-**Stability tiers.** Every SCL interface declares a `stability`:
+**Stability tiers.** External interfaces are classified in the TypeSpec contract:
 
 - `stable` — a versioned external contract, covered by the compatibility guarantee below.
 - `beta` — an external contract not yet covered by the compatibility guarantee; reserved for future endpoints.
@@ -302,19 +303,19 @@ An interface counts as `stable`/`beta` only if it is reachable by an API access 
 
 **Out of IdMagic's versioning scheme**: OAuth2/OIDC, SAML, WS-Federation, SCIM, and SharedSignals (SSF) protocol endpoints. Their compatibility and versioning is governed by the standards themselves; discovery documents (`/.well-known/...`, `/scim/v2/ServiceProviderConfig`, SAML/WS-Fed metadata) are the source of truth for those, not this scheme.
 
-**Deprecation.** A deprecated interface is marked in SCL with `deprecated_since`, and once a removal date is set, `sunset_at` (minimum 12 months after `deprecated_since`) and `successor`. Responses from a deprecated interface carry a `Deprecation` header (and a `Sunset` header once `sunset_at` is set), added uniformly by `backend/shared/http/support_http.DeprecationHeadersMiddleware`. The same fields are reflected in the generated OpenAPI document as `deprecated: true`, `x-scl-deprecated-since`, `x-scl-sunset-at`, and `x-scl-successor`.
+**Deprecation.** A deprecated interface records its schedule in TypeSpec. Responses carry a `Deprecation` header and, once scheduled, a `Sunset` header through `backend/shared/http/support_http.DeprecationHeadersMiddleware`.
 
-**Currently deprecated APIs** (machine-generated from `spec/idmagic.openapi.json`, itself generated from SCL — do not hand-maintain a separate list):
+**Currently deprecated APIs** (inspect the generated TypeSpec OpenAPI; do not hand-maintain a separate list):
 
 ```bash
-jq '[.paths[][] | select(.deprecated == true) | {operationId, "x-scl-deprecated-since", "x-scl-sunset-at", "x-scl-successor"}]' spec/idmagic.openapi.json
+jq '[.paths[][] | select(.deprecated == true) | {operationId, deprecated}]' spec/generated/openapi/idmagic.openapi.json
 ```
 
-**Breaking-change detection.** `just check-api-compat` compares the generated `spec/idmagic.openapi.json` against the frozen release baseline `spec/idmagic.openapi.baseline.json` and fails on any breaking difference (field removal/rename, type change, new required field, changed default, removed error code, removed path/operation/parameter/response). It runs in CI (`.github/workflows/idmagic-ci.yaml`) and in `just verify`. **After cutting a release**, refresh the baseline so future PRs are compared against what actually shipped:
+**Breaking-change detection.** `just check-api-compat` compares TypeSpec-generated OpenAPI against the frozen release baseline `spec/idmagic.openapi.baseline.json` and fails on breaking differences. Generated artifacts are ignored. **After cutting a release**, refresh the baseline so future changes are compared against what actually shipped:
 
 ```bash
-just scl-render
-cp spec/idmagic.openapi.json spec/idmagic.openapi.baseline.json
+just spec-render
+cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json
 ```
 
 Skipping this step lets the baseline go stale and the check stops catching real regressions; committing a baseline update without an actual release makes the check stop catching real ones too, so only refresh it as part of cutting a release.
@@ -323,7 +324,8 @@ Skipping this step lets the baseline go stale and the check stops catching real 
 
 For deep dives into specific areas, consult the following guides:
 
-- **Product Specification**: [spec/scl.yaml](spec/scl.yaml)
+- **Product Requirements**: [spec/requirements.md](spec/requirements.md)
+- **API and Model Specification**: [spec/main.tsp](spec/main.tsp)
 - **Implementation Index**: [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Infrastructure & K8s Guide**: [infra/README.md](infra/README.md)
 - **Seed Profiles Guide**: [seed/README.md](seed/README.md)

@@ -101,7 +101,7 @@ func loadGeneratedOpenAPIOperations() ([]routeOperation, error) {
 		return nil, fmt.Errorf("resolve contract test source path")
 	}
 	path := filepath.Join(
-		filepath.Dir(filename), "..", "..", "..", "..", "spec", "idmagic.openapi.json",
+		filepath.Dir(filename), "..", "..", "..", "..", "spec", "generated", "openapi", "idmagic.openapi.json",
 	)
 	data, err := os.ReadFile(path)
 	if err != nil {

@@ -19,7 +19,7 @@ Go バックエンドのカバレッジ改善は複数の work item に分割さ
 
 ## Scope
 - `backend/shared/security/tokens_jose と backend/signingkeys/keys_memory` の鍵生成・署名検証・エラー系を中心に、意味のあるユニットテストを追加する。
-- `backend/shared/spec` の OpenAPI / SCL 由来 spec helper をテストする。
+- `backend/shared/spec` の OpenAPI / specification 由来 spec helper をテストする。
 - `backend/authentication/handlers_http` の正常系・異常系・認可 / CSRF / tenant 境界をテストする。
 - `backend/shared/http/support_http` の auth、tenant middleware、CSRF、consent、response helper をテストする。
 - `internal/scim/usecases` の SCIM inbound provisioning use case をテストする。

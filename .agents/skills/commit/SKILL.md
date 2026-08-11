@@ -47,7 +47,7 @@ Why this change is needed / what problem it solves (not a restatement of the dif
 - **attribution はリポジトリ設定（`.claude/settings.json`）に従う。**
   `Co-authored-by` などのフッターを手動で足さない。
 - 現在のブランチにそのままコミットする（このリポジトリは既定ブランチ直コミット運用）。
-- SCL 派生物（HTML / JSON Schema / OpenAPI）の扱いはブランチの役割で分ける。
+- TypeSpec 派生物は untracked のままにし、release baseline は通常の commit で更新しない。
   並列 worktree の work-item commit では生成物を原則含めない。integration / main へ入れる
-  commit では `just scl-render` の結果を含め、spec ↔ 派生物の同期を保つ
-  （`scl-render` Skill 参照）。
+  commit では `just spec-render` の結果を含め、TypeSpec ↔ 派生物の同期を保つ
+  （`spec-render` Skill 参照）。

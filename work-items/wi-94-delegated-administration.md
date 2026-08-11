@@ -50,7 +50,7 @@ created_at: 2026-07-03
 - UI navigation/count/exportもscope済みAPIだけを使い、権限外resourceへのリンクや総件数を表示しない。
 
 ## Tasks
-- [ ] T001 [ADR/SCL] 初期scope種類、policy/access capability集合、list filtering、再委任禁止を決定し、assignment/interfaces/events/constraints/contracts/scenariosを再生成する。
+- [ ] T001 [Design/Spec] 初期scope種類、policy/access capability集合、list filtering、再委任禁止を決定し、assignment/interfaces/events/constraints/contracts/scenariosを再生成する。
 - [ ] T002 [Domain] typed ResourceScope、Assignment lifecycle/expiry、scope evaluatorとfull-admin/delegated decision合成を実装する。
 - [ ] T003 [Persistence] assignment repository/index、group/application reference integrity、revoke/versionをmemory/PostgreSQLへ追加する。
 - [ ] T004 [Authorization] user/group/application/audit等Scope記載resourceのlist/get/mutation policyとquery filterを順次接続する。

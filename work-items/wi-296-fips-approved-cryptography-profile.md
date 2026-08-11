@@ -31,8 +31,8 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: SigningKeys, kind: model, element: SignatureAlgorithm }
-  - { context: OAuth2, kind: interface, element: Token }
+  - { path: spec/contexts/signing-keys/models.tsp, symbol: IdMagic.Contract.SignatureAlgorithm }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.Token }
 ---
 
 # FIPS 承認暗号のみで動作する運転モード (FIPS profile) を導入する
@@ -151,7 +151,7 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
       結果を ADR の下書きに反映する。
 - [ ] T002 [ADR] FIPS 運転モードの ADR を起票する (適用範囲・許可集合・パスワードハッシュ
       移行・HIBP の扱い・ビルド方法・起動時自己検査・無効化される機能一覧)。
-- [ ] T003 [SCL] SignatureAlgorithm の FIPS 許可集合、client metadata の requires、
+- [ ] T003 [Spec] SignatureAlgorithm の FIPS 許可集合、client metadata の requires、
       `password_hash_scheme`、System の FIPS 設定と自己検査、guarantee、scenario 4 件を
       追加し `just check-scl` を通す。
 - [ ] T004 [Hash] パスワードハッシュを方式付きにする。既存 Argon2id ハッシュの判別、

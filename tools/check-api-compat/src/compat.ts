@@ -31,6 +31,38 @@ function refName(schema: unknown, prefix = '#/components/schemas/'): string | un
   return typeof ref === 'string' && ref.startsWith(prefix) ? ref.slice(prefix.length) : undefined
 }
 
+function contractTypeName(schema: unknown): string | undefined {
+  return refName(schema)?.split('.').at(-1)
+}
+
+function collectContractTypeNames(
+  schema: JsonSchema | undefined,
+  components: Record<string, JsonSchema>,
+  seen: Set<string> = new Set(),
+): Set<string> {
+  const names = new Set<string>()
+  if (!schema) return names
+  const ref = refName(schema)
+  if (ref) {
+    const contractName = ref.split('.').at(-1)
+    if (contractName) names.add(contractName)
+    if (!seen.has(ref) && components[ref]) {
+      seen.add(ref)
+      for (const name of collectContractTypeNames(components[ref], components, seen))
+        names.add(name)
+    }
+  }
+  for (const keyword of ['oneOf', 'anyOf', 'allOf'] as const) {
+    const members = schema[keyword]
+    if (!Array.isArray(members)) continue
+    for (const member of members) {
+      for (const name of collectContractTypeNames(member as JsonSchema, components, seen))
+        names.add(name)
+    }
+  }
+  return names
+}
+
 /** Resolve a `$ref` against components, cycle-guarded. Non-refs pass through unchanged. */
 function resolve(
   schema: JsonSchema | undefined,
@@ -111,12 +143,10 @@ function diffSchema(
   }
 
   if (Array.isArray(b.oneOf)) {
-    const baseNames = (b.oneOf as unknown[]).map((s) => refName(s)).filter((n): n is string => !!n)
-    const currNames = new Set(
-      (Array.isArray(c.oneOf) ? (c.oneOf as unknown[]) : [])
-        .map((s) => refName(s))
-        .filter((n): n is string => !!n),
-    )
+    const baseNames = (b.oneOf as unknown[])
+      .map((s) => contractTypeName(s))
+      .filter((n): n is string => !!n)
+    const currNames = collectContractTypeNames(curr, currComponents)
     for (const name of baseNames) {
       if (!currNames.has(name)) {
         findings.push({ operation: ctx, message: `error code '${name}' removed` })

@@ -25,7 +25,7 @@ import (
 
 func TestDiscoveryRoutesIncludeRFC8414Alias(t *testing.T) {
 	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{Deps: support.Deps{Issuer: "https://idp.example", SCL: spec.MustLoadSCL()}})
+	httpadapter.Register(e, httpadapter.Deps{Deps: support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract()}})
 
 	for _, path := range []string{
 		"/realms/default/.well-known/openid-configuration",
@@ -77,7 +77,7 @@ func TestPerTenantJwksIsolation(t *testing.T) {
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "https://idp.example", SCL: spec.MustLoadSCL(),
+			Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
 			TenantRepo: tenants,
 		}, KeyStore: keyStore,
 	})

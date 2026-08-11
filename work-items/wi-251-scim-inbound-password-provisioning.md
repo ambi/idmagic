@@ -20,9 +20,9 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { context: Sourcing, kind: standard_requirement, standard: RFC7643, requirement: RFC7643-CORE-RESOURCES }
-  - { context: Sourcing, kind: interface, element: CreateScimUser }
-  - { context: Sourcing, kind: interface, element: UpdateScimUser }
+  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
+  - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
 ---
 
 # SCIM inbound password provisioning への対応可否を判断し、対応する場合は実装する
@@ -60,9 +60,9 @@ CreateScimUser/UpdateScimUser/PatchScimUser はこの属性を黙殺する。
 ## Tasks
 
 - [ ] T000 [Decision] 対応するかどうかを ADR で判断する。却下する場合は
-      `spec/contexts/scim.yaml` の `RFC7643-CORE-RESOURCES.reason` に明記して
+      `spec/contexts/sourcing/requirements.md` の `RFC7643-CORE-RESOURCES.reason` に明記して
       work item を `cancelled` にする。
-- [ ] T001 [SCL] (対応する場合) password の契約を `spec/contexts/scim.yaml` に追加する。
+- [ ] T001 [Spec] (対応する場合) password の契約を `spec/contexts/sourcing/requirements.md` に追加する。
 - [ ] T002 [Domain] RED: password のハッシュ化・ポリシー検証 test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: CreateScimUser/UpdateScimUser/PatchScimUser の
       password 処理 HTTP contract test を先に失敗させて実装する。ログ・エラー

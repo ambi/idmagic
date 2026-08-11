@@ -26,17 +26,17 @@ initial_context:
   stop_before_reading:
     - backend
 affected_spec:
-  - { context: System, kind: standard_requirement, standard: WCAG22, requirement: WCAG22-KEYBOARD }
-  - { context: System, kind: standard_requirement, standard: WCAG22, requirement: WCAG22-FOCUS }
-  - { context: System, kind: standard_requirement, standard: WCAG22, requirement: WCAG22-LABELS-ERRORS }
-  - { context: System, kind: standard_requirement, standard: WCAG22, requirement: WCAG22-STATUS }
+  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-KEYBOARD }
+  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-FOCUS }
+  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-LABELS-ERRORS }
+  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-STATUS }
 ---
 
 # WCAG 2.2 AA 準拠を自動検査で保証し、認証 UI のアクセシビリティを担保する
 
 ## Motivation
 
-SCL の `System.standards.WCAG22` は 4 件の要件を **adoption: required / strength: MUST** で
+specification の `System.standards.WCAG22` は 4 件の要件を **adoption: required / strength: MUST** で
 宣言している:
 
 - `WCAG22-KEYBOARD` (2.1.1) — すべての認証操作をキーボードだけで完了可能にする
@@ -46,7 +46,7 @@ SCL の `System.standards.WCAG22` は 4 件の要件を **adoption: required / s
 
 しかし **これらを検証する手段が存在しない**。UI 側には E2E (`frontend/tests/e2e`) と
 unit test があるが、アクセシビリティ検査 (axe-core 等) は入っていない。
-つまり SCL が MUST と宣言した要件が、実装で満たされているかどうか誰も確認していない
+つまり specification が MUST と宣言した要件が、実装で満たされているかどうか誰も確認していない
 「宣言だけの保証」になっている。Regenerative Architecture の建て方 (仕様が正本で、
 実装と検証がそれに従う) からすると、これは最も直すべき類の乖離である。
 
@@ -120,7 +120,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
   ADR で分け、後者を `frontend/README.md` の手順として残す。自動検査だけで
   「AA 準拠」と言わないことを明記する。
 - **認証 UI を最優先にする**。ここが通れないと全アプリからロックアウトされるため、
-  影響度が管理コンソールと桁違いである。段階を SCL に明記して、部分適合の状態を
+  影響度が管理コンソールと桁違いである。段階を specification に明記して、部分適合の状態を
   「未完了」ではなく「宣言済みの段階」として扱えるようにする。
 - **共通コンポーネントで解く**。画面ごとに個別対応すると回帰する。focus-visible、
   live region、Dialog のフォーカストラップは共通コンポーネント側で解決し、
@@ -136,7 +136,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 
 ## Tasks
 
-- [ ] T001 [SCL] `System.standards.WCAG22` の各要件に検証手段の対応を追記し、
+- [ ] T001 [Spec] `System.standards.WCAG22` の各要件に検証手段の対応を追記し、
       scenario 3 件と対象画面の段階を追加して `just check-scl` を通す。
 - [ ] T002 [ADR] アクセシビリティ適合の範囲と検証方法の ADR を起票する
       (準拠レベル・対象段階・自動 / 手動の分界・ブランディングとの整合・CI 閾値)。

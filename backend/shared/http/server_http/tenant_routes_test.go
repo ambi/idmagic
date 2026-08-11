@@ -40,7 +40,7 @@ func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{Issuer: "https://idp.example", SCL: spec.MustLoadSCL(), TenantRepo: tenants}})
+	Register(e, Deps{Deps: support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenants}})
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/.well-known/openid-configuration", http.NoBody))
@@ -71,7 +71,7 @@ func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 		}
 	}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{Issuer: "https://idp.example", SCL: spec.MustLoadSCL(), TenantRepo: tenants}})
+	Register(e, Deps{Deps: support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenants}})
 
 	bare := httptest.NewRecorder()
 	e.ServeHTTP(bare, httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/openid-configuration", http.NoBody))

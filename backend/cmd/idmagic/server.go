@@ -72,10 +72,7 @@ func Run() error {
 		}
 	}
 	federationSigner := samltoken.KeyStoreSignerProvider{KeyStore: deps.SigningKeys.KeyStore}
-	sclDoc, err := spec.LoadSCL()
-	if err != nil {
-		return fmt.Errorf("load SCL: %w", err)
-	}
+	runtimeContract := spec.CurrentRuntimeContract()
 	sentinelPasswordHash, err := hasher.Hash("idmagic-invalid-user-password")
 	if err != nil {
 		return fmt.Errorf("create sentinel password hash: %w", err)
@@ -199,7 +196,7 @@ func Run() error {
 		MetricsHandler: appMetrics.Handler(),
 		Deps: httpsupport.Deps{
 			Issuer:                    issuer,
-			SCL:                       sclDoc,
+			Contract:                  runtimeContract,
 			TenantBaseDomain:          bootstrap.EnvDefault("TENANT_BASE_DOMAIN", ""),
 			TrustedForwardedHops:      bootstrap.EnvInt("TRUSTED_FORWARDED_HOPS", 0),
 			RateLimiter:               deps.RateLimit.RateLimiter,

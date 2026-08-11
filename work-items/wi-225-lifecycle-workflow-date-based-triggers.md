@@ -16,13 +16,13 @@ Microsoft Entra ID Lifecycle Workflows と Okta Lifecycle Management の中心�
 
 現在の IdMagic の LifecycleWorkflow は User mutation イベント (`user_created` /
 `user_attributes_changed` / `user_status_changed`) のみを起点にしており、
-`spec/contexts/identity-management.yaml` (L1531) も「日付・cron・待機 step は対象外」と明記して
+`spec/contexts/identity-management/requirements.md` (L1531) も「日付・cron・待機 step は対象外」と明記して
 日付が到来したことだけを理由にした trigger を持たない。この結果、「入社日の 3 営業日前にアカウントを
 有効化する」「退職日の 30 日後にアカウントを削除する」といった典型的な joiner/mover/leaver シナリオを
 IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを得ない。
 
 ## Scope
-- `spec/contexts/identity-management.yaml` の `WorkflowTriggerKind` に `date_attribute_offset`
+- `spec/contexts/identity-management/requirements.md` の `WorkflowTriggerKind` に `date_attribute_offset`
   (仮称) を追加し、対象の日付型属性、offset 方向 (before/after)、offset 日数を持つ trigger 定義を
   追加する。
 - 日次スキャン job (既存の [[wi-126-async-job-runner]] を利用) を追加し、対象日付属性を持つ全 User
@@ -48,7 +48,7 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 - 重複排除は「同一 User × workflow × revision × 評価日」を一意制約にする。
 
 ## Tasks
-- [ ] T001 [SCL] `date_attribute_offset` trigger kind、日次スキャン scenario、objective を追加する。
+- [ ] T001 [Spec] `date_attribute_offset` trigger kind、日次スキャン scenario、objective を追加する。
 - [ ] T002 [Decision] 日次スキャン方式、タイムゾーン方針、dedup 方針を ADR に記録する。
 - [ ] T003 [App] trigger evaluator の拡張と日次スキャン job を実装する。
 - [ ] T004 [Verify] 境界日 (offset 当日、前後日)、タイムゾーン、重複実行を検証する。

@@ -56,7 +56,7 @@ opt-out 設定を追加する。
 - retry/dead-letter は EmailSender error classに従い、認証成功自体は巻き戻さない。delivery statusと元event correlationを監査可能にする。
 
 ## Tasks
-- [ ] T001 [Catalog/SCL] 対象 authentication events、severity/mandatory/dedup、preference/delivery models/interfaces/events/scenarios を追加して再生成する。
+- [ ] T001 [Catalog/specification] 対象 authentication events、severity/mandatory/dedup、preference/delivery models/interfaces/events/scenarios を追加して再生成する。
 - [ ] T002 [Projection] durable event log cursorから NotificationIntent を冪等生成し、recipient snapshot rule と dedup keyを実装する。
 - [ ] T003 [Persistence/Worker] preference、intent/delivery state、retry/dead-letter repository と email delivery workerを実装する。
 - [ ] T004 [Templates] event別subject/body、安全なdevice/location summary、branding/i18n token、security review URLを追加する。

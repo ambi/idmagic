@@ -1,6 +1,6 @@
 ---
 context: repo
-updated_at: 2026-08-09
+updated_at: 2026-08-11
 ---
 
 # Architecture: repo
@@ -8,53 +8,47 @@ updated_at: 2026-08-09
 ## Overview
 
 This document is the cross-cutting design record for `idmagic`: how the system is currently built and why
-it took that shape, in prose a human can read. The machine-checked module ledger lives beside it in
-`architecture.yaml`; design that belongs to a single bounded context lives in that context's own
-`ARCHITECTURE.md`.
+it has that shape. Design that belongs to one bounded context lives in that context's own
+`ARCHITECTURE.md`. Repository paths and imports are the module map; a lightweight check rejects forbidden
+outward dependencies without an exhaustive edge ledger.
 
-Normative requirements are in SCL, rejected options and the premises they were weighed against are in
-ADRs, and one-off implementation records are in work items. Design statements here carry a short,
-self-contained reason for their shape; the [Structural Decisions](#structural-decisions) section is the
-only place that links out to the ADR holding the full comparison. See
-[Documentation Policy](#documentation-policy) for the routing table.
+Normative requirements are in requirements Markdown, API and model contracts are in TypeSpec, and
+change-specific alternatives and implementation history are in work items. Existing ADR links are
+historical evidence only; new decisions are recorded in the current design and the work item.
 
-Lists that churn — endpoints, fields, screens — are not kept here. Code, `spec/contexts/*.yaml`, and the
+Lists that churn — endpoints, fields, screens — are not kept here. Code, `spec/contexts/*/*.tsp`, and the
 UI documents are authoritative for those.
 
 ### Reading order
 
 For a feature change, read in this order.
 
-1. `spec/scl.yaml` `context_map`, to locate the bounded context and its dependencies.
-2. That context's `spec/contexts/<context>.yaml`. Feature and behavior changes are SCL-first.
+1. `spec/requirements.md`, to locate cross-context requirements.
+2. The owning context's `requirements.md`, `models.tsp`, and `main.tsp`. Changes are specification-first.
 3. The context's `ARCHITECTURE.md` if it has one; otherwise the relevant section of this document.
-4. The ADR, only when the background of a decision is needed. Search `decisions/` by filename rather
-   than trusting an old work item's summary.
+4. The active work item. Read an archived ADR only when historical background is genuinely needed.
 5. Go implementation, in the order `domain/`, `usecases/`, `ports/`, then whichever
    `<role>_<technology>/` adapter is involved.
 6. `backend/shared/` and `backend/cmd/internal/bootstrap/` only when touching cross-cutting HTTP or
    persistence behavior.
 7. `frontend/ARCHITECTURE.md` and `frontend/src/features/README.md` first when touching the UI.
 
-Going the other way — implementation back to specification — package names correspond closely to SCL
+Going the other way — implementation back to specification — package names correspond closely to
 context names. The exceptions are collected under `backend/shared/`.
 
 ## Structure
 
 ```text
 .
-├── architecture.yaml  # cross-cutting module ledger (machine-checked)
 ├── backend/           # Go bounded contexts, shared, cmd/
 │   └── <context>/
-│       ├── architecture.yaml   # this context's module ledger
 │       └── ARCHITECTURE.md     # this context's design (only where one is warranted)
 ├── frontend/          # React UI and gateway
-├── spec/              # SCL and derived contracts
+├── spec/              # TypeSpec, requirements Markdown, and release baseline
 ├── infra/             # container, local runtime, and database schema assets
 ├── load/k6/           # tenant-local OAuth SLO smoke
-├── tools/             # RA/SCL CLI, renderer, schema validator
-├── verification/      # traceability manifest and revision-stamped evidence
-├── decisions/         # Architecture Decision Records
+├── tools/             # RA checks and compatibility tooling
+├── decisions/         # read-only historical ADR archive
 └── work-items/        # units of work and completion records
 ```
 
@@ -67,15 +61,15 @@ usecase packages never depend back on adapters or runtime.
 
 | RA layer | Location | How to read it |
 | --- | --- | --- |
-| Specification Core | `spec/scl.yaml`, `spec/contexts/*.yaml` | Normative specification. Changes start here. |
-| Decision Record | `decisions/*.md` | Rejected options and the premises at the time. |
-| Architecture | `ARCHITECTURE.md`, `architecture.yaml` (root and per context) | The current design, and the ledger that is machine-checked against the tree. |
-| Application Logic | `backend/<context>/domain`, `backend/<context>/usecases`, `backend/shared/spec` | Framework-independent domain, usecases, and SCL bindings. |
+| Specification Core | `spec/**/*.tsp`, `spec/**/requirements.md` | Normative specification. Changes start here. |
+| Change Record | `work-items/*.md` | Alternatives, plan, tasks, and completion history for one change. |
+| Architecture | root and context `ARCHITECTURE.md` | Current design and durable rationale. |
+| Application Logic | `backend/<context>/domain`, `backend/<context>/usecases` | Framework-independent domain and use cases. |
 | Adapter Layer | `backend/<context>/{handlers_http,db_postgres,...}`, `backend/shared/<capability>/<role>_<technology>` | HTTP, persistence, crypto, policy, notification — the connections outward. |
 | Runtime & Infrastructure | `backend/cmd/`, `backend/cmd/internal/bootstrap`, `infra/`, `frontend/`, `docker compose` | Startup, DI, delivery, process boundaries. |
 
-`backend/shared/spec` holds Go bindings of SCL and their derived checks; it is not the specification
-core itself. Do not adjust the Go binding in place of changing SCL.
+Generated OpenAPI is ignored and recreated from TypeSpec. The tracked OpenAPI baseline represents the
+last released wire contract and changes only as part of a release.
 
 ## Stack
 
@@ -87,9 +81,9 @@ core itself. Do not adjust the Go binding in place of changing SCL.
 
 ## Context Map
 
-The main correspondence between SCL contexts and Go packages.
+The main correspondence between specification contexts and Go packages.
 
-| SCL context | Go package | Responsibility |
+| Specification context | Go package | Responsibility |
 | --- | --- | --- |
 | `System` | `backend/cmd/internal/bootstrap`, `backend/shared/http/server_http`, `frontend/` | Cross-cutting UX, startup, routing composition, health. |
 | `Tenancy` | `backend/tenancy` | Tenant / realm, tenant-scoped settings, user attribute schema, control-plane tenant administration. |
@@ -112,8 +106,8 @@ The main correspondence between SCL contexts and Go packages.
 | `WorkloadIdentity` | `backend/workloadidentity` | Workload identity federation for agent runtimes: registered external attestation issuers (`WorkloadTrustBundle`) and the subject-pattern-to-`Agent` mapping (`AgentWorkloadBinding`) that OAuth2's token-exchange grant consumes to federate external JWT-SVIDs into idmagic tokens without long-lived secrets. |
 | `SharedSignals` | `backend/sharedsignals` | Continuous access evaluation (CAEP) and near-real-time agent revocation via the OpenID Shared Signals Framework (SSF, RFC 8417 Security Event Tokens). Owns the per-agent `AgentRevocationEpoch` that OAuth2's `Introspect` checks against a token's `issued_at` for fail-closed local revocation, and `SsfStream`/`SsfTransmitterConfig`/`SsfReceiverConfig` for pushing/receiving CAEP events to/from external parties. Local revocation always precedes and does not wait on ecosystem propagation. `AgentRevocationReactor` reacts to IdManagement's already-emitted lifecycle events (kill/disable/credential-unbind, owner disable/soft-delete/delete) via `idmanagement/deps_http.EventReactor` — IdManagement's usecases carry no SharedSignals dependency or explicit call. The outbound SET transmitter pipeline is implemented: `AgentRevocationReactor`'s best-effort projection (`ProjectAgentAccessRevoked`) fans a local revocation out to every enabled Transmit `SsfStream` subscribed to `session-revoked`, signs a RFC 8417 Security Event Token via `ports.SecurityEventTokenSigner` (implemented by `sign_jose`, reusing SigningKeys' rotation/JWKS rather than separate key material), and enqueues a `SecurityEventDelivery`; a periodic worker (`ProcessDueDeliveries`, `sharedsignals/push_http` for the SSRF-safe HTTP push) retries with exponential backoff and dead-letters once `max_delivery_attempts` is exhausted. Domain model, memory/PostgreSQL persistence, `Introspect` enforcement wiring, Agent revocation enforcement, and the SET transmitter are implemented; the SSF receiver (inbound `ReceiveSecurityEvent`) and admin UI (stream CRUD, delivery status) are not yet implemented. |
 
-The published vocabulary and dependencies between contexts are authoritative in `spec/scl.yaml`
-`context_map`. Before adding a direct import, revisit `depends_on` there.
+Context ownership is documented here and in each context's requirements. Before adding a direct import,
+run the forbidden-boundary check and keep cross-context dependencies on published interfaces.
 
 ## Conventions
 
@@ -121,7 +115,6 @@ A bounded context normally takes this shape.
 
 ```text
 backend/<context>/
-  architecture.yaml  # this context's module ledger
   domain/            # entities, value objects, state machines, pure validation
   usecases/          # application logic that performs the specified operations
   ports/             # abstractions over repositories, stores, external services
@@ -144,7 +137,7 @@ alone should reveal whether the role is handler, repository, publisher, or clien
 package name stops saying what the thing does.
 
 Whether a context has `domain/` and `usecases/` follows from whether it has logic of its own; the
-packages are not placed mechanically. Shared SCL Go bindings stay in `backend/shared/spec`, while
+packages are not placed mechanically. Shared runtime contract helpers stay in `backend/shared/spec`, while
 context-specific business types are owned by that context's `domain/`. A context such as
 `tenancy`, which has no domain logic beyond the bindings, has no per-context `domain/`. Contexts that do
 have their own logic — `idmanagement` (User/Group/Agent aggregates, attribute schema, field validation)
@@ -204,7 +197,7 @@ lengthening the directory names would not.
 
 ### Frontend Component Structure
 
-A UI context boundary aligned with an RA/SCL feature is placed in `frontend/src/features/<feature>/`.
+A UI context boundary aligned with a specification feature is placed in `frontend/src/features/<feature>/`.
 Views, local components, helpers, tests, and localized dictionaries (`*.i18n.ts`) for that feature must reside in its directory. The alias `slices/` is not used.
 Cross-cutting reusable components not tied to a specific feature boundary are placed in `frontend/src/components/`.
 
@@ -262,7 +255,7 @@ has no such constraint and follows the generic convention.
 
 This convention is not yet implemented: `WriteBrowserError`
 (`backend/shared/http/support_http/response.go`) still returns the legacy `{error, message}` shape
-everywhere, and 422 is used in exactly one place today. The SCL language extension (status per
+everywhere, and 422 is used in exactly one place today. The TypeSpec contract (status per
 error model, envelope per binding) and the handler migration are tracked as separate work items.
 
 ### Metrics
@@ -520,7 +513,7 @@ schema-level design rationale that does not fit the policies above lives here in
   matches with `occurred_at DESC` for the scan.
 - **ApiTokens** — `api_tokens` holds lifecycle records for managed RFC 9068 JWT access
   tokens; JWT bodies are never stored, `jti` is the lookup key. `scopes` lists the granted
-  `<resource>:<action>` permissions (`ApiTokenScope` in `spec/contexts/api-tokens.yaml`); the table's
+  `<resource>:<action>` permissions (`ApiTokenScope` in `spec/contexts/api-tokens/models.tsp`); the table's
   `CHECK` mirrors that enum as defense in depth alongside Go-side validation.
 - **IdGovernance** — `lifecycle_workflow_revisions` are append-only; execution records
   (`lifecycle_workflow_runs`/`_steps`) reference the revision they expand rather than mutable JSON.
@@ -535,7 +528,7 @@ catalog (system-shipped ja/en copy) plus optional per-`(tenant_id, template_key,
 Deleting an override (`ResetNotificationTemplate`) always falls back to the built-in default; there is no
 "revert to previous override" step, because when a template breaks a recovery flow, the fastest fix for
 an admin is a known-good fallback, not a choice among versions. `template_key`
-is a fixed SCL enum — tenants cannot add keys — so every key traces to exactly one send path and no
+is a fixed specification enum — tenants cannot add keys — so every key traces to exactly one send path and no
 orphaned template can exist without a sender.
 
 Placeholders (`{{name}}`) are validated against a per-key allow-list at save time; an override that
@@ -608,7 +601,7 @@ the login throttle's, which are still hardcoded in `server.go`) so operators can
 
 Keys are `client_id`/IP/`identifier_hash` composites; `client_id` is not secret, while IP and
 password-reset identifiers are SHA-256 hashed before storage, matching the login throttle's
-`hashThrottleIdentifier` convention. Exceeding a threshold returns HTTP 429 with `Retry-After` and the SCL
+`hashThrottleIdentifier` convention. Exceeding a threshold returns HTTP 429 with `Retry-After` and the TypeSpec
 `RateLimitedError`, which also now covers the login throttle's own 429 response (previously an undeclared
 ad hoc body).
 
@@ -619,8 +612,8 @@ startup-time DI. `backend/cmd/idmagic-worker/` only claims durable
 jobs and runs handlers, scaling horizontally independently of the API.
 `backend/cmd/idmagic-batch/` is started one-shot by an external scheduler, performs a single retention
 sweep or signing-key lifecycle pass, and exits. Every runtime unit reuses the same
-Go module and bounded context implementations. The ledger of these units is `runtime_units` in
-`architecture.yaml`.
+Go module and bounded context implementations. Runtime units are derived from the entry points and
+their `just` build recipes rather than repeated in a ledger.
 
 This shape — every bounded context implementation in a single Go module, with several runtime units as
 thin entry points reusing that shared implementation — is currently a **modular monolith**. Context
@@ -710,13 +703,10 @@ The `memory` runtime keeps this state in process and is therefore **single-repli
 - Endpoint rate limiting is a shared technical capability rather than a business aggregate, uses a fixed
   window rather than token-bucket/sliding-window counters, and stays fail-closed and PostgreSQL-only
   ([ADR-157](decisions/ADR-157-endpoint-rate-limit-policy.md)).
-- SCL normative elements, Architecture modules, declared checks, and revision-stamped evidence are
-  directly traceable — not only for audit, but so an AI can fetch the minimum context a change needs
-  ([ADR-115](decisions/ADR-115-direct-workspace-traceability-graph.md)).
-- Keeping the structure as an executable, checkable declaration is
-  [ADR-116](decisions/ADR-116-executable-architecture-map.md). Moving that ledger into
-  `architecture.yaml` and making this document the prose design record is
-  [ADR-143](decisions/ADR-143-second-layer-design-ledger-decision-split.md).
+- Requirement IDs and TypeSpec symbols provide direct specification references without a repository-wide
+  traceability manifest. Tests and work items cite those stable names where the evidence is useful.
+- Repository paths and imports are the executable structure. The check rejects forbidden outward
+  dependencies without requiring every allowed module and edge to be declared twice.
 - Separating LifecycleWorkflow from IdManagement's record of truth into IdGovernance's policy and
   orchestration follows [ADR-117](decisions/ADR-117-extract-identity-governance-context.md).
 - Environment-specific seed policy and execution orchestration are separated from the record contexts and
@@ -812,18 +802,18 @@ document answers.
 
 | What you want to write | Where it goes | Question it answers |
 | --- | --- | --- |
-| Normative requirement, behavior, contract, data shape | `spec/contexts/*.yaml` | What must hold |
+| Requirement, scenario, glossary, standard, state transition | `spec/**/requirements.md` | What must hold |
+| Model, API contract, HTTP binding, authentication | `spec/**/*.tsp` | What is exchanged |
 | Current design of one context | `<context>/ARCHITECTURE.md` | How it is now, and why |
 | Cross-cutting design, conventions, cross-cutting policy | this document | The same, for what spans contexts |
-| Machine-checked module ledger | `architecture.yaml` (root / context) | How the structure is checked |
-| Rejected options, premises at the time, revisit conditions | `decisions/ADR-NNN-*.md` | What was rejected, and why this was chosen |
+| Forbidden dependency rules | `tools/check/src/check-boundaries.ts` | Which outward imports are rejected |
+| Historical decision evidence | `decisions/ADR-NNN-*.md` | Why an old choice was made |
 | How to use or run something | the `README.md` of that directory | How to use it / how to run it |
 | What to do when something happens | `infra/runbooks/*.md` | What to do in an incident |
 | A one-off implementation record | `work-items/` | What was done this time |
 
-Do not open an ADR merely to describe a design. An ADR is written when there was a real fork and a
-rejected option actually exists. Conversely, when design is written here, add a sentence or two of
-reason and link to the ADR — never transcribe the ADR body, because a second copy always drifts.
+Do not create new ADRs. Put current design and concise rationale here; put change-specific alternatives
+and history in the work item. Existing ADRs remain read-only historical evidence.
 
 Do not hand-copy lists that can be read mechanically from code or schema. No exhaustive endpoint tables,
 test inventories, or environment-variable tables.

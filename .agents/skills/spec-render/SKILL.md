@@ -1,0 +1,11 @@
+---
+name: spec-render
+description: Compile the TypeSpec specification and regenerate ignored standard artifacts such as OpenAPI after specification changes.
+---
+
+# TypeSpec 派生物の再生成
+
+1. `just spec-render` を実行する。
+2. `just check-api-compat` で release baseline に対する破壊を確認する。
+3. `spec/generated/` は untracked のため commit しない。
+4. release 時だけ、明示的な release 手順として baseline を更新する。通常の feature change で baseline を更新して検査を回避しない。
