@@ -12,7 +12,7 @@ depends_on: [wi-192-tenant-branding-logo-display-regression, wi-193-simplify-ten
 テナント管理者が設定したロゴ・ブランドカラーが利用者向け hosted UI にしか反映されず、日常的に利用する管理コンソールとのブランド体験が分断されている。テナント管理コンソールを同じブランドで一貫して操作できるようにする。
 
 ## Scope
-- `spec/requirements.md` の `TenantBranding` の適用先、GetTenantBranding の consumer、管理コンソールテーマ適用 scenario と fail-open invariant。
+- `spec/SPECIFICATION.md` の `TenantBranding` の適用先、GetTenantBranding の consumer、管理コンソールテーマ適用 scenario と fail-open invariant。
 - tenant admin console の shell、ナビゲーション、ページ見出し、主要 action、選択・focus・link・status の色を branding の primary / accent color から導く semantic theme token へ移行する。
 - tenant branding の logo / product name を管理コンソール chrome に表示する。
 - branding 未設定・取得失敗・低コントラスト色でも管理コンソールを操作可能にする自動 foreground / neutral fallback と、主要画面の視覚回帰テスト。

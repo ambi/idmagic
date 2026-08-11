@@ -36,7 +36,7 @@ JSON API) が同じ `backend/oauth2/handlers_http` パッケージに混在す�
 - `backend/oauth2/handlers_http/authorize_consent.go` (3 箇所)
 
 `admin_authorization_detail_type_handler.go` の `invalid_type` (現状 400、
-`spec/contexts/oauth2/requirements.md` の `InvalidAuthorizationDetailTypeError` は 422) は
+`spec/contexts/oauth2/SPECIFICATION.md` の `InvalidAuthorizationDetailTypeError` は 422) は
 envelope 移行と同時に status も 422 へ揃える。
 
 `authorize_enrollment.go:170` の `mfa_enrollment_not_allowed` (現状 **403**) は
@@ -62,7 +62,7 @@ language stub。`authentication` context 側 (`wi-329`) の同名コードは現
 
 - 各 `WriteBrowserError` 呼び出しについて、それが JSON API (ログイン/MFA/同意
   画面が fetch する API) か OAuth2 protocol endpoint の一部かを、呼び出し元
-  handler が bind される interface (`spec/contexts/oauth2/requirements.md` の
+  handler が bind される interface (`spec/contexts/oauth2/SPECIFICATION.md` の
   `bindings.path`) と `wi-325` Design 節の 12 interface リストを突き合わせて
   判定する。`device_handler.go` はファイル内に両方の handler
   (`handleDeviceAuthorization` は protocol、`handleDeviceAPI` はブラウザ向け)

@@ -4,18 +4,23 @@
 
 - Status updates, explanations, questions, summaries, and final responses of AI coding agents must be Japanese.
 - The main `README.md` file must be written in English only.
-- `ARCHITECTURE.md` (root and per-context design records) must be written in English only.
-- Develop according to Regenerative Architecture.
+- Use the specification-first development workflow.
   - Keep feature and behavior changes specification-first.
   - Put models, API interfaces, and authentication mechanisms in `spec/**/*.tsp`.
-  - Put requirements, scenarios, glossary, standards, and language-independent state-transition tables in `spec/**/requirements.md`.
-  - Use stable `REQ-<CONTEXT>-NNN` requirement IDs and TypeSpec symbols in work-item references.
-  - Treat [REGENERATIVE_ARCHITECTURE.md](REGENERATIVE_ARCHITECTURE.md), [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md), and [ARCHITECTURE_FORMAT.md](ARCHITECTURE_FORMAT.md) as section-addressable references, not required reading.
-  - Expect the `ra` CLI to discover the standard repository layout without a registry file.
-  - Regenerate untracked TypeSpec artifacts after specification changes.
-  - If bounded contexts, global directory structures, adopted technologies, or core architecture rules change, synchronize the relevant `ARCHITECTURE.md`.
-  - Do not create new ADRs. Put durable current design and rationale in `ARCHITECTURE.md`; put change-specific analysis, alternatives, and implementation history in the work item. Existing ADRs are read-only history.
-  - Do not add `architecture.yaml`. Architectural checks infer structure from paths and reject forbidden dependencies only.
+  - Put overview, glossary, standards, language-independent state transitions, current design,
+    and scenarios in the owning `spec/**/SPECIFICATION.md`.
+  - Use stable `REQ-<CONTEXT>-NNN` normative scenario IDs and TypeSpec symbols in work-item references.
+  - Treat [DEVELOPMENT.md](DEVELOPMENT.md) and
+    [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) as section-addressable references, not required reading.
+  - Expect repository tools to discover the standard layout without a registry file; use `just` recipes
+    rather than a methodology-specific CLI.
+  - Regenerate untracked TypeSpec and HTML artifacts after specification changes.
+  - If bounded contexts, global directory structures, adopted technologies, or core design rules change,
+    synchronize the owning `SPECIFICATION.md` Design section.
+  - Do not create new ADRs. Put durable current design and rationale in `SPECIFICATION.md`; put
+    change-specific analysis, alternatives, and implementation history in the work item. Existing ADRs are
+    read-only history.
+  - Do not add architecture ledgers. Boundary checks infer structure from paths and reject forbidden dependencies only.
 
 ## Commands via just
 

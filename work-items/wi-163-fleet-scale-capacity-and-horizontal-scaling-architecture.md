@@ -34,7 +34,7 @@ ADR で確定する。実際のデータ層改修は [[wi-164-data-tier-scalabil
 - **decision**:
   - 新規 ADR: 水平スケール参照アーキテクチャ。app レプリカの stateless 性、共有状態ストア (Valkey) のトポロジ選定基準、データ層 (PostgreSQL) の分界、鍵・JWKS・discovery のキャッシュ戦略、容量計画の算出根拠（1 レプリカあたり処理能力 × 必要レプリカ数）を記録する。データ層と可用性の詳細設計は後続 WI へ委譲する分界も明記する。
 - **documentation**:
-  - `ARCHITECTURE.md` またはデプロイ参照ドキュメントに、フリート規模のリファレンストポロジ図（LB → N app レプリカ → Valkey → PostgreSQL）と容量計画の前提を追記する。
+  - `spec/SPECIFICATION.md` またはデプロイ参照ドキュメントに、フリート規模のリファレンストポロジ図（LB → N app レプリカ → Valkey → PostgreSQL）と容量計画の前提を追記する。
 
 ## Out of Scope
 - PostgreSQL のパーティショニング / リードレプリカ / 接続プール実装。→ [[wi-164-data-tier-scalability-partitioning-read-replica-pooling]]
@@ -57,7 +57,7 @@ ADR で確定する。実際のデータ層改修は [[wi-164-data-tier-scalabil
 - [ ] T001 [ADR] 水平スケール参照アーキテクチャと容量計画の算出根拠を記録する。
 - [ ] T002 [Spec] `System.objectives` に fleet-scale capacity 目標、stateless / 共有ストア constraints、大規模クラスタ scenarios を追加する。
 - [ ] T003 [Render] `just spec-render` で派生物を更新する。
-- [ ] T004 [Doc] `ARCHITECTURE.md` に参照トポロジと容量前提を追記する。
+- [ ] T004 [Doc] `spec/SPECIFICATION.md` に参照トポロジと容量前提を追記する。
 - [ ] T005 [Verify] `just yaml-check`、`just check-ids` を通す。
 
 ## Verification

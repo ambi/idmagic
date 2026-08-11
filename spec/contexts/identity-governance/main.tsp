@@ -4,6 +4,7 @@ import "@typespec/openapi";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
+@tag("Identity Governance")
 namespace IdMagic.IdGovernance {
 
 namespace Operations {

@@ -12,7 +12,7 @@ import (
 
 // DataKeyRepository is the in-process reference implementation of
 // ports.DataKeyRepository. It is also the reference behavior for tests and
-// the local demo (ARCHITECTURE.md Persistence policy) — the PostgreSQL
+// the local demo (spec/SPECIFICATION.md persistence policy) — the PostgreSQL
 // adapter must never diverge from it.
 type DataKeyRepository struct {
 	mu       sync.Mutex

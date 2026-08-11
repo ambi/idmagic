@@ -121,7 +121,7 @@ describe('locatePointer', () => {
 
 describe('SCHEMAS', () => {
   it('exposes exactly the documented schemas', () => {
-    expect(Object.keys(SCHEMAS).sort()).toEqual(['architecture-doc', 'work-item'])
+    expect(Object.keys(SCHEMAS).sort()).toEqual(['work-item'])
   })
 })
 
@@ -175,9 +175,9 @@ describe('validateAgainstSchema — work-item', () => {
         'work-item',
         {
           ...feature,
-          initial_context: { source: ['tools/ra/src'] },
+          initial_context: { source: ['tools/workspace/src'] },
           affected_spec: [
-            { path: 'spec/contexts/ra/requirements.md', requirement: 'REQ-RA-CHECK' },
+            { path: 'spec/contexts/demo/SPECIFICATION.md', requirement: 'REQ-DEMO-CHECK' },
           ],
         },
         '',

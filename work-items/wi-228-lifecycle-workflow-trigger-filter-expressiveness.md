@@ -10,7 +10,7 @@ depends_on: [wi-153-identity-lifecycle-workflows]
 
 ## Motivation
 現在の `LifecycleWorkflow` は 1 revision につき trigger kind が 1 つ
-(`spec/contexts/identity-management/requirements.md` L1659、`WorkflowTriggerDef` は配列ではなく単数)、filter は
+(`spec/contexts/identity-management/SPECIFICATION.md` L1659、`WorkflowTriggerDef` は配列ではなく単数)、filter は
 field/operator/value の AND 結合のみで、operator も `eq`/`not_eq`/`in`/`exists` に限定される
 (L1536-1543)。実運用の joiner/mover/leaver では「部署が Sales に変わった、または役職が Manager に
 変わった」のような OR 条件、「入社日から 30 日以上経過」のような比較演算子が必要になる場面が多い。

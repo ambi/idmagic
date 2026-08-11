@@ -5,8 +5,8 @@ New ADRs are no longer created. Existing files under `decisions/` are immutable 
 For a new change:
 
 - put change-specific motivation, considered alternatives, risks, and implementation history in the work item;
-- put normative behavior in TypeSpec or `requirements.md`;
-- put durable current design and its concise rationale in `ARCHITECTURE.md`;
+- put API contracts in TypeSpec and normative behavior or durable current design in the owning
+  `SPECIFICATION.md`;
 - update those current-state documents directly when a former decision is replaced.
 
 Do not renumber, rewrite, or delete archived ADRs as part of ordinary feature work.

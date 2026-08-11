@@ -25,7 +25,6 @@ import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { basename, isAbsolute, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { parseArchitectureDoc } from './arch-check.ts'
 import { type Finding, SCHEMAS, lintRawText, parseArgs, validateAgainstSchema } from './lib.ts'
 
 const REPO_ROOT = resolve(import.meta.dir, '../../..')
@@ -219,10 +218,7 @@ async function parseYaml(path: string, text: string): Promise<ParseResult> {
   const ext = extname(path).toLowerCase()
   if (ext === '.md') {
     try {
-      const data =
-        basename(path) === 'ARCHITECTURE.md'
-          ? parseArchitectureDoc(text)
-          : parseFrontmatterAndMarkdown(path, text)
+      const data = parseFrontmatterAndMarkdown(path, text)
       return { ok: true, data }
     } catch (e) {
       return {

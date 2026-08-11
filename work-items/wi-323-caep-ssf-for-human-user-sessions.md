@@ -11,7 +11,7 @@ depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 ## Motivation
 
 [[wi-58-continuous-access-evaluation-agent-revocation]] / [[ADR-057]] は Motivation・specification
-(`spec/contexts/sharedsignals/requirements.md`)・実装のいずれも Agent プリンシパル限定でスコープされている。
+(`spec/contexts/sharedsignals/SPECIFICATION.md`)・実装のいずれも Agent プリンシパル限定でスコープされている。
 `AgentRevocationEpoch` は `agent_id` をキーに `agents` テーブルへ直接 FK する専用テーブルで、
 OAuth2 `Introspect` への `ensures` 節も `access_token_subject_is_agent(...)` というガード付きで
 Agent 主体の token にしか revocation epoch 判定をかけない。
@@ -34,7 +34,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
 
 ## Scope
 
-- `spec/contexts/sharedsignals/requirements.md`:
+- `spec/contexts/sharedsignals/SPECIFICATION.md`:
   - `AgentRevocationEpoch` と対称な新規 model `UserRevocationEpoch` (`user_id` をキーに `users`
     テーブルへ FK する専用テーブル) を追加する。
   - `CheckUserRevocationEpoch` / `AdvanceUserRevocationEpoch` (`access: internal`) interface を
@@ -45,7 +45,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
     (`UserRevocationReason`) にするかは `## Design` で判断する。
   - `ReceiveSecurityEvent` の subject 解決を Agent だけでなく User にも対応させる (現状は
     `security_event_subject_resolves_to_tenant_local_principal` が Agent のみを解決する前提)。
-- `spec/contexts/oauth2/requirements.md`:
+- `spec/contexts/oauth2/SPECIFICATION.md`:
   - `Introspect` の `ensures` 節に、`access_token_subject_is_user(...)` の場合も同様に revocation
     epoch を判定する節を追加する (現状の Agent 向け節と対称)。
 - specification 変更なしで既存イベントをトリガーとして利用する対象 (`SharedSignals` が構造的に反応する、

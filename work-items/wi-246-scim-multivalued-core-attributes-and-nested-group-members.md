@@ -28,8 +28,8 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7643-CORE-RESOURCES }
-  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7644-PATCH }
+  - { path: spec/contexts/sourcing/SPECIFICATION.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: spec/contexts/sourcing/SPECIFICATION.md, requirement: RFC7644-PATCH }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimGroup }
 ---
@@ -58,7 +58,7 @@ silently に切り捨てる(`emails` は最初の要素以外破棄、`phoneNumb
 - Group の `members[].type` に `"Group"` を許可し、`GroupRepository` が入れ子構造を
   安全に扱えるか(循環参照防止、深さ上限)を調査した上で対応する。既存
   `GroupMember` モデル・`ListGroupsByUser` 等への影響を洗い出す。
-- `spec/contexts/sourcing/requirements.md` の `RFC7643-CORE-RESOURCES` の `reason` を、対応範囲拡大に
+- `spec/contexts/sourcing/SPECIFICATION.md` の `RFC7643-CORE-RESOURCES` の `reason` を、対応範囲拡大に
   合わせて更新する([[ADR-121-scope-narrowing-disclosure-obligation]])。
 
 ## Out of Scope
@@ -80,7 +80,7 @@ silently に切り捨てる(`emails` は最初の要素以外破棄、`phoneNumb
   展開には深さ上限を設ける。
 - 実装時、まず nested group member は読み取り専用の1階層展開から始め、循環検出を実装してから
   書き込みに対応する。
-- 実装着手時に `backend/sourcing/scim/ARCHITECTURE.md` と `backend/idmanagement/ARCHITECTURE.md`
+- 実装着手時に `spec/contexts/sourcing/SPECIFICATION.md` と `spec/contexts/identity-management/SPECIFICATION.md`
   へテーブル形状・深さ上限などの設計詳細を書く(ADR には決定の要約のみを置いた)。
 
 ## Tasks
@@ -89,7 +89,7 @@ silently に切り捨てる(`emails` は最初の要素以外破棄、`phoneNumb
       roles への反映要否を判断し、ADR化する。
       → [[ADR-162-scim-multivalued-attributes-stay-in-scim-context]]、
       [[ADR-163-scim-nested-group-member-is-representational-only]]。
-- [ ] T001 [Spec] 対応する新規属性・nested member の契約を `spec/contexts/sourcing/requirements.md` に明記し、
+- [ ] T001 [Spec] 対応する新規属性・nested member の契約を `spec/contexts/sourcing/SPECIFICATION.md` に明記し、
       `RFC7643-CORE-RESOURCES` の `reason` を更新する。ADR-162/163 の決定を前提にする。
 - [ ] T002 [Domain] RED: emails 配列・phoneNumbers・addresses・nested member の
       parse/validation test を先に失敗させて実装する。

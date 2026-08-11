@@ -4,6 +4,7 @@ import "@typespec/openapi";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
+@tag("OAuth 2.0 and OpenID Connect")
 namespace IdMagic.OAuth2 {
 
 namespace Operations {

@@ -27,7 +27,7 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 ## Design
 
 - `support.WriteBrowserError(...)` を `support.WriteProblem(...)` に機械的に
-  置き換える。`spec/contexts/provisioning/requirements.md` の該当 model はいずれも
+  置き換える。`spec/contexts/provisioning/SPECIFICATION.md` の該当 model はいずれも
   既存 Go 実装と status が一致している (wi-325 確認済み。
   `ProvisioningConnectionAlreadyExistsError`/`ProvisioningDeliveryNotRetryableError`
   =409、`ProvisioningConnectionNotFoundError`/`ProvisioningDeliveryNotFoundError`

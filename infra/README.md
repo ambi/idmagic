@@ -89,5 +89,5 @@ Changing endpoint style changes the issuer, cookie scope, and WebAuthn RP ID. Co
 The cross-cutting runtime design these assets implement — high availability and shared state, request
 correlation, the metrics contract, HTTP server hardening, and security response headers — is recorded in
 the repository design record, not here. See
-[`ARCHITECTURE.md`](../ARCHITECTURE.md) `## Cross-cutting Concerns` and `## Runtime Composition`.
+[`spec/SPECIFICATION.md`](../spec/SPECIFICATION.md) `## Design`.
 This file keeps the commands and configuration steps for running the stack (ADR-143).

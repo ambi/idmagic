@@ -1,18 +1,15 @@
 {
-  "name": "@regenerative-architecture/cli",
-  "bin": {
-    "ra": "ra/src/main.ts"
-  },
+  "name": "@idmagic/tools",
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "ra": "bun run ra/src/main.ts",
     "generate-contract": "bun run generate-contract/src/main.ts",
+    "render-spec-docs": "bun run render-spec-docs/src/main.ts",
     "check": "bun run check/src/main.ts",
-    "check:workspace": "bun run ra/src/check-workspace.ts",
+    "check:workspace": "bun run workspace/src/check-workspace.ts",
     "check:all": "bun run check:workspace",
     "check:workspace-work-items": "bun run check:workspace --work-items --ids",
     "check-ids:workspace": "bun run check:workspace --ids"

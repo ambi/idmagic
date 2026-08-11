@@ -59,7 +59,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
     と監査ログにパスワードを含めないこと、失敗した差分を安全に再試行できることを定める。
 - **architecture**:
   - Connector runtime とその IdMagic 側受信境界を追加するため、bounded context の所有関係、
-    新規 process / directory 規約を `ARCHITECTURE.md` に同期する。
+    新規 process / directory 規約を `spec/SPECIFICATION.md` に同期する。
 - **go**:
   - Directory Connector の runtime（LDAP(S) read、AD 実装向けの差分取得、mapping、local
     cursor、再試行）と、IdMagic 側の enrollment / mTLS 認証 / 同期受理 use case を追加する。

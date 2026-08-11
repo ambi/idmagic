@@ -4,6 +4,7 @@ import "@typespec/openapi";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
+@tag("Signing Keys")
 namespace IdMagic.SigningKeys {
 
 namespace Operations {

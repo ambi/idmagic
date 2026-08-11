@@ -1,9 +1,8 @@
 # App repository command map for humans and AI agents.
 #
-# This app repo consumes RA tools from the embedded tools/ directory.
+# Repository tooling is embedded under tools/ and exposed through this command map.
 
 
-ra_cmd := env("RA_CMD", "bun run tools/ra/src/main.ts")
 golangci_cache := env("GOLANGCI_LINT_CACHE", "/tmp/idmagic-golangci-cache")
 git_commit := `git rev-parse HEAD 2>/dev/null || echo "unknown"`
 build_date := `date -u +'%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo "unknown"`
@@ -14,11 +13,11 @@ ldflags := "-X github.com/ambi/idmagic/backend/shared/version.Version=" + versio
 default:
     @just --list
 
-# Install local dependencies and setup RA.
-setup: setup-ra install-ui
+# Install local dependencies and setup repository tools.
+setup: setup-tools install-ui
 
-# Setup RA tools dependencies and link agent skills.
-setup-ra:
+# Setup repository tool dependencies and link agent skills.
+setup-tools:
     cd tools && bun install
     ln -sfn tools/node_modules node_modules
     mkdir -p .agents/skills
@@ -90,19 +89,19 @@ verify-serial: check check-api-compat test-tools typecheck-tools lint-go test-go
 # Validate specifications, then test and type-check embedded tooling.
 verify-spec: check test-tools typecheck-tools
 
-# Run embedded RA tooling tests.
+# Run embedded repository tooling tests.
 test-tools:
     cd tools && bun test
 
-# Type-check embedded RA tooling.
+# Type-check embedded repository tooling.
 typecheck-tools:
     cd tools && bun run typecheck
 
-# Format embedded RA tooling.
+# Format embedded repository tooling.
 format-tools:
     cd tools && bun run format
 
-# Lint embedded RA tooling.
+# Lint embedded repository tooling.
 lint-tools:
     cd tools && bun run lint
 
@@ -207,24 +206,21 @@ build-ui:
 test-ui-e2e:
     cd frontend && bun run test:e2e
 
-# Validate specification sources, records, architecture prose, and forbidden dependencies.
-check: check-spec check-work-items check-ids check-architecture check-boundaries
+# Validate specification sources, records, and forbidden dependencies.
+check: check-spec check-work-items check-ids check-boundaries
 
-# Compile TypeSpec and validate language-independent requirements.
+# Compile TypeSpec and validate canonical specification documents.
 check-spec: compile-spec check-generated-contract
-    {{ra_cmd}} check --requirements
+    cd tools && bun run workspace/src/check-workspace.ts --documents
+    cd tools && bun run render-spec-docs/src/main.ts --check
 
 # Validate work-item records (Markdown with YAML frontmatter).
 check-work-items:
-    {{ra_cmd}} check --work-items
+    cd tools && bun run workspace/src/check-workspace.ts --work-items
 
 # Detect duplicate / mismatched change-record ids.
 check-ids:
-    {{ra_cmd}} check --ids
-
-# Validate ARCHITECTURE.md against the workspace it describes.
-check-architecture:
-    {{ra_cmd}} check --architecture
+    cd tools && bun run workspace/src/check-workspace.ts --ids
 
 # Reject outward source dependencies inferred directly from repository paths.
 check-boundaries:
@@ -234,8 +230,12 @@ check-boundaries:
 check-api-compat:
     cd tools && bun run check-api-compat/src/main.ts --baseline ../spec/idmagic.openapi.baseline.json --current ../spec/generated/openapi/idmagic.openapi.json
 
+# Render the browsable specification and API documentation from canonical sources.
+render-spec-docs:
+    cd tools && bun run render-spec-docs/src/main.ts
+
 # Regenerate standard artifacts from TypeSpec. Generated files are untracked.
-spec-render: compile-spec generate-contract
+spec-render: compile-spec generate-contract render-spec-docs
 
 # Start the local dev stack (Go API + React UI together with live reload).
 dev:

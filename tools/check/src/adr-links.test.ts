@@ -33,7 +33,7 @@ describe('extractAdrLinks', () => {
 
 describe('checkAdrLinks', () => {
   const source: AdrLinkSource = {
-    path: '/repo/ARCHITECTURE.md',
+    path: '/repo/spec/SPECIFICATION.md',
     text: 'see [ADR-1](decisions/ADR-1-a.md)',
   }
 
@@ -44,7 +44,7 @@ describe('checkAdrLinks', () => {
   it('reports a reference that resolves to no file', () => {
     expect(checkAdrLinks([source], resolvesNone)).toEqual([
       {
-        path: '/repo/ARCHITECTURE.md',
+        path: '/repo/spec/SPECIFICATION.md',
         message: "dangling ADR link 'decisions/ADR-1-a.md' resolves to no file",
       },
     ])
@@ -65,6 +65,6 @@ describe('checkAdrLinks', () => {
       seen.push([from, reference])
       return true
     })
-    expect(seen).toEqual([['/repo/ARCHITECTURE.md', 'decisions/ADR-1-a.md']])
+    expect(seen).toEqual([['/repo/spec/SPECIFICATION.md', 'decisions/ADR-1-a.md']])
   })
 })

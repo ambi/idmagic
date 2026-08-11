@@ -37,7 +37,7 @@ Why this change is needed / what problem it solves (not a restatement of the dif
 
 - `type`: `feat` `fix` `docs` `refactor` `chore` `test` `perf` `build` `ci` `style`
   から。破壊的変更は `!` を付ける（例 `feat(idmagic)!: ...`）。
-- `scope`: 変更したコンテキスト / モジュール（例 `idmagic`, `tools`, `scl`）。
+- `scope`: 変更したコンテキスト / モジュール（例 `idmagic`, `tools`, `spec`）。
 - **subject ≤ 72 文字**、命令形。
 - body は *what* ではなく *why*。何を変えたかは diff が語る。
 - **subject を英語にして body を日本語にする間違いを繰り返さない。両方英語。**

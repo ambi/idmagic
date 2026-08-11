@@ -4,6 +4,7 @@ import "@typespec/openapi";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
+@tag("Provisioning")
 namespace IdMagic.Provisioning {
 
 namespace Operations {

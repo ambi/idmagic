@@ -7,7 +7,6 @@
 
 import Ajv2020, { type ErrorObject, type ValidateFunction } from 'ajv/dist/2020.js'
 import addFormats from 'ajv-formats'
-import architectureDocSchema from '../schemas/architecture-doc.schema.json' with { type: 'json' }
 import workItemSchema from '../schemas/work-item.schema.json' with { type: 'json' }
 
 export type Finding = { line: number; column: number; message: string }
@@ -17,7 +16,6 @@ addFormats.default(ajv)
 
 export const SCHEMAS: Record<string, ValidateFunction> = {
   'work-item': ajv.compile(workItemSchema),
-  'architecture-doc': ajv.compile(architectureDocSchema),
 }
 
 export type CliOptions = {

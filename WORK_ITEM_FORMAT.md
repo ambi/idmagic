@@ -2,7 +2,7 @@
 
 一つの意味変更を説明・設計・実装・検証できる作業単位。未完了は `work-items/`、完了・中止は `work-items/done/` に置く。ファイル名は `wi-<連番>-<kebab-title>.md`。
 
-Work item はタスク、変更固有の Design Doc、実装履歴を兼ねる。現在も有効な結論は、完了時に TypeSpec、requirements Markdown、または `ARCHITECTURE.md` へ反映する。新しい ADR は作らない。
+Work item はタスク、変更固有の Design Doc、実装履歴を兼ねる。現在も有効な結論は、完了時に TypeSpec または owning context の `SPECIFICATION.md` へ反映する。新しい ADR は作らない。
 
 ```markdown
 ---
@@ -13,14 +13,14 @@ created_at: 2026-01-01
 depends_on: []
 change_kind: feature
 initial_context:
-  requirements: [spec/contexts/system/requirements.md#REQ-SYSTEM-001]
-  typespec: [IdMagic.System.Operations.StartTask]
+  specification: [spec/contexts/system/SPECIFICATION.md#REQ-SYSTEM-001]
+  typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
   tests: [backend/system]
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: spec/contexts/system/requirements.md, requirement: REQ-SYSTEM-001 }
-  - { path: spec/contexts/system/main.tsp, symbol: IdMagic.System.Operations.StartTask }
+  - { path: spec/contexts/system/SPECIFICATION.md, requirement: REQ-SYSTEM-001 }
+  - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
 ---
 
 # 一文で表す意味変更
@@ -52,7 +52,7 @@ affected_spec:
 リスクと軽減策。
 ```
 
-`feature` / `bugfix` / `operations` は `initial_context` と `affected_spec` が必須。`affected_spec` は requirement ID または TypeSpec symbol を直接参照する。仕様非影響の `refactor` / `docs` / `tooling` / `maintenance` は次を使える。
+`feature` / `bugfix` / `operations` は `initial_context` と `affected_spec` が必須。`affected_spec` は normative scenario / standard ID または TypeSpec symbol を直接参照する。仕様非影響の `refactor` / `docs` / `tooling` / `maintenance` は次を使える。
 
 ```yaml
 spec_impact: { kind: none, reason: "具体的な理由" }
@@ -60,7 +60,7 @@ spec_impact: { kind: none, reason: "具体的な理由" }
 
 `depends_on` は完了前提だけを完全 slug で列挙する。関連・後続候補は本文に書く。
 
-中規模以上では `Design` と `Plan` を具体化する。Domain / Use Cases / Adapters の task は先に落としたテストと対応する requirement ID を自己証跡として残す。
+中規模以上では `Design` と `Plan` を具体化する。Domain / Use Cases / Adapters の task は先に落としたテストと対応する normative scenario ID を自己証跡として残す。
 
 完了時は status を `completed` にし、本文末尾へ次を追記して `done/` へ移す。
 

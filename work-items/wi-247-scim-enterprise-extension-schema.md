@@ -24,7 +24,7 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/requirements.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: spec/contexts/sourcing/SPECIFICATION.md, requirement: RFC7643-CORE-RESOURCES }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimSchemas }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
 ---
@@ -63,7 +63,7 @@ schema を discovery(`/Schemas`)にも request body 処理にも一切持たず�
 
 ## Tasks
 
-- [ ] T001 [Spec] enterprise extension の対応属性・schema 契約を `spec/contexts/sourcing/requirements.md` に追加する。
+- [ ] T001 [Spec] enterprise extension の対応属性・schema 契約を `spec/contexts/sourcing/SPECIFICATION.md` に追加する。
 - [ ] T002 [Domain] RED: enterprise extension の parse/validation test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: `/Schemas` と CRUD/PATCH の HTTP contract test を先に失敗させて実装する。
 - [ ] T004 [Verify] `just yaml-check`、`just test-go`、`just verify-go` を実行する。

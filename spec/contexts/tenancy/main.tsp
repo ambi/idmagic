@@ -4,6 +4,7 @@ import "@typespec/openapi";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
+@tag("Tenancy")
 namespace IdMagic.Tenancy {
 
 namespace Operations {

@@ -40,11 +40,11 @@ affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.LogoutNotification }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.FrontChannelLogoutTarget }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DiscoveryDocument }
-  - { path: spec/contexts/oauth2/requirements.md, requirement: REQ-OAUTH2-049 }
-  - { path: spec/contexts/oauth2/requirements.md, requirement: REQ-OAUTH2-050 }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-023 }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-025 }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.CheckSessionIframe }
-  - { path: spec/contexts/oauth2/requirements.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
-  - { path: spec/contexts/oauth2/requirements.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
   - { path: spec/contexts/jobs/models.tsp, symbol: IdMagic.Contract.JobKind }
 ---
 
@@ -55,7 +55,7 @@ affected_spec:
 revoke に伴う refresh token family の失効と `/end_session` の `id_token_hint`
 検証は実運用相当まで完成した。しかし、接続済み RP (Relying Party) へ「ユーザーが
 ログアウトしたこと」を伝播する OpenID Connect Front-Channel Logout 1.0 /
-Back-Channel Logout 1.0 は未実装であり、`spec/contexts/oauth2/requirements.md` の
+Back-Channel Logout 1.0 は未実装であり、`spec/contexts/oauth2/SPECIFICATION.md` の
 `standards.OpenIDConnectFrontChannelLogout` / `OpenIDConnectBackChannelLogout` は
 既に `adoption: required` として宣言済みである (wi-28 T001)。宣言した標準と実装の
 不一致を解消するため、通知配送を実装する。
@@ -65,8 +65,8 @@ Keycloak / Okta / Google 相当の IdP では、ユーザーが idmagic から�
 idmagic 上ではログアウト済みでも RP 側では認証済みのまま残り続ける。
 
 ## Scope
-以下は wi-28 の T001 (specification-first) で既に `spec/contexts/oauth2/requirements.md` /
-`spec/contexts/jobs/requirements.md` に追加・コミット済みであり、本 WI はそれらに対する
+以下は wi-28 の T001 (specification-first) で既に `spec/contexts/oauth2/SPECIFICATION.md` /
+`spec/contexts/jobs/SPECIFICATION.md` に追加・コミット済みであり、本 WI はそれらに対する
 Go 実装を担当する (追加の specification 変更が必要になった場合のみ `spec-change` に戻る)。
 
 - `models.ClientSession` — sid が発行結果を渡した RP (client_id) の参加記録。
@@ -82,7 +82,7 @@ Go 実装を担当する (追加の specification 変更が必要になった場
   `backchannel_logout_session_supported` / `check_session_iframe`。
 - `interfaces.FrontChannelLogout` (internal) / `interfaces.BackChannelLogout`
   (internal) / `interfaces.CheckSessionIframe` (public)。
-- `spec/contexts/jobs/requirements.md` の `models.JobKind.backchannel_logout_delivery`。
+- `spec/contexts/jobs/SPECIFICATION.md` の `models.JobKind.backchannel_logout_delivery`。
 
 Go 実装スコープ:
 - 管理者向けクライアント編集 (`RegisterClient` / `UpdateAdminOAuth2Client` /

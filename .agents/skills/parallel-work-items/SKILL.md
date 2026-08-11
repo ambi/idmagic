@@ -1,6 +1,6 @@
 ---
 name: parallel-work-items
-description: Set up and coordinate parallel git worktrees and branches for multiple Regenerative Architecture work items. Use when the user wants to implement work items concurrently, create per-work-item workspaces, prepare branch/worktree commands, assign agents to work items, or integrate completed work-item branches back through an integration branch.
+description: Set up and coordinate parallel git worktrees and branches for multiple specification-first work items. Use when the user wants to implement work items concurrently, create per-work-item workspaces, prepare branch/worktree commands, assign agents to work items, or integrate completed work-item branches back through an integration branch.
 ---
 
 # 並列ワークアイテム実装
@@ -74,7 +74,7 @@ move it to done, and commit the branch. Do not push.
 
 衝突を早く見つけるため、各 branch の作業範囲を work item の `scope` に寄せる。
 
-- 同じ requirements ID または TypeSpec symbol を複数 branch が触る場合は、先に順序を決める。
+- 同じ normative scenario / standard ID または TypeSpec symbol を複数 branch が触る場合は、先に順序を決める。
 - 同じ id / ファイル名を作った場合は `just check-ids` の結果に従って片方を採番し直す。
 - 生成物の衝突は手で解かず、統合済み TypeSpec から再生成する。
 

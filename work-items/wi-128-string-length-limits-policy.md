@@ -34,7 +34,7 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
     採用するかを `wi-127-postgres-column-type-policy` の型ポリシーと整合させる。
 - **spec**:
   - 最大文字数が公開 contract、管理 UI 入力制約、または保証義務に関わる場合は、
-    specification-first で `spec/requirements.md` を最小限更新し、derived artifacts を再生成する。
+    specification-first で `spec/SPECIFICATION.md` を最小限更新し、derived artifacts を再生成する。
 - **implementation**:
   - 決定した上限を、HTTP request validation、domain/service validation、UI form validation、
     OpenAPI/JSON Schema など該当する境界に反映する。

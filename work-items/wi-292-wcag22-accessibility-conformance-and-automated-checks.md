@@ -26,10 +26,10 @@ initial_context:
   stop_before_reading:
     - backend
 affected_spec:
-  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-KEYBOARD }
-  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-FOCUS }
-  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-LABELS-ERRORS }
-  - { path: spec/contexts/system/requirements.md, requirement: WCAG22-STATUS }
+  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-KEYBOARD }
+  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-FOCUS }
+  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-LABELS-ERRORS }
+  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-STATUS }
 ---
 
 # WCAG 2.2 AA 準拠を自動検査で保証し、認証 UI のアクセシビリティを担保する
@@ -47,7 +47,7 @@ specification の `System.standards.WCAG22` は 4 件の要件を **adoption: re
 しかし **これらを検証する手段が存在しない**。UI 側には E2E (`frontend/tests/e2e`) と
 unit test があるが、アクセシビリティ検査 (axe-core 等) は入っていない。
 つまり specification が MUST と宣言した要件が、実装で満たされているかどうか誰も確認していない
-「宣言だけの保証」になっている。Regenerative Architecture の建て方 (仕様が正本で、
+「宣言だけの保証」になっている。specification-first workflow の建て方 (仕様が正本で、
 実装と検証がそれに従う) からすると、これは最も直すべき類の乖離である。
 
 実務上の影響:

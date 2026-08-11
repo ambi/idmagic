@@ -4,6 +4,7 @@ import "@typespec/openapi";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
+@tag("API Tokens")
 namespace IdMagic.ApiTokens {
 
 namespace Operations {

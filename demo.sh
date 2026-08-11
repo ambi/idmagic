@@ -67,7 +67,7 @@ token_request() {
 }
 
 echo "================================================================"
-echo "  Regenerative Architecture Go - OAuth2 / OIDC IdP デモ"
+echo "  IdMagic Go - OAuth2 / OIDC IdP demo"
 echo "================================================================"
 
 echo

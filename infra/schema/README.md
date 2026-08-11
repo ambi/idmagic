@@ -162,9 +162,9 @@ converges required rows such as the default tenant at startup.
   a deploy-time operation.
 - Do not use `--enable-drop` in automation without a reviewed migration plan.
 - Do not put SQL comments (`--`) in `postgres.sql`. Two independent reasons:
-  - Design rationale belongs in `ARCHITECTURE.md` (root or per-context), not in
+  - Design rationale belongs in the owning `spec/**/SPECIFICATION.md`, not in
     the DDL file — a comment restating "why" drifts from the real design record
-    the same way a second copy of any decision does. See `ARCHITECTURE.md`
+    the same way a second copy of any decision does. See `spec/SPECIFICATION.md`
     `## Cross-cutting Concerns` > Database design policy for the column-type
     rules (ADR-084) and the `tenant_id` retention classes (ADR-082, simplified
     by ADR-083); do not restate them here.
@@ -222,7 +222,7 @@ converges required rows such as the default tenant at startup.
   is no reason to revert working hygiene just because the upstream bug it
   guarded against is now fixed.
 - Conventions this file keeps, because they are about writing SQL rather than
-  design (see `ARCHITECTURE.md` for anything beyond these):
+  design (see `spec/SPECIFICATION.md` for anything beyond these):
   - A table's own identifier is `id`; a reference to a User from another table
     is `user_id` (an owner reference is `owner_user_id`).
   - Every table has `created_at`. Tables whose rows can be updated after

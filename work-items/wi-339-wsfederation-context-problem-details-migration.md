@@ -29,7 +29,7 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 ## Design
 
 - `support.WriteBrowserError(...)` を `support.WriteProblem(...)` に機械的に
-  置き換える。`spec/contexts/ws-federation/requirements.md` の該当 model はいずれも
+  置き換える。`spec/contexts/ws-federation/SPECIFICATION.md` の該当 model はいずれも
   既存 Go 実装と status が一致しているため status 変更は不要。
 
 ## Plan

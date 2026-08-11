@@ -14,7 +14,7 @@ created_at: 2026-07-04
 パース失敗や負値を「静かに fallback へ戻す」ため、`TRUSTED_FORWARDED_HOPS` や
 リテンション間隔のような security/運用に効く値をタイポしても、警告なく既定値で
 起動してしまう。本番でこれは、意図した閾値が実は効いていないという silent
-misconfiguration を招く。設定項目の網羅一覧も存在せず、ARCHITECTURE.md も
+misconfiguration を招く。設定項目の網羅一覧も存在せず、spec/SPECIFICATION.md も
 「全環境変数一覧は置かない」としているため、運用者が正となる設定表を持てない。
 
 12-factor と Kubernetes のコンポーネント設定検証（無効な設定は起動拒否）に倣い、

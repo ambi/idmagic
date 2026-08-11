@@ -22,7 +22,7 @@ depends_on: []
 
 ## Scope
 
-- `spec/requirements.md`（`Group` モデルへのフィールド追加。対象コンテキストは要確認だが
+- `spec/SPECIFICATION.md`（`Group` モデルへのフィールド追加。対象コンテキストは要確認だが
   `models.Group` 相当）
 - グループ集約のドメイン・ユースケース・永続化層（Postgres スキーマ変更を含む）
 - `frontend/src/features/admin-groups/`（グループ詳細・編集画面への属性入力欄追加）

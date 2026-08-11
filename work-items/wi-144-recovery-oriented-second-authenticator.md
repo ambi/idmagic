@@ -22,11 +22,11 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 
 ## Scope
 
-- `spec/contexts/authentication/requirements.md`:
+- `spec/contexts/authentication/SPECIFICATION.md`:
   - 「復旧手段が単一（single point of failure）」を表す派生状態（例: 認証器 1 個のみ / 同期不可
     passkey のみ / recovery code のみ）と、その account security への提示。
   - 2 個目認証器登録の推奨状態と、任意強制ポリシー（推奨 / 必須）の表現。
-- `spec/contexts/application/requirements.md` および管理 UI: テナント既定 / アプリ単位で「2 個目認証器を
+- `spec/contexts/application/SPECIFICATION.md` および管理 UI: テナント既定 / アプリ単位で「2 個目認証器を
   推奨するか必須にするか」を設定する項目。
 - Account UI（`AccountSecurityPage`）: 復旧手段が単一のときの警告と、2 個目登録への導線。
 - 登録オンボーディング（wi-127）: 初回 MFA 登録完了直後に 2 個目認証器登録を促すステップ。

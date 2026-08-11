@@ -28,10 +28,10 @@ type Problem struct {
 }
 
 // WriteProblem writes an RFC 9457 Problem Details response (ADR-154), the
-// default envelope for generic API errors (see ARCHITECTURE.md HTTP error
+// default envelope for generic API errors (see spec/SPECIFICATION.md HTTP error
 // responses). code becomes both the `type` URN suffix and, humanized, the
 // stable `title`; detail carries the occurrence-specific explanation.
-// instance is the request's correlation id (ARCHITECTURE.md Request
+// instance is the request's correlation id (spec/SPECIFICATION.md request
 // correlation), read from context rather than passed in so call sites cannot
 // drift from the id actually returned to the client via X-Request-ID.
 func WriteProblem(c *echo.Context, status int, code, detail string) error {

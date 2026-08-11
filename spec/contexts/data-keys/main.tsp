@@ -4,6 +4,7 @@ import "@typespec/openapi";
 using TypeSpec.Http;
 using TypeSpec.OpenAPI;
 
+@tag("Data Keys")
 namespace IdMagic.DataKeys {
 
 namespace Operations {

@@ -26,7 +26,7 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 `admin_category_handler.go` の `category_name_required`/`unknown_category`
 (`wi-326` T003 で新設した distinguishable code) はここで envelope を
 Problem Details 化すると同時に status も specification 宣言値 422 へ揃える
-(`spec/contexts/application/requirements.md` の `CategoryNameRequiredError`/
+(`spec/contexts/application/SPECIFICATION.md` の `CategoryNameRequiredError`/
 `UnknownCategoryError`)。他の call site (`category_not_found` 404,
 `application_not_found` 404 等) は既存 status のまま envelope だけ変える。
 
