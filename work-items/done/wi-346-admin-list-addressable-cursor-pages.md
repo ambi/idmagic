@@ -11,24 +11,14 @@ initial_context:
       - interfaces.ListAdminUsers
       - interfaces.ListGroups
       - interfaces.ListAgents
-      - objectives.ListAdminUsersLatency
-      - objectives.ListGroupsLatency
-      - objectives.ListAgentsLatency
       - scenarios.管理者はユーザー一覧をページングしながら安定して閲覧できる
-      - flows.AdminUsers
-      - flows.AdminGroups
-      - flows.AdminAgents
     Application:
       - interfaces.ListAdminApplications
       - interfaces.ListApplicationAssignments
-      - objectives.ListAdminApplicationsLatency
-      - flows.AdminApplicationManagement
     Audit:
       - models.AuditEventQuery
       - interfaces.ListAdminAuditEvents
-      - objectives.ListAdminAuditEventsLatency
       - scenarios.管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される
-      - flows.AdminAuditEvents
     Authentication: [interfaces.ListAuthenticationEventBuckets]
     OAuth2: [interfaces.ListAdminOAuth2Clients, interfaces.ListAdminConsents]
     Provisioning: [interfaces.ListProvisioningDeliveries, objectives.ListProvisioningDeliveriesLatency]
@@ -49,27 +39,16 @@ affected_spec:
   - { context: IdManagement, kind: interface, element: ListAdminUsers }
   - { context: IdManagement, kind: interface, element: ListGroups }
   - { context: IdManagement, kind: interface, element: ListAgents }
-  - { context: IdManagement, kind: objective, element: ListAdminUsersLatency }
-  - { context: IdManagement, kind: objective, element: ListGroupsLatency }
-  - { context: IdManagement, kind: objective, element: ListAgentsLatency }
   - { context: IdManagement, kind: scenario, element: 管理者はユーザー一覧をページングしながら安定して閲覧できる }
-  - { context: IdManagement, kind: flow, element: AdminUsers }
-  - { context: IdManagement, kind: flow, element: AdminGroups }
-  - { context: IdManagement, kind: flow, element: AdminAgents }
   - { context: Application, kind: interface, element: ListAdminApplications }
   - { context: Application, kind: interface, element: ListApplicationAssignments }
-  - { context: Application, kind: objective, element: ListAdminApplicationsLatency }
-  - { context: Application, kind: flow, element: AdminApplicationManagement }
   - { context: Audit, kind: model, element: AuditEventQuery }
   - { context: Audit, kind: interface, element: ListAdminAuditEvents }
-  - { context: Audit, kind: objective, element: ListAdminAuditEventsLatency }
   - { context: Audit, kind: scenario, element: 管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される }
-  - { context: Audit, kind: flow, element: AdminAuditEvents }
   - { context: Authentication, kind: interface, element: ListAuthenticationEventBuckets }
   - { context: OAuth2, kind: interface, element: ListAdminOAuth2Clients }
   - { context: OAuth2, kind: interface, element: ListAdminConsents }
   - { context: Provisioning, kind: interface, element: ListProvisioningDeliveries }
-  - { context: Provisioning, kind: objective, element: ListProvisioningDeliveriesLatency }
 ---
 
 # 管理一覧を正確な集計と共有可能な双方向 cursor URL で閲覧できるようにする

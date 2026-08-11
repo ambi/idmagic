@@ -13,7 +13,6 @@ initial_context:
       - models.DataExportColumn
       - interfaces.StartGroupCsvExport
       - interfaces.ListGroupExports
-      - flows.AdminGroups
   source:
     - backend/idmanagement/group/domain/groups.go
     - backend/idmanagement/group/usecases/admin_groups.go
@@ -35,7 +34,6 @@ affected_spec:
   - { context: IdManagement, kind: model, element: Group }
   - { context: IdManagement, kind: model, element: DataExportColumn }
   - { context: IdManagement, kind: interface, element: StartGroupCsvExport }
-  - { context: IdManagement, kind: flow, element: AdminGroups }
 ---
 
 # Group CSV を安全に往復できる部分 upsert へ拡張する

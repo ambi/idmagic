@@ -298,14 +298,6 @@ authorization:
     TenantAdministrator:
       effect: permit
       principal: TenantAdministrator
-objectives:
-  ListAdminAuditEventsLatency:
-    description: "page data と全 AuditEventQuery predicate に一致する exact count を合わせた応答の 95% 以上を\n300ms 未満で返す。id/occurred_at の複合 index を forward/reverse scan する keyset pagination と既存の\ntime/type/user/structured filter index を使う count を独立して並列実行し、limit 上限 (1000) 付近の深い\n前後ページでも先頭ページと同程度の latency を保つ。\n"
-    interface: ListAdminAuditEvents
-    indicator: measurement.latency < duration("300ms")
-    target: 0.95
-    window: 30d
-    budgeting: occurrences
 scenarios:
   管理者は監査ログを期間で絞り込み参照・エクスポートできる:
     actor: TenantAdministrator
@@ -368,38 +360,3 @@ scenarios:
         condition: 実行者が TenantAdministrator ロールを持たない
         steps:
           - ListAdminAuditEvents は AccessDeniedError で拒否される
-flows:
-  AdminAuditEvents:
-    entry: AdminAuditEvents
-    views:
-      AdminAuditEvents:
-        sees: 監査イベント一覧画面(時系列降順の DomainEvent、正確な件数・現在ページ、URL に同期した絞り込み・compact cursor、先頭/前/次/末尾移動)
-        does:
-          - action: list
-            does: 絞り込み条件を指定して一覧を検索する
-            interface: ListAdminAuditEvents
-            to: AdminAuditEvents
-          - action: next_page
-            does: 「次へ」をクリックして Link の URL へ移動し、次ページで一覧を置き換える
-            interface: ListAdminAuditEvents
-            to: AdminAuditEvents
-          - action: previous_page
-            does: 「前へ」をクリックして Link の URL へ移動し、前ページで一覧を置き換える
-            interface: ListAdminAuditEvents
-            to: AdminAuditEvents
-          - action: first_page
-            does: 「最初へ」をクリックして cursor の無い Link URL へ移動し、先頭ページで一覧を置き換える
-            interface: ListAdminAuditEvents
-            to: AdminAuditEvents
-          - action: last_page
-            does: 「最後へ」をクリックして end anchor cursor の Link URL へ移動し、末尾ページで一覧を置き換える
-            interface: ListAdminAuditEvents
-            to: AdminAuditEvents
-          - action: view
-            does: 一覧からイベントを1件クリックして詳細を表示する
-            interface: GetAdminAuditEvent
-            to: AdminAuditEvents
-          - action: export
-            does: 絞り込み条件を指定してエクスポートボタンをクリックする
-            interface: ExportAdminAuditEvents
-            to: AdminAuditEvents

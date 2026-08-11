@@ -1024,13 +1024,6 @@ authorization:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.tenant_id
-objectives:
-  LifecycleWorkflowTriggerHandoffLatency:
-    description: "User mutation の commit から WorkflowRun 作成までの遅延の99%以上を5秒未満に収める。\nAPI process の即時 dispatch が失敗しても、periodic dispatcher が同じ目標内に未 enqueue run を\n回収することを含む。\n"
-    indicator: measurement.latency < duration("5s")
-    target: 0.99
-    window: 30d
-    budgeting: occurrences
 scenarios:
   管理者はライフサイクルワークフローを作成できる:
     actor: TenantAdministrator
@@ -1192,74 +1185,3 @@ scenarios:
         condition: workflow の trigger の filter が対象 User の現在属性に一致しない
         steps:
           - "応答は全 action を blocked、reason \"trigger_not_matched\" として返す"
-flows:
-  AdminLifecycleWorkflows:
-    entry: AdminLifecycleWorkflows
-    views:
-      AdminLifecycleWorkflows:
-        sees: LifecycleWorkflow一覧画面(name、status、trigger種別)
-        does:
-          - action: list
-            does: 画面を開く
-            interface: ListLifecycleWorkflows
-            to: AdminLifecycleWorkflows
-          - action: create
-            does: 新規作成を選び専用の作成画面を開く
-            to: AdminLifecycleWorkflowEditor
-          - action: view
-            does: 一覧から workflow を1件クリックして編集画面を開く
-            interface: GetLifecycleWorkflow
-            to: AdminLifecycleWorkflowEditor
-      AdminLifecycleWorkflowEditor:
-        sees: 一覧から分離された専用editor画面(trigger/filter/action の型付き form、validation summary、保存前の action 順序表示)
-        does:
-          - action: create
-            does: 新しい workflow 定義を作成する
-            interface: CreateLifecycleWorkflow
-            to: AdminLifecycleWorkflowEditor
-          - action: update
-            does: trigger/actions/表示情報を編集して保存する (expected_revision による楽観ロック)
-            interface: UpdateLifecycleWorkflow
-            to: AdminLifecycleWorkflowEditor
-          - action: dry_run
-            does: 対象 user を指定して dry-run を実行し would-change/no-op/blocked を確認する
-            interface: DryRunLifecycleWorkflow
-            to: AdminLifecycleWorkflowEditor
-          - action: enable
-            does: validation に成功した revision を enable する
-            interface: EnableLifecycleWorkflow
-            to: AdminLifecycleWorkflowEditor
-          - action: disable
-            does: 影響 (未開始 run の cancel、実行中 run の停止範囲) を確認して disable する
-            interface: DisableLifecycleWorkflow
-            to: AdminLifecycleWorkflowEditor
-          - action: delete
-            does: 確認後、状態に関係なく workflow を削除する
-            interface: DeleteLifecycleWorkflow
-            to: AdminLifecycleWorkflows
-          - action: view_runs
-            does: 実行履歴画面へ移動する
-            interface: ListLifecycleWorkflowRuns
-            to: AdminLifecycleWorkflowRuns
-      AdminLifecycleWorkflowRuns:
-        sees: 実行履歴画面(triggered_at、target user、status の一覧)
-        does:
-          - action: list
-            does: workflow の run 一覧を表示する
-            interface: ListLifecycleWorkflowRuns
-            to: AdminLifecycleWorkflowRuns
-          - action: view
-            does: run を1件クリックして詳細を表示する
-            interface: GetLifecycleWorkflowRun
-            to: AdminLifecycleWorkflowRunDetail
-      AdminLifecycleWorkflowRunDetail:
-        sees: run detail画面(trigger、固定 revision、target user、Job attempt、各 step の outcome/error_code/timestamp)
-        does:
-          - action: view
-            does: 画面を開く
-            interface: GetLifecycleWorkflowRun
-            to: AdminLifecycleWorkflowRunDetail
-          - action: retry
-            does: partially_failed / failed の run を再試行する
-            interface: RetryLifecycleWorkflowRun
-            to: AdminLifecycleWorkflowRunDetail

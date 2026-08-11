@@ -20,9 +20,7 @@ initial_context:
   stop_before_reading: [backend/oauth2]
 affected_spec:
   - { context: Tenancy, kind: scenario, element: 管理者は正規ロケーションの連携情報を取得する }
-  - { context: Tenancy, kind: flow, element: TenantSettingsManagement }
   - { context: Saml, kind: scenario, element: 管理者はSAML IdP profileを共有または専用で管理できる }
-  - { context: Saml, kind: flow, element: AdminSamlIdpProfiles }
 ---
 
 # 連携エンドポイント参照とSAML IdP profile変更を分離する

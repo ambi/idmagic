@@ -12,22 +12,12 @@ initial_context:
       - interfaces.ListAdminUsers
       - interfaces.ListGroups
       - interfaces.ListAgents
-      - objectives.ListAdminUsersLatency
-      - objectives.ListGroupsLatency
-      - objectives.ListAgentsLatency
       - scenarios.管理者はユーザー一覧をページングしながら安定して閲覧できる
-      - flows.AdminUsers
-      - flows.AdminGroups
-      - flows.AdminAgents
     Application:
       - interfaces.ListAdminApplications
-      - objectives.ListAdminApplicationsLatency
-      - flows.AdminApplicationManagement
     Audit:
       - interfaces.ListAdminAuditEvents
-      - objectives.ListAdminAuditEventsLatency
       - scenarios.管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される
-      - flows.AdminAuditEvents
   source:
     - backend/shared/http/support_http/pagination_cursor.go
     - backend/shared/http/support_http/pagination_request.go
@@ -46,20 +36,10 @@ affected_spec:
   - { context: IdManagement, kind: interface, element: ListAdminUsers }
   - { context: IdManagement, kind: interface, element: ListGroups }
   - { context: IdManagement, kind: interface, element: ListAgents }
-  - { context: IdManagement, kind: objective, element: ListAdminUsersLatency }
-  - { context: IdManagement, kind: objective, element: ListGroupsLatency }
-  - { context: IdManagement, kind: objective, element: ListAgentsLatency }
   - { context: IdManagement, kind: scenario, element: 管理者はユーザー一覧をページングしながら安定して閲覧できる }
-  - { context: IdManagement, kind: flow, element: AdminUsers }
-  - { context: IdManagement, kind: flow, element: AdminGroups }
-  - { context: IdManagement, kind: flow, element: AdminAgents }
   - { context: Application, kind: interface, element: ListAdminApplications }
-  - { context: Application, kind: objective, element: ListAdminApplicationsLatency }
-  - { context: Application, kind: flow, element: AdminApplicationManagement }
   - { context: Audit, kind: interface, element: ListAdminAuditEvents }
-  - { context: Audit, kind: objective, element: ListAdminAuditEventsLatency }
   - { context: Audit, kind: scenario, element: 管理者は監査ログをページングしながら閲覧でき絞り込み変更でcursorが無効化される }
-  - { context: Audit, kind: flow, element: AdminAuditEvents }
 ---
 
 # 管理一覧で正確な件数とページ位置を表示し短い cursor で先頭・末尾へ移動できるようにする

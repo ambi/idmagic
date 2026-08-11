@@ -468,31 +468,6 @@ authorization:
       effect: permit
       principal: TenantAdministrator
       when: principal.tenant_id == resource.id
-objectives:
-  JwksLatency:
-    description: /jwks 応答の99%以上を20ms未満で返す。クライアントの署名検証準備のため極めて低レイテンシを要求し、CDN キャッシュも前提とする。
-    interface: GetJwks
-    indicator: measurement.latency < duration("20ms")
-    target: 0.99
-    window: 30d
-    budgeting: occurrences
-  JwksErrorRate:
-    description: /jwks 応答の99.99%以上を非5xxで返す。全クライアントの署名検証経路に影響するため一桁厳しい上限を要求する。
-    interface: GetJwks
-    indicator: measurement.status_code < 500
-    target: 0.9999
-    window: 30d
-    budgeting: occurrences
-  SigningKeyLifecycle:
-    description: 署名鍵は用途ごとに既定90日で回転する。Signing の旧鍵は既定7日間 JWKS に、XmlFederationSigning の旧証明書は既定7日間 SAML / WS-Fed metadata に重複公開してから archive する。compliance archive の保持期間 2555 日は grace 期間とは別に扱う。
-    indicator: measurement.rotation_cadence_days == 90 && measurement.signing_key_grace_days == 7
-    target: 1.0
-    window: 30d
-    budgeting: occurrences
-    annotations:
-      rotation_cadence_days: 90
-      signing_key_grace_days: 7
-      signing_key_archive_days: 2555
 scenarios:
   署名鍵を回転しても旧kidはJWKSに残る:
     actor: TenantAdministrator
@@ -582,18 +557,3 @@ scenarios:
         condition: 管理者が現在の署名鍵 K2 を無効化しようとする
         steps:
           - エラー "InvalidRequestError"
-flows:
-  AdminKeyManagement:
-    entry: AdminKeys
-    views:
-      AdminKeys:
-        sees: 署名鍵管理画面(鍵一覧、状態、JWKS)
-        does:
-          - action: rotate
-            does: 鍵を回転するボタンをクリックする
-            interface: RotateTenantSigningKey
-            to: AdminKeys
-          - action: disable
-            does: 回転後の検証用鍵を指定して、即時無効化するボタンをクリックする
-            interface: DisableTenantKey
-            to: AdminKeys

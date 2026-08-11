@@ -12,7 +12,6 @@ initial_context:
       - models.SeedRequest
       - models.SeedPlan
       - interfaces.SeedData
-      - objectives.SeedScalability
       - scenarios.環境別の明示profileが選択される
       - scenarios.同一seedの再適用はno-opになる
       - scenarios.productionでdemoまたはperformance profileは拒否される

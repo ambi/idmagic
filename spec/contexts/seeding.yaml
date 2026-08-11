@@ -152,14 +152,6 @@ interfaces:
       - "seed_plan_and_diagnostics_exclude_secret_values(output.plan)"
     stability: internal
     access: internal
-objectives:
-  SeedScalability:
-    description: manifest/include は bounded size と depth で読み、performance profile は bounded batch と streamable plan を使い、全 operation をメモリに保持しない。通常 profile の件数上限は安全な既定値を越えず、override は明示される。
-    interface: SeedData
-    indicator: measurement.memory_bounded == true
-    target: 1.0
-    window: 30d
-    budgeting: occurrences
 scenarios:
   環境別の明示profileが選択される:
     actor: SeedOperator

@@ -946,14 +946,6 @@ authorization:
       principal: ManagementApiClient
       when: '"shared-signals:write" in context.token_scopes && principal.tenant_id == context.tenant_id'
 
-objectives:
-  RevocationPropagationLatency:
-    description: "AgentAccessRevoked (LocalRevocation, kill-switch/所有者オフボード/inbound SET のいずれが\n起点でも) から、購読中の SsfStream 向け SecurityEventDelivery が delivered になるまでの遅延の\n99% 以上を 30 秒未満に収める。LocalRevocation 自体はこの目標を待たずに即時完了し、\nこの目標は EcosystemPropagation (外部 receiver への SET 配送) だけを対象とする。\n"
-    indicator: measurement.revocation_to_delivery_latency < duration("30s")
-    target: 0.99
-    window: 30d
-    budgeting: occurrences
-
 scenarios:
   kill-switchは既発行トークンをintrospectionで即時無効化する:
     actor: TenantAdministrator

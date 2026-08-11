@@ -17,7 +17,6 @@ initial_context:
       - interfaces.StartUserCsvExport
       - scenarios.管理者は CSV を検証して有効な行だけをインポートできる
       - scenarios.管理者はユーザー一覧を CSV に安全にエクスポートできる
-      - flows.AdminUsers
   source:
     - backend/idmanagement/domain/data_export.go
     - backend/idmanagement/usecases/data_export.go
@@ -52,7 +51,6 @@ affected_spec:
   - { context: IdManagement, kind: interface, element: GetAdminUserImport }
   - { context: IdManagement, kind: interface, element: StartUserCsvExport }
   - { context: IdManagement, kind: scenario, element: 管理者はエクスポートしたユーザー CSV を安全に再適用できる }
-  - { context: IdManagement, kind: flow, element: AdminUsers }
 ---
 
 # ユーザー CSV を安全に往復できる部分 upsert へ拡充する

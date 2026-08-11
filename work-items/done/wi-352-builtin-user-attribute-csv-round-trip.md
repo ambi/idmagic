@@ -14,7 +14,6 @@ initial_context:
       - models.DataExportColumn
       - interfaces.StartUserCsvExport
       - interfaces.ImportAdminUsers
-      - flows.AdminUsers
   source:
     - backend/idmanagement/user/domain/attributes.go
     - backend/idmanagement/user/domain/user_csv.go

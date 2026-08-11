@@ -10,13 +10,6 @@ initial_context:
     System:
       - interfaces.MetricsExposition
       - interfaces.ReadinessProbe
-    OAuth2:
-      - objectives.TokenLatency
-      - objectives.TokenErrorRate
-      - objectives.TokenEndpointAvailability
-    Authentication:
-      - objectives.LoginLatency
-      - objectives.LoginErrorRate
   decisions:
     - decisions/ADR-017-opentelemetry-as-observability-interface.md
     - decisions/ADR-078-kubernetes-health-probes-and-graceful-drain.md
@@ -32,7 +25,6 @@ initial_context:
     - frontend
 affected_spec:
   - { context: System, kind: interface, element: MetricsExposition }
-  - { context: OAuth2, kind: objective, element: TokenErrorRate }
 ---
 
 # アラートごとの運用 runbook を整備し、アラートから手順へ辿れるようにする
