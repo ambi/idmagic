@@ -226,23 +226,19 @@ New `*Page.tsx` files (and refactors of existing ones) follow a container/presen
 
 ### Design Decisions
 
-- Design rationale, the machine-checked module ledger, and run/verification instructions are kept in
-  Architecture and run instructions are kept separate because they answer different questions, rather than one combined
-  document ([ADR-143](../../../decisions/ADR-143-second-layer-design-ledger-decision-split.md)).
+- Current UI/runtime design and rationale live in this specification, while run and verification
+  instructions live in the relevant README or runbook because they answer operational questions. Source
+  paths and imports describe executable structure; no duplicate module ledger is maintained.
 - The admin console and account portal are first-party OIDC relying parties of the IdP itself, as pure
-  SPA RPs holding the access token in the browser rather than behind a BFF
-  ([ADR-061](../../../decisions/ADR-061-first-party-portals-as-oidc-rp.md)).
+  SPA RPs holding the access token in the browser rather than behind a BFF.
 - Internally generated id columns, including the admin/account portals' fixed `client_id`s, are typed as
-  `UUID` rather than `TEXT`
-  ([ADR-084](../../../decisions/ADR-084-postgres-column-type-policy.md)).
+  `UUID` rather than `TEXT`.
 - The admin console and account portal follow a fixed set of UI consistency rules: detail-then-edit
   navigation instead of inline/modal editing, in-row list actions instead of kebab menus, dynamic
-  per-page browser tab titles, and "監査イベント" instead of "監査ログ" as the audit terminology
-  ([ADR-086](../../../decisions/ADR-086-ui-navigation-consistency-and-page-title-policy.md)).
+  per-page browser tab titles, and "監査イベント" instead of "監査ログ" as the audit terminology.
 - The tenant-wide default sign-in policy applies to an application as an override, not a composed floor,
   of that application's own policy — the precedent that motivated this file's container/presentation
-  component split, first applied to the admin UI built for that decision
-  ([ADR-081](../../../decisions/ADR-081-tenant-default-sign-in-policy-composition.md)).
+  component split, first applied to the admin UI built for that decision.
 
 ## Scenarios
 

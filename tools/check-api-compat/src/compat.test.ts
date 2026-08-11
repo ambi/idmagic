@@ -70,7 +70,7 @@ describe('compareOpenApi — additive changes are not breaking', () => {
   })
 })
 
-describe('compareOpenApi — breaking changes (ADR-156)', () => {
+describe('compareOpenApi — breaking changes', () => {
   it('flags a removed path', () => {
     const baseline = { paths: { '/widgets': { get: { responses: {} } } } }
     const current = { paths: {} }

@@ -55,7 +55,13 @@ Use a language-independent table for every state machine:
 |---|---|---|---|---|
 ```
 
+Use `—` in `Guard` when the transition is unconditional. Do not use an empty string literal such as `""`;
+it looks like an executable condition in both the source table and the derived diagram.
+
 Application code and tests are executable evidence, not the only state-transition documentation.
+The table is the normative source. The generated specification site derives one Mermaid state diagram
+from the same rows and displays the table with the diagram; do not maintain a second hand-written state
+diagram for the same machine.
 
 ## 5. Scenarios and normative IDs
 
@@ -107,5 +113,17 @@ add an ad hoc authorization DSL to the specification format.
 
 - Compile TypeSpec and validate canonical documents through the repository's specification check.
 - Compare generated OpenAPI with the released baseline for compatibility.
-- Generate OpenAPI and a navigation-linked HTML view from TypeSpec and `SPECIFICATION.md` sources.
+- Generate OpenAPI and a multi-page, navigation-linked HTML site from TypeSpec and `SPECIFICATION.md`
+  sources. The entry point is `spec/generated/docs/index.html`; Method, whole-system, context, API, and
+  model content are separate pages.
+- Delegate API operation/schema presentation to an OpenAPI-native viewer over the generated OpenAPI.
+  Generate the broader model catalog from repository-owned TypeSpec model, enum, union, and scalar
+  declarations, including declarations not reachable from HTTP operations. Transport wrapper declarations
+  in `Operations` namespaces belong to the OpenAPI reference and are not duplicated in the catalog.
+- Render Mermaid fences from canonical documents and derive state diagrams from normative transition
+  tables. Scenario keywords remain plain Markdown grammar in the source and receive semantic styling in
+  the generated view.
+- Current `SPECIFICATION.md` files must be self-contained and must not link to the historical ADR archive.
+  Move still-current conclusions and concise rationale into the owning Design section before removing a
+  historical link.
 - Never edit or treat generated HTML/OpenAPI as normative source.

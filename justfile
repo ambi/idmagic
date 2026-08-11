@@ -228,7 +228,7 @@ check-boundaries:
 
 # Detect breaking changes vs the frozen OpenAPI release baseline.
 check-api-compat:
-    cd tools && bun run check-api-compat/src/main.ts --baseline ../spec/idmagic.openapi.baseline.json --current ../spec/generated/openapi/idmagic.openapi.json
+    cd tools && bun run check-api-compat/src/main.ts
 
 # Render the browsable specification and API documentation from canonical sources.
 render-spec-docs:

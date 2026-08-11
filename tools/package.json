@@ -1,5 +1,5 @@
 {
-  "name": "@idmagic/tools",
+  "name": "@specification-first/tools",
   "scripts": {
     "test": "bun test",
     "typecheck": "tsc --noEmit",
@@ -24,9 +24,15 @@
     "@types/markdown-it": "^14.1.2",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
-    "markdown-it": "^14.2.0"
+    "happy-dom": "latest",
+    "markdown-it": "^14.2.0",
+    "mermaid": "latest",
+    "swagger-ui-dist": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "scarfSettings": {
+    "enabled": false
   }
 }

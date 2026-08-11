@@ -71,12 +71,12 @@ Terminal: `succeeded`, `failed`, `canceled`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| queued | JobStarted | "" | running |  |
-| running | JobSucceeded | "" | succeeded |  |
+| queued | JobStarted | — | running |  |
+| running | JobSucceeded | — | succeeded |  |
 | running | JobFailed | attempts >= max_attempts | failed |  |
 | running | JobRetried | attempts < max_attempts | queued |  |
-| queued | JobCanceled | "" | canceled |  |
-| running | JobCanceled | "" | canceled |  |
+| queued | JobCanceled | — | canceled |  |
+| running | JobCanceled | — | canceled |  |
 
 ## Design
 
@@ -195,17 +195,16 @@ partial unique index allows at most one non-terminal Job per `(tenant_id, dedup_
 
 ### Design Decisions
 
-- Durable queue implemented as a PostgreSQL `FOR UPDATE SKIP LOCKED` lease:
-  [ADR-098](../../../decisions/ADR-098-durable-job-queue-skip-locked-lease.md)
-- Process separation, delivery guarantee, and drain:
-  [ADR-099](../../../decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)
-- Boundary with scheduled batch:
-  [ADR-124](../../../decisions/ADR-124-scheduled-batch-execution-boundary.md)
-- Capacity isolation through execution lanes:
-  [ADR-129](../../../decisions/ADR-129-job-execution-lanes.md)
-- No at-rest encryption for `params`/`result` in this WI; retention purge runs from the worker rather
-  than as a dedicated Job:
-  [ADR-100](../../../decisions/ADR-100-job-data-retention-and-pii.md)
+- The durable queue uses a PostgreSQL `FOR UPDATE SKIP LOCKED` lease so concurrent workers claim distinct
+  rows without adding a second queue datastore.
+- `idmagic-worker` is a process boundary separate from the API. Delivery is at least once, handlers own
+  idempotency, and shutdown drains already-claimed work before the lease expires.
+- Scheduled one-shot retention and key-lifecycle work belongs to `idmagic-batch`; Jobs owns durable,
+  retryable asynchronous application work rather than every scheduled command.
+- Execution lanes isolate concurrency for latency-sensitive, default, and bulk work without creating
+  separate queue implementations.
+- `params` and `result` are not encrypted at rest. They are opaque per `JobKind`, must not contain secrets,
+  and terminal rows are purged by the worker retention sweep rather than by a recursively enqueued Job.
 
 ## Scenarios
 

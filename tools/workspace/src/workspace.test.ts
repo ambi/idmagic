@@ -2,11 +2,40 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'bun:test'
-import { discoverWorkspaceConfig } from './workspace.ts'
+import {
+  discoverGeneratedOpenApi,
+  discoverOpenApiBaseline,
+  discoverWorkspaceConfig,
+} from './workspace.ts'
 
 const cleanup: string[] = []
 afterAll(async () => {
   for (const path of cleanup) await rm(path, { recursive: true, force: true })
+})
+
+describe('OpenAPI artifact discovery', () => {
+  it('discovers product-neutral filenames from the standard directories', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'spec', 'generated', 'openapi'), { recursive: true })
+    await writeFile(join(root, 'spec', 'sample.openapi.baseline.json'), '{}\n')
+    await writeFile(join(root, 'spec', 'generated', 'openapi', 'sample.openapi.json'), '{}\n')
+
+    expect(await discoverOpenApiBaseline(root)).toBe(
+      join(root, 'spec', 'sample.openapi.baseline.json'),
+    )
+    expect(await discoverGeneratedOpenApi(root)).toBe(
+      join(root, 'spec', 'generated', 'openapi', 'sample.openapi.json'),
+    )
+  })
+
+  it('rejects ambiguous generated OpenAPI documents', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'spec', 'generated', 'openapi'), { recursive: true })
+    await writeFile(join(root, 'spec', 'generated', 'openapi', 'one.json'), '{}\n')
+    await writeFile(join(root, 'spec', 'generated', 'openapi', 'two.json'), '{}\n')
+
+    await expect(discoverGeneratedOpenApi(root)).rejects.toThrow('found 2')
+  })
 })
 
 async function workspace(): Promise<string> {

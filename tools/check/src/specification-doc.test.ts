@@ -111,4 +111,21 @@ describe('validateSpecification', () => {
       'Standards is out of canonical section order',
     )
   })
+
+  it('rejects links from current specifications to the historical ADR archive', () => {
+    const source = valid.replace(
+      'Demo behavior.',
+      'Demo behavior. See [ADR-001](../decisions/ADR-001-old-choice.md).',
+    )
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'current specification must not link to the historical ADR archive',
+    )
+  })
+
+  it('rejects an empty-string state transition guard', () => {
+    const source = valid.replace('| Ready | Run | allowed | Done |', '| Ready | Run | "" | Done |')
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'unconditional state transition guard must use — instead of an empty string',
+    )
+  })
 })

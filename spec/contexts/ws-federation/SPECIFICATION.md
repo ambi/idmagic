@@ -151,15 +151,12 @@ or a coexisting AD FS deployment instead.
 
 - Federation metadata publication and claim-mapping ownership are scoped so `WsFederation` publishes
   discovery (issuer, endpoints, signing certificates) while `ClaimMapping` owns the shared claim
-  release policy across WS-Fed, WS-Trust, and SAML
-  ([ADR-062](../../../decisions/ADR-062-federation-metadata-publication.md)).
+  release policy across WS-Fed, WS-Trust, and SAML.
 - Active WS-Trust STS support is scoped to `/trust/usernamemixed` with `Issue` only, targeting
-  Microsoft 365-style rich-client sign-in rather than general WS-Trust interoperability
-  ([ADR-063](../../../decisions/ADR-063-ws-trust-active-sts-scope.md)).
+  Microsoft 365-style rich-client sign-in rather than general WS-Trust interoperability.
 - The Microsoft Entra domain federation profile is a fixed relying-party preset (UPN/ImmutableID
   claim shape, sourceAnchor validation) rather than hand-authored claim configuration, so
-  misconfiguration cannot surface opaquely on the Entra side
-  ([ADR-065](../../../decisions/ADR-065-entra-domain-federation-profile.md)).
+  misconfiguration cannot surface opaquely on the Entra side.
 
 ## Scenarios
 

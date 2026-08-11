@@ -41,9 +41,9 @@ Terminal: `Archived`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Active | SigningKeyRotated | "" | Verifying |  |
-| Verifying | SigningKeyRetired | "" | Retired |  |
-| Retired | SigningKeyArchived | "" | Archived |  |
+| Active | SigningKeyRotated | — | Verifying |  |
+| Verifying | SigningKeyRetired | — | Retired |  |
+| Retired | SigningKeyArchived | — | Archived |  |
 
 ## Authorization Boundary
 
@@ -101,14 +101,12 @@ provider blocks new signatures.
 
 - SAML IdP profiles are modeled as shareable (a profile can back more than one SP trust), with
   dedicated-use profiles expressed as the one-consumer case of the same model rather than a separate
-  type ([ADR-145](../../../decisions/ADR-145-shareable-saml-idp-profiles.md)).
+  type.
 - Signing keys are scoped per tenant behind a pluggable `KeyProvider`, rather than a shared
-  system-wide key or a provider baked into each protocol adapter
-  ([ADR-075](../../../decisions/ADR-075-per-tenant-signing-keys-and-key-provider.md)).
+  system-wide key or a provider baked into each protocol adapter.
 - Key rotation cadence (90-day minimum), overlap expiry (7-day minimum), and archive retention
   (7 years) are fixed, normative policy values that live in this design record rather than being
-  left as undocumented configuration
-  ([ADR-108](../../../decisions/ADR-108-signing-key-rotation-and-retention-policy-configuration.md)).
+  left as undocumented configuration.
 
 ## Scenarios
 

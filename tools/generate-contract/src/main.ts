@@ -2,6 +2,7 @@
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 
 type OpenAPIOperation = {
   operationId?: string
@@ -13,7 +14,7 @@ type OpenAPIDocument = {
 }
 
 const root = resolve(import.meta.dir, '../../..')
-const input = resolve(root, 'spec/generated/openapi/idmagic.openapi.json')
+const input = await discoverGeneratedOpenApi(root)
 const output = resolve(root, 'backend/shared/spec/operations_gen.go')
 const check = process.argv.includes('--check')
 

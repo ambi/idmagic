@@ -41,8 +41,7 @@ operational value rather than an SLO, so it lives in Design rather than as a pro
 ### Design Decisions
 
 - Audit event retention is fixed at 7 years under GDPR Article 30 record-keeping, documented as an
-  operational value here rather than as a product objective
-  ([ADR-107](../../../decisions/ADR-107-audit-retention-and-jobs-dev-environment-topology.md)).
+  operational value here rather than as a product objective.
 
 ## Scenarios
 

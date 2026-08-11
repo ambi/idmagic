@@ -420,7 +420,7 @@ Terminal: `Expired`, `Revoked`
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Active | Expire | now() >= expires_at | Expired |  |
-| Active | ClientSecretRevoked | "" | Revoked |  |
+| Active | ClientSecretRevoked | — | Revoked |  |
 
 ### AuthorizationCodeFlow
 
@@ -431,21 +431,21 @@ Terminal: `Exchanged`, `Rejected`, `Expired`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Received | Validate | "" | AuthenticationPending |  |
-| Received | Reject | "" | Rejected |  |
-| AuthenticationPending | AuthenticateUser | "" | Authenticated |  |
-| AuthenticationPending | Reject | "" | Rejected |  |
-| AuthenticationPending | Expire | "" | Expired |  |
-| Authenticated | RequestConsent | "" | ConsentPending |  |
-| Authenticated | IssueCode | "" | CodeIssued |  |
-| Authenticated | Reject | "" | Rejected |  |
-| ConsentPending | GrantConsent | "" | Consented |  |
-| ConsentPending | Reject | "" | Rejected |  |
-| ConsentPending | Expire | "" | Expired |  |
-| Consented | IssueCode | "" | CodeIssued |  |
-| Consented | Reject | "" | Rejected |  |
-| CodeIssued | RedeemCode | "" | Exchanged |  |
-| CodeIssued | Expire | "" | Expired |  |
+| Received | Validate | — | AuthenticationPending |  |
+| Received | Reject | — | Rejected |  |
+| AuthenticationPending | AuthenticateUser | — | Authenticated |  |
+| AuthenticationPending | Reject | — | Rejected |  |
+| AuthenticationPending | Expire | — | Expired |  |
+| Authenticated | RequestConsent | — | ConsentPending |  |
+| Authenticated | IssueCode | — | CodeIssued |  |
+| Authenticated | Reject | — | Rejected |  |
+| ConsentPending | GrantConsent | — | Consented |  |
+| ConsentPending | Reject | — | Rejected |  |
+| ConsentPending | Expire | — | Expired |  |
+| Consented | IssueCode | — | CodeIssued |  |
+| Consented | Reject | — | Rejected |  |
+| CodeIssued | RedeemCode | — | Exchanged |  |
+| CodeIssued | Expire | — | Expired |  |
 
 ### DeviceCodeFlow
 
@@ -456,13 +456,13 @@ Terminal: `Exchanged`, `Denied`, `Expired`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Issued | EnterUserCode | "" | UserCodeEntered |  |
-| Issued | Expire | "" | Expired |  |
-| UserCodeEntered | Approve | "" | Approved |  |
-| UserCodeEntered | Deny | "" | Denied |  |
-| UserCodeEntered | Expire | "" | Expired |  |
-| Approved | Exchange | "" | Exchanged |  |
-| Approved | Expire | "" | Expired |  |
+| Issued | EnterUserCode | — | UserCodeEntered |  |
+| Issued | Expire | — | Expired |  |
+| UserCodeEntered | Approve | — | Approved |  |
+| UserCodeEntered | Deny | — | Denied |  |
+| UserCodeEntered | Expire | — | Expired |  |
+| Approved | Exchange | — | Exchanged |  |
+| Approved | Expire | — | Expired |  |
 
 ### RefreshTokenLifecycle
 
@@ -474,10 +474,10 @@ Terminal: `Revoked`, `Expired`
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Active | Rotate | now() < absolute_expires_at | Rotated |  |
-| Active | RevokeToken | "" | Revoked |  |
-| Active | Expire | "" | Expired |  |
-| Rotated | RevokeToken | "" | Revoked |  |
-| Rotated | Expire | "" | Expired |  |
+| Active | RevokeToken | — | Revoked |  |
+| Active | Expire | — | Expired |  |
+| Rotated | RevokeToken | — | Revoked |  |
+| Rotated | Expire | — | Expired |  |
 
 ### LogoutNotificationLifecycle
 
@@ -490,8 +490,8 @@ Terminal: `Delivered`, `Failed`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Pending | Deliver | "" | Delivered |  |
-| Pending | Exhaust | "" | Failed |  |
+| Pending | Deliver | — | Delivered |  |
+| Pending | Exhaust | — | Failed |  |
 
 ### AuthorizationCodeRecordLifecycle
 
@@ -503,7 +503,7 @@ Terminal: `Redeemed`, `Expired`
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Issued | RedeemCode | now() < expires_at | Redeemed |  |
-| Issued | Expire | "" | Expired |  |
+| Issued | Expire | — | Expired |  |
 
 ### ConsentLifecycle
 
@@ -514,8 +514,8 @@ Terminal: `Revoked`, `Expired`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Granted | RevokeConsent | "" | Revoked |  |
-| Granted | Expire | "" | Expired |  |
+| Granted | RevokeConsent | — | Revoked |  |
+| Granted | Expire | — | Expired |  |
 
 ### PARRecordLifecycle
 
@@ -527,7 +527,7 @@ Terminal: `Used`, `Expired`
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Stored | Use | now() < expires_at | Used |  |
-| Stored | Expire | "" | Expired |  |
+| Stored | Expire | — | Expired |  |
 
 ## Authorization Boundary
 
@@ -820,62 +820,48 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
 
 - Authorization request and device-code lifecycles are expressed as declarative state-transition
   tables in `spec/flows/` rather than ad hoc conditional logic, so regeneration cannot silently
-  drift the transitions a client is allowed to make
-  ([ADR-001](../../../decisions/ADR-001-state-machine-as-spec.md)).
+  drift the transitions a client is allowed to make.
 - PKCE requirement is staged per client type — required by default for public and FAPI 2.0 clients,
-  opt-in for legacy confidential clients — rather than mandated uniformly
-  ([ADR-002](../../../decisions/ADR-002-pkce-required-for-all-clients.md)).
+  opt-in for legacy confidential clients — rather than mandated uniformly.
 - Pushed Authorization Requests are mandatory for FAPI 2.0 clients and optional for everyone else,
   closing off URL tampering and unauthenticated request forgery at `/authorize` for the clients that
-  need the strongest guarantee
-  ([ADR-006](../../../decisions/ADR-006-par-mandatory-fapi-clients.md)).
+  need the strongest guarantee.
 - Five client authentication methods are supported, spanning FAPI-grade asymmetric authentication
-  down to legacy shared-secret methods, with `client_secret_jwt` deliberately excluded
-  ([ADR-008](../../../decisions/ADR-008-client-authentication-methods.md)).
+  down to legacy shared-secret methods, with `client_secret_jwt` deliberately excluded.
 - `private_key_jwt` verification is pinned to a fixed rule set — algorithm allowlist, issuer/
   subject/audience checks, bounded assertion lifetime, replay protection — so what Discovery
-  advertises is what the server actually enforces
-  ([ADR-023](../../../decisions/ADR-023-private-key-jwt-verification.md)).
+  advertises is what the server actually enforces.
 - Client ID Metadata Documents are supported as a non-persisted, registry-less alternative to
-  Dynamic Client Registration for resolving `client_id`s shaped as HTTPS URLs
-  ([ADR-155](../../../decisions/ADR-155-client-id-metadata-documents.md)).
+  Dynamic Client Registration for resolving `client_id`s shaped as HTTPS URLs.
 - Access tokens are issued as self-contained JWTs by default while refresh tokens stay opaque,
   database-backed references, since the two need different revocation and verification-scaling
-  properties ([ADR-012](../../../decisions/ADR-012-opaque-vs-jwt-access-tokens.md)).
+  properties.
 - Refresh tokens rotate on every use, and presenting an already-rotated token revokes the entire
-  token family, uniformly for public and confidential clients
-  ([ADR-004](../../../decisions/ADR-004-refresh-token-rotation.md)).
+  token family, uniformly for public and confidential clients.
 - DPoP is the default sender-constraint mechanism, with mTLS offered as an option for clients that
-  already run client PKI ([ADR-005](../../../decisions/ADR-005-dpop-as-default-sender-constraint.md)).
+  already run client PKI.
 - Consent is persisted per `(subject, client_id)` as a set of granted scopes, not per-client and not
-  per-interaction, to avoid silent scope creep and consent fatigue
-  ([ADR-007](../../../decisions/ADR-007-consent-model.md)).
+  per-interaction, to avoid silent scope creep and consent fatigue.
 - Authorization decisions are declared as policy in `spec/policy/client-authorization.json` and
   evaluated through an AuthZEN-style `authorize()` interface rather than scattered as inline
-  conditionals ([ADR-010](../../../decisions/ADR-010-authzen-policy-as-spec.md)).
+  conditionals.
 - The Discovery document is generated at runtime from `spec/discovery.json` rather than
-  hand-maintained or build-time generated, so it cannot drift from the implementation
-  ([ADR-011](../../../decisions/ADR-011-discovery-as-derived-artifact.md)).
+  hand-maintained or build-time generated, so it cannot drift from the implementation.
 - The Device Authorization Grant reuses the state-transition table already declared in
   `spec/flows/device-code-flow.json` rather than reimplementing approve/deny/exchange transitions
-  ad hoc ([ADR-025](../../../decisions/ADR-025-device-authorization-grant.md)).
+  ad hoc.
 - Protocol timing and security parameters (token/code/PAR TTLs, rate limits, DPoP replay window,
   consent retention) are kept together in one place rather than modeled as product objectives, since
-  they are protocol/security settings, not availability SLOs
-  ([ADR-109](../../../decisions/ADR-109-oauth2-lifetime-security-and-retention-policy-configuration.md)).
+  they are protocol/security settings, not availability SLOs.
 - `Agent` is a first-class principal that owns identity and lifecycle but holds no credentials of
-  its own, binding instead to existing `OAuth2Client` registrations
-  ([ADR-048](../../../decisions/ADR-048-agent-as-first-class-non-human-principal.md)).
+  its own, binding instead to existing `OAuth2Client` registrations.
 - Acting on a user's behalf is implemented as OAuth 2.0 Token Exchange, defaulting to delegation
-  (original `sub`, agent recorded in `act`) rather than impersonation
-  ([ADR-049](../../../decisions/ADR-049-token-exchange-delegation-and-actor-chain.md)).
+  (original `sub`, agent recorded in `act`) rather than impersonation.
 - Agent-scoped permissions are expressed as RFC 9396 `authorization_details` rather than coarse
   scopes, so bounds like a transfer limit can be declared and only ever narrowed, never widened, on
-  a subsequent token exchange
-  ([ADR-050](../../../decisions/ADR-050-rich-authorization-requests-for-agent-scopes.md)).
+  a subsequent token exchange.
 - The `sid` claim is `LoginSession.id` itself, shared across every relying party for a browser
-  session, so a single session revoke can be walked to every affected RP
-  ([ADR-127](../../../decisions/ADR-127-oidc-session-binding-and-logout-propagation.md)).
+  session, so a single session revoke can be walked to every affected RP.
 
 ## Scenarios
 

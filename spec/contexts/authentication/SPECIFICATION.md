@@ -92,8 +92,8 @@ Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Active | IdentityProviderConnectionDisabled | "" | Disabled |  |
-| Disabled | IdentityProviderConnectionActivated | "" | Active |  |
+| Active | IdentityProviderConnectionDisabled | — | Disabled |  |
+| Disabled | IdentityProviderConnectionActivated | — | Active |  |
 
 ## Authorization Boundary
 
@@ -348,68 +348,48 @@ without new policy or session states.
 ### Design Decisions
 
 - Authentication owns the login-time identity-broker (upstream OIDC/SAML connections, external-subject
-  links, linking/JIT policy) directly, rather than splitting it into a separate sourcing context
-  ([ADR-146](../../../decisions/ADR-146-authentication-owned-identity-broker.md)).
+  links, linking/JIT policy) directly, rather than splitting it into a separate sourcing context.
 - PostgreSQL `authentication_sessions` is the single source of truth for `LoginSession`; revocation
-  tombstones the row instead of deleting it, and Valkey holds no active-session state
-  ([ADR-126](../../../decisions/ADR-126-postgresql-as-login-session-source-of-truth.md)).
+  tombstones the row instead of deleting it, and Valkey holds no active-session state.
 - `users.id` is the canonical, globally unique user identifier, with protocol `sub` claims derived from
-  it rather than the reverse
-  ([ADR-082](../../../decisions/ADR-082-user-domain-id-and-tenant-key-policy.md)).
+  it rather than the reverse.
 - Authentication event retention is asymmetric by kind (365/30/90 days), tenant-adjustable within a
-  global cap, and enforced by an idempotent hourly sweep rather than partitioning or cold storage
-  ([ADR-045](../../../decisions/ADR-045-authentication-event-retention.md)).
+  global cap, and enforced by an idempotent hourly sweep rather than partitioning or cold storage.
 - Reversible secrets kept in the app database, including the MFA TOTP seed, move to envelope encryption
-  under the `DataKeys` context and an `EnvelopeCrypto` port rather than staying plaintext
-  ([ADR-148](../../../decisions/ADR-148-envelope-encryption-and-datakeys-context.md)).
+  under the `DataKeys` context and an `EnvelopeCrypto` port rather than staying plaintext.
 - WebAuthn credentials and recovery codes are modeled as their own tables rather than squeezed into
   `mfa_factors`, ceremony logic is delegated to `go-webauthn/webauthn`, and recovery-code possession
-  alone never counts toward `mfa_enrolled`
-  ([ADR-087](../../../decisions/ADR-087-webauthn-phishing-resistant-mfa.md)).
+  alone never counts toward `mfa_enrolled`.
 - Authentication event PII (username, IP, User-Agent, device fingerprint, location) was originally
-  decided to be tenant-salt hashed or truncated rather than stored in plaintext
-  ([ADR-046](../../../decisions/ADR-046-authentication-event-pii-policy.md)).
+  decided to be tenant-salt hashed or truncated rather than stored in plaintext.
 - Login-throttle and other shared ephemeral state fail closed when their store is unreachable, rather
-  than allowing unthrottled attempts through
-  ([ADR-077](../../../decisions/ADR-077-shared-login-throttle-store-and-ephemeral-state-ha.md)).
+  than allowing unthrottled attempts through.
 - Password policy follows NIST SP 800-63B-4: length and identifier-similarity checks plus a
-  common-password dictionary, with no composition-rule or forced-rotation requirement
-  ([ADR-026](../../../decisions/ADR-026-password-policy.md)).
+  common-password dictionary, with no composition-rule or forced-rotation requirement.
 - Authentication and identity-management configuration values (password history depth, breach-check
   defaults, TOTP/WebAuthn/recovery-code parameters, reset-token TTL, login-throttle thresholds) are
-  centralized in this policy section rather than scattered across product objectives
-  ([ADR-106](../../../decisions/ADR-106-identity-and-credential-policy-configuration.md)).
+  centralized in this policy section rather than scattered across product objectives.
 - `change-password` rejects reuse of the last 5 password hashes, checked only on change-password (not on
-  initial registration) since a first registration has nothing to compare against
-  ([ADR-027](../../../decisions/ADR-027-password-history.md)).
+  initial registration) since a first registration has nothing to compare against.
 - `BreachedPasswordChecker` layers an HIBP k-anonymity check on the bundled offline dictionary, fails
-  open on outage, and ships a no-op default adapter so it introduces no external dependency by default
-  ([ADR-028](../../../decisions/ADR-028-breached-password-checker.md)).
+  open on outage, and ships a no-op default adapter so it introduces no external dependency by default.
 - Forgot-password issues a single-use, hashed reset token with a uniform response and best-effort email
-  delivery, so the flow cannot become a username-enumeration or SMTP-outage oracle
-  ([ADR-030](../../../decisions/ADR-030-password-reset-by-email.md)).
+  delivery, so the flow cannot become a username-enumeration or SMTP-outage oracle.
 - `EmailSender`'s production adapter speaks SMTP only, not a per-provider HTTP SDK, since SMTP alone
-  already reaches every major transactional-email provider
-  ([ADR-035](../../../decisions/ADR-035-smtp-email-sender-adapter.md)).
+  already reaches every major transactional-email provider.
 - Login throttling counts per-account and per-IP failures independently, keyed on hashed identifiers,
-  and deliberately does not use permanent lockouts
-  ([ADR-029](../../../decisions/ADR-029-login-throttling.md)).
+  and deliberately does not use permanent lockouts.
 - Authentication events are split into individual rows and 5-minute bucket aggregates so a throttled
-  actor's flood collapses into one row instead of growing without bound
-  ([ADR-041](../../../decisions/ADR-041-authentication-event-model.md)).
+  actor's flood collapses into one row instead of growing without bound.
 - The original hash-everything PII scheme for authentication events was superseded: username is no
   longer hashed since account-confirmed events already correlate by `user_id`, and admin search resolves
-  a searched username to `user_id` on the fly instead
-  ([ADR-104](../../../decisions/ADR-104-username-search-drops-hashing.md)).
+  a searched username to `user_id` on the fly instead.
 - The account self-service portal and the admin account API are separate contracts; the portal's own
-  summary endpoint deliberately omits roles so it cannot leak admin metadata
-  ([ADR-042](../../../decisions/ADR-042-end-user-account-portal-scope.md)).
+  summary endpoint deliberately omits roles so it cannot leak admin metadata.
 - High-sensitivity self-service operations (password change, TOTP removal, email change, revoking other
-  sessions) require step-up re-authentication on top of CSRF protection
-  ([ADR-043](../../../decisions/ADR-043-account-portal-csrf-and-step-up.md)).
+  sessions) require step-up re-authentication on top of CSRF protection.
 - Once MFA enforcement begins, an unenrolled user can only reach a registration-only flow through an
-  admin-issued, single-use `MfaEnrollmentBypass` grant, never through a bare password success alone
-  ([ADR-110](../../../decisions/ADR-110-admin-authorized-mfa-enrollment-bypass.md)).
+  admin-issued, single-use `MfaEnrollmentBypass` grant, never through a bare password success alone.
 
 ## Scenarios
 

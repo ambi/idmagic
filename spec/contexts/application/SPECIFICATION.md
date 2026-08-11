@@ -132,14 +132,11 @@ kind of client.
 - Application sign-in policy (`AppSignInPolicy`) evaluates a structured, evaluator-checkable rule set —
   a constrained `RequiredAuthnStrength` enum, `reauth_max_age_seconds`, and `network_allow_cidrs` — fail-
   closed at the same federation gate for every protocol, replacing an earlier free-text ACR/network/device
-  model whose fields were never actually enforced
-  ([ADR-079](../../../decisions/ADR-079-application-sign-in-policy-evaluation.md)).
+  model whose fields were never actually enforced.
 - The tenant-wide default sign-in policy overrides, rather than composes with, an application's own
-  policy, keeping a single, directly-inspectable effective policy per application
-  ([ADR-081](../../../decisions/ADR-081-tenant-default-sign-in-policy-composition.md)).
+  policy, keeping a single, directly-inspectable effective policy per application.
 - An Application has at most one protocol configuration, fixed at creation time and enforced by a
-  composite foreign key from the owning protocol table rather than a JSON-array-of-bindings model
-  ([ADR-138](../../../decisions/ADR-138-relate-single-application-protocol-by-foreign-key.md)).
+  composite foreign key from the owning protocol table rather than a JSON-array-of-bindings model.
 
 ## Scenarios
 

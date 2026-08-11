@@ -2,7 +2,7 @@
  * Pure transform: two OpenAPI 3.1 documents (a frozen release baseline and
  * the freshly generated current spec) -> a list of breaking-change findings.
  *
- * Implements the compatibility definition from ADR-156: additive changes
+ * Implements the repository compatibility policy: additive changes
  * (new fields, new optional parameters, new endpoints, new error codes) are
  * fine; removing or renaming a field, changing a field's type, making a
  * field required, changing a default, or removing a documented error code
@@ -212,7 +212,7 @@ function diffParameters(
   }
 }
 
-/** Compare a baseline OpenAPI document against the current one; breaking changes only (ADR-156). */
+/** Compare a baseline OpenAPI document against the current one; breaking changes only. */
 export function compareOpenApi(baseline: JsonSchema, current: JsonSchema): CompatFinding[] {
   const findings: CompatFinding[] = []
   const base = baseline as OpenApiDoc

@@ -5,6 +5,9 @@ import { extname, relative, resolve } from 'node:path'
 
 const root = resolve(import.meta.dir, '../../..')
 const excluded = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', 'generated'])
+const goModule = (await readFile(resolve(root, 'go.mod'), 'utf8')).match(/^module\s+(\S+)$/m)?.[1]
+if (!goModule) throw new Error('go.mod must declare a module path')
+const backendImportPrefix = `${goModule}/backend/`
 
 async function walk(dir: string, result: string[] = []): Promise<string[]> {
   for (const entry of await readdir(dir, { withFileTypes: true })) {
@@ -30,9 +33,9 @@ for (const file of files) {
   const extension = extname(file)
   if (extension === '.go' && rel.startsWith('backend/') && !rel.endsWith('_test.go')) {
     const source = await readFile(file, 'utf8')
-    const imports = [...source.matchAll(/"(github\.com\/ambi\/idmagic\/backend\/[^"\n]+)"/g)].map(
-      (match) => match[1] ?? '',
-    )
+    const imports = [...source.matchAll(/"([^"\n]+)"/g)]
+      .map((match) => match[1] ?? '')
+      .filter((imported) => imported.startsWith(backendImportPrefix))
     const isDomain = rel.split('/').includes('domain')
     const isUseCase = rel.split('/').includes('usecases')
     for (const imported of imports) {

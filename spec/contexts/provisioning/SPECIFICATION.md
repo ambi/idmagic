@@ -52,12 +52,12 @@ Terminal: `succeeded`, `dead_letter`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| pending | ProvisioningDeliveryStarted | "" | in_flight |  |
+| pending | ProvisioningDeliveryStarted | — | in_flight |  |
 | in_flight | UserProvisioned | source_type == 'user' | succeeded |  |
 | in_flight | UserDeprovisioned | source_type == 'user' | succeeded |  |
 | in_flight | GroupPushed | source_type == 'group' | succeeded |  |
 | in_flight | GroupMembershipPushed | source_type == 'group' | succeeded |  |
-| in_flight | UserProvisioningFailed | "" | dead_letter |  |
+| in_flight | UserProvisioningFailed | — | dead_letter |  |
 
 ## Authorization Boundary
 
@@ -103,17 +103,13 @@ equivalent, without depending on the shared outbox's atomicity. Delivery idempot
 - `Provisioning` is split out as its own bounded context — named for the capability rather than a
   direction word — with a protocol-agnostic core (connection, mapping, delivery engine) and thin
   per-protocol feature slices (`client_scim` today, `entraid`/`googledir` to follow) implementing
-  `ProvisioningTargetClient`, rather than a shared SCIM wire kernel with the inbound side
-  ([ADR-128](../../../decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md)).
+  `ProvisioningTargetClient`, rather than a shared SCIM wire kernel with the inbound side.
 - `Sourcing` (inbound identity intake) does not mirror `Provisioning`'s protocol-agnostic core,
-  because unlike outbound delivery it has no shared engine already implemented to extract into one
-  ([ADR-141](../../../decisions/ADR-141-inbound-identity-sourcing-taxonomy.md)).
+  because unlike outbound delivery it has no shared engine already implemented to extract into one.
 - The transactional trigger-capture pattern — writing the triggering mutation and its queued
   follow-up row in the same transaction as the record context's commit — originated for
   lifecycle-workflow triggers in IdManagement and was preserved when that ownership moved to
-  IdGovernance; Provisioning reuses the same pattern for its own delivery capture
-  ([ADR-113](../../../decisions/ADR-113-identity-lifecycle-workflow-execution-model.md),
-  [ADR-117](../../../decisions/ADR-117-extract-identity-governance-context.md)).
+  IdGovernance; Provisioning reuses the same pattern for its own delivery capture.
 
 ## Scenarios
 

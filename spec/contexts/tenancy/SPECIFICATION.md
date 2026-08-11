@@ -48,8 +48,8 @@ Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Active | TenantDisabled | "" | Disabled |  |
-| Disabled | TenantEnabled | "" | Active |  |
+| Active | TenantDisabled | — | Disabled |  |
+| Disabled | TenantEnabled | — | Active |  |
 
 ## Authorization Boundary
 
@@ -205,38 +205,29 @@ counters against actual row counts, after which a System Admin can tighten limit
 
 - Admin authorization stores RBAC role names directly on `User.roles` rather than a separate
   tenant-membership model, with tenant-scoped roles deferred to their own model instead of being
-  embedded into `roles`
-  ([ADR-031](../../../decisions/ADR-031-admin-user-api-and-rbac.md)).
+  embedded into `roles`.
 - Tenant is a first-class aggregate with a two-tier authorization boundary: an `admin` role scoped to
   its own tenant, and a `system_admin` role scoped across tenants and housed in the default
-  control-plane tenant
-  ([ADR-032](../../../decisions/ADR-032-tenant-as-first-class-aggregate.md)).
+  control-plane tenant.
 - Tenant resolution uses path-prefix routing (`/realms/{realm}/...`) rather than subdomain or
   header-based resolution, so a browser flow's OIDC `iss` claim and Discovery metadata can be derived
-  from the same URL the client already used
-  ([ADR-033](../../../decisions/ADR-033-tenant-resolution-via-path-prefix.md)).
+  from the same URL the client already used.
 - A tenant has exactly one canonical location and issuer, selected by `Tenant.endpoint_style`; this
   replaced an earlier bare-issuer fallback and `LEGACY_BARE_ISSUER` escape hatch that let a single
-  tenant answer from two origins
-  ([ADR-144](../../../decisions/ADR-144-tenant-canonical-location-and-host-based-resolution.md)).
+  tenant answer from two origins.
 - `tenants` splits its primary key into an immutable UUID surrogate key and a mutable, uniquely
   constrained `realm` identifier, so a realm can be renamed without touching the opaque key every
-  dependent `tenant_id` FK relies on
-  ([ADR-085](../../../decisions/ADR-085-tenant-uuid-key-and-realm-identifier.md)).
+  dependent `tenant_id` FK relies on.
 - idmagic-generated id columns, including seed data, are UUID-typed; ids whose values are defined by an
-  external authority (e.g. SAML `entity_id`) are not
-  ([ADR-084](../../../decisions/ADR-084-postgres-column-type-policy.md)).
+  external authority (e.g. SAML `entity_id`) are not.
 - `TenantBranding` is a separate entity keyed by `tenant_id` rather than a value object embedded in
   `Tenant`, with a constrained field set and validated-blob upload storage reused from application icon
-  storage
-  ([ADR-096](../../../decisions/ADR-096-tenant-branding-value-and-logo-storage.md)).
+  storage.
 - Tenant branding color values are validated by `#rrggbb` format only; a WCAG contrast check is not
-  enforced as a save-time constraint, superseding an earlier version of the branding design that did
-  ([ADR-097](../../../decisions/ADR-097-tenant-branding-color-contrast-is-advisory.md)).
+  enforced as a save-time constraint, superseding an earlier version of the branding design that did.
 - Tenant resource quotas split into synchronously-enforced Hard quotas and asynchronously-warned Soft
   quotas, with fixed defaults, System-Admin-only limit changes, and a generous safe-ceiling migration
-  for tenants that predate quotas
-  ([ADR-134](../../../decisions/ADR-134-tenant-resource-quotas.md)).
+  for tenants that predate quotas.
 
 ## Scenarios
 

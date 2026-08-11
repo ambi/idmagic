@@ -99,12 +99,10 @@ this integrates SCIM deletion into the existing soft-delete policy rather than b
 
 - Inbound identity intake is grouped into `Sourcing` by whether there is an upstream authority with
   a durable source binding, not by transport direction or runtime shape — a distinction that keeps
-  admin CSV import and login-time federation out of this context and rules out naming it `Inbound`
-  ([ADR-141](../../../decisions/ADR-141-inbound-identity-sourcing-taxonomy.md)).
+  admin CSV import and login-time federation out of this context and rules out naming it `Inbound`.
 - SCIM `DELETE /Users/{id}` integrates into the platform's existing soft-delete policy
   (`PendingDeletion`, 30-day grace period, then anonymize-cascade purge) rather than purging
-  immediately, so a misconfigured or erroneous external sync cannot cause unrecoverable PII loss
-  ([ADR-080](../../../decisions/ADR-080-scim2-inbound-provisioning.md)).
+  immediately, so a misconfigured or erroneous external sync cannot cause unrecoverable PII loss.
 
 ## Scenarios
 

@@ -1,8 +1,12 @@
-# ワークアイテム
+# Work Item Format
 
-一つの意味変更を説明・設計・実装・検証できる作業単位。未完了は `work-items/`、完了・中止は `work-items/done/` に置く。ファイル名は `wi-<連番>-<kebab-title>.md`。
+A work item is one unit of work that can describe, design, implement, and verify one semantic change.
+Pending items live in `work-items/`; completed or cancelled items live in `work-items/done/`. File names use
+`wi-<sequence>-<kebab-title>.md`.
 
-Work item はタスク、変更固有の Design Doc、実装履歴を兼ねる。現在も有効な結論は、完了時に TypeSpec または owning context の `SPECIFICATION.md` へ反映する。新しい ADR は作らない。
+A work item is also the task list, change-specific design document, and implementation history for that
+change. When the item is completed, conclusions that remain current must be reflected in TypeSpec or the
+owning context's `SPECIFICATION.md`. Do not create a new ADR.
 
 ```markdown
 ---
@@ -23,52 +27,54 @@ affected_spec:
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
 ---
 
-# 一文で表す意味変更
+# One-sentence semantic change
 
 ## Motivation
-なぜ必要か。
+Why the change is needed.
 
 ## Scope
-- 対象仕様と実装。
+- Specifications and implementation included in the change.
 
 ## Out of Scope
-- 明示的に行わないこと。
+- Work explicitly excluded from the change.
 
 ## Design
-採用する設計、考慮事項、却下した代替案。
+The selected design, considerations, and rejected alternatives.
 
 ## Plan
-実装順、移行、未決定事項。
+Implementation order, migration, and unresolved questions.
 
 ## Tasks
-- [ ] T001 [Spec] 仕様を更新する。
-- [ ] T002 [App] RED を確認して実装する。
-- [ ] T003 [Verify] 検証する。
+- [ ] T001 [Spec] Update the specification.
+- [ ] T002 [App] Confirm RED and implement the behavior.
+- [ ] T003 [Verify] Verify the change.
 
 ## Verification
 - `just verify`
 
 ## Risk Notes
-リスクと軽減策。
+Risks and mitigations.
 ```
 
-`feature` / `bugfix` / `operations` は `initial_context` と `affected_spec` が必須。`affected_spec` は normative scenario / standard ID または TypeSpec symbol を直接参照する。仕様非影響の `refactor` / `docs` / `tooling` / `maintenance` は次を使える。
+`initial_context` and `affected_spec` are required for `feature`, `bugfix`, and `operations` items.
+`affected_spec` directly references a normative scenario/standard ID or a TypeSpec symbol. Changes with
+no specification impact (`refactor`, `docs`, `tooling`, or `maintenance`) may use:
 
 ```yaml
-spec_impact: { kind: none, reason: "具体的な理由" }
+spec_impact: { kind: none, reason: "A concrete reason." }
 ```
 
-`depends_on` は完了前提だけを完全 slug で列挙する。関連・後続候補は本文に書く。
+For medium and larger changes, make `Design` and `Plan` concrete. Domain, Use Cases, and Adapters tasks
+must retain the corresponding test and normative scenario ID as self-evidence.
 
-中規模以上では `Design` と `Plan` を具体化する。Domain / Use Cases / Adapters の task は先に落としたテストと対応する normative scenario ID を自己証跡として残す。
-
-完了時は status を `completed` にし、本文末尾へ次を追記して `done/` へ移す。
+When the work is complete, set `status` to `completed`, append the following section, and move the file
+to `work-items/done/`:
 
 ```markdown
 ## Completion
 - **Completed At**: 2026-01-01
 - **Summary**:
-  意味上の差分。
+  The semantic difference introduced by the work.
 - **Verification Results**:
   - `just verify` - passed
 ```

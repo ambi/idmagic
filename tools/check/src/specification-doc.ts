@@ -208,6 +208,13 @@ export function validateSpecification(source: string): SpecificationValidation {
   if (!seenSections.has('Overview'))
     findings.push({ line: 1, message: 'Overview section is required' })
 
+  for (const match of source.matchAll(/\[[^\]]+\]\([^\n)]*decisions\/ADR-[^\n)]*\)/g)) {
+    findings.push({
+      line: lineAt(source, match.index ?? 0),
+      message: 'current specification must not link to the historical ADR archive',
+    })
+  }
+
   const scenarioIds = [...source.matchAll(/^### (REQ-[A-Z0-9-]+): .+$/gm)].map((match) => ({
     id: match[1] ?? '',
     line: lineAt(source, match.index ?? 0),
@@ -231,6 +238,12 @@ export function validateSpecification(source: string): SpecificationValidation {
         findings.push({
           line: lineAt(source, states.offset + (machine.index ?? 0)),
           message: 'state transition must use From | Event | Guard | To | Effects',
+        })
+      }
+      for (const match of body.matchAll(/^\|[^|\n]*\|[^|\n]*\|\s*""\s*\|/gm)) {
+        findings.push({
+          line: lineAt(source, states.offset + start + (match.index ?? 0)),
+          message: 'unconditional state transition guard must use — instead of an empty string',
         })
       }
     }

@@ -49,8 +49,8 @@ Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| enabled | SsfStreamDisabled | "" | disabled |  |
-| disabled | SsfStreamEnabled | "" | enabled |  |
+| enabled | SsfStreamDisabled | — | disabled |  |
+| disabled | SsfStreamEnabled | — | enabled |  |
 
 ### SecurityEventDeliveryLifecycle
 
@@ -61,10 +61,10 @@ Terminal: `delivered`, `dead_letter`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| pending | SecurityEventTransmitted | "" | delivered |  |
-| pending | SecurityEventDeliveryFailed | "" | failed |  |
-| failed | SecurityEventDeliveryRetried | "" | pending |  |
-| failed | SecurityEventDeliveryDeadLettered | "" | dead_letter |  |
+| pending | SecurityEventTransmitted | — | delivered |  |
+| pending | SecurityEventDeliveryFailed | — | failed |  |
+| failed | SecurityEventDeliveryRetried | — | pending |  |
+| failed | SecurityEventDeliveryDeadLettered | — | dead_letter |  |
 
 ## Authorization Boundary
 

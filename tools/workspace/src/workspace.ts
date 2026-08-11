@@ -16,6 +16,37 @@ export type WorkspaceConfig = {
   decisions?: string
 }
 
+async function discoverSingleFile(
+  directory: string,
+  predicate: (name: string) => boolean,
+  description: string,
+): Promise<string> {
+  const matches = (await readdir(directory, { withFileTypes: true }))
+    .filter((entry) => entry.isFile() && predicate(entry.name))
+    .map((entry) => resolve(directory, entry.name))
+    .sort()
+  if (matches.length !== 1) {
+    throw new Error(`expected exactly one ${description} in ${directory}, found ${matches.length}`)
+  }
+  return matches[0]!
+}
+
+export async function discoverGeneratedOpenApi(root = WORKSPACE_ROOT): Promise<string> {
+  return discoverSingleFile(
+    resolve(root, 'spec/generated/openapi'),
+    (name) => name.endsWith('.json'),
+    'generated OpenAPI JSON file',
+  )
+}
+
+export async function discoverOpenApiBaseline(root = WORKSPACE_ROOT): Promise<string> {
+  return discoverSingleFile(
+    resolve(root, 'spec'),
+    (name) => name.endsWith('.openapi.baseline.json'),
+    'OpenAPI baseline JSON file',
+  )
+}
+
 const EXCLUDED = new Set(['.git', 'node_modules', 'vendor', 'dist', 'build', 'generated'])
 
 async function scanNamed(root: string, names: Set<string>, dir = root, found: string[] = []) {

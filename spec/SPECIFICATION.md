@@ -3,19 +3,18 @@ context: repository
 updated_at: 2026-08-11
 ---
 
-# Repository Specification
+# Whole-System Specification
 
 ## Overview
 
-This document is the cross-cutting design record for `idmagic`: how the system is currently built and why
-it has that shape. Behavior and design that belong to one bounded context live in that context's own
+This document is the whole-system specification and cross-cutting design record: how the system is
+currently built and why it has that shape. Behavior and design that belong to one bounded context live in that context's own
 `spec/contexts/<context>/SPECIFICATION.md`. Repository paths and imports are the module map; a lightweight
 check rejects forbidden outward dependencies without an exhaustive edge ledger.
 
 Normative behavior and current design share the owning `SPECIFICATION.md`; API and model contracts are in
-adjacent TypeSpec, and change-specific alternatives and implementation history are in work items. Existing
-ADR links are historical evidence only; new decisions are recorded in the current specification and the
-work item.
+adjacent TypeSpec, and change-specific alternatives and implementation history are in work items. Current
+documentation is self-contained; historical decision records are not part of the current specification.
 
 Lists that churn — endpoints, fields, screens — are not kept here. Code, `spec/contexts/*/*.tsp`, and the
 UI documents are authoritative for those.
@@ -24,9 +23,9 @@ UI documents are authoritative for those.
 
 For a feature change, read in this order.
 
-1. `spec/SPECIFICATION.md`, to locate cross-context design and ownership.
+1. `spec/SPECIFICATION.md`, to locate whole-system design and ownership.
 2. The owning context's `SPECIFICATION.md`, `models.tsp`, and `main.tsp`. Changes are specification-first.
-3. The active work item. Read an archived ADR only when historical background is genuinely needed.
+3. The active work item for change-specific alternatives and implementation history.
 4. Go implementation, in the order `domain/`, `usecases/`, `ports/`, then whichever
    `<role>_<technology>/` adapter is involved.
 5. `backend/shared/` and `backend/cmd/internal/bootstrap/` only when touching cross-cutting HTTP or
@@ -49,7 +48,7 @@ context names. The exceptions are collected under `backend/shared/`.
 ├── infra/             # container, local runtime, and database schema assets
 ├── load/k6/           # tenant-local OAuth SLO smoke
 ├── tools/             # specification, boundary, compatibility, and rendering tools
-├── decisions/         # read-only historical ADR archive
+├── decisions/         # read-only historical decision archive
 └── work-items/        # units of work and completion records
 ```
 
@@ -82,7 +81,70 @@ last released wire contract and changes only as part of a release.
 
 ### Context Map
 
-The main correspondence between specification contexts and Go packages.
+The diagram is a curated DDD context map: it shows domain-facing relationships and integration boundaries,
+not every source import. Arrow direction is supplier/upstream to customer/downstream. `OHS/PL` means an
+Open Host Service with a Published Language, `C/S` means Customer/Supplier, `ACL` means Anti-Corruption
+Layer, and `Events` means a published event relationship. Repository paths and imports remain the source
+for code dependency checks; this graph is not an architecture ledger.
+
+```mermaid
+flowchart LR
+  Tenancy[Tenancy]
+  IdManagement[IdManagement]
+  IdGovernance[IdGovernance]
+  Authentication[Authentication]
+  OAuth2[OAuth2]
+  Application[Application]
+  ClaimMapping[ClaimMapping]
+  Provisioning[Provisioning]
+  Sourcing[Sourcing]
+  ApiTokens[ApiTokens]
+  Jobs[Jobs]
+  Seeding[Seeding]
+  SigningKeys[SigningKeys]
+  DataKeys[DataKeys]
+  WsFederation[WsFederation]
+  Saml[Saml]
+  WorkloadIdentity[WorkloadIdentity]
+  SharedSignals[SharedSignals]
+  Audit[Audit]
+  System[System]
+
+  Tenancy -->|OHS/PL: tenant boundary| IdManagement
+  Tenancy -->|OHS/PL: tenant settings| Application
+  IdManagement -->|OHS/PL: principals| Authentication
+  IdManagement -->|Events: lifecycle| IdGovernance
+  IdGovernance -->|C/S: governed mutations| IdManagement
+  IdManagement -->|Events: lifecycle| Provisioning
+  Sourcing -->|ACL: authoritative identity| IdManagement
+  Authentication -->|OHS/PL: authenticated subject| OAuth2
+  Application -->|C/S: protocol binding and gate| OAuth2
+  Application -->|C/S: protocol binding and gate| Saml
+  Application -->|C/S: protocol binding and gate| WsFederation
+  ClaimMapping -->|OHS/PL: released claims| OAuth2
+  ClaimMapping -->|OHS/PL: released claims| Saml
+  ClaimMapping -->|OHS/PL: released claims| WsFederation
+  SigningKeys -->|OHS/PL: signing service| OAuth2
+  SigningKeys -->|OHS/PL: XML signing service| Saml
+  SigningKeys -->|OHS/PL: XML signing service| WsFederation
+  SigningKeys -->|OHS/PL: SET signing service| SharedSignals
+  DataKeys -->|OHS/PL: encryption-key lifecycle| Authentication
+  WorkloadIdentity -->|ACL: workload attestation| OAuth2
+  ApiTokens -->|OHS/PL: API principal| System
+  Jobs -->|OHS/PL: durable execution| IdGovernance
+  Jobs -->|OHS/PL: durable execution| Provisioning
+  Jobs -->|OHS/PL: durable execution| SharedSignals
+  Seeding -->|C/S: published commands| Tenancy
+  Seeding -->|C/S: published commands| IdManagement
+  Seeding -->|C/S: published commands| Application
+  IdManagement -->|Events: audit facts| Audit
+  Authentication -->|Events: audit facts| Audit
+  OAuth2 -->|Events: audit facts| Audit
+  System -->|C/S: UI and runtime composition| Authentication
+  System -->|C/S: UI and runtime composition| Application
+```
+
+The table is the responsibility and implementation-location index for every bounded context.
 
 | Specification context | Go package | Responsibility |
 | --- | --- | --- |
@@ -689,111 +751,108 @@ multi-replica deployments so this path stays up.
 
 The `memory` runtime keeps this state in process and is therefore **single-replica / test only**.
 
+### Specification publishing
+
+Canonical Markdown and TypeSpec are published as an ignored, reproducible static site rooted at
+`spec/generated/docs/index.html`. The site separates Method guides, this whole-system document, each
+bounded-context document, the API reference, and the TypeSpec model catalog into independently addressable
+pages. Internal links are resolved from one generated page manifest, and generation fails on a broken or
+unreachable page link.
+
+API operation and wire-schema presentation is delegated to a repository-local Swagger UI distribution
+that consumes the generated OpenAPI document; the specification renderer does not maintain a second
+OpenAPI interpretation. The model catalog is separate and is derived from repository-owned TypeSpec model,
+enum, union, and scalar declarations, including declarations that are not reachable from an HTTP operation.
+Transport wrappers in `Operations` namespaces remain in the API reference rather than being duplicated as
+catalog pages.
+
+Mermaid source in canonical documents is rendered with repository-local assets. State diagrams are
+derived from the normative `From / Event / Guard / To / Effects` tables, so the graph and table cannot
+become separate sources of truth. Scenario keywords receive semantic HTML and visual labels without
+changing their canonical Markdown grammar. The site has no CDN or hosted-service dependency and remains a
+derived reading view rather than a specification source.
+
 ### Structural Decisions
 
-- The artifact boundary between `backend/` and `frontend/`, and the placement of Go entry points, follow
-  [ADR-092](../decisions/ADR-092-backend-and-frontend-top-level-directories.md).
-- The placement of runtime and database infrastructure assets follows
-  [ADR-102](../decisions/ADR-102-infrastructure-root-for-runtime-and-database-assets.md).
+- `backend/` and `frontend/` are separate deployable artifact boundaries; Go entry points live under
+  `backend/cmd/` so runtime composition does not leak into context packages.
+- Runtime, container, Kubernetes, and database infrastructure assets live under `infra/`, keeping
+  operational composition separate from application source.
 - Technical shared context is separated from context-owned adapters, and context-specific persistence
   adapters live with their context, because a shared package that accumulates context-specific concepts
-  widens the reading surface of every later change
-  ([ADR-070](../decisions/ADR-070-technical-shared-context-for-cross-context-adapters.md),
-  [ADR-090](../decisions/ADR-090-context-local-persistence-and-sqlc.md)).
+  widens the reading surface of every later change.
 - Endpoint rate limiting is a shared technical capability rather than a business aggregate, uses a fixed
-  window rather than token-bucket/sliding-window counters, and stays fail-closed and PostgreSQL-only
-  ([ADR-157](../decisions/ADR-157-endpoint-rate-limit-policy.md)).
+  window rather than token-bucket/sliding-window counters, and stays fail-closed and PostgreSQL-only.
 - Requirement IDs and TypeSpec symbols provide direct specification references without a repository-wide
   traceability manifest. Tests and work items cite those stable names where the evidence is useful.
 - Repository paths and imports are the executable structure. The check rejects forbidden outward
   dependencies without requiring every allowed module and edge to be declared twice.
-- Separating LifecycleWorkflow from IdManagement's record of truth into IdGovernance's policy and
-  orchestration follows [ADR-117](../decisions/ADR-117-extract-identity-governance-context.md).
+- LifecycleWorkflow policy and orchestration live in IdGovernance, while IdManagement remains the record
+  of truth for users and groups; this keeps governance policy out of the record context.
 - Environment-specific seed policy and execution orchestration are separated from the record contexts and
-  applied through each context's published command surface
-  ([ADR-118](../decisions/ADR-118-extract-environment-aware-seeding-context.md)).
+  applied through each context's published command surface.
 - Outbound provisioning (the SCIM client) is a separate context from the inbound SCIM server because the
   direction of truth is reversed and the lifecycles differ. Delivery does not observe the existing
   queue; it is committed by a same-transaction capture that writes `ProvisioningDelivery` inside the
-  caller's Postgres transaction
-  ([ADR-128](../decisions/ADR-128-extract-provisioning-context-and-transactional-delivery-capture.md)).
+  caller's Postgres transaction.
 - Inbound identity intake is grouped by whether there is an authority with a durable source binding —
   not by direction or runtime shape — into a single `Sourcing` context with one feature slice per
-  source. A source-independent core is not built until a second source lands (thin root)
-  ([ADR-141](../decisions/ADR-141-inbound-identity-sourcing-taxonomy.md)).
+  source. A source-independent core is not built until a second source lands (thin root).
 - Envelope encryption for DB-resident reversible secrets splits the technical `EnvelopeCrypto` port
   (Tink AEAD/keyset, master-key provider) from the business-facing per-tenant DEK lifecycle, the same
   split `SigningKeys` uses for `transit/sign`; the port lives in `backend/shared/security`, the lifecycle
   in the new `DataKeys` context, and neither is merged into `SigningKeys`, whose `KeyStore` port has a
-  different operation shape and lifecycle ([ADR-148](../decisions/ADR-148-envelope-encryption-and-datakeys-context.md)).
+  different operation shape and lifecycle.
 - Dynamic Group membership rules evaluate through a restricted CEL environment rather than a bespoke
-  expression language or full script engine
-  ([ADR-111](../decisions/ADR-111-cel-dynamic-group-membership-rules.md)).
+  expression language or full script engine.
 - `ApiTokens` unifies SCIM and management API access tokens under one issuance/scope model instead of two
-  parallel token types ([ADR-135](../decisions/ADR-135-unify-scim-and-management-api-tokens.md)).
+  parallel token types.
 - `WorkloadIdentity` federates external workload attestation (JWT-SVIDs) into idmagic tokens via
-  OAuth2 token-exchange rather than a parallel credential system
-  ([ADR-053](../decisions/ADR-053-workload-identity-federation-for-agent-runtimes.md)).
+  OAuth2 token-exchange rather than a parallel credential system.
 - Adapter packages sit flat under the owning context/feature, named `<role>_<technology>`, with no
-  `adapters/`/`persistence/` classification directory, so the package name alone states the role
-  ([ADR-133](../decisions/ADR-133-flat-wikipedia-architecture.md)).
-- Context-specific business types are owned by that context's `domain/` rather than a shared package
-  ([ADR-089](../decisions/ADR-089-context-local-domain-models.md)).
+  `adapters/`/`persistence/` classification directory, so the package name alone states the role.
+- Context-specific business types are owned by that context's `domain/` rather than a shared package.
 - A context with independent sub-domains may add a feature vertical slice layer
-  (`backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/`), piloted on `idmanagement`
-  ([ADR-130](../decisions/ADR-130-idmanagement-feature-vertical-slice.md)).
+  (`backend/<context>/<feature>/{domain,ports,usecases,<role>_<technology>}/`), piloted on `idmanagement`.
 - Context-specific repositories and route wiring are collected in `backend/<context>/module.go` so the
-  central router only calls the Module ([ADR-091](../decisions/ADR-091-module-pattern-di-routing.md)).
+  central router only calls the Module.
 - Error response bodies migrate to RFC 9457 Problem Details except where a protocol spec mandates its own
-  error shape (OAuth2, SCIM, DCR) ([ADR-154](../decisions/ADR-154-rfc-9457-problem-details-for-http-errors.md)).
+  error shape (OAuth2, SCIM, DCR).
 - Addressable administrative list positions use non-expiring, bidirectional signed keyset cursors rather
-  than offsets or short-lived continuation tokens
-  ([ADR-159](../decisions/ADR-159-addressable-bidirectional-cursor-pages.md)).
+  than offsets or short-lived continuation tokens.
 - Audit log (immutable, long-retention, legal/SIEM evidence) and application log (operational, stdout
   JSON Lines with `trace_id`/`span_id`/`request_id`) are kept as two separate tracks with different
-  storage and retention, rather than one shared log stream
-  ([ADR-018](../decisions/ADR-018-audit-vs-application-log-separation.md)).
+  storage and retention, rather than one shared log stream.
 - PostgreSQL column type selection follows a fixed rule set (`TEXT` for free-form/bounded strings with
   `CHECK`, `UUID` for internally generated ids, `TIMESTAMPTZ`, `TEXT`+`CHECK` over enums, JSONB only for
-  spec-derived/append-only payloads) so the choice is reproducible each time a table is added
-  ([ADR-084](../decisions/ADR-084-postgres-column-type-policy.md)).
+  spec-derived/append-only payloads) so the choice is reproducible each time a table is added.
 - `users.id`/`oauth2_clients.client_id` are globally unique, so child rows reference them directly and
-  tenant-scoped composite foreign keys are not used
-  ([ADR-082](../decisions/ADR-082-user-domain-id-and-tenant-key-policy.md), simplified by
-  [ADR-083](../decisions/ADR-083-globally-unique-client-id.md)).
+  tenant-scoped composite foreign keys are not used.
 - `authentication_sessions` and the ephemeral auth/OAuth2 opaque-key stores keep `tenant_id` as a
-  fail-closed defense-in-depth predicate even though their parent key is already globally unique
-  ([ADR-126](../decisions/ADR-126-postgresql-as-login-session-source-of-truth.md);
-  [ADR-139](../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md); the ADR-082 §4 exception).
+  fail-closed defense-in-depth predicate even though their parent key is already globally unique. This
+  is the deliberate exception to the otherwise direct globally-unique parent-key policy.
 - Volatile auth/OAuth2 state (authorization requests/codes, PAR, device codes, replay guards, the
   denylist, WebAuthn challenges, login throttle) is consolidated into PostgreSQL rather than a second
-  stateful store, so only one datastore is operated
-  ([ADR-139](../decisions/ADR-139-consolidate-ephemeral-state-into-postgresql.md)).
+  stateful store, so only one datastore is operated.
 - Notification email content resolves through exactly two tiers (built-in catalog, optional per-tenant
   override) with no version history, and overridable fields are limited to subject/body/sender-display-name
-  so a malicious tenant admin can only make their own mail look wrong, never inject into the shared shell
-  ([ADR-142](../decisions/ADR-142-notification-template-catalog-and-locale-resolution.md)), the same
-  system-shell/tenant-content split hosted UI branding uses
-  ([ADR-096](../decisions/ADR-096-tenant-branding-value-and-logo-storage.md)).
+  so a malicious tenant admin can only make their own mail look wrong, never inject into the shared shell, the same
+  system-shell/tenant-content split hosted UI branding uses.
 - `application_icons` and tenant branding assets are kept in separate tables and `object_key` spaces so
-  the two never cross ownership ([ADR-073](../decisions/ADR-073-application-icon-upload-storage.md)).
+  the two never cross ownership.
 - A tenant has exactly one canonical location, chosen between path-prefix and subdomain, which fixes its
   issuer, cookie scope, and WebAuthn RP ID; `'path'` is the default so no wildcard DNS/certificate is
-  required ([ADR-144](../decisions/ADR-144-tenant-canonical-location-and-host-based-resolution.md)).
+  required.
 - `refresh_tokens.sid` links a refresh token to its OIDC browser session without an FK, because session
-  housekeeping deletes independently of token revoke state
-  ([ADR-127](../decisions/ADR-127-oidc-session-binding-and-logout-propagation.md)); `refresh_tokens.resource` and
+  housekeeping deletes independently of token revoke state; `refresh_tokens.resource` and
   `mcp_resource_servers` implement RFC 8707 resource indicators as part of idmagic acting as an MCP
-  authorization server ([ADR-055](../decisions/ADR-055-mcp-authorization-server.md)).
-- `idmagic-worker` only claims durable jobs and scales independently of the API
-  ([ADR-099](../decisions/ADR-099-job-worker-execution-model-and-fault-tolerance.md)); `idmagic-batch` runs
-  one-shot retention/key-lifecycle sweeps and exits
-  ([ADR-124](../decisions/ADR-124-scheduled-batch-execution-boundary.md)); job execution uses per-lane
-  workers for resource/latency isolation ([ADR-129](../decisions/ADR-129-job-execution-lanes.md)).
+  authorization server.
+- `idmagic-worker` only claims durable jobs and scales independently of the API; `idmagic-batch` runs
+  one-shot retention/key-lifecycle sweeps and exits; job execution uses per-lane
+  workers for resource/latency isolation.
 - Kubernetes health is split into `/livez`/`/readyz`/`/startupz` instead of one shared liveness/readiness
   endpoint, so a transient dependency blip cannot both restart-loop a pod and keep traffic routed to a
-  replica that cannot serve it
-  ([ADR-078](../decisions/ADR-078-kubernetes-health-probes-and-graceful-drain.md)).
+  replica that cannot serve it.
 
 ### Documentation Policy
 
@@ -807,13 +866,12 @@ document answers.
 | Current design of one context | Its `spec/contexts/<context>/SPECIFICATION.md` Design section | How it is now, and why |
 | Cross-cutting design, conventions, cross-cutting policy | This document's Design section | The same, for what spans contexts |
 | Forbidden dependency rules | `tools/check/src/check-boundaries.ts` | Which outward imports are rejected |
-| Historical decision evidence | `decisions/ADR-NNN-*.md` | Why an old choice was made |
 | How to use or run something | the `README.md` of that directory | How to use it / how to run it |
 | What to do when something happens | `infra/runbooks/*.md` | What to do in an incident |
 | A one-off implementation record | `work-items/` | What was done this time |
 
 Do not create new ADRs. Put current design and concise rationale here; put change-specific alternatives
-and history in the work item. Existing ADRs remain read-only historical evidence.
+and history in the work item. Historical records remain outside current specification navigation.
 
 Do not hand-copy lists that can be read mechanically from code or schema. No exhaustive endpoint tables,
 test inventories, or environment-variable tables.

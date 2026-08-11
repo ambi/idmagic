@@ -47,12 +47,12 @@ Terminal: `archived`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| draft | LifecycleWorkflowEnabled | "" | enabled |  |
-| enabled | LifecycleWorkflowDisabled | "" | disabled |  |
-| disabled | LifecycleWorkflowEnabled | "" | enabled |  |
-| draft | LifecycleWorkflowDeleted | "" | archived |  |
-| enabled | LifecycleWorkflowDeleted | "" | archived |  |
-| disabled | LifecycleWorkflowDeleted | "" | archived |  |
+| draft | LifecycleWorkflowEnabled | — | enabled |  |
+| enabled | LifecycleWorkflowDisabled | — | disabled |  |
+| disabled | LifecycleWorkflowEnabled | — | enabled |  |
+| draft | LifecycleWorkflowDeleted | — | archived |  |
+| enabled | LifecycleWorkflowDeleted | — | archived |  |
+| disabled | LifecycleWorkflowDeleted | — | archived |  |
 
 ### WorkflowRunLifecycle
 
@@ -68,12 +68,12 @@ Terminal: `succeeded`, `partially_failed`, `failed`, `canceled`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| queued | LifecycleWorkflowRunStarted | "" | running |  |
-| running | LifecycleWorkflowRunSucceeded | "" | succeeded |  |
-| running | LifecycleWorkflowRunPartiallyFailed | "" | partially_failed |  |
-| running | LifecycleWorkflowRunFailed | "" | failed |  |
-| queued | LifecycleWorkflowRunCanceled | "" | canceled |  |
-| running | LifecycleWorkflowRunCanceled | "" | canceled |  |
+| queued | LifecycleWorkflowRunStarted | — | running |  |
+| running | LifecycleWorkflowRunSucceeded | — | succeeded |  |
+| running | LifecycleWorkflowRunPartiallyFailed | — | partially_failed |  |
+| running | LifecycleWorkflowRunFailed | — | failed |  |
+| queued | LifecycleWorkflowRunCanceled | — | canceled |  |
+| running | LifecycleWorkflowRunCanceled | — | canceled |  |
 
 ## Authorization Boundary
 
@@ -121,14 +121,12 @@ as `Job` records.
 - `IdGovernance` is split out of `IdManagement` to own `LifecycleWorkflow` policy and orchestration,
   leaving `IdManagement` as the identity-principal record of truth, so the lifecycle-workflow slice
   has a home for the broader IGA roadmap (access campaigns, entitlements, JIT elevation) instead of
-  continuing to smear across a record context's layers
-  ([ADR-117](../../../decisions/ADR-117-extract-identity-governance-context.md)).
+  continuing to smear across a record context's layers.
 - The transactional trigger-capture pattern (writing the workflow run in the same transaction as the
   triggering mutation), the trigger-occurrence uniqueness constraint that collapses at-least-once
   redelivery, ports-and-adapters action execution, and the revision-pinning/partial-failure/loop-
   suppression/retention rules were all established for `LifecycleWorkflow` while it still lived
-  inside `IdManagement`, and carried forward unchanged when `IdGovernance` was split out
-  ([ADR-113](../../../decisions/ADR-113-identity-lifecycle-workflow-execution-model.md)).
+  inside `IdManagement`, and carried forward unchanged when `IdGovernance` was split out.
 
 ## Scenarios
 

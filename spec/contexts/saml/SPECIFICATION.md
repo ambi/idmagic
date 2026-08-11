@@ -133,14 +133,12 @@ continue to use the reviewed library selected for XML signature handling.
 
 - The initial SAML 2.0 IdP scope is the Web Browser SSO Profile only (HTTP-Redirect/HTTP-POST
   bindings, SP- and IdP-initiated SSO, Single Logout); SAML ECP, encrypted assertions, and acting as
-  a SAML SP are excluded to keep the signature-wrapping attack surface contained
-  ([ADR-067](../../../decisions/ADR-067-saml2-idp-scope.md)).
+  a SAML SP are excluded to keep the signature-wrapping attack surface contained.
 - SAML IdP profiles are modeled as shareable (a profile can back more than one SP trust), with
   dedicated-use profiles expressed as the one-consumer case of the same model rather than a separate
-  type ([ADR-145](../../../decisions/ADR-145-shareable-saml-idp-profiles.md)).
+  type.
 - XML parsing, canonicalization, and signing use a reviewed third-party XML signature library rather
-  than a hand-rolled implementation
-  ([ADR-060](../../../decisions/ADR-060-xml-signature-library-and-saml-assertion-signing.md)).
+  than a hand-rolled implementation.
 
 ## Scenarios
 

@@ -78,13 +78,11 @@ reference resolves without ever passing the materialized value into a plan, log,
 - `Seeding` is a separate operations context that owns environment policy, drift policy, and
   application order across record contexts through their existing idempotent command surfaces,
   rather than scattering seed profiles across each record context and losing the single point of
-  cross-context safety verification
-  ([ADR-118](../../../decisions/ADR-118-extract-environment-aware-seeding-context.md)).
+  cross-context safety verification.
 - Seed manifests are versioned, strictly-decoded YAML with a restricted `include`/secret-reference
   grammar (no merge keys, templating, remote URLs, or literal `${ENV}` expansion), and re-applying
   the same manifest/generator-seed/secret version replays deterministically rather than relying on a
-  dedicated checkpoint table
-  ([ADR-132](../../../decisions/ADR-132-use-versioned-seed-manifests-and-secret-references.md)).
+  dedicated checkpoint table.
 
 ## Scenarios
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
  * check-api-compat — detect breaking changes between a frozen OpenAPI
- * release baseline and the currently generated OpenAPI document (ADR-156).
+ * release baseline and the currently generated OpenAPI document.
  *
  *   check-api-compat --baseline <file> --current <file>
  *
@@ -10,6 +10,7 @@
  */
 
 import { readFile } from 'node:fs/promises'
+import { discoverGeneratedOpenApi, discoverOpenApiBaseline } from '../../workspace/src/workspace.ts'
 import { compareOpenApi, type JsonSchema } from './compat.ts'
 
 function parseArgs(argv: readonly string[]): { baseline: string; current: string } | undefined {
@@ -27,7 +28,11 @@ function parseArgs(argv: readonly string[]): { baseline: string; current: string
     : undefined
 }
 
-const args = parseArgs(process.argv.slice(2))
+const argv = process.argv.slice(2)
+const args =
+  argv.length === 0
+    ? { baseline: await discoverOpenApiBaseline(), current: await discoverGeneratedOpenApi() }
+    : parseArgs(argv)
 if (!args) {
   process.stderr.write('Usage: check-api-compat --baseline <file> --current <file>\n')
   process.exit(2)
@@ -55,6 +60,6 @@ for (const finding of findings) {
 process.stderr.write(
   '\nIf this break is intentional: version the path, add a new interface, and mark the old one\n' +
     'deprecated with its sunset policy instead of changing it in place. If the baseline\n' +
-    'itself is simply out of date after a release, refresh spec/idmagic.openapi.baseline.json.\n',
+    `itself is simply out of date after a release, refresh ${args.baseline}.\n`,
 )
 process.exit(1)

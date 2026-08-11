@@ -39,10 +39,10 @@ Terminal: `destroyed`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| active | DataEncryptionKeyRotated | "" | retiring |  |
-| retiring | DataEncryptionKeyDisabled | "" | disabled |  |
-| retiring | DataEncryptionKeyDestroyed | "" | destroyed |  |
-| disabled | DataEncryptionKeyDestroyed | "" | destroyed |  |
+| active | DataEncryptionKeyRotated | — | retiring |  |
+| retiring | DataEncryptionKeyDisabled | — | disabled |  |
+| retiring | DataEncryptionKeyDestroyed | — | destroyed |  |
+| disabled | DataEncryptionKeyDestroyed | — | destroyed |  |
 
 ## Authorization Boundary
 

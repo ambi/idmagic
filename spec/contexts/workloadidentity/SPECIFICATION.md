@@ -31,8 +31,8 @@ Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| enabled | WorkloadTrustBundleDisabled | "" | disabled |  |
-| disabled | WorkloadTrustBundleEnabled | "" | enabled |  |
+| enabled | WorkloadTrustBundleDisabled | — | disabled |  |
+| disabled | WorkloadTrustBundleEnabled | — | enabled |  |
 
 ### AgentWorkloadBindingLifecycle
 
@@ -43,8 +43,8 @@ Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| enabled | AgentWorkloadBindingDisabled | "" | disabled |  |
-| disabled | AgentWorkloadBindingEnabled | "" | enabled |  |
+| enabled | AgentWorkloadBindingDisabled | — | disabled |  |
+| disabled | AgentWorkloadBindingEnabled | — | enabled |  |
 
 ## Authorization Boundary
 

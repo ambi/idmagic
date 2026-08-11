@@ -63,14 +63,14 @@ Terminal: `Deleted`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Active | UserDisabled | "" | Disabled |  |
-| Disabled | UserEnabled | "" | Active |  |
-| Active | UserSoftDeleted | "" | PendingDeletion |  |
-| Disabled | UserSoftDeleted | "" | PendingDeletion |  |
-| PendingDeletion | UserRestored | "" | Active |  |
+| Active | UserDisabled | — | Disabled |  |
+| Disabled | UserEnabled | — | Active |  |
+| Active | UserSoftDeleted | — | PendingDeletion |  |
+| Disabled | UserSoftDeleted | — | PendingDeletion |  |
+| PendingDeletion | UserRestored | — | Active |  |
 | PendingDeletion | UserDeleted | input.purge == true \|\| duration_since(status_changed_at) >= duration('2592000s') | Deleted | UserDeleted |
-| Active | UserDeleted | "" | Deleted |  |
-| Disabled | UserDeleted | "" | Deleted |  |
+| Active | UserDeleted | — | Deleted |  |
+| Disabled | UserDeleted | — | Deleted |  |
 
 ### DynamicMembershipEvaluationLifecycle
 
@@ -81,9 +81,9 @@ Terminal: `succeeded`, `failed`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| queued | DynamicMembershipEvaluationStarted | "" | running |  |
-| running | DynamicMembershipEvaluated | "" | succeeded |  |
-| running | DynamicMembershipEvaluationFailed | "" | failed |  |
+| queued | DynamicMembershipEvaluationStarted | — | running |  |
+| running | DynamicMembershipEvaluated | — | succeeded |  |
+| running | DynamicMembershipEvaluationFailed | — | failed |  |
 
 ### AgentLifecycle
 
@@ -96,10 +96,10 @@ Terminal: `Killed`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| Active | AgentDisabled | "" | Disabled |  |
-| Disabled | AgentEnabled | "" | Active |  |
-| Active | AgentKilled | "" | Killed |  |
-| Disabled | AgentKilled | "" | Killed |  |
+| Active | AgentDisabled | — | Disabled |  |
+| Disabled | AgentEnabled | — | Active |  |
+| Active | AgentKilled | — | Killed |  |
+| Disabled | AgentKilled | — | Killed |  |
 
 ### DataExportLifecycle
 
@@ -116,11 +116,11 @@ Terminal: `failed`, `canceled`, `expired`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
-| queued | DataExportStarted | "" | running |  |
-| running | DataExportSucceeded | "" | succeeded |  |
-| running | DataExportFailed | "" | failed |  |
-| queued | DataExportCanceled | "" | canceled |  |
-| running | DataExportCanceled | "" | canceled |  |
+| queued | DataExportStarted | — | running |  |
+| running | DataExportSucceeded | — | succeeded |  |
+| running | DataExportFailed | — | failed |  |
+| queued | DataExportCanceled | — | canceled |  |
+| running | DataExportCanceled | — | canceled |  |
 | succeeded | DataExportExpired | duration_since(completed_at) >= duration('2592000s') | expired |  |
 
 ## Authorization Boundary
@@ -195,7 +195,7 @@ Both the OIDC/SCIM built-in attributes and tenant-defined custom attributes are 
 `UserAttributeDef` mechanism, so admins configure one schema shape instead of two. Definitions come from
 two tiers that combine into one effective schema:
 
-- a **builtin catalog**, `BuiltinUserAttributeDefs()`, defined in code and shared by every tenant — the
+- a **builtin catalog**, `BuiltinUserAttributeDefs`, defined in code and shared by every tenant — the
   OIDC §5.1 optional claims and SCIM `enterprise:User`-equivalent organizational attributes;
 - a **tenant schema**, `TenantUserAttributeSchema`, a separate aggregate keyed by `tenant_id` rather
   than embedded in the `Tenant` aggregate, because its schema churns faster than tenant settings, is a
@@ -345,35 +345,27 @@ gated by a dedicated `AdminAgentsManage` permission rather than reusing generic 
 
 - `User`, `Group`, and `Agent` are organized as separate feature vertical slices — each with its own
   domain, ports, use cases, and adapters — rather than one flat context package, once a context grows
-  past a single feature
-  ([ADR-130](../../../decisions/ADR-130-idmanagement-feature-vertical-slice.md)).
+  past a single feature.
 - User deletion is implemented as anonymization-in-place (a `Deleted` tombstone that clears
   re-identifying fields) rather than physical row removal, since append-only records such as
-  `AdminAuditEvent` reference `sub` and a hard delete would break that reference
-  ([ADR-036](../../../decisions/ADR-036-user-deletion-and-anonymization.md)).
+  `AdminAuditEvent` reference `sub` and a hard delete would break that reference.
 - `User` keeps a thin typed core and pushes every other profile attribute into a single sparse
   `attributes` map, rather than giving every user ~25 rarely-used optional OIDC/SCIM fields at the type
-  level ([ADR-039](../../../decisions/ADR-039-user-profile-shape.md)).
+  level.
 - Built-in and tenant-defined attributes are governed by one `UserAttributeDef` schema mechanism
   (builtin catalog ∪ tenant schema) instead of two separate systems, with `pii` defaulting to `true`
-  for safe-by-default handling of sensitive values
-  ([ADR-040](../../../decisions/ADR-040-user-custom-attribute-policy.md)).
+  for safe-by-default handling of sensitive values.
 - User CSV uses a reversible partial-upsert dialect and applies only a server-held successful preview
-  payload, while replanning mutations against current state
-  ([ADR-161](../../../decisions/ADR-161-reversible-user-csv-partial-upsert.md)).
+  payload, while replanning mutations against current state.
 - `Group` was introduced as a tenant-scoped aggregate so roles can be granted and revoked as a bundle,
   with effective roles computed as a plain union of `user.roles` and group roles rather than a
-  hierarchy with precedence or subtraction rules
-  ([ADR-038](../../../decisions/ADR-038-group-aggregate-and-effective-roles.md)).
+  hierarchy with precedence or subtraction rules.
 - `Agent` is a third first-class principal type distinct from `User` and `OAuth2Client`, binding to an
   existing `OAuth2Client` registration rather than owning its own credential and cryptographic surface,
   so autonomous and supervised agents stay distinguishable from generic M2M clients without doubling
-  the credential attack surface
-  ([ADR-048](../../../decisions/ADR-048-agent-as-first-class-non-human-principal.md)).
+  the credential attack surface.
 - `Agent` registration, lookup, and mutation are tenant-scoped, following the same tenant-as-aggregate
-  and tenant-scoped-persistence boundary the rest of IdManagement's aggregates follow
-  ([ADR-032](../../../decisions/ADR-032-tenant-as-first-class-aggregate.md),
-  [ADR-034](../../../decisions/ADR-034-tenant-scoped-persistence.md)).
+  and tenant-scoped-persistence boundary the rest of IdManagement's aggregates follow.
 
 ## Scenarios
 

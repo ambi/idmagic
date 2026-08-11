@@ -57,5 +57,4 @@ which keeps the fail-closed guarantee in one place instead of three.
 - `ClaimMapping` is its own bounded context — separate from `OAuth2` and the XML federation
   protocols — because claim issuance is a pure, protocol-agnostic transformation independent of XML
   signing or transport, and folding WS-*/SAML relying-party trust into `OAuth2` would have bloated
-  that context's responsibility
-  ([ADR-059](../../../decisions/ADR-059-federation-bounded-context-and-claim-issuance.md)).
+  that context's responsibility.
