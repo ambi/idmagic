@@ -253,23 +253,7 @@ func (u *Usecases) removeMembersLenient(ctx context.Context, tenantID, groupID s
 }
 
 func groupMemberScimIDs(value any) ([]string, error) {
-	valList, ok := value.([]any)
-	if !ok {
-		return nil, domain.NewMutationError("invalidValue", "members value must be an array")
-	}
-	scimIDs := make([]string, 0, len(valList))
-	for _, v := range valList {
-		vMap, ok := v.(map[string]any)
-		if !ok {
-			return nil, domain.NewMutationError("invalidValue", "each member must be an object with a value")
-		}
-		scimID, _ := vMap["value"].(string)
-		if scimID == "" {
-			return nil, domain.NewMutationError("invalidValue", "member value must be a non-empty string")
-		}
-		scimIDs = append(scimIDs, scimID)
-	}
-	return scimIDs, nil
+	return domain.ParseGroupMemberScimIDs(value)
 }
 
 // UpdateGroup implements PUT full-replace semantics (ADR-122): displayName
@@ -442,6 +426,7 @@ func (u *Usecases) toScimGroup(ctx context.Context, group *groupdomain.Group, sc
 		scimMembers = append(scimMembers, map[string]any{
 			"value":   userScimID,
 			"display": m.UserID,
+			"type":    "User",
 		})
 	}
 

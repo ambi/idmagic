@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
@@ -239,15 +240,7 @@ func (u *Usecases) applyUserPatchOp(ctx context.Context, tenantID string, user *
 			user.Email = &empty
 			return nil
 		}
-		emails, ok := op.Value.([]any)
-		if !ok || len(emails) == 0 {
-			return domain.NewMutationError("invalidValue", "emails value must be a non-empty array")
-		}
-		firstEmail, ok := emails[0].(map[string]any)
-		if !ok {
-			return domain.NewMutationError("invalidValue", "emails[0] must be an object")
-		}
-		email, _ := firstEmail["value"].(string)
+		email, _ := op.Value.(string)
 		user.Email = &email
 	case domain.UserAttrActive:
 		if isRemoveOp {
@@ -367,11 +360,6 @@ func userFilterAttrs(user *userdomain.User, scimID string) map[string]any {
 }
 
 func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]any {
-	var emailVal string
-	if user.Email != nil {
-		emailVal = *user.Email
-	}
-
 	var givenName, familyName, formattedName string
 	if user.GivenName != nil {
 		givenName = *user.GivenName
@@ -385,7 +373,7 @@ func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]a
 
 	active := user.Lifecycle.Status == idmdomain.UserStatusActive
 
-	return map[string]any{
+	resource := map[string]any{
 		"schemas":  []string{"urn:ietf:params:scim:schemas:core:2.0:User"},
 		"id":       scimID,
 		"userName": user.PreferredUsername,
@@ -393,12 +381,6 @@ func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]a
 			"familyName": familyName,
 			"givenName":  givenName,
 			"formatted":  formattedName,
-		},
-		"emails": []map[string]any{
-			{
-				"value":   emailVal,
-				"primary": true,
-			},
 		},
 		"active": active,
 		"meta": map[string]any{
@@ -408,4 +390,12 @@ func (u *Usecases) toScimUser(user *userdomain.User, scimID string) map[string]a
 			"location":     "/scim/v2/Users/" + scimID,
 		},
 	}
+	if user.Email != nil && strings.TrimSpace(*user.Email) != "" {
+		resource["emails"] = []map[string]any{{
+			"value":   *user.Email,
+			"type":    "work",
+			"primary": true,
+		}}
+	}
+	return resource
 }

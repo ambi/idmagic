@@ -81,7 +81,7 @@ model GetScimSchemasError400 {
   @body body: GetScimSchemasError400Body;
 }
 
-@doc("SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の\n属性だけを、各属性の type、multiValued、required、mutability(readOnly/readWrite)、\nreturned、uniqueness とともに広告する。空の attribute 配列を返さない。")
+@doc("SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の\n属性だけを、各属性の type、multiValued、required、mutability(readOnly/readWrite)、\nreturned、uniqueness とともに広告する。User emails は単一 canonical email への\nprojection、Group members の referenceTypes は User のみと明記し、未対応の\nphoneNumbers、addresses、Group member は広告しない。空の attribute 配列を返さない。")
 @TypeSpec.OpenAPI.operationId("GetScimSchemas")
 @route("/scim/v2/Schemas")
 @get
@@ -113,7 +113,7 @@ model CreateScimUserError400 {
   @body body: CreateScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。`id` は常に server が生成し、\nbody に含まれていても無視する(readOnly)。`active` 省略時は true。作成した\nresource は `id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、\n`meta.location` を含めて返す。同一 tenant 内で `userName` が既存 User と重複する\n場合は 409 `uniqueness` にする。")
+@doc("SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。emails は全 element を検証後、\nprimary=true、type=work(case-insensitive)、wire order の順で単一 email へ投影する。\n不正 emails、phoneNumbers、addresses は invalidValue にする。`id` は常に server が\n生成し、body に含まれていても無視する(readOnly)。`active` 省略時は true。作成した\nresource は canonical email がある場合だけ単一 type=work、primary=true entry と、\n`id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location` を返す。\n同一 tenant 内で `userName` が既存 User と重複する場合は 409 `uniqueness` にする。")
 @TypeSpec.OpenAPI.operationId("CreateScimUser")
 @route("/scim/v2/Users")
 @post
@@ -170,7 +170,7 @@ model GetScimUserError400 {
   @body body: GetScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する GET 要求。`id`、`meta.resourceType`、\n`meta.created`、`meta.lastModified`、`meta.location` を含む resource を返す。")
+@doc("SCIM 2.0 /Users/{id} に対する GET 要求。canonical email がある場合だけ単一の\ntype=work、primary=true entry として返す。`id`、`meta.resourceType`、`meta.created`、\n`meta.lastModified`、`meta.location` を含む resource を返す。")
 @TypeSpec.OpenAPI.operationId("GetScimUser")
 @route("/scim/v2/Users/{id}")
 @get
@@ -204,7 +204,7 @@ model PatchScimUserError400 {
   @body body: PatchScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の\n各要素は `op`(add/replace/remove のいずれか)と `path` を持つ。`path` は\nRFC7644-PATCH が対応する User 属性(userName、name、name.formatted、\nname.givenName、name.familyName、emails、active)のいずれかでなければならず、\nそれ以外は invalidPath の ScimProtocolError にする。`op` が add/replace/remove\n以外、または value の型が対象属性と不整合な場合は invalidValue にする。`id`、\n`meta`、`schemas` への書込みは mutability エラーにする。")
+@doc("SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の\n各要素は `op`(add/replace/remove のいずれか)と `path` を持つ。`path` は\nRFC7644-PATCH が対応する User 属性(userName、name、name.formatted、\nname.givenName、name.familyName、emails、active)のいずれかでなければならず、\nphoneNumbers、addresses を含むそれ以外は invalidPath にする。emails の\nadd/replace は全 element を検証後、primary=true、type=work(case-insensitive)、\nwire order の順で単一 email へ投影し、不正値は invalidValue にする。`op` が\nadd/replace/remove 以外、または value の型が対象属性と不整合な場合も\ninvalidValue にする。`id`、`meta`、`schemas` への書込みは mutability エラーにする。")
 @TypeSpec.OpenAPI.operationId("PatchScimUser")
 @route("/scim/v2/Users/{id}")
 @patch
@@ -238,7 +238,7 @@ model UpdateScimUserError400 {
   @body body: UpdateScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。省略された他の mutable\n属性(name.*、emails、active)は既定値にリセットする(name/emails は空、\nactive は true)。`id`、`meta` への書込みは無視する(readOnly)。")
+@doc("SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。省略された他の mutable\n属性(name.*、emails、active)は既定値にリセットする(name/emails は空、\nactive は true)。emails は全 element を検証後、primary=true、type=work\n(case-insensitive)、wire order の順で単一 email へ投影する。不正 emails、\nphoneNumbers、addresses は invalidValue にする。`id`、`meta` への書込みは\n無視する(readOnly)。")
 @TypeSpec.OpenAPI.operationId("UpdateScimUser")
 @route("/scim/v2/Users/{id}")
 @put
@@ -294,7 +294,7 @@ model CreateScimGroupError400 {
   @body body: CreateScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は\ninvalidValue の ScimProtocolError にする。`id` は常に server が生成し、\nbody に含まれていても無視する(readOnly)。`members` の各要素は同一 tenant\n内で解決可能な User の SCIM id でなければならず、解決できない member は\ninvalidValue にして group を作成しない。作成した resource は `id`、\n`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location`\nを含めて返す。同一 tenant 内で `displayName` が既存 Group と重複する場合は\n409 `uniqueness` にする。")
+@doc("SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は\ninvalidValue の ScimProtocolError にする。`id` は常に server が生成し、\nbody に含まれていても無視する(readOnly)。`members` の各要素は type が省略または\nUser(case-insensitive)で、同一 tenant 内で解決可能な User の SCIM id でなければ\nならない。type=Group または解決できない member は invalidValue にして group を\n作成しない。作成した resource の各 member は type=User とし、`id`、\n`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location`\nを含めて返す。同一 tenant 内で `displayName` が既存 Group と重複する場合は\n409 `uniqueness` にする。")
 @TypeSpec.OpenAPI.operationId("CreateScimGroup")
 @route("/scim/v2/Groups")
 @post
@@ -351,7 +351,7 @@ model GetScimGroupError400 {
   @body body: GetScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups/{id} に対する GET 要求。`id`、`meta.resourceType`、\n`meta.created`、`meta.lastModified`、`meta.location` を含む resource を返す。")
+@doc("SCIM 2.0 /Groups/{id} に対する GET 要求。各 member は type=User として返す。\n`id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location` を\n含む resource を返す。")
 @TypeSpec.OpenAPI.operationId("GetScimGroup")
 @route("/scim/v2/Groups/{id}")
 @get
@@ -385,7 +385,7 @@ model PatchScimGroupError400 {
   @body body: PatchScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は\nRFC7644-PATCH が対応する Group 属性(displayName、members)のいずれかで\nなければならず、それ以外は invalidPath の ScimProtocolError にする。`op` が\nadd/replace/remove 以外、または value の型が対象属性と不整合な場合は\ninvalidValue にする。`members` の add で解決できない member を指定した場合も\ninvalidValue にし、group を変更しない。`id`、`meta`、`schemas` への書込みは\nmutability エラーにする。")
+@doc("SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は\nRFC7644-PATCH が対応する Group 属性(displayName、members)のいずれかで\nなければならず、それ以外は invalidPath の ScimProtocolError にする。`op` が\nadd/replace/remove 以外、または value の型が対象属性と不整合な場合は\ninvalidValue にする。`members` は type が省略または User(case-insensitive)の member\nだけを許可する。type=Group または解決できない member を指定した場合も\ninvalidValue にし、group を変更しない。`id`、`meta`、`schemas` への書込みは\nmutability エラーにする。")
 @TypeSpec.OpenAPI.operationId("PatchScimGroup")
 @route("/scim/v2/Groups/{id}")
 @patch
@@ -419,7 +419,7 @@ model UpdateScimGroupError400 {
   @body body: UpdateScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`displayName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。`members` を省略した場合は\n既存メンバーを全て削除する(空集合への置換)。解決できない member を指定した\n場合は invalidValue にし、group を変更しない。`id`、`meta` への書込みは\n無視する(readOnly)。")
+@doc("SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`displayName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。`members` を省略した場合は\n既存メンバーを全て削除する(空集合への置換)。`members` は type が省略または\nUser(case-insensitive)の member だけを許可する。type=Group または解決できない\nmember を指定した場合は invalidValue にし、group を変更しない。`id`、`meta` への\n書込みは無視する(readOnly)。")
 @TypeSpec.OpenAPI.operationId("UpdateScimGroup")
 @route("/scim/v2/Groups/{id}")
 @put

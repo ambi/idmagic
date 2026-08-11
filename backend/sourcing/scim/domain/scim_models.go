@@ -117,16 +117,17 @@ type ResourceType struct {
 }
 
 type SchemaAttribute struct {
-	Name          string            `json:"name"`
-	Type          string            `json:"type"`
-	MultiValued   bool              `json:"multiValued"`
-	Description   string            `json:"description,omitempty"`
-	Required      bool              `json:"required"`
-	CaseExact     bool              `json:"caseExact"`
-	Mutability    string            `json:"mutability"`
-	Returned      string            `json:"returned"`
-	Uniqueness    string            `json:"uniqueness"`
-	SubAttributes []SchemaAttribute `json:"subAttributes,omitempty"`
+	Name           string            `json:"name"`
+	Type           string            `json:"type"`
+	MultiValued    bool              `json:"multiValued"`
+	Description    string            `json:"description,omitempty"`
+	Required       bool              `json:"required"`
+	CaseExact      bool              `json:"caseExact"`
+	Mutability     string            `json:"mutability"`
+	Returned       string            `json:"returned"`
+	Uniqueness     string            `json:"uniqueness"`
+	ReferenceTypes []string          `json:"referenceTypes,omitempty"`
+	SubAttributes  []SchemaAttribute `json:"subAttributes,omitempty"`
 }
 
 type Schema struct {

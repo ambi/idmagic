@@ -82,11 +82,22 @@ Attributes map directly onto the User/Group aggregates:
 | `Users.id` | `User.sub` |
 | `Users.userName` | `User.preferred_username` |
 | `Users.name.formatted` / `displayName` | `User.name` |
-| `Users.emails[type=work].value` | `User.email` |
+| `Users.emails` | `User.email` (primary、work、wire order の順で 1 件へ投影) |
 | `Users.active` | `UserLifecycle.status == Active` |
 | `Groups.id` | `Group.id` |
 | `Groups.displayName` | `Group.name` |
 | `Groups.members` | `GroupMember` memberships |
+
+SCIM の `emails` は multi-valued transport だが、IdMagic の canonical User は認証・通知で使う
+単一 email だけを持つ。User mutation は全 email element を検証してから、`primary=true`、
+case-insensitive な `type=work`、wire order の先頭という優先順位で 1 件へ投影する。複数 primary や
+不正 element は mutation 全体を拒否する。User response は canonical email がある場合だけ、単一の
+`type=work, primary=true` entry に正規化して返し、入力配列全体の lossless round-trip は保証しない。
+
+Schema discovery は実装済み subset だけを広告する。`phoneNumbers` と `addresses` は保存・広告せず、
+POST/PUT body では `invalidValue`、PATCH path では `invalidPath` として silent data loss を防ぐ。
+Group membership は直接 User member だけを表し、member type は省略または `User` のみを受け付け、
+response では常に `type=User` を返す。認可上の意味を持たない Group-in-Group graph は保存しない。
 
 A PATCH/PUT toggling `active` to `false` transitions `User.lifecycle.status` to `Disabled`; toggling
 it to `true` transitions it back to `Active`. `DELETE /Users/{id}` does not purge: it performs the
@@ -103,6 +114,9 @@ this integrates SCIM deletion into the existing soft-delete policy rather than b
 - SCIM `DELETE /Users/{id}` integrates into the platform's existing soft-delete policy
   (`PendingDeletion`, 30-day grace period, then anonymize-cascade purge) rather than purging
   immediately, so a misconfigured or erroneous external sync cannot cause unrecoverable PII loss.
+- SCIM multi-valued profile data is projected into IdMagic's canonical aggregate instead of being
+  retained in a protocol-only shadow store; unsupported complex attributes and nested groups fail
+  explicitly rather than creating silent data loss or a graph with no authorization semantics.
 
 ## Scenarios
 
@@ -155,4 +169,22 @@ this integrates SCIM deletion into the existing soft-delete policy rather than b
 - THEN グループが作成される
 - WHEN SCIMクライアントが PatchScimGroup でメンバー追加を指定する
   - ALT 追加対象 User が別 tenant に属する → ScimProtocolError を返し membership を作成しない
+  - ALT member の type が User 以外である → invalidValue の ScimProtocolError を返し Group を変更しない
 - THEN GroupMembership が同期され User の有効ロールが更新される
+- THEN Group response の各 member は type=User を持つ
+
+### REQ-SOURCING-006: SCIM多値emailはcanonical emailへ決定的に投影される
+- ACTOR ScimBearerClient
+- GIVEN 有効な SCIM アクセストークンが発行されている
+- WHEN SCIMクライアントが CreateScimUser、UpdateScimUser、または PatchScimUser で複数 emails を送る
+  - ALT primary=true が複数ある、element が object でない、value が空または string でない、type が string でない、primary が boolean でない → invalidValue の ScimProtocolError を返し User を変更しない
+  - ALT primary がない → type が case-insensitive に work と一致する最初の element を選ぶ
+  - ALT primary も work もない → wire order の最初の element を選ぶ
+- THEN primary=true の element が 1 件あれば、その value だけを User.email に保存する
+- THEN User response は保存した email がある場合だけ、単一の type=work、primary=true entry を返す
+- WHEN SCIMクライアントが CreateScimUser または UpdateScimUser で phoneNumbers または addresses を送る
+  - THEN invalidValue の ScimProtocolError を返し User を変更しない
+- WHEN SCIMクライアントが PatchScimUser の path に phoneNumbers または addresses を指定する
+  - THEN invalidPath の ScimProtocolError を返し User を変更しない
+- WHEN SCIMクライアントが GetScimSchemas を呼び出す
+- THEN server は対応する単一 email projection と User member だけを広告し、phoneNumbers、addresses、Group member を広告しない

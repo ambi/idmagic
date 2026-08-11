@@ -21,9 +21,10 @@ func UserCoreSchema() Schema {
 			},
 			{
 				Name: "emails", Type: "complex", MultiValued: true, Mutability: "readWrite", Returned: "default",
-				Description: "Only the value of the first element is persisted (RFC7643-CORE-RESOURCES adoption:partial).",
+				Description: "Projected to one canonical email by primary, work, then wire order; responses contain one work/primary entry (RFC7643-CORE-RESOURCES adoption:partial).",
 				SubAttributes: []SchemaAttribute{
 					{Name: "value", Type: "string", Mutability: "readWrite", Returned: "default"},
+					{Name: "type", Type: "string", Mutability: "readWrite", Returned: "default"},
 					{Name: "primary", Type: "boolean", Mutability: "readWrite", Returned: "default"},
 				},
 			},
@@ -48,7 +49,9 @@ func GroupCoreSchema() Schema {
 				Description: "Only User members are supported. Nested group members (type=Group) are not supported (RFC7643-CORE-RESOURCES adoption:partial).",
 				SubAttributes: []SchemaAttribute{
 					{Name: "value", Type: "string", Mutability: "immutable", Returned: "default"},
+					{Name: "$ref", Type: "reference", Mutability: "immutable", Returned: "default", ReferenceTypes: []string{"User"}},
 					{Name: "display", Type: "string", Mutability: "readOnly", Returned: "default"},
+					{Name: "type", Type: "string", Mutability: "immutable", Returned: "default"},
 				},
 			},
 		},

@@ -88,6 +88,68 @@ func TestScimCreateUserResourceContract(t *testing.T) {
 			t.Errorf("scimType = %v, want uniqueness", body2["scimType"])
 		}
 	})
+
+	t.Run("emails project by primary and response is canonical", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName": "email-priority@example.com",
+			"emails": []any{
+				map[string]any{"value": "work@example.com", "type": "work"},
+				map[string]any{"value": "primary@example.com", "type": "home", "primary": true},
+			},
+		})
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d body=%v", rec.Code, body)
+		}
+		emails, _ := body["emails"].([]any)
+		if len(emails) != 1 {
+			t.Fatalf("expected one canonical email, got %v", body["emails"])
+		}
+		email, _ := emails[0].(map[string]any)
+		if email["value"] != "primary@example.com" || email["type"] != "work" || email["primary"] != true {
+			t.Errorf("unexpected canonical email: %v", email)
+		}
+	})
+
+	t.Run("omitted email is omitted from response", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName": "without-email@example.com",
+		})
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d body=%v", rec.Code, body)
+		}
+		if _, exists := body["emails"]; exists {
+			t.Errorf("expected emails to be omitted, got %v", body["emails"])
+		}
+	})
+
+	t.Run("invalid emails reject the whole create", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName": "two-primary@example.com",
+			"emails": []any{
+				map[string]any{"value": "one@example.com", "primary": true},
+				map[string]any{"value": "two@example.com", "primary": true},
+			},
+		})
+		if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
+			t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)
+		}
+		_, listBody := doScimGet(t, e, tokenStr, "/scim/v2/Users?filter="+url.QueryEscape(`userName eq "two-primary@example.com"`))
+		if int(listBody["totalResults"].(float64)) != 0 {
+			t.Errorf("expected invalid user not to be created, got %v", listBody)
+		}
+	})
+
+	for _, attr := range []string{"phoneNumbers", "addresses"} {
+		t.Run("unsupported "+attr+" is invalidValue", func(t *testing.T) {
+			rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+				"userName": "unsupported-" + attr + "@example.com",
+				attr:       []any{},
+			})
+			if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
+				t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)
+			}
+		})
+	}
 }
 
 // interfaces.UpdateScimUser: PUT は完全置換 (省略した属性は既定値にリセット)。
@@ -98,6 +160,7 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 	createRec, created := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
 		"userName": "bjensen@example.com",
 		"name":     map[string]any{"givenName": "Barbara", "familyName": "Jensen"},
+		"emails":   []any{map[string]any{"value": "bjensen@example.com", "primary": true}},
 		"active":   false,
 	})
 	if createRec.Code != http.StatusCreated {
@@ -132,6 +195,9 @@ func TestScimUpdateUserFullReplace(t *testing.T) {
 		}
 		if body["active"] != true {
 			t.Errorf("expected active reset to default true, got %v", body["active"])
+		}
+		if _, exists := body["emails"]; exists {
+			t.Errorf("expected omitted emails to clear canonical email, got %v", body["emails"])
 		}
 	})
 }
@@ -188,6 +254,43 @@ func TestScimPatchUserResourceContract(t *testing.T) {
 			t.Errorf("scimType = %v, want invalidValue", body["scimType"])
 		}
 	})
+
+	t.Run("emails project by work fallback", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID,
+			patchOp("replace", "emails", []any{
+				map[string]any{"value": "home@example.com", "type": "home"},
+				map[string]any{"value": "work@example.com", "type": "WORK"},
+			}))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+		}
+		emails, _ := body["emails"].([]any)
+		email, _ := emails[0].(map[string]any)
+		if email["value"] != "work@example.com" || email["type"] != "work" || email["primary"] != true {
+			t.Errorf("unexpected canonical email: %v", email)
+		}
+	})
+
+	t.Run("remove emails clears canonical email", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID,
+			patchOp("remove", "emails", nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d body=%v", rec.Code, body)
+		}
+		if _, exists := body["emails"]; exists {
+			t.Errorf("expected emails to be omitted after remove, got %v", body["emails"])
+		}
+	})
+
+	for _, path := range []string{"phoneNumbers", "addresses"} {
+		t.Run("unsupported "+path+" path is invalidPath", func(t *testing.T) {
+			rec, body := doScimJSON(t, e, http.MethodPatch, tokenStr, "/scim/v2/Users/"+scimID,
+				patchOp("replace", path, []any{}))
+			if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidPath" {
+				t.Fatalf("expected 400 invalidPath, got %d body=%v", rec.Code, body)
+			}
+		})
+	}
 }
 
 // interfaces.CreateScimGroup / UpdateScimGroup / PatchScimGroup: displayName
@@ -315,6 +418,47 @@ func TestScimGroupResourceContract(t *testing.T) {
 		}
 		if body["scimType"] != "invalidPath" {
 			t.Errorf("scimType = %v, want invalidPath", body["scimType"])
+		}
+	})
+
+	t.Run("User member type is accepted and returned canonically", func(t *testing.T) {
+		userRec, user := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Users", map[string]any{
+			"userName": "typed-member@example.com",
+		})
+		if userRec.Code != http.StatusCreated {
+			t.Fatalf("setup user create failed: %d", userRec.Code)
+		}
+		groupRec, group := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Groups", map[string]any{
+			"displayName": "TypedMembers",
+			"members": []any{map[string]any{
+				"value": user["id"],
+				"type":  "uSeR",
+			}},
+		})
+		if groupRec.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d body=%v", groupRec.Code, group)
+		}
+		members, _ := group["members"].([]any)
+		member, _ := members[0].(map[string]any)
+		if member["type"] != "User" {
+			t.Errorf("member type = %v, want User", member["type"])
+		}
+	})
+
+	t.Run("Group member type is rejected without creating the group", func(t *testing.T) {
+		rec, body := doScimJSON(t, e, http.MethodPost, tokenStr, "/scim/v2/Groups", map[string]any{
+			"displayName": "NestedGroup",
+			"members": []any{map[string]any{
+				"value": "some-group",
+				"type":  "Group",
+			}},
+		})
+		if rec.Code != http.StatusBadRequest || body["scimType"] != "invalidValue" {
+			t.Fatalf("expected 400 invalidValue, got %d body=%v", rec.Code, body)
+		}
+		_, listBody := doScimGet(t, e, tokenStr, "/scim/v2/Groups?filter="+url.QueryEscape(`displayName eq "NestedGroup"`))
+		if int(listBody["totalResults"].(float64)) != 0 {
+			t.Errorf("expected nested group not to be created, got %v", listBody)
 		}
 	})
 }

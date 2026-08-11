@@ -41,9 +41,75 @@ type UserWrite struct {
 	Active     bool
 }
 
+// ProjectCanonicalEmail validates every SCIM emails element and projects the
+// multi-valued transport representation onto IdMagic's single canonical email
+// (REQ-SOURCING-006). Selection order is primary, work, then wire order.
+func ProjectCanonicalEmail(emails []any) (string, error) {
+	if len(emails) == 0 {
+		return "", nil
+	}
+
+	candidates := make([]string, 0, len(emails))
+	primaryIndex := -1
+	workIndex := -1
+
+	for i, raw := range emails {
+		email, ok := raw.(map[string]any)
+		if !ok {
+			return "", newMutationError("invalidValue", "emails[%d] must be an object", i)
+		}
+
+		value, ok := email["value"].(string)
+		if !ok || strings.TrimSpace(value) == "" {
+			return "", newMutationError("invalidValue", "emails[%d].value must be a non-empty string", i)
+		}
+
+		var emailType string
+		if rawType, exists := email["type"]; exists {
+			emailType, ok = rawType.(string)
+			if !ok {
+				return "", newMutationError("invalidValue", "emails[%d].type must be a string", i)
+			}
+		}
+
+		primary := false
+		if rawPrimary, exists := email["primary"]; exists {
+			primary, ok = rawPrimary.(bool)
+			if !ok {
+				return "", newMutationError("invalidValue", "emails[%d].primary must be a boolean", i)
+			}
+		}
+		if primary {
+			if primaryIndex >= 0 {
+				return "", newMutationError("invalidValue", "emails must not contain more than one primary element")
+			}
+			primaryIndex = i
+		}
+		if workIndex < 0 && strings.EqualFold(emailType, "work") {
+			workIndex = i
+		}
+
+		candidates = append(candidates, value)
+	}
+
+	if primaryIndex >= 0 {
+		return candidates[primaryIndex], nil
+	}
+	if workIndex >= 0 {
+		return candidates[workIndex], nil
+	}
+	return candidates[0], nil
+}
+
 // ParseUserWrite extracts a POST/PUT body into a fully-resolved UserWrite.
 // userName is required; its absence is a *MutationError (invalidValue).
 func ParseUserWrite(body map[string]any) (UserWrite, error) {
+	for _, unsupported := range []string{"phoneNumbers", "addresses"} {
+		if _, exists := body[unsupported]; exists {
+			return UserWrite{}, newMutationError("invalidValue", "%s is not a supported User attribute", unsupported)
+		}
+	}
+
 	userName, _ := body["userName"].(string)
 	if strings.TrimSpace(userName) == "" {
 		return UserWrite{}, newMutationError("invalidValue", "userName is required")
@@ -57,9 +123,15 @@ func ParseUserWrite(body map[string]any) (UserWrite, error) {
 		w.Formatted, _ = nameMap["formatted"].(string)
 	}
 
-	if emails, ok := body["emails"].([]any); ok && len(emails) > 0 {
-		if firstEmail, ok := emails[0].(map[string]any); ok {
-			w.Email, _ = firstEmail["value"].(string)
+	if rawEmails, exists := body["emails"]; exists {
+		emails, ok := rawEmails.([]any)
+		if !ok {
+			return UserWrite{}, newMutationError("invalidValue", "emails must be an array")
+		}
+		var err error
+		w.Email, err = ProjectCanonicalEmail(emails)
+		if err != nil {
+			return UserWrite{}, err
 		}
 	}
 
@@ -142,6 +214,17 @@ func ParseUserPatchOps(body map[string]any) ([]UserPatchOp, error) {
 				return nil, newMutationError("invalidValue", "active value must be a boolean")
 			}
 		}
+		if attr == UserAttrEmails && op != "remove" {
+			emails, isArray := value.([]any)
+			if !isArray || len(emails) == 0 {
+				return nil, newMutationError("invalidValue", "emails value must be a non-empty array")
+			}
+			projected, err := ProjectCanonicalEmail(emails)
+			if err != nil {
+				return nil, err
+			}
+			value = projected
+		}
 
 		ops = append(ops, UserPatchOp{Op: op, Attr: attr, Value: value})
 	}
@@ -166,19 +249,43 @@ func ParseGroupWrite(body map[string]any) (GroupWrite, error) {
 	}
 
 	w := GroupWrite{DisplayName: displayName, MemberScimIDs: []string{}}
-	if members, ok := body["members"].([]any); ok {
-		for _, mVal := range members {
-			mMap, ok := mVal.(map[string]any)
-			if !ok {
-				continue
-			}
-			scimID, _ := mMap["value"].(string)
-			if scimID != "" {
-				w.MemberScimIDs = append(w.MemberScimIDs, scimID)
-			}
+	if members, exists := body["members"]; exists {
+		var err error
+		w.MemberScimIDs, err = ParseGroupMemberScimIDs(members)
+		if err != nil {
+			return GroupWrite{}, err
 		}
 	}
 	return w, nil
+}
+
+// ParseGroupMemberScimIDs validates the User-only Group membership subset
+// before any mutation is applied (REQ-SOURCING-005).
+func ParseGroupMemberScimIDs(value any) ([]string, error) {
+	members, ok := value.([]any)
+	if !ok {
+		return nil, newMutationError("invalidValue", "members value must be an array")
+	}
+
+	scimIDs := make([]string, 0, len(members))
+	for i, raw := range members {
+		member, ok := raw.(map[string]any)
+		if !ok {
+			return nil, newMutationError("invalidValue", "members[%d] must be an object", i)
+		}
+		if rawType, exists := member["type"]; exists {
+			memberType, isString := rawType.(string)
+			if !isString || !strings.EqualFold(memberType, "User") {
+				return nil, newMutationError("invalidValue", "members[%d].type must be User", i)
+			}
+		}
+		scimID, ok := member["value"].(string)
+		if !ok || strings.TrimSpace(scimID) == "" {
+			return nil, newMutationError("invalidValue", "members[%d].value must be a non-empty string", i)
+		}
+		scimIDs = append(scimIDs, scimID)
+	}
+	return scimIDs, nil
 }
 
 // GroupAttr enumerates the Group attribute paths this server accepts in a
@@ -231,6 +338,11 @@ func ParseGroupPatchOps(body map[string]any) ([]GroupPatchOp, error) {
 		attr, ok := groupPatchAttrs[lowerPath]
 		if !ok {
 			return nil, newMutationError("invalidPath", "attribute %q is not a supported PATCH path", path)
+		}
+		if attr == GroupAttrMembers {
+			if _, err := ParseGroupMemberScimIDs(opMap["value"]); err != nil {
+				return nil, err
+			}
 		}
 
 		ops = append(ops, GroupPatchOp{Op: op, Attr: attr, Value: opMap["value"]})

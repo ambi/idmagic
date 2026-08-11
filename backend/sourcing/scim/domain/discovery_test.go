@@ -63,6 +63,18 @@ func TestUserCoreSchemaAttributes(t *testing.T) {
 	if !emails.MultiValued {
 		t.Error("expected emails to be multiValued")
 	}
+	for _, unsupported := range []string{"phoneNumbers", "addresses"} {
+		if _, exists := byName[unsupported]; exists {
+			t.Errorf("unsupported attribute %q must not be advertised", unsupported)
+		}
+	}
+	emailSubAttrs := make(map[string]domain.SchemaAttribute, len(emails.SubAttributes))
+	for _, attr := range emails.SubAttributes {
+		emailSubAttrs[attr.Name] = attr
+	}
+	if emailSubAttrs["type"].Type != "string" || emailSubAttrs["primary"].Type != "boolean" {
+		t.Errorf("expected emails type/primary metadata, got %+v", emails.SubAttributes)
+	}
 }
 
 func TestGroupCoreSchemaAttributes(t *testing.T) {
@@ -86,5 +98,19 @@ func TestGroupCoreSchemaAttributes(t *testing.T) {
 	}
 	if !members.MultiValued {
 		t.Error("expected members to be multiValued")
+	}
+	memberSubAttrs := make(map[string]domain.SchemaAttribute, len(members.SubAttributes))
+	for _, attr := range members.SubAttributes {
+		memberSubAttrs[attr.Name] = attr
+	}
+	ref, ok := memberSubAttrs["$ref"]
+	if !ok {
+		t.Fatal("expected members.$ref sub-attribute")
+	}
+	if len(ref.ReferenceTypes) != 1 || ref.ReferenceTypes[0] != "User" {
+		t.Errorf("members.$ref.ReferenceTypes = %v, want [User]", ref.ReferenceTypes)
+	}
+	if memberSubAttrs["type"].Type != "string" {
+		t.Errorf("expected members.type metadata, got %+v", members.SubAttributes)
 	}
 }
