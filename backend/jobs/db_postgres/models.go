@@ -865,6 +865,20 @@ type User struct {
 	SearchText        pgtype.Text
 }
 
+type UserCsvArtifact struct {
+	ID        string
+	TenantID  string
+	Sha256    string
+	ByteSize  int64
+	CreatedAt time.Time
+}
+
+type UserCsvArtifactChunk struct {
+	ArtifactID  string
+	ChunkNumber int32
+	Payload     []byte
+}
+
 type WebauthnCredential struct {
 	CredentialID   string
 	UserID         string
