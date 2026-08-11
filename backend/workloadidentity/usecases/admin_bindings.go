@@ -1,4 +1,4 @@
-// 管理者向け AgentWorkloadBinding ライフサイクル操作 (ADR-053)。SCL WorkloadIdentity
+// 管理者向け AgentWorkloadBinding ライフサイクル操作。SCL WorkloadIdentity
 // bounded context が所有する admin インターフェース群: ListAgentWorkloadBindings /
 // CreateAgentWorkloadBinding / DisableAgentWorkloadBinding /
 // EnableAgentWorkloadBinding / DeleteAgentWorkloadBinding。

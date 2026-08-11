@@ -4,14 +4,14 @@
 
 IdMagic は認証の単一障害点であり、この runbook はバックアップ対象の分類、
 バックアップ／リストア手順、リストア後の検証、障害シナリオ別の対応を定める
-(ADR-153, wi-101)。バックアップ対象は次の 2 系統のみである
-(旧 Valkey は ADR-139 で撤去済み、旧 `idmagic-relay`/Kafka は ADR-147 で
+(wi-101)。バックアップ対象は次の 2 系統のみである
+(旧 Valkey は 撤去済み、旧 `idmagic-relay`/Kafka は
 撤去済み):
 
 1. **PostgreSQL**: durable テーブルと ephemeral テーブル (認可中間状態・
    コード・PAR・device code・リプレイ・WebAuthn チャレンジ・denylist・
    login throttle・SAML AuthnRequest リプレイ) を両方含む単一のデータベース。
-2. **署名鍵素材**: `KeyProvider` (ADR-075) が `Local`/`Postgres` なら
+2. **署名鍵素材**: `KeyProvider` が `Local`/`Postgres` なら
    PostgreSQL のバックアップに含まれる。`VaultTransit` なら private key は
    Vault 外に出ないため、Vault 側のスナップショットが正本であり
    PostgreSQL 側は public key のミラーに過ぎない。
@@ -72,7 +72,7 @@ trap cleanup」パターンを踏襲):
 5. `idmagic-batch restore-consistency-check` を実行し、以降の「リストア後
    検証チェックリスト」を機械的に検査する。
 
-### リストア整合順序 (DR 全体, ADR-153)
+### リストア整合順序 (DR 全体)
 
 KMS/Vault access 確認 → PostgreSQL restore (schema 先行 apply → data
 restore) → schema/version 検査 → ephemeral テーブル truncate → signing

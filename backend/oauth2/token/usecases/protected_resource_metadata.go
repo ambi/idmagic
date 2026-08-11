@@ -1,5 +1,5 @@
 // Protected Resource Metadata (RFC 9728) のユースケース。配信内容は McpResourceServer
-// 登録から導出し、手書きで独立に保守しない (ADR-011 と同方針、ADR-055)。
+// 登録から導出し、手書きで独立に保守しない。
 package usecases
 
 import (

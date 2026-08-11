@@ -74,7 +74,7 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (*http.R
 
 // classify maps a non-2xx SCIM response to the protocol-agnostic error
 // taxonomy ports.ConflictError/ports.NotFoundError/ports.RetryableError
-// declares (ADR-128 decision 2: the delivery engine usecase must not depend
+// declares (decision 2: the delivery engine usecase must not depend
 // on this package).
 func classify(resp *http.Response, data []byte) error {
 	switch {

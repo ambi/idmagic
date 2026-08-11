@@ -12,10 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// GroupRepository は ADR-038 の Group 集約とメンバーシップを PostgreSQL に永続化する。
+// GroupRepository は Group 集約とメンバーシップを PostgreSQL に永続化する。
 // すべての参照はテナント境界に閉じる。group_members は groups への ON DELETE CASCADE
 // FK を持つため、DeleteGroup の cascade は DB 側でも保証される。クエリは sqlc 生成
-// (wi-178, ADR-090); Pool は DBTX を構造的に満たす。
+// (wi-178); Pool は DBTX を構造的に満たす。
 type GroupRepository struct{ Pool sharedpg.DB }
 
 func groupFromRow(row *Group) (*groupdomain.Group, error) {
@@ -62,7 +62,7 @@ func (r *GroupRepository) ListAll(ctx context.Context, tenantID string) ([]*grou
 	return out, nil
 }
 
-// ListPage implements ports.GroupRepository.ListPage (wi-159, ADR-158): keyset
+// ListPage implements ports.GroupRepository.ListPage (wi-159): keyset
 // pagination ordered by (name, id) ascending, strictly after the given
 // keyset ("", "" for the first page).
 func (r *GroupRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*groupdomain.Group, error) {

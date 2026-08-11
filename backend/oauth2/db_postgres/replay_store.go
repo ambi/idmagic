@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ReplayStore は DPoP / private_key_jwt assertion の jti リプレイ予約を PostgreSQL に持つ
-// (ADR-139)。kind 列で 1 テーブル oauth2_replay_jtis を dpop / client_assertion に
+// ReplayStore は DPoP / private_key_jwt assertion の jti リプレイ予約を PostgreSQL に持つ。
+// kind 列で 1 テーブル oauth2_replay_jtis を dpop / client_assertion に
 // 名前空間分けする。同一構造体が DpopReplayStore /
 // ClientAssertionReplayStore 両 port を構造的に満たす。tenant は ctx から解決する。
 // SETNX + TTL を INSERT ... ON CONFLICT DO UPDATE ... WHERE expires_at <= now RETURNING で写す:

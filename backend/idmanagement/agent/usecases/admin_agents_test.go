@@ -57,7 +57,7 @@ func newAgentDeps(t *testing.T) (agentusecases.AdminAgentDeps, *[]spec.DomainEve
 }
 
 // newAgentDepsWithQuota is like newAgentDeps but pins the tenant's agents
-// Hard Quota to limit (wi-160, ADR-134).
+// Hard Quota to limit (wi-160).
 func newAgentDepsWithQuota(t *testing.T, tenantID string, limit int) agentusecases.AdminAgentDeps {
 	t.Helper()
 	deps, _ := newAgentDeps(t)

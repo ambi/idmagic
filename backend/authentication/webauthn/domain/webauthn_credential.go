@@ -8,7 +8,7 @@ import (
 	z "github.com/Oudwins/zog"
 )
 
-// WebAuthnCredential は登録済みの WebAuthn / Passkey credential 1 件 (wi-26 / ADR-087)。
+// WebAuthnCredential は登録済みの WebAuthn / Passkey credential 1 件 (wi-26)。
 // 1 ユーザーが複数持てるため MfaFactor とは別集合とし、credential_id で一意識別する。
 // PublicKey は COSE 公開鍵 (base64url)、SignCount は clone 検出用の署名カウンタ。
 type WebAuthnCredential struct {

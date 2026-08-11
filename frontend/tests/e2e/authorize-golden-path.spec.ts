@@ -58,7 +58,7 @@ test('authorize golden path: login -> consent -> callback keeps code and iss', a
 }, 60_000)
 
 // wi-67: 管理コンソールのサイドバー遷移が client-side (フルリロード無し) であること。
-// /admin は OIDC RP としてログインし (ADR-061)、ログイン後はサイドバーの Link 遷移が
+// /admin は OIDC RP としてログインし、ログイン後はサイドバーの Link 遷移が
 // ページを再読込せず、対象 route のデータだけを取得することを検証する。
 test('admin sidebar navigation is client-side (no full reload)', async () => {
   const view = new Bun.WebView({ width: 1280, height: 2000 })

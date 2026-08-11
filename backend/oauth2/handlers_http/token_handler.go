@@ -162,7 +162,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_scope", "The requested scope is not declared."))
 			}
 		}
-		// RFC 8707 resource indicator (ADR-055, wi-262) — 指定時は登録済み Active な
+		// RFC 8707 resource indicator (wi-262) — 指定時は登録済み Active な
 		// McpResourceServer に audience を限定する。未指定時は従来どおり client_id。
 		mcpResourceServer, err := tokenusecases.ResolveResourceIndicator(ctx, d.McpResourceServerRepo, support.RequestTenantID(c), c.Request().PostForm["resource"], scopes)
 		if err != nil {
@@ -178,7 +178,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		} else if clientStub.MTLSThumbprintS256 != "" {
 			sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: clientStub.MTLSThumbprintS256}
 		}
-		// ADR-048: client に Agent が束縛されている場合、Active 以外 (Disabled / Killed)
+		// client に Agent が束縛されている場合、Active 以外 (Disabled / Killed)
 		// なら新規トークンを発行しない (fail-closed)。束縛があれば agent_id を token に載せる。
 		var agentID string
 		if d.AgentRepo != nil {

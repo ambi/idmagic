@@ -19,7 +19,7 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- name: FindActiveAuthenticationSession :one
 -- 認証解決用の fail-closed lookup。tenant_id / revoked_at / expires_at を DB 層で検証し、
--- 別 tenant または失効・期限切れの行を返さない (ADR-126)。
+-- 別 tenant または失効・期限切れの行を返さない。
 SELECT id, tenant_id, user_id, auth_time, amr, acr, authentication_pending,
        pending_purpose, enrollment_deadline, enrollment_bypass_id, step_up_at,
        expires_at, last_seen_at, revoked_at, revoke_reason
@@ -62,7 +62,7 @@ ORDER BY auth_time DESC, id DESC
 LIMIT $4;
 
 -- name: DeleteAllAuthenticationSessionsForUser :exec
--- ADR-036 の anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
+-- anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
 DELETE FROM authentication_sessions WHERE tenant_id = $1 AND user_id = $2;
 
 -- name: DeleteExpiredAuthenticationSessionsBatch :execrows

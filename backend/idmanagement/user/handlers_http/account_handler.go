@@ -36,7 +36,7 @@ type AccountProfileResponse struct {
 }
 
 // accountSummaryResponse は portal home 用のアカウント概要 (self-service)。
-// admin shell 用の AccountContext とは別契約で roles を含めない (wi-21 / ADR-042)。
+// admin shell 用の AccountContext とは別契約で roles を含めない (wi-21)。
 type accountSummaryResponse struct {
 	ID                string                     `json:"id"`
 	PreferredUsername string                     `json:"preferred_username"`

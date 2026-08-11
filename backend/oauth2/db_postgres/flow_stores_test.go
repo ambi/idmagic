@@ -12,7 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
-// TestPARStore は Pushed Authorization Request の単発消費 (ADR-139) を検証する。
+// TestPARStore は Pushed Authorization Request の単発消費 を検証する。
 func TestPARStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
@@ -58,7 +58,7 @@ func TestPARStore(t *testing.T) {
 	}
 }
 
-// TestAuthorizationCodeStore は認可コードの単発 redeem (ADR-139) を検証する。
+// TestAuthorizationCodeStore は認可コードの単発 redeem を検証する。
 func TestAuthorizationCodeStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)
@@ -98,7 +98,7 @@ func TestAuthorizationCodeStore(t *testing.T) {
 	}
 }
 
-// TestDeviceCodeStore は RFC 8628 device flow の状態遷移 (ADR-139) を検証する。
+// TestDeviceCodeStore は RFC 8628 device flow の状態遷移 を検証する。
 func TestDeviceCodeStore(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := seedTenant(t, db)

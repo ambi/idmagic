@@ -8,7 +8,7 @@ import (
 
 // scenario `Tenancy: 日本語ロケールのユーザーには日本語のパスワードリセットメールが届く`
 // の主経路と 3 つの extension: 受信者 locale → テナント既定 → システム既定の順に、
-// カタログが同梱翻訳を持つ最初の locale を採る (ADR-142 決定 7)。
+// カタログが同梱翻訳を持つ最初の locale を採る。
 func TestResolveLocaleFollowsRecipientThenTenantThenSystem(t *testing.T) {
 	cases := []struct {
 		name       string

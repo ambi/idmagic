@@ -11,7 +11,7 @@ import (
 )
 
 type Querier interface {
-	// ADR-036 の anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
+	// anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
 	DeleteAllAuthenticationSessionsForUser(ctx context.Context, arg DeleteAllAuthenticationSessionsForUserParams) error
 	// housekeeping cleanup。primary key を選んで小 batch で削除する (wi-253 Plan §7)。
 	DeleteExpiredAuthenticationSessionsBatch(ctx context.Context, arg DeleteExpiredAuthenticationSessionsBatchParams) (int64, error)
@@ -19,7 +19,7 @@ type Querier interface {
 	DeleteExpiredThrottleCountersBatch(ctx context.Context, arg DeleteExpiredThrottleCountersBatchParams) (int64, error)
 	DeleteThrottleCounter(ctx context.Context, arg DeleteThrottleCounterParams) error
 	// 認証解決用の fail-closed lookup。tenant_id / revoked_at / expires_at を DB 層で検証し、
-	// 別 tenant または失効・期限切れの行を返さない (ADR-126)。
+	// 別 tenant または失効・期限切れの行を返さない。
 	FindActiveAuthenticationSession(ctx context.Context, arg FindActiveAuthenticationSessionParams) (*FindActiveAuthenticationSessionRow, error)
 	// revoked/expired を含む所有者確認用 lookup。self-service revoke の idempotency 判定に使う。
 	FindOwnedAuthenticationSession(ctx context.Context, arg FindOwnedAuthenticationSessionParams) (*FindOwnedAuthenticationSessionRow, error)

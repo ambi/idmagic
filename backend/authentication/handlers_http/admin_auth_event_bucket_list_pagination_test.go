@@ -44,9 +44,9 @@ func newAdminAuthEventBucketPaginationHandler(t *testing.T) (*echo.Echo, *authnm
 	return e, store
 }
 
-// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す (ADR-144)。
+// defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
 // 他パッケージ (例: idmanagement/handlers_http) の同名 helper を複製したもの
-// (_test.go はパッケージを跨げないため、ADR-130 Phase 2 と同方針)。
+// (_test.go はパッケージを跨げないため、Phase 2 と同方針)。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {
 		return path

@@ -1,6 +1,6 @@
 package usecases
 
-// ログイン / step-up 時の WebAuthn assertion 検証 (wi-26 / ADR-087)。challenge は
+// ログイン / step-up 時の WebAuthn assertion 検証 (wi-26)。challenge は
 // challengeKey (pending login session id) にひもづけて発行・消費する。sign_count 逆行は
 // clone の疑いとして拒否する。
 

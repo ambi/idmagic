@@ -37,7 +37,7 @@ type ExchangeCodeInput struct {
 	RedirectURI  string
 	DpopJKT      string
 	MTLSX5TS256  string
-	// Resource は RFC 8707 resource indicator (ADR-055)。/token へ再指定された場合、
+	// Resource は RFC 8707 resource indicator。/token へ再指定された場合、
 	// /authorize 時に束縛された resource と一致しなければならない (RFC 8707 §2)。
 	Resource []string
 }
@@ -90,7 +90,7 @@ func ExchangeCodeForToken(ctx context.Context, deps ExchangeCodeDeps, in Exchang
 		return nil, NewOAuthError("invalid_grant", "PKCE verification failed")
 	}
 	// RFC 8707 §2 — /token に resource が再指定された場合、/authorize 時に束縛された
-	// resource と一致しなければならない (ADR-055)。新規 resource の後付け指定は拒否する。
+	// resource と一致しなければならない。新規 resource の後付け指定は拒否する。
 	if requested := nonEmpty(in.Resource); len(requested) > 0 {
 		if len(requested) > 1 || rec.Resource == nil || requested[0] != *rec.Resource {
 			emit(deps.Emit, &domain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: "invalid_target"})

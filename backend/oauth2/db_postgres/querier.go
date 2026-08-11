@@ -54,7 +54,7 @@ type Querier interface {
 	ListAuthorizationDetailTypesByTenant(ctx context.Context, tenantID string) ([]*AuthorizationDetailType, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]*Oauth2ClientSecret, error)
 	ListClientsByTenant(ctx context.Context, tenantID string) ([]*Oauth2Client, error)
-	// First page of ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158):
+	// First page of ListAdminOAuth2Clients keyset pagination (wi-159):
 	// client_id order matches the admin handler's pre-existing re-sort of
 	// ListClientsByTenant's rows.
 	ListClientsByTenantPage(ctx context.Context, arg ListClientsByTenantPageParams) ([]*Oauth2Client, error)
@@ -63,7 +63,7 @@ type Querier interface {
 	ListClientsByTenantPageAfter(ctx context.Context, arg ListClientsByTenantPageAfterParams) ([]*Oauth2Client, error)
 	ListClientsByTenantPageBefore(ctx context.Context, arg ListClientsByTenantPageBeforeParams) ([]*Oauth2Client, error)
 	ListConsentsByTenant(ctx context.Context, tenantID string) ([]*Consent, error)
-	// First page of ListAdminConsents keyset pagination (wi-159, ADR-158): the
+	// First page of ListAdminConsents keyset pagination (wi-159): the
 	// (user_id, client_id) primary key already backs this range scan.
 	ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*Consent, error)
 	// Continuation page: resumes strictly after the (user_id, client_id) keyset
@@ -77,7 +77,7 @@ type Querier interface {
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
 	// 単発 redeem の CAS。state='issued' の行だけを redeemed にして 1 行返す。既 redeemed は 0 行。
 	RedeemAuthorizationCode(ctx context.Context, arg RedeemAuthorizationCodeParams) (*RedeemAuthorizationCodeRow, error)
-	// SETNX + TTL の写像 (ADR-139 §3)。live な予約は ON CONFLICT の DO UPDATE ... WHERE が
+	// SETNX + TTL の写像。live な予約は ON CONFLICT の DO UPDATE ... WHERE が
 	// false で 0 行 (ErrNoRows)、期限切れの残骸は上書きして 1 行、未存在は INSERT で 1 行。
 	// 行が返れば新規予約成功。kind で dpop / client_assertion を名前空間分けする。
 	ReserveOauth2ReplayJTI(ctx context.Context, arg ReserveOauth2ReplayJTIParams) (string, error)

@@ -1,6 +1,6 @@
-// Package sourcing は Sourcing bounded context の DI 組立を所有する (ADR-091)。
+// Package sourcing は Sourcing bounded context の DI 組立を所有する。
 // source slice は現在 scim (SCIM 2.0 server) のみ。source 非依存コアは 2 つ目の source が
-// 着地した時点で on-demand に切り出す (ADR-141 決定 3・4)。
+// 着地した時点で on-demand に切り出す (決定 3・4)。
 package sourcing
 
 import (

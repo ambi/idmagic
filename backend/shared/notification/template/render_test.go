@@ -12,7 +12,7 @@ import (
 
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
 // (extension at 2): HTML 側の差し込み値はエスケープされて描画され、タグとして
-// 解釈されない。エスケープはレンダラの責務に閉じる (ADR-142 決定 5)。
+// 解釈されない。エスケープはレンダラの責務に閉じる。
 func TestRenderEscapesVariablesInHTMLOnly(t *testing.T) {
 	def := template.Definition{
 		Subject:  "{{product_name}} からのお知らせ",
@@ -51,7 +51,7 @@ func TestRenderEscapesVariablesInHTMLOnly(t *testing.T) {
 }
 
 // レンダラは未定義の変数を空文字列へ潰さない。潰すと「リンクが欠けたメール」が
-// 配られるため、描画側でも fail-closed にする (ADR-142 決定 3)。
+// 配られるため、描画側でも fail-closed にする。
 func TestRenderRejectsMissingVariable(t *testing.T) {
 	def := template.Definition{
 		Subject:  "件名",
@@ -125,8 +125,7 @@ func TestValidateDefinitionAcceptsAllowedPlaceholders(t *testing.T) {
 }
 
 // scenario `Tenancy: 許可されていない差し込み変数を含むテンプレート上書きは保存時に拒否される`
-// (extension at 1): HTML 本文を空にしてテキスト本文だけを保存しようとすると拒否される
-// (ADR-142 決定 4)。
+// (extension at 1): HTML 本文を空にしてテキスト本文だけを保存しようとすると拒否される。
 func TestValidateDefinitionRequiresSubjectTextAndHTMLTogether(t *testing.T) {
 	cases := map[string]template.Definition{
 		"missing html":    {Subject: "件名", BodyText: "本文", BodyHTML: ""},
@@ -164,7 +163,7 @@ func TestPlaceholdersAreDeclaredForEveryKey(t *testing.T) {
 				t.Errorf("%s does not allow the shared placeholder %q", key, want)
 			}
 		}
-		// ADR-142 決定 10: 資格情報・生 IP は許可集合に入れない。
+		// 決定 10: 資格情報・生 IP は許可集合に入れない。
 		for _, forbidden := range []string{"password", "password_hash", "token", "totp_secret", "client_ip", "ip_address"} {
 			if slices.Contains(placeholders, forbidden) {
 				t.Errorf("%s must not allow the placeholder %q", key, forbidden)

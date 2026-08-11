@@ -1,5 +1,5 @@
 // Package application は application bounded context の DI 組立と route 登録を自前で持つ
-// (ADR-091, wi-172 パイロット)。中央 server/routes.go の Deps と bootstrap/deps.go の
+// (wi-172 パイロット)。中央 server/routes.go の Deps と bootstrap/deps.go の
 // Dependencies から application 由来 field を Module 1 個に集約し撤去する。
 package application
 
@@ -28,8 +28,7 @@ type Module struct {
 	CategoryRepo            appports.ApplicationCategoryRepository
 	SignInPolicyRepo        appports.SignInPolicyRepository
 	DefaultSignInPolicyRepo appports.DefaultSignInPolicyRepository
-	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45,
-	// ADR-128). nil means outbound provisioning is not wired.
+	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
 	ProvisioningNotifier appports.ProvisioningNotifier
 }
 

@@ -574,7 +574,7 @@ type SaveIdentityProviderConnectionParams struct {
 }
 
 // secret_reference/secret_key_version/secret_ciphertext are always written as an
-// authoritative trio computed by the Go layer (ADR-150): the caller already resolved
+// authoritative trio computed by the Go layer: the caller already resolved
 // "keep the existing secret unchanged" by copying the previous value forward, so this
 // query never needs to fall back to the stored row for those three columns.
 func (q *Queries) SaveIdentityProviderConnection(ctx context.Context, arg SaveIdentityProviderConnectionParams) error {
@@ -620,7 +620,7 @@ type UpdateIdentityProviderConnectionSecretCiphertextParams struct {
 }
 
 // Writes back a (re-)encrypted secret and always clears the legacy plaintext
-// secret_reference column, mirroring UpdateMfaFactorCiphertext (ADR-148).
+// secret_reference column, mirroring UpdateMfaFactorCiphertext.
 func (q *Queries) UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) error {
 	_, err := q.db.Exec(ctx, updateIdentityProviderConnectionSecretCiphertext,
 		arg.TenantID,

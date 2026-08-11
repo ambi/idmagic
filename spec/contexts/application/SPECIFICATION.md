@@ -127,6 +127,18 @@ and WS-Fed table names (`saml_service_providers`, `wsfed_relying_parties`), whic
 protocol-specific, domain-standard terms rather than a name generic enough to be confused with any other
 kind of client.
 
+### Portal application ordering and category
+
+ApplicationCatalog owns both the end-user portal's manual application ordering and admin-defined
+categories, since both are display concerns about `Application` rather than IdentityManagement's
+User aggregate. Manual order is `ApplicationOrdering`, a per-`(tenant_id, user_sub)` list of
+`application_id`s; apps without a saved order sort by name ascending. `ListMyApplications` resolves
+assigned/visible/active apps first, then applies the saved order — entries no longer assigned are
+skipped, and assigned apps missing from the saved order are appended in name order — so the list never
+breaks under concurrent assignment changes. Reordering (`ReorderMyApplications`) upserts the order list
+only; it is a personal display setting, not an authorization or auditable state transition, so it emits
+no domain event. Categories are admin-defined per tenant and assigned 0..N per Application.
+
 ### Design Decisions
 
 - Application sign-in policy (`AppSignInPolicy`) evaluates a structured, evaluator-checkable rule set —

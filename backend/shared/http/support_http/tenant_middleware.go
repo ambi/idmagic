@@ -12,7 +12,7 @@ import (
 )
 
 // ResolveHostTenant は Host が `{realm}.{TenantBaseDomain}` に一致するリクエストを
-// subdomain style のテナントへ解決する (ADR-144)。TenantBaseDomain が空、Host が
+// subdomain style のテナントへ解決する。TenantBaseDomain が空、Host が
 // 一致しない、realm が不在、あるいは見つかったテナントが subdomain style でない
 // 場合はいずれも 404 とし、default テナントへは落とさない。
 //
@@ -44,7 +44,7 @@ func (d Deps) ResolvePathTenant(next echo.HandlerFunc) echo.HandlerFunc {
 // ResolveDefaultRealmTenant は path から realm を読まず、固定で default realm の
 // テナントを resolve する。URL prefix は /realms/default になり、cookie path が
 // そのまま control-plane endpoint を覆う (cross-tenant cookie 漏れを避けるための
-// ADR-033 §1 の選択)。テナント横断操作である /realms/default/admin/tenants 等で使う。
+// §1 の選択)。テナント横断操作である /realms/default/admin/tenants 等で使う。
 func (d Deps) ResolveDefaultRealmTenant(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		if _, ok := d.hostRealm(c.Request().Host); ok {
@@ -87,7 +87,7 @@ func normalizeHost(host string) string {
 }
 
 // resolveTenant は realm からテナントを解決し、到達経路が そのテナントの正規ロケーション
-// と一致することを確かめてから、issuer / URL prefix を ctx に載せる (ADR-144)。
+// と一致することを確かめてから、issuer / URL prefix を ctx に載せる。
 // 内部キーは tenant.ID (UUID)。
 func (d Deps) resolveTenant(
 	c *echo.Context,
@@ -136,8 +136,8 @@ func tenantNotFound(c *echo.Context) error {
 	return c.JSON(http.StatusNotFound, map[string]string{"error": "tenant_not_found"})
 }
 
-// CanonicalLocation はテナントの正規ロケーションを (issuer, URL prefix) として返す
-// (ADR-144)。1 テナント = 1 正規ロケーション = 1 issuer なので、discovery 文書の
+// CanonicalLocation はテナントの正規ロケーションを (issuer, URL prefix) として返す。
+// 1 テナント = 1 正規ロケーション = 1 issuer なので、discovery 文書の
 // issuer は必ずその文書の取得元 URL と一致する (OIDC Discovery 1.0 §4.3)。
 func (d Deps) CanonicalLocation(tenant *tenancydomain.Tenant) (issuer, urlPrefix string) {
 	base := strings.TrimSuffix(d.Issuer, "/")
@@ -176,7 +176,7 @@ func RequestHTU(c *echo.Context, base string) string {
 	return strings.TrimRight(base, "/") + c.Request().URL.Path
 }
 
-// TenantURL はテナントの正規ロケーション配下の絶対 URL を組み立てる (ADR-144)。
+// TenantURL はテナントの正規ロケーション配下の絶対 URL を組み立てる。
 // issuer 自体が正規ロケーションの root なので、issuer に path を継ぐだけでよい。
 //
 // `issuer + TenantRoute(c, path)` と書いてはならない: path style では issuer が

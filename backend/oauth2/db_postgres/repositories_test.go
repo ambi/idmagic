@@ -41,7 +41,7 @@ func newUUID(t *testing.T) string {
 
 // seedTenant / seedUser は pgfixtures を使わず自前で用意する。pgfixtures は本パッケージ
 // (oauthpg) を import しており、本パッケージの内部テストから pgfixtures を使うと
-// postgres -> pgfixtures -> postgres の import cycle になるため (ADR-090, wi-172 と同じ制約)。
+// postgres -> pgfixtures -> postgres の import cycle になるため (wi-172 と同じ制約)。
 
 func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	t.Helper()
@@ -347,7 +347,7 @@ func TestMcpResourceServerRepositoryRoundTrip(t *testing.T) {
 	}
 }
 
-// ADR-055/wi-262: resource indicator (RFC 8707) の audience 束縛が Postgres 永続化を
+// wi-262: resource indicator (RFC 8707) の audience 束縛が Postgres 永続化を
 // 跨いで保持されることを確認する。
 func TestRefreshTokenStoreRoundTrip_PreservesResource(t *testing.T) {
 	db := pgtest.Require(t)

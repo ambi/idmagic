@@ -4,7 +4,7 @@ package db_postgres
 // 永続化する読み出しモデル。in-memory 実装 (memory.AuditEventStore) と同じ port 契約を
 // 満たし、admin の時系列調査 / 本人サインイン履歴 / wi-44 の認証イベント検索が共有する。
 // 付加属性 (ip_truncated / ip_hash / session_id 等) は payload JSONB に載るため、本テーブルは
-// 構造化カラムを増やさず type / user_id / occurred_at の絞り込みだけを担う (ADR-041)。
+// 構造化カラムを増やさず type / user_id / occurred_at の絞り込みだけを担う。
 
 import (
 	"context"
@@ -280,7 +280,7 @@ func rawStorableAttrNames() []string {
 	return names
 }
 
-// DeleteOlderThan は ADR-045 の保持期間 sweep。type 別 cutoff を個別 DELETE で消し、
+// DeleteOlderThan は 保持期間 sweep。type 別 cutoff を個別 DELETE で消し、
 // それ以外は Default cutoff で消す。Keep / ByType に挙げた type は Default 削除から除外する。
 // (tenant_id, occurred_at) index が当たる。idempotent。
 func (r *AuditEventRepository) DeleteOlderThan(ctx context.Context, cutoff ports.RetentionCutoff) (int64, error) {

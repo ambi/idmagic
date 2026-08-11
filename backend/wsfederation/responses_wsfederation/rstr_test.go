@@ -67,7 +67,7 @@ func TestRenderPassiveForm(t *testing.T) {
 		t.Fatal("wctx hidden input missing")
 	}
 	// 自動送信は inline event handler ではなく固定の <script> で行い、CSP hash で許可される
-	// (support.AutoSubmitScript, ADR-076)。
+	// (support.AutoSubmitScript)。
 	if strings.Contains(s, "onload=") {
 		t.Fatal("form must not use an inline onload handler under strict CSP")
 	}

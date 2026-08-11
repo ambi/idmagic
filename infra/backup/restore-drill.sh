@@ -2,7 +2,7 @@
 # Runs a full local backup -> simulated db loss -> restore ->
 # consistency-check drill against a disposable, isolated docker compose
 # project, and prints elapsed time as a local RPO/RTO estimate
-# (wi-101, ADR-153). Mirrors the disposable-compose-project + trap cleanup
+# (wi-101). Mirrors the disposable-compose-project + trap cleanup
 # pattern from infra/schema/check-convergence.sh so it never touches a
 # developer's running dev stack.
 #

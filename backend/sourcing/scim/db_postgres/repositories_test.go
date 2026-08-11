@@ -33,7 +33,7 @@ func newUUID(t *testing.T) string {
 
 // seedTenant / seedUser / seedGroup は pgfixtures を使わず自前で用意する。pgfixtures は
 // 本パッケージ (scim/postgres) を import しており、本パッケージの内部テストから pgfixtures を
-// 使うと postgres -> pgfixtures -> postgres の import cycle になるため (ADR-090, wi-172 と同じ制約)。
+// 使うと postgres -> pgfixtures -> postgres の import cycle になるため (wi-172 と同じ制約)。
 
 func seedTenant(t *testing.T, db sharedpg.DB) *tenancydomain.Tenant {
 	t.Helper()

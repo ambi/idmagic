@@ -5,7 +5,7 @@ WHERE tenant_id = $1
 ORDER BY name;
 
 -- name: ListApplicationsByTenantPage :many
--- First page of ListAdminApplications keyset pagination (wi-159, ADR-158):
+-- First page of ListAdminApplications keyset pagination (wi-159):
 -- stable sort by (name, id) so admins see the pre-existing alphabetical
 -- order. id is a load-bearing tie-break since application names aren't
 -- unique per tenant.

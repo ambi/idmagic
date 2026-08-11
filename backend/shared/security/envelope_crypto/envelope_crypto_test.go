@@ -77,7 +77,7 @@ func TestGenerateWrapUnwrapRoundTrip(t *testing.T) {
 }
 
 // TestUnwrapRejectsWrongTenant は AAD/鍵境界を跨いだ wrap 材料の付け替えを
-// fail-closed で拒否することを検証する (ADR-148)。
+// fail-closed で拒否することを検証する。
 func TestUnwrapRejectsWrongTenant(t *testing.T) {
 	ctx := context.Background()
 	crypto := NewTinkEnvelopeCrypto(newFakeMasterKeyProvider())
@@ -128,7 +128,7 @@ func TestEncryptDecryptKnownAnswer(t *testing.T) {
 }
 
 // TestDecryptFailsClosedOnTamperedCiphertext ensures a bit-flipped ciphertext
-// is rejected rather than returning corrupted plaintext (ADR-148 fail-closed).
+// is rejected rather than returning corrupted plaintext (fail-closed).
 func TestDecryptFailsClosedOnTamperedCiphertext(t *testing.T) {
 	ctx := context.Background()
 	crypto := NewTinkEnvelopeCrypto(newFakeMasterKeyProvider())
@@ -154,7 +154,7 @@ func TestDecryptFailsClosedOnTamperedCiphertext(t *testing.T) {
 }
 
 // TestDecryptFailsClosedOnAADMismatch は ciphertext をテナント/テーブル/フィールドを
-// またいで付け替えても復号できないことを検証する (ADR-148 の AAD 束縛)。
+// またいで付け替えても復号できないことを検証する (AAD 束縛)。
 func TestDecryptFailsClosedOnAADMismatch(t *testing.T) {
 	ctx := context.Background()
 	crypto := NewTinkEnvelopeCrypto(newFakeMasterKeyProvider())

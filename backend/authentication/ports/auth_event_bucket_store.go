@@ -1,7 +1,7 @@
 package ports
 
 // AuthEventBucketStore は、攻撃時にログイン失敗イベントを 1 行ずつ書かず 5 分窓の
-// bucket に集約するための境界 (wi-20 スライス 3 / ADR-029 と同じ leaky-bucket 系の
+// bucket に集約するための境界 (wi-20 スライス 3 / と同じ leaky-bucket 系の
 // 語彙)。閾値超過 (throttle が Locked) の判定は呼び出し側 (recordLoginFailure) が
 // 持ち、本 store は「窓ごとの件数を積み、その窓で最初の記録だったか」を返すことに
 // 専念する。最初の記録だけが集約イベント (AuthenticationEventAggregated) を発火し、
@@ -54,7 +54,7 @@ type AuthEventBucketStore interface {
 	) (AuthEventBucketResult, error)
 	// List は tenant 境界内の bucket を新しい窓順 (windowStart 降順、同窓は
 	// "kind|keyHash" 昇順で安定化) で最大 limit 件返す。afterWindowStart/afterKey
-	// は keyset pagination の継続カーソル (wi-159, ADR-158)。afterKey は
+	// は keyset pagination の継続カーソル (wi-159)。afterKey は
 	// "kind|keyHash" 形式で、直近応答の最終行の Kind/KeyHash から組み立てる。
 	// ゼロ値/空文字列なら先頭ページ。
 	List(ctx context.Context, tenantID string, afterWindowStart time.Time, afterKey string, limit int) ([]AuthEventBucket, error)

@@ -1,8 +1,7 @@
 // Package cimd_http fetches and resolves OAuth Client ID Metadata Documents
 // (CIMD, draft-ietf-oauth-client-id-metadata-document-00) over an SSRF-safe
 // HTTP client, and adapts resolution into the existing OAuth2ClientRepository
-// lookup path via a decorator. Resolution results are never persisted
-// (ADR-155).
+// lookup path via a decorator. Resolution results are never persisted.
 package cimd_http
 
 import (

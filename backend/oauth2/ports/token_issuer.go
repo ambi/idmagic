@@ -18,8 +18,8 @@ type AccessTokenInput struct {
 	AuthTime         int64
 	AMR              []string
 	ACR              string
-	// AgentID は client_credentials で発行したトークンに束縛された Agent の id
-	// (ADR-048)。非空のとき agent_id / principal_type=agent claim を付与する。
+	// AgentID は client_credentials で発行したトークンに束縛された Agent の id。
+	// 非空のとき agent_id / principal_type=agent claim を付与する。
 	AgentID string
 	// Audiences は発行トークンの aud を明示指定する (RFC 8707 / RFC 8693)。
 	// 空のときは従来どおり Client.ClientID を aud に用いる。len==1 なら単一文字列、
@@ -29,7 +29,7 @@ type AccessTokenInput struct {
 	// Act は RFC 8693 §4.1 の actor claim。非 nil のとき act claim を付与する
 	// (トークン交換の委任トークン用)。
 	Act map[string]any
-	// AuthorizationDetails は RFC 9396 の構造化詳細 (ADR-050)。非空のとき
+	// AuthorizationDetails は RFC 9396 の構造化詳細。非空のとき
 	// authorization_details claim を付与する。RS の検証点となる。
 	AuthorizationDetails []spec.AuthorizationDetail
 	// ExpiresAt は管理発行 token など、通常の短期 TTL と異なる絶対期限を指定する。
@@ -47,13 +47,13 @@ type IDTokenInput struct {
 	AuthTime int64
 	AMR      []string
 	ACR      string
-	// Sid は OIDC session id (ADR-127)。空文字列は browser session を持たない発行を表す。
+	// Sid は OIDC session id。空文字列は browser session を持たない発行を表す。
 	Sid       string
 	AtHashFor string // access token whose hash goes into at_hash
 	// ResolveAttributeDefs はユーザのテナントに有効な属性定義 (builtin + custom) を
 	// 返す。nil の場合は属性ベースの claim 生成をスキップする (wi-19)。
 	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
-	// ClaimPolicy is Client's per-application claim release override (wi-73 / ADR-151).
+	// ClaimPolicy is Client's per-application claim release override (wi-73).
 	// nil means no override.
 	ClaimPolicy *claimdomain.ClaimMappingPolicy
 }

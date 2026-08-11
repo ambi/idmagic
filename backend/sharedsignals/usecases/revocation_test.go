@@ -107,7 +107,7 @@ func seedAgent(ctx context.Context, t *testing.T, repo *agentmemory.AgentReposit
 
 // TestAgentRevocationReactor_ReactsToAgentEvents — RED: React が
 // AgentKilled/AgentDisabled/AgentCredentialUnbound のそれぞれで対象 Agent の epoch
-// のみ前進させる (ADR-057, wi-58)。KillAgent 等はこのイベントを既に emit しており、
+// のみ前進させる (wi-58)。KillAgent 等はこのイベントを既に emit しており、
 // reactor 側の追加呼び出しは不要 (トリガーは既存の Emit)。
 func TestAgentRevocationReactor_ReactsToAgentEvents(t *testing.T) {
 	ctx := context.Background()
@@ -208,7 +208,7 @@ func TestAgentRevocationReactor_IgnoresUnrelatedEvents(t *testing.T) {
 // lightweight wiring (SharedSignals.Module 未配線のテスト等) では、対象イベントを
 // 受けても panic せず no-op で返す。composition root は常に non-nil な reactor を
 // 渡すため (deps_http.Deps.ReactiveEmit)、reactor 自身がこの nil-skip を保証する
-// 必要がある (ADR-057, wi-58)。
+// 必要がある (wi-58)。
 func TestAgentRevocationReactor_NilEpochRepoIsNoop(t *testing.T) {
 	ctx := context.Background()
 	reactor := &ssusecases.AgentRevocationReactor{AgentRepo: agentmemory.NewAgentRepository()}

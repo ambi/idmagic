@@ -11,7 +11,7 @@ import (
 )
 
 // =====================================================================
-// AgentRepository (ADR-048)
+// AgentRepository
 // =====================================================================
 
 type AgentRepository struct {
@@ -46,7 +46,7 @@ func (r *AgentRepository) ListAll(_ context.Context, tenantID string) ([]*agentd
 	return out, nil
 }
 
-// ListPage implements ports.AgentRepository.ListPage (wi-159, ADR-158): keyset
+// ListPage implements ports.AgentRepository.ListPage (wi-159): keyset
 // pagination ordered by (Name, ID) ascending, strictly after the given keyset.
 func (r *AgentRepository) ListPage(_ context.Context, tenantID, afterName, afterID string, limit int) ([]*agentdomain.Agent, error) {
 	r.mu.RLock()

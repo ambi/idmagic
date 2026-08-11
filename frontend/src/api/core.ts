@@ -103,7 +103,7 @@ export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   return body
 }
 
-// Page ラップは cursor pagination (ADR-159) の応答: body は素のドメインデータのまま、
+// Page ラップは cursor pagination の応答: body は素のドメインデータのまま、
 // 前後ページの有無・cursor は Link レスポンスヘッダにだけ出てくる。
 export type Page<T> = {
   body: T
@@ -118,7 +118,7 @@ export type Page<T> = {
 }
 
 // requestPage は request() と同じ fetch/エラー処理を共有しつつ、Link ヘッダから
-// rel="prev" / rel="next" の cursor query param を抜き出して返す (ADR-159)。
+// rel="prev" / rel="next" の cursor query param を抜き出して返す。
 export async function requestPage<T>(url: string, init?: RequestInit): Promise<Page<T>> {
   const { body, response } = await doFetch<T>(url, init)
   const link = response.headers.get('Link')

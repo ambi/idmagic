@@ -2,7 +2,7 @@
 -- ON CONFLICT matches the jobs_tenant_dedup_key_active_idx partial unique index
 -- (JobHandlerIdempotency). DO NOTHING means no rows are returned when an active
 -- Job with the same (tenant_id, dedup_key) already exists; the caller then looks
--- it up with FindActiveJobByDedupKey. lane (ADR-129) is derived by the usecase
+-- it up with FindActiveJobByDedupKey. lane is derived by the usecase
 -- from kind's registration, never chosen by the enqueue caller.
 INSERT INTO jobs (id, tenant_id, kind, lane, status, params, attempts, max_attempts, dedup_key, run_at, created_at, updated_at)
 VALUES ($1, $2, $3, $4, 'queued', $5, 0, $6, $7, $8, $9, $9)
@@ -19,7 +19,7 @@ WHERE tenant_id = $1 AND dedup_key = $2 AND status IN ('queued', 'running');
 -- Claimable is either a StatusQueued job whose run_at is due, or a StatusRunning
 -- job whose lease already expired (a crashed/drained worker's job, reclaimed for
 -- a new attempt without changing its status), restricted to a single lane
--- (ADR-129 lane isolation: a lane's worker never claims another lane's backlog).
+-- (lane isolation: a lane's worker never claims another lane's backlog).
 -- Both cases increment attempts.
 WITH claimable AS (
     SELECT id FROM jobs

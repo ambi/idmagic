@@ -1,4 +1,4 @@
-// refresh token の domain。ADR-004 のローテーション + ファミリー失効の基盤。
+// refresh token の domain。ローテーション + ファミリー失効の基盤。
 package domain
 
 import (

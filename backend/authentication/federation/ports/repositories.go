@@ -42,7 +42,7 @@ type SecretResolver interface {
 	Resolve(context.Context, string) (string, error)
 }
 
-// SecretCipher envelope-encrypts the client secret at rest (ADR-150). The concrete
+// SecretCipher envelope-encrypts the client secret at rest. The concrete
 // implementation is backend/datakeys.FieldCipher; this port exists so db_postgres does
 // not depend on DataKeys' internal packages directly (mirrors
 // backend/authentication/totp/ports.SecretCipher).

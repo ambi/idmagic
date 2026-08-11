@@ -123,7 +123,6 @@ add an ad hoc authorization DSL to the specification format.
 - Render Mermaid fences from canonical documents and derive state diagrams from normative transition
   tables. Scenario keywords remain plain Markdown grammar in the source and receive semantic styling in
   the generated view.
-- Current `SPECIFICATION.md` files must be self-contained and must not link to the historical ADR archive.
-  Move still-current conclusions and concise rationale into the owning Design section before removing a
-  historical link.
+- Current `SPECIFICATION.md` files must be self-contained: state design and rationale inline rather than
+  linking out to another document for it.
 - Never edit or treat generated HTML/OpenAPI as normative source.

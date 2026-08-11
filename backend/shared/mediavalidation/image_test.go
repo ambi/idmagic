@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// TestDetectImageContentType is the contract both Application icon (ADR-073) and
-// Tenant branding asset (ADR-096) upload paths rely on: fixed magic-byte
+// TestDetectImageContentType is the contract both Application icon and
+// Tenant branding asset upload paths rely on: fixed magic-byte
 // detection, a hard size ceiling, and rejection of anything else (including SVG).
 func TestDetectImageContentType(t *testing.T) {
 	png := append([]byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}, make([]byte, 4)...)

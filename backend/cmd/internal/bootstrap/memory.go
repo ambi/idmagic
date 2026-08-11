@@ -72,7 +72,7 @@ func assembleMemory() (*Dependencies, error) {
 	dataKeysCache := datakeysusecases.NewDataKeyCache(dataKeysRepo, dataKeysCrypto)
 	// No FieldMigrator to register: the memory runtime's MfaFactorRepository
 	// (below) never encrypts, so there is nothing for the
-	// data_key_reencryption job to migrate (dev/test only, ADR-139).
+	// data_key_reencryption job to migrate (dev/test only).
 	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
 	userRepo := usermemory.NewUserRepository()
 	userCSVArtifacts := usermemory.NewUserCSVArtifactStore()
@@ -143,7 +143,7 @@ func assembleMemory() (*Dependencies, error) {
 			AuthEventBucketStore: authnmemory.NewAuthEventBucketStore(),
 		},
 		OAuth2: oauth2.Module{
-			// ClientRepo は CIMD (Client ID Metadata Document) 解決をデコレータで足す (ADR-155)。
+			// ClientRepo は CIMD (Client ID Metadata Document) 解決をデコレータで足す。
 			// 登録済みクライアントの挙動は完全にそのまま (FindByID がヒットすればデコレータは委譲する
 			// だけ)。Emit は起動シーケンス上 NewEmitFunc より前にしか組み立てられないため、
 			// cmd/idmagic/server.go 側で deps.OAuth2.ClientRepo を型アサートして事後設定する

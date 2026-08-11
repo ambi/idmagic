@@ -145,7 +145,7 @@ CREATE UNIQUE INDEX users_preferred_username_active_idx
     ON users (tenant_id, preferred_username)
     WHERE lifecycle->>'status' <> 'deleted';
 
--- Backs ListAdminUsers keyset pagination (wi-159, ADR-158): tenant_id equality +
+-- Backs ListAdminUsers keyset pagination (wi-159): tenant_id equality +
 -- (preferred_username, id) range scan matching ListUsersByTenantPage/-PageAfter's
 -- WHERE/ORDER BY exactly, including the IS DISTINCT FROM predicate so the
 -- partial index qualifies for both queries.
@@ -153,7 +153,7 @@ CREATE INDEX users_tenant_username_id_active_idx
     ON users (tenant_id, preferred_username, id)
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
 
--- Backs exact status-filtered pagination counts (wi-347, ADR-160).
+-- Backs exact status-filtered pagination counts (wi-347).
 CREATE INDEX users_tenant_lifecycle_status_active_idx
     ON users (tenant_id, (coalesce(lifecycle->>'status', 'active')))
     WHERE lifecycle->>'status' IS DISTINCT FROM 'deleted';
@@ -487,7 +487,7 @@ CREATE TABLE audit_events (
 );
 
 -- (tenant_id, occurred_at DESC, id DESC) backs ListAdminAuditEvents keyset
--- pagination (wi-159, ADR-158): id is the tie-break for the rare case of
+-- pagination (wi-159): id is the tie-break for the rare case of
 -- multiple events sharing the same occurred_at.
 CREATE INDEX audit_events_tenant_occurred_idx
     ON audit_events (tenant_id, occurred_at DESC, id DESC);
@@ -508,7 +508,7 @@ CREATE TABLE authentication_event_buckets (
 );
 
 -- (tenant_id, window_start DESC, kind DESC, key_hash DESC) backs
--- ListAuthenticationEventBuckets keyset pagination (wi-159, ADR-158);
+-- ListAuthenticationEventBuckets keyset pagination (wi-159);
 -- kind/key_hash is the tie-break (not count, which isn't unique).
 CREATE INDEX authentication_event_buckets_window_idx
     ON authentication_event_buckets (tenant_id, window_start DESC, kind DESC, key_hash DESC);
@@ -609,7 +609,7 @@ CREATE TABLE applications (
         UNIQUE (id, tenant_id, protocol_type)
 );
 
--- Backs ListAdminApplications keyset pagination (wi-159, ADR-158): tenant_id
+-- Backs ListAdminApplications keyset pagination (wi-159): tenant_id
 -- equality + (name, id) range scan matching ListApplicationsByTenantPage/
 -- -PageAfter's WHERE/ORDER BY. Application names aren't unique per tenant
 -- (unlike users/groups/agents), so id is a load-bearing tie-break here.
@@ -650,7 +650,7 @@ CREATE TABLE oauth2_clients (
 CREATE INDEX oauth2_clients_application_id_idx
     ON oauth2_clients (application_id) WHERE application_id IS NOT NULL;
 
--- Backs ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158): tenant_id
+-- Backs ListAdminOAuth2Clients keyset pagination (wi-159): tenant_id
 -- equality + client_id range scan matching ListClientsByTenantPage/
 -- -PageAfter's WHERE/ORDER BY (the admin handler has always displayed
 -- clients in client_id order, layered on top of FindAll's created_at order).
@@ -740,7 +740,7 @@ CREATE TABLE agent_credential_bindings (
 CREATE INDEX agent_credential_bindings_client_idx
     ON agent_credential_bindings (client_id);
 
--- Workload identity federation for agent runtimes (ADR-053, wi-54).
+-- Workload identity federation for agent runtimes (wi-54).
 CREATE TABLE workload_trust_bundles (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
@@ -1216,7 +1216,7 @@ CREATE TABLE provisioning_deliveries (
 
 CREATE INDEX provisioning_deliveries_unenqueued_idx ON provisioning_deliveries (created_at) WHERE status = 'pending' AND job_id IS NULL;
 -- id DESC tie-break backs ListProvisioningDeliveries keyset pagination
--- (wi-159, ADR-158): created_at alone isn't unique enough for a stable cursor.
+-- (wi-159): created_at alone isn't unique enough for a stable cursor.
 CREATE INDEX provisioning_deliveries_connection_idx ON provisioning_deliveries (connection_id, created_at DESC, id DESC);
 
 CREATE UNLOGGED TABLE oauth2_authorization_requests (
@@ -1366,7 +1366,7 @@ CREATE UNLOGGED TABLE saml_authnrequest_replays (
 CREATE INDEX saml_authnrequest_replays_expires_at_idx
     ON saml_authnrequest_replays (expires_at);
 
--- SharedSignals (ADR-057, wi-58): CAEP/SSF continuous access evaluation and
+-- SharedSignals (wi-58): CAEP/SSF continuous access evaluation and
 -- near-real-time agent revocation.
 
 CREATE TABLE agent_revocation_epochs (

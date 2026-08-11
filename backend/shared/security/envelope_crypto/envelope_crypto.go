@@ -1,7 +1,7 @@
 // Package envelope_crypto: Layer 4 - Adapter Layer (technical shared adapter)
 //
 // EnvelopeCrypto is the port for two-tier envelope encryption of DB-resident
-// reversible secrets (ADR-148): a MasterKeyProvider wraps per-tenant
+// reversible secrets: a MasterKeyProvider wraps per-tenant
 // DataEncryptionKeys, and this package uses Tink's AEAD primitive directly to
 // generate DEKs and encrypt/decrypt records. AEAD/keyset handling — nonce
 // generation, authentication tags — is delegated entirely to Tink; this
@@ -20,13 +20,13 @@ import (
 	"github.com/tink-crypto/tink-go/v2/tink"
 )
 
-// ErrDecryptionFailed signals a fail-closed refusal (ADR-148): unwrap
+// ErrDecryptionFailed signals a fail-closed refusal: unwrap
 // failure, AAD/tamper mismatch, or any other reason a secret cannot be
 // recovered. Callers must deny access, never fall back to plaintext.
 var ErrDecryptionFailed = errors.New("envelope_crypto: decryption failed (fail-closed)")
 
 // MasterKeyProvider is the swappable custody boundary for the key material
-// that wraps per-tenant DataEncryptionKeys (ADR-148). Implementations:
+// that wraps per-tenant DataEncryptionKeys. Implementations:
 // envelope_openbao (production, Vault Transit-compatible) and
 // envelope_cleartext (dev/local, no external service required).
 type MasterKeyProvider interface {
@@ -40,7 +40,7 @@ type MasterKeyProvider interface {
 }
 
 // EnvelopeCrypto is the port DataKeys and record-owning repositories depend
-// on (ADR-148). GenerateDataKey/Encrypt/Decrypt are always Tink-backed;
+// on. GenerateDataKey/Encrypt/Decrypt are always Tink-backed;
 // Wrap/Unwrap/Healthy delegate to the injected MasterKeyProvider.
 type EnvelopeCrypto interface {
 	GenerateDataKey(ctx context.Context) (plaintextDEK []byte, err error)
@@ -53,7 +53,7 @@ type EnvelopeCrypto interface {
 }
 
 // AAD is the fixed associated-data binding for record-level ciphertext
-// (ADR-148): tenant, owning context, table, record id, and field. Binding all
+// : tenant, owning context, table, record id, and field. Binding all
 // five means a ciphertext copied across any one of these dimensions fails to
 // decrypt instead of silently succeeding.
 type AAD struct {

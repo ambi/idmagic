@@ -11,7 +11,7 @@ import (
 )
 
 // ===============================================================
-// Agent 集約 (ADR-048)
+// Agent 集約
 // ===============================================================
 
 // Agent は tenant-scoped な非人間 (non-human) identity principal。自身の資格情報は
@@ -57,13 +57,13 @@ func (a Agent) Validate() error {
 	return spec.Validate(agentSchema, &a)
 }
 
-// IsActive は Agent が新規トークン発行可能な状態かを返す (ADR-048)。Status が Active
+// IsActive は Agent が新規トークン発行可能な状態かを返す。Status が Active
 // かつ disabled_at / killed_at がいずれも未設定の場合のみ true。
 func (a Agent) IsActive() bool {
 	return a.Status == idmdomain.AgentStatusActive && a.DisabledAt == nil && a.KilledAt == nil
 }
 
-// AgentCredentialBinding は Agent と OAuth2Client の束縛関係 (ADR-048)。
+// AgentCredentialBinding は Agent と OAuth2Client の束縛関係。
 // agent_id × client_id で一意。
 type AgentCredentialBinding struct {
 	AgentID   string    `json:"agent_id"`

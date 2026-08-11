@@ -225,7 +225,7 @@ export function DisableUserDialog({
   )
 }
 
-// ResetAuthenticatorDialog は管理者による認証器リセット (wi-143 / ADR-088 第2層) の
+// ResetAuthenticatorDialog は管理者による認証器リセット (wi-143 / 第2層) の
 // 確認ダイアログ。対象 factor を選んでもらい、削除のみ (代替 factor の登録はしない) で
 // あることと、TOTP / WebAuthn を両方失う場合の再登録強制を明示する。
 export function ResetAuthenticatorDialog({

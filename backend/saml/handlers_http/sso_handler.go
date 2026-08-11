@@ -165,7 +165,7 @@ func (d Deps) issueResponse(c *echo.Context, o samlusecases.SignInOutcome, relay
 		return d.rejectSSO(c, o.SP.EntityID, "response build failed", err)
 	}
 	// 自動 POST は cross-origin の ACS へ form 送信し固定の submit script を含む。
-	// 当該レスポンスの CSP に form-action=ACS と script hash を許可する (ADR-076)。
+	// 当該レスポンスの CSP に form-action=ACS と script hash を許可する。
 	support.SetAutoPostFormCSP(c, o.Validated.ACSURL)
 	formHTML, err := samlresponse.EncodePostForm(responseXML, o.Validated.ACSURL, relayState)
 	if err != nil {

@@ -1,7 +1,7 @@
 package domain
 
-// McpResourceServer は MCP resource server (ツール/データソース) の tenant-scoped 登録
-// (ADR-055)。canonical resource URI と許可 scope を所有し、Protected Resource Metadata
+// McpResourceServer は MCP resource server (ツール/データソース) の tenant-scoped 登録。
+// canonical resource URI と許可 scope を所有し、Protected Resource Metadata
 // (RFC 9728) と resource indicator (RFC 8707) 検証の基準になる。
 
 import (

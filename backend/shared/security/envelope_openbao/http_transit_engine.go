@@ -1,7 +1,7 @@
 // Package envelope_openbao: Layer 4 - Adapter Layer (technical shared adapter)
 //
 // OpenBaoMasterKeyProvider is the production envelope_crypto.MasterKeyProvider
-// (ADR-148): it wraps per-tenant DEKs through OpenBao's Vault
+// : it wraps per-tenant DEKs through OpenBao's Vault
 // Transit-compatible HTTP API, one transit key per tenant. It mirrors the
 // backend/signingkeys/keys_vault HTTP client pattern (token auth, timeout,
 // no hand-rolled retry/backoff — a single request per call).

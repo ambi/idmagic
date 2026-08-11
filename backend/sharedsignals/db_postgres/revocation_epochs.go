@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AgentRevocationEpochRepository は AgentRevocationEpoch (ADR-057) を PostgreSQL に
+// AgentRevocationEpochRepository は AgentRevocationEpoch を PostgreSQL に
 // 永続化する。Advance は epoch の単調増加を SQL の条件付き ON CONFLICT で fail-closed に
 // 強制する (WHERE EXCLUDED.epoch >= 既存 epoch でなければ更新自体が起きず 0 行になる)。
 type AgentRevocationEpochRepository struct{ Pool sharedpg.DB }

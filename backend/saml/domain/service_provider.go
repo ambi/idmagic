@@ -7,12 +7,12 @@ import (
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
 )
 
-// SAML 2.0 IdP の双子定義 (wi-29, ADR-067)。
+// SAML 2.0 IdP の双子定義 (wi-29)。
 //
 // SamlServiceProvider は SAML 2.0 Web Browser SSO Profile の relying party (SP) 登録を表す。
 // entityID で識別し、許可 AssertionConsumerService の閉集合・audience・NameID format・
-// 署名方針・claim policy を束ねる。claim mapping (ADR-059) と SAML assertion 直列化
-// (ADR-060) は WS-Federation / WS-Trust と共有する protocol-agnostic な仕組みを再利用する。
+// 署名方針・claim policy を束ねる。claim mapping と SAML assertion 直列化
+// は WS-Federation / WS-Trust と共有する protocol-agnostic な仕組みを再利用する。
 
 // SAML 2.0 binding URI。SP-initiated SSO / SLO で用いる。
 const (

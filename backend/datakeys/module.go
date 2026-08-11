@@ -1,4 +1,4 @@
-// Package datakeys composes the DataKeys bounded context (ADR-148).
+// Package datakeys composes the DataKeys bounded context.
 package datakeys
 
 import (

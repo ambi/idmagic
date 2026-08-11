@@ -8,7 +8,7 @@ import (
 )
 
 // WorkloadSVIDVerifier verifies an external workload attestation token
-// against a resolved JWKS source (ADR-053). Concrete implementation lives in
+// against a resolved JWKS source. Concrete implementation lives in
 // the adapters layer (backend/workloadidentity/verification_jose) so the
 // usecases layer never imports the shared JOSE/crypto adapter directly.
 type WorkloadSVIDVerifier interface {

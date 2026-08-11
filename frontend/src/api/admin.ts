@@ -91,7 +91,7 @@ export type CreateAdminUserInput = {
 }
 
 // 一覧 API は大規模テナントでのコスト削減のため既定 50 件・最大 200 件の keyset
-// pagination になっている (ADR-158)。PICKER_LIST_LIMIT はプライマリの一覧画面ではなく
+// pagination になっている。PICKER_LIST_LIMIT はプライマリの一覧画面ではなく
 // picker/lookup 用途 (グループ追加候補、割り当て対象選択、id→name 解決など) の呼び出し元が
 // 既定値 (50件) に事故で切り詰められないよう明示する上限。200 件を超えるテナントでは
 // picker が一部の候補を表示できなくなるが、これは Design が許容する「capped query」の範囲
@@ -135,7 +135,7 @@ export async function listAdminUsers(): Promise<AdminUser[]> {
     .users
 }
 
-// listAdminUsersPage はユーザー一覧画面専用の addressable cursor pagination 版 (ADR-159)。
+// listAdminUsersPage はユーザー一覧画面専用の addressable cursor pagination 版。
 export async function listAdminUsersPage(params?: {
   cursor?: string
   limit?: number
@@ -403,7 +403,7 @@ export async function retryLifecycleWorkflowRun(
   )
 }
 
-// authorization_details type (RFC 9396 / ADR-050) の管理 API クライアント。
+// authorization_details type (RFC 9396) の管理 API クライアント。
 export type AuthorizationDetailTypeInput = {
   type?: string
   description?: string
@@ -569,7 +569,7 @@ export type AdminAuditEventQuery = {
   after?: string
   before?: string
   limit?: number
-  // cursor (ADR-159): Link の prev/next cursor を渡して隣接ページを取得する。フィルタ変更時は
+  // cursor: Link の prev/next cursor を渡して隣接ページを取得する。フィルタ変更時は
   // 呼び出し側で cursor を落として先頭ページに戻す。
   cursor?: string
   allTenants?: boolean
@@ -718,8 +718,8 @@ export type IdentityProviderConnection = {
   updated_at: string
 }
 
-// secret_reference は書き込み専用でクライアントシークレットの実値を受け取る
-// (ADR-150)。未入力なら既存の値を維持する。レスポンス側の型には含まれない
+// secret_reference は書き込み専用でクライアントシークレットの実値を受け取る。
+// 未入力なら既存の値を維持する。レスポンス側の型には含まれない
 // (API レスポンスには実値もciphertextも含まれないため IdentityProviderConnection
 // 自体に secret_reference フィールドはない)。
 export type IdentityProviderConnectionInput = Omit<
@@ -820,7 +820,7 @@ export async function deleteIdentityProviderConnection(
     adminRequest(csrfToken, 'DELETE'),
   )
 }
-// 通知テンプレート (wi-288, ADR-142)。文面は組込み既定カタログとテナント上書きの
+// 通知テンプレート (wi-288)。文面は組込み既定カタログとテナント上書きの
 // 2 段で解決され、DELETE (reset) は上書きを消して組込み既定へ戻す。
 function notificationTemplatePath(templateKey: string, locale: string): string {
   return `/api/admin/v1/tenant/notification_templates/${encodeURIComponent(templateKey)}/${encodeURIComponent(locale)}`
@@ -869,7 +869,7 @@ export async function previewNotificationTemplate(
   )
 }
 
-// 宛先は指定できない。サーバが操作者本人の検証済みアドレスに固定する (ADR-142 決定 8)。
+// 宛先は指定できない。サーバが操作者本人の検証済みアドレスに固定する。
 export async function sendTestNotification(
   csrfToken: string,
   templateKey: string,
@@ -959,7 +959,7 @@ export type AdminGroupPage = PaginationPageMetadata & {
   groups: AdminGroup[]
 }
 
-// listAdminGroupsPage はグループ一覧画面専用の addressable cursor pagination 版 (ADR-159)。
+// listAdminGroupsPage はグループ一覧画面専用の addressable cursor pagination 版。
 export async function listAdminGroupsPage(params?: {
   cursor?: string
   limit?: number
@@ -1084,7 +1084,7 @@ export type AdminAgentPage = PaginationPageMetadata & {
   agents: AdminAgent[]
 }
 
-// listAdminAgentsPage はエージェント一覧画面専用の addressable cursor pagination 版 (ADR-159)。
+// listAdminAgentsPage はエージェント一覧画面専用の addressable cursor pagination 版。
 export async function listAdminAgentsPage(params?: {
   cursor?: string
   limit?: number
@@ -1307,7 +1307,7 @@ export type AdminApplicationPage = PaginationPageMetadata & {
   applications: AdminApplication[]
 }
 
-// listAdminApplicationsPage はアプリケーション一覧画面専用の addressable cursor pagination 版 (ADR-159)。
+// listAdminApplicationsPage はアプリケーション一覧画面専用の addressable cursor pagination 版。
 export async function listAdminApplicationsPage(params?: {
   cursor?: string
   limit?: number
@@ -1526,7 +1526,7 @@ export async function updateAppSignInPolicy(
   )
 }
 
-// テナントデフォルトサインインポリシー (wi-115, ADR-081)。
+// テナントデフォルトサインインポリシー (wi-115)。
 export async function getTenantDefaultSignInPolicy(): Promise<TenantDefaultSignInPolicyView> {
   return request<TenantDefaultSignInPolicyView>('/api/admin/v1/default-sign-in-policy')
 }
@@ -1570,7 +1570,7 @@ export async function revokeMfaEnrollmentBypass(csrfToken: string, userID: strin
   )
 }
 
-// wi-143 / ADR-088 第2層: 管理者による認証器の緊急リセット。削除のみを行い、
+// wi-143 / 第2層: 管理者による認証器の緊急リセット。削除のみを行い、
 // 代わりの factor は登録しない。TOTP / WebAuthn が両方無くなった場合だけ
 // reenrollment_required=true になり、単発の enrollment bypass が自動発行される。
 export type AuthenticatorResetTarget = 'totp' | 'webauthn' | 'recovery_code'
@@ -1592,7 +1592,7 @@ export async function resetUserAuthenticators(
   )
 }
 
-// Admin session management (wi-28 T007, ADR-127 決定9): view and revoke a
+// Admin session management (wi-28 T007): view and revoke a
 // target user's sessions. Unlike self-service /api/account/v1/sessions, these
 // have no `current` marker and session revoke also cascades to that
 // session's refresh tokens server-side (RevokeTokensBySid).
@@ -1622,7 +1622,7 @@ export async function revokeAllAdminUserSessions(csrfToken: string, userID: stri
   )
 }
 
-// ApplicationCategory の管理 (wi-70, ADR-069)。tenant 単位で定義し Application に付与する。
+// ApplicationCategory の管理 (wi-70)。tenant 単位で定義し Application に付与する。
 export async function listApplicationCategories(): Promise<ApplicationCategory[]> {
   return (
     await request<{ categories: ApplicationCategory[] }>('/api/admin/v1/application-categories')

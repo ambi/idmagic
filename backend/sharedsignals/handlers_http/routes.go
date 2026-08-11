@@ -1,4 +1,4 @@
-// Package handlers_http は SharedSignals bounded context の管理 API (ADR-057,
+// Package handlers_http は SharedSignals bounded context の管理 API (
 // wi-58 T005) を所有する。SsfStream (transmitter/receiver) の CRUD と
 // SecurityEventDelivery の一覧 (delivery health) を、テナント解決済みグループに
 // 登録する。

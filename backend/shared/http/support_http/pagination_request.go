@@ -51,7 +51,7 @@ func TrimPage[T any](items []T, page PageRequest) ([]T, bool, bool) {
 }
 
 // ParsePageRequest parses "limit" (ParseLimit) and "cursor" for a keyset-
-// paginated list endpoint (ADR-158). A cursor is verified against tenantID
+// paginated list endpoint. A cursor is verified against tenantID
 // and queryHash (the caller's fingerprint of the interface + any sort/filter
 // params) so a cursor cannot be replayed against a different tenant or a
 // since-changed query, then split into its (primary, id) keyset. Every

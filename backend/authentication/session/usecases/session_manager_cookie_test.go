@@ -6,7 +6,7 @@ import (
 	"github.com/ambi/idmagic/backend/authentication/session/usecases"
 )
 
-// ADR-127 decision 4: /end_session の id_token_hint fallback は browser cookie から
+// decision 4: /end_session の id_token_hint fallback は browser cookie から
 // sid を読み取るだけで、失効はしない (revoke の有無は呼び出し側が決める)。
 func TestSessionIDFromCookieExtractsWithoutRevoking(t *testing.T) {
 	m := usecases.NewSessionManager(nil)

@@ -12,7 +12,7 @@ import (
 
 // selectMasterKeyProvider は DATA_KEY_PROVIDER=openbao のとき OpenBao Transit を
 // 本番の master key custody として使い、それ以外は Tink cleartext keyset
-// (dev/local、外部サービス不要) を返す (ADR-148)。selectKeyStore (署名鍵) と同じ
+// (dev/local、外部サービス不要) を返す。selectKeyStore (署名鍵) と同じ
 // 「env var で本番 provider へ切り替える」パターン。DATA_KEY_PROVIDER=openbao で
 // OPENBAO_ADDR/OPENBAO_TOKEN が空のときは起動時に失敗させる (wi-97 T007): 検証
 // しないと、最初の暗号化操作まで誤設定に気づけず fail-closed の発火が遅れる。

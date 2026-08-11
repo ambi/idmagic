@@ -99,7 +99,7 @@ func (e *AgentWorkloadBindingDeleted) EventType() string     { return "AgentWork
 func (e *AgentWorkloadBindingDeleted) OccurredAt() time.Time { return e.At }
 
 // WorkloadTokenExchanged は外部 attestation の検証を通過し、束縛先 Agent の資格情報として
-// idmagic token を発行したことを表す (ADR-053)。OAuth2 の token-exchange usecase が
+// idmagic token を発行したことを表す。OAuth2 の token-exchange usecase が
 // 実際の発行成功後に emit する (検証成功だけでは emit しない)。
 type WorkloadTokenExchanged struct {
 	At            time.Time `json:"-"`
@@ -114,7 +114,7 @@ func (e *WorkloadTokenExchanged) EventType() string     { return "WorkloadTokenE
 func (e *WorkloadTokenExchanged) OccurredAt() time.Time { return e.At }
 
 // WorkloadAttestationRejected は外部 attestation token の検証が fail-closed で拒否
-// されたことを表す (ADR-053)。TrustBundleID は issuer が登録済みだった場合のみ設定する。
+// されたことを表す。TrustBundleID は issuer が登録済みだった場合のみ設定する。
 type WorkloadAttestationRejected struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`

@@ -80,8 +80,8 @@ SELECT id, tenant_id, connection_id, source_type, source_id, source_version, ope
 FROM provisioning_deliveries WHERE tenant_id=$1 AND connection_id=$2 ORDER BY created_at DESC LIMIT $3;
 
 -- name: ListProvisioningDeliveriesByConnectionPage :many
--- First page of ListProvisioningDeliveries keyset pagination (wi-159,
--- ADR-159). Empty status/source_type arguments disable that filter.
+-- First page of ListProvisioningDeliveries keyset pagination (wi-159).
+-- Empty status/source_type arguments disable that filter.
 SELECT id, tenant_id, connection_id, source_type, source_id, source_version, operation, status, job_id, last_error, created_at, updated_at, completed_at
 FROM provisioning_deliveries
 WHERE tenant_id=sqlc.arg(tenant_id) AND connection_id=sqlc.arg(connection_id)

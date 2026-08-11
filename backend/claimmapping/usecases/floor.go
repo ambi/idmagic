@@ -24,7 +24,7 @@ var coreAttributeKeys = map[string]bool{
 }
 
 // reservedClaimTypes are protocol-controlled positions that ClaimMappingRule can never
-// target, in any protocol (ADR-151).
+// target, in any protocol.
 var reservedClaimTypes = map[string]bool{
 	"iss": true, "sub": true, "aud": true, "exp": true, "iat": true, "nbf": true,
 	"jti": true, "azp": true, "nonce": true, "at_hash": true, "c_hash": true,
@@ -32,7 +32,7 @@ var reservedClaimTypes = map[string]bool{
 }
 
 // IsReservedClaimType reports whether claimType is an engine-controlled claim position
-// that a ClaimMappingRule can never produce or override (ADR-151).
+// that a ClaimMappingRule can never produce or override.
 func IsReservedClaimType(claimType string) bool {
 	return reservedClaimTypes[strings.ToLower(strings.TrimSpace(claimType))]
 }
@@ -41,7 +41,6 @@ func IsReservedClaimType(claimType string) bool {
 // source, given the tenant's attribute definitions. Core User fields are always
 // releasable. Custom/builtin attributes are releasable unless their visibility is
 // Private, or they are not present in defs at all (fail-closed for unknown keys),
-// per ADR-151.
 func IsAttributeReleasable(key string, defs []userdomain.UserAttributeDef) bool {
 	if coreAttributeKeys[key] {
 		return true
@@ -56,7 +55,7 @@ func IsAttributeReleasable(key string, defs []userdomain.UserAttributeDef) bool 
 
 // ClaimReleaseDeniedError reports a fail-closed rejection of claim issuance: an
 // unresolved required source, a Private-visibility attribute referenced as a rule or
-// NameID source, or a reserved claim type targeted by a rule (ADR-151).
+// NameID source, or a reserved claim type targeted by a rule.
 type ClaimReleaseDeniedError struct{ Reason string }
 
 func (e *ClaimReleaseDeniedError) Error() string {
@@ -64,7 +63,7 @@ func (e *ClaimReleaseDeniedError) Error() string {
 }
 
 // ValidateClaimReleaseRules checks a candidate rule list against the fail-closed floor
-// (ADR-151) at write time, so admins get immediate feedback instead of a runtime
+// at write time, so admins get immediate feedback instead of a runtime
 // issuance failure. It is the Go implementation of the SCL predicate
 // claim_release_rules_within_floor used by UpdateApplicationOidcConfig /
 // UpdateApplicationWsFedConfig / UpdateApplicationSamlConfig.
@@ -86,7 +85,7 @@ func ValidateClaimReleaseRules(rules []claimdomain.ClaimMappingRule, defs []user
 
 // IssueClaimsWithFloor enforces the tenant attribute-visibility and reserved-claim-type
 // floor before delegating to IssueClaims. It is the single claim resolution path shared
-// by OIDC, SAML, and WS-Federation (ADR-151): overrides configured per Application can
+// by OIDC, SAML, and WS-Federation: overrides configured per Application can
 // narrow or remap within this floor, but can never reach a Private attribute or an
 // engine-controlled claim position.
 func IssueClaimsWithFloor(policy claimdomain.ClaimMappingPolicy, attrs Attributes, defs []userdomain.UserAttributeDef) (ClaimIssuanceResult, error) {

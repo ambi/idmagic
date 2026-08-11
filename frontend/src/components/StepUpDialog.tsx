@@ -1,4 +1,4 @@
-// step-up 再認証 (ADR-043 / wi-43)。高 sensitivity な self-service 操作が 403
+// step-up 再認証 (wi-43)。高 sensitivity な self-service 操作が 403
 // step_up_required を返したとき、再認証 modal を出して password / TOTP を提示させ、
 // 成立後に元の操作を 1 回だけ再試行する共通フック + ダイアログ。
 import { type FormEvent, useState } from 'react'

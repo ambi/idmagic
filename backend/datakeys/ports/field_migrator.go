@@ -5,7 +5,7 @@ import "context"
 
 // FieldMigrator re-encrypts one owning context's envelope-encrypted field
 // batch-wise onto a tenant's current active DataEncryptionKey version
-// (spec/contexts/data-keys.yaml, ADR-148, wi-97 T006). Implementations live
+// (spec/contexts/data-keys.yaml, wi-97 T006). Implementations live
 // in the owning context's adapter (e.g.
 // backend/authentication/totp/db_postgres.MfaFactorReencryptor) and are
 // registered by name with usecases.MigratorRegistry at bootstrap, so DataKeys

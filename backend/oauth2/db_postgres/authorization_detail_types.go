@@ -12,8 +12,8 @@ import (
 )
 
 // AuthorizationDetailTypeRepository は RFC 9396 authorization_details の type 定義
-// (ADR-050) を PostgreSQL に永続化する。schema は JSONB として保持する。すべての
-// 参照はテナント境界に閉じる。クエリは sqlc 生成 (wi-173, ADR-090)。
+// を PostgreSQL に永続化する。schema は JSONB として保持する。すべての
+// 参照はテナント境界に閉じる。クエリは sqlc 生成 (wi-173)。
 type AuthorizationDetailTypeRepository struct{ Pool sharedpg.DB }
 
 func textOrNil(s *string) pgtype.Text {

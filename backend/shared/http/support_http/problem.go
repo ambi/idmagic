@@ -9,12 +9,11 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// ProblemContentType is the media type for RFC 9457 Problem Details responses
-// (ADR-154).
+// ProblemContentType is the media type for RFC 9457 Problem Details responses.
 const ProblemContentType = "application/problem+json"
 
 // problemTypeURNPrefix identifies idmagic-internal problem types. There is no
-// published documentation page behind these URIs yet (ADR-154 defers that);
+// published documentation page behind these URIs yet (defers that);
 // clients are expected to switch on `code`/the URN suffix, not dereference it.
 const problemTypeURNPrefix = "urn:idmagic:error:"
 
@@ -27,7 +26,7 @@ type Problem struct {
 	Instance string `json:"instance,omitempty"`
 }
 
-// WriteProblem writes an RFC 9457 Problem Details response (ADR-154), the
+// WriteProblem writes an RFC 9457 Problem Details response, the
 // default envelope for generic API errors (see spec/SPECIFICATION.md HTTP error
 // responses). code becomes both the `type` URN suffix and, humanized, the
 // stable `title`; detail carries the occurrence-specific explanation.

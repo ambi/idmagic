@@ -2,7 +2,7 @@
 //
 // Deps の定義・route 登録の集約点。ユーザー・グループ・エージェントそれぞれの
 // ハンドラ実装は user/handlers_http・group/handlers_http・agent/handlers_http に
-// feature 垂直スライスとして分割されている (ADR-130 Phase 2)。ハンドラは
+// feature 垂直スライスとして分割されている。ハンドラは
 // Deps のメソッドではなくフリー関数 (func HandleX(d Deps, c *echo.Context) error)
 // として実装されており、Deps 型自体の分割（cross-feature port の重複）を避けている。
 package handlers_http

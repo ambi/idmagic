@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// WebAuthnCredentialRepository (Authentication) — wi-26 / ADR-087
+// WebAuthnCredentialRepository (Authentication) — wi-26 /
 type WebAuthnCredentialRepository struct{ Pool sharedpg.DB }
 
 func (r *WebAuthnCredentialRepository) queries() *Queries { return New(r.Pool) }

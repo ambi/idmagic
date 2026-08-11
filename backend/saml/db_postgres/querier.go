@@ -21,7 +21,7 @@ type Querier interface {
 	GetSamlServiceProvider(ctx context.Context, arg GetSamlServiceProviderParams) (*SamlServiceProvider, error)
 	ListSamlIDPProfilesByTenant(ctx context.Context, tenantID string) ([]*SamlIdentityProviderProfile, error)
 	ListSamlServiceProvidersByTenant(ctx context.Context, tenantID string) ([]*SamlServiceProvider, error)
-	// TTL 付き単発予約 (ADR-139 §3)。live な予約が既にあれば ON CONFLICT の
+	// TTL 付き単発予約。live な予約が既にあれば ON CONFLICT の
 	// DO UPDATE ... WHERE が false になり 0 行 (ErrNoRows)、期限切れの残骸なら上書きして 1 行、
 	// 未存在なら INSERT で 1 行を返す。行が返れば新規予約成功 (重複時は 0 行 = 予約失敗)。
 	ReserveSamlAuthnRequestReplay(ctx context.Context, arg ReserveSamlAuthnRequestReplayParams) (string, error)

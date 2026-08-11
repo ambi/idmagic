@@ -2,7 +2,7 @@ import { commonDictionary } from '../../lib/i18n/common.i18n'
 import { useDictionary } from '../../lib/i18n'
 import { Button } from './button'
 
-// LoadMoreButton は admin 一覧画面の keyset pagination (ADR-158) 共通の「さらに読み込む」
+// LoadMoreButton は admin 一覧画面の keyset pagination 共通の「さらに読み込む」
 // 操作。次ページが無ければ何も描画しない (Link ヘッダ不在 = 最終ページ)。
 export function LoadMoreButton({
   hasMore,

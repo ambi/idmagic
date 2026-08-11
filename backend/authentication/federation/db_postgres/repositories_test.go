@@ -43,7 +43,7 @@ func newTestCipher(t *testing.T, tenantID string) *datakeys.FieldCipher {
 	return &datakeys.FieldCipher{Cache: cache, Crypto: crypto}
 }
 
-// RED (interface: UpdateIdentityProviderConnection, ADR-150): a real (non "env:") secret
+// RED (interface: UpdateIdentityProviderConnection): a real (non "env:") secret
 // value is encrypted at rest, never written to the legacy plaintext column.
 func TestConnectionRepositoryEncryptsRealSecretAtRest(t *testing.T) {
 	pool := pgtest.Require(t)

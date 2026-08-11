@@ -38,7 +38,7 @@ func TestTenantRepositorySaveAndFind(t *testing.T) {
 		t.Fatalf("unexpected tenant: %+v", got)
 	}
 
-	// FindByRealm は不変 UUID キーではなく URL slug で解決する (ADR-085)。
+	// FindByRealm は不変 UUID キーではなく URL slug で解決する。
 	byRealm, err := repo.FindByRealm(ctx, "acme")
 	if err != nil {
 		t.Fatalf("find by realm: %v", err)
@@ -83,7 +83,7 @@ func TestTenantRepositoryFindByIDMissing(t *testing.T) {
 	}
 }
 
-// wi-285 / ADR-144: endpoint_style がラウンドトリップし、列を知らない呼び出し元が
+// wi-285 / endpoint_style がラウンドトリップし、列を知らない呼び出し元が
 // 組み立てたゼロ値の Tenant は 'path' として保存される (NOT NULL + CHECK があるため、
 // 空文字列を素通しすると保存が落ちる)。
 func TestTenantRepositoryPersistsEndpointStyle(t *testing.T) {

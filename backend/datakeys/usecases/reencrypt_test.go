@@ -71,7 +71,7 @@ func TestReencryptTenantField_MigratesAllInOneRunWhenUnderCap(t *testing.T) {
 }
 
 // TestReencryptTenantField_StopsAtMaxBatchesPerRunAndReportsRemaining covers
-// the ADR-129 lane-fairness cap: a tenant with more pending rows than
+// the lane-fairness cap: a tenant with more pending rows than
 // ReencryptMaxBatchesPerRun*ReencryptBatchSize is not migrated to completion
 // in one call; ReencryptionHandler is responsible for the continuation.
 func TestReencryptTenantField_StopsAtMaxBatchesPerRunAndReportsRemaining(t *testing.T) {

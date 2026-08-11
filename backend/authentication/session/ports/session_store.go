@@ -9,7 +9,7 @@ import (
 )
 
 // SessionStore persists domain.LoginSession. PostgreSQL is the single source
-// of truth (wi-253 / ADR-126): Find and ListBySub only return active
+// of truth (wi-253): Find and ListBySub only return active
 // sessions so authentication resolution stays fail-closed, and Revoke
 // tombstones a session instead of deleting it.
 type SessionStore interface {
@@ -37,7 +37,7 @@ type SessionStore interface {
 	// (wi-20 スライス 2)。self / admin のセッション一覧に使う。
 	ListBySub(ctx context.Context, sub string) ([]*domain.LoginSession, error)
 
-	// DeleteAllForSub は ADR-036 の anonymize cascade から呼ばれる。
+	// DeleteAllForSub は anonymize cascade から呼ばれる。
 	// 対象 sub の LoginSession をすべて物理削除する (tombstone ではなく erasure)。
 	DeleteAllForSub(ctx context.Context, sub string) error
 

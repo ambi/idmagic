@@ -36,7 +36,7 @@ type ReceiveDeps struct {
 // stream's SsfReceiverConfig, and on success reflects it as LocalRevocation
 // (AdvanceRevocationEpoch, reason=InboundSecurityEvent) — external-origin
 // signals converge onto the same fail-closed revocation path as idmagic's
-// own kill-switch (ADR-057 decision 5). Every requires clause is
+// own kill-switch (decision 5). Every requires clause is
 // fail-closed: any failure rejects without reflecting the event.
 func ReceiveSecurityEvent(ctx context.Context, deps ReceiveDeps, streamID, token string, now time.Time) error {
 	tenantID := tenancy.TenantID(ctx)
@@ -140,7 +140,7 @@ func rejectEvent(ctx context.Context, deps ReceiveDeps, tenantID, streamID, setJ
 // own transmitter produces (BuildAndSignSecurityEventToken): one CAEP
 // event-type URI mapped to a claims object carrying a `subject`
 // (subject_type/tenant_id/principal_id). Full RFC 9493 Subject Identifiers
-// interop is out of scope (ADR-057 keeps the wire format idmagic-defined
+// interop is out of scope (keeps the wire format idmagic-defined
 // until a concrete external transmitter requires otherwise).
 func extractCaepEventAndSubject(events map[string]any) (ssdomain.CaepEventType, ssdomain.SsfSubject, bool) {
 	for uri, raw := range events {

@@ -8,10 +8,10 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
-// AccessTokenDenylist は失効した access token の jti を PostgreSQL に保持する (ADR-139)。
+// AccessTokenDenylist は失効した access token の jti を PostgreSQL に保持する。
 // failover で失効が消えると防御後退になるため裏付けテーブルは LOGGED。IsRevoked は
 // introspection のたびに走り得る唯一のホット読取だが、per-request の共有ストア参照を
-// Postgres に置換する範囲に留める (高 RPS 最適化は ADR-139 §6 の別レイヤ)。
+// Postgres に置換する範囲に留める (高 RPS 最適化は §6 の別レイヤ)。
 // tenant は ctx から解決し、期限切れマーカーは revoked とみなさない。
 type AccessTokenDenylist struct{ Pool sharedpg.DB }
 

@@ -1,5 +1,5 @@
-// admin_data_export_handler.go: admin CSV data export endpoints (wi-148,
-// ADR-140). Export is exposed per resource type — /users/exports,
+// admin_data_export_handler.go: admin CSV data export endpoints (wi-148).
+// Export is exposed per resource type — /users/exports,
 // /groups/exports, and /groups/{group_id}/members/exports — mirroring how
 // Entra / Okta / Google surface CSV export (and symmetric with the per-type
 // /users/imports). The internal job pipeline, CSV generation, storage, and

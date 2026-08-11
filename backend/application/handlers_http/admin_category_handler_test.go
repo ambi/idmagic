@@ -7,7 +7,7 @@ import (
 )
 
 // wi-326 T003: admin_category_handler.go used to collapse both conditions into
-// the generic "invalid_request" code (ADR-154 background). They now carry
+// the generic "invalid_request" code (background). They now carry
 // distinguishable codes matching the new SCL error models
 // CategoryNameRequiredError / UnknownCategoryError (spec/contexts/application.yaml).
 func TestCreateApplicationCategory_EmptyNameYieldsDistinguishableCode(t *testing.T) {

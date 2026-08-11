@@ -49,7 +49,7 @@ func seedTransmitStream(t *testing.T, streamRepo *ssmemory.SsfStreamRepository, 
 
 // TestProjectAgentAccessRevoked_EnqueuesForSubscribedEnabledStream — RED:
 // session-revoked を購読する有効な Transmit stream に pending delivery を1件
-// enqueue する (ADR-057 EcosystemPropagation)。
+// enqueue する (EcosystemPropagation)。
 func TestProjectAgentAccessRevoked_EnqueuesForSubscribedEnabledStream(t *testing.T) {
 	ctx := context.Background()
 	deps, streamRepo, configRepo, deliveryRepo := newProjectorDeps(t)

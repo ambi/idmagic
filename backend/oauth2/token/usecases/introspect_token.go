@@ -31,7 +31,7 @@ type IntrospectionResponse struct {
 	JTI       string            `json:"jti,omitempty"`
 	CNF       map[string]string `json:"cnf,omitempty"`
 	Act       map[string]any    `json:"act,omitempty"`
-	// AuthorizationDetails は RFC 9396 — RS が信頼する検証点 (ADR-050)。
+	// AuthorizationDetails は RFC 9396 — RS が信頼する検証点。
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
 }
 
@@ -40,8 +40,8 @@ type IntrospectDeps struct {
 	RefreshStore        ports.RefreshTokenStore
 	AccessTokenDenylist ports.AccessTokenDenylist
 	// AgentRepo resolves the Agent bound to an access token's client_id
-	// (ADR-048), so RevocationEpochRepo can fail-closed check its issued_at
-	// against the Agent's revocation epoch (ADR-057, wi-58). nil skips the
+	// , so RevocationEpochRepo can fail-closed check its issued_at
+	// against the Agent's revocation epoch (wi-58). nil skips the
 	// check.
 	AgentRepo agentports.AgentRepository
 	// RevocationEpochRepo backs the SCL internal interface CheckRevocationEpoch
@@ -106,7 +106,7 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 			return &IntrospectionResponse{Active: false}, nil
 		}
 	}
-	// ADR-057 (wi-58): Agent が subject の access token は、issued_at と
+	// Agent が subject の access token は、issued_at と
 	// SharedSignals の revocation epoch を比較し、kill-switch / 所有者オフボード /
 	// inbound SET のいずれかで epoch が前進していれば fail-closed で無効と判定する。
 	if r.Active && r.ClientID != "" && deps.AgentRepo != nil && deps.RevocationEpochRepo != nil {

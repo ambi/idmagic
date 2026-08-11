@@ -119,7 +119,7 @@ export function signInStrengthOptions(t: AdminApplicationsDictionary): SelectOpt
 }
 
 // summarizeSignInRule は 1 件のサインインルールを利用者向けの 1 行へ要約する。
-// 内部ルール名は表示せず、テナントデフォルト・実効ポリシーの読み取り専用表示に用いる (wi-115, ADR-081)。
+// 内部ルール名は表示せず、テナントデフォルト・実効ポリシーの読み取り専用表示に用いる (wi-115)。
 export function summarizeSignInRule(rule: SignInRule, t: AdminApplicationsDictionary): string {
   const parts: string[] = [
     rule.required_authn.strength === 'Mfa' ? t.strengthMfaLabel : t.strengthPasswordLabel,
@@ -134,7 +134,7 @@ export function summarizeSignInRule(rule: SignInRule, t: AdminApplicationsDictio
   return parts.join(' / ')
 }
 
-// 編集中のアプリ個別ポリシー入力から表示用の SignInRule を組み立てる (ADR-081, 上書きモデル)。
+// 編集中のアプリ個別ポリシー入力から表示用の SignInRule を組み立てる (上書きモデル)。
 export function appRuleFromInputs(
   strength: RequiredAuthnStrength,
   reauthText: string,
@@ -158,7 +158,7 @@ export function appRuleFromInputs(
 }
 
 // signInRuleWeakerThanDefault はアプリ個別ルールがデフォルトより弱いかの UI 用ヒント判定。
-// 認証強度・再認証を求めるまでの時間・許可ネットワークの 3 項目で見る (サーバの判定と対応, ADR-081)。
+// 認証強度・再認証を求めるまでの時間・許可ネットワークの 3 項目で見る (サーバの判定と対応)。
 export function signInRuleWeakerThanDefault(
   appRule: SignInRule,
   defaultRules: SignInRule[],
@@ -331,7 +331,7 @@ export type ReleasableAttributeOption = SelectOption & { visibility?: AttrVisibi
 // useReleasableAttributes はテナントの属性定義 (組み込み + custom) を一度だけ取得し、
 // (1) claim release preview 用の全定義 (Private を含む、非PII: key/type/visibility のみ)、
 // (2) source 選択肢用の releasable 一覧 (User の core field + visibility != private) を返す
-// (wi-73, ADR-151)。実際の利用者の値は取得・表示しない。
+// (wi-73)。実際の利用者の値は取得・表示しない。
 export function useReleasableAttributes(): {
   allDefs: UserAttributeDef[] | null
   options: ReleasableAttributeOption[]
@@ -371,7 +371,7 @@ export function useReleasableAttributes(): {
 }
 
 // ClaimReleaseAttributesPreview は claim release rule / NameID・sub source の候補を示す
-// 非PII preview (wi-73, ADR-151)。実際の利用者の値は取得・表示せず、テナントの属性
+// 非PII preview (wi-73)。実際の利用者の値は取得・表示せず、テナントの属性
 // 定義 (key / type / visibility) だけを一覧する。visibility=private は fail-closed floor で
 // 常に拒否されることを明示する。
 export function ClaimReleaseAttributesPreview() {
@@ -432,7 +432,7 @@ function visibilityLabel(visibility: AttrVisibility, t: AdminApplicationsDiction
 }
 
 // SourceAttributeSelect は NameID / sub の source 属性を選ぶ。releasable な属性 (User の
-// core field + visibility != private) だけを選択肢にする (wi-73, ADR-151)。既存値が一覧に
+// core field + visibility != private) だけを選択肢にする (wi-73)。既存値が一覧に
 // 無い場合 (未取得中・tenant 定義から外れた値) も選択肢に含め、値を失わないようにする。
 export function SourceAttributeSelect({
   value,
@@ -467,7 +467,7 @@ function claimRuleSourceOptions(t: AdminApplicationsDictionary): SelectOption[] 
   ]
 }
 
-// ClaimRulesEditor は claim release 上書き rule の構造化エディタ (wi-73, ADR-151)。
+// ClaimRulesEditor は claim release 上書き rule の構造化エディタ (wi-73)。
 // 生 JSON を書かせる代わりに、claim 名の入力・source の選択・(user_attribute のときの)
 // releasable な属性選択・(fixed のときの) 固定値入力・required チェックボックスを行単位で
 // 提供する。source_key は floor (visibility != private) を満たす属性だけから選べるため、

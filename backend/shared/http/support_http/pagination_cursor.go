@@ -1,6 +1,6 @@
 package support_http
 
-// Opaque keyset pagination cursor codec (ADR-160). Version 3 keeps tenant and
+// Opaque keyset pagination cursor codec. Version 3 keeps tenant and
 // query fingerprints out of the wire payload and binds them as HMAC associated
 // data. Legacy version-zero and version-two JSON cursors remain decodable.
 

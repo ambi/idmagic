@@ -12,7 +12,7 @@ import (
 
 // =====================================================================
 // SessionStore (Authentication) — PostgreSQL 実装と同じ contract を持つ in-memory 版
-// (wi-253 / ADR-126)。有効性判定は domain.LoginSession.Active に委ね、失効は tombstone
+// (wi-253)。有効性判定は domain.LoginSession.Active に委ね、失効は tombstone
 // (Revoke) で物理削除しない。
 // =====================================================================
 

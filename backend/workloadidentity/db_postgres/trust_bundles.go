@@ -12,8 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// WorkloadTrustBundleRepository は WorkloadTrustBundle (ADR-053) を PostgreSQL に
-// 永続化する。すべての参照はテナント境界に閉じる。クエリは sqlc 生成 (ADR-090)。
+// WorkloadTrustBundleRepository は WorkloadTrustBundle を PostgreSQL に
+// 永続化する。すべての参照はテナント境界に閉じる。クエリは sqlc 生成。
 type WorkloadTrustBundleRepository struct{ Pool sharedpg.DB }
 
 func textPtrOrNil(t pgtype.Text) *string {

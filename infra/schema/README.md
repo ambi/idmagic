@@ -166,8 +166,7 @@ converges required rows such as the default tenant at startup.
     the DDL file — a comment restating "why" drifts from the real design record
     the same way a second copy of any decision does. See `spec/SPECIFICATION.md`
     `## Cross-cutting Concerns` > Database design policy for the column-type
-    rules (ADR-084) and the `tenant_id` retention classes (ADR-082, simplified
-    by ADR-083); do not restate them here.
+    rules and the `tenant_id` retention classes; do not restate them here.
   - `psqldef`'s dependency-aware statement ordering (rewritten from a fixed
     bucket order to a topological sort upstream in
     [sqldef/sqldef#1209](https://github.com/sqldef/sqldef/pull/1209), merged

@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL interface CheckSessionIframe (OIDC Session Management 1.0, adoption: optional,
-// ADR-127 決定8)。session_state の salted hash 相関は実装せず、現在の browser cookie が
+// 決定8)。session_state の salted hash 相関は実装せず、現在の browser cookie が
 // 有効な LoginSession に解決できるかどうかだけを静的ページに埋め込んで返す。
 
 import (

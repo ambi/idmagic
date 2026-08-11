@@ -56,7 +56,7 @@ type notificationTemplateTestSendResponse struct {
 
 // notificationTemplateRequest は更新とプレビューで共用する入力。更新では 3 点セットが
 // 必須で、プレビューでは省略が「現在有効な文面を使う」を意味する。テスト送信の宛先を
-// 指定するフィールドは意図的に存在しない (ADR-142 決定 8)。
+// 指定するフィールドは意図的に存在しない。
 type notificationTemplateRequest struct {
 	Subject         string `json:"subject"`
 	BodyText        string `json:"body_text"`
@@ -208,7 +208,7 @@ func (d Deps) handlePreviewNotificationTemplate(c *echo.Context) error {
 
 // handleSendTestNotification は宛先をリクエストから一切読まない。操作者本人の検証済み
 // アドレスに固定することで、管理者権限が任意宛先メール送信の踏み台になる経路を構造的に
-// 作らない (ADR-142 決定 8)。
+// 作らない。
 func (d Deps) handleSendTestNotification(c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err

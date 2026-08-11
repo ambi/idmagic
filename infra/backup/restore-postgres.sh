@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restores a pg_dump custom-format backup into a target PostgreSQL database
-# and runs the post-restore consistency check (wi-101, ADR-153).
+# and runs the post-restore consistency check (wi-101).
 #
 # Connects via the standard libpq PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE
 # environment variables (same convention as infra/schema/README.md's
@@ -8,7 +8,7 @@
 # these directly; DATABASE_URL (derived below) is only for
 # idmagic-batch restore-consistency-check.
 #
-# Order (ADR-153): refuse a non-empty target -> apply schema
+# Order: refuse a non-empty target -> apply schema
 # (infra/schema/postgres.sql) -> pg_restore data -> truncate ephemeral
 # UNLOGGED/LOGGED tables -> idmagic-batch restore-consistency-check.
 #

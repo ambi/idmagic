@@ -31,7 +31,7 @@ func (n *Notifier) Notify(ctx context.Context, notification notificationports.No
 
 	def, err := Builtin(notification.Key, locale)
 	if err != nil {
-		// 宛先アドレスは PII なのでマスクする (ADR-018 §4)。
+		// 宛先アドレスは PII なのでマスクする。
 		logging.Error(ctx, "notification template is unavailable",
 			"template_key", string(notification.Key), "locale", locale,
 			"to", logging.MaskEmail(notification.To), "error", err)
@@ -46,7 +46,7 @@ func (n *Notifier) Notify(ctx context.Context, notification notificationports.No
 		"tenant_display_name": settings.TenantDisplayName,
 	}, notification.Vars))
 	if err != nil {
-		// 描画できない文面を「変数が抜けたメール」として配らない (ADR-142 決定 3)。
+		// 描画できない文面を「変数が抜けたメール」として配らない。
 		logging.Error(ctx, "notification template did not render",
 			"template_key", string(notification.Key), "locale", locale,
 			"to", logging.MaskEmail(notification.To), "error", err)

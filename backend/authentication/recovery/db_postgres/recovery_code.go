@@ -8,7 +8,7 @@ import (
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 )
 
-// RecoveryCodeRepository (Authentication) — wi-26 / ADR-087
+// RecoveryCodeRepository (Authentication) — wi-26 /
 type RecoveryCodeRepository struct{ Pool sharedpg.DB }
 
 func (r *RecoveryCodeRepository) queries() *Queries { return New(r.Pool) }

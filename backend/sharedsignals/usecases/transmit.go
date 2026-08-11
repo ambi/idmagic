@@ -39,7 +39,7 @@ func caepEventTypeFromURI(uri string) ssdomain.CaepEventType {
 // BuildAndSignSecurityEventToken builds a RFC 8417 Security Event Token for
 // event and signs it via signer, which reuses SigningKeys' existing
 // rotation/JWKS distribution instead of introducing separate SET key
-// material (ADR-057 decisions 3/7). signer is a port
+// material (decisions 3/7). signer is a port
 // (ports.SecurityEventTokenSigner): the actual JWT signing package lives in
 // the adapters layer (sign_jose), so this use_cases-layer function never
 // imports it directly.

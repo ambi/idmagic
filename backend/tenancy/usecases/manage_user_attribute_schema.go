@@ -10,7 +10,7 @@ import (
 )
 
 // ErrInvalidUserAttributeSchema は custom 属性定義が不正 (key 衝突 / 重複 / 形式違反)
-// のときに返す (ADR-040)。
+// のときに返す。
 var ErrInvalidUserAttributeSchema = errors.New("invalid attribute schema")
 
 // GetUserAttributeSchema は tenant の custom 属性定義を返す。未定義のテナントには
@@ -30,7 +30,7 @@ func GetUserAttributeSchema(
 }
 
 // UpdateUserAttributeSchema は tenant の custom 属性定義を全置換する。各定義を検証し、
-// 組み込み属性との key 衝突・重複 key を拒否したうえで保存する (ADR-040)。
+// 組み込み属性との key 衝突・重複 key を拒否したうえで保存する。
 func UpdateUserAttributeSchema(
 	ctx context.Context, repo tenantports.TenantUserAttributeSchemaRepository,
 	tenantID string, defs []userdomain.UserAttributeDef, now time.Time,

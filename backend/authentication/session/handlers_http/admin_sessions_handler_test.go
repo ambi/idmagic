@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL interfaces "ListSessions"/"RevokeSession"/"RevokeUserSessions" (admin, wi-28 T007,
-// ADR-127 決定9) を /api/admin/v1/users/{sub}/sessions 経由で検証する。
+// 決定9) を /api/admin/v1/users/{sub}/sessions 経由で検証する。
 
 import (
 	"context"
@@ -92,7 +92,7 @@ func (f adminSessionsFixture) seedRefreshToken(t *testing.T, sid, clientID strin
 // sessionTestCSRF は /api/auth/password_reset_context (CSRF cookie 発行専用の GET) を叩いて
 // CSRF token/cookie を得る。password feature の password_reset_handler_test.go の
 // passwordResetCSRF と同じ実装だが、_test.go はパッケージを跨げないため複製する
-// (ADR-130 Phase 2 と同方針)。
+// (Phase 2 と同方針)。
 func sessionTestCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodGet, "/realms/default/api/auth/password_reset_context", http.NoBody)
@@ -230,7 +230,7 @@ func TestAdminSessionEndpointsRequireAdminRole(t *testing.T) {
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
-// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// bare path はどのテナントの正規ロケーションでもなくなったため、
 // テストのリクエスト先も /realms/default 配下でなければ 404 になる。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {

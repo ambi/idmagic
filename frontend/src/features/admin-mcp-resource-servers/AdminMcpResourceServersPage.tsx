@@ -12,7 +12,7 @@ import { adminMcpResourceServersDictionary } from './AdminMcpResourceServersPage
 import { editURL, newURL } from './AdminMcpResourceServersShared'
 
 // AdminMcpResourceServersPage は MCP リソースサーバーの参照専用一覧。作成/編集は専用ルート
-// (new / $resourceServerId/edit) に一本化されている (ADR-086 policy #2, wi-314 T014)。
+// (new / $resourceServerId/edit) に一本化されている (policy #2, wi-314 T014)。
 export function AdminMcpResourceServersPage({
   csrfToken,
   actorUsername,

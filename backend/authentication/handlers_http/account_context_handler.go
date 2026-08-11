@@ -1,6 +1,6 @@
 // /api/auth/account: 認証済みセッション向けのアカウントコンテキスト取得。
 // authentication コンテキスト所有。パスワード変更は password feature の handlers_http
-// (ADR-130 Phase 2) へ分割されている。
+// へ分割されている。
 package handlers_http
 
 import (
@@ -37,7 +37,7 @@ func handleAccountContext(d Deps, c *echo.Context) error {
 		return err
 	}
 	resp := accountContextResponse{CSRFToken: csrf, ID: authn.UserID}
-	// realm はリクエストが解決した現在テナントの公開 slug (ADR-085)。UI の system console
+	// realm はリクエストが解決した現在テナントの公開 slug。UI の system console
 	// gating (realm == "default") に使う。
 	if t := tenancy.Tenant(c.Request().Context()); t != nil {
 		resp.Realm = t.Realm
@@ -46,7 +46,7 @@ func handleAccountContext(d Deps, c *echo.Context) error {
 		if user, _ := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID); user != nil {
 			resp.PreferredUsername = user.PreferredUsername
 			resp.TenantID = user.TenantID
-			// グループ由来ロールを含む有効ロールを返す (ADR-038)。
+			// グループ由来ロールを含む有効ロールを返す。
 			resp.Roles = d.EffectiveRoles(c.Request().Context(), user)
 		}
 	}

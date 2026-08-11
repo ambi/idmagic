@@ -1,6 +1,6 @@
 package usecases
 
-// 利用者ポータルの手動並び順 (wi-70, ADR-069)。手動順は ApplicationCatalog が所有し、
+// 利用者ポータルの手動並び順 (wi-70)。手動順は ApplicationCatalog が所有し、
 // 既定は name 昇順。手動順を割当済み visible アプリの上に重ねる。
 
 import (

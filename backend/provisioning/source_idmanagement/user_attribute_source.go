@@ -1,5 +1,5 @@
 // Package identitysource adapts IdManagement's User aggregate to
-// ports.AttributeSource for the Provisioning delivery engine (ADR-128
+// ports.AttributeSource for the Provisioning delivery engine (
 // decision 4: Provisioning legitimately depends on IdManagement per
 // context_map, so this adapter may import idmanagement/domain and ports).
 package source_idmanagement

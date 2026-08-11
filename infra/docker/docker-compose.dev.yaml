@@ -42,7 +42,7 @@ services:
     depends_on:
       idp: { condition: service_started }
 
-  # wi-304: application log aggregation (ADR-018 JSON Lines -> Loki).
+  # wi-304: application log aggregation (JSON Lines -> Loki).
   loki:
     image: grafana/loki:3.1.1
     command: ["-config.file=/etc/loki/loki-config.yaml"]
@@ -120,7 +120,7 @@ services:
   worker:
     image: idmagic:dev
     entrypoint: ["/app/idmagic-worker"]
-    # JOB_WORKER_LANES is intentionally unset: compat mode (ADR-129), a single
+    # JOB_WORKER_LANES is intentionally unset: compat mode, a single
     # process claims every lane. Production splits this into one Deployment
     # per lane (infra/k8s/base/worker.yaml) so latency_sensitive gets a
     # reserved execution slot independent of the bulk backlog.

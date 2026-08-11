@@ -36,7 +36,7 @@ type AuthorizeRequestInput struct {
 	ParUsed              bool
 	ParRequestURI        string
 	AuthorizationDetails []spec.AuthorizationDetail
-	// Resource は RFC 8707 resource indicator (ADR-055)。form/query の resource は複数
+	// Resource は RFC 8707 resource indicator。form/query の resource は複数
 	// 指定され得るため slice で受ける (単一値以外は invalid_target)。
 	Resource []string
 }
@@ -106,12 +106,12 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 		in.Prompt = prompt.Canonical()
 	}
 
-	// RFC 9396 authorization_details: 登録済み type に対し fail-closed 検証 (ADR-050)。
+	// RFC 9396 authorization_details: 登録済み type に対し fail-closed 検証。
 	if err := ValidateAuthorizationDetails(ctx, deps.AuthzDetailTypeRepo, in.AuthorizationDetails); err != nil {
 		return nil, err
 	}
 
-	// RFC 8707 resource indicator: 登録済み Active な McpResourceServer に限定する (ADR-055)。
+	// RFC 8707 resource indicator: 登録済み Active な McpResourceServer に限定する。
 	mcp, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, requestedScopes)
 	if err != nil {
 		emit(deps.Emit, &domain.ResourceAudienceRejected{At: time.Now().UTC(), TenantID: tenantID, ClientID: in.ClientID, Reason: errorCode(err)})

@@ -34,18 +34,18 @@ import (
 var (
 	ErrUsernameConflict = errors.New("preferred username already exists")
 	// ErrSelfDeleteForbidden は admin / system_admin が自身を削除しようとした場合に
-	// 返る (ADR-036 の自爆防止)。
+	// 返る (自爆防止)。
 	ErrSelfDeleteForbidden = errors.New("admins cannot delete themselves")
 	// ErrSelfDisableForbidden は admin / system_admin が自身を無効化しようとした
 	// 場合に返る。delete 側 (ErrSelfDeleteForbidden) と対称な自爆防止で、誤操作で
 	// 自身の管理画面アクセスを即時遮断する事故を防ぐ。enable 方向には適用しない。
 	ErrSelfDisableForbidden = errors.New("admins cannot disable themselves")
 	// ErrInvalidAttribute は attributes が実効スキーマ (組み込み ∪ tenant) に
-	// 適合しない場合に返る (ADR-040)。
+	// 適合しない場合に返る。
 	ErrInvalidAttribute = errors.New("attribute does not conform to schema")
 )
 
-// deletedPasswordHashSentinel は ADR-036 の tombstone 用に PasswordHash へ設定する
+// deletedPasswordHashSentinel は tombstone 用に PasswordHash へ設定する
 // 非ハッシュ形式の値。Argon2id のフォーマットと一致しないため、どんなパスワードでも
 // 認証に通らないが、`z.String().Required()` の schema 制約は満たす。
 const deletedPasswordHashSentinel = "$deleted$"
@@ -64,16 +64,16 @@ type AdminUserDeps struct {
 	Emit                func(spec.DomainEvent) error
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで
-	// 確定する (wi-237, ADR-117)。nil のとき UserRepo.Save に fallback する。
+	// 確定する (wi-237)。nil のとき UserRepo.Save に fallback する。
 	UserMutationCommitter userports.UserMutationCommitter
 	// SoftDeleteGraceSeconds は soft-delete の猶予期間 (秒)。0 のとき
 	// UserSoftDeleteGracePeriodSeconds を既定として使う。テストで短縮するために注入する。
 	SoftDeleteGraceSeconds int
-	// ProvisioningNotifier は User mutation を outbound Provisioning (wi-45,
-	// ADR-128) へ通知する境界 port。nil のとき outbound provisioning は未配線として
+	// ProvisioningNotifier は User mutation を outbound Provisioning (wi-45)
+	// へ通知する境界 port。nil のとき outbound provisioning は未配線として
 	// 何もしない。
 	ProvisioningNotifier userports.ProvisioningNotifier
-	// QuotaRepo enforces the tenant's Hard Quota on users (wi-160, ADR-134).
+	// QuotaRepo enforces the tenant's Hard Quota on users (wi-160).
 	// nil skips enforcement (wiring gaps in tests/tools); production bootstrap
 	// always sets it.
 	QuotaRepo tenantports.QuotaRepository
@@ -81,7 +81,7 @@ type AdminUserDeps struct {
 
 // notifyProvisioning is a best-effort call to deps.ProvisioningNotifier: a nil
 // notifier or a notification error must not fail the admin operation that
-// already committed. This is ADR-128
+// already committed. This is
 // decision 4's scoped simplification; see backend/provisioning/ports.
 // ProvisioningCapture doc for the residual reliability gap it accepts.
 func notifyProvisioning(ctx context.Context, deps AdminUserDeps, tenantID, userID string, trigger userports.ProvisioningTrigger, now time.Time) {
@@ -175,7 +175,7 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 // captureUserMutation persists the mutated user and any governance side effects
 // (lifecycle workflow runs) atomically. When a UserMutationCommitter is wired,
 // IdGovernance owns the transactional capture; the nil fallback keeps
-// lightweight unit-test wiring usable (wi-237, ADR-117).
+// lightweight unit-test wiring usable (wi-237).
 func captureUserMutation(ctx context.Context, deps AdminUserDeps, before, after *userdomain.User, changed []string, now time.Time) error {
 	if deps.UserMutationCommitter == nil {
 		return deps.UserRepo.Save(ctx, after)
@@ -473,7 +473,7 @@ func changedAttributeFields(before, after map[string]userdomain.AttributeValue) 
 	return changed
 }
 
-// DeleteUserInput は ADR-036 の DeleteUser use case 入力。
+// DeleteUserInput は DeleteUser use case 入力。
 type DeleteUserInput struct {
 	ActorUserID string
 	Sub         string
@@ -481,7 +481,7 @@ type DeleteUserInput struct {
 	Now         time.Time
 }
 
-// DeleteUser は ADR-036 の anonymize cascade を実行する。
+// DeleteUser は anonymize cascade を実行する。
 //   - 対象 user の PII フィールドを tombstone 値で置換する (`deleted_at` 設定)。
 //   - 関連 aggregate (Consent / RefreshToken / Session / PasswordHistory /
 //     MfaFactor / DeviceAuthorization) を物理削除する。

@@ -10,7 +10,7 @@ import (
 // against (wi-261 T006). lane is always a bounded domain.ExecutionLane value
 // and outcome is always "succeeded" or "failed" — implementations must never
 // add a tenant_id, job_id, or other high-cardinality label
-// (spec/contexts/system.yaml MetricsExposition, ADR-100).
+// (spec/contexts/system.yaml MetricsExposition).
 type JobsMetrics interface {
 	// RecordJobClaimLatency records how long a claimed Job waited past its
 	// run_at before this Runner claimed it.

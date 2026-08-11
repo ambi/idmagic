@@ -11,7 +11,7 @@ import (
 )
 
 // NotificationTemplateRepository は通知テンプレートのテナント上書きを PostgreSQL に
-// 保存する (wi-288, ADR-142)。行の有無がそのまま「上書き済み / 組込み既定」を表し、
+// 保存する (wi-288)。行の有無がそのまま「上書き済み / 組込み既定」を表し、
 // 削除が「既定へのリセット」になる。クエリは sqlc 生成。
 type NotificationTemplateRepository struct{ Pool sharedpg.DB }
 

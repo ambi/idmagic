@@ -1,8 +1,8 @@
 // Package domain は IdManagement bounded context の業務型を所有する
-// (wi-178, ADR-089/ADR-093)。
+// (wi-178, )。
 package domain
 
-// AgentStatus は Agent の運用状態 (ADR-048)。Active 通常稼働 / Disabled 可逆な運用停止 /
+// AgentStatus は Agent の運用状態。Active 通常稼働 / Disabled 可逆な運用停止 /
 // Killed 緊急停止 (一方向終端)。Active 以外は新規トークンを発行しない (fail-closed)。
 type AgentStatus string
 
@@ -20,7 +20,7 @@ func (s AgentStatus) Valid() bool {
 	return false
 }
 
-// AgentKind は Agent の自律性区分 (ADR-048)。Autonomous 自律実行 / Supervised 監督下実行。
+// AgentKind は Agent の自律性区分。Autonomous 自律実行 / Supervised 監督下実行。
 type AgentKind string
 
 const (
@@ -33,7 +33,7 @@ func (k AgentKind) Valid() bool {
 }
 
 // ===============================================================
-// ユーザー属性拡張 (wi-19 / ADR-039 / ADR-040)
+// ユーザー属性拡張 (wi-19 / )
 // ===============================================================
 
 // UserStatus は UserLifecycle.status。User の運用状態の **唯一の真実** で、
@@ -84,7 +84,7 @@ func (a RequiredAction) Valid() bool {
 	return false
 }
 
-// AttributeType は属性値の sum type discriminator (ADR-040)。OIDC 標準クレームの
+// AttributeType は属性値の sum type discriminator。OIDC 標準クレームの
 // 組み込み属性と tenant 定義カスタム属性の両方で共通に使う。
 type AttributeType string
 
@@ -105,7 +105,7 @@ func (t AttributeType) Valid() bool {
 	return false
 }
 
-// AttrVisibility は属性の開示範囲 (ADR-040)。claim_exposed のみ UserInfo / ID Token に出せる。
+// AttrVisibility は属性の開示範囲。claim_exposed のみ UserInfo / ID Token に出せる。
 type AttrVisibility string
 
 const (

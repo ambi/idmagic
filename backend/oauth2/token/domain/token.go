@@ -35,9 +35,9 @@ type RefreshTokenRecord struct {
 	Rotated           bool              `json:"rotated"`
 	SenderConstraint  *SenderConstraint `json:"sender_constraint,omitempty"`
 	// Sid は発行元 AuthorizationCodeRecord.sid。Rotate では親の値をそのまま引き継ぐ。
-	// nil は client_credentials 等 browser session を持たない発行 (ADR-127)。
+	// nil は client_credentials 等 browser session を持たない発行。
 	Sid *string `json:"sid,omitempty"`
-	// Resource は発行元の resource indicator (ADR-055)。Rotate では親の値をそのまま
+	// Resource は発行元の resource indicator。Rotate では親の値をそのまま
 	// 引き継ぎ、ローテーション後も同じ McpResourceServer へ audience を厳格限定する
 	// (wi-262)。nil は resource 未指定の発行。
 	Resource *string `json:"resource,omitempty"`
@@ -73,7 +73,7 @@ type IDTokenClaims struct {
 	AuthTime int64  `json:"auth_time"`
 	Nonce    string `json:"nonce,omitempty"`
 	// Sid は browser session に束縛された発行のときだけ含める OIDC session id
-	// (OpenID Connect Front/Back-Channel Logout 1.0, ADR-127)。
+	// (OpenID Connect Front/Back-Channel Logout 1.0)。
 	Sid               string   `json:"sid,omitempty"`
 	ACR               string   `json:"acr,omitempty"`
 	AMR               []string `json:"amr,omitempty"`

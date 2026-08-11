@@ -1,4 +1,4 @@
-// Package wsfederation は WS-Federation bounded context の DI 組立を所有する (ADR-091)。
+// Package wsfederation は WS-Federation bounded context の DI 組立を所有する。
 package wsfederation
 
 import (

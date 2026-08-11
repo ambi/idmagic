@@ -9,8 +9,7 @@ import (
 
 // DataExportTargetKind is the resource type a CSV export targets. Column
 // definitions are closed to a per-kind allowlist so unreviewed attributes never
-// leak (spec/contexts/identity-management.yaml models.DataExportTargetKind,
-// ADR-140).
+// leak (spec/contexts/identity-management.yaml models.DataExportTargetKind).
 type DataExportTargetKind string
 
 const (
@@ -39,7 +38,7 @@ const (
 
 // DataExportColumn is one allowlisted column for an export target. PII marks
 // columns whose values are personal data (email/name), which callers select
-// explicitly and whose request/download are audited (ADR-140). Sensitive values
+// explicitly and whose request/download are audited. Sensitive values
 // (password_hash, secrets, tokens, recovery/MFA secrets) are never present in
 // any allowlist.
 type DataExportColumn struct {
@@ -49,7 +48,7 @@ type DataExportColumn struct {
 }
 
 // exportColumns is the authoritative per-target column allowlist. Adding a new
-// exportable attribute is an explicit edit here, reviewed against ADR-140's
+// exportable attribute is an explicit edit here, reviewed against 's
 // sensitive-value exclusion.
 var exportColumns = map[DataExportTargetKind][]DataExportColumn{
 	ExportTargetUser: {
@@ -103,7 +102,7 @@ var (
 
 // ValidateExportColumns checks that keys is a non-empty, duplicate-free subset of
 // kind's allowlist. This is the fail-closed gate that keeps sensitive/unreviewed
-// attributes out of exports (ADR-140).
+// attributes out of exports.
 func ValidateExportColumns(kind DataExportTargetKind, keys []string) error {
 	allowed, ok := ColumnsForTarget(kind)
 	if !ok {
@@ -152,8 +151,8 @@ func LabelsForColumns(kind DataExportTargetKind, keys []string) []string {
 // EscapeCSVField neutralizes CSV formula injection: spreadsheet software
 // (Excel / Sheets) interprets a cell as a formula when it begins with '=', '+',
 // '-', '@', or a leading TAB / CR / LF. Such values are prefixed with a single
-// quote so they render as text. Safety is prioritized over display fidelity
-// (ADR-140). RFC 4180 quoting itself is applied separately by EncodeCSVRecords.
+// quote so they render as text. Safety is prioritized over display fidelity.
+// RFC 4180 quoting itself is applied separately by EncodeCSVRecords.
 func EscapeCSVField(s string) string {
 	if s == "" {
 		return s

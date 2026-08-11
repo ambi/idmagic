@@ -2,7 +2,7 @@
 // addresses, protecting fetchers that dereference a client-supplied URL
 // (JWKS jwks_uri, Client ID Metadata Documents) from SSRF into internal
 // networks. Extracted from tokens_jose.JWKResolver so both fetchers share
-// one hardened dialer (ADR-155).
+// one hardened dialer.
 package safehttp
 
 import (

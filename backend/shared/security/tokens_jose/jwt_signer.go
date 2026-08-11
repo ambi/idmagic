@@ -85,7 +85,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 	if in.Act != nil {
 		claims["act"] = in.Act
 	}
-	// RFC 9396 — 構造化詳細を claim としてトークンに束縛する (RS の検証点, ADR-050)。
+	// RFC 9396 — 構造化詳細を claim としてトークンに束縛する (RS の検証点)。
 	if len(in.AuthorizationDetails) > 0 {
 		claims["authorization_details"] = in.AuthorizationDetails
 	}
@@ -105,7 +105,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 	if in.ACR != "" {
 		claims["acr"] = in.ACR
 	}
-	// ADR-048: client_credentials トークンが Agent に束縛されているとき、principal を
+	// client_credentials トークンが Agent に束縛されているとき、principal を
 	// 非人間 identity として識別できるよう agent_id / principal_type を付与する。
 	if in.AgentID != "" {
 		claims["agent_id"] = in.AgentID
@@ -195,9 +195,9 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 }
 
 // VerifyIDTokenHint は /end_session の id_token_hint を検証する (OIDC RP-Initiated
-// Logout 1.0, ADR-127)。署名 (登録済み鍵) と iss は fail-closed で検証するが、exp は
+// Logout 1.0)。署名 (登録済み鍵) と iss は fail-closed で検証するが、exp は
 // 検証しない — ログアウト時点で ID Token が期限切れになっているのが通常の RP 実装
-// であるため (ADR-127 決定4)。aud/sub/sid のクライアント一致判定は呼び出し側 (usecase)
+// であるため。aud/sub/sid のクライアント一致判定は呼び出し側 (usecase)
 // の責務とする。
 func (s *JWTSigner) VerifyIDTokenHint(ctx context.Context, token string) (*oauthports.IDTokenHintClaims, error) {
 	keys, err := s.KeyStore.GetAllKeys(ctx)
@@ -331,7 +331,7 @@ func normalizeAudience(v any) []string {
 // SignPS256 signs claims with key using PS256, returning the compact JWT.
 // Exported so other contexts can sign non-OAuth2 JWTs with the same key
 // management (e.g. SharedSignals' Security Event Tokens reuse SigningKeys'
-// rotation/JWKS instead of introducing separate key material, ADR-057
+// rotation/JWKS instead of introducing separate key material,
 // decision 7).
 func SignPS256(key *signingdomain.SigningKey, extraHeader map[string]string, claims map[string]any) (string, error) {
 	// crypto.Signer 経由で署名する。Local / Postgres provider の *rsa.PrivateKey は

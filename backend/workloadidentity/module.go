@@ -1,5 +1,5 @@
 // Package workloadidentity composes the WorkloadIdentity bounded context
-// (ADR-053, [[wi-54-workload-identity-federation-spiffe]]).
+// ([[wi-54-workload-identity-federation-spiffe]]).
 package workloadidentity
 
 import (

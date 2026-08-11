@@ -59,7 +59,7 @@ type ProvisioningDeliveryRepository interface {
 	// ordered by (created_at, id) descending — matching ListByConnection's
 	// pre-existing "most recent first" order, with id as tie-break — status
 	// filters to a single status when non-nil. afterCreatedAt/afterID are the
-	// keyset continuation cursor (wi-159, ADR-158); zero/"" for the first page.
+	// keyset continuation cursor (wi-159); zero/"" for the first page.
 	ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error)
 	ListPageBeforeByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, beforeCreatedAt time.Time, beforeID string, limit int) ([]*domain.ProvisioningDelivery, error)
 	// ListUnenqueued returns pending deliveries with no Jobs.Job associated yet

@@ -58,7 +58,7 @@ func TestValidateResponseChecksSignatureCorrelationAudienceAndClaims(t *testing.
 	}
 }
 
-// RED (interface: TestIdentityProviderConnection, ADR-149 SAML test-connection design):
+// RED (interface: TestIdentityProviderConnection, SAML test-connection design):
 // a currently-valid signing certificate reports no failures.
 func TestValidateSigningCertificatesAcceptsValidCertificate(t *testing.T) {
 	now := time.Now().UTC()

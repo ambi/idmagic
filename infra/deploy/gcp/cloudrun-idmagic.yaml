@@ -38,7 +38,7 @@ spec:
             - name: PERSISTENCE
               value: "postgres"
             - name: KEY_PROVIDER
-              value: "db" # DB-backed 署名鍵(ADR-024)。全レプリカで JWKS 一致
+              value: "db" # DB-backed 署名鍵。全レプリカで JWKS 一致
             - name: OBSERVABILITY
               value: "otel"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT

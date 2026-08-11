@@ -12,7 +12,7 @@ import (
 
 // ErrUserNotFound は自己サービス経路で対象 user が存在しない、または tenant が
 // 不一致な場合。password/totp/webauthn/mfa/session/recovery 各 feature から共有で
-// 参照されるため context ルートに置く (ADR-130 決定 6 と同方針)。
+// 参照されるため context ルートに置く (決定 6 と同方針)。
 var ErrUserNotFound = errors.New("user not found")
 
 // LoadSelfUser は self 経路で対象 user を取得する。tenant 不一致は ErrUserNotFound に潰す。

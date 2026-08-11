@@ -21,7 +21,7 @@ var (
 	ErrPasswordReused          = errors.New("new password matches a recent password")
 )
 
-// ErrUserNotFound は feature 横断で共有する context ルートの error (ADR-130 決定 6)。
+// ErrUserNotFound は feature 横断で共有する context ルートの error。
 var ErrUserNotFound = authusecases.ErrUserNotFound
 
 type ChangePasswordInput struct {

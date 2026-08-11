@@ -72,7 +72,7 @@ func TestExtractSearchAttributes(t *testing.T) {
 }
 
 func TestExtractSearchAttributesFailureOutcome(t *testing.T) {
-	// ADR-104 (ADR-046 の username 条項を撤回): 実アカウントが確定しない可能性のある
+	// 実アカウントが確定しない可能性のある
 	// AuthenticationFailed は平文 username をそのまま検索属性として使う。
 	rec := &ports.AuditEventRecord{
 		Type:    "AuthenticationFailed",

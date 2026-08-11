@@ -11,7 +11,7 @@ WHERE u.tenant_id = $1
 ORDER BY c.user_id, c.client_id;
 
 -- name: ListConsentsByTenantPage :many
--- First page of ListAdminConsents keyset pagination (wi-159, ADR-158): the
+-- First page of ListAdminConsents keyset pagination (wi-159): the
 -- (user_id, client_id) primary key already backs this range scan.
 SELECT c.user_id, c.client_id, c.scopes, c.created_at, c.updated_at, c.granted_at, c.expires_at, c.revoked_at
 FROM consents c

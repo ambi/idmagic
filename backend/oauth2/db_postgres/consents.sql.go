@@ -99,7 +99,7 @@ type ListConsentsByTenantPageParams struct {
 	PageLimit int32
 }
 
-// First page of ListAdminConsents keyset pagination (wi-159, ADR-158): the
+// First page of ListAdminConsents keyset pagination (wi-159): the
 // (user_id, client_id) primary key already backs this range scan.
 func (q *Queries) ListConsentsByTenantPage(ctx context.Context, arg ListConsentsByTenantPageParams) ([]*Consent, error) {
 	rows, err := q.db.Query(ctx, listConsentsByTenantPage, arg.TenantID, arg.PageLimit)

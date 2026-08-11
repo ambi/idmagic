@@ -252,7 +252,7 @@ func patchSettings(t *testing.T, e *echo.Echo, body any) *httptest.ResponseRecor
 	return rec
 }
 
-// テナント既定 locale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。UI が選択肢を
+// テナント既定 locale は通知の locale 解決の第 2 段。UI が選択肢を
 // 組み立てられるよう、同梱翻訳を持つ locale 一覧も同じレスポンスで返す。
 func TestAdminSettingsExposeDefaultLocale(t *testing.T) {
 	e, repo, _ := newSettingsServer(

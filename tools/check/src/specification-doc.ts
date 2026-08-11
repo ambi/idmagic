@@ -208,10 +208,10 @@ export function validateSpecification(source: string): SpecificationValidation {
   if (!seenSections.has('Overview'))
     findings.push({ line: 1, message: 'Overview section is required' })
 
-  for (const match of source.matchAll(/\[[^\]]+\]\([^\n)]*decisions\/ADR-[^\n)]*\)/g)) {
+  for (const match of source.matchAll(/\[[^\]]+\]\([^\n)]*decisions\/[^\n)]*\)/g)) {
     findings.push({
       line: lineAt(source, match.index ?? 0),
-      message: 'current specification must not link to the historical ADR archive',
+      message: 'current specification must be self-contained and must not link to decisions/',
     })
   }
 

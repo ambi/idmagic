@@ -137,7 +137,7 @@ func Register(e *echo.Echo, d Deps) {
 	d.IdManagement = mergeLegacyIdManagementDeps(d.IdManagement, d)
 	d.Notification = mergeLegacyNotificationDeps(d.Notification, d)
 	d.Tenancy = mergeLegacyTenancyDeps(d.Tenancy, d)
-	// テナントの正規ロケーションは 2 形あり、どちらか一方だけが有効になる (ADR-144)。
+	// テナントの正規ロケーションは 2 形あり、どちらか一方だけが有効になる。
 	// subdomain style は origin 直下の bare path、path style は /realms/{realm} 配下。
 	// 到達経路と endpoint_style の一致は resolver 側で確かめる。
 	registerTenantRoutes(e.Group("", d.ResolveHostTenant), d)
@@ -155,7 +155,7 @@ func Register(e *echo.Echo, d Deps) {
 
 	// control-plane (テナント横断操作) は他の全ボンデッドコンテキストと同じ
 	// tenantGroup にそのまま登録する。default テナントへの限定は
-	// requireSystemAdmin (user.TenantID == DefaultTenantID) が担う (ADR-032) —
+	// requireSystemAdmin (user.TenantID == DefaultTenantID) が担う —
 	// ルーティング層で別 prefix に隔離する必要はない。
 	tenancyhttp.RegisterControlPlaneRoutes(tenantGroup, tenancyhttp.Deps{
 		Deps:           d.Deps,
@@ -255,7 +255,7 @@ func mergeLegacyNotificationDeps(module sharednotification.Module, d Deps) share
 	}
 	// 旧来の互換入力 (EmailSender だけを渡すテスト) からも通知テンプレートカタログを
 	// 通した送信になるよう、Notifier を既定構成で組み立てる。テナント上書きは
-	// Tenancy 由来なので、この経路では組込み既定だけを使う (ADR-142)。
+	// Tenancy 由来なので、この経路では組込み既定だけを使う。
 	if module.Notifier == nil && module.EmailSender != nil {
 		module.Notifier = &template.Notifier{Sender: module.EmailSender}
 	}
@@ -285,7 +285,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// revocationReactor fail-closed reacts to already-emitted IdManagement
 	// events (AgentKilled/AgentDisabled/AgentCredentialUnbound/UserDisabled/
 	// UserSoftDeleted/UserDeleted) by advancing SharedSignals' Agent
-	// revocation epoch (ADR-057, wi-58). Composed into idmhttp.Deps.Reactor,
+	// revocation epoch (wi-58). Composed into idmhttp.Deps.Reactor,
 	// which ReactiveEmit calls after every Emit.
 	//
 	// Its own Emit records the derived RevocationEpochAdvanced/
@@ -293,7 +293,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	// to registered SSF Transmit streams (EcosystemPropagation, wi-58 T004).
 	// This projection step is deliberately non-propagating: ecosystem
 	// propagation must never block or delay the local revocation that just
-	// succeeded (ADR-057 decision 6), so a projection failure is logged, not
+	// succeeded (decision 6), so a projection failure is logged, not
 	// returned.
 	projectorDeps := sharedsignalsusecases.ProjectorDeps{
 		StreamRepo: d.SharedSignals.StreamRepo, TransmitterConfigRepo: d.SharedSignals.TransmitterConfigRepo,
@@ -318,8 +318,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	}
 
 	// fetchWorkloadJWKS resolves a WorkloadTrustBundle's signing keys (inline
-	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (ADR-023 基盤の
-	// 再利用、ADR-053). Shared by the admin JWKS-refresh action and
+	// jwks or jwks_uri) via the shared, SSRF-safe JWKResolver (基盤の
+	// 再利用). Shared by the admin JWKS-refresh action and
 	// VerifyWorkloadAttestation's verification path.
 	fetchWorkloadJWKS := func(ctx context.Context, bundle *workloadidentitydomain.WorkloadTrustBundle) ([]map[string]any, error) {
 		return d.JWKResolver.ResolveJWKSSource(ctx, bundle.JWKSURI, bundle.JWKS)

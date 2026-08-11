@@ -79,7 +79,7 @@ func TestFieldCipherEncryptBootstrapsFirstDataKey(t *testing.T) {
 }
 
 // TestFieldCipherDecryptFailsClosedAcrossRecords ensures ciphertext cannot be
-// decrypted under a different record id (AAD binding, ADR-148) — e.g. one
+// decrypted under a different record id (AAD binding) — e.g. one
 // user's encrypted secret cannot be replayed onto another user's row.
 func TestFieldCipherDecryptFailsClosedAcrossRecords(t *testing.T) {
 	fc, deps := newTestFieldCipher(t)

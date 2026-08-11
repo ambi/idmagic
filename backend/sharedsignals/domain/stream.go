@@ -10,7 +10,7 @@ import (
 )
 
 // SsfStream は tenant が登録する SSF stream の共通メタデータ。direction ごとに
-// SsfTransmitterConfig または SsfReceiverConfig が 1 対 1 で付随する (ADR-057)。
+// SsfTransmitterConfig または SsfReceiverConfig が 1 対 1 で付随する。
 type SsfStream struct {
 	ID         string
 	TenantID   string

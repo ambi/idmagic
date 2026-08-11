@@ -50,7 +50,7 @@ type ReserveOauth2ReplayJTIParams struct {
 	Now          time.Time
 }
 
-// SETNX + TTL の写像 (ADR-139 §3)。live な予約は ON CONFLICT の DO UPDATE ... WHERE が
+// SETNX + TTL の写像。live な予約は ON CONFLICT の DO UPDATE ... WHERE が
 // false で 0 行 (ErrNoRows)、期限切れの残骸は上書きして 1 行、未存在は INSERT で 1 行。
 // 行が返れば新規予約成功。kind で dpop / client_assertion を名前空間分けする。
 func (q *Queries) ReserveOauth2ReplayJTI(ctx context.Context, arg ReserveOauth2ReplayJTIParams) (string, error) {

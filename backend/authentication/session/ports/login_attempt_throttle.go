@@ -26,7 +26,7 @@ type LoginThrottleConfig struct {
 }
 
 // LoginThrottleConfigs は per-account / per-IP の両軸のしきい値を束ねる。
-// memory / postgres いずれの adapter も同一の port 型を消費する (ADR-077)。
+// memory / postgres いずれの adapter も同一の port 型を消費する。
 type LoginThrottleConfigs struct {
 	Account LoginThrottleConfig
 	IP      LoginThrottleConfig

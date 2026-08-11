@@ -25,7 +25,7 @@ type UserInfoInput struct {
 	// ユーザを読み込んだ後に確定するため、関数として遅延解決する。
 	ResolveAttributeDefs func(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error)
 	// ClaimPolicy is the requesting OAuth2Client's per-application claim release
-	// override (wi-73 / ADR-151). nil means no override: only scope-gated standard
+	// override (wi-73). nil means no override: only scope-gated standard
 	// claims and ClaimsForScopes are issued.
 	ClaimPolicy *claimdomain.ClaimMappingPolicy
 }

@@ -1,6 +1,6 @@
 // /api/account/v1/security — エンドユーザー自身のセキュリティ概要 (password/totp/webauthn/
-// recovery を横断した集計、wi-21 / ADR-042)。TOTP self-service 登録・解除は mfa feature の
-// handlers_http (ADR-130 Phase 2) へ分割されている。
+// recovery を横断した集計、wi-21)。TOTP self-service 登録・解除は mfa feature の
+// handlers_http へ分割されている。
 package handlers_http
 
 import (

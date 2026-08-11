@@ -1,5 +1,5 @@
 // Package verification_jose is the adapters-layer implementation of
-// ports.WorkloadSVIDVerifier (ADR-053). It is the only place in
+// ports.WorkloadSVIDVerifier. It is the only place in
 // WorkloadIdentity that imports backend/shared/security/tokens_jose,
 // keeping the usecases layer free of adapter dependencies.
 package verification_jose

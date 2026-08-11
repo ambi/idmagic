@@ -31,7 +31,7 @@ const (
 // (spec/scl.yaml objectives.PasswordPolicy.value.breached_password_check_enabled の双子)。
 // 既定は false で NoopBreachedPasswordChecker を使う。実運用では
 // BREACHED_PASSWORD_CHECKER=hibp で adapter を差し替えて有効化する。テナント別の
-// opt-out は Phase 4 (ADR-028 §6)。
+// opt-out は Phase 4。
 const PasswordPolicyBreachedCheckEnabled = false
 
 type PasswordPolicyResult struct {

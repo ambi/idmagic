@@ -56,7 +56,7 @@ func TestTenantValidateHappyAndFailure(t *testing.T) {
 }
 
 // wi-285: endpoint_style が Subdomain のとき realm はホスト名の最左ラベルになるため、
-// 新規作成時の realm は単一 DNS ラベルとして妥当でなければならない (ADR-144)。
+// 新規作成時の realm は単一 DNS ラベルとして妥当でなければならない。
 // 制約の強化は新規作成にのみ適用し、既存 realm は Tenant.Validate で再検証しない。
 func TestValidateNewRealm(t *testing.T) {
 	cases := []struct {
@@ -109,7 +109,7 @@ func TestTenantEndpointStyleValid(t *testing.T) {
 	}
 }
 
-// Subdomain は tenant base domain が設定された配備でのみ選択できる (ADR-144)。
+// Subdomain は tenant base domain が設定された配備でのみ選択できる。
 // 未設定の配備で選ばせると、到達不能な正規ロケーションを持つテナントが生まれる。
 func TestValidateEndpointStyleSelectable(t *testing.T) {
 	cases := []struct {
@@ -136,7 +136,7 @@ func TestValidateEndpointStyleSelectable(t *testing.T) {
 }
 
 // 既存 realm は再検証しない。厳格化前に作られた realm を持つ Tenant が
-// Validate で落ちると、起動や読み出しが壊れる (ADR-144 影響)。
+// Validate で落ちると、起動や読み出しが壊れる (影響)。
 func TestTenantValidateDoesNotReapplyNewRealmRules(t *testing.T) {
 	now := time.Now().UTC()
 	legacy := Tenant{

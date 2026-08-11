@@ -12,7 +12,7 @@ import (
 // fragment, non-empty host (mirrors backend/shared/security/tokens_jose.ValidateJWKSURI,
 // the equivalent guard for jwks_uri). It is a pure syntax check with no network
 // I/O; the SSRF-relevant DNS/connect-time guard lives in the scim protocol
-// package's newSafeHTTPClient (ADR-128 decision 2: usecases must not depend on
+// package's newSafeHTTPClient (decision 2: usecases must not depend on
 // a protocol adapter package, so this pure rule lives in domain instead).
 func ValidateOutboundBaseURL(raw string) error {
 	parsed, err := url.Parse(raw)

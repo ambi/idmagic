@@ -1,6 +1,6 @@
 # Discovers every container via the Docker Engine API (docker_sd_configs) and
 # tails its logs through that same API, so no host log directory needs to be
-# bind-mounted. idp/worker emit ADR-018 JSON Lines; their `service`/`level`
+# bind-mounted. idp/worker emit JSON Lines; their `service`/`level`
 # fields become Loki labels (bounded sets), while `trace_id`/`span_id`/
 # `request_id` are attached as structured metadata rather than labels, because
 # they are unbounded and would blow up the index (same rationale as

@@ -74,7 +74,7 @@ func AdminEmit(sink func(spec.DomainEvent) error, event spec.DomainEvent) error 
 	return sink(event)
 }
 
-// CheckQuotaAndAudit enforces resource's tenant Hard Quota (ADR-134, wi-160)
+// CheckQuotaAndAudit enforces resource's tenant Hard Quota (wi-160)
 // via quotaRepo.CheckAndIncrement, shared by the user/group/agent usecase
 // packages that all emit through the same error-returning sink signature. A
 // rejection also emits QuotaExceeded through sink (SCL objective QuotaAudit);

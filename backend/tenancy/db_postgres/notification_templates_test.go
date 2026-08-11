@@ -112,7 +112,7 @@ func TestNotificationTemplateRepositoryIsolatesTenants(t *testing.T) {
 }
 
 // tenants.default_locale は通知の locale 解決の第 2 段。永続化されないと解決順序が
-// 実質 2 段になるため、往復を固定する (ADR-142 決定 7)。
+// 実質 2 段になるため、往復を固定する。
 func TestTenantRepositoryPersistsDefaultLocale(t *testing.T) {
 	db := pgtest.Require(t)
 	repo := &TenantRepository{Pool: db}

@@ -10,9 +10,9 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// McpResourceServerRepository は MCP resource server 登録 (ADR-055) を PostgreSQL に
+// McpResourceServerRepository は MCP resource server 登録 を PostgreSQL に
 // 永続化する。scopes は JSONB として保持する。すべての参照はテナント境界に閉じる。
-// クエリは sqlc 生成 (wi-173, ADR-090)。
+// クエリは sqlc 生成 (wi-173)。
 type McpResourceServerRepository struct{ Pool sharedpg.DB }
 
 func mcpResourceServerFromRow(row *McpResourceServer) (*domain.McpResourceServer, error) {

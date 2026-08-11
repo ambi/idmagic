@@ -197,7 +197,7 @@ func TestListByTenantReturnsNewestFirst(t *testing.T) {
 }
 
 // TestTenantsAreIsolated ensures one tenant's DEK operations never affect
-// another tenant's lifecycle state (tenant boundary, ADR-148).
+// another tenant's lifecycle state (tenant boundary).
 func TestTenantsAreIsolated(t *testing.T) {
 	repo := NewDataKeyRepository()
 	ctx := context.Background()

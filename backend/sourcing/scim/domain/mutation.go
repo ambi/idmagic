@@ -30,7 +30,7 @@ func newMutationError(scimType, format string, args ...any) *MutationError {
 
 // UserWrite is a fully-resolved User attribute set (RFC7643-CORE-RESOURCES
 // adoption:partial subset) after applying POST/PUT full-specification
-// semantics: attributes omitted from the request body default (ADR-122
+// semantics: attributes omitted from the request body default (
 // chooses the "reset to default" interpretation RFC 7644 §3.5.1 allows).
 type UserWrite struct {
 	UserName   string
@@ -232,7 +232,7 @@ func ParseUserPatchOps(body map[string]any) ([]UserPatchOp, error) {
 }
 
 // GroupWrite is a fully-resolved Group attribute set after applying
-// POST/PUT full-specification semantics (ADR-122).
+// POST/PUT full-specification semantics.
 type GroupWrite struct {
 	DisplayName   string
 	MemberScimIDs []string

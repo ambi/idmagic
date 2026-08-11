@@ -13,7 +13,7 @@ import (
 	gowebauthn "github.com/go-webauthn/webauthn/webauthn"
 )
 
-// TestWebAuthnSessionStore は WebAuthn challenge の短命保持 (ADR-087 / ADR-139) を検証する。
+// TestWebAuthnSessionStore は WebAuthn challenge の短命保持 を検証する。
 // memory adapter とのパリティ: round-trip、一度きり消費、期限切れは nil、tenant 分離、GC。
 func TestWebAuthnSessionStore(t *testing.T) {
 	db := pgtest.Require(t)

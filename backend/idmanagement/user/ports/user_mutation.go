@@ -9,7 +9,7 @@ import (
 
 // UserMutation は User 集約の 1 回の変更を、governance 側の観測に必要な最小情報で
 // 表す。Before は作成時 nil、Changed は属性変更で実際に変わった field 名。IdManagement は
-// LifecycleWorkflow の型を知らずにこの値だけを渡す (wi-237, ADR-117)。
+// LifecycleWorkflow の型を知らずにこの値だけを渡す (wi-237)。
 type UserMutation struct {
 	Before  *userdomain.User
 	After   *userdomain.User

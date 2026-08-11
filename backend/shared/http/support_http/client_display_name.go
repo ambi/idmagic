@@ -1,7 +1,7 @@
 package support_http
 
 // ClientDisplayNameResolver は client_id を人間可読な表示名へ解決する共通ロジック
-// (wi-141)。ADR-084 で client_id を UUID 化した結果、同意 / 接続済みアプリ画面が UUID を
+// (wi-141)。client_id を UUID 化した結果、同意 / 接続済みアプリ画面が UUID を
 // 生表示していた。表示名の解決順を 1 箇所に集約し、OAuth2 admin consents と Authentication
 // account consents の両ハンドラで一貫させる。
 

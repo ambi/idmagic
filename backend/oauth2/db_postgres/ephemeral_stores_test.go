@@ -10,7 +10,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
-// TestReplayStore は DPoP / client-assertion jti リプレイ予約 (ADR-139) を検証する。
+// TestReplayStore は DPoP / client-assertion jti リプレイ予約 を検証する。
 // once-only、tenant / kind 名前空間分離、期限切れ後の再予約を memory adapter とのパリティで確認する。
 func TestReplayStore(t *testing.T) {
 	db := pgtest.Require(t)
@@ -42,7 +42,7 @@ func TestReplayStore(t *testing.T) {
 	}
 }
 
-// TestAccessTokenDenylist は access token 失効リスト (ADR-139) を検証する。
+// TestAccessTokenDenylist は access token 失効リスト を検証する。
 // Add → IsRevoked=true、tenant 分離、期限切れエントリは revoked ではない、GC。
 func TestAccessTokenDenylist(t *testing.T) {
 	db := pgtest.Require(t)

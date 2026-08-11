@@ -148,7 +148,7 @@ func newTestNotifier(sender *email_memory.NoopEmailSender) *template.Notifier {
 }
 
 // scenario `Tenancy: 日本語ロケールのユーザーには日本語のパスワードリセットメールが届く`
-// と同じ locale 解決を、メールアドレス変更の確認メールでも通す (ADR-142)。確認先の
+// と同じ locale 解決を、メールアドレス変更の確認メールでも通す。確認先の
 // 新アドレスは本文に出す必要があるため、new_email が差し込まれることも固定する。
 func TestRequestEmailChangeLocalizesToTheRecipientLocale(t *testing.T) {
 	ctx := context.Background()

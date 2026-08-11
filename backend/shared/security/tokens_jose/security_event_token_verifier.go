@@ -1,5 +1,5 @@
 // Package tokens_jose: 外部 SSF transmitter からの Security Event Token (SET,
-// RFC 8417) の検証 (ADR-057 §ReceiveSecurityEvent, [[wi-58-continuous-access-evaluation-agent-revocation]])。
+// RFC 8417) の検証 (§ReceiveSecurityEvent, [[wi-58-continuous-access-evaluation-agent-revocation]])。
 package tokens_jose
 
 import (
@@ -30,7 +30,7 @@ type SecurityEventTokenClaims struct {
 	Payload  map[string]any
 }
 
-// VerifySecurityEventToken verifies an inbound Security Event Token (ADR-057
+// VerifySecurityEventToken verifies an inbound Security Event Token (
 // fail-closed): alg must be PS256/ES256/RS256 (external transmitters have a
 // wider algorithm choice than this app's own self-issued JWTs, same
 // allowance as VerifyWorkloadSVID), iss must equal expectedIssuer exactly,

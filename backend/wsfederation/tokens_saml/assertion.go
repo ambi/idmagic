@@ -1,8 +1,8 @@
-// Package samltoken は WsFederation bounded context の SAML token アダプタ (ADR-047)。
+// Package samltoken は WsFederation bounded context の SAML token アダプタ。
 //
-// claim 発行エンジン (ADR-059) の出力を、署名済み SAML assertion という XML ワイヤ形式に
+// claim 発行エンジン の出力を、署名済み SAML assertion という XML ワイヤ形式に
 // 変換する。Entra / AD FS の WS-Federation 既定である SAML 1.1 と、SAML 2.0 の双方を組み立てる
-// (ADR-060, wi-61)。XML 署名は goxmldsig に委ね、自前実装しない (ADR-060)。enveloped signature・
+// (wi-61)。XML 署名は goxmldsig に委ね、自前実装しない。enveloped signature・
 // exclusive C14N・RSA-SHA256 を用いる。SAML 1.1 と 2.0 で ID 参照属性が異なる (AssertionID / ID)。
 package tokens_saml
 
@@ -221,7 +221,7 @@ func splitClaimType(claimType string) (namespace, name string) {
 	return "", claimType
 }
 
-// Signer は SAML assertion を enveloped 署名する (ADR-060)。SAML 1.1/2.0 で ID 参照属性が
+// Signer は SAML assertion を enveloped 署名する。SAML 1.1/2.0 で ID 参照属性が
 // 異なるため、署名時に対象属性名を受け取り、署名コンテキストを都度構築する。
 type Signer struct {
 	cert *x509.Certificate

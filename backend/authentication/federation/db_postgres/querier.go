@@ -30,12 +30,12 @@ type Querier interface {
 	ReserveReplay(ctx context.Context, arg ReserveReplayParams) (string, error)
 	SaveFederatedLoginAttempt(ctx context.Context, arg SaveFederatedLoginAttemptParams) error
 	// secret_reference/secret_key_version/secret_ciphertext are always written as an
-	// authoritative trio computed by the Go layer (ADR-150): the caller already resolved
+	// authoritative trio computed by the Go layer: the caller already resolved
 	// "keep the existing secret unchanged" by copying the previous value forward, so this
 	// query never needs to fall back to the stored row for those three columns.
 	SaveIdentityProviderConnection(ctx context.Context, arg SaveIdentityProviderConnectionParams) error
 	// Writes back a (re-)encrypted secret and always clears the legacy plaintext
-	// secret_reference column, mirroring UpdateMfaFactorCiphertext (ADR-148).
+	// secret_reference column, mirroring UpdateMfaFactorCiphertext.
 	UpdateIdentityProviderConnectionSecretCiphertext(ctx context.Context, arg UpdateIdentityProviderConnectionSecretCiphertextParams) error
 }
 

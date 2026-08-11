@@ -58,7 +58,7 @@ spec:
           expr: idmagic:jobs_claim_latency_seconds:p99_5m{lane="latency_sensitive"} > 5
           for: 5m
           labels: { severity: page }
-          annotations: { summary: "latency_sensitive lane p99 claim latency exceeds 5s despite ADR-129 lane isolation" }
+          annotations: { summary: "latency_sensitive lane p99 claim latency exceeds 5s despite lane isolation" }
         - alert: JobsFailureRatioBudgetBurn
           expr: idmagic:jobs_failure_ratio:ratio_rate5m > 0.05
           for: 10m

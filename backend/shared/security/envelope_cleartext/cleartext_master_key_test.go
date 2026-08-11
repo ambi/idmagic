@@ -38,7 +38,7 @@ func TestWrapUnwrapRoundTrip(t *testing.T) {
 }
 
 // TestUnwrapRejectsWrongTenant ensures a wrapped DEK cannot be unwrapped
-// under a different tenant's AAD binding (ADR-148 fail-closed).
+// under a different tenant's AAD binding (fail-closed).
 func TestUnwrapRejectsWrongTenant(t *testing.T) {
 	ctx := context.Background()
 	provider, err := NewCleartextMasterKeyProvider()

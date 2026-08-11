@@ -13,7 +13,7 @@ import (
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
 
-// MaxTenantBrandingAssetBytes は branding ロゴ / favicon の最大サイズ (ADR-096、ADR-073
+// MaxTenantBrandingAssetBytes は branding ロゴ / favicon の最大サイズ (
 // の Application icon と同じ上限)。
 const MaxTenantBrandingAssetBytes = 256 * 1024
 
@@ -52,7 +52,7 @@ func GetBranding(ctx context.Context, repo tenantports.TenantBrandingRepository,
 }
 
 // UpdateBranding は branding のテキスト / 色 / リンクを部分更新する。色は hex 形式と
-// コントラスト比、リンクは https scheme のみを検証し、満たさない値は拒否する (ADR-096)。
+// コントラスト比、リンクは https scheme のみを検証し、満たさない値は拒否する。
 func UpdateBranding(
 	ctx context.Context, repo tenantports.TenantBrandingRepository,
 	tenantID string, input BrandingUpdateInput, now time.Time,
@@ -104,7 +104,7 @@ func normalizeFooterLink(link domain.TenantFooterLink) domain.TenantFooterLink {
 }
 
 // DetectBrandingAssetContentType は backend/shared/mediavalidation の magic byte 判定に
-// 委譲し、branding asset 固有のエラー値にマップする (ADR-096: Application icon と検証
+// 委譲し、branding asset 固有のエラー値にマップする (Application icon と検証
 // ロジックを共有する)。
 func DetectBrandingAssetContentType(data []byte) (string, error) {
 	contentType, err := mediavalidation.DetectImageContentType(data, MaxTenantBrandingAssetBytes)
@@ -131,7 +131,7 @@ type UploadBrandingAssetInput struct {
 }
 
 // UploadBrandingAsset は branding ロゴ / favicon を検証・保存し、TenantBranding の
-// 参照 (object_key / url) を更新する (ADR-096、ADR-073 と同型)。
+// 参照 (object_key / url) を更新する (と同型)。
 func UploadBrandingAsset(
 	ctx context.Context, brandingRepo tenantports.TenantBrandingRepository, assetStore tenantports.TenantBrandingAssetStore,
 	tenantID string, in UploadBrandingAssetInput,
@@ -192,7 +192,7 @@ func UploadBrandingAsset(
 }
 
 // DeleteBrandingAsset は branding の保存済みロゴまたは favicon を削除し、TenantBranding
-// の参照を空に戻す。branding が未設定のテナントに対しては no-op (ADR-073 の
+// の参照を空に戻す。branding が未設定のテナントに対しては no-op (
 // DeleteApplicationIcon と同じく冪等)。
 func DeleteBrandingAsset(
 	ctx context.Context, brandingRepo tenantports.TenantBrandingRepository, assetStore tenantports.TenantBrandingAssetStore,

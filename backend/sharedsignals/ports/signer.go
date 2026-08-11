@@ -8,7 +8,7 @@ import "context"
 // on the adapters-layer JWT signing package directly (Clean Architecture
 // layering, enforced by `just check-architecture`); the composition root
 // injects an implementation that wraps SigningKeys' KeyStore + the shared
-// PS256 signer (ADR-057 decisions 3/7: reuse existing key management).
+// PS256 signer (decisions 3/7: reuse existing key management).
 type SecurityEventTokenSigner interface {
 	Sign(ctx context.Context, tenantID string, claims map[string]any) (compact string, err error)
 }

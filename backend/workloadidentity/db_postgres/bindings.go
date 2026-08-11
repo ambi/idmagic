@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AgentWorkloadBindingRepository は AgentWorkloadBinding (ADR-053) を PostgreSQL に
-// 永続化する。クエリは sqlc 生成 (ADR-090)。
+// AgentWorkloadBindingRepository は AgentWorkloadBinding を PostgreSQL に
+// 永続化する。クエリは sqlc 生成。
 type AgentWorkloadBindingRepository struct{ Pool sharedpg.DB }
 
 func bindingFromRow(row *AgentWorkloadBinding) (*workloaddomain.AgentWorkloadBinding, error) {

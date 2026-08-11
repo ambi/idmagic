@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "認証済みユーザーは自身のプロフィールを読み・編集できる" を
-// /api/account/v1/profile 経由で検証する (ADR-040 / wi-19)。
+// /api/account/v1/profile 経由で検証する (wi-19)。
 
 import (
 	"bytes"

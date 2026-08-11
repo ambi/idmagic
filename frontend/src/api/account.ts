@@ -134,7 +134,7 @@ export async function revokeOtherAccountSessions(csrfToken: string): Promise<voi
   throw await responseAPIError(response)
 }
 
-// step-up 再認証 (ADR-043 / wi-43)。高 sensitivity 操作が 403 step_up_required を返したら、
+// step-up 再認証 (wi-43)。高 sensitivity 操作が 403 step_up_required を返したら、
 // start で利用可能な factor を取得し、complete で password / TOTP を提示して再認証する。
 export type StepUpMethod = 'password' | 'totp' | 'webauthn' | 'recovery_code'
 
@@ -235,7 +235,7 @@ export async function removeTotpFactor(csrfToken: string, code: string): Promise
 }
 
 // registerPasskey は登録 challenge を取得し、navigator.credentials.create で作成した
-// パスキーを attestation としてサーバーに登録する (wi-26 / ADR-087)。
+// パスキーを attestation としてサーバーに登録する (wi-26)。
 export async function registerPasskey(csrfToken: string, label?: string): Promise<void> {
   const startResponse = await fetch(tenantURL('/api/account/v1/mfa/webauthn/register/start'), {
     method: 'POST',

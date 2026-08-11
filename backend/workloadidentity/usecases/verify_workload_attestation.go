@@ -1,5 +1,5 @@
 // Package usecases は WorkloadIdentity bounded context のアプリケーションロジックを
-// 所有する (ADR-053)。VerifyWorkloadAttestation は OAuth2 の token-exchange grant
+// 所有する。VerifyWorkloadAttestation は OAuth2 の token-exchange grant
 // (subject_token_type=JwtSvid) から呼ばれ、外部 attestation token を登録済み
 // WorkloadTrustBundle で検証し、AgentWorkloadBinding で Agent principal に写す。
 package usecases
@@ -22,7 +22,7 @@ import (
 // needs. FetchJWKS performs the live JWKS lookup for a bundle (network I/O is
 // injected so the usecase itself stays free of transport concerns); SVIDVerifier
 // is the adapters-layer port that checks signature/claims and applies the
-// ADR-053 last-known-good JWKS fallback.
+// last-known-good JWKS fallback.
 type VerifyWorkloadAttestationDeps struct {
 	TrustBundleRepo ports.WorkloadTrustBundleRepository
 	BindingRepo     ports.AgentWorkloadBindingRepository
@@ -38,7 +38,7 @@ type VerifyWorkloadAttestationInput struct {
 }
 
 // VerifyWorkloadAttestation は fail-closed で外部 attestation を検証し、一意に決定した
-// Agent principal を返す (ADR-053)。失敗経路は必ず WorkloadAttestationRejected を emit
+// Agent principal を返す。失敗経路は必ず WorkloadAttestationRejected を emit
 // してから reason 付きのエラーを返す。
 func VerifyWorkloadAttestation(
 	ctx context.Context,

@@ -1,4 +1,4 @@
-// Package audit は audit bounded context の DI 組立を持つ (ADR-091)。
+// Package audit は audit bounded context の DI 組立を持つ。
 // authentication / identity-management / oauth2 / tenancy / signing-keys /
 // application / saml / wsfederation を横断する監査イベント read model の
 // repository と検索用 salt store を Module へ集約する。

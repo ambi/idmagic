@@ -27,7 +27,7 @@ const group: AdminGroup = {
 describe('AdminGroupDetailPage', () => {
   afterEach(() => restoreGlobals())
 
-  it('is fully read-only: no member add/remove controls (ADR-086 policy, wi-314 T011)', async () => {
+  it('is fully read-only: no member add/remove controls (policy, wi-314 T011)', async () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {

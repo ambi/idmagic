@@ -10,7 +10,7 @@ import (
 // registers at bootstrap (mirrors backend/jobs/usecases.HandlerRegistry).
 // RotateTenantDataKey enqueues a data_key_reencryption job per registered
 // name, and DestroyTenantDataKey's gate checks every registered migrator's
-// PendingCount before erasing a wrapped_dek (ADR-148, wi-97 T006).
+// PendingCount before erasing a wrapped_dek (wi-97 T006).
 type MigratorRegistry struct {
 	mu        sync.RWMutex
 	migrators map[string]ports.FieldMigrator

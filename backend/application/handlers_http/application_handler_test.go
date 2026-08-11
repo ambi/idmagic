@@ -209,7 +209,7 @@ func TestApplicationAdminCRUDAndAccountVisibility(t *testing.T) {
 
 // テナント既定サインインポリシーを設定すると、アプリ個別ポリシーが未設定でも
 // 上書きモデル: 個別ポリシー未設定なら effective はデフォルト、設定するとデフォルトを上書きし
-// デフォルトより弱ければ weaker_than_default が立つ (wi-115, ADR-081)。
+// デフォルトより弱ければ weaker_than_default が立つ (wi-115)。
 func TestTenantDefaultSignInPolicyOverrideAndWeakerFlag(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -460,7 +460,7 @@ func TestApplicationCreateRejectsNonAdmin(t *testing.T) {
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
-// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// bare path はどのテナントの正規ロケーションでもなくなったため、
 // テストのリクエスト先も /realms/default 配下でなければ 404 になる。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {

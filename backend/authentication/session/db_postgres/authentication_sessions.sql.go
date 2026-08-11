@@ -21,7 +21,7 @@ type DeleteAllAuthenticationSessionsForUserParams struct {
 	UserID   string
 }
 
-// ADR-036 の anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
+// anonymize cascade から呼ばれる物理削除 (tombstone ではなく erasure)。
 func (q *Queries) DeleteAllAuthenticationSessionsForUser(ctx context.Context, arg DeleteAllAuthenticationSessionsForUserParams) error {
 	_, err := q.db.Exec(ctx, deleteAllAuthenticationSessionsForUser, arg.TenantID, arg.UserID)
 	return err
@@ -81,7 +81,7 @@ type FindActiveAuthenticationSessionRow struct {
 }
 
 // 認証解決用の fail-closed lookup。tenant_id / revoked_at / expires_at を DB 層で検証し、
-// 別 tenant または失効・期限切れの行を返さない (ADR-126)。
+// 別 tenant または失効・期限切れの行を返さない。
 func (q *Queries) FindActiveAuthenticationSession(ctx context.Context, arg FindActiveAuthenticationSessionParams) (*FindActiveAuthenticationSessionRow, error) {
 	row := q.db.QueryRow(ctx, findActiveAuthenticationSession, arg.ID, arg.TenantID, arg.ExpiresAt)
 	var i FindActiveAuthenticationSessionRow

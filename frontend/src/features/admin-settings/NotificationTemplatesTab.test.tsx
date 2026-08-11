@@ -83,7 +83,7 @@ describe('NotificationTemplatesTab', () => {
     for (const placeholder of detailBody.placeholders) {
       expect(screen.getByText(`{{${placeholder}}}`)).toBeInTheDocument()
     }
-    // 宛先固定は仕様なので UI にも明記する (ADR-142 決定 8)。
+    // 宛先固定は仕様なので UI にも明記する。
     expect(screen.getByText(t.sendTestHelp)).toBeInTheDocument()
   })
 

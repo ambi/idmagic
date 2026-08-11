@@ -28,8 +28,7 @@ type (
 	LifecycleWorkflowDispatcherDeps struct {
 		RunRepo igports.LifecycleWorkflowRunRepository
 		JobRepo jobsports.JobRepository
-		// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
-		// ADR-134). nil skips enforcement.
+		// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160). nil skips enforcement.
 		QuotaRepo tenantports.QuotaRepository
 	}
 	lifecycleWorkflowJobParams struct {
@@ -38,8 +37,7 @@ type (
 )
 
 // LifecycleWorkflowRunJobKind is owned and registered by IdGovernance rather
-// than Jobs. Jobs remains a generic durable queue (ADR-117). Lane is default
-// (ADR-129).
+// than Jobs. Jobs remains a generic durable queue. Lane is default.
 const LifecycleWorkflowRunJobKind jobsdomain.JobKind = "lifecycle_workflow_run"
 
 func init() { jobsdomain.RegisterKind(LifecycleWorkflowRunJobKind, jobsdomain.LaneDefault) }
@@ -51,8 +49,7 @@ type LifecycleWorkflowExecutorDeps struct {
 	ApplicationRepo appports.ApplicationRepository
 	AssignmentRepo  appports.AssignmentRepository
 	// Notifier resolves the LifecycleWorkflowNotification catalog template. The
-	// action's TemplateKey is a label rendered into the body, not the body itself
-	// (ADR-142).
+	// action's TemplateKey is a label rendered into the body, not the body itself.
 	Notifier sharednotification.Notifier
 	Emit     func(spec.DomainEvent) error
 }
@@ -83,7 +80,7 @@ func DispatchQueuedLifecycleWorkflowRuns(ctx context.Context, deps LifecycleWork
 }
 
 // LifecycleWorkflowRunHandler executes a WorkflowRun's pending/failed steps and
-// checkpoints each outcome (WI-218). It emits the audit events ADR-113 assigns
+// checkpoints each outcome (WI-218). It emits the audit events assigns
 // to the run/step lifecycle: RunStarted on the queued->running transition,
 // StepFailed per action that fails this attempt, and exactly one of
 // RunSucceeded/RunPartiallyFailed/RunFailed when the run terminates.

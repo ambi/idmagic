@@ -1,6 +1,6 @@
 package usecases
 
-// WebAuthn / Passkey ceremony (wi-26 / ADR-087)。core ceremony は go-webauthn に委ね、
+// WebAuthn / Passkey ceremony (wi-26)。core ceremony は go-webauthn に委ね、
 // この層は spec 型 <-> go-webauthn 型の変換と challenge の永続化のみを担う。credential は
 // MfaFactor と別集合 (identity=credential_id) で、1 ユーザーが複数持てる。
 

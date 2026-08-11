@@ -11,7 +11,7 @@ import "slices"
 // filter parse の時点で拒否され、SQL 生成には到達しない。
 
 // AuditSearchTransform は検索属性を sidecar に保存 / 検索する前に平文値へ適用する変換。
-// ADR-104 (ADR-046 の username/IP 条項を撤回) により、現状は TransformNone のみ存在する。
+// (username/IP 条項を撤回) により、現状は TransformNone のみ存在する。
 type AuditSearchTransform int
 
 const (
@@ -89,7 +89,7 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 	},
 	"actor.username": {
 		Field: "actor.username",
-		// ADR-104 (ADR-046 の username 条項を撤回): 平文のまま保存・検索する。
+		// 平文のまま保存・検索する。
 		// 実アカウントが確定しないイベント (AuthenticationFailed) 専用の検索軸。
 		RawStorable:      true,
 		Transform:        TransformNone,
@@ -111,7 +111,7 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 		UIVisible:        true,
 	},
 	"client.ip": {
-		// ADR-104 (ADR-046 の IP 条項を撤回): 平文のまま保存・検索する (truncate/hash しない)。
+		// 平文のまま保存・検索する (truncate/hash しない)。
 		Field:            "client.ip",
 		RawStorable:      true,
 		Transform:        TransformNone,

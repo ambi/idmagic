@@ -16,7 +16,7 @@ type PARInput struct {
 	ClientID   string
 	Parameters map[string]string
 	// Resource は RFC 8707 resource indicator。form の resource は複数指定され得るため
-	// Parameters (単一値に平坦化済み) とは別に slice で受ける (ADR-055)。
+	// Parameters (単一値に平坦化済み) とは別に slice で受ける。
 	Resource []string
 }
 
@@ -45,7 +45,7 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 	if client == nil {
 		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
-	// RFC 9396 — authorization_details があれば push 時点で fail-closed 検証する (ADR-050)。
+	// RFC 9396 — authorization_details があれば push 時点で fail-closed 検証する。
 	if raw := in.Parameters["authorization_details"]; raw != "" {
 		details, err := ParseAuthorizationDetails(raw)
 		if err != nil {
@@ -55,7 +55,7 @@ func PushAuthorizationRequest(ctx context.Context, deps PARDeps, in PARInput, no
 			return nil, err
 		}
 	}
-	// RFC 8707 resource indicator — push 時点で早期に fail-closed 検証する (ADR-055)。
+	// RFC 8707 resource indicator — push 時点で早期に fail-closed 検証する。
 	// 確定検証は /authorize 消費時・/token 発行時にも再度行う (registry 状態変化への防御)。
 	if _, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, strings.Fields(in.Parameters["scope"])); err != nil {
 		emit(deps.Emit, &domain.ResourceAudienceRejected{At: now, TenantID: tenantID, ClientID: in.ClientID, Reason: errorCode(err)})

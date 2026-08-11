@@ -211,7 +211,7 @@ const (
 // provisioningDeliveriesQueryHash fingerprints every filter/sort query param
 // (everything except cursor/limit, which are pagination controls, not filter
 // identity) so a cursor issued for one filter combination (e.g. status) is
-// rejected if the caller changes it before following it (wi-159, ADR-158).
+// rejected if the caller changes it before following it (wi-159).
 func provisioningDeliveriesQueryHash(c *echo.Context) string {
 	q := c.Request().URL.Query()
 	q.Del("cursor")

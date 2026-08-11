@@ -9,7 +9,7 @@ import (
 // outbound Provisioning after committing a mutation
 // (spec/contexts/provisioning.yaml §deprovision セマンティクス trigger 列). This is
 // an IdManagement-owned vocabulary (mirrors idmports.UserMutationCommitter,
-// wi-237/ADR-117): IdManagement must not import backend/provisioning (context_map
+// wi-237): IdManagement must not import backend/provisioning (context_map
 // depends_on direction is Provisioning -> IdManagement, not the reverse).
 // backend/provisioning/usecases implements ProvisioningNotifier and translates
 // these values to its own ports.ProvisioningTrigger.

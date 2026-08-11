@@ -25,8 +25,7 @@ import { useDictionary } from '../../lib/i18n'
 import type { AdminGroup, AdminGroupMember, AdminUser } from '../../types'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 
-// allowEditing は内部の GroupMembersSection にそのまま渡す (参照専用文脈での
-// メンバー追加・除外 UI 抑止)。
+// allowEditing は内部の GroupMembersSection にそのまま渡す (参照専用文脈でのメンバー追加・除外 UI 抑止)。
 export function GroupDetailCard({
   group,
   csrfToken,
@@ -217,7 +216,7 @@ export function GroupDetailCard({
 
 // allowEditing=false は参照専用の文脈 (一覧右ペイン / グループ詳細画面) で使う。
 // メンバーの追加・除外の操作 UI は出さず、読み取り表示のみとする。実際のメンバー
-// 編集は専用の編集画面 (allowEditing=true) から行う (ADR-086 policy #1)。
+// 編集は専用の編集画面 (allowEditing=true) から行う (policy #1)。
 export function GroupMembersSection({
   group,
   csrfToken,

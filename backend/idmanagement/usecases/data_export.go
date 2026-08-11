@@ -27,10 +27,9 @@ import (
 )
 
 // KindDataExport is the Jobs.JobKind for one admin CSV data export
-// (spec/contexts/identity-management.yaml interfaces.StartResourceCsvExport,
-// ADR-140). It is a caller-owned kind (ADR-117 §5) registered on the bulk lane
-// (ADR-129): exports are throughput-oriented background work, not latency
-// sensitive.
+// (spec/contexts/identity-management.yaml interfaces.StartResourceCsvExport).
+// It is a caller-owned kind registered on the bulk lane:
+// exports are throughput-oriented background work, not latency sensitive.
 const KindDataExport jobsdomain.JobKind = "data_export"
 
 func init() {
@@ -39,13 +38,13 @@ func init() {
 
 const (
 	// DataExportMaxRows caps how many rows one export may contain. It bounds
-	// the CSV materialized into the Job result (ADR-140 stores the file there),
+	// the CSV materialized into the Job result (stores the file there),
 	// keeping worker memory and the jobs row size in check.
 	DataExportMaxRows = 100_000
 	// DataExportMaxBytes caps the generated CSV size for the same reason.
 	DataExportMaxBytes = 8 << 20 // 8 MiB
 	// DataExportTTL is how long a completed export stays downloadable. It
-	// aligns with the Jobs default record retention (ADR-100): once the jobs
+	// aligns with the Jobs default record retention: once the jobs
 	// row is purged the export is gone, and between logical expiry and physical
 	// purge the read model reports it expired and refuses download.
 	DataExportTTL = 30 * 24 * time.Hour
@@ -53,7 +52,7 @@ const (
 
 var (
 	// ErrInvalidExportFilter is returned when a filter key is not allowlisted
-	// for the target or its value is invalid (fail-closed; ADR-140 keeps
+	// for the target or its value is invalid (fail-closed keeps
 	// exports to defined filters, never arbitrary querying).
 	ErrInvalidExportFilter = errors.New("data export: invalid filter")
 	// ErrExportNotFound is returned when an export id does not exist in the
@@ -121,7 +120,7 @@ type DataExportDeps struct {
 	UserCSVArtifacts userports.UserCSVArtifactStore
 	Emit             func(spec.DomainEvent) error
 	// QuotaRepo enforces the tenant's active_jobs Hard Quota at enqueue
-	// (wi-160, ADR-134). nil skips enforcement.
+	// (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
 	// Now returns the current time; defaults to time.Now().UTC() when nil.
 	Now func() time.Time
@@ -553,7 +552,7 @@ func membershipColumnValue(g *groupdomain.Group, m *groupdomain.GroupMember, use
 }
 
 // validateExportFilter fails closed on any filter key not allowlisted for the
-// target, or an invalid value (ADR-140: exports use defined filters only).
+// target, or an invalid value (exports use defined filters only).
 // group_membership requires group_id: a member export is always scoped to one
 // group (the /groups/{group_id}/members/exports path), matching how Entra /
 // Okta / Google expose member CSV export per-group.

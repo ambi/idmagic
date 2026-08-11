@@ -204,7 +204,7 @@ type ListClientsByTenantPageParams struct {
 	PageLimit int32
 }
 
-// First page of ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158):
+// First page of ListAdminOAuth2Clients keyset pagination (wi-159):
 // client_id order matches the admin handler's pre-existing re-sort of
 // ListClientsByTenant's rows.
 func (q *Queries) ListClientsByTenantPage(ctx context.Context, arg ListClientsByTenantPageParams) ([]*Oauth2Client, error) {

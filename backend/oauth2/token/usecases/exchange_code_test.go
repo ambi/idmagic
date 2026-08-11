@@ -205,7 +205,7 @@ func TestExchangeCodePropagatesNonceToIDToken(t *testing.T) {
 }
 
 func TestExchangeCodePropagatesSidToRefreshTokenAndIDToken(t *testing.T) {
-	// ADR-127: AuthorizationCodeRecord.sid は発行 RefreshTokenRecord.sid と
+	// AuthorizationCodeRecord.sid は発行 RefreshTokenRecord.sid と
 	// id_token の sid claim にそのまま引き継がれる。
 	f := newExchangeFixture(t, []string{"openid", "offline_access"})
 	sid := "session-1"

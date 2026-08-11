@@ -18,7 +18,7 @@ WHERE tenant_id = $1
 ORDER BY created_at;
 
 -- name: ListClientsByTenantPage :many
--- First page of ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158):
+-- First page of ListAdminOAuth2Clients keyset pagination (wi-159):
 -- client_id order matches the admin handler's pre-existing re-sort of
 -- ListClientsByTenant's rows.
 SELECT tenant_id, client_id, application_id, application_protocol_type, client_secret_hash, client_name, client_type, redirect_uris,

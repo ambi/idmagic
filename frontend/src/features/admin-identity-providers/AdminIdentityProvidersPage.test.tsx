@@ -97,7 +97,7 @@ describe('AdminIdentityProvidersPage', () => {
     )
   })
 
-  // RED (interface: TestIdentityProviderConnection, ADR-150): a failing test result is
+  // RED (interface: TestIdentityProviderConnection): a failing test result is
   // shown as a clear banner listing failure reasons, not a generic success toast.
   it('shows a failure banner with reasons when the connection test fails', async () => {
     stubGlobal(

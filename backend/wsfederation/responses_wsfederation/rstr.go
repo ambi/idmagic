@@ -1,6 +1,6 @@
-// Package wsfed は WsFederation bounded context の WS-Federation passive アダプタ (ADR-047, wi-61)。
+// Package wsfed は WsFederation bounded context の WS-Federation passive アダプタ (wi-61)。
 //
-// 署名済み SAML assertion (samltoken アダプタ, ADR-060) を WS-Trust の RequestSecurityTokenResponse
+// 署名済み SAML assertion (samltoken アダプタ) を WS-Trust の RequestSecurityTokenResponse
 // (RSTR) に包み、relying party へ自動 POST する passive レスポンスを組み立てる。XML 構造は etree、
 // 自動 POST フォームは html/template でエスケープして出力する。
 package responses_wsfederation
@@ -103,7 +103,7 @@ var passiveForm = template.Must(template.New("wsfed-passive").Parse(`<!DOCTYPE h
 // RenderPassiveForm は自動 POST フォームの HTML を生成する。replyURL は呼び出し側で
 // 許可集合に対して検証済みであること (ValidateSignIn)。自動送信は inline event handler
 // ではなく固定の <script> で行い、その内容は CSP hash で許可される
-// (support.AutoSubmitScript, ADR-076)。'unsafe-inline' 無しの厳格 CSP でも通る。
+// (support.AutoSubmitScript)。'unsafe-inline' 無しの厳格 CSP でも通る。
 func RenderPassiveForm(replyURL, wresult, wctx string) ([]byte, error) {
 	if strings.TrimSpace(replyURL) == "" {
 		return nil, fmt.Errorf("wsfed: reply URL is required")

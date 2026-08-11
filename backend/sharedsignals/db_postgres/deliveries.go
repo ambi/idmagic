@@ -9,8 +9,8 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
-// SecurityEventDeliveryRepository は SecurityEventDelivery (outbound SET outbox,
-// ADR-057) を PostgreSQL に永続化する。set_payload には SecurityEventToken 全体を
+// SecurityEventDeliveryRepository は SecurityEventDelivery (outbound SET outbox)
+// を PostgreSQL に永続化する。set_payload には SecurityEventToken 全体を
 // JSON で埋め込む (別テーブルへ正規化しない: outbox 行は当該 SET の配送状態そのもの)。
 type SecurityEventDeliveryRepository struct{ Pool sharedpg.DB }
 

@@ -43,7 +43,7 @@ func Run() error {
 	shuttingDown := &atomic.Bool{}
 	startupComplete := &atomic.Bool{}
 
-	// アプリケーションログは stdout に構造化 JSON Lines で出力する (ADR-018)。
+	// アプリケーションログは stdout に構造化 JSON Lines で出力する。
 	// 監査ログ (DomainEvent) は EventSink 経由の別経路。
 	buildInfo := version.Get()
 	serviceName := bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic")
@@ -154,7 +154,7 @@ func Run() error {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
 
-	// Echo フレームワークのログも同じ構造化ハンドラ (ADR-018 の field 規約) に載せる。
+	// Echo フレームワークのログも同じ構造化ハンドラ (field 規約) に載せる。
 	e.Logger = slogLogger
 	// DefaultHTTPErrorHandler は仕様上エラーをログに残さない。ハンドラが返す
 	// 生エラー (panic ではないもの) が 500 になったとき原因を追えるようにする。
@@ -167,7 +167,7 @@ func Run() error {
 	e.Use(httpsupport.RequestIDMiddleware(bootstrap.EnvDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
 	e.Use(httpsupport.LoggingMiddleware())
 	e.Use(httpsupport.RecoverMiddleware(logger))
-	// SecurityResponseHeaders / FrameAncestorsPolicy objectives (ADR-076):
+	// SecurityResponseHeaders / FrameAncestorsPolicy objectives:
 	// backend レスポンスへ CSP (nonce ベース) / frame-ancestors 'none' / nosniff 等を
 	// 一元付与する。HSTS は TLS 終端層が所有するため既定は無効 (開発 http では抑制)。
 	e.Use(httpsupport.SecurityHeadersMiddleware(bootstrap.LoadSecurityHeaders(os.Getenv)))
@@ -187,7 +187,7 @@ func Run() error {
 	emit := deps.NewEmitFunc(logger)
 	sessionManager.QuotaRepo = deps.Tenancy.QuotaRepo
 	sessionManager.Emit = emit
-	// ClientRepo is wrapped with CIMD resolution in bootstrap (ADR-155); Emit can only
+	// ClientRepo is wrapped with CIMD resolution in bootstrap; Emit can only
 	// be wired here, after NewEmitFunc exists (same reason as sessionManager.Emit above).
 	if cimdRepo, ok := deps.OAuth2.ClientRepo.(*cimdhttp.ClientRepositoryWithCIMD); ok {
 		cimdRepo.Emit = emit

@@ -40,7 +40,7 @@ type AdminSettingsResponse struct {
 	PasswordPolicyDefaults passwordPolicyDefaults         `json:"password_policy_defaults"`
 	// DefaultLocale は通知の locale 解決の第 2 段。空文字列はシステム既定を使う意味。
 	// SupportedLocales はカタログが同梱翻訳を持つ locale で、UI の選択肢になる
-	// (wi-288, ADR-142 決定 7)。
+	// (wi-288, 決定 7)。
 	DefaultLocale    string              `json:"default_locale,omitempty"`
 	SupportedLocales []string            `json:"supported_locales"`
 	Quota            *domain.TenantQuota `json:"quota,omitempty"`

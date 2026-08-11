@@ -8,7 +8,7 @@
 # 注意:
 #  - これは雛形。値はプレースホルダなので実行前に環境へ合わせて置換すること。
 #  - 一部は beta/preview 機能（worker pools）。gcloud components を更新のこと。
-#  - スキーマ適用(psqldef)は「起動時ではなくデプロイ工程」で行う（ADR-071）。
+# - スキーマ適用(psqldef)は「起動時ではなくデプロイ工程」で行う。
 set -euo pipefail
 
 PROJECT="your-project"
@@ -51,7 +51,7 @@ printf 'postgres://%s:REPLACE_ME@/%s?host=/cloudsql/%s:%s:%s' \
   gcloud secrets versions add idmagic-database-url --data-file=-
 
 # ---------------------------------------------------------------------------
-# 4) スキーマ適用（psqldef / デプロイ工程・起動時禁止 ADR-071 / --enable-drop 禁止）
+# 4) スキーマ適用（psqldef / デプロイ工程・起動時禁止 --enable-drop 禁止）
 #    CI から DATABASE_URL を PG* にマップして実行するのが基本。ここは手動例。
 #    docker run --rm -v "$PWD/infra/schema:/schema:ro" \
 #      -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD sqldef/psqldef:3.11 \

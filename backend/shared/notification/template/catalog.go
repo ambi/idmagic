@@ -11,7 +11,7 @@ import (
 )
 
 // defaultsFS は組込み既定テンプレートを locale 別ファイルとして持つ。同梱翻訳は
-// ja / en だが、ファイルを足せば locale を増やせる形にしてある (ADR-142 決定 7)。
+// ja / en だが、ファイルを足せば locale を増やせる形にしてある。
 //
 //go:embed defaults/*.yaml
 var defaultsFS embed.FS
@@ -50,7 +50,7 @@ func loadBuiltins() (map[string]map[notificationports.TemplateKey]Definition, er
 }
 
 // Builtin は組込み既定テンプレートを返す。テナントは編集できず、上書きの削除で常に
-// ここへ戻る (ADR-142 決定 1)。カタログの完全性は package のテストで固定しているため、
+// ここへ戻る。カタログの完全性は package のテストで固定しているため、
 // 対応 locale と既知 key の組で not found にはならない。
 func Builtin(key notificationports.TemplateKey, locale string) (Definition, error) {
 	if !key.Valid() {

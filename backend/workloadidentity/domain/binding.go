@@ -10,7 +10,7 @@ import (
 )
 
 // AgentWorkloadBinding は WorkloadTrustBundle 配下で外部 subject の glob pattern を
-// 同一テナントの Agent へ写す mapping (ADR-053)。agent_id は WorkloadTrustBundle と
+// 同一テナントの Agent へ写す mapping。agent_id は WorkloadTrustBundle と
 // 同一 tenant_id の既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal、
 // usecase 側で検証する)。
 type AgentWorkloadBinding struct {
@@ -57,7 +57,7 @@ func (b AgentWorkloadBinding) IsEnabled() bool {
 }
 
 // MatchAgent は Enabled な binding のうち subject に一致する pattern を持つものを
-// 一意に決定する (ADR-053 fail-closed)。一致が無ければ ErrNoBindingMatch、複数の
+// 一意に決定する (fail-closed)。一致が無ければ ErrNoBindingMatch、複数の
 // Enabled binding に曖昧に一致すれば ErrAmbiguousBindingMatch を返す。Disabled な
 // binding は候補から除外し、ambiguity の判定にも数えない。
 func MatchAgent(bindings []AgentWorkloadBinding, subject string) (*AgentWorkloadBinding, error) {

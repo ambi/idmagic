@@ -2,8 +2,8 @@
 //
 // Deps 型定義・route 登録・feature 横断ハンドラ (account context, consents, signin
 // activity, auth event buckets, security 集計) を所有する。feature 固有のハンドラは
-// password/totp/webauthn/mfa/session/recovery の handlers_http パッケージへ分割されている
-// (ADR-130 Phase 2)。共有基盤 support.Deps を受け取り router から登録される。
+// password/totp/webauthn/mfa/session/recovery の handlers_http パッケージへ分割されている。
+// 共有基盤 support.Deps を受け取り router から登録される。
 package handlers_http
 
 import (
@@ -18,7 +18,7 @@ import (
 )
 
 // Deps は authentication HTTP ハンドラが必要とする依存。型定義自体は leaf package
-// httpdeps にあり、この alias で従来通り http.Deps として参照できる (ADR-130 Phase 2)。
+// httpdeps にあり、この alias で従来通り http.Deps として参照できる。
 type Deps = httpdeps.Deps
 
 // RegisterRoutes はテナント解決済みグループに authentication コンテキストの

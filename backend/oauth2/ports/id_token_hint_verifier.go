@@ -3,9 +3,9 @@ package ports
 import "context"
 
 // IDTokenHintClaims is the subset of ID Token claims needed to resolve an
-// RP-Initiated Logout target (ADR-127). Exp is intentionally not surfaced:
+// RP-Initiated Logout target. Exp is intentionally not surfaced:
 // RPs commonly present an already-expired ID Token as id_token_hint at
-// logout time, and ADR-127 decision 4 does not check it.
+// logout time, and decision 4 does not check it.
 type IDTokenHintClaims struct {
 	Subject  string
 	Audience string

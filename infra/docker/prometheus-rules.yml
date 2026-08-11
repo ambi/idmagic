@@ -30,7 +30,7 @@ groups:
           sum(rate(authn_login_throttle_total{outcome="throttled"}[5m]))
           / sum(rate(authn_login_throttle_total[5m]))
 
-  # wi-261 T006 (ADR-129): lane is always a bounded execution-lane label
+  # wi-261 T006: lane is always a bounded execution-lane label
   # (latency_sensitive/default/bulk), never tenant_id/job_id.
   - name: idmagic-jobs-golden-signals
     rules:
@@ -93,7 +93,7 @@ groups:
         labels:
           severity: page
         annotations:
-          summary: "latency_sensitive lane p99 claim latency exceeds 5s despite ADR-129 lane isolation; check that lane's worker deployment for crashes or undersized concurrency"
+          summary: "latency_sensitive lane p99 claim latency exceeds 5s despite lane isolation; check that lane's worker deployment for crashes or undersized concurrency"
       - alert: JobsFailureRatioBudgetBurn
         expr: idmagic:jobs_failure_ratio:ratio_rate5m > 0.05
         for: 10m

@@ -1,4 +1,4 @@
-# Replica counts (ADR-129): latency_sensitive keeps 2 replicas so its
+# Replica counts: latency_sensitive keeps 2 replicas so its
 # reserved execution slot survives a single pod disruption (paired with the
 # PodDisruptionBudget in infra/k8s/base/pdb.yaml); bulk gets 2 replicas for
 # throughput since its jobs are long-running/high-volume; default is the

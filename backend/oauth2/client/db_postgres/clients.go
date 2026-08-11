@@ -21,7 +21,7 @@ import (
 )
 
 // OAuth2ClientRepository は OAuth2Client を PostgreSQL に永続化する。クエリは sqlc 生成
-// (wi-173, ADR-090); Pool は oauth2pg.DBTX を構造的に満たす。
+// (wi-173); Pool は oauth2pg.DBTX を構造的に満たす。
 type OAuth2ClientRepository struct{ Pool sharedpg.DB }
 
 func clientFromRow(row *oauth2pg.Oauth2Client) (*domain.OAuth2Client, error) {
@@ -103,8 +103,8 @@ func (r *OAuth2ClientRepository) FindAll(ctx context.Context, tenantID string) (
 	return out, nil
 }
 
-// ListPage implements ports.OAuth2ClientRepository.ListPage (wi-159,
-// ADR-158): keyset pagination ordered by client_id ascending — matching the
+// ListPage implements ports.OAuth2ClientRepository.ListPage (wi-159)
+// : keyset pagination ordered by client_id ascending — matching the
 // admin handler's pre-existing re-sort of FindAll's rows — strictly after
 // afterClientID ("" for the first page).
 func (r *OAuth2ClientRepository) ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error) {

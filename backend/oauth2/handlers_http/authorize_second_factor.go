@@ -1,4 +1,4 @@
-// 第二要素 (login step) の WebAuthn / recovery code サポート (wi-26 / ADR-087)。
+// 第二要素 (login step) の WebAuthn / recovery code サポート (wi-26)。
 // password 認証後の pending login session に対し、TOTP に加えて passkey / recovery code を
 // 選択式で検証できるようにする。検証成功後の共通後処理は finishSecondFactor に集約する。
 package handlers_http

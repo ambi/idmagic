@@ -80,7 +80,7 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 	return err
 }
 
-// getDefaultQuota resolves the ADR-134 baseline limit for resource through
+// getDefaultQuota resolves the baseline limit for resource through
 // domain.DefaultTenantQuota (the single source of truth shared with the
 // memory backend's TenantQuota.EffectiveLimit) so the two persistence
 // implementations cannot drift apart. Soft-quota / undefined resources fall

@@ -17,9 +17,8 @@
   - Regenerate untracked TypeSpec and HTML artifacts after specification changes.
   - If bounded contexts, global directory structures, adopted technologies, or core design rules change,
     synchronize the owning `SPECIFICATION.md` Design section.
-  - Do not create new ADRs. Put durable current design and rationale in `SPECIFICATION.md`; put
-    change-specific analysis, alternatives, and implementation history in the work item. Existing ADRs are
-    read-only history.
+  - Put durable current design and rationale in `SPECIFICATION.md`;
+    put change-specific analysis, alternatives, and implementation history in the work item.
   - Do not add architecture ledgers. Boundary checks infer structure from paths and reject forbidden dependencies only.
 
 ## Commands via just

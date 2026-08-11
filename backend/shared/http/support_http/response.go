@@ -22,7 +22,7 @@ func WriteBrowserError(c *echo.Context, status int, code, message string) error 
 	return NoStoreJSON(c, status, map[string]string{"error": code, "message": message})
 }
 
-// WriteRateLimited は SCL RateLimitedError (429、ADR-157) を返す。login throttle と
+// WriteRateLimited は SCL RateLimitedError (429) を返す。login throttle と
 // endpoint rate limiter の両方から呼ばれる共通の 429 応答で、oauth2-bound / browser-JSON の
 // どちらの binding でも同じ形にする (OAuthError は 429 の追加フィールドを持てないため
 // writeOAuthError 経路は使わない、login throttle の既存パターンを一般化)。

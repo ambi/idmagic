@@ -41,7 +41,7 @@ func newGroupDeps(t *testing.T) (groupusecases.AdminGroupDeps, *[]spec.DomainEve
 }
 
 // newGroupDepsWithQuota is like newGroupDeps but pins the tenant's groups
-// Hard Quota to limit, for wi-160 enforcement tests (ADR-134).
+// Hard Quota to limit, for wi-160 enforcement tests.
 func newGroupDepsWithQuota(t *testing.T, tenantID string, limit int) groupusecases.AdminGroupDeps {
 	t.Helper()
 	deps, _ := newGroupDeps(t)

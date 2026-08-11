@@ -1,9 +1,8 @@
-// Package logging is the application-log port and its slog-backed adapter
-// (ADR-018). Application logs are structured JSON Lines on stdout with level,
-// service, and — when an OpenTelemetry span is active — trace_id / span_id for
-// correlation with traces.
+// Package logging is the application-log port and its slog-backed adapter.
+// Application logs are structured JSON Lines on stdout with level,
+// service, and — when an OpenTelemetry span is active — trace_id / span_id for correlation with traces.
 //
-// This is the mutable, short-retention half of ADR-018. The immutable audit log
+// This is the mutable, short-retention half of. The immutable audit log
 // (DomainEvent) travels a separate path via the EventSink port and must not be
 // written through this package. x-pii fields (email etc.) must never reach an
 // application log in plaintext; use MaskEmail and friends before logging.
@@ -53,13 +52,13 @@ func (s slogLogger) Error(ctx context.Context, msg string, args ...any) {
 func (s slogLogger) With(args ...any) Logger { return slogLogger{l: s.l.With(args...)} }
 
 // New builds a JSON Lines Logger writing to w. service and version are attached
-// to every record; the field convention follows ADR-018 §3
+// to every record; the field convention follows §3
 // (timestamp / level / service / message plus trace_id / span_id).
 func New(w io.Writer, level slog.Level, service, version string) Logger {
 	return slogLogger{l: NewSlog(w, level, service, version)}
 }
 
-// NewSlog builds the underlying *slog.Logger used by New, with the ADR-018
+// NewSlog builds the underlying *slog.Logger used by New, with the
 // field convention and trace correlation. It is exposed so framework loggers
 // that require a *slog.Logger (e.g. Echo's e.Logger) can share the same format.
 func NewSlog(w io.Writer, level slog.Level, service, version string) *slog.Logger {
@@ -73,7 +72,7 @@ func NewSlog(w io.Writer, level slog.Level, service, version string) *slog.Logge
 	)
 }
 
-// replaceAttr renames slog's default keys to the ADR-018 field names.
+// replaceAttr renames slog's default keys to the field names.
 func replaceAttr(_ []string, a slog.Attr) slog.Attr {
 	switch a.Key {
 	case slog.TimeKey:
@@ -108,7 +107,7 @@ func RequestIDFromContext(ctx context.Context) string {
 
 // traceHandler injects trace_id / span_id from the active OpenTelemetry span and
 // request_id from the request context, so application logs correlate with traces
-// and with a single request (ADR-017 / ADR-018).
+// and with a single request.
 type traceHandler struct{ slog.Handler }
 
 func (h *traceHandler) Handle(ctx context.Context, r slog.Record) error {
@@ -148,7 +147,7 @@ func ParseLevel(s string) slog.Level {
 }
 
 // MaskEmail redacts the local part of an email address so it can appear in an
-// application log without leaking PII (ADR-018 §4). The domain is retained for
+// application log without leaking PII. The domain is retained for
 // operational debugging: "alice@example.com" -> "***@example.com". Values that
 // are not addresses are fully masked.
 func MaskEmail(addr string) string {

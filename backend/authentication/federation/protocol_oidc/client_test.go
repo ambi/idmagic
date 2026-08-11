@@ -91,9 +91,9 @@ func TestExchangeValidatesSignedIDTokenAndNormalizesClaims(t *testing.T) {
 	}
 }
 
-// RED (interface: TestIdentityProviderConnection, ADR-150): reachable endpoints and a
+// RED (interface: TestIdentityProviderConnection): reachable endpoints and a
 // resolvable secret_reference together report success with no failures.
-// RED (bug found via manual verification, ADR-150): after envelope encryption, the repository
+// RED (bug found via manual verification): after envelope encryption, the repository
 // hands protocol_oidc the already-decrypted plaintext secret directly (or, in the memory
 // backend, whatever value was saved), not an "env:" reference. That value must be usable
 // as-is without a SecretResolver — only a literal "env:" prefix should require resolution.

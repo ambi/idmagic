@@ -12,7 +12,7 @@ import { adminAuthorizationDetailTypesDictionary } from './AdminAuthorizationDet
 import { editURL, newURL } from './AdminAuthorizationDetailTypesShared'
 
 // AdminAuthorizationDetailTypesPage は認可詳細タイプの参照専用一覧。作成/編集は専用ルート
-// (new / $type/edit) に一本化されている (ADR-086 policy #2, wi-314 T014)。
+// (new / $type/edit) に一本化されている (policy #2, wi-314 T014)。
 export function AdminAuthorizationDetailTypesPage({
   csrfToken,
   actorUsername,

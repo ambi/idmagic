@@ -279,7 +279,7 @@ test('account connected application consent can be revoked from the browser', as
     await view.navigate(`${uiOrigin}/account/applications`)
     await waitForPage(view, 'account-applications')
     // demo-client は client_name を持たないため、Application カタログ名 "Demo Client" へ
-    // 解決される (wi-141)。UUID (ADR-084) は補助表記に留まる。
+    // 解決される (wi-141)。UUID は補助表記に留まる。
     await waitForText(view, 'Demo Client')
     await clickButtonByText(view, 'Revoke access')
     await waitForText(view, 'Access for “Demo Client” has been revoked.')
@@ -651,7 +651,7 @@ test('admin user list opens a user detail page', async () => {
   }
 }, 60_000)
 
-// wi-143 / ADR-088 第2層: 管理者による認証器リセット。alice (admin) は自身を対象に
+// wi-143 / 第2層: 管理者による認証器リセット。alice (admin) は自身を対象に
 // self-service で TOTP を登録し、admin console からその TOTP をリセットする。
 // mfa_enrolled が false へ戻り、再登録を要求する通知が出て、ユーザー操作メニューが
 // (削除済みのため) 「MFA 登録を承認」側の選択肢へ切り替わることを確認する。

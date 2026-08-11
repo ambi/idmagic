@@ -11,7 +11,7 @@ import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { kindLabel, StatusBadge } from './AdminAgentsShared'
 
 // 資格情報のバインド/解除は編集画面 (AdminAgentEditPage) に一本化されており、
-// この一覧右ペイン/詳細画面カードは読み取り専用 (ADR-086 policy #1, wi-314 T012)。
+// この一覧右ペイン/詳細画面カードは読み取り専用 (policy #1, wi-314 T012)。
 // confirmDelete 等のローカル state を選択エージェント切り替え時にリセットするため、
 // 呼び出し側は `key={agent?.id}` を指定して選択が変わるたびに再マウントさせること。
 export function AgentDetailCard({

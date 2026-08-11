@@ -1,7 +1,7 @@
 // Package domain implements the Provisioning bounded context's protocol-agnostic
 // core business types (spec/contexts/provisioning.yaml). Protocol-specific wire
 // clients (e.g. SCIM) live in per-protocol feature packages and depend on this
-// package, not the other way around (ADR-128 decision 2).
+// package, not the other way around (decision 2).
 package domain
 
 import (

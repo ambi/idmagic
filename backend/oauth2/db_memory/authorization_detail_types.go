@@ -10,7 +10,7 @@ import (
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
-// AuthorizationDetailTypeRepository (RFC 9396 / ADR-050)
+// AuthorizationDetailTypeRepository (RFC 9396)
 
 type AuthorizationDetailTypeRepository struct {
 	mu    sync.RWMutex

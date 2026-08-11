@@ -15,7 +15,7 @@ type TenantAttributeSchemaRepo interface {
 
 // ResolveTenantAttributeDefs merges builtin attribute definitions with a tenant's
 // custom schema (if any). The result is the attribute_defs input IssueClaimsWithFloor
-// uses to enforce the visibility floor (ADR-151). A nil repo yields builtin defs only.
+// uses to enforce the visibility floor. A nil repo yields builtin defs only.
 func ResolveTenantAttributeDefs(ctx context.Context, tenantID string, repo TenantAttributeSchemaRepo) ([]userdomain.UserAttributeDef, error) {
 	defs := userdomain.BuiltinUserAttributeDefs()
 	if repo == nil {

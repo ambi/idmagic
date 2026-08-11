@@ -194,7 +194,7 @@ type ExchangeDeviceCodeInput struct {
 	DeviceCode   string
 	ProofJKT     string
 	ProofX5TS256 string
-	// Resource は RFC 8707 resource indicator (ADR-055, wi-264)。form の resource は
+	// Resource は RFC 8707 resource indicator (wi-264)。form の resource は
 	// 複数指定され得るため slice で受ける (単一値以外は invalid_target)。
 	Resource []string
 }
@@ -304,7 +304,7 @@ func ExchangeDeviceCode(ctx context.Context, deps ExchangeDeviceCodeDeps, in Exc
 		sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: in.ProofX5TS256}
 	}
 
-	// RFC 8707 resource indicator (ADR-055, wi-264) — 指定時は登録済み Active な
+	// RFC 8707 resource indicator (wi-264) — 指定時は登録済み Active な
 	// McpResourceServer に audience を限定する。未指定時は従来どおり client_id。
 	mcpResourceServer, err := ResolveResourceIndicator(ctx, deps.McpResourceServerRepo, tenantID, in.Resource, rec.Scopes)
 	if err != nil {

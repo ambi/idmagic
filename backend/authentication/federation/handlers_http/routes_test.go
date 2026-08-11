@@ -155,7 +155,7 @@ func adminRequest(t *testing.T, method, path string, body any) *http.Request {
 	return request
 }
 
-// RED (interface: CreateIdentityProviderConnection, ADR-149): a newly created connection
+// RED (interface: CreateIdentityProviderConnection): a newly created connection
 // starts Disabled, not the removed Draft status.
 func TestCreateAdminInitialStatusIsDisabled(t *testing.T) {
 	e, _ := newAdminServer(t, nil)
@@ -179,7 +179,7 @@ func TestCreateAdminInitialStatusIsDisabled(t *testing.T) {
 	}
 }
 
-// RED (interface: UpdateIdentityProviderConnection, ADR-149 §編集時の自動デグレード):
+// RED (interface: UpdateIdentityProviderConnection, §編集時の自動デグレード):
 // updating only display_name keeps an Active connection Active; changing the issuer degrades it.
 func TestUpdateAdminDegradesOnlyOnTrustSourceChange(t *testing.T) {
 	e, repos := newAdminServer(t, nil)
@@ -224,7 +224,7 @@ func TestUpdateAdminDegradesOnlyOnTrustSourceChange(t *testing.T) {
 	}
 }
 
-// RED (interface: DeleteIdentityProviderConnection, ADR-149): deletion no longer requires
+// RED (interface: DeleteIdentityProviderConnection): deletion no longer requires
 // Disabled first; an Active connection can be deleted directly.
 func TestDeleteAdminSucceedsForActiveConnection(t *testing.T) {
 	e, repos := newAdminServer(t, nil)
@@ -248,7 +248,7 @@ func TestDeleteAdminSucceedsForActiveConnection(t *testing.T) {
 	}
 }
 
-// RED (interface: TestIdentityProviderConnection, ADR-150): the test action returns a
+// RED (interface: TestIdentityProviderConnection): the test action returns a
 // structured success/failure result reflecting real reachability, not a canned "valid" string.
 func TestTestAdminReportsStructuredReachabilityResult(t *testing.T) {
 	oidcClient := oidcprotocol.Client{HTTPClient: &http.Client{Transport: fakeRoundTripper(func(r *http.Request) (*http.Response, error) {

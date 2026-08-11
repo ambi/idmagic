@@ -27,7 +27,7 @@ type transactionResponse struct {
 	SecondFactorMethods []string `json:"second_factor_methods,omitempty"`
 }
 
-// consentDetailView は同意画面に提示する authorization_details の人間可読表現 (ADR-050)。
+// consentDetailView は同意画面に提示する authorization_details の人間可読表現。
 type consentDetailView struct {
 	Type        string   `json:"type"`
 	Description string   `json:"description,omitempty"`

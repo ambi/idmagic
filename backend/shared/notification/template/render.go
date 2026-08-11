@@ -13,15 +13,15 @@ import (
 
 // placeholderPattern は「差し込み変数のように見えるもの」を広く拾う。`{{Password}}` の
 // ような綴り違いも拾って許可集合の検査対象にするため、名前の形は絞らない。絞ると
-// 綴り違いが検査をすり抜けて本文にそのまま残り、編集者が気づけない (ADR-142 決定 3)。
+// 綴り違いが検査をすり抜けて本文にそのまま残り、編集者が気づけない。
 var placeholderPattern = regexp.MustCompile(`\{\{[^{}]*\}\}`)
 
 // 全 key 共通の差し込み変数。ブランディングと宛名は全通知で必要になるため key ごとに
-// 差を付けない (ADR-142「テンプレートキーごとの placeholder 許可集合」)。
+// 差を付けない (「テンプレートキーごとの placeholder 許可集合」)。
 var sharedPlaceholders = []string{"product_name", "tenant_display_name", "user_display_name"}
 
 // keyPlaceholders は key 固有の差し込み変数。資格情報・単発トークン単体・生 IP は
-// 意図的に含めない (ADR-142 決定 10)。
+// 意図的に含めない。
 var keyPlaceholders = map[notificationports.TemplateKey][]string{
 	notificationports.TemplateKeyPasswordReset:                 {"reset_url", "expires_in_minutes"},
 	notificationports.TemplateKeyEmailVerification:             {"verification_url", "expires_in_minutes"},
@@ -31,7 +31,7 @@ var keyPlaceholders = map[notificationports.TemplateKey][]string{
 }
 
 // sampleValues はプレビュー用の固定値。実在の利用者名やトークンをプレビュー経路に
-// 流さない (ADR-142 決定 9)。
+// 流さない。
 var sampleValues = map[string]string{
 	"product_name":        DefaultProductName,
 	"tenant_display_name": "Example Inc.",
@@ -47,7 +47,7 @@ var sampleValues = map[string]string{
 }
 
 // Placeholders は template_key ごとの差し込み変数の許可集合を返す。管理 API がこの
-// 集合を返すため、編集者は使える変数を推測しなくてよい (ADR-142 決定 3)。
+// 集合を返すため、編集者は使える変数を推測しなくてよい。
 func Placeholders(key notificationports.TemplateKey) []string {
 	specific, ok := keyPlaceholders[key]
 	if !ok {
@@ -86,7 +86,7 @@ func ValidateDefinition(key notificationports.TemplateKey, def Definition) error
 }
 
 // Render は差し込み変数を展開する。HTML 側は必ずエスケープし、テキスト側は素で展開する。
-// 値の無い変数は空文字列へ潰さずエラーにする (ADR-142 決定 3、決定 5)。
+// 値の無い変数は空文字列へ潰さずエラーにする。
 func Render(def Definition, vars map[string]string) (Rendered, error) {
 	subject, err := expand(def.Subject, vars, false)
 	if err != nil {
@@ -147,7 +147,7 @@ func collapseToSingleLine(value string) string {
 	return strings.Join(strings.Fields(value), " ")
 }
 
-// wrapHTMLDocument はテナントが上書きできない文書外枠を供給する (ADR-142 決定 6)。
+// wrapHTMLDocument はテナントが上書きできない文書外枠を供給する。
 // doctype / charset / viewport / 本文コンテナのスタイルはシステムが持ち、上書きできるのは
 // `<body>` 内の fragment だけ。
 func wrapHTMLDocument(subject, fragment string) string {

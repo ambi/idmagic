@@ -240,7 +240,7 @@ func TestPreviewNotificationTemplateFallsBackToTheEffectiveTemplate(t *testing.T
 }
 
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
-// 宛先は操作者本人に固定する。任意宛先を許すとメール送信の踏み台になる (ADR-142 決定 8)。
+// 宛先は操作者本人に固定する。任意宛先を許すとメール送信の踏み台になる。
 func TestSendTestNotificationGoesToTheActorOnly(t *testing.T) {
 	ctx := context.Background()
 	deps, sender := newNotificationTemplateDeps(ctx, t)
@@ -310,7 +310,7 @@ func TestSendTestNotificationUsesTheStoredOverride(t *testing.T) {
 }
 
 // TenantNotificationSource は Tenancy の repository で shared/notification の port を
-// 満たす (ADR-142 決定 11)。既定 locale と製品名 / 表示名の解決経路を固定する。
+// 満たす。既定 locale と製品名 / 表示名の解決経路を固定する。
 func TestTenantNotificationSourceResolvesTenantSettings(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 25, 0, 0, 0, 0, time.UTC)

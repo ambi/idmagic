@@ -105,13 +105,13 @@ func TestRevokeOtherSessionsKeepsCurrent(t *testing.T) {
 		t.Fatalf("len(events)=%d, want 2", len(events))
 	}
 	// oauth2 側の RevokeTokensBySid 呼び出し元 (account_sessions_handler) が失効対象の
-	// sid 一覧をここから受け取る (ADR-127)。
+	// sid 一覧をここから受け取る。
 	if len(revokedIDs) != 2 || !slices.Contains(revokedIDs, "s1") || !slices.Contains(revokedIDs, "s3") {
 		t.Fatalf("revokedIDs=%#v, want [s1 s3]", revokedIDs)
 	}
 }
 
-// ADR-127: RP-Initiated Logout (/end_session) は所有者 (sub) を検証済みでない sid
+// RP-Initiated Logout (/end_session) は所有者 (sub) を検証済みでない sid
 // (id_token_hint または browser cookie 由来) から直接失効する。既に失効済み/未知の
 // sid は Find が有効セッションのみ返すため自然に no-op (idempotent) になる。
 func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
@@ -146,7 +146,7 @@ func TestEndSessionRevokesBySidAndEmitsEvent(t *testing.T) {
 	}
 }
 
-// wi-28 T007 (ADR-127 決定9): admin 向け session 管理は self-service と対で、
+// wi-28 T007: admin 向け session 管理は self-service と対で、
 // 既存の ListUserSignInActivity と同じアクセス制御パターン (TenantAdministrator,
 // resource=User/input.user_id) を踏襲する。current マーカーは持たない。
 func TestAdminListSessionsHasNoCurrentMarker(t *testing.T) {

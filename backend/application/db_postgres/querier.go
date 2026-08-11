@@ -29,8 +29,8 @@ type Querier interface {
 	LinkWsFedRelyingPartyToApplication(ctx context.Context, arg LinkWsFedRelyingPartyToApplicationParams) error
 	ListAppSignInPoliciesByTenant(ctx context.Context, tenantID string) ([]*ListAppSignInPoliciesByTenantRow, error)
 	ListApplicationAssignmentsByApplication(ctx context.Context, arg ListApplicationAssignmentsByApplicationParams) ([]*ListApplicationAssignmentsByApplicationRow, error)
-	// First page of ListApplicationAssignments keyset pagination (wi-159,
-	// ADR-158): the (application_id, subject_type, subject_id) primary key
+	// First page of ListApplicationAssignments keyset pagination (wi-159):
+	// the (application_id, subject_type, subject_id) primary key
 	// already backs this range scan.
 	ListApplicationAssignmentsByApplicationPage(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageParams) ([]*ListApplicationAssignmentsByApplicationPageRow, error)
 	// Continuation page: resumes strictly after the (subject_type, subject_id)
@@ -40,7 +40,7 @@ type Querier interface {
 	ListApplicationAssignmentsByTenant(ctx context.Context, tenantID string) ([]*ListApplicationAssignmentsByTenantRow, error)
 	ListApplicationCategoriesByTenant(ctx context.Context, tenantID string) ([]*ApplicationCategory, error)
 	ListApplicationsByTenant(ctx context.Context, tenantID string) ([]*Application, error)
-	// First page of ListAdminApplications keyset pagination (wi-159, ADR-158):
+	// First page of ListAdminApplications keyset pagination (wi-159):
 	// stable sort by (name, id) so admins see the pre-existing alphabetical
 	// order. id is a load-bearing tie-break since application names aren't
 	// unique per tenant.
@@ -55,7 +55,7 @@ type Querier interface {
 	UpsertApplication(ctx context.Context, arg UpsertApplicationParams) error
 	// ListApplicationAssignmentsBySubjects は (subject_type, subject_id) ペア配列との
 	// UNNEST 突き合わせが必要で、sqlc の静的解析が UNNEST の引数型を解決できない
-	// (動的クエリのエスケープハッチ、ADR-090)。手書き pgx として applications.go に残す。
+	// (動的クエリのエスケープハッチ)。手書き pgx として applications.go に残す。
 	UpsertApplicationAssignment(ctx context.Context, arg UpsertApplicationAssignmentParams) error
 	UpsertApplicationCategory(ctx context.Context, arg UpsertApplicationCategoryParams) error
 	UpsertApplicationIcon(ctx context.Context, arg UpsertApplicationIconParams) error

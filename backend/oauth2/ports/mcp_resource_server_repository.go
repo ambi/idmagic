@@ -6,7 +6,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 )
 
-// McpResourceServerRepository はテナント登録済みの MCP resource server (ADR-055) の
+// McpResourceServerRepository はテナント登録済みの MCP resource server の
 // 永続境界。canonical resource URI・許可 scope・運用状態を保持する。
 type McpResourceServerRepository interface {
 	ListAll(ctx context.Context, tenantID string) ([]*domain.McpResourceServer, error)

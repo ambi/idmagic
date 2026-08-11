@@ -32,7 +32,7 @@ type TokenDecision struct {
 
 // IssueToken は claim を発行し、要求 token type を検証して有効 token type を確定する。
 // 挙動は旧 HTTP ハンドラ handleWsTrustUsernameMixed の claim / token type 決定部と一致する。
-// attrSchemaRepo は attribute visibility floor (ADR-151) を強制するための tenant custom
+// attrSchemaRepo は attribute visibility floor を強制するための tenant custom
 // attribute schema 解決に使う。nil なら builtin 定義のみを floor とする。
 func (WsTrustService) IssueToken(ctx context.Context, tenantID string, attrSchemaRepo claimusecases.TenantAttributeSchemaRepo, req TokenRequest) (TokenDecision, error) {
 	attrs, err := feddomain.ApplyEntraProfile(claimusecases.ResolveUserAttributes(req.User), req.RP.EntraProfile)

@@ -26,7 +26,7 @@ const (
 
 // ProvisioningCapture is the boundary port IdManagement/Application call after
 // committing a User/assignment mutation (spec/contexts/provisioning.yaml
-// §配送・信頼性, ADR-128 decision 4). This implementation captures in its own,
+// §配送・信頼性, decision 4). This implementation captures in its own,
 // separate transaction right after the caller's commit rather than truly inside
 // it (a scoped simplification recorded in wi-45 T006; the residual gap — a
 // crash between the two commits loses the capture with no recovery — is left

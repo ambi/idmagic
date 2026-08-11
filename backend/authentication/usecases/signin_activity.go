@@ -3,7 +3,7 @@ package usecases
 // ユーザー本人のサインイン履歴 (wi-20 スライス 1)。本スライスは新テーブルを作らず、
 // 既存の監査イベントストア (AuditEventRepository) に蓄積済みの UserAuthenticated を
 // 発生時刻の降順で読み出して射影する。IP / UA / sessionId などの付加属性は、イベント側を
-// 拡張する後続スライス (ADR-041) で足す。
+// 拡張する後続スライス で足す。
 
 import (
 	"context"

@@ -39,7 +39,7 @@ func TestParseAccountScopes(t *testing.T) {
 	}
 }
 
-// SCL models.ApiTokenScope / ADR-136: application/protocol 管理 API の正準 scope。
+// SCL models.ApiTokenScope / application/protocol 管理 API の正準 scope。
 func TestParseApplicationProtocolScopes(t *testing.T) {
 	want := []Scope{
 		ScopeApplicationsRead, ScopeApplicationsWrite,

@@ -5,7 +5,7 @@ import { cn } from '../lib/utils'
 type BrandProps = {
   compact?: boolean
   inverse?: boolean
-  // テナント branding のロゴ / 製品名 (wi-89, ADR-096)。未設定なら IdMagic 既定を表示する。
+  // テナント branding のロゴ / 製品名 (wi-89)。未設定なら IdMagic 既定を表示する。
   productName?: string
   logoURL?: string
 }

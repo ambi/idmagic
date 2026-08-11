@@ -10,7 +10,7 @@ import (
 )
 
 // =====================================================================
-// TenantUserAttributeSchemaRepository (ADR-040 / wi-19)
+// TenantUserAttributeSchemaRepository (wi-19)
 // =====================================================================
 
 type TenantUserAttributeSchemaRepository struct {

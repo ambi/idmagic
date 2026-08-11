@@ -30,7 +30,7 @@ type SessionDeps struct {
 	Store authnports.SessionStore
 	Emit  func(spec.DomainEvent)
 	// QuotaRepo frees the tenant's active_sessions Hard Quota slot when a
-	// session ends (wi-160, ADR-134). The increment side lives in
+	// session ends (wi-160). The increment side lives in
 	// SessionManager.CreateWithPending, which owns session creation. nil
 	// skips enforcement (wiring gaps in tests/tools); production bootstrap
 	// always sets it.
@@ -88,7 +88,7 @@ func ListSessions(
 
 // RevokeOwnSession は本人のセッション 1 件を失効する。対象が存在しないか本人のもので
 // なければ ErrSessionNotFound。失効は tombstone であり、既に失効済みの対象への再送は
-// idempotent に成功する (event は再送しない、ADR-126)。
+// idempotent に成功する (event は再送しない)。
 func RevokeOwnSession(
 	ctx context.Context,
 	deps SessionDeps,
@@ -119,7 +119,7 @@ func RevokeOwnSession(
 // ("他のセッションを全て終了")。対象は ListBySub が返す有効なセッションに限るため、
 // 既に失効済みの行は自然に対象外になる。失効した sessionID の一覧を返す。呼び出し側
 // (account_sessions_handler) はこれを sid として oauth2 の RevokeTokensBySid へ渡し、
-// refresh token family を横断して失効させる (ADR-127)。
+// refresh token family を横断して失効させる。
 func RevokeOtherSessions(
 	ctx context.Context,
 	deps SessionDeps,
@@ -149,7 +149,7 @@ func RevokeOtherSessions(
 
 // AdminSessionView は admin 向け一覧表示用のセッション射影 (wi-28 T007)。self-service
 // の SessionView と異なり current マーカーの代わりに対象 UserID と LastSeenAt を持つ
-// (操作者と対象ユーザーが別人のため、ADR-127 決定9)。
+// (操作者と対象ユーザーが別人のため、決定9)。
 type AdminSessionView struct {
 	ID         string
 	UserID     string
@@ -161,7 +161,7 @@ type AdminSessionView struct {
 }
 
 // AdminListSessions は admin が対象ユーザーの有効なセッションを開始時刻の降順で
-// 一覧する (wi-28, ADR-127 決定9)。ListUserSignInActivity と同じアクセス制御
+// 一覧する (wi-28, 決定9)。ListUserSignInActivity と同じアクセス制御
 // パターン (TenantAdministrator, resource=User/input.user_id) を前提とし、
 // アクセス制御自体は HTTP 層が担う。
 func AdminListSessions(ctx context.Context, store authnports.SessionStore, targetUserID string) ([]AdminSessionView, error) {
@@ -216,7 +216,7 @@ func AdminRevokeSession(
 // AdminRevokeUserSessions は admin が対象ユーザーの全セッションを失効する (wi-28)。
 // RevokeOtherSessions と異なり、操作者自身のセッションではないため除外対象
 // (keepSessionID) が無い。失効した sessionID の一覧を返し、呼び出し側が oauth2 の
-// RevokeTokensBySid へ渡す (ADR-127)。
+// RevokeTokensBySid へ渡す。
 func AdminRevokeUserSessions(
 	ctx context.Context,
 	deps SessionDeps,
@@ -245,7 +245,7 @@ func AdminRevokeUserSessions(
 // sid (id_token_hint または browser cookie から解決) を失効する。self-service の
 // Revoke* と異なり FindOwned による所有者確認はしない — sid 自体が検証済みの
 // id_token_hint か、本人だけが送れる browser cookie から来ているため十分な認可根拠
-// となる (ADR-127)。Find は有効な (未失効・未期限切れ) セッションのみ返すため、
+// となる。Find は有効な (未失効・未期限切れ) セッションのみ返すため、
 // 既に失効済み・期限切れ・未知の sid は自然に no-op になる (idempotent)。
 func EndSession(
 	ctx context.Context,

@@ -116,7 +116,7 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 	if err != nil {
 		return ApplicationAccessDecision{}, err
 	}
-	// アプリ個別ポリシーがあればそれを、なければテナントデフォルトを適用する (上書きモデル, ADR-081)。
+	// アプリ個別ポリシーがあればそれを、なければテナントデフォルトを適用する (上書きモデル)。
 	var defaultPolicy *appdomain.TenantDefaultSignInPolicy
 	if g.DefaultSignInPolicyRepo != nil {
 		defaultPolicy, err = g.DefaultSignInPolicyRepo.Get(ctx, tenantID)

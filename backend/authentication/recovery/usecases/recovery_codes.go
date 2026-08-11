@@ -1,6 +1,6 @@
 package usecases
 
-// backup recovery code の生成・消費・失効 (wi-26 / ADR-087)。平文は生成時に一度だけ返し、
+// backup recovery code の生成・消費・失効 (wi-26)。平文は生成時に一度だけ返し、
 // DB には SHA-256 hex のみ保存する。1 コードは single-use、再生成は既存 set を全置換する。
 // recovery code は TOTP / WebAuthn 喪失時の backup で、単独では第二要素にしない。
 

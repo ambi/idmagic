@@ -35,18 +35,18 @@ import (
 	scimsource "github.com/ambi/idmagic/backend/sourcing/scim/source_idmanagement"
 )
 
-// allLanes is the ADR-129 compat-mode default for JOB_WORKER_LANES: a single
+// allLanes is the compat-mode default for JOB_WORKER_LANES: a single
 // idmagic-worker process claims every lane. Dedicated per-lane deployments
 // (production topology) instead set JOB_WORKER_LANES to a single lane.
 var allLanes = []domain.ExecutionLane{domain.LaneLatencySensitive, domain.LaneDefault, domain.LaneBulk}
 
-// RunWorker starts the durable job queue worker process (ADR-099):
+// RunWorker starts the durable job queue worker process:
 // idmagic-worker claims and executes Jobs independently of, and horizontally
 // scalable apart from, idmagic-api. It also owns the periodic retention
-// sweep (ADR-045) relocated from the API process: that sweep is a
+// sweep relocated from the API process: that sweep is a
 // cross-tenant background job unrelated to serving HTTP requests, and its
 // tenant_id-less scope doesn't fit the Jobs queue's tenant-owned model
-// (ADR-099's design decision), so it stays a plain goroutine here rather
+// ('s design decision), so it stays a plain goroutine here rather
 // than becoming a queued Job.
 func RunWorker() error {
 	buildInfo := version.Get()
@@ -197,7 +197,7 @@ func RunWorker() error {
 	// waiting for its own in-flight jobs (rn.wg.Wait()). Give the whole
 	// process one shared grace period; lanes that don't finish in time exit
 	// anyway. In-flight leases then expire naturally and another worker
-	// reclaims them (ADR-099), same as a hard kill.
+	// reclaims them, same as a hard kill.
 	drainGracePeriod := 5 * time.Second
 	if val := os.Getenv("DRAIN_GRACE_PERIOD_SECONDS"); val != "" {
 		if parsed, err := time.ParseDuration(val + "s"); err == nil {
@@ -223,7 +223,7 @@ func RunWorker() error {
 
 // resolveWorkerLanes parses JOB_WORKER_LANES (comma-separated ExecutionLanes)
 // into the lanes this process's Runners claim. It defaults to every lane
-// (compat mode, ADR-129 decision 5(b)): the standard Docker-less development
+// (compat mode, decision 5(b)): the standard Docker-less development
 // environment and docker-compose both rely on this default so a single
 // process still serves every JobKind. Dedicated per-lane production
 // deployments set it to exactly one lane.
@@ -246,7 +246,7 @@ func resolveWorkerLanes() ([]domain.ExecutionLane, error) {
 
 // laneConcurrency resolves a lane's worker concurrency from
 // JOB_WORKER_CONCURRENCY_<LANE> (e.g. JOB_WORKER_CONCURRENCY_LATENCY_SENSITIVE),
-// falling back to the shared JOB_WORKER_CONCURRENCY (ADR-099 default 4) when
+// falling back to the shared JOB_WORKER_CONCURRENCY (default 4) when
 // no lane-specific override is set. This lets a dedicated
 // latency_sensitive deployment reserve capacity independently of bulk's.
 func laneConcurrency(lane domain.ExecutionLane) int {
@@ -289,7 +289,7 @@ func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, a
 	}
 }
 
-// ephemeralSweepLoop は揮発性ストア (ADR-139) の期限切れ行を周期的に空間回収する。
+// ephemeralSweepLoop は揮発性ストア の期限切れ行を周期的に空間回収する。
 // retention sweep (idmagic-batch, 外部 cron) と違い、ephemeral は短 TTL なので常駐 worker の
 // 高頻度 ticker で回す。正しさは read の expires_at 述語が担保するため best-effort でよい。
 func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies) {
@@ -325,7 +325,7 @@ func lifecycleWorkflowDispatchLoop(ctx context.Context, deps *bootstrap.Dependen
 // provisioningDispatchLoop periodically associates pending ProvisioningDelivery
 // rows with a Jobs.Job (LifecycleWorkflowRunLifecycle's dispatcher precedent):
 // it recovers deliveries whose same-Tx-adjacent capture succeeded but whose
-// immediate enqueue call failed (wi-45 T006, ADR-128 decision 4).
+// immediate enqueue call failed (wi-45 T006, decision 4).
 func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
@@ -342,7 +342,7 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies)
 }
 
 // sharedSignalsDeliveryLoop is the retry/backoff/dead-letter delivery worker
-// for outbound Security Event Tokens (ADR-057, wi-58 T004): it periodically
+// for outbound Security Event Tokens (wi-58 T004): it periodically
 // picks up due SecurityEventDelivery rows (SsfStream direction=Transmit) and
 // pushes each one, independent of the Jobs durable queue —
 // SecurityEventDelivery already owns its own attempt_count/next_attempt_at/

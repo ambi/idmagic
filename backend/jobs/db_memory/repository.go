@@ -17,7 +17,7 @@ import (
 
 // JobRepository is a mutex-protected, map-backed ports.JobRepository. It
 // approximates the PostgreSQL adapter's `FOR UPDATE SKIP LOCKED` claim
-// (ADR-098) with a single mutex serializing ClaimBatch instead, since there is
+// with a single mutex serializing ClaimBatch instead, since there is
 // no concurrent-transaction concern to model in-process.
 type JobRepository struct {
 	mu   sync.Mutex

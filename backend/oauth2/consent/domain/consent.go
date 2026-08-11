@@ -1,6 +1,6 @@
 package domain
 
-// Consent の双子定義。internal/shared/spec/oauth2.go から移設 (wi-173, ADR-089)。
+// Consent の双子定義。internal/shared/spec/oauth2.go から移設 (wi-173)。
 // AuthorizationDetail（実行時インスタンス）は [[wi-181]] 側の AuthorizationRequest /
 // AuthorizationCodeRecord からも参照されるため shared に残置し、本パッケージからは
 // spec 経由で参照する。

@@ -27,11 +27,11 @@ func (e *EmailSent) OccurredAt() time.Time { return e.At }
 
 // AuthenticationEventAggregated は、攻撃 (クレデンシャル試行洪水) 時に個別の
 // AuthenticationFailed を 1 行ずつ書かず、(tenant, kind, keyHash, 5 分窓) の bucket に
-// 集約したことを表す (wi-20 スライス 3 / ADR-029 の throttle 判定と keyHash を共有する)。
+// 集約したことを表す (wi-20 スライス 3 / throttle 判定と keyHash を共有する)。
 // 1 つの窓につき最初の 1 件だけ emit し、以後の増分は bucket store の count に積む。
 // よって payload の Count は「emit 時点の値」で、実体は bucket store 側で伸び続ける。
 
-// --- wi-44 / ADR-041: 認証ステップ・MFA・session・federation・impersonation の語彙。
+// --- wi-44 / 認証ステップ・MFA・session・federation・impersonation の語彙。
 // use case / 実 IdP 連携は各専用 WI。本 WI はイベント型とストレージ列のみを用意する。
 
 // MfaFactorEnrolled は本人が self-service で MFA factor (現状 TOTP) を登録した (wi-21)。
@@ -52,9 +52,9 @@ func (e *EmailSent) OccurredAt() time.Time { return e.At }
 // RecoveryCodesRevoked は本人が backup recovery code を明示的に失効した (wi-26, step-up 済み)。
 
 // StepUpRequested は本人が高 sensitivity 操作のための step-up 再認証を開始した
-// (ADR-043 / wi-43)。利用可能な factor の提示要求であり、まだ再認証は成立していない。
+// (wi-43)。利用可能な factor の提示要求であり、まだ再認証は成立していない。
 
-// StepUpCompleted は step-up 再認証が成立した (ADR-043 / wi-43)。method は再認証に
+// StepUpCompleted は step-up 再認証が成立した (wi-43)。method は再認証に
 // 使った factor (password | totp)。これ以降 recency 窓内は sensitive 操作を許可する。
 
 // SessionEnded は LoginSession が終了した (wi-20)。self / admin の明示的な失効では
@@ -77,13 +77,13 @@ func (e *EmailSent) OccurredAt() time.Time { return e.At }
 // PII は anonymize 済みで、関連 aggregate は cascade 削除されている。
 
 // AuthorizationDetailsRequested はクライアントが authorization_details を要求し、
-// 登録 type 適合検証を通過したことを表す (RFC 9396 / ADR-050)。
+// 登録 type 適合検証を通過したことを表す (RFC 9396)。
 
 // AuthorizationDetailsConsented は ResourceOwner が提示された authorization_details に
-// 同意したことを表す。発行・交換の部分集合判定の基準となる (ADR-050)。
+// 同意したことを表す。発行・交換の部分集合判定の基準となる。
 
 // AuthorizationDetailsRejected は authorization_details の検証・同意・ダウンスコープ
-// 違反により要求を拒否したことを表す (fail-closed, ADR-050)。
+// 違反により要求を拒否したことを表す (fail-closed)。
 
 func MarshalDomainEvent(event DomainEvent) ([]byte, error) {
 	payload, err := json.Marshal(event)

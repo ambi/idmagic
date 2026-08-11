@@ -3,7 +3,7 @@ SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at
 WHERE tenant_id=$1 ORDER BY name;
 
 -- name: ListGroupsByTenantPage :many
--- First page of ListGroups keyset pagination (wi-159, ADR-158): stable sort by
+-- First page of ListGroups keyset pagination (wi-159): stable sort by
 -- (name, id) so admins see the pre-existing alphabetical order.
 SELECT id,tenant_id,name,description,roles,membership_type,created_at,updated_at FROM groups
 WHERE tenant_id=$1

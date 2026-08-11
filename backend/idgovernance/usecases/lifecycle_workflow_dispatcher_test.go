@@ -289,7 +289,7 @@ func TestLifecycleWorkflowRunHandlerUnassignApplicationNoOpWhenNotAssigned(t *te
 
 // scenario `Tenancy: テナントの通知テンプレート上書きは組込み既定より優先される`
 // の前提となるカタログ接続。send_email action は template_key を件名と本文に直挿しせず、
-// カタログの LifecycleWorkflowNotification から解決する (ADR-142)。
+// カタログの LifecycleWorkflowNotification から解決する。
 func TestLifecycleWorkflowRunHandlerSendsCatalogTemplateForSendEmail(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 7, 16, 0, 0, 0, 0, time.UTC)

@@ -73,7 +73,7 @@ func newRefreshFixture(t *testing.T, sc *domain.SenderConstraint, now time.Time,
 
 func TestRefreshTokensRejectsAbsoluteTTLExpired(t *testing.T) {
 	now := time.Now().UTC()
-	// AbsoluteExpiresAt を過去にしてローテーション不可を観測する (ADR-004)。
+	// AbsoluteExpiresAt を過去にしてローテーション不可を観測する。
 	f := newRefreshFixture(t, nil, now, -time.Minute)
 	_, err := RefreshTokens(context.Background(), f.deps, RefreshInput{
 		ClientID: "client", RefreshToken: f.token,

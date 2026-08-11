@@ -66,7 +66,7 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                now,
 	})
-	// first-party クライアント (ADR-061): consent をスキップする検証用。
+	// first-party クライアント : consent をスキップする検証用。
 	clientRepo.Seed(&domain.OAuth2Client{
 		TenantID: tenancydomain.DefaultTenantID,
 		ClientID: authFirstPartyClientID, ClientType: spec.ClientPublic,
@@ -190,7 +190,7 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 	}
 }
 
-// ADR-061: first-party クライアントは consent 画面をスキップし、同意レコードが
+// first-party クライアントは consent 画面をスキップし、同意レコードが
 // 無くても即 authorization code を発行する (redirect_uri へ code 付きで 303)。
 func TestAuthorizeFirstPartyClientSkipsConsent(t *testing.T) {
 	now := time.Now().UTC()

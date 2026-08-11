@@ -12,7 +12,7 @@ import (
 )
 
 // WsFedRelyingPartyRepository は WS-Federation RP trust の PostgreSQL 実装。
-// クエリは sqlc 生成で管理する (wi-174, ADR-090)。
+// クエリは sqlc 生成で管理する (wi-174)。
 type WsFedRelyingPartyRepository struct{ Pool sharedpg.DB }
 
 func relyingPartyFromRow(row *WsfedRelyingParty) (*domain.WsFedRelyingParty, error) {

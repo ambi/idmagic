@@ -100,7 +100,7 @@ func (c Client) TestConnection(ctx context.Context, connection domain.IdentityPr
 // resolveSecret returns the client secret ready to use. A value using the legacy "env:" scheme
 // is resolved via SecretResolver; anything else (including "") is already the real secret value
 // — the repository dual-reads legacy env: references and decrypted ciphertext into the same
-// SecretReference field (ADR-150), so only the legacy case still needs resolution here.
+// SecretReference field, so only the legacy case still needs resolution here.
 func (c Client) resolveSecret(ctx context.Context, reference string) (string, error) {
 	if reference == "" || !strings.HasPrefix(reference, "env:") {
 		return reference, nil

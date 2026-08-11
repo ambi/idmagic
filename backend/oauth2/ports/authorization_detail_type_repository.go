@@ -7,7 +7,7 @@ import (
 )
 
 // AuthorizationDetailTypeRepository はテナント登録済みの authorization_details
-// type 定義 (RFC 9396 / ADR-050) の永続境界。受理する type のスキーマ・表示
+// type 定義 (RFC 9396) の永続境界。受理する type のスキーマ・表示
 // テンプレート・運用状態を保持する。
 type AuthorizationDetailTypeRepository interface {
 	ListAll(ctx context.Context, tenantID string) ([]*domain.AuthorizationDetailType, error)

@@ -13,7 +13,6 @@ export type WorkspaceConfig = {
   specification?: string
   documents: string[]
   workItems?: string
-  decisions?: string
 }
 
 async function discoverSingleFile(
@@ -71,7 +70,6 @@ async function scanNamed(root: string, names: Set<string>, dir = root, found: st
 export async function discoverWorkspaceConfig(root = WORKSPACE_ROOT): Promise<WorkspaceConfig> {
   const specification = existsSync(resolve(root, 'spec/main.tsp')) ? 'spec/main.tsp' : undefined
   const workItems = existsSync(resolve(root, 'work-items')) ? 'work-items' : undefined
-  const decisions = existsSync(resolve(root, 'decisions')) ? 'decisions' : undefined
   const documents = (await scanNamed(root, new Set(['SPECIFICATION.md']))).sort()
   const legacyDocuments = (
     await scanNamed(root, new Set(['ARCHITECTURE.md', 'requirements.md']))
@@ -82,7 +80,7 @@ export async function discoverWorkspaceConfig(root = WORKSPACE_ROOT): Promise<Wo
   if (!specification && !workItems && documents.length === 0) {
     throw new Error(`no specification-first workspace targets found under ${root}`)
   }
-  return { specification, documents, workItems, decisions }
+  return { specification, documents, workItems }
 }
 
 export async function loadWorkspaceConfig(): Promise<WorkspaceConfig> {

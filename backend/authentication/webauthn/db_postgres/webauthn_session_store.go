@@ -13,8 +13,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// WebAuthnSessionStore は WebAuthn ceremony の challenge を PostgreSQL に短命保持する
-// (ADR-087 / ADR-139)。Take は GetDel 相当の一度きり消費 (DELETE ... WHERE expires_at > now
+// WebAuthnSessionStore は WebAuthn ceremony の challenge を PostgreSQL に短命保持する。
+// Take は GetDel 相当の一度きり消費 (DELETE ... WHERE expires_at > now
 // RETURNING) で replay を防ぐ。tenant は ctx から解決する。SessionData は JSONB で持つ。
 type WebAuthnSessionStore struct{ Pool sharedpg.DB }
 

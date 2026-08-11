@@ -6,14 +6,14 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 )
 
-// GroupRepository は tenant-scoped な Group 集約とそのメンバーシップを永続化する
-// (ADR-038)。すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
+// GroupRepository は tenant-scoped な Group 集約とそのメンバーシップを永続化する。
+// すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
 // reject する。
 type GroupRepository interface {
 	ListAll(ctx context.Context, tenantID string) ([]*groupdomain.Group, error)
 	// ListPage returns up to limit groups for tenantID ordered by (name, id)
 	// ascending, strictly after the keyset (afterName, afterID). Pass "", ""
-	// for the first page. Backs ListGroups keyset pagination (wi-159, ADR-158).
+	// for the first page. Backs ListGroups keyset pagination (wi-159).
 	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*groupdomain.Group, error)
 	ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*groupdomain.Group, error)
 	Count(ctx context.Context, tenantID string) (int64, error)

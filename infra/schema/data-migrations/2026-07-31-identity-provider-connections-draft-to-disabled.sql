@@ -1,9 +1,9 @@
--- wi-309 / ADR-149: IdentityProviderConnectionStatus is simplified from
+-- wi-309 / IdentityProviderConnectionStatus is simplified from
 -- Draft/Active/Disabled to Active/Disabled. Run this once against an existing
 -- environment BEFORE applying the updated infra/schema/postgres.sql (its
 -- CHECK (status IN ('active', 'disabled')) constraint rejects 'draft' rows).
 --
--- Per ADR-071 §5, data migrations are kept out of the declarative schema
+-- Per §5, data migrations are kept out of the declarative schema
 -- file and stored as a one-off script instead.
 --
 -- Idempotent: safe to re-run: no rows match status = 'draft' after the first

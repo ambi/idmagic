@@ -175,7 +175,7 @@ func newTestNotifier(sender *email_memory.NoopEmailSender) *template.Notifier {
 }
 
 // scenario `Tenancy: 日本語ロケールのユーザーには日本語のパスワードリセットメールが届く`
-// 文面は usecase ではなく通知テンプレートカタログが持つ (ADR-142)。
+// 文面は usecase ではなく通知テンプレートカタログが持つ。
 func TestRequestPasswordResetLocalizesToTheRecipientLocale(t *testing.T) {
 	locale := "ja"
 	email := "hanako@example.com"

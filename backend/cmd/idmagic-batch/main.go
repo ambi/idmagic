@@ -92,7 +92,7 @@ func parseSigningKeyLifecycleConfig(args []string) (signingKeyLifecycleConfig, e
 }
 
 // runDataKeyReencryptionSweep enqueues the data_key_reencryption Job for
-// every tenant and every registered FieldMigrator (wi-97 T006, ADR-148). Its
+// every tenant and every registered FieldMigrator (wi-97 T006). Its
 // own enqueue is dedup'd (JobHandlerIdempotency), so re-running this sweep
 // on a cadence, or after a rotation's own auto-enqueue already fired, is
 // always safe. It is the operator-facing entry point for the initial

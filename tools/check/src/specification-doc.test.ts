@@ -112,13 +112,13 @@ describe('validateSpecification', () => {
     )
   })
 
-  it('rejects links from current specifications to the historical ADR archive', () => {
+  it('rejects links from current specifications to decisions/', () => {
     const source = valid.replace(
       'Demo behavior.',
-      'Demo behavior. See [ADR-001](../decisions/ADR-001-old-choice.md).',
+      'Demo behavior. See [old choice](../decisions/old-choice.md).',
     )
     expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
-      'current specification must not link to the historical ADR archive',
+      'current specification must be self-contained and must not link to decisions/',
     )
   })
 

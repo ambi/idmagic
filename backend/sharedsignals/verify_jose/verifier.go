@@ -1,5 +1,5 @@
 // Package verify_jose implements ports.SecurityEventTokenVerifier: inbound
-// Security Event Token verification (ADR-057 §ReceiveSecurityEvent). It is
+// Security Event Token verification (§ReceiveSecurityEvent). It is
 // the only place in SharedSignals that imports backend/shared/security/tokens_jose,
 // keeping the usecases layer free of adapter dependencies (mirrors
 // workloadidentity/verification_jose and sharedsignals/sign_jose).
@@ -47,7 +47,7 @@ func translateError(err error) error {
 		return ssports.ErrSecurityEventAudienceMismatch
 	default:
 		// Malformed token, invalid signature, missing claim: all fail-closed
-		// as a signature failure (ADR-057).
+		// as a signature failure.
 		return ssports.ErrSecurityEventSignatureInvalid
 	}
 }

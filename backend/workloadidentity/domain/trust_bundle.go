@@ -9,8 +9,8 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// WorkloadTrustBundle はテナントが登録する外部 attestation 発行者の信頼設定
-// (ADR-053)。trust domain・issuer・JWKS 取得元 (または inline JWKS)・受理する
+// WorkloadTrustBundle はテナントが登録する外部 attestation 発行者の信頼設定。
+// trust domain・issuer・JWKS 取得元 (または inline JWKS)・受理する
 // audience・受理する外部 SVID の最大 TTL を束ねる。issuer はテナント内で一意
 // (repository 層で強制する)。
 type WorkloadTrustBundle struct {

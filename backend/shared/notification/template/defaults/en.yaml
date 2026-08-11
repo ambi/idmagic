@@ -1,5 +1,5 @@
 # Builtin default templates (en). Tenants cannot edit these; resetting an override
-# always returns here (ADR-142 §1). body_html is a fragment placed inside <body>;
+# always returns here. body_html is a fragment placed inside <body>;
 # the document shell is supplied by the renderer.
 password_reset:
   subject: "Reset your {{product_name}} password"

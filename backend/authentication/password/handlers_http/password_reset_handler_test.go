@@ -176,7 +176,7 @@ func resetTokenFromEmail(t *testing.T, message string) string {
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
-// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// bare path はどのテナントの正規ロケーションでもなくなったため、
 // テストのリクエスト先も /realms/default 配下でなければ 404 になる。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {

@@ -8,7 +8,7 @@ import (
 // KeysetPage sorts items by a two-part (primary, id) key and returns up to
 // limit items strictly after (afterPrimary, afterID) — "", "" for the first
 // page, limit<=0 for unbounded. Shared by every ports.*Repository.ListPage
-// in-memory implementation (wi-159, ADR-158) so each only supplies its own
+// in-memory implementation (wi-159) so each only supplies its own
 // key extraction, not the sort/seek/limit mechanics. Sorts items in place
 // (like slices.SortFunc); callers pass a slice already private to the call
 // (e.g. freshly built via append while iterating a map).

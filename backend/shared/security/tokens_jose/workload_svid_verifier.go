@@ -1,6 +1,6 @@
 // Package tokens_jose: 外部 workload attestation token (JWT-SVID / Kubernetes
 // projected ServiceAccount token / クラウド instance identity token) の検証
-// (ADR-023 の JWKS/JWT 検証基盤を再利用、[[wi-54-workload-identity-federation-spiffe]])。
+// (JWKS/JWT 検証基盤を再利用、[[wi-54-workload-identity-federation-spiffe]])。
 package tokens_jose
 
 import (
@@ -36,7 +36,7 @@ type WorkloadSVIDClaims struct {
 }
 
 // VerifyWorkloadSVID は外部 workload attestation token (JWT-SVID) を検証する
-// (ADR-053 fail-closed)。alg は PS256 / ES256 / RS256 を受理する (外部 issuer は
+// (fail-closed)。alg は PS256 / ES256 / RS256 を受理する (外部 issuer は
 // 本アプリの自己発行 JWT より alg の選択肢が広いため、[[wi-54-workload-identity-federation-spiffe]]
 // では RS256 も受理する)。iss は登録済み WorkloadTrustBundle の issuer と完全一致、aud は
 // 受理 audience のいずれかと一致、exp は clock skew を許容して未来、(exp - iat) は
@@ -138,7 +138,7 @@ func audienceStrings(aud any) []string {
 }
 
 // =====================================================================
-// WorkloadJWKSCache — last-known-good キャッシュ (ADR-053 bundle refresh)
+// WorkloadJWKSCache — last-known-good キャッシュ (bundle refresh)
 // =====================================================================
 
 const workloadJWKSMaxStaleness = 24 * time.Hour

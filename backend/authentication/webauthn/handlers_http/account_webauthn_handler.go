@@ -1,6 +1,6 @@
 // /api/account/v1/mfa/webauthn/* — エンドユーザー自身の WebAuthn / Passkey の self-service
-// 登録・解除 (wi-26 / ADR-087)。登録は attestation 検証 (RP ID / origin / challenge) を所持
-// 証明とし、解除は step-up 再認証 (ADR-043) を要求する。
+// 登録・解除 (wi-26)。登録は attestation 検証 (RP ID / origin / challenge) を所持
+// 証明とし、解除は step-up 再認証 を要求する。
 package handlers_http
 
 import (
@@ -25,8 +25,7 @@ type webAuthnCredentialRemoveRequest struct {
 }
 
 // WebAuthnAccountDeps は webauthn ceremony use case の依存を組み立てる。webauthn 自身の
-// handler に加え、mfa の step-up ハンドラからも package 境界を越えて呼ばれる
-// (ADR-130 Phase 2)。
+// handler に加え、mfa の step-up ハンドラからも package 境界を越えて呼ばれる。
 func WebAuthnAccountDeps(d httpdeps.Deps, c *echo.Context) authusecases.WebAuthnDeps {
 	return authusecases.WebAuthnDeps{
 		RP:             ResolveRPForRequest(c, d.Deps, d.WebAuthnRP),
@@ -78,7 +77,7 @@ func HandleRemoveWebAuthnCredential(d httpdeps.Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	// Passkey の解除は高 sensitivity 操作。step-up 再認証を要求する (ADR-043)。
+	// Passkey の解除は高 sensitivity 操作。step-up 再認証を要求する。
 	sub, err := httpdeps.RequireStepUpSub(d, c)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)

@@ -9,7 +9,7 @@ import (
 )
 
 // =====================================================================
-// RecoveryCodeRepository (Authentication) — wi-26 / ADR-087
+// RecoveryCodeRepository (Authentication) — wi-26 /
 // =====================================================================
 
 type RecoveryCodeRepository struct {

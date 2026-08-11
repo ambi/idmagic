@@ -35,14 +35,14 @@ export type SignInPolicyAppRow = {
   view: AppSignInPolicyView
 }
 
-// 内部ルール名。UI には表示しないが、保存契約上ルールには名前が要る (ADR-081)。
+// 内部ルール名。UI には表示しないが、保存契約上ルールには名前が要る。
 const DEFAULT_RULE_NAME = 'tenant-default'
 
 function strengthLabel(strength: RequiredAuthnStrength, t: AdminSignInPolicyDictionary): string {
   return strength === 'Mfa' ? t.strengthMfaLabel : t.strengthPasswordLabel
 }
 
-// summarizeRules は実効ルール列を利用者向けの短い文へ要約する。内部ルール名は見せない (ADR-081)。
+// summarizeRules は実効ルール列を利用者向けの短い文へ要約する。内部ルール名は見せない。
 function summarizeRules(rules: SignInRule[], t: AdminSignInPolicyDictionary): string {
   const enabled = rules.filter((rule) => rule.enabled)
   if (enabled.length === 0) {
@@ -65,7 +65,7 @@ function summarizeRules(rules: SignInRule[], t: AdminSignInPolicyDictionary): st
     .join('、')
 }
 
-// AdminSignInPolicyPage はテナントのサインインポリシーを総合的に扱う画面 (wi-115, ADR-081)。
+// AdminSignInPolicyPage はテナントのサインインポリシーを総合的に扱う画面 (wi-115)。
 // 上段で全アプリ共通のデフォルトポリシーを詳細表示/編集し、下段で各アプリの上書き・実効ポリシーを一覧する。
 export function AdminSignInPolicyPage({
   csrfToken,

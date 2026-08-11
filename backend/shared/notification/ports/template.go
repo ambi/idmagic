@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// TemplateKey は通知の用途を表す固定識別子 (ADR-142 決定 2)。SCL
+// TemplateKey は通知の用途を表す固定識別子。SCL
 // `Tenancy.NotificationTemplateKey` の双子定義。テナントは key を追加できない。
 type TemplateKey string
 
@@ -36,7 +36,7 @@ func (k TemplateKey) Valid() bool {
 
 // TemplateOverride はテナントによる通知テンプレート上書き 1 件。SCL
 // `Tenancy.NotificationTemplate` の双子定義。上書きできるのは件名 / テキスト本文 /
-// HTML 本文 / 差出人表示名だけで、差出人アドレスはサーバ設定のまま (ADR-142 決定 6)。
+// HTML 本文 / 差出人表示名だけで、差出人アドレスはサーバ設定のまま。
 type TemplateOverride struct {
 	TenantID        string
 	Key             TemplateKey
@@ -62,7 +62,7 @@ type TenantNotificationSettings struct {
 
 // TenantNotificationSource は shared/notification が Tenancy から受け取る境界。
 // カタログとレンダラは shared に置き、テナント上書きの永続化は Tenancy が所有する
-// (ADR-142 決定 11) ため、shared 側はこの port だけを知る。
+// ため、shared 側はこの port だけを知る。
 type TenantNotificationSource interface {
 	NotificationSettings(ctx context.Context, tenantID string) (TenantNotificationSettings, error)
 	FindTemplateOverride(ctx context.Context, tenantID string, key TemplateKey, locale string) (*TemplateOverride, error)

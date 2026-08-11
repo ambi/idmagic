@@ -6,7 +6,7 @@ Pending items live in `work-items/`; completed or cancelled items live in `work-
 
 A work item is also the task list, change-specific design document, and implementation history for that
 change. When the item is completed, conclusions that remain current must be reflected in TypeSpec or the
-owning context's `SPECIFICATION.md`. Do not create a new ADR.
+owning context's `SPECIFICATION.md`.
 
 ```markdown
 ---

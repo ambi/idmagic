@@ -1,7 +1,7 @@
 // Package envelope_cleartext: Layer 4 - Adapter Layer (technical shared adapter)
 //
 // CleartextMasterKeyProvider is the dev/local envelope_crypto.MasterKeyProvider
-// (ADR-148): it wraps per-tenant DEKs with an in-process Tink keyset instead
+// : it wraps per-tenant DEKs with an in-process Tink keyset instead
 // of an external KMS, so engineers can develop without standing up OpenBao.
 // It must never be selected in production configuration.
 package envelope_cleartext

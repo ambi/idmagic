@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// ADR-061 / wi-66: OIDC RP 化した portal が提示する Bearer access token を
+// wi-66: OIDC RP 化した portal が提示する Bearer access token を
 // resource server として受理する経路を /api/admin/v1/policy/roles 経由で検証する。
 // セッション resolver を配線せず、Bearer のみで admin 認可が成立すること、
 // 無効トークン・非 admin・トークン無しの fail-closed を確認する。
@@ -109,7 +109,7 @@ func TestBearerInactiveTokenIsUnauthorized(t *testing.T) {
 
 func TestBearerWithoutPortalScopeIsForbidden(t *testing.T) {
 	admin := keyAdminUser("user_alice", "acme", []string{"admin"})
-	// admin ロールはあるが token に idmagic.admin scope が無い → fail-closed (ADR-061)。
+	// admin ロールはあるが token に idmagic.admin scope が無い → fail-closed。
 	e := newBearerAdminServer(t, admin, stubIntrospector{byToken: map[string]*oauthports.IntrospectionResult{
 		"good": tokenWithScope("user_alice", "openid profile"),
 	}})

@@ -27,8 +27,8 @@ type CompleteLoginInput struct {
 	AuthTime  time.Time
 	AMR       []string
 	ACR       string
-	// Sid は AuthenticationContext.session_id から一度だけ伝搬する OIDC session id
-	// (ADR-127)。空文字列は browser session を持たない発行を表す。
+	// Sid は AuthenticationContext.session_id から一度だけ伝搬する OIDC session id。
+	// 空文字列は browser session を持たない発行を表す。
 	Sid string
 }
 

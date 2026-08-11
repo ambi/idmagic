@@ -10,7 +10,7 @@ import (
 // error taxonomy ProvisioningTargetClient implementations must return (wrapped
 // via errors.As-compatible chains) so the delivery engine usecase can classify
 // downstream responses without depending on a concrete protocol package
-// (ADR-128 decision 2).
+// (decision 2).
 
 // ConflictError is returned when the downstream service provider reports a
 // 409-equivalent conflict (an existing resource conflicts, e.g. duplicate

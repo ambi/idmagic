@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AuthnRequestReplayStore は SAML AuthnRequest リプレイ予約を PostgreSQL に持つ (ADR-139)。
+// AuthnRequestReplayStore は SAML AuthnRequest リプレイ予約を PostgreSQL に持つ。
 // port の SETNX + TTL 意味論を INSERT ... ON CONFLICT DO UPDATE ... WHERE expires_at <= now で
 // 写す: live な予約は WHERE が false になり 0 行 (= 予約失敗)、期限切れ / 未存在は 1 行
 // (= 予約成功) を返す。到達不能時はエラーを返し、呼び出し側で fail-closed に倒れる

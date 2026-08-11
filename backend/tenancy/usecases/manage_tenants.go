@@ -30,7 +30,7 @@ var (
 type UpdateInput struct {
 	DisplayName            *string
 	PasswordPolicyOverride *domain.PasswordPolicyOverride
-	// DefaultLocale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。nil は現状維持、
+	// DefaultLocale は通知の locale 解決の第 2 段。nil は現状維持、
 	// 空文字列はシステム既定へ戻す、それ以外は同梱翻訳を持つ locale のみ受け付ける。
 	DefaultLocale *string
 }
@@ -59,7 +59,7 @@ func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now t
 }
 
 // Create は admin が指定した realm (URL slug) で新規テナントを作成する。不変 UUID キー
-// (id) はサーバが採番する (ADR-085)。realm の重複は ErrTenantConflict。
+// (id) はサーバが採番する。realm の重複は ErrTenantConflict。
 func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displayName string, now time.Time) (*domain.Tenant, error) {
 	displayName = strings.TrimSpace(displayName)
 	if displayName == "" {
@@ -74,7 +74,7 @@ func Create(ctx context.Context, repo tenantports.TenantRepository, realm, displ
 		EndpointStyle: domain.TenantEndpointStylePath,
 		CreatedAt:     normalizeNow(now), UpdatedAt: normalizeNow(now),
 	}
-	// 新規 realm には DNS ラベル規則と予約語を適用する (ADR-144)。Tenant.Validate は
+	// 新規 realm には DNS ラベル規則と予約語を適用する。Tenant.Validate は
 	// 既存 realm を落とさないよう緩いままなので、作成経路で別に検査する。
 	if err := domain.ValidateNewRealm(tenant.Realm); err != nil {
 		return nil, ErrInvalidTenantID
@@ -212,7 +212,7 @@ func SetDisabled(ctx context.Context, repo tenantports.TenantRepository, id stri
 	return &updated, nil
 }
 
-// SetEndpointStyle はテナントの正規ロケーションを切り替える破壊的操作 (ADR-144)。
+// SetEndpointStyle はテナントの正規ロケーションを切り替える破壊的操作。
 // 通常の Update に混ぜないことで、呼び出し側が issuer / RP ID / cookie scope の変更を
 // 明示的に扱うことを強制する。
 func SetEndpointStyle(

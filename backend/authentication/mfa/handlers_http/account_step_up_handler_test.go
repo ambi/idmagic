@@ -1,6 +1,6 @@
 package handlers_http_test
 
-// wi-43 / ADR-043: 高 sensitivity な self-service 操作は step-up 再認証を要求する。
+// wi-43 / 高 sensitivity な self-service 操作は step-up 再認証を要求する。
 // (1) 対象表 (パスワード変更 / MFA 解除 / email 変更 / 全セッション失効) の全ハンドラが、
 //     recency 窓を外れたセッションに対し 403 step_up_required を返すことを表で照合する。
 // (2) step_up/complete で再認証すると、同一セッションで gate を通過できる (flip) ことを

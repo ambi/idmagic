@@ -1,6 +1,6 @@
-// Package samlresponse は Saml bounded context の SAMLResponse アダプタ (wi-29, ADR-067)。
+// Package samlresponse は Saml bounded context の SAMLResponse アダプタ (wi-29)。
 //
-// 署名済み <saml:Assertion> (samltoken, ADR-060) を SAML 2.0 Web Browser SSO の
+// 署名済み <saml:Assertion> (samltoken) を SAML 2.0 Web Browser SSO の
 // <samlp:Response> に包み、必要なら Response 全体も enveloped 署名し、HTTP-POST binding の
 // 自動 POST フォームに直列化する。XML 署名・canonicalization は goxmldsig に委ね、自前実装しない。
 package responses_saml
@@ -127,7 +127,7 @@ func BuildResponse(in ResponseInput, signer *samltoken.Signer) ([]byte, error) {
 
 // EncodePostForm は SAMLResponse を base64 化し、ACS への自動 POST フォーム HTML を返す。
 // 自動送信は inline event handler ではなく固定の <script> で行い、その内容は CSP hash で
-// 許可される (support.AutoSubmitScript, ADR-076)。'unsafe-inline' 無しの厳格 CSP でも通る。
+// 許可される (support.AutoSubmitScript)。'unsafe-inline' 無しの厳格 CSP でも通る。
 func EncodePostForm(responseXML []byte, acsURL, relayState string) ([]byte, error) {
 	if strings.TrimSpace(acsURL) == "" {
 		return nil, fmt.Errorf("samlresponse: ACS URL is required")

@@ -11,7 +11,7 @@ import (
 // UserMutationCommitter implements the IdManagement boundary port
 // userports.UserMutationCommitter. It owns the transactional capture that keeps a
 // User mutation and its derived lifecycle workflow runs consistent, so
-// IdManagement stays free of lifecycle workflow types (wi-237, ADR-117).
+// IdManagement stays free of lifecycle workflow types (wi-237).
 type UserMutationCommitter struct {
 	WorkflowRepo igports.LifecycleWorkflowRepository
 	// Capture commits the user and runs in one transaction (production). When

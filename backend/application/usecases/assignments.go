@@ -21,8 +21,7 @@ type AssignmentDeps struct {
 	AssignmentRepo ports.AssignmentRepository
 	OrderingRepo   ports.ApplicationOrderingRepository
 	Emit           func(spec.DomainEvent)
-	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45,
-	// ADR-128). nil means outbound provisioning is not wired.
+	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
 	ProvisioningNotifier ports.ProvisioningNotifier
 }
 
@@ -109,7 +108,7 @@ func UnassignApplication(ctx context.Context, deps AssignmentDeps, actorUserID, 
 }
 
 // ListAssignments returns up to limit+1 assignments after the given keyset
-// (wi-159, ADR-158) — callers pass limit+1 to detect whether a next page
+// (wi-159) — callers pass limit+1 to detect whether a next page
 // exists, then trim to limit before responding.
 func ListAssignments(ctx context.Context, deps AssignmentDeps, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
 	tenantID := tenancy.TenantID(ctx)

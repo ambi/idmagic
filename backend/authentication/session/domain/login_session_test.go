@@ -76,7 +76,7 @@ func TestLoginSessionActive(t *testing.T) {
 }
 
 // TestLoginSessionRevokeIdempotent: 2 回目以降の失効要求は最初の revoked_at /
-// revoke_reason を保持したまま成功として扱う (tombstone, ADR-126)。
+// revoke_reason を保持したまま成功として扱う (tombstone)。
 func TestLoginSessionRevokeIdempotent(t *testing.T) {
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	sess := domain.LoginSession{ExpiresAt: now.Add(time.Hour)}

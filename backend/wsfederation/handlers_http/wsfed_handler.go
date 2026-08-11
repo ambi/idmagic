@@ -101,7 +101,7 @@ func (d Deps) issuePassiveForm(c *echo.Context, o wsfedusecases.SignInOutcome) e
 		return c.String(http.StatusInternalServerError, "rstr serialize failed")
 	}
 	// 自動 POST は cross-origin の ReplyURL へ form 送信し固定の submit script を含む。
-	// 当該レスポンスの CSP に form-action=ReplyURL と script hash を許可する (ADR-076)。
+	// 当該レスポンスの CSP に form-action=ReplyURL と script hash を許可する。
 	support.SetAutoPostFormCSP(c, o.Validated.ReplyURL)
 	formHTML, err := wsfed.RenderPassiveForm(o.Validated.ReplyURL, wresult, o.Validated.Wctx)
 	if err != nil {

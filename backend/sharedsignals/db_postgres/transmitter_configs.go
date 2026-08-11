@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// SsfTransmitterConfigRepository は SsfTransmitterConfig (ADR-057) を PostgreSQL に永続化する。
+// SsfTransmitterConfigRepository は SsfTransmitterConfig を PostgreSQL に永続化する。
 type SsfTransmitterConfigRepository struct{ Pool sharedpg.DB }
 
 func transmitterConfigFromRow(row *SsfTransmitterConfig) *ssdomain.SsfTransmitterConfig {

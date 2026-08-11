@@ -1,4 +1,4 @@
-# idmagic-worker split into one Deployment per ADR-129 execution lane so a
+# idmagic-worker split into one Deployment per execution lane so a
 # lane's claim/execution capacity is never consumed by another lane's
 # backlog. JOB_WORKER_LANES pins each Deployment to exactly one lane (unlike
 # the docker-compose dev worker, which leaves it unset and runs compat mode).

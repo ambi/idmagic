@@ -16,7 +16,7 @@ import (
 )
 
 func TestEmitAuthenticationFailureRecordsPlaintextAttributes(t *testing.T) {
-	// ADR-104 (ADR-046 の username/IP/UA 条項を撤回): AuthenticationFailed は平文のまま記録する。
+	// AuthenticationFailed は平文のまま記録する。
 	d := Deps{}
 	var emitted spec.DomainEvent
 	d.Emit = func(e spec.DomainEvent) { emitted = e }

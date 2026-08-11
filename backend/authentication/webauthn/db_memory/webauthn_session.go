@@ -9,7 +9,7 @@ import (
 )
 
 // =====================================================================
-// WebAuthnSessionStore (Authentication) — wi-26 / ADR-087
+// WebAuthnSessionStore (Authentication) — wi-26 /
 // WebAuthn ceremony の challenge を短命に保持する。Take は一度きりの消費。
 // =====================================================================
 

@@ -1,4 +1,4 @@
-// 管理者向け SsfStream ライフサイクル操作 (ADR-057, wi-58 T005)。SCL SharedSignals
+// 管理者向け SsfStream ライフサイクル操作 (wi-58 T005)。SCL SharedSignals
 // bounded context が所有する admin インターフェース群: ListSsfStreams / GetSsfStream /
 // RegisterSsfTransmitterStream / RegisterSsfReceiverStream / UpdateSsfStream /
 // DisableSsfStream / EnableSsfStream / DeleteSsfStream / ListSecurityEventDeliveries。

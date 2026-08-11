@@ -1,6 +1,6 @@
 package usecases
 
-// 高 sensitivity な self-service 操作のための step-up 再認証 (ADR-043 / wi-43)。
+// 高 sensitivity な self-service 操作のための step-up 再認証 (wi-43)。
 // パスワード変更・MFA factor 解除・primary email 変更・全セッション失効などは、
 // セッションが乗っ取られた場合の被害を抑えるため「直近 N 分以内に password / MFA で
 // 再認証済み」であることを要求する。判定の recency ソースは max(auth_time, step_up_at)。

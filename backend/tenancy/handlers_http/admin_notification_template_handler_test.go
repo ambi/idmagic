@@ -255,7 +255,7 @@ func TestNotificationTemplatePreviewDoesNotSend(t *testing.T) {
 }
 
 // scenario `Tenancy: プレビューは実送信せずテスト送信は操作者本人にしか届かない`
-// 宛先は操作者本人に固定され、リクエストで指定できない (ADR-142 決定 8)。
+// 宛先は操作者本人に固定され、リクエストで指定できない。
 func TestNotificationTemplateTestSendGoesToTheActorOnly(t *testing.T) {
 	e, sender, _ := newNotificationTemplateServer(t, notificationAdmin())
 
@@ -297,7 +297,7 @@ func TestNotificationTemplateTestSendRequiresVerifiedActorAddress(t *testing.T) 
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
-// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// bare path はどのテナントの正規ロケーションでもなくなったため、
 // テストのリクエスト先も /realms/default 配下でなければ 404 になる。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {

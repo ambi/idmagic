@@ -16,8 +16,8 @@ import (
 )
 
 // LoginAttemptThrottle は login throttle の counter / lock を PostgreSQL の共有行で数える。
-// ADR-077 の共有ストア化・fail-closed・SHA-256 識別子・tenant scoping を維持しつつ、機構を
-// PostgreSQL に置く (ADR-139: Postgres は既に hard dependency で依存を増やさない)。
+// 共有ストア化・fail-closed・SHA-256 識別子・tenant scoping を維持しつつ、機構を
+// PostgreSQL に置く (Postgres は既に hard dependency で依存を増やさない)。
 // fixed-window の counter と lockout を 1 行 (failures / window_expires_at / locked_until) に統合し、
 // RecordFailure は tx + SELECT FOR UPDATE の read-modify-write で 1 往復に原子化する。
 // 到達不能時はエラーを返し、呼び出し側で fail-closed に倒れる。

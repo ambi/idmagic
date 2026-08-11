@@ -23,7 +23,7 @@ type queryer interface {
 }
 
 // restoreConsistencyReport is the result of a post-restore consistency check
-// (wi-101, ADR-153): it verifies that a PostgreSQL restore did not leave the
+// (wi-101): it verifies that a PostgreSQL restore did not leave the
 // tenant/user/client baseline empty, signing keys resolvable, the jobs queue
 // free of dedup_key violations, and ephemeral tables truncated as intended.
 type restoreConsistencyReport struct {
@@ -35,7 +35,7 @@ type restoreConsistencyReport struct {
 	NonEmptyEphemeralTables        []string
 }
 
-// ephemeralTables are truncated on restore (ADR-153); any row surviving in
+// ephemeralTables are truncated on restore; any row surviving in
 // one of them after restore means the truncate step was skipped or failed.
 var ephemeralTables = []string{
 	"oauth2_authorization_requests",
@@ -152,7 +152,7 @@ func checkRestoreConsistency(ctx context.Context, db queryer) (restoreConsistenc
 }
 
 // runRestoreConsistencyCheck is the operator-facing entry point
-// (`idmagic-batch restore-consistency-check`, wi-101, ADR-153). It opens its
+// (`idmagic-batch restore-consistency-check`, wi-101). It opens its
 // own short-lived connection pool rather than the full bootstrap.Dependencies
 // graph: a post-restore check only needs to read PostgreSQL directly and
 // must not depend on unrelated env config (WEBAUTHN_RP_ID etc.) that a

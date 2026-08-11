@@ -17,7 +17,7 @@ func withTenant(ctx context.Context, tenant *tenancydomain.Tenant) context.Conte
 	return tenancy.WithTenant(ctx, tenant, "", "")
 }
 
-// TestRateLimiter verifies the shared endpoint rate limiter (ADR-157): fixed-window Allow
+// TestRateLimiter verifies the shared endpoint rate limiter: fixed-window Allow
 // blocks at threshold, resets after window expiry, isolates by tenant/policy/key, and GC
 // reclaims expired rows. Parity with the memory adapter's contract.
 func TestRateLimiter(t *testing.T) {

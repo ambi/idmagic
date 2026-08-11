@@ -102,7 +102,7 @@ func TestApplicationAccessEvaluatesSignInPolicy(t *testing.T) {
 }
 
 // TestApplicationAccessAppliesTenantDefaultPolicy はアプリ個別ポリシー未設定のとき
-// テナントデフォルトが適用され、個別ポリシーがあればそれで上書きされることを確認する (wi-115, ADR-081)。
+// テナントデフォルトが適用され、個別ポリシーがあればそれで上書きされることを確認する (wi-115)。
 func TestApplicationAccessAppliesTenantDefaultPolicy(t *testing.T) {
 	ctx := context.Background()
 	apps := appmemory.NewApplicationRepository()

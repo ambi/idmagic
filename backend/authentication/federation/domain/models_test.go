@@ -34,7 +34,7 @@ func TestIdentityProviderConnectionValidateAndLifecycle(t *testing.T) {
 	}
 }
 
-// RED (scenario/state guard: IdentityProviderConnectionLifecycle, ADR-149): Draft は廃止され、
+// RED (scenario/state guard: IdentityProviderConnectionLifecycle): Draft は廃止され、
 // Active な connection の再 activate は許可されない (Disabled からの遷移だけが有効)。
 func TestActivateRejectsAlreadyActiveConnection(t *testing.T) {
 	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
@@ -54,7 +54,7 @@ func TestActivateRejectsAlreadyActiveConnection(t *testing.T) {
 	}
 }
 
-// RED (model: IdentityProviderConnectionStatus, ADR-149): Draft は enum から除かれたので
+// RED (model: IdentityProviderConnectionStatus): Draft は enum から除かれたので
 // Validate は Active/Disabled 以外の status 値を常に拒否する。
 func TestValidateRejectsNonActiveDisabledStatus(t *testing.T) {
 	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)

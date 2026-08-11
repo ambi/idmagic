@@ -12,7 +12,7 @@ import (
 
 const tenantSaltBytes = 32
 
-// TenantSaltStore は相関 salt の PostgreSQL 実装 (wi-145 / ADR-046)。
+// TenantSaltStore は相関 salt の PostgreSQL 実装 (wi-145)。
 // tenant scope は ctx (tenancy.TenantID) から解決し、初回取得時に generate-on-first-use する。
 type TenantSaltStore struct{ Pool DB }
 

@@ -11,7 +11,7 @@ import (
 )
 
 // ParseLimit parses the "limit" query parameter for a keyset-paginated list
-// endpoint (ADR-158): absent falls back to def, present must be a positive
+// endpoint: absent falls back to def, present must be a positive
 // integer (else an error the caller maps to InvalidRequestError), clamped to
 // max rather than rejected so a too-large limit degrades gracefully.
 func ParseLimit(c *echo.Context, def, maxLimit int) (int, error) {

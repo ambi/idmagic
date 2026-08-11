@@ -1,9 +1,9 @@
 package domain
 
-// IdManagement bounded context の User / 属性モデル (ADR-039 / ADR-040)。
+// IdManagement bounded context の User / 属性モデル。
 // 組み込み属性カタログと claim 射影は attributes.go が持つ。field validation の
 // zog schema は本パッケージが所有し、`shared/spec` の Validate/ZogError 汎用ラッパーのみ
-// 再利用する (ADR-093)。
+// 再利用する。
 
 import (
 	"fmt"
@@ -18,12 +18,12 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// attrKeyPattern は ADR-040 の属性キー命名規則: snake_case、英字始まり。
+// attrKeyPattern は 属性キー命名規則: snake_case、英字始まり。
 var attrKeyPattern = regexp.MustCompile(`^[a-z][a-z0-9_]{0,62}$`)
 
 // User は IdP の最小コア。識別・認証・表示名・RBAC・ライフサイクルだけを型付きで
 // 持ち、それ以外のプロフィール属性 (OIDC §5.1 optional claim / 組織属性 / tenant
-// 定義 custom) は Attributes に sparse に格納する (ADR-039)。テナントは実際に使う
+// 定義 custom) は Attributes に sparse に格納する。テナントは実際に使う
 // 属性しか持たないため、固定カラム/フィールドの肥大を避けられる。
 type User struct {
 	ID                string                    `json:"id"`
@@ -71,7 +71,7 @@ func (u User) Validate() error {
 	return nil
 }
 
-// IsDeleted は User が ADR-036 の tombstone 状態 (status == Deleted) かを返す。
+// IsDeleted は User が tombstone 状態 (status == Deleted) かを返す。
 func (u User) IsDeleted() bool { return u.Lifecycle.EffectiveStatus() == idmdomain.UserStatusDeleted }
 
 // IsSoftDeleted は User が削除予約状態 (status == PendingDeletion) かを返す。PII は
@@ -146,7 +146,7 @@ func (l UserLifecycle) Validate() error {
 }
 
 // AttributeValue は属性 1 件の値 (sum type)。Type が示すフィールドだけが設定される。
-// OIDC 標準クレームの組み込み属性と tenant 定義 custom 属性で共通 (ADR-040)。
+// OIDC 標準クレームの組み込み属性と tenant 定義 custom 属性で共通。
 type AttributeValue struct {
 	Type        idmdomain.AttributeType `json:"type"`
 	String      *string                 `json:"string,omitempty"`
@@ -209,7 +209,7 @@ func (v AttributeValue) JSONValue() any {
 	return nil
 }
 
-// UserAttributeDef は属性 1 件の定義 (ADR-040)。組み込みカタログ
+// UserAttributeDef は属性 1 件の定義。組み込みカタログ
 // (BuiltinUserAttributeDefs) と tenant 定義 (TenantUserAttributeSchema) の両方で使う。
 type UserAttributeDef struct {
 	Key            string                   `json:"key"`
@@ -246,7 +246,7 @@ var userAttributeDefSchema = z.Struct(z.Shape{
 
 func (d UserAttributeDef) Validate() error { return spec.Validate(userAttributeDefSchema, &d) }
 
-// TenantUserAttributeSchema は tenant 単位の custom 属性定義集合 (ADR-040)。
+// TenantUserAttributeSchema は tenant 単位の custom 属性定義集合。
 // 組み込み属性は BuiltinUserAttributeDefs() がコードで持ち、本集合は tenant 固有分のみ。
 // tenant 削除時に cascade する。
 type TenantUserAttributeSchema struct {

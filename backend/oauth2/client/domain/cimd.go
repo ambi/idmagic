@@ -1,7 +1,7 @@
 package domain
 
 // Client ID Metadata Documents (CIMD, draft-ietf-oauth-client-id-metadata-document-00).
-// Pure URL-shape and document validation; no network I/O (ADR-155).
+// Pure URL-shape and document validation; no network I/O.
 
 import (
 	"encoding/json"
@@ -43,12 +43,11 @@ type clientIDMetadataDocument struct {
 
 // ParseClientIDMetadataDocument parses and validates a fetched CIMD document
 // against the URL it was fetched from (which is also the resulting client's
-// client_id), returning a synthesized OAuth2Client that is never persisted
-// (ADR-155). It performs no I/O; the caller is responsible for the SSRF-safe
-// fetch.
+// client_id), returning a synthesized OAuth2Client that is never persisted.
+// It performs no I/O; the caller is responsible for the SSRF-safe fetch.
 //
 // MVP only accepts documents that omit token_endpoint_auth_method or declare
-// it as "none"; anything else is rejected fail-closed (ADR-155 rejected
+// it as "none"; anything else is rejected fail-closed (rejected
 // private_key_jwt-via-CIMD for this iteration).
 func ParseClientIDMetadataDocument(raw []byte, requestURL string) (*OAuth2Client, error) {
 	var doc clientIDMetadataDocument

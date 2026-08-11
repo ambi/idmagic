@@ -6,15 +6,15 @@ import (
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 )
 
-// AgentRepository は tenant-scoped な Agent 集約とその OAuth2Client 束縛を永続化する
-// (ADR-048)。すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
+// AgentRepository は tenant-scoped な Agent 集約とその OAuth2Client 束縛を永続化する。
+// すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
 // reject する。Agent は自身の資格情報を持たず、AgentCredentialBinding で既存
 // OAuth2Client に束縛してトークンを得る。
 type AgentRepository interface {
 	ListAll(ctx context.Context, tenantID string) ([]*agentdomain.Agent, error)
 	// ListPage returns up to limit agents for tenantID ordered by (name, id)
 	// ascending, strictly after the keyset (afterName, afterID). Pass "", ""
-	// for the first page. Backs ListAgents keyset pagination (wi-159, ADR-158).
+	// for the first page. Backs ListAgents keyset pagination (wi-159).
 	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*agentdomain.Agent, error)
 	ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*agentdomain.Agent, error)
 	Count(ctx context.Context, tenantID string) (int64, error)
@@ -30,6 +30,6 @@ type AgentRepository interface {
 	// 返し no-op とする (冪等)。
 	RemoveBinding(ctx context.Context, tenantID, agentID, clientID string) (bool, error)
 	// FindByClientID は指定 client に束縛された Agent を返す。束縛がなければ nil を
-	// 返す。トークン発行経路の status gate が呼ぶ (ADR-048)。
+	// 返す。トークン発行経路の status gate が呼ぶ。
 	FindByClientID(ctx context.Context, tenantID, clientID string) (*agentdomain.Agent, error)
 }

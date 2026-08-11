@@ -3,8 +3,8 @@ package usecases
 // 監査イベントレコードから sidecar 検索属性を生成する抽出器 (wi-145 / wi-46)。
 //
 // event.type / outcome / actor.id / client.id / session.id / target.id / transaction.id /
-// correlation.id / request.id の非 PII raw id に加え、actor.username / client.ip も ADR-104
-// (ADR-046 の username/IP 条項を撤回) により平文のまま抽出する。actor.username は実アカウントが
+// correlation.id / request.id の非 PII raw id に加え、actor.username / client.ip も
+// (username/IP 条項を撤回) により平文のまま抽出する。actor.username は実アカウントが
 // 確定しないイベント (AuthenticationFailed 等、payload.username を持つイベント) でのみ値を持つ。
 
 import (

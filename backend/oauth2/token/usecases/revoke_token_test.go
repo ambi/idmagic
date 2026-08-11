@@ -66,7 +66,7 @@ func TestRevokeManagedAccessTokenUpdatesLifecycleRecord(t *testing.T) {
 	}
 }
 
-// ADR-127 §3: session revoke は sid を共有する全 family/client の RefreshTokenRecord を
+// §3: session revoke は sid を共有する全 family/client の RefreshTokenRecord を
 // 一括で失効させる。
 func TestRevokeTokensBySidRevokesAllFamiliesAndClients(t *testing.T) {
 	ctx := context.Background()

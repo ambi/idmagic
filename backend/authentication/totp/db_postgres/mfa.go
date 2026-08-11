@@ -21,7 +21,7 @@ const (
 )
 
 // MfaFactorRepository (Authentication). Cipher envelope-encrypts Secret at
-// rest (ADR-148): Save always encrypts and never writes the legacy plaintext
+// rest: Save always encrypts and never writes the legacy plaintext
 // column; Find/ListBySub dual-read rows written before this migration
 // (secret populated, secret_ciphertext NULL) until wi-97 T006 backfills them.
 type MfaFactorRepository struct {

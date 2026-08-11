@@ -1,7 +1,7 @@
 package bootstrap
 
-// 揮発性の認証 / OAuth2 一時状態 (ADR-139) の空間回収 sweep。正しさは各 read の
-// expires_at 述語が担保しており、本 sweep は best-effort な空間回収のみ (ADR-139 §2)。
+// 揮発性の認証 / OAuth2 一時状態 の空間回収 sweep。正しさは各 read の
+// expires_at 述語が担保しており、本 sweep は best-effort な空間回収のみ。
 // 常駐 idmagic-worker の周期 ticker から呼ぶ。
 
 import (

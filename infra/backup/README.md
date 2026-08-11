@@ -1,9 +1,7 @@
 # PostgreSQL backup / restore scripts
 
 Scripts here implement the pg_dump / logical-restore path of the backup and
-DR strategy defined in
-[ADR-153](../../decisions/ADR-153-backup-restore-and-disaster-recovery.md).
-Procedures, DR scenarios, and the verification checklist are in
+DR strategy. Procedures, DR scenarios, and the verification checklist are in
 [`infra/runbooks/backup-restore-dr.md`](../runbooks/backup-restore-dr.md);
 this README only covers how to run the scripts.
 
@@ -50,5 +48,5 @@ just restore-drill
 `restore-postgres.sh` refuses to run against a database that already has
 tenant rows (restore into a freshly created, empty database), applies
 `infra/schema/postgres.sql` via `psqldef` first, restores data, truncates
-the ephemeral UNLOGGED/LOGGED tables (ADR-153), and finishes by running
+the ephemeral UNLOGGED/LOGGED tables, and finishes by running
 `idmagic-batch restore-consistency-check`.

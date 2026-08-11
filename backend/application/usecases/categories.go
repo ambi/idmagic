@@ -1,6 +1,6 @@
 package usecases
 
-// 管理者向け ApplicationCategory の CRUD と Application への付与 (wi-70, ADR-069)。
+// 管理者向け ApplicationCategory の CRUD と Application への付与 (wi-70)。
 // カテゴリは ApplicationCatalog が tenant 単位で所有し、ポータルのセクション分類に使う。
 // 付与は Application.CategoryIDs に持ち、カテゴリ削除時はアプリ側からも除く。
 

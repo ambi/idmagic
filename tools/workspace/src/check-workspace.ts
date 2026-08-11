@@ -100,15 +100,5 @@ if ((all || args.has('--documents')) && config.documents.length > 0) {
 }
 
 if ((all || args.has('--ids')) && config.workItems) {
-  const command = [
-    'check/src/check-ids.ts',
-    '--work-items',
-    rootPath(config.workItems),
-    '--root',
-    rootPath('.'),
-    '--links',
-    ...config.documents.map(rootPath),
-  ]
-  if (config.decisions) command.push('--decisions', rootPath(config.decisions))
-  await runTool(command)
+  await runTool(['check/src/check-ids.ts', '--work-items', rootPath(config.workItems)])
 }

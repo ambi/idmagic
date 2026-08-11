@@ -90,4 +90,4 @@ The cross-cutting runtime design these assets implement — high availability an
 correlation, the metrics contract, HTTP server hardening, and security response headers — is recorded in
 the repository design record, not here. See
 [`spec/SPECIFICATION.md`](../spec/SPECIFICATION.md) `## Design`.
-This file keeps the commands and configuration steps for running the stack (ADR-143).
+This file keeps the commands and configuration steps for running the stack.

@@ -1,4 +1,4 @@
-// Rich Authorization Requests (RFC 9396) の検証・ダウンスコープ判定 (ADR-050)。
+// Rich Authorization Requests (RFC 9396) の検証・ダウンスコープ判定。
 //
 // 本ファイルは authorization_details に対する 2 つの fail-closed 判定を担う:
 //

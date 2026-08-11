@@ -1,8 +1,8 @@
 package usecases
 
-// self-service の MFA (現状 TOTP) 登録・解除 (wi-21 / ADR-042)。actor.sub == target.sub
+// self-service の MFA (現状 TOTP) 登録・解除 (wi-21)。actor.sub == target.sub
 // に固定し、登録は確認コードによる所持証明、解除は有効な TOTP コードによる所持証明を
-// 要求する。WebAuthn / SMS OTP は別 WI。step-up auth (ADR-043) は本ステージでは未導入で、
+// 要求する。WebAuthn / SMS OTP は別 WI。step-up auth は本ステージでは未導入で、
 // 所持証明 + CSRF + 認証済みセッションで保護する。
 //
 // 登録フローは stateless: StartTOTPEnrollment が返した secret をクライアントが保持し、

@@ -65,7 +65,7 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 
 // problemFallback replaces echo.DefaultHTTPErrorHandler so a handler error
 // that isn't otherwise classified (not a token/quota error) still gets the
-// RFC 9457 envelope (ADR-154) instead of echo's built-in `{"message": ...}`
+// RFC 9457 envelope instead of echo's built-in `{"message": ...}`
 // shape. It mirrors DefaultHTTPErrorHandler's status/message derivation
 // (including the already-committed guard) but writes Problem Details.
 func problemFallback(c *echo.Context, err error, code int) {

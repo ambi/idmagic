@@ -11,7 +11,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 )
 
-// ADR-127 決定4: id_token_hint は本 OP が署名した ID Token のみを受理し、署名・iss を
+// 決定4: id_token_hint は本 OP が署名した ID Token のみを受理し、署名・iss を
 // fail-closed で検証する。exp は検証しない。
 
 func TestVerifyIDTokenHintReturnsClaimsForValidToken(t *testing.T) {

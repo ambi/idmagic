@@ -20,7 +20,7 @@ type Deps struct {
 	Repository ports.DataKeyRepository
 	Crypto     envelope_crypto.EnvelopeCrypto
 	// Cache is invalidated on Rotate/Disable/Destroy so no worker replica
-	// keeps encrypting with a DEK that is no longer active (ADR-148).
+	// keeps encrypting with a DEK that is no longer active.
 	Cache ports.CacheInvalidator
 	Emit  func(spec.DomainEvent)
 	// Migrators lists every owning context's registered FieldMigrator

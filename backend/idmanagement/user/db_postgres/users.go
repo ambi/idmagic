@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// UserRepository (IdManagement)。クエリは sqlc 生成 (wi-178, ADR-090);
+// UserRepository (IdManagement)。クエリは sqlc 生成 (wi-178);
 // Pool は DBTX を構造的に満たす。
 type UserRepository struct{ Pool sharedpg.DB }
 
@@ -132,7 +132,7 @@ func (r *UserRepository) FindAll(ctx context.Context, tenantID string) ([]*userd
 	return out, nil
 }
 
-// ListPage implements ports.UserRepository.ListPage (wi-159, ADR-158): keyset
+// ListPage implements ports.UserRepository.ListPage (wi-159): keyset
 // pagination ordered by (preferred_username, id) ascending, strictly after
 // the given keyset ("", "" for the first page).
 func (r *UserRepository) ListPage(ctx context.Context, tenantID, afterUsername, afterID string, limit int) ([]*userdomain.User, error) {
@@ -278,13 +278,13 @@ func (r *UserRepository) Save(ctx context.Context, u *userdomain.User) error {
 // SaveUserTx writes a User row on the caller's DBTX (e.g. an in-flight
 // transaction). IdGovernance's UserWorkflowCapture uses it to keep the User
 // mutation and its derived lifecycle workflow runs in one transaction after the
-// context split (wi-237, ADR-117); the users table stays owned by IdManagement.
+// context split (wi-237); the users table stays owned by IdManagement.
 func SaveUserTx(ctx context.Context, db DBTX, u *userdomain.User) error {
 	return internalSaveUser(ctx, db, u)
 }
 
 func internalSaveUser(ctx context.Context, db DBTX, u *userdomain.User) error {
-	// lifecycle / attributes は JSONB に格納する (ADR-039)。多値属性は本 PR では
+	// lifecycle / attributes は JSONB に格納する。多値属性は本 PR では
 	// 単一カラムで持ち、検索が要るようになった段階で別テーブル化する。
 	roles, err := json.Marshal(u.Roles)
 	if err != nil {

@@ -61,7 +61,7 @@ func (r *ConsentRepository) FindAll(_ context.Context, tenantID string) ([]*doma
 }
 
 // ListPage implements ports.ConsentRepository.ListPage
-// (wi-159, ADR-158): keyset pagination ordered by (UserID, ClientID)
+// (wi-159): keyset pagination ordered by (UserID, ClientID)
 // ascending, strictly after the given keyset.
 func (r *ConsentRepository) ListPage(_ context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*domain.Consent, error) {
 	r.mu.RLock()

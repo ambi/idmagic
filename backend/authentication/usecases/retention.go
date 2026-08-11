@@ -1,6 +1,6 @@
 package usecases
 
-// 認証イベント / 監査イベントの保持期間 sweep (ADR-045)。種類ごとに根拠ある保持期間を
+// 認証イベント / 監査イベントの保持期間 sweep。種類ごとに根拠ある保持期間を
 // 決め、cutoff より古い行を確実に削除する。partition 化は行わない判断のため、retention が
 // 単一テーブルの肥大と PII 滞留を抑える唯一の機構になる。
 //
@@ -28,7 +28,7 @@ type RetentionPolicy struct {
 	MaxDays int
 }
 
-// DefaultRetentionPolicy は ADR-045 の既定値。
+// DefaultRetentionPolicy は 既定値。
 func DefaultRetentionPolicy() RetentionPolicy {
 	return RetentionPolicy{
 		SuccessDays:    365,

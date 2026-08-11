@@ -14,10 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// AgentRepository は ADR-048 の Agent 集約と OAuth2Client 束縛を PostgreSQL に永続化
+// AgentRepository は Agent 集約と OAuth2Client 束縛を PostgreSQL に永続化
 // する。すべての参照はテナント境界に閉じる。agent_credential_bindings は agents への
 // ON DELETE CASCADE FK を持つため、DeleteAgent の cascade は DB 側でも保証される。
-// クエリは sqlc 生成 (wi-178, ADR-090); Pool は DBTX を構造的に満たす。
+// クエリは sqlc 生成 (wi-178); Pool は DBTX を構造的に満たす。
 type AgentRepository struct{ Pool sharedpg.DB }
 
 func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {
@@ -81,7 +81,7 @@ func (r *AgentRepository) ListAll(ctx context.Context, tenantID string) ([]*agen
 	return out, nil
 }
 
-// ListPage implements ports.AgentRepository.ListPage (wi-159, ADR-158): keyset
+// ListPage implements ports.AgentRepository.ListPage (wi-159): keyset
 // pagination ordered by (name, id) ascending, strictly after the given
 // keyset ("", "" for the first page).
 func (r *AgentRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*agentdomain.Agent, error) {

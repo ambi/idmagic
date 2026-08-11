@@ -25,7 +25,7 @@ type Metrics interface {
 	// "store_unavailable".
 	RecordLoginThrottle(policy, outcome string)
 	// RecordEndpointRateLimit records one endpoint rate limiter evaluation
-	// (ADR-157), distinct from RecordLoginThrottle. policy is the
+	// , distinct from RecordLoginThrottle. policy is the
 	// EndpointRateLimitPolicy id ("token", "authorize", "par",
 	// "device_authorization", "password_reset", "login"); outcome is
 	// "allowed", "rate_limited", or "store_unavailable".

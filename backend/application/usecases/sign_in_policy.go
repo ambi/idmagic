@@ -129,7 +129,7 @@ type UpdateDefaultSignInPolicyInput struct {
 	Now         time.Time
 }
 
-// UpdateDefaultSignInPolicy はテナントデフォルト sign-in policy を置き換える (ADR-081)。
+// UpdateDefaultSignInPolicy はテナントデフォルト sign-in policy を置き換える。
 // 空 rules で保存すればデフォルトは allow-all に戻る。
 func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in UpdateDefaultSignInPolicyInput) (*domain.TenantDefaultSignInPolicy, error) {
 	tenantID := tenancy.TenantID(ctx)
@@ -160,7 +160,7 @@ func UpdateDefaultSignInPolicy(ctx context.Context, deps SignInPolicyDeps, in Up
 }
 
 // appPolicyConfigured はアプリが独自の sign-in policy を持つ (デフォルトを上書きする) かを返す。
-// 有効ルールが 1 つでもあれば「設定あり」とみなす (ADR-081)。
+// 有効ルールが 1 つでもあれば「設定あり」とみなす。
 func appPolicyConfigured(app *domain.AppSignInPolicy) bool {
 	if app == nil {
 		return false
@@ -173,7 +173,7 @@ func appPolicyConfigured(app *domain.AppSignInPolicy) bool {
 	return false
 }
 
-// EffectiveSignInRules は上書きモデルで実際に適用されるルール列を返す (ADR-081)。
+// EffectiveSignInRules は上書きモデルで実際に適用されるルール列を返す。
 // アプリが独自ポリシーを持てばそれがデフォルトを完全に置換し、持たなければデフォルトを適用する。
 func EffectiveSignInRules(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) []domain.SignInRule {
 	if appPolicyConfigured(app) {
@@ -221,7 +221,7 @@ func settingsFromRules(rules []domain.SignInRule) signInSettings {
 	return signInSettings{}
 }
 
-// AppPolicyWeakerThanDefault はアプリ独自ポリシーがデフォルトより弱いかを返す (ADR-081, UI 警告用)。
+// AppPolicyWeakerThanDefault はアプリ独自ポリシーがデフォルトより弱いかを返す (UI 警告用)。
 // アプリが独自ポリシーを持たなければ (=デフォルトを適用) 常に false。弱さは認証強度・再認証時間・
 // 許可ネットワークの 3 項目のいずれかで判定する。
 func AppPolicyWeakerThanDefault(def *domain.TenantDefaultSignInPolicy, app *domain.AppSignInPolicy) bool {

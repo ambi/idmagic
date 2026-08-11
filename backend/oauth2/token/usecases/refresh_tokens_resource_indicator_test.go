@@ -1,6 +1,6 @@
 package usecases
 
-// ADR-055/wi-262: refresh token ローテーションを跨いで resource indicator の
+// wi-262: refresh token ローテーションを跨いで resource indicator の
 // audience 束縛を保持することを検証する。
 
 import (

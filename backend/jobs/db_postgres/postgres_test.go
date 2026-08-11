@@ -111,7 +111,7 @@ func TestEnqueue_DedupIgnoresTerminalJobs(t *testing.T) {
 	}
 }
 
-// TestClaimBatch_ExcludesOtherLanes: RED for ADR-129 lane isolation against
+// TestClaimBatch_ExcludesOtherLanes: RED for lane isolation against
 // the real ClaimJobs SQL (jobs_claimable_idx is lane-prefixed) — a due,
 // queued Job in one lane must never be returned when claiming a different
 // lane.
@@ -226,7 +226,7 @@ func TestClaimBatch_ReclaimsExpiredLease(t *testing.T) {
 }
 
 // TestClaimBatch_ConcurrentClaimIsExclusive proves the actual `FOR UPDATE SKIP
-// LOCKED` SQL (ADR-098), not just the memory adapter's mutex approximation:
+// LOCKED` SQL, not just the memory adapter's mutex approximation:
 // many concurrent callers claiming from the same real PostgreSQL table must
 // never claim the same job twice (JobLeaseExclusivity). Run with -race.
 func TestClaimBatch_ConcurrentClaimIsExclusive(t *testing.T) {

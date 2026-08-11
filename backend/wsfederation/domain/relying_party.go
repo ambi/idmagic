@@ -18,7 +18,7 @@ func (t WsFedTokenType) Valid() bool {
 	return t == TokenTypeSAML11 || t == TokenTypeSAML20
 }
 
-// WsFedRelyingParty は WS-Federation passive の relying party 登録 (ADR-059)。
+// WsFedRelyingParty は WS-Federation passive の relying party 登録。
 type WsFedRelyingParty struct {
 	TenantID      string                         `json:"tenant_id"`
 	Wtrealm       string                         `json:"wtrealm"`

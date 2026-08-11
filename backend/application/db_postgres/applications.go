@@ -15,8 +15,8 @@ import (
 )
 
 // ApplicationRepository は ApplicationCatalog の Application aggregate を PostgreSQL に
-// 永続化する。protocol relation は各 protocol table の application_id から解決する (ADR-138)。
-// クエリは sqlc 生成 (wi-172, ADR-090); Pool は DBTX を構造的に満たす。
+// 永続化する。protocol relation は各 protocol table の application_id から解決する。
+// クエリは sqlc 生成 (wi-172); Pool は DBTX を構造的に満たす。
 type ApplicationRepository struct{ Pool sharedpg.DB }
 
 func applicationFromRow(row *Application) *domain.Application {
@@ -79,7 +79,7 @@ func (r *ApplicationRepository) ListAll(ctx context.Context, tenantID string) ([
 	return out, nil
 }
 
-// ListPage implements ports.ApplicationRepository.ListPage (wi-159, ADR-158):
+// ListPage implements ports.ApplicationRepository.ListPage (wi-159):
 // keyset pagination ordered by (name, id) ascending, strictly after the
 // given keyset ("", "" for the first page).
 func (r *ApplicationRepository) ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error) {
@@ -284,7 +284,7 @@ func (r *ApplicationRepository) RemoveCategory(ctx context.Context, tenantID, ca
 	})
 }
 
-// SignInPolicyRepository は Application sign-in policy を PostgreSQL に永続化する (ADR-079)。
+// SignInPolicyRepository は Application sign-in policy を PostgreSQL に永続化する。
 type SignInPolicyRepository struct{ Pool sharedpg.DB }
 
 func signInPolicyFromFields(tenantID, applicationID string, rules []byte, createdAt, updatedAt time.Time) (*domain.AppSignInPolicy, error) {
@@ -351,7 +351,7 @@ func (r *SignInPolicyRepository) Delete(ctx context.Context, tenantID, applicati
 	})
 }
 
-// DefaultSignInPolicyRepository はテナント既定 sign-in policy を PostgreSQL に永続化する (ADR-081)。
+// DefaultSignInPolicyRepository はテナント既定 sign-in policy を PostgreSQL に永続化する。
 type DefaultSignInPolicyRepository struct{ Pool sharedpg.DB }
 
 func (r *DefaultSignInPolicyRepository) Get(ctx context.Context, tenantID string) (*domain.TenantDefaultSignInPolicy, error) {
@@ -388,7 +388,7 @@ func (r *DefaultSignInPolicyRepository) Save(ctx context.Context, policy *domain
 	})
 }
 
-// ApplicationIconStore は Application icon blob を PostgreSQL に保存する (wi-74, ADR-073)。
+// ApplicationIconStore は Application icon blob を PostgreSQL に保存する (wi-74)。
 type ApplicationIconStore struct{ Pool sharedpg.DB }
 
 func (s *ApplicationIconStore) Save(ctx context.Context, icon *domain.ApplicationIcon) error {
@@ -459,7 +459,7 @@ func (r *ApplicationAssignmentRepository) ListByApplication(ctx context.Context,
 }
 
 // ListPageByApplication implements ports.AssignmentRepository.ListPageByApplication
-// (wi-159, ADR-158): keyset pagination ordered by (subject_type, subject_id)
+// (wi-159): keyset pagination ordered by (subject_type, subject_id)
 // ascending, strictly after the given keyset ("", "" for the first page).
 func (r *ApplicationAssignmentRepository) ListPageByApplication(ctx context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
 	q := New(r.Pool)
@@ -510,7 +510,7 @@ func (r *ApplicationAssignmentRepository) ListPageBeforeByApplication(ctx contex
 
 // ListBySubjects は (subject_type, subject_id) ペア配列との UNNEST 突き合わせが必要で、
 // sqlc の静的解析が UNNEST の引数型を解決できないため手書き pgx のままとする
-// (動的クエリのエスケープハッチ、ADR-090)。
+// (動的クエリのエスケープハッチ)。
 func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, tenantID string, subjects []appports.SubjectRef) ([]*domain.ApplicationAssignment, error) {
 	if len(subjects) == 0 {
 		return []*domain.ApplicationAssignment{}, nil
@@ -522,7 +522,7 @@ func (r *ApplicationAssignmentRepository) ListBySubjects(ctx context.Context, te
 		ids[i] = s.ID
 	}
 	// (subject_type, subject_id) のペアを UNNEST で突き合わせる。subject_id は UUID 列の
-	// ため、パラメータは text[] のまま列側を text にキャストして比較する (ADR-084)。
+	// ため、パラメータは text[] のまま列側を text にキャストして比較する。
 	const assignmentSelect = `SELECT a.tenant_id,aa.application_id,aa.subject_type,aa.subject_id,aa.visibility,aa.created_at,aa.updated_at FROM application_assignments aa JOIN applications a ON a.id=aa.application_id`
 	rows, err := r.Pool.Query(ctx, assignmentSelect+`
  WHERE a.tenant_id=$1 AND (aa.subject_type,aa.subject_id::text) IN (
@@ -563,8 +563,8 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(ctx context.Contex
 }
 
 // ApplicationOrderingRepository は利用者ごとのポータル手動並び順を PostgreSQL に永続化する
-// (wi-70, ADR-069)。application_ids は順序を保つ text[] で格納する。user_id は global unique
-// なため tenant_id 列は持たず、行は user_id で一意に識別する (ADR-082)。tenantID 引数は port
+// (wi-70)。application_ids は順序を保つ text[] で格納する。user_id は global unique
+// なため tenant_id 列は持たず、行は user_id で一意に識別する。tenantID 引数は port
 // 契約の互換のために残すが SQL では用いない。
 type ApplicationOrderingRepository struct{ Pool sharedpg.DB }
 
@@ -592,7 +592,7 @@ func (r *ApplicationOrderingRepository) Save(ctx context.Context, o *domain.Appl
 	})
 }
 
-// ApplicationCategoryRepository は ApplicationCategory を PostgreSQL に永続化する (wi-70, ADR-069)。
+// ApplicationCategoryRepository は ApplicationCategory を PostgreSQL に永続化する (wi-70)。
 // すべてテナント境界に閉じる。
 type ApplicationCategoryRepository struct{ Pool sharedpg.DB }
 

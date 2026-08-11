@@ -391,7 +391,7 @@ func TestAdminAuditEventsFilterAndQUseSearchAttributes(t *testing.T) {
 }
 
 func TestAdminAuditEventsFiltersPlaintextUsernameAndIP(t *testing.T) {
-	// ADR-104 (ADR-046 の username/IP 条項を撤回): actor.username / client.ip は平文のまま
+	// actor.username / client.ip は平文のまま
 	// 完全一致で検索する。サーバ側の hash/truncate transform はしない。
 	user := auditUser("user_admin", "acme", []string{"admin"})
 	now := time.Now().UTC()

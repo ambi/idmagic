@@ -89,7 +89,7 @@ export function TestResultBanner({
 }
 
 // DeleteConnectionDialog は Active な接続を削除する前の確認ダイアログ (wi-309)。
-// Disabled な接続 (旧 Draft 相当) はいつでも確認なしで削除できる ([[ADR-149]])。
+// Disabled な接続 (旧 Draft 相当) はいつでも確認なしで削除できる。
 export function DeleteConnectionDialog({
   connection,
   busy,

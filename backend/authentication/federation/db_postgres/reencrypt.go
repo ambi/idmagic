@@ -9,11 +9,11 @@ import (
 )
 
 // IdentityProviderSecretMigratorName registers ConnectionSecretReencryptor with
-// backend/datakeys' MigratorRegistry (ADR-150, mirrors totppostgres.MfaFactorMigratorName).
+// backend/datakeys' MigratorRegistry (mirrors totppostgres.MfaFactorMigratorName).
 const IdentityProviderSecretMigratorName = "identity_provider_client_secret"
 
 // ConnectionSecretReencryptor migrates identity_provider_connections.secret_reference off the
-// env: scheme and onto envelope encryption (ADR-150). Unlike the MFA reencryptor it migrates
+// env: scheme and onto envelope encryption. Unlike the MFA reencryptor it migrates
 // from a legacy *reference* rather than legacy *plaintext*, so a row can genuinely fail to
 // migrate (its env: variable is no longer set): ReencryptBatch skips such rows rather than
 // failing the whole batch, leaving them counted by PendingCount until an operator re-enters the
@@ -39,7 +39,7 @@ func (m *ConnectionSecretReencryptor) ReencryptBatch(ctx context.Context, tenant
 			return migrated, err
 		}
 		if !ok {
-			continue // unresolvable env: reference (or missing dependency): leave pending (ADR-150)
+			continue // unresolvable env: reference (or missing dependency): leave pending
 		}
 		version, ciphertext, err := m.Repo.Cipher.Encrypt(
 			ctx, tenantID, federationSecretRecordContext, federationSecretTable,

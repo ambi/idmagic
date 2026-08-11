@@ -351,8 +351,8 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 }
 
 // ListDeliveries lists a connection's deliveries, most recent first.
-// afterCreatedAt/afterID are the keyset continuation cursor (wi-159,
-// ADR-158); zero/"" for the first page.
+// afterCreatedAt/afterID are the keyset continuation cursor (wi-159)
+// ; zero/"" for the first page.
 func ListDeliveries(ctx context.Context, deps AdminDeps, tenantID, applicationID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
 	if limit <= 0 {
 		limit = 50

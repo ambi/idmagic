@@ -4,7 +4,7 @@ package handlers_http_test
 // no feature-specific logic. Go test files cannot be imported across
 // packages, so this file duplicates them from
 // user/handlers_http/admin_user_handler_test.go for this package's own
-// integration tests (ADR-130 Phase 2).
+// integration tests.
 
 import (
 	"bytes"
@@ -79,7 +79,7 @@ func adminJSONRequest(
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
-// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// bare path はどのテナントの正規ロケーションでもなくなったため、
 // テストのリクエスト先も /realms/default 配下でなければ 404 になる。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {

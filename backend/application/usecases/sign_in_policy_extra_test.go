@@ -1,6 +1,6 @@
 package usecases_test
 
-// sign-in policy の取得・更新・評価とテナントデフォルトの未カバー分岐を補う (wi-129, ADR-081)。
+// sign-in policy の取得・更新・評価とテナントデフォルトの未カバー分岐を補う (wi-129)。
 
 import (
 	"errors"

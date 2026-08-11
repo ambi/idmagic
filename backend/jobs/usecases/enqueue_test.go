@@ -52,7 +52,7 @@ func TestEnqueue_AppliesDefaultsAndEmits(t *testing.T) {
 	}
 }
 
-// TestEnqueue_DerivesLaneFromKind: RED for ADR-129 decision 1 — the caller
+// TestEnqueue_DerivesLaneFromKind: RED for decision 1 — the caller
 // cannot specify a lane; Enqueue derives it from the JobKind's registration
 // (spec/contexts/jobs.yaml EnqueueJob: "作成される Job の lane は kind の登録情報
 // から一意に決まり、呼び出し元は指定できない").

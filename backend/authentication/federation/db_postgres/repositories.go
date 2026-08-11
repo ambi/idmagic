@@ -17,7 +17,7 @@ import (
 )
 
 // federationSecretRecordContext/-Table/-Field name the AAD components for envelope
-// encryption of the client secret (ADR-150), mirroring
+// encryption of the client secret, mirroring
 // backend/authentication/totp/db_postgres's mfaFactorRecordContext/-Table/-Field.
 const (
 	federationSecretRecordContext = "Authentication"
@@ -29,7 +29,7 @@ const (
 func connectionRecordID(tenantID, providerID string) string { return tenantID + ":" + providerID }
 
 // ConnectionRepository persists IdentityProviderConnection. Cipher envelope-encrypts a real
-// secret value at rest (ADR-150): Save always encrypts a non-empty SecretReference that is
+// secret value at rest: Save always encrypts a non-empty SecretReference that is
 // not a legacy "env:" reference, and never writes it to the legacy plaintext column. A
 // SecretReference that still uses the "env:" scheme is left untouched in the legacy column
 // (dual-read/dual-write) until a FieldMigrator resolves and re-encrypts it. Cipher may be nil
@@ -90,7 +90,7 @@ func (r *ConnectionRepository) Save(ctx context.Context, c *domain.IdentityProvi
 // secret_ciphertext) trio to write. A blank SecretReference means "no secret configured" (both
 // forms NULL). A legacy "env:" reference — or any value at all when Cipher is nil — is written
 // to the legacy plaintext column unchanged. Anything else is treated as a real secret value and
-// is always encrypted, never written in plaintext (ADR-150, mirrors MfaFactorRepository.Save).
+// is always encrypted, never written in plaintext (mirrors MfaFactorRepository.Save).
 func (r *ConnectionRepository) resolveSecretColumns(
 	ctx context.Context, c *domain.IdentityProviderConnection,
 ) (secretReference string, keyVersion pgtype.Int4, ciphertext []byte, err error) {

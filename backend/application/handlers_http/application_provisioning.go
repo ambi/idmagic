@@ -63,7 +63,7 @@ type createApplicationRequest struct {
 }
 
 // oidcConfig / wsfedConfig はアプリ詳細に解決して返す protocol 設定。
-// advanced 項目を含めてアプリ編集画面に集約する (wi-76, ADR-066)。
+// advanced 項目を含めてアプリ編集画面に集約する (wi-76)。
 // ClientType / TokenEndpointAuthMethod / FapiProfile は更新契約上の不変項目で表示専用。
 type oidcConfig struct {
 	ClientID                string                              `json:"client_id"`
@@ -78,7 +78,7 @@ type oidcConfig struct {
 	FapiProfile             oauthdomain.FapiProfile             `json:"fapi_profile"`
 	ClientSecretRotatable   bool                                `json:"client_secret_rotatable"`
 	SecretCredentials       []clientSecretCredentialMetadata    `json:"secret_credentials"`
-	// SubSourceAttribute and Rules are the claim release override (wi-73, ADR-151).
+	// SubSourceAttribute and Rules are the claim release override (wi-73).
 	SubSourceAttribute string                         `json:"sub_source_attribute"`
 	Rules              []claimdomain.ClaimMappingRule `json:"rules"`
 }
@@ -138,7 +138,7 @@ func nonNilRules(rules []claimdomain.ClaimMappingRule) []claimdomain.ClaimMappin
 }
 
 // oidcSubSourceAttribute は OAuth2Client.ClaimPolicy から sub の source 属性を取り出す
-// (wi-73, ADR-151)。policy 未設定なら既定 (defaultNameIDSource = "user_id") を返す。
+// (wi-73)。policy 未設定なら既定 (defaultNameIDSource = "user_id") を返す。
 func oidcSubSourceAttribute(policy *claimdomain.ClaimMappingPolicy) string {
 	if policy == nil || policy.NameID.SourceAttribute == "" {
 		return defaultNameIDSource
@@ -154,7 +154,7 @@ func oidcClaimPolicyRules(policy *claimdomain.ClaimMappingPolicy) []claimdomain.
 	return policy.Rules
 }
 
-// resolveClaimAttributeDefs はこのテナントの属性可視性 floor (ADR-151) 判定用に builtin +
+// resolveClaimAttributeDefs はこのテナントの属性可視性 floor 判定用に builtin +
 // custom 属性定義を解決する。OIDC / WS-Fed / SAML の claim release 上書き検証が共有する。
 func (d Deps) resolveClaimAttributeDefs(ctx context.Context, tenantID string) ([]userdomain.UserAttributeDef, error) {
 	return claimusecases.ResolveTenantAttributeDefs(ctx, tenantID, d.AttrSchemaRepo)

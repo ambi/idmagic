@@ -1,4 +1,4 @@
-// Package domain は WorkloadIdentity bounded context の業務型を所有する (ADR-053)。
+// Package domain は WorkloadIdentity bounded context の業務型を所有する。
 package domain
 
 // WorkloadTrustBundleStatus は WorkloadTrustBundle の運用状態。Enabled は配下の

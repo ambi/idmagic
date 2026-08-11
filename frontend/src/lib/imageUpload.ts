@@ -1,4 +1,4 @@
-// magic byte による raster 画像アップロードの共通ガード (wi-89, ADR-096)。
+// magic byte による raster 画像アップロードの共通ガード (wi-89)。
 // Application icon と Tenant branding asset は同じ受理形式・検証方針を持つため、
 // クライアント側の事前検証ロジックをここに集約する (実際の検証は server 側の
 // backend/shared/mediavalidation が正本)。

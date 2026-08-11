@@ -1,6 +1,6 @@
 package usecases
 
-// ADR-055/wi-264: RFC 8707 resource indicator を device_code グラントへ拡張する。
+// wi-264: RFC 8707 resource indicator を device_code グラントへ拡張する。
 // M2M/CLI パターンでも 1 トークン = 1 McpResourceServer の audience 限定を
 // fail-closed で強制する。既存の resource 未指定クライアントの挙動は無変更。
 

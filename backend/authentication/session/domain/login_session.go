@@ -32,7 +32,7 @@ type LoginSession struct {
 	EnrollmentBypassID    string              `json:"enrollment_bypass_id,omitempty"`
 	ExpiresAt             time.Time           `json:"expires_at"`
 	// StepUpAt は直近で password / MFA による step-up 再認証が成立した時刻 (Unix 秒、
-	// 未実施は 0)。高 sensitivity な self-service 操作の recency 判定に使う (ADR-043)。
+	// 未実施は 0)。高 sensitivity な self-service 操作の recency 判定に使う。
 	StepUpAt int64 `json:"step_up_at,omitempty"`
 	// LastSeenAt はセッションが認証結果として意味上利用された直近時刻。
 	// LoginSessionTouchInterval 未満の再 touch では更新しない粗粒度な値で、
@@ -40,7 +40,7 @@ type LoginSession struct {
 	LastSeenAt time.Time `json:"last_seen_at,omitzero"`
 	// RevokedAt / RevokeReason は失効の tombstone。物理削除せず残し、認証解決は
 	// RevokedAt != nil を fail-closed で無効とみなす。再失効は最初の値を保持する
-	// idempotent 操作 (ADR-126)。
+	// idempotent 操作。
 	RevokedAt    *time.Time             `json:"revoked_at,omitempty"`
 	RevokeReason *spec.SessionEndReason `json:"revoke_reason,omitempty"`
 }
@@ -57,7 +57,7 @@ func (s LoginSession) Active(now time.Time) bool {
 
 // Revoke はセッションを tombstone として失効させる。最初の失効だけが revoked_at /
 // revoke_reason を確定し、以降の呼び出しは idempotent な no-op になる
-// (ADR-126、self/admin どちらの失効経路からも安全に再送できる)。
+// (self/admin どちらの失効経路からも安全に再送できる)。
 func (s *LoginSession) Revoke(reason spec.SessionEndReason, now time.Time) {
 	if s.RevokedAt != nil {
 		return

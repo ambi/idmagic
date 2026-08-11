@@ -43,7 +43,7 @@ func TestValidateExportColumns(t *testing.T) {
 }
 
 // TestColumnsForTarget_NoSensitiveColumns: allowlist に sensitive 値の列を
-// 一切含めない (ADR-140)。
+// 一切含めない。
 func TestColumnsForTarget_NoSensitiveColumns(t *testing.T) {
 	banned := []string{"password", "password_hash", "secret", "token", "recovery", "mfa_secret", "totp"}
 	for _, kind := range []DataExportTargetKind{ExportTargetUser, ExportTargetGroup, ExportTargetGroupMembership} {

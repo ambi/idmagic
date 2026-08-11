@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL scenario "テナント内 admin は所属テナントの custom 属性定義を読み・更新できる"
-// を /api/admin/v1/tenant/user_attribute_schema 経由で検証する (ADR-040 / wi-19)。
+// を /api/admin/v1/tenant/user_attribute_schema 経由で検証する (wi-19)。
 
 import (
 	"bytes"

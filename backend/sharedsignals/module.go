@@ -1,5 +1,5 @@
 // Package sharedsignals composes the SharedSignals bounded context
-// (ADR-057, [[wi-58-continuous-access-evaluation-agent-revocation]]).
+// ([[wi-58-continuous-access-evaluation-agent-revocation]]).
 package sharedsignals
 
 import (

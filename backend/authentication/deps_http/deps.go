@@ -2,7 +2,7 @@
 // leaf package (no dependency on the feature handlers_http packages) so that
 // password/totp/webauthn/mfa/session/recovery handlers_http can depend on it
 // without an import cycle back to the context-root handlers_http package
-// that wires routes (ADR-130 Phase 2).
+// that wires routes.
 package deps_http
 
 import (
@@ -35,7 +35,7 @@ type Deps struct {
 	PasswordHistoryRepo passwordports.PasswordHistoryRepository
 	ConsentRepo         oauthports.ConsentRepository
 	// RefreshStore は self-service session revoke から oauth2 の RefreshTokenRecord を
-	// sid 単位で失効させるために使う (ADR-127, wi-28 T004)。nil なら token revoke をスキップする。
+	// sid 単位で失効させるために使う (wi-28 T004)。nil なら token revoke をスキップする。
 	RefreshStore              oauthports.RefreshTokenStore
 	ClientDisplayNameResolver *support.ClientDisplayNameResolver
 	AttrSchemaRepo            tenantports.TenantUserAttributeSchemaRepository
@@ -64,7 +64,7 @@ func (d Deps) ConsentDeps() consentusecases.ConsentDeps {
 // error-returning signature ChangePasswordDeps requires (wi-184 T003). It is
 // the default for handlers not yet migrated to the transaction runner.
 // Exported (unlike its wi-184 origin) so the password/totp/webauthn/mfa/
-// session/recovery feature packages can call it across the ADR-130 Phase 2
+// session/recovery feature packages can call it across the Phase 2
 // package boundary.
 func (d Deps) LegacyEmit() func(spec.DomainEvent) error {
 	return func(event spec.DomainEvent) error {

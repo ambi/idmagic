@@ -1,7 +1,7 @@
 // Package devinfra provides the Docker-free shared infrastructure used by
 // `just dev`: an embedded PostgreSQL server. It is development-only; production
 // continues to use PostgreSQL managed outside the application process. All
-// ephemeral state now lives in PostgreSQL as well (ADR-139), so no separate
+// ephemeral state now lives in PostgreSQL as well, so no separate
 // cache/KV endpoint is started.
 package devinfra
 

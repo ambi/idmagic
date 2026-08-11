@@ -1,4 +1,4 @@
-// リフレッシュトークンによる再発行。ADR-004 ローテーション + ファミリー失効。
+// リフレッシュトークンによる再発行。ローテーション + ファミリー失効。
 package usecases
 
 import (
@@ -111,7 +111,7 @@ func RefreshTokens(ctx context.Context, deps RefreshDeps, in RefreshInput, now t
 	}
 	emit(deps.Emit, &domain.RefreshTokenRotated{At: now, TenantID: tenantID, OldTokenID: record.ID, NewTokenID: newTok.Record.ID, FamilyID: record.FamilyID})
 
-	// resource indicator (ADR-055, wi-262): 初回発行時に束縛された resource を
+	// resource indicator (wi-262): 初回発行時に束縛された resource を
 	// rotation を跨いで保持する。RotateRefreshToken が parent.Resource を
 	// 新レコードへ引き継ぎ済みなので、ここでは newTok.Record.Resource を使う。
 	var audiences []string

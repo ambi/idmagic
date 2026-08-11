@@ -72,7 +72,7 @@ func LoadRuntimeConfig() RuntimeConfig {
 }
 
 // assemble は PERSISTENCE 環境変数に応じて memory/postgres いずれかの構成を組み立てる。
-// 揮発性状態も PostgreSQL に統合済みで、選択肢は memory / postgres の 2 つ (ADR-139)。
+// 揮発性状態も PostgreSQL に統合済みで、選択肢は memory / postgres の 2 つ。
 func Assemble(ctx context.Context) (*Dependencies, error) {
 	var deps *Dependencies
 	var err error
@@ -87,14 +87,14 @@ func Assemble(ctx context.Context) (*Dependencies, error) {
 	if err != nil {
 		return nil, err
 	}
-	// WebAuthn RP は永続層に依らず env config から構築する (wi-26 / ADR-087)。
+	// WebAuthn RP は永続層に依らず env config から構築する (wi-26)。
 	rp, err := loadWebAuthnRP()
 	if err != nil {
 		return nil, err
 	}
 	deps.Authentication.WebAuthnRP = rp
 	// 通知はカタログ解決を含めてここで組み立て、API プロセスと worker プロセスが
-	// 同じ経路 (テナント上書き・locale 解決を含む) で送るようにする (wi-288, ADR-142)。
+	// 同じ経路 (テナント上書き・locale 解決を含む) で送るようにする (wi-288)。
 	//nolint:contextcheck // 起動時の配線のみ。実際の I/O は送信ごとに呼び出し元の context で走る。
 	if err := AssembleNotification(deps, os.Getenv); err != nil {
 		return nil, err

@@ -13,7 +13,7 @@ import (
 )
 
 // FieldCipher is the public entry point record-owning repositories use to
-// envelope-encrypt a single field (ADR-148). It composes the tenant DEK
+// envelope-encrypt a single field. It composes the tenant DEK
 // cache with the Tink-backed EnvelopeCrypto port and binds the fixed AAD
 // (tenant/context/table/record id/field). Consuming contexts should depend
 // on a small local interface (e.g.

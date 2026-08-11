@@ -1,5 +1,5 @@
 # 組込み既定テンプレート (ja)。テナントは編集できず、上書きの削除で常にここへ戻る
-# (ADR-142 決定 1)。body_html は <body> 内に入る fragment で、文書外枠はレンダラが供給する。
+# 。body_html は <body> 内に入る fragment で、文書外枠はレンダラが供給する。
 password_reset:
   subject: "{{product_name}} のパスワード再設定"
   body_text: |

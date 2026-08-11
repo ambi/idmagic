@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 
 export type ListPage<T> = { items: T[]; nextCursor: string | null }
 
-// usePaginatedList は admin 一覧画面の「さらに読み込む」操作 (ADR-158, Link ヘッダ由来の
+// usePaginatedList は admin 一覧画面の「さらに読み込む」操作 (Link ヘッダ由来の
 // nextCursor) に共通する蓄積・二重読み込み防止のみを持つ。エラーの捕捉・表示文言は既存の
 // 各画面の慣習 (AuthenticationAPIError 判定 + 画面固有メッセージ) に揃えるため、呼び出し側で
 // loadMore() を try/catch する想定であえて持たない。

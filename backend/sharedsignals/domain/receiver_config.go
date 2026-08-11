@@ -9,7 +9,7 @@ import (
 )
 
 // SsfReceiverConfig は direction=Receive の SsfStream に 1 対 1 で付随する、外部
-// transmitter の信頼設定。WorkloadTrustBundle (ADR-053) と同型の登録済み issuer
+// transmitter の信頼設定。WorkloadTrustBundle と同型の登録済み issuer
 // 検証を再利用する。
 type SsfReceiverConfig struct {
 	StreamID          string

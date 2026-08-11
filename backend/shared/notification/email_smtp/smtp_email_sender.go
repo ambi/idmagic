@@ -19,7 +19,7 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
-// SMTPTLSMode は SMTP 接続時の TLS 戦略を表す (ADR-035 §2)。
+// SMTPTLSMode は SMTP 接続時の TLS 戦略を表す。
 type SMTPTLSMode string
 
 const (
@@ -58,7 +58,7 @@ func NewSMTPEmailSender(cfg SMTPEmailSenderConfig) *SMTPEmailSender {
 
 func (s *SMTPEmailSender) SendEmail(ctx context.Context, message sharednotification.EmailMessage) bool {
 	if err := s.send(ctx, message, time.Now().UTC()); err != nil {
-		// 宛先アドレスは PII なのでマスクする (ADR-018 §4)。
+		// 宛先アドレスは PII なのでマスクする。
 		logging.Error(ctx, "smtp send failed",
 			"to", logging.MaskEmail(message.To),
 			"subject", message.Subject,
@@ -150,7 +150,7 @@ func (s *SMTPEmailSender) send(ctx context.Context, message sharednotification.E
 }
 
 // buildRFC5322Message は EmailMessage を RFC 5322 形式の本文に変換する。
-// Text/HTML 両方ある場合は multipart/alternative (ADR-035 §8)。
+// Text/HTML 両方ある場合は multipart/alternative。
 func buildRFC5322Message(from string, message sharednotification.EmailMessage, now time.Time) (string, error) {
 	messageID, err := newMessageID(from, now)
 	if err != nil {
@@ -227,7 +227,7 @@ func formatAddressHeader(address string) (string, error) {
 }
 
 // formatFromHeader is formatAddressHeader plus a caller-supplied display name. A
-// tenant may override only the display part of the From mailbox (ADR-142 §6), so
+// tenant may override only the display part of the From mailbox, so
 // the address still comes from server configuration and is re-parsed here.
 // (*mail.Address).String quotes and MIME-encodes the name, and CR/LF is collapsed
 // first, so a display name can neither terminate the header nor introduce a

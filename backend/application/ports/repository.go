@@ -14,7 +14,7 @@ type ApplicationRepository interface {
 	// ListPage returns up to limit applications for tenantID ordered by
 	// (name, id) ascending, strictly after the keyset (afterName, afterID).
 	// Pass "", "" for the first page. Backs ListAdminApplications keyset
-	// pagination (wi-159, ADR-158).
+	// pagination (wi-159).
 	ListPage(ctx context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error)
 	ListPageBefore(ctx context.Context, tenantID, beforeName, beforeID string, limit int) ([]*domain.Application, error)
 	Count(ctx context.Context, tenantID string) (int64, error)
@@ -42,7 +42,7 @@ type ApplicationIconStore interface {
 	DeleteByApplication(ctx context.Context, tenantID, applicationID string) error
 }
 
-// ApplicationCategoryRepository は ApplicationCategory の永続境界 (wi-70, ADR-069)。
+// ApplicationCategoryRepository は ApplicationCategory の永続境界 (wi-70)。
 type ApplicationCategoryRepository interface {
 	// ListAll はテナント内のカテゴリを position 昇順 (同値は name 昇順) で返す。
 	ListAll(ctx context.Context, tenantID string) ([]*domain.ApplicationCategory, error)
@@ -60,7 +60,7 @@ type SubjectRef struct {
 	ID   string
 }
 
-// ApplicationOrderingRepository は利用者ごとのポータル手動並び順の永続境界 (wi-70, ADR-069)。
+// ApplicationOrderingRepository は利用者ごとのポータル手動並び順の永続境界 (wi-70)。
 type ApplicationOrderingRepository interface {
 	// Get は利用者の手動並び順 (application_id の順序列) を返す。未保存なら (nil, nil)。
 	Get(ctx context.Context, tenantID, userID string) (*domain.ApplicationOrdering, error)
@@ -75,8 +75,7 @@ type AssignmentRepository interface {
 	// ListPageByApplication returns up to limit assignments for (tenantID, applicationID)
 	// ordered by (subject_type, subject_id) ascending, strictly after the
 	// keyset (afterSubjectType, afterSubjectID). Pass "", "" for the first
-	// page. Backs ListApplicationAssignments keyset pagination (wi-159,
-	// ADR-158).
+	// page. Backs ListApplicationAssignments keyset pagination (wi-159).
 	ListPageByApplication(ctx context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error)
 	ListPageBeforeByApplication(ctx context.Context, tenantID, applicationID, beforeSubjectType, beforeSubjectID string, limit int) ([]*domain.ApplicationAssignment, error)
 	// ListBySubjects は指定 subject 群に一致する割当を返す (ポータル一覧・割当ゲート用)。
@@ -103,7 +102,7 @@ type SignInPolicyRepository interface {
 	Delete(ctx context.Context, tenantID, applicationID string) error
 }
 
-// DefaultSignInPolicyRepository はテナント既定 sign-in policy の永続境界 (ADR-081)。
+// DefaultSignInPolicyRepository はテナント既定 sign-in policy の永続境界。
 type DefaultSignInPolicyRepository interface {
 	// Get は tenant_id に一致する既定 policy を返す。未設定なら (nil, nil)。
 	Get(ctx context.Context, tenantID string) (*domain.TenantDefaultSignInPolicy, error)

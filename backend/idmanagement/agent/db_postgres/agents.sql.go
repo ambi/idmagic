@@ -204,7 +204,7 @@ type ListAgentsByTenantPageParams struct {
 	PageLimit int32
 }
 
-// First page of ListAgents keyset pagination (wi-159, ADR-158): stable sort
+// First page of ListAgents keyset pagination (wi-159): stable sort
 // by (name, id) so admins see the pre-existing alphabetical order.
 func (q *Queries) ListAgentsByTenantPage(ctx context.Context, arg ListAgentsByTenantPageParams) ([]*Agent, error) {
 	rows, err := q.db.Query(ctx, listAgentsByTenantPage, arg.TenantID, arg.PageLimit)

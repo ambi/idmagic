@@ -1,7 +1,7 @@
 package domain
 
-// AuthorizationDetailType（RFC 9396 / ADR-050 の登録 type 定義）の双子定義。
-// internal/shared/spec/oauth2.go から移設 (wi-173, ADR-089)。実行時インスタンスの
+// AuthorizationDetailType（RFC 9396 / 登録 type 定義）の双子定義。
+// internal/shared/spec/oauth2.go から移設 (wi-173)。実行時インスタンスの
 // AuthorizationDetail は [[wi-181]] 側の型からも参照されるため shared に残置しており、
 // 本ファイルの型（登録スキーマ）とは依存関係がない。
 
@@ -14,7 +14,7 @@ import (
 )
 
 // AuthorizationDetailFieldSemantics は authorization_details の登録スキーマで
-// 各フィールドが担うダウンスコープ半順序を表す (RFC 9396 / ADR-050)。
+// 各フィールドが担うダウンスコープ半順序を表す (RFC 9396)。
 type AuthorizationDetailFieldSemantics string
 
 const (
@@ -32,7 +32,7 @@ func (s AuthorizationDetailFieldSemantics) Valid() bool {
 	return false
 }
 
-// AuthorizationDetailTypeState は登録 type の運用状態を表す (ADR-050)。
+// AuthorizationDetailTypeState は登録 type の運用状態を表す。
 type AuthorizationDetailTypeState string
 
 const (
@@ -63,7 +63,7 @@ type AuthorizationDetailsSchema struct {
 	Rules []AuthorizationDetailFieldRule `json:"rules"`
 }
 
-// AuthorizationDetailType はテナントが登録する authorization_details の type 定義 (ADR-050)。
+// AuthorizationDetailType はテナントが登録する authorization_details の type 定義。
 type AuthorizationDetailType struct {
 	TenantID        string                       `json:"tenant_id"`
 	Type            string                       `json:"type"`

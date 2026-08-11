@@ -19,7 +19,7 @@ const maxRequestIDLen = 128
 
 // RequestIDMiddleware assigns every request a request_id (RequestFaultIsolation
 // objective), writes it to the response header, and stores it in the request
-// context so the application logger (ADR-018) attaches it to every line for the
+// context so the application logger attaches it to every line for the
 // request. It is registered outermost so downstream middleware — including
 // recovery — logs under the same id.
 //

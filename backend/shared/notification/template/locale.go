@@ -10,7 +10,7 @@ import (
 const FallbackLocale = "en"
 
 // supportedLocales はカタログが同梱翻訳を持つ locale。翻訳ファイル (defaults/<locale>.yaml)
-// を足したらここに足す (ADR-142 決定 7: locale は enum ではなく言語タグとして一般化する)。
+// を足したらここに足す (決定 7: locale は enum ではなく言語タグとして一般化する)。
 var supportedLocales = []string{"ja", "en"}
 
 func SupportedLocales() []string { return slices.Clone(supportedLocales) }

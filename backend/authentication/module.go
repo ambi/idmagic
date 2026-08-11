@@ -1,5 +1,5 @@
 // Package authentication は authentication bounded context の DI 組立を所有する
-// (ADR-091, wi-177)。中央 server/routes.go と bootstrap の Dependencies は、認証固有の
+// (wi-177)。中央 server/routes.go と bootstrap の Dependencies は、認証固有の
 // port と実行時依存をこの Module 1 個で受け渡す。
 package authentication
 

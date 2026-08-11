@@ -19,7 +19,7 @@ type OAuth2ClientRepository interface {
 	// ListPage returns up to limit clients for tenantID ordered by client_id
 	// ascending — matching the admin handler's pre-existing re-sort of
 	// FindAll's rows — strictly after afterClientID ("" for the first page).
-	// Backs ListAdminOAuth2Clients keyset pagination (wi-159, ADR-158).
+	// Backs ListAdminOAuth2Clients keyset pagination (wi-159).
 	ListPage(ctx context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error)
 	ListPageBefore(ctx context.Context, tenantID, beforeClientID string, limit int) ([]*domain.OAuth2Client, error)
 	ListClientSecretCredentials(ctx context.Context, clientID string) ([]domain.ClientSecretCredential, error)

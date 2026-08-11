@@ -29,10 +29,10 @@ type AuthorizationRequest struct {
 	ACRValues           *string                         `json:"acr_values,omitempty"`
 	// Sid は authenticate_user 完了時に AuthenticationContext.session_id から一度だけ
 	// 伝搬する OIDC session id (Authentication の LoginSession.id と同値)。
-	// AuthorizationCodeRecord / RefreshTokenRecord / IdTokenClaims へそのまま引き継ぐ (ADR-127)。
+	// AuthorizationCodeRecord / RefreshTokenRecord / IdTokenClaims へそのまま引き継ぐ。
 	Sid                  *string                    `json:"sid,omitempty"`
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
-	// Resource は RFC 8707 resource indicator (ADR-055)。非nil のとき、発行トークンの
+	// Resource は RFC 8707 resource indicator。非nil のとき、発行トークンの
 	// aud をこの McpResourceServer の resource URI に厳格限定する。
 	Resource  *string   `json:"resource,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
@@ -57,10 +57,10 @@ type AuthorizationCodeRecord struct {
 	AMR                    []string                 `json:"amr,omitempty"`
 	ACR                    *string                  `json:"acr,omitempty"`
 	// Sid は認可リクエストから引き継いだ OIDC session id。id_token の sid claim と
-	// 発行 RefreshTokenRecord.sid に伝播する (ADR-127)。
+	// 発行 RefreshTokenRecord.sid に伝播する。
 	Sid                  *string                    `json:"sid,omitempty"`
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
-	// Resource は認可リクエストから引き継いだ resource indicator (ADR-055)。
+	// Resource は認可リクエストから引き継いだ resource indicator。
 	Resource       *string                           `json:"resource,omitempty"`
 	State          spec.AuthorizationCodeRecordState `json:"state"`
 	IssuedAt       time.Time                         `json:"issued_at"`

@@ -1,6 +1,6 @@
 package db_postgres
 
-// AuthEventBucketStore は AuthEventBucketStore (ADR-041 / wi-44) を PostgreSQL に永続化する。
+// AuthEventBucketStore は AuthEventBucketStore (wi-44) を PostgreSQL に永続化する。
 // 攻撃時に個別の AuthenticationFailed を 1 行ずつ書かず、(tenant_id, kind, key_hash, 5 分窓)
 // 単位の 1 行へ畳み込む。Record は upsert 1 回で「窓ごとの件数を積む」+「その窓で最初の記録
 // だったか」を返し、最初の記録だけが集約イベントを emit する。xmax=0 は当該 upsert が INSERT
@@ -54,7 +54,7 @@ func (s *AuthEventBucketStore) Record(
 }
 
 // DeleteOlderThan は window_start が before より前の bucket を削除し、削除件数を返す
-// (ADR-045 の保持期間 sweep / 既定 90 日)。idempotent。
+// (保持期間 sweep / 既定 90 日)。idempotent。
 func (s *AuthEventBucketStore) DeleteOlderThan(ctx context.Context, before time.Time) (int64, error) {
 	return s.queries().DeleteAuthEventBucketsOlderThan(ctx, before.UTC())
 }

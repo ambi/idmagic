@@ -24,7 +24,7 @@ type consentAPIRequest struct {
 // Save is an upsert keyed by (tenant, sub, client): only a brand-new or
 // previously-Revoked consent should consume a slot, so re-consenting to an
 // already-Granted record (e.g. a scope change) doesn't double-count
-// (wi-160, ADR-134).
+// (wi-160).
 func shouldConsumeConsentQuota(existing *oauthdomain.Consent) bool {
 	return existing == nil || existing.State == oauthdomain.ConsentRevoked
 }

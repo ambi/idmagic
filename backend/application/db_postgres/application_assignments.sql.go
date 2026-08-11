@@ -122,8 +122,8 @@ type ListApplicationAssignmentsByApplicationPageRow struct {
 	UpdatedAt     time.Time
 }
 
-// First page of ListApplicationAssignments keyset pagination (wi-159,
-// ADR-158): the (application_id, subject_type, subject_id) primary key
+// First page of ListApplicationAssignments keyset pagination (wi-159):
+// the (application_id, subject_type, subject_id) primary key
 // already backs this range scan.
 func (q *Queries) ListApplicationAssignmentsByApplicationPage(ctx context.Context, arg ListApplicationAssignmentsByApplicationPageParams) ([]*ListApplicationAssignmentsByApplicationPageRow, error) {
 	rows, err := q.db.Query(ctx, listApplicationAssignmentsByApplicationPage, arg.TenantID, arg.ApplicationID, arg.PageLimit)
@@ -341,7 +341,7 @@ type UpsertApplicationAssignmentParams struct {
 
 // ListApplicationAssignmentsBySubjects は (subject_type, subject_id) ペア配列との
 // UNNEST 突き合わせが必要で、sqlc の静的解析が UNNEST の引数型を解決できない
-// (動的クエリのエスケープハッチ、ADR-090)。手書き pgx として applications.go に残す。
+// (動的クエリのエスケープハッチ)。手書き pgx として applications.go に残す。
 func (q *Queries) UpsertApplicationAssignment(ctx context.Context, arg UpsertApplicationAssignmentParams) error {
 	_, err := q.db.Exec(ctx, upsertApplicationAssignment,
 		arg.ApplicationID,

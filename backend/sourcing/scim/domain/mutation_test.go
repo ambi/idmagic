@@ -23,7 +23,7 @@ func TestParseUserWriteRequiresUserName(t *testing.T) {
 	}
 }
 
-// 省略した mutable 属性は既定値にリセットされる (PUT full-replace semantics, ADR-122)。
+// 省略した mutable 属性は既定値にリセットされる (PUT full-replace semantics)。
 func TestParseUserWriteDefaultsOmittedAttributes(t *testing.T) {
 	w, err := domain.ParseUserWrite(map[string]any{"userName": "bjensen"})
 	if err != nil {

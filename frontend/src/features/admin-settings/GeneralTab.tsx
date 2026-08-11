@@ -22,7 +22,7 @@ export function GeneralTab({
   onSaved: (next: AdminSettings) => void
 }) {
   const [displayName, setDisplayName] = useState(settings.display_name)
-  // 空文字列は「システムの既定に従う」。API 側も空文字列で未設定へ戻す (ADR-142 決定 7)。
+  // 空文字列は「システムの既定に従う」。API 側も空文字列で未設定へ戻す。
   const [defaultLocale, setDefaultLocale] = useState(settings.default_locale ?? '')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)

@@ -43,11 +43,10 @@ type RegisterClientResult struct {
 type RegisterClientDeps struct {
 	ClientRepo ports.OAuth2ClientRepository
 	Emit       func(spec.DomainEvent)
-	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (wi-160,
-	// ADR-134). This single check covers both dynamic client registration
-	// (/register) and admin client creation (CreateAdminOAuth2Client calls
-	// RegisterClient internally). nil skips enforcement (wiring gaps in
-	// tests/tools); production bootstrap always sets it.
+	// QuotaRepo enforces the tenant's Hard Quota on oauth2_clients (wi-160).
+	// This single check covers both dynamic client registration (/register) and admin client creation
+	// (CreateAdminOAuth2Client calls RegisterClient internally).
+	// nil skips enforcement (wiring gaps in tests/tools); production bootstrap always sets it.
 	QuotaRepo tenantports.QuotaRepository
 }
 

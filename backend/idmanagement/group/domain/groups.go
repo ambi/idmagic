@@ -12,7 +12,7 @@ import (
 )
 
 // ===============================================================
-// Group 集約 (ADR-038)
+// Group 集約
 // ===============================================================
 
 // Group は tenant-scoped なロール束集約。所属する User に roles[] を一斉付与する。
@@ -132,7 +132,7 @@ func NewGroupID() (string, error) {
 	return spec.NewUUIDv4()
 }
 
-// EffectiveRoles は認可で用いる有効ロール集合を返す (ADR-038)。
+// EffectiveRoles は認可で用いる有効ロール集合を返す。
 // effective_roles(user) = user.roles ∪ ⋃_{g ∈ groups} g.roles。
 // 結果はソート済みで重複を含まない。所属グループが空なら user.roles に一致する。
 func EffectiveRoles(userRoles []string, groups []*Group) []string {

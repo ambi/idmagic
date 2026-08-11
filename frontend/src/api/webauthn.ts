@@ -1,4 +1,4 @@
-// WebAuthn / Passkey の JSON <-> ブラウザ API 変換 (wi-26 / ADR-087)。
+// WebAuthn / Passkey の JSON <-> ブラウザ API 変換 (wi-26)。
 // サーバー (go-webauthn) は challenge / credential id を base64url 文字列で受け渡すが、
 // navigator.credentials.create / get は ArrayBuffer を要求する。ここでその相互変換を担う。
 import { base64URL } from './core'

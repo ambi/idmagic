@@ -1,6 +1,6 @@
 // Token Exchange Grant (RFC 8693) のユースケース。
 //
-// 本実装は ADR-049 に忠実に、以下に限定する (fail-closed):
+// 本実装は に忠実に、以下に限定する (fail-closed):
 //   - SELF-ISSUED トークンのみ: subject_token / actor_token は本 IdP が発行し、
 //     既存の IntrospectAccessToken (署名検証 + active) を通過したものに限る。
 //     外部/フェデレーショントークンは対象外 (将来 wi-54 / wi-57)。
@@ -10,7 +10,7 @@
 //     (テナント別上書きは将来)
 //   - may_act 強制: subject_token に may_act があれば現在アクター sub が may_act.sub と
 //     一致しなければ拒否。
-//   - RESOURCE INDICATORS (RFC 8707, ADR-055): resource を必須・1 個のみとし、登録済み
+//   - RESOURCE INDICATORS (RFC 8707): resource を必須・1 個のみとし、登録済み
 //     Active な McpResourceServer に限定する。未登録・Disabled は invalid_target で
 //     fail-closed 拒否する。発行トークン aud = [resource]。
 //   - REFRESH TOKEN は発行しない。
@@ -30,7 +30,7 @@ import (
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
-// MaxDelegationDepth は発行トークンの act 入れ子の最大深さ (ADR-049)。
+// MaxDelegationDepth は発行トークンの act 入れ子の最大深さ。
 const MaxDelegationDepth = 3
 
 const (
@@ -73,7 +73,7 @@ type ExchangeTokenDeps struct {
 	McpResourceServerRepo ports.McpResourceServerRepository
 	// WorkloadVerifier verifies external workload attestation tokens
 	// (subject_token_type=JWT URN) and maps them to a bound Agent's client
-	// (ADR-053, [[wi-54-workload-identity-federation-spiffe]]). nil rejects
+	// ([[wi-54-workload-identity-federation-spiffe]]). nil rejects
 	// workload subject_token_type as unsupported.
 	WorkloadVerifier ports.WorkloadTokenVerifier
 	Emit             func(spec.DomainEvent)
@@ -115,7 +115,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	switch in.SubjectTokenType {
 	case "", tokenTypeAccessTokenURN:
 		// SELF-ISSUED access_token: 本 IdP が発行し IntrospectAccessToken を通過した
-		// トークンの委任 (ADR-049)。
+		// トークンの委任。
 		subject, err = deps.Introspector.IntrospectAccessToken(ctx, in.SubjectToken)
 		if err != nil {
 			return nil, err
@@ -125,8 +125,8 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		}
 	case tokenTypeJWTURN:
 		// 外部 workload attestation (JWT-SVID 等) — WorkloadIdentity の
-		// VerifyWorkloadAttestation を経由し、束縛先 Agent の client へ写す
-		// (ADR-053)。専用の資格情報経路は新設せず、以降のロジックは introspection
+		// VerifyWorkloadAttestation を経由し、束縛先 Agent の client へ写す。
+		// 専用の資格情報経路は新設せず、以降のロジックは introspection
 		// 結果と同じ形へ正規化して再利用する。
 		if deps.WorkloadVerifier == nil {
 			return reject("", NewOAuthError("invalid_request", "unsupported subject_token_type"))
@@ -211,7 +211,7 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		return reject(currentActorSub, NewOAuthError("invalid_scope", "account scope requires user subject"))
 	}
 
-	// --- authorization_details ダウンスコープ (拡大不可, RFC 9396 / ADR-050) ---
+	// --- authorization_details ダウンスコープ (拡大不可, RFC 9396) ---
 	// 要求があれば登録 type に対し検証し、subject_token の詳細の部分集合に限る。
 	// 要求が無ければ subject の詳細を保持する (縮小のみ、決して拡張しない)。
 	grantedDetails := subject.AuthorizationDetails

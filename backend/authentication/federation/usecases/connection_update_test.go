@@ -22,7 +22,7 @@ func baseConnection(status federationdomain.ConnectionStatus) federationdomain.I
 	}
 }
 
-// RED (usecase: UpdateIdentityProviderConnection, ADR-149 §編集時の自動デグレード):
+// RED (usecase: UpdateIdentityProviderConnection, §編集時の自動デグレード):
 // display_name のみの変更では Active を保持する。
 func TestResolveUpdatedStatusPreservesActiveOnNonTrustChange(t *testing.T) {
 	existing := baseConnection(federationdomain.ConnectionActive)

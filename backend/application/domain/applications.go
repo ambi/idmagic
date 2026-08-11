@@ -2,7 +2,7 @@ package domain
 
 import "time"
 
-// Application の双子定義 (wi-69, ADR-064)。
+// Application の双子定義 (wi-69)。
 //
 // Application は運用者が「接続する業務アプリケーション」として扱う上位 aggregate。
 // OIDC client / SAML SP / WS-Fed RP のいずれか単一 protocol と、表示名・アイコン・
@@ -45,7 +45,7 @@ func (s ApplicationStatus) Valid() bool {
 	return false
 }
 
-// ApplicationProtocolType は Application が利用する単一 protocol の種別 (ADR-138)。
+// ApplicationProtocolType は Application が利用する単一 protocol の種別。
 type ApplicationProtocolType string
 
 const (
@@ -142,7 +142,7 @@ type MfaEnrollmentPolicy struct {
 }
 
 // AppSignInPolicy は Application ごとの federation 開始条件。
-// 設定されるとテナントデフォルトを上書き (置換) する (ADR-081)。
+// 設定されるとテナントデフォルトを上書き (置換) する。
 type AppSignInPolicy struct {
 	TenantID      string       `json:"tenant_id"`
 	ApplicationID string       `json:"application_id"`
@@ -151,7 +151,7 @@ type AppSignInPolicy struct {
 	UpdatedAt     time.Time    `json:"updated_at"`
 }
 
-// TenantDefaultSignInPolicy はテナントデフォルトの federation 開始条件 (ADR-081)。
+// TenantDefaultSignInPolicy はテナントデフォルトの federation 開始条件。
 // 例外設定のない全 Application の評価でアプリ個別ポリシーの前に合成される最低要件 (floor)。
 type TenantDefaultSignInPolicy struct {
 	TenantID  string       `json:"tenant_id"`
@@ -160,7 +160,7 @@ type TenantDefaultSignInPolicy struct {
 	UpdatedAt time.Time    `json:"updated_at"`
 }
 
-// ApplicationProtocol は Application に紐づく単一 protocol 設定への参照 (ADR-138)。
+// ApplicationProtocol は Application に紐づく単一 protocol 設定への参照。
 type ApplicationProtocol struct {
 	Type     ApplicationProtocolType `json:"type"`
 	ClientID string                  `json:"client_id,omitempty"`
@@ -196,7 +196,7 @@ type ApplicationIcon struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-// ApplicationCategory は管理者が tenant 単位で定義するポータルの分類セクション (wi-70, ADR-069)。
+// ApplicationCategory は管理者が tenant 単位で定義するポータルの分類セクション (wi-70)。
 // Application に 0..N 個付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。
 type ApplicationCategory struct {
 	TenantID  string    `json:"tenant_id"`
@@ -218,7 +218,7 @@ type ApplicationAssignment struct {
 	UpdatedAt     time.Time             `json:"updated_at"`
 }
 
-// ApplicationOrdering は利用者ポータルでの手動並び順 (wi-70, ADR-069)。
+// ApplicationOrdering は利用者ポータルでの手動並び順 (wi-70)。
 // user_id (global unique) をキーに、Application の表示順を application_id の順序列で持つ。
 type ApplicationOrdering struct {
 	UserID         string    `json:"user_id"`
@@ -311,7 +311,7 @@ func (e *AppSignInPolicyUpdated) EventType() string     { return "AppSignInPolic
 func (e *AppSignInPolicyUpdated) OccurredAt() time.Time { return e.At }
 
 // ApplicationClaimMappingUpdated は Application の claim release 上書き (rules / sub
-// または NameID の source 属性) を更新した event (wi-73, ADR-151)。
+// または NameID の source 属性) を更新した event (wi-73)。
 type ApplicationClaimMappingUpdated struct {
 	At            time.Time `json:"-"`
 	TenantID      string    `json:"tenantId"`
@@ -323,7 +323,7 @@ type ApplicationClaimMappingUpdated struct {
 func (e *ApplicationClaimMappingUpdated) EventType() string     { return "ApplicationClaimMappingUpdated" }
 func (e *ApplicationClaimMappingUpdated) OccurredAt() time.Time { return e.At }
 
-// TenantDefaultSignInPolicyUpdated はテナント既定 sign-in policy を更新した event (ADR-081)。
+// TenantDefaultSignInPolicyUpdated はテナント既定 sign-in policy を更新した event。
 type TenantDefaultSignInPolicyUpdated struct {
 	At          time.Time `json:"-"`
 	TenantID    string    `json:"tenantId"`

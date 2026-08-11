@@ -4,7 +4,7 @@ package handlers_http_test
 // feature-specific logic. Go test files cannot be imported across packages,
 // so this file duplicates them from
 // user/handlers_http/admin_user_handler_test.go for this package's own
-// tests (ADR-130 Phase 2).
+// tests.
 
 import (
 	"bytes"
@@ -36,8 +36,8 @@ func adminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 	if len(cookies) == 0 {
 		t.Fatal("csrf cookie missing")
 	}
-	// path style のテナントは cookie path でテナント境界を作る (ADR-033 §1)。
-	// bare path が正規ロケーションでなくなった今 (ADR-144)、cookie path は
+	// path style のテナントは cookie path でテナント境界を作る。
+	// bare path が正規ロケーションでなくなった今、cookie path は
 	// テナントの URL prefix と一致する。
 	if cookies[0].Path != "/realms/default" {
 		t.Fatalf("csrf cookie path=%q, want /realms/default", cookies[0].Path)
@@ -47,7 +47,7 @@ func adminCSRF(t *testing.T, e *echo.Echo) (string, *http.Cookie) {
 
 // this package's own tests happen to only exercise POST today.
 //
-//nolint:unparam // generic helper duplicated from user/handlers_http (ADR-130 Phase 2);
+//nolint:unparam // generic helper duplicated from user/handlers_http;
 func adminJSONRequest(
 	t *testing.T,
 	e *echo.Echo,
@@ -76,7 +76,7 @@ func adminJSONRequest(
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
-// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// bare path はどのテナントの正規ロケーションでもなくなったため、
 // テストのリクエスト先も /realms/default 配下でなければ 404 になる。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {

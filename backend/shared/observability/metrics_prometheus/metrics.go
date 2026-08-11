@@ -24,7 +24,7 @@ import (
 // support.HTTPAbortMetrics, exported for pull-based scrape via the
 // MetricsExposition interface (system.yaml, GET /metrics). It uses the OTel
 // Prometheus exporter (an sdkmetric.Reader) rather than a second, competing
-// prometheus client registry, per ADR-017. It is independent of Provider
+// prometheus client registry, It is independent of Provider
 // (tracing + OTLP push metrics): both may run at the same time, and Metrics
 // works even when Provider (OBSERVABILITY=otel) is disabled, because a
 // scrape endpoint needs no collector to be configured.
@@ -43,10 +43,10 @@ type Metrics struct {
 	tokenIssuance  metric.Int64Counter
 	tokenDuration  metric.Float64Histogram
 
-	// jobs* back usecases.JobsMetrics (wi-261 T006, ADR-129): lane is always
+	// jobs* back usecases.JobsMetrics (wi-261 T006): lane is always
 	// a bounded domain.ExecutionLane and outcome is always "succeeded" or
 	// "failed" — never tenant_id/job_id (spec/contexts/system.yaml
-	// MetricsExposition, ADR-100).
+	// MetricsExposition).
 	jobsClaimLatency metric.Float64Histogram
 	jobsOutcome      metric.Int64Counter
 	jobsRetry        metric.Int64Counter

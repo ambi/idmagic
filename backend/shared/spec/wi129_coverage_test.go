@@ -96,7 +96,7 @@ func TestEnumValid(t *testing.T) {
 	}
 }
 
-// Validate() happy/failure カバレッジは tenancy/domain へ移設した (wi-179, ADR-089/ADR-093)。
+// Validate() happy/failure カバレッジは tenancy/domain へ移設した (wi-179, )。
 
 // ---------------------------------------------------------------
 // コンストラクタ / ID 生成

@@ -122,7 +122,7 @@ func TestUserInfo_ClaimPolicyAddsOverrideClaim(t *testing.T) {
 }
 
 // TestUserInfo_ClaimPolicyRejectsPrivateAttribute verifies the fail-closed floor
-// (ADR-151) rejects a claim_policy rule that targets a Private-visibility attribute,
+// rejects a claim_policy rule that targets a Private-visibility attribute,
 // even though it is scoped to a single Application.
 func TestUserInfo_ClaimPolicyRejectsPrivateAttribute(t *testing.T) {
 	repo := userInfoFixture(t)

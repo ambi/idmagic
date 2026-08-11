@@ -14,7 +14,7 @@ const knownErrorKeys = {
 
 // stable な backend error code だけを UI の辞書へ対応付ける。未登録 code の本文は
 // backend が英語で返す契約を維持し、勝手に翻訳・置換しない。retryAfterSeconds は
-// rate_limited のときだけ、完結した1文として末尾に足す (ADR-157)。
+// rate_limited のときだけ、完結した1文として末尾に足す。
 export function localizedErrorMessage(
   locale: Locale,
   code: string | undefined,

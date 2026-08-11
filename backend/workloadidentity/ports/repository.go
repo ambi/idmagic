@@ -6,8 +6,8 @@ import (
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
-// WorkloadTrustBundleRepository は tenant-scoped な WorkloadTrustBundle を永続化する
-// (ADR-053)。すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
+// WorkloadTrustBundleRepository は tenant-scoped な WorkloadTrustBundle を永続化する。
+// すべての操作はテナント境界に閉じ、cross-tenant 参照は use case 側で
 // reject する。
 type WorkloadTrustBundleRepository interface {
 	ListAll(ctx context.Context, tenantID string) ([]*workloaddomain.WorkloadTrustBundle, error)
@@ -22,8 +22,7 @@ type WorkloadTrustBundleRepository interface {
 	Delete(ctx context.Context, tenantID, id string) error
 }
 
-// AgentWorkloadBindingRepository は tenant-scoped な AgentWorkloadBinding を永続化する
-// (ADR-053)。
+// AgentWorkloadBindingRepository は tenant-scoped な AgentWorkloadBinding を永続化する。
 type AgentWorkloadBindingRepository interface {
 	ListByTrustBundle(ctx context.Context, tenantID, trustBundleID string) ([]*workloaddomain.AgentWorkloadBinding, error)
 	FindByID(ctx context.Context, tenantID, id string) (*workloaddomain.AgentWorkloadBinding, error)

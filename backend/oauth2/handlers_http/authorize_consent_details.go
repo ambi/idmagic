@@ -12,7 +12,7 @@ import (
 
 // renderConsentDetails は authorization_details を登録 type の表示テンプレートで
 // 人間可読に整形する。テンプレートの {field} を detail の値で置換し、テンプレートが
-// 無い/未登録 type のときはフィールドを 1 行ずつ列挙する (ADR-050)。
+// 無い/未登録 type のときはフィールドを 1 行ずつ列挙する。
 func (d Deps) renderConsentDetails(c *echo.Context, details []spec.AuthorizationDetail) []consentDetailView {
 	if len(details) == 0 {
 		return nil

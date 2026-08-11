@@ -1,7 +1,7 @@
 // /api/account/v1/sessions — エンドユーザー自身の有効なセッションの一覧と失効 (self-service,
 // wi-20 スライス 2)。actor.sub に固定し、本人のセッションのみ参照・失効できる。失効は
 // LoginSession に revoked_at / revoke_reason を設定する tombstone であり、物理削除しない
-// (wi-253 / ADR-126)。
+// (wi-253)。
 package handlers_http
 
 import (
@@ -53,7 +53,7 @@ func accountSessionDeps(d httpdeps.Deps) authusecases.SessionDeps {
 }
 
 // revokeOAuthSessionTokens は sid (LoginSession.id) に紐づく RefreshTokenRecord を
-// family/client を横断して失効させる (ADR-127 §3)。RefreshStore が配線されていない
+// family/client を横断して失効させる。RefreshStore が配線されていない
 // 環境 (offline_access 未使用など) では no-op とする。
 func revokeOAuthSessionTokens(d httpdeps.Deps, c *echo.Context, sid string) error {
 	if d.RefreshStore == nil {
@@ -136,7 +136,7 @@ func toAdminSessionResponse(view authusecases.AdminSessionView) adminSessionResp
 }
 
 // HandleAdminListSessions は admin が対象ユーザーの有効なセッションを一覧する
-// (wi-28 T007, ADR-127 決定9)。
+// (wi-28 T007, 決定9)。
 func HandleAdminListSessions(d httpdeps.Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
@@ -154,7 +154,7 @@ func HandleAdminListSessions(d httpdeps.Deps, c *echo.Context) error {
 
 // HandleAdminRevokeSession は admin が対象ユーザーのセッション 1 件を失効する
 // (wi-28 T007)。session revoke に続けて、同じ sid を共有する RefreshTokenRecord も
-// family/client を横断して失効させる (ADR-127, T004 の RevokeTokensBySid を再利用)。
+// family/client を横断して失効させる (T004 の RevokeTokensBySid を再利用)。
 func HandleAdminRevokeSession(d httpdeps.Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
@@ -208,7 +208,7 @@ func HandleRevokeOtherAccountSessions(d httpdeps.Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	// 他の全セッションの失効は高 sensitivity 操作。step-up 再認証を要求する (ADR-043)。
+	// 他の全セッションの失効は高 sensitivity 操作。step-up 再認証を要求する。
 	sub, sessionID, err := httpdeps.RequireStepUpSession(d, c)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)

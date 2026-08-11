@@ -74,8 +74,8 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, tenant)
 }
 
-// resolveTenantByRealm は admin API path の realm slug を UUID キーのテナントへ解決する
-// (ADR-085)。usecase は UUID キーで扱うため、handler で realm→UUID を写像する。
+// resolveTenantByRealm は admin API path の realm slug を UUID キーのテナントへ解決する。
+// usecase は UUID キーで扱うため、handler で realm→UUID を写像する。
 func (d Deps) resolveTenantByRealm(c *echo.Context, realm string) (*domain.Tenant, error) {
 	tenant, err := d.TenantRepo.FindByRealm(c.Request().Context(), realm)
 	if err != nil {

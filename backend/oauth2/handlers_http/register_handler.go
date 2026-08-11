@@ -56,7 +56,7 @@ func (d Deps) handleRegisterClient(c *echo.Context) error {
 		// only understands *usecases.OAuthError and would otherwise flatten a
 		// quota rejection into a generic 500) so it gets the same stable
 		// quota_exceeded response, logging, and metrics as every other create
-		// path (support_http.ErrorHandler, wi-160 ADR-134).
+		// path (support_http.ErrorHandler, wi-160 ).
 		if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 			return err
 		}

@@ -870,8 +870,7 @@ document answers.
 | What to do when something happens | `infra/runbooks/*.md` | What to do in an incident |
 | A one-off implementation record | `work-items/` | What was done this time |
 
-Do not create new ADRs. Put current design and concise rationale here; put change-specific alternatives
-and history in the work item. Historical records remain outside current specification navigation.
+Historical records remain outside current specification navigation.
 
 Do not hand-copy lists that can be read mechanically from code or schema. No exhaustive endpoint tables,
 test inventories, or environment-variable tables.

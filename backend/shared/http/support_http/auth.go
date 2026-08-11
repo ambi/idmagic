@@ -73,7 +73,7 @@ func (a *Authenticator) ResolveAuthentication(c *echo.Context) (*authdomain.Auth
 }
 
 // resolveAuthnContext は AuthenticationContext を解決する。OIDC RP 化した portal が
-// 提示する Bearer access token を優先し ([[ADR-061]])、無ければ first-party セッション
+// 提示する Bearer access token を優先し ()、無ければ first-party セッション
 // cookie で解決する (dual-mode)。Bearer は緊急セッションログイン経路と併存する。
 func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.AuthenticationContext, error) {
 	if token, scheme := authorizationToken(c); token != "" {
@@ -111,7 +111,7 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 				return nil, &InvalidTokenError{}
 			}
 		}
-		// resource server のスコープ境界 (ADR-061): admin / account API は対応する
+		// resource server のスコープ境界 : admin / account API は対応する
 		// portal scope を要求する。account portal の token で admin API を叩く等の
 		// cross-portal 利用を fail-closed で拒否する。緊急セッション経路は scope を
 		// 持たないが、その経路はこの分岐を通らない (role 境界で守る)。
@@ -207,7 +207,7 @@ func authorizationToken(c *echo.Context) (string, string) {
 }
 
 // RequireAdmin は認証済み + 有効ロールに admin を含むユーザを要求する。
-// グループ由来ロールを含めた有効ロールで判定する (ADR-038)。
+// グループ由来ロールを含めた有効ロールで判定する。
 func (a *Authenticator) RequireAdmin(c *echo.Context) (*userdomain.User, error) {
 	authn, err := a.ResolveAuthentication(c)
 	if err != nil {
@@ -285,7 +285,7 @@ func (a *Authenticator) RequireAuditReader(c *echo.Context) (*userdomain.User, e
 	return actor, nil
 }
 
-// EffectiveRoles は User の直接ロールにグループ由来ロールを合成して返す (ADR-038)。
+// EffectiveRoles は User の直接ロールにグループ由来ロールを合成して返す。
 func (a *Authenticator) EffectiveRoles(ctx context.Context, user *userdomain.User) []string {
 	if a.GroupRepo == nil {
 		return user.Roles

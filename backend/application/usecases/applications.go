@@ -36,14 +36,13 @@ type ApplicationDeps struct {
 	AssignmentRepo ports.AssignmentRepository
 	PolicyRepo     ports.SignInPolicyRepository
 	Emit           func(spec.DomainEvent)
-	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160,
-	// ADR-134). nil skips enforcement (wiring gaps in tests/tools);
+	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it.
 	QuotaRepo tenantports.QuotaRepository
 }
 
 // checkApplicationQuota enforces the tenant's applications Hard Quota
-// (ADR-134) before a new Application is persisted. A rejection also emits
+// before a new Application is persisted. A rejection also emits
 // QuotaExceeded so quota pressure is auditable (SCL objective QuotaAudit).
 func checkApplicationQuota(ctx context.Context, deps ApplicationDeps, tenantID string, now time.Time) error {
 	if deps.QuotaRepo == nil {
@@ -270,7 +269,7 @@ func DeleteApplicationIcon(ctx context.Context, deps ApplicationDeps, actorUserI
 }
 
 // DetectApplicationIconContentType は backend/shared/mediavalidation の magic byte
-// 判定に委譲し、Application icon 固有のエラー値にマップする (wi-89, ADR-096: Tenant
+// 判定に委譲し、Application icon 固有のエラー値にマップする (wi-89, Tenant
 // branding asset と検証ロジックを共有する)。
 func DetectApplicationIconContentType(data []byte) (string, error) {
 	contentType, err := mediavalidation.DetectImageContentType(data, MaxApplicationIconBytes)

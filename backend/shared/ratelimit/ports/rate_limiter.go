@@ -18,7 +18,7 @@ type RateLimitPolicyConfig struct {
 
 // RateLimitConfigs maps a policy id (e.g. "token", "authorize", "par", "device_authorization",
 // "password_reset", "login") to its threshold. memory / postgres adapters consume the same
-// port type (ADR-157).
+// port type.
 type RateLimitConfigs map[string]RateLimitPolicyConfig
 
 type RateLimiter interface {
@@ -30,7 +30,7 @@ type RateLimiter interface {
 }
 
 // Module bundles the shared rate limiter capability for composition roots. It is a
-// cross-cutting technical capability (ADR-157), not owned by any single bounded context, so it
+// cross-cutting technical capability, not owned by any single bounded context, so it
 // sits alongside the other shared/* modules (e.g. notification) rather than nested inside a
 // context Module.
 type Module struct {

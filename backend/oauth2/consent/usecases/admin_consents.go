@@ -24,14 +24,14 @@ type ConsentDeps struct {
 	ConsentRepo consentports.ConsentRepository
 	Emit        func(spec.DomainEvent)
 	// QuotaRepo frees the tenant's consents Hard Quota slot on revoke
-	// (wi-160, ADR-134). The increment side lives in the /consent HTTP
+	// (wi-160). The increment side lives in the /consent HTTP
 	// handler (authorize_consent.go), which is where new consents are
 	// created; nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
 }
 
 // ListConsents returns up to limit+1 consents after the given keyset
-// (wi-159, ADR-158) — callers pass limit+1 to detect whether a next page
+// (wi-159) — callers pass limit+1 to detect whether a next page
 // exists, then trim to limit before responding.
 func ListConsents(ctx context.Context, deps ConsentDeps, afterUserID, afterClientID string, limit int) ([]*domain.Consent, error) {
 	return deps.ConsentRepo.ListPage(ctx, tenancy.TenantID(ctx), afterUserID, afterClientID, limit)
@@ -72,7 +72,7 @@ func RevokeConsent(
 	}
 	// Revoke is idempotent (SCL); only free the quota slot the first time a
 	// Granted consent transitions to Revoked, so repeat revokes don't
-	// under-count usage (wi-160, ADR-134).
+	// under-count usage (wi-160).
 	if deps.QuotaRepo != nil && consent.State == domain.ConsentGranted {
 		if err := tenancyusecases.DecrementQuota(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceConsents, 1); err != nil {
 			return err

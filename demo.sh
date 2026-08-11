@@ -5,7 +5,7 @@
 set -euo pipefail
 
 BASE="${BASE:-http://localhost:8080}"
-# Development seed's stable external client UUID (ADR-084). The display name is
+# Development seed's stable external client UUID. The display name is
 # "Demo Client"; it is not the protocol client_id.
 CLIENT_ID="${CLIENT_ID:-00000000-0000-4000-8000-000000000021}"
 CLIENT_SECRET="${DEMO_CLIENT_SECRET:-demo-client-secret}"

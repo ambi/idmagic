@@ -12,7 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
-// TestAuthorizationRequestStore は /authorize 中間状態の tx 直列化された状態遷移 (ADR-139) を
+// TestAuthorizationRequestStore は /authorize 中間状態の tx 直列化された状態遷移 を
 // 検証する。Save/Find、UpdateState の TransitionAuthorizationCodeFlow、AttachAuthentication、
 // 不正遷移エラー、tenant 分離、GC を memory adapter とのパリティで確認する。
 func TestAuthorizationRequestStore(t *testing.T) {

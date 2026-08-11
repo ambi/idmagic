@@ -3,7 +3,7 @@ package handlers_http_test
 // SCL scenario "管理者はテナントのロゴと配色をカスタマイズでき利用者のログイン画面に
 // 反映される" / "不正な branding 入力は拒否されシステム既定にフォールバックする" を
 // /api/branding, /api/admin/v1/tenant/branding, /api/admin/v1/tenant/branding/assets/{kind}
-// 経由で検証する (wi-89, ADR-096)。GetTenantBranding / GetTenantBrandingAsset は
+// 経由で検証する (wi-89)。GetTenantBranding / GetTenantBrandingAsset は
 // public、更新系のみ tenant admin に制限される。
 
 import (

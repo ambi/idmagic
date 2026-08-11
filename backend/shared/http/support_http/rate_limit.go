@@ -31,7 +31,7 @@ func ExtractClientIP(request *http.Request, trustedHops int) string {
 	return ips[index]
 }
 
-// CheckRateLimit applies the shared endpoint rate limiter (ADR-157) for policyID/key, distinct
+// CheckRateLimit applies the shared endpoint rate limiter for policyID/key, distinct
 // from the per-account/per-IP login throttle. When the limiter is nil (not wired — e.g. some
 // tests) it allows the request through, matching LoginAttemptThrottle's optional-by-construction
 // convention.

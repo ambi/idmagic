@@ -1,6 +1,6 @@
 # Minimal single-binary Loki for local development (wi-304). Storage is the
 # local filesystem inside the container; there is no retention/compaction
-# tuning here because this config never runs in production (ADR-102 keeps
+# tuning here because this config never runs in production (keeps
 # infra/docker/ dev-only, infra/k8s/ owns production topology).
 auth_enabled: false
 

@@ -122,7 +122,7 @@ export function NotificationTemplatesTab({ csrfToken }: { csrfToken: string }) {
     if (!detail || !draft) return
     setError('')
     setNotice('')
-    // 件名 / テキスト / HTML は 3 点セット。片方だけの上書きは作れない (ADR-142 決定 4)。
+    // 件名 / テキスト / HTML は 3 点セット。片方だけの上書きは作れない。
     if (!draft.subject.trim() || !draft.bodyText.trim() || !draft.bodyHtml.trim()) {
       setError(t.requiredFieldsError)
       return

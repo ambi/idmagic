@@ -15,7 +15,7 @@ import (
 // newSafeHTTPClient builds an http.Client whose DialContext re-resolves the
 // target host and rejects non-public IPs at connect time (DNS-rebinding safe),
 // and whose CheckRedirect re-validates each redirect target
-// (backend/shared/security/tokens_jose.JWKResolver precedent, ADR-128 §配送・信頼性
+// (backend/shared/security/tokens_jose.JWKResolver precedent, §配送・信頼性
 // SSRF/leak 対策). Production code must go through NewClient, which uses this;
 // tests inject a plain http.Client (e.g. httptest.Server.Client()) instead.
 func newSafeHTTPClient() *http.Client {

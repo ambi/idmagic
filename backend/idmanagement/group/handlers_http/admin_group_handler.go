@@ -404,9 +404,9 @@ func writeAdminGroupError(c *echo.Context, err error) error {
 	}
 }
 
-// effectiveRoles は actor の有効ロール (user.roles ∪ 所属 group.roles) を返す (ADR-038)。
+// effectiveRoles は actor の有効ロール (user.roles ∪ 所属 group.roles) を返す。
 // GroupRepo 未配線時は user.roles をそのまま返し、後方互換を保つ。
 
-// withEffectiveRoles は user のコピーに有効ロールを載せて返す (ADR-038)。
+// withEffectiveRoles は user のコピーに有効ロールを載せて返す。
 // admin actor を解決する各経路 (settings / role policy / key / audit) が
 // グループ由来ロールを一貫して評価できるようにする。

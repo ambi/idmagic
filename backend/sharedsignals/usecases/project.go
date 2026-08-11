@@ -31,7 +31,7 @@ func initiatingEntityForReason(reason ssdomain.RevocationReason) ssdomain.Initia
 	return ssdomain.InitiatingEntityAdmin
 }
 
-// ProjectAgentAccessRevoked implements EcosystemPropagation (ADR-057
+// ProjectAgentAccessRevoked implements EcosystemPropagation (
 // decision 6): it fans event out to every enabled Transmit SsfStream
 // subscribed to session-revoked, builds and signs one SecurityEventToken per
 // stream, and enqueues each as a pending SecurityEventDelivery for the

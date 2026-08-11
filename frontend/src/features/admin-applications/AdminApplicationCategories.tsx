@@ -13,7 +13,7 @@ import { adminApplicationsDictionary } from './AdminApplicationsPage.i18n'
 import { messageOf, SectionTitle } from './AdminApplicationsShared'
 import type { AdminApplication, ApplicationCategory } from '../../types'
 
-// カテゴリ (定義の管理 + アプリへの付与) — wi-70 / ADR-069
+// カテゴリ (定義の管理 + アプリへの付与) — wi-70 /
 export function CategoryManager({
   app,
   csrfToken,

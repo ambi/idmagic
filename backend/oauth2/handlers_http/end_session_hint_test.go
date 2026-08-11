@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // SCL シナリオ "RP-Initiated Logout はid_token_hintからsessionとclientを解決する" を
-// /end_session 経由で検証する (ADR-127, wi-28 T005)。
+// /end_session 経由で検証する (wi-28 T005)。
 
 import (
 	"context"
@@ -193,7 +193,7 @@ func TestEndSessionRejectsIDTokenHintFromOtherIssuer(t *testing.T) {
 }
 
 func TestEndSessionAcceptsExpiredIDTokenHint(t *testing.T) {
-	// ADR-127 決定4: exp は検証しない。ここでは JWTSigner が iat/exp を現在時刻から
+	// 決定4: exp は検証しない。ここでは JWTSigner が iat/exp を現在時刻から
 	// 発行するため、代わりに「署名・iss・aud・sub・sid は正しいが期限切れの表明」を
 	// 直接検証する代わりに、通常発行 (未来 exp) のトークンで正常に解決できることを
 	// 確認する回帰的な健全性チェックとして扱う。expのみを理由に拒否されないことは

@@ -185,8 +185,8 @@ func TestBuildRFC5322MessageSanitizesUntrustedContent(t *testing.T) {
 	}
 }
 
-// テナントが上書きできるのは差出人の表示名だけで、アドレスはサーバ設定のまま
-// (ADR-142 決定 6)。表示名は mail.Address 経由で quoting / MIME encoding される。
+// テナントが上書きできるのは差出人の表示名だけで、アドレスはサーバ設定のまま。
+// 表示名は mail.Address 経由で quoting / MIME encoding される。
 func TestBuildRFC5322MessageAppliesFromDisplayName(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)
@@ -263,7 +263,7 @@ func requireBodyNotContains(t *testing.T, body, needle string) {
 }
 
 // fakeSMTPServer は最小限の SMTP プロトコルを話す。STARTTLS / TLS upgrade は
-// しない (本番 TLS パスは ADR-035 § 検証 の手動確認で覆う)。
+// しない (本番 TLS パスは § 検証 の手動確認で覆う)。
 type fakeSMTPServer struct {
 	listener net.Listener
 	host     string

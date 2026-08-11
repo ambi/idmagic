@@ -96,7 +96,7 @@ func TestJobKind_Valid(t *testing.T) {
 	}
 }
 
-// TestExecutionLane_Valid: RED for ADR-129 ExecutionLane (scenario
+// TestExecutionLane_Valid: RED for ExecutionLane (scenario
 // spec/contexts/jobs.yaml "bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる"
 // presupposes a closed lane vocabulary).
 func TestExecutionLane_Valid(t *testing.T) {
@@ -110,7 +110,7 @@ func TestExecutionLane_Valid(t *testing.T) {
 	}
 }
 
-// TestLaneFor_BuiltinKinds: RED for ADR-129 decision 1's fixed initial
+// TestLaneFor_BuiltinKinds: RED for decision 1's fixed initial
 // assignment of the four built-in JobKinds.
 func TestLaneFor_BuiltinKinds(t *testing.T) {
 	tests := []struct {
@@ -144,7 +144,7 @@ func TestLaneFor_UnregisteredKind(t *testing.T) {
 	}
 }
 
-// TestRegisterKind_AssignsLane: RED for ADR-129 decision 1 — RegisterKind now
+// TestRegisterKind_AssignsLane: RED for decision 1 — RegisterKind now
 // takes the caller-declared lane, and the kind becomes Valid() only once
 // registered with one.
 func TestRegisterKind_AssignsLane(t *testing.T) {

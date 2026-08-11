@@ -1,4 +1,4 @@
-// authorization_details type 定義 (RFC 9396 / ADR-050) の管理 API。
+// authorization_details type 定義 (RFC 9396) の管理 API。
 // AdminAuthorizationDetailTypesManage で保護され、テナント境界に閉じる。
 package handlers_http
 

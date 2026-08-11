@@ -1,4 +1,4 @@
-// MCP resource server 登録 (RFC 9728 / RFC 8707, ADR-055) の管理 API。
+// MCP resource server 登録 (RFC 9728 / RFC 8707) の管理 API。
 // AdminMcpResourcesManage で保護され、テナント境界に閉じる。
 package handlers_http
 

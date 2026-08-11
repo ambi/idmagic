@@ -1,7 +1,7 @@
 package bootstrap
 
-// 認証 / 監査イベントの保持期間 sweep を one-shot batch として動かす
-// (ADR-045, ADR-124)。周期と再試行は外部 scheduler が所有する。
+// 認証 / 監査イベントの保持期間 sweep を one-shot batch として動かす。
+// 周期と再試行は外部 scheduler が所有する。
 
 import (
 	"context"

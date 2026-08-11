@@ -18,7 +18,7 @@ export const apiHealth = `http://localhost:${apiPort}/health`
 export const callbackPort = 3000
 
 export const demo = {
-  // seedDemoClientID (ADR-084): external demo client は UUID 識別子を使う。
+  // seedDemoClientID: external demo client は UUID 識別子を使う。
   clientId: '00000000-0000-4000-8000-000000000021',
   username: 'alice',
   password: 'demo-password-1234',

@@ -92,7 +92,7 @@ func (d Deps) recordLoginFailure(c *echo.Context, username, clientIP string) (bo
 }
 
 // correlationHash は throttle / bucket の emit keyHash を tenant salt 付きで計算する
-// (wi-145 / ADR-046)。username / IP の相関検索属性と同じ単一ヘルパ (spec.SaltedHash) を共有し、
+// (wi-145)。username / IP の相関検索属性と同じ単一ヘルパ (spec.SaltedHash) を共有し、
 // tenant salt により cross-tenant で相関を集約しない。salt store が無い構成 (一部テスト) では
 // unsalted SHA-256 にフォールバックする。
 func (d Deps) correlationHash(c *echo.Context, value string) string {
@@ -147,7 +147,7 @@ func extractClientIP(request *http.Request, trustedHops int) string {
 }
 
 // writeLoginThrottled renders the login throttle's 429 through the same SCL RateLimitedError
-// shape the endpoint rate limiter uses (ADR-157), reconciling what was previously an
+// shape the endpoint rate limiter uses, reconciling what was previously an
 // undeclared ad hoc "too_many_requests" body.
 func writeLoginThrottled(c *echo.Context, retryAfterSeconds int) error {
 	return support.WriteRateLimited(c, retryAfterSeconds)

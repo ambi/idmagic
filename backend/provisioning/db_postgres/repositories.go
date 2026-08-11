@@ -1,6 +1,6 @@
 // Package postgres implements the Provisioning bounded context's repositories
 // on PostgreSQL using hand-written SQL via pgx (LifecycleWorkflowRunRepository
-// precedent; sqlc is not required for every context, ADR-090). credential_secret
+// precedent; sqlc is not required for every context). credential_secret
 // is stored as plaintext for now (dev/test grade, see infra/schema/postgres.sql
 // comment and wi-97 envelope-encryption-at-rest).
 package db_postgres
@@ -500,8 +500,8 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(ctx context.Context, t
 }
 
 // ListPageByConnection implements
-// ports.ProvisioningDeliveryRepository.ListPageByConnection (wi-159,
-// ADR-158): keyset pagination ordered by (created_at, id) descending —
+// ports.ProvisioningDeliveryRepository.ListPageByConnection (wi-159)
+// : keyset pagination ordered by (created_at, id) descending —
 // matching ListByConnection's pre-existing "most recent first" order.
 func (r *ProvisioningDeliveryRepository) ListPageByConnection(ctx context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
 	q := New(r.Pool)

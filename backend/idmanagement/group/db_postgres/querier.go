@@ -18,7 +18,7 @@ type Querier interface {
 	ListDynamicGroupRules(ctx context.Context, tenantID string) ([]string, error)
 	ListGroupMembersByGroup(ctx context.Context, arg ListGroupMembersByGroupParams) ([]*ListGroupMembersByGroupRow, error)
 	ListGroupsByTenant(ctx context.Context, tenantID string) ([]*Group, error)
-	// First page of ListGroups keyset pagination (wi-159, ADR-158): stable sort by
+	// First page of ListGroups keyset pagination (wi-159): stable sort by
 	// (name, id) so admins see the pre-existing alphabetical order.
 	ListGroupsByTenantPage(ctx context.Context, arg ListGroupsByTenantPageParams) ([]*Group, error)
 	// Continuation page: resumes strictly after the (name, id) keyset of the last

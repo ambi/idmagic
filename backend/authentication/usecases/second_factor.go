@@ -1,6 +1,6 @@
 package usecases
 
-// 第二要素 (MFA) の登録状態ユーティリティ (wi-26 / ADR-087)。User.mfa_enrolled は
+// 第二要素 (MFA) の登録状態ユーティリティ (wi-26)。User.mfa_enrolled は
 // 「TOTP factor または WebAuthn credential が存在する」で導出する。recovery code は backup
 // 専用で単独の第二要素にはしない。TOTP / WebAuthn の解除後に残存要素へ応じて再計算する。
 
@@ -42,7 +42,7 @@ func hasSecondFactor(
 
 // SyncMfaEnrolled は残存する第二要素に応じて User.mfa_enrolled を再計算し、変化があれば保存する。
 // totp/webauthn を横断するため mfa (このパッケージ) が所有し、export して webauthn 側からも
-// package 境界を越えて呼べるようにする (ADR-130 Phase 2 と同方針)。
+// package 境界を越えて呼べるようにする (Phase 2 と同方針)。
 func SyncMfaEnrolled(
 	ctx context.Context,
 	userRepo userports.UserRepository,

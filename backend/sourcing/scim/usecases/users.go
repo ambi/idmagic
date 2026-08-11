@@ -103,7 +103,7 @@ func (u *Usecases) GetUser(ctx context.Context, tenantID, scimID string) (map[st
 	return u.toScimUser(user, scimID), nil
 }
 
-// UpdateUser implements PUT full-replace semantics (ADR-122): every
+// UpdateUser implements PUT full-replace semantics: every
 // RFC7643-CORE-RESOURCES mutable attribute is set from body, with omitted
 // attributes reset to their default via domain.ParseUserWrite. The User
 // aggregate is validated (userName required) before the single Save call,
@@ -154,7 +154,7 @@ func (u *Usecases) UpdateUser(ctx context.Context, tenantID, scimID string, body
 
 // PatchUser applies RFC 7644 §3.5.2 operations validated by
 // domain.ParseUserPatchOps against the User attribute allowlist. All
-// operations are validated up front (ADR-122 validate-first) before any
+// operations are validated up front (validate-first) before any
 // field is mutated; the aggregate is persisted with a single Save call.
 func (u *Usecases) PatchUser(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	ref, err := u.ScimRepo.FindUserRefByScimID(ctx, tenantID, scimID)
@@ -290,7 +290,7 @@ func (u *Usecases) DeleteUser(ctx context.Context, tenantID, scimID string) erro
 		return errors.New("user not found")
 	}
 
-	// Soft Delete: status = PendingDeletion (ADR-080)
+	// Soft Delete: status = PendingDeletion
 	now := time.Now()
 	user.Lifecycle.Status = idmdomain.UserStatusPendingDeletion
 	user.Lifecycle.StatusChangedAt = &now

@@ -8,7 +8,7 @@ import (
 )
 
 // ConsoleEmailSender は dev / demo 用の配送アダプタ。本番では EMAIL_SENDER=smtp を使う。
-// 宛先アドレスは PII なのでマスクする (ADR-018 §4)。本文は dev でリセットリンク等を
+// 宛先アドレスは PII なのでマスクする。本文は dev でリセットリンク等を
 // 確認するために出力する (本アダプタは本番では動かない)。
 type ConsoleEmailSender struct{}
 

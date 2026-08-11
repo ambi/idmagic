@@ -5,7 +5,7 @@ import (
 )
 
 // loadSecurityHeaders builds the security response header configuration
-// (SecurityResponseHeaders / FrameAncestorsPolicy objectives, ADR-076) from env,
+// (SecurityResponseHeaders / FrameAncestorsPolicy objectives) from env,
 // falling back to production-safe defaults. HSTS is off by default (dev http)
 // because the TLS terminator owns it; CSP enforces by default and can be dropped
 // to report-only for staged rollout.

@@ -14,7 +14,7 @@ import (
 const MfaFactorMigratorName = "mfa_totp_secret"
 
 // MfaFactorReencryptor implements backend/datakeys/ports.FieldMigrator for
-// mfa_factors.secret (ADR-148, wi-97 T006): it drives the data_key_reencryption
+// mfa_factors.secret (wi-97 T006): it drives the data_key_reencryption
 // job's per-tenant backfill/re-encryption of legacy plaintext rows and rows
 // still on a retiring DEK version.
 type MfaFactorReencryptor struct {

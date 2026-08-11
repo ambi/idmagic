@@ -246,7 +246,7 @@ describe('AdminSettingsPage', () => {
     ).toBeInTheDocument()
   })
 
-  // テナント既定 locale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。
+  // テナント既定 locale は通知の locale 解決の第 2 段。
   it('updates the tenant default locale from the general tab', async () => {
     const fetch = mock().mockResolvedValue(response(200, { ...settings, default_locale: 'ja' }))
     stubGlobal('fetch', fetch)

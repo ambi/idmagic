@@ -11,8 +11,8 @@ type UserAuthenticated struct {
 	TenantID string    `json:"tenantId"`
 	UserID   string    `json:"userId"`
 	AMR      []string  `json:"amr"`
-	// wi-44 / ADR-041: 産業標準の optional 属性 (後方互換: 既存 payload は破壊しない)。
-	// ADR-104 (ADR-046 の username/IP/device 条項を撤回): 平文のまま持つ。hash / truncate はしない。
+	// wi-44 / 産業標準の optional 属性 (後方互換: 既存 payload は破壊しない)。
+	// 平文のまま持つ。hash / truncate はしない。
 	SessionID         string `json:"sessionId,omitempty"`
 	ClientID          string `json:"clientId,omitempty"`
 	ACR               string `json:"acr,omitempty"`
@@ -31,7 +31,7 @@ type AuthenticationFailed struct {
 	TenantID string    `json:"tenantId"`
 	Username string    `json:"username"`
 	Reason   string    `json:"reason"`
-	// ADR-104 (ADR-046 の username/IP/device 条項を撤回): 平文のまま持つ。hash / truncate はしない。
+	// 平文のまま持つ。hash / truncate はしない。
 	SessionID         string `json:"sessionId,omitempty"`
 	ClientID          string `json:"clientId,omitempty"`
 	IP                string `json:"ip,omitempty"`
@@ -367,7 +367,7 @@ func (e *MfaEnrollmentBypassExpired) EventType() string     { return "MfaEnrollm
 func (e *MfaEnrollmentBypassExpired) OccurredAt() time.Time { return e.At }
 
 // AuthenticatorResetRequested / AuthenticatorResetCompleted は管理者による認証器
-// リセット (ADR-088 第 2 層、wi-143) の監査イベント。
+// リセット (第 2 層、wi-143) の監査イベント。
 
 type AuthenticatorResetRequested struct {
 	At          time.Time                       `json:"-"`

@@ -8,7 +8,7 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 )
 
-// ReceivedSecurityEventRepository は inbound SET の受理記録 (ADR-057) を PostgreSQL に
+// ReceivedSecurityEventRepository は inbound SET の受理記録 を PostgreSQL に
 // 永続化する。replay 検知は UNIQUE (stream_id, set_jti) と ON CONFLICT DO NOTHING で
 // 二重挿入を fail-closed に防ぐ (ExistsByJTI と合わせた事前・事後の二重チェック)。
 type ReceivedSecurityEventRepository struct{ Pool sharedpg.DB }

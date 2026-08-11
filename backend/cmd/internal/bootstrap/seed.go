@@ -28,7 +28,7 @@ import (
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
-// 固定 UUID の seed id (ADR-084)。id 列は UUID 型のため、デモ/first-party の値も
+// 固定 UUID の seed id。id 列は UUID 型のため、デモ/first-party の値も
 // UUID にする。再起動で重複しないよう固定し、UI (frontend/src/api/oidc.ts / authFlow.ts) の
 // OIDC 設定と application binding もこの値を参照する。
 const (
@@ -249,7 +249,7 @@ func SeedDemoApplications(
 	return nil
 }
 
-// seedDemoAuthorizationDetailTypes は RFC 9396 のサンプル type を 1 件投入する (ADR-050)。
+// seedDemoAuthorizationDetailTypes は RFC 9396 のサンプル type を 1 件投入する。
 // payment_initiation は actions を集合包含、creditorAccount を enum、instructedAmount を
 // 上限 (単調減少) として扱い、エージェントに「口座 X へ最大 N まで」を束縛させる例。
 func seedDemoAuthorizationDetailTypes(ctx context.Context, types oauthports.AuthorizationDetailTypeRepository, typeName string, now time.Time) error {

@@ -1,5 +1,5 @@
 // Package jobs is the Jobs bounded context's top-level wiring point
-// (ADR-091): Module aggregates the persistence dependency other packages
+// : Module aggregates the persistence dependency other packages
 // (bootstrap) inject, and NoopEchoHandler is the core-runtime smoke-test
 // handler.
 package jobs

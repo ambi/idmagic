@@ -192,7 +192,7 @@ func TestUpdateClearsOverrideWhenAllFieldsZero(t *testing.T) {
 	}
 }
 
-// テナント既定 locale は通知の locale 解決の第 2 段 (ADR-142 決定 7)。カタログが
+// テナント既定 locale は通知の locale 解決の第 2 段。カタログが
 // 同梱翻訳を持たない locale は保存時に拒否し、空文字列でシステム既定へ戻す。
 func TestUpdateDefaultLocale(t *testing.T) {
 	ctx := context.Background()

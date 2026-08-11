@@ -20,8 +20,8 @@ type Querier interface {
 	ListProvisioningConnectionsByTenant(ctx context.Context, tenantID string) ([]*ListProvisioningConnectionsByTenantRow, error)
 	ListProvisioningDeliveriesByConnection(ctx context.Context, arg ListProvisioningDeliveriesByConnectionParams) ([]*ProvisioningDelivery, error)
 	ListProvisioningDeliveriesByConnectionAndStatus(ctx context.Context, arg ListProvisioningDeliveriesByConnectionAndStatusParams) ([]*ProvisioningDelivery, error)
-	// First page of ListProvisioningDeliveries keyset pagination (wi-159,
-	// ADR-159). Empty status/source_type arguments disable that filter.
+	// First page of ListProvisioningDeliveries keyset pagination (wi-159).
+	// Empty status/source_type arguments disable that filter.
 	ListProvisioningDeliveriesByConnectionPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageParams) ([]*ProvisioningDelivery, error)
 	// Continuation page: resumes strictly after the (created_at, id) keyset of
 	// the last row the caller saw.

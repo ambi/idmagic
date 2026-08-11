@@ -10,7 +10,7 @@ import (
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
-// TestLoginAttemptThrottle は共有 login throttle (ADR-077 / ADR-139) を検証する。
+// TestLoginAttemptThrottle は共有 login throttle を検証する。
 // fixed-window でしきい値到達時にロックし、lockout 経過で解放、成功でクリア、tenant 分離、
 // window リセットを memory adapter とのパリティで確認する。fail-closed は到達不能時の error 伝播で担保。
 func TestLoginAttemptThrottle(t *testing.T) {

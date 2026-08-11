@@ -2,7 +2,7 @@ package ports
 
 import "context"
 
-// SecretCipher envelope-encrypts the TOTP seed at rest (ADR-148). The
+// SecretCipher envelope-encrypts the TOTP seed at rest. The
 // concrete implementation is backend/datakeys.FieldCipher; this port exists
 // so db_postgres does not depend on DataKeys' internal packages directly
 // (mirrors backend/authentication/password/ports.PasswordHasher).

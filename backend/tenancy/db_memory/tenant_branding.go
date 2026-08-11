@@ -9,7 +9,7 @@ import (
 )
 
 // =====================================================================
-// TenantBrandingRepository (wi-89, ADR-096)
+// TenantBrandingRepository (wi-89)
 // =====================================================================
 
 type TenantBrandingRepository struct {
@@ -43,7 +43,7 @@ func (r *TenantBrandingRepository) Save(_ context.Context, branding *domain.Tena
 }
 
 // =====================================================================
-// TenantBrandingAssetStore (wi-89, ADR-096)
+// TenantBrandingAssetStore (wi-89)
 // =====================================================================
 
 type TenantBrandingAssetStore struct {

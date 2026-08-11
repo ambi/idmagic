@@ -68,7 +68,7 @@ func newTokenExchangeServer(t *testing.T) string {
 	})
 	srv := httptest.NewServer(e)
 	t.Cleanup(srv.Close)
-	// bare path はテナントの正規ロケーションではないので (ADR-144)、
+	// bare path はテナントの正規ロケーションではないので、
 	// default テナントの prefix まで含めた base を返す。
 	return srv.URL + "/realms/default"
 }

@@ -7,11 +7,11 @@ import (
 )
 
 // NotificationTemplateRepository は通知テンプレートのテナント上書きを保持する
-// (wi-288, ADR-142)。組込み既定カタログとレンダラは shared/notification が所有し、
-// テナント単位の設定という関心だけを Tenancy が持つ (ADR-142 決定 11)。
+// (wi-288)。組込み既定カタログとレンダラは shared/notification が所有し、
+// テナント単位の設定という関心だけを Tenancy が持つ。
 //
 // 行が存在しない (tenant_id, template_key, locale) は「組込み既定を使う」を意味し、
-// 行の削除がそのまま「既定へのリセット」になる。版管理は持たない (ADR-142 決定 1)。
+// 行の削除がそのまま「既定へのリセット」になる。版管理は持たない。
 type NotificationTemplateRepository interface {
 	FindByKey(ctx context.Context, tenantID string, key notificationports.TemplateKey, locale string) (*notificationports.TemplateOverride, error)
 	// ListAll は tenant の全上書きを返す。カタログの全 key × locale は呼び出し側が

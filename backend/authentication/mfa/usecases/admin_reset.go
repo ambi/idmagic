@@ -1,6 +1,6 @@
 package usecases
 
-// 管理者による認証器リセット (ADR-088 第 2 層、wi-143)。管理者は対象 factor を
+// 管理者による認証器リセット (第 2 層、wi-143)。管理者は対象 factor を
 // 削除するだけで、代わりの factor を登録することはできない (なりすまし面を作らない
 // ため)。TOTP / WebAuthn の両方が無くなった場合だけ、既存の管理者承認 enrollment
 // bypass (IssueMfaEnrollmentBypass と同じ機構) を自動発行し、次回ログインを wi-127 の

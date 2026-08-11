@@ -11,7 +11,7 @@ import (
 )
 
 // =====================================================================
-// GroupRepository (ADR-038)
+// GroupRepository
 // =====================================================================
 
 type GroupRepository struct {
@@ -48,7 +48,7 @@ func (r *GroupRepository) ListAll(_ context.Context, tenantID string) ([]*groupd
 	return out, nil
 }
 
-// ListPage implements ports.GroupRepository.ListPage (wi-159, ADR-158): keyset
+// ListPage implements ports.GroupRepository.ListPage (wi-159): keyset
 // pagination ordered by (Name, ID) ascending, strictly after the given keyset.
 func (r *GroupRepository) ListPage(_ context.Context, tenantID, afterName, afterID string, limit int) ([]*groupdomain.Group, error) {
 	r.mu.RLock()

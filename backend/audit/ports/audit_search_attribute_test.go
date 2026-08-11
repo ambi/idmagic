@@ -20,12 +20,12 @@ func TestAuditSearchRegistryIntegrity(t *testing.T) {
 				t.Errorf("attr %q has unknown operator %q", key, op)
 			}
 		}
-		// ADR-104 (ADR-046 の username/IP 条項を撤回) により、現状は全属性が平文 raw_storable。
+		// (username/IP 条項を撤回) により、現状は全属性が平文 raw_storable。
 		if !attr.RawStorable {
-			t.Errorf("attr %q is not raw_storable, but no PII transform exists anymore (ADR-104)", key)
+			t.Errorf("attr %q is not raw_storable, but no PII transform exists anymore ", key)
 		}
 		if attr.Transform != TransformNone {
-			t.Errorf("attr %q declares a transform, but TransformNone is the only transform (ADR-104)", key)
+			t.Errorf("attr %q declares a transform, but TransformNone is the only transform ", key)
 		}
 	}
 }
@@ -58,7 +58,7 @@ func TestAllowsOperator(t *testing.T) {
 }
 
 func TestActorUsernameAndClientIPAreVisibleAndRawStorable(t *testing.T) {
-	// ADR-104 (ADR-046 の username/IP 条項を撤回): 平文のまま sidecar に保存・検索する。
+	// 平文のまま sidecar に保存・検索する。
 	for _, field := range []string{"actor.username", "client.ip"} {
 		attr, ok := LookupSearchAttribute(field)
 		if !ok {
@@ -68,7 +68,7 @@ func TestActorUsernameAndClientIPAreVisibleAndRawStorable(t *testing.T) {
 			t.Fatalf("%s should be available in the admin search builder", field)
 		}
 		if !attr.RawStorable {
-			t.Fatalf("%s should store plaintext in the sidecar (ADR-104)", field)
+			t.Fatalf("%s should store plaintext in the sidecar ", field)
 		}
 	}
 }

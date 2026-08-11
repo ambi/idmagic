@@ -29,8 +29,7 @@ const (
 
 type SessionManager struct {
 	Store ports.SessionStore
-	// QuotaRepo enforces the tenant's Hard Quota on active_sessions (wi-160,
-	// ADR-134). nil skips enforcement (wiring gaps in tests/tools);
+	// QuotaRepo enforces the tenant's Hard Quota on active_sessions (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it. Settable directly (not a
 	// NewSessionManager param) so existing call sites are unaffected.
 	QuotaRepo tenantports.QuotaRepository
@@ -197,7 +196,7 @@ func authenticationContextFromSession(sess *domain.LoginSession) *authdomain.Aut
 	}
 }
 
-// RecordStepUp は session に step-up 再認証の成立時刻を刻む (ADR-043)。pending な
+// RecordStepUp は session に step-up 再認証の成立時刻を刻む。pending な
 // session や別テナントの session には作用させない。成立後の AuthenticationContext を返す。
 func (m *SessionManager) RecordStepUp(
 	ctx context.Context,
@@ -231,7 +230,7 @@ func (m *SessionManager) RecordStepUp(
 
 func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers) (*authdomain.AuthenticationContext, error) {
 	cookies := parseCookies(headers.Get("Cookie"))
-	// Subdomain tenants use the browser-enforced __Host- name (ADR-144). Path
+	// Subdomain tenants use the browser-enforced __Host- name. Path
 	// tenants retain the legacy name; prefer the host-only cookie if both exist.
 	sid := cookies["__Host-"+SessionCookie]
 	if sid == "" {
@@ -252,7 +251,7 @@ func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers
 	}
 	// last_seen_at の書き込みはここで一括して行い、oauth2/account/admin 等の呼び出し側に
 	// touch 契機を分散配線しない。実際の書き込み量は adapter 側の粗粒度ガード
-	// (LoginSessionTouchInterval) が抑える (wi-253 / ADR-126)。best-effort であり
+	// (LoginSessionTouchInterval) が抑える (wi-253)。best-effort であり
 	// 失敗しても認証解決自体は妨げない。
 	_ = m.Store.Touch(ctx, sess.ID, time.Now().UTC())
 	return authenticationContextFromSession(sess), nil
@@ -268,7 +267,7 @@ func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error 
 
 // SessionIDFromCookie extracts the session id from a Cookie header without
 // revoking it. RP-Initiated Logout (/end_session) uses this as the fallback
-// session resolution when no id_token_hint was given (ADR-127 decision 4).
+// session resolution when no id_token_hint was given (decision 4).
 func (m *SessionManager) SessionIDFromCookie(cookieHeader string) string {
 	cookies := parseCookies(cookieHeader)
 	if sid := cookies["__Host-"+SessionCookie]; sid != "" {

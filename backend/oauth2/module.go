@@ -1,4 +1,4 @@
-// Package oauth2 は oauth2 bounded context の DI 組立を自前で持つ (ADR-091)。
+// Package oauth2 は oauth2 bounded context の DI 組立を自前で持つ。
 // 中央 server/routes.go の Deps と bootstrap/deps.go の Dependencies から oauth2 由来
 // field を Module へ集約していく。client/consent/認可詳細タイプ分から着手し (wi-173)、
 // token/grant (wi-181) が Module へフィールドを追加していく。監査 (audit) の repository は
@@ -32,7 +32,7 @@ type Module struct {
 	Authorizer                 oauthports.Authorizer
 	EventSink                  oauthports.EventSink
 	// WorkloadVerifier verifies external workload attestation tokens for the
-	// token-exchange grant (ADR-053, [[wi-54-workload-identity-federation-spiffe]]).
+	// token-exchange grant ([[wi-54-workload-identity-federation-spiffe]]).
 	// nil rejects subject_token_type=JWT URN as unsupported (fail-closed).
 	WorkloadVerifier oauthports.WorkloadTokenVerifier
 }

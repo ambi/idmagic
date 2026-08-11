@@ -459,7 +459,7 @@ func (d Deps) handleUnassignApplication(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
-// signInPolicyView は app 個別・テナントデフォルト・上書き後 effective を区別して返す (ADR-081)。
+// signInPolicyView は app 個別・テナントデフォルト・上書き後 effective を区別して返す。
 // weaker_than_default はアプリ独自ポリシーがデフォルトより弱いときの UI 警告用フラグ。
 func (d Deps) signInPolicyView(c *echo.Context, policy *domain.AppSignInPolicy) (map[string]any, error) {
 	deps := d.signInPolicyDeps()
@@ -611,7 +611,7 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	if errors.Is(err, clientusecases.ErrClientSecretLimitExceeded) {
 		return support.WriteBrowserError(c, http.StatusConflict, "client_secret_limit_exceeded", "The client already has two active secrets.")
 	}
-	// QuotaExceededError (wi-160, ADR-134) falls through to support_http.ErrorHandler
+	// QuotaExceededError (wi-160) falls through to support_http.ErrorHandler
 	// instead of being flattened into invalid_request/400 below, so it gets the same
 	// stable quota_exceeded/422 response, logging, and metrics as every other create path.
 	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {

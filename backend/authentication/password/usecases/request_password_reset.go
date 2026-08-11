@@ -26,7 +26,7 @@ type RequestPasswordResetDeps struct {
 	UserRepo   userports.UserRepository
 	TokenStore passwordports.PasswordResetTokenStore
 	// Notifier は文面 (件名 / テキスト / HTML) と locale を通知テンプレートカタログから
-	// 解決する。use case は文面を組み立てない (ADR-142)。
+	// 解決する。use case は文面を組み立てない。
 	Notifier sharednotification.Notifier
 	Emit     func(spec.DomainEvent)
 	Issuer   string
@@ -78,7 +78,7 @@ func RequestPasswordReset(ctx context.Context, deps RequestPasswordResetDeps, in
 	}
 
 	// The link is assembled here, not inside the template, so a tenant editing the
-	// template can never take over URL construction (ADR-142 §5).
+	// template can never take over URL construction.
 	resetURL := strings.TrimRight(deps.Issuer, "/") + "/reset_password?token=" + url.QueryEscape(rawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
 	// Send to the verified address stored on the account, not the raw request

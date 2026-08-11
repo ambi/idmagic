@@ -4,7 +4,7 @@ package usecases
 // SCL の IdManagement bounded context が所有する self インターフェース:
 // GetUserProfile / UpdateUserProfile。actor.sub == target.sub を前提とし、
 // 編集できるのは editable_by_user=true の属性と表示名のみ (status / roles /
-// organization は admin 専用、ADR-040 の affected_guarantees)。
+// organization は admin 専用、affected_guarantees)。
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 )
 
 // ErrAttributeNotEditable は self-service で editable_by_user=false の属性を
-// 変更しようとした場合に返る (ADR-040)。
+// 変更しようとした場合に返る。
 var ErrAttributeNotEditable = errors.New("attribute is not user-editable")
 
 type AccountProfileDeps struct {
@@ -105,7 +105,7 @@ func UpdateUserProfile(
 	if err := deps.UserRepo.Save(ctx, &updated); err != nil {
 		return nil, nil, err
 	}
-	// self 編集は actorUserID == targetUserID。changedFields の粒度で記録する (ADR-018)。
+	// self 編集は actorUserID == targetUserID。changedFields の粒度で記録する。
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.UserUpdated{
 		At: now, TenantID: user.TenantID, ActorUserID: user.ID, TargetUserID: user.ID, ChangedFields: changed,
 	}); err != nil {

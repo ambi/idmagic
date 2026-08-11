@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// nullable 列と domain の optional 値の相互変換。ADR-084 の text codec 登録を前提に、
+// nullable 列と domain の optional 値の相互変換。text codec 登録を前提に、
 // UUID は Go 側で string として扱う。
 
 func timestamptzOrNil(t *time.Time) pgtype.Timestamptz {

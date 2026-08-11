@@ -1,8 +1,8 @@
 package usecases
 
-// self-service の WebAuthn / Passkey 登録・削除 (wi-26 / ADR-087)。actor.sub == target.sub に
+// self-service の WebAuthn / Passkey 登録・削除 (wi-26)。actor.sub == target.sub に
 // 固定する。登録は attestation の検証 (RP ID / origin / challenge) を所持証明とし、削除は
-// step-up (ADR-043) を HTTP 層で要求する。1 ユーザーが複数 credential を持てる。
+// step-up を HTTP 層で要求する。1 ユーザーが複数 credential を持てる。
 
 import (
 	"bytes"

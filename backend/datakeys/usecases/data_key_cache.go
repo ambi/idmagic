@@ -19,7 +19,7 @@ type tenantVersion struct {
 // record-owning repositories are not forced through
 // MasterKeyProvider.Unwrap on every encrypt/decrypt call. It implements
 // ports.CacheInvalidator so lifecycle usecases can drop a tenant's entries
-// on rotate/disable/destroy (ADR-148).
+// on rotate/disable/destroy.
 type DataKeyCache struct {
 	mu            sync.RWMutex
 	activeVersion map[string]int
@@ -68,7 +68,7 @@ func (c *DataKeyCache) GetActive(ctx context.Context, tenantID string) (version 
 // GetByVersion returns the plaintext DEK for a specific (tenant, version),
 // used to decrypt ciphertext encrypted under a version that has since
 // rotated out to retiring. A destroyed version fails closed rather than
-// returning stale cached material (ADR-148 crypto-shredding).
+// returning stale cached material (crypto-shredding).
 func (c *DataKeyCache) GetByVersion(ctx context.Context, tenantID string, version int) ([]byte, error) {
 	c.mu.RLock()
 	if dek, ok := c.byVersion[tenantVersion{tenantID, version}]; ok {

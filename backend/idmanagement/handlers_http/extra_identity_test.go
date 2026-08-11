@@ -203,7 +203,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 // AdvanceRevocationEpoch), not just the reactor unit in isolation. Confirms
 // the SCL scenario `kill-switchは既発行トークンをintrospectionで即時無効化する`'s
 // precondition actually gets wired when SharedSignals.Module is configured
-// (ADR-057, wi-58).
+// (wi-58).
 func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 	userRepo := usermemory.NewUserRepository()
 	now := time.Now().UTC()

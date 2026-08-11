@@ -9,7 +9,7 @@ import (
 	z "github.com/Oudwins/zog"
 )
 
-// tenantSchema / tenantIDPattern は tenancy/domain へ移設した (wi-179, ADR-089/ADR-093)。
+// tenantSchema / tenantIDPattern は tenancy/domain へ移設した (wi-179, )。
 
 var authorizationRequestSchema = z.Struct(z.Shape{
 	"ID": z.String().UUID().Required(),
@@ -107,13 +107,13 @@ func validate(schema *z.StructSchema, value any) error {
 }
 
 // Validate は zog スキーマによるフィールド検証を行う。per-context domain パッケージが
-// 自身のスキーマを検証するための汎用ラッパー (ADR-093)。
+// 自身のスキーマを検証するための汎用ラッパー。
 func Validate(schema *z.StructSchema, value any) error {
 	return validate(schema, value)
 }
 
 // ZogError は zog の検証結果をメッセージ結合済みの error へ変換する。per-context domain
-// パッケージが自身の Validate() 実装から呼び出す汎用ラッパー (ADR-093)。
+// パッケージが自身の Validate() 実装から呼び出す汎用ラッパー。
 func ZogError(issues z.ZogIssueList) error {
 	return zogError(issues)
 }

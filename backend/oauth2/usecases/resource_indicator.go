@@ -1,5 +1,5 @@
 // Resource Indicators (RFC 8707) の共通検証。Authorize / PushAuthorizationRequest /
-// Token(authorization_code redemption) / Token(token-exchange) から呼ばれる (ADR-055)。
+// Token(authorization_code redemption) / Token(token-exchange) から呼ばれる。
 package usecases
 
 import (
@@ -26,7 +26,8 @@ func nonEmpty(values []string) []string {
 //   - resources が空 (resource 未指定) の場合は (nil, nil) を返し、呼び出し側は
 //     従来どおり client_id を audience とする発行を続ける (後方互換)。
 //   - resources が複数、または tenant 内に登録された Active な McpResourceServer が
-//     見つからない場合は fail-closed で invalid_target を返す (ADR-055 決定3)。
+//
+// 見つからない場合は fail-closed で invalid_target を返す。
 //   - requestedScopes が resource の許可 scope (allowlist) の部分集合でない場合は
 //     invalid_scope を返す。
 func ResolveResourceIndicator(

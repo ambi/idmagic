@@ -81,7 +81,7 @@ func (e *QuotaExceeded) EventType() string     { return "QuotaExceeded" }
 func (e *QuotaExceeded) OccurredAt() time.Time { return e.At }
 
 // NotificationTemplateUpdated / NotificationTemplateReset は通知テンプレートの上書き
-// 操作の監査イベント (wi-288, ADR-142)。文面そのものは記録せず、対象の key と locale
+// 操作の監査イベント (wi-288)。文面そのものは記録せず、対象の key と locale
 // だけを残す (本文には PII や復旧リンクが入りうるため)。
 type NotificationTemplateUpdated struct {
 	At          time.Time `json:"-"`

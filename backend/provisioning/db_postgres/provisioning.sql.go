@@ -515,8 +515,8 @@ type ListProvisioningDeliveriesByConnectionPageParams struct {
 	PageLimit        int32
 }
 
-// First page of ListProvisioningDeliveries keyset pagination (wi-159,
-// ADR-159). Empty status/source_type arguments disable that filter.
+// First page of ListProvisioningDeliveries keyset pagination (wi-159).
+// Empty status/source_type arguments disable that filter.
 func (q *Queries) ListProvisioningDeliveriesByConnectionPage(ctx context.Context, arg ListProvisioningDeliveriesByConnectionPageParams) ([]*ProvisioningDelivery, error) {
 	rows, err := q.db.Query(ctx, listProvisioningDeliveriesByConnectionPage,
 		arg.TenantID,

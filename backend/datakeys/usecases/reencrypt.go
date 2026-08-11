@@ -20,7 +20,7 @@ const ReencryptBatchSize = 200
 
 // ReencryptMaxBatchesPerRun caps how many batches a single
 // data_key_reencryption Job execution drives before yielding its worker slot
-// back (ADR-129 lane fairness): remaining work is picked up by a re-enqueued
+// back (lane fairness): remaining work is picked up by a re-enqueued
 // continuation Job (see ReencryptionHandler) rather than one Job
 // monopolizing a bulk worker forever.
 const ReencryptMaxBatchesPerRun = 25
@@ -31,7 +31,7 @@ const ReencryptMaxBatchesPerRun = 25
 var ErrFieldMigratorNotRegistered = errors.New("datakeys: no field migrator registered for name")
 
 // ReencryptDeps are the dependencies for ReencryptTenantField and
-// ReencryptionHandler (wi-97 T006, ADR-148).
+// ReencryptionHandler (wi-97 T006).
 type ReencryptDeps struct {
 	Repository ports.DataKeyRepository
 	Migrators  *MigratorRegistry
@@ -120,7 +120,7 @@ func EnqueueReencryptionJob(ctx context.Context, repo jobsports.JobRepository, t
 }
 
 // ReencryptionHandler is the jobs.Handler for
-// jobsdomain.KindDataKeyReencryption (ADR-148, wi-97 T006). It is idempotent
+// jobsdomain.KindDataKeyReencryption (wi-97 T006). It is idempotent
 // (JobHandlerIdempotency): a row already on the active version is simply not
 // reselected by the underlying FieldMigrator. When rows remain after
 // ReencryptMaxBatchesPerRun batches, it re-enqueues a dedup'd continuation

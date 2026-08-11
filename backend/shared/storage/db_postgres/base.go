@@ -219,7 +219,7 @@ func Open(ctx context.Context, databaseURL string, cfg DBConfig) (*pgxpool.Pool,
 }
 
 // RegisterUUIDAsText は uuid OID に text codec を登録し、UUID 列を Go の string として
-// read/write できるようにする (ADR-084)。内部生成 id 列は UUID 型だが Go 側では string で
+// read/write できるようにする。内部生成 id 列は UUID 型だが Go 側では string で
 // 扱うため、接続確立時にこれを登録する。エンコードは text を渡し PostgreSQL が uuid として
 // 解釈する。接続プールを構築する全経路 (本番の Open と test harness) で呼ぶ。
 func RegisterUUIDAsText(conn *pgx.Conn) {

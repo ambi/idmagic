@@ -207,7 +207,7 @@ func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	if oauthErr, ok := errors.AsType[*clientusecases.OAuthError](err); ok {
 		return support.WriteBrowserError(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
 	}
-	// QuotaExceededError (wi-160, ADR-134) falls through to support_http.ErrorHandler
+	// QuotaExceededError (wi-160) falls through to support_http.ErrorHandler
 	// instead of being flattened into invalid_client_metadata/400 below, so it gets the
 	// same stable quota_exceeded/422 response, logging, and metrics as every other
 	// create path.

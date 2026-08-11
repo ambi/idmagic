@@ -51,7 +51,7 @@ func requestWithHost(host, target string) *http.Request {
 	return req
 }
 
-// ADR-144 の fail-closed: 未登録の Host はどのテナントにも解決してはならない。
+// fail-closed: 未登録の Host はどのテナントにも解決してはならない。
 // ここが fail-open だと任意の Host ヘッダで default テナントに到達でき、
 // テナント境界の破りになる。resolver で最初に固定するのはこの性質。
 func TestUnknownSubdomainDoesNotResolveToDefaultTenant(t *testing.T) {
@@ -64,7 +64,7 @@ func TestUnknownSubdomainDoesNotResolveToDefaultTenant(t *testing.T) {
 	}
 }
 
-// prefix 無しの path は default テナントの第 2 ロケーションになるため廃止した (ADR-144)。
+// prefix 無しの path は default テナントの第 2 ロケーションになるため廃止した。
 func TestBareRouteOnBaseDomainIsNotATenantLocation(t *testing.T) {
 	e := hostRoutingFixture(t, "idp.example")
 

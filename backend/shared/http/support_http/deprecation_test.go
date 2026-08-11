@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// ADR-156 / wi-297 T005: interfaces marked deprecated_since must return the
+// wi-297 T005: interfaces marked deprecated_since must return the
 // Deprecation header (RFC 9745), and Sunset (RFC 8594) when sunset_at is
 // also set. Non-deprecated interfaces must not gain either header.
 func TestDeprecationHeadersMiddleware(t *testing.T) {

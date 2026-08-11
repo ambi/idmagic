@@ -8,7 +8,7 @@ import { PageMarker } from '../-page'
 
 type AdminOAuth2ClientListResponse = { clients: AdminOAuth2Client[] }
 
-// Dashboard タイル用の一覧 API はどれも大規模テナントで全件取得できない (ADR-158)。
+// Dashboard タイル用の一覧 API はどれも大規模テナントで全件取得できない。
 // userCount/clientCount は settings.usage (tenant usage summary、専用の集計クエリ) を優先し、
 // usage が無い場合のみ読み込み済み件数にフォールバックする。activeUserCount/
 // disabledUserCount/grantedConsentCount は breakdown 用の summary endpoint が無いため、

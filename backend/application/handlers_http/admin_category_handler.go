@@ -1,4 +1,4 @@
-// ApplicationCategory の管理 API (wi-70, ADR-069)。RequireAdmin で保護し、テナント境界に閉じる。
+// ApplicationCategory の管理 API (wi-70)。RequireAdmin で保護し、テナント境界に閉じる。
 package handlers_http
 
 import (

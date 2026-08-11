@@ -69,7 +69,7 @@ func TestResolveEndSessionValidatesRegisteredRedirectURI(t *testing.T) {
 	}
 }
 
-// ADR-127: id_token_hint の sid をそのまま session 解決に使い、hint の aud を
+// id_token_hint の sid をそのまま session 解決に使い、hint の aud を
 // client_id として扱う。
 func TestResolveEndSessionResolvesSidAndClientFromHint(t *testing.T) {
 	repo := memory.NewClientRepository()

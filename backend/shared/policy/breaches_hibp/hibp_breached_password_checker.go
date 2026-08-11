@@ -21,7 +21,7 @@ import (
 	"go.opentelemetry.io/otel/metric"
 )
 
-// HIBP Range API への接続パラメータ (ADR-028 §3)。
+// HIBP Range API への接続パラメータ。
 const (
 	hibpDefaultEndpoint    = "https://api.pwnedpasswords.com/range/"
 	hibpDefaultTimeout     = 2 * time.Second
@@ -32,10 +32,10 @@ const (
 )
 
 // HibpBreachedPasswordChecker は HIBP Range API (k-anonymity) で漏洩 password を
-// 検査する ports.BreachedPasswordChecker 実装 (ADR-028 §3)。
+// 検査する ports.BreachedPasswordChecker 実装。
 //
 // 生 password は外部送信せず、SHA-1 の先頭 5 文字 (prefix) のみを送る。HTTP error /
-// timeout / 5xx は false を返す fail-open とし (ADR-028 §4)、失敗は warn log と
+// timeout / 5xx は false を返す fail-open とし、失敗は warn log と
 // metric 1 本で可視化する。
 type HibpBreachedPasswordChecker struct {
 	endpoint  string
@@ -136,7 +136,7 @@ func (c *HibpBreachedPasswordChecker) fetch(ctx context.Context, prefix string) 
 		return nil, err
 	}
 	req.Header.Set("User-Agent", c.userAgent)
-	// Add-Padding はレスポンスサイズ side-channel を抑える HIBP 推奨ヘッダ (ADR-028 §3)。
+	// Add-Padding はレスポンスサイズ side-channel を抑える HIBP 推奨ヘッダ。
 	req.Header.Set("Add-Padding", "true")
 
 	resp, err := c.client.Do(req)

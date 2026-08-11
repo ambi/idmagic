@@ -12,7 +12,7 @@ import (
 )
 
 // =====================================================================
-// ApplicationRepository (wi-69, ADR-064)
+// ApplicationRepository (wi-69)
 // =====================================================================
 
 type ApplicationRepository struct {
@@ -41,7 +41,7 @@ func cloneSignInPolicy(policy *domain.AppSignInPolicy) *domain.AppSignInPolicy {
 }
 
 // =====================================================================
-// ApplicationIconStore (wi-74, ADR-073)
+// ApplicationIconStore (wi-74)
 // =====================================================================
 
 type ApplicationIconStore struct {
@@ -110,7 +110,7 @@ func (r *ApplicationRepository) ListAll(_ context.Context, tenantID string) ([]*
 	return out, nil
 }
 
-// ListPage implements ports.ApplicationRepository.ListPage (wi-159, ADR-158):
+// ListPage implements ports.ApplicationRepository.ListPage (wi-159):
 // keyset pagination ordered by (Name, ID) ascending, strictly after the
 // given keyset.
 func (r *ApplicationRepository) ListPage(_ context.Context, tenantID, afterName, afterID string, limit int) ([]*domain.Application, error) {
@@ -222,7 +222,7 @@ func (r *ApplicationRepository) RemoveCategory(_ context.Context, tenantID, cate
 }
 
 // =====================================================================
-// SignInPolicyRepository (wi-71, ADR-079)
+// SignInPolicyRepository (wi-71)
 // =====================================================================
 
 type SignInPolicyRepository struct {
@@ -276,7 +276,7 @@ func (r *SignInPolicyRepository) Delete(_ context.Context, tenantID, application
 }
 
 // =====================================================================
-// DefaultSignInPolicyRepository (wi-115, ADR-081)
+// DefaultSignInPolicyRepository (wi-115)
 // =====================================================================
 
 func cloneDefaultSignInPolicy(policy *domain.TenantDefaultSignInPolicy) *domain.TenantDefaultSignInPolicy {
@@ -352,7 +352,7 @@ func (r *ApplicationAssignmentRepository) ListByApplication(_ context.Context, t
 }
 
 // ListPageByApplication implements ports.AssignmentRepository.ListPageByApplication
-// (wi-159, ADR-158): keyset pagination ordered by (SubjectType, SubjectID)
+// (wi-159): keyset pagination ordered by (SubjectType, SubjectID)
 // ascending, strictly after the given keyset.
 func (r *ApplicationAssignmentRepository) ListPageByApplication(_ context.Context, tenantID, applicationID, afterSubjectType, afterSubjectID string, limit int) ([]*domain.ApplicationAssignment, error) {
 	r.mu.RLock()
@@ -444,7 +444,7 @@ func (r *ApplicationAssignmentRepository) DeleteByApplication(_ context.Context,
 }
 
 // =====================================================================
-// ApplicationOrderingRepository (wi-70, ADR-069)
+// ApplicationOrderingRepository (wi-70)
 // =====================================================================
 
 type ApplicationOrderingRepository struct {
@@ -485,7 +485,7 @@ func (r *ApplicationOrderingRepository) Save(_ context.Context, ordering *domain
 }
 
 // =====================================================================
-// ApplicationCategoryRepository (wi-70, ADR-069)
+// ApplicationCategoryRepository (wi-70)
 // =====================================================================
 
 type ApplicationCategoryRepository struct {

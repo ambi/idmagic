@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Takes a logical (pg_dump custom-format) backup of a PostgreSQL database and
 # writes a timestamped dump + sha256 checksum into the given output
-# directory (wi-101, ADR-153). This is the portable-export / small-drill
+# directory (wi-101). This is the portable-export / small-drill
 # path; production-scale RPO is met by PITR (base backup + WAL archive),
 # documented in infra/runbooks/backup-restore-dr.md and not automated here.
 #

@@ -1,6 +1,6 @@
 // Package http is the Provisioning bounded context's admin HTTP adapter
 // (wi-45 T007a, spec/contexts/provisioning.yaml interfaces). It lives in the
-// protocol-agnostic core (ADR-128 decision 2), not a protocol feature slice.
+// protocol-agnostic core (decision 2), not a protocol feature slice.
 // The account-facing/UI consumer is deferred to a follow-up (wi-45 T007b);
 // this pass focuses on making the admin API match the SCL bindings exactly
 // (routes_contract_test.go's assembled-router-vs-OpenAPI invariant).

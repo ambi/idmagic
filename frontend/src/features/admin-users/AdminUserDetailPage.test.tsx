@@ -38,7 +38,7 @@ const user: AdminUser = {
 describe('AdminUserDetailPage', () => {
   afterEach(() => restoreGlobals())
 
-  it('is fully read-only: no group/required-action/session edit controls (ADR-086 policy)', async () => {
+  it('is fully read-only: no group/required-action/session edit controls (policy)', async () => {
     stubGlobal(
       'fetch',
       mock((url: string) => {

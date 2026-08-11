@@ -9,7 +9,7 @@ import (
 // FuzzEncodeCSVRecords は、User 名・属性など untrusted な値がそのままセルに載る
 // CSV エクスポートで、生成物が (1) RFC 4180 として必ずパースでき、(2) パースし直した
 // どのセルも formula injection トリガー文字 (= + - @ TAB CR) で始まらないことを、
-// 任意のバイト列に対して固定する (ADR-140 / ADR-121: 外部未信頼入力を表計算ソフトが
+// 任意のバイト列に対して固定する (外部未信頼入力を表計算ソフトが
 // 解釈する高リスク面のため fuzz を採用)。値の正しさは通常のユニットテストが担う。
 func FuzzEncodeCSVRecords(f *testing.F) {
 	seeds := []string{"", "alice", "=1+1", "+1", "-1", "@evil", "\t=x", "\r\n", "a,b\"c\nd", "山田=太郎"}

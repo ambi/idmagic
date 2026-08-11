@@ -47,14 +47,13 @@ TypeSpec and `SPECIFICATION.md` are colocated under `spec/` so backend, frontend
 implementations see the same language-independent source. A generated HTML view provides cross-document
 navigation without becoming an authored format.
 
-## 5. Work items and decisions
+## 5. Work items
 
 A work item is the design and execution record for one meaningful change. It holds motivation, scope,
 alternatives, plan, tasks, risks, and completion evidence. When the work lands, copy only the conclusion
 that remains true into TypeSpec or the owning `SPECIFICATION.md`.
 
-Do not create new ADRs. An existing decision archive may remain read-only for historical links, but current
-design must be understandable without opening it.
+Current design must be understandable from `SPECIFICATION.md` and the work item alone.
 
 ## 6. Context economy
 

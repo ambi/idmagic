@@ -95,7 +95,7 @@ func TestConnectionSecretReencryptorMigratesResolvableLegacyReference(t *testing
 	}
 }
 
-// RED (ADR-150): a legacy reference whose environment variable is gone cannot be resolved
+// RED: a legacy reference whose environment variable is gone cannot be resolved
 // automatically; ReencryptBatch must skip it (not fail the batch) and leave it pending.
 func TestConnectionSecretReencryptorSkipsUnresolvableLegacyReference(t *testing.T) {
 	pool := pgtest.Require(t)

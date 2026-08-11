@@ -13,7 +13,7 @@ spec:
       app.kubernetes.io/name: idmagic
       app.kubernetes.io/component: api
 ---
-# ADR-129: latency_sensitive must always keep an execution slot available,
+# latency_sensitive must always keep an execution slot available,
 # independent of voluntary disruptions (node drains, rollouts) — this is the
 # same reservation guarantee the lane isolation itself provides against the
 # bulk backlog, extended to cluster-initiated disruption.

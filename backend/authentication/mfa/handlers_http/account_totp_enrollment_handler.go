@@ -1,6 +1,6 @@
 // /api/account/v1/mfa/totp/* — エンドユーザー自身の TOTP の self-service 登録・解除
-// (wi-21 / ADR-042)。登録は確認コード、解除は有効な TOTP コードによる所持証明に加え、
-// 解除は step-up 再認証 (ADR-043) を要求する。
+// (wi-21)。登録は確認コード、解除は有効な TOTP コードによる所持証明に加え、
+// 解除は step-up 再認証 を要求する。
 package handlers_http
 
 import (
@@ -81,7 +81,7 @@ func HandleRemoveTotpFactor(d httpdeps.Deps, c *echo.Context) error {
 	if err := d.VerifyBrowserRequest(c); err != nil {
 		return err
 	}
-	// MFA factor の解除は高 sensitivity 操作。step-up 再認証を要求する (ADR-043)。
+	// MFA factor の解除は高 sensitivity 操作。step-up 再認証を要求する。
 	sub, err := httpdeps.RequireStepUpSub(d, c)
 	if err != nil {
 		return httpdeps.WriteAccountError(c, err)

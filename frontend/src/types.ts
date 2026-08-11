@@ -271,7 +271,7 @@ export type AppSignInPolicy = {
   updated_at: string
 }
 
-// テナントデフォルトサインインポリシー (wi-115, ADR-081)。例外設定のない全アプリに floor として適用される。
+// テナントデフォルトサインインポリシー (wi-115)。例外設定のない全アプリに floor として適用される。
 export type TenantDefaultSignInPolicy = {
   tenant_id: string
   rules: SignInRule[]
@@ -284,7 +284,7 @@ export type TenantDefaultSignInPolicyView = {
   unenrolled_user_count: number
 }
 
-// アプリ詳細で「このアプリの上書き」「テナントデフォルト」「最終的に適用されるポリシー」を区別する (ADR-081)。
+// アプリ詳細で「このアプリの上書き」「テナントデフォルト」「最終的に適用されるポリシー」を区別する。
 // weaker_than_default はアプリ個別ポリシーがデフォルトより弱いときの警告フラグ。
 export type AppSignInPolicyView = {
   policy: AppSignInPolicy
@@ -309,7 +309,7 @@ export type ApplicationOidcConfig = {
   fapi_profile: string
   client_secret_rotatable: boolean
   secret_credentials: ClientSecretCredentialMetadata[]
-  // sub_source_attribute / rules は claim release 上書き (wi-73, ADR-151)。
+  // sub_source_attribute / rules は claim release 上書き (wi-73)。
   sub_source_attribute: string
   rules: WsFedClaimMappingRule[]
 }
@@ -757,7 +757,7 @@ export type AdminSettings = {
     max_length: number
     history_depth: number
   }
-  // 通知メールの locale 解決の第 2 段 (ADR-142)。未設定ならシステム既定を使う。
+  // 通知メールの locale 解決の第 2 段。未設定ならシステム既定を使う。
   default_locale?: string
   // カタログが同梱翻訳を持つ locale。既定 locale とテンプレート編集の選択肢になる。
   supported_locales: string[]
@@ -807,8 +807,7 @@ export type AdminIntegrationEndpointCatalog = {
   }
 }
 
-// NotificationTemplateKey は通知の用途を表す固定識別子。テナントは key を追加できない
-// (ADR-142 決定 2)。
+// NotificationTemplateKey は通知の用途を表す固定識別子。テナントは key を追加できない。
 export type NotificationTemplateKey =
   | 'password_reset'
   | 'email_verification'
@@ -859,7 +858,7 @@ export type NotificationTemplatePreview = {
   from_display_name?: string
 }
 
-// テスト送信の宛先は操作者本人に固定されるため、リクエストに宛先は無い (ADR-142 決定 8)。
+// テスト送信の宛先は操作者本人に固定されるため、リクエストに宛先は無い。
 export type NotificationTemplateTestResult = {
   delivered: boolean
   to: string

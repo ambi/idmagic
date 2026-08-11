@@ -85,7 +85,7 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 }
 
 func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
-	// ADR-104 (ADR-046 の username 条項を撤回): AuthenticationFailed.username は redact されず、
+	// AuthenticationFailed.username は redact されず、
 	// 他の failure イベントと同じ保持期間 (FailDays) でそのまま保持される。
 	ctx := context.Background()
 	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
@@ -165,7 +165,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 }
 
 // TestRetentionSweepDeletesExpiredSessions: wi-253 Plan §7 の housekeeping cleanup を
-// retention sweep (ADR-045) に統合する。SessionDays (既定 90 日) を LoginSession の
+// retention sweep に統合する。SessionDays (既定 90 日) を LoginSession の
 // tombstone/期限切れ行の物理削除 cutoff に転用する。
 func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
 	ctx := context.Background()

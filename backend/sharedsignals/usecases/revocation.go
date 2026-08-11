@@ -1,7 +1,7 @@
 // Package usecases owns the SharedSignals-internal interfaces
 // CheckRevocationEpoch / AdvanceRevocationEpoch and the AgentRevocationReactor
 // that reacts to IdManagement DomainEvents already flowing through the
-// composition root's Emit pipeline (ADR-057, wi-58).
+// composition root's Emit pipeline (wi-58).
 package usecases
 
 import (
@@ -72,7 +72,7 @@ func CheckRevocationEpoch(ctx context.Context, deps RevocationDeps, tenantID, ag
 // AgentRevocationReactor reacts to IdManagement DomainEvents that IdManagement
 // already emits unconditionally for audit (KillAgent/SetAgentDisabled/
 // UnbindCredential/SetUserDisabled/SoftDeleteUser/DeleteUser), and
-// fail-closed advances the affected agent(s)' revocation epoch (ADR-057,
+// fail-closed advances the affected agent(s)' revocation epoch (
 // wi-58). The composition root composes it into the Emit pipeline once
 // (idmanagement/deps_http.Deps.ReactiveEmit); IdManagement's own usecases
 // need no SharedSignals dependency or extra call — the event they already

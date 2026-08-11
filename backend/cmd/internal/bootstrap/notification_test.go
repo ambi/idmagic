@@ -11,7 +11,7 @@ import (
 )
 
 // Notifier は組込み既定カタログだけでなくテナント上書きも見なければならない。ここが
-// 繋がっていないと、管理画面で保存した文面が実送信に反映されない (wi-288, ADR-142)。
+// 繋がっていないと、管理画面で保存した文面が実送信に反映されない (wi-288)。
 func TestAssembleNotificationAppliesTenantOverrides(t *testing.T) {
 	ctx := context.Background()
 	templates := tenancymemory.NewNotificationTemplateRepository()

@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// SsfReceiverConfigRepository は SsfReceiverConfig (ADR-057) を PostgreSQL に永続化する。
+// SsfReceiverConfigRepository は SsfReceiverConfig を PostgreSQL に永続化する。
 type SsfReceiverConfigRepository struct{ Pool sharedpg.DB }
 
 func receiverConfigFromRow(row *SsfReceiverConfig) (*ssdomain.SsfReceiverConfig, error) {

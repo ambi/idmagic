@@ -19,7 +19,7 @@ func TestAdminRolePoliciesOmitInternalDocReferences(t *testing.T) {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 	body := rec.Body.String()
-	for _, leak := range []string{"ADR-", "actor.roles", "allow_when", `"requirements"`} {
+	for _, leak := range []string{"actor.roles", "allow_when", `"requirements"`} {
 		if strings.Contains(body, leak) {
 			t.Fatalf("response leaks internal token %q: %s", leak, body)
 		}

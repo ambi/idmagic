@@ -29,7 +29,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	if authn == nil || authn.AuthenticationPending {
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
-	// パスワード変更は高 sensitivity 操作。step-up 再認証を要求する (ADR-043)。
+	// パスワード変更は高 sensitivity 操作。step-up 再認証を要求する。
 	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
 		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	}

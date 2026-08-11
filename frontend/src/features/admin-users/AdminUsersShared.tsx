@@ -409,7 +409,7 @@ function AdminSessionRow({
 }
 
 // allowEditing=false は参照専用の文脈 (ユーザー詳細画面) で使う。セッションの終了は
-// 編集画面 (allowEditing=true) に一本化する (wi-28 T007, ADR-127 決定9 の操作を、
+// 編集画面 (allowEditing=true) に一本化する (wi-28 T007, 決定9 の操作を、
 // 詳細/編集の分離ポリシーに合わせて移設)。
 // 終了 (revoke) はサーバー側で同じ sid を共有する RefreshTokenRecord も
 // family/client を横断して失効させる (T004 の RevokeTokensBySid)。

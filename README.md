@@ -27,7 +27,6 @@ IdMagic follows a lightweight specification-first workflow. The main bounded con
 | --- | --- |
 | Product specification and current design | `spec/**/*.tsp`, `spec/**/SPECIFICATION.md` |
 | Change design and history | `work-items/*.md` |
-| Historical decisions | `decisions/*.md` (read-only archive) |
 | Application logic | `backend/<context>/domain`, `backend/<context>/usecases` |
 | Core and adapters | `backend/<context>/{domain,usecases,ports}`, `backend/<context>/{handlers_http,db_postgres,...}` |
 | Runtime and infra | `backend/cmd/`, `backend/bootstrap`, `infra/`, `frontend/` |
@@ -287,7 +286,7 @@ SMTP_FROM=noreply@idmagic.test \
 
 ## API Stability, Versioning & Deprecation
 
-IdMagic's management API and self-service account API are external contracts: tenants build automation, provisioning, and IaC against them (see [ADR-137](decisions/ADR-137-unify-api-access-token-wire-format.md) for the API access token that authenticates these calls). [ADR-156](decisions/ADR-156-api-versioning-and-deprecation-policy.md) defines how they are versioned and deprecated; this section is the operational summary.
+IdMagic's management API and self-service account API are external contracts: tenants build automation, provisioning, and IaC against them, authenticated with a unified RFC 9068 JWT API access token. This section is the operational summary of how they are versioned and deprecated.
 
 **Stability tiers.** External interfaces are classified in the TypeSpec contract:
 

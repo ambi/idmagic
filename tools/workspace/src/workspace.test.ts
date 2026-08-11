@@ -43,7 +43,6 @@ async function workspace(): Promise<string> {
   cleanup.push(root)
   await mkdir(join(root, 'spec', 'contexts', 'demo'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
-  await mkdir(join(root, 'decisions'), { recursive: true })
   await writeFile(join(root, 'spec', 'main.tsp'), 'namespace Demo;\n')
   await writeFile(join(root, 'spec', 'SPECIFICATION.md'), '# Specification\n')
   await writeFile(join(root, 'spec', 'contexts', 'demo', 'SPECIFICATION.md'), '# Demo\n')
@@ -60,7 +59,6 @@ describe('discoverWorkspaceConfig', () => {
       'spec/contexts/demo/SPECIFICATION.md',
     ])
     expect(config.workItems).toBe('work-items')
-    expect(config.decisions).toBe('decisions')
   })
 
   it('rejects an empty directory with no specification targets', async () => {

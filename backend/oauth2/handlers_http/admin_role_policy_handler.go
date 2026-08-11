@@ -2,9 +2,7 @@ package handlers_http
 
 import (
 	"net/http"
-	"regexp"
 	"slices"
-	"strings"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -14,20 +12,10 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// adrReference は SCL の説明文に埋め込まれた ADR 参照 (例 " (ADR-031 / ADR-032)")。
-// 設計ドキュメントの語彙なので、管理者向けレスポンスからは取り除く。
-var adrReference = regexp.MustCompile(`\s*\(ADR-[^)]*\)`)
-
-// sanitizeAdminCopy は SCL 由来の説明文を管理 UI 向けに整える。内部の ADR 参照を
-// 取り除くだけで文意は保つ。allow_when 式 (requirements) は別途レスポンスに含めない。
-func sanitizeAdminCopy(text string) string {
-	return strings.TrimSpace(adrReference.ReplaceAllString(text, ""))
-}
-
 // roleDescriptionCopy / permissionDescriptionCopy は利用者向けの平易な説明。
 // SCL の normative 定義は設計者向け語彙 (User.roles / SystemAdministrator /
 // tombstone 等) を含むため、管理 UI には用語集を引いた user-facing コピーを返す。
-// 未登録の名前は SCL 由来の説明を ADR 除去のうえフォールバックする。
+// 未登録の名前は raw の説明文をそのままフォールバックする。
 var roleDescriptionCopy = map[string]string{
 	"admin":        "An administrator role that can manage users, applications, groups, and settings within its own tenant. Cannot perform cross-tenant operations.",
 	"system_admin": "A system-wide administrator role. Can perform cross-tenant operations such as creating or disabling tenants.",
@@ -60,14 +48,14 @@ func roleDescription(name, raw string) string {
 	if text, ok := roleDescriptionCopy[name]; ok {
 		return text
 	}
-	return sanitizeAdminCopy(raw)
+	return raw
 }
 
 func permissionDescription(name, raw string) string {
 	if text, ok := permissionDescriptionCopy[name]; ok {
 		return text
 	}
-	return sanitizeAdminCopy(raw)
+	return raw
 }
 
 type AdminRolePolicyResponse struct {

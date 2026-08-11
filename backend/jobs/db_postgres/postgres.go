@@ -1,4 +1,4 @@
-// Package postgres is the PostgreSQL JobRepository implementation (ADR-098):
+// Package postgres is the PostgreSQL JobRepository implementation:
 // claim uses `FOR UPDATE SKIP LOCKED` inside a single atomic
 // `UPDATE ... FROM (SELECT ... FOR UPDATE SKIP LOCKED) RETURNING` statement, so
 // no explicit transaction is needed.
@@ -20,7 +20,7 @@ import (
 )
 
 // JobRepository persists Jobs to PostgreSQL. Pool is DBTX-compatible
-// (ADR-090); a fresh Queries is created per call, matching the
+// ; a fresh Queries is created per call, matching the
 // convention in backend/sourcing/scim/db_postgres.
 type JobRepository struct{ Pool sharedpg.DB }
 

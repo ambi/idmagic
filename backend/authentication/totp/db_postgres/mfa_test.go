@@ -61,8 +61,7 @@ func TestMfaFactorRepositoryRoundTrip(t *testing.T) {
 	}
 
 	// Encryption at rest: the raw row must carry ciphertext, not plaintext,
-	// and the legacy plaintext column must be left NULL for new writes
-	// (ADR-148).
+	// and the legacy plaintext column must be left NULL for new writes.
 	row, err := New(db).GetMfaFactor(ctx, GetMfaFactorParams{UserID: user.ID, Type: string(spec.MfaFactorTOTP)})
 	if err != nil {
 		t.Fatalf("raw get: %v", err)
@@ -91,7 +90,7 @@ func TestMfaFactorRepositoryRoundTrip(t *testing.T) {
 	}
 }
 
-// TestMfaFactorRepositoryDualReadsLegacyPlaintext covers a pre-ADR-148 row
+// TestMfaFactorRepositoryDualReadsLegacyPlaintext covers a pre-existing row
 // (secret populated, ciphertext columns NULL) written before this migration:
 // it must still be readable during the staged rollout (wi-97 T005/T006).
 func TestMfaFactorRepositoryDualReadsLegacyPlaintext(t *testing.T) {
@@ -122,7 +121,7 @@ func TestMfaFactorRepositoryDualReadsLegacyPlaintext(t *testing.T) {
 // TestMfaFactorRepositoryDecryptFailsClosedForWrongTenant ensures a factor
 // saved under one tenant cannot be decrypted from a different tenant's
 // context: the DEK is tenant-scoped, so cross-tenant confusion fails closed
-// rather than silently returning a wrong or garbled secret (ADR-148).
+// rather than silently returning a wrong or garbled secret.
 func TestMfaFactorRepositoryDecryptFailsClosedForWrongTenant(t *testing.T) {
 	db := pgtest.Require(t)
 	tenant := pgfixtures.SeedTenant(t, db)

@@ -153,7 +153,7 @@ const (
 // auditEventQueryHash fingerprints every filter/sort query param (everything
 // except cursor/limit, which are pagination controls, not filter identity)
 // so a cursor issued for one filter/sort combination is rejected if the
-// caller changes filters before following it (wi-159, ADR-158).
+// caller changes filters before following it (wi-159).
 func auditEventQueryHash(c *echo.Context) string {
 	q := c.Request().URL.Query()
 	q.Del("cursor")
@@ -401,7 +401,7 @@ func (d Deps) parseAuditEventQuery(c *echo.Context, actor *userdomain.User) (aud
 
 // parseAuditFilters は繰り返し filter=field:op:value[,value2] クエリを parse / validate する
 // (wi-145)。field/operator は registry allowlist のみ許可。IPv6 の値に含まれる ":" を壊さない
-// よう先頭 2 個の ":" で切る。ADR-104 により PII 属性の hash/truncate transform はしない (平文一致)。
+// よう先頭 2 個の ":" で切る。により PII 属性の hash/truncate transform はしない (平文一致)。
 func (d Deps) parseAuditFilters(c *echo.Context) ([]auditports.AuditFilterExpression, error) {
 	raw := c.Request().URL.Query()["filter"]
 	if len(raw) == 0 {

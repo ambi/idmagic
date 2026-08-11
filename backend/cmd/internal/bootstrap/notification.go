@@ -10,10 +10,10 @@ import (
 
 // AssembleNotification は通知の送信経路を組み立てる: EmailSender adapter (未設定なら
 // EMAIL_SENDER / SMTP_* から解決) と、その上に載る Notifier。Notifier は Tenancy の
-// repository を通してテナント既定 locale・製品名・テンプレート上書きを解決する
-// (ADR-142 決定 11)。API プロセスと worker プロセスの両方がこれを呼ぶ。
+// repository を通してテナント既定 locale・製品名・テンプレート上書きを解決する。
+// API プロセスと worker プロセスの両方がこれを呼ぶ。
 //
-// DEFAULT_LOCALE は locale 解決の最終段 (ADR-142 決定 7)。UI の
+// DEFAULT_LOCALE は locale 解決の最終段。UI の
 // ConfiguredDefaultLocale (VITE_DEFAULT_LOCALE) と同じ役割で、未設定なら製品既定
 // (FallbackLocale) を使う。同梱翻訳を持たない値は silent fallback にせず起動を失敗させる
 // (誤設定を「なぜか英語で届く」として運用中に気付く形にしない)。

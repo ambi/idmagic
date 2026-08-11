@@ -58,8 +58,8 @@ func (r *OAuth2ClientRepository) FindAll(_ context.Context, tenantID string) ([]
 	return out, nil
 }
 
-// ListPage implements ports.OAuth2ClientRepository.ListPage (wi-159,
-// ADR-158): keyset pagination ordered by ClientID ascending — matching the
+// ListPage implements ports.OAuth2ClientRepository.ListPage (wi-159)
+// : keyset pagination ordered by ClientID ascending — matching the
 // admin handler's pre-existing re-sort of FindAll's rows — strictly after
 // afterClientID ("" for the first page).
 func (r *OAuth2ClientRepository) ListPage(_ context.Context, tenantID, afterClientID string, limit int) ([]*domain.OAuth2Client, error) {

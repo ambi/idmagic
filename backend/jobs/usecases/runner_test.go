@@ -73,7 +73,7 @@ func enqueueTestJob(t *testing.T, repo *memoryjobs.JobRepository, maxAttempts in
 	return job
 }
 
-// TestRunner_OnlyClaimsConfiguredLane: RED for ADR-129 lane isolation
+// TestRunner_OnlyClaimsConfiguredLane: RED for lane isolation
 // (spec/contexts/jobs.yaml scenario "bulk laneのbacklogが滞留してもlatency_sensitiveジョブは専用実行枠でclaimされる"):
 // a Runner configured for LaneLatencySensitive must never claim a Job whose
 // JobKind resolves to a different lane, even when that Job is due and the
@@ -225,7 +225,7 @@ func TestRunner_BulkBacklogDoesNotStarveLatencySensitive(t *testing.T) {
 	handlers := usecases.NewHandlerRegistry()
 
 	// No built-in JobKind is registered to LaneLatencySensitive yet in this
-	// binary (backchannel_logout_delivery, ADR-129's real assignment, is
+	// binary (backchannel_logout_delivery, 's real assignment, is
 	// wi-257's still-pending handler); register a test-only kind so this
 	// test exercises the same lane a real latency-sensitive JobKind would.
 	const latencySensitiveTestKind domain.JobKind = "test_latency_sensitive_delivery"

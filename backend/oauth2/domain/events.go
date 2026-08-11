@@ -142,7 +142,7 @@ func (e *TokenExchangeRejected) EventType() string     { return "TokenExchangeRe
 func (e *TokenExchangeRejected) OccurredAt() time.Time { return e.At }
 
 // ProtectedResourceMetadataServed は RFC 9728 — /.well-known/oauth-protected-resource
-// が登録済み McpResourceServer の metadata を配信した (ADR-055)。
+// が登録済み McpResourceServer の metadata を配信した。
 type ProtectedResourceMetadataServed struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`
@@ -155,7 +155,7 @@ func (e *ProtectedResourceMetadataServed) EventType() string {
 func (e *ProtectedResourceMetadataServed) OccurredAt() time.Time { return e.At }
 
 // ResourceScopedTokenIssued は RFC 8707 — resource indicator に基づき audience を単一
-// McpResourceServer へ厳格限定した Access Token を発行した (ADR-055)。Authorize/PAR/
+// McpResourceServer へ厳格限定した Access Token を発行した。Authorize/PAR/
 // Token(authorization_code) 経路が対象。token-exchange は TokenExchanged.audience で表現する。
 type ResourceScopedTokenIssued struct {
 	At       time.Time `json:"-"`
@@ -169,7 +169,7 @@ func (e *ResourceScopedTokenIssued) EventType() string     { return "ResourceSco
 func (e *ResourceScopedTokenIssued) OccurredAt() time.Time { return e.At }
 
 // ResourceAudienceRejected は RFC 8707 — resource indicator が未登録・Disabled・複数指定
-// のため fail-closed で拒否した (ADR-055)。Authorize/PAR/Token(authorization_code) 経路が
+// のため fail-closed で拒否した。Authorize/PAR/Token(authorization_code) 経路が
 // 対象。token-exchange の拒否は TokenExchangeRejected.reason で表現する。
 type ResourceAudienceRejected struct {
 	At       time.Time `json:"-"`

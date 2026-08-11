@@ -1,6 +1,6 @@
 package usecases
 
-// 管理者向け Agent ライフサイクル操作と OAuth2Client 資格情報束縛 (ADR-048)。
+// 管理者向け Agent ライフサイクル操作と OAuth2Client 資格情報束縛。
 // SCL IdManagement bounded context が所有する admin インターフェース群:
 // ListAgents / GetAgent / RegisterAgent / UpdateAgent / DisableAgent /
 // EnableAgent / KillAgent / DeleteAgent / BindAgentCredential /
@@ -47,7 +47,7 @@ type AdminAgentDeps struct {
 	ClientRepo oauthports.OAuth2ClientRepository
 	UserRepo   userports.UserRepository
 	Emit       func(spec.DomainEvent) error
-	// QuotaRepo enforces the tenant's Hard Quota on agents (wi-160, ADR-134).
+	// QuotaRepo enforces the tenant's Hard Quota on agents (wi-160).
 	// nil skips enforcement (wiring gaps in tests/tools); production
 	// bootstrap always sets it.
 	QuotaRepo tenantports.QuotaRepository
@@ -59,8 +59,8 @@ type AgentView struct {
 	ClientIDs []string
 }
 
-// ListAgents returns up to limit+1 agents after the given keyset (wi-159,
-// ADR-158) — callers pass limit+1 to detect whether a next page exists, then
+// ListAgents returns up to limit+1 agents after the given keyset (wi-159)
+// — callers pass limit+1 to detect whether a next page exists, then
 // trim to limit before responding.
 func ListAgents(ctx context.Context, deps AdminAgentDeps, afterName, afterID string, limit int) ([]AgentView, error) {
 	tenantID := tenancy.TenantID(ctx)

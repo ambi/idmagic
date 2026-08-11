@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// AuthorizationRequestStore は /authorize の中間状態を PostgreSQL に保持する (ADR-139)。
+// AuthorizationRequestStore は /authorize の中間状態を PostgreSQL に保持する。
 // state を含む full record を payload JSONB に持ち、状態遷移 (UpdateState /
 // AttachAuthentication) は tx + SELECT FOR UPDATE の read-modify-write で直列化する。
 // tenant は ctx から解決し fail-closed 述語に含める。

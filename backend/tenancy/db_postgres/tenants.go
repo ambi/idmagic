@@ -12,7 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// TenantRepository (Tenancy)。クエリは sqlc 生成 (wi-179, ADR-090); Pool は DBTX を
+// TenantRepository (Tenancy)。クエリは sqlc 生成 (wi-179); Pool は DBTX を
 // 構造的に満たす。
 type TenantRepository struct{ Pool sharedpg.DB }
 

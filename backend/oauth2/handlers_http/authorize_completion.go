@@ -34,7 +34,7 @@ func (d Deps) completeAfterAuthn(
 		return authorizationNext{Path: d.pendingAuthPath(c, authn)}, nil
 	}
 	// first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
-	// resource owner が IdP 利用者自身であるため consent をスキップする (ADR-061)。
+	// resource owner が IdP 利用者自身であるため consent をスキップする。
 	if d.ConsentRepo != nil && !client.FirstParty {
 		consent, _ := d.ConsentRepo.Find(
 			c.Request().Context(), support.RequestTenantID(c), authn.UserID, client.ClientID,
@@ -55,7 +55,7 @@ func (d Deps) completeAfterAuthn(
 			covered = false
 		}
 		// RFC 9396 — 構造化された authorization_details は粗い scope 同意では代替できない。
-		// 明示同意を要求し、過去 scope 同意での自動スキップを許さない (fail-closed, ADR-050)。
+		// 明示同意を要求し、過去 scope 同意での自動スキップを許さない (fail-closed)。
 		if len(req.AuthorizationDetails) > 0 {
 			covered = false
 		}
@@ -110,7 +110,7 @@ func (d Deps) issueCodeURL(
 	// 割当ゲート (wi-69): client が Application binding に属する場合、未割当 subject には
 	// 認可コードを発行せず access_denied で RP へ返す (fail-closed, AssignmentGatesProtocol)。
 	// ただし first-party クライアント (IdP 自身の管理コンソール / アカウントポータル) は
-	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない (ADR-061)。
+	// resource owner が IdP 利用者自身であり、アプリ割当でログインをゲートしない。
 	if !d.clientIsFirstParty(ctx, req.ClientID) {
 		decision, err := d.EvaluateApplicationAccess(
 			ctx, tenantID, appdomain.ApplicationProtocolOIDC, req.ClientID, authn.UserID, authn, d.ClientIP(c.Request()),

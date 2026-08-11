@@ -1,6 +1,6 @@
 package domain
 
-// OAuth2Client の双子定義。internal/shared/spec/oauth2.go から移設 (wi-173, ADR-089)。
+// OAuth2Client の双子定義。internal/shared/spec/oauth2.go から移設 (wi-173)。
 // ClientType / GrantType / ResponseType は shared/spec/policy.go の SCL permissions
 // 評価エンジンおよび [[wi-181]] 側に残る AuthorizationRequest からも参照されるため
 // shared に残置し、本パッケージからは spec 経由で参照する (wi-173 Plan 参照)。
@@ -66,12 +66,12 @@ type OAuth2Client struct {
 	FapiProfile                        FapiProfile                      `json:"fapi_profile"`
 	// FirstParty は IdP 自身が所有する信頼済みクライアント (管理コンソール /
 	// アカウントポータル) を表す。resource owner が IdP 利用者自身であるため、
-	// authorization_code フローで consent 画面をスキップする (ADR-061)。
+	// authorization_code フローで consent 画面をスキップする。
 	FirstParty bool      `json:"first_party"`
 	CreatedAt  time.Time `json:"created_at"`
 	UpdatedAt  time.Time `json:"updated_at"`
 	// ClaimPolicy is this client's per-application claim release override
-	// (allow/rename/remap within the tenant attribute-visibility floor, ADR-151).
+	// (allow/rename/remap within the tenant attribute-visibility floor).
 	// nil means no override: only the existing scope-gated standard claims
 	// (ClaimsForScopes) are issued.
 	ClaimPolicy *claimdomain.ClaimMappingPolicy `json:"claim_policy,omitempty"`

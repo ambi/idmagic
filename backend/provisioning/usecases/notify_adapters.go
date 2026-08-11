@@ -11,7 +11,7 @@ import (
 )
 
 // UserMutationNotifier implements userports.ProvisioningNotifier by translating
-// IdManagement's trigger vocabulary to CaptureLifecycleEvent (ADR-128
+// IdManagement's trigger vocabulary to CaptureLifecycleEvent (
 // decision 4's scoped, separate-transaction capture; see CaptureDeps doc).
 type UserMutationNotifier struct{ CaptureDeps CaptureDeps }
 

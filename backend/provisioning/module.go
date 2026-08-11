@@ -1,5 +1,5 @@
 // Package provisioning is the Provisioning bounded context's top-level wiring
-// point (ADR-091 Module pattern): Module aggregates the persistence
+// point (Module pattern): Module aggregates the persistence
 // dependencies bootstrap injects, and JobEnqueuer/Notifiers build the
 // cross-context adapters (Jobs enqueue, IdManagement/Application capture
 // notification) other composition-root code wires in.
@@ -25,7 +25,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// NewTargetClient builds the outbound SCIM wire client for conn (ADR-128
+// NewTargetClient builds the outbound SCIM wire client for conn (
 // decision 2). Only bearer_token auth is wired end-to-end for now;
 // oauth2_client_credentials connections authenticate with the stored secret as
 // a bearer token, which is incorrect for that auth method and is a known gap
@@ -46,7 +46,7 @@ func (m Module) captureDeps(assignmentRepo appports.AssignmentRepository) usecas
 }
 
 // UserNotifier builds the userports.ProvisioningNotifier IdManagement calls
-// after committing a User mutation (ADR-128 decision 4).
+// after committing a User mutation (decision 4).
 func (m Module) UserNotifier(assignmentRepo appports.AssignmentRepository) userports.ProvisioningNotifier {
 	return usecases.UserMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
 }

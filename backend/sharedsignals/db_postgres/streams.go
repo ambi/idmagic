@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// SsfStreamRepository は SsfStream (ADR-057) を PostgreSQL に永続化する。
+// SsfStreamRepository は SsfStream を PostgreSQL に永続化する。
 type SsfStreamRepository struct{ Pool sharedpg.DB }
 
 func streamFromRow(row *SsfStream) (*ssdomain.SsfStream, error) {

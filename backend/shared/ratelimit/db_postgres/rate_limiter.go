@@ -15,7 +15,7 @@ import (
 )
 
 // RateLimiter counts requests against the shared endpoint_rate_limit_counters row in
-// PostgreSQL (ADR-157). Unlike the login throttle, every call to Allow consumes budget
+// PostgreSQL. Unlike the login throttle, every call to Allow consumes budget
 // regardless of the request's outcome, so the read-modify-write is simpler: no lockout state,
 // just a fixed-window counter compared against the configured threshold on every call.
 // Reaching an unreachable store returns an error, letting the caller fail closed.

@@ -232,7 +232,7 @@ type ListUsersByTenantPageParams struct {
 	Limit    int32
 }
 
-// First page of ListAdminUsers keyset pagination (wi-159, ADR-158): stable
+// First page of ListAdminUsers keyset pagination (wi-159): stable
 // sort by (preferred_username, id) so admins see the pre-existing alphabetical
 // order, with id as tie-break for uniqueness.
 func (q *Queries) ListUsersByTenantPage(ctx context.Context, arg ListUsersByTenantPageParams) ([]*User, error) {

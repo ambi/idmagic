@@ -27,7 +27,7 @@ export const adminSettingsDictionary = defineDictionary(
     crossTenantNoticeSuffix: 'ページを利用してください。',
     emailTabHeading: 'メール送信',
     emailTabDescription:
-      '送信先 SMTP の設定は ADR-035 に従い環境変数で管理しています。UI 経由の編集は 別 WI で扱います。',
+      '送信先 SMTP の設定は に従い環境変数で管理しています。UI 経由の編集は 別 WI で扱います。',
     generalHeading: '一般',
     generalSubheading: 'テナントの基本情報を確認できます。',
     edit: '編集',
@@ -229,7 +229,7 @@ export const adminSettingsDictionary = defineDictionary(
     crossTenantNoticeSuffix: 'page.',
     emailTabHeading: 'Email delivery',
     emailTabDescription:
-      'Outbound SMTP settings are managed via environment variables per ADR-035. Editing via the UI is handled in a future work item.',
+      'Outbound SMTP settings are managed via environment variables Editing via the UI is handled in a future work item.',
     generalHeading: 'General',
     generalSubheading: "You can review the tenant's basic information.",
     edit: 'Edit',

@@ -1,4 +1,4 @@
-// /.well-known/oauth-protected-resource (RFC 9728 Protected Resource Metadata, ADR-055)
+// /.well-known/oauth-protected-resource (RFC 9728 Protected Resource Metadata)
 package handlers_http
 
 import (

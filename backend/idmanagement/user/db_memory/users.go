@@ -97,7 +97,7 @@ func (r *UserRepository) FindAll(_ context.Context, tenantID string) ([]*userdom
 	return out, nil
 }
 
-// ListPage implements ports.UserRepository.ListPage (wi-159, ADR-158): keyset
+// ListPage implements ports.UserRepository.ListPage (wi-159): keyset
 // pagination ordered by (PreferredUsername, ID) ascending, strictly after the
 // given keyset.
 func (r *UserRepository) ListPage(_ context.Context, tenantID, afterUsername, afterID string, limit int) ([]*userdomain.User, error) {

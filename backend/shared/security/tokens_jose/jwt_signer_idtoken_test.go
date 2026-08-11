@@ -80,7 +80,7 @@ func TestSignIDTokenIncludesAttributeClaimsByScope(t *testing.T) {
 }
 
 func TestSignIDTokenIncludesSidWhenPresent(t *testing.T) {
-	// ADR-127: browser session に束縛された発行では sid claim を含める。
+	// browser session に束縛された発行では sid claim を含める。
 	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		t.Fatal(err)
@@ -179,7 +179,7 @@ func TestSignIDTokenClaimPolicyAddsOverrideClaim(t *testing.T) {
 }
 
 // TestSignIDTokenClaimPolicyRejectsPrivateAttribute verifies the fail-closed floor
-// (ADR-151) rejects issuance when a claim_policy rule targets an undefined/Private
+// rejects issuance when a claim_policy rule targets an undefined/Private
 // attribute.
 func TestSignIDTokenClaimPolicyRejectsPrivateAttribute(t *testing.T) {
 	ks, err := signingcrypto.NewInMemoryKeyStore()

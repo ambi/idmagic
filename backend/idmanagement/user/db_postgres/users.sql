@@ -26,7 +26,7 @@ WHERE tenant_id=$1 AND (lifecycle->>'status' IS DISTINCT FROM 'deleted')
 ORDER BY preferred_username;
 
 -- name: ListUsersByTenantPage :many
--- First page of ListAdminUsers keyset pagination (wi-159, ADR-158): stable
+-- First page of ListAdminUsers keyset pagination (wi-159): stable
 -- sort by (preferred_username, id) so admins see the pre-existing alphabetical
 -- order, with id as tie-break for uniqueness.
 SELECT id,tenant_id,preferred_username,password_hash,name,given_name,family_name,email,

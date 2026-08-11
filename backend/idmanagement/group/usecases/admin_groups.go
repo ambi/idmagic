@@ -1,6 +1,6 @@
 package usecases
 
-// 管理者向け Group ライフサイクル操作と user-group membership (ADR-038)。
+// 管理者向け Group ライフサイクル操作と user-group membership。
 // SCL IdManagement bounded context が所有する admin インターフェース群:
 // ListGroups / GetGroup / CreateGroup / UpdateGroup / DeleteGroup /
 // AddGroupMember / RemoveGroupMember / ListUserGroups。
@@ -38,7 +38,7 @@ type AdminGroupDeps struct {
 	GroupRepo groupports.GroupRepository
 	UserRepo  userports.UserRepository
 	Emit      func(spec.DomainEvent) error
-	// QuotaRepo enforces the tenant's Hard Quota on groups (wi-160, ADR-134).
+	// QuotaRepo enforces the tenant's Hard Quota on groups (wi-160).
 	// nil skips enforcement (e.g. wiring gaps in tests/tools not yet updated);
 	// production bootstrap always sets it.
 	QuotaRepo tenantports.QuotaRepository
@@ -50,8 +50,8 @@ type GroupView struct {
 	MemberCount int
 }
 
-// ListGroups returns up to limit+1 groups after the given keyset (wi-159,
-// ADR-158) — callers pass limit+1 to detect whether a next page exists, then
+// ListGroups returns up to limit+1 groups after the given keyset (wi-159)
+// — callers pass limit+1 to detect whether a next page exists, then
 // trim to limit before responding.
 func ListGroups(ctx context.Context, deps AdminGroupDeps, afterName, afterID string, limit int) ([]GroupView, error) {
 	tenantID := tenancy.TenantID(ctx)

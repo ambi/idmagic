@@ -41,13 +41,13 @@ const (
 	KindUserImportApply       JobKind = "user_import_apply"
 	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
 	// KindDataKeyReencryption is wi-97's DataKeys re-encryption job
-	// (spec/contexts/data-keys.yaml, ADR-148): it drives a registered
+	// (spec/contexts/data-keys.yaml): it drives a registered
 	// FieldMigrator through pending rows onto a tenant's active
 	// DataEncryptionKey version.
 	KindDataKeyReencryption JobKind = "data_key_reencryption"
 )
 
-// ExecutionLane is the ADR-129 execution-lane vocabulary
+// ExecutionLane is the execution-lane vocabulary
 // (spec/contexts/jobs.yaml models.ExecutionLane). A JobKind is assigned
 // exactly one lane at registration; enqueue callers cannot choose it.
 type ExecutionLane string
@@ -70,7 +70,7 @@ func (l ExecutionLane) Valid() bool {
 // built-in kinds (registered by this package's init below) and
 // extension kinds (registered by the owning bounded context via
 // RegisterKind). A JobKind is Valid() only once it has a registered lane
-// (ADR-129): "未割当の JobKind は拒否する" is enforced by construction rather
+// : "未割当の JobKind は拒否する" is enforced by construction rather
 // than as a separate check.
 var kindLanes sync.Map // map[JobKind]ExecutionLane
 
@@ -83,7 +83,7 @@ func init() {
 }
 
 // RegisterKind declares a context-owned job kind and the ExecutionLane it
-// runs in (ADR-129). The Jobs context owns the durable queue and lane
+// runs in. The Jobs context owns the durable queue and lane
 // vocabulary, while the caller owns the handler vocabulary; this prevents
 // feature-specific kinds from accumulating in Jobs. RegisterKind panics if
 // lane is not a valid ExecutionLane, or if kind was already registered with a
@@ -113,7 +113,7 @@ func LaneFor(kind JobKind) (ExecutionLane, bool) {
 }
 
 // Valid reports whether kind has been registered with an ExecutionLane
-// (ADR-129: every valid JobKind has exactly one lane).
+// (every valid JobKind has exactly one lane).
 func (k JobKind) Valid() bool {
 	_, ok := LaneFor(k)
 	return ok
@@ -168,20 +168,20 @@ func IsJobLifecycleTerminal(s JobStatus) bool {
 	return false
 }
 
-// DefaultBackoffBase and DefaultBackoffCap are the ADR-099 default retry backoff
+// DefaultBackoffBase and DefaultBackoffCap are the default retry backoff
 // parameters: exponential starting at 30s, capped at 30 minutes.
 const (
 	DefaultBackoffBase = 30 * time.Second
 	DefaultBackoffCap  = 30 * time.Minute
 )
 
-// DefaultMaxAttempts is the ADR-099 default attempt budget applied when
+// DefaultMaxAttempts is the default attempt budget applied when
 // EnqueueJob does not specify one; a JobKind's handler registration may
 // override it per kind.
 const DefaultMaxAttempts = 5
 
 // NextRetryRunAt computes the run_at for a Job returned to Queued via EventRetry,
-// using exponential backoff (ADR-099): base * 2^(attempts-1), capped at maxBackoff.
+// using exponential backoff: base * 2^(attempts-1), capped at maxBackoff.
 // attempts is the Job's attempt count after the failure being retried (>= 1).
 func NextRetryRunAt(now time.Time, attempts int, base, maxBackoff time.Duration) time.Time {
 	if attempts < 1 {

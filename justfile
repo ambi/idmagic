@@ -162,7 +162,7 @@ test-go-fuzz package fuzztime="30s":
 build-go:
     go build -ldflags '{{ldflags}}' ./...
 
-# Regenerate sqlc-generated postgres query code from sqlc.yaml (ADR-090).
+# Regenerate sqlc-generated postgres query code from sqlc.yaml.
 sqlc-generate:
     sqlc generate
 
@@ -280,18 +280,18 @@ check-schema:
     ./infra/schema/check-convergence.sh
 
 # Take a pg_dump backup (custom format + sha256 checksum). Requires
-# PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE to be exported (wi-101, ADR-153).
+# PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE to be exported (wi-101).
 backup-postgres output_dir:
     ./infra/backup/backup-postgres.sh {{output_dir}}
 
 # Restore a pg_dump backup into an empty target database. db_name must match
-# $PGDATABASE exactly (non-production guard, wi-101, ADR-153).
+# $PGDATABASE exactly (non-production guard, wi-101).
 restore-postgres backup_file db_name:
     ./infra/backup/restore-postgres.sh {{backup_file}} --yes-restore-into-this-database {{db_name}}
 
 # Run a full local backup -> simulated db loss -> restore -> consistency-check
 # drill against a disposable compose project, and print elapsed time as a
-# local RPO/RTO estimate (wi-101, ADR-153).
+# local RPO/RTO estimate (wi-101).
 restore-drill:
     ./infra/backup/restore-drill.sh
 

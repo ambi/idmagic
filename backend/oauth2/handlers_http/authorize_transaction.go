@@ -61,7 +61,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
 	}
 	// 表示名は client_name → Application カタログ名 → client_id の順で解決する (wi-141)。
-	// ADR-084 で client_id を UUID 化したため、同意画面での UUID 生表示を避ける。
+	// client_id を UUID 化したため、同意画面での UUID 生表示を避ける。
 	name := d.ClientDisplayNameResolver.Resolve(
 		c.Request().Context(), support.RequestTenantID(c), req.ClientID,
 	)

@@ -88,7 +88,7 @@ func TestWrapUnwrapRoundTrip(t *testing.T) {
 }
 
 // TestUnwrapRejectsMismatchedMasterKeyID ensures a masterKeyID referencing a
-// different tenant's transit key is rejected fail-closed (ADR-148), even if
+// different tenant's transit key is rejected fail-closed, even if
 // the caller supplies otherwise-valid ciphertext.
 func TestUnwrapRejectsMismatchedMasterKeyID(t *testing.T) {
 	ctx := context.Background()
@@ -109,7 +109,7 @@ func TestUnwrapRejectsMismatchedMasterKeyID(t *testing.T) {
 
 // TestWrapPropagatesProviderUnavailable ensures a transit engine error (e.g.
 // OpenBao unreachable) surfaces as an error rather than a silent fallback
-// (ADR-148 fail-closed on provider outage).
+// (fail-closed on provider outage).
 func TestWrapPropagatesProviderUnavailable(t *testing.T) {
 	ctx := context.Background()
 	engine := newFakeTransitEngine()

@@ -1,4 +1,4 @@
-// Package saml は SAML bounded context の DI 組立を所有する (ADR-091)。
+// Package saml は SAML bounded context の DI 組立を所有する。
 package saml
 
 import (

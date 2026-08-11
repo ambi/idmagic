@@ -18,7 +18,7 @@ type DocumentFetcher interface {
 
 // ClientRepositoryWithCIMD wraps a registered-client repository and adds a
 // live Client ID Metadata Document resolution fallback for client_ids
-// shaped as HTTPS metadata document URLs (ADR-155). It embeds
+// shaped as HTTPS metadata document URLs. It embeds
 // ports.OAuth2ClientRepository so every method other than FindByID
 // delegates straight through unchanged — CIMD-resolved clients are never
 // persisted, so Save/Delete/FindAll/etc. only ever see registered clients.

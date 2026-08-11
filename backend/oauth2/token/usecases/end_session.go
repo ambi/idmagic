@@ -1,4 +1,4 @@
-// /end_session (OIDC RP-Initiated Logout 1.0) の client/session 解決 (ADR-127)。
+// /end_session (OIDC RP-Initiated Logout 1.0) の client/session 解決。
 // local logout (LoginSession revoke / refresh token revoke) と post_logout_redirect_uri
 // への redirect は HTTP 層 (end_session_handler.go) が本 use case の結果を使って行う。
 package usecases
@@ -27,7 +27,7 @@ type EndSessionInput struct {
 type EndSessionTarget struct {
 	// Sid is the OIDC session id resolved from a verified id_token_hint.
 	// Empty when no hint was given; the caller falls back to the browser
-	// cookie for session resolution (ADR-127 decision 4).
+	// cookie for session resolution (decision 4).
 	Sid string
 	// Client / RedirectURI are only populated when PostLogoutRedirectURI was
 	// requested. A nil Client means the caller should skip straight to the
@@ -37,7 +37,7 @@ type EndSessionTarget struct {
 }
 
 // ResolveEndSession は RP-Initiated Logout 1.0 の client 解決・redirect_uri 検証・
-// id_token_hint 検証をまとめて行う (ADR-127)。id_token_hint 由来の異常は fail-closed
+// id_token_hint 検証をまとめて行う。id_token_hint 由来の異常は fail-closed
 // で invalid_request として拒否する: 署名検証不能、iss 不一致 (HintVerifier 側で検証)、
 // client_id パラメータとの aud 不一致。exp は検証しない。
 func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionInput) (*EndSessionTarget, error) {

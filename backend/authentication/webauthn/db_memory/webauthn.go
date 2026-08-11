@@ -9,7 +9,7 @@ import (
 )
 
 // =====================================================================
-// WebAuthnCredentialRepository (Authentication) — wi-26 / ADR-087
+// WebAuthnCredentialRepository (Authentication) — wi-26 /
 // =====================================================================
 
 type WebAuthnCredentialRepository struct {

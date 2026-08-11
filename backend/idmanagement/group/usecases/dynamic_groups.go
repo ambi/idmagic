@@ -30,8 +30,8 @@ type DynamicGroupDeps struct {
 	SchemaRepo tenantports.TenantUserAttributeSchemaRepository
 	JobRepo    jobsports.JobRepository
 	Emit       func(spec.DomainEvent) error
-	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
-	// ADR-134) for the background reconcile job this package enqueues. nil
+	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160)
+	// for the background reconcile job this package enqueues. nil
 	// skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
 }

@@ -11,8 +11,8 @@ import (
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-// TenantBrandingRepository は branding config を PostgreSQL に保存する (wi-89,
-// ADR-096)。tenant_brandings は個別 nullable 列を持つ専用テーブルで、tenants には
+// TenantBrandingRepository は branding config を PostgreSQL に保存する (wi-89)
+// 。tenant_brandings は個別 nullable 列を持つ専用テーブルで、tenants には
 // 列を追加しない。クエリは sqlc 生成。
 type TenantBrandingRepository struct{ Pool sharedpg.DB }
 
@@ -69,7 +69,7 @@ func textOrNil(s string) pgtype.Text {
 }
 
 // TenantBrandingAssetStore は branding ロゴ / favicon blob を PostgreSQL に保存する
-// (wi-89, ADR-096)。ADR-073 の application_icons と同型だが専用テーブルに分離する。
+// (wi-89)。application_icons と同型だが専用テーブルに分離する。
 type TenantBrandingAssetStore struct{ Pool sharedpg.DB }
 
 func (s *TenantBrandingAssetStore) Save(ctx context.Context, asset *domain.TenantBrandingAsset) error {

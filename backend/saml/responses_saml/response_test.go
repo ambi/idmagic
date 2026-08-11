@@ -185,7 +185,7 @@ func TestEncodePostForm(t *testing.T) {
 		t.Error("form does not POST to ACS URL")
 	}
 	// 自動送信は inline event handler ではなく固定の <script> で行う。その内容は
-	// CSP hash で許可される (support.AutoSubmitScript, ADR-076)。
+	// CSP hash で許可される (support.AutoSubmitScript)。
 	if bytes.Contains(out, []byte("onload=")) {
 		t.Error("form must not use an inline onload handler under strict CSP")
 	}

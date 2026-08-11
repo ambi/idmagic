@@ -80,7 +80,7 @@ func TestExchangeCodeForToken_tokenRequestResourceWithoutAuthorizeBinding_reject
 	assertOAuthError(t, err, "invalid_target")
 }
 
-// ADR-055/wi-262: authorize 時に束縛された resource は発行される RefreshTokenRecord にも
+// wi-262: authorize 時に束縛された resource は発行される RefreshTokenRecord にも
 // 伝播し、後続のローテーションで audience 限定を保持できるようにする。
 func TestExchangeCodeForToken_resourceBoundAtAuthorize_propagatesToRefreshTokenRecord(t *testing.T) {
 	f := newExchangeFixture(t, []string{"openid", "offline_access"})

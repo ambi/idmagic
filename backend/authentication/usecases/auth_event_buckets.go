@@ -30,8 +30,8 @@ type AuthEventBucketView struct {
 
 // ListAuthEventBuckets は tenant 境界内の集約 bucket を新しい窓順で最大 limit 件返す。
 // limit は [1, AuthEventBucketMaxLimit] にクランプし、0 以下は既定値。
-// afterWindowStart/afterKey は keyset pagination の継続カーソル (wi-159,
-// ADR-158)。ゼロ値/空文字列なら先頭ページ。
+// afterWindowStart/afterKey は keyset pagination の継続カーソル (wi-159)
+// 。ゼロ値/空文字列なら先頭ページ。
 func ListAuthEventBuckets(
 	ctx context.Context,
 	store authnports.AuthEventBucketStore,

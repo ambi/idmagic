@@ -22,13 +22,13 @@ import (
 type Deps struct {
 	Issuer   string
 	Contract *spec.RuntimeContract
-	// TenantBaseDomain は subdomain style のテナントが載る親ドメイン (ADR-144)。
+	// TenantBaseDomain は subdomain style のテナントが載る親ドメイン。
 	// 空なら host ベースのテナント解決そのものが無効になり、path prefix 経路だけが
 	// 残る。ワイルドカード DNS / 証明書を用意できない配備を一級市民として保つための
 	// 既定であり、この値が空の間はどのテナントも subdomain style を選べない。
 	TenantBaseDomain     string
 	TrustedForwardedHops int
-	// RateLimiter is the shared endpoint rate limiter (ADR-157), distinct from the
+	// RateLimiter is the shared endpoint rate limiter, distinct from the
 	// per-account/per-IP login throttle. nil-safe: callers must check before use, matching
 	// LoginAttemptThrottle's optional-by-construction convention in tests that don't wire it.
 	RateLimiter               rlports.RateLimiter
@@ -42,7 +42,7 @@ type Deps struct {
 	ShuttingDown              *atomic.Bool
 	StartupComplete           *atomic.Bool
 	TenantRepo                tenantports.TenantRepository
-	// PaginationCodec signs/verifies keyset pagination cursors (ADR-158).
+	// PaginationCodec signs/verifies keyset pagination cursors.
 	// nil-safe: handlers that don't paginate never touch it.
 	PaginationCodec *CursorCodec
 }

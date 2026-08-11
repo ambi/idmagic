@@ -10,7 +10,7 @@ import (
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
-// NotificationTemplateRepository (wi-288, ADR-142)。key は
+// NotificationTemplateRepository (wi-288)。key は
 // tenant_id + template_key + locale で、postgres 側の PK と同じ粒度。
 type NotificationTemplateRepository struct {
 	mu        sync.RWMutex

@@ -56,7 +56,7 @@ func TestUserValidateRejectsMalformedEmail(t *testing.T) {
 	}
 }
 
-// 通知の locale 解決の第 1 段は受信者 User の locale 属性 (ADR-142 決定 7)。属性は
+// 通知の locale 解決の第 1 段は受信者 User の locale 属性。属性は
 // sum type なので、型が String でない、値が無い、そもそも属性が無いケースは
 // 「未設定」として空文字列を返す。
 func TestUserLocaleAttribute(t *testing.T) {

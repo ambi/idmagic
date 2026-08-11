@@ -14,7 +14,7 @@ type AttributeSource interface {
 	ResolveAttributes(ctx context.Context, tenantID string, sourceType domain.ProvisioningSourceType, sourceID string) (attrs map[string]any, exists bool, err error)
 }
 
-// ProvisioningTargetClient is the protocol seam (ADR-128 decision 2): each
+// ProvisioningTargetClient is the protocol seam (decision 2): each
 // protocol feature slice (backend/provisioning/client_scim, a future .../entraid)
 // implements this against its own wire format. The delivery engine usecase
 // depends only on this port, never on a concrete protocol package.

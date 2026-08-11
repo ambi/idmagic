@@ -19,8 +19,7 @@ import (
 type EnqueueDeps struct {
 	Repo ports.JobRepository
 	Emit func(spec.DomainEvent)
-	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160,
-	// ADR-134). nil skips enforcement (wiring gaps in tests/tools);
+	// QuotaRepo enforces the tenant's Hard Quota on active_jobs (wi-160). nil skips enforcement (wiring gaps in tests/tools);
 	// production bootstrap always sets it.
 	QuotaRepo tenantports.QuotaRepository
 }
@@ -52,7 +51,7 @@ func Enqueue(ctx context.Context, deps EnqueueDeps, input ports.EnqueueInput, no
 	// decision only the repository can make: a dedup hit must never consume
 	// quota. A genuinely new Job that then fails the check is immediately
 	// Canceled below so it doesn't linger as a counted-but-rejected row
-	// (wi-160, ADR-134).
+	// (wi-160).
 	job, created, err := deps.Repo.Enqueue(ctx, input)
 	if err != nil {
 		return nil, err

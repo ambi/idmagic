@@ -19,7 +19,7 @@ import (
 const defaultSessionListLimit = 50
 
 // SessionRepository (Authentication) — PostgreSQL を LoginSession の単一正本とする
-// (wi-253 / ADR-126)。tenant scoping は他の authentication postgres repository と同じ
+// (wi-253)。tenant scoping は他の authentication postgres repository と同じ
 // 慣習に合わせ、呼び出し側の ctx から tenancy.TenantID で取得する。
 type SessionRepository struct{ Pool sharedpg.DB }
 

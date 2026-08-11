@@ -1,5 +1,5 @@
 // /session/check (OIDC Session Management 1.0 check_session_iframe, Draft 28,
-// adoption: optional per ADR-127 決定8)。session_state の salted hash 相関
+// adoption: optional per 決定8)。session_state の salted hash 相関
 // アルゴリズムは実装せず、現在の browser cookie が有効な LoginSession に解決できるかを
 // ページロード時点で判定し、静的な HTML/JS に埋め込んで返す。
 package handlers_http

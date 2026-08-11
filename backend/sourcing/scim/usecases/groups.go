@@ -15,7 +15,7 @@ import (
 
 // CreateGroup validates the full request (displayName uniqueness, member
 // resolvability) before any write. If a persistence step still fails after
-// validation (rare operational failure, ADR-122), already-completed steps
+// validation (rare operational failure), already-completed steps
 // are compensated best-effort so a duplicate-key retry doesn't see a
 // half-created group.
 func (u *Usecases) CreateGroup(ctx context.Context, tenantID string, body map[string]any) (map[string]any, error) {
@@ -166,7 +166,7 @@ func (u *Usecases) findGroupByDisplayName(ctx context.Context, tenantID, display
 }
 
 // resolveMemberUserIDs resolves every SCIM member id to an internal User id
-// before any write happens (ADR-122 validate-first). An unresolvable
+// before any write happens (validate-first). An unresolvable
 // member is a *domain.MutationError (invalidValue); the caller has not yet
 // touched persistence at that point.
 func (u *Usecases) resolveMemberUserIDs(ctx context.Context, tenantID string, scimIDs []string) ([]string, error) {
@@ -185,7 +185,7 @@ func (u *Usecases) resolveMemberUserIDs(ctx context.Context, tenantID string, sc
 }
 
 // addMembers adds each userID, compensating (best-effort) by removing
-// already-added members if a later AddMember call fails (ADR-122).
+// already-added members if a later AddMember call fails.
 func (u *Usecases) addMembers(ctx context.Context, tenantID, groupID string, userIDs []string) error {
 	added := make([]string, 0, len(userIDs))
 	for _, userID := range userIDs {
@@ -202,7 +202,7 @@ func (u *Usecases) addMembers(ctx context.Context, tenantID, groupID string, use
 
 // replaceMembers removes all existing members and adds newUserIDs,
 // attempting best-effort compensation to restore the prior membership if a
-// step fails partway (ADR-122: no cross-context DB transaction).
+// step fails partway (no cross-context DB transaction).
 func (u *Usecases) replaceMembers(ctx context.Context, tenantID, groupID string, newUserIDs []string) error {
 	existing, err := u.GroupRepo.ListMembersByGroup(ctx, tenantID, groupID)
 	if err != nil {
@@ -256,7 +256,7 @@ func groupMemberScimIDs(value any) ([]string, error) {
 	return domain.ParseGroupMemberScimIDs(value)
 }
 
-// UpdateGroup implements PUT full-replace semantics (ADR-122): displayName
+// UpdateGroup implements PUT full-replace semantics: displayName
 // is required, and members omitted from the body clears the group's
 // membership. Uniqueness and member resolvability are validated before any
 // write.
@@ -309,7 +309,7 @@ func (u *Usecases) UpdateGroup(ctx context.Context, tenantID, scimID string, bod
 
 // PatchGroup applies RFC 7644 §3.5.2 operations validated by
 // domain.ParseGroupPatchOps. Every add/replace member reference is
-// resolved before any operation is applied (ADR-122 validate-first).
+// resolved before any operation is applied (validate-first).
 func (u *Usecases) PatchGroup(ctx context.Context, tenantID, scimID string, body map[string]any) (map[string]any, error) {
 	ref, err := u.ScimRepo.FindGroupRefByScimID(ctx, tenantID, scimID)
 	if err != nil {

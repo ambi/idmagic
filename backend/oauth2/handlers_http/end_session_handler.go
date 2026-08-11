@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// handleEndSession は RP-Initiated Logout 1.0 endpoint (ADR-127)。id_token_hint が
+// handleEndSession は RP-Initiated Logout 1.0 endpoint。id_token_hint が
 // あれば署名・iss・aud・sub・sid を検証して対象 sid を解決し (client_id パラメータと
 // 矛盾する hint は拒否)、無ければ browser cookie による既存の解決方法にフォールバック
 // する。ローカル revoke (LoginSession + 同じ sid を持つ RefreshTokenRecord) を
@@ -60,8 +60,8 @@ func (d Deps) handleEndSession(c *echo.Context) error {
 }
 
 // endLocalSession は id_token_hint (優先) または browser cookie から解決した sid を
-// もとに、LoginSession と同じ sid を共有する RefreshTokenRecord を失効させる
-// (ADR-127)。RP への通知 (front/back-channel logout) は T006 のスコープであり、
+// もとに、LoginSession と同じ sid を共有する RefreshTokenRecord を失効させる。
+// RP への通知 (front/back-channel logout) は T006 のスコープであり、
 // ここではローカル revoke のみを行う。
 func (d Deps) endLocalSession(c *echo.Context, sid string) {
 	ctx := c.Request().Context()

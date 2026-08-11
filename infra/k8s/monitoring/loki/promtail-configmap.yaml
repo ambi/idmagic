@@ -1,6 +1,6 @@
 # Discovers pods cluster-wide via kubernetes_sd_configs and tails their log
 # files under /var/log/pods (mounted by the DaemonSet). The `cri` stage
-# unwraps the containerd/CRI-O log envelope before the same ADR-018 JSON
+# unwraps the containerd/CRI-O log envelope before the same JSON
 # pipeline used in infra/docker/promtail-config.yaml: `service`/`level`
 # become bounded Loki labels, `trace_id`/`span_id`/`request_id` become
 # structured metadata instead of labels because they are unbounded. `component`

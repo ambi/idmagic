@@ -66,7 +66,7 @@ import (
 	wsfedpostgres "github.com/ambi/idmagic/backend/wsfederation/db_postgres"
 )
 
-// assemblePostgres は PostgreSQL 単一依存の構成を組み立てる (ADR-139)。durable state と
+// assemblePostgres は PostgreSQL 単一依存の構成を組み立てる。durable state と
 // 揮発性の認証 / OAuth2 一時状態の双方を PostgreSQL に載せる。
 func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 	databaseURL := os.Getenv("DATABASE_URL")
@@ -200,7 +200,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 		},
 		OAuth2: oauth2.Module{
 			// See memory.go for why CIMD resolution is wired as a decorator here and
-			// Emit is set post-hoc in cmd/idmagic/server.go (ADR-155).
+			// Emit is set post-hoc in cmd/idmagic/server.go.
 			ClientRepo: &cimdhttp.ClientRepositoryWithCIMD{
 				OAuth2ClientRepository: &oauth2clientpostgres.OAuth2ClientRepository{Pool: resilientDB},
 				Fetcher:                cimdhttp.NewFetcher(),

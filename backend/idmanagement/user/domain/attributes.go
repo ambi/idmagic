@@ -7,7 +7,7 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
-// 組み込み属性カタログ (wi-19 / ADR-039 / ADR-040)。
+// 組み込み属性カタログ (wi-19 / )。
 //
 // core (User の型付きフィールド: sub / preferred_username / name / given_name /
 // family_name / email / email_verified / roles / lifecycle) 以外の OIDC §5.1

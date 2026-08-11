@@ -272,7 +272,7 @@ func HandleDeleteAdminUser(d Deps, c *echo.Context) error {
 		}
 	}
 	// 既定は soft-delete (削除予約)。?purge=true または body force=true で完全削除
-	// (ADR-036 の anonymize cascade) に分岐する。
+	// (anonymize cascade) に分岐する。
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
 	if c.QueryParam("purge") == "true" || input.Force {

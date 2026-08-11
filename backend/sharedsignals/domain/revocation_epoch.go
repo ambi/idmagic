@@ -10,7 +10,7 @@ import (
 
 // AgentRevocationEpoch は Agent ごとの revocation epoch を保持する 1 対 1 の付随
 // レコード。Epoch 以前に issued_at を持つ access token / session は無効とみなす
-// (fail-closed)。行が存在しない Agent は未失効を意味する (ADR-057)。
+// (fail-closed)。行が存在しない Agent は未失効を意味する。
 type AgentRevocationEpoch struct {
 	AgentID       string
 	TenantID      string

@@ -1,4 +1,4 @@
-// Package metadata は SAML 2.0 IdP の metadata XML を組み立てる (wi-29, ADR-067)。
+// Package metadata は SAML 2.0 IdP の metadata XML を組み立てる (wi-29)。
 //
 // realm 単位の IdP entityID・署名証明書・SSO/SLO endpoint から、SP が取り込める
 // <EntityDescriptor><IDPSSODescriptor> を導出する。署名証明書は KeyDescriptor として広告し、

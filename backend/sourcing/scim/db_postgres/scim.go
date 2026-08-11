@@ -10,7 +10,7 @@ import (
 )
 
 // ScimRepository は SCIM user-ref/group-ref を PostgreSQL に永続化する。クエリは
-// sqlc 生成 (wi-176, ADR-090); Pool は DBTX を構造的に満たす。
+// sqlc 生成 (wi-176); Pool は DBTX を構造的に満たす。
 type ScimRepository struct{ Pool sharedpg.DB }
 
 func (r *ScimRepository) SaveUserRef(ctx context.Context, ref *ports.ScimUserRef) error {

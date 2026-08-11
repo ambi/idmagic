@@ -8,7 +8,7 @@ import (
 )
 
 // WorkloadTokenVerifier abstracts external workload attestation verification
-// (ADR-053, [[wi-54-workload-identity-federation-spiffe]]). The token-exchange
+// ([[wi-54-workload-identity-federation-spiffe]]). The token-exchange
 // usecase depends on this interface only; the concrete implementation lives in
 // backend/workloadidentity/usecases and is wired in at the composition root, so
 // OAuth2's Go dependency on WorkloadIdentity stays limited to the published

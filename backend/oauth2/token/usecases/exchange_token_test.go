@@ -366,7 +366,7 @@ func TestExchangeTokenActorTokenBecomesActor(t *testing.T) {
 	}
 }
 
-// fakeWorkloadVerifier is a stub for ports.WorkloadTokenVerifier (ADR-053).
+// fakeWorkloadVerifier is a stub for ports.WorkloadTokenVerifier.
 type fakeWorkloadVerifier struct {
 	grant *workloaddomain.WorkloadIdentityGrant
 	err   error

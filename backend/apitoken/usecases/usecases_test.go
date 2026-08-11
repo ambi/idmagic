@@ -128,7 +128,7 @@ func TestManagedTokenIntrospectionUsesLifecycleRecord(t *testing.T) {
 	}
 }
 
-// SCL interfaces.IssueApiToken / ADR-137: 発行者と選択 client を持つ managed JWT を一度だけ返す。
+// SCL interfaces.IssueApiToken / 発行者と選択 client を持つ managed JWT を一度だけ返す。
 func TestIssueListAndRevokeApiToken(t *testing.T) {
 	now := time.Date(2026, 7, 23, 10, 0, 0, 0, time.UTC)
 	repo, issuer := &fakeRepository{}, &fakeTokenIssuer{}

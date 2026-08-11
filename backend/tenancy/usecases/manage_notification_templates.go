@@ -17,10 +17,10 @@ var (
 	// ErrUnknownNotificationTemplate はカタログに無い template_key / locale。
 	ErrUnknownNotificationTemplate = errors.New("unknown notification template")
 	// ErrInvalidNotificationTemplate は許可外の差し込み変数、または件名 / テキスト /
-	// HTML の 3 点セットが揃っていない上書き (ADR-142 決定 3、決定 4)。
+	// HTML の 3 点セットが揃っていない上書き。
 	ErrInvalidNotificationTemplate = errors.New("invalid notification template")
 	// ErrTestNotificationRecipient は操作者に検証済みメールアドレスが無い状態での
-	// テスト送信。宛先は操作者本人に固定するため、代替の宛先は無い (ADR-142 決定 8)。
+	// テスト送信。宛先は操作者本人に固定するため、代替の宛先は無い。
 	ErrTestNotificationRecipient = errors.New("the acting administrator has no verified email address")
 )
 
@@ -137,7 +137,7 @@ func GetNotificationTemplate(
 }
 
 // UpdateNotificationTemplate は上書きを全置換で保存する。許可外の差し込み変数と
-// 3 点セットの欠けは保存前に拒否する (ADR-142 決定 3)。
+// 3 点セットの欠けは保存前に拒否する。
 func UpdateNotificationTemplate(
 	ctx context.Context, deps NotificationTemplateDeps, tenantID string,
 	key notificationports.TemplateKey, locale string, input NotificationTemplateInput, now time.Time,
@@ -172,7 +172,7 @@ func UpdateNotificationTemplate(
 }
 
 // ResetNotificationTemplate は上書きを削除して組込み既定へ戻す。上書きが無い場合も
-// 成功する冪等操作 (ADR-142 決定 1)。
+// 成功する冪等操作。
 func ResetNotificationTemplate(
 	ctx context.Context, deps NotificationTemplateDeps, tenantID string,
 	key notificationports.TemplateKey, locale string,
@@ -187,8 +187,8 @@ func ResetNotificationTemplate(
 	return newTemplateDetail(key, locale, builtin, nil), nil
 }
 
-// PreviewNotificationTemplate は保存前の文面をサンプル値で描画する。送信も保存もしない
-// (ADR-142 決定 9)。省略フィールドは現在有効な文面で埋める。
+// PreviewNotificationTemplate は保存前の文面をサンプル値で描画する。送信も保存もしない。
+// 省略フィールドは現在有効な文面で埋める。
 func PreviewNotificationTemplate(
 	ctx context.Context, deps NotificationTemplateDeps, tenantID string,
 	key notificationports.TemplateKey, locale string, input NotificationTemplateInput,
@@ -218,7 +218,7 @@ func PreviewNotificationTemplate(
 }
 
 // SendTestNotification は現在有効な文面を操作者本人へ送る。宛先はリクエストで
-// 指定できない (ADR-142 決定 8)。
+// 指定できない。
 func SendTestNotification(
 	ctx context.Context, deps NotificationTemplateDeps, tenantID string,
 	key notificationports.TemplateKey, locale string, actor TestNotificationActor,
@@ -290,7 +290,7 @@ func newTemplateDetail(
 
 // previewVars はサンプル値にテナントの実際の製品名 / 表示名を重ねる。実データ (実在の
 // 利用者名やトークン) は入れず、ブランディングだけ本物にすることで「実際に届く見た目」に
-// 近づける (ADR-142 決定 9)。
+// 近づける。
 func previewVars(ctx context.Context, deps NotificationTemplateDeps, tenantID string, key notificationports.TemplateKey) map[string]string {
 	vars := template.SampleVars(key)
 	if deps.Tenant == nil {
@@ -329,7 +329,7 @@ func firstNonBlank(values ...string) string {
 }
 
 // TenantNotificationSource は shared/notification の port を Tenancy の repository で
-// 満たす (ADR-142 決定 11)。テナントが存在しない場合も空の設定を返し、通知そのものは
+// 満たす。テナントが存在しない場合も空の設定を返し、通知そのものは
 // 止めない (呼び出し側がシステム既定へ落とす)。
 type TenantNotificationSource struct {
 	TenantRepo   tenantports.TenantRepository

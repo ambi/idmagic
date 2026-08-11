@@ -1,4 +1,4 @@
-// Rich Authorization Requests (RFC 9396) の受付・検証ヘルパー (ADR-050)。
+// Rich Authorization Requests (RFC 9396) の受付・検証ヘルパー。
 //
 // /authorize・/par・/token から共通で呼ばれ、authorization_details を JSON から
 // パースし、テナント登録済み type に対し fail-closed に検証する。ダウンスコープ

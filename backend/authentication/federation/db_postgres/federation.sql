@@ -1,6 +1,6 @@
 -- name: SaveIdentityProviderConnection :exec
 -- secret_reference/secret_key_version/secret_ciphertext are always written as an
--- authoritative trio computed by the Go layer (ADR-150): the caller already resolved
+-- authoritative trio computed by the Go layer: the caller already resolved
 -- "keep the existing secret unchanged" by copying the previous value forward, so this
 -- query never needs to fall back to the stored row for those three columns.
 INSERT INTO identity_provider_connections (
@@ -68,7 +68,7 @@ WHERE tenant_id = $1
 
 -- name: UpdateIdentityProviderConnectionSecretCiphertext :exec
 -- Writes back a (re-)encrypted secret and always clears the legacy plaintext
--- secret_reference column, mirroring UpdateMfaFactorCiphertext (ADR-148).
+-- secret_reference column, mirroring UpdateMfaFactorCiphertext.
 UPDATE identity_provider_connections
 SET secret_reference = NULL, secret_key_version = $3, secret_ciphertext = $4, updated_at = now()
 WHERE tenant_id = $1 AND id = $2;

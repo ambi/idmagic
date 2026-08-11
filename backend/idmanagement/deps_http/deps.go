@@ -1,7 +1,7 @@
 // Package httpdeps holds the IdManagement HTTP layer's Deps type. It is a
 // leaf package (no dependency on the feature handlers_http packages) so that
 // user/group/agent handlers_http can depend on it without an import cycle
-// back to the context-root handlers_http package that wires routes (ADR-130
+// back to the context-root handlers_http package that wires routes (
 // Phase 2).
 package deps_http
 
@@ -26,10 +26,10 @@ import (
 
 // EventReactor receives every DomainEvent this context's Emit already emits
 // and fail-closed reacts to the ones it cares about. Unlike Emit (fire-and-
-// forget, ADR-184/wi-190's reverted transactional-event-log decided against
+// forget, wi-190's reverted transactional-event-log decided against
 // making the general audit path error-propagating), a reactor's error
 // propagates back through ReactiveEmit. SharedSignals implements this
-// shape for Agent revocation epoch enforcement (ADR-057, wi-58) without
+// shape for Agent revocation epoch enforcement (wi-58) without
 // idmanagement importing sharedsignals — only context.Context and
 // spec.DomainEvent are named in the signature.
 type EventReactor interface {
@@ -47,7 +47,7 @@ type Deps struct {
 	UserMutationCommitter userports.UserMutationCommitter
 	ProvisioningNotifier  userports.ProvisioningNotifier
 	// Reactor fail-closed reacts to emitted DomainEvents (currently
-	// SharedSignals' Agent revocation epoch enforcement; ADR-057, wi-58).
+	// SharedSignals' Agent revocation epoch enforcement; wi-58).
 	// nil skips reaction. See ReactiveEmit.
 	Reactor               EventReactor
 	JobRepo               jobsports.JobRepository
@@ -65,7 +65,7 @@ type Deps struct {
 	EmailSender           sharednotification.EmailSender
 	Notifier              sharednotification.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents
-	// (wi-160, ADR-134). nil skips enforcement.
+	// (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
 }
 
@@ -79,7 +79,7 @@ func (d Deps) ConsentDeps() consentusecases.ConsentDeps {
 // runner; migrated handlers (admin_user_handler.go Create/Update/
 // SetDisabled) override deps.Emit with a transaction-bound one instead.
 // Exported (unlike its wi-184 origin) so the user/group/agent feature
-// packages can call it across the ADR-130 Phase 2 package boundary.
+// packages can call it across the Phase 2 package boundary.
 func (d Deps) LegacyEmit() func(spec.DomainEvent) error {
 	return func(event spec.DomainEvent) error {
 		if d.Emit != nil {
@@ -90,10 +90,10 @@ func (d Deps) LegacyEmit() func(spec.DomainEvent) error {
 }
 
 // ReactiveEmit composes LegacyEmit's best-effort audit trail with d.Reactor's
-// fail-closed reaction: the mutation that emits (KillAgent, SetUserDisabled,
-// ...) gets Reactor's error back, so a failed Agent revocation epoch advance
+// fail-closed reaction: the mutation that emits (KillAgent, SetUserDisabled, ...)
+// gets Reactor's error back, so a failed Agent revocation epoch advance
 // fails the admin operation instead of being silently swallowed like the
-// audit write is (ADR-057, wi-58). d.Reactor uses its own background
+// audit write is (wi-58). d.Reactor uses its own background
 // context with a timeout, not the caller's request context, matching
 // NewEmitFunc's existing convention of not tying event recording to
 // request cancellation.

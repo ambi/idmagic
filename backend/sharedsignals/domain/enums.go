@@ -1,4 +1,4 @@
-// Package domain は SharedSignals bounded context の業務型を所有する (ADR-057)。
+// Package domain は SharedSignals bounded context の業務型を所有する。
 package domain
 
 // SsfStreamDirection は idmagic からみた stream の向き。Transmit は idmagic が外部
@@ -35,7 +35,7 @@ func (s SsfStreamStatus) Valid() bool {
 	return false
 }
 
-// CaepEventType は実装する CAEP イベント種別 (ADR-057 決定 2)。
+// CaepEventType は実装する CAEP イベント種別。
 type CaepEventType string
 
 const (

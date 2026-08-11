@@ -16,7 +16,7 @@ import (
 
 // TestBuildAndSignSecurityEventToken — RED: RFC 8417 の claims (iss/jti/iat/aud/
 // events) を組み立て、SigningKeys の既存鍵で PS256 署名した compact JWT を返す
-// (ADR-057 決定3/7、既存の JWT 署名鍵管理を再利用する)。
+// (決定3/7、既存の JWT 署名鍵管理を再利用する)。
 func TestBuildAndSignSecurityEventToken(t *testing.T) {
 	ctx := context.Background()
 	keyStore, err := signingmemory.NewInMemoryKeyStore()

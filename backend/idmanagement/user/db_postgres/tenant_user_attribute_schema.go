@@ -11,8 +11,8 @@ import (
 )
 
 // TenantUserAttributeSchemaRepository は tenant ごとの custom 属性定義を保持する
-// (ADR-040 / wi-19)。定義一覧は attributes JSONB 列に格納する。クエリは sqlc 生成
-// (wi-178, ADR-090); Pool は DBTX を構造的に満たす。
+// (wi-19)。定義一覧は attributes JSONB 列に格納する。クエリは sqlc 生成
+// (wi-178); Pool は DBTX を構造的に満たす。
 type TenantUserAttributeSchemaRepository struct{ Pool sharedpg.DB }
 
 func (r *TenantUserAttributeSchemaRepository) FindByTenant(

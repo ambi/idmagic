@@ -33,7 +33,7 @@ export function availableSecondFactorMethods(methods?: string[]): SecondFactorMe
 }
 
 // TotpPage は password 認証後の第二要素ステップ。利用できる method (認証アプリ / パスキー /
-// リカバリコード) を選択して検証する (wi-26 / ADR-087)。
+// リカバリコード) を選択して検証する (wi-26)。
 export function TotpPage({
   csrfToken,
   returnTo,

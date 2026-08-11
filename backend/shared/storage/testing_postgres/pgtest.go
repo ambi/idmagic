@@ -87,7 +87,7 @@ func start() (*pgxpool.Pool, func()) {
 		warn("parse config failed", err)
 		return nil, stopAndRemove
 	}
-	// 本番の Open と同じく uuid 列を string で扱えるよう codec を登録する (ADR-084)。
+	// 本番の Open と同じく uuid 列を string で扱えるよう codec を登録する。
 	// sharedpg.RegisterUUIDAsText と同一ロジックをここに持つ (import cycle 回避のため
 	// pgtest は sharedpg に依存しない、wi-172)。
 	poolConfig.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {

@@ -1,4 +1,4 @@
-// Package handlers_http は WorkloadIdentity bounded context の管理 API (ADR-053) を
+// Package handlers_http は WorkloadIdentity bounded context の管理 API を
 // 所有する。federation provider (WorkloadTrustBundle) と subject mapping
 // (AgentWorkloadBinding) の CRUD を、テナント解決済みグループに登録する。
 package handlers_http

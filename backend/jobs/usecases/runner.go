@@ -17,8 +17,8 @@ import (
 	tenancyusecases "github.com/ambi/idmagic/backend/tenancy/usecases"
 )
 
-// RunnerConfig holds the ADR-099 tunables for a worker's poll loop, plus the
-// ADR-129 Lane it claims. Zero values fall back to the ADR-099 defaults (see
+// RunnerConfig holds the tunables for a worker's poll loop, plus the
+// Lane it claims. Zero values fall back to the defaults (see
 // withDefaults); Lane has no default and must be a valid domain.ExecutionLane
 // (NewRunner panics otherwise, a startup-time programmer error).
 type RunnerConfig struct {
@@ -62,7 +62,7 @@ type RunnerDeps struct {
 	// valid and records nothing.
 	Metrics JobsMetrics
 	// QuotaRepo frees the tenant's active_jobs Hard Quota slot when a Job
-	// reaches a terminal state (wi-160, ADR-134). The increment side lives in
+	// reaches a terminal state (wi-160). The increment side lives in
 	// Enqueue. nil skips enforcement (wiring gaps in tests/tools); production
 	// bootstrap always sets it.
 	QuotaRepo tenantports.QuotaRepository
@@ -82,7 +82,7 @@ func decrementActiveJobsQuota(ctx context.Context, quotaRepo tenantports.QuotaRe
 	}
 }
 
-// Runner is the worker pool (ADR-099): it polls JobRepository for claimable
+// Runner is the worker pool: it polls JobRepository for claimable
 // Jobs, executes up to Concurrency of them at once, heartbeats in-flight
 // leases, and applies retry-with-backoff or dead-letter on failure.
 type Runner struct {
@@ -94,7 +94,7 @@ type Runner struct {
 
 // NewRunner panics if cfg.Lane is not a valid domain.ExecutionLane: a Runner
 // with no lane, or an unrecognized one, can never claim anything and is a
-// worker misconfiguration caught at startup (ADR-129), matching
+// worker misconfiguration caught at startup, matching
 // HandlerRegistry.Register's panic-on-invalid-JobKind precedent.
 func NewRunner(cfg RunnerConfig, deps RunnerDeps) *Runner {
 	if !cfg.Lane.Valid() {
@@ -108,7 +108,7 @@ func NewRunner(cfg RunnerConfig, deps RunnerDeps) *Runner {
 }
 
 // Run polls until ctx is canceled, then stops claiming new Jobs and blocks
-// until all in-flight executions finish. This is the drain half of ADR-099:
+// until all in-flight executions finish. This is the drain half of
 // the caller (cmd/idmagic-worker) decides how long to wait for Run to return
 // before giving up and letting the process exit, at which point any
 // still-unfinished Job's lease expires naturally and another worker reclaims

@@ -16,7 +16,7 @@ import (
 )
 
 // ConsentRepository は Consent を PostgreSQL に永続化する。クエリは sqlc 生成
-// (wi-173, ADR-090); Pool は oauth2pg.DBTX を構造的に満たす。
+// (wi-173); Pool は oauth2pg.DBTX を構造的に満たす。
 type ConsentRepository struct{ Pool sharedpg.DB }
 
 func consentFromRow(row *oauth2pg.Consent) (*domain.Consent, error) {
@@ -72,7 +72,7 @@ func (r *ConsentRepository) FindAll(ctx context.Context, tenantID string) ([]*do
 }
 
 // ListPage implements ports.ConsentRepository.ListPage
-// (wi-159, ADR-158): keyset pagination ordered by (user_id, client_id)
+// (wi-159): keyset pagination ordered by (user_id, client_id)
 // ascending, strictly after the given keyset ("", "" for the first page).
 func (r *ConsentRepository) ListPage(ctx context.Context, tenantID, afterUserID, afterClientID string, limit int) ([]*domain.Consent, error) {
 	q := oauth2pg.New(r.Pool)

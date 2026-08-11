@@ -11,7 +11,7 @@ import (
 // TenantSaltBytes は相関 salt のバイト長 (256 bit)。
 const TenantSaltBytes = 32
 
-// InMemoryTenantSaltStore は dev/test 用の tenant-aware な相関 salt ストア (wi-145 / ADR-046)。
+// InMemoryTenantSaltStore は dev/test 用の tenant-aware な相関 salt ストア (wi-145)。
 // tenant scope は ctx (tenancy.TenantID) から解決し、初回取得時に 32 byte を生成する。
 // tenancy.TenantID は未設定 ctx で DefaultTenantID を返すため、空テナントでも安全に動く。
 type InMemoryTenantSaltStore struct {

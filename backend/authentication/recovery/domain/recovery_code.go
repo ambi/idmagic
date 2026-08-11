@@ -8,7 +8,7 @@ import (
 	z "github.com/Oudwins/zog"
 )
 
-// RecoveryCode は TOTP / WebAuthn 喪失時の backup recovery code 1 件 (wi-26 / ADR-087)。
+// RecoveryCode は TOTP / WebAuthn 喪失時の backup recovery code 1 件 (wi-26)。
 // 平文は保存せず CodeHash (SHA-256 hex) のみを持つ。ConsumedAt が非 nil なら使用済み。
 type RecoveryCode struct {
 	UserID      string     `json:"user_id"`

@@ -1,7 +1,7 @@
 // Package scim is the SCIM protocol feature slice for outbound provisioning
-// (ADR-128 decision 2): it depends on backend/provisioning/domain (the
+// (decision 2): it depends on backend/provisioning/domain (the
 // protocol-agnostic core) and owns the SCIM wire client. It does not import
-// backend/sourcing/scim (the inbound server slice); the two share no code (ADR-128 decision 3).
+// backend/sourcing/scim (the inbound server slice); the two share no code (decision 3).
 package client_scim
 
 import (

@@ -36,14 +36,12 @@ type Deps struct {
 	ClientRepo                  oauthports.OAuth2ClientRepository
 	WsFedRPRepo                 wsfederationports.WsFedRelyingPartyRepository
 	SamlSPRepo                  samlports.SamlServiceProviderRepository
-	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45,
-	// ADR-128). nil means outbound provisioning is not wired.
+	// ProvisioningNotifier is the outbound Provisioning boundary port (wi-45). nil means outbound provisioning is not wired.
 	ProvisioningNotifier appports.ProvisioningNotifier
-	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160,
-	// ADR-134). nil skips enforcement.
+	// QuotaRepo enforces the tenant's Hard Quota on applications (wi-160). nil skips enforcement.
 	QuotaRepo tenantports.QuotaRepository
 	// AttrSchemaRepo resolves tenant attribute definitions to enforce the claim
-	// release fail-closed floor (wi-73, ADR-151) when saving protocol claim rules.
+	// release fail-closed floor (wi-73) when saving protocol claim rules.
 	AttrSchemaRepo claimusecases.TenantAttributeSchemaRepo
 }
 

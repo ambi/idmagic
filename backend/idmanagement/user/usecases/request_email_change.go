@@ -41,7 +41,7 @@ type RequestEmailChangeDeps struct {
 	UserRepo   userports.UserRepository
 	TokenStore userports.EmailChangeTokenStore
 	// Notifier は文面 (件名 / テキスト / HTML) と locale を通知テンプレートカタログから
-	// 解決する。use case は文面を組み立てない (ADR-142)。
+	// 解決する。use case は文面を組み立てない。
 	Notifier sharednotification.Notifier
 	Emit     func(spec.DomainEvent)
 	Issuer   string
@@ -101,7 +101,7 @@ func RequestEmailChange(ctx context.Context, deps RequestEmailChangeDeps, in Req
 	}
 
 	// リンクはここで組み立てる。テナントがテンプレートを編集しても URL の構築を
-	// 奪えないようにする (ADR-142 決定 5)。
+	// 奪えないようにする。
 	verifyURL := strings.TrimRight(deps.Issuer, "/") + "/account/email/verify?token=" + url.QueryEscape(rawToken)
 	minutes := int(ttl.Round(time.Minute) / time.Minute)
 	delivered := deps.Notifier.Notify(ctx, sharednotification.Notification{

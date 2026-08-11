@@ -14,7 +14,7 @@ import (
 
 // BrandingResponse は GetTenantBranding / UpdateTenantBranding / asset 操作が返す公開
 // 安全な projection (SCL TenantBrandingResponse の双子定義)。未設定フィールドは省略し、
-// クライアント側でシステム既定 (IdMagic) に解決する (ADR-096)。
+// クライアント側でシステム既定 (IdMagic) に解決する。
 type BrandingResponse struct {
 	ProductName  string                   `json:"product_name,omitempty"`
 	LogoURL      string                   `json:"logo_url,omitempty"`
@@ -49,8 +49,7 @@ func toBrandingResponse(b *domain.TenantBranding) BrandingResponse {
 }
 
 // brandingETag は branding の version を ETag にする。未設定テナントは全テナント共通の
-// 固定値を返し、cross-tenant のキャッシュ混同は URL (tenant 解決済み path) 側で防ぐ
-// (ADR-096 決定 9)。
+// 固定値を返し、cross-tenant のキャッシュ混同は URL (tenant 解決済み path) 側で防ぐ。
 func brandingETag(b *domain.TenantBranding) string {
 	if b == nil || !b.IsConfigured() || b.UpdatedAt.IsZero() {
 		return `"branding-default"`
@@ -60,8 +59,7 @@ func brandingETag(b *domain.TenantBranding) string {
 
 // handleGetBranding は解決済みテナントの hosted UI branding を返す公開 endpoint。
 // 認証を要求しない (login / consent / device 画面が未認証のうちに読む)。branding 未設定
-// でも例外を投げず空の projection を返し、hosted login エンドポイントを止めない
-// (ADR-096 決定 8)。
+// でも例外を投げず空の projection を返し、hosted login エンドポイントを止めない。
 func (d Deps) handleGetBranding(c *echo.Context) error {
 	branding, err := tenantusecases.GetBranding(c.Request().Context(), d.BrandingRepo, support.RequestTenantID(c))
 	if err != nil {
@@ -77,7 +75,7 @@ func (d Deps) handleGetBranding(c *echo.Context) error {
 }
 
 // handleGetBrandingAsset は保存済み branding アセット (ロゴ / favicon) を配信する公開
-// endpoint。別テナントまたは削除済み object は未存在として扱う (ADR-096、ADR-073 と同型)。
+// endpoint。別テナントまたは削除済み object は未存在として扱う (と同型)。
 func (d Deps) handleGetBrandingAsset(c *echo.Context) error {
 	if d.BrandingAssetStore == nil {
 		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The image does not exist.")

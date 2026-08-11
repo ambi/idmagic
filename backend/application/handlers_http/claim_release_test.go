@@ -58,7 +58,7 @@ func TestUpdateApplicationOidcConfig_RulesRoundtrip(t *testing.T) {
 }
 
 // TestUpdateApplicationOidcConfig_RejectsUndefinedAttributeSource verifies the
-// fail-closed floor (ADR-151, wi-73): a claim rule referencing an attribute key with no
+// fail-closed floor (wi-73): a claim rule referencing an attribute key with no
 // UserAttributeDef is rejected at write time, not silently accepted.
 func TestUpdateApplicationOidcConfig_RejectsUndefinedAttributeSource(t *testing.T) {
 	e := newApplicationHandler(t)
@@ -92,7 +92,7 @@ func TestUpdateApplicationOidcConfig_RejectsUndefinedAttributeSource(t *testing.
 }
 
 // TestUpdateApplicationWsFedConfig_RejectsReservedClaimType verifies the WS-Fed claim
-// release editor shares the same fail-closed floor (ADR-151, wi-73).
+// release editor shares the same fail-closed floor (wi-73).
 func TestUpdateApplicationWsFedConfig_RejectsReservedClaimType(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
@@ -124,7 +124,7 @@ func TestUpdateApplicationWsFedConfig_RejectsReservedClaimType(t *testing.T) {
 }
 
 // TestUpdateApplicationSamlConfig_RejectsUndefinedAttributeSource verifies the SAML
-// claim release editor shares the same fail-closed floor (ADR-151, wi-73).
+// claim release editor shares the same fail-closed floor (wi-73).
 func TestUpdateApplicationSamlConfig_RejectsUndefinedAttributeSource(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)

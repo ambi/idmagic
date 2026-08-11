@@ -90,7 +90,7 @@ func (s *AuthEventBucketStore) List(
 		out = append(out, *bucket)
 	}
 	// windowStart 降順 (新しい窓が先)、同窓は "kind|keyHash" (DESC、Postgres 側の
-	// tuple 比較と方向を揃える) で安定化 (wi-159, ADR-158: keyset pagination には
+	// tuple 比較と方向を揃える) で安定化 (wi-159, keyset pagination には
 	// count のような非一意キーではなく、PRIMARY KEY (tenant_id, kind, key_hash,
 	// window_start) 相当の一意キーが要る)。
 	key := func(b authnports.AuthEventBucket) (string, string) {
@@ -136,7 +136,7 @@ func (s *AuthEventBucketStore) ListBefore(
 }
 
 // DeleteOlderThan は windowStart が before より前の bucket を物理削除し、削除件数を返す
-// (ADR-045 の保持期間 sweep / 既定 90 日)。idempotent。
+// (保持期間 sweep / 既定 90 日)。idempotent。
 func (s *AuthEventBucketStore) DeleteOlderThan(_ context.Context, before time.Time) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

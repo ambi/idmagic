@@ -24,7 +24,7 @@ func (d Deps) handleDiscovery(c *echo.Context) error {
 	if err != nil {
 		return writeOAuthError(c, err)
 	}
-	// RFC 9396 — テナントで Enabled な authorization_details type を広告する (ADR-050)。
+	// RFC 9396 — テナントで Enabled な authorization_details type を広告する。
 	if d.AuthzDetailTypeRepo != nil {
 		types, err := d.AuthzDetailTypeRepo.ListAll(c.Request().Context(), tenantID)
 		if err != nil {

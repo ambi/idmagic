@@ -10,7 +10,7 @@ import (
 	sharedmem "github.com/ambi/idmagic/backend/shared/storage/db_memory"
 )
 
-// McpResourceServerRepository (ADR-055)
+// McpResourceServerRepository
 
 type McpResourceServerRepository struct {
 	mu    sync.RWMutex

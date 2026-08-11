@@ -230,7 +230,7 @@ func TestSamlSSO_UnauthenticatedRedirectsToLogin(t *testing.T) {
 		t.Fatalf("status=%d, want 303", rec.Code)
 	}
 	loc := rec.Header().Get("Location")
-	// redirect 先はテナントの正規ロケーション配下の相対パス (ADR-144)。
+	// redirect 先はテナントの正規ロケーション配下の相対パス。
 	if !strings.HasPrefix(loc, "/realms/default/login") || !strings.Contains(loc, "return_to=") {
 		t.Fatalf("Location=%q, want /realms/default/login with return_to", loc)
 	}
@@ -651,7 +651,7 @@ func TestAdminServiceProvider_ForbiddenForNonAdmin(t *testing.T) {
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。
-// ADR-144 で bare path はどのテナントの正規ロケーションでもなくなったため、
+// bare path はどのテナントの正規ロケーションでもなくなったため、
 // テストのリクエスト先も /realms/default 配下でなければ 404 になる。
 func defaultRealmPath(path string) string {
 	if strings.HasPrefix(path, "/realms/") {

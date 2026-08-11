@@ -62,7 +62,7 @@ func TestGetActiveFailsClosedWhenNoActiveKey(t *testing.T) {
 // TestInvalidateForcesReUnwrapAfterRotate ensures a cached DEK is dropped on
 // Invalidate, so a subsequent GetActive re-resolves the new active version
 // rather than serving the pre-rotation DEK from a stale cache entry
-// (ADR-148: no worker replica keeps encrypting with a superseded DEK).
+// (no worker replica keeps encrypting with a superseded DEK).
 func TestInvalidateForcesReUnwrapAfterRotate(t *testing.T) {
 	repo := db_memory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()
@@ -137,7 +137,7 @@ func TestGetByVersionDecryptsRetiringVersion(t *testing.T) {
 
 // TestGetByVersionFailsClosedForDestroyedVersion ensures a destroyed
 // version's ciphertext can never be decrypted, even if the cache still held
-// a stale entry (ADR-148 fail-closed / crypto-shredding).
+// a stale entry (fail-closed / crypto-shredding).
 func TestGetByVersionFailsClosedForDestroyedVersion(t *testing.T) {
 	repo := db_memory.NewDataKeyRepository()
 	master, err := envelope_cleartext.NewCleartextMasterKeyProvider()

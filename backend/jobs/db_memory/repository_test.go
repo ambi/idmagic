@@ -87,7 +87,7 @@ func TestEnqueue_DedupIgnoresTerminalJobs(t *testing.T) {
 	}
 }
 
-// TestClaimBatch_ExcludesOtherLanes: RED for ADR-129 lane isolation — a due,
+// TestClaimBatch_ExcludesOtherLanes: RED for lane isolation — a due,
 // queued Job in one lane must never be returned when claiming a different
 // lane, even with ample batchSize.
 func TestClaimBatch_ExcludesOtherLanes(t *testing.T) {

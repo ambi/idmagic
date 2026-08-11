@@ -243,7 +243,7 @@ func (r *ProvisioningDeliveryRepository) ListByConnection(_ context.Context, ten
 }
 
 // ListPageByConnection implements ports.ProvisioningDeliveryRepository.ListPageByConnection
-// (wi-159, ADR-158): keyset pagination ordered by (CreatedAt, ID) descending
+// (wi-159): keyset pagination ordered by (CreatedAt, ID) descending
 // — matching ListByConnection's pre-existing "most recent first" order.
 func (r *ProvisioningDeliveryRepository) ListPageByConnection(_ context.Context, tenantID, connectionID string, status *domain.ProvisioningDeliveryStatus, sourceType *domain.ProvisioningSourceType, afterCreatedAt time.Time, afterID string, limit int) ([]*domain.ProvisioningDelivery, error) {
 	r.mu.RLock()

@@ -74,7 +74,7 @@ export async function submitTOTP(
 }
 
 // loginWithPasskey は login 第二要素の WebAuthn フロー: challenge 取得 →
-// navigator.credentials.get → assertion 検証 (wi-26 / ADR-087)。
+// navigator.credentials.get → assertion 検証 (wi-26)。
 export async function loginWithPasskey(
   csrfToken: string,
   returnTo?: string,
@@ -241,7 +241,7 @@ export async function startDemoAuthorization() {
   sessionStorage.setItem('idmagic-demo-code-verifier', verifier)
   const parameters = new URLSearchParams({
     response_type: 'code',
-    // demo-client の固定 UUID (ADR-084)。bootstrap seed と一致させる。
+    // demo-client の固定 UUID。bootstrap seed と一致させる。
     client_id: '00000000-0000-4000-8000-000000000021',
     redirect_uri: `${window.location.origin}${tenantURL('/callback')}`,
     scope: 'openid profile email offline_access',

@@ -1,6 +1,6 @@
 // Package sign_jose implements ports.SecurityEventTokenSigner: PS256 JWT
 // signing for outbound Security Event Tokens, reusing SigningKeys' key
-// rotation/JWKS instead of introducing separate SET key material (ADR-057
+// rotation/JWKS instead of introducing separate SET key material (
 // decisions 3/7). This is an adapters-layer package (wraps
 // shared/security/tokens_jose, a Clean Architecture "adapters" module) so
 // sharedsignals/usecases can depend on the ports.SecurityEventTokenSigner

@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// DeviceCodeStore は RFC 8628 device authorization を PostgreSQL に保持する (ADR-139)。
+// DeviceCodeStore は RFC 8628 device authorization を PostgreSQL に保持する。
 // full record を payload JSONB に持ち、device_code_hash を PK、(tenant_id,user_code) を
 // UNIQUE 鍵、state を Exchange の CAS 述語、user_id を DeleteAllForSub の索引に昇格する。
 // Save / Update は同一 upsert。read では state を payload に overlay する。

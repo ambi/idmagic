@@ -1,5 +1,5 @@
 // 管理コンソール / アカウントポータルを、自分自身の IdP の OIDC RP として動かす
-// 最小クライアント (ADR-061 / wi-66)。authorization_code + PKCE で IdP の /authorize に
+// 最小クライアント (wi-66)。authorization_code + PKCE で IdP の /authorize に
 // リダイレクトし、/callback で code を /token に交換して access token を取得する。
 // pure SPA RP のため token は sessionStorage に保持し、API 呼び出しに Bearer を付与する。
 import { base64URL, setBearerTokenProvider, tenantURL } from './core'
@@ -12,7 +12,7 @@ type PortalConfig = { clientId: string; scope: string }
 // バックグラウンドの refresh_token grant で更新できる (silent renew, wi-66 Stage 4)。
 const PORTALS: Record<PortalAudience, PortalConfig> = {
   admin: {
-    // first-party クライアントの固定 UUID (ADR-084)。bootstrap seed と一致させる。
+    // first-party クライアントの固定 UUID。bootstrap seed と一致させる。
     clientId: '00000000-0000-4000-8000-000000000022',
     scope: 'openid profile idmagic.admin offline_access',
   },

@@ -66,7 +66,7 @@ func (m MfaFactorType) Valid() bool {
 	return false
 }
 
-// AuthenticatorResetTarget は管理者による認証器リセット (ADR-088 第 2 層) が
+// AuthenticatorResetTarget は管理者による認証器リセット が
 // 対象にできる要素。
 type AuthenticatorResetTarget string
 
@@ -211,5 +211,5 @@ const (
 )
 
 // AgentStatus / AgentKind / UserStatus / RequiredAction / AttributeType / AttrVisibility は
-// idmanagement/domain へ移設した (wi-178, ADR-089/ADR-093)。
-// TenantStatus は tenancy/domain へ移設した (wi-179, ADR-089/ADR-093)。
+// idmanagement/domain へ移設した (wi-178, )。
+// TenantStatus は tenancy/domain へ移設した (wi-179, )。

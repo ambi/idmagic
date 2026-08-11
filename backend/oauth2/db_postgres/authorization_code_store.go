@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// AuthorizationCodeStore は単回使用の認可コードを PostgreSQL に保持する (ADR-139)。
+// AuthorizationCodeStore は単回使用の認可コードを PostgreSQL に保持する。
 // full record を payload JSONB に持ち、state / redeemed_at / issued_family_id を昇格列にする。
 // Redeem は state='issued' の単一列 CAS (UPDATE ... RETURNING) で atomic に redeemed へ倒し、
 // read では昇格列を payload に overlay して単文 CAS による payload の陳腐化を隠す。
