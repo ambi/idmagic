@@ -3,58 +3,56 @@ name: parallel-work-items
 description: Set up and coordinate parallel git worktrees and branches for multiple specification-first work items. Use when the user wants to implement work items concurrently, create per-work-item workspaces, prepare branch/worktree commands, assign agents to work items, or integrate completed work-item branches back through an integration branch.
 ---
 
-# 並列ワークアイテム実装
+# Implementing work items in parallel
 
 ## Overview
 
-複数の work item を別々の git worktree + branch で進める。各 worktree では
-`implement-work-item` Skill を使い、統合地点では `spec-render` Skill を使って派生物を一度だけ
-再生成する。
+Carry several work items forward in separate git worktrees and branches. Each worktree follows the
+`implement-work-item` Skill; derived artifacts are regenerated once, at the integration point, with
+the `spec-render` Skill.
 
-## 0. 前提を確認
+## 0. Check the preconditions
 
-1. リポジトリルートで `git status --short` を確認する。未コミット差分がある場合は、
-   それが今回のセットアップ対象か、ユーザの既存作業かを分ける。
-2. 対象 work item のファイルを確認し、id と状態を読む。未作成なら `new-work-item` Skill で
-   先に作る。
-3. base branch を決める。指定がなければ現在の branch を base とする。
-4. worktree 置き場を決める。指定がなければリポジトリ親ディレクトリ直下に
-   `<repo>-<short-id>` 形式で作る。
+1. Read `git status --short` at the repository root. If uncommitted changes exist, separate what
+   belongs to this setup from the user's existing work.
+2. Open the target work items and read their ids and status. Create anything missing with the
+   `new-work-item` Skill first.
+3. Decide the base branch. Without direction, use the current branch.
+4. Decide where worktrees live. Without direction, create them next to the repository as
+   `<repo>-<short-id>`.
 
-## 1. ブランチと worktree を作る
+## 1. Create branches and worktrees
 
-work item ごとに branch を作る。branch は実装・レビュー・統合の単位なので、worktree だけで
-済ませない。
+Create a branch per work item. A branch is the unit of implementation, review, and integration, so do
+not settle for a worktree alone.
 
 - branch: `work-item/<work-item-id>`
-- worktree: `../<repo>-<work-item-id>` または短縮して `../<repo>-wi-<nn>`
+- worktree: `../<repo>-<work-item-id>`, or shortened to `../<repo>-wi-<nn>`
 
-新規 branch の例:
+A new branch:
 
 ```sh
 git fetch --all --prune
 git worktree add -b work-item/wi-42-example ../idmagic-wi-42 <base-branch>
 ```
 
-既存 branch を別 worktree に出す例:
+An existing branch checked out into another worktree:
 
 ```sh
 git worktree add ../idmagic-wi-42 work-item/wi-42-example
 ```
 
-複数 work item のセットアップでは、各 worktree 作成後に次を確認する。
+When setting up several work items, confirm each worktree after creating it:
 
 ```sh
 git worktree list
 git -C ../idmagic-wi-42 status --short --branch
 ```
 
-## 2. 各 worktree で実装する
+## 2. Implement in each worktree
 
-各 worktree は独立した agent / terminal に割り当てる。agent へ渡す指示は短くし、対象
-work item と worktree パスを明示する。
-
-例:
+Assign each worktree to its own agent or terminal. Keep the instruction short and name both the work
+item and the worktree path.
 
 ```text
 Use the implement-work-item Skill in /path/to/idmagic-wi-42.
@@ -62,26 +60,27 @@ Implement work-items/wi-42-example.md end to end, verify it, update completion,
 move it to done, and commit the branch. Do not push.
 ```
 
-各 branch では `implement-work-item` Skill の順序に従う。
+Every branch follows the order in the `implement-work-item` Skill.
 
-- 仕様変更がある場合は `spec-change` Skill を先に使う。
-- work-item branch では OpenAPI などの TypeSpec 派生物を commit しない。
-- 検査用に `just spec-render` を実行してよいが、生成物は untracked のままにする。
-- 完了時は work item に `completion` を追記し、`work-items/done/` へ移して commit する。
-- push はユーザの明示指示があるまでしない。
+- Use the `spec-change` Skill first whenever the specification changes.
+- Do not commit TypeSpec derived artifacts, such as OpenAPI, on a work-item branch.
+- Running `just spec-render` to check something is fine; leave the generated files untracked.
+- On completion, append `completion` to the work item, move it to `work-items/done/`, and commit.
+- Do not push until the user explicitly asks.
 
-## 3. 並列作業中の調整
+## 3. Coordinate while the branches run
 
-衝突を早く見つけるため、各 branch の作業範囲を work item の `scope` に寄せる。
+Keep each branch inside its work item's `scope` so conflicts surface early.
 
-- 同じ normative scenario / standard ID または TypeSpec symbol を複数 branch が触る場合は、先に順序を決める。
-- 同じ id / ファイル名を作った場合は `just check-ids` の結果に従って片方を採番し直す。
-- 生成物の衝突は手で解かず、統合済み TypeSpec から再生成する。
+- When several branches touch the same normative scenario, standard id, or TypeSpec symbol, agree on
+  the order first.
+- When two branches create the same id or filename, follow `just check-ids` and renumber one of them.
+- Do not resolve conflicts in generated files by hand. Regenerate from the integrated TypeSpec.
 
-## 4. 統合する
+## 4. Integrate
 
-統合用 branch / worktree を用意してから completed branch を取り込む。指定がなければ
-`integration/work-items` branch 名を使う。
+Prepare an integration branch and worktree, then take in the completed branches. Without direction,
+name the branch `integration/work-items`.
 
 ```sh
 git worktree add -b integration/work-items ../idmagic-integration <base-branch>
@@ -90,7 +89,7 @@ git merge --no-ff work-item/wi-42-example
 git merge --no-ff work-item/wi-43-example
 ```
 
-統合後は TypeSpec 派生物を検証する。
+Verify the derived TypeSpec artifacts after integrating:
 
 ```sh
 just check
@@ -98,16 +97,16 @@ just spec-render
 just verify
 ```
 
-`spec/generated/` は commit せず、release baseline は通常の統合で更新しない。
+Do not commit `spec/generated/`, and do not update the release baseline during ordinary integration.
 
-## 5. 片付け
+## 5. Clean up
 
-merge 済みで不要になった worktree はユーザ確認後に削除する。削除は作業ファイルを消す操作
-なので、未コミット差分がないことを確認してから行う。
+Remove merged worktrees only after the user confirms. Removal deletes working files, so check that
+nothing is uncommitted first.
 
 ```sh
 git -C ../idmagic-wi-42 status --short
 git worktree remove ../idmagic-wi-42
 ```
 
-branch 削除や remote push / delete は、ユーザの明示指示がある場合だけ実行する。
+Delete branches, and push or delete remote refs, only when the user explicitly asks.

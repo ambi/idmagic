@@ -3,10 +3,12 @@ name: spec-render
 description: Compile TypeSpec and regenerate ignored OpenAPI and browsable specification HTML after specification or design changes.
 ---
 
-# 仕様派生物の再生成
+# Regenerating derived specification artifacts
 
-1. `just spec-render` を実行する。
-2. `just check-api-compat` で release baseline に対する破壊を確認する。
-3. context別tagのOpenAPIと `spec/generated/docs/index.html` が生成されることを確認する。
-4. `spec/generated/` は untracked のため commit しない。
-5. release 時だけ、明示的な release 手順として baseline を更新する。通常の feature change で baseline を更新して検査を回避しない。
+1. Run `just spec-render`.
+2. Check for breakage against the release baseline with `just check-api-compat`.
+3. Confirm that the OpenAPI carries per-context tags and that `spec/generated/docs/index.html` is
+   produced.
+4. `spec/generated/` is untracked. Do not commit it.
+5. Update the baseline only during a release, as an explicit release step. Never update the baseline
+   during an ordinary feature change to get around the compatibility check.

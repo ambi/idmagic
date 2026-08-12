@@ -3,13 +3,17 @@ name: new-work-item
 description: Create a specification-first work item under work-items using the canonical format, requirement/TypeSpec references, tasks, design alternatives, and verification plan.
 ---
 
-# Work item の作成
+# Creating a work item
 
-1. `WORK_ITEM_FORMAT.md` を正本として読む。
-2. `work-items/` と `done/` の最大番号を調べ、未使用の `wi-NNN-kebab-title.md` を作る。
-3. Motivation / Scope / Out of Scope / Design / Plan / Tasks / Verification / Risk Notes を書く。
-4. feature・bugfix・operations は `initial_context` と `affected_spec` に normative scenario / standard ID または TypeSpec symbol を direct reference する。
-5. 却下案と変更固有の判断は Design に残す。ADR は作らない。
-6. `just check-work-items` と `just check-ids` を通す。
+1. Read `WORK_ITEM_FORMAT.md` as the authority for the format.
+2. Find the highest number across `work-items/` and `done/`, then create an unused
+   `wi-NNN-kebab-title.md`.
+3. Write Motivation, Scope, Out of Scope, Design, Plan, Tasks, Verification, and Risk Notes.
+4. For `feature`, `bugfix`, and `operations` items, make `affected_spec` a direct reference to a
+   normative scenario or standard id, or to a TypeSpec symbol. Do not write `initial_context` when
+   filing the item; it is written when the work starts.
+5. Keep rejected options and change-specific judgment in Design. Do not create an ADR.
+6. Pass `just check-work-items` and `just check-ids`.
 
-完了時は `Completion` を追記し、status を completed にして `work-items/done/` へ移す。
+On completion, append `Completion`, set the status to completed, and move the file to
+`work-items/done/`.
