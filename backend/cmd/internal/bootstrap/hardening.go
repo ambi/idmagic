@@ -19,15 +19,17 @@ type httpServerHardening struct {
 	MaxBodyBytes      int64
 }
 
-// loadHTTPServerHardening は env から上書き可能なハードニング設定を組み立てる。
-// 未指定・不正値は本番安全なデフォルトにフォールバックする (envDuration / envInt の規約)。
-func LoadHTTPServerHardening() httpServerHardening {
+// LoadHTTPServerHardening は env から上書き可能なハードニング設定を組み立てる。
+// 未指定は本番安全なデフォルトを使い、不正値は l に ConfigError を記録して
+// fail-fast させる (以前は envDuration / envInt の規約で不正値も silent に
+// フォールバックしていた。wi-103)。
+func LoadHTTPServerHardening(l *ConfigLoader) httpServerHardening {
 	return httpServerHardening{
-		ReadHeaderTimeout: EnvDuration("HTTP_READ_HEADER_TIMEOUT", 10*time.Second),
-		ReadTimeout:       EnvDuration("HTTP_READ_TIMEOUT", 30*time.Second),
-		WriteTimeout:      EnvDuration("HTTP_WRITE_TIMEOUT", 60*time.Second),
-		IdleTimeout:       EnvDuration("HTTP_IDLE_TIMEOUT", 120*time.Second),
-		MaxBodyBytes:      int64(EnvInt("HTTP_MAX_BODY_BYTES", 1<<20)),
+		ReadHeaderTimeout: l.PositiveDuration("HTTP_READ_HEADER_TIMEOUT", 10*time.Second),
+		ReadTimeout:       l.PositiveDuration("HTTP_READ_TIMEOUT", 30*time.Second),
+		WriteTimeout:      l.PositiveDuration("HTTP_WRITE_TIMEOUT", 60*time.Second),
+		IdleTimeout:       l.PositiveDuration("HTTP_IDLE_TIMEOUT", 120*time.Second),
+		MaxBodyBytes:      int64(l.PositiveInt("HTTP_MAX_BODY_BYTES", 1<<20)),
 	}
 }
 

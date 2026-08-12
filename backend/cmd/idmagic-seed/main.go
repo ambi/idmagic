@@ -34,7 +34,12 @@ func run() error {
 	flag.Parse()
 
 	request := domain.Request{Environment: domain.Environment(environment), Profile: domain.Profile(profile), Mode: domain.Mode(mode), ManifestPath: manifestPath, GeneratorSeed: generatorSeed, Count: count, BatchSize: batchSize, AllowLarge: allowLarge, FirstPartyRedirectURIs: bootstrap.ParseSeedRedirectURIs(redirectURIs)}
-	deps, err := bootstrap.Assemble(context.Background())
+	loader := bootstrap.NewConfigLoader(os.Getenv)
+	shared := bootstrap.LoadSharedConfig(loader)
+	if err := loader.Err(); err != nil {
+		return fmt.Errorf("load startup configuration: %w", err)
+	}
+	deps, err := bootstrap.Assemble(context.Background(), shared)
 	if err == nil {
 		defer deps.Close()
 		var plan domain.Plan

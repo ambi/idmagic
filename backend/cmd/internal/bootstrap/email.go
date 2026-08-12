@@ -2,9 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
-	"strings"
-	"time"
 
 	"github.com/ambi/idmagic/backend/shared/logging"
 	emailConsole "github.com/ambi/idmagic/backend/shared/notification/email_console"
@@ -12,100 +9,30 @@ import (
 	sharednotification "github.com/ambi/idmagic/backend/shared/notification/ports"
 )
 
-// resolveEmailSender は EMAIL_SENDER / SMTP_* 環境変数から EmailSender adapter を組み立てる。
-// 既定は console。smtp 選択時に SMTP_HOST / SMTP_FROM が無い場合は起動失敗 (§影響)。
-func ResolveEmailSender(getenv func(string) string) (sharednotification.EmailSender, error) {
-	kind := strings.ToLower(strings.TrimSpace(getenv("EMAIL_SENDER")))
-	if kind == "" {
-		kind = "console"
-	}
-	switch kind {
-	case "console":
-		logging.Info(context.Background(), "email sender configured", "kind", "console")
-		return emailConsole.ConsoleEmailSender{}, nil
+// ResolveEmailSender builds the EmailSender adapter selected by
+// cfg.EmailSender. cfg is assumed already validated by LoadSharedConfig
+// (EMAIL_SENDER is a closed enum; SMTP_HOST/SMTP_FROM are required when
+// EMAIL_SENDER=smtp), so this function only constructs the adapter.
+func ResolveEmailSender(cfg SharedConfig) sharednotification.EmailSender {
+	switch cfg.EmailSender {
 	case "smtp":
-		cfg, err := buildSMTPConfig(getenv)
-		if err != nil {
-			return nil, err
+		smtpCfg := emailSMTP.SMTPEmailSenderConfig{
+			Host:     cfg.SMTPHost,
+			Port:     cfg.SMTPPort,
+			Username: cfg.SMTPUser,
+			Password: cfg.SMTPPass.Value(),
+			From:     cfg.SMTPFrom,
+			Hello:    cfg.SMTPHelo,
+			TLSMode:  cfg.SMTPTLSMode,
+			Timeout:  cfg.SMTPTimeout,
 		}
 		// from はサービス自身の送信元 (運用設定) であり data subject の PII ではない。
+		// Username/Password は secret のためログに出さない。
 		logging.Info(context.Background(), "email sender configured",
-			"kind", "smtp", "host", cfg.Host, "port", cfg.Port, "tls", cfg.TLSMode, "from", cfg.From)
-		return emailSMTP.NewSMTPEmailSender(cfg), nil
+			"kind", "smtp", "host", smtpCfg.Host, "port", smtpCfg.Port, "tls", smtpCfg.TLSMode, "from", smtpCfg.From)
+		return emailSMTP.NewSMTPEmailSender(smtpCfg)
 	default:
-		return nil, fmt.Errorf("unsupported EMAIL_SENDER=%q (want console or smtp)", kind)
+		logging.Info(context.Background(), "email sender configured", "kind", "console")
+		return emailConsole.ConsoleEmailSender{}
 	}
-}
-
-func buildSMTPConfig(getenv func(string) string) (emailSMTP.SMTPEmailSenderConfig, error) {
-	var zero emailSMTP.SMTPEmailSenderConfig
-	host := strings.TrimSpace(getenv("SMTP_HOST"))
-	if host == "" {
-		return zero, fmt.Errorf("EMAIL_SENDER=smtp requires SMTP_HOST")
-	}
-	from := strings.TrimSpace(getenv("SMTP_FROM"))
-	if from == "" {
-		return zero, fmt.Errorf("EMAIL_SENDER=smtp requires SMTP_FROM")
-	}
-	tlsMode, err := parseSMTPTLSMode(getenv("SMTP_TLS"))
-	if err != nil {
-		return zero, err
-	}
-	return emailSMTP.SMTPEmailSenderConfig{
-		Host:     host,
-		Port:     parseSMTPPort(getenv("SMTP_PORT"), tlsMode),
-		Username: getenv("SMTP_USERNAME"),
-		Password: getenv("SMTP_PASSWORD"),
-		From:     from,
-		Hello:    strings.TrimSpace(getenv("SMTP_HELO")),
-		TLSMode:  tlsMode,
-		Timeout:  parseSMTPTimeout(getenv("SMTP_TIMEOUT_SECONDS")),
-	}, nil
-}
-
-func parseSMTPTLSMode(raw string) (emailSMTP.SMTPTLSMode, error) {
-	switch strings.ToLower(strings.TrimSpace(raw)) {
-	case "", "starttls":
-		return emailSMTP.SMTPTLSSTARTTLS, nil
-	case "implicit":
-		return emailSMTP.SMTPTLSImplicit, nil
-	case "none":
-		return emailSMTP.SMTPTLSNone, nil
-	default:
-		return "", fmt.Errorf("unsupported SMTP_TLS=%q (want starttls, implicit, or none)", raw)
-	}
-}
-
-func parseSMTPPort(raw string, mode emailSMTP.SMTPTLSMode) int {
-	if port := envIntFrom(raw, 0); port > 0 {
-		return port
-	}
-	switch mode {
-	case emailSMTP.SMTPTLSImplicit:
-		return 465
-	case emailSMTP.SMTPTLSNone:
-		return 25
-	default:
-		return 587
-	}
-}
-
-func parseSMTPTimeout(raw string) time.Duration {
-	seconds := envIntFrom(raw, 10)
-	if seconds <= 0 {
-		seconds = 10
-	}
-	return time.Duration(seconds) * time.Second
-}
-
-func envIntFrom(raw string, fallback int) int {
-	trimmed := strings.TrimSpace(raw)
-	if trimmed == "" {
-		return fallback
-	}
-	var parsed int
-	if _, err := fmt.Sscanf(trimmed, "%d", &parsed); err != nil {
-		return fallback
-	}
-	return parsed
 }

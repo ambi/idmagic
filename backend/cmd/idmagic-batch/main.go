@@ -123,7 +123,12 @@ func runDataKeyReencryptionSweep(ctx context.Context, deps *bootstrap.Dependenci
 }
 
 func withDependencies(ctx context.Context, fn func(*bootstrap.Dependencies) error) error {
-	deps, err := bootstrap.Assemble(ctx)
+	loader := bootstrap.NewConfigLoader(os.Getenv)
+	shared := bootstrap.LoadSharedConfig(loader)
+	if err := loader.Err(); err != nil {
+		return fmt.Errorf("load startup configuration: %w", err)
+	}
+	deps, err := bootstrap.Assemble(ctx, shared)
 	if err != nil {
 		return err
 	}

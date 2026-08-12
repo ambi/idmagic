@@ -1,27 +1,22 @@
 package bootstrap
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
-func TestEnvInt32RejectsOutOfRangeValues(t *testing.T) {
-	t.Setenv("BOOTSTRAP_INT32", "2147483648")
+func TestEnvIntRejectsNegativeValues(t *testing.T) {
+	t.Setenv("BOOTSTRAP_INT", "-1")
 
-	if got := envInt32("BOOTSTRAP_INT32", 20); got != 20 {
-		t.Fatalf("envInt32 out-of-range value = %d, want fallback 20", got)
+	if got := EnvInt("BOOTSTRAP_INT", 20); got != 20 {
+		t.Fatalf("EnvInt negative value = %d, want fallback 20", got)
 	}
 }
 
-func TestEnvCircuitBreakerMinRequestsRejectsOutOfRangeValues(t *testing.T) {
-	t.Setenv("BOOTSTRAP_UINT32", "4294967296")
+func TestEnvDurationRejectsNonPositiveValues(t *testing.T) {
+	t.Setenv("BOOTSTRAP_DURATION", "0s")
 
-	if got := envCircuitBreakerMinRequests("BOOTSTRAP_UINT32"); got != 10 {
-		t.Fatalf("envCircuitBreakerMinRequests out-of-range value = %d, want fallback 10", got)
-	}
-}
-
-func TestEnvCircuitBreakerMinRequestsRejectsNegativeValues(t *testing.T) {
-	t.Setenv("BOOTSTRAP_UINT32", "-1")
-
-	if got := envCircuitBreakerMinRequests("BOOTSTRAP_UINT32"); got != 10 {
-		t.Fatalf("envCircuitBreakerMinRequests negative value = %d, want fallback 10", got)
+	if got := EnvDuration("BOOTSTRAP_DURATION", 5*time.Second); got != 5*time.Second {
+		t.Fatalf("EnvDuration non-positive value = %v, want fallback 5s", got)
 	}
 }

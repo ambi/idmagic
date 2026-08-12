@@ -55,7 +55,16 @@ func RunWorker() error {
 	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
 	logger := logging.Default()
 
-	deps, err := bootstrap.Assemble(context.Background())
+	// Assemble が読む共有設定 (persistence/notification/webauthn/authzen/
+	// keystore/datakeys) は idmagic (API) と同じ検証を通す。worker 固有の
+	// JOB_*/WORKER_ID 等は未移行 (wi-103 の後続タスク)。
+	loader := bootstrap.NewConfigLoader(os.Getenv)
+	shared := bootstrap.LoadSharedConfig(loader)
+	if err := loader.Err(); err != nil {
+		return fmt.Errorf("load startup configuration: %w", err)
+	}
+
+	deps, err := bootstrap.Assemble(context.Background(), shared)
 	if err != nil {
 		return fmt.Errorf("assemble dependencies: %w", err)
 	}

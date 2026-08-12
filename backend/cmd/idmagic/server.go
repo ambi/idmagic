@@ -22,7 +22,6 @@ import (
 	"github.com/ambi/idmagic/backend/shared/logging"
 	metricsPrometheus "github.com/ambi/idmagic/backend/shared/observability/metrics_prometheus"
 	telemetryOTLP "github.com/ambi/idmagic/backend/shared/observability/telemetry_otlp"
-	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -36,9 +35,19 @@ import (
 
 // Run はサーバ全体を起動する。SIGINT/SIGTERM で graceful shutdown。
 func Run() error {
-	runtime := bootstrap.LoadRuntimeConfig()
-	issuer := bootstrap.EnvDefault("ISSUER", "http://localhost:8080")
-	addr := bootstrap.EnvDefault("ADDR", ":8080")
+	// 起動時設定は Assemble や listener 起動より前に一括で読み込み検証する。
+	// 必須値欠落・型/範囲不正・相互矛盾する組み合わせはここで集約エラーとして
+	// 返し、部分起動させない (REQ-SYSTEM-016)。
+	loader := bootstrap.NewConfigLoader(os.Getenv)
+	shared := bootstrap.LoadSharedConfig(loader)
+	api := bootstrap.LoadAPIConfig(loader)
+	if err := loader.Err(); err != nil {
+		return fmt.Errorf("load startup configuration: %w", err)
+	}
+
+	runtime := bootstrap.LoadRuntimeConfig(shared)
+	issuer := api.Issuer
+	addr := api.Addr
 
 	shuttingDown := &atomic.Bool{}
 	startupComplete := &atomic.Bool{}
@@ -46,13 +55,13 @@ func Run() error {
 	// アプリケーションログは stdout に構造化 JSON Lines で出力する。
 	// 監査ログ (DomainEvent) は EventSink 経由の別経路。
 	buildInfo := version.Get()
-	serviceName := bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic")
-	logLevel := logging.ParseLevel(os.Getenv("LOG_LEVEL"))
+	serviceName := api.OTelServiceName
+	logLevel := logging.ParseLevel(api.LogLevel)
 	slogLogger := logging.NewSlog(os.Stdout, logLevel, serviceName, buildInfo.Version)
 	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
 	logger := logging.Default()
 
-	deps, err := bootstrap.Assemble(context.Background())
+	deps, err := bootstrap.Assemble(context.Background(), shared)
 	if err != nil {
 		return fmt.Errorf("assemble dependencies: %w", err)
 	}
@@ -77,10 +86,7 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("create sentinel password hash: %w", err)
 	}
-	breachedChecker, err := bootstrap.ResolveBreachedPasswordChecker(os.Getenv)
-	if err != nil {
-		return fmt.Errorf("resolve breached password checker: %w", err)
-	}
+	breachedChecker := bootstrap.ResolveBreachedPasswordChecker(shared)
 	loginThrottle := deps.Authentication.NewLoginAttemptThrottle(sessionports.LoginThrottleConfigs{
 		Account: sessionports.LoginThrottleConfig{
 			MaxFailures:    10,
@@ -93,36 +99,8 @@ func Run() error {
 			LockoutSeconds: 900,
 		},
 	})
-	rateLimiter := deps.RateLimit.NewRateLimiter(rlports.RateLimitConfigs{
-		"token": {
-			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_TOKEN_MAX_REQUESTS", 60),
-			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_TOKEN_WINDOW_SECONDS", 60),
-		},
-		"authorize": {
-			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_AUTHORIZE_MAX_REQUESTS", 30),
-			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_AUTHORIZE_WINDOW_SECONDS", 60),
-		},
-		"par": {
-			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_PAR_MAX_REQUESTS", 30),
-			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_PAR_WINDOW_SECONDS", 60),
-		},
-		"device_authorization": {
-			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS", 20),
-			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS", 60),
-		},
-		"password_reset": {
-			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS", 5),
-			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS", 900),
-		},
-		"login": {
-			MaxRequests:   bootstrap.EnvInt("RATE_LIMIT_LOGIN_MAX_REQUESTS", 20),
-			WindowSeconds: bootstrap.EnvInt("RATE_LIMIT_LOGIN_WINDOW_SECONDS", 60),
-		},
-	})
-	authorizer, err := bootstrap.AssembleAuthorizer()
-	if err != nil {
-		return err
-	}
+	rateLimiter := deps.RateLimit.NewRateLimiter(api.RateLimits)
+	authorizer := bootstrap.AssembleAuthorizer(shared)
 	sessionManager := sessionusecases.NewSessionManager(deps.Authentication.SessionStore)
 	tokenSigner := tokensJOSE.NewJWTSigner(issuer, deps.SigningKeys.KeyStore)
 	jwkResolver := tokensJOSE.NewJWKResolver()
@@ -149,7 +127,7 @@ func Run() error {
 	// MetricsExposition objective: pull-based /metrics は OTLP collector の有無に
 	// 依存しないため、OBSERVABILITY 設定 (OTLP push tracing/metrics) とは独立に
 	// 常時構築する。RED middleware はここで組み立てた Meter へ記録する。
-	appMetrics, err := metricsPrometheus.NewMetrics(bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
+	appMetrics, err := metricsPrometheus.NewMetrics(api.OTelServiceName, version.Get().Version)
 	if err != nil {
 		return fmt.Errorf("initialize metrics: %w", err)
 	}
@@ -164,21 +142,21 @@ func Run() error {
 	// 同じ request_id 配下に入る。受信 X-Request-ID は secure-by-default で無視し
 	// 自前生成する。信頼できる境界プロキシが所有・消毒している構成でのみ
 	// REQUEST_ID_TRUST_INBOUND=true で受信値の再利用を許可する。
-	e.Use(httpsupport.RequestIDMiddleware(bootstrap.EnvDefault("REQUEST_ID_TRUST_INBOUND", "false") == "true"))
+	e.Use(httpsupport.RequestIDMiddleware(api.RequestIDTrustInbound))
 	e.Use(httpsupport.LoggingMiddleware())
 	e.Use(httpsupport.RecoverMiddleware(logger))
 	// SecurityResponseHeaders / FrameAncestorsPolicy objectives:
 	// backend レスポンスへ CSP (nonce ベース) / frame-ancestors 'none' / nosniff 等を
 	// 一元付与する。HSTS は TLS 終端層が所有するため既定は無効 (開発 http では抑制)。
-	e.Use(httpsupport.SecurityHeadersMiddleware(bootstrap.LoadSecurityHeaders(os.Getenv)))
+	e.Use(httpsupport.SecurityHeadersMiddleware(api.SecurityHeaders))
 	// HTTPServerHardening objective: ボディ上限を全リクエストに課し、超過は 413 で拒否する。
 	// request_id 付与と panic recover の内側に置き、拒否レスポンスも相関/回復対象にする。
 	e.Use(httpsupport.MetricsMiddleware(appMetrics))
-	hardening := bootstrap.LoadHTTPServerHardening()
+	hardening := api.Hardening
 	e.Use(middleware.BodyLimit(hardening.MaxBodyBytes))
 	var otelProvider *telemetryOTLP.Provider
 	if runtime.Observability == "otel" {
-		otelProvider, err = telemetryOTLP.New(ctx, bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic"), version.Get().Version)
+		otelProvider, err = telemetryOTLP.New(ctx, api.OTelServiceName, version.Get().Version)
 		if err != nil {
 			return fmt.Errorf("initialize OpenTelemetry: %w", err)
 		}
@@ -197,8 +175,8 @@ func Run() error {
 		Deps: httpsupport.Deps{
 			Issuer:                    issuer,
 			Contract:                  runtimeContract,
-			TenantBaseDomain:          bootstrap.EnvDefault("TENANT_BASE_DOMAIN", ""),
-			TrustedForwardedHops:      bootstrap.EnvInt("TRUSTED_FORWARDED_HOPS", 0),
+			TenantBaseDomain:          api.TenantBaseDomain,
+			TrustedForwardedHops:      api.TrustedForwardedHops,
 			RateLimiter:               deps.RateLimit.RateLimiter,
 			OperationTimeout:          0, // 必要なら設定
 			DetachedCompletionTimeout: 0,
@@ -280,12 +258,7 @@ func Run() error {
 		shuttingDown.Store(true)
 
 		// 2. ドレイン猶予待機
-		drainGracePeriod := 5 * time.Second
-		if val := os.Getenv("DRAIN_GRACE_PERIOD_SECONDS"); val != "" {
-			if parsed, err := time.ParseDuration(val + "s"); err == nil {
-				drainGracePeriod = parsed
-			}
-		}
+		drainGracePeriod := time.Duration(api.DrainGracePeriod) * time.Second
 		logger.Info(context.Background(), "waiting for connection drain", "duration", drainGracePeriod.String())
 		time.Sleep(drainGracePeriod)
 

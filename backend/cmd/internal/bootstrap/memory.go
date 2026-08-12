@@ -58,12 +58,12 @@ import (
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
 )
 
-func assembleMemory() (*Dependencies, error) {
+func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	keyStore, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
 		return nil, err
 	}
-	masterKeyProvider, err := selectMasterKeyProvider()
+	masterKeyProvider, err := selectMasterKeyProvider(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func assembleMemory() (*Dependencies, error) {
 			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
-		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
+		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
 		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
 		Audit: audit.Module{
 			AuditEventRepo:  auditEventRepo,

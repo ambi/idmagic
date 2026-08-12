@@ -14,9 +14,9 @@ import (
 func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
 	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
-	deps, err := assembleMemory()
+	deps, err := assembleMemory(SharedConfig{})
 	if err != nil {
-		t.Fatalf("assembleMemory() error = %v", err)
+		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
 	ctx := context.Background()
 	dryRun := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeDryRun}
@@ -72,9 +72,9 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
 	t.Setenv("DEMO_CLIENT_SECRET", "demo-client-secret")
 	t.Setenv("DEMO_USER_PASSWORD", "demo-password-1234")
-	deps, err := assembleMemory()
+	deps, err := assembleMemory(SharedConfig{})
 	if err != nil {
-		t.Fatalf("assembleMemory() error = %v", err)
+		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
 	ctx := context.Background()
 	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
@@ -116,9 +116,9 @@ func TestSameClientIgnoresApplicationCatalogOwnership(t *testing.T) {
 }
 
 func TestPerformanceSeedIsDeterministicAndIdempotent(t *testing.T) {
-	deps, err := assembleMemory()
+	deps, err := assembleMemory(SharedConfig{})
 	if err != nil {
-		t.Fatalf("assembleMemory() error = %v", err)
+		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
 	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfilePerformance, Mode: domain.ModeApply, Count: 3}
 	if _, err := Seed(context.Background(), deps, request); err != nil {

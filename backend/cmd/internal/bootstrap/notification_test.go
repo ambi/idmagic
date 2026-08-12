@@ -33,7 +33,7 @@ func TestAssembleNotificationAppliesTenantOverrides(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := AssembleNotification(deps, stubEnv(map[string]string{})); err != nil {
+	if err := AssembleNotification(deps, loadSharedConfigOrFatal(t, map[string]string{})); err != nil {
 		t.Fatalf("AssembleNotification: %v", err)
 	}
 	if deps.Notification.EmailSender == nil || deps.Notification.Notifier == nil {
@@ -42,7 +42,7 @@ func TestAssembleNotificationAppliesTenantOverrides(t *testing.T) {
 
 	sender := &captureEmailSender{}
 	deps.Notification.EmailSender = sender
-	if err := AssembleNotification(deps, stubEnv(map[string]string{})); err != nil {
+	if err := AssembleNotification(deps, loadSharedConfigOrFatal(t, map[string]string{})); err != nil {
 		t.Fatal(err)
 	}
 	// 明示的に差した sender は上書きしない (テスト・組み込み用途の差し替えを壊さない)。
@@ -82,7 +82,7 @@ func TestAssembleNotificationUsesTenantDefaultLocale(t *testing.T) {
 		NotificationTemplates: tenancymemory.NewNotificationTemplateRepository(),
 	}}
 	deps.Notification.EmailSender = sender
-	if err := AssembleNotification(deps, stubEnv(map[string]string{})); err != nil {
+	if err := AssembleNotification(deps, loadSharedConfigOrFatal(t, map[string]string{})); err != nil {
 		t.Fatal(err)
 	}
 
@@ -109,7 +109,7 @@ func TestAssembleNotificationHonorsSystemDefaultLocale(t *testing.T) {
 	sender := &captureEmailSender{}
 	deps := &Dependencies{}
 	deps.Notification.EmailSender = sender
-	if err := AssembleNotification(deps, stubEnv(map[string]string{"DEFAULT_LOCALE": "ja"})); err != nil {
+	if err := AssembleNotification(deps, loadSharedConfigOrFatal(t, map[string]string{"DEFAULT_LOCALE": "ja"})); err != nil {
 		t.Fatal(err)
 	}
 
@@ -126,10 +126,10 @@ func TestAssembleNotificationHonorsSystemDefaultLocale(t *testing.T) {
 	}
 }
 
-func TestAssembleNotificationRejectsUnsupportedSystemDefaultLocale(t *testing.T) {
-	deps := &Dependencies{}
-	err := AssembleNotification(deps, stubEnv(map[string]string{"DEFAULT_LOCALE": "fr"}))
-	if err == nil {
+func TestLoadSharedConfigRejectsUnsupportedDefaultLocale(t *testing.T) {
+	l := NewConfigLoader(stubEnv(map[string]string{"DEFAULT_LOCALE": "fr"}))
+	LoadSharedConfig(l)
+	if err := l.Err(); err == nil {
 		t.Fatal("an unsupported DEFAULT_LOCALE must fail startup rather than silently fall back")
 	}
 }

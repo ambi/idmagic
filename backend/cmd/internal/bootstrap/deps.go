@@ -2,8 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"errors"
-	"os"
 	"strings"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -63,32 +61,33 @@ type RuntimeConfig struct {
 	AuthZEN       string
 }
 
-func LoadRuntimeConfig() RuntimeConfig {
+func LoadRuntimeConfig(cfg SharedConfig) RuntimeConfig {
 	return RuntimeConfig{
-		Persistence:   EnvDefault("PERSISTENCE", "memory"),
-		Observability: EnvDefault("OBSERVABILITY", "noop"),
-		AuthZEN:       EnvDefault("AUTHZEN", "local"),
+		Persistence:   cfg.Persistence,
+		Observability: cfg.Observability,
+		AuthZEN:       cfg.AuthZEN,
 	}
 }
 
-// assemble は PERSISTENCE 環境変数に応じて memory/postgres いずれかの構成を組み立てる。
-// 揮発性状態も PostgreSQL に統合済みで、選択肢は memory / postgres の 2 つ。
-func Assemble(ctx context.Context) (*Dependencies, error) {
+// Assemble は cfg.Persistence に応じて memory/postgres いずれかの構成を組み立てる。
+// 揮発性状態も PostgreSQL に統合済みで、選択肢は memory / postgres の 2 つ。cfg は
+// 呼び出し側が LoadSharedConfig + ConfigLoader.Err() で既に検証済みであることを前提とし、
+// ここでは I/O を伴う組み立てのみ行う (wi-103: 検証と組み立てのフェーズを分離し、
+// 検証はネットワーク接続や listener 起動より前に集約して終える)。
+func Assemble(ctx context.Context, cfg SharedConfig) (*Dependencies, error) {
 	var deps *Dependencies
 	var err error
-	switch EnvDefault("PERSISTENCE", "memory") {
-	case "memory":
-		deps, err = assembleMemory()
+	switch cfg.Persistence {
 	case "postgres":
-		deps, err = assemblePostgres(ctx)
+		deps, err = assemblePostgres(ctx, cfg)
 	default:
-		return nil, errors.New("PERSISTENCE must be memory or postgres")
+		deps, err = assembleMemory(cfg)
 	}
 	if err != nil {
 		return nil, err
 	}
-	// WebAuthn RP は永続層に依らず env config から構築する (wi-26)。
-	rp, err := loadWebAuthnRP()
+	// WebAuthn RP は永続層に依らず cfg から構築する (wi-26)。
+	rp, err := loadWebAuthnRP(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -96,28 +95,24 @@ func Assemble(ctx context.Context) (*Dependencies, error) {
 	// 通知はカタログ解決を含めてここで組み立て、API プロセスと worker プロセスが
 	// 同じ経路 (テナント上書き・locale 解決を含む) で送るようにする (wi-288)。
 	//nolint:contextcheck // 起動時の配線のみ。実際の I/O は送信ごとに呼び出し元の context で走る。
-	if err := AssembleNotification(deps, os.Getenv); err != nil {
+	if err := AssembleNotification(deps, cfg); err != nil {
 		return nil, err
 	}
 	return deps, nil
 }
 
-// loadWebAuthnRP は WEBAUTHN_RP_ID / WEBAUTHN_RP_ORIGINS / WEBAUTHN_RP_DISPLAY_NAME から RP を
-// 構築する。RP_ID 未設定なら WebAuthn は無効 (nil) とし、RP_ID 設定時に origin が無ければ
-// 起動を失敗させる (誤設定の silent 無効化を防ぐ起動時検証)。
-func loadWebAuthnRP() (*gowebauthn.WebAuthn, error) {
-	rpID := strings.TrimSpace(EnvDefault("WEBAUTHN_RP_ID", ""))
-	if rpID == "" {
+// loadWebAuthnRP は cfg.WebAuthnRP* から RP を構築する。RP_ID 未設定なら WebAuthn は
+// 無効 (nil) として扱う。RP_ID 設定時に origin が無い組み合わせは LoadSharedConfig が
+// 既に fail-fast させているため、ここでは gowebauthn.New 自体が返す構築時エラーだけを
+// 扱えばよい。
+func loadWebAuthnRP(cfg SharedConfig) (*gowebauthn.WebAuthn, error) {
+	if cfg.WebAuthnRPID == "" {
 		return nil, nil //nolint:nilnil // RP_ID 未設定は WebAuthn 無効を表す正当な状態 (エラーではない)。
 	}
-	origins := splitAndTrim(EnvDefault("WEBAUTHN_RP_ORIGINS", ""))
-	if len(origins) == 0 {
-		return nil, errors.New("WEBAUTHN_RP_ORIGINS must be set when WEBAUTHN_RP_ID is set")
-	}
 	return webauthnusecases.NewWebAuthn(webauthnusecases.WebAuthnConfig{
-		RPID:          rpID,
-		RPDisplayName: EnvDefault("WEBAUTHN_RP_DISPLAY_NAME", "idmagic"),
-		RPOrigins:     origins,
+		RPID:          cfg.WebAuthnRPID,
+		RPDisplayName: cfg.WebAuthnRPDisplayName,
+		RPOrigins:     cfg.WebAuthnRPOrigins,
 	})
 }
 

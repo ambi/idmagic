@@ -8,18 +8,26 @@ import (
 	emailSMTP "github.com/ambi/idmagic/backend/shared/notification/email_smtp"
 )
 
+func loadSharedConfigOrFatal(t *testing.T, env map[string]string) SharedConfig {
+	t.Helper()
+	l := NewConfigLoader(stubEnv(env))
+	cfg := LoadSharedConfig(l)
+	if err := l.Err(); err != nil {
+		t.Fatalf("LoadSharedConfig: %v", err)
+	}
+	return cfg
+}
+
 func TestResolveEmailSenderDefaultsToConsole(t *testing.T) {
 	t.Parallel()
-	sender, err := ResolveEmailSender(stubEnv(map[string]string{}))
-	if err != nil {
-		t.Fatalf("resolveEmailSender: %v", err)
-	}
+	cfg := loadSharedConfigOrFatal(t, map[string]string{})
+	sender := ResolveEmailSender(cfg)
 	if _, ok := sender.(emailConsole.ConsoleEmailSender); !ok {
 		t.Fatalf("default sender = %T, want ConsoleEmailSender", sender)
 	}
 }
 
-func TestResolveEmailSenderSMTPRequiresHostAndFrom(t *testing.T) {
+func TestLoadSharedConfigSMTPRequiresHostAndFrom(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name string
@@ -32,7 +40,9 @@ func TestResolveEmailSenderSMTPRequiresHostAndFrom(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := ResolveEmailSender(stubEnv(tc.env))
+			l := NewConfigLoader(stubEnv(tc.env))
+			LoadSharedConfig(l)
+			err := l.Err()
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err=%v, want substring %q", err, tc.want)
 			}
@@ -42,43 +52,30 @@ func TestResolveEmailSenderSMTPRequiresHostAndFrom(t *testing.T) {
 
 func TestResolveEmailSenderSMTPBuildsAdapter(t *testing.T) {
 	t.Parallel()
-	sender, err := ResolveEmailSender(stubEnv(map[string]string{
+	cfg := loadSharedConfigOrFatal(t, map[string]string{
 		"EMAIL_SENDER":  "smtp",
 		"SMTP_HOST":     "smtp.example.com",
 		"SMTP_FROM":     "noreply@example.com",
 		"SMTP_USERNAME": "apikey",
 		"SMTP_PASSWORD": "s3cret",
-	}))
-	if err != nil {
-		t.Fatalf("resolveEmailSender: %v", err)
-	}
+	})
+	sender := ResolveEmailSender(cfg)
 	if _, ok := sender.(*emailSMTP.SMTPEmailSender); !ok {
 		t.Fatalf("smtp sender = %T, want *SMTPEmailSender", sender)
 	}
 }
 
-func TestResolveEmailSenderRejectsUnknownKind(t *testing.T) {
+func TestLoadSharedConfigRejectsUnknownEmailSender(t *testing.T) {
 	t.Parallel()
-	_, err := ResolveEmailSender(stubEnv(map[string]string{"EMAIL_SENDER": "carrier-pigeon"}))
+	l := NewConfigLoader(stubEnv(map[string]string{"EMAIL_SENDER": "carrier-pigeon"}))
+	LoadSharedConfig(l)
+	err := l.Err()
 	if err == nil || !strings.Contains(err.Error(), "EMAIL_SENDER") {
 		t.Fatalf("err=%v, want unsupported EMAIL_SENDER error", err)
 	}
 }
 
-func TestParseSMTPTLSModeDefault(t *testing.T) {
-	t.Parallel()
-	for _, raw := range []string{"", "starttls", "STARTTLS"} {
-		mode, err := parseSMTPTLSMode(raw)
-		if err != nil {
-			t.Fatalf("parseSMTPTLSMode(%q): %v", raw, err)
-		}
-		if mode != emailSMTP.SMTPTLSSTARTTLS {
-			t.Fatalf("parseSMTPTLSMode(%q) = %q, want starttls", raw, mode)
-		}
-	}
-}
-
-func TestParseSMTPPortDefaultsPerMode(t *testing.T) {
+func TestLoadSharedConfigSMTPPortDefaultsPerMode(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		mode emailSMTP.SMTPTLSMode
@@ -89,12 +86,31 @@ func TestParseSMTPPortDefaultsPerMode(t *testing.T) {
 		{emailSMTP.SMTPTLSNone, 25},
 	}
 	for _, tc := range cases {
-		if got := parseSMTPPort("", tc.mode); got != tc.want {
-			t.Errorf("mode=%s port=%d, want %d", tc.mode, got, tc.want)
+		cfg := loadSharedConfigOrFatal(t, map[string]string{
+			"EMAIL_SENDER": "smtp", "SMTP_HOST": "h", "SMTP_FROM": "a@b", "SMTP_TLS": string(tc.mode),
+		})
+		if cfg.SMTPPort != tc.want {
+			t.Errorf("mode=%s port=%d, want %d", tc.mode, cfg.SMTPPort, tc.want)
 		}
 	}
-	if got := parseSMTPPort("2525", emailSMTP.SMTPTLSSTARTTLS); got != 2525 {
-		t.Errorf("explicit port override = %d, want 2525", got)
+
+	cfg := loadSharedConfigOrFatal(t, map[string]string{
+		"EMAIL_SENDER": "smtp", "SMTP_HOST": "h", "SMTP_FROM": "a@b", "SMTP_PORT": "2525",
+	})
+	if cfg.SMTPPort != 2525 {
+		t.Errorf("explicit port override = %d, want 2525", cfg.SMTPPort)
+	}
+}
+
+func TestLoadSharedConfigRejectsMalformedSMTPPort(t *testing.T) {
+	t.Parallel()
+	l := NewConfigLoader(stubEnv(map[string]string{
+		"EMAIL_SENDER": "smtp", "SMTP_HOST": "h", "SMTP_FROM": "a@b", "SMTP_PORT": "not-a-port",
+	}))
+	LoadSharedConfig(l)
+	err := l.Err()
+	if err == nil || !strings.Contains(err.Error(), "SMTP_PORT") {
+		t.Fatalf("err=%v, want malformed SMTP_PORT error", err)
 	}
 }
 

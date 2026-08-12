@@ -2,8 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"errors"
-	"os"
 	"time"
 
 	"github.com/ambi/idmagic/backend/apitoken"
@@ -67,37 +65,19 @@ import (
 )
 
 // assemblePostgres は PostgreSQL 単一依存の構成を組み立てる。durable state と
-// 揮発性の認証 / OAuth2 一時状態の双方を PostgreSQL に載せる。
-func assemblePostgres(ctx context.Context) (*Dependencies, error) {
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return nil, errors.New("PERSISTENCE=postgres requires DATABASE_URL")
-	}
+// 揮発性の認証 / OAuth2 一時状態の双方を PostgreSQL に載せる。cfg は呼び出し側が
+// LoadSharedConfig + ConfigLoader.Err() で既に検証済み (DATABASE_URL 必須等) である
+// ことを前提とする。
+func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, error) {
+	// 1. サーキットブレイカーの構築
+	dbBreaker := resilience.NewCircuitBreaker(cfg.DBBreaker) //nolint:contextcheck // Global breaker doesn't rely on request context
 
-	// 1. レジリエンス構成のパラメータ構築
-	dbCfg := postgres.DBConfig{
-		MaxConns:        envInt32("DB_MAX_CONNS", 20),
-		MinConns:        envInt32("DB_MIN_CONNS", 2),
-		MaxConnIdleTime: EnvDuration("DB_MAX_CONN_IDLE_TIME", 30*time.Second),
-		MaxConnLifetime: EnvDuration("DB_MAX_CONN_LIFETIME", 1*time.Hour),
-		ConnectTimeout:  EnvDuration("DB_CONNECT_TIMEOUT", 5*time.Second),
-		QueryTimeout:    EnvDuration("DB_QUERY_TIMEOUT", 5*time.Second),
-	}
-
-	// 2. サーキットブレイカーの構築
-	dbBreaker := resilience.NewCircuitBreaker(resilience.Settings{ //nolint:contextcheck // Global breaker doesn't rely on request context
-		Name:             "postgres",
-		FailureThreshold: envFloat("DB_BREAKER_FAILURE_THRESHOLD", 0.5),
-		Cooldown:         EnvDuration("DB_BREAKER_COOLDOWN", 30*time.Second),
-		MinRequests:      envCircuitBreakerMinRequests("DB_BREAKER_MIN_REQUESTS"),
-	})
-
-	// 3. 接続オープン
-	pool, err := postgres.Open(ctx, databaseURL, dbCfg)
+	// 2. 接続オープン
+	pool, err := postgres.Open(ctx, cfg.DatabaseURL.Value(), cfg.DB)
 	if err != nil {
 		return nil, err
 	}
-	resilientDB := postgres.NewResilientDB(pool, dbBreaker, dbCfg.QueryTimeout)
+	resilientDB := postgres.NewResilientDB(pool, dbBreaker, cfg.DB.QueryTimeout)
 	tenantRepo := &tenancypostgres.TenantRepository{Pool: resilientDB}
 	// NewKeyStore bootstraps the default tenant signing key, whose FK requires
 	// the tenant row to exist first. Fresh databases (including `just dev`) must
@@ -118,7 +98,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 		pool.Close()
 		return nil, err
 	}
-	masterKeyProvider, err := selectMasterKeyProvider()
+	masterKeyProvider, err := selectMasterKeyProvider(cfg)
 	if err != nil {
 		pool.Close()
 		return nil, err
@@ -219,7 +199,7 @@ func assemblePostgres(ctx context.Context) (*Dependencies, error) {
 			AccessTokenDenylist:        &oauth2postgres.AccessTokenDenylist{Pool: resilientDB},
 			EventSink:                  sinks_console.NewConsoleSink(),
 		},
-		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(keyStore)},
+		SigningKeys: signingkeys.Module{KeyStore: selectKeyStore(cfg, keyStore)},
 		DataKeys:    datakeys.Module{Repository: dataKeysRepo, Cache: dataKeysCache, Crypto: dataKeysCrypto, Migrators: dataKeysMigrators},
 		Audit: audit.Module{
 			AuditEventRepo:  &auditpostgres.AuditEventRepository{Pool: resilientDB},

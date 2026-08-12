@@ -1,6 +1,6 @@
 ---
 context: system
-updated_at: 2026-08-11
+updated_at: 2026-08-12
 ---
 
 # System Specification
@@ -239,6 +239,12 @@ New `*Page.tsx` files (and refactors of existing ones) follow a container/presen
 - The tenant-wide default sign-in policy applies to an application as an override, not a composed floor,
   of that application's own policy — the precedent that motivated this file's container/presentation
   component split, first applied to the admin UI built for that decision.
+- 起動時設定は `backend/cmd/internal/bootstrap` が所有する単一の Config 型へ集約してパース・検証する。
+  Fail-fast の対象は必須値欠落、型・範囲不正、相互に矛盾する組み合わせ (例: persistence が postgres
+  なのに DSN が空) であり、検証は listener 起動前に集約エラーとして返し部分起動させない。secret と
+  分類したフィールド (DSN、SMTP 資格情報、API キー等) は検証エラー・起動ログ・生成する設定
+  リファレンスのいずれにも値を出さない。idmagic (API) プロセスから段階的に導入し、他プロセスへの
+  適用は追って行う。
 
 ## Scenarios
 
@@ -367,3 +373,15 @@ New `*Page.tsx` files (and refactors of existing ones) follow a container/presen
 - THEN 直前の画面への同一オリジン相対 return_to を保ったまま再認可を1回だけ開始する
   - ALT 再認可から復旧できない → 再ログイン導線を提示する
 - THEN 再ログイン完了後に元の AdminDashboard へ復帰する
+
+### REQ-SYSTEM-016: 起動時設定の検証に失敗するとプロセスは部分起動せず集約エラーで停止する
+- ACTOR Operator
+- GIVEN Operator が環境変数で設定検証を実装した backend プロセス (idmagic) の設定を与える
+- WHEN プロセスが起動時に Config を集約・検証する
+  - ALT 必須値が欠落している → 検証は該当キーを含む集約エラーを返す → プロセスは listener を開始せず終了する
+  - ALT 値の型・範囲が不正である (数値でない、負の duration 等) → 検証は該当キーを含む集約エラーを返す → プロセスは listener を開始せず終了する
+  - ALT 相互に矛盾する組み合わせである (persistence が postgres なのに DSN が空等) → 検証は該当する組み合わせを含む集約エラーを返す → プロセスは listener を開始せず終了する
+- THEN 発生したすべての検証エラーが1回の起動試行で集約されて報告される
+- THEN 検証エラーおよび起動ログは secret として分類された値 (DSN、SMTP 資格情報、API キー等) を含まない
+- WHEN すべての検証を通過する
+- THEN プロセスは検証済み Config を用いて初期化を完了する

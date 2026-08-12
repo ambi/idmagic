@@ -12,7 +12,11 @@ import (
 )
 
 func TestLoadHTTPServerHardeningDefaults(t *testing.T) {
-	h := LoadHTTPServerHardening()
+	l := NewConfigLoader(stubEnv(nil))
+	h := LoadHTTPServerHardening(l)
+	if err := l.Err(); err != nil {
+		t.Fatalf("LoadHTTPServerHardening: %v", err)
+	}
 	if h.ReadHeaderTimeout != 10*time.Second {
 		t.Errorf("ReadHeaderTimeout = %v, want 10s", h.ReadHeaderTimeout)
 	}
@@ -31,13 +35,17 @@ func TestLoadHTTPServerHardeningDefaults(t *testing.T) {
 }
 
 func TestLoadHTTPServerHardeningEnvOverride(t *testing.T) {
-	t.Setenv("HTTP_READ_HEADER_TIMEOUT", "5s")
-	t.Setenv("HTTP_READ_TIMEOUT", "15s")
-	t.Setenv("HTTP_WRITE_TIMEOUT", "45s")
-	t.Setenv("HTTP_IDLE_TIMEOUT", "90s")
-	t.Setenv("HTTP_MAX_BODY_BYTES", "2048")
-
-	h := LoadHTTPServerHardening()
+	l := NewConfigLoader(stubEnv(map[string]string{
+		"HTTP_READ_HEADER_TIMEOUT": "5s",
+		"HTTP_READ_TIMEOUT":        "15s",
+		"HTTP_WRITE_TIMEOUT":       "45s",
+		"HTTP_IDLE_TIMEOUT":        "90s",
+		"HTTP_MAX_BODY_BYTES":      "2048",
+	}))
+	h := LoadHTTPServerHardening(l)
+	if err := l.Err(); err != nil {
+		t.Fatalf("LoadHTTPServerHardening: %v", err)
+	}
 	if h.ReadHeaderTimeout != 5*time.Second {
 		t.Errorf("ReadHeaderTimeout = %v, want 5s", h.ReadHeaderTimeout)
 	}
@@ -55,16 +63,24 @@ func TestLoadHTTPServerHardeningEnvOverride(t *testing.T) {
 	}
 }
 
-func TestLoadHTTPServerHardeningInvalidEnvFallsBack(t *testing.T) {
-	t.Setenv("HTTP_READ_TIMEOUT", "not-a-duration")
-	t.Setenv("HTTP_MAX_BODY_BYTES", "-1")
-
-	h := LoadHTTPServerHardening()
-	if h.ReadTimeout != 30*time.Second {
-		t.Errorf("ReadTimeout = %v, want default 30s on invalid value", h.ReadTimeout)
+// TestLoadHTTPServerHardeningInvalidEnvFailsFast asserts wi-103's fail-fast
+// requirement: a malformed value must stop startup, not silently fall back
+// to the default (the previous behavior this test used to assert).
+func TestLoadHTTPServerHardeningInvalidEnvFailsFast(t *testing.T) {
+	l := NewConfigLoader(stubEnv(map[string]string{
+		"HTTP_READ_TIMEOUT":   "not-a-duration",
+		"HTTP_MAX_BODY_BYTES": "-1",
+	}))
+	LoadHTTPServerHardening(l)
+	err := l.Err()
+	if err == nil {
+		t.Fatal("expected an error for malformed HTTP_READ_TIMEOUT/HTTP_MAX_BODY_BYTES")
 	}
-	if h.MaxBodyBytes != 1<<20 {
-		t.Errorf("MaxBodyBytes = %d, want default on invalid value", h.MaxBodyBytes)
+	if !strings.Contains(err.Error(), "HTTP_READ_TIMEOUT") {
+		t.Errorf("err=%v, want it to mention HTTP_READ_TIMEOUT", err)
+	}
+	if !strings.Contains(err.Error(), "HTTP_MAX_BODY_BYTES") {
+		t.Errorf("err=%v, want it to mention HTTP_MAX_BODY_BYTES", err)
 	}
 }
 

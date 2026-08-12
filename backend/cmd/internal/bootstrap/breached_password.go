@@ -2,8 +2,6 @@ package bootstrap
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	"github.com/ambi/idmagic/backend/shared/logging"
@@ -14,22 +12,16 @@ import (
 // breachedPasswordCheckerVersion は HIBP の User-Agent に乗せる版番号 (HIBP の etiquette)。
 const breachedPasswordCheckerVersion = "0.3.0"
 
-// resolveBreachedPasswordChecker は BREACHED_PASSWORD_CHECKER 環境変数から
-// BreachedPasswordChecker adapter を組み立てる。既定は noop (外部依存なし)。
-// hibp 選択時は api.pwnedpasswords.com への egress が要る。
-func ResolveBreachedPasswordChecker(getenv func(string) string) (passwordports.BreachedPasswordChecker, error) {
-	kind := strings.ToLower(strings.TrimSpace(getenv("BREACHED_PASSWORD_CHECKER")))
-	if kind == "" {
-		kind = "noop"
-	}
-	switch kind {
-	case "noop":
-		logging.Info(context.Background(), "breached password checker configured", "kind", "noop")
-		return breachesNoop.NoopBreachedPasswordChecker{}, nil
-	case "hibp":
+// ResolveBreachedPasswordChecker builds the BreachedPasswordChecker adapter
+// selected by cfg.BreachedPasswordChecker. cfg is assumed already validated
+// by LoadSharedConfig (BREACHED_PASSWORD_CHECKER is a closed enum), so this
+// function only constructs the adapter. hibp 選択時は api.pwnedpasswords.com
+// への egress が要る。
+func ResolveBreachedPasswordChecker(cfg SharedConfig) passwordports.BreachedPasswordChecker {
+	if cfg.BreachedPasswordChecker == "hibp" {
 		logging.Info(context.Background(), "breached password checker configured", "kind", "hibp")
-		return breachesHIBP.NewHibpBreachedPasswordChecker(breachedPasswordCheckerVersion), nil
-	default:
-		return nil, fmt.Errorf("unsupported BREACHED_PASSWORD_CHECKER=%q (want noop or hibp)", kind)
+		return breachesHIBP.NewHibpBreachedPasswordChecker(breachedPasswordCheckerVersion)
 	}
+	logging.Info(context.Background(), "breached password checker configured", "kind", "noop")
+	return breachesNoop.NoopBreachedPasswordChecker{}
 }
