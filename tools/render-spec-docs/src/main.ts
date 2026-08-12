@@ -3,9 +3,9 @@
 import { compile, formatDiagnostic, NodeHost } from '@typespec/compiler'
 import { Window } from 'happy-dom'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { basename, dirname, resolve } from 'node:path'
+import { basename, dirname, relative, resolve } from 'node:path'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
-import { renderSpecificationSite, type SourceDocument } from './render.ts'
+import { renderSpecificationSite, type ScenarioTrace, type SourceDocument } from './render.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
 
 const root = resolve(import.meta.dir, '../../..')
@@ -31,6 +31,56 @@ for (const path of paths.sort()) {
 }
 const openapi = JSON.parse(await readFile(openapiPath, 'utf8'))
 
+/**
+ * Collect what names a scenario outside the specification. The search runs over
+ * the working tree rather than an authored index, so the traceability view can
+ * never drift from what the repository actually says.
+ */
+const SCENARIO_IDENTIFIER = /REQ-[A-Z0-9]+-[0-9]+/g
+const SKIPPED_DIRECTORIES = new Set([
+  '.git',
+  'node_modules',
+  'vendor',
+  'dist',
+  'build',
+  'generated',
+  'coverage',
+])
+const TEXT_EXTENSIONS = /\.(?:go|ts|tsx|js|jsx|sql|sh|py|rb|java|kt|rs|md|yaml|yml|json|tsp|toml)$/
+
+async function collectTraces(): Promise<ScenarioTrace[]> {
+  const sources = new Map<string, Set<string>>()
+  const workItems = new Map<string, Set<string>>()
+  const walk = async (directory: string): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (entry.name.startsWith('.') || SKIPPED_DIRECTORIES.has(entry.name)) continue
+      const absolute = resolve(directory, entry.name)
+      const path = relative(root, absolute)
+      if (entry.isDirectory()) {
+        await walk(absolute)
+        continue
+      }
+      // The specification declares the scenarios; only what points at them counts.
+      if (path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path)) continue
+      const target = path.startsWith('work-items/') ? workItems : sources
+      for (const match of (await readFile(absolute, 'utf8')).matchAll(SCENARIO_IDENTIFIER)) {
+        const paths = target.get(match[0]) ?? new Set<string>()
+        paths.add(path)
+        target.set(match[0], paths)
+      }
+    }
+  }
+  await walk(root)
+  const ids = new Set([...sources.keys(), ...workItems.keys()])
+  return [...ids].map((id) => ({
+    id,
+    sources: [...(sources.get(id) ?? [])].sort(),
+    workItems: [...(workItems.get(id) ?? [])].sort(),
+  }))
+}
+
+const traces = await collectTraces()
+
 const program = await compile(NodeHost, typespecPath, { noEmit: true })
 if (program.hasError()) {
   throw new Error(program.diagnostics.map((diagnostic) => formatDiagnostic(diagnostic)).join('\n'))
@@ -44,6 +94,7 @@ const result = renderSpecificationSite({
   outputDirectory,
   openapiFileName: basename(openapiPath),
   models,
+  traces,
 })
 
 const validationWindow = new Window()

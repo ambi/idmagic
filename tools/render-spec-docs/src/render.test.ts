@@ -114,6 +114,7 @@ describe('renderSpecificationSite', () => {
       'models/example-demo-internalrecord.html',
       'models/index.html',
       'specification/index.html',
+      'traceability/index.html',
     ])
     expect(result.files['index.html']).toContain('Whole-System Specification')
     expect(result.files['index.html']).toContain('href="contexts/demo/index.html"')

@@ -2,6 +2,19 @@ import { dirname, posix, relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
+/**
+ * What names a normative scenario outside the specification. Collected by
+ * searching for the identifier, so the specification itself needs no back
+ * references to code and stays the only place the behavior is stated.
+ */
+export type ScenarioTrace = {
+  id: string
+  /** Repository-relative code and test paths that name the scenario. */
+  sources: string[]
+  /** Work item paths that name the scenario. */
+  workItems: string[]
+}
+
 export type SourceDocument = {
   path: string
   source: string
@@ -330,7 +343,7 @@ function navigation(page: string, documents: RenderedDocument[]): string {
         return `<a data-site-link${current} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(entry.title)}</a>`
       })
       .join('')}</section>`
-  return `${group('Method', method)}${root ? group('Whole System', [root]) : ''}${group('Contexts', contexts)}<section class="nav-group"><h2>References</h2>${siteLink(page, 'api/index.html', 'API Reference')}${siteLink(page, 'models/index.html', 'Model Catalog')}</section>`
+  return `${group('Method', method)}${root ? group('Whole System', [root]) : ''}${group('Contexts', contexts)}<section class="nav-group"><h2>References</h2>${siteLink(page, 'api/index.html', 'API Reference')}${siteLink(page, 'models/index.html', 'Model Catalog')}${siteLink(page, 'traceability/index.html', 'Traceability')}</section>`
 }
 
 function breadcrumbs(page: string, current: string): string {
@@ -457,6 +470,53 @@ function propertyRows(
     .join('')
 }
 
+function scenarioIndex(documents: RenderedDocument[]): ScenarioEntry[] {
+  const entries: ScenarioEntry[] = []
+  for (const document of documents) {
+    // Method documents illustrate the grammar in fenced examples; only
+    // specification documents declare scenarios.
+    if (document.category === 'method') continue
+    for (const match of document.source.matchAll(/^### (REQ-[A-Z0-9-]+): (.+)$/gm)) {
+      entries.push({
+        id: match[1] ?? '',
+        title: match[2] ?? '',
+        document,
+        anchor: `${document.id}-${slug(`${match[1]}: ${match[2]}`)}`,
+      })
+    }
+  }
+  return entries.sort((a, b) => a.id.localeCompare(b.id))
+}
+
+type ScenarioEntry = {
+  id: string
+  title: string
+  document: RenderedDocument
+  anchor: string
+}
+
+function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]): string {
+  const page = 'traceability/index.html'
+  const byId = new Map(traces.map((trace) => [trace.id, trace]))
+  const scenarios = scenarioIndex(documents)
+  const covered = scenarios.filter((scenario) => (byId.get(scenario.id)?.sources.length ?? 0) > 0)
+  const paths = (label: string, entries: string[]) =>
+    entries.length === 0
+      ? `<span class="trace-empty">no ${escapeHtml(label)}</span>`
+      : `<ul class="trace-paths">${entries
+          .map((entry) => `<li><code>${escapeHtml(entry)}</code></li>`)
+          .join('')}</ul>`
+  const rows = scenarios
+    .map((scenario) => {
+      const trace = byId.get(scenario.id)
+      const href = `${pageHref(page, scenario.document.outputPath)}#${scenario.anchor}`
+      return `<tr><th scope="row"><a data-site-link href="${escapeHtml(href)}">${escapeHtml(scenario.id)}</a><span class="trace-title">${escapeHtml(scenario.title)}</span></th><td>${paths('reference', trace?.sources ?? [])}</td><td>${paths('work item', trace?.workItems ?? [])}</td></tr>`
+    })
+    .join('')
+  const body = `<header class="reference-header"><p class="eyebrow">Derived from the repository</p><h1>Traceability</h1><p>Every normative scenario, the code and tests that name its identifier, and the work items that recorded it. References are collected by searching for the identifier, so a scenario appears here only once something outside the specification names it. ${covered.length} of ${scenarios.length} scenarios carry at least one reference.</p></header><table class="trace-table"><thead><tr><th scope="col">Scenario</th><th scope="col">Code and tests</th><th scope="col">Work items</th></tr></thead><tbody>${rows}</tbody></table>`
+  return shell({ page, title: 'Traceability', current: 'Traceability', body, documents })
+}
+
 function modelIndex(models: CatalogSymbol[], documents: RenderedDocument[]): string {
   const page = 'models/index.html'
   const groups = new Map<string, CatalogSymbol[]>()
@@ -574,7 +634,8 @@ function validateSiteLinks(files: Record<string, string>): void {
 const styles = `
 :root{color-scheme:light dark;--bg:#f4f6fb;--panel:#fff;--panel-2:#f8f9fd;--text:#182033;--muted:#667085;--line:#d9dfeb;--accent:#3457d5;--accent-soft:#e9eeff;--code:#edf1f8;--shadow:0 12px 32px rgba(25,35,60,.08);--actor:#6d28d9;--given:#176b87;--when:#9a5b00;--then:#157347;--alt:#b42318;--diagram-line:#294cba}
 @media(prefers-color-scheme:dark){:root{--bg:#0f131b;--panel:#171c27;--panel-2:#1d2431;--text:#eef2f8;--muted:#a7b0c1;--line:#30394b;--accent:#9db1ff;--accent-soft:#242f52;--code:#242b39;--shadow:none;--actor:#c4a7ff;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--alt:#ff9a91;--diagram-line:#b9c8ff}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group h2{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.actor{color:var(--actor)}.scenario-keyword.given{color:var(--given)}.scenario-keyword.when{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword.alt{color:var(--alt)}li:has(>.scenario-keyword){margin:.45em 0}li>ul li:has(>.scenario-keyword.alt){padding-left:8px;border-left:3px solid var(--alt)}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--panel-2)}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group h2{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.actor{color:var(--actor)}.scenario-keyword.given{color:var(--given)}.scenario-keyword.when{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword.alt{color:var(--alt)}li:has(>.scenario-keyword){margin:.45em 0}li>ul li:has(>.scenario-keyword.alt){padding-left:8px;border-left:3px solid var(--alt)}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-title{color:var(--muted);font-weight:400}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
+.model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--panel-2)}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
 @media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}main{width:auto;margin:0;padding:18px}.document,.reference-page,.model-detail,.hero{padding:24px 20px}.hero h1{font-size:34px}.diagram-shell .mermaid{min-width:480px}}
 @media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link{display:none}main{width:auto;margin:0;padding:0}.document,.reference-page,.model-detail,.hero{border:0;box-shadow:none;padding:0}a{color:inherit;text-decoration:none}}
 `
@@ -602,6 +663,7 @@ export function renderSpecificationSite(args: {
   outputDirectory: string
   openapiFileName: string
   models: CatalogSymbol[]
+  traces?: ScenarioTrace[]
 }): RenderedSpecificationSite {
   const documents = args.documents.map(documentMetadata)
   const openapi = inspectOpenApi(args.openapi)
@@ -624,6 +686,7 @@ export function renderSpecificationSite(args: {
     'index.html': landingPage(documents, args.models.length),
     'api/index.html': apiPage(args.openapi, args.openapiFileName, documents),
     'models/index.html': modelIndex(args.models, documents),
+    'traceability/index.html': traceabilityPage(documents, args.traces ?? []),
   }
   for (const document of documents)
     files[document.outputPath] = documentPage(document, documents, markdown)
