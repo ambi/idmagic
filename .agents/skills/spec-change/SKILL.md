@@ -15,8 +15,9 @@ Update the smallest owning specification before the implementation.
 4. Give each new observable normative behavior an unused `REQ-<CONTEXT>-NNN`. Never reuse or reorder
    an existing id. Retire a behavior with `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather
    than deleting it.
-5. Keep behavior that holds only when several contexts cooperate in the root `SPECIFICATION.md` as
-   `REQ-SYSTEM-NNN`, naming the participating contexts.
+5. Keep behavior that holds only when several contexts cooperate in the document that owns the
+   cross-context view — in this repository `spec/contexts/system/SPECIFICATION.md`, as
+   `REQ-SYSTEM-NNN` — naming the participating contexts.
 6. Do not add a fine-grained authorization policy DSL. TypeSpec records the authentication scheme;
    authorization behavior stays in code and tests.
 7. Sync the work item's `affected_spec` with the normative scenario or standard id, or the TypeSpec

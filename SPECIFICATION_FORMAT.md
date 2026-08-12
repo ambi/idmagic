@@ -48,9 +48,10 @@ their order are *(checked)*. Put the overview in this document once; do not repe
 implementation-side design file.
 
 A context document owns only behavior that context can satisfy and verify on its own. Behavior that holds
-only when several contexts cooperate belongs to the root document as `REQ-SYSTEM-NNN` and names the
-participating contexts in the scenario. Splitting such a flow into per-context fragments leaves no place
-where the real guarantee is stated.
+only when several contexts cooperate belongs to whichever document declares ownership of the
+cross-context view — the root document, or a system-level context that says so in its `Overview` — and
+names the participating contexts in the scenario. Splitting such a flow into per-context fragments leaves
+no place where the real guarantee is stated.
 
 `Design` records current structure, dependency direction, runtime composition, adopted technologies,
 security boundaries, operational constraints, and concise durable rationale. Change-specific comparisons

@@ -1486,7 +1486,7 @@ model ListAdminRolePoliciesError403 {
   @body body: ListAdminRolePoliciesError403Body;
 }
 
-@doc("管理者が SCL authorization から導出された、自身に可視な role・permission・HTTP interface の対応を取得する。")
+@doc("管理者が、自身に可視な role・permission・HTTP interface の対応を取得する。")
 @TypeSpec.OpenAPI.operationId("ListAdminRolePolicies")
 @route("/api/admin/v1/policy/roles")
 @get

@@ -45,8 +45,6 @@ spec:
               value: "http://localhost:4318" # OTLP collector サイドカー/エンドポイント
             - name: OTEL_EXPORTER_OTLP_PROTOCOL
               value: "http/protobuf"
-            - name: SCL_PATH
-              value: "/app/spec/scl.yaml"
             - name: WEBAUTHN_RP_ID
               value: "id.example.com"
             - name: WEBAUTHN_RP_ORIGINS

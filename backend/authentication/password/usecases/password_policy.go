@@ -1,8 +1,8 @@
 // Package usecases: Layer 3 - Application Logic（パスワードポリシー）
 //
-// 仕様核は spec/scl.yaml `objectives.PasswordPolicy`。本ファイルはその
-// 双子定義。SCL と本ファイルの値が乖離すると spec↔impl drift になるため、
-// coherence test (spec_bindings) で突き合わせる。
+// Authentication context の PasswordPolicy 既定値をここで宣言する。テナント上書きの
+// スキーマと、UI へ返す現行値 (PasswordPolicyDefaults) は spec/contexts/tenancy に
+// あり、そちらと値が乖離すると spec↔impl drift になる。
 package usecases
 
 import (
@@ -28,7 +28,7 @@ const (
 )
 
 // PasswordPolicyBreachedCheckEnabled は breached password check の宣言的既定値
-// (spec/scl.yaml objectives.PasswordPolicy.value.breached_password_check_enabled の双子)。
+// (tenancy の PasswordPolicyDefaults.breached_password_check_enabled が返す値)。
 // 既定は false で NoopBreachedPasswordChecker を使う。実運用では
 // BREACHED_PASSWORD_CHECKER=hibp で adapter を差し替えて有効化する。テナント別の
 // opt-out は Phase 4。

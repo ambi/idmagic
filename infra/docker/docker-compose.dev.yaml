@@ -93,7 +93,6 @@ services:
       OBSERVABILITY: otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
-      SCL_PATH: /app/spec/scl.yaml
       SEED_ENVIRONMENT: development
       SEED_PROFILE: development
       DEMO_CLIENT_SECRET: demo-client-secret

@@ -9,7 +9,7 @@ import (
 
 // WorkloadTokenVerifierAdapter satisfies oauth2/ports.WorkloadTokenVerifier
 // (structurally; this package does not import oauth2 to keep the dependency
-// one-directional per spec/scl.yaml). It is the composition-root wiring point
+// one-directional, as `just check-boundaries` enforces). It is the wiring point
 // between OAuth2's token-exchange grant and WorkloadIdentity.
 type WorkloadTokenVerifierAdapter struct {
 	Deps VerifyWorkloadAttestationDeps

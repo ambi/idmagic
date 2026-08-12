@@ -81,8 +81,8 @@ func CheckRevocationEpoch(ctx context.Context, deps RevocationDeps, tenantID, ag
 type AgentRevocationReactor struct {
 	EpochRepo ssports.AgentRevocationEpochRepository
 	// AgentRepo resolves the agent set owned by a disabled/deleted user
-	// (SharedSignals depends on IdManagement's AgentRepository per
-	// spec/scl.yaml context_map).
+	// (SharedSignals depends on IdManagement's AgentRepository; the context
+	// relationships live in spec/SPECIFICATION.md Design).
 	AgentRepo agentports.AgentRepository
 	// Emit records the derived RevocationEpochAdvanced / AgentAccessRevoked
 	// events (best-effort audit trail is the caller's concern to compose;

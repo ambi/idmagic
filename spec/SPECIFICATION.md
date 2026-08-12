@@ -48,8 +48,7 @@ context names. The exceptions are collected under `backend/shared/`.
 ├── infra/             # container, local runtime, and database schema assets
 ├── load/k6/           # tenant-local OAuth SLO smoke
 ├── tools/             # specification, boundary, compatibility, and rendering tools
-├── decisions/         # read-only historical decision archive
-└── work-items/        # units of work and completion records
+└── work-items/        # units of work, decision history, and completion records
 ```
 
 Dependencies run from `spec` toward the implementations and derived artifacts. `backend` domain and
@@ -784,7 +783,9 @@ derived reading view rather than a specification source.
 - Endpoint rate limiting is a shared technical capability rather than a business aggregate, uses a fixed
   window rather than token-bucket/sliding-window counters, and stays fail-closed and PostgreSQL-only.
 - Requirement IDs and TypeSpec symbols provide direct specification references without a repository-wide
-  traceability manifest. Tests and work items cite those stable names where the evidence is useful.
+  traceability manifest. Tests and work items cite those stable names where the evidence is useful, and
+  the generated site derives the scenario-to-code view from those citations rather than from an authored
+  index.
 - Repository paths and imports are the executable structure. The check rejects forbidden outward
   dependencies without requiring every allowed module and edge to be declared twice.
 - LifecycleWorkflow policy and orchestration live in IdGovernance, while IdManagement remains the record

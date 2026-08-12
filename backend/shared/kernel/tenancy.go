@@ -1,6 +1,6 @@
 // Package kernel は複数 bounded context から真に published language として参照される、
-// ごく小さな型・定数のみを持つ。何を収録するかは spec/scl.yaml
-// context_map の publishes/depends_on.uses を規範とする。
+// ごく小さな型・定数のみを持つ。何を収録するかは spec/SPECIFICATION.md Design の
+// context 関係（各 context が publish するもの / 依存するもの）を規範とする。
 package kernel
 
 // DefaultTenantID は既定テナントの不変 UUID 代理キー。所有権は

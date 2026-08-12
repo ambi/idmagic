@@ -1,13 +1,13 @@
-// Package spec: SCL → Go バインディング。
+// Package spec: 仕様の Go バインディング。
 //
-// 仕様本体（language-agnostic）は spec/scl.yaml。
-// 本ファイルはランタイム検証のための Go バインディング。SCL を変更したら本ファイル
-// も合わせて更新する。乖離は coherence test で検出する。
+// 仕様本体（language-agnostic）は spec/**/*.tsp と spec/**/SPECIFICATION.md。
+// 本ファイルはランタイム検証のための Go バインディングで、仕様を変更したら合わせて
+// 更新する。
 package spec
 
 // ===============================================================
-// SCL `models` セクションの enum を Go の typed string で表す。
-// ワイヤ形式（snake_case）は vocabulary[].aliases[0] と同じ。
+// TypeSpec の enum を Go の typed string で表す。
+// ワイヤ形式は TypeSpec の宣言と同じ snake_case。
 // ===============================================================
 
 type ClientType string
