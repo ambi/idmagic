@@ -20,7 +20,7 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	}
 	ctx := context.Background()
 	dryRun := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeDryRun}
-	plan, err := Seed(ctx, deps, dryRun)
+	plan, err := Seed(ctx, deps, dryRun, "")
 	if err != nil {
 		t.Fatalf("Seed(dry-run) error = %v", err)
 	}
@@ -34,7 +34,7 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 
 	apply := dryRun
 	apply.Mode = domain.ModeApply
-	first, err := Seed(ctx, deps, apply)
+	first, err := Seed(ctx, deps, apply, "")
 	if err != nil {
 		t.Fatalf("Seed(first apply) error = %v", err)
 	}
@@ -49,7 +49,7 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Recent(password history) error = %v", err)
 	}
-	second, err := Seed(ctx, deps, apply)
+	second, err := Seed(ctx, deps, apply, "")
 	if err != nil {
 		t.Fatalf("Seed(second apply) error = %v", err)
 	}
@@ -78,7 +78,7 @@ func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
 	}
 	ctx := context.Background()
 	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfileDevelopment, Mode: domain.ModeApply}
-	if _, err := Seed(ctx, deps, request); err != nil {
+	if _, err := Seed(ctx, deps, request, ""); err != nil {
 		t.Fatalf("Seed(initial) error = %v", err)
 	}
 	client, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
@@ -92,7 +92,7 @@ func TestSeedRejectsManualDriftWithoutOverwritingIt(t *testing.T) {
 	if err := deps.OAuth2.ClientRepo.Save(ctx, client); err != nil {
 		t.Fatalf("Save(manual drift) error = %v", err)
 	}
-	if _, err := Seed(ctx, deps, request); err == nil {
+	if _, err := Seed(ctx, deps, request, ""); err == nil {
 		t.Fatal("Seed(drift) error = nil, want conflict")
 	}
 	kept, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
@@ -121,10 +121,10 @@ func TestPerformanceSeedIsDeterministicAndIdempotent(t *testing.T) {
 		t.Fatalf("assembleMemory(SharedConfig{}) error = %v", err)
 	}
 	request := domain.Request{Environment: domain.EnvironmentDevelopment, Profile: domain.ProfilePerformance, Mode: domain.ModeApply, Count: 3}
-	if _, err := Seed(context.Background(), deps, request); err != nil {
+	if _, err := Seed(context.Background(), deps, request, ""); err != nil {
 		t.Fatalf("Seed(first apply) error = %v", err)
 	}
-	second, err := Seed(context.Background(), deps, request)
+	second, err := Seed(context.Background(), deps, request, "")
 	if err != nil {
 		t.Fatalf("Seed(second apply) error = %v", err)
 	}

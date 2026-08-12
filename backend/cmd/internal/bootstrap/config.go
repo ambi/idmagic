@@ -58,6 +58,43 @@ func (s Secret) GoString() string             { return "[REDACTED]" }
 func (s Secret) MarshalJSON() ([]byte, error) { return []byte(`"[REDACTED]"`), nil }
 func (s Secret) MarshalText() ([]byte, error) { return []byte("[REDACTED]"), nil }
 
+// Field type names used by ConfigField.Type and rendered verbatim into the
+// generated ConfigurationReference.
+const (
+	fieldTypeString   = "string"
+	fieldTypeSecret   = "secret"
+	fieldTypeBool     = "boolean"
+	fieldTypeInt      = "integer"
+	fieldTypeFloat    = "number"
+	fieldTypeDuration = "duration"
+	fieldTypeURL      = "url"
+	fieldTypeEnum     = "enum"
+	fieldTypeEnumList = "enum list"
+	fieldTypeList     = "list"
+)
+
+// ConfigField is the metadata ConfigLoader records for every key it reads.
+// It carries exactly what an operator needs to set the key — type, default,
+// whether it is required, its allowed values or range — so the
+// ConfigurationReference is generated from the same calls that parse the
+// value and cannot drift from what a process actually reads
+// (REQ-SYSTEM-017). Secret fields record no Default: their value never
+// leaves the process.
+type ConfigField struct {
+	Key        string
+	Type       string
+	Default    string
+	Constraint string
+	Allowed    []string
+	Required   bool
+	// RequiredWhen names the condition that makes an otherwise optional
+	// field mandatory, for example PERSISTENCE=postgres. It is metadata for
+	// the generated reference; runtime enforcement remains in Required* or
+	// Require calls beside the Config definition.
+	RequiredWhen string
+	Secret       bool
+}
+
 // ConfigLoader reads typed startup configuration from an env-like source and
 // aggregates every parse or required-value failure instead of silently
 // falling back to a default. A single ConfigLoader is meant to be shared
@@ -66,17 +103,83 @@ func (s Secret) MarshalText() ([]byte, error) { return []byte("[REDACTED]"), nil
 type ConfigLoader struct {
 	getenv func(string) string
 	errs   ConfigErrors
+	fields []ConfigField
+	index  map[string]int
 }
 
 // NewConfigLoader creates a ConfigLoader reading from getenv (os.Getenv in
 // production, a stub map in tests).
 func NewConfigLoader(getenv func(string) string) *ConfigLoader {
-	return &ConfigLoader{getenv: getenv}
+	return &ConfigLoader{getenv: getenv, index: map[string]int{}}
 }
 
 func (l *ConfigLoader) fail(key, problem string) {
 	l.errs = append(l.errs, ConfigError{Key: key, Problem: problem})
 }
+
+// record registers key's metadata, merging it with an earlier read of the
+// same key: a field read twice (once unconditionally, once as required
+// under a cross-field condition) is one row in the reference, and any read
+// that required it makes it required.
+func (l *ConfigLoader) record(f ConfigField) {
+	if i, ok := l.index[f.Key]; ok {
+		existing := &l.fields[i]
+		existing.Required = existing.Required || f.Required
+		if existing.RequiredWhen == "" {
+			existing.RequiredWhen = f.RequiredWhen
+		}
+		existing.Secret = existing.Secret || f.Secret
+		if existing.Default == "" {
+			existing.Default = f.Default
+		}
+		if existing.Constraint == "" {
+			existing.Constraint = f.Constraint
+		}
+		if len(existing.Allowed) == 0 {
+			existing.Allowed = f.Allowed
+		}
+		return
+	}
+	l.index[f.Key] = len(l.fields)
+	l.fields = append(l.fields, f)
+}
+
+// constrain attaches a range constraint to an already recorded key.
+func (l *ConfigLoader) constrain(key, constraint string) {
+	if i, ok := l.index[key]; ok {
+		l.fields[i].Constraint = constraint
+	}
+}
+
+// retype narrows an already recorded key's type, for accessors layered on a
+// more general one (URL and Enum both read a String first).
+func (l *ConfigLoader) retype(key, fieldType string) {
+	if i, ok := l.index[key]; ok {
+		l.fields[i].Type = fieldType
+	}
+}
+
+// allow attaches the accepted values to an already recorded key.
+func (l *ConfigLoader) allow(key string, allowed []string) {
+	if i, ok := l.index[key]; ok && len(allowed) > 0 {
+		l.fields[i].Allowed = allowed
+	}
+}
+
+// RequiredWhen records the condition under which key is required. Call it
+// beside the corresponding cross-field validation so the generated
+// ConfigurationReference reports conditional requirements without needing
+// to execute every possible configuration combination (REQ-SYSTEM-017).
+func (l *ConfigLoader) RequiredWhen(key, condition string) {
+	if i, ok := l.index[key]; ok {
+		l.fields[i].RequiredWhen = condition
+	}
+}
+
+// Fields returns every key read through this loader, in first-read order.
+// The ConfigurationReference generator loads each process's config into its
+// own loader and renders these rows (REQ-SYSTEM-017).
+func (l *ConfigLoader) Fields() []ConfigField { return slices.Clone(l.fields) }
 
 // Err returns the aggregated validation error accumulated so far, or nil if
 // every field loaded (and every Require call) has succeeded.
@@ -94,6 +197,7 @@ func (l *ConfigLoader) raw(key string) (string, bool) {
 
 // String returns the trimmed value of key, or fallback when unset.
 func (l *ConfigLoader) String(key, fallback string) string {
+	l.record(ConfigField{Key: key, Type: fieldTypeString, Default: fallback})
 	if v, ok := l.raw(key); ok {
 		return v
 	}
@@ -103,6 +207,7 @@ func (l *ConfigLoader) String(key, fallback string) string {
 // RequiredString returns the trimmed value of key, recording a ConfigError
 // when it is unset.
 func (l *ConfigLoader) RequiredString(key string) string {
+	l.record(ConfigField{Key: key, Type: fieldTypeString, Required: true})
 	v, ok := l.raw(key)
 	if !ok {
 		l.fail(key, "is required")
@@ -110,8 +215,20 @@ func (l *ConfigLoader) RequiredString(key string) string {
 	return v
 }
 
+// StringList returns key split on commas with each element trimmed, or
+// fallback when unset.
+func (l *ConfigLoader) StringList(key string, fallback []string) []string {
+	l.record(ConfigField{Key: key, Type: fieldTypeList, Default: strings.Join(fallback, ",")})
+	v, ok := l.raw(key)
+	if !ok {
+		return fallback
+	}
+	return splitAndTrim(v)
+}
+
 // Secret returns key wrapped as a Secret, redacted-by-default.
 func (l *ConfigLoader) Secret(key string) Secret {
+	l.record(ConfigField{Key: key, Type: fieldTypeSecret, Secret: true})
 	v, _ := l.raw(key)
 	return NewSecret(v)
 }
@@ -119,6 +236,7 @@ func (l *ConfigLoader) Secret(key string) Secret {
 // RequiredSecret returns key wrapped as a Secret, recording a ConfigError
 // when it is unset. The error message never includes the value.
 func (l *ConfigLoader) RequiredSecret(key string) Secret {
+	l.record(ConfigField{Key: key, Type: fieldTypeSecret, Secret: true, Required: true})
 	v, ok := l.raw(key)
 	if !ok {
 		l.fail(key, "is required")
@@ -129,6 +247,10 @@ func (l *ConfigLoader) RequiredSecret(key string) Secret {
 // Bool parses key as "true"/"false" (case-insensitive), recording a
 // ConfigError for any other non-empty value instead of treating it as false.
 func (l *ConfigLoader) Bool(key string, fallback bool) bool {
+	l.record(ConfigField{
+		Key: key, Type: fieldTypeBool,
+		Default: strconv.FormatBool(fallback), Allowed: []string{"true", "false"},
+	})
 	v, ok := l.raw(key)
 	if !ok {
 		return fallback
@@ -147,6 +269,7 @@ func (l *ConfigLoader) Bool(key string, fallback bool) bool {
 // Int parses key as a base-10 integer, recording a ConfigError on a parse
 // failure instead of silently keeping fallback.
 func (l *ConfigLoader) Int(key string, fallback int) int {
+	l.record(ConfigField{Key: key, Type: fieldTypeInt, Default: strconv.Itoa(fallback)})
 	v, ok := l.raw(key)
 	if !ok {
 		return fallback
@@ -162,6 +285,7 @@ func (l *ConfigLoader) Int(key string, fallback int) int {
 // PositiveInt is Int plus a > 0 range check.
 func (l *ConfigLoader) PositiveInt(key string, fallback int) int {
 	parsed := l.Int(key, fallback)
+	l.constrain(key, "> 0")
 	if parsed <= 0 {
 		l.fail(key, fmt.Sprintf("must be positive, got %d", parsed))
 		return fallback
@@ -172,6 +296,7 @@ func (l *ConfigLoader) PositiveInt(key string, fallback int) int {
 // NonNegativeInt is Int plus a >= 0 range check.
 func (l *ConfigLoader) NonNegativeInt(key string, fallback int) int {
 	parsed := l.Int(key, fallback)
+	l.constrain(key, ">= 0")
 	if parsed < 0 {
 		l.fail(key, fmt.Sprintf("must not be negative, got %d", parsed))
 		return fallback
@@ -181,6 +306,7 @@ func (l *ConfigLoader) NonNegativeInt(key string, fallback int) int {
 
 // Int32 parses key as a base-10 32-bit integer.
 func (l *ConfigLoader) Int32(key string, fallback int32) int32 {
+	l.record(ConfigField{Key: key, Type: fieldTypeInt, Default: strconv.FormatInt(int64(fallback), 10)})
 	v, ok := l.raw(key)
 	if !ok {
 		return fallback
@@ -196,6 +322,7 @@ func (l *ConfigLoader) Int32(key string, fallback int32) int32 {
 // NonNegativeInt32 is Int32 plus a >= 0 range check.
 func (l *ConfigLoader) NonNegativeInt32(key string, fallback int32) int32 {
 	parsed := l.Int32(key, fallback)
+	l.constrain(key, ">= 0")
 	if parsed < 0 {
 		l.fail(key, fmt.Sprintf("must not be negative, got %d", parsed))
 		return fallback
@@ -205,6 +332,10 @@ func (l *ConfigLoader) NonNegativeInt32(key string, fallback int32) int32 {
 
 // NonNegativeUint32 parses key as a base-10 unsigned 32-bit integer.
 func (l *ConfigLoader) NonNegativeUint32(key string, fallback uint32) uint32 {
+	l.record(ConfigField{
+		Key: key, Type: fieldTypeInt,
+		Default: strconv.FormatUint(uint64(fallback), 10), Constraint: ">= 0",
+	})
 	v, ok := l.raw(key)
 	if !ok {
 		return fallback
@@ -219,6 +350,10 @@ func (l *ConfigLoader) NonNegativeUint32(key string, fallback uint32) uint32 {
 
 // Float parses key as a base-10 float.
 func (l *ConfigLoader) Float(key string, fallback float64) float64 {
+	l.record(ConfigField{
+		Key: key, Type: fieldTypeFloat,
+		Default: strconv.FormatFloat(fallback, 'g', -1, 64),
+	})
 	v, ok := l.raw(key)
 	if !ok {
 		return fallback
@@ -234,6 +369,7 @@ func (l *ConfigLoader) Float(key string, fallback float64) float64 {
 // FloatRange is Float plus a [minVal, maxVal] inclusive range check.
 func (l *ConfigLoader) FloatRange(key string, fallback, minVal, maxVal float64) float64 {
 	parsed := l.Float(key, fallback)
+	l.constrain(key, fmt.Sprintf("%v..%v", minVal, maxVal))
 	if parsed < minVal || parsed > maxVal {
 		l.fail(key, fmt.Sprintf("must be between %v and %v, got %v", minVal, maxVal, parsed))
 		return fallback
@@ -243,6 +379,7 @@ func (l *ConfigLoader) FloatRange(key string, fallback, minVal, maxVal float64) 
 
 // Duration parses key with time.ParseDuration.
 func (l *ConfigLoader) Duration(key string, fallback time.Duration) time.Duration {
+	l.record(ConfigField{Key: key, Type: fieldTypeDuration, Default: fallback.String()})
 	v, ok := l.raw(key)
 	if !ok {
 		return fallback
@@ -258,6 +395,7 @@ func (l *ConfigLoader) Duration(key string, fallback time.Duration) time.Duratio
 // PositiveDuration is Duration plus a > 0 range check.
 func (l *ConfigLoader) PositiveDuration(key string, fallback time.Duration) time.Duration {
 	parsed := l.Duration(key, fallback)
+	l.constrain(key, "> 0")
 	if parsed <= 0 {
 		l.fail(key, fmt.Sprintf("must be positive, got %s", parsed))
 		return fallback
@@ -269,6 +407,7 @@ func (l *ConfigLoader) PositiveDuration(key string, fallback time.Duration) time
 // the non-empty value does not parse as an absolute URL.
 func (l *ConfigLoader) URL(key, fallback string) string {
 	v := l.String(key, fallback)
+	l.retype(key, fieldTypeURL)
 	if v == "" {
 		return v
 	}
@@ -282,6 +421,7 @@ func (l *ConfigLoader) URL(key, fallback string) string {
 // RequiredURL is URL plus a required-value check.
 func (l *ConfigLoader) RequiredURL(key string) string {
 	v := l.RequiredString(key)
+	l.retype(key, fieldTypeURL)
 	if v == "" {
 		return v
 	}
@@ -298,11 +438,71 @@ func (l *ConfigLoader) RequiredURL(key string) string {
 // is case-insensitive.
 func (l *ConfigLoader) Enum(key, fallback string, allowed ...string) string {
 	v := l.String(key, fallback)
+	l.retype(key, fieldTypeEnum)
+	l.allow(key, allowed)
 	if slices.Contains(allowed, v) {
 		return v
 	}
 	l.fail(key, fmt.Sprintf("must be one of %s, got %q", strings.Join(allowed, ", "), v))
 	return fallback
+}
+
+// EnumFold is Enum with case-insensitive input, returning the normalized
+// lower-case value. It preserves existing configuration compatibility while
+// still rejecting unknown selectors instead of silently choosing an adapter.
+func (l *ConfigLoader) EnumFold(key, fallback string, allowed ...string) string {
+	raw := l.String(key, fallback)
+	l.retype(key, fieldTypeEnum)
+	l.allow(key, allowed)
+	v := strings.ToLower(raw)
+	if slices.Contains(allowed, v) {
+		return v
+	}
+	l.fail(key, fmt.Sprintf("must be one of %s, got %q", strings.Join(allowed, ", "), raw))
+	return fallback
+}
+
+// OptionalEnum is Enum for a setting whose empty value means "disabled".
+// Empty is not rendered as an allowed value, while any non-empty unknown
+// value is retained in the returned Config only so related validation can
+// still aggregate; callers must not use the Config when Err() is non-nil.
+func (l *ConfigLoader) OptionalEnum(key string, allowed ...string) string {
+	v := l.String(key, "")
+	l.retype(key, fieldTypeEnum)
+	l.allow(key, allowed)
+	if v == "" || slices.Contains(allowed, v) {
+		return v
+	}
+	l.fail(key, fmt.Sprintf("must be one of %s, got %q", strings.Join(allowed, ", "), v))
+	return v
+}
+
+// OptionalEnumFold is OptionalEnum with case-insensitive input.
+func (l *ConfigLoader) OptionalEnumFold(key string, allowed ...string) string {
+	raw := l.String(key, "")
+	l.retype(key, fieldTypeEnum)
+	l.allow(key, allowed)
+	v := strings.ToLower(raw)
+	if v == "" || slices.Contains(allowed, v) {
+		return v
+	}
+	l.fail(key, fmt.Sprintf("must be one of %s, got %q", strings.Join(allowed, ", "), raw))
+	return v
+}
+
+// EnumList returns key split on commas with each element trimmed (or
+// fallback when unset), recording a ConfigError for any element that is not
+// one of allowed.
+func (l *ConfigLoader) EnumList(key string, fallback []string, allowed ...string) []string {
+	v := l.StringList(key, fallback)
+	l.retype(key, fieldTypeEnumList)
+	l.allow(key, allowed)
+	for _, element := range v {
+		if !slices.Contains(allowed, element) {
+			l.fail(key, fmt.Sprintf("must contain only %s, got %q", strings.Join(allowed, ", "), element))
+		}
+	}
+	return v
 }
 
 // Require records a ConfigError attributed to key when ok is false, for

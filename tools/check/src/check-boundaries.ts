@@ -33,6 +33,26 @@ for (const file of files) {
   const extension = extname(file)
   if (extension === '.go' && rel.startsWith('backend/') && !rel.endsWith('_test.go')) {
     const source = await readFile(file, 'utf8')
+    // Startup configuration is read in one place. `backend/cmd/internal/bootstrap`
+    // owns env access and validates it, so an invalid value fails startup instead
+    // of silently falling back; `*_env` adapters resolve runtime locators rather
+    // than startup configuration and keep their own env access.
+    const ownsEnvAccess =
+      rel.startsWith('backend/cmd/internal/bootstrap/') || /\/[a-z0-9]+_env\//.test(rel)
+    if (!ownsEnvAccess) {
+      const envReads = [...source.matchAll(/os\.(?:Getenv|LookupEnv|Environ)\b/g)].filter(
+        (match) =>
+          !source
+            .slice(Math.max(0, (match.index ?? 0) - 30), match.index)
+            .includes('bootstrap.NewConfigLoader('),
+      )
+      if (envReads.length > 0) {
+        console.error(
+          `${rel}: startup configuration must be read through bootstrap's ConfigLoader, not os.Getenv`,
+        )
+        failed = true
+      }
+    }
     const imports = [...source.matchAll(/"([^"\n]+)"/g)]
       .map((match) => match[1] ?? '')
       .filter((imported) => imported.startsWith(backendImportPrefix))

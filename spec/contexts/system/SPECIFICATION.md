@@ -1,6 +1,6 @@
 ---
 context: system
-updated_at: 2026-08-12
+updated_at: 2026-08-13
 ---
 
 # System Specification
@@ -35,6 +35,7 @@ module boundaries are inferred from paths and forbidden imports; run instruction
 | APIConsumer | HTTP API を直接呼び出す外部クライアント。 |  |
 | InterfaceStability | interface の外部契約としての性質を表す区分。stable は互換を保証する外部契約、beta は互換保証前の外部契約、internal は browser session 専用または domain-internal で外部契約に含めない区分。stable/beta は同時 2 版までパス版で提供し、非推奨表明から最低 12 か月は維持する。 | stability tier, 安定性区分 |
 | Deprecation | stable/beta の interface を将来削除する予告。deprecated_since 以降は応答に Deprecation ヘッダを付与し、sunset_at が定まれば Sunset ヘッダも付与する。sunset_at は deprecated_since から最低 12 か月後でなければならない。 | 非推奨化 |
+| ConfigurationReference | backend プロセスが起動時に読む設定キーの網羅一覧。キー名、値の型、既定値、必須か、読むプロセス、説明を持ち、secret として分類されたキーは値を持たない。Config の定義から生成する。 | 設定リファレンス |
 
 ## Standards
 
@@ -242,9 +243,11 @@ New `*Page.tsx` files (and refactors of existing ones) follow a container/presen
 - 起動時設定は `backend/cmd/internal/bootstrap` が所有する単一の Config 型へ集約してパース・検証する。
   Fail-fast の対象は必須値欠落、型・範囲不正、相互に矛盾する組み合わせ (例: persistence が postgres
   なのに DSN が空) であり、検証は listener 起動前に集約エラーとして返し部分起動させない。secret と
-  分類したフィールド (DSN、SMTP 資格情報、API キー等) は検証エラー・起動ログ・生成する設定
-  リファレンスのいずれにも値を出さない。idmagic (API) プロセスから段階的に導入し、他プロセスへの
-  適用は追って行う。
+  分類したフィールド (DSN、SMTP 資格情報、API キー等) は検証エラー・起動ログ・ConfigurationReference
+  のいずれにも値を出さない。全 backend プロセス (idmagic, idmagic-worker, idmagic-batch, idmagic-seed)
+  がこの Config を通して環境を読み、`backend/cmd/internal/bootstrap` の外で環境変数を直接読まない。
+- ConfigurationReference は Config の定義から生成し、生成物として追跡する。定義と生成物の乖離は
+  リポジトリ検証で失敗させ、運用者向けの設定表を手書きで二重管理しない。
 
 ## Scenarios
 
@@ -376,12 +379,22 @@ New `*Page.tsx` files (and refactors of existing ones) follow a container/presen
 
 ### REQ-SYSTEM-016: 起動時設定の検証に失敗するとプロセスは部分起動せず集約エラーで停止する
 - ACTOR Operator
-- GIVEN Operator が環境変数で設定検証を実装した backend プロセス (idmagic) の設定を与える
+- GIVEN Operator が環境変数で backend プロセス (idmagic, idmagic-worker, idmagic-batch, idmagic-seed) の設定を与える
 - WHEN プロセスが起動時に Config を集約・検証する
-  - ALT 必須値が欠落している → 検証は該当キーを含む集約エラーを返す → プロセスは listener を開始せず終了する
-  - ALT 値の型・範囲が不正である (数値でない、負の duration 等) → 検証は該当キーを含む集約エラーを返す → プロセスは listener を開始せず終了する
-  - ALT 相互に矛盾する組み合わせである (persistence が postgres なのに DSN が空等) → 検証は該当する組み合わせを含む集約エラーを返す → プロセスは listener を開始せず終了する
+  - ALT 必須値が欠落している → 検証は該当キーを含む集約エラーを返す → プロセスは副作用のある初期化 (listener の待受、永続化依存への接続、seed の適用) を開始せず終了する
+  - ALT 値の型・範囲が不正である (数値でない、負の duration 等) → 検証は該当キーを含む集約エラーを返す → プロセスは副作用のある初期化を開始せず終了する
+  - ALT 相互に矛盾する組み合わせである (persistence が postgres なのに DSN が空等) → 検証は該当する組み合わせを含む集約エラーを返す → プロセスは副作用のある初期化を開始せず終了する
 - THEN 発生したすべての検証エラーが1回の起動試行で集約されて報告される
 - THEN 検証エラーおよび起動ログは secret として分類された値 (DSN、SMTP 資格情報、API キー等) を含まない
 - WHEN すべての検証を通過する
 - THEN プロセスは検証済み Config を用いて初期化を完了する
+
+### REQ-SYSTEM-017: ConfigurationReference は起動時設定の定義から生成され乖離を検出できる
+- ACTOR Operator
+- GIVEN backend プロセスの起動時設定が Config として一箇所で定義されている
+- WHEN ConfigurationReference を生成する
+- THEN 生成物は設定可能な各キーについて、キー名、値の型、既定値、必須か、読むプロセス、説明を含む
+- THEN 生成物は secret として分類されたキーについて値を含まず、secret である旨のみを示す
+- WHEN 生成物と Config の定義を突き合わせる
+  - ALT 生成物が定義と一致しない → 突き合わせは失敗し、乖離したキーを報告する
+- THEN Operator は Config の実装を読まずに設定可能な全キーを参照できる

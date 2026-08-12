@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -35,11 +34,6 @@ import (
 	scimsource "github.com/ambi/idmagic/backend/sourcing/scim/source_idmanagement"
 )
 
-// allLanes is the compat-mode default for JOB_WORKER_LANES: a single
-// idmagic-worker process claims every lane. Dedicated per-lane deployments
-// (production topology) instead set JOB_WORKER_LANES to a single lane.
-var allLanes = []domain.ExecutionLane{domain.LaneLatencySensitive, domain.LaneDefault, domain.LaneBulk}
-
 // RunWorker starts the durable job queue worker process:
 // idmagic-worker claims and executes Jobs independently of, and horizontally
 // scalable apart from, idmagic-api. It also owns the periodic retention
@@ -50,19 +44,22 @@ var allLanes = []domain.ExecutionLane{domain.LaneLatencySensitive, domain.LaneDe
 // than becoming a queued Job.
 func RunWorker() error {
 	buildInfo := version.Get()
-	serviceName := bootstrap.EnvDefault("OTEL_SERVICE_NAME", "idmagic-worker")
-	logLevel := logging.ParseLevel(os.Getenv("LOG_LEVEL"))
-	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
-	logger := logging.Default()
 
-	// Assemble が読む共有設定 (persistence/notification/webauthn/authzen/
-	// keystore/datakeys) は idmagic (API) と同じ検証を通す。worker 固有の
-	// JOB_*/WORKER_ID 等は未移行 (wi-103 の後続タスク)。
+	// 共有設定 (persistence/notification/webauthn/authzen/keystore/datakeys) と
+	// worker 固有設定 (JOB_*/WORKER_ID/sweep 間隔) を同じ loader で読み、
+	// Assemble・metrics listener・Runner 起動より前に一括で検証する
+	// (REQ-SYSTEM-016)。
 	loader := bootstrap.NewConfigLoader(os.Getenv)
 	shared := bootstrap.LoadSharedConfig(loader)
+	worker := bootstrap.LoadWorkerConfig(loader)
 	if err := loader.Err(); err != nil {
 		return fmt.Errorf("load startup configuration: %w", err)
 	}
+
+	serviceName := worker.OTelServiceName
+	logLevel := logging.ParseLevel(worker.LogLevel)
+	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
+	logger := logging.Default()
 
 	deps, err := bootstrap.Assemble(context.Background(), shared)
 	if err != nil {
@@ -83,7 +80,7 @@ func RunWorker() error {
 	}
 	defer func() { _ = appMetrics.Shutdown(context.Background()) }()
 	metricsServer := &http.Server{
-		Addr:              bootstrap.EnvDefault("ADDR", ":8080"),
+		Addr:              worker.Addr,
 		Handler:           metricsMux(appMetrics),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
@@ -159,25 +156,25 @@ func RunWorker() error {
 	attrSource := &identitysource.UserAttributeSource{UserRepo: deps.IdManagement.UserRepo}
 	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, provisioning.NewTargetClient)))
 	go provisioningDispatchLoop(ctx, deps)
-	go ephemeralSweepLoop(ctx, deps)
-	go sharedSignalsDeliveryLoop(ctx, deps)
+	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
+	go sharedSignalsDeliveryLoop(ctx, deps, worker.SharedSignalsDeliveryInterval)
 
-	workerID := bootstrap.EnvDefault("WORKER_ID", workerIDFallback())
-	lanes, err := resolveWorkerLanes()
-	if err != nil {
-		return err
+	workerID := worker.WorkerID
+	if workerID == "" {
+		workerID = workerIDFallback()
 	}
+	lanes := worker.Lanes
 	runners := make([]*usecases.Runner, 0, len(lanes))
 	for _, lane := range lanes {
 		runners = append(runners, usecases.NewRunner(
 			usecases.RunnerConfig{
 				WorkerID:      workerID + "-" + string(lane),
 				Lane:          lane,
-				PollInterval:  bootstrap.EnvDuration("JOB_POLL_INTERVAL", 2*time.Second),
-				Concurrency:   laneConcurrency(lane),
-				LeaseDuration: bootstrap.EnvDuration("JOB_LEASE_DURATION", 5*time.Minute),
-				BackoffBase:   bootstrap.EnvDuration("JOB_BACKOFF_BASE", domain.DefaultBackoffBase),
-				BackoffCap:    bootstrap.EnvDuration("JOB_BACKOFF_CAP", domain.DefaultBackoffCap),
+				PollInterval:  worker.PollInterval,
+				Concurrency:   worker.Concurrency[lane],
+				LeaseDuration: worker.LeaseDuration,
+				BackoffBase:   worker.BackoffBase,
+				BackoffCap:    worker.BackoffCap,
 			},
 			usecases.RunnerDeps{
 				Repo:     deps.Jobs.Repo,
@@ -207,12 +204,7 @@ func RunWorker() error {
 	// process one shared grace period; lanes that don't finish in time exit
 	// anyway. In-flight leases then expire naturally and another worker
 	// reclaims them, same as a hard kill.
-	drainGracePeriod := 5 * time.Second
-	if val := os.Getenv("DRAIN_GRACE_PERIOD_SECONDS"); val != "" {
-		if parsed, err := time.ParseDuration(val + "s"); err == nil {
-			drainGracePeriod = parsed
-		}
-	}
+	drainGracePeriod := worker.DrainGracePeriod
 	logger.Info(context.Background(), "received signal, draining in-flight jobs", "grace_period", drainGracePeriod.String(), "lanes", lanes)
 	deadline := time.After(drainGracePeriod)
 	for remaining := len(runners); remaining > 0; {
@@ -228,39 +220,6 @@ func RunWorker() error {
 		}
 	}
 	return nil
-}
-
-// resolveWorkerLanes parses JOB_WORKER_LANES (comma-separated ExecutionLanes)
-// into the lanes this process's Runners claim. It defaults to every lane
-// (compat mode, decision 5(b)): the standard Docker-less development
-// environment and docker-compose both rely on this default so a single
-// process still serves every JobKind. Dedicated per-lane production
-// deployments set it to exactly one lane.
-func resolveWorkerLanes() ([]domain.ExecutionLane, error) {
-	raw := strings.TrimSpace(os.Getenv("JOB_WORKER_LANES"))
-	if raw == "" {
-		return allLanes, nil
-	}
-	parts := strings.Split(raw, ",")
-	lanes := make([]domain.ExecutionLane, 0, len(parts))
-	for _, p := range parts {
-		lane := domain.ExecutionLane(strings.TrimSpace(p))
-		if !lane.Valid() {
-			return nil, fmt.Errorf("JOB_WORKER_LANES: invalid ExecutionLane %q", lane)
-		}
-		lanes = append(lanes, lane)
-	}
-	return lanes, nil
-}
-
-// laneConcurrency resolves a lane's worker concurrency from
-// JOB_WORKER_CONCURRENCY_<LANE> (e.g. JOB_WORKER_CONCURRENCY_LATENCY_SENSITIVE),
-// falling back to the shared JOB_WORKER_CONCURRENCY (default 4) when
-// no lane-specific override is set. This lets a dedicated
-// latency_sensitive deployment reserve capacity independently of bulk's.
-func laneConcurrency(lane domain.ExecutionLane) int {
-	key := "JOB_WORKER_CONCURRENCY_" + strings.ToUpper(string(lane))
-	return bootstrap.EnvInt(key, bootstrap.EnvInt("JOB_WORKER_CONCURRENCY", 4))
 }
 
 // metricsMux serves only GET /metrics: idmagic-worker has no other HTTP
@@ -301,8 +260,8 @@ func jobsQueueDepthSamplingLoop(ctx context.Context, repo ports.JobRepository, a
 // ephemeralSweepLoop は揮発性ストア の期限切れ行を周期的に空間回収する。
 // retention sweep (idmagic-batch, 外部 cron) と違い、ephemeral は短 TTL なので常駐 worker の
 // 高頻度 ticker で回す。正しさは read の expires_at 述語が担保するため best-effort でよい。
-func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies) {
-	ticker := time.NewTicker(bootstrap.EnvDuration("EPHEMERAL_SWEEP_INTERVAL", 60*time.Second))
+func ephemeralSweepLoop(ctx context.Context, deps *bootstrap.Dependencies, interval time.Duration) {
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		if err := bootstrap.RunEphemeralSweepOnce(ctx, deps, time.Now().UTC()); err != nil {
@@ -357,7 +316,7 @@ func provisioningDispatchLoop(ctx context.Context, deps *bootstrap.Dependencies)
 // SecurityEventDelivery already owns its own attempt_count/next_attempt_at/
 // status state machine (SecurityEventDeliveryLifecycle), so it does not need
 // a second retry mechanism layered on top.
-func sharedSignalsDeliveryLoop(ctx context.Context, deps *bootstrap.Dependencies) {
+func sharedSignalsDeliveryLoop(ctx context.Context, deps *bootstrap.Dependencies, interval time.Duration) {
 	logger := logging.Default()
 	// NewEmitFunc intentionally uses its own background+timeout context for
 	// audit writes rather than this loop's ctx, so an audit record isn't lost
@@ -371,7 +330,7 @@ func sharedSignalsDeliveryLoop(ctx context.Context, deps *bootstrap.Dependencies
 			return nil
 		},
 	}
-	ticker := time.NewTicker(bootstrap.EnvDuration("SHARED_SIGNALS_DELIVERY_INTERVAL", 5*time.Second))
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
 		if _, err := sharedsignalsusecases.ProcessDueDeliveries(ctx, deliverDeps, time.Now().UTC(), 100); err != nil {

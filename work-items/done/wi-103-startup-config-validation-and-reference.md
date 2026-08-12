@@ -1,14 +1,29 @@
 ---
 depends_on: []
-status: in_progress  # pending | in_progress | completed | cancelled
+status: completed  # pending | in_progress | completed | cancelled
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-04
 change_kind: feature
 initial_context:
-  source: [backend/cmd/internal/bootstrap, backend/cmd/idmagic, backend/cmd/idmagic-worker]
+  specification:
+    - spec/contexts/system/SPECIFICATION.md#REQ-SYSTEM-016
+    - spec/contexts/system/SPECIFICATION.md#REQ-SYSTEM-017
+  source:
+    - backend/cmd/internal/bootstrap
+    - backend/cmd/idmagic/server.go
+    - backend/cmd/idmagic-worker/worker.go
+    - backend/cmd/idmagic-batch
+    - backend/cmd/idmagic-seed/main.go
+    - tools/check/src/check-boundaries.ts
+    - justfile
+    - README.md
+  tests:
+    - backend/cmd/internal/bootstrap
+    - backend/cmd/idmagic-worker
 affected_spec:
   - { path: spec/contexts/system/SPECIFICATION.md, requirement: REQ-SYSTEM-016 }
+  - { path: spec/contexts/system/SPECIFICATION.md, requirement: REQ-SYSTEM-017 }
 ---
 
 # 起動時の設定を集約・検証し fail-fast させ、単一の設定リファレンスを生成する
@@ -64,9 +79,9 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
   (条件付き必須のcross-field検証、secret redaction、既存adapter固有型への詰め替え) は
   どのライブラリを使っても手書きになり、型変換の定型部分 (100〜150 行程度) を削れる
   だけで新規依存のコストに見合わない。
-- 第一段の対象は idmagic (API) プロセスに限定した。`Assemble()` は idmagic-worker/
-  idmagic-batch/idmagic-seed からも呼ばれる共有関数のため、`SharedConfig` の検証は
-  副次的にこれらのプロセスにも及ぶが、worker 固有 (`JOB_*` 等) の移行は T004 で扱う。
+- `SharedConfig` は全 backend プロセスで共有し、`APIConfig`、`WorkerConfig`、`SeedConfig`
+  はプロセス固有設定を同じ `ConfigLoader` へ読み込む。batch の restore consistency check は
+  DB 以外の設定へ依存させず、専用 loader で `DATABASE_URL` だけを必須 secret として読む。
 
 ## Plan
 - idmagic (API) が起動時に読む env をすべて `SharedConfig` (Assemble が使う共有部分) と
@@ -77,54 +92,85 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
   DATABASE_URL 必須、key_provider=vault/data_key_provider=openbao には資格情報必須、
   authzen=remote には URL 必須、issuer URL 等) を行い、`Assemble()` や listener 起動より
   前に全 error をまとめて返す。
-- 残タスク (T004-T006): worker/batch/seed 固有 env の移行、field metadata からの
-  reference 生成 just recipe、compose/CI/deployment manifest と README の移行は
-  後続の work item に切り出す。
+- field metadata と各 `Load*Config` を生成元に ConfigurationReference を作り、同じキーを
+  複数プロセスが異なる既定値で読む場合は各 process section に個別の行を残す。README は
+  手書き一覧を持たず生成物へリンクし、リポジトリ検証で定義との乖離を拒否する。
 
 ## Tasks
 - [x] T001 [Inventory] idmagic (API) が起動時に読む全 env read (bootstrap 配下 + `cmd/idmagic/server.go`)
       を一覧化し、source は environment のみ (file source は Out of Scope として見送り)、
-      secret 判定、fail-fast 対象を決定した。idmagic-worker/idmagic-batch/idmagic-seed 固有の
-      env (JOB_*, WORKER_ID, SEED_* 等) と deploy consumer (compose/CI/manifest) の棚卸しは
-      未実施 (T004/T006 で扱う)。
+      secret 判定、fail-fast 対象を決定した。T004/T006 で idmagic-worker/idmagic-batch/
+      idmagic-seed 固有 env と deploy consumer (compose/CI/manifest) まで棚卸しを完了した。
 - [x] T002 [Config Core] `backend/cmd/internal/bootstrap/config.go` に typed `ConfigLoader`
-      (String/Secret/Bool/Int/Int32/Uint32/Float/Duration/URL/Enum + Require)、`ConfigErrors`
+      (String/Secret/Bool/Int/Int32/Uint32/Float/Duration/URL/Enum/List + Require)、`ConfigErrors`
       aggregation、`Secret` (String/GoString/MarshalJSON/MarshalText を常に `[REDACTED]` にする
-      redaction) を実装した。field metadata レジストリ (name/type/default/required/secret/
-      process/description/example/deprecation を一箇所に持つ表) は T005 (未着手) 向けに見送り、
-      今回は各 `Load*Config` 内の個別呼び出しに留めている。file source loader は未実装。
+      redaction)、生成用 field metadata (type/default/required/secret/allowed/constraint) を
+      実装した。description は T005 の検査付き表で補い、file source loader は Out of Scope とした。
 - [x] T003 [Validation] `sharedconfig.go` (`LoadSharedConfig`: persistence/authzen/webauthn/
       postgres/key_provider/data_key_provider/email·smtp/default_locale/breached_password_checker)
       と `apiconfig.go` (`LoadAPIConfig`: issuer/addr/otel/log_level/request_id/tenant_base_domain/
       trusted_forwarded_hops/rate_limits/http hardening/security headers/drain_grace_period) を
       実装し、`cmd/idmagic/server.go` の `Run()` 冒頭で両方をロードして `loader.Err()` を
       listener 起動・`Assemble()` より前に確認する (REQ-SYSTEM-016)。TLS 組み合わせ検証は
-      対象env変数が存在しない (TLS はゲートウェイが終端) ため対象外。
-- [ ] T004 [Migration] idmagic は完了。idmagic-worker/idmagic-batch/idmagic-seed 固有の
-      `os.Getenv`/`EnvDefault`/`EnvInt`/`EnvDuration` 直参照 (JOB_*, WORKER_ID,
-      EPHEMERAL_SWEEP_INTERVAL, SHARED_SIGNALS_DELIVERY_INTERVAL, SEED_* 等) は未移行。
-      直接 `os.Getenv` を禁止する architecture test/lint も未追加。
-- [ ] T005 [Generation] 未着手。
-- [ ] T006 [Deploy/Docs] 未着手。compose/CI/deployment examples/README は現行の env 名のまま。
-- [x] T007 [Verify] (idmagic scope) missing/malformed/unknown/conflicting values と secret
-      redaction を単体テストで、fail-fast (集約エラー・部分起動なし) と正常起動を手動起動で
-      検証した。all runtime modes (worker/batch/seed 固有設定) と generated reference
-      freshness は T004/T005 が未着手のため対象外。
+      対象env変数が存在しない (TLS はゲートウェイが終端) ため対象外。RED/GREEN:
+      `TestLoadSharedConfigRejectsUnknownAdapterSelectors` で adapter selector の typo も拒否する。
+- [x] T004 [Migration] REQ-SYSTEM-016: idmagic-worker/idmagic-batch/idmagic-seed の固有 env を
+      `WorkerConfig`/`SeedConfig`/専用 `ConfigLoader` へ移し、旧 `EnvDefault`/`EnvInt`/
+      `EnvDuration` を削除した。RED: `TestLoadSeedConfigRejectsUnknownProfileAndEnvironment`、
+      GREEN: 同テスト、`TestLoadWorkerConfigRejectsMalformedIntervals`、
+      `TestLoadWorkerConfigRejectsInvalidLane`。bootstrap 外の `os.Getenv` 等を境界検査で拒否する。
+- [x] T005 [Generation] REQ-SYSTEM-017: `ConfigLoader` が記録する field metadata と
+      `RenderConfigReference` から `CONFIGURATION.md` を生成し、`just generate-config-reference` /
+      `just check-config-reference` を追加した。RED/GREEN:
+      `TestRenderConfigReferenceRecordsTypeDefaultAndRequirement`、
+      `TestRenderConfigReferenceKeepsProcessSpecificDefaults`。secret 値、条件付き必須、
+      process 固有 default を検証する。
+- [x] T006 [Deploy/Docs] README の手書き設定表を ConfigurationReference への導線へ置換した。
+      compose/CI/deployment manifest は既存の互換 env 名を継続利用でき、キー名変更は不要だった。
+- [x] T007 [Verify] 全 runtime mode の狭い Go テスト、設定リファレンス freshness、仕様・境界・
+      API 互換性検査、`just verify`、`just spec-diff` を実行して Completion に記録する。
 
 ## Verification
-- `just test-go-race` - 合格
-- `just lint-go` - 合格
-- `just verify` - 合格
-- 手動: `TRUSTED_FORWARDED_HOPS=not-a-number PERSISTENCE=postgres` で起動し、
-  `DATABASE_URL: is required` と `TRUSTED_FORWARDED_HOPS: must be an integer` の
-  2 件が 1 回の集約エラーで返り、listener が起動しないことを確認した。
-- 手動: 既定値のみ (memory persistence) で起動し `/livez` が 200 を返すことを確認した。
-- 手動 (未実施, T005 未着手のため): 生成された設定リファレンスが実 Config 型と一致することを確認する。
+- `just test-go-package ./backend/cmd/internal/bootstrap`
+- `just test-go-package ./backend/cmd/idmagic-worker`
+- `just check-config-reference`
+- `just check-spec`
+- `just check-api-compat`
+- `just check-boundaries`
+- `just verify`
+- `just spec-diff`
 
 ## Risk Notes
 黙って fallback していた挙動を fail-fast に変えると、既存のゆるい設定で
-動いていた環境が起動できなくなり得る。今回は idmagic (API) プロセスに限定して導入し、
+動いていた環境が起動できなくなり得る。全 backend プロセスへ導入し、
 `HSTS_INCLUDE_SUBDOMAINS`/`CSP_REPORT_ONLY`/`HSTS_ENABLED` は「`true`/`false` 以外は
 静かに既定値」から「`true`/`false` 以外は起動失敗」へ挙動を厳格化した (security に
-効く boolean のため意図的な変更)。worker/batch/seed 固有設定への展開 (T004) は
-本番デプロイでの実地確認を経てから段階的に進める。
+効く boolean のため意図的な変更)。worker の duration/concurrency/lane と seed の
+profile/environment も不正値を既定値へ戻さず起動を拒否するため、deploy 前に生成済み
+ConfigurationReference と既存 manifest の値を照合する。
+
+## Completion
+- **Completed At**: 2026-08-13
+- **Summary**:
+  REQ-SYSTEM-016 を idmagic だけから全 backend プロセスへ拡張し、環境由来設定を
+  bootstrap の型付き ConfigLoader に集約した。未知・型不正・範囲外・条件付き必須の
+  問題は listener、依存接続、seed 適用より前に一括報告し、secret は formatting/JSON/
+  生成ドキュメントで redaction する。REQ-SYSTEM-017 を追加し、process 固有 default と
+  条件付き必須を含む `CONFIGURATION.md` を Config metadata から生成して freshness を
+  リポジトリ検証へ組み込んだ。`just spec-diff` の意味差分は REQ-SYSTEM-017 の追加と
+  REQ-SYSTEM-016 の変更。
+- **Verification Results**:
+  - `just spec-render` - passed (24 documents, 313 operations, 17 API tags, 747 TypeSpec symbols)
+  - `just check-spec` - passed
+  - `just check-api-compat` - passed
+  - `just check-boundaries` - passed
+  - `just test-go-package ./backend/cmd/internal/bootstrap` - passed
+  - `just test-go-package ./backend/cmd/idmagic` - passed
+  - `just test-go-package ./backend/cmd/idmagic-worker` - passed
+  - `just test-go-package ./backend/cmd/idmagic-batch` - passed
+  - `just test-go-package ./backend/cmd/idmagic-seed` - passed
+  - `just check-config-reference` - passed
+  - `just check-work-items` - passed
+  - `just lint-go` - passed (0 issues)
+  - `just verify` - passed
+  - `just spec-diff` - added REQ-SYSTEM-017; changed REQ-SYSTEM-016

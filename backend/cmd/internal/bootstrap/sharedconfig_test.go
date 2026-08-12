@@ -32,6 +32,27 @@ func TestLoadSharedConfigRejectsUnknownPersistence(t *testing.T) {
 	}
 }
 
+// TestLoadSharedConfigRejectsUnknownAdapterSelectors covers REQ-SYSTEM-016:
+// an operator typo must not silently select the no-op or local adapter.
+func TestLoadSharedConfigRejectsUnknownAdapterSelectors(t *testing.T) {
+	t.Parallel()
+	l := NewConfigLoader(stubEnv(map[string]string{
+		"OBSERVABILITY":     "open-telemetry",
+		"KEY_PROVIDER":      "vaul",
+		"DATA_KEY_PROVIDER": "open-bao",
+	}))
+	LoadSharedConfig(l)
+	err := l.Err()
+	if err == nil {
+		t.Fatal("expected unknown adapter selectors to fail startup validation")
+	}
+	for _, key := range []string{"OBSERVABILITY", "KEY_PROVIDER", "DATA_KEY_PROVIDER"} {
+		if !strings.Contains(err.Error(), key) {
+			t.Errorf("aggregated error %q does not mention %s", err.Error(), key)
+		}
+	}
+}
+
 func TestLoadSharedConfigAuthZENRemoteRequiresURL(t *testing.T) {
 	t.Parallel()
 	l := NewConfigLoader(stubEnv(map[string]string{"AUTHZEN": "remote"}))

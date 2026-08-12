@@ -219,7 +219,7 @@ test-ui-e2e:
     cd frontend && bun run test:e2e
 
 # Validate specification sources, records, dependencies, and the command map.
-check: check-spec check-work-items check-ids check-boundaries check-command-map
+check: check-spec check-work-items check-ids check-boundaries check-command-map check-config-reference
 
 # Reject workflow steps that call a recipe this justfile does not define.
 check-command-map:
@@ -241,6 +241,14 @@ check-ids:
 # Reject outward source dependencies inferred directly from repository paths.
 check-boundaries:
     cd tools && bun run check/src/check-boundaries.ts
+
+# Generate the operator configuration reference from the startup Config definition.
+generate-config-reference:
+    go run ./backend/cmd/idmagic-config-reference --output CONFIGURATION.md
+
+# Check that the configuration reference still matches the startup Config definition.
+check-config-reference:
+    go run ./backend/cmd/idmagic-config-reference --check --output CONFIGURATION.md
 
 # Detect breaking changes vs the frozen OpenAPI release baseline.
 check-api-compat:

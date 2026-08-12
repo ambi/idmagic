@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/shared/logging"
 	sharedpg "github.com/ambi/idmagic/backend/shared/storage/db_postgres"
 	"github.com/jackc/pgx/v5"
@@ -158,12 +158,13 @@ func checkRestoreConsistency(ctx context.Context, db queryer) (restoreConsistenc
 // must not depend on unrelated env config (WEBAUTHN_RP_ID etc.) that a
 // restore drill environment may not set.
 func runRestoreConsistencyCheck(ctx context.Context) error {
-	databaseURL := os.Getenv("DATABASE_URL")
-	if databaseURL == "" {
-		return errors.New("restore-consistency-check requires DATABASE_URL")
+	loader := bootstrap.NewConfigLoader(os.Getenv)
+	databaseURL := loader.RequiredSecret("DATABASE_URL")
+	if err := loader.Err(); err != nil {
+		return fmt.Errorf("load startup configuration: %w", err)
 	}
 
-	pool, err := sharedpg.Open(ctx, databaseURL, sharedpg.DBConfig{
+	pool, err := sharedpg.Open(ctx, databaseURL.Value(), sharedpg.DBConfig{
 		MaxConns:        4,
 		MinConns:        1,
 		MaxConnIdleTime: 30 * time.Second,

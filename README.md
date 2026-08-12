@@ -115,45 +115,11 @@ If `VERSION` is not specified, it defaults to `0.0.0-dev`. For Docker builds, yo
 
 ## Configuration
 
-Local defaults use in-memory persistence and console email output. Production adapters are selected with environment variables:
-
-| Variable | Values | Purpose |
-| --- | --- | --- |
-| `PERSISTENCE` | `memory`, `postgres` | storage backend |
-| `DATABASE_URL` | connection string | PostgreSQL database connection |
-| `OBSERVABILITY` | `noop`, `otel` | OpenTelemetry tracing/metrics |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | endpoint URL | OTLP/HTTP collector endpoint |
-| `EMAIL_SENDER` | `console`, `smtp` | password reset and notification delivery |
-| `DEFAULT_LOCALE` | `ja`, `en` | last resort language for notification emails; defaults to `en`. An unsupported value fails startup |
-| `KEY_PROVIDER` | `local`, `vault` | signing key provider |
-| `VAULT_ADDR`, `VAULT_TOKEN` | Vault configuration | Vault Transit configuration |
-| `DATA_KEY_PROVIDER` | unset, `openbao` | master-key custody for envelope-encrypted reversible secrets (MFA TOTP seeds today); unset uses an in-process Tink cleartext keyset (dev/local only) |
-| `OPENBAO_ADDR`, `OPENBAO_TOKEN` | OpenBao configuration | required when `DATA_KEY_PROVIDER=openbao`; startup fails fast if either is empty |
-| `OPENBAO_TRANSIT_MOUNT` | mount path, default `transit` | OpenBao Transit engine mount |
-| `OPENBAO_DATA_KEY_PREFIX` | key name prefix, default `idmagic/datakeys` | per-tenant OpenBao Transit key naming (`{prefix}/{tenant_id}`) |
-| `BREACHED_PASSWORD_CHECKER` | `noop`, `hibp` | breached password checker |
-| `REQUEST_ID_TRUST_INBOUND` | `false`, `true` | reuse an edge proxy's inbound `X-Request-ID` |
-| `HSTS_ENABLED` | `false`, `true` | emit `Strict-Transport-Security` |
-| `HSTS_MAX_AGE_SECONDS` | `31536000` | HSTS `max-age` when enabled |
-| `HSTS_INCLUDE_SUBDOMAINS` | `true`, `false` | add `includeSubDomains` to HSTS |
-| `CSP_REPORT_ONLY` | `false`, `true` | send CSP as `Content-Security-Policy-Report-Only` for staged rollout |
-| `CSP_REPORT_URI` | URL/path | CSP `report-uri` for violation collection |
-| `TENANT_BASE_DOMAIN` | parent hostname, e.g. `id.example.com` | enables the `subdomain` endpoint style at `{realm}.<domain>`; unset keeps every tenant on path routing |
-| `WEBAUTHN_RP_ID` | domain, e.g. `localhost` | WebAuthn relying-party ID; WebAuthn/passkeys are disabled when unset |
-| `WEBAUTHN_RP_ORIGINS` | comma-separated origins | Allowed browser origins for WebAuthn ceremonies, e.g. `http://localhost:5173` |
-| `WEBAUTHN_RP_DISPLAY_NAME` | display name | WebAuthn relying-party display name shown by authenticators |
-| `SEED_PROFILE` | `bootstrap`, `development`, `test`, `performance` | explicit startup seed profile; unset by default |
-| `SEED_ENVIRONMENT` | `development`, `test`, `staging`, `production` | required when `SEED_PROFILE` is set |
-| `SEED_MANIFEST` | local YAML path | optional root manifest; defaults to `seed/manifests/<profile>.yaml` |
-| `SEED_SECRET_ROOT` | local directory | root for relative `file` secret locators |
-| `SEED_FIRST_PARTY_REDIRECT_URIS` | comma-separated HTTPS URIs | required for production bootstrap first-party clients |
-| `TRUSTED_FORWARDED_HOPS` | integer, default `0` | number of trusted `X-Forwarded-For` hops in front of this process; used by the login throttle and the endpoint rate limiter below to resolve the real client IP. `0` (default) distrusts the header entirely |
-| `RATE_LIMIT_TOKEN_MAX_REQUESTS` / `RATE_LIMIT_TOKEN_WINDOW_SECONDS` | integers, default `60` / `60` | `/token` fixed-window limit, keyed by client_id+IP |
-| `RATE_LIMIT_AUTHORIZE_MAX_REQUESTS` / `RATE_LIMIT_AUTHORIZE_WINDOW_SECONDS` | integers, default `30` / `60` | `/authorize` fixed-window limit, keyed by IP+client_id |
-| `RATE_LIMIT_PAR_MAX_REQUESTS` / `RATE_LIMIT_PAR_WINDOW_SECONDS` | integers, default `30` / `60` | `/par` fixed-window limit, keyed by IP+client_id |
-| `RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS` / `RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS` | integers, default `20` / `60` | `/device_authorization` fixed-window limit, keyed by client_id+IP |
-| `RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS` / `RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS` | integers, default `5` / `900` | `/api/auth/forgot_password` fixed-window limit, keyed by the submitted identifier+IP |
-| `RATE_LIMIT_LOGIN_MAX_REQUESTS` / `RATE_LIMIT_LOGIN_WINDOW_SECONDS` | integers, default `20` / `60` | `/api/auth/login` fixed-window limit, keyed by IP; separate from and in addition to the per-account/per-IP login throttle above |
+Local defaults use in-memory persistence and console email output. See the generated
+[Configuration Reference](CONFIGURATION.md) for every startup environment variable, its type,
+default, conditional requirements, owning processes, and secret classification. Invalid startup
+configuration is reported as one aggregated error before listeners, dependency connections, or
+seed application begin.
 
 ### Job Worker & Scheduled Batches
 

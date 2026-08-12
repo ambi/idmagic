@@ -41,6 +41,7 @@ func Run() error {
 	loader := bootstrap.NewConfigLoader(os.Getenv)
 	shared := bootstrap.LoadSharedConfig(loader)
 	api := bootstrap.LoadAPIConfig(loader)
+	seed := bootstrap.LoadSeedConfig(loader)
 	if err := loader.Err(); err != nil {
 		return fmt.Errorf("load startup configuration: %w", err)
 	}
@@ -74,9 +75,8 @@ func Run() error {
 	if err := tenantusecases.EnsureDefault(ctx, deps.Tenancy.TenantRepo, time.Now().UTC()); err != nil {
 		return fmt.Errorf("ensure default tenant: %w", err)
 	}
-	if bootstrap.SeedProfileConfigured(os.Getenv) {
-		req := bootstrap.LoadSeedRequest(os.Getenv)
-		if _, err := bootstrap.Seed(ctx, deps, req); err != nil {
+	if seed.Configured() {
+		if _, err := bootstrap.Seed(ctx, deps, seed.Request(), seed.SecretRoot); err != nil {
 			return fmt.Errorf("explicit startup seed: %w", err)
 		}
 	}
@@ -187,7 +187,7 @@ func Run() error {
 			ShuttingDown:              shuttingDown,
 			StartupComplete:           startupComplete,
 			TenantRepo:                deps.Tenancy.TenantRepo,
-			PaginationCodec:           httpsupport.NewCursorCodec(bootstrap.LoadPaginationCursorSecret()),
+			PaginationCodec:           httpsupport.NewCursorCodec(bootstrap.PaginationCursorSecret(api.PaginationCursorSecret)),
 			HealthInfo: httpsupport.HealthInfo{
 				Persistence:   runtime.Persistence,
 				Observability: runtime.Observability,

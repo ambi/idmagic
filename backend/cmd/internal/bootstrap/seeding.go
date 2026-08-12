@@ -22,7 +22,10 @@ import (
 )
 
 // Seed は runtime composition から Seeding usecase へ既存 record context の port を接続する。
-func Seed(ctx context.Context, deps *Dependencies, request domain.Request) (domain.Plan, error) {
+// secretRoot (SeedConfig.SecretRoot) は相対 file secret locator の解決根であり、
+// 検証済み設定として呼び出し側から渡す。manifest 内の env locator だけは
+// 実行時解決なので os.Getenv をそのまま与える。
+func Seed(ctx context.Context, deps *Dependencies, request domain.Request, secretRoot string) (domain.Plan, error) {
 	path := request.ManifestPath
 	if path == "" {
 		var err error
@@ -36,7 +39,7 @@ func Seed(ctx context.Context, deps *Dependencies, request domain.Request) (doma
 		return domain.Plan{}, err
 	}
 	materialized, err := seedusecases.MaterializeManifest(request, seedManifest, manifestadapter.SecretResolver{
-		SecretRoot: os.Getenv("SEED_SECRET_ROOT"),
+		SecretRoot: secretRoot,
 		Getenv:     os.Getenv,
 	})
 	if err != nil {

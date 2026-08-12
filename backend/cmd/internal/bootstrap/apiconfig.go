@@ -21,6 +21,8 @@ type APIConfig struct {
 	TrustedForwardedHops  int
 	DrainGracePeriod      int // seconds
 
+	PaginationCursorSecret Secret
+
 	RateLimits rlports.RateLimitConfigs
 
 	Hardening       httpServerHardening
@@ -43,6 +45,7 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 	// for wi-103's fail-fast requirement.
 	cfg.TrustedForwardedHops = l.NonNegativeInt("TRUSTED_FORWARDED_HOPS", 0)
 	cfg.DrainGracePeriod = l.NonNegativeInt("DRAIN_GRACE_PERIOD_SECONDS", 5)
+	cfg.PaginationCursorSecret = l.Secret("PAGINATION_CURSOR_SECRET")
 
 	cfg.RateLimits = rlports.RateLimitConfigs{
 		"token": {

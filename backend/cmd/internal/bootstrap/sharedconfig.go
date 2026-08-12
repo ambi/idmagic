@@ -67,18 +67,18 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 	var cfg SharedConfig
 
 	cfg.Persistence = l.Enum("PERSISTENCE", "memory", "memory", "postgres")
-	cfg.Observability = l.String("OBSERVABILITY", "noop")
+	cfg.Observability = l.EnumFold("OBSERVABILITY", "noop", "noop", "otel")
 
 	cfg.AuthZEN = l.Enum("AUTHZEN", "local", "local", "remote")
-	cfg.AuthZENURL = l.String("AUTHZEN_URL", "")
+	cfg.AuthZENURL = l.URL("AUTHZEN_URL", "")
+	l.RequiredWhen("AUTHZEN_URL", "AUTHZEN=remote")
 	if cfg.AuthZEN == "remote" {
 		cfg.AuthZENURL = l.RequiredURL("AUTHZEN_URL")
-	} else if cfg.AuthZENURL != "" {
-		cfg.AuthZENURL = l.URL("AUTHZEN_URL", "")
 	}
 
 	cfg.WebAuthnRPID = l.String("WEBAUTHN_RP_ID", "")
-	cfg.WebAuthnRPOrigins = splitAndTrim(l.String("WEBAUTHN_RP_ORIGINS", ""))
+	cfg.WebAuthnRPOrigins = l.StringList("WEBAUTHN_RP_ORIGINS", nil)
+	l.RequiredWhen("WEBAUTHN_RP_ORIGINS", "WEBAUTHN_RP_ID is set")
 	cfg.WebAuthnRPDisplayName = l.String("WEBAUTHN_RP_DISPLAY_NAME", "idmagic")
 	if cfg.WebAuthnRPID != "" {
 		l.Require("WEBAUTHN_RP_ORIGINS", len(cfg.WebAuthnRPOrigins) > 0,
@@ -90,6 +90,7 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 	} else {
 		cfg.DatabaseURL = l.Secret("DATABASE_URL")
 	}
+	l.RequiredWhen("DATABASE_URL", "PERSISTENCE=postgres")
 	cfg.DB = postgres.DBConfig{
 		MaxConns:        l.NonNegativeInt32("DB_MAX_CONNS", 20),
 		MinConns:        l.NonNegativeInt32("DB_MIN_CONNS", 2),
@@ -105,9 +106,11 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 		MinRequests:      l.NonNegativeUint32("DB_BREAKER_MIN_REQUESTS", 10),
 	}
 
-	cfg.KeyProvider = strings.ToLower(l.String("KEY_PROVIDER", ""))
+	cfg.KeyProvider = l.OptionalEnumFold("KEY_PROVIDER", "local", "vault")
 	cfg.VaultAddr = l.String("VAULT_ADDR", "")
 	cfg.VaultToken = l.Secret("VAULT_TOKEN")
+	l.RequiredWhen("VAULT_ADDR", "KEY_PROVIDER=vault")
+	l.RequiredWhen("VAULT_TOKEN", "KEY_PROVIDER=vault")
 	cfg.VaultTransitMount = l.String("VAULT_TRANSIT_MOUNT", "")
 	cfg.VaultKeyPrefix = l.String("VAULT_KEY_PREFIX", "")
 	if cfg.KeyProvider == "vault" {
@@ -115,9 +118,11 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 		l.Require("VAULT_TOKEN", !cfg.VaultToken.Empty(), "is required when KEY_PROVIDER=vault")
 	}
 
-	cfg.DataKeyProvider = strings.ToLower(l.String("DATA_KEY_PROVIDER", ""))
+	cfg.DataKeyProvider = l.OptionalEnumFold("DATA_KEY_PROVIDER", "openbao")
 	cfg.OpenBaoAddr = l.String("OPENBAO_ADDR", "")
 	cfg.OpenBaoToken = l.Secret("OPENBAO_TOKEN")
+	l.RequiredWhen("OPENBAO_ADDR", "DATA_KEY_PROVIDER=openbao")
+	l.RequiredWhen("OPENBAO_TOKEN", "DATA_KEY_PROVIDER=openbao")
 	cfg.OpenBaoTransitMount = l.String("OPENBAO_TRANSIT_MOUNT", "")
 	cfg.OpenBaoDataKeyPrefix = l.String("OPENBAO_DATA_KEY_PREFIX", "idmagic/datakeys")
 	if cfg.DataKeyProvider == "openbao" {
@@ -148,6 +153,8 @@ func loadSMTPConfig(l *ConfigLoader, cfg *SharedConfig, required bool) {
 		cfg.SMTPHost = l.String("SMTP_HOST", "")
 		cfg.SMTPFrom = l.String("SMTP_FROM", "")
 	}
+	l.RequiredWhen("SMTP_HOST", "EMAIL_SENDER=smtp")
+	l.RequiredWhen("SMTP_FROM", "EMAIL_SENDER=smtp")
 	mode := strings.ToLower(l.Enum("SMTP_TLS", "starttls", "starttls", "implicit", "none"))
 	cfg.SMTPTLSMode = emailSMTP.SMTPTLSMode(mode)
 
