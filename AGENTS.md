@@ -10,8 +10,10 @@
   - Put overview, glossary, standards, language-independent state transitions, current design,
     and scenarios in the owning `spec/**/SPECIFICATION.md`.
   - Use stable `REQ-<CONTEXT>-NNN` normative scenario IDs and TypeSpec symbols in work-item references.
-  - Treat [DEVELOPMENT.md](DEVELOPMENT.md) and
-    [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) as section-addressable references, not required reading.
+  - Treat these as section-addressable references, not required reading:
+    [DEVELOPMENT.md](DEVELOPMENT.md) for the stage/skill/gate loop and the verification ladder,
+    [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) for specification documents, and
+    [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) for work items.
   - Expect repository tools to discover the standard layout without a registry file; use `just` recipes
     rather than a methodology-specific CLI.
   - Regenerate untracked TypeSpec and HTML artifacts after specification changes.

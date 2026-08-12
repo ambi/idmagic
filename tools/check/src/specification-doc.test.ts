@@ -43,6 +43,30 @@ describe('validateSpecification', () => {
     expect(result.scenarioIds.map((scenario) => scenario.id)).toEqual(['REQ-DEMO-001'])
   })
 
+  it('accepts a retired scenario without steps and reports its successor', () => {
+    const source = `${valid}
+### REQ-DEMO-002: An old behavior (superseded by REQ-DEMO-001)
+Replaced by the valid request scenario.
+`
+    const result = validateSpecification(source)
+    expect(result.findings).toEqual([])
+    expect(result.scenarioIds.at(-1)).toMatchObject({
+      id: 'REQ-DEMO-002',
+      supersededBy: 'REQ-DEMO-001',
+    })
+  })
+
+  it('still requires steps in a scenario that is not retired', () => {
+    const source = `${valid}
+### REQ-DEMO-002: An old behavior
+Replaced by the valid request scenario.
+`
+    const result = validateSpecification(source)
+    expect(result.findings.map((finding) => finding.message)).toContain(
+      'scenario must contain at least one WHEN line',
+    )
+  })
+
   it('rejects a top-level alternative and old scenario syntax', () => {
     const result = validateSpecification(
       valid.replace('- ACTOR User', '- Actor: User').replace('  - ALT', '- ALT'),

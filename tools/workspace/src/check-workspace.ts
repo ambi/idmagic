@@ -1,12 +1,16 @@
 #!/usr/bin/env bun
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
 } from '../../check/src/work-item-dependencies.ts'
+import {
+  type ReferenceEnvironment,
+  verifyWorkItemReferences,
+} from '../../check/src/work-item-references.ts'
 import { loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
 
 const args = new Set(process.argv.slice(2))
@@ -20,6 +24,17 @@ for (const arg of args) {
 }
 const all = args.size === 0
 const config = await loadWorkspaceConfig()
+
+const repository: ReferenceEnvironment = {
+  exists: (path) => existsSync(rootPath(path)),
+  read: (path) => {
+    try {
+      return readFileSync(rootPath(path), 'utf8')
+    } catch {
+      return undefined
+    }
+  },
+}
 
 async function workItemFiles(root: string): Promise<string[]> {
   const result: string[] = []
@@ -46,6 +61,7 @@ if ((all || args.has('--work-items')) && config.workItems) {
       status?: unknown
       depends_on?: unknown
       affected_spec?: unknown
+      initial_context?: unknown
     }
     records.push({
       id: basename(path, '.md'),
@@ -55,36 +71,9 @@ if ((all || args.has('--work-items')) && config.workItems) {
         : [],
     })
 
-    if (Array.isArray(data.affected_spec)) {
-      for (const reference of data.affected_spec) {
-        if (!reference || typeof reference !== 'object' || Array.isArray(reference)) continue
-        const ref = reference as Record<string, unknown>
-        if (typeof ref.path !== 'string') {
-          if (data.status === 'pending' || data.status === 'in_progress') {
-            console.error(`${path}: active work item contains a legacy specification reference`)
-            process.exit(1)
-          }
-          continue
-        }
-        const target = rootPath(ref.path)
-        if (!existsSync(target)) {
-          console.error(`${path}: affected_spec path does not exist: ${ref.path}`)
-          process.exit(1)
-        }
-        const targetSource = await readFile(target, 'utf8')
-        if (typeof ref.requirement === 'string' && !targetSource.includes(ref.requirement)) {
-          console.error(`${path}: requirement does not resolve in ${ref.path}: ${ref.requirement}`)
-          process.exit(1)
-        }
-        if (typeof ref.symbol === 'string') {
-          const name = ref.symbol.split('.').at(-1) ?? ''
-          const declaration = new RegExp(`\\b(?:alias|enum|model|op|scalar|union)\\s+${name}\\b`)
-          if (!declaration.test(targetSource)) {
-            console.error(`${path}: TypeSpec symbol does not resolve in ${ref.path}: ${ref.symbol}`)
-            process.exit(1)
-          }
-        }
-      }
+    for (const finding of verifyWorkItemReferences(data, repository)) {
+      console.error(`${path}: ${finding}`)
+      process.exit(1)
     }
   }
   const findings = verifyWorkItemDependencies(records)

@@ -5,6 +5,7 @@ import { basename, relative } from 'node:path'
 import { validateSpecification } from './specification-doc.ts'
 
 const seen = new Map<string, string>()
+const supersessions: Array<{ where: string; target: string }> = []
 let failed = false
 
 for (const path of process.argv.slice(2)) {
@@ -30,8 +31,18 @@ for (const path of process.argv.slice(2)) {
     } else {
       seen.set(scenario.id, `${rel}:${scenario.line}`)
     }
+    if (scenario.supersededBy) {
+      supersessions.push({ where: `${rel}:${scenario.line}`, target: scenario.supersededBy })
+    }
   }
   console.log(`ok  ${rel} (${result.scenarioIds.length} normative scenario id(s))`)
+}
+
+for (const supersession of supersessions) {
+  if (!seen.has(supersession.target)) {
+    console.error(`${supersession.where}: superseding ${supersession.target} does not exist`)
+    failed = true
+  }
 }
 
 if (failed) process.exit(1)

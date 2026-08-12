@@ -1,5 +1,9 @@
 # Specification Format
 
+The exact, current grammar is whatever `just check-spec` accepts; its diagnostics are the precise rule.
+This document states intent, examples, and the decisions a checker cannot make for you. Rules marked
+*(checked)* fail the build; the rest are review judgment.
+
 ## 1. Layout
 
 ```text
@@ -39,8 +43,14 @@ H1 title, and these H2 sections in order when applicable:
 6. `Design`
 7. `Scenarios`
 
-`Overview` is required. Omit empty optional sections. Put the overview in this document once; do not repeat
-it in an implementation-side design file.
+`Overview` is required. Omit empty optional sections. Frontmatter, the single H1, the section set, and
+their order are *(checked)*. Put the overview in this document once; do not repeat it in an
+implementation-side design file.
+
+A context document owns only behavior that context can satisfy and verify on its own. Behavior that holds
+only when several contexts cooperate belongs to the root document as `REQ-SYSTEM-NNN` and names the
+participating contexts in the scenario. Splitting such a flow into per-context fragments leaves no place
+where the real guarantee is stated.
 
 `Design` records current structure, dependency direction, runtime composition, adopted technologies,
 security boundaries, operational constraints, and concise durable rationale. Change-specific comparisons
@@ -55,8 +65,8 @@ Use a language-independent table for every state machine:
 |---|---|---|---|---|
 ```
 
-Use `—` in `Guard` when the transition is unconditional. Do not use an empty string literal such as `""`;
-it looks like an executable condition in both the source table and the derived diagram.
+Use `—` in `Guard` when the transition is unconditional *(checked)*. Do not use an empty string literal
+such as `""`; it looks like an executable condition in both the source table and the derived diagram.
 
 Application code and tests are executable evidence, not the only state-transition documentation.
 The table is the normative source. The generated specification site derives one Mermaid state diagram
@@ -75,14 +85,22 @@ structural constraints belong in Design. Do not duplicate those concerns as pros
 `SHOULD` or `MAY` only in explanatory or standards policy text when an exception or option is genuinely
 intended.
 
-Do not remove an existing requirement merely because its title matches a TypeSpec operation. First map
-every normative precondition, postcondition, failure case, and invariant to TypeSpec, Scenarios, Standards,
-State Transitions, Authorization Boundary, or Design. A standalone Requirements section is unnecessary
-only when that semantic audit leaves no requirement owned solely by it.
+Retire a behavior instead of deleting it. Mark the heading, drop the steps, and state the successor:
 
-Use uppercase keywords without colons. Nest an alternative immediately below the `WHEN` or `THEN` step
-that it replaces or interrupts. The Markdown structure carries the relationship; do not add local step
-numbers:
+```markdown
+### REQ-ACCOUNT-002: a valid session opens the account (superseded by REQ-ACCOUNT-042)
+Replaced by session-scoped account access.
+```
+
+The successor must exist *(checked)*. A retired ID is never reused. Deleting the heading outright leaves
+nothing saying the behavior existed, and the work item alone cannot be searched by ID. Before retiring,
+map every precondition, postcondition, failure case, and invariant to its new owner — TypeSpec, Scenarios,
+Standards, State Transitions, Authorization Boundary, or Design. A title matching a TypeSpec operation is
+not by itself evidence that a scenario became redundant.
+
+Use uppercase keywords without colons *(checked)*. Nest an alternative immediately below the `WHEN` or
+`THEN` step that it replaces or interrupts. The Markdown structure carries the relationship; do not add
+local step numbers:
 
 ```markdown
 ### REQ-ACCOUNT-002: a valid session opens the account

@@ -16,7 +16,7 @@ risk: low
 created_at: 2026-01-01
 depends_on: []
 change_kind: feature
-initial_context:
+initial_context: # written when the item starts, not when it is filed
   specification: [spec/contexts/system/SPECIFICATION.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
@@ -56,13 +56,21 @@ Implementation order, migration, and unresolved questions.
 Risks and mitigations.
 ```
 
-`initial_context` and `affected_spec` are required for `feature`, `bugfix`, and `operations` items.
-`affected_spec` directly references a normative scenario/standard ID or a TypeSpec symbol. Changes with
-no specification impact (`refactor`, `docs`, `tooling`, or `maintenance`) may use:
+`affected_spec` is required for `feature`, `bugfix`, and `operations` items. It directly references a
+normative scenario/standard ID or a TypeSpec symbol. Changes with no specification impact (`refactor`,
+`docs`, `tooling`, or `maintenance`) may use:
 
 ```yaml
 spec_impact: { kind: none, reason: "A concrete reason." }
 ```
+
+`initial_context` is the reading list one agent starts from. Write it when the item moves to
+`in_progress`, not when it is filed: a list written for a backlog item rots before the work begins, and a
+reading list that points at moved or deleted files is worse than none. A pending item needs only
+Motivation, Scope, and Out of Scope to be useful.
+
+Once the item is `in_progress`, `just check-work-items` resolves that list: every path must exist, and a
+`spec/**/SPECIFICATION.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
 
 For medium and larger changes, make `Design` and `Plan` concrete. Domain, Use Cases, and Adapters tasks
 must retain the corresponding test and normative scenario ID as self-evidence.

@@ -5,8 +5,11 @@ export type SpecificationFinding = {
 
 export type SpecificationValidation = {
   findings: SpecificationFinding[]
-  scenarioIds: Array<{ id: string; line: number }>
+  scenarioIds: Array<{ id: string; line: number; supersededBy?: string }>
 }
+
+/** A retired scenario keeps its heading and names its successor instead of carrying steps. */
+const SUPERSEDED_HEADING = /^### REQ-[A-Z0-9-]+: .+ \(superseded by (REQ-[A-Z0-9-]+)\)$/
 
 const SECTION_ORDER = [
   'Overview',
@@ -218,6 +221,7 @@ export function validateSpecification(source: string): SpecificationValidation {
   const scenarioIds = [...source.matchAll(/^### (REQ-[A-Z0-9-]+): .+$/gm)].map((match) => ({
     id: match[1] ?? '',
     line: lineAt(source, match.index ?? 0),
+    supersededBy: match[0].match(SUPERSEDED_HEADING)?.[1],
   }))
   const localIds = new Set<string>()
   for (const scenario of scenarioIds) {
@@ -257,6 +261,7 @@ export function validateSpecification(source: string): SpecificationValidation {
         start,
         starts[index + 1] ?? scenarioSection.body.length,
       )
+      if (SUPERSEDED_HEADING.test(block.split('\n')[0] ?? '')) continue
       validateScenario(block, scenarioSection.offset + start, source, findings)
     }
   }

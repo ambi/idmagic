@@ -136,7 +136,6 @@ describe('validateAgainstSchema — work-item', () => {
     motivation: 'because',
     scope: {},
     out_of_scope: [],
-    affected_guarantees: [],
     verification: [],
     risk: 'low',
     risk_notes: 'none',
@@ -145,29 +144,13 @@ describe('validateAgainstSchema — work-item', () => {
     completed_at: '2026-06-17',
     summary: 'done',
     verification: [{ cmd: 'go test ./...', result: 'ok' }],
-    affected_guarantees_state: [],
-  }
-  const validEvidence = {
-    id: 'go-test',
-    kind: 'test',
-    command: 'go test ./...',
-    executed_at: '2026-06-17T00:00:00Z',
-    target_revision: 'abc1234',
-    result: 'passed',
-    artifacts: [
-      {
-        path: 'work-items/artifacts/wi-1-demo/go-test.log',
-        sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-        summary: 'go test output',
-      },
-    ],
   }
 
   it('accepts a minimal valid work item', () => {
     expect(validateAgainstSchema('work-item', validWorkItem, '')).toEqual([])
   })
 
-  it('requires direct specification targets and initial context for feature work', () => {
+  it('requires direct specification targets for feature work', () => {
     const feature = { ...validWorkItem, change_kind: 'feature' }
     expect(validateAgainstSchema('work-item', feature, '')).not.toEqual([])
     expect(
@@ -175,7 +158,6 @@ describe('validateAgainstSchema — work-item', () => {
         'work-item',
         {
           ...feature,
-          initial_context: { source: ['tools/workspace/src'] },
           affected_spec: [
             { path: 'spec/contexts/demo/SPECIFICATION.md', requirement: 'REQ-DEMO-CHECK' },
           ],
@@ -282,24 +264,13 @@ describe('validateAgainstSchema — work-item', () => {
     expect(validateAgainstSchema('work-item', data, '')).toEqual([])
   })
 
-  it('accepts completion evidence embedded in the work item', () => {
+  it('tolerates fields only legacy completed records carry', () => {
     const data = {
       ...validWorkItem,
       status: 'completed',
-      completion: { ...validCompletion, evidence: [validEvidence] },
+      completion: { ...validCompletion, evidence: [{ id: 'go-test', kind: 'test' }] },
     }
     expect(validateAgainstSchema('work-item', data, '')).toEqual([])
-  })
-
-  it('rejects completion evidence without a command, procedure, or artifact', () => {
-    const { command: _omitted, artifacts: _alsoOmitted, ...brokenEvidence } = validEvidence
-    const data = {
-      ...validWorkItem,
-      status: 'completed',
-      completion: { ...validCompletion, evidence: [brokenEvidence] },
-    }
-    const f = validateAgainstSchema('work-item', data, '')
-    expect(f.length).toBeGreaterThan(0)
   })
 
   it('requires completion when status is completed', () => {
@@ -308,20 +279,16 @@ describe('validateAgainstSchema — work-item', () => {
     expect(f.some((x) => x.message.includes('completion'))).toBe(true)
   })
 
-  it('accepts the legacy remaining_guarantees_state field in completion', () => {
-    const { affected_guarantees_state: _omitted, ...rest } = validCompletion
-    const data = {
-      ...validWorkItem,
-      status: 'completed',
-      completion: { ...rest, remaining_guarantees_state: [] },
-    }
-    expect(validateAgainstSchema('work-item', data, '')).toEqual([])
-  })
-
-  it('accepts completion without guarantees-state field', () => {
-    const { affected_guarantees_state: _omitted, ...completion } = validCompletion
-    const data = { ...validWorkItem, status: 'completed', completion }
-    expect(validateAgainstSchema('work-item', data, '')).toEqual([])
+  it('requires initial context once the item is in progress', () => {
+    const started = { ...validWorkItem, status: 'in_progress' }
+    expect(validateAgainstSchema('work-item', started, '')).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        { ...started, initial_context: { specification: ['spec/SPECIFICATION.md#REQ-DEMO-001'] } },
+        '',
+      ),
+    ).toEqual([])
   })
 })
 
