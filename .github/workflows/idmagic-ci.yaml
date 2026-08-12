@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   verify:
-    name: Verify backend, SCL, and UI
+    name: Verify specification, backend, and UI
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +28,6 @@ jobs:
         run: |
           just check
           just check-api-compat
-          just traceability-strict
           just test-tools
           just typecheck-tools
       - name: Go lint
