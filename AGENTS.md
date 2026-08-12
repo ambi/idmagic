@@ -26,3 +26,26 @@
 The `justfile` is the single command map for this repo. Run every basic command — verify, build, test, lint, format, dev servers, demos, codegen — through its `just` recipe, never by invoking the underlying tool (`bun`, `go`, `golangci-lint`, `docker`, a `*.sh` script, …) directly.
 
 - Run `just --list` to discover the recipe before reaching for a raw tool. If a common command has no recipe yet, add one to the `justfile` instead of running it ad hoc.
+- `golangci-lint` already enables the `govet` linter and formats with `gofumpt`+`goimports`, so `go vet`,
+  `gofmt`, and `gofumpt` are redundant: use `just lint-go` / `just format-go` / `just test-go`.
+  Do not hand-prefix `GOCACHE=` — the default build cache is correct and faster.
+
+## Tooling
+
+Reach for the purpose-built CLI before writing a script. Needing more than one command is a reason to
+learn the tool's flags, not to open an editor — a throwaway script is never the shortest path to a
+value that already lives in a structured file.
+
+| Task | Use | Not |
+|---|---|---|
+| Query/extract JSON | `jq` | throwaway `python3 -c` / `bun -e` |
+| Explore JSON of unknown shape | `gron file.json \| rg pattern` | reading the whole file |
+| Query/extract YAML | `yq` | `grep` against indentation |
+| Search file contents | `rg` | `grep -r`, `find … -exec grep` |
+| Find files by name | `fd` | `find` |
+| Search/rewrite code by structure | `ast-grep` | multi-file regex, the deprecated `sg` alias |
+| Bulk literal replace across files | `sd` | `sed -i` |
+| Read an HTML page, extract from the web | `ax` | `curl` + a parsing script |
+| GitHub PRs, issues, API | `gh` | `curl` against api.github.com |
+
+Run `just setup-cli-tools` if any of these are missing.

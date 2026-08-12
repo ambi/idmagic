@@ -24,6 +24,16 @@ setup-tools:
     mkdir -p .claude
     ln -sfn ../.agents/skills .claude/skills
 
+# Install the host CLI tools that the AGENTS.md tooling rules assume.
+setup-cli-tools:
+    #!/usr/bin/env sh
+    set -eu
+    if ! command -v brew >/dev/null 2>&1; then
+        echo "Homebrew not found. Install manually: jq yq ripgrep fd gh ast-grep gron sd" >&2
+        exit 1
+    fi
+    brew install jq yq ripgrep fd gh ast-grep gron sd
+
 # Compile the TypeSpec product contract and emit OpenAPI.
 compile-spec:
     cd tools && bunx tsp compile ../spec/main.tsp --config ../spec/tspconfig.yaml
