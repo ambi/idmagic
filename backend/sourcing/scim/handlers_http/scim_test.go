@@ -453,7 +453,7 @@ func TestScimInboundProvisioning(t *testing.T) {
 	usecasesInst := usecases.NewUsecases(scimRepo, userRepo, groupRepo, func(spec.DomainEvent) {})
 	apiTokens := newTestApiTokenService()
 
-	sd := support.Deps{Emit: func(spec.DomainEvent) {}}
+	sd := support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), Emit: func(spec.DomainEvent) {}}
 	authenticator := &support.Authenticator{
 		UserRepo:  userRepo,
 		GroupRepo: groupRepo,
@@ -477,8 +477,9 @@ func TestScimInboundProvisioning(t *testing.T) {
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("expected 401, got %d", rec.Code)
 		}
-		if got := rec.Header().Get("WWW-Authenticate"); got != `Bearer error="invalid_token"` {
-			t.Fatalf("WWW-Authenticate = %q, want invalid_token", got)
+		want := `Bearer error="invalid_token", resource_metadata="https://idp.example/realms/default/.well-known/oauth-protected-resource"`
+		if got := rec.Header().Get("WWW-Authenticate"); got != want {
+			t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
 		}
 	}
 

@@ -18,6 +18,7 @@ import (
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -102,8 +103,34 @@ func TestBearerInactiveTokenIsUnauthorized(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("inactive token must be 401: status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("WWW-Authenticate"); got != `Bearer error="invalid_token"` {
-		t.Fatalf("WWW-Authenticate = %q, want invalid_token", got)
+	want := `Bearer error="invalid_token", resource_metadata="http://idp.test/realms/acme/.well-known/oauth-protected-resource"`
+	if got := rec.Header().Get("WWW-Authenticate"); got != want {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
+	}
+}
+
+func TestBearerInactiveTokenChallengeUsesSubdomainMetadata(t *testing.T) {
+	tenants := newSingleTenantRepo()
+	tenants.tenant.EndpointStyle = tenancydomain.TenantEndpointStyleSubdomain
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Deps: support.Deps{
+			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+			TenantRepo: tenants, TenantBaseDomain: "idp.test", Emit: func(spec.DomainEvent) {},
+		},
+		TokenIntrospector: stubIntrospector{},
+	})
+	req := httptest.NewRequest(http.MethodGet, "/api/admin/v1/policy/roles", http.NoBody)
+	req.Host = "acme.idp.test"
+	req.Header.Set("Authorization", "Bearer revoked")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("inactive token must be 401: status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	want := `Bearer error="invalid_token", resource_metadata="http://acme.idp.test/.well-known/oauth-protected-resource"`
+	if got := rec.Header().Get("WWW-Authenticate"); got != want {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
 	}
 }
 
@@ -117,8 +144,9 @@ func TestBearerWithoutPortalScopeIsForbidden(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("admin API without idmagic.admin scope must be 403: status=%d body=%s", rec.Code, rec.Body.String())
 	}
-	if got := rec.Header().Get("WWW-Authenticate"); got != `Bearer error="insufficient_scope", scope="idmagic.admin"` {
-		t.Fatalf("WWW-Authenticate = %q, want insufficient_scope", got)
+	want := `Bearer error="insufficient_scope", scope="idmagic.admin", resource_metadata="http://idp.test/realms/acme/.well-known/oauth-protected-resource"`
+	if got := rec.Header().Get("WWW-Authenticate"); got != want {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, want)
 	}
 }
 

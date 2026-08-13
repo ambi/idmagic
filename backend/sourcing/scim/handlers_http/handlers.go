@@ -55,10 +55,10 @@ func (h *Handler) authenticate(c *echo.Context, allowedScopes ...apitokendomain.
 func (h *Handler) writeScimAuthError(c *echo.Context, err error) error {
 	var scopeErr *support.InsufficientScopeError
 	if errors.As(err, &scopeErr) {
-		c.Response().Header().Set("WWW-Authenticate", `Bearer error="insufficient_scope", scope="`+scopeErr.Required+`"`)
+		support.SetBearerChallenge(c, "insufficient_scope", scopeErr.Required)
 		return h.writeScimError(c, http.StatusForbidden, err.Error(), "")
 	}
-	c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
+	support.SetBearerChallenge(c, "invalid_token", "")
 	return h.writeScimError(c, http.StatusUnauthorized, err.Error(), "")
 }
 

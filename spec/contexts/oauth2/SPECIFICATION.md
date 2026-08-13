@@ -349,6 +349,7 @@ RFC 9728 — https://www.rfc-editor.org/rfc/rfc9728.html
 | RFC9728-METADATA | required | MUST | 登録済み McpResourceServer ごとに resource・対応する authorization_servers・サポート scope を含む metadata文書を配信する。 |
 | RFC9728-WELL-KNOWN | required | MUST | /.well-known/oauth-protected-resource で resource を指定した metadata取得を提供する。 |
 | RFC9728-IDMAGIC-API | required | MUST | resource 未指定時は realm の IdMagic API metadata と account / management / SCIM scope、header / DPoP bearer method を公開する。 |
+| RFC9728-CHALLENGE | required | MUST | Bearer 保護リソースの 401 invalid_token と 403 insufficient_scope 応答は、当該 realm の Protected Resource Metadata URL を resource_metadata auth-param で提示する。 |
 
 ### OpenID Connect Core 1.0 incorporating errata set 1
 
@@ -1398,3 +1399,12 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
   - ALT 既に終端状態の承認要求を判断する → 操作は InvalidRequestError で拒否され、記録済みの判断は上書きされない
 - THEN 承認要求 "AR1" の状態は Approved になる
 - THEN "BackchannelAuthApproved" が発行される
+
+### REQ-OAUTH2-044: Bearer 保護リソースの認証エラーは metadata URL を提示する
+- ACTOR RegisteredClient
+- GIVEN realm "acme" の issuer は "https://idp.example.com/realms/acme" である
+- WHEN client が無効な access token で realm "acme" の保護 API を呼ぶ
+  - ALT access token に必要な scope がない → HTTP 403 を返し、WWW-Authenticate は error="insufficient_scope"、必要な scope、resource_metadata="https://idp.example.com/realms/acme/.well-known/oauth-protected-resource" を含む
+  - ALT realm "acme" が host-root endpoint style を使う → resource_metadata は host-root issuer 配下の "/.well-known/oauth-protected-resource" を指す
+- THEN HTTP 401 を返し、WWW-Authenticate は Bearer error="invalid_token" と resource_metadata="https://idp.example.com/realms/acme/.well-known/oauth-protected-resource" を quoted auth-param として含む
+- THEN resource_metadata URL は resource 未指定時の realm IdMagic API Protected Resource Metadata を返す

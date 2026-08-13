@@ -872,8 +872,9 @@ func TestAccountContextRejectsStaleBearerToken(t *testing.T) {
 	if !bytes.Contains(body, []byte(`"type":"urn:idmagic:error:invalid_token"`)) {
 		t.Fatalf("unexpected body=%s", body)
 	}
-	if got := resp.Header.Get("WWW-Authenticate"); got != `Bearer error="invalid_token"` {
-		t.Fatalf("WWW-Authenticate = %q, want invalid_token", got)
+	wantChallenge := `Bearer error="invalid_token", resource_metadata="http://test/realms/default/.well-known/oauth-protected-resource"`
+	if got := resp.Header.Get("WWW-Authenticate"); got != wantChallenge {
+		t.Fatalf("WWW-Authenticate = %q, want %q", got, wantChallenge)
 	}
 }
 

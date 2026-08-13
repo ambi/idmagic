@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -30,17 +31,39 @@ type InvalidTokenError struct{}
 
 func (*InvalidTokenError) Error() string { return "invalid access token" }
 
+// SetBearerChallenge writes one RFC 6750 challenge and advertises the RFC 9728
+// metadata endpoint derived from the tenant's canonical issuer and TypeSpec contract.
+func SetBearerChallenge(c *echo.Context, errorCode, requiredScope string) {
+	params := []string{"Bearer error=" + strconv.Quote(errorCode)}
+	if requiredScope != "" {
+		params = append(params, "scope="+strconv.Quote(requiredScope))
+	}
+	if metadataURL := protectedResourceMetadataURL(c); metadataURL != "" {
+		params = append(params, "resource_metadata="+strconv.Quote(metadataURL))
+	}
+	c.Response().Header().Set("WWW-Authenticate", strings.Join(params, ", "))
+}
+
+func protectedResourceMetadataURL(c *echo.Context) string {
+	issuer := strings.TrimRight(RequestIssuer(c, ""), "/")
+	operation, ok := spec.CurrentRuntimeContract().Operation("GetProtectedResourceMetadata")
+	if issuer == "" || !ok {
+		return ""
+	}
+	return issuer + operation.Path
+}
+
 // WriteAccessTokenError maps RFC 6750 bearer-token failures to their resource
 // server response. It returns handled=false for non-token errors.
 func WriteAccessTokenError(c *echo.Context, err error) (handled bool, result error) {
 	var tokenErr *InvalidTokenError
 	if errors.As(err, &tokenErr) {
-		c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
+		SetBearerChallenge(c, "invalid_token", "")
 		return true, WriteProblem(c, http.StatusUnauthorized, "invalid_token", "The access token is invalid.")
 	}
 	var scopeErr *InsufficientScopeError
 	if errors.As(err, &scopeErr) {
-		c.Response().Header().Set("WWW-Authenticate", `Bearer error="insufficient_scope", scope="`+scopeErr.Required+`"`)
+		SetBearerChallenge(c, "insufficient_scope", scopeErr.Required)
 		return true, WriteProblem(c, http.StatusForbidden, "insufficient_scope", "The required scope is missing.")
 	}
 	return false, nil
