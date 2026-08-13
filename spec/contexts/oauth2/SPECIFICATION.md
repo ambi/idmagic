@@ -728,16 +728,19 @@ short-lived access tokens are left to expire naturally.
 
 ### Authorization policy (AuthZEN)
 
-Every authorization decision in this context — client/redirect_uri checks, grant-type entitlement,
-refresh token validity, sender-constraint/proof matching, `/userinfo` scope checks, `/introspect`
-caller authentication — is declared in `spec/policy/client-authorization.json` and evaluated through
-an AuthZEN-style `authorize({subject, action, resource, context})` interface, rather than scattered
-as inline conditionals across adapters where a check could silently drop on regeneration. The
-current evaluator is a local
-pure-function adapter over that same policy document; swapping in an external AuthZEN service, OPA,
-or Cedar later only touches the adapter, not the usecases that call `authorize()`. Every `rules[].id`
-declared in the policy JSON must have a matching implementation, which an invariants test enforces
-so a newly declared rule cannot silently ship unimplemented.
+Authorization decisions that cross the policy boundary use an AuthZEN-style
+`authorize({subject, action, resource, context})` port. The local implementation evaluates the
+application-owned action-to-requirement table and named rule functions in Go; role-policy inspection
+reads the same table so the displayed requirements match runtime local authorization. A remote
+AuthZEN adapter implements the same port and is selected at composition time. Policy failures,
+undefined actions, malformed remote responses, and unavailable remote evaluators deny the protected
+operation rather than falling back to an allow decision.
+
+Cedar is not a runtime policy source. Its Go implementation can evaluate the existing request shape,
+but its schema validator is still an experimental API and moving only runtime evaluation would leave
+the Go requirement table in place for role-policy inspection. Reconsider Cedar only when validation
+has a stable compatibility contract and one policy representation can replace both runtime rules and
+inspection metadata without introducing a second authorization source.
 
 ### Discovery
 
@@ -945,9 +948,11 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
   already run client PKI.
 - Consent is persisted per `(subject, client_id)` as a set of granted scopes, not per-client and not
   per-interaction, to avoid silent scope creep and consent fatigue.
-- Authorization decisions are declared as policy in `spec/policy/client-authorization.json` and
-  evaluated through an AuthZEN-style `authorize()` interface rather than scattered as inline
-  conditionals.
+- Authorization decisions crossing the policy boundary use an AuthZEN-style `authorize()` port;
+  the local Go rule table also supplies role-policy inspection, while an external AuthZEN service is
+  isolated behind the remote adapter.
+- Cedar is not adopted while its Go schema validator is experimental and a migration would retain a
+  second Go authorization source for role-policy inspection.
 - The Discovery document is generated at runtime from `spec/discovery.json` rather than
   hand-maintained or build-time generated, so it cannot drift from the implementation.
 - The Device Authorization Grant reuses the state-transition table already declared in

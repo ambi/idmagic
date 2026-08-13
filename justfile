@@ -139,6 +139,10 @@ test-go:
 test-go-package package:
     go test {{package}}
 
+[doc("Benchmark one Go package using a benchmark name or regular expression.")]
+benchmark-go-package package benchmark count="5":
+    go test {{package}} -run '^$' -bench {{benchmark}} -benchmem -count {{count}}
+
 # Example: just seed development development dry_run
 [doc("Plan or apply an explicit environment seed.")]
 seed environment profile mode="dry_run" manifest="" count="0":

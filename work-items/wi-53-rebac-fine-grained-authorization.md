@@ -1,5 +1,5 @@
 ---
-depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-51-rich-authorization-requests-agent-scopes]
+depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-51-rich-authorization-requests-agent-scopes, wi-354-evaluate-cedar-authorization]
 status: pending
 authors: ["tn"]
 risk: high
@@ -16,7 +16,7 @@ created_at: 2026-06-22
 (ReBAC) と、その実装である OpenFGA (Auth0 / Okta の Fine-Grained Authorization)
 が、エージェントの RAG データアクセスを per-resource で絞る標準的手法になっている。
 
-idmagic は AuthZEN スタイルの PDP を持つ (ADR-010) が、判定はクライアント認可
+idmagic は AuthZEN スタイルの `Authorizer` port を持つが、判定はクライアント認可
 ルール中心で、リソース×主体の関係タプルに基づく判定を持たない。本 WI は AuthZEN の
 `{subject, action, resource, context}` インターフェースを拡張し、関係タプル
 (user/agent ⇄ resource) に基づく ReBAC 判定を追加する。これにより
@@ -42,20 +42,16 @@ idmagic は AuthZEN スタイルの PDP を持つ (ADR-010) が、判定はク�
 - 大規模 tuple のシャーディング・キャッシュ最適化 (まず正しさ優先)。
 
 ## Plan
-- [[ADR-052-relationship-based-fine-grained-authorization]] を [[ADR-010-authzen-policy-as-spec]] の既存 `PolicyDecision` contract に合わせて accepted にし、ReBAC を新しい HTTP middleware ではなく AuthZEN evaluator の relationship facts provider として組み込む。
+- ReBAC を新しい HTTP middleware ではなく、既存 AuthZEN-style `Authorizer` seam の relationship facts provider として組み込む。
 - tuple は `(tenant, resource_type:id, relation, subject_type:id)`、model は relation rewrite/permission を versioned に保持する。tenant を tuple key と evaluator input の双方で必須にし、wildcard/subject-set の初期対応範囲を ADR で固定する。
 - 既存 admin RBAC は管理面の coarse gate として残す。ReBAC は agent がデータ resource へアクセスする箇所で RBAC/RAR/actor chain と AND 合成し、判定不能・循環・store failure は fail-closed にする。
 - 初期 backend は PostgreSQL closure/evaluation とし、OpenFGA等の外部 service は port adapter の将来候補に留める。model update と tuple write の整合 token を返し、read-your-writes が必要な管理操作で使う。
 - decision audit は許可/拒否、model version、relation path の非PII要約を記録し、tuple 全量や機密 resource name を event に複製しない。
-- **[[wi-354-evaluate-cedar-authorization]] との順序** (2026-08 に整理): 両 WI は
-  **同じ [[ADR-010-authzen-policy-as-spec]] の seam を対象にしている**。本 WI は Go の ReBAC
-  evaluator を作り、wi-354 は「実行時判断を Cedar へ移し、同じ意味の Go rule map を削除できるか」を
-  評価する。順序を決めずに着手すると、wi-354 が削除対象にするものを本 WI が作ることになる。
-  **wi-354 の採否判断を先行させ、その結論を受けて本 WI の evaluator の実装形態を決める**。
-  wi-354 が不採用と結論した場合、本 WI は上記の Go 実装のまま進める。採用と結論した場合は、
-  relation facts provider を Cedar の entity projection として表現できるかを T001 で見直す。
-  いずれの結論でも、ReBAC を新しい middleware ではなく AuthZEN evaluator の facts provider として
-  組み込むという設計判断は変わらない。この整理は [[wi-369-agent-capability-survey-2026-08]] による。
+- **[[wi-354-evaluate-cedar-authorization]] の結論** (2026-08-14): cedar-go v1.8.0 の runtime pilot は
+  token-exchange の既存判断を表現できたが、schema validator が実験 API で、role-policy inspection 用の
+  Go requirement table も撤去できないため Cedar は不採用となった。本 WI は上記の Go evaluator 方針で進め、
+  relationship facts provider を既存 AuthZEN-style `Authorizer` seam に接続する。Cedar の再評価は validator の
+  安定化、inspection metadata の単一正本化、bounded entity projection が成立した後に限る。
 
 ## Tasks
 - [ ] T001 [Design/Spec] ADR-052 の relation language、AuthZEN 合成順、consistency/fail mode を確定し、models/interfaces/events/constraints/contracts を再生成する。
@@ -75,4 +71,4 @@ idmagic は AuthZEN スタイルの PDP を持つ (ADR-010) が、判定はク�
 ## Risk Notes
 ReBAC は判定ロジックの中枢で、グラフ探索の誤りや既定許可は情報漏洩に直結する。
 既定拒否 (fail-closed) を徹底し、actor チェーンを判定 context に明示的に載せる。
-ADR-010 の adapter 境界を踏襲し、ローカル実装と外部 PDP を同一契約で検証する。
+既存 `Authorizer` adapter 境界を踏襲し、ローカル実装と外部 PDP を同一契約で検証する。
