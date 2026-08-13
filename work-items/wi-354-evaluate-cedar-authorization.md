@@ -34,6 +34,14 @@ Cedar の導入は policy schema、entity projection、validator、運用、移�
 - Cedarを採る場合の必須条件は、対象経路の実行時判断をCedarへ移し、同じ意味のGo rule mapを削除できることとする。
 - 採否は将来時点のvalidator安定性、性能、障害時のfail-closed挙動、ローカル/remote AuthZEN互換性で判断する。
 - 不採用の場合も、認可requirementsと既存Goテストを正本/実現の関係として維持する。
+- **[[wi-53-rebac-fine-grained-authorization]] との順序** (2026-08 に整理): wi-53 は
+  ReBAC evaluator を [[ADR-010-authzen-policy-as-spec]] の seam に組み込む WI で、
+  **本 WI と同じ seam を対象にしている**。本 WI が Cedar 採用と結論すると、wi-53 が作る
+  Go evaluator は削除候補になる。そのため**本 WI の採否判断を wi-53 より先行させる**。
+  あわせて、pilot 対象 (T002) の候補として wi-53 の対象経路を検討する。両者を同じ経路に
+  揃えられれば、Cedar の entity projection が関係タプルを表現できるかという最も重い問いを
+  pilot で直接検証でき、二度作る事態を避けられる。この整理は
+  [[wi-369-agent-capability-survey-2026-08]] による。
 
 ## Plan
 

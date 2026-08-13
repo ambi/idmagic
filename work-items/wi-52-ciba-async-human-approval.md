@@ -22,6 +22,19 @@ delivery) を実装し、エージェントが行動前に人間承認を得る�
 ([[wi-51-rich-authorization-requests-agent-scopes]]) と組み合わせ「何を承認するか」を
 構造的に提示し、既存の通知 (email sender) や将来の push と接続する。
 
+**モデルと実行の乖離**: idmagic は `AgentKind` に `Supervised` (人間の監督下で実行する区分) を
+持ち、管理者はエージェントをそう宣言できる。しかし**その監督を実行時に強制する仕組みが
+一つも無い**ため、`Supervised` は現状ただのラベルである。本 WI が、宣言された区分を初めて
+実際の挙動に結び付ける。
+
+**依存の状態**: `depends_on` の 3 件 ([[wi-49-agent-identity-first-class-principal]] /
+[[wi-50-token-exchange-delegation-actor-chain]] / [[wi-51-rich-authorization-requests-agent-scopes]])
+はすべて完了済みで、本 WI はアンブロック済みである。
+[[wi-59-agent-governance-guardrails-audit-inventory]] が本 WI を明示的に待っており
+(閾値超過時の「承認へ昇格」経路)、それまでは承認要求を deny 扱いにせざるを得ない。
+エージェントのガバナンス層はここが埋まるまで進まない。この優先度判断は
+[[wi-369-agent-capability-survey-2026-08]] の棚卸しによる。
+
 ## Scope
 - **decision**:
   - 新規 ADR [[ADR-051]]: token delivery mode (poll を既定、ping / push は将来)、binding_message と user_code の扱い、認証要求の有効期限・ポーリング間隔、authentication device への 通知チャネル (email / push)、CIBA と既存 step-up / consent の責務分担を確定する。
@@ -48,6 +61,16 @@ delivery) を実装し、エージェントが行動前に人間承認を得る�
 - `/bc-authorize` では login_hint/id_token_hint の検証、client authentication、requested expiry を制限する。token endpoint の CIBA grant は pending/slow_down/expired/access_denied を RFC 準拠で返し、Approved を一度だけ token 化する。
 - 承認操作は account portal の本人 session + step-up を必須にし、RAR の人間可読 rendering を再利用する。binding message だけで内容を代替せず、agent・actor chain・resource・actions を表示する。
 - poll 状態は Valkey の短命共有 store、最終 decision/監査 event は durable event log に残す。ping delivery は adapter とし、初期実装は poll を必須、ping は追加可能な構成にする。
+- **AuthZEN AARP との関係** (2026-08 時点の外部動向): OpenID AuthZEN WG は
+  Access Request and Approval Profile (AARP) を WG Draft に昇格させた。AARP は
+  「認可が**まだ**下せない — 承認・同意・委譲権限・アテステーション・リスク評価といった
+  前提条件を先に満たす必要がある」状況を、要求 → 追跡 → 充足 → 再評価という相互運用可能な
+  形に抽象化したものである。CIBA はその最も普及した実装形にあたる。
+  将来 AARP プロファイルへ寄せる余地を残すため、**承認状態を CIBA 固有の形ではなく
+  「前提条件が未充足である」という一般形で保持する**。具体的には、decision を保持する
+  domain model が `auth_req_id` や poll interval といった CIBA の輸送層の語彙に依存しないようにし、
+  CIBA 固有の値は adapter 側に閉じる。AARP を独立した work item として追随しない判断と
+  その理由は [[wi-369-agent-capability-survey-2026-08]] に記録した。
 
 ## Tasks
 - [ ] T001 [Design/Spec] ADR-051 を既存 Agent/TokenExchange/RAR 型へ確定し、request lifecycle、CIBA endpoints/errors、approval interfaces/events/constraints/contracts/scenarios を追加して再生成する。

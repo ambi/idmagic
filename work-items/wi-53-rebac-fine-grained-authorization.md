@@ -47,6 +47,15 @@ idmagic は AuthZEN スタイルの PDP を持つ (ADR-010) が、判定はク�
 - 既存 admin RBAC は管理面の coarse gate として残す。ReBAC は agent がデータ resource へアクセスする箇所で RBAC/RAR/actor chain と AND 合成し、判定不能・循環・store failure は fail-closed にする。
 - 初期 backend は PostgreSQL closure/evaluation とし、OpenFGA等の外部 service は port adapter の将来候補に留める。model update と tuple write の整合 token を返し、read-your-writes が必要な管理操作で使う。
 - decision audit は許可/拒否、model version、relation path の非PII要約を記録し、tuple 全量や機密 resource name を event に複製しない。
+- **[[wi-354-evaluate-cedar-authorization]] との順序** (2026-08 に整理): 両 WI は
+  **同じ [[ADR-010-authzen-policy-as-spec]] の seam を対象にしている**。本 WI は Go の ReBAC
+  evaluator を作り、wi-354 は「実行時判断を Cedar へ移し、同じ意味の Go rule map を削除できるか」を
+  評価する。順序を決めずに着手すると、wi-354 が削除対象にするものを本 WI が作ることになる。
+  **wi-354 の採否判断を先行させ、その結論を受けて本 WI の evaluator の実装形態を決める**。
+  wi-354 が不採用と結論した場合、本 WI は上記の Go 実装のまま進める。採用と結論した場合は、
+  relation facts provider を Cedar の entity projection として表現できるかを T001 で見直す。
+  いずれの結論でも、ReBAC を新しい middleware ではなく AuthZEN evaluator の facts provider として
+  組み込むという設計判断は変わらない。この整理は [[wi-369-agent-capability-survey-2026-08]] による。
 
 ## Tasks
 - [ ] T001 [Design/Spec] ADR-052 の relation language、AuthZEN 合成順、consistency/fail mode を確定し、models/interfaces/events/constraints/contracts を再生成する。
