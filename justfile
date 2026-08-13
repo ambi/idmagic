@@ -380,3 +380,7 @@ check-k6:
 # Run the OAuth2 / OIDC demo against a running server (default http://localhost:8080).
 demo:
     ./demo.sh
+
+# Run an interactive CIBA approval demo against the lightweight local stack.
+demo-ciba base="http://localhost:5173/realms/default":
+    BASE={{base}} ./ciba-demo.sh

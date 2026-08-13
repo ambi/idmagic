@@ -54,13 +54,14 @@ func SeedDemoData(
 ) error {
 	secretHash := oauthdomain.HashClientSecret(clientSecret)
 	now := time.Now().UTC()
+	demoClientName := "Demo Client"
 	demoClient := &oauthdomain.OAuth2Client{
-		TenantID: tenancydomain.DefaultTenantID, ClientID: seed.ClientID,
+		TenantID: tenancydomain.DefaultTenantID, ClientID: seed.ClientID, ClientName: &demoClientName,
 		ClientSecretHash: &secretHash, ClientType: spec.ClientConfidential,
 		RedirectURIs: seed.ClientRedirectURIs,
 		GrantTypes: []spec.GrantType{
 			spec.GrantAuthorizationCode, spec.GrantRefreshToken,
-			spec.GrantClientCredentials, spec.GrantDeviceCode,
+			spec.GrantClientCredentials, spec.GrantDeviceCode, spec.GrantCiba,
 		},
 		ResponseTypes:           []spec.ResponseType{spec.ResponseTypeCode},
 		TokenEndpointAuthMethod: oauthdomain.AuthMethodClientSecretBasic,

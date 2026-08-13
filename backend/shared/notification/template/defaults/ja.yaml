@@ -85,7 +85,8 @@ agent_action_approval_request:
   body_text: |
     {{user_display_name}} さん
 
-    {{client_name}}{{agent_name}} が操作の承認を求めています。
+    {{client_name}} が操作の承認を求めています。
+    Agent: {{agent_name}}
     照合メッセージ: {{binding_message}}
     {{expires_in_minutes}} 分以内に次のページで内容を確認してください。
 
@@ -96,7 +97,8 @@ agent_action_approval_request:
     {{tenant_display_name}}
   body_html: |
     <p>{{user_display_name}} さん</p>
-    <p><strong>{{client_name}}</strong>{{agent_name}} が操作の承認を求めています。</p>
+    <p><strong>{{client_name}}</strong> が操作の承認を求めています。</p>
+    <p>Agent: {{agent_name}}</p>
     <p>照合メッセージ: {{binding_message}}</p>
     <p><a href="{{approval_url}}" style="color:#1d4fd8;">承認要求を確認する</a></p>
     <p style="color:#475569;font-size:13px;">この要求は {{expires_in_minutes}} 分で期限切れになります。心当たりがない場合は拒否するか、期限切れにしてください。</p>

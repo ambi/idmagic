@@ -62,6 +62,14 @@ Use:
 
 *(Note: Do not open `/login` directly. The login screen expects an active authorization transaction.)*
 
+To try the CIBA poll-mode approval flow, sign in as `alice`, then run this in a second terminal:
+
+```bash
+just demo-ciba
+```
+
+Follow the prompt to open the account approval page, approve the request, and return to the terminal.
+
 ### Docker Development Stack
 
 The compose stack starts PostgreSQL, OpenTelemetry Collector, Prometheus, the Go API, and the UI gateway. Caddy exposes the combined app at <http://localhost:8080/>.

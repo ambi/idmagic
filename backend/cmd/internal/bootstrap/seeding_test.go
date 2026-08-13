@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/seeding/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
@@ -40,6 +41,13 @@ func TestSeedDryRunDoesNotMutateAndRepeatedApplyConverges(t *testing.T) {
 	}
 	if first.Count(domain.OperationNoop) == 0 {
 		t.Fatalf("first apply plan = %+v, want converged no-op plan", first)
+	}
+	demoClient, err := deps.OAuth2.ClientRepo.FindByID(ctx, tenancydomain.DefaultTenantID, seedDemoClientID)
+	if err != nil || demoClient == nil || !slices.Contains(demoClient.GrantTypes, spec.GrantCiba) {
+		t.Fatalf("demo client CIBA grant = %#v, %v; want enabled", demoClient, err)
+	}
+	if demoClient.ClientName == nil || *demoClient.ClientName != "Demo Client" {
+		t.Fatalf("demo client name = %#v, want Demo Client", demoClient.ClientName)
 	}
 	aliceBefore, err := deps.IdManagement.UserRepo.FindBySub(ctx, seedUserAliceID)
 	if err != nil {

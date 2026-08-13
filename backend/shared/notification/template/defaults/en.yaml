@@ -86,7 +86,8 @@ agent_action_approval_request:
   body_text: |
     Hello {{user_display_name}},
 
-    {{client_name}} requested your approval for an action{{agent_name}}.
+    {{client_name}} requested your approval for an action.
+    Agent: {{agent_name}}
     Reference: {{binding_message}}
     Review the request within {{expires_in_minutes}} minutes:
 
@@ -97,7 +98,8 @@ agent_action_approval_request:
     {{tenant_display_name}}
   body_html: |
     <p>Hello {{user_display_name}},</p>
-    <p><strong>{{client_name}}</strong> requested your approval for an action{{agent_name}}.</p>
+    <p><strong>{{client_name}}</strong> requested your approval for an action.</p>
+    <p>Agent: {{agent_name}}</p>
     <p>Reference: {{binding_message}}</p>
     <p><a href="{{approval_url}}" style="color:#1d4fd8;">Review the approval request</a></p>
     <p style="color:#475569;font-size:13px;">This request expires in {{expires_in_minutes}} minutes. If you do not recognize it, deny it or let it expire.</p>

@@ -384,14 +384,16 @@ func notifyApproval(ctx context.Context, deps StartApprovalDeps, client *oauthdo
 	if client.ClientName != nil && strings.TrimSpace(*client.ClientName) != "" {
 		clientName = *client.ClientName
 	}
-	agentSuffix := ""
-	if agentName != "" {
-		agentSuffix = fmt.Sprintf(" (%s)", agentName)
+	if agentName == "" {
+		agentName = "—"
+	}
+	if binding == "" {
+		binding = "—"
 	}
 	deps.Notifier.Notify(ctx, notificationports.Notification{
 		TenantID: user.TenantID, To: *user.Email, Key: notificationports.TemplateKeyAgentActionApprovalRequest,
 		RecipientLocale: user.LocaleAttribute(), Vars: map[string]string{
-			"approval_url": deps.ApprovalURL, "client_name": clientName, "agent_name": agentSuffix,
+			"approval_url": deps.ApprovalURL, "client_name": clientName, "agent_name": agentName,
 			"binding_message": binding, "expires_in_minutes": fmt.Sprintf("%d", int(ttl.Minutes())),
 			"user_display_name": user.DisplayName(),
 		},

@@ -18,6 +18,7 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	sharedusecases "github.com/ambi/idmagic/backend/oauth2/usecases"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -35,6 +36,45 @@ func TestValidateStartApprovalInputRejectsMalformedCIBARequest(t *testing.T) {
 		if err := approvalusecases.ValidateStartApprovalInput(input); err == nil {
 			t.Fatalf("ValidateStartApprovalInput(%+v) accepted malformed request", input)
 		}
+	}
+}
+
+type recordingNotifier struct {
+	notification notificationports.Notification
+}
+
+func (n *recordingNotifier) Notify(_ context.Context, notification notificationports.Notification) bool {
+	n.notification = notification
+	return true
+}
+
+func TestStartApprovalNotificationUsesFallbacksWithoutAgentOrBindingMessage(t *testing.T) {
+	t.Parallel()
+	ctx := tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{ID: "tenant-a"}, "", "")
+	clientRepo := oauthmemory.NewClientRepository()
+	clientRepo.Seed(&oauthdomain.OAuth2Client{
+		TenantID: "tenant-a", ClientID: "demo-client", ClientType: spec.ClientConfidential,
+		GrantTypes: []spec.GrantType{spec.GrantCiba}, Scope: "openid",
+	})
+	email := "alice@example.com"
+	userRepo := usermemory.NewUserRepository()
+	userRepo.Seed(&userdomain.User{
+		ID: "alice-id", TenantID: "tenant-a", PreferredUsername: "alice", Email: &email,
+		CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+	})
+	notifier := &recordingNotifier{}
+	_, err := approvalusecases.StartApproval(ctx, approvalusecases.StartApprovalDeps{
+		ClientRepo: clientRepo, UserRepo: userRepo, Store: approvalmemory.NewApprovalRequestStore(),
+		Notifier: notifier, ApprovalURL: "https://idp.example/account/approvals",
+	}, approvalusecases.StartApprovalInput{ClientID: "demo-client", LoginHint: "alice", Scope: "openid"}, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("StartApproval() error = %v", err)
+	}
+	if got := notifier.notification.Vars["agent_name"]; got != "—" {
+		t.Fatalf("agent_name = %q, want fallback", got)
+	}
+	if got := notifier.notification.Vars["binding_message"]; got != "—" {
+		t.Fatalf("binding_message = %q, want fallback", got)
 	}
 }
 
