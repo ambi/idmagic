@@ -3,6 +3,7 @@
 ## Rules
 
 - Status updates, explanations, questions, summaries, and final responses of AI coding agents must be Japanese.
+- Code comments must be written in English. User-facing UI text stays Japanese and is unaffected.
 - The main `README.md` file must be written in English only.
 - Use the specification-first development workflow.
   - Keep feature and behavior changes specification-first.
@@ -34,12 +35,18 @@ The `justfile` is the single command map for this repo. Run every basic command 
 
 ## Tooling
 
-Reach for the purpose-built CLI before writing a script. Needing more than one command is a reason to
-learn the tool's flags, not to open an editor — a throwaway script is never the shortest path to a
-value that already lives in a structured file.
+Reach for the purpose-built tool before writing a script — when reading and editing files as much as
+when extracting values. Needing more than one command is a reason to learn the tool's flags, not to
+open an editor: a throwaway script is never the shortest path to a value that already lives in a
+structured file, nor to an edit an editing tool already makes directly.
+
+The first two rows are the ones every task touches, so they come first: an agent with file tools
+reads and edits through those tools, and reaches for a shell only for what they cannot do.
 
 | Task | Use | Not |
 |---|---|---|
+| Read a file, or part of one | the Read tool (`offset`/`limit`) | `cat`, `head`, `tail`, `sed -n 'N,Mp'` |
+| Edit code | the Edit tool, or `sd` for one literal string across files | `sed -i`, a `python3` / `bun` heredoc rewriting files |
 | Query/extract JSON | `jq` | throwaway `python3 -c` / `bun -e` |
 | Explore JSON of unknown shape | `gron file.json \| rg pattern` | reading the whole file |
 | Query/extract YAML | `yq` | `grep` against indentation |
