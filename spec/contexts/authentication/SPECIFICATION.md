@@ -180,6 +180,26 @@ bundled common-password dictionary are enforced, but mixed-character-class and p
 requirements are not — both are explicitly discouraged by NIST and tend to push users toward
 predictable patterns rather than raising effective entropy.
 
+Composition rules ("must contain a symbol", "must contain an uppercase letter") are therefore left
+unimplemented on purpose, not by omission. §3.1.1.2 states them as a SHALL NOT, and the reason is
+empirical rather than stylistic: a user asked for one more character class satisfies the rule in the
+most predictable way available (`password` becomes `Password1!`), so the guessing resistance gained is
+far smaller than the nominal search space suggests, while support load and password reuse both rise.
+The defenses that do move the number — length, the breach and dictionary checks, login throttling, and
+MFA — are all already in place, and stacking a composition rule on top of them buys nothing.
+
+The demand for these rules is nevertheless real, and it comes from audit checklists rather than from
+threat models: PCI DSS v4.0 §8.3.6 still requires both alphabetic and numeric characters, and internal
+security standards that predate SP 800-63B-4 often say the same. So this may yet be implemented — as
+an off-by-default, per-tenant opt-in shaped exactly like `max_age_days`, with the specification
+recording that its purpose is to satisfy a compliance requirement and not to strengthen a password.
+Adopting it would also mean revising the `NIST63B4-NO-COMPOSITION` row above: the product default
+would stay compliant, but an opted-in tenant would be an explicit, documented deviation, and the
+Standards table must not claim otherwise. Two details would have to be settled first — which character
+classes exist, and whether membership is judged over ASCII or Unicode categories, since `min_length`
+counts runes and a half-width/full-width mismatch would leave the UI's stated requirements and the
+server's verdict disagreeing.
+
 Length, history depth, and expiry are per-tenant overridable (`PasswordPolicyOverride`); an omitted
 field inherits the global default, and the resolved snapshot is what every password-setting path
 evaluates — change-password, reset-password redemption, and admin user creation alike. Overrides may
@@ -386,6 +406,10 @@ without new policy or session states.
   than allowing unthrottled attempts through.
 - Password policy follows NIST SP 800-63B-4: length and identifier-similarity checks plus a
   common-password dictionary, with no composition-rule or forced-rotation requirement.
+- Character-class composition rules are deliberately not implemented, since SP 800-63B-4 states them
+  as a SHALL NOT and they raise predictability rather than guessing resistance; they may still be
+  added later as an off-by-default tenant opt-in for compliance checklists such as PCI DSS v4.0,
+  which would make the `NIST63B4-NO-COMPOSITION` adoption an explicit deviation for those tenants.
 - Tenants may override length, history depth, and expiry only in the stricter direction, and every
   password-setting path evaluates the same resolved snapshot rather than the global default.
 - Password expiry is opt-in per tenant, measured from the later of the last password change and the
