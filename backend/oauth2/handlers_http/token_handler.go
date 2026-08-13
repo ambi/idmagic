@@ -8,6 +8,7 @@ import (
 	"time"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
+	approvalusecases "github.com/ambi/idmagic/backend/oauth2/approval/usecases"
 	deviceusecases "github.com/ambi/idmagic/backend/oauth2/device/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -251,6 +252,23 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			body["id_token"] = res.IDToken
 		}
 		return c.JSON(http.StatusOK, body)
+
+	case "urn:openid:params:grant-type:ciba":
+		result, err := approvalusecases.ExchangeApproval(ctx, approvalusecases.ExchangeApprovalDeps{
+			ClientRepo: d.ClientRepo, UserRepo: d.UserRepo, AgentRepo: d.AgentRepo,
+			Store: d.ApprovalRequestStore, TokenIssuer: d.TokenIssuer,
+			ResolveAttributeDefs: d.effectiveUserAttributeDefs, Emit: d.Emit,
+		}, approvalusecases.ExchangeApprovalInput{
+			ClientID: clientStub.ID, AuthReqID: c.Request().PostFormValue("auth_req_id"),
+			ProofJKT: dpopJKT, ProofX5TS256: clientStub.MTLSThumbprintS256,
+		}, now)
+		if err != nil {
+			return writeOAuthError(c, err)
+		}
+		return c.JSON(http.StatusOK, map[string]any{
+			"access_token": result.AccessToken, "id_token": result.IDToken,
+			"token_type": result.TokenType, "expires_in": result.ExpiresIn, "scope": result.Scope,
+		})
 
 	case "urn:ietf:params:oauth:grant-type:token-exchange":
 		exchangeDetails, err := tokenusecases.ParseAuthorizationDetails(c.Request().PostFormValue("authorization_details"))

@@ -194,11 +194,9 @@ func (s *JWTSigner) SignIDToken(ctx context.Context, in oauthports.IDTokenInput)
 	return SignPS256(key, nil, claims)
 }
 
-// VerifyIDTokenHint は /end_session の id_token_hint を検証する (OIDC RP-Initiated
-// Logout 1.0)。署名 (登録済み鍵) と iss は fail-closed で検証するが、exp は
-// 検証しない — ログアウト時点で ID Token が期限切れになっているのが通常の RP 実装
-// であるため。aud/sub/sid のクライアント一致判定は呼び出し側 (usecase)
-// の責務とする。
+// VerifyIDTokenHint verifies the signature and issuer while exposing claims
+// for endpoint-specific checks. Logout may accept an expired hint, whereas
+// CIBA checks ExpiresAt before resolving the subject.
 func (s *JWTSigner) VerifyIDTokenHint(ctx context.Context, token string) (*oauthports.IDTokenHintClaims, error) {
 	keys, err := s.KeyStore.GetAllKeys(ctx)
 	if err != nil {
@@ -218,14 +216,21 @@ func (s *JWTSigner) VerifyIDTokenHint(ctx context.Context, token string) (*oauth
 	if v, ok := payload["sid"].(string); ok {
 		claims.Sid = v
 	}
+	if v, ok := payload["exp"].(float64); ok {
+		claims.ExpiresAt = int64(v)
+	}
 	switch aud := payload["aud"].(type) {
 	case string:
 		claims.Audience = aud
+		claims.Audiences = []string{aud}
 	case []any:
-		if len(aud) > 0 {
-			if v, ok := aud[0].(string); ok {
-				claims.Audience = v
+		for _, item := range aud {
+			if v, ok := item.(string); ok {
+				claims.Audiences = append(claims.Audiences, v)
 			}
+		}
+		if len(claims.Audiences) > 0 {
+			claims.Audience = claims.Audiences[0]
 		}
 	}
 	return claims, nil

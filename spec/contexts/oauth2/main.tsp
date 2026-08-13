@@ -679,6 +679,61 @@ op DeviceAuthorization(
   @body body: DeviceAuthorizationHttpRequest
 ): DeviceAuthorizationSuccess_200 | DeviceAuthorizationError400 | DeviceAuthorizationError401 | DeviceAuthorizationError429;
 
+model BackchannelAuthenticateHttpRequest {
+  request: IdMagic.Contract.BackchannelAuthenticationRequest;
+}
+
+model BackchannelAuthenticateHttpResponse {
+  response: IdMagic.Contract.BackchannelAuthenticationResponse;
+}
+
+model BackchannelAuthenticateSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: BackchannelAuthenticateHttpResponse;
+}
+
+union BackchannelAuthenticateError400Body {
+  IdMagic.Contract.InvalidRequestError,
+  IdMagic.Contract.InvalidScopeError,
+  IdMagic.Contract.InvalidBindingMessageError,
+  IdMagic.Contract.UnknownUserIdError,
+  IdMagic.Contract.UnauthorizedClientError,
+}
+
+model BackchannelAuthenticateError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/json";
+  @body body: BackchannelAuthenticateError400Body;
+}
+
+union BackchannelAuthenticateError401Body {
+  IdMagic.Contract.InvalidClientError,
+}
+
+model BackchannelAuthenticateError401 {
+  @statusCode statusCode: 401;
+  @header contentType: "application/json";
+  @body body: BackchannelAuthenticateError401Body;
+}
+
+union BackchannelAuthenticateError429Body {
+  IdMagic.Contract.RateLimitedError,
+}
+
+model BackchannelAuthenticateError429 {
+  @statusCode statusCode: 429;
+  @header contentType: "application/json";
+  @body body: BackchannelAuthenticateError429Body;
+}
+
+@doc("Backchannel Authentication Request (OpenID CIBA Core §7.1)。client を認証したうえで\n人間の承認を求める承認要求を起票し、auth_req_id を返す。承認が成立するまで token endpoint の\nciba grant は authorization_pending を返し、成立後にちょうど一度だけトークン化する。")
+@TypeSpec.OpenAPI.operationId("BackchannelAuthenticate")
+@route("/bc-authorize")
+@post
+op BackchannelAuthenticate(
+  @body body: BackchannelAuthenticateHttpRequest
+): BackchannelAuthenticateSuccess_200 | BackchannelAuthenticateError400 | BackchannelAuthenticateError401 | BackchannelAuthenticateError429;
+
 model GetOpenidConfigurationHttpResponse {
   discovery: IdMagic.Contract.DiscoveryDocument;
 }
@@ -1557,6 +1612,70 @@ op RevokeMyConsent(
   @path client_id: string,
   @body body: RevokeMyConsentHttpRequest
 ): RevokeMyConsentSuccess_204 | RevokeMyConsentError400 | RevokeMyConsentError403;
+
+model ListMyApprovalRequestsHttpResponse {
+  response: IdMagic.Contract.AccountApprovalRequestListResponse;
+}
+
+model ListMyApprovalRequestsSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: ListMyApprovalRequestsHttpResponse;
+}
+
+union ListMyApprovalRequestsError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ListMyApprovalRequestsError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ListMyApprovalRequestsError403Body;
+}
+
+@doc("認証済みユーザーが自身宛の保留中の承認要求一覧を取得する (self-service)。対象は actor.id に\n固定し、他人宛の承認要求は返さない。期限切れの要求は返さない。")
+@TypeSpec.OpenAPI.operationId("ListMyApprovalRequests")
+@route("/api/account/v1/approval-requests")
+@get
+op ListMyApprovalRequests(
+
+): ListMyApprovalRequestsSuccess_200 | ListMyApprovalRequestsError403;
+
+model DecideMyApprovalRequestHttpRequest {
+  request: IdMagic.Contract.AccountApprovalDecisionRequest;
+}
+
+model DecideMyApprovalRequestSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+union DecideMyApprovalRequestError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model DecideMyApprovalRequestError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: DecideMyApprovalRequestError400Body;
+}
+
+union DecideMyApprovalRequestError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model DecideMyApprovalRequestError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: DecideMyApprovalRequestError403Body;
+}
+
+@doc("認証済みユーザーが自身宛の承認要求 1 件を承認または拒否する (self-service)。step-up 再認証と\nCSRF 検証を必須とし、actor.id == 承認対象 User に固定する。他人宛・終端状態・期限切れの要求への\n判断は拒否する。")
+@TypeSpec.OpenAPI.operationId("DecideMyApprovalRequest")
+@route("/api/account/v1/approval-requests/{id}/decision")
+@post
+op DecideMyApprovalRequest(
+  @path id: string,
+  @body body: DecideMyApprovalRequestHttpRequest
+): DecideMyApprovalRequestSuccess_204 | DecideMyApprovalRequestError400 | DecideMyApprovalRequestError403;
 }
 
 }

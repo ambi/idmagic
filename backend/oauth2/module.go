@@ -23,6 +23,7 @@ type Module struct {
 	PARStore                   oauthports.PARStore
 	RefreshStore               oauthports.RefreshTokenStore
 	DeviceCodeStore            oauthports.DeviceCodeStore
+	ApprovalRequestStore       oauthports.ApprovalRequestStore
 	DpopReplayStore            oauthports.DpopReplayStore
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
 	AccessTokenDenylist        oauthports.AccessTokenDenylist

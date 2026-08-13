@@ -15,6 +15,7 @@ const (
 	TemplateKeyEmailVerification             TemplateKey = "email_verification"
 	TemplateKeyEmailChangeConfirmation       TemplateKey = "email_change_confirmation"
 	TemplateKeyAccountSecurityAlert          TemplateKey = "account_security_alert"
+	TemplateKeyAgentActionApprovalRequest    TemplateKey = "agent_action_approval_request"
 	TemplateKeyLifecycleWorkflowNotification TemplateKey = "lifecycle_workflow_notification"
 )
 
@@ -26,6 +27,7 @@ func TemplateKeys() []TemplateKey {
 		TemplateKeyEmailVerification,
 		TemplateKeyEmailChangeConfirmation,
 		TemplateKeyAccountSecurityAlert,
+		TemplateKeyAgentActionApprovalRequest,
 		TemplateKeyLifecycleWorkflowNotification,
 	}
 }

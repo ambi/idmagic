@@ -161,6 +161,7 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			PARStore:                   oauth2memory.NewPARStore(),
 			RefreshStore:               oauth2memory.NewRefreshTokenStore(),
 			DeviceCodeStore:            oauth2memory.NewDeviceCodeStore(),
+			ApprovalRequestStore:       oauth2memory.NewApprovalRequestStore(),
 			DpopReplayStore:            oauth2memory.NewDpopReplayStore(),
 			ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 			AccessTokenDenylist:        oauth2memory.NewAccessTokenDenylist(),

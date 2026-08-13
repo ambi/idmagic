@@ -212,6 +212,54 @@ type DeviceAuthorizationRequested struct {
 func (e *DeviceAuthorizationRequested) EventType() string     { return "DeviceAuthorizationRequested" }
 func (e *DeviceAuthorizationRequested) OccurredAt() time.Time { return e.At }
 
+// BackchannelAuth events audit CIBA approval requests by UUID and never expose auth_req_id.
+
+type BackchannelAuthRequested struct {
+	At                time.Time `json:"-"`
+	TenantID          string    `json:"tenantId"`
+	ApprovalRequestID string    `json:"approvalRequestId"`
+	ClientID          string    `json:"clientId"`
+	AgentID           string    `json:"agentId,omitempty"`
+	UserID            string    `json:"userId"`
+	Scopes            []string  `json:"scopes"`
+}
+
+func (e *BackchannelAuthRequested) EventType() string     { return "BackchannelAuthRequested" }
+func (e *BackchannelAuthRequested) OccurredAt() time.Time { return e.At }
+
+type BackchannelAuthApproved struct {
+	At                time.Time `json:"-"`
+	TenantID          string    `json:"tenantId"`
+	ApprovalRequestID string    `json:"approvalRequestId"`
+	ClientID          string    `json:"clientId"`
+	UserID            string    `json:"userId"`
+}
+
+func (e *BackchannelAuthApproved) EventType() string     { return "BackchannelAuthApproved" }
+func (e *BackchannelAuthApproved) OccurredAt() time.Time { return e.At }
+
+type BackchannelAuthDenied struct {
+	At                time.Time `json:"-"`
+	TenantID          string    `json:"tenantId"`
+	ApprovalRequestID string    `json:"approvalRequestId"`
+	ClientID          string    `json:"clientId"`
+	UserID            string    `json:"userId"`
+}
+
+func (e *BackchannelAuthDenied) EventType() string     { return "BackchannelAuthDenied" }
+func (e *BackchannelAuthDenied) OccurredAt() time.Time { return e.At }
+
+type BackchannelAuthExpired struct {
+	At                time.Time `json:"-"`
+	TenantID          string    `json:"tenantId"`
+	ApprovalRequestID string    `json:"approvalRequestId"`
+	ClientID          string    `json:"clientId"`
+	UserID            string    `json:"userId"`
+}
+
+func (e *BackchannelAuthExpired) EventType() string     { return "BackchannelAuthExpired" }
+func (e *BackchannelAuthExpired) OccurredAt() time.Time { return e.At }
+
 type DeviceAuthorizationApproved struct {
 	At       time.Time `json:"-"`
 	TenantID string    `json:"tenantId"`

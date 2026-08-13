@@ -39,6 +39,8 @@ function templateKeyLabel(key: NotificationTemplateKey, t: NotificationTemplates
       return t.templateEmailChangeConfirmation
     case 'account_security_alert':
       return t.templateAccountSecurityAlert
+    case 'agent_action_approval_request':
+      return t.templateAgentActionApprovalRequest
     case 'lifecycle_workflow_notification':
       return t.templateLifecycleWorkflowNotification
     default:

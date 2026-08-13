@@ -27,11 +27,13 @@ const (
 	GrantClientCredentials GrantType = "client_credentials"
 	GrantDeviceCode        GrantType = "urn:ietf:params:oauth:grant-type:device_code"
 	GrantTokenExchange     GrantType = "urn:ietf:params:oauth:grant-type:token-exchange"
+	GrantCiba              GrantType = "urn:openid:params:grant-type:ciba"
 )
 
 func (g GrantType) Valid() bool {
 	switch g {
-	case GrantAuthorizationCode, GrantRefreshToken, GrantClientCredentials, GrantDeviceCode, GrantTokenExchange:
+	case GrantAuthorizationCode, GrantRefreshToken, GrantClientCredentials, GrantDeviceCode,
+		GrantTokenExchange, GrantCiba:
 		return true
 	}
 	return false
@@ -187,6 +189,25 @@ func (s DeviceCodeFlowState) Valid() bool {
 	switch s {
 	case DeviceFlowIssued, DeviceFlowUserCodeEntered,
 		DeviceFlowApproved, DeviceFlowDenied, DeviceFlowExchanged, DeviceFlowExpired:
+		return true
+	}
+	return false
+}
+
+// ApprovalRequestState represents the lifecycle of a human approval request.
+type ApprovalRequestState string
+
+const (
+	ApprovalPending  ApprovalRequestState = "pending"
+	ApprovalApproved ApprovalRequestState = "approved"
+	ApprovalDenied   ApprovalRequestState = "denied"
+	ApprovalExpired  ApprovalRequestState = "expired"
+	ApprovalConsumed ApprovalRequestState = "consumed"
+)
+
+func (s ApprovalRequestState) Valid() bool {
+	switch s {
+	case ApprovalPending, ApprovalApproved, ApprovalDenied, ApprovalExpired, ApprovalConsumed:
 		return true
 	}
 	return false

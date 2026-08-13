@@ -54,6 +54,44 @@ export async function listAccountConsents(): Promise<AccountConsent[]> {
   return (await request<{ consents: AccountConsent[] }>('/api/account/v1/consents')).consents
 }
 
+export type AccountApprovalRequest = {
+  id: string
+  client_id: string
+  client_name: string
+  agent_name?: string
+  scopes: string[]
+  authorization_details?: Array<Record<string, unknown> & { type: string }>
+  binding_message?: string
+  requested_at: string
+  expires_at: string
+}
+
+export async function listMyApprovalRequests(): Promise<AccountApprovalRequest[]> {
+  const body = await request<{ approval_requests: AccountApprovalRequest[] }>(
+    '/api/account/v1/approval-requests',
+  )
+  return body.approval_requests ?? []
+}
+
+export async function decideMyApprovalRequest(
+  csrfToken: string,
+  id: string,
+  decision: 'approve' | 'deny',
+): Promise<void> {
+  const response = await fetch(
+    tenantURL(`/api/account/v1/approval-requests/${encodeURIComponent(id)}/decision`),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ decision }),
+      credentials: 'same-origin',
+      cache: 'no-store',
+    },
+  )
+  if (response.status === 204) return
+  throw await responseAPIError(response)
+}
+
 export async function revokeAccountConsent(csrfToken: string, clientId: string): Promise<void> {
   const response = await fetch(
     tenantURL(`/api/account/v1/consents/${encodeURIComponent(clientId)}/revoke`),

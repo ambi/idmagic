@@ -25,6 +25,7 @@ import { Route as TotpRouteImport } from './routes/totp'
 import { Route as AccountIndexRouteImport } from './routes/account/index'
 import { Route as AccountActivityRouteImport } from './routes/account/activity'
 import { Route as AccountApplicationsRouteImport } from './routes/account/applications'
+import { Route as AccountApprovalsRouteImport } from './routes/account/approvals'
 import { Route as AccountAppsRouteImport } from './routes/account/apps'
 import { Route as AccountDataRouteImport } from './routes/account/data'
 import { Route as AccountEmailsRouteImport } from './routes/account/emails'
@@ -175,6 +176,11 @@ const AccountActivityRoute = AccountActivityRouteImport.update({
 const AccountApplicationsRoute = AccountApplicationsRouteImport.update({
   id: '/applications',
   path: '/applications',
+  getParentRoute: () => AccountRouteRoute,
+} as any)
+const AccountApprovalsRoute = AccountApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => AccountRouteRoute,
 } as any)
 const AccountAppsRoute = AccountAppsRouteImport.update({
@@ -572,6 +578,7 @@ export interface FileRoutesByFullPath {
   '/totp': typeof TotpRoute
   '/account/activity': typeof AccountActivityRoute
   '/account/applications': typeof AccountApplicationsRoute
+  '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
   '/account/data': typeof AccountDataRoute
   '/account/emails': typeof AccountEmailsRoute
@@ -658,6 +665,7 @@ export interface FileRoutesByTo {
   '/totp': typeof TotpRoute
   '/account/activity': typeof AccountActivityRoute
   '/account/applications': typeof AccountApplicationsRoute
+  '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
   '/account/data': typeof AccountDataRoute
   '/account/emails': typeof AccountEmailsRoute
@@ -741,6 +749,7 @@ export interface FileRoutesById {
   '/totp': typeof TotpRoute
   '/account/activity': typeof AccountActivityRoute
   '/account/applications': typeof AccountApplicationsRoute
+  '/account/approvals': typeof AccountApprovalsRoute
   '/account/apps': typeof AccountAppsRoute
   '/account/data': typeof AccountDataRoute
   '/account/emails': typeof AccountEmailsRoute
@@ -832,6 +841,7 @@ export interface FileRouteTypes {
     | '/totp'
     | '/account/activity'
     | '/account/applications'
+    | '/account/approvals'
     | '/account/apps'
     | '/account/data'
     | '/account/emails'
@@ -918,6 +928,7 @@ export interface FileRouteTypes {
     | '/totp'
     | '/account/activity'
     | '/account/applications'
+    | '/account/approvals'
     | '/account/apps'
     | '/account/data'
     | '/account/emails'
@@ -1000,6 +1011,7 @@ export interface FileRouteTypes {
     | '/totp'
     | '/account/activity'
     | '/account/applications'
+    | '/account/approvals'
     | '/account/apps'
     | '/account/data'
     | '/account/emails'
@@ -1202,6 +1214,13 @@ declare module '@tanstack/react-router' {
       path: '/applications'
       fullPath: '/account/applications'
       preLoaderRoute: typeof AccountApplicationsRouteImport
+      parentRoute: typeof AccountRouteRoute
+    }
+    '/account/approvals': {
+      id: '/account/approvals'
+      path: '/approvals'
+      fullPath: '/account/approvals'
+      preLoaderRoute: typeof AccountApprovalsRouteImport
       parentRoute: typeof AccountRouteRoute
     }
     '/account/apps': {
@@ -1707,6 +1726,7 @@ declare module '@tanstack/react-router' {
 interface AccountRouteRouteChildren {
   AccountActivityRoute: typeof AccountActivityRoute
   AccountApplicationsRoute: typeof AccountApplicationsRoute
+  AccountApprovalsRoute: typeof AccountApprovalsRoute
   AccountAppsRoute: typeof AccountAppsRoute
   AccountDataRoute: typeof AccountDataRoute
   AccountEmailsRoute: typeof AccountEmailsRoute
@@ -1722,6 +1742,7 @@ interface AccountRouteRouteChildren {
 const AccountRouteRouteChildren: AccountRouteRouteChildren = {
   AccountActivityRoute: AccountActivityRoute,
   AccountApplicationsRoute: AccountApplicationsRoute,
+  AccountApprovalsRoute: AccountApprovalsRoute,
   AccountAppsRoute: AccountAppsRoute,
   AccountDataRoute: AccountDataRoute,
   AccountEmailsRoute: AccountEmailsRoute,

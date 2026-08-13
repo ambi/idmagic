@@ -435,6 +435,21 @@ type Oauth2AccessTokenDenylist struct {
 	CreatedAt time.Time
 }
 
+type Oauth2ApprovalRequest struct {
+	ID              string
+	TenantID        string
+	AuthReqIDHash   string
+	ClientID        string
+	UserID          string
+	State           string
+	IntervalSeconds int32
+	LastPolledAt    pgtype.Timestamptz
+	ExpiresAt       time.Time
+	Payload         []byte
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type Oauth2AuthorizationCode struct {
 	Code           string
 	TenantID       string

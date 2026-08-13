@@ -13,12 +13,16 @@ import (
 type Querier interface {
 	// 失効マーカーを追加する。同一 jti は同一トークンを指し exp も決定的なので冪等 (DO NOTHING)。
 	AddOauth2AccessTokenDenylist(ctx context.Context, arg AddOauth2AccessTokenDenylistParams) error
+	ConsumeApprovalRequest(ctx context.Context, arg ConsumeApprovalRequestParams) (*ConsumeApprovalRequestRow, error)
 	// 単発消費の CAS。未使用かつ未期限の行だけを used=true にして 1 行返す。それ以外は 0 行。
 	ConsumePARRequest(ctx context.Context, arg ConsumePARRequestParams) ([]byte, error)
+	DecideApprovalRequest(ctx context.Context, arg DecideApprovalRequestParams) (*DecideApprovalRequestRow, error)
+	DeleteApprovalRequestsForUser(ctx context.Context, arg DeleteApprovalRequestsForUserParams) error
 	DeleteAuthorizationDetailType(ctx context.Context, arg DeleteAuthorizationDetailTypeParams) error
 	DeleteClient(ctx context.Context, arg DeleteClientParams) error
 	DeleteConsentsForSub(ctx context.Context, userID string) error
 	DeleteDeviceCodesForUser(ctx context.Context, arg DeleteDeviceCodesForUserParams) error
+	DeleteExpiredApprovalRequestsBatch(ctx context.Context, arg DeleteExpiredApprovalRequestsBatchParams) (int64, error)
 	DeleteExpiredAuthorizationCodesBatch(ctx context.Context, arg DeleteExpiredAuthorizationCodesBatchParams) (int64, error)
 	DeleteExpiredAuthorizationRequestsBatch(ctx context.Context, arg DeleteExpiredAuthorizationRequestsBatchParams) (int64, error)
 	DeleteExpiredDeviceCodesBatch(ctx context.Context, arg DeleteExpiredDeviceCodesBatchParams) (int64, error)
@@ -29,6 +33,9 @@ type Querier interface {
 	DeleteRefreshTokensForSub(ctx context.Context, userID string) error
 	// 単発 exchange の CAS。state='approved' の行だけを exchanged にして 1 行返す。
 	ExchangeDeviceCode(ctx context.Context, arg ExchangeDeviceCodeParams) (*ExchangeDeviceCodeRow, error)
+	ExpireApprovalRequest(ctx context.Context, arg ExpireApprovalRequestParams) (*ExpireApprovalRequestRow, error)
+	FindApprovalRequestByAuthReqIDHash(ctx context.Context, arg FindApprovalRequestByAuthReqIDHashParams) (*FindApprovalRequestByAuthReqIDHashRow, error)
+	FindApprovalRequestByID(ctx context.Context, arg FindApprovalRequestByIDParams) (*FindApprovalRequestByIDRow, error)
 	// 期限フィルタなし (parity)。state / redeemed_at / issued_family_id は read で payload に overlay。
 	FindAuthorizationCode(ctx context.Context, arg FindAuthorizationCodeParams) (*FindAuthorizationCodeRow, error)
 	// 期限フィルタなし (parity)。tenant_id は fail-closed 述語。
@@ -71,10 +78,12 @@ type Querier interface {
 	ListConsentsByTenantPageAfter(ctx context.Context, arg ListConsentsByTenantPageAfterParams) ([]*Consent, error)
 	ListConsentsByTenantPageBefore(ctx context.Context, arg ListConsentsByTenantPageBeforeParams) ([]*Consent, error)
 	ListMcpResourceServersByTenant(ctx context.Context, tenantID string) ([]*McpResourceServer, error)
+	ListPendingApprovalRequestsForUser(ctx context.Context, arg ListPendingApprovalRequestsForUserParams) ([]*ListPendingApprovalRequestsForUserRow, error)
 	// tx 内の read-modify-write を直列化するための行ロック取得。
 	LockAuthorizationRequest(ctx context.Context, arg LockAuthorizationRequestParams) ([]byte, error)
 	LockClientForSecretIssuance(ctx context.Context, clientID string) (string, error)
 	MarkRefreshTokenRotated(ctx context.Context, id string) error
+	RecordApprovalRequestPoll(ctx context.Context, arg RecordApprovalRequestPollParams) (*RecordApprovalRequestPollRow, error)
 	// 単発 redeem の CAS。state='issued' の行だけを redeemed にして 1 行返す。既 redeemed は 0 行。
 	RedeemAuthorizationCode(ctx context.Context, arg RedeemAuthorizationCodeParams) (*RedeemAuthorizationCodeRow, error)
 	// SETNX + TTL の写像。live な予約は ON CONFLICT の DO UPDATE ... WHERE が
@@ -84,6 +93,7 @@ type Querier interface {
 	RevokeConsent(ctx context.Context, arg RevokeConsentParams) error
 	RevokeRefreshTokenFamily(ctx context.Context, familyID string) error
 	RevokeRefreshTokensBySid(ctx context.Context, sid pgtype.UUID) error
+	SaveApprovalRequest(ctx context.Context, arg SaveApprovalRequestParams) error
 	SaveAuthorizationCode(ctx context.Context, arg SaveAuthorizationCodeParams) error
 	SaveAuthorizationRequest(ctx context.Context, arg SaveAuthorizationRequestParams) error
 	// Save / Update 共通の upsert。device_code_hash を PK、(tenant_id,user_code) を UNIQUE 鍵に持つ。

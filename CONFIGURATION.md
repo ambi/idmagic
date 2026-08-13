@@ -81,6 +81,8 @@ HTTP listener, hardening, security headers, and endpoint rate limits.
 | `RATE_LIMIT_PAR_WINDOW_SECONDS` | integer (> 0) | `60` | no | Window length for the `/par` limit. |
 | `RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS` | integer (> 0) | `20` | no | `/device_authorization` fixed-window limit, keyed by client_id and IP. |
 | `RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS` | integer (> 0) | `60` | no | Window length for the `/device_authorization` limit. |
+| `RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTS` | integer (> 0) | `20` | no | `/bc-authorize` fixed-window limit, keyed by client_id and IP. |
+| `RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_WINDOW_SECONDS` | integer (> 0) | `60` | no | Window length for the `/bc-authorize` limit. |
 | `RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS` | integer (> 0) | `5` | no | `/api/auth/forgot_password` fixed-window limit, keyed by the submitted identifier and IP. |
 | `RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS` | integer (> 0) | `900` | no | Window length for the password reset limit. |
 | `RATE_LIMIT_LOGIN_MAX_REQUESTS` | integer (> 0) | `20` | no | `/api/auth/login` fixed-window limit, keyed by IP. Separate from, and in addition to, the per-account login throttle. |

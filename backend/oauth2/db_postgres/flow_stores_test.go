@@ -2,9 +2,11 @@ package db_postgres_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
+	approvaldomain "github.com/ambi/idmagic/backend/oauth2/approval/domain"
 	oauth2postgres "github.com/ambi/idmagic/backend/oauth2/db_postgres"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -55,6 +57,72 @@ func TestPARStore(t *testing.T) {
 	}
 	if n, err := store.DeleteExpiredBatch(ctx, now, 100); err != nil || n < 1 {
 		t.Fatalf("gc n=%d err=%v (want >=1)", n, err)
+	}
+}
+
+// REQ-OAUTH2-041/042: PostgreSQL serializes poll bookkeeping, decisions, and one-time consumption.
+func TestApprovalRequestStore(t *testing.T) {
+	db := pgtest.Require(t)
+	tenant := seedTenant(t, db)
+	other := seedTenant(t, db)
+	user := seedUser(t, db, tenant.ID)
+	client := seedClient(t, db, tenant.ID)
+	ctx := tenancy.WithTenant(context.Background(), tenant, "", "")
+	otherCtx := tenancy.WithTenant(context.Background(), other, "", "")
+	store := &oauth2postgres.ApprovalRequestStore{Pool: db}
+	now := pgtest.Now()
+	rec := &approvaldomain.ApprovalRequest{
+		ID: newUUID(t), TenantID: tenant.ID, ClientID: client.ClientID, UserID: user.ID,
+		Scopes: []string{"openid"}, State: spec.ApprovalPending,
+		AuthReqIDHash: approvaldomain.HashAuthReqID("auth-request-secret"), IntervalSeconds: 5,
+		RequestedAt: now, ExpiresAt: now.Add(time.Minute),
+	}
+	if err := store.Save(ctx, rec); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	if got, err := store.FindByID(otherCtx, rec.ID); err != nil || got != nil {
+		t.Fatalf("cross-tenant find = %+v, err = %v", got, err)
+	}
+	if _, tooFast, err := store.RecordPoll(ctx, rec.AuthReqIDHash, now); err != nil || tooFast {
+		t.Fatalf("first poll tooFast = %v, err = %v", tooFast, err)
+	}
+	polled, tooFast, err := store.RecordPoll(ctx, rec.AuthReqIDHash, now.Add(time.Second))
+	if err != nil || !tooFast || polled.IntervalSeconds != 10 {
+		t.Fatalf("fast poll = %+v, tooFast = %v, err = %v", polled, tooFast, err)
+	}
+	decided, err := store.Decide(ctx, rec.ID, user.ID, spec.ApprovalEventApprove, now.Add(2*time.Second))
+	if err != nil || decided == nil || decided.State != spec.ApprovalApproved || decided.DecidedAt == nil {
+		t.Fatalf("decide = %+v, err = %v", decided, err)
+	}
+	stored, err := store.FindByID(ctx, rec.ID)
+	if err != nil || stored.DecidedAt == nil {
+		t.Fatalf("persisted decision = %+v, err = %v", stored, err)
+	}
+
+	var wg sync.WaitGroup
+	results := make(chan *approvaldomain.ApprovalRequest, 2)
+	for range 2 {
+		wg.Go(func() {
+			consumed, consumeErr := store.Consume(ctx, rec.AuthReqIDHash, now.Add(3*time.Second))
+			if consumeErr != nil {
+				t.Errorf("consume: %v", consumeErr)
+			}
+			results <- consumed
+		})
+	}
+	wg.Wait()
+	close(results)
+	successes := 0
+	for consumed := range results {
+		if consumed != nil {
+			successes++
+			if consumed.ConsumedAt == nil {
+				t.Error("successful consume did not persist consumed_at")
+			}
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("successful consumes = %d, want 1", successes)
 	}
 }
 

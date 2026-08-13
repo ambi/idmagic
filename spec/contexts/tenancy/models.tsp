@@ -350,6 +350,7 @@ enum NotificationTemplateKey {
   EmailVerification: "EmailVerification",
   EmailChangeConfirmation: "EmailChangeConfirmation",
   AccountSecurityAlert: "AccountSecurityAlert",
+  AgentActionApprovalRequest: "AgentActionApprovalRequest",
   LifecycleWorkflowNotification: "LifecycleWorkflowNotification",
 }
 

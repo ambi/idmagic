@@ -17,6 +17,7 @@ describe('development gateway', () => {
     '/realms/default/wsfed',
     '/realms/default/trust/mex',
     '/realms/default/scim/v2',
+    '/realms/default/bc-authorize',
   ])('proxies the published integration endpoint %s', (path) => {
     expect(proxyMatches(path)).toBe(true)
   })

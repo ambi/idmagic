@@ -19,6 +19,7 @@ var discoveryEndpoints = []discoveryEndpoint{
 	{"revocation_endpoint", "Revoke"},
 	{"pushed_authorization_request_endpoint", "PushAuthorizationRequest"},
 	{"device_authorization_endpoint", "DeviceAuthorization"},
+	{"backchannel_authentication_endpoint", "BackchannelAuthenticate"},
 	{"registration_endpoint", "RegisterClient"},
 	{"end_session_endpoint", "EndSession"},
 }
@@ -50,8 +51,11 @@ func (c *RuntimeContract) BuildDiscoveryDocument(issuer string) (map[string]any,
 	doc["response_modes_supported"] = []string{"query", "form_post"}
 	doc["grant_types_supported"] = []string{
 		string(GrantAuthorizationCode), string(GrantRefreshToken), string(GrantClientCredentials),
-		string(GrantDeviceCode), string(GrantTokenExchange),
+		string(GrantDeviceCode), string(GrantTokenExchange), string(GrantCiba),
 	}
+	// CIBA Core section 4: only poll mode is implemented and user_code is unsupported.
+	doc["backchannel_token_delivery_modes_supported"] = []string{"poll"}
+	doc["backchannel_user_code_parameter_supported"] = false
 	doc["id_token_signing_alg_values_supported"] = []string{"PS256", "ES256"}
 	doc["token_endpoint_auth_signing_alg_values_supported"] = []string{"PS256", "ES256"}
 	doc["code_challenge_methods_supported"] = []string{string(CodeChallengeMethodS256)}

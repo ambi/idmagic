@@ -64,6 +64,10 @@ func LoadAPIConfig(l *ConfigLoader) APIConfig {
 			MaxRequests:   l.PositiveInt("RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS", 20),
 			WindowSeconds: l.PositiveInt("RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS", 60),
 		},
+		"backchannel_authentication": {
+			MaxRequests:   l.PositiveInt("RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTS", 20),
+			WindowSeconds: l.PositiveInt("RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_WINDOW_SECONDS", 60),
+		},
 		"password_reset": {
 			MaxRequests:   l.PositiveInt("RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS", 5),
 			WindowSeconds: l.PositiveInt("RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS", 900),

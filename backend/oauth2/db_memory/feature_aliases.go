@@ -1,6 +1,7 @@
 package db_memory
 
 import (
+	approvalmemory "github.com/ambi/idmagic/backend/oauth2/approval/db_memory"
 	authorizationmemory "github.com/ambi/idmagic/backend/oauth2/authorization/db_memory"
 	clientmemory "github.com/ambi/idmagic/backend/oauth2/client/db_memory"
 	consentmemory "github.com/ambi/idmagic/backend/oauth2/consent/db_memory"
@@ -28,4 +29,5 @@ var (
 	NewRefreshTokenStore         = tokenmemory.NewRefreshTokenStore
 	NewAccessTokenDenylist       = tokenmemory.NewAccessTokenDenylist
 	NewDeviceCodeStore           = devicememory.NewDeviceCodeStore
+	NewApprovalRequestStore      = approvalmemory.NewApprovalRequestStore
 )

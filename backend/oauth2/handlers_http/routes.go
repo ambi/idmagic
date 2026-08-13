@@ -22,6 +22,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	signingports "github.com/ambi/idmagic/backend/signingkeys/ports"
@@ -55,6 +56,8 @@ type Deps struct {
 	JWKResolver                *tokens_jose.JWKResolver
 	ClientAssertionReplayStore oauthports.ClientAssertionReplayStore
 	DeviceCodeStore            oauthports.DeviceCodeStore
+	ApprovalRequestStore       oauthports.ApprovalRequestStore
+	Notifier                   notificationports.Notifier
 	DpopReplayStore            oauthports.DpopReplayStore
 	RefreshStore               oauthports.RefreshTokenStore
 	TokenIssuer                oauthports.TokenIssuer
@@ -113,6 +116,9 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/register", d.handleRegisterClient)
 	g.POST("/par", d.handlePAR)
 	g.POST("/device_authorization", d.handleDeviceAuthorization)
+	g.POST("/bc-authorize", d.handleBackchannelAuthenticate)
+	g.GET("/api/account/v1/approval-requests", d.handleListMyApprovalRequests)
+	g.POST("/api/account/v1/approval-requests/:id/decision", d.handleDecideMyApprovalRequest)
 	g.GET("/.well-known/openid-configuration", d.handleDiscovery)
 	g.GET("/.well-known/oauth-authorization-server", d.handleDiscovery)
 	g.GET("/session/check", d.handleCheckSessionIframe)

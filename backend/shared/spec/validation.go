@@ -102,6 +102,24 @@ var deviceAuthorizationSchema = z.Struct(z.Shape{
 // ValidateDeviceAuthorization は oauth2 domain の device authorization 検証を共有する。
 func ValidateDeviceAuthorization(value any) error { return validate(deviceAuthorizationSchema, value) }
 
+var approvalRequestSchema = z.Struct(z.Shape{
+	"ID":             z.String().UUID().Required(),
+	"ClientID":       z.String().Required(),
+	"UserID":         z.String().Required(),
+	"AuthReqIDHash":  z.String().Required(),
+	"BindingMessage": z.Ptr(z.String().Max(64)),
+	"State": z.StringLike[ApprovalRequestState]().TestFunc(
+		func(value *ApprovalRequestState, _ z.Ctx) bool { return value.Valid() },
+		z.Message("state is not in enum"),
+	).Required(),
+	"IntervalSeconds": z.Int().GT(0).Required(),
+	"RequestedAt":     z.Time().Required(),
+	"ExpiresAt":       z.Time().Required(),
+})
+
+// ValidateApprovalRequest applies the shared approval-request schema.
+func ValidateApprovalRequest(value any) error { return validate(approvalRequestSchema, value) }
+
 func validate(schema *z.StructSchema, value any) error {
 	return zogError(schema.Validate(value))
 }

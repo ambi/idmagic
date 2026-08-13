@@ -1301,6 +1301,27 @@ CREATE INDEX oauth2_device_codes_expires_at_idx
 CREATE INDEX oauth2_device_codes_user_idx
     ON oauth2_device_codes (tenant_id, user_id) WHERE user_id IS NOT NULL;
 
+CREATE UNLOGGED TABLE oauth2_approval_requests (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    auth_req_id_hash TEXT NOT NULL UNIQUE,
+    client_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    state TEXT NOT NULL CHECK (state IN ('pending', 'approved', 'denied', 'expired', 'consumed')),
+    interval_seconds INTEGER NOT NULL CHECK (interval_seconds > 0),
+    last_polled_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT oauth2_approval_requests_tenant_fkey FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT oauth2_approval_requests_client_fkey FOREIGN KEY (client_id) REFERENCES oauth2_clients(client_id) ON DELETE CASCADE,
+    CONSTRAINT oauth2_approval_requests_user_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX oauth2_approval_requests_pending_user_idx
+    ON oauth2_approval_requests (tenant_id, user_id, created_at) WHERE state = 'pending';
+CREATE INDEX oauth2_approval_requests_expires_at_idx ON oauth2_approval_requests (expires_at);
+
 CREATE UNLOGGED TABLE oauth2_replay_jtis (
     tenant_id UUID NOT NULL,
     kind TEXT NOT NULL,

@@ -85,6 +85,16 @@ enum DeviceCodeState {
 }
 
 
+@doc("ApprovalRequestLifecycle 状態機械の取りうる状態列挙。CIBA の輸送語彙ではなく「前提条件がまだ充足されていない」一般形として持つ。Consumed は Approved からのみ到達する、一度きりのトークン化を表す終端。状態機械セクションも参照。")
+enum ApprovalRequestState {
+  Pending: "Pending",
+  Approved: "Approved",
+  Denied: "Denied",
+  Expired: "Expired",
+  Consumed: "Consumed",
+}
+
+
 @doc("RefreshTokenLifecycle 状態機械の取りうる状態列挙。Rotated は子トークンへ消費済み、Revoked は失効済み、Expired は期限切れ。")
 enum RefreshTokenState {
   Active: "Active",
@@ -533,6 +543,37 @@ model DeviceAuthorization {
 }
 
 
+@doc("人間の承認が成立するまで client の要求を保留する承認要求。判断の状態と内容は CIBA の\n輸送 bookkeeping から分離するが、競合する判断と poll を一つの store 境界で直列化するため同じ\nrecord に併置する。id は UUID で、auth_req_id は SHA-256 ハッシュだけを索引として保存する。")
+model ApprovalRequest {
+  id: string;
+  @doc("所属テナント ID。")
+  tenant_id: string = "default";
+  @doc("承認要求を起票した client。")
+  client_id: string;
+  @doc("client に束縛された Agent (存在する場合)。承認画面と発行トークンの agent_id claim に使う。")
+  agent_id?: string;
+  @doc("承認判断を行う User の sub。login_hint / id_token_hint から解決し、以後この User だけが判断できる。")
+  user_id: string;
+  @doc("承認されたときに発行するトークンの scope。")
+  scopes: string[];
+  @doc("RFC 9396 — 承認対象の構造化された権限要求。承認画面はこれを人間可読に描画する。")
+  authorization_details?: AuthorizationDetail[];
+  @doc("要求の取り違え承認を防ぐため承認画面に表示する短い識別文 (CIBA Core §7.1 binding_message)。")
+  binding_message?: string;
+  state: ApprovalRequestState;
+  @doc("CIBA auth_req_id の SHA-256 ハッシュ。輸送層の索引であり、決定の意味論には関与しない。")
+  auth_req_id_hash: string;
+  @doc("輸送層の bookkeeping — client に指示する最小ポーリング間隔 (秒)。slow_down のたびに増える。")
+  interval_seconds: int64;
+  @doc("輸送層の bookkeeping — 直近のポーリング時刻。slow_down の判定に使う。")
+  last_polled_at?: utcDateTime;
+  requested_at: utcDateTime;
+  expires_at: utcDateTime;
+  decided_at?: utcDateTime;
+  consumed_at?: utcDateTime;
+}
+
+
 @doc("Sender-Constrained 証明 (RFC 7800)。")
 model SenderConstraintCnf {
   @doc("DPoP 鍵の SHA-256 サムプリント (RFC 9449 §6.1)。")
@@ -620,6 +661,12 @@ model DiscoveryDocument {
   revocation_endpoint: url;
   pushed_authorization_request_endpoint: url;
   device_authorization_endpoint: url;
+  @doc("CIBA Core §4 — backchannel authentication endpoint。CIBA を提供する場合にだけ広告する。")
+  backchannel_authentication_endpoint?: url;
+  @doc("CIBA Core §4 — 実装している token delivery mode。本実装は poll のみで、ping / push は広告しない。")
+  backchannel_token_delivery_modes_supported?: string[] = #["poll"];
+  @doc("CIBA Core §4 — user_code パラメータは非対応。承認画面は本人の認証済み session と step-up で保護されるため、二つ目の共有秘密を持たない。")
+  backchannel_user_code_parameter_supported?: boolean = false;
   registration_endpoint: url;
   end_session_endpoint?: url;
   frontchannel_logout_supported: boolean = true;
@@ -870,6 +917,8 @@ model TokenRequest {
   code_verifier?: string;
   refresh_token?: string;
   device_code?: string;
+  @doc("CIBA grant (urn:openid:params:grant-type:ciba) の auth_req_id。承認が成立するまで authorization_pending / slow_down を返し、成立後は一度だけトークン化する。")
+  auth_req_id?: string;
   client_id?: string;
   client_secret?: string;
   client_assertion?: string;
@@ -964,6 +1013,65 @@ model DeviceAuthorizationResponse {
   verification_uri_complete?: url;
   expires_in: int64;
   interval?: int64;
+}
+
+
+@doc("/bc-authorize リクエスト (CIBA Core §7.1)。client が人間の承認を求めて起票する。\nlogin_hint と id_token_hint はいずれか一方だけを指定し、どちらも解決できなければ\nunknown_user_id で fail-closed に拒否する。user_code は非対応 (discovery で広告しない)。")
+model BackchannelAuthenticationRequest {
+  @doc("承認対象 User を示すヒント。username または email として解決する。")
+  login_hint?: string;
+  @doc("本 OP が発行した有効な ID Token。署名・iss・aud・sub・exp を検証して承認対象 User を解決する。")
+  id_token_hint?: string;
+  @doc("承認されたときに発行するトークンの scope。必須かつ openid を含み、client の宣言 scope の部分集合でなければならない。")
+  scope: string;
+  @doc("RFC 9396 — 承認対象の構造化された権限要求 (JSON 文字列)。登録済み type だけを受理する。")
+  authorization_details?: string;
+  @doc("承認画面に表示する短い識別文 (CIBA Core §7.1)。")
+  binding_message?: string;
+  @doc("client が要求する有効期限 (秒)。正の整数かつ 600 秒以下。未指定時は 300 秒。")
+  requested_expiry?: int64;
+  client_id?: string;
+  client_secret?: string;
+  client_assertion?: string;
+  client_assertion_type?: string;
+}
+
+
+@doc("/bc-authorize レスポンス (CIBA Core §7.3)。auth_req_id は bearer secret であり、\nclient はこれを token endpoint の ciba grant で提示してポーリングする。")
+model BackchannelAuthenticationResponse {
+  auth_req_id: string;
+  expires_in: int64;
+  @doc("client が守るべき最小ポーリング間隔 (秒)。")
+  interval?: int64;
+}
+
+
+@doc("end-user の account portal が返す保留中の承認要求 1 件 (self-service)。自分宛に固定される\nため user_id は出さない。binding_message だけで内容を代替せず、要求元と要求内容を並べて返す。")
+model AccountApprovalRequest {
+  id: string;
+  client_id: string;
+  @doc("client_id を解決した表示名。OAuth2Client.client_name → Application カタログ名の順で\n解決し、いずれも無ければ client_id をそのまま返す。")
+  client_name: string;
+  @doc("client に束縛された Agent の表示名 (存在する場合)。")
+  agent_name?: string;
+  scopes: string[];
+  authorization_details?: AuthorizationDetail[];
+  binding_message?: string;
+  requested_at: utcDateTime;
+  expires_at: utcDateTime;
+}
+
+
+@doc("end-user 自身宛の保留中承認要求の一覧 (self-service)。")
+model AccountApprovalRequestListResponse {
+  approval_requests: AccountApprovalRequest[];
+}
+
+
+@doc("end-user が承認要求 1 件に下す判断。approve または deny のいずれか。")
+model AccountApprovalDecisionRequest {
+  @doc("approve または deny。")
+  decision: string;
 }
 
 
@@ -1125,6 +1233,18 @@ model SlowDownError {
 
 @doc("Device Authorization Grant においてユーザーがまだ承認していない (RFC 8628 §3.5 authorization_pending)。クライアントは interval 秒待ってから再試行する。")
 model AuthorizationPendingError {
+
+}
+
+
+@doc("CIBA の /bc-authorize において login_hint / id_token_hint から承認対象 User を解決できない (CIBA Core §13 unknown_user_id)。User の存在有無を error の差で開示しないため、非 active・別テナントも同じ error に畳む。")
+model UnknownUserIdError {
+
+}
+
+
+@doc("CIBA の /bc-authorize において binding_message が長すぎる、または表示に適さない (CIBA Core §13 invalid_binding_message)。")
+model InvalidBindingMessageError {
 
 }
 
@@ -1465,6 +1585,58 @@ model DeviceAuthorizationDenied {
   tenantId: string;
   clientId: string;
   userId?: string;
+}
+
+
+@doc("CIBA Core §7.3 — 人間の承認を求める承認要求を起票した。auth_req_id は bearer secret のため監査ログに残さない。")
+model BackchannelAuthRequested {
+  occurredAt: utcDateTime;
+  @doc("承認要求を受け付けたテナント ID。")
+  tenantId: string;
+  approvalRequestId: string;
+  clientId: string;
+  agentId?: string;
+  userId: string;
+  scopes: string[];
+}
+
+
+@doc("CIBA Core §7.3 — 承認対象 User が承認要求を承認した。")
+model BackchannelAuthApproved {
+  occurredAt: utcDateTime;
+  @doc("承認が起きたテナント ID。")
+  tenantId: string;
+  approvalRequestId: string;
+  clientId: string;
+  userId: string;
+}
+
+
+@doc("CIBA Core §7.3 — 承認対象 User が承認要求を拒否した。")
+model BackchannelAuthDenied {
+  occurredAt: utcDateTime;
+  @doc("拒否が起きたテナント ID。")
+  tenantId: string;
+  approvalRequestId: string;
+  clientId: string;
+  userId: string;
+}
+
+
+@doc("CIBA Core §11 — 承認要求が判断されないまま有効期限に到達した。")
+model BackchannelAuthExpired {
+  occurredAt: utcDateTime;
+  @doc("期限切れが起きたテナント ID。")
+  tenantId: string;
+  approvalRequestId: string;
+  clientId: string;
+  userId: string;
+}
+
+
+@doc("承認要求を承認済みトークンへ一度きり消費する lifecycle event。")
+model Consume {
+  occurredAt: utcDateTime;
 }
 
 

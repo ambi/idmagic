@@ -150,6 +150,8 @@ func endpointName(path string) string {
 		return "register"
 	case strings.HasPrefix(path, "/device_authorization"):
 		return "device_authorization"
+	case strings.HasPrefix(path, "/bc-authorize"):
+		return "backchannel_authentication"
 	case strings.HasPrefix(path, "/.well-known/"):
 		return "discovery"
 	default:

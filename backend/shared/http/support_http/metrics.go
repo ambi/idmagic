@@ -27,7 +27,7 @@ type Metrics interface {
 	// RecordEndpointRateLimit records one endpoint rate limiter evaluation
 	// , distinct from RecordLoginThrottle. policy is the
 	// EndpointRateLimitPolicy id ("token", "authorize", "par",
-	// "device_authorization", "password_reset", "login"); outcome is
+	// "device_authorization", "backchannel_authentication", "password_reset", "login"); outcome is
 	// "allowed", "rate_limited", or "store_unavailable".
 	RecordEndpointRateLimit(policy, outcome string)
 	// RecordTokenIssuance records one confirmed /token grant outcome.

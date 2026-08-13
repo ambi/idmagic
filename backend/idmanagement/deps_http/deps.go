@@ -58,6 +58,7 @@ type Deps struct {
 	ConsentRepo           oauthports.ConsentRepository
 	RefreshStore          oauthports.RefreshTokenStore
 	DeviceCodeStore       oauthports.DeviceCodeStore
+	ApprovalRequestStore  oauthports.ApprovalRequestStore
 	MfaFactorRepo         mfaports.MfaFactorRepository
 	PasswordHasher        passwordports.PasswordHasher
 	PasswordHistoryRepo   passwordports.PasswordHistoryRepository

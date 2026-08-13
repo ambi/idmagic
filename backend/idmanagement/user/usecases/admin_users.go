@@ -51,17 +51,18 @@ var (
 const deletedPasswordHashSentinel = "$deleted$"
 
 type AdminUserDeps struct {
-	UserRepo            userports.UserRepository
-	GroupRepo           groupports.GroupRepository
-	AttrSchemaRepo      tenantports.TenantUserAttributeSchemaRepository
-	ConsentRepo         oauthports.ConsentRepository
-	RefreshStore        oauthports.RefreshTokenStore
-	DeviceCodeStore     oauthports.DeviceCodeStore
-	SessionStore        sessionports.SessionStore
-	MfaFactorRepo       mfaports.MfaFactorRepository
-	PasswordHasher      passwordports.PasswordHasher
-	PasswordHistoryRepo passwordports.PasswordHistoryRepository
-	Emit                func(spec.DomainEvent) error
+	UserRepo             userports.UserRepository
+	GroupRepo            groupports.GroupRepository
+	AttrSchemaRepo       tenantports.TenantUserAttributeSchemaRepository
+	ConsentRepo          oauthports.ConsentRepository
+	RefreshStore         oauthports.RefreshTokenStore
+	DeviceCodeStore      oauthports.DeviceCodeStore
+	ApprovalRequestStore oauthports.ApprovalRequestStore
+	SessionStore         sessionports.SessionStore
+	MfaFactorRepo        mfaports.MfaFactorRepository
+	PasswordHasher       passwordports.PasswordHasher
+	PasswordHistoryRepo  passwordports.PasswordHistoryRepository
+	Emit                 func(spec.DomainEvent) error
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで
 	// 確定する (wi-237)。nil のとき UserRepo.Save に fallback する。
@@ -750,6 +751,11 @@ func cascadeDeleteForSub(ctx context.Context, deps AdminUserDeps, sub string) er
 	}
 	if deps.DeviceCodeStore != nil {
 		if err := deps.DeviceCodeStore.DeleteAllForSub(ctx, sub); err != nil {
+			return err
+		}
+	}
+	if deps.ApprovalRequestStore != nil {
+		if err := deps.ApprovalRequestStore.DeleteAllForSub(ctx, sub); err != nil {
 			return err
 		}
 	}

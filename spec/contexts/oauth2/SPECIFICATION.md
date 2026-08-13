@@ -1,6 +1,6 @@
 ---
 context: oauth2
-updated_at: 2026-08-11
+updated_at: 2026-08-14
 ---
 
 # OAuth2 Specification
@@ -42,6 +42,15 @@ requests, and session/logout binding.
 | ClientCredentials | Client 自身が認可主体となる machine-to-machine フロー (RFC 6749 §4.4)。confidential のみ。 | client_credentials, M2Mグラント |
 | DeviceCode | 入力制約のあるデバイス向けのデバイス認可グラント (RFC 8628)。grant_type は URN。 | urn:ietf:params:oauth:grant-type:device_code, device_code, デバイスコード |
 | TokenExchange | 既存トークンを別トークンに交換するトークン交換グラント (RFC 8693)。本アプリは 2 種類の subject_token を扱う: (1) 自己発行トークンの委任 (delegation) — subject_token / actor_token は本 IdP が発行し IntrospectAccessToken を通過したものに限る、(2) workload identity federation — subject_token_type が JwtSvid のとき、外部 attestation token を WorkloadIdentity の VerifyWorkloadAttestation で検証し、テナント登録済みの AgentWorkloadBinding で写した Agent の資格情報として発行する。grant_type は URN。 | urn:ietf:params:oauth:grant-type:token-exchange, token-exchange, トークン交換 |
+| Ciba | Client-Initiated Backchannel Authentication (OpenID CIBA Core)。client が帯域外の authentication device 経由で ResourceOwner の判断を求める decoupled なフロー。本アプリは poll mode のみを実装し、grant_type は URN。 | urn:openid:params:grant-type:ciba, ciba, CIBA, backchannel authentication |
+| ApprovalRequest | 人間の承認が成立するまで client の要求を保留する承認要求。承認対象 User・要求元 client / Agent・要求 scope / AuthorizationDetails・binding message・期限を持ち、Pending から一方向に進む。CIBA の輸送語彙に依存しない一般形で保持する。 | approval_request, 承認要求 |
+| AuthReqId | /bc-authorize が発行する承認要求の bearer secret (CIBA Core §7.3)。token endpoint の ciba grant で提示する。保存は SHA-256 ハッシュのみで、画面にも監査ログにも出さない。 | auth_req_id |
+| BindingMessage | 承認画面に表示する短い識別文 (CIBA Core §7.1)。別要求の取り違え承認を防ぐ補助であり、要求内容の提示を代替しない。 | binding_message |
+| TokenDeliveryMode | 承認成立をどう client へ届けるかの区分 (CIBA Core §4)。本アプリは poll のみ実装し、ping / push は広告しない。 | backchannel_token_delivery_mode, poll, ping, push |
+| UnknownUserId | CIBA error code unknown_user_id。login_hint / id_token_hint から承認対象 User を解決できない。存在有無を開示しないため非 active・別テナントも同じ error に畳む。 | unknown_user_id |
+| Pending | 承認要求が起票され、まだ判断されていない初期状態。 | pending |
+| Consumed | 承認済みの承認要求がちょうど一度トークン化された終端状態。 | consumed |
+| Consume | 承認済みの承認要求をトークンへ一度きり消費する。 | consume |
 | AuthorizationDetails | 構造化された細粒度の権限要求 (RFC 9396)。type で識別される JSON オブジェクトの配列として、対象・操作・上限・条件を表し、/authorize・/par・/token で要求・同意・トークン反映する。本アプリは受理する type をテナント登録スキーマに限定し fail-closed に検証する。 | authorization_details, RAR, Rich Authorization Requests, リッチ認可リクエスト |
 | AccessToken | ResourceServer にアクセスする際に提示するトークン。JWT (PS256 / ES256) として発行、TTL 600秒。 | access_token, アクセストークン |
 | IdToken | OIDC が定める、ResourceOwner の認証結果を表明する JWT。iss/sub/aud/exp/iat/auth_time/nonce/azp を含む。 | id_token, IDトークン |
@@ -352,6 +361,19 @@ Final — https://openid.net/specs/openid-connect-core-1_0-18.html
 | OIDC-CORE-USERINFO | required | SHOULD | openid scopeのAccess Tokenに対してsubを含むUserInfoを返す。 |
 | OIDC-CORE-HYBRID-IMPLICIT | excluded | MAY | Implicit FlowおよびHybrid Flowを提供する。 |
 
+### OpenID Connect Client-Initiated Backchannel Authentication Flow Core 1.0
+
+Final — https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| CIBA-CORE-BACKCHANNEL-REQUEST | optional | MUST | client認証済みのbackchannel authentication requestを受け付ける。scope は必須で openid を含み、login_hint または id_token_hint のちょうど一方から承認対象Userを解決し、auth_req_id・expires_in・intervalを返す。解決できない場合はunknown_user_idで拒否する。 |
+| CIBA-CORE-POLL-MODE | optional | MUST | token endpointのciba grantでauthorization_pending、slow_down、access_denied、expired_tokenのポーリング意味論を守り、承認成立後の auth_req_id をちょうど一度だけトークン化する。 |
+| CIBA-CORE-BINDING-MESSAGE | optional | SHOULD | binding_messageを承認画面に表示し、client・要求scope・authorization_detailsと併せて何を承認するのかを示す。 |
+| CIBA-CORE-PING-PUSH | excluded | MAY | ping および push の token delivery mode を提供する。 |
+| CIBA-CORE-USER-CODE | excluded | MAY | user_code パラメータによる authentication device 側の本人確認補助を受け付ける。 |
+| CIBA-CORE-SIGNED-REQUEST | excluded | MAY | 署名済み JWT による backchannel authentication request を受け付ける。 |
+
 ### OpenID Connect Discovery 1.0 incorporating errata set 1
 
 Final — https://openid.net/specs/openid-connect-discovery-1_0-21.html
@@ -462,6 +484,23 @@ Terminal: `Exchanged`, `Denied`, `Expired`
 | UserCodeEntered | Deny | — | Denied |  |
 | UserCodeEntered | Expire | — | Expired |  |
 | Approved | Exchange | — | Exchanged |  |
+| Approved | Expire | — | Expired |  |
+
+### ApprovalRequestLifecycle
+
+人間の承認を待つ ApprovalRequest のライフサイクル。Pending から Approved / Denied / Expired へ
+一方向に進み、Consumed へ到達できるのは Approved からだけである。Consume は保存層の CAS で
+ちょうど一度だけ成立し、並行するポーリングが二重にトークンを得ることはない。
+
+Initial: `Pending`
+Terminal: `Denied`, `Expired`, `Consumed`
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| Pending | Approve | now() < expires_at | Approved |  |
+| Pending | Deny | — | Denied |  |
+| Pending | Expire | — | Expired |  |
+| Approved | Consume | now() < expires_at | Consumed |  |
 | Approved | Expire | — | Expired |  |
 
 ### RefreshTokenLifecycle
@@ -778,6 +817,69 @@ what was granted. Where a `type` and a coarse `scope` overlap the same area, the
 bound wins; a request that would let `scope` re-widen an area already bounded by
 `authorization_details` is rejected.
 
+### Backchannel human approval for agent actions (CIBA)
+
+An autonomous agent that is about to do something consequential — move money, delete data, publish
+externally — needs a human to say yes first, and that human is not sitting in the agent's request.
+`POST /bc-authorize` (OpenID CIBA Core) lets an authenticated client raise an approval request out of
+band, and the `urn:openid:params:grant-type:ciba` grant at `/token` holds the request open until a
+person decides. This is what finally gives `AgentKind.Supervised` a runtime meaning: before this
+grant existed, an agent could be *declared* supervised without any path by which supervision was
+actually exercised. Which agents are *obliged* to use it is deliberately not decided here — the
+default kind for every agent created so far is `supervised`, so enforcing "supervised implies
+approval on every grant" now would revoke access from existing deployments; that threshold judgment
+belongs to the governance layer.
+
+CIBA is modeled as an approval capability layered onto OAuth 2.0, not as a separate authentication
+method, and it does not displace consent or step-up. Consent stays what it is — a long-lived
+`(subject, client_id)` scope grant; an approval request is a short-lived judgment about one action.
+Step-up protects the approval *action* (the account portal demands reauthentication before a decision
+is recorded) rather than being replaced by the backchannel flow.
+
+The record that holds the decision is deliberately not shaped like CIBA. OpenID AuthZEN's Access
+Request and Approval Profile abstracts "authorization cannot be decided *yet* — a precondition must
+be satisfied first" into request → track → satisfy → re-evaluate, and CIBA is its most widely
+deployed instance. So the aggregate is `ApprovalRequest`, keyed by a UUID, and CIBA transport
+bookkeeping is explicitly separated from decision semantics: `auth_req_id` is a 32-byte bearer secret
+stored only as a SHA-256 lookup digest, while `interval_seconds` and `last_polled_at` are labeled as
+transport fields. They remain on the same persisted record so a decision and a concurrent poll are
+serialized by one store boundary instead of being split across inconsistent records.
+The account portal addresses requests by UUID, so a bearer secret never reaches a human-facing
+surface. Moving to an AARP profile later should touch the adapter, not the aggregate.
+
+`Pending → Approved | Denied | Expired` and `Approved → Consumed` is one-way, and issuance goes
+through a store-level compare-and-set that flips exactly the rows still in `approved` — the same
+shape as the device grant's `Exchange` — so two concurrent polls cannot both mint a token. Every
+non-approved state is fail-closed at `/token`: pending polls get `authorization_pending`, polls
+faster than the interval get `slow_down` (and pay a +5s interval increase), denial gets
+`access_denied`, expiry gets `expired_token`, and a second exchange of a consumed request gets
+`invalid_grant`.
+
+Only `poll` delivery is implemented and advertised; `ping` is left as a seam rather than wired,
+and `push` is out of the question while it would mean shipping a notification fabric. `user_code`
+is advertised as unsupported: the approval screen already sits behind the user's authenticated
+session plus step-up, and adding a second, weaker shared secret in front of it buys nothing.
+Requests default to a 300-second lifetime; a positive `requested_expiry` up to 600 seconds is
+accepted and larger or non-positive values are rejected. The polling interval reuses the device grant's 5s/+5s configuration
+rather than introducing a second polling convention. Out-of-band notification reuses the existing
+tenant-overridable notification catalog with one added template key, so an approval request reaches
+the human the same way password resets and security alerts already do.
+
+The approving user is resolved at `/bc-authorize` from exactly one of `login_hint` (username or email)
+or a verified `id_token_hint`; missing or multiple hints are `invalid_request`. An unresolvable hint,
+a non-active user, and a user in another tenant all
+collapse to the same `unknown_user_id` so the endpoint cannot be used to probe which accounts exist.
+The resulting request is bound to that user, and decisions require the account session, step-up, and
+CSRF verification, with another user's request invisible in the list and rejected when addressed
+directly by id. The approval screen renders the agent, the client, the requested scopes, and the
+`authorization_details` (reusing the RAR human-readable rendering), because a `binding_message`
+alone tells a person which request this is, not what it does.
+
+Approval requests are stored the way every other volatile OAuth2 record already is — an `UNLOGGED`
+Postgres table plus an in-memory adapter, swept by the shared ephemeral sweep — rather than in a
+separate short-lived store, since a second storage technology for one record type would buy
+nothing that the existing convention does not already provide.
+
 ### OIDC session binding and logout propagation
 
 The `sid` claim is `LoginSession.id` itself — one value shared across every relying party for a
@@ -862,6 +964,17 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
   a subsequent token exchange.
 - The `sid` claim is `LoginSession.id` itself, shared across every relying party for a browser
   session, so a single session revoke can be walked to every affected RP.
+- Human approval of an agent action is implemented as CIBA layered onto OAuth 2.0 as an approval
+  capability, displacing neither consent nor step-up.
+- The record holding an approval decision is a transport-neutral `ApprovalRequest` keyed by a UUID;
+  CIBA lookup and polling fields are explicitly transport bookkeeping but stay co-located so the
+  store can serialize decision and poll updates atomically.
+- An approved request becomes a token through a store-level compare-and-set, so concurrent polls
+  cannot double-issue; every other state is fail-closed at `/token`.
+- Only CIBA `poll` delivery is implemented, and `user_code` is advertised as unsupported, since the
+  approval screen already sits behind the user's session and step-up.
+- Whether a `supervised` agent is *obliged* to obtain approval is left to the governance layer, since
+  `supervised` is the default kind and enforcing it here would revoke access from existing agents.
 
 ## Scenarios
 
@@ -990,7 +1103,7 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
 ### REQ-OAUTH2-014: Discovery 文書は宣言された全エンドポイントを広告する
 - ACTOR RegisteredClient
 - WHEN Discovery 文書を取得する
-- THEN 応答に issuer・authorization_endpoint・token_endpoint・userinfo_endpoint・jwks_uri・introspection_endpoint・revocation_endpoint・pushed_authorization_request_endpoint・device_authorization_endpoint・registration_endpoint が含まれる
+- THEN 応答に issuer・authorization_endpoint・token_endpoint・userinfo_endpoint・jwks_uri・introspection_endpoint・revocation_endpoint・pushed_authorization_request_endpoint・device_authorization_endpoint・backchannel_authentication_endpoint・registration_endpoint が含まれる
 
 ### REQ-OAUTH2-015: 認可コードの並行交換はちょうど一方だけ成功する
 - ACTOR RegisteredClient
@@ -1227,5 +1340,61 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
   - ALT 対象 endpoint が /token である → client_id と IP の組で閾値超過している状態で token を要求する → エラー "RateLimitedError"
   - ALT 対象 endpoint が /authorize または /par である → IP と client_id の組で閾値超過している状態で認可リクエストを送る → エラー "RateLimitedError"
   - ALT 対象 endpoint が /device_authorization である → client_id と IP の組で閾値超過している状態でデバイス認可を開始する → エラー "RateLimitedError"
+  - ALT 対象 endpoint が /bc-authorize である → client_id と IP の組で閾値超過している状態で backchannel 認可を開始する → エラー "RateLimitedError"
   - ALT 共有カウンタストアに到達できない → リクエストは fail-closed で "RateLimitedError" として拒否される
 - THEN エラー "RateLimitedError" (HTTP 429、Retry-After ヘッダ付き)
+
+### REQ-OAUTH2-041: backchannel 認可要求は人間の承認が成立してからトークンを発行する
+- ACTOR RegisteredClient
+- GIVEN confidential クライアント "agent-app" が grant_types に "urn:openid:params:grant-type:ciba" を含めて登録済みである
+- GIVEN active User "alice" が存在する
+- WHEN "agent-app" として login_hint "alice"・scope "openid"・binding_message "W-123" で backchannel 認可を開始する
+  - ALT scope が未指定または openid を含まない → エラー "InvalidScopeError"
+  - ALT login_hint と id_token_hint が両方指定される、または両方未指定である → エラー "InvalidRequestError"
+  - ALT requested_expiry が非正または 600 秒を超える → エラー "InvalidRequestError"
+  - ALT binding_message が 64 文字を超える、または制御文字を含む → エラー "InvalidBindingMessageError"
+  - ALT login_hint が User を解決できない → 未知の login_hint "nobody" で backchannel 認可を開始する → エラー "UnknownUserIdError"
+  - ALT login_hint の User が別テナントまたは非 active である → エラー "UnknownUserIdError"
+  - ALT client の許可 scope に含まれない scope を要求する → エラー "InvalidScopeError"
+- THEN 応答に auth_req_id・expires_in・interval が含まれる
+- THEN 承認要求の状態は Pending になる
+- THEN "BackchannelAuthRequested" が発行される
+- WHEN "agent-app" が auth_req_id "AR1" を交換する
+  - ALT ユーザー判断前にポーリングする → Pending 状態の auth_req_id "AR1" を交換する → エラー "AuthorizationPendingError"
+  - ALT interval より短い間隔で再試行する → interval 5 秒の auth_req_id "AR1" を交換し "2s" 経過後に再度交換する → 2 回目はエラー "SlowDownError"
+- WHEN ユーザー "alice" が承認要求 "AR1" を承認する
+- THEN 承認要求 "AR1" の状態は Approved になる
+- THEN "BackchannelAuthApproved" が発行される
+- WHEN "agent-app" が auth_req_id "AR1" を交換する
+- THEN 応答に access_token と id_token が含まれ sub は "alice"、scope は要求した "openid" になる
+- THEN 承認要求 "AR1" の状態は Consumed になる
+- THEN "AccessTokenIssued" が発行される
+
+### REQ-OAUTH2-042: 承認が成立していない承認要求はトークンを発行しない
+- ACTOR RegisteredClient
+- GIVEN "agent-app" が起票した承認要求 "AR1" が存在する
+- WHEN "agent-app" が auth_req_id "AR1" を交換する
+  - ALT ユーザーが "AR1" を拒否済みである → エラー "AccessDeniedError" → 承認要求 "AR1" の状態は Denied のままになる
+  - ALT "AR1" が expires_at を過ぎている → requested_at "2026-01-01T00:00:00Z"・expires_at "2026-01-01T00:05:00Z" の "AR1" を時刻 "2026-01-01T00:06:00Z" で交換する → エラー "ExpiredTokenError" → 承認要求 "AR1" の状態は Expired になる
+  - ALT 承認済みの "AR1" を 2 回交換する → 1 回目の応答には access_token が含まれる → 2 回目はエラー "InvalidGrantError" → 承認要求 "AR1" の状態は Consumed のままになる
+  - ALT 承認済みの "AR1" を並行に 2 回交換する → ちょうど一方が成功し、もう一方はエラー "InvalidGrantError"
+  - ALT 起票元でない client "other-app" が "AR1" を交換する → エラー "InvalidGrantError"
+  - ALT 別テナントの token endpoint で "AR1" を交換する → エラー "InvalidGrantError"
+  - ALT "AR1" の承認後に Agent が kill-switch で停止されている → エラー "InvalidGrantError" → トークンは発行されない
+- THEN 承認要求が Approved のときだけ応答に access_token が含まれる
+
+### REQ-OAUTH2-043: 承認要求を判断できるのは対象ユーザー本人の step-up 済みセッションだけである
+- ACTOR ResourceOwner
+- GIVEN ユーザー "alice" 宛の承認要求 "AR1" が Pending で存在する
+- GIVEN ユーザー "bob" 宛の承認要求 "AR2" が Pending で存在する
+- GIVEN "alice" が認証済みで step-up の recency 窓を満たしている
+- WHEN "alice" が保留中の承認要求一覧を取得する
+- THEN 一覧には "AR1" と要求元 client の表示名・Agent 名・要求 scope・authorization_details・binding_message が含まれる
+- THEN 一覧に "AR2" と期限切れの承認要求は含まれない
+- WHEN "alice" が承認要求 "AR1" を承認する
+  - ALT step-up の recency 窓を外れている → 操作は AccessDeniedError で拒否され承認要求 "AR1" の状態は Pending のままになる
+  - ALT CSRF token が一致しない → 操作は拒否され承認要求 "AR1" の状態は Pending のままになる
+  - ALT "alice" が他人宛の承認要求 "AR2" を判断する → 操作は AccessDeniedError で拒否される
+  - ALT 既に終端状態の承認要求を判断する → 操作は InvalidRequestError で拒否され、記録済みの判断は上書きされない
+- THEN 承認要求 "AR1" の状態は Approved になる
+- THEN "BackchannelAuthApproved" が発行される

@@ -34,6 +34,11 @@ var grantSpec = map[GrantType]GrantSpecEntry{
 		RequiresPKCE:       false,
 		Issues:             []string{"access_token", "refresh_token", "id_token"},
 	},
+	GrantCiba: {
+		AllowedClientTypes: []ClientType{ClientConfidential},
+		RequiresPKCE:       false,
+		Issues:             []string{"access_token", "id_token"},
+	},
 }
 
 func GetGrantSpec(g GrantType) (GrantSpecEntry, bool) {

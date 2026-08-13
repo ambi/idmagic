@@ -80,6 +80,28 @@ account_security_alert:
     <p style="color:#475569;font-size:13px;">心当たりがない場合は、パスワードを変更し、管理者に連絡してください。</p>
     <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
 
+agent_action_approval_request:
+  subject: "{{client_name}} からの操作承認要求"
+  body_text: |
+    {{user_display_name}} さん
+
+    {{client_name}}{{agent_name}} が操作の承認を求めています。
+    照合メッセージ: {{binding_message}}
+    {{expires_in_minutes}} 分以内に次のページで内容を確認してください。
+
+    {{approval_url}}
+
+    心当たりがない場合は拒否するか、期限切れにしてください。
+
+    {{tenant_display_name}}
+  body_html: |
+    <p>{{user_display_name}} さん</p>
+    <p><strong>{{client_name}}</strong>{{agent_name}} が操作の承認を求めています。</p>
+    <p>照合メッセージ: {{binding_message}}</p>
+    <p><a href="{{approval_url}}" style="color:#1d4fd8;">承認要求を確認する</a></p>
+    <p style="color:#475569;font-size:13px;">この要求は {{expires_in_minutes}} 分で期限切れになります。心当たりがない場合は拒否するか、期限切れにしてください。</p>
+    <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
+
 lifecycle_workflow_notification:
   subject: "{{product_name}} からのお知らせ"
   body_text: |

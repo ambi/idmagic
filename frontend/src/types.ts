@@ -819,6 +819,7 @@ export type NotificationTemplateKey =
   | 'email_verification'
   | 'email_change_confirmation'
   | 'account_security_alert'
+  | 'agent_action_approval_request'
   | 'lifecycle_workflow_notification'
 
 export type NotificationTemplateSummary = {

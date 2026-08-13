@@ -194,6 +194,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			PARStore:                   &oauth2postgres.PARStore{Pool: resilientDB},
 			RefreshStore:               &oauth2tokenpostgres.RefreshTokenStore{Pool: resilientDB},
 			DeviceCodeStore:            &oauth2postgres.DeviceCodeStore{Pool: resilientDB},
+			ApprovalRequestStore:       &oauth2postgres.ApprovalRequestStore{Pool: resilientDB},
 			DpopReplayStore:            &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "dpop"},
 			ClientAssertionReplayStore: &oauth2postgres.ReplayStore{Pool: resilientDB, Kind: "client_assertion"},
 			AccessTokenDenylist:        &oauth2postgres.AccessTokenDenylist{Pool: resilientDB},

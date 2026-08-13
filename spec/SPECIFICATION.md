@@ -638,7 +638,7 @@ never real user data, so the editor screen cannot become a way to read user data
 `backend/shared/ratelimit` (`ports`, `db_memory`, `db_postgres`) is a technical capability, not a business
 aggregate — the same placement as `EnvelopeCrypto` in `backend/shared/security` — because it protects
 endpoints across both the OAuth2 and Authentication contexts (`/authorize`, `/token`, `/par`,
-`/device_authorization`, `/api/auth/password_reset/*`). It is separate from, and does not replace, the
+`/device_authorization`, `/bc-authorize`, `/api/auth/password_reset/*`). It is separate from, and does not replace, the
 per-account/per-IP login throttle above.
 
 The port is a single `Allow(ctx, tenantID, policyID, key, now)` call: a fixed-window counter keyed on
@@ -659,6 +659,7 @@ the login throttle's, which are still hardcoded in `server.go`) so operators can
 | `authorize` | `RATE_LIMIT_AUTHORIZE_MAX_REQUESTS` / `RATE_LIMIT_AUTHORIZE_WINDOW_SECONDS` | 30 / 60s |
 | `par` | `RATE_LIMIT_PAR_MAX_REQUESTS` / `RATE_LIMIT_PAR_WINDOW_SECONDS` | 30 / 60s |
 | `device_authorization` | `RATE_LIMIT_DEVICE_AUTHORIZATION_MAX_REQUESTS` / `RATE_LIMIT_DEVICE_AUTHORIZATION_WINDOW_SECONDS` | 20 / 60s |
+| `backchannel_authentication` | `RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_MAX_REQUESTS` / `RATE_LIMIT_BACKCHANNEL_AUTHENTICATION_WINDOW_SECONDS` | 20 / 60s |
 | `password_reset` | `RATE_LIMIT_PASSWORD_RESET_MAX_REQUESTS` / `RATE_LIMIT_PASSWORD_RESET_WINDOW_SECONDS` | 5 / 900s |
 
 Keys are `client_id`/IP/`identifier_hash` composites; `client_id` is not secret, while IP and

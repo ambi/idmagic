@@ -22,6 +22,7 @@ enum GrantType {
   ClientCredentials: "ClientCredentials",
   DeviceCode: "DeviceCode",
   TokenExchange: "TokenExchange",
+  Ciba: "Ciba",
 }
 
 

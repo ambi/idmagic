@@ -1,5 +1,6 @@
 import {
   IconApps,
+  IconChecklist,
   IconChevronDown,
   IconDatabaseCog,
   IconHistory,
@@ -39,6 +40,7 @@ export type AccountNavKey =
   | 'emails'
   | 'security'
   | 'activity'
+  | 'approvals'
   | 'applications'
   | 'data'
 
@@ -67,6 +69,7 @@ export function AccountShell({
     { key: 'emails', label: t.emailAddresses, href: '/account/emails', icon: IconMail },
     { key: 'security', label: t.security, href: '/account/security', icon: IconShieldLock },
     { key: 'activity', label: t.activity, href: '/account/activity', icon: IconHistory },
+    { key: 'approvals', label: t.approvals, href: '/account/approvals', icon: IconChecklist },
     { key: 'applications', label: t.connectedApps, href: '/account/applications', icon: IconApps },
     { key: 'data', label: t.dataAndPrivacy, href: '/account/data', icon: IconDatabaseCog },
   ]

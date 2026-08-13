@@ -17,7 +17,7 @@ type RateLimitPolicyConfig struct {
 }
 
 // RateLimitConfigs maps a policy id (e.g. "token", "authorize", "par", "device_authorization",
-// "password_reset", "login") to its threshold. memory / postgres adapters consume the same
+// "backchannel_authentication", "password_reset", "login") to its threshold. Adapters consume the same
 // port type.
 type RateLimitConfigs map[string]RateLimitPolicyConfig
 

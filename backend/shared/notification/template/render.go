@@ -27,6 +27,7 @@ var keyPlaceholders = map[notificationports.TemplateKey][]string{
 	notificationports.TemplateKeyEmailVerification:             {"verification_url", "expires_in_minutes"},
 	notificationports.TemplateKeyEmailChangeConfirmation:       {"confirmation_url", "expires_in_minutes", "new_email"},
 	notificationports.TemplateKeyAccountSecurityAlert:          {"event_description", "occurred_at"},
+	notificationports.TemplateKeyAgentActionApprovalRequest:    {"approval_url", "client_name", "agent_name", "binding_message", "expires_in_minutes"},
 	notificationports.TemplateKeyLifecycleWorkflowNotification: {"notification_key"},
 }
 
@@ -43,6 +44,10 @@ var sampleValues = map[string]string{
 	"new_email":           "new-address@example.test",
 	"event_description":   "Sign-in from a new device",
 	"occurred_at":         "2026-01-01 12:00 UTC",
+	"approval_url":        "https://idp.example.test/account/approvals",
+	"client_name":         "Expense Agent",
+	"agent_name":          "Travel Assistant",
+	"binding_message":     "Trip W-123",
 	"notification_key":    "welcome",
 }
 
