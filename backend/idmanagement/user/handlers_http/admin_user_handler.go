@@ -338,7 +338,7 @@ func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 		ConsentRepo:           d.ConsentRepo, RefreshStore: d.RefreshStore,
 		DeviceCodeStore: d.DeviceCodeStore, MfaFactorRepo: d.MfaFactorRepo,
 		PasswordHasher: d.PasswordHasher, PasswordHistoryRepo: d.PasswordHistoryRepo,
-		Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo,
+		Emit: d.ReactiveEmit(), QuotaRepo: d.QuotaRepo, TenantRepo: d.TenantRepo,
 	}
 	if d.SessionManager != nil {
 		deps.SessionStore = d.SessionManager.Store

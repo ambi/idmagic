@@ -300,17 +300,34 @@ func (d Deps) recordLoginOutcome(outcome, reasonClass, method string) {
 	}
 }
 
-// recordLoginAndRequiredAction は full authentication 完了時に last_login_at を
-// 記録し (wi-19)、未充足の required action があればログイン後の強制誘導先を返す。
-// 返り値 gateNext が非空なら OAuth フローを完了させず、その画面へ誘導する。現状
-// 専用画面のある update_password のみ change-password へ gate する (UI 拡張は wi-21)。
+// recordLoginAndRequiredAction records last_login_at once full authentication
+// completes and returns where an unmet required action forces the user next. A
+// non-empty gateNext means the OAuth flow does not complete and the user is sent
+// to that screen instead. Only update_password gates today, because it is the
+// action with a screen of its own.
+//
+// An expired password is evaluated here too (REQ-AUTHENTICATION-024): the login
+// itself already succeeded, and the expiry only adds the required action, which
+// the same gate below then routes to change-password.
 func (d Deps) recordLoginAndRequiredAction(c *echo.Context, user *userdomain.User, now time.Time) (string, error) {
+	ctx := c.Request().Context()
 	updated := *user
 	updated.Lifecycle.LastLoginAt = &now
-	if err := d.UserRepo.Save(c.Request().Context(), &updated); err != nil {
+	expired := authusecases.EnforcePasswordExpiry(
+		&updated, authusecases.ResolveTenantPolicy(ctx, d.TenantRepo), now,
+	)
+	if err := d.UserRepo.Save(ctx, &updated); err != nil {
 		return "", err
 	}
 	*user = updated
+	if expired && d.Emit != nil {
+		// The actor is the system, not the user: the action was imposed by the
+		// tenant's policy rather than by anyone's request.
+		d.Emit(&idmdomain.UserRequiredActionSet{
+			At: now, TenantID: updated.TenantID, ActorUserID: "", TargetUserID: updated.ID,
+			Action: string(idmdomain.RequiredActionUpdatePassword),
+		})
+	}
 	if slices.Contains(updated.Lifecycle.RequiredActions, idmdomain.RequiredActionUpdatePassword) {
 		return support.TenantRoute(c, "/change_password"), nil
 	}

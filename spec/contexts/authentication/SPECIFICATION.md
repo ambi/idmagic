@@ -180,6 +180,26 @@ bundled common-password dictionary are enforced, but mixed-character-class and p
 requirements are not — both are explicitly discouraged by NIST and tend to push users toward
 predictable patterns rather than raising effective entropy.
 
+Length, history depth, and expiry are per-tenant overridable (`PasswordPolicyOverride`); an omitted
+field inherits the global default, and the resolved snapshot is what every password-setting path
+evaluates — change-password, reset-password redemption, and admin user creation alike. Overrides may
+only move in the stricter direction (a shorter `min_length`, a longer `max_length`, or a shallower
+`history_depth` than the global default is rejected), so a tenant cannot weaken the product baseline.
+
+Password expiry (`max_age_days`) is off by default and opt-in per tenant, since NIST SP 800-63B-4
+discourages forced rotation; it exists for tenants under a regulatory rotation requirement. When
+enabled, expiry is measured from `max(password_changed_at, the tenant's policy update time)` rather
+than from `password_changed_at` alone — otherwise enabling the setting would expire every long-lived
+password at once, and this way every user is guaranteed a full `max_age_days` window after any policy
+change without a separate grace knob (it also gives users with no recorded change a defined starting
+point). An expired password never fails authentication: login succeeds and the user is given the
+`update_password` required action, which the existing post-login gate routes to change-password and a
+successful change or reset clears. Failing the login itself would leave the user only the reset-email
+path and make expiry indistinguishable from a lockout. Users with no password credential
+(federated/passwordless) are excluded, since forcing a change they cannot perform is a dead end.
+`max_age_days` is bounded by a system ceiling (30–3650 days) so a tenant cannot turn rotation into
+self-inflicted denial of service.
+
 `change-password` also rejects reuse of the last 5 password hashes (`history_depth=5`), stored in
 `password_histories` as the same Argon2id PHC string as `password_hash` — a separate encoding would not
 raise the attack cost and would just add dual maintenance. History is written on both registration and
@@ -366,6 +386,11 @@ without new policy or session states.
   than allowing unthrottled attempts through.
 - Password policy follows NIST SP 800-63B-4: length and identifier-similarity checks plus a
   common-password dictionary, with no composition-rule or forced-rotation requirement.
+- Tenants may override length, history depth, and expiry only in the stricter direction, and every
+  password-setting path evaluates the same resolved snapshot rather than the global default.
+- Password expiry is opt-in per tenant, measured from the later of the last password change and the
+  tenant's policy update time, and enforced as a post-login `update_password` required action rather
+  than as an authentication failure.
 - Authentication and identity-management configuration values (password history depth, breach-check
   defaults, TOTP/WebAuthn/recovery-code parameters, reset-token TTL, login-throttle thresholds) are
   centralized in this policy section rather than scattered across product objectives.
@@ -627,3 +652,18 @@ without new policy or session states.
 - THEN reenrollment_required=false の応答が返り、enrollment bypass は発行されない
 - WHEN bob が次回ログインで TOTP コードによる第二要素検証を完了する
 - THEN ログインを完了できる
+
+### REQ-AUTHENTICATION-024: 有効期限を過ぎたパスワードのユーザーは次回ログイン後にパスワード変更を強制される
+- ACTOR EndUser
+- GIVEN テナントの password policy は max_age_days=90 で、ポリシー更新から 90 日以上が経過している
+- GIVEN ユーザー "alice" の password_changed_at は 91 日前である
+- WHEN ユーザー "alice" が正しい password でログインする
+  - ALT password_changed_at が 89 日前である → ログインはそのまま完了し update_password は付与されない
+  - ALT max_age_days が未設定である → 経過日数に関わらず update_password は付与されない
+  - ALT ポリシー更新から 90 日が経過していない → 猶予期間内なので update_password は付与されない
+  - ALT ユーザーが password credential を持たない (federated / passwordless) → update_password は付与されない
+- THEN ログイン自体は成功する
+- THEN ユーザー "alice" に required action update_password が付与される
+- THEN ユーザー "alice" はパスワード変更画面へ誘導され、変更完了までフローを継続できない
+- WHEN ユーザー "alice" がポリシーを満たす新しいパスワードへ変更する
+- THEN update_password が解除され "PasswordChanged" が発行される

@@ -62,6 +62,10 @@ type Tenant struct {
 	DisplayName            string                  `json:"display_name"`
 	Status                 TenantStatus            `json:"status"`
 	PasswordPolicyOverride *PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	// PasswordPolicyUpdatedAt is when password_policy_override last changed. It is
+	// the lower bound of the expiry (MaxAgeDays) reference time, so a policy change
+	// does not expire every existing user's password at once.
+	PasswordPolicyUpdatedAt *time.Time `json:"password_policy_updated_at,omitempty"`
 	// DefaultLocale は通知の locale 解決の第 2 段。nil / 空文字列は
 	// 「システム既定 locale を使う」を意味する。値の妥当性 (同梱翻訳を持つ locale か)
 	// は shared/notification のカタログが正本なので、ここでは形だけを検証する。
@@ -81,12 +85,15 @@ func (t Tenant) Validate() error {
 	return spec.Validate(tenantSchema, &t)
 }
 
-// PasswordPolicyOverride はテナント固有の objectives.PasswordPolicy 上書き値。
-// SCL `PasswordPolicyOverride` の双子定義。省略フィールドは global default を継承する。
+// PasswordPolicyOverride holds a tenant's overrides of the product PasswordPolicy.
+// It is the twin of the TypeSpec `PasswordPolicyOverride`; an omitted field
+// inherits the global default.
 type PasswordPolicyOverride struct {
 	MinLength    *int `json:"min_length,omitempty"`
 	MaxLength    *int `json:"max_length,omitempty"`
 	HistoryDepth *int `json:"history_depth,omitempty"`
+	// MaxAgeDays is the password expiry in days. nil or 0 disables it (the default).
+	MaxAgeDays *int `json:"max_age_days,omitempty"`
 }
 
 type TenantQuota struct {

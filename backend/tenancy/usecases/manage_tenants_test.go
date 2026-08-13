@@ -117,6 +117,10 @@ func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 		{"shorter min_length", domain.PasswordPolicyOverride{MinLength: new(8)}},
 		{"longer max_length", domain.PasswordPolicyOverride{MaxLength: new(256)}},
 		{"shorter history_depth", domain.PasswordPolicyOverride{HistoryDepth: new(2)}},
+		// REQ-TENANCY-019: an expiry that is too short or too long is rejected by
+		// the system bounds.
+		{"max_age_days below the system floor", domain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysFloor - 1)}},
+		{"max_age_days above the system ceiling", domain.PasswordPolicyOverride{MaxAgeDays: new(PasswordMaxAgeDaysCeiling + 1)}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -132,6 +136,48 @@ func TestUpdateRejectsWeakerPolicyOverride(t *testing.T) {
 				t.Fatalf("err = %v, want ErrPolicyOverrideWeaker", err)
 			}
 		})
+	}
+}
+
+// REQ-AUTHENTICATION-024: the override change time is recorded because expiry is
+// measured from it.
+func TestUpdateRecordsPasswordPolicyUpdatedAt(t *testing.T) {
+	repo := memory.NewTenantRepository()
+	created, err := Create(context.Background(), repo, "acme", "Acme", time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.PasswordPolicyUpdatedAt != nil {
+		t.Fatalf("a fresh tenant has no policy change: %v", created.PasswordPolicyUpdatedAt)
+	}
+	floor := PolicyFloor{MinLength: 12, MaxLength: 128, HistoryDepth: 5}
+	policyAt := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	maxAge := 90
+	updated, err := Update(context.Background(), repo, created.ID, UpdateInput{
+		PasswordPolicyOverride: &domain.PasswordPolicyOverride{MaxAgeDays: &maxAge},
+	}, floor, policyAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if updated.PasswordPolicyUpdatedAt == nil || !updated.PasswordPolicyUpdatedAt.Equal(policyAt) {
+		t.Fatalf("password_policy_updated_at = %v, want %v", updated.PasswordPolicyUpdatedAt, policyAt)
+	}
+	if updated.PasswordPolicyOverride == nil || updated.PasswordPolicyOverride.MaxAgeDays == nil ||
+		*updated.PasswordPolicyOverride.MaxAgeDays != maxAge {
+		t.Fatalf("override = %#v", updated.PasswordPolicyOverride)
+	}
+
+	// A non-policy update must not move the reference time; moving it would
+	// extend the grace window without end.
+	newName := "Acme Inc."
+	renamed, err := Update(context.Background(), repo, created.ID, UpdateInput{
+		DisplayName: &newName,
+	}, floor, policyAt.AddDate(0, 0, 30))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if renamed.PasswordPolicyUpdatedAt == nil || !renamed.PasswordPolicyUpdatedAt.Equal(policyAt) {
+		t.Fatalf("password_policy_updated_at = %v, want it unchanged at %v", renamed.PasswordPolicyUpdatedAt, policyAt)
 	}
 }
 

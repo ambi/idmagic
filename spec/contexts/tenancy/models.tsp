@@ -59,7 +59,7 @@ enum TenantEndpointStyle {
 }
 
 
-@doc("テナント固有のパスワードポリシー上書き値 (Phase 4)。Phase 0 で固定値とした\nAuthentication context の PasswordPolicy をテナント解決ポートで差し替えるためのスキーマ。\n省略フィールドは global default を継承し、change_password / reset_password の\n評価経路ではテナント値が global より厳しい方向にのみ働く想定。")
+@doc("テナント固有のパスワードポリシー上書き値。Authentication context の PasswordPolicy 標準値を\nテナント解決ポートで差し替えるためのスキーマ。省略フィールドは global default を継承し、\nchange_password / reset_password / 管理者によるユーザー作成の評価経路では\nテナント値が global より厳しい方向にのみ働く。")
 model PasswordPolicyOverride {
   @doc("下限長 (≥ global default を推奨)")
   min_length?: int64;
@@ -67,6 +67,9 @@ model PasswordPolicyOverride {
   max_length?: int64;
   @doc("履歴照合件数 (PasswordHistoryNoReuse)")
   history_depth?: int64;
+  @doc("パスワードの有効期限 (日)。0 または省略で無効 (NIST SP 800-63B-4 に沿った既定)。\n正の値を設定したテナントでは、期限を過ぎたパスワードを持つユーザーが次回ログイン成立後に\nupdate_password required action へ誘導される。認証自体は失敗しない。\nsystem ceiling は 30 日以上 3650 日以下で、範囲外は PolicyOverrideWeakerError で拒否する。")
+  @minValue(0)
+  max_age_days?: int64;
 }
 
 @doc("テナント (realm) 集約。Client、User、Consent、policy、branding はこの認可境界に閉じる。")
@@ -121,6 +124,8 @@ model PasswordPolicyDefaults {
   max_length: int64;
   @doc("Authentication context の PasswordPolicy.history_depth。")
   history_depth: int64;
+  @doc("Authentication context の PasswordPolicy.max_age_days。省略は 0 (有効期限なし) と同じ意味で、\nこのフィールドを知らない旧クライアントの解釈と一致する。")
+  max_age_days?: int64;
 }
 
 
@@ -586,7 +591,7 @@ model TenantEnabled {
 }
 
 
-@doc("テナントの password_policy_override がグローバルな下限ポリシーより弱い。")
+@doc("テナントの password_policy_override がグローバルな下限ポリシーより弱いか、max_age_days が system ceiling の範囲外である。")
 model PolicyOverrideWeakerError {
 
 }

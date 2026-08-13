@@ -44,11 +44,12 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	ctx := c.Request().Context()
 	snap := resolvePasswordPolicy(ctx, d)
 	_, err = authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
-		UserRepo:            d.UserRepo,
-		PasswordHasher:      d.PasswordHasher,
-		PasswordHistoryRepo: d.PasswordHistoryRepo,
-		Emit:                d.LegacyEmit(),
-		Policy:              snap,
+		UserRepo:                d.UserRepo,
+		PasswordHasher:          d.PasswordHasher,
+		PasswordHistoryRepo:     d.PasswordHistoryRepo,
+		BreachedPasswordChecker: d.BreachedPasswordChecker,
+		Emit:                    d.LegacyEmit(),
+		Policy:                  snap,
 	}, authusecases.ChangePasswordInput{
 		Sub:             authn.UserID,
 		CurrentPassword: input.CurrentPassword,

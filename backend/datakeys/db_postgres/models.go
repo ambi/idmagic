@@ -746,15 +746,17 @@ type SsfTransmitterConfig struct {
 }
 
 type Tenant struct {
-	ID            string
-	Realm         string
-	DisplayName   string
-	Status        string
-	DefaultLocale pgtype.Text
-	EndpointStyle string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	DisabledAt    pgtype.Timestamptz
+	ID                      string
+	Realm                   string
+	DisplayName             string
+	Status                  string
+	DefaultLocale           pgtype.Text
+	EndpointStyle           string
+	PasswordPolicyOverride  []byte
+	PasswordPolicyUpdatedAt pgtype.Timestamptz
+	CreatedAt               time.Time
+	UpdatedAt               time.Time
+	DisabledAt              pgtype.Timestamptz
 }
 
 type TenantBranding struct {

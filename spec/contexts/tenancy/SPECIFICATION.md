@@ -415,7 +415,12 @@ counters against actual row counts, after which a System Admin can tighten limit
 - ACTOR TenantAdministrator
 - GIVEN roles=["admin"] のユーザー "operator" が管理画面の設定を開いている
 - WHEN 管理者 "operator" がパスワードの最小長を更新する
+  - ALT 標準値より弱い上書き (最小長を下回る / 最大長を上回る / 履歴件数を下回る) を保存する → エラー "PolicyOverrideWeakerError"
+  - ALT max_age_days に system ceiling の範囲外 (30 未満、または 3650 超) を保存する → エラー "PolicyOverrideWeakerError"
 - THEN 更新後の設定に新しい最小長が反映される
+- THEN 上書きは永続化され、プロセス再起動後の設定取得でも同じ値が返る
+- WHEN 管理者 "operator" が max_age_days=90 を保存する
+- THEN 以後のパスワード検証と有効期限判定にテナントの上書き値が使われる
 
 ### REQ-TENANCY-020: 管理者はテナント固有のグループ属性スキーマを定義できる
 - ACTOR TenantAdministrator

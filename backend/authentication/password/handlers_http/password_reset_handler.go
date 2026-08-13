@@ -7,40 +7,16 @@ import (
 	"strings"
 	"time"
 
-	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
-
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
-	"github.com/ambi/idmagic/backend/authentication/password/domain"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
-	"github.com/ambi/idmagic/backend/tenancy"
 
 	"github.com/labstack/echo/v5"
 )
 
-// resolvePasswordPolicy は global default + tenant override を合成した snapshot を返す。
-// テナント解決失敗時はサイレントに global default にフォールバックする
-// (パスワードポリシーで認証経路を落とすのは過剰)。
+// resolvePasswordPolicy returns the global defaults merged with the tenant override.
 func resolvePasswordPolicy(ctx context.Context, d httpdeps.Deps) authusecases.PasswordPolicySnapshot {
-	defaults := domain.PasswordPolicySnapshot{
-		MinLength:    authusecases.PasswordPolicyMinLength,
-		MaxLength:    authusecases.PasswordPolicyMaxLength,
-		HistoryDepth: authusecases.PasswordPolicyHistoryDepth,
-	}
-	var tenant *tenancydomain.Tenant
-	if d.TenantRepo != nil {
-		if id := tenancy.TenantID(ctx); id != "" {
-			if found, err := d.TenantRepo.FindByID(ctx, id); err == nil {
-				tenant = found
-			}
-		}
-	}
-	resolved := domain.ResolvePasswordPolicy(tenant, defaults)
-	return authusecases.PasswordPolicySnapshot{
-		MinLength:    resolved.MinLength,
-		MaxLength:    resolved.MaxLength,
-		HistoryDepth: resolved.HistoryDepth,
-	}
+	return authusecases.ResolveTenantPolicy(ctx, d.TenantRepo)
 }
 
 type forgotPasswordAPIRequest struct {

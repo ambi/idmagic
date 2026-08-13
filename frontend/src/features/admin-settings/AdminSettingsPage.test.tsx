@@ -220,6 +220,38 @@ describe('AdminSettingsPage', () => {
 
     expect(screen.getByRole('heading', { name: t.passwordPolicyHeading })).toBeInTheDocument()
     expect(screen.getAllByText('8 chars').length).toBeGreaterThan(0)
+    // REQ-AUTHENTICATION-024: expiry is off unless the tenant opted in.
+    expect(screen.getAllByText(t.noExpiryValue).length).toBeGreaterThan(0)
+  })
+
+  // REQ-AUTHENTICATION-024: the tenant's expiry opt-in is editable and is sent as
+  // max_age_days.
+  it('saves the password expiry as part of the policy override', async () => {
+    const fetch = mock().mockResolvedValue(
+      response(200, { ...settings, password_policy_override: { max_age_days: 90 } }),
+    )
+    stubGlobal('fetch', fetch)
+    await renderWithRouter(
+      <AdminSettingsPage
+        csrfToken="csrf"
+        actorUsername="admin"
+        actorRoles={['admin']}
+        actorRealm="acme"
+        settings={settings}
+        integrationEndpoints={integrationEndpoints}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.tabPasswordPolicyLabel }))
+    fireEvent.click(screen.getByRole('button', { name: t.edit }))
+    fireEvent.change(screen.getByLabelText(t.maxAgeFieldLabel), { target: { value: '90' } })
+    fireEvent.click(screen.getByRole('button', { name: t.save }))
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled())
+    const [, init] = fetch.mock.calls[0]
+    expect(JSON.parse(init.body).password_policy_override.max_age_days).toBe(90)
+    expect(await screen.findByText(t.passwordPolicyUpdatedNotice)).toBeInTheDocument()
+    expect(screen.getAllByText(`90${t.daysSuffix}`).length).toBeGreaterThan(0)
   })
 
   // 通知メールタブは wi-288 で実装済み。「近日公開」の無効タブのままにしない。

@@ -2,6 +2,7 @@ package db_postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -55,6 +56,10 @@ func (r *TenantRepository) FindAll(ctx context.Context) ([]*domain.Tenant, error
 }
 
 func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) error {
+	override, err := marshalPolicyOverride(tenant.PasswordPolicyOverride)
+	if err != nil {
+		return err
+	}
 	return New(r.Pool).SaveTenant(ctx, SaveTenantParams{
 		ID:            tenant.ID,
 		Realm:         tenant.Realm,
@@ -63,10 +68,12 @@ func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) erro
 		DefaultLocale: textPtrOrNil(tenant.DefaultLocale),
 		// ゼロ値の Tenant を 'path' として書く。列は NOT NULL なので、空文字列を
 		// そのまま渡すと CHECK 制約で落ちる。
-		EndpointStyle: string(tenant.EffectiveEndpointStyle()),
-		CreatedAt:     tenant.CreatedAt,
-		UpdatedAt:     tenant.UpdatedAt,
-		DisabledAt:    timestamptzOrNil(tenant.DisabledAt),
+		EndpointStyle:           string(tenant.EffectiveEndpointStyle()),
+		PasswordPolicyOverride:  override,
+		PasswordPolicyUpdatedAt: timestamptzOrNil(tenant.PasswordPolicyUpdatedAt),
+		CreatedAt:               tenant.CreatedAt,
+		UpdatedAt:               tenant.UpdatedAt,
+		DisabledAt:              timestamptzOrNil(tenant.DisabledAt),
 	})
 }
 
@@ -88,7 +95,36 @@ func tenantFromRow(row *Tenant) (*domain.Tenant, error) {
 		defaultLocale := row.DefaultLocale.String
 		tenant.DefaultLocale = &defaultLocale
 	}
+	override, err := unmarshalPolicyOverride(row.PasswordPolicyOverride)
+	if err != nil {
+		return nil, err
+	}
+	tenant.PasswordPolicyOverride = override
+	if row.PasswordPolicyUpdatedAt.Valid {
+		policyUpdatedAt := row.PasswordPolicyUpdatedAt.Time
+		tenant.PasswordPolicyUpdatedAt = &policyUpdatedAt
+	}
 	return tenant, tenant.Validate()
+}
+
+// marshalPolicyOverride maps "no override" to SQL NULL, so a cleared override and
+// one that was never set are the same row state.
+func marshalPolicyOverride(override *domain.PasswordPolicyOverride) ([]byte, error) {
+	if override == nil {
+		return nil, nil
+	}
+	return json.Marshal(override)
+}
+
+func unmarshalPolicyOverride(raw []byte) (*domain.PasswordPolicyOverride, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+	var override domain.PasswordPolicyOverride
+	if err := json.Unmarshal(raw, &override); err != nil {
+		return nil, err
+	}
+	return &override, nil
 }
 
 // textPtrOrNil maps an unset or blank optional string to SQL NULL, so "cleared"

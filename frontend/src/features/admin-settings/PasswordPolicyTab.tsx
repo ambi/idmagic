@@ -12,6 +12,17 @@ import type { AdminSettings } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { passwordPolicyOverride, ReadSetting } from './AdminSettingsShared'
 
+// The server rejects anything outside this range (REQ-TENANCY-019); the input
+// bounds only spare the administrator a round trip.
+const MAX_AGE_DAYS_MIN = 30
+const MAX_AGE_DAYS_MAX = 3650
+
+// An absent or 0 max_age_days both mean "no expiry"; an older server omits the
+// field entirely.
+function formatMaxAge(days: number | undefined, daysSuffix: string, noExpiry: string) {
+  return days ? `${days}${daysSuffix}` : noExpiry
+}
+
 export function PasswordPolicyTab({
   csrfToken,
   settings,
@@ -26,6 +37,7 @@ export function PasswordPolicyTab({
   const [minLength, setMinLength] = useState(override?.min_length?.toString() ?? '')
   const [maxLength, setMaxLength] = useState(override?.max_length?.toString() ?? '')
   const [historyDepth, setHistoryDepth] = useState(override?.history_depth?.toString() ?? '')
+  const [maxAgeDays, setMaxAgeDays] = useState(override?.max_age_days?.toString() ?? '')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -38,7 +50,7 @@ export function PasswordPolicyTab({
     setError('')
     setNotice('')
     try {
-      const policy = passwordPolicyOverride(minLength, maxLength, historyDepth)
+      const policy = passwordPolicyOverride(minLength, maxLength, historyDepth, maxAgeDays)
       const next = await updateAdminSettings(csrfToken, {
         password_policy_override: policy,
       })
@@ -46,6 +58,7 @@ export function PasswordPolicyTab({
       setMinLength(next.password_policy_override?.min_length?.toString() ?? '')
       setMaxLength(next.password_policy_override?.max_length?.toString() ?? '')
       setHistoryDepth(next.password_policy_override?.history_depth?.toString() ?? '')
+      setMaxAgeDays(next.password_policy_override?.max_age_days?.toString() ?? '')
       setEditing(false)
       setNotice(t.passwordPolicyUpdatedNotice)
     } catch (cause) {
@@ -72,7 +85,7 @@ export function PasswordPolicyTab({
             </Button>
           ) : null}
         </div>
-        <dl className="mt-3 grid grid-cols-3 gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs">
+        <dl className="mt-3 grid grid-cols-2 gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-xs sm:grid-cols-4">
           <div>
             <dt className="text-slate-500">{t.standardMinLengthLabel}</dt>
             <dd className="mt-0.5 text-sm font-semibold text-slate-900">
@@ -91,6 +104,12 @@ export function PasswordPolicyTab({
               {`${defaults.history_depth}${t.countSuffix}`}
             </dd>
           </div>
+          <div>
+            <dt className="text-slate-500">{t.standardMaxAgeLabel}</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-slate-900">
+              {formatMaxAge(defaults.max_age_days, t.daysSuffix, t.noExpiryValue)}
+            </dd>
+          </div>
         </dl>
         <p className="mt-2 text-xs text-slate-500">{t.weakerPolicyWarning}</p>
       </header>
@@ -98,7 +117,7 @@ export function PasswordPolicyTab({
         {error ? <Alert variant="destructive">{error}</Alert> : null}
         <Toast message={notice} onDismiss={() => setNotice('')} />
         {!editing ? (
-          <dl className="grid gap-3 sm:grid-cols-3">
+          <dl className="grid gap-3 sm:grid-cols-4">
             <ReadSetting
               label={t.minLengthLabel}
               value={`${override?.min_length ?? defaults.min_length}${t.charsSuffix}`}
@@ -111,10 +130,18 @@ export function PasswordPolicyTab({
               label={t.historyDepthLabel}
               value={`${override?.history_depth ?? defaults.history_depth}${t.countSuffix}`}
             />
+            <ReadSetting
+              label={t.maxAgeLabel}
+              value={formatMaxAge(
+                override?.max_age_days ?? defaults.max_age_days,
+                t.daysSuffix,
+                t.noExpiryValue,
+              )}
+            />
           </dl>
         ) : (
           <form onSubmit={handleSave} className="grid gap-4">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-4">
               <PolicyField
                 id="min-length"
                 label={t.minLengthFieldLabel}
@@ -145,7 +172,20 @@ export function PasswordPolicyTab({
                 placeholder={defaults.history_depth.toString()}
                 hint={t.atLeastHint.replace('{n}', defaults.history_depth.toString())}
               />
+              <PolicyField
+                id="max-age-days"
+                label={t.maxAgeFieldLabel}
+                value={maxAgeDays}
+                onChange={setMaxAgeDays}
+                min={MAX_AGE_DAYS_MIN}
+                max={MAX_AGE_DAYS_MAX}
+                placeholder=""
+                hint={t.maxAgeHint
+                  .replace('{min}', MAX_AGE_DAYS_MIN.toString())
+                  .replace('{max}', MAX_AGE_DAYS_MAX.toString())}
+              />
             </div>
+            <p className="text-xs text-slate-500">{t.maxAgeDescription}</p>
             <div className="flex items-center gap-2">
               <Button type="submit" disabled={saving}>
                 {saving ? t.saving : t.save}
@@ -160,6 +200,7 @@ export function PasswordPolicyTab({
                   setHistoryDepth(
                     settings.password_policy_override?.history_depth?.toString() ?? '',
                   )
+                  setMaxAgeDays(settings.password_policy_override?.max_age_days?.toString() ?? '')
                   setEditing(false)
                 }}
               >

@@ -18,6 +18,7 @@ capable of handling complex enterprise authentication flows.
 - **Multi-Tenant Architecture**: Deep tenant isolation with realm-scoped routes, per-tenant signing keys (auto-rotated), tenant-specific application catalogs, and customizable branded portals.
 - **High Availability & Scalability**: Built for scale with shared state in PostgreSQL, robust distributed job processing, and native OpenTelemetry integration.
 - **Modern Administration Experience**: High-performance React-based admin console and account portals powered by Vite, Tailwind CSS, and Radix UI.
+- **Configurable Credential Policy**: NIST SP 800-63B-4-aligned password rules by default (length, history, breached-password check, no composition rules or forced rotation), with per-tenant overrides that may only tighten them and an opt-in password expiry for tenants under a rotation requirement.
 
 ## Architecture & Repository Map
 

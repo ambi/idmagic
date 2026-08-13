@@ -1,74 +1,210 @@
 ---
-depends_on: [wi-24-hibp-breached-password-checker]
-status: pending
-authors: ["tn"]
+status: completed
+authors: [tn]
 risk: medium
 created_at: 2026-07-03
+depends_on: [wi-24-hibp-breached-password-checker]
+change_kind: feature
+initial_context:
+  specification:
+    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-010
+    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-016
+    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-022
+    - spec/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-019
+  typespec:
+    - IdMagic.Tenancy.PasswordPolicyOverride
+    - IdMagic.Tenancy.PasswordPolicyDefaults
+    - IdMagic.Tenancy.AdminSettingsResponse
+    - IdMagic.Tenancy.Operations.UpdateAdminSettings
+  source:
+    - backend/authentication/password/domain/password_policy_resolver.go
+    - backend/authentication/password/usecases/password_policy.go
+    - backend/authentication/password/usecases/change_password.go
+    - backend/authentication/password/usecases/reset_password_with_token.go
+    - backend/authentication/password/handlers_http/password_reset_handler.go
+    - backend/authentication/password/handlers_http/change_password_handler.go
+    - backend/oauth2/handlers_http/authorize_login.go
+    - backend/idmanagement/user/usecases/admin_users.go
+    - backend/tenancy/domain/tenancy.go
+    - backend/tenancy/usecases/manage_tenants.go
+    - backend/tenancy/db_postgres/tenants.go
+    - backend/tenancy/db_postgres/tenants.sql
+    - infra/schema/postgres.sql
+    - frontend/src/features/admin-settings/PasswordPolicyTab.tsx
+    - frontend/src/features/admin-settings/AdminSettingsShared.tsx
+  tests:
+    - backend/authentication/password/domain/password_policy_resolver_test.go
+    - backend/authentication/password/usecases/password_policy_test.go
+    - backend/authentication/password/usecases/change_password_test.go
+    - backend/tenancy/usecases/manage_tenants_test.go
+    - backend/tenancy/db_postgres/tenants_test.go
+    - frontend/src/features/admin-settings/AdminSettingsPage.test.tsx
+  stop_before_reading:
+    - backend/authentication/federation
+    - backend/saml
+    - backend/wsfederation
+affected_spec:
+  - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyOverride }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyDefaults }
+  - { path: spec/contexts/tenancy/SPECIFICATION.md, requirement: REQ-TENANCY-019 }
+  - { path: spec/contexts/authentication/SPECIFICATION.md, requirement: REQ-AUTHENTICATION-024 }
 ---
 
-# 設定可能なパスワードポリシー (長さ / 履歴 / 有効期限) を導入する
+# テナントのパスワードポリシーを永続化し、任意の有効期限で次回ログイン時の変更を強制する
 
 ## Motivation
-現状のパスワード検証は breach チェック ([[wi-24-hibp-breached-password-checker]])
-と最低限に留まり、テナントがポリシーを調整できない。代表的な IdP は password
-policy を設定可能にする:
 
-- Keycloak: password policies (length / history / expiry / regex 等)。
-- Okta / Entra: password policy (length / complexity / age / history)。
+`PasswordPolicyOverride` (min_length / max_length / history_depth) はモデル・use case・admin
+UI まで揃っているが、実際には二つの穴がある。
 
-一方 NIST SP 800-63B は「複雑性の強制」「定期変更の強制」を非推奨とし、最小長 +
-breach チェックを中心に据える。本 WI は**モダンなガイドラインを既定**としつつ、
-テナントが必要に応じて履歴・有効期限・追加要件を opt-in できる設定可能ポリシーを
-導入する。
+1. **上書きが PostgreSQL に保存されていない。** `backend/tenancy/db_postgres/tenants.go` の
+   `SaveTenant` は `password_policy_override` を書かず、`tenantFromRow` も読まない。`tenants`
+   テーブルに列が無い。db_memory では動くため、開発中は動作して見えるが、PostgreSQL 配備では
+   管理者が保存したポリシーが即座に消える。「設定可能なパスワードポリシー」が本番で成立して
+   いない。
+2. **有効期限 (max age) が無い。** NIST SP 800-63B-4 は定期変更の強制を非推奨とするので既定
+   off で正しいが、規制要件でローテーションを求められるテナントに逃げ道が無い。
+   `password_changed_at` と `RequiredActionUpdatePassword`、ログイン後の gate
+   (`recordLoginAndRequiredAction`) は既にあるので、欠けているのは判定だけである。
+
+加えて、ポリシー適用経路に取りこぼしがある。admin の `CreateUser` はテナント解決を通さない
+`ValidatePassword` (global default) で検証しており、テナントが min_length を上げても管理者
+発行パスワードには効かない。change-password は breach チェックを実行しておらず、同じ検証を
+通すはずの reset-password とだけ挙動が違う。
 
 ## Scope
-- **decision**:
-  - 新規 ADR: サポートするルール (最小長 / breach / 履歴 / 有効期限 / 任意の 追加要件) と既定値を決める。既定は NIST 準拠 (最小長 + breach 中心、複雑性 / 定期変更は既定 off)。履歴用 past-hash の保管方針、有効期限は RequiredAction.UpdatePassword と連携する点を記録する。
-- **scl**:
-  - §3.2 models: PasswordPolicy を追加する。
-  - §3.3 interfaces: ChangePassword / ResetPasswordWithToken / RegisterUser ([[wi-87-self-service-user-registration]]) の検証にポリシーを反映する。
-  - §3.4 states/events: PasswordPolicyUpdated を追加する。
-  - 所有要素の constraints/contracts: ポリシーは全パスワード設定経路で一貫適用され、履歴は hash 比較で平文を保持しないことを明示する。
-  - tenancy: AdminSettings に password policy 設定を追加する。
-- **go**:
-  - policy 評価器と password history store (hash) を追加し、既存 HIBP チェックと 合成する。有効期限超過で UpdatePassword required action を付与する。
-- **http**:
-  - admin の policy 設定エンドポイントと、検証失敗時の要件メッセージを追加する。
-- **ui**:
-  - AdminSettingsPage にポリシー編集、ChangePasswordPage / RegisterPage に 要件表示を追加する。
-- **documentation**:
-  - README にポリシー項目と既定値 (NIST 準拠) を追記する。
+
+- **spec**:
+  - `PasswordPolicyOverride` / `PasswordPolicyDefaults` に `max_age_days` を追加する。既定は
+    0 (無効) で、テナントが明示的に opt-in する。
+  - Authentication の Design (Password lifecycle) に、有効期限の評価基準時刻・除外対象・
+    ポリシー変更時の猶予を記す。
+  - 新規 `REQ-AUTHENTICATION-024` (有効期限超過ユーザーは次回ログインで変更を強制される) と、
+    `REQ-TENANCY-019` の ALT (system ceiling を超える max_age_days は拒否 / 保存が永続する)。
+- **domain**: `PasswordPolicySnapshot.MaxAgeDays` と、`password_changed_at` / ポリシー更新時刻 /
+  現在時刻から期限超過を判定する純関数。
+- **usecases**: 期限超過ユーザーに `update_password` required action を付与する use case。
+  admin `CreateUser` をテナント解決済み snapshot へ移す。change-password に breach チェックを
+  追加して reset-password と同じ検証段にする。
+- **persistence**: `tenants` に `password_policy_override` (JSONB) と
+  `password_policy_updated_at` を追加し、sqlc を再生成する。
+- **http/ui**: ログイン完了時に期限を評価して既存の change-password gate に載せる。
+  admin settings に max_age_days の編集と表示を追加する。
+- **documentation**: README の Key Capabilities に、既定ポリシーとテナント上書き・有効期限を
+  1 項目として追記する。
 
 ## Out of Scope
+
+- セルフサービス登録経路へのポリシー適用 ([[wi-87-self-service-user-registration]] が未実装のため、
+  対象の経路が存在しない)。
+- テナント単位の breach チェック on/off と HIBP モード選択。breach adapter は起動時の
+  `BREACHED_PASSWORD_CHECKER` で選ぶ配備単位の設定のままにする。
+- 文字種混在などの composition rule (NIST が明示的に非推奨とするため導入しない)。
+- 管理 UI でのポリシー変更影響人数プレビュー。
+- リアルタイム strength meter と外部辞書サービス連携。
 - パスワードなし強制 / passwordless-only ポリシー。
-- 外部辞書サービスとの連携 (breach は既存 HIBP に留める)。
-- 高度なリアルタイム strength meter。
+
+## Design
+
+**永続化。** `password_policy_override` は JSONB 1 列で持つ。フィールドは 4 つだが、上書き有無を
+NULL で表す必要があり、今後もフィールドが増える見込みのある「テナント設定の袋」であって、単体で
+検索・集計する対象ではない。列を 4 本足すと、増えるたびにマイグレーションと sqlc 再生成が要る。
+`tenant_quotas` のような別テーブルは、上書きが tenant 集約に埋め込まれた値オブジェクトである
+以上、読み書きのたびに join を増やすだけになる。
+
+**有効期限の基準時刻。** 期限は `max(user.password_changed_at, tenant.password_policy_updated_at)`
+から測る。`password_changed_at` だけを見ると、管理者が max_age を有効にした瞬間に、それより前
+から変えていない全ユーザーが一斉に期限切れになる。ポリシー更新時刻を下限に入れると、ポリシー
+変更後は誰もが必ず max_age 日分の猶予を得るので、別建ての grace 設定を持たずに同じ結果になる。
+`password_changed_at` が nil のユーザー (一度も変更記録が無い) も同じ規則で扱える。
+
+**除外。** `PasswordHash` が空のユーザー (federated / passwordless) は評価対象外とする。強制した
+ところで変更できるパスワードが無く、change-password 画面で行き止まりになる。
+
+**強制の形。** 期限超過は credential を無効化せず、ログイン成立後に `update_password` required
+action を付与するだけにする。既存の `recordLoginAndRequiredAction` が change-password 画面へ
+gate し、change-password / reset-password の成功が action を自動解除する経路も既にある。
+認証そのものを失敗させると、ユーザーはリセットメール経路へ回るしかなくなり、期限切れが
+アカウントロックと区別できなくなる。
+
+**system ceiling。** `max_age_days` はテナントが自由に短くできると DoS 相当の UX 破壊になるので、
+下限 30 日・上限 3650 日で gate する。既存の `PolicyFloor` (min/max length・history depth) と
+同じ `enforcePolicyFloor` で拒否し、`ErrPolicyOverrideWeaker` を返す。
 
 ## Plan
-- [[ADR-026-password-policy]] のNIST方針（composition ruleを強制しない、長さ/denylist）と [[ADR-027-password-history]]、wi-24 HIBPを組み合わせ、tenant policyで変更可能なのは安全な範囲に限定する。短すぎるminimumや過大なhistory/expiryを許さないsystem floor/ceilingを持つ。
-- `PasswordPolicy` は min/max length、history count、optional max age、HIBP modeを持つ。validationはregistration/change/reset/admin-setの全経路で同じ use caseを通し、ログイン時はexpiryだけを評価する。
-- historyは既存PasswordHistory repository/hash verifierを再利用し、現在hash + N世代をconstant-timeで比較する。policy count縮小で即削除せずretention上限まで保持する。
-- max ageは `password_changed_at` を正本にし、期限到来時はcredential自体を無効にせずlogin後にPasswordChangeRequired状態へ遷移する。service/agent/passwordless userへの適用除外を明示する。
-- policy変更は既存userを即lockoutせず、effective_at/grace期間を持たせる。管理UIに影響人数previewと安全なvalidationを出す。
+
+1. spec: TypeSpec に `max_age_days`、Authentication Design に期限の規則、REQ-AUTHENTICATION-024
+   と REQ-TENANCY-019 の ALT。`just check-spec` → `just spec-render`。
+2. domain: `PasswordPolicySnapshot.MaxAgeDays` と `PasswordExpiredAt` 判定 (RED 先行)。
+3. usecases: 期限評価 use case、admin `CreateUser` のテナント解決、change-password の breach
+   チェック、`enforcePolicyFloor` の max age ceiling。
+4. persistence: `infra/schema/postgres.sql` に 2 列、`tenants.sql` を更新して `just
+   sqlc-generate`、`tenants.go` の read/write。
+5. http/ui: ログイン gate への組み込み、admin settings の max age フィールドと i18n。
+6. verify: `just test-go` / `just verify`。
 
 ## Tasks
-- [ ] T001 [Design/Spec] ADR-026/027とwi-24の重複を整理し、tenant policy bounds、effective/grace、expiry lifecycle/interfaces/scenariosを追加して再生成する。
-- [ ] T002 [Domain] PasswordPolicy validation/evaluation と violation code、user password_changed_at/required-action transitionを実装する。
-- [ ] T003 [Usecases] registration/change/reset/admin-setの全経路を共通 policy + HIBP + history evaluatorへ移し、history writeをtransactionに含める。
-- [ ] T004 [Persistence] tenant policy/effective_at と user password_changed_at migration、history retention queryをmemory/PostgreSQLへ追加する。
-- [ ] T005 [Authentication/UI] expiry login handoff、password-change-required screen、管理policy editor/影響previewを追加する。
-- [ ] T006 [Verify] system bounds、Unicode length、HIBP unavailable mode、history count変更、grace/clock boundary、passwordless/service除外、全変更経路を検証する。
+
+- [x] T001 [Spec] `max_age_days` を TypeSpec に追加し、Authentication の Password lifecycle
+      Design と REQ-AUTHENTICATION-024 / REQ-TENANCY-019 ALT を書いて `just check-spec` を通す。
+- [x] T002 [Domain] `PasswordPolicySnapshot.MaxAgeDays` と期限判定の純関数を実装する
+      (RED: `TestPasswordExpired` / `TestResolvePasswordPolicy`
+      @ `password_policy_resolver_test.go`, REQ-AUTHENTICATION-024)。
+- [x] T003 [Usecases] 期限評価 use case、admin `CreateUser` のテナント解決、change-password の
+      breach チェック、max age の system bounds を実装する
+      (RED: `TestEnforcePasswordExpiry` / `TestResolveTenantPolicy` @ `password_expiry_test.go`、
+      `TestChangePasswordRejectsBreachedPassword` @ `change_password_test.go`、
+      `TestUpdateRejectsWeakerPolicyOverride` / `TestUpdateRecordsPasswordPolicyUpdatedAt`
+      @ `manage_tenants_test.go`, REQ-AUTHENTICATION-010, REQ-AUTHENTICATION-024, REQ-TENANCY-019)。
+- [x] T004 [Persistence] `tenants` に `password_policy_override` (JSONB) と
+      `password_policy_updated_at` を追加し、sqlc 再生成と repository の read/write を実装する
+      (RED: `TestTenantRepositoryPersistsPasswordPolicyOverride` @ `tenants_test.go`,
+      REQ-TENANCY-019)。
+- [x] T005 [Adapters/UI] ログイン完了時の期限評価と admin settings の max age 編集を追加する
+      (RED: `TestLoginWithExpiredPasswordIsGatedToChangePassword` @ `password_expiry_e2e_test.go`、
+      `saves the password expiry as part of the policy override` @ `AdminSettingsPage.test.tsx`,
+      REQ-AUTHENTICATION-024)。
+- [x] T006 [Verify] 境界 (system bounds / 猶予 / passwordless 除外 / 全変更経路) を検証し
+      `just verify`。
 
 ## Verification
+
 - `just test-go`
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
-- 手動: ポリシーを設定 → 要件を満たさないパスワードが change / reset / register で拒否される。履歴に一致するパスワードへの再設定が拒否されることを確認する。
+- `just verify`
+- 手動: admin settings で max_age_days を設定 → 保存後にプロセスを再起動しても値が残る →
+  期限超過ユーザーのログイン後に change-password へ誘導される。
 
 ## Risk Notes
-ポリシーを厳しくしすぎると UX を損ない、緩いと無意味。既定を NIST 準拠に置き、
-複雑性 / 定期変更は opt-in にする。履歴 hash の取り扱い (平文比較禁止) と、全設定
-経路での一貫適用漏れが主なリスクで、経路ごとにテストを置く。
+
+`password_policy_override` の永続化は、これまで保存されていなかった値が初めて効き始めることを
+意味する。db_memory では既に効いていたため挙動差が出るのは PostgreSQL 配備だけだが、既に UI から
+保存を試みたテナントがあれば、その値は失われている (再入力が必要)。
+
+有効期限は既定 off なので、opt-in しないテナントの挙動は変わらない。opt-in したテナントでも、
+ポリシー更新時刻を基準に入れるため一斉ロックアウトは起きない。最大のリスクは基準時刻の計算を
+誤って全員を即時期限切れにすることなので、猶予と clock 境界にテストを置く。
+
+## Completion
+
+- **Completed At**: 2026-08-13
+- **Summary**:
+  テナントのパスワードポリシー上書きが PostgreSQL に永続化されるようになり、`tenants` に
+  `password_policy_override` (JSONB) と `password_policy_updated_at` が加わった。これまで
+  `SaveTenant` は上書きを書いておらず、PostgreSQL 配備では管理者が保存した値が保存時点で
+  失われていた (db_memory でのみ機能していた)。
+  併せて、テナントが opt-in できる有効期限 `max_age_days` (既定 0 = 無効、system bounds
+  30〜3650 日) を追加した。期限は `max(password_changed_at, password_policy_updated_at)` から
+  測るため、有効化した瞬間に既存ユーザーが一斉に期限切れになることはない。期限超過は認証を
+  失敗させず、ログイン成立後に `update_password` required action を付与して既存の
+  change-password gate に載せる。password credential を持たないユーザーは対象外。
+  ポリシー適用の取りこぼしも塞いだ: 管理者による `CreateUser` は global default ではなく
+  テナント解決済みポリシーで検証するようになり、change-password は reset-password と同じ
+  breach チェックを通すようになった。`PasswordPolicySnapshot` は domain 側の単一定義へ
+  集約し (usecases 側は型エイリアス)、層をまたぐ詰め替えを無くした。
+  正規シナリオの差分は `REQ-AUTHENTICATION-024` の追加と `REQ-TENANCY-019` の変更
+  (弱い上書き / system bounds の ALT と、永続性の THEN)。
+- **Verification Results**:
+  - `just verify` - passed (test-go / test-ui-unit / lint-go / lint-ui / build-ui / check /
+    check-api-compat / format-check-ui / test-tools / typecheck-tools)
+  - `just check-schema` - passed (schema convergence)
+  - `just spec-diff` - added: REQ-AUTHENTICATION-024 / changed: REQ-TENANCY-019

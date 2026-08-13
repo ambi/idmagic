@@ -35,13 +35,25 @@ type UpdateInput struct {
 	DefaultLocale *string
 }
 
-// PolicyFloor は password_policy_override が下回ってはならない global 値。
-// MinLength の最低値、MaxLength の上限値、HistoryDepth の最低値で gating する (WI-17)。
+// PolicyFloor holds the product-wide values a password_policy_override must not
+// fall below: the lowest MinLength, the highest MaxLength, and the lowest
+// HistoryDepth accepted.
 type PolicyFloor struct {
 	MinLength    int
 	MaxLength    int
 	HistoryDepth int
 }
+
+// System bounds for expiry (max_age_days). Unlike length and history, stricter
+// is not safer here: an extremely short rotation period only pushes users toward
+// predictable patterns, and amounts to a tenant inflicting a denial of service on
+// itself, while an extremely long one makes the setting meaningless. Both
+// directions are rejected against a fixed range rather than the baseline values
+// (REQ-TENANCY-019).
+const (
+	PasswordMaxAgeDaysFloor   = 30
+	PasswordMaxAgeDaysCeiling = 3650
+)
 
 func EnsureDefault(ctx context.Context, repo tenantports.TenantRepository, now time.Time) error {
 	tenant, err := repo.FindByID(ctx, domain.DefaultTenantID)
@@ -120,14 +132,17 @@ func Update(
 	}
 	if input.PasswordPolicyOverride != nil {
 		normalized := normalizeOverride(*input.PasswordPolicyOverride)
-		if normalized == nil {
-			updated.PasswordPolicyOverride = nil
-		} else {
+		if normalized != nil {
 			if err := enforcePolicyFloor(*normalized, floor); err != nil {
 				return nil, err
 			}
-			updated.PasswordPolicyOverride = normalized
 		}
+		updated.PasswordPolicyOverride = normalized
+		// Expiry is measured from this, so only an update that touches the policy
+		// moves it (REQ-AUTHENTICATION-024). Moving it on a display_name update
+		// would extend the grace window without end.
+		policyChangedAt := normalizeNow(now)
+		updated.PasswordPolicyUpdatedAt = &policyChangedAt
 	}
 	if input.DefaultLocale != nil {
 		requested := strings.TrimSpace(*input.DefaultLocale)
@@ -166,6 +181,11 @@ func normalizeOverride(o domain.PasswordPolicyOverride) *domain.PasswordPolicyOv
 		result.HistoryDepth = &v
 		anyOverride = true
 	}
+	if o.MaxAgeDays != nil && *o.MaxAgeDays > 0 {
+		v := *o.MaxAgeDays
+		result.MaxAgeDays = &v
+		anyOverride = true
+	}
 	if !anyOverride {
 		return nil
 	}
@@ -180,6 +200,10 @@ func enforcePolicyFloor(o domain.PasswordPolicyOverride, floor PolicyFloor) erro
 		return ErrPolicyOverrideWeaker
 	}
 	if o.HistoryDepth != nil && floor.HistoryDepth > 0 && *o.HistoryDepth < floor.HistoryDepth {
+		return ErrPolicyOverrideWeaker
+	}
+	if o.MaxAgeDays != nil &&
+		(*o.MaxAgeDays < PasswordMaxAgeDaysFloor || *o.MaxAgeDays > PasswordMaxAgeDaysCeiling) {
 		return ErrPolicyOverrideWeaker
 	}
 	return nil

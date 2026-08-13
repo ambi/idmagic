@@ -1,8 +1,9 @@
-// Package usecases: Layer 3 - Application Logic（パスワードポリシー）
+// Package usecases: Layer 3 - Application Logic (password policy).
 //
-// Authentication context の PasswordPolicy 既定値をここで宣言する。テナント上書きの
-// スキーマと、UI へ返す現行値 (PasswordPolicyDefaults) は spec/contexts/tenancy に
-// あり、そちらと値が乖離すると spec↔impl drift になる。
+// The product defaults of the Authentication context's PasswordPolicy are
+// declared here. The schema of the tenant overrides and the current values
+// returned to the UI (PasswordPolicyDefaults) live in spec/contexts/tenancy;
+// letting the two drift apart is a spec-implementation drift.
 package usecases
 
 import (
@@ -11,6 +12,8 @@ import (
 	"unicode/utf8"
 
 	z "github.com/Oudwins/zog"
+
+	passworddomain "github.com/ambi/idmagic/backend/authentication/password/domain"
 )
 
 type PasswordPolicyViolation string
@@ -25,13 +28,18 @@ const (
 	PasswordPolicyMinLength    = 12
 	PasswordPolicyMaxLength    = 128
 	PasswordPolicyHistoryDepth = 5
+	// PasswordPolicyMaxAgeDays is the declared default for expiry. 0 means "no
+	// expiry", following NIST SP 800-63B-4's discouragement of forced rotation;
+	// a tenant opts in through PasswordPolicyOverride.max_age_days
+	// (REQ-AUTHENTICATION-024).
+	PasswordPolicyMaxAgeDays = 0
 )
 
-// PasswordPolicyBreachedCheckEnabled は breached password check の宣言的既定値
-// (tenancy の PasswordPolicyDefaults.breached_password_check_enabled が返す値)。
-// 既定は false で NoopBreachedPasswordChecker を使う。実運用では
-// BREACHED_PASSWORD_CHECKER=hibp で adapter を差し替えて有効化する。テナント別の
-// opt-out は Phase 4。
+// PasswordPolicyBreachedCheckEnabled is the declared default for the breached
+// password check. It is false, which selects NoopBreachedPasswordChecker; a
+// deployment enables the check by swapping the adapter with
+// BREACHED_PASSWORD_CHECKER=hibp. The choice of adapter is deployment-wide, not
+// per tenant.
 const PasswordPolicyBreachedCheckEnabled = false
 
 type PasswordPolicyResult struct {
@@ -39,28 +47,27 @@ type PasswordPolicyResult struct {
 	Violations []PasswordPolicyViolation
 }
 
-// PasswordPolicySnapshot は実評価に使うしきい値。テナント解決後の値を渡す想定で、
-// Phase 4 のテナント別ポリシー (spec.ResolvePasswordPolicy) と統合する。
-// spec.PasswordPolicySnapshot と同じ shape を持ち、authentication 層が
-// 単独で評価できる形にしてある。
-type PasswordPolicySnapshot struct {
-	MinLength    int
-	MaxLength    int
-	HistoryDepth int
-}
+// PasswordPolicySnapshot holds the tenant-resolved thresholds an evaluation
+// runs against. The single definition lives in password/domain; this is an alias
+// so use cases can name the same type. Defining it twice would mean repacking
+// the resolved policy at every layer boundary, and every new field would add one
+// more place a conversion can be forgotten.
+type PasswordPolicySnapshot = passworddomain.PasswordPolicySnapshot
 
-func defaultPasswordPolicySnapshot() PasswordPolicySnapshot {
+// DefaultPasswordPolicySnapshot returns the thresholds that apply with no override.
+func DefaultPasswordPolicySnapshot() PasswordPolicySnapshot {
 	return PasswordPolicySnapshot{
 		MinLength:    PasswordPolicyMinLength,
 		MaxLength:    PasswordPolicyMaxLength,
 		HistoryDepth: PasswordPolicyHistoryDepth,
+		MaxAgeDays:   PasswordPolicyMaxAgeDays,
 	}
 }
 
-// resolveSnapshot は spec 解決済みの snapshot を最優先で受け取り、
-// 旧経路（HistoryDepth のみ別個に渡す形）からの呼び出しもサポートする。
-// snap が完全なゼロ値なら global default、legacyDepth が指定されていれば
-// HistoryDepth のみ上書きする。
+// resolveSnapshot prefers an already-resolved snapshot and still supports the
+// older callers that pass HistoryDepth on its own. A fully zero snapshot falls
+// back to the global defaults, and a positive legacyDepth overrides only
+// HistoryDepth.
 func resolveSnapshot(snap PasswordPolicySnapshot, legacyDepth int) PasswordPolicySnapshot {
 	result := snap
 	if result.MinLength == 0 {
@@ -96,18 +103,19 @@ func passwordSchemaFor(snap PasswordPolicySnapshot) *z.StringSchema[string] {
 		)
 }
 
-// ValidatePassword は global default のしきい値で評価する。テナント別ポリシーが
-// 不要な経路 (ログイン経路の弱い再評価など) で使う。
+// ValidatePassword evaluates against the global defaults, for paths that do not
+// need the tenant policy (such as the weak re-check on the login path).
 //
-// 文字数は UTF-8 コードポイント単位 (rune) で数え、surrogate サイズの差で
-// TS 実装 (UTF-16 code units) と細部が食い違うため、ASCII デモパスワード
-// については両者一致する想定。
+// Length counts UTF-8 code points (runes). The TypeScript side counts UTF-16
+// code units, so the two differ on surrogates; they agree for the ASCII demo
+// passwords.
 func ValidatePassword(plain string) PasswordPolicyResult {
-	return ValidatePasswordWith(plain, defaultPasswordPolicySnapshot())
+	return ValidatePasswordWith(plain, DefaultPasswordPolicySnapshot())
 }
 
-// ValidatePasswordWith はテナント解決済みのしきい値で評価する。change-password /
-// reset-password のように本格的なポリシー適用が必要な経路で使う。
+// ValidatePasswordWith evaluates against tenant-resolved thresholds, for the
+// paths that apply the policy in full such as change-password and
+// reset-password.
 func ValidatePasswordWith(plain string, snap PasswordPolicySnapshot) PasswordPolicyResult {
 	var violations []PasswordPolicyViolation
 	for _, issue := range passwordSchemaFor(snap).Validate(&plain) {

@@ -32,12 +32,13 @@ type ChangePasswordInput struct {
 }
 
 type ChangePasswordDeps struct {
-	UserRepo            userports.UserRepository
-	PasswordHasher      passwordports.PasswordHasher
-	PasswordHistoryRepo passwordports.PasswordHistoryRepository
-	Emit                func(spec.DomainEvent) error
-	HistoryDepth        int                    // Deprecated: use Policy 指定。後方互換のためのフォールバック。
-	Policy              PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
+	UserRepo                userports.UserRepository
+	PasswordHasher          passwordports.PasswordHasher
+	PasswordHistoryRepo     passwordports.PasswordHistoryRepository
+	BreachedPasswordChecker passwordports.BreachedPasswordChecker
+	Emit                    func(spec.DomainEvent) error
+	HistoryDepth            int                    // Deprecated: use Policy 指定。後方互換のためのフォールバック。
+	Policy                  PasswordPolicySnapshot // テナント解決済みのしきい値。ゼロ値は global default。
 }
 
 func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePasswordInput) (*userdomain.User, error) {
@@ -61,6 +62,12 @@ func ChangePassword(ctx context.Context, deps ChangePasswordDeps, in ChangePassw
 	result := ValidatePasswordWith(in.NewPassword, snap)
 	if !result.OK {
 		return nil, &PasswordPolicyError{Violations: result.Violations}
+	}
+	// The same validation stages as reset-password: when the paths differ in
+	// strength, the weaker one becomes the effective policy.
+	if deps.BreachedPasswordChecker != nil &&
+		deps.BreachedPasswordChecker.IsBreached(ctx, in.NewPassword) {
+		return nil, &PasswordPolicyError{Violations: []PasswordPolicyViolation{ViolationBreached}}
 	}
 
 	depth := snap.HistoryDepth

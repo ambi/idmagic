@@ -691,6 +691,7 @@ export type AdminTenant = {
     min_length?: number
     max_length?: number
     history_depth?: number
+    max_age_days?: number
   }
   created_at: string
   updated_at?: string
@@ -753,11 +754,14 @@ export type AdminSettings = {
     min_length?: number
     max_length?: number
     history_depth?: number
+    max_age_days?: number
   }
   password_policy_defaults: {
     min_length: number
     max_length: number
     history_depth: number
+    // 0 は有効期限なし。このフィールドを知らない旧サーバでは undefined になる。
+    max_age_days?: number
   }
   // 通知メールの locale 解決の第 2 段。未設定ならシステム既定を使う。
   default_locale?: string

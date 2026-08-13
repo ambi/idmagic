@@ -408,7 +408,7 @@ model UpdateAdminSettingsError403 {
   @body body: UpdateAdminSettingsError403Body;
 }
 
-@doc("テナント内 admin が自身のテナントの設定を更新する。display_name、default_locale、\npassword_policy_override のいずれかを任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) は use case\n側で拒否する。default_locale はカタログが同梱翻訳を持つ locale のみ受け付け、\n空文字列でシステム既定へ戻す。")
+@doc("テナント内 admin が自身のテナントの設定を更新する。display_name、default_locale、\npassword_policy_override のいずれかを任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) と、\nmax_age_days が system ceiling (30 日以上 3650 日以下) の範囲外の場合は use case\n側で拒否する。default_locale はカタログが同梱翻訳を持つ locale のみ受け付け、\n空文字列でシステム既定へ戻す。")
 @TypeSpec.OpenAPI.operationId("UpdateAdminSettings")
 @route("/api/admin/v1/settings")
 @patch

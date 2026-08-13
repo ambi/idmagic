@@ -7,6 +7,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/tenancy/domain"
 
+	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
@@ -51,6 +52,8 @@ type passwordPolicyDefaults struct {
 	MinLength    int `json:"min_length"`
 	MaxLength    int `json:"max_length"`
 	HistoryDepth int `json:"history_depth"`
+	// MaxAgeDays is 0 when expiry is off, which is the product default.
+	MaxAgeDays int `json:"max_age_days"`
 }
 
 type adminSettingsUpdateRequest struct {
@@ -132,6 +135,7 @@ func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 			MinLength:    floor.MinLength,
 			MaxLength:    floor.MaxLength,
 			HistoryDepth: floor.HistoryDepth,
+			MaxAgeDays:   authusecases.PasswordPolicyMaxAgeDays,
 		},
 		SupportedLocales: template.SupportedLocales(),
 		Quota:            t.Quota,

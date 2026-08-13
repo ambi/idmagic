@@ -155,6 +155,50 @@ func TestChangePasswordHonorsTenantOverridePolicy(t *testing.T) {
 	}
 }
 
+// REQ-AUTHENTICATION-010: change-password runs the same validation stages as
+// reset-password.
+func TestChangePasswordRejectsBreachedPassword(t *testing.T) {
+	t.Parallel()
+
+	userRepo := usermemory.NewUserRepository()
+	historyRepo := authnmemory.NewPasswordHistoryRepository()
+	hasher := passwords_argon2id.NewArgon2idPasswordHasher()
+	hash, err := hasher.Hash("demo-password-1234")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2025, 6, 10, 0, 0, 0, 0, time.UTC)
+	if err := userRepo.Save(context.Background(), &userdomain.User{
+		ID: "user-1", PreferredUsername: "alice", PasswordHash: hash,
+		CreatedAt: now.Add(-time.Hour), UpdatedAt: now.Add(-time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ChangePassword(context.Background(), ChangePasswordDeps{
+		UserRepo:                userRepo,
+		PasswordHasher:          hasher,
+		PasswordHistoryRepo:     historyRepo,
+		BreachedPasswordChecker: breachedChecker{},
+	}, ChangePasswordInput{
+		Sub:             "user-1",
+		CurrentPassword: "demo-password-1234",
+		NewPassword:     "fresh-pass-9182",
+		Now:             now,
+	})
+	var policyErr *PasswordPolicyError
+	if !errors.As(err, &policyErr) {
+		t.Fatalf("err=%v, want PasswordPolicyError for a breached password", err)
+	}
+	if len(policyErr.Violations) != 1 || policyErr.Violations[0] != ViolationBreached {
+		t.Fatalf("violations=%v, want [breached]", policyErr.Violations)
+	}
+}
+
+type breachedChecker struct{}
+
+func (breachedChecker) IsBreached(context.Context, string) bool { return true }
+
 func TestChangePasswordRejectsPasswordReuse(t *testing.T) {
 	t.Parallel()
 

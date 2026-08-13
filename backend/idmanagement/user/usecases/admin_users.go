@@ -77,6 +77,9 @@ type AdminUserDeps struct {
 	// nil skips enforcement (wiring gaps in tests/tools); production bootstrap
 	// always sets it.
 	QuotaRepo tenantports.QuotaRepository
+	// TenantRepo resolves the tenant's password policy override for
+	// admin-issued passwords. nil falls back to the product defaults.
+	TenantRepo tenantports.TenantRepository
 }
 
 // notifyProvisioning is a best-effort call to deps.ProvisioningNotifier: a nil
@@ -125,7 +128,11 @@ func CreateUser(ctx context.Context, deps AdminUserDeps, in CreateUserInput) (*u
 	if existing != nil {
 		return nil, ErrUsernameConflict
 	}
-	result := authusecases.ValidatePassword(in.Password)
+	// An admin-issued password goes through the same tenant-resolved policy as
+	// change-password and reset-password; otherwise a tenant that raised
+	// min_length would still get baseline-strength passwords from this path.
+	policy := authusecases.ResolveTenantPolicy(ctx, deps.TenantRepo)
+	result := authusecases.ValidatePasswordWith(in.Password, policy)
 	if !result.OK {
 		return nil, &authusecases.PasswordPolicyError{Violations: result.Violations}
 	}

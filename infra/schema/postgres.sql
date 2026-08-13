@@ -8,6 +8,13 @@ CREATE TABLE tenants (
     default_locale TEXT,
     endpoint_style TEXT NOT NULL DEFAULT 'path'
         CHECK (endpoint_style IN ('path', 'subdomain')),
+    -- Tenant password policy overrides. One JSONB column rather than a column per
+    -- rule: the set is a bag of optional settings read and written whole with the
+    -- tenant, never searched or aggregated on its own.
+    password_policy_override JSONB,
+    -- When the override last changed. The lower bound for password expiry, so
+    -- enabling max_age_days does not expire every existing password at once.
+    password_policy_updated_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
