@@ -289,6 +289,7 @@ type tenantQuotaUpdateRequest struct {
 	ActiveSessions       *int `json:"active_sessions,omitempty"`
 	Consents             *int `json:"consents,omitempty"`
 	ActiveJobs           *int `json:"active_jobs,omitempty"`
+	SsfStreams           *int `json:"ssf_streams,omitempty"`
 	AuditEventsRetained  *int `json:"audit_events_retained,omitempty"`
 	ExportArtifactsBytes *int `json:"export_artifacts_bytes,omitempty"`
 }
@@ -319,6 +320,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 		ActiveSessions:       req.ActiveSessions,
 		Consents:             req.Consents,
 		ActiveJobs:           req.ActiveJobs,
+		SsfStreams:           req.SsfStreams,
 		AuditEventsRetained:  req.AuditEventsRetained,
 		ExportArtifactsBytes: req.ExportArtifactsBytes,
 	}

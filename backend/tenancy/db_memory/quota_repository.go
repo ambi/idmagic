@@ -58,6 +58,8 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 		currentUsage = usage.Consents
 	case domain.ResourceActiveJobs:
 		currentUsage = usage.ActiveJobs
+	case domain.ResourceSsfStreams:
+		currentUsage = usage.SsfStreams
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)
 	}
@@ -84,6 +86,8 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 		usage.Consents += delta
 	case domain.ResourceActiveJobs:
 		usage.ActiveJobs += delta
+	case domain.ResourceSsfStreams:
+		usage.SsfStreams += delta
 	}
 
 	return nil
@@ -122,6 +126,8 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 		decrementValue(&usage.Consents)
 	case domain.ResourceActiveJobs:
 		decrementValue(&usage.ActiveJobs)
+	case domain.ResourceSsfStreams:
+		decrementValue(&usage.SsfStreams)
 	default:
 		return fmt.Errorf("unknown resource: %s", resource)
 	}

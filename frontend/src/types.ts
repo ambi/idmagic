@@ -709,6 +709,7 @@ export type TenantQuota = {
   active_sessions?: number
   consents?: number
   active_jobs?: number
+  ssf_streams?: number
   audit_events_retained?: number
   export_artifacts_bytes?: number
 }
@@ -722,6 +723,7 @@ export type TenantUsage = {
   active_sessions: number
   consents: number
   active_jobs: number
+  ssf_streams: number
   audit_events_retained: number
   export_artifacts_bytes: number
 }

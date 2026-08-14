@@ -61,6 +61,20 @@ describe('compareOpenApi — additive changes are not breaking', () => {
     expect(compareOpenApi(baseline, current)).toEqual([])
   })
 
+  it('does not flag a new field the baseline never declared, even when it is required', () => {
+    const baseline = withSchema({
+      type: 'object',
+      properties: { users: { type: 'integer' } },
+      required: ['users'],
+    })
+    const current = withSchema({
+      type: 'object',
+      properties: { users: { type: 'integer' }, ssf_streams: { type: 'integer' } },
+      required: ['users', 'ssf_streams'],
+    })
+    expect(compareOpenApi(baseline, current)).toEqual([])
+  })
+
   it('does not flag a new error code added to an error response', () => {
     const baseline = withSchema({ oneOf: [{ $ref: '#/components/schemas/NotFound' }] })
     const current = withSchema({

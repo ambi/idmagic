@@ -181,20 +181,18 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		} else if clientStub.MTLSThumbprintS256 != "" {
 			sc = &domain.SenderConstraint{Type: spec.SenderConstraintMTLS, X5TS256: clientStub.MTLSThumbprintS256}
 		}
-		// client に Agent が束縛されている場合、Active 以外 (Disabled / Killed)
-		// なら新規トークンを発行しない (fail-closed)。束縛があれば agent_id を token に載せる。
+		// client に Agent が束縛されている場合、Agent 自身が Active でない
+		// (Disabled / Killed) か、所有者がオフボードされていれば新規トークンを
+		// 発行しない (fail-closed)。束縛があれば agent_id を token に載せる。
+		agent, err := tokenusecases.ResolveIssuableAgent(ctx, tokenusecases.AgentIssuanceDeps{
+			AgentRepo: d.AgentRepo, UserRepo: d.UserRepo,
+		}, client.ClientID)
+		if err != nil {
+			return writeOAuthError(c, err)
+		}
 		var agentID string
-		if d.AgentRepo != nil {
-			agent, err := d.AgentRepo.FindByClientID(ctx, support.RequestTenantID(c), client.ClientID)
-			if err != nil {
-				return writeOAuthError(c, err)
-			}
-			if agent != nil {
-				if !agent.IsActive() {
-					return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_client", "agent is disabled or killed"))
-				}
-				agentID = agent.ID
-			}
+		if agent != nil {
+			agentID = agent.ID
 		}
 		token, jti, err := d.TokenIssuer.SignAccessToken(ctx, oauthports.AccessTokenInput{
 			Client: client, Sub: client.ClientID, Scopes: scopes,

@@ -10,6 +10,8 @@ model TenantQuota {
   active_sessions: int64;
   consents: int64;
   active_jobs: int64;
+  @doc("送信側と受信側を合わせた SsfStream の上限。")
+  ssf_streams: int64;
   audit_events_retained: int64;
   export_artifacts_bytes: int64;
 }
@@ -25,6 +27,7 @@ model TenantUsage {
   active_sessions: int64;
   consents: int64;
   active_jobs: int64;
+  ssf_streams: int64;
   audit_events_retained: int64;
   export_artifacts_bytes: int64;
 }
@@ -40,6 +43,7 @@ model TenantQuotaUpdateRequest {
   active_sessions?: int64;
   consents?: int64;
   active_jobs?: int64;
+  ssf_streams?: int64;
   audit_events_retained?: int64;
   export_artifacts_bytes?: int64;
 }

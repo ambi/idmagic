@@ -29,7 +29,7 @@ func (r *QuotaRepository) CheckAndIncrement(ctx context.Context, tenantID, resou
 	switch resource {
 	case domain.ResourceUsers, domain.ResourceGroups, domain.ResourceAgents, domain.ResourceApplications,
 		domain.ResourceOAuth2Clients, domain.ResourceActiveSessions, domain.ResourceConsents, domain.ResourceActiveJobs,
-		"audit_events_retained", "export_artifacts_bytes":
+		domain.ResourceSsfStreams, "audit_events_retained", "export_artifacts_bytes":
 		// Ensure tenant_usages row exists
 		_, err := r.db.Exec(ctx, `
 			INSERT INTO tenant_usages (tenant_id) VALUES ($1) ON CONFLICT DO NOTHING
@@ -67,7 +67,7 @@ func (r *QuotaRepository) Decrement(ctx context.Context, tenantID, resource stri
 	switch resource {
 	case domain.ResourceUsers, domain.ResourceGroups, domain.ResourceAgents, domain.ResourceApplications,
 		domain.ResourceOAuth2Clients, domain.ResourceActiveSessions, domain.ResourceConsents, domain.ResourceActiveJobs,
-		"audit_events_retained", "export_artifacts_bytes":
+		domain.ResourceSsfStreams, "audit_events_retained", "export_artifacts_bytes":
 		stmt = fmt.Sprintf(`
 			UPDATE tenant_usages 
 			SET %[1]s = GREATEST(0, %[1]s - $2) 
@@ -102,6 +102,7 @@ func (r *QuotaRepository) SetQuota(ctx context.Context, tenantID string, quota *
 		ActiveSessions:       toPgtypeInt4(quota.ActiveSessions),
 		Consents:             toPgtypeInt4(quota.Consents),
 		ActiveJobs:           toPgtypeInt4(quota.ActiveJobs),
+		SsfStreams:           toPgtypeInt4(quota.SsfStreams),
 		AuditEventsRetained:  toPgtypeInt4(quota.AuditEventsRetained),
 		ExportArtifactsBytes: toPgtypeInt4(quota.ExportArtifactsBytes),
 	})
@@ -142,6 +143,7 @@ func (r *QuotaRepository) GetQuota(ctx context.Context, tenantID string) (*domai
 		ActiveSessions:       fromPgtype(row.ActiveSessions),
 		Consents:             fromPgtype(row.Consents),
 		ActiveJobs:           fromPgtype(row.ActiveJobs),
+		SsfStreams:           fromPgtype(row.SsfStreams),
 		AuditEventsRetained:  fromPgtype(row.AuditEventsRetained),
 		ExportArtifactsBytes: fromPgtype(row.ExportArtifactsBytes),
 	}, nil
@@ -166,6 +168,7 @@ func (r *QuotaRepository) GetUsage(ctx context.Context, tenantID string) (*domai
 		ActiveSessions:       int(row.ActiveSessions),
 		Consents:             int(row.Consents),
 		ActiveJobs:           int(row.ActiveJobs),
+		SsfStreams:           int(row.SsfStreams),
 		AuditEventsRetained:  int(row.AuditEventsRetained),
 		ExportArtifactsBytes: int(row.ExportArtifactsBytes),
 	}, nil

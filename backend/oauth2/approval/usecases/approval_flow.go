@@ -111,20 +111,17 @@ func StartApproval(ctx context.Context, deps StartApprovalDeps, in StartApproval
 	if err != nil {
 		return nil, err
 	}
+	agent, err := sharedusecases.ResolveIssuableAgent(ctx, sharedusecases.AgentIssuanceDeps{
+		AgentRepo: deps.AgentRepo, UserRepo: deps.UserRepo,
+	}, client.ClientID)
+	if err != nil {
+		return nil, err
+	}
 	var agentID *string
 	agentName := ""
-	if deps.AgentRepo != nil {
-		agent, findErr := deps.AgentRepo.FindByClientID(ctx, tenantID, client.ClientID)
-		if findErr != nil {
-			return nil, findErr
-		}
-		if agent != nil {
-			if !agent.IsActive() {
-				return nil, sharedusecases.NewOAuthError("invalid_client", "agent is disabled or killed")
-			}
-			agentID = &agent.ID
-			agentName = agent.Name
-		}
+	if agent != nil {
+		agentID = &agent.ID
+		agentName = agent.Name
 	}
 	id, err := approvaldomain.NewApprovalRequestID()
 	if err != nil {
@@ -300,6 +297,13 @@ func ExchangeApproval(ctx context.Context, deps ExchangeApprovalDeps, in Exchang
 		}
 		if agent == nil || !agent.IsActive() {
 			return nil, sharedusecases.NewOAuthError("invalid_grant", "agent is disabled or killed")
+		}
+		ownerActive, ownerErr := sharedusecases.AgentOwnerIsActive(ctx, deps.UserRepo, agent)
+		if ownerErr != nil {
+			return nil, ownerErr
+		}
+		if !ownerActive {
+			return nil, sharedusecases.NewOAuthError("invalid_grant", "agent owner is offboarded")
 		}
 	}
 	consumed, err := deps.Store.Consume(ctx, hash, now)

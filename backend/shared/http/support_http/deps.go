@@ -13,6 +13,7 @@ import (
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	rlports "github.com/ambi/idmagic/backend/shared/ratelimit/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
@@ -56,6 +57,12 @@ type Authenticator struct {
 	ApiTokenAuthenticator apitokenports.Authenticator
 	DpopReplayStore       oauthports.DpopReplayStore
 	AuthnResolver         authdomain.AuthenticationContextResolver
+	// Revocation は Bearer access token に /introspect と同じ失効判定を適用するための
+	// repository 群 (REQ-OAUTH2-047)。判定そのものは
+	// oauth2/token/usecases.AccessTokenIsRevoked が一手に持ち、この経路と /introspect が
+	// 同じ規則を共有する。ゼロ値 (repository がすべて nil) では判定を行わないので、
+	// SharedSignals や denylist を組み立てない軽量な配線でもそのまま動く。
+	Revocation tokenusecases.IntrospectDeps
 }
 
 // ApplicationGate はフェデレーション開始時のアプリ割当ゲートに必要な依存を保持する。

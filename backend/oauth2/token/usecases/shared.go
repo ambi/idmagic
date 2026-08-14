@@ -12,4 +12,7 @@ var (
 	ValidateAuthorizationDetails = sharedusecases.ValidateAuthorizationDetails
 	LoadAuthorizationDetailTypes = sharedusecases.LoadAuthorizationDetailTypes
 	ResolveResourceIndicator     = sharedusecases.ResolveResourceIndicator
+	ResolveIssuableAgent         = sharedusecases.ResolveIssuableAgent
 )
+
+type AgentIssuanceDeps = sharedusecases.AgentIssuanceDeps

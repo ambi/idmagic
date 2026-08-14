@@ -351,6 +351,7 @@ function TenantEditor({
   const [qSessions, setQSessions] = useState(tenant.quota?.active_sessions?.toString() ?? '')
   const [qConsents, setQConsents] = useState(tenant.quota?.consents?.toString() ?? '')
   const [qJobs, setQJobs] = useState(tenant.quota?.active_jobs?.toString() ?? '')
+  const [qSsfStreams, setQSsfStreams] = useState(tenant.quota?.ssf_streams?.toString() ?? '')
   const [qAudits, setQAudits] = useState(tenant.quota?.audit_events_retained?.toString() ?? '')
   const [qArtifacts, setQArtifacts] = useState(
     tenant.quota?.export_artifacts_bytes?.toString() ?? '',
@@ -383,6 +384,7 @@ function TenantEditor({
         active_sessions: num(qSessions),
         consents: num(qConsents),
         active_jobs: num(qJobs),
+        ssf_streams: num(qSsfStreams),
         audit_events_retained: num(qAudits),
         export_artifacts_bytes: num(qArtifacts),
       })
@@ -530,6 +532,16 @@ function TenantEditor({
             min={1}
             value={qJobs}
             onChange={(e) => setQJobs(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor={`qss-${tenant.id}`}>{t.quotaSsfStreams}</Label>
+          <Input
+            id={`qss-${tenant.id}`}
+            type="number"
+            min={1}
+            value={qSsfStreams}
+            onChange={(e) => setQSsfStreams(e.target.value)}
           />
         </div>
         <div className="grid gap-1.5">

@@ -105,6 +105,7 @@ type TenantQuota struct {
 	ActiveSessions       *int `json:"active_sessions,omitempty"`
 	Consents             *int `json:"consents,omitempty"`
 	ActiveJobs           *int `json:"active_jobs,omitempty"`
+	SsfStreams           *int `json:"ssf_streams,omitempty"`
 	AuditEventsRetained  *int `json:"audit_events_retained,omitempty"`
 	ExportArtifactsBytes *int `json:"export_artifacts_bytes,omitempty"`
 }
@@ -118,6 +119,7 @@ type TenantUsage struct {
 	ActiveSessions       int `json:"active_sessions"`
 	Consents             int `json:"consents"`
 	ActiveJobs           int `json:"active_jobs"`
+	SsfStreams           int `json:"ssf_streams"`
 	AuditEventsRetained  int `json:"audit_events_retained"`
 	ExportArtifactsBytes int `json:"export_artifacts_bytes"`
 }
@@ -152,6 +154,11 @@ const (
 	ResourceActiveSessions = "active_sessions"
 	ResourceConsents       = "consents"
 	ResourceActiveJobs     = "active_jobs"
+	// ResourceSsfStreams counts SsfStream rows regardless of direction:
+	// Transmit and Receive share one limit because direction is an attribute of
+	// the same set, and the resources a stream consumes (a delivery target, a
+	// JWKS source, retained delivery records) do not differ by direction.
+	ResourceSsfStreams = "ssf_streams"
 )
 
 // DefaultTenantQuota is the baseline Hard Quota applied when a tenant
@@ -173,6 +180,7 @@ var DefaultTenantQuota = map[string]int{
 	ResourceActiveSessions: 50000,
 	ResourceConsents:       10000,
 	ResourceActiveJobs:     10,
+	ResourceSsfStreams:     20,
 }
 
 // resourceOverride returns q's explicit limit for resource, or nil when q has
@@ -200,6 +208,8 @@ func (q *TenantQuota) resourceOverride(resource string) *int {
 		return q.Consents
 	case ResourceActiveJobs:
 		return q.ActiveJobs
+	case ResourceSsfStreams:
+		return q.SsfStreams
 	default:
 		return nil
 	}

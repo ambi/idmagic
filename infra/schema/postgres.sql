@@ -35,6 +35,7 @@ CREATE TABLE tenant_quotas (
     active_sessions INT,
     consents INT,
     active_jobs INT,
+    ssf_streams INT,
     audit_events_retained INT,
     export_artifacts_bytes INT,
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
@@ -50,6 +51,7 @@ CREATE TABLE tenant_usages (
     active_sessions INT NOT NULL DEFAULT 0 CHECK (active_sessions >= 0),
     consents INT NOT NULL DEFAULT 0 CHECK (consents >= 0),
     active_jobs INT NOT NULL DEFAULT 0 CHECK (active_jobs >= 0),
+    ssf_streams INT NOT NULL DEFAULT 0 CHECK (ssf_streams >= 0),
     audit_events_retained INT NOT NULL DEFAULT 0 CHECK (audit_events_retained >= 0),
     export_artifacts_bytes INT NOT NULL DEFAULT 0 CHECK (export_artifacts_bytes >= 0),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE

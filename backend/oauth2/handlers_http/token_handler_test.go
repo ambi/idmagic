@@ -16,6 +16,9 @@ import (
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
+	"github.com/ambi/idmagic/backend/idmanagement"
+	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
@@ -32,6 +35,11 @@ type tokenFixture struct {
 	e                     *echo.Echo
 	clientRepo            *oauth2memory.OAuth2ClientRepository
 	mcpResourceServerRepo *oauth2memory.McpResourceServerRepository
+	// agentRepo / userRepo は Agent 主体のトークン発行経路 (Agent の状態と所有者の
+	// オフボード判定) を持つ。空のままなら束縛された Agent が居ないだけなので、
+	// Agent を持ち出さない既存のテストはこれまでどおり通る。
+	agentRepo *agentmemory.AgentRepository
+	userRepo  *usermemory.UserRepository
 }
 
 func newTokenServer(t *testing.T) tokenFixture {
@@ -75,6 +83,8 @@ func newTokenServer(t *testing.T) tokenFixture {
 	tokenIssuer := tokens_jose.NewJWTSigner("http://test", keyStore)
 
 	mcpResourceServerRepo := oauth2memory.NewMcpResourceServerRepository()
+	agentRepo := agentmemory.NewAgentRepository()
+	userRepo := usermemory.NewUserRepository()
 
 	e := echo.New()
 	deps := httpadapter.Deps{
@@ -86,6 +96,7 @@ func newTokenServer(t *testing.T) tokenFixture {
 			ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
 			McpResourceServerRepo: mcpResourceServerRepo,
 		},
+		IdManagement:      idmanagement.Module{AgentRepo: agentRepo, UserRepo: userRepo},
 		KeyStore:          keyStore,
 		TokenIssuer:       tokenIssuer,
 		TokenIntrospector: tokenIssuer,
@@ -102,6 +113,8 @@ func newTokenServer(t *testing.T) tokenFixture {
 		e:                     e,
 		clientRepo:            clientRepo,
 		mcpResourceServerRepo: mcpResourceServerRepo,
+		agentRepo:             agentRepo,
+		userRepo:              userRepo,
 	}
 }
 

@@ -12,7 +12,7 @@ import (
 )
 
 const getTenantQuota = `-- name: GetTenantQuota :one
-SELECT tenant_id, users, groups, agents, applications, oauth2_clients, active_sessions, consents, active_jobs, audit_events_retained, export_artifacts_bytes FROM tenant_quotas WHERE tenant_id = $1
+SELECT tenant_id, users, groups, agents, applications, oauth2_clients, active_sessions, consents, active_jobs, ssf_streams, audit_events_retained, export_artifacts_bytes FROM tenant_quotas WHERE tenant_id = $1
 `
 
 func (q *Queries) GetTenantQuota(ctx context.Context, tenantID string) (*TenantQuota, error) {
@@ -28,6 +28,7 @@ func (q *Queries) GetTenantQuota(ctx context.Context, tenantID string) (*TenantQ
 		&i.ActiveSessions,
 		&i.Consents,
 		&i.ActiveJobs,
+		&i.SsfStreams,
 		&i.AuditEventsRetained,
 		&i.ExportArtifactsBytes,
 	)
@@ -35,7 +36,7 @@ func (q *Queries) GetTenantQuota(ctx context.Context, tenantID string) (*TenantQ
 }
 
 const getTenantUsage = `-- name: GetTenantUsage :one
-SELECT tenant_id, users, groups, agents, applications, oauth2_clients, active_sessions, consents, active_jobs, audit_events_retained, export_artifacts_bytes FROM tenant_usages WHERE tenant_id = $1
+SELECT tenant_id, users, groups, agents, applications, oauth2_clients, active_sessions, consents, active_jobs, ssf_streams, audit_events_retained, export_artifacts_bytes FROM tenant_usages WHERE tenant_id = $1
 `
 
 func (q *Queries) GetTenantUsage(ctx context.Context, tenantID string) (*TenantUsage, error) {
@@ -51,6 +52,7 @@ func (q *Queries) GetTenantUsage(ctx context.Context, tenantID string) (*TenantU
 		&i.ActiveSessions,
 		&i.Consents,
 		&i.ActiveJobs,
+		&i.SsfStreams,
 		&i.AuditEventsRetained,
 		&i.ExportArtifactsBytes,
 	)
@@ -60,9 +62,9 @@ func (q *Queries) GetTenantUsage(ctx context.Context, tenantID string) (*TenantU
 const upsertTenantQuota = `-- name: UpsertTenantQuota :exec
 INSERT INTO tenant_quotas (
     tenant_id, users, groups, agents, applications, oauth2_clients,
-    active_sessions, consents, active_jobs, audit_events_retained, export_artifacts_bytes
+    active_sessions, consents, active_jobs, ssf_streams, audit_events_retained, export_artifacts_bytes
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) ON CONFLICT (tenant_id) DO UPDATE SET
     users = EXCLUDED.users,
     groups = EXCLUDED.groups,
@@ -72,6 +74,7 @@ INSERT INTO tenant_quotas (
     active_sessions = EXCLUDED.active_sessions,
     consents = EXCLUDED.consents,
     active_jobs = EXCLUDED.active_jobs,
+    ssf_streams = EXCLUDED.ssf_streams,
     audit_events_retained = EXCLUDED.audit_events_retained,
     export_artifacts_bytes = EXCLUDED.export_artifacts_bytes
 `
@@ -86,6 +89,7 @@ type UpsertTenantQuotaParams struct {
 	ActiveSessions       pgtype.Int4
 	Consents             pgtype.Int4
 	ActiveJobs           pgtype.Int4
+	SsfStreams           pgtype.Int4
 	AuditEventsRetained  pgtype.Int4
 	ExportArtifactsBytes pgtype.Int4
 }
@@ -101,6 +105,7 @@ func (q *Queries) UpsertTenantQuota(ctx context.Context, arg UpsertTenantQuotaPa
 		arg.ActiveSessions,
 		arg.Consents,
 		arg.ActiveJobs,
+		arg.SsfStreams,
 		arg.AuditEventsRetained,
 		arg.ExportArtifactsBytes,
 	)
@@ -110,9 +115,9 @@ func (q *Queries) UpsertTenantQuota(ctx context.Context, arg UpsertTenantQuotaPa
 const upsertTenantUsage = `-- name: UpsertTenantUsage :exec
 INSERT INTO tenant_usages (
     tenant_id, users, groups, agents, applications, oauth2_clients,
-    active_sessions, consents, active_jobs, audit_events_retained, export_artifacts_bytes
+    active_sessions, consents, active_jobs, ssf_streams, audit_events_retained, export_artifacts_bytes
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 ) ON CONFLICT (tenant_id) DO UPDATE SET
     users = EXCLUDED.users,
     groups = EXCLUDED.groups,
@@ -122,6 +127,7 @@ INSERT INTO tenant_usages (
     active_sessions = EXCLUDED.active_sessions,
     consents = EXCLUDED.consents,
     active_jobs = EXCLUDED.active_jobs,
+    ssf_streams = EXCLUDED.ssf_streams,
     audit_events_retained = EXCLUDED.audit_events_retained,
     export_artifacts_bytes = EXCLUDED.export_artifacts_bytes
 `
@@ -136,6 +142,7 @@ type UpsertTenantUsageParams struct {
 	ActiveSessions       int32
 	Consents             int32
 	ActiveJobs           int32
+	SsfStreams           int32
 	AuditEventsRetained  int32
 	ExportArtifactsBytes int32
 }
@@ -151,6 +158,7 @@ func (q *Queries) UpsertTenantUsage(ctx context.Context, arg UpsertTenantUsagePa
 		arg.ActiveSessions,
 		arg.Consents,
 		arg.ActiveJobs,
+		arg.SsfStreams,
 		arg.AuditEventsRetained,
 		arg.ExportArtifactsBytes,
 	)

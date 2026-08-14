@@ -38,6 +38,7 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	"github.com/ambi/idmagic/backend/provisioning"
 	"github.com/ambi/idmagic/backend/saml"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -151,6 +152,11 @@ func Register(e *echo.Echo, d Deps) {
 		TokenIntrospector: d.OAuth2.TokenIntrospector,
 		DpopReplayStore:   d.OAuth2.DpopReplayStore,
 		AuthnResolver:     d.Authentication.AuthnResolver,
+		Revocation: tokenusecases.IntrospectDeps{
+			AccessTokenDenylist: d.OAuth2.AccessTokenDenylist,
+			AgentRepo:           d.IdManagement.AgentRepo,
+			RevocationEpochRepo: d.SharedSignals.RevocationEpochRepo,
+		},
 	}
 
 	// control-plane (テナント横断操作) は他の全ボンデッドコンテキストと同じ
@@ -277,6 +283,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		UserRepo: d.IdManagement.UserRepo, GroupRepo: d.IdManagement.GroupRepo,
 		SessionManager: d.Authentication.SessionManager, TokenIntrospector: d.OAuth2.TokenIntrospector,
 		ApiTokenAuthenticator: apiTokenService, DpopReplayStore: d.OAuth2.DpopReplayStore, AuthnResolver: d.Authentication.AuthnResolver,
+		// admin / account portal の Bearer にも /introspect と同じ失効判定を通す
+		// (REQ-OAUTH2-047)。/introspect の配線 (oauth2 handlers_http) と同じ repository 群。
+		Revocation: tokenusecases.IntrospectDeps{
+			AccessTokenDenylist: d.OAuth2.AccessTokenDenylist,
+			AgentRepo:           d.IdManagement.AgentRepo,
+			RevocationEpochRepo: d.SharedSignals.RevocationEpochRepo,
+		},
 	}
 
 	appGate := d.Application.Gate(d.IdManagement.GroupRepo, d.TrustedForwardedHops)
@@ -393,6 +406,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		ReceiverConfigRepo: d.SharedSignals.ReceiverConfigRepo, DeliveryRepo: d.SharedSignals.DeliveryRepo,
 		ReceivedEventRepo: d.SharedSignals.ReceivedEventRepo, EpochRepo: d.SharedSignals.RevocationEpochRepo,
 		AgentRepo: d.IdManagement.AgentRepo, Verifier: &sharedsignalsverifyjose.Verifier{JWKResolver: d.JWKResolver},
+		QuotaRepo: d.Tenancy.QuotaRepo,
 		Emit: func(event spec.DomainEvent) error {
 			if d.Emit != nil {
 				d.Emit(event)

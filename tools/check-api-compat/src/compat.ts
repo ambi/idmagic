@@ -106,16 +106,19 @@ function diffSchema(
     })
   }
 
+  const baseProps = isRecord(b.properties) ? (b.properties as Record<string, JsonSchema>) : {}
+  const currProps = isRecord(c.properties) ? (c.properties as Record<string, JsonSchema>) : {}
+
   const baseRequired = new Set(Array.isArray(b.required) ? (b.required as string[]) : [])
   const currRequired = new Set(Array.isArray(c.required) ? (c.required as string[]) : [])
   for (const name of currRequired) {
-    if (!baseRequired.has(name)) {
+    // A field the baseline never declared is an addition, which this policy
+    // treats as compatible however it is marked; only a field the baseline
+    // already carried as optional can tighten into a breaking requirement.
+    if (!baseRequired.has(name) && name in baseProps) {
       findings.push({ operation: ctx, message: `field '${name}' became required` })
     }
   }
-
-  const baseProps = isRecord(b.properties) ? (b.properties as Record<string, JsonSchema>) : {}
-  const currProps = isRecord(c.properties) ? (c.properties as Record<string, JsonSchema>) : {}
   for (const [name, baseField] of Object.entries(baseProps)) {
     if (!(name in currProps)) {
       findings.push({ operation: ctx, message: `field '${name}' removed` })

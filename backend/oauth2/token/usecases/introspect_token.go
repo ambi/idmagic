@@ -51,6 +51,40 @@ type IntrospectDeps struct {
 	RevocationEpochRepo ssports.AgentRevocationEpochRepository
 }
 
+// AccessTokenIsRevoked は署名検証を通過済みの access token が、その後に失効させられて
+// いないかを判定する。判定は 2 つある。jti が AccessTokenDenylist に載っていること
+// (RFC 7009 の明示的な失効) と、token の subject である Agent の revocation epoch が
+// issued_at より後へ前進していること (kill-switch / 所有者オフボード / 受理済み inbound SET)
+// である。どちらも repository が nil なら判定を行わない。
+//
+// IntrospectToken から切り出してあるのは、Bearer を受ける資源サーバー側の経路
+// (shared/http/support_http.Authenticator) が、同じ規則を二度実装せずに通すためである
+// (REQ-OAUTH2-047)。失効判定を通らない access token 検証経路を残さない。
+func AccessTokenIsRevoked(ctx context.Context, deps IntrospectDeps, r *ports.IntrospectionResult) (bool, error) {
+	if r == nil || !r.Active {
+		return false, nil
+	}
+	if r.JTI != "" && deps.AccessTokenDenylist != nil {
+		revoked, err := deps.AccessTokenDenylist.IsRevoked(ctx, r.JTI)
+		if err != nil || revoked {
+			return revoked, err
+		}
+	}
+	if r.ClientID == "" || deps.AgentRepo == nil || deps.RevocationEpochRepo == nil {
+		return false, nil
+	}
+	tenantID := tenancy.TenantID(ctx)
+	agent, err := deps.AgentRepo.FindByClientID(ctx, tenantID, r.ClientID)
+	if err != nil || agent == nil {
+		return false, err
+	}
+	epoch, err := deps.RevocationEpochRepo.FindByAgent(ctx, tenantID, agent.ID)
+	if err != nil {
+		return false, err
+	}
+	return epoch != nil && epoch.Supersedes(time.Unix(r.Iat, 0)), nil
+}
+
 func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInput, now time.Time) (*IntrospectionResponse, error) {
 	if now.IsZero() {
 		now = time.Now().UTC()
@@ -97,33 +131,12 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 	if err != nil {
 		return nil, err
 	}
-	if r.Active && r.JTI != "" && deps.AccessTokenDenylist != nil {
-		revoked, err := deps.AccessTokenDenylist.IsRevoked(ctx, r.JTI)
-		if err != nil {
-			return nil, err
-		}
-		if revoked {
-			return &IntrospectionResponse{Active: false}, nil
-		}
+	revoked, err := AccessTokenIsRevoked(ctx, deps, r)
+	if err != nil {
+		return nil, err
 	}
-	// Agent が subject の access token は、issued_at と
-	// SharedSignals の revocation epoch を比較し、kill-switch / 所有者オフボード /
-	// inbound SET のいずれかで epoch が前進していれば fail-closed で無効と判定する。
-	if r.Active && r.ClientID != "" && deps.AgentRepo != nil && deps.RevocationEpochRepo != nil {
-		tenantID := tenancy.TenantID(ctx)
-		agent, err := deps.AgentRepo.FindByClientID(ctx, tenantID, r.ClientID)
-		if err != nil {
-			return nil, err
-		}
-		if agent != nil {
-			epoch, err := deps.RevocationEpochRepo.FindByAgent(ctx, tenantID, agent.ID)
-			if err != nil {
-				return nil, err
-			}
-			if epoch != nil && epoch.Supersedes(time.Unix(r.Iat, 0)) {
-				return &IntrospectionResponse{Active: false}, nil
-			}
-		}
+	if revoked {
+		return &IntrospectionResponse{Active: false}, nil
 	}
 	resp := &IntrospectionResponse{
 		Active:               r.Active,

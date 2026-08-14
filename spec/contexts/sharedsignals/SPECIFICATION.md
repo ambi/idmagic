@@ -19,6 +19,7 @@ Shared Signals Framework (SSF) と Continuous Access Evaluation Profile (CAEP) �
 | LocalRevocation | IdMagic 自身の `Introspect` または保護 API が、失効エポックとアクセストークンの `issued_at` を比較して行う、当該 IdP 内で完結する失効判定。CAEP / SSF イベントの配送より常に先に確定する。 |  |
 | EcosystemPropagation | `LocalRevocation` で確定した失効を、SSF ストリームを通じて外部の受信側 (別の IdP、リソースサーバー、ガバナンス基盤) へ CAEP イベントとして伝える層。受信側の障害や遅延によって `LocalRevocation` を遅らせない。 |  |
 | FailClosed | SET の署名検証失敗、未知の鍵、改ざんの検知、未登録の発行者、重複の検知、失効エポックを判定できない場合のいずれでも、常に「反映しない」または「無効とみなす」側に倒す方針。 |  |
+| SubjectIdentifier | SET が指す主体の表現。RFC 9493 は `format` メンバーで種別を区別する標準形式を定める。IdMagic は自身の送信側が使う独自形式に加えて、外部の送信側との相互運用のために RFC 9493 の `iss_sub` と `opaque` を解釈する。 | Subject Identifier, サブジェクト識別子 |
 | System | `SharedSignals` の失効反映と SET 送受信のユースケースそのものを指す、人間の操作者を伴わない技術的な主体。`KillAgent` などの Domain Event を契機に失効エポックを進め、CAEP イベントを生成する。 |  |
 
 ## Standards
@@ -31,6 +32,15 @@ RFC 8417 — https://www.rfc-editor.org/rfc/rfc8417.html
 |---|---|---|---|
 | RFC8417-SET-SIGNED | required | MUST | SET は jti/iat/iss/aud/events を含む署名済み JWT として発行する。 |
 | RFC8417-SET-VERIFY | required | MUST | 受信側は署名検証を通過した SET だけを反映する。検証失敗、未知の鍵、改ざんを検知した場合は反映せず、フェイルクローズで拒否して監査する。 |
+
+### Subject Identifiers for Security Event Tokens
+
+RFC 9493 — https://www.rfc-editor.org/rfc/rfc9493.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC9493-SUBID-FORMAT | partial | MUST | `format` メンバーを持つ Subject Identifier を受け取った場合、`format` の値でのみ種別を判定する。IdMagic が解釈するのは `iss_sub` と `opaque` であり、それ以外の `format` は主体を解決できないものとしてフェイルクローズで拒否する。 |
+| RFC9493-SUBID-ISS-SUB | partial | MUST | `format=iss_sub` の `iss` は、受信ストリームに登録された `trusted_issuer` と完全一致しなければならない。一致しない `iss` は、SET の署名が正しくても主体を解決できないものとして拒否する。 |
 
 ## State Transitions
 
@@ -68,6 +78,10 @@ Initial: `pending` Terminal: `delivered`, `dead_letter`
 
 #### CheckRevocationEpoch
 指定した Agent の失効エポックを返す。OAuth2 の Introspect または保護 API がアクセストークンの `issued_at` と比較し、失効エポック以前に発行されたトークンをフェイルクローズで無効と判定するために呼び出す。
+
+#### ResolveSecurityEventSubject
+受理した SET の `events` クレームから、失効を反映する対象のテナントローカルなプリンシパルを決める。IdMagic 自身の送信側が生成する独自形式 (`subject_type` / `tenant_id` / `principal_id`) と、RFC 9493 の Subject Identifier (`format=iss_sub` と `format=opaque`) の両方を解釈する。判別は `format` メンバーの有無で行い、両形式を同時に満たす表現は受け付けない。RFC 9493 形式は自身のテナントを名乗らないため、テナントは受信ストリームが属するテナントで決まる。識別子は Agent の識別子として解決し、一致しなければ Agent に束縛済みの `OAuth2Client` の識別子として解決する。どちらでも解決できない場合はフェイルクローズで拒否する。
+- Result invariant: subject_resolves_within_receiving_stream_tenant(input.stream_id)
 
 #### AdvanceRevocationEpoch
 KillAgent、DisableAgent、UnbindAgentCredential、所有者（`owner_user_id`）の無効化または削除、受理済みの SecurityEvent のいずれかを契機として、対象 Agent 群の失効エポックを進める。所有者のオフボーディングでは、対象テナント内で `owner_user_id` が一致するすべての Agent を一括して進める。失効エポックを既存値より前の時刻に戻すことはない。
@@ -136,3 +150,25 @@ KillAgent、DisableAgent、UnbindAgentCredential、所有者（`owner_user_id`�
 - WHEN 管理者が "S1" を DisableSsfStream する
 - THEN "S1" が `direction=Receive` なら、以後の SET は `ssf_receiver_stream_enabled` によって拒否される
 - THEN "S1" が `direction=Transmit` なら、以後の RevocationEpochAdvanced から新しい SecurityEventDelivery を生成しない
+
+### REQ-SHAREDSIGNALS-009: SsfStream の登録は Hard Quota を超えると拒否される
+- ACTOR TenantAdministrator
+- GIVEN 対象テナントの `ssf_streams` 上限が 20、利用量が 20 である
+- WHEN 管理者が RegisterSsfTransmitterStream で新しいストリームを登録しようとする
+  - ALT RegisterSsfReceiverStream で登録しようとする → 同じく QuotaExceededError で拒否される（送信側と受信側は同一の上限を共有する）
+  - ALT 管理者が先に既存のストリームを DeleteSsfStream する → 利用量が 19 に戻り、次の登録は成功する
+- THEN QuotaExceededError で拒否され、SsfStream も付随する設定も作成されない
+- THEN "QuotaExceeded" が `resource="ssf_streams"` で発行される
+
+### REQ-SHAREDSIGNALS-010: RFC 9493 の Subject Identifier で送られた SET も主体を解決する
+- ACTOR System
+- GIVEN `direction=Receive` の SsfStream "S1" に `trusted_issuer="https://issuer.example"` が登録されている
+- GIVEN テナント "T1" に Agent "A1" が存在し、OAuth2Client "C1" に束縛されている
+- WHEN `format=iss_sub`、`iss="https://issuer.example"`、`sub="A1"` の Subject Identifier を持つ SET を "S1" へ POST する
+  - ALT `sub` が "A1" ではなく束縛先の "C1" である → 同じく "A1" として解決され、失効エポックが前進する
+  - ALT `format=opaque`、`id="A1"` である → 同じく "A1" として解決される（テナントは受信ストリームが属するテナントで決まる）
+  - ALT `iss` が "S1" の `trusted_issuer` と一致しない → `SecurityEventRejectedError` で拒否され、"SecurityEventRejected" が `verification_result=rejected_subject_unresolved` で発行される
+  - ALT `format=email` など IdMagic が解釈しない形式である → `SecurityEventRejectedError` で拒否される
+  - ALT `sub` がどの Agent にも束縛先クライアントにも一致しない → `SecurityEventRejectedError` で拒否される
+- THEN "A1" の AgentRevocationEpoch が前進する
+- THEN "SecurityEventReceived" が発行される

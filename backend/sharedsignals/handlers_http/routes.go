@@ -16,6 +16,7 @@ import (
 	ssdomain "github.com/ambi/idmagic/backend/sharedsignals/domain"
 	ssports "github.com/ambi/idmagic/backend/sharedsignals/ports"
 	"github.com/ambi/idmagic/backend/sharedsignals/usecases"
+	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 
 	"github.com/labstack/echo/v5"
 )
@@ -36,13 +37,15 @@ type Deps struct {
 	EpochRepo             ssports.AgentRevocationEpochRepository
 	AgentRepo             agentports.AgentRepository
 	Verifier              ssports.SecurityEventTokenVerifier
+	QuotaRepo             tenantports.QuotaRepository
 	Emit                  func(spec.DomainEvent) error
 }
 
 func (d Deps) adminDeps() usecases.AdminStreamDeps {
 	return usecases.AdminStreamDeps{
 		StreamRepo: d.StreamRepo, TransmitterConfigRepo: d.TransmitterConfigRepo,
-		ReceiverConfigRepo: d.ReceiverConfigRepo, DeliveryRepo: d.DeliveryRepo, Emit: d.Emit,
+		ReceiverConfigRepo: d.ReceiverConfigRepo, DeliveryRepo: d.DeliveryRepo,
+		QuotaRepo: d.QuotaRepo, Emit: d.Emit,
 	}
 }
 

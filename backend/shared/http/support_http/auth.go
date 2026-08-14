@@ -12,6 +12,7 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -108,6 +109,16 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 			return nil, err
 		}
 		if res == nil || !res.Active || res.Sub == "" {
+			return nil, &InvalidTokenError{}
+		}
+		// /introspect と同じ失効判定 (AccessTokenDenylist と AgentRevocationEpoch) を
+		// 通す (REQ-OAUTH2-047)。判定を持たない検証経路を残さないための一本化であり、
+		// 判定の実体は oauth2/token/usecases が単独で所有する。
+		revoked, err := tokenusecases.AccessTokenIsRevoked(c.Request().Context(), a.Revocation, res)
+		if err != nil {
+			return nil, err
+		}
+		if revoked {
 			return nil, &InvalidTokenError{}
 		}
 		if res.Managed {

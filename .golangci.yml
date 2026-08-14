@@ -121,6 +121,13 @@ linters:
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
+      # A client with no bound Agent is the ordinary case on every token
+      # issuance path, not an error: ResolveIssuableAgent passes through
+      # AgentRepository.FindByClientID's (nil, nil) not-bound contract.
+      - path: backend/oauth2/usecases/agent_issuance\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
       # DPoP is optional for non-DPoP-bound calls; no header means no result.
       - path: backend/shared/security/tokens_jose/dpop_verifier\.go
         text: "return both a `nil` error and an invalid value"
