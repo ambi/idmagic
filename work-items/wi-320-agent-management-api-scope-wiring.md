@@ -1,6 +1,6 @@
 ---
 status: pending
-authors: [claude]
+authors: [tn]
 risk: low
 created_at: 2026-08-08
 depends_on: [wi-49-agent-identity-first-class-principal]

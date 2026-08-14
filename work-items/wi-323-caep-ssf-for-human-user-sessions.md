@@ -1,6 +1,6 @@
 ---
 status: pending
-authors: [claude]
+authors: [tn]
 risk: medium
 created_at: 2026-08-08
 depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
