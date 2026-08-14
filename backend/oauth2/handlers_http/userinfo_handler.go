@@ -70,9 +70,11 @@ func (d Deps) handleUserInfo(c *echo.Context) error {
 			if dpopHeader == "" || d.DpopReplayStore == nil {
 				return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_token", "DPoP proof is required"))
 			}
-			r, err := tokensJOSE.VerifyDPoP(
+			// ath is checked against the access token string the client presented,
+			// not against any post-introspection representation of it.
+			r, err := tokensJOSE.VerifyDPoPForResource(
 				c.Request().Context(), dpopHeader,
-				c.Request().Method, support.RequestHTU(c, d.Issuer),
+				c.Request().Method, support.RequestHTU(c, d.Issuer), token,
 				d.DpopReplayStore, time.Now().UTC(),
 			)
 			if err != nil || r == nil || subtle.ConstantTimeCompare(

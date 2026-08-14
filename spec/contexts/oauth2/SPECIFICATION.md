@@ -328,6 +328,7 @@ RFC 9449 — https://www.rfc-editor.org/rfc/rfc9449.html
 |---|---|---|---|
 | RFC9449-PROOF | optional | MAY | DPoP proofの署名、htm、htu、iat、jtiを検証する。 |
 | RFC9449-TOKEN-BINDING | optional | MUST | DPoP利用時はAccess Tokenへjktを含め、提示proofの鍵と照合する。 |
+| RFC9449-ATH | optional | MUST | 保護リソースへ提示するDPoP proofはathを含み、base64url(SHA-256(access token))と一致しなければ拒否する。 |
 
 ### Best Current Practice for OAuth 2.0 Security
 
@@ -704,7 +705,18 @@ FAPI/banking clients. Clients declaring the FAPI 2.0 profile must use at least o
 general-profile clients opt
 in via `dpop_bound_access_tokens`. DPoP proof validation checks the `jwk`-header signature plus
 `htm`/`htu`/`iat`/`jti`, with a bounded clock skew and a replay window on `jti`, and issued tokens
-carry the JWK thumbprint in `cnf.jkt`. mTLS validation trusts a TLS-terminating proxy to pass a
+carry the JWK thumbprint in `cnf.jkt`.
+
+Proof validation is split by endpoint kind rather than parameterized, because the two kinds differ in
+what a proof must be bound to. At the token endpoint the target access token does not exist yet, so a
+proof carries no `ath`. At a protected resource the proof must carry `ath` =
+base64url(SHA-256(presented access token)), compared in constant time against the raw token string the
+client presented — not any post-introspection representation. Without `ath` a proof only demonstrates
+key possession and is interchangeable across every token issued to that key for the same `htm`/`htu`,
+which matters most for agents that run long, span resource servers, and hold different tokens at each
+delegation hop. A missing `ath` at a protected resource is rejected outright rather than tolerated
+behind a grace flag: an opt-out would have to default to accepting unbound proofs, which is the
+failure this closes. mTLS validation trusts a TLS-terminating proxy to pass a
 verified client certificate, matches the registered `tls_client_auth_subject_dn`, and binds issued
 tokens via `cnf.x5t#S256`; `/userinfo` requires the presented certificate's thumbprint to match the
 token's `cnf` before accepting it. Both access and refresh tokens carry the sender constraint —
@@ -1413,3 +1425,12 @@ are compatibility facades over the slices, and `module.go` is the sole compositi
   - ALT realm "acme" が host-root endpoint style を使う → resource_metadata は host-root issuer 配下の "/.well-known/oauth-protected-resource" を指す
 - THEN HTTP 401 を返し、WWW-Authenticate は Bearer error="invalid_token" と resource_metadata="https://idp.example.com/realms/acme/.well-known/oauth-protected-resource" を quoted auth-param として含む
 - THEN resource_metadata URL は resource 未指定時の realm IdMagic API Protected Resource Metadata を返す
+
+### REQ-OAUTH2-045: 保護リソースの DPoP proof は ath で access token に束縛される
+- ACTOR RegisteredClient
+- GIVEN DPoP 鍵 "K1" にバインドされた access token "AT1" と "AT2" が存在する
+- WHEN client が "AT1" を提示し、ath が "AT1" の base64url(SHA-256) である "K1" 署名の DPoP proof で保護リソースを呼ぶ
+  - ALT proof が ath を含まない → エラー "InvalidTokenError"
+  - ALT proof の ath が "AT2" の base64url(SHA-256) である → エラー "InvalidTokenError"
+  - ALT トークンエンドポイントへ ath を含まない "K1" 署名の DPoP proof を提示する → 要求は受理され access token が発行される
+- THEN 要求は受理される

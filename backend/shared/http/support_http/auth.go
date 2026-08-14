@@ -126,7 +126,9 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 			if scheme != "dpop" || a.DpopReplayStore == nil {
 				return nil, &InvalidTokenError{}
 			}
-			proof, err := tokensjose.VerifyDPoP(c.Request().Context(), c.Request().Header.Get("DPoP"), c.Request().Method, RequestHTU(c, ""), a.DpopReplayStore, time.Now().UTC())
+			// ath is checked against the access token string the client presented,
+			// not against any post-introspection representation of it.
+			proof, err := tokensjose.VerifyDPoPForResource(c.Request().Context(), c.Request().Header.Get("DPoP"), c.Request().Method, RequestHTU(c, ""), token, a.DpopReplayStore, time.Now().UTC())
 			if err != nil {
 				return nil, &InvalidTokenError{}
 			}

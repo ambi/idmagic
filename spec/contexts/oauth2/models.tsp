@@ -583,6 +583,21 @@ model SenderConstraintCnf {
 }
 
 
+@doc("DPoP Proof JWT のクレーム (RFC 9449 §4.2)。typ は dpop+jwt、公開鍵は jwk ヘッダで提示する。")
+model DpopProofClaims {
+  @doc("proof ごとに一意な識別子。リプレイ窓の間は再使用できない。")
+  jti: string;
+  @doc("対象リクエストの HTTP メソッド。")
+  htm: string;
+  @doc("query と fragment を除いた対象リクエストの HTTP URI。")
+  htu: url;
+  @doc("proof の発行時刻。許容 clock skew の外は拒否する。")
+  iat: utcDateTime;
+  @doc("提示する access token の base64url(SHA-256) ハッシュ (RFC 9449 §4.3)。保護リソースへのアクセスでは必須、トークンエンドポイントでは対象 token が存在しないため付与しない。")
+  ath?: string;
+}
+
+
 @doc("RefreshToken に紐づくセンダー制約。発行時のバインド先（DPoP 鍵サムプリントまたは mTLS 証明書サムプリント）を保持する。")
 model RefreshTokenSenderConstraint {
   type: SenderConstraintKind;

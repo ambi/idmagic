@@ -58,7 +58,7 @@ func TestVerifyDPoPAcceptsValidProof(t *testing.T) {
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
 		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "jti-ok", "iat": now.Unix()},
 	)
-	res, err := VerifyDPoP(
+	res, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
 		memory.NewDpopReplayStore(), now,
 	)
@@ -137,7 +137,7 @@ func TestVerifyDPoPRejectsFailureCases(t *testing.T) {
 			payload := map[string]any{"htm": "POST", "htu": validHTU, "jti": tc.name, "iat": now.Unix()}
 			tc.mutate(header, payload)
 			proof := encodeDPoPProof(t, key, header, payload)
-			_, err := VerifyDPoP(
+			_, err := VerifyDPoPForToken(
 				context.Background(), proof, "POST", validHTU,
 				memory.NewDpopReplayStore(), now,
 			)
@@ -161,10 +161,10 @@ func TestVerifyDPoPDetectsReplay(t *testing.T) {
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
 		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "replay-jti", "iat": now.Unix()},
 	)
-	if _, err := VerifyDPoP(context.Background(), proof, "POST", "https://idp.example/token", store, now); err != nil {
+	if _, err := VerifyDPoPForToken(context.Background(), proof, "POST", "https://idp.example/token", store, now); err != nil {
 		t.Fatalf("first attempt rejected: %v", err)
 	}
-	_, err := VerifyDPoP(context.Background(), proof, "POST", "https://idp.example/token", store, now)
+	_, err := VerifyDPoPForToken(context.Background(), proof, "POST", "https://idp.example/token", store, now)
 	if err == nil || !strings.Contains(err.Error(), "replay") {
 		t.Fatalf("expected replay rejection, got %v", err)
 	}
@@ -180,7 +180,7 @@ func TestVerifyDPoPRejectsInvalidSignature(t *testing.T) {
 		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": claimedJWK},
 		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "sig-mismatch", "iat": now.Unix()},
 	)
-	_, err := VerifyDPoP(
+	_, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
 		memory.NewDpopReplayStore(), now,
 	)
@@ -189,9 +189,106 @@ func TestVerifyDPoPRejectsInvalidSignature(t *testing.T) {
 	}
 }
 
+func TestVerifyDPoPForResourceBindsProofToAccessToken(t *testing.T) {
+	// REQ-OAUTH2-045: a proof presented to a protected resource must carry
+	// base64url(SHA-256) of the presented access token in ath.
+	key, jwk := dpopTestKey(t)
+	now := time.Now().UTC()
+	const (
+		htu         = "https://idp.example/realms/default/userinfo"
+		accessToken = "AT1"
+		otherToken  = "AT2"
+	)
+	proofWithATH := func(t *testing.T, jti string, ath any) string {
+		t.Helper()
+		payload := map[string]any{"htm": "GET", "htu": htu, "jti": jti, "iat": now.Unix()}
+		if ath != nil {
+			payload["ath"] = ath
+		}
+		return encodeDPoPProof(
+			t, key,
+			map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
+			payload,
+		)
+	}
+
+	t.Run("正しい ath を持つ proof は受理される", func(t *testing.T) {
+		res, err := VerifyDPoPForResource(
+			context.Background(), proofWithATH(t, "ath-ok", AccessTokenHash(accessToken)),
+			"GET", htu, accessToken, memory.NewDpopReplayStore(), now,
+		)
+		if err != nil {
+			t.Fatalf("valid ath rejected: %v", err)
+		}
+		if res == nil || res.JKT == "" {
+			t.Fatalf("expected thumbprint, got %+v", res)
+		}
+	})
+
+	t.Run("ath 欠落の proof は拒否される", func(t *testing.T) {
+		_, err := VerifyDPoPForResource(
+			context.Background(), proofWithATH(t, "ath-missing", nil),
+			"GET", htu, accessToken, memory.NewDpopReplayStore(), now,
+		)
+		if err == nil || !strings.Contains(err.Error(), "ath required") {
+			t.Fatalf("expected missing-ath rejection, got %v", err)
+		}
+	})
+
+	t.Run("別 access token の ath を持つ proof は拒否される", func(t *testing.T) {
+		_, err := VerifyDPoPForResource(
+			context.Background(), proofWithATH(t, "ath-other", AccessTokenHash(otherToken)),
+			"GET", htu, accessToken, memory.NewDpopReplayStore(), now,
+		)
+		if err == nil || !strings.Contains(err.Error(), "ath mismatch") {
+			t.Fatalf("expected ath mismatch rejection, got %v", err)
+		}
+	})
+
+	t.Run("proof 不在は拒否される", func(t *testing.T) {
+		_, err := VerifyDPoPForResource(
+			context.Background(), "", "GET", htu, accessToken,
+			memory.NewDpopReplayStore(), now,
+		)
+		if err == nil || !strings.Contains(err.Error(), "proof required") {
+			t.Fatalf("expected missing-proof rejection, got %v", err)
+		}
+	})
+
+	t.Run("access token 未指定の呼び出しは拒否される", func(t *testing.T) {
+		// Pins that the ath check cannot be skipped by forgetting to pass the token.
+		_, err := VerifyDPoPForResource(
+			context.Background(), proofWithATH(t, "ath-no-token", AccessTokenHash(accessToken)),
+			"GET", htu, "", memory.NewDpopReplayStore(), now,
+		)
+		if err == nil || !strings.Contains(err.Error(), "access token required") {
+			t.Fatalf("expected missing-token rejection, got %v", err)
+		}
+	})
+}
+
+func TestVerifyDPoPForTokenAcceptsProofWithoutATH(t *testing.T) {
+	// REQ-OAUTH2-045: the token endpoint requires no ath because the target access
+	// token does not exist yet. Guards against leaking the requirement onto that path.
+	key, jwk := dpopTestKey(t)
+	now := time.Now().UTC()
+	proof := encodeDPoPProof(
+		t, key,
+		map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk},
+		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "token-no-ath", "iat": now.Unix()},
+	)
+	res, err := VerifyDPoPForToken(
+		context.Background(), proof, "POST", "https://idp.example/token",
+		memory.NewDpopReplayStore(), now,
+	)
+	if err != nil || res == nil {
+		t.Fatalf("token endpoint proof without ath: res=%v err=%v", res, err)
+	}
+}
+
 func TestVerifyDPoPMissingHeaderIsNoOp(t *testing.T) {
 	// 空ヘッダーは「proof 不在」を意味する。エラー無しで nil を返し、呼び出し側の責務に委ねる。
-	res, err := VerifyDPoP(
+	res, err := VerifyDPoPForToken(
 		context.Background(), "", "POST", "https://idp.example/token",
 		memory.NewDpopReplayStore(), time.Now().UTC(),
 	)

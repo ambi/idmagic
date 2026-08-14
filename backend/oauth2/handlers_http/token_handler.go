@@ -81,7 +81,9 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 	var dpopJKT string
 	if proof := c.Request().Header.Get("DPoP"); proof != "" && d.DpopReplayStore != nil {
 		htu := support.RequestHTU(c, d.Issuer)
-		r, err := tokens_jose.VerifyDPoP(c.Request().Context(), proof, "POST", htu, d.DpopReplayStore, time.Now().UTC())
+		// No ath is required here: the access token it would bind to does not exist
+		// at token request time (RFC 9449 §4.3).
+		r, err := tokens_jose.VerifyDPoPForToken(c.Request().Context(), proof, "POST", htu, d.DpopReplayStore, time.Now().UTC())
 		if err != nil {
 			return writeOAuthError(c, tokenusecases.NewOAuthError("invalid_dpop_proof", err.Error()))
 		}

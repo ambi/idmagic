@@ -1,7 +1,7 @@
 package handlers_http_test
 
 // /userinfo + DPoP PoP 検証 (RFC 9449 §7) のテスト。SenderConstraintDPoP の AT は
-// 同じ鍵で署名された DPoP proof と htm / htu / iat / jti を伴わない限り受理しない。
+// 同じ鍵で署名された DPoP proof と htm / htu / iat / jti / ath を伴わない限り受理しない。
 
 import (
 	"bytes"
@@ -32,6 +32,7 @@ import (
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -64,13 +65,20 @@ func rsaJWKThumbprint(t *testing.T, jwk map[string]any) string {
 	return base64.RawURLEncoding.EncodeToString(sum[:])
 }
 
-func signDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, htm, htu, jti string, now time.Time) string {
+// signDPoPProof signs a GET proof for a protected resource. ath is derived from
+// accessToken; an empty accessToken yields a proof without ath (a REQ-OAUTH2-045
+// rejection case).
+func signDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, htu, jti, accessToken string, now time.Time) string {
 	t.Helper()
 	header, err := json.Marshal(map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk})
 	if err != nil {
 		t.Fatal(err)
 	}
-	payload, err := json.Marshal(map[string]any{"htm": htm, "htu": htu, "jti": jti, "iat": now.Unix()})
+	claims := map[string]any{"htm": http.MethodGet, "htu": htu, "jti": jti, "iat": now.Unix()}
+	if accessToken != "" {
+		claims["ath"] = tokensJOSE.AccessTokenHash(accessToken)
+	}
+	payload, err := json.Marshal(claims)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,7 +143,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	}
 
 	// 有効プルーフ。htu は requestHTU と一致する形 (base + path)。
-	validProof := signDPoPProof(t, key, jwk, "GET", "http://test/realms/default/userinfo", "jti-valid", now)
+	validProof := signDPoPProof(t, key, jwk, "http://test/realms/default/userinfo", "jti-valid", "atoken", now)
 	if rec := call("DPoP atoken", validProof); rec.Code != http.StatusOK {
 		t.Fatalf("valid proof status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -143,13 +151,21 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 	// DPoP ヘッダー欠落 → invalid_token。
 	mustReject("missing DPoP proof", call("DPoP atoken", ""))
 
+	// REQ-OAUTH2-045: a proof without ath only shows key possession, so invalid_token.
+	noATHProof := signDPoPProof(t, key, jwk, "http://test/realms/default/userinfo", "jti-no-ath", "", now)
+	mustReject("missing ath", call("DPoP atoken", noATHProof))
+
+	// REQ-OAUTH2-045: a proof made for another access token cannot be reused here.
+	otherATHProof := signDPoPProof(t, key, jwk, "http://test/realms/default/userinfo", "jti-other-ath", "othertoken", now)
+	mustReject("ath of another access token", call("DPoP atoken", otherATHProof))
+
 	// 別鍵で署名された proof → 署名検証は通っても jkt が一致せず invalid_token。
 	attacker, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
 	}
 	attJWK := rsaJWK(&attacker.PublicKey)
-	attProof := signDPoPProof(t, attacker, attJWK, "GET", "http://test/realms/default/userinfo", "jti-attacker", now)
+	attProof := signDPoPProof(t, attacker, attJWK, "http://test/realms/default/userinfo", "jti-attacker", "atoken", now)
 	mustReject("wrong jkt", call("DPoP atoken", attProof))
 }
 
@@ -189,7 +205,7 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 	})
 
 	htu := "http://test/realms/acme/userinfo"
-	proof := signDPoPProof(t, key, jwk, "GET", htu, "jti-acme", now)
+	proof := signDPoPProof(t, key, jwk, htu, "jti-acme", "atoken", now)
 
 	req := httptest.NewRequest(http.MethodGet, "/realms/acme/userinfo", http.NoBody)
 	req.Header.Set("Authorization", "DPoP atoken")

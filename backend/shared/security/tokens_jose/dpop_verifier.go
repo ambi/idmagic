@@ -8,6 +8,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -29,9 +30,18 @@ type DPoPResult struct {
 	JKT string
 }
 
-// VerifyDPoP は DPoP ヘッダ JWT を検証して JWK thumbprint を返す。
-// 期待 htm/htu と乖離した場合 / 署名検証失敗 / iat スキュー外 / jti リプレイで error。
-func VerifyDPoP(
+// AccessTokenHash returns the ath claim value base64url(SHA-256(access token)) of a
+// DPoP proof (RFC 9449 §4.3). The hashed input is the access token string the client
+// presented, never a post-introspection internal representation of it.
+func AccessTokenHash(accessToken string) string {
+	digest := sha256.Sum256([]byte(accessToken))
+	return base64.RawURLEncoding.EncodeToString(digest[:])
+}
+
+// VerifyDPoPForToken verifies a proof presented to a token endpoint (/token, /par).
+// No ath is required there: the access token it would bind to does not exist yet
+// (RFC 9449 §4.3). A missing proof means "DPoP not used", so it returns nil without error.
+func VerifyDPoPForToken(
 	ctx context.Context,
 	dpopHeader, expectedHTM, expectedHTU string,
 	replay ports.DpopReplayStore,
@@ -40,6 +50,38 @@ func VerifyDPoP(
 	if dpopHeader == "" {
 		return nil, nil
 	}
+	return verifyDPoP(ctx, dpopHeader, expectedHTM, expectedHTU, "", replay, now)
+}
+
+// VerifyDPoPForResource verifies a proof presented to a protected resource
+// (REQ-OAUTH2-045). Unlike the token endpoint path, the proof must be bound to
+// accessToken through ath, and both a missing proof and a missing access token are
+// errors. The two paths are separate functions so that a caller who forgets to pass
+// the access token cannot silently skip the ath check.
+func VerifyDPoPForResource(
+	ctx context.Context,
+	dpopHeader, expectedHTM, expectedHTU, accessToken string,
+	replay ports.DpopReplayStore,
+	now time.Time,
+) (*DPoPResult, error) {
+	if dpopHeader == "" {
+		return nil, errors.New("dpop: proof required")
+	}
+	if accessToken == "" {
+		return nil, errors.New("dpop: access token required")
+	}
+	return verifyDPoP(ctx, dpopHeader, expectedHTM, expectedHTU, accessToken, replay, now)
+}
+
+// verifyDPoP verifies a DPoP header JWT and returns its JWK thumbprint. It fails on an
+// htm/htu mismatch, a bad signature, an iat outside the clock skew, or a replayed jti.
+// A non-empty accessToken makes ath mandatory and checks it against that token.
+func verifyDPoP(
+	ctx context.Context,
+	dpopHeader, expectedHTM, expectedHTU, accessToken string,
+	replay ports.DpopReplayStore,
+	now time.Time,
+) (*DPoPResult, error) {
 	parts := strings.Split(dpopHeader, ".")
 	if len(parts) != 3 {
 		return nil, errors.New("dpop: malformed proof")
@@ -85,6 +127,15 @@ func VerifyDPoP(
 	}
 	if htu, _ := payload["htu"].(string); htu != expectedHTU {
 		return nil, fmt.Errorf("dpop: htu mismatch (got %q, want %q)", htu, expectedHTU)
+	}
+	if accessToken != "" {
+		ath, _ := payload["ath"].(string)
+		if ath == "" {
+			return nil, errors.New("dpop: ath required")
+		}
+		if subtle.ConstantTimeCompare([]byte(ath), []byte(AccessTokenHash(accessToken))) != 1 {
+			return nil, errors.New("dpop: ath mismatch")
+		}
 	}
 	iat, _ := payload["iat"].(float64)
 	skew := now.Unix() - int64(iat)

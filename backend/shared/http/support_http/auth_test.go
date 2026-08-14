@@ -2,13 +2,25 @@ package support_http
 
 import (
 	"context"
+	cryptostd "crypto"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
+	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
+	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
+	tokensjose "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/labstack/echo/v5"
 )
 
@@ -27,6 +39,107 @@ type authTestManagedAuthenticator struct {
 
 func (f authTestManagedAuthenticator) Authenticate(context.Context, string) (apitokendomain.Principal, error) {
 	return f.principal, f.err
+}
+
+// authTestDPoPProof signs a DPoP proof JWT with the given htm / htu / ath.
+func authTestDPoPProof(t *testing.T, key *rsa.PrivateKey, jwk map[string]any, htm, htu, jti, ath string, now time.Time) string {
+	t.Helper()
+	header, err := json.Marshal(map[string]any{"typ": "dpop+jwt", "alg": "PS256", "jwk": jwk})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := map[string]any{"htm": htm, "htu": htu, "jti": jti, "iat": now.Unix()}
+	if ath != "" {
+		claims["ath"] = ath
+	}
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := base64.RawURLEncoding.EncodeToString(header) + "." + base64.RawURLEncoding.EncodeToString(payload)
+	digest := sha256.Sum256([]byte(input))
+	sig, err := rsa.SignPSS(rand.Reader, key, cryptostd.SHA256, digest[:], &rsa.PSSOptions{SaltLength: rsa.PSSSaltLengthEqualsHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
+
+func authTestJWK(pub *rsa.PublicKey) map[string]any {
+	return map[string]any{
+		"kty": "RSA",
+		"n":   base64.RawURLEncoding.EncodeToString(pub.N.Bytes()),
+		"e":   base64.RawURLEncoding.EncodeToString(new(big.Int).SetInt64(int64(pub.E)).Bytes()),
+	}
+}
+
+func authTestJKT(t *testing.T, jwk map[string]any) string {
+	t.Helper()
+	canonical, err := json.Marshal(map[string]any{"e": jwk["e"], "kty": jwk["kty"], "n": jwk["n"]})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(canonical)
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// REQ-OAUTH2-045: a DPoP proof at a protected resource is bound to the presented access
+// token through ath. A proof that only demonstrates key possession (no ath), or one made
+// for another token, is rejected.
+func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
+	now := time.Now().UTC()
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwk := authTestJWK(&key.PublicKey)
+	const (
+		path        = "/api/account/v1/profile"
+		accessToken = "AT1"
+		otherToken  = "AT2"
+	)
+
+	for _, tc := range []struct {
+		name          string
+		ath           string
+		authenticated bool
+	}{
+		{name: "ath of the presented token", ath: tokensjose.AccessTokenHash(accessToken), authenticated: true},
+		{name: "no ath", ath: ""},
+		{name: "ath of another access token", ath: tokensjose.AccessTokenHash(otherToken)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, path, http.NoBody)
+			req.Header.Set("Authorization", "DPoP "+accessToken)
+			req.Header.Set("DPoP", authTestDPoPProof(t, key, jwk, http.MethodGet, path, tc.name, tc.ath, now))
+			c := e.NewContext(req, httptest.NewRecorder())
+			a := Authenticator{
+				TokenIntrospector: authTestIntrospector{result: &oauthports.IntrospectionResult{
+					Active: true, Sub: "user-1", Scope: "account:read",
+					SenderConstraint: &oauthdomain.SenderConstraint{
+						Type: spec.SenderConstraintDPoP, JKT: authTestJKT(t, jwk),
+					},
+				}},
+				DpopReplayStore: memory.NewDpopReplayStore(),
+			}
+
+			got, err := a.resolveAuthnContext(c)
+			if tc.authenticated {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if got == nil || got.UserID != "user-1" {
+					t.Fatalf("authn=%+v", got)
+				}
+				return
+			}
+			var tokenErr *InvalidTokenError
+			if !errors.As(err, &tokenErr) {
+				t.Fatalf("err=%v authn=%+v; want InvalidTokenError", err, got)
+			}
+		})
+	}
 }
 
 // wi-275: account resource server の route と最小 scope の正準対応。

@@ -1,12 +1,27 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-08-13
 depends_on: []
 change_kind: bugfix
+initial_context:
+  specification:
+    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-010
+    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-045
+  typespec: [IdMagic.Contract.SenderConstraintCnf]
+  source:
+    - backend/shared/security/tokens_jose/dpop_verifier.go
+    - backend/shared/http/support_http/auth.go
+    - backend/oauth2/handlers_http/userinfo_handler.go
+    - backend/oauth2/handlers_http/token_handler.go
+    - backend/oauth2/authorization/domain/pkce.go
+  tests:
+    - backend/shared/security/tokens_jose/dpop_verifier_test.go
+    - backend/oauth2/handlers_http/userinfo_handler_test.go
+  stop_before_reading: [frontend, infra]
 affected_spec:
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-010 }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-045 }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.SenderConstraintCnf }
 ---
 
@@ -35,7 +50,8 @@ proof と token の対応が緩いほど、取り違えと流用の窓が構造�
 ## Scope
 
 - `spec/contexts/oauth2/SPECIFICATION.md` の DPoP 節に `ath` 検証の normative scenario
-  (REQ-OAUTH2-042) と standards 要件行を追加する。
+  (REQ-OAUTH2-045) と standards 要件行 (RFC9449-ATH) を追加する。
+  起票時に想定した REQ-OAUTH2-042 は CIBA の承認要求に既に使われていたため 045 を採番した。
 - `tokens_jose.VerifyDPoP` に access token を渡し、`ath` を検証できるようにする。
 - リソースアクセス経路の呼び出し側を更新する:
   `backend/shared/http/support_http/auth.go` (`resolveAuthnContext` の DPoP 分岐) と
@@ -78,14 +94,30 @@ proof と token の対応が緩いほど、取り違えと流用の窓が構造�
 
 ## Tasks
 
-- [ ] T001 [Spec] DPoP 節に `ath` 検証の standards 要件と REQ-OAUTH2-042 を追加し、
-      `ath` 欠落時の扱い (即時必須か段階導入か) を決めて記録する。
-- [ ] T002 [Domain] `VerifyDPoP` で `ath` を検証する。RED: `ath` 欠落 / 別 token の `ath` /
-      正しい `ath` の 3 ケースを先に書く → GREEN。
-- [ ] T003 [Adapters] `resolveAuthnContext` と userinfo の呼び出しに access token を渡す。
-      RED: 別 access token 用の proof が保護リソースで拒否されるテスト → GREEN。
-- [ ] T004 [Docs] README に DPoP クライアント側の `ath` 要求と移行手順を追記する。
-- [ ] T005 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [x] T001 [Spec] DPoP 節に `ath` 検証の standards 要件 (RFC9449-ATH) と REQ-OAUTH2-045 を追加し、
+      TypeSpec に `DpopProofClaims` を起こした。`ath` 欠落は**即時拒否**とする (段階導入を採らない)。
+      根拠: 猶予フラグは既定値を「束縛の無い proof を受理する」側に置くことになり、本項目が
+      閉じようとしている失敗そのものを設定可能な状態として残す。IdMagic は未リリースであり、
+      リポジトリ内に DPoP proof を生成するクライアント実装も存在しない (frontend は
+      `dpop_bound_access_tokens` の設定 UI のみ) ため、移行対象となる稼働クライアントはいない。
+- [x] T002 [Domain] `VerifyDPoP` を経路別の `VerifyDPoPForToken` / `VerifyDPoPForResource` に
+      分け、後者で `ath` を必須検証する (`AccessTokenHash` + `subtle.ConstantTimeCompare`)。
+      RED → GREEN: `TestVerifyDPoPForResourceBindsProofToAccessToken` (REQ-OAUTH2-045、
+      正しい `ath` / `ath` 欠落 / 別 token の `ath` / proof 不在 / access token 未指定) と
+      `TestVerifyDPoPForTokenAcceptsProofWithoutATH` (REQ-OAUTH2-045 の ALT、token 経路の回帰)。
+      `backend/shared/security/tokens_jose/dpop_verifier_test.go`。
+- [x] T003 [Adapters] `resolveAuthnContext` / userinfo に生の access token を渡し、token
+      エンドポイントは `VerifyDPoPForToken` に振り分けた。RED → GREEN:
+      `TestResourceDPoPProofBindsToPresentedAccessToken`
+      (`backend/shared/http/support_http/auth_test.go`、REQ-OAUTH2-045) と
+      `TestUserInfoDPoPBoundRequiresMatchingProof` に追加した missing ath /
+      ath of another access token の 2 ケース
+      (`backend/oauth2/handlers_http/userinfo_handler_test.go`、REQ-OAUTH2-045)。
+- [x] T004 [Docs] 取りやめ。IdMagic は未リリースで移行対象の稼働 DPoP クライアントが存在しない
+      ため、README に移行手順は書かない。`ath` の要求はクライアント向けの規範として
+      REQ-OAUTH2-045 と RFC9449-ATH に置き、README の機能一覧は変更しない。
+- [x] T005 [Verify] 下記 Verification を緑にした。`just spec-render` を実行済み
+      (生成物は untracked)。手動 `just dev` 確認は未実施 — Completion 参照。
 
 ## Verification
 
@@ -99,11 +131,41 @@ proof と token の対応が緩いほど、取り違えと流用の窓が構造�
 ## Risk Notes
 
 リスクは medium。**既存の DPoP クライアントを壊す破壊的変更**であり、`ath` を送らない
-実装はリソースアクセスで一斉に失敗する。移行方針を T001 で明示的に決め、README に書く。
+実装はリソースアクセスで一斉に失敗する。IdMagic は未リリースで移行対象の稼働クライアントが
+いないため、T001 で即時必須と決め、README への移行手順は書かない。
 
 検証を追加する側の失敗様式にも注意する。`ath` の算出対象を introspection 後の内部表現に
 してしまうと、正しいクライアントを拒否する。ハンドラが受け取った生の token 文字列を
 渡すことをテストで固定する。
+
+## Completion
+
+- **Completed At**: 2026-08-14
+- **Summary**:
+  保護リソースへの DPoP proof が access token に束縛されるようになった。`just spec-diff` の
+  差分は normative scenario **REQ-OAUTH2-045** の追加と TypeSpec 宣言 **DpopProofClaims** の追加
+  (加えて standards 行 RFC9449-ATH と Design 節の DPoP 段落)。仕様上の意味の差は、
+  「DPoP proof は鍵の所有を示す」から「保護リソースに提示する proof は
+  `ath` = base64url(SHA-256(提示 access token)) を持ち、持たない proof は拒否される」への強化で、
+  トークンエンドポイントは対象 token が存在しないため従来どおり `ath` を要求しない。
+  実装では `VerifyDPoP` を経路別の `VerifyDPoPForToken` / `VerifyDPoPForResource` に分割した。
+  optional 引数ではなく関数分割にしたのは、access token を渡し忘れた呼び出しが
+  「ath 検証が黙って無効化された保護リソース」にならないようにするため。3 つの呼び出し側は
+  改名によるコンパイルエラーで全て露出させて振り分けた。比較は `subtle.ConstantTimeCompare`。
+- **Verification Results**:
+  - `just check` - passed (`just verify` に含めて実行)
+  - `just check-spec` - passed
+  - `just check-work-items` - passed
+  - `just check-api-compat` - passed (breaking change 無し)
+  - `just verify` - passed
+  - `just verify-go` (lint-go + test-go-race) - passed
+  - `just spec-render` - 実行済み
+  - 手動 `just dev` 確認 - **未実施**。(1)〜(4) は httptest でハンドラ経路を通す自動テストで
+    等価に押さえた: `TestUserInfoDPoPBoundRequiresMatchingProof` と
+    `TestResourceDPoPProofBindsToPresentedAccessToken` が (1)(2)(3)、
+    `TestVerifyDPoPForTokenAcceptsProofWithoutATH` と既存 token 経路テストが (4)。
+    リポジトリに DPoP proof を生成するクライアントが無く、手動確認には PS256 proof を
+    その場で作る使い捨てスクリプトが必要になるため見送った。
 
 トークンエンドポイント経路に誤って `ath` 必須を波及させると、DPoP を使う全てのトークン
 取得が壊れる。経路の分離をテストで固定する。
