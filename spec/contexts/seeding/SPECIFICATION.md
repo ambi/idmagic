@@ -7,37 +7,28 @@ updated_at: 2026-08-11
 
 ## Overview
 
-環境別の seed profile、投入計画、dry-run、適用の安全方針を所有する運用 bounded context。
-各業務データの意味と永続化は各 record context に残し、Seeding は published command
-surface を通じて依存順の実行を調整する。profile は明示選択であり、production では
-bootstrap 以外を fail-closed で拒否する。
+環境別の seed プロファイル、投入計画、プレビューと適用の安全方針を所有する運用 Bounded Context である。各業務データの意味と永続化は記録を所有する Context に残し、Seeding は公開コマンドインターフェースを通じて依存順の実行を調整する。プロファイルは明示的に選択し、本番では `bootstrap` 以外をフェイルクローズで拒否する。
 
-The `Seeding` context is an operations bounded context owning `SeedProfile`, `SeedRequest`,
-`SeedPlan`, environment policy, drift policy, and application order. It does not own the meaning,
-validation, or persistence of seeded resources — those stay in each record context (IdManagement,
-Authentication, OAuth2, Application, Saml, WsFederation), reached through their existing idempotent
-command surfaces. This split keeps environment safety and application order centralized while
-avoiding duplicated invariant checks; the rejected alternative of scattering profiles across record
-contexts loses that single point of cross-context safety verification.
+所有するのは `SeedProfile`、`SeedRequest`、`SeedPlan`、環境ポリシー、ドリフトポリシー、適用順序であり、投入するリソースの意味、検証、永続化は所有しない。この分割により、環境の安全性と適用順序を一元化しながら、不変条件の検査が重複することを避け、Context をまたぐ安全性を 1 か所で検証する。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| SeedProfile | seed の内容と生成規則を表す明示選択の profile。bootstrap は稼働に必要な最小データだけ、development/test は既知のサンプル、performance は非機密の合成データを表す。環境名から暗黙に選ばない。 | seed profile |
-| SeedPlan | 現在状態と profile manifest を比較して作る、redacted な変更計画。dry-run と apply は同じ計画規則を使う。 | seed plan |
-| SeedDrift | seed 管理対象の logical key に対する現在値が manifest の canonical value と異なる状態。既定では手動変更を上書きせず conflict として停止する。 | drift |
-| BootstrapSeed | first-party client など、サービス稼働に必要な最小データ。デモ資格情報やサンプル tenant data を含まない。 |  |
-| SeedOperator | 明示した profile を plan または apply するローカル運用者または自動化主体。 |  |
-| SeedManifest | seed resource と決定的 generator を宣言する versioned YAML desired state。DB fixture ではなく各 record context の公開 command surface への入力となる。 | seed manifest |
-| SeedSecretReference | manifest が秘密値そのものの代わりに保持する provider、locator、version の組。解決値は plan、log、error に現れない。 | secret reference |
+| SeedProfile | seed の内容と生成規則を表す、明示的に選択するプロファイル。`bootstrap` は稼働に必要な最小データだけ、`development` と `test` は既知のサンプル、`performance` は機密情報を含まない合成データを表す。環境名から暗黙には選ばない。 | seed プロファイル |
+| SeedPlan | 現在の状態とプロファイルのマニフェストを比較して作る、シークレットを除いた変更計画。プレビューと適用は同じ計画規則を使う。 | seed計画 |
+| SeedDrift | seed 管理対象の論理キーについて、現在値がマニフェストの正規値と異なる状態。デフォルトでは手動変更を上書きせず、競合として停止する。 | drift |
+| BootstrapSeed | ファーストパーティークライアントなど、サービスの稼働に必要な最小データ。デモ用の資格情報やサンプルテナントのデータは含まない。 |  |
+| SeedOperator | 明示したプロファイルを計画または適用するローカル運用者または自動化主体。 |  |
+| SeedManifest | seed リソースと決定的な生成器を宣言する、バージョン付き YAML の望ましい状態。データベースのフィクスチャではなく、記録を所有する各 Context の公開コマンドインターフェースへの入力となる。 | seed マニフェスト |
+| SeedSecretReference | マニフェストがシークレット値そのものの代わりに保持する、プロバイダー、ロケーター、バージョンの組。解決した値は計画、ログ、エラーに現れない。 | シークレット参照 |
 
 ## Design
 
 ### Internal Interfaces
 
 #### SeedData
-seed を同一の決定的 planner で計画し適用する内部運用 interface。apply は各 record context の published command surface だけを呼び、直接 SQL fixture で不変条件を迂回しない。
+seed を同じ決定的な計画器でプレビューし、適用する内部運用インターフェースである。適用時は記録を所有する各 Context が公開するコマンドだけを呼び、SQL フィクスチャを直接使って不変条件を迂回しない。
 - Input invariant: manifest_schema_supported(input.request)
 - Input invariant: manifest_profile_matches_request(input.request)
 - Input invariant: manifest_paths_are_local_and_contained(input.request)
@@ -49,111 +40,87 @@ seed を同一の決定的 planner で計画し適用する内部運用 interfac
 
 ### Environment policy and planning
 
-A profile is never inferred from environment name — it must be given explicitly by request/CLI.
-Production accepts only the `bootstrap` profile; `demo`/`test`/`performance` are rejected
-fail-closed before any write, so a misrouted request cannot seed demo credentials into production.
-Dry-run and apply share the same planner, and re-applying the same manifest/generator-seed/secret
-version is a no-op — manual drift is a conflict by default, with explicit reconcile left as a
-separate, later contract. Application uses bounded, dependency-ordered batches of idempotent
-commands rather than one cross-context transaction; the `performance` profile's batch size defaults
-to 250 and caps at 1,000. Rather than a dedicated checkpoint table, the same request replays
-deterministically from logical keys/IDs derived from profile and generator seed, serialized by an
-in-process mutex per request key and, across processes, a PostgreSQL advisory lock on the existing
-connection.
+構成を環境名から推測することは決してなく、リクエストまたは CLI で明示しなければならない。本番が受け付けるのは `bootstrap` プロファイルだけであり、`demo`、`test`、`performance` は書き込み前にフェイルクローズで拒否する。宛先を誤ったリクエストによって、本番にデモ用の資格情報が投入されることを防ぐためである。プレビューと適用は同じ計画器を共有し、同じマニフェスト、生成 seed、シークレットのバージョンで再適用しても何も変更しない。手作業によるドリフトはデフォルトでは競合として扱い、明示的な調停は後続の別契約に委ねる。適用は Context をまたぐ単一トランザクションではなく、依存順に並べた上限付きバッチの冪等なコマンドで行う。`performance` プロファイルのバッチサイズはデフォルト 250、上限 1,000 とする。専用の進捗テーブルは設けず、同じリクエストはプロファイルと生成 seed から導く論理キーと ID によって決定的に再現する。直列化には、リクエストキーごとのプロセス内ミューテックスと、プロセス間では既存の接続に対する PostgreSQL アドバイザリーロックを使用する。
 
 ### Seed manifests and secret references
 
-`models.SeedManifest` is a versioned, strictly-decoded YAML desired state, converted by the
-`manifests_yaml` adapter into domain types before reaching the existing per-resource contributors;
-domain and usecases never see the parser or filesystem/env APIs directly. `include` resolves only
-local relative paths under the manifest root, bounded by depth and total-count limits — YAML merge
-keys, templating, remote URLs, and env-var expansion are excluded from the grammar to avoid path
-traversal and injection surfaces. Secret values are never written into a manifest; they are
-referenced through `models.SeedSecretReference`, whose `env` provider is available everywhere but
-whose `file` provider is the only one permitted in staging/production. Dry-run validates that a
-reference resolves without ever passing the materialized value into a plan, log, or error.
+`models.SeedManifest` は、バージョンを持ち厳密に解釈する YAML の望ましい状態である。`manifests_yaml` アダプターが Domain の型へ変換してから、リソースごとの既存処理へ渡す。Domain とユースケースは、パーサー、ファイルシステム、環境変数 API を直接参照しない。`include` で読み込めるのはマニフェストルート配下のローカル相対パスだけとし、深さと総数に上限を設ける。パストラバーサルや注入の余地を避けるため、YAML のマージキー、テンプレート展開、リモート URL、環境変数展開は文法から除外する。シークレット値はマニフェストに直接書かず、`models.SeedSecretReference` で参照する。`env` プロバイダーはどの環境でも使えるが、ステージングと本番で許可するのは `file` プロバイダーだけである。プレビューでは参照を解決できることを検証するが、取得した値を計画、ログ、エラーへ渡すことは一切ない。
 
 ### Design Decisions
 
-- `Seeding` is a separate operations context that owns environment policy, drift policy, and
-  application order across record contexts through their existing idempotent command surfaces,
-  rather than scattering seed profiles across each record context and losing the single point of
-  cross-context safety verification.
-- Seed manifests are versioned, strictly-decoded YAML with a restricted `include`/secret-reference
-  grammar (no merge keys, templating, remote URLs, or literal `${ENV}` expansion), and re-applying
-  the same manifest/generator-seed/secret version replays deterministically rather than relying on a
-  dedicated checkpoint table.
+- `Seeding` は独立した運用 Context であり、記録を所有する各 Context の既存の冪等なコマンドインターフェースを通じて、環境ポリシー、ドリフトポリシー、適用順序を横断的に所有する。投入構成を各 Context へ分散し、Context をまたぐ安全性を検証する単一の地点を失う案は採用しない。
+- 入力マニフェストはバージョンを持ち、厳密に解釈する YAML とする。`include` とシークレット参照の文法を制限し、マージキー、テンプレート展開、リモート URL、`${ENV}` の直接展開はいずれも許可しない。同じマニフェスト、生成 seed、シークレットのバージョンでの再適用は、専用の進捗テーブルに頼らず決定的に再現する。
 
 ## Scenarios
 
-### REQ-SEEDING-001: 環境別の明示profileが選択される
+### REQ-SEEDING-001: 環境別の明示プロファイルが選択される
 - ACTOR SeedOperator
-- GIVEN SeedOperator が environment と profile を明示している
-- WHEN SeedOperator が SeedData を dry_run で呼ぶ
-- THEN planner は environment policy に許可された manifest だけを選ぶ
-- THEN 応答は redacted な SeedPlan を返し永続状態を変更しない
+- GIVEN `SeedOperator` が環境とプロファイルを明示している
+- WHEN `SeedOperator` が `SeedData` を `dry_run` で呼ぶ
+- THEN 計画器は環境ポリシーで許可されたマニフェストだけを選ぶ
+- THEN レスポンスは機密値を除去した `SeedPlan` を返し、永続状態を変更しない
 
-### REQ-SEEDING-002: 明示manifestまたはprofile既定manifestが選択される
+### REQ-SEEDING-002: 明示したマニフェストまたはプロファイルのデフォルトマニフェストを選択する
 - ACTOR SeedOperator
-- GIVEN SeedOperator が environment と profile を明示している
-- WHEN SeedOperator が明示 manifest path を指定して SeedData を呼ぶ
-  - ALT manifest path が未指定である → loader は profile ごとの repository default manifest を選ぶ
-- THEN loader は指定 path の manifest と contained include を strict decode する
-- THEN planner は manifest の typed desired resource を計画する
+- GIVEN `SeedOperator` が環境とプロファイルを明示している
+- WHEN `SeedOperator` がマニフェストのパスを明示して `SeedData` を呼ぶ
+  - ALT マニフェストのパスが未指定である → ローダーはプロファイルごとの Repository にあるデフォルトマニフェストを選ぶ
+- THEN ローダーは指定したパスのマニフェストと、その配下に収まる `include` を厳密にデコードする
+- THEN 計画器はマニフェストに記載された型付きの望ましいリソースを計画する
 
-### REQ-SEEDING-003: manifestとrequestのprofile不一致は拒否される
+### REQ-SEEDING-003: マニフェストと指定プロファイルの不一致を拒否する
 - ACTOR SeedOperator
-- GIVEN SeedOperator が request と異なる profile の manifest を指定している
-- WHEN SeedOperator が SeedData を呼ぶ
-- THEN SeedData は secret 解決と書き込みの前に SeedRejectedError で拒否する
+- GIVEN `SeedOperator` がリクエストと異なるプロファイルのマニフェストを指定している
+- WHEN `SeedOperator` が `SeedData` を呼ぶ
+- THEN `SeedData` はシークレットの解決と書き込みの前に `SeedRejectedError` で拒否する
 
-### REQ-SEEDING-004: 不正manifestは書き込み前に拒否される
+### REQ-SEEDING-004: 不正なマニフェストは書き込み前に拒否する
 - ACTOR SeedOperator
-- GIVEN manifest に未知 key、重複 logical key、未対応 schema version、include cycle、または root 外 path がある
-- WHEN SeedOperator が SeedData を呼ぶ
-- THEN loader は secret 解決と書き込みの前に SeedRejectedError で拒否する
-- THEN 診断には秘密値を含めない
+- GIVEN マニフェストに未知のキー、重複する論理キー、未対応のスキーマバージョン、`include` の循環、またはルート外のパスがある
+- WHEN `SeedOperator` が `SeedData` を呼ぶ
+- THEN ローダーはシークレットの解決と書き込みの前に `SeedRejectedError` で拒否する
+- THEN 診断にはシークレット値を含めない
 
-### REQ-SEEDING-005: productionではenv secret providerを拒否する
+### REQ-SEEDING-005: 本番では env シークレットプロバイダーを拒否する
 - ACTOR SeedOperator
-- GIVEN environment が production である
-- GIVEN manifest が env secret provider を参照している
-- WHEN SeedOperator が SeedData を dry_run または apply で呼ぶ
-- THEN SeedData は secret 解決と書き込みの前に SeedRejectedError で拒否する
+- GIVEN 環境が本番である
+- GIVEN マニフェストが `env` シークレットプロバイダーを参照している
+- WHEN `SeedOperator` が `SeedData` を `dry_run` または `apply` で呼ぶ
+- THEN `SeedData` はシークレットの解決と書き込みの前に `SeedRejectedError` で拒否する
 - THEN 永続状態は変更されない
 
-### REQ-SEEDING-006: 同一seedの再適用はno-opになる
+### REQ-SEEDING-006: 同じ seed を再適用しても何も変更しない
 - ACTOR SeedOperator
-- GIVEN 同じ manifest、generator seed、secret version で seed が apply 済みである
-- WHEN SeedOperator が同じ SeedRequest を再度 apply する
-- THEN SeedPlan の全 operation は noop である
-- THEN password history と created_at / updated_at は変更されない
+- GIVEN 同じマニフェスト、生成 seed、シークレットのバージョンで seed を適用済みである
+- WHEN `SeedOperator` が同じ `SeedRequest` を再度 `apply` する
+- THEN `SeedPlan` のすべての操作は `noop` である
+- THEN パスワード履歴と `created_at`、`updated_at` は変更されない
 
-### REQ-SEEDING-007: productionでdemoまたはperformance profileは拒否される
+### REQ-SEEDING-007: 本番では development または performance プロファイルを拒否する
 - ACTOR SeedOperator
-- GIVEN environment が production である
-- WHEN SeedOperator が development または performance profile を指定して SeedData を呼ぶ
-- THEN SeedData は書き込み前に SeedRejectedError で拒否する
+- GIVEN 環境が本番である
+- WHEN `SeedOperator` が `development` または `performance` プロファイルを指定して `SeedData` を呼ぶ
+- THEN `SeedData` は書き込み前に `SeedRejectedError` で拒否する
 - THEN 既知のデモ資格情報は作成されない
 
-### REQ-SEEDING-008: production bootstrapには明示redirect URIが必要である
+### REQ-SEEDING-008: 本番の bootstrap には明示的なリダイレクト URI が必要である
 - ACTOR SeedOperator
-- GIVEN environment が production である
-- GIVEN profile が bootstrap である
-- WHEN SeedOperator が first_party_redirect_uris を指定して SeedData を apply する
-  - ALT redirect URI が未指定、localhost、または http URI である → SeedData は書き込み前に SeedRejectedError で拒否する
-- THEN first-party client は指定 URI だけを redirect URI として持つ
+- GIVEN 環境が本番である
+- GIVEN プロファイルが `bootstrap` である
+- WHEN `SeedOperator` が `first_party_redirect_uris` を指定して `SeedData` を `apply` する
+  - ALT リダイレクト URI が未指定、localhost、または HTTP URI である → `SeedData` は書き込み前に `SeedRejectedError` で拒否する
+- THEN ファーストパーティークライアントは指定した URI だけをリダイレクト URI として持つ
 
-### REQ-SEEDING-009: manual driftは上書きせずconflictになる
+### REQ-SEEDING-009: 手動変更によるドリフトは上書きせず競合とする
 - ACTOR SeedOperator
-- GIVEN seed 管理対象の logical key が手動変更されている
-- WHEN SeedOperator が対応する profile を apply する
-- THEN SeedData は SeedConflictError を返す
+- GIVEN seed 管理対象の論理キーが手動で変更されている
+- WHEN `SeedOperator` が対応するプロファイルを `apply` する
+- THEN `SeedData` は `SeedConflictError` を返す
 - THEN 手動変更は維持される
 
-### REQ-SEEDING-010: 部分失敗後に同じrequestを再実行すると収束する
+### REQ-SEEDING-010: 部分失敗後に同じリクエストを再実行すると目的の状態へ収束する
 - ACTOR SeedOperator
-- GIVEN SeedData の apply が一部の operation を完了した後に失敗している
-- WHEN SeedOperator が同じ SeedRequest を再度 apply する
-- THEN 完了済み logical key は no-op と判定される
-- THEN 未完了の logical key だけが適用され、重複なく目的状態へ収束する
+- GIVEN `SeedData` の適用が一部の操作を完了した後に失敗している
+- WHEN `SeedOperator` が同じ `SeedRequest` を再度 `apply` する
+- THEN 完了済みの論理キーは `noop` と判定される
+- THEN 未完了の論理キーだけが適用され、重複なく目的の状態へ収束する

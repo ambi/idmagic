@@ -1,26 +1,24 @@
 ---
 context: authentication
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # Authentication Specification
 
 ## Overview
 
-エンドユーザ (Subject) の資格情報検証、MFA、ログインセッション、パスワード変更・リセット、step-up、認証イベントを所有する。User / Group / Agent の identity ライフサイクルは IdManagement が所有する。
+エンドユーザー (Subject) の資格情報の検証、MFA、ログインセッション、ステップアップ認証、パスワードの変更とリセット、復旧、ログイン時の federation、認証のイベントを所有する。User / Group / Agent のアイデンティティのライフサイクルは IdManagement が所有する。
 
-The `Authentication` context owns credential verification, MFA, login sessions, step-up, recovery,
-and login-time federation. Independent capabilities are vertical feature slices with their own domain,
-ports, use cases, and adapters; `module.go` remains the context composition boundary.
+独立した能力は、それぞれドメイン、ポート、ユースケース、アダプターを持つ機能ごとの垂直分割とする。`module.go` は Context を組み立てる境界であり続ける。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| IdentityBroker | 外部 identity provider の認証結果を検証し、tenant 内の local User と安全に相関して LoginSession 発行へ渡す Authentication capability。 |  |
-| ExternalIdentityProvider | idmagic に対して upstream authentication authority となる OIDC Provider または SAML Identity Provider。 | upstream IdP, social login provider |
-| FederatedIdentity | tenant、provider、外部の不変 subject の組を local User へ一意に結び付ける identity link。 |  |
-| JitProvisioning | 検証済み外部 claim と tenant の明示 policy / claim mapping に基づき、初回 federated login 中に local User を作成すること。 | JIT provisioning |
+| IdentityBroker | 外部アイデンティティ provider の認証結果を検証し、テナント内の local User と安全に相関して LoginSession 発行へ渡す Authentication capability。 |  |
+| ExternalIdentityProvider | idmagic に対してアップストリーム authentication authority となる OIDC Provider または SAML Identity Provider。 | アップストリーム IdP, social login provider |
+| FederatedIdentity | テナント、プロバイダー外部の不変 subject の組を local User へ一意に結び付けるアイデンティティ link。 |  |
+| JitProvisioning | 検証済み外部 claim とテナントの明示ポリシー / claim mapping に基づき、初回 federated login 中に local User を作成すること。 | JIT provisioning |
 | Totp | RFC 6238 に基づく time-based one-time password。 | totp, otp |
 | Webauthn | WebAuthn credential による認証。 | webauthn |
 | RecoveryCode | TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード。 | recovery_code |
@@ -44,7 +42,7 @@ ports, use cases, and adapters; `module.go` remains the context composition boun
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| OIDC-DISCOVERY-ISSUER | required | MUST | discovery 文書の issuer は設定した issuer と完全一致し、endpoint と JWKS URI は事前に許可された HTTPS authority に限定する。 |
+| OIDC-DISCOVERY-ISSUER | required | MUST | Discovery Metadata の `issuer` は設定した発行者と完全一致し、エンドポイントと JWKS URI は事前に許可された HTTPS オーソリティに限定する。 |
 
 ### TOTP Time-Based One-Time Password Algorithm
 
@@ -52,7 +50,7 @@ RFC 6238 — https://www.rfc-editor.org/rfc/rfc6238.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| RFC6238-TOTP | optional | MUST | TOTP factor利用時は共有秘密と時間ステップからOTPを生成・検証する。 |
+| RFC6238-TOTP | optional | MUST | TOTP の認証要素を使うときは、共有シークレットと時間ステップから OTP を生成し検証する。 |
 
 ### Digital Identity Guidelines — Authentication and Authenticator Management
 
@@ -60,9 +58,9 @@ NIST SP 800-63B-4 — https://pages.nist.gov/800-63-4/sp800-63b.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| NIST63B4-PASSWORD-MINIMUM | excluded | MUST | 単一要素認証に使用するPasswordへ15文字以上の最小長を要求する。 |
-| NIST63B4-NO-COMPOSITION | required | MUST NOT | 文字種混在などPassword composition ruleを課さない。 |
-| NIST63B4-PASSWORD-STORAGE | required | MUST | Passwordをsaltとcost factorを持つoffline attack耐性のあるhashとして保存する。 |
+| NIST63B4-PASSWORD-MINIMUM | excluded | MUST | 単一要素の認証に使うパスワードに 15 文字以上の最小長を要求する。 |
+| NIST63B4-NO-COMPOSITION | required | MUST NOT | 文字種の混在のような、パスワードの構成規則を課さない。 |
+| NIST63B4-PASSWORD-STORAGE | required | MUST | パスワードは salt とコストパラメーターを備え、オフライン攻撃に耐えるハッシュとして保存する。 |
 
 ### Web Authentication — An API for accessing Public Key Credentials Level 3
 
@@ -70,8 +68,8 @@ Candidate Recommendation Snapshot — https://www.w3.org/TR/webauthn-3/
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| WEBAUTHN3-AUTHENTICATION | required | MAY | WebAuthn factor利用時はoriginとRelying Partyにscopeされた公開鍵Credentialを検証する。 |
-| WEBAUTHN3-REGISTRATION | required | MUST | WebAuthn credential登録時はattestationのchallenge / RP ID / originを検証し、COSE公開鍵とsign countを保存する。 |
+| WEBAUTHN3-AUTHENTICATION | required | MAY | WebAuthn の認証要素を使うときは、オリジンと Relying Party の範囲に限定された公開鍵クレデンシャルを検証する。 |
+| WEBAUTHN3-REGISTRATION | required | MUST | WebAuthn の credential を登録するときは、attestation の challenge / RP ID / origin を検証し、COSE の公開鍵と sign count を保存する。 |
 
 ### Authentication Method Reference Values
 
@@ -85,10 +83,9 @@ RFC 8176 — https://www.rfc-editor.org/rfc/rfc8176.html
 
 ### IdentityProviderConnectionLifecycle
 
-upstream connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。
+アップストリーム connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。
 
-Initial: `Disabled`
-Terminal: none
+Initial: `Disabled` Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
@@ -97,420 +94,188 @@ Terminal: none
 
 ## Authorization Boundary
 
-Authorization semantics are enforced by the application and its tests. This specification records API authentication, but intentionally defines no policy DSL. A separate work item will evaluate Cedar before any policy language is adopted.
+認可の意味づけはアプリケーションとそのテストが強制する。本仕様は API の認証を記録するが、ポリシーの DSL は意図的に定義しない。ポリシーの言語を採用する前に、別の work item で Cedar を評価する。
 
 ## Design
 
 ### Inbound identity federation
 
-`federation/` is the identity-broker feature slice. It owns tenant-scoped upstream OIDC and SAML
-connections, external-subject links, single-use login attempts, protocol validation, linking policy,
-and the handoff to an IdMagic login session. Downstream SAML IdP and WS-Federation issuance remain in
-their protocol contexts. Identity Management exposes credential-less user creation for JIT, but does
-not own the login-time correlation policy. Authentication owns this login-time correlation and
-orchestration directly rather than delegating it to a separate sourcing context, since the broker's
-linking and JIT decisions are tightly coupled to session issuance.
+`federation/` はアイデンティティブローカーの機能単位である。テナント単位の上流 OIDC / SAML 接続、外部 subject との関連付け、1 回のログイン試行、プロトコル検証、関連付けポリシー、IdMagic のログインセッションへの引き渡しを所有する。下流向けの SAML IdP と WS-Federation の発行は、それぞれのプロトコルの Context に残す。IdManagement は JIT 用に資格情報を持たないユーザーを作成する機能を公開するが、ログイン時の相関ポリシーは所有しない。Authentication がログイン時の相関と処理の組み立てを直接所有し、独立した Sourcing Context には委ねない。ブローカーの関連付けと JIT の判断が、セッション発行と密接に結び付いているためである。
 
-The broker first resolves an immutable external subject through a `FederatedIdentity`. Verified-email
-linking is available only under an explicit connection policy, a verified upstream claim, and a unique
-tenant-local match. JIT is separately enabled per connection and may be narrowed by an email-domain
-allowlist. Explicit link and unlink operations require recent step-up, and the last usable sign-in
-method cannot be removed.
+ブローカーは、まず `FederatedIdentity` を通じて不変な外部 subject を解決する。検証済みメールアドレスによるリンクを許可するのは、接続に明示的なポリシーがあり、上流のクレームが検証済みで、テナント内で一意に一致する場合だけである。JIT は接続ごとに個別に有効化し、メールドメインの許可リストでさらに絞り込める。明示的なリンクとリンク解除の操作には直近のステップアップ認証を要求し、最後に残った利用可能なサインイン手段は取り除けない。
 
-Protocol adapters treat every upstream document as untrusted. OIDC uses saved HTTPS discovery
-endpoints, Authorization Code with PKCE, state, nonce, issuer/audience/time checks, and a constrained
-JWK algorithm. SAML uses a correlated AuthnRequest and validates XML signature, issuer, destination,
-audience, subject confirmation, time, and replay. Unsolicited IdP-initiated responses and encrypted
-assertions are outside the initial SAML adapter.
+プロトコルの アダプターはアップストリームの文書をすべて信頼できないものとして扱う。OIDC は保存済みの HTTPS の discovery エンドポイント、PKCE 付きの Authorization Code、`state`、`nonce`、issuer と audience と時刻のチェック、そして制限された JWK のアルゴリズムを使う。SAML は相関の取れた AuthnRequest を使い、XML の署名、issuer、destination、audience、subject confirmation、時刻、再送を検証する。要求していない IdP 起点の応答と暗号化された assertion は、最初の SAML の アダプターの範囲外である。
 
-Client secrets are represented only by a `secret_reference`; the initial runtime resolver accepts
-`env:NAME` references. Neither raw secrets nor upstream tokens/assertions are persisted or returned.
-Public provider discovery exposes only active provider identifiers, display names, and protocols.
+クライアントシークレットは `secret_reference` だけで表す。実行時の解決器は `env:NAME` の参照を受け付ける。生のシークレットも上流のトークンやアサーションも、保存も返却もしない。公開するプロバイダーのディスカバリーに含めるのは、有効なプロバイダーの識別子、表示名、プロトコルだけである。
 
-After callback validation the broker creates a normal Authentication session with `federated` in AMR.
-OAuth authorization resumes through `/authorize/resume`, so application policy, required actions,
-consent, and code issuance remain owned by OAuth2 rather than being duplicated in the broker.
+コールバックを検証した後、ブローカーは AMR に `federated` を持つ通常の Authentication セッションを作成する。OAuth の認可は `/authorize/resume` を通じて再開するため、アプリケーションポリシー、必須操作、同意、認可コードの発行はブローカーに複製せず、引き続き OAuth2 が所有する。
 
 ### Persistence
 
-`authentication_sessions` is the single source of truth for a `LoginSession`.
-`tenant_id` is kept alongside the user-derived path as an exception to the usual
-[`tenant_id` retention classes](../../SPECIFICATION.md#2-tenant_id-retention-classes): a session id is an
-opaque browser-cookie value re-verified on every request, a fail-closed boundary where per-tenant lookup
-matters the same way it does for `refresh_tokens.sid`. Revocation sets
-`revoked_at`/`revoke_reason` rather than deleting the row, so physical removal stays a housekeeping
-concern independent of revoke state, and a repeated revoke is a safe no-op. Its two indexes serve, in
-order: keyset pagination over one user's non-revoked sessions ordered by `auth_time DESC`, and the
-housekeeping batch's `expires_at` cleanup scan.
+`authentication_sessions` が `LoginSession` の単一の正である。`tenant_id` はユーザーから導かれる経路と併せて保持しており、通常の [`tenant_id` retention classes](../../SPECIFICATION.md#2-tenant_id-retention-classes) に対する例外にあたる。セッションの id はすべてのリクエストで検証し直される中身の見えないブラウザーの cookie の値であり、`refresh_tokens.sid` と同じ意味でテナントごとの照合が効く fail-closed な境界だからである。失効は行を削除せず `revoked_at` と `revoke_reason` を設定するので、物理的な削除は失効の状態とは独立した整理の関心事に留まり、失効の繰り返しは安全に何も起こさない。2 つのインデックスは順に、1 人のユーザーの失効していないセッションを `auth_time DESC` で並べたキーセット方式のページ送りと、整理の一括処理による `expires_at` の掃除の走査に使う。
 
-A session's validity is a fixed 1-hour TTL set once at creation (`SessionTTLSeconds`), not a sliding
-window: `expires_at` is never extended by use. Only `last_seen_at` moves, coalesced to a 5-minute
-floor, because bumping `expires_at` on every touch would add write amplification, VACUUM pressure, and
-lock contention that this coarse-touch/absolute-expiry combination avoids. The 90-day
-retention window is a separate, later concern: it bounds how long an already-expired row is
-kept for investigation before the housekeeping batch physically deletes it, not how long a session
-stays valid.
+セッションの有効性は作成時に一度だけ設定される固定 1 時間の有効期限 (`SessionTTLSeconds`) であり、使うたびに延びる方式ではない。`expires_at` が利用によって延長されることはない。動くのは `last_seen_at` だけで、それも 5 分を下限としてまとめる。触れるたびに `expires_at` を更新すると書き込みの増幅、VACUUM の負荷、ロックの競合を招くが、粗い更新と絶対的な期限の組み合わせはそれを避ける。90 日の保持期間は別の後段の関心事であり、既に期限切れになった行を整理の一括処理が物理的に削除するまで調査のために何日残すかを定めるもので、セッションが何日有効かではない。
 
-`mfa_factors.secret` is the legacy plaintext TOTP seed column, kept only so existing rows remain
-readable (dual-read); new writes populate `secret_key_version`/`secret_ciphertext` and leave `secret`
-`NULL`. A pending backfill migrates the remaining plaintext rows, after which `secret` is dropped.
+`mfa_factors.secret` は以前からある平文の TOTP の種の列であり、既存の行が読めるようにするためだけに残している (二重読み)。新しい書き込みは `secret_key_version` と `secret_ciphertext` を埋め、`secret` は `NULL` のままにする。残りの平文の行は保留中の埋め戻しで移行し、その後 `secret` を削除する。
 
-`webauthn_credentials` keys on `credential_id` because one user can register several;
-it stays a separate table from `mfa_factors` for that reason. `public_key` holds the COSE public key
-(base64url). `recovery_codes` never stores the plaintext code, only `code_hash`
-(SHA-256 hex); a non-`NULL` `consumed_at` means the code is used and cannot be replayed, and
-regeneration replaces a user's whole set at once. `webauthn_sessions` is the WebAuthn ceremony
-challenge store; `GetDel` is `DELETE ... WHERE expires_at > now() RETURNING data`.
+`webauthn_credentials` は `credential_id` を鍵とする。1 人のユーザーが複数登録できるからであり、同じ理由で `mfa_factors` とは別のテーブルのままにしている。`public_key` は COSE の公開鍵 (base64url) を保持する。`recovery_codes` は平文のコードを決して保存せず、`code_hash` (SHA-256 の 16 進) だけを持つ。`consumed_at` が `NULL` でなければそのコードは使用済みで再送できず、再生成はユーザーの一式をまとめて置き換える。`webauthn_sessions` は WebAuthn の手続きの challenge のストアであり、`GetDel` は `DELETE ... WHERE expires_at > now() RETURNING data` である。
 
-`tenant_correlation_salts` is a per-tenant secret used to compute the correlated hash
-(`SaltedHash`) of usernames/IPs and the throttle/bucket `keyHash`, so correlation is never aggregated
-across tenants; it is generated on first use rather than provisioned up front.
+`tenant_correlation_salts` はテナントごとのシークレットで、利用者名や IP の相関用ハッシュ（`SaltedHash`）と、スロットルや集計の `keyHash` の算出に使う。これにより相関がテナントをまたいで集約されることはない。あらかじめ用意するのではなく、最初に使うときに生成する。
 
-`login_throttle_counters` is `LOGGED` because losing it on failover would
-be a defense-in-depth regression, and uses `fillfactor = 80` to leave header room for the frequent
-same-row `UPDATE`s (HOT updates) a counter takes. `identifier_hash` is a SHA-256 hex digest, so no
-plaintext username or IP is retained.
+`login_throttle_counters` は `LOGGED` である。切り替え時に失うことが多層防御の後退にあたるからである。また `fillfactor = 80` を使い、カウンターが頻繁に受ける同一行への `UPDATE` (HOT 更新) のために余地を残す。`identifier_hash` は SHA-256 の 16 進の要約なので、平文の利用者名や IP は保持されない。
 
 ### Password lifecycle
 
-Password rules follow NIST SP 800-63B-4 §3.1.1.2's move away from composition rules and forced
-rotation: length (`min_length=12`, `max_length=128`), a case-insensitive check against the user's own
-identifiers (username/email/local-part, skipped under 4 characters to avoid false positives), and a
-bundled common-password dictionary are enforced, but mixed-character-class and periodic-rotation
-requirements are not — both are explicitly discouraged by NIST and tend to push users toward
-predictable patterns rather than raising effective entropy.
+パスワードの規則は、構成規則と強制的な定期変更から離れる NIST SP 800-63B-4 §3.1.1.2 に従う。長さ (`min_length=12`、`max_length=128`)、ユーザー自身の識別子との大文字小文字を無視した照合 (利用者名、メールアドレス、その local part。誤検知を避けるため 4 文字未満は飛ばす)、そして同梱のよくあるパスワードの辞書を強制するが、文字種の混在と定期的な変更は要求しない。どちらも NIST が明確に推奨しておらず、実効的なエントロピーを上げるよりも、利用者を予測しやすい型へ追いやる傾向がある。
 
-Composition rules ("must contain a symbol", "must contain an uppercase letter") are therefore left
-unimplemented on purpose, not by omission. §3.1.1.2 states them as a SHALL NOT, and the reason is
-empirical rather than stylistic: a user asked for one more character class satisfies the rule in the
-most predictable way available (`password` becomes `Password1!`), so the guessing resistance gained is
-far smaller than the nominal search space suggests, while support load and password reuse both rise.
-The defenses that do move the number — length, the breach and dictionary checks, login throttling, and
-MFA — are all already in place, and stacking a composition rule on top of them buys nothing.
+したがって構成規則 (「記号を含めること」「大文字を含めること」) は、抜け落ちではなく意図的に実装していない。§3.1.1.2 はこれを SHALL NOT として述べており、その理由は様式ではなく経験に基づく。もう 1 種類の文字を求められた利用者は、可能な限り予測しやすいやり方で規則を満たす (`password` が `Password1!` になる) ので、得られる推測への耐性は名目上の探索空間が示唆するよりはるかに小さく、その一方で問い合わせの負荷とパスワードの使い回しはどちらも増える。実際に数字を動かす防御 — 長さ、漏洩と辞書の照合、ログインのスロットル、MFA — はいずれも既に備わっており、その上に構成規則を重ねても何も得られない。
 
-The demand for these rules is nevertheless real, and it comes from audit checklists rather than from
-threat models: PCI DSS v4.0 §8.3.6 still requires both alphabetic and numeric characters, and internal
-security standards that predate SP 800-63B-4 often say the same. So this may yet be implemented — as
-an off-by-default, per-tenant opt-in shaped exactly like `max_age_days`, with the specification
-recording that its purpose is to satisfy a compliance requirement and not to strengthen a password.
-Adopting it would also mean revising the `NIST63B4-NO-COMPOSITION` row above: the product default
-would stay compliant, but an opted-in tenant would be an explicit, documented deviation, and the
-Standards table must not claim otherwise. Two details would have to be settled first — which character
-classes exist, and whether membership is judged over ASCII or Unicode categories, since `min_length`
-counts runes and a half-width/full-width mismatch would leave the UI's stated requirements and the
-server's verdict disagreeing.
+とはいえこの規則への需要は実在し、それは脅威モデルではなく監査の確認項目から来る。PCI DSS v4.0 §8.3.6 は今も英字と数字の両方を要求し、SP 800-63B-4 より前に定められた社内の安全基準も同じことを言っていることが多い。そのため将来実装する可能性はある。その場合は `max_age_days` とまったく同じ形の、デフォルトで無効なテナントごとの選択制とし、目的がパスワードを強くすることではなく法令や基準への適合を満たすことである旨を仕様に記録する。採用するなら上の `NIST63B4-NO-COMPOSITION` の行も改める必要がある。製品のデフォルトは適合したままだが、有効にしたテナントは明示的で文書化された逸脱になるので、Standards の表がそれ以外を主張してはならない。先に決めるべき点が 2 つある。どの文字種を設けるか、そして所属を ASCII と Unicode のどちらの分類で判定するかである。`min_length` は Unicode の符号位置を数えるため、半角と全角の食い違いは UI が示す要件とサーバーの判定を食い違わせる。
 
-Length, history depth, and expiry are per-tenant overridable (`PasswordPolicyOverride`); an omitted
-field inherits the global default, and the resolved snapshot is what every password-setting path
-evaluates — change-password, reset-password redemption, and admin user creation alike. Overrides may
-only move in the stricter direction (a shorter `min_length`, a longer `max_length`, or a shallower
-`history_depth` than the global default is rejected), so a tenant cannot weaken the product baseline.
+長さ、履歴の深さ、有効期限はテナントごとに上書きできる (`PasswordPolicyOverride`)。省略した項目は全体のデフォルトを継承し、解決後の写しをパスワードを設定するすべての経路が評価する。パスワードの変更、リセットの引き換え、管理者によるユーザーの作成のいずれも同じである。上書きは厳しくする方向にしか動かせない (全体のデフォルトより短い `min_length`、長い `max_length`、浅い `history_depth` は拒否される) ので、テナントが製品の基準を弱めることはできない。
 
-Password expiry (`max_age_days`) is off by default and opt-in per tenant, since NIST SP 800-63B-4
-discourages forced rotation; it exists for tenants under a regulatory rotation requirement. When
-enabled, expiry is measured from `max(password_changed_at, the tenant's policy update time)` rather
-than from `password_changed_at` alone — otherwise enabling the setting would expire every long-lived
-password at once, and this way every user is guaranteed a full `max_age_days` window after any policy
-change without a separate grace knob (it also gives users with no recorded change a defined starting
-point). An expired password never fails authentication: login succeeds and the user is given the
-`update_password` required action, which the existing post-login gate routes to change-password and a
-successful change or reset clears. Failing the login itself would leave the user only the reset-email
-path and make expiry indistinguishable from a lockout. Users with no password credential
-(federated/passwordless) are excluded, since forcing a change they cannot perform is a dead end.
-`max_age_days` is bounded by a system ceiling (30–3650 days) so a tenant cannot turn rotation into
-self-inflicted denial of service.
+パスワードの有効期限 (`max_age_days`) はデフォルトで無効なテナントごとの選択制である。NIST SP 800-63B-4 が強制的な定期変更を推奨していないためであり、規制で定期変更を課されたテナントのために存在する。有効にした場合、期限は `password_changed_at` だけでなく `max(password_changed_at, tenant のポリシー更新時刻)` から測る。そうしないと設定を有効にした瞬間に長く使われているパスワードが一斉に期限切れになるからであり、この方式ならポリシーの変更後にすべてのユーザーが `max_age_days` の期間をまるごと保証され、猶予のための別の設定項目も要らない (変更の記録がないユーザーに明確な起点を与える効果もある)。期限切れのパスワードが認証を失敗させることはない。ログインは成功し、ユーザーには `update_password` の必須の操作が与えられる。既存のログイン後の関門がこれをパスワード変更へ導き、変更かリセットが成功すると解除される。ログイン自体を失敗させると、ユーザーにはリセットメールの経路しか残らず、期限切れと締め出しの区別が付かなくなる。パスワードの資格情報を持たないユーザー (federation やパスワードなし) は対象外である。実行できない変更を強いても行き止まりだからである。`max_age_days` にはシステム側の上限 (30〜3650 日) があり、テナントが定期変更を自らへのサービス妨害に変えられないようにしている。
 
-`change-password` also rejects reuse of the last 5 password hashes (`history_depth=5`), stored in
-`password_histories` as the same Argon2id PHC string as `password_hash` — a separate encoding would not
-raise the attack cost and would just add dual maintenance. History is written on both registration and
-change-password (so a same-as-initial change is still caught) but checked only on change-password, since
-a first registration has nothing to compare against.
+パスワードの変更は直近 5 件のパスワードのハッシュの再利用も拒否する (`history_depth=5`)。これらは `password_hash` と同じ Argon2id の PHC 文字列として `password_histories` に保存する。別の符号化にしても攻撃のコストは上がらず、二重の保守が増えるだけだからである。履歴は登録時とパスワード変更時の両方で書き込むが (初回と同じ値への変更も検出できるようにするため)、照合はパスワードの変更時のみ行う。初回の登録には比較する相手がないからである。
 
-A `BreachedPasswordChecker` port layers external knowledge (HIBP Range API, k-anonymity: only a SHA-1
-prefix leaves the server) on top of the bundled offline dictionary. It fails open — an HIBP timeout or
-outage returns `breached=false` rather than blocking the change — because an optional defense-in-depth
-layer should not be able to take credential changes down; failures are still recorded for audit. The
-default adapter is a no-op so in-memory/dev startup carries no external dependency, and
-`breached_password_check_enabled=false` by default.
+`BreachedPasswordChecker` の ポートは、同梱の手元の辞書の上に外部の知識 (HIBP の Range API。k-匿名性により、サーバーから出るのは SHA-1 の接頭辞だけ) を重ねる。これは fail-open である。HIBP のタイムアウトや障害は変更を止めるのではなく `breached=false` を返す。任意の多層防御が資格情報の変更を停止させられてはならないからである。失敗そのものは監査のために記録する。デフォルトの アダプターは何もしないので、メモリ構成や開発時の起動が外部への依存を持たず、`breached_password_check_enabled` もデフォルトで `false` である。
 
-Forgot-password issues a single-use, 32-byte random token stored in `password_reset_tokens` only as its
-SHA-256 hash (`ttl=1800s`), and redemption runs the same validation/history/breach pipeline as
-change-password. Every response on this path is uniform (`204` whether the email exists, is unverified,
-or was mistyped) so the recovery flow cannot become a username-enumeration oracle, and email delivery is
-best-effort — a send failure is never surfaced to the caller, only logged — so an SMTP outage cannot be
-probed from the unauthenticated side.
+パスワードを忘れた場合の処理は、単回限りの 32 バイトの乱数のトークンを発行し、`password_reset_tokens` には SHA-256 のハッシュとしてのみ保存する (`ttl=1800s`)。引き換えではパスワードの変更と同じ検証、履歴、漏洩の一連の処理を通す。この経路の応答はすべて同一である (メールアドレスが存在するか、未確認か、打ち間違いかによらず `204`) ので、復旧の流れが利用者名の存在を暴く手段になることはない。メールの配送は最大限努力であり、送信の失敗が呼び出し元に現れることはなく記録のみに留まるので、認証されていない側から SMTP の障害を探ることもできない。
 
-Delivery itself goes through an `EmailSender` port; the production adapter speaks SMTP only (STARTTLS by
-default, PLAIN auth permitted only under TLS) rather than adding an HTTP SDK per provider, because SMTP
-alone already reaches every major transactional-email provider and each additional REST SDK would
-multiply dependency, credential-shape, and error-format surface for no port-level benefit. Outgoing
-content is normalized before sending (CRLF/NUL stripped, HTML body escaped, subject RFC 2047-encoded) so
-a user-controlled string cannot inject SMTP headers or raw HTML.
+配送そのものは `EmailSender` の ポートを経由する。本番の アダプターは provider ごとの HTTP SDK を足すのではなく SMTP だけを話す (デフォルトで STARTTLS、PLAIN による認証は TLS の下でのみ許す)。SMTP だけで主要な送信サービスにはすべて届くうえ、REST の SDK を 1 つ足すごとに依存、資格情報の形、エラーの書式が増えるが、ポートの水準では何の利点もないからである。送信内容は送る前に正規化する (CRLF と NUL を除去し、HTML の本文を無害化し、件名を RFC 2047 で符号化する) ので、ユーザーが制御する文字列が SMTP のヘッダーや生の HTML を注入することはできない。
 
 ### Login throttling
 
-Login attempts are throttled on two independent axes — per-account (10 failures/900s → 900s lock) and
-per-IP (30 failures/900s → 900s lock) — because either axis alone misses an attack shape the other
-catches: per-account stops a dictionary attack against one victim, per-IP stops credential stuffing
-spread across many accounts from one source. Crossing either threshold is enough to return 429; counters
-are cluster-wide, backed by the shared `login_throttle_counters` table in PostgreSQL, so a lock holds
-across replicas.
+ログインの試行は独立した 2 つの軸で抑制する。アカウント単位 (900 秒で 10 回の失敗 → 900 秒の締め出し) と IP 単位 (900 秒で 30 回の失敗 → 900 秒の締め出し) である。片方の軸だけではもう片方が捉える攻撃の形を取り逃がすからで、アカウント単位は 1 人の被害者への辞書攻撃を止め、IP 単位は 1 つの発信元から多数のアカウントへ広がる credential stuffing を止める。どちらかの閾値を超えれば 429 を返す。カウンターは PostgreSQL の共有テーブル `login_throttle_counters` を裏に持ち全体で共有されるので、締め出しはレプリカをまたいで効く。
 
-Counters key on a SHA-256 hash of the identifier rather than plaintext, and the per-account counter is
-incremented *before* checking whether the account exists — using a fixed sentinel hash for the
-password-verify step when it does not — because otherwise timing (an Argon2 verify happening or not) or
-the shape of the 429 response would leak which usernames exist. A successful login clears the account
-counter but deliberately leaves the per-IP counter alone: one successful login from a shared office/NAT
-IP does not make the rest of that IP's traffic trustworthy, and IP counters age out on their own via the
-window. If the shared throttle store is unreachable, login fails closed rather than allowing unthrottled
-attempts. Client IP is read from the direct peer by default; `X-Forwarded-For` is honored only under an
-explicit `TRUSTED_FORWARDED_HOPS` opt-in, since trusting it unconditionally would let an attacker spoof
-around the per-IP axis. Each lockout emits `LoginThrottled` with the same tenant-salted `keyHash` used
-by bucket aggregation below, not plaintext.
+カウンターは平文ではなく識別子の SHA-256 のハッシュを鍵とする。またアカウント単位のカウンターは、アカウントが存在するかを確かめる *前* に加算する。存在しない場合はパスワードの検証の段で固定の番人のハッシュを使う。そうしないと、処理時間 (Argon2 の検証が起きるかどうか) や 429 の応答の形から、どの利用者名が存在するかが漏れるからである。ログインの成功はアカウントのカウンターを消すが、IP 単位のカウンターは意図的に残す。共有のオフィスや NAT の IP から 1 回ログインが成功しても、その IP の残りの通信が信頼できることにはならず、IP のカウンターは時間枠によって自然に消えるからである。共有のスロットルのストアへ到達できない場合、ログインは抑制なしに通すのではなく fail-closed で失敗する。クライアントの IP はデフォルトでは直接の接続相手から読む。`X-Forwarded-For` を尊重するのは `TRUSTED_FORWARDED_HOPS` を明示的に有効にした場合だけである。無条件に信頼すると、攻撃者が IP 単位の軸を偽装で回避できるからである。締め出しのたびに `LoginThrottled` を発行し、そこには平文ではなく、下の集計と同じテナントの salt を効かせた `keyHash` を載せる。
 
 ### Authentication event logging
 
-Authentication events are kept in two tracks so an attack traffic spike cannot take down the audit store
-or bury genuine signal: `authentication_events` holds one row per individual action (success, failure,
-MFA, federation, session start), while `authentication_event_buckets` folds an ongoing burst from the
-same `(tenant, kind, keyHash)` into a single 5-minute-window row whose `count` increments in place
-instead of emitting new rows. Once a per-account or per-IP actor crosses the login-throttle lockout
-threshold above, its subsequent failures stop emitting individual `AuthenticationFailed` events and roll
-into the bucket instead, sharing the same tenant-salted `keyHash` as the throttle counter so audit and
-throttle correlate without exposing plaintext.
+認証のイベントは 2 つの系統で保持する。攻撃による通信の急増が監査のストアを落としたり、本物の兆候を埋もれさせたりしないようにするためである。`authentication_events` は個々の操作 (成功、失敗、MFA、federation、セッションの開始) ごとに 1 行を持ち、`authentication_event_buckets` は同じ `(tenant, kind, keyHash)` から続く集中を、新しい行を出す代わりに `count` をその場で増やす 5 分の時間枠の 1 行へたたむ。アカウント単位または IP 単位の行為者が上のログインのスロットルの締め出しの閾値を超えると、以後の失敗は個別の `AuthenticationFailed` の発行をやめて集計側へ回る。スロットルのカウンターと同じテナントの salt を効かせた `keyHash` を共有するので、平文を晒さずに監査とスロットルを突き合わせられる。
 
-Bucket thresholds (5-minute window; 10 failures/account, 50/IP, 1000/tenant by default, tenant
-overridable) balance keeping ordinary typos visible as individual events against letting a genuine flood
-keep writing rows forever: set too low, normal mistakes vanish into a bucket; too high, the flood never
-collapses. Each window emits exactly one `AuthenticationEventAggregated` admin event — later hits in the
-same window only bump `count` — and an admin can drill from that row into up to 10 individual failure
-samples for the same key. Impersonation events (`SessionImpersonationStarted`/`Ended`) are excluded from
-both bucket collapsing and retention shortening, since they document an admin acting as a user and are
-kept intact for that user's protection.
+集計の閾値 (5 分の時間枠。デフォルトでアカウント 10 回、IP 50 回、テナント 1000 回の失敗。テナントごとに上書き可能) は、ふつうの打ち間違いを個別のイベントとして見えるように保つことと、本物の氾濫が延々と行を書き続けるのを許さないことの釣り合いを取る。低すぎれば通常の間違いが集計に消え、高すぎれば氾濫がいつまでもたたまれない。各時間枠はちょうど 1 つの `AuthenticationEventAggregated` の管理用のイベントを発行し、同じ時間枠の以後の発生は `count` を増やすだけである。管理者はその行から、同じ鍵についての個別の失敗の見本を最大 10 件までたどれる。なりすましのイベント (`SessionImpersonationStarted` と `Ended`) は、集計へのたたみ込みからも保持期間の短縮からも除外する。管理者がユーザーとして振る舞ったことを記録するものであり、そのユーザーを守るために手を加えずに残すからである。
 
-Retention is asymmetric by kind and enforced by an idempotent, batched hourly sweep on `occurred_at`:
-successes 365 days (long enough to spot an unusual login pattern), individual failure rows 30 days,
-bucket rows and session/MFA-challenge rows 90 days. Tenants may shorten or lengthen within a
-`max_retention_days` global cap; impersonation events cannot be shortened below the cap. Partitioning and
-cold storage were deferred — search performance instead comes from the sweep keeping row counts bounded,
-a `(tenant_id, occurred_at)` index, and a query `limit`.
+保持期間は種別ごとに異なり、`occurred_at` に対する冪等な毎時の一括スイープで強制する。成功イベントは 365 日、個別の失敗行は 30 日、集計行とセッションや MFA のチャレンジ行は 90 日保持する。テナントは全体の上限 `max_retention_days` の範囲で期間を調整できるが、なりすましイベントを上限より短くすることはできない。検索性能は、スイープによる行数の抑制、`(tenant_id, occurred_at)` インデックス、クエリの `limit` によって確保する。
 
-PII handling was reworked from an earlier hash/truncate-everything scheme once tenant-salt hashing was
-found to add real wiring cost for little benefit — events tied to a confirmed account
-(`UserAuthenticated`, OAuth2-flow events) already correlate by `user_id` and never needed a username
-hash, and admin search instead resolves a searched username to `user_id` on the fly. The current state:
-username, IP, User-Agent, and device fingerprint are stored in plaintext for the event's normal retention
-window (`AuthenticationFailed` keeps plaintext username for its full 30-day retention rather than a
-shorter hash-only window); location remains reduced to country code only. The one piece of the earlier
-scheme that survives is the tenant-salted `keyHash` used by `LoginThrottled` and bucket aggregation —
-that hash identifies a throttle/bucket key, not a stored audit PII field.
+確定したアカウントに結び付くイベント（`UserAuthenticated` や OAuth2 フローのイベント）は `user_id` で相関し、管理者がユーザー名で検索するときは、その場で `user_id` に解決する。ユーザー名、IP、User-Agent、端末の指紋は各イベントの通常の保持期間中は平文で保存し、`AuthenticationFailed` のユーザー名も 30 日間保持する。所在地は国コードだけを保存する。`LoginThrottled` と集計では、テナントごとのソルトを使った `keyHash` をスロットルと集計のキーとして使用するが、監査上の PII 項目としては扱わない。
 
-### Account portal trust boundary and step-up
+### Account portal trust boundary and ステップアップ認証
 
-Account portal APIs (`/api/account/*`) act only on the authenticated session's own `actor.sub`;
-URL/body/query-supplied `sub` or `tenant_id` are never trusted, so cross-user and cross-tenant access
-cannot arise structurally. This is a separate contract from the admin API (`/api/auth/account`, which
-includes roles) — the portal's own summary endpoint (`/api/account/summary`) deliberately omits roles so
-the self-service surface cannot leak admin metadata even by accident. Self-service can change the user's
-own display name, `editable_by_user=true` attributes, and password; roles, status, org attributes, and
-`editable_by_user=false` attributes stay admin-only, and `required_actions` can only be viewed — never
-granted or revoked — by the user, aside from actions that clear themselves as a side effect of the user's
-own action (e.g. `update_password` clearing on a successful password change). The portal UI is a distinct
-shell that never surfaces admin navigation, even to a user who happens to hold an admin role.
+アカウントのポータルの API (`/api/account/*`) は、認証されたセッション自身の `actor.sub` に対してのみ作用する。URL、本文、問い合わせ文字列で与えられた `sub` や `tenant_id` を信頼することは決してないので、ユーザーをまたぐアクセスやテナントをまたぐアクセスは構造的に生じ得ない。これは管理 API (`/api/auth/account`。ロールを含む) とは別の契約である。ポータル自身の要約のエンドポイント (`/api/account/summary`) は意図的にロールを省くので、利用者自身が操作する面が管理用の情報を誤って漏らすこともない。利用者自身が変更できるのは、自分の表示名、`editable_by_user=true` の属性、パスワードである。ロール、状態、組織の属性、`editable_by_user=false` の属性は管理者専用のままであり、`required_actions` はユーザーからは閲覧のみで、付与も取り消しもできない。ただしユーザー自身の操作の副作用として解除されるもの (パスワードの変更が成功したときの `update_password` など) は除く。ポータルの UI は独立した外枠であり、たまたま管理者のロールを持つユーザーに対しても管理用の案内を一切出さない。
 
-CSRF and same-origin checks protect every self mutation, but they don't help once the session cookie
-itself is stolen — an attacker holding it can still take the account over outright (change the password,
-drop MFA, redirect where notifications go). High-sensitivity self-service operations therefore require a
-recent re-authentication ("step-up") on top of CSRF: `ChangePassword`, `RemoveTotpFactor`,
-`RequestEmailChange`, and `RevokeMyOtherSessions` require step-up in the requirements, with a test
-(`TestStepUpAnnotatedInterfacesMatchGatedHandlers`) keeping the annotation and the gated handlers from
-drifting apart. A session counts as stepped-up if `max(session.auth_time, session.step_up_at)` is within
-`StepUpRecencySeconds` (5 minutes) — so a session is stepped-up immediately after login, matching the
-re-auth pattern users already expect from Google/Okta-style prompts. A gate failure returns
-`403 step_up_required`, not `401`, since the session is authenticated and has simply not proven recency
-for this specific action; the UI reissues the original request once `POST /api/account/step_up/complete`
-succeeds. Recency is stored as `step_up_at` on the `LoginSession` row itself so it cannot follow the
-cookie to a different device.
+CSRF と同一オリジンの検査は自己管理の変更操作を保護するが、セッション Cookie 自体が盗まれた後には役立たない。Cookie を持つ攻撃者は、パスワード変更、MFA の解除、通知先の変更などによってアカウントを乗っ取れる。そのため機密性の高い自己管理操作には、CSRF に加えて直近の再認証（ステップアップ認証）を要求する。ステップアップ認証が必要な操作は `ChangePassword`、`RemoveTotpFactor`、`RequestEmailChange`、`RevokeMyOtherSessions` であり、テスト (`TestStepUpAnnotatedInterfacesMatchGatedHandlers`) が注釈と実際に制御されるハンドラーの不一致を防ぐ。`max(session.auth_time, session.step_up_at)` が `StepUpRecencySeconds`（5 分）以内であれば、セッションをステップアップ認証済みと見なす。したがってログイン直後のセッションもステップアップ認証済みであり、Google や Okta で利用者が慣れている再認証の形と一致する。制御に失敗した場合は `401` ではなく `403 step_up_required` を返す。セッションは認証済みだが、この操作に必要な直近の認証を示していないためである。`POST /api/account/step_up/complete` が成功すると、UI は元のリクエストを再送する。認証の新しさは `LoginSession` の行自体に `step_up_at` として保存するため、Cookie とともに別の端末へ引き継がれることはない。
 
 ### WebAuthn/passkey MFA and recovery codes
 
-TOTP keeps the standard RFC 6238 parameters (SHA1, 30s step, 6 digits, ±1 step window, 160-bit secret).
-WebAuthn credentials live in their own table (`webauthn_credentials`, keyed on `credential_id`) rather
-than being squeezed into `mfa_factors`, because that table's `(user_id, type)` identity allows only one
-factor per type per user, while WebAuthn's whole value is registering several authenticators per
-account. Ceremony logic (CBOR/COSE parsing, signature verification) is delegated entirely to
-`go-webauthn/webauthn` rather than reimplemented, since a self-written attestation/assertion verifier is
-exactly the kind of code where a subtle bug is a security bypass. Registration and authentication
-challenges reuse the existing ephemeral `SessionStore` (keyed by `sub` for registration, by
-pending-login-session id for authentication) instead of a new store, since the challenge is already a
-short-lived server-side value with the same lifecycle shape as other session data.
+TOTP は RFC 6238 の標準的なパラメーター（SHA1、30 秒のステップ、6 桁、前後 1 ステップの許容、160 ビットの seed）を使う。WebAuthn の資格情報は `mfa_factors` へ押し込めず、`credential_id` をキーとする専用テーブル `webauthn_credentials` に置く。`mfa_factors` の `(user_id, type)` という同一性では、ユーザーごと・種別ごとに 1 つの要素しか持てないが、WebAuthn の価値は 1 つのアカウントへ複数の認証器を登録できることにあるためである。CBOR と COSE の解析、署名検証といったセレモニーのロジックは自作せず、`go-webauthn/webauthn` に全面的に委ねる。自作のアテステーションとアサーションの検証器では、わずかな誤りがそのままセキュリティ回避につながるためである。登録と認証のチャレンジには新しいストアを設けず、既存の一時的な `SessionStore` を再利用する。登録では `sub`、認証では保留中のログインセッション ID をキーとする。チャレンジは他のセッションデータと同じライフサイクルを持つ、短命なサーバー側の値だからである。
 
-RP ID and allowed origins come from deployment config (`WEBAUTHN_RP_ID`/`WEBAUTHN_RP_ORIGINS`), validated
-at startup and re-checked on every ceremony; attestation is `none` (privacy over device-model
-enforcement), user verification `preferred`, resident keys `discouraged` (`challenge_bytes=32`,
-`timeout_seconds=120`) — this stage adds WebAuthn as a phishing-resistant second factor alongside
-password, not as a passwordless/discoverable-credential flow, which stays explicitly out of scope. A
-returned `sign_count` at or below the stored value (0-to-0 excepted) is treated as evidence of a cloned
-authenticator and the assertion is rejected outright, since a genuine authenticator's counter only moves
-forward.
+RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `WEBAUTHN_RP_ORIGINS`）から取得し、起動時に検証したうえで、セレモニーごとに再確認する。アテステーションは `none`（端末機種の強制よりプライバシーを優先）、ユーザー検証は `preferred`、常駐鍵は `discouraged` とする（`challenge_bytes=32`、`timeout_seconds=120`）。この段階では WebAuthn をパスワードと組み合わせるフィッシング耐性の高い第 2 要素として追加し、パスワードレス認証や Discoverable Credential のフローは明確に対象外とする。返された `sign_count` が保存値以下の場合（0 から 0 は除く）、認証器が複製された証拠と見なしてアサーションをその場で拒否する。真正な認証器のカウンターは増加する一方だからである。
 
-Recovery codes (hash-only via SHA-256, single-use via `consumed_at`, regeneration replaces the whole set
-— 10 codes of 10 characters from a low-ambiguity alphabet) exist purely as a backup for a lost
-TOTP/WebAuthn factor and are deliberately **not** counted toward `User.mfa_enrolled` — treating a backup
-code as a standalone second factor would let a user rely on it as their only MFA, defeating the point of
-having a backup. `mfa_enrolled` is instead derived from "at least one TOTP factor or WebAuthn credential
-exists," recomputed whenever either is removed; generating, regenerating, or revoking recovery codes
-requires step-up. On successful second-factor verification, `acr` rises to `urn:idmagic:acr:mfa` and
-`amr` gains `webauthn` (an RFC 8176 registered value) or `rc` for recovery-code use — `rc` is this
-application's own non-IANA value, called out explicitly since it is not a registered AMR.
+復旧コード（SHA-256 ハッシュだけを保存し、`consumed_at` によって単回利用を保証する。再生成時は一式をまとめて置き換え、紛らわしい文字を除いた文字集合から 10 文字のコードを 10 個生成する）は、TOTP や WebAuthn の認証要素を失ったときの控えとしてのみ存在し、`User.mfa_enrolled` には意図的に **数えない**。復旧コードを単独の第二認証要素として扱うと、ユーザーがそれを唯一の MFA として利用でき、控えを持つ意味が失われるからである。`mfa_enrolled` は「TOTP 認証要素または WebAuthn クレデンシャルが 1 つ以上存在すること」から導出し、どちらかを削除するたびに再計算する。復旧コードの生成、再生成、失効にはステップアップ認証が必要である。第二認証要素の検証に成功すると `acr` は `urn:idmagic:acr:mfa` へ上がり、`amr` には `webauthn`、復旧コードを使った場合は `rc` が加わる。`webauthn` は RFC 8176 の登録値である一方、`rc` はこのアプリケーション独自の IANA 未登録値である。
 
 ### MFA enrollment bypass
 
-Enforcing MFA at a point in time creates a chicken-and-egg problem: rejecting every unenrolled user
-outright blocks legitimate new users and factor-loss recovery, but letting anyone register a factor on a
-bare password success lets an attacker who merely knows the password enroll their own factor and defeat
-the MFA requirement entirely. Before enforcement begins, unenrolled users get a normal password session
-and are nudged toward pre-registering a factor through the already step-up-gated account security
-screen. After enforcement begins, an unenrolled user can only reach a registration-only flow if an admin
-has issued them an `MfaEnrollmentBypass` — a short-lived, single-use, server-side grant, not a
-distributed secret — that is still unconsumed, unrevoked, and within its deadline; the enforcement date
-and any grace period are operational timestamps only, never a basis for trusting who is enrolling.
+ある時点から MFA を強制すると鶏と卵の問題が生じる。未登録のユーザーをすべて拒むと、正当な新規ユーザーと認証要素を失った利用者の復旧が止まる。一方、パスワードの検証に成功しただけで誰でも認証要素を登録できるようにすると、パスワードを知る攻撃者が自身の認証要素を登録し、MFA 要件を無効にできてしまう。強制開始前は、未登録のユーザーも通常のパスワードセッションを得て、ステップアップ認証で保護されたアカウントのセキュリティ設定画面から認証要素を先に登録するよう促される。強制開始後は、管理者が発行した `MfaEnrollmentBypass` が未消費、未失効、期限内である場合に限り、未登録のユーザーは登録専用フローに到達できる。これは短命で単回限りのサーバー側の許可であり、配布されるシークレットではない。強制開始日と猶予期間は運用上の時刻にすぎず、誰が登録しているかを信頼する根拠にはならない。
 
-A successful password login atomically consumes the bypass and moves the same `LoginSession` into
-`pending_purpose=Enrollment`; that pending session is treated as unauthenticated everywhere except the
-registration-only API and the original authorization transaction it was serving — it cannot reach
-account, admin, or application resources. Only after the user proves possession of the new factor does
-the session gain the second-factor AMR and resume as fully MFA'd; an expired, non-issuable, revoked, or
-already-consumed bypass fails closed rather than falling back to any weaker path. The initial enrollment
-factor is TOTP; WebAuthn is expected to plug into the same pending/bypass contract as a later adapter
-without new policy or session states.
+パスワードによるログインが成功すると、その許可を不可分に消費し、同じ `LoginSession` を `pending_purpose=Enrollment` へ移す。この保留中のセッションは、登録専用 API と、元々処理していた認可トランザクションを除くすべての場所で未認証として扱われる。アカウント、管理、アプリケーションのリソースには到達できない。ユーザーが新しい認証要素の所持を証明して初めて、セッションは第二認証要素の AMR を得て、MFA 済みとして再開する。期限切れ、発行不可、失効済み、消費済みの許可は、より弱い経路へフォールバックせずフェイルクローズで失敗する。最初に登録できる認証要素は TOTP である。WebAuthn は同じ保留と許可の契約を使うアダプターとして追加でき、別のポリシーやセッション状態を必要としない。
 
 ### Design Decisions
 
-- Authentication owns the login-time identity-broker (upstream OIDC/SAML connections, external-subject
-  links, linking/JIT policy) directly, rather than splitting it into a separate sourcing context.
-- PostgreSQL `authentication_sessions` is the single source of truth for `LoginSession`; revocation
-  tombstones the row instead of deleting it, and Valkey holds no active-session state.
-- `users.id` is the canonical, globally unique user identifier, with protocol `sub` claims derived from
-  it rather than the reverse.
-- Authentication event retention is asymmetric by kind (365/30/90 days), tenant-adjustable within a
-  global cap, and enforced by an idempotent hourly sweep rather than partitioning or cold storage.
-- Reversible secrets kept in the app database, including the MFA TOTP seed, move to envelope encryption
-  under the `DataKeys` context and an `EnvelopeCrypto` port rather than staying plaintext.
-- WebAuthn credentials and recovery codes are modeled as their own tables rather than squeezed into
-  `mfa_factors`, ceremony logic is delegated to `go-webauthn/webauthn`, and recovery-code possession
-  alone never counts toward `mfa_enrolled`.
-- Authentication event PII (username, IP, User-Agent, device fingerprint, location) was originally
-  decided to be tenant-salt hashed or truncated rather than stored in plaintext.
-- Login-throttle and other shared ephemeral state fail closed when their store is unreachable, rather
-  than allowing unthrottled attempts through.
-- Password policy follows NIST SP 800-63B-4: length and identifier-similarity checks plus a
-  common-password dictionary, with no composition-rule or forced-rotation requirement.
-- Character-class composition rules are deliberately not implemented, since SP 800-63B-4 states them
-  as a SHALL NOT and they raise predictability rather than guessing resistance; they may still be
-  added later as an off-by-default tenant opt-in for compliance checklists such as PCI DSS v4.0,
-  which would make the `NIST63B4-NO-COMPOSITION` adoption an explicit deviation for those tenants.
-- Tenants may override length, history depth, and expiry only in the stricter direction, and every
-  password-setting path evaluates the same resolved snapshot rather than the global default.
-- Password expiry is opt-in per tenant, measured from the later of the last password change and the
-  tenant's policy update time, and enforced as a post-login `update_password` required action rather
-  than as an authentication failure.
-- Authentication and identity-management configuration values (password history depth, breach-check
-  defaults, TOTP/WebAuthn/recovery-code parameters, reset-token TTL, login-throttle thresholds) are
-  centralized in this policy section rather than scattered across product objectives.
-- `change-password` rejects reuse of the last 5 password hashes, checked only on change-password (not on
-  initial registration) since a first registration has nothing to compare against.
-- `BreachedPasswordChecker` layers an HIBP k-anonymity check on the bundled offline dictionary, fails
-  open on outage, and ships a no-op default adapter so it introduces no external dependency by default.
-- Forgot-password issues a single-use, hashed reset token with a uniform response and best-effort email
-  delivery, so the flow cannot become a username-enumeration or SMTP-outage oracle.
-- `EmailSender`'s production adapter speaks SMTP only, not a per-provider HTTP SDK, since SMTP alone
-  already reaches every major transactional-email provider.
-- Login throttling counts per-account and per-IP failures independently, keyed on hashed identifiers,
-  and deliberately does not use permanent lockouts.
-- Authentication events are split into individual rows and 5-minute bucket aggregates so a throttled
-  actor's flood collapses into one row instead of growing without bound.
-- The original hash-everything PII scheme for authentication events was superseded: username is no
-  longer hashed since account-confirmed events already correlate by `user_id`, and admin search resolves
-  a searched username to `user_id` on the fly instead.
-- The account self-service portal and the admin account API are separate contracts; the portal's own
-  summary endpoint deliberately omits roles so it cannot leak admin metadata.
-- High-sensitivity self-service operations (password change, TOTP removal, email change, revoking other
-  sessions) require step-up re-authentication on top of CSRF protection.
-- Once MFA enforcement begins, an unenrolled user can only reach a registration-only flow through an
-  admin-issued, single-use `MfaEnrollmentBypass` grant, never through a bare password success alone.
+- ログイン時のアイデンティティブローカー（上流の OIDC / SAML 接続、外部 subject へのリンク、リンクと JIT のポリシー）は、独立した Sourcing Context へ分けず Authentication が直接所有する。
+- PostgreSQL の `authentication_sessions` が `LoginSession` の単一の正である。失効は行を削除せず墓標を立て、Valkey は有効なセッションの状態を持たない。
+- `users.id` を正式かつ全体で一意なユーザー識別子とし、プロトコルの `sub` クレームはここから導出する。その逆ではない。
+- 認証のイベントの保持期間は種別ごとに非対称 (365 / 30 / 90 日) で、全体の上限の範囲でテナントが調整でき、テーブルの分割や低速な保存先ではなく冪等な毎時の掃除が強制する。
+- MFA の TOTP seed を含め、アプリケーションのデータベースに残る可逆なシークレットは平文で保存せず、`DataKeys` Context と `EnvelopeCrypto` ポートによるエンベロープ暗号化へ移す。
+- WebAuthn の credential と復旧コードは `mfa_factors` へ押し込めず独自のテーブルとして表し、手続きの論理は `go-webauthn/webauthn` へ委ね、復旧コードの所持だけでは `mfa_enrolled` に数えない。
+- ログインのスロットルをはじめとする共有の一時的な状態は、ストアへ到達できないとき抑制なしの試行を通さず fail-closed で失敗する。
+- パスワードのポリシーは NIST SP 800-63B-4 に従う。長さと識別子との類似の照合に加えてよくあるパスワードの辞書を用い、構成規則も強制的な定期変更も要求しない。
+- 文字種の構成規則は意図的に実装しない。SP 800-63B-4 がこれを SHALL NOT として述べており、推測への耐性ではなく予測しやすさを上げるからである。ただし PCI DSS v4.0 のような適合の確認項目のために、デフォルトで無効なテナントごとの選択制として後から加える可能性は残る。その場合、当該テナントにとって `NIST63B4-NO-COMPOSITION` の採否は明示的な逸脱になる。
+- テナントが長さ、履歴の深さ、有効期限を上書きできるのは厳しくする方向のみであり、パスワードを設定するすべての経路は全体のデフォルトではなく同じ解決後の写しを評価する。
+- パスワードの有効期限はテナントごとの選択制であり、直近のパスワードの変更とテナントのポリシーの更新時刻のうち遅いほうから測り、認証の失敗ではなくログイン後の `update_password` の必須の操作として強制する。
+- 認証とアイデンティティ管理の設定値 (パスワードの履歴の深さ、漏洩の照合のデフォルト、TOTP / WebAuthn / 復旧コードのパラメーター、リセットのトークンの有効期間、ログインのスロットルの閾値) は、製品の目標に散らさずこのポリシーの節にまとめる。
+- パスワードの変更は直近 5 件のパスワードのハッシュの再利用を拒否する。照合はパスワードの変更時のみで、初回の登録では行わない。比較する相手がないからである。
+- `BreachedPasswordChecker` は同梱の手元の辞書の上に HIBP の k-匿名性による照合を重ね、障害時は fail-open で、デフォルトでは何もしない アダプターを同梱するので外部への依存を持ち込まない。
+- パスワードを忘れた場合の処理は、単回限りでハッシュ化されたリセットのトークンを発行し、応答を一様にし、メールの配送を最大限努力とする。これによりこの流れが利用者名の存在を暴く手段にも、SMTP の障害を探る手段にもならない。
+- `EmailSender` の本番の アダプターは provider ごとの HTTP SDK ではなく SMTP だけを話す。SMTP だけで主要な送信サービスにはすべて届くからである。
+- ログインのスロットルはアカウント単位と IP 単位の失敗を独立に数え、ハッシュ化した識別子を鍵とし、恒久的な締め出しは意図的に使わない。
+- 認証のイベントは個別の行と 5 分の集計に分け、抑制された行為者の氾濫が際限なく増えるのではなく 1 行にたたまれるようにする。
+- 確定したアカウントの認証イベントは `user_id` で相関し、ユーザー名による管理者検索は入力されたユーザー名をその場で `user_id` へ解決する。
+- 利用者自身が操作するアカウントのポータルと管理用のアカウント API は別の契約である。ポータル自身の要約のエンドポイントは意図的にロールを省くので、管理用の情報を漏らすことはない。
+- 機微の高い自己操作 (パスワードの変更、TOTP の削除、メールアドレスの変更、他のセッションの失効) は、CSRF の防御に加えてステップアップ認証による再認証を要求する。
+- MFA の強制が始まった後、未登録のユーザーが登録専用の流れに到達できるのは、管理者が発行した単回限りの `MfaEnrollmentBypass` を通じてのみであり、素のパスワードの成功だけでは決して到達できない。
 
 ## Scenarios
 
 ### REQ-AUTHENTICATION-001: 外部OIDC認証は検証済みsubjectを同じlocal Userへ相関する
 - ACTOR EndUser
-- GIVEN request tenant で OIDC connection が Active である
-- GIVEN issuer、authorization endpoint、token endpoint、JWKS は管理時に検証済みである
+- GIVEN リクエスト先のテナントで OIDC 接続が `Active` である
+- GIVEN issuer、authorization エンドポイントトークン エンドポイントJWKS は管理時に検証済みである
 - WHEN EndUser が StartFederatedLogin を開始する
-- THEN state、nonce、PKCE を単発 attempt に保存して upstream へ遷移する
-- WHEN upstream callback が code と ID Token を返す
-  - ALT 同じ state または token response を再利用する → single-use attempt / replay guard が拒否する
+- THEN `state`、`nonce`、PKCE を単発 attempt に保存してアップストリームへ遷移する
+- WHEN アップストリーム callback が code と ID Token を返す
+  - ALT 同じ state またはトークン response を再利用する → single-use attempt / replay guard が拒否する
 - THEN CompleteFederatedLogin は code と ID Token の署名、issuer、audience、時刻、nonce を検証する
-  - ALT state、nonce、issuer、audience、署名、時刻のいずれかが一致しない → callback を拒否し LoginSession と link を作成しない → FederatedLoginRejected を発行する
-- THEN 初回は明示 JIT policy と claim mapping により local User と FederatedIdentity を作成する
-- THEN 2回目は同じ tenant、provider、external subject の既存 link から同じ local User を解決する
+  - ALT `state`、`nonce`、issuer、audience、署名、時刻のいずれかが一致しない → callback を拒否し LoginSession と link を作成しない → FederatedLoginRejected を発行する
+- THEN 初回は明示 JIT ポリシーと claim mapping により local User と FederatedIdentity を作成する
+- THEN 2回目は同じテナント、プロバイダーexternal subject の既存 link から同じ local User を解決する
 - THEN federated AMR の LoginSession を発行する
 
-### REQ-AUTHENTICATION-002: verified emailによる自動linkは明示policyと一意一致を要求する
+### REQ-AUTHENTICATION-002: verified emailによる自動linkは明示ポリシーと一意一致を要求する
 - ACTOR EndUser
 - GIVEN external subject の既存 link は無い
-- GIVEN 同じ email の local User が tenant 内に存在する
+- GIVEN 同じ email の local User がテナント内に存在する
 - GIVEN provider の linking_policy が VerifiedEmail である
-- GIVEN upstream email_verified claim が true であり、email は tenant 内で一意に一致する
+- GIVEN アップストリーム email_verified claim が true であり、email はテナント内で一意に一致する
 - WHEN EndUser が未連携の external subject で federated login を完了する
-  - ALT policy が None、email が未検証、または一致が曖昧である → 自動 link と LoginSession 発行を拒否する
+  - ALT ポリシーが None、email が未検証、または一致が曖昧である → 自動 link と LoginSession 発行を拒否する
 - THEN FederatedIdentity を既存 User に作成する
 
-### REQ-AUTHENTICATION-003: external identityの明示linkとunlinkはstep-upを要求する
+### REQ-AUTHENTICATION-003: external アイデンティティの明示linkとunlinkはステップアップ認証を要求する
 - ACTOR AuthenticatedSelf
-- GIVEN ResourceOwner は対象 tenant の active User である
-- WHEN 直近5分以内の step-up session で provider の外部認証を完了する
-  - ALT step-up が古い、または無い → link / unlink を AccessDeniedError で拒否する
+- GIVEN ResourceOwner は対象テナントの active User である
+- WHEN 直近5分以内のステップアップ認証セッションで provider の外部認証を完了する
+  - ALT ステップアップ認証が古い、または無い → link / unlink を AccessDeniedError で拒否する
 - THEN external subject が未使用なら自身へ link する
-- WHEN 直近5分以内の step-up session で link の解除を要求する
-  - ALT password credential も他の external identity link も残らない → account lockout 防止のため unlink を拒否する
-- THEN 対象の external identity link を解除する
+- WHEN 直近5分以内のステップアップ認証セッションで link の解除を要求する
+  - ALT password credential も他の external アイデンティティ link も残らない → account lockout 防止のため unlink を拒否する
+- THEN 対象の external アイデンティティ link を解除する
 
-### REQ-AUTHENTICATION-004: API token発行者はsensitive facet scope内で自身のauthentication情報だけを操作できる
+### REQ-AUTHENTICATION-004: API トークン発行者はsensitive facet スコープで自身のauthentication情報だけを操作できる
 - ACTOR SelfApiClient
-- GIVEN client は対象 tenant の active User に固定された有効な API access token を提示している
-- WHEN client が account context、security、signin activity、session、MFA factor、recovery code、password、または session の操作を要求する
+- GIVEN クライアントは対象テナントの active User に固定された有効な API access トークンを提示している
+- WHEN クライアントがアカウントのセキュリティ設定、サインイン履歴、セッション、MFA 認証要素、復旧コード、またはパスワードの操作を要求する
   - ALT 対応しない account scope で sensitive facet の変更を要求する → 操作は AccessDeniedError で拒否される
-  - ALT token の tenant または user_id が操作対象と一致しない → 操作は AccessDeniedError で拒否される
-  - ALT API token で step-up endpoint を要求する → 操作は AccessDeniedError で拒否される
-- THEN account:read scope は自身の account context、security、signin activity、session の参照だけを許可する
-- THEN account:mfa:write scope は自身の MFA factor と recovery code の変更だけを許可する
-- THEN account:sessions:write scope は自身の session の失効だけを許可する
+  - ALT トークンのテナントまたは user_id が操作対象と一致しない → 操作は AccessDeniedError で拒否される
+  - ALT API トークンでステップアップ認証 endpoint を要求する → 操作は AccessDeniedError で拒否される
+- THEN account:read scope は自身の account コンテキストsecurity、signin activity、セッションの参照だけを許可する
+- THEN `account:mfa:write` スコープは自身の MFA 認証要素と復旧コードの変更だけを許可する
+- THEN account:sessions:write scope は自身のセッションの失効だけを許可する
 - THEN account:password:write scope と current password は自身の password の変更だけを許可する
 
-### REQ-AUTHENTICATION-005: browser bootstrap contextは認証状態とCSRF境界を保持する
+### REQ-AUTHENTICATION-005: browser bootstrap コンテキスト認証状態とCSRF境界を保持する
 - ACTOR AuthenticatedSelf
-- GIVEN ユーザー "alice" が認証済み session または first-party portal の access token を持つ
-- WHEN browser または API client が account context を要求する
-  - ALT session が未認証または認証途中である → account context の取得は AccessDeniedError で拒否される
-  - ALT Bearer token が許可された portal scope または account:read scope を一つも持たない → account context の取得は AccessDeniedError で拒否される
-- THEN management portal は idmagic.admin、account portal は idmagic.account、自己管理 API client は account:read scope で同じ account context を取得できる
-- THEN 応答は subject、realm、effective role、CSRF token を含む
-- WHEN 未認証のパスワードリセット画面が password reset context を要求する
-- THEN CSRF token を含む context が返る
+- GIVEN ユーザー "alice" が認証済みセッションまたは first-party portal の access トークンを持つ
+- WHEN ブラウザーまたは API クライアントがアカウントコンテキストをリクエストする
+  - ALT セッションが未認証または認証途中である → アカウントコンテキストの取得を AccessDeniedError で拒否する
+  - ALT Bearer トークンが許可されたポータルスコープまたは `account:read` スコープを 1 つも持たない → アカウントコンテキストの取得を AccessDeniedError で拒否する
+- THEN 管理ポータルは `idmagic.admin`、アカウントポータルは `idmagic.account`、自己管理 API クライアントは `account:read` スコープで同じアカウントコンテキストを取得できる
+- THEN 応答は subject、realm、effective ロール、CSRF トークンを含む
+- WHEN 未認証のパスワードリセット画面がパスワードリセットコンテキストをリクエストする
+- THEN CSRF トークンを含むコンテキストが返る
 
-### REQ-AUTHENTICATION-006: ユーザーはWebAuthnでstep-up challengeを開始できる
+### REQ-AUTHENTICATION-006: ユーザーはWebAuthnでステップアップ認証 challengeを開始できる
 - ACTOR AuthenticatedSelf
-- GIVEN ユーザー "alice" が WebAuthn credential を登録済みで認証済み session を持つ
-- WHEN ユーザー "alice" が正しい CSRF token で step-up WebAuthn challenge を要求する
-  - ALT CSRF token が一致しない、または WebAuthn が利用不能である → challenge は発行されず要求は拒否される
-- THEN 応答の PublicKeyCredentialRequestOptions は現在 session に束縛される
+- GIVEN ユーザー "alice" が WebAuthn credential を登録済みで認証済みセッションを持つ
+- WHEN ユーザー "alice" が正しい CSRF トークンでステップアップ認証 WebAuthn challenge を要求する
+  - ALT CSRF トークンが一致しない、または WebAuthn が利用不能である → challenge は発行されず要求は拒否される
+- THEN 応答の PublicKeyCredentialRequestOptions は現在セッションに束縛される
 
-### REQ-AUTHENTICATION-007: ResourceOwnerはブラウザでパスワード認証し認可を継続する
+### REQ-AUTHENTICATION-007: ResourceOwnerはブラウザーでパスワード認証し認可を継続する
 - ACTOR ResourceOwner
 - GIVEN 未認証セッションで "web-app" として認可リクエストを送信済みである
 - WHEN browser login API に username "alice" と正しい password を送信する
-  - ALT SameSite cookie と request token が一致しない → csrf 値を改ざんして browser login API を送信する → エラー "InvalidRequestError"
+  - ALT SameSite cookie と request トークンが一致しない → csrf 値を改ざんして browser login API を送信する → エラー "InvalidRequestError"
   - ALT 直近 900 秒窓で per-account の失敗回数が 10 回に達している → 正しい password で browser login API を送信する → エラー "RateLimitedError" → "LoginThrottled" が発行される
   - ALT 失敗回数に関わらず同一 IP からの login API リクエストが EndpointRateLimitPolicy の window 内で max_requests に達している → 正しい password で browser login API を送信する → エラー "RateLimitedError"
 - THEN セッション Cookie が発行される
@@ -522,7 +287,7 @@ without new policy or session states.
 - GIVEN 未認証である
 - WHEN "alice" 宛のパスワードリセットを要求する
   - ALT 同一 identifier と IP の組で EndpointRateLimitPolicy の window 内の max_requests に達している → "alice" 宛のパスワードリセットを再度要求する → エラー "RateLimitedError"
-- THEN user の存在有無に関わらず 204 を返す
+- THEN ユーザーの存在有無に関わらず 204 を返す
 - THEN "PasswordResetRequested" が発行される
 
 ### REQ-AUTHENTICATION-009: 無効化されたユーザーは新規ログインも既存セッションも拒否される
@@ -544,7 +309,7 @@ without new policy or session states.
 - THEN パスワードが変更され password_changed_at が更新される
 - THEN "PasswordChanged" が発行される
 
-### REQ-AUTHENTICATION-011: ユーザーはTOTP factorを登録して有効化できる
+### REQ-AUTHENTICATION-011: ユーザーは TOTP 認証要素を登録して有効化できる
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が認証済みでセキュリティ画面を開いている
 - WHEN ユーザー "alice" が TOTP 登録を開始する
@@ -553,19 +318,19 @@ without new policy or session states.
 - THEN セキュリティ概要の MFA 状態が登録済みになる
 - THEN "MfaFactorEnrolled" が発行される
 
-### REQ-AUTHENTICATION-012: ユーザーはstep-up再認証のうえでTOTP factorを解除する
+### REQ-AUTHENTICATION-012: ユーザーはステップアップ再認証のうえで TOTP 認証要素を解除する
 - ACTOR AuthenticatedSelf
-- GIVEN ユーザー "alice" が登録済み TOTP factor を持ち認証済みである
-- WHEN ユーザー "alice" が step-up を成立させ現在の TOTP コードで解除する
-  - ALT step-up なしで解除を試みる → ユーザー "alice" が step-up なしで TOTP factor の解除を試みる → step-up 再認証が要求される
-- THEN TOTP factor が解除される
+- GIVEN ユーザー "alice" が登録済みの TOTP 認証要素を持ち認証済みである
+- WHEN ユーザー "alice" がステップアップ認証を成立させ現在の TOTP コードで解除する
+  - ALT ステップアップ認証なしで解除を試みる → ユーザー "alice" がステップアップ認証なしで TOTP 認証要素の解除を試みる → ステップアップ認証による再認証が要求される
+- THEN TOTP 認証要素が解除される
 - THEN "MfaFactorRemoved" が発行される
 
 ### REQ-AUTHENTICATION-013: ユーザーは自分の有効なセッションを一覧して失効できる
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が複数の有効なセッションを持ち認証済みである
 - WHEN ユーザー "alice" がアクティビティ画面でセッション一覧を取得する
-  - ALT process 再起動を挟んでセッション一覧を取得する → サーバープロセスを再起動する → ユーザー "alice" が同じ session cookie でアクティビティ画面を開く → セッションは再起動前と同じ内容で解決できる
+  - ALT process 再起動を挟んでセッション一覧を取得する → サーバープロセスを再起動する → ユーザー "alice" が同じセッション cookie でアクティビティ画面を開く → セッションは再起動前と同じ内容で解決できる
 - THEN 自分の有効なセッションが返る
 - WHEN ユーザー "alice" が現在以外のセッションを 1 件失効させる
   - ALT 既に失効済みのセッションへ同じ失効操作を再送する → ユーザー "alice" が直前に失効させた同じセッション id へ再度失効を要求する → 要求は成功として扱われ、最初の失効時刻が保持される
@@ -605,7 +370,7 @@ without new policy or session states.
 
 ### REQ-AUTHENTICATION-017: TOTP必須ユーザーは正しいコードで認証を継続できる
 - ACTOR EndUser
-- GIVEN TOTP factor が登録された authentication_pending の LoginSession が存在する
+- GIVEN TOTP 認証要素が登録された `authentication_pending` の LoginSession が存在する
 - WHEN browser TOTP API に正しいコードを送信する
   - ALT 誤った TOTP コードを送信する → browser TOTP API に誤ったコードを送信する → エラー "InvalidRequestError" → LoginSession は authentication_pending のままである
 - THEN 認証が成立し認可フローが継続する
@@ -614,31 +379,31 @@ without new policy or session states.
 ### REQ-AUTHENTICATION-018: MFA未登録ユーザーは管理者承認済みオンボーディングを完了して同じ認可処理を継続できる
 - ACTOR EndUser
 - GIVEN 対象 Application の実効ポリシーは MFA 必須で強制開始済み、enrollment bypass を許可し猶予期限内である
-- GIVEN user は TOTP / WebAuthn factor を持たない
-- GIVEN 管理者が対象 user に有効な単発 enrollment bypass を発行済みである
-- WHEN user が正しい password を送信する
-  - ALT enrollment bypass が無い、取消済み、消費済み、または期限切れである → password が正しくてもログインを完了せず access denied にする → factor 登録 API は利用できない
+- GIVEN ユーザーは TOTP / WebAuthn 認証要素を持たない
+- GIVEN 管理者が対象ユーザーに有効な単発 enrollment bypass を発行済みである
+- WHEN ユーザーが正しい password を送信する
+  - ALT 登録バイパスがない、取消済み、消費済み、または期限切れである → パスワードが正しくてもログインを完了せずアクセスを拒否する → 認証要素登録 API は利用できない
 - THEN bypass は消費され、同一 LoginSession は pending_purpose=Enrollment の未完了状態になる
 - THEN MfaEnrollmentRequired と MfaEnrollmentBypassConsumed が発行され、登録専用画面へ進む
-- WHEN user が TOTP secret に対する正しい code で登録を確定する
-  - ALT enrollment deadline を過ぎている → factor を保存せず access denied にする → LoginSession を認証完了へ昇格させない
-  - ALT TOTP code が不正である → factor を保存せず InvalidRequestError を返す → LoginSession は Enrollment pending のままである
-- THEN factor が保存され、同一 LoginSession に otp が追加されて pending が解除される
+- WHEN ユーザーが TOTP secret に対する正しい code で登録を確定する
+  - ALT 登録期限を過ぎている → 認証要素を保存せずアクセスを拒否する → LoginSession を認証完了へ昇格させない
+  - ALT TOTP コードが不正である → 認証要素を保存せず InvalidRequestError を返す → LoginSession は `Enrollment` の保留状態のままである
+- THEN 認証要素が保存され、同じ LoginSession の `amr` に `otp` が追加されて保留状態が解除される
 - THEN MfaEnrollmentCompleted と UserAuthenticated が発行され、元の authorization transaction が継続する
 
 ### REQ-AUTHENTICATION-019: MFA強制開始前の未登録ユーザーはログインできるが登録を促される
 - ACTOR EndUser
 - GIVEN テナントデフォルトポリシーは将来時刻から MFA 必須になる
-- GIVEN user は MFA factor を持たない
-- WHEN user が正しい password でログインする
-- THEN 強制開始前なので password session は成立する
+- GIVEN ユーザーは MFA 認証要素を持たない
+- WHEN ユーザーが正しい password でログインする
+- THEN 強制開始前なので password セッションは成立する
 - THEN UI は強制開始日時と事前登録を促す警告を表示する
-- THEN user は通常の step-up を経た account security から factor を事前登録できる
+- THEN ユーザーは通常のステップアップ認証を経たアカウントのセキュリティ設定画面から認証要素を事前登録できる
 
 ### REQ-AUTHENTICATION-020: Enrollment pendingセッションは通常リソースへアクセスできない
 - ACTOR EndUser
 - GIVEN pending_purpose=Enrollment の LoginSession が存在する
-- WHEN user が account、admin、Application の resource を要求する
+- WHEN ユーザーが アカウントadmin、Application の resource を要求する
 - THEN システムは未認証として拒否する
 - THEN 登録専用 start / confirm API と元の auth transaction だけを許可する
 
@@ -656,30 +421,30 @@ without new policy or session states.
 
 ### REQ-AUTHENTICATION-022: 管理者は認証器を全リセットしたユーザーに次回ログインで再登録を強制できる
 - ACTOR TenantAdministrator
-- GIVEN ユーザー "alice" は TOTP factor を持ち、recovery code も生成済みである
+- GIVEN ユーザー "alice" は TOTP 認証要素を持ち、復旧コードも生成済みである
 - WHEN 管理者がユーザー "alice" の ResetUserAuthenticators を targets=[Totp, RecoveryCode] で呼ぶ
   - ALT 他テナントの管理者、または admin ロールを持たない操作者が呼び出す → エラー "AccessDeniedError" → 対象ユーザーの認証器は変更されない
 - THEN "AuthenticatorResetRequested" が発行される
-- THEN TOTP factor と recovery code が削除され、他に WebAuthn credential も無いため mfa_enrolled が false になる
+- THEN TOTP 認証要素と復旧コードが削除され、他に WebAuthn クレデンシャルもないため `mfa_enrolled` が `false` になる
 - THEN reenrollment_required=true の応答が返り、単発 enrollment bypass が自動発行される
 - THEN "AuthenticatorResetCompleted" と "MfaEnrollmentBypassIssued" が発行される
 - WHEN alice が正しい password で次にログインする
 - THEN 有効な bypass により同一 LoginSession が pending_purpose=Enrollment になる
-- WHEN alice が新しい TOTP factor の登録を確定する
+- WHEN "alice" が新しい TOTP 認証要素の登録を確定する
 - THEN 同一 LoginSession が MFA 済みに昇格し元の authorization transaction が継続する
 
 ### REQ-AUTHENTICATION-023: 管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる
 - ACTOR TenantAdministrator
-- GIVEN ユーザー "bob" は TOTP factor と WebAuthn credential を両方持つ
+- GIVEN ユーザー "bob" は TOTP 認証要素と WebAuthn クレデンシャルを両方持つ
 - WHEN 管理者がユーザー "bob" の ResetUserAuthenticators を targets=[Webauthn] で呼ぶ
-- THEN WebAuthn credential のみ削除され、TOTP factor は残るため mfa_enrolled は true のままである
+- THEN WebAuthn クレデンシャルだけが削除され、TOTP 認証要素は残るため `mfa_enrolled` は `true` のままである
 - THEN reenrollment_required=false の応答が返り、enrollment bypass は発行されない
 - WHEN bob が次回ログインで TOTP コードによる第二要素検証を完了する
 - THEN ログインを完了できる
 
 ### REQ-AUTHENTICATION-024: 有効期限を過ぎたパスワードのユーザーは次回ログイン後にパスワード変更を強制される
 - ACTOR EndUser
-- GIVEN テナントの password policy は max_age_days=90 で、ポリシー更新から 90 日以上が経過している
+- GIVEN テナントの password ポリシーは max_age_days=90 で、ポリシー更新から 90 日以上が経過している
 - GIVEN ユーザー "alice" の password_changed_at は 91 日前である
 - WHEN ユーザー "alice" が正しい password でログインする
   - ALT password_changed_at が 89 日前である → ログインはそのまま完了し update_password は付与されない

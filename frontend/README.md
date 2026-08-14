@@ -1,58 +1,42 @@
-# IdMagic UI
+# IdMagic の UI
 
-The authorization UI of `idmagic` aims to provide a modern, compliant, easy-to-use, and high-visual-quality authentication and identity management experience suitable for enterprise environments.
+`idmagic` の認可 UI は、企業環境に適した、現代的で標準に準拠し、使いやすく視覚的な品質の高い認証とアイデンティティ管理の体験を提供することを目指す。
 
-## Implementation Guidelines
+## 実装指針
 
-When modifying the UI, run the following verification checks:
+UI を変更したときは、次の検証を実行する。
 ```bash
-bun run lint
-bun run typecheck
-bun run build
+just verify-ui
 ```
 
-When API contracts are modified, run Go HTTP E2E tests to verify that cookies, CSRF protection, OAuth redirects, and JSON schemas remain correct.
+API 契約を変更したときは、Go の HTTP E2E テストを実行し、Cookie、CSRF 防御、OAuth のリダイレクト、JSON スキーマが正しいことを検証する。
 
-While the Vite CLI utilizes `#!/usr/bin/env node`, dev and build scripts execute JS entries directly via `bun`. This unifies running processes under `bun .../vite.js` without requiring a Node.js runtime.
+Vite CLI は `#!/usr/bin/env node` を使うが、開発とビルドのスクリプトは `bun` で JavaScript の起点を直接実行する。これにより Node.js のランタイムを必要とせず、実行するプロセスを `bun .../vite.js` に統一する。
 
-## E2E Smoke Tests
+## E2E スモークテスト
 
-Verify the SPA's golden path (`/authorize → login → consent → callback`) by running:
+次のコマンドで SPA の主要経路（`/authorize → login → consent → callback`）を検証する。
 ```bash
-bun run test:e2e
+just test-ui-e2e
 ```
 
-The runner uses `bun test` and the built-in `Bun.WebView` (using WKWebView on macOS and Chrome via CDP on Linux/Windows), eliminating the need for heavy browser automation frameworks or manual driver downloads.
+テストランナーは `bun test` と組込みの `Bun.WebView` を使う。macOS では WKWebView、Linux と Windows では CDP 経由の Chrome を使うため、大規模なブラウザー自動化フレームワークや手動でのドライバーのダウンロードは不要である。
 
-The test suite (`tests/e2e/`) automatically manages the lifecycle of:
-1. **Go API**: Starts in `memory` mode on port `:8081` (`ADDR=:8081 ISSUER=http://localhost:5173`) to match the browser origin and pass CSRF checks.
-2. **Vite Dev Server**: Starts on port `:5173`, proxying browser-flow, API, and published protocol endpoint requests to `8081`.
-3. **Mock Callback Server**: Starts on port `:3000` to receive the auth code at the development seed's external demo client's `redirect_uri` (`http://localhost:3000/callback`; client ID `00000000-0000-4000-8000-000000000021`).
+テスト一式（`tests/e2e/`）は次のライフサイクルを自動的に管理する。
+1. **Go API**: ブラウザーのオリジンと一致させて CSRF 検査を通すため、`memory` モードでポート `:8081`（`ADDR=:8081 ISSUER=http://localhost:5173`）に起動する。
+2. **Vite 開発サーバー**: ポート `:5173` に起動し、ブラウザーフロー、API、公開プロトコルのエンドポイントへのリクエストを `8081` へプロキシする。
+3. **模擬コールバックサーバー**: ポート `:3000` に起動し、`development` seed の外部デモクライアントに設定した `redirect_uri`（`http://localhost:3000/callback`、クライアント ID `00000000-0000-4000-8000-000000000021`）で認可コードを受け取る。
 
-This setup validates client routing (`meta[name="idmagic:page"]`) and ensures that `code` and `iss` parameters are preserved during cross-origin redirects (RFC 9207). Requires only `go` and `bun` in your `PATH`.
+この構成はクライアント側のルーティング（`meta[name="idmagic:page"]`）を検証し、オリジンをまたぐリダイレクトで `code` と `iss` のパラメーターが保たれることを確認する（RFC 9207）。`PATH` に必要なのは `go` と `bun` だけである。
 
-## Localization (UI Display Languages)
+## ローカライゼーション（UI の表示言語）
 
-The hosted authentication, account, and admin UI support Japanese (`ja`) and English (`en`) only.
-English is the product default. Set `VITE_DEFAULT_LOCALE=ja` or `VITE_DEFAULT_LOCALE=en` at
-application startup to choose the final fallback when neither an explicit nor a browser locale is
-available; an unset or invalid value falls back to English.
+ホステッド認証とアカウント管理の UI が対応するのは日本語 (`ja`) と英語 (`en`) だけである。製品のデフォルトは英語である。明示されたロケールもブラウザーのロケールも利用できないときの最終的なフォールバックを選ぶには、アプリケーションの起動時に `VITE_DEFAULT_LOCALE=ja` または `VITE_DEFAULT_LOCALE=en` を設定する。未設定または無効な値の場合は英語を使う。
 
-Add user-visible copy to the dictionary that is local to its feature (for example,
-`frontend/src/features/auth-flow/LoginPage.i18n.ts`) and provide both locale values in
-the same change. Use `defineDictionary` so TypeScript rejects missing or extra keys;
-run `just verify-ui` before committing. Do not add another locale without a separately
-specified product decision. Translate only stable backend error codes in the receiving
-UI dictionary; render an unknown backend message unchanged, because backend error text
-is intentionally English-only.
+利用者に見える文言は、その機能が持つ辞書（例: `frontend/src/features/auth-flow/LoginPage.i18n.ts`）に追加し、同じ変更で両方のロケールの値を用意する。足りないキーや余分なキーを TypeScript が拒否するように `defineDictionary` を使い、コミット前に `just verify-ui` を実行する。別途仕様化した製品上の決定なしにロケールを追加しない。受信側 UI の辞書では、安定したバックエンドのエラーコードだけを翻訳する。バックエンドのエラーメッセージは英語だけなので、未知のメッセージは変更せず表示する。
 
-### Test Locale
+### テスト時のロケール
 
-Frontend tests use English as their default locale. Ordinary behavior tests assert English labels and
-messages so they exercise the same fallback language as the product.
+フロントエンドのテストは英語をデフォルトのロケールとする。通常の振る舞いのテストは英語のラベルとメッセージを検証し、製品と同じフォールバック言語を通す。
 
-Set `locale: 'ja'` only when the test's explicit purpose is to verify Japanese localization. A Japanese
-localization test should say so in its name and should remain separate from ordinary behavior tests.
-Presentation tests rendered without a locale provider also fall back to English. Tests that need a
-router should use `renderWithRouter`, whose default locale is English, and pass `{ locale: 'ja' }` only
-for an explicit Japanese-localization case.
+テストの明示的な目的が日本語のローカライズ検証である場合にだけ `locale: 'ja'` を設定する。日本語ローカライズのテストは、その目的を名前に含め、通常の振る舞いのテストと分ける。ロケールプロバイダーなしで描画するプレゼンテーション層のテストも英語へフォールバックする。ルーターが必要なテストは、デフォルトロケールが英語である `renderWithRouter` を使い、明示的に日本語のローカライズを検証する場合だけ `{ locale: 'ja' }` を渡す。

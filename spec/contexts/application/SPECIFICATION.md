@@ -7,295 +7,213 @@ updated_at: 2026-08-11
 
 ## Overview
 
-運用者が「接続する業務アプリケーション」として扱う上位概念を所有する。OIDC client /
-SAML SP / WS-Fed RP は Application の protocol binding であり、表示名、アイコン、
-ライフサイクル、割当はここに集約する。割当はポータル可視性と
-フェデレーション利用可否を fail-closed で制御する。protocol binding の wire 挙動は
-各 protocol context が所有し、Application は binding を opaque key で参照する。
+運用者が「接続する業務アプリケーション」として扱う上位概念を所有する。OIDC クライアント、SAML SP、WS-Fed RP は Application に関連付けるプロトコル設定であり、表示名、アイコン、ライフサイクル、割り当てはここに集約する。割り当てによって、ポータルでの表示とフェデレーションの利用可否をフェイルクローズで制御する。通信時の動作は各プロトコルの Context が所有し、Application はプロトコル設定を中身に依存しないキーで参照する。
 
-`Application` owns the ApplicationCatalog: the tenant-scoped registry of applications an identity
-provider issues tokens or assertions for, the sign-in policy (per-application and tenant-default) that
-gates each login, and the relation between a catalog entry and its concrete protocol configuration
-(OAuth2 client, SAML service provider, or WS-Fed relying party). `domain` holds the aggregate and policy
-evaluation rules, `ports`/`usecases` the catalog and policy operations, and `handlers_http` the HTTP
-adapter; `module.go` composes them for the router.
+`domain` が Aggregate とポリシー評価の規則を、`ports` と `usecase` がカタログとポリシーの操作を、`handlers_http` が HTTP アダプターを持つ。`module.go` は、それらをルーティングに組み込む。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| Application | 運用者が接続・割当・監査する業務アプリケーション。federated / service Application は最大1個の protocol 設定を持つ。 | アプリケーション, Application |
-| ApplicationProtocol | Application が利用する単一の protocol 設定への型付き参照。OAuth2Client、SamlServiceProvider、WsFedRelyingParty のいずれか1個を指す。 | application_protocol |
+| Application | 運用者が接続、割り当て、監査する業務アプリケーション。`federated` または `service` の Application は、プロトコル設定を最大 1 つ持つ。 | アプリケーション, Application |
+| ApplicationProtocol | Application が利用する 1 つのプロトコル設定への型付き参照。OAuth2Client、SamlServiceProvider、WsFedRelyingParty のいずれか 1 つを指す。 | application_protocol |
 
 ## Authorization Boundary
 
-Authorization semantics are enforced by the application and its tests. This specification records API authentication, but intentionally defines no policy DSL. A separate work item will evaluate Cedar before any policy language is adopted.
+認可の意味はアプリケーションとそのテストで保証する。本仕様では API の認証方式を定めるが、ポリシー用の DSL は定義しない。
 
 ## Design
 
 ### Internal Interfaces
 
 #### AssignApplicationDesiredState
-呼び出し元 bounded context (IdManagement の LifecycleWorkflow 等) が Application への
-user 割当を desired-state で付与する内部インターフェース。HTTP には公開せず、同一プロセス内の
-Go 呼び出しとして各 context の usecase から使う。既に同じ (id, user_id) の割当が
-指定どおりの visibility で存在する場合は変更せず changed=false を返す (冪等)。呼び出し元は
-同一テナントの id / user_id だけを渡す。
+呼び出し元の Bounded Context（IdManagement の LifecycleWorkflow など）が、あるべき状態を指定して Application へのユーザー割り当てを作成する内部インターフェースである。HTTP には公開せず、同じプロセス内の Go 呼び出しとして各 Context のユースケースから利用する。同じ `id` と `user_id` の割り当てが指定した `visibility` ですでに存在する場合は、変更せずに `changed=false` を返す。呼び出し元が渡せるのは、同じテナントの `id` と `user_id` だけである。
 
 #### UnassignApplicationDesiredState
-呼び出し元 bounded context が Application への user 割当を desired-state で解除する内部
-インターフェース。割当が存在しない場合も no-op (changed=false) で正常終了する (冪等)。
+呼び出し元の Bounded Context が、あるべき状態を指定して Application へのユーザー割り当てを解除する内部インターフェースである。割り当てが存在しない場合も何も変更せず、`changed=false` を返して正常終了する。
 
 ### Sign-in policy evaluation
 
-`AppSignInPolicy` is a tenant/application-scoped ordered set of `SignInRule`s that ApplicationCatalog
-owns and evaluates on every federation start (OIDC authorize, SAML SSO, WS-Fed sign-in) before a token or
-assertion is issued — the same gate point as the existing per-application protocol-binding check, so
-policy evaluation cannot be bypassed by choosing a different protocol entry point. An earlier
-version accepted free-text ACR/factor strings and free-text network/device conditions but only ever
-enforced them as a fail-closed rejection, producing configuration fields that looked functional but were
-never actually evaluated; the model was replaced with values the evaluator can and does check.
+`AppSignInPolicy` は、テナントとアプリケーションごとに順序付けた `SignInRule` の集合であり、ApplicationCatalog が所有する。OIDC の認可、SAML の SSO、WS-Fed のサインインなど、フェデレーションを開始するたびにトークンや Assertion の発行前に評価する。アプリケーションとプロトコル設定の関連付けを確認するのと同じ関門で評価するため、別のプロトコルを入口に選んでポリシー評価を迂回することはできない。設定できるのは評価器が実際に確認できる値だけである。
 
-Required authentication strength is a constrained `RequiredAuthnStrength` enum — `Password` or `Mfa` —
-mapped 1:1 to internal ACR URNs and AMR values, rather than free text, since only two ACR values exist in
-practice and an unconstrained string invites misconfiguration. Of the original free-text conditions,
-only the two that the evaluator can actually check were kept structured: `reauth_max_age_seconds`
-(evaluated against authentication/step-up recency) and `network_allow_cidrs` (the request's client IP
-checked against admin-supplied, save-time-validated CIDRs); free-text device conditions were dropped
-entirely rather than kept as an unenforced input.
+必須の認証強度は自由入力ではなく、`Password` または `Mfa` に制約した `RequiredAuthnStrength` 列挙であり、内部の ACR URN と AMR 値へ 1 対 1 で対応付ける。実際に存在する ACR 値は 2 種類だけで、制約のない文字列は設定ミスを招くためである。`reauth_max_age_seconds` は Authentication のステップアップ認証の直近性に対して評価し、`network_allow_cidrs` は管理者が指定して保存時に検証した CIDR に対してリクエスト元のクライアント IP を検査する。評価器が確認できない端末条件は受け付けない。
 
-Evaluation is fail-closed throughout. OIDC can route an insufficient-strength result to the existing
-step-up flow; SAML and WS-Fed instead halt the protocol transaction outright with an explicit rejection
-reason, since neither has a step-up mechanism to redirect to yet. A non-empty CIDR allowlist that the
-client IP doesn't match, or a request where the client IP can't be determined at all, is a hard rejection
-rather than a step-up opportunity.
+評価はすべてフェイルクローズで行う。OIDC は認証強度不足の結果を既存のステップアップ認証フローへ送れる。一方、SAML と WS-Fed には遷移先となるステップアップ認証機構がまだないため、明示的な拒否理由を付けてプロトコルトランザクションを直ちに停止する。空でない CIDR 許可リストにクライアント IP が一致しない場合や、リクエスト元のクライアント IP を特定できない場合は、ステップアップ認証の機会とはせず、無条件に拒否する。
 
 ### Tenant default policy composition
 
-`TenantDefaultSignInPolicy` lets a tenant set one baseline sign-in policy for every application that
-doesn't define its own, using the same `SignInRule` vocabulary and evaluator as per-application policy so
-no second policy language exists. It is owned by ApplicationCatalog rather than `Tenancy`, since it is
-conceptually about how applications are signed into, not about the tenant aggregate itself, keeping
-sign-in policy ownership in one place.
+`TenantDefaultSignInPolicy` により、テナントは独自のポリシーを定義していないすべてのアプリケーションに対して、基準となるサインインポリシーを 1 つ設定できる。アプリケーションごとのポリシーと同じ `SignInRule` の語彙と評価器を使用し、別のポリシー言語は設けない。これを `Tenancy` ではなく ApplicationCatalog が所有するのは、テナント Aggregate そのものではなく、アプリケーションへのサインイン方法に関する概念だからである。これにより、サインインポリシーの所有者を 1 か所に保つ。
 
-The relationship between default and per-application policy is **override, not composition**: if an
-application defines any enabled rules, those rules entirely replace the tenant default for evaluation
-purposes; otherwise the default applies as-is. `EffectiveSignInRules(default, app)` selects one side or
-the other before handing rules to the same fail-closed evaluator used for per-application policy. An
-initial design composed the two as a floor the application couldn't weaken, but that made the effective
-policy hard for admins to read at a glance and required a separate exemption flag for legitimate low-risk
-relaxation; override was chosen for a single, directly-inspectable effective policy per application,
-consistent with the principle that the per-application policy has final say.
+デフォルトポリシーとアプリケーションごとのポリシーは、合成せずに上書きする。アプリケーションが有効な規則を 1 つでも定義していれば、その規則がテナントのデフォルトを完全に置き換える。定義がなければデフォルトをそのまま適用する。`EffectiveSignInRules(default, app)` がどちらか一方を選び、アプリケーションごとのポリシーと同じフェイルクローズの評価器に渡す。これにより、各アプリケーションに実際に適用されるポリシーを 1 つだけ直接確認できる。
 
-Because override lets an application go below the tenant default, `AppSignInPolicyResponse` carries a
-`weaker_than_default` flag — set when the override reduces required strength, loosens or drops
-re-auth recency, or widens the allowed network — computed by `AppPolicyWeakerThanDefault(default, app)`
-and surfaced as a UI warning rather than a block, since the underlying design goal was to make deliberate
-relaxation easy, not to forbid it. New tenants start with an empty (allow-all) default so introducing
-this feature changes no existing tenant's behavior until an admin opts in; auto-applying a strict default
-such as mandatory MFA at migration time was rejected as too likely to cause a mass lockout. Because the
-default lives as an ordinary table row, clearing its rules or deleting the row is an immediate,
-reversible rollback to allow-all with no schema change involved.
+上書きによってアプリケーションはテナントのデフォルトより弱いポリシーを設定できるため、`AppSignInPolicyResponse` は `weaker_than_default` フラグを持つ。要求する認証強度を下げる、再認証の時間制限を緩めるか外す、許可ネットワークを広げる場合に、`AppPolicyWeakerThanDefault(default, app)` がこの値を算出する。保存を禁止するのではなく、UI に警告を表示する。新しいテナントは規則が空の、すべてを許可するデフォルトから始める。デフォルトは通常のテーブル行として保存するので、規則を空にするか行を削除すれば、スキーマを変更せずにすべてを許可する状態へ戻せる。
 
 ### Application/protocol relation
 
-An Application has at most one protocol configuration, fixed at creation time: a `weblink` application
-has none, and a `federated`/`service` application has exactly one of OAuth2 client, SAML service
-provider, or WS-Fed relying party. Reconnecting, detaching, or changing protocol type afterward is not
-supported, reflecting that no real creation/edit flow ever needed an application to carry more than one
-protocol binding, even though the original JSON-array binding model was built to allow it.
+Application が持つプロトコル設定は最大 1 つとし、作成時に固定する。`weblink` アプリケーションはプロトコル設定を持たず、`federated` と `service` のアプリケーションは、OAuth2 クライアント、SAML サービスプロバイダー、WS-Federation のリライングパーティーのいずれか 1 つだけを持つ。作成後の再接続、切り離し、プロトコル種別の変更には対応しない。
 
-Each protocol table (`oauth2_clients`, `saml_service_providers`, `wsfed_relying_parties`) keeps its own
-existing primary key and gains a nullable, unique `application_id`; a non-`NULL` value is a composite
-foreign key that also pins tenant and a fixed protocol discriminator, so the database itself rejects two
-protocol rows claiming the same Application, a cross-table duplicate claim, or a tenant/type mismatch —
-none of which the prior JSON-array-of-bindings representation could express as a constraint, which had
-instead required a full per-tenant scan to resolve. `NULL` represents a legitimate catalog-external
-record: protocol configurations created through Dynamic Client Registration or trust-management APIs
-that were never meant to appear in the Application catalog, which is why every protocol config isn't
-required to carry an Application.
+各プロトコルのテーブル（`oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties`）は、`NULL` を許容する一意な `application_id` を持つ。`application_id` が `NULL` でない場合は、テナントと固定のプロトコル判別子も含む複合外部キーで参照する。これにより、2 つのプロトコル行が同じ Application を参照すること、テーブルをまたいで重複して参照すること、テナントや種別が食い違うことをデータベース自身が拒否する。`NULL` は、Dynamic Client Registration や信頼管理 API で作成され、Application カタログには表示しない正当なレコードを表す。そのため、すべてのプロトコル設定に Application を必須とはしない。
 
-Because catalog creation spans two records (the Application row and the protocol row's `application_id`
-relation), both commit in one transaction: if the second half fails, no orphaned catalog-visible
-Application is left behind, and the protocol row that does exist is still valid as a catalog-external
-record. Deleting an Application cascades to delete its owned protocol configuration, but a protocol
-config that's Application-owned rejects direct deletion through the lower-level protocol management API
-as a conflict — deletion has to go through the Application it belongs to.
+カタログへの作成では、Application 行の作成とプロトコル行への `application_id` の設定を 1 つのトランザクションで確定する。後半が失敗しても、カタログにだけ表示される孤立した Application は残らない。Application を削除すると、それが所有するプロトコル設定も連鎖して削除する。一方、Application が所有するプロトコル設定を各プロトコルの管理 API から直接削除しようとした場合は、競合として拒否する。削除は必ず所有元の Application を経由する。
 
-The OAuth2 protocol table was renamed from the generic `clients` to `oauth2_clients` to match the SAML
-and WS-Fed table names (`saml_service_providers`, `wsfed_relying_parties`), which already used
-protocol-specific, domain-standard terms rather than a name generic enough to be confused with any other
-kind of client.
+OAuth2 のプロトコルテーブルは `oauth2_clients` とする。SAML と WS-Fed のテーブル（`saml_service_providers`、`wsfed_relying_parties`）と同様に、プロトコル固有の標準用語を使う。
 
 ### Portal application ordering and category
 
-ApplicationCatalog owns both the end-user portal's manual application ordering and admin-defined
-categories, since both are display concerns about `Application` rather than IdentityManagement's
-User aggregate. Manual order is `ApplicationOrdering`, a per-`(tenant_id, user_sub)` list of
-`application_id`s; apps without a saved order sort by name ascending. `ListMyApplications` resolves
-assigned/visible/active apps first, then applies the saved order — entries no longer assigned are
-skipped, and assigned apps missing from the saved order are appended in name order — so the list never
-breaks under concurrent assignment changes. Reordering (`ReorderMyApplications`) upserts the order list
-only; it is a personal display setting, not an authorization or auditable state transition, so it emits
-no domain event. Categories are admin-defined per tenant and assigned 0..N per Application.
+ApplicationCatalog は、エンドユーザーポータルでの手動の並び順と、管理者が定義するカテゴリの両方を所有する。どちらも IdentityManagement の User Aggregate ではなく、`Application` の表示に関わる事柄だからである。手動の並び順は `ApplicationOrdering` であり、`(tenant_id, user_sub)` ごとの `application_id` の一覧で表す。保存された並び順を持たないアプリケーションは名前の昇順に並べる。`ListMyApplications` は、まず割り当て済みで可視かつ有効なアプリケーションを解決し、その後に保存された並び順を適用する。割り当てが外れた項目は除外し、保存された並び順にない割り当て済みアプリケーションは名前順で末尾に加えるため、割り当てが並行して変わっても一覧は壊れない。並び替え (`ReorderMyApplications`) は並び順の一覧を作成または更新するだけである。これは個人の表示設定であり、認可や監査対象の状態遷移ではないため、ドメインイベントを発行しない。カテゴリはテナントごとに管理者が定義し、Application ごとに 0 個以上を割り当てる。
 
 ### Design Decisions
 
-- Application sign-in policy (`AppSignInPolicy`) evaluates a structured, evaluator-checkable rule set —
-  a constrained `RequiredAuthnStrength` enum, `reauth_max_age_seconds`, and `network_allow_cidrs` — fail-
-  closed at the same federation gate for every protocol, replacing an earlier free-text ACR/network/device
-  model whose fields were never actually enforced.
-- The tenant-wide default sign-in policy overrides, rather than composes with, an application's own
-  policy, keeping a single, directly-inspectable effective policy per application.
-- An Application has at most one protocol configuration, fixed at creation time and enforced by a
-  composite foreign key from the owning protocol table rather than a JSON-array-of-bindings model.
+- アプリケーションのサインインポリシー（`AppSignInPolicy`）は、評価器が確認できる構造化された規則だけを持つ。制限された `RequiredAuthnStrength` 列挙、`reauth_max_age_seconds`、`network_allow_cidrs` を、すべてのプロトコルに共通するフェデレーションの関門でフェイルクローズに評価する。
+- テナント全体のデフォルトのサインインのポリシーは、アプリケーション自身のポリシーと合成せず上書きされる。アプリケーションごとに直接確認できる実効的なポリシーを 1 つに保つためである。
+- Application が持つプロトコル設定は最大 1 つとし、作成時に固定する。JSON 配列による関連付けモデルではなく、所有するプロトコルテーブルからの複合外部キーで保証する。
 
 ## Scenarios
 
-### REQ-APPLICATION-001: 管理者はアプリ詳細でIdMagic側の連携設定を確認できる
+### REQ-APPLICATION-001: 管理者はアプリケーション詳細で IdMagic 側の連携設定を確認できる
 - ACTOR TenantAdministrator
-- GIVEN OIDC または SAML protocol を持つ Application が存在する
+- GIVEN OIDC または SAML プロトコルを持つ Application が存在する
 - WHEN 管理者が Application の詳細画面を開く
-- THEN 画面は IdMagic に登録済みの RP / SP 情報と、相手側へ投入する IdMagic の discovery または metadata を区別して表示する
-- THEN OIDC application には OpenID Discovery URL と client_id を表示する
-- THEN SAML application には IdP metadata URL、entityID、SSO URL、SLO URL、署名証明書を表示する
-- THEN client secret は作成・互換ローテーション・追加発行の成功応答以外では表示しない
+- THEN 画面は IdMagic に登録済みの RP / SP 情報と、接続先に設定する IdMagic の Discovery またはメタデータを区別して表示する
+- THEN OIDC アプリケーションには Discovery URL と `client_id` を表示する
+- THEN SAML アプリケーションには IdP メタデータ URL、entityID、SSO URL、SLO URL、署名証明書を表示する
+- THEN クライアントシークレットは、作成、互換ローテーション、追加発行に成功したときのレスポンス以外には表示しない
 
-### REQ-APPLICATION-002: 管理者は通常設定と独立したセクションでclient secretを管理できる
+### REQ-APPLICATION-002: 管理者は通常設定とは独立したセクションでクライアントシークレットを管理できる
 - ACTOR TenantAdministrator
-- GIVEN secret-based OIDC protocol を持つ Application が存在する
-- GIVEN 期限なし legacy credential が1件 Active である
+- GIVEN シークレットを使う OIDC プロトコルを持つ Application が存在する
+- GIVEN 有効期限のない従来の資格情報が 1 件 `Active` である
 - WHEN 管理者が Application の編集画面を開く
-- THEN client_id は通常の OIDC 設定カード内に参照項目として表示される
-- THEN credential 一覧と追加発行・個別失効操作は通常設定の保存 form 外にある専用トップレベルセクションへ表示される
-- WHEN 管理者が90日の期限を選んで新 secret を追加発行する
-  - ALT Active credential が既に2件存在する → 追加発行操作は利用不可となり、先に既存 credential を失効する案内を表示する
-- THEN 新 secret は一度だけ表示され、一覧には作成日・有効期限・Active 状態が表示される
-- WHEN 管理者が旧 credential を個別失効する
-  - ALT credential が Expired または Revoked である → 個別失効操作は表示しない
-- THEN その credential だけが Revoked 状態になる
+- THEN `client_id` は通常の OIDC 設定カード内に参照項目として表示される
+- THEN 資格情報の一覧、追加発行、個別失効の操作は、通常設定の保存フォーム外にある専用の最上位セクションに表示される
+- WHEN 管理者が 90 日の有効期限を選んで新しいシークレットを追加発行する
+  - ALT `Active` の資格情報がすでに 2 件存在する → 追加発行操作を無効にし、先に既存の資格情報を失効するよう案内する
+- THEN 新しいシークレットは一度だけ表示され、一覧には作成日、有効期限、`Active` ステータスが表示される
+- WHEN 管理者が以前の資格情報を個別に失効する
+  - ALT 資格情報が `Expired` または `Revoked` である → 個別失効操作を表示しない
+- THEN その資格情報だけが `Revoked` ステータスになる
 
-### REQ-APPLICATION-003: API token発行者はaccount scope内で自身のportal applicationだけを操作できる
+### REQ-APPLICATION-003: API トークン発行者は account スコープで自分のポータルアプリケーションだけを操作できる
 - ACTOR SelfApiClient
-- GIVEN client は対象 tenant の active User に固定された有効な API access token を提示している
-- WHEN client が account:read scope で自身に割り当てられた application と保存済み順序を要求する
-  - ALT token の tenant または user_id が操作対象と一致しない → 操作は AccessDeniedError で拒否される
-- THEN client 自身の application と保存済み順序だけが返る
-- WHEN client が account:write scope で自身の application 順序の保存を要求する
-  - ALT client が account:read scope だけを持つ → 操作は AccessDeniedError で拒否される
-- THEN client 自身の application 順序が保存される
+- GIVEN クライアントは対象テナントの `active` User に固定された有効な API アクセストークンを提示している
+- WHEN クライアントが `account:read` スコープで、自分に割り当てられたアプリケーションと保存済みの順序をリクエストする
+  - ALT トークンのテナントまたは `user_id` が操作対象と一致しない → 操作を AccessDeniedError で拒否する
+- THEN クライアント自身のアプリケーションと保存済みの順序だけが返る
+- WHEN クライアントが `account:write` スコープで、自分のアプリケーション順序の保存をリクエストする
+  - ALT クライアントが `account:read` スコープだけを持つ → 操作を AccessDeniedError で拒否する
+- THEN クライアント自身のアプリケーション順序が保存される
 
-### REQ-APPLICATION-004: management API clientはApplication scope内の操作だけを実行できる
+### REQ-APPLICATION-004: 管理 API クライアントは Application スコープで許可された操作だけを実行できる
 - ACTOR ManagementApiClient
-- GIVEN client は対象 tenant の有効な API access token を提示している
-- WHEN client が Application、category、assignment、または tenant default sign-in policy の操作を要求する
-  - ALT applications:read だけで Application の変更を要求する → 操作は AccessDeniedError で拒否される
-  - ALT token の tenant と request tenant が一致しない → 操作は AccessDeniedError で拒否される
-- THEN applications:read scope は Application、category、assignment の参照だけを許可する
-- THEN applications:write scope は Application の作成・protocol 設定更新・削除を許可する
-- THEN settings:read または settings:write scope は tenant default sign-in policy の対応する操作種別だけを許可する
+- GIVEN クライアントは対象テナントの有効な API アクセストークンを提示している
+- WHEN クライアントが Application、カテゴリ、割り当て、またはテナントのデフォルトサインインポリシーに対する操作をリクエストする
+  - ALT `applications:read` だけで Application の変更をリクエストする → 操作を AccessDeniedError で拒否する
+  - ALT トークンのテナントとリクエスト先のテナントが一致しない → 操作を AccessDeniedError で拒否する
+- THEN `applications:read` スコープでは Application、カテゴリ、割り当ての参照だけを許可する
+- THEN `applications:write` スコープでは Application の作成、プロトコル設定の更新、削除を許可する
+- THEN `settings:read` または `settings:write` スコープでは、テナントのデフォルトサインインポリシーに対する対応種別の操作だけを許可する
 
-### REQ-APPLICATION-005: 管理者はApplicationのSAML protocol設定を更新できる
+### REQ-APPLICATION-005: 管理者は Application の SAML プロトコル設定を更新できる
 - ACTOR TenantAdministrator
-- GIVEN 管理者が SAML protocol を持つ Application の編集画面を開いている
-- WHEN 管理者が ACS URL、署名方針、claim 規則、IdP profile割当を更新する
+- GIVEN 管理者が SAML プロトコルを持つ Application の編集画面を開いている
+- WHEN 管理者が ACS URL、署名方針、クレーム規則、IdP プロファイルの割り当てを更新する
   - ALT AuthnRequest 署名必須だが検証可能な証明書がない → 更新は InvalidRequestError で拒否される
-- THEN SAML service provider 設定だけが同一テナント内で更新される
+- THEN SAML サービスプロバイダー設定だけが同じテナント内で更新される
 
-### REQ-APPLICATION-006: 管理者はApplication単位でclaim releaseを絞り込める
+### REQ-APPLICATION-006: 管理者は Application ごとに公開するクレームを制限できる
 - ACTOR TenantAdministrator
-- GIVEN 同一テナントに OIDC Application "payroll" と "directory" が存在し、いずれも employee_number (visibility=SelfReadable) を含む同じ User 属性を参照できる
-- WHEN 管理者が "payroll" の claim release rule に claim_type="employee_number"、source=user_attribute、source_key="employee_number" を追加して保存する
-  - ALT 管理者が visibility=Private の属性 (例 password 関連の内部属性) を source_key に指定する → 更新は InvalidRequestError で拒否される (claim_release_rules_within_floor)
-  - ALT 管理者が reserved claim type (例 \"sub\"、\"iss\") を claim_type に指定する → 更新は InvalidRequestError で拒否される (claim_release_rules_within_floor)
+- GIVEN 同じテナントに OIDC Application "payroll" と "directory" が存在し、どちらも `employee_number`（`visibility=SelfReadable`）を含む同じ User 属性を参照できる
+- WHEN 管理者が "payroll" のクレーム公開規則に `claim_type="employee_number"`、`source=user_attribute`、`source_key="employee_number"` を追加して保存する
+  - ALT 管理者が `visibility=Private` の属性（パスワード関連の内部属性など）を `source_key` に指定する → 更新を InvalidRequestError で拒否する（`claim_release_rules_within_floor`）
+  - ALT 管理者が予約済みのクレーム型（`sub`、`iss` など）を `claim_type` に指定する → 更新を InvalidRequestError で拒否する（`claim_release_rules_within_floor`）
 - THEN "ApplicationClaimMappingUpdated" が発行される
-- THEN "payroll" 向けに発行される ID Token / assertion には employee_number claim が含まれる
-- THEN "directory" は自身の rule を更新していないため employee_number claim を含まない
+- THEN "payroll" 向けに発行される ID Token / Assertion には `employee_number` クレームが含まれる
+- THEN "directory" は自身の規則を更新していないため、`employee_number` クレームを含まない
 
-### REQ-APPLICATION-007: 管理者は管理画面でアプリケーションと単一protocolを構成できる
+### REQ-APPLICATION-007: 管理者は管理画面でアプリケーションと 1 つのプロトコルを構成できる
 - ACTOR TenantAdministrator
-- GIVEN roles=["admin"] のユーザー "operator" が管理画面のアプリケーション一覧を開いている
-- WHEN 管理者 "operator" が confidential なアプリケーション "portal" (type=oidc) を作成する
-- THEN 作成応答だけが生成された client_secret を一度だけ含む
-- WHEN 管理者 "operator" がアプリケーション "portal" の OIDC 設定 (redirect_uris / scope) を編集する
+- GIVEN ロール=["admin"] のユーザー "operator" が管理画面のアプリケーション一覧を開いている
+- WHEN 管理者 "operator" が confidential アプリケーション "portal"（`type=oidc`）を作成する
+- THEN 作成レスポンスだけが、生成された `client_secret` を一度だけ含む
+- WHEN 管理者 "operator" がアプリケーション "portal" の OIDC 設定（`redirect_uris` / `scope`）を編集する
 - THEN OIDC 設定が保存される
 - WHEN 管理者 "operator" がアプリケーション "portal" をユーザー "alice" に割り当てる
-  - ALT 別テナントまたは存在しない subject を指定する → InvalidRequestError で拒否される
+  - ALT 別テナントの主体または存在しない主体を指定する → InvalidRequestError で拒否される
 - THEN "alice" への割当が保存される
 - WHEN 管理者 "operator" がアプリケーション "portal" を取得する
-  - ALT 別テナントの管理者が同じ id を指定する → InvalidRequestError で拒否される
+  - ALT 別テナントの管理者が同じ ID を指定する → InvalidRequestError で拒否される
 - THEN 同一テナントのアプリケーションだけが返る
 - WHEN 管理者 "operator" がアプリケーション "portal" を削除する
 - THEN "ApplicationCreated"、"ApplicationAssigned"、"ApplicationDeleted" が発行される
 
-### REQ-APPLICATION-008: 管理者はApplicationアイコンをアップロード削除できる
+### REQ-APPLICATION-008: 管理者は Application のアイコンをアップロード・削除できる
 - ACTOR TenantAdministrator
 - GIVEN 管理者が Application 編集画面を開いている
 - WHEN 管理者が PNG / JPEG / WebP / GIF の 256KiB 以下の画像をアップロードする
   - ALT 非画像または上限超過ファイルをアップロードする → InvalidRequestError で拒否され、既存アイコンは置き換わらない
-- THEN Application は icon_object_key と内部 icon_url を持つ
-- WHEN 管理一覧・詳細・利用者ポータルが icon_url を取得する
-  - ALT 別テナントの application_id と id で同じアイコンを取得する → アセットは存在しないものとして扱われ InvalidRequestError で拒否される
-- THEN icon_url は IdP の配信 URL を指す
+- THEN Application は `icon_object_key` と内部の `icon_url` を持つ
+- WHEN 管理一覧、詳細、利用者ポータルが `icon_url` を取得する
+  - ALT 別テナントの `application_id` と ID で同じアイコンを取得する → アセットは存在しないものとして扱い、InvalidRequestError で拒否する
+- THEN `icon_url` は IdP の配信 URL を指す
 - WHEN 管理者がアイコンを削除する
-- THEN icon_object_key と icon_url は空になる
+- THEN `icon_object_key` と `icon_url` は空になる
 
 ### REQ-APPLICATION-009: 管理者はアプリケーション別サインインポリシーを設定できる
 - ACTOR TenantAdministrator
 - GIVEN 管理者が Application 編集画面を開いている
-- GIVEN Application は OIDC / SAML / WS-Fed のいずれか単一の protocol を持つ
-- WHEN 管理者が MFA 必須と再認証を求めるまでの時間 (秒) を要求する sign-in policy を保存する
-  - ALT 管理者以外が policy を更新する → AccessDeniedError で拒否される
+- GIVEN Application は OIDC / SAML / WS-Fed のいずれか 1 つのプロトコルを持つ
+- WHEN 管理者が MFA 必須と再認証を求めるまでの時間（秒）を指定したサインインポリシーを保存する
+  - ALT 管理者以外がポリシーを更新する → AccessDeniedError で拒否される
 - THEN AppSignInPolicyUpdated が発行される
 - WHEN 単要素セッションの利用者が対象 Application にアクセスする
-- THEN システムは token / assertion 発行前に policy を評価する (強制点は OAuth2.Authorize)
-  - ALT 許可 CIDR に含まれないクライアント IP、またはクライアント IP を取得できない → federation を拒否し、AppAccessDeniedByPolicy を発行する
-- THEN step-up が可能な経路では step-up を要求し、昇格後に federation を完了する
+- THEN システムはトークン / Assertion の発行前にポリシーを評価する（強制点は OAuth2.Authorize）
+  - ALT クライアント IP が許可 CIDR に含まれない、またはクライアント IP を取得できない → フェデレーションを拒否し、AppAccessDeniedByPolicy を発行する
+- THEN ステップアップ認証が可能な経路ではステップアップ認証を要求し、認証強度を上げた後にフェデレーションを完了する
 
 ### REQ-APPLICATION-010: 管理者はテナントデフォルトサインインポリシーを設定し全アプリに適用できる
 - ACTOR TenantAdministrator
-- GIVEN roles=["admin"] のユーザー "operator" がサインインポリシー画面を開いている
-- GIVEN テナントに OIDC protocol を持つ複数の Application が存在し、いずれも個別 sign-in policy を持たない
-- WHEN 管理者が MFA 必須、将来の強制開始日時、enrollment bypass 猶予、管理者承認を要求するテナントデフォルトサインインポリシーを保存する
-  - ALT 管理者がルールを空にして保存する → TenantDefaultSignInPolicyUpdated を発行し、独自ポリシーを持たない Application の federation に追加要件を課さない
+- GIVEN ロール=["admin"] のユーザー "operator" がサインインポリシー画面を開いている
+- GIVEN テナントに OIDC プロトコルを持つ複数の Application が存在し、いずれも個別のサインインポリシーを持たない
+- WHEN 管理者が MFA 必須、将来の適用開始日時、登録を一時的に迂回できる猶予期間、管理者承認を指定したテナントのデフォルトサインインポリシーを保存する
+  - ALT 管理者が規則を空にして保存する → TenantDefaultSignInPolicyUpdated を発行し、独自ポリシーを持たない Application のフェデレーションに追加要件を課さない
 - THEN TenantDefaultSignInPolicyUpdated が発行される
-- THEN 画面は active user の MFA 未登録人数と強制時のロックアウト影響を表示する
+- THEN 画面は有効なユーザーの MFA 未登録人数と、適用時に利用できなくなるユーザーへの影響を表示する
 - WHEN 単要素セッションの利用者が個別ポリシーを持たない Application にアクセスする
-- THEN システムはデフォルトポリシーを適用し step-up を要求する
-- WHEN 管理者が対象 Application にデフォルトより弱い sign-in policy を保存する
+- THEN システムはデフォルトポリシーを適用しステップアップ認証を要求する
+- WHEN 管理者が対象 Application にデフォルトより弱いサインインポリシーを保存する
 - THEN システムはデフォルトより弱い旨の警告を表示するが保存を許可する
-- THEN 当該 Application では弱い policy を適用し、他の Application ではデフォルトの MFA 必須を引き続き適用する
+- THEN 当該 Application では弱いポリシーを適用し、他の Application ではデフォルトの MFA 必須を引き続き適用する
 - WHEN 管理者が Application の編集画面を開く
-- THEN 画面はテナントデフォルト・この Application の上書き・最終的に適用される policy を区別して表示する
+- THEN 画面はテナントデフォルト・この Application の上書き・最終的に適用されるポリシーを区別して表示する
 
-### REQ-APPLICATION-011: 未割当のsubjectはprotocol経由でアプリケーションへフェデレーションできない
+### REQ-APPLICATION-011: 割り当てのない主体はプロトコル経由でアプリケーションへフェデレーションできない
 - ACTOR TenantAdministrator
 - GIVEN アプリケーション "portal" にユーザー "alice" は割り当てられていない
-- WHEN "alice" が "portal" への federation を試みる (強制点は OAuth2.Authorize)
-  - ALT 管理者が事前に "portal" へ "alice" を visibility=visible で割り当てる → "alice" は federation を完了できる
-- THEN 未割当のため federation は拒否される
+- WHEN "alice" が "portal" へのフェデレーションを試みる（強制点は OAuth2.Authorize）
+  - ALT 管理者が事前に "portal" へ "alice" を `visibility=visible` で割り当てる → "alice" はフェデレーションを完了できる
+- THEN 割り当てがないため、フェデレーションを拒否する
 
-### REQ-APPLICATION-012: hidden割当はポータル一覧から除外されるがprotocol利用は許可される
+### REQ-APPLICATION-012: hidden の割り当てはポータル一覧から除外するがプロトコルの利用は許可する
 - ACTOR TenantAdministrator
-- GIVEN 管理者が "portal" にユーザー "alice" を visibility=hidden で割り当てている
-- WHEN "alice" が自分のポータルアプリ一覧 (ListMyApplications) を取得する
+- GIVEN 管理者が "portal" にユーザー "alice" を `visibility=hidden` で割り当てている
+- WHEN "alice" が自分のポータルアプリケーション一覧（ListMyApplications）を取得する
 - THEN 一覧に "portal" は含まれない
-- WHEN "alice" が "portal" への federation を試みる (強制点は OAuth2.Authorize)
-- THEN hidden 割当があるため federation を完了できる
+- WHEN "alice" が "portal" へのフェデレーションを試みる（強制点は OAuth2.Authorize）
+- THEN `hidden` の割り当てがあるため、フェデレーションを完了できる
 
-### REQ-APPLICATION-013: adminロールを持たない利用者はApplicationを操作できない
+### REQ-APPLICATION-013: admin ロールを持たない利用者は Application を操作できない
 - ACTOR AuthenticatedSelf
-- GIVEN "alice" は admin ロールを持たない認証済みユーザーである
+- GIVEN "alice" は `admin` ロールを持たない認証済みユーザーである
 - WHEN "alice" が ListAdminApplications を呼び出す
 - THEN AccessDeniedError で拒否される
 
-### REQ-APPLICATION-014: desired-state割当はgroup経由の割当を変更しない
+### REQ-APPLICATION-014: あるべき状態を指定した割り当てはグループ割り当てを変更しない
 - ACTOR TenantAdministrator
-- GIVEN "alice" は dynamic group 経由で "portal" への group assignment (subject_type=group) を既に持つ
+- GIVEN "alice" は動的グループを介して "portal" へのグループ割り当て（`subject_type=group`）をすでに持つ
 - WHEN IdManagement の LifecycleWorkflow が "alice" に対して AssignApplicationDesiredState を呼び出す
-  - ALT 個人の direct assignment が既に指定どおりの visibility で存在する → 変更を行わず changed=false を返す
-- THEN "alice" 個人への direct user assignment (subject_type=user) が作成される
-- THEN group assignment (subject_type=group) の行は変更されない
+  - ALT 個人への直接割り当てが指定どおりの `visibility` ですでに存在する → 変更せずに `changed=false` を返す
+- THEN "alice" 個人への直接ユーザー割り当て（`subject_type=user`）が作成される
+- THEN グループ割り当て（`subject_type=group`）の行は変更されない
 - WHEN LifecycleWorkflow が後から UnassignApplicationDesiredState を呼び出す
-- THEN direct user assignment だけが削除され、group assignment は残る
-- THEN federation は引き続き許可される
+- THEN 直接ユーザー割り当てだけが削除され、グループ割り当ては残る
+- THEN フェデレーションは引き続き許可される

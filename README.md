@@ -1,106 +1,96 @@
 # IdMagic
 
-**A production-ready, enterprise-grade identity provider.**
+**本番運用に対応する、エンタープライズ向けアイデンティティプロバイダー。**
 
-IdMagic is a Go-based Identity Provider delivering robust implementations of OAuth 2.0,
-OpenID Connect, SAML, WS-Federation, tenant isolation, application portals, and
-identity administration. It uses a specification-first development workflow: API and model contracts live in
-TypeSpec, each context keeps behavior and current design in one canonical specification document, and
-implementation remains organized around bounded contexts.
+IdMagic は Go で実装したアイデンティティプロバイダーであり、OAuth 2.0、OpenID Connect、SAML、WS-Federation、テナント分離、アプリケーションポータル、アイデンティティ管理を堅牢に提供する。仕様を先に定める開発手順を採用し、API とモデルの契約は TypeSpec、各 Context の振る舞いと現在の設計は 1 つの正規仕様書に置き、実装は Bounded Context を中心に構成する。
 
-The project is built to serve as a highly reliable real-world identity platform
-capable of handling complex enterprise authentication flows.
+複雑なエンタープライズ認証フローを扱える、信頼性の高い実用的なアイデンティティ基盤を目指している。
 
-## Key Capabilities
+## 主な機能
 
-- **Comprehensive Identity Protocols**: Full-featured OAuth 2.0 and OpenID Connect authorization server including PKCE, PAR, device flow, DPoP, dynamic client registration, and token rotation.
-- **Enterprise Federation**: Out-of-the-box support for SAML 2.0 IdP, WS-Federation passive profile, WS-Trust STS, and Microsoft Entra domain federation presets.
-- **Multi-Tenant Architecture**: Deep tenant isolation with realm-scoped routes, per-tenant signing keys (auto-rotated), tenant-specific application catalogs, and customizable branded portals.
-- **High Availability & Scalability**: Built for scale with shared state in PostgreSQL, robust distributed job processing, and native OpenTelemetry integration.
-- **Modern Administration Experience**: High-performance React-based admin console and account portals powered by Vite, Tailwind CSS, and Radix UI.
-- **Configurable Credential Policy**: NIST SP 800-63B-4-aligned password rules by default (length, history, breached-password check, no composition rules or forced rotation), with per-tenant overrides that may only tighten them and an opt-in password expiry for tenants under a rotation requirement.
+- **包括的なアイデンティティプロトコル**: PKCE、PAR、デバイスフロー、DPoP、動的クライアント登録、トークンローテーションを含む、完全な OAuth 2.0 / OpenID Connect 認可サーバー。
+- **エンタープライズフェデレーション**: SAML 2.0 IdP、WS-Federation Passive Profile、WS-Trust STS、Microsoft Entra ドメインフェデレーションのプリセットを標準で提供する。
+- **マルチテナントアーキテクチャ**: レルム単位のルート、テナントごとに自動ローテーションする署名鍵、テナント固有のアプリケーションカタログ、カスタマイズ可能なブランドポータルによって、テナントを厳密に分離する。
+- **高可用性とスケーラビリティ**: PostgreSQL の共有状態、堅牢な分散ジョブ処理、OpenTelemetry のネイティブ統合によってスケールに対応する。
+- **モダンな管理体験**: Vite、Tailwind CSS、Radix UI を使った、高性能な React 製の管理コンソールとアカウントポータル。
+- **設定可能な資格情報ポリシー**: デフォルトでは NIST SP 800-63B-4 に沿ったパスワード規則を採用する。長さ、履歴、漏洩パスワード検査を適用し、文字種の構成規則や強制ローテーションは設けない。テナントごとの上書きは厳格化だけを許し、ローテーション要件があるテナントはパスワード有効期限を明示的に有効化できる。
 
-## Architecture & Repository Map
+## アーキテクチャとリポジトリ構成
 
-IdMagic follows a lightweight specification-first workflow. The main bounded contexts are `tenancy`, `idmanagement`, `authentication`, `oauth2`, `application`, `wsfederation`, and `saml`. Shared adapter code lives under `backend/shared`; runtime composition lives in `backend/bootstrap`.
+IdMagic は軽量な仕様優先の開発手順を採用する。主な Bounded Context は `tenancy`、`idmanagement`、`authentication`、`oauth2`、`application`、`wsfederation`、`saml` である。共有アダプターは `backend/shared`、ランタイムの構成は `backend/cmd/internal/bootstrap` に置く。
 
-| Layer | Location |
+| 区分 | 場所 |
 | --- | --- |
-| Product specification and current design | `spec/**/*.tsp`, `spec/**/SPECIFICATION.md` |
-| Change design and history | `work-items/*.md` |
-| Application logic | `backend/<context>/domain`, `backend/<context>/usecases` |
-| Core and adapters | `backend/<context>/{domain,usecases,ports}`, `backend/<context>/{handlers_http,db_postgres,...}` |
-| Runtime and infra | `backend/cmd/`, `backend/bootstrap`, `infra/`, `frontend/` |
+| 製品仕様と現在の設計 | `spec/**/*.tsp`, `spec/**/SPECIFICATION.md` |
+| 変更の設計と履歴 | `work-items/*.md` |
+| アプリケーションロジック | `backend/<context>/domain`, `backend/<context>/usecases` |
+| 中核とアダプター | `backend/<context>/{domain,usecases,ports}`, `backend/<context>/{handlers_http,db_postgres,...}` |
+| ランタイムとインフラストラクチャ | `backend/cmd/`, `backend/bootstrap`, `infra/`, `frontend/` |
 
-`infra/schema/postgres.sql` is the declarative current-state schema. The app does not run migrations on startup; deployment applies schema changes with `psqldef`.
+`infra/schema/postgres.sql` は現在状態を宣言するスキーマである。アプリケーションは起動時に移行を実行せず、配備時に `psqldef` でスキーマ変更を適用する。
 
-## Getting Started & Development
+## 開発の始め方
 
-### Local Quick Start
+### ローカルでのクイックスタート
 
-Run the Docker-free local stack with embedded PostgreSQL, the API, worker, and UI:
+組み込み PostgreSQL、API、`worker` プロセス、UI を含む Docker 不要のローカルスタックを起動する:
 
 ```bash
 just dev
 ```
 
-The first run downloads and caches an embedded PostgreSQL binary (about 190 MB).
-Development data is temporary and is removed when the stack stops. The API and
-worker remain separate processes and share the PostgreSQL job queue, so durable
-jobs work in this mode. The local endpoint is `127.0.0.1:55432` (PostgreSQL).
+初回実行時に、約 190 MB の組み込み PostgreSQL バイナリをダウンロードしてキャッシュする。開発データは一時的なもので、スタックの停止時に削除される。API と `worker` は別のプロセスとして動きながら PostgreSQL のジョブキューを共有するため、この構成でも永続ジョブが動作する。PostgreSQL のローカルエンドポイントは `127.0.0.1:55432` である。
 
-For the smallest API + UI loop, without durable jobs or the background worker:
+永続ジョブとバックグラウンドの `worker` プロセスを使わない、最小の API と UI の構成:
 
 ```bash
 just dev-memory
 ```
 
-Open <http://localhost:5173/> and choose the local demo authentication entry.
-Use:
-- **`alice`** (password: `demo-password-1234`): tenant admin demo user
-- **`root`** (password: `demo-password-1234`): tenant admin + system admin
+<http://localhost:5173/> を開き、ローカルデモ認証を選択する。使用できるアカウント:
 
-*(Note: Do not open `/login` directly. The login screen expects an active authorization transaction.)*
+- **`alice`** (パスワード: `demo-password-1234`): テナント管理者のデモユーザー
+- **`root`** (パスワード: `demo-password-1234`): テナント管理者とシステム管理者を兼ねるユーザー
 
-To try the CIBA poll-mode approval flow, sign in as `alice`, then run this in a second terminal:
+*注意: `/login` を直接開かないこと。ログイン画面には進行中の認可トランザクションが必要である。*
+
+CIBA のポーリング方式による承認フローを試すには、`alice` でサインインし、別のターミナルで次を実行する:
 
 ```bash
 just demo-ciba
 ```
 
-Follow the prompt to open the account approval page, approve the request, and return to the terminal.
+表示された案内に従ってアカウントの承認ページを開き、リクエストを承認してターミナルへ戻る。
 
-### Docker Development Stack
+### Docker 開発環境
 
-The compose stack starts PostgreSQL, OpenTelemetry Collector, Prometheus, the Go API, and the UI gateway. Caddy exposes the combined app at <http://localhost:8080/>.
+Compose スタックは PostgreSQL、OpenTelemetry Collector、Prometheus、Go API、UI ゲートウェイを起動する。Caddy が統合アプリケーションを <http://localhost:8080/> で公開する。
 
 ```bash
-just dev-compose       # start, detached
-just logs-compose      # follow logs
-just down-compose      # stop and remove
+just dev-compose       # バックグラウンドで起動
+just logs-compose      # ログを追跡
+just down-compose      # 停止して削除
 ```
 
-### Manual Local Run
+### 個別に起動する
 
-If you prefer separate terminals, start a shared PostgreSQL yourself and
-provide `PERSISTENCE=postgres` and `DATABASE_URL` to both the API and worker.
-`just dev-api` by itself continues to use memory mode.
+別々のターミナルで実行する場合は、共有 PostgreSQL を用意し、API と `worker` プロセスの両方へ `PERSISTENCE=postgres` と `DATABASE_URL` を渡す。`just dev-api` だけを実行した場合は、引き続きメモリモードを使う。
 
 ```bash
-# Terminal 1: Go API
+# ターミナル 1: Go API
 WEBAUTHN_RP_ID=localhost \
 WEBAUTHN_RP_ORIGINS=http://localhost:5173 \
 ADDR=:8081 \
 ISSUER=http://localhost:5173 \
 just dev-api
 
-# Terminal 2: React UI
+# ターミナル 2: React UI
 just dev-ui
 ```
 
-### Common Commands
+### 主なコマンド
 
-This repository uses `just` as the command map. Useful commands include:
+このリポジトリはコマンド一覧として `just` を使う。主なコマンド:
 
 ```bash
 just --list
@@ -112,75 +102,54 @@ just verify-ui
 just test-ui-e2e
 ```
 
-### Build and Versioning
+### ビルドとバージョン
 
-IdMagic supports injecting build version metadata at build time using Go `-ldflags`.
+IdMagic は Go の `-ldflags` を使い、ビルド時にバージョンのメタデータを埋め込める。
 
 ```bash
 VERSION=1.0.0 just build-go
 ```
 
-If `VERSION` is not specified, it defaults to `0.0.0-dev`. For Docker builds, you can pass version metadata as build arguments (`VERSION`, `GIT_COMMIT`, `BUILD_DATE`).
+`VERSION` を指定しない場合は `0.0.0-dev` をデフォルトとする。Docker ビルドでは、ビルド引数（`VERSION`、`GIT_COMMIT`、`BUILD_DATE`）でバージョンメタデータを渡せる。
 
-## Configuration
+## 設定
 
-Local defaults use in-memory persistence and console email output. See the generated
-[Configuration Reference](CONFIGURATION.md) for every startup environment variable, its type,
-default, conditional requirements, owning processes, and secret classification. Invalid startup
-configuration is reported as one aggregated error before listeners, dependency connections, or
-seed application begin.
+ローカルのデフォルトでは、メモリ永続化とコンソールへのメール出力を使う。すべての起動時環境変数について、型、デフォルト、条件付き要件、所有するプロセス、シークレット区分を確認するには、生成済みの [設定リファレンス](CONFIGURATION.md) を参照する。不正な起動設定は、リスナー、依存先への接続、seed の適用を始める前に、1 つの集約エラーとして報告する。
 
-### Job Worker & Scheduled Batches
+### ジョブの `worker` プロセスと定期バッチ
 
-Production splits `idmagic-worker` into one Deployment per lane using the `JOB_WORKER_LANES` variable (e.g. `latency_sensitive`, `default`, `bulk`).
+本番では `JOB_WORKER_LANES` 変数を使い、`idmagic-worker` をレーン（`latency_sensitive`、`default`、`bulk` など）ごとの Deployment に分ける。
 
-`idmagic-batch` executes one operational batch and exits. External schedulers run `retention-sweep` hourly and `signing-key-lifecycle` daily; neither task is coupled to the horizontally scaled durable-job worker. 
+`idmagic-batch` は 1 つの運用バッチを実行して終了する。外部スケジューラーは `retention-sweep` を毎時、`signing-key-lifecycle` を毎日実行する。いずれも、水平スケールする永続ジョブの `worker` プロセスとは独立している。
 
-### Envelope Encryption & Data Keys
+### エンベロープ暗号化とデータ鍵
 
-Reversible secrets that must remain in the app DB (MFA TOTP seeds today) are envelope-encrypted at rest
-([whole-system specification](spec/SPECIFICATION.md#3-envelope-encryption-for-reversible-secrets)): a per-tenant
-`DataEncryptionKey` (DEK) directly encrypts each secret, and a master key — held by the swappable
-`DATA_KEY_PROVIDER` — wraps that DEK.
+アプリケーションデータベースに残す必要がある可逆なシークレット（現在は MFA の TOTP seed）は、保存時に[エンベロープ暗号化](spec/SPECIFICATION.md#3-envelope-encryption-for-reversible-secrets)する。テナントごとの `DataEncryptionKey`（DEK）が各シークレットを直接暗号化し、差し替え可能な `DATA_KEY_PROVIDER` が保持するマスターキーで DEK をラップする。
 
-- **Dev fallback**: leaving `DATA_KEY_PROVIDER` unset uses an in-process Tink cleartext keyset, so no
-  external service is required to develop. This must never be selected in production.
-- **Losing the master key is unrecoverable.** If OpenBao's Transit keys are lost without a backup, every
-  tenant's wrapped DEKs become permanently unwrappable — this is the same crypto-shredding property that
-  makes `DestroyTenantDataKey` deliberate, but applied by accident. Back up OpenBao's Transit engine
-  storage using OpenBao's own backup mechanism; a PostgreSQL backup of `tenant_data_encryption_keys` alone
-  is not sufficient to recover, since it only holds the wrapped (master-key-encrypted) form.
-- **Key health**: `GET /api/admin/data-keys/health` (`system_admin` only) reports each tenant's active DEK
-  version/status and the configured provider's name/reachability, without ever returning key material.
-- **Rotation and backfill**: rotating a tenant's DEK (internal-only today, no admin endpoint yet) enqueues
-  a resumable `data_key_reencryption` job (`backend/jobs`) that migrates every reference onto the new
-  version; only once that job reports nothing pending can the old version be destroyed. To backfill
-  legacy plaintext rows written before this migration (or to catch up any tenant whose auto-enqueued job
-  failed), run `idmagic-batch data-key-reencryption-sweep` — it is idempotent and safe to re-run or put on
-  a cadence.
+- **開発用フォールバック**: `DATA_KEY_PROVIDER` を設定しない場合は、プロセス内の Tink 平文鍵セットを使うため、開発時に外部サービスは不要である。本番では決して選択してはならない。
+- **マスターキーを失うと復旧できない。** OpenBao の Transit 鍵をバックアップせずに失うと、すべてのテナントのラップ済み DEK を恒久的にアンラップできなくなる。これは `DestroyTenantDataKey` が意図的に実現する暗号学的消去と同じ性質が、事故によって発生することを意味する。OpenBao の Transit エンジンのストレージは OpenBao 自身のバックアップ手段で保護する。`tenant_data_encryption_keys` の PostgreSQL バックアップには、マスターキーで暗号化した形しか含まれないため、それだけでは復旧できない。
+- **鍵の健全性**: `GET /api/admin/data-keys/health` (`system_admin` 専用) は、鍵素材を返さずに、各テナントの有効な DEK のバージョンとステータス、設定済みプロバイダーの名前と到達性を報告する。
+- **ローテーションと再暗号化**: テナントの DEK を内部操作でローテーションすると、すべての参照を新しいバージョンへ移す再開可能な `data_key_reencryption` ジョブ（`backend/jobs`）を投入する。ジョブが保留中の参照なしを報告した後に限り、古いバージョンを破棄できる。再暗号化を再開または再走査するには `idmagic-batch data-key-reencryption-sweep` を実行する。冪等なので再実行や定期実行が可能である。
 
-### WebAuthn Configuration Notes
+### WebAuthn の設定
 
-WebAuthn binds passkeys to the browser origin and relying-party ID. Non-local deployments must use HTTPS and set `WEBAUTHN_RP_ID` to the registrable domain that users visit. `WEBAUTHN_RP_ORIGINS` must include every public origin used by the UI.
+WebAuthn はパスキーをブラウザーのオリジンと RP ID に束縛する。ローカル以外の環境では HTTPS を使い、`WEBAUTHN_RP_ID` をユーザーが訪れる登録可能なドメインに設定する。`WEBAUTHN_RP_ORIGINS` には UI が使用するすべての公開オリジンを含める。
 
-### Upstream OIDC Identity Provider
+### 上流の OIDC アイデンティティプロバイダー
 
-Tenant administrators configure inbound OIDC and SAML connections under **Settings → External identity
-providers**. An OIDC connection needs a fixed HTTPS issuer and its last-known-good authorization,
-token, and JWKS endpoints. The callback URI registered at the upstream provider is:
+テナント管理者は **設定 → 外部アイデンティティプロバイダー** で受信 OIDC / SAML 接続を設定する。OIDC 接続には固定の HTTPS 発行者と、最後に正常だった認可、トークン、JWKS の各エンドポイントが必要である。上流プロバイダーへ登録するコールバック URI:
 
 ```text
 https://<idmagic-origin>/realms/<realm>/api/auth/federation/oidc/callback
 ```
 
-Client secrets are not stored in the IdMagic database. Put the value in the API process environment and
-save only an `env:` reference in the connection:
+クライアントシークレットは IdMagic のデータベースに保存しない。値を API プロセスの環境へ置き、接続には `env:` 参照だけを保存する:
 
 ```bash
 CONTOSO_CLIENT_SECRET=replace-with-the-provider-secret
 ```
 
-Example connection input:
+接続入力の例:
 
 ```json
 {
@@ -204,49 +173,41 @@ Example connection input:
 }
 ```
 
-Test the draft connection before activating it. Login requests use only the saved provider and endpoint
-configuration; a browser request cannot supply an arbitrary discovery or token URL.
+下書きの接続は有効化する前にテストする。ログインリクエストは保存済みのプロバイダーとエンドポイントの設定だけを使い、ブラウザーから任意の Discovery URL やトークン URL を指定することはできない。
 
-JIT provisioning is disabled by default. When enabled, the first accepted upstream identity creates an
-active local user without a password credential. Use `allowed_email_domains` to narrow who can be
-created. Automatic linking by verified email is a separate opt-in policy: it requires the upstream
-`email_verified` claim and exactly one matching verified local email. Keep it disabled unless the
-upstream provider's email-verification and account-recovery guarantees are trusted. External tokens and
-SAML assertions are validated for the login and are never retained.
+JIT プロビジョニングはデフォルトで無効である。有効にすると、最初に受理したアップストリームアイデンティティから、パスワード資格情報を持たない有効なローカルユーザーを作成する。作成対象は `allowed_email_domains` で絞り込む。検証済みメールアドレスによる自動リンクは別の明示的なポリシーであり、アップストリームの `email_verified` クレームと、検証済みローカルメールアドレスとの一意な一致を必要とする。アップストリームプロバイダーのメール検証とアカウント復旧の保証を信頼できない限り、無効のままにする。外部トークンと SAML アサーションはログイン時に検証し、保持しない。
 
-### Tenant Endpoint Styles
+### テナントエンドポイントの形式
 
-Each tenant has exactly one canonical location and issuer. The default `path` style is served at `{ISSUER}/realms/{realm}` and needs no wildcard DNS or certificate. `subdomain` is served at `https://{realm}.{TENANT_BASE_DOMAIN}` and is available only when `TENANT_BASE_DOMAIN` is configured. The ingress layer must provide wildcard DNS and a matching wildcard TLS certificate; IdMagic does not issue or renew certificates.
+各テナントは正規ロケーションと発行者を 1 つだけ持つ。デフォルトの `path` 形式は `{ISSUER}/realms/{realm}` で提供し、ワイルドカード DNS や証明書を必要としない。`subdomain` 形式は `https://{realm}.{TENANT_BASE_DOMAIN}` で提供し、`TENANT_BASE_DOMAIN` が設定されている場合だけ利用できる。イングレス層はワイルドカード DNS と対応するワイルドカード TLS 証明書を提供しなければならない。IdMagic は証明書の発行や更新を行わない。
 
-Changing a tenant from `path` to `subdomain` (or back) is disruptive: its issuer and protocol metadata URLs change, relying parties must be reconfigured, existing passkeys must be re-enrolled, and active browser sessions end. Plan the change as an identity migration. The current work covers IdMagic-managed subdomains only; customer-owned domains are separate work.
+テナントを `path` から `subdomain` へ、または逆方向へ変更すると、発行者とプロトコルメタデータの URL が変わる。リライングパーティーの再設定、既存パスキーの再登録、進行中のブラウザーセッションの終了が必要になるため、アイデンティティ移行として計画する。利用できるのは IdMagic が管理するサブドメインだけであり、顧客所有ドメインには対応しない。
 
-### Notification Email Templates
+### 通知メールテンプレート
 
-Notification emails come from a template catalog rather than being composed in code. Each message resolves in two steps: the bundled default wording for the chosen language, overridden by a per-tenant customization when one exists. Every message is sent as `multipart/alternative` with both a plain-text and an HTML part.
+通知メールはコード内で組み立てず、テンプレートカタログから生成する。各メッセージは 2 段階で解決する。選択した言語に組み込まれたデフォルト文面を使い、テナント固有のカスタマイズが存在すれば上書きする。すべてのメッセージを、プレーンテキストと HTML の両方を含む `multipart/alternative` として送信する。
 
-Template keys:
+テンプレートキー:
 
-| Key | Sent when | Placeholders (in addition to `product_name`, `tenant_display_name`, `user_display_name`) |
+| キー | 送信条件 | プレースホルダー（`product_name`、`tenant_display_name`、`user_display_name` に加えて使用可能） |
 | --- | --- | --- |
-| `password_reset` | a user requests a password reset | `reset_url`, `expires_in_minutes` |
-| `email_verification` | an address needs verification | `verification_url`, `expires_in_minutes` |
-| `email_change_confirmation` | a user requests an email address change | `confirmation_url`, `expires_in_minutes`, `new_email` |
-| `account_security_alert` | not emitted yet; the catalog entry exists so the wording can be prepared | `event_description`, `occurred_at` |
-| `lifecycle_workflow_notification` | a lifecycle workflow runs a `send_email` action | `notification_key` |
+| `password_reset` | ユーザーがパスワードのリセットをリクエストしたとき | `reset_url`, `expires_in_minutes` |
+| `email_verification` | メールアドレスの検証が必要なとき | `verification_url`, `expires_in_minutes` |
+| `email_change_confirmation` | ユーザーがメールアドレスの変更をリクエストしたとき | `confirmation_url`, `expires_in_minutes`, `new_email` |
+| `account_security_alert` | まだ発行しない。文面を準備できるようカタログ項目だけを用意している | `event_description`, `occurred_at` |
+| `lifecycle_workflow_notification` | ライフサイクルワークフローが `send_email` 操作を実行したとき | `notification_key` |
 
-Placeholders are written as `{{name}}`. Each key declares an allowed set, and the admin API returns that set alongside the template. A customization referencing anything outside the set is **rejected when saved**, not silently blanked at send time, so a template can never ship a message with a missing recovery link. Values substituted into the HTML body are escaped by the renderer; links are assembled by the server, never by the template.
+プレースホルダーは `{{name}}` と書く。各キーが許可する集合を宣言し、管理 API はテンプレートとともにその集合を返す。集合外のプレースホルダーを参照するカスタマイズは、送信時に暗黙に空文字へ変えず、**保存時に拒否する**。これにより、復旧リンクが欠けたメッセージを送ることはない。HTML 本文へ代入する値はレンダラーがエスケープし、リンクはテンプレートではなくサーバーが組み立てる。
 
-Language resolution runs in three steps and picks the first language with a bundled translation: the recipient's `locale` user attribute, then the tenant's default language (Settings → General), then `DEFAULT_LOCALE` (default `en`). Bundled translations ship for `ja` and `en`.
+言語は、受信者の `locale` ユーザー属性、テナントのデフォルト言語（設定 → 一般）、`DEFAULT_LOCALE`（デフォルトは `en`）の順に解決し、組込み翻訳が存在する最初の言語を選ぶ。組込み翻訳は `ja` と `en` を提供する。
 
-A tenant may customize the subject, the plain-text body, the HTML body, and the sender display name. The subject and both bodies are saved as one set, so a half-overridden template cannot exist. The sender email address, the surrounding HTML document, and its base styling stay server-owned. Deleting a customization ("Reset to default") returns to the bundled wording; there is no version history.
+テナントは件名、プレーンテキスト本文、HTML 本文、送信者の表示名をカスタマイズできる。件名と両方の本文は 1 組として保存するため、一部だけ上書きしたテンプレートは存在しない。送信元メールアドレス、外側の HTML 文書、基本スタイルはサーバーが所有する。カスタマイズを削除して「デフォルトに戻す」と組み込み文面へ戻り、バージョン履歴は持たない。
 
-Test messages sent from the template editor always go to the acting administrator's own verified email address. The recipient cannot be chosen, which keeps tenant administrator rights from becoming a relay for sending mail to arbitrary addresses.
+テンプレートエディターから送るテストメッセージは、操作した管理者本人の検証済みメールアドレスへ必ず送信する。宛先を選択できないため、テナント管理者権限を任意のアドレスへのメールリレーとして悪用できない。
 
-Upgrade note: before this catalog existed, the three emails that already shipped (password reset, email change confirmation, and lifecycle workflow notifications) were hardcoded English plain text, and lifecycle notifications used the raw template key as both subject and body. Their subjects and bodies have changed.
+### ローカルでのメールテスト（SMTP）
 
-### Local Email Testing (SMTP)
-
-For SMTP testing during development, Mailpit works well:
+開発中の SMTP テストには Mailpit が適している:
 
 ```bash
 mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025
@@ -259,50 +220,49 @@ SMTP_FROM=noreply@idmagic.test \
 ./dev.sh
 ```
 
-## API Stability, Versioning & Deprecation
+## API の安定性、バージョニング、廃止
 
-IdMagic's management API and self-service account API are external contracts: tenants build automation, provisioning, and IaC against them, authenticated with a unified RFC 9068 JWT API access token. This section is the operational summary of how they are versioned and deprecated.
+IdMagic の管理 API とセルフサービスのアカウント API は外部契約である。テナントは統一された RFC 9068 JWT API アクセストークンで認証し、自動化、プロビジョニング、IaC をこれらの API に対して構築する。この節は、バージョン管理と非推奨化の運用要約である。
 
-**Stability tiers.** External interfaces are classified in the TypeSpec contract:
+**安定性区分。** 外部インターフェースは TypeSpec 契約で分類する:
 
-- `stable` — a versioned external contract, covered by the compatibility guarantee below.
-- `beta` — an external contract not yet covered by the compatibility guarantee; reserved for future endpoints.
-- `internal` — not part of the external contract. This covers browser-only interactive flows (login, MFA enrollment, consent — anything reachable only by a first-party browser session, not by an API access token) and admin-console screens that currently have no API-access-token path. `internal` interfaces can change without notice.
+- `stable` — バージョン付きの外部契約。下記の互換性保証の対象。
+- `beta` — まだ互換性保証の対象でない外部契約。将来のエンドポイント用に予約する。
+- `internal` — 外部契約に含まれない。ファーストパーティーのブラウザーセッションからだけ到達でき、API アクセストークンでは到達できない対話型フロー (ログイン、MFA 登録、同意など) と、現在は API アクセストークン経路を持たない管理コンソール画面が該当する。`internal` インターフェースは予告なく変更できる。
 
-An interface counts as `stable`/`beta` only if it is reachable by an API access token (`ManagementApiClient*`/`SelfApiClient*`/SCIM scopes), is a protocol endpoint governed by an external standard (OAuth2/OIDC, SAML, WS-Federation, SCIM, SSF — see below), or is an unauthenticated public asset/operational endpoint (health probes, metrics, branding assets).
+API アクセストークンで到達できる (`ManagementApiClient*`、`SelfApiClient*`、SCIM スコープ)、外部標準が規定するプロトコルエンドポイント (OAuth2 / OIDC、SAML、WS-Federation、SCIM、SSF)、または未認証の公開資産・運用エンドポイント (ヘルスプローブ、メトリクス、ブランド資産) のいずれかに該当する場合だけ、インターフェースを `stable` または `beta` とする。
 
-**Compatibility definition.** Backward-compatible: adding a field, adding an optional parameter, adding a new endpoint. Breaking: removing or renaming a field, changing a field's type, making a field required, changing an error code, changing a default value. Error codes returned via `BackendErrorResponse` are part of the contract.
+**互換性の定義。** 後方互換な変更は、フィールドの追加、任意パラメーターの追加、新しいエンドポイントの追加である。破壊的変更は、フィールドの削除または名前変更、フィールド型の変更、フィールドの必須化、エラーコードの変更、デフォルト値の変更である。`BackendErrorResponse` で返すエラーコードは契約の一部となる。
 
-**Versioning.** The management (`/api/admin/v1/...`) and self-service (`/api/account/v1/...`) APIs are versioned by path. `/v1/` is the only path — there is no unversioned form. A breaking change is introduced as a new `/v2/` prefix, never by mutating an existing path. At most 2 versions are supported concurrently.
+**バージョン管理。** 管理 API (`/api/admin/v1/...`) とセルフサービス API (`/api/account/v1/...`) はパスでバージョン管理する。`/v1/` だけを提供し、バージョンなしの形は設けない。破壊的変更は既存パスを変更せず、新しい `/v2/` 接頭辞で導入する。同時にサポートするバージョンは最大 2 個とする。
 
-**Out of IdMagic's versioning scheme**: OAuth2/OIDC, SAML, WS-Federation, SCIM, and SharedSignals (SSF) protocol endpoints. Their compatibility and versioning is governed by the standards themselves; discovery documents (`/.well-known/...`, `/scim/v2/ServiceProviderConfig`, SAML/WS-Fed metadata) are the source of truth for those, not this scheme.
+**IdMagic のバージョン方式の対象外**: OAuth2 / OIDC、SAML、WS-Federation、SCIM、SharedSignals（SSF）の各プロトコルエンドポイント。互換性とバージョン管理は各標準が規定し、この方式ではなく Discovery Metadata（`/.well-known/...`）、`/scim/v2/ServiceProviderConfig`、SAML / WS-Fed メタデータを正とする。
 
-**Deprecation.** A deprecated interface records its schedule in TypeSpec. Responses carry a `Deprecation` header and, once scheduled, a `Sunset` header through `backend/shared/http/support_http.DeprecationHeadersMiddleware`.
+**非推奨化。** 非推奨のインターフェースは TypeSpec に予定を記録する。レスポンスには `Deprecation` ヘッダーを付け、廃止時期が決まった後は `backend/shared/http/support_http.DeprecationHeadersMiddleware` を通じて `Sunset` ヘッダーも付ける。
 
-**Currently deprecated APIs** (inspect the generated TypeSpec OpenAPI; do not hand-maintain a separate list):
+**現在非推奨の API** (生成された TypeSpec OpenAPI を確認し、別の一覧を手作業で保守しない):
 
 ```bash
 jq '[.paths[][] | select(.deprecated == true) | {operationId, deprecated}]' spec/generated/openapi/idmagic.openapi.json
 ```
 
-**Breaking-change detection.** `just check-api-compat` compares TypeSpec-generated OpenAPI against the frozen release baseline `spec/idmagic.openapi.baseline.json` and fails on breaking differences. Generated artifacts are ignored. **After cutting a release**, refresh the baseline so future changes are compared against what actually shipped:
+**破壊的変更の検出。** `just check-api-compat` は TypeSpec から生成した OpenAPI を、固定済みのリリース基準 `spec/idmagic.openapi.baseline.json` と比較し、破壊的な差分があれば失敗する。生成物は追跡しない。**リリース後**は、以後の変更を実際に配布した内容と比較できるよう基準を更新する:
 
 ```bash
 just spec-render
 cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json
 ```
 
-Skipping this step lets the baseline go stale and the check stops catching real regressions; committing a baseline update without an actual release makes the check stop catching real ones too, so only refresh it as part of cutting a release.
+この手順を省くと基準が古くなり、実際の後退を検出できなくなる。一方、実際のリリースなしに基準を更新してコミットしても、実際の後退を検出できなくなる。基準はリリース作業の一部としてだけ更新する。
 
-## Documentation Guide
+## 文書案内
 
-For deep dives into specific areas, consult the following guides:
+各領域の詳細は次の文書を参照する:
 
-- **Product Specification and Design**: [spec/SPECIFICATION.md](spec/SPECIFICATION.md)
-- **API and Model Specification**: [spec/main.tsp](spec/main.tsp)
-- **Browsable Specification Site**: generated by `just spec-render` at `spec/generated/docs/index.html`;
-  includes separate Method, whole-system, bounded-context, Swagger UI API, and searchable TypeSpec model pages
-- **Infrastructure & K8s Guide**: [infra/README.md](infra/README.md)
-- **Seed Profiles Guide**: [seed/README.md](seed/README.md)
-- **UI Design & Localization**: [frontend/README.md](frontend/README.md)
-- **PostgreSQL Workflow**: [infra/schema/README.md](infra/schema/README.md)
+- **製品仕様と設計**: [spec/SPECIFICATION.md](spec/SPECIFICATION.md)
+- **API とモデルの仕様**: [spec/main.tsp](spec/main.tsp)
+- **閲覧用仕様サイト**: `just spec-render` で `spec/generated/docs/index.html` に生成する。手法、システム全体、Bounded Context、Swagger UI API、検索可能な TypeSpec モデルを別々のページとして含む
+- **インフラストラクチャと Kubernetes**: [infra/README.md](infra/README.md)
+- **seed プロファイル**: [seed/README.md](seed/README.md)
+- **UI 設計とローカライズ**: [frontend/README.md](frontend/README.md)
+- **PostgreSQL 手順**: [infra/schema/README.md](infra/schema/README.md)

@@ -1,6 +1,5 @@
-# UI Features
+# UI の機能
 
-The `features/` directory represents UI context boundaries aligned with the canonical specifications.
-Unless they are cross-cutting common components, views, local components, and local helpers must reside under their corresponding feature directory.
+`features/` ディレクトリは、正式な仕様に沿った UI の機能境界を表す。横断的な共通コンポーネントでない限り、ビュー、機能内のコンポーネント、機能内のヘルパーは、対応する機能のディレクトリに置かなければならない。
 
-Do not use the alias name `slices/`. This avoids confusion with Go's standard `slices` package and makes it easier for AI agents to determine the scope of files they need to read.
+別名として `slices/` を使わない。Go 標準の `slices` パッケージとの混同を避け、AI エージェントが読むべきファイルの範囲を判断しやすくするためである。

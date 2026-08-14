@@ -1,81 +1,79 @@
-# IdMagic デプロイ構成 — GCP 単一クラウド
+# GCP への IdMagic の配備
 
-compute / DB / イベント配信 を **単一 VPC・単一リージョン**に同居させる構成。レイテンシと egress で有利、CUD（確約利用割引）で大きく圧縮でき、運用は単一ベンダで完結する。前提ワークロードは中規模 SaaS・本番 HA・イベント配信(event-relay) 含む。
+コンピューティングリソース、データベース、イベントリレーを **単一 VPC・単一リージョン** に配置する。レイテンシーと egress コストを抑え、CUD（確約利用割引）で費用を圧縮し、運用を単一ベンダー内で完結させる。中規模 SaaS、本番の高可用性、イベントリレーを前提とする。
 
 
 
-## 前提アーキテクチャ
+## アーキテクチャ
 
-- フロント: React+Vite の**純 SPA**（`frontend/` → `dist/`）。SSR 無し。
-- ゲートウェイ: **Caddy**（`frontend/Caddyfile`）が静的配信＋同一オリジンで API/OIDC パスを backend へプロキシ。CSP は SPA HTML のみに付与。
-- backend: 常駐 Go **2サービス** — `idmagic`(API `:8080`) / `idmagic-worker`。CGO 無し distroless（`infra/docker/Dockerfile`）。`PERSISTENCE=postgres` でステートレス・水平スケール可。
-- データ: **PostgreSQL 17**（本体+blob＋セッション・OAuth 一時状態）。揮発性状態も同じ PostgreSQL が持つため、2 つ目のステートフル基盤は無い。
-- 署名鍵: **DB-backed 永続鍵**を推奨（全レプリカ JWKS 一致）。Vault Transit も可。
-- スキーマ: `psqldef` を**デプロイ工程で適用**（起動時適用は禁止、`--enable-drop` 禁止）。
+- フロントエンド: React + Vite の**純粋な SPA**（`frontend/` → `dist/`）。SSR は使わない。
+- ゲートウェイ: **Caddy**（`frontend/Caddyfile`）が静的アセットを配信し、同一オリジンで API / OIDC のパスをバックエンドへプロキシする。CSP は SPA の HTML だけに付与する。
+- バックエンド: 常駐する 2 個の Go プロセス、`idmagic`（API `:8080`）と `idmagic-worker`。CGO を使わない distroless イメージ（`infra/docker/Dockerfile`）で実行し、`PERSISTENCE=postgres` によりステートレスに水平スケーリングできる。
+- データ: **PostgreSQL 17** が業務データ、BLOB、セッション、OAuth の一時状態を保持する。揮発性の状態も同じ PostgreSQL に置くため、2 個目のステートフル基盤はない。
+- 署名鍵: 全レプリカの JWKS を一致させるため、**データベース保存の永続鍵**を推奨する。Vault Transit も利用できる。
+- スキーマ: `psqldef` を**配備工程で適用**する。起動時の適用と `--enable-drop` の使用は禁止する。
 
-## 構成図
+## トポロジー
 
 ```
-ユーザ
+利用者
   ▼
-Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
+Cloud Load Balancing（HTTPS）+ Cloud CDN + Cloud Armor（WAF）
   │
   ├─ 静的 SPA … GCS バケット + Cloud CDN
   │
-  └─ /api・/authorize・/token・/.well-known 等 → Cloud Run (idmagic API, minScale=2, HA)
+  └─ /api・/authorize・/token・/.well-known など → Cloud Run（idmagic API、minScale=2、高可用性）
                                                      │
         ┌─────────────────────────────────────┼─────────────────────────────┐
         ▼                                                                   ▼
   Cloud SQL for PostgreSQL                                            Secret Manager
-   (REGIONAL = HA, 揮発性状態も同居)                                    / Cloud KMS
+   （REGIONAL = 高可用性、揮発性状態も同居）                              / Cloud KMS
 
-背景処理（HTTP を持たない常駐プロセス）:
-  Cloud Run worker pools ─ idmagic-worker（ジョブ+保持スイープ）
+バックグラウンド処理（HTTP を持たない常駐プロセス）：
+  Cloud Run worker pools ─ idmagic-worker（ジョブ実行と保持期間スイープ）
 ```
 
-## サービス対応
+## サービスの対応
 
-| プロセス | 実行形態 | 理由 |
+| プロセス | 実行基盤 | 選定理由 |
 |---|---|---|
-| `idmagic`(API) | **Cloud Run Service** | HTTP(`:8080`) を提供。`minScale=2` で HA・オートスケール |
-| `idmagic-worker` | **Cloud Run worker pools** | HTTP を持たない常駐ワーカ。`$PORT` リッスン不要の worker pools が適合 |
+| `idmagic`（API） | **Cloud Run Service** | HTTP（`:8080`）を提供する。`minScale=2` で高可用性と自動スケーリングを実現する。 |
+| `idmagic-worker` | **Cloud Run worker pools** | HTTP を持たない常駐 `worker` プロセスであり、`$PORT` のリッスンが不要な worker pools が適する。 |
+| `idmagic-seed` | Cloud Run Job（任意・一過性） | 初期 seed |
 
-| `idmagic-seed` | Cloud Run Job（任意・一過性） | 初期シード |
+> Cloud Run の通常の Service は `$PORT` への HTTP レスポンスが必須なので、HTTP を持たない `worker` プロセスとイベントリレーには **worker pools** を使う。
 
-> Cloud Run の通常 Service は `$PORT` への HTTP 応答が必須のため、HTTP を持たない worker/relay は **worker pools** を使う。
+## 配備順序
 
-## デプロイ順（重要）
+1. 既存の `infra/docker/Dockerfile` から、2 個のバイナリを含む distroless イメージをビルドし、Artifact Registry へ登録する。
+2. Cloud SQL（REGIONAL）を用意する。
+3. `DATABASE_URL` などのシークレットを Secret Manager に登録する。
+4. `psqldef --apply` で**スキーマを適用する**。起動時ではなくこの工程で実行し、`--enable-drop` は使わない。
+5. `idmagic`（Service）、`idmagic-worker`（worker pools）の順に配備する。
+6. Cloud Load Balancing、Cloud CDN、Cloud Armor、DNS、TLS を配備する。
 
-1. イメージビルド（既存 `infra/docker/Dockerfile`、2バイナリ入り distroless）→ Artifact Registry。
-2. データ払い出し: Cloud SQL(REGIONAL)
-3. Secret 登録（`DATABASE_URL` 等）
-4. **スキーマ適用**: `psqldef --apply`（**起動時ではなくこの工程で**。`--enable-drop` 禁止）
-5. サービス投入: `idmagic`(Service) → `idmagic-worker`(worker pools)
-6. 前段: Cloud Load Balancing + Cloud CDN + Cloud Armor、DNS/TLS
+ひな型は [`provision.sh`](./provision.sh)（準備と配備）と [`cloudrun-idmagic.yaml`](./cloudrun-idmagic.yaml)（API Service）を参照する。
 
-雛形は [`provision.sh`](./provision.sh)（払い出し＋デプロイ）と [`cloudrun-idmagic.yaml`](./cloudrun-idmagic.yaml)（API Service）を参照。
+## 環境変数
 
-## 主な環境変数
-
-| 変数 | 値 | 備考 |
+| 変数 | 設定値または参照 | 説明 |
 |---|---|---|
 | `PERSISTENCE` | `postgres` | ステートレス・水平スケール前提 |
-| `DATABASE_URL` | Secret | Cloud SQL（Private IP か Unix ソケット） |
+| `DATABASE_URL` | Secret Manager の `idmagic-database-url` シークレットの `latest` 版 | Cloud Run が環境変数へ注入する Cloud SQL 接続文字列（プライベート IP または Unix ソケット） |
+| `KEY_PROVIDER` | `db` | データベース保存の署名鍵。全レプリカで JWKS が一致 |
+| `ISSUER` | `https://id.example.com` | Discovery Metadata の `issuer` と一致必須 |
+| `OBSERVABILITY` / `OTEL_EXPORTER_OTLP_ENDPOINT` | `otel` / コレクター | OTLP 送信、`/metrics` はプル方式 |
 
-| `KEY_PROVIDER` | `db` | DB-backed 署名鍵。全レプリカ JWKS 一致 |
-| `ISSUER` | `https://id.example.com` | discovery の issuer と一致必須 |
-| `OBSERVABILITY` / `OTEL_EXPORTER_OTLP_ENDPOINT` | `otel` / collector | OTLP 送出、`/metrics` は pull |
+## 高可用性とスケーリング
 
-## HA / スケール
+- API: `minScale=2`（最低 2 レプリカ）とし、`maxScale` は負荷に応じて決める。ステートレスなので水平スケーリングできる。
+- `worker` プロセス: リース方式なので複数インスタンスを実行できる。`min-instances>=1` とする。
+- データベース: `REGIONAL`（同期スタンバイ）とする。揮発性の状態も同じデータベースに置くため、2 個目のステートフル基盤はない。
+- 署名鍵はデータベースに保存し、全レプリカで一致させる。Vault を使う場合も共通の鍵を参照させる。
 
-- API: `minScale=2`（最低2レプリカ）、`maxScale` は負荷に応じて。ステートレスなので水平スケール可。
-- worker: リース制のため複数インスタンス可。`min-instances>=1`。
-- DB: `REGIONAL`（同期スタンバイ）。揮発性状態も同一 DB に載るため 2 つ目のステートフル基盤は無い。
-- 署名鍵は DB-backed で全レプリカ一致を担保（Vault を使う場合は別途）。
+## 費用の目安
 
-## コスト目安（中規模 SaaS・HA・リスト価格）
-
-| 項目 | 構成 | 月額(USD) |
+| 項目 | 構成 | 月額（USD） |
 |---|---|---|
 | Cloud Run | API×2 + worker pools | $180–250 |
 | Cloud SQL PostgreSQL HA | 2–4 vCPU/8–16GB + 100GB SSD | $300–450 |
@@ -83,4 +81,4 @@ Cloud Load Balancing (HTTPS) + Cloud CDN + Cloud Armor(WAF)
 | Secret Manager/KMS/ログ/egress | | $30–60 |
 | **合計** | | **~$540–830（中心 ~$685）** |
 
-ステートフル基盤は PostgreSQL 一つで、揮発性状態も同居する。2 つ目のキャッシュ基盤 (月 $150–200 規模) の固定費が発生しない。CUD（1年 20–25% / 3年 40–52%）で **~$520–700** まで低下しうる（compute/DB の compute 分に適用、storage は対象外）。
+ステートフル基盤は PostgreSQL 1 個であり、揮発性の状態も同居する。2 個目のキャッシュ基盤（月 $150–200 規模）の固定費は発生しない。CUD（1 年 20–25% / 3 年 40–52%）により **~$520–700** まで低下しうる。割引はコンピューティングとデータベースの演算リソースに適用され、ストレージは対象外である。

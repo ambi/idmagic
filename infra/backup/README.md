@@ -1,22 +1,16 @@
-# PostgreSQL backup / restore scripts
+# PostgreSQL バックアップ・復元スクリプト
 
-Scripts here implement the pg_dump / logical-restore path of the backup and
-DR strategy. Procedures, DR scenarios, and the verification checklist are in
-[`infra/runbooks/backup-restore-dr.md`](../runbooks/backup-restore-dr.md);
-this README only covers how to run the scripts.
+ここにあるスクリプトは、バックアップと災害復旧戦略のうち、`pg_dump` と論理復元の経路を実装する。手順、災害復旧のシナリオ、検証チェックリストは [`infra/runbooks/backup-restore-dr.md`](../runbooks/backup-restore-dr.md) にあり、この README はスクリプトの実行方法だけを扱う。
 
-## Requirements
+## 必要なもの
 
-- `pg_dump` / `pg_restore` / `psql` (PostgreSQL 17 client tools, matching the
-  server version in `infra/docker/docker-compose.dev.yaml`).
-- `psqldef` (see `infra/schema/README.md` for install instructions).
-- Go toolchain (for `idmagic-batch restore-consistency-check`, invoked by
-  `restore-postgres.sh` via `go run`).
+- `pg_dump` / `pg_restore` / `psql`（`infra/docker/docker-compose.dev.yaml` のサーバーバージョンに合わせた PostgreSQL 17 クライアントツール）。
+- `psqldef`（インストール手順は `infra/schema/README.md` を参照）。
+- Go ツールチェーン（`restore-postgres.sh` が `go run` 経由で呼び出す `idmagic-batch restore-consistency-check` 用）。
 
-## Connection variables
+## 接続変数
 
-All scripts connect via the standard libpq environment variables, the same
-convention `infra/schema/README.md` uses for `psqldef`:
+すべてのスクリプトは標準の libpq 環境変数で接続する。これは `infra/schema/README.md` が `psqldef` に使うのと同じ規約である。
 
 ```bash
 export PGHOST=localhost
@@ -26,27 +20,19 @@ export PGPASSWORD=idmagic
 export PGDATABASE=idmagic
 ```
 
-There is no default target — every script requires these to be set
-explicitly so a backup or restore never silently targets the wrong
-database.
+デフォルトの対象はない。バックアップや復元が誤ったデータベースを暗黙に対象としないよう、すべてのスクリプトがこれらの明示的な設定を要求する。
 
-## Usage
+## 使用方法
 
 ```bash
-# Take a backup (pg_dump custom format + sha256 checksum).
+# バックアップを取得する（pg_dump カスタム形式と SHA-256 チェックサム）。
 just backup-postgres <output-dir>
 
-# Restore a backup into an empty target database. The db name must be
-# typed out explicitly as a non-production guard.
+# 空の対象データベースへバックアップを復元する。本番環境以外であることを保証するため、データベース名を明示的に入力しなければならない。
 just restore-postgres <backup-file> <db-name>
 
-# Run the full local backup -> simulated loss -> restore -> consistency
-# check drill against a disposable docker compose project.
+# 使い捨ての Docker Compose プロジェクトに対して、ローカルバックアップ、損失の模擬、復元、整合性検査からなる訓練全体を実行する。
 just restore-drill
 ```
 
-`restore-postgres.sh` refuses to run against a database that already has
-tenant rows (restore into a freshly created, empty database), applies
-`infra/schema/postgres.sql` via `psqldef` first, restores data, truncates
-the ephemeral UNLOGGED/LOGGED tables, and finishes by running
-`idmagic-batch restore-consistency-check`.
+`restore-postgres.sh` は、テナントの行がすでにあるデータベースに対する実行を拒否する。新しく作った空のデータベースへ復元すること。最初に `psqldef` で `infra/schema/postgres.sql` を適用し、データを復元し、一時的な `UNLOGGED` / `LOGGED` テーブルを空にして、最後に `idmagic-batch restore-consistency-check` を実行する。

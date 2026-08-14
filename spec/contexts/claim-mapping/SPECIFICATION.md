@@ -7,54 +7,27 @@ updated_at: 2026-08-11
 
 ## Overview
 
-identity principal の属性を外部 relying party / service provider / client へ出すための
-release policy と protocol-neutral な claim projection を所有する。属性解決と出力許可を
-共通化し、OIDC JSON claims、SAML AttributeStatement、WS-Fed claim URI への wire 変換は
-各 protocol context が所有する。
+アイデンティティプリンシパルの属性を外部のリライングパーティー、サービスプロバイダー、クライアントへ公開するための属性公開ポリシーと、プロトコルに依存しないクレーム投影を所有する。属性解決と公開の可否判定を共通化し、OIDC の JSON クレーム、SAML の `AttributeStatement`、WS-Fed のクレーム URI へのワイヤー変換は各プロトコルの Context が所有する。
 
-The `ClaimMapping` context owns a single protocol-agnostic capability: turning resolved identity
-attributes into the claims a federation protocol issues to a relying party. It exists as its own
-context because claim issuance is a pure transformation independent of XML signing or transport,
-and no existing context was a good fit — `OAuth2` is scoped to OIDC/OAuth, and folding WS-*/SAML
-relying-party trust and assertion handling in with it would have bloated that context's
-responsibility. Carving this out first let the fail-closed and attribute-minimization guarantees be
-established with unit tests before the (heavier) XML-signature library decision was made.
+独立した Context として存在するのは、クレームの発行が XML の署名や搬送とは独立した純粋な変換であり、既存のどの Context にも収まりが悪かったからである。`OAuth2` は OIDC と OAuth に対象を限定しており、WS-* や SAML のリライングパーティーの信頼とアサーションの扱いをそこへ取り込むと、その Context の責務が肥大する。先に切り出すことで、重い XML 署名ライブラリを選定する前に、フェイルクローズと属性最小化の保証を単体テストで固められた。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| ClaimMappingPolicy | identity principal の属性を外部 application / relying party / service provider / client へ出すための属性解決と出力許可の規則。 | ClaimMappingPolicy, attribute release, claim mapping |
+| ClaimMappingPolicy | アイデンティティプリンシパルの属性を外部アプリケーション、リライングパーティー、サービスプロバイダー、クライアントへ公開するための属性解決と公開許可の規則。 | ClaimMappingPolicy, attribute release, claim mapping |
 
 ## Design
 
 ### Internal Interfaces
 
 #### ResolveEffectiveClaims
-tenant の属性可視性 (visibility != Private) と reserved claim type の固定集合を
-fail-closed floor として強制し、ClaimMappingPolicy と解決済み属性から NameID と IssuedClaim[] を
-組み立てる。WS-Fed / SAML / OIDC の各 issuer が共有する唯一の claim 解決経路。
-User の core field (user_id / email / name / given_name / family_name / preferred_username /
-email_verified / roles) は UserAttributeDef に現れないため常に解決対象にする。user_id は User 集約の
-識別子を指す protocol-neutral な内部属性キーであり、OIDC ID Token/UserInfo が実際に発行する wire
-claim "sub" (RFC 7519 / OIDC Core が定める語彙) とは別物。custom attribute で
-attribute_defs に無い key、または visibility=Private の key を source に持つ rule は floor で拒否する。
+テナントの属性可視性 (`visibility != Private`) と予約済みクレーム型の固定集合をフェイルクローズの下限として強制し、`ClaimMappingPolicy` と解決済み属性から `NameID` と `IssuedClaim[]` を組み立てる。これは WS-Fed、SAML、OIDC の各 issuer が共有する唯一のクレーム解決経路である。`User` の中核フィールド (`user_id`、`email`、`name`、`given_name`、`family_name`、`preferred_username`、`email_verified`、ロール) は `UserAttributeDef` に現れないため、常に解決対象とする。`user_id` は User Aggregate の識別子を指す、プロトコルに依存しない内部属性キーであり、OIDC ID Token や UserInfo が実際に発行するワイヤークレーム `sub` (RFC 7519 と OIDC Core が定める語彙) とは異なる。カスタム属性について、`attribute_defs` にないキー、または `visibility=Private` のキーをソースに持つ規則は下限の検査で拒否する。
 
 ### Declarative claim-issuance engine
 
-`ClaimMappingRule` declares an output claim type (a URI) and its source — a user attribute, a fixed
-value, or NameID — rather than an AD-FS-style claim rule language; `ClaimMappingPolicy` bundles a
-relying party's rule set together with a `NameIdConfiguration`. The engine takes a resolved
-attribute map (already detached from the identity aggregate) and a policy, and returns
-`IssuedClaim[]`. It is fail-closed on both ends: only claims explicitly named by a mapping rule are
-ever emitted, so an unmapped attribute can never leak into a token, and a required rule whose source
-attribute is missing causes issuance to be refused rather than emitting a partial claim set. WS-Fed,
-WS-Trust, and SAML all call this same engine instead of each implementing their own claim assembly,
-which keeps the fail-closed guarantee in one place instead of three.
+`ClaimMappingRule` は AD FS 風のクレーム規則言語ではなく、出力するクレームの型 (URI) とそのソース — ユーザー属性、固定値、`NameID` のいずれか — を宣言する。`ClaimMappingPolicy` はリライングパーティーの規則集合を `NameIdConfiguration` と束ねる。この処理系は、解決済み属性の対応表 (すでにアイデンティティの Aggregate から切り離されている) とポリシーを受け取り、`IssuedClaim[]` を返す。入力側と出力側の両方でフェイルクローズとする。対応付け規則が明示したクレームだけを発行するため、対応付けのない属性がトークンへ漏れることはない。必須規則のソース属性が欠けている場合は、部分的なクレーム集合を返さず、発行そのものを拒否する。WS-Fed、WS-Trust、SAML はそれぞれでクレームを組み立てずに同じ処理系を呼ぶため、フェイルクローズの保証は 3 か所ではなく 1 か所に留まる。
 
 ### Design Decisions
 
-- `ClaimMapping` is its own bounded context — separate from `OAuth2` and the XML federation
-  protocols — because claim issuance is a pure, protocol-agnostic transformation independent of XML
-  signing or transport, and folding WS-*/SAML relying-party trust into `OAuth2` would have bloated
-  that context's responsibility.
+- `ClaimMapping` は `OAuth2` および XML フェデレーションプロトコルから分けた独立した Bounded Context である。クレームの発行は XML の署名や搬送とは独立した、プロトコルに依存しない純粋な変換であり、WS-* や SAML のリライングパーティーの信頼を `OAuth2` へ取り込むと、その Context の責務が肥大するからである。

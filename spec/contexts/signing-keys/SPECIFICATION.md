@@ -7,28 +7,23 @@ updated_at: 2026-08-11
 
 ## Overview
 
-tenant-scoped signing key material のライフサイクル、ローテーション、公開重複期間、監査を
-protocol 横断で所有する。OAuth2/OIDC は JWK/JWKS と JWT signer、SAML / WS-* は X.509
-証明書と XML signer adapter を使うが、鍵用途・ローテーション・tenant isolation の規範は
-ここに集約する。
+テナント単位の署名鍵素材について、ライフサイクル、ローテーション、公開の重複期間、監査をプロトコル横断で所有する。OAuth2 / OIDC は JWK / JWKS と JWT 署名器、SAML / WS-* は X.509 証明書と XML 署名アダプターを使用するが、鍵の用途、ローテーション、テナント間の分離に関する規則はここに集約する。
 
-The `SigningKeys` context owns tenant-scoped asymmetric key metadata, provider selection, rotation,
-verification overlap, and archival. It exposes key material only through published signing and public-key
-ports; protocol serialization remains in OAuth2, SAML, and WS-Federation adapters.
+鍵プロバイダーの選択と保管もここに含まれる。鍵素材は公開された署名ポートと公開鍵ポートを通じてのみ提供し、各プロトコル形式への直列化は OAuth2、SAML、WS-Federation のアダプターが担う。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| SigningKeys | tenant-scoped signing key material のライフサイクルと公開を扱う境界。OAuth2/OIDC は JWK/JWKS、SAML/WS-* は X.509 証明書を使う。 | KeyMaterial, signing keys |
+| SigningKeys | テナント単位の署名鍵素材について、ライフサイクルと公開を扱う境界。OAuth2 / OIDC は JWK / JWKS、SAML / WS-* は X.509 証明書を使用する。 | KeyMaterial, signing keys |
 | Retire | SigningKey を Verifying から Retired に移す。 | retire |
 | Archive | SigningKey を Retired から Archived に移す。 | archive |
 | Verifying | 署名はしないが、過去発行トークンの検証のため JWKS に残っている状態。 | verifying |
 | Retired | JWKS から除去された状態。新規検証には使われない。 | retired |
 | Archived | 監査用に長期保管されている終端状態。鍵マテリアルは封印。 | archived |
-| KeyProvider | 鍵マテリアルの保管種別と署名の実行主体。Local / Database は private key をプロセス内に持ちアプリが署名する dev/test 用、VaultTransit は private key を Vault 内に保持し署名を Vault API に委ねる本番用。Database は特定の製品名を表さない。 | key provider, 鍵プロバイダ |
+| KeyProvider | 鍵素材の保管方式と署名の実行主体。Local / Database は秘密鍵をプロセス内に読み込み、アプリケーションが署名する開発・テスト用の方式である。VaultTransit は秘密鍵を Vault 内に保持し、署名を Vault API に委ねる本番用の方式である。Database は特定の製品名を表さない。 | key provider, 鍵プロバイダー |
 | VaultTransit | HashiCorp Vault の Transit secrets engine を使う KeyProvider。秘密鍵マテリアルは Vault 外に出ず、署名要求ごとに Vault へ委譲する。 | Vault Transit |
-| FailClosed | KeyProvider が不達のとき、新規 token 発行を停止する挙動。既発行 token 検証用の JWKS は取得可能な範囲で返す。強制点は OAuth2.Token の requires が持つ。 | fail-closed, フェイルクローズ |
+| FailClosed | KeyProvider が不達のとき、新規トークン発行を停止する挙動。既発行トークン検証用の JWKS は取得可能な範囲で返す。強制点は OAuth2.Token の requires が持つ。 | fail-closed, フェイルクローズ |
 
 ## State Transitions
 
@@ -36,8 +31,7 @@ ports; protocol serialization remains in OAuth2, SAML, and WS-Federation adapter
 
 署名鍵のライフサイクル (SigningKeyMinJwksOverlap)。Active から Rotate で Verifying に降り、Retire で JWKS から外し、Archive で監査保管に入る。
 
-Initial: `Active`
-Terminal: `Archived`
+Initial: `Active` Terminal: `Archived`
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
@@ -47,132 +41,103 @@ Terminal: `Archived`
 
 ## Authorization Boundary
 
-Authorization semantics are enforced by the application and its tests. This specification records API authentication, but intentionally defines no policy DSL. A separate work item will evaluate Cedar before any policy language is adopted.
+認可の意味はアプリケーションとそのテストで保証する。本仕様では API の認証方式を定めるが、ポリシー用の DSL はあえて定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
 
 ## Design
 
 ### Usage and scope isolation
 
-Every key lookup is scoped by the request tenant, `KeyUsage`, and an opaque scope ID. Callers that do
-not select a usage or scope use `Signing` and the default scope, preserving a small API for OAuth2/OIDC.
-XML protocol adapters explicitly select `XmlFederationSigning`; SAML additionally selects its identity
-provider profile ID as the scope. A JWT key can therefore never be selected for an XML assertion, and
-one SAML profile cannot select another profile's credential.
+鍵を取得するときは必ず、リクエスト元のテナント、`KeyUsage`、外部に意味を公開しないスコープ ID を指定する。用途とスコープを明示しない呼び出し元には `Signing` とデフォルトスコープを適用し、OAuth2 / OIDC 向け API を簡潔に保つ。XML プロトコルのアダプターは `XmlFederationSigning` を明示的に選び、SAML ではさらに IdP プロファイル ID をスコープとして指定する。これにより、JWT 用の鍵が XML Assertion に使われたり、ある SAML プロファイルが別のプロファイルの資格情報を使ったりすることを防ぐ。
 
-The local, PostgreSQL, and Vault adapters all maintain one active key per tenant, usage, and scope.
-PostgreSQL enforces the same invariant with a partial unique index, and Vault includes the scope in its
-key-set identity. This compound key exists because rotating one SAML profile must not rotate another
-profile or every JWT verification key.
+ローカル、PostgreSQL、Vault の各アダプターは、テナント、用途、スコープの組み合わせごとに有効な鍵を 1 つだけ保持する。PostgreSQL では部分一意インデックスによって同じ不変条件を保証し、Vault では鍵集合の識別情報にスコープを含める。これは、1 つの SAML プロファイルの鍵をローテーションしたときに、別のプロファイルやすべての JWT 検証鍵まで変更されることを防ぐためである。
 
 ### XML federation credentials
 
-An XML federation key carries a self-signed X.509 certificate containing its public key. The certificate
-is public metadata; the private key follows the configured provider and never appears in an admin
-response. Active keys sign new messages, while unexpired verifying certificates remain available to
-SAML and WS-Federation metadata during the rotation overlap.
+XML フェデレーション用の鍵には、その公開鍵を含む自己署名 X.509 証明書を対応付ける。証明書は公開メタデータとして扱うが、秘密鍵は設定されたプロバイダーで保管し、管理 API のレスポンスには決して含めない。新しいメッセージには現在有効な鍵で署名する一方、有効期限内の検証用証明書は、ローテーションの重複期間中も SAML と WS-Federation のメタデータから参照できるようにする。
 
-Local and database providers hold the private RSA key in process when signing. Vault Transit retains the
-private key and implements `crypto.Signer`; it selects PSS for JWT requests and PKCS#1 v1.5 for XML
-Signature and X.509 operations because those wire formats advertise RSA-SHA256 rather than RSA-PSS.
+局所とデータベースの提供元は、署名時に RSA の秘密鍵をプロセス内に保持する。Vault Transit は秘密鍵を手放さず `crypto.Signer` を実装する。JWT のリクエストには PSS を、XML Signature と X.509 の操作には PKCS#1 v1.5 を選ぶ。これらの通信の形式が RSA-PSS ではなく RSA-SHA256 を広告するからである。
 
 ### Lifecycle
 
-Keys are created lazily for the resolved tenant, usage, and scope. No default tenant receives an eager
-bootstrap key. This keeps tenant creation uniform and avoids special state that cannot be explained by
-the request-scoped lifecycle.
+鍵は、使用するテナント、用途、スコープが確定した時点で初めて作成する。デフォルトテナントにだけ事前に初期鍵を作ることはしない。これにより、すべてのテナントを同じ手順で作成でき、リクエスト単位のライフサイクルでは説明できない特別な状態を避けられる。
 
-A tenant's active signing key rotates at least every 90 days, driven by a scheduled operational job
-independent of the manual, immediate `RotateTenantSigningKey` path. Rotation atomically demotes the
-old active key to verifying and gives it an overlap expiry of at least 7 days, so JWKS consumers and
-relying parties can still validate messages issued just before rotation. Key material reaching the
-terminal `Archived` state is retained for 7 years to support verification of audit tokens signed by
-already-retired keys; there is no separate purge/erase interface yet.
+テナントの有効な署名鍵は少なくとも 90 日ごとにローテーションする。これは、手動で即時実行する `RotateTenantSigningKey` とは別に、定期実行する運用ジョブが行う。ローテーションでは、古い有効鍵を同じ処理内で検証用に降格させ、少なくとも 7 日間の重複期間を設ける。これにより、JWKS の利用者とリライングパーティーは、ローテーション直前に発行されたメッセージも検証できる。終端状態の `Archived` に達した鍵素材は、退役した鍵で署名された監査トークンを検証できるように 7 年間保持する。個別に完全削除するインターフェースは現時点では提供しない。
 
-Public key and certificate listing includes active and unexpired verifying records; archive removes
-expired records from publication.
+公開鍵と証明書の一覧には、有効な記録と期限切れでない検証用の記録を含める。保管は期限切れの記録を公開から外す。
 
-Fail-closed behavior when a key provider is unreachable is not enforced inside `SigningKeys` — this
-context has no signing or issuance interface of its own. It only surfaces the observable
-`provider_healthy` signal (`TenantSigningKey.provider_healthy`, `ListTenantKeyHealth`); the actual
-fail-closed enforcement point is OAuth2's `Token` issuance interface, which is where an unreachable
-provider blocks new signatures.
+鍵プロバイダーに到達できない場合のフェイルクローズ動作は、`SigningKeys` 自身では強制しない。この Context は署名や発行を行うインターフェースを持たないためである。ここでは、`TenantSigningKey.provider_healthy` と `ListTenantKeyHealth` を通じて、観測可能な `provider_healthy` シグナルだけを提供する。実際にフェイルクローズを強制するのは OAuth2 の `Token` 発行インターフェースであり、プロバイダーに到達できない場合はそこで新しい署名を停止する。
 
 ### Design Decisions
 
-- SAML IdP profiles are modeled as shareable (a profile can back more than one SP trust), with
-  dedicated-use profiles expressed as the one-consumer case of the same model rather than a separate
-  type.
-- Signing keys are scoped per tenant behind a pluggable `KeyProvider`, rather than a shared
-  system-wide key or a provider baked into each protocol adapter.
-- Key rotation cadence (90-day minimum), overlap expiry (7-day minimum), and archive retention
-  (7 years) are fixed, normative policy values that live in this design record rather than being
-  left as undocumented configuration.
+- SAML IdP プロファイルは共有可能なモデルとし、1 つのプロファイルで複数の SP との信頼関係を扱えるようにする。専用プロファイルは別の型にはせず、同じモデルにサービスプロバイダーを 1 つだけ関連付けて表す。
+- 署名鍵は、差し替え可能な `KeyProvider` の背後でテナントごとに分離する。システム全体で鍵を共有したり、各プロトコルのアダプターにプロバイダーを埋め込んだりしない。
+- 鍵のローテーション間隔（最短 90 日）、公開の重複期間（最短 7 日）、保管期間（7 年）は固定の規範的なポリシー値であり、文書化されない設定にはせず本設計に記録する。
 
 ## Scenarios
 
-### REQ-SIGNINGKEYS-001: 署名鍵を回転しても旧kidはJWKSに残る
+### REQ-SIGNINGKEYS-001: 署名鍵をローテーションしても以前の kid は JWKS に残る
 - ACTOR TenantAdministrator
-- GIVEN admin ロールを持つ "operator" が認証済みである
-- GIVEN 現在の署名鍵は kid "kid-old" を持つ
-- WHEN "operator" が管理画面で現在の署名鍵を回転する
-- THEN 回転により kid "kid-new" が新しい active 鍵になる
-- WHEN client が JWKS を取得する
-- THEN 応答に kid "kid-old" と "kid-new" の両方が含まれる
+- GIVEN `admin` ロールを持つ "operator" が認証済みである
+- GIVEN 現在の署名鍵は `kid` "kid-old" を持つ
+- WHEN "operator" が管理画面で現在の署名鍵をローテーションする
+- THEN ローテーションによって `kid` "kid-new" が新しい有効鍵になる
+- WHEN クライアントが JWKS を取得する
+- THEN レスポンスに `kid` "kid-old" と "kid-new" の両方が含まれる
 
-### REQ-SIGNINGKEYS-002: grace期間終了後の署名鍵はJWKSから除去されarchiveされる
+### REQ-SIGNINGKEYS-002: 猶予期間終了後の署名鍵は JWKS から除去してアーカイブする
 - ACTOR SystemAdministrator
-- GIVEN kid "kid-old" の Verifying 鍵の expires_at が経過している
-- WHEN scheduler が archive 処理を実行する
-- WHEN client が JWKS を取得する
-- THEN 応答に kid "kid-old" は含まれない
-- THEN SigningKeyArchived イベントに kid、retiredAt、expiresAt、disposedAt が記録される
+- GIVEN `kid` "kid-old" の `Verifying` 鍵は `expires_at` を経過している
+- WHEN スケジューラーがアーカイブ処理を実行する
+- WHEN クライアントが JWKS を取得する
+- THEN レスポンスに `kid` "kid-old" は含まれない
+- THEN SigningKeyArchived イベントに `kid`、`retiredAt`、`expiresAt`、`disposedAt` が記録される
 
-### REQ-SIGNINGKEYS-003: lifecycle設定が不正なbatchは起動しない
+### REQ-SIGNINGKEYS-003: ライフサイクル設定が不正なバッチは起動しない
 - ACTOR SystemAdministrator
-- GIVEN grace_days が cadence_days 以上である
-- WHEN system_admin が idmagic-batch signing-key-lifecycle を起動する
+- GIVEN `grace_days` が `cadence_days` 以上である
+- WHEN `system_admin` が `idmagic-batch signing-key-lifecycle` を起動する
 - THEN 設定エラーで終了し、鍵を回転しない
 
-### REQ-SIGNINGKEYS-004: テナントごとのJWKSは互いに分離される
+### REQ-SIGNINGKEYS-004: テナントごとの JWKS は互いに分離される
 - ACTOR TenantAdministrator
 - GIVEN テナント "tenant-a" とテナント "tenant-b" がそれぞれ署名鍵を持つ
 - WHEN テナント "tenant-a" の管理者が署名鍵を回転する
-- WHEN client がテナント "tenant-a" の JWKS を取得する
-- THEN 応答にはテナント "tenant-a" の kid だけが含まれ、テナント "tenant-b" の kid は含まれない
+- WHEN クライアントがテナント "tenant-a" の JWKS を取得する
+- THEN レスポンスにはテナント "tenant-a" の `kid` だけが含まれ、テナント "tenant-b" の `kid` は含まれない
 
-### REQ-SIGNINGKEYS-005: XML federation署名資格情報はテナントと用途で分離される
+### REQ-SIGNINGKEYS-005: XML フェデレーション署名資格情報はテナントと用途で分離される
 - ACTOR TenantAdministrator
 - GIVEN テナント "tenant-a" とテナント "tenant-b" が存在する
 - GIVEN 両テナントが JWT Signing 鍵と XmlFederationSigning 鍵を持つ
-- WHEN テナント "tenant-a" が SAML assertion を発行する
-- THEN assertion は tenant-a の active XmlFederationSigning 鍵で署名される
-- THEN tenant-b の証明書でも tenant-a の JWT Signing 公開鍵でも署名を検証できない
+- WHEN テナント "tenant-a" が SAML Assertion を発行する
+- THEN Assertion はテナント "tenant-a" の有効な `XmlFederationSigning` 鍵で署名される
+- THEN テナント "tenant-b" の証明書でも、テナント "tenant-a" の JWT Signing 公開鍵でも署名を検証できない
 
-### REQ-SIGNINGKEYS-006: XML federation鍵の回転中も既存trustを検証できる
+### REQ-SIGNINGKEYS-006: XML フェデレーション鍵のローテーション中も既存の信頼関係を検証できる
 - ACTOR TenantAdministrator
-- GIVEN XmlFederationSigning の現在鍵 K1 が metadata に掲載されている
+- GIVEN `XmlFederationSigning` の現在の鍵 K1 がメタデータに掲載されている
 - WHEN 管理者が XmlFederationSigning 鍵を K2 へ回転する
-- THEN 新規 XML message は K2 で署名される
-- THEN grace期間中の SAML / WS-Fed metadata には K1 と K2 の証明書が掲載される
-- THEN grace期間終了後は K1 が metadata から除去される
+- THEN 新しい XML メッセージは K2 で署名される
+- THEN 猶予期間中の SAML / WS-Fed メタデータには K1 と K2 の証明書が掲載される
+- THEN 猶予期間終了後は K1 がメタデータから除去される
 
-### REQ-SIGNINGKEYS-007: XML federation署名資格情報は再起動後も同一である
+### REQ-SIGNINGKEYS-007: XML フェデレーション署名資格情報は再起動後も同一である
 - ACTOR SystemAdministrator
-- GIVEN PostgreSQL または Vault provider で tenant の XmlFederationSigning 鍵が作成済みである
-- WHEN API process を再起動する
-- WHEN client が同じ tenant の metadata を取得する
-- THEN active certificate の fingerprint は再起動前と一致する
+- GIVEN PostgreSQL または Vault プロバイダーでテナントの `XmlFederationSigning` 鍵が作成済みである
+- WHEN API プロセスを再起動する
+- WHEN クライアントが同じテナントのメタデータを取得する
+- THEN 有効な証明書のフィンガープリントは再起動前と一致する
 
-### REQ-SIGNINGKEYS-008: KeyProvider障害時は健全性が観測できJWKSは取得可能な範囲で返る
+### REQ-SIGNINGKEYS-008: KeyProvider の障害時は健全性を観測でき、JWKS は取得可能な範囲で返る
 - ACTOR SystemAdministrator
 - GIVEN テナント "tenant-a" の KeyProvider が到達不能である
-- WHEN system_admin が署名鍵ヘルス一覧を取得する
-- THEN テナント "tenant-a" の provider_healthy は false として返る
+- WHEN `system_admin` が署名鍵の健全性一覧を取得する
+- THEN テナント "tenant-a" の `provider_healthy` は `false` として返る
 - THEN テナント "tenant-a" の JWKS は取得可能な範囲でキャッシュされた鍵を返す
 
 ### REQ-SIGNINGKEYS-009: 通常のテナント管理者はシステムコンソールの署名鍵ヘルスにアクセスできない
 - ACTOR TenantAdministrator
-- GIVEN "operator" は admin ロールのみを持ち system_admin ロールを持たない
+- GIVEN "operator" は `admin` ロールだけを持ち、`system_admin` ロールを持たない
 - WHEN "operator" が署名鍵ヘルス一覧を呼び出す
 - THEN AccessDeniedError で拒否される
 

@@ -1,37 +1,22 @@
-# UI E2E tests
+# UI の E2E テスト
 
-These tests run with Bun's built-in test runner and `Bun.WebView`. They do not
-use Playwright, so local and CI runs do not need to download browser binaries.
+これらのテストは Bun 組み込みのテストランナーと `Bun.WebView` で動く。Playwright は使わないため、ローカル環境と CI でブラウザーのバイナリをダウンロードする必要はない。
 
-## Shape
+## 構成
 
-- `fixtures.ts` owns the real Go server, Vite server, callback listener, page
-  marker polling, and shared login helpers.
-- Specs should prefer user-observable route and DOM state over sleeps.
-- Page readiness is detected through `<meta name="idmagic:page">`, which is set by
-  route components after their loaders have completed.
-- Tests cover browser integration only. Handler and usecase edge cases stay in
-  Go tests unless a browser-specific regression is involved.
+- `fixtures.ts` は実際の Go サーバーと Vite サーバー、コールバックリスナー、ページマーカーのポーリング、共有のログインヘルパーを所有する。
+- テスト仕様では待ち時間ではなく、利用者が観測できるルートと DOM の状態を優先する。
+- ページの準備完了は、ルートコンポーネントがローダーの完了後に設定する `<meta name="idmagic:page">` で検出する。
+- テストが扱うのはブラウザーとの統合だけである。ブラウザー固有の回帰でない限り、ハンドラーとユースケースの境界事例は Go のテストに置く。
 
-## Current coverage
+## 現在のテスト範囲
 
-- `authorize-golden-path.spec.ts` covers the OIDC browser authorization golden
-  path and the admin shell client-side navigation invariant.
-- `ui-scenario-smoke.spec.ts` covers the first wi-75 slice: login assistance
-  pages, account portal route reachability, and admin console route reachability.
-- `ui-scenario-actions.spec.ts` covers the second wi-75 slice: account profile
-  update, account data export trigger, connected application consent revocation,
-  TOTP enrollment/removal with step-up, account session revocation, email change
-  confirmation through a local SMTP sink, password reset through the same local
-  SMTP sink, admin audit filtering and export URL generation, admin tenant user
-  attribute schema add/delete, admin application creation/protocol binding/user
-  assignment/deletion, admin agent registration and credential binding, admin
-  general settings update, and signing key rotation action visibility for tenant
-  admins.
+- `authorize-golden-path.spec.ts` は OIDC のブラウザー認可の主要経路と、管理画面シェルのクライアント側ナビゲーションの不変条件を扱う。
+- `ui-scenario-smoke.spec.ts` は wi-75 の最初の実装範囲、すなわちログイン支援ページ、アカウントポータルのルート、管理コンソールのルートへ到達できることを扱う。
+- `ui-scenario-actions.spec.ts` は wi-75 の 2 番目の実装範囲、すなわちアカウントプロファイルの更新、アカウントデータのエクスポート開始、接続済みアプリケーションに対する同意の取り消し、ステップアップ認証を伴う TOTP の登録と削除、アカウントセッションの失効、ローカルの SMTP 受信先を介したメールアドレス変更の確認、同じ受信先を介したパスワードリセット、管理者による監査イベントの絞り込みとエクスポート URL の生成、ユーザー属性スキーマの追加と削除、アプリケーションの作成・プロトコルのバインディング・ユーザーの割り当て・削除、エージェントの登録と資格情報のバインディング、全般設定の更新、署名鍵ローテーション操作の表示を扱う。
 
-## Expansion rules
+## 拡張時の規則
 
-- Add destructive CRUD E2E only when the browser interaction itself is the risk.
-- Reuse `fixtures.ts` for login and route polling instead of open-coded waits.
-- Keep TOTP, email confirmation, and reset-link extraction helpers centralized in
-  `fixtures.ts` when those scenarios are added.
+- 破壊的な CRUD 操作の E2E テストは、ブラウザー操作自体にリスクがある場合にだけ追加する。
+- ログインとルートのポーリングには、その場で待機処理を書かず `fixtures.ts` を再利用する。
+- TOTP、メールアドレスの確認、リセットリンクの抽出を扱うシナリオを追加するときも、それらのヘルパーを `fixtures.ts` に集約する。

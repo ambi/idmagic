@@ -1,23 +1,21 @@
-# Environment Seed Profiles
+# 環境別の seed プロファイル
 
-Seeds are not executed by default during server startup. Plan and apply them explicitly using:
+seed はサーバーの起動時にはデフォルトで実行されない。次の形式で明示的にプレビューし、適用する。
 `just seed <environment> <profile> <mode> [manifest]`
 
-Only `just dev` and `just dev-memory` explicitly apply the `development` profile in the same process for local convenience.
+ローカルでの利便性のため、同じプロセス内で `development` プロファイルを明示的に適用するのは `just dev` と `just dev-memory` だけである。
 
-The desired state for a profile is located in `seed/manifests/*.yaml`. You can select a different root manifest via the fourth CLI argument or the `SEED_MANIFEST` environment variable. Manifests are strictly decoded and only local relative includes are allowed. Unknown keys, duplicate logical keys, circular references, paths outside the root, and YAML anchors/aliases/merges are rejected before any writes occur.
+プロファイルの望ましい状態は `seed/manifests/*.yaml` にある。4 番目の CLI 引数または環境変数 `SEED_MANIFEST` で別のルートマニフェストを選べる。マニフェストは厳密に解釈し、ローカルの相対パスによるインクルードだけを許可する。未知のキー、重複する論理キー、循環参照、ルート外のパス、YAML のアンカー・エイリアス・マージは、書き込みが起こる前に拒否する。
 
 | Profile | Allowed environments | Contents |
 | --- | --- | --- |
-| `bootstrap` | development / test / staging / production | Minimal configuration for first-party clients. `SEED_FIRST_PARTY_REDIRECT_URIS` is required in production. |
-| `development` | development / test / staging | Local demo user, group, protocol samples, and applications. |
-| `test` | test | Deterministic fixtures identical to `development`. |
-| `performance` | development / test / staging | Deterministic synthetic users. Typically up to 10,000 records; exceeding this requires the `--allow-large` flag. |
+| `bootstrap` | development / test / staging / production | ファーストパーティークライアントのための最小限の設定。本番では `SEED_FIRST_PARTY_REDIRECT_URIS` が必須である。 |
+| `development` | development / test / staging | ローカルのデモ用ユーザー、グループ、プロトコル例、アプリケーション。 |
+| `test` | test | `development` と同一の決定的なフィクスチャー。 |
+| `performance` | development / test / staging | 決定的に生成する合成ユーザー。通常は最大 10,000 件で、超える場合は `--allow-large` フラグが必要である。 |
 
-Review changes using `just seed development development dry_run`, then change the mode to `apply` to execute them. Seed output only includes logical keys and counts, omitting full passwords, client secrets, TOTP secrets, hashes, and PII.
+`just seed development development dry_run` で変更をプレビューし、実行するときはモードを `apply` に変える。seed の出力には論理キーと件数だけを含め、パスワード、クライアントシークレット、TOTP seed、ハッシュ、個人識別情報の完全な値は含めない。
 
-Secret values must not be placed directly in YAML. Instead, they should be referenced using a `provider` (`env` or `file`), a `locator`, and a `version`. Staging and production environments only permit the `file` provider, and file locators are strictly limited to regular files under `SEED_SECRET_ROOT`. The `dry_run` mode also validates whether references can be resolved.
+シークレットの値を YAML に直接置いてはならない。代わりに `provider`（`env` または `file`）、`locator`、`version` を使って参照する。ステージング環境と本番環境で許可するのは `file` プロバイダーだけで、ファイルの所在は `SEED_SECRET_ROOT` 配下の通常ファイルに厳しく制限する。`dry_run` モードでも参照を解決できるか検証する。
 
-Because the old `SKIP_DEMO_SEED` flag has been removed, there is no need to configure startup settings to disable demo seeding. If a demo seed already exists in an environment, applying the same `development` profile will perform a semantic comparison, retaining manual changes as conflicts.
-
-Performance profiles should not be included in normal verification flows. Use a small record count via `just seed development performance apply` for setup, and run `just seed-throughput development 10000 250` only during measurements. For counts exceeding 10,000, specify the `--allow-large` CLI flag; values over 100,000 are rejected.
+性能プロファイルを通常の検証フローに含めない。準備には `just seed development performance apply` で少ない件数を使い、計測時だけ `just seed-throughput development 10000 250` を実行する。10,000 件を超える場合は CLI フラグ `--allow-large` を指定し、100,000 を超える値は拒否する。

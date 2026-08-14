@@ -1,172 +1,103 @@
-# Backup / Restore / Disaster Recovery Runbook
+# バックアップ、復元、災害復旧のランブック
 
 ## 概要
 
-IdMagic は認証の単一障害点であり、この runbook はバックアップ対象の分類、
-バックアップ／リストア手順、リストア後の検証、障害シナリオ別の対応を定める
-(wi-101)。バックアップ対象は次の 2 系統のみである
-(旧 Valkey は 撤去済み、旧 `idmagic-relay`/Kafka は
-撤去済み):
+IdMagic は認証基盤の単一障害点になりうるため、この手順書ではバックアップ対象の分類、バックアップと復元の手順、復元後の検証、障害シナリオごとの対応を定める。バックアップ対象は次の 2 系統である。
 
-1. **PostgreSQL**: durable テーブルと ephemeral テーブル (認可中間状態・
-   コード・PAR・device code・リプレイ・WebAuthn チャレンジ・denylist・
-   login throttle・SAML AuthnRequest リプレイ) を両方含む単一のデータベース。
-2. **署名鍵素材**: `KeyProvider` が `Local`/`Postgres` なら
-   PostgreSQL のバックアップに含まれる。`VaultTransit` なら private key は
-   Vault 外に出ないため、Vault 側のスナップショットが正本であり
-   PostgreSQL 側は public key のミラーに過ぎない。
+1. **PostgreSQL**: 永続テーブルと一時テーブル（認可の中間状態、コード、PAR、デバイスコード、リプレイ記録、WebAuthn チャレンジ、拒否リスト、ログインスロットル、SAML AuthnRequest のリプレイ記録）を含む単一のデータベース。
+2. **署名鍵素材**: `KeyProvider` が `Local` / `Postgres` なら PostgreSQL のバックアップに含まれる。`VaultTransit` では秘密鍵が Vault 外に出ないため、Vault 側のスナップショットが正本であり、PostgreSQL 側は公開鍵の写しにすぎない。
 
 ## バックアップ手順
 
-### PostgreSQL: 論理バックアップ (pg_dump, portable export / 小規模 drill 用途)
+### PostgreSQL の論理バックアップ
 
 ```sh
 just backup-postgres <output-dir> [database-url]
 ```
 
-`infra/backup/backup-postgres.sh` が `pg_dump -Fc` (custom format) で
-timestamp 付きの dump を取得し、sha256 チェックサムを併記出力する。
-接続先はデフォルトを持たず、呼び出し側が明示する。
+`infra/backup/backup-postgres.sh` が `pg_dump -Fc`（カスタム形式）でタイムスタンプ付きのダンプを取得し、SHA-256 チェックサムを併記して出力する。接続先はデフォルト値を持たず、呼び出し側が明示する。
 
-### PostgreSQL: 物理バックアップ (PITR, 本番の正本)
+### PostgreSQL の物理バックアップ
 
-本番規模の RPO を満たすには base backup + 継続的な WAL archive
-(`pg_basebackup` + `archive_command` によるアーカイブ、または管理サービスの
-継続アーカイブ機能) を正本とする。ローカル docker compose の `postgres`
-サービスは WAL archiving を有効化していない単一ノード構成のため、この
-runbook のローカルドリルは pg_dump による論理バックアップ経路を検証する。
-本番導入時は WAL archive の宛先 (オブジェクトストレージ等) と retention を
-別途決定し、この節を具体化する。
+本番規模の RPO を満たすには、ベースバックアップと継続的な WAL アーカイブ（`pg_basebackup` と `archive_command` によるアーカイブ、またはマネージドサービスの継続アーカイブ機能）を正本とする。ローカルの Docker Compose にある `postgres` サービスは WAL アーカイブを有効にしていない単一ノード構成なので、この手順書のローカル訓練では `pg_dump` による論理バックアップの経路を検証する。本番へ導入するときは WAL アーカイブの保存先（オブジェクトストレージなど）と保持期間を別途決定し、この節を具体化する。
 
-### 署名鍵素材
+### 署名鍵の素材
 
-- `Local`/`Postgres` provider: private key は `signing_keys.private_jwk` に
-  平文で入っており、PostgreSQL のバックアップにそのまま含まれる。**平文鍵を
-  含むバックアップの保管先自体を暗号化する** (保存先ボリューム/バケットの
-  暗号化、または dump をさらに `age`/`gpg` で包んでから保管する)。
-- `VaultTransit` provider: private key は Vault 内に閉じる。Vault/OpenBao
-  自身のスナップショット機構 (`vault operator raft snapshot save` 相当) で
-  別途バックアップする。PostgreSQL 側の `signing_keys.private_jwk` はこの
-  provider では空/プレースホルダであり、鍵の復旧に使えない。
+- `Local` / `Postgres` プロバイダー: 秘密鍵は `signing_keys.private_jwk` に平文で入り、PostgreSQL のバックアップにそのまま含まれる。**平文の鍵を含むバックアップの保存先自体を暗号化する**。保存先のボリュームやバケットを暗号化するか、ダンプをさらに `age` / `gpg` で暗号化してから保存する。
+- `VaultTransit` プロバイダー: 秘密鍵は Vault 内に閉じる。Vault / OpenBao 自身のスナップショット機構（`vault operator raft snapshot save` 相当）で別途バックアップする。PostgreSQL 側の `signing_keys.private_jwk` はこのプロバイダーでは空またはプレースホルダーであり、鍵の復旧には使えない。
 
-## リストア手順
+## 復元手順
 
 ```sh
 just restore-postgres <backup-file> [database-url]
 ```
 
-`infra/backup/restore-postgres.sh` は次の順で実行する
-(`infra/schema/check-convergence.sh` と同じ「使い捨て compose project +
-trap cleanup」パターンを踏襲):
+`infra/backup/restore-postgres.sh` は次の順で実行する（`infra/schema/check-convergence.sh` と同じ、使い捨ての Compose プロジェクトを終了時に片付ける方式を使う）。
 
-1. **non-production guard**: 明示フラグ (`--yes-restore-into-this-database`)
-   と compose project 名 (`idmagic-restore-drill*` 等) の両方を要求し、
-   本番接続文字列らしき対象への誤実行を防ぐ。
-2. `infra/schema/postgres.sql` を空データベースへ先に apply する
-   (schema と data restore を競合させない)。
-3. `pg_restore --data-only` で data のみを復元し (schema は前段の psqldef 適用で既に存在するため二重に作らない)、dump のチェックサムを事前検証する。
-4. ephemeral テーブル (UNLOGGED/LOGGED いずれも) を明示的に truncate する。
-   UNLOGGED テーブルは PITR/物理バックアップ自体に含まれず自動的に空で
-   戻る性質があるが、pg_dump 経由の論理バックアップには含まれ得るため、
-   この truncate を省略しない。
-5. `idmagic-batch restore-consistency-check` を実行し、以降の「リストア後
-   検証チェックリスト」を機械的に検査する。
+1. **本番環境への誤操作防止**: 明示的なフラグ（`--yes-restore-into-this-database`）と Compose プロジェクト名（`idmagic-restore-drill*` など）の両方を要求し、本番環境らしい接続文字列を持つ対象への誤実行を防ぐ。
+2. `infra/schema/postgres.sql` を空のデータベースへ先に適用し、スキーマとデータの復元を競合させない。
+3. ダンプのチェックサムを検証してから、`pg_restore --data-only` でデータだけを復元する。スキーマは前段の `psqldef` 適用で存在するため、二重に作成しない。
+4. 一時テーブル（`UNLOGGED` / `LOGGED` の両方）を明示的に `TRUNCATE` する。`UNLOGGED` テーブルは PITR や物理バックアップには含まれず自動的に空で戻るが、`pg_dump` による論理バックアップには含まれうるため、この処理を省略しない。
+5. `idmagic-batch restore-consistency-check` を実行し、以降の復元後検証チェックリストを機械的に検査する。
 
-### リストア整合順序 (DR 全体)
+### 復元時の整合性を保つ順序
 
-KMS/Vault access 確認 → PostgreSQL restore (schema 先行 apply → data
-restore) → schema/version 検査 → ephemeral テーブル truncate → signing
-key の DB metadata と provider key version の整合チェック → API/worker
-起動 → JWKS/token 検証。**鍵喪失を「DB だけ restore」で隠さない**:
-signing key の検証に失敗したら fail-closed とし、DB restore とは別に
-emergency rotation 手順 (下記) に進む。
+KMS / Vault へのアクセス確認、PostgreSQL の復元（スキーマを先に適用してからデータを復元）、スキーマとバージョンの検査、一時テーブルの `TRUNCATE`、署名鍵のデータベースメタデータとプロバイダー側鍵バージョンの整合性検査、API と `worker` の起動、JWKS とトークンの検証の順とする。**鍵の喪失をデータベースだけの復元で隠さない**。署名鍵の検証に失敗した場合はフェイルクローズとし、データベースの復元とは別に下記の緊急ローテーション手順へ進む。
 
-## リストア後の検証チェックリスト
+## 復元後の確認一覧
 
-`just restore-postgres` の最後に自動実行される
-`idmagic-batch restore-consistency-check` が次を検査する:
+`just restore-postgres` の最後に自動実行される `idmagic-batch restore-consistency-check` が次を検査する。
 
-- [ ] tenant / user / client のレコード件数が 0 でない。
-- [ ] 各 tenant の active signing key が解決可能で、JWKS を構成できる。
-- [ ] `jobs` テーブルに `dedup_key` 違反 (同一 tenant+dedup_key の queued/
-      running 重複) がない。
-- [ ] ephemeral テーブル (UNLOGGED/LOGGED) がリストア直後に空である
-      (truncate 漏れの検出)。
+- [ ] テナント、ユーザー、クライアントのレコード件数が 0 でない。
+- [ ] 各テナントの有効な署名鍵を解決でき、JWKS を構成できる。
+- [ ] `jobs` テーブルに `dedup_key` 違反（同じテナントと `dedup_key` に対する `queued` / `running` の重複）がない。
+- [ ] 一時テーブル（`UNLOGGED` / `LOGGED`）が復元直後に空である。
 
-手動でも以下を確認する:
+手動でも次を確認する。
 
-- [ ] 既発行 token が復旧後の JWKS で検証できる (kid が消えていない)。
-- [ ] 代表 tenant で疎通 (ログイン/token 発行) を一度通す。
+- [ ] 発行済みトークンを復旧後の JWKS で検証できる（`kid` が消えていない）。
+- [ ] 代表テナントでログインとトークン発行を 1 回ずつ確認する。
 
-## 障害シナリオ別 DR 手順
+## 災害復旧のシナリオ
 
-### DB loss (PostgreSQL インスタンス喪失)
+### データベースの喪失
 
-1. 直近の PITR ベース (production) または pg_dump (drill/小規模) から
-   `just restore-postgres` を実行。
-2. リストア整合順序に従い、consistency-check が green になるまで API を
-   再開しない。
-3. RPO は「最後の WAL archive / dump からの経過時間」。RTO は「検知から
-   consistency-check green までの経過時間」で計測する。
+1. 直近の PITR ベースバックアップ（本番）または `pg_dump`（訓練・小規模環境）から `just restore-postgres` を実行する。
+2. 復元の整合順序に従い、整合性検査に合格するまで API を再開しない。
+3. RPO は最後の WAL アーカイブまたはダンプからの経過時間、RTO は障害検知から整合性検査の合格までの経過時間で計測する。
 
-### Point-in-time 誤削除 (特定 tenant/レコードの誤削除・誤更新)
+### 誤削除からのポイントインタイム復旧
 
-1. 影響範囲 (tenant/user/client) を audit log (`audit_events`) から特定する。
-2. PITR で誤削除直前の time point へ復元した使い捨て環境を用意し、
-   該当レコードのみを本番へ再投入する (全体ロールバックは避け、影響範囲を
-   最小化する)。
-3. pg_dump drill しか使えない環境では、直近の定期 dump までしか戻せない
-   ことを事前に周知し、誤削除検知までのリードタイムを短縮する運用
-   (アラート、確認ダイアログ) を優先する。
+1. 影響範囲（テナント、ユーザー、クライアント）を監査ログ（`audit_events`）から特定する。
+2. PITR で誤削除の直前へ復元した使い捨て環境を用意し、該当レコードだけを本番環境へ再投入する。全体のロールバックは避け、影響範囲を最小化する。
+3. `pg_dump` による訓練しか使えない環境では、直近の定期ダンプまでしか戻せないことを事前に周知する。アラートと確認ダイアログにより、誤削除の検知時間を短縮する運用を優先する。
 
-### Region loss (リージョン喪失)
+### リージョンの喪失
 
-マルチリージョンのアクティブ/アクティブ構成は wi-101 の Out of Scope。
-本 runbook が扱うのは「リージョン内の最新バックアップから、代替リージョンで
-新規に環境を構築し `restore-postgres` を実行する」単一リージョン再構築の
-手順のみ。RTO は環境構築時間 (IaC 適用) + restore 時間の合算になる。
+複数リージョンの active-active 構成は対象外である。この手順書では、リージョン内の最新バックアップから代替リージョンに新しい環境を構築し、`restore-postgres` を実行する単一リージョンの再構築だけを扱う。RTO は環境の構築時間（IaC の適用）と復元時間の合計になる。
 
-### Key provider loss (Vault/OpenBao 喪失、または signing key 破損)
+### 鍵プロバイダーの喪失
 
-1. **PostgreSQL restore で鍵喪失を隠さない**: consistency-check の
-   signing key 検証が失敗したら、DB restore が成功していても fail-closed
-   のまま新規 token 発行を止める。
-2. Vault/OpenBao 側のスナップショットから鍵ストアを復旧できる場合は復旧し、
-   `signing_keys` の public key ミラーと Vault 側の kid が一致することを
-   確認する。
-3. 復旧不能な場合は emergency rotation (新しい signing key を発行し、旧
-   kid は JWKS から段階的に外す) に進む。この間、旧 kid で署名された
-   token の検証は継続できないことを利用者へ告知する。
+1. **PostgreSQL の復元で鍵の喪失を隠さない**: 整合性検査の署名鍵検証が失敗した場合は、データベースの復元が成功していてもフェイルクローズのまま新しいトークンの発行を止める。
+2. Vault / OpenBao 側のスナップショットからキーストアを復旧できる場合は復旧し、`signing_keys` の公開鍵の写しと Vault 側の `kid` が一致することを確認する。
+3. 復旧できない場合は緊急ローテーションへ進み、新しい署名鍵を発行して古い `kid` を JWKS から段階的に外す。この間、古い `kid` で署名されたトークンの検証を継続できないことを利用者へ告知する。
 
-### Partial restore (一部テーブル/一部 tenant のみの復元)
+### 部分的な復元
 
-1. 対象範囲を限定した pg_dump (`pg_dump --table=...` 等) からの復元は
-   外部キー制約・`jobs`/`signing_keys` などの整合を壊しやすいため、
-   consistency-check を必ず通す。
-2. 部分復元後に全体の整合が取れないと判断した場合は、全体リストアに
-   切り替える (部分復元を無理に完遂しない) — rollback の判断基準は
-   consistency-check の結果とする。
+1. 対象範囲を限定した `pg_dump`（`pg_dump --table=...` など）からの復元は、外部キー制約や `jobs` / `signing_keys` などの整合性を壊しやすいため、整合性検査を必ず通す。
+2. 部分的な復元後に全体の整合性を保てない場合は、全体の復元へ切り替える。ロールバックの判断基準は整合性検査の結果とする。
 
-## 運用 (定期 drill・アクセスレビュー・expiry)
+## 運用
 
-- **定期 drill**: `just restore-drill` を定期的に (最低でも四半期に 1 回)
-  実行し、backup 成功だけでなく restore 可能性そのものを確認する。実測
-  RPO/RTO を下記の表に追記する。
-- **アクセスレビュー**: バックアップ保管先 (暗号化された保存先) と
-  Vault/OpenBao の snapshot へのアクセス権限を、鍵ローテーションと同じ
-  cadence で棚卸しする。
-- **expiry**: バックアップの retention 期間を明示し、期限切れ dump を
-  自動削除する運用を設ける。
-- 上記のスケジューリング・アラート基盤への実配線 (cron/alertmanager 等)
-  は本 runbook の記述時点では未実施。ローカル drill と手順の整備を先行し、
-  実運用環境が用意でき次第、配線する。
+- **定期訓練**: `just restore-drill` を最低でも四半期に 1 回実行し、バックアップの成功だけでなく復元できること自体を確認する。実測した RPO / RTO を下記の表に追記する。
+- **アクセスレビュー**: 暗号化されたバックアップ保存先と Vault / OpenBao のスナップショットへのアクセス権限を、鍵ローテーションと同じ頻度で棚卸しする。
+- **有効期限**: バックアップの保持期間を明示し、期限切れのダンプを自動削除する運用を設ける。
+- **スケジュールとアラート**: cron や Alertmanager などの運用基盤から定期訓練と失敗通知を実行する。
 
-## 実測 RPO/RTO (ローカル drill)
+## 計測した RPO と RTO
 
-| 実行日 | 環境 | シナリオ | RPO (実測) | RTO (実測) | 備考 |
+| Date | Environment | Scenario | Measured RPO | Measured RTO | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 2026-08-01 | ローカル docker compose (`just restore-drill`) | tenant 1 / user 2 / client 3 / signing key 1 件の pg_dump backup → DB 破棄・再作成 → restore → consistency-check | 0s (backup 直後に破棄したため無視できる差分) | 6.3s (全体、うち restore+consistency-check は 2s) | データ量が小さいローカル drill の下限値。本番規模の RPO/RTO は PITR + staging 実測で別途確定する。 |
+| 2026-08-01 | ローカル Docker Compose（`just restore-drill`） | テナント 1 件、ユーザー 2 件、クライアント 3 件、署名鍵 1 件の `pg_dump` バックアップ → データベースの破棄・再作成 → 復元 → 整合性検査 | 0 秒（バックアップ直後に破棄したため差分は無視できる） | 6.3 秒（全体。うち復元と整合性検査は 2 秒） | データ量が少ないローカル訓練の下限値。本番規模の RPO / RTO は PITR を使うステージング環境で実測する。 |
 
-Vault Transit を含む staging 環境での実ドリルは、dev 環境に Vault/OpenBao
-サービスが存在しないため未実施。実施可能な環境が用意され次第、上表に
-追記する。
+Vault Transit を含むステージング環境での実際の訓練は、開発環境に Vault / OpenBao サービスが存在しないため未実施である。実施可能な環境が用意され次第、上表に追記する。

@@ -7,27 +7,26 @@ updated_at: 2026-08-11
 
 ## Overview
 
-自律エージェントランタイム向けの workload identity federation を所有する。テナントが登録した外部 attestation 発行者の信頼設定 (WorkloadTrustBundle) と、外部 subject を既存 Agent へ写す mapping (AgentWorkloadBinding) を管理する。OIDC 互換 JWT (Kubernetes projected ServiceAccount token・クラウド instance identity token・SPIFFE JWT-SVID) を第一級の attestation 種別とし、idmagic 自身は SPIRE server/agent を同梱・運用しない (relying party 側に徹する)。検証を通過した外部 attestation を OAuth2 の token-exchange grant (RFC 8693) へ subject として渡し、専用の資格情報経路は新設しない。
+自律エージェントの実行環境向けに、ワークロードアイデンティティフェデレーションを所有する。テナントが登録した外部アテステーション発行者の信頼設定（`WorkloadTrustBundle`）と、外部の主体を既存の `Agent` に対応付ける `AgentWorkloadBinding` を管理する。OIDC 互換 JWT（Kubernetes の投影 ServiceAccount トークン、クラウドのインスタンスアイデンティティトークン、SPIFFE JWT-SVID）を主要なアテステーション形式とする。IdMagic 自身は SPIRE のサーバーやエージェントを同梱・運用せず、リライングパーティーとして動作する。検証済みの外部アテステーションは、OAuth2 Token Exchange グラント（RFC 8693）の subject として渡し、専用の資格情報経路は新設しない。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| WorkloadTrustBundle | テナントが登録する外部 attestation 発行者の信頼設定。trust domain・issuer・JWKS 取得元 (または inline JWKS)・受理する audience・受理する外部 SVID の最大 TTL を束ねる。登録済み issuer のみを信頼する (trust-on-first-use を許さない)。 |  |
-| AgentWorkloadBinding | WorkloadTrustBundle 配下で、外部 subject に対する glob pattern を同一テナントの既存 Agent へ写す 1 対多の mapping 行。pattern にマッチしない subject、または複数の Enabled binding に曖昧にマッチする subject は fail-closed で拒否する。 |  |
-| JwtSvid | OIDC 互換の JWT を wire 形式とする外部 attestation token。Kubernetes projected ServiceAccount token・クラウドの instance identity (OIDC) token・SPIFFE の JWT-SVID を包含する第一級の subject_token 種別。X.509-SVID (mTLS) は将来の拡張。 | JWT-SVID |
-| TrustDomain | WorkloadTrustBundle が束ねる論理グループ名。SPIFFE trust domain、または運用者が定める発行者グループのラベル。 |  |
-| FailClosed | 未登録 issuer・署名不正・期限切れ・pattern 不一致・ambiguous match・束縛先 Agent が Active でない、のいずれかに該当する場合、常に交換を拒否する方針。判定漏れは「交換しない」側へ倒す。 |  |
-| System | WorkloadIdentity の検証 usecase そのものを指す、人間の操作者を伴わない技術的な主体。 |  |
+| WorkloadTrustBundle | テナントが登録する外部アテステーション発行者の信頼設定。トラストドメイン、発行者、JWKS の取得元またはインライン JWKS、受理する audience、外部 SVID の最大 TTL をまとめる。事前に登録した発行者だけを信頼し、Trust On First Use は許可しない。 |  |
+| AgentWorkloadBinding | `WorkloadTrustBundle` の配下で、外部主体に対する glob パターンを同じテナントの既存 `Agent` に対応付けるレコード。パターンに一致しない主体や、複数の有効な関連付けに一致して対象を一意に決められない主体は、フェイルクローズで拒否する。 |  |
+| JwtSvid | OIDC 互換 JWT を通信形式とする外部アテステーショントークン。Kubernetes の投影 ServiceAccount トークン、クラウドのインスタンスアイデンティティトークン、SPIFFE JWT-SVID を包含する、主要な `subject_token` 種別。X.509-SVID（mTLS）は将来の拡張とする。 | JWT-SVID |
+| TrustDomain | `WorkloadTrustBundle` がまとめる論理グループ名。SPIFFE トラストドメイン、または運用者が定める発行者グループのラベル。 |  |
+| FailClosed | 未登録の発行者、署名不正、期限切れ、パターン不一致、一意に決められない一致、対応先の `Agent` が `Active` でない場合のいずれでも、交換を拒否する方針。判定できない場合も「交換しない」側に倒す。 |  |
+| System | `WorkloadIdentity` の検証ユースケースそのものを指す、人間の操作者を伴わない技術的な主体。 |  |
 
 ## State Transitions
 
 ### WorkloadTrustBundleLifecycle
 
-登録時に enabled として作成される。無効化で disabled に遷移し、以後配下の binding は交換に使えなくなる (fail-closed)。再有効化で enabled に戻せる。削除は状態遷移ではなく行そのものを取り除く終端操作で、配下の binding を cascade で削除する。
+登録時に `enabled` として作成する。無効化すると `disabled` に遷移し、それ以降は配下の関連付けを交換に使えない。再有効化すれば `enabled` に戻せる。削除は状態遷移ではなくレコードそのものを取り除く終端操作であり、配下の関連付けもカスケード削除する。
 
-Initial: `enabled`
-Terminal: none
+Initial: `enabled` Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
@@ -36,10 +35,9 @@ Terminal: none
 
 ### AgentWorkloadBindingLifecycle
 
-作成時に enabled として作成される。無効化で disabled に遷移し以後の交換に使えなくなる。再有効化で enabled に戻せる。削除は状態遷移ではなく行そのものを取り除く終端操作。
+作成時は `enabled` とする。無効化すると `disabled` に遷移し、それ以降の交換には使えない。再有効化すれば `enabled` に戻せる。削除は状態遷移ではなく行そのものを取り除く終端操作である。
 
-Initial: `enabled`
-Terminal: none
+Initial: `enabled` Terminal: none
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
@@ -48,14 +46,14 @@ Terminal: none
 
 ## Authorization Boundary
 
-Authorization semantics are enforced by the application and its tests. This specification records API authentication, but intentionally defines no policy DSL. A separate work item will evaluate Cedar before any policy language is adopted.
+認可の意味はアプリケーションとそのテストで強制する。本仕様は API の認証を記述するが、ポリシーの DSL は意図的に定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
 
 ## Design
 
 ### Internal Interfaces
 
 #### VerifyWorkloadAttestation
-OAuth2 の token-exchange grant (subject_token_type=JWT-SVID URN) から呼ぶ published interface。外部 attestation token を登録済み WorkloadTrustBundle で検証し (署名・iss・aud・exp・TTL 上限)、テナント内の AgentWorkloadBinding で subject を一意に Agent へ写し、束縛先 Agent が Active であることを確認する。いずれかに失敗すれば fail-closed で拒否する。idmagic 自身は SPIRE server/agent を実装しない (relying party 側に徹する)。
+OAuth2 Token Exchange グラント（`subject_token_type` は JWT-SVID URN）から呼び出す公開インターフェースである。外部アテステーショントークンの署名、`iss`、`aud`、`exp`、TTL 上限を登録済みの `WorkloadTrustBundle` で検証する。次に、テナント内の `AgentWorkloadBinding` から対応する `Agent` を一意に特定し、その `Agent` が `Active` であることを確認する。いずれかの検証に失敗した場合はフェイルクローズで拒否する。IdMagic 自身は SPIRE のサーバーやエージェントを実装せず、リライングパーティーとして動作する。
 - Input invariant: trust_bundle_registered_for_issuer(context.tenant_id, input.attestation.subject_token)
 - Input invariant: workload_attestation_signature_and_claims_valid(context.tenant_id, input.attestation.subject_token)
 - Input invariant: !ambiguous_binding_match(context.tenant_id, input.attestation.subject_token)
@@ -64,67 +62,67 @@ OAuth2 の token-exchange grant (subject_token_type=JWT-SVID URN) から呼ぶ p
 
 ## Scenarios
 
-### REQ-WORKLOADIDENTITY-001: 登録済みtrustbundle経由でワークロードトークンをAgent資格情報に交換できる
+### REQ-WORKLOADIDENTITY-001: 登録済みの信頼設定を使ってワークロードトークンを Agent 資格情報に交換できる
 - ACTOR System
-- GIVEN テナント "tenant-a" に issuer "https://issuer.example" の WorkloadTrustBundle "prod-cluster" が Enabled で登録済みである
-- GIVEN "prod-cluster" 配下に subject pattern "spiffe://example.org/ns/prod/sa/*" を Agent "checkout-bot" へ写す AgentWorkloadBinding が Enabled で存在する
-- GIVEN Agent "checkout-bot" は Active で、AgentCredentialBinding 経由で OAuth2Client に束縛済みである
-- WHEN sub "spiffe://example.org/ns/prod/sa/worker-1" を持つ有効な JWT-SVID を subject_token として token-exchange を呼ぶ
-- THEN VerifyWorkloadAttestation が Agent \"checkout-bot\" の束縛先 client_id を sub とする WorkloadIdentityGrant を返す
-- THEN WorkloadTokenExchanged が発火し、束縛先 Agent の資格情報として短命な idmagic access token が発行される
+- GIVEN テナント "tenant-a" に発行者 "https://issuer.example" の WorkloadTrustBundle "prod-cluster" が `Enabled` で登録済みである
+- GIVEN "prod-cluster" 配下に、主体パターン "spiffe://example.org/ns/prod/sa/*" を Agent "checkout-bot" に対応付ける `Enabled` の AgentWorkloadBinding が存在する
+- GIVEN Agent "checkout-bot" は `Active` で、AgentCredentialBinding を介して OAuth2Client に関連付けられている
+- WHEN `sub` が "spiffe://example.org/ns/prod/sa/worker-1" である有効な JWT-SVID を `subject_token` として Token Exchange を呼ぶ
+- THEN VerifyWorkloadAttestation が Agent "checkout-bot" の関連付け先 `client_id` を `sub` とする WorkloadIdentityGrant を返す
+- THEN WorkloadTokenExchanged が発行され、関連付け先 Agent の資格情報として有効期間の短い IdMagic アクセストークンが発行される
 
-### REQ-WORKLOADIDENTITY-002: 未登録issuerは拒否される
+### REQ-WORKLOADIDENTITY-002: 未登録の発行者を拒否する
 - ACTOR System
-- GIVEN テナント "tenant-a" に issuer "https://issuer.example" の WorkloadTrustBundle は登録されていない
-- WHEN iss "https://unknown-issuer.example" の JWT-SVID を subject_token として token-exchange を呼ぶ
-- THEN VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=unregistered_issuer) で拒否し WorkloadAttestationRejected が reason=unregistered_issuer で発火する
+- GIVEN テナント "tenant-a" に発行者 "https://issuer.example" の WorkloadTrustBundle は登録されていない
+- WHEN `iss` が "https://unknown-issuer.example" である JWT-SVID を `subject_token` として Token Exchange を呼ぶ
+- THEN VerifyWorkloadAttestation が `reason=unregistered_issuer` の WorkloadAttestationRejectedError で拒否し、同じ理由の WorkloadAttestationRejected を発行する
 
-### REQ-WORKLOADIDENTITY-003: 署名が不正なattestationは拒否される
+### REQ-WORKLOADIDENTITY-003: 署名が不正なアテステーションを拒否する
 - ACTOR System
-- GIVEN テナント "tenant-a" に issuer "https://issuer.example" の WorkloadTrustBundle "prod-cluster" が Enabled で登録済みである
-- WHEN iss "https://issuer.example" を詐称するが登録済み JWKS で検証できない署名を持つ JWT を subject_token として token-exchange を呼ぶ
-- THEN VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=invalid_signature) で拒否する
+- GIVEN テナント "tenant-a" に発行者 "https://issuer.example" の WorkloadTrustBundle "prod-cluster" が `Enabled` で登録済みである
+- WHEN `iss` に "https://issuer.example" を指定しているが、登録済み JWKS では署名を検証できない JWT を `subject_token` として Token Exchange を呼ぶ
+- THEN VerifyWorkloadAttestation が `reason=invalid_signature` の WorkloadAttestationRejectedError で拒否する
 
-### REQ-WORKLOADIDENTITY-004: 期限切れのattestationは拒否される
+### REQ-WORKLOADIDENTITY-004: 期限切れのアテステーションを拒否する
 - ACTOR System
-- GIVEN テナント "tenant-a" に issuer "https://issuer.example" の WorkloadTrustBundle "prod-cluster" が Enabled で登録済みである
-- WHEN exp が過去時刻の JWT-SVID を subject_token として token-exchange を呼ぶ
-- THEN VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=expired) で拒否する
+- GIVEN テナント "tenant-a" に発行者 "https://issuer.example" の WorkloadTrustBundle "prod-cluster" が `Enabled` で登録済みである
+- WHEN `exp` が過去の時刻である JWT-SVID を `subject_token` として Token Exchange を呼ぶ
+- THEN VerifyWorkloadAttestation が `reason=expired` の WorkloadAttestationRejectedError で拒否する
 
-### REQ-WORKLOADIDENTITY-005: 複数bindingに曖昧にマッチするsubjectは拒否される
+### REQ-WORKLOADIDENTITY-005: 複数の関連付けに一致して Agent を一意に決められない主体を拒否する
 - ACTOR System
-- GIVEN "prod-cluster" 配下に "spiffe://example.org/ns/prod/sa/*" → Agent "a" と "spiffe://example.org/ns/prod/sa/worker-*" → Agent "b" の 2 つの Enabled AgentWorkloadBinding が存在する
-- WHEN sub "spiffe://example.org/ns/prod/sa/worker-1" を持つ有効な JWT-SVID で token-exchange を呼ぶ
-- THEN VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=ambiguous_match) で拒否する
+- GIVEN "prod-cluster" 配下に、"spiffe://example.org/ns/prod/sa/*" を Agent "a" に、"spiffe://example.org/ns/prod/sa/worker-*" を Agent "b" に対応付ける 2 つの `Enabled` AgentWorkloadBinding が存在する
+- WHEN `sub` が "spiffe://example.org/ns/prod/sa/worker-1" である有効な JWT-SVID を使って Token Exchange を呼ぶ
+- THEN VerifyWorkloadAttestation が `reason=ambiguous_match` の WorkloadAttestationRejectedError で拒否する
 
-### REQ-WORKLOADIDENTITY-006: 束縛先AgentがKilled後は拒否される
+### REQ-WORKLOADIDENTITY-006: 対応先 Agent が Killed になった後は交換を拒否する
 - ACTOR System
-- GIVEN AgentWorkloadBinding の写像先 Agent "checkout-bot" が KillAgent により killed へ遷移済みである
-- WHEN sub がマッチする有効な JWT-SVID で token-exchange を呼ぶ
-- THEN VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=agent_not_active) で拒否する
+- GIVEN AgentWorkloadBinding の対応先 Agent "checkout-bot" が KillAgent によって `killed` に遷移済みである
+- WHEN `sub` がパターンに一致する有効な JWT-SVID を使って Token Exchange を呼ぶ
+- THEN VerifyWorkloadAttestation が `reason=agent_not_active` の WorkloadAttestationRejectedError で拒否する
 
-### REQ-WORKLOADIDENTITY-007: 他テナントのtrustbundleは利用できない
+### REQ-WORKLOADIDENTITY-007: 他テナントの信頼設定は利用できない
 - ACTOR System
-- GIVEN テナント "tenant-b" に issuer "https://issuer.example" の WorkloadTrustBundle が登録済みである
-- GIVEN テナント "tenant-a" には同じ issuer の WorkloadTrustBundle が存在しない
-- WHEN テナント "tenant-a" のコンテキストで iss "https://issuer.example" の JWT-SVID を subject_token として token-exchange を呼ぶ
-- THEN VerifyWorkloadAttestation が WorkloadAttestationRejectedError (reason=unregistered_issuer) で拒否し tenant-b の登録は見えない
+- GIVEN テナント "tenant-b" に発行者 "https://issuer.example" の WorkloadTrustBundle が登録済みである
+- GIVEN テナント "tenant-a" には同じ発行者の WorkloadTrustBundle が存在しない
+- WHEN テナント "tenant-a" の実行コンテキストで、`iss` が "https://issuer.example" である JWT-SVID を `subject_token` として Token Exchange を呼ぶ
+- THEN VerifyWorkloadAttestation が `reason=unregistered_issuer` の WorkloadAttestationRejectedError で拒否し、テナント "tenant-b" の登録内容は参照されない
 
-### REQ-WORKLOADIDENTITY-008: 管理者がtrustbundleを登録・無効化・再有効化できる
+### REQ-WORKLOADIDENTITY-008: 管理者は信頼設定を登録・無効化・再有効化できる
 - ACTOR TenantAdministrator
 - GIVEN 管理者としてテナントに認証済みである
-- WHEN issuer "https://issuer.example" と JWKS 取得元を指定して RegisterWorkloadTrustBundle を呼ぶ
-  - ALT jwks_uri と jwks のいずれも指定しない → RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
-  - ALT 同一テナント内に同じ issuer の WorkloadTrustBundle が既に存在する → RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
-- THEN WorkloadTrustBundleConfigured が発火し、WorkloadTrustBundle が enabled として作成される
+- WHEN 発行者 "https://issuer.example" と JWKS の取得元を指定して RegisterWorkloadTrustBundle を呼ぶ
+  - ALT `jwks_uri` と `jwks` のどちらも指定しない → RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
+  - ALT 同じテナント内に同じ発行者の WorkloadTrustBundle がすでに存在する → RegisterWorkloadTrustBundle が InvalidRequestError で拒否される
+- THEN WorkloadTrustBundleConfigured が発行され、WorkloadTrustBundle が `enabled` として作成される
 - WHEN 作成した WorkloadTrustBundle に対して DisableWorkloadTrustBundle を呼ぶ
-- THEN WorkloadTrustBundleDisabled が発火し、以後この bundle 配下の binding は交換に使えなくなる
+- THEN WorkloadTrustBundleDisabled が発行され、以後この信頼設定に属する関連付けは交換に使えなくなる
 - WHEN EnableWorkloadTrustBundle を呼ぶ
-- THEN WorkloadTrustBundleEnabled が発火し enabled に戻る
+- THEN WorkloadTrustBundleEnabled が発行され、`enabled` に戻る
 
-### REQ-WORKLOADIDENTITY-009: 管理者が他テナントのAgentへbindingを作成できない
+### REQ-WORKLOADIDENTITY-009: 管理者は他テナントの Agent への関連付けを作成できない
 - ACTOR TenantAdministrator
 - GIVEN テナント "tenant-a" に WorkloadTrustBundle "prod-cluster" が登録済みである
 - GIVEN Agent "other-tenant-agent" はテナント "tenant-b" に属する
-- WHEN "prod-cluster" 配下に agent_id="other-tenant-agent" の CreateAgentWorkloadBinding を呼ぶ
-- THEN CreateAgentWorkloadBinding が InvalidRequestError で拒否され binding は作成されない
+- WHEN "prod-cluster" 配下に `agent_id="other-tenant-agent"` を指定して CreateAgentWorkloadBinding を呼ぶ
+- THEN CreateAgentWorkloadBinding が InvalidRequestError で拒否され、関連付けは作成されない

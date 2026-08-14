@@ -1,10 +1,57 @@
 # AGENTS.md / CLAUDE.md
 
+## Language
+
+| What | Language |
+|---|---|
+| Repository-root `README.md`, headings included | Japanese |
+| `CONFIGURATION.md`, `DEVELOPMENT.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
+| `spec/**/*.tsp`, doc comments included | English |
+| Prose in `spec/SPECIFICATION.md` and `spec/contexts/*/SPECIFICATION.md` | Japanese |
+| `work-items/**` | Japanese |
+| READMEs below the repository root except `tools/**`, headings included | Japanese |
+| `infra/runbooks/*`, headings included | Japanese |
+| `tools/**` | English |
+| Go and TypeScript comments | Japanese |
+| Go and TypeScript identifiers, database columns, event names, error codes, scopes | English |
+| `REQ-<CONTEXT>-NNN`, TypeSpec symbols, section headings, table headers, frontmatter keys | English |
+| API error messages, log messages, CLI help | English |
+| User-facing UI text | Localized; `ja` and `en` both live in the `*.i18n.ts` dictionaries |
+| Commit messages | English |
+| Status updates, explanations, questions, summaries, and final responses of AI coding agents | Japanese |
+
+For anything not listed: English if it leaves the repository or appears at runtime without being
+localized, because such text can never be swapped for a translation. Japanese otherwise.
+
+Write Japanese prose as natural technical Japanese, using established translations or transliterations for
+ordinary vocabulary. Keep Latin spelling only when the exact original spelling is semantically required — an
+identifier, literal value, path, command, product or protocol name, acronym — or when no settled Japanese
+rendering exists. Familiarity among engineers, domain jargon, capitalization, or easier correspondence with an
+English source does not make the original spelling necessary. Put exact code and configuration tokens in
+backticks; otherwise translate or transliterate them. Review the whole sentence as Japanese rather than
+substituting Japanese predicates around English nouns. When several Japanese renderings are reasonable,
+follow the established repository usage consistently instead of choosing independently in each document.
+Choose wording from the concept's role in context, never from a global word-for-word substitution table, and
+do not collapse distinct source concepts into one Japanese term. Treat recognized named technical patterns and
+standard-defined terms as terms of art, and retain their original names when translation would obscure the
+concept being referenced.
+
+Do not say the same thing twice in two languages. A Japanese paragraph and an English paragraph carrying
+the same content are two documents drifting apart, not one bilingual document.
+
+None of this is checked by tooling.
+
+## Formatting
+
+Markdown has no column limit. Japanese prose in particular is one paragraph per line, however long: a
+newline inside a paragraph renders as a space, so a break between two Japanese characters inserts a
+space that does not belong there. Tables, code blocks, and generated files keep whatever width their
+own format requires.
+
+Source files wrap at about 150 columns. Do not carry the old 80-column habit into them.
+
 ## Rules
 
-- Status updates, explanations, questions, summaries, and final responses of AI coding agents must be Japanese.
-- Code comments must be written in English. User-facing UI text stays Japanese and is unaffected.
-- The main `README.md` file must be written in English only.
 - Use the specification-first development workflow.
   - Keep feature and behavior changes specification-first.
   - Put models, API interfaces, and authentication mechanisms in `spec/**/*.tsp`.

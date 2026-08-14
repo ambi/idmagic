@@ -1,93 +1,56 @@
-# Infrastructure Guide
+# インフラストラクチャガイド
 
-This guide covers deployment, monitoring, and security configurations for IdMagic.
+この手引きは IdMagic の配備、監視、セキュリティ設定を扱う。
 
-## Kubernetes, Monitoring, and Load Smoke
+## Kubernetes、監視、負荷スモークテスト
 
-The Kubernetes base separates the API, UI gateway, and durable
-job worker into independent Deployments, linked by PostgreSQL and a shared OTLP. The worker is split into one Deployment per
-execution lane (`idmagic-worker-{latency-sensitive,default,bulk}`),
-each with its own metrics-only Service (`/metrics`, no application HTTP
-surface). Apply a rendered environment only after your platform has created
-the referenced Secrets (`idmagic-<environment>-runtime-secrets`,
-`idmagic-<environment>-worker-secrets`). Secret values, image release digests,
-and cloud-specific database endpoints are never stored in this repository.
+Kubernetes のベース構成は API、UI ゲートウェイ、永続ジョブを処理する `worker` を独立した Deployment に分け、PostgreSQL と共通の OTLP 接続先を使用する。`worker` は実行レーンごとの Deployment（`idmagic-worker-{latency-sensitive,default,bulk}`）に分かれ、それぞれがメトリクス専用の Service を持つ。この Service は `/metrics` だけを公開し、アプリケーション用 HTTP エンドポイントは持たない。プラットフォームが参照先の Secret（`idmagic-<environment>-runtime-secrets`、`idmagic-<environment>-worker-secrets`）を作成した後にだけ、レンダリング済みの環境を適用する。シークレットの値、リリースイメージのダイジェスト、クラウド固有のデータベースエンドポイントは、このリポジトリには決して保存しない。
 
 ```bash
 just check-k8s dev
 just deploy-k8s dev
 ```
 
-Production starts at three API/UI replicas and two relay replicas. Replace the
-zero digest placeholders in the production overlay through the release
-pipeline, validate it, then apply it. Roll back by applying the preceding
-release's digest overlay; Kubernetes keeps the prior ReplicaSet available for
-an immediate `just rollback-k8s idmagic-api` when necessary.
+本番環境は API と UI のレプリカを 3 個、イベントリレーのレプリカを 2 個配置する構成から始める。リリースパイプラインで本番オーバーレイのゼロダイジェストのプレースホルダーを置き換え、検証してから適用する。ロールバックでは直前のリリースのダイジェストオーバーレイを適用する。Kubernetes は以前の ReplicaSet を保持するため、必要なら直ちに `just rollback-k8s idmagic-api` を実行できる。
 
-The API probes `/startupz`, `/livez`, and `/readyz` directly. Its NetworkPolicy
-allows only the UI gateway and Prometheus scrape traffic in, plus DNS and
-PostgreSQL egress.
-Each worker lane's NetworkPolicy allows only Prometheus scrape traffic in
-(`/metrics`, port 8080), plus DNS and PostgreSQL egress — worker has
-no readiness/liveness probes since it serves no application traffic.
+API は `/startupz`、`/livez`、`/readyz` を直接プローブする。その NetworkPolicy が受信を許可するのは UI ゲートウェイと Prometheus のスクレイプ通信だけで、送信先は DNS と PostgreSQL に限る。各 `worker` レーンの NetworkPolicy が受信を許可するのは Prometheus のスクレイプ通信（`/metrics`、ポート 8080）だけで、送信先は DNS と PostgreSQL に限る。`worker` はアプリケーションの通信を処理しないため、レディネスプローブとライブネスプローブを持たない。
 
-`infra/k8s/monitoring` packages the same HTTP RED/authentication recording and
-alert rules used by the Docker example, plus lane-scoped Jobs golden signals
-(queue depth, claim latency, failure ratio, retry rate). It maps
-`TokenLatency`, `TokenErrorRate`, `LoginLatency`, `LoginErrorRate`, and
-availability evidence to the request-rate, error-rate, latency, login, and
-token panels. Apply the `monitoring/operator` directory only when Prometheus
-Operator is installed (its `idmagic-worker` `ServiceMonitor` covers all three
-lane Services); otherwise configure Prometheus to scrape the `idmagic-api` and
-`idmagic-worker-{latency-sensitive,default,bulk}` Services at `/metrics`.
+`infra/k8s/monitoring` は Docker の例と同じ HTTP RED、認証記録ルール、アラートルールに加え、レーンごとのジョブのゴールデンシグナル（キュー深度、取得レイテンシー、失敗率、再試行率）をまとめる。`TokenLatency`、`TokenErrorRate`、`LoginLatency`、`LoginErrorRate`、可用性の証跡を、リクエスト率、エラー率、レイテンシー、ログイン、トークンの各パネルに対応付ける。`monitoring/operator` ディレクトリは Prometheus Operator がインストール済みの場合にだけ適用する。その `idmagic-worker` ServiceMonitor は 3 個のレーンの Service をすべて対象とする。それ以外の場合は、Prometheus が `idmagic-api` と `idmagic-worker-{latency-sensitive,default,bulk}` の Service にある `/metrics` をスクレイプするよう設定する。
 
 ```bash
 just check-monitoring
 just deploy-monitoring
-just deploy-monitoring-operator # Prometheus Operator only
+just deploy-monitoring-operator # Prometheus Operator を使う場合だけ
 ```
 
-The k6 smoke covers authorization-code + S256 PKCE, refresh-token rotation,
-and client credentials using one tenant-local seed fixture. Its default client
-is the development seed's stable UUID; it does not create or reuse data across
-tenants. Start a deliberately seeded development target first, then provide
-only disposable fixture credentials through environment variables when defaults
-do not apply:
+k6 スモークテストは、テナント内に閉じた 1 組の seed フィクスチャーを使い、認可コードと S256 PKCE、リフレッシュトークンのローテーション、クライアントクレデンシャルズを扱う。デフォルトのクライアントには開発用 seed の固定 UUID を使い、テナントをまたぐデータの作成や再利用は行わない。最初に、意図的に seed を投入した開発環境の対象を起動する。デフォルト値を使えない場合は、使い捨てのフィクスチャー用資格情報だけを環境変数で渡す。
 
 ```bash
-just k6-smoke # default: http://host.docker.internal:8080/realms/default
-# local `just dev-memory` API: just k6-smoke http://host.docker.internal:8081 http://localhost:5173
+just k6-smoke # デフォルト値: http://host.docker.internal:8080/realms/default
+# ローカルの `just dev-memory` API: just k6-smoke http://host.docker.internal:8081 http://localhost:5173
 just check-k6
 ```
 
-The smoke threshold is p99 token latency below 300 ms and an error ratio below
-0.1%, derived from `OAuth2/objective/TokenLatency` and
-`OAuth2/objective/TokenErrorRate`. CI should run the same recipe against its
-isolated service URL after provisioning its fixture; it must not run against a
-production tenant.
+スモークテストのしきい値は `OAuth2/objective/TokenLatency` と `OAuth2/objective/TokenErrorRate` から導き、p99 トークンレイテンシーを 300 ms 未満、エラー率を 0.1% 未満とする。CI はフィクスチャーを用意した後、隔離したサービス URL に対して同じレシピを実行する。本番テナントに対して実行してはならない。
 
-Re-apply only the declarative PostgreSQL schema:
+宣言的な PostgreSQL スキーマだけを再適用する。
 
 ```bash
 docker compose -f infra/docker/docker-compose.dev.yaml run --rm schema
 ```
 
-Run the OAuth/OIDC demo script against the compose stack:
+Docker Compose のスタックに対して OAuth / OIDC のデモスクリプトを実行する。
 
 ```bash
 BASE=http://localhost:8080 ./demo.sh
 ```
 
-## Design
+## 設計
 
-## Tenant Subdomain Routing
+## テナントのサブドメインルーティング
 
-Set `TENANT_BASE_DOMAIN` only after the ingress has wildcard DNS and a wildcard TLS certificate for `*.${TENANT_BASE_DOMAIN}`. A tenant configured with endpoint style `subdomain` is reachable exclusively at `{realm}.${TENANT_BASE_DOMAIN}`; path-style tenants remain exclusively under `/realms/{realm}`. The application returns `Vary: Host` for tenant responses, so any CDN or reverse proxy must retain the host in its cache key. Certificate issuance and renewal remain platform responsibilities.
+Ingress に `*.${TENANT_BASE_DOMAIN}` のワイルドカード DNS とワイルドカード TLS 証明書がある場合にだけ `TENANT_BASE_DOMAIN` を設定する。エンドポイント形式が `subdomain` のテナントには `{realm}.${TENANT_BASE_DOMAIN}` だけで到達でき、パス形式のテナントには `/realms/{realm}` だけで到達できる。アプリケーションはテナントのレスポンスに `Vary: Host` を返すため、CDN やリバースプロキシはキャッシュキーにホストを含めなければならない。証明書の発行と更新はプラットフォームの責任である。
 
-Changing endpoint style changes the issuer, cookie scope, and WebAuthn RP ID. Coordinate RP metadata changes and passkey re-enrollment before switching it in the system tenant console.
+エンドポイント形式を変えると、発行者、Cookie のスコープ、WebAuthn の RP ID が変わる。システムテナントのコンソールで切り替える前に、RP メタデータの変更とパスキーの再登録を調整する。
 
-The cross-cutting runtime design these assets implement — high availability and shared state, request
-correlation, the metrics contract, HTTP server hardening, and security response headers — is recorded in
-the repository design record, not here. See
-[`spec/SPECIFICATION.md`](../spec/SPECIFICATION.md) `## Design`.
-This file keeps the commands and configuration steps for running the stack.
+これらの資材が実装する横断的な実行時設計、すなわち高可用性と共有状態、リクエストの相関付け、メトリクスの契約、HTTP サーバーの堅牢化、セキュリティレスポンスヘッダーは、ここではなくリポジトリの設計記録に記載する。[`spec/SPECIFICATION.md`](../spec/SPECIFICATION.md) の `## Design` を参照する。このファイルには、スタックを動かすコマンドと設定手順を記載する。
