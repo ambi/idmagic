@@ -375,4 +375,88 @@ describe('AccountSecurityPage', () => {
       expect.objectContaining({ method: 'DELETE' }),
     )
   })
+
+  // wi-91: テナントが信頼済みデバイスを無効にしている間は節ごと出さない。
+  it('hides the remembered-devices section when the tenant disables the feature', async () => {
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, {})))
+    await renderWithRouter(
+      <AccountSecurityPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        security={security}
+        trustedDevices={{ devices: [], max_age_seconds: 0 }}
+      />,
+    )
+
+    expect(screen.queryByText(t.trustedDevices)).not.toBeInTheDocument()
+  })
+
+  it('lists remembered devices with their masked label and marks the current browser', async () => {
+    stubGlobal('fetch', mock().mockResolvedValue(response(200, {})))
+    await renderWithRouter(
+      <AccountSecurityPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        security={security}
+        trustedDevices={{
+          devices: [
+            {
+              id: 'device-1',
+              current: true,
+              label: 'Chrome / macOS',
+              created_at: '2026-08-01T10:00:00Z',
+              last_used_at: '2026-08-10T10:00:00Z',
+              expires_at: '2026-09-01T10:00:00Z',
+            },
+          ],
+          max_age_seconds: 2592000,
+        }}
+      />,
+    )
+
+    expect(screen.getByText(t.trustedDevices)).toBeInTheDocument()
+    expect(screen.getByText('Chrome / macOS')).toBeInTheDocument()
+    expect(screen.getByText(t.trustedDeviceCurrent)).toBeInTheDocument()
+  })
+
+  // wi-91: 取り消しは step-up 済みで成立し、一覧から消える。
+  it('revokes a remembered device and drops it from the list', async () => {
+    stubGlobal(
+      'fetch',
+      mock((url: string) =>
+        Promise.resolve(url.includes('/trusted_devices/') ? response(204) : response(200, {})),
+      ),
+    )
+    await renderWithRouter(
+      <AccountSecurityPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        security={security}
+        trustedDevices={{
+          devices: [
+            {
+              id: 'device-1',
+              current: false,
+              label: 'Firefox / Linux',
+              created_at: '2026-08-01T10:00:00Z',
+              last_used_at: '2026-08-10T10:00:00Z',
+              expires_at: '2026-09-01T10:00:00Z',
+            },
+          ],
+          max_age_seconds: 2592000,
+        }}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: t.trustedDeviceRevoke }))
+
+    expect(await screen.findByText(t.trustedDeviceEmpty)).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/account/v1/trusted_devices/device-1/revoke'),
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
 })

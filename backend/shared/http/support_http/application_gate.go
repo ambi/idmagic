@@ -23,6 +23,10 @@ type ApplicationAccessDecision struct {
 	StepUpRequired bool
 	ApplicationID  string
 	Reason         string
+	// TrustedDeviceAllowed は、実効ポリシーが記憶済みの信頼済みデバイスによる MFA の
+	// 充足を認めるかどうか (wi-91)。StepUpRequired のときだけ意味を持ち、false なら
+	// 呼び出し側は cookie を見ずに本物の第二要素を要求する。
+	TrustedDeviceAllowed bool
 }
 
 // ApplicationAccessAllowed は binding 経由のフェデレーション開始を許可してよいかを返す。
@@ -130,7 +134,10 @@ func (g *ApplicationGate) EvaluateApplicationAccess(
 	case appusecases.PolicyAllow:
 		return ApplicationAccessDecision{Allowed: true, ApplicationID: app.ID}, nil
 	case appusecases.PolicyStepUpRequired:
-		return ApplicationAccessDecision{ApplicationID: app.ID, StepUpRequired: true, Reason: evaluation.Reason}, nil
+		return ApplicationAccessDecision{
+			ApplicationID: app.ID, StepUpRequired: true, Reason: evaluation.Reason,
+			TrustedDeviceAllowed: effective != nil && appusecases.TrustedDeviceAllowedByRules(effective.Rules),
+		}, nil
 	default:
 		return ApplicationAccessDecision{ApplicationID: app.ID, Reason: evaluation.Reason}, nil
 	}

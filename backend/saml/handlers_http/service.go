@@ -27,7 +27,7 @@ func (d Deps) logoutService() samlusecases.LogoutService {
 }
 
 // gateAdapter は support.ApplicationGate を usecase の ApplicationGate へ橋渡しする。
-// 判定結果は同一形なので値変換で写す。
+// 判定結果は項目ごとに写す。
 type gateAdapter struct{ *support.ApplicationGate }
 
 func (g gateAdapter) EvaluateApplicationAccess(
@@ -39,5 +39,10 @@ func (g gateAdapter) EvaluateApplicationAccess(
 	clientIP string,
 ) (samlusecases.ApplicationAccessDecision, error) {
 	dec, err := g.ApplicationGate.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, authn, clientIP)
-	return samlusecases.ApplicationAccessDecision(dec), err
+	// 項目ごとに写す。この Context には step-up の遷移先が無く、信頼済みデバイスの判定も
+	// 使わないので、共有の判定に項目が増えてもここは follow しない。
+	return samlusecases.ApplicationAccessDecision{
+		Allowed: dec.Allowed, StepUpRequired: dec.StepUpRequired,
+		ApplicationID: dec.ApplicationID, Reason: dec.Reason,
+	}, err
 }

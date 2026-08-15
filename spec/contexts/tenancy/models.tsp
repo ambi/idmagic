@@ -93,6 +93,9 @@ model Tenant {
   @doc("Tenant override for the maximum Token Exchange (RFC 8693) `act` chain depth. When omitted, the system default applies.\nThe override may only tighten the limit; PolicyOverrideWeakerError rejects values above the system default.\nThis asymmetric rule matches password_policy_override and prevents tenant settings from widening an authorization boundary.")
   @minValue(1)
   max_delegation_depth?: int64;
+  @doc("Authentication context の信頼済みデバイス (remember this device) の有効期間 (秒)。\n0 または省略でテナント全体の機能無効となり、デバイスの記憶も第二要素のスキップも起こらない。\nsystem ceiling は 7776000 秒 (90 日) で、超える値は PolicyOverrideWeakerError で拒否する。")
+  @minValue(0)
+  trusted_device_max_age_seconds?: int64;
   @pattern("^[a-z]{2}$")
   default_locale?: string;
   created_at: utcDateTime;
@@ -150,6 +153,11 @@ model AdminSettingsResponse {
   max_delegation_depth?: int64;
   @doc("Delegation depth applied when the tenant has no override, and the ceiling that an override cannot exceed.\nThe response exposes this value so the administrative UI can display the concrete limit and reject an excessive value before sending it.")
   max_delegation_depth_default: int64;
+  @doc("信頼済みデバイスの有効期間 (秒)。0 または省略で機能無効。")
+  @minValue(0)
+  trusted_device_max_age_seconds?: int64;
+  @doc("信頼済みデバイスの有効期間に許される上限 (秒)。管理 UI が具体的な上限を提示し、\n超過値を送信前に弾けるように返す。")
+  trusted_device_max_age_seconds_ceiling: int64;
   @doc("テナントの既定 locale。未設定ならシステム既定 locale を使う。")
   default_locale?: string;
   @doc("カタログが同梱翻訳を持つ locale の一覧。管理 UI が既定 locale と通知テンプレートの選択肢を組み立てるために返す。")
@@ -519,6 +527,9 @@ model TenantUpdateRequest {
   @doc("Maximum delegation depth. Omission preserves the current value, and zero restores the system default. Values above the system default are rejected.")
   @minValue(0)
   max_delegation_depth?: int64;
+  @doc("信頼済みデバイスの有効期間 (秒)。省略時は既存値を維持し、0 で機能を無効へ戻す。\nsystem ceiling (7776000 秒 = 90 日) を超える値は拒否する。")
+  @minValue(0)
+  trusted_device_max_age_seconds?: int64;
   @doc("テナント既定 locale。省略時は既存値を維持し、空文字列でシステム既定へ戻す。サポート外の locale は拒否する。")
   default_locale?: string;
 }
@@ -535,6 +546,9 @@ model TenantSummaryResponse {
   password_policy_override?: PasswordPolicyOverride;
   @minValue(1)
   max_delegation_depth?: int64;
+  @doc("信頼済みデバイスの有効期間 (秒)。0 または省略で機能無効。")
+  @minValue(0)
+  trusted_device_max_age_seconds?: int64;
   default_locale?: string;
   quota: TenantQuota;
   usage: TenantUsage;

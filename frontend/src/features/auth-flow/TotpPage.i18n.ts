@@ -23,6 +23,9 @@ export const totpPageDictionary = defineDictionary(
     passkeyFooterNote: 'パスキーは端末に紐づき、フィッシングに強い認証方法です。',
     passkeyCancelled: 'パスキー認証がキャンセルされました。',
     passkeyFailed: 'パスキー認証に失敗しました。',
+    rememberDevice: 'このデバイスを記憶する',
+    rememberDeviceHint:
+      '次回以降、このブラウザーからのサインインでは二段階目の確認を省略します。共有の端末では使わないでください。パスワードや認証要素を変更すると記憶は取り消されます。',
   },
   {
     eyebrow: 'Two-factor authentication',
@@ -47,5 +50,8 @@ export const totpPageDictionary = defineDictionary(
     passkeyFooterNote: 'Passkeys are bound to your device and resistant to phishing.',
     passkeyCancelled: 'Passkey authentication was cancelled.',
     passkeyFailed: 'Passkey authentication failed.',
+    rememberDevice: 'Remember this device',
+    rememberDeviceHint:
+      'Skip the second verification step when you sign in from this browser again. Do not use this on a shared device. Changing your password or authenticators cancels it.',
   },
 )

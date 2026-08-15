@@ -72,9 +72,12 @@ func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) erro
 		PasswordPolicyOverride:  override,
 		PasswordPolicyUpdatedAt: timestamptzOrNil(tenant.PasswordPolicyUpdatedAt),
 		MaxDelegationDepth:      int4OrNil(tenant.MaxDelegationDepth),
-		CreatedAt:               tenant.CreatedAt,
-		UpdatedAt:               tenant.UpdatedAt,
-		DisabledAt:              timestamptzOrNil(tenant.DisabledAt),
+		// 0 は「上書きの解除」ではなく「機能無効」を意味する値なので、NULL へ畳まず
+		// そのまま書く (MaxDelegationDepth との違い)。
+		TrustedDeviceMaxAgeSeconds: int4OrNil(tenant.TrustedDeviceMaxAgeSeconds),
+		CreatedAt:                  tenant.CreatedAt,
+		UpdatedAt:                  tenant.UpdatedAt,
+		DisabledAt:                 timestamptzOrNil(tenant.DisabledAt),
 	})
 }
 
@@ -108,6 +111,10 @@ func tenantFromRow(row *Tenant) (*domain.Tenant, error) {
 	if row.MaxDelegationDepth.Valid {
 		depth := int(row.MaxDelegationDepth.Int32)
 		tenant.MaxDelegationDepth = &depth
+	}
+	if row.TrustedDeviceMaxAgeSeconds.Valid {
+		maxAge := int(row.TrustedDeviceMaxAgeSeconds.Int32)
+		tenant.TrustedDeviceMaxAgeSeconds = &maxAge
 	}
 	return tenant, tenant.Validate()
 }

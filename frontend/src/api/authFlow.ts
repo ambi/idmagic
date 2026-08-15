@@ -62,6 +62,7 @@ export async function submitTOTP(
   csrfToken: string,
   code: string,
   returnTo?: string,
+  rememberDevice?: boolean,
 ): Promise<BrowserFlowResponse> {
   return request('/api/auth/totp', {
     method: 'POST',
@@ -69,7 +70,7 @@ export async function submitTOTP(
       'Content-Type': 'application/json',
       'X-CSRF-Token': csrfToken,
     },
-    body: JSON.stringify({ code, return_to: returnTo }),
+    body: JSON.stringify({ code, return_to: returnTo, remember_device: rememberDevice }),
   })
 }
 
@@ -78,6 +79,7 @@ export async function submitTOTP(
 export async function loginWithPasskey(
   csrfToken: string,
   returnTo?: string,
+  rememberDevice?: boolean,
 ): Promise<BrowserFlowResponse> {
   const challengeResponse = await fetch(tenantURL('/api/auth/webauthn/challenge'), {
     method: 'POST',
@@ -94,7 +96,7 @@ export async function loginWithPasskey(
   return request('/api/auth/webauthn', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-    body: JSON.stringify({ assertion, return_to: returnTo }),
+    body: JSON.stringify({ assertion, return_to: returnTo, remember_device: rememberDevice }),
   })
 }
 

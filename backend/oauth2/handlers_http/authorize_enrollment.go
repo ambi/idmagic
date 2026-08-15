@@ -159,7 +159,9 @@ func (d Deps) handleConfirmMfaEnrollmentAPI(c *echo.Context) error {
 	if d.Emit != nil {
 		d.Emit(&authdomain.MfaEnrollmentCompleted{At: now, TenantID: tenancy.TenantID(c.Request().Context()), UserID: authn.UserID, SessionID: authn.SessionID, FactorType: "Totp"})
 	}
-	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo)
+	// 登録専用フローからはデバイスを記憶しない (wi-91)。ここは管理者が発行した bypass で
+	// 到達する経路であり、記憶の同意を出す画面でもない。
+	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo, false)
 }
 
 func writeBrowserEnrollmentError(c *echo.Context, err error) error {

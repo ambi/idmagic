@@ -957,6 +957,87 @@ op RevokeMyOtherSessions(
 
 ): RevokeMyOtherSessionsSuccess_204 | RevokeMyOtherSessionsError403;
 
+model ListMyTrustedDevicesHttpResponse {
+  trusted_devices: IdMagic.Contract.AccountTrustedDeviceListResponse;
+}
+
+model ListMyTrustedDevicesSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: ListMyTrustedDevicesHttpResponse;
+}
+
+union ListMyTrustedDevicesError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ListMyTrustedDevicesError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ListMyTrustedDevicesError403Body;
+}
+
+@doc("認証済みユーザーが自身の有効な信頼済みデバイスを取得する (self-service)。対象は\nsubject.id に固定し、最終利用時刻の降順で返す。現在のリクエストが提示した cookie に\n対応するデバイスを current=true でマークする。selector と verifier_hash は返さない。")
+@TypeSpec.OpenAPI.operationId("ListMyTrustedDevices")
+@route("/api/account/v1/trusted_devices")
+@get
+op ListMyTrustedDevices(
+
+): ListMyTrustedDevicesSuccess_200 | ListMyTrustedDevicesError403;
+
+model RevokeMyTrustedDeviceSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+union RevokeMyTrustedDeviceError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model RevokeMyTrustedDeviceError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: RevokeMyTrustedDeviceError400Body;
+}
+
+union RevokeMyTrustedDeviceError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model RevokeMyTrustedDeviceError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: RevokeMyTrustedDeviceError403Body;
+}
+
+@doc("認証済みユーザーが自身の信頼済みデバイス 1 件を失効する (self-service)。第二要素を\n条件付きで飛ばす能力を取り消す機微操作なので、直近のステップアップ再認証を要求する。\n対象が本人のものでなければ拒否する。失効は revoked_at / revoke_reason=self_revoke を\n設定する tombstone であり、既に失効済みの対象への再失効は idempotent に成功する。")
+@TypeSpec.OpenAPI.operationId("RevokeMyTrustedDevice")
+@route("/api/account/v1/trusted_devices/{id}/revoke")
+@post
+op RevokeMyTrustedDevice(
+  @path id: string
+): RevokeMyTrustedDeviceSuccess_204 | RevokeMyTrustedDeviceError400 | RevokeMyTrustedDeviceError403;
+
+model RevokeMyTrustedDevicesSuccess_204 {
+  @statusCode statusCode: 204;
+}
+
+union RevokeMyTrustedDevicesError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model RevokeMyTrustedDevicesError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: RevokeMyTrustedDevicesError403Body;
+}
+
+@doc("認証済みユーザーが自身の信頼済みデバイスをすべて失効する (self-service)。現在の\nデバイスも対象に含む \"すべての記憶を解除\" 操作で、直近のステップアップ再認証を要求する。\n各対象は tombstone として失効し、既に失効済みの対象は idempotent にスキップする。")
+@TypeSpec.OpenAPI.operationId("RevokeMyTrustedDevices")
+@route("/api/account/v1/trusted_devices/revoke_all")
+@post
+op RevokeMyTrustedDevices(
+
+): RevokeMyTrustedDevicesSuccess_204 | RevokeMyTrustedDevicesError403;
+
 model ListSessionsHttpResponse {
   sessions: IdMagic.Contract.SessionRecordListResponse;
 }

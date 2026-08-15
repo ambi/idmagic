@@ -20,6 +20,7 @@ import (
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 	signingcrypto "github.com/ambi/idmagic/backend/signingkeys/keys_memory"
 
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/ambi/idmagic/backend/authentication"
@@ -30,6 +31,7 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	totpusecases "github.com/ambi/idmagic/backend/authentication/totp/usecases"
+	trusteddevicememory "github.com/ambi/idmagic/backend/authentication/trusteddevice/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -137,8 +139,36 @@ func newServerWithTOTP(t *testing.T, totpSecret string) *httptest.Server {
 	return newServerWithTOTPPolicy(t, totpSecret, false)
 }
 
+// totpServerOptions は TOTP / MFA ポリシー付きテストサーバーの組み立て条件。可変長引数を
+// 増やす代わりに 1 つの構造体で表す (wi-91 で信頼済みデバイスの条件が加わったため)。
+type totpServerOptions struct {
+	totpSecret string
+	requireMFA bool
+	// enrollment は MFA 強制開始済み + 管理者 bypass 発行済みの登録専用フローを組む。
+	enrollment bool
+	// expiredBypass は enrollment=true のとき bypass を期限切れとして発行する。
+	expiredBypass bool
+	// trustedDeviceMaxAgeSeconds はテナントの信頼済みデバイス有効期間。0 は機能無効。
+	trustedDeviceMaxAgeSeconds int
+	// allowTrustedDevice は MFA ルールの allow_trusted_device。nil は既定 (true)。
+	allowTrustedDevice *bool
+}
+
 func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, enrollment ...bool) *httptest.Server {
 	t.Helper()
+	opts := totpServerOptions{totpSecret: totpSecret, requireMFA: requireMFA}
+	if len(enrollment) > 0 {
+		opts.enrollment = enrollment[0]
+	}
+	if len(enrollment) > 1 {
+		opts.expiredBypass = enrollment[1]
+	}
+	return newTOTPServer(t, opts)
+}
+
+func newTOTPServer(t *testing.T, opts totpServerOptions) *httptest.Server {
+	t.Helper()
+	totpSecret, requireMFA := opts.totpSecret, opts.requireMFA
 
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := usermemory.NewUserRepository()
@@ -191,14 +221,14 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 		}
 	}
 	if requireMFA {
-		enrollmentEnabled := len(enrollment) > 0 && enrollment[0]
+		enrollmentEnabled := opts.enrollment
 		var enrollmentPolicy *appdomain.MfaEnrollmentPolicy
 		if enrollmentEnabled {
 			start := now.Add(-time.Minute)
 			grace := 3600
 			enrollmentPolicy = &appdomain.MfaEnrollmentPolicy{EnforcementStartAt: &start, GracePeriodSeconds: &grace, AllowAdminBypass: true}
 			bypassExpiresAt := now.Add(15 * time.Minute)
-			if len(enrollment) > 1 && enrollment[1] {
+			if opts.expiredBypass {
 				bypassExpiresAt = now.Add(-time.Second)
 			}
 			if err := mfaEnrollmentBypassRepo.Save(context.Background(), &mfadomain.MfaEnrollmentBypass{
@@ -227,8 +257,9 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 			TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now,
 			Rules: []appdomain.SignInRule{{
 				RuleID: "default", Name: "Require MFA", Enabled: true,
-				RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
-				MfaEnrollment: enrollmentPolicy,
+				RequiredAuthn:      appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+				MfaEnrollment:      enrollmentPolicy,
+				AllowTrustedDevice: opts.allowTrustedDevice,
 			}},
 		}); err != nil {
 			t.Fatalf("seed sign-in policy: %v", err)
@@ -247,16 +278,19 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps: support.Deps{
-			Issuer: "http://test",
-
+			Issuer:          "http://test",
+			TenantRepo:      seedTrustedDeviceTenant(t, opts.trustedDeviceMaxAgeSeconds),
 			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 		}, OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
 			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
 		}, UserRepo: userRepo,
-		Authentication: authentication.Module{MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo},
-		MfaFactorRepo:  mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
+		Authentication: authentication.Module{
+			MfaEnrollmentBypassRepo: mfaEnrollmentBypassRepo,
+			TrustedDeviceRepo:       trusteddevicememory.NewTrustedDeviceRepository(),
+		},
+		MfaFactorRepo: mfaFactorRepo, PasswordHistoryRepo: passwordHistoryRepo,
 		KeyStore: keyStore, TokenIssuer: tokenIssuer, TokenIntrospector: tokenIssuer,
 		PasswordHasher: hasher, SessionManager: sessionManager, AuthnResolver: sessionManager,
 		Application: application.Module{
@@ -265,6 +299,24 @@ func newServerWithTOTPPolicy(t *testing.T, totpSecret string, requireMFA bool, e
 		},
 	})
 	return httptest.NewServer(e)
+}
+
+// seedTrustedDeviceTenant は既定テナントを 1 件だけ持つリポジトリを返す。
+// maxAgeSeconds が 0 なら信頼済みデバイスは無効のままになる。
+func seedTrustedDeviceTenant(t *testing.T, maxAgeSeconds int) *tenancymemory.TenantRepository {
+	t.Helper()
+	repo := tenancymemory.NewTenantRepository()
+	tenant := &tenancydomain.Tenant{
+		ID: tenancydomain.DefaultTenantID, Realm: "default", DisplayName: "Default",
+		Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC(),
+	}
+	if maxAgeSeconds > 0 {
+		tenant.TrustedDeviceMaxAgeSeconds = &maxAgeSeconds
+	}
+	if err := repo.Save(context.Background(), tenant); err != nil {
+		t.Fatalf("seed tenant: %v", err)
+	}
+	return repo
 }
 
 func TestBrowserAuthorizationFlowUsesCookiesAndJSONAPI(t *testing.T) {

@@ -22,6 +22,7 @@ updated_at: 2026-08-15
 | Totp | RFC 6238 に基づく時刻同期型のワンタイムパスワード。 | totp, otp |
 | Webauthn | WebAuthn の公開鍵クレデンシャルによる認証。 | webauthn |
 | RecoveryCode | TOTP や WebAuthn の認証要素を失ったときに使う、単回限りの控えの復旧コード。 | recovery_code |
+| TrustedDevice | 本物の第二要素が成立した直後に本人が明示同意して記憶させたブラウザーを表す、ユーザー単位の資格情報。有効な間は、そのブラウザーからのログインで第二要素の提示を省略できる。 | 信頼済みデバイス, remember this device |
 | EndUser | 認証済みまたは認証を試みる一般利用者。ログイン・MFA継続・パスワードリセットなど、認証が未完了の操作の主体を指す。 |  |
 | ResourceOwner | OAuth2/OIDC 認可フローでリソースの所有者として認可判断を行う利用者。EndUser と同一人物を OAuth2 文脈で指す呼称。 |  |
 
@@ -77,7 +78,7 @@ RFC 8176 — https://www.rfc-editor.org/rfc/rfc8176.html
 
 | ID | Adoption | Strength | Statement |
 |---|---|---|---|
-| RFC8176-AMR-VOCABULARY | required | MUST | LoginSession.amr は RFC 8176 登録値 (pwd, otp, webauthn, hwk, swk) のサブセットに、本アプリ固有の非 IANA 拡張値 rc (recovery code) を加えた語彙のみを許可する。 |
+| RFC8176-AMR-VOCABULARY | required | MUST | LoginSession.amr は RFC 8176 登録値 (pwd, otp, webauthn, hwk, swk) のサブセットに、本アプリ固有の非 IANA 拡張値 rc (recovery code) と tdev (信頼済みデバイス) を加えた語彙のみを許可する。 |
 
 ## State Transitions
 
@@ -91,6 +92,19 @@ Initial: `Disabled` Terminal: none
 |---|---|---|---|---|
 | Active | IdentityProviderConnectionDisabled | — | Disabled |  |
 | Disabled | IdentityProviderConnectionActivated | — | Active |  |
+
+### TrustedDeviceLifecycle
+
+信頼済みデバイスは、発行された `Active` と、二度と第二要素を肩代わりしない `Revoked` の 2 状態しか持たない。期限切れは状態ではなく `Active` の行に対する時刻の判定であり、絶対期限か idle 期限のどちらかを過ぎた行は評価の時点で失効として扱う。`Revoked` は終端で、失効は行を削除せず `revoked_at` と `revoke_reason` を設定する tombstone なので、同じ理由での再失効は安全な no-op になる。
+
+利用そのものは状態を変えない。期限内の照合が成功するたびに verifier を回転させて `last_used_at` を進め、cookie を再発行するが、行は `Active` のままである。
+
+Initial: `Active` Terminal: `Revoked`
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| Active | TrustedDeviceRevoked | — | Revoked | revoked_at と revoke_reason を設定する |
+| Revoked | TrustedDeviceRevoked | — | Revoked |  |
 
 ## Design
 
@@ -131,6 +145,8 @@ MFA の強制開始後に未登録のユーザーが到達できるのは登録�
 `mfa_factors.secret` は以前からある平文の TOTP の種の列であり、既存の行が読めるようにするためだけに残している (二重読み)。新しい書き込みは `secret_key_version` と `secret_ciphertext` を埋め、`secret` は `NULL` のままにする。残りの平文の行は保留中の埋め戻しで移行し、その後 `secret` を削除する。
 
 `webauthn_credentials` は `credential_id` を鍵とする。1 人のユーザーが複数登録できるからであり、同じ理由で `mfa_factors` とは別のテーブルのままにしている。`public_key` は COSE の公開鍵 (base64url) を保持する。`recovery_codes` は平文のコードを決して保存せず、`code_hash` (SHA-256 の 16 進) だけを持つ。`consumed_at` が `NULL` でなければそのコードは使用済みで再送できず、再生成はユーザーの一式をまとめて置き換える。`webauthn_sessions` は WebAuthn の手続きの challenge のストアであり、`GetDel` は `DELETE ... WHERE expires_at > now() RETURNING data` である。
+
+`trusted_devices` も `authentication_sessions` と同じ理由で、通常の [`tenant_id` retention classes](../../SPECIFICATION.md#2-tenant_id-retention-classes) の例外として `tenant_id` を保持する。`user_id` から辿れば所属テナントは分かるが、この行を引く鍵は不透明な cookie の `selector` であり、ログインのたびにテナント境界をフェイルクローズで確かめる条件が、`users` への結合ではなく行そのものに要るからである。同じ理由でテナントごとの有効な一覧にも要る。親が全体で一意なので外部キーは `users(id)` への単一列とし、テナント単位の複合外部キーは使わない。`selector` は全体で一意なので、走査ではなく 1 行の等値検索で解決する。`verifier_hash` は SHA-256 hex で、cookie の平文も生の User-Agent も IP も保存しない。インデックスは `(tenant_id, user_id, last_used_at DESC)` の部分インデックス 1 本で、本人の一覧と一括失効の両方を賄う。
 
 `tenant_correlation_salts` はテナントごとのシークレットで、利用者名や IP の相関用ハッシュ（`SaltedHash`）と、スロットルや集計の `keyHash` の算出に使う。これにより相関がテナントをまたいで集約されることはない。あらかじめ用意するのではなく、最初に使うときに生成する。
 
@@ -184,6 +200,24 @@ RP ID と許可するオリジンはデプロイ時の設定（`WEBAUTHN_RP_ID` 
 
 復旧コード（SHA-256 ハッシュだけを保存し、`consumed_at` によって単回利用を保証する。再生成時は一式をまとめて置き換え、紛らわしい文字を除いた文字集合から 10 文字のコードを 10 個生成する）は、TOTP や WebAuthn の認証要素を失ったときの控えとしてのみ存在し、`User.mfa_enrolled` には意図的に **数えない**。復旧コードを単独の第二認証要素として扱うと、ユーザーがそれを唯一の MFA として利用でき、控えを持つ意味が失われるからである。`mfa_enrolled` は「TOTP 認証要素または WebAuthn クレデンシャルが 1 つ以上存在すること」から導出し、どちらかを削除するたびに再計算する。復旧コードの生成、再生成、失効にはステップアップ認証が必要である。第二認証要素の検証に成功すると `acr` は `urn:idmagic:acr:mfa` へ上がり、`amr` には `webauthn`、復旧コードを使った場合は `rc` が加わる。`webauthn` は RFC 8176 の登録値である一方、`rc` はこのアプリケーション独自の IANA 未登録値である。
 
+### Trusted device (remember this device)
+
+常用の端末で毎回第二要素を求めると摩擦が大きい。`TrustedDevice` は、本人が明示的に同意した 1 つのブラウザーを一定期間だけ覚えておき、その端末からのログインで第二要素の提示を省略できるようにする。第二要素を条件付きで飛ばす仕組みなので、設計はもっぱら「いつ発行しないか」と「いつ失効させるか」で成り立っている。
+
+端末は指紋ではなくサーバーが発行した秘密で識別する。User-Agent や画面解像度の組み合わせは攻撃者が複製できるうえ、正規の利用者側では更新のたびに変わるため、どちらの方向にも外れる。cookie には `selector.verifier` を入れ、サーバーは `selector` と `SHA-256(verifier)` だけを保存する。`selector` は一意なので行を 1 件だけ引け、`verifier` のハッシュは定数時間で比較する。全行を走査して総当たりの時間差を晒すことも、cookie の平文を保存することもない。cookie は realm ごとの名前とパスを使う既存のヘルパーで発行するので、あるテナントで記憶した端末が別のテナントのログインへ持ち込まれることはない。属性は `HttpOnly`、`SameSite=Lax`、発行者が HTTPS なら `Secure` とする。
+
+発行はログインで**本物の第二要素 (TOTP / WebAuthn) が成立した直後**に限る。パスワードだけの成功からは発行しない。パスワードを知る攻撃者が自分の端末を記憶させられるなら、MFA 要件は最初から無い。復旧コードによる成功からも発行しない。復旧コードは要素を失ったときの経路であり、その状況の端末を長期の信頼に足るものとして扱えないからである。MFA 登録専用フローからも発行しない。テナントの `trusted_device_max_age_seconds` が 0 または未設定なら、そもそも同意の導線を出さず、送られてきた `remember_device` も無視する。既定は 0、すなわち機能無効である。
+
+評価はサインインポリシーが MFA を要求し、かつセッションがまだ第二要素を持たない時にだけ行う。有効なら `tdev` を `amr` に加え、`acr` は `urn:idmagic:acr:mfa` へ上がる。`tdev` は `rc` と同じくこのアプリケーション固有の IANA 未登録値であり、「要素を提示したのではなく端末が記憶されていた」ことを RP に対しても隠さない。`SignInRule.allow_trusted_device=false` のルールは `tdev` を MFA の充足として認めないため、アプリケーション単位で「毎回 MFA」を明示できる。
+
+ステップアップ再認証は `StepUpMethod` に列挙した factor だけで成立し、`tdev` はその選択肢に入らない。信頼済みデバイスがステップアップの直近性 (`step_up_at`) を進めることも決してない。したがって、パスワード変更、TOTP の解除、メールアドレスの変更、他セッションの一括失効といった機微操作は、端末を記憶していても必ず再認証を要求する。記憶が肩代わりするのはログイン時の第二要素だけである。
+
+有効期限は絶対期限と idle 期限の両方で切る。絶対期限は `created_at + trusted_device_max_age_seconds` で、上限は 90 日とする。idle 期限は `last_used_at + min(30 日, max_age)` で、しばらく使われていない端末は絶対期限より先に落ちる。照合に成功するたびに verifier を回転させて cookie を再発行するので、盗まれた古い cookie は正規の利用者が次に同じ端末でログインした時点で無効になる。回転は正規の利用者の側にも観測可能な副作用を残すため、盗難が静かに続く状態を作らない。
+
+失効は網羅的に配線する。本人によるパスワードの変更とリセット、認証要素の登録と解除、管理者による認証器のリセット、アカウントの無効化、本人または管理者による全セッションの失効は、いずれも対象ユーザーの全デバイスを失効させる。資格情報が変わったということは、それ以前に成立した第二要素の証明も同時に古くなったということだからである。本人はアカウントのポータルから個別に、あるいは一括で失効でき、その操作自体がステップアップ認証の対象である。失効は行を削除せず `revoked_at` と `revoke_reason` を設定するので、再送は安全な no-op になる。
+
+保持するのはデバイス識別子と時刻、そして User-Agent から導いたブラウザーと OS の系統だけのラベル (例 `Chrome / macOS`) である。生の User-Agent も IP も cookie の平文も保存しない。一覧で自分の端末を見分けるのに要る粒度はそこまでで、それ以上は失効の判断に寄与せず、漏れたときの被害だけが増えるからである。監査イベント (`TrustedDeviceRegistered` / `TrustedDeviceRevoked`) も同じ粒度に留める。
+
 ### MFA enrollment bypass
 
 ある時点から MFA を強制すると鶏と卵の問題が生じる。未登録のユーザーをすべて拒むと、正当な新規ユーザーと認証要素を失った利用者の復旧が止まる。一方、パスワードの検証に成功しただけで誰でも認証要素を登録できるようにすると、パスワードを知る攻撃者が自身の認証要素を登録し、MFA 要件を無効にできてしまう。強制開始前は、未登録のユーザーも通常のパスワードセッションを得て、ステップアップ認証で保護されたアカウントのセキュリティ設定画面から認証要素を先に登録するよう促される。強制開始後は、管理者が発行した `MfaEnrollmentBypass` が未消費、未失効、期限内である場合に限り、未登録のユーザーは登録専用フローに到達できる。これは短命で単回限りのサーバー側の許可であり、配布されるシークレットではない。強制開始日と猶予期間は運用上の時刻にすぎず、誰が登録しているかを信頼する根拠にはならない。
@@ -214,6 +248,11 @@ RP ID と許可するオリジンはデプロイ時の設定（`WEBAUTHN_RP_ID` 
 - 利用者自身が操作するアカウントのポータルと管理用のアカウント API は別の契約である。ポータル自身の要約のエンドポイントは意図的にロールを省くので、管理用の情報を漏らすことはない。
 - 機微の高い自己操作 (パスワードの変更、TOTP の削除、メールアドレスの変更、他のセッションの失効) は、CSRF の防御に加えてステップアップ認証による再認証を要求する。
 - MFA の強制が始まった後、未登録のユーザーが登録専用の流れに到達できるのは、管理者が発行した単回限りの `MfaEnrollmentBypass` を通じてのみであり、素のパスワードの成功だけでは決して到達できない。
+- 信頼済みデバイスは端末の指紋ではなく、selector と verifier に分けたサーバー発行の秘密で識別し、利用のたびに回転させる。指紋は攻撃者に複製でき、正規の利用者側では勝手に変わるからである。
+- 信頼済みデバイスの発行は、本物の第二要素が成立した直後に限る。パスワードだけ、復旧コード、登録専用フローからは発行しない。
+- 信頼済みデバイスはログイン時の第二要素だけを肩代わりし、ステップアップ認証の直近性には一切寄与しない。
+- 資格情報が変わる操作 (パスワード、認証要素、認証器のリセット、アカウントの無効化、全セッションの失効) は、対象ユーザーの信頼済みデバイスをすべて失効させる。
+- 信頼済みデバイスはテナントごとの明示的な有効期間 (`trusted_device_max_age_seconds`) でのみ有効になり、既定は無効である。
 
 ## Scenarios
 
@@ -476,3 +515,55 @@ RP ID と許可するオリジンはデプロイ時の設定（`WEBAUTHN_RP_ID` 
 - THEN 外部 IdP 接続の管理は、ブラウザーのログインセッションまたは管理ポータルのアクセストークンからのみ行える
 - WHEN 同じクライアントがセッションと認証情報の管理 API をリクエストする
 - THEN `sessions:read` は利用者のセッションとサインイン履歴の参照を、`sessions:write` はセッションの失効を、`users:write` は MFA 登録の一時免除と認証器のリセットを許可する
+
+### REQ-AUTHENTICATION-026: 第二要素の成立時に本人が同意した端末は次回以降の第二要素を省略できる
+- ACTOR EndUser
+- GIVEN テナントの `trusted_device_max_age_seconds` は正の値である
+- GIVEN 対象 Application の実効サインインポリシーは `Mfa` で `allow_trusted_device=true` である
+- GIVEN ユーザー "alice" は TOTP 認証要素を登録済みである
+- WHEN ユーザー "alice" が正しいパスワードに続けて正しい TOTP コードを送信し、このデバイスを記憶することに同意する
+  - ALT テナントの `trusted_device_max_age_seconds` が 0 または未設定である → 同意は無視され、デバイスは記憶されない
+  - ALT 第二要素として復旧コードを消費した → デバイスは記憶されない
+  - ALT パスワードだけで認証が完了した (ポリシーが MFA を要求していない) → デバイスは記憶されない
+- THEN 認証が成立し、realm scope の HttpOnly cookie として信頼済みデバイスの資格情報が発行される
+- THEN "TrustedDeviceRegistered" が発行される
+- WHEN 同じブラウザーでユーザー "alice" が正しいパスワードを送信する
+- THEN 第二要素の画面へ進まずに認証が成立し、`amr` に `tdev` が加わって `acr` が `urn:idmagic:acr:mfa` になる
+- THEN 信頼済みデバイスの verifier が回転し、更新された cookie が再発行される
+
+### REQ-AUTHENTICATION-027: 期限切れ・盗難・別テナントの信頼済みデバイス cookie は第二要素を省略できない
+- ACTOR EndUser
+- GIVEN ユーザー "alice" は 1 つの信頼済みデバイスを持ち、対象 Application の実効サインインポリシーは `Mfa` である
+- WHEN ユーザー "alice" が絶対期限を過ぎた cookie を提示して正しいパスワードを送信する
+  - ALT 直近利用から idle 期限を過ぎた cookie を提示する → 第二要素を要求する
+  - ALT 回転前の古い cookie を提示する → 第二要素を要求する
+  - ALT 別テナントの realm で発行された cookie を提示する → 第二要素を要求する
+  - ALT selector は正しいが verifier が一致しない cookie を提示する → 第二要素を要求する
+- THEN LoginSession は `authentication_pending=true` になり、第二要素の選択画面へ進む
+- THEN `amr` に `tdev` は加わらない
+
+### REQ-AUTHENTICATION-028: 資格情報が変わると信頼済みデバイスはすべて失効する
+- ACTOR AuthenticatedSelf
+- GIVEN ユーザー "alice" は有効な信頼済みデバイスを持つ
+- WHEN ユーザー "alice" が自身のパスワードを変更する
+  - ALT メールのリセットリンクでパスワードを再設定する → 同じく全デバイスが失効する
+  - ALT ユーザー "alice" が TOTP 認証要素を登録または解除する → 同じく全デバイスが失効する
+  - ALT 管理者がユーザー "alice" の認証器をリセットする → 同じく全デバイスが失効する
+  - ALT 管理者がユーザー "alice" を無効化する → 同じく全デバイスが失効する
+  - ALT ユーザー "alice" が他のセッションを一括失効させる → 同じく全デバイスが失効する
+- THEN ユーザー "alice" の信頼済みデバイスはすべて失効し、"TrustedDeviceRevoked" が発行される
+- WHEN 失効した端末でユーザー "alice" が再びログインする
+- THEN 第二要素が再び要求される
+
+### REQ-AUTHENTICATION-029: 信頼済みデバイスは機微操作の再認証を肩代わりしない
+- ACTOR AuthenticatedSelf
+- GIVEN ユーザー "alice" は信頼済みデバイスによって `amr` に `tdev` を持つセッションで認証済みである
+- GIVEN そのセッションはステップアップ認証を行っていない
+- WHEN ユーザー "alice" がパスワードの変更、TOTP 認証要素の解除、または他セッションの一括失効を要求する
+- THEN ステップアップ認証による再認証が要求される
+- WHEN ユーザー "alice" が自身の信頼済みデバイスを一覧する
+  - ALT ステップアップ認証なしで信頼済みデバイスの失効を要求する → ステップアップ認証による再認証が要求される
+- THEN selector と verifier を含まない一覧が最終利用時刻の降順で返り、現在の端末が current として示される
+- WHEN ユーザー "alice" がステップアップ認証を成立させて信頼済みデバイスを失効させる
+  - ALT 既に失効済みのデバイスへ同じ失効操作を再送する → 要求は成功として扱われ、最初の失効時刻を保持する
+- THEN 対象は一覧から消え、"TrustedDeviceRevoked" が発行される

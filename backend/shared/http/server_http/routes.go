@@ -22,6 +22,7 @@ import (
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	"github.com/ambi/idmagic/backend/authorization"
 	authorizationhttp "github.com/ambi/idmagic/backend/authorization/handlers_http"
@@ -109,6 +110,7 @@ type Deps struct {
 	WebAuthnRP              *gowebauthn.WebAuthn
 	WebAuthnCredentialRepo  webauthnports.WebAuthnCredentialRepository
 	RecoveryCodeRepo        recoveryports.RecoveryCodeRepository
+	TrustedDeviceRepo       trusteddeviceports.TrustedDeviceRepository
 	OAuth2                  oauth2.Module
 	// Deprecated: 移行中のテスト用互換入力。bootstrap は OAuth2.Module のみを設定する。
 	TokenIssuer       oauthports.TokenIssuer
@@ -216,6 +218,9 @@ func mergeLegacyAuthenticationDeps(module authentication.Module, d Deps) authent
 	}
 	if module.RecoveryCodeRepo == nil {
 		module.RecoveryCodeRepo = d.RecoveryCodeRepo
+	}
+	if module.TrustedDeviceRepo == nil {
+		module.TrustedDeviceRepo = d.TrustedDeviceRepo
 	}
 	if module.AuthnResolver == nil {
 		module.AuthnResolver = module.SessionManager
@@ -395,6 +400,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnCredentialRepo:     d.Authentication.WebAuthnCredentialRepo,
 		WebAuthnSessionStore:       d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:           d.Authentication.RecoveryCodeRepo,
+		TrustedDeviceRepo:          d.Authentication.TrustedDeviceRepo,
 		QuotaRepo:                  d.Tenancy.QuotaRepo,
 	})
 
@@ -477,6 +483,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnCredentialRepo:    d.Authentication.WebAuthnCredentialRepo,
 		WebAuthnSessionStore:      d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
+		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
 	}
 	authhttp.RegisterRoutes(g, authDeps)
 
@@ -537,6 +544,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		DeviceCodeStore:       d.OAuth2.DeviceCodeStore,
 		ApprovalRequestStore:  d.OAuth2.ApprovalRequestStore,
 		MfaFactorRepo:         d.Authentication.MfaFactorRepo,
+		TrustedDeviceRepo:     d.Authentication.TrustedDeviceRepo,
 		PasswordHasher:        d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
 		EmailChangeTokenStore: d.IdManagement.EmailChangeTokenStore,

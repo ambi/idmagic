@@ -16,12 +16,17 @@ CREATE TABLE tenants (
     -- enabling max_age_days does not expire every existing password at once.
     password_policy_updated_at TIMESTAMPTZ,
     max_delegation_depth INTEGER,
+    trusted_device_max_age_seconds INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
     CONSTRAINT tenants_realm_unique UNIQUE (realm),
     CONSTRAINT tenants_max_delegation_depth_positive
         CHECK (max_delegation_depth IS NULL OR max_delegation_depth >= 1),
+    -- 0 and NULL both mean "trusted devices are disabled"; the ceiling is 90 days.
+    CONSTRAINT tenants_trusted_device_max_age_range
+        CHECK (trusted_device_max_age_seconds IS NULL
+            OR (trusted_device_max_age_seconds >= 0 AND trusted_device_max_age_seconds <= 7776000)),
     CONSTRAINT tenants_default_locale_format CHECK (default_locale IS NULL OR default_locale ~ '^[a-z]{2}$'),
     CONSTRAINT tenants_realm_format CHECK (
         realm <> 'admin' AND realm ~ '^[a-z0-9][a-z0-9-]{0,62}$'
@@ -238,6 +243,34 @@ CREATE TABLE recovery_codes (
     CONSTRAINT recovery_codes_user_id_fkey
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE trusted_devices (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    selector TEXT NOT NULL UNIQUE,
+    verifier_hash TEXT NOT NULL,
+    label TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_used_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    revoked_at TIMESTAMPTZ,
+    revoke_reason TEXT
+        CHECK (revoke_reason IS NULL OR revoke_reason IN
+            ('self_revoke', 'password_change', 'mfa_change', 'admin_revoke',
+             'account_disabled', 'session_revoke')),
+    CONSTRAINT trusted_devices_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT trusted_devices_user_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT trusted_devices_expiry CHECK (expires_at > created_at),
+    CONSTRAINT trusted_devices_revocation
+        CHECK ((revoked_at IS NULL) = (revoke_reason IS NULL))
+);
+
+CREATE INDEX trusted_devices_active_user_idx
+    ON trusted_devices (tenant_id, user_id, last_used_at DESC)
+    WHERE revoked_at IS NULL;
 
 CREATE TABLE signing_keys (
     kid TEXT PRIMARY KEY,

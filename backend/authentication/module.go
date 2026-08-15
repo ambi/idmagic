@@ -13,6 +13,7 @@ import (
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 
 	"github.com/go-webauthn/webauthn/webauthn"
@@ -35,6 +36,7 @@ type Module struct {
 	WebAuthnSessionStore     webauthnports.WebAuthnSessionStore
 	WebAuthnRP               *webauthn.WebAuthn
 	RecoveryCodeRepo         recoveryports.RecoveryCodeRepository
+	TrustedDeviceRepo        trusteddeviceports.TrustedDeviceRepository
 	NewLoginAttemptThrottle  func(sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle
 	AuthEventBucketStore     ports.AuthEventBucketStore
 

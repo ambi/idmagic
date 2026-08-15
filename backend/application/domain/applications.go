@@ -133,6 +133,16 @@ type SignInRule struct {
 	RequiredAuthn RequiredAuthnLevel   `json:"required_authn"`
 	Condition     AccessCondition      `json:"condition"`
 	MfaEnrollment *MfaEnrollmentPolicy `json:"mfa_enrollment,omitempty"`
+	// AllowTrustedDevice は required_authn=Mfa のとき、記憶済みの信頼済みデバイス
+	// (amr に tdev) で MFA 要件を満たしてよいかどうか。nil は既定の true と読む:
+	// この列を知らずに保存された既存ルールが、暗黙に「毎回 MFA」へ倒れないようにする。
+	// テナントが信頼済みデバイスを有効にしていなければ、そもそも発行も評価もされない。
+	AllowTrustedDevice *bool `json:"allow_trusted_device,omitempty"`
+}
+
+// TrustedDeviceAllowed は AllowTrustedDevice のゼロ値 (nil) を既定の true として読む。
+func (r SignInRule) TrustedDeviceAllowed() bool {
+	return r.AllowTrustedDevice == nil || *r.AllowTrustedDevice
 }
 
 type MfaEnrollmentPolicy struct {

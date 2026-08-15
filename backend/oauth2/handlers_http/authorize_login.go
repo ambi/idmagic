@@ -153,29 +153,42 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 			return err
 		}
 		if decision.StepUpRequired {
-			if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
-				enrollment, policyErr := d.applicationMfaEnrollmentPolicy(c, decision.ApplicationID)
-				if policyErr != nil {
-					return policyErr
-				}
-				if begun, err := d.beginMfaEnrollment(c, authn, enrollment); err != nil {
-					return err
-				} else if begun {
-					return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/mfa-enrollment")})
-				}
-				return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
-					RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "The application's sign-in policy requirements were not met."),
-				})
-			}
-			pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
+			// 記憶済みの信頼済みデバイスは第二要素の提示を省略できる (wi-91)。成立すると
+			// authn は tdev 込みへ昇格するので、そのまま通常の完了経路へ落ちる。
+			trusted, err := d.trustedDeviceSatisfiesSecondFactor(c, decision.TrustedDeviceAllowed, authn)
 			if err != nil {
 				return err
 			}
-			if pending == nil {
-				return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
+			if trusted {
+				// 第二要素の不足がこの decision の唯一の拒否理由だったので、昇格した
+				// 時点で下の !decision.Allowed による拒否も当たらない。
+				req.AMR, req.ACR = authn.AMR, &authn.ACR
+				decision.Allowed = true
+			} else {
+				if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
+					enrollment, policyErr := d.applicationMfaEnrollmentPolicy(c, decision.ApplicationID)
+					if policyErr != nil {
+						return policyErr
+					}
+					if begun, err := d.beginMfaEnrollment(c, authn, enrollment); err != nil {
+						return err
+					} else if begun {
+						return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: support.TenantRoute(c, "/mfa-enrollment")})
+					}
+					return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
+						RedirectTo: authorizationErrorURL(req, support.RequestIssuer(c, d.Issuer), "access_denied", "The application's sign-in policy requirements were not met."),
+					})
+				}
+				pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
+				if err != nil {
+					return err
+				}
+				if pending == nil {
+					return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
+				}
+				d.setSessionCookie(c, pending.SessionID)
+				return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: d.pendingAuthPath(c, authn)})
 			}
-			d.setSessionCookie(c, pending.SessionID)
-			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: d.pendingAuthPath(c, authn)})
 		}
 		if !decision.Allowed {
 			return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{
@@ -236,6 +249,17 @@ func (d Deps) enforceDefaultSignInPolicy(
 	case appusecases.PolicyStepUpRequired:
 		if !allowChallenge {
 			return true, nil
+		}
+		// 記憶済みの信頼済みデバイスは第二要素の提示を省略できる (wi-91)。成立すると
+		// authn は tdev 込みへ昇格し、遷移は起きない。
+		trusted, err := d.trustedDeviceSatisfiesSecondFactor(
+			c, appusecases.TrustedDeviceAllowedByRules(policy.Rules), authn,
+		)
+		if err != nil {
+			return false, err
+		}
+		if trusted {
+			return false, nil
 		}
 		if len(d.secondFactorMethods(c, authn.UserID)) == 0 {
 			enrollment := appusecases.MfaEnrollmentPolicyFromRules(policy.Rules)

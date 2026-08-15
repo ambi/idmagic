@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { getAccountSecurity, listLinkedIdentities } from '../../api/account'
+import { getAccountSecurity, listLinkedIdentities, listTrustedDevices } from '../../api/account'
 import { AccountSecurityPage } from '../../features/account/AccountSecurityPage'
 import { hasAdminRole, requirePortalAccount } from '../-guards'
 import { PageMarker } from '../-page'
@@ -7,9 +7,10 @@ import { PageMarker } from '../-page'
 export const Route = createFileRoute('/account/security')({
   loader: async ({ location }) => {
     const account = await requirePortalAccount('account', location.pathname, location.searchStr)
-    const [security, linkedIdentities] = await Promise.all([
+    const [security, linkedIdentities, trustedDevices] = await Promise.all([
       getAccountSecurity(),
       listLinkedIdentities(),
+      listTrustedDevices(),
     ])
     return {
       csrfToken: account.csrf_token,
@@ -17,6 +18,7 @@ export const Route = createFileRoute('/account/security')({
       isAdmin: hasAdminRole(account.roles),
       security,
       linkedIdentities,
+      trustedDevices,
     }
   },
   component: AccountSecurityRoute,

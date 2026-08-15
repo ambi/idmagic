@@ -6,12 +6,17 @@
 package deps_http
 
 import (
+	"context"
+	"time"
+
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/mfa/ports"
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
@@ -54,6 +59,26 @@ type Deps struct {
 	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore   webauthnports.WebAuthnSessionStore
 	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
+
+	// TrustedDeviceRepo は信頼済みデバイスの一覧・失効と、資格情報が変わったときの
+	// 一括失効に使う (wi-91)。nil なら信頼済みデバイスは存在しないものとして扱う。
+	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+}
+
+// TrustedDeviceDeps は信頼済みデバイスの use case へ渡す依存を組み立てる。
+func (d Deps) TrustedDeviceDeps() trusteddeviceusecases.Deps {
+	return trusteddeviceusecases.Deps{Repo: d.TrustedDeviceRepo, Emit: d.Emit}
+}
+
+// RevokeTrustedDevices は対象ユーザーの信頼済みデバイスをすべて失効させる。資格情報が
+// 変わる操作 (パスワード、認証要素、認証器のリセット、全セッション失効) の後処理として
+// 各ハンドラーから呼ぶ。配線が無ければ no-op。
+func (d Deps) RevokeTrustedDevices(
+	ctx context.Context, tenantID, userID string, reason spec.TrustedDeviceRevokeReason,
+) error {
+	return trusteddeviceusecases.RevokeAllForUser(
+		ctx, d.TrustedDeviceDeps(), tenantID, userID, reason, time.Now().UTC(),
+	)
 }
 
 func (d Deps) ConsentDeps() consentusecases.ConsentDeps {

@@ -1,6 +1,7 @@
 import {
   IconArrowRight,
   IconCircleCheck,
+  IconDeviceLaptop,
   IconDeviceMobile,
   IconFingerprint,
   IconKey,
@@ -18,9 +19,13 @@ import {
   registerPasskey,
   removePasskey,
   removeTotpFactor,
+  revokeAllTrustedDevices,
   revokeRecoveryCodes,
+  revokeTrustedDevice,
   startTotpEnrollment,
   tenantURL,
+  type AccountTrustedDevice,
+  type AccountTrustedDevices,
   type LinkedIdentity,
 } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
@@ -52,12 +57,14 @@ export function AccountSecurityPage({
   isAdmin,
   security,
   linkedIdentities = [],
+  trustedDevices: initialTrustedDevices,
 }: {
   csrfToken: string
   username: string
   isAdmin: boolean
   security: AccountSecurity
   linkedIdentities?: LinkedIdentity[]
+  trustedDevices?: AccountTrustedDevices
 }) {
   const t = useDictionary(accountSecurityDictionary)
   const [enrolled, setEnrolled] = useState(security.totp_enrolled)
@@ -75,7 +82,47 @@ export function AccountSecurityPage({
     security.recovery_codes ?? { total: 0, remaining: 0 },
   )
   const [generatedCodes, setGeneratedCodes] = useState<string[] | null>(null)
+  // 記憶済みデバイス。max_age_seconds が 0 のテナントでは節ごと出さない (wi-91)。
+  const [trustedDevices, setTrustedDevices] = useState<AccountTrustedDevices>(
+    initialTrustedDevices ?? { devices: [], max_age_seconds: 0 },
+  )
   const { guard, dialog } = useStepUpGuard(csrfToken)
+
+  // 記憶の取り消しは step-up 再認証を要する機微操作なので guard を通す。
+  async function handleRevokeTrustedDevice(id: string) {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await guard(() => revokeTrustedDevice(csrfToken, id))
+      setTrustedDevices((current) => ({
+        ...current,
+        devices: current.devices.filter((device) => device.id !== id),
+      }))
+      setNotice(t.trustedDeviceRevoked)
+    } catch (cause) {
+      if (cause instanceof StepUpCancelledError) return
+      setError(errorMessage(cause, t.trustedDeviceRevokeFailed))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRevokeAllTrustedDevices() {
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      await guard(() => revokeAllTrustedDevices(csrfToken))
+      setTrustedDevices((current) => ({ ...current, devices: [] }))
+      setNotice(t.trustedDeviceRevoked)
+    } catch (cause) {
+      if (cause instanceof StepUpCancelledError) return
+      setError(errorMessage(cause, t.trustedDeviceRevokeFailed))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function handleRegisterPasskey() {
     setBusy(true)
@@ -247,6 +294,15 @@ export function AccountSecurityPage({
         onGenerate={handleGenerateRecovery}
         onRevoke={handleRevokeRecovery}
       />
+
+      {trustedDevices.max_age_seconds > 0 ? (
+        <TrustedDevicesCard
+          devices={trustedDevices.devices}
+          busy={busy}
+          onRevoke={handleRevokeTrustedDevice}
+          onRevokeAll={handleRevokeAllTrustedDevices}
+        />
+      ) : null}
 
       <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
         <IconShieldLock className="mt-0.5 shrink-0 text-slate-500" size={17} aria-hidden="true" />
@@ -694,6 +750,94 @@ function RecoveryCodesCard({
         onGenerate={onGenerate}
         onRevoke={onRevoke}
       />
+    </Card>
+  )
+}
+
+// TrustedDevicesCard は第二要素を省略できるブラウザーの一覧と取り消しを提示する (wi-91)。
+// 生の User-Agent は保存していないので、ラベルはブラウザーと OS の系統だけになる。
+function TrustedDevicesCard({
+  devices,
+  busy,
+  onRevoke,
+  onRevokeAll,
+}: {
+  devices: AccountTrustedDevice[]
+  busy: boolean
+  onRevoke: (id: string) => void
+  onRevokeAll: () => void
+}) {
+  const t = useDictionary(accountSecurityDictionary)
+  const { locale } = useLocale()
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+          <IconDeviceLaptop size={20} aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{t.trustedDevices}</p>
+          <p className="mt-1 text-sm text-slate-600">{t.trustedDevicesDescription}</p>
+        </div>
+      </div>
+
+      {devices.length === 0 ? (
+        <p className="text-sm text-slate-500">{t.trustedDeviceEmpty}</p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {devices.map((device) => (
+            <li
+              key={device.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-slate-900">
+                  {device.label || t.trustedDeviceUnknown}
+                  {device.current ? (
+                    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {t.trustedDeviceCurrent}
+                    </span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {t.trustedDeviceLastUsed.replace(
+                    '{value}',
+                    formatAccountSecurityDateTime(device.last_used_at, locale, t.noRecord),
+                  )}
+                  {' · '}
+                  {t.trustedDeviceExpires.replace(
+                    '{value}',
+                    formatAccountSecurityDateTime(device.expires_at, locale, t.noRecord),
+                  )}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 px-3 text-xs"
+                disabled={busy}
+                onClick={() => onRevoke(device.id)}
+              >
+                {t.trustedDeviceRevoke}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {devices.length > 0 ? (
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 px-3 text-xs"
+            disabled={busy}
+            onClick={onRevokeAll}
+          >
+            {t.trustedDeviceRevokeAll}
+          </Button>
+        </div>
+      ) : null}
     </Card>
   )
 }

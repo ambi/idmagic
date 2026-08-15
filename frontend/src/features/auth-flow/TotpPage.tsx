@@ -38,10 +38,12 @@ export function TotpPage({
   csrfToken,
   returnTo,
   secondFactorMethods,
+  canRememberDevice,
 }: {
   csrfToken: string
   returnTo?: string
   secondFactorMethods?: string[]
+  canRememberDevice?: boolean
 }) {
   const t = useDictionary(totpPageDictionary)
   const tCommon = useDictionary(commonDictionary)
@@ -55,6 +57,10 @@ export function TotpPage({
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // 記憶の同意は本人が明示的に付ける。既定は off で、リカバリコードでは提示しない
+  // (要素喪失時の経路の端末を長期の信頼に足るものとして扱わないため)。
+  const [rememberDevice, setRememberDevice] = useState(false)
+  const rememberable = (canRememberDevice ?? false) && method !== 'recovery_code'
 
   function fail(cause: unknown, fallback: string) {
     setError(cause instanceof AuthenticationAPIError ? cause.message : fallback)
@@ -66,7 +72,7 @@ export function TotpPage({
     setSubmitting(true)
     setError('')
     try {
-      continueBrowserFlow(await submitTOTP(csrfToken, code.trim(), returnTo))
+      continueBrowserFlow(await submitTOTP(csrfToken, code.trim(), returnTo, rememberDevice))
     } catch (cause) {
       fail(cause, tCommon.networkError)
     }
@@ -87,7 +93,7 @@ export function TotpPage({
     setSubmitting(true)
     setError('')
     try {
-      continueBrowserFlow(await loginWithPasskey(csrfToken, returnTo))
+      continueBrowserFlow(await loginWithPasskey(csrfToken, returnTo, rememberDevice))
     } catch (cause) {
       if (cause instanceof DOMException) {
         fail(cause, t.passkeyCancelled)
@@ -228,6 +234,23 @@ export function TotpPage({
               </Button>
             </div>
           </form>
+        ) : null}
+
+        {rememberable ? (
+          <div className="flex flex-col gap-1.5">
+            <label className="flex items-start gap-2.5 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="remember_device"
+                className="mt-0.5 size-4 shrink-0 rounded border-slate-300"
+                disabled={submitting}
+                checked={rememberDevice}
+                onChange={(event) => setRememberDevice(event.target.checked)}
+              />
+              <span>{t.rememberDevice}</span>
+            </label>
+            <p className="pl-6.5 text-xs leading-5 text-slate-500">{t.rememberDeviceHint}</p>
+          </div>
         ) : null}
 
         <div className="flex items-start gap-3 rounded-xl bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">

@@ -786,18 +786,19 @@ type SsfTransmitterConfig struct {
 }
 
 type Tenant struct {
-	ID                      string
-	Realm                   string
-	DisplayName             string
-	Status                  string
-	DefaultLocale           pgtype.Text
-	EndpointStyle           string
-	PasswordPolicyOverride  []byte
-	PasswordPolicyUpdatedAt pgtype.Timestamptz
-	MaxDelegationDepth      pgtype.Int4
-	CreatedAt               time.Time
-	UpdatedAt               time.Time
-	DisabledAt              pgtype.Timestamptz
+	ID                         string
+	Realm                      string
+	DisplayName                string
+	Status                     string
+	DefaultLocale              pgtype.Text
+	EndpointStyle              string
+	PasswordPolicyOverride     []byte
+	PasswordPolicyUpdatedAt    pgtype.Timestamptz
+	MaxDelegationDepth         pgtype.Int4
+	TrustedDeviceMaxAgeSeconds pgtype.Int4
+	CreatedAt                  time.Time
+	UpdatedAt                  time.Time
+	DisabledAt                 pgtype.Timestamptz
 }
 
 type TenantBranding struct {
@@ -898,6 +899,20 @@ type TenantUserAttributeSchema struct {
 	Attributes []byte
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+}
+
+type TrustedDevice struct {
+	ID           string
+	TenantID     string
+	UserID       string
+	Selector     string
+	VerifierHash string
+	Label        pgtype.Text
+	CreatedAt    time.Time
+	LastUsedAt   time.Time
+	ExpiresAt    time.Time
+	RevokedAt    pgtype.Timestamptz
+	RevokeReason pgtype.Text
 }
 
 type User struct {

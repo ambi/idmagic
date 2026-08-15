@@ -305,6 +305,51 @@ describe('auth-flow pages', () => {
     )
   })
 
+  // wi-91: 記憶の同意は既定 off で、明示的にチェックしたときだけ送る。
+  it('sends remember_device only when the user ticks the checkbox', async () => {
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} canRememberDevice />)
+    fireEvent.change(screen.getByLabelText(totpT.codeLabel), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: totpT.verifyCode }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/totp'),
+      expect.objectContaining({ body: expect.stringContaining('"remember_device":false') }),
+    )
+  })
+
+  it('sends remember_device=true after the user consents', async () => {
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} canRememberDevice />)
+    fireEvent.click(screen.getByLabelText(totpT.rememberDevice))
+    fireEvent.change(screen.getByLabelText(totpT.codeLabel), { target: { value: '123456' } })
+    fireEvent.click(screen.getByRole('button', { name: totpT.verifyCode }))
+
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith('/continue'))
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/auth/totp'),
+      expect.objectContaining({ body: expect.stringContaining('"remember_device":true') }),
+    )
+  })
+
+  // wi-91: テナントが無効にしていれば導線ごと出さない。復旧コードでも出さない。
+  it('hides the remember-device consent when the tenant disables it', () => {
+    render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} />)
+    expect(screen.queryByLabelText(totpT.rememberDevice)).not.toBeInTheDocument()
+  })
+
+  it('hides the remember-device consent on the recovery-code method', () => {
+    render(
+      <TotpPage
+        csrfToken="csrf"
+        secondFactorMethods={['totp', 'recovery_code']}
+        canRememberDevice
+      />,
+    )
+    expect(screen.getByLabelText(totpT.rememberDevice)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: totpT.methodRecoveryCode }))
+    expect(screen.queryByLabelText(totpT.rememberDevice)).not.toBeInTheDocument()
+  })
+
   it('shows a returned error for an invalid TOTP code', async () => {
     stubGlobal('fetch', mock().mockResolvedValue(response(400, { message: 'The code is invalid' })))
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} />)

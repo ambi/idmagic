@@ -26,6 +26,8 @@ type tenantUpdateRequest struct {
 	DisplayName            *string                        `json:"display_name,omitempty"`
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	MaxDelegationDepth     *int                           `json:"max_delegation_depth,omitempty"`
+	// TrustedDeviceMaxAgeSeconds は信頼済みデバイスの有効期間 (秒)。0 は機能無効。
+	TrustedDeviceMaxAgeSeconds *int `json:"trusted_device_max_age_seconds,omitempty"`
 }
 
 type tenantEndpointStyleRequest struct {
@@ -133,9 +135,10 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	tenant, err := tenantusecases.Update(
 		c.Request().Context(), d.TenantRepo, target.ID,
 		tenantusecases.UpdateInput{
-			DisplayName:            input.DisplayName,
-			PasswordPolicyOverride: input.PasswordPolicyOverride,
-			MaxDelegationDepth:     input.MaxDelegationDepth,
+			DisplayName:                input.DisplayName,
+			PasswordPolicyOverride:     input.PasswordPolicyOverride,
+			MaxDelegationDepth:         input.MaxDelegationDepth,
+			TrustedDeviceMaxAgeSeconds: input.TrustedDeviceMaxAgeSeconds,
 		},
 		d.tenantPolicyFloor(),
 		now,
@@ -187,6 +190,9 @@ func tenantChangedFields(input tenantUpdateRequest) []string {
 	}
 	if input.MaxDelegationDepth != nil {
 		fields = append(fields, "max_delegation_depth")
+	}
+	if input.TrustedDeviceMaxAgeSeconds != nil {
+		fields = append(fields, "trusted_device_max_age_seconds")
 	}
 	return fields
 }
@@ -276,10 +282,12 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 			"A tenant policy override cannot be weaker than the product baseline "+
 				"(min_length≥%d / max_length≤%d / history_depth≥%d), "+
 				"max_age_days must be between %d and %d when set, "+
-				"and max_delegation_depth must be between 1 and %d",
+				"max_delegation_depth must be between 1 and %d, "+
+				"and trusted_device_max_age_seconds must be between 0 and %d",
 			floor.MinLength, floor.MaxLength, floor.HistoryDepth,
 			tenantusecases.PasswordMaxAgeDaysFloor, tenantusecases.PasswordMaxAgeDaysCeiling,
 			domain.DefaultMaxDelegationDepth,
+			domain.TrustedDeviceMaxAgeCeilingSeconds,
 		)
 		return support.WriteBrowserError(c, http.StatusBadRequest, "policy_override_weaker", message)
 	default:

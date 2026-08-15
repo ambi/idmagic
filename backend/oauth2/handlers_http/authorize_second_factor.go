@@ -24,6 +24,8 @@ import (
 type browserWebAuthnRequest struct {
 	Assertion json.RawMessage `json:"assertion"`
 	ReturnTo  string          `json:"return_to,omitempty"`
+	// RememberDevice は「このデバイスを記憶する」への本人の明示同意 (wi-91)。
+	RememberDevice bool `json:"remember_device,omitempty"`
 }
 
 type recoveryCodeAPIRequest struct {
@@ -34,6 +36,8 @@ type recoveryCodeAPIRequest struct {
 type totpAPIRequest struct {
 	Code     string `json:"code"`
 	ReturnTo string `json:"return_to,omitempty"`
+	// RememberDevice は「このデバイスを記憶する」への本人の明示同意 (wi-91)。
+	RememberDevice bool `json:"remember_device,omitempty"`
 }
 
 func (d Deps) webAuthnLoginDeps(c *echo.Context) webauthnusecases.WebAuthnDeps {
@@ -62,6 +66,7 @@ func (d Deps) secondFactorTransaction(c *echo.Context, csrf string, authn *authd
 		Kind:                "totp",
 		CSRFToken:           csrf,
 		SecondFactorMethods: d.secondFactorMethods(c, authn.UserID),
+		CanRememberDevice:   d.trustedDeviceMaxAge(c) > 0,
 	}
 }
 
@@ -149,7 +154,7 @@ func (d Deps) handleWebAuthnAPI(c *echo.Context) error {
 		d.emitAuthenticationFailure(c, authn.UserID, "webauthn_invalid")
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_webauthn", "Passkey authentication failed.")
 	}
-	return d.finishSecondFactor(c, authn.SessionID, req, "webauthn", directAdminLogin, input.ReturnTo)
+	return d.finishSecondFactor(c, authn.SessionID, req, "webauthn", directAdminLogin, input.ReturnTo, input.RememberDevice)
 }
 
 // handleRecoveryCodeAPI は login の第二要素として backup recovery code を消費する。
@@ -190,7 +195,8 @@ func (d Deps) handleRecoveryCodeAPI(c *echo.Context) error {
 		}
 		return err
 	}
-	return d.finishSecondFactor(c, authn.SessionID, req, "rc", directAdminLogin, input.ReturnTo)
+	// 復旧コードは要素喪失時の経路なので、その端末を記憶の対象にはしない。
+	return d.finishSecondFactor(c, authn.SessionID, req, "rc", directAdminLogin, input.ReturnTo, false)
 }
 
 // handleTOTPAPI は login の第二要素として TOTP ワンタイムコードを検証する。
@@ -236,7 +242,7 @@ func (d Deps) handleTOTPAPI(c *echo.Context) error {
 		d.emitAuthenticationFailure(c, authn.UserID, result.Reason)
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_totp", "Check the TOTP code.")
 	}
-	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo)
+	return d.finishSecondFactor(c, authn.SessionID, req, "otp", directAdminLogin, input.ReturnTo, input.RememberDevice)
 }
 
 // finishSecondFactor は第二要素 (otp / webauthn / rc) 検証後の共通後処理。session を認証完了に
@@ -248,6 +254,7 @@ func (d Deps) finishSecondFactor(
 	amr string,
 	directAdminLogin bool,
 	returnTo string,
+	rememberDevice bool,
 ) error {
 	completed, err := d.SessionManager.CompleteFactor(c.Request().Context(), sessionID, []string{amr})
 	if err != nil {
@@ -257,6 +264,10 @@ func (d Deps) finishSecondFactor(
 		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
 	}
 	d.setSessionCookie(c, completed.SessionID)
+	// 本物の第二要素が成立した直後だけがデバイスを記憶できる契機である (wi-91)。
+	if err := d.rememberDeviceIfRequested(c, completed.UserID, amr, rememberDevice); err != nil {
+		return err
+	}
 	var user *userdomain.User
 	found, err := d.UserRepo.FindBySub(c.Request().Context(), completed.UserID)
 	if err != nil {

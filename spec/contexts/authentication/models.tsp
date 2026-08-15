@@ -408,6 +408,62 @@ model RecoveryCodeStatus {
 }
 
 
+@doc("信頼済みデバイス (remember this device) 1 件。ログインで本物の第二要素 (TOTP / WebAuthn) が\n成立した直後に本人が明示同意した場合だけ発行する、user 単位の単発資格情報。ブラウザーには\n`selector.verifier` を realm scope の HttpOnly / SameSite=Lax cookie で渡し、サーバーは\nselector と verifier_hash (SHA-256 hex) だけを保存する。selector で 1 行を引いて\nverifier のハッシュを定数時間比較するため、平文の cookie も device fingerprint も保存しない。\n利用のたびに verifier を回転させるので、盗まれた古い cookie は次の正規利用で無効になる。\n有効期限は絶対期限 (expires_at) と idle 期限 (last_used_at + idle window) の両方で切る。")
+model TrustedDevice {
+  @doc("デバイス識別子。監査と本人による失効の対象キー。")
+  id: string;
+  @doc("所属テナント ID。cookie は realm scope なのでテナントをまたいで解決されない。")
+  tenant_id: string = "default";
+  @doc("所有者ユーザの sub。")
+  user_id: string;
+  @doc("cookie 前半の非秘密な探索キー (base64url)。一意で、1 行の特定にだけ使う。")
+  selector: string;
+  @doc("cookie 後半 (verifier) の SHA-256 hex。平文は保存しない。利用のたびに回転する。")
+  verifier_hash: string;
+  @doc("User-Agent から導出したブラウザーと OS の系統だけの表示ラベル (例 \"Chrome / macOS\")。\n生の User-Agent も IP も保存しない。")
+  label?: string;
+  created_at: utcDateTime;
+  @doc("直近で第二要素のスキップに使われた時刻。idle 期限の起点。")
+  last_used_at: utcDateTime;
+  @doc("created_at + テナントの trusted_device_max_age_seconds。絶対期限。")
+  expires_at: utcDateTime;
+  @doc("失効時刻。未失効は null。失効は tombstone であり物理削除しない。")
+  revoked_at?: utcDateTime;
+  @doc("revoked_at と対で設定される失効理由。revoked_at が null なら null。")
+  revoke_reason?: TrustedDeviceRevokeReason;
+}
+
+
+@doc("信頼済みデバイスの失効理由。self_revoke は本人の明示的な失効、password_change /\nmfa_change は資格情報の変更に伴う一括失効、admin_revoke は管理者による認証器リセット、\naccount_disabled はアカウントの無効化、session_revoke は本人または管理者による全セッション失効。")
+enum TrustedDeviceRevokeReason {
+  self_revoke: "self_revoke",
+  password_change: "password_change",
+  mfa_change: "mfa_change",
+  admin_revoke: "admin_revoke",
+  account_disabled: "account_disabled",
+  session_revoke: "session_revoke",
+}
+
+
+@doc("self-service セキュリティ画面で提示する信頼済みデバイス 1 件の射影。selector も\nverifier_hash も返さず、識別と表示に必要な属性のみ。current は今のリクエストが提示した\ncookie に対応するデバイスかどうか。")
+model AccountTrustedDevice {
+  id: string;
+  current: boolean;
+  label?: string;
+  created_at: utcDateTime;
+  last_used_at: utcDateTime;
+  expires_at: utcDateTime;
+}
+
+
+@doc("ListMyTrustedDevices の返り値。最終利用時刻の降順 (新しい順) で本人の有効な\n信頼済みデバイスを返す。テナントが信頼済みデバイスを無効にしている場合は常に空。")
+model AccountTrustedDeviceListResponse {
+  devices: AccountTrustedDevice[];
+  @doc("テナントの trusted_device_max_age_seconds。0 なら機能が無効で、UI は記憶の導線を出さない。")
+  max_age_seconds: int64;
+}
+
+
 @doc("StartWebAuthnRegistration の返り値。navigator.credentials.create に渡す\nPublicKeyCredentialCreationOptions を JSON でそのまま返す。challenge は短命で\nサーバー側セッションに束縛する。")
 model WebAuthnRegistrationOptions {
   @doc("PublicKeyCredentialCreationOptions (WebAuthn Level 3)。")
@@ -435,6 +491,8 @@ model BrowserWebAuthnRequest {
   @doc("PublicKeyCredential (assertion response, WebAuthn Level 3)。")
   assertion: unknown;
   return_to?: string;
+  @doc("このデバイスを記憶して以後の第二要素を省略してよいという本人の明示同意。テナントが\n信頼済みデバイスを無効にしている場合は無視する。")
+  remember_device?: boolean;
 }
 
 
@@ -570,6 +628,8 @@ model BrowserTotpRequest {
   code: string;
   @doc("管理画面への直接ログインを継続する場合の同一 realm 内遷移先。")
   return_to?: string;
+  @doc("このデバイスを記憶して以後の第二要素を省略してよいという本人の明示同意。テナントが\n信頼済みデバイスを無効にしている場合は無視する。")
+  remember_device?: boolean;
 }
 
 
@@ -1014,6 +1074,30 @@ model RecoveryCodesRevoked {
   @doc("対象 user の所属テナント ID。")
   tenantId: string;
   userId: string;
+}
+
+
+@doc("ログインで本物の第二要素が成立した直後に、本人の明示同意でデバイスを記憶した。cookie の\n平文も User-Agent も IP も payload に含めず、デバイス識別子と失効判断に要る時刻だけを残す。")
+model TrustedDeviceRegistered {
+  occurredAt: utcDateTime;
+  @doc("対象 user の所属テナント ID。")
+  tenantId: string;
+  userId: string;
+  deviceId: string;
+  @doc("記憶のきっかけになった第二要素 (otp | webauthn)。")
+  factor: string;
+  expiresAt: utcDateTime;
+}
+
+
+@doc("信頼済みデバイスを失効した。本人の明示的な失効に加えて、資格情報の変更・管理者による\n認証器リセット・アカウント無効化・全セッション失効による一括失効でも発行する。")
+model TrustedDeviceRevoked {
+  occurredAt: utcDateTime;
+  @doc("対象 user の所属テナント ID。")
+  tenantId: string;
+  userId: string;
+  deviceId: string;
+  reason: TrustedDeviceRevokeReason;
 }
 
 

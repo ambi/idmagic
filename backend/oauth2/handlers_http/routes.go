@@ -15,6 +15,7 @@ import (
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -88,6 +89,10 @@ type Deps struct {
 	WebAuthnCredentialRepo webauthnports.WebAuthnCredentialRepository
 	WebAuthnSessionStore   webauthnports.WebAuthnSessionStore
 	RecoveryCodeRepo       recoveryports.RecoveryCodeRepository
+
+	// TrustedDeviceRepo は「このデバイスを記憶する」の発行と評価に使う (wi-91)。
+	// nil なら信頼済みデバイスは発行も評価もされず、第二要素は常に要求される。
+	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
 }
 
 // RegisterRoutes はテナント解決済みグループに oauth2 コンテキストのエンドポイントを

@@ -13,6 +13,7 @@ type TransactionResponse = {
   scopes?: string[]
   authorization_details?: ConsentDetailView[]
   second_factor_methods?: string[]
+  can_remember_device?: boolean
 }
 
 export type BrowserFlowPage =
@@ -26,6 +27,7 @@ export type BrowserFlowPage =
       csrfToken: string
       returnTo?: string
       secondFactorMethods: string[]
+      canRememberDevice: boolean
     }
   | {
       kind: 'consent'
@@ -72,6 +74,7 @@ export async function loadBrowserFlowData(path: string, search: string): Promise
       csrfToken: data.csrf_token,
       returnTo,
       secondFactorMethods: data.second_factor_methods ?? ['totp'],
+      canRememberDevice: data.can_remember_device ?? false,
     }
   }
   if (data.kind === 'mfa_enrollment') {

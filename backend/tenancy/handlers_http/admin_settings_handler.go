@@ -44,6 +44,11 @@ type AdminSettingsResponse struct {
 	// 管理 UI が具体数字を示し、超過を送る前に弾けるよう両方返す。
 	MaxDelegationDepth        *int `json:"max_delegation_depth,omitempty"`
 	MaxDelegationDepthDefault int  `json:"max_delegation_depth_default"`
+	// TrustedDeviceMaxAgeSeconds はテナントが明示した信頼済みデバイスの有効期間 (未設定なら
+	// 省略 = 機能無効)、Ceiling は設定できる上限。管理 UI が具体数字を示し、超過を送る前に
+	// 弾けるよう両方返す。
+	TrustedDeviceMaxAgeSeconds        *int `json:"trusted_device_max_age_seconds,omitempty"`
+	TrustedDeviceMaxAgeSecondsCeiling int  `json:"trusted_device_max_age_seconds_ceiling"`
 	// DefaultLocale は通知の locale 解決の第 2 段。空文字列はシステム既定を使う意味。
 	// SupportedLocales はカタログが同梱翻訳を持つ locale で、UI の選択肢になる
 	// (wi-288, 決定 7)。
@@ -66,6 +71,8 @@ type adminSettingsUpdateRequest struct {
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	// MaxDelegationDepth は省略で現状維持、0 で上書き解除。
 	MaxDelegationDepth *int `json:"max_delegation_depth,omitempty"`
+	// TrustedDeviceMaxAgeSeconds は省略で現状維持、0 で機能無効へ戻す。
+	TrustedDeviceMaxAgeSeconds *int `json:"trusted_device_max_age_seconds,omitempty"`
 	// DefaultLocale は省略で現状維持、空文字列でシステム既定へ戻す。
 	DefaultLocale *string `json:"default_locale,omitempty"`
 }
@@ -112,10 +119,11 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 	tenant, err := tenantusecases.Update(
 		c.Request().Context(), d.TenantRepo, actor.TenantID,
 		tenantusecases.UpdateInput{
-			DisplayName:            input.DisplayName,
-			PasswordPolicyOverride: input.PasswordPolicyOverride,
-			MaxDelegationDepth:     input.MaxDelegationDepth,
-			DefaultLocale:          input.DefaultLocale,
+			DisplayName:                input.DisplayName,
+			PasswordPolicyOverride:     input.PasswordPolicyOverride,
+			MaxDelegationDepth:         input.MaxDelegationDepth,
+			TrustedDeviceMaxAgeSeconds: input.TrustedDeviceMaxAgeSeconds,
+			DefaultLocale:              input.DefaultLocale,
 		},
 		d.tenantPolicyFloor(),
 		now,
@@ -167,6 +175,9 @@ func adminSettingsChangedFields(input adminSettingsUpdateRequest) []string {
 	}
 	if input.MaxDelegationDepth != nil {
 		fields = append(fields, "max_delegation_depth")
+	}
+	if input.TrustedDeviceMaxAgeSeconds != nil {
+		fields = append(fields, "trusted_device_max_age_seconds")
 	}
 	if input.DefaultLocale != nil {
 		fields = append(fields, "default_locale")

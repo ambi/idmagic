@@ -12,6 +12,7 @@ import (
 	"github.com/ambi/idmagic/backend/application/domain"
 	"github.com/ambi/idmagic/backend/application/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -202,9 +203,10 @@ func EffectivePolicyForEvaluation(def *domain.TenantDefaultSignInPolicy, app *do
 // signInSettings は 1 ポリシー分の設定を強度比較のために平坦化した表現。
 // UI は常に単一ルールを書き込むため、有効な最初のルールから読み取る。
 type signInSettings struct {
-	requireMfa bool
-	reauth     *int
-	cidrs      []string
+	requireMfa         bool
+	allowTrustedDevice bool
+	reauth             *int
+	cidrs              []string
 }
 
 func settingsFromRules(rules []domain.SignInRule) signInSettings {
@@ -213,9 +215,10 @@ func settingsFromRules(rules []domain.SignInRule) signInSettings {
 			continue
 		}
 		return signInSettings{
-			requireMfa: rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa,
-			reauth:     rule.Condition.ReauthMaxAgeSeconds,
-			cidrs:      rule.Condition.NetworkAllowCIDRs,
+			requireMfa:         rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa,
+			allowTrustedDevice: rule.TrustedDeviceAllowed(),
+			reauth:             rule.Condition.ReauthMaxAgeSeconds,
+			cidrs:              rule.Condition.NetworkAllowCIDRs,
 		}
 	}
 	return signInSettings{}
@@ -236,6 +239,11 @@ func AppPolicyWeakerThanDefault(def *domain.TenantDefaultSignInPolicy, app *doma
 
 	// 認証強度: デフォルトが MFA 必須なのにアプリがそうでない。
 	if defSettings.requireMfa && !appSettings.requireMfa {
+		return true
+	}
+	// 記憶済みデバイスによる充足: デフォルトが毎回 MFA を求めるのにアプリが許している。
+	if defSettings.requireMfa && appSettings.requireMfa &&
+		!defSettings.allowTrustedDevice && appSettings.allowTrustedDevice {
 		return true
 	}
 	// 再認証時間: デフォルトに上限があるのにアプリが未設定、または上限を延ばしている。
@@ -311,6 +319,19 @@ func ValidateSignInPolicyRulesAt(rules []domain.SignInRule, now time.Time) error
 	return nil
 }
 
+// TrustedDeviceAllowedByRules は、記憶済みの信頼済みデバイスで MFA 要件を満たしてよいかを
+// 実効ルールから返す。MFA を要求する有効なルールが 1 つでもこれを禁じていれば false
+// (「毎回 MFA」が優先される)。MFA を要求するルールが無い場合は判断の対象自体が無いので true。
+func TrustedDeviceAllowedByRules(rules []domain.SignInRule) bool {
+	for i := range rules {
+		rule := &rules[i]
+		if rule.Enabled && rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && !rule.TrustedDeviceAllowed() {
+			return false
+		}
+	}
+	return true
+}
+
 func MfaEnrollmentPolicyFromRules(rules []domain.SignInRule) *domain.MfaEnrollmentPolicy {
 	for i := range rules {
 		if rules[i].Enabled && rules[i].RequiredAuthn.Strength == domain.RequiredAuthnMfa {
@@ -376,7 +397,7 @@ func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn *authdomain.Auth
 			return PolicyEvaluation{Decision: PolicyDeny, Reason: "client network is not allowed"}
 		}
 		mfaEnforced := rule.MfaEnrollment == nil || rule.MfaEnrollment.EnforcementStartAt == nil || !now.Before(*rule.MfaEnrollment.EnforcementStartAt)
-		if rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && mfaEnforced && !authusecases.ACRSatisfies(authn.ACR, authusecases.ACRMFA) {
+		if rule.RequiredAuthn.Strength == domain.RequiredAuthnMfa && mfaEnforced && !mfaSatisfied(rule, authn) {
 			return PolicyEvaluation{Decision: PolicyStepUpRequired, Reason: "mfa requirement is not satisfied"}
 		}
 		if rule.Condition.ReauthMaxAgeSeconds != nil {
@@ -387,6 +408,24 @@ func EvaluateSignInPolicy(policy *domain.AppSignInPolicy, authn *authdomain.Auth
 		}
 	}
 	return PolicyEvaluation{Decision: PolicyAllow}
+}
+
+// mfaSatisfied は MFA 必須ルールが満たされているかを返す。allow_trusted_device=false の
+// ルールでは、記憶済みデバイスによる昇格 (amr の tdev のみ) を充足として認めない。本物の
+// 第二要素があれば、同じセッションに tdev が併存していても満たされている。
+func mfaSatisfied(rule domain.SignInRule, authn *authdomain.AuthenticationContext) bool {
+	if !authusecases.ACRSatisfies(authn.ACR, authusecases.ACRMFA) {
+		return false
+	}
+	if rule.TrustedDeviceAllowed() {
+		return true
+	}
+	for _, method := range authn.AMR {
+		if method != trusteddeviceusecases.AMRTrustedDevice && authusecases.IsMfaAMR(method) {
+			return true
+		}
+	}
+	return false
 }
 
 // clientIPAllowed は clientIP が許可 CIDR のいずれかに含まれるかを返す。

@@ -10,6 +10,7 @@ import (
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -78,7 +79,7 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A token and a new password are required.")
 	}
 	snap := resolvePasswordPolicy(c.Request().Context(), d)
-	_, err := authusecases.ResetPasswordWithToken(
+	reset, err := authusecases.ResetPasswordWithToken(
 		c.Request().Context(),
 		authusecases.ResetPasswordWithTokenDeps{
 			UserRepo: d.UserRepo, TokenStore: d.PasswordResetTokenStore,
@@ -92,6 +93,12 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	)
 	switch {
 	case err == nil:
+		// リセットもパスワード変更と同じく、記憶済みの端末をすべて失効させる (wi-91)。
+		if err := d.RevokeTrustedDevices(
+			c.Request().Context(), reset.TenantID, reset.ID, spec.TrustedDevicePasswordChange,
+		); err != nil {
+			return err
+		}
 		return support.NoStoreJSON(c, http.StatusOK, map[string]string{"status": "ok"})
 	case errors.Is(err, authusecases.ErrInvalidResetToken):
 		return support.WriteBrowserError(c, http.StatusGone, "invalid_reset_token", "The reset link is invalid or expired.")

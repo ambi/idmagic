@@ -37,5 +37,10 @@ func (g gateAdapter) EvaluateApplicationAccess(
 	clientIP string,
 ) (wsfedusecases.ApplicationAccessDecision, error) {
 	dec, err := g.ApplicationGate.EvaluateApplicationAccess(ctx, tenantID, bindingType, bindingKey, sub, authn, clientIP)
-	return wsfedusecases.ApplicationAccessDecision(dec), err
+	// 項目ごとに写す。この Context には step-up の遷移先が無く、信頼済みデバイスの判定も
+	// 使わないので、共有の判定に項目が増えてもここは follow しない。
+	return wsfedusecases.ApplicationAccessDecision{
+		Allowed: dec.Allowed, StepUpRequired: dec.StepUpRequired,
+		ApplicationID: dec.ApplicationID, Reason: dec.Reason,
+	}, err
 }

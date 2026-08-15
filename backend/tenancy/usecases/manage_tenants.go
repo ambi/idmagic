@@ -34,6 +34,10 @@ type UpdateInput struct {
 	// nil は現状維持、0 は上書きの解除 (システム既定を継承)、正の値は上書き。
 	// システム既定を超える値は ErrPolicyOverrideWeaker で拒否する。
 	MaxDelegationDepth *int
+	// TrustedDeviceMaxAgeSeconds は信頼済みデバイスの有効期間。nil は現状維持、
+	// 0 は機能無効 (上書きの解除ではない)、正の値は有効化。この設定だけは既定が
+	// 最も厳しい状態なので緩める方向の値を保存でき、上限超過だけを拒否する。
+	TrustedDeviceMaxAgeSeconds *int
 	// DefaultLocale は通知の locale 解決の第 2 段。nil は現状維持、
 	// 空文字列はシステム既定へ戻す、それ以外は同梱翻訳を持つ locale のみ受け付ける。
 	DefaultLocale *string
@@ -161,6 +165,19 @@ func Update(
 			return nil, ErrPolicyOverrideWeaker
 		default:
 			updated.MaxDelegationDepth = &depth
+		}
+	}
+	if input.TrustedDeviceMaxAgeSeconds != nil {
+		maxAge := *input.TrustedDeviceMaxAgeSeconds
+		switch {
+		case maxAge == 0:
+			// 機能無効へ戻す。MaxDelegationDepth の 0 と違い「上書きの解除」ではなく、
+			// この設定にとって最も厳しい状態そのものである。
+			updated.TrustedDeviceMaxAgeSeconds = nil
+		case maxAge < 0 || maxAge > domain.TrustedDeviceMaxAgeCeilingSeconds:
+			return nil, ErrPolicyOverrideWeaker
+		default:
+			updated.TrustedDeviceMaxAgeSeconds = &maxAge
 		}
 	}
 	if input.DefaultLocale != nil {

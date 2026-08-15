@@ -12,6 +12,7 @@ import (
 	passwordhttp "github.com/ambi/idmagic/backend/authentication/password/handlers_http"
 	recoveryhttp "github.com/ambi/idmagic/backend/authentication/recovery/handlers_http"
 	sessionhttp "github.com/ambi/idmagic/backend/authentication/session/handlers_http"
+	trusteddevicehttp "github.com/ambi/idmagic/backend/authentication/trusteddevice/handlers_http"
 	webauthnhttp "github.com/ambi/idmagic/backend/authentication/webauthn/handlers_http"
 
 	"github.com/labstack/echo/v5"
@@ -43,6 +44,9 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.GET("/api/account/v1/sessions", func(c *echo.Context) error { return sessionhttp.HandleListAccountSessions(d, c) })
 	g.POST("/api/account/v1/sessions/:id/revoke", func(c *echo.Context) error { return sessionhttp.HandleRevokeAccountSession(d, c) })
 	g.POST("/api/account/v1/sessions/revoke_others", func(c *echo.Context) error { return sessionhttp.HandleRevokeOtherAccountSessions(d, c) })
+	g.GET("/api/account/v1/trusted_devices", func(c *echo.Context) error { return trusteddevicehttp.HandleListTrustedDevices(d, c) })
+	g.POST("/api/account/v1/trusted_devices/:id/revoke", func(c *echo.Context) error { return trusteddevicehttp.HandleRevokeTrustedDevice(d, c) })
+	g.POST("/api/account/v1/trusted_devices/revoke_all", func(c *echo.Context) error { return trusteddevicehttp.HandleRevokeAllTrustedDevices(d, c) })
 	g.POST("/api/auth/change_password", func(c *echo.Context) error { return passwordhttp.HandleChangePasswordAPI(d, c) })
 	g.GET("/api/auth/password_reset_context", func(c *echo.Context) error { return passwordhttp.HandlePasswordResetContext(d, c) })
 	g.POST("/api/auth/forgot_password", func(c *echo.Context) error { return passwordhttp.HandleForgotPasswordAPI(d, c) })

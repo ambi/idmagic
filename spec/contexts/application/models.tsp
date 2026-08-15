@@ -175,6 +175,8 @@ model SignInRule {
   required_authn: RequiredAuthnLevel;
   condition: AccessCondition;
   mfa_enrollment?: MfaEnrollmentPolicy;
+  @doc("required_authn=Mfa のとき、記憶済みの信頼済みデバイス (amr に tdev) で MFA 要件を\n満たしてよいかどうか。false は「毎回 MFA」を意味し、本物の第二要素の提示だけを認める。\n既定は true だが、テナントが trusted_device_max_age_seconds を 0 のままにしていれば\nそもそも信頼済みデバイスは発行も評価もされないので、実効的な既定は「記憶しない」である。")
+  allow_trusted_device: boolean = true;
 }
 
 

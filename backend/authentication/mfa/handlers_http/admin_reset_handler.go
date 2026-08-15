@@ -42,6 +42,13 @@ func HandleResetUserAuthenticators(d httpdeps.Deps, c *echo.Context) error {
 	if err != nil {
 		return writeAuthenticatorResetError(c, err)
 	}
+	// 管理者が認証器をリセットした以上、それ以前に成立した第二要素の証明も古くなる
+	// ので、記憶済みの端末をすべて失効させる (wi-91)。
+	if err := d.RevokeTrustedDevices(
+		c.Request().Context(), support.RequestTenantID(c), c.Param("sub"), spec.TrustedDeviceAdminRevoke,
+	); err != nil {
+		return err
+	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{
 		"mfa_enrolled":          result.MfaEnrolled,
 		"reenrollment_required": result.ReenrollmentRequired,

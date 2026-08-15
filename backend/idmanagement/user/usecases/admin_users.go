@@ -16,6 +16,8 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
+	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
@@ -60,9 +62,12 @@ type AdminUserDeps struct {
 	ApprovalRequestStore oauthports.ApprovalRequestStore
 	SessionStore         sessionports.SessionStore
 	MfaFactorRepo        mfaports.MfaFactorRepository
-	PasswordHasher       passwordports.PasswordHasher
-	PasswordHistoryRepo  passwordports.PasswordHistoryRepository
-	Emit                 func(spec.DomainEvent) error
+	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する
+	// ために持つ (wi-91)。nil なら未配線として何もしない。
+	TrustedDeviceRepo   trusteddeviceports.TrustedDeviceRepository
+	PasswordHasher      passwordports.PasswordHasher
+	PasswordHistoryRepo passwordports.PasswordHistoryRepository
+	Emit                func(spec.DomainEvent) error
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装し、User 保存と派生する LifecycleWorkflow run 生成を同一トランザクションで
 	// 確定する (wi-237)。nil のとき UserRepo.Save に fallback する。
@@ -350,6 +355,11 @@ func SetUserDisabled(
 	trigger := userports.ProvisioningUserEnabled
 	if disabled {
 		trigger = userports.ProvisioningUserDisabled
+		// 無効化したアカウントの記憶済み端末は残さない (wi-91)。ログイン自体は
+		// 無効ユーザーを弾くが、再有効化したときに古い信頼が生き返らないようにする。
+		if err := revokeTrustedDevicesOnDisable(ctx, deps, updated.TenantID, targetUserID, now); err != nil {
+			return nil, err
+		}
 		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.UserDisabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
 	} else {
 		emitErr = idmusecases.AdminEmit(deps.Emit, &idmdomain.UserEnabled{At: now, TenantID: updated.TenantID, ActorUserID: actorUserID, TargetUserID: targetUserID})
@@ -359,6 +369,30 @@ func SetUserDisabled(
 	}
 	notifyProvisioning(ctx, deps, updated.TenantID, updated.ID, trigger, now)
 	return &updated, nil
+}
+
+// revokeTrustedDevicesOnDisable は無効化に伴い記憶済みの端末をすべて失効させる (wi-91)。
+// この Context の Emit は error を返す契約なので、fire-and-forget な use case 側の sink で
+// 取りこぼした最初のエラーをここで拾い直す。
+func revokeTrustedDevicesOnDisable(
+	ctx context.Context,
+	deps AdminUserDeps,
+	tenantID, targetUserID string,
+	now time.Time,
+) error {
+	var emitErr error
+	sink := func(event spec.DomainEvent) {
+		if err := idmusecases.AdminEmit(deps.Emit, event); err != nil && emitErr == nil {
+			emitErr = err
+		}
+	}
+	if err := trusteddeviceusecases.RevokeAllForUser(
+		ctx, trusteddeviceusecases.Deps{Repo: deps.TrustedDeviceRepo, Emit: sink},
+		tenantID, targetUserID, spec.TrustedDeviceAccountDisabled, now,
+	); err != nil {
+		return err
+	}
+	return emitErr
 }
 
 // ErrInvalidRequiredAction は RequiredAction enum に無い値が指定された場合に返る。
@@ -746,6 +780,11 @@ func cascadeDeleteForSub(ctx context.Context, deps AdminUserDeps, sub string) er
 	}
 	if deps.MfaFactorRepo != nil {
 		if err := deps.MfaFactorRepo.DeleteAllForSub(ctx, sub); err != nil {
+			return err
+		}
+	}
+	if deps.TrustedDeviceRepo != nil {
+		if err := deps.TrustedDeviceRepo.DeleteAllForSub(ctx, sub); err != nil {
 			return err
 		}
 	}

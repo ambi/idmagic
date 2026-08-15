@@ -228,3 +228,66 @@ func TestValidateSignInPolicyRulesDefaultsStrengthAndNormalizesCIDR(t *testing.T
 		t.Fatal("expected rule_id to be generated")
 	}
 }
+
+// REQ-AUTHENTICATION-027: 記憶済みデバイスによる昇格 (amr=tdev) は既定では MFA 要件を
+// 満たすが、allow_trusted_device=false のルールでは満たさない (wi-91)。
+func TestEvaluateSignInPolicyTrustedDeviceSatisfiesMfaOnlyWhenAllowed(t *testing.T) {
+	deny := false
+	trustedOnly := &authdomain.AuthenticationContext{
+		UserID: "alice", ACR: authusecases.ACRMFA, AMR: []string{"pwd", "tdev"},
+	}
+	realFactor := &authdomain.AuthenticationContext{
+		UserID: "alice", ACR: authusecases.ACRMFA, AMR: []string{"pwd", "otp", "tdev"},
+	}
+	now := time.Now().UTC()
+
+	allowing := &domain.AppSignInPolicy{Rules: []domain.SignInRule{mfaRule("rule-1")}}
+	if got := EvaluateSignInPolicy(allowing, trustedOnly, "", now); got.Decision != PolicyAllow {
+		t.Fatalf("decision=%s, want %s when the rule allows trusted devices", got.Decision, PolicyAllow)
+	}
+
+	everyTime := &domain.AppSignInPolicy{Rules: []domain.SignInRule{mfaRule("rule-1")}}
+	everyTime.Rules[0].AllowTrustedDevice = &deny
+	if got := EvaluateSignInPolicy(everyTime, trustedOnly, "", now); got.Decision != PolicyStepUpRequired {
+		t.Fatalf("decision=%s, want %s when the rule requires MFA every time", got.Decision, PolicyStepUpRequired)
+	}
+	// 本物の第二要素があれば、同じセッションに tdev が併存していても満たされている。
+	if got := EvaluateSignInPolicy(everyTime, realFactor, "", now); got.Decision != PolicyAllow {
+		t.Fatalf("decision=%s, want %s when a genuine second factor was presented", got.Decision, PolicyAllow)
+	}
+}
+
+// 「毎回 MFA」のテナントデフォルトを、記憶済みデバイスを許すアプリ設定で緩めた場合は
+// weaker_than_default として警告する (wi-91)。
+func TestAppPolicyWeakerThanDefaultDetectsTrustedDeviceRelaxation(t *testing.T) {
+	deny := false
+	allow := true
+	def := &domain.TenantDefaultSignInPolicy{Rules: []domain.SignInRule{mfaRule("default-1")}}
+	def.Rules[0].AllowTrustedDevice = &deny
+	app := &domain.AppSignInPolicy{Rules: []domain.SignInRule{mfaRule("app-1")}}
+	app.Rules[0].AllowTrustedDevice = &allow
+
+	if !AppPolicyWeakerThanDefault(def, app) {
+		t.Fatal("allowing trusted devices where the default forbids them is a weaker policy")
+	}
+	app.Rules[0].AllowTrustedDevice = &deny
+	if AppPolicyWeakerThanDefault(def, app) {
+		t.Fatal("matching the default must not be reported as weaker")
+	}
+}
+
+// 既存の保存済みルール (allow_trusted_device 未設定) は既定の true として読む (wi-91)。
+func TestTrustedDeviceAllowedDefaultsToTrue(t *testing.T) {
+	if !(domain.SignInRule{}).TrustedDeviceAllowed() {
+		t.Fatal("an unset allow_trusted_device must read as the declared default (true)")
+	}
+	if !TrustedDeviceAllowedByRules([]domain.SignInRule{mfaRule("rule-1")}) {
+		t.Fatal("rules that do not set the field must allow trusted devices")
+	}
+	deny := false
+	rules := []domain.SignInRule{mfaRule("rule-1"), mfaRule("rule-2")}
+	rules[1].AllowTrustedDevice = &deny
+	if TrustedDeviceAllowedByRules(rules) {
+		t.Fatal("a single every-time-MFA rule must win over the others")
+	}
+}

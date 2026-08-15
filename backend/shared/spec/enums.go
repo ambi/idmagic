@@ -174,6 +174,28 @@ func (r SessionEndReason) Valid() bool {
 	return false
 }
 
+// TrustedDeviceRevokeReason は信頼済みデバイスの失効理由 (wi-91)。self_revoke は本人の
+// 明示的な失効、それ以外は資格情報の変更・管理操作・アカウント状態の変化に伴う一括失効。
+type TrustedDeviceRevokeReason string
+
+const (
+	TrustedDeviceSelfRevoke      TrustedDeviceRevokeReason = "self_revoke"
+	TrustedDevicePasswordChange  TrustedDeviceRevokeReason = "password_change"
+	TrustedDeviceMfaChange       TrustedDeviceRevokeReason = "mfa_change"
+	TrustedDeviceAdminRevoke     TrustedDeviceRevokeReason = "admin_revoke"
+	TrustedDeviceAccountDisabled TrustedDeviceRevokeReason = "account_disabled"
+	TrustedDeviceSessionRevoke   TrustedDeviceRevokeReason = "session_revoke"
+)
+
+func (r TrustedDeviceRevokeReason) Valid() bool {
+	switch r {
+	case TrustedDeviceSelfRevoke, TrustedDevicePasswordChange, TrustedDeviceMfaChange,
+		TrustedDeviceAdminRevoke, TrustedDeviceAccountDisabled, TrustedDeviceSessionRevoke:
+		return true
+	}
+	return false
+}
+
 type DeviceCodeFlowState string
 
 const (

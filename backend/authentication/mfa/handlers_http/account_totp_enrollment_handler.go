@@ -10,6 +10,7 @@ import (
 	httpdeps "github.com/ambi/idmagic/backend/authentication/deps_http"
 	authusecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
 )
@@ -73,6 +74,12 @@ func HandleConfirmTotpEnrollment(d httpdeps.Deps, c *echo.Context) error {
 		}); err != nil {
 		return httpdeps.WriteAccountError(c, err)
 	}
+	// 認証要素の集合が変わったので、記憶済みの端末をすべて失効させる (wi-91)。
+	if err := d.RevokeTrustedDevices(
+		c.Request().Context(), support.RequestTenantID(c), sub, spec.TrustedDeviceMfaChange,
+	); err != nil {
+		return err
+	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)
 }
@@ -93,6 +100,12 @@ func HandleRemoveTotpFactor(d httpdeps.Deps, c *echo.Context) error {
 	if err := authusecases.RemoveTOTPFactor(c.Request().Context(), accountMfaDeps(d),
 		authusecases.RemoveTOTPFactorInput{Sub: sub, Code: input.Code, Now: time.Now().UTC()}); err != nil {
 		return httpdeps.WriteAccountError(c, err)
+	}
+	// 認証要素の集合が変わったので、記憶済みの端末をすべて失効させる (wi-91)。
+	if err := d.RevokeTrustedDevices(
+		c.Request().Context(), support.RequestTenantID(c), sub, spec.TrustedDeviceMfaChange,
+	); err != nil {
+		return err
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusNoContent)

@@ -71,6 +71,11 @@ type Tenant struct {
 	// 厳しい方向にのみ働き、システム既定を超える値は設定境界で拒否するため、
 	// テナント設定から認可境界を広げることはできない。
 	MaxDelegationDepth *int `json:"max_delegation_depth,omitempty"`
+	// TrustedDeviceMaxAgeSeconds は Authentication の信頼済みデバイスの有効期間。
+	// nil と 0 はどちらも「機能無効」であり、上書きを解除する操作ではない。この設定だけは
+	// 既定が最も厳しい状態そのものなので、他の上書きと違って緩める方向の値を保存できる。
+	// 上限 (TrustedDeviceMaxAgeCeilingSeconds) を超える値は設定境界で拒否する。
+	TrustedDeviceMaxAgeSeconds *int `json:"trusted_device_max_age_seconds,omitempty"`
 	// DefaultLocale は通知の locale 解決の第 2 段。nil / 空文字列は
 	// 「システム既定 locale を使う」を意味する。値の妥当性 (同梱翻訳を持つ locale か)
 	// は shared/notification のカタログが正本なので、ここでは形だけを検証する。
@@ -298,6 +303,25 @@ func (t Tenant) EffectiveMaxDelegationDepth() int {
 		return *t.MaxDelegationDepth
 	}
 	return DefaultMaxDelegationDepth
+}
+
+// TrustedDeviceMaxAgeCeilingSeconds は信頼済みデバイスの有効期間に許す上限 (90 日)。
+// DefaultMaxDelegationDepth と違い既定ではない。既定は「機能無効」であり、テナントが
+// 正の値を明示したときだけ機能が有効になる。
+const TrustedDeviceMaxAgeCeilingSeconds = 90 * 24 * 60 * 60
+
+// EffectiveTrustedDeviceMaxAge は信頼済みデバイスの有効期間を返す。未設定・0 以下・
+// 上限超過はいずれも 0 (機能無効) として読む。設定境界で弾いた後でも、読み出し側が
+// 壊れた値で MFA を弱めないようにするためである。
+func (t Tenant) EffectiveTrustedDeviceMaxAge() time.Duration {
+	if t.TrustedDeviceMaxAgeSeconds == nil {
+		return 0
+	}
+	seconds := *t.TrustedDeviceMaxAgeSeconds
+	if seconds <= 0 || seconds > TrustedDeviceMaxAgeCeilingSeconds {
+		return 0
+	}
+	return time.Duration(seconds) * time.Second
 }
 
 // EffectiveEndpointStyle はゼロ値を Path として読む。永続化前の行や、この列を知らない

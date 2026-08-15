@@ -20,6 +20,7 @@ import (
 	sessionpostgres "github.com/ambi/idmagic/backend/authentication/session/db_postgres"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totppostgres "github.com/ambi/idmagic/backend/authentication/totp/db_postgres"
+	trusteddevicepostgres "github.com/ambi/idmagic/backend/authentication/trusteddevice/db_postgres"
 	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres"
 	"github.com/ambi/idmagic/backend/authorization"
 	authorizationpostgres "github.com/ambi/idmagic/backend/authorization/db_postgres"
@@ -176,6 +177,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			WebAuthnCredentialRepo:   &webauthnpostgres.WebAuthnCredentialRepository{Pool: resilientDB},
 			WebAuthnSessionStore:     &webauthnpostgres.WebAuthnSessionStore{Pool: resilientDB},
 			RecoveryCodeRepo:         &recoverypostgres.RecoveryCodeRepository{Pool: resilientDB},
+			TrustedDeviceRepo:        &trusteddevicepostgres.TrustedDeviceRepository{Pool: resilientDB},
 			NewLoginAttemptThrottle: func(configs sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle {
 				return &sessionpostgres.LoginAttemptThrottle{Pool: resilientDB, Configs: configs}
 			},

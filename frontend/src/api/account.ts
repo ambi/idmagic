@@ -378,3 +378,49 @@ export async function reorderMyApplications(
     )
   ).application_ids
 }
+
+// 信頼済みデバイス (remember this device) の self-service 管理 (wi-91)。
+// selector も verifier も返らず、識別と表示に必要な属性だけを扱う。
+export type AccountTrustedDevice = {
+  id: string
+  current: boolean
+  label?: string
+  created_at: string
+  last_used_at: string
+  expires_at: string
+}
+
+export type AccountTrustedDevices = {
+  devices: AccountTrustedDevice[]
+  // max_age_seconds が 0 ならテナントが機能を無効にしており、UI は記憶の導線を出さない。
+  max_age_seconds: number
+}
+
+export async function listTrustedDevices(): Promise<AccountTrustedDevices> {
+  return request('/api/account/v1/trusted_devices')
+}
+
+export async function revokeTrustedDevice(csrfToken: string, id: string): Promise<void> {
+  const response = await fetch(
+    tenantURL(`/api/account/v1/trusted_devices/${encodeURIComponent(id)}/revoke`),
+    {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': csrfToken },
+      credentials: 'same-origin',
+      cache: 'no-store',
+    },
+  )
+  if (response.status === 204) return
+  throw await responseAPIError(response)
+}
+
+export async function revokeAllTrustedDevices(csrfToken: string): Promise<void> {
+  const response = await fetch(tenantURL('/api/account/v1/trusted_devices/revoke_all'), {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': csrfToken },
+    credentials: 'same-origin',
+    cache: 'no-store',
+  })
+  if (response.status === 204) return
+  throw await responseAPIError(response)
+}

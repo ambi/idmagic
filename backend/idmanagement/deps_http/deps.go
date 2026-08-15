@@ -11,6 +11,7 @@ import (
 
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	mfaports "github.com/ambi/idmagic/backend/authentication/totp/ports"
+	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
@@ -49,17 +50,19 @@ type Deps struct {
 	// Reactor fail-closed reacts to emitted DomainEvents (currently
 	// SharedSignals' Agent revocation epoch enforcement; wi-58).
 	// nil skips reaction. See ReactiveEmit.
-	Reactor               EventReactor
-	JobRepo               jobsports.JobRepository
-	ClientRepo            oauthports.OAuth2ClientRepository
-	ScimRepo              scimports.ScimRepository
-	AttrSchemaRepo        tenantports.TenantUserAttributeSchemaRepository
-	GroupAttrSchemaRepo   tenantports.TenantGroupAttributeSchemaRepository
-	ConsentRepo           oauthports.ConsentRepository
-	RefreshStore          oauthports.RefreshTokenStore
-	DeviceCodeStore       oauthports.DeviceCodeStore
-	ApprovalRequestStore  oauthports.ApprovalRequestStore
-	MfaFactorRepo         mfaports.MfaFactorRepository
+	Reactor              EventReactor
+	JobRepo              jobsports.JobRepository
+	ClientRepo           oauthports.OAuth2ClientRepository
+	ScimRepo             scimports.ScimRepository
+	AttrSchemaRepo       tenantports.TenantUserAttributeSchemaRepository
+	GroupAttrSchemaRepo  tenantports.TenantGroupAttributeSchemaRepository
+	ConsentRepo          oauthports.ConsentRepository
+	RefreshStore         oauthports.RefreshTokenStore
+	DeviceCodeStore      oauthports.DeviceCodeStore
+	ApprovalRequestStore oauthports.ApprovalRequestStore
+	MfaFactorRepo        mfaports.MfaFactorRepository
+	// TrustedDeviceRepo は無効化と匿名化 cascade から信頼済みデバイスを失効 / 削除する (wi-91)。
+	TrustedDeviceRepo     trusteddeviceports.TrustedDeviceRepository
 	PasswordHasher        passwordports.PasswordHasher
 	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore userports.EmailChangeTokenStore

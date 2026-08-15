@@ -25,6 +25,9 @@ type transactionResponse struct {
 	// SecondFactorMethods は kind=totp (第二要素待ち) のときに利用できる method 一覧
 	// (totp / webauthn / recovery_code)。UI が第二要素選択画面の選択肢に使う (wi-26)。
 	SecondFactorMethods []string `json:"second_factor_methods,omitempty"`
+	// CanRememberDevice はテナントが信頼済みデバイスを有効にしているかどうか (wi-91)。
+	// false のとき UI は「このデバイスを記憶する」の導線を出さない。
+	CanRememberDevice bool `json:"can_remember_device,omitempty"`
 }
 
 // consentDetailView は同意画面に提示する authorization_details の人間可読表現。

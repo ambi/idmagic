@@ -11,6 +11,7 @@ import (
 	mfausecases "github.com/ambi/idmagic/backend/authentication/mfa/usecases"
 	authusecases "github.com/ambi/idmagic/backend/authentication/password/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 type changePasswordAPIRequest struct {
@@ -43,7 +44,7 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 
 	ctx := c.Request().Context()
 	snap := resolvePasswordPolicy(ctx, d)
-	_, err = authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
+	changed, err := authusecases.ChangePassword(ctx, authusecases.ChangePasswordDeps{
 		UserRepo:                d.UserRepo,
 		PasswordHasher:          d.PasswordHasher,
 		PasswordHistoryRepo:     d.PasswordHistoryRepo,
@@ -58,6 +59,13 @@ func HandleChangePasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	})
 	switch {
 	case err == nil:
+		// パスワードが変わった以上、それ以前に成立した第二要素の証明も同時に古くなる
+		// ので、記憶済みの端末をすべて失効させる (wi-91)。
+		if err := d.RevokeTrustedDevices(
+			ctx, changed.TenantID, changed.ID, spec.TrustedDevicePasswordChange,
+		); err != nil {
+			return err
+		}
 		c.Response().Header().Set("Cache-Control", "no-store")
 		return c.NoContent(http.StatusNoContent)
 	case errors.Is(err, authusecases.ErrUserNotFound):
