@@ -11,7 +11,7 @@ updated_at: 2026-08-15
 
 資格情報の検証、MFA、ログインセッションは `Authentication` が、OAuth2 クライアントの資格情報とトークン発行は `OAuth2` が持つ。この Context が所有するのは、それらが認証とトークン発行の対象にするプリンシパルの記録そのものである。
 
-`User`、`Group`、`Agent` は `user/`、`group/`、`agent/` に置く別々の機能単位であり、それぞれが自身のドメイン、ポート、ユースケース、アダプターを持つ。本書はユーザーのライフサイクル、プロフィールを構成する属性モデル、`Group`、`Agent` の順に読む。
+`User`、`Group`、`Agent` は `user/`、`group/`、`agent/` に置く別々の機能単位であり、それぞれが自身のドメイン、ポート、ユースケース、アダプターを持つ。
 
 ## Glossary
 
@@ -100,7 +100,9 @@ Initial: `queued` Terminal: `failed`, `canceled`, `expired`
 | running | DataExportCanceled | — | canceled |  |
 | succeeded | DataExportExpired | duration_since(completed_at) >= duration('2592000s') | expired |  |
 
-## Authorization Boundary
+## Design
+
+### Authorization boundary
 
 管理 API はプリンシパルの種類と操作ごとに権限を分ける。`User` は参照 (`admin:user_read`)、作成 (`admin:user_create`)、CSV インポート (`admin:user_import`)、更新 (`admin:user_update`)、削除 (`admin:user_delete`)、復元 (`admin:user_restore`)、完全削除 (`admin:user_purge`)、`Group` は参照 (`admin:groups_read`) と変更 (`admin:groups_write`)、`Agent` は `admin:agents_manage` を要する。いずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。Agent のキルスイッチを含むライフサイクル操作も、汎用の管理者権限ではなく `admin:agents_manage` で制御する。
 
@@ -117,8 +119,6 @@ Agent のキルスイッチは `agents:write` に含める。Agent の削除は�
 自己破壊は防ぐ。操作者と対象が同じプリンシパルで、その対象が `admin` または `system_admin` を持つ場合、削除は拒否する。管理者が自身の特権アカウントを消す経路は、どの対話フローにも必要ないからである。
 
 CSV インポートは、より強い上流の権威を上書きしない。取り込み元が管理する `User` は `source_managed` として拒否し、所有権を確認できない場合も外部管理として扱って拒否する。
-
-## Design
 
 ### Internal Interfaces
 

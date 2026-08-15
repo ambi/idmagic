@@ -46,13 +46,13 @@ Initial: `enabled` Terminal: none
 | enabled | AgentWorkloadBindingDisabled | — | disabled |  |
 | disabled | AgentWorkloadBindingEnabled | — | enabled |  |
 
-## Authorization Boundary
+## Design
 
-`WorkloadTrustBundle` と `AgentWorkloadBinding` の登録、更新、無効化、削除は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。関連付けの対象にできる `Agent` も同じテナントのものに限る。API アクセストークンでは、ロールに加えて `workload-identity:read` が信頼設定と関連付けの参照だけを、`workload-identity:write` がその変更を許可する。JWKS の再取得は保存する鍵素材を差し替えるため変更系に置く。
+### Authorization boundary
+
+`WorkloadTrustBundle` と `AgentWorkloadBinding` の登録、更新、無効化、削除は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。関連付けの対象にできる `Agent` も同じテナントのものに限る。API アクセストークンでは、ロールに加えて `workload-identity:read` と `workload-identity:write` を要求する。JWKS の再取得は保存する鍵素材を差し替えるため変更系に置く。
 
 交換の経路そのものは管理者の権限を通らない。外部ワークロードが提示するのはアテステーショントークンだけであり、得られる権限は登録済みの信頼設定と関連付けが定めた `Agent` のものに固定される。トークンの内容が対応先の `Agent` を変えることはなく、未登録の発行者を実行時に信頼することもない (Trust On First Use を許可しない)。
-
-## Design
 
 ### Internal Interfaces
 

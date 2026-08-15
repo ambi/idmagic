@@ -9,7 +9,7 @@ updated_at: 2026-08-15
 
 OAuth 2.0 / OIDC プロトコル群の全責務を所有する。クライアントメタデータと Dynamic Client Registration、認可判断（認可、同意、認可コード、PAR、Device Authorization、RP-Initiated Logout）、トークンの発行とライフサイクル（アクセストークン、リフレッシュトークン、ID トークン、イントロスペクション、失効、UserInfo、Proof of Possession）、Discovery Metadata、Authorization Server Metadata、健全性報告をこの Bounded Context に集約する。
 
-認可サーバーは `authorization/`、`client/`、`consent/`、`device/`、`token/` の機能単位で実装する。本書は仕組みごとに、認可とデバイスのライフサイクル、PKCE と PAR、クライアント認証、トークン形式とローテーション、送信者制約、同意、認可ポリシー、Discovery Metadata、デバイスグラント、有効期間とセキュリティ設定、Agent プリンシパルと委譲、Rich Authorization Requests、セッションとログアウトのバインディングの順に読む。
+認可サーバーは `authorization/`、`client/`、`consent/`、`device/`、`token/` の機能単位で実装する。
 
 ## Glossary
 
@@ -564,7 +564,9 @@ Initial: `Stored` Terminal: `Used`, `Expired`
 | Stored | Use | now() < expires_at | Used |  |
 | Stored | Expire | — | Expired |  |
 
-## Authorization Boundary
+## Design
+
+### Authorization boundary
 
 プロトコルの経路には 4 つの異なる境界がある。
 
@@ -578,8 +580,6 @@ Initial: `Stored` Terminal: `Used`, `Expired`
 すべての判定は AuthZEN 形式の `authorize()` ポートを通り、規則表が要件の論理積を評価する。判定を返せない場合、事実が欠けている場合、ストアへ到達できない場合のいずれも、許可へ退避しない。
 
 代行 (Token Exchange) は権限を広げない。`act` チェーン上のすべての actor が有効であり、要求するスコープと `authorization_details` が元の権限の部分集合であることを求める。チェーンの深さはテナントの `max_delegation_depth` (システム既定 3) を超えられず、上書きを解決できない場合は交換を拒否する。
-
-## Design
 
 ### Internal Interfaces
 

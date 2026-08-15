@@ -152,4 +152,94 @@ Replaced by the valid request scenario.
       'unconditional state transition guard must use — instead of an empty string',
     )
   })
+
+  it('rejects the retired Authorization Boundary section', () => {
+    const source = valid.replace(
+      '## State Transitions',
+      '## Authorization Boundary\n\nOnly an administrator.\n\n## State Transitions',
+    )
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'unknown top-level section Authorization Boundary',
+    )
+  })
+})
+
+const withStandards = (rows: string) =>
+  valid.replace(
+    '## State Transitions',
+    `## Standards
+
+### Demo Protocol
+
+https://example.invalid/demo
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+${rows}
+
+## State Transitions`,
+  )
+
+describe('validateSpecification standards', () => {
+  it('accepts closed vocabularies on both axes, including optional with MUST', () => {
+    const source = withStandards(
+      [
+        '| DEMO-CORE | required | MUST | The product answers a demo request. |',
+        '| DEMO-EXTRA | optional | MUST | When the extension is offered, its rules are honored. |',
+        '| DEMO-LEGACY | excluded | MAY | The legacy transport is not offered. |',
+      ].join('\n'),
+    )
+    expect(validateSpecification(source).findings).toEqual([])
+  })
+
+  it('rejects a standard without the canonical table', () => {
+    const source = valid.replace(
+      '## State Transitions',
+      '## Standards\n\n### Demo Protocol\n\nAdopted in full.\n\n## State Transitions',
+    )
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'standard must use | ID | Adoption | Strength | Statement |',
+    )
+  })
+
+  it('rejects an adoption outside the vocabulary', () => {
+    const source = withStandards('| DEMO-CORE | planned | MUST | Someday. |')
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'DEMO-CORE has Adoption "planned"; use one of required, optional, partial, excluded',
+    )
+  })
+
+  it('rejects a strength outside the vocabulary', () => {
+    const source = withStandards('| DEMO-CORE | required | SHALL | The product answers. |')
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'DEMO-CORE has Strength "SHALL"; use one of MUST, MUST NOT, SHOULD, MAY',
+    )
+  })
+
+  it('rejects an obligation on an excluded capability', () => {
+    const source = withStandards(
+      '| DEMO-LEGACY | excluded | MUST | The legacy transport is required. |',
+    )
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'DEMO-LEGACY is excluded, so it cannot carry the obligation "MUST"',
+    )
+  })
+
+  it('rejects a duplicate standard id across two standards', () => {
+    const source = withStandards('| DEMO-CORE | required | MUST | The product answers. |').replace(
+      '## State Transitions',
+      `### Other Protocol
+
+https://example.invalid/other
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| DEMO-CORE | optional | MAY | A second row claiming the same id. |
+
+## State Transitions`,
+    )
+    expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
+      'duplicate standard id DEMO-CORE (first seen on line 26)',
+    )
+  })
 })

@@ -55,13 +55,13 @@ updated_at: 2026-08-15
 |---|---|---|---|
 | WSAddressing-MessageIDToAction | required | MUST | MessageID はリプレイ防止のために検証し、To は能動的 STS のエンドポイント、Action は Issue として検証する |
 
-## Authorization Boundary
+## Design
 
-RP の登録・参照・削除と Entra ドメインフェデレーションプロファイルの設定は `AdminFederationTrustsManage` 権限 (AuthZEN action `admin:federation_trusts_manage`) を要し、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `wsfed:read` が RP の参照だけを、`wsfed:write` が RP と Entra フェデレーションの変更を許可する。
+### Authorization boundary
+
+RP の登録・参照・削除と Entra ドメインフェデレーションプロファイルの設定は `AdminFederationTrustsManage` 権限 (AuthZEN action `admin:federation_trusts_manage`) を要し、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `wsfed:read` と `wsfed:write` を要求する。
 
 プロトコルのエンドポイントは管理者の認可を通らず、それぞれ別の境界を持つ。`federationmetadata.xml` と `/trust/mex` はテナントの公開 Discovery であり認証を要さないが、公開するのは発行者、エンドポイント、署名証明書に限る。パッシブサインインはブラウザーのログインセッションで主体を決め、`wtrealm`、`wreply`、対象ユーザーの Application 割り当てを検証してから発行する。能動的な STS は UsernameToken で認証し、`AppliesTo` が登録済みの RP に解決できることを求める。いずれの経路でも、未登録の宛先にトークンを発行することはない。
-
-## Design
 
 ### Internal Interfaces
 

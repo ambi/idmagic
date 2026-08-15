@@ -16,12 +16,34 @@ const SECTION_ORDER = [
   'Glossary',
   'Standards',
   'State Transitions',
-  'Authorization Boundary',
   'Design',
   'Scenarios',
 ] as const
 
 type SectionName = (typeof SECTION_ORDER)[number]
+
+const STANDARDS_HEADER = '| ID | Adoption | Strength | Statement |'
+
+/** Whether the product takes the standard's capability at all. */
+const ADOPTION_VALUES = new Set(['required', 'optional', 'partial', 'excluded'])
+
+/** How firmly the product holds the rule once taken. */
+const STRENGTH_VALUES = new Set(['MUST', 'MUST NOT', 'SHOULD', 'MAY'])
+
+/** An excluded capability carries no obligation, so these strengths cannot describe one. */
+const OBLIGATION_STRENGTHS = new Set(['MUST', 'SHOULD'])
+
+/** Splits a Markdown table row into trimmed cells, dropping the empty edges. */
+function tableRowCells(line: string): string[] {
+  return line
+    .split('|')
+    .slice(1, -1)
+    .map((cell) => cell.trim())
+}
+
+function isSeparatorRow(line: string): boolean {
+  return /^\|(?:\s*:?-+:?\s*\|)+$/.test(line)
+}
 
 function lineAt(source: string, offset: number): number {
   return source.slice(0, offset).split('\n').length
@@ -158,6 +180,67 @@ function validateScenario(
   }
 }
 
+/**
+ * Standards rows are contract data: two closed vocabularies and an ID other documents cite.
+ * Adoption and Strength are independent axes, so only the pairing that cannot mean anything —
+ * an obligation attached to a capability the product does not provide — is rejected.
+ */
+function validateStandards(
+  body: string,
+  offset: number,
+  source: string,
+  findings: SpecificationFinding[],
+): void {
+  const standards = [...body.matchAll(/^### .+$/gm)]
+  const seenIds = new Map<string, number>()
+  for (const [index, standard] of standards.entries()) {
+    const start = (standard.index ?? 0) + standard[0].length
+    const end = standards[index + 1]?.index ?? body.length
+    const block = body.slice(start, end)
+    if (!block.includes(STANDARDS_HEADER)) {
+      findings.push({
+        line: lineAt(source, offset + (standard.index ?? 0)),
+        message: `standard must use ${STANDARDS_HEADER}`,
+      })
+      continue
+    }
+    for (const match of block.matchAll(/^\|.*\|$/gm)) {
+      const line = match[0]
+      if (line === STANDARDS_HEADER || isSeparatorRow(line)) continue
+      const at = lineAt(source, offset + start + (match.index ?? 0))
+      const [id, adoption, strength] = tableRowCells(line)
+      if (!id || !adoption || !strength) continue
+      const previous = seenIds.get(id)
+      if (previous !== undefined) {
+        findings.push({
+          line: at,
+          message: `duplicate standard id ${id} (first seen on line ${previous})`,
+        })
+      } else {
+        seenIds.set(id, at)
+      }
+      if (!ADOPTION_VALUES.has(adoption)) {
+        findings.push({
+          line: at,
+          message: `${id} has Adoption "${adoption}"; use one of ${[...ADOPTION_VALUES].join(', ')}`,
+        })
+      }
+      if (!STRENGTH_VALUES.has(strength)) {
+        findings.push({
+          line: at,
+          message: `${id} has Strength "${strength}"; use one of ${[...STRENGTH_VALUES].join(', ')}`,
+        })
+      }
+      if (adoption === 'excluded' && OBLIGATION_STRENGTHS.has(strength)) {
+        findings.push({
+          line: at,
+          message: `${id} is excluded, so it cannot carry the obligation "${strength}"`,
+        })
+      }
+    }
+  }
+}
+
 export function validateSpecification(source: string): SpecificationValidation {
   const findings: SpecificationFinding[] = []
   const frontmatter = source.match(/^---\n([\s\S]*?)\n---\n/)
@@ -252,6 +335,9 @@ export function validateSpecification(source: string): SpecificationValidation {
       }
     }
   }
+
+  const standards = sectionBody(source, sections, 'Standards')
+  if (standards) validateStandards(standards.body, standards.offset, source, findings)
 
   const scenarioSection = sectionBody(source, sections, 'Scenarios')
   if (scenarioSection) {

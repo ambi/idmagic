@@ -39,13 +39,13 @@ Initial: `Active` Terminal: `Archived`
 | Verifying | SigningKeyRetired | — | Retired |  |
 | Retired | SigningKeyArchived | — | Archived |  |
 
-## Authorization Boundary
+## Design
 
-鍵の一覧と参照は `AdminKeysRead` (`admin:keys_read`)、ローテーションは `TenantKeysRotate` (`admin:keys_rotate`)、検証用鍵の無効化は `TenantKeysDisable` (`admin:keys_disable`) を要し、いずれも `admin` または `system_admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。テナント横断の健全性一覧 `SystemKeyHealthRead` (`admin:keys_health_read`) だけは `system_admin` に限る。API アクセストークンでは、ロールに加えて `signing-keys:read` が鍵と健全性の参照だけを、`signing-keys:write` がローテーションと無効化を許可する。
+### Authorization boundary
+
+鍵の一覧と参照は `AdminKeysRead` (`admin:keys_read`)、ローテーションは `TenantKeysRotate` (`admin:keys_rotate`)、検証用鍵の無効化は `TenantKeysDisable` (`admin:keys_disable`) を要し、いずれも `admin` または `system_admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。テナント横断の健全性一覧 `SystemKeyHealthRead` (`admin:keys_health_read`) だけは `system_admin` に限る。API アクセストークンでは、ロールに加えて `signing-keys:read` と `signing-keys:write` を要求する。
 
 管理 API のレスポンスに秘密鍵素材を含めることは、いずれの権限でもできない。返すのは `kid`、状態、有効期間、証明書、フィンガープリントに限る。公開鍵を配る JWKS とフェデレーションメタデータは認証を要さず、テナントごとのエンドポイントで公開する。
-
-## Design
 
 ### Usage and scope isolation
 

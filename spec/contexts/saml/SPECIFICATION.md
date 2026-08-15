@@ -56,15 +56,15 @@ WS-Fed / WS-Trust とは、クレームの発行処理と XML 署名だけを共
 | SAML2Metadata-IDPSSODescriptor | required | MUST | IdP メタデータでは、SSO エンドポイント、SLO エンドポイント、署名証明書、NameID 形式を公開する |
 | SAML2Metadata-WantAuthnRequestsSigned | optional | MAY | SP ごとの信頼ポリシーとして、AuthnRequest / LogoutRequest の署名検証を要求できる |
 
-## Authorization Boundary
+## Design
 
-SP と IdP プロファイルの登録・参照・削除は `AdminFederationTrustsManage` 権限 (AuthZEN action `admin:federation_trusts_manage`) を要し、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `saml:read` が SP と IdP プロファイルの参照だけを、`saml:write` がその変更を許可する。
+### Authorization boundary
+
+SP と IdP プロファイルの登録・参照・削除は `AdminFederationTrustsManage` 権限 (AuthZEN action `admin:federation_trusts_manage`) を要し、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `saml:read` と `saml:write` を要求する。
 
 プロトコルのエンドポイントは管理者の認可を通らない。IdP メタデータと証明書の取得は認証を要さない公開 Discovery であり、公開するのは entityID、エンドポイント、署名証明書に限る。SSO と SLO はブラウザーのログインセッションで主体を決め、SP の entityID、`AssertionConsumerServiceURL`、Destination、対象ユーザーの Application 割り当てをすべて検証してから発行する。1 つでも一致しなければ SAMLResponse を発行しない。
 
 テナントとプロファイルはどちらも信頼境界である。SSO と SLO では、リクエスト先のルートが指すプロファイルと、対象 SP に割り当てられたプロファイルが一致することを確認する。ある信頼境界に対する正当なリクエストを、同じテナントの別のプロファイルへ送り直しても通らない。
-
-## Design
 
 ### SSO Profile scope
 

@@ -44,7 +44,9 @@ Initial: `Active` Terminal: none
 | Active | TenantDisabled | — | Disabled |  |
 | Disabled | TenantEnabled | — | Active |  |
 
-## Authorization Boundary
+## Design
+
+### Authorization boundary
 
 管理の認可は 2 段である。`admin` ロールは自身のテナント内に閉じ、`system_admin` ロールはテナントを越える操作を持つ。テナントの作成、一覧、更新、無効化、正規ロケーションの切り替え、リソース上限の変更は制御面の操作であり、`admin:tenants_manage` として `system_admin` ロールとデフォルト (制御面) テナントへの所属の両方を要求する。所属テナントの設定 (`admin:settings_read` / `admin:settings_update`)、外装 (`admin:branding_update`)、属性スキーマ、通知テンプレートは `admin` または `system_admin` が自身のテナントに対して変更でき、テナント管理者は自身の上限を参照できるが変更はできない。上限を決める権限をテナント自身ではなく共有基盤の運用者に残すためである。
 
@@ -53,8 +55,6 @@ API アクセストークンでは、ロールに加えて `settings:*` が所�
 いずれの経路でも、ロールを持つだけでは足りない。呼び出し元のアカウントが `disabled_at` でないこと、認証済みであること、対象が呼び出し元と同じテナントに属することを合わせて要求する。状態を変える管理リクエストは、セッションによる認証に加えて `Origin` と CSRF トークンも検証する。セッション Cookie だけでは、そのリクエストが管理 UI から出たことを証明できないからである。
 
 テナント解決も認可境界の一部である。テナントは `endpoint_style` が指す正規ロケーションからだけ到達でき、もう一方の経路では不在として扱う。どの経路にも一致しないリクエストをデフォルトテナントへフォールバックさせない。存在しないテナントには `404 tenant_not_found`、無効なテナントにはプロトコルルートで `400 invalid_request` を返し、内部のテナント情報は公開しない。
-
-## Design
 
 ### Internal Interfaces
 

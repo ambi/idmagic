@@ -11,7 +11,7 @@ updated_at: 2026-08-15
 
 React UI と Go API は別々にビルドし、ゲートウェイを通じて同一オリジンで公開する。組み込みの認証画面 (ログイン、同意、デバイス認証)、管理コンソール、アカウントポータルはこの Context に属する。
 
-本書は、SPA と API の責任分担、ブラウザー保護、ルーティング、起動時設定、UI 規約とその根拠を記す。実行手順と検証コマンドは `README.md` に置く。
+実行手順と検証コマンドは所有せず、`README.md` に置く。
 
 ## Glossary
 
@@ -56,7 +56,9 @@ Regulation (EU) 2016/679 — https://eur-lex.europa.eu/eli/reg/2016/679/oj
 | GDPR-ERASURE | required | MUST | 削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う。 |
 | GDPR-PROCESSING-RECORDS | required | MUST | セキュリティおよび認可イベントの監査記録を定義済みの期間保持する。保持期間は Audit Context が所有する。 |
 
-## Authorization Boundary
+## Design
+
+### Authorization boundary
 
 この Context 自身は業務データの認可を判断しない。どの経路へどの資格情報で到達できるかという、システム入口の境界を所有する。
 
@@ -64,8 +66,6 @@ Regulation (EU) 2016/679 — https://eur-lex.europa.eu/eli/reg/2016/679/oj
 - 管理 API (`/api/admin/*`) とセルフサービス API (`/api/account/*`) は、ログイントランザクションとは独立した認可を通る。ポータル境界のスコープ (`idmagic.admin` / `idmagic.account`) を要求し、アカウントポータルのトークンで管理 API を呼ぶ経路をフェイルクローズで塞ぐ。実際に何ができるかは、記録を所有する各 Context のロールとスコープが決める。
 - 状態を変更するブラウザー API は、二重送信方式の CSRF トークンと、設定済みの公開発行者と一致する `Origin` ヘッダーを要求する。
 - 生存確認、受付可否、起動完了の各プローブは認証を要さないが、返すのは状態だけで、設定値や依存先の詳細は含めない。`/metrics` も認証を持たないため、公開先は折り返しアドレス、管理用ネットワーク、認証付きプロキシの背後に限る。
-
-## Design
 
 ### Internal Interfaces
 

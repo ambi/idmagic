@@ -45,15 +45,15 @@ Initial: `pending` Terminal: `succeeded`, `dead_letter`
 | in_flight | GroupMembershipPushed | source_type == 'group' | succeeded |  |
 | in_flight | UserProvisioningFailed | — | dead_letter |  |
 
-## Authorization Boundary
+## Design
 
-接続の登録、更新、削除、接続テスト、On-Demand Provision、Full Resync、Quarantine の解除、配信の一覧と再試行は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `provisioning:read` が接続と配信の参照だけを、`provisioning:write` が接続の変更と配信操作を許可する。接続テスト、On-Demand Provision、Full Resync、Quarantine の解除、配信の再試行はいずれも下流を変えるため変更系に属する。
+### Authorization boundary
+
+接続の登録、更新、削除、接続テスト、On-Demand Provision、Full Resync、Quarantine の解除、配信の一覧と再試行は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `provisioning:read` と `provisioning:write` を要求する。接続テスト、On-Demand Provision、Full Resync、Quarantine の解除、配信の再試行はいずれも下流を変えるため変更系に属する。
 
 接続と配信はテナントを越えない。別テナントの接続 ID や配信 ID を指定した参照は、存在しないものとして拒否する。
 
 配信そのものは管理者の権限を借りない。`worker` が下流へ提示するのは接続に保存した資格情報だけであり、IdMagic 側の管理者権限が下流へ伝わることはない。下流の URL は登録時に HTTPS であることと、内部アドレスやリンクローカルアドレスを指さないことを検証する。
-
-## Design
 
 ### Protocol-agnostic core with protocol feature slices
 

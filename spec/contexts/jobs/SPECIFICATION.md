@@ -66,13 +66,13 @@ Initial: `queued` Terminal: `succeeded`, `failed`, `canceled`
 | queued | JobCanceled | — | canceled |  |
 | running | JobCanceled | — | canceled |  |
 
-## Authorization Boundary
+## Design
+
+### Authorization boundary
 
 キューを操作する HTTP のエンドポイントは持たない。`EnqueueJob` 以下のインターフェースはいずれも同一プロセス内の Go 呼び出しであり、テナント管理者や API アクセストークンから直接呼べる経路はない。したがって、あるテナントが別のテナントのジョブを投入・取得・キャンセルすることはできない。
 
 ハンドラーの実行コンテキストは、その Job の `tenant_id` に固定する。ハンドラーが誤って別テナントの Aggregate の識別子を渡されても、実行コンテキストのテナントと一致しないため操作は拒否される。`worker` プロセスはすべてのテナントのジョブを実行するが、1 件のジョブを処理する間に見えるのは 1 つのテナントの範囲だけである。
-
-## Design
 
 ### Internal Interfaces
 

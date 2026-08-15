@@ -48,15 +48,15 @@ RFC 8693 — https://www.rfc-editor.org/rfc/rfc8693.html
 |---|---|---|---|
 | RFC8693-FGA-ACTOR-AND | required | MUST | 代行トークンでの判定は、`sub` の主体と `act` チェーン上のすべての actor が同じ関係を持つときにだけ許可する。エージェントは代行するユーザーの権限を超えられない。 |
 
-## Authorization Boundary
+## Design
+
+### Authorization boundary
 
 認可モデルと関係タプルの管理は `AdminAuthorizationModelManage` 権限 (AuthZEN action `admin:authorization_model_manage`) を要する。この権限はテナント管理者に属し、テナント境界を越えない。この Context の管理 API は対話セッション限定であり、API アクセストークンからはどのスコープを持っていても到達できない。`ApiTokenScope` は認可モデルと関係タプルに対応する語彙をまだ持たず、既存のスコープへ畳み込めば、そのスコープを持つトークンが黙って認可判定の書き換え能力を得るからである。
 
 関係タプルの読み書きは、常に呼び出し元のテナントで解決した `tenant_id` に閉じる。リクエスト本体が別テナントの識別子を含んでいても、それが判定や書き込みの対象テナントを変えることはない。判定に用いるタプルの読み出しも同じ境界で行うため、他テナントへ書き込まれたタプルが判定へ寄与する経路は存在しない。
 
 `CheckAccess` と `ListAccessibleResources` は診断と内部利用の接点である。関係の有無そのものが情報になるため、これらも管理権限を要する。データ資源を提供する呼び出し側が代行アクセスを判定する経路は、HTTP ではなくユースケースの直接呼び出しとする。
-
-## Design
 
 ### 関係の言語
 

@@ -11,7 +11,7 @@ updated_at: 2026-08-15
 
 この Context に入るかどうかは、通信の方向や実行時の形ではなく、永続的な関連付けを持つ外部権威が存在するかどうかで決まる。したがって、管理者による CSV インポート（IdManagement）、ログイン時のフェデレーション（Authentication）、下流システムとの台帳照合（Application または Provisioning）はいずれも対象外である。
 
-現在の機能単位は `scim` だけである。SCIM 2.0 サーバーとして `/scim/v2/Users`、`/scim/v2/Groups` などを提供し、Okta、Google Cloud Identity、Entra ID などの外部 IdP からユーザーとグループの同期を受ける。将来は閉域の Directory Connector を扱う `directory` と、定期的なファイル取り込みを扱う `feed` を同じ Context に追加する。Context のルートにはファサードと組み立てだけを置き、複数の取り込み元に実在する共通点が判明するまでは共通機構を作らない。
+現在の機能単位は `scim` だけである。SCIM 2.0 サーバーとして `/scim/v2/Users`、`/scim/v2/Groups` などを提供し、Okta、Google Cloud Identity、Entra ID などの外部 IdP からユーザーとグループの同期を受ける。Context のルートにはファサードと組み立てだけを置き、複数の取り込み元に実在する共通点が判明するまでは共通機構を作らない。
 
 ## Glossary
 
@@ -49,13 +49,13 @@ RFC 7644 — https://www.rfc-editor.org/rfc/rfc7644.html
 | RFC7644-ERROR-RESPONSE | required | MUST | プロトコル上の失敗は、HTTP ステータスと detail を持つ SCIM エラーレスポンスで返す。 |
 | RFC7644-FILTERING | partial | SHOULD | コレクション一覧のエンドポイントは、`filter` クエリパラメーターによる絞り込みを提供する。 |
 
-## Authorization Boundary
+## Design
 
-SCIM のエンドポイントはユーザーのセッションではなく、`ApiTokens` が発行するテナント単位の API アクセストークンで認証する。操作ごとに必要なスコープを要求し、`/Users` の参照には `scim:users:read`、変更には `scim:users:write`、`/Groups` も同様に `scim:groups:read` / `scim:groups:write` を求める。Discovery のエンドポイントは `scim:` で始まるいずれかのスコープで参照できる。
+### Authorization boundary
+
+SCIM のエンドポイントはユーザーのセッションではなく、`ApiTokens` が発行するテナント単位の API アクセストークンで認証し、操作ごとに `scim:users:*` と `scim:groups:*` のスコープを要求する。Discovery のエンドポイントは `scim:` で始まるいずれかのスコープで参照できる。
 
 トークンはテナントを束縛する。リクエストしたレルムがトークンのテナントと一致しなければ、リソースが存在するかどうかを問わず拒否する。取り込み中に解決する参照 — Group のメンバー、Enterprise 拡張の `manager` — も同じテナント内に限り、別テナントの識別子を指す参照は `invalidValue` として拒否して保存しない。
-
-## Design
 
 ### SCIM 2.0 inbound provisioning
 

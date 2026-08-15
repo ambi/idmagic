@@ -20,15 +20,15 @@ updated_at: 2026-08-15
 | AppSignInPolicy | Application ごとに順序付けた `SignInRule` の集合。フェデレーションの開始ごとに、トークンや Assertion の発行前に評価する。 | サインインポリシー |
 | ApplicationAssignment | Application を利用できる主体を表す割り当て。`subject_type` が `user` の直接割り当てと `group` のグループ割り当てがあり、`visibility` が `hidden` の割り当てはポータルに現れないままフェデレーションだけを許可する。 | 割り当て |
 
-## Authorization Boundary
+## Design
 
-Application、プロトコル設定、カテゴリ、割り当て、サインインポリシーの管理はいずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`admin:application_assignments_manage`、`admin:application_policies_manage`、`admin:application_categories_manage`、`admin:tenant_default_sign_in_policy_manage` を要求する。いずれも操作対象が呼び出し元と同じテナントに属することを条件とする。API アクセストークンでは、ロールに加えて `applications:read` が Application、プロトコル設定、カテゴリ、割り当ての参照だけを、`applications:write` がその変更を許可する。テナントのデフォルトサインインポリシーだけは Application 単位ではなくテナント設定なので `settings:read` / `settings:write` に対応させる。
+### Authorization boundary
+
+Application、プロトコル設定、カテゴリ、割り当て、サインインポリシーの管理はいずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`admin:application_assignments_manage`、`admin:application_policies_manage`、`admin:application_categories_manage`、`admin:tenant_default_sign_in_policy_manage` を要求する。いずれも操作対象が呼び出し元と同じテナントに属することを条件とする。API アクセストークンでは、ロールに加えて `applications:read` と `applications:write` を要求する。テナントのデフォルトサインインポリシーだけは Application 単位ではなくテナント設定なので `settings:read` / `settings:write` に対応させる。
 
 エンドユーザーが触れるのは自分自身の範囲だけである。`ListMyApplications` と `ReorderMyApplications` は認証済み本人の割り当てと表示設定に閉じ (`account:applications_read`)、他のユーザーの一覧や並び順へは到達できない。
 
 割り当てを持たない主体は、どのプロトコルからもフェデレーションを完了できない。この関門は Application とプロトコル設定の関連付けを確認するのと同じ場所にあるため、別のプロトコルを入口に選んで迂回することはできない。`AssignApplicationDesiredState` と `UnassignApplicationDesiredState` は HTTP に公開せず、同じテナント内の識別子しか受け取らない内部インターフェースである。
-
-## Design
 
 ### Internal Interfaces
 

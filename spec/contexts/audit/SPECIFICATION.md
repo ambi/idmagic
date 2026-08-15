@@ -20,13 +20,13 @@ updated_at: 2026-08-15
 | ResolvableUserEventPayloadPolicy | 実在するアカウントが必ず特定できるイベント (UserAuthenticated、ConsentGranted、AuthorizationCodeIssued、AuthorizationCodeRedeemed、AccessTokenIssued、RefreshTokenIssued など) のペイロードには、平文かハッシュかを問わずユーザー名を含めないという方針。各 Context のイベントモデルにユーザー名相当のフィールドを設けないことで構造的に保証する。ユーザー名による検索は `AuditEventQuery.username` を User Repository で `user_id` へ解決し、既存の `user_id` 検索に帰着させる。実在しないアカウント名も追跡する必要がある認証失敗イベントに限り、平文の検索属性 `actor.username` を持たせる。 | resolvable-user-event-payload-policy |
 | TenantAdministrator | 所属テナントまたは (system_admin の場合) 全テナント横断で監査イベントを読み出す権限を持つ管理者。 |  |
 
-## Authorization Boundary
+## Design
+
+### Authorization boundary
 
 監査イベントの参照とエクスポートは `AdminAuditEventsRead` 権限 (AuthZEN action `admin:audit_events_read`) を要する。`admin` または `system_admin` ロールを持つ、有効かつ認証済みのユーザーだけが行える。書き込み経路は公開せず、イベントの追加は各 Context の発行経路だけが行う。API アクセストークンでは、ロールに加えて `audit:read` を要求する。対になる変更系のスコープは存在しない。書き込み経路そのものを公開しないためである。
 
 問い合わせは既定で呼び出し元のテナントに閉じる。全テナント横断の参照は、`system_admin` ロールを持つユーザーが制御面 (default テナント) の経路から明示的に要求した場合に限る。ページングのカーソルはテナントと絞り込み条件を束縛するため、別テナントで発行されたカーソルや条件が変わったカーソルは拒否する。
-
-## Design
 
 ### Retention
 
