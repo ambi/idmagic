@@ -55,12 +55,7 @@ Initial: `queued` Terminal: `succeeded`, `partially_failed`, `failed`, `canceled
 
 ## Authorization Boundary
 
-LifecycleWorkflow の作成、編集、有効化、無効化、削除、プレビューは、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。API アクセストークンでは、ロールに加えて次のスコープをそれぞれの操作に要求する。ドライランは評価結果を返すだけで保存しないため参照系に置く。
-
-| スコープ | 許可する操作 |
-|---|---|
-| `lifecycle-workflows:read` | ListLifecycleWorkflows、GetLifecycleWorkflow、ListLifecycleWorkflowRuns、GetLifecycleWorkflowRun、DryRunLifecycleWorkflow |
-| `lifecycle-workflows:write` | CreateLifecycleWorkflow、UpdateLifecycleWorkflow、EnableLifecycleWorkflow、DisableLifecycleWorkflow、DeleteLifecycleWorkflow、RetryLifecycleWorkflowRun |
+LifecycleWorkflow の作成、編集、有効化、無効化、削除、プレビューは、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `lifecycle-workflows:read` がワークフローと実行結果の参照だけを、`lifecycle-workflows:write` がワークフローの変更と実行の再試行を許可する。ドライランは評価結果を返すだけで保存しないため参照系に置く。
 
 WorkflowRun の実行は管理者の権限を借りない。アクションは記録系 Context が公開する冪等なコマンドインターフェースを通り、対象ユーザーとグループ、アプリケーションはいずれも実行時にワークフローと同じテナント内で再取得する。定義時に別テナントの識別子を指定すれば保存で拒否し、実行までに対象が削除または移動していればそのステップを失敗として記録する。したがって、ワークフローがテナント境界を越える経路は定義側にも実行側にも存在しない。
 

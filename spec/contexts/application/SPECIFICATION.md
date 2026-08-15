@@ -22,14 +22,7 @@ updated_at: 2026-08-15
 
 ## Authorization Boundary
 
-Application、プロトコル設定、カテゴリ、割り当て、サインインポリシーの管理はいずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`admin:application_assignments_manage`、`admin:application_policies_manage`、`admin:application_categories_manage`、`admin:tenant_default_sign_in_policy_manage` を要求する。いずれも操作対象が呼び出し元と同じテナントに属することを条件とする。API アクセストークンでは、ロールに加えて次のスコープをそれぞれの操作に要求する。テナントのデフォルトサインインポリシーだけは Application 単位ではなくテナント設定なので `settings:*` に対応させる。
-
-| スコープ | 許可する操作 |
-|---|---|
-| `applications:read` | ListAdminApplications、GetAdminApplication、ListApplicationAssignments、ListApplicationCategories、GetAppSignInPolicy |
-| `applications:write` | CreateAdminApplication、UpdateAdminApplication、DeleteAdminApplication、UploadApplicationIcon、DeleteApplicationIcon、UpdateApplicationOidcConfig、RotateApplicationClientSecret、IssueApplicationClientSecret、RevokeApplicationClientSecret、UpdateApplicationWsFedConfig、UpdateApplicationSamlConfig、AssignApplication、UnassignApplication、UpdateAppSignInPolicy、SetApplicationCategories、CreateApplicationCategory、UpdateApplicationCategory、DeleteApplicationCategory |
-| `settings:read` | GetTenantDefaultSignInPolicy |
-| `settings:write` | UpdateTenantDefaultSignInPolicy |
+Application、プロトコル設定、カテゴリ、割り当て、サインインポリシーの管理はいずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`admin:application_assignments_manage`、`admin:application_policies_manage`、`admin:application_categories_manage`、`admin:tenant_default_sign_in_policy_manage` を要求する。いずれも操作対象が呼び出し元と同じテナントに属することを条件とする。API アクセストークンでは、ロールに加えて `applications:read` が Application、プロトコル設定、カテゴリ、割り当ての参照だけを、`applications:write` がその変更を許可する。テナントのデフォルトサインインポリシーだけは Application 単位ではなくテナント設定なので `settings:read` / `settings:write` に対応させる。
 
 エンドユーザーが触れるのは自分自身の範囲だけである。`ListMyApplications` と `ReorderMyApplications` は認証済み本人の割り当てと表示設定に閉じ (`account:applications_read`)、他のユーザーの一覧や並び順へは到達できない。
 

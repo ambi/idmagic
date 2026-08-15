@@ -47,12 +47,7 @@ Initial: `pending` Terminal: `succeeded`, `dead_letter`
 
 ## Authorization Boundary
 
-接続の登録、更新、削除、接続テスト、On-Demand Provision、Full Resync、Quarantine の解除、配信の一覧と再試行は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。API アクセストークンでは、ロールに加えて次のスコープをそれぞれの操作に要求する。
-
-| スコープ | 許可する操作 |
-|---|---|
-| `provisioning:read` | GetProvisioningConnection、ListTenantProvisioningConnections、ListProvisioningDeliveries、GetProvisioningDelivery |
-| `provisioning:write` | RegisterProvisioningConnection、UpdateProvisioningConnection、DeleteProvisioningConnection、TestProvisioningConnection、ProvisionOnDemand、StartFullResync、ResumeProvisioningConnection、RetryProvisioningDelivery |
+接続の登録、更新、削除、接続テスト、On-Demand Provision、Full Resync、Quarantine の解除、配信の一覧と再試行は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。API アクセストークンでは、ロールに加えて `provisioning:read` が接続と配信の参照だけを、`provisioning:write` が接続の変更と配信操作を許可する。接続テスト、On-Demand Provision、Full Resync、Quarantine の解除、配信の再試行はいずれも下流を変えるため変更系に属する。
 
 接続と配信はテナントを越えない。別テナントの接続 ID や配信 ID を指定した参照は、存在しないものとして拒否する。
 

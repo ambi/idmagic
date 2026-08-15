@@ -573,19 +573,7 @@ Initial: `Stored` Terminal: `Used`, `Expired`
 - **トークンによるアクセス**: 発行したトークンで到達できる範囲は、そのトークンのスコープが決める。`account:*` を含むユーザー紐付きのスコープは、User の subject を持たないグラント (`client_credentials` や、subject を伴わない Token Exchange) では発行しない。
 - **管理 API**: クライアント (`admin:clients_manage`)、同意 (`admin:consents_manage`)、`authorization_details` の型 (`admin:authorization_detail_types_manage`) の管理は、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行う。
 
-管理 API では、API アクセストークンにロールに加えて次のスコープをそれぞれの操作に要求する。ロールポリシー一覧はテナント設定の参照なので `settings:read` に対応させる。
-
-| スコープ | 許可する操作 |
-|---|---|
-| `oauth-clients:read` | ListAdminOAuth2Clients、GetAdminOAuth2Client |
-| `oauth-clients:write` | CreateAdminOAuth2Client、UpdateAdminOAuth2Client、DeleteAdminOAuth2Client |
-| `authorization-detail-types:read` | ListAuthorizationDetailTypes、GetAuthorizationDetailType |
-| `authorization-detail-types:write` | CreateAuthorizationDetailType、UpdateAuthorizationDetailType、DeleteAuthorizationDetailType |
-| `mcp-resource-servers:read` | ListAdminMcpResourceServers、GetAdminMcpResourceServer |
-| `mcp-resource-servers:write` | CreateAdminMcpResourceServer、UpdateAdminMcpResourceServer、DeleteAdminMcpResourceServer |
-| `consents:read` | ListAdminConsents、GetAdminConsent |
-| `consents:write` | RevokeAdminConsent |
-| `settings:read` | ListAdminRolePolicies |
+管理 API では、API アクセストークンにロールに加えてリソースごとのスコープを要求する。`oauth-clients:*`、`consents:*`、`authorization-detail-types:*`、`mcp-resource-servers:*` がそれぞれのリソースに対応し、`read` が参照だけを、`write` が変更を許可する。リソースをまたぐ流用はできず、あるリソースのスコープで別のリソースを操作することはない。ロールポリシー一覧だけはテナント設定の参照なので `settings:read` に対応させる。
 
 すべての判定は AuthZEN 形式の `authorize()` ポートを通り、規則表が要件の論理積を評価する。判定を返せない場合、事実が欠けている場合、ストアへ到達できない場合のいずれも、許可へ退避しない。
 

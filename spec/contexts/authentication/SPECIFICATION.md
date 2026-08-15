@@ -104,16 +104,9 @@ MFA の強制開始後に未登録のユーザーが到達できるのは登録�
 
 上流の IdP から受け取ったものはすべて信頼しない。ログインリクエストが使うのは保存済みのプロバイダーとエンドポイントの設定だけであり、ブラウザーから任意の Discovery URL やトークン URL を指定することはできない。クライアントシークレットはデータベースに保存せず `secret_reference` だけを保持し、外部トークンと SAML Assertion はログイン時に検証したうえで保持しない。
 
-この Context が持つ管理 API のうち、セッションと認証情報に対する操作は API アクセストークンから到達でき、ロールに加えて次のスコープをそれぞれの操作に要求する。認証イベントのバケットは監査の派生的な参照なので `audit:read` に対応させる。
+この Context が持つ管理 API のうち、セッションと認証情報に対する操作は API アクセストークンから到達できる。`sessions:read` が利用者のセッションとサインイン履歴の参照だけを、`sessions:write` がセッションの失効を許可する。MFA 登録の一時免除と認証器のリセットは対象 `User` の資格情報を変えるので `users:write` に属する。認証イベントのバケットは監査の派生的な参照なので `audit:read` に対応させる。
 
-| スコープ | 許可する操作 |
-|---|---|
-| `sessions:read` | ListSessions、ListUserSignInActivity |
-| `sessions:write` | RevokeSession、RevokeUserSessions |
-| `users:write` | IssueMfaEnrollmentBypass、RevokeMfaEnrollmentBypass、ResetUserAuthenticators |
-| `audit:read` | ListAuthenticationEventBuckets |
-
-外部 IdP 接続の管理 API はこれと異なり、**API アクセストークンからは到達できない対話セッション限定の操作** とする。攻撃者が管理する IdP を登録できることは、任意のユーザーとしてサインインできることと同じであり、認証の迂回そのものだからである。この能力を既存の設定変更スコープへ畳み込むと、設定を更新するために発行したトークンが黙って認証の迂回能力を得る。したがって `CreateIdentityProviderConnection`、`UpdateIdentityProviderConnection`、`DeleteIdentityProviderConnection`、`ActivateIdentityProviderConnection`、`DisableIdentityProviderConnection`、`RefreshIdentityProviderMetadata`、`TestIdentityProviderConnection`、`PreviewIdentityProviderMapping`、`ListIdentityProviderConnections` は、ブラウザーのログインセッションまたは管理ポータルのアクセストークンからのみ呼べる。
+外部 IdP 接続の管理 API はこれと異なり、**API アクセストークンからは到達できない対話セッション限定の操作** とする。攻撃者が管理する IdP を登録できることは、任意のユーザーとしてサインインできることと同じであり、認証の迂回そのものだからである。この能力を既存の設定変更スコープへ畳み込むと、設定を更新するために発行したトークンが黙って認証の迂回能力を得る。したがって外部 IdP 接続の参照と変更は、ブラウザーのログインセッションまたは管理ポータルのアクセストークンからのみ行える。
 
 ## Design
 
@@ -480,8 +473,8 @@ RP ID と許可するオリジンはデプロイ時の設定（`WEBAUTHN_RP_ID` 
 - ACTOR ManagementApiClient
 - GIVEN クライアントは対象テナントの有効な API アクセストークンを提示している
 - GIVEN トークンの発行者は `admin` ロールを持つ
-- WHEN クライアントが外部 IdP 接続の参照、登録、更新、削除、有効化、無効化、メタデータ再取得、接続テスト、またはマッピングのプレビューをリクエストする
-  - ALT トークンが `settings:write` を含む、または `ApiTokenScope` のあらゆるスコープを含む → 操作は `insufficient_scope` で拒否され、必要な資格として対話セッションを提示する
+- WHEN クライアントが外部 IdP 接続の参照または変更をリクエストする
+  - ALT トークンが `ApiTokenScope` のどのスコープを持っていても → 操作は `insufficient_scope` で拒否され、必要な資格として対話セッションを提示する
 - THEN 外部 IdP 接続の管理は、ブラウザーのログインセッションまたは管理ポータルのアクセストークンからのみ行える
 - WHEN 同じクライアントがセッションと認証情報の管理 API をリクエストする
 - THEN `sessions:read` は利用者のセッションとサインイン履歴の参照を、`sessions:write` はセッションの失効を、`users:write` は MFA 登録の一時免除と認証器のリセットを許可する

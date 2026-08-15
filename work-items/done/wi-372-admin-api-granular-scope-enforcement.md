@@ -59,7 +59,7 @@ affected_spec:
 
 ## Scope
 
-- **仕様**: 管理 API の operation と `ApiTokenScope` の対応を TypeSpec の `x-api-token-scopes` に宣言し、同じ対応をスコープ単位でまとめた表を、それを所有する各 Context の `SPECIFICATION.md` の `Authorization Boundary` に記述する。実装しないと決めたスコープは `ApiTokenScope` から削除する。
+- **仕様**: 管理 API の operation と `ApiTokenScope` の対応を TypeSpec の `x-api-token-scopes` に宣言する。各 Context の `SPECIFICATION.md` の `Authorization Boundary` には、その Context が使うスコープ語彙と、`read` / `write` の割り当てが操作の名前から読み取れない場合の判断だけを書く。実装しないと決めたスコープは `ApiTokenScope` から削除する。
 - **共有の強制点**: `backend/shared/http/support_http` に、ルートから契約の operation を解決して必要スコープをフェイルクローズに判定する仕組みを追加する。
 - **ドリフト検出**: 宣言のない operation と、どの operation も要求しないスコープの両方を検出する検査を追加し、`just check` の対象にする。
 - **エラー応答**: スコープ不足は RFC 6750 に従い `WWW-Authenticate` の `insufficient_scope` と、必要なスコープ名を返す。ロール不足の `access_denied` と区別する。
@@ -224,6 +224,8 @@ affected_spec:
   `ApiTokenScope` の列挙値は 1 つも削除していない。棚卸しの結果、37 個の管理粒度スコープはすべて 1 つ以上の operation に対応づいた (`sessions:*`、`consents:*`、`tenants:*` を含む)。`just check-api-compat` に破壊的変更は現れない。発行済みトークンが失う能力もない — 管理 API へ到達できていたトークンが存在しないためで、影響は「到達できるようになる」方向にしかない。影響の算出は、保存済みのスコープ集合 (`api_tokens.scopes`) と契約の `x-api-token-scopes` の突き合わせで静的に行える。
 
   正本は TypeSpec 1 か所である。起票時の設計はルート登録側に対応表を持つ案 (b) だったが、`@TypeSpec.OpenAPI.extension` で新しいデコレーターなしに宣言でき、既存の `generate-contract` / `check-generated-contract` に乗ることが分かったため案 (c) を採った。ルート登録側 (20 ファイル) の書き換えは不要になり、宣言はレンダリングした API 文書にも載る。
+
+  **正本を 1 か所に保つための後続の是正。** 最初の実装では、`Scope` の記述どおり operation とスコープの対応表を各 Context の `Authorization Boundary` にも置いた。これは TypeSpec の宣言と同じ対応を散文側に複製したもので、照合する検査がないまま片方が古びる。表を外し、各 Context の境界文には「どのスコープ語彙を使うか」と「`read` / `write` の割り当てが操作の名前から読み取れない場合の判断とその理由」だけを残した。CSV エクスポートを参照系に置く理由、`KillAgent` を `agents:write` に含める理由、デフォルトサインインポリシーを `settings:*` に対応させる理由、外部 IdP 接続を対話セッション限定にする理由がそれにあたり、いずれも注釈からは読み取れない durable な判断である。網羅的な対応は TypeSpec だけが持つ。
 - **Verification Results**:
   - `just check-spec` - passed (25 document(s), 322 operation(s))
   - `just check-api-compat` - passed (no breaking changes vs the frozen baseline)

@@ -104,16 +104,11 @@ Initial: `queued` Terminal: `failed`, `canceled`, `expired`
 
 管理 API はプリンシパルの種類と操作ごとに権限を分ける。`User` は参照 (`admin:user_read`)、作成 (`admin:user_create`)、CSV インポート (`admin:user_import`)、更新 (`admin:user_update`)、削除 (`admin:user_delete`)、復元 (`admin:user_restore`)、完全削除 (`admin:user_purge`)、`Group` は参照 (`admin:groups_read`) と変更 (`admin:groups_write`)、`Agent` は `admin:agents_manage` を要する。いずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。Agent のキルスイッチを含むライフサイクル操作も、汎用の管理者権限ではなく `admin:agents_manage` で制御する。
 
-API アクセストークンでは、ロールに加えて次のスコープをそれぞれの操作に要求する。CSV エクスポートの一連の操作は対象を変更せず読み出しを投影するだけなので参照系に置く。参照だけのためにデータ変更の権限を渡さずに済ませるためである。逆に CSV インポートは `User` を変更するため変更系に置く。Agent のキルスイッチも `agents:write` に含める。`DeleteAgent` は同じスコープにあり、削除はキルより厳密に破壊的であるため、キルだけを外しても防御にはならないからである。
+API アクセストークンでは、ロールに加えてプリンシパルの種類ごとのスコープを要求する。`users:*`、`groups:*`、`agents:*` がそれぞれに対応し、`read` が参照だけを、`write` が変更を許可する。種類をまたぐ流用はできない。
 
-| スコープ | 許可する操作 |
-|---|---|
-| `users:read` | ListAdminUsers、GetAdminUser、ListUserGroups、StartUserCsvExport、ListUserExports、GetUserExport、DownloadUserExportFile、CancelUserExport |
-| `users:write` | CreateAdminUser、UpdateAdminUser、DisableAdminUser、EnableAdminUser、DeleteAdminUser、RestoreAdminUser、SetUserRequiredAction、ClearUserRequiredAction、ImportAdminUsers、GetAdminUserImport、ApplyAdminUserImport |
-| `groups:read` | ListGroups、GetGroup、PreviewDynamicGroupRule、StartGroupCsvExport、ListGroupExports、GetGroupExport、DownloadGroupExportFile、CancelGroupExport、StartGroupMemberCsvExport、ListGroupMemberExports、GetGroupMemberExport、DownloadGroupMemberExportFile、CancelGroupMemberExport |
-| `groups:write` | CreateGroup、UpdateGroup、DeleteGroup、UpdateDynamicGroupRule、EnableDynamicGroupRule、DisableDynamicGroupRule、AddGroupMember、RemoveGroupMember |
-| `agents:read` | ListAgents、GetAgent |
-| `agents:write` | RegisterAgent、UpdateAgent、DisableAgent、EnableAgent、KillAgent、DeleteAgent、BindAgentCredential、UnbindAgentCredential |
+読み書きの境目は HTTP メソッドではなく、操作が対象を変更するかで決める。CSV エクスポートの開始、参照、ダウンロード、取り消しはいずれも対象データの読み出しの投影であり `User` も `Group` も変更しないため参照系に置く。データを読むだけのために変更権限を渡さずに済ませるためである。動的グループ規則のプレビューも同じ理由で参照系とする。逆に CSV インポートは `User` を変更するため変更系に置く。
+
+Agent のキルスイッチは `agents:write` に含める。Agent の削除は同じスコープにあり、キルより厳密に破壊的であるため、キルだけを外しても防御にならない。
 
 対象は常に呼び出し元と同じテナントに属していなければならない。テナントをまたぐメンバーシップは無条件に拒否し、`AddMember` は対象 `User` を読み込んだうえで別テナントに属していれば拒否する。
 

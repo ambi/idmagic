@@ -24,13 +24,7 @@ Authentication、IdManagement、OAuth2、Tenancy、SigningKeys、Application、S
 
 ## Authorization Boundary
 
-監査イベントの参照とエクスポートは `AdminAuditEventsRead` 権限 (AuthZEN action `admin:audit_events_read`) を要する。`admin` または `system_admin` ロールを持つ、有効かつ認証済みのユーザーだけが行える。書き込み経路は公開せず、イベントの追加は各 Context の発行経路だけが行う。API アクセストークンでは、ロールに加えて次のスコープをそれぞれの操作に要求する。
-
-| スコープ | 許可する操作 |
-|---|---|
-| `audit:read` | ListAdminAuditEvents、GetAdminAuditEvent、ExportAdminAuditEvents、GetAdminAuditEventSearchOptions |
-
-変更系のスコープは存在しない。書き込み経路そのものを公開しないためである。
+監査イベントの参照とエクスポートは `AdminAuditEventsRead` 権限 (AuthZEN action `admin:audit_events_read`) を要する。`admin` または `system_admin` ロールを持つ、有効かつ認証済みのユーザーだけが行える。書き込み経路は公開せず、イベントの追加は各 Context の発行経路だけが行う。API アクセストークンでは、ロールに加えて `audit:read` を要求する。対になる変更系のスコープは存在しない。書き込み経路そのものを公開しないためである。
 
 問い合わせは既定で呼び出し元のテナントに閉じる。全テナント横断の参照は、`system_admin` ロールを持つユーザーが制御面 (default テナント) の経路から明示的に要求した場合に限る。ページングのカーソルはテナントと絞り込み条件を束縛するため、別テナントで発行されたカーソルや条件が変わったカーソルは拒否する。
 
