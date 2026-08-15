@@ -27,6 +27,11 @@ type IntrospectionResult struct {
 	// AuthorizationDetails は RFC 9396 の構造化詳細。検証済みペイロードから
 	// 抽出し、introspection 応答とトークン交換のダウンスコープ判定に使う。
 	AuthorizationDetails []spec.AuthorizationDetail
+	// PrincipalType / AgentID は Agent に束縛されたトークンの標識 (wi-49)。
+	// 委譲モードの導出は act チェーンだけでは足りず、subject が非人間の
+	// プリンシパルかどうかをここで見る。
+	PrincipalType string
+	AgentID       string
 }
 
 type TokenIntrospector interface {

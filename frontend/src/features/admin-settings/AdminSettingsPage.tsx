@@ -1,6 +1,7 @@
 import {
   IconLink,
   IconMail,
+  IconNetwork,
   IconPalette,
   IconShieldLock,
   IconTag,
@@ -18,6 +19,7 @@ import type {
 } from '../../types'
 import { adminSettingsDictionary, type AdminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { BrandingTab } from './BrandingTab'
+import { DelegationPolicyTab } from './DelegationPolicyTab'
 import { GeneralTab } from './GeneralTab'
 import { NotificationTemplatesTab } from './NotificationTemplatesTab'
 import { PasswordPolicyTab } from './PasswordPolicyTab'
@@ -29,6 +31,7 @@ const DEFAULT_REALM = 'default'
 type TabKey =
   | 'general'
   | 'password-policy'
+  | 'delegation-policy'
   | 'branding'
   | 'integration-endpoints'
   | 'email'
@@ -55,6 +58,12 @@ function tabs(t: AdminSettingsDictionary): Tab[] {
       label: t.tabPasswordPolicyLabel,
       description: t.tabPasswordPolicyDescription,
       icon: IconShieldLock,
+    },
+    {
+      key: 'delegation-policy',
+      label: t.tabDelegationPolicyLabel,
+      description: t.tabDelegationPolicyDescription,
+      icon: IconNetwork,
     },
     {
       key: 'branding',
@@ -180,6 +189,13 @@ export function AdminSettingsPage({
           ) : null}
           {active === 'password-policy' ? (
             <PasswordPolicyTab
+              csrfToken={csrfToken}
+              settings={settings}
+              onSaved={(next) => setSettings(next)}
+            />
+          ) : null}
+          {active === 'delegation-policy' ? (
+            <DelegationPolicyTab
               csrfToken={csrfToken}
               settings={settings}
               onSaved={(next) => setSettings(next)}

@@ -90,6 +90,9 @@ model Tenant {
   status: TenantStatus = TenantStatus.Active;
   endpoint_style: TenantEndpointStyle = TenantEndpointStyle.Path;
   password_policy_override?: PasswordPolicyOverride;
+  @doc("Tenant override for the maximum Token Exchange (RFC 8693) `act` chain depth. When omitted, the system default applies.\nThe override may only tighten the limit; PolicyOverrideWeakerError rejects values above the system default.\nThis asymmetric rule matches password_policy_override and prevents tenant settings from widening an authorization boundary.")
+  @minValue(1)
+  max_delegation_depth?: int64;
   @pattern("^[a-z]{2}$")
   default_locale?: string;
   created_at: utcDateTime;
@@ -142,6 +145,11 @@ model AdminSettingsResponse {
   display_name: string;
   password_policy_override?: PasswordPolicyOverride;
   password_policy_defaults: PasswordPolicyDefaults;
+  @doc("Tenant override for the maximum Token Exchange `act` chain depth. When omitted, the system default applies.")
+  @minValue(1)
+  max_delegation_depth?: int64;
+  @doc("Delegation depth applied when the tenant has no override, and the ceiling that an override cannot exceed.\nThe response exposes this value so the administrative UI can display the concrete limit and reject an excessive value before sending it.")
+  max_delegation_depth_default: int64;
   @doc("テナントの既定 locale。未設定ならシステム既定 locale を使う。")
   default_locale?: string;
   @doc("カタログが同梱翻訳を持つ locale の一覧。管理 UI が既定 locale と通知テンプレートの選択肢を組み立てるために返す。")
@@ -508,6 +516,9 @@ model TenantUpdateRequest {
   display_name?: string;
   @doc("省略時は既存値を維持。null を渡したい場合は明示する。")
   password_policy_override?: PasswordPolicyOverride;
+  @doc("Maximum delegation depth. Omission preserves the current value, and zero restores the system default. Values above the system default are rejected.")
+  @minValue(0)
+  max_delegation_depth?: int64;
   @doc("テナント既定 locale。省略時は既存値を維持し、空文字列でシステム既定へ戻す。サポート外の locale は拒否する。")
   default_locale?: string;
 }
@@ -522,6 +533,8 @@ model TenantSummaryResponse {
   display_name: string;
   status: TenantStatus;
   password_policy_override?: PasswordPolicyOverride;
+  @minValue(1)
+  max_delegation_depth?: int64;
   default_locale?: string;
   quota: TenantQuota;
   usage: TenantUsage;

@@ -11,6 +11,7 @@ import (
 	approvalusecases "github.com/ambi/idmagic/backend/oauth2/approval/usecases"
 	deviceusecases "github.com/ambi/idmagic/backend/oauth2/device/usecases"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
+	policytenancy "github.com/ambi/idmagic/backend/oauth2/policy_tenancy"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	tokenusecases "github.com/ambi/idmagic/backend/oauth2/token/usecases"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -280,6 +281,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
 			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo,
 			WorkloadVerifier: d.WorkloadVerifier, Emit: d.Emit,
+			DelegationPolicy: policytenancy.DelegationPolicyResolver{Tenants: d.TenantRepo},
 		}, tokenusecases.ExchangeTokenInput{
 			ClientID:             clientStub.ID,
 			SubjectToken:         c.Request().PostFormValue("subject_token"),

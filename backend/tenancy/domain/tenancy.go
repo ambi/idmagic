@@ -66,6 +66,11 @@ type Tenant struct {
 	// the lower bound of the expiry (MaxAgeDays) reference time, so a policy change
 	// does not expire every existing user's password at once.
 	PasswordPolicyUpdatedAt *time.Time `json:"password_policy_updated_at,omitempty"`
+	// MaxDelegationDepth は Token Exchange の act チェーン深さ上限のテナント上書き。
+	// nil は DefaultMaxDelegationDepth を継承する。PasswordPolicyOverride と同じく
+	// 厳しい方向にのみ働き、システム既定を超える値は設定境界で拒否するため、
+	// テナント設定から認可境界を広げることはできない。
+	MaxDelegationDepth *int `json:"max_delegation_depth,omitempty"`
 	// DefaultLocale は通知の locale 解決の第 2 段。nil / 空文字列は
 	// 「システム既定 locale を使う」を意味する。値の妥当性 (同梱翻訳を持つ locale か)
 	// は shared/notification のカタログが正本なので、ここでは形だけを検証する。
@@ -277,6 +282,22 @@ func ValidateEndpointStyleSelectable(style TenantEndpointStyle, baseDomain strin
 		return ErrSubdomainStyleNoBase
 	}
 	return nil
+}
+
+// DefaultMaxDelegationDepth は Token Exchange (RFC 8693) の act チェーンに許す
+// 深さの既定であり、同時にテナント上書きが超えられない上限でもある。既定と上限を
+// 1 つの値にしているのは、上書きが厳しい方向にしか働かないためである
+// (DefaultTenantQuota と EffectiveLimit の関係と同じ形)。
+const DefaultMaxDelegationDepth = 3
+
+// EffectiveMaxDelegationDepth はテナントの上書き値、無ければ既定を返す。
+// 0 以下の値は上書き無しとして読む。ここを 0 のまま返すと、上限 0 = すべての交換を
+// 拒否という設定していないはずの状態になるためである。
+func (t Tenant) EffectiveMaxDelegationDepth() int {
+	if t.MaxDelegationDepth != nil && *t.MaxDelegationDepth > 0 {
+		return *t.MaxDelegationDepth
+	}
+	return DefaultMaxDelegationDepth
 }
 
 // EffectiveEndpointStyle はゼロ値を Path として読む。永続化前の行や、この列を知らない

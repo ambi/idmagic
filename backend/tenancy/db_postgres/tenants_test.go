@@ -177,3 +177,57 @@ func TestTenantRepositoryPersistsEndpointStyle(t *testing.T) {
 		t.Fatalf("EndpointStyle = %q, want %q", stored.EndpointStyle, domain.TenantEndpointStyleSubdomain)
 	}
 }
+
+// REQ-TENANCY-021: 委譲深さの上書きは往復し、解除すると NULL に戻る。
+func TestTenantRepositoryPersistsMaxDelegationDepth(t *testing.T) {
+	db := pgtest.Require(t)
+	repo := &TenantRepository{Pool: db}
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+
+	tenant := &domain.Tenant{
+		ID: "33333333-3333-3333-3333-333333333341", Realm: "delegation-depth",
+		DisplayName: "Delegation Depth", Status: domain.TenantStatusActive,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if err := repo.Save(ctx, tenant); err != nil {
+		t.Fatalf("save without override: %v", err)
+	}
+	stored, err := repo.FindByID(ctx, tenant.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("find: %+v %v", stored, err)
+	}
+	if stored.MaxDelegationDepth != nil {
+		t.Fatalf("MaxDelegationDepth = %v, want nil when never set", stored.MaxDelegationDepth)
+	}
+	if stored.EffectiveMaxDelegationDepth() != domain.DefaultMaxDelegationDepth {
+		t.Fatalf("EffectiveMaxDelegationDepth() = %d, want the system default",
+			stored.EffectiveMaxDelegationDepth())
+	}
+
+	depth := 1
+	stored.MaxDelegationDepth = &depth
+	if err := repo.Save(ctx, stored); err != nil {
+		t.Fatalf("save override: %v", err)
+	}
+	stored, err = repo.FindByID(ctx, tenant.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("find after override: %+v %v", stored, err)
+	}
+	if stored.MaxDelegationDepth == nil || *stored.MaxDelegationDepth != depth {
+		t.Fatalf("MaxDelegationDepth = %v, want %d", stored.MaxDelegationDepth, depth)
+	}
+
+	// 解除は列を NULL に戻す。設定したことのないテナントと同じ行の状態になる。
+	stored.MaxDelegationDepth = nil
+	if err := repo.Save(ctx, stored); err != nil {
+		t.Fatalf("clear override: %v", err)
+	}
+	stored, err = repo.FindByID(ctx, tenant.ID)
+	if err != nil || stored == nil {
+		t.Fatalf("find after clear: %+v %v", stored, err)
+	}
+	if stored.MaxDelegationDepth != nil {
+		t.Fatalf("MaxDelegationDepth = %v, want nil after clearing", stored.MaxDelegationDepth)
+	}
+}

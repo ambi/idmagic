@@ -20,6 +20,7 @@ const settings: AdminSettings = {
   realm: 'acme',
   display_name: 'Acme',
   password_policy_defaults: { min_length: 8, max_length: 64, history_depth: 5 },
+  max_delegation_depth_default: 3,
   supported_locales: ['ja', 'en'],
 }
 

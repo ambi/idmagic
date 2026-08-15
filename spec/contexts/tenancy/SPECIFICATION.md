@@ -1,6 +1,6 @@
 ---
 context: tenancy
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # Tenancy Specification
@@ -86,6 +86,12 @@ HTTP リクエストの Host ヘッダーとパスから所属テナントを解
 
 デフォルトテナントを表す 2 つの定数も同じ分離に従う。`spec.DefaultTenantID` は固定の UUID であり、idmagic が生成する ID の列が全体を通じて UUID 型であることと整合する。`spec.DefaultRealm` は文字列 `"default"` であり、テナントを URL に表す箇所だけで使う。`tenants(id)` を参照する外部キー列は UUID 型とし、`tenant_id` に SQL のデフォルト値は持たせない。すべての挿入で `tenant_id` を明示しなければならず、値が欠けた場合はデフォルトテナントへ黙って混入させず、明確に失敗させる。これはリポジトリ全体の [`tenant_id` retention classes](../../SPECIFICATION.md#2-tenant_id-retention-classes) 方針をさらに厳しくした例である。`tenants` への外部キーを持たない追記専用テーブル、または中身の見えないキーを持つテーブル（`audit_events.tenant_id`、`authentication_event_buckets.tenant_id`）では、`tenant_id` を `UUID` ではなく `TEXT` のままにする。テナントに属さない監査イベントには、UUID 列で自然に表せない番兵値が必要なためである。
 
+### Tenant security policy overrides
+
+`Tenant` が持つセキュリティポリシーの上書きは、配備全体の製品既定を緩めず、厳しい方向にだけ働く。パスワードポリシーでは最小長と履歴件数を下げず最大長を上げない。Token Exchange の `max_delegation_depth` ではシステム既定の 3 を超えて上げず、未設定なら 3 を継承する。管理 API の `0` は委譲を全面禁止する値ではなく、上書きを解除して SQL の `NULL` へ戻す操作として扱う。設定取得では現在の任意上書きとシステム既定を別々に返し、管理 UI が継承状態と実効値を区別できるようにする。
+
+OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返す小さなポートに依存する。`oauth2/policy_tenancy` アダプターがこのポートを `Tenant` の実効値へ接続する。上書きを読めないときにシステム既定へ退避すると、テナントが意図して下げた認可境界を黙って広げるため、解決失敗では Token Exchange を拒否する。
+
 ### Tenant branding
 
 `TenantBranding` は `Tenant` に埋め込まれた値オブジェクトではなく、`tenant_id` をキーとする独立したエンティティである。`TenantUserAttributeSchema` と同じ形であり、見た目に関わり独立して更新される外装設定が、認可と realm の解決が依存する中核の `Tenant` Aggregate を肥大化させないようにするためである。8 つの項目（製品名、ロゴ、ファビコン、2 つのブランドカラー、サポート導線、法務導線、フッター文言）は Okta、Entra ID、Keycloak、OneLogin に共通する部分集合として選んだ。任意の CSS、HTML、スクリプト、背景画像は、入力の余地を絞るために意図的に除外した。
@@ -113,6 +119,7 @@ HTTP リクエストの Host ヘッダーとパスから所属テナントを解
 - `TenantBranding` は `Tenant` に埋め込まれた値オブジェクトではなく `tenant_id` をキーとする独立したエンティティとし、項目を限定し、アプリケーションアイコンの保存処理から再利用した検証付きの取り込み保存を使う。
 - テナントの外装色は `#rrggbb` の形式だけを検証し、保存時の制約として WCAG のコントラスト検査を強制しない。管理 UI で結果を確認できるようにし、最終的な可読性はテナントが負う。
 - テナントの資源の上限は、同期的に強制する Hard の上限と、非同期に警告する Soft の上限に分ける。デフォルトは固定し、上限の変更は System Admin のみとし、上限の導入前から存在するテナントには余裕を持たせた安全な上限で移行する。
+- テナントのセキュリティポリシー上書きは製品既定を厳しくする方向にだけ許可する。OAuth2 は Tenancy のリポジトリではなくポートから委譲深さを解決し、解決失敗では既定へ退避せず Token Exchange を拒否する。
 - `TenantGroupAttributeSchema` は `TenantUserAttributeSchema` と同じ配置規則に従う。テナント単位の独自属性スキーマは、それが `IdManagement` のどのプリンシパル（`User` または `Group`）を管理するかによらず `Tenancy` に置く。スキーマの変更とテナント削除時の連鎖は `Tenancy` の関心事だからである。`TenantUserAttributeSchema` と統合せず別の Aggregate にしているのは、`Group` には照合先となる組込みカタログが存在しないためである（理由は IdManagement の設計記録を参照）。
 
 ## Scenarios
@@ -309,3 +316,13 @@ HTTP リクエストの Host ヘッダーとパスから所属テナントを解
 - WHEN "operator" が group custom attribute "cost_center" (type=string, required=false) を追加する
   - ALT 既存 key と重複する key を追加する → 更新は InvalidGroupAttributeSchemaError で拒否される
 - THEN 更新後のスキーマに追加した属性が含まれ "TenantGroupAttributeSchemaUpdated" が発行される
+
+### REQ-TENANCY-021: 委譲深さの上書きは厳しい方向にのみ働く
+- ACTOR TenantAdministrator
+- GIVEN ロール=["admin"] のユーザー "operator" が管理画面の設定を開いている
+- WHEN 管理者 "operator" が委譲深さの上限を保存する
+  - ALT システム既定より小さい値を保存する → 上書きが永続化され、以後のトークン交換の判定に使われる
+  - ALT システム既定を超える値を保存する → エラー "PolicyOverrideWeakerError"
+  - ALT 1 未満の値を保存する → エラー "PolicyOverrideWeakerError"
+  - ALT 0 を保存する → 上書きを解除し、システム既定を継承する状態へ戻す
+- THEN 設定取得の応答は現在の上書き値と、上書きが無いときに適用されるシステム既定の双方を返す

@@ -6,8 +6,9 @@
 //     外部/フェデレーショントークンは対象外 (将来 wi-54 / wi-57)。
 //   - DELEGATION ONLY: 発行トークンの sub は subject_token.sub を維持し、必ず act を
 //     設定する。impersonation (act 省略 / sub 差し替え) は対象外 (将来、gated)。
-//   - MAX DELEGATION DEPTH: act の入れ子は MaxDelegationDepth まで。超過は invalid_request。
-//     (テナント別上書きは将来)
+//   - MAX DELEGATION DEPTH: act の入れ子はテナントが定める上限まで。超過は invalid_request。
+//     上限はテナントが下げられるが、システム既定を超えて上げることはできない。
+//     テナントのポリシーを解決できない場合は既定へ退避せず拒否する。
 //   - may_act 強制: subject_token に may_act があれば現在アクター sub が may_act.sub と
 //     一致しなければ拒否。
 //   - RESOURCE INDICATORS (RFC 8707): resource を必須・1 個のみとし、登録済み
@@ -27,11 +28,15 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 	workloaddomain "github.com/ambi/idmagic/backend/workloadidentity/domain"
 )
 
-// MaxDelegationDepth は発行トークンの act 入れ子の最大深さ。
-const MaxDelegationDepth = 3
+// DefaultMaxDelegationDepth は発行トークンの act 入れ子の最大深さの既定であり、
+// テナント上書きが超えられない上限でもある。値は Tenant 集約が所有し、ここは
+// 解決器が組み立てられていない配線 (テストや軽量な組み立て) のための退避先として
+// 参照するだけである。定数を二重に持つとどちらかが古くなる。
+const DefaultMaxDelegationDepth = tenancydomain.DefaultMaxDelegationDepth
 
 const (
 	tokenTypeAccessTokenURN = "urn:ietf:params:oauth:token-type:access_token"
@@ -76,6 +81,10 @@ type ExchangeTokenDeps struct {
 	// ([[wi-54-workload-identity-federation-spiffe]]). nil rejects
 	// workload subject_token_type as unsupported.
 	WorkloadVerifier ports.WorkloadTokenVerifier
+	// DelegationPolicy はテナントの act チェーン深さ上限を解決する。nil なら
+	// テナント上書きの上限でもある DefaultMaxDelegationDepth を使うため、未配線でも
+	// 製品既定より広い許可にはならない。解決器が error を返した場合は交換を拒否する。
+	DelegationPolicy ports.DelegationPolicyResolver
 	Emit             func(spec.DomainEvent)
 }
 
@@ -182,7 +191,13 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		act["act"] = subject.Act
 	}
 	depth := actDepth(act)
-	if depth > MaxDelegationDepth {
+	maxDepth, err := resolveMaxDelegationDepth(ctx, deps.DelegationPolicy, tenantID)
+	if err != nil {
+		// テナントのポリシーを読めないまま既定へ退避すると、テナントが下げたはずの
+		// 上限が黙って戻る。拒否は監査へ残るので、設定不備は運用側から見える。
+		return reject(currentActorSub, NewOAuthError("invalid_request", "The delegation policy could not be resolved."))
+	}
+	if depth > maxDepth {
 		return reject(currentActorSub, NewOAuthError("invalid_request", "The delegation depth exceeds the limit."))
 	}
 
@@ -272,9 +287,19 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		At: now, TenantID: tenantID, JTI: jti, ClientID: client.ClientID,
 		UserID: subject.Sub, Scopes: grantedScopes, SenderConstraint: senderConstraintTag(sc),
 	})
+	// 委譲モードは introspection と同じ導出関数を通す。ここで別の規則を書くと、
+	// 監査とリソースサーバーの見え方が食い違い、しかもその不整合は調査のときに
+	// 最も見つけにくい形で現れる。
+	principalType := ""
+	if agentID != "" {
+		principalType = domain.PrincipalTypeAgent
+	}
 	emit(deps.Emit, &domain.TokenExchanged{
 		At: now, TenantID: tenantID, ActorUserID: currentActorSub, SubjectUserID: subject.Sub,
-		Audience: resource, DelegationDepth: depth,
+		Audience: resource, DelegationDepth: depth, MaxDelegationDepth: maxDepth,
+		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
+			Sub: subject.Sub, ClientID: client.ClientID, PrincipalType: principalType, Act: act,
+		}),
 	})
 	if workloadGrant != nil {
 		emit(deps.Emit, &workloaddomain.WorkloadTokenExchanged{
@@ -335,6 +360,24 @@ func evaluateTokenExchangePolicy(
 		return spec.Evaluate(req), nil
 	}
 	return authorizer.Authorize(ctx, req)
+}
+
+// resolveMaxDelegationDepth はテナントの委譲深さ上限を解決する。解決器が組み立てられて
+// いない配線では既定 (= 上書きが超えられない上限) を使い、解決に失敗した場合は error を
+// 返して呼び出し側に拒否させる。解決できた値が既定を超えていた場合も既定へ丸める:
+// 上書きは厳しい方向にのみ働くという規則を、保存側と評価側の両方で守る。
+func resolveMaxDelegationDepth(ctx context.Context, resolver ports.DelegationPolicyResolver, tenantID string) (int, error) {
+	if resolver == nil {
+		return DefaultMaxDelegationDepth, nil
+	}
+	resolved, err := resolver.MaxDelegationDepth(ctx, tenantID)
+	if err != nil {
+		return 0, err
+	}
+	if resolved < 1 || resolved > DefaultMaxDelegationDepth {
+		return DefaultMaxDelegationDepth, nil
+	}
+	return resolved, nil
 }
 
 // actDepth は act claim の入れ子の深さを数える。最も外側の act を 1 とする。

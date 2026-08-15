@@ -120,12 +120,18 @@ func (e *TokenIntrospected) EventType() string     { return "TokenIntrospected" 
 func (e *TokenIntrospected) OccurredAt() time.Time { return e.At }
 
 type TokenExchanged struct {
-	At              time.Time `json:"-"`
-	TenantID        string    `json:"tenantId"`
-	ActorUserID     string    `json:"actorUserId"`
-	SubjectUserID   string    `json:"subjectUserId"`
-	Audience        string    `json:"audience"`
-	DelegationDepth int       `json:"delegationDepth"`
+	At            time.Time `json:"-"`
+	TenantID      string    `json:"tenantId"`
+	ActorUserID   string    `json:"actorUserId"`
+	SubjectUserID string    `json:"subjectUserId"`
+	Audience      string    `json:"audience"`
+	// DelegationDepth は発行トークンの act 入れ子の深さ。
+	DelegationDepth int `json:"delegationDepth"`
+	// MaxDelegationDepth は判定に適用した上限。深さだけを残すと、後から
+	// 「その時どの上限で通したのか」を再現できない。
+	MaxDelegationDepth int `json:"maxDelegationDepth"`
+	// DelegationMode は発行トークンの委譲モード。introspection と同じ導出関数を通す。
+	DelegationMode DelegationMode `json:"delegationMode"`
 }
 
 func (e *TokenExchanged) EventType() string     { return "TokenExchanged" }

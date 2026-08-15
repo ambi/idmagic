@@ -109,7 +109,7 @@ func (s *JWTSigner) SignAccessToken(ctx context.Context, in oauthports.AccessTok
 	// 非人間 identity として識別できるよう agent_id / principal_type を付与する。
 	if in.AgentID != "" {
 		claims["agent_id"] = in.AgentID
-		claims["principal_type"] = "agent"
+		claims["principal_type"] = domain.PrincipalTypeAgent
 	}
 	tok, err := SignPS256(key, map[string]string{"typ": "at+jwt"}, claims)
 	if err != nil {
@@ -290,6 +290,12 @@ func (s *JWTSigner) IntrospectAccessToken(ctx context.Context, token string) (*o
 		}
 	}
 	res.Aud = normalizeAudience(payload["aud"])
+	if v, ok := payload["principal_type"].(string); ok {
+		res.PrincipalType = v
+	}
+	if v, ok := payload["agent_id"].(string); ok {
+		res.AgentID = v
+	}
 	if act, ok := payload["act"].(map[string]any); ok {
 		res.Act = act
 	}

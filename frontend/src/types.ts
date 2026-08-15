@@ -693,6 +693,7 @@ export type AdminTenant = {
     history_depth?: number
     max_age_days?: number
   }
+  max_delegation_depth?: number
   created_at: string
   updated_at?: string
   disabled_at?: string
@@ -765,6 +766,9 @@ export type AdminSettings = {
     // 0 は有効期限なし。このフィールドを知らない旧サーバでは undefined になる。
     max_age_days?: number
   }
+  // Token Exchange の act チェーンに許す深さ。上書きはシステム既定以下に限る。
+  max_delegation_depth?: number
+  max_delegation_depth_default: number
   // 通知メールの locale 解決の第 2 段。未設定ならシステム既定を使う。
   default_locale?: string
   // カタログが同梱翻訳を持つ locale。既定 locale とテンプレート編集の選択肢になる。

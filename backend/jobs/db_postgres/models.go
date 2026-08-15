@@ -794,6 +794,7 @@ type Tenant struct {
 	EndpointStyle           string
 	PasswordPolicyOverride  []byte
 	PasswordPolicyUpdatedAt pgtype.Timestamptz
+	MaxDelegationDepth      pgtype.Int4
 	CreatedAt               time.Time
 	UpdatedAt               time.Time
 	DisabledAt              pgtype.Timestamptz

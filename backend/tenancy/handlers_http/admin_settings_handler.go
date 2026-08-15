@@ -39,6 +39,11 @@ type AdminSettingsResponse struct {
 	DisplayName            string                         `json:"display_name"`
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
 	PasswordPolicyDefaults passwordPolicyDefaults         `json:"password_policy_defaults"`
+	// MaxDelegationDepth はテナント上書き (未設定なら省略)、MaxDelegationDepthDefault は
+	// 上書きが無いときに適用される値であり、同時に上書きが超えられない上限でもある。
+	// 管理 UI が具体数字を示し、超過を送る前に弾けるよう両方返す。
+	MaxDelegationDepth        *int `json:"max_delegation_depth,omitempty"`
+	MaxDelegationDepthDefault int  `json:"max_delegation_depth_default"`
 	// DefaultLocale は通知の locale 解決の第 2 段。空文字列はシステム既定を使う意味。
 	// SupportedLocales はカタログが同梱翻訳を持つ locale で、UI の選択肢になる
 	// (wi-288, 決定 7)。
@@ -59,6 +64,8 @@ type passwordPolicyDefaults struct {
 type adminSettingsUpdateRequest struct {
 	DisplayName            *string                        `json:"display_name,omitempty"`
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	// MaxDelegationDepth は省略で現状維持、0 で上書き解除。
+	MaxDelegationDepth *int `json:"max_delegation_depth,omitempty"`
 	// DefaultLocale は省略で現状維持、空文字列でシステム既定へ戻す。
 	DefaultLocale *string `json:"default_locale,omitempty"`
 }
@@ -107,6 +114,7 @@ func (d Deps) handleUpdateAdminSettings(c *echo.Context) error {
 		tenantusecases.UpdateInput{
 			DisplayName:            input.DisplayName,
 			PasswordPolicyOverride: input.PasswordPolicyOverride,
+			MaxDelegationDepth:     input.MaxDelegationDepth,
 			DefaultLocale:          input.DefaultLocale,
 		},
 		d.tenantPolicyFloor(),
@@ -137,9 +145,11 @@ func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 			HistoryDepth: floor.HistoryDepth,
 			MaxAgeDays:   authusecases.PasswordPolicyMaxAgeDays,
 		},
-		SupportedLocales: template.SupportedLocales(),
-		Quota:            t.Quota,
-		Usage:            t.Usage,
+		MaxDelegationDepth:        t.MaxDelegationDepth,
+		MaxDelegationDepthDefault: domain.DefaultMaxDelegationDepth,
+		SupportedLocales:          template.SupportedLocales(),
+		Quota:                     t.Quota,
+		Usage:                     t.Usage,
 	}
 	if t.DefaultLocale != nil {
 		response.DefaultLocale = *t.DefaultLocale
@@ -154,6 +164,9 @@ func adminSettingsChangedFields(input adminSettingsUpdateRequest) []string {
 	}
 	if input.PasswordPolicyOverride != nil {
 		fields = append(fields, "password_policy_override")
+	}
+	if input.MaxDelegationDepth != nil {
+		fields = append(fields, "max_delegation_depth")
 	}
 	if input.DefaultLocale != nil {
 		fields = append(fields, "default_locale")

@@ -1,6 +1,7 @@
 package handlers_http_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -21,6 +22,8 @@ import (
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
+	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
 )
@@ -56,9 +59,16 @@ func newTokenExchangeServer(t *testing.T) string {
 		ID: "rs-orders", Resource: "https://api.example/orders", Name: "Orders API",
 		Scopes: []string{"read", "write"}, State: domain.McpResourceServerActive,
 	})
+	tenantRepo := tenancymemory.NewTenantRepository()
+	if err := tenantRepo.Save(context.Background(), &tenancydomain.Tenant{
+		ID: tenancydomain.DefaultTenantID, Realm: tenancydomain.DefaultRealm,
+		DisplayName: "Default", Status: tenancydomain.TenantStatusActive,
+	}); err != nil {
+		t.Fatalf("tenant repo: %v", err)
+	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"},
+		Deps: support.Deps{Issuer: "http://test", TenantRepo: tenantRepo},
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(), RefreshStore: oauth2memory.NewRefreshTokenStore(),
 			McpResourceServerRepo: resourceServers,
@@ -152,6 +162,9 @@ func TestTokenExchangeIssuesDelegatedToken(t *testing.T) {
 	act, _ := introspection["act"].(map[string]any)
 	if act == nil || act["sub"] != exchClientID {
 		t.Fatalf("act=%v, want act.sub=%s", introspection["act"], exchClientID)
+	}
+	if mode := introspection["delegation_mode"]; mode != "autonomous" {
+		t.Fatalf("delegation_mode=%v, want autonomous", mode)
 	}
 }
 

@@ -14,7 +14,8 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 )
 
-func tenantContext(id string) context.Context {
+func tenantContext() context.Context {
+	id := tenancydomain.DefaultTenantID
 	return tenancy.WithTenant(context.Background(), &tenancydomain.Tenant{
 		ID: id, DisplayName: id, Status: tenancydomain.TenantStatusActive, CreatedAt: time.Now().UTC(),
 	}, "https://idp.example/realms/"+id, "/realms/"+id)

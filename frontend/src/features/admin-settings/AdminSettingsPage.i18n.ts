@@ -8,6 +8,9 @@ export const adminSettingsDictionary = defineDictionary(
     tabPasswordPolicyLabel: 'パスワードポリシー',
     tabPasswordPolicyDescription:
       'テナント単位の上書き値。空欄のフィールドは IdMagic の標準値が適用されます。',
+    tabDelegationPolicyLabel: '委譲ポリシー',
+    tabDelegationPolicyDescription:
+      'エージェントの Token Exchange で許可する委譲チェーンの深さを制限します。',
     tabBrandingLabel: 'ブランディング',
     tabBrandingDescription: 'ロゴ・配色・サポート/法務リンクなど hosted UI の見た目を設定します。',
     tabIntegrationEndpointsLabel: '連携エンドポイント',
@@ -47,6 +50,23 @@ export const adminSettingsDictionary = defineDictionary(
     displayNameUpdatedNotice: '表示名を更新しました。',
     settingsUpdatedNotice: '設定を更新しました。',
     settingsUpdateFailedError: '設定を更新できませんでした。',
+    delegationPolicyHeading: '委譲ポリシー',
+    delegationPolicySubheading:
+      'Token Exchange で発行するトークンの行為者チェーンに、テナント固有の上限を設定できます。',
+    systemDelegationDepthLabel: 'システム上限',
+    effectiveDelegationDepthLabel: '適用中の上限',
+    delegationDepthSourceLabel: '設定元',
+    delegationDepthInheritedValue: 'システム既定を継承',
+    delegationDepthOverrideValue: 'テナント上書き',
+    maxDelegationDepthFieldLabel: '委譲深さの上限',
+    maxDelegationDepthHint:
+      '空欄ではシステム既定を継承します。1 以上 {max} 以下の値だけを設定できます。',
+    maxDelegationDepthRangeError: '委譲深さは 1 以上、システム上限以下で入力してください。',
+    delegationPolicyTighteningWarning:
+      'テナント設定では認可境界を厳しくすることだけができ、システム上限を引き上げることはできません。',
+    delegationPolicyUpdatedNotice: '委譲ポリシーを更新しました。',
+    delegationPolicyUpdateFailedError: '委譲ポリシーを更新できませんでした。',
+    delegationDepthSuffix: ' 段',
     passwordPolicyHeading: 'パスワードポリシー',
     passwordPolicySubheading: 'テナントに適用されるパスワード要件を確認できます。',
     standardMinLengthLabel: '標準 最小長',
@@ -216,6 +236,9 @@ export const adminSettingsDictionary = defineDictionary(
     tabPasswordPolicyLabel: 'Password policy',
     tabPasswordPolicyDescription:
       "Per-tenant overrides. Blank fields fall back to IdMagic's standard values.",
+    tabDelegationPolicyLabel: 'Delegation policy',
+    tabDelegationPolicyDescription:
+      'Limit the depth of delegation chains allowed during agent token exchange.',
     tabBrandingLabel: 'Branding',
     tabBrandingDescription:
       "Configure the hosted UI's appearance, including logo, colors, and support/legal links.",
@@ -257,6 +280,24 @@ export const adminSettingsDictionary = defineDictionary(
     displayNameUpdatedNotice: 'Updated the display name.',
     settingsUpdatedNotice: 'Updated the settings.',
     settingsUpdateFailedError: 'Could not update the settings.',
+    delegationPolicyHeading: 'Delegation policy',
+    delegationPolicySubheading:
+      'Set a tenant-specific limit on the actor chain of tokens issued through Token Exchange.',
+    systemDelegationDepthLabel: 'System ceiling',
+    effectiveDelegationDepthLabel: 'Effective limit',
+    delegationDepthSourceLabel: 'Source',
+    delegationDepthInheritedValue: 'Inherit the system default',
+    delegationDepthOverrideValue: 'Tenant override',
+    maxDelegationDepthFieldLabel: 'Maximum delegation depth',
+    maxDelegationDepthHint:
+      'Leave blank to inherit the system default. Enter a value from 1 through {max}.',
+    maxDelegationDepthRangeError:
+      'Delegation depth must be at least 1 and no greater than the system ceiling.',
+    delegationPolicyTighteningWarning:
+      'Tenant settings can only tighten this authorization boundary; they cannot raise the system ceiling.',
+    delegationPolicyUpdatedNotice: 'Updated the delegation policy.',
+    delegationPolicyUpdateFailedError: 'Could not update the delegation policy.',
+    delegationDepthSuffix: ' levels',
     passwordPolicyHeading: 'Password policy',
     passwordPolicySubheading: 'You can review the password requirements applied to this tenant.',
     standardMinLengthLabel: 'Standard min length',

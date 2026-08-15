@@ -672,6 +672,8 @@ export async function listTenantDataKeyHealth(): Promise<TenantDataKeyHealth[]> 
 export type UpdateAdminSettingsInput = {
   display_name?: string
   password_policy_override?: AdminSettings['password_policy_override']
+  // 0 でシステム既定へ戻す (省略は現状維持)。
+  max_delegation_depth?: number
   // 空文字列でシステム既定へ戻す (省略は現状維持)。
   default_locale?: string
 }

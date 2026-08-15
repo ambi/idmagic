@@ -30,6 +30,10 @@ var (
 type UpdateInput struct {
 	DisplayName            *string
 	PasswordPolicyOverride *domain.PasswordPolicyOverride
+	// MaxDelegationDepth は Token Exchange の act チェーン深さ上限の上書き。
+	// nil は現状維持、0 は上書きの解除 (システム既定を継承)、正の値は上書き。
+	// システム既定を超える値は ErrPolicyOverrideWeaker で拒否する。
+	MaxDelegationDepth *int
 	// DefaultLocale は通知の locale 解決の第 2 段。nil は現状維持、
 	// 空文字列はシステム既定へ戻す、それ以外は同梱翻訳を持つ locale のみ受け付ける。
 	DefaultLocale *string
@@ -143,6 +147,21 @@ func Update(
 		// would extend the grace window without end.
 		policyChangedAt := normalizeNow(now)
 		updated.PasswordPolicyUpdatedAt = &policyChangedAt
+	}
+	if input.MaxDelegationDepth != nil {
+		depth := *input.MaxDelegationDepth
+		switch {
+		case depth == 0:
+			// 上書きの解除。システム既定へ戻す。
+			updated.MaxDelegationDepth = nil
+		case depth < 1 || depth > domain.DefaultMaxDelegationDepth:
+			// 上書きは厳しい方向にのみ働く。システム既定を超える値は認可の境界を
+			// 緩めるので拒否する。1 未満は「すべての交換を拒否」という、
+			// 設定として表現するつもりのない状態になるので同じく拒否する。
+			return nil, ErrPolicyOverrideWeaker
+		default:
+			updated.MaxDelegationDepth = &depth
+		}
 	}
 	if input.DefaultLocale != nil {
 		requested := strings.TrimSpace(*input.DefaultLocale)

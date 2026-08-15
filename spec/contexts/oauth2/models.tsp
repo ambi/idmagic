@@ -973,6 +973,14 @@ model IntrospectionRequest {
 }
 
 
+@doc("How the token's subject is currently acting. This derived value comes from the `act` chain and principal type and has no independent persistent state.\n`OnBehalfOf` means another principal acts for the subject (`act` contains an actor different from the subject).\n`Autonomous` means no delegation is present and the subject is a non-human principal (Agent or client).\n`Direct` means no delegation is present and the subject is a human user.")
+enum DelegationMode {
+  Direct: "direct",
+  Autonomous: "autonomous",
+  OnBehalfOf: "on_behalf_of",
+}
+
+
 @doc("/introspect レスポンス (RFC 7662 §2.2)。トークンの active 状態と有効時のメタデータを返す。")
 model IntrospectionResponse {
   active: boolean;
@@ -987,6 +995,8 @@ model IntrospectionResponse {
   cnf?: SenderConstraintCnf;
   @doc("RFC 8693 §4.1 actor claim。委任トークンの場合に現在アクターとアクター連鎖を返す。")
   act?: unknown;
+  @doc("Whether an active token represents autonomous, on-behalf-of, or direct execution.\nThe authorization server returns the derived value so resource servers do not reimplement the `act` and principal-type rules.\nThe value is produced by the same derivation function used for audit events.")
+  delegation_mode?: DelegationMode;
 }
 
 
@@ -1504,6 +1514,10 @@ model TokenExchanged {
   audience: string;
   @doc("発行トークンの act 入れ子の深さ。")
   delegationDepth: int64;
+  @doc("Maximum delegation depth applied to this decision. The system default applies when the tenant has no override.\nRecording the applied limit makes the decision reproducible from the audit event.")
+  maxDelegationDepth: int64;
+  @doc("Delegation mode of the issued token, produced by the same derivation function used for introspection.")
+  delegationMode: DelegationMode;
 }
 
 

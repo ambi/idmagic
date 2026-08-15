@@ -1,13 +1,69 @@
 ---
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-08-13
 depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain]
 change_kind: feature
+initial_context:
+  specification:
+    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-046
+    - spec/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-019
+  typespec:
+    - IdMagic.Contract.Tenant
+    - IdMagic.Contract.PasswordPolicyOverride
+    - IdMagic.Contract.AdminSettingsResponse
+    - IdMagic.Contract.TenantUpdateRequest
+    - IdMagic.Contract.TenantSummaryResponse
+    - IdMagic.Contract.DelegationMode
+    - IdMagic.Contract.IntrospectionResponse
+    - IdMagic.Contract.TokenExchanged
+  source:
+    - backend/oauth2/domain/delegation_mode.go
+    - backend/oauth2/token/usecases/exchange_token.go
+    - backend/oauth2/token/usecases/introspect_token.go
+    - backend/oauth2/domain/events.go
+    - backend/oauth2/ports/delegation_policy.go
+    - backend/oauth2/ports/token_introspector.go
+    - backend/oauth2/policy_tenancy/delegation_policy.go
+    - backend/oauth2/handlers_http/token_handler.go
+    - backend/shared/security/tokens_jose/jwt_signer.go
+    - backend/tenancy/domain/tenancy.go
+    - backend/tenancy/usecases/manage_tenants.go
+    - backend/tenancy/handlers_http/admin_settings_handler.go
+    - backend/tenancy/handlers_http/admin_tenant_handler.go
+    - backend/tenancy/db_postgres/tenants.go
+    - backend/tenancy/db_postgres/tenants.sql
+    - frontend/src/features/admin-settings/AdminSettingsPage.tsx
+    - frontend/src/features/admin-settings/AdminSettingsPage.i18n.ts
+    - frontend/src/features/admin-settings/DelegationPolicyTab.tsx
+    - frontend/src/api/admin.ts
+    - frontend/src/types.ts
+    - infra/schema/postgres.sql
+  tests:
+    - backend/oauth2/domain/delegation_mode_test.go
+    - backend/oauth2/token/usecases/exchange_token_delegation_policy_test.go
+    - backend/oauth2/token/usecases/delegation_mode_agreement_test.go
+    - backend/oauth2/handlers_http/token_exchange_handler_test.go
+    - backend/tenancy/usecases/manage_delegation_depth_test.go
+    - backend/tenancy/db_postgres/tenants_test.go
+    - backend/tenancy/handlers_http/admin_settings_handler_test.go
+    - frontend/src/features/admin-settings/DelegationPolicyTab.test.tsx
+  stop_before_reading:
+    - backend/saml
+    - backend/wsfederation
+    - backend/provisioning
 affected_spec:
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.Tenant }
-  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.Token }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.AdminSettingsResponse }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantUpdateRequest }
+  - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantSummaryResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DelegationMode }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.IntrospectionResponse }
+  - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.TokenExchanged }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-048 }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-049 }
+  - { path: spec/contexts/tenancy/SPECIFICATION.md, requirement: REQ-TENANCY-021 }
 ---
 
 # 委譲深さの上限をテナントポリシーにし、トークンが自律実行か代理実行かを判別可能にする
@@ -39,7 +95,8 @@ delegation-only + 深さ上限 + `may_act` 強制で既に先行している。�
 
 - `spec/contexts/tenancy/models.tsp` の `Tenant` に委譲深さ上限の override を追加する。
 - `spec/contexts/oauth2/SPECIFICATION.md` に、テナント上限を超える委譲が拒否される
-  normative scenario (REQ-OAUTH2-043) を追加する。
+  normative scenario (REQ-OAUTH2-048) と、委譲モードを一貫して返す scenario
+  (REQ-OAUTH2-049) を追加する。
 - `exchange_token.go` の `const MaxDelegationDepth` をテナント設定からの解決に置き換える。
   判定箇所 (`act` 入れ子深さの検査) と、既存の `evaluateTokenExchangePolicy` が AuthZEN
   リクエストに渡している `DelegationDepth` の経路を再利用する。
@@ -76,7 +133,7 @@ delegation-only + 深さ上限 + `may_act` 強制で既に先行している。�
 
 ## Plan
 
-- 先に spec (Tenant の override + REQ-OAUTH2-043) を確定させ、そのあと実装する。
+- 先に spec (Tenant の override + REQ-OAUTH2-048 / REQ-OAUTH2-049) を確定させ、そのあと実装する。
 - テナント設定の解決経路は `exchange_token.go` の中で既にテナントを解決しているため、
   新しい依存を足さずに済むかを最初に確認する。足りない場合もポートを 1 本増やすに留める。
 - モード導出は domain の純関数として置き、introspection と監査イベントの両方が
@@ -87,18 +144,13 @@ delegation-only + 深さ上限 + `may_act` 強制で既に先行している。�
 
 ## Tasks
 
-- [ ] T001 [Spec] `Tenant` に委譲深さ上限の override (厳しい方向のみ・system ceiling 付き) を
-      追加し、REQ-OAUTH2-043 を追加する。
-- [ ] T002 [Domain] 委譲モードの導出を純関数として実装する。RED: 自律実行 / ユーザー代理 /
-      多段委譲の 3 ケースを先に書く → GREEN。
-- [ ] T003 [UseCases] `const MaxDelegationDepth` をテナント解決に置き換える。RED: テナント上限を
-      超える委譲が拒否され、上限内は通り、設定解決失敗時は fail-closed で拒否されるテスト → GREEN。
-- [ ] T004 [Adapters] introspection 応答と Token Exchange 監査イベントにモードを含める。
-      RED: 両方が同じ導出結果を返すテスト → GREEN。
-- [ ] T005 [Persistence] テナント設定の保存と読み出しを追加する (memory / postgres)。
-      RED: 上書き値の往復と、ceiling を超える値の拒否 → GREEN。
-- [ ] T006 [UI] テナント設定画面に委譲深さ上限を追加する。RED: presentation logic の unit test → GREEN。
-- [ ] T007 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [x] T001 [Spec] `Tenant` に委譲深さ上限の override (厳しい方向のみ・system ceiling 付き) を追加し、`REQ-OAUTH2-048`、`REQ-OAUTH2-049`、`REQ-TENANCY-021` を追加した。
+- [x] T002 [Domain] 委譲モードの導出を純関数として実装した。RED → GREEN: `TestDeriveDelegationMode` (`REQ-OAUTH2-049`) が自律実行、利用者代理、多段委譲を固定する。
+- [x] T003 [UseCases] 固定の委譲深さをテナントポリシー解決に置き換えた。RED → GREEN: `TestExchangeTokenHonoursTenantDelegationDepth` (`REQ-OAUTH2-048`) が上限超過、上限内、解決失敗時の fail-closed を固定する。
+- [x] T004 [Adapters] introspection 応答と `TokenExchanged` 監査イベントにモードを含めた。RED → GREEN: `TestDelegationModeAgreesBetweenAuditAndIntrospection` と `TestTokenExchangeIssuesDelegatedToken` (`REQ-OAUTH2-049`) が同じ導出結果と HTTP 応答を固定する。
+- [x] T005 [Persistence] memory / PostgreSQL で委譲深さ上限を保存・読出しできるようにした。RED → GREEN: `TestUpdateMaxDelegationDepthOnlyTightens` と `TestTenantRepositoryPersistsMaxDelegationDepth` (`REQ-TENANCY-021`) が往復、解除、ceiling 超過拒否を固定する。
+- [x] T006 [UI] テナント設定画面に委譲ポリシータブを追加した。RED → GREEN: `DelegationPolicyTab` の unit test (`REQ-TENANCY-021`) が厳しい上書き、解除、上限超過の送信前拒否を固定する。
+- [x] T007 [Verify] Verification を緑にし、`just spec-render` で派生仕様を再生成した。
 
 ## Verification
 
@@ -119,3 +171,17 @@ system ceiling をテストで固定する。
 
 モード導出を 2 箇所に書くと、introspection と監査ログが食い違う。これは調査時に最も
 質の悪い形の不整合になるため、導出を純関数 1 箇所に閉じ、両経路がそれを通ることをテストで固定する。
+
+## Completion
+- **Completed At**: 2026-08-15
+- **Summary**:
+  `just spec-diff` が示す意味差分は `REQ-OAUTH2-048`、`REQ-OAUTH2-049`、`REQ-TENANCY-021` と `DelegationMode` 宣言の追加である。Token Exchange の委譲深さはテナントがシステム既定 3 以下へ厳しくでき、解決失敗では拒否される。自律実行、利用者代理、直接実行は 1 つの純関数から introspection と `TokenExchanged` 監査イベントへ出力される。設定は memory / PostgreSQL / テナント API を往復し、管理 UI では実効値と継承状態を表示して上書きと解除を行える。
+- **Verification Results**:
+  - `just check-spec` - passed
+  - `just check-api-compat` - passed; no breaking changes against the release baseline
+  - `just spec-render` - passed; OpenAPI and 813 specification pages generated
+  - `just check-schema` - passed; schema convergence confirmed
+  - `just verify-go` - passed; lint 0 issues and all race-enabled Go tests passed
+  - `just verify-ui` - passed; format, lint, 572 unit tests, and production build passed
+  - `just verify` - passed; all 10 repository checks passed
+  - 手動 `just dev` の 4 ケースは対話実行せず、同じ条件を上記の domain / use case / HTTP / UI 自動テストで固定した

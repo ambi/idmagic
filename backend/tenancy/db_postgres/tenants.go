@@ -71,6 +71,7 @@ func (r *TenantRepository) Save(ctx context.Context, tenant *domain.Tenant) erro
 		EndpointStyle:           string(tenant.EffectiveEndpointStyle()),
 		PasswordPolicyOverride:  override,
 		PasswordPolicyUpdatedAt: timestamptzOrNil(tenant.PasswordPolicyUpdatedAt),
+		MaxDelegationDepth:      int4OrNil(tenant.MaxDelegationDepth),
 		CreatedAt:               tenant.CreatedAt,
 		UpdatedAt:               tenant.UpdatedAt,
 		DisabledAt:              timestamptzOrNil(tenant.DisabledAt),
@@ -104,7 +105,19 @@ func tenantFromRow(row *Tenant) (*domain.Tenant, error) {
 		policyUpdatedAt := row.PasswordPolicyUpdatedAt.Time
 		tenant.PasswordPolicyUpdatedAt = &policyUpdatedAt
 	}
+	if row.MaxDelegationDepth.Valid {
+		depth := int(row.MaxDelegationDepth.Int32)
+		tenant.MaxDelegationDepth = &depth
+	}
 	return tenant, tenant.Validate()
+}
+
+// int4OrNil は「上書きなし」を SQL NULL に写し、解除済みと未設定を同じ行状態にする。
+func int4OrNil(value *int) pgtype.Int4 {
+	if value == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(*value), Valid: true} //nolint:gosec // bounded to the system ceiling by the settings use case.
 }
 
 // marshalPolicyOverride maps "no override" to SQL NULL, so a cleared override and

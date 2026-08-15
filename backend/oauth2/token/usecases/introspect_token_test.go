@@ -24,7 +24,7 @@ func (f *fakeIntrospector) IntrospectAccessToken(ctx context.Context, token stri
 }
 
 func TestIntrospectToken(t *testing.T) {
-	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	ctx := tenantContext()
 	refreshStore := memory.NewRefreshTokenStore()
 	denylist := memory.NewAccessTokenDenylist()
 	introspector := &fakeIntrospector{}

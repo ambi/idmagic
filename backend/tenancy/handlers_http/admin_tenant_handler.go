@@ -25,6 +25,7 @@ type tenantCreateRequest struct {
 type tenantUpdateRequest struct {
 	DisplayName            *string                        `json:"display_name,omitempty"`
 	PasswordPolicyOverride *domain.PasswordPolicyOverride `json:"password_policy_override,omitempty"`
+	MaxDelegationDepth     *int                           `json:"max_delegation_depth,omitempty"`
 }
 
 type tenantEndpointStyleRequest struct {
@@ -134,6 +135,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 		tenantusecases.UpdateInput{
 			DisplayName:            input.DisplayName,
 			PasswordPolicyOverride: input.PasswordPolicyOverride,
+			MaxDelegationDepth:     input.MaxDelegationDepth,
 		},
 		d.tenantPolicyFloor(),
 		now,
@@ -182,6 +184,9 @@ func tenantChangedFields(input tenantUpdateRequest) []string {
 	}
 	if input.PasswordPolicyOverride != nil {
 		fields = append(fields, "password_policy_override")
+	}
+	if input.MaxDelegationDepth != nil {
+		fields = append(fields, "max_delegation_depth")
 	}
 	return fields
 }
@@ -268,11 +273,13 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 	case errors.Is(err, tenantusecases.ErrPolicyOverrideWeaker):
 		floor := d.tenantPolicyFloor()
 		message := fmt.Sprintf(
-			"The password policy cannot be weaker than the baseline "+
+			"A tenant policy override cannot be weaker than the product baseline "+
 				"(min_length≥%d / max_length≤%d / history_depth≥%d), "+
-				"and max_age_days must be between %d and %d when set",
+				"max_age_days must be between %d and %d when set, "+
+				"and max_delegation_depth must be between 1 and %d",
 			floor.MinLength, floor.MaxLength, floor.HistoryDepth,
 			tenantusecases.PasswordMaxAgeDaysFloor, tenantusecases.PasswordMaxAgeDaysCeiling,
+			domain.DefaultMaxDelegationDepth,
 		)
 		return support.WriteBrowserError(c, http.StatusBadRequest, "policy_override_weaker", message)
 	default:

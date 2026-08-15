@@ -15,10 +15,13 @@ CREATE TABLE tenants (
     -- When the override last changed. The lower bound for password expiry, so
     -- enabling max_age_days does not expire every existing password at once.
     password_policy_updated_at TIMESTAMPTZ,
+    max_delegation_depth INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     disabled_at TIMESTAMPTZ,
     CONSTRAINT tenants_realm_unique UNIQUE (realm),
+    CONSTRAINT tenants_max_delegation_depth_positive
+        CHECK (max_delegation_depth IS NULL OR max_delegation_depth >= 1),
     CONSTRAINT tenants_default_locale_format CHECK (default_locale IS NULL OR default_locale ~ '^[a-z]{2}$'),
     CONSTRAINT tenants_realm_format CHECK (
         realm <> 'admin' AND realm ~ '^[a-z0-9][a-z0-9-]{0,62}$'

@@ -33,6 +33,9 @@ type IntrospectionResponse struct {
 	Act       map[string]any    `json:"act,omitempty"`
 	// AuthorizationDetails は RFC 9396 — RS が信頼する検証点。
 	AuthorizationDetails []spec.AuthorizationDetail `json:"authorization_details,omitempty"`
+	// DelegationMode は自律実行と利用者の代理の区別。リソースサーバーが act と
+	// principal 種別から各自で導出し直さずに済むよう、導出済みの値を返す。
+	DelegationMode domain.DelegationMode `json:"delegation_mode,omitempty"`
 }
 
 type IntrospectDeps struct {
@@ -113,6 +116,11 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 				Iat:       rec.IssuedAt.Unix(),
 				Exp:       rec.ExpiresAt.Unix(),
 				JTI:       rec.ID,
+				// リフレッシュトークンは act を持たないので direct か autonomous になる。
+				// 同じ導出関数を通し、トークン種別ごとに規則が分かれないようにする。
+				DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
+					Sub: rec.UserID, ClientID: rec.ClientID,
+				}),
 			}
 			if rec.SenderConstraint != nil {
 				resp.CNF = map[string]string{}
@@ -150,6 +158,13 @@ func IntrospectToken(ctx context.Context, deps IntrospectDeps, in IntrospectInpu
 		JTI:                  r.JTI,
 		Act:                  r.Act,
 		AuthorizationDetails: r.AuthorizationDetails,
+	}
+	// 立場を語るのは active なトークンだけにする。失効したトークンにモードが付くと、
+	// リソースサーバーが active の確認を飛ばして立場だけを読む余地ができる。
+	if r.Active {
+		resp.DelegationMode = domain.DeriveDelegationMode(domain.DelegationSubject{
+			Sub: r.Sub, ClientID: r.ClientID, PrincipalType: r.PrincipalType, Act: r.Act,
+		})
 	}
 	if r.SenderConstraint != nil {
 		resp.CNF = map[string]string{}

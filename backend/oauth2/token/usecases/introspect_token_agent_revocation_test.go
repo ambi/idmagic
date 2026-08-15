@@ -20,7 +20,7 @@ import (
 // revocation epoch を比較し、epoch 以前に発行された token は fail-closed で
 // active=false になる。epoch より後に発行された token は通常どおり active=true。
 func TestIntrospectToken_AgentRevocationEpoch(t *testing.T) {
-	ctx := tenantContext(tenancydomain.DefaultTenantID)
+	ctx := tenantContext()
 	now := time.Now().UTC()
 
 	agentRepo := agentmemory.NewAgentRepository()
