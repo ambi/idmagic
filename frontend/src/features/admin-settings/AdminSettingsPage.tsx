@@ -1,4 +1,5 @@
 import {
+  IconDeviceLaptop,
   IconLink,
   IconMail,
   IconNetwork,
@@ -23,6 +24,7 @@ import { DelegationPolicyTab } from './DelegationPolicyTab'
 import { GeneralTab } from './GeneralTab'
 import { NotificationTemplatesTab } from './NotificationTemplatesTab'
 import { PasswordPolicyTab } from './PasswordPolicyTab'
+import { TrustedDeviceTab } from './TrustedDeviceTab'
 import { ApiTokensTab } from './ApiTokensTab'
 import { IntegrationEndpointsTab } from './IntegrationEndpointsTab'
 
@@ -32,6 +34,7 @@ type TabKey =
   | 'general'
   | 'password-policy'
   | 'delegation-policy'
+  | 'trusted-device'
   | 'branding'
   | 'integration-endpoints'
   | 'email'
@@ -64,6 +67,12 @@ function tabs(t: AdminSettingsDictionary): Tab[] {
       label: t.tabDelegationPolicyLabel,
       description: t.tabDelegationPolicyDescription,
       icon: IconNetwork,
+    },
+    {
+      key: 'trusted-device',
+      label: t.tabTrustedDeviceLabel,
+      description: t.tabTrustedDeviceDescription,
+      icon: IconDeviceLaptop,
     },
     {
       key: 'branding',
@@ -196,6 +205,13 @@ export function AdminSettingsPage({
           ) : null}
           {active === 'delegation-policy' ? (
             <DelegationPolicyTab
+              csrfToken={csrfToken}
+              settings={settings}
+              onSaved={(next) => setSettings(next)}
+            />
+          ) : null}
+          {active === 'trusted-device' ? (
+            <TrustedDeviceTab
               csrfToken={csrfToken}
               settings={settings}
               onSaved={(next) => setSettings(next)}

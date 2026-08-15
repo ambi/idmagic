@@ -11,6 +11,9 @@ export const adminSettingsDictionary = defineDictionary(
     tabDelegationPolicyLabel: '委譲ポリシー',
     tabDelegationPolicyDescription:
       'エージェントの Token Exchange で許可する委譲チェーンの深さを制限します。',
+    tabTrustedDeviceLabel: '信頼済みデバイス',
+    tabTrustedDeviceDescription:
+      '利用者が記憶させた端末で、二段階目の確認を一定期間省略できるようにします。',
     tabBrandingLabel: 'ブランディング',
     tabBrandingDescription: 'ロゴ・配色・サポート/法務リンクなど hosted UI の見た目を設定します。',
     tabIntegrationEndpointsLabel: '連携エンドポイント',
@@ -67,6 +70,23 @@ export const adminSettingsDictionary = defineDictionary(
     delegationPolicyUpdatedNotice: '委譲ポリシーを更新しました。',
     delegationPolicyUpdateFailedError: '委譲ポリシーを更新できませんでした。',
     delegationDepthSuffix: ' 段',
+    trustedDeviceHeading: '信頼済みデバイス',
+    trustedDeviceSubheading:
+      '利用者が二段階目の確認に成功した直後に明示同意した端末を記憶し、その期間だけ次回以降の二段階目の確認を省略できるようにします。',
+    trustedDeviceSecurityWarning:
+      '二段階目の確認を条件付きで省略する設定です。既定は無効で、有効にする期間は短いほど安全です。パスワードや認証要素の変更、認証器のリセット、全セッションの失効、アカウントの無効化では記憶を自動で取り消します。パスワード変更などの機微な操作では、記憶済みでも必ず再認証を求めます。',
+    trustedDeviceStatusLabel: '状態',
+    trustedDeviceStatusEnabled: '有効',
+    trustedDeviceStatusDisabled: '無効',
+    trustedDeviceEffectiveLabel: '有効期間',
+    trustedDeviceCeilingLabel: 'システム上限',
+    trustedDeviceFieldLabel: '有効期間 (日)',
+    trustedDeviceHint: '0 または空欄で無効にします。1 以上 {max} 以下の日数を設定できます。',
+    trustedDeviceRangeError: '有効期間は 0 以上 {max} 日以下の整数で入力してください。',
+    trustedDeviceUpdatedNotice: '信頼済みデバイスの設定を更新しました。',
+    trustedDeviceUpdateFailedError: '信頼済みデバイスの設定を更新できませんでした。',
+    trustedDeviceDaySuffix: ' 日',
+    trustedDeviceSecondSuffix: ' 秒',
     passwordPolicyHeading: 'パスワードポリシー',
     passwordPolicySubheading: 'テナントに適用されるパスワード要件を確認できます。',
     standardMinLengthLabel: '標準 最小長',
@@ -236,6 +256,9 @@ export const adminSettingsDictionary = defineDictionary(
     tabPasswordPolicyLabel: 'Password policy',
     tabPasswordPolicyDescription:
       "Per-tenant overrides. Blank fields fall back to IdMagic's standard values.",
+    tabTrustedDeviceLabel: 'Trusted devices',
+    tabTrustedDeviceDescription:
+      'Let users remember a browser and skip the second verification step for a limited time.',
     tabDelegationPolicyLabel: 'Delegation policy',
     tabDelegationPolicyDescription:
       'Limit the depth of delegation chains allowed during agent token exchange.',
@@ -298,6 +321,23 @@ export const adminSettingsDictionary = defineDictionary(
     delegationPolicyUpdatedNotice: 'Updated the delegation policy.',
     delegationPolicyUpdateFailedError: 'Could not update the delegation policy.',
     delegationDepthSuffix: ' levels',
+    trustedDeviceHeading: 'Trusted devices',
+    trustedDeviceSubheading:
+      'Remember a browser the user explicitly consented to right after a successful second verification step, and skip that step on later sign-ins for as long as it lasts.',
+    trustedDeviceSecurityWarning:
+      'This conditionally skips the second verification step. It is off by default, and a shorter period is safer. Remembered devices are revoked automatically on a password or authenticator change, an authenticator reset, a global session revoke, and account disablement. Sensitive operations such as changing a password always demand reauthentication, remembered or not.',
+    trustedDeviceStatusLabel: 'Status',
+    trustedDeviceStatusEnabled: 'Enabled',
+    trustedDeviceStatusDisabled: 'Disabled',
+    trustedDeviceEffectiveLabel: 'Lifetime',
+    trustedDeviceCeilingLabel: 'System ceiling',
+    trustedDeviceFieldLabel: 'Lifetime (days)',
+    trustedDeviceHint: 'Use 0 or leave it blank to disable. Accepts 1 to {max} days.',
+    trustedDeviceRangeError: 'Enter a whole number of days between 0 and {max}.',
+    trustedDeviceUpdatedNotice: 'Updated the trusted device setting.',
+    trustedDeviceUpdateFailedError: 'Could not update the trusted device setting.',
+    trustedDeviceDaySuffix: ' days',
+    trustedDeviceSecondSuffix: ' seconds',
     passwordPolicyHeading: 'Password policy',
     passwordPolicySubheading: 'You can review the password requirements applied to this tenant.',
     standardMinLengthLabel: 'Standard min length',

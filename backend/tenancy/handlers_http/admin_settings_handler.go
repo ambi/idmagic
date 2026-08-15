@@ -153,11 +153,13 @@ func (d Deps) toAdminSettingsResponse(t *domain.Tenant) AdminSettingsResponse {
 			HistoryDepth: floor.HistoryDepth,
 			MaxAgeDays:   authusecases.PasswordPolicyMaxAgeDays,
 		},
-		MaxDelegationDepth:        t.MaxDelegationDepth,
-		MaxDelegationDepthDefault: domain.DefaultMaxDelegationDepth,
-		SupportedLocales:          template.SupportedLocales(),
-		Quota:                     t.Quota,
-		Usage:                     t.Usage,
+		MaxDelegationDepth:                t.MaxDelegationDepth,
+		MaxDelegationDepthDefault:         domain.DefaultMaxDelegationDepth,
+		TrustedDeviceMaxAgeSeconds:        t.TrustedDeviceMaxAgeSeconds,
+		TrustedDeviceMaxAgeSecondsCeiling: domain.TrustedDeviceMaxAgeCeilingSeconds,
+		SupportedLocales:                  template.SupportedLocales(),
+		Quota:                             t.Quota,
+		Usage:                             t.Usage,
 	}
 	if t.DefaultLocale != nil {
 		response.DefaultLocale = *t.DefaultLocale

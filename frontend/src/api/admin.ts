@@ -674,6 +674,8 @@ export type UpdateAdminSettingsInput = {
   password_policy_override?: AdminSettings['password_policy_override']
   // 0 でシステム既定へ戻す (省略は現状維持)。
   max_delegation_depth?: number
+  // 0 で信頼済みデバイスを無効へ戻す (省略は現状維持)。
+  trusted_device_max_age_seconds?: number
   // 空文字列でシステム既定へ戻す (省略は現状維持)。
   default_locale?: string
 }

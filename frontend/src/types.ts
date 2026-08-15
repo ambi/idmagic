@@ -769,6 +769,10 @@ export type AdminSettings = {
   // Token Exchange の act チェーンに許す深さ。上書きはシステム既定以下に限る。
   max_delegation_depth?: number
   max_delegation_depth_default: number
+  // 信頼済みデバイス (remember this device) の有効期間 (秒)。0 と未設定はどちらも
+  // 機能無効を意味し、上書きの解除ではない。ceiling は設定できる上限。
+  trusted_device_max_age_seconds?: number
+  trusted_device_max_age_seconds_ceiling: number
   // 通知メールの locale 解決の第 2 段。未設定ならシステム既定を使う。
   default_locale?: string
   // カタログが同梱翻訳を持つ locale。既定 locale とテンプレート編集の選択肢になる。

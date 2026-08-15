@@ -169,6 +169,68 @@ func TestAdminSettingsPatchUpdatesAndEmitsEvent(t *testing.T) {
 	}
 }
 
+// wi-91: 管理設定 API は信頼済みデバイスの有効期間と上限を返し、0 で機能を無効へ戻せる。
+// 他の上書きと違い既定が「無効」なので、未設定は「継承」ではなく「無効」を意味する。
+func TestAdminSettingsExposeAndUpdateTrustedDeviceMaxAge(t *testing.T) {
+	e, repo, _ := newSettingsServer(
+		t,
+		settingsActor("admin", "acme", []string{"admin"}),
+		activeTenant("acme", "Acme"),
+	)
+
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/settings", http.NoBody))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var initial tenancyhttp.AdminSettingsResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &initial); err != nil {
+		t.Fatal(err)
+	}
+	if initial.TrustedDeviceMaxAgeSeconds != nil {
+		t.Fatalf("trusted_device_max_age_seconds=%v, want unset (disabled)", initial.TrustedDeviceMaxAgeSeconds)
+	}
+	if initial.TrustedDeviceMaxAgeSecondsCeiling != domain.TrustedDeviceMaxAgeCeilingSeconds {
+		t.Fatalf("ceiling=%d, want %d",
+			initial.TrustedDeviceMaxAgeSecondsCeiling, domain.TrustedDeviceMaxAgeCeilingSeconds)
+	}
+
+	thirtyDays := 30 * 24 * 60 * 60
+	if resp := patchSettings(t, e, map[string]any{
+		"trusted_device_max_age_seconds": thirtyDays,
+	}); resp.Code != http.StatusOK {
+		t.Fatalf("patch status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	stored, err := repo.FindByID(context.Background(), "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.EffectiveTrustedDeviceMaxAge() != 30*24*time.Hour {
+		t.Fatalf("stored lifetime=%v, want 30 days", stored.EffectiveTrustedDeviceMaxAge())
+	}
+
+	// 0 は上書きの解除ではなく機能無効。
+	if resp := patchSettings(t, e, map[string]any{
+		"trusted_device_max_age_seconds": 0,
+	}); resp.Code != http.StatusOK {
+		t.Fatalf("disable status=%d body=%s", resp.Code, resp.Body.String())
+	}
+	stored, err = repo.FindByID(context.Background(), "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored.EffectiveTrustedDeviceMaxAge() != 0 {
+		t.Fatalf("stored lifetime=%v, want disabled", stored.EffectiveTrustedDeviceMaxAge())
+	}
+
+	resp := patchSettings(t, e, map[string]any{
+		"trusted_device_max_age_seconds": domain.TrustedDeviceMaxAgeCeilingSeconds + 1,
+	})
+	if resp.Code != http.StatusBadRequest || !bytes.Contains(resp.Body.Bytes(), []byte("policy_override_weaker")) {
+		t.Fatalf("above-ceiling status=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
 // REQ-TENANCY-021: 設定 API は現在の上書きとシステム上限を返し、厳しい上書きだけを保存する。
 func TestAdminSettingsExposeAndUpdateMaxDelegationDepth(t *testing.T) {
 	e, repo, _ := newSettingsServer(
