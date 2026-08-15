@@ -9,7 +9,7 @@ updated_at: 2026-08-15
 
 受動的な WS-Federation と能動的な WS-Trust STS について、RP の信頼関係、AD FS 互換の `federationmetadata.xml`、MEX、RST と RSTR を所有する。
 
-自前で持たないものは共有する。プロトコルに依存しないクレーム発行は `ClaimMapping`、XML Assertion の署名は `tokens_saml` アダプター、署名鍵のライフサイクルは `SigningKeys` が所有する。SAML 2.0 SP との信頼関係は `Saml` Context が所有する。
+プロトコルに依存しないクレーム発行は `ClaimMapping`、XML Assertion の署名は `tokens_saml` アダプター、署名鍵のライフサイクルは `SigningKeys` が所有する。SAML 2.0 SP との信頼関係は `Saml` Context の責務である。
 
 ## Glossary
 
@@ -77,7 +77,7 @@ RP の登録・参照・削除と Entra ドメインフェデレーションプ�
 
 受動的な発行でも能動的な発行でも、発行時にリクエスト元テナントの有効な `XmlFederationSigning` 資格情報を取得する。フェデレーションメタデータでは、広告する役割ごとに現在有効な証明書と有効期限内の検証用証明書を公開する。これにより、RP は計画されたローテーションの前後でも検証を継続できる。
 
-署名の提供元は、プロセスの起動時の状態ではなく `SigningKeys` を裏に持つ。これにより WS-Fed と SAML は 1 つの XML の資格情報のライフサイクルに乗りつつ、OAuth2 と JWT の鍵からの分離を保てる。
+署名は、プロセス起動時に保持した状態ではなく、`SigningKeys` から取得した資格情報で行う。これにより、WS-Fed と SAML は XML 署名資格情報のライフサイクルを共有しながら、OAuth2 と JWT の鍵から分離できる。
 
 ### Federation metadata
 
@@ -89,9 +89,9 @@ RP の登録・参照・削除と Entra ドメインフェデレーションプ�
 
 ### WS-Trust active STS scope
 
-能動的な WS-Trust への対応は、一般的な相互運用ではなく Microsoft 365 風のリッチクライアントのサインインを狙う。SOAP、WS-Security、WS-Addressing、SAML の署名は互いに十分重なっており、束縛を広く覆うと再送と XML の包み替えの危険が実質的に高まるので、最初の範囲は意図的に狭くする。
+能動的な WS-Trust への対応は、汎用的な相互運用ではなく、Microsoft 365 型のリッチクライアントによるサインインを対象とする。SOAP、WS-Security、WS-Addressing、SAML の署名は相互に関係するため、対応するバインディングを増やすほど再送や XML 署名ラッピングの攻撃面が広がる。そこで、初期の対応範囲は意図的に狭くする。
 
-能動的な STS のエンドポイントは `/trust/usernamemixed` だけであり、受け付けるのは WS-Trust 1.3 の `Issue` のみである。`Validate`、`Renew`、`Cancel` は実装しない。認証は UsernameToken のみで、既存の `UserRepository`、`PasswordHasher`、`LoginAttemptThrottle` に対して検証する。Kerberos と IWA の `windowstransport` は範囲外であり、別のスライスへ残す。
+能動的な STS のエンドポイントは `/trust/usernamemixed` だけであり、受け付けるのは WS-Trust 1.3 の `Issue` のみである。`Validate`、`Renew`、`Cancel` は実装しない。認証には UsernameToken だけを使い、既存の `UserRepository`、`PasswordHasher`、`LoginAttemptThrottle` で検証する。Kerberos と IWA の `windowstransport` は範囲外とし、将来の実装に委ねる。
 
 WS-Addressing と WS-Security の必須要素（`MessageID`、`To`、`Action`、UsernameToken、Timestamp、`AppliesTo`）はフェイルクローズで検証する。Timestamp は期限切れの値と遠い未来の値を拒否し、`MessageID` は有効期間の短いリプレイ防止ストアに記録する。`AppliesTo` は登録済みの WS-Fed RP に解決できなければならず、未登録の宛先は拒否する。発行する Assertion の audience と recipient はその RP に限定し、クレームは RP の `ClaimMappingPolicy` を通じて発行する。これにより、リプレイや audience の取り違えが RP の境界を越えることを防ぐ。RSTR は SOAP 1.2 で署名済み SAML Assertion を返し、RST が SAML 1.1 または SAML 2.0 を明示的に要求しない場合は SAML 1.1 をデフォルトとする。
 

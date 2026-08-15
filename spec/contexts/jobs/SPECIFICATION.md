@@ -7,9 +7,9 @@ updated_at: 2026-08-15
 
 ## Overview
 
-テナント境界を保つ汎用非同期ジョブ基盤の永続キューと `worker` の実行環境を所有する。所有するのは、テナントが持つあらゆる非同期作業に共通する実行基盤 — 投入、永続化、取得、リース、ハートビート、再試行、配信不能への退避、キャンセル — であり、業務処理は一切持たない。
+テナント境界を保つ汎用非同期ジョブ基盤として、永続キューと `worker` の実行環境を所有する。対象は、非同期処理に共通する投入、永続化、取得、リース、ハートビート、再試行、配信不能への退避、キャンセルであり、業務処理は所有しない。
 
-`JobKind` のパラメーターを解釈して副作用を起こす処理は、利用側 Context のユースケースに残す。`backend/cmd/idmagic-worker/worker.go` が起動時にそれらのハンドラーを一覧へ登録する。業務ロジックを基盤の外に置くのは、ジョブ基盤に触れるたびに利用側のすべての Context を読み直さずに済むようにするためである。
+`JobKind` のパラメーターを解釈して副作用を起こす処理は、利用側 Context のユースケースに置く。`backend/cmd/idmagic-worker/worker.go` が起動時にそれらのハンドラーを一覧へ登録する。この分離により、ジョブ基盤は利用側 Context の業務ロジックに依存しない。
 
 API プロセスはジョブを投入するが実行せず、`worker` プロセスはジョブを実行するが HTTP を提供しない。
 
@@ -34,7 +34,7 @@ idmagic-worker                    │ レーンごとに独立してポーリン
 | Term | Definition | Aliases |
 |---|---|---|
 | JobLease | `worker` が Job を Running にする際に確保する排他権。`lease_owner`（`worker` 識別子）と `lease_expires_at` を持ち、ハートビートで更新する。ハートビートが途絶えて期限切れになると、別の `worker` が再取得できる。 | lease, リース |
-| DeadLetter | `attempts` が `max_attempts` を超えて `Failed` に確定した Job。再試行されず、エラーを保持したまま調査対象として残る。 | 配信不能 |
+| DeadLetter | `attempts` が `max_attempts` に達して `Failed` に確定した Job。再試行されず、エラーを保持したまま調査対象として残る。 | 配信不能 |
 | Queued | Job が投入され、まだ `worker` に取得されていない初期状態。`run_at` を過ぎると取得できる。 | queued |
 | Running | `worker` がリースを確保し、ハンドラーを実行中の状態。 | running |
 | Succeeded | ハンドラが正常終了した終端状態。 | succeeded |
@@ -53,7 +53,7 @@ idmagic-worker                    │ レーンごとに独立してポーリン
 
 ### JobLifecycle
 
-Job の状態遷移を表す。`queued` から `running` へは `worker` による取得で遷移し、`running` から `queued` へはバックオフを伴う再試行で戻る。`succeeded`、`failed`、`canceled` は不可逆の終端状態である。`attempts` が `max_attempts` に達した場合は `running` から配信不能を表す `failed` へ、未達の場合は再試行を表す `queued` へ遷移する。
+`worker` が取得すると `queued` から `running` へ遷移する。実行に失敗した場合、`attempts` が `max_attempts` 未満ならバックオフを伴って `queued` に戻り、上限に達していれば配信不能を表す `failed` へ遷移する。`succeeded`、`failed`、`canceled` は不可逆の終端状態である。
 
 Initial: `queued` Terminal: `succeeded`, `failed`, `canceled`
 
@@ -139,7 +139,7 @@ SIGTERM や SIGINT を受けると `worker` は取得をやめ、停止猶予期
 - 配送は少なくとも 1 回とし、冪等性はハンドラーの責務とする。ちょうど 1 回を基盤側で保証しようとすると、プロセスの異常終了と完了報告の競合を塞ぎきれないからである。
 - 停止時の回復は明示的な再投入ではなく、リースの自然な期限切れに委ねる。停止処理の打ち切りとハンドラーの完了が競合すると、再投入が二重実行の余地を作るからである。
 - 全テナントを対象とする定期処理は永続ジョブに混ぜず、`idmagic-batch` が担う。横断的な一掃にはテナントごとの作業単位が存在せず、キューへ流し込むとキューの深さもレーンの隔離も意味を失うからである。
-- `params` と `result` は保存時に暗号化しない。`JobKind` ごとに中身の見えない値であり、そもそもシークレットを含めてはならないからである。
+- `params` と `result` は保存時に暗号化しない。`JobKind` ごとに解釈する不透明な値であり、シークレットを含めてはならないからである。
 
 ## Scenarios
 

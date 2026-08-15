@@ -7,11 +7,11 @@ updated_at: 2026-08-15
 
 ## Overview
 
-上流の外部権威から IdMagic へアイデンティティを取り込む責務を所有する。情報の正は外部の取り込み元にあり、IdMagic 内部のプリンシパルはその写しである。取り込み元との関連付け、外部の不変 ID との相関、取り込み処理とカーソル、上流の権威に従う削除・無効化の規則をまとめ、取り込み元ごとに機能単位を設ける。
+外部の権威ある取り込み元から IdMagic へアイデンティティを取り込む責務を所有する。情報の正は外部にあり、IdMagic 内部のプリンシパルはその写しである。取り込み元との関連付け、外部の不変 ID との相関、取り込み処理とカーソル、外部の状態に従う削除・無効化の規則を定め、取り込み元ごとに機能単位を設ける。
 
 この Context に入るかどうかは、通信の方向や実行時の形ではなく、永続的な関連付けを持つ外部権威が存在するかどうかで決まる。したがって、管理者による CSV インポート（IdManagement）、ログイン時のフェデレーション（Authentication）、下流システムとの台帳照合（Application または Provisioning）はいずれも対象外である。
 
-現在の機能単位は `scim` だけで、SCIM 2.0 サーバーとして `/scim/v2/Users`、`/scim/v2/Groups` などを提供し、外部 IdP（Okta、Google Cloud Identity、Entra ID）からユーザーとグループの同期を受ける。将来は閉域の Directory Connector を扱う `directory` と、定期的なファイル取り込みを扱う `feed` を同じ Context に追加する。Context のルートはファサードと組み立てだけを持つ薄い形に保ち、共通の取り込み機構は 2 つ目の取り込み元が現れて実在の共通点が分かるまで作らない。
+現在の機能単位は `scim` だけである。SCIM 2.0 サーバーとして `/scim/v2/Users`、`/scim/v2/Groups` などを提供し、Okta、Google Cloud Identity、Entra ID などの外部 IdP からユーザーとグループの同期を受ける。将来は閉域の Directory Connector を扱う `directory` と、定期的なファイル取り込みを扱う `feed` を同じ Context に追加する。Context のルートにはファサードと組み立てだけを置き、複数の取り込み元に実在する共通点が判明するまでは共通機構を作らない。
 
 ## Glossary
 
@@ -63,7 +63,7 @@ SCIM のエンドポイントはユーザーのセッションではなく、`Ap
 
 属性は User と Group の Aggregate へ直接対応付ける。
 
-| SCIM | idmagic |
+| SCIM | IdMagic |
 | --- | --- |
 | `Users.id` | `User.sub` |
 | `Users.userName` | `User.preferred_username` |

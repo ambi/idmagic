@@ -7,7 +7,7 @@ updated_at: 2026-08-15
 
 ## Overview
 
-SAML 2.0 IdP として、SP の信頼、IdP プロファイル、IdP メタデータ、AuthnRequest / Response、AssertionConsumerService、Single Logout を所有するプロトコルの Bounded Context である。Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供する。
+SAML 2.0 IdP として、SP の信頼、IdP プロファイル、IdP メタデータ、AuthnRequest / Response、AssertionConsumerService、Single Logout を所有する Bounded Context である。Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供する。
 
 WS-Fed / WS-Trust とは、クレームの発行処理と XML 署名だけを共有する。プロトコルに依存しないクレームの対応付けは `ClaimMapping`、署名鍵のライフサイクルは `SigningKeys` が所有する。
 
@@ -68,7 +68,7 @@ SP と IdP プロファイルの登録・参照・削除は `AdminFederationTrus
 
 ### SSO Profile scope
 
-初期対応の範囲は SAML 2.0 の Web Browser SSO Profile に限る。HTTP-Redirect（deflate と Base64）および HTTP-POST（Base64）のバインディング、署名済みの Response と Assertion、メタデータの公開、SP 起点と IdP 起点の SSO、Single Logout を提供する。SAML ECP、暗号化された Assertion、idmagic が外部 IdP に対して SAML SP として動作する外部 IdP からのフェデレーションは対象外とし、必要になった時点で別の実装単位として扱う。対応範囲を狭めることで、SAML で知られている署名ラッピング攻撃への露出を抑える。
+初期対応の範囲は SAML 2.0 の Web Browser SSO Profile に限る。HTTP-Redirect (deflate と Base64) および HTTP-POST (Base64) のバインディング、署名済みの Response と Assertion、メタデータの公開、SP 起点と IdP 起点の SSO、Single Logout を提供する。SAML ECP、暗号化された Assertion、IdMagic が SAML SP として外部 IdP と連携する機能は対象外とし、必要になった時点で別の実装単位として扱う。対応範囲を狭めることで、SAML で知られている署名ラッピング攻撃への露出を抑える。
 
 クレームの発行と Assertion の署名には、WS-Federation と WS-Trust で共有している構築器と署名器 (`backend/wsfederation/tokens_saml`) を再利用する。これらは SAML のバージョン、Bearer SubjectConfirmation、audience の制限をすでに扱っている。この Context では署名処理を作り直さず、`InResponseTo` の対応付けなど SP 起点のフローに固有の入力だけを追加する。
 
@@ -78,9 +78,9 @@ SP と IdP プロファイルの登録・参照・削除は `AdminFederationTrus
 
 ### Identity provider profiles
 
-各サービスプロバイダーは、テナント内の IdP プロファイルのうち 1 つだけに関連付ける。テナントに必ず存在し変更できない `default` プロファイルは複数のサービスプロバイダーで共有し、短い `/saml/*` ルートを使用する。追加のプロファイルは `/saml/idp/{profile_id}/*` ルートとプロファイル固有の entityID を使用する。`shared` プロファイルは複数のサービスプロバイダーで共有できるが、`dedicated` プロファイルを割り当てられるサービスプロバイダーは最大 1 つとする。どちらも同じモデルで表し、プロトコル、永続化、管理のすべての経路で同じ信頼境界の規則を適用する。
+各サービスプロバイダーは、テナント内の IdP プロファイル 1 つだけに関連付ける。テナントに必ず存在し変更できない `default` プロファイルは複数のサービスプロバイダーで共有し、短い `/saml/*` ルートを使用する。追加のプロファイルは `/saml/idp/{profile_id}/*` ルートとプロファイル固有の entityID を使用する。`shared` プロファイルは複数のサービスプロバイダーで共有できるが、`dedicated` プロファイルを割り当てられるサービスプロバイダーは最大 1 つとする。どちらも同じモデルで表し、プロトコル、永続化、管理のすべての経路で同じ信頼境界の規則を適用する。
 
-プロファイル管理 API は、サーバーが生成した正式な entityID、メタデータ、SSO、SLO、証明書取得用の各 URL と、証明書のフィンガープリントを返す。関連付けられているサービスプロバイダーの数も返し、UI で使用中のプロファイルを削除できないようにする。ただし、最終的な整合性は Repository で保証する。デフォルトプロファイルの変更、`dedicated` プロファイルへの複数サービスプロバイダーの割り当て、使用中のプロファイルの削除はいずれも拒否する。
+プロファイル管理 API は、サーバーが生成した正式な entityID と、メタデータ、SSO、SLO、証明書取得用の各 URL、証明書のフィンガープリントを返す。関連付けられているサービスプロバイダーの数も返し、UI では使用中のプロファイルを削除できないようにする。最終的な整合性は Repository で保証し、デフォルトプロファイルの変更、`dedicated` プロファイルへの複数サービスプロバイダーの割り当て、使用中のプロファイルの削除はいずれも拒否する。
 
 SSO と SLO では、リクエスト先のルートからプロファイルを特定し、対象サービスプロバイダーに関連付けられたプロファイルと一致することを確認する。Destination の検証には、そのプロファイルの正式なエンドポイントを使用する。これらを組み合わせて検証することで、ある信頼境界に対する正当なリクエストが、同じテナントの別のプロファイルを介して再送されることを防ぐ。
 

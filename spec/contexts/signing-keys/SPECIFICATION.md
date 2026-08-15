@@ -9,7 +9,7 @@ updated_at: 2026-08-15
 
 テナント単位の署名鍵素材について、ライフサイクル、ローテーション、公開の重複期間、監査をプロトコル横断で所有する。OAuth2 / OIDC は JWK / JWKS と JWT 署名器、SAML / WS-* は X.509 証明書と XML 署名アダプターを使用するが、鍵の用途、ローテーション、テナント間の分離に関する規則はここに集約する。
 
-鍵プロバイダーの選択と保管もここに含まれる。鍵素材は公開された署名ポートと公開鍵ポートを通じてのみ提供し、各プロトコル形式への直列化は OAuth2、SAML、WS-Federation のアダプターが担う。
+鍵プロバイダーの選択と保管もここに含む。鍵素材は署名ポートと公開鍵ポートを通じてのみ提供し、各プロトコル形式への直列化は OAuth2、SAML、WS-Federation のアダプターに委ねる。
 
 ## Glossary
 
@@ -20,7 +20,7 @@ updated_at: 2026-08-15
 | Archive | SigningKey を Retired から Archived に移す。 | archive |
 | Verifying | 署名はしないが、過去発行トークンの検証のため JWKS に残っている状態。 | verifying |
 | Retired | JWKS から除去された状態。新規検証には使われない。 | retired |
-| Archived | 監査用に長期保管されている終端状態。鍵マテリアルは封印。 | archived |
+| Archived | 監査用に長期保管する終端状態。鍵素材は封印される。 | archived |
 | KeyProvider | 鍵素材の保管方式と署名の実行主体。Local / Database は秘密鍵をプロセス内に読み込み、アプリケーションが署名する開発・テスト用の方式である。VaultTransit は秘密鍵を Vault 内に保持し、署名を Vault API に委ねる本番用の方式である。Database は特定の製品名を表さない。 | key provider, 鍵プロバイダー |
 | VaultTransit | HashiCorp Vault の Transit secrets engine を使う KeyProvider。秘密鍵マテリアルは Vault 外に出ず、署名要求ごとに Vault へ委譲する。 | Vault Transit |
 | FailClosed | KeyProvider が不達のとき、新規トークン発行を停止する挙動。既発行トークン検証用の JWKS は取得可能な範囲で返す。強制点は OAuth2.Token の requires が持つ。 | fail-closed, フェイルクローズ |
@@ -29,7 +29,7 @@ updated_at: 2026-08-15
 
 ### SigningKeyLifecycle
 
-署名鍵のライフサイクル (SigningKeyMinJwksOverlap)。Active から Rotate で Verifying に降り、Retire で JWKS から外し、Archive で監査保管に入る。
+署名鍵は `Active` からローテーションによって `Verifying` へ遷移し、`Retire` で JWKS から除外した後、`Archive` で監査保管に移す。公開鍵を重複して掲載する期間には `SigningKeyMinJwksOverlap` を適用する。
 
 Initial: `Active` Terminal: `Archived`
 
@@ -49,7 +49,7 @@ Initial: `Active` Terminal: `Archived`
 
 ### Usage and scope isolation
 
-鍵を取得するときは必ず、リクエスト元のテナント、`KeyUsage`、外部に意味を公開しないスコープ ID を指定する。用途とスコープを明示しない呼び出し元には `Signing` とデフォルトスコープを適用し、OAuth2 / OIDC 向け API を簡潔に保つ。XML プロトコルのアダプターは `XmlFederationSigning` を明示的に選び、SAML ではさらに IdP プロファイル ID をスコープとして指定する。これにより、JWT 用の鍵が XML Assertion に使われたり、ある SAML プロファイルが別のプロファイルの資格情報を使ったりすることを防ぐ。
+鍵の取得には、リクエスト元のテナント、`KeyUsage`、外部には意味を公開しないスコープ ID を使用する。用途とスコープを明示しない呼び出し元には `Signing` とデフォルトスコープを適用し、OAuth2 / OIDC 向け API を簡潔に保つ。XML プロトコルのアダプターは `XmlFederationSigning` を明示的に選び、SAML ではさらに IdP プロファイル ID をスコープとして指定する。これにより、JWT 用の鍵が XML Assertion に使われたり、ある SAML プロファイルが別のプロファイルの資格情報を使ったりすることを防ぐ。
 
 ローカル、PostgreSQL、Vault の各アダプターは、テナント、用途、スコープの組み合わせごとに有効な鍵を 1 つだけ保持する。PostgreSQL では部分一意インデックスによって同じ不変条件を保証し、Vault では鍵集合の識別情報にスコープを含める。これは、1 つの SAML プロファイルの鍵をローテーションしたときに、別のプロファイルやすべての JWT 検証鍵まで変更されることを防ぐためである。
 
@@ -61,13 +61,13 @@ Local と Database の `KeyProvider` は、署名の間 RSA 秘密鍵をプロ�
 
 ### Lifecycle
 
-鍵は、使用するテナント、用途、スコープが確定した時点で初めて作成する。デフォルトテナントにだけ事前に初期鍵を作ることはしない。これにより、すべてのテナントを同じ手順で作成でき、リクエスト単位のライフサイクルでは説明できない特別な状態を避けられる。
+鍵は、使用するテナント、用途、スコープが確定した時点で作成する。デフォルトテナントだけに初期鍵を事前作成することはしない。すべてのテナントを同じ手順で扱い、デフォルトテナントに固有の状態を設けないためである。
 
 テナントの有効な署名鍵は少なくとも 90 日ごとにローテーションする。これは、手動で即時実行する `RotateTenantSigningKey` とは別に、定期実行する運用ジョブが行う。ローテーションでは、古い有効鍵を同じ処理内で検証用に降格させ、少なくとも 7 日間の重複期間を設ける。これにより、JWKS の利用者と RP は、ローテーション直前に発行されたメッセージも検証できる。終端状態の `Archived` に達した鍵素材は、退役した鍵で署名された監査トークンを検証できるように 7 年間保持する。個別に完全削除するインターフェースは提供しない。
 
 公開鍵と証明書の一覧には、有効な鍵と、期限切れでない検証用の鍵を含める。`Archived` へ移った鍵は一覧から外れ、以後は公開しない。
 
-鍵プロバイダーに到達できない場合のフェイルクローズ動作は、`SigningKeys` 自身では強制しない。この Context は署名や発行を行うインターフェースを持たないためである。ここでは、`TenantSigningKey.provider_healthy` と `ListTenantKeyHealth` を通じて、観測可能な `provider_healthy` シグナルだけを提供する。実際にフェイルクローズを強制するのは OAuth2 の `Token` 発行インターフェースであり、プロバイダーに到達できない場合はそこで新しい署名を停止する。
+鍵プロバイダーに到達できない場合のフェイルクローズ動作は、`SigningKeys` 自身では強制しない。この Context にはトークンを発行するインターフェースがないためである。ここでは `TenantSigningKey.provider_healthy` と `ListTenantKeyHealth` を通じて、観測可能な `provider_healthy` シグナルだけを提供する。実際にフェイルクローズを強制するのは OAuth2 の `Token` 発行インターフェースであり、プロバイダーに到達できない場合はそこで新しい署名を停止する。
 
 ### Design Decisions
 

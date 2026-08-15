@@ -7,7 +7,7 @@ updated_at: 2026-08-15
 
 ## Overview
 
-テナントごとの `DataEncryptionKey`（DEK）のライフサイクル（`bootstrap`、`rotate`、`disable`、`destroy`）とメタデータを所有する。DEK はマスターキープロバイダー（OpenBao Transit 互換。開発環境とローカル環境では Tink の平文鍵セット）でラップし、データベースに保存する可逆なシークレット（TOTP seed など）のエンベロープ暗号化に使う。
+テナントごとの `DataEncryptionKey` (DEK) のライフサイクル (`bootstrap`、`rotate`、`disable`、`destroy`) とメタデータを所有する。DEK はマスターキープロバイダーでラップし、データベースに保存する TOTP seed などの可逆なシークレットをエンベロープ暗号化する。マスターキープロバイダーには OpenBao Transit 互換の実装を使い、開発環境とローカル環境では Tink の平文鍵セットも使用できる。
 
 暗号処理そのものは所有しない。`EnvelopeCrypto` ポートとその実装は技術的な共有アダプター (`backend/shared/security`) に置き、この Context が外部へ公開するのは `EncryptedSecret` と鍵のライフサイクルメタデータだけである。署名鍵（`private_jwk`）も管理せず、`SigningKeys` の責務とする。
 
@@ -18,10 +18,10 @@ updated_at: 2026-08-15
 | DataEncryptionKey | レコード単位の可逆なシークレットを Tink AEAD で直接暗号化・復号する、テナントスコープの対称鍵 (DEK)。 | DEK |
 | MasterKey | DEK をラップしてエンベロープ暗号化する KMS 側の鍵。プロバイダー (OpenBao Transit 互換、または開発環境とローカル環境で使う Tink の平文鍵セット) が管理し、アプリケーションデータベースには平文で残らない。 |  |
 | Wrap | `MasterKey` で DEK を暗号化し、永続化できる `wrapped_dek` にする操作。 | wrap |
-| Active | 新規の暗号化操作に使われる、テナントにつき高々1本の DataEncryptionKey の状態。 |  |
+| Active | 新規の暗号化操作に使われる状態。テナントごとに高々 1 本だけ存在する。 |  |
 | Retiring | 新規の暗号化には使わないが、既存の暗号文の復号には引き続き使う状態。再暗号化ジョブ (`Jobs` 経由) がすべての参照を移行するまで維持する。 |  |
-| Disabled | 鍵素材の危殆化などにより、手動で即時ロックアウトした状態。この鍵で暗号化された暗号文の復号は、それ以降フェイルクローズで拒否する。 | disabled |
-| Destroyed | `wrapped_dek` を破棄した終端状態。復号は恒久的に不可能となり、暗号学的消去が成立する。不可逆である。 |  |
+| Disabled | 鍵素材の危殆化などにより、手動で即時に無効化した状態。以後、この鍵で暗号化された暗号文の復号はフェイルクローズで拒否する。 | disabled |
+| Destroyed | `wrapped_dek` を破棄し、暗号学的消去が成立した終端状態。復号は恒久的に不可能であり、元に戻せない。 |  |
 | FailClosed | アンラップの失敗、プロバイダーへの到達不能、AAD や改ざんの不一致などで復号できない場合に、平文へフォールバックせずアクセスを拒否する方針。 |  |
 | System | `DataKeys` のライフサイクルユースケースと再暗号化ジョブそのものを指す、人間の操作者を伴わない技術的な主体。 |  |
 
@@ -29,7 +29,7 @@ updated_at: 2026-08-15
 
 ### DataEncryptionKeyLifecycle
 
-`bootstrap` で `active` として生成する。ローテーションで新しいバージョンが `active` になると、旧バージョンは `retiring` へ遷移する。`retiring` は `disable` で即時にロックアウトでき、`retiring` または `disabled` の鍵は、すべての参照を再暗号化したことを `Jobs` 経由で確認した後に限り、`destroy` で終端状態の `destroyed` へ進む。`active` を直接 `disable` または `destroy` することはできず、先にローテーションで退避させる。
+`bootstrap` で最初の鍵を `active` として生成する。ローテーションで新しいバージョンが `active` になると、旧バージョンは `retiring` へ遷移する。`retiring` の鍵は `disable` で即時に無効化できる。`retiring` または `disabled` の鍵を `destroyed` へ遷移できるのは、すべての参照を再暗号化したことを `Jobs` 経由で確認した後だけである。`active` の鍵は直接 `disable` または `destroy` できず、先にローテーションする必要がある。
 
 Initial: `active` Terminal: `destroyed`
 
@@ -60,7 +60,7 @@ DEK のライフサイクル操作 (`bootstrap`、`rotate`、`disable`、`destro
 - Result invariant: active_key_count(input.tenant_id) <= 1
 
 #### DisableTenantDataKey
-ローテーション済み (`retiring`) の `DataEncryptionKey` 1 本を即時にロックアウトする。危殆化対応など、`destroy` による暗号学的消去の前に復号を止める場合に使う。`active` なバージョンはこの操作の対象にできず、先に `RotateTenantDataKey` で退避させる。
+ローテーション済み (`retiring`) の `DataEncryptionKey` 1 本を即時に無効化する。危殆化への対応など、`destroy` による暗号学的消去の前に復号を止める場合に使う。`active` なバージョンは対象にできず、先に `RotateTenantDataKey` でローテーションする必要がある。
 - Input invariant: data_key_is_not_active(input.tenant_id, input.version)
 
 #### DestroyTenantDataKey

@@ -7,24 +7,24 @@ updated_at: 2026-08-15
 
 ## Overview
 
-下流の SaaS へユーザーとグループを反映する外向きのプロビジョニングを所有する。情報の正は idmagic 側の User と Group であり、下流はその写しである。接続は Application 1 件につき最大 1 件とし、配信対象の範囲には既存の ApplicationAssignment を再利用する。
+下流の SaaS へユーザーとグループを反映する、外向きのプロビジョニングを所有する。情報の正は IdMagic 側の User と Group であり、下流のリソースはその複製である。接続は Application 1 件につき最大 1 件とし、配信対象の範囲には既存の ApplicationAssignment を利用する。
 
-`Sourcing` が外部から受け取るのに対し、この Context は外部へ送り出す。処理の向き、記録の正がどちらにあるか、語彙のすべてが反転するため、`Tenancy`、`Application`、`IdManagement`、`Jobs` への公開された参照を除いてコードを共有しない。
+`Sourcing` が外部から取り込むのに対し、この Context は外部へ送り出す。処理の向き、記録の正の所在、語彙が異なるため、`Tenancy`、`Application`、`IdManagement`、`Jobs` の公開インターフェースを除いてコードを共有しない。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| ProvisioningConnection | Application 1 件に対して最大 1 件だけ存在する outbound provisioning の設定。接続先 base_url・認証・機能トグル・スコープ属性マッピング・deprovision ポリシー・信頼性設定を束ねる。 | connection, 接続 |
-| RemoteResourceLink | idmagic の `User` または `Group` と、下流の SCIM サービスプロバイダー上のリソース（リモート ID、`externalId`、`etag`）との対応を保持するエンティティ。HTTP 409（既存リソースとの衝突）では照合属性を使って既存リソースへ関連付け、HTTP 404（リソースの消失）では再作成して関連付けを更新する。 | remote link, 相関 |
+| ProvisioningConnection | Application 1 件に対して最大 1 件だけ存在する外向きプロビジョニングの設定。接続先 `base_url`、認証、機能トグル、スコープ、属性の対応付け、プロビジョニング解除ポリシー、信頼性設定をまとめる。 | connection, 接続 |
+| RemoteResourceLink | IdMagic の `User` または `Group` と、下流の SCIM サービスプロバイダー上のリソース（リモート ID、`externalId`、`etag`）との対応を保持するエンティティ。HTTP 409（既存リソースとの衝突）では照合属性を使って既存リソースへ関連付け、HTTP 404（リソースの消失）では再作成して関連付けを更新する。 | remote link, 相関 |
 | ProvisioningDelivery | 内部のライフサイクルイベント 1 件を下流へ反映するための配信単位。冪等キー（`tenant_id`、`connection_id`、`source_type`、`source_id`、`source_version`）により、重複する投入を no-op とする。実行は Jobs の `Job` に委譲する。 | delivery, 配信 |
 | Deprovision | 割り当て解除、無効化、削除という内部のライフサイクルイベントを、下流に対する無効化、削除、無操作のいずれかへ変換すること。変換規則は `DeprovisionPolicy` が持つ。 |  |
 | Grace Period | 削除操作を直ちに実行せず、`DeprovisionPolicy.grace_period_days` の経過後に完全削除するまでの猶予期間。期間内に対象が適用範囲へ戻れば取り消す。 | grace period, 猶予期間 |
 | Accidental Deletion Guard | 1 回の同期で無効化または削除の対象が `accidental_deletion_count_threshold` を超えた場合に、実行せず接続を Quarantine へ移す誤削除防止策。 | 誤削除ガード |
 | Quarantine | 連続失敗または誤削除ガードの超過によって配信を停止した `ProvisioningConnection.health` の状態。管理者が `ResumeProvisioningConnection` で解除するまで再開しない。 | quarantine, 隔離 |
 | On-Demand Provision | 管理者が対象を 1 件だけ指定し、即時に試験配信する手動運用。 |  |
-| Full Resync | 管理者が接続の適用範囲に含まれるすべての対象を再走査し、下流の状態を idmagic の状態へ収束させる手動運用。 |  |
-| Mirror | 下流の SaaS 上のリソースが idmagic を記録の正とする写しであり、下流での手動変更は次回の配信で上書きされること。 |  |
+| Full Resync | 管理者が接続の適用範囲に含まれるすべての対象を再走査し、下流の状態を IdMagic の状態へ収束させる手動運用。 |  |
+| Mirror | 下流の SaaS 上のリソースが IdMagic を記録の正とする写しであり、下流での手動変更は次回の配信で上書きされること。 |  |
 | Push Groups | `ProvisioningFeatureFlags.push_groups` が有効なとき、Group とメンバーシップを下流へ配信する機能。 |  |
 | System | Provisioning の配信エンジンそのもの。人間の操作者を伴わない技術的主体を指す。 |  |
 
@@ -51,15 +51,15 @@ Initial: `pending` Terminal: `succeeded`, `dead_letter`
 
 接続と配信はテナントを越えない。別テナントの接続 ID や配信 ID を指定した参照は、存在しないものとして拒否する。
 
-配信そのものは管理者の権限を借りない。`worker` が下流へ提示するのは接続に保存した資格情報だけであり、idmagic 側の管理者権限が下流へ伝わることはない。下流の URL は登録時に HTTPS であることと、内部アドレスやリンクローカルアドレスを指さないことを検証する。
+配信そのものは管理者の権限を借りない。`worker` が下流へ提示するのは接続に保存した資格情報だけであり、IdMagic 側の管理者権限が下流へ伝わることはない。下流の URL は登録時に HTTPS であることと、内部アドレスやリンクローカルアドレスを指さないことを検証する。
 
 ## Design
 
 ### Protocol-agnostic core with protocol feature slices
 
-外向きの振る舞いの大半、すなわち接続のエンベロープ、`DeprovisionPolicy`、`AttributeMappingRule`、`ProvisioningDelivery` と `RemoteResourceLink` による配信処理（キュー、再試行と間隔、隔離、順序、再同期）はプロトコルに依存しない。プロトコル固有なのは通信クライアントと接続設定の一部（認証方式、能力の探索、デフォルト属性スキーマ）だけである。したがって Context のルート (`domain`、`ports`、`usecase`、`handlers_http`) がプロトコル非依存の中核を持ち、プロトコルごとに `ProvisioningTargetClient` ポートを実装する機能単位を設ける。現在は `client_scim` があり、将来は中核に触れず `entraid` と `googledir` を同階層へ追加する想定である。これは、このリポジトリで一般的な「厚い機能単位、薄い共通ルート」を意図的に反転した形である。ここではドメインの形がほぼプロトコルに依存せず、プロトコルが駆動される側のアダプターの軸になるため、中核が厚く機能単位が薄い。
+接続の共通情報、`DeprovisionPolicy`、`AttributeMappingRule`、`ProvisioningDelivery` と `RemoteResourceLink` によるキューイング、再試行、隔離、順序制御、再同期は、いずれもプロトコルに依存しない。プロトコル固有なのは、通信クライアントと、認証方式、能力の探索、デフォルト属性スキーマなど接続設定の一部だけである。このため、Context のルート (`domain`、`ports`、`usecase`、`handlers_http`) にプロトコル非依存の中核を置き、プロトコルごとに `ProvisioningTargetClient` ポートを実装する薄い機能単位を設ける。現在は `client_scim` があり、将来は中核を変えずに `entraid` と `googledir` を同じ階層へ追加する。この Context ではドメインの大部分がプロトコルに依存しないため、リポジトリで一般的な「厚い機能単位、薄い共通ルート」とは逆に、中核を厚く保つ。
 
-この Context の `client_scim` 機能と `Sourcing` の `scim` 機能の間には、共有する SCIM 通信中核を置かない。内向き側のフィルター構文の解析と評価、および固定レスポンスの構造体は、受信した SCIM リクエストを自身のデータに対して評価する側のためのものである。一方、外向き側はフィルター文字列を組み立て、マッピングに基づくより広い属性集合（`externalId`、Enterprise 拡張）を直列化する必要がある。実際に重なる部分（Discovery の構造体、RFC が定めるスキーマ URN）は十分に小さく、現時点で共有すると双方を早すぎる段階で結合することになる。本当の重複が現れるまで切り出しを先送りする。
+この Context の `client_scim` 機能と `Sourcing` の `scim` 機能の間には、共有の SCIM 通信中核を置かない。内向き側には、受信した SCIM リクエストを自身のデータに対して評価するためのフィルター構文解析、評価器、固定レスポンスの構造体が必要である。一方、外向き側には、フィルター文字列の組み立てと、対応付けに基づく広い属性集合 (`externalId`、Enterprise 拡張) の直列化が必要になる。重なるのは Discovery の構造体と RFC が定めるスキーマ URN 程度なので、実際の重複が増えるまでは共通化しない。
 
 ### Same-transaction delivery capture
 

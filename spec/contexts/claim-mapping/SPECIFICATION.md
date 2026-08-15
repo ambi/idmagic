@@ -7,14 +7,14 @@ updated_at: 2026-08-15
 
 ## Overview
 
-プリンシパルの属性を外部の RP、SP、クライアントへ公開するための属性公開ポリシーと、プロトコルに依存しないクレーム投影を所有する。属性の解決と公開可否の判定を 1 か所に集約し、OIDC の JSON クレーム、SAML の `AttributeStatement`、WS-Fed のクレーム URI への変換は各プロトコルの Context が所有する。
+プリンシパルの属性を外部の RP、SP、クライアントへ公開するポリシーと、プロトコルに依存しないクレームの組み立てを所有する。属性の解決と公開可否の判定はここに集約し、OIDC の JSON クレーム、SAML の `AttributeStatement`、WS-Fed のクレーム URI への変換は各プロトコルの Context に委ねる。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
 | ClaimMappingPolicy | プリンシパルの属性を外部のアプリケーション、RP、SP、クライアントへ公開するための、属性解決と公開許可の規則。 | ClaimMappingPolicy, attribute release, claim mapping |
-| IssuedClaim | `ClaimMappingPolicy` の適用結果として発行が確定した、クレーム型 (URI) と値の組。プロトコルごとのワイヤー表現へ変換する前の中間表現である。 | IssuedClaim |
+| IssuedClaim | `ClaimMappingPolicy` を適用して得られる、クレーム型 (URI) と値の組。プロトコルごとのワイヤー表現へ変換する前の中間表現である。 | IssuedClaim |
 | NameID | RP や SP に対してプリンシパルを指し示す識別子。`NameIdConfiguration` がソース属性と形式を定める。 | NameID |
 
 ## Design
@@ -23,7 +23,7 @@ updated_at: 2026-08-15
 
 #### ResolveEffectiveClaims
 
-`ClaimMappingPolicy` と解決済みの属性から `NameID` と `IssuedClaim[]` を組み立てる。WS-Fed、SAML、OIDC の各 issuer が共有する唯一のクレーム解決経路であり、テナントの属性可視性 (`visibility != Private`) と予約済みクレーム型の固定集合を、ポリシーでは緩められない下限として強制する。
+`ClaimMappingPolicy` と解決済みの属性から `NameID` と `IssuedClaim[]` を組み立てる。WS-Fed、SAML、OIDC の各 issuer が共有する唯一のクレーム解決経路である。テナントの属性可視性 (`visibility != Private`) と予約済みクレーム型の固定集合は、ポリシーでは緩和できない制約として強制する。
 
 `User` の中核フィールド (`user_id`、`email`、`name`、`given_name`、`family_name`、`preferred_username`、`email_verified`、ロール) は `UserAttributeDef` に現れないため、常に解決対象とする。カスタム属性については、`attribute_defs` にないキー、または `visibility=Private` のキーをソースに持つ規則を下限の検査で拒否する。
 
@@ -33,7 +33,7 @@ updated_at: 2026-08-15
 
 `ClaimMappingRule` は AD FS 風のクレーム規則言語ではなく、出力するクレーム型 (URI) とそのソース — ユーザー属性、固定値、`NameID` のいずれか — を宣言する。`ClaimMappingPolicy` は RP ごとの規則集合を `NameIdConfiguration` と束ねる。処理系はポリシーと解決済み属性の対応表を受け取り、`IssuedClaim[]` を返す。
 
-入力側と出力側の両方でフェイルクローズとする。規則が明示したクレームだけを発行するため、対応付けのない属性がトークンへ漏れることはない。必須規則のソース属性が欠けている場合は、部分的なクレーム集合を返さず、発行そのものを拒否する。WS-Fed、WS-Trust、SAML はいずれも自前でクレームを組み立てずにこの処理系を呼ぶため、この保証は 1 か所に留まる。
+入力と出力のどちらもフェイルクローズで扱う。規則に明記されたクレームだけを発行するため、対応付けのない属性がトークンへ漏れることはない。必須規則のソース属性が欠けている場合は、部分的なクレーム集合を返さず、発行そのものを拒否する。WS-Fed、WS-Trust、SAML はいずれもこの処理系を使い、独自にクレームを組み立てない。
 
 ### Design Decisions
 

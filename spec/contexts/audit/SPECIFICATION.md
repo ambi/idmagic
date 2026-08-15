@@ -7,16 +7,14 @@ updated_at: 2026-08-15
 
 ## Overview
 
-Authentication、IdManagement、OAuth2、Tenancy、SigningKeys、Application、SAML、WS-Federation など、複数の Bounded Context が発行するセキュリティ監査イベントの横断的な Read Model を所有する。監査イベントの検索とエクスポートを行う管理 API、検索属性レジストリ、個人識別情報の変換方針、保持期間をまとめる。イベントの発行元は各 Context のままとし、Audit はそれらを横断して読む窓口を所有する。
-
-`DomainEvent` として蓄積される監査の記録は、管理者向けの `AdminAuditEventResponse` として公開する。
+複数の Bounded Context が発行するセキュリティ監査イベントを横断して読むための Read Model を所有する。監査イベントの検索とエクスポートを行う管理 API、検索属性の定義、個人識別情報の変換方針、保持期間もここで定める。イベントの発行は各 Context の責務とし、`DomainEvent` として蓄積した記録を管理者向けの `AdminAuditEventResponse` として公開する。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
 | AuditEventSearchRegistry | 監査イベントで使用できる検索属性（`AuditEventSearchAttribute`）の定義一覧。属性ごとにフィールド、演算子、変換方法を宣言し、任意の SQL や JSONPath を受け付けない閉じた検索文法を定める。Go の `AuditSearchRegistry` マップを唯一の正とする。 | search-attribute-registry, 検索属性定義 |
-| AuditEventFilterExpression | `AuditEventQuery.filter` の 1 項。レジストリの許可リストにあるフィールド、演算子、値の並びからなる論理積 (AND) の 1 要素。個人識別情報の属性は平文入力をサーバー側で変換してから照合する。 | filter-expression, フィルター式 |
+| AuditEventFilterExpression | `AuditEventQuery.filter` を構成する論理積 (AND) の 1 要素。レジストリの許可リストにあるフィールド、演算子、値からなる。個人識別情報の属性は平文入力をサーバー側で変換してから照合する。 | filter-expression, フィルター式 |
 | AuditActor | 操作を行った本人。ペイロードの `userId` に相当する。認証、OAuth2 フロー、本人による操作では、常に本人が操作者になる。`AuditEventQuery.user_id`、検索時に `user_id` へ解決する `username`、フィルターの `actor.id` は、いずれも操作者を指す。UI では「ユーザー ID（操作者）」「ユーザー名（操作者）」「ログイン試行のユーザー名」と表記する。 | actor, 操作者 |
 | AuditTargetUser | 別のユーザーに対する操作の対象。ペイロードの `targetUserId` に相当する。管理者が実行する UserCreated / UserDisabled / GroupMemberAdded の対象ユーザーがこれにあたる。フィルターの `target.id` が指すのはこちらであり、操作者とは区別する。UI では「対象ユーザー」と表記する。 | target, 対象ユーザー |
 | ResolvableUserEventPayloadPolicy | 実在するアカウントが必ず特定できるイベント (UserAuthenticated、ConsentGranted、AuthorizationCodeIssued、AuthorizationCodeRedeemed、AccessTokenIssued、RefreshTokenIssued など) のペイロードには、平文かハッシュかを問わずユーザー名を含めないという方針。各 Context のイベントモデルにユーザー名相当のフィールドを設けないことで構造的に保証する。ユーザー名による検索は `AuditEventQuery.username` を User Repository で `user_id` へ解決し、既存の `user_id` 検索に帰着させる。実在しないアカウント名も追跡する必要がある認証失敗イベントに限り、平文の検索属性 `actor.username` を持たせる。 | resolvable-user-event-payload-policy |
@@ -36,7 +34,7 @@ Authentication、IdManagement、OAuth2、Tenancy、SigningKeys、Application、S
 
 ### Search attribute registry
 
-検索文法は `AuditSearchRegistry` が宣言する属性、演算子、変換方法の閉じた集合に限る。任意の SQL や JSONPath は受け付けない。個人識別情報にあたる属性は、登録簿が宣言した変換 (要約値化や丸め) を適用してから照合するため、検索用のインデックスに平文は残らない。平文が残るのは `audit_events.payload` だけであり、それも失敗イベントに限って短い保持期間の下で保持する。
+検索文法は `AuditSearchRegistry` が宣言する属性、演算子、変換方法の閉じた集合に限り、任意の SQL や JSONPath は受け付けない。個人識別情報にあたる属性には、レジストリで定めた変換 (ハッシュ化や丸め) を適用してから照合するため、検索用インデックスに平文は残らない。平文を保持できるのは `audit_events.payload` だけであり、対象を失敗イベントに限ったうえで保持期間を短くする。
 
 ## Scenarios
 

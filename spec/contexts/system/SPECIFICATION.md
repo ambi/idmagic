@@ -7,9 +7,9 @@ updated_at: 2026-08-15
 
 ## Overview
 
-外部標準、共有語彙、横断的なユーザー体験、Context をまたぐシナリオを所有する。1 つの Context だけでは成り立たない振る舞いは、ここが所有する。
+外部標準、共有語彙、横断的なユーザー体験、複数の Context にまたがるシナリオを所有する。
 
-React UI は Go API とは別のビルド成果物であり、ゲートウェイが両者を 1 つのオリジンにまとめる。組み込みの認証画面（ログイン、同意、デバイス認証）、管理コンソール、アカウントポータルはこの Context に属する。
+React UI と Go API は別々にビルドし、ゲートウェイを通じて同一オリジンで公開する。組み込みの認証画面 (ログイン、同意、デバイス認証)、管理コンソール、アカウントポータルはこの Context に属する。
 
 本書は、SPA と API の責任分担、ブラウザー保護、ルーティング、起動時設定、UI 規約とその根拠を記す。実行手順と検証コマンドは `README.md` に置く。
 
@@ -17,11 +17,11 @@ React UI は Go API とは別のビルド成果物であり、ゲートウェイ
 
 | Term | Definition | Aliases |
 |---|---|---|
-| Locale | UI の表示言語を一意に決める BCP 47 言語タグ。idmagic は `ja` と `en` だけに対応し、それ以外は未対応のロケールとして扱う。 | locale tag, 表示言語コード |
+| Locale | UI の表示言語を一意に決める BCP 47 言語タグ。IdMagic は `ja` と `en` だけに対応し、それ以外は未対応のロケールとして扱う。 | locale tag, 表示言語コード |
 | DisplayLanguage | EndUser または Administrator が言語切り替え UI で明示的に選択したロケール。選択はブラウザーに保存し、以後のアクセスでは保存済みの設定を優先する。 | 表示言語, 言語設定 |
-| FallbackLocale | 要求されたロケールが未対応である場合、または対応するロケールの辞書に翻訳キーがない場合に使うデフォルトのロケール。idmagic では `en` とする。 | デフォルトロケール |
+| FallbackLocale | 要求されたロケールが未対応である場合、または対応する辞書に翻訳キーがない場合に使うロケール。IdMagic では `en` とする。 | デフォルトロケール |
 | ConfiguredDefaultLocale | 起動時設定 `VITE_DEFAULT_LOCALE` で指定するデフォルトのロケール。`ja` または `en` だけを受け付け、未設定または未対応の値であれば `FallbackLocale` を使う。 | 起動時のデフォルトロケール |
-| DemoLoginAffordance | HomePage が表示する、ローカルデモ用資格情報による `authorization_code` フローへのショートカット。資格情報は Seeding の `development` プロファイルが作成する。Vite 開発サーバーではデフォルトで表示し、それ以外のビルドでは起動時設定 `VITE_DEMO_LOGIN_ENABLED=true` の場合だけ表示する。表示条件は `development` プロファイルの適用状態を検査しない。 | デモログインのショートカット, ローカルデモ認証の近道 |
+| DemoLoginAffordance | HomePage に表示する、ローカルデモ用資格情報による `authorization_code` フローへのショートカット。資格情報は Seeding の `development` プロファイルが作成する。Vite 開発サーバーではデフォルトで表示し、それ以外のビルドでは起動時設定 `VITE_DEMO_LOGIN_ENABLED=true` の場合だけ表示する。表示時に `development` プロファイルの適用状態は検査しない。 | デモログインのショートカット |
 | BackendErrorText | バックエンドが HTTP、OAuth / OIDC リダイレクト、SAML、SCIM などの外部 API レスポンスで返す利用者向けのエラー本文。`message`、`error_description`、`detail`、プレーンテキストのエラー本文を含む。常に英語であり、表示言語によって変化しない。 | API エラーメッセージ, エラーの説明 |
 | PersistedStateModel | `created_at` を持ち、作成後に現在状態を更新する場合は `updated_at` も持つ永続状態モデルの規約。作成後は不変で、消費または削除だけを行う記録モデルは `updated_at` を持たない。`issued_at`、`granted_at`、`occurred_at`、`expires_at`、`revoked_at` などのドメイン時刻は `created_at` を置き換えない。各 Context のモデル定義はこの規約に従う。 |  |
 | EndUser | 認証済みまたは認証を試みる一般利用者。 |  |
@@ -58,7 +58,7 @@ Regulation (EU) 2016/679 — https://eur-lex.europa.eu/eli/reg/2016/679/oj
 
 ## Authorization Boundary
 
-この Context 自身は業務データの認可判断を持たない。所有するのは、どの経路がどの資格でバックエンドに到達できるかという入口の分け方である。
+この Context 自身は業務データの認可を判断しない。どの経路へどの資格情報で到達できるかという、システム入口の境界を所有する。
 
 - ブラウザーの認証フロー (`/api/auth/*`) は認可トランザクションの Cookie で解決する。トランザクションの内容は常にサーバー側に保持し、HTML、URL、JavaScript から読めるアプリケーション状態には含めない。
 - 管理 API (`/api/admin/*`) とセルフサービス API (`/api/account/*`) は、ログイントランザクションとは独立した認可を通る。ポータル境界のスコープ (`idmagic.admin` / `idmagic.account`) を要求し、アカウントポータルのトークンで管理 API を呼ぶ経路をフェイルクローズで塞ぐ。実際に何ができるかは、記録を所有する各 Context のロールとスコープが決める。
@@ -70,7 +70,7 @@ Regulation (EU) 2016/679 — https://eur-lex.europa.eu/eli/reg/2016/679/oj
 ### Internal Interfaces
 
 #### BackendErrorResponse
-バックエンドの HTTP API とプロトコルエンドポイントがエラー時に返す共通の外部契約。`message`、`error_description`、`detail`、プレーンテキスト本文はいずれも `BackendErrorText` であり、表示言語（`DisplayLanguage`）にかかわらず英語で固定する。RFC 9457 Problem Details では、`type` にある `urn:idmagic:error:` の接尾辞を安定したエラーコードとして解釈できる。UI は `detail` または `title` を人間が読めるフォールバックとして利用できる。この契約は、個別エンドポイントのエラーコードや HTTP ステータスを変更しない。
+バックエンドの HTTP API とプロトコルエンドポイントが返す、共通のエラー契約である。`message`、`error_description`、`detail`、プレーンテキスト本文はいずれも `BackendErrorText` であり、`DisplayLanguage` にかかわらず英語で固定する。RFC 9457 Problem Details では、`type` の `urn:idmagic:error:` に続く部分を安定したエラーコードとして解釈できる。UI は `detail` または `title` を、人間が読めるフォールバックとして利用できる。この契約は、個別エンドポイントのエラーコードや HTTP ステータスを変更しない。
 - Result invariant: text_is_english(output.message)
 - Result invariant: text_is_english(output.error_description)
 - Result invariant: text_is_english(output.detail)
@@ -93,7 +93,7 @@ Caddy は参照用の設定であり、必須のランタイムではない。�
 
 ### Authorization transaction
 
-Go サービスは OAuth の認可要求全体をサーバー側に保持する。内部 UUID は短命で `HttpOnly`、HTTPS では `Secure`、`SameSite=Lax` のトランザクション cookie にだけ保存し、HTML、URL、JavaScript から読めるアプリケーション状態には含めない。
+Go サービスは OAuth の認可要求全体をサーバー側に保持する。ブラウザーには、短命な内部 UUID だけを `HttpOnly`、`SameSite=Lax`、HTTPS では `Secure` のトランザクション Cookie に保存する。認可要求の内容は HTML、URL、JavaScript から読める状態に含めない。
 
 SPA は `GET /api/auth/transaction` を呼び、画面の種類、クライアント名、要求されたスコープなど表示用のデータだけを取得する。ログインと同意のコマンドは cookie からトランザクションを解決する。
 
@@ -113,9 +113,9 @@ SPA は `GET /api/auth/transaction` を呼び、画面の種類、クライア�
 
 ### Admin console and account portal as OIDC RPs
 
-管理コンソール（`/admin/*`）とアカウントポータル（`/account/*`）は IdP 自身の OIDC RP として、IdP の `/authorize` と `/token` に対する `authorization_code` + PKCE で認証する。管理用の `…0022` とアカウント用の `…0023` という固定 UUID の `client_id` を持つファーストパーティーのパブリッククライアントとして登録し、`src/api/oidc.ts` と bootstrap seed に反映する。リソース所有者が IdP 自身のユーザーであるため、同意画面は省略する。
+管理コンソール (`/admin/*`) とアカウントポータル (`/account/*`) は IdP 自身の OIDC RP であり、IdP の `/authorize` と `/token` に対する `authorization_code` + PKCE で認証する。管理用の `…0022` とアカウント用の `…0023` という固定 UUID の `client_id` を持つファーストパーティーのパブリッククライアントとして登録し、`src/api/oidc.ts` と bootstrap seed に反映する。リソース所有者は IdP 自身のユーザーなので、同意画面は省略する。
 
-純粋な SPA RP なのでアクセストークンはブラウザーの `sessionStorage` に保持し、`Authorization: Bearer` として `/api/{admin,account}/*` へ送る。バックエンドは RFC 9068 のリソースサーバーとして検証する。これは厳格な「JavaScript にトークンを置かない」姿勢からの意図的な逸脱であり、短命なアクセストークン (600 秒)、`Cache-Control: no-store`、URL・ログ・DOM にトークンを置かないことによって影響範囲を限定する。OIDC クライアントや鍵の設定の不具合で管理者を締め出さないよう、ファーストパーティーのセッションログイン (`POST /api/auth/login`) は緊急時の経路として残す。
+純粋な SPA RP なので、アクセストークンはブラウザーの `sessionStorage` に保持し、`Authorization: Bearer` として `/api/{admin,account}/*` へ送る。バックエンドは RFC 9068 のリソースサーバーとして検証する。JavaScript からトークンへアクセスできる設計上のリスクは、600 秒の短い有効期間、`Cache-Control: no-store`、URL、ログ、DOM にトークンを置かないことで抑える。OIDC クライアントや鍵の設定不備で管理者が復旧不能にならないよう、ファーストパーティーのセッションログイン (`POST /api/auth/login`) は緊急経路として残す。
 
 ### Client-side routing
 
@@ -123,11 +123,11 @@ SPA は TanStack Router を使い、`src/routes/` 配下のファイルベース
 
 ### Design Guidelines
 
-- **信頼を優先する**: 落ち着いた配色、明確なサービスの識別、現在の操作とセキュリティ状態の透明な説明により安全な体験を作り、認証を判断する利用者に安心感を与える。
+- **信頼できる情報を示す**: 落ち着いた配色、明確なサービス識別、現在の操作とセキュリティ状態の説明により、利用者が認証の可否を判断できるようにする。
 - **重要な情報を先に示す**: 明確な情報階層により、ページの題名、要求元、共有する情報、次の操作、取り消し方を最初に示す。
 - **重要な操作を単純にする**: 画面ごとの主な操作を 1 個に絞り、拒否や取り消しとは視覚的に区別する。UI 固有の理由で OAuth / OIDC フォームの名前、送信値、遷移の契約を変えない。
 - **アクセシビリティを標準とする**: キーボード操作、見えるフォーカス表示、十分な色のコントラスト、明示的なラベル、適切な `aria-*` 属性、動きを減らす設定を尊重するアニメーションに対応する。
-- **企業利用に適した密度を保つ**: 過剰なアニメーションや消費者向けの装飾を避け、一貫した余白、タイポグラフィ、ボーダー、状態色で構造化したレイアウトを保つ。
+- **業務利用に適した情報密度を保つ**: 過剰なアニメーションや装飾を避け、一貫した余白、タイポグラフィ、ボーダー、状態色で情報を構造化する。
 - **情報を失わずレスポンシブにする**: デスクトップでは補足情報を表示し、モバイルではサービスの識別や安全上の警告を省かず認証操作を優先する。
 - **共有コンポーネントで一貫させる**: Tailwind CSS、Radix UI、shadcn/ui に沿ったローカルコンポーネントを使う。色、角丸、フォーカスリング、無効状態をその場ごとに実装しない。
 
@@ -170,7 +170,7 @@ UI の基盤は、複雑な組み込み済みテーマに依存せず、アク�
 
 ### UI navigation and consistency policy
 
-管理コンソールとアカウントポータルは、UI の一貫性とナビゲーションに関する厳格な指針に従う。この指針は Entra フェデレーションと外部アイデンティティプロバイダー (`/admin/identity-providers`) にも適用する。
+管理コンソールとアカウントポータルには、次の UI とナビゲーションの指針を共通して適用する。Entra フェデレーションと外部アイデンティティプロバイダー (`/admin/identity-providers`) も対象とする。
 
 1. **詳細を確認してから編集する**
    - リソースの作成や編集では、読み取り専用の詳細ビューと書き込み用の編集ビューを分ける。
@@ -188,8 +188,8 @@ UI の基盤は、複雑な組み込み済みテーマに依存せず、アク�
 
 新しい `*Page.tsx` ファイルの作成時と既存ファイルのリファクタリング時は、コンテナと表示用コンポーネントを分割し、データ取得や副作用から切り離した UI 描画を単体テストできるようにする。
 
-1. **ファイルではなく意味で分ける。** 公開する `XxxPage` 関数は薄いコンテナとし、`useState`、API 呼び出し、副作用を所有して、ページの `*Shell` を直接配置する。コンテナの全状態をプロパティとして受け直す単一の `XxxPresentation` でページ全体を包まない。それでは同じ複雑さを余分な層の背後へ移すだけである。
-2. **セクションの境界で抽出する。** 独立してテストする価値がある自己完結した単位ごとに、表示用コンポーネントを抽出する。自身の検証を持つフォーム（`AdminSignInPolicyPage.tsx` の `DefaultPolicyFormPresentation` など）、項目一覧（`PasskeyList`）、対話的な状態を持つカード（`AccountSecurityPage.tsx` の `TotpEnrollmentForm`）が該当する。静的で読み取り専用のマークアップはコンテナ内に置いてよく、独自のコンポーネントは不要である。
+1. **ファイル数ではなく責務で分ける。** 公開する `XxxPage` 関数は薄いコンテナとし、`useState`、API 呼び出し、副作用を所有して、ページの `*Shell` を直接配置する。コンテナの全状態を props として受け取る単一の `XxxPresentation` でページ全体を包まない。その形では複雑さを別の層へ移すだけだからである。
+2. **セクションの境界で抽出する。** 独立してテストする価値がある自己完結した単位ごとに、表示用コンポーネントを抽出する。自身の検証を持つフォーム (`AdminSignInPolicyPage.tsx` の `DefaultPolicyFormPresentation` など)、項目一覧 (`PasskeyList`)、対話的な状態を持つカード (`AccountSecurityPage.tsx` の `TotpEnrollmentForm`) が該当する。静的で読み取り専用のマークアップはコンテナ内に置いてよく、個別のコンポーネントへ分ける必要はない。
 3. **表示用のプロパティを小さく保つ。** コンポーネントが受け取るのは自身のセクションに必要なプロパティ（通常は 10 個より十分少ない）と、実行する操作のコールバックだけとし、コンテナの状態オブジェクト全体は渡さない。独立したセクションが複数あってプロパティが増える場合は、プロパティを広げず、セクションごとのコンポーネントへさらに分ける。
 4. **表示用コンポーネントに副作用を置かない。** データとコールバックを受け取って描画するだけとし、`fetch` や `api.*` の呼び出し、`useEffect`、ナビゲーションはコンテナに置く。セクションが自身の状態を管理して純粋なフォームに委譲する場合は、`DefaultPolicyCard` のような小さいセクション専用コンテナに置いてよい。
 5. **抽出した単位をテストする。** 抽出した各表示用コンポーネントと純粋な補助関数（日付の整形、検証、派生値の計算）に Vitest / Testing Library の単体テストを付ける。`AccountShell`、`AdminShell`、`AuthShell` を包むコンポーネントは、これらのシェルが TanStack Router の `Link` を使うため、描画にルーターコンテキストを必要とする。テストを省略せず、`src/test/renderWithRouter.tsx` の `renderWithRouter` テスト用補助関数を使う。
@@ -198,7 +198,7 @@ UI の基盤は、複雑な組み込み済みテーマに依存せず、アク�
 
 起動時設定は `backend/cmd/internal/bootstrap` が所有する単一の `Config` 型へ集約し、そこで解析と検証を行う。すべてのバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）はこの `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。
 
-検証はフェイルファストである。必須値の欠落、型や範囲の不正、相互に矛盾する組み合わせ（`persistence` が `postgres` なのに DSN が空、など）を 1 回の起動試行ですべて集約し、リスナーの待ち受け、依存先への接続、seed の適用といった副作用のある初期化を始める前に報告して終了する。設定を 1 つ直すたびに次のエラーへ進む往復を避けるため、最初の 1 件で止めずに集約する。
+設定検証は、副作用のある初期化を始める前に失敗させる。必須値の欠落、型や範囲の不正、`persistence=postgres` なのに DSN が空であるなどの矛盾を 1 回の起動試行ですべて集約し、リスナーの待ち受け、依存先への接続、seed の適用前に報告して終了する。設定を 1 つ直すたびに次のエラーが現れる往復を避けるため、最初のエラーだけでは停止しない。
 
 シークレットに分類したフィールド（DSN、SMTP 資格情報、API キーなど）の値は、検証エラー、起動ログ、`ConfigurationReference` のいずれにも出力しない。`ConfigurationReference` は `Config` の定義から生成し、生成物として追跡する。定義と生成物の乖離はリポジトリ検証で失敗させ、運用者向けの設定表を手書きで二重管理しない。
 

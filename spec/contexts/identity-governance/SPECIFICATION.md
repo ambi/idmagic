@@ -7,7 +7,7 @@ updated_at: 2026-08-15
 
 ## Overview
 
-アイデンティティガバナンス (IGA) のポリシーとオーケストレーションを所有する。LifecycleWorkflow（JML 自動化）の定義、トリガー評価、WorkflowRun の実行をまとめ、将来の IGA 機能（アクセスレビューのキャンペーン、アクセスのリクエストと承認、エンタイトルメントと SoD、必要時の権限昇格）の受け皿となる。
+アイデンティティガバナンス (IGA) のポリシーとオーケストレーションを所有する。JML を自動化する LifecycleWorkflow の定義、トリガー評価、WorkflowRun の実行を扱う。将来は、アクセスレビュー、アクセスのリクエストと承認、エンタイトルメントと SoD、必要時の権限昇格もこの Context に追加する。
 
 記録の正は持たない。User と Group は `IdManagement` が、Application の割り当ては `Application` が所有する。`IdGovernance` は User のライフサイクルイベントを購読し、冪等なコマンドインターフェースを介してこれら記録系 Context の状態を変更する。
 
@@ -25,7 +25,7 @@ updated_at: 2026-08-15
 
 ### WorkflowDefinitionLifecycle
 
-`LifecycleWorkflow.status` の状態機械。`draft` で作成し、完全な検証に成功したリビジョンを有効化すると、新しいトリガーの評価対象になる。無効化すると新しいトリガーを止め、後から再び有効化できる。管理者は `draft`、`enabled`、`disabled` のいずれからも削除できる。`enabled` から削除した場合は新しいトリガーを止め、`queued` の WorkflowRun をキャンセルする。`archived` は削除済みの定義を参照整合性のため内部に保持する終端状態であり、管理画面と通常の API には公開しない。実行履歴と `LifecycleWorkflowDeleted` 監査イベントは保持する。
+`LifecycleWorkflow` は `draft` で作成する。完全な検証に成功したリビジョンを有効化すると、新しいトリガーの評価対象になる。無効化すると新しいトリガーを止め、後から再び有効化できる。管理者は `draft`、`enabled`、`disabled` のどの状態からも削除できる。`enabled` から削除した場合は新しいトリガーを止め、`queued` の WorkflowRun をキャンセルする。削除済みの定義は参照整合性を保つため、内部では終端状態の `archived` として保持するが、管理画面と通常の API には公開しない。実行履歴と `LifecycleWorkflowDeleted` 監査イベントは保持する。
 
 Initial: `draft` Terminal: `archived`
 
@@ -40,7 +40,7 @@ Initial: `draft` Terminal: `archived`
 
 ### WorkflowRunLifecycle
 
-`WorkflowRun.status` の状態機械。`queued` で作成し、ディスパッチャーが `job_id` を関連付けて最初のステップを開始すると `running` に遷移する。1 回の試行では未完了のステップを定義順にすべて試す。Job の試行上限に達した時点で、全ステップが成功していれば `succeeded`、成功と失敗が混在していれば `partially_failed`、成功が 1 つもなければ `failed` で終了する。`no_op` は成功として扱う。Jobs 側で再試行している間は `WorkflowRun.status` を `running` のままにする。ワークフローを無効化すると、未開始の `queued` の実行は `canceled` になり、`running` の実行は現在のステップのチェックポイント後、次のステップを始める前に `canceled` になる。
+`WorkflowRun` は `queued` で作成し、ディスパッチャーが `job_id` を関連付けて最初のステップを開始すると `running` に遷移する。1 回の試行では、未完了のステップを定義順にすべて実行する。Job の試行上限に達した時点で、全ステップが成功していれば `succeeded`、成功と失敗が混在していれば `partially_failed`、成功が 1 つもなければ `failed` で終了する。`no_op` は成功として扱い、Jobs 側で再試行している間は `running` のままにする。ワークフローを無効化すると、未開始の `queued` の実行は `canceled` になり、`running` の実行は現在のステップのチェックポイント後、次のステップを始める前に `canceled` になる。
 
 Initial: `queued` Terminal: `succeeded`, `partially_failed`, `failed`, `canceled`
 
@@ -63,7 +63,7 @@ WorkflowRun の実行は管理者の権限を借りない。アクションは�
 
 ### Trigger capture via Transactional Outbox
 
-`IdManagement` は User のライフサイクルイベント（`UserCreated`、`UserAttributesChanged`、`UserStatusChanged`）を、ユーザーの変更と同じトランザクションで Transactional Outbox へ書く。`IdGovernance` はそのイベントを消費し、`WorkflowRun` と `WorkflowStep` の行を作る。これにより、Context をまたぐ単一トランザクションを要求せず、User は更新されたのに起動対象の実行が作られないという障害の隙間を塞ぐ。配信は少なくとも 1 回行われるため、`(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` の一意制約により、同じ発火事象の重複配信を 1 つの実行へ収束させる。
+`IdManagement` は User のライフサイクルイベント (`UserCreated`、`UserAttributesChanged`、`UserStatusChanged`) を、ユーザーの変更と同じトランザクションで Transactional Outbox へ書く。`IdGovernance` はそのイベントを消費し、`WorkflowRun` と `WorkflowStep` の行を作る。これにより、Context をまたぐ単一トランザクションを要求せずに、User だけが更新されて対応する実行が作られない事態を防ぐ。イベントは少なくとも 1 回配信されるため、`(tenant_id, workflow_id, revision, source_occurrence_id, target_user_id)` の一意制約を使って、同じ発火事象の重複配信を 1 つの実行へ収束させる。
 
 ### Action execution via published command surface
 

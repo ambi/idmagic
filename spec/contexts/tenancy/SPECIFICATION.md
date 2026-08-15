@@ -7,17 +7,15 @@ updated_at: 2026-08-15
 
 ## Overview
 
-Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストからのテナント解決、テナント管理 API を所有する。テナントは idmagic のあらゆる Aggregate が属する境界であり、Client、User、Consent、鍵、ポリシーはすべてこの内側に閉じる。
-
-正規ロケーションとルーティング、不変な ID と変更できる短縮名へのキーの分離、テナントごとの外観と通知テンプレート、リソース上限、セキュリティポリシーの上書き、そして管理者の操作を利用者向けの通信から分ける認可境界もここが持つ。
+Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストからのテナント解決、テナント管理 API を所有する。Tenant は IdMagic のあらゆる Aggregate が属する境界である。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| Tenant | 独立した認可境界。Client / User / Consent / 鍵 / ポリシーがこの境界に閉じる。URL 上は Realm という別名で表現される。 | テナント, テナント, Realm, realm |
+| Tenant | 独立した認可境界。URL 上は Realm という別名で表現される。 | テナント, Realm, realm |
 | DefaultTenant | 起動時に自動作成される `realm == "default"` のテナント。ID は固定 UUID の代理キー。単一テナント運用時の互換性と、接頭辞のない HTTP リクエストの解決先を兼ねる。 | デフォルトテナント |
-| TenantDisablement | Tenant.disabled_at を設定してテナント単位で `/authorize` / `/token` / `/login` 等を停止する復活可能な操作。テナント物理削除とは独立。 | disable テナント, テナント無効化 |
+| TenantDisablement | Tenant.disabled_at を設定してテナント単位で停止する復活可能な操作。テナント物理削除とは独立。 | テナント無効化 |
 | EntraFederation | Microsoft Entra ID の検証済みドメインを WS-Federation / WS-Trust の federated IdP として接続するプロファイル。 | Microsoft365Federation, AzureADFederation, M365Federation |
 | Disabled | 復活可能な無効化状態。Tenant と (慣例的に) User の disabled_at 経路で共有される。 | disabled |
 | Disable | 対象を Disabled に遷移させる。Tenant では `/api/admin/tenants/{id}/disable` から発火。 | disable |
@@ -37,7 +35,7 @@ Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストか�
 
 ### TenantLifecycle
 
-テナントのライフサイクル。Active で通常稼働、Disable で全プロトコルルートを停止、Enable で復帰。物理削除は本フェーズ対象外。
+テナントは `Active` で通常稼働し、`Disable` で全プロトコルルートを停止する。`Enable` で復帰できる。物理削除は対象外とする。
 
 Initial: `Active` Terminal: none
 
@@ -54,7 +52,7 @@ API アクセストークンでは、ロールに加えて `settings:*` が所�
 
 いずれの経路でも、ロールを持つだけでは足りない。呼び出し元のアカウントが `disabled_at` でないこと、認証済みであること、対象が呼び出し元と同じテナントに属することを合わせて要求する。状態を変える管理リクエストは、セッションによる認証に加えて `Origin` と CSRF トークンも検証する。セッション Cookie だけでは、そのリクエストが管理 UI から出たことを証明できないからである。
 
-テナントの解決自体がもう 1 つの境界である。テナントは自身の `endpoint_style` が指す正規ロケーションからしか到達できず、もう一方の経路では不在として扱う。どの経路にも一致しないリクエストをデフォルトテナントへ退避させることはない (フェイルクローズ)。存在しないテナントには `404 tenant_not_found`、無効なテナントにはプロトコルルートで `400 invalid_request` を返し、どちらも存在やステータスの違いを漏らさない。
+テナント解決も認可境界の一部である。テナントは `endpoint_style` が指す正規ロケーションからだけ到達でき、もう一方の経路では不在として扱う。どの経路にも一致しないリクエストをデフォルトテナントへフォールバックさせない。存在しないテナントには `404 tenant_not_found`、無効なテナントにはプロトコルルートで `400 invalid_request` を返し、内部のテナント情報は公開しない。
 
 ## Design
 
@@ -63,34 +61,34 @@ API アクセストークンでは、ロールに加えて `settings:*` が所�
 #### ResolveTenant
 HTTP リクエストの Host ヘッダーとパスから所属テナントを解決する内部インターフェース。
 
-**不変条件: 1 テナント = 1 正規ロケーション = 1 発行者。** テナントは自身の `endpoint_style` が指す正規ロケーションからのみ到達でき、他方の経路では不在として扱う。同一テナントに 2 つのオリジンから到達できると発行者が多義になり、Discovery Metadata の `issuer` が取得元 URL と一致しなくなる（OpenID Connect Discovery 1.0 §4.3 / RFC 8414 §3.3 違反）。
+**不変条件: 1 テナント = 1 正規ロケーション = 1 発行者。** テナントは `endpoint_style` が指す正規ロケーションからだけ到達でき、他方の経路では不在として扱う。同一テナントへ 2 つのオリジンから到達できると発行者が一意に定まらず、Discovery Metadata の `issuer` が取得元 URL と一致しなくなる (OpenID Connect Discovery 1.0 §4.3 / RFC 8414 §3.3 違反)。
 
 解決順序:
 1. `tenant_base_domain` が設定され、Host が `{label}.{tenant_base_domain}` に一致するなら、ラベルをレルムとして対応付ける。見つかったテナントの `endpoint_style` が `Subdomain` でなければ不在として扱う。
 2. パスが `/realms/{realm}/...` に一致するなら realm を対応付ける。見つかったテナントの `endpoint_style` が `Path` でなければ不在として扱う。
-3. どちらにも一致しないリクエストは、テナントが存在しないものとして扱う。任意の Host や接頭辞のないパスをデフォルトテナントへフォールバックさせない（フェイルクローズ）。テナント境界の侵害を防ぐため、デフォルトでは拒否する。
+3. どちらにも一致しないリクエストは、テナントが存在しないものとして扱う。任意の Host や接頭辞のないパスをデフォルトテナントへフォールバックさせず、フェイルクローズで拒否する。
 
 発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、解決した正規ロケーションから組み立てる。`Path` の場合、発行者は `{base}/realms/{realm}`、`Subdomain` の場合は `{scheme}://{realm}.{tenant_base_domain}` とする。存在しないテナントには `404 tenant_not_found`、無効なテナントには OAuth/OIDC のプロトコルルートで `400 invalid_request` を返し、いずれも存在やステータスの詳細を漏らさない。
 
 ### Admin authorization gate
 
-ロール名は `User.roles` に直接持ち、テナント所属を模した別のモデルは設けない。最初の管理対象が User のライフサイクルであり、`system_admin` はデフォルトの制御面テナントから操作するからである。テナント単位のロールは、テナント ID を `roles` の文字列へ埋め込む形では符号化せず、独立したモデルとして先送りする。
+ロール名は `User.roles` に直接保持し、テナント所属を表す別のモデルは設けない。現在の管理対象は User のライフサイクルであり、`system_admin` はデフォルトの制御面テナントから操作するためである。将来テナント単位のロールが必要になっても、テナント ID を `roles` の文字列へ埋め込まず、独立したモデルとして設計する。
 
 `disabled_at` は `deleted_at` とは異なる、元に戻せる停止である。停止されたユーザーは新規のサインイン、既存のセッション、トークンの再発行、UserInfo のいずれも拒否されるが、アカウントとその履歴は復帰のために残る。管理レスポンスは `password_hash` を決して含まない専用の `AdminUserResponse` を使い、管理による変更は監査で追跡できるよう、操作者と対象の両方の `sub` を載せたドメインイベントを発行する。
 
 ### Tenant resolution
 
-プロトコルと管理のルートはすべて `/realms/{realm}/...` の下に置く。テナントの作成や更新はテナントをまたぐ制御面の操作であるため、`/realms/default/admin/tenants/...` に置く。これにより、デフォルトテナントのセッション Cookie のパスがそのまま対象を覆い、Cookie のスコープをルートパスまで広げずに済む。パスの接頭辞による解決をサブドメインやヘッダーによる解決より優先したのは、ブラウザーフローにおける OIDC の `iss` クレームと Discovery メタデータを、クライアントがすでに使用した URL から導出できなければならないためである。ヘッダーは転送を越えて保持されず、サブドメインだけの方式では、ローカル開発と CI にワイルドカード DNS とテナントごとの TLS を強いることになる。
+プロトコルと管理のルートはすべて `/realms/{realm}/...` の下に置く。テナントの作成や更新はテナントをまたぐ制御面の操作なので、`/realms/default/admin/tenants/...` に置く。これにより、デフォルトテナントのセッション Cookie のパスだけで対象を覆い、Cookie のスコープをルートパスまで広げずに済む。デフォルトをパス方式とするのは、ブラウザーフローにおける OIDC の `iss` クレームと Discovery Metadata を、クライアントが使用した URL から導出できるためである。ヘッダーはプロキシを越えて保持されるとは限らず、サブドメイン方式だけではローカル開発と CI にワイルドカード DNS とテナントごとの TLS が必要になる。
 
 `TenantResolver` のミドルウェアは `^/realms/([a-z0-9][a-z0-9-]{0,62})(/|$)` で realm の区間を取り出し、`TenantRepository` で解決して、解決した `Tenant` と発行者の文字列をリクエストコンテキストに付ける。レスポンスの形が場合ごとに変わらないため、解決器のレスポンスだけからテナントを列挙することはできない。
 
-`Subdomain` を選べるのは、デプロイ時に基底ドメインを設定している場合だけである。設定しないデプロイは `Path` のままとなり、ワイルドカード DNS も証明書も要らない。`realm` 自体は不変である。発行者に現れ、`Subdomain` のテナントではホスト名にも現れるため、改名は `endpoint_style` の変更と同じ破壊をもたらす。
+`Subdomain` を選べるのは、デプロイ時に基底ドメインを設定している場合だけである。設定しないデプロイは `Path` のままとなり、ワイルドカード DNS も証明書も必要ない。`realm` は変更できるが、発行者と、`Subdomain` 方式ではホスト名にも現れるため、その変更は `endpoint_style` の変更と同様に既存クライアントとの互換性を壊す。
 
 ### Tenant identity: UUID key and realm slug
 
-`tenants` は、不変な代理キー `id UUID` と、可変で一意性を制約された識別子 `realm TEXT` を持つ。これにより、他のすべてのテーブルの `tenant_id` 外部キーが依存する中身の見えない鍵に触れず、realm を改名できる。組織の改名、ブランドの変更、綴りの訂正といった、運用上正当な要求である。外部に露出する語彙、すなわち URL の接頭辞、OIDC の発行者、Discovery Metadata には一貫して `realm` を使い、内部の参照（`tenant_id` 外部キー列、`spec.DefaultTenantID`、Context 内の `TenantID`）にはすべて UUID を使う。解決ミドルウェアが `FindByRealm(realm)` で両者を橋渡しし、管理 API は URL では `realm` でテナントを指しつつ、ユースケースを呼ぶ前に UUID へ解決する。
+`tenants` は、不変の代理キー `id UUID` と、変更可能で一意な識別子 `realm TEXT` を持つ。これにより、組織名やブランド名の変更、綴りの訂正で realm を改名しても、他のテーブルの `tenant_id` 外部キーは変更せずに済む。URL の接頭辞、OIDC の発行者、Discovery Metadata など外部に公開する識別子には `realm` を使い、`tenant_id` 外部キー列、`spec.DefaultTenantID`、Context 内の `TenantID` など内部参照には UUID を使う。解決ミドルウェアが `FindByRealm(realm)` で両者を対応付け、管理 API は URL の `realm` をユースケースの呼び出し前に UUID へ解決する。
 
-デフォルトテナントを表す 2 つの定数も同じ分離に従う。`spec.DefaultTenantID` は固定の UUID であり、idmagic が生成する ID の列が全体を通じて UUID 型であることと整合する。`spec.DefaultRealm` は文字列 `"default"` であり、テナントを URL に表す箇所だけで使う。`tenants(id)` を参照する外部キー列は UUID 型とし、`tenant_id` に SQL のデフォルト値は持たせない。すべての挿入で `tenant_id` を明示しなければならず、値が欠けた場合はデフォルトテナントへ黙って混入させず、明確に失敗させる。これはリポジトリ全体の [`tenant_id` retention classes](../../SPECIFICATION.md#2-tenant_id-retention-classes) 方針をさらに厳しくした例である。`tenants` への外部キーを持たない追記専用テーブル、または中身の見えないキーを持つテーブル（`audit_events.tenant_id`、`authentication_event_buckets.tenant_id`）では、`tenant_id` を `UUID` ではなく `TEXT` のままにする。テナントに属さない監査イベントには、UUID 列で自然に表せない番兵値が必要なためである。
+デフォルトテナントを表す 2 つの定数も同じ分離に従う。`spec.DefaultTenantID` は固定の UUID であり、IdMagic が生成する ID の列が全体を通じて UUID 型であることと整合する。`spec.DefaultRealm` は文字列 `"default"` であり、テナントを URL に表す箇所だけで使う。`tenants(id)` を参照する外部キー列は UUID 型とし、`tenant_id` に SQL のデフォルト値は持たせない。すべての挿入で `tenant_id` を明示しなければならず、値が欠けた場合はデフォルトテナントへ黙って混入させず、明確に失敗させる。これはリポジトリ全体の [`tenant_id` retention classes](../../SPECIFICATION.md#2-tenant_id-retention-classes) 方針をさらに厳しくした例である。`tenants` への外部キーを持たない追記専用テーブル、または不透明なキーを持つテーブル（`audit_events.tenant_id`、`authentication_event_buckets.tenant_id`）では、`tenant_id` を `UUID` ではなく `TEXT` のままにする。テナントに属さない監査イベントには、UUID 列で自然に表せない番兵値が必要なためである。
 
 ### Tenant security policy overrides
 
@@ -100,11 +98,11 @@ OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返
 
 ### Tenant branding
 
-`TenantBranding` は `Tenant` に埋め込まれた値オブジェクトではなく、`tenant_id` をキーとする独立したエンティティである。`TenantUserAttributeSchema` と同じ形であり、見た目に関わり独立して更新される外装設定が、認可と realm の解決が依存する中核の `Tenant` Aggregate を肥大化させないようにするためである。8 つの項目（製品名、ロゴ、ファビコン、2 つのブランドカラー、サポート導線、法務導線、フッター文言）は Okta、Entra ID、Keycloak、OneLogin に共通する部分集合として選んだ。任意の CSS、HTML、スクリプト、背景画像は、入力の余地を絞るために意図的に除外した。
+`TenantBranding` は `Tenant` に埋め込まず、`tenant_id` をキーとする独立したエンティティとする。独立して更新される外観設定によって、認可と realm 解決が依存する中核の `Tenant` Aggregate を肥大化させないためである。設定項目は、製品名、ロゴ、ファビコン、2 つのブランドカラー、サポート導線、法務導線、フッター文言に限る。任意の CSS、HTML、スクリプト、背景画像は受け付けない。
 
 信頼できないテナントの入力をマークアップや自由形式のスタイルとしてホステッドログインシェルへ渡さない。ブランドカラーは `#rrggbb` として検証し、固定した 2 個の CSS カスタムプロパティ（`--tenant-brand-primary` / `--tenant-brand-accent`）にだけ注入する。テキストフィールドはデフォルトのエスケープ処理で描画し、`dangerouslySetInnerHTML` は決して使わない。`support_url` / `legal_url` は `https://` スキームだけを許可リストに含め、`javascript:`、`data:`、平文の `http://` を書き込み時に拒否する。コントラストは保存時の制約に含めず、管理 UI で確認できるようにして、可読性の結果はテナントが負う。
 
-ロゴとファビコンの取り込みは、アプリケーションのアイコンの保存と同じ検証付きの経路 (先頭バイトの確認、大きさの上限、許可する形式の限定、`nosniff` での配信) を再利用する。両方の呼び出し箇所が同じ振る舞いを保つよう `backend/shared/mediavalidation` の共有の補助へ切り出しているが、保存先は専用の `tenant_branding_assets` のテーブルとし、外装の保存が Application の所有として扱われないようにする。`GetTenantBranding` は常に成功する。設定の欠落、不正な値、資産の欠落のいずれも、ホストされたログイン画面を失敗させるのではなくシステムデフォルトの外装へ退避する。外装の更新はすべて `updated_at` を進め、公開の応答はこれをキャッシュを無効化する版や ETag として露出する。tenant_id は既にキャッシュの鍵 (URL) の一部なので、これだけで古い外装のキャッシュを、テナントをまたぐ漏れなしに無効化できる。
+ロゴとファビコンには、Application アイコンと同じ検証処理を使う。先頭バイト、サイズ、形式を検証し、`nosniff` を付けて配信する。検証処理は `backend/shared/mediavalidation` で共有するが、保存先は専用の `tenant_branding_assets` テーブルとし、所有権は Tenancy に保つ。`GetTenantBranding` は、設定やアセットが欠けていてもシステムデフォルトへフォールバックし、ログイン画面を失敗させない。更新時は `updated_at` を進め、公開レスポンスではキャッシュ版または ETag として使う。`tenant_id` は URL の一部なので、テナント間でキャッシュを混同せずに古い外観を無効化できる。
 
 ### Tenant resource quotas
 
@@ -112,14 +110,14 @@ OAuth2 Context は `TenantRepository` を直接参照せず、委譲深さを返
 
 新しいテナントには固定のデフォルトの上限を与える (たとえばユーザー 10,000、グループ 1,000、エージェント 100、アプリケーション 50、OAuth2 のクライアント 100、有効なセッション 50,000、同意 10,000、実行中のジョブ 10、SSF ストリーム 20)。SSF ストリームの上限は送信側と受信側で分けず、`SsfStream` の行数として 1 つの上限で数える。向きは同じ集合の属性でしかなく、上限を分けても抑えたい資源 (ストリーム 1 本ごとに増える配送先・鍵取得先・保持する配送記録) は変わらないためである。System Admin は特定のテナントの上限を個別に上書きできる。Tenant Admin は自身の上限に対する使用量を閲覧できるが変更はできない。上限を決める権限を、テナント自身ではなく共有のプラットフォームの運用者に残すためである。
 
-上限のないまま既に存在するテナントへ上限を展開すると、即座の締め出しを招きかねない。そこで移行では標準のデフォルトではなく、余裕を持たせた安全な上限を先に割り当てる (たとえば現在の使用量の 2 倍、あるいはデフォルトの 10 倍)。その後に背景で動く突き合わせのジョブが使用量のカウンターを実際の行数と照合し、それから System Admin が意図して上限を締められるようにする。
+既存テナントへ初めて上限を適用する際は、現在の使用量を下回って直ちに操作を拒否しないよう、十分な余裕を持つ値を割り当てる。たとえば現在の使用量の 2 倍またはデフォルトの 10 倍を使う。その後、バックグラウンドの照合ジョブで使用量カウンターと実際の行数を一致させてから、System Admin が意図した値へ上限を引き下げる。
 
 ### Design Decisions
 
 - テナントの解決はサブドメインやヘッダーではなく、パスの接頭辞 (`/realms/{realm}/...`) をデフォルトとする。ヘッダーは転送を越えて保持されず、サブドメインだけの方式はローカル開発と CI にワイルドカード DNS とテナントごとの TLS を強いるからである。
 - テナントの正規ロケーションはちょうど 1 つとし、もう一方の経路を不在として扱う。2 つのオリジンから同じテナントに到達できると発行者が多義になり、Discovery Metadata の `issuer` が取得元 URL と一致しなくなるからである。
 - `tenants` の鍵を、不変な UUID の代理キーと、可変で一意な `realm` へ分割する。組織の改名やブランド変更で realm を変えるときに、すべての `tenant_id` 外部キーが頼る鍵へ触れずに済ませるためである。
-- idmagic が生成する id の列は初期データを含め UUID 型とする。値を外部の権威が定める id (SAML の `entity_id` など) はこの限りではない。
+- IdMagic が生成する id の列は初期データを含め UUID 型とする。値を外部の権威が定める id (SAML の `entity_id` など) はこの限りではない。
 - `TenantBranding` と属性スキーマは `Tenant` に埋め込まず、`tenant_id` をキーとする独立したエンティティとする。見た目や機能ごとの設定が増えるたびに、認可と realm 解決が依存する中核の Aggregate を太らせないためである。
 - 外装として受け取るのは限定した項目だけとし、任意の CSS、HTML、スクリプト、背景画像は受け付けない。信頼できないテナントの入力を、共有のログインシェルへマークアップとして渡さないためである。
 - 外装色は形式だけを検証し、WCAG のコントラストを保存時の制約にはしない。管理 UI で結果を確認できるようにし、最終的な可読性はテナントが負う。
