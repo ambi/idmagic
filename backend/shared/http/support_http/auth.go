@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	apitokendomain "github.com/ambi/idmagic/backend/apitoken/domain"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -121,6 +122,7 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 		if revoked {
 			return nil, &InvalidTokenError{}
 		}
+		var apiToken *apitokendomain.Principal
 		if res.Managed {
 			if a.ApiTokenAuthenticator == nil {
 				return nil, &InvalidTokenError{}
@@ -132,6 +134,7 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 			if principal.UserID != res.Sub || principal.ClientID != res.ClientID {
 				return nil, &InvalidTokenError{}
 			}
+			apiToken = &principal
 		}
 		if res.SenderConstraint != nil && res.SenderConstraint.Type == spec.SenderConstraintDPoP {
 			if scheme != "dpop" || a.DpopReplayStore == nil {
@@ -151,17 +154,26 @@ func (a *Authenticator) resolveAuthnContext(c *echo.Context) (*authdomain.Authen
 		// portal scope を要求する。account portal の token で admin API を叩く等の
 		// cross-portal 利用を fail-closed で拒否する。緊急セッション経路は scope を
 		// 持たないが、その経路はこの分岐を通らない (role 境界で守る)。
+		//
+		// API アクセストークンは portal scope を持たず、リソースと操作の粒度スコープだけを
+		// 持つ。そこで管理 API では、契約が operation ごとに宣言した粒度スコープが portal
+		// scope の代わりになる (REQ-APITOKENS-004)。account API が既に同じ形を採っている。
 		fields := strings.Fields(res.Scope)
 		if want := requiredPortalScope(c.Request().URL.Path); want != "" {
-			if want == "idmagic.account" {
+			switch {
+			case want == "idmagic.account":
 				required, allowed := requiredAccountScope(c.Request().Method, c.Request().URL.Path)
 				if !allowed {
-					return nil, &InsufficientScopeError{Required: "interactive_session"}
+					return nil, &InsufficientScopeError{Required: spec.InteractiveSessionScope}
 				}
 				if !hasRequiredAccountScope(fields, required, c.Request().URL.Path) {
 					return nil, &InsufficientScopeError{Required: required}
 				}
-			} else if !slices.Contains(fields, want) {
+			case apiToken != nil:
+				if err := requireAdminApiTokenScope(c, spec.CurrentRuntimeContract(), apiToken.Scopes); err != nil {
+					return nil, err
+				}
+			case !slices.Contains(fields, want):
 				return nil, &InsufficientScopeError{Required: want}
 			}
 		}

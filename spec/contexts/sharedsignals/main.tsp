@@ -28,6 +28,7 @@ model ListSsfStreamsError403 {
 }
 
 @doc("管理者が所属テナントの SsfStream を一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:read"])
 @TypeSpec.OpenAPI.operationId("ListSsfStreams")
 @route("/api/admin/v1/shared-signals/streams")
 @get
@@ -65,6 +66,7 @@ model GetSsfStreamError403 {
 }
 
 @doc("管理者が個々の SsfStream を参照する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:read"])
 @TypeSpec.OpenAPI.operationId("GetSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}")
 @get
@@ -120,6 +122,7 @@ model RegisterSsfTransmitterStreamError422 {
 }
 
 @doc("管理者が direction=Transmit の SsfStream と配送先 (SsfTransmitterConfig) を登録する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("RegisterSsfTransmitterStream")
 @route("/api/admin/v1/shared-signals/streams/transmitter")
 @post
@@ -176,6 +179,7 @@ model RegisterSsfReceiverStreamError422 {
 }
 
 @doc("管理者が direction=Receive の SsfStream と外部 transmitter の信頼設定 (SsfReceiverConfig) を登録する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("RegisterSsfReceiverStream")
 @route("/api/admin/v1/shared-signals/streams/receiver")
 @post
@@ -229,6 +233,7 @@ model UpdateSsfStreamError422 {
 }
 
 @doc("管理者が SsfStream の event_types 等のメタデータを更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("UpdateSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}")
 @patch
@@ -266,6 +271,7 @@ model DisableSsfStreamError403 {
 }
 
 @doc("管理者が SsfStream を無効化する。以後配送/受理を行わない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("DisableSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}/disable")
 @post
@@ -303,6 +309,7 @@ model EnableSsfStreamError403 {
 }
 
 @doc("管理者が無効化済みの SsfStream を再有効化する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("EnableSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}/enable")
 @post
@@ -336,6 +343,7 @@ model DeleteSsfStreamError403 {
 }
 
 @doc("管理者が SsfStream を削除する。付随する Transmitter/ReceiverConfig は cascade で削除する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:write"])
 @TypeSpec.OpenAPI.operationId("DeleteSsfStream")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}")
 @delete
@@ -373,6 +381,7 @@ model ListSecurityEventDeliveriesError403 {
 }
 
 @doc("管理者が direction=Transmit の SsfStream の配送状況 (pending/delivered/failed/dead_letter) を一覧する。運用の delivery health 確認に使う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["shared-signals:read"])
 @TypeSpec.OpenAPI.operationId("ListSecurityEventDeliveries")
 @route("/api/admin/v1/shared-signals/streams/{stream_id}/deliveries")
 @get

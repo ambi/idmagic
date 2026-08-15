@@ -28,6 +28,7 @@ model ListLifecycleWorkflowsError403 {
 }
 
 @doc("管理者が所属テナントの未削除 LifecycleWorkflow を一覧する。削除済み定義は返さない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflows")
 @route("/api/admin/v1/lifecycle_workflows")
 @get
@@ -69,6 +70,7 @@ model CreateLifecycleWorkflowError403 {
 }
 
 @doc("管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("CreateLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows")
 @post
@@ -106,6 +108,7 @@ model GetLifecycleWorkflowError403 {
 }
 
 @doc("管理者が LifecycleWorkflow 1 件を取得する。別テナントの workflow は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
 @get
@@ -158,6 +161,7 @@ model UpdateLifecycleWorkflowError409 {
 }
 
 @doc("管理者が LifecycleWorkflow の trigger/actions/表示情報を更新する。expected_revision が\ncurrent_revision と一致しない場合は WorkflowRevisionConflictError で拒否する (lost update 防止)。\ntrigger または actions が変わる場合は current_revision を 1 増やすが status/enabled_revision は\n変えない (再度 EnableLifecycleWorkflow を呼ぶまで旧 revision の trigger 評価が続く)。archived\nworkflow は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("UpdateLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
 @put
@@ -201,6 +205,7 @@ model EnableLifecycleWorkflowError403 {
 }
 
 @doc("管理者が current_revision を validation し、成功すれば enabled_revision に設定して\nstatus=enabled にする。以後この revision が trigger 評価対象になる。validation 失敗または\narchived workflow は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("EnableLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/enable")
 @post
@@ -244,6 +249,7 @@ model DisableLifecycleWorkflowError403 {
 }
 
 @doc("管理者が LifecycleWorkflow を disable する。新規 trigger を止め、未開始の queued run を\ncanceled にする。running run は現在 step の checkpoint 後、次 step の前で停止する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DisableLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/disable")
 @post
@@ -277,6 +283,7 @@ model DeleteLifecycleWorkflowError403 {
 }
 
 @doc("管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DeleteLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
 @delete
@@ -320,6 +327,7 @@ model DryRunLifecycleWorkflowError403 {
 }
 
 @doc("管理者が enabled_revision (未指定なら current_revision) を対象 user へ試算する。同じ\nvalidator / trigger evaluator / action planner を使い、対象 User の現在の group membership /\napplication assignment / required action / status / email 検証状態を実際に読んで action ごとの\nwould_change / no_op / blocked を判定する。trigger の filter が対象 User に一致しない場合は\n全 action を blocked (reason: trigger_not_matched) として返す。対象 user が存在しないか別\ntenant の場合は InvalidRequestError を返す。WorkflowRun / Job / membership / assignment /\nrequired action / status / email のいずれも作成・変更しない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("DryRunLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/dry_run")
 @post
@@ -358,6 +366,7 @@ model ListLifecycleWorkflowRunsError403 {
 }
 
 @doc("管理者が特定 LifecycleWorkflow の run 履歴を新しい順に一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflowRuns")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/runs")
 @get
@@ -395,6 +404,7 @@ model GetLifecycleWorkflowRunError403 {
 }
 
 @doc("管理者が WorkflowRun 1 件の詳細 (trigger、revision、target user、Job attempt、各 step) を取得する。別テナントの run は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflowRun")
 @route("/api/admin/v1/lifecycle_workflow_runs/{run_id}")
 @get
@@ -436,6 +446,7 @@ model RetryLifecycleWorkflowRunError403 {
 }
 
 @doc("管理者が partially_failed または failed の WorkflowRun を再試行する。未完了 (failed) step\nだけを対象に新しい Job を関連付ける。changed / no_op 済み step は変更しない。disable と競合する\n場合は新しい step を開始しない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("RetryLifecycleWorkflowRun")
 @route("/api/admin/v1/lifecycle_workflow_runs/{run_id}/retry")
 @post

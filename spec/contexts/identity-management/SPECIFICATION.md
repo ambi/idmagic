@@ -104,6 +104,17 @@ Initial: `queued` Terminal: `failed`, `canceled`, `expired`
 
 管理 API はプリンシパルの種類と操作ごとに権限を分ける。`User` は参照 (`admin:user_read`)、作成 (`admin:user_create`)、CSV インポート (`admin:user_import`)、更新 (`admin:user_update`)、削除 (`admin:user_delete`)、復元 (`admin:user_restore`)、完全削除 (`admin:user_purge`)、`Group` は参照 (`admin:groups_read`) と変更 (`admin:groups_write`)、`Agent` は `admin:agents_manage` を要する。いずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。Agent のキルスイッチを含むライフサイクル操作も、汎用の管理者権限ではなく `admin:agents_manage` で制御する。
 
+API アクセストークンでは、ロールに加えて次のスコープをそれぞれの操作に要求する。CSV エクスポートの一連の操作は対象を変更せず読み出しを投影するだけなので参照系に置く。参照だけのためにデータ変更の権限を渡さずに済ませるためである。逆に CSV インポートは `User` を変更するため変更系に置く。Agent のキルスイッチも `agents:write` に含める。`DeleteAgent` は同じスコープにあり、削除はキルより厳密に破壊的であるため、キルだけを外しても防御にはならないからである。
+
+| スコープ | 許可する操作 |
+|---|---|
+| `users:read` | ListAdminUsers、GetAdminUser、ListUserGroups、StartUserCsvExport、ListUserExports、GetUserExport、DownloadUserExportFile、CancelUserExport |
+| `users:write` | CreateAdminUser、UpdateAdminUser、DisableAdminUser、EnableAdminUser、DeleteAdminUser、RestoreAdminUser、SetUserRequiredAction、ClearUserRequiredAction、ImportAdminUsers、GetAdminUserImport、ApplyAdminUserImport |
+| `groups:read` | ListGroups、GetGroup、PreviewDynamicGroupRule、StartGroupCsvExport、ListGroupExports、GetGroupExport、DownloadGroupExportFile、CancelGroupExport、StartGroupMemberCsvExport、ListGroupMemberExports、GetGroupMemberExport、DownloadGroupMemberExportFile、CancelGroupMemberExport |
+| `groups:write` | CreateGroup、UpdateGroup、DeleteGroup、UpdateDynamicGroupRule、EnableDynamicGroupRule、DisableDynamicGroupRule、AddGroupMember、RemoveGroupMember |
+| `agents:read` | ListAgents、GetAgent |
+| `agents:write` | RegisterAgent、UpdateAgent、DisableAgent、EnableAgent、KillAgent、DeleteAgent、BindAgentCredential、UnbindAgentCredential |
+
 対象は常に呼び出し元と同じテナントに属していなければならない。テナントをまたぐメンバーシップは無条件に拒否し、`AddMember` は対象 `User` を読み込んだうえで別テナントに属していれば拒否する。
 
 セルフサービス API (`/api/account/*`) は認証済み本人の記録だけに閉じる。本人が書き込めるのは `editable_by_user == true` の属性に限り、更新は対応表全体の置き換えではなくキーごとの併合とする。本人へ開示するのも `self_readable` と `claim_exposed` の属性だけで、`admin_readable` と `private` は読み出せない。
@@ -450,3 +461,15 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 - THEN 作成したグループの `email` と `attributes` が指定どおりに保存され、"GroupCreated" が発行される
 - WHEN "operator" が同じグループの `email` と `attributes` を更新する
 - THEN 更新後のグループに新しい値が反映され、"GroupUpdated" の `changed_fields` に "email" と "attributes" が含まれる
+
+### REQ-IDMANAGEMENT-025: 管理 API クライアントはプリンシパルの種類と操作の粒度でだけ User / Group / Agent を操作できる
+- ACTOR ManagementApiClient
+- GIVEN クライアントは対象テナントの有効な API アクセストークンを提示している
+- GIVEN トークンの発行者は対象操作に必要なロールを今も持っている
+- WHEN クライアントが User、Group、または Agent の操作をリクエストする
+  - ALT `users:read` だけで User の変更または CSV インポートを要求する → 操作は AccessDeniedError で拒否される
+  - ALT `users:*` だけで Group または Agent の操作を要求する → 操作は AccessDeniedError で拒否される
+  - ALT `agents:read` だけで Agent のキルまたは削除を要求する → 操作は AccessDeniedError で拒否される
+- THEN `users:read` は User の参照に加えて、User を変更しない CSV エクスポートの開始、参照、ダウンロード、取り消しを許可する
+- THEN `groups:read` は Group の参照に加えて、Group を変更しない動的グループ規則のプレビューと CSV エクスポートを許可する
+- THEN `agents:write` は Agent のキルと削除の両方を許可する

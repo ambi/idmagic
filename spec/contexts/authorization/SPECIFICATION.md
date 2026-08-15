@@ -50,7 +50,7 @@ RFC 8693 — https://www.rfc-editor.org/rfc/rfc8693.html
 
 ## Authorization Boundary
 
-認可モデルと関係タプルの管理は `AdminAuthorizationModelManage` 権限 (AuthZEN action `admin:authorization_model_manage`) を要する。この権限はテナント管理者に属し、テナント境界を越えない。
+認可モデルと関係タプルの管理は `AdminAuthorizationModelManage` 権限 (AuthZEN action `admin:authorization_model_manage`) を要する。この権限はテナント管理者に属し、テナント境界を越えない。この Context の管理 API は対話セッション限定であり、API アクセストークンからはどのスコープを持っていても到達できない。`ApiTokenScope` は認可モデルと関係タプルに対応する語彙をまだ持たず、既存のスコープへ畳み込めば、そのスコープを持つトークンが黙って認可判定の書き換え能力を得るからである。
 
 関係タプルの読み書きは、常に呼び出し元のテナントで解決した `tenant_id` に閉じる。リクエスト本体が別テナントの識別子を含んでいても、それが判定や書き込みの対象テナントを変えることはない。判定に用いるタプルの読み出しも同じ境界で行うため、他テナントへ書き込まれたタプルが判定へ寄与する経路は存在しない。
 

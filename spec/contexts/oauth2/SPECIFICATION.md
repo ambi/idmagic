@@ -571,7 +571,21 @@ Initial: `Stored` Terminal: `Used`, `Expired`
 - **クライアントの認証**: `/token`、`/introspect`、`/revoke` などは、`client_secret_basic`、`client_secret_post`、`private_key_jwt`、`tls_client_auth`、`self_signed_tls_client_auth` のいずれかでクライアントを認証する。認証に失敗した理由は区別せず、一律に `invalid_client` を返す。
 - **ユーザーの認証と同意**: `/authorize` はブラウザーのログインセッションで主体を決め、Application の割り当てと実効サインインポリシーを満たしたうえで、`(subject, client_id)` の同意が要求スコープを覆う場合にだけ認可コードを発行する。
 - **トークンによるアクセス**: 発行したトークンで到達できる範囲は、そのトークンのスコープが決める。`account:*` を含むユーザー紐付きのスコープは、User の subject を持たないグラント (`client_credentials` や、subject を伴わない Token Exchange) では発行しない。
-- **管理 API**: クライアント (`admin:clients_manage`)、同意 (`admin:consents_manage`)、`authorization_details` の型 (`admin:authorization_detail_types_manage`) の管理は、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行う。API アクセストークンでは `oauth-clients:*`、`consents:*`、`authorization-detail-types:*`、`mcp-resource-servers:*` が対応する。
+- **管理 API**: クライアント (`admin:clients_manage`)、同意 (`admin:consents_manage`)、`authorization_details` の型 (`admin:authorization_detail_types_manage`) の管理は、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行う。
+
+管理 API では、API アクセストークンにロールに加えて次のスコープをそれぞれの操作に要求する。ロールポリシー一覧はテナント設定の参照なので `settings:read` に対応させる。
+
+| スコープ | 許可する操作 |
+|---|---|
+| `oauth-clients:read` | ListAdminOAuth2Clients、GetAdminOAuth2Client |
+| `oauth-clients:write` | CreateAdminOAuth2Client、UpdateAdminOAuth2Client、DeleteAdminOAuth2Client |
+| `authorization-detail-types:read` | ListAuthorizationDetailTypes、GetAuthorizationDetailType |
+| `authorization-detail-types:write` | CreateAuthorizationDetailType、UpdateAuthorizationDetailType、DeleteAuthorizationDetailType |
+| `mcp-resource-servers:read` | ListAdminMcpResourceServers、GetAdminMcpResourceServer |
+| `mcp-resource-servers:write` | CreateAdminMcpResourceServer、UpdateAdminMcpResourceServer、DeleteAdminMcpResourceServer |
+| `consents:read` | ListAdminConsents、GetAdminConsent |
+| `consents:write` | RevokeAdminConsent |
+| `settings:read` | ListAdminRolePolicies |
 
 すべての判定は AuthZEN 形式の `authorize()` ポートを通り、規則表が要件の論理積を評価する。判定を返せない場合、事実が欠けている場合、ストアへ到達できない場合のいずれも、許可へ退避しない。
 

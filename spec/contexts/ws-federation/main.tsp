@@ -150,6 +150,7 @@ model ConfigureEntraFederationError403 {
 }
 
 @doc("Microsoft Entra domain federation preset を設定する。検証済み domain、 IssuerUri、sourceAnchor 属性を受け取り、sourceAnchor が既存 user で欠落・重複しないこと、 GUID または base64 ImmutableID として正規化できることを検証する。成功時は UPN / ImmutableID / persistent NameID の claim preset を持つ WsFedRelyingParty を upsert し、Entra に登録する PassiveLogOnUri / ActiveLogOnUri / MetadataExchangeUri を返す。 Hybrid Azure AD Join device registration は windowstransport + コンピュータアカウント Kerberos を要するため未提供として診断に含める。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("ConfigureEntraFederation")
 @route("/api/admin/v1/wsfed/entra-federation")
 @post
@@ -196,6 +197,7 @@ model RegisterWsFedRelyingPartyError403 {
 }
 
 @doc("管理者が WS-Federation relying party trust を登録または更新する。wtrealm、reply_urls、audience、token_type、claim_policy を契約として保存し、reply_urls は空でない閉集合にする。管理操作は AdminFederationTrustsManage で保護する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("RegisterWsFedRelyingParty")
 @route("/api/admin/v1/wsfed/relying-parties")
 @post
@@ -223,6 +225,7 @@ model ListWsFedRelyingPartiesError403 {
 }
 
 @doc("管理者が所属テナントの WS-Federation relying party trust を一覧する。管理操作は AdminFederationTrustsManage で保護する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:read"])
 @TypeSpec.OpenAPI.operationId("ListWsFedRelyingParties")
 @route("/api/admin/v1/wsfed/relying-parties")
 @get
@@ -265,6 +268,7 @@ model DeleteWsFedRelyingPartyError409 {
 }
 
 @doc("管理者が所属テナントの catalog 外 WS-Federation relying party trust を wtrealm で削除する。application_id が非 NULL の RP は ApplicationOwnedProtocolError (HTTP 409) で拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("DeleteWsFedRelyingParty")
 @route("/api/admin/v1/wsfed/relying-parties")
 @delete

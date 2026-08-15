@@ -39,6 +39,7 @@ model GetAuthorizationModelError404 {
 }
 
 @doc("所属テナントで published 済みの最新の認可モデルを取得する。version を指定すると特定の版を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("GetAuthorizationModel")
 @route("/api/admin/v1/authorization/model")
 @get
@@ -91,6 +92,7 @@ model PutAuthorizationModelError422 {
 }
 
 @doc("所属テナントの認可モデルを新しい版として published する。既存の版は書き換えず追記する。未知の関係の参照や書き換え規則の循環は 422 で拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("PutAuthorizationModel")
 @route("/api/admin/v1/authorization/model")
 @post
@@ -119,6 +121,7 @@ model ListRelationTuplesError403 {
 }
 
 @doc("所属テナントの RelationTuple を絞り込んで一覧する。すべてのフィルターは省略可能で、上限件数まで返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListRelationTuples")
 @route("/api/admin/v1/authorization/relation-tuples")
 @get
@@ -174,6 +177,7 @@ model WriteRelationTuplesError422 {
 }
 
 @doc("所属テナントの RelationTuple を 1 トランザクションで追加・削除する。登録済みの認可モデルに適合しない差分は 422 で拒否し、部分適用しない。応答の整合トークンは以後の CheckAccess へ渡せる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("WriteRelationTuples")
 @route("/api/admin/v1/authorization/relation-tuples")
 @post
@@ -222,6 +226,7 @@ model CheckAccessError422 {
 }
 
 @doc("主体と代行チェーンが対象リソースに対して関係を持つかを判定する。診断と内部利用のための操作であり、許可・不許可のいずれも 200 で返す。判定不能はここでも許可にせず、不許可として返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("CheckAccess")
 @route("/api/admin/v1/authorization/check")
 @post
@@ -283,6 +288,7 @@ model ListAccessibleResourcesError422 {
 }
 
 @doc("主体と代行チェーンが指定した関係を持つリソース識別子を、上限つきの走査で列挙する。上限に達した場合は truncated を立てる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListAccessibleResources")
 @route("/api/admin/v1/authorization/list-accessible-resources")
 @post

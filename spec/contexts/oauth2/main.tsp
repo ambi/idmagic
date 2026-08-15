@@ -832,6 +832,7 @@ model ListAuthorizationDetailTypesError403 {
 }
 
 @doc("管理者が所属テナントの authorization_details type を一覧する (RFC 9396)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:read"])
 @TypeSpec.OpenAPI.operationId("ListAuthorizationDetailTypes")
 @route("/api/admin/v1/authorization-detail-types")
 @get
@@ -879,6 +880,7 @@ model GetAuthorizationDetailTypeError422 {
 }
 
 @doc("管理者が単一 type を取得する。別テナントの type は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:read"])
 @TypeSpec.OpenAPI.operationId("GetAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types/{type}")
 @get
@@ -930,6 +932,7 @@ model CreateAuthorizationDetailTypeError422 {
 }
 
 @doc("管理者が所属テナントに authorization_details type を登録する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("CreateAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types")
 @post
@@ -982,6 +985,7 @@ model UpdateAuthorizationDetailTypeError422 {
 }
 
 @doc("管理者が type の schema / display_template / description / state を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types/{type}")
 @patch
@@ -1015,6 +1019,7 @@ model DeleteAuthorizationDetailTypeError403 {
 }
 
 @doc("管理者が type を削除する。発行済みトークンは失効まで有効。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["authorization-detail-types:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAuthorizationDetailType")
 @route("/api/admin/v1/authorization-detail-types/{type}")
 @delete
@@ -1052,6 +1057,7 @@ model ListAdminOAuth2ClientsError400 {
 }
 
 @doc("管理者が所属テナントの client を client_id 昇順の双方向 keyset pagination で一覧する。\ncursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminOAuth2Clients")
 @route("/api/admin/v1/clients")
 @get
@@ -1090,6 +1096,7 @@ model GetAdminOAuth2ClientError403 {
 }
 
 @doc("管理者が所属テナントの client を取得する。別テナントの client は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
 @get
@@ -1141,6 +1148,7 @@ model CreateAdminOAuth2ClientError422 {
 }
 
 @doc("管理者が所属テナントに client を作成する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminOAuth2Client")
 @route("/api/admin/v1/clients")
 @post
@@ -1183,6 +1191,7 @@ model UpdateAdminOAuth2ClientError403 {
 }
 
 @doc("管理者が所属テナントの client metadata を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
 @patch
@@ -1226,6 +1235,7 @@ model DeleteAdminOAuth2ClientError409 {
 }
 
 @doc("管理者が所属テナントの catalog 外 client を削除する。application_id が非 NULL の client は ApplicationOwnedProtocolError (HTTP 409) で拒否し、Application 削除へ誘導する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["oauth-clients:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminOAuth2Client")
 @route("/api/admin/v1/clients/{client_id}")
 @delete
@@ -1253,6 +1263,7 @@ model ListAdminMcpResourceServersError403 {
 }
 
 @doc("管理者が所属テナントの McpResourceServer を一覧する (AdminMcpResourcesManage)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminMcpResourceServers")
 @route("/api/admin/v1/mcp-resource-servers")
 @get
@@ -1290,6 +1301,7 @@ model GetAdminMcpResourceServerError403 {
 }
 
 @doc("管理者が所属テナントの McpResourceServer を取得する。別テナントの登録は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers/{id}")
 @get
@@ -1331,6 +1343,7 @@ model CreateAdminMcpResourceServerError403 {
 }
 
 @doc("管理者が所属テナントに McpResourceServer を登録する。resource は tenant 内で一意でなければならない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers")
 @post
@@ -1373,6 +1386,7 @@ model UpdateAdminMcpResourceServerError403 {
 }
 
 @doc("管理者が McpResourceServer の name / scopes / state を更新する。resource (canonical URI) は不変。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers/{id}")
 @patch
@@ -1406,6 +1420,7 @@ model DeleteAdminMcpResourceServerError403 {
 }
 
 @doc("管理者が McpResourceServer を削除する。以後この resource を指定する新規発行は invalid_target で拒否する (発行済みトークンは失効まで有効)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["mcp-resource-servers:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminMcpResourceServer")
 @route("/api/admin/v1/mcp-resource-servers/{id}")
 @delete
@@ -1443,6 +1458,7 @@ model ListAdminConsentsError400 {
 }
 
 @doc("管理者が所属テナントの Consent を監査目的で user_id, client_id 昇順の双方向 keyset\npagination で一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminConsents")
 @route("/api/admin/v1/consents")
 @get
@@ -1481,6 +1497,7 @@ model GetAdminConsentError403 {
 }
 
 @doc("管理者が所属テナントの Consent を subject と client_id で取得する。別テナントの Consent は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminConsent")
 @route("/api/admin/v1/consents/{user_id}/{client_id}")
 @get
@@ -1514,6 +1531,7 @@ model RevokeAdminConsentError403 {
 }
 
 @doc("管理者が所属テナントの Consent を論理撤回する。管理者による Consent の作成・scope 拡張は許可しない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["consents:write"])
 @TypeSpec.OpenAPI.operationId("RevokeAdminConsent")
 @route("/api/admin/v1/consents/{user_id}/{client_id}")
 @delete
@@ -1542,6 +1560,7 @@ model ListAdminRolePoliciesError403 {
 }
 
 @doc("管理者が、自身に可視な role・permission・HTTP interface の対応を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminRolePolicies")
 @route("/api/admin/v1/policy/roles")
 @get

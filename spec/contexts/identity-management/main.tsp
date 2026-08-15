@@ -252,6 +252,7 @@ model ListAdminUsersError400 {
 }
 
 @doc("管理者が削除されていないユーザーを preferred_username 昇順 (同値は id で tie-break) の\n双方向 keyset pagination で一覧する。query は username、name、email、id、roles を tenant 全体で\ncase-insensitive contains 検索し、status とともに絞り込む。cursor は応答の Link response header\n(rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminUsers")
 @route("/api/admin/v1/users")
 @get
@@ -292,6 +293,7 @@ model GetAdminUserError403 {
 }
 
 @doc("管理者が id を指定してユーザーを取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminUser")
 @route("/api/admin/v1/users/{user_id}")
 @get
@@ -344,6 +346,7 @@ model CreateAdminUserError422 {
 }
 
 @doc("管理者が Authentication context の PasswordPolicy を満たす初期パスワードでユーザーを作成する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminUser")
 @route("/api/admin/v1/users")
 @post
@@ -387,6 +390,7 @@ model ImportAdminUsersError403 {
 }
 
 @doc("管理者が UTF-8 (BOM 可) CSV を streaming upload して副作用のない preview ジョブへ投入する。User export と共有する configurable transfer policy の既定は 100,000 data rows・64 MiB/file・64 KiB/field。payload は immutable artifact store に保存し、job params には tenant-scoped reference・server-computed SHA-256・size だけを保持する。ヘッダーは安定した機械キーの任意順・任意部分集合を許可し、未知・重複・password/hash 列をファイル単位で拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminUsers")
 @route("/api/admin/v1/users/imports")
 @post
@@ -428,6 +432,7 @@ model ApplyAdminUserImportError403 {
 }
 
 @doc("管理者が同一 tenant の成功済み preview job を指定して CSV を適用する。CSV は再送せず、preview payload と source_sha256 を読み、現在の repository 状態に対して同じ deterministic planner で再計画する。ファイル全体は行単位部分成功、各行の profile・roles・required actions・custom attributes は単一 aggregate mutation として原子的に確定する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminUserImport")
 @route("/api/admin/v1/users/imports/{preview_job_id}/apply")
 @post
@@ -466,6 +471,7 @@ model GetAdminUserImportError403 {
 }
 
 @doc("管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。row error は immutable result artifact に固定件数の page chunk として保存し、tenant・job・error ordinal に結合した署名付き opaque cursor と limit（既定 100、最大 200）で双方向取得する。job result JSON は操作別件数、result artifact metadata、error_total だけを保持する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("GetAdminUserImport")
 @route("/api/admin/v1/users/imports/{job_id}")
 @get
@@ -521,6 +527,7 @@ model StartUserCsvExportError422 {
 }
 
 @doc("管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。CSV ヘッダーは表示 label ではなく要求した machine key と一致する。列は組み込み User allowlist (13 個のコア列 + attr:<key> の組み込み拡張属性 27 種) と実効 TenantUserAttributeSchema の custom:<key> (テナント定義属性) の部分集合に限り、status フィルタを引き継げる。生成 payload は import と同じ UserCsvTransferPolicy と immutable artifact store を使うため、成功した User export は無編集で preview できる。202 とエクスポート id を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("StartUserCsvExport")
 @route("/api/admin/v1/users/exports")
 @post
@@ -548,6 +555,7 @@ model ListUserExportsError403 {
 }
 
 @doc("管理者が User エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。CSV 本体や PII 値は含まない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListUserExports")
 @route("/api/admin/v1/users/exports")
 @get
@@ -585,6 +593,7 @@ model GetUserExportError403 {
 }
 
 @doc("管理者が User エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetUserExport")
 @route("/api/admin/v1/users/exports/{export_id}")
 @get
@@ -622,6 +631,7 @@ model DownloadUserExportFileError403 {
 }
 
 @doc("管理者が完成済み User エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("DownloadUserExportFile")
 @route("/api/admin/v1/users/exports/{export_id}/file")
 @get
@@ -663,6 +673,7 @@ model CancelUserExportError403 {
 }
 
 @doc("管理者が終端前の User エクスポートを取消す。既に終端の場合は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("CancelUserExport")
 @route("/api/admin/v1/users/exports/{export_id}/cancel")
 @post
@@ -717,6 +728,7 @@ model StartGroupCsvExportError422 {
 }
 
 @doc("管理者が Group 一覧の CSV エクスポートを非同期ジョブとして開始する。列は Group allowlist の部分集合に限る。202 とエクスポート id を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupCsvExport")
 @route("/api/admin/v1/groups/exports")
 @post
@@ -744,6 +756,7 @@ model ListGroupExportsError403 {
 }
 
 @doc("管理者が Group エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupExports")
 @route("/api/admin/v1/groups/exports")
 @get
@@ -781,6 +794,7 @@ model GetGroupExportError403 {
 }
 
 @doc("管理者が Group エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupExport")
 @route("/api/admin/v1/groups/exports/{export_id}")
 @get
@@ -818,6 +832,7 @@ model DownloadGroupExportFileError403 {
 }
 
 @doc("管理者が完成済み Group エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupExportFile")
 @route("/api/admin/v1/groups/exports/{export_id}/file")
 @get
@@ -859,6 +874,7 @@ model CancelGroupExportError403 {
 }
 
 @doc("管理者が終端前の Group エクスポートを取消す。既に終端の場合は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupExport")
 @route("/api/admin/v1/groups/exports/{export_id}/cancel")
 @post
@@ -914,6 +930,7 @@ model StartGroupMemberCsvExportError422 {
 }
 
 @doc("管理者が特定 Group のメンバー一覧の CSV エクスポートを開始する。group_id は path から取り、そのグループのメンバーだけを対象とする (Entra / Okta / Google と同じ per-group)。202 とエクスポート id を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupMemberCsvExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports")
 @post
@@ -942,6 +959,7 @@ model ListGroupMemberExportsError403 {
 }
 
 @doc("管理者が特定 Group のメンバーエクスポート一覧を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupMemberExports")
 @route("/api/admin/v1/groups/{group_id}/members/exports")
 @get
@@ -979,6 +997,7 @@ model GetGroupMemberExportError403 {
 }
 
 @doc("管理者が特定 Group のメンバーエクスポート 1 件の状態を取得する。別グループの export id は解決しない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupMemberExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}")
 @get
@@ -1017,6 +1036,7 @@ model DownloadGroupMemberExportFileError403 {
 }
 
 @doc("管理者が完成済みメンバーエクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupMemberExportFile")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}/file")
 @get
@@ -1060,6 +1080,7 @@ model CancelGroupMemberExportError403 {
 }
 
 @doc("管理者が終端前のメンバーエクスポートを取消す。既に終端の場合は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupMemberExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}/cancel")
 @post
@@ -1115,6 +1136,7 @@ model UpdateAdminUserError422 {
 }
 
 @doc("管理者がユーザーのプロフィール、email_verified、roles を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminUser")
 @route("/api/admin/v1/users/{user_id}")
 @patch
@@ -1162,6 +1184,7 @@ model DisableAdminUserError422 {
 }
 
 @doc("管理者がユーザーを無効化し、新規ログインと既存セッション利用を拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("DisableAdminUser")
 @route("/api/admin/v1/users/{user_id}/disable")
 @post
@@ -1199,6 +1222,7 @@ model EnableAdminUserError403 {
 }
 
 @doc("管理者が無効化済みユーザーを再有効化する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("EnableAdminUser")
 @route("/api/admin/v1/users/{user_id}/enable")
 @post
@@ -1250,6 +1274,7 @@ model DeleteAdminUserError422 {
 }
 
 @doc("管理者がユーザーを削除する。既定は SoftDelete で、status を\nPendingDeletion に遷移させ PII / Consent / RefreshToken / Session を温存する\n(猶予期間内は Restore 可能)。`purge=true` の場合は anonymize\ncascade を即時実施し tombstone 化する。いずれも冪等で、既に同じ終着状態の\nuser への再呼び出しは no-op として 204 を返す。自分自身は削除できない\n(admin / system_admin の自爆防止)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminUser")
 @route("/api/admin/v1/users/{user_id}")
 @delete
@@ -1303,6 +1328,7 @@ model RestoreAdminUserError409 {
 }
 
 @doc("管理者が PendingDeletion のユーザーを Restore する。status を Active\nに戻し PII / credential を温存したまま復元する。猶予期間を過ぎている、または\nPendingDeletion でない user に対しては InvalidRequestError を返す。復元後の\nuser を返す。自分自身への操作は use case 側で reject する (自爆防止と対称の\n扱い)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("RestoreAdminUser")
 @route("/api/admin/v1/users/{user_id}/restore")
 @post
@@ -1356,6 +1382,7 @@ model SetUserRequiredActionError422 {
 }
 
 @doc("管理者が対象ユーザーに次回ログイン時の強制アクション (RequiredAction) を\n付与する。update_password を付与されたユーザーは次回ログイン時に\nchange-password 画面へ強制誘導される (本人の変更で自動解除)。冪等で、既に\n付与済みなら現状を返す。admin 専用。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("SetUserRequiredAction")
 @route("/api/admin/v1/users/{user_id}/required_actions")
 @post
@@ -1394,6 +1421,7 @@ model ClearUserRequiredActionError403 {
 }
 
 @doc("管理者が対象ユーザーの強制アクションを解除する。冪等で、未付与なら\n現状を返す。admin 専用。本人のパスワード変更に伴う update_password の自動\n解除は ChangePassword / ResetPasswordWithToken 側で発火する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ClearUserRequiredAction")
 @route("/api/admin/v1/users/{user_id}/required_actions/{action}")
 @delete
@@ -1432,6 +1460,7 @@ model ListGroupsError400 {
 }
 
 @doc("管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。各グループは member_count を含む。cursor は応答の Link response header\n(rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroups")
 @route("/api/admin/v1/groups")
 @get
@@ -1471,6 +1500,7 @@ model GetGroupError403 {
 }
 
 @doc("管理者が単一グループとそのメンバー一覧を取得する。別テナントのグループは未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroup")
 @route("/api/admin/v1/groups/{group_id}")
 @get
@@ -1527,6 +1557,7 @@ model CreateGroupError422 {
 }
 
 @doc("管理者が所属テナントにグループを作成する。name はテナント内で一意。email は形式検証のみ (一意制約なし)、attributes はテナントの TenantGroupAttributeSchema に対して検証する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("CreateGroup")
 @route("/api/admin/v1/groups")
 @post
@@ -1582,6 +1613,7 @@ model UpdateGroupError422 {
 }
 
 @doc("管理者がグループの name / description / email / attributes / roles を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("UpdateGroup")
 @route("/api/admin/v1/groups/{group_id}")
 @patch
@@ -1615,6 +1647,7 @@ model DeleteGroupError403 {
 }
 
 @doc("管理者がグループを削除する。所属 membership は cascade で解除する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("DeleteGroup")
 @route("/api/admin/v1/groups/{group_id}")
 @delete
@@ -1652,6 +1685,7 @@ model AddGroupMemberError403 {
 }
 
 @doc("管理者が User をグループに所属させる。同一テナントの User のみ許可し、既所属なら no-op (冪等)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("AddGroupMember")
 @route("/api/admin/v1/groups/{group_id}/members/{user_id}")
 @post
@@ -1686,6 +1720,7 @@ model RemoveGroupMemberError403 {
 }
 
 @doc("管理者が User をグループから外す。非所属なら no-op (冪等)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("RemoveGroupMember")
 @route("/api/admin/v1/groups/{group_id}/members/{user_id}")
 @delete
@@ -1739,6 +1774,7 @@ model UpdateDynamicGroupRuleError422 {
 }
 
 @doc("管理者が dynamic group の制限 CEL rule を検証して保存する。未知属性、型不一致、非 Boolean、許可外構文、上限超過は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("UpdateDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule")
 @put
@@ -1792,6 +1828,7 @@ model PreviewDynamicGroupRuleError422 {
 }
 
 @doc("最大100 Userに未保存 CEL を副作用なしで評価し、現在所属との差分だけを返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("PreviewDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/preview")
 @post
@@ -1834,6 +1871,7 @@ model EnableDynamicGroupRuleError403 {
 }
 
 @doc("検証済み rule を有効化し、旧 version membership を即時無効化して全件再評価 Job を予約する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("EnableDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/enable")
 @post
@@ -1876,6 +1914,7 @@ model DisableDynamicGroupRuleError403 {
 }
 
 @doc("rule を無効化して、全 dynamic membership を認可・割当判定から即時除外する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("DisableDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/disable")
 @post
@@ -1914,6 +1953,7 @@ model ListUserGroupsError403 {
 }
 
 @doc("管理者が指定 User の所属グループと有効ロール内訳 (明示 / グループ由来 / union) を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListUserGroups")
 @route("/api/admin/v1/users/{user_id}/groups")
 @get
@@ -1951,6 +1991,7 @@ model ListAgentsError400 {
 }
 
 @doc("管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
 @TypeSpec.OpenAPI.operationId("ListAgents")
 @route("/api/admin/v1/agents")
 @get
@@ -1989,6 +2030,7 @@ model GetAgentError403 {
 }
 
 @doc("管理者が単一 Agent を取得する。別テナントの Agent は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
 @TypeSpec.OpenAPI.operationId("GetAgent")
 @route("/api/admin/v1/agents/{agent_id}")
 @get
@@ -2044,6 +2086,7 @@ model RegisterAgentError422 {
 }
 
 @doc("管理者が所属テナントに Agent を登録する。name はテナント内で一意、owner_user_id 省略時は actor を所有者とする。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("RegisterAgent")
 @route("/api/admin/v1/agents")
 @post
@@ -2099,6 +2142,7 @@ model UpdateAgentError422 {
 }
 
 @doc("管理者が Agent の name / description / kind / owner_user_id / roles を更新する。owner_user_id の変更は所有権移転。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAgent")
 @route("/api/admin/v1/agents/{agent_id}")
 @patch
@@ -2136,6 +2180,7 @@ model DisableAgentError403 {
 }
 
 @doc("管理者が Agent を可逆に運用停止する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DisableAgent")
 @route("/api/admin/v1/agents/{agent_id}/disable")
 @post
@@ -2173,6 +2218,7 @@ model EnableAgentError403 {
 }
 
 @doc("管理者が運用停止中の Agent を再稼働する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("EnableAgent")
 @route("/api/admin/v1/agents/{agent_id}/enable")
 @post
@@ -2210,6 +2256,7 @@ model KillAgentError403 {
 }
 
 @doc("管理者が Agent を緊急停止する (一方向終端、復帰不能)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("KillAgent")
 @route("/api/admin/v1/agents/{agent_id}/kill")
 @post
@@ -2243,6 +2290,7 @@ model DeleteAgentError403 {
 }
 
 @doc("管理者が Agent を削除する。束縛は cascade で解除する。Killed の Agent は削除できない (fail-closed。削除により束縛先 OAuth2Client が client_credentials で無制限に token を再取得できてしまうため)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAgent")
 @route("/api/admin/v1/agents/{agent_id}")
 @delete
@@ -2280,6 +2328,7 @@ model BindAgentCredentialError403 {
 }
 
 @doc("管理者が Agent に OAuth2Client を束縛する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("BindAgentCredential")
 @route("/api/admin/v1/agents/{agent_id}/credentials")
 @post
@@ -2313,6 +2362,7 @@ model UnbindAgentCredentialError403 {
 }
 
 @doc("管理者が Agent から OAuth2Client の束縛を解除する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UnbindAgentCredential")
 @route("/api/admin/v1/agents/{agent_id}/credentials/{client_id}")
 @delete

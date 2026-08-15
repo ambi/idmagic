@@ -50,6 +50,15 @@ Initial: `Active` Terminal: none
 
 管理の認可は 2 段である。`admin` ロールは自身のテナント内に閉じ、`system_admin` ロールはテナントを越える操作を持つ。テナントの作成、一覧、更新、無効化、正規ロケーションの切り替え、リソース上限の変更は制御面の操作であり、`admin:tenants_manage` として `system_admin` ロールとデフォルト (制御面) テナントへの所属の両方を要求する。所属テナントの設定 (`admin:settings_read` / `admin:settings_update`)、外装 (`admin:branding_update`)、属性スキーマ、通知テンプレートは `admin` または `system_admin` が自身のテナントに対して変更でき、テナント管理者は自身の上限を参照できるが変更はできない。上限を決める権限をテナント自身ではなく共有基盤の運用者に残すためである。
 
+API アクセストークンでは、ロールに加えて次のスコープをそれぞれの操作に要求する。通知テンプレートのプレビューは描画結果を返すだけなので参照系に、テスト送信は実際にメールを送るため変更系に置く。制御面のテナント CRUD は `admin:tenants_manage` の条件を満たす利用者が自身のテナントで発行したトークンから到達しうるため、`tenants:*` を対応させる。
+
+| スコープ | 許可する操作 |
+|---|---|
+| `settings:read` | GetAdminSettings、GetAdminIntegrationEndpoints、GetTenantUserAttributeSchema、GetTenantGroupAttributeSchema、ListNotificationTemplates、GetNotificationTemplate、PreviewNotificationTemplate |
+| `settings:write` | UpdateAdminSettings、UpdateTenantUserAttributeSchema、UpdateTenantGroupAttributeSchema、UpdateTenantBranding、UploadTenantBrandingAsset、DeleteTenantBrandingAsset、UpdateNotificationTemplate、ResetNotificationTemplate、SendTestNotification |
+| `tenants:read` | ListTenants、GetTenant |
+| `tenants:write` | CreateTenant、UpdateTenant、SetTenantEndpointStyle、DisableTenant、EnableTenant、UpdateTenantQuota |
+
 いずれの経路でも、ロールを持つだけでは足りない。呼び出し元のアカウントが `disabled_at` でないこと、認証済みであること、対象が呼び出し元と同じテナントに属することを合わせて要求する。状態を変える管理リクエストは、セッションによる認証に加えて `Origin` と CSRF トークンも検証する。セッション Cookie だけでは、そのリクエストが管理 UI から出たことを証明できないからである。
 
 テナントの解決自体がもう 1 つの境界である。テナントは自身の `endpoint_style` が指す正規ロケーションからしか到達できず、もう一方の経路では不在として扱う。どの経路にも一致しないリクエストをデフォルトテナントへ退避させることはない (フェイルクローズ)。存在しないテナントには `404 tenant_not_found`、無効なテナントにはプロトコルルートで `400 invalid_request` を返し、どちらも存在やステータスの違いを漏らさない。

@@ -280,6 +280,7 @@ model CreateSamlIdentityProviderProfileError403 {
 }
 
 @doc("テナント管理者が追加のsharedまたはdedicated SAML IdP profileを作成する。default profileはこの操作では作成できない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("CreateSamlIdentityProviderProfile")
 @route("/api/admin/v1/saml/idp-profiles")
 @post
@@ -307,6 +308,7 @@ model ListSamlIdentityProviderProfilesError403 {
 }
 
 @doc("テナント内のSAML IdP profileをdefault先頭、name昇順で一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:read"])
 @TypeSpec.OpenAPI.operationId("ListSamlIdentityProviderProfiles")
 @route("/api/admin/v1/saml/idp-profiles")
 @get
@@ -358,6 +360,7 @@ model UpdateSamlIdentityProviderProfileError409 {
 }
 
 @doc("テナント管理者が追加IdP profileのnameまたはmodeを変更する。default profileは変更できず、dedicatedへの変更時に複数SPから参照されていれば拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("UpdateSamlIdentityProviderProfile")
 @route("/api/admin/v1/saml/idp-profiles/{profile_id}")
 @put
@@ -402,6 +405,7 @@ model DeleteSamlIdentityProviderProfileError409 {
 }
 
 @doc("参照されていない追加IdP profileを削除する。default profileとSPが参照中のprofileは拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("DeleteSamlIdentityProviderProfile")
 @route("/api/admin/v1/saml/idp-profiles/{profile_id}")
 @delete
@@ -448,6 +452,7 @@ model RegisterSamlServiceProviderError403 {
 }
 
 @doc("SAML service provider の登録 / 更新 (upsert)。entityID、許可 ACS URL、NameID format、audience、署名方針、claim policy を受け取り、テナント境界に閉じて保存する。entityID と ACS URL の閉集合は必須。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("RegisterSamlServiceProvider")
 @route("/api/admin/v1/saml/service-providers")
 @post
@@ -475,6 +480,7 @@ model ListSamlServiceProvidersError403 {
 }
 
 @doc("テナント内の SAML service provider を entityID 昇順で一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:read"])
 @TypeSpec.OpenAPI.operationId("ListSamlServiceProviders")
 @route("/api/admin/v1/saml/service-providers")
 @get
@@ -517,6 +523,7 @@ model DeleteSamlServiceProviderError409 {
 }
 
 @doc("entityID に一致する catalog 外 SAML service provider を削除する (冪等)。application_id が非 NULL の SP は ApplicationOwnedProtocolError (HTTP 409) で拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["saml:write"])
 @TypeSpec.OpenAPI.operationId("DeleteSamlServiceProvider")
 @route("/api/admin/v1/saml/service-providers")
 @delete

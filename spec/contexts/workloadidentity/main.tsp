@@ -28,6 +28,7 @@ model ListWorkloadTrustBundlesError403 {
 }
 
 @doc("管理者が所属テナントの WorkloadTrustBundle を一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:read"])
 @TypeSpec.OpenAPI.operationId("ListWorkloadTrustBundles")
 @route("/api/admin/v1/workload-identity/trust-bundles")
 @get
@@ -65,6 +66,7 @@ model GetWorkloadTrustBundleError403 {
 }
 
 @doc("管理者が単一 WorkloadTrustBundle を取得する。別テナントの bundle は未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:read"])
 @TypeSpec.OpenAPI.operationId("GetWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}")
 @get
@@ -120,6 +122,7 @@ model RegisterWorkloadTrustBundleError422 {
 }
 
 @doc("管理者が所属テナントに WorkloadTrustBundle を登録する。name はテナント内で一意、issuer もテナント内で一意でなければならない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("RegisterWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles")
 @post
@@ -174,6 +177,7 @@ model UpdateWorkloadTrustBundleError422 {
 }
 
 @doc("管理者が WorkloadTrustBundle の name / jwks_uri / jwks / accepted_audiences / max_subject_token_ttl_seconds を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("UpdateWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}")
 @patch
@@ -211,6 +215,7 @@ model DisableWorkloadTrustBundleError403 {
 }
 
 @doc("管理者が WorkloadTrustBundle を無効化する。以後配下の全 binding が交換に使えなくなる (fail-closed)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DisableWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/disable")
 @post
@@ -248,6 +253,7 @@ model EnableWorkloadTrustBundleError403 {
 }
 
 @doc("管理者が無効化済みの WorkloadTrustBundle を再有効化する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("EnableWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/enable")
 @post
@@ -281,6 +287,7 @@ model DeleteWorkloadTrustBundleError403 {
 }
 
 @doc("管理者が WorkloadTrustBundle を削除する。配下の AgentWorkloadBinding は cascade で削除する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DeleteWorkloadTrustBundle")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}")
 @delete
@@ -322,6 +329,7 @@ model RefreshWorkloadTrustBundleJWKSError403 {
 }
 
 @doc("管理者が WorkloadTrustBundle の JWKS 到達性を即時確認する (設定ミスの事前検知)。成功時は jwks_cached_at を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("RefreshWorkloadTrustBundleJWKS")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/refresh")
 @post
@@ -360,6 +368,7 @@ model ListAgentWorkloadBindingsError403 {
 }
 
 @doc("管理者が WorkloadTrustBundle 配下の AgentWorkloadBinding を一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:read"])
 @TypeSpec.OpenAPI.operationId("ListAgentWorkloadBindings")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings")
 @get
@@ -413,6 +422,7 @@ model CreateAgentWorkloadBindingError422 {
 }
 
 @doc("管理者が WorkloadTrustBundle 配下に AgentWorkloadBinding を作成する。agent_id は同一テナントの既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。同一 trust_bundle_id 内で subject_pattern の完全重複は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("CreateAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}/bindings")
 @post
@@ -450,6 +460,7 @@ model DisableAgentWorkloadBindingError403 {
 }
 
 @doc("管理者が AgentWorkloadBinding を無効化する。以後この binding は交換に使えなくなる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DisableAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}/disable")
 @post
@@ -487,6 +498,7 @@ model EnableAgentWorkloadBindingError403 {
 }
 
 @doc("管理者が無効化済みの AgentWorkloadBinding を再有効化する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("EnableAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}/enable")
 @post
@@ -520,6 +532,7 @@ model DeleteAgentWorkloadBindingError403 {
 }
 
 @doc("管理者が AgentWorkloadBinding を削除する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["workload-identity:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAgentWorkloadBinding")
 @route("/api/admin/v1/workload-identity/bindings/{binding_id}")
 @delete

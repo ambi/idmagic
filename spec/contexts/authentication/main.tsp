@@ -828,6 +828,7 @@ model ListUserSignInActivityError400 {
 }
 
 @doc("admin が対象ユーザーのサインイン履歴を取得する。tenant 境界内に限定し、\nパス sub のユーザーの UserAuthenticated を発生時刻の降順で最大 limit 件返す。\nlimit 既定 10 / 上限 50。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:read"])
 @TypeSpec.OpenAPI.operationId("ListUserSignInActivity")
 @route("/api/admin/v1/users/{user_id}/signin_activity")
 @get
@@ -866,6 +867,7 @@ model ListAuthenticationEventBucketsError400 {
 }
 
 @doc("admin が認証イベント集約 (bucket) を window_start の降順で一覧する。攻撃時に個別行へ\n落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で双方向 keyset pagination により\n取得する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。limit 既定\n50 / 上限 200。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ListAuthenticationEventBuckets")
 @route("/api/admin/v1/authentication_event_buckets")
 @get
@@ -975,6 +977,7 @@ model ListSessionsError403 {
 }
 
 @doc("admin が対象ユーザーの有効なセッションを一覧する。tenant 境界内に\n限定し、開始時刻の降順で返す。ListMySessions と異なり対象は任意の user_id で、\ncurrent マーカーは持たない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:read"])
 @TypeSpec.OpenAPI.operationId("ListSessions")
 @route("/api/admin/v1/users/{user_id}/sessions")
 @get
@@ -1011,6 +1014,7 @@ model RevokeSessionError403 {
 }
 
 @doc("admin が対象ユーザーのセッション1件を失効する。RevokeMySession と同じ\ntombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削除しない)。\n既に失効済みの対象への再失効は idempotent に成功する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:write"])
 @TypeSpec.OpenAPI.operationId("RevokeSession")
 @route("/api/admin/v1/users/{user_id}/sessions/{id}/revoke")
 @post
@@ -1039,6 +1043,7 @@ model RevokeUserSessionsError403 {
 }
 
 @doc("admin が対象ユーザーの全セッションを失効する。\"全セッションを終了\"\n操作。RevokeMyOtherSessions と異なり操作者自身のセッションではないため除外対象は\n無く、対象ユーザーの有効な全セッションを tombstone にする。各対象は idempotent に\n失効する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:write"])
 @TypeSpec.OpenAPI.operationId("RevokeUserSessions")
 @route("/api/admin/v1/users/{user_id}/sessions/revoke_all")
 @post
@@ -1155,6 +1160,7 @@ model IssueMfaEnrollmentBypassError422 {
 }
 
 @doc("テナント管理者が同一テナントの MFA 未登録 active user に短期・単発の enrollment bypass を発行する。同一 user の既存未消費 bypass は取り消して置換する。ログイン免除ではなく登録専用 pending flow への承認である。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("IssueMfaEnrollmentBypass")
 @route("/api/admin/v1/users/{user_id}/mfa-enrollment-bypass")
 @post
@@ -1178,6 +1184,7 @@ model RevokeMfaEnrollmentBypassError403 {
 }
 
 @doc("テナント管理者が対象 user の未消費 enrollment bypass を取り消す。既に消費・期限切れの場合もログインを許可せず冪等に終了する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("RevokeMfaEnrollmentBypass")
 @route("/api/admin/v1/users/{user_id}/mfa-enrollment-bypass")
 @delete
@@ -1230,6 +1237,7 @@ model ResetUserAuthenticatorsError422 {
 }
 
 @doc("テナント管理者が対象 user の認証器 (TOTP factor / WebAuthn credential /\nrecovery code) から選択した種別を削除し、mfa_enrolled を再計算する (緊急\nbackstop)。管理者は新しい factor を代わりに登録できず、削除と再登録要求に限定する。\nTOTP と WebAuthn が両方無くなった場合は既存の管理者承認 enrollment bypass\n(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを\nfail-closed な enrollment-required flow へ誘導する。片方の要素のみ削除するなど mfa_enrolled\nが true のまま残る場合は bypass を発行せず、残存要素で通常ログインを継続できる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ResetUserAuthenticators")
 @route("/api/admin/v1/users/{user_id}/authenticator-reset")
 @post
@@ -1595,6 +1603,7 @@ model ListIdentityProviderConnectionsError403 {
 }
 
 @doc("tenant administrator が connection 一覧を取得する。secret_reference と secret は返さない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListIdentityProviderConnections")
 @route("/api/admin/v1/identity-providers")
 @get
@@ -1636,6 +1645,7 @@ model CreateIdentityProviderConnectionError403 {
 }
 
 @doc("tenant administrator が connection を作る。作成直後の初期状態は Disabled。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("CreateIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers")
 @post
@@ -1678,6 +1688,7 @@ model UpdateIdentityProviderConnectionError403 {
 }
 
 @doc("tenant administrator が connection の display、mapping、policy、secret reference、trust source を更新する。issuer / endpoint / certificate / protocol などの trust source を変更したときだけ Active を Disabled に落とし、display_name や claim_mapping など非 trust フィールドの変更では状態を保持する。trust source 変更時に再検証が失敗した場合は last-known-good を維持する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("UpdateIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}")
 @put
@@ -1711,6 +1722,7 @@ model DeleteIdentityProviderConnectionError403 {
 }
 
 @doc("tenant administrator が connection を状態を問わずいつでも削除する。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("DeleteIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}")
 @delete
@@ -1747,6 +1759,7 @@ model ActivateIdentityProviderConnectionError403 {
 }
 
 @doc("trust validation と接続 test に成功した Disabled connection を Active にする。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ActivateIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/activate")
 @post
@@ -1774,6 +1787,7 @@ model DisableIdentityProviderConnectionError403 {
 }
 
 @doc("Active connection を Disabled にし、新規 routing と callback completion を直ちに拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("DisableIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/disable")
 @post
@@ -1816,6 +1830,7 @@ model RefreshIdentityProviderMetadataError403 {
 }
 
 @doc("tenant administrator が固定済み issuer / metadata source から discovery/JWKS または SAML metadata を再取得し、SSRF と trust validation 成功時だけ last-known-good を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("RefreshIdentityProviderMetadata")
 @route("/api/admin/v1/identity-providers/{provider_id}/refresh")
 @post
@@ -1858,6 +1873,7 @@ model TestIdentityProviderConnectionError403 {
 }
 
 @doc("保存済み last-known-good trust source に対して実際に到達性・解決可能性を検査する。OIDC は authorization_endpoint/token_endpoint/jwks_uri への到達性と secret_reference の解決可能性を、SAML は保存済み証明書の X.509 パース可否と有効期限を確認する。secret の実値、token、certificate 本文は返さない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("TestIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/test")
 @post
@@ -1901,6 +1917,7 @@ model PreviewIdentityProviderMappingError403 {
 }
 
 @doc("tenant administrator が保存済み test response の検証済み claim を mapping し、token/assertionを含まない正規化 preview を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("PreviewIdentityProviderMapping")
 @route("/api/admin/v1/identity-providers/{provider_id}/mapping-preview")
 @post

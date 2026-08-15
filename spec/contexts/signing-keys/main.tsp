@@ -64,6 +64,7 @@ model ListAdminKeysError403 {
 }
 
 @doc("テナント内 admin が自テナントの JWKS に乗っている署名鍵 (active + verifying) の\nメタデータを取得する。対象は context.tenant_id に固定するため cross-tenant 読み出しは\n構造的に発生しない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminKeys")
 @route("/api/admin/v1/keys")
 @get
@@ -101,6 +102,7 @@ model GetAdminKeyError403 {
 }
 
 @doc("テナント内 admin が kid を指定して自テナントの署名鍵 1 件を取得する。他テナントの kid または存在しない kid は InvalidRequestError。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminKey")
 @route("/api/admin/v1/keys/{kid}")
 @get
@@ -128,6 +130,7 @@ model RotateTenantSigningKeyError403 {
 }
 
 @doc("テナント内 admin が自テナントに新しい署名鍵を生成し active を切り替える。旧 active 鍵は\nJWKS に verifying として残存し、SigningKeyMinJwksOverlap 期間後に Retire される\n(Retire 処理は別の運用ジョブ)。テナント単位のため回転の影響範囲は当該テナントに\n閉じる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("RotateTenantSigningKey")
 @route("/api/admin/v1/keys/rotate")
 @post
@@ -169,6 +172,7 @@ model DisableTenantKeyError403 {
 }
 
 @doc("テナント内 admin が、回転後の移行期間にある非 active 署名鍵 1 件を kid 指定で\n即時無効化 (Retire) する。対象は JWKS から除去され、その鍵で署名された既発行\nトークンは検証できなくなる。現在の署名鍵はこの操作で無効化できない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:write"])
 @TypeSpec.OpenAPI.operationId("DisableTenantKey")
 @route("/api/admin/v1/keys/{kid}/disable")
 @post
@@ -197,6 +201,7 @@ model ListTenantKeyHealthError403 {
 }
 
 @doc("system_admin がテナント横断で署名鍵ヘルス (provider / active kid /\n鍵数 / provider 到達性) を一覧する。秘密鍵は返さない。fail-closed 判定や\n回転漏れの検知に使う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["signing-keys:read"])
 @TypeSpec.OpenAPI.operationId("ListTenantKeyHealth")
 @route("/api/admin/v1/keys/health")
 @get

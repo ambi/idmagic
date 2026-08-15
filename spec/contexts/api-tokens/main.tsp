@@ -28,6 +28,7 @@ model ListApiTokensError403 {
 }
 
 @doc("テナントの API アクセストークンを一覧する。JWT 本文は返さない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListApiTokens")
 @route("/api/admin/v1/api-tokens")
 @get
@@ -75,6 +76,7 @@ model IssueApiTokenError403 {
 }
 
 @doc("テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を 指定する。RFC 9068 JWT access token を含む応答を一度だけ返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("IssueApiToken")
 @route("/api/admin/v1/api-tokens")
 @post
@@ -107,6 +109,7 @@ model RevokeApiTokenError403 {
 }
 
 @doc("テナントの API アクセストークンを失効する。存在しない id への呼び出しも冪等に成功する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("RevokeApiToken")
 @route("/api/admin/v1/api-tokens/{id}")
 @delete

@@ -223,7 +223,11 @@ test-ui-e2e:
     cd frontend && bun run test:e2e
 
 # Validate specification sources, records, dependencies, and the command map.
-check: check-spec check-work-items check-ids check-boundaries check-command-map check-config-reference
+check: check-spec check-work-items check-ids check-boundaries check-command-map check-config-reference check-admin-scopes
+
+# Detect admin API operations with no API access token scope declaration, and scopes no operation requires.
+check-admin-scopes:
+    cd tools && bun run check/src/check-admin-scopes.ts
 
 # Reject workflow steps that call a recipe this justfile does not define.
 check-command-map:

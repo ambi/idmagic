@@ -38,6 +38,7 @@ model ListAdminApplicationsError400 {
 }
 
 @doc("管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminApplications")
 @route("/api/admin/v1/applications")
 @get
@@ -76,6 +77,7 @@ model GetAdminApplicationError403 {
 }
 
 @doc("管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminApplication")
 @route("/api/admin/v1/applications/{id}")
 @get
@@ -127,6 +129,7 @@ model CreateAdminApplicationError422 {
 }
 
 @doc("管理者が Application を一括作成する。種別に応じた protocol row を準備し、Application と application_id relation を同一 transaction で catalog へ公開する。protocol 種別は作成後に変更できない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminApplication")
 @route("/api/admin/v1/applications")
 @post
@@ -169,6 +172,7 @@ model UpdateAdminApplicationError403 {
 }
 
 @doc("管理者が Application のメタデータを更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminApplication")
 @route("/api/admin/v1/applications/{id}")
 @patch
@@ -212,6 +216,7 @@ model UploadApplicationIconError403 {
 }
 
 @doc("管理者が Application のアイコン画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UploadApplicationIcon")
 @route("/api/admin/v1/applications/{id}/icon")
 @post
@@ -250,6 +255,7 @@ model DeleteApplicationIconError403 {
 }
 
 @doc("管理者が Application の保存済みアイコンを削除する。削除後は icon_url を返さない。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationIcon")
 @route("/api/admin/v1/applications/{id}/icon")
 @delete
@@ -311,6 +317,7 @@ model DeleteAdminApplicationError403 {
 }
 
 @doc("管理者が Application を削除する (冪等)。関連する protocol row は同一 transaction で cascade delete される。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminApplication")
 @route("/api/admin/v1/applications/{id}")
 @delete
@@ -348,6 +355,7 @@ model UpdateApplicationOidcConfigError403 {
 }
 
 @doc("管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。rules /\nsub_source_attribute は claim release 上書きであり、visibility=Private の\n属性や reserved claim type を参照する rule は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationOidcConfig")
 @route("/api/admin/v1/applications/{id}/oidc")
 @patch
@@ -391,6 +399,7 @@ model RotateApplicationClientSecretError403 {
 }
 
 @doc("互換性のため、管理者が Application の OIDC protocol の client secret を従来方式で回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。新しい管理 UI は IssueApplicationClientSecret と RevokeApplicationClientSecret を使用する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RotateApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/rotate-secret")
 @post
@@ -444,6 +453,7 @@ model IssueApplicationClientSecretError422 {
 }
 
 @doc("管理者が Application の secret-based OIDC client に期限付き credential を追加発行する。既存 credential は変更せず、Active credential が2件なら原子的に拒否する。secret-based でない client は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("IssueApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/client-secrets")
 @post
@@ -482,6 +492,7 @@ model RevokeApplicationClientSecretError403 {
 }
 
 @doc("管理者が Application の secret-based OIDC client に属する指定 credential だけを即時失効する。既に失効済みなら冪等に成功し、別 client または存在しない credential は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RevokeApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/client-secrets/{credential_id}")
 @delete
@@ -520,6 +531,7 @@ model UpdateApplicationWsFedConfigError403 {
 }
 
 @doc("管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。rules /\nname_id_source は claim release 上書きであり、visibility=Private の属性や\nreserved claim type を参照する rule は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationWsFedConfig")
 @route("/api/admin/v1/applications/{id}/wsfed")
 @patch
@@ -558,6 +570,7 @@ model UpdateApplicationSamlConfigError403 {
 }
 
 @doc("管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを\n部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。rules / name_id_source は\nclaim release 上書きであり、visibility=Private の属性や reserved claim type\nを参照する rule は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationSamlConfig")
 @route("/api/admin/v1/applications/{id}/saml")
 @patch
@@ -596,6 +609,7 @@ model ListApplicationAssignmentsError403 {
 }
 
 @doc("管理者が Application の割当を subject_type, subject_id 昇順の双方向 keyset pagination で\n一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListApplicationAssignments")
 @route("/api/admin/v1/applications/{id}/assignments")
 @get
@@ -640,6 +654,7 @@ model AssignApplicationError403 {
 }
 
 @doc("管理者が Application にユーザー / グループを割当てる。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("AssignApplication")
 @route("/api/admin/v1/applications/{id}/assignments")
 @post
@@ -673,6 +688,7 @@ model UnassignApplicationError403 {
 }
 
 @doc("管理者が Application の割当を解除する (冪等)。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UnassignApplication")
 @route("/api/admin/v1/applications/{id}/assignments/{subject_type}/{subject_id}")
 @delete
@@ -712,6 +728,7 @@ model GetAppSignInPolicyError403 {
 }
 
 @doc("管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAppSignInPolicy")
 @route("/api/admin/v1/applications/{id}/sign-in-policy")
 @get
@@ -754,6 +771,7 @@ model UpdateAppSignInPolicyError403 {
 }
 
 @doc("管理者が Application の sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAppSignInPolicy")
 @route("/api/admin/v1/applications/{id}/sign-in-policy")
 @put
@@ -782,6 +800,7 @@ model GetTenantDefaultSignInPolicyError403 {
 }
 
 @doc("管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetTenantDefaultSignInPolicy")
 @route("/api/admin/v1/default-sign-in-policy")
 @get
@@ -823,6 +842,7 @@ model UpdateTenantDefaultSignInPolicyError403 {
 }
 
 @doc("管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantDefaultSignInPolicy")
 @route("/api/admin/v1/default-sign-in-policy")
 @put
@@ -850,6 +870,7 @@ model ListApplicationCategoriesError403 {
 }
 
 @doc("管理者が所属テナントの ApplicationCategory を position 昇順で一覧する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListApplicationCategories")
 @route("/api/admin/v1/application-categories")
 @get
@@ -901,6 +922,7 @@ model CreateApplicationCategoryError403 {
 }
 
 @doc("管理者が ApplicationCategory を作成する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("CreateApplicationCategory")
 @route("/api/admin/v1/application-categories")
 @post
@@ -953,6 +975,7 @@ model UpdateApplicationCategoryError403 {
 }
 
 @doc("管理者が ApplicationCategory の名前 / 並び順を更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationCategory")
 @route("/api/admin/v1/application-categories/{id}")
 @patch
@@ -986,6 +1009,7 @@ model DeleteApplicationCategoryError403 {
 }
 
 @doc("管理者が ApplicationCategory を削除する (冪等)。付与済みの Application からも除く。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationCategory")
 @route("/api/admin/v1/application-categories/{id}")
 @delete
@@ -1038,6 +1062,7 @@ model SetApplicationCategoriesError403 {
 }
 
 @doc("管理者が Application に付与するカテゴリ集合を置き換える。所属テナントの既存カテゴリのみ受け付ける。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("SetApplicationCategories")
 @route("/api/admin/v1/applications/{id}/categories")
 @put

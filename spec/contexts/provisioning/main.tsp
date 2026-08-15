@@ -54,6 +54,7 @@ model RegisterProvisioningConnectionError403 {
 }
 
 @doc("管理者が Application に ProvisioningConnection を新規登録する。属性マッピングは SCIM core User の既定を自動 seed する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("RegisterProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
 @post
@@ -92,6 +93,7 @@ model GetProvisioningConnectionError403 {
 }
 
 @doc("管理者が Application の ProvisioningConnection を取得する。別テナントは未存在として扱う。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("GetProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
 @get
@@ -156,6 +158,7 @@ model UpdateProvisioningConnectionError403 {
 }
 
 @doc("管理者が ProvisioningConnection の設定を更新する。credential を含む更新は\ncredential rotation として扱い ProvisioningCredentialRotated も発行する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("UpdateProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
 @patch
@@ -189,6 +192,7 @@ model DeleteProvisioningConnectionError403 {
 }
 
 @doc("管理者が ProvisioningConnection を削除する (hard delete)。既存の RemoteResourceLink・ProvisioningDelivery は履歴として残す。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("DeleteProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
 @delete
@@ -232,6 +236,7 @@ model TestProvisioningConnectionError403 {
 }
 
 @doc("管理者が下流 /ServiceProviderConfig への到達性を確認し capabilities を再取得してキャッシュを更新する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("TestProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning/test")
 @post
@@ -286,6 +291,7 @@ model ProvisionOnDemandError403 {
 }
 
 @doc("管理者が単一 subject を指定して即時に試験配送する ProvisioningDelivery を作成する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("ProvisionOnDemand")
 @route("/api/admin/v1/applications/{id}/provisioning/on-demand")
 @post
@@ -328,6 +334,7 @@ model StartFullResyncError403 {
 }
 
 @doc("管理者が connection の scope 内 subject 全件を再走査し収束させる full resync を開始する。完了は非同期で FullResyncCompleted が発行される。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("StartFullResync")
 @route("/api/admin/v1/applications/{id}/provisioning/full-resync")
 @post
@@ -366,6 +373,7 @@ model ListProvisioningDeliveriesError400 {
 }
 
 @doc("管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。status/source_type で絞り込める。cursor は応答の Link response header\n(rel=\"prev\" / rel=\"next\") から取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("ListProvisioningDeliveries")
 @route("/api/admin/v1/applications/{id}/provisioning/deliveries")
 @get
@@ -407,6 +415,7 @@ model GetProvisioningDeliveryError403 {
 }
 
 @doc("管理者が配送 1 件の詳細を取得する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("GetProvisioningDelivery")
 @route("/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}")
 @get
@@ -460,6 +469,7 @@ model RetryProvisioningDeliveryError403 {
 }
 
 @doc("管理者が dead_letter の配送を手動で再試行する。pending へ戻し dispatcher の再走査対象にする。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("RetryProvisioningDelivery")
 @route("/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}/retry")
 @post
@@ -503,6 +513,7 @@ model ResumeProvisioningConnectionError403 {
 }
 
 @doc("管理者が quarantine された ProvisioningConnection を解除し配送を再開する。運用手順に quarantine 解除の経路が明記されていなかったため、本 interface を追加した。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("ResumeProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning/resume")
 @post
@@ -531,6 +542,7 @@ model ListTenantProvisioningConnectionsError403 {
 }
 
 @doc("管理者がテナント内で有効な ProvisioningConnection を横断的に一覧する (テナント設定の read-only 集約ビュー)。書き込みは各 Application 側の interface へ誘導する。")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("ListTenantProvisioningConnections")
 @route("/api/admin/v1/provisioning/connections")
 @get
