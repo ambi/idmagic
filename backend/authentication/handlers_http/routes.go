@@ -11,6 +11,7 @@ import (
 	mfahttp "github.com/ambi/idmagic/backend/authentication/mfa/handlers_http"
 	passwordhttp "github.com/ambi/idmagic/backend/authentication/password/handlers_http"
 	recoveryhttp "github.com/ambi/idmagic/backend/authentication/recovery/handlers_http"
+	securitynotificationhttp "github.com/ambi/idmagic/backend/authentication/securitynotification/handlers_http"
 	sessionhttp "github.com/ambi/idmagic/backend/authentication/session/handlers_http"
 	trusteddevicehttp "github.com/ambi/idmagic/backend/authentication/trusteddevice/handlers_http"
 	webauthnhttp "github.com/ambi/idmagic/backend/authentication/webauthn/handlers_http"
@@ -32,6 +33,12 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 	g.POST("/api/account/v1/step_up/complete", func(c *echo.Context) error { return mfahttp.HandleCompleteStepUp(d, c) })
 	g.POST("/api/account/v1/step_up/webauthn/challenge", func(c *echo.Context) error { return mfahttp.HandleStepUpWebAuthnChallenge(d, c) })
 	g.GET("/api/account/v1/security", func(c *echo.Context) error { return handleGetAccountSecurity(d, c) })
+	g.GET("/api/account/v1/notification_preferences", func(c *echo.Context) error {
+		return securitynotificationhttp.HandleGetNotificationPreferences(d, c)
+	})
+	g.PUT("/api/account/v1/notification_preferences", func(c *echo.Context) error {
+		return securitynotificationhttp.HandleUpdateNotificationPreferences(d, c)
+	})
 	g.POST("/api/account/v1/mfa/totp/enroll/start", func(c *echo.Context) error { return mfahttp.HandleStartTotpEnrollment(d, c) })
 	g.POST("/api/account/v1/mfa/totp/enroll/confirm", func(c *echo.Context) error { return mfahttp.HandleConfirmTotpEnrollment(d, c) })
 	g.POST("/api/account/v1/mfa/totp/remove", func(c *echo.Context) error { return mfahttp.HandleRemoveTotpFactor(d, c) })

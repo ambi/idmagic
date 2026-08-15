@@ -3,9 +3,10 @@ package domain
 import "strings"
 
 // DeviceLabel は User-Agent からブラウザーと OS の系統だけを取り出した表示ラベルを返す
-// (例 "Chrome / macOS")。一覧で自分の端末を見分けるのに要る粒度はここまでで、生の
-// User-Agent を保存しても失効の判断には寄与せず、漏れたときの被害だけが増える。
-// 判別できない場合は空文字を返し、UI 側は既定の表示名にフォールバックする。
+// (例 "Chrome / macOS")。信頼済みデバイスの一覧とセキュリティ通知の本文が共に使うため、
+// 機能別ではなく Context 共通の domain に置く。自分の端末を見分けるのに要る粒度はここまで
+// で、生の User-Agent を保存しても失効の判断には寄与せず、漏れたときの被害だけが増える。
+// 判別できない場合は空文字を返し、呼び出し側は既定の表示へフォールバックする。
 func DeviceLabel(userAgent string) string {
 	browser, os := browserFamily(userAgent), osFamily(userAgent)
 	switch {

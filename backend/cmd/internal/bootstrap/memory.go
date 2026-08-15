@@ -16,6 +16,7 @@ import (
 	mfamemory "github.com/ambi/idmagic/backend/authentication/mfa/db_memory"
 	passwordmemory "github.com/ambi/idmagic/backend/authentication/password/db_memory"
 	recoverymemory "github.com/ambi/idmagic/backend/authentication/recovery/db_memory"
+	securitynotificationmemory "github.com/ambi/idmagic/backend/authentication/securitynotification/db_memory"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
@@ -142,6 +143,9 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			WebAuthnSessionStore:     webauthnmemory.NewWebAuthnSessionStore(),
 			RecoveryCodeRepo:         recoverymemory.NewRecoveryCodeRepository(),
 			TrustedDeviceRepo:        trusteddevicememory.NewTrustedDeviceRepository(),
+
+			NotificationPreferenceRepo: securitynotificationmemory.NewPreferenceRepository(),
+			KnownSignInDeviceRepo:      securitynotificationmemory.NewKnownDeviceRepository(),
 			NewLoginAttemptThrottle: func(configs sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle {
 				return sessionmemory.NewLoginAttemptThrottle(configs)
 			},

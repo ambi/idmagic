@@ -14,6 +14,8 @@ import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	authnports "github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/securitynotification/ports"
+	securitynotificationusecases "github.com/ambi/idmagic/backend/authentication/securitynotification/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	trusteddeviceusecases "github.com/ambi/idmagic/backend/authentication/trusteddevice/usecases"
@@ -63,6 +65,15 @@ type Deps struct {
 	// TrustedDeviceRepo は信頼済みデバイスの一覧・失効と、資格情報が変わったときの
 	// 一括失効に使う (wi-91)。nil なら信頼済みデバイスは存在しないものとして扱う。
 	TrustedDeviceRepo trusteddeviceports.TrustedDeviceRepository
+
+	// NotificationPreferenceRepo は本人によるセキュリティ通知の受信設定 (wi-90)。
+	// nil なら取得は「すべて有効」を返し、更新は保存できないことを明示して失敗する。
+	NotificationPreferenceRepo securitynotificationports.PreferenceRepository
+}
+
+// NotificationPreferenceDeps はセキュリティ通知の受信設定の use case へ渡す依存。
+func (d Deps) NotificationPreferenceDeps() securitynotificationusecases.PreferenceDeps {
+	return securitynotificationusecases.PreferenceDeps{Repo: d.NotificationPreferenceRepo}
 }
 
 // TrustedDeviceDeps は信頼済みデバイスの use case へ渡す依存を組み立てる。

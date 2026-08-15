@@ -347,6 +347,14 @@ type Job struct {
 	UpdatedAt      time.Time
 }
 
+type KnownSignInDevice struct {
+	UserID      string
+	DeviceHash  string
+	Label       pgtype.Text
+	FirstSeenAt time.Time
+	LastSeenAt  time.Time
+}
+
 type LifecycleWorkflow struct {
 	ID              string
 	TenantID        string
@@ -439,6 +447,12 @@ type MfaFactor struct {
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 	LastUsedAt       pgtype.Timestamptz
+}
+
+type NotificationPreference struct {
+	UserID             string
+	DisabledCategories []string
+	UpdatedAt          time.Time
 }
 
 type NotificationTemplate struct {

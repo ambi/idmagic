@@ -352,6 +352,74 @@ op GetAccountSecurity(
 
 ): GetAccountSecuritySuccess_200 | GetAccountSecurityError403;
 
+model GetMyNotificationPreferencesHttpResponse {
+  preferences: IdMagic.Contract.AccountNotificationPreferences;
+}
+
+model GetMyNotificationPreferencesSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: GetMyNotificationPreferencesHttpResponse;
+}
+
+union GetMyNotificationPreferencesError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model GetMyNotificationPreferencesError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: GetMyNotificationPreferencesError403Body;
+}
+
+@doc("認証済みユーザーが自身のセキュリティ通知の受信設定を取得する (self-service)。対象は\nactor.sub に固定。全種別を仕様が定める安定した並びで返し、本人が無効化できない種別には\nmandatory=true を付ける。")
+@TypeSpec.OpenAPI.operationId("GetMyNotificationPreferences")
+@route("/api/account/v1/notification_preferences")
+@get
+op GetMyNotificationPreferences(
+
+): GetMyNotificationPreferencesSuccess_200 | GetMyNotificationPreferencesError403;
+
+model UpdateMyNotificationPreferencesHttpRequest {
+  request: IdMagic.Contract.UpdateNotificationPreferencesRequest;
+}
+
+model UpdateMyNotificationPreferencesHttpResponse {
+  preferences: IdMagic.Contract.AccountNotificationPreferences;
+}
+
+model UpdateMyNotificationPreferencesSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: UpdateMyNotificationPreferencesHttpResponse;
+}
+
+union UpdateMyNotificationPreferencesError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model UpdateMyNotificationPreferencesError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: UpdateMyNotificationPreferencesError400Body;
+}
+
+union UpdateMyNotificationPreferencesError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model UpdateMyNotificationPreferencesError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: UpdateMyNotificationPreferencesError403Body;
+}
+
+@doc("認証済みユーザーが自身のセキュリティ通知の受信設定を更新する (self-service)。対象は\nactor.sub に固定。通知を止める操作は乗っ取り後に最初に行われる操作なので、直近の\nステップアップ再認証を要求する。必須の種別を disabled_categories に含む要求は 400 で\n拒否し、一部だけを適用することはしない。")
+@TypeSpec.OpenAPI.operationId("UpdateMyNotificationPreferences")
+@route("/api/account/v1/notification_preferences")
+@put
+op UpdateMyNotificationPreferences(
+  @body body: UpdateMyNotificationPreferencesHttpRequest
+): UpdateMyNotificationPreferencesSuccess_200 | UpdateMyNotificationPreferencesError400 | UpdateMyNotificationPreferencesError403;
+
 model StartTotpEnrollmentHttpResponse {
   enrollment: IdMagic.Contract.TOTPEnrollmentStart;
 }

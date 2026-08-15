@@ -183,6 +183,7 @@ var stepUpGatedEndpoints = []struct {
 	{"webauthn_remove", http.MethodPost, "/realms/default/api/account/v1/mfa/webauthn/remove"},
 	{"recovery_codes_generate", http.MethodPost, "/realms/default/api/account/v1/mfa/recovery-codes/generate"},
 	{"recovery_codes_revoke", http.MethodPost, "/realms/default/api/account/v1/mfa/recovery-codes/revoke"},
+	{"notification_preferences_update", http.MethodPut, "/realms/default/api/account/v1/notification_preferences"},
 	{"link_external_identity", http.MethodPost, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
 	{"unlink_external_identity", http.MethodDelete, "/realms/default/api/account/v1/linked-identities/{provider_id}"},
 }

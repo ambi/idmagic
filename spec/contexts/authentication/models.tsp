@@ -464,6 +464,63 @@ model AccountTrustedDeviceListResponse {
 }
 
 
+@doc("アカウントのセキュリティ通知の種別。1 通の通知は必ずどれか 1 つの種別に属し、\n種別ごとに本人が受信を止められるかどうかが決まる。new_device_sign_in は既知でない\nブラウザーからのサインイン、credential_change はパスワードの変更、mfa_change は\n認証要素・復旧コード・信頼済みデバイスの増減、contact_change はメールアドレスの\n変更要求と確定、session_revoked は本人または管理者による明示的なセッション失効、\nimpersonation は管理者が本人として操作を始めたこと。")
+enum SecurityNotificationCategory {
+  new_device_sign_in: "new_device_sign_in",
+  credential_change: "credential_change",
+  mfa_change: "mfa_change",
+  contact_change: "contact_change",
+  session_revoked: "session_revoked",
+  impersonation: "impersonation",
+}
+
+
+@doc("本人によるセキュリティ通知の受信設定。行が無いことと「すべて有効」は同じ意味で、\n初回の変更まで行を作らない。disabled_categories に載せられるのは任意の種別だけで、\n必須の種別を含む更新は拒否する。乗っ取りの直後に攻撃者が最初に消すのは通知であり、\n通知を消せることは通知が無いことと変わらないためである。")
+model NotificationPreference {
+  @doc("所有者ユーザの sub。tenant_id は持たない (users.id が全体で一意なため)。")
+  user_id: string;
+  @doc("本人が受信を止めた種別。必須の種別は含められない。")
+  disabled_categories: SecurityNotificationCategory[];
+  updated_at: utcDateTime;
+}
+
+
+@doc("そのユーザーが過去にサインインしたことのあるブラウザー 1 件。new_device_sign_in の\n判定と重複排除を兼ねる。サインインのたびに (user_id, device_hash) で upsert し、\n行が新たに作られたときだけ「新しい端末」として通知する。device_hash は\nテナントの相関ソルトを効かせた User-Agent の SHA-256 hex であり、生の User-Agent も\nIP も保存しない。")
+model KnownSignInDevice {
+  @doc("所有者ユーザの sub。")
+  user_id: string;
+  @doc("SaltedHash(tenant salt, User-Agent) の hex。テナントをまたいで相関しない。")
+  device_hash: string;
+  @doc("User-Agent から導いたブラウザーと OS の系統だけの表示ラベル (例 \"Chrome / macOS\")。")
+  label?: string;
+  first_seen_at: utcDateTime;
+  last_seen_at: utcDateTime;
+}
+
+
+@doc("セキュリティ通知の種別 1 件についての本人向けの提示。mandatory が true の種別は\nenabled が常に true で、更新でも false にできない。")
+model AccountNotificationCategoryPreference {
+  category: SecurityNotificationCategory;
+  @doc("本人が無効化できない種別かどうか。")
+  mandatory: boolean;
+  @doc("現在この種別の通知を受け取るかどうか。")
+  enabled: boolean;
+}
+
+
+@doc("GetMyNotificationPreferences の返り値。全種別を仕様が定める安定した並びで返すので、\nUI は種別の一覧をコード側に持たなくてよい。")
+model AccountNotificationPreferences {
+  categories: AccountNotificationCategoryPreference[];
+}
+
+
+@doc("UpdateMyNotificationPreferences の入力。有効にする種別ではなく無効にする種別を\n送るので、後から種別が増えても既存の設定は「有効」のまま引き継がれる。必須の種別を\n含む要求は 400 で拒否する。")
+model UpdateNotificationPreferencesRequest {
+  @doc("受信を止める種別。任意の種別だけを含められる。")
+  disabled_categories: SecurityNotificationCategory[];
+}
+
+
 @doc("StartWebAuthnRegistration の返り値。navigator.credentials.create に渡す\nPublicKeyCredentialCreationOptions を JSON でそのまま返す。challenge は短命で\nサーバー側セッションに束縛する。")
 model WebAuthnRegistrationOptions {
   @doc("PublicKeyCredentialCreationOptions (WebAuthn Level 3)。")
@@ -1121,6 +1178,21 @@ model StepUpRequested {
   tenantId: string;
   userId: string;
   sessionId: string;
+}
+
+
+@doc("アカウントのセキュリティ通知を 1 通送った (または送ろうとして失敗した)。何を知らせたかを\n監査に残すためのイベントであり、本文も宛先アドレスも payload に含めない。通知の\nディスパッチャー自身が発行するが、このイベント種別はカタログに無いので通知は連鎖しない。")
+model AccountSecurityNotificationSent {
+  occurredAt: utcDateTime;
+  @doc("対象 user の所属テナント ID。")
+  tenantId: string;
+  @doc("通知を受け取る本人の sub (なりすましでは操作した admin ではなく対象本人)。")
+  userId: string;
+  category: SecurityNotificationCategory;
+  @doc("通知の契機になったイベントの種別名。")
+  triggerEventType: string;
+  @doc("EmailSender が受け付けたかどうか。最大限努力なので false でも元の操作は成立している。")
+  delivered: boolean;
 }
 
 

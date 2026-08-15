@@ -364,7 +364,7 @@ model TenantBrandingUpdated {
 }
 
 
-@doc("通知の用途を表す固定識別子。カタログはこの全 key に対し ja / en の組込み既定テンプレートを持つ。テナントは key を追加できない。AccountSecurityAlert は現在どの経路からも送信されず、カタログと編集面だけが先に存在する。")
+@doc("通知の用途を表す固定識別子。カタログはこの全 key に対し ja / en の組込み既定テンプレートを持つ。テナントは key を追加できない。AccountSecurityAlert は 1 つの key で全種別のセキュリティ通知を賄い、何が起きたかは event_description と device_summary の差し込みで表す。")
 enum NotificationTemplateKey {
   PasswordReset: "PasswordReset",
   EmailVerification: "EmailVerification",

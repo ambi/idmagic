@@ -9,6 +9,7 @@ import (
 	"slices"
 	"time"
 
+	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/domain"
 	"github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -48,7 +49,7 @@ func Issue(
 		return "", nil
 	}
 	device, cookie, err := domain.NewTrustedDevice(
-		tenantID, userID, domain.DeviceLabel(userAgent), maxAge, now,
+		tenantID, userID, authdomain.DeviceLabel(userAgent), maxAge, now,
 	)
 	if err != nil {
 		return "", err

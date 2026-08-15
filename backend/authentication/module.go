@@ -10,6 +10,7 @@ import (
 	passwordports "github.com/ambi/idmagic/backend/authentication/password/ports"
 	"github.com/ambi/idmagic/backend/authentication/ports"
 	recoveryports "github.com/ambi/idmagic/backend/authentication/recovery/ports"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/securitynotification/ports"
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
@@ -37,8 +38,13 @@ type Module struct {
 	WebAuthnRP               *webauthn.WebAuthn
 	RecoveryCodeRepo         recoveryports.RecoveryCodeRepository
 	TrustedDeviceRepo        trusteddeviceports.TrustedDeviceRepository
-	NewLoginAttemptThrottle  func(sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle
-	AuthEventBucketStore     ports.AuthEventBucketStore
+	// NotificationPreferenceRepo / KnownSignInDeviceRepo はアカウントのセキュリティ
+	// 通知 (wi-90)。どちらも nil なら「すべて有効・端末は記録しない」として振る舞い、
+	// 通知の配線が無い構成でも認証と資格情報の変更は変わらない。
+	NotificationPreferenceRepo securitynotificationports.PreferenceRepository
+	KnownSignInDeviceRepo      securitynotificationports.KnownDeviceRepository
+	NewLoginAttemptThrottle    func(sessionports.LoginThrottleConfigs) sessionports.LoginAttemptThrottle
+	AuthEventBucketStore       ports.AuthEventBucketStore
 
 	PasswordHasher          passwordports.PasswordHasher
 	BreachedPasswordChecker passwordports.BreachedPasswordChecker

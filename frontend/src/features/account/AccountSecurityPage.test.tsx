@@ -460,3 +460,91 @@ describe('AccountSecurityPage', () => {
     )
   })
 })
+
+describe('AccountSecurityPage notification preferences', () => {
+  const security: AccountSecurity = {
+    totp_enrolled: false,
+    factors: [],
+    webauthn_credentials: [],
+    recovery_codes: { total: 0, remaining: 0 },
+  }
+  const preferences = {
+    categories: [
+      { category: 'new_device_sign_in' as const, mandatory: false, enabled: true },
+      { category: 'credential_change' as const, mandatory: true, enabled: true },
+      { category: 'session_revoked' as const, mandatory: false, enabled: false },
+    ],
+  }
+
+  afterEach(() => restoreGlobals())
+
+  // REQ-AUTHENTICATION-033: 必須の種別はトグルを操作できず、常に通知であることを示す。
+  it('locks the toggle for categories the user cannot turn off', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, {}))),
+    )
+    await renderWithRouter(
+      <AccountSecurityPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        security={security}
+        notificationPreferences={preferences}
+      />,
+    )
+
+    expect(screen.getByText(t.notifications)).toBeInTheDocument()
+    expect(
+      screen.getByRole('checkbox', { name: t.notificationCategoryCredentialChange }),
+    ).toBeDisabled()
+    expect(screen.getByText(t.notificationMandatory)).toBeInTheDocument()
+    expect(
+      screen.getByRole('checkbox', { name: t.notificationCategoryNewDeviceSignIn }),
+    ).not.toBeDisabled()
+    expect(
+      screen.getByRole('checkbox', { name: t.notificationCategorySessionRevoked }),
+    ).not.toBeChecked()
+  })
+
+  // REQ-AUTHENTICATION-034: 停止は「止める種別」の集合として送り、既存の停止を保つ。
+  it('sends the whole disabled set when a category is turned off', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() =>
+        Promise.resolve(
+          response(200, {
+            categories: [
+              { category: 'new_device_sign_in', mandatory: false, enabled: false },
+              { category: 'credential_change', mandatory: true, enabled: true },
+              { category: 'session_revoked', mandatory: false, enabled: false },
+            ],
+          }),
+        ),
+      ),
+    )
+    await renderWithRouter(
+      <AccountSecurityPage
+        csrfToken="csrf"
+        username="taro"
+        isAdmin={false}
+        security={security}
+        notificationPreferences={preferences}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('checkbox', { name: t.notificationCategoryNewDeviceSignIn }))
+
+    expect(await screen.findByText(t.notificationUpdated)).toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/api/account/v1/notification_preferences'),
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ disabled_categories: ['new_device_sign_in', 'session_revoked'] }),
+      }),
+    )
+    expect(
+      screen.getByRole('checkbox', { name: t.notificationCategoryNewDeviceSignIn }),
+    ).not.toBeChecked()
+  })
+})

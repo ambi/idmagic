@@ -59,12 +59,17 @@ func NewAuditEventRecord(e spec.DomainEvent) (*auditports.AuditEventRecord, erro
 // this helper, so audit coverage doesn't depend on which process happens to run
 // the use case.
 func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent) {
-	return func(event spec.DomainEvent) {
+	var emit func(spec.DomainEvent)
+	emit = func(event spec.DomainEvent) {
 		eventCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancel()
 		if err := d.OAuth2.EventSink.Emit(eventCtx, event); err != nil {
 			logger.Error(eventCtx, "event sink emit failed", "error", err)
 		}
+		// アカウントのセキュリティ通知は同じ配信点から購読する (wi-90)。監査への
+		// 書き込みと同じワイヤ表現を見るので、通知の対象は emit 済みの事実に一致する。
+		// 送信自体は切り離して走るため、この呼び出しは SMTP を待たない。
+		d.dispatchSecurityNotification(logger, emit, event)
 		if d.Audit.AuditEventRepo == nil {
 			return
 		}
@@ -81,4 +86,5 @@ func (d *Dependencies) NewEmitFunc(logger logging.Logger) func(spec.DomainEvent)
 			logger.Error(appendCtx, "audit event append failed; reconciliation required", "error", err, "event_type", event.EventType(), "tenant_id", rec.TenantID)
 		}
 	}
+	return emit
 }

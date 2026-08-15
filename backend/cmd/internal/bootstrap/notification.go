@@ -25,6 +25,13 @@ func AssembleNotification(deps *Dependencies, cfg SharedConfig) error {
 		systemDefaultLocale = template.FallbackLocale
 	}
 
+	// セキュリティ通知は同じ Notifier に載る。ここで決めるのは本文の説明を選ぶ locale の
+	// 最終段と、送信を認証中のリクエストから切り離す方法だけである (wi-90)。
+	deps.SecurityNotifications.SystemDefaultLocale = systemDefaultLocale
+	if deps.SecurityNotifications.Run == nil {
+		deps.SecurityNotifications.Run = runDetached
+	}
+
 	deps.Notification.Notifier = &template.Notifier{
 		Sender: deps.Notification.EmailSender,
 		Tenant: tenantusecases.TenantNotificationSource{

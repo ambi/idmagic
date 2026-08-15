@@ -12,6 +12,8 @@ import (
 	auditmemory "github.com/ambi/idmagic/backend/audit/db_memory"
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authnmemory "github.com/ambi/idmagic/backend/authentication/db_memory"
+	securitynotificationmemory "github.com/ambi/idmagic/backend/authentication/securitynotification/db_memory"
+	securitynotificationports "github.com/ambi/idmagic/backend/authentication/securitynotification/ports"
 	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
 	sessiondomain "github.com/ambi/idmagic/backend/authentication/session/domain"
 	"github.com/ambi/idmagic/backend/authentication/usecases"
@@ -62,7 +64,7 @@ func TestRetentionSweepDeletesByTypeBoundaries(t *testing.T) {
 	// impersonation: cap 未設定なら無期限保持 (400 日前でも残る)。
 	seedAudit(t, store, "imp-400", (&authdomain.SessionImpersonationStarted{}).EventType(), daysAgo(now, 400))
 
-	res, err := usecases.RunRetentionSweep(ctx, store, nil, nil, usecases.DefaultRetentionPolicy(), now)
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Audit: store}, usecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -99,7 +101,7 @@ func TestRetentionSweepKeepsFailureUsernamePlaintext(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := usecases.RunRetentionSweep(ctx, store, nil, nil, usecases.DefaultRetentionPolicy(), now); err != nil {
+	if _, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Audit: store}, usecases.DefaultRetentionPolicy(), now); err != nil {
 		t.Fatal(err)
 	}
 	oldGot, _ := store.FindByID(ctx, "fail-8")
@@ -122,7 +124,7 @@ func TestRetentionSweepGlobalCapShortensAndDeletesImpersonation(t *testing.T) {
 
 	policy := usecases.DefaultRetentionPolicy()
 	policy.MaxDays = 30
-	if _, err := usecases.RunRetentionSweep(ctx, store, nil, nil, policy, now); err != nil {
+	if _, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Audit: store}, policy, now); err != nil {
 		t.Fatal(err)
 	}
 	got := remainingAuditIDs(t, store)
@@ -148,7 +150,7 @@ func TestRetentionSweepDeletesOldBuckets(t *testing.T) {
 	if _, err := store.Record(ctx, "failed_login", tenancydomain.DefaultTenantID, "fresh-key", now); err != nil {
 		t.Fatal(err)
 	}
-	res, err := usecases.RunRetentionSweep(ctx, nil, store, nil, usecases.DefaultRetentionPolicy(), now)
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Buckets: store}, usecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +188,7 @@ func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
 	mustSave("expired-91", daysAgo(now, 91))
 	mustSave("active", now.Add(time.Hour))
 
-	res, err := usecases.RunRetentionSweep(ctx, nil, nil, store, usecases.DefaultRetentionPolicy(), now)
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{Sessions: store}, usecases.DefaultRetentionPolicy(), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,5 +203,41 @@ func TestRetentionSweepDeletesExpiredSessions(t *testing.T) {
 	}
 	if owned, _ := store.FindOwned(ctx, "active", "user-1"); owned == nil {
 		t.Error("active session should survive")
+	}
+}
+
+// TestRetentionSweepDeletesIdleKnownSignInDevices: 既知のサインイン端末はサインイン履歴と
+// 同じ 365 日で掃除する (wi-90)。履歴から消えた端末を「既知」と呼び続けないためである。
+func TestRetentionSweepDeletesIdleKnownSignInDevices(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 6, 21, 12, 0, 0, 0, time.UTC)
+	store := securitynotificationmemory.NewKnownDeviceRepository()
+
+	observe := func(hash string, seenAt time.Time) {
+		t.Helper()
+		if _, err := store.Observe(ctx, securitynotificationports.KnownDevice{
+			UserID: "user-1", DeviceHash: hash, SeenAt: seenAt,
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	observe("recent", daysAgo(now, 364))
+	observe("idle", daysAgo(now, 366))
+
+	res, err := usecases.RunRetentionSweep(ctx, usecases.RetentionStores{KnownDevices: store}, usecases.DefaultRetentionPolicy(), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.KnownDevices != 1 {
+		t.Fatalf("deleted known devices=%d, want 1", res.KnownDevices)
+	}
+	// 掃除された端末は次のサインインで再び「新しい端末」になり、残った端末はならない。
+	swept, err := store.Observe(ctx, securitynotificationports.KnownDevice{UserID: "user-1", DeviceHash: "idle", SeenAt: now})
+	if err != nil || !swept {
+		t.Errorf("the swept device = %v, err %v; want it to count as new again", swept, err)
+	}
+	kept, err := store.Observe(ctx, securitynotificationports.KnownDevice{UserID: "user-1", DeviceHash: "recent", SeenAt: now})
+	if err != nil || kept {
+		t.Errorf("the device within the window = %v, err %v; want it to stay known", kept, err)
 	}
 }

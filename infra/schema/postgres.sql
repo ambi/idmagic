@@ -272,6 +272,40 @@ CREATE INDEX trusted_devices_active_user_idx
     ON trusted_devices (tenant_id, user_id, last_used_at DESC)
     WHERE revoked_at IS NULL;
 
+-- Security notification preferences (wi-90). Only the categories the user turned
+-- off are stored, so a category added later stays enabled for existing rows. An
+-- absent row means "every category enabled"; the row is created on first change.
+-- No tenant_id: users.id is globally unique and the row hangs off it.
+CREATE TABLE notification_preferences (
+    user_id UUID PRIMARY KEY,
+    disabled_categories TEXT[] NOT NULL DEFAULT '{}',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT notification_preferences_user_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    CONSTRAINT notification_preferences_categories
+        CHECK (disabled_categories <@ ARRAY['new_device_sign_in', 'session_revoked'])
+);
+
+-- Browsers this user has signed in from before (wi-90). The insert-or-touch is
+-- what decides "new device", so it is both the judgement and the deduplication
+-- for new_device_sign_in notifications. device_hash is SaltedHash(tenant salt,
+-- User-Agent); neither the raw User-Agent nor the IP is stored.
+CREATE TABLE known_sign_in_devices (
+    user_id UUID NOT NULL,
+    device_hash TEXT NOT NULL,
+    label TEXT,
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, device_hash),
+    CONSTRAINT known_sign_in_devices_user_fkey
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- The retention sweep drops devices idle past the sign-in history window, so a
+-- browser that fell out of the history is not still called "known".
+CREATE INDEX known_sign_in_devices_idle_idx
+    ON known_sign_in_devices (last_seen_at);
+
 CREATE TABLE signing_keys (
     kid TEXT PRIMARY KEY,
     tenant_id UUID NOT NULL,

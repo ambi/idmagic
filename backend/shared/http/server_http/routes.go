@@ -484,6 +484,8 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		WebAuthnSessionStore:      d.Authentication.WebAuthnSessionStore,
 		RecoveryCodeRepo:          d.Authentication.RecoveryCodeRepo,
 		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
+
+		NotificationPreferenceRepo: d.Authentication.NotificationPreferenceRepo,
 	}
 	authhttp.RegisterRoutes(g, authDeps)
 

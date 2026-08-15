@@ -70,15 +70,18 @@ account_security_alert:
 
     Activity: {{event_description}}
     When: {{occurred_at}}
+    Device: {{device_summary}}
 
-    If this was not you, change your password and contact your administrator.
+    If this was not you, review your account security and change your password:
+    {{security_review_url}}
 
     {{tenant_display_name}}
   body_html: |
     <p>Hello {{user_display_name}},</p>
     <p>The following activity was recorded on your {{product_name}} account.</p>
-    <p>Activity: {{event_description}}<br>When: {{occurred_at}}</p>
-    <p style="color:#475569;font-size:13px;">If this was not you, change your password and contact your administrator.</p>
+    <p>Activity: {{event_description}}<br>When: {{occurred_at}}<br>Device: {{device_summary}}</p>
+    <p><a href="{{security_review_url}}" style="color:#1d4fd8;">Review your account security</a></p>
+    <p style="color:#475569;font-size:13px;">If this was not you, change your password from that page and contact your administrator.</p>
     <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
 
 agent_action_approval_request:

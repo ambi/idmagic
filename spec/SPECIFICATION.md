@@ -322,7 +322,7 @@ DEK の破棄では `tenant_data_encryption_keys` の行を削除せず、`wrapp
 | `PasswordReset`, `EmailVerification`, `EmailChangeConfirmation` | 1 つの `*_url` の導線, `expires_in_minutes` |
 | `EmailChangeConfirmation` (additional) | `new_email` |
 | `LifecycleWorkflowNotification` (additional) | `notification_key` |
-| `AccountSecurityAlert` (additional) | `event_description`, `occurred_at` |
+| `AccountSecurityAlert` (additional) | `event_description`, `occurred_at`, `device_summary`, `security_review_url` |
 
 資格情報、ダイジェスト値、TOTP シークレット、API トークン、生の IP アドレスは決して差し込みにしない。メールは受信者によって転送され、引用され、無期限に保持されるため、そこに置いたものは後の受信箱の侵害ですべて露出する。
 

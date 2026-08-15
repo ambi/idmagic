@@ -162,6 +162,19 @@ func Run() error {
 		}
 		e.Use(otelProvider.Middleware)
 	}
+	// セキュリティ通知の本文に載せるアカウント画面の URL は、テナントの正規ロケーション
+	// 配下でなければならない。正規ロケーションの組み立ては HTTP 層が所有するので、
+	// issuer と親ドメインを知っているこのプロセスが解決器を差し込む (wi-90)。
+	// NewEmitFunc がこの配線を読むため、必ずその前に行う。
+	canonical := httpsupport.Deps{Issuer: issuer, TenantBaseDomain: api.TenantBaseDomain}
+	deps.SecurityNotifications.IssuerResolver = func(ctx context.Context, tenantID string) string {
+		tenant, err := deps.Tenancy.TenantRepo.FindByID(ctx, tenantID)
+		if err != nil || tenant == nil {
+			return issuer
+		}
+		tenantIssuer, _ := canonical.CanonicalLocation(tenant)
+		return tenantIssuer
+	}
 	emit := deps.NewEmitFunc(logger)
 	sessionManager.QuotaRepo = deps.Tenancy.QuotaRepo
 	sessionManager.Emit = emit

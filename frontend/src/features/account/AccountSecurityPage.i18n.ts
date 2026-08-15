@@ -85,6 +85,28 @@ export const accountSecurityDictionary = defineDictionary(
     trustedDeviceEmpty: '記憶済みのデバイスはありません。',
     trustedDeviceRevoked: 'デバイスの記憶を取り消しました。',
     trustedDeviceRevokeFailed: 'デバイスの記憶を取り消せませんでした。',
+    notifications: 'セキュリティ通知',
+    notificationsDescription:
+      'アカウントに起きた変化をメールでお知らせします。乗っ取りに早く気づくための通知なので、資格情報や連絡先に関わるものは止められません。',
+    notificationMandatory: '常に通知',
+    notificationUpdated: '通知の設定を変更しました。',
+    notificationUpdateFailed: '通知の設定を変更できませんでした。',
+    notificationCategoryNewDeviceSignIn: '新しいデバイスからのサインイン',
+    notificationCategoryNewDeviceSignInHint:
+      'これまで使ったことのないブラウザーでサインインしたとき。同じブラウザーの 2 回目以降は届きません。',
+    notificationCategoryCredentialChange: 'パスワードの変更',
+    notificationCategoryCredentialChangeHint: 'パスワードを変更したとき。',
+    notificationCategoryMfaChange: '認証要素の変更',
+    notificationCategoryMfaChangeHint:
+      '認証アプリ・パスキー・復旧コードの登録と解除、管理者による認証器のリセット、デバイスの記憶。',
+    notificationCategoryContactChange: 'メールアドレスの変更',
+    notificationCategoryContactChangeHint:
+      '変更を要求したときは変更前のアドレスへ、確定したときは新しいアドレスへ届きます。',
+    notificationCategorySessionRevoked: 'セッションの失効',
+    notificationCategorySessionRevokedHint:
+      'ご自身または管理者がサインイン中のセッションを失効させたとき。',
+    notificationCategoryImpersonation: '管理者による代理操作',
+    notificationCategoryImpersonationHint: '管理者があなたとして操作を開始したとき。',
   },
   {
     noRecord: 'No record',
@@ -173,5 +195,28 @@ export const accountSecurityDictionary = defineDictionary(
     trustedDeviceEmpty: 'No devices are remembered.',
     trustedDeviceRevoked: 'The device is no longer remembered.',
     trustedDeviceRevokeFailed: 'Could not revoke the remembered device.',
+    notifications: 'Security notifications',
+    notificationsDescription:
+      'We email you when something on your account changes. These notices are how you spot a takeover early, so the ones about credentials and contact details cannot be turned off.',
+    notificationMandatory: 'Always on',
+    notificationUpdated: 'Notification settings updated.',
+    notificationUpdateFailed: 'Could not update the notification settings.',
+    notificationCategoryNewDeviceSignIn: 'Sign-in from a new device',
+    notificationCategoryNewDeviceSignInHint:
+      'When you sign in from a browser you have never used before. Later sign-ins from the same browser do not send one.',
+    notificationCategoryCredentialChange: 'Password changed',
+    notificationCategoryCredentialChangeHint: 'When your password changes.',
+    notificationCategoryMfaChange: 'Authenticator changed',
+    notificationCategoryMfaChangeHint:
+      'Adding or removing an authenticator app, passkey, or recovery codes; an administrator resetting them; remembering a device.',
+    notificationCategoryContactChange: 'Email address changed',
+    notificationCategoryContactChangeHint:
+      'Sent to the old address when a change is requested, and to the new address once it takes effect.',
+    notificationCategorySessionRevoked: 'Session revoked',
+    notificationCategorySessionRevokedHint:
+      'When you or an administrator explicitly revokes a signed-in session.',
+    notificationCategoryImpersonation: 'Administrator acting as you',
+    notificationCategoryImpersonationHint:
+      'When an administrator starts acting as you in the product.',
   },
 )

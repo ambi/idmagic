@@ -16,19 +16,23 @@ func RunRetentionSweepOnce(ctx context.Context, deps *Dependencies, now time.Tim
 	audit, _ := deps.Audit.AuditEventRepo.(authusecases.AuditEventPurger)
 	buckets, _ := deps.Authentication.AuthEventBucketStore.(authusecases.AuthEventBucketPurger)
 	sessions, _ := deps.Authentication.SessionStore.(authusecases.SessionPurger)
-	if audit == nil && buckets == nil && sessions == nil {
+	knownDevices, _ := deps.Authentication.KnownSignInDeviceRepo.(authusecases.KnownDevicePurger)
+	stores := authusecases.RetentionStores{
+		Audit: audit, Buckets: buckets, Sessions: sessions, KnownDevices: knownDevices,
+	}
+	if stores.Empty() {
 		return nil
 	}
 	if now.IsZero() {
 		now = time.Now().UTC()
 	}
 	policy := authusecases.DefaultRetentionPolicy()
-	res, err := authusecases.RunRetentionSweep(ctx, audit, buckets, sessions, policy, now)
+	res, err := authusecases.RunRetentionSweep(ctx, stores, policy, now)
 	if err != nil {
 		return err
 	}
 	logging.Info(ctx, "retention sweep completed",
 		"deleted_audit_events", res.AuditEvents, "deleted_buckets", res.Buckets,
-		"deleted_sessions", res.Sessions)
+		"deleted_sessions", res.Sessions, "deleted_known_devices", res.KnownDevices)
 	return nil
 }

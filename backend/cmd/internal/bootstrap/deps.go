@@ -52,8 +52,12 @@ type Dependencies struct {
 	Authorization    authorization.Module
 	Notification     notification.Module
 	RateLimit        ratelimit.Module
-	Close            func()
-	DbPing           func(context.Context) error
+	// SecurityNotifications はアカウントのセキュリティ通知の起動時配線 (wi-90)。
+	// AssembleNotification が locale と実行方法を埋め、issuer を知るプロセスが
+	// IssuerResolver を差し込む。
+	SecurityNotifications SecurityNotificationConfig
+	Close                 func()
+	DbPing                func(context.Context) error
 }
 
 // RuntimeConfig は /health などで露出するための実行時構成ラベルを集約する。

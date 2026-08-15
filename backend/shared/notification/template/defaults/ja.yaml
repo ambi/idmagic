@@ -69,15 +69,18 @@ account_security_alert:
 
     内容: {{event_description}}
     日時: {{occurred_at}}
+    デバイス: {{device_summary}}
 
-    心当たりがない場合は、パスワードを変更し、管理者に連絡してください。
+    心当たりがない場合は、次のページでアカウントのセキュリティを確認し、パスワードを変更してください。
+    {{security_review_url}}
 
     {{tenant_display_name}}
   body_html: |
     <p>{{user_display_name}} さん</p>
     <p>{{product_name}} のアカウントで次の操作が記録されました。</p>
-    <p>内容: {{event_description}}<br>日時: {{occurred_at}}</p>
-    <p style="color:#475569;font-size:13px;">心当たりがない場合は、パスワードを変更し、管理者に連絡してください。</p>
+    <p>内容: {{event_description}}<br>日時: {{occurred_at}}<br>デバイス: {{device_summary}}</p>
+    <p><a href="{{security_review_url}}" style="color:#1d4fd8;">アカウントのセキュリティを確認する</a></p>
+    <p style="color:#475569;font-size:13px;">心当たりがない場合は、そのページからパスワードを変更し、管理者に連絡してください。</p>
     <p style="color:#475569;font-size:13px;">{{tenant_display_name}}</p>
 
 agent_action_approval_request:

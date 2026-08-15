@@ -1,5 +1,6 @@
 import {
   IconArrowRight,
+  IconBell,
   IconCircleCheck,
   IconDeviceLaptop,
   IconDeviceMobile,
@@ -24,9 +25,13 @@ import {
   revokeTrustedDevice,
   startTotpEnrollment,
   tenantURL,
+  updateNotificationPreferences,
+  type AccountNotificationCategoryPreference,
+  type AccountNotificationPreferences,
   type AccountTrustedDevice,
   type AccountTrustedDevices,
   type LinkedIdentity,
+  type SecurityNotificationCategory,
 } from '../../api'
 import { AccountShell } from '../../components/AccountShell'
 import { StepUpCancelledError, useStepUpGuard } from '../../components/StepUpDialog'
@@ -58,6 +63,7 @@ export function AccountSecurityPage({
   security,
   linkedIdentities = [],
   trustedDevices: initialTrustedDevices,
+  notificationPreferences: initialNotificationPreferences,
 }: {
   csrfToken: string
   username: string
@@ -65,6 +71,7 @@ export function AccountSecurityPage({
   security: AccountSecurity
   linkedIdentities?: LinkedIdentity[]
   trustedDevices?: AccountTrustedDevices
+  notificationPreferences?: AccountNotificationPreferences
 }) {
   const t = useDictionary(accountSecurityDictionary)
   const [enrolled, setEnrolled] = useState(security.totp_enrolled)
@@ -86,7 +93,35 @@ export function AccountSecurityPage({
   const [trustedDevices, setTrustedDevices] = useState<AccountTrustedDevices>(
     initialTrustedDevices ?? { devices: [], max_age_seconds: 0 },
   )
+  // セキュリティ通知の受信設定 (wi-90)。必須の種別はサーバーが mandatory を付けて返す。
+  const [notifications, setNotifications] = useState<AccountNotificationCategoryPreference[]>(
+    initialNotificationPreferences?.categories ?? [],
+  )
   const { guard, dialog } = useStepUpGuard(csrfToken)
+
+  // 通知を止めることは乗っ取りに気づく手立てを外すことでもあるので、更新は step-up
+  // 再認証を要する。サーバーは「止める種別」の集合を丸ごと置き換える。
+  async function handleToggleNotification(
+    category: SecurityNotificationCategory,
+    enabled: boolean,
+  ) {
+    const disabled = notifications
+      .filter((item) => (item.category === category ? !enabled : !item.enabled && !item.mandatory))
+      .map((item) => item.category)
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const updated = await guard(() => updateNotificationPreferences(csrfToken, disabled))
+      setNotifications(updated.categories)
+      setNotice(t.notificationUpdated)
+    } catch (cause) {
+      if (cause instanceof StepUpCancelledError) return
+      setError(errorMessage(cause, t.notificationUpdateFailed))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   // 記憶の取り消しは step-up 再認証を要する機微操作なので guard を通す。
   async function handleRevokeTrustedDevice(id: string) {
@@ -301,6 +336,14 @@ export function AccountSecurityPage({
           busy={busy}
           onRevoke={handleRevokeTrustedDevice}
           onRevokeAll={handleRevokeAllTrustedDevices}
+        />
+      ) : null}
+
+      {notifications.length > 0 ? (
+        <NotificationPreferencesCard
+          categories={notifications}
+          busy={busy}
+          onToggle={handleToggleNotification}
         />
       ) : null}
 
@@ -838,6 +881,94 @@ function TrustedDevicesCard({
           </Button>
         </div>
       ) : null}
+    </Card>
+  )
+}
+
+// NotificationPreferencesCard はセキュリティ通知の種別ごとの受信設定を提示する (wi-90)。
+// 必須の種別はトグルを操作不能にし、「常に通知」であることを明示する。乗っ取りの直後に
+// 攻撃者が最初に消すのは通知であり、消せることは通知が無いことと変わらないためである。
+function NotificationPreferencesCard({
+  categories,
+  busy,
+  onToggle,
+}: {
+  categories: AccountNotificationCategoryPreference[]
+  busy: boolean
+  onToggle: (category: SecurityNotificationCategory, enabled: boolean) => void
+}) {
+  const t = useDictionary(accountSecurityDictionary)
+  const labels: Record<SecurityNotificationCategory, { title: string; hint: string }> = {
+    new_device_sign_in: {
+      title: t.notificationCategoryNewDeviceSignIn,
+      hint: t.notificationCategoryNewDeviceSignInHint,
+    },
+    credential_change: {
+      title: t.notificationCategoryCredentialChange,
+      hint: t.notificationCategoryCredentialChangeHint,
+    },
+    mfa_change: {
+      title: t.notificationCategoryMfaChange,
+      hint: t.notificationCategoryMfaChangeHint,
+    },
+    contact_change: {
+      title: t.notificationCategoryContactChange,
+      hint: t.notificationCategoryContactChangeHint,
+    },
+    session_revoked: {
+      title: t.notificationCategorySessionRevoked,
+      hint: t.notificationCategorySessionRevokedHint,
+    },
+    impersonation: {
+      title: t.notificationCategoryImpersonation,
+      hint: t.notificationCategoryImpersonationHint,
+    },
+  }
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+          <IconBell size={20} aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-900">{t.notifications}</p>
+          <p className="mt-1 text-sm text-slate-600">{t.notificationsDescription}</p>
+        </div>
+      </div>
+
+      <ul className="flex flex-col gap-2">
+        {categories.map((preference) => {
+          const label = labels[preference.category]
+          return (
+            <li
+              key={preference.category}
+              className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 p-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-slate-900">
+                  {label.title}
+                  {preference.mandatory ? (
+                    <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                      {t.notificationMandatory}
+                    </span>
+                  ) : null}
+                </p>
+                <p className="mt-0.5 text-xs text-slate-500">{label.hint}</p>
+              </div>
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-slate-300"
+                  checked={preference.enabled}
+                  disabled={busy || preference.mandatory}
+                  aria-label={label.title}
+                  onChange={(event) => onToggle(preference.category, event.target.checked)}
+                />
+              </label>
+            </li>
+          )
+        })}
+      </ul>
     </Card>
   )
 }

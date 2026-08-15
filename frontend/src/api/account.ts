@@ -424,3 +424,40 @@ export async function revokeAllTrustedDevices(csrfToken: string): Promise<void> 
   if (response.status === 204) return
   throw await responseAPIError(response)
 }
+
+// セキュリティ通知の種別 (wi-90)。バックエンドのカタログと同じ並びで返るので、
+// UI 側で並べ替えない。
+export type SecurityNotificationCategory =
+  | 'new_device_sign_in'
+  | 'credential_change'
+  | 'mfa_change'
+  | 'contact_change'
+  | 'session_revoked'
+  | 'impersonation'
+
+export type AccountNotificationCategoryPreference = {
+  category: SecurityNotificationCategory
+  // mandatory な種別は本人が止められない。UI はトグルを操作不能にして理由を示す。
+  mandatory: boolean
+  enabled: boolean
+}
+
+export type AccountNotificationPreferences = {
+  categories: AccountNotificationCategoryPreference[]
+}
+
+export async function getNotificationPreferences(): Promise<AccountNotificationPreferences> {
+  return request('/api/account/v1/notification_preferences')
+}
+
+// 更新は「止める種別」を丸ごと置き換える。必須の種別を含めるとサーバーが 400 で拒否し、
+// 一部だけが適用されることはない。
+export async function updateNotificationPreferences(
+  csrfToken: string,
+  disabledCategories: SecurityNotificationCategory[],
+): Promise<AccountNotificationPreferences> {
+  return request(
+    '/api/account/v1/notification_preferences',
+    adminRequest(csrfToken, 'PUT', { disabled_categories: disabledCategories }),
+  )
+}

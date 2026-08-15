@@ -24,6 +24,10 @@ type RetentionPolicy struct {
 	AggregatedDays int
 	MfaDays        int
 	SessionDays    int
+	// KnownDeviceDays は既知のサインイン端末を「既知」と呼び続ける期間 (wi-90)。
+	// 成功イベントと同じ 365 日にそろえる。サインイン履歴から消えた端末を既知のまま
+	// にすると、本人が確かめる手立てのない判定が残るためである。
+	KnownDeviceDays int
 	// MaxDays は global cap (0 = 上限なし)。各種類はこれを超えて保持しない。
 	MaxDays int
 }
@@ -31,12 +35,13 @@ type RetentionPolicy struct {
 // DefaultRetentionPolicy は 既定値。
 func DefaultRetentionPolicy() RetentionPolicy {
 	return RetentionPolicy{
-		SuccessDays:    365,
-		FailDays:       30,
-		AggregatedDays: 90,
-		MfaDays:        90,
-		SessionDays:    90,
-		MaxDays:        0,
+		SuccessDays:     365,
+		FailDays:        30,
+		AggregatedDays:  90,
+		MfaDays:         90,
+		SessionDays:     90,
+		KnownDeviceDays: 365,
+		MaxDays:         0,
 	}
 }
 
@@ -135,6 +140,15 @@ func (p RetentionPolicy) SessionCutoff(now time.Time) time.Time {
 	return now.Add(-time.Duration(days) * 24 * time.Hour)
 }
 
+// KnownDeviceCutoff は known_sign_in_devices の削除境界 (wi-90)。
+func (p RetentionPolicy) KnownDeviceCutoff(now time.Time) time.Time {
+	days := p.capDays(p.KnownDeviceDays)
+	if days <= 0 {
+		return time.Time{}
+	}
+	return now.Add(-time.Duration(days) * 24 * time.Hour)
+}
+
 // AuditEventPurger / AuthEventBucketPurger は sweep が要求する削除境界。store の read 契約
 // (AuditEventRepository / AuthEventBucketStore) とは分離し、sweep を持たない構成でも動く。
 type AuditEventPurger interface {
@@ -151,6 +165,25 @@ type SessionPurger interface {
 	DeleteExpiredBatch(ctx context.Context, cutoff time.Time, limit int) (int, error)
 }
 
+// KnownDevicePurger は既知のサインイン端末の削除境界 (wi-90)。
+type KnownDevicePurger interface {
+	DeleteIdleBefore(ctx context.Context, cutoff time.Time) (int64, error)
+}
+
+// RetentionStores は sweep が触る保存先の束。nil の系統はスキップする。位置引数を
+// 増やし続けると、どの store がどれか読めなくなるため名前付きで渡す。
+type RetentionStores struct {
+	Audit        AuditEventPurger
+	Buckets      AuthEventBucketPurger
+	Sessions     SessionPurger
+	KnownDevices KnownDevicePurger
+}
+
+// Empty は掃除する先が 1 つも無いかを返す。
+func (s RetentionStores) Empty() bool {
+	return s.Audit == nil && s.Buckets == nil && s.Sessions == nil && s.KnownDevices == nil
+}
+
 // sessionSweepBatchLimit は 1 回の sweep 呼び出しで物理削除する LoginSession の上限。
 // 大きな DELETE 1 発による write amplification / lock 競合を避け、残りは次回の
 // (外部 scheduler が起動する) sweep 呼び出しで収束させる。
@@ -158,47 +191,55 @@ const sessionSweepBatchLimit = 1000
 
 // RetentionSweepResult は 1 回の sweep で削除した件数。
 type RetentionSweepResult struct {
-	AuditEvents int64
-	Buckets     int64
-	Sessions    int
+	AuditEvents  int64
+	Buckets      int64
+	Sessions     int
+	KnownDevices int64
 }
 
-// RunRetentionSweep は監査イベント・bucket・期限切れ LoginSession を保持期間に従って
-// 一括削除する。store が nil の系統はスキップする。idempotent で、1 回で消し切れなくても
-// 次回で収束する。
+// RunRetentionSweep は監査イベント・bucket・期限切れ LoginSession・使われなくなった
+// 既知の端末を保持期間に従って一括削除する。store が nil の系統はスキップする。
+// idempotent で、1 回で消し切れなくても次回で収束する。
 func RunRetentionSweep(
 	ctx context.Context,
-	audit AuditEventPurger,
-	buckets AuthEventBucketPurger,
-	sessions SessionPurger,
+	stores RetentionStores,
 	policy RetentionPolicy,
 	now time.Time,
 ) (RetentionSweepResult, error) {
 	var result RetentionSweepResult
 	now = now.UTC()
-	if audit != nil {
-		deleted, err := audit.DeleteOlderThan(ctx, policy.AuditCutoff(now))
+	if stores.Audit != nil {
+		deleted, err := stores.Audit.DeleteOlderThan(ctx, policy.AuditCutoff(now))
 		if err != nil {
 			return result, err
 		}
 		result.AuditEvents = deleted
 	}
-	if buckets != nil {
+	if stores.Buckets != nil {
 		if before := policy.BucketCutoff(now); !before.IsZero() {
-			deleted, err := buckets.DeleteOlderThan(ctx, before)
+			deleted, err := stores.Buckets.DeleteOlderThan(ctx, before)
 			if err != nil {
 				return result, err
 			}
 			result.Buckets = deleted
 		}
 	}
-	if sessions != nil {
+	if stores.Sessions != nil {
 		if before := policy.SessionCutoff(now); !before.IsZero() {
-			deleted, err := sessions.DeleteExpiredBatch(ctx, before, sessionSweepBatchLimit)
+			deleted, err := stores.Sessions.DeleteExpiredBatch(ctx, before, sessionSweepBatchLimit)
 			if err != nil {
 				return result, err
 			}
 			result.Sessions = deleted
+		}
+	}
+	if stores.KnownDevices != nil {
+		if before := policy.KnownDeviceCutoff(now); !before.IsZero() {
+			deleted, err := stores.KnownDevices.DeleteIdleBefore(ctx, before)
+			if err != nil {
+				return result, err
+			}
+			result.KnownDevices = deleted
 		}
 	}
 	return result, nil
