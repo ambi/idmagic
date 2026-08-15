@@ -21,6 +21,8 @@ import (
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totppostgres "github.com/ambi/idmagic/backend/authentication/totp/db_postgres"
 	webauthnpostgres "github.com/ambi/idmagic/backend/authentication/webauthn/db_postgres"
+	"github.com/ambi/idmagic/backend/authorization"
+	authorizationpostgres "github.com/ambi/idmagic/backend/authorization/db_postgres"
 	"github.com/ambi/idmagic/backend/datakeys"
 	datakeyspostgres "github.com/ambi/idmagic/backend/datakeys/db_postgres"
 	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
@@ -237,6 +239,10 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			ReceiverConfigRepo:    &sharedsignalspostgres.SsfReceiverConfigRepository{Pool: resilientDB},
 			DeliveryRepo:          &sharedsignalspostgres.SecurityEventDeliveryRepository{Pool: resilientDB},
 			ReceivedEventRepo:     &sharedsignalspostgres.ReceivedSecurityEventRepository{Pool: resilientDB},
+		},
+		Authorization: authorization.Module{
+			TupleRepo: &authorizationpostgres.RelationTupleRepository{Pool: resilientDB},
+			ModelRepo: &authorizationpostgres.AuthorizationModelRepository{Pool: resilientDB},
 		},
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {

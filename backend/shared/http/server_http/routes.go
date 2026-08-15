@@ -23,6 +23,9 @@ import (
 	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
 	totpports "github.com/ambi/idmagic/backend/authentication/totp/ports"
 	webauthnports "github.com/ambi/idmagic/backend/authentication/webauthn/ports"
+	"github.com/ambi/idmagic/backend/authorization"
+	authorizationhttp "github.com/ambi/idmagic/backend/authorization/handlers_http"
+	authorizationprincipals "github.com/ambi/idmagic/backend/authorization/principals_idmanagement"
 	"github.com/ambi/idmagic/backend/datakeys"
 	datakeyshttp "github.com/ambi/idmagic/backend/datakeys/handlers_http"
 	"github.com/ambi/idmagic/backend/idgovernance"
@@ -127,6 +130,7 @@ type Deps struct {
 	Provisioning     provisioning.Module
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
+	Authorization    authorization.Module
 
 	// WebAuthn / Passkey と backup recovery code (wi-26)。WebAuthnRP が nil の場合 WebAuthn は無効。
 }
@@ -398,6 +402,15 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Deps: d.Deps, Authenticator: authenticator,
 		TrustBundleRepo: d.WorkloadIdentity.TrustBundleRepo, BindingRepo: d.WorkloadIdentity.BindingRepo,
 		AgentRepo: d.IdManagement.AgentRepo, FetchJWKS: fetchWorkloadJWKS,
+	})
+
+	authorizationhttp.RegisterRoutes(g, authorizationhttp.Deps{
+		Deps: d.Deps, Authenticator: authenticator,
+		TupleRepo: d.Authorization.TupleRepo, ModelRepo: d.Authorization.ModelRepo,
+		Principals: authorizationprincipals.Resolver{
+			Agents: d.IdManagement.AgentRepo, Users: d.IdManagement.UserRepo,
+		},
+		Authorizer: d.OAuth2.Authorizer,
 	})
 
 	sharedsignalshttp.RegisterRoutes(g, sharedsignalshttp.Deps{

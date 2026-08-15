@@ -56,6 +56,7 @@ var rolePermissionInterfaces = map[string][]string{
 	"AdminApplicationPoliciesManage":       {"GetAppSignInPolicy", "UpdateAppSignInPolicy"},
 	"AdminTenantDefaultSignInPolicyManage": {"GetTenantDefaultSignInPolicy", "UpdateTenantDefaultSignInPolicy"},
 	"AdminApplicationCategoriesManage":     {"ListApplicationCategories", "CreateApplicationCategory", "UpdateApplicationCategory", "DeleteApplicationCategory", "SetApplicationCategories"},
+	"AdminAuthorizationModelManage":        {"GetAuthorizationModel", "PutAuthorizationModel", "ListRelationTuples", "WriteRelationTuples", "CheckAccess", "ListAccessibleResources"},
 	"AdminFederationTrustsManage":          {"RegisterSamlServiceProvider", "ListSamlServiceProviders", "DeleteSamlServiceProvider", "RegisterWsFedRelyingParty", "ListWsFedRelyingParties", "DeleteWsFedRelyingParty"},
 	"ScimProvision": {
 		"GetScimServiceProviderConfig", "GetScimResourceTypes", "GetScimSchemas",

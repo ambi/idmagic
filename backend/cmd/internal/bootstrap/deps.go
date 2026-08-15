@@ -9,6 +9,7 @@ import (
 	"github.com/ambi/idmagic/backend/audit"
 	"github.com/ambi/idmagic/backend/authentication"
 	webauthnusecases "github.com/ambi/idmagic/backend/authentication/webauthn/usecases"
+	"github.com/ambi/idmagic/backend/authorization"
 	"github.com/ambi/idmagic/backend/datakeys"
 	"github.com/ambi/idmagic/backend/idgovernance"
 	"github.com/ambi/idmagic/backend/idmanagement"
@@ -48,6 +49,7 @@ type Dependencies struct {
 	Provisioning     provisioning.Module
 	WorkloadIdentity workloadidentity.Module
 	SharedSignals    sharedsignals.Module
+	Authorization    authorization.Module
 	Notification     notification.Module
 	RateLimit        ratelimit.Module
 	Close            func()

@@ -20,6 +20,8 @@ import (
 	sessionports "github.com/ambi/idmagic/backend/authentication/session/ports"
 	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
 	webauthnmemory "github.com/ambi/idmagic/backend/authentication/webauthn/db_memory"
+	"github.com/ambi/idmagic/backend/authorization"
+	authorizationmemory "github.com/ambi/idmagic/backend/authorization/db_memory"
 	"github.com/ambi/idmagic/backend/datakeys"
 	datakeysmemory "github.com/ambi/idmagic/backend/datakeys/db_memory"
 	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
@@ -204,6 +206,14 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 			DeliveryRepo:          sharedsignalsmemory.NewSecurityEventDeliveryRepository(),
 			ReceivedEventRepo:     sharedsignalsmemory.NewReceivedSecurityEventRepository(),
 		},
+		Authorization: func() authorization.Module {
+			// タプルとモデルの書き込み版は 1 つの Store が共有する。
+			store := authorizationmemory.NewStore()
+			return authorization.Module{
+				TupleRepo: authorizationmemory.NewRelationTupleRepository(store),
+				ModelRepo: authorizationmemory.NewAuthorizationModelRepository(store),
+			}
+		}(),
 		RateLimit: rlports.Module{
 			NewRateLimiter: func(configs rlports.RateLimitConfigs) rlports.RateLimiter {
 				return ratelimitmemory.NewRateLimiter(configs)

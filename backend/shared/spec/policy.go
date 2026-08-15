@@ -68,6 +68,39 @@ type AuthZContext struct {
 	SubjectUserID     string                  `json:"subjectUserID,omitempty"`
 	Audience          string                  `json:"audience,omitempty"`
 	DelegationDepth   int                     `json:"delegationDepth,omitempty"`
+	// ActorChain は RFC 8693 の act チェーンを外側から内側の順に載せる。
+	// 直接アクセスでは空になる。
+	ActorChain []AuthZActor `json:"actorChain,omitempty"`
+	// Relationship は Authorization Context が組み立てた関係の事実。
+	// nil のまま届いた resource:access は許可しない (fail-closed)。
+	Relationship *AuthZRelationshipFacts `json:"relationship,omitempty"`
+}
+
+// AuthZActor は代行チェーンの 1 段。Active はプリンシパルの有効性を解決した結果で、
+// 解決できなかった場合は false のままにする。
+type AuthZActor struct {
+	Type   string `json:"type"`
+	ID     string `json:"id"`
+	Active bool   `json:"active"`
+}
+
+// AuthZRelationshipFacts は ReBAC の評価結果を判定 context へ載せた形。判定の
+// 合成は評価器の規則表が持ち、Authorization Context はこの事実だけを供給する。
+type AuthZRelationshipFacts struct {
+	// Evaluated は関係評価を実際に走らせたことを表す。供給を忘れた経路が
+	// 黙って許可にならないよう、規則側はこれを必須にする。
+	Evaluated bool `json:"evaluated"`
+	// SubjectPermitted は代行されるユーザー自身が関係を持つかどうか。
+	SubjectPermitted bool `json:"subjectPermitted"`
+	// ActorChainPermitted はチェーン上のすべての actor が同じ関係を持つかどうか。
+	// チェーンが空のときは true になる。
+	ActorChainPermitted bool `json:"actorChainPermitted"`
+	// ModelVersion は判定に用いた認可モデルの版。
+	ModelVersion int `json:"modelVersion,omitempty"`
+	// RelationPath はたどった関係名だけの経路要約。識別子は含まない。
+	RelationPath []string `json:"relationPath,omitempty"`
+	// DenyReasons は関係評価が下した拒否理由。
+	DenyReasons []string `json:"denyReasons,omitempty"`
 }
 
 type AuthZProofOfPossession struct {
@@ -129,6 +162,10 @@ const (
 	ActionScimProvision                        = "scim:provision"
 	ActionManageScimSettings                   = "admin:scim_settings_manage"
 	ActionAdminBrandingUpdate                  = "admin:branding_update"
+	ActionAdminAuthorizationModelManage        = "admin:authorization_model_manage"
+	// ActionResourceAccess は Authorization Context の関係ベース判定を合成する
+	// アクション。管理面のロール認可ではなく、データ資源 1 件へのアクセスを表す。
+	ActionResourceAccess = "resource:access"
 )
 
 // 管理画面の capability 名から AuthZ action 名への対応。
@@ -173,6 +210,7 @@ var actionNameMapping = map[string]string{
 	"ScimProvision":                        ActionScimProvision,
 	"ManageScimSettings":                   ActionManageScimSettings,
 	"BrandingUpdate":                       ActionAdminBrandingUpdate,
+	"AdminAuthorizationModelManage":        ActionAdminAuthorizationModelManage,
 }
 
 func ActionNameForCapability(capabilityName string) (string, bool) {
@@ -298,6 +336,19 @@ var actionRules = map[string][]string{
 	ActionAdminBrandingUpdate: {
 		"actor_is_admin_or_system_admin", "actor_is_active", "actor_is_authenticated", "actor_and_resource_share_tenant",
 	},
+	ActionAdminAuthorizationModelManage: {
+		"actor_is_admin", "actor_is_active", "actor_is_authenticated", "actor_and_resource_share_tenant",
+	},
+	// resource:access は関係の事実、代行チェーン、スコープ、テナントの論理積である。
+	// 事実が欠けたまま届いた要求は relationship_facts_present が落とす。
+	ActionResourceAccess: {
+		"relationship_facts_present",
+		"relationship_permits_subject",
+		"relationship_permits_actor_chain",
+		"actor_chain_principals_active",
+		"scope_subset_of_client_scope",
+		"actor_and_resource_share_tenant",
+	},
 }
 
 type ruleEvaluator func(req AuthZRequest) bool
@@ -368,6 +419,24 @@ var ruleEvaluators = map[string]ruleEvaluator{
 	"actor_and_resource_share_tenant": func(r AuthZRequest) bool {
 		return r.Subject.Type == "User" && r.Subject.Properties.TenantID != "" &&
 			r.Subject.Properties.TenantID == r.Resource.Properties.TenantID
+	},
+	"relationship_facts_present": func(r AuthZRequest) bool {
+		return r.Context.Relationship != nil && r.Context.Relationship.Evaluated
+	},
+	"relationship_permits_subject": func(r AuthZRequest) bool {
+		return r.Context.Relationship != nil && r.Context.Relationship.SubjectPermitted
+	},
+	"relationship_permits_actor_chain": func(r AuthZRequest) bool {
+		return r.Context.Relationship != nil && r.Context.Relationship.ActorChainPermitted
+	},
+	"actor_chain_principals_active": func(r AuthZRequest) bool {
+		// 空のチェーン (直接アクセス) は満たす。1 段でも有効性を解決できなければ落とす。
+		for _, actor := range r.Context.ActorChain {
+			if !actor.Active {
+				return false
+			}
+		}
+		return true
 	},
 	"actor_is_admin_or_system_admin": func(r AuthZRequest) bool {
 		if r.Subject.Type != "User" {

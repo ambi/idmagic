@@ -1509,3 +1509,47 @@ CREATE TABLE received_security_events (
     CONSTRAINT received_security_events_stream_jti_key
         UNIQUE (stream_id, set_jti)
 );
+
+CREATE TABLE authorization_models (
+    id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,
+    version INTEGER NOT NULL,
+    definition JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT authorization_models_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    CONSTRAINT authorization_models_tenant_version_key
+        UNIQUE (tenant_id, version)
+);
+
+CREATE TABLE authorization_relation_tuples (
+    tenant_id UUID NOT NULL,
+    resource_type TEXT NOT NULL
+        CHECK (resource_type ~ '^[a-z][a-z0-9_]*$' AND char_length(resource_type) <= 64),
+    resource_id TEXT NOT NULL
+        CHECK (char_length(resource_id) BETWEEN 1 AND 256),
+    relation TEXT NOT NULL
+        CHECK (relation ~ '^[a-z][a-z0-9_]*$' AND char_length(relation) <= 64),
+    subject_type TEXT NOT NULL
+        CHECK (subject_type ~ '^[a-z][a-z0-9_]*$' AND char_length(subject_type) <= 64),
+    subject_id TEXT NOT NULL
+        CHECK (char_length(subject_id) BETWEEN 1 AND 256),
+    subject_relation TEXT NOT NULL DEFAULT ''
+        CHECK (subject_relation = '' OR (subject_relation ~ '^[a-z][a-z0-9_]*$' AND char_length(subject_relation) <= 64)),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT authorization_relation_tuples_pkey
+        PRIMARY KEY (tenant_id, resource_type, resource_id, relation, subject_type, subject_id, subject_relation),
+    CONSTRAINT authorization_relation_tuples_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+
+CREATE INDEX authorization_relation_tuples_subject_idx
+    ON authorization_relation_tuples (tenant_id, subject_type, subject_id, subject_relation, resource_type);
+
+CREATE TABLE authorization_write_versions (
+    tenant_id UUID PRIMARY KEY,
+    version BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT authorization_write_versions_tenant_fkey
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);

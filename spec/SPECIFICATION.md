@@ -88,6 +88,7 @@ flowchart LR
   WorkloadIdentity[WorkloadIdentity]
   SharedSignals[SharedSignals]
   Audit[Audit]
+  Authorization[Authorization]
   System[System]
 
   Tenancy -->|OHS/PL: tenant boundary| IdManagement
@@ -117,9 +118,12 @@ flowchart LR
   Seeding -->|C/S: published commands| Tenancy
   Seeding -->|C/S: published commands| IdManagement
   Seeding -->|C/S: published commands| Application
+  OAuth2 -->|OHS/PL: AuthZEN policy evaluation| Authorization
+  IdManagement -->|OHS/PL: principal status| Authorization
   IdManagement -->|Events: audit facts| Audit
   Authentication -->|Events: audit facts| Audit
   OAuth2 -->|Events: audit facts| Audit
+  Authorization -->|Events: audit facts| Audit
   System -->|C/S: UI and runtime composition| Authentication
   System -->|C/S: UI and runtime composition| Application
 ```
@@ -135,6 +139,7 @@ flowchart LR
 | `Authentication` | `backend/authentication` | 資格情報の検証、MFA、ログインセッション、ステップアップ認証、パスワードの変更とリセット、認証イベント。 |
 | `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC のプロトコルのエンドポイント、クライアント、同意、トークン、ロールのポリシー。 |
 | `Application` | `backend/application` | Application のカタログ、プロトコルの束縛、割り当て、ポータルの並び順と分類。 |
+| `Authorization` | `backend/authorization` | リソース 1 件ごとの細粒度認可。テナントごとの認可モデル（リソース型と関係の定義）、関係タプル、深さ制限つきのグラフ評価、整合トークンを所有する。判定の合成そのものは持たず、関係の成否を事実として OAuth2 が所有する AuthZEN の `Authorizer` ポートへ渡す。設計は [Authorization specification](contexts/authorization/SPECIFICATION.md) を参照。 |
 | `Audit` | `backend/audit` | 全 Context にまたがる監査イベントの Read Model。検索属性の登録簿、個人識別情報の変換、管理 API、保持期間を所有する。 |
 | `ClaimMapping` | `backend/claimmapping` | プロトコルに依存しないクレーム開示ポリシー、アイデンティティ属性からクレームへのマッピング、フェイルクローズな検証。 |
 | `Provisioning` | `backend/provisioning` | SCIM 2.0 による外向きのプロビジョニング。下流の SaaS へ反映するライフサイクルを担う。idmagic の User と Group が正となる情報源であり、下流はその写しである。 |
@@ -328,6 +333,7 @@ PostgreSQL に構造を追加するには、まず `infra/schema/postgres.sql` �
 - **OAuth2** — `oauth2_client_secrets` は `client_secret` の資格情報をクライアント本体の行から分離する。`refresh_tokens.sid` は OIDC のブラウザーセッションを表し、`authentication_sessions.id` と同じ値を持つ。`client_credentials` などブラウザーセッションを伴わない発行では `NULL` になる。セッションの保持期間に基づく物理削除とリフレッシュトークンの失効を独立させるため、`authentication_sessions` への外部キーは設定しない。`refresh_tokens.resource`（RFC 8707）は認可コードの交換時にバインドしたリソース指示子であり、ローテーション後も保持する。`NULL` は `resource` が指定されなかったことを表す。`mcp_resource_servers` は、ツールやデータを提供する MCP リソースサーバーのテナント単位の登録である。`resource` はテナント内で一意な正規リソース URI であり、Protected Resource Metadata（RFC 9728）とリソース指示子（RFC 8707）の検証基準になる。`oauth2_authorization_requests` は `/authorize` の処理中の状態を `payload` の JSONB に保持し、単一トランザクション内の `SELECT ... FOR UPDATE` で遷移を直列化する。`oauth2_authorization_codes` は `UPDATE ... WHERE state = 'issued' RETURNING` による比較交換で一度だけ消費する。`oauth2_par_requests` も `used` を比較交換の条件として一度だけ消費する。`oauth2_device_codes` は `device_code_hash` を鍵とし、`user_code` をテナント内で一意な副次的な照合先とする。承認時に `user_id` を設定し、交換時は `state` を比較交換の条件とする。`oauth2_replay_jtis.kind` は `dpop` と `client_assertion` の再送防止を区別し、`INSERT ... ON CONFLICT DO NOTHING` で初回利用だけを記録する。`oauth2_access_token_denylist` は、切り替え時にも失効情報を失わないよう `LOGGED` テーブルとする。
 - **Audit** — `audit_event_search_attributes` は付随する検索用のインデックスであり、 `(event, attr_name, 変換後の値)` ごとに 1 行を持つ。`attr_name` は `AuditSearchRegistry` の `Field` である。PII の属性はここへ保存する前に要約値にするか丸める。平文は `audit_events.payload` にのみ存在し、それも失敗のイベントについて短い保持期間の下でのみである。`audit_events` の削除に連鎖し、照合用のインデックスは等価一致のために `(tenant_id, attr_name, attr_value)` を、走査のために `occurred_at DESC` を並べる。
 - **ApiTokens** — `api_tokens` は管理対象の RFC 9068 JWT アクセストークンのライフサイクル記録を保持する。JWT 本体は保存せず、`jti` を照合キーとする。`scopes` は許可された `<resource>:<action>` 形式の権限を列挙する（`spec/contexts/api-tokens/models.tsp` の `ApiTokenScope`）。テーブルの `CHECK` 制約にも同じ列挙を反映し、Go 側の検証と合わせて多層防御とする。
+- **Authorization** — `authorization_models` はモデルの版を追記のみで保持し、定義は JSONB に置く。定義は外部から与えられる構造であり、結合や絞り込みの対象にならないからである。`authorization_relation_tuples` は逆にタプルを列へ展開し、`(tenant_id, resource_type, resource_id, relation, subject_type, subject_id, subject_relation)` を主キーとする。判定の絞り込みが主キーの先頭から効き、同じ組の再書き込みが冪等になる。主体側からの走査には `(tenant_id, subject_type, subject_id, subject_relation, resource_type)` の索引を使う。`authorization_write_versions` はテナントごとの書き込み版を 1 行で保持し、タプル書き込みとモデル登録が同じトランザクションで進める。返す整合トークンはテナントを束縛しているので、他テナントのトークンは判定側で fail-closed に弾ける。
 - **IdGovernance** — `lifecycle_workflow_revisions` は追記のみである。実行の記録 (`lifecycle_workflow_runs` と `_steps`) は可変な JSON ではなく、展開元の版を参照する。
 - **Provisioning** — `provisioning_connections.credential_secret` は開発およびテスト専用の平文列であり、本番環境ではこの列に依拠しない。
 
@@ -426,6 +432,9 @@ API の操作とワイヤ表現の提示は、生成された OpenAPI の文書�
 - 内向きのアイデンティティ取り込みは、方向や実行時の形ではなく、永続的な取り込み元とのバインディングを持つ権威の有無でまとめる。取り込み元ごとに 1 つの機能単位を持つ単一の `Sourcing` Context とし、取り込み元に依存しない中核は 2 つ目の取り込み元が現れるまで作らない（薄いルート）。
 - データベースに残る可逆なシークレットのエンベロープ暗号化では、技術的な `EnvelopeCrypto` ポート（Tink の AEAD と鍵束、主鍵のプロバイダー）を、業務に面したテナントごとの DEK のライフサイクルから分ける。これは `SigningKeys` が `transit/sign` に使うのと同じ分割である。ポートは `backend/shared/security` に、ライフサイクルは `DataKeys` Context に置き、どちらも `SigningKeys` には統合しない。`SigningKeys` の `KeyStore` ポートは操作の形もライフサイクルも異なるからである。
 - Dynamic Group のメンバーシップの規則は、独自の式の言語や本格的な処理系ではなく、制限された CEL の環境で評価する。
+- リソース 1 件ごとの細粒度認可 (ReBAC) は、新しい HTTP ミドルウェアや第 2 の判定経路ではなく、既存の AuthZEN の `Authorizer` ポートへ関係の事実を供給する側として組み込む。`Authorization` Context は関係の成否だけを組み立て、ロール・スコープ・代行チェーン・プリンシパルの有効性との論理積は評価器の規則表が持つ。合成規則の所在を二重化させないためであり、外部 PDP へ差し替えてもこの分割は変わらない。
+- 関係の書き換え規則は和 (union) だけで構成し、交差と差集合は導入しない。評価が単調になり、規則やタプルの追加が既存の許可を取り消さないからである。
+- リソースの列挙は逆引きインデックスではなく、上限つきの走査と 1 件ずつの判定で行い、打ち切りを結果に示す。正しさを先に固定し、規模が問題になった時点で持ち方を改めて設計する。
 - `ApiTokens` は SCIM と管理 API のアクセストークンを、別々のトークン種別ではなく、単一の発行方式とスコープモデルに統一する。
 - `WorkloadIdentity` は外部ワークロードのアテステーション（JWT-SVID）を、独立した資格情報体系ではなく、OAuth2 のトークン交換を介して idmagic のトークンへ連携する。
 - アダプターのパッケージは所有する Context または機能の直下に平らに置き、`<role>_<technology>` で命名する。`adapters/` や `persistence/` のような分類ディレクトリは置かず、パッケージ名だけで役割が分かるようにする。

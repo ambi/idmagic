@@ -186,6 +186,31 @@ type AuthorizationDetailType struct {
 	UpdatedAt       time.Time
 }
 
+type AuthorizationModel struct {
+	ID         string
+	TenantID   string
+	Version    int32
+	Definition []byte
+	CreatedAt  time.Time
+}
+
+type AuthorizationRelationTuple struct {
+	TenantID        string
+	ResourceType    string
+	ResourceID      string
+	Relation        string
+	SubjectType     string
+	SubjectID       string
+	SubjectRelation string
+	CreatedAt       time.Time
+}
+
+type AuthorizationWriteVersion struct {
+	TenantID  string
+	Version   int64
+	UpdatedAt time.Time
+}
+
 type Consent struct {
 	UserID    string
 	ClientID  string

@@ -41,6 +41,8 @@ import "./contexts/workloadidentity/models.tsp";
 import "./contexts/workloadidentity/main.tsp";
 import "./contexts/sharedsignals/models.tsp";
 import "./contexts/sharedsignals/main.tsp";
+import "./contexts/authorization/models.tsp";
+import "./contexts/authorization/main.tsp";
 
 using TypeSpec.Http;
 
