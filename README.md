@@ -1,47 +1,37 @@
 # IdMagic
 
-**本番運用に対応する、エンタープライズ向けアイデンティティプロバイダー。**
+**プロダクションレディなエンタープライズ向け ID プロバイダー。**
 
-IdMagic は Go で実装したアイデンティティプロバイダーであり、OAuth 2.0、OpenID Connect、SAML、WS-Federation、テナント分離、アプリケーションポータル、アイデンティティ管理を堅牢に提供する。仕様を先に定める開発手順を採用し、API とモデルの契約は TypeSpec、各 Context の振る舞いと現在の設計は 1 つの正規仕様書に置き、実装は Bounded Context を中心に構成する。
-
-複雑なエンタープライズ認証フローを扱える、信頼性の高い実用的なアイデンティティ基盤を目指している。
+IdMagic は Go で実装したIDプロバイダーであり、OAuth 2.0、OpenID Connect、SAML、WS-Federation、テナント分離、アプリケーションポータル、ID管理を堅牢に提供する。
 
 ## 主な機能
 
-- **包括的なアイデンティティプロトコル**: PKCE、PAR、デバイスフロー、DPoP、動的クライアント登録、トークンローテーションを含む、完全な OAuth 2.0 / OpenID Connect 認可サーバー。
-- **エンタープライズフェデレーション**: SAML 2.0 IdP、WS-Federation Passive Profile、WS-Trust STS、Microsoft Entra ドメインフェデレーションのプリセットを標準で提供する。
-- **マルチテナントアーキテクチャ**: レルム単位のルート、テナントごとに自動ローテーションする署名鍵、テナント固有のアプリケーションカタログ、カスタマイズ可能なブランドポータルによって、テナントを厳密に分離する。
-- **高可用性とスケーラビリティ**: PostgreSQL の共有状態、堅牢な分散ジョブ処理、OpenTelemetry のネイティブ統合によってスケールに対応する。
-- **モダンな管理体験**: Vite、Tailwind CSS、Radix UI を使った、高性能な React 製の管理コンソールとアカウントポータル。
-- **設定可能な資格情報ポリシー**: デフォルトでは NIST SP 800-63B-4 に沿ったパスワード規則を採用する。長さ、履歴、漏洩パスワード検査を適用し、文字種の構成規則や強制ローテーションは設けない。テナントごとの上書きは厳格化だけを許し、ローテーション要件があるテナントはパスワード有効期限を明示的に有効化できる。
-
-## アーキテクチャとリポジトリ構成
-
-IdMagic は軽量な仕様優先の開発手順を採用する。主な Bounded Context は `tenancy`、`idmanagement`、`authentication`、`oauth2`、`application`、`wsfederation`、`saml` である。共有アダプターは `backend/shared`、ランタイムの構成は `backend/cmd/internal/bootstrap` に置く。
-
-| 区分 | 場所 |
-| --- | --- |
-| 製品仕様と現在の設計 | `spec/**/*.tsp`, `spec/**/SPECIFICATION.md` |
-| 変更の設計と履歴 | `work-items/*.md` |
-| アプリケーションロジック | `backend/<context>/domain`, `backend/<context>/usecases` |
-| 中核とアダプター | `backend/<context>/{domain,usecases,ports}`, `backend/<context>/{handlers_http,db_postgres,...}` |
-| ランタイムとインフラストラクチャ | `backend/cmd/`, `backend/bootstrap`, `infra/`, `frontend/` |
-
-`infra/schema/postgres.sql` は現在状態を宣言するスキーマである。アプリケーションは起動時に移行を実行せず、配備時に `psqldef` でスキーマ変更を適用する。
+- **包括的な ID プロトコル**: 完全な OAuth 2.0 / OpenID Connect 認可サーバー。PKCE (RFC 7636)、Pushed Authorization Requests (RFC 9126)、デバイスフロー (RFC 8628)、DPoP (RFC 9449) と mTLS (RFC 8705) による送信者制約、動的クライアント登録 (RFC 7591)、Client ID Metadata Document、リソース指示子 (RFC 8707)、RFC 9068 JWT アクセストークン、トークン交換 (RFC 8693)、Rich Authorization Requests (RFC 9396)、CIBA、RP-Initiated / Front-Channel / Back-Channel Logout に対応し、FAPI 2.0 Security Profile と RFC 9700 (BCP 240) に沿って運用する。
+- **エンタープライズフェデレーション**: SAML 2.0 IdP、WS-Federation Passive Profile、WS-Trust STS、Microsoft Entra ドメインフェデレーションのプリセットを標準で提供する。上流の OIDC / SAML IdP からのログインフェデレーションにも対応する。
+- **マルチテナントアーキテクチャ**: テナントごとのサブドメイン、自動ローテーションする署名鍵、カスタマイズ可能なブランドポータルによって、テナントを厳密に分離する。
+- **エージェントを第一級の主体として扱う**: 自律型・監督型の AI エージェントを `Agent` として登録し、所有者、目的、ライフサイクルを管理する。資格情報は既存の OAuth クライアントに束ね、Kubernetes や SPIFFE の JWT-SVID を長期シークレットなしでトークンへ交換できる。代行はなりすましではなく委譲を既定とし、権限は `authorization_details` で上限付きに宣言する。人間の承認が要る操作は CIBA を通し、キルスイッチは即時に効く。
+- **ID ガバナンス**: 入社・異動・退職をライフサイクルワークフローとして自動化する。ユーザーの作成、属性変更、ステータス遷移をトリガーに、グループ、アプリケーション割り当て、必須操作、通知を順に適用し、実行前に結果を試算できる。
+- **双方向のデータ連携**: 外部 IdP から SCIM 2.0 サーバーとしてユーザーとグループを受け取り、下流の SaaS へは SCIM 2.0 クライアントとして反映する。管理者向けには CSV の一括インポートとエクスポートを提供し、事前検証、行単位の判定、往復可能なエンコードを保証する。
+- **カスタム属性とクレームマッピング**: ユーザーとグループにテナント定義の属性スキーマを持たせ、属性ごとに可視性と本人編集の可否を宣言する。公開するクレームは宣言的な対応付けだけで決まり、OIDC、SAML、WS-Federation が同じフェイルクローズの発行経路を共有する。
+- **アプリケーションごとのサインインポリシー**: MFA の要否、再認証を求めるまでの時間、接続元ネットワークをアプリケーション単位で設定できる。テナント全体の既定を置き、アプリケーションごとに上書きでき、実際に適用される内容を管理画面で確認できる。
+- **継続的アクセス評価 (SSF / CAEP)**: OpenID Shared Signals Framework の送信側と受信側の両方として動く。失効はまず自身の中で即時に確定させ、そのうえで署名済みの Security Event Token として外部へ伝える。
+- **設定可能な資格情報ポリシー**: デフォルトでは NIST SP 800-63B-4 に沿ったパスワード規則を採用する。長さ、履歴、漏洩パスワード検査を適用し、文字種の構成規則や強制ローテーションは設けない。TOTP、パスキー (WebAuthn)、復旧コードによる多要素認証に対応する。
+- **高可用性とスケーラビリティ**: 状態は PostgreSQL に集約し、第 2 のデータストアを運用しない。永続ジョブはレーンごとの `worker` が処理し、API とは独立して台数を増やせる。OpenTelemetry のトレースとメトリクスを標準で出力し、Kubernetes には生存・受付可否・起動完了の 3 つのプローブを分けて提供する。
+- **モダンなユーザーエクスペリエンス**: Tailwind CSS を使った高性能な React 製のログイン画面・管理コンソール・アカウントポータル。
 
 ## 開発の始め方
 
 ### ローカルでのクイックスタート
 
-組み込み PostgreSQL、API、`worker` プロセス、UI を含む Docker 不要のローカルスタックを起動する:
+組み込み PostgreSQL、バックエンド API、非同期処理の `worker`、フロントエンドを含む Docker 不要のローカルスタックを起動する:
 
 ```bash
 just dev
 ```
 
-初回実行時に、約 190 MB の組み込み PostgreSQL バイナリをダウンロードしてキャッシュする。開発データは一時的なもので、スタックの停止時に削除される。API と `worker` は別のプロセスとして動きながら PostgreSQL のジョブキューを共有するため、この構成でも永続ジョブが動作する。PostgreSQL のローカルエンドポイントは `127.0.0.1:55432` である。
+初回実行時に、約 190 MB の組み込み PostgreSQL バイナリをダウンロードしてキャッシュする。開発データは一時的なもので、スタックの停止時に削除される。PostgreSQL のローカルエンドポイントは `127.0.0.1:55432` である。
 
-永続ジョブとバックグラウンドの `worker` プロセスを使わない、最小の API と UI の構成:
+永続ジョブと `worker` プロセスが不要なら、最小の API と UI の構成も起動できる:
 
 ```bash
 just dev-memory
@@ -52,19 +42,15 @@ just dev-memory
 - **`alice`** (パスワード: `demo-password-1234`): テナント管理者のデモユーザー
 - **`root`** (パスワード: `demo-password-1234`): テナント管理者とシステム管理者を兼ねるユーザー
 
-*注意: `/login` を直接開かないこと。ログイン画面には進行中の認可トランザクションが必要である。*
-
 CIBA のポーリング方式による承認フローを試すには、`alice` でサインインし、別のターミナルで次を実行する:
 
 ```bash
 just demo-ciba
 ```
 
-表示された案内に従ってアカウントの承認ページを開き、リクエストを承認してターミナルへ戻る。
-
 ### Docker 開発環境
 
-Compose スタックは PostgreSQL、OpenTelemetry Collector、Prometheus、Go API、UI ゲートウェイを起動する。Caddy が統合アプリケーションを <http://localhost:8080/> で公開する。
+Docker Compose スタックは PostgreSQL、OpenTelemetry Collector、Prometheus、Go API、UI ゲートウェイを起動する。Caddy が統合アプリケーションを <http://localhost:8080/> で公開する。
 
 ```bash
 just dev-compose       # バックグラウンドで起動
@@ -74,7 +60,7 @@ just down-compose      # 停止して削除
 
 ### 個別に起動する
 
-別々のターミナルで実行する場合は、共有 PostgreSQL を用意し、API と `worker` プロセスの両方へ `PERSISTENCE=postgres` と `DATABASE_URL` を渡す。`just dev-api` だけを実行した場合は、引き続きメモリモードを使う。
+別々のターミナルで実行する場合は、共有 PostgreSQL を用意し、API と `worker` プロセスの両方へ `PERSISTENCE=postgres` と `DATABASE_URL` を渡す。`just dev-api` だけを実行した場合は、引き続きインメモリモードを使う。
 
 ```bash
 # ターミナル 1: Go API
@@ -114,78 +100,35 @@ VERSION=1.0.0 just build-go
 
 ## 設定
 
-ローカルのデフォルトでは、メモリ永続化とコンソールへのメール出力を使う。すべての起動時環境変数について、型、デフォルト、条件付き要件、所有するプロセス、シークレット区分を確認するには、生成済みの [設定リファレンス](CONFIGURATION.md) を参照する。不正な起動設定は、リスナー、依存先への接続、seed の適用を始める前に、1 つの集約エラーとして報告する。
+ローカルのデフォルトでは、メモリ永続化とコンソールへのメール出力を使う。すべての起動時環境変数について、型、デフォルト、条件付き要件、所有するプロセス、シークレット区分を確認するには、生成済みの [設定リファレンス](CONFIGURATION.md) を参照する。不正な起動設定は、リスナー、依存先への接続、seed の適用を始める前に、エラーとして報告する。
 
 ### ジョブの `worker` プロセスと定期バッチ
 
-本番では `JOB_WORKER_LANES` 変数を使い、`idmagic-worker` をレーン（`latency_sensitive`、`default`、`bulk` など）ごとの Deployment に分ける。
+`idmagic-worker` はレーン（`latency_sensitive`、`default`、`bulk` など）ごとにキューに積まれたジョブを非同期で処理していく。
 
-`idmagic-batch` は 1 つの運用バッチを実行して終了する。外部スケジューラーは `retention-sweep` を毎時、`signing-key-lifecycle` を毎日実行する。いずれも、水平スケールする永続ジョブの `worker` プロセスとは独立している。
+`idmagic-batch` は 1 つの運用バッチを実行して終了する。外部スケジューラーは `retention-sweep` を毎時、`signing-key-lifecycle` を毎日実行する。
 
 ### エンベロープ暗号化とデータ鍵
 
-アプリケーションデータベースに残す必要がある可逆なシークレット（現在は MFA の TOTP seed）は、保存時に[エンベロープ暗号化](spec/SPECIFICATION.md#3-envelope-encryption-for-reversible-secrets)する。テナントごとの `DataEncryptionKey`（DEK）が各シークレットを直接暗号化し、差し替え可能な `DATA_KEY_PROVIDER` が保持するマスターキーで DEK をラップする。
+データベースに残す必要がある可逆なシークレット（現在は MFA の TOTP seed）は、保存時に[エンベロープ暗号化](spec/SPECIFICATION.md#3-envelope-encryption-for-reversible-secrets)する。テナントごとの `DataEncryptionKey`（DEK）が各シークレットを直接暗号化し、差し替え可能な `DATA_KEY_PROVIDER` が保持するマスターキーで DEK をラップする。
 
 - **開発用フォールバック**: `DATA_KEY_PROVIDER` を設定しない場合は、プロセス内の Tink 平文鍵セットを使うため、開発時に外部サービスは不要である。本番では決して選択してはならない。
 - **マスターキーを失うと復旧できない。** OpenBao の Transit 鍵をバックアップせずに失うと、すべてのテナントのラップ済み DEK を恒久的にアンラップできなくなる。これは `DestroyTenantDataKey` が意図的に実現する暗号学的消去と同じ性質が、事故によって発生することを意味する。OpenBao の Transit エンジンのストレージは OpenBao 自身のバックアップ手段で保護する。`tenant_data_encryption_keys` の PostgreSQL バックアップには、マスターキーで暗号化した形しか含まれないため、それだけでは復旧できない。
-- **鍵の健全性**: `GET /api/admin/data-keys/health` (`system_admin` 専用) は、鍵素材を返さずに、各テナントの有効な DEK のバージョンとステータス、設定済みプロバイダーの名前と到達性を報告する。
 - **ローテーションと再暗号化**: テナントの DEK を内部操作でローテーションすると、すべての参照を新しいバージョンへ移す再開可能な `data_key_reencryption` ジョブ（`backend/jobs`）を投入する。ジョブが保留中の参照なしを報告した後に限り、古いバージョンを破棄できる。再暗号化を再開または再走査するには `idmagic-batch data-key-reencryption-sweep` を実行する。冪等なので再実行や定期実行が可能である。
 
 ### WebAuthn の設定
 
-WebAuthn はパスキーをブラウザーのオリジンと RP ID に束縛する。ローカル以外の環境では HTTPS を使い、`WEBAUTHN_RP_ID` をユーザーが訪れる登録可能なドメインに設定する。`WEBAUTHN_RP_ORIGINS` には UI が使用するすべての公開オリジンを含める。
-
-### 上流の OIDC アイデンティティプロバイダー
-
-テナント管理者は **設定 → 外部アイデンティティプロバイダー** で受信 OIDC / SAML 接続を設定する。OIDC 接続には固定の HTTPS 発行者と、最後に正常だった認可、トークン、JWKS の各エンドポイントが必要である。上流プロバイダーへ登録するコールバック URI:
-
-```text
-https://<idmagic-origin>/realms/<realm>/api/auth/federation/oidc/callback
-```
-
-クライアントシークレットは IdMagic のデータベースに保存しない。値を API プロセスの環境へ置き、接続には `env:` 参照だけを保存する:
-
-```bash
-CONTOSO_CLIENT_SECRET=replace-with-the-provider-secret
-```
-
-接続入力の例:
-
-```json
-{
-  "display_name": "Contoso Workforce",
-  "protocol": "oidc",
-  "issuer": "https://login.contoso.example",
-  "client_id": "idmagic-production",
-  "secret_reference": "env:CONTOSO_CLIENT_SECRET",
-  "authorization_endpoint": "https://login.contoso.example/oauth2/authorize",
-  "token_endpoint": "https://login.contoso.example/oauth2/token",
-  "jwks_uri": "https://login.contoso.example/oauth2/jwks",
-  "claim_mapping": {
-    "subject": "sub",
-    "username": "preferred_username",
-    "email": "email",
-    "email_verified": "email_verified",
-    "name": "name"
-  },
-  "linking_policy": "none",
-  "jit_provisioning": false
-}
-```
-
-下書きの接続は有効化する前にテストする。ログインリクエストは保存済みのプロバイダーとエンドポイントの設定だけを使い、ブラウザーから任意の Discovery URL やトークン URL を指定することはできない。
-
-JIT プロビジョニングはデフォルトで無効である。有効にすると、最初に受理したアップストリームアイデンティティから、パスワード資格情報を持たない有効なローカルユーザーを作成する。作成対象は `allowed_email_domains` で絞り込む。検証済みメールアドレスによる自動リンクは別の明示的なポリシーであり、アップストリームの `email_verified` クレームと、検証済みローカルメールアドレスとの一意な一致を必要とする。アップストリームプロバイダーのメール検証とアカウント復旧の保証を信頼できない限り、無効のままにする。外部トークンと SAML アサーションはログイン時に検証し、保持しない。
+WebAuthn はパスキーをブラウザーのオリジンと RP ID に束縛する。ローカル以外の環境では HTTPS を使い、`WEBAUTHN_RP_ID` にはユーザーが訪れる登録可能なドメインに設定する。`WEBAUTHN_RP_ORIGINS` には UI が使用するすべての公開オリジンを含める。
 
 ### テナントエンドポイントの形式
 
-各テナントは正規ロケーションと発行者を 1 つだけ持つ。デフォルトの `path` 形式は `{ISSUER}/realms/{realm}` で提供し、ワイルドカード DNS や証明書を必要としない。`subdomain` 形式は `https://{realm}.{TENANT_BASE_DOMAIN}` で提供し、`TENANT_BASE_DOMAIN` が設定されている場合だけ利用できる。イングレス層はワイルドカード DNS と対応するワイルドカード TLS 証明書を提供しなければならない。IdMagic は証明書の発行や更新を行わない。
+各テナントは正規ロケーションと発行者を 1 つだけ持つ。デフォルトの `path` 形式は `{ISSUER}/realms/{realm}` で提供し、ワイルドカード DNS や証明書を必要としない。`subdomain` 形式は `https://{realm}.{TENANT_BASE_DOMAIN}` で提供し、`TENANT_BASE_DOMAIN` が設定されている場合だけ利用できる。イングレス層はワイルドカード DNS と対応するワイルドカード TLS 証明書を提供しなければならない。
 
-テナントを `path` から `subdomain` へ、または逆方向へ変更すると、発行者とプロトコルメタデータの URL が変わる。リライングパーティーの再設定、既存パスキーの再登録、進行中のブラウザーセッションの終了が必要になるため、アイデンティティ移行として計画する。利用できるのは IdMagic が管理するサブドメインだけであり、顧客所有ドメインには対応しない。
+テナントを `path` から `subdomain` へ、または逆方向へ変更すると、発行者とプロトコルメタデータの URL が変わる。RP の再設定、既存パスキーの再登録、進行中のブラウザーセッションの終了が必要になるため、ID 移行として計画する。利用できるのは IdMagic が管理するサブドメインだけであり、顧客所有ドメインには対応しない。
 
 ### 通知メールテンプレート
 
-通知メールはコード内で組み立てず、テンプレートカタログから生成する。各メッセージは 2 段階で解決する。選択した言語に組み込まれたデフォルト文面を使い、テナント固有のカスタマイズが存在すれば上書きする。すべてのメッセージを、プレーンテキストと HTML の両方を含む `multipart/alternative` として送信する。
+通知メールのメッセージは 2 段階で解決する。選択した言語に組み込まれたデフォルト文面を使い、テナント固有のカスタマイズが存在すれば上書きする。すべてのメッセージを、プレーンテキストと HTML の両方を含む `multipart/alternative` として送信する。
 
 テンプレートキー:
 
@@ -203,11 +146,9 @@ JIT プロビジョニングはデフォルトで無効である。有効にす�
 
 テナントは件名、プレーンテキスト本文、HTML 本文、送信者の表示名をカスタマイズできる。件名と両方の本文は 1 組として保存するため、一部だけ上書きしたテンプレートは存在しない。送信元メールアドレス、外側の HTML 文書、基本スタイルはサーバーが所有する。カスタマイズを削除して「デフォルトに戻す」と組み込み文面へ戻り、バージョン履歴は持たない。
 
-テンプレートエディターから送るテストメッセージは、操作した管理者本人の検証済みメールアドレスへ必ず送信する。宛先を選択できないため、テナント管理者権限を任意のアドレスへのメールリレーとして悪用できない。
-
 ### ローカルでのメールテスト（SMTP）
 
-開発中の SMTP テストには Mailpit が適している:
+開発中の SMTP テストには [Mailpit](https://mailpit.axllent.org/) が適している:
 
 ```bash
 mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025
@@ -222,7 +163,7 @@ SMTP_FROM=noreply@idmagic.test \
 
 ## API の安定性、バージョニング、廃止
 
-IdMagic の管理 API とセルフサービスのアカウント API は外部契約である。テナントは統一された RFC 9068 JWT API アクセストークンで認証し、自動化、プロビジョニング、IaC をこれらの API に対して構築する。この節は、バージョン管理と非推奨化の運用要約である。
+IdMagic の管理 API とセルフサービスのアカウント API は外部契約である。テナントは統一された RFC 9068 JWT API アクセストークンで認証する。
 
 **安定性区分。** 外部インターフェースは TypeSpec 契約で分類する:
 
@@ -230,9 +171,7 @@ IdMagic の管理 API とセルフサービスのアカウント API は外部�
 - `beta` — まだ互換性保証の対象でない外部契約。将来のエンドポイント用に予約する。
 - `internal` — 外部契約に含まれない。ファーストパーティーのブラウザーセッションからだけ到達でき、API アクセストークンでは到達できない対話型フロー (ログイン、MFA 登録、同意など) と、現在は API アクセストークン経路を持たない管理コンソール画面が該当する。`internal` インターフェースは予告なく変更できる。
 
-API アクセストークンで到達できる (`ManagementApiClient*`、`SelfApiClient*`、SCIM スコープ)、外部標準が規定するプロトコルエンドポイント (OAuth2 / OIDC、SAML、WS-Federation、SCIM、SSF)、または未認証の公開資産・運用エンドポイント (ヘルスプローブ、メトリクス、ブランド資産) のいずれかに該当する場合だけ、インターフェースを `stable` または `beta` とする。
-
-**互換性の定義。** 後方互換な変更は、フィールドの追加、任意パラメーターの追加、新しいエンドポイントの追加である。破壊的変更は、フィールドの削除または名前変更、フィールド型の変更、フィールドの必須化、エラーコードの変更、デフォルト値の変更である。`BackendErrorResponse` で返すエラーコードは契約の一部となる。
+**互換性の定義。** 後方互換な変更は、フィールドの追加、任意パラメーターの追加、新しいエンドポイントの追加である。破壊的変更は、フィールドの削除または名前変更、フィールド型の変更、フィールドの必須化、エラーコードの変更、デフォルト値の変更である。
 
 **バージョン管理。** 管理 API (`/api/admin/v1/...`) とセルフサービス API (`/api/account/v1/...`) はパスでバージョン管理する。`/v1/` だけを提供し、バージョンなしの形は設けない。破壊的変更は既存パスを変更せず、新しい `/v2/` 接頭辞で導入する。同時にサポートするバージョンは最大 2 個とする。
 
@@ -259,9 +198,9 @@ cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.jso
 
 各領域の詳細は次の文書を参照する:
 
-- **製品仕様と設計**: [spec/SPECIFICATION.md](spec/SPECIFICATION.md)
+- **仕様と設計**: [spec/SPECIFICATION.md](spec/SPECIFICATION.md)
 - **API とモデルの仕様**: [spec/main.tsp](spec/main.tsp)
-- **閲覧用仕様サイト**: `just spec-render` で `spec/generated/docs/index.html` に生成する。手法、システム全体、Bounded Context、Swagger UI API、検索可能な TypeSpec モデルを別々のページとして含む
+- **仕様の HTML 化**: `just spec-render` で `spec/generated/docs/index.html` を生成する。手法、システム全体、Bounded Context、Swagger UI API、検索可能な TypeSpec モデルを別々のページとして含む
 - **インフラストラクチャと Kubernetes**: [infra/README.md](infra/README.md)
 - **seed プロファイル**: [seed/README.md](seed/README.md)
 - **UI 設計とローカライズ**: [frontend/README.md](frontend/README.md)

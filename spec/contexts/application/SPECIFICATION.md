@@ -1,15 +1,15 @@
 ---
 context: application
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # Application Specification
 
 ## Overview
 
-運用者が「接続する業務アプリケーション」として扱う上位概念を所有する。OIDC クライアント、SAML SP、WS-Fed RP は Application に関連付けるプロトコル設定であり、表示名、アイコン、ライフサイクル、割り当てはここに集約する。割り当てによって、ポータルでの表示とフェデレーションの利用可否をフェイルクローズで制御する。通信時の動作は各プロトコルの Context が所有し、Application はプロトコル設定を中身に依存しないキーで参照する。
+運用者が「接続する業務アプリケーション」として扱う上位概念を所有する。OIDC クライアント、SAML SP、WS-Fed RP は Application に関連付けるプロトコル設定であり、表示名、アイコン、ライフサイクル、割り当て、サインインポリシー、ポータルでの並び順とカテゴリはここに集約する。
 
-`domain` が Aggregate とポリシー評価の規則を、`ports` と `usecase` がカタログとポリシーの操作を、`handlers_http` が HTTP アダプターを持つ。`module.go` は、それらをルーティングに組み込む。
+割り当てとサインインポリシーは、ポータルでの表示とフェデレーションの利用可否をフェイルクローズで制御する。通信時の動作は各プロトコルの Context が所有し、Application はプロトコル設定を中身に依存しないキーで参照する。
 
 ## Glossary
 
@@ -17,10 +17,16 @@ updated_at: 2026-08-11
 |---|---|---|
 | Application | 運用者が接続、割り当て、監査する業務アプリケーション。`federated` または `service` の Application は、プロトコル設定を最大 1 つ持つ。 | アプリケーション, Application |
 | ApplicationProtocol | Application が利用する 1 つのプロトコル設定への型付き参照。OAuth2Client、SamlServiceProvider、WsFedRelyingParty のいずれか 1 つを指す。 | application_protocol |
+| AppSignInPolicy | Application ごとに順序付けた `SignInRule` の集合。フェデレーションの開始ごとに、トークンや Assertion の発行前に評価する。 | サインインポリシー |
+| ApplicationAssignment | Application を利用できる主体を表す割り当て。`subject_type` が `user` の直接割り当てと `group` のグループ割り当てがあり、`visibility` が `hidden` の割り当てはポータルに現れないままフェデレーションだけを許可する。 | 割り当て |
 
 ## Authorization Boundary
 
-認可の意味はアプリケーションとそのテストで保証する。本仕様では API の認証方式を定めるが、ポリシー用の DSL は定義しない。
+Application、プロトコル設定、カテゴリ、割り当て、サインインポリシーの管理はいずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。AuthZEN の action は対象ごとに分かれ、`admin:applications_manage`、`admin:application_assignments_manage`、`admin:application_policies_manage`、`admin:application_categories_manage`、`admin:tenant_default_sign_in_policy_manage` を要求する。いずれも操作対象が呼び出し元と同じテナントに属することを条件とする。API アクセストークンでは `applications:read` が参照だけを、`applications:write` が変更を許可し、テナントのデフォルトサインインポリシーは `settings:read` / `settings:write` に対応する。
+
+エンドユーザーが触れるのは自分自身の範囲だけである。`ListMyApplications` と `ReorderMyApplications` は認証済み本人の割り当てと表示設定に閉じ (`account:applications_read`)、他のユーザーの一覧や並び順へは到達できない。
+
+割り当てを持たない主体は、どのプロトコルからもフェデレーションを完了できない。この関門は Application とプロトコル設定の関連付けを確認するのと同じ場所にあるため、別のプロトコルを入口に選んで迂回することはできない。`AssignApplicationDesiredState` と `UnassignApplicationDesiredState` は HTTP に公開せず、同じテナント内の識別子しか受け取らない内部インターフェースである。
 
 ## Design
 
@@ -50,7 +56,7 @@ updated_at: 2026-08-11
 
 ### Application/protocol relation
 
-Application が持つプロトコル設定は最大 1 つとし、作成時に固定する。`weblink` アプリケーションはプロトコル設定を持たず、`federated` と `service` のアプリケーションは、OAuth2 クライアント、SAML サービスプロバイダー、WS-Federation のリライングパーティーのいずれか 1 つだけを持つ。作成後の再接続、切り離し、プロトコル種別の変更には対応しない。
+Application が持つプロトコル設定は最大 1 つとし、作成時に固定する。`weblink` アプリケーションはプロトコル設定を持たず、`federated` と `service` のアプリケーションは、OAuth2 クライアント、SAML SP、WS-Federation RP のいずれか 1 つだけを持つ。作成後の再接続、切り離し、プロトコル種別の変更には対応しない。
 
 各プロトコルのテーブル（`oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties`）は、`NULL` を許容する一意な `application_id` を持つ。`application_id` が `NULL` でない場合は、テナントと固定のプロトコル判別子も含む複合外部キーで参照する。これにより、2 つのプロトコル行が同じ Application を参照すること、テーブルをまたいで重複して参照すること、テナントや種別が食い違うことをデータベース自身が拒否する。`NULL` は、Dynamic Client Registration や信頼管理 API で作成され、Application カタログには表示しない正当なレコードを表す。そのため、すべてのプロトコル設定に Application を必須とはしない。
 
@@ -64,9 +70,10 @@ ApplicationCatalog は、エンドユーザーポータルでの手動の並び�
 
 ### Design Decisions
 
-- アプリケーションのサインインポリシー（`AppSignInPolicy`）は、評価器が確認できる構造化された規則だけを持つ。制限された `RequiredAuthnStrength` 列挙、`reauth_max_age_seconds`、`network_allow_cidrs` を、すべてのプロトコルに共通するフェデレーションの関門でフェイルクローズに評価する。
-- テナント全体のデフォルトのサインインのポリシーは、アプリケーション自身のポリシーと合成せず上書きされる。アプリケーションごとに直接確認できる実効的なポリシーを 1 つに保つためである。
-- Application が持つプロトコル設定は最大 1 つとし、作成時に固定する。JSON 配列による関連付けモデルではなく、所有するプロトコルテーブルからの複合外部キーで保証する。
+- サインインポリシーには、評価器が実際に確認できる値だけを設定できるようにする。自由入力の認証強度や端末条件を許すと、保存はできるのに評価で必ず落ちる設定が作れてしまうからである。
+- テナントのデフォルトとアプリケーションごとのポリシーは合成せず、上書きとする。合成規則を持つと、あるアプリケーションに実際に適用されるポリシーを 1 つの形で示せなくなるからである。
+- デフォルトより弱いポリシーは保存を禁じず、警告として示す。運用上、特定のアプリケーションだけ要件を下げる必要は実在するため、禁止すると設定そのものが迂回されるからである。
+- Application とプロトコル設定の 1 対 1 の関係は、JSON 配列による関連付けではなく、プロトコルテーブルからの複合外部キーで保証する。テナントや種別の食い違いをデータベース自身に拒否させるためである。
 
 ## Scenarios
 

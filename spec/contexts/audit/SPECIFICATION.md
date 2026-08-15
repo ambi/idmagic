@@ -1,6 +1,6 @@
 ---
 context: audit
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # Audit Specification
@@ -17,23 +17,26 @@ Authentication、IdManagement、OAuth2、Tenancy、SigningKeys、Application、S
 |---|---|---|
 | AuditEventSearchRegistry | 監査イベントで使用できる検索属性（`AuditEventSearchAttribute`）の定義一覧。属性ごとにフィールド、演算子、変換方法を宣言し、任意の SQL や JSONPath を受け付けない閉じた検索文法を定める。Go の `AuditSearchRegistry` マップを唯一の正とする。 | search-attribute-registry, 検索属性定義 |
 | AuditEventFilterExpression | `AuditEventQuery.filter` の 1 項。レジストリの許可リストにあるフィールド、演算子、値の並びからなる論理積 (AND) の 1 要素。個人識別情報の属性は平文入力をサーバー側で変換してから照合する。 | filter-expression, フィルター式 |
-| AuditActorVsTarget | 監査イベントでユーザーを関連付ける軸には、操作者と対象ユーザーの 2 種類がある。操作者は操作を行った本人で、ペイロードの `userId` に相当する。認証、OAuth2 フロー、本人による操作では、すべて本人が操作者になる。対象ユーザーは別のユーザーに対する操作の対象で、ペイロードの `targetUserId` に相当する。たとえば、管理者が UserCreated / UserDisabled / GroupMemberAdded を実行した場合のユーザーである。`AuditEventQuery.user_id`、検索時に `user_id` へ解決する `username`、フィルターの `actor.id` は、いずれも操作者を表す。フィルターの `target.id` は対象ユーザーを表すため、これらとは区別する。実在しないアカウント名も追跡する認証失敗イベントだけは、平文の検索属性 `actor.username` を使用する。UI では操作者側を「ユーザー ID（操作者）」「ユーザー名（操作者）」「ログイン試行のユーザー名」、対象側を「対象ユーザー」と表記する。 | actor-vs-target, 操作者と対象ユーザー |
-| ResolvableUserEventPayloadPolicy | UserAuthenticated、ConsentGranted、AuthorizationCodeIssued、AuthorizationCodeRedeemed、AccessTokenIssued、RefreshTokenIssued など、実在するアカウントが必ず特定できるイベントのペイロードには、平文かハッシュかを問わずユーザー名を含めない。この制約は、各 Context のイベントモデルにユーザー名相当のフィールドを設けないことで構造的に保証する。たとえば、`Authentication.UserAuthenticated` のペイロードは `userId` だけを持つ。管理 UI でユーザー名による検索が必要な場合は、検索時に `AuditEventQuery.username` を User Repository で `user_id` に解決し、既存の `user_id` 検索を使用する。実在しないアカウント名も追跡する必要がある認証失敗イベントに限り、例外として平文の検索属性 `actor.username` を持たせる。 | resolvable-user-event-payload-policy |
+| AuditActor | 操作を行った本人。ペイロードの `userId` に相当する。認証、OAuth2 フロー、本人による操作では、常に本人が操作者になる。`AuditEventQuery.user_id`、検索時に `user_id` へ解決する `username`、フィルターの `actor.id` は、いずれも操作者を指す。UI では「ユーザー ID（操作者）」「ユーザー名（操作者）」「ログイン試行のユーザー名」と表記する。 | actor, 操作者 |
+| AuditTargetUser | 別のユーザーに対する操作の対象。ペイロードの `targetUserId` に相当する。管理者が実行する UserCreated / UserDisabled / GroupMemberAdded の対象ユーザーがこれにあたる。フィルターの `target.id` が指すのはこちらであり、操作者とは区別する。UI では「対象ユーザー」と表記する。 | target, 対象ユーザー |
+| ResolvableUserEventPayloadPolicy | 実在するアカウントが必ず特定できるイベント (UserAuthenticated、ConsentGranted、AuthorizationCodeIssued、AuthorizationCodeRedeemed、AccessTokenIssued、RefreshTokenIssued など) のペイロードには、平文かハッシュかを問わずユーザー名を含めないという方針。各 Context のイベントモデルにユーザー名相当のフィールドを設けないことで構造的に保証する。ユーザー名による検索は `AuditEventQuery.username` を User Repository で `user_id` へ解決し、既存の `user_id` 検索に帰着させる。実在しないアカウント名も追跡する必要がある認証失敗イベントに限り、平文の検索属性 `actor.username` を持たせる。 | resolvable-user-event-payload-policy |
 | TenantAdministrator | 所属テナントまたは (system_admin の場合) 全テナント横断で監査イベントを読み出す権限を持つ管理者。 |  |
 
 ## Authorization Boundary
 
-認可の意味はアプリケーションとそのテストで強制する。本仕様は API の認証を記述するが、ポリシーの DSL は意図的に定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
+監査イベントの参照とエクスポートは `AdminAuditEventsRead` 権限 (AuthZEN action `admin:audit_events_read`) を要する。`admin` または `system_admin` ロールを持つ、有効かつ認証済みのユーザーだけが行える。書き込み経路は公開せず、イベントの追加は各 Context の発行経路だけが行う。
+
+問い合わせは既定で呼び出し元のテナントに閉じる。全テナント横断の参照は、`system_admin` ロールを持つユーザーが制御面 (default テナント) の経路から明示的に要求した場合に限る。ページングのカーソルはテナントと絞り込み条件を束縛するため、別テナントで発行されたカーソルや条件が変わったカーソルは拒否する。
 
 ## Design
 
 ### Retention
 
-監査レコードは GDPR 第 30 条 (処理活動の記録) を根拠に、追記のみで 7 年間保持する。現時点では削除やアーカイブを行うインターフェースを提供しない。これは SLO ではなく運用上の固定値なので、製品要件ではなく Design に記載する。
+監査レコードは GDPR 第 30 条 (処理活動の記録) を根拠に、追記のみで 7 年間保持する。削除やアーカイブのインターフェースは提供しない。これは SLO ではなく運用上の固定値なので、製品要件ではなく Design に記載する。
 
-### Design Decisions
+### Search attribute registry
 
-- 監査イベントの保持期間は、GDPR 第 30 条が定める記録の保存に基づき 7 年で固定する。製品目標ではなく、運用上の値としてここに記録する。
+検索文法は `AuditSearchRegistry` が宣言する属性、演算子、変換方法の閉じた集合に限る。任意の SQL や JSONPath は受け付けない。個人識別情報にあたる属性は、登録簿が宣言した変換 (要約値化や丸め) を適用してから照合するため、検索用のインデックスに平文は残らない。平文が残るのは `audit_events.payload` だけであり、それも失敗イベントに限って短い保持期間の下で保持する。
 
 ## Scenarios
 

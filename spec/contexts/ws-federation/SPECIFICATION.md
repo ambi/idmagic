@@ -1,13 +1,15 @@
 ---
 context: ws-federation
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # WsFederation Specification
 
 ## Overview
 
-受動的な WS-Federation と能動的な WS-Trust STS について、信頼関係、AD FS 互換の `federationmetadata.xml`、MEX、RST と RSTR、WS-Fed リライングパーティーとの関連付けを所有する。SAML Assertion、クレームの公開、署名鍵のライフサイクルには共有機能を利用する。プロトコルに依存しないクレーム発行は `ClaimMapping` と共有し、XML Assertion の署名は `tokens_saml` アダプターと共有する。SAML 2.0 SP との関連付けは Saml Context が所有する。
+受動的な WS-Federation と能動的な WS-Trust STS について、RP の信頼関係、AD FS 互換の `federationmetadata.xml`、MEX、RST と RSTR を所有する。
+
+自前で持たないものは共有する。プロトコルに依存しないクレーム発行は `ClaimMapping`、XML Assertion の署名は `tokens_saml` アダプター、署名鍵のライフサイクルは `SigningKeys` が所有する。SAML 2.0 SP との信頼関係は `Saml` Context が所有する。
 
 ## Glossary
 
@@ -55,7 +57,9 @@ updated_at: 2026-08-11
 
 ## Authorization Boundary
 
-認可の意味はアプリケーションとそのテストで保証する。本仕様では API の認証方式を定めるが、ポリシー用の DSL はあえて定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
+RP の登録・参照・削除と Entra ドメインフェデレーションプロファイルの設定は `AdminFederationTrustsManage` 権限 (AuthZEN action `admin:federation_trusts_manage`) を要し、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。API アクセストークンでは `wsfed:read` が参照だけを、`wsfed:write` が変更を許可する。
+
+プロトコルのエンドポイントは管理者の認可を通らず、それぞれ別の境界を持つ。`federationmetadata.xml` と `/trust/mex` はテナントの公開 Discovery であり認証を要さないが、公開するのは発行者、エンドポイント、署名証明書に限る。パッシブサインインはブラウザーのログインセッションで主体を決め、`wtrealm`、`wreply`、対象ユーザーの Application 割り当てを検証してから発行する。能動的な STS は UsernameToken で認証し、`AppliesTo` が登録済みの RP に解決できることを求める。いずれの経路でも、未登録の宛先にトークンを発行することはない。
 
 ## Design
 
@@ -71,13 +75,13 @@ updated_at: 2026-08-11
 
 ### Tenant signing
 
-受動的な発行でも能動的な発行でも、発行時にリクエスト元テナントの有効な `XmlFederationSigning` 資格情報を取得する。フェデレーションメタデータでは、広告する役割ごとに現在有効な証明書と有効期限内の検証用証明書を公開する。これにより、リライングパーティーは計画されたローテーションの前後でも検証を継続できる。
+受動的な発行でも能動的な発行でも、発行時にリクエスト元テナントの有効な `XmlFederationSigning` 資格情報を取得する。フェデレーションメタデータでは、広告する役割ごとに現在有効な証明書と有効期限内の検証用証明書を公開する。これにより、RP は計画されたローテーションの前後でも検証を継続できる。
 
 署名の提供元は、プロセスの起動時の状態ではなく `SigningKeys` を裏に持つ。これにより WS-Fed と SAML は 1 つの XML の資格情報のライフサイクルに乗りつつ、OAuth2 と JWT の鍵からの分離を保てる。
 
 ### Federation metadata
 
-この Context は、各レルムの `/{realm}/federationmetadata/2007-06/federationmetadata.xml` で AD FS 互換の `federationmetadata.xml` を公開し、テナントの発行者（デフォルトテナントでは `/realms/default`）を entityID として広告する。これにより、WS-Fed リライングパーティーと Microsoft Entra のドメインフェデレーションは、別の導入手順を使わずに発行者、エンドポイント、署名証明書を検出できる。
+この Context は、各レルムの `/{realm}/federationmetadata/2007-06/federationmetadata.xml` で AD FS 互換の `federationmetadata.xml` を公開し、テナントの発行者（デフォルトテナントでは `/realms/default`）を entityID として広告する。これにより、WS-Fed RP と Microsoft Entra のドメインフェデレーションは、別の導入手順を使わずに発行者、エンドポイント、署名証明書を検出できる。
 
 `EntityDescriptor` は `SecurityTokenServiceType` と `ApplicationServiceType` の両方の `RoleDescriptor` を持ち、`PassiveRequestorEndpoint`、`SecurityTokenServiceEndpoint`、`MetadataEndpoint`、そして署名の `KeyDescriptor` を広告する。署名の証明書は OAuth と OIDC の JWK の形を再利用せず、WS-* が本来使う X.509 の形で公開する。鍵の用途、ローテーション、重なりは `SigningKeys` の責務のままであり、メタデータは WS-* の利用者が既に期待するものを広告すれば足りるからである。`/{realm}/trust/mex` は能動的な STS (下記) の探索として、`usernamemixed` のエンドポイントと UsernameToken を必須とするその方針を公開する。RST と RSTR のやり取り自体はメタデータの一部ではない。
 
@@ -89,58 +93,58 @@ updated_at: 2026-08-11
 
 能動的な STS のエンドポイントは `/trust/usernamemixed` だけであり、受け付けるのは WS-Trust 1.3 の `Issue` のみである。`Validate`、`Renew`、`Cancel` は実装しない。認証は UsernameToken のみで、既存の `UserRepository`、`PasswordHasher`、`LoginAttemptThrottle` に対して検証する。Kerberos と IWA の `windowstransport` は範囲外であり、別のスライスへ残す。
 
-WS-Addressing と WS-Security の必須要素（`MessageID`、`To`、`Action`、UsernameToken、Timestamp、`AppliesTo`）はフェイルクローズで検証する。Timestamp は期限切れの値と遠い未来の値を拒否し、`MessageID` は有効期間の短いリプレイ防止ストアに記録する。`AppliesTo` は登録済みの WS-Fed リライングパーティーに解決できなければならず、未登録の宛先は拒否する。発行する Assertion の audience と recipient はその RP に限定し、クレームは RP の `ClaimMappingPolicy` を通じて発行する。これにより、リプレイや audience の取り違えがリライングパーティーの境界を越えることを防ぐ。RSTR は SOAP 1.2 で署名済み SAML Assertion を返し、RST が SAML 1.1 または SAML 2.0 を明示的に要求しない場合は SAML 1.1 をデフォルトとする。
+WS-Addressing と WS-Security の必須要素（`MessageID`、`To`、`Action`、UsernameToken、Timestamp、`AppliesTo`）はフェイルクローズで検証する。Timestamp は期限切れの値と遠い未来の値を拒否し、`MessageID` は有効期間の短いリプレイ防止ストアに記録する。`AppliesTo` は登録済みの WS-Fed RP に解決できなければならず、未登録の宛先は拒否する。発行する Assertion の audience と recipient はその RP に限定し、クレームは RP の `ClaimMappingPolicy` を通じて発行する。これにより、リプレイや audience の取り違えが RP の境界を越えることを防ぐ。RSTR は SOAP 1.2 で署名済み SAML Assertion を返し、RST が SAML 1.1 または SAML 2.0 を明示的に要求しない場合は SAML 1.1 をデフォルトとする。
 
 ### Entra domain federation profile
 
-`EntraFederationProfile` は、WS-Federation リライングパーティー用の定型設定である。ドメイン、IssuerUri、sourceAnchor 属性、受動・能動・MEX の各エンドポイントを受け取り、wtrealm と audience に同じ IssuerUri を持つ `WsFedRelyingParty` を作成または更新する。定型設定にすることで、クレーム設定の JSON を手書きする必要がなくなる。手書きの設定を誤ると Entra 側では原因を特定しにくく、設定時に sourceAnchor の安定性や一意性も保証できない。
+`EntraFederationProfile` は、WS-Federation RP 用の定型設定である。ドメイン、IssuerUri、sourceAnchor 属性、受動・能動・MEX の各エンドポイントを受け取り、wtrealm と audience に同じ IssuerUri を持つ `WsFedRelyingParty` を作成または更新する。定型設定にすることで、クレーム設定の JSON を手書きする必要がなくなる。手書きの設定を誤ると Entra 側では原因を特定しにくく、設定時に sourceAnchor の安定性や一意性も保証できない。
 
 必須クレームは定型設定で固定し、フェイルクローズで扱う。UPN は `preferred_username` から `http://schemas.xmlsoap.org/claims/UPN` として発行する。ImmutableID は正規化した sourceAnchor（`entra_immutable_id`）から導き、永続的な NameID と `http://schemas.xmlsoap.org/claims/nameidentifier` の両方に含める。sourceAnchor は、プロファイル設定時には既存ユーザーの欠落、重複、変換できない値を拒否し、発行時には対象ユーザーの ImmutableID を導けない場合にクレーム発行を拒否する。
 
-GUID の形をした sourceAnchor の値は、ImmutableID として使う前に .NET の `Guid.ToByteArray()` のバイト順 — AD FS と Entra の慣行 — で base64 に符号化する。既に base64 の値はそのまま通す。このバイト順を誤ると、Entra は assertion を元の社内の同じユーザーへ関連付けられず、アカウントの重複やサインインの失敗を招く。プロファイルのデフォルトのトークンの型は SAML 1.1 であり、Entra と AD FS の WS-Fed のデフォルトに合わせている。Hybrid Azure AD Join の端末の登録 (`windowstransport` とコンピューターアカウントの Kerberos) は明確に範囲外であり、設定の案内では managed や PHS、あるいは AD FS の併存の配備へ誘導する。
+GUID の形をした sourceAnchor の値は、ImmutableID として使う前に .NET の `Guid.ToByteArray()` のバイト順 — AD FS と Entra の慣行 — で base64 に符号化する。既に base64 の値はそのまま通す。このバイト順を誤ると、Entra は assertion を元の社内の同じユーザーへ関連付けられず、アカウントの重複やサインインの失敗を招く。プロファイルのデフォルトのトークンの型は SAML 1.1 であり、Entra と AD FS の WS-Fed のデフォルトに合わせている。Hybrid Azure AD Join の端末の登録 (`windowstransport` とコンピューターアカウントの Kerberos) は明確に範囲外であり、設定の案内では managed や PHS、あるいは AD FS の併存のデプロイへ誘導する。
 
 ### Design Decisions
 
 - フェデレーションメタデータの公開とクレーム対応付けの所有を分ける。`WsFederation` が Discovery 情報（発行者、エンドポイント、署名証明書）を公開し、`ClaimMapping` が WS-Fed、WS-Trust、SAML に共通するクレーム公開ポリシーを所有する。
-- 能動的な WS-Trust の STS への対応は `/trust/usernamemixed` の `Issue` のみに限る。一般的な WS-Trust の相互運用ではなく、Microsoft 365 風のリッチクライアントのサインインを狙う。
-- Microsoft Entra のドメインフェデレーションプロファイルは、手書きのクレーム設定ではなく、UPN と ImmutableID のクレーム形式および sourceAnchor 検証を固定した定型のリライングパーティー設定とする。設定ミスが Entra 側で原因を特定しにくい障害として現れることを防ぐためである。
+- 能動的な WS-Trust の対応範囲は `/trust/usernamemixed` の `Issue` だけに絞る。束縛を広く覆うほど、再送と XML の包み替えに対する攻撃面が実質的に広がるからである。
+- Entra のドメインフェデレーションは、汎用の RP 設定ではなく専用の定型設定として扱う。手書きのクレーム設定を誤ると、Entra 側では原因を特定しにくい障害として現れるからである。
 
 ## Scenarios
 
-### REQ-WSFEDERATION-001: management API クライアントはWS-Fed スコープのtrustだけを操作できる
+### REQ-WSFEDERATION-001: 管理 API クライアントは WS-Fed スコープの信頼設定だけを操作できる
 - ACTOR ManagementApiClient
-- GIVEN クライアントは対象テナントの有効な API access トークンを提示している
-- WHEN クライアントがリライングパーティーまたは Entra フェデレーションの操作をリクエストする
+- GIVEN クライアントは対象テナントの有効な API アクセストークンを提示している
+- WHEN クライアントが RP または Entra フェデレーションの操作をリクエストする
   - ALT wsfed:read だけで変更操作を要求する → 操作は AccessDeniedError で拒否される
   - ALT トークンのテナントとリクエスト先のテナントが一致しない → 操作を AccessDeniedError で拒否する
-- THEN `wsfed:read` スコープではリライングパーティーの参照だけを許可する
-- THEN `wsfed:write` スコープではリライングパーティーと Entra フェデレーションの変更だけを許可する
+- THEN `wsfed:read` スコープでは RP の参照だけを許可する
+- THEN `wsfed:write` スコープでは RP と Entra フェデレーションの変更だけを許可する
 
-### REQ-WSFEDERATION-002: WS-Federation passive sign-in succeeds
+### REQ-WSFEDERATION-002: 登録済みの RP へのパッシブサインインはトークンを発行する
 - ACTOR EndUser
-- GIVEN wtrealm と wreply は登録済みで subject は対象 Application に割り当てられている
+- GIVEN wtrealm と wreply は登録済みで、対象ユーザーは対象 Application に割り当てられている
 - WHEN 登録済み RP の wsignin1.0 を受信する
-- THEN wtrealm / wreply / wfresh / subject assignment を検証する
+- THEN wtrealm、wreply、wfresh、Application の割り当てを検証する
   - ALT wfresh より認証が古い → トークンを発行せず再認証へ誘導する
   - ALT wtrealm、wreply、wauth、対象者の割り当てのいずれかが不正である → WsFedSignInRejected を発行してフェイルクローズで拒否する
 - THEN 署名済み Assertion を RSTR フォームで返し、wctx を同じ値で返す
 
-### REQ-WSFEDERATION-003: WS-Federation passive sign-in rejects untrusted target
+### REQ-WSFEDERATION-003: 信頼していない宛先へのパッシブサインインは拒否する
 - ACTOR EndUser
-- GIVEN wtrealm が未登録、wreply が許可外、または subject が未割当である
+- GIVEN wtrealm が未登録、wreply が許可外、または対象ユーザーが未割り当てである
 - WHEN 不正な wsignin1.0 を受信する
 - THEN トークンを発行せず WsFedSignInRejected を発行する
 
-### REQ-WSFEDERATION-004: WS-Trust Issue succeeds
+### REQ-WSFEDERATION-004: 妥当な WS-Trust Issue は RSTR を返す
 - ACTOR SecurityTokenRequester
 - GIVEN UsernameToken、MessageID、Timestamp、To、Action、RequestType、KeyType、AppliesTo が有効である
-- WHEN WS-Trust Issue RST を受信する
-- THEN UsernameToken と RST の閉集合条件を検証する
+- WHEN WS-Trust Issue の RST を受信する
+- THEN UsernameToken と RST の必須要素をすべて検証する
   - ALT MessageID が Assertion の有効期間内に再利用されている → WsTrustTokenRejected を発行してプロトコルエラーを返す
-  - ALT UsernameToken credential が不正である → AccessDeniedError を返しトークンを発行しない
+  - ALT UsernameToken の資格情報が不正である → AccessDeniedError を返しトークンを発行しない
 - THEN RSTR を返す
 
-### REQ-WSFEDERATION-005: WS-Trust Issue は不正なエンベロープを拒否する
+### REQ-WSFEDERATION-005: 不正なエンベロープの WS-Trust Issue は拒否する
 - ACTOR SecurityTokenRequester
 - GIVEN RST の To、MessageID、AppliesTo、Action、RequestType、KeyType のいずれかが不正である
 - WHEN 不正な RST を受信する

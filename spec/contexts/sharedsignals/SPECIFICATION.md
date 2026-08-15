@@ -1,13 +1,17 @@
 ---
 context: sharedsignals
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # SharedSignals Specification
 
 ## Overview
 
-Shared Signals Framework (SSF) と Continuous Access Evaluation Profile (CAEP) による、エージェントのほぼリアルタイムな失効を所有する。`Agent` ごとの失効エポックを保持し、`KillAgent`、`DisableAgent`、`UnbindAgentCredential`、所有者のオフボーディング、または検証済みの受信 Security Event Token (SET、RFC 8417) を起点として、フェイルクローズに前進させる (`LocalRevocation`)。OAuth2 の `Introspect` は前進したエポックをアクセストークンの `issued_at` と比較し、即時失効へ反映する。同時に、SSF ストリームを通じて CAEP イベントを外部の受信側へプッシュし (`EcosystemPropagation`)、外部の送信側から受け取った検証済みイベントもローカル失効へ収束させる。IdMagic は送信側と受信側の両方として振る舞う。
+Shared Signals Framework (SSF) と Continuous Access Evaluation Profile (CAEP) による、エージェントのほぼリアルタイムな失効を所有する。IdMagic は SSF の送信側と受信側の両方として振る舞う。
+
+中心にあるのは `Agent` ごとの失効エポックである。`KillAgent`、`DisableAgent`、`UnbindAgentCredential`、所有者のオフボーディング、検証済みの受信 Security Event Token (SET、RFC 8417) のいずれかを起点として単調に前進し、OAuth2 の `Introspect` がこれをアクセストークンの `issued_at` と比較して即時失効に反映する (`LocalRevocation`)。
+
+確定した失効は SSF ストリームを通じて CAEP イベントとして外部の受信側へ伝える (`EcosystemPropagation`)。伝播はローカル失効の後に行い、受信側の障害や遅延がローカル失効を遅らせることはない。逆方向として、外部の送信側から受け取った検証済みイベントも同じ失効エポックへ収束させる。
 
 ## Glossary
 
@@ -70,7 +74,11 @@ Initial: `pending` Terminal: `delivered`, `dead_letter`
 
 ## Authorization Boundary
 
-認可の意味はアプリケーションとそのテストで強制する。本仕様は API の認証を記述するが、ポリシーの DSL は意図的に定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
+`SsfStream` の登録、更新、有効化、無効化、削除、および配送状況の参照は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。
+
+受信エンドポイント (`/ssf/streams/{stream_id}/events`) はブラウザーセッションを持たない外部の送信側が呼ぶため、管理 API の認証経路には載せない。代わりに、SET の署名が受信ストリームに登録済みの `trusted_issuer` の鍵で検証できること、`jti` が未使用であること、主体がそのストリームのテナント内で解決できることをすべて満たしたときにだけ受理する。1 つでも満たさなければ失効を反映せず拒否する。受理した SET が変更できるのは対象 Agent の失効エポックだけであり、これを進める以外の副作用は持たない。
+
+失効エポックの前進 (`AdvanceRevocationEpoch`) と参照 (`CheckRevocationEpoch`) は HTTP に公開せず、Domain Event と OAuth2 の `Introspect` からの内部呼び出しに限る。エポックを巻き戻す操作は、どの権限にも存在しない。
 
 ## Design
 

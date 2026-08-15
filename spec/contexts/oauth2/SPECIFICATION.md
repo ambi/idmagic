@@ -9,7 +9,7 @@ updated_at: 2026-08-15
 
 OAuth 2.0 / OIDC プロトコル群の全責務を所有する。クライアントメタデータと Dynamic Client Registration、認可判断（認可、同意、認可コード、PAR、Device Authorization、RP-Initiated Logout）、トークンの発行とライフサイクル（アクセストークン、リフレッシュトークン、ID トークン、イントロスペクション、失効、UserInfo、Proof of Possession）、Discovery Metadata、Authorization Server Metadata、健全性報告をこの Bounded Context に集約する。
 
-`oauth2` Context は OAuth 2.0 / OIDC 認可サーバーを `authorization/`、`client/`、`consent/`、`device/`、`token/` の機能単位で実装し、それぞれが `domain`、`ports`、`usecase`、`db_memory` / `db_postgres` アダプターを所有する。Context 直下の `domain`、`ports`、`usecase` パッケージは機能単位の上に置く互換ファサード、`handlers_http` は共有する HTTP と永続化のアダプター、`module.go` は唯一の Composition Root である。本書は、認可とデバイスのライフサイクル、PKCE と PAR、クライアント認証、トークン形式とローテーション、送信者制約、同意、認可ポリシー、Discovery Metadata、デバイスグラント、有効期間とセキュリティ設定、Agent プリンシパルと委任、Rich Authorization Requests、セッションとログアウトのバインディングという仕組みごとに読む。
+認可サーバーは `authorization/`、`client/`、`consent/`、`device/`、`token/` の機能単位で実装する。本書は仕組みごとに、認可とデバイスのライフサイクル、PKCE と PAR、クライアント認証、トークン形式とローテーション、送信者制約、同意、認可ポリシー、Discovery Metadata、デバイスグラント、有効期間とセキュリティ設定、Agent プリンシパルと委譲、Rich Authorization Requests、セッションとログアウトのバインディングの順に読む。
 
 ## Glossary
 
@@ -280,6 +280,27 @@ RFC 8707 — https://www.rfc-editor.org/rfc/rfc8707.html
 | RFC8707-AUDIENCE | required | SHOULD | 発行するアクセストークンに空でない `audience` を設定し、意図しないリソースサーバーでの利用を防ぐ。 |
 | RFC8707-MCP-RESOURCE-BINDING | required | MUST | `resource` パラメーターで指定された `McpResourceServer` にアクセストークンの `audience` を厳格に限定し、未登録、無効、複数指定の `resource` は fail-closed で拒否する。認可、Pushed Authorization Requests、トークン発行（認可コードの交換、リフレッシュトークンのローテーション、`client_credentials`、`device_code`、トークン交換）の全経路へ一様に適用する。`resource` が未指定であれば `client_id` を `audience` とする。 |
 
+### OAuth 2.0 Token Exchange
+
+RFC 8693 — https://www.rfc-editor.org/rfc/rfc8693.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC8693-DELEGATION-DEFAULT | required | MUST | 交換の既定は委譲とする。発行するトークンは元のユーザーを `sub` に保ち、現在の行為者を `act` に記録し、以前の行為者を §4.1 に従って内側へ入れ子にする。 |
+| RFC8693-IMPERSONATION | optional | MAY | なりすまし (`act` を落として `sub` を置き換える形) は、クライアントまたは Agent へ明示的に許可した場合だけ受け付ける。 |
+| RFC8693-SUBJECT-TOKEN | required | MUST | 受け付ける `subject_token` は、自身が発行しイントロスペクションを通過したトークンか、`subject_token_type` が JWT-SVID の登録済み外部アテステーションに限る。 |
+| RFC8693-DELEGATION-DEPTH | required | MUST | `act` チェーンの長さをテナントの実効委譲深さで制限する。テナントはシステム既定を下げられるが上げられず、ポリシーを解決できない場合は交換を拒否する。 |
+
+### OAuth 2.0 Rich Authorization Requests
+
+RFC 9396 — https://www.rfc-editor.org/rfc/rfc9396.html
+
+| ID | Adoption | Strength | Statement |
+|---|---|---|---|
+| RFC9396-REGISTERED-TYPES | required | MUST | `authorization_details` は、テナントが事前登録した `type` とそのスキーマに対して検証する。未登録の型やスキーマの不一致は部分的に受理せず拒否する。 |
+| RFC9396-MONOTONIC-NARROWING | required | MUST | 発行または交換するトークンが持てるのは、同意した権限の部分集合に限る。後続の交換は権限を狭めることだけを許し、広げる要求は拒否する。 |
+| RFC9396-SCOPE-PRECEDENCE | required | MUST | 同じ領域で `type` と粗い `scope` が重なる場合は構造化された詳細の上限を優先し、`authorization_details` で制限した領域を `scope` が再び広げる要求は拒否する。 |
+
 ### JSON Web Token Profile for OAuth 2.0 Access Tokens
 
 RFC 9068 — https://www.rfc-editor.org/rfc/rfc9068.html
@@ -545,7 +566,16 @@ Initial: `Stored` Terminal: `Used`, `Expired`
 
 ## Authorization Boundary
 
-認可の意味づけはアプリケーションとそのテストが強制する。本仕様は API の認証を記録するが、ポリシーの DSL は意図的に定義しない。ポリシーの言語を採用する前に、別の work item で Cedar を評価する。
+プロトコルの経路には 4 つの異なる境界がある。
+
+- **クライアントの認証**: `/token`、`/introspect`、`/revoke` などは、`client_secret_basic`、`client_secret_post`、`private_key_jwt`、`tls_client_auth`、`self_signed_tls_client_auth` のいずれかでクライアントを認証する。認証に失敗した理由は区別せず、一律に `invalid_client` を返す。
+- **ユーザーの認証と同意**: `/authorize` はブラウザーのログインセッションで主体を決め、Application の割り当てと実効サインインポリシーを満たしたうえで、`(subject, client_id)` の同意が要求スコープを覆う場合にだけ認可コードを発行する。
+- **トークンによるアクセス**: 発行したトークンで到達できる範囲は、そのトークンのスコープが決める。`account:*` を含むユーザー紐付きのスコープは、User の subject を持たないグラント (`client_credentials` や、subject を伴わない Token Exchange) では発行しない。
+- **管理 API**: クライアント (`admin:clients_manage`)、同意 (`admin:consents_manage`)、`authorization_details` の型 (`admin:authorization_detail_types_manage`) の管理は、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行う。API アクセストークンでは `oauth-clients:*`、`consents:*`、`authorization-detail-types:*`、`mcp-resource-servers:*` が対応する。
+
+すべての判定は AuthZEN 形式の `authorize()` ポートを通り、規則表が要件の論理積を評価する。判定を返せない場合、事実が欠けている場合、ストアへ到達できない場合のいずれも、許可へ退避しない。
+
+代行 (Token Exchange) は権限を広げない。`act` チェーン上のすべての actor が有効であり、要求するスコープと `authorization_details` が元の権限の部分集合であることを求める。チェーンの深さはテナントの `max_delegation_depth` (システム既定 3) を超えられず、上書きを解決できない場合は交換を拒否する。
 
 ## Design
 
@@ -559,7 +589,7 @@ Initial: `Stored` Terminal: `Used`, `Expired`
 
 ### Authorization and device lifecycles as declarative state machines
 
-`AuthorizationRequest` とデバイスコードのライフサイクルは、`if` / `switch` のロジックへ分散させず、`spec/flows/` の宣言的な状態遷移表（状態、イベント、遷移）で表す。アダプター層を再生成しても、クライアントに許可する遷移の集合が暗黙にずれないようにするためである。リフレッシュトークンファミリーは意図的に対象外とする。その状態空間は実質的に `{active, revoked, rotated}` だけであり、遷移の適否より親子関係のローテーショングラフが重要なため、レコードのフィールドと失効規則で表す（下記の Refresh token rotation を参照）。`authorization/usecase` と `device/usecase` は遷移ロジックを再実装せず、これらの表を直接使う。
+`AuthorizationRequest` とデバイスコードのライフサイクルは、`if` / `switch` のロジックへ分散させず、本書の State Transitions が規定する宣言的な遷移表（状態、イベント、遷移）で表す。アダプター層を再生成しても、クライアントに許可する遷移の集合が暗黙にずれないようにするためである。リフレッシュトークンファミリーは意図的に対象外とする。その状態空間は実質的に `{active, revoked, rotated}` だけであり、遷移の適否より親子関係のローテーショングラフが重要なため、レコードのフィールドと失効規則で表す（下記の Refresh token rotation を参照）。`authorization/usecase` と `device/usecase` は遷移ロジックを再実装せず、これらの表を直接使う。
 
 ### PKCE and Pushed Authorization Requests
 
@@ -605,11 +635,11 @@ Cedar は実行時ポリシーの正ではない。Go 実装は既存のリク�
 
 ### Discovery
 
-OAuth 2.0 Authorization Server Metadata と OIDC Discovery Metadata は手作業で保守せず、派生成果物とする。実行時に `spec/discovery.json` のテンプレートを読み、発行者のプレースホルダーを置き換える。対応するグラント、認証方式、署名アルゴリズム、レスポンスタイプ、PKCE 方式は、`grants/grant-types.json` やトークンスキーマに設定した PKCE 要件など、その事実を所有する仕様中核ファイルと照合する。これにより、手作業で保守する文書と実装のずれ、およびビルド手順の省略による生成物の陳腐化を防ぐ。
+OAuth 2.0 Authorization Server Metadata と OIDC Discovery Metadata は手作業で保守せず、派生成果物とする。実行時に、TypeSpec から生成したランタイム契約 (`backend/shared/spec`) からリクエスト先テナントの発行者を当てはめて組み立てる。対応するグラント、認証方式、署名アルゴリズム、レスポンスタイプ、PKCE 方式はいずれも同じ契約に由来するため、広告した内容とサーバーが実際に強制する内容がずれることはない。テナントで有効な `authorization_details` の型だけは実行時に解決して重ねる。
 
 ### Device Authorization Grant
 
-デバイスフロー（RFC 8628）、すなわち `POST /device_authorization`、`/device` の検証 UI、`/token` の `device_code` グラントでは、承認・拒否・交換の遷移をその場で再実装せず、`spec/flows/device-code-flow.json` で宣言済みの状態遷移表を使う。`device_code` は 32 バイトのランダム値であり、ベアラーシークレットとして SHA-256 ハッシュだけを保存する。`user_code` は母音と見分けにくい文字を除いた 20 文字の縮小済みで曖昧さのない文字集合を使い、`WDJB-MJHT` のようにグループ分けして表示する。ポーリングは仕様中核が所有する間隔とバックオフ増分に従い、`authorization_pending` / `slow_down` / `access_denied` / `expired_token` を返す。二重発行を防ぐため、承認済みコードをトークン発行前に `approved → exchanged` へ遷移させる。
+デバイスフロー（RFC 8628）、すなわち `POST /device_authorization`、`/device` の検証 UI、`/token` の `device_code` グラントでは、承認・拒否・交換の遷移をその場で再実装せず、`DeviceCodeFlow` の遷移表を共有する 1 つの遷移関数を使う。`device_code` は 32 バイトのランダム値であり、ベアラーシークレットとして SHA-256 ハッシュだけを保存する。`user_code` は母音と見分けにくい文字を除いた 20 文字の縮小済みで曖昧さのない文字集合を使い、`WDJB-MJHT` のようにグループ分けして表示する。ポーリングは仕様中核が所有する間隔とバックオフ増分に従い、`authorization_pending` / `slow_down` / `access_denied` / `expired_token` を返す。二重発行を防ぐため、承認済みコードをトークン発行前に `approved → exchanged` へ遷移させる。
 
 ### Lifetime, security, and retention configuration
 
@@ -617,7 +647,7 @@ OAuth 2.0 Authorization Server Metadata と OIDC Discovery Metadata は手作業
 
 ### Agent principals and token-exchange delegation
 
-`Agent` は `User` や `OAuth2Client` と異なる第一級のプリンシパルであり、アイデンティティ、所有関係、目的、緊急停止を含むライフサイクルを所有する。ただし独自の資格情報の基本要素は持たず、1 個以上の既存の `OAuth2Client` 登録に束縛するため、エージェントのガバナンスに重複する第 2 の資格情報・暗号の仕組みは不要である。すべてのエージェントは所有者 (`User` またはグループ) を必須とし、所有者の離任をエージェントのアクセスへ連鎖する。すべてのトークン発行経路で `status` (`active` / `disabled` / `killed`) を安全側に検査し、状態を解決できない場合は発行を許可しない。所有者の離任の連鎖は、エージェントの `status` を書き換える一度きりの状態遷移ではなく、発行のたびに所有者を解決して有効性を確かめる評価として実装する。所有者を解決できない場合、または所有者が無効化・削除されている場合は発行しない。エージェントの `status` を経由しないのは、一度きりの書き込みが届かなかった配備でガードごと失われるのを避けるためであり、所有者が復帰すれば発行も自動的に再開する。既に発行済みのトークンは、この評価ではなく SharedSignals の失効エポックが無効化する。アクセストークンのクレームは任意のプリンシパル種別の標識を持ち、既存のトークン利用者を壊さず、リソースサーバーと AuthZEN のポリシー層がエージェント向けに発行したトークンを区別できるようにする。
+`Agent` は `User` や `OAuth2Client` と異なる第一級のプリンシパルであり、アイデンティティ、所有関係、目的、緊急停止を含むライフサイクルを所有する。ただし独自の資格情報の基本要素は持たず、1 個以上の既存の `OAuth2Client` 登録に束縛するため、エージェントのガバナンスに重複する第 2 の資格情報・暗号の仕組みは不要である。すべてのエージェントは所有者 (`User` またはグループ) を必須とし、所有者の離任をエージェントのアクセスへ連鎖する。すべてのトークン発行経路で `status` (`active` / `disabled` / `killed`) を安全側に検査し、状態を解決できない場合は発行を許可しない。所有者の離任の連鎖は、エージェントの `status` を書き換える一度きりの状態遷移ではなく、発行のたびに所有者を解決して有効性を確かめる評価として実装する。所有者を解決できない場合、または所有者が無効化・削除されている場合は発行しない。エージェントの `status` を経由しないのは、一度きりの書き込みが届かなかったデプロイでガードごと失われるのを避けるためであり、所有者が復帰すれば発行も自動的に再開する。既に発行済みのトークンは、この評価ではなく SharedSignals の失効エポックが無効化する。アクセストークンのクレームは任意のプリンシパル種別の標識を持ち、既存のトークン利用者を壊さず、リソースサーバーと AuthZEN のポリシー層がエージェント向けに発行したトークンを区別できるようにする。
 
 ユーザーの代理行為は `/token` の OAuth 2.0 Token Exchange（RFC 8693）として実装する。デフォルトの結果はなりすましではなく委任である。交換後のトークンは元のユーザーを `sub` に保ち、現在の行為者であるエージェントを `act` クレームに記録する。RFC 8693 §4.1 に従って以前の行為者を内側へ入れ子にするため、下位エージェントへの委任チェーンを追跡できる。なりすまし（`act` を削除して `sub` を置換）は、クライアントまたはエージェントへ明示的に許可した場合だけ利用できる。判断できない場合は、監査証跡を保つ委任をデフォルトとする。`may_act` と AuthZEN ポリシーが、許可する行為者、対象者、深さの組を共同で制御する。交換時には、結果を単一の対象へ狭める `resource` を必須とする（RFC 8707）。委任の最大深度で `act` チェーンの長さを制限する。上限はテナントごとに下げられるが、システム既定を超えて上げることはできない。テナント設定から認可の境界を緩める経路を作らないための非対称性であり、パスワードポリシーの上書きと同じ扱いである。テナントの委譲ポリシーを解決できない場合は、既定へ退避せず交換を拒否する。
 
@@ -651,11 +681,11 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 
 ### Conventions
 
-曖昧さがなく列挙可能な形を持つプロトコル上重要な振る舞いは、`spec/` で一度だけ宣言し、ユースケースやアダプターで再実装せず利用する。状態遷移、認可規則、Discovery Metadata、デバイスフローの遷移はすべてこの形に従い、アダプター層の再生成結果が仕様から暗黙に分岐しないようにする。機能単位（`authorization/`、`client/`、`consent/`、`device/`、`token/`）は、それぞれ `domain`、`ports`、`usecase`、`db_memory`、`db_postgres` の各層を所有する。Context 直下の `domain`、`ports`、`usecase` パッケージは機能単位の上に置く互換ファサードであり、`module.go` だけを Composition Root とする。
+曖昧さがなく列挙できる形を持つプロトコル上重要な振る舞いは、仕様で一度だけ宣言し、ユースケースやアダプターで再実装せずに使う。状態遷移、認可規則、Discovery Metadata、デバイスフローの遷移はいずれもこの形に従う。Context 直下の `domain`、`ports`、`usecase` パッケージは機能単位の上に置く互換ファサードであり、Composition Root は `module.go` だけである。
 
 ### Design Decisions
 
-- 認可リクエストとデバイスコードのライフサイクルは、その場の条件分岐ではなく `spec/flows/` の宣言的な状態遷移表で表し、再生成による遷移のずれを防ぐ。
+- 認可リクエストとデバイスコードのライフサイクルは、その場の条件分岐ではなく宣言的な遷移表で表す。条件分岐に散らすと、クライアントに許可する遷移の集合が実装のたびに暗黙にずれるからである。
 - PKCE はすべてのクライアントに一律で強制せず、公開クライアントと FAPI 2.0 クライアントではデフォルトで必須、従来の confidential クライアントでは任意とする。
 - Pushed Authorization Requests は FAPI 2.0 クライアントで必須、その他では任意とし、最も強い保証が必要なクライアントの `/authorize` で URL の改ざんと未認証リクエストの偽造を防ぐ。
 - クライアント認証は FAPI 級の非対称認証から従来の共有シークレットまで 5 方式に対応し、`client_secret_jwt` は意図的に除外する。
@@ -667,13 +697,12 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - 同意はクライアントごとや操作ごとではなく、`(subject, client_id)` ごとに付与済みスコープ集合として永続化し、暗黙のスコープ拡大と同意疲れを避ける。
 - ポリシー境界をまたぐ認可判断には AuthZEN 型の `authorize()` ポートを使用する。ローカルの Go 規則表はロールポリシーの確認にも使用し、外部 AuthZEN サービスはリモートアダプターの背後に隔離する。
 - Go のスキーマ検証器が実験段階にあり、移行後もロールポリシー確認用の第 2 の Go 認可情報源が残る間は Cedar を採用しない。
-- Discovery Metadata は手作業やビルド時に生成せず、実行時に `spec/discovery.json` から生成して実装とのずれを防ぐ。
-- Device Authorization Grant の承認、拒否、交換は再実装せず、`spec/flows/device-code-flow.json` の状態遷移表を再利用する。
+- Discovery Metadata は手作業でもビルド時でもなく、実行時に契約から組み立てる。手作業では実装とずれ、ビルド時では手順の省略で生成物が古くなるからである。
 - トークン、コード、PAR の TTL、レート制限、DPoP のリプレイ防止期間、同意の保持期間は、可用性 SLO ではなくプロトコルとセキュリティの設定であるため、製品目標にはせず 1 か所にまとめる。
 - `Agent` はアイデンティティとライフサイクルを所有する第一級のプリンシパルだが、独自の資格情報は持たず、既存の `OAuth2Client` 登録に関連付ける。
 - ユーザーの代理行為は OAuth 2.0 Token Exchange として実装し、偽装ではなく、元の `sub` と `act` の Agent を保つ委任をデフォルトとする。
 - Agent 単位の権限は粗いスコープではなく RFC 9396 `authorization_details` で表し、送金上限などの制約を宣言する。後続の Token Exchange では権限を狭めることだけを許す。
-- `sid` クレームには、ブラウザーセッションに参加するすべてのリライングパーティーが共有する `LoginSession.id` 自体を使用し、1 回のセッション失効から影響するすべての RP をたどれるようにする。
+- `sid` クレームには、ブラウザーセッションに参加するすべての RP が共有する `LoginSession.id` そのものを使う。1 回のセッション失効から、影響するすべての RP をたどれるようにするためである。
 - Agent の操作に対する人間の承認は、同意やステップアップ認証を置き換えず、OAuth 2.0 上の承認機能として CIBA で実装する。
 - 承認判断の記録には、UUID をキーとし通信方式に依存しない `ApprovalRequest` を使用する。CIBA の検索フィールドとポーリング用フィールドは通信上の記録だが、ストアが判断とポーリングを不可分に直列化できるよう同じ場所に置く。
 - 承認済みリクエストはストア単位の Compare-and-Set でトークンに交換し、同時ポーリングによる二重発行を防ぐ。それ以外の状態は `/token` でフェイルクローズに扱う。
@@ -783,7 +812,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - THEN 発行された access トークンは DPoP 鍵サムプリントに cnf でバインドされる
 - THEN 発行された refresh トークンのセンダー制約は Dpop
 
-### REQ-OAUTH2-011: 失効済みトークンの introspection は active=false のみ返す
+### REQ-OAUTH2-011: 失効済みトークンのイントロスペクションは `active=false` だけを返す
 - ACTOR ResourceServer
 - GIVEN 失効済み access トークン "AT1" が存在する
 - WHEN トークン "AT1" を検査する
@@ -819,7 +848,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - THEN "RefreshTokenReuseDetected" が発行される
 - THEN "TokenRevoked" が発行される
 
-### REQ-OAUTH2-016: 動的クライアント登録は client_id を採番して返す
+### REQ-OAUTH2-016: 動的クライアント登録は `client_id` を採番して返す
 - ACTOR Client
 - WHEN confidential クライアント "web-app" を redirect_uri "https://app.example.com/callback" で登録する
   - ALT redirect_uri を持たない登録要求である → confidential クライアント "web-app" を redirect_uri "" で登録する → エラー "InvalidRequestError"
@@ -835,7 +864,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - THEN 環境のプロキシを使用せず、DNS 検査済みの公開 IP へ直接接続する
 - THEN metadata document の取得と検証に成功する
 
-### REQ-OAUTH2-018: absolute_expires_at を超えた refresh トークンはローテーション不可
+### REQ-OAUTH2-018: 絶対有効期限を過ぎたリフレッシュトークンはローテーションできない
 - ACTOR RegisteredClient
 - GIVEN absolute_expires_at "2026-01-01T00:00:00Z" の refresh トークン "RT1" が存在する
 - GIVEN 現在時刻は "2026-01-02T00:00:00Z" である
@@ -850,7 +879,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - THEN "RT1" の状態は "Revoked"
 - THEN "TokenRevoked" が発行される
 
-### REQ-OAUTH2-020: 失効した access_token でユーザー情報取得は invalid_token で拒否される
+### REQ-OAUTH2-020: 失効したアクセストークンによる UserInfo の取得は `invalid_token` で拒否される
 - ACTOR RegisteredClient
 - GIVEN 有効な access トークン "AT1" が存在する
 - WHEN トークン "AT1" を失効させる
@@ -858,7 +887,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - WHEN クライアントがトークン "AT1" でユーザー情報を取得する
 - THEN エラー "InvalidTokenError"
 
-### REQ-OAUTH2-021: refresh_token は offline_access スコープ付与時のみ発行される
+### REQ-OAUTH2-021: リフレッシュトークンは `offline_access` スコープを付与したときだけ発行する
 - ACTOR RegisteredClient
 - GIVEN confidential クライアント "web-app" が grant_types に "authorization_code"・"refresh_token" を含めて登録済みである
 - WHEN "web-app" として scope "openid offline_access" で認可リクエストを送る
@@ -890,7 +919,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - THEN id_token_hint の sid が示す LoginSession が失効する
 - THEN 同じ sid を持つ全クライアントの RefreshTokenRecord が Revoked へ遷移する
 
-### REQ-OAUTH2-025: セッション失効時は backchannel_logout_uri を登録済みの RP へログアウトトークンを配送する
+### REQ-OAUTH2-025: セッション失効時は `backchannel_logout_uri` を登録済みの RP へログアウトトークンを配信する
 - ACTOR ResourceOwner
 - GIVEN "web-app" が backchannel_logout_uri "https://app.example.com/backchannel_logout" を登録済みである
 - GIVEN ユーザー "alice" が "web-app" とのブラウザセッションを持つ
@@ -1048,7 +1077,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
   - ALT 共有カウンタストアに到達できない → リクエストは fail-closed で "RateLimitedError" として拒否される
 - THEN エラー "RateLimitedError" (HTTP 429、Retry-After ヘッダ付き)
 
-### REQ-OAUTH2-041: backchannel 認可要求は人間の承認が成立してからトークンを発行する
+### REQ-OAUTH2-041: バックチャネル認可要求は人間の承認が成立してからトークンを発行する
 - ACTOR RegisteredClient
 - GIVEN `confidential` クライアント `agent-app` が `grant_types` に `urn:openid:params:grant-type:ciba` を含めて登録済みである
 - GIVEN active User "alice" が存在する
@@ -1132,7 +1161,7 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 - THEN エラー "InvalidClientError" で拒否され、トークンは発行されない
 - THEN 所有者の状態は "A1" の `status` を書き換えず、発行のたびに解決する（"A1" は `Active` のまま）
 
-### REQ-OAUTH2-047: 管理 / アカウント portal の Bearer 認証も失効判定を通る
+### REQ-OAUTH2-047: 管理コンソールとアカウントポータルの Bearer 認証も失効判定を通る
 - ACTOR ResourceServer
 - GIVEN Agent "A1" に束縛されたクライアントへ発行済みの access トークン "AT1" がある
 - GIVEN "A1" の revocation epoch が "AT1" の issued_at より後へ前進している

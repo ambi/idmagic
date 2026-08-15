@@ -1,13 +1,15 @@
 ---
 context: data-keys
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # DataKeys Specification
 
 ## Overview
 
-テナントごとの `DataEncryptionKey`（DEK）のライフサイクル（`bootstrap`、`rotate`、`disable`、`destroy`）とメタデータを所有する。DEK はマスターキープロバイダー（OpenBao Transit 互換。開発環境とローカル環境では Tink の平文鍵セット）でラップし、データベースに保存する復号可能なシークレット（TOTP seed など）のエンベロープ暗号化に使用する。`EnvelopeCrypto` ポートは Go の共有技術アダプターに置き、SCL には `EncryptedSecret` と鍵のライフサイクルメタデータだけを公開する。署名鍵（`private_jwk`）は管理せず、`SigningKeys` の責務とする。
+テナントごとの `DataEncryptionKey`（DEK）のライフサイクル（`bootstrap`、`rotate`、`disable`、`destroy`）とメタデータを所有する。DEK はマスターキープロバイダー（OpenBao Transit 互換。開発環境とローカル環境では Tink の平文鍵セット）でラップし、データベースに保存する可逆なシークレット（TOTP seed など）のエンベロープ暗号化に使う。
+
+暗号処理そのものは所有しない。`EnvelopeCrypto` ポートとその実装は技術的な共有アダプター (`backend/shared/security`) に置き、この Context が外部へ公開するのは `EncryptedSecret` と鍵のライフサイクルメタデータだけである。署名鍵（`private_jwk`）も管理せず、`SigningKeys` の責務とする。
 
 ## Glossary
 
@@ -40,7 +42,9 @@ Initial: `active` Terminal: `destroyed`
 
 ## Authorization Boundary
 
-認可の意味はアプリケーションとそのテストで強制する。本仕様は API の認証を記述するが、ポリシーの DSL は意図的に定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
+DEK のライフサイクル操作 (`bootstrap`、`rotate`、`disable`、`destroy`) は HTTP に公開しない。同じプロセス内の内部インターフェースとしてのみ呼べるため、テナント管理者がこれらを直接起動する経路は存在しない。
+
+唯一の管理 API である `ListTenantDataKeyHealth` はテナント横断の運用情報を返すため、`system_admin` ロールを持つユーザーだけが呼べる。応答には鍵素材を一切含めず、`active_version`、`status`、プロバイダーへの到達性に限る。
 
 ## Design
 

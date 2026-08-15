@@ -1,15 +1,17 @@
 ---
 context: identity-management
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # IdManagement Specification
 
 ## Overview
 
-人間の `User`、`Group`、非人間の `Agent` というアイデンティティプリンシパルと、そのプロフィール、ロール、ライフサイクル、管理 API、自己管理 API を所有する。資格情報の検証、MFA、ログインセッションは Authentication に分離する。
+テナント単位のプリンシパル台帳 — 人間の `User`、`Group`、非人間の `Agent` — と、そのプロフィール、ロール、ライフサイクル、管理 API、セルフサービス API を所有する。
 
-`IdManagement` コンテキストは、テナント単位のプリンシパル台帳である `User`、`Group`、`Agent` の各集約と、ユーザープロフィールの検証に使う属性スキーマを所有する。資格情報の検証とログインセッションは `Authentication` が、OAuth2 クライアントの資格情報とトークン発行は `OAuth2` が所有し、IdManagement はそれらのコンテキストが認証とトークン発行の対象にするプリンシパルのレコードを所有する。`User`、`Group`、`Agent` はそれぞれ `user/`、`group/`、`agent/` に置く別々の機能スライスであり、各スライスが自身のドメイン、ポート、ユースケース、アダプターを持つ。本書はユーザーのライフサイクル、ユーザープロフィールを構成する属性モデル、`Group`、`Agent` の順に読む。
+資格情報の検証、MFA、ログインセッションは `Authentication` が、OAuth2 クライアントの資格情報とトークン発行は `OAuth2` が持つ。この Context が所有するのは、それらが認証とトークン発行の対象にするプリンシパルの記録そのものである。
+
+`User`、`Group`、`Agent` は `user/`、`group/`、`agent/` に置く別々の機能単位であり、それぞれが自身のドメイン、ポート、ユースケース、アダプターを持つ。本書はユーザーのライフサイクル、プロフィールを構成する属性モデル、`Group`、`Agent` の順に読む。
 
 ## Glossary
 
@@ -17,21 +19,21 @@ updated_at: 2026-08-11
 |---|---|---|
 | Administrator | `User.roles` に `admin` を持ち、所属テナント内の管理 API の利用を許可された認証済みユーザー。テナント境界を越える操作は SystemAdministrator に限定する。 | admin, 管理者, TenantAdmin |
 | SystemAdministrator | `User.roles` に `system_admin` を持つ認証済みユーザー。テナント管理（CRUD・無効化・有効化）とテナント横断操作を許可され、`system_admin` 専用のシステムコンソール (`/system`) から `/api/admin/tenants/*` や `/api/admin/keys/health` を呼び出せる。テナント境界を越えるため、パスではなくロールで制御する。 | system_admin, システム管理者 |
-| EndUser | 認証済みまたは認証を試みる一般利用者。管理ロールを持たない自己サービス操作 (account portal) の主体。 | end ユーザー, 利用者, エンドユーザー |
+| EndUser | 認証済みまたは認証を試みる一般利用者。管理ロールを持たない、アカウントポータルでのセルフサービス操作の主体。 | 利用者, エンドユーザー |
 | UserDisablement | `User.status` を `Disabled` に遷移させ、認証とセッション利用を停止する復元可能な管理操作。削除や個人識別情報の消去とは異なる。 | disable ユーザー |
-| UserImport | 管理者が UTF-8 CSV を使ってユーザーの作成・部分更新を事前検証し、成功済み プレビュー に結合して非同期適用する操作。CSV は安定した機械キーのヘッダーを任意順・任意部分集合で持ち、パスワードや password_hash を含めない。 | CSV ユーザーインポート, bulk ユーザーインポート, ユーザー一括インポート |
+| UserImport | 管理者が UTF-8 CSV でユーザーの作成と部分更新を行う操作。まずプレビューで事前検証し、成功したプレビューを指定して非同期に適用する。CSV のヘッダーは安定した機械可読なキーで、順序と部分集合は任意だが、`password` と `password_hash` は含められない。 | CSV ユーザーインポート, ユーザー一括インポート |
 | UserDeletion | User の Tombstone 化と関連 Aggregate のカスケード削除。`status` を `Deleted` に遷移させて個人識別情報のフィールドを匿名化し、監査のため `id` だけを保持する。`Deleted` は終端状態であり復元できない。 | delete ユーザー, anonymize ユーザー, アカウント削除 |
-| Deleted | User の終端状態。`status == Deleted` で PII が anonymize 済み。login / トークン / userinfo は active=false 相当。 | deleted |
-| Delete | User を Deleted に遷移させる管理操作。tombstone 化と cascade を 1 オペレーションで実施する。 | delete |
+| Deleted | User の終端状態。個人識別情報は匿名化済みで、ログイン、トークン発行、UserInfo のいずれも無効なプリンシパルとして扱う。 | deleted |
+| Delete | User を Deleted に遷移させる管理操作。Tombstone 化と関連 Aggregate のカスケード削除を 1 回の操作で行う。 | delete |
 | PendingDeletion | User の削除予約状態。`status == PendingDeletion` では個人識別情報を保持するが、`Disabled` と同様に認証を拒否する。猶予期間（`states.UserLifecycle` の `PendingDeletion` → `Deleted` 遷移のガード）内であれば Restore で `Active` に戻せる。猶予期間を過ぎると Purge により `Deleted` へ遷移し、匿名化する。 | pending_deletion, 削除予約中 |
-| SoftDelete | User を Active / Disabled から PendingDeletion に遷移させる管理操作。PII / Consent / RefreshToken / Session を残したまま削除を予約し、誤操作を猶予期間内で救済できる。 | soft_delete, soft-delete |
+| SoftDelete | User を `Active` / `Disabled` から `PendingDeletion` へ遷移させる管理操作。個人識別情報、同意、リフレッシュトークン、セッションを残したまま削除を予約するため、誤操作を猶予期間内に取り消せる。 | soft_delete, soft-delete |
 | Restore | `PendingDeletion` の User を `Active` に戻す管理操作。猶予期間内だけ実行でき、個人識別情報と資格情報は保持しているため通常どおりログインを再開できる。 | restore |
 | Purge | User を `Active` / `Disabled` / `PendingDeletion` から `Deleted` に遷移させる確定削除操作。匿名化をカスケードし、猶予期間経過後の自動消去と、管理者による明示的な完全削除の双方から呼び出す。 | purge |
-| Group | テナント単位集約。再利用可能なロール束 (ロール[]) を持ち、所属する User にそのロールを一斉付与する。階層・deny ルール・属性自動所属は持たない (union のみ)。連絡先 email と、TenantGroupAttributeSchema に対して検証される custom attributes も持つ。 | group, グループ, ロール group, ロールグループ |
+| Group | テナント単位の Aggregate。再利用できるロールの束を持ち、所属する User へまとめて付与する。階層、拒否規則、属性による自動所属は持たず、和集合だけで構成する。連絡先メールアドレスと、`TenantGroupAttributeSchema` に対して検証する独自属性も持つ。 | group, グループ, ロールグループ |
 | GroupMembership | User と Group の所属関係 (`GroupMember`)。`manual` は管理者操作、`dynamic` は有効な CEL 規則の評価結果だけから変更する。`effective_roles(user) = user.roles ∪ ⋃ membership.group.roles`。 | group membership, グループ所属, membership |
 | DynamicGroupRule | User の中核属性と TenantUserAttributeSchema で定義した属性だけを参照し、所属可否を Boolean で返す制限付き CEL 式。規則のバージョンが一致する動的メンバーシップだけを有効とする。 | dynamic membership rule, 動的グループルール |
-| EffectiveRoles | 認可判断で使う User の有効ロール集合。`User.roles` と所属 Group のロールの和集合。管理者向け RBAC の制御と `/account` の自己管理 Context で参照する。 | effective ロール, 有効ロール |
-| Agent | テナント単位の非人間アイデンティティプリンシパル。自身の資格情報は持たず、AgentCredentialBinding で既存の OAuth2Client にバインドしてトークンを得る。所有者（User または Group の ID）は必須。 | agent, エージェント, AI エージェント, 非人間アイデンティティ |
+| EffectiveRoles | 認可判断で使う User の有効ロール集合。`User.roles` と所属 Group のロールの和集合であり、管理コンソールの RBAC 制御とアカウントポータルの双方が参照する。 | 有効ロール |
+| Agent | テナント単位の非人間プリンシパル。自身の資格情報は持たず、AgentCredentialBinding で既存の OAuth2Client にバインドしてトークンを得る。所有者（User または Group の ID）は必須。 | agent, エージェント, AI エージェント, 非人間アイデンティティ |
 | Killed | Agent の緊急停止 (kill-switch) による一方向終端状態。Killed からは復帰できず、新規トークンを一切発行しない (fail-closed)。 | killed |
 | DisableAgent | Agent を Active から Disabled に遷移させる可逆な運用停止。`/api/admin/agents/{agent_id}/disable` から発火。 | disable agent |
 | EnableAgent | Disabled の Agent を Active に戻す。`/api/admin/agents/{agent_id}/enable` から発火。 | enable agent |
@@ -100,7 +102,15 @@ Initial: `queued` Terminal: `failed`, `canceled`, `expired`
 
 ## Authorization Boundary
 
-認可の意味づけはアプリケーションとそのテストが強制する。本仕様は API の認証を記録するが、ポリシーの DSL は意図的に定義しない。ポリシーの言語を採用する前に、別の work item で Cedar を評価する。
+管理 API はプリンシパルの種類と操作ごとに権限を分ける。`User` は参照 (`admin:user_read`)、作成 (`admin:user_create`)、CSV インポート (`admin:user_import`)、更新 (`admin:user_update`)、削除 (`admin:user_delete`)、復元 (`admin:user_restore`)、完全削除 (`admin:user_purge`)、`Group` は参照 (`admin:groups_read`) と変更 (`admin:groups_write`)、`Agent` は `admin:agents_manage` を要する。いずれも `admin` ロールを持つ、有効かつ認証済みのユーザーに限る。Agent のキルスイッチを含むライフサイクル操作も、汎用の管理者権限ではなく `admin:agents_manage` で制御する。
+
+対象は常に呼び出し元と同じテナントに属していなければならない。テナントをまたぐメンバーシップは無条件に拒否し、`AddMember` は対象 `User` を読み込んだうえで別テナントに属していれば拒否する。
+
+セルフサービス API (`/api/account/*`) は認証済み本人の記録だけに閉じる。本人が書き込めるのは `editable_by_user == true` の属性に限り、更新は対応表全体の置き換えではなくキーごとの併合とする。本人へ開示するのも `self_readable` と `claim_exposed` の属性だけで、`admin_readable` と `private` は読み出せない。
+
+自己破壊は防ぐ。操作者と対象が同じプリンシパルで、その対象が `admin` または `system_admin` を持つ場合、削除は拒否する。管理者が自身の特権アカウントを消す経路は、どの対話フローにも必要ないからである。
+
+CSV インポートは、より強い上流の権威を上書きしない。取り込み元が管理する `User` は `source_managed` として拒否し、所有権を確認できない場合も外部管理として扱って拒否する。
 
 ## Design
 
@@ -123,7 +133,7 @@ Authentication Context が、検証済みの上流アイデンティティとテ
 
 ### User Profile: Thin Core and Attribute Bag
 
-`User` は型として持つ中核を、アイデンティティ、認証、RBAC に必要なものだけに限る。`sub`、`tenant_id`、`preferred_username`、`password_hash`、`email`、`email_verified`、`mfa_enrolled`、`roles`、`name` / `given_name` / `family_name`、`lifecycle`、各種の時刻である。滅多に使わない OIDC や SCIM の任意の項目 25 個ほどを、すべてのユーザーに型と保存の水準で持たせると、ほとんど使わないテナントにとって模型が肥大することが分かった。それ以外のプロフィールの属性 — 残りの OIDC §5.1 の任意の claim (`middle_name`、`nickname`、`picture`、`phone_number`、`address_*` など)、SCIM 風の組織の属性 (`title`、`department`、`manager_sub` など)、テナントが定義する独自の項目 — は、単一の疎な `attributes: Map<String, AttributeValue>` に置き、実際に値を持つ鍵だけが領域を消費する。OIDC の `address` の claim は入れ子の構造ではなく平坦な鍵 (`address_formatted`、`address_locality` など) として保存し、`AttributeValue` を素直な直和の型 (文字列、数値、真偽値、日付、文字列の配列) に保つ。入れ子の `address` の物へ組み直すのは、UserInfo や ID Token の claim を作るときだけである。
+`User` は型として持つ中核を、アイデンティティ、認証、RBAC に必要なものだけに限る。`sub`、`tenant_id`、`preferred_username`、`password_hash`、`email`、`email_verified`、`mfa_enrolled`、`roles`、`name` / `given_name` / `family_name`、`lifecycle`、各種の時刻である。滅多に使わない OIDC や SCIM の任意項目 25 個ほどを、すべてのユーザーに型と保存の水準で持たせると、それらを使わないテナントにとってモデルが肥大するだけである。それ以外のプロフィール属性 — 残りの OIDC §5.1 の任意クレーム (`middle_name`、`nickname`、`picture`、`phone_number`、`address_*` など)、SCIM 相当の組織属性 (`title`、`department`、`manager_sub` など)、テナントが定義する独自項目 — は、単一の疎な `attributes: Map<String, AttributeValue>` に置き、実際に値を持つキーだけが領域を消費する。OIDC の `address` クレームは入れ子の構造ではなく平坦なキー (`address_formatted`、`address_locality` など) として保存し、`AttributeValue` を素直な直和型 (文字列、数値、真偽値、日付、文字列の配列) に保つ。入れ子の `address` へ組み直すのは、UserInfo や ID Token のクレームを作るときだけである。
 
 ライフサイクルの正は `User.lifecycle.status`（`Active` / `Disabled` / `Locked` / `Staged` / `Suspended` / `Deleted`）と `status_changed_at` の 1 組だけである。遷移時刻の監査記録は、時刻を持つ `UserDisabled` / `UserDeleted` イベントに残す。認証を許可するのは `status == Active` だけであり、それ以外の状態は、デフォルトで `Active` に解決されるゼロ値も含めて認証を拒否する。
 
@@ -146,7 +156,7 @@ OIDC と SCIM の組み込みの属性も、テナントが定義する独自の
 
 `User` のエクスポートとインポートは、設定可能な 1 つの転送ポリシーを共有する。デフォルトの上限はデータ行 100,000 件、成果物ごとに 64 MiB、項目ごとに 64 KiB とする。これは 1 個の非同期成果物に対するリソース保護の上限であり、テナントのユーザー数の上限ではない。実効ポリシーを超える `User` エクスポートは、再インポートできない成功済み成果物を作らず失敗する。容量の契約には、10,000 ユーザーとすべての組み込み列を持つ統合フィクスチャーを含め、小さな移行単位を超える規模で往復の保証を検証する。
 
-解析と直列化は `io.Reader` と `io.Writer` に対して動作し、CSV 全体を文字列、2 次元のレコードスライス、ジョブ JSON 内の base64 として実体化しない。解析器は byte、行、項目の上限を段階的に強制する。計画ではページ単位のリポジトリ読み取りから上限付きの ID と username のインデックスを構築し、適用では行ごとのトランザクション境界を保ちながら上限付きのまとまりで進める。これによりworkerのメモリを成果物全体の大きさから独立させ、CSV の行ごとにリポジトリを検索することを避ける。
+解析と直列化は `io.Reader` と `io.Writer` に対して動作し、CSV 全体を文字列、2 次元のレコードスライス、ジョブ JSON 内の base64 として実体化しない。解析器は byte、行、項目の上限を段階的に強制する。計画ではページ単位のリポジトリ読み取りから上限付きの ID と username のインデックスを構築し、適用では行ごとのトランザクション境界を保ちながら上限付きのまとまりで進める。これにより `worker` のメモリを成果物全体の大きさから独立させ、CSV の行ごとにリポジトリを検索することを避ける。
 
 ユーザーのユースケース層は プレビュー と 適用 に共通する 1 個の決定的な計画器を所有する。既存の集約を不変な ID、次に優先 username で解決し、型付きの独自属性と行間の衝突を検証し、状態を変更せず `created`、`updated`、`unchanged`、`rejected` のいずれかを生成する。適用 は プレビュー 時の古い変更計画を実行せず、現在のリポジトリ状態に対して同じ計画器を再び実行する。これにより同時変更を 適用 時に可視化し、プレビュー が暗黙の楽観的ロックの迂回路になることを防ぐ。
 
@@ -168,13 +178,13 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 
 ### Group Contact and Custom Attributes
 
-`Group` は任意の `email` (部署の distribution list などの単純な連絡先) と、テナント定義の custom metadata を入れる疎な `attributes` も持つ。Keycloak の schema のない自由形式の key / value model ではなく、管理者定義の schema で group profile を拡張する Okta と Microsoft Entra ID の方式に従う。これは既存の `User` attribute の仕組みと同じ姿勢である。`email` は形式だけを検証し (`User.email` と同じ address format の検査)、`User.email` と異なり verification flag、変更要求の flow、一意性の constraint を持たない。group には inbox の支配を証明する self-service actor がおらず、それに依存する認証経路もないからである。
+`Group` は任意の `email` (部署のメーリングリストなど単純な連絡先) と、テナントが定義する任意の項目を入れる疎な `attributes` も持つ。スキーマを持たない自由形式のキー・値ではなく、管理者が定義したスキーマでグループのプロフィールを拡張する方式を採り、`User` の属性と同じ統治の姿勢を保つ。`email` は `User.email` と同じ形式検査だけを行い、検証済みフラグ、変更要求のフロー、一意性の制約は持たない。グループには受信箱を支配していることを示せる本人がおらず、それに依存する認証経路もないからである。
 
 `Group.attributes` は、`GroupAttributeDef` で定義する `TenantGroupAttributeSchema` に対して検証する。これは `Tenancy` が所有するテナント単位の Aggregate である。どのプリンシパルを統治するスキーマであっても、テナント単位のスキーマ管理は `Tenancy` の関心事であるため、`TenantUserAttributeSchema` と同じ場所に置く。`GroupAttributeDef` は `UserAttributeDef` と異なり、`key`、`label`、`type`、`multi_valued`、`required` だけを持ち、`editable_by_user`、`claim_name` / `oidc_scope`、`visibility` は持たない。`Group` にはセルフサービスの編集画面がなく、その属性を OIDC / SAML クレームへ射影しないためである。和集合にする組み込みカタログもない。`User` の組み込み層は、OIDC §5.1 と SCIM `enterprise:User` が多数の任意プロフィールクレームを固定的に定めるため存在するが、Group には同様の標準語彙がない。そのため `TenantGroupAttributeSchema.attributes` だけが実効定義の集合になる。未定義キーの拒否、型の一致、`multi_valued` の整合性、`required` の充足という `ValidateAttributes` 型の検査は概念として再利用する。一方で、2 つの定義がすべてのフィールドを共有するわけではないため、`GroupAttributeDef` に対する Group 固有の処理として実装する。管理者は、ユーザースキーマと同じ形の 2 つのエンドポイント `GetTenantGroupAttributeSchema` / `UpdateTenantGroupAttributeSchema` (`/api/admin/v1/tenant/group_attribute_schema`) を通じてスキーマを管理する。
 
 ### Agent Principal
 
-`Agent` は、`User` と OAuth2 が所有する資格情報プリミティブに並ぶ、第 3 の第一級プリンシパル型である。エージェント固有の関心事を `OAuth2Client` に後付けすると、監査とポリシーにおいて自律型・監督型の AI エージェントを一般的な M2M クライアントと区別できない。一方、エージェントに独立した資格情報と暗号機能のインターフェースを与えると、`OAuth2Client` にすでに存在する攻撃面が倍増する。IdManagement は、アイデンティティ、所有権、ライフサイクル、資格情報のバインディングを含む Aggregate 自体を所有する。エージェントがトークン交換チェーンのアクターとして行為するための委任機構は OAuth2 が所有し、その Context の設計記録で扱う。
+`Agent` は、`User` と OAuth2 が所有する資格情報プリミティブに並ぶ、第 3 の第一級プリンシパル型である。この Context が所有するのは、アイデンティティ、所有権、ライフサイクル、資格情報のバインディングを含む Aggregate 自体である。エージェントがトークン交換のチェーンで actor として振る舞うための委譲機構は `OAuth2` が所有する。
 
 `Agent` Aggregate は `(id, tenant_id, display_name, kind, status, owner, purpose, created_at, updated_at, disabled_at?, killed_at?)` を持つ。`id` は URL セーフなスラッグであり、`kind` はエージェントの行為に人間がどの程度関与するかを宣言するため、`autonomous` と `supervised` を区別する。登録、検索、変更はすべてテナント単位とし、IdManagement の他の Aggregate と同じテナント境界に従う。
 
@@ -184,82 +194,83 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 
 ### Design Decisions
 
-- Context が単一の機能を超えて成長したら、`User`、`Group`、`Agent` は 1 個の平らな Context パッケージではなく、それぞれがドメイン、ポート、ユースケース、アダプターを持つ別々の垂直分割として構成する。
-- User の削除は物理的な行の削除ではなく、再識別可能なフィールドを消した `Deleted` の Tombstone として、その場で匿名化する。`AdminAuditEvent` などの追記専用レコードが `sub` を参照しており、物理削除はその参照を壊すためである。
-- `User` は最小限の型付き中核を保ち、それ以外のプロフィール属性を 1 個の疎な `attributes` マップに置く。ほとんどの User が使わない約 25 個の任意の OIDC / SCIM フィールドをすべて型として持たせない。
-- 組み込みとテナント定義の attribute は 2 個の別の system ではなく、1 個の `UserAttributeDef` schema mechanism (builtin catalog ∪ tenant schema) で統治し、機微な値を安全側のデフォルトで扱うため `pii` のデフォルトを `true` とする。
-- User CSV は可逆な部分アップサート形式を使い、サーバーが保持する成功済みのプレビューペイロードだけを適用し、現在の状態に対して変更を再計画する。
-- `Group` はロールを一組として付与・取り消しできるテナント単位の Aggregate として導入し、実効ロールは優先順位や減算規則を持つ階層ではなく、`user.roles` と Group のロールの単純な和集合として計算する。
-- `Group.attributes` は Keycloak の schema のない自由形式の key / value model ではなく、`User` と同じ schema 駆動の統治姿勢 (Okta / Entra ID 型) を再利用する。ただし `UserAttributeDef` / `TenantUserAttributeSchema` へ統合せず、別の `GroupAttributeDef` / `TenantGroupAttributeSchema` の仕組みを使う。`Group` には共有できる組み込み OIDC / SCIM catalog、self-service editor、claim exposure の層がないからである。
-- `Agent` は `User` と `OAuth2Client` とは異なる第 3 の第一級プリンシパル型である。独自の資格情報や暗号機能のインターフェースは所有せず、既存の `OAuth2Client` 登録にバインドする。資格情報の攻撃面を倍増させず、自律型・監督型エージェントを一般的な M2M クライアントと区別できるようにするためである。
-- `Agent` の登録、検索、変更はテナント単位とし、IdManagement の他の Aggregate と同じく、テナントを Aggregate の境界および永続化の境界とする。
+- `User`、`Group`、`Agent` は 1 つの平らなパッケージではなく、それぞれがドメイン、ポート、ユースケース、アダプターを持つ機能ごとの垂直分割として構成する。
+- User の削除は行の物理削除ではなく、再識別できる項目を消した `Deleted` の Tombstone とする。`AdminAuditEvent` などの追記専用の記録が `sub` を参照しており、物理削除はその参照を壊すうえ、「削除済み」と「停止中」の運用上の区別も消してしまうからである。
+- `User` の型付き中核は最小限に保ち、それ以外のプロフィール属性は 1 つの疎な `attributes` に置く。ほとんどのテナントが使わない約 25 個の任意項目を、すべてのユーザーに型と保存の水準で持たせないためである。
+- 組み込みの属性とテナント定義の属性を 2 つの仕組みに分けず、`UserAttributeDef` の 1 つのスキーマ機構 (組み込みカタログ ∪ テナントスキーマ) で統べる。管理者が向き合うスキーマの形を 1 つに保つためである。
+- 属性の `pii` は既定を `true` とする。テナントの利便より開示の上限を優先する、安全側の既定である。
+- CSV の適用は、クライアントが再送する CSV ではなく、サーバーが保持する成功済みのプレビューペイロードだけを対象とし、変更計画は現在の状態から作り直す。プレビューが暗黙の楽観的ロックの迂回路になることを防ぐためである。
+- `Group.attributes` は `UserAttributeDef` / `TenantUserAttributeSchema` へ統合せず、別の `GroupAttributeDef` / `TenantGroupAttributeSchema` を使う。`Group` には共有できる組み込みカタログも、セルフサービスの編集画面も、クレーム開示の層もないからである。
+- 実効ロールは `user.roles` と所属 Group のロールの単純な和集合とし、優先順位や減算の規則を持たない。平らな和集合で足りるところに deny を導入すると、評価順の複雑さだけが増えるからである。
+- `Agent` は `User` と `OAuth2Client` に並ぶ第 3 の第一級プリンシパル型とし、独自の資格情報や暗号インターフェースは持たせず既存の `OAuth2Client` にバインドする。エージェント固有の関心事を `OAuth2Client` に後付けすると監査とポリシーで一般的な M2M クライアントと区別できず、独立した資格情報を与えると攻撃面が倍増するからである。
+- すべての `Agent` に所有者を必須とし、所有者のオフボーディングを配下の `Agent` へ伝播させる。孤立した非人間アイデンティティを残さないためである。
 
 ## Scenarios
 
-### REQ-IDMANAGEMENT-001: federated JITはpassword credentialを作らずactive Userを作成する
+### REQ-IDMANAGEMENT-001: フェデレーションの JIT はパスワード資格情報を作らず有効な User を作成する
 - ACTOR EndUser
-- GIVEN Authentication Context が上流トークン / Assertion とテナントの JIT ポリシーを検証済みである
+- GIVEN Authentication Context が上流のトークンまたは Assertion と、テナントの JIT ポリシーを検証済みである
 - WHEN Authentication Context が ProvisionFederatedUser を呼ぶ
-- THEN mapped username、任意の name/email/attributes、テナント quota、一意性を検証する
-  - ALT username/email が衝突する、quota 超過、または属性 schema が不正である → User を作成せずエラーを返す
-- THEN password_hash が null の active User を作成して UserCreated を発行する
+- THEN 対応付けたユーザー名、任意の名前・メールアドレス・属性、テナントのリソース上限、一意性を検証する
+  - ALT ユーザー名またはメールアドレスが衝突する、リソース上限を超える、属性スキーマに違反する → User を作成せずエラーを返す
+- THEN `password_hash` が空の `Active` な User を作成し、`UserCreated` を発行する
 
-### REQ-IDMANAGEMENT-002: API トークン発行者はaccount スコープで自身のアイデンティティ情報だけを操作できる
+### REQ-IDMANAGEMENT-002: API トークンの発行者は account スコープで自身の情報だけを操作できる
 - ACTOR SelfApiClient
-- GIVEN クライアントは対象テナントの active User に固定された有効な API access トークンを提示している
-- WHEN クライアントが summary、プロファイル、data export、または primary email change request の操作を要求する
-  - ALT account:read だけで変更操作を要求する → 操作は AccessDeniedError で拒否される
-  - ALT トークンのテナントまたは user_id が操作対象と一致しない → 操作は AccessDeniedError で拒否される
-- THEN account:read scope は自身の summary、プロファイル、data エクスポートの参照だけを許可する
-- THEN account:write scope は自身のプロファイルと primary email change request の変更だけを許可する
+- GIVEN クライアントは対象テナントの有効な User に固定された、有効な API アクセストークンを提示している
+- WHEN クライアントが概要、プロフィール、データエクスポート、またはプライマリメールアドレスの変更申請を要求する
+  - ALT `account:read` だけで変更操作を要求する → 操作は AccessDeniedError で拒否される
+  - ALT トークンのテナントまたは `user_id` が操作対象と一致しない → 操作は AccessDeniedError で拒否される
+- THEN `account:read` スコープは、自身の概要、プロフィール、データエクスポートの参照だけを許可する
+- THEN `account:write` スコープは、自身のプロフィールとプライマリメールアドレスの変更申請だけを許可する
 
-### REQ-IDMANAGEMENT-003: email verification画面は未認証でもCSRF境界を確立できる
+### REQ-IDMANAGEMENT-003: メールアドレス確認画面は未認証でも CSRF 境界を確立できる
 - ACTOR EndUser
-- WHEN EndUser がメール確認コンテキストを取得する
-- THEN 応答に CSRF トークンと SameSite cookie が含まれる
-- WHEN EndUser が CSRF トークンと SameSite cookie を使って email verification を送信する
-  - ALT CSRF トークンと cookie が一致しない → email verification は InvalidRequestError で拒否される
-- THEN email verification が受理される
+- WHEN EndUser がメールアドレス確認の文脈を取得する
+- THEN レスポンスに CSRF トークンと SameSite 属性を持つ Cookie が含まれる
+- WHEN EndUser がその CSRF トークンと Cookie を添えてメールアドレスの確認を送信する
+  - ALT CSRF トークンと Cookie が一致しない → 確認は InvalidRequestError で拒否される
+- THEN メールアドレスの確認が受理される
 
 ### REQ-IDMANAGEMENT-004: 管理者は CSV を検証して有効な行だけをインポートできる
 - ACTOR TenantAdministrator
 - GIVEN ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
-- WHEN 管理者が machine-key header [id,email,ロール,custom:department] を任意順で含む CSV を事前検証へ投入する
-  - ALT CSV が実効 UserCsvTransferPolicy の max_bytes、max_rows、max_field_bytes のいずれかを超える → インポート投入は拒否される → エラー "csv_too_large" または "too_many_rows" または "field_too_large"
-  - ALT CSV のヘッダーに未知列、重複列、password または password_hash が含まれる → インポート投入は拒否される → エラー "invalid_header"
+- WHEN 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
+  - ALT CSV が実効 `UserCsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える → インポートの投入は拒否される → エラー "csv_too_large" / "too_many_rows" / "field_too_large"
+  - ALT CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる → インポートの投入は拒否される → エラー "invalid_header"
 - THEN プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
   - ALT 行の `id` と `preferred_username` が別の `User` を示す、識別子がない、同じ対象または同じ最終ユーザー名を複数行が示す → 対象行は `rejected` となり、安定したエラーコードを返す
-- WHEN 管理者が同一テナントの成功済み プレビュー job id を指定して 適用 を開始する
+- WHEN 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
   - ALT プレビュージョブが存在しない、`queued` または `failed` である、別テナントに属する、保存済みのペイロードとダイジェストが一致しない → 適用は `User` を変更せず `InvalidRequestError` または `AccessDeniedError` で拒否される
-- THEN CSV は再送されず、保存済み プレビュー payload が使用される
-- THEN 適用 は プレビュー payload と SHA-256 を検証し、現在の repository 状態に対して同じ planner で再計画する
+- THEN CSV は再送されず、保存済みのプレビューペイロードが使われる
+- THEN 適用はプレビューペイロードと SHA-256 を検証し、現在の Repository の状態に対して同じ計画器で再計画する
   - ALT プレビュー後に対象 `User` の状態が別の操作で変更されている → 適用は古いプレビュー計画を実行せず、現在状態から `updated`、`unchanged`、`rejected` を再判定する
-- THEN 有効行は create または update され、無効行は rejected として残り、各行のプロファイル・ロール・required actions・custom attributes は原子的に保存される
-  - ALT 対象 `User` が外部ソース管理である → 対象行は安定したエラーコード `source_managed` で `rejected` となり、`User` は変更されない
-  - ALT 1 行の validation、保存、または監査処理が途中で失敗する → その行のプロファイル・ロール・required actions・custom attributes は一部も保存されず、別の有効行は適用を継続する
+- THEN 有効な行は作成または更新され、無効な行は `rejected` として残る。各行のプロフィール、ロール、必須操作、カスタム属性は不可分に保存される
+  - ALT 対象 `User` が外部の取り込み元に管理されている → 対象行は安定したエラーコード `source_managed` で `rejected` となり、`User` は変更されない
+  - ALT 1 行の検証、保存、監査処理が途中で失敗する → その行のプロフィール、ロール、必須操作、カスタム属性は一部も保存されず、他の有効な行は適用を続ける
 
 ### REQ-IDMANAGEMENT-005: 管理者はユーザー一覧をページングしながら安定して閲覧できる
 - ACTOR TenantAdministrator
-- GIVEN 所属テナントに limit を超えるユーザーが存在する
-- WHEN 管理者が ListAdminUsers を limit のみで実行して先頭ページを取得する
+- GIVEN 所属テナントに `limit` を超えるユーザーが存在する
+- WHEN 管理者が `ListAdminUsers` を `limit` だけ指定して実行し、先頭ページを取得する
   - ALT `query` または `status` を指定する → `ListAdminUsers` はテナント全体から条件に一致する `User` だけを返す → `pagination.total_items` は条件一致件数、`total_users` は削除済みを除くフィルター非依存の件数を返す → `query` または `status` を変更した管理者はカーソルを破棄して先頭ページから取得する
   - ALT 条件に一致する `User` が 0 件である → ユーザー一覧は空で、総項目数、総ページ数、現在のページ番号は `0 / 0 / 0` を返す → `first`、`prev`、`next`、`last` の `Link` は返さない
   - ALT 正確な件数の取得に失敗する → 0 件として成功させず、リクエスト全体をサーバーエラーで失敗させる
   - ALT 実行者が TenantAdministrator ロールを持たない → ListAdminUsers は AccessDeniedError で拒否される
-- THEN 応答は filter に一致する exact total items / total pages / current page / page size と filter 非依存の total_users を返す
+- THEN レスポンスは、絞り込みに一致する正確な総件数、総ページ数、現在のページ、ページサイズと、絞り込みに依存しない `total_users` を返す
 - THEN レスポンスの `Link` ヘッダー（`rel="next"`）にコンパクトなカーソルが含まれる
-- WHEN 一覧の途中で他の管理者がユーザーを1件削除する
+- WHEN 一覧の途中で他の管理者がユーザーを 1 件削除する
 - THEN 削除されたユーザーは一覧対象から除外される
-- WHEN 管理者が取得済みの cursor で次ページを取得する
-  - ALT cursor が別テナントで発行された、改ざんされた、または query/status が発行時と異なる → ListAdminUsers は InvalidRequestError を返す → 管理者は先頭ページへ戻って再取得する
+- WHEN 管理者が取得済みのカーソルで次ページを取得する
+  - ALT カーソルが別テナントで発行された、改ざんされた、または `query` / `status` が発行時と異なる → `ListAdminUsers` は InvalidRequestError を返す → 管理者は先頭ページへ戻って取得し直す
 - THEN 削除された行を除き、既に返却済みの行との重複なく残りのユーザーが返る
 - THEN レスポンスの `Link` ヘッダー（`rel="prev"`）に前ページのカーソルが含まれる
-- WHEN 管理者が前ページの cursor で前ページを取得する
-- THEN そのページのユーザーが canonical order で返る
-- WHEN 管理者が rel="last" の end anchor cursor で最終ページを取得する
+- WHEN 管理者が `rel="prev"` のカーソルで前ページを取得する
+- THEN そのページのユーザーが正規の並び順で返る
+- WHEN 管理者が `rel="last"` の終端カーソルで最終ページを取得する
 - THEN 端数を含む最終ページが返る
-- WHEN 管理者が rel="first" の cursor を含まない URL で先頭ページを取得する
-- THEN canonical な先頭ページが返る
+- WHEN 管理者が `rel="first"` のカーソルを含まない URL で先頭ページを取得する
+- THEN 正規の先頭ページが返る
 
 ### REQ-IDMANAGEMENT-006: 管理者はユーザー一覧を CSV に安全にエクスポートできる
 - ACTOR TenantAdministrator
@@ -267,7 +278,7 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 - GIVEN 一覧には自テナントのユーザーが存在する
 - WHEN 管理者が列 [`preferred_username`, `email`] と `status` フィルターを指定して `/users/exports` へエクスポートを開始する
   - ALT 選択列に `User` の許可一覧にないキー（例: `password_hash`）が含まれる → エクスポート開始は `InvalidRequestError` で拒否される → エラー `invalid_columns`
-- THEN エクスポートは 202 とエクスポート id を返し、ジョブは queued である
+- THEN エクスポートは 202 とエクスポート ID を返し、ジョブは `queued` である
 - WHEN 終端前に管理者がエクスポートを取り消す
 - THEN ステータスは `canceled` となり、`DataExportCanceled` が発行される
 - THEN `worker` プロセスが生成を開始し、`DataExportStarted` が発行される
@@ -275,36 +286,36 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
   - ALT 生成が失敗する → ステータスは `failed`、`downloadable` は `false` となり、`error_code` が記録される → `DataExportFailed` が発行される → 不完全なファイルはダウンロードできない
 - THEN DataExportSucceeded が発行される
 - WHEN 管理者がファイルをダウンロードする
-  - ALT セル値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる → 値は formula injection を避ける可逆 prefix で出力され、インポート decoder は規定どおり prefix 1 文字だけを戻す
+  - ALT セル値が \"=\", \"+\", \"-\", \"@\", タブ, CR, LF のいずれかで始まる → 数式の注入を避ける可逆な接頭辞を付けて出力し、インポート側の変換器は規定どおり接頭辞 1 文字だけを取り除く
   - ALT 保持期限を経過している → ステータスは `expired`、`downloadable` は `false` となる → ファイル本体は完全削除され、ダウンロードは `InvalidRequestError` で拒否される
   - ALT `User` エクスポートの ID を `/groups/exports` または別テナントで指定する → 種類とテナントの境界により、取得、ダウンロード、取り消しは `AccessDeniedError` または `InvalidRequestError` で拒否される
-- THEN 選択した machine key と一致する header の RFC 4180 CSV が content-disposition attachment で返る
+- THEN 選択した機械可読キーと一致するヘッダーを持つ RFC 4180 CSV が、`Content-Disposition: attachment` で返る
 - THEN DataExportDownloaded が発行される
 
 ### REQ-IDMANAGEMENT-007: 管理者はエクスポートしたユーザー CSV を安全に再適用できる
 - ACTOR TenantAdministrator
 - GIVEN 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `UserCsvTransferPolicy` の上限内に収まる
-- WHEN 管理者がインポート-compatible な組み込み列、required_actions、custom:department を machine-key header でエクスポートする
-  - ALT 値が危険な先頭文字、既存 apostrophe、comma、quote、または改行を含む → reversible formula-safe codec と RFC 4180 quoting により decode(encode(value)) は元の値と一致する
+- WHEN 管理者がインポート可能な組み込み列、`required_actions`、`custom:department` を機械可読ヘッダーでエクスポートする
+  - ALT 値が危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む → 可逆な数式安全変換と RFC 4180 の引用により `decode(encode(value))` は元の値と一致する
   - ALT 生成結果が実効 `UserCsvTransferPolicy` のいずれかの上限を超える → `User` エクスポートは `csv_transfer_limit_exceeded` で失敗し、再インポートできない成功済み成果物を作らない → 管理者はフィルターまたは列を絞って複数の成果物に分割できる
 - THEN `worker` プロセスは CSV を不変の成果物ストアへストリーミング出力し、ジョブ結果にはテナント単位のペイロード参照、サーバーが算出した SHA-256、サイズ、行数を保持する
-- WHEN 管理者が同じ 10,000 行 artifact を無編集で プレビュー する
-- THEN 全行 unchanged となり、User は変更されない
-- WHEN 管理者が 1 行の email と custom:department だけを編集して再度 プレビュー する
-  - ALT 状態mfa_enrolled、created_at、updated_at、または id の値だけを編集する → 読み取り専用列は受理して無視し、writable 列に差分がなければ unchanged とする
-  - ALT custom 属性の型、boolean、number、date、required custom 属性、または required_actions が不正である → 対象行は stable error code で rejected となり、値を job view、エラーaudit イベントに含めない
+- WHEN 管理者が同じ 10,000 行の成果物を編集せずプレビューする
+- THEN 全行が `unchanged` となり、`User` は変更されない
+- WHEN 管理者が 1 行の `email` と `custom:department` だけを編集して再びプレビューする
+  - ALT `status`、`mfa_enrolled`、`created_at`、`updated_at`、`id` の値だけを編集する → 読み取り専用列は受理したうえで無視し、書き込み可能な列に差分がなければ `unchanged` とする
+  - ALT カスタム属性の型、真偽値、数値、日付、必須のカスタム属性、`required_actions` のいずれかが不正である → 対象行は安定したエラーコードで `rejected` となり、値はジョブの表示にも監査イベントにも含めない
 - THEN 変更行だけが updated、残りは unchanged と計画される
-- WHEN 管理者が成功済み プレビュー job id を 適用 する
-- THEN 指定した writable 列だけが更新され、未指定列は維持される
+- WHEN 管理者が成功済みプレビュージョブの ID を指定して適用する
+- THEN 指定した書き込み可能な列だけが更新され、指定しなかった列は維持される
 
 ### REQ-IDMANAGEMENT-008: 管理者は特定グループのメンバー一覧を CSV にエクスポートできる
 - ACTOR TenantAdministrator
 - GIVEN ロール=["admin"] のユーザー "operator" がグループ "engineering" の詳細を開いている
-- WHEN 管理者が /groups/{group_id}/members/exports へ列 [user_id, preferred_username] でエクスポートを開始する
-  - ALT group_id を指定しない (per-group 必須) → エクスポート開始は InvalidRequestError で拒否される
-- THEN エクスポートは group_id で scope され、そのグループのメンバーだけが対象になる
-- WHEN 生成完了後、管理者がメンバー CSV をダウンロードする
-  - ALT 別グループの path でそのエクスポート id を指定する → 取得・ダウンロードは InvalidRequestError で拒否される (per-group 分離)
+- WHEN 管理者が `/groups/{group_id}/members/exports` へ列 [user_id, preferred_username] を指定してエクスポートを開始する
+  - ALT `group_id` を指定しない → グループ単位の指定は必須であり、エクスポートの開始は InvalidRequestError で拒否される
+- THEN エクスポートの対象は `group_id` に閉じ、そのグループのメンバーだけを含む
+- WHEN 生成完了後、管理者がメンバーの CSV をダウンロードする
+  - ALT 別グループのパスでそのエクスポート ID を指定する → グループごとに分離しているため、取得とダウンロードは InvalidRequestError で拒否される
 - THEN 指定したグループのメンバーだけを含む CSV が返る
 
 ### REQ-IDMANAGEMENT-009: 管理者はエージェントを登録しクライアント資格情報をバインドできる
@@ -313,7 +324,7 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 - WHEN 管理者 "operator" がエージェント "batch-agent" を登録する
 - THEN エージェント "batch-agent" が登録される
 - WHEN 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
-  - ALT 別テナントのクライアント資格情報をバインドする → tenant_id "acme" の Agent に tenant_id "default" の client_id を指定する → エラー "InvalidRequestError"
+  - ALT 別テナントのクライアント資格情報をバインドする → テナント "acme" の Agent にテナント "default" の `client_id` を指定する → エラー "InvalidRequestError"
 - THEN クライアント資格情報がバインドされる
 - WHEN 管理者 "operator" がエージェント "batch-agent" を無効化する
 - THEN エージェントは無効状態になる
@@ -327,7 +338,7 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 - THEN ユーザー `alice` のステータスは `Active` である
 - THEN "UserEnabled" が発行される
 
-### REQ-IDMANAGEMENT-011: 管理者はユーザーを soft-delete し猶予期間内に復元できる
+### REQ-IDMANAGEMENT-011: 管理者はユーザーの削除を予約し、猶予期間内に復元できる
 - ACTOR TenantAdministrator
 - GIVEN ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
 - GIVEN ユーザー "alice" は Active である
@@ -338,7 +349,7 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 - THEN ユーザー `alice` のステータスは `Active` である
 - THEN "UserRestored" が発行される
 
-### REQ-IDMANAGEMENT-012: soft-delete されたユーザーはログインを拒否される
+### REQ-IDMANAGEMENT-012: 削除を予約したユーザーはログインを拒否される
 - ACTOR EndUser
 - GIVEN ユーザー "alice" は PendingDeletion である
 - WHEN ユーザー "alice" が正しいパスワードでログインを試みる
@@ -348,18 +359,18 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 - ACTOR TenantAdministrator
 - GIVEN ユーザー "alice" は PendingDeletion である
 - WHEN 管理者がユーザー "alice" を完全削除する
-  - ALT 対象が admin 自身である → soft-delete / 復元 / 完全削除のいずれも拒否される → エラー "self_delete_forbidden"
+  - ALT 対象が操作者自身であり、`admin` または `system_admin` を持つ → 削除の予約、復元、完全削除のいずれも拒否される → エラー "self_delete_forbidden"
 - THEN ユーザー `alice` のステータスは `Deleted` である
 - THEN "UserDeleted" が発行される
 
-### REQ-IDMANAGEMENT-014: ロールに応じて管理APIのアクセスが制御される
+### REQ-IDMANAGEMENT-014: 管理 API のアクセスはロールに応じて制御される
 - ACTOR TenantAdministrator
 - GIVEN ロールに "admin" を持つユーザー "operator" が認証済みである
-- WHEN 管理者 "operator" が preferred_username "bob" のユーザーを作成する
+- WHEN 管理者 "operator" が `preferred_username` "bob" のユーザーを作成する
 - THEN "UserCreated" が発行される
 - WHEN 管理者 "operator" がユーザー一覧を取得する
-  - ALT admin ロールを持たないユーザーが管理 API を呼ぶ → ロールが空のユーザー "alice" が認証済みである → ユーザー "alice" がユーザー一覧を取得する → エラー "AccessDeniedError"
-- THEN 応答にユーザー "bob" が含まれる
+  - ALT `admin` ロールを持たないユーザーが管理 API を呼ぶ → ロールが空のユーザー "alice" が認証済みである → ユーザー "alice" がユーザー一覧を取得する → エラー "AccessDeniedError"
+- THEN レスポンスにユーザー "bob" が含まれる
 
 ### REQ-IDMANAGEMENT-015: 管理者はグループを作成しユーザーを所属させると有効ロールにグループ由来ロールが乗る
 - ACTOR TenantAdministrator
@@ -371,15 +382,15 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
   - ALT 同じユーザーを同じグループへ再度所属させる → 管理者 "operator" がユーザー "alice" をグループ "engineering" に再度所属させる → "GroupMemberAdded" は再発行されない
 - THEN "GroupMemberAdded" が発行される
 - WHEN 管理者がユーザー "alice" の所属グループを取得する
-- THEN effective_roles に "catalog:read" が含まれる
-- THEN group_roles は "catalog:read" を含み direct_roles は空である
+- THEN 実効ロールに "catalog:read" が含まれる
+- THEN `group_roles` は "catalog:read" を含み、`direct_roles` は空である
 
 ### REQ-IDMANAGEMENT-016: ユーザーは自分のプロフィール表示名を更新できる
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が認証済みでマイアカウントのプロフィールを開いている
 - WHEN ユーザー "alice" が表示名を更新する
 - THEN 更新後のプロフィールに新しい表示名が反映される
-- THEN editable_by_user=false の属性は更新できない
+- THEN `editable_by_user=false` の属性は更新できない
 
 ### REQ-IDMANAGEMENT-017: ユーザーはメールアドレス変更を起票し確認リンクで確定できる
 - ACTOR AuthenticatedSelf
@@ -387,55 +398,55 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 - WHEN ユーザー "alice" が新しいメールアドレスへの変更を起票する
 - THEN 新アドレスへ確認リンクが送られる
 - WHEN ユーザー "alice" が確認リンクのトークンで変更を確定する
-- THEN primary email が新しいアドレスへ更新される
+- THEN プライマリメールアドレスが新しいアドレスへ更新される
 
 ### REQ-IDMANAGEMENT-018: ユーザーは自分のアカウントデータをエクスポートできる
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が認証済みでデータとプライバシー画面を開いている
 - WHEN ユーザー "alice" がアカウントデータをエクスポートする
-- THEN 応答に自分のプロファイルと consents が含まれる
+- THEN レスポンスに自分のプロフィールと同意の一覧が含まれる
 
-### REQ-IDMANAGEMENT-019: マイアカウントAPIは他人のリソースを返さない
+### REQ-IDMANAGEMENT-019: アカウント API は他人のリソースを返さない
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が認証済みである
-- WHEN ユーザー "alice" のマイアカウント概要を取得する
-- THEN 応答は "alice" 自身のデータだけでロールを含まない
+- WHEN ユーザー "alice" のアカウント概要を取得する
+- THEN レスポンスは "alice" 自身のデータだけを含み、ロールは含まない
 
-### REQ-IDMANAGEMENT-020: 管理者はCELルールで動的グループ所属を管理できる
+### REQ-IDMANAGEMENT-020: 管理者は CEL の規則で動的グループの所属を管理できる
 - ACTOR TenantAdministrator
-- GIVEN department 属性が定義され Engineering の User と Sales の User が存在する
-- GIVEN membership_type=dynamic のグループが存在する
+- GIVEN `department` 属性が定義され、Engineering の User と Sales の User が存在する
+- GIVEN `membership_type=dynamic` のグループが存在する
 - WHEN 管理者が `user.department == "Engineering"` を保存して有効化する
-- THEN 全件再評価後に Engineering の Active User だけが dynamic_rule source で所属する
-- THEN effective_roles と application assignment はその所属を参照する
+- THEN 全件の再評価後、Engineering の有効な User だけが動的規則を由来として所属する
+- THEN 実効ロールと Application の割り当ては、その所属を参照する
 
-### REQ-IDMANAGEMENT-021: CELルールは保存前に選択ユーザーでプレビューできる
+### REQ-IDMANAGEMENT-021: CEL の規則は保存前に選んだユーザーでプレビューできる
 - ACTOR TenantAdministrator
-- GIVEN 管理者が最大100 Userを選択している
-- WHEN 未保存 CEL を評価する
-- THEN 応答は matched と add/remove/unchanged を返し属性値を返さない
+- GIVEN 管理者が最大 100 件の User を選択している
+- WHEN 未保存の CEL 式を評価する
+- THEN レスポンスは一致の有無と、追加・削除・変更なしの判定を返し、属性値そのものは返さない
 
-### REQ-IDMANAGEMENT-022: 不正なCELルールと動的グループの手動操作は拒否される
+### REQ-IDMANAGEMENT-022: 不正な CEL の規則と動的グループの手動操作は拒否される
 - ACTOR TenantAdministrator
-- WHEN 管理者が未定義属性または許可外関数を参照する CEL を保存する
+- WHEN 管理者が、未定義の属性または許可外の関数を参照する CEL 式を保存する
 - THEN 保存は拒否される
-- WHEN 管理者が dynamic group に対して手動 AddGroupMember または RemoveGroupMember を呼ぶ
-- THEN membership の変更は拒否される
+- WHEN 管理者が動的グループに対して `AddGroupMember` または `RemoveGroupMember` を手動で呼ぶ
+- THEN メンバーシップの変更は拒否される
 
-### REQ-IDMANAGEMENT-023: 評価不能なルールは権限を付与しない
+### REQ-IDMANAGEMENT-023: 評価できない規則は権限を付与しない
 - ACTOR TenantAdministrator
-- GIVEN 有効な dynamic rule の version が更新された
-- WHEN system が新 version の dynamic rule を再評価する
-- THEN 旧 version の membership は直ちに effective ロールから除外される
-- THEN 再評価が失敗した User は新 version の membership を取得しない
+- GIVEN 有効な動的規則のバージョンが更新された
+- WHEN 新しいバージョンの動的規則を再評価する
+- THEN 旧バージョンのメンバーシップは直ちに実効ロールから除外される
+- THEN 再評価に失敗した User は、新しいバージョンのメンバーシップを得ない
 
 ### REQ-IDMANAGEMENT-024: 管理者はグループの連絡先メールとカスタム属性を、テナント定義のスキーマに従って設定できる
 - ACTOR TenantAdministrator
 - GIVEN admin ロールを持つ "operator" が認証済みである
 - GIVEN テナントの Group 属性スキーマに "cost_center" (string, required=false) が定義されている
 - WHEN "operator" が email="sales@example.test" と attributes={cost_center: "CC-100"} を指定してグループ "sales" を作成する
-  - ALT email がメールアドレスの形式を満たさない → 作成は InvalidEmailError で拒否される
-  - ALT attributes に未定義の key を指定する、または定義済み key と型が一致しない → 作成は InvalidGroupAttributeError で拒否される
-- THEN 作成されたグループの email と attributes が指定どおりに保存され "GroupCreated" が発行される
-- WHEN "operator" が同グループの email と attributes を更新する
-- THEN 更新後のグループに新しい email と attributes が反映され "GroupUpdated" の changed_fields に "email"/"attributes" が含まれる
+  - ALT `email` がメールアドレスの形式を満たさない → 作成は InvalidEmailError で拒否される
+  - ALT `attributes` に未定義のキーを指定する、または定義済みのキーと型が一致しない → 作成は InvalidGroupAttributeError で拒否される
+- THEN 作成したグループの `email` と `attributes` が指定どおりに保存され、"GroupCreated" が発行される
+- WHEN "operator" が同じグループの `email` と `attributes` を更新する
+- THEN 更新後のグループに新しい値が反映され、"GroupUpdated" の `changed_fields` に "email" と "attributes" が含まれる

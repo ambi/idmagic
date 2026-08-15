@@ -1,13 +1,15 @@
 ---
 context: workloadidentity
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # WorkloadIdentity Specification
 
 ## Overview
 
-自律エージェントの実行環境向けに、ワークロードアイデンティティフェデレーションを所有する。テナントが登録した外部アテステーション発行者の信頼設定（`WorkloadTrustBundle`）と、外部の主体を既存の `Agent` に対応付ける `AgentWorkloadBinding` を管理する。OIDC 互換 JWT（Kubernetes の投影 ServiceAccount トークン、クラウドのインスタンスアイデンティティトークン、SPIFFE JWT-SVID）を主要なアテステーション形式とする。IdMagic 自身は SPIRE のサーバーやエージェントを同梱・運用せず、リライングパーティーとして動作する。検証済みの外部アテステーションは、OAuth2 Token Exchange グラント（RFC 8693）の subject として渡し、専用の資格情報経路は新設しない。
+自律エージェントの実行環境向けに、ワークロードアイデンティティフェデレーションを所有する。テナントが登録した外部アテステーション発行者の信頼設定（`WorkloadTrustBundle`）と、外部の主体を既存の `Agent` に対応付ける `AgentWorkloadBinding` を管理する。OIDC 互換 JWT（Kubernetes の投影 ServiceAccount トークン、クラウドのインスタンスアイデンティティトークン、SPIFFE JWT-SVID）を主要なアテステーション形式とする。
+
+IdMagic は SPIRE のサーバーやエージェントを同梱・運用せず、外部アテステーションを検証する RP として動作する。検証済みのアテステーションは OAuth2 Token Exchange グラント（RFC 8693）の subject として渡すため、長期のシークレットを配る専用の資格情報経路は設けない。
 
 ## Glossary
 
@@ -46,14 +48,16 @@ Initial: `enabled` Terminal: none
 
 ## Authorization Boundary
 
-認可の意味はアプリケーションとそのテストで強制する。本仕様は API の認証を記述するが、ポリシーの DSL は意図的に定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
+`WorkloadTrustBundle` と `AgentWorkloadBinding` の登録、更新、無効化、削除は、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。関連付けの対象にできる `Agent` も同じテナントのものに限る。
+
+交換の経路そのものは管理者の権限を通らない。外部ワークロードが提示するのはアテステーショントークンだけであり、得られる権限は登録済みの信頼設定と関連付けが定めた `Agent` のものに固定される。トークンの内容が対応先の `Agent` を変えることはなく、未登録の発行者を実行時に信頼することもない (Trust On First Use を許可しない)。
 
 ## Design
 
 ### Internal Interfaces
 
 #### VerifyWorkloadAttestation
-OAuth2 Token Exchange グラント（`subject_token_type` は JWT-SVID URN）から呼び出す公開インターフェースである。外部アテステーショントークンの署名、`iss`、`aud`、`exp`、TTL 上限を登録済みの `WorkloadTrustBundle` で検証する。次に、テナント内の `AgentWorkloadBinding` から対応する `Agent` を一意に特定し、その `Agent` が `Active` であることを確認する。いずれかの検証に失敗した場合はフェイルクローズで拒否する。IdMagic 自身は SPIRE のサーバーやエージェントを実装せず、リライングパーティーとして動作する。
+OAuth2 Token Exchange グラント（`subject_token_type` は JWT-SVID URN）から呼び出す公開インターフェースである。外部アテステーショントークンの署名、`iss`、`aud`、`exp`、TTL 上限を登録済みの `WorkloadTrustBundle` で検証する。次に、テナント内の `AgentWorkloadBinding` から対応する `Agent` を一意に特定し、その `Agent` が `Active` であることを確認する。いずれかの検証に失敗した場合はフェイルクローズで拒否する。
 - Input invariant: trust_bundle_registered_for_issuer(context.tenant_id, input.attestation.subject_token)
 - Input invariant: workload_attestation_signature_and_claims_valid(context.tenant_id, input.attestation.subject_token)
 - Input invariant: !ambiguous_binding_match(context.tenant_id, input.attestation.subject_token)

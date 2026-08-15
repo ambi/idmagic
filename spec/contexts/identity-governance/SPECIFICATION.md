@@ -1,15 +1,15 @@
 ---
 context: identity-governance
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # IdGovernance Specification
 
 ## Overview
 
-アイデンティティガバナンスのポリシーとオーケストレーションを所有する。LifecycleWorkflow（JML 自動化）の定義、トリガー評価、WorkflowRun の実行、各アクションの実行をまとめ、将来の IGA 機能（認証キャンペーン、アクセスのリクエストと承認、エンタイトルメントと SoD、JIT 特権昇格）の受け皿となる。アイデンティティプリンシパルの記録の正は IdManagement が、Application の割り当ては Application が所有する。IdGovernance は User のライフサイクルイベントを購読し、冪等なコマンドインターフェースを介して、これら記録系 Context の状態を変更する。
+アイデンティティガバナンス (IGA) のポリシーとオーケストレーションを所有する。LifecycleWorkflow（JML 自動化）の定義、トリガー評価、WorkflowRun の実行をまとめ、将来の IGA 機能（アクセスレビューのキャンペーン、アクセスのリクエストと承認、エンタイトルメントと SoD、必要時の権限昇格）の受け皿となる。
 
-`IdGovernance` は、アイデンティティプリンシパルの記録を正として保つ `IdManagement` とは独立した Context である。ライフサイクルワークフローに加えて、アクセスレビュー、エンタイトルメント、必要時の権限昇格といった IGA のポリシーとオーケストレーションを所有する。
+記録の正は持たない。User と Group は `IdManagement` が、Application の割り当ては `Application` が所有する。`IdGovernance` は User のライフサイクルイベントを購読し、冪等なコマンドインターフェースを介してこれら記録系 Context の状態を変更する。
 
 ## Glossary
 
@@ -55,7 +55,9 @@ Initial: `queued` Terminal: `succeeded`, `partially_failed`, `failed`, `canceled
 
 ## Authorization Boundary
 
-認可の意味はアプリケーションとそのテストで強制する。本仕様は API の認証方式を記録するが、ポリシー DSL は意図的に定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
+LifecycleWorkflow の作成、編集、有効化、無効化、削除、プレビューは、`admin` ロールを持つ、有効かつ認証済みのユーザーだけが所属テナントに対して行える。
+
+WorkflowRun の実行は管理者の権限を借りない。アクションは記録系 Context が公開する冪等なコマンドインターフェースを通り、対象ユーザーとグループ、アプリケーションはいずれも実行時にワークフローと同じテナント内で再取得する。定義時に別テナントの識別子を指定すれば保存で拒否し、実行までに対象が削除または移動していればそのステップを失敗として記録する。したがって、ワークフローがテナント境界を越える経路は定義側にも実行側にも存在しない。
 
 ## Design
 
@@ -73,8 +75,9 @@ Initial: `queued` Terminal: `succeeded`, `partially_failed`, `failed`, `canceled
 
 ### Design Decisions
 
-- `IdGovernance` を `IdManagement` から切り出し、`LifecycleWorkflow` のポリシーとオーケストレーションを所有させる。`IdManagement` はアイデンティティプリンシパルの記録の正のままとする。これによりライフサイクルワークフローは記録系 Context の層をまたいで広がり続けることなく、アクセスレビュー、エンタイトルメント、必要時の権限昇格といった、より広い IGA の構想を置く場所を得る。
-- User の変更と、その変更を契機に作る WorkflowRun は、Transactional Outbox を介して不可分に捕捉する。同じイベントが複数回配信されても WorkflowRun を重複して作らない一意制約を設け、アクションはポートとアダプターを介して実行する。リビジョンの固定、部分的失敗、循環抑止、保持期間を同じ実行規則に含める。
+- ガバナンスのポリシーとオーケストレーションを `IdManagement` から切り出し、記録の正は `IdManagement` に残す。ワークフローが記録系 Context の内部へ広がるのを防ぎ、後続の IGA 機能を置く場所を確保するためである。
+- `LifecycleWorkflow` は DAG や条件分岐を持たず、アクションを定義順の線形リストに限る。実行前のプレビューと部分的失敗の意味を、実行してみなければ定まらない分岐を持ち込まずに決められるからである。
+- WorkflowRun は展開済みのアクションリストとリビジョンを作成時に固定する。実行の途中で定義が変わっても、すでに始まった実行の意味が変わらないようにするためである。
 
 ## Scenarios
 

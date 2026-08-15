@@ -1,15 +1,15 @@
 ---
 context: saml
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # Saml Specification
 
 ## Overview
 
-SAML 2.0 IdP として、サービスプロバイダーとのバインディング、IdP メタデータ、AuthnRequest / Response、AssertionConsumerService、Single Logout を所有するプロトコルの Bounded Context である。Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供する。WS-Fed / WS-Trust とは、クレームの発行処理と XML 署名機能だけを共有する。
+SAML 2.0 IdP として、SP の信頼、IdP プロファイル、IdP メタデータ、AuthnRequest / Response、AssertionConsumerService、Single Logout を所有するプロトコルの Bounded Context である。Web Browser SSO Profile に基づき、SP 起点と IdP 起点の SSO を提供する。
 
-サービスプロバイダーの信頼、IdP のプロファイル、レスポンスの構築もここに含まれる。プロトコルに依存しないクレームの対応付けは `ClaimMapping` に残し、XML 署名はフェデレーションで共有する署名プロバイダーへ委ねる。
+WS-Fed / WS-Trust とは、クレームの発行処理と XML 署名だけを共有する。プロトコルに依存しないクレームの対応付けは `ClaimMapping`、署名鍵のライフサイクルは `SigningKeys` が所有する。
 
 ## Glossary
 
@@ -58,7 +58,11 @@ SAML 2.0 IdP として、サービスプロバイダーとのバインディン�
 
 ## Authorization Boundary
 
-認可の意味づけはアプリケーションとそのテストで保証する。本仕様では API の認証方式を定めるが、ポリシー用の DSL はあえて定義しない。ポリシー言語を採用する前に、別の作業項目で Cedar を評価する。
+SP と IdP プロファイルの登録・参照・削除は `AdminFederationTrustsManage` 権限 (AuthZEN action `admin:federation_trusts_manage`) を要し、`admin` ロールを持つ、有効かつ認証済みのユーザーが所属テナントに対して行える。API アクセストークンでは `saml:read` が参照だけを、`saml:write` が変更を許可する。
+
+プロトコルのエンドポイントは管理者の認可を通らない。IdP メタデータと証明書の取得は認証を要さない公開 Discovery であり、公開するのは entityID、エンドポイント、署名証明書に限る。SSO と SLO はブラウザーのログインセッションで主体を決め、SP の entityID、`AssertionConsumerServiceURL`、Destination、対象ユーザーの Application 割り当てをすべて検証してから発行する。1 つでも一致しなければ SAMLResponse を発行しない。
+
+テナントとプロファイルはどちらも信頼境界である。SSO と SLO では、リクエスト先のルートが指すプロファイルと、対象 SP に割り当てられたプロファイルが一致することを確認する。ある信頼境界に対する正当なリクエストを、同じテナントの別のプロファイルへ送り直しても通らない。
 
 ## Design
 
@@ -66,7 +70,7 @@ SAML 2.0 IdP として、サービスプロバイダーとのバインディン�
 
 初期対応の範囲は SAML 2.0 の Web Browser SSO Profile に限る。HTTP-Redirect（deflate と Base64）および HTTP-POST（Base64）のバインディング、署名済みの Response と Assertion、メタデータの公開、SP 起点と IdP 起点の SSO、Single Logout を提供する。SAML ECP、暗号化された Assertion、idmagic が外部 IdP に対して SAML SP として動作する外部 IdP からのフェデレーションは対象外とし、必要になった時点で別の実装単位として扱う。対応範囲を狭めることで、SAML で知られている署名ラッピング攻撃への露出を抑える。
 
-クレームの発行と Assertion の署名には、WS-Federation と WS-Trust で共有している、プロトコルに依存しない構築器と署名器（`internal/wsfederation/adapters/samltoken`）を再利用する。これらは SAML のバージョン、Bearer SubjectConfirmation、audience の制限をすでに扱っている。この Bounded Context では署名処理を作り直さず、`InResponseTo` の対応付けなど、SP 起点のフローに固有の入力だけを追加する。
+クレームの発行と Assertion の署名には、WS-Federation と WS-Trust で共有している構築器と署名器 (`backend/wsfederation/tokens_saml`) を再利用する。これらは SAML のバージョン、Bearer SubjectConfirmation、audience の制限をすでに扱っている。この Context では署名処理を作り直さず、`InResponseTo` の対応付けなど SP 起点のフローに固有の入力だけを追加する。
 
 デフォルトでは Assertion に署名し、Response への署名は任意に有効化できる。これは Okta や Entra が提供する「Sign Response」に相当する。`goxmldsig` は、署名対象要素の末尾に Enveloped Signature を追加する。署名後に要素を移動すると名前空間が再構成されてダイジェスト値が変わり、検証できなくなるため、署名済み要素は移動しない。この制約は Assertion と Response のどちらに署名する場合にも適用する。
 
@@ -92,9 +96,9 @@ SSO と SLO では、リクエスト先のルートからプロファイルを�
 
 ### Design Decisions
 
-- SAML 2.0 IdP の初期対応範囲は Web Browser SSO Profile に限り、HTTP-Redirect と HTTP-POST のバインディング、SP 起点と IdP 起点の SSO、Single Logout を提供する。SAML ECP、暗号化された Assertion、SAML SP としての動作は、署名ラッピング攻撃への露出を抑えるために対象外とする。
-- SAML IdP プロファイルは、1 つのプロファイルで複数の SP との信頼関係を扱える共有可能なモデルとする。専用プロファイルを別の型にはせず、同じモデルにサービスプロバイダーを 1 つだけ関連付けて表す。
-- XML の構文解析、正規化、署名には自作の処理ではなく、検証済みの第三者製 XML 署名ライブラリを使用する。
+- 対応範囲を Web Browser SSO Profile に限り、ECP、暗号化 Assertion、SAML SP としての動作は含めない。対応するバインディングと形式を減らすほど、SAML で知られた署名ラッピング攻撃への露出が小さくなるからである。
+- SAML IdP プロファイルは共有可能な 1 つのモデルとし、専用プロファイルを別の型にしない。`dedicated` は同じモデルに SP を 1 つだけ関連付けた状態として表す。信頼境界の規則をプロトコル、永続化、管理のすべての経路で 1 つに保つためである。
+- XML の構文解析、正規化、署名は自作せず、検証済みの第三者製ライブラリに委ねる。
 
 ## Scenarios
 
@@ -166,7 +170,7 @@ SSO と SLO では、リクエスト先のルートからプロファイルを�
 
 ### REQ-SAML-007: 未登録または不一致の SAML リクエストを拒否する
 - ACTOR EndUser
-- GIVEN AuthnRequest の entityID、ACS URL、Destination、subject assignment のいずれかが不正である
+- GIVEN AuthnRequest の entityID、ACS URL、Destination、対象ユーザーの割り当てのいずれかが不正である
 - WHEN 不正な AuthnRequest を受信する
 - THEN SAMLResponse を発行せず SamlSignInRejected を発行する
 

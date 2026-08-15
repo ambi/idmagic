@@ -7,21 +7,21 @@ updated_at: 2026-08-15
 
 ## Overview
 
-エンドユーザー (Subject) の資格情報の検証、MFA、ログインセッション、ステップアップ認証、パスワードの変更とリセット、復旧、ログイン時の federation、認証のイベントを所有する。User / Group / Agent のアイデンティティのライフサイクルは IdManagement が所有する。
+エンドユーザーの資格情報の検証、MFA、ログインセッション、ステップアップ認証、パスワードの変更とリセット、アカウントの復旧、ログイン時のフェデレーション、認証イベントを所有する。
 
-独立した能力は、それぞれドメイン、ポート、ユースケース、アダプターを持つ機能ごとの垂直分割とする。`module.go` は Context を組み立てる境界であり続ける。
+`User` / `Group` / `Agent` のライフサイクルそのものは `IdManagement` が持つ。この Context が扱うのは、そのプリンシパルが本人であることをどう確かめ、確かめた結果をどうセッションとして保つかである。
 
 ## Glossary
 
 | Term | Definition | Aliases |
 |---|---|---|
-| IdentityBroker | 外部アイデンティティ provider の認証結果を検証し、テナント内の local User と安全に相関して LoginSession 発行へ渡す Authentication capability。 |  |
-| ExternalIdentityProvider | idmagic に対してアップストリーム authentication authority となる OIDC Provider または SAML Identity Provider。 | アップストリーム IdP, social login provider |
-| FederatedIdentity | テナント、プロバイダー外部の不変 subject の組を local User へ一意に結び付けるアイデンティティ link。 |  |
-| JitProvisioning | 検証済み外部 claim とテナントの明示ポリシー / claim mapping に基づき、初回 federated login 中に local User を作成すること。 | JIT provisioning |
-| Totp | RFC 6238 に基づく time-based one-time password。 | totp, otp |
-| Webauthn | WebAuthn credential による認証。 | webauthn |
-| RecoveryCode | TOTP / WebAuthn 喪失時に使う backup の使い捨て復旧コード。 | recovery_code |
+| IdentityBroker | 外部の IdP による認証結果を検証し、テナント内のローカル User と安全に相関させて、LoginSession の発行へ引き渡す機能。 |  |
+| ExternalIdentityProvider | idmagic にとって上流の認証権威となる OIDC Provider または SAML Identity Provider。 | 上流 IdP, 外部 IdP |
+| FederatedIdentity | テナント、プロバイダー、外部の不変な subject の組を、ローカルの User へ一意に結び付ける関連付け。 |  |
+| JitProvisioning | 検証済みの外部クレームと、テナントが明示したポリシーおよびクレームの対応付けに基づき、初回のフェデレーションログインの途中でローカルの User を作成すること。 | JIT プロビジョニング |
+| Totp | RFC 6238 に基づく時刻同期型のワンタイムパスワード。 | totp, otp |
+| Webauthn | WebAuthn の公開鍵クレデンシャルによる認証。 | webauthn |
+| RecoveryCode | TOTP や WebAuthn の認証要素を失ったときに使う、単回限りの控えの復旧コード。 | recovery_code |
 | EndUser | 認証済みまたは認証を試みる一般利用者。ログイン・MFA継続・パスワードリセットなど、認証が未完了の操作の主体を指す。 |  |
 | ResourceOwner | OAuth2/OIDC 認可フローでリソースの所有者として認可判断を行う利用者。EndUser と同一人物を OAuth2 文脈で指す呼称。 |  |
 
@@ -83,7 +83,7 @@ RFC 8176 — https://www.rfc-editor.org/rfc/rfc8176.html
 
 ### IdentityProviderConnectionLifecycle
 
-アップストリーム connection は利用可能 Active と routing 停止 Disabled の2状態だけを遷移する。作成直後の初期状態は Disabled。metadata refresh 失敗や trust source 以外のフィールド更新は状態を変えず last-known-good を保持する。
+上流との接続は、利用できる `Active` と経路を止めた `Disabled` の 2 状態だけを行き来する。作成直後は `Disabled` である。メタデータの再取得の失敗や、信頼の根拠にあたらない項目の更新は状態を変えず、最後に成功した内容を保持する。
 
 Initial: `Disabled` Terminal: none
 
@@ -94,7 +94,15 @@ Initial: `Disabled` Terminal: none
 
 ## Authorization Boundary
 
-認可の意味づけはアプリケーションとそのテストが強制する。本仕様は API の認証を記録するが、ポリシーの DSL は意図的に定義しない。ポリシーの言語を採用する前に、別の work item で Cedar を評価する。
+この Context の大半は、認証が完了する前のリクエストを扱う。したがってロールではなく、「そのセッションが何をどこまで証明したか」が境界になる。
+
+セルフサービス API (`/api/account/*`) は、認証済みセッション自身の `actor.sub` に対してのみ作用する。URL、本文、クエリ文字列で与えられた `sub` や `tenant_id` を信頼することは決してないため、ユーザーをまたぐアクセスとテナントをまたぐアクセスは構造的に生じ得ない。本人が変更できるのは自分の表示名、`editable_by_user=true` の属性、パスワードに限る。ロール、状態、組織の属性、`required_actions` は管理者専用であり、ユーザーからは閲覧しかできない。例外は、パスワード変更の成功で `update_password` が解除されるように、本人の操作の副作用として解除される場合だけである。
+
+機密性の高いセルフサービス操作 — `ChangePassword`、`RemoveTotpFactor`、`RequestEmailChange`、`RevokeMyOtherSessions` — には、CSRF と同一オリジンの検査に加えて直近の再認証 (ステップアップ認証) を要求する。セッション Cookie を盗んだ攻撃者が、そのままアカウントを乗っ取れないようにするためである。満たさない場合は `401` ではなく `403 step_up_required` を返す。セッションは認証済みだが、この操作に必要な直近の認証を示していないからである。
+
+MFA の強制開始後に未登録のユーザーが到達できるのは登録専用のフローだけであり、そこへ入るには管理者が発行した未消費・未失効・期限内の `MfaEnrollmentBypass` を要する。`pending_purpose=Enrollment` の保留中セッションは、登録専用 API と元の認可トランザクション以外のすべての場所で未認証として扱う。アカウント、管理、アプリケーションのいずれのリソースにも到達できない。
+
+上流の IdP から受け取ったものはすべて信頼しない。ログインリクエストが使うのは保存済みのプロバイダーとエンドポイントの設定だけであり、ブラウザーから任意の Discovery URL やトークン URL を指定することはできない。クライアントシークレットはデータベースに保存せず `secret_reference` だけを保持し、外部トークンと SAML Assertion はログイン時に検証したうえで保持しない。
 
 ## Design
 
@@ -104,7 +112,7 @@ Initial: `Disabled` Terminal: none
 
 ブローカーは、まず `FederatedIdentity` を通じて不変な外部 subject を解決する。検証済みメールアドレスによるリンクを許可するのは、接続に明示的なポリシーがあり、上流のクレームが検証済みで、テナント内で一意に一致する場合だけである。JIT は接続ごとに個別に有効化し、メールドメインの許可リストでさらに絞り込める。明示的なリンクとリンク解除の操作には直近のステップアップ認証を要求し、最後に残った利用可能なサインイン手段は取り除けない。
 
-プロトコルの アダプターはアップストリームの文書をすべて信頼できないものとして扱う。OIDC は保存済みの HTTPS の discovery エンドポイント、PKCE 付きの Authorization Code、`state`、`nonce`、issuer と audience と時刻のチェック、そして制限された JWK のアルゴリズムを使う。SAML は相関の取れた AuthnRequest を使い、XML の署名、issuer、destination、audience、subject confirmation、時刻、再送を検証する。要求していない IdP 起点の応答と暗号化された assertion は、最初の SAML の アダプターの範囲外である。
+プロトコルのアダプターは上流の文書をすべて信頼できないものとして扱う。OIDC は保存済みの HTTPS の discovery エンドポイント、PKCE 付きの Authorization Code、`state`、`nonce`、issuer と audience と時刻のチェック、そして制限された JWK のアルゴリズムを使う。SAML は相関の取れた AuthnRequest を使い、XML の署名、issuer、destination、audience、subject confirmation、時刻、再送を検証する。要求していない IdP 起点のレスポンスと暗号化された Assertion は、最初の SAML アダプターの範囲外とする。
 
 クライアントシークレットは `secret_reference` だけで表す。実行時の解決器は `env:NAME` の参照を受け付ける。生のシークレットも上流のトークンやアサーションも、保存も返却もしない。公開するプロバイダーのディスカバリーに含めるのは、有効なプロバイダーの識別子、表示名、プロトコルだけである。
 
@@ -138,11 +146,11 @@ Initial: `Disabled` Terminal: none
 
 パスワードの変更は直近 5 件のパスワードのハッシュの再利用も拒否する (`history_depth=5`)。これらは `password_hash` と同じ Argon2id の PHC 文字列として `password_histories` に保存する。別の符号化にしても攻撃のコストは上がらず、二重の保守が増えるだけだからである。履歴は登録時とパスワード変更時の両方で書き込むが (初回と同じ値への変更も検出できるようにするため)、照合はパスワードの変更時のみ行う。初回の登録には比較する相手がないからである。
 
-`BreachedPasswordChecker` の ポートは、同梱の手元の辞書の上に外部の知識 (HIBP の Range API。k-匿名性により、サーバーから出るのは SHA-1 の接頭辞だけ) を重ねる。これは fail-open である。HIBP のタイムアウトや障害は変更を止めるのではなく `breached=false` を返す。任意の多層防御が資格情報の変更を停止させられてはならないからである。失敗そのものは監査のために記録する。デフォルトの アダプターは何もしないので、メモリ構成や開発時の起動が外部への依存を持たず、`breached_password_check_enabled` もデフォルトで `false` である。
+`BreachedPasswordChecker` のポートは、同梱の手元の辞書の上に外部の知識 (HIBP の Range API。k-匿名性により、サーバーから出るのは SHA-1 の接頭辞だけ) を重ねる。これは fail-open である。HIBP のタイムアウトや障害は変更を止めるのではなく `breached=false` を返す。任意の多層防御が資格情報の変更を停止させられてはならないからである。失敗そのものは監査のために記録する。デフォルトのアダプターは何もしないので、メモリ構成や開発時の起動が外部への依存を持たず、`breached_password_check_enabled` もデフォルトで `false` である。
 
 パスワードを忘れた場合の処理は、単回限りの 32 バイトの乱数のトークンを発行し、`password_reset_tokens` には SHA-256 のハッシュとしてのみ保存する (`ttl=1800s`)。引き換えではパスワードの変更と同じ検証、履歴、漏洩の一連の処理を通す。この経路の応答はすべて同一である (メールアドレスが存在するか、未確認か、打ち間違いかによらず `204`) ので、復旧の流れが利用者名の存在を暴く手段になることはない。メールの配送は最大限努力であり、送信の失敗が呼び出し元に現れることはなく記録のみに留まるので、認証されていない側から SMTP の障害を探ることもできない。
 
-配送そのものは `EmailSender` の ポートを経由する。本番の アダプターは provider ごとの HTTP SDK を足すのではなく SMTP だけを話す (デフォルトで STARTTLS、PLAIN による認証は TLS の下でのみ許す)。SMTP だけで主要な送信サービスにはすべて届くうえ、REST の SDK を 1 つ足すごとに依存、資格情報の形、エラーの書式が増えるが、ポートの水準では何の利点もないからである。送信内容は送る前に正規化する (CRLF と NUL を除去し、HTML の本文を無害化し、件名を RFC 2047 で符号化する) ので、ユーザーが制御する文字列が SMTP のヘッダーや生の HTML を注入することはできない。
+配送そのものは `EmailSender` のポートを経由する。本番のアダプターは送信サービスごとの HTTP SDK を足すのではなく SMTP だけを話す (デフォルトで STARTTLS、PLAIN による認証は TLS の下でのみ許す)。SMTP だけで主要な送信サービスにはすべて届くうえ、REST の SDK を 1 つ足すごとに依存、資格情報の形、エラーの書式が増えるが、ポートの水準では何の利点もないからである。送信内容は送る前に正規化する (CRLF と NUL を除去し、HTML の本文を無害化し、件名を RFC 2047 で符号化する) ので、ユーザーが制御する文字列が SMTP のヘッダーや生の HTML を注入することはできない。
 
 ### Login throttling
 
@@ -160,7 +168,7 @@ Initial: `Disabled` Terminal: none
 
 確定したアカウントに結び付くイベント（`UserAuthenticated` や OAuth2 フローのイベント）は `user_id` で相関し、管理者がユーザー名で検索するときは、その場で `user_id` に解決する。ユーザー名、IP、User-Agent、端末の指紋は各イベントの通常の保持期間中は平文で保存し、`AuthenticationFailed` のユーザー名も 30 日間保持する。所在地は国コードだけを保存する。`LoginThrottled` と集計では、テナントごとのソルトを使った `keyHash` をスロットルと集計のキーとして使用するが、監査上の PII 項目としては扱わない。
 
-### Account portal trust boundary and ステップアップ認証
+### Account portal trust boundary and step-up authentication
 
 アカウントのポータルの API (`/api/account/*`) は、認証されたセッション自身の `actor.sub` に対してのみ作用する。URL、本文、問い合わせ文字列で与えられた `sub` や `tenant_id` を信頼することは決してないので、ユーザーをまたぐアクセスやテナントをまたぐアクセスは構造的に生じ得ない。これは管理 API (`/api/auth/account`。ロールを含む) とは別の契約である。ポータル自身の要約のエンドポイント (`/api/account/summary`) は意図的にロールを省くので、利用者自身が操作する面が管理用の情報を誤って漏らすこともない。利用者自身が変更できるのは、自分の表示名、`editable_by_user=true` の属性、パスワードである。ロール、状態、組織の属性、`editable_by_user=false` の属性は管理者専用のままであり、`required_actions` はユーザーからは閲覧のみで、付与も取り消しもできない。ただしユーザー自身の操作の副作用として解除されるもの (パスワードの変更が成功したときの `update_password` など) は除く。ポータルの UI は独立した外枠であり、たまたま管理者のロールを持つユーザーに対しても管理用の案内を一切出さない。
 
@@ -170,7 +178,7 @@ CSRF と同一オリジンの検査は自己管理の変更操作を保護する
 
 TOTP は RFC 6238 の標準的なパラメーター（SHA1、30 秒のステップ、6 桁、前後 1 ステップの許容、160 ビットの seed）を使う。WebAuthn の資格情報は `mfa_factors` へ押し込めず、`credential_id` をキーとする専用テーブル `webauthn_credentials` に置く。`mfa_factors` の `(user_id, type)` という同一性では、ユーザーごと・種別ごとに 1 つの要素しか持てないが、WebAuthn の価値は 1 つのアカウントへ複数の認証器を登録できることにあるためである。CBOR と COSE の解析、署名検証といったセレモニーのロジックは自作せず、`go-webauthn/webauthn` に全面的に委ねる。自作のアテステーションとアサーションの検証器では、わずかな誤りがそのままセキュリティ回避につながるためである。登録と認証のチャレンジには新しいストアを設けず、既存の一時的な `SessionStore` を再利用する。登録では `sub`、認証では保留中のログインセッション ID をキーとする。チャレンジは他のセッションデータと同じライフサイクルを持つ、短命なサーバー側の値だからである。
 
-RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `WEBAUTHN_RP_ORIGINS`）から取得し、起動時に検証したうえで、セレモニーごとに再確認する。アテステーションは `none`（端末機種の強制よりプライバシーを優先）、ユーザー検証は `preferred`、常駐鍵は `discouraged` とする（`challenge_bytes=32`、`timeout_seconds=120`）。この段階では WebAuthn をパスワードと組み合わせるフィッシング耐性の高い第 2 要素として追加し、パスワードレス認証や Discoverable Credential のフローは明確に対象外とする。返された `sign_count` が保存値以下の場合（0 から 0 は除く）、認証器が複製された証拠と見なしてアサーションをその場で拒否する。真正な認証器のカウンターは増加する一方だからである。
+RP ID と許可するオリジンはデプロイ時の設定（`WEBAUTHN_RP_ID` と `WEBAUTHN_RP_ORIGINS`）から取得し、起動時に検証したうえで、セレモニーごとに再確認する。アテステーションは `none`（端末機種の強制よりプライバシーを優先）、ユーザー検証は `preferred`、常駐鍵は `discouraged` とする（`challenge_bytes=32`、`timeout_seconds=120`）。この段階では WebAuthn をパスワードと組み合わせるフィッシング耐性の高い第 2 要素として追加し、パスワードレス認証や Discoverable Credential のフローは明確に対象外とする。返された `sign_count` が保存値以下の場合（0 から 0 は除く）、認証器が複製された証拠と見なしてアサーションをその場で拒否する。真正な認証器のカウンターは増加する一方だからである。
 
 復旧コード（SHA-256 ハッシュだけを保存し、`consumed_at` によって単回利用を保証する。再生成時は一式をまとめて置き換え、紛らわしい文字を除いた文字集合から 10 文字のコードを 10 個生成する）は、TOTP や WebAuthn の認証要素を失ったときの控えとしてのみ存在し、`User.mfa_enrolled` には意図的に **数えない**。復旧コードを単独の第二認証要素として扱うと、ユーザーがそれを唯一の MFA として利用でき、控えを持つ意味が失われるからである。`mfa_enrolled` は「TOTP 認証要素または WebAuthn クレデンシャルが 1 つ以上存在すること」から導出し、どちらかを削除するたびに再計算する。復旧コードの生成、再生成、失効にはステップアップ認証が必要である。第二認証要素の検証に成功すると `acr` は `urn:idmagic:acr:mfa` へ上がり、`amr` には `webauthn`、復旧コードを使った場合は `rc` が加わる。`webauthn` は RFC 8176 の登録値である一方、`rc` はこのアプリケーション独自の IANA 未登録値である。
 
@@ -187,7 +195,7 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - `users.id` を正式かつ全体で一意なユーザー識別子とし、プロトコルの `sub` クレームはここから導出する。その逆ではない。
 - 認証のイベントの保持期間は種別ごとに非対称 (365 / 30 / 90 日) で、全体の上限の範囲でテナントが調整でき、テーブルの分割や低速な保存先ではなく冪等な毎時の掃除が強制する。
 - MFA の TOTP seed を含め、アプリケーションのデータベースに残る可逆なシークレットは平文で保存せず、`DataKeys` Context と `EnvelopeCrypto` ポートによるエンベロープ暗号化へ移す。
-- WebAuthn の credential と復旧コードは `mfa_factors` へ押し込めず独自のテーブルとして表し、手続きの論理は `go-webauthn/webauthn` へ委ね、復旧コードの所持だけでは `mfa_enrolled` に数えない。
+- WebAuthn のクレデンシャルと復旧コードは `mfa_factors` へ押し込めず、独自のテーブルとして表す。セレモニーの処理は `go-webauthn/webauthn` へ委ね、復旧コードの所持だけでは `mfa_enrolled` に数えない。
 - ログインのスロットルをはじめとする共有の一時的な状態は、ストアへ到達できないとき抑制なしの試行を通さず fail-closed で失敗する。
 - パスワードのポリシーは NIST SP 800-63B-4 に従う。長さと識別子との類似の照合に加えてよくあるパスワードの辞書を用い、構成規則も強制的な定期変更も要求しない。
 - 文字種の構成規則は意図的に実装しない。SP 800-63B-4 がこれを SHALL NOT として述べており、推測への耐性ではなく予測しやすさを上げるからである。ただし PCI DSS v4.0 のような適合の確認項目のために、デフォルトで無効なテナントごとの選択制として後から加える可能性は残る。その場合、当該テナントにとって `NIST63B4-NO-COMPOSITION` の採否は明示的な逸脱になる。
@@ -195,9 +203,9 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - パスワードの有効期限はテナントごとの選択制であり、直近のパスワードの変更とテナントのポリシーの更新時刻のうち遅いほうから測り、認証の失敗ではなくログイン後の `update_password` の必須の操作として強制する。
 - 認証とアイデンティティ管理の設定値 (パスワードの履歴の深さ、漏洩の照合のデフォルト、TOTP / WebAuthn / 復旧コードのパラメーター、リセットのトークンの有効期間、ログインのスロットルの閾値) は、製品の目標に散らさずこのポリシーの節にまとめる。
 - パスワードの変更は直近 5 件のパスワードのハッシュの再利用を拒否する。照合はパスワードの変更時のみで、初回の登録では行わない。比較する相手がないからである。
-- `BreachedPasswordChecker` は同梱の手元の辞書の上に HIBP の k-匿名性による照合を重ね、障害時は fail-open で、デフォルトでは何もしない アダプターを同梱するので外部への依存を持ち込まない。
+- `BreachedPasswordChecker` は同梱の辞書の上に HIBP の k-匿名性による照合を重ね、障害時は fail-open とする。デフォルトは何もしないアダプターなので、外部への依存を持ち込まない。
 - パスワードを忘れた場合の処理は、単回限りでハッシュ化されたリセットのトークンを発行し、応答を一様にし、メールの配送を最大限努力とする。これによりこの流れが利用者名の存在を暴く手段にも、SMTP の障害を探る手段にもならない。
-- `EmailSender` の本番の アダプターは provider ごとの HTTP SDK ではなく SMTP だけを話す。SMTP だけで主要な送信サービスにはすべて届くからである。
+- `EmailSender` の本番のアダプターは、送信サービスごとの HTTP SDK ではなく SMTP だけを話す。SMTP だけで主要な送信サービスにはすべて届くからである。
 - ログインのスロットルはアカウント単位と IP 単位の失敗を独立に数え、ハッシュ化した識別子を鍵とし、恒久的な締め出しは意図的に使わない。
 - 認証のイベントは個別の行と 5 分の集計に分け、抑制された行為者の氾濫が際限なく増えるのではなく 1 行にたたまれるようにする。
 - 確定したアカウントの認証イベントは `user_id` で相関し、ユーザー名による管理者検索は入力されたユーザー名をその場で `user_id` へ解決する。
@@ -207,87 +215,87 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 
 ## Scenarios
 
-### REQ-AUTHENTICATION-001: 外部OIDC認証は検証済みsubjectを同じlocal Userへ相関する
+### REQ-AUTHENTICATION-001: 外部 OIDC 認証は検証済みの subject を常に同じローカル User へ相関する
 - ACTOR EndUser
 - GIVEN リクエスト先のテナントで OIDC 接続が `Active` である
-- GIVEN issuer、authorization エンドポイントトークン エンドポイントJWKS は管理時に検証済みである
+- GIVEN issuer、認可エンドポイント、トークンエンドポイント、JWKS は登録時に検証済みである
 - WHEN EndUser が StartFederatedLogin を開始する
-- THEN `state`、`nonce`、PKCE を単発 attempt に保存してアップストリームへ遷移する
-- WHEN アップストリーム callback が code と ID Token を返す
-  - ALT 同じ state またはトークン response を再利用する → single-use attempt / replay guard が拒否する
+- THEN `state`、`nonce`、PKCE を単回限りのログイン試行として保存し、上流へ遷移する
+- WHEN 上流のコールバックが認可コードと ID Token を返す
+  - ALT 同じ `state` またはトークンレスポンスを再利用する → 単回限りの試行と再送防止によって拒否する
 - THEN CompleteFederatedLogin は code と ID Token の署名、issuer、audience、時刻、nonce を検証する
-  - ALT `state`、`nonce`、issuer、audience、署名、時刻のいずれかが一致しない → callback を拒否し LoginSession と link を作成しない → FederatedLoginRejected を発行する
-- THEN 初回は明示 JIT ポリシーと claim mapping により local User と FederatedIdentity を作成する
-- THEN 2回目は同じテナント、プロバイダーexternal subject の既存 link から同じ local User を解決する
-- THEN federated AMR の LoginSession を発行する
+  - ALT `state`、`nonce`、issuer、audience、署名、時刻のいずれかが一致しない → コールバックを拒否し、LoginSession も関連付けも作成しない → FederatedLoginRejected を発行する
+- THEN 初回は、明示した JIT ポリシーとクレームの対応付けに従ってローカルの User と FederatedIdentity を作成する
+- THEN 2 回目以降は、同じテナント・プロバイダー・外部 subject の既存の関連付けから同じローカル User を解決する
+- THEN AMR に `federated` を持つ LoginSession を発行する
 
-### REQ-AUTHENTICATION-002: verified emailによる自動linkは明示ポリシーと一意一致を要求する
+### REQ-AUTHENTICATION-002: 検証済みメールアドレスによる自動リンクは明示ポリシーと一意な一致を要求する
 - ACTOR EndUser
-- GIVEN external subject の既存 link は無い
-- GIVEN 同じ email の local User がテナント内に存在する
-- GIVEN provider の linking_policy が VerifiedEmail である
-- GIVEN アップストリーム email_verified claim が true であり、email はテナント内で一意に一致する
-- WHEN EndUser が未連携の external subject で federated login を完了する
-  - ALT ポリシーが None、email が未検証、または一致が曖昧である → 自動 link と LoginSession 発行を拒否する
-- THEN FederatedIdentity を既存 User に作成する
+- GIVEN その外部 subject に対する既存の関連付けはない
+- GIVEN 同じメールアドレスを持つローカル User がテナント内に存在する
+- GIVEN 接続の `linking_policy` が `VerifiedEmail` である
+- GIVEN 上流の `email_verified` クレームが true で、メールアドレスがテナント内で一意に一致する
+- WHEN EndUser が未連携の外部 subject でフェデレーションログインを完了する
+  - ALT ポリシーが `None`、メールアドレスが未検証、または一致が一意でない → 自動リンクと LoginSession の発行を拒否する
+- THEN 既存の User に対して FederatedIdentity を作成する
 
-### REQ-AUTHENTICATION-003: external アイデンティティの明示linkとunlinkはステップアップ認証を要求する
+### REQ-AUTHENTICATION-003: 外部アイデンティティの明示的なリンクと解除はステップアップ認証を要求する
 - ACTOR AuthenticatedSelf
-- GIVEN ResourceOwner は対象テナントの active User である
-- WHEN 直近5分以内のステップアップ認証セッションで provider の外部認証を完了する
-  - ALT ステップアップ認証が古い、または無い → link / unlink を AccessDeniedError で拒否する
-- THEN external subject が未使用なら自身へ link する
-- WHEN 直近5分以内のステップアップ認証セッションで link の解除を要求する
-  - ALT password credential も他の external アイデンティティ link も残らない → account lockout 防止のため unlink を拒否する
-- THEN 対象の external アイデンティティ link を解除する
+- GIVEN ResourceOwner は対象テナントの有効な User である
+- WHEN 直近 5 分以内にステップアップ認証を済ませたセッションで、外部プロバイダーの認証を完了する
+  - ALT ステップアップ認証が古い、または行われていない → リンクと解除を AccessDeniedError で拒否する
+- THEN その外部 subject が未使用であれば、自身へリンクする
+- WHEN 直近 5 分以内にステップアップ認証を済ませたセッションでリンクの解除を要求する
+  - ALT パスワード資格情報も他の外部アイデンティティのリンクも残らなくなる → 締め出しを防ぐため解除を拒否する
+- THEN 対象の外部アイデンティティのリンクを解除する
 
-### REQ-AUTHENTICATION-004: API トークン発行者はsensitive facet スコープで自身のauthentication情報だけを操作できる
+### REQ-AUTHENTICATION-004: API トークンの発行者は機密操作のスコープで自身の認証情報だけを操作できる
 - ACTOR SelfApiClient
-- GIVEN クライアントは対象テナントの active User に固定された有効な API access トークンを提示している
+- GIVEN クライアントは対象テナントの有効な User に固定された、有効な API アクセストークンを提示している
 - WHEN クライアントがアカウントのセキュリティ設定、サインイン履歴、セッション、MFA 認証要素、復旧コード、またはパスワードの操作を要求する
-  - ALT 対応しない account scope で sensitive facet の変更を要求する → 操作は AccessDeniedError で拒否される
-  - ALT トークンのテナントまたは user_id が操作対象と一致しない → 操作は AccessDeniedError で拒否される
-  - ALT API トークンでステップアップ認証 endpoint を要求する → 操作は AccessDeniedError で拒否される
-- THEN account:read scope は自身の account コンテキストsecurity、signin activity、セッションの参照だけを許可する
-- THEN `account:mfa:write` スコープは自身の MFA 認証要素と復旧コードの変更だけを許可する
-- THEN account:sessions:write scope は自身のセッションの失効だけを許可する
-- THEN account:password:write scope と current password は自身の password の変更だけを許可する
+  - ALT 対応しないスコープで機密操作の変更を要求する → 操作は AccessDeniedError で拒否される
+  - ALT トークンのテナントまたは `user_id` が操作対象と一致しない → 操作は AccessDeniedError で拒否される
+  - ALT API トークンでステップアップ認証のエンドポイントを要求する → 操作は AccessDeniedError で拒否される
+- THEN `account:read` スコープは、自身のアカウント情報、セキュリティ設定、サインイン履歴、セッションの参照だけを許可する
+- THEN `account:mfa:write` スコープは、自身の MFA 認証要素と復旧コードの変更だけを許可する
+- THEN `account:sessions:write` スコープは、自身のセッションの失効だけを許可する
+- THEN `account:password:write` スコープと現在のパスワードの提示は、自身のパスワードの変更だけを許可する
 
-### REQ-AUTHENTICATION-005: browser bootstrap コンテキスト認証状態とCSRF境界を保持する
+### REQ-AUTHENTICATION-005: ブラウザーの初期化情報は認証状態と CSRF 境界を保持する
 - ACTOR AuthenticatedSelf
-- GIVEN ユーザー "alice" が認証済みセッションまたは first-party portal の access トークンを持つ
+- GIVEN ユーザー "alice" が認証済みセッション、またはファーストパーティーのポータルのアクセストークンを持つ
 - WHEN ブラウザーまたは API クライアントがアカウントコンテキストをリクエストする
   - ALT セッションが未認証または認証途中である → アカウントコンテキストの取得を AccessDeniedError で拒否する
   - ALT Bearer トークンが許可されたポータルスコープまたは `account:read` スコープを 1 つも持たない → アカウントコンテキストの取得を AccessDeniedError で拒否する
 - THEN 管理ポータルは `idmagic.admin`、アカウントポータルは `idmagic.account`、自己管理 API クライアントは `account:read` スコープで同じアカウントコンテキストを取得できる
-- THEN 応答は subject、realm、effective ロール、CSRF トークンを含む
+- THEN レスポンスは subject、realm、実効ロール、CSRF トークンを含む
 - WHEN 未認証のパスワードリセット画面がパスワードリセットコンテキストをリクエストする
 - THEN CSRF トークンを含むコンテキストが返る
 
-### REQ-AUTHENTICATION-006: ユーザーはWebAuthnでステップアップ認証 challengeを開始できる
+### REQ-AUTHENTICATION-006: ユーザーは WebAuthn でステップアップ認証のチャレンジを開始できる
 - ACTOR AuthenticatedSelf
-- GIVEN ユーザー "alice" が WebAuthn credential を登録済みで認証済みセッションを持つ
-- WHEN ユーザー "alice" が正しい CSRF トークンでステップアップ認証 WebAuthn challenge を要求する
-  - ALT CSRF トークンが一致しない、または WebAuthn が利用不能である → challenge は発行されず要求は拒否される
-- THEN 応答の PublicKeyCredentialRequestOptions は現在セッションに束縛される
+- GIVEN ユーザー "alice" が WebAuthn のクレデンシャルを登録済みで、認証済みセッションを持つ
+- WHEN ユーザー "alice" が正しい CSRF トークンでステップアップ認証の WebAuthn チャレンジを要求する
+  - ALT CSRF トークンが一致しない、または WebAuthn を利用できない → チャレンジは発行されず、要求を拒否する
+- THEN レスポンスの `PublicKeyCredentialRequestOptions` は現在のセッションに束縛される
 
-### REQ-AUTHENTICATION-007: ResourceOwnerはブラウザーでパスワード認証し認可を継続する
+### REQ-AUTHENTICATION-007: ResourceOwner はブラウザーでパスワード認証し、認可を継続する
 - ACTOR ResourceOwner
 - GIVEN 未認証セッションで "web-app" として認可リクエストを送信済みである
-- WHEN browser login API に username "alice" と正しい password を送信する
-  - ALT SameSite cookie と request トークンが一致しない → csrf 値を改ざんして browser login API を送信する → エラー "InvalidRequestError"
-  - ALT 直近 900 秒窓で per-account の失敗回数が 10 回に達している → 正しい password で browser login API を送信する → エラー "RateLimitedError" → "LoginThrottled" が発行される
-  - ALT 失敗回数に関わらず同一 IP からの login API リクエストが EndpointRateLimitPolicy の window 内で max_requests に達している → 正しい password で browser login API を送信する → エラー "RateLimitedError"
+- WHEN ブラウザーのログイン API にユーザー名 "alice" と正しいパスワードを送信する
+  - ALT SameSite の Cookie とリクエストのトークンが一致しない → CSRF の値を改ざんしてログイン API を送信する → エラー "InvalidRequestError"
+  - ALT 直近 900 秒の時間枠で、アカウント単位の失敗回数が 10 回に達している → 正しいパスワードでログイン API を送信する → エラー "RateLimitedError" → "LoginThrottled" が発行される
+  - ALT 失敗回数によらず、同一 IP からのログイン API リクエストが `EndpointRateLimitPolicy` の時間枠内で上限に達している → 正しいパスワードでログイン API を送信する → エラー "RateLimitedError"
 - THEN セッション Cookie が発行される
 - THEN 認可コードが redirect_uri に返る
 - THEN "UserAuthenticated" が発行される
 
-### REQ-AUTHENTICATION-008: パスワードリセット要求は識別子とIPの組でrate limitされる
+### REQ-AUTHENTICATION-008: パスワードリセットの要求は識別子と IP の組で流量制限される
 - ACTOR EndUser
 - GIVEN 未認証である
 - WHEN "alice" 宛のパスワードリセットを要求する
-  - ALT 同一 identifier と IP の組で EndpointRateLimitPolicy の window 内の max_requests に達している → "alice" 宛のパスワードリセットを再度要求する → エラー "RateLimitedError"
-- THEN ユーザーの存在有無に関わらず 204 を返す
+  - ALT 同じ識別子と IP の組で、`EndpointRateLimitPolicy` の時間枠内の上限に達している → "alice" 宛のパスワードリセットを再度要求する → エラー "RateLimitedError"
+- THEN ユーザーの存在にかかわらず 204 を返す
 - THEN "PasswordResetRequested" が発行される
 
 ### REQ-AUTHENTICATION-009: 無効化されたユーザーは新規ログインも既存セッションも拒否される
@@ -297,7 +305,7 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - THEN ユーザー "alice" は無効状態になる
 - WHEN ユーザー "alice" が既存セッションで認証必須 API を呼ぶ
 - THEN エラー "AccessDeniedError"
-- WHEN ユーザー "alice" が正しい password で新規ログインを試みる
+- WHEN ユーザー "alice" が正しいパスワードで新規ログインを試みる
 - THEN エラー "AccessDeniedError"
 
 ### REQ-AUTHENTICATION-010: ユーザーは現在のパスワードを確認して新しいパスワードへ変更できる
@@ -306,15 +314,15 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - WHEN ユーザー "alice" が正しい現在のパスワードと新しいパスワードを送信する
   - ALT 新しいパスワードが 12 文字未満である → ユーザー "alice" が 12 文字未満のパスワードを送信する → エラー "InvalidRequestError"
   - ALT 新しいパスワードが直近 5 件の履歴に一致する → ユーザー "alice" が直近使用した過去のパスワードを新パスワードとして送信する → エラー "InvalidRequestError"
-- THEN パスワードが変更され password_changed_at が更新される
+- THEN パスワードが変更され、`password_changed_at` が更新される
 - THEN "PasswordChanged" が発行される
 
 ### REQ-AUTHENTICATION-011: ユーザーは TOTP 認証要素を登録して有効化できる
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が認証済みでセキュリティ画面を開いている
 - WHEN ユーザー "alice" が TOTP 登録を開始する
-- THEN 応答に secret と account_name が含まれる
-- WHEN ユーザー "alice" がその secret に対する正しいコードで登録を確認する
+- THEN レスポンスにシークレットとアカウント名が含まれる
+- WHEN ユーザー "alice" がそのシークレットに対する正しいコードで登録を確認する
 - THEN セキュリティ概要の MFA 状態が登録済みになる
 - THEN "MfaFactorEnrolled" が発行される
 
@@ -330,10 +338,10 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が複数の有効なセッションを持ち認証済みである
 - WHEN ユーザー "alice" がアクティビティ画面でセッション一覧を取得する
-  - ALT process 再起動を挟んでセッション一覧を取得する → サーバープロセスを再起動する → ユーザー "alice" が同じセッション cookie でアクティビティ画面を開く → セッションは再起動前と同じ内容で解決できる
+  - ALT プロセスの再起動を挟んでセッション一覧を取得する → サーバープロセスを再起動する → ユーザー "alice" が同じセッション Cookie でアクティビティ画面を開く → セッションは再起動前と同じ内容で解決できる
 - THEN 自分の有効なセッションが返る
 - WHEN ユーザー "alice" が現在以外のセッションを 1 件失効させる
-  - ALT 既に失効済みのセッションへ同じ失効操作を再送する → ユーザー "alice" が直前に失効させた同じセッション id へ再度失効を要求する → 要求は成功として扱われ、最初の失効時刻が保持される
+  - ALT 既に失効済みのセッションへ同じ失効操作を再送する → ユーザー "alice" が直前に失効させた同じセッション ID へ再度失効を要求する → 要求は成功として扱われ、最初の失効時刻を保持する
 - THEN 失効したセッションは一覧から消える
 - WHEN ユーザー "alice" が現在以外のすべてのセッションを一括失効させる
 - THEN 現在のセッションだけが残る
@@ -342,17 +350,17 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - ACTOR AuthenticatedSelf
 - GIVEN ユーザー "alice" が認証済みでアクティビティ画面を開いている
 - WHEN ユーザー "alice" が自分のサインイン履歴を取得する
-  - ALT 認証手段に WebAuthn が含まれる → UI は webauthn という技術名ではなく「パスキー」と表示する
-- THEN 応答に自分のサインインイベントだけが含まれる
-- THEN 第二要素を使ったサインインは、pwd と第二要素の amr を含む完了後の UserAuthenticated として表示される
+  - ALT 認証手段に WebAuthn が含まれる → UI は `webauthn` という技術名ではなく「パスキー」と表示する
+- THEN レスポンスに自分のサインインイベントだけが含まれる
+- THEN 第二要素を使ったサインインは、`pwd` と第二要素の `amr` を持つ完了後の `UserAuthenticated` として表示される
 
-### REQ-AUTHENTICATION-015: MFA登録済みユーザーでもポリシーが要求しない限り第二要素を求められない
+### REQ-AUTHENTICATION-015: MFA 登録済みでも、ポリシーが要求しない限り第二要素は求めない
 - ACTOR EndUser
-- GIVEN ユーザー "alice" は TOTP または WebAuthn credential を登録済みである
-- GIVEN 対象 Application の実効サインインポリシーは Password である
+- GIVEN ユーザー "alice" は TOTP または WebAuthn のクレデンシャルを登録済みである
+- GIVEN 対象 Application の実効サインインポリシーは `Password` である
 - WHEN ユーザー "alice" がユーザー名とパスワードを送信する
-  - ALT 対象 Application の実効サインインポリシーが Mfa である → LoginSession は authentication_pending=true へ切り替わる → 利用可能な第二要素 (TOTP / パスキー / リカバリコード) の選択画面へ進む
-- THEN LoginSession は authentication_pending=false で作られる
+  - ALT 対象 Application の実効サインインポリシーが `Mfa` である → LoginSession は `authentication_pending=true` へ切り替わる → 利用できる第二要素 (TOTP / パスキー / 復旧コード) の選択画面へ進む
+- THEN LoginSession は `authentication_pending=false` で作られる
 - THEN 認可フローは第二要素画面に進まず、同意または認可コード発行へ進む
 
 ### REQ-AUTHENTICATION-016: ユーザーはメールのリセットリンクでパスワードを再設定する
@@ -361,51 +369,51 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - WHEN ユーザー "alice" がそのトークンと新しいパスワードを送信する
   - ALT トークンが期限切れまたは不正である → 無効なパスワードリセットトークンで新しいパスワードを送信する → エラー "InvalidRequestError"
 - THEN パスワードが更新される
-- WHEN ユーザー "alice" が新しいパスワードを browser login API に送信する
+- WHEN ユーザー "alice" が新しいパスワードをブラウザーのログイン API へ送信する
 - THEN ログインに成功する
 - WHEN EndUser が未登録のメールアドレスでパスワードリセットを要求する
-- THEN 応答は登録済みアドレスに対する応答と区別できない
+- THEN レスポンスは登録済みアドレスに対するものと区別できない
 - WHEN EndUser が登録済みのメールアドレスでパスワードリセットを要求する
 - THEN 登録済みアドレスへリセットリンクが送られる
 
-### REQ-AUTHENTICATION-017: TOTP必須ユーザーは正しいコードで認証を継続できる
+### REQ-AUTHENTICATION-017: TOTP が必須のユーザーは正しいコードで認証を継続できる
 - ACTOR EndUser
 - GIVEN TOTP 認証要素が登録された `authentication_pending` の LoginSession が存在する
-- WHEN browser TOTP API に正しいコードを送信する
-  - ALT 誤った TOTP コードを送信する → browser TOTP API に誤ったコードを送信する → エラー "InvalidRequestError" → LoginSession は authentication_pending のままである
+- WHEN ブラウザーの TOTP API に正しいコードを送信する
+  - ALT 誤った TOTP コードを送信する → ブラウザーの TOTP API に誤ったコードを送信する → エラー "InvalidRequestError" → LoginSession は `authentication_pending` のままである
 - THEN 認証が成立し認可フローが継続する
 - THEN "UserAuthenticated" が発行される
 
-### REQ-AUTHENTICATION-018: MFA未登録ユーザーは管理者承認済みオンボーディングを完了して同じ認可処理を継続できる
+### REQ-AUTHENTICATION-018: MFA 未登録のユーザーは管理者が承認した登録を終えて同じ認可処理を継続できる
 - ACTOR EndUser
-- GIVEN 対象 Application の実効ポリシーは MFA 必須で強制開始済み、enrollment bypass を許可し猶予期限内である
-- GIVEN ユーザーは TOTP / WebAuthn 認証要素を持たない
-- GIVEN 管理者が対象ユーザーに有効な単発 enrollment bypass を発行済みである
-- WHEN ユーザーが正しい password を送信する
-  - ALT 登録バイパスがない、取消済み、消費済み、または期限切れである → パスワードが正しくてもログインを完了せずアクセスを拒否する → 認証要素登録 API は利用できない
-- THEN bypass は消費され、同一 LoginSession は pending_purpose=Enrollment の未完了状態になる
-- THEN MfaEnrollmentRequired と MfaEnrollmentBypassConsumed が発行され、登録専用画面へ進む
-- WHEN ユーザーが TOTP secret に対する正しい code で登録を確定する
+- GIVEN 対象 Application の実効ポリシーは MFA 必須かつ強制開始済みで、登録バイパスを許可し猶予期限内である
+- GIVEN ユーザーは TOTP と WebAuthn のいずれの認証要素も持たない
+- GIVEN 管理者が対象ユーザーへ有効な単回限りの登録バイパスを発行済みである
+- WHEN ユーザーが正しいパスワードを送信する
+  - ALT 登録バイパスがない、取り消し済み、消費済み、または期限切れである → パスワードが正しくてもログインを完了せずアクセスを拒否する → 認証要素の登録 API も利用できない
+- THEN バイパスを消費し、同じ LoginSession は `pending_purpose=Enrollment` の未完了状態になる
+- THEN `MfaEnrollmentRequired` と `MfaEnrollmentBypassConsumed` が発行され、登録専用画面へ進む
+- WHEN ユーザーが TOTP のシークレットに対する正しいコードで登録を確定する
   - ALT 登録期限を過ぎている → 認証要素を保存せずアクセスを拒否する → LoginSession を認証完了へ昇格させない
   - ALT TOTP コードが不正である → 認証要素を保存せず InvalidRequestError を返す → LoginSession は `Enrollment` の保留状態のままである
 - THEN 認証要素が保存され、同じ LoginSession の `amr` に `otp` が追加されて保留状態が解除される
-- THEN MfaEnrollmentCompleted と UserAuthenticated が発行され、元の authorization transaction が継続する
+- THEN `MfaEnrollmentCompleted` と `UserAuthenticated` が発行され、元の認可トランザクションが継続する
 
-### REQ-AUTHENTICATION-019: MFA強制開始前の未登録ユーザーはログインできるが登録を促される
+### REQ-AUTHENTICATION-019: MFA の強制開始前は、未登録のユーザーもログインできるが登録を促される
 - ACTOR EndUser
 - GIVEN テナントデフォルトポリシーは将来時刻から MFA 必須になる
 - GIVEN ユーザーは MFA 認証要素を持たない
-- WHEN ユーザーが正しい password でログインする
-- THEN 強制開始前なので password セッションは成立する
+- WHEN ユーザーが正しいパスワードでログインする
+- THEN 強制開始前なので、パスワードだけのセッションが成立する
 - THEN UI は強制開始日時と事前登録を促す警告を表示する
 - THEN ユーザーは通常のステップアップ認証を経たアカウントのセキュリティ設定画面から認証要素を事前登録できる
 
-### REQ-AUTHENTICATION-020: Enrollment pendingセッションは通常リソースへアクセスできない
+### REQ-AUTHENTICATION-020: 登録待ちのセッションは通常のリソースへアクセスできない
 - ACTOR EndUser
-- GIVEN pending_purpose=Enrollment の LoginSession が存在する
-- WHEN ユーザーが アカウントadmin、Application の resource を要求する
-- THEN システムは未認証として拒否する
-- THEN 登録専用 start / confirm API と元の auth transaction だけを許可する
+- GIVEN `pending_purpose=Enrollment` の LoginSession が存在する
+- WHEN ユーザーがアカウント、管理、Application のいずれかのリソースを要求する
+- THEN 未認証として拒否する
+- THEN 登録の開始と確定の API、および元の認可トランザクションだけを許可する
 
 ### REQ-AUTHENTICATION-021: 管理者は対象ユーザーのセッションを一覧・個別失効・全失効できる
 - ACTOR TenantAdministrator
@@ -413,9 +421,9 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - WHEN 管理者がユーザー "alice" の ListSessions を呼ぶ
   - ALT 他テナントの管理者が呼び出す → エラー "AccessDeniedError"
 - THEN 開始時刻の降順で有効なセッション一覧が返る
-- WHEN 管理者がそのうち1件の RevokeSession を呼ぶ
-  - ALT 既に失効済みのセッションへ再度 RevokeSession を呼ぶ → 204 が返り revoked_at は初回の値を保持する
-- THEN 対象セッションは revoke_reason=admin_revoke で失効し "SessionEnded" が発行される
+- WHEN 管理者がそのうち 1 件の `RevokeSession` を呼ぶ
+  - ALT 既に失効済みのセッションへ再度 `RevokeSession` を呼ぶ → 204 が返り、`revoked_at` は初回の値を保持する
+- THEN 対象セッションは `revoke_reason=admin_revoke` で失効し、"SessionEnded" が発行される
 - WHEN 管理者がユーザー "alice" の RevokeUserSessions を呼ぶ
 - THEN 残り全セッションが失効する
 
@@ -423,36 +431,36 @@ RP ID と許可するオリジンは配備時の設定（`WEBAUTHN_RP_ID` と `W
 - ACTOR TenantAdministrator
 - GIVEN ユーザー "alice" は TOTP 認証要素を持ち、復旧コードも生成済みである
 - WHEN 管理者がユーザー "alice" の ResetUserAuthenticators を targets=[Totp, RecoveryCode] で呼ぶ
-  - ALT 他テナントの管理者、または admin ロールを持たない操作者が呼び出す → エラー "AccessDeniedError" → 対象ユーザーの認証器は変更されない
+  - ALT 他テナントの管理者、または `admin` ロールを持たない操作者が呼び出す → エラー "AccessDeniedError" → 対象ユーザーの認証器は変更されない
 - THEN "AuthenticatorResetRequested" が発行される
 - THEN TOTP 認証要素と復旧コードが削除され、他に WebAuthn クレデンシャルもないため `mfa_enrolled` が `false` になる
-- THEN reenrollment_required=true の応答が返り、単発 enrollment bypass が自動発行される
+- THEN `reenrollment_required=true` のレスポンスが返り、単回限りの登録バイパスを自動発行する
 - THEN "AuthenticatorResetCompleted" と "MfaEnrollmentBypassIssued" が発行される
-- WHEN alice が正しい password で次にログインする
-- THEN 有効な bypass により同一 LoginSession が pending_purpose=Enrollment になる
+- WHEN "alice" が正しいパスワードで次にログインする
+- THEN 有効なバイパスにより、同じ LoginSession が `pending_purpose=Enrollment` になる
 - WHEN "alice" が新しい TOTP 認証要素の登録を確定する
-- THEN 同一 LoginSession が MFA 済みに昇格し元の authorization transaction が継続する
+- THEN 同じ LoginSession が MFA 済みへ昇格し、元の認可トランザクションが継続する
 
 ### REQ-AUTHENTICATION-023: 管理者が一部の認証器のみリセットした場合は残存要素でログインを継続できる
 - ACTOR TenantAdministrator
 - GIVEN ユーザー "bob" は TOTP 認証要素と WebAuthn クレデンシャルを両方持つ
 - WHEN 管理者がユーザー "bob" の ResetUserAuthenticators を targets=[Webauthn] で呼ぶ
 - THEN WebAuthn クレデンシャルだけが削除され、TOTP 認証要素は残るため `mfa_enrolled` は `true` のままである
-- THEN reenrollment_required=false の応答が返り、enrollment bypass は発行されない
-- WHEN bob が次回ログインで TOTP コードによる第二要素検証を完了する
+- THEN `reenrollment_required=false` のレスポンスが返り、登録バイパスは発行されない
+- WHEN "bob" が次回のログインで TOTP コードによる第二要素の検証を完了する
 - THEN ログインを完了できる
 
 ### REQ-AUTHENTICATION-024: 有効期限を過ぎたパスワードのユーザーは次回ログイン後にパスワード変更を強制される
 - ACTOR EndUser
-- GIVEN テナントの password ポリシーは max_age_days=90 で、ポリシー更新から 90 日以上が経過している
-- GIVEN ユーザー "alice" の password_changed_at は 91 日前である
-- WHEN ユーザー "alice" が正しい password でログインする
-  - ALT password_changed_at が 89 日前である → ログインはそのまま完了し update_password は付与されない
-  - ALT max_age_days が未設定である → 経過日数に関わらず update_password は付与されない
-  - ALT ポリシー更新から 90 日が経過していない → 猶予期間内なので update_password は付与されない
-  - ALT ユーザーが password credential を持たない (federated / passwordless) → update_password は付与されない
+- GIVEN テナントのパスワードポリシーは `max_age_days=90` で、ポリシーの更新から 90 日以上が経過している
+- GIVEN ユーザー "alice" の `password_changed_at` は 91 日前である
+- WHEN ユーザー "alice" が正しいパスワードでログインする
+  - ALT `password_changed_at` が 89 日前である → ログインはそのまま完了し、`update_password` は付与されない
+  - ALT `max_age_days` が未設定である → 経過日数によらず `update_password` は付与されない
+  - ALT ポリシーの更新から 90 日が経過していない → 猶予期間内なので `update_password` は付与されない
+  - ALT ユーザーがパスワード資格情報を持たない (フェデレーションまたはパスワードレス) → `update_password` は付与されない
 - THEN ログイン自体は成功する
-- THEN ユーザー "alice" に required action update_password が付与される
+- THEN ユーザー "alice" に必須操作 `update_password` が付与される
 - THEN ユーザー "alice" はパスワード変更画面へ誘導され、変更完了までフローを継続できない
 - WHEN ユーザー "alice" がポリシーを満たす新しいパスワードへ変更する
-- THEN update_password が解除され "PasswordChanged" が発行される
+- THEN `update_password` が解除され、"PasswordChanged" が発行される

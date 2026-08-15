@@ -1,17 +1,17 @@
 ---
 context: system
-updated_at: 2026-08-13
+updated_at: 2026-08-15
 ---
 
 # System Specification
 
 ## Overview
 
-外部標準、共有語彙、横断的なユーザー体験、Context をまたぐシナリオを所有する。
+外部標準、共有語彙、横断的なユーザー体験、Context をまたぐシナリオを所有する。1 つの Context だけでは成り立たない振る舞いは、ここが所有する。
 
-React UI は Go API とは別のビルド成果物であり、ゲートウェイが両者を 1 つのオリジンにまとめる。組み込みの認証画面（ログイン、同意、デバイス認証）、管理コンソール、アカウントポータルを所有する。
+React UI は Go API とは別のビルド成果物であり、ゲートウェイが両者を 1 つのオリジンにまとめる。組み込みの認証画面（ログイン、同意、デバイス認証）、管理コンソール、アカウントポータルはこの Context に属する。
 
-本書は、SPA と API の責任分担、ブラウザー保護、ルーティング、UI 規約とその根拠を記す、この境界の設計記録である。機械検査するモジュール境界はパスと禁止されたインポートから推論し、実行手順と検証コマンドは `README.md` に置く。
+本書は、SPA と API の責任分担、ブラウザー保護、ルーティング、起動時設定、UI 規約とその根拠を記す。実行手順と検証コマンドは `README.md` に置く。
 
 ## Glossary
 
@@ -55,6 +55,15 @@ Regulation (EU) 2016/679 — https://eur-lex.europa.eu/eli/reg/2016/679/oj
 | GDPR-CONSENT-WITHDRAWAL | required | MUST | ResourceOwner が同意を撤回でき、撤回後の新規発行には利用しない。`Consent` と `ConsentLifecycle` は OAuth2 Context が所有する。 |
 | GDPR-ERASURE | required | MUST | 削除要求後は法的保存義務を除く PII を定義済み期間内に消去する。消去は IdManagement の UserLifecycle Purge 遷移と Authentication の資格情報破棄が個別に担う。 |
 | GDPR-PROCESSING-RECORDS | required | MUST | セキュリティおよび認可イベントの監査記録を定義済みの期間保持する。保持期間は Audit Context が所有する。 |
+
+## Authorization Boundary
+
+この Context 自身は業務データの認可判断を持たない。所有するのは、どの経路がどの資格でバックエンドに到達できるかという入口の分け方である。
+
+- ブラウザーの認証フロー (`/api/auth/*`) は認可トランザクションの Cookie で解決する。トランザクションの内容は常にサーバー側に保持し、HTML、URL、JavaScript から読めるアプリケーション状態には含めない。
+- 管理 API (`/api/admin/*`) とセルフサービス API (`/api/account/*`) は、ログイントランザクションとは独立した認可を通る。ポータル境界のスコープ (`idmagic.admin` / `idmagic.account`) を要求し、アカウントポータルのトークンで管理 API を呼ぶ経路をフェイルクローズで塞ぐ。実際に何ができるかは、記録を所有する各 Context のロールとスコープが決める。
+- 状態を変更するブラウザー API は、二重送信方式の CSRF トークンと、設定済みの公開発行者と一致する `Origin` ヘッダーを要求する。
+- 生存確認、受付可否、起動完了の各プローブは認証を要さないが、返すのは状態だけで、設定値や依存先の詳細は含めない。`/metrics` も認証を持たないため、公開先は折り返しアドレス、管理用ネットワーク、認証付きプロキシの背後に限る。
 
 ## Design
 
@@ -104,9 +113,9 @@ SPA は `GET /api/auth/transaction` を呼び、画面の種類、クライア�
 
 ### Admin console and account portal as OIDC RPs
 
-管理コンソール（`/admin/*`）とアカウントポータル（`/account/*`）は IdP 自身の OIDC リライングパーティーとして、IdP の `/authorize` と `/token` に対する `authorization_code` + PKCE で認証する。管理用の `…0022` とアカウント用の `…0023` という固定 UUID の `client_id` を持つファーストパーティーのパブリッククライアントとして登録し、`src/api/oidc.ts` と bootstrap seed に反映する。リソース所有者が IdP のユーザーであるため、同意画面は省略する。
+管理コンソール（`/admin/*`）とアカウントポータル（`/account/*`）は IdP 自身の OIDC RP として、IdP の `/authorize` と `/token` に対する `authorization_code` + PKCE で認証する。管理用の `…0022` とアカウント用の `…0023` という固定 UUID の `client_id` を持つファーストパーティーのパブリッククライアントとして登録し、`src/api/oidc.ts` と bootstrap seed に反映する。リソース所有者が IdP 自身のユーザーであるため、同意画面は省略する。
 
-純粋な SPA RP なのでアクセストークンはブラウザーの `sessionStorage` に保持し、`Authorization: Bearer` として `/api/{admin,account}/*` へ送り、RFC 9068 のリソースサーバーとして検証する。これは厳格な「JavaScript にトークンを置かない」姿勢からの意図的な逸脱であり、短命なアクセストークン (600 秒)、`Cache-Control: no-store`、URL・ログ・DOM にトークンを置かないことによって範囲を制限する。OIDC クライアントや鍵の設定の故障で管理者を締め出さないよう、first-party のセッションログイン (`POST /api/auth/login`) は緊急時の初期経路として残す。
+純粋な SPA RP なのでアクセストークンはブラウザーの `sessionStorage` に保持し、`Authorization: Bearer` として `/api/{admin,account}/*` へ送る。バックエンドは RFC 9068 のリソースサーバーとして検証する。これは厳格な「JavaScript にトークンを置かない」姿勢からの意図的な逸脱であり、短命なアクセストークン (600 秒)、`Cache-Control: no-store`、URL・ログ・DOM にトークンを置かないことによって影響範囲を限定する。OIDC クライアントや鍵の設定の不具合で管理者を締め出さないよう、ファーストパーティーのセッションログイン (`POST /api/auth/login`) は緊急時の経路として残す。
 
 ### Client-side routing
 
@@ -185,21 +194,28 @@ UI の基盤は、複雑な組み込み済みテーマに依存せず、アク�
 4. **表示用コンポーネントに副作用を置かない。** データとコールバックを受け取って描画するだけとし、`fetch` や `api.*` の呼び出し、`useEffect`、ナビゲーションはコンテナに置く。セクションが自身の状態を管理して純粋なフォームに委譲する場合は、`DefaultPolicyCard` のような小さいセクション専用コンテナに置いてよい。
 5. **抽出した単位をテストする。** 抽出した各表示用コンポーネントと純粋な補助関数（日付の整形、検証、派生値の計算）に Vitest / Testing Library の単体テストを付ける。`AccountShell`、`AdminShell`、`AuthShell` を包むコンポーネントは、これらのシェルが TanStack Router の `Link` を使うため、描画にルーターコンテキストを必要とする。テストを省略せず、`src/test/renderWithRouter.tsx` の `renderWithRouter` テスト用補助関数を使う。
 
+### Startup configuration
+
+起動時設定は `backend/cmd/internal/bootstrap` が所有する単一の `Config` 型へ集約し、そこで解析と検証を行う。すべてのバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）はこの `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。
+
+検証はフェイルファストである。必須値の欠落、型や範囲の不正、相互に矛盾する組み合わせ（`persistence` が `postgres` なのに DSN が空、など）を 1 回の起動試行ですべて集約し、リスナーの待ち受け、依存先への接続、seed の適用といった副作用のある初期化を始める前に報告して終了する。設定を 1 つ直すたびに次のエラーへ進む往復を避けるため、最初の 1 件で止めずに集約する。
+
+シークレットに分類したフィールド（DSN、SMTP 資格情報、API キーなど）の値は、検証エラー、起動ログ、`ConfigurationReference` のいずれにも出力しない。`ConfigurationReference` は `Config` の定義から生成し、生成物として追跡する。定義と生成物の乖離はリポジトリ検証で失敗させ、運用者向けの設定表を手書きで二重管理しない。
+
 ### Design Decisions
 
-- 現在の UI とランタイムの設計および根拠は本仕様に置き、実行手順と検証手順は該当する README またはランブックに置く。ソースのパスとインポートが実行可能な構造を表すため、重複するモジュール台帳は保守しない。
-- 管理コンソールとアカウントポータルは IdP 自身のファーストパーティー OIDC リライングパーティーであり、BFF の背後ではなくブラウザーにアクセストークンを保持する純粋な SPA RP とする。
+- 管理コンソールとアカウントポータルは、BFF の背後に置かずファーストパーティーの OIDC RP として扱う。IdP 自身が持つ認可とトークン発行の経路を、管理画面のためだけに二重化しないためである。
+- 純粋な SPA RP としてアクセストークンをブラウザーに保持することを受け入れ、短命なトークンと no-store で影響範囲を限定する。BFF を挟むとセッション状態を持つ層が増え、IdP の可用性と復旧経路が複雑になるからである。
+- ファーストパーティーのセッションログインを緊急経路として残す。OIDC クライアントや鍵の設定を壊すと、直す手段そのものが失われるからである。
 - 管理・アカウントポータルの固定 `client_id` を含む内部生成の ID 列は、`TEXT` ではなく `UUID` 型とする。
-- 管理コンソールとアカウントポータルは、インラインやモーダルで編集せず詳細確認後に編集する、ケバブメニューではなく一覧の行内に操作を表示する、ページごとに動的なブラウザータブのタイトルを使う、監査用語には「監査ログ」ではなく「監査イベント」を使う、という UI の一貫性規則に従う。
-- テナント全体のデフォルトサインインポリシーは、アプリケーション自身のポリシーと合成する下限ではなく、上書きとして適用する。
-- 起動時設定は `backend/cmd/internal/bootstrap` が所有する単一の `Config` 型へ集約し、解析および検証する。必須値の欠落、型や範囲の不正、相互に矛盾する組み合わせ（例: `persistence` が `postgres` なのに DSN が空）ではフェイルファストし、リスナーの起動前に集約エラーを返して部分的な起動を許さない。シークレットに分類したフィールド（DSN、SMTP 資格情報、API キーなど）の値は、検証エラー、起動ログ、`ConfigurationReference` のいずれにも出力しない。すべてのバックエンドプロセス（`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`）はこの `Config` を通して環境を読み、`backend/cmd/internal/bootstrap` の外で環境変数を直接読まない。
-- `ConfigurationReference` は `Config` の定義から生成し、生成物として追跡する。定義と生成物の乖離はリポジトリ検証で失敗させ、運用者向けの設定表を手書きで二重管理しない。
+- 主要リソースの作成と編集はモーダルではなく専用ページとする。ブラウザーの「戻る」の挙動とディープリンクを保つためである。
+- 一覧の操作はケバブメニューに隠さず行内に表示する。管理作業では、その行に何ができるかが一覧の時点で分かることのほうが、見た目の整理より重要だからである。
 
 ## Scenarios
 
 ### REQ-SYSTEM-001: Operator は分離された運用資産で SLO を検証する
 - ACTOR Operator
-- GIVEN API、UI ゲートウェイ、イベントリレーは個別の実行単位として配備される
+- GIVEN API、UI ゲートウェイ、イベントリレーは個別の実行単位としてデプロイされる
 - GIVEN `MetricsExposition` の公開範囲は管理ネットワークに制限される
 - WHEN Operator が環境のオーバーレイを選んで運用マニフェストを適用する
   - ALT PostgreSQL へ到達できない → `ReadinessProbe` は `unavailable` を返し、API は新規トラフィックを受けない → `LivenessProbe` は `healthy` を維持し、依存障害だけでは再起動しない
@@ -238,7 +254,7 @@ UI の基盤は、複雑な組み込み済みテーマに依存せず、アク�
 
 ### REQ-SYSTEM-006: 起動時設定により Vite 開発サーバー以外でも DemoLoginAffordance が表示される
 - ACTOR Operator
-- GIVEN Vite 開発サーバーではなくビルド済みのフロントエンドを配備している
+- GIVEN Vite 開発サーバーではなくビルド済みのフロントエンドをデプロイしている
 - WHEN Operator が `VITE_DEMO_LOGIN_ENABLED` を `true` に設定してビルドする
   - ALT `VITE_DEMO_LOGIN_ENABLED` が未設定または `true` 以外である → `HomePage` は `DemoLoginAffordance` を表示しない
 - WHEN EndUser が HomePage を表示する

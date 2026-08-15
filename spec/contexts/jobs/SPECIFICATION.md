@@ -1,17 +1,17 @@
 ---
 context: jobs
-updated_at: 2026-08-11
+updated_at: 2026-08-15
 ---
 
 # Jobs Specification
 
 ## Overview
 
-テナント境界を保つ汎用非同期ジョブ基盤の永続キューと `worker` の実行環境を所有する。各ジョブの業務ロジックは呼び出し元の Bounded Context のユースケースに残し、Jobs はキュー投入、取得、リース、再試行、進捗表示という技術的能力だけを提供する。管理者向けの一覧・詳細・キャンセル API と運用メトリクスは別の機能単位が所有する。
+テナント境界を保つ汎用非同期ジョブ基盤の永続キューと `worker` の実行環境を所有する。所有するのは、テナントが持つあらゆる非同期作業に共通する実行基盤 — 投入、永続化、取得、リース、ハートビート、再試行、配信不能への退避、キャンセル — であり、業務処理は一切持たない。
 
-業務処理は一切所有しない。所有するのは、テナントが持つあらゆる非同期作業に共通する実行基盤である。投入、永続化、取得、リース、ハートビート、再試行、配信不能への退避、キャンセルがこれに当たる。JobKind のパラメーターを解釈して副作用を起こす処理は、利用側 Context のユースケースに残す。`backend/cmd/idmagic-worker/worker.go` は起動時にそれらのハンドラーを一覧へ登録する。API プロセスはジョブを投入するが実行せず、`worker` プロセスはジョブを実行するが HTTP を提供しない。
+`JobKind` のパラメーターを解釈して副作用を起こす処理は、利用側 Context のユースケースに残す。`backend/cmd/idmagic-worker/worker.go` が起動時にそれらのハンドラーを一覧へ登録する。業務ロジックを基盤の外に置くのは、ジョブ基盤に触れるたびに利用側のすべての Context を読み直さずに済むようにするためである。
 
-業務ロジックを基盤の外に置くのは、ジョブ基盤に触れるたびに利用側のすべての Context を読み直さずに済むようにするためである。モジュール境界はパスから推論し、禁止されたインポートがないかを検査する。
+API プロセスはジョブを投入するが実行せず、`worker` プロセスはジョブを実行するが HTTP を提供しない。
 
 ```text
 API / 利用側のユースケース
@@ -66,6 +66,12 @@ Initial: `queued` Terminal: `succeeded`, `failed`, `canceled`
 | queued | JobCanceled | — | canceled |  |
 | running | JobCanceled | — | canceled |  |
 
+## Authorization Boundary
+
+キューを操作する HTTP のエンドポイントは持たない。`EnqueueJob` 以下のインターフェースはいずれも同一プロセス内の Go 呼び出しであり、テナント管理者や API アクセストークンから直接呼べる経路はない。したがって、あるテナントが別のテナントのジョブを投入・取得・キャンセルすることはできない。
+
+ハンドラーの実行コンテキストは、その Job の `tenant_id` に固定する。ハンドラーが誤って別テナントの Aggregate の識別子を渡されても、実行コンテキストのテナントと一致しないため操作は拒否される。`worker` プロセスはすべてのテナントのジョブを実行するが、1 件のジョブを処理する間に見えるのは 1 つのテナントの範囲だけである。
+
 ## Design
 
 ### Internal Interfaces
@@ -94,11 +100,11 @@ Initial: `queued` Terminal: `succeeded`, `failed`, `canceled`
 
 ### Execution lanes
 
-`JobKind` はちょうど 1 つの `ExecutionLane` (`latency_sensitive`、`default`、`bulk`) を持ち、`domain.RegisterKind(kind, lane)` による登録の時点で固定される。投入する呼び出し元がこれを選ぶことはできない。`Job.Lane` は種別の登録から導かれ、取得は自分の系統の中のジョブだけを対象にする。呼び出し元を意図的に排除しているのは、系統が呼び出しごとの優先度ではなく容量を隔離する単位だからである。
+`JobKind` はちょうど 1 つの `ExecutionLane` (`latency_sensitive`、`default`、`bulk`) を持ち、`domain.RegisterKind(kind, lane)` による登録の時点で固定される。`Job.Lane` は種別の登録から導かれ、取得は自分のレーンの中のジョブだけを対象にする。投入する呼び出し元がレーンを選べないのは、レーンが呼び出しごとの優先度ではなく容量を隔離する単位だからである。
 
 各レーンは独自の並行数上限を持つ独立した `Runner` を備え、空いている実行枠の数だけジョブを一括取得して、ハンドラーを並行実行する（デフォルトは 4 枠）。1 つのプロセスで複数レーンの `Runner` を同時に起動することもできる。これは `JOB_WORKER_LANES` が未設定の場合の互換動作であり、開発環境と Docker Compose のデフォルトでもある。1 つのレーンの `Runner` だけを持つ専用の Deployment を動かすこともでき、こちらを本番のデフォルトとする。`infra/k8s/base/worker.yaml` が `idmagic-worker-{latency-sensitive,default,bulk}` の 3 つの Deployment を定義し、レーンごとの並行数は `JOB_WORKER_CONCURRENCY_<LANE>` で与える。
 
-系統をまたぐ順序は目的ではない。狙いは容量の隔離であり、`bulk` の滞留がどれだけ積み上がっても `latency_sensitive` の実行の枠を奪うことはない。同じ理由で系統の中にも数値の優先度は存在しない。系統の中の取得の候補はおおむね `run_at` の古い順だが、並行実行、複数プロセス、同じ時刻を持つジョブがあるため、開始の順序も完了の順序も保証しない。
+レーンが与えるのは順序ではなく容量の隔離である。`bulk` の滞留がどれだけ積み上がっても、`latency_sensitive` の実行枠を奪うことはない。同じ理由でレーンの中に数値の優先度は存在しない。取得の候補はおおむね `run_at` の古い順だが、並行実行、複数プロセス、同時刻のジョブがあるため、開始の順序も完了の順序も保証しない。
 
 ### Claim and lease
 
@@ -114,11 +120,11 @@ SIGTERM や SIGINT を受けると `worker` は取得をやめ、停止猶予期
 
 ### Metrics
 
-`idmagic-worker` は `/metrics` (`MetricsExposition`、system.yaml) を管理専用の別の HTTP の待ち受けで公開する。idmagic-api の `/metrics` とは別のプロセスかつ別の実体である。系統ごとの `jobs_claim_latency_seconds`、`jobs_outcome_total`、`jobs_retry_total`、`jobs_queue_depth` を持つ。`tenant_id` と `job_id` は取りうる値を有限に保つためラベルから除外する。
+`idmagic-worker` は `/metrics` を管理専用の別の HTTP リスナーで公開する。これは `idmagic-api` の `/metrics` とは別のプロセスかつ別の実体である。レーンごとに `jobs_claim_latency_seconds`、`jobs_outcome_total`、`jobs_retry_total`、`jobs_queue_depth` を持つ。`tenant_id` と `job_id` は取りうる値を有限に保つためラベルから除外する。
 
 ### Boundary with scheduled batch
 
-全テナントを対象とする定期的な保持期間の処理と署名鍵のライフサイクルの処理は、永続的なジョブに混ぜない。代わりに外部の予定表が `idmagic-batch` を 1 回限りで起動する。横断的な一掃にはテナントごとの作業の単位が存在しないので、テナントが持つ待ち行列へ流し込むと待ち行列の深さも系統の隔離も意味を失う。
+全テナントを対象とする定期的な保持期間の処理と署名鍵のライフサイクルの処理は、永続ジョブに混ぜない。代わりに外部のスケジューラーが `idmagic-batch` を 1 回限りで起動する。横断的な一掃にはテナントごとの作業単位が存在しないため、テナントのキューへ流し込むとキューの深さもレーンの隔離も意味を失う。
 
 `worker` 内のライフサイクルワークフローの割り当て処理は、業務処理を直接行う定期バッチではなく、回復経路である。同じトランザクションで確定したものの Job と関連付けられなかった WorkflowRun を再走査し、永続キューへ安全に引き渡す。
 
@@ -128,11 +134,12 @@ SIGTERM や SIGINT を受けると `worker` は取得をやめ、停止猶予期
 
 ### Design Decisions
 
-- 永続キューは PostgreSQL の `FOR UPDATE SKIP LOCKED` によるリースを使う。第二のキューデータストアを増やさずに、並行する `worker` が別々の行を取得できるようにするためである。
-- `idmagic-worker` は API とは別のプロセスの境界である。配送は少なくとも 1 回であり、冪等性はハンドラーが担い、停止時にはリースが切れる前に取得済みの作業を捌き切る。
-- 予定実行の 1 回限りの保持期間と鍵のライフサイクルの処理は `idmagic-batch` に属する。Jobs が所有するのは、あらゆる予定実行の命令ではなく、永続的で再試行できる非同期のアプリケーションの作業である。
-- 実行の系統は、待ち行列の実装を別々に作ることなく、遅延に敏感な作業、通常の作業、大量の作業の並行度を隔離する。
-- `params` と `result` は保存時に暗号化しない。`JobKind` ごとに中身の見えないものであり、シークレットを含めてはならない。終端の行は再帰的に投入される Job ではなく、`worker` の保持期間スイープが削除する。
+- 永続キューは専用のキューミドルウェアではなく PostgreSQL に置き、`FOR UPDATE SKIP LOCKED` でリースする。運用するデータストアを増やさずに、並行する `worker` が別々の行を安全に取得できるからである。
+- 実行レーンは呼び出し元ではなく `JobKind` の登録が決める。レーンは呼び出しごとの優先度ではなく容量の隔離単位であり、投入側に選ばせると隔離が意味を失うからである。
+- 配送は少なくとも 1 回とし、冪等性はハンドラーの責務とする。ちょうど 1 回を基盤側で保証しようとすると、プロセスの異常終了と完了報告の競合を塞ぎきれないからである。
+- 停止時の回復は明示的な再投入ではなく、リースの自然な期限切れに委ねる。停止処理の打ち切りとハンドラーの完了が競合すると、再投入が二重実行の余地を作るからである。
+- 全テナントを対象とする定期処理は永続ジョブに混ぜず、`idmagic-batch` が担う。横断的な一掃にはテナントごとの作業単位が存在せず、キューへ流し込むとキューの深さもレーンの隔離も意味を失うからである。
+- `params` と `result` は保存時に暗号化しない。`JobKind` ごとに中身の見えない値であり、そもそもシークレットを含めてはならないからである。
 
 ## Scenarios
 
@@ -160,10 +167,10 @@ SIGTERM や SIGINT を受けると `worker` は取得をやめ、停止猶予期
 ### REQ-JOBS-003: 同じ Job を再試行してもハンドラーの副作用は 1 回分だけ観測される
 - ACTOR System
 - GIVEN `dedup_key` を指定して Job が投入済みである
-- WHEN ハンドラが1回目の実行で外部への通知を送信する
-- THEN Job は succeeded になる
-- WHEN at-least-once 配信により同じ Job が再配送される
-- THEN ハンドラは dedup_key を用いて冪等に判定し重複通知を送らない
+- WHEN ハンドラーが 1 回目の実行で外部への通知を送信する
+- THEN Job は `succeeded` になる
+- WHEN 少なくとも 1 回の配送保証により同じ Job が再配送される
+- THEN ハンドラーは `dedup_key` を用いて冪等に判定し、重複した通知を送らない
 
 ### REQ-JOBS-004: `worker` が異常終了してもリース失効後に別の `worker` が再取得する
 - ACTOR System
@@ -174,8 +181,8 @@ SIGTERM や SIGINT を受けると `worker` は取得をやめ、停止猶予期
 
 ### REQ-JOBS-005: ハンドラーが失敗し続けると `max_attempts` 到達時に配信不能となる
 - ACTOR System
-- GIVEN `max_attempts=3` の Job が `running` で `FailJob` を呼ばれた回数がすでに 2 回である
-- WHEN ハンドラが3回目も失敗し FailJob を呼ぶ
+- GIVEN `max_attempts=3` の Job が `running` で、`FailJob` を呼ばれた回数がすでに 2 回である
+- WHEN ハンドラーが 3 回目も失敗し `FailJob` を呼ぶ
 - THEN `attempts` が `max_attempts` に達している
 - THEN Job の状態が `failed` になりエラーが保持される
 - THEN Job は二度と `running` にならない
@@ -190,8 +197,7 @@ SIGTERM や SIGINT を受けると `worker` は取得をやめ、停止猶予期
 ### REQ-JOBS-007: 同じ dedup_key の lifecycle_workflow_run は重複して投入されない
 - ACTOR System
 - GIVEN テナント "tenant-a" で IdGovernance が `dedup_key="lifecycle-workflow-run:run-1"`、`kind="lifecycle_workflow_run"` の Job を `EnqueueJob` で投入済みである
-
-- WHEN IdGovernance が同じ `dedup_key` で再度 `EnqueueJob` を呼ぶ（少なくとも 1 回の配信による再送やディスパッチャーの重複実行を模す）
+- WHEN IdGovernance が同じ `dedup_key` で再度 `EnqueueJob` を呼ぶ（再送やディスパッチャーの重複実行を模す）
 - THEN 新規 Job は作成されず既存 Job の JobRef が返る
 
 ### REQ-JOBS-008: API プロセスでの投入に失敗しても定期ディスパッチャーが未関連付けの実行を回収する
