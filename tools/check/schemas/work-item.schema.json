@@ -80,6 +80,11 @@
       "type": "string",
       "enum": ["pending", "in_progress", "completed", "cancelled"]
     },
+    "priority": {
+      "description": "着手順の推奨。depends_on が表す完了前提とは独立で、拘束力を持たない。未指定は未評価を意味する。",
+      "type": "string",
+      "enum": ["p0", "p1", "p2", "p3"]
+    },
     "depends_on": {
       "description": "この work-item の完了前に完了が必要な work-item ID。一時的な関連や後続候補は含めない。",
       "type": "array",

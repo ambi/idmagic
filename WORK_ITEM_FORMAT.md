@@ -14,6 +14,7 @@ status: pending
 authors: [name]
 risk: low
 created_at: 2026-01-01
+priority: p1
 depends_on: []
 change_kind: feature
 initial_context: # written when the item starts, not when it is filed
@@ -55,6 +56,10 @@ Implementation order, migration, and unresolved questions.
 ## Risk Notes
 Risks and mitigations.
 ```
+
+`priority` (`p0`–`p3`) and `depends_on` answer different questions. `depends_on` states what must be
+completed first; it is machine-checked and it constrains order. `priority` states what deserves attention
+first among the items nothing blocks; it is advisory, and an item may be left unset to mean unranked.
 
 `affected_spec` is required for `feature`, `bugfix`, and `operations` items. It directly references a
 normative scenario/standard ID or a TypeSpec symbol. Changes with no specification impact (`refactor`,
