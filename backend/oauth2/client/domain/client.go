@@ -78,9 +78,9 @@ type OAuth2Client struct {
 }
 
 var oauth2ClientSchema = z.Struct(z.Shape{
-	"ClientID": z.String().Min(1).Max(128).Required(),
+	"ClientID": spec.Chars(1, spec.LengthClientID).Required(),
 	"ClientName": z.Ptr(
-		z.String().Min(1).Max(200),
+		spec.Chars(1, spec.LengthDisplayName),
 	),
 	"ClientType": z.StringLike[spec.ClientType]().TestFunc(
 		func(value *spec.ClientType, _ z.Ctx) bool { return value.Valid() },

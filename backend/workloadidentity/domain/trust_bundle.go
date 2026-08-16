@@ -30,10 +30,10 @@ type WorkloadTrustBundle struct {
 }
 
 var workloadTrustBundleSchema = z.Struct(z.Shape{
-	"ID":                        z.String().Min(1).Max(64).Required(),
+	"ID":                        spec.Chars(1, spec.LengthHandle).Required(),
 	"TenantID":                  z.String().Min(1).Required(),
-	"Name":                      z.String().Min(1).Max(100).Required(),
-	"TrustDomain":               z.String().Min(1).Max(255).Required(),
+	"Name":                      spec.Chars(1, spec.LengthName).Required(),
+	"TrustDomain":               spec.Chars(1, spec.LengthDNSName).Required(),
 	"Issuer":                    z.String().Min(1).Required(),
 	"AcceptedAudiences":         z.Slice(z.String().Min(1)).Min(1).Required(),
 	"MaxSubjectTokenTTLSeconds": z.Int().GT(0).Required(),

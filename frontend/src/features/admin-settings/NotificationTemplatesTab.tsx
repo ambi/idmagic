@@ -16,6 +16,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type {
   NotificationTemplateDetail,
   NotificationTemplateKey,
@@ -363,7 +364,7 @@ function Editor({
         <Input
           id="notification-subject"
           value={draft.subject}
-          maxLength={200}
+          maxLength={LENGTH.displayName}
           onChange={(event) => onChange({ ...draft, subject: event.target.value })}
         />
       </div>
@@ -373,7 +374,7 @@ function Editor({
         <textarea
           id="notification-body-text"
           value={draft.bodyText}
-          maxLength={8000}
+          maxLength={LENGTH.plainBody}
           onChange={(event) => onChange({ ...draft, bodyText: event.target.value })}
           className={`${textareaClass} min-h-40`}
         />
@@ -384,7 +385,7 @@ function Editor({
         <textarea
           id="notification-body-html"
           value={draft.bodyHtml}
-          maxLength={20000}
+          maxLength={LENGTH.richBody}
           onChange={(event) => onChange({ ...draft, bodyHtml: event.target.value })}
           className={`${textareaClass} min-h-40`}
         />
@@ -396,7 +397,7 @@ function Editor({
         <Input
           id="notification-from-display-name"
           value={draft.fromDisplayName}
-          maxLength={80}
+          maxLength={LENGTH.chromeLabel}
           onChange={(event) => onChange({ ...draft, fromDisplayName: event.target.value })}
         />
         <p className="text-xs text-slate-500">{t.fromDisplayNameHelp}</p>

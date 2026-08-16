@@ -138,6 +138,11 @@ type Deps struct {
 }
 
 func Register(e *echo.Echo, d Deps) {
+	// エラーレスポンスの既定形式 (Problem Details) と型付きエラーの写像は経路の
+	// 組み立てに属する。ここで入れないと、ハンドラのテストが本番と別のエラー経路を
+	// 通ってしまい、500 に落ちる分類漏れがテストからは見えない。ログとメトリクスを
+	// 持つ版は、起動時に cmd がこの後で差し替える。
+	e.HTTPErrorHandler = support.ErrorHandler(nil, nil)
 	e.Use(support.DeprecationHeadersMiddleware(d.Contract))
 	d.OAuth2 = mergeLegacyOAuth2Deps(d.OAuth2, d)
 	d.Authentication = mergeLegacyAuthenticationDeps(d.Authentication, d)

@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ambi/idmagic/backend/shared/spec"
+
 	z "github.com/Oudwins/zog"
 )
 
@@ -83,7 +85,7 @@ type registerClientRequest struct {
 }
 
 var registerClientRequestSchema = z.Struct(z.Shape{
-	"ClientName":   z.String().Max(200),
+	"ClientName":   spec.CharsAtMost(spec.LengthDisplayName),
 	"ClientType":   z.String().OneOf([]string{"public", "confidential"}),
 	"RedirectURIs": z.Slice(z.String().URL()).Min(1),
 	"GrantTypes": z.Slice(z.String().OneOf([]string{

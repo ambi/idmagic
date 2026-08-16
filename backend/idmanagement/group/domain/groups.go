@@ -74,11 +74,11 @@ func (s GroupMembershipSource) Effective() GroupMembershipSource {
 }
 
 var groupSchema = z.Struct(z.Shape{
-	"ID":          z.String().Min(1).Max(64).Required(),
+	"ID":          spec.Chars(1, spec.LengthHandle).Required(),
 	"TenantID":    z.String().Min(1).Required(),
-	"Name":        z.String().Min(1).Max(100).Required(),
-	"Description": z.Ptr(z.String().Max(500)),
-	"Email":       z.Ptr(z.String().Email()),
+	"Name":        spec.Chars(1, spec.LengthName).Required(),
+	"Description": z.Ptr(spec.CharsAtMost(spec.LengthDescription)),
+	"Email":       z.Ptr(spec.CharsAtMost(spec.LengthEmail).Email()),
 	"Roles":       z.Slice(z.String().Min(1)),
 	"CreatedAt":   z.Time().Required(),
 	"UpdatedAt":   z.Time().Required(),
@@ -170,7 +170,7 @@ var groupAttributeDefSchema = z.Struct(z.Shape{
 		func(value *idmdomain.AttributeType, _ z.Ctx) bool { return value.Valid() },
 		z.Message("attribute type is not in enum"),
 	).Required(),
-	"Label": z.String().Max(100),
+	"Label": spec.CharsAtMost(spec.LengthName),
 })
 
 func (d GroupAttributeDef) Validate() error { return spec.Validate(groupAttributeDefSchema, &d) }

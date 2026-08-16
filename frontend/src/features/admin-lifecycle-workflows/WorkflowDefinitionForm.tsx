@@ -16,6 +16,7 @@ import {
   type WorkflowTrigger,
 } from '../../types'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import { domainLabelsDictionary } from '../../lib/i18n/domainLabels.i18n'
 import { workflowFormDictionary, type WorkflowFormDictionary } from './WorkflowDefinitionForm.i18n'
 
@@ -306,7 +307,7 @@ export function WorkflowDefinitionForm({
           <Input
             id="workflow-name"
             value={draft.name}
-            maxLength={100}
+            maxLength={LENGTH.name}
             onChange={(event) => setDraft({ ...draft, name: event.target.value })}
             placeholder={t.namePlaceholder}
           />
@@ -316,7 +317,7 @@ export function WorkflowDefinitionForm({
           <Input
             id="workflow-description"
             value={draft.description}
-            maxLength={500}
+            maxLength={LENGTH.description}
             onChange={(event) => setDraft({ ...draft, description: event.target.value })}
             placeholder={t.descriptionPlaceholder}
           />

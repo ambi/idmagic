@@ -26,10 +26,10 @@ type AgentWorkloadBinding struct {
 }
 
 var agentWorkloadBindingSchema = z.Struct(z.Shape{
-	"ID":             z.String().Min(1).Max(64).Required(),
+	"ID":             spec.Chars(1, spec.LengthHandle).Required(),
 	"TenantID":       z.String().Min(1).Required(),
 	"TrustBundleID":  z.String().Min(1).Required(),
-	"SubjectPattern": z.String().Min(1).Max(500).Required(),
+	"SubjectPattern": spec.Chars(1, spec.LengthDescription).Required(),
 	"AgentID":        z.String().Min(1).Required(),
 	"Status": z.StringLike[AgentWorkloadBindingStatus]().TestFunc(
 		func(value *AgentWorkloadBindingStatus, _ z.Ctx) bool { return value.Valid() },

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // placeholderPattern は「差し込み変数のように見えるもの」を広く拾う。`{{Password}}` の
@@ -81,6 +82,22 @@ func ValidateDefinition(key notificationports.TemplateKey, def Definition) error
 	}
 	if strings.TrimSpace(def.Subject) == "" || strings.TrimSpace(def.BodyText) == "" || strings.TrimSpace(def.BodyHTML) == "" {
 		return ErrIncompleteTemplate
+	}
+	// 上限は notification_templates の CHECK と同じ数。ここで止めないと、
+	// 制約違反がデータベースから返って 500 になる。
+	for _, field := range []struct {
+		name  string
+		value string
+		limit int
+	}{
+		{"subject", def.Subject, spec.LengthDisplayName},
+		{"body_text", def.BodyText, spec.LengthPlainBody},
+		{"body_html", def.BodyHTML, spec.LengthRichBody},
+		{"from_display_name", def.FromDisplayName, spec.LengthChromeLabel},
+	} {
+		if err := spec.CheckMaxChars(field.name, field.value, field.limit); err != nil {
+			return err
+		}
 	}
 	for _, part := range []string{def.Subject, def.BodyText, def.BodyHTML} {
 		for _, name := range placeholderNames(part) {

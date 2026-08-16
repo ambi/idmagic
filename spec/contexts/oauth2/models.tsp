@@ -559,6 +559,7 @@ model ApprovalRequest {
   @doc("RFC 9396 — 承認対象の構造化された権限要求。承認画面はこれを人間可読に描画する。")
   authorization_details?: AuthorizationDetail[];
   @doc("要求の取り違え承認を防ぐため承認画面に表示する短い識別文 (CIBA Core §7.1 binding_message)。")
+  @maxLength(64)
   binding_message?: string;
   state: ApprovalRequestState;
   @doc("CIBA auth_req_id の SHA-256 ハッシュ。輸送層の索引であり、決定の意味論には関与しない。")
@@ -1052,6 +1053,7 @@ model BackchannelAuthenticationRequest {
   @doc("RFC 9396 — 承認対象の構造化された権限要求 (JSON 文字列)。登録済み type だけを受理する。")
   authorization_details?: string;
   @doc("承認画面に表示する短い識別文 (CIBA Core §7.1)。")
+  @maxLength(64)
   binding_message?: string;
   @doc("client が要求する有効期限 (秒)。正の整数かつ 600 秒以下。未指定時は 300 秒。")
   requested_expiry?: int64;

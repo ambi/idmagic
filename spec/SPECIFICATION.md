@@ -214,6 +214,53 @@ HTTP ルーティングは `backend/shared/http/server_http/routes.go` で組み
 
 OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handlers_http`）、Dynamic Client Registration（RFC 7591、`backend/oauth2/handlers_http` の一部）は、各標準が定めるエラーレスポンスを返す。標準に従うクライアントとの相互運用性を保つため、これらには Problem Details を適用しない。
 
+#### String length limits
+
+文字列フィールドの長さ上限は、公開契約、Go の検証、PostgreSQL の制約、UI の入力欄という 4 つの境界に同じ数で現れる。数が同じでも数える単位が違えば別々の上限になるので、単位を先に固定する。
+
+単位は **Unicode コードポイント**である。TypeSpec の `@maxLength`、そこから生成される OpenAPI の `maxLength`、PostgreSQL の `char_length()`、Go の `utf8.RuneCountInString` は、いずれもコードポイントを数える。zog の `String().Max(n)` だけは UTF-8 バイト数を数えるため、文字列フィールドには使わない。代わりに `backend/shared/spec` の `Chars` と `CharsAtMost` を使う。バイト数で数えると、上限 100 の名前が英字なら 100 文字、日本語なら 33 文字になり、契約に書いた数が意味を持たなくなる。
+
+例外は、準拠する標準自身がオクテットで上限を定めている値に限る。メールアドレスは RFC 5321 の 254 オクテット、realm は DNS ラベルの 63 オクテットである。どちらも書式を ASCII に限っているため、実際の値ではコードポイント数と一致する。
+
+上限を置く値は、次の既定の区分から選ぶ。外部の標準も固定の表示面も関与しない値のために、新しい数を持ち込まない。
+
+| Class | Limit | Applies to |
+| --- | --- | --- |
+| Handle | 64 | IdMagic が採番する集約の ID、および関係名や型名のような語彙的な名前 |
+| Name | 100 | 一行の名前 |
+| DisplayName | 200 | 利用者に見せる表示名とメールの件名 |
+| ExternalID | 256 | 呼び出し側の資源空間から来る識別子 |
+| Description | 500 | 数文の説明、パターン、表示テンプレート |
+| URI | 2048 | URL と URI |
+| Expression | 4096 | CEL のような式 |
+| PlainBody | 8000 | 平文の本文 |
+| RichBody | 20000 | HTML の本文 |
+
+次の値は外部の標準か固定の表示面から上限が決まるので、区分の外に置く。
+
+| Field | Limit | Why |
+| --- | --- | --- |
+| メールアドレス | 254 | RFC 5321 が定める経路の上限 |
+| `Tenant.realm` | 63 | DNS ラベル |
+| `WorkloadTrustBundle.trust_domain` | 255 | DNS 名 |
+| `client_id` | 128 | UUID を収めたうえで、他の認可サーバーから移入した値も受けられる幅 |
+| パスワード | 128 | `PasswordPolicy` の既定の上限 |
+| ブランディングの短いラベル | 80 | サインイン画面とメールの固定枠に収まる幅 |
+| ブランディングの補足テキスト | 280 | 同上 |
+
+上限を置かない値もある。`entity_id`、`wtrealm`、`scim_id`、`kid` のように外部が値を決め、その標準が長さを定めていない識別子には、データベースの都合だけで上限を置かない。短すぎる上限は相互運用性を壊す一方、上限がないことによる資源の消費は [HTTP server hardening](#http-server-hardening) の `HTTP_MAX_BODY_BYTES` が引き受ける。
+
+4 つの境界は同じ数を持つが、役割は同じではない。
+
+| Boundary | Role |
+| --- | --- |
+| TypeSpec の `@maxLength` | 公開契約。OpenAPI と生成ドキュメントが示す数の出どころ。 |
+| Go の domain スキーマ | 唯一の強制点。ここを通らない書き込み経路を作らない。 |
+| PostgreSQL の `CHECK (char_length(col) <= N)` | 最後の防壁。ここで落ちるのは実装の不具合であり、利用者向けエラーの発生源にしない。 |
+| UI の `maxLength` 属性 | 入力の補助。保証ではない。 |
+
+上限違反は、解析できた内容が業務規則に違反する場合に当たるので、[HTTP error responses](#http-error-responses) が定める 422 で返す。違反したフィールドと上限を `detail` に載せ、何を短くすればよいかを利用者が判断できるようにする。
+
 #### Metrics
 
 `GET /metrics` は Prometheus と OpenMetrics の形式でメトリクスを公開する。ルートパターンごとの HTTP RED（件数、`status_code` によるエラー率、所要時間、処理中の数）に加え、SLO とアラートに使う認証のゴールデンシグナルを含む。
@@ -281,7 +328,7 @@ PostgreSQL の構造を変更する場合は、まず `infra/schema/postgres.sql
 列型の選択を一貫させるため、次の規則を適用する。
 
 - **自由形式の文字列、長さ無制限**：`TEXT` を使う。制約のない `varchar` は使わない。
-- **長さの上限がある文字列**：固定の列ごとの長さ上限の方針に従い、`TEXT` + `CHECK (char_length(col) <= N)` か `varchar(N)` のいずれかを一貫して使う。書式が固定された識別子は `CHECK (... ~ regex)` で守る。
+- **長さの上限がある文字列**：`TEXT` + `CHECK (char_length(col) <= N)` を使う。`varchar(N)` は使わない。上限を宣言と別の場所に置かず、他の `CHECK` と同じ書き方で並べるためである。`N` の決め方は [String length limits](#string-length-limits) に従う。書式が固定された識別子は `CHECK (... ~ regex)` で併せて守る。
 - **内部で生成する ID**：IdMagic が `spec.NewUUIDv4()` で生成する列は `UUID` とする。Go 側は `string` で保持し、pgx のテキスト用符号器（`RegisterUUIDAsText`）が両者を変換する。
 - **外部が決める ID**：`entity_id`、`wtrealm`、`scim_id`、`kid` など、外部が値を決める ID は `TEXT` とする。IdMagic が採番する値ではなく、UUID とも限らないためである。
 - **時刻**：すべて `TIMESTAMPTZ` とし、マイクロ秒の精度を正とする。スキーマで丸めない。

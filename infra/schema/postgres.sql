@@ -27,6 +27,7 @@ CREATE TABLE tenants (
     CONSTRAINT tenants_trusted_device_max_age_range
         CHECK (trusted_device_max_age_seconds IS NULL
             OR (trusted_device_max_age_seconds >= 0 AND trusted_device_max_age_seconds <= 7776000)),
+    CONSTRAINT tenants_display_name_length CHECK (char_length(display_name) BETWEEN 1 AND 200),
     CONSTRAINT tenants_default_locale_format CHECK (default_locale IS NULL OR default_locale ~ '^[a-z]{2}$'),
     CONSTRAINT tenants_realm_format CHECK (
         realm <> 'admin' AND realm ~ '^[a-z0-9][a-z0-9-]{0,62}$'
@@ -90,7 +91,9 @@ CREATE TABLE tenant_brandings (
     CONSTRAINT tenant_brandings_footer_link_1_label_length CHECK (footer_link_1_label IS NULL OR char_length(footer_link_1_label) <= 80),
     CONSTRAINT tenant_brandings_footer_link_2_label_length CHECK (footer_link_2_label IS NULL OR char_length(footer_link_2_label) <= 80),
     CONSTRAINT tenant_brandings_footer_link_1_url_format CHECK (footer_link_1_url IS NULL OR footer_link_1_url ~ '^https://'),
-    CONSTRAINT tenant_brandings_footer_link_2_url_format CHECK (footer_link_2_url IS NULL OR footer_link_2_url ~ '^https://')
+    CONSTRAINT tenant_brandings_footer_link_2_url_format CHECK (footer_link_2_url IS NULL OR footer_link_2_url ~ '^https://'),
+    CONSTRAINT tenant_brandings_product_name_length CHECK (product_name IS NULL OR char_length(product_name) <= 80),
+    CONSTRAINT tenant_brandings_footer_text_length CHECK (footer_text IS NULL OR char_length(footer_text) <= 280)
 );
 
 CREATE TABLE notification_templates (
@@ -155,7 +158,15 @@ CREATE TABLE users (
     ) STORED,
     CONSTRAINT users_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
-    CONSTRAINT users_tenant_id_unique UNIQUE (tenant_id, id)
+    CONSTRAINT users_tenant_id_unique UNIQUE (tenant_id, id),
+    CONSTRAINT users_preferred_username_length
+        CHECK (char_length(preferred_username) BETWEEN 1 AND 100),
+    CONSTRAINT users_name_length CHECK (name IS NULL OR char_length(name) <= 200),
+    CONSTRAINT users_given_name_length
+        CHECK (given_name IS NULL OR char_length(given_name) <= 100),
+    CONSTRAINT users_family_name_length
+        CHECK (family_name IS NULL OR char_length(family_name) <= 100),
+    CONSTRAINT users_email_length CHECK (email IS NULL OR char_length(email) <= 254)
 );
 
 CREATE UNIQUE INDEX users_preferred_username_active_idx
@@ -504,7 +515,11 @@ CREATE TABLE groups (
     CONSTRAINT groups_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT groups_tenant_id_id_unique UNIQUE (tenant_id, id),
-    CONSTRAINT groups_tenant_name_key UNIQUE (tenant_id, name)
+    CONSTRAINT groups_tenant_name_key UNIQUE (tenant_id, name),
+    CONSTRAINT groups_name_length CHECK (char_length(name) BETWEEN 1 AND 100),
+    CONSTRAINT groups_description_length
+        CHECK (description IS NULL OR char_length(description) <= 500),
+    CONSTRAINT groups_email_length CHECK (email IS NULL OR char_length(email) <= 254)
 );
 
 CREATE TABLE group_members (
@@ -641,7 +656,10 @@ CREATE TABLE agents (
         FOREIGN KEY (owner_user_id)
         REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT agents_tenant_id_id_unique UNIQUE (tenant_id, id),
-    CONSTRAINT agents_tenant_name_key UNIQUE (tenant_id, name)
+    CONSTRAINT agents_tenant_name_key UNIQUE (tenant_id, name),
+    CONSTRAINT agents_name_length CHECK (char_length(name) BETWEEN 1 AND 100),
+    CONSTRAINT agents_description_length
+        CHECK (description IS NULL OR char_length(description) <= 500)
 );
 
 CREATE TABLE authorization_detail_types (
@@ -656,7 +674,10 @@ CREATE TABLE authorization_detail_types (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, type),
     CONSTRAINT authorization_detail_types_tenant_id_fkey
-        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
+        FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
+    CONSTRAINT authorization_detail_types_type_length CHECK (char_length(type) <= 100),
+    CONSTRAINT authorization_detail_types_description_length CHECK (description IS NULL OR char_length(description) <= 500),
+    CONSTRAINT authorization_detail_types_display_template_length CHECK (char_length(display_template) <= 500)
 );
 
 CREATE TABLE mcp_resource_servers (
@@ -672,7 +693,8 @@ CREATE TABLE mcp_resource_servers (
     CONSTRAINT mcp_resource_servers_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT mcp_resource_servers_tenant_resource_unique
-        UNIQUE (tenant_id, resource)
+        UNIQUE (tenant_id, resource),
+    CONSTRAINT mcp_resource_servers_name_length CHECK (char_length(name) BETWEEN 1 AND 200)
 );
 
 CREATE TABLE applications (
@@ -734,7 +756,9 @@ CREATE TABLE oauth2_clients (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT oauth2_clients_application_fkey
         FOREIGN KEY (application_id, tenant_id, application_protocol_type)
-        REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE
+        REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE,
+    CONSTRAINT oauth2_clients_client_name_length
+        CHECK (client_name IS NULL OR char_length(client_name) <= 200)
 );
 
 CREATE INDEX oauth2_clients_application_id_idx
@@ -849,7 +873,10 @@ CREATE TABLE workload_trust_bundles (
     CONSTRAINT workload_trust_bundles_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT workload_trust_bundles_tenant_name_key UNIQUE (tenant_id, name),
-    CONSTRAINT workload_trust_bundles_tenant_issuer_key UNIQUE (tenant_id, issuer)
+    CONSTRAINT workload_trust_bundles_tenant_issuer_key UNIQUE (tenant_id, issuer),
+    CONSTRAINT workload_trust_bundles_name_length CHECK (char_length(name) BETWEEN 1 AND 100),
+    CONSTRAINT workload_trust_bundles_trust_domain_length
+        CHECK (char_length(trust_domain) BETWEEN 1 AND 255)
 );
 
 CREATE TABLE agent_workload_bindings (
@@ -870,7 +897,9 @@ CREATE TABLE agent_workload_bindings (
     CONSTRAINT agent_workload_bindings_agent_fkey
         FOREIGN KEY (agent_id) REFERENCES agents(id) ON DELETE RESTRICT,
     CONSTRAINT agent_workload_bindings_bundle_pattern_key
-        UNIQUE (trust_bundle_id, subject_pattern)
+        UNIQUE (trust_bundle_id, subject_pattern),
+    CONSTRAINT agent_workload_bindings_subject_pattern_length
+        CHECK (char_length(subject_pattern) BETWEEN 1 AND 500)
 );
 
 CREATE INDEX agent_workload_bindings_agent_idx

@@ -6,6 +6,7 @@ import { Alert } from '../../components/ui/alert'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import { Field, optionalValue, parseRoles } from './AdminUsersPrimitives'
 
@@ -74,11 +75,16 @@ export function AdminUserCreatePage({
               {error && <Alert>{error}</Alert>}
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <Field id="preferred_username" label={t.username} required />
-                <Field id="name" label={t.displayName} />
+                <Field
+                  id="preferred_username"
+                  label={t.username}
+                  required
+                  maxLength={LENGTH.name}
+                />
+                <Field id="name" label={t.displayName} maxLength={LENGTH.displayName} />
               </div>
 
-              <Field id="email" label={t.emailFieldLabel} type="email" />
+              <Field id="email" label={t.emailFieldLabel} type="email" maxLength={LENGTH.email} />
 
               <Field
                 id="password"

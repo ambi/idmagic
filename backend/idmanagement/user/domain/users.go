@@ -45,12 +45,12 @@ type User struct {
 
 var userSchema = z.Struct(z.Shape{
 	"ID":                z.String().Required(),
-	"PreferredUsername": z.String().Min(1).Max(100).Required(),
+	"PreferredUsername": spec.Chars(1, spec.LengthName).Required(),
 	"PasswordHash":      z.String(),
-	"Name":              z.Ptr(z.String().Max(200)),
-	"GivenName":         z.Ptr(z.String().Max(100)),
-	"FamilyName":        z.Ptr(z.String().Max(100)),
-	"Email":             z.Ptr(z.String().Email()),
+	"Name":              z.Ptr(spec.CharsAtMost(spec.LengthDisplayName)),
+	"GivenName":         z.Ptr(spec.CharsAtMost(spec.LengthName)),
+	"FamilyName":        z.Ptr(spec.CharsAtMost(spec.LengthName)),
+	"Email":             z.Ptr(spec.CharsAtMost(spec.LengthEmail).Email()),
 	"Roles":             z.Slice(z.String().Min(1)),
 	"CreatedAt":         z.Time().Required(),
 	"UpdatedAt":         z.Time().Required(),
@@ -235,9 +235,11 @@ var userAttributeDefSchema = z.Struct(z.Shape{
 		func(value *idmdomain.AttributeType, _ z.Ctx) bool { return value.Valid() },
 		z.Message("attribute type is not in enum"),
 	).Required(),
-	"Label":     z.String().Max(100),
-	"ClaimName": z.Ptr(z.String().Min(1).Max(100)),
-	"OIDCScope": z.Ptr(z.String().Min(1).Max(60)),
+	"Label":     spec.CharsAtMost(spec.LengthName),
+	"ClaimName": z.Ptr(spec.Chars(1, spec.LengthName)),
+	// scope 名は語彙的な識別子なので Handle の区分に寄せる。従来の 60 から
+	// 広がる方向なので、これまで通っていた定義は通り続ける。
+	"OIDCScope": z.Ptr(spec.Chars(1, spec.LengthHandle)),
 	"Visibility": z.StringLike[idmdomain.AttrVisibility]().TestFunc(
 		func(value *idmdomain.AttrVisibility, _ z.Ctx) bool { return value.Valid() },
 		z.Message("attribute visibility is not in enum"),

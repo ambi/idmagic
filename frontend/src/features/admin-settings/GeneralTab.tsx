@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminSettings } from '../../types'
 import { adminSettingsDictionary } from './AdminSettingsPage.i18n'
 import { displayNameError, ReadSetting } from './AdminSettingsShared'
@@ -129,7 +130,7 @@ export function GeneralTab({
                 id="display-name"
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
-                maxLength={200}
+                maxLength={LENGTH.displayName}
               />
               <p className="text-xs text-slate-500">{t.displayNameHelp}</p>
             </div>

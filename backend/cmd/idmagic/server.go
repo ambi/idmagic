@@ -134,9 +134,6 @@ func Run() error {
 
 	// Echo フレームワークのログも同じ構造化ハンドラ (field 規約) に載せる。
 	e.Logger = slogLogger
-	// DefaultHTTPErrorHandler は仕様上エラーをログに残さない。ハンドラが返す
-	// 生エラー (panic ではないもの) が 500 になったとき原因を追えるようにする。
-	e.HTTPErrorHandler = httpsupport.ErrorHandler(logger, appMetrics)
 	// RequestFaultIsolation objective: request_id を最外で付与し、その内側で
 	// panic を捕捉して 500 に局所化する。以降の otel / ハンドラの panic とログは
 	// 同じ request_id 配下に入る。受信 X-Request-ID は secure-by-default で無視し
@@ -229,6 +226,11 @@ func Run() error {
 		SharedSignals:    deps.SharedSignals,
 		Authorization:    deps.Authorization,
 	})
+
+	// Register が入れた既定のエラーハンドラを、ログとメトリクスを持つ版へ差し替える。
+	// echo の DefaultHTTPErrorHandler は仕様上エラーをログに残さないので、ハンドラが
+	// 返す生エラー (panic ではないもの) が 500 になったとき原因を追えるようにする。
+	e.HTTPErrorHandler = httpsupport.ErrorHandler(logger, appMetrics)
 
 	// 起動準備がすべて完了したので、startupComplete を true に設定する
 	startupComplete.Store(true)

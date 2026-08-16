@@ -24,6 +24,14 @@ type quotaExceeded interface {
 	GetTenantID() string
 }
 
+// fieldLengthViolation は spec.LengthError を import せずに受けるための構造的
+// インターフェース。文字列長の上限は解析できた内容に対する業務規則なので、
+// 各 context の handler がエラー写像を持つかどうかに関わらず 422 で返す。
+type fieldLengthViolation interface {
+	error
+	IsFieldLengthViolation() bool
+}
+
 func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler {
 	if logger == nil {
 		logger = logging.Default()
@@ -41,6 +49,10 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 				metrics.RecordQuotaExceeded(qErr.GetResource())
 			}
 			_ = WriteProblem(c, http.StatusUnprocessableEntity, "quota_exceeded", err.Error())
+			return
+		}
+		if lengthErr, ok := errors.AsType[fieldLengthViolation](err); ok {
+			_ = WriteProblem(c, http.StatusUnprocessableEntity, "field_length_exceeded", lengthErr.Error())
 			return
 		}
 

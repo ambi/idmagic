@@ -103,11 +103,13 @@ var deviceAuthorizationSchema = z.Struct(z.Shape{
 func ValidateDeviceAuthorization(value any) error { return validate(deviceAuthorizationSchema, value) }
 
 var approvalRequestSchema = z.Struct(z.Shape{
-	"ID":             z.String().UUID().Required(),
-	"ClientID":       z.String().Required(),
-	"UserID":         z.String().Required(),
-	"AuthReqIDHash":  z.String().Required(),
-	"BindingMessage": z.Ptr(z.String().Max(64)),
+	"ID":            z.String().UUID().Required(),
+	"ClientID":      z.String().Required(),
+	"UserID":        z.String().Required(),
+	"AuthReqIDHash": z.String().Required(),
+	// CIBA の binding_message。start 時の検査 (approval/usecases) も同じ
+	// コードポイント数で数える。
+	"BindingMessage": z.Ptr(CharsAtMost(LengthHandle)),
 	"State": z.StringLike[ApprovalRequestState]().TestFunc(
 		func(value *ApprovalRequestState, _ z.Ctx) bool { return value.Valid() },
 		z.Message("state is not in enum"),
@@ -142,9 +144,13 @@ func zogError(issues z.ZogIssueList) error {
 	}
 
 	messages := make([]string, 0, len(issues))
+	length := false
 	for _, issue := range issues {
 		if issue == nil {
 			continue
+		}
+		if issue.Code == issueCodeMaxChars || issue.Code == issueCodeMinChars {
+			length = true
 		}
 		message := issue.Message
 		if message == "" && issue.Err != nil {
@@ -154,7 +160,7 @@ func zogError(issues z.ZogIssueList) error {
 			message = issue.Code
 		}
 		if path := issue.PathString(); path != "" {
-			message = fmt.Sprintf("%s: %s", path, message)
+			message = fmt.Sprintf("%s: %s", snakeCase(path), message)
 		}
 		messages = append(messages, message)
 	}
@@ -162,5 +168,9 @@ func zogError(issues z.ZogIssueList) error {
 		return errors.New("validation failed")
 	}
 	sort.Strings(messages)
-	return errors.New(strings.Join(messages, "; "))
+	joined := strings.Join(messages, "; ")
+	if length {
+		return &LengthError{message: joined}
+	}
+	return errors.New(joined)
 }

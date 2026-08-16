@@ -55,7 +55,7 @@ var mcpResourceServerSchema = z.Struct(z.Shape{
 		func(value *string, _ z.Ctx) bool { return value != nil && isAbsoluteURIWithoutFragment(*value) },
 		z.Message("resource must be an absolute URI without a fragment (RFC 8707 §2)"),
 	).Required(),
-	"Name":   z.String().Min(1).Max(200).Required(),
+	"Name":   spec.Chars(1, spec.LengthDisplayName).Required(),
 	"Scopes": z.Slice(z.String().Min(1)).Min(1).Required(),
 	"State": z.StringLike[McpResourceServerState]().TestFunc(
 		func(value *McpResourceServerState, _ z.Ctx) bool { return value.Valid() },

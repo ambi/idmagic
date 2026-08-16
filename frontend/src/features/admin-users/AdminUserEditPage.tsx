@@ -17,6 +17,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Toast } from '../../components/ui/toast'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import { cn } from '../../lib/utils'
 import type { AdminUser, TenantUserAttributeSchema } from '../../types'
 import {
@@ -268,6 +269,7 @@ export function AdminUserEditPage({
                           onChange={(event) => setUsername(event.target.value)}
                           autoFocus={!user.scim_source}
                           required
+                          maxLength={LENGTH.name}
                           aria-invalid={usernameInvalid}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
@@ -280,6 +282,7 @@ export function AdminUserEditPage({
                           id="user-editor-name"
                           value={name}
                           onChange={(event) => setName(event.target.value)}
+                          maxLength={LENGTH.displayName}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
                         />
@@ -290,6 +293,7 @@ export function AdminUserEditPage({
                           id="user-editor-given-name"
                           value={givenName}
                           onChange={(event) => setGivenName(event.target.value)}
+                          maxLength={LENGTH.name}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
                         />
@@ -302,6 +306,7 @@ export function AdminUserEditPage({
                           id="user-editor-family-name"
                           value={familyName}
                           onChange={(event) => setFamilyName(event.target.value)}
+                          maxLength={LENGTH.name}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
                         />
@@ -316,6 +321,7 @@ export function AdminUserEditPage({
                             setEmail(event.target.value)
                             setEmailVerifiedTouched(false)
                           }}
+                          maxLength={LENGTH.email}
                           readOnly={!!user.scim_source}
                           className={user.scim_source ? 'bg-slate-50' : undefined}
                         />

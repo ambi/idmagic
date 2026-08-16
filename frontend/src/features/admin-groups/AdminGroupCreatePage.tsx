@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { TenantGroupAttributeSchema } from '../../types'
 import { AdminGroupAttributeEditor, groupAttributeMapFromDraft } from './AdminGroupAttributeEditor'
 import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
@@ -86,7 +87,13 @@ export function AdminGroupCreatePage({
                 <Label htmlFor="group-name">
                   {t.groupNameLabel} <span className="text-red-500">*</span>
                 </Label>
-                <Input id="group-name" name="name" required placeholder="engineering" />
+                <Input
+                  id="group-name"
+                  name="name"
+                  required
+                  maxLength={LENGTH.name}
+                  placeholder="engineering"
+                />
                 <p className="text-xs text-slate-500">{t.groupNameHelp}</p>
               </div>
 
@@ -123,13 +130,14 @@ export function AdminGroupCreatePage({
                 <Input
                   id="group-description"
                   name="description"
+                  maxLength={LENGTH.description}
                   placeholder={t.groupDescriptionPlaceholder}
                 />
               </div>
 
               <div className="grid gap-1.5">
                 <Label htmlFor="group-email">{t.emailOptionalLabel}</Label>
-                <Input id="group-email" name="email" type="email" />
+                <Input id="group-email" name="email" type="email" maxLength={LENGTH.email} />
                 <p className="text-xs text-slate-500">{t.emailHelp}</p>
               </div>
 

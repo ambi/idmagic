@@ -20,7 +20,8 @@ const (
 	// MaxTTL is the largest requested_expiry accepted from a client.
 	MaxTTL = 600 * time.Second
 	// MaxBindingMessageLength keeps the identifier short enough for safe display.
-	MaxBindingMessageLength = 64
+	// Counted in Unicode code points, like every other string limit.
+	MaxBindingMessageLength = spec.LengthHandle
 )
 
 // ApprovalRequest holds the human decision for one requested action.

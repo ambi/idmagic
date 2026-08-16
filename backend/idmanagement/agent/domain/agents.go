@@ -35,10 +35,10 @@ type Agent struct {
 }
 
 var agentSchema = z.Struct(z.Shape{
-	"ID":          z.String().Min(1).Max(64).Required(),
+	"ID":          spec.Chars(1, spec.LengthHandle).Required(),
 	"TenantID":    z.String().Min(1).Required(),
-	"Name":        z.String().Min(1).Max(100).Required(),
-	"Description": z.Ptr(z.String().Max(500)),
+	"Name":        spec.Chars(1, spec.LengthName).Required(),
+	"Description": z.Ptr(spec.CharsAtMost(spec.LengthDescription)),
 	"Kind": z.StringLike[idmdomain.AgentKind]().TestFunc(
 		func(value *idmdomain.AgentKind, _ z.Ctx) bool { return value.Valid() },
 		z.Message("agent kind is not in enum"),

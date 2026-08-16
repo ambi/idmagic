@@ -15,6 +15,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminAgent } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { parseRoles } from './AdminAgentsShared'
@@ -127,6 +128,7 @@ export function AdminAgentEditPage({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  maxLength={LENGTH.name}
                   aria-invalid={nameInvalid}
                   disabled={killed}
                 />
@@ -137,6 +139,7 @@ export function AdminAgentEditPage({
                   id="agent-editor-description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  maxLength={LENGTH.description}
                   disabled={killed}
                 />
               </div>

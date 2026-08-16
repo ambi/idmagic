@@ -10,8 +10,20 @@ import (
 
 	notificationports "github.com/ambi/idmagic/backend/shared/notification/ports"
 	"github.com/ambi/idmagic/backend/shared/notification/template"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantports "github.com/ambi/idmagic/backend/tenancy/ports"
 )
+
+// wrapTemplateValidation は長さ違反だけを型付きのまま上へ返す。ErrInvalidNotificationTemplate
+// へ包むと「3 点セットと差し込み変数」の汎用メッセージに潰れ、どのフィールドを何文字
+// 短くすればよいかが利用者に伝わらない。
+func wrapTemplateValidation(err error) error {
+	var lengthErr *spec.LengthError
+	if errors.As(err, &lengthErr) {
+		return err
+	}
+	return errors.Join(ErrInvalidNotificationTemplate, err)
+}
 
 var (
 	// ErrUnknownNotificationTemplate はカタログに無い template_key / locale。
@@ -153,7 +165,7 @@ func UpdateNotificationTemplate(
 		FromDisplayName: strings.TrimSpace(input.FromDisplayName),
 	}
 	if err := template.ValidateDefinition(key, def); err != nil {
-		return nil, errors.Join(ErrInvalidNotificationTemplate, err)
+		return nil, wrapTemplateValidation(err)
 	}
 
 	override := &notificationports.TemplateOverride{
@@ -205,7 +217,7 @@ func PreviewNotificationTemplate(
 		FromDisplayName: firstNonBlank(input.FromDisplayName, effective.FromDisplayName),
 	}
 	if err := template.ValidateDefinition(key, def); err != nil {
-		return nil, errors.Join(ErrInvalidNotificationTemplate, err)
+		return nil, wrapTemplateValidation(err)
 	}
 	rendered, err := template.Render(def, previewVars(ctx, deps, tenantID, key))
 	if err != nil {

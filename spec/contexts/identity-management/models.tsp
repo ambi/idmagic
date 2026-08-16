@@ -35,6 +35,7 @@ model Group {
   @maxLength(500)
   description?: string;
   @doc("グループ宛の連絡先メールアドレス。User.email と異なり認証・検証フローは持たない。")
+  @maxLength(254)
   email?: string;
   @doc("テナント定義の TenantGroupAttributeSchema に対して検証される custom 属性。")
   attributes?: Record<AttributeValue>;
@@ -49,6 +50,7 @@ model Group {
 model GroupAttributeDef {
   @minLength(1)
   key: string;
+  @maxLength(100)
   label?: string;
   type: AttributeType;
   multi_valued: boolean = false;
@@ -218,9 +220,13 @@ model User {
   @maxLength(100)
   preferred_username: string;
   password_hash?: string;
+  @maxLength(200)
   name?: string;
+  @maxLength(100)
   given_name?: string;
+  @maxLength(100)
   family_name?: string;
+  @maxLength(254)
   email?: string;
   email_verified: boolean = false;
   mfa_enrolled: boolean = false;
@@ -238,7 +244,9 @@ model AdminUserCreateRequest {
   @maxLength(100)
   preferred_username: string;
   password: string;
+  @maxLength(200)
   name?: string;
+  @maxLength(254)
   email?: string;
   email_verified: boolean = false;
   roles: string[] = #[];
@@ -250,7 +258,9 @@ model AdminUserUpdateRequest {
   @minLength(1)
   @maxLength(100)
   preferred_username?: string;
+  @maxLength(200)
   name?: string;
+  @maxLength(254)
   email?: string;
   email_verified?: boolean;
   roles?: string[];
@@ -617,6 +627,7 @@ model GroupCreateRequest {
   name: string;
   @maxLength(500)
   description?: string;
+  @maxLength(254)
   email?: string;
   attributes?: Record<AttributeValue>;
   roles?: string[];
@@ -632,6 +643,7 @@ model GroupUpdateRequest {
   name?: string;
   @maxLength(500)
   description?: string;
+  @maxLength(254)
   email?: string;
   attributes?: Record<AttributeValue>;
   roles?: string[];

@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminAgent } from '../../types'
 import { adminAgentsDictionary } from './AdminAgentsPage.i18n'
 import { optionalValue, parseRoles } from './AdminAgentsShared'
@@ -79,7 +80,13 @@ export function AdminAgentCreatePage({
 
               <div className="grid gap-1.5">
                 <Label htmlFor="agent-name">{t.agentNameLabel}</Label>
-                <Input id="agent-name" name="name" required placeholder="invoice-bot" />
+                <Input
+                  id="agent-name"
+                  name="name"
+                  required
+                  maxLength={LENGTH.name}
+                  placeholder="invoice-bot"
+                />
                 <p className="text-xs text-slate-500">{t.agentNameHelp}</p>
               </div>
               <div className="grid gap-1.5">
@@ -87,6 +94,7 @@ export function AdminAgentCreatePage({
                 <Input
                   id="agent-description"
                   name="description"
+                  maxLength={LENGTH.description}
                   placeholder={t.agentDescriptionPlaceholder}
                 />
               </div>

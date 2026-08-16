@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // Wildcard は「その型の主体すべて」を表す主体識別子。direct 規則が
@@ -103,8 +106,8 @@ func validateIdentifier(label, value string) error {
 	if value == "" {
 		return fmt.Errorf("%w: %s must not be empty", ErrTupleInvalid, label)
 	}
-	if len(value) > 256 {
-		return fmt.Errorf("%w: %s exceeds 256 bytes", ErrTupleInvalid, label)
+	if utf8.RuneCountInString(value) > spec.LengthExternalID {
+		return fmt.Errorf("%w: %s exceeds %d characters", ErrTupleInvalid, label, spec.LengthExternalID)
 	}
 	if strings.ContainsAny(value, ":#") {
 		return fmt.Errorf("%w: %s must not contain ':' or '#'", ErrTupleInvalid, label)

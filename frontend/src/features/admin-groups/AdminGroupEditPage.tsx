@@ -8,6 +8,7 @@ import { Card } from '../../components/ui/card'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminGroup, TenantGroupAttributeSchema, TenantUserAttributeSchema } from '../../types'
 import {
   AdminGroupAttributeEditor,
@@ -127,6 +128,7 @@ export function AdminGroupEditPage({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
+                    maxLength={LENGTH.name}
                     aria-invalid={nameInvalid}
                     readOnly={!!group.scim_source}
                     className={group.scim_source ? 'bg-slate-50' : undefined}
@@ -138,6 +140,7 @@ export function AdminGroupEditPage({
                     id="group-editor-description"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    maxLength={LENGTH.description}
                     readOnly={!!group.scim_source}
                     className={group.scim_source ? 'bg-slate-50' : undefined}
                   />
@@ -149,6 +152,7 @@ export function AdminGroupEditPage({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    maxLength={LENGTH.email}
                   />
                   <p className="text-xs text-slate-500">{t.emailHelp}</p>
                 </div>

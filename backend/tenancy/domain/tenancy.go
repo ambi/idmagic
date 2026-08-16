@@ -338,13 +338,13 @@ var localeTagPattern = regexp.MustCompile(`^[a-z]{2}$`)
 
 var tenantSchema = z.Struct(z.Shape{
 	"ID": z.String().Min(1).Required(),
-	"Realm": z.String().Min(1).Max(63).TestFunc(
+	"Realm": spec.Chars(1, spec.LengthDNSLabel).TestFunc(
 		func(value *string, _ z.Ctx) bool {
 			return value != nil && tenantIDPattern.MatchString(*value) && *value != "admin"
 		},
 		z.Message("tenant realm must be a URL-safe slug and must not be admin"),
 	).Required(),
-	"DisplayName": z.String().Min(1).Max(200).Required(),
+	"DisplayName": spec.Chars(1, spec.LengthDisplayName).Required(),
 	"Status": z.StringLike[TenantStatus]().TestFunc(
 		func(value *TenantStatus, _ z.Ctx) bool { return value.Valid() },
 		z.Message("tenant status is not in enum"),
@@ -440,7 +440,7 @@ func validTenantBrandingLink(value string) bool {
 
 var tenantBrandingSchema = z.Struct(z.Shape{
 	"TenantID":         z.String().Min(1).Required(),
-	"ProductName":      z.String().Max(80),
+	"ProductName":      spec.CharsAtMost(spec.LengthChromeLabel),
 	"LogoObjectKey":    z.String(),
 	"LogoURL":          z.String(),
 	"FaviconObjectKey": z.String(),
@@ -455,14 +455,14 @@ var tenantBrandingSchema = z.Struct(z.Shape{
 	),
 	"FooterLink1": tenantFooterLinkSchema,
 	"FooterLink2": tenantFooterLinkSchema,
-	"FooterText":  z.String().Max(280),
+	"FooterText":  spec.CharsAtMost(spec.LengthChromeText),
 	"CreatedAt":   z.Time().Required(),
 	"UpdatedAt":   z.Time().Required(),
 })
 
 var tenantFooterLinkSchema = z.Struct(z.Shape{
-	"Label": z.String().Max(80),
-	"URL":   z.String().Max(2048),
+	"Label": spec.CharsAtMost(spec.LengthChromeLabel),
+	"URL":   spec.CharsAtMost(spec.LengthURI),
 })
 
 func validTenantFooterLink(link TenantFooterLink) bool {
