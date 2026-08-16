@@ -1,9 +1,24 @@
 ---
-status: pending
+status: cancelled
 authors: [tn]
 risk: low
 created_at: 2026-08-08
 depends_on: [wi-49-agent-identity-first-class-principal]
+completion:
+  completed_at: 2026-08-16
+  summary: |
+    本 work item が立てた二択は [[wi-372-admin-api-granular-scope-enforcement]] (2026-08-15 完了) が
+    包含して決着させたため、実施せずに中止する。wi-372 は `IdManagement` コンテキスト全体へ
+    `ManagementApiClient` 系 principal を導入し、Agent 管理 interface に `agents:read` / `agents:write`
+    を配線した。結果は `spec/contexts/identity-management/SPECIFICATION.md` の REQ-IDMANAGEMENT-025 が
+    正本として保持している。本 work item が明示的な判断を求めた `KillAgent` の扱いも wi-372 の Design で
+    確定済みで、結論は「`agents:write` に含める」。理由は、削除が既に同じスコープにあり、削除はキルより
+    厳密に破壊的であるため、キルだけを外しても防御にならないこと、および漏洩時の懸念よりも
+    侵害された Agent の自動化された即時停止という正当な用途を優先すべきことである。
+    Motivation が「全体設計は別 work item とする」と書いた相手が wi-372 そのものであった。
+  verification:
+    - cmd: rg -n '^### REQ-IDMANAGEMENT-025' spec/contexts/identity-management/SPECIFICATION.md
+      result: 管理 API クライアントの粒度別スコープ制御シナリオが宣言済みであることを確認した。
 ---
 
 # Agent 管理 API を `agents:read`/`agents:write` scope 付き API access token からも操作可能にする(または scope を削除する)
