@@ -20,6 +20,7 @@ import (
 
 	"github.com/ambi/idmagic/backend/authentication/federation/domain"
 	federationports "github.com/ambi/idmagic/backend/authentication/federation/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const maxSAMLResponseBytes = 1 << 20
@@ -98,6 +99,12 @@ func ValidateResponse(
 	responseID := strings.TrimSpace(root.SelectAttrValue("ID", ""))
 	if responseID == "" || hasDuplicateIDs(root) {
 		return empty, errors.New("SAML response IDs are missing or duplicated")
+	}
+	// ID は replay 表の主キーの成分になる。上限が無いと、外部 IdP が決めた長さの
+	// まま btree の索引行上限で落ちる。応答形は SAML が決めるので、型付きの
+	// LengthError は返さない。
+	if err := spec.CheckKeyString("ID", responseID, spec.LengthProtocolMessageID, spec.BytesProtocolMessageID); err != nil {
+		return empty, fmt.Errorf("SAML Response %s", err.Error())
 	}
 	validated, err := validateSignature(root, connection.SAMLSigningCertificates)
 	if err != nil {

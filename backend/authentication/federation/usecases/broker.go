@@ -57,6 +57,12 @@ func CompleteIdentity(
 	if !connection.Active() || claims.Subject == "" || claims.Username == "" {
 		return nil, ErrLinkingDenied
 	}
+	// external_subject は federated_identities の主キーの成分になる。上限を超える
+	// subject は連携を拒否する。ここは外部 IdP との接点なので、長さ違反も他の
+	// 拒否と同じ ErrLinkingDenied として扱う。
+	if spec.CheckKeyString("sub", claims.Subject, spec.LengthFederatedSubject, spec.BytesFederatedSubject) != nil {
+		return nil, ErrLinkingDenied
+	}
 	now = normalizedNow(now)
 	link, err := deps.Identities.FindBySubject(
 		ctx, connection.TenantID, connection.ID, claims.Subject,

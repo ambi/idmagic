@@ -5,6 +5,7 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // SAML 2.0 IdP の双子定義 (wi-29)。
@@ -61,6 +62,14 @@ type SamlServiceProvider struct {
 	AuthnRequestSigningCertificatePEM string    `json:"authn_request_signing_certificate_pem,omitempty"`
 	CreatedAt                         time.Time `json:"created_at"`
 	UpdatedAt                         time.Time `json:"updated_at"`
+}
+
+// Validate は SP 登録が保存できる形かを検査する。entityID は主キーの成分なので、
+// 契約の上限 (コードポイント) と資源の上限 (バイト) の両方を課す。後者が無いと、
+// 契約を満たす多バイトの entityID が btree の索引行上限で落ち、利用者には 500 しか
+// 届かない。
+func (sp SamlServiceProvider) Validate() error {
+	return spec.CheckKeyString("entity_id", sp.EntityID, spec.LengthSamlEntityID, spec.BytesSamlEntityID)
 }
 
 func (sp SamlServiceProvider) EffectiveIDPProfileID() string {

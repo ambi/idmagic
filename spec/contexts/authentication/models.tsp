@@ -59,6 +59,7 @@ model IdentityProviderConnection {
   token_endpoint?: string;
   jwks_uri?: string;
   saml_sso_url?: string;
+  @maxLength(2048)
   saml_entity_id?: string;
   saml_signing_certificates: string[];
   claim_mapping: ClaimMapping;

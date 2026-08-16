@@ -11,8 +11,9 @@ enum WsFedTokenType {
 model WsFedRelyingParty {
   @doc("所属テナント ID。")
   tenant_id: string = "default";
-  @doc("RP の識別子 (WS-Fed wtrealm / SAML audience)。")
+  @doc("RP の識別子 (WS-Fed wtrealm / SAML audience)。WS-Federation は URI としか定めないので上限は URI 区分に従う。btree の索引行に収める資源上限として、別に 2048 バイトの上限も課す。")
   @minLength(1)
+  @maxLength(2048)
   wtrealm: string;
   @doc("対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。")
   application_id?: unknown;

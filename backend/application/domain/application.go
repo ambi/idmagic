@@ -3,6 +3,8 @@ package domain
 
 import (
 	"errors"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 var (
@@ -65,10 +67,14 @@ func ValidateProtocol(protocol ApplicationProtocol) error {
 		if protocol.Wtrealm == "" {
 			return ErrWsFedWtrealm
 		}
+		// wtrealm は wsfed_relying_parties の主キーの成分になる。上限には
+		// SamlServiceProvider / WsFedRelyingParty と同じ数を使う。
+		return spec.CheckKeyString("wtrealm", protocol.Wtrealm, spec.LengthWtrealm, spec.BytesWtrealm)
 	case ApplicationProtocolSAML:
 		if protocol.EntityID == "" {
 			return ErrSAMLEntityID
 		}
+		return spec.CheckKeyString("entity_id", protocol.EntityID, spec.LengthSamlEntityID, spec.BytesSamlEntityID)
 	}
 	return nil
 }

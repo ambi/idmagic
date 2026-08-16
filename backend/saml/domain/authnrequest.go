@@ -28,6 +28,8 @@ import (
 
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const (
@@ -163,6 +165,13 @@ func ParseAuthnRequest(xml []byte) (AuthnRequest, error) {
 	}
 	if req.ID == "" {
 		return AuthnRequest{}, fmt.Errorf("saml: AuthnRequest is missing ID")
+	}
+	// ID は replay 表の主キーの成分になる。上限が無いと、相手が決めた長さのまま
+	// btree の索引行上限で落ち、SAML の応答ではなく 500 が返る。型付きの
+	// LengthError は包まない。この接点の応答形は SAML が決めており、
+	// Problem Details を返しても相手は読めない。
+	if err := spec.CheckKeyString("ID", req.ID, spec.LengthProtocolMessageID, spec.BytesProtocolMessageID); err != nil {
+		return AuthnRequest{}, fmt.Errorf("saml: AuthnRequest %s", err.Error())
 	}
 	if req.Issuer == "" {
 		return AuthnRequest{}, fmt.Errorf("saml: AuthnRequest is missing Issuer")

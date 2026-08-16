@@ -4,6 +4,7 @@ import (
 	"time"
 
 	claimdomain "github.com/ambi/idmagic/backend/claimmapping/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // WsFedTokenType は発行 assertion の SAML バージョン (wi-61)。RSTR の TokenType にもなる。
@@ -31,6 +32,12 @@ type WsFedRelyingParty struct {
 	EntraProfile  *EntraFederationProfile        `json:"entra_profile,omitempty"`
 	CreatedAt     time.Time                      `json:"created_at"`
 	UpdatedAt     time.Time                      `json:"updated_at"`
+}
+
+// Validate は RP 登録が保存できる形かを検査する。wtrealm は主キーの成分なので、
+// 契約の上限 (コードポイント) と資源の上限 (バイト) の両方を課す。
+func (rp WsFedRelyingParty) Validate() error {
+	return spec.CheckKeyString("wtrealm", rp.Wtrealm, spec.LengthWtrealm, spec.BytesWtrealm)
 }
 
 func (rp WsFedRelyingParty) EffectiveAudience() string {

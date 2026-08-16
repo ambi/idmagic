@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 	"time"
+
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 // ValidateOutboundBaseURL enforces spec/contexts/provisioning.yaml
@@ -234,6 +236,10 @@ func (c *ProvisioningConnection) Quarantine(reason string, now time.Time) error 
 		return ErrConnectionAlreadyQuarantined
 	}
 	now = now.UTC()
+	// reason は連携先が返したエラー文であり、利用者の入力ではない。長すぎることを
+	// 理由に隔離そのものを失敗させると、健全性の記録が失われる方が高くつくので、
+	// 拒否せずここで切り詰める。
+	reason = spec.TruncateChars(reason, spec.LengthQuarantineReason)
 	c.Health, c.QuarantinedAt, c.QuarantineReason, c.UpdatedAt = HealthQuarantined, &now, &reason, now
 	return nil
 }

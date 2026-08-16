@@ -9,6 +9,7 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select } from '../../components/ui/select'
 import { useDictionary } from '../../lib/i18n'
+import { LENGTH } from '../../lib/lengthLimits'
 import {
   AUTH_METHODS,
   type AppType,
@@ -330,6 +331,7 @@ export function AdminApplicationCreatePage({
                       value={wtrealm}
                       onChange={(e) => setWtrealm(e.target.value)}
                       required
+                      maxLength={LENGTH.uri}
                       className="font-mono text-xs"
                       placeholder="urn:app:example"
                     />
@@ -376,6 +378,7 @@ export function AdminApplicationCreatePage({
                       value={samlEntityID}
                       onChange={(e) => setSamlEntityID(e.target.value)}
                       required
+                      maxLength={LENGTH.uri}
                       className="font-mono text-xs"
                       placeholder="https://app.example.com/saml/metadata"
                     />

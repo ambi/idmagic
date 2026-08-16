@@ -1,5 +1,6 @@
 import type { IdentityProviderConnection } from '../../api'
 import { Input } from '../../components/ui/input'
+import { LENGTH } from '../../lib/lengthLimits'
 import type { AdminIdentityProvidersDictionary } from './AdminIdentityProvidersPage.i18n'
 import { Field, type FormState, URLField } from './AdminIdentityProviderFormShared'
 
@@ -66,6 +67,7 @@ export function TrustSourceFields({
           <Field label={t.samlEntityId}>
             <Input
               required
+              maxLength={LENGTH.uri}
               value={form.samlEntityId}
               onChange={(event) => field('samlEntityId', event.target.value)}
             />

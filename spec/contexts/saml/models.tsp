@@ -81,8 +81,9 @@ model SamlServiceProvider {
   @doc("同一テナント内でこのSPに割り当てられたSAML IdP profile。SSO/SLO要求はrouteのprofileと一致する場合だけ受理する。")
   @minLength(1)
   idp_profile_id: string = "default";
-  @doc("SP の識別子 (SAML entityID)。AuthnRequest の Issuer と完全一致しなければならない。")
+  @doc("SP の識別子 (SAML entityID)。AuthnRequest の Issuer と完全一致しなければならない。saml-schema-metadata-2.0.xsd の entityIDType は 1024 文字を定めるが、それを超える非準拠 SP を拒否しないため上限は外側に取る。btree の索引行に収める資源上限として、別に 2048 バイトの上限も課す。")
   @minLength(1)
+  @maxLength(2048)
   entity_id: string;
   @doc("対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。")
   application_id?: unknown;

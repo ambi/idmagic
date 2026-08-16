@@ -116,8 +116,10 @@ model ApplicationProtocol {
   @doc("oidc が指す OAuth2 client_id。")
   client_id?: string;
   @doc("saml が指す SAML entity_id。")
+  @maxLength(2048)
   entity_id?: string;
   @doc("wsfed が指す WS-Fed RP の wtrealm。")
+  @maxLength(2048)
   wtrealm?: string;
 }
 
@@ -274,8 +276,10 @@ model AdminApplicationCreateRequest {
   @doc("token_endpoint_auth_method=private_key_jwt の公開鍵 JWKS URI。")
   jwks_uri?: url;
   @doc("token_endpoint_auth_method=tls_client_auth の証明書 Subject DN。")
+  @maxLength(2048)
   tls_client_auth_subject_dn?: string;
   @doc("type=wsfed のとき必須。生成する WS-Fed RP の wtrealm。")
+  @maxLength(2048)
   wtrealm?: string;
   @doc("type=wsfed のとき必須。許可する wreply。")
   reply_urls?: string[];
@@ -284,6 +288,7 @@ model AdminApplicationCreateRequest {
   @doc("type=wsfed の NameID ソース属性。")
   name_id_source?: string;
   @doc("type=saml のとき必須。生成する SAML SP の entity ID。")
+  @maxLength(2048)
   entity_id?: string;
   @doc("type=saml のとき必須。Assertion Consumer Service URL。")
   acs_urls?: string[];

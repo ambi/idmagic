@@ -82,6 +82,9 @@ var oauth2ClientSchema = z.Struct(z.Shape{
 	"ClientName": z.Ptr(
 		spec.Chars(1, spec.LengthDisplayName),
 	),
+	// 証明書の Subject DN は外部が値を決める。索引の鍵ではないので資源の上限は
+	// 要らないが、保存量を無制限にしてよい理由にもならない。
+	"TlsClientAuthSubjectDN": z.Ptr(spec.CharsAtMost(spec.LengthSubjectDN)),
 	"ClientType": z.StringLike[spec.ClientType]().TestFunc(
 		func(value *spec.ClientType, _ z.Ctx) bool { return value.Valid() },
 		z.Message("client_type is not in enum"),

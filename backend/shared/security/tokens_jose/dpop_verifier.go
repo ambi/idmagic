@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const (
@@ -145,6 +146,12 @@ func verifyDPoP(
 	jti, _ := payload["jti"].(string)
 	if jti == "" {
 		return nil, errors.New("dpop: jti required")
+	}
+	// jti は replay 表の主キーの成分になる。上限が無いと、client が決めた長さの
+	// まま btree の索引行上限で落ちる。応答形は OAuth 2.0 が決めるので、型付きの
+	// LengthError は返さない。
+	if err := spec.CheckKeyString("jti", jti, spec.LengthProtocolMessageID, spec.BytesProtocolMessageID); err != nil {
+		return nil, fmt.Errorf("dpop: %s", err.Error())
 	}
 	isNew, err := replay.RecordIfNew(ctx, jti, dpopJTIReplayWindowSeconds, now)
 	if err != nil {

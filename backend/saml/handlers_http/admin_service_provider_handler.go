@@ -116,6 +116,12 @@ func (d Deps) handleUpsertServiceProvider(c *echo.Context) error {
 		AuthnRequestSigningCertificatePEM: strings.TrimSpace(req.SigningCertificatePEM),
 		CreatedAt:                         now,
 	}
+	// 長さの上限は domain が持つ。エラーをそのまま返して大域のエラー写像に
+	// 422 を作らせる。ここで WriteBrowserError を挟むと 400 になり、
+	// wi-128 が長さ違反へ与えた扱いから外れる。
+	if err := sp.Validate(); err != nil {
+		return err
+	}
 	status := http.StatusCreated
 	if existing != nil {
 		sp.CreatedAt = existing.CreatedAt

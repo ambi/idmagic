@@ -239,6 +239,10 @@ CREATE TABLE webauthn_credentials (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     last_used_at TIMESTAMPTZ,
+    -- credential_id は authenticator が決める。WebAuthn は credential ID を
+    -- 1023 バイト以下と定めるので base64url で 1364 文字になる。
+    CONSTRAINT webauthn_credentials_credential_id_length
+        CHECK (char_length(credential_id) <= 2048 AND octet_length(credential_id) <= 2048),
     CONSTRAINT webauthn_credentials_user_id_fkey
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -333,6 +337,10 @@ CREATE TABLE signing_keys (
     retired_at TIMESTAMPTZ,
     expires_at TIMESTAMPTZ,
     archived_at TIMESTAMPTZ,
+    -- kid は IdMagic が生成する RFC 7638 の JWK thumbprint (base64url 43 文字)。
+    -- 外部入力に対する拒否ではなく、生成が壊れたことを検知するための上限。
+    CONSTRAINT signing_keys_kid_length
+        CHECK (char_length(kid) <= 64 AND octet_length(kid) <= 64),
     CONSTRAINT signing_keys_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT
 );
@@ -462,6 +470,8 @@ CREATE TABLE federated_identities (
     linked_at TIMESTAMPTZ NOT NULL,
     last_login_at TIMESTAMPTZ,
     PRIMARY KEY (tenant_id, provider_id, external_subject),
+    CONSTRAINT federated_identities_external_subject_length
+        CHECK (char_length(external_subject) <= 512 AND octet_length(external_subject) <= 1024),
     CONSTRAINT federated_identities_tenant_id_provider_id_local_user_id_key
         UNIQUE (tenant_id, provider_id, local_user_id),
     CONSTRAINT federated_identities_provider_fkey
@@ -497,6 +507,8 @@ CREATE TABLE federated_response_replays (
     response_id TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     PRIMARY KEY (tenant_id, response_id),
+    CONSTRAINT federated_response_replays_response_id_length
+        CHECK (char_length(response_id) <= 256 AND octet_length(response_id) <= 256),
     CONSTRAINT federated_response_replays_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
@@ -758,7 +770,9 @@ CREATE TABLE oauth2_clients (
         FOREIGN KEY (application_id, tenant_id, application_protocol_type)
         REFERENCES applications(id, tenant_id, protocol_type) ON DELETE CASCADE,
     CONSTRAINT oauth2_clients_client_name_length
-        CHECK (client_name IS NULL OR char_length(client_name) <= 200)
+        CHECK (client_name IS NULL OR char_length(client_name) <= 200),
+    CONSTRAINT oauth2_clients_tls_client_auth_subject_dn_length
+        CHECK (tls_client_auth_subject_dn IS NULL OR char_length(tls_client_auth_subject_dn) <= 2048)
 );
 
 CREATE INDEX oauth2_clients_application_id_idx
@@ -1007,6 +1021,11 @@ CREATE TABLE saml_service_providers (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, entity_id),
+    -- entity_id は主キーの成分なので、契約の上限 (コードポイント) と、btree の索引行に
+    -- 収まることを保証する資源の上限 (バイト) の両方を課す。1 列に CHECK を 2 つ並べると
+    -- psqldef の差分が収束しないため、1 つの制約にまとめる。
+    CONSTRAINT saml_service_providers_entity_id_length
+        CHECK (char_length(entity_id) <= 2048 AND octet_length(entity_id) <= 2048),
     CONSTRAINT saml_service_providers_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT saml_service_providers_idp_profile_fkey
@@ -1035,6 +1054,8 @@ CREATE TABLE wsfed_relying_parties (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, wtrealm),
+    CONSTRAINT wsfed_relying_parties_wtrealm_length
+        CHECK (char_length(wtrealm) <= 2048 AND octet_length(wtrealm) <= 2048),
     CONSTRAINT wsfed_relying_parties_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT wsfed_relying_parties_application_fkey
@@ -1123,6 +1144,10 @@ CREATE TABLE scim_user_refs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),
+    -- scim_id は IdMagic が採番する (RFC 7643 の id は service provider が割り当てる)。
+    -- 外部入力に対する拒否ではなく、採番が壊れたことを検知するための上限。
+    CONSTRAINT scim_user_refs_scim_id_length
+        CHECK (char_length(scim_id) <= 64 AND octet_length(scim_id) <= 64),
     CONSTRAINT scim_user_refs_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT scim_user_refs_user_id_fkey
@@ -1136,6 +1161,8 @@ CREATE TABLE scim_group_refs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, scim_id),
+    CONSTRAINT scim_group_refs_scim_id_length
+        CHECK (char_length(scim_id) <= 64 AND octet_length(scim_id) <= 64),
     CONSTRAINT scim_group_refs_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT scim_group_refs_group_id_fkey
@@ -1295,7 +1322,11 @@ CREATE TABLE provisioning_connections (
     CONSTRAINT provisioning_connections_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE RESTRICT,
     CONSTRAINT provisioning_connections_quarantine_check
-        CHECK ((health = 'quarantined') = (quarantined_at IS NOT NULL))
+        CHECK ((health = 'quarantined') = (quarantined_at IS NOT NULL)),
+    -- 連携先が返したエラー文。書き込み側が切り詰めるので、ここで落ちるのは
+    -- 切り詰めを通らない経路ができたときだけである。
+    CONSTRAINT provisioning_connections_quarantine_reason_length
+        CHECK (quarantine_reason IS NULL OR char_length(quarantine_reason) <= 500)
 );
 
 CREATE TABLE provisioning_remote_links (
@@ -1430,6 +1461,8 @@ CREATE UNLOGGED TABLE oauth2_replay_jtis (
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, kind, jti),
+    CONSTRAINT oauth2_replay_jtis_jti_length
+        CHECK (char_length(jti) <= 256 AND octet_length(jti) <= 256),
     CONSTRAINT oauth2_replay_jtis_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
@@ -1442,6 +1475,10 @@ CREATE TABLE oauth2_access_token_denylist (
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, jti),
+    -- IdMagic が発行した token の jti なので、外部入力に対する拒否ではなく
+    -- 採番が壊れたことを検知するための上限。
+    CONSTRAINT oauth2_access_token_denylist_jti_length
+        CHECK (char_length(jti) <= 64 AND octet_length(jti) <= 64),
     CONSTRAINT oauth2_access_token_denylist_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
@@ -1500,6 +1537,12 @@ CREATE UNLOGGED TABLE saml_authnrequest_replays (
     expires_at TIMESTAMPTZ NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (tenant_id, entity_id, request_id),
+    -- 複合鍵は成分ごとではなく索引行 1 件として制限されるので、合計を予算内に
+    -- 収める。16 + 2048 + 256 = 2320 バイト。
+    CONSTRAINT saml_authnrequest_replays_entity_id_length
+        CHECK (char_length(entity_id) <= 2048 AND octet_length(entity_id) <= 2048),
+    CONSTRAINT saml_authnrequest_replays_request_id_length
+        CHECK (char_length(request_id) <= 256 AND octet_length(request_id) <= 256),
     CONSTRAINT saml_authnrequest_replays_tenant_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );

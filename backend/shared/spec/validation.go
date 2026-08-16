@@ -149,7 +149,7 @@ func zogError(issues z.ZogIssueList) error {
 		if issue == nil {
 			continue
 		}
-		if issue.Code == issueCodeMaxChars || issue.Code == issueCodeMinChars {
+		if issue.Code == issueCodeMaxChars || issue.Code == issueCodeMinChars || issue.Code == issueCodeMaxBytes {
 			length = true
 		}
 		message := issue.Message

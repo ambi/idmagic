@@ -82,6 +82,11 @@ func (d Deps) handleUpsertRelyingParty(c *echo.Context) error {
 		ClaimPolicy: req.ClaimPolicy,
 		CreatedAt:   now,
 	}
+	// 長さの上限は domain が持つ。エラーをそのまま返して大域のエラー写像に
+	// 422 を作らせる。
+	if err := rp.Validate(); err != nil {
+		return err
+	}
 	status := http.StatusCreated
 	if existing != nil {
 		rp.CreatedAt = existing.CreatedAt

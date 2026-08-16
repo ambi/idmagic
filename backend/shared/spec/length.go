@@ -50,11 +50,62 @@ const (
 	LengthChromeText = 280
 )
 
+// 索引の鍵の成分になる文字列の、契約の上限 (コードポイント)。資源の上限 (バイト) が
+// 対になっており、両方を課す。数の根拠は spec/SPECIFICATION.md の
+// "String length limits" にある。
+const (
+	// LengthSamlEntityID は SAML SP の entityID。saml-schema-metadata-2.0.xsd の
+	// entityIDType は 1024 文字を定めるが、それを超える非準拠 SP を拒否しないため
+	// URI 区分の外側に取る。
+	LengthSamlEntityID = LengthURI
+	// LengthWtrealm は WS-Federation の relying party 識別子。標準は URI としか
+	// 定めないので URI 区分に従う。
+	LengthWtrealm = LengthURI
+	// LengthProtocolMessageID は相手のプロトコルメッセージが名乗る ID。SAML の
+	// AuthnRequest / Response の ID、DPoP proof と client assertion の jti。
+	// いずれの標準も長さを定めていない。
+	LengthProtocolMessageID = LengthExternalID
+	// LengthFederatedSubject は外部 IdP が名乗る subject。OpenID Connect Core 1.0
+	// の sub は 255 ASCII 文字以下だが、SAML の NameID には規定がないので広く取る。
+	LengthFederatedSubject = 512
+	// LengthWebAuthnCredentialID は authenticator が決める credential ID の
+	// base64url 表現。WebAuthn は credential ID を 1023 バイト以下と定めるので
+	// base64url で 1364 文字になる。
+	LengthWebAuthnCredentialID = LengthURI
+	// LengthSubjectDN は tls_client_auth の証明書 Subject DN。索引の鍵ではないが
+	// 外部が値を決めるので上限を置く。
+	LengthSubjectDN = LengthURI
+	// LengthQuarantineReason は連携先が返したエラー文。利用者の入力ではないので
+	// 超過は拒否せず、書き込み側が TruncateChars で切り詰める。
+	LengthQuarantineReason = LengthDescription
+)
+
+// 資源の上限 (バイト)。btree v4 の索引行に収まることを保証するためだけの数で、
+// 契約の上限とは役割が違う。バイトで数えるのは、btree が制限しているものが
+// バイトだからである。
+const (
+	BytesSamlEntityID          = 2048
+	BytesWtrealm               = 2048
+	BytesProtocolMessageID     = 256
+	BytesFederatedSubject      = 1024
+	BytesWebAuthnCredentialID  = 2048
+	BytesGeneratedKeyComponent = LengthHandle
+)
+
+// BtreeIndexRowLimitBytes は PostgreSQL の btree v4 が索引行 1 件に課す上限。
+// これを超えると挿入が SQLSTATE 54000 で落ちる。
+const BtreeIndexRowLimitBytes = 2704
+
+// KeyByteBudget は索引の鍵 1 件あたりに使ってよいバイト数。btree の上限との差が、
+// 索引タプル自身が使う領域と、将来列を足すための余白になる。
+const KeyByteBudget = 2400
+
 // 長さ違反だけを他の検証失敗と区別するための issue code。HTTP 層はこの区別を
 // 使って 422 を返す。
 const (
 	issueCodeMaxChars = "max_chars"
 	issueCodeMinChars = "min_chars"
+	issueCodeMaxBytes = "max_bytes"
 )
 
 // Chars は下限と上限をコードポイント数で課す文字列スキーマを返す。zog の Min / Max は
@@ -81,6 +132,17 @@ func Chars(minimum, maximum int) *z.StringSchema[string] {
 // 扱う省略可能なフィールドで使う。
 func CharsAtMost(maximum int) *z.StringSchema[string] { return Chars(0, maximum) }
 
+// KeyString は索引の鍵の成分になる文字列のスキーマを返す。契約の上限 (コードポイント)
+// と資源の上限 (バイト) を重ねて課す。コードポイントの上限だけでは、標準が許す
+// 長さのまま UTF-8 で btree の索引行上限を超える値を通してしまう。
+func KeyString(maxChars, maxBytes int) *z.StringSchema[string] {
+	return Chars(0, maxChars).TestFunc(
+		func(value *string, _ z.Ctx) bool { return len(*value) <= maxBytes },
+		z.IssueCode(issueCodeMaxBytes),
+		z.Message(fmt.Sprintf("must be at most %d bytes", maxBytes)),
+	)
+}
+
 // LengthError は文字列フィールドが長さの制約に違反したことを表す。解析はできた
 // 内容が業務規則に違反する場合なので、HTTP 層はこれを 422 に写像する。長さ以外の
 // 検証失敗は素の error のままにして、保存済みデータの破損がサーバの不具合として
@@ -103,6 +165,36 @@ func CheckMaxChars(field, value string, maximum int) error {
 	return &LengthError{
 		message: fmt.Sprintf("%s: must be at most %d characters, got %d", field, maximum, actual),
 	}
+}
+
+// CheckMaxBytes は資源の上限を zog スキーマを経由しない検査から課す。field には
+// 公開契約の wire 名を渡す。上限内なら nil を返す。
+func CheckMaxBytes(field, value string, maximum int) error {
+	actual := len(value)
+	if actual <= maximum {
+		return nil
+	}
+	return &LengthError{
+		message: fmt.Sprintf("%s: must be at most %d bytes, got %d", field, maximum, actual),
+	}
+}
+
+// CheckKeyString は索引の鍵の成分に契約の上限と資源の上限の両方を課す。
+func CheckKeyString(field, value string, maxChars, maxBytes int) error {
+	if err := CheckMaxChars(field, value, maxChars); err != nil {
+		return err
+	}
+	return CheckMaxBytes(field, value, maxBytes)
+}
+
+// TruncateChars は値をコードポイント単位で切り詰める。利用者の入力ではなく、
+// 連携先が返した診断用の文字列にだけ使う。入力を黙って短くしてよい場面は他にない。
+func TruncateChars(value string, maximum int) string {
+	if utf8.RuneCountInString(value) <= maximum {
+		return value
+	}
+	runes := []rune(value)
+	return string(runes[:maximum])
 }
 
 // snakeCase は zog が返す Go の構造体フィールド名を、公開契約が使う wire 名へ

@@ -26,7 +26,9 @@ type WebAuthnCredential struct {
 }
 
 var webAuthnCredentialSchema = z.Struct(z.Shape{
-	"CredentialID": z.String().Required(),
+	// CredentialID は主キーそのもの。WebAuthn は credential ID を 1023 バイト
+	// 以下と定めるので base64url で 1364 文字になり、上限は余白を残した数である。
+	"CredentialID": spec.KeyString(spec.LengthWebAuthnCredentialID, spec.BytesWebAuthnCredentialID).Required(),
 	"UserID":       z.String().Required(),
 	"PublicKey":    z.String().Required(),
 	"CreatedAt":    z.Time().Required(),

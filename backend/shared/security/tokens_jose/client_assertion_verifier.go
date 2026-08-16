@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ambi/idmagic/backend/oauth2/ports"
+	"github.com/ambi/idmagic/backend/shared/spec"
 )
 
 const (
@@ -94,6 +95,11 @@ func VerifyClientAssertion(
 	jti, _ := payload["jti"].(string)
 	if jti == "" {
 		return nil, errors.New("client_assertion: jti required")
+	}
+	// jti は replay 表の主キーの成分になる。応答形は OAuth 2.0 が決めるので、
+	// 型付きの LengthError は返さない。
+	if err := spec.CheckKeyString("jti", jti, spec.LengthProtocolMessageID, spec.BytesProtocolMessageID); err != nil {
+		return nil, fmt.Errorf("client_assertion: %s", err.Error())
 	}
 
 	jwks, err := keysFn(ctx, iss)
