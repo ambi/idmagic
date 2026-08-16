@@ -1,13 +1,13 @@
 ---
 context: repository
-updated_at: 2026-08-15
+updated_at: 2026-08-16
 ---
 
 # Whole-System Specification
 
 ## Overview
 
-本書は、システム全体に適用する仕様と設計を記録する。単一の Bounded Context に属する振る舞いと設計は、その Context の `spec/contexts/<context>/SPECIFICATION.md` に置く。API とモデルの契約は隣接する TypeSpec に、変更ごとの検討と実装の経緯は work item に記録する。
+この文書は、システム全体に適用する仕様と設計を記録する。一つの Bounded Context に属する振る舞いと設計は、その Context の `spec/contexts/<context>/SPECIFICATION.md` に置く。API とモデルの契約は隣接する TypeSpec に、変更ごとの検討と実装の経緯は work item に記録する。
 
 エンドポイント、フィールド、画面など、個別機能の詳細はここに置かない。それぞれ `spec/contexts/*/*.tsp`、コード、UI 文書を正とする。
 
@@ -16,11 +16,11 @@ updated_at: 2026-08-15
 機能の変更では、次の順に読む。
 
 1. `spec/SPECIFICATION.md`。システム全体の設計と所有権の所在をつかむ。
-2. 所有する Context の `SPECIFICATION.md`、`models.tsp`、`main.tsp`。変更は仕様が先である。
-3. 進行中の work item。変更ごとの設計・実装の経緯が載っている。
-4. Go の実装。`domain/`、`usecase/`、`ports/`、関係する `<role>_<technology>/` アダプターの順。
-5. `backend/shared/` と `backend/cmd/internal/bootstrap/`。横断的な HTTP や永続化の振る舞いに触れるときだけ読む。
-6. UI に触れるときは `spec/contexts/system/SPECIFICATION.md` と `frontend/src/features/README.md` を先に読む。
+2. 所有する Context の `SPECIFICATION.md`、`models.tsp`、`main.tsp`。変更に先立って仕様を更新する。
+3. 進行中の work item。変更ごとの設計と実装の経緯を確認する。
+4. Go の実装。`domain/`、`usecase/`、`ports/`、関連する `<role>_<technology>/` アダプターの順に読む。
+5. `backend/shared/` と `backend/cmd/internal/bootstrap/`。横断的な HTTP や永続化の振る舞いを変更するときだけ読む。
+6. UI を変更するときは `spec/contexts/system/SPECIFICATION.md` と `frontend/src/features/README.md` を先に読む。
 
 実装から仕様を探す場合は、原則としてパッケージ名に対応する Context を参照する。Context に属さない技術的な共通機能は `backend/shared/` に集約している。
 
@@ -58,14 +58,14 @@ updated_at: 2026-08-15
 
 ### Stack
 
-- バックエンド: Go。
-- フロントエンド: React/TypeScript、Bun。
-- DB: PostgreSQL。
-- インフラ: Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Promtail、k6。
+- **バックエンド**：Go。
+- **フロントエンド**：React/TypeScript、Bun。
+- **データベース**：PostgreSQL。
+- **インフラ基盤**：Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Promtail、k6。
 
 ### Context Map
 
-この図は DDD の Context Map であり、ドメイン上の関係と統合境界を示す。ソースコードの import 関係を網羅するものではない。矢印は supplier (上流) から customer (下流) へ向かう。`OHS/PL` は Published Language を伴う Open Host Service、`C/S` は Customer/Supplier、`ACL` は Anti-Corruption Layer、`Events` は公開イベントによる関係を表す。
+この図は DDD の Context Map であり、ドメイン上の関係と統合境界を示す。ソースコードの import 関係を網羅するものではない。矢印は Supplier（上流）から Customer（下流）へ向かう。`OHS/PL` は Published Language を伴う Open Host Service、`C/S` は Customer/Supplier、`ACL` は Anti-Corruption Layer、`Events` は公開イベントによる関係を表す。
 
 ```mermaid
 flowchart LR
@@ -137,8 +137,8 @@ flowchart LR
 | `IdManagement` | `backend/idmanagement` | User、Group、Agent、自身のプロフィール、アイデンティティのライフサイクル、CEL による動的メンバーシップ規則と再評価。 |
 | `IdGovernance` | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション。記録の正は IdManagement に残る。 |
 | `Authentication` | `backend/authentication` | 資格情報の検証、MFA、ログインセッション、ステップアップ認証、パスワードの変更とリセット、認証イベント。 |
-| `OAuth2` | `backend/oauth2` | OAuth 2.0 / OIDC のプロトコルのエンドポイント、クライアント、同意、トークン、ロールのポリシー。 |
-| `Application` | `backend/application` | Application のカタログ、プロトコルの束縛、割り当て、ポータルの並び順と分類。 |
+| `OAuth2` | `backend/oauth2` | OAuth 2.0 と OIDC のプロトコルエンドポイント、クライアント、同意、トークン、ロールのポリシー。 |
+| `Application` | `backend/application` | Application のカタログ、プロトコルのバインディング、割り当て、ポータルの並び順と分類。 |
 | `Authorization` | `backend/authorization` | リソース 1 件ごとの細粒度認可。テナントごとの認可モデル（リソース型と関係の定義）、関係タプル、深さ制限つきのグラフ評価、整合トークンを所有する。判定の合成そのものは持たず、関係の成否を事実として OAuth2 が所有する AuthZEN の `Authorizer` ポートへ渡す。 |
 | `Audit` | `backend/audit` | 全 Context にまたがる監査イベントの Read Model。検索属性の登録簿、個人識別情報の変換、管理 API、保持期間を所有する。 |
 | `ClaimMapping` | `backend/claimmapping` | プロトコルに依存しないクレーム開示ポリシー、アイデンティティ属性からクレームへのマッピング、フェイルクローズな検証。 |
@@ -147,16 +147,16 @@ flowchart LR
 | `ApiTokens` | `backend/apitoken` | 管理 API と SCIM API を認証するテナント単位の API アクセストークン（`idmagic_pat_` で始まる）。発行、失効、一覧、スコープの語彙を担う。 |
 | `Jobs` | `backend/jobs` | テナント境界を保つ汎用の非同期ジョブ基盤。 |
 | `Seeding` | `backend/seeding` | 環境ごとの構成、プレビュー、機密情報を伏せた計画、適用ポリシー。業務データとその永続化は、記録を所有する各 Context に残る。 |
-| `SigningKeys` | `backend/signingkeys` | テナントと用途で区切られた鍵のメタデータ、X.509 資格情報、ローテーション、Repository のポート、管理 API と JWKS の HTTP エンドポイント、メモリ・PostgreSQL・Vault の各アダプター。JWT と XML の署名処理はプロトコル側のアダプターに残す。 |
-| `DataKeys` | `backend/datakeys` | MFA の TOTP seed など、データベースに保存する必要がある可逆なシークレットを保護するための、テナントごとの `DataEncryptionKey` (DEK) のメタデータとライフサイクル。署名鍵は `SigningKeys`、`EnvelopeCrypto` ポートは `backend/shared/security` が所有する。 |
+| `SigningKeys` | `backend/signingkeys` | テナントと用途で区切られた鍵のメタデータ、X.509 資格情報、ローテーション、Repository のポート、管理 API と JWKS の HTTP エンドポイント、メモリ、PostgreSQL、Vault の各アダプター。JWT と XML の署名処理はプロトコルのアダプターに残す。 |
+| `DataKeys` | `backend/datakeys` | MFA の TOTP シードなど、データベースに保存する必要がある可逆なシークレットを保護するテナントごとの `DataEncryptionKey`（DEK）のメタデータとライフサイクル。署名鍵は `SigningKeys`、`EnvelopeCrypto` ポートは `backend/shared/security` が所有する。 |
 | `WsFederation` | `backend/wsfederation` | WS-Federation のパッシブプロファイル、WS-Trust のアクティブ STS、フェデレーションメタデータ、MEX、RP の信頼、リクエスト元テナントによる XML 署名。 |
 | `Saml` | `backend/saml` | SAML 2.0 IdP、SP の信頼、メタデータ、SSO と SLO、リクエスト元テナントによる XML 署名。 |
-| `WorkloadIdentity` | `backend/workloadidentity` | エージェントの実行環境に対するワークロードアイデンティティフェデレーション。登録済みの外部アテステーション発行者 (`WorkloadTrustBundle`) と、subject のパターンから `Agent` への対応付け (`AgentWorkloadBinding`) を持つ。OAuth2 のトークン交換はこれを使い、長期シークレットを配布せずに外部の JWT-SVID を IdMagic のトークンへ交換する。 |
+| `WorkloadIdentity` | `backend/workloadidentity` | エージェントの実行環境に対するワークロードアイデンティティフェデレーション。登録済みの外部アテステーション発行者（`WorkloadTrustBundle`）と、`subject` のパターンから `Agent` への対応付け（`AgentWorkloadBinding`）を持つ。OAuth2 のトークン交換はこれを使い、長期シークレットを配布せずに外部の JWT-SVID を IdMagic のトークンへ交換する。 |
 | `SharedSignals` | `backend/sharedsignals` | OpenID Shared Signals Framework（SSF）と RFC 8417 の Security Event Token（SET）による継続的アクセス評価（CAEP）およびエージェントのほぼ即時の失効。 |
 
 ### Conventions
 
-Bounded Context は通常この形を取る。
+Bounded Context は通常、次の 4 層で構成する。
 
 ```text
 backend/<context>/
@@ -174,7 +174,7 @@ backend/<context>/
 
 具象のドメインイベントの構造体は、それを所有する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` はイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを持つ。
 
-2 つ以上の独立した機能を持つ Context は、4 層の構成に機能ごとの垂直分割を追加してよい: `backend/<context>/<feature>/{domain,ports,usecase,<role>_<technology>}/`。機能が 1 つしかない Context は分割しない。
+2 つ以上の独立した機能を持つ Context は、4 層の構成に機能ごとの垂直分割を追加してよい：`backend/<context>/<feature>/{domain,ports,usecase,<role>_<technology>}/`。機能が 1 つしかない Context は分割しない。
 
 ```text
 backend/idmanagement/
@@ -188,13 +188,13 @@ backend/idmanagement/
 
 #### Frontend Component Structure
 
-仕様上の機能とそろえた UI の境界は `frontend/src/features/<feature>/` に置く。その機能のビュー、ローカルコンポーネント、ヘルパー、テスト、ローカライズ辞書 (`*.i18n.ts`) は必ずそのディレクトリに置く。特定の機能境界にひも付かない、横断的で再利用可能なコンポーネントは `frontend/src/components/` に置く。
+仕様上の機能とそろえた UI の境界は `frontend/src/features/<feature>/` に置く。その機能のビュー、ローカルコンポーネント、ヘルパー、テスト、ローカライズ辞書（`*.i18n.ts`）は必ずそのディレクトリに置く。特定の機能境界にひも付かない、横断的で再利用可能なコンポーネントは `frontend/src/components/` に置く。
 
 ### Cross-cutting Concerns
 
 #### HTTP routing
 
-HTTP ルーティングは `backend/shared/http/server_http/routes.go` で組み立てる。ここがテナント単位のルートをデフォルトのテナントと `/realms/:tenant_id` の両方に登録し、制御面のテナント管理だけを `/realms/default/admin/tenants` に分離する。
+HTTP ルーティングは `backend/shared/http/server_http/routes.go` で組み立てる。ここがテナント単位のルートを既定のテナントと `/realms/:tenant_id` の両方に登録し、制御面のテナント管理だけを `/realms/default/admin/tenants` に分離する。
 
 各 Context のルーティングは `backend/<context>/handlers_http/routes.go` にある。正確なエンドポイントの一覧はそのファイルを参照する。新しい HTTP API は、それを所有する Context の `routes.go` に、同じ `handlers_http` 配下のハンドラーとともに登録する。Context 固有の Repository とルーティングの接続は `backend/<context>/module.go` に集約し、中央のルーターは Module を呼ぶだけにする。
 
@@ -202,26 +202,26 @@ HTTP ルーティングは `backend/shared/http/server_http/routes.go` で組み
 
 すべてのリクエストに `request_id` を割り当て、`X-Request-ID` レスポンスヘッダーと、そのリクエストに関するすべてのアプリケーションログへ付与する。`OBSERVABILITY=otel` の場合は `trace_id` と `span_id` も付与する。
 
-`X-Request-ID` はクライアントが制御できるため、デフォルトでは受信値を無視して新しい ID を生成する。これにより、クライアントによる ID の偽装や意図的な衝突を防ぐ。`REQUEST_ID_TRUST_INBOUND=true` を設定できるのは、信頼できる境界プロキシがヘッダーを生成または無害化する場合だけである。クライアントの値をそのまま転送するプロキシは信頼してはならない。受信値を利用する場合も長さと文字種を制限し、ヘッダーとログへの注入を防ぐ。
+`X-Request-ID` はクライアントが制御できるため、既定では受信値を無視して新しい ID を生成する。これにより、クライアントによる ID の偽装や意図的な衝突を防ぐ。`REQUEST_ID_TRUST_INBOUND=true` を設定できるのは、信頼できる境界プロキシがヘッダーを生成または無害化する場合だけである。クライアントの値をそのまま転送するプロキシは信頼してはならない。受信値を利用する場合も長さと文字種を制限し、ヘッダーとログへの注入を防ぐ。
 
 #### Cursor pagination
 
-管理用の一覧 API は、署名済みで版の付いたキーセット方式のカーソルを RFC 8288 の `Link` レスポンスヘッダーで運ぶ。カーソルは自身のテナント、問い合わせと並び順の同一性、方向、行の境界を束縛する。
+管理用の一覧 API は、署名済みで版の付いたキーセット方式のカーソルを RFC 8288 の `Link` レスポンスヘッダーで返す。カーソルは自身のテナント、問い合わせと並び順の同一性、方向、行の境界を束縛する。
 
 #### HTTP error responses
 
-汎用 API のエラーレスポンスには、デフォルトの形式として RFC 9457 Problem Details（`application/problem+json`、`type`、`title`、`status`、`detail`、`instance`）を使う。`instance` には上記のリクエスト相関用の `request_id` を載せる。HTTP ステータスコードは RFC 9110 に従い、400 はリクエストを解析できないこと（不正な JSON、必須構造の欠落）を、422 は解析できた内容が業務規則に違反すること（不正なロール、参照の不一致、ポリシー違反）を表す。
+汎用 API のエラーレスポンスには、既定形式として RFC 9457 Problem Details（`application/problem+json`、`type`、`title`、`status`、`detail`、`instance`）を使う。`instance` には上記のリクエスト相関用の `request_id` を載せる。HTTP ステータスコードは RFC 9110 に従い、400 はリクエストを解析できないこと（不正な JSON、必須構造の欠落）を、422 は解析できた内容が業務規則に違反すること（不正なロール、参照の不一致、ポリシー違反）を表す。
 
 OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handlers_http`）、Dynamic Client Registration（RFC 7591、`backend/oauth2/handlers_http` の一部）は、各標準が定めるエラーレスポンスを返す。標準に従うクライアントとの相互運用性を保つため、これらには Problem Details を適用しない。
 
 #### Metrics
 
-`GET /metrics` は Prometheus / OpenMetrics 形式のメトリクスを公開する。ルートパターンごとの HTTP RED (件数、`status_code` によるエラー率、所要時間、処理中の数) に加え、SLO とアラートに使う認証の golden signal を含む。
+`GET /metrics` は Prometheus と OpenMetrics の形式でメトリクスを公開する。ルートパターンごとの HTTP RED（件数、`status_code` によるエラー率、所要時間、処理中の数）に加え、SLO とアラートに使う認証のゴールデンシグナルを含む。
 
 | Metric | Labels | Verifies |
 | --- | --- | --- |
 | `http_requests_total`, `http_request_duration_seconds`, `http_requests_in_flight` | `route`, `method`, `status_code` | 接点ごとの遅延とエラー率の目標 |
-| `authn_login_attempts_total` | `outcome`, `reason_class`, `method` | ログインの成否という golden signal |
+| `authn_login_attempts_total` | `outcome`, `reason_class`, `method` | ログインの成否というゴールデンシグナル |
 | `authn_login_throttle_total` | `policy`, `outcome` | ログインのスロットルの発動率 |
 | `endpoint_rate_limit_total` | `policy`, `outcome` | エンドポイントの流量制限の発動率 |
 | `oauth2_token_issuance_total`, `oauth2_token_issuance_duration_seconds` | `grant_type`, `outcome` | grant 別の `/token` の発行率と遅延 |
@@ -231,38 +231,38 @@ OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handl
 
 #### Logging
 
-アプリケーションログは、`timestamp`、`level`、`service`、`message` と、相関用の `trace_id`、`span_id`、`request_id` を持つ JSON Lines として標準出力へ書く (`backend/shared/logging`)。プロセス自身は他の場所へログを書かない。
+アプリケーションログは、`timestamp`、`level`、`service`、`message` と、相関用の `trace_id`、`span_id`、`request_id` を持つ JSON Lines として標準出力へ書く（`backend/shared/logging`）。プロセス自身は他の場所へログを書かない。
 
-**ローカル** (`infra/docker/docker-compose.dev.yaml`): Promtail は Docker Engine API (`docker_sd_configs`) ですべてのコンテナを検出し、ログを Loki へ送る。ホストのログディレクトリをマウントする必要はなく、Docker ソケットだけを使用する。Grafana には初回起動時に Prometheus と Loki のデータソース、および golden signal のダッシュボードを設定する。`docker compose up` だけでメトリクスとログを閲覧できる。
+**ローカル**（`infra/docker/docker-compose.dev.yaml`）：Promtail は Docker Engine API（`docker_sd_configs`）ですべてのコンテナを検出し、ログを Loki へ送る。ホストのログディレクトリをマウントする必要はなく、Docker ソケットだけを使用する。Grafana には初回起動時に Prometheus と Loki のデータソースとゴールデンシグナルのダッシュボードを設定する。`just dev-compose` だけでメトリクスとログを閲覧できる。
 
-**Kubernetes** (`infra/k8s/monitoring/loki/`): Promtail は DaemonSet として動作し、`kubernetes_sd_configs` で pod を検出して `/var/log/pods` を追尾する。Loki は永続ボリュームを持つ単一レプリカの StatefulSet として動作する。ファイルシステムへの保存は開発用のデフォルトであり、本番クラスターではオブジェクトストレージを使う保持設定で上書きする。
+**Kubernetes**（`infra/k8s/monitoring/loki/`）：Promtail は DaemonSet として動作し、`kubernetes_sd_configs` で Pod を検出して `/var/log/pods` を追尾する。Loki は永続ボリュームを持つ単一レプリカの StatefulSet として動作する。ファイルシステムへの保存は開発用の既定であり、本番クラスターではオブジェクトストレージを使う保持設定で上書きする。
 
 | Field | Loki treatment | Why |
 | --- | --- | --- |
-| `service`, `level` | index label | 有限の集合である |
-| `trace_id`, `span_id`, `request_id` | structured metadata (not a label) | 値が限られない — ここでインデックスのラベルにすると組み合わせが爆発する。[Metrics](#metrics) が `tenant_id` と `user_id` について述べたのと同じ理由 |
+| `service`, `level` | インデックスラベル | 有限の集合である |
+| `trace_id`, `span_id`, `request_id` | 構造化メタデータ（ラベルではない） | 値の種類に上限がなく、インデックスラベルにすると組み合わせが爆発する。[Metrics](#metrics) で `tenant_id` と `user_id` をラベルにしない理由と同じ |
 
 #### HTTP server hardening
 
-外部に公開する HTTP サーバーには、本番環境で安全なタイムアウトとリクエスト本体の上限を適用する。低速な接続や過大なリクエストによる接続枠とメモリの枯渇を防ぐためである (`gosec G112` / CWE-400)。上限を超えた本体は `413` で拒否する。
+外部に公開する HTTP サーバーには、本番環境で安全なタイムアウトとリクエスト本体の上限を適用する。低速な接続や過大なリクエストによる接続枠とメモリの枯渇を防ぐためである（`gosec G112`、CWE-400）。上限を超えた本体は `413` で拒否する。
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `HTTP_READ_HEADER_TIMEOUT` | `10s` | リクエストのヘッダーを読む上限時間 (slowloris の抑止) |
+| `HTTP_READ_HEADER_TIMEOUT` | `10s` | リクエストのヘッダーを読む上限時間（slowloris の抑止） |
 | `HTTP_READ_TIMEOUT` | `30s` | リクエスト全体を読む上限時間 |
 | `HTTP_WRITE_TIMEOUT` | `60s` | レスポンスを書く上限時間 |
 | `HTTP_IDLE_TIMEOUT` | `120s` | 持続接続の待機時間の上限 |
-| `HTTP_MAX_BODY_BYTES` | `1048576` | リクエスト本体の最大バイト数 (1 MiB) |
+| `HTTP_MAX_BODY_BYTES` | `1048576` | リクエスト本体の最大バイト数（1 MiB） |
 
-これは多層防御であり、境界プロキシの代わりではない。大量のリクエストと TLS handshake を悪用する slowloris には、前段のリバースプロキシで対処する。
+これは多層防御であり、境界プロキシの代わりではない。大量のリクエストと TLS ハンドシェイクを悪用する slowloris には、前段のリバースプロキシで対処する。
 
 #### Security response headers
 
-境界ミドルウェアは、すべてのバックエンドレスポンスに `X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`、`X-Frame-Options: DENY`、厳格な `Content-Security-Policy` (`default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`) を適用する。`frame-ancestors 'none'` と `X-Frame-Options: DENY` により、ログイン、同意、ポータル画面の埋め込みとクリックジャッキングを防ぐ。CSP では `'unsafe-inline'` を使わない。IdMagic が出力する埋め込みスクリプトは、SAML ACS と WS-Fed の POST バインディングで使う固定の自動送信処理だけである。これらはレスポンスごとに `script-src 'sha256-…'` で許可し、`form-action` も送信先エンドポイントに限定する。
+境界ミドルウェアは、すべてのバックエンドレスポンスに `X-Content-Type-Options: nosniff`、`Referrer-Policy: no-referrer`、`X-Frame-Options: DENY`、厳格な `Content-Security-Policy`（`default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'`）を適用する。`frame-ancestors 'none'` と `X-Frame-Options: DENY` により、ログイン、同意、ポータル画面の埋め込みとクリックジャッキングを防ぐ。CSP では `'unsafe-inline'` を使わない。IdMagic が出力する埋め込みスクリプトは、SAML ACS と WS-Fed の POST バインディングで使う固定の自動送信処理だけである。これらはレスポンスごとに `script-src 'sha256-…'` で許可し、`form-action` も送信先エンドポイントに限定する。
 
-**ヘッダーの所有。** CSP と `frame-ancestors` はルートごとの判断が必要なので IdMagic が設定する。これにより、最小構成のプロキシの背後でも、プロキシがない場合でも保護が成立する。単一ページアプリケーションはゲートウェイが配信し、静的 HTML に対して `script-src 'self'` を含む CSP を設定する。
+CSP と `frame-ancestors` はルートごとの判断が必要なので、IdMagic がヘッダーを設定する。これにより、最小構成のプロキシの背後でも、プロキシがない場合でも保護が成立する。単一ページアプリケーションはゲートウェイが配信し、静的 HTML に対して `script-src 'self'` を含む CSP を設定する。
 
-**HSTS は TLS を終端する側のもの。** `Strict-Transport-Security` はデフォルトで無効である。平文の `http` での開発が汚染されないようにするためである。TLS がこの区間か、その手前で終端される場合にのみ有効化する。通常の構成では境界のプロキシに任せ (`HSTS_ENABLED=false`)、アプリケーション自身が表明すべき場合に `HSTS_ENABLED=true` とする (`HSTS_MAX_AGE_SECONDS` と `HSTS_INCLUDE_SUBDOMAINS` で調整する)。
+HSTS は TLS を終端する側が設定する。`Strict-Transport-Security` は既定で無効とし、平文の `http` を使う開発環境に影響させない。TLS がこの区間か、その手前で終端される場合にのみ有効化する。通常の構成では境界のプロキシに任せ（`HSTS_ENABLED=false`）、アプリケーション自身が表明すべき場合に `HSTS_ENABLED=true` とする（`HSTS_MAX_AGE_SECONDS` と `HSTS_INCLUDE_SUBDOMAINS` で調整する）。
 
 画面を壊さずに CSP を厳しくするには、`CSP_REPORT_ONLY=true` で `Content-Security-Policy-Report-Only` を出し、`CSP_REPORT_URI=<url>` で違反を収集し、観察してから強制へ戻す。
 
@@ -270,7 +270,7 @@ OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handl
 
 永続化ポートと Repository の実装は、それを所有する Context に属する。Context 固有のメモリと PostgreSQL のアダプターは `backend/<context>/{db_memory,db_postgres}` に置き、共有のデータベース接続プール、行の読み取り、トランザクションのヘルパーは `backend/shared/storage/db_postgres` に置く。一時的な状態も PostgreSQL に統合するため、2 種類目のデータストアは運用しない。
 
-`db_postgres` の静的な SQL 文はすべて `sqlc` で型安全な問い合わせを生成しなければならない。文字列を伴う生の `Pool.Query` と `Pool.Exec` は、`sqlc` に利点がない極めて動的な問い合わせに限って許される。
+`db_postgres` の静的な SQL 文はすべて `sqlc` の入力とし、型安全な Go コードを生成しなければならない。SQL 文字列を直接渡す `Pool.Query` と `Pool.Exec` は、問い合わせの構造が実行時まで決まらず、`sqlc` の型生成を利用できない場合に限って許される。
 
 PostgreSQL の構造を変更する場合は、まず `infra/schema/postgres.sql` の現行スキーマを更新する。`psqldef` で差分をプレビューしてから適用し、適用後と再適用後のプレビューが空になることを確認する。手順は `infra/schema/README.md` に記載しており、CI では空のデータベースに対して `postgres.sql` が収束することを `just check-schema` で検証する。既存データのバックフィル、値の変換、削除前の退避など、構造差分で表現できない変更は work item の手順または専用 SQL に明記する。アプリケーション起動時にスキーマを移行する仕組みは設けない。
 
@@ -280,31 +280,31 @@ PostgreSQL の構造を変更する場合は、まず `infra/schema/postgres.sql
 
 列型の選択を一貫させるため、次の規則を適用する。
 
-- **自由形式の文字列、長さ無制限**: `TEXT` を使う。制約のない `varchar` は決して使わない。
-- **長さの上限がある文字列**: 固定の列ごとの長さ上限の方針に従い、`TEXT` + `CHECK (char_length(col) <= N)` か `varchar(N)` のいずれかを一貫して使う。書式が固定された識別子は `CHECK (... ~ regex)` で守る。
-- **内部で生成する ID**: IdMagic が `spec.NewUUIDv4()` で生成する列は `UUID` とする。Go 側は `string` で保持し、pgx のテキスト用符号器 (`RegisterUUIDAsText`) が両者を変換する。
-- **外部が決める ID**: `entity_id`、`wtrealm`、`scim_id`、`kid` など、外部が値を決める ID は `TEXT` とする。IdMagic が採番する値ではなく、UUID とも限らないためである。
-- **時刻**: すべて `TIMESTAMPTZ` とし、マイクロ秒の精度を正とする。スキーマ側で丸めない。
-- **有限の値集合**: `TEXT` + `CHECK (col IN (...))` とする。PostgreSQL の列挙型は避ける。値の追加に `ALTER TYPE` が必要で、宣言的なスキーマの差分取りと相性が悪いためである。
-- **JSONB**: 結合や絞り込みが必要な値、外部キーや一意性の制約を持つ値などは JSONB の中に置かないようにする。
+- **自由形式の文字列、長さ無制限**：`TEXT` を使う。制約のない `varchar` は使わない。
+- **長さの上限がある文字列**：固定の列ごとの長さ上限の方針に従い、`TEXT` + `CHECK (char_length(col) <= N)` か `varchar(N)` のいずれかを一貫して使う。書式が固定された識別子は `CHECK (... ~ regex)` で守る。
+- **内部で生成する ID**：IdMagic が `spec.NewUUIDv4()` で生成する列は `UUID` とする。Go 側は `string` で保持し、pgx のテキスト用符号器（`RegisterUUIDAsText`）が両者を変換する。
+- **外部が決める ID**：`entity_id`、`wtrealm`、`scim_id`、`kid` など、外部が値を決める ID は `TEXT` とする。IdMagic が採番する値ではなく、UUID とも限らないためである。
+- **時刻**：すべて `TIMESTAMPTZ` とし、マイクロ秒の精度を正とする。スキーマで丸めない。
+- **有限の値集合**：`TEXT` + `CHECK (col IN (...))` とする。PostgreSQL の列挙型は避ける。値の追加に `ALTER TYPE` が必要で、宣言的なスキーマの差分取りと相性が悪いためである。
+- **JSONB**：結合や絞り込みが必要な値、外部キーや一意性の制約を持つ値などは JSONB の中に置かない。
 
 ##### 2. tenant_id retention classes
 
 `users.id` と `oauth2_clients.client_id` はシステム全体で一意なので、子の行はその鍵だけで親を参照し、**テナント単位の複合外部キーは使わない**。全体で一意な親からテナントを特定できるという理由だけで、子の行へ `tenant_id` を重複して持たせない。`tenant_id` は、検索、制約、保持期間、監査のいずれかに必要な場合にだけ追加する。
 
-- **テナントが所有する aggregate**: `tenant_id` を持つ。
-- **テナント単位で外部に由来する自然キー**: 外部の id がテナント内でしか一意でないため、`tenant_id` を主キーの一部にする (`scim_user_refs` と `scim_group_refs` は `(tenant_id, scim_id)`)。
-- **全体で一意な親の子**: 全体で一意な鍵 (`user_id` と `client_id`) で識別し、テナントごとの検索や保持期間が必要でない限り `tenant_id` を持たない。
-  - ただし `authentication_sessions` では、不透明な cookie 値であるセッション ID をすべてのリクエストで照合するため、`tenant_id` をフェイルクローズな多層防御の条件として使う。また、テナントごとの有効なセッション一覧にも必要である。不透明なトークン、認可コード、challenge を鍵とする一時的な認証情報も同様に扱う。
+- **テナントが所有する Aggregate**：`tenant_id` を持つ。
+- **テナント単位で外部に由来する自然キー**：外部の ID がテナント内でしか一意でないため、`tenant_id` を主キーの一部にする（`scim_user_refs` と `scim_group_refs` は `(tenant_id, scim_id)`）。
+- **全体で一意な親の子**：全体で一意な鍵（`user_id` と `client_id`）で識別し、テナントごとの検索や保持期間が必要でない限り `tenant_id` を持たない。
+  - ただし `authentication_sessions` では、不透明な Cookie 値であるセッション ID をすべてのリクエストで照合するため、`tenant_id` をフェイルクローズな多層防御の条件として使う。テナントごとの有効なセッション一覧にも必要である。不透明なトークン、認可コード、チャレンジを鍵とする一時的な認証情報も同様に扱う。
 
 ##### 3. Envelope encryption for reversible secrets
 
-データベースに保存する必要がある可逆なシークレットは、平文で保存しない。差し替え可能な `EnvelopeCrypto` プロバイダーのマスターキーでテナントごとの `DataEncryptionKey` (DEK) をラップし、その DEK で各シークレットを AEAD 暗号化する。AEAD と鍵セットの処理は [Tink](https://developers.google.com/tink) に委ね、nonce、認証タグ、追加認証データの組み立てを自作しない。追加認証データには `(tenant, context, table, record id, field)` と DEK のバージョンを使う。このため、暗号文を別のテナント、テーブル、フィールドへ複製しても復号できない。
+データベースに保存する必要がある可逆なシークレットは、平文で保存しない。差し替え可能な `EnvelopeCrypto` プロバイダーのマスターキーでテナントごとの `DataEncryptionKey`（DEK）をラップし、その DEK で各シークレットを AEAD 暗号化する。AEAD と鍵セットの処理は [Tink](https://developers.google.com/tink) に委ね、nonce、認証タグ、追加認証データの組み立てを自作しない。追加認証データには `(tenant, context, table, record id, field)` と DEK のバージョンを使う。このため、暗号文を別のテナント、テーブル、フィールドへ複製しても復号できない。
 
-- `EnvelopeCrypto`（Tink を使う AEAD と鍵セットのポート、および OpenBao と平文鍵セットによるマスターキー提供元のアダプター）は、`certificates_mtls`、`passwords_argon2id`、`tokens_jose` と並べて `backend/shared/security` に置く。これは技術的な能力であり、業務上の Aggregate ではない。
+- `EnvelopeCrypto`（Tink を使う AEAD と鍵セットのポート、および OpenBao と平文鍵セットによるマスターキー提供元のアダプター）は、`certificates_mtls`、`passwords_argon2id`、`tokens_jose` と並べて `backend/shared/security` に置く。これは業務上の Aggregate ではなく、技術上の共通機能である。
 - `backend/datakeys`（`DataKeys` Context）は、ラップされた DEK のメタデータとライフサイクル（初期化、ローテーション、無効化、破棄）だけを所有し、`EnvelopeCrypto` ポート自体は所有しない。`SigningKeys` が `transit/sign` を暗号化、復号、データ鍵の機能から分離しているのと同じ構成である。
-- ローテーションでは新しい DEK の版を以後の書き込み用に有効化し、直前の版を復号可能な `retiring` のまま残す。`backend/jobs` の `JobKind` と `HandlerRegistry` に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古い版を破棄できる。`FieldMigrator` ポート（`backend/datakeys/ports`）により、各 Context は自身の一括再暗号化処理と残件数の算出を登録する。これにより、`DataKeys` は利用側のスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
-- アンラップの失敗、プロバイダーへの到達不能、追加認証データの不一致、改ざんの検知では、フェイルクローズで復号を拒否する。呼び出し側は平文へフォールバックしたり、項目を読み飛ばしたりしない。
+- ローテーションでは新しい DEK の版を以後の書き込み用に有効化し、直前の版を復号可能な `retiring` のまま残す。`backend/jobs` の `JobKind` と `HandlerRegistry` に登録した再開可能な再暗号化ジョブがすべての参照を移行し終えた後にだけ、古い版を破棄できる。`FieldMigrator` ポート（`backend/datakeys/ports`）により、各 Context は自身の一括再暗号化処理と残件数の算出を登録する。これにより、`DataKeys` はこのポートを利用する Context のスキーマへ依存しない。ローテーションは登録された移行処理ごとにジョブを自動投入し、いずれかの移行処理が残件を報告している間はラップされた DEK の消去を拒否する。
+- アンラップに失敗した場合、プロバイダーへ到達できない場合、追加認証データが一致しない場合、または改ざんを検知した場合は、フェイルクローズで復号を拒否する。呼び出し元は平文へフォールバックしたり、項目を読み飛ばしたりしない。
 - マスターキーの提供元は OpenBao（Vault Transit 互換の HTTP API）である。開発環境とローカル環境では Tink の平文鍵セットを使うため、OpenBao は不要である。提供元は設計上差し替え可能である。
 - 唯一の HTTP 接点は、読み取り専用で `system_admin` に限定した `GET /api/admin/data-keys/health`（`backend/datakeys/handlers_http`）である。各テナントで有効な DEK の版とステータス、マスターキー提供元の名前と到達性を報告し、鍵素材は決して返さない。ローテーション、無効化、破棄は内部操作とし、管理用エンドポイントを公開しない。
 
@@ -312,33 +312,41 @@ DEK の破棄では `tenant_data_encryption_keys` の行を削除せず、`wrapp
 
 ##### 4. Notification template catalog and locale resolution
 
-通知メールの内容は、システムが同梱する日本語と英語の組み込みカタログと、任意の `(tenant_id, template_key, locale)` ごとの上書きという 2 段階で解決する。版の履歴は持たず、`ResetNotificationTemplate` は常に既知の正常な組み込み文面へ戻す。`template_key` は仕様で定める固定の列挙であり、テナントは追加できない。各キーは 1 つの送信経路に対応し、送信元のないテンプレートは作れない。
+通知メールの内容は、システムが同梱する日本語と英語の組み込みカタログと、必要に応じた `(tenant_id, template_key, locale)` ごとの上書きという 2 段階で解決する。版の履歴は持たず、`ResetNotificationTemplate` は常に既知の正常な組み込み文面へ戻す。`template_key` は仕様で定める固定の列挙であり、テナントは追加できない。各キーは 1 つの送信経路に対応し、送信元のないテンプレートは作成できない。
 
-プレースホルダー (`{{name}}`) は保存時にテンプレートキーごとの許可リストと照合する。宣言されていないプレースホルダーを参照する上書きは、空の値で描画せず、その場で拒否する。アカウント復旧などの導線が実行時に欠落することを防ぐためである。許可リストは `backend/shared/notification/template` で定義して API から返す。
+プレースホルダー（`{{name}}`）は保存時にテンプレートキーごとの許可リストと照合する。宣言されていないプレースホルダーを参照する上書きは、空の値で描画するのではなく、保存時に拒否する。アカウント復旧などの導線が実行時に欠落することを防ぐためである。許可リストは `backend/shared/notification/template` で定義して API から返す。
 
 | Key | Placeholders |
 | --- | --- |
 | all keys | `product_name`, `tenant_display_name`, `user_display_name` |
-| `PasswordReset`, `EmailVerification`, `EmailChangeConfirmation` | 1 つの `*_url` の導線, `expires_in_minutes` |
+| `PasswordReset`, `EmailVerification`, `EmailChangeConfirmation` | 1 つの `*_url` の導線、`expires_in_minutes` |
 | `EmailChangeConfirmation` (additional) | `new_email` |
 | `LifecycleWorkflowNotification` (additional) | `notification_key` |
 | `AccountSecurityAlert` (additional) | `event_description`, `occurred_at`, `device_summary`, `security_review_url` |
 
-資格情報、ダイジェスト値、TOTP シークレット、API トークン、生の IP アドレスは決して差し込みにしない。メールは受信者によって転送され、引用され、無期限に保持されるため、そこに置いたものは後の受信箱の侵害ですべて露出する。
+資格情報、ダイジェスト値、TOTP シークレット、API トークン、生の IP アドレスは決して差し込みにしない。メールは受信者によって転送され、引用され、無期限に保持されるため、これらの情報を差し込むと、後に受信箱が侵害された際に露出する。
 
-描画処理は、件名、平文本文、HTML 本文を常に 1 つの単位として返す。上書きも 3 つを同時に置き換え、メールは `multipart/alternative` として送るため、平文と HTML の内容が意図せず食い違わない。特殊文字の処理はテンプレートではなく描画側の責務とし、HTML に差し込む値だけをエスケープする。導線の URL は呼び出し側のユースケースがリクエストの issuer から組み立て、1 つのプレースホルダー値として渡す。テンプレートは URL を配置できるが、断片から組み立てることはできない。上書きできるのは、件名、HTML 本文の断片、平文本文、送信者の表示名だけである。HTML 文書の外枠と送信元アドレスはシステムが所有し、テナントの入力をこれらへ注入させない。
+描画処理は、件名、平文本文、HTML 本文を常に 1 つの単位として返す。上書きも 3 つを同時に置き換え、メールは `multipart/alternative` として送るため、平文と HTML の内容が意図せず食い違わない。
 
-言語は、受信者の `User.locale`、テナントの `default_locale`、システムのデフォルト (`DEFAULT_LOCALE`、デフォルトは `en`) の順に解決し、カタログに翻訳がある最初の言語を使う。テナントのデフォルト言語は明示的な列で管理し、ある言語のテンプレートを上書きしただけで他の通知までその言語へ変わることを防ぐ。
+特殊文字の処理はテンプレートではなく描画処理の責務とし、HTML に差し込む値だけをエスケープする。導線の URL は呼び出すユースケースがリクエストの `issuer` から組み立て、1 つのプレースホルダー値として渡す。テンプレートは URL を配置できるが、断片から組み立てられない。
 
-試し送りは、操作中の管理者自身が確認済みのアドレスにだけ配送し、エンドポイントは宛先を受け取らない。任意の宛先を許可すると、テナントの外観をまとったメールを第三者へ送る手段になるためである。下書きのプレビューは読み取り専用で、実際の利用者データではなく固定のサンプル値を使って描画する。
+上書きできるのは、件名、HTML 本文の断片、平文本文、送信者の表示名だけである。HTML 文書の外枠と送信元アドレスはシステムが所有し、テナントの入力をこれらへ注入させない。
+
+言語は、受信者の `User.locale`、テナントの `default_locale`、システム設定の `DEFAULT_LOCALE`（既定値は `en`）の順に解決し、カタログに翻訳がある最初の言語を使う。テナントの既定言語は明示的な列で管理し、ある言語のテンプレートを上書きしただけで他の通知までその言語へ変わることを防ぐ。
+
+試し送りは、操作中の管理者自身が確認済みのアドレスにだけ送信し、エンドポイントは宛先を受け取らない。任意の宛先を許可すると、テナントのブランド表示を使ったメールを第三者へ送る手段になるためである。下書きのプレビューは読み取り専用で、実際の利用者データではなく固定のサンプル値を使って描画する。
 
 ##### 5. Endpoint rate limiting
 
-`backend/shared/ratelimit` (`ports`、`db_memory`、`db_postgres`) は業務上の Aggregate ではなく、`backend/shared/security` の `EnvelopeCrypto` と同様の技術的な共通機能である。OAuth2 と Authentication の両方に属するエンドポイント (`/authorize`、`/token`、`/par`、`/device_authorization`、`/bc-authorize`、`/api/auth/password_reset/*`) を保護するため、特定の Context には置かない。アカウント単位・IP 単位のログインスロットルとは目的が異なり、その代わりにはならない。
+`backend/shared/ratelimit`（`ports`、`db_memory`、`db_postgres`）は業務上の Aggregate ではなく、`backend/shared/security` の `EnvelopeCrypto` と同様の技術的な共通機能である。OAuth2 と Authentication の双方に属するエンドポイント（`/authorize`、`/token`、`/par`、`/device_authorization`、`/bc-authorize`、`/api/auth/password_reset/*`）を保護するため、特定の Context には置かない。アカウント単位および IP 単位のログインスロットルとは目的が異なり、その代わりにはならない。
 
-ポートは `Allow(ctx, tenantID, policyID, key, now)` という単一の操作を公開する。`(tenant_id, policy_id, key_hash)` をキーとする固定時間枠のカウンターを持ち、結果にかかわらずリクエストごとに 1 回加算する。失敗だけを数えるログインスロットルとは異なる。`endpoint_rate_limit_counters` は、すべてのリクエストで更新される一時データなので `UNLOGGED` とする。障害でカウンターを失っても時間枠がリセットされるだけで、永続的な安全性の保証は失われない。一方、失うと保証が弱まる `login_throttle_counters` とアクセストークンの拒否リストは `LOGGED` のままにする。ストアへ到達できない場合は、すべてのポリシーでフェイルクローズに拒否する。保護対象のエンドポイントはすでに PostgreSQL を必須としているため、新しい種類の依存障害は増えない。
+ポートは `Allow(ctx, tenantID, policyID, key, now)` という単一の操作を公開する。`(tenant_id, policy_id, key_hash)` をキーとする固定時間枠のカウンターを持ち、許可と拒否のいずれでも、リクエストごとに 1 回加算する。失敗だけを数えるログインスロットルとは異なる。
 
-ポリシーごとに、固定時間枠の最大リクエスト数と秒数を環境変数で設定できる。運用者はコードを変更せずに閾値を調整できる。
+`endpoint_rate_limit_counters` は、すべてのリクエストで更新される一時データなので `UNLOGGED` とする。障害でカウンターを失っても時間枠がリセットされるだけで、永続的な安全性の保証は失われない。一方、失うと保証が弱まる `login_throttle_counters` とアクセストークンの拒否リストは `LOGGED` のままにする。
+
+ストアへ到達できない場合は、すべてのポリシーでフェイルクローズに拒否する。保護対象のエンドポイントはすでに PostgreSQL を必須としているため、依存先の種類は増えない。
+
+ポリシーごとに、固定時間枠の最大リクエスト数と枠の長さを秒単位の環境変数で設定できる。運用者はコードを変更せずに閾値を調整できる。
 
 | Policy | Env (max / window) | Default |
 | --- | --- | --- |
@@ -353,32 +361,40 @@ DEK の破棄では `tenant_data_encryption_keys` の行を削除せず、`wrapp
 
 ### Runtime Composition
 
-`backend/cmd/idmagic/` の main パッケージが API プロセスを起動し、`backend/cmd/internal/bootstrap` が依存注入を担う。`backend/cmd/idmagic-worker/` は永続化されたジョブを取得してハンドラーを実行し、API とは独立して水平スケールできる。`backend/cmd/idmagic-batch/` は外部スケジューラーから起動され、保持期限を過ぎたデータの削除または署名鍵のライフサイクル処理を 1 回実行して終了する。すべての実行単位は、同じ Go モジュールと Bounded Context の実装を再利用する。実行単位の一覧は別の台帳に重複して持たず、エントリーポイントと対応する `just` のビルド手順から導く。
+システムには次の 3 つの実行単位がある。
 
-すべての Bounded Context を単一の Go モジュールに置き、複数の実行単位を共通実装を再利用する薄いエントリーポイントとして構成するため、現在のアーキテクチャは **Modular Monolith** である。Context の論理境界は厳密に保ち、Context 間は公開された言語とポートで接続する。通常は複数の Context を 1 つの API プロセスに組み合わせ、実行単位を分けるのは、リソースやレイテンシーの特性が異なるジョブと横断的なバッチ処理だけである。独立したデータ所有、チーム、SLO が必要になるまではサービスを分割しない。この記述は現在の設計を示すものであり、将来も同じ構成を義務付けるものではない。
+- **API プロセス**：`backend/cmd/idmagic/` の `main` パッケージが起動し、`backend/cmd/internal/bootstrap` が依存注入を担う。
+- **ワーカー**：`backend/cmd/idmagic-worker/` が永続化されたジョブを取得してハンドラーを実行し、API とは独立して水平スケールできる。
+- **バッチ**：`backend/cmd/idmagic-batch/` が外部スケジューラーから起動され、保持期限を過ぎたデータの削除または署名鍵のライフサイクル処理を 1 回実行して終了する。
+
+すべての実行単位は、同じ Go モジュールと Bounded Context の実装を再利用する。実行単位の一覧は別の台帳に重複して持たず、エントリーポイントと対応する `just` のビルド手順から導く。
+
+単一の Go モジュール内で Bounded Context の境界を保ちつつ、複数の実行単位が実装を共有する現在のアーキテクチャを **Modular Monolith** とする。Context 間は公開された言語とポートで接続する。
+
+通常は複数の Context を 1 つの API プロセスに組み合わせ、リソースやレイテンシーの特性が異なるジョブと横断的なバッチ処理だけを別の実行単位にする。独立したデータ所有権、担当チーム、SLO が必要になるまではサービスを分割しない。この記述は現在の設計を示すものであり、将来も同じ構成を義務付けるものではない。
 
 `backend/cmd/internal/bootstrap/deps.go` の `Dependencies` は HTTP 層へ渡す依存を集約し、メモリ、PostgreSQL、コンソール、OpenTelemetry など実行時の実装選択を吸収する。Context 固有の Repository は各 `Module` にまとめ、中央の `Dependencies` とサーバーの `Deps` はその Module を受け取る。ポートを追加した場合は、その Context の `ports/`、メモリと PostgreSQL の各アダプター、スキーマ変更の要否、`bootstrap.Dependencies`、`assembleMemory`、`assemblePostgres`、`support.Deps`、関連する HTTP ハンドラーまたはユースケースの構築処理を確認する。
 
 #### Health probes and graceful drain
 
-Kubernetes 向けのヘルスチェックは、生存確認、受付可否、起動完了を別々のエンドポイントに分ける。これらを 1 つにまとめると、PostgreSQL の一時的な障害で回復可能な pod を繰り返し再起動したり、応答できないレプリカへ通信を流し続けたりするためである。従来の `/health` は起動時設定のラベルを返すだけなので、後方互換のために残す。
+Kubernetes 向けのヘルスチェックは、生存確認、受付可否、起動完了を別々のエンドポイントに分ける。これらを 1 つにまとめると、PostgreSQL の一時的な障害で回復可能な Pod を繰り返し再起動したり、応答できないレプリカへ通信を流し続けたりするためである。従来の `/health` は起動時設定のラベルを返すだけなので、後方互換のために残す。
 
-- **`/livez`** はデッドロックなど回復不能な状態でのみ失敗する。一時的な依存障害では `200` を返し、自然に回復できる pod を再起動させない。
-- **`/readyz`** は必須の依存 (PostgreSQL) へ短いタイムアウト (デフォルト `1s`) で並行に問い合わせ、到達できなければ `503` を返す。`?verbose` を付けると、依存ごとに `healthy`、`degraded`、`unavailable` の状態を返す。
-- **`/startupz`** はアプリケーションの初期化 (初期データの確認を含む) が完了すると `200` を返す。
+- **`/livez`** はデッドロックなど回復不能な状態でのみ失敗する。一時的な依存障害では `200` を返し、自然に回復できる Pod を再起動させない。
+- **`/readyz`** は必須の依存（PostgreSQL）へ短いタイムアウト（既定値は `1s`）で並行に問い合わせ、到達できなければ `503` を返す。`?verbose` を付けると、依存ごとに `healthy`、`degraded`、`unavailable` の状態を返す。
+- **`/startupz`** はアプリケーションの初期化（初期データの確認を含む）が完了すると `200` を返す。
 - **`/health`** は後方互換のために残しており、従来どおり起動時の設定のラベルだけを返す。
 
-`SIGTERM` または `SIGINT` を受けると停止状態に入り、`/readyz` は直ちに `503` (`unavailable`) を返す。負荷分散装置が対象を外す時間を確保するため、退避猶予期間 (`DRAIN_GRACE_PERIOD_SECONDS`、デフォルト `5s`) を待ってから HTTP サーバーの停止を始める。
+`SIGTERM` または `SIGINT` を受けると停止状態に入り、`/readyz` は直ちに `503`（`unavailable`）を返す。負荷分散装置が対象を外す時間を確保するため、退避猶予期間（`DRAIN_GRACE_PERIOD_SECONDS`、既定値は `5s`）を待ってから HTTP サーバーの停止を始める。
 
 #### Availability and shared state
 
-レプリカを複数動かすには `postgres` のランタイム (`PERSISTENCE=postgres`、`DATABASE_URL`) が必要である。共有される状態は永続的なものも一時的なものも、レプリカごとのプロセスのメモリではなくすべて PostgreSQL に置く。
+レプリカを複数動かすには `postgres` のランタイム（`PERSISTENCE=postgres`、`DATABASE_URL`）が必要である。共有される状態は永続的なものも一時的なものも、レプリカごとのプロセスメモリではなくすべて PostgreSQL に置く。
 
-- **永続的**: リフレッシュトークン、監査イベント、認証イベントの集計バケット、ログインセッション。ログイン済みのブラウザーセッションは `authentication_sessions` を唯一の正とするため、API レプリカを再起動または順次入れ替えても有効なセッションは失われない。利用者の操作、ログアウト、アカウントの無効化による失効では行を削除せず、`revoked_at` と `revoke_reason` を記録する。このため、失効リクエストを再送しても安全である。
-- **一時的**: 認可リクエスト、認可コード、PAR、デバイスコード、DPoP とクライアントアサーションの再送防止、アクセストークンの拒否リスト、WebAuthn のチャレンジ、ログイン試行のスロットル、エンドポイントのレート制限カウンター。いずれも短命で、再試行しても安全である。すべての行が `expires_at` を持ち、読み取りを `expires_at > now()` で絞り込むため、有効期限の正しさは `idmagic-worker` が領域回収のために行う最大限努力の掃除に依存しない。
+- **永続的**：リフレッシュトークン、監査イベント、認証イベントの集計バケット、ログインセッション。ログイン済みのブラウザーセッションは `authentication_sessions` を唯一の正とするため、API レプリカを再起動または順次入れ替えても有効なセッションは失われない。利用者の操作、ログアウト、アカウントの無効化による失効では行を削除せず、`revoked_at` と `revoke_reason` を記録する。このため、失効リクエストを再送しても安全である。
+- **一時的**：認可リクエスト、認可コード、PAR、デバイスコード、DPoP とクライアントアサーションの再送防止、アクセストークンの拒否リスト、WebAuthn のチャレンジ、ログイン試行のスロットル、エンドポイントのレート制限カウンター。いずれも短命で、再試行しても安全である。すべての行が `expires_at` を持ち、読み取りを `expires_at > now()` で絞り込むため、有効期限の正しさは `idmagic-worker` が領域回収のために行う最善努力型の削除処理に依存しない。
 
 ログインスロットルの状態は必ず共有する。レプリカごとにカウンターを持つと、失敗試行が `N` 個のレプリカへ分散され、アカウント単位と IP 単位の閾値がシステム全体では最大 `N` 倍に緩むためである。PostgreSQL の共有カウンターを `SELECT ... FOR UPDATE` で直列化して更新し、すべてのレプリカを通じて試行回数を数える。アカウントと IP の識別子は SHA-256 でハッシュ化し、平文のユーザー名や IP は保存しない。
 
-スロットルは認証の重要な経路にあるため、障害時は**フェイルクローズ**とする。ストアへ到達できず状態を確認できない場合、ログイン試行を許可せず拒否する。複数レプリカで運用する場合は、PostgreSQL も地域冗長や同期スタンバイなどの高可用構成にする。
+スロットルはログイン可否の判定に使うため、障害時は**フェイルクローズ**とする。ストアへ到達できず状態を確認できない場合、ログイン試行を許可せず拒否する。複数レプリカで運用する場合は、PostgreSQL も地域冗長や同期スタンバイなどの高可用構成にする。
 
 `memory` のランタイムはこの状態をプロセス内に保持するので、**単一レプリカとテスト専用**である。
