@@ -24,8 +24,14 @@ no-response 時の既定失効、campaign 結果のレポートを提供する�
 ## Scope
 - **scl**:
   - `IdentityManagement` に AccessCertificationCampaign / CertificationScope /
-    CertificationItem (対象: GroupMembership または ApplicationAssignment) /
+    CertificationItem (対象: GroupMembership、ApplicationAssignment、または Agent) /
     CertificationDecision (approve/revoke) / CampaignStatus を追加する。
+  - `Agent` を certification 対象に含める。すべての `Agent` は所有者を必須とするため、
+    所有者の異動・退職で放置された非人間アイデンティティは、人間の access と同じ理由で
+    定期的な再確認を要する。reviewer は Agent の所有者とし、失効の decision は
+    `DisableAgent` へ対応付ける (`KillAgent` は一方向終端のため campaign からは行わない)。
+    棚卸しによる検出そのものは [[wi-59-agent-governance-guardrails-audit-inventory]] が持ち、
+    本 WI はそれを定期的な承認の対象として扱う。
   - campaign 開始 / 締切 / 完了、decision 記録、no-response 時の auto-revoke を
     events / scenarios として追加する。
   - `Application` の ApplicationAssignmentRef、`IdentityManagement` の GroupRef を

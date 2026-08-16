@@ -3,6 +3,7 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-08-15
+priority: p1
 depends_on: [wi-53-rebac-fine-grained-authorization]
 change_kind: feature
 affected_spec:

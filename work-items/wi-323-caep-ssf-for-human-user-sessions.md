@@ -3,6 +3,7 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-08-08
+priority: p3
 depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 ---
 

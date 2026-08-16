@@ -1,73 +1,89 @@
 ---
-depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-52-ciba-async-human-approval, wi-58-continuous-access-evaluation-agent-revocation, wi-184-transactional-event-log-foundation]
 status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-06-22
+priority: p1
+depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-52-ciba-async-human-approval, wi-58-continuous-access-evaluation-agent-revocation, wi-184-transactional-event-log-foundation, wi-377-agent-and-delegation-chain-audit-axes]
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-management/SPECIFICATION.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-046 }
 ---
 
-# エージェントガバナンス (ガードレール・委譲チェーン監査・インベントリ)
+# エージェントのガードレールと棚卸しを統制層として与える
 
 ## Motivation
-エージェントを第一級プリンシパルとして運用するには、ID・委譲・認可だけでなく
-「過剰行動を抑えるガードレール」「誰がどの権限で何をしたかの監査」「全エージェントの
-棚卸し (インベントリ)」という統制層が要る。Microsoft Entra Agent ID / Agent 365、
-Okta・Ping のエージェントガバナンスはいずれも、レート・予算上限、行動監査、
-ライフサイクル可視化を中核に据えている。
 
-idmagic は監査イベント基盤 ([[wi-44-authentication-event-store-and-search]] 等) と
-rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]]) を持つが、エージェント
-単位の予算・レート・行動上限や、委譲チェーン (act) を含む横断監査、エージェント
-インベントリ画面を持たない。本 WI は [[wi-49-agent-identity-first-class-principal]] を
-起点に、エージェント単位のガードレール、actor チェーン込みの監査・相関検索、
-インベントリ / 統制ダッシュボードを束ねる。これは導入した一連のエージェント機能に
-運用統制を被せる総仕上げにあたる。
+エージェントを第一級プリンシパルとして運用するには、アイデンティティ・委譲・認可だけでなく、過剰な行動を抑えるガードレールと、全エージェントの棚卸しが要る。Microsoft Entra Agent ID と Okta for AI Agents はいずれも 2026 年 4 月に一般提供へ入り、レートと予算の上限、行動監査、ライフサイクルの可視化を中核に据えている。エージェントの発見と棚卸しは、もはや差別化要素ではなく前提である。
+
+IdMagic は監査イベント基盤とエンドポイント単位のレート制限を持つが、**エージェント単位の**予算・レート・行動上限を持たず、エージェントの棚卸し画面も持たない。所有者が退職したエージェント、長く使われていないエージェント、資格情報が外れたまま残るエージェントを一覧する手段が無い。すべての `Agent` に所有者が必須である以上、所有者の退職は非人間アイデンティティの孤立という古典的な問題を直に引き起こすが、現在それを扱うのは `SharedSignals` の失効エポック一括前進だけで、棚卸しの観点が存在しない。
+
+本 work item は、導入した一連のエージェント機能に運用統制を被せる総仕上げにあたる。
+
+**範囲の変更 (2026-08-16)。** 起票時のスコープに含まれていた監査軸の拡張は [[wi-377-agent-and-delegation-chain-audit-axes]] へ分離した。監査は「上限を設けて拒否した判断が、誰に対するものだったか」を辿るための土台であり、ガードレールより先に成立している必要がある。分離により本 work item はガードレールの評価器と棚卸しという一貫した塊になる。
 
 ## Scope
-- **decision**:
-  - 新規 ADR [[ADR-058]]: エージェント単位のガードレール種別 (レート / 予算・コスト / 行動回数 / 有効期限 / 許可リソース)、上限超過時の挙動 (拒否 / 要承認へ降格)、actor チェーンを 含む監査イベントの相関キー、インベントリの表示観点 (所有者・最終活動・付与権限) を確定する。
-- **scl**:
-  - 新規 model: AgentGuardrail / GuardrailKind / AgentActivitySummary / AgentAuditQuery。監査イベントに actor チェーン (act) と委譲深さを載せる。
-  - 新規 event: GuardrailConfigured / GuardrailBreached / AgentActionAudited。
-  - 新規 interface: ガードレール CRUD、エージェント別アクティビティ / 監査検索、 インベントリ一覧。permission AdminAgentGovernanceManage。
-- **go**:
-  - ガードレール評価 (トークン発行 / 行動経路でレート・予算・回数・有効期限を fail-closed に 強制)、actor チェーンを含む監査イベントの発火と相関検索 adapter を実装する。
-- **http**:
-  - ガードレール管理 API、エージェント監査検索 API、インベントリ API。
-- **ui**:
-  - admin: エージェントインベントリ / 統制ダッシュボード、ガードレール設定、委譲チェーン込み監査ビュー。
+
+- **ガードレールのポリシー。** エージェント・所有者・アプリケーション・リソースの単位で、許可する行動と `authorization_details` の範囲、レート、予算、委譲深さ、人間の承認要否を版付きのポリシーとして保持する。トークンの発行と交換、および仲介される行動の前に評価する。
+- **上限超過時の分岐。** 拒否するか、[[wi-52-ciba-async-human-approval]] の承認要求へ降格するかを、ガードレールの種別ごとに宣言できるようにする。承認要求へ降格する経路が利用できない場合、暗黙に許可へ倒さず拒否する。
+- **棚卸し (インベントリ)。** エージェント・所有者・束縛クライアント・直近の委譲チェーン・実効ポリシーを横断して検索できるようにする。[[wi-184-transactional-event-log-foundation]] のイベントログから投影し、再構築を冪等にする。棚卸しの観点として次を明示的に含める。
+  - **所有者不在。** 所有者が退職・削除・無効化されたまま残るエージェント。
+  - **休眠。** 一定期間トークンを発行していないエージェント。
+  - **未束縛の資格情報。** `AgentCredentialBinding` を持たない、または束縛先クライアントが失われたエージェント。
+- **管理 UI。** エージェント詳細に所有者・束縛クライアント・実効ガードレール・直近の委譲・判断・キル操作を統合し、棚卸しの観点で絞り込めるようにする。専用の権限で制御する。
+- ガードレールの設定・違反・棚卸しの投影をイベントとして残し、[[wi-377-agent-and-delegation-chain-audit-axes]] が加える監査軸から辿れるようにする。
+- durable な設計判断 (ガードレールの種別、評価点、承認への降格規則、棚卸しの観点) は `spec/contexts/identity-management/SPECIFICATION.md` の Design へ、本変更固有の分析と却下した代替案は本ファイルの `## Design` へ置く。
 
 ## Out of Scope
-- 課金・コスト計測基盤そのものの構築 (予算上限の評価フックの提供まで)。
-- 異常検知エンジン ([[wi-58-continuous-access-evaluation-agent-revocation]] のシグナル源)。
-- SIEM への外部エクスポート (まず内部監査・検索)。
+
+- **監査の検索軸と委譲チェーンの相関。** [[wi-377-agent-and-delegation-chain-audit-axes]] が持つ。本 work item はそこで整備された軸へ判断結果を載せる側である。
+- 課金・コスト計測基盤そのものの構築。予算上限の**判断側**は本 work item の範囲だが、消費量を計測する基盤は作らない。エージェントの実行環境が報告する値を評価するフックまでとする。
+- 異常検知エンジン。[[wi-150-risk-based-authentication-and-adaptive-sign-in]] が人間側で規則ベースに限定した判断と揃える。機械学習を持ち込むと説明可能性とフェイルクローズの保証が壊れる。
+- 外部への監査ログ配信。[[wi-286-outbound-event-hooks-and-audit-log-streaming]] が持つ。
+- **Web Bot Auth** (RFC 9421 の HTTP メッセージ署名、`Signature-Agent` ヘッダー、JWKS ディレクトリ)。Cloudflare / Amazon / Akamai / OpenAI が支持し 2026 年に IETF へ WG が立った仕組みだが、これは**ウェブサイトが自動化トラフィックの発信元事業者を識別する**ためのものであって、認可サーバーが担う統制ではない。委譲元ユーザーの概念もスコープもテナントも持たず、IdMagic のガードレールと重なる部分が無い。実施すべき層は CDN・WAF・リバースプロキシである。なお WG は単一の draft をまだ採択しておらず、名前の一致する draft が並立している。この状況が解消し、かつ認可判断の入力として使える形が定まった時点で再評価する。
+- エージェントを対象とするアクセス証明キャンペーン。[[wi-213-access-certification-campaigns]] が持つ。
+- エージェントを対象とするライフサイクルワークフローのトリガーとアクション。`IdGovernance` の拡張として別に扱う。
+
+## Design
+
+未定。着手時に次を確定して本節に記録する。
+
+- ガードレールの種別 (レート / 予算 / 行動回数 / 有効期限 / 許可リソース) と、それぞれの超過時の既定の挙動。
+- 評価点。トークン発行、トークン交換、資格情報の取得、仲介される行動のうちどこで評価するか。評価を増やすほど確実だが判定が重くなる。
+- ポリシーの版と評価の競合。評価中にポリシーが差し替わった場合の扱い。
+- 棚卸しの投影を、イベントログからの再構築で作るか、読み取り専用の問い合わせで都度作るか。
 
 ## Plan
-- [[ADR-058-agent-governance-guardrails-audit-inventory]] を、既存 Agent aggregate/admin UI、token `agent_id`/`act`、RAR、kill 操作へ合わせて accepted にする。Agent の第二正本は作らず、governance は policy と cross-context read model を所有する。
-- guardrail は agent/owner/application/resource ごとの allowed action/RAR、rate/budget、delegation depth、human-approval requirement を versioned policy として保持し、token issue/exchange と brokered action の前に AuthZEN 形式で評価する。
-- threshold 超過は deny または wi-52 CIBA approval-required に分岐する。wi-52 未完了時は approval-required を暗黙 allow にせず拒否する。
-- inventory は Agent event、credential binding、token exchange、authorization decision、kill/revocation event を wi-184 event log から投影し、agent→owner→client→recent actor chain→effective policy を検索できるようにする。
-- audit detail は correlation/request ID、policy version、decision reason、actor chain ID を持ち、token/RARの機密値は schema-approved 要約だけ保存する。
+
+- ガードレールは版付きのポリシーとして保持し、評価結果に版・理由・相関 ID を残す。どの版で拒否されたかが後から辿れない統制は検証できない。
+- 承認への降格は [[wi-52-ciba-async-human-approval]] の `ApprovalRequest` を使う。二つ目の承認経路を作らない。緊急の拒否とキルは [[wi-58-continuous-access-evaluation-agent-revocation]] の失効エポックへ接続する。
+- 棚卸しはイベントログからの投影とし、再構築を冪等にする。エージェント集約の第二の正本は作らない。統制が所有するのはポリシーと横断的な読み取りモデルだけである。
+- 監査へ保存するのは、スキーマで承認された要約に限る。トークンと `authorization_details` の機密値は残さない。
 
 ## Tasks
-- [ ] T001 [Design/Spec] ADR-058 の policy language、evaluation points、CIBA fallback、inventory/events/authorization/access/scenarios を確定して再生成する。
-- [ ] T002 [Domain] GuardrailPolicy、version、decision/reason と inventory projection model を実装する。
-- [ ] T003 [Persistence] policy repository と event-log cursor/read-model tables を追加し、rebuild/idempotent projection を実装する。
-- [ ] T004 [Enforcement] token issue/exchange、agent credential、brokered action に evaluator を接続し、Agent status/RAR/actor chain/rate result を合成する。
-- [ ] T005 [CIBA/Revocation] approval-required を wi-52へ、emergency deny/kill を wi-58へ接続し、依存未提供時の fail-closed path をテストする。
-- [ ] T006 [Admin UI] agent detail に owner/client/effective guardrail/recent delegation/decision/kill を統合し、検索/filter と専用権限を追加する。
-- [ ] T007 [Verify] policy version race、depth/rate超過、approval fallback、projection rebuild、missing event、PII masking、tenant isolation を検証する。
+
+- [ ] T001 [Design] ガードレールの種別、評価点、承認への降格規則、棚卸しの観点を確定し `## Design` と `SPECIFICATION.md` の Design へ振り分ける。
+- [ ] T002 [Spec] ガードレールのポリシー、違反イベント、棚卸しの検索、専用権限を仕様へ追加して再生成する。
+- [ ] T003 [Domain] ポリシー・版・判断と理由・棚卸しの投影モデルを実装する。
+- [ ] T004 [Persistence] ポリシーの保存と、イベントログのカーソルおよび読み取りモデルを追加し、冪等な再構築を実装する。
+- [ ] T005 [Enforcement] トークン発行・交換・資格情報・仲介行動に評価器を接続し、Agent の状態・`authorization_details`・委譲チェーン・レート判定を合成する。
+- [ ] T006 [Fallback] 承認への降格を wi-52 へ、緊急の拒否とキルを wi-58 へ接続し、依存が利用できないときに拒否側へ倒れることをテストする。
+- [ ] T007 [UI] エージェント詳細への統合と、所有者不在・休眠・未束縛での絞り込みを追加する。
+- [ ] T008 [Verify] ポリシー版の競合、深さとレートの超過、承認への降格、投影の再構築、イベント欠落、PII の秘匿、テナント境界を検証する。
 
 ## Verification
+
+- `just verify-spec`
 - `just test-go`
-  - reason: レート / 予算 / 回数 / 有効期限の上限強制、超過時挙動、actor チェーン監査の相関、tenant scope の境界。
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just build-ui`
-- 手動: エージェントにレート / 予算上限を設定 → 上限内は許可・超過は拒否 → 委譲チェーン込みで監査に残ることを確認する。
+  - reason: レート・予算・回数・有効期限の上限強制、超過時の分岐、依存が利用できないときのフェイルクローズ、棚卸し投影の冪等性、テナント境界。
+- `just verify-ui`
+- `just verify`
+- 手動: エージェントにレートと予算の上限を設定し、上限内は許可され超過は拒否されること、拒否がその版と理由とともに監査へ残ることを確認する。
+- 手動: 所有者を退職させ、そのエージェントが棚卸しで所有者不在として現れることを確認する。
 
 ## Risk Notes
-ガードレール評価を発行 / 行動経路に挟むため、判定の重さやすり抜けが課題になる。
-上限判定は fail-closed (迷ったら拒否) とし、actor チェーンの監査は既存イベント基盤に
-載せて二重化を避ける。予算・コストは外部計測のフックに留め、計測基盤は別途とする。
+
+ガードレールの評価を発行と行動の経路へ挟むため、判定の重さとすり抜けが課題になる。上限の判定は迷ったら拒否する側へ倒し、判断の記録は既存のイベント基盤へ載せて二重化を避ける。予算とコストは外部が報告する値を評価するフックに留め、計測基盤そのものは作らない。
+
+棚卸しの投影が第二の正本になる危険もある。エージェント集約の正本は `IdManagement` のままとし、統制が所有するのはポリシーと読み取りモデルだけであることを実装で守る。
