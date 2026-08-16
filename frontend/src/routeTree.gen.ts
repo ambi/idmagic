@@ -48,6 +48,7 @@ import { Route as AdminRolesRouteImport } from './routes/admin/roles'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminSignInPolicyRouteImport } from './routes/admin/sign-in-policy'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminWorkloadIdentityRouteImport } from './routes/admin/workload-identity'
 import { Route as SystemIndexRouteImport } from './routes/system/index'
 import { Route as SystemDataKeysRouteImport } from './routes/system/data-keys'
 import { Route as SystemKeysRouteImport } from './routes/system/keys'
@@ -76,6 +77,8 @@ import { Route as AdminUsersIdRouteImport } from './routes/admin/users_/$id'
 import { Route as AdminUsersExportsRouteImport } from './routes/admin/users_/exports'
 import { Route as AdminUsersImportRouteImport } from './routes/admin/users_/import'
 import { Route as AdminUsersNewRouteImport } from './routes/admin/users_/new'
+import { Route as AdminWorkloadIdentityTrustBundleIdRouteImport } from './routes/admin/workload-identity_/$trustBundleId'
+import { Route as AdminWorkloadIdentityNewRouteImport } from './routes/admin/workload-identity_/new'
 import { Route as AdminAgentsAgentIdIndexRouteImport } from './routes/admin/agents_/$agentId.index'
 import { Route as AdminAgentsAgentIdEditRouteImport } from './routes/admin/agents_/$agentId.edit'
 import { Route as AdminApplicationsApplicationIdIndexRouteImport } from './routes/admin/applications_/$applicationId.index'
@@ -94,6 +97,8 @@ import { Route as AdminSettingsSamlIdpProfilesNewRouteImport } from './routes/ad
 import { Route as AdminTenantAttributesNewRouteImport } from './routes/admin/tenant/attributes_/new'
 import { Route as AdminUsersIdIndexRouteImport } from './routes/admin/users_/$id.index'
 import { Route as AdminUsersIdEditRouteImport } from './routes/admin/users_/$id.edit'
+import { Route as AdminWorkloadIdentityTrustBundleIdIndexRouteImport } from './routes/admin/workload-identity_/$trustBundleId.index'
+import { Route as AdminWorkloadIdentityTrustBundleIdEditRouteImport } from './routes/admin/workload-identity_/$trustBundleId.edit'
 import { Route as AdminGroupsGroupIdMembersExportsRouteImport } from './routes/admin/groups_/$groupId.members.exports'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdIndexRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.index'
 import { Route as AdminSettingsSamlIdpProfilesProfileIdEditRouteImport } from './routes/admin/settings_/saml-idp-profiles_/$profileId.edit'
@@ -294,6 +299,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminWorkloadIdentityRoute = AdminWorkloadIdentityRouteImport.update({
+  id: '/workload-identity',
+  path: '/workload-identity',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const SystemIndexRoute = SystemIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -442,6 +452,18 @@ const AdminUsersNewRoute = AdminUsersNewRouteImport.update({
   path: '/users/new',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminWorkloadIdentityTrustBundleIdRoute =
+  AdminWorkloadIdentityTrustBundleIdRouteImport.update({
+    id: '/workload-identity_/$trustBundleId',
+    path: '/workload-identity/$trustBundleId',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
+const AdminWorkloadIdentityNewRoute =
+  AdminWorkloadIdentityNewRouteImport.update({
+    id: '/workload-identity_/new',
+    path: '/workload-identity/new',
+    getParentRoute: () => AdminRouteRoute,
+  } as any)
 const AdminAgentsAgentIdIndexRoute = AdminAgentsAgentIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -543,6 +565,18 @@ const AdminUsersIdEditRoute = AdminUsersIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => AdminUsersIdRoute,
 } as any)
+const AdminWorkloadIdentityTrustBundleIdIndexRoute =
+  AdminWorkloadIdentityTrustBundleIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AdminWorkloadIdentityTrustBundleIdRoute,
+  } as any)
+const AdminWorkloadIdentityTrustBundleIdEditRoute =
+  AdminWorkloadIdentityTrustBundleIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AdminWorkloadIdentityTrustBundleIdRoute,
+  } as any)
 const AdminGroupsGroupIdMembersExportsRoute =
   AdminGroupsGroupIdMembersExportsRouteImport.update({
     id: '/members/exports',
@@ -600,6 +634,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
   '/system/data-keys': typeof SystemDataKeysRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
@@ -629,6 +664,8 @@ export interface FileRoutesByFullPath {
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
+  '/admin/workload-identity/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
+  '/admin/workload-identity/new': typeof AdminWorkloadIdentityNewRoute
   '/account/profile/': typeof AccountProfileIndexRoute
   '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
@@ -643,11 +680,13 @@ export interface FileRoutesByFullPath {
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/tenant/attributes/new': typeof AdminTenantAttributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
+  '/admin/workload-identity/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
   '/admin/agents/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers/$id/': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users/$id/': typeof AdminUsersIdIndexRoute
+  '/admin/workload-identity/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
   '/admin/settings/saml-idp-profiles/$profileId/': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
@@ -687,6 +726,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
   '/system/data-keys': typeof SystemDataKeysRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
@@ -711,6 +751,7 @@ export interface FileRoutesByTo {
   '/admin/users/exports': typeof AdminUsersExportsRoute
   '/admin/users/import': typeof AdminUsersImportRoute
   '/admin/users/new': typeof AdminUsersNewRoute
+  '/admin/workload-identity/new': typeof AdminWorkloadIdentityNewRoute
   '/admin/agents/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/applications/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
   '/admin/applications/$applicationId/provisioning': typeof AdminApplicationsApplicationIdProvisioningRoute
@@ -723,11 +764,13 @@ export interface FileRoutesByTo {
   '/admin/settings/saml-idp-profiles/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/tenant/attributes/new': typeof AdminTenantAttributesNewRoute
   '/admin/users/$id/edit': typeof AdminUsersIdEditRoute
+  '/admin/workload-identity/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
   '/admin/agents/$agentId': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications/$applicationId': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers/$id': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users/$id': typeof AdminUsersIdIndexRoute
+  '/admin/workload-identity/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/groups/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/settings/saml-idp-profiles/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
   '/admin/settings/saml-idp-profiles/$profileId': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
@@ -771,6 +814,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/sign-in-policy': typeof AdminSignInPolicyRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/workload-identity': typeof AdminWorkloadIdentityRoute
   '/system/data-keys': typeof SystemDataKeysRoute
   '/system/keys': typeof SystemKeysRoute
   '/system/tenants': typeof SystemTenantsRoute
@@ -800,6 +844,8 @@ export interface FileRoutesById {
   '/admin/users_/exports': typeof AdminUsersExportsRoute
   '/admin/users_/import': typeof AdminUsersImportRoute
   '/admin/users_/new': typeof AdminUsersNewRoute
+  '/admin/workload-identity_/$trustBundleId': typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
+  '/admin/workload-identity_/new': typeof AdminWorkloadIdentityNewRoute
   '/account/profile_/': typeof AccountProfileIndexRoute
   '/admin/agents_/$agentId/edit': typeof AdminAgentsAgentIdEditRoute
   '/admin/applications_/$applicationId/edit': typeof AdminApplicationsApplicationIdEditRoute
@@ -814,11 +860,13 @@ export interface FileRoutesById {
   '/admin/settings_/saml-idp-profiles_/new': typeof AdminSettingsSamlIdpProfilesNewRoute
   '/admin/tenant/attributes_/new': typeof AdminTenantAttributesNewRoute
   '/admin/users_/$id/edit': typeof AdminUsersIdEditRoute
+  '/admin/workload-identity_/$trustBundleId/edit': typeof AdminWorkloadIdentityTrustBundleIdEditRoute
   '/admin/agents_/$agentId/': typeof AdminAgentsAgentIdIndexRoute
   '/admin/applications_/$applicationId/': typeof AdminApplicationsApplicationIdIndexRoute
   '/admin/groups_/$groupId/': typeof AdminGroupsGroupIdIndexRoute
   '/admin/identity-providers_/$id/': typeof AdminIdentityProvidersIdIndexRoute
   '/admin/users_/$id/': typeof AdminUsersIdIndexRoute
+  '/admin/workload-identity_/$trustBundleId/': typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
   '/admin/groups_/$groupId/members/exports': typeof AdminGroupsGroupIdMembersExportsRoute
   '/admin/settings_/saml-idp-profiles_/$profileId/edit': typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
   '/admin/settings_/saml-idp-profiles_/$profileId/': typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
@@ -863,6 +911,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/sign-in-policy'
     | '/admin/users'
+    | '/admin/workload-identity'
     | '/system/data-keys'
     | '/system/keys'
     | '/system/tenants'
@@ -892,6 +941,8 @@ export interface FileRouteTypes {
     | '/admin/users/exports'
     | '/admin/users/import'
     | '/admin/users/new'
+    | '/admin/workload-identity/$trustBundleId'
+    | '/admin/workload-identity/new'
     | '/account/profile/'
     | '/admin/agents/$agentId/edit'
     | '/admin/applications/$applicationId/edit'
@@ -906,11 +957,13 @@ export interface FileRouteTypes {
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/tenant/attributes/new'
     | '/admin/users/$id/edit'
+    | '/admin/workload-identity/$trustBundleId/edit'
     | '/admin/agents/$agentId/'
     | '/admin/applications/$applicationId/'
     | '/admin/groups/$groupId/'
     | '/admin/identity-providers/$id/'
     | '/admin/users/$id/'
+    | '/admin/workload-identity/$trustBundleId/'
     | '/admin/groups/$groupId/members/exports'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
     | '/admin/settings/saml-idp-profiles/$profileId/'
@@ -950,6 +1003,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/sign-in-policy'
     | '/admin/users'
+    | '/admin/workload-identity'
     | '/system/data-keys'
     | '/system/keys'
     | '/system/tenants'
@@ -974,6 +1028,7 @@ export interface FileRouteTypes {
     | '/admin/users/exports'
     | '/admin/users/import'
     | '/admin/users/new'
+    | '/admin/workload-identity/new'
     | '/admin/agents/$agentId/edit'
     | '/admin/applications/$applicationId/edit'
     | '/admin/applications/$applicationId/provisioning'
@@ -986,11 +1041,13 @@ export interface FileRouteTypes {
     | '/admin/settings/saml-idp-profiles/new'
     | '/admin/tenant/attributes/new'
     | '/admin/users/$id/edit'
+    | '/admin/workload-identity/$trustBundleId/edit'
     | '/admin/agents/$agentId'
     | '/admin/applications/$applicationId'
     | '/admin/groups/$groupId'
     | '/admin/identity-providers/$id'
     | '/admin/users/$id'
+    | '/admin/workload-identity/$trustBundleId'
     | '/admin/groups/$groupId/members/exports'
     | '/admin/settings/saml-idp-profiles/$profileId/edit'
     | '/admin/settings/saml-idp-profiles/$profileId'
@@ -1033,6 +1090,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/sign-in-policy'
     | '/admin/users'
+    | '/admin/workload-identity'
     | '/system/data-keys'
     | '/system/keys'
     | '/system/tenants'
@@ -1062,6 +1120,8 @@ export interface FileRouteTypes {
     | '/admin/users_/exports'
     | '/admin/users_/import'
     | '/admin/users_/new'
+    | '/admin/workload-identity_/$trustBundleId'
+    | '/admin/workload-identity_/new'
     | '/account/profile_/'
     | '/admin/agents_/$agentId/edit'
     | '/admin/applications_/$applicationId/edit'
@@ -1076,11 +1136,13 @@ export interface FileRouteTypes {
     | '/admin/settings_/saml-idp-profiles_/new'
     | '/admin/tenant/attributes_/new'
     | '/admin/users_/$id/edit'
+    | '/admin/workload-identity_/$trustBundleId/edit'
     | '/admin/agents_/$agentId/'
     | '/admin/applications_/$applicationId/'
     | '/admin/groups_/$groupId/'
     | '/admin/identity-providers_/$id/'
     | '/admin/users_/$id/'
+    | '/admin/workload-identity_/$trustBundleId/'
     | '/admin/groups_/$groupId/members/exports'
     | '/admin/settings_/saml-idp-profiles_/$profileId/edit'
     | '/admin/settings_/saml-idp-profiles_/$profileId/'
@@ -1377,6 +1439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/workload-identity': {
+      id: '/admin/workload-identity'
+      path: '/workload-identity'
+      fullPath: '/admin/workload-identity'
+      preLoaderRoute: typeof AdminWorkloadIdentityRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/system/': {
       id: '/system/'
       path: '/'
@@ -1573,6 +1642,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersNewRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/workload-identity_/$trustBundleId': {
+      id: '/admin/workload-identity_/$trustBundleId'
+      path: '/workload-identity/$trustBundleId'
+      fullPath: '/admin/workload-identity/$trustBundleId'
+      preLoaderRoute: typeof AdminWorkloadIdentityTrustBundleIdRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/workload-identity_/new': {
+      id: '/admin/workload-identity_/new'
+      path: '/workload-identity/new'
+      fullPath: '/admin/workload-identity/new'
+      preLoaderRoute: typeof AdminWorkloadIdentityNewRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/agents_/$agentId/': {
       id: '/admin/agents_/$agentId/'
       path: '/'
@@ -1698,6 +1781,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users/$id/edit'
       preLoaderRoute: typeof AdminUsersIdEditRouteImport
       parentRoute: typeof AdminUsersIdRoute
+    }
+    '/admin/workload-identity_/$trustBundleId/': {
+      id: '/admin/workload-identity_/$trustBundleId/'
+      path: '/'
+      fullPath: '/admin/workload-identity/$trustBundleId/'
+      preLoaderRoute: typeof AdminWorkloadIdentityTrustBundleIdIndexRouteImport
+      parentRoute: typeof AdminWorkloadIdentityTrustBundleIdRoute
+    }
+    '/admin/workload-identity_/$trustBundleId/edit': {
+      id: '/admin/workload-identity_/$trustBundleId/edit'
+      path: '/edit'
+      fullPath: '/admin/workload-identity/$trustBundleId/edit'
+      preLoaderRoute: typeof AdminWorkloadIdentityTrustBundleIdEditRouteImport
+      parentRoute: typeof AdminWorkloadIdentityTrustBundleIdRoute
     }
     '/admin/groups_/$groupId/members/exports': {
       id: '/admin/groups_/$groupId/members/exports'
@@ -1838,6 +1935,24 @@ const AdminUsersIdRouteWithChildren = AdminUsersIdRoute._addFileChildren(
   AdminUsersIdRouteChildren,
 )
 
+interface AdminWorkloadIdentityTrustBundleIdRouteChildren {
+  AdminWorkloadIdentityTrustBundleIdEditRoute: typeof AdminWorkloadIdentityTrustBundleIdEditRoute
+  AdminWorkloadIdentityTrustBundleIdIndexRoute: typeof AdminWorkloadIdentityTrustBundleIdIndexRoute
+}
+
+const AdminWorkloadIdentityTrustBundleIdRouteChildren: AdminWorkloadIdentityTrustBundleIdRouteChildren =
+  {
+    AdminWorkloadIdentityTrustBundleIdEditRoute:
+      AdminWorkloadIdentityTrustBundleIdEditRoute,
+    AdminWorkloadIdentityTrustBundleIdIndexRoute:
+      AdminWorkloadIdentityTrustBundleIdIndexRoute,
+  }
+
+const AdminWorkloadIdentityTrustBundleIdRouteWithChildren =
+  AdminWorkloadIdentityTrustBundleIdRoute._addFileChildren(
+    AdminWorkloadIdentityTrustBundleIdRouteChildren,
+  )
+
 interface AdminSettingsSamlIdpProfilesProfileIdRouteChildren {
   AdminSettingsSamlIdpProfilesProfileIdEditRoute: typeof AdminSettingsSamlIdpProfilesProfileIdEditRoute
   AdminSettingsSamlIdpProfilesProfileIdIndexRoute: typeof AdminSettingsSamlIdpProfilesProfileIdIndexRoute
@@ -1872,6 +1987,7 @@ interface AdminRouteRouteChildren {
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminSignInPolicyRoute: typeof AdminSignInPolicyRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminWorkloadIdentityRoute: typeof AdminWorkloadIdentityRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminAgentsAgentIdRoute: typeof AdminAgentsAgentIdRouteWithChildren
   AdminAgentsNewRoute: typeof AdminAgentsNewRoute
@@ -1894,6 +2010,8 @@ interface AdminRouteRouteChildren {
   AdminUsersExportsRoute: typeof AdminUsersExportsRoute
   AdminUsersImportRoute: typeof AdminUsersImportRoute
   AdminUsersNewRoute: typeof AdminUsersNewRoute
+  AdminWorkloadIdentityTrustBundleIdRoute: typeof AdminWorkloadIdentityTrustBundleIdRouteWithChildren
+  AdminWorkloadIdentityNewRoute: typeof AdminWorkloadIdentityNewRoute
   AdminAuthorizationDetailTypesTypeEditRoute: typeof AdminAuthorizationDetailTypesTypeEditRoute
   AdminFederationEntraNewRoute: typeof AdminFederationEntraNewRoute
   AdminLifecycleWorkflowsWorkflowIdEditRoute: typeof AdminLifecycleWorkflowsWorkflowIdEditRoute
@@ -1919,6 +2037,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSettingsRoute: AdminSettingsRoute,
   AdminSignInPolicyRoute: AdminSignInPolicyRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminWorkloadIdentityRoute: AdminWorkloadIdentityRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminAgentsAgentIdRoute: AdminAgentsAgentIdRouteWithChildren,
   AdminAgentsNewRoute: AdminAgentsNewRoute,
@@ -1942,6 +2061,9 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminUsersExportsRoute: AdminUsersExportsRoute,
   AdminUsersImportRoute: AdminUsersImportRoute,
   AdminUsersNewRoute: AdminUsersNewRoute,
+  AdminWorkloadIdentityTrustBundleIdRoute:
+    AdminWorkloadIdentityTrustBundleIdRouteWithChildren,
+  AdminWorkloadIdentityNewRoute: AdminWorkloadIdentityNewRoute,
   AdminAuthorizationDetailTypesTypeEditRoute:
     AdminAuthorizationDetailTypesTypeEditRoute,
   AdminFederationEntraNewRoute: AdminFederationEntraNewRoute,

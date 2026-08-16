@@ -64,6 +64,9 @@ import type {
   ProvisioningSourceType,
   ProvisioningTestConnectionResult,
   ClientSecretCredentialMetadata,
+  WorkloadTrustBundle,
+  WorkloadTrustBundleRefreshResult,
+  AgentWorkloadBinding,
 } from '../types'
 import {
   authenticationAPIError,
@@ -489,6 +492,139 @@ export async function deleteMcpResourceServer(
     `/api/admin/v1/mcp-resource-servers/${encodeURIComponent(resourceServerID)}`,
     adminRequest(csrfToken, 'DELETE'),
   )
+}
+
+// WorkloadIdentity (REQ-WORKLOADIDENTITY-008 / -009) の管理 API クライアント。
+// 信頼バンドルはテナント配下の平坦な集合、バインディングは信頼バンドル配下の子で、
+// 状態変更と削除だけは binding_id をトップレベルに取る (仕様のルート定義どおり)。
+export type WorkloadTrustBundleRegisterInput = {
+  name: string
+  trust_domain: string
+  issuer: string
+  jwks_uri?: string
+  jwks?: Record<string, unknown>
+  accepted_audiences: string[]
+  max_subject_token_ttl_seconds?: number
+}
+
+// issuer と trust_domain は不変のため更新入力に持たせない (登録し直しでのみ変えられる)。
+export type WorkloadTrustBundleUpdateInput = {
+  name?: string
+  jwks_uri?: string
+  jwks?: Record<string, unknown>
+  accepted_audiences?: string[]
+  max_subject_token_ttl_seconds?: number
+}
+
+export type AgentWorkloadBindingCreateInput = {
+  subject_pattern: string
+  agent_id: string
+}
+
+const WORKLOAD_TRUST_BUNDLES = '/api/admin/v1/workload-identity/trust-bundles'
+const WORKLOAD_BINDINGS = '/api/admin/v1/workload-identity/bindings'
+
+function trustBundlePath(trustBundleID: string, suffix = ''): string {
+  return `${WORKLOAD_TRUST_BUNDLES}/${encodeURIComponent(trustBundleID)}${suffix}`
+}
+
+function bindingPath(bindingID: string, suffix = ''): string {
+  return `${WORKLOAD_BINDINGS}/${encodeURIComponent(bindingID)}${suffix}`
+}
+
+export async function listWorkloadTrustBundles(): Promise<WorkloadTrustBundle[]> {
+  const response = await request<{ trust_bundles: WorkloadTrustBundle[] | null }>(
+    WORKLOAD_TRUST_BUNDLES,
+  )
+  return response.trust_bundles ?? []
+}
+
+export async function getWorkloadTrustBundle(trustBundleID: string): Promise<WorkloadTrustBundle> {
+  return request<WorkloadTrustBundle>(trustBundlePath(trustBundleID))
+}
+
+export async function registerWorkloadTrustBundle(
+  csrfToken: string,
+  input: WorkloadTrustBundleRegisterInput,
+): Promise<WorkloadTrustBundle> {
+  return request(WORKLOAD_TRUST_BUNDLES, adminRequest(csrfToken, 'POST', input))
+}
+
+export async function updateWorkloadTrustBundle(
+  csrfToken: string,
+  trustBundleID: string,
+  input: WorkloadTrustBundleUpdateInput,
+): Promise<WorkloadTrustBundle> {
+  return request(trustBundlePath(trustBundleID), adminRequest(csrfToken, 'PATCH', input))
+}
+
+export async function disableWorkloadTrustBundle(
+  csrfToken: string,
+  trustBundleID: string,
+): Promise<void> {
+  await request(trustBundlePath(trustBundleID, '/disable'), adminRequest(csrfToken, 'POST'))
+}
+
+export async function enableWorkloadTrustBundle(
+  csrfToken: string,
+  trustBundleID: string,
+): Promise<void> {
+  await request(trustBundlePath(trustBundleID, '/enable'), adminRequest(csrfToken, 'POST'))
+}
+
+export async function deleteWorkloadTrustBundle(
+  csrfToken: string,
+  trustBundleID: string,
+): Promise<void> {
+  await request(trustBundlePath(trustBundleID), adminRequest(csrfToken, 'DELETE'))
+}
+
+export async function refreshWorkloadTrustBundleJWKS(
+  csrfToken: string,
+  trustBundleID: string,
+): Promise<WorkloadTrustBundleRefreshResult> {
+  return request(trustBundlePath(trustBundleID, '/refresh'), adminRequest(csrfToken, 'POST'))
+}
+
+export async function listAgentWorkloadBindings(
+  trustBundleID: string,
+): Promise<AgentWorkloadBinding[]> {
+  const response = await request<{ bindings: AgentWorkloadBinding[] | null }>(
+    trustBundlePath(trustBundleID, '/bindings'),
+  )
+  return response.bindings ?? []
+}
+
+export async function createAgentWorkloadBinding(
+  csrfToken: string,
+  trustBundleID: string,
+  input: AgentWorkloadBindingCreateInput,
+): Promise<AgentWorkloadBinding> {
+  return request(
+    trustBundlePath(trustBundleID, '/bindings'),
+    adminRequest(csrfToken, 'POST', input),
+  )
+}
+
+export async function disableAgentWorkloadBinding(
+  csrfToken: string,
+  bindingID: string,
+): Promise<void> {
+  await request(bindingPath(bindingID, '/disable'), adminRequest(csrfToken, 'POST'))
+}
+
+export async function enableAgentWorkloadBinding(
+  csrfToken: string,
+  bindingID: string,
+): Promise<void> {
+  await request(bindingPath(bindingID, '/enable'), adminRequest(csrfToken, 'POST'))
+}
+
+export async function deleteAgentWorkloadBinding(
+  csrfToken: string,
+  bindingID: string,
+): Promise<void> {
+  await request(bindingPath(bindingID), adminRequest(csrfToken, 'DELETE'))
 }
 
 type WsFedRelyingPartyListResponse = { relying_parties: WsFedRelyingParty[] | null }

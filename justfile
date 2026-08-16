@@ -202,6 +202,12 @@ lint-ui:
 typecheck-ui:
     cd frontend && bun run typecheck
 
+# Regenerate src/routeTree.gen.ts after adding or removing a file route.
+# Dev and build do this too, but build type-checks first, so a new route file fails
+# the type check before the tree that declares it is written.
+generate-routes:
+    cd frontend && bun run generate:routes
+
 # Run UI unit tests.
 test-ui-unit:
     cd frontend && bun run test:unit

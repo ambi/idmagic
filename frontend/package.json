@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test:e2e": "bun test tests/e2e/ui-scenario-actions.spec.ts && bun test tests/e2e/ui-scenario-smoke.spec.ts && bun test tests/e2e/admin-session-recovery.spec.ts && bun test tests/e2e/authorize-golden-path.spec.ts",
     "test:unit": "bun test src/",
-    "test:unit:coverage": "bun test --coverage src/"
+    "test:unit:coverage": "bun test --coverage src/",
+    "generate:routes": "bun run scripts/generate-routes.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

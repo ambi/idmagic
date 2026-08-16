@@ -1,6 +1,7 @@
 import {
   IconActivity,
   IconApps,
+  IconCertificate,
   IconCheckupList,
   IconCloudUpload,
   IconForms,
@@ -33,6 +34,7 @@ export type AdminNavKey =
   | 'identity-providers'
   | 'authz-detail-types'
   | 'mcp-resource-servers'
+  | 'workload-identity'
   | 'consents'
   | 'audit-events'
   | 'keys'
@@ -127,6 +129,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconPlugConnected,
       href: tenantURL('/admin/mcp-resource-servers'),
       active: active === 'mcp-resource-servers',
+    },
+    {
+      key: 'workload-identity',
+      label: t.workloadIdentity,
+      icon: IconCertificate,
+      href: tenantURL('/admin/workload-identity'),
+      active: active === 'workload-identity',
     },
     {
       key: 'consents',

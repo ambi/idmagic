@@ -525,6 +525,44 @@ export type McpResourceServer = {
   updated_at: string
 }
 
+// WorkloadTrustBundle はテナントが登録する外部アテステーション発行者の信頼設定。
+// inline JWKS の本体は API が返さないため、設定済みかどうかだけを has_inline_jwks で受け取る。
+export type WorkloadTrustBundle = {
+  id: string
+  tenant_id: string
+  name: string
+  trust_domain: string
+  issuer: string
+  jwks_uri?: string
+  has_inline_jwks: boolean
+  accepted_audiences: string[]
+  max_subject_token_ttl_seconds: number
+  status: 'enabled' | 'disabled'
+  created_at: string
+  updated_at?: string
+  jwks_cached_at?: string
+}
+
+// AgentWorkloadBinding は信頼バンドル配下で外部主体の glob パターンを同一テナントの Agent へ写す。
+export type AgentWorkloadBinding = {
+  id: string
+  tenant_id: string
+  trust_bundle_id: string
+  subject_pattern: string
+  agent_id: string
+  status: 'enabled' | 'disabled'
+  created_at: string
+  updated_at?: string
+  disabled_at?: string
+}
+
+// WorkloadTrustBundleRefreshResult は JWKS 到達性の即時確認の結果。
+export type WorkloadTrustBundleRefreshResult = {
+  reachable: boolean
+  key_count?: number
+  jwks_cached_at?: string
+}
+
 export type WsFedClaimMappingRule = {
   claim_type: string
   source: 'user_attribute' | 'fixed' | 'nameid'
