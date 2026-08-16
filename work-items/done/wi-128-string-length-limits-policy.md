@@ -182,10 +182,13 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
   - **DB の最後の防壁**：`users`、`groups`、`agents`、`tenants`、`tenant_brandings`、`oauth2_clients`、`mcp_resource_servers`、`authorization_detail_types`、`workload_trust_bundles`、`agent_workload_bindings` に `CHECK (char_length(col) ...)` を追加した。通知テンプレートは DB と TypeSpec に上限があるのに Go 側の検査が無く、超過が制約違反として返って 500 になっていたので、`template.ValidateDefinition` に同じ上限を入れた。
   - **UI**：`frontend/src/lib/lengthLimits.ts` に同じ区分を置き、group / user / agent の作成・編集、テナント設定、通知テンプレート、ライフサイクルワークフローの各入力欄の `maxLength` をそこから引くようにした。既存の直書きの数値も同じ表に寄せた。パスワード欄には付けない（貼り付けを黙って切り詰めるため）。
   - **上限値の変更**：`UserAttributeDef.OIDCScope` の 60 を Handle 区分の 64 へ広げた 1 件のみ。他はすべて据え置きで、引き下げは行っていない。
+- **`CHECK` に置く規則の切り分け**:
+  レビューで、`tenant_brandings.footer_link_{1,2}_url` のスキーム allowlist（`~ '^https://'`）を SQL に置くのが適切かを問われた。置かないのが正しい。上の表が `CHECK` に与えた役割は「実装の不具合だけが落ちる最後の防壁」であり、管理者が `http://` と打ったという通常の入力誤りで落ちる規則はその定義に反する。加えてスキームの集合は `mailto:` やオンプレの `http://` へ広がりうる可変な製品ポリシーで、DDL に置くと変更のたびに全配備でスキーマ移行が要る。長さは安定した資源境界なので SQL に残す資格がある。
+  そこで `_url_format` を廃し、`_url_length`（2048）だけを置いた。スキーム規則は Go の `TenantBranding.Validate()` が引き続き強制し、`manage_branding_test.go` が `javascript:` / `http://` / `data:` の拒否を、`branding_handler_test.go` が HTTP 境界を検証している。この切り分けは `spec/SPECIFICATION.md` の String length limits に明文化した。
+  なお psqldef が同一列に `CHECK` を 2 つ置くと収束しない件（当初これを理由に長さ CHECK を見送っていた）は、1 つの `CHECK` にまとめれば回避できることを確認した。今回は上の設計判断により、そもそもまとめる必要がなくなっている。
 - **意図的に見送った点**:
-  - `tenant_brandings.footer_link_{1,2}_url` の長さ CHECK。同じ列の `~ '^https://'` 制約と併存させると psqldef が収束せず、再適用のたびに `_url_format` を再追加する DDL を出す（wi-308 の不具合群）。TypeSpec と Go は 2048 を保持している。
-  - `entity_id`、`wtrealm`、`scim_id`、`kid`、token hash、audit / outbox payload など、現に上限を持たない値。Out of Scope のとおり、根拠なく上限を導入していない。
-  - TypeSpec の `UserAttributeDef` は `key` と `visibility` しか宣言しておらず、Go 側にある `Label` / `ClaimName` / `OIDCScope` は契約に無い。フィールドの追加はこの work item の範囲を超えるため、Go 側の単位だけを直した。
+  - `entity_id`、`wtrealm`、`scim_id`、`kid`、token hash など、現に上限を持たない外部由来の値。Out of Scope のとおり根拠なく上限を導入していないが、「上限なし」もまた検討されていない既定でしかない、というレビュー指摘は妥当である。実測では、これらが主キー成分になっている列は btree v4 の索引行上限 2704 バイトで既に破綻し、`SQLSTATE 54000`（`index row size ... exceeds btree version 4 maximum 2704`）という低水準のエラーを返す。資源上限としての明示的な天井を与える作業を `wi-380` に分離した。既存データの棚卸しを挟む必要があるため、この work item では扱わない。
+  - TypeSpec の `UserAttributeDef` は `key` と `visibility` しか宣言していないが、handler は `userdomain.UserAttributeDef` をそのまま JSON 化しており、実際には `label` / `type` / `multi_valued` / `required` / `editable_by_user` / `claim_name` / `oidc_scope` / `pii` を含む 10 フィールドが線上に出ている。契約が 8 フィールド不足しているのは長さとは独立した仕様の欠落なので、`wi-381` に分離した。この work item では Go 側の数え方だけを直した。
 - **Verification Results**:
   - `just verify` - passed（check / check-api-compat / lint-go / test-go / lint-ui / format-check-ui / test-ui-unit / build-ui / test-tools / typecheck-tools）
   - `just verify-go` - passed

@@ -90,8 +90,8 @@ CREATE TABLE tenant_brandings (
     CONSTRAINT tenant_brandings_footer_link_2_complete CHECK ((footer_link_2_label IS NULL) = (footer_link_2_url IS NULL)),
     CONSTRAINT tenant_brandings_footer_link_1_label_length CHECK (footer_link_1_label IS NULL OR char_length(footer_link_1_label) <= 80),
     CONSTRAINT tenant_brandings_footer_link_2_label_length CHECK (footer_link_2_label IS NULL OR char_length(footer_link_2_label) <= 80),
-    CONSTRAINT tenant_brandings_footer_link_1_url_format CHECK (footer_link_1_url IS NULL OR footer_link_1_url ~ '^https://'),
-    CONSTRAINT tenant_brandings_footer_link_2_url_format CHECK (footer_link_2_url IS NULL OR footer_link_2_url ~ '^https://'),
+    CONSTRAINT tenant_brandings_footer_link_1_url_length CHECK (footer_link_1_url IS NULL OR char_length(footer_link_1_url) <= 2048),
+    CONSTRAINT tenant_brandings_footer_link_2_url_length CHECK (footer_link_2_url IS NULL OR char_length(footer_link_2_url) <= 2048),
     CONSTRAINT tenant_brandings_product_name_length CHECK (product_name IS NULL OR char_length(product_name) <= 80),
     CONSTRAINT tenant_brandings_footer_text_length CHECK (footer_text IS NULL OR char_length(footer_text) <= 280)
 );
