@@ -81,10 +81,10 @@ func (d Deps) handleReceiveSecurityEvent(c *echo.Context) error {
 		return err
 	}
 	if len(body) > maxSecurityEventTokenBytes {
-		return support.WriteBrowserError(c, http.StatusRequestEntityTooLarge, "security_event_token_too_large", "The Security Event Token exceeds the accepted size.")
+		return writeSecurityEventReceiverError(c, http.StatusRequestEntityTooLarge, "security_event_token_too_large", "The Security Event Token exceeds the accepted size.")
 	}
 	if err := usecases.ReceiveSecurityEvent(c.Request().Context(), d.receiveDeps(), c.Param("stream_id"), string(body), time.Now().UTC()); err != nil {
-		return writeAdminSharedSignalsError(c, err)
+		return writeReceivedSecurityEventError(c, err)
 	}
 	c.Response().Header().Set("Cache-Control", "no-store")
 	return c.NoContent(http.StatusAccepted)
@@ -180,7 +180,7 @@ func (d Deps) handleRegisterTransmitterStream(c *echo.Context) error {
 	}
 	var req registerTransmitterStreamRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	stream, err := usecases.RegisterSsfTransmitterStream(c.Request().Context(), d.adminDeps(), usecases.RegisterSsfTransmitterStreamInput{
 		EventTypes: caepEventTypesFromStrings(req.EventTypes), DeliveryEndpoint: req.DeliveryEndpoint,
@@ -201,7 +201,7 @@ func (d Deps) handleRegisterReceiverStream(c *echo.Context) error {
 	}
 	var req registerReceiverStreamRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	stream, err := usecases.RegisterSsfReceiverStream(c.Request().Context(), d.adminDeps(), usecases.RegisterSsfReceiverStreamInput{
 		EventTypes: caepEventTypesFromStrings(req.EventTypes), TrustedIssuer: req.TrustedIssuer,
@@ -222,7 +222,7 @@ func (d Deps) handleUpdateStream(c *echo.Context) error {
 	}
 	var req updateStreamRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	var eventTypes *[]ssdomain.CaepEventType
 	if req.EventTypes != nil {
@@ -310,26 +310,47 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"deliveries": out})
 }
 
+// writeAdminSharedSignalsError は管理 API のエラーを返す。管理 API は汎用 API なので
+// 既定の envelope である RFC 9457 Problem Details を使う (spec/SPECIFICATION.md
+// HTTP error responses)。inbound SET receiver は形式が違うので
+// writeSecurityEventReceiverError を使うこと。
 func writeAdminSharedSignalsError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, usecases.ErrStreamNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "ssf_stream_not_found", "The SSF stream does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "ssf_stream_not_found", "The SSF stream does not exist.")
 	case errors.Is(err, usecases.ErrEventTypesEmpty):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "ssf_stream_event_types_required", "event_types must not be empty.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_stream_event_types_required", "event_types must not be empty.")
 	case errors.Is(err, usecases.ErrEventTypeInvalid):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "ssf_stream_event_type_invalid", "event_types contains an unknown CAEP event type.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_stream_event_type_invalid", "event_types contains an unknown CAEP event type.")
 	case errors.Is(err, usecases.ErrDeliveryEndpointInvalid):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "ssf_transmitter_delivery_endpoint_invalid", "delivery_endpoint is required and must be an https URL.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_transmitter_delivery_endpoint_invalid", "delivery_endpoint is required and must be an https URL.")
 	case errors.Is(err, usecases.ErrAudienceRequired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "ssf_transmitter_audience_required", "audience is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_transmitter_audience_required", "audience is required.")
 	case errors.Is(err, usecases.ErrTrustedIssuerInvalid):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "ssf_receiver_trusted_issuer_invalid", "trusted_issuer is required and must be an https URL.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_receiver_trusted_issuer_invalid", "trusted_issuer is required and must be an https URL.")
 	case errors.Is(err, usecases.ErrJWKSSourceRequired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "ssf_receiver_jwks_required", "jwks_uri or jwks is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_receiver_jwks_required", "jwks_uri or jwks is required.")
 	case errors.Is(err, usecases.ErrAcceptedAudiencesEmpty):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "ssf_receiver_accepted_audiences_required", "accepted_audiences must not be empty.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "ssf_receiver_accepted_audiences_required", "accepted_audiences must not be empty.")
+	default:
+		return err
+	}
+}
+
+// writeSecurityEventReceiverError は inbound SET receiver
+// (POST /ssf/streams/:stream_id/events) のエラーを返す。この endpoint の応答形式は
+// RFC 8935 §2.3 が固定しており、汎用 API の Problem Details を適用しない
+// (spec/SPECIFICATION.md HTTP error responses の標準準拠の例外)。
+func writeSecurityEventReceiverError(c *echo.Context, status int, code, description string) error {
+	return support.NoStoreJSON(c, status, map[string]string{"error": code, "message": description})
+}
+
+func writeReceivedSecurityEventError(c *echo.Context, err error) error {
+	switch {
+	case errors.Is(err, usecases.ErrStreamNotFound):
+		return writeSecurityEventReceiverError(c, http.StatusNotFound, "ssf_stream_not_found", "The SSF stream does not exist.")
 	case errors.Is(err, usecases.ErrSecurityEventRejected):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "security_event_rejected", "The Security Event Token was rejected.")
+		return writeSecurityEventReceiverError(c, http.StatusBadRequest, "security_event_rejected", "The Security Event Token was rejected.")
 	default:
 		return err
 	}
