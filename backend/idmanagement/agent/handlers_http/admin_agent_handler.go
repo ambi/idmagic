@@ -65,7 +65,7 @@ func HandleListAgents(d Deps, c *echo.Context) error {
 	tenantID := support.RequestTenantID(c)
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAgentsQuery, listAgentsDefaultLimit, listAgentsMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	ctx := c.Request().Context()
 	var views []agentusecases.AgentView
@@ -132,7 +132,7 @@ func HandleRegisterAgent(d Deps, c *echo.Context) error {
 	}
 	var input agentRegisterRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ownerUserID := ""
 	if input.OwnerUserID != nil {
@@ -158,7 +158,7 @@ func HandleUpdateAgent(d Deps, c *echo.Context) error {
 	}
 	var input agentUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	agentID := c.Param("agent_id")
 	if _, err := agentusecases.UpdateAgent(c.Request().Context(), adminAgentDeps(d), agentusecases.UpdateAgentInput{
@@ -212,7 +212,7 @@ func HandleBindAgentCredential(d Deps, c *echo.Context) error {
 	}
 	var input agentCredentialBindRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := agentusecases.BindCredential(c.Request().Context(), adminAgentDeps(d), actor.ID, c.Param("agent_id"), input.ClientID, time.Now().UTC()); err != nil {
 		return writeAdminAgentError(c, err)
@@ -275,23 +275,23 @@ func toAgentSummaryResponse(agent *agentdomain.Agent, clientIDs []string) agentS
 func writeAdminAgentError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, agentusecases.ErrAgentNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "agent_not_found", "The agent does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "agent_not_found", "The agent does not exist.")
 	case errors.Is(err, agentusecases.ErrAgentClientNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "The client does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "client_not_found", "The client does not exist.")
 	case errors.Is(err, agentusecases.ErrAgentNameConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "agent_name_conflict", "The agent name is already in use.")
+		return support.WriteProblem(c, http.StatusConflict, "agent_name_conflict", "The agent name is already in use.")
 	case errors.Is(err, agentusecases.ErrAgentNameEmpty):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_name_required", "The agent name is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_name_required", "The agent name is required.")
 	case errors.Is(err, agentusecases.ErrAgentOwnerRequired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_owner_required", "An owner is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_owner_required", "An owner is required.")
 	case errors.Is(err, agentusecases.ErrAgentOwnerNotFound):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_owner_not_found", "The owner user does not exist.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_owner_not_found", "The owner user does not exist.")
 	case errors.Is(err, agentusecases.ErrAgentKilled):
-		return support.WriteBrowserError(c, http.StatusConflict, "agent_killed", "A stopped agent cannot be modified.")
+		return support.WriteProblem(c, http.StatusConflict, "agent_killed", "A stopped agent cannot be modified.")
 	case errors.Is(err, agentusecases.ErrAgentClientBound):
-		return support.WriteBrowserError(c, http.StatusConflict, "agent_client_already_bound", "The client is already bound to another agent.")
+		return support.WriteProblem(c, http.StatusConflict, "agent_client_already_bound", "The client is already bound to another agent.")
 	case errors.Is(err, idmusecases.ErrInvalidRole):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "The role is invalid.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_role", "The role is invalid.")
 	default:
 		return err
 	}

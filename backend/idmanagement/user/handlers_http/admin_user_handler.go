@@ -97,14 +97,14 @@ func HandleListAdminUsers(d Deps, c *echo.Context) error {
 	if rawStatus := strings.TrimSpace(c.QueryParam("status")); rawStatus != "" {
 		parsed := idmdomain.UserStatus(rawStatus)
 		if !parsed.Valid() {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "status is invalid")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "status is invalid")
 		}
 		status = &parsed
 	}
 	queryHash := listAdminUsersQuery + ";query=" + strings.ToLower(query) + ";status=" + c.QueryParam("status")
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, queryHash, listAdminUsersDefaultLimit, listAdminUsersMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	ctx := c.Request().Context()
 	var users []*userdomain.User
@@ -173,10 +173,10 @@ func HandleGetAdminUser(d Deps, c *echo.Context) error {
 		return err
 	}
 	if user == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	}
 	if user.TenantID != support.RequestTenantID(c) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	}
 	res := toAdminUserResponse(user)
 	if d.ScimRepo != nil {
@@ -199,7 +199,7 @@ func HandleCreateAdminUser(d Deps, c *echo.Context) error {
 	}
 	var input adminUserCreateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
@@ -228,7 +228,7 @@ func HandleUpdateAdminUser(d Deps, c *echo.Context) error {
 	}
 	var input adminUserUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()
@@ -268,7 +268,7 @@ func HandleDeleteAdminUser(d Deps, c *echo.Context) error {
 	var input adminUserDeleteRequest
 	if c.Request().ContentLength > 0 {
 		if err := support.DecodeJSON(c.Request(), &input); err != nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 		}
 	}
 	// 既定は soft-delete (削除予約)。?purge=true または body force=true で完全削除
@@ -350,23 +350,23 @@ func adminUserDeps(d Deps) userusecases.AdminUserDeps {
 func writeAdminUserError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, idmusecases.ErrUserNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	case errors.Is(err, userusecases.ErrUsernameConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "username_conflict", "The username is already in use.")
+		return support.WriteProblem(c, http.StatusConflict, "username_conflict", "The username is already in use.")
 	case errors.Is(err, idmusecases.ErrInvalidRole):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "The role is invalid.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_role", "The role is invalid.")
 	case errors.Is(err, userusecases.ErrSelfDeleteForbidden):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "self_delete_forbidden", "Administrators cannot delete themselves.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "self_delete_forbidden", "Administrators cannot delete themselves.")
 	case errors.Is(err, userusecases.ErrSelfDisableForbidden):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "self_disable_forbidden", "Administrators cannot disable themselves.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "self_disable_forbidden", "Administrators cannot disable themselves.")
 	case errors.Is(err, userusecases.ErrUserNotPendingDeletion):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "not_pending_deletion", "The user is not scheduled for deletion.")
+		return support.WriteProblem(c, http.StatusConflict, "not_pending_deletion", "The user is not scheduled for deletion.")
 	case errors.Is(err, userusecases.ErrRestoreGracePeriodExpired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "restore_grace_expired", "The restoration grace period has expired.")
+		return support.WriteProblem(c, http.StatusConflict, "restore_grace_expired", "The restoration grace period has expired.")
 	case errors.Is(err, userusecases.ErrInvalidAttribute):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "The attribute does not conform to the schema.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute", "The attribute does not conform to the schema.")
 	case errors.Is(err, userusecases.ErrInvalidRequiredAction):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_required_action", "The required action is invalid.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_required_action", "The required action is invalid.")
 	default:
 		var policyErr *authusecases.PasswordPolicyError
 		if errors.As(err, &policyErr) {
@@ -422,7 +422,7 @@ func HandleSetUserRequiredAction(d Deps, c *echo.Context) error {
 	}
 	var input adminRequiredActionRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()

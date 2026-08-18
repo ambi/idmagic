@@ -85,7 +85,7 @@ func TestAdminGroupAPICreateRejectsInvalidEmail(t *testing.T) {
 	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/groups", csrf, cookie, map[string]any{
 		"name": "sales", "email": "not-an-email",
 	})
-	if create.Code != http.StatusBadRequest {
+	if create.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d body=%s", create.Code, create.Body.String())
 	}
 }
@@ -97,7 +97,7 @@ func TestAdminGroupAPICreateRejectsUndefinedAttribute(t *testing.T) {
 		"name":       "sales",
 		"attributes": map[string]any{"unknown": map[string]any{"type": "string", "string": "x"}},
 	})
-	if create.Code != http.StatusBadRequest {
+	if create.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d body=%s", create.Code, create.Body.String())
 	}
 }

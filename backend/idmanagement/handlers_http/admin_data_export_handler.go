@@ -106,11 +106,11 @@ func handleStartExport(d Deps, c *echo.Context, target idmdomain.DataExportTarge
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
 	}
 	var in startDataExportRequest
 	if err := support.DecodeJSON(c.Request(), &in); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The export request is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The export request is invalid.")
 	}
 	filter := in.Filter
 	if target == idmdomain.ExportTargetGroupMembership {
@@ -128,7 +128,7 @@ func handleListExports(d Deps, c *echo.Context, target idmdomain.DataExportTarge
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
 	}
 	views, err := idmusecases.ListDataExports(c.Request().Context(), exportUsecaseDeps(d), scopeFor(c, target))
 	if err != nil {
@@ -146,7 +146,7 @@ func handleGetExport(d Deps, c *echo.Context, target idmdomain.DataExportTargetK
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
 	}
 	view, err := idmusecases.GetDataExport(c.Request().Context(), exportUsecaseDeps(d), scopeFor(c, target), c.Param("export_id"))
 	if err != nil {
@@ -161,7 +161,7 @@ func handleDownloadExport(d Deps, c *echo.Context, target idmdomain.DataExportTa
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
 	}
 	file, err := idmusecases.DownloadDataExport(c.Request().Context(), exportUsecaseDeps(d), scopeFor(c, target), actor.ID, c.Param("export_id"))
 	if err != nil {
@@ -185,7 +185,7 @@ func handleCancelExport(d Deps, c *echo.Context, target idmdomain.DataExportTarg
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "jobs_unavailable", "The job service is unavailable.")
 	}
 	view, err := idmusecases.CancelDataExport(c.Request().Context(), exportUsecaseDeps(d), scopeFor(c, target), actor.ID, c.Param("export_id"))
 	if err != nil {
@@ -260,21 +260,21 @@ func HandleCancelGroupMemberExport(d Deps, c *echo.Context) error {
 func writeDataExportError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, idmdomain.ErrInvalidExportColumns):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_columns", "The selected columns are not allowed for this target.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_columns", "The selected columns are not allowed for this target.")
 	case errors.Is(err, idmdomain.ErrInvalidExportTarget):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_target", "The export target is not supported.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_target", "The export target is not supported.")
 	case errors.Is(err, idmusecases.ErrInvalidExportFilter):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_filter", "The export filter is not allowed.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_filter", "The export filter is not allowed.")
 	case errors.Is(err, idmusecases.ErrExportNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "data_export_not_found", "The export does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "data_export_not_found", "The export does not exist.")
 	case errors.Is(err, idmusecases.ErrExportNotDownloadable):
-		return support.WriteBrowserError(c, http.StatusConflict, "data_export_not_downloadable", "The export is not available for download.")
+		return support.WriteProblem(c, http.StatusConflict, "data_export_not_downloadable", "The export is not available for download.")
 	case errors.Is(err, jobsports.ErrJobAlreadyTerminal):
-		return support.WriteBrowserError(c, http.StatusConflict, "data_export_not_cancelable", "The export has already finished.")
+		return support.WriteProblem(c, http.StatusConflict, "data_export_not_cancelable", "The export has already finished.")
 	}
 	var quotaErr *tenancydomain.QuotaExceededError
 	if errors.As(err, &quotaErr) {
-		return support.WriteBrowserError(c, http.StatusTooManyRequests, "quota_exceeded", "The active job quota has been exceeded.")
+		return support.WriteProblem(c, http.StatusTooManyRequests, "quota_exceeded", "The active job quota has been exceeded.")
 	}
 	return support.WriteServerError(c, err)
 }

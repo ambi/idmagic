@@ -34,7 +34,7 @@ func HandleImportAdminUsers(d Deps, c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil || d.UserCSVArtifacts == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
 	}
 	job, err := userusecases.StartUserImportPreview(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Request().Body, time.Now().UTC())
 	if err != nil {
@@ -52,7 +52,7 @@ func HandleApplyAdminUserImport(d Deps, c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil || d.UserCSVArtifacts == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
 	}
 	job, err := userusecases.StartUserImportApply(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Param("preview_job_id"), time.Now().UTC())
 	if err != nil {
@@ -66,12 +66,12 @@ func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.JobRepo == nil || d.UserCSVArtifacts == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
 	}
 	tenantID := tenancy.TenantID(c.Request().Context())
 	job, err := d.JobRepo.Get(c.Request().Context(), c.Param("job_id"))
 	if errors.Is(err, jobsports.ErrJobNotFound) || job == nil || job.TenantID != tenantID || (job.Kind != jobsdomain.KindUserImportPreview && job.Kind != jobsdomain.KindUserImportApply) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_import_not_found", "The import does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "user_import_not_found", "The import does not exist.")
 	}
 	if err != nil {
 		return err
@@ -89,11 +89,11 @@ func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, userImportErrorsQuery+";job="+job.ID,
 		userusecases.UserImportDefaultErrorLimit, userusecases.UserImportMaxErrorLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	boundaryOrdinal, err := parseUserImportErrorKeyset(page.AfterPrimary, page.AfterID, job.ID)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The pagination cursor is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The pagination cursor is invalid.")
 	}
 	startOrdinal := 1
 	switch {
@@ -141,13 +141,13 @@ func writeUserImportError(c *echo.Context, err error) error {
 	var csvErr *userdomain.UserCSVError
 	switch {
 	case errors.Is(err, userusecases.ErrUserImportNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_import_not_found", "The preview does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "user_import_not_found", "The preview does not exist.")
 	case errors.Is(err, userusecases.ErrUserImportPreviewNotReady):
-		return support.WriteBrowserError(c, http.StatusConflict, "preview_not_ready", "The preview has not succeeded.")
+		return support.WriteProblem(c, http.StatusConflict, "preview_not_ready", "The preview has not succeeded.")
 	case errors.Is(err, userusecases.ErrUserImportDigestMismatch):
-		return support.WriteBrowserError(c, http.StatusConflict, "preview_digest_mismatch", "The preview payload integrity check failed.")
+		return support.WriteProblem(c, http.StatusConflict, "preview_digest_mismatch", "The preview payload integrity check failed.")
 	case errors.As(err, &csvErr):
-		return support.WriteBrowserError(c, http.StatusBadRequest, string(csvErr.Code), "The CSV exceeds the configured transfer policy.")
+		return support.WriteProblem(c, http.StatusBadRequest, string(csvErr.Code), "The CSV exceeds the configured transfer policy.")
 	default:
 		return err
 	}

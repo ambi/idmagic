@@ -88,7 +88,7 @@ func HandleListGroups(d Deps, c *echo.Context) error {
 	tenantID := support.RequestTenantID(c)
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listGroupsQuery, listGroupsDefaultLimit, listGroupsMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	ctx := c.Request().Context()
 	var views []groupusecases.GroupView
@@ -172,7 +172,7 @@ func HandleCreateGroup(d Deps, c *echo.Context) error {
 	}
 	var input groupCreateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if input.MembershipType.Effective() == groupdomain.GroupMembershipDynamic && input.DynamicRule != nil {
 		defs := userdomain.BuiltinUserAttributeDefs()
@@ -215,7 +215,7 @@ func HandleUpdateDynamicGroupRule(d Deps, c *echo.Context) error {
 	}
 	var input dynamicRuleRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	rule, err := groupusecases.UpdateDynamicGroupRule(c.Request().Context(), dynamicGroupDeps(d), actor.ID, c.Param("group_id"), input.Expression, time.Now().UTC())
 	if err != nil {
@@ -233,7 +233,7 @@ func HandlePreviewDynamicGroupRule(d Deps, c *echo.Context) error {
 	}
 	var input dynamicRulePreviewRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	preview, err := groupusecases.PreviewDynamicGroupRule(c.Request().Context(), dynamicGroupDeps(d), c.Param("group_id"), input.Expression, input.UserIDs)
 	if err != nil {
@@ -275,7 +275,7 @@ func HandleUpdateGroup(d Deps, c *echo.Context) error {
 	}
 	var input groupUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	group, err := groupusecases.UpdateGroup(c.Request().Context(), adminGroupDeps(d), groupusecases.UpdateGroupInput{
 		ActorUserID: actor.ID, ID: c.Param("group_id"),
@@ -404,23 +404,23 @@ func toGroupSummaryResponse(group *groupdomain.Group, memberCount int) groupSumm
 func writeAdminGroupError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, groupusecases.ErrGroupNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "group_not_found", "The group does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "group_not_found", "The group does not exist.")
 	case errors.Is(err, idmusecases.ErrUserNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	case errors.Is(err, groupusecases.ErrGroupNameConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "group_name_conflict", "The group name is already in use.")
+		return support.WriteProblem(c, http.StatusConflict, "group_name_conflict", "The group name is already in use.")
 	case errors.Is(err, groupusecases.ErrGroupNameEmpty):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "group_name_required", "The group name is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "group_name_required", "The group name is required.")
 	case errors.Is(err, idmusecases.ErrInvalidRole):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_role", "The role is invalid.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_role", "The role is invalid.")
 	case errors.Is(err, groupusecases.ErrDynamicMembershipManaged):
-		return support.WriteBrowserError(c, http.StatusConflict, "dynamic_membership_managed_by_rule", "Dynamic group membership is managed by its rule.")
+		return support.WriteProblem(c, http.StatusConflict, "dynamic_membership_managed_by_rule", "Dynamic group membership is managed by its rule.")
 	case errors.Is(err, groupusecases.ErrInvalidDynamicGroupRule):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_dynamic_group_rule", err.Error())
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_dynamic_group_rule", err.Error())
 	case errors.Is(err, groupusecases.ErrInvalidEmail):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_email", "The email address is not valid.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_email", "The email address is not valid.")
 	case errors.Is(err, groupusecases.ErrInvalidAttribute):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute", "The attribute does not conform to the schema.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute", "The attribute does not conform to the schema.")
 	default:
 		return err
 	}

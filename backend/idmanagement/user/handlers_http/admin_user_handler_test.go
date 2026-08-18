@@ -145,7 +145,7 @@ func TestAdminUserAPISetsAndClearsRequiredAction(t *testing.T) {
 	bad := adminJSONRequest(t, e, http.MethodPost,
 		"/api/admin/v1/users/"+created.ID+"/required_actions", csrf, cookie,
 		map[string]any{"action": "teleport"})
-	if bad.Code != http.StatusBadRequest {
+	if bad.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("invalid action status=%d body=%s", bad.Code, bad.Body.String())
 	}
 
@@ -268,10 +268,10 @@ func TestAdminUserAPIRejectsSelfDelete(t *testing.T) {
 	e, _ := newAdminUserHandler(t)
 	csrf, cookie := adminCSRF(t, e)
 	resp := adminJSONRequest(t, e, http.MethodDelete, "/api/admin/v1/users/admin", csrf, cookie, nil)
-	if resp.Code != http.StatusBadRequest {
+	if resp.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
-	if !strings.Contains(resp.Body.String(), "self_delete_forbidden") {
+	if !strings.Contains(resp.Body.String(), "urn:idmagic:error:self_delete_forbidden") {
 		t.Fatalf("unexpected body=%s", resp.Body.String())
 	}
 }

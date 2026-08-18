@@ -194,7 +194,8 @@ func TestDataExportHTTP_RejectsInvalidColumns(t *testing.T) {
 	resp := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users/exports", csrf, cookie, map[string]any{
 		"columns": []string{"password_hash"},
 	})
-	if resp.Code != http.StatusBadRequest || !strings.Contains(resp.Body.String(), "invalid_columns") {
+	if resp.Code != http.StatusUnprocessableEntity ||
+		!strings.Contains(resp.Body.String(), "urn:idmagic:error:invalid_columns") {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
 }

@@ -542,14 +542,14 @@ func TestIdentityAPIErrors(t *testing.T) {
 	updateGrpBlank := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/groups/group-1", csrf, cookie, map[string]any{
 		"name": " ",
 	})
-	if updateGrpBlank.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for blank group name, got %d", updateGrpBlank.Code)
+	if updateGrpBlank.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for blank group name, got %d", updateGrpBlank.Code)
 	}
 	updateGrpBadRole := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/groups/group-1", csrf, cookie, map[string]any{
 		"roles": []string{" "},
 	})
-	if updateGrpBadRole.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for invalid group role, got %d", updateGrpBadRole.Code)
+	if updateGrpBadRole.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for invalid group role, got %d", updateGrpBadRole.Code)
 	}
 
 	// --- 3. Agent Errors ---
@@ -559,21 +559,21 @@ func TestIdentityAPIErrors(t *testing.T) {
 		t.Fatalf("expected 404 for ghost agent, got %d", getAgt.Code)
 	}
 
-	// Agent name required (400)
+	// Agent name required (422)
 	createAgtBlank := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{
 		"name": " ",
 	})
-	if createAgtBlank.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for blank agent name, got %d", createAgtBlank.Code)
+	if createAgtBlank.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for blank agent name, got %d", createAgtBlank.Code)
 	}
 
-	// Agent owner not found (400)
+	// Agent owner not found (422)
 	missingOwner := "ghost-user"
 	createAgtOwnerMissing := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{
 		"name": "OwnerMissingAgent", "owner_user_id": &missingOwner,
 	})
-	if createAgtOwnerMissing.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for missing owner, got %d", createAgtOwnerMissing.Code)
+	if createAgtOwnerMissing.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for missing owner, got %d", createAgtOwnerMissing.Code)
 	}
 
 	// Agent name conflict (409)
@@ -601,20 +601,20 @@ func TestIdentityAPIErrors(t *testing.T) {
 	updateAgtBadRole := adminJSONRequest(t, e, http.MethodPatch, "/api/admin/v1/agents/"+seedAgent.ID, csrf, cookie, map[string]any{
 		"roles": []string{" "},
 	})
-	if updateAgtBadRole.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for invalid agent role, got %d", updateAgtBadRole.Code)
+	if updateAgtBadRole.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for invalid agent role, got %d", updateAgtBadRole.Code)
 	}
 
 	// --- 4. Email Change Errors ---
-	// Invalid email format (400)
+	// Invalid email format (422)
 	badEmailReq := adminJSONRequest(t, e, http.MethodPost, "/api/account/v1/email/change_request", csrf, cookie, map[string]any{
 		"new_email": "invalid-email-format",
 	})
-	if badEmailReq.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for bad email, got %d", badEmailReq.Code)
+	if badEmailReq.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for bad email, got %d", badEmailReq.Code)
 	}
 
-	// Unchanged email (400)
+	// Unchanged email (422)
 	unchangedReq := httptest.NewRequest(
 		http.MethodPost,
 		"/realms/default/api/account/v1/email/change_request",
@@ -627,8 +627,8 @@ func TestIdentityAPIErrors(t *testing.T) {
 	unchangedReq.AddCookie(cookie)
 	unchangedRes := httptest.NewRecorder()
 	e.ServeHTTP(unchangedRes, unchangedReq)
-	if unchangedRes.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for unchanged email, got %d body=%s", unchangedRes.Code, unchangedRes.Body.String())
+	if unchangedRes.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for unchanged email, got %d body=%s", unchangedRes.Code, unchangedRes.Body.String())
 	}
 
 	// Email taken (409)
