@@ -154,11 +154,15 @@ language stub。`authentication` context 側 (`wi-329`) の同名コードは現
     `IssueMfaEnrollmentBypass` (`spec/contexts/authentication/main.tsp`、
     管理者が bypass を発行する別 operation、`wi-329` で実装を 422 へ揃え済み)
     だけである。ここで 403 を返す `POST /api/auth/mfa/enrollment/totp/*` は
-    TypeSpec に operation 自体が宣言されておらず、揃える先の宣言値が存在
-    しない。さらにこの分岐は `ErrMfaAlreadyEnrolled` (管理 API 側では 409) も
-    同じ code・同じ status で扱っているため、宣言のないまま 422 にすると
-    別概念を 1 つの status に押し込むことになる。契約の欠落を埋めるのが先で、
-    それは `wi-382` (TypeSpec contract fidelity) の領域として残す。
+    `StartBrowserMfaEnrollment`/`ConfirmBrowserMfaEnrollment`
+    (`spec/contexts/authentication/main.tsp`) として宣言されてはいるが、その
+    error union は 400 が `InvalidRequestError`、403 が `AccessDeniedError` で、
+    `MfaEnrollmentNotAllowedError` も 422 も含まない。つまりこの operation には
+    揃える先の宣言値が存在しない。さらにこの分岐は `ErrMfaAlreadyEnrolled`
+    (管理 API 側では 409) も同じ code・同じ status で扱っているため、宣言の
+    ないまま 422 にすると別概念を 1 つの status に押し込むことになる。
+    契約の欠落を埋めるのが先で、それは `wi-382` (TypeSpec contract fidelity)
+    の T009 に引き継いだ。
 - **Verification Results**:
   - `just test-go-package ./backend/oauth2/handlers_http` - RED
     (`TestAdminRejectsInvalidTypeSchema` が status 400 で失敗) → GREEN

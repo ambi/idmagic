@@ -100,18 +100,23 @@ HTTP error responses 節にある「未実装」の記載を実装完了状態�
   統一され、標準がエラー形式を定める接点 (OAuth2 / SCIM / DCR /
   SharedSignals 受信エンドポイント) だけが例外として残る。
 
-  **対応していないこと**:
+  **対応していないこと** (いずれも `wi-382` に引き継ぎ済み):
   - `WriteRateLimited` (429) は `{error, retry_after_seconds, message}` の
     まま。`retry_after_seconds` を運ぶ独自形状で、Problem Details 化するなら
     拡張メンバーの扱いを決める必要があるため、この work item の
-    「レガシーヘルパーの削除」とは別種の変更として残す。
+    「レガシーヘルパーの削除」とは別種の変更として残す。契約側が 7 operation で
+    `application/problem+json` を宣言している食い違いは `wi-382` T002。
   - SharedSignals 受信エンドポイントの body が RFC 8935 §2.3 の
     `{err, description}` と一致していない既知の乖離 (`wi-335` Risk Notes) は
-    未対応のまま。
-  - 移行中に見つかった契約の欠落 (自己サービスの属性更新エンドポイントと
-    `/api/auth/mfa/enrollment/totp/*` が TypeSpec に未宣言、
-    export の `quota_exceeded` が `QuotaExceededError` と別概念) は
-    `wi-331`/`wi-332` の Completion に記録した。`wi-382` の領域。
+    未対応のまま。実装の変更なので `wi-382` の Out of Scope に置き、そこから
+    別 work item を起票する。
+  - 移行中に見つかった契約の穴 (`UpdateUserProfile` の error union に
+    `InvalidUserAttributeError` と 401/404 が無い、
+    `StartBrowserMfaEnrollment`/`ConfirmBrowserMfaEnrollment` に
+    `MfaEnrollmentNotAllowedError` が無い、export 系 operation に 429 の宣言が
+    無く `quota_exceeded` が別概念と code を共有している、
+    `ReceiveSecurityEvent` に 413/404 の宣言が無い) は `wi-382` の
+    Motivation 6 と T009 に一覧として移した。
 - **Verification Results**:
   - `just test-go` - passed (全パッケージ)
   - `just lint-go` - 0 issues
