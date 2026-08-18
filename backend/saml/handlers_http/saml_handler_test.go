@@ -628,8 +628,15 @@ func TestAdminServiceProvider_RejectsInvalid(t *testing.T) {
 	e := newAdminServer(t)
 	// acs_urls 欠落。
 	body := `{"entity_id":"https://sp.example.com","claim_policy":{"name_id":{"format":"f","source_attribute":"user_id"}}}`
-	if rec := doJSON(e, http.MethodPost, "/api/admin/v1/saml/service-providers", body); rec.Code != http.StatusBadRequest {
+	rec := doJSON(e, http.MethodPost, "/api/admin/v1/saml/service-providers", body)
+	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d, want 400", rec.Code)
+	}
+	if contentType := rec.Header().Get("Content-Type"); contentType != support.ProblemContentType {
+		t.Fatalf("Content-Type=%q, want %q", contentType, support.ProblemContentType)
+	}
+	if !strings.Contains(rec.Body.String(), "urn:idmagic:error:invalid_request") {
+		t.Fatalf("unexpected body=%s", rec.Body.String())
 	}
 }
 

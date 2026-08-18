@@ -1,9 +1,14 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
+initial_context:
+  specification: [spec/SPECIFICATION.md, spec/contexts/saml/SPECIFICATION.md]
+  source: [backend/saml/handlers_http, backend/shared/http/support_http/problem.go]
+  tests: [backend/saml/handlers_http]
+  stop_before_reading: [frontend]
 ---
 
 # saml context の `WriteBrowserError` 呼び出しを Problem Details へ移行する
@@ -43,9 +48,10 @@ wi-325 が `IdPProfileInUseError`/`DefaultIdPProfileError` (いずれも 409) �
 
 ## Tasks
 
-- [ ] T001 [App] `admin_idp_profile_handler.go`・
+- [x] T001 [App] `admin_idp_profile_handler.go`・
       `admin_service_provider_handler.go` を `WriteProblem` へ移行する。
-- [ ] T002 [Verify] `just verify` を通す。
+      RED→GREEN: `TestAdminServiceProvider_RejectsInvalid`。
+- [x] T002 [Verify] `just verify` を通す。
 
 ## Verification
 
@@ -54,3 +60,23 @@ wi-325 が `IdPProfileInUseError`/`DefaultIdPProfileError` (いずれも 409) �
 ## Risk Notes
 
 小規模 (2 ファイル・13 箇所)。特記事項なし。
+
+## Completion
+
+- **Completed At**: 2026-08-19
+- **Summary**:
+  `backend/saml/handlers_http` の `admin_idp_profile_handler.go` (8 箇所)・
+  `admin_service_provider_handler.go` (5 箇所) をすべて
+  `support.WriteProblem` へ置き換えた。status 変更は不要
+  (`profile_in_use`/`application_owned_protocol` は既に 409、`not_found` は 404)。
+  長さ違反を大域のエラー写像に 422 として作らせている箇所 (wi-128) の
+  コメントが旧ヘルパー名を指していたため現在の名前へ直した。
+  SAML プロトコル応答 (AuthnRequest/Response、metadata XML) は対象外のまま
+  変更していない。
+  仕様変更はない (`just spec-diff`: no normative specification change)。
+- **Verification Results**:
+  - `just test-go-package ./backend/saml/handlers_http` - RED
+    (`TestAdminServiceProvider_RejectsInvalid` が
+    `Content-Type: application/json` で失敗) → GREEN
+  - `just verify` - passed
+  - `just spec-diff` - no normative specification change against main

@@ -108,11 +108,11 @@ func (d Deps) handleCreateIDPProfile(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.IDPProfileRepo == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
 	}
 	var req idpProfileRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	now := time.Now().UTC()
 	profile := &samldomain.SamlIdentityProviderProfile{
@@ -137,18 +137,18 @@ func (d Deps) handleUpdateIDPProfile(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.IDPProfileRepo == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
 	}
 	var req idpProfileRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	profile, err := d.IDPProfileRepo.FindIDPProfileByID(c.Request().Context(), support.RequestTenantID(c), c.Param("profile_id"))
 	if err != nil {
 		return err
 	}
 	if profile == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The SAML identity provider profile does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The SAML identity provider profile does not exist.")
 	}
 	profile.Name, profile.Mode = strings.TrimSpace(req.Name), req.Mode
 	if err := d.IDPProfileRepo.SaveIDPProfile(c.Request().Context(), profile); err != nil {
@@ -173,7 +173,7 @@ func (d Deps) handleDeleteIDPProfile(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.IDPProfileRepo == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "SAML is unavailable.")
 	}
 	if err := d.IDPProfileRepo.DeleteIDPProfile(c.Request().Context(), support.RequestTenantID(c), c.Param("profile_id")); err != nil {
 		return d.writeIDPProfileError(c, err)
@@ -184,9 +184,9 @@ func (d Deps) handleDeleteIDPProfile(c *echo.Context) error {
 func (d Deps) writeIDPProfileError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, samldomain.ErrDefaultIDPProfile), errors.Is(err, samldomain.ErrIDPProfileInUse):
-		return support.WriteBrowserError(c, http.StatusConflict, "profile_in_use", err.Error())
+		return support.WriteProblem(c, http.StatusConflict, "profile_in_use", err.Error())
 	case errors.Is(err, samldomain.ErrInvalidIDPProfile), errors.Is(err, samldomain.ErrDedicatedIDPProfileCardinality):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	default:
 		return err
 	}
