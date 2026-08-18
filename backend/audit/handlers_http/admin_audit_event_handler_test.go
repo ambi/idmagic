@@ -419,7 +419,8 @@ func TestAdminAuditEventsRejectsUnknownFilterField(t *testing.T) {
 	e := newAuditAdminServer(t, user, nil)
 	rec := getAdminAuditEvents(e, "/realms/acme/api/admin/v1/audit_events?filter=payload.any:eq:value")
 	if rec.Code != http.StatusBadRequest ||
-		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_request"`)) {
+		rec.Header().Get("Content-Type") != support.ProblemContentType ||
+		!bytes.Contains(rec.Body.Bytes(), []byte(`"type":"urn:idmagic:error:invalid_request"`)) {
 		t.Fatalf("unknown filter must be 400 invalid_request, got %d body=%s", rec.Code, rec.Body.String())
 	}
 }

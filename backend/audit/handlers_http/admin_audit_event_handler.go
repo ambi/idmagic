@@ -168,11 +168,11 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	}
 	query, noMatch, err := d.parseAuditEventQuery(c, actor)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, actor.TenantID, auditEventQueryHash(c), listAdminAuditEventsDefaultLimit, listAdminAuditEventsMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	if d.AuditEventRepo == nil || noMatch {
 		metadata := support.CalculatePaginationMetadata(0, page)
@@ -184,7 +184,7 @@ func (d Deps) handleListAdminAuditEvents(c *echo.Context) error {
 	if page.AfterPrimary != "" {
 		afterOccurredAt, err := time.Parse(time.RFC3339Nano, page.AfterPrimary)
 		if err != nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
 		}
 		if page.Direction == support.PageBackward {
 			query.BeforeOccurredAt = afterOccurredAt
@@ -238,18 +238,18 @@ func (d Deps) handleGetAdminAuditEvent(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.AuditEventRepo == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
 	rec, err := d.AuditEventRepo.FindByID(c.Request().Context(), c.Param("id"))
 	if err != nil {
 		return support.WriteServerError(c, err)
 	}
 	if rec == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
 	if !auditEventVisibleTo(rec, actor) {
 		// 別テナントのイベントは存在を隠す。
-		return support.WriteBrowserError(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "event_not_found", "The audit event does not exist.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toAdminAuditEventResponse(rec))
 }
@@ -261,7 +261,7 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 	}
 	query, noMatch, err := d.parseAuditEventQuery(c, actor)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	query.Limit = adminAuditEventExportMaxLimit
 	var records []*auditports.AuditEventRecord
