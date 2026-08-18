@@ -9,11 +9,34 @@ enum AttrVisibility {
 }
 
 
-@doc("Tenancy context が publish する属性定義の published language stub。claim 発行時の属性可視性判定にのみ使う。")
+@doc("Tenancy context が publish する属性定義の published language stub。claim 発行時の属性可視性判定に使うほか、\ntenant の user_attribute_schema の要求本体と応答本体にそのまま現れる。")
 model UserAttributeDef {
+  @doc("属性の機械名。先頭が英字の snake_case で、builtin カタログと tenant custom 属性を通じて一意。")
   @minLength(1)
   key: string;
-  visibility: AttrVisibility = AttrVisibility.Private;
+  @doc("管理画面と self-service フォームに出す表示名。省略時は key をそのまま表示に使う。")
+  @maxLength(100)
+  label?: string;
+  @doc("属性値の型。multi_valued と食い違う定義に対する属性値の検証は失敗する。")
+  type: AttributeType;
+  @doc("値を複数持つか。type=StringArray のときだけ true にできる。")
+  multi_valued: boolean = false;
+  @doc("User の作成と更新で値を必須とするか。")
+  required: boolean = false;
+  @doc("利用者自身が self-service プロフィールからこの属性を編集できるか。")
+  editable_by_user: boolean = false;
+  @doc("claim へ出すときの claim 名。省略時は key をそのまま claim 名に使う。")
+  @minLength(1)
+  @maxLength(100)
+  claim_name?: string;
+  @doc("claim 露出を解禁する OIDC scope。省略時は custom_attribute scope が解禁の条件になる。")
+  @minLength(1)
+  @maxLength(64)
+  oidc_scope?: string;
+  @doc("属性の開示範囲。既定値は無く、値の無い定義も enum 外の値も拒否する。ClaimExposed だけが claim に出せる。")
+  visibility: AttrVisibility;
+  @doc("値が個人情報を含むか。省略時は false になるので、PII として扱わせたい属性には明示的に true を送る。")
+  pii: boolean = false;
 }
 
 
