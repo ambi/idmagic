@@ -144,7 +144,7 @@ func (d Deps) handleRegisterTrustBundle(c *echo.Context) error {
 	}
 	var req registerTrustBundleRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	bundle, err := usecases.RegisterWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), usecases.RegisterWorkloadTrustBundleInput{
 		Name: req.Name, TrustDomain: req.TrustDomain, Issuer: req.Issuer, JWKSURI: req.JWKSURI,
@@ -165,7 +165,7 @@ func (d Deps) handleUpdateTrustBundle(c *echo.Context) error {
 	}
 	var req updateTrustBundleRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	bundle, err := usecases.UpdateWorkloadTrustBundle(c.Request().Context(), d.adminDeps(), c.Param("trust_bundle_id"), usecases.UpdateWorkloadTrustBundleInput{
 		Name: req.Name, JWKSURI: req.JWKSURI, JWKS: req.JWKS, AcceptedAudiences: req.AcceptedAudiences,
@@ -284,7 +284,7 @@ func (d Deps) handleCreateBinding(c *echo.Context) error {
 	}
 	var req createBindingRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	binding, err := usecases.CreateAgentWorkloadBinding(c.Request().Context(), d.adminBindingDeps(), c.Param("trust_bundle_id"), usecases.CreateAgentWorkloadBindingInput{
 		SubjectPattern: req.SubjectPattern, AgentID: req.AgentID,
@@ -332,29 +332,29 @@ func (d Deps) changeBindingStatus(c *echo.Context, action func(id string, now ti
 func writeAdminWorkloadIdentityError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, usecases.ErrTrustBundleNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "workload_trust_bundle_not_found", "The workload trust bundle does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "workload_trust_bundle_not_found", "The workload trust bundle does not exist.")
 	case errors.Is(err, usecases.ErrTrustBundleNameConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "workload_trust_bundle_name_conflict", "The trust bundle name is already in use.")
+		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_name_conflict", "The trust bundle name is already in use.")
 	case errors.Is(err, usecases.ErrTrustBundleIssuerConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "workload_trust_bundle_issuer_conflict", "The issuer is already registered.")
+		return support.WriteProblem(c, http.StatusConflict, "workload_trust_bundle_issuer_conflict", "The issuer is already registered.")
 	case errors.Is(err, usecases.ErrTrustBundleMissingJWKS):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "workload_trust_bundle_jwks_required", "jwks_uri or jwks is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_jwks_required", "jwks_uri or jwks is required.")
 	case errors.Is(err, usecases.ErrTrustBundleNameRequired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "workload_trust_bundle_name_required", "The trust bundle name is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_name_required", "The trust bundle name is required.")
 	case errors.Is(err, usecases.ErrTrustBundleIssuerRequired):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "workload_trust_bundle_issuer_required", "The issuer is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_issuer_required", "The issuer is required.")
 	case errors.Is(err, usecases.ErrTrustBundleAudiencesEmpty):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "workload_trust_bundle_audiences_required", "accepted_audiences must not be empty.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_audiences_required", "accepted_audiences must not be empty.")
 	case errors.Is(err, usecases.ErrTrustBundleInvalidTTL):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "workload_trust_bundle_invalid_ttl", "max_subject_token_ttl_seconds must be positive.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "workload_trust_bundle_invalid_ttl", "max_subject_token_ttl_seconds must be positive.")
 	case errors.Is(err, usecases.ErrBindingNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "agent_workload_binding_not_found", "The binding does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "agent_workload_binding_not_found", "The binding does not exist.")
 	case errors.Is(err, usecases.ErrBindingAgentNotFound):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_workload_binding_agent_not_found", "The agent does not exist in this tenant.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_workload_binding_agent_not_found", "The agent does not exist in this tenant.")
 	case errors.Is(err, usecases.ErrBindingSubjectPatternExists):
-		return support.WriteBrowserError(c, http.StatusConflict, "agent_workload_binding_pattern_conflict", "subject_pattern is already registered for this trust bundle.")
+		return support.WriteProblem(c, http.StatusConflict, "agent_workload_binding_pattern_conflict", "subject_pattern is already registered for this trust bundle.")
 	case errors.Is(err, usecases.ErrBindingSubjectPatternEmpty):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "agent_workload_binding_pattern_required", "subject_pattern is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_workload_binding_pattern_required", "subject_pattern is required.")
 	default:
 		return err
 	}

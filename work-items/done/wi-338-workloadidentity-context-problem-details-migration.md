@@ -1,9 +1,14 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
+initial_context:
+  specification: [spec/SPECIFICATION.md, spec/contexts/workloadidentity/SPECIFICATION.md]
+  source: [backend/workloadidentity/handlers_http, backend/shared/http/support_http/problem.go]
+  tests: [backend/workloadidentity/handlers_http]
+  stop_before_reading: [frontend]
 ---
 
 # workloadidentity context の `WriteBrowserError` 呼び出しを Problem Details へ移行する
@@ -52,9 +57,10 @@ status を揃える。
 
 ## Tasks
 
-- [ ] T001 [App] `routes.go` の 15 箇所を `WriteProblem` へ移行し、
+- [x] T001 [App] `routes.go` の 15 箇所を `WriteProblem` へ移行し、
       granular 7 model の status を 422 に揃える。
-- [ ] T002 [Verify] `just verify` を通す。
+      RED→GREEN: `TestRegisterTrustBundleRejectsMissingName` (新規)。
+- [x] T002 [Verify] `just verify` を通す。
 
 ## Verification
 
@@ -65,3 +71,26 @@ status を揃える。
 単一ファイル 15 箇所。trust bundle 系と agent-workload binding 系で status
 変更対象/非対象が入り混じるため、行単位で `wi-325` Design 節の対応表と
 突き合わせて確認すること。
+
+## Completion
+
+- **Completed At**: 2026-08-19
+- **Summary**:
+  `backend/workloadidentity/handlers_http/routes.go` の 15 箇所を
+  `support.WriteProblem` へ置き換え、granular 7 code
+  (`workload_trust_bundle_jwks_required`・`workload_trust_bundle_name_required`・
+  `workload_trust_bundle_issuer_required`・
+  `workload_trust_bundle_audiences_required`・`workload_trust_bundle_invalid_ttl`・
+  `agent_workload_binding_agent_not_found`・
+  `agent_workload_binding_pattern_required`) の status を 400 から仕様の
+  宣言値 422 に揃えた。残り 8 箇所 (`invalid_request` 400、
+  `*_not_found` 404、`*_conflict` 409) は status 据え置き。
+  このパッケージには HTTP レベルのテストが 1 つもなかったため、
+  `routes_test.go` を新設して trust bundle 登録の name 欠落ケースを固定した。
+  仕様変更はない (`just spec-diff`: no normative specification change)。
+- **Verification Results**:
+  - `just test-go-package ./backend/workloadidentity/handlers_http` - RED
+    (`TestRegisterTrustBundleRejectsMissingName` が status 400・旧 envelope で
+    失敗) → GREEN
+  - `just verify` - passed
+  - `just spec-diff` - no normative specification change against main
