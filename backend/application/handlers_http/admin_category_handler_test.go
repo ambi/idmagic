@@ -4,26 +4,35 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
-// wi-326 T003: admin_category_handler.go used to collapse both conditions into
-// the generic "invalid_request" code (background). They now carry
-// distinguishable codes matching the new SCL error models
-// CategoryNameRequiredError / UnknownCategoryError (spec/contexts/application.yaml).
+// カテゴリ名の欠落と未知カテゴリの割当は、generic な "invalid_request" ではなく
+// それぞれ固有の code を持ち、業務規則違反として 422 を返す
+// (spec/contexts/application/main.tsp の CreateApplicationCategoryError422 /
+// SetApplicationCategoriesError422)。
 func TestCreateApplicationCategory_EmptyNameYieldsDistinguishableCode(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
 	rec := adminJSON(t, e, http.MethodPost, "/api/admin/v1/application-categories", csrf, cookie, map[string]any{"name": "  "})
 
-	var body struct {
-		Error string `json:"error"`
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want %d (body=%s)", rec.Code, http.StatusUnprocessableEntity, rec.Body.String())
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+	if ct := rec.Header().Get("Content-Type"); ct != support.ProblemContentType {
+		t.Fatalf("Content-Type = %q, want %q", ct, support.ProblemContentType)
+	}
+	var problem support.Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
 		t.Fatalf("unmarshal body: %v (body=%s)", err, rec.Body.String())
 	}
-	if body.Error != "category_name_required" {
-		t.Errorf("error code = %q, want %q", body.Error, "category_name_required")
+	if problem.Type != "urn:idmagic:error:category_name_required" {
+		t.Errorf("type = %q, want %q", problem.Type, "urn:idmagic:error:category_name_required")
+	}
+	if problem.Status != http.StatusUnprocessableEntity {
+		t.Errorf("status field = %d, want %d", problem.Status, http.StatusUnprocessableEntity)
 	}
 }
 
@@ -36,13 +45,17 @@ func TestSetApplicationCategories_UnknownCategoryYieldsDistinguishableCode(t *te
 		"category_ids": []string{"does-not-exist"},
 	})
 
-	var body struct {
-		Error string `json:"error"`
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want %d (body=%s)", rec.Code, http.StatusUnprocessableEntity, rec.Body.String())
 	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+	if ct := rec.Header().Get("Content-Type"); ct != support.ProblemContentType {
+		t.Fatalf("Content-Type = %q, want %q", ct, support.ProblemContentType)
+	}
+	var problem support.Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
 		t.Fatalf("unmarshal body: %v (body=%s)", err, rec.Body.String())
 	}
-	if body.Error != "unknown_category" {
-		t.Errorf("error code = %q, want %q", body.Error, "unknown_category")
+	if problem.Type != "urn:idmagic:error:unknown_category" {
+		t.Errorf("type = %q, want %q", problem.Type, "urn:idmagic:error:unknown_category")
 	}
 }

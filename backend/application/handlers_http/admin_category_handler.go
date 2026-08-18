@@ -55,7 +55,7 @@ func (d Deps) handleCreateCategory(c *echo.Context) error {
 	}
 	var req categoryRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	category, err := appusecases.CreateCategory(c.Request().Context(), d.categoryDeps(), appusecases.CreateCategoryInput{
 		ActorUserID: actor.ID, Name: req.Name, Position: req.Position, Now: time.Now().UTC(),
@@ -76,7 +76,7 @@ func (d Deps) handleUpdateCategory(c *echo.Context) error {
 	}
 	var req categoryRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	name := &req.Name
 	if req.Name == "" {
@@ -118,7 +118,7 @@ func (d Deps) handleSetApplicationCategories(c *echo.Context) error {
 	}
 	var req applicationCategoriesRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	app, err := appusecases.SetApplicationCategories(c.Request().Context(), d.categoryDeps(), appusecases.SetApplicationCategoriesInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("id"), CategoryIDs: req.CategoryIDs, Now: time.Now().UTC(),
@@ -136,18 +136,15 @@ func (d Deps) categoryDeps() appusecases.CategoryDeps {
 func (d Deps) writeCategoryError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, appusecases.ErrCategoryNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "category_not_found", "The category does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "category_not_found", "The category does not exist.")
 	case errors.Is(err, appusecases.ErrApplicationNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
 	case errors.Is(err, appusecases.ErrCategoryNameRequired):
-		// status stays 400 (SCL declares 422) until the application context's
-		// WriteBrowserError call sites migrate to Problem Details (wi-326 T004),
-		// same deferred pairing wi-325 used for its 37 granular error models.
-		return support.WriteBrowserError(c, http.StatusBadRequest, "category_name_required", "The category name is required.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "category_name_required", "The category name is required.")
 	case errors.Is(err, appusecases.ErrUnknownCategory):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "unknown_category", "A nonexistent category cannot be assigned.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "unknown_category", "A nonexistent category cannot be assigned.")
 	default:
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 }
 

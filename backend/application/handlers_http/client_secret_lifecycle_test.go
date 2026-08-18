@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/labstack/echo/v5"
+
+	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 )
 
 type applicationSecretCredential struct {
@@ -84,8 +86,15 @@ func TestAdminApplicationClientSecretLifecycle(t *testing.T) {
 	limited := adminJSON(t, e, http.MethodPost, "/api/admin/v1/applications/"+applicationID+"/oidc/client-secrets", csrf, cookie, map[string]any{
 		"expires_in_days": 90,
 	})
-	if limited.Code != http.StatusConflict {
+	if limited.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("limit status=%d body=%s", limited.Code, limited.Body.String())
+	}
+	var limitedProblem support.Problem
+	if err := json.Unmarshal(limited.Body.Bytes(), &limitedProblem); err != nil {
+		t.Fatalf("unmarshal limit body: %v (body=%s)", err, limited.Body.String())
+	}
+	if limitedProblem.Type != "urn:idmagic:error:client_secret_limit_exceeded" {
+		t.Errorf("limit type = %q, want %q", limitedProblem.Type, "urn:idmagic:error:client_secret_limit_exceeded")
 	}
 
 	revoked := adminJSON(t, e, http.MethodDelete, "/api/admin/v1/applications/"+applicationID+"/oidc/client-secrets/"+legacyID, csrf, cookie, nil)

@@ -429,10 +429,10 @@ func TestAdminApplicationExtraErrors(t *testing.T) {
 	e := newApplicationHandler(t)
 	csrf, cookie := appCSRF(t, e)
 
-	// Create Category with empty name -> 400
+	// Create Category with empty name -> 422 (category_name_required)
 	badCat := adminJSON(t, e, http.MethodPost, "/api/admin/v1/application-categories", csrf, cookie, map[string]any{"name": ""})
-	if badCat.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", badCat.Code)
+	if badCat.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422, got %d", badCat.Code)
 	}
 
 	// Update non-existent category -> 404

@@ -87,7 +87,7 @@ func (d Deps) handleListApplications(c *echo.Context) error {
 	ctx := c.Request().Context()
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminApplicationsQuery, listAdminApplicationsDefaultLimit, listAdminApplicationsMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	var apps []*domain.Application
 	var pageErr, countErr error
@@ -255,7 +255,7 @@ func (d Deps) handleUpdateApplication(c *echo.Context) error {
 	}
 	var req applicationUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	app, err := appusecases.UpdateApplication(c.Request().Context(), d.applicationDeps(), appusecases.UpdateApplicationInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("id"),
@@ -277,7 +277,7 @@ func (d Deps) handleUploadApplicationIcon(c *echo.Context) error {
 	}
 	file, err := c.FormFile("file")
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Specify an icon image file.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Specify an icon image file.")
 	}
 	src, err := file.Open()
 	if err != nil {
@@ -324,7 +324,7 @@ func (d Deps) handleDeleteApplicationIcon(c *echo.Context) error {
 
 func (d Deps) handleGetApplicationIcon(c *echo.Context) error {
 	if d.ApplicationIconStore == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The icon image does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The icon image does not exist.")
 	}
 	icon, err := d.ApplicationIconStore.Find(
 		c.Request().Context(), support.RequestTenantID(c), c.Param("application_id"), c.Param("id"),
@@ -333,7 +333,7 @@ func (d Deps) handleGetApplicationIcon(c *echo.Context) error {
 		return err
 	}
 	if icon == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The icon image does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The icon image does not exist.")
 	}
 	c.Response().Header().Set("Content-Type", icon.ContentType)
 	c.Response().Header().Set("X-Content-Type-Options", "nosniff")
@@ -392,7 +392,7 @@ func (d Deps) handleListAssignments(c *echo.Context) error {
 	tenantID := support.RequestTenantID(c)
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listApplicationAssignmentsQuery, listApplicationAssignmentsDefaultLimit, listApplicationAssignmentsMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	var assignments []*domain.ApplicationAssignment
 	if page.Direction == support.PageBackward {
@@ -429,7 +429,7 @@ func (d Deps) handleAssignApplication(c *echo.Context) error {
 	}
 	var req assignmentRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	assignment, err := appusecases.AssignApplication(c.Request().Context(), d.assignmentDeps(), appusecases.AssignApplicationInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("id"),
@@ -504,7 +504,7 @@ func (d Deps) handleUpdateSignInPolicy(c *echo.Context) error {
 	}
 	var req signInPolicyRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	policy, err := appusecases.UpdateSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateSignInPolicyInput{
 		ActorUserID: actor.ID, ApplicationID: c.Param("id"), Rules: req.Rules, Now: time.Now().UTC(),
@@ -544,7 +544,7 @@ func (d Deps) handleUpdateDefaultSignInPolicy(c *echo.Context) error {
 	}
 	var req defaultSignInPolicyRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	policy, err := appusecases.UpdateDefaultSignInPolicy(c.Request().Context(), d.signInPolicyDeps(), appusecases.UpdateDefaultSignInPolicyInput{
 		ActorUserID: actor.ID, Rules: req.Rules, Now: time.Now().UTC(),
@@ -598,18 +598,18 @@ func (d Deps) signInPolicyDeps() appusecases.SignInPolicyDeps {
 
 func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	if errors.Is(err, appusecases.ErrApplicationNotFound) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "application_not_found", "The application does not exist.")
 	}
 	if errors.Is(err, appusecases.ErrApplicationIconRequired) ||
 		errors.Is(err, appusecases.ErrApplicationIconTooLarge) ||
 		errors.Is(err, appusecases.ErrApplicationIconFormat) {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_icon", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_icon", err.Error())
 	}
 	if errors.Is(err, appusecases.ErrInvalidSignInPolicy) {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_sign_in_policy", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_sign_in_policy", err.Error())
 	}
 	if errors.Is(err, clientusecases.ErrClientSecretLimitExceeded) {
-		return support.WriteBrowserError(c, http.StatusConflict, "client_secret_limit_exceeded", "The client already has two active secrets.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "client_secret_limit_exceeded", "The client already has two active secrets.")
 	}
 	// QuotaExceededError (wi-160) falls through to support_http.ErrorHandler
 	// instead of being flattened into invalid_request/400 below, so it gets the same
@@ -617,7 +617,7 @@ func (d Deps) writeApplicationError(c *echo.Context, err error) error {
 	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		return err
 	}
-	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+	return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 }
 
 func (d Deps) buildApplicationResponse(ctx context.Context, tenantID string, app *domain.Application) applicationResponse {

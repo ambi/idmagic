@@ -30,11 +30,11 @@ func (d Deps) handleRotateOIDCClientSecret(c *echo.Context) error {
 	}
 	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
 	if clientID == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	var req rotateOIDCClientSecretRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	graceDays := 7
 	if req.GraceDays != nil {
@@ -66,11 +66,11 @@ func (d Deps) handleIssueOIDCClientSecret(c *echo.Context) error {
 	}
 	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
 	if clientID == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	var req issueOIDCClientSecretRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	expiresInDays := 90
 	if req.ExpiresInDays != nil {
@@ -106,7 +106,7 @@ func (d Deps) handleRevokeOIDCClientSecret(c *echo.Context) error {
 	}
 	clientID := bindingKeyOf(app, domain.ApplicationProtocolOIDC)
 	if clientID == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The OIDC binding does not exist.")
 	}
 	now := time.Now().UTC()
 	result, err := clientusecases.RevokeClientSecret(c.Request().Context(), clientusecases.AdminOAuth2ClientDeps{
