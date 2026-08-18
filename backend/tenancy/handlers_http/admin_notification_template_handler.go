@@ -84,13 +84,13 @@ func (d Deps) notificationTemplateDeps() tenantusecases.NotificationTemplateDeps
 func (d Deps) writeNotificationTemplateError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, tenantusecases.ErrUnknownNotificationTemplate):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request",
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"The notification template key or locale does not exist.")
 	case errors.Is(err, tenantusecases.ErrInvalidNotificationTemplate):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_notification_template",
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_notification_template",
 			"The template must set a subject, a text body, and an HTML body, and may only use the listed placeholders.")
 	case errors.Is(err, tenantusecases.ErrTestNotificationRecipient):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request",
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"A test message is only sent to your own verified email address, and your account has none.")
 	default:
 		return err
@@ -142,7 +142,7 @@ func (d Deps) handleUpdateNotificationTemplate(c *echo.Context) error {
 	}
 	var input notificationTemplateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	key, locale := notificationTemplateKeyParam(c), c.Param("locale")
 	now := time.Now().UTC()
@@ -193,7 +193,7 @@ func (d Deps) handlePreviewNotificationTemplate(c *echo.Context) error {
 	}
 	var input notificationTemplateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	preview, err := tenantusecases.PreviewNotificationTemplate(c.Request().Context(), d.notificationTemplateDeps(),
 		actor.TenantID, notificationTemplateKeyParam(c), c.Param("locale"), input.toInput())

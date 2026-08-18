@@ -70,11 +70,11 @@ func (d Deps) handleGetAdminIntegrationEndpoints(c *echo.Context) error {
 		return d.WriteAdminAccessError(c, err)
 	}
 	if d.FederationSigner == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "federation_credentials_unavailable", "Federation signing credentials are unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "federation_credentials_unavailable", "Federation signing credentials are unavailable.")
 	}
 	signer, err := d.FederationSigner.Resolve(c.Request().Context())
 	if err != nil || signer == nil || signer.Certificate() == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "federation_credentials_unavailable", "Federation signing credentials are unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "federation_credentials_unavailable", "Federation signing credentials are unavailable.")
 	}
 	issuer := strings.TrimRight(support.RequestIssuer(c, d.Issuer), "/")
 	return support.NoStoreJSON(c, http.StatusOK, buildAdminIntegrationEndpointCatalog(issuer, signer.Certificate()))

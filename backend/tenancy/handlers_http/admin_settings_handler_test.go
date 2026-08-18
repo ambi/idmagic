@@ -226,7 +226,7 @@ func TestAdminSettingsExposeAndUpdateTrustedDeviceMaxAge(t *testing.T) {
 	resp := patchSettings(t, e, map[string]any{
 		"trusted_device_max_age_seconds": domain.TrustedDeviceMaxAgeCeilingSeconds + 1,
 	})
-	if resp.Code != http.StatusBadRequest || !bytes.Contains(resp.Body.Bytes(), []byte("policy_override_weaker")) {
+	if resp.Code != http.StatusUnprocessableEntity || !bytes.Contains(resp.Body.Bytes(), []byte("urn:idmagic:error:policy_override_weaker")) {
 		t.Fatalf("above-ceiling status=%d body=%s", resp.Code, resp.Body.String())
 	}
 }
@@ -267,7 +267,7 @@ func TestAdminSettingsExposeAndUpdateMaxDelegationDepth(t *testing.T) {
 	resp = patchSettings(t, e, map[string]any{
 		"max_delegation_depth": domain.DefaultMaxDelegationDepth + 1,
 	})
-	if resp.Code != http.StatusBadRequest || !bytes.Contains(resp.Body.Bytes(), []byte("policy_override_weaker")) {
+	if resp.Code != http.StatusUnprocessableEntity || !bytes.Contains(resp.Body.Bytes(), []byte("urn:idmagic:error:policy_override_weaker")) {
 		t.Fatalf("weaker override status=%d body=%s", resp.Code, resp.Body.String())
 	}
 }
@@ -281,10 +281,10 @@ func TestAdminSettingsPatchRejectsWeakerPolicy(t *testing.T) {
 	resp := patchSettings(t, e, map[string]any{
 		"password_policy_override": map[string]int{"min_length": 4},
 	})
-	if resp.Code != http.StatusBadRequest {
+	if resp.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
-	if !bytes.Contains(resp.Body.Bytes(), []byte("policy_override_weaker")) {
+	if !bytes.Contains(resp.Body.Bytes(), []byte("urn:idmagic:error:policy_override_weaker")) {
 		t.Fatalf("unexpected body=%s", resp.Body.String())
 	}
 }

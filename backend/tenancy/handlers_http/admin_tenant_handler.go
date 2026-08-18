@@ -64,7 +64,7 @@ func (d Deps) handleGetTenant(c *echo.Context) error {
 		return err
 	}
 	if tenant == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
 	}
 	if d.QuotaRepo != nil {
 		if q, err := d.QuotaRepo.GetQuota(c.Request().Context(), tenant.ID); err == nil {
@@ -100,7 +100,7 @@ func (d Deps) handleCreateTenant(c *echo.Context) error {
 	}
 	var input tenantCreateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	now := time.Now().UTC()
 	tenant, err := tenantusecases.Create(
@@ -125,7 +125,7 @@ func (d Deps) handleUpdateTenant(c *echo.Context) error {
 	}
 	var input tenantUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
 	if err != nil {
@@ -166,7 +166,7 @@ func (d Deps) handleSetTenantEndpointStyle(c *echo.Context) error {
 	}
 	var input tenantEndpointStyleRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	target, err := d.resolveTenantByRealm(c, c.Param("target_tenant_id"))
 	if err != nil {
@@ -264,17 +264,17 @@ func (d Deps) requireSystemAdmin(c *echo.Context) (*userdomain.User, error) {
 func (d Deps) writeTenantError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, tenantusecases.ErrTenantNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "tenant_not_found", "The tenant does not exist.")
 	case errors.Is(err, tenantusecases.ErrTenantConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "tenant_conflict", "The tenant ID is already in use.")
+		return support.WriteProblem(c, http.StatusConflict, "tenant_conflict", "The tenant ID is already in use.")
 	case errors.Is(err, tenantusecases.ErrInvalidTenantID),
 		errors.Is(err, tenantusecases.ErrDisplayNameEmpty),
 		errors.Is(err, tenantusecases.ErrDefaultTenant),
 		errors.Is(err, domain.ErrEndpointStyleUnknown),
 		errors.Is(err, domain.ErrSubdomainStyleNoBase):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	case errors.Is(err, tenantusecases.ErrUnsupportedDefaultLocale):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request",
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"The default locale has no bundled translation for notification emails.")
 	case errors.Is(err, tenantusecases.ErrPolicyOverrideWeaker):
 		floor := d.tenantPolicyFloor()
@@ -289,7 +289,7 @@ func (d Deps) writeTenantError(c *echo.Context, err error) error {
 			domain.DefaultMaxDelegationDepth,
 			domain.TrustedDeviceMaxAgeCeilingSeconds,
 		)
-		return support.WriteBrowserError(c, http.StatusBadRequest, "policy_override_weaker", message)
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "policy_override_weaker", message)
 	default:
 		return err
 	}
@@ -313,7 +313,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 	ctx := c.Request().Context()
 	tenantID := c.Param("target_tenant_id")
 	if tenantID == "" {
-		return support.WriteBrowserError(c, 400, "invalid_request", "tenant_id is required")
+		return support.WriteProblem(c, 400, "invalid_request", "tenant_id is required")
 	}
 
 	_, err := d.requireSystemAdmin(c)
@@ -323,7 +323,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 
 	var req tenantQuotaUpdateRequest
 	if err := c.Bind(&req); err != nil {
-		return support.WriteBrowserError(c, 400, "invalid_request", "invalid request body: "+err.Error())
+		return support.WriteProblem(c, 400, "invalid_request", "invalid request body: "+err.Error())
 	}
 
 	quota := &domain.TenantQuota{
@@ -342,7 +342,7 @@ func (d Deps) handleUpdateTenantQuota(c *echo.Context) error {
 
 	if d.QuotaRepo != nil {
 		if err := d.QuotaRepo.SetQuota(ctx, tenantID, quota); err != nil {
-			return support.WriteBrowserError(c, 500, "internal_error", "failed to update quota: "+err.Error())
+			return support.WriteProblem(c, 500, "internal_error", "failed to update quota: "+err.Error())
 		}
 	}
 

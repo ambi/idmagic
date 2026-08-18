@@ -1,9 +1,14 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
+initial_context:
+  specification: [spec/SPECIFICATION.md, spec/contexts/tenancy/SPECIFICATION.md]
+  source: [backend/tenancy/handlers_http, backend/shared/http/support_http/problem.go]
+  tests: [backend/tenancy/handlers_http]
+  stop_before_reading: [frontend]
 ---
 
 # tenancy context の `WriteBrowserError` 呼び出しを Problem Details へ移行する
@@ -53,15 +58,22 @@ status: 422) に対応する Go 呼び出し箇所も、この移行と同時に
 
 ## Tasks
 
-- [ ] T001 [App] `admin_tenant_handler.go` を移行し、
+- [x] T001 [App] `admin_tenant_handler.go` を移行し、
       `policy_override_weaker` を 422 に揃える。
-- [ ] T002 [App] `admin_user_attribute_schema_handler.go` を移行し、
-      `invalid_attribute_schema` を 422 に揃える。
-- [ ] T003 [App] `admin_branding_handler.go`・
+      RED→GREEN: `TestAdminSettingsPatchRejectsWeakerPolicy`・
+      `TestAdminSettingsExposeAndUpdateTrustedDeviceMaxAge`・
+      `TestAdminSettingsExposeAndUpdateMaxDelegationDepth`。
+- [x] T002 [App] `admin_user_attribute_schema_handler.go` を移行し、
+      `invalid_attribute_schema` を 422 に揃える。起票後に増えていた
+      `admin_group_attribute_schema_handler.go` の同名 code も
+      `InvalidGroupAttributeSchemaError` (422) に対応するので同時に揃えた。
+      RED→GREEN: `TestUserAttributeSchemaPutRejectsBuiltinCollision`・
+      `TestGroupAttributeSchemaPutRejectsDuplicateKey`。
+- [x] T003 [App] `admin_branding_handler.go`・
       `admin_notification_template_handler.go`・`branding_handler.go`・
       `integration_endpoints_handler.go`・`admin_settings_handler.go` を
       `WriteProblem` へ移行する (status 変更なし)。
-- [ ] T004 [Verify] `just verify` を通す。
+- [x] T004 [Verify] `just verify` を通す。
 
 ## Verification
 
@@ -72,3 +84,26 @@ status: 422) に対応する Go 呼び出し箇所も、この移行と同時に
 `admin_tenant_handler.go` (12 箇所) が最大。テナントデフォルトサインイン
 ポリシー・quota 系の分岐が多いため、置換漏れがないか件数を突き合わせて
 確認すること。
+
+## Completion
+
+- **Completed At**: 2026-08-19
+- **Summary**:
+  `backend/tenancy/handlers_http` の 8 ファイル・38 箇所の `WriteBrowserError`
+  をすべて `support.WriteProblem` へ置き換えた (起票時の 7 ファイルに加えて
+  その後追加された `admin_group_attribute_schema_handler.go` を含む)。
+  status を仕様の宣言値 422 へ揃えたのは 3 箇所:
+  `admin_tenant_handler.go` の `policy_override_weaker`
+  (`PolicyOverrideWeakerError`)、`admin_user_attribute_schema_handler.go` と
+  `admin_group_attribute_schema_handler.go` の `invalid_attribute_schema`
+  (`InvalidUserAttributeSchemaError`/`InvalidGroupAttributeSchemaError`)。
+  `attribute_referenced_by_dynamic_group` 409、`tenant_conflict` 409、
+  `tenant_not_found`/`not_found` 404、`federation_credentials_unavailable` 503
+  は既存 status のまま envelope だけ変えた。
+  仕様変更はない (`just spec-diff`: no normative specification change)。
+- **Verification Results**:
+  - `just test-go-package ./backend/tenancy/handlers_http` - RED (5 テストが
+    status 400・旧 envelope で失敗) → GREEN
+  - `just test-go` - passed (全パッケージ)
+  - `just verify` - passed
+  - `just spec-diff` - no normative specification change against main

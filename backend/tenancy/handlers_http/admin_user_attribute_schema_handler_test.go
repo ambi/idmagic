@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -147,7 +148,10 @@ func TestUserAttributeSchemaPutRejectsBuiltinCollision(t *testing.T) {
 			{"key": "nickname", "type": "string", "visibility": "claim_exposed"},
 		},
 	})
-	if rec.Code != http.StatusBadRequest {
+	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "urn:idmagic:error:invalid_attribute_schema") {
+		t.Fatalf("unexpected body=%s", rec.Body.String())
 	}
 }

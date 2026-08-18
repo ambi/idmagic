@@ -60,14 +60,14 @@ func (d Deps) handleUpdateGroupAttributeSchema(c *echo.Context) error {
 	}
 	var input groupAttributeSchemaUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	schema, err := tenantusecases.UpdateGroupAttributeSchema(
 		c.Request().Context(), d.GroupAttrSchemaRepo, actor.TenantID, input.Attributes, time.Now().UTC(),
 	)
 	if err != nil {
 		if errors.Is(err, tenantusecases.ErrInvalidGroupAttributeSchema) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_attribute_schema", "The attribute definition is invalid.")
+			return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute_schema", "The attribute definition is invalid.")
 		}
 		return err
 	}
