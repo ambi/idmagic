@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -168,6 +169,12 @@ func TestAdminKeysGetUnknownKidReturns404(t *testing.T) {
 	rec := getAdminKeys(e, "/realms/acme/api/admin/v1/keys/unknown-kid")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	if contentType := rec.Header().Get("Content-Type"); contentType != support.ProblemContentType {
+		t.Fatalf("Content-Type=%q, want %q", contentType, support.ProblemContentType)
+	}
+	if !strings.Contains(rec.Body.String(), "urn:idmagic:error:key_not_found") {
+		t.Fatalf("unexpected body=%s", rec.Body.String())
 	}
 }
 
