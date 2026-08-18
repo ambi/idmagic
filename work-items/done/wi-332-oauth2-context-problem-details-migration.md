@@ -1,9 +1,14 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: high
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
+initial_context:
+  specification: [spec/SPECIFICATION.md, spec/contexts/oauth2/SPECIFICATION.md]
+  source: [backend/oauth2/handlers_http, backend/shared/http/support_http/problem.go]
+  tests: [backend/oauth2/handlers_http, backend/shared/http/server_http]
+  stop_before_reading: [frontend]
 ---
 
 # oauth2 context の generic (非 RFC 6749) ハンドラの `WriteBrowserError` 呼び出しを Problem Details へ移行する
@@ -82,19 +87,32 @@ language stub。`authentication` context 側 (`wi-329`) の同名コードは現
 
 ## Tasks
 
-- [ ] T000 [Research] 82 箇所を「JSON API (移行対象)」/
-      「protocol endpoint (対象外)」に分類し一覧を残す。
-- [ ] T001 [App] `authorize_second_factor.go`・`authorize_login.go`・
+- [x] T000 [Research] 分類結果: `WriteBrowserError` を直接呼んでいる箇所は
+      すべてブラウザ向け JSON API 側だった。protocol endpoint
+      (`/token`・`/introspect`・`/revoke`・`/userinfo`・`/register`・`/par`・
+      `/device_authorization`・`/authorize` の redirect 経路・CIBA の
+      `handleBackchannelAuthenticate`) は `writeOAuthError`/
+      `redirectAuthorizationError` を使っており、`WriteBrowserError` は
+      1 箇所も呼んでいない。`device_handler.go` は
+      `handleDeviceAuthorization`/`handleDeviceContext` に呼び出しがなく、
+      3 箇所とも `handleDeviceAPI` (`POST /api/auth/device`) 内であることを
+      関数境界の行番号で確認した。
+- [x] T001 [App] `authorize_second_factor.go`・`authorize_login.go`・
       `authorize_consent.go`・`authorize_transaction.go`・`authorize_resume.go`・
-      `authorize_enrollment.go` の JSON API 箇所を `WriteProblem` へ移行する
-      (`mfa_enrollment_not_allowed` は 422 に揃える)。
-- [ ] T002 [App] `admin_client_handler.go`・
+      `authorize_enrollment.go` の JSON API 箇所を `WriteProblem` へ移行する。
+      `mfa_enrollment_not_allowed` の status は据え置いた (下記 Completion 参照)。
+      RED→GREEN: `TestDisabledUserCannotLogIn`・
+      `TestDisabledUserLoginAndExistingSessionAreRejected`。
+- [x] T002 [App] `admin_client_handler.go`・
       `admin_authorization_detail_type_handler.go`・
       `admin_mcp_resource_server_handler.go` を `WriteProblem` へ移行する
-      (`invalid_type` は 422 に揃える)。
-- [ ] T003 [App] `device_handler.go` の `handleDeviceAPI` だけを
+      (`invalid_type` は 422 に揃える)。起票後に増えていた
+      `approval_handler.go` (account 向け承認 API) と `admin_consent_handler.go`
+      も同じ分類基準で移行した。
+      RED→GREEN: `TestAdminRejectsInvalidTypeSchema`。
+- [x] T003 [App] `device_handler.go` の `handleDeviceAPI` だけを
       `WriteProblem` へ移行する。
-- [ ] T004 [Verify] `just verify` を通す。
+- [x] T004 [Verify] `just verify` を通す。
 
 ## Verification
 
@@ -109,3 +127,43 @@ language stub。`authentication` context 側 (`wi-329`) の同名コードは現
 同一パッケージに混在する。誤って protocol endpoint 側を Problem Details 化すると
 標準クライアントライブラリの `{error, error_description}` 解析が壊れる
 (ADR-154 却下代替案 参照)。T000 の分類作業を省略しないこと。
+
+## Completion
+
+- **Completed At**: 2026-08-19
+- **Summary**:
+  `backend/oauth2/handlers_http` の 12 ファイル・89 箇所の `WriteBrowserError`
+  を `support.WriteProblem` へ置き換えた。T000 の分類の結果、
+  `WriteBrowserError` の呼び出しはすべてブラウザ向け JSON API 側にあり、
+  RFC 6749/7591/8628 の protocol endpoint は `writeOAuthError`/
+  `redirectAuthorizationError` しか使っていなかったため、
+  protocol 応答の形式 (`{error, error_description}`) は 1 箇所も変えていない。
+  起票時の一覧になかった `approval_handler.go` (account の承認 API 7 箇所) と
+  `admin_consent_handler.go` (1 箇所) も同じ基準でブラウザ API と判定して
+  移行した。
+  status を仕様の宣言値へ揃えたのは `admin_authorization_detail_type_handler.go`
+  の `invalid_type` 2 箇所 (400 → 422、`InvalidAuthorizationDetailTypeError` は
+  create/update/replace 3 operation の 422 union の要素)。
+  仕様変更はない (`just spec-diff`: no normative specification change)。
+
+  **起票時の指示から外れた判断**:
+  - `authorize_enrollment.go` の `mfa_enrollment_not_allowed` は **403 のまま**
+    にした。起票時は「`authentication.yaml` の 422 model を published language
+    stub として再公開しているので同一 model」という前提だったが、現在の
+    TypeSpec で `MfaEnrollmentNotAllowedError` (422) を宣言しているのは
+    `IssueMfaEnrollmentBypass` (`spec/contexts/authentication/main.tsp`、
+    管理者が bypass を発行する別 operation、`wi-329` で実装を 422 へ揃え済み)
+    だけである。ここで 403 を返す `POST /api/auth/mfa/enrollment/totp/*` は
+    TypeSpec に operation 自体が宣言されておらず、揃える先の宣言値が存在
+    しない。さらにこの分岐は `ErrMfaAlreadyEnrolled` (管理 API 側では 409) も
+    同じ code・同じ status で扱っているため、宣言のないまま 422 にすると
+    別概念を 1 つの status に押し込むことになる。契約の欠落を埋めるのが先で、
+    それは `wi-382` (TypeSpec contract fidelity) の領域として残す。
+- **Verification Results**:
+  - `just test-go-package ./backend/oauth2/handlers_http` - RED
+    (`TestAdminRejectsInvalidTypeSchema` が status 400 で失敗) → GREEN
+  - `just test-go` - passed (全パッケージ。protocol endpoint のテスト
+    (`token_handler_test.go`・`register_handler_test.go`・`par_handler_test.go`
+    など `{"error": ...}` を照合するもの) は 1 つも変更していない)
+  - `just verify` - passed
+  - `just spec-diff` - no normative specification change against main

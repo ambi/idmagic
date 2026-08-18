@@ -21,7 +21,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 	if err != nil {
 		if returnTo := c.QueryParam("return_to"); returnTo != "" {
 			if !validReturnTo(c, returnTo) {
-				return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
+				return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 			}
 			csrf, csrfErr := d.EnsureCSRFCookie(c)
 			if csrfErr != nil {
@@ -33,7 +33,7 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 			}
 			return support.NoStoreJSON(c, http.StatusOK, transactionResponse{Kind: "login", CSRFToken: csrf})
 		}
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
 	}
 	csrf, err := d.EnsureCSRFCookie(c)
 	if err != nil {
@@ -51,14 +51,14 @@ func (d Deps) handleTransaction(c *echo.Context) error {
 		return support.NoStoreJSON(c, http.StatusOK, d.secondFactorTransaction(c, csrf, authn))
 	}
 	if authn == nil || authn.UserID != *req.UserID {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not match.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not match.")
 	}
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
 	if err != nil {
 		return err
 	}
 	if client == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
 	}
 	// 表示名は client_name → Application カタログ名 → client_id の順で解決する (wi-141)。
 	// client_id を UUID 化したため、同意画面での UUID 生表示を避ける。

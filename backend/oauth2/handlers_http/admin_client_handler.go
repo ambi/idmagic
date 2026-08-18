@@ -63,7 +63,7 @@ func (d Deps) handleListAdminOAuth2Clients(c *echo.Context) error {
 	tenantID := support.RequestTenantID(c)
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminOAuth2ClientsQuery, listAdminOAuth2ClientsDefaultLimit, listAdminOAuth2ClientsMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	var clients []*oauthdomain.OAuth2Client
 	if page.Direction == support.PageBackward {
@@ -116,14 +116,14 @@ func (d Deps) handleCreateAdminOAuth2Client(c *echo.Context) error {
 	}
 	var req registerClientRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := validateRegisterClientRequest(&req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 	}
 	if req.JwksURI != nil {
 		if err := tokens_jose.ValidateJWKSURI(*req.JwksURI); err != nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 		}
 	}
 	registration := clientusecases.RegisterClientInput{
@@ -162,7 +162,7 @@ func (d Deps) handleUpdateAdminOAuth2Client(c *echo.Context) error {
 	}
 	var req adminClientUpdateRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	client, err := clientusecases.UpdateAdminOAuth2Client(c.Request().Context(), d.adminClientDeps(), clientusecases.UpdateAdminOAuth2ClientInput{
 		ActorUserID: actor.ID, ClientID: c.Param("client_id"), ClientName: req.ClientName,
@@ -199,13 +199,13 @@ func (d Deps) adminClientDeps() clientusecases.AdminOAuth2ClientDeps {
 
 func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	if errors.Is(err, clientusecases.ErrClientNotFound) {
-		return support.WriteBrowserError(c, http.StatusNotFound, "client_not_found", "The client does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "client_not_found", "The client does not exist.")
 	}
 	if errors.Is(err, clientusecases.ErrProtocolOwnedByApplication) {
-		return support.WriteBrowserError(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated client.")
+		return support.WriteProblem(c, http.StatusConflict, "application_owned_protocol", "Delete the Application to remove its associated client.")
 	}
 	if oauthErr, ok := errors.AsType[*clientusecases.OAuthError](err); ok {
-		return support.WriteBrowserError(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
+		return support.WriteProblem(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
 	}
 	// QuotaExceededError (wi-160) falls through to support_http.ErrorHandler
 	// instead of being flattened into invalid_client_metadata/400 below, so it gets the
@@ -214,7 +214,7 @@ func (d Deps) writeAdminOAuth2ClientError(c *echo.Context, err error) error {
 	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		return err
 	}
-	return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
+	return support.WriteProblem(c, http.StatusBadRequest, "invalid_client_metadata", err.Error())
 }
 
 func toAdminOAuth2ClientResponse(client *oauthdomain.OAuth2Client) adminClientResponse {

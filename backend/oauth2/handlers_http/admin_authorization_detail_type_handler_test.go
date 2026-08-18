@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -94,8 +95,11 @@ func TestAdminRejectsInvalidTypeSchema(t *testing.T) {
 	// 空の rules はスキーマ違反 (Min(1)) で fail-closed。
 	payload["schema"] = map[string]any{"rules": []map[string]any{}}
 	res := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/authorization-detail-types", csrf, cookie, payload)
-	if res.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400 for empty schema, got %d body=%s", res.Code, res.Body.String())
+	if res.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for empty schema, got %d body=%s", res.Code, res.Body.String())
+	}
+	if !strings.Contains(res.Body.String(), "urn:idmagic:error:invalid_type") {
+		t.Fatalf("unexpected body=%s", res.Body.String())
 	}
 }
 

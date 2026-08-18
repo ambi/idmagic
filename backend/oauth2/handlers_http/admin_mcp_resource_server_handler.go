@@ -61,7 +61,7 @@ func (d Deps) handleGetAdminMcpResourceServer(c *echo.Context) error {
 		return err
 	}
 	if m == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "resource_server_not_found", "The MCP resource server does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "resource_server_not_found", "The MCP resource server does not exist.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, toMcpResourceServerResponse(m))
 }
@@ -75,10 +75,10 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 	}
 	var req mcpResourceServerRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if strings.TrimSpace(req.Resource) == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "resource is required.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "resource is required.")
 	}
 	tenantID := support.RequestTenantID(c)
 	existing, err := d.McpResourceServerRepo.FindByResource(c.Request().Context(), tenantID, req.Resource)
@@ -86,7 +86,7 @@ func (d Deps) handleCreateAdminMcpResourceServer(c *echo.Context) error {
 		return err
 	}
 	if existing != nil {
-		return support.WriteBrowserError(c, http.StatusConflict, "resource_exists", "The same resource is already registered.")
+		return support.WriteProblem(c, http.StatusConflict, "resource_exists", "The same resource is already registered.")
 	}
 	id, err := spec.NewUUIDv4()
 	if err != nil {
@@ -121,11 +121,11 @@ func (d Deps) handleUpdateAdminMcpResourceServer(c *echo.Context) error {
 		return err
 	}
 	if existing == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "resource_server_not_found", "The MCP resource server does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "resource_server_not_found", "The MCP resource server does not exist.")
 	}
 	var req mcpResourceServerRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	// resource (canonical URI) は不変 — 発行済みトークンの aud 意味が変わるため更新不可。
 	if req.Name != "" {
@@ -160,7 +160,7 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 
 func (d Deps) saveValidatedMcpResourceServer(c *echo.Context, m *oauthdomain.McpResourceServer) error {
 	if err := m.Validate(); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_resource_server", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", err.Error())
 	}
 	if err := d.McpResourceServerRepo.Save(c.Request().Context(), m); err != nil {
 		return err

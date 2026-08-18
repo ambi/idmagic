@@ -74,7 +74,7 @@ func (d Deps) handleListMyApprovalRequests(c *echo.Context) error {
 		return err
 	}
 	if authn == nil || authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	records, err := approvalusecases.ListPendingApprovals(c.Request().Context(), d.ApprovalRequestStore, authn.UserID)
 	if err != nil {
@@ -124,17 +124,17 @@ func (d Deps) handleDecideMyApprovalRequest(c *echo.Context) error {
 		return err
 	}
 	if authn == nil || authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	}
 	if !mfausecases.StepUpSatisfied(authn, time.Now().UTC()) {
-		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
+		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	}
 	var input accountApprovalDecisionRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if input.Decision != "approve" && input.Decision != "deny" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "decision must be approve or deny")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "decision must be approve or deny")
 	}
 	err = approvalusecases.DecideApproval(c.Request().Context(), d.ApprovalRequestStore, d.Emit, authn.UserID, c.Param("id"), input.Decision == "approve", time.Now().UTC())
 	if err != nil {
@@ -150,9 +150,9 @@ func writeAccountApprovalError(c *echo.Context, err error) error {
 		return err
 	}
 	if oauthErr.Code == "access_denied" {
-		return support.WriteBrowserError(c, http.StatusForbidden, oauthErr.Code, oauthErr.Description)
+		return support.WriteProblem(c, http.StatusForbidden, oauthErr.Code, oauthErr.Description)
 	}
-	return support.WriteBrowserError(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
+	return support.WriteProblem(c, http.StatusBadRequest, oauthErr.Code, oauthErr.Description)
 }
 
 func optionalInt(raw string) (int, bool, error) {

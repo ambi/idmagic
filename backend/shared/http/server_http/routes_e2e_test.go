@@ -1072,7 +1072,7 @@ func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	body, _ = io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized ||
-		!bytes.Contains(body, []byte(`"error":"invalid_credentials"`)) {
+		!bytes.Contains(body, []byte(`"type":"urn:idmagic:error:invalid_credentials"`)) {
 		t.Fatalf("post-disable login: status=%d body=%s", resp.StatusCode, body)
 	}
 }

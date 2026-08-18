@@ -31,19 +31,19 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	}
 	var input loginAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if strings.TrimSpace(input.Username) == "" || input.Password == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A username and password are required.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A username and password are required.")
 	}
 	req, transactionErr := d.transactionRequest(c)
 	directAdminLogin := transactionErr != nil && input.ReturnTo != ""
 	if directAdminLogin {
 		if !validReturnTo(c, input.ReturnTo) {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 		}
 	} else if transactionErr != nil {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", transactionErr.Error())
 	}
 
 	normalizedUsername := strings.ToLower(input.Username)
@@ -92,15 +92,15 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 		if !aggregated {
 			d.emitAuthenticationFailure(c, input.Username, "invalid_credentials")
 		}
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_credentials", "Check the username or password.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_credentials", "Check the username or password.")
 	}
 	if !user.IsActive() {
 		d.recordLoginOutcome("failure", "account_disabled", "password")
 		d.emitAuthenticationFailure(c, input.Username, "account_disabled")
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "invalid_credentials", "Check the username or password.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "invalid_credentials", "Check the username or password.")
 	}
 	if result := authusecases.ValidatePassword(input.Password); !result.OK {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "password_policy", "The password does not meet the security requirements.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "password_policy", "The password does not meet the security requirements.")
 	}
 	if d.LoginAttemptThrottle != nil {
 		if err := d.LoginAttemptThrottle.RecordSuccess(
@@ -142,7 +142,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 	req.UserID, req.AuthTime, req.AMR, req.ACR = &user.ID, &authn.AuthTime, authn.AMR, &authn.ACR
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
 	if err != nil || client == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
 	}
 	if !client.FirstParty {
 		decision, err := d.EvaluateApplicationAccess(
@@ -184,7 +184,7 @@ func (d Deps) handleLoginAPI(c *echo.Context) error {
 					return err
 				}
 				if pending == nil {
-					return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
+					return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
 				}
 				d.setSessionCookie(c, pending.SessionID)
 				return support.NoStoreJSON(c, http.StatusOK, browserFlowResponse{Next: d.pendingAuthPath(c, authn)})
@@ -268,19 +268,19 @@ func (d Deps) enforceDefaultSignInPolicy(
 			} else if begun {
 				return true, nil
 			}
-			return false, support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "MFA is required, but no second factor is available.")
+			return false, support.WriteProblem(c, http.StatusForbidden, "access_denied", "MFA is required, but no second factor is available.")
 		}
 		pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
 		if err != nil {
 			return false, err
 		}
 		if pending == nil {
-			return false, support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
+			return false, support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
 		}
 		d.setSessionCookie(c, pending.SessionID)
 		return true, nil
 	default:
-		return false, support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "The sign-in policy cannot be satisfied.")
+		return false, support.WriteProblem(c, http.StatusForbidden, "access_denied", "The sign-in policy cannot be satisfied.")
 	}
 }
 

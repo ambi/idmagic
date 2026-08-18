@@ -14,25 +14,25 @@ import (
 func (d Deps) handleFederatedResume(c *echo.Context) error {
 	req, err := d.transactionRequest(c)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
 	}
 	authn, err := d.ResolveAuthentication(c)
 	if err != nil || authn == nil || authn.AuthenticationPending {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "A completed authentication session is required.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "A completed authentication session is required.")
 	}
 	user, err := d.UserRepo.FindBySub(c.Request().Context(), authn.UserID)
 	if err != nil {
 		return err
 	}
 	if user == nil || !user.IsActive() {
-		return support.WriteBrowserError(c, http.StatusForbidden, "access_denied", "The user is not active.")
+		return support.WriteProblem(c, http.StatusForbidden, "access_denied", "The user is not active.")
 	}
 	client, err := d.ClientRepo.FindByID(c.Request().Context(), support.RequestTenantID(c), req.ClientID)
 	if err != nil {
 		return err
 	}
 	if client == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_transaction", "The client does not exist.")
 	}
 	if client.FirstParty {
 		if redirected, policyErr := d.enforceDefaultSignInPolicy(c, authn, true); policyErr != nil {

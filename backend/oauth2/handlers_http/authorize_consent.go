@@ -35,15 +35,15 @@ func (d Deps) handleConsentAPI(c *echo.Context) error {
 	}
 	req, err := d.transactionRequest(c)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
+		return support.WriteProblem(c, http.StatusUnauthorized, "transaction_unavailable", err.Error())
 	}
 	authn, _ := d.ResolveAuthentication(c)
 	if authn == nil || req.UserID == nil || authn.UserID != *req.UserID {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not match.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The authentication session does not match.")
 	}
 	var input consentAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	ctx, cancel := d.OperationContext(c.Request().Context())
 	defer cancel()

@@ -95,7 +95,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 	if response.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d body=%s", response.Code, response.Body.String())
 	}
-	if !strings.Contains(response.Body.String(), `"invalid_credentials"`) {
+	if !strings.Contains(response.Body.String(), `"urn:idmagic:error:invalid_credentials"`) {
 		t.Fatalf("unexpected body=%s", response.Body.String())
 	}
 }

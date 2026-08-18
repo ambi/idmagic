@@ -40,7 +40,7 @@ func (d Deps) handleListAdminConsents(c *echo.Context) error {
 	tenantID := support.RequestTenantID(c)
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, listAdminConsentsQuery, listAdminConsentsDefaultLimit, listAdminConsentsMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	var consents []*oauthdomain.Consent
 	if page.Direction == support.PageBackward {
