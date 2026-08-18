@@ -52,7 +52,7 @@ func (d Deps) handleRegisterConnection(c *echo.Context) error {
 	}
 	var req registerConnectionRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	conn, err := usecases.RegisterConnection(c.Request().Context(), d.adminDeps(), usecases.RegisterConnectionInput{
 		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("id"),
@@ -73,7 +73,7 @@ func (d Deps) handleGetConnection(c *echo.Context) error {
 		return d.writeError(c, err)
 	}
 	if conn == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "provisioning_not_found", "The connection was not found.")
+		return support.WriteProblem(c, http.StatusNotFound, "provisioning_not_found", "The connection was not found.")
 	}
 	return support.NoStoreJSON(c, http.StatusOK, conn)
 }
@@ -103,7 +103,7 @@ func (d Deps) handleUpdateConnection(c *echo.Context) error {
 	}
 	var req updateConnectionRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	in := usecases.UpdateConnectionInput{
 		TenantID: support.RequestTenantID(c), ApplicationID: c.Param("id"),
@@ -165,7 +165,7 @@ func (d Deps) handleProvisionOnDemand(c *echo.Context) error {
 	}
 	var req onDemandRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	delivery, err := usecases.ProvisionOnDemand(c.Request().Context(), d.adminDeps(), support.RequestTenantID(c), c.Param("id"), req.SubjectType, req.SubjectID, time.Now().UTC())
 	if err != nil {
@@ -227,7 +227,7 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 	if raw := c.QueryParam("status"); raw != "" {
 		s := domain.ProvisioningDeliveryStatus(raw)
 		if !s.Valid() {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "status is invalid")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "status is invalid")
 		}
 		status = &s
 	}
@@ -235,20 +235,20 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 	if raw := c.QueryParam("source_type"); raw != "" {
 		s := domain.ProvisioningSourceType(raw)
 		if !s.Valid() {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "source_type is invalid")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "source_type is invalid")
 		}
 		sourceType = &s
 	}
 	tenantID := support.RequestTenantID(c)
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, tenantID, provisioningDeliveriesQueryHash(c), listProvisioningDeliveriesDefaultLimit, listProvisioningDeliveriesMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	afterCreatedAt := time.Time{}
 	if page.AfterPrimary != "" {
 		afterCreatedAt, err = time.Parse(time.RFC3339Nano, page.AfterPrimary)
 		if err != nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "cursor is invalid, expired, or does not match this tenant/query.")
 		}
 	}
 	var deliveries []*domain.ProvisioningDelivery

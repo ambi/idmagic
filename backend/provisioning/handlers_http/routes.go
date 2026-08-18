@@ -60,10 +60,10 @@ func RegisterRoutes(g *echo.Group, d Deps) {
 func (d Deps) writeError(c *echo.Context, err error) error {
 	switch {
 	case isNotFound(err):
-		return support.WriteBrowserError(c, http.StatusNotFound, "provisioning_not_found", err.Error())
+		return support.WriteProblem(c, http.StatusNotFound, "provisioning_not_found", err.Error())
 	case isConflict(err):
-		return support.WriteBrowserError(c, http.StatusConflict, "provisioning_conflict", err.Error())
+		return support.WriteProblem(c, http.StatusConflict, "provisioning_conflict", err.Error())
 	default:
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 }

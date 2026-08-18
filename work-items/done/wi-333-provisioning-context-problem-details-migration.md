@@ -1,9 +1,14 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
+initial_context:
+  specification: [spec/SPECIFICATION.md, spec/contexts/provisioning/SPECIFICATION.md]
+  source: [backend/provisioning/handlers_http, backend/shared/http/support_http/problem.go]
+  tests: [backend/provisioning/handlers_http]
+  stop_before_reading: [frontend]
 ---
 
 # provisioning context の `WriteBrowserError` 呼び出しを Problem Details へ移行する
@@ -42,8 +47,9 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 
 ## Tasks
 
-- [ ] T001 [App] `handlers.go`・`routes.go` を `WriteProblem` へ移行する。
-- [ ] T002 [Verify] `just verify` を通す。
+- [x] T001 [App] `handlers.go`・`routes.go` を `WriteProblem` へ移行する。
+      RED→GREEN: `TestAdminDeliveryListRejectsInvalidCursor`。
+- [x] T002 [Verify] `just verify` を通す。
 
 ## Verification
 
@@ -52,3 +58,20 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 ## Risk Notes
 
 小規模 (2 ファイル・7 箇所)。特記事項なし。
+
+## Completion
+
+- **Completed At**: 2026-08-19
+- **Summary**:
+  `backend/provisioning/handlers_http` の `handlers.go` (8 箇所)・`routes.go`
+  (3 箇所) をすべて `support.WriteProblem` へ置き換えた (起票時の調査より
+  4 箇所増えていた)。Design の想定どおり status 変更は不要で、
+  `provisioning_not_found` 404・`provisioning_conflict` 409・
+  `invalid_request` 400 のまま envelope だけ変えた。
+  仕様変更はない (`just spec-diff`: no normative specification change)。
+- **Verification Results**:
+  - `just test-go-package ./backend/provisioning/handlers_http` - RED
+    (`TestAdminDeliveryListRejectsInvalidCursor` が
+    `Content-Type: application/json` で失敗) → GREEN
+  - `just verify` - passed
+  - `just spec-diff` - no normative specification change against main

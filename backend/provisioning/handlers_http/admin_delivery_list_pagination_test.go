@@ -210,6 +210,12 @@ func TestAdminDeliveryListRejectsInvalidCursor(t *testing.T) {
 	if resp.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
 	}
+	if contentType := resp.Header().Get("Content-Type"); contentType != support.ProblemContentType {
+		t.Fatalf("Content-Type=%q, want %q", contentType, support.ProblemContentType)
+	}
+	if !strings.Contains(resp.Body.String(), "urn:idmagic:error:invalid_request") {
+		t.Fatalf("unexpected body=%s", resp.Body.String())
+	}
 }
 
 func TestAdminDeliveryListRejectsCursorFromAnotherTenant(t *testing.T) {
