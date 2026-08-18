@@ -66,7 +66,7 @@ func HandleConfirmTotpEnrollment(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input totpEnrollmentConfirmRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := authusecases.ConfirmTOTPEnrollment(c.Request().Context(), accountMfaDeps(d),
 		authusecases.ConfirmTOTPEnrollmentInput{
@@ -95,7 +95,7 @@ func HandleRemoveTotpFactor(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input mfaFactorRemoveRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := authusecases.RemoveTOTPFactor(c.Request().Context(), accountMfaDeps(d),
 		authusecases.RemoveTOTPFactorInput{Sub: sub, Code: input.Code, Now: time.Now().UTC()}); err != nil {

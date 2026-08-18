@@ -55,7 +55,7 @@ func HandleUpdateNotificationPreferences(d httpdeps.Deps, c *echo.Context) error
 	}
 	var input updateNotificationPreferencesRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	disabled := make([]domain.Category, 0, len(input.DisabledCategories))
 	for _, value := range input.DisabledCategories {
@@ -85,10 +85,10 @@ func toResponse(preferences []securitynotificationusecases.CategoryPreference) n
 func writeNotificationPreferenceError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, domain.ErrMandatoryCategory):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "mandatory_notification_category",
+		return support.WriteProblem(c, http.StatusBadRequest, "mandatory_notification_category",
 			"This security notification cannot be turned off.")
 	case errors.Is(err, domain.ErrUnknownCategory):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request",
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request",
 			"The request names a notification category that does not exist.")
 	default:
 		return httpdeps.WriteAccountError(c, err)

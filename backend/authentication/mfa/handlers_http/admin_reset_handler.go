@@ -34,7 +34,7 @@ func HandleResetUserAuthenticators(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input resetAuthenticatorsRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	result, err := authusecases.ResetUserAuthenticators(
 		c.Request().Context(), authenticatorResetDeps(d), actor.ID, c.Param("sub"), input.Targets, time.Now().UTC(),
@@ -58,7 +58,7 @@ func HandleResetUserAuthenticators(d httpdeps.Deps, c *echo.Context) error {
 
 func writeAuthenticatorResetError(c *echo.Context, err error) error {
 	if errors.Is(err, authusecases.ErrAuthenticatorResetNotAllowed) {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "authenticator_reset_not_allowed", "The authenticator reset cannot be performed.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "authenticator_reset_not_allowed", "The authenticator reset cannot be performed.")
 	}
 	return err
 }

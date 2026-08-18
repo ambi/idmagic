@@ -63,7 +63,7 @@ func HandleFinishWebAuthnRegistration(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input webAuthnRegistrationFinishRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := authusecases.FinishWebAuthnRegistration(
 		c.Request().Context(), WebAuthnAccountDeps(d, c), sub, []byte(input.Attestation), input.Label, time.Now().UTC(),
@@ -90,11 +90,11 @@ func HandleRemoveWebAuthnCredential(d httpdeps.Deps, c *echo.Context) error {
 		return httpdeps.WriteAccountError(c, err)
 	}
 	if d.WebAuthnCredentialRepo == nil {
-		return support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
+		return support.WriteProblem(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	}
 	var input webAuthnCredentialRemoveRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if err := authusecases.RemoveWebAuthnCredential(
 		c.Request().Context(), WebAuthnAccountDeps(d, c), sub, input.CredentialID, time.Now().UTC(),

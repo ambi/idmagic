@@ -84,13 +84,13 @@ func WriteAccountError(c *echo.Context, err error) error {
 	}
 	switch {
 	case errors.Is(err, support.ErrAdminAuthenticationRequired):
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
 	case errors.Is(err, mfausecases.ErrStepUpRequired):
-		return support.WriteBrowserError(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
+		return support.WriteProblem(c, http.StatusForbidden, "step_up_required", "This operation requires reauthentication.")
 	case errors.Is(err, idmusecases.ErrUserNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "user_not_found", "The user does not exist.")
 	case errors.Is(err, sessionusecases.ErrSessionNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "session_not_found", "The session does not exist.")
 	default:
 		return err
 	}
@@ -102,25 +102,25 @@ func WriteAccountError(c *echo.Context, err error) error {
 func WriteAccountMfaError(c *echo.Context, err error) (handled bool, result error) {
 	switch {
 	case errors.Is(err, mfausecases.ErrMfaAlreadyEnrolled):
-		return true, support.WriteBrowserError(c, http.StatusConflict, "mfa_already_enrolled", "An authenticator app is already enrolled.")
+		return true, support.WriteProblem(c, http.StatusConflict, "mfa_already_enrolled", "An authenticator app is already enrolled.")
 	case errors.Is(err, mfausecases.ErrMfaNotEnrolled):
-		return true, support.WriteBrowserError(c, http.StatusNotFound, "mfa_not_enrolled", "No authenticator app is enrolled.")
+		return true, support.WriteProblem(c, http.StatusNotFound, "mfa_not_enrolled", "No authenticator app is enrolled.")
 	case errors.Is(err, mfausecases.ErrInvalidTOTPCode):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_totp", "Check the authentication code.")
+		return true, support.WriteProblem(c, http.StatusBadRequest, "invalid_totp", "Check the authentication code.")
 	case errors.Is(err, mfausecases.ErrInvalidTOTPSecret):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "Restart the enrollment process.")
+		return true, support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "Restart the enrollment process.")
 	case errors.Is(err, webauthnusecases.ErrWebAuthnNotConfigured):
-		return true, support.WriteBrowserError(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
+		return true, support.WriteProblem(c, http.StatusServiceUnavailable, "webauthn_unavailable", "Passkey authentication is unavailable.")
 	case errors.Is(err, webauthnusecases.ErrWebAuthnChallengeMissing):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "webauthn_challenge_expired", "Restart passkey enrollment.")
+		return true, support.WriteProblem(c, http.StatusBadRequest, "webauthn_challenge_expired", "Restart passkey enrollment.")
 	case errors.Is(err, webauthnusecases.ErrWebAuthnCredentialCloned):
-		return true, support.WriteBrowserError(c, http.StatusUnauthorized, "webauthn_cloned", "This passkey cannot be used.")
+		return true, support.WriteProblem(c, http.StatusUnauthorized, "webauthn_cloned", "This passkey cannot be used.")
 	case errors.Is(err, webauthnusecases.ErrWebAuthnVerification):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_webauthn", "Passkey verification failed.")
+		return true, support.WriteProblem(c, http.StatusBadRequest, "invalid_webauthn", "Passkey verification failed.")
 	case errors.Is(err, webauthnusecases.ErrWebAuthnCredentialNotFound):
-		return true, support.WriteBrowserError(c, http.StatusNotFound, "webauthn_not_found", "The requested passkey was not found.")
+		return true, support.WriteProblem(c, http.StatusNotFound, "webauthn_not_found", "The requested passkey was not found.")
 	case errors.Is(err, recoveryusecases.ErrRecoveryCodeInvalid):
-		return true, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_recovery_code", "Check the recovery code.")
+		return true, support.WriteProblem(c, http.StatusBadRequest, "invalid_recovery_code", "Check the recovery code.")
 	default:
 		return false, nil
 	}

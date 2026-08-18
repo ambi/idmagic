@@ -862,12 +862,12 @@ func TestChangePasswordUpdatesCredentialsAndRejectsReuse(t *testing.T) {
 		t.Fatalf("POST /api/auth/change_password reuse: %v", err)
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusBadRequest {
+	if resp.StatusCode != http.StatusUnprocessableEntity {
 		body, _ := io.ReadAll(resp.Body)
-		t.Fatalf("status=%d, want 400; body=%s", resp.StatusCode, body)
+		t.Fatalf("status=%d, want 422; body=%s", resp.StatusCode, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
-	if !bytes.Contains(body, []byte(`"error":"password_reuse"`)) {
+	if !bytes.Contains(body, []byte(`"type":"urn:idmagic:error:password_reuse"`)) {
 		t.Fatalf("unexpected body=%s", body)
 	}
 }
@@ -887,7 +887,7 @@ func TestAccountContextRequiresAuthenticatedSession(t *testing.T) {
 		t.Fatalf("status=%d, want 401; body=%s", resp.StatusCode, body)
 	}
 	body, _ := io.ReadAll(resp.Body)
-	if !bytes.Contains(body, []byte(`"error":"authentication_required"`)) {
+	if !bytes.Contains(body, []byte(`"type":"urn:idmagic:error:authentication_required"`)) {
 		t.Fatalf("unexpected body=%s", body)
 	}
 }
@@ -1055,7 +1055,7 @@ func TestDisabledUserLoginAndExistingSessionAreRejected(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized ||
-		!bytes.Contains(body, []byte(`"error":"authentication_required"`)) {
+		!bytes.Contains(body, []byte(`"type":"urn:idmagic:error:authentication_required"`)) {
 		t.Fatalf("post-disable /account: status=%d body=%s", resp.StatusCode, body)
 	}
 

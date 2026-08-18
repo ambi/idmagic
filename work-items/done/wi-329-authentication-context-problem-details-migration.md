@@ -1,9 +1,14 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: medium
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
+initial_context:
+  specification: [spec/SPECIFICATION.md, spec/contexts/authentication/SPECIFICATION.md]
+  source: [backend/authentication, backend/shared/http/support_http/problem.go]
+  tests: [backend/authentication, backend/shared/http/server_http]
+  stop_before_reading: [frontend]
 ---
 
 # authentication context の `WriteBrowserError` 呼び出しを Problem Details へ移行する
@@ -66,19 +71,28 @@ status 実装済み確認 (現状 → specification 宣言値 422 への実装�
 
 ## Tasks
 
-- [ ] T001 [App] `federation/handlers_http/routes.go`・`deps_http/account_helpers.go`・
+- [x] T001 [App] `federation/handlers_http/routes.go`・`deps_http/account_helpers.go`・
       `webauthn/handlers_http/account_webauthn_handler.go`・
       `recovery/handlers_http/recovery_codes_handler.go`・
       `handlers_http/account_context_handler.go` を `WriteProblem` へ移行する。
-- [ ] T002 [App] `password/handlers_http/change_password_handler.go`・
+      起票後に増えていた `handlers_http/admin_auth_event_bucket_handler.go`・
+      `securitynotification/handlers_http/account_notification_preferences_handler.go`・
+      `trusteddevice/handlers_http/account_trusted_devices_handler.go` も同じ
+      コンテキストなのであわせて移行した。
+      RED→GREEN: `TestUpdateNotificationPreferencesRejectsMandatoryCategories`
+      (REQ-AUTHENTICATION-033)・`TestAccountContextRequiresAuthenticatedSession`・
+      `TestDisabledUserLoginAndExistingSessionAreRejected`。
+- [x] T002 [App] `password/handlers_http/change_password_handler.go`・
       `password/handlers_http/password_reset_handler.go` を移行し、
       `password_reuse` の status を 422 に揃える。
-- [ ] T003 [App] `mfa/handlers_http/*` (`account_step_up_handler.go`、
+      RED→GREEN: `TestChangePasswordUpdatesCredentialsAndRejectsReuse`。
+- [x] T003 [App] `mfa/handlers_http/*` (`account_step_up_handler.go`、
       `admin_mfa_enrollment_handler.go`、`admin_reset_handler.go`、
       `account_totp_enrollment_handler.go`) を移行し、
       `mfa_enrollment_not_allowed`/`authenticator_reset_not_allowed` の status を
       422 に揃える。
-- [ ] T004 [Verify] `just verify` を通す。
+      RED→GREEN: `TestAdminMfaOperationsRejectDisallowedRequests` (新規)。
+- [x] T004 [Verify] `just verify` を通す。
 
 ## Verification
 
@@ -91,3 +105,41 @@ status 実装済み確認 (現状 → specification 宣言値 422 への実装�
 `federation/handlers_http/routes.go` (20 箇所) と `deps_http/account_helpers.go`
 (14 箇所) は federation 系の複雑な分岐を持つため、置換漏れがないか
 `grep -c WriteBrowserError` で件数を突き合わせて確認すること。
+
+## Completion
+
+- **Completed At**: 2026-08-19
+- **Summary**:
+  `backend/authentication` 配下 14 ファイル・78 箇所の `WriteBrowserError` を
+  すべて `support.WriteProblem` へ置き換えた。起票時の一覧は 11 ファイルだったが、
+  その後追加された `admin_auth_event_bucket_handler.go`・
+  `account_notification_preferences_handler.go`・
+  `account_trusted_devices_handler.go` も同一コンテキストなので含めた。
+  status を仕様の宣言値 422 へ揃えたのは 4 箇所:
+  `password_reuse` (`change_password_handler.go`・`password_reset_handler.go`)、
+  `mfa_enrollment_not_allowed` (`admin_mfa_enrollment_handler.go`)、
+  `authenticator_reset_not_allowed` (`admin_reset_handler.go`)。
+  それ以外の call site は status を変えず envelope だけ変えた。
+  管理者の MFA 操作 2 件 (対象なしの authenticator reset、範囲外 TTL の
+  enrollment bypass) は既存テストが status を固定していなかったため、
+  `admin_authenticator_reset_e2e_test.go` に実 HTTP スタックを通す
+  `TestAdminMfaOperationsRejectDisallowedRequests` を新設して 422 と
+  Problem Details を固定した。
+  仕様変更はない (`just spec-diff`: no normative specification change)。
+
+  **対応していないこと**:
+  - `oauth2` context の `authorize_enrollment.go:172` にある同名 code
+    `mfa_enrollment_not_allowed` (現状 403) は `wi-332` の scope。
+  - step-up gate の対象表テスト (`account_step_up_handler_test.go` の
+    `errorCode`) は、まだ移行していないコンテキスト (email 変更 =
+    `idmanagement`) のエンドポイントも含むため、Problem Details と
+    `{error, message}` の両方から code を読む形にした。`wi-340` で
+    `{error, message}` 側の分岐を落とす。
+- **Verification Results**:
+  - `just test-go-package ./backend/shared/http/server_http` - RED
+    (`TestAdminMfaOperationsRejectDisallowedRequests` 2 ケースと
+    `TestChangePasswordUpdatesCredentialsAndRejectsReuse` が status 400 で失敗)
+    → GREEN
+  - `just test-go` - passed (全パッケージ)
+  - `just verify` - passed
+  - `just spec-diff` - no normative specification change against main

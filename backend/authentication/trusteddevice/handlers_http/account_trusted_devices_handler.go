@@ -126,7 +126,7 @@ func HandleRevokeAllTrustedDevices(d httpdeps.Deps, c *echo.Context) error {
 
 func writeTrustedDeviceError(c *echo.Context, err error) error {
 	if errors.Is(err, trusteddeviceusecases.ErrTrustedDeviceNotFound) {
-		return support.WriteBrowserError(
+		return support.WriteProblem(
 			c, http.StatusNotFound, "trusted_device_not_found", "The trusted device does not exist.",
 		)
 	}

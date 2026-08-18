@@ -113,7 +113,7 @@ func (d Deps) start(c *echo.Context, providerID string, linking bool) error {
 	}
 	returnTo := c.QueryParam("return_to")
 	if returnTo != "" && !validReturnTo(c, returnTo) {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "return_to is invalid.")
 	}
 	linkUserID := ""
 	if linking {
@@ -128,7 +128,7 @@ func (d Deps) start(c *echo.Context, providerID string, linking bool) error {
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), providerID)
 	if err != nil || connection == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The identity provider is unavailable.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The identity provider is unavailable.")
 	}
 	callbackPath := "/api/auth/federation/oidc/callback"
 	if connection.Protocol == federationdomain.ProtocolSAML {
@@ -139,21 +139,21 @@ func (d Deps) start(c *echo.Context, providerID string, linking bool) error {
 		c.Request().Context(), d.Broker, providerID, returnTo, linkUserID, callbackURL, time.Now().UTC(),
 	)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "federation_failed", "The identity provider login could not be started.")
+		return support.WriteProblem(c, http.StatusBadRequest, "federation_failed", "The identity provider login could not be started.")
 	}
 	return c.Redirect(http.StatusSeeOther, start.RedirectTo)
 }
 
 func (d Deps) complete(c *echo.Context, state, response, callbackPath string) error {
 	if state == "" || response == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The federation response is incomplete.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The federation response is incomplete.")
 	}
 	completion, err := federationusecases.CompleteLogin(
 		c.Request().Context(), d.Broker, state, response,
 		support.TenantURL(c, callbackPath, d.Auth.Issuer), time.Now().UTC(),
 	)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusUnauthorized, "federation_failed", "The identity provider response was rejected.")
+		return support.WriteProblem(c, http.StatusUnauthorized, "federation_failed", "The identity provider response was rejected.")
 	}
 	c.SetCookie(&http.Cookie{ //nolint:gosec // Secure is enabled for HTTPS issuers; local HTTP development intentionally disables it.
 		Name:  support.TenantCookieName(c, sessionusecases.SessionCookie),
@@ -206,7 +206,7 @@ func (d Deps) unlink(c *echo.Context) error {
 	if err := federationusecases.UnlinkIdentity(
 		c.Request().Context(), d.Broker, authn, c.Param("provider_id"), time.Now().UTC(),
 	); err != nil {
-		return support.WriteBrowserError(c, http.StatusForbidden, "unlink_denied", "The linked identity cannot be removed.")
+		return support.WriteProblem(c, http.StatusForbidden, "unlink_denied", "The linked identity cannot be removed.")
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -254,7 +254,7 @@ func (d Deps) createAdmin(c *echo.Context) error {
 	}
 	var input connectionInput
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	var connection federationdomain.IdentityProviderConnection
 	input.apply(&connection)
@@ -265,7 +265,7 @@ func (d Deps) createAdmin(c *echo.Context) error {
 	connection.TenantID, connection.Status = support.RequestTenantID(c), federationdomain.ConnectionDisabled
 	connection.CreatedAt, connection.UpdatedAt = now, now
 	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	return support.NoStoreJSON(c, http.StatusCreated, withSecretPresence(&connection))
 }
@@ -276,11 +276,11 @@ func (d Deps) updateAdmin(c *echo.Context) error {
 	}
 	existing, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
 	if err != nil || existing == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
 	}
 	var input connectionInput
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	var connection federationdomain.IdentityProviderConnection
 	input.apply(&connection)
@@ -291,7 +291,7 @@ func (d Deps) updateAdmin(c *echo.Context) error {
 	connection.Status = federationusecases.ResolveUpdatedStatus(*existing, connection)
 	connection.UpdatedAt = time.Now().UTC()
 	if err := d.Broker.Connections.Save(c.Request().Context(), &connection); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	return support.NoStoreJSON(c, http.StatusOK, withSecretPresence(&connection))
 }
@@ -324,7 +324,7 @@ func (d Deps) changeStatus(c *echo.Context, activate bool) error {
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
 	if err != nil || connection == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
 	}
 	now := time.Now().UTC()
 	if activate {
@@ -333,7 +333,7 @@ func (d Deps) changeStatus(c *echo.Context, activate bool) error {
 		connection.Disable(now)
 	}
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_state", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_state", err.Error())
 	}
 	if err := d.Broker.Connections.Save(c.Request().Context(), connection); err != nil {
 		return err
@@ -347,13 +347,13 @@ func (d Deps) refresh(c *echo.Context) error {
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
 	if err != nil || connection == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
 	}
 	if connection.Protocol != federationdomain.ProtocolOIDC || d.OIDC == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "unsupported", "Automatic metadata refresh is unavailable for this provider.")
+		return support.WriteProblem(c, http.StatusBadRequest, "unsupported", "Automatic metadata refresh is unavailable for this provider.")
 	}
 	if err := d.OIDC.RefreshDiscovery(c.Request().Context(), connection, time.Now().UTC()); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "metadata_invalid", "The identity provider metadata was rejected.")
+		return support.WriteProblem(c, http.StatusBadRequest, "metadata_invalid", "The identity provider metadata was rejected.")
 	}
 	if err := d.Broker.Connections.Save(c.Request().Context(), connection); err != nil {
 		return err
@@ -372,7 +372,7 @@ func (d Deps) test(c *echo.Context) error {
 	}
 	connection, err := d.Broker.Connections.Find(c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"))
 	if err != nil || connection == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
 	}
 	var failures []string
 	if err := connection.Validate(); err != nil {
@@ -405,17 +405,17 @@ func (d Deps) previewMapping(c *echo.Context) error {
 		c.Request().Context(), support.RequestTenantID(c), c.Param("provider_id"),
 	)
 	if err != nil || connection == nil {
-		return support.WriteBrowserError(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "not_found", "The identity provider does not exist.")
 	}
 	var input struct {
 		Claims map[string]any `json:"claims"`
 	}
 	if err := support.DecodeJSON(c.Request(), &input); err != nil || input.Claims == nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A claims object is required.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A claims object is required.")
 	}
 	preview, err := oidcprotocol.NormalizeClaims(connection.ClaimMapping, input.Claims)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_mapping", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_mapping", err.Error())
 	}
 	return support.NoStoreJSON(c, http.StatusOK, map[string]any{"preview": preview})
 }

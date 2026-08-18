@@ -43,7 +43,7 @@ func HandleForgotPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input forgotPasswordAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	clientIP := support.ExtractClientIP(c.Request(), d.TrustedForwardedHops)
 	if blocked, err := support.CheckRateLimit(c, d.RateLimiter, d.Metrics, "password_reset", strings.ToLower(input.Email)+"|"+clientIP); err != nil {
@@ -73,10 +73,10 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	}
 	var input resetPasswordAPIRequest
 	if err := support.DecodeJSON(c.Request(), &input); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if strings.TrimSpace(input.Token) == "" || input.NewPassword == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A token and a new password are required.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A token and a new password are required.")
 	}
 	snap := resolvePasswordPolicy(c.Request().Context(), d)
 	reset, err := authusecases.ResetPasswordWithToken(
@@ -101,9 +101,9 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 		}
 		return support.NoStoreJSON(c, http.StatusOK, map[string]string{"status": "ok"})
 	case errors.Is(err, authusecases.ErrInvalidResetToken):
-		return support.WriteBrowserError(c, http.StatusGone, "invalid_reset_token", "The reset link is invalid or expired.")
+		return support.WriteProblem(c, http.StatusGone, "invalid_reset_token", "The reset link is invalid or expired.")
 	case errors.Is(err, authusecases.ErrPasswordReused):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "password_reuse", "A recently used password cannot be reused.")
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "password_reuse", "A recently used password cannot be reused.")
 	default:
 		var policyErr *authusecases.PasswordPolicyError
 		if errors.As(err, &policyErr) {

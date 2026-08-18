@@ -187,12 +187,12 @@ func TestUpdateNotificationPreferencesRejectsMandatoryCategories(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status=%d body=%s, want 400", rec.Code, rec.Body.String())
 	}
-	var problem map[string]any
+	var problem support.Problem
 	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
 		t.Fatal(err)
 	}
-	if problem["error"] != "mandatory_notification_category" {
-		t.Errorf("error=%v, want mandatory_notification_category", problem["error"])
+	if problem.Type != "urn:idmagic:error:mandatory_notification_category" {
+		t.Errorf("type=%q, want urn:idmagic:error:mandatory_notification_category", problem.Type)
 	}
 
 	for _, category := range decodeCategories(t, preferencesRequest(t, e, http.MethodGet, sessionID, nil)).Categories {

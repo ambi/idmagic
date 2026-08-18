@@ -33,13 +33,13 @@ func handleListAuthEventBuckets(d Deps, c *echo.Context) error {
 	}
 	page, err := support.ParsePageRequest(c, d.PaginationCodec, actor.TenantID, listAuthenticationEventBucketsQuery, authusecases.AuthEventBucketDefaultLimit, authusecases.AuthEventBucketMaxLimit)
 	if err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 	afterWindowStart := time.Time{}
 	if page.AfterPrimary != "" {
 		afterWindowStart, err = time.Parse(time.RFC3339Nano, page.AfterPrimary)
 		if err != nil {
-			return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "cursor is invalid or expired.")
+			return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "cursor is invalid or expired.")
 		}
 	}
 	var buckets []authusecases.AuthEventBucketView

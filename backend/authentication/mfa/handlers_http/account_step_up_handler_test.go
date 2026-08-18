@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -159,14 +160,22 @@ func accountRequest(t *testing.T, e *echo.Echo, method, path, sessionID string, 
 	return rec
 }
 
+// 対象表は複数コンテキストのエンドポイントにまたがり、Problem Details
+// (`type: urn:idmagic:error:<code>`) を返すものと、まだ `{error, message}` を
+// 返すものが混在する。どちらからも code を取り出す。
 func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 	t.Helper()
-	var body map[string]any
+	var body struct {
+		Type  string `json:"type"`
+		Error string `json:"error"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		return ""
 	}
-	code, _ := body["error"].(string)
-	return code
+	if code, found := strings.CutPrefix(body.Type, "urn:idmagic:error:"); found {
+		return code
+	}
+	return body.Error
 }
 
 // 対象表: step-up が必要な sensitive 操作の全エンドポイント。

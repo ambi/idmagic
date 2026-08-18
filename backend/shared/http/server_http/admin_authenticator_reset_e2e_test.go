@@ -382,3 +382,56 @@ func TestAdminResetUserAuthenticatorsRejectsNonAdmin(t *testing.T) {
 		t.Fatalf("status=%d, want 403; body=%s", resp.StatusCode, body)
 	}
 }
+
+// 管理者の MFA 操作のうち、要求は解析できるが実行が許されないもの
+// (対象の指定されないリセット、範囲外の TTL を指定した enrollment bypass) は
+// 業務規則違反として 422 を返し、body は Problem Details である。
+func TestAdminMfaOperationsRejectDisallowedRequests(t *testing.T) {
+	srv := newServerForAuthenticatorReset(t)
+	defer srv.Close()
+
+	adminClient := loginDirectAdmin(t, srv, resetAdminUsername, resetAdminPassword, resetAdminTOTP)
+	csrf := adminCSRFToken(t, adminClient, srv)
+
+	for _, testCase := range []struct {
+		name    string
+		target  string
+		payload map[string]any
+		code    string
+	}{
+		{
+			name:    "authenticator reset without targets",
+			target:  srv.URL + "/realms/default/api/admin/v1/users/user_alice/authenticator-reset",
+			payload: map[string]any{"targets": []string{}},
+			code:    "authenticator_reset_not_allowed",
+		},
+		{
+			name:    "enrollment bypass with a TTL outside the allowed range",
+			target:  srv.URL + "/realms/default/api/admin/v1/users/user_alice/mfa-enrollment-bypass",
+			payload: map[string]any{"expires_in_seconds": 10},
+			code:    "mfa_enrollment_not_allowed",
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodPost, testCase.target, bytes.NewReader(mustJSONBytes(t, testCase.payload)))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Origin", "http://test")
+			req.Header.Set("X-Csrf-Token", csrf)
+			resp, err := adminClient.Do(req)
+			if err != nil {
+				t.Fatalf("POST %s: %v", testCase.target, err)
+			}
+			defer resp.Body.Close()
+			body, _ := io.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusUnprocessableEntity {
+				t.Fatalf("status=%d, want 422; body=%s", resp.StatusCode, body)
+			}
+			if contentType := resp.Header.Get("Content-Type"); contentType != support.ProblemContentType {
+				t.Fatalf("Content-Type=%q, want %q", contentType, support.ProblemContentType)
+			}
+			if !bytes.Contains(body, []byte(`"type":"urn:idmagic:error:`+testCase.code+`"`)) {
+				t.Fatalf("body=%s, want type urn:idmagic:error:%s", body, testCase.code)
+			}
+		})
+	}
+}
