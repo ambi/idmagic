@@ -1,9 +1,14 @@
 ---
-status: pending
+status: completed
 authors: ["tn"]
 risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
+initial_context:
+  specification: [spec/SPECIFICATION.md, spec/contexts/ws-federation/SPECIFICATION.md]
+  source: [backend/wsfederation/handlers_http, backend/shared/http/support_http/problem.go]
+  tests: [backend/wsfederation/handlers_http]
+  stop_before_reading: [frontend]
 ---
 
 # wsfederation context の `WriteBrowserError` 呼び出しを Problem Details へ移行する
@@ -41,9 +46,10 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 
 ## Tasks
 
-- [ ] T001 [App] `admin_relying_party_handler.go`・`admin_entra_handler.go` を
+- [x] T001 [App] `admin_relying_party_handler.go`・`admin_entra_handler.go` を
       `WriteProblem` へ移行する。
-- [ ] T002 [Verify] `just verify` を通す。
+      RED→GREEN: `TestAdminRelyingParty_RejectsInvalid`。
+- [x] T002 [Verify] `just verify` を通す。
 
 ## Verification
 
@@ -52,3 +58,22 @@ depends_on: [wi-326-http-error-responses-rfc9457-migration]
 ## Risk Notes
 
 小規模 (2 ファイル・7 箇所)。特記事項なし。
+
+## Completion
+
+- **Completed At**: 2026-08-19
+- **Summary**:
+  `backend/wsfederation/handlers_http` の `admin_relying_party_handler.go`
+  (4 箇所)・`admin_entra_handler.go` (3 箇所) をすべて `support.WriteProblem`
+  へ置き換えた。status 変更は不要 (`invalid_request` 400・
+  `application_owned_protocol` 409)。WS-Federation プロトコル応答
+  (`wsignin1.0`/`wsignout1.0` の XML・redirect、WS-Trust SOAP) は対象外のまま
+  変更していない。長さ違反が既に 422 Problem Details で返っていること
+  (`admin_relying_party_length_test.go`、wi-128) も引き続き green。
+  仕様変更はない (`just spec-diff`: no normative specification change)。
+- **Verification Results**:
+  - `just test-go-package ./backend/wsfederation/handlers_http` - RED
+    (`TestAdminRelyingParty_RejectsInvalid` が
+    `Content-Type: application/json` で失敗) → GREEN
+  - `just verify` - passed
+  - `just spec-diff` - no normative specification change against main

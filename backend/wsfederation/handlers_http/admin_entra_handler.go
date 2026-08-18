@@ -48,17 +48,17 @@ func (d Deps) handleConfigureEntraFederation(c *echo.Context) error {
 	}
 	var req configureEntraRequest
 	if err := c.Bind(&req); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON body is invalid.")
 	}
 	if err := req.validate(); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 
 	ctx := c.Request().Context()
 	tenantID := support.RequestTenantID(c)
 	sourceAttr := strings.TrimSpace(req.SourceAnchorAttribute)
 	if err := d.validateEntraSourceAnchors(c, sourceAttr); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", err.Error())
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", err.Error())
 	}
 
 	passive := support.TenantURL(c, "/wsfed", d.Issuer)
