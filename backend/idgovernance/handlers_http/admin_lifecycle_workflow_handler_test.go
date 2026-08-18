@@ -165,6 +165,16 @@ func TestAdminLifecycleWorkflowDryRunReflectsActualUserState(t *testing.T) {
 	if missingUser.Code != http.StatusBadRequest {
 		t.Fatalf("dry_run for missing user status=%d body=%s", missingUser.Code, missingUser.Body.String())
 	}
+	if contentType := missingUser.Header().Get("Content-Type"); contentType != support.ProblemContentType {
+		t.Fatalf("dry_run for missing user Content-Type=%q, want %q", contentType, support.ProblemContentType)
+	}
+	var problem support.Problem
+	if err := json.Unmarshal(missingUser.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("unmarshal dry_run error body: %v (body=%s)", err, missingUser.Body.String())
+	}
+	if problem.Type != "urn:idmagic:error:invalid_request" {
+		t.Errorf("dry_run for missing user type=%q, want urn:idmagic:error:invalid_request", problem.Type)
+	}
 }
 
 // defaultRealmPath は bare path を default テナントの正規ロケーション配下へ移す。

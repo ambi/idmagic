@@ -153,7 +153,7 @@ func (d Deps) handleGetLifecycleWorkflow(c *echo.Context) error {
 func (d Deps) decodeWorkflow(c *echo.Context) (lifecycleWorkflowRequest, error) {
 	var request lifecycleWorkflowRequest
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
-		return request, support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return request, support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	return request, nil
 }
@@ -224,7 +224,7 @@ func (d Deps) handleDeleteLifecycleWorkflow(c *echo.Context) error {
 		ExpectedRevision int64 `json:"expected_revision"`
 	}
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	actor, err := d.RequireAdmin(c)
 	if err != nil {
@@ -244,7 +244,7 @@ func (d Deps) changeLifecycleWorkflow(c *echo.Context, change func(string, int64
 		ExpectedRevision int64 `json:"expected_revision"`
 	}
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	actor, err := d.RequireAdmin(c)
 	if err != nil {
@@ -267,10 +267,10 @@ func (d Deps) handleDryRunLifecycleWorkflow(c *echo.Context) error {
 	}
 	var request lifecycleDryRunRequest
 	if err := support.DecodeJSON(c.Request(), &request); err != nil {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}
 	if request.TargetUserID == "" {
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "A target user is required.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "A target user is required.")
 	}
 	result, err := igusecases.DryRunLifecycleWorkflow(c.Request().Context(), igusecases.DryRunLifecycleWorkflowDeps{
 		Repo: d.LifecycleWorkflowRepo, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,
@@ -329,14 +329,14 @@ func (d Deps) handleRetryLifecycleWorkflowRun(c *echo.Context) error {
 func (d Deps) writeLifecycleWorkflowError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, igusecases.ErrLifecycleWorkflowNotFound):
-		return support.WriteBrowserError(c, http.StatusNotFound, "workflow_not_found", "The workflow does not exist.")
+		return support.WriteProblem(c, http.StatusNotFound, "workflow_not_found", "The workflow does not exist.")
 	case errors.Is(err, igusecases.ErrWorkflowRevisionConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "workflow_revision_conflict", "The workflow was updated by another change.")
+		return support.WriteProblem(c, http.StatusConflict, "workflow_revision_conflict", "The workflow was updated by another change.")
 	case errors.Is(err, igusecases.ErrWorkflowNameConflict):
-		return support.WriteBrowserError(c, http.StatusConflict, "workflow_name_conflict", "The workflow name is already in use.")
+		return support.WriteProblem(c, http.StatusConflict, "workflow_name_conflict", "The workflow name is already in use.")
 	case errors.Is(err, igusecases.ErrLifecycleWorkflowTargetUserNotFound):
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_request", "The target user was not found.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The target user was not found.")
 	default:
-		return support.WriteBrowserError(c, http.StatusBadRequest, "invalid_workflow", "The workflow input is invalid.")
+		return support.WriteProblem(c, http.StatusBadRequest, "invalid_workflow", "The workflow input is invalid.")
 	}
 }
