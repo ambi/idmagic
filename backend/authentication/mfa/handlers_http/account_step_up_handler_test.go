@@ -160,22 +160,14 @@ func accountRequest(t *testing.T, e *echo.Echo, method, path, sessionID string, 
 	return rec
 }
 
-// 対象表は複数コンテキストのエンドポイントにまたがり、Problem Details
-// (`type: urn:idmagic:error:<code>`) を返すものと、まだ `{error, message}` を
-// 返すものが混在する。どちらからも code を取り出す。
+// Problem Details の type URN (urn:idmagic:error:<code>) から code を取り出す。
 func errorCode(t *testing.T, rec *httptest.ResponseRecorder) string {
 	t.Helper()
-	var body struct {
-		Type  string `json:"type"`
-		Error string `json:"error"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+	var problem support.Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
 		return ""
 	}
-	if code, found := strings.CutPrefix(body.Type, "urn:idmagic:error:"); found {
-		return code
-	}
-	return body.Error
+	return strings.TrimPrefix(problem.Type, "urn:idmagic:error:")
 }
 
 // 対象表: step-up が必要な sensitive 操作の全エンドポイント。

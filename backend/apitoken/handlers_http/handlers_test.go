@@ -123,9 +123,7 @@ func TestIssueApiTokenRejectsInvalidRequest(t *testing.T) {
 	}
 }
 
-// wi-326 T004 pilot: apitoken is the first context migrated from
-// WriteBrowserError's legacy {error,message} envelope to RFC 9457 Problem
-// Details. Both invalid_request paths (malformed JSON body and
+// Both invalid_request paths (malformed JSON body and
 // usecases.ErrInvalidRequest) must return application/problem+json.
 func TestIssueApiToken_InvalidRequestIsProblemDetails(t *testing.T) {
 	e := newHandler(t)

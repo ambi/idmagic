@@ -17,11 +17,6 @@ func NoStoreJSON(c *echo.Context, status int, body any) error {
 	return c.JSON(status, body)
 }
 
-// WriteBrowserError はブラウザ向け API の {error, message} エラー body を返す。
-func WriteBrowserError(c *echo.Context, status int, code, message string) error {
-	return NoStoreJSON(c, status, map[string]string{"error": code, "message": message})
-}
-
 // WriteRateLimited は SCL RateLimitedError (429) を返す。login throttle と
 // endpoint rate limiter の両方から呼ばれる共通の 429 応答で、oauth2-bound / browser-JSON の
 // どちらの binding でも同じ形にする (OAuthError は 429 の追加フィールドを持てないため
@@ -30,9 +25,9 @@ func WriteRateLimited(c *echo.Context, retryAfterSeconds int) error {
 	c.Response().Header().Set("Retry-After", strconv.Itoa(retryAfterSeconds))
 	return NoStoreJSON(c, http.StatusTooManyRequests, map[string]any{
 		"error": "rate_limited", "retry_after_seconds": retryAfterSeconds,
-		// message is the English fallback for callers that don't localize by code
-		// (WriteBrowserError's shape); UI screens that do localize (LoginPage etc.)
-		// map the "rate_limited" code to a translated message instead.
+		// message is the English fallback for callers that don't localize by code;
+		// UI screens that do localize (LoginPage etc.) map the "rate_limited"
+		// code to a translated message instead.
 		"message": "Too many requests. Try again later.",
 	})
 }

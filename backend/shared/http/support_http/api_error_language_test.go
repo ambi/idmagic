@@ -27,7 +27,6 @@ func TestAPIErrorLiteralTextIsEnglish(t *testing.T) {
 		"NewOAuthError":              1,
 		"NewScimError":               1,
 		"OAuthErrorBody":             1,
-		"WriteBrowserError":          3,
 		"WriteProblem":               3,
 		"authorizationErrorURL":      3,
 		"newFilterError":             0,
