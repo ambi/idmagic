@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("認可モデルが定める関係の書き換え規則の種別。direct は直接 RelationTuple、computed_userset は同一オブジェクト上の別関係、tuple_to_userset は tupleset_relation でたどった先のオブジェクト上の関係を指す。")
+@doc("The kinds of rewrite rule an authorization model may use for a relation. `direct` reads a RelationTuple as it stands, `computed_userset` reads another relation on the same object, and `tuple_to_userset` reads a relation on the object reached through `tupleset_relation`.")
 enum RelationRewriteKind {
   direct: "direct",
   computed_userset: "computed_userset",
@@ -8,23 +8,23 @@ enum RelationRewriteKind {
 }
 
 
-@doc("1 つの関係を構成する書き換え規則。RelationDefinition が持つ規則の和 (union) が、その関係の成立条件になる。intersection と exclusion は定義しない。")
+@doc("One rewrite rule making up a relation. A relation holds when the union of the rules on its RelationDefinition holds. Intersection and exclusion are not defined.")
 model RelationRewrite {
   kind: RelationRewriteKind;
-  @doc("computed_userset と tuple_to_userset で評価する関係名。direct では指定しない。")
+  @doc("The relation name evaluated by `computed_userset` and `tuple_to_userset`. Not set for `direct`.")
   @maxLength(64)
   computed_relation?: string;
-  @doc("tuple_to_userset で親オブジェクトへたどる関係名。ほかの kind では指定しない。")
+  @doc("The relation `tuple_to_userset` follows to the parent object. Not set for the other kinds.")
   @maxLength(64)
   tupleset_relation?: string;
-  @doc("direct で受け入れる主体の形。user は個別の主体、group#member は subject set、user:* はワイルドカードを表す。ここに現れない形の RelationTuple は書き込み時も判定時も受け付けない。ほかの kind では指定しない。")
+  @doc("The subject shapes `direct` accepts: `user` for an individual subject, `group#member` for a subject set, and `user:*` for a wildcard. A RelationTuple whose shape is not listed here is refused both when written and when evaluated. Not set for the other kinds.")
   direct_subject_types?: string[];
 }
 
 
-@doc("ResourceTypeDefinition が公開する 1 つの関係の定義。rewrites が空の関係は決して成立しない。")
+@doc("The definition of one relation a ResourceTypeDefinition exposes. A relation with no rewrites can never hold.")
 model RelationDefinition {
-  @doc("関係名。^[a-z][a-z0-9_]*$。同一 ResourceTypeDefinition 内で一意。")
+  @doc("The relation name, matching `^[a-z][a-z0-9_]*$` and unique within its ResourceTypeDefinition.")
   @minLength(1)
   @maxLength(64)
   name: string;
@@ -32,9 +32,9 @@ model RelationDefinition {
 }
 
 
-@doc("認可モデルが定めるリソース型。RelationTuple の resource_type と subject_type はここで宣言した型名だけを取りうる。")
+@doc("A resource type the authorization model defines. The `resource_type` and `subject_type` of a RelationTuple may only be type names declared here.")
 model ResourceTypeDefinition {
-  @doc("型名。^[a-z][a-z0-9_]*$。AuthorizationModel 内で一意。")
+  @doc("The type name, matching `^[a-z][a-z0-9_]*$` and unique within the AuthorizationModel.")
   @minLength(1)
   @maxLength(64)
   name: string;
@@ -42,47 +42,47 @@ model ResourceTypeDefinition {
 }
 
 
-@doc("テナントの認可モデル。版を追記のみで積み上げ、published された最新版が判定に使われる。未知の関係・型を参照する版は登録時に fail-closed で拒否する。")
+@doc("The authorization model of a tenant. Revisions are only appended, and the latest published one decides every check. A revision referring to an unknown relation or type is refused fail-closed at registration.")
 model AuthorizationModel {
-  @doc("生成識別子。UUID v4。不変。")
+  @doc("The generated identifier (UUID v4). Immutable.")
   id: string;
-  @doc("所属テナント ID。cross-tenant 参照は禁止。")
+  @doc("The tenant it belongs to. Cross-tenant references are forbidden.")
   tenant_id: string = "default";
-  @doc("テナント内で単調増加する版。1 から始まる。")
+  @doc("The revision, rising monotonically within the tenant and starting at 1.")
   version: int32;
   resource_types: ResourceTypeDefinition[];
   created_at: utcDateTime;
 }
 
 
-@doc("(resource_type:resource_id, relation, subject) の関係事実。テナント内で一意な組であり、同じ組の再書き込みは冪等。subject_relation を持つ主体は subject set (group:eng#member) を表す。subject_id が * のワイルドカードは、direct 規則が subject_type を許した場合にだけ受け付ける。")
+@doc("The relation fact `(resource_type:resource_id, relation, subject)`. The triple is unique within the tenant, so writing the same one again is idempotent. A subject carrying `subject_relation` denotes a subject set (`group:eng#member`). A `subject_id` of `*` is a wildcard, accepted only when a `direct` rule permits that `subject_type`.")
 model RelationTuple {
-  @doc("関係を持たれる側のリソース型。認可モデルが宣言した型名。")
+  @doc("The resource type the relation is held on. A type name the authorization model declared.")
   @minLength(1)
   @maxLength(64)
   resource_type: string;
-  @doc("リソース識別子。idmagic は採番せず、呼び出し側の資源空間の id をそのまま持つ。")
+  @doc("The resource identifier. IdMagic does not mint it; it holds the id from the caller's own resource space as it is.")
   @minLength(1)
   @maxLength(256)
   resource_id: string;
   @minLength(1)
   @maxLength(64)
   relation: string;
-  @doc("主体型。認可モデルが宣言した型名。")
+  @doc("The subject type. A type name the authorization model declared.")
   @minLength(1)
   @maxLength(64)
   subject_type: string;
-  @doc("主体識別子。* はワイルドカードを表す。")
+  @doc("The subject identifier. `*` denotes a wildcard.")
   @minLength(1)
   @maxLength(256)
   subject_id: string;
-  @doc("subject set を表す関係名。省略時は個別の主体を指す。")
+  @doc("The relation name that makes this a subject set. Left out, the subject is an individual one.")
   @maxLength(64)
   subject_relation?: string;
 }
 
 
-@doc("WriteRelationTuples が 1 トランザクションで適用する差分。writes と deletes は同じ組を同時に含んではならない。delete_objects に挙げたオブジェクトは、リソース側・主体側の双方の RelationTuple を取り除く (削除の波及)。")
+@doc("The change WriteRelationTuples applies in one transaction. The same triple may not appear in both `writes` and `deletes`. An object listed in `delete_objects` has its RelationTuples removed on both the resource side and the subject side, so a deletion cascades.")
 model RelationTupleWriteRequest {
   writes?: RelationTuple[];
   deletes?: RelationTuple[];
@@ -90,7 +90,7 @@ model RelationTupleWriteRequest {
 }
 
 
-@doc("type:id 形式のオブジェクト参照。")
+@doc("An object reference written as `type:id`.")
 model FgaObjectReference {
   @minLength(1)
   @maxLength(64)
@@ -101,9 +101,9 @@ model FgaObjectReference {
 }
 
 
-@doc("判定時に主体を代行しているプリンシパルの 1 段。RFC 8693 の act チェーンを外側から内側の順に並べる。")
+@doc("One step of the principals acting on behalf of the subject at check time. The RFC 8693 `act` chain, ordered outermost first.")
 model FgaActor {
-  @doc("認可モデルが宣言する主体型 (agent / user など)。判定でも有効性の解決でも同じ語彙を使う。")
+  @doc("A subject type the authorization model declares (`agent`, `user`, and so on). Checks and validity resolution use the same vocabulary.")
   @minLength(1)
   type: string;
   @minLength(1)
@@ -111,7 +111,7 @@ model FgaActor {
 }
 
 
-@doc("CheckAccess の入力。subject は代行される主体 (通常はアクセストークンの sub)、actor_chain は代行しているエージェント列である。minimum_consistency を与えると、ストアの書き込み版がそれ以上であることを確認してから判定する。")
+@doc("The input to CheckAccess. `subject` is the principal being acted for -- usually the `sub` of the access token -- and `actor_chain` is the sequence of agents acting on its behalf. Giving `minimum_consistency` makes the check confirm the store's write revision has reached at least that point before deciding.")
 model FgaCheckRequest {
   @minLength(1)
   resource_type: string;
@@ -124,24 +124,28 @@ model FgaCheckRequest {
   @minLength(1)
   subject_id: string;
   actor_chain?: FgaActor[];
-  @doc("この判定に必要な最小の整合トークン。WriteRelationTuples が返した値を渡す。")
+  @doc("The smallest consistency token this check needs. Pass the value WriteRelationTuples returned.")
   minimum_consistency?: string;
+  @doc("The scopes the caller's access token carries. The check refuses fail-closed when they do not cover what the operation requires.")
+  granted_scopes?: string[];
+  @doc("The scopes the operation requires.")
+  required_scopes?: string[];
 }
 
 
-@doc("CheckAccess の結果。permitted が false のとき reasons が拒否した規則名を持つ。relation_path はたどった関係名だけの要約で、オブジェクト識別子や主体識別子を含まない。")
+@doc("The result of CheckAccess. When `permitted` is false, `reasons` names the rules that denied it. `relation_path` summarizes only the relation names that were followed; it carries no object or subject identifier.")
 model FgaCheckResult {
   permitted: boolean;
-  @doc("判定に用いた認可モデルの版。")
+  @doc("The revision of the authorization model the check used.")
   model_version: int32;
-  @doc("判定時点のストアの整合トークン。")
+  @doc("The store's consistency token at the moment of the check.")
   consistency: string;
   relation_path: string[];
   reasons: string[];
 }
 
 
-@doc("ListAccessibleResources の結果。走査の上限に達した場合 truncated が true になり、呼び出し側はこれを完全な一覧として扱ってはならない。")
+@doc("The result of ListAccessibleResources. Reaching the scan ceiling sets `truncated`, and the caller must not treat the list as complete.")
 model FgaListAccessibleResourcesResult {
   resource_ids: string[];
   truncated: boolean;
@@ -150,31 +154,23 @@ model FgaListAccessibleResourcesResult {
 }
 
 
-@doc("認可モデルの登録が検証で拒否された (未知の型・関係の参照、名前の書式違反、書き換え規則の循環、必須フィールドの欠落)。")
-model AuthorizationModelInvalidError {
-
-}
+@doc("Registering the authorization model was rejected by validation: a reference to an unknown type or relation, a name that breaks the naming rules, a cycle in the rewrite rules, or a missing required field. RFC 9457 Problem Details with `type` = `urn:idmagic:error:authorization_model_invalid`.")
+model AuthorizationModelInvalidError is ProblemDetails;
 
 
-@doc("テナントに published 済みの認可モデルが存在しない。")
-model AuthorizationModelNotFoundError {
-
-}
+@doc("The tenant has no published authorization model. RFC 9457 Problem Details with `type` = `urn:idmagic:error:authorization_model_not_found`.")
+model AuthorizationModelNotFoundError is ProblemDetails;
 
 
-@doc("RelationTuple が登録済み認可モデルに適合しない (未知の型・関係、許可されていない主体型、許可されていないワイルドカード、writes と deletes の重複)。")
-model RelationTupleInvalidError {
-
-}
+@doc("A RelationTuple does not fit the registered authorization model: an unknown type or relation, a subject type that is not permitted, a wildcard that is not permitted, or the same tuple in both `writes` and `deletes`. RFC 9457 Problem Details with `type` = `urn:idmagic:error:relation_tuple_invalid`.")
+model RelationTupleInvalidError is ProblemDetails;
 
 
-@doc("提示された整合トークンがストアの書き込み版より新しい、または別テナントのトークンである。判定は fail-closed で拒否する。")
-model ConsistencyNotSatisfiedError {
-
-}
+@doc("The consistency token presented is newer than the write revision the store holds, or it belongs to another tenant. The check is fail-closed and rejects. RFC 9457 Problem Details with `type` = `urn:idmagic:error:consistency_not_satisfied`.")
+model ConsistencyNotSatisfiedError is ProblemDetails;
 
 
-@doc("管理者がテナントの認可モデルの新しい版を published した。")
+@doc("An administrator published a new revision of the tenant's authorization model.")
 model AuthorizationModelPublished {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -184,7 +180,7 @@ model AuthorizationModelPublished {
 }
 
 
-@doc("RelationTuple を書き込んだ。個々のタプルは監査へ複製せず、件数と整合トークンだけを残す。")
+@doc("RelationTuples were written. The individual tuples are not copied into the audit trail; only the count and the consistency token are kept.")
 model RelationTupleWritten {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -193,7 +189,7 @@ model RelationTupleWritten {
 }
 
 
-@doc("RelationTuple を削除した。オブジェクト単位の削除の波及もこのイベントで表す。")
+@doc("RelationTuples were deleted. A cascading per-object deletion is recorded through this event as well.")
 model RelationTupleDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -202,7 +198,7 @@ model RelationTupleDeleted {
 }
 
 
-@doc("CheckAccess が判定を下した。リソース識別子は SHA-256 の先頭 16 桁ダイジェストにし、主体識別子とタプルの内容は残さない。")
+@doc("CheckAccess reached a decision. The resource identifier is reduced to the first 16 hex digits of its SHA-256, and neither the subject identifier nor the tuple contents are kept.")
 model FgaCheckEvaluated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -211,26 +207,26 @@ model FgaCheckEvaluated {
   relation: string;
   permitted: boolean;
   modelVersion: int32;
-  @doc("たどった関係名だけの経路要約。")
+  @doc("A summary of the path followed, relation names only.")
   relationPath: string[];
-  @doc("拒否した規則名。permitted が true のときは空。")
+  @doc("The rules that denied it. Empty when `permitted` is true.")
   reasons: string[];
-  @doc("代行チェーンの段数。0 は直接アクセス。")
+  @doc("How many steps the delegation chain had. Zero means direct access.")
   actorChainDepth: int32;
 }
 
 
-@doc("ListAccessibleResources が走査を終えた。1 件ごとの判定は監査へ展開せず、この 1 件で件数と打ち切りだけを残す。リソース識別子は残さない。")
+@doc("ListAccessibleResources finished its scan. The per-candidate decisions are not expanded into the audit trail; this single event keeps only the counts and whether the scan was cut short. No resource identifier is kept.")
 model FgaResourcesEnumerated {
   occurredAt: utcDateTime;
   tenantId: string;
   resourceType: string;
   relation: string;
-  @doc("走査した候補の件数。")
+  @doc("How many candidates were scanned.")
   candidateCount: int32;
-  @doc("許可された件数。")
+  @doc("How many were permitted.")
   permittedCount: int32;
-  @doc("走査の上限に達して打ち切ったかどうか。")
+  @doc("Whether the scan hit its ceiling and was cut short.")
   truncated: boolean;
   modelVersion: int32;
   actorChainDepth: int32;

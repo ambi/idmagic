@@ -8,13 +8,10 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.Sourcing {
 
 namespace Operations {
-model GetScimServiceProviderConfigHttpResponse {
-  config: unknown;
-}
-
 model GetScimServiceProviderConfigSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetScimServiceProviderConfigHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimServiceProviderConfig;
 }
 
 union GetScimServiceProviderConfigError400Body {
@@ -27,7 +24,7 @@ model GetScimServiceProviderConfigError400 {
   @body body: GetScimServiceProviderConfigError400Body;
 }
 
-@doc("SCIM 2.0 /ServiceProviderConfig を取得する。\nレスポンスは受け付ける認証方式を authenticationSchemes で申告する。同属性は\nRFC 7643 §5 で REQUIRED の多値属性であり、空や欠落は許されない。SCIM API は\nBearer スキームで提示するアクセストークンで認証するため、少なくとも\noauthbearertoken 方式を 1 件含める。")
+@doc("Reads the SCIM 2.0 /ServiceProviderConfig.\nThe response declares which authentication schemes are accepted, in `authenticationSchemes`. RFC 7643 section 5\nmakes that attribute a REQUIRED multi-valued one, so it may be neither empty nor absent. The SCIM API authenticates\nwith an access token presented under the Bearer scheme, so at least the `oauthbearertoken` scheme is listed.")
 @TypeSpec.OpenAPI.operationId("GetScimServiceProviderConfig")
 @route("/scim/v2/ServiceProviderConfig")
 @get
@@ -35,13 +32,10 @@ op GetScimServiceProviderConfig(
   @query tenant_id: string
 ): GetScimServiceProviderConfigSuccess_200 | GetScimServiceProviderConfigError400;
 
-model GetScimResourceTypesHttpResponse {
-  types: unknown[];
-}
-
 model GetScimResourceTypesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetScimResourceTypesHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResourceType[];
 }
 
 union GetScimResourceTypesError400Body {
@@ -54,7 +48,7 @@ model GetScimResourceTypesError400 {
   @body body: GetScimResourceTypesError400Body;
 }
 
-@doc("SCIM 2.0 /ResourceTypes を取得する。実装済みの User と Group の2 resource type\nだけを返す(schema URN、endpoint)。User は対応する enterprise extension\n(urn:ietf:params:scim:schemas:extension:enterprise:2.0:User)を schemaExtensions に\n広告する。")
+@doc("Reads the SCIM 2.0 /ResourceTypes. Only the two resource types that are implemented, User and Group, are returned,\nwith their schema URN and endpoint. User advertises the enterprise extension it supports\n(urn:ietf:params:scim:schemas:extension:enterprise:2.0:User) under `schemaExtensions`.")
 @TypeSpec.OpenAPI.operationId("GetScimResourceTypes")
 @route("/scim/v2/ResourceTypes")
 @get
@@ -62,13 +56,10 @@ op GetScimResourceTypes(
   @query tenant_id: string
 ): GetScimResourceTypesSuccess_200 | GetScimResourceTypesError400;
 
-model GetScimSchemasHttpResponse {
-  schemas: unknown[];
-}
-
 model GetScimSchemasSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetScimSchemasHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimSchema[];
 }
 
 union GetScimSchemasError400Body {
@@ -81,7 +72,7 @@ model GetScimSchemasError400 {
   @body body: GetScimSchemasError400Body;
 }
 
-@doc("SCIM 2.0 /Schemas を取得する。RFC7643-CORE-RESOURCES が対応する User と Group の\n属性、および RFC7643-ENTERPRISE-EXTENSION が対応する enterprise extension\n(urn:ietf:params:scim:schemas:extension:enterprise:2.0:User)の employeeNumber、\ndepartment、manager を、各属性の type、multiValued、required、\nmutability(readOnly/readWrite)、returned、uniqueness とともに広告する。User emails は\n単一 canonical email への projection、Group members の referenceTypes は User のみと\n明記し、未対応の phoneNumbers、addresses、Group member、costCenter、division、\norganization は広告しない。空の attribute 配列を返さない。")
+@doc("Reads the SCIM 2.0 /Schemas. It advertises the User and Group attributes RFC7643-CORE-RESOURCES covers, and the\n`employeeNumber`, `department`, and `manager` of the enterprise extension RFC7643-ENTERPRISE-EXTENSION covers\n(urn:ietf:params:scim:schemas:extension:enterprise:2.0:User), each with its `type`, `multiValued`, `required`,\n`mutability` (readOnly or readWrite), `returned`, and `uniqueness`. It states that User emails project onto a single\ncanonical email and that the `referenceTypes` of Group members is User alone, and it does not advertise what is not\nsupported: phoneNumbers, addresses, a Group as a member, costCenter, division, and organization. An empty attribute\narray is never returned.")
 @TypeSpec.OpenAPI.operationId("GetScimSchemas")
 @route("/scim/v2/Schemas")
 @get
@@ -89,18 +80,10 @@ op GetScimSchemas(
   @query tenant_id: string
 ): GetScimSchemasSuccess_200 | GetScimSchemasError400;
 
-model CreateScimUserHttpRequest {
-  tenant_id: string;
-  body: unknown;
-}
-
-model CreateScimUserHttpResponse {
-  response: unknown;
-}
-
 model CreateScimUserSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: CreateScimUserHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union CreateScimUserError400Body {
@@ -113,21 +96,19 @@ model CreateScimUserError400 {
   @body body: CreateScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users に対する POST 要求。内部 User を作成する。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。emails は全 element を検証後、\nprimary=true、type=work(case-insensitive)、wire order の順で単一 email へ投影する。\n不正 emails、phoneNumbers、addresses は invalidValue にする。\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User 配下の employeeNumber、\ndepartment、manager(オブジェクトの value または文字列)も対応する。employeeNumber・\ndepartment が string でない、または manager が同一 tenant 内に存在しない SCIM User を\n指す場合は invalidValue にする。`id` は常に server が生成し、body に含まれていても\n無視する(readOnly)。`active` 省略時は true。作成した resource は canonical email が\nある場合だけ単一 type=work、primary=true entry を、enterprise extension 属性を1つ以上\n持つ場合だけ schemas に enterprise extension URN と対応する属性オブジェクトを含め、\n`id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location` を返す。\n同一 tenant 内で `userName` が既存 User と重複する場合は 409 `uniqueness` にする。")
+@doc("POST to SCIM 2.0 /Users, creating an internal User. `userName` is required, and its absence gives an `invalidValue`\nScimProtocolError. Every element of `emails` is validated, then projected onto a single email in the order\nprimary=true, type=work (case-insensitive), wire order. A malformed `emails`, `phoneNumbers`, or `addresses` gives\n`invalidValue`. `employeeNumber`, `department`, and `manager` (either the `value` of an object or a plain string)\nunder urn:ietf:params:scim:schemas:extension:enterprise:2.0:User are supported too; an `employeeNumber` or\n`department` that is not a string, and a `manager` naming a SCIM User that does not exist in the same tenant, both\ngive `invalidValue`. `id` is always generated by the server and ignored even when the body carries one (readOnly),\nand `active` defaults to true. The created resource carries a single type=work, primary=true entry only when there\nis a canonical email, carries the enterprise extension URN in `schemas` together with the matching attribute object\nonly when at least one extension attribute is set, and always returns `id`, `meta.resourceType`, `meta.created`,\n`meta.lastModified`, and `meta.location`. A `userName` that collides with an existing User in the same tenant gives\n409 `uniqueness`.")
 @TypeSpec.OpenAPI.operationId("CreateScimUser")
 @route("/scim/v2/Users")
 @post
 op CreateScimUser(
-  @body body: CreateScimUserHttpRequest
+  @header contentType: "application/scim+json",
+  @body body: IdMagic.Contract.ScimResource
 ): CreateScimUserSuccess_200 | CreateScimUserError400;
-
-model ListScimUsersHttpResponse {
-  response: unknown;
-}
 
 model ListScimUsersSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListScimUsersHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimListResponse;
 }
 
 union ListScimUsersError400Body {
@@ -140,7 +121,7 @@ model ListScimUsersError400 {
   @body body: ListScimUsersError400Body;
 }
 
-@doc("SCIM 2.0 /Users collection を filter、startIndex、count に従って検索する。\nfilter は RFC 7644 §3.4.2.2 grammar のうち、User の許可属性\n(userName, active, name.formatted, name.givenName, name.familyName,\nemails.value, id への eq, ne, co, sw, ew, pr。meta.created,\nmeta.lastModified への eq, ne, gt, ge, lt, le, pr。dateTime 比較は\nRFC3339 実時刻で行う) への比較演算子と論理演算子 (and, or, not, 丸括弧に\nよるグループ化) だけを受け付ける。属性名は schema URN プレフィックス\n(urn:ietf:params:scim:schemas:core:2.0:User: など) を付けた表記でも\n解決できる。許可外の属性・演算子・未知の URN プレフィックス・構文エラー・\n入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError とし、\n内部エラーには落とさない。")
+@doc("Searches the SCIM 2.0 /Users collection under `filter`, `startIndex`, and `count`.\nOf the RFC 7644 section 3.4.2.2 grammar, `filter` accepts only comparison operators over the permitted User\nattributes -- eq, ne, co, sw, ew, pr on userName, active, name.formatted, name.givenName, name.familyName,\nemails.value, and id; eq, ne, gt, ge, lt, le, pr on meta.created and meta.lastModified, where dateTime comparison\nuses real RFC 3339 instants -- together with the logical operators and, or, not, and grouping parentheses. An\nattribute name may also be written with its schema URN prefix (urn:ietf:params:scim:schemas:core:2.0:User: and the\nlike). An attribute or operator outside the allow list, an unknown URN prefix, a syntax error, and input longer or\nmore deeply nested than the ceiling all give an `invalidFilter` ScimProtocolError; none of them degrade into an\ninternal error.")
 @TypeSpec.OpenAPI.operationId("ListScimUsers")
 @route("/scim/v2/Users")
 @get
@@ -151,13 +132,10 @@ op ListScimUsers(
   @query count?: int64
 ): ListScimUsersSuccess_200 | ListScimUsersError400;
 
-model GetScimUserHttpResponse {
-  response: unknown;
-}
-
 model GetScimUserSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetScimUserHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union GetScimUserError400Body {
@@ -170,7 +148,7 @@ model GetScimUserError400 {
   @body body: GetScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する GET 要求。canonical email がある場合だけ単一の\ntype=work、primary=true entry として返す。`id`、`meta.resourceType`、`meta.created`、\n`meta.lastModified`、`meta.location` を含む resource を返す。")
+@doc("GET on SCIM 2.0 /Users/{id}. A canonical email is returned as a single type=work, primary=true entry, and only when\nthere is one. The resource carries `id`, `meta.resourceType`, `meta.created`, `meta.lastModified`, and\n`meta.location`.")
 @TypeSpec.OpenAPI.operationId("GetScimUser")
 @route("/scim/v2/Users/{id}")
 @get
@@ -179,19 +157,10 @@ op GetScimUser(
   @path id: string
 ): GetScimUserSuccess_200 | GetScimUserError400;
 
-model PatchScimUserHttpRequest {
-  tenant_id: string;
-  id: string;
-  body: unknown;
-}
-
-model PatchScimUserHttpResponse {
-  response: unknown;
-}
-
 model PatchScimUserSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: PatchScimUserHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union PatchScimUserError400Body {
@@ -204,28 +173,20 @@ model PatchScimUserError400 {
   @body body: PatchScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`Operations` の\n各要素は `op`(add/replace/remove のいずれか)と `path` を持つ。`path` は\nRFC7644-PATCH が対応する User 属性(userName、name、name.formatted、\nname.givenName、name.familyName、emails、active、employeeNumber、department、\nmanager。enterprise extension 属性は bare 名または\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User で修飾した完全パスの\nどちらでも指定できる)のいずれかでなければならず、phoneNumbers、addresses を\n含むそれ以外は invalidPath にする。emails の add/replace は全 element を検証後、\nprimary=true、type=work(case-insensitive)、wire order の順で単一 email へ投影し、\n不正値は invalidValue にする。manager の add/replace は value オブジェクトまたは\n文字列を受け付け、同一 tenant 内に存在しない SCIM User を指す場合は invalidValue\nにする。`op` が add/replace/remove 以外、または value の型が対象属性と不整合な\n場合も invalidValue にする。`id`、`meta`、`schemas` への書込みは mutability エラー\nにする。")
+@doc("PATCH on SCIM 2.0 /Users/{id} (RFC 7644 section 3.5.2). Each element of `Operations` carries an `op` -- add, replace,\nor remove -- and a `path`. `path` must name one of the User attributes RFC7644-PATCH covers: userName, name,\nname.formatted, name.givenName, name.familyName, emails, active, employeeNumber, department, and manager, where an\nenterprise extension attribute may be written either bare or fully qualified with\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User. Anything else, phoneNumbers and addresses included,\ngives `invalidPath`. An add or replace on `emails` validates every element and then projects onto a single email in\nthe order primary=true, type=work (case-insensitive), wire order, and a malformed value gives `invalidValue`. An add\nor replace on `manager` accepts a value object or a plain string, and naming a SCIM User that does not exist in the\nsame tenant gives `invalidValue`. An `op` other than add, replace, or remove, and a value whose type does not fit\nthe target attribute, also give `invalidValue`. Writing to `id`, `meta`, or `schemas` gives a mutability error.")
 @TypeSpec.OpenAPI.operationId("PatchScimUser")
 @route("/scim/v2/Users/{id}")
 @patch
 op PatchScimUser(
   @path id: string,
-  @body body: PatchScimUserHttpRequest
+  @header contentType: "application/scim+json",
+  @body body: IdMagic.Contract.ScimResource
 ): PatchScimUserSuccess_200 | PatchScimUserError400;
-
-model UpdateScimUserHttpRequest {
-  tenant_id: string;
-  id: string;
-  body: unknown;
-}
-
-model UpdateScimUserHttpResponse {
-  response: unknown;
-}
 
 model UpdateScimUserSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateScimUserHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union UpdateScimUserError400Body {
@@ -238,13 +199,14 @@ model UpdateScimUserError400 {
   @body body: UpdateScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`userName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。省略された他の mutable\n属性(name.*、emails、active、enterprise extension の employeeNumber、\ndepartment、manager)は既定値にリセットする(name/emails/enterprise extension\n属性は空、active は true)。emails は全 element を検証後、primary=true、type=work\n(case-insensitive)、wire order の順で単一 email へ投影する。不正 emails、\nphoneNumbers、addresses は invalidValue にする。\nurn:ietf:params:scim:schemas:extension:enterprise:2.0:User 配下の employeeNumber、\ndepartment が string でない、または manager が同一 tenant 内に存在しない SCIM User\nを指す場合も invalidValue にする。`id`、`meta` への書込みは無視する(readOnly)。")
+@doc("PUT on SCIM 2.0 /Users/{id}. It **replaces** the mutable attributes RFC7643-CORE-RESOURCES covers outright; this is\nnot a partial update. `userName` is required, and its absence gives an `invalidValue` ScimProtocolError. Every other\nmutable attribute left out -- name.*, emails, active, and the enterprise extension employeeNumber, department, and\nmanager -- is reset to its default: empty for name, emails, and the extension attributes, true for active. Every\nelement of `emails` is validated, then projected onto a single email in the order primary=true, type=work\n(case-insensitive), wire order. A malformed `emails`, `phoneNumbers`, or `addresses` gives `invalidValue`, as does an\n`employeeNumber` or `department` that is not a string and a `manager` naming a SCIM User that does not exist in the\nsame tenant, all under urn:ietf:params:scim:schemas:extension:enterprise:2.0:User. Writes to `id` and `meta` are\nignored (readOnly).")
 @TypeSpec.OpenAPI.operationId("UpdateScimUser")
 @route("/scim/v2/Users/{id}")
 @put
 op UpdateScimUser(
   @path id: string,
-  @body body: UpdateScimUserHttpRequest
+  @header contentType: "application/scim+json",
+  @body body: IdMagic.Contract.ScimResource
 ): UpdateScimUserSuccess_200 | UpdateScimUserError400;
 
 model DeleteScimUserSuccess_200 {
@@ -261,7 +223,7 @@ model DeleteScimUserError400 {
   @body body: DeleteScimUserError400Body;
 }
 
-@doc("SCIM 2.0 /Users/{id} に対する DELETE 要求。内部 User を soft-delete する。")
+@doc("DELETE on SCIM 2.0 /Users/{id}. The internal User is soft-deleted.")
 @TypeSpec.OpenAPI.operationId("DeleteScimUser")
 @route("/scim/v2/Users/{id}")
 @delete
@@ -270,18 +232,10 @@ op DeleteScimUser(
   @path id: string
 ): DeleteScimUserSuccess_200 | DeleteScimUserError400;
 
-model CreateScimGroupHttpRequest {
-  tenant_id: string;
-  body: unknown;
-}
-
-model CreateScimGroupHttpResponse {
-  response: unknown;
-}
-
 model CreateScimGroupSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: CreateScimGroupHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union CreateScimGroupError400Body {
@@ -294,21 +248,19 @@ model CreateScimGroupError400 {
   @body body: CreateScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups に対する POST 要求。`displayName` は必須で、欠落は\ninvalidValue の ScimProtocolError にする。`id` は常に server が生成し、\nbody に含まれていても無視する(readOnly)。`members` の各要素は type が省略または\nUser(case-insensitive)で、同一 tenant 内で解決可能な User の SCIM id でなければ\nならない。type=Group または解決できない member は invalidValue にして group を\n作成しない。作成した resource の各 member は type=User とし、`id`、\n`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location`\nを含めて返す。同一 tenant 内で `displayName` が既存 Group と重複する場合は\n409 `uniqueness` にする。")
+@doc("POST to SCIM 2.0 /Groups. `displayName` is required, and its absence gives an `invalidValue` ScimProtocolError. `id`\nis always generated by the server and ignored even when the body carries one (readOnly). Each element of `members`\nmust have a `type` that is absent or User (case-insensitive) and must be the SCIM id of a User that resolves inside\nthe same tenant; a member of type Group, and a member that does not resolve, both give `invalidValue` and no group is\ncreated. Every member of the created resource carries type=User, and the resource carries `id`,\n`meta.resourceType`, `meta.created`, `meta.lastModified`, and `meta.location`. A `displayName` that collides with an\nexisting Group in the same tenant gives 409 `uniqueness`.")
 @TypeSpec.OpenAPI.operationId("CreateScimGroup")
 @route("/scim/v2/Groups")
 @post
 op CreateScimGroup(
-  @body body: CreateScimGroupHttpRequest
+  @header contentType: "application/scim+json",
+  @body body: IdMagic.Contract.ScimResource
 ): CreateScimGroupSuccess_200 | CreateScimGroupError400;
-
-model ListScimGroupsHttpResponse {
-  response: unknown;
-}
 
 model ListScimGroupsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListScimGroupsHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimListResponse;
 }
 
 union ListScimGroupsError400Body {
@@ -321,7 +273,7 @@ model ListScimGroupsError400 {
   @body body: ListScimGroupsError400Body;
 }
 
-@doc("SCIM 2.0 /Groups collection を filter、startIndex、count に従って検索する。\nfilter は RFC 7644 §3.4.2.2 grammar のうち、Group の許可属性\n(displayName, id への eq, ne, co, sw, ew, pr。meta.created,\nmeta.lastModified への eq, ne, gt, ge, lt, le, pr。dateTime 比較は\nRFC3339 実時刻で行う) への比較演算子と論理演算子 (and, or, not, 丸括弧に\nよるグループ化) だけを受け付ける。属性名は schema URN プレフィックス\n(urn:ietf:params:scim:schemas:core:2.0:Group: など) を付けた表記でも\n解決できる。許可外の属性・演算子・未知の URN プレフィックス・構文エラー・\n入力長やネスト深さの上限超過は invalidFilter の ScimProtocolError とし、\n内部エラーには落とさない。")
+@doc("Searches the SCIM 2.0 /Groups collection under `filter`, `startIndex`, and `count`.\nOf the RFC 7644 section 3.4.2.2 grammar, `filter` accepts only comparison operators over the permitted Group\nattributes -- eq, ne, co, sw, ew, pr on displayName and id; eq, ne, gt, ge, lt, le, pr on meta.created and\nmeta.lastModified, where dateTime comparison uses real RFC 3339 instants -- together with the logical operators and,\nor, not, and grouping parentheses. An attribute name may also be written with its schema URN prefix\n(urn:ietf:params:scim:schemas:core:2.0:Group: and the like). An attribute or operator outside the allow list, an\nunknown URN prefix, a syntax error, and input longer or more deeply nested than the ceiling all give an\n`invalidFilter` ScimProtocolError; none of them degrade into an internal error.")
 @TypeSpec.OpenAPI.operationId("ListScimGroups")
 @route("/scim/v2/Groups")
 @get
@@ -332,13 +284,10 @@ op ListScimGroups(
   @query count?: int64
 ): ListScimGroupsSuccess_200 | ListScimGroupsError400;
 
-model GetScimGroupHttpResponse {
-  response: unknown;
-}
-
 model GetScimGroupSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetScimGroupHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union GetScimGroupError400Body {
@@ -351,7 +300,7 @@ model GetScimGroupError400 {
   @body body: GetScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups/{id} に対する GET 要求。各 member は type=User として返す。\n`id`、`meta.resourceType`、`meta.created`、`meta.lastModified`、`meta.location` を\n含む resource を返す。")
+@doc("GET on SCIM 2.0 /Groups/{id}. Every member is returned with type=User. The resource carries `id`,\n`meta.resourceType`, `meta.created`, `meta.lastModified`, and `meta.location`.")
 @TypeSpec.OpenAPI.operationId("GetScimGroup")
 @route("/scim/v2/Groups/{id}")
 @get
@@ -360,19 +309,10 @@ op GetScimGroup(
   @path id: string
 ): GetScimGroupSuccess_200 | GetScimGroupError400;
 
-model PatchScimGroupHttpRequest {
-  tenant_id: string;
-  id: string;
-  body: unknown;
-}
-
-model PatchScimGroupHttpResponse {
-  response: unknown;
-}
-
 model PatchScimGroupSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: PatchScimGroupHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union PatchScimGroupError400Body {
@@ -385,28 +325,20 @@ model PatchScimGroupError400 {
   @body body: PatchScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups/{id} に対する PATCH 要求(RFC 7644 §3.5.2)。`path` は\nRFC7644-PATCH が対応する Group 属性(displayName、members)のいずれかで\nなければならず、それ以外は invalidPath の ScimProtocolError にする。`op` が\nadd/replace/remove 以外、または value の型が対象属性と不整合な場合は\ninvalidValue にする。`members` は type が省略または User(case-insensitive)の member\nだけを許可する。type=Group または解決できない member を指定した場合も\ninvalidValue にし、group を変更しない。`id`、`meta`、`schemas` への書込みは\nmutability エラーにする。")
+@doc("PATCH on SCIM 2.0 /Groups/{id} (RFC 7644 section 3.5.2). `path` must name one of the Group attributes RFC7644-PATCH\ncovers, `displayName` or `members`; anything else gives an `invalidPath` ScimProtocolError. An `op` other than add,\nreplace, or remove, and a value whose type does not fit the target attribute, give `invalidValue`. `members` accepts\nonly members whose `type` is absent or User (case-insensitive); a member of type Group, and a member that does not\nresolve, both give `invalidValue` and the group is left unchanged. Writing to `id`, `meta`, or `schemas` gives a\nmutability error.")
 @TypeSpec.OpenAPI.operationId("PatchScimGroup")
 @route("/scim/v2/Groups/{id}")
 @patch
 op PatchScimGroup(
   @path id: string,
-  @body body: PatchScimGroupHttpRequest
+  @header contentType: "application/scim+json",
+  @body body: IdMagic.Contract.ScimResource
 ): PatchScimGroupSuccess_200 | PatchScimGroupError400;
-
-model UpdateScimGroupHttpRequest {
-  tenant_id: string;
-  id: string;
-  body: unknown;
-}
-
-model UpdateScimGroupHttpResponse {
-  response: unknown;
-}
 
 model UpdateScimGroupSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateScimGroupHttpResponse;
+  @header contentType: "application/scim+json";
+  @body body: IdMagic.Contract.ScimResource;
 }
 
 union UpdateScimGroupError400Body {
@@ -419,13 +351,14 @@ model UpdateScimGroupError400 {
   @body body: UpdateScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups/{id} に対する PUT 要求。RFC7643-CORE-RESOURCES が対応する\nmutable 属性を**完全に置換**する(部分更新ではない)。`displayName` は必須で、\n欠落は invalidValue の ScimProtocolError にする。`members` を省略した場合は\n既存メンバーを全て削除する(空集合への置換)。`members` は type が省略または\nUser(case-insensitive)の member だけを許可する。type=Group または解決できない\nmember を指定した場合は invalidValue にし、group を変更しない。`id`、`meta` への\n書込みは無視する(readOnly)。")
+@doc("PUT on SCIM 2.0 /Groups/{id}. It **replaces** the mutable attributes RFC7643-CORE-RESOURCES covers outright; this is\nnot a partial update. `displayName` is required, and its absence gives an `invalidValue` ScimProtocolError. Leaving\n`members` out removes every existing member, replacing the set with the empty one. `members` accepts only members\nwhose `type` is absent or User (case-insensitive); a member of type Group, and a member that does not resolve, both\ngive `invalidValue` and the group is left unchanged. Writes to `id` and `meta` are ignored (readOnly).")
 @TypeSpec.OpenAPI.operationId("UpdateScimGroup")
 @route("/scim/v2/Groups/{id}")
 @put
 op UpdateScimGroup(
   @path id: string,
-  @body body: UpdateScimGroupHttpRequest
+  @header contentType: "application/scim+json",
+  @body body: IdMagic.Contract.ScimResource
 ): UpdateScimGroupSuccess_200 | UpdateScimGroupError400;
 
 model DeleteScimGroupSuccess_200 {
@@ -442,7 +375,7 @@ model DeleteScimGroupError400 {
   @body body: DeleteScimGroupError400Body;
 }
 
-@doc("SCIM 2.0 /Groups/{id} に対する DELETE 要求。")
+@doc("DELETE on SCIM 2.0 /Groups/{id}.")
 @TypeSpec.OpenAPI.operationId("DeleteScimGroup")
 @route("/scim/v2/Groups/{id}")
 @delete

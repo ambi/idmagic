@@ -17,7 +17,7 @@ model GetEmailVerificationContextSuccess_200 {
   @body body: GetEmailVerificationContextHttpResponse;
 }
 
-@doc("未認証で開かれる email verification 画面が確認 POST を保護する CSRF token を取得する。")
+@doc("The email verification screen, which opens unauthenticated, reads the CSRF token that protects its confirmation POST.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetEmailVerificationContext")
 @route("/api/account/v1/email/verify_context")
@@ -26,13 +26,9 @@ op GetEmailVerificationContext(
 
 ): GetEmailVerificationContextSuccess_200;
 
-model GetAccountSummaryHttpResponse {
-  summary: IdMagic.Contract.AccountSummary;
-}
-
 model GetAccountSummarySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAccountSummaryHttpResponse;
+  @body body: IdMagic.Contract.AccountSummary;
 }
 
 union GetAccountSummaryError403Body {
@@ -45,7 +41,7 @@ model GetAccountSummaryError403 {
   @body body: GetAccountSummaryError403Body;
 }
 
-@doc("認証済みユーザーが自身のアカウント概要を取得する (self-service portal home)。\n対象は subject.id に固定。roles を含まず、最終ログイン・パスワード変更日時・\nMFA 状態・未対応 required actions を返す。admin shell の AccountContext とは\n別契約。")
+@doc("An authenticated user reads their own account summary, the home of the self-service portal.\nThe target is fixed to `subject.id`. It carries no roles, and returns the last sign-in, the password change time,\nthe MFA state, and the required actions still outstanding. It is a separate contract from the AccountContext of the\nadministration shell.")
 @TypeSpec.OpenAPI.operationId("GetAccountSummary")
 @route("/api/account/v1/summary")
 @get
@@ -53,13 +49,9 @@ op GetAccountSummary(
 
 ): GetAccountSummarySuccess_200 | GetAccountSummaryError403;
 
-model GetUserProfileHttpResponse {
-  profile: IdMagic.Contract.AccountProfileResponse;
-}
-
 model GetUserProfileSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetUserProfileHttpResponse;
+  @body body: IdMagic.Contract.AccountProfileResponse;
 }
 
 union GetUserProfileError403Body {
@@ -72,7 +64,7 @@ model GetUserProfileError403 {
   @body body: GetUserProfileError403Body;
 }
 
-@doc("認証済みユーザーが自身のプロフィールを取得する (self-service)。対象は\nsubject.id に固定するため cross-user 参照は構造的に発生しない。attributes は\nself が読める分のみ、editable_attributes に編集可能定義を併せて返す。")
+@doc("An authenticated user reads their own profile (self-service). The target is fixed to\n`subject.id`, so a cross-user read cannot arise structurally. `attributes` carries only what the user may read of\ntheir own, and `editable_attributes` carries the definitions they may edit.")
 @TypeSpec.OpenAPI.operationId("GetUserProfile")
 @route("/api/account/v1/profile")
 @get
@@ -80,17 +72,9 @@ op GetUserProfile(
 
 ): GetUserProfileSuccess_200 | GetUserProfileError403;
 
-model UpdateUserProfileHttpRequest {
-  request: IdMagic.Contract.AccountProfileUpdateRequest;
-}
-
-model UpdateUserProfileHttpResponse {
-  profile: IdMagic.Contract.AccountProfileResponse;
-}
-
 model UpdateUserProfileSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateUserProfileHttpResponse;
+  @body body: IdMagic.Contract.AccountProfileResponse;
 }
 
 union UpdateUserProfileError400Body {
@@ -113,17 +97,44 @@ model UpdateUserProfileError403 {
   @body body: UpdateUserProfileError403Body;
 }
 
-@doc("認証済みユーザーが自身の表示名と editable_by_user=true の属性を更新する\n(self-service)。subject.id == resource.id に固定。属性は key 単位の merge とし、\neditable_by_user=false の key は拒否する。status / roles / organization の変更は\nadmin 専用で本経路では扱わない。")
+union UpdateUserProfileError401Body {
+  IdMagic.Contract.AuthenticationRequiredError,
+}
+
+model UpdateUserProfileError401 {
+  @statusCode statusCode: 401;
+  @header contentType: "application/problem+json";
+  @body body: UpdateUserProfileError401Body;
+}
+
+union UpdateUserProfileError404Body {
+  IdMagic.Contract.UserNotFoundError,
+  IdMagic.Contract.SessionNotFoundError,
+}
+
+model UpdateUserProfileError404 {
+  @statusCode statusCode: 404;
+  @header contentType: "application/problem+json";
+  @body body: UpdateUserProfileError404Body;
+}
+
+union UpdateUserProfileError422Body {
+  IdMagic.Contract.InvalidUserAttributeError,
+}
+
+model UpdateUserProfileError422 {
+  @statusCode statusCode: 422;
+  @header contentType: "application/problem+json";
+  @body body: UpdateUserProfileError422Body;
+}
+
+@doc("An authenticated user updates their own display name and the attributes marked `editable_by_user=true`\n(self-service). `subject.id` is fixed equal to `resource.id`. Attributes merge per key, and a key with\n`editable_by_user=false` is refused. Changing status, roles, or organization is for administrators and is not handled here.")
 @TypeSpec.OpenAPI.operationId("UpdateUserProfile")
 @route("/api/account/v1/profile")
 @patch
 op UpdateUserProfile(
-  @body body: UpdateUserProfileHttpRequest
-): UpdateUserProfileSuccess_200 | UpdateUserProfileError400 | UpdateUserProfileError403;
-
-model RequestEmailChangeHttpRequest {
-  request: IdMagic.Contract.AccountEmailChangeRequest;
-}
+  @body body: IdMagic.Contract.AccountProfileUpdateRequest
+): UpdateUserProfileSuccess_200 | UpdateUserProfileError400 | UpdateUserProfileError401 | UpdateUserProfileError403 | UpdateUserProfileError404 | UpdateUserProfileError422;
 
 model RequestEmailChangeSuccess_200 {
   @statusCode statusCode: 200;
@@ -160,20 +171,22 @@ model RequestEmailChangeError422 {
   @body body: RequestEmailChangeError422Body;
 }
 
-@doc("認証済みユーザーが自身の primary email 変更を起票する (self-service)。新アドレスへ\nワンタイムリンクを送るだけで User.email は変えない。subject.id に固定し、tenant 内で\n既に使われているアドレスは拒否する。\n確認メールの文面は Tenancy の通知テンプレートカタログ\n(template_key=EmailChangeConfirmation) から解決し、locale は受信者 User の locale 属性 →\nテナントの default_locale → システム既定 locale の順に決める。テナント上書きがあれば\n組込み既定より優先する。プレーンテキストと HTML の両方を必ず生成し、確認リンクは\nリクエストの発行元 URL から組み立てる。")
+@doc("An authenticated user raises a change of their own primary email (self-service). It only sends a one-time link to the\nnew address; `User.email` is left alone. The target is fixed to `subject.id`, and an address already in use inside the\ntenant is refused.\nThe wording of the confirmation message is resolved from the Tenancy notification template catalogue\n(`template_key=EmailChangeConfirmation`), and the locale is decided in the order: the recipient User's locale attribute,\nthe tenant's `default_locale`, the system default locale. A tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the confirmation link is built from the issuer URL of the request.")
 @TypeSpec.OpenAPI.operationId("RequestEmailChange")
 @route("/api/account/v1/email/change_request")
 @post
 op RequestEmailChange(
-  @body body: RequestEmailChangeHttpRequest
+  @body body: IdMagic.Contract.AccountEmailChangeRequest
 ): RequestEmailChangeSuccess_200 | RequestEmailChangeError400 | RequestEmailChangeError403 | RequestEmailChangeError422;
 
-model ConfirmEmailChangeHttpRequest {
-  request: IdMagic.Contract.AccountEmailChangeConfirm;
+model ConfirmEmailChangeHttpResponse {
+  @doc("Always `ok`.")
+  status: string;
 }
 
 model ConfirmEmailChangeSuccess_200 {
   @statusCode statusCode: 200;
+  @body body: ConfirmEmailChangeHttpResponse;
 }
 
 union ConfirmEmailChangeError400Body {
@@ -186,22 +199,18 @@ model ConfirmEmailChangeError400 {
   @body body: ConfirmEmailChangeError400Body;
 }
 
-@doc("新アドレスへ送ったワンタイムリンクを消費して primary email を確定する。\ntoken が新アドレス所有の証左なので認証済みセッションは要求しない。token の\n所持そのものが認可の根拠であり (self-service セッションではなく\ntoken-possession-authenticated)、AuthenticatedSelf/session ベースの access 分類は\n適用しない。確定時に email_verified=true とし、verify_email の required action が\nあれば自動解除する。")
+@doc("Consumes the one-time link sent to the new address and settles the primary email.\nThe token is itself the proof that the new address is owned, so no authenticated session is required. Possession of the\ntoken is the ground of authorization -- this is token-possession-authenticated rather than a self-service session -- so\nthe AuthenticatedSelf and session-based access classification does not apply. On settling, `email_verified` becomes true\nand a `verify_email` required action, if there is one, is cleared automatically.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ConfirmEmailChange")
 @route("/api/account/v1/email/verify")
 @post
 op ConfirmEmailChange(
-  @body body: ConfirmEmailChangeHttpRequest
+  @body body: IdMagic.Contract.AccountEmailChangeConfirm
 ): ConfirmEmailChangeSuccess_200 | ConfirmEmailChangeError400;
-
-model ExportAccountDataHttpResponse {
-  export: IdMagic.Contract.AccountDataExport;
-}
 
 model ExportAccountDataSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ExportAccountDataHttpResponse;
+  @body body: IdMagic.Contract.AccountDataExport;
 }
 
 union ExportAccountDataError403Body {
@@ -214,7 +223,7 @@ model ExportAccountDataError403 {
   @body body: ExportAccountDataError403Body;
 }
 
-@doc("認証済みユーザーが自身の個人データを JSON で取得する (self-service, GDPR access)。\n対象は subject.id に固定。本ステージは同期生成で profile と consents を含む。")
+@doc("An authenticated user reads their own personal data as JSON (self-service, GDPR access).\nThe target is fixed to `subject.id`. At this stage it is generated synchronously and carries the profile and the consents.")
 @TypeSpec.OpenAPI.operationId("ExportAccountData")
 @route("/api/account/v1/data_export")
 @get
@@ -222,13 +231,9 @@ op ExportAccountData(
 
 ): ExportAccountDataSuccess_200 | ExportAccountDataError403;
 
-model ListAdminUsersHttpResponse {
-  response: IdMagic.Contract.AdminUserListResponse;
-}
-
 model ListAdminUsersSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListAdminUsersHttpResponse;
+  @body body: IdMagic.Contract.AdminUserListResponse;
 }
 
 union ListAdminUsersError403Body {
@@ -251,7 +256,7 @@ model ListAdminUsersError400 {
   @body body: ListAdminUsersError400Body;
 }
 
-@doc("管理者が削除されていないユーザーを preferred_username 昇順 (同値は id で tie-break) の\n双方向 keyset pagination で一覧する。query は username、name、email、id、roles を tenant 全体で\ncase-insensitive contains 検索し、status とともに絞り込む。cursor は応答の Link response header\n(rel=\"prev\" / rel=\"next\") から取得する。")
+@doc("An administrator lists the users that have not been deleted by `preferred_username` ascending, with the id breaking ties,\nthrough bidirectional keyset pagination. `query` searches username, name, email, id, and roles case-insensitively as a\nsubstring across the tenant, and narrows together with `status`. The cursor comes from the Link response header of the\nresponse (`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminUsers")
 @route("/api/admin/v1/users")
@@ -263,13 +268,9 @@ op ListAdminUsers(
   @query limit?: int64
 ): ListAdminUsersSuccess_200 | ListAdminUsersError403 | ListAdminUsersError400;
 
-model GetAdminUserHttpResponse {
-  user: IdMagic.Contract.AdminUserResponse;
-}
-
 model GetAdminUserSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAdminUserHttpResponse;
+  @body body: IdMagic.Contract.AdminUserResponse;
 }
 
 union GetAdminUserError400Body {
@@ -292,7 +293,7 @@ model GetAdminUserError403 {
   @body body: GetAdminUserError403Body;
 }
 
-@doc("管理者が id を指定してユーザーを取得する。")
+@doc("An administrator reads a user by id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminUser")
 @route("/api/admin/v1/users/{user_id}")
@@ -301,17 +302,9 @@ op GetAdminUser(
   @path user_id: string
 ): GetAdminUserSuccess_200 | GetAdminUserError400 | GetAdminUserError403;
 
-model CreateAdminUserHttpRequest {
-  request: IdMagic.Contract.AdminUserCreateRequest;
-}
-
-model CreateAdminUserHttpResponse {
-  user: IdMagic.Contract.AdminUserResponse;
-}
-
 model CreateAdminUserSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: CreateAdminUserHttpResponse;
+  @body body: IdMagic.Contract.AdminUserResponse;
 }
 
 union CreateAdminUserError400Body {
@@ -345,28 +338,18 @@ model CreateAdminUserError422 {
   @body body: CreateAdminUserError422Body;
 }
 
-@doc("管理者が Authentication context の PasswordPolicy を満たす初期パスワードでユーザーを作成する。")
+@doc("An administrator creates a user with an initial password that satisfies the PasswordPolicy of the Authentication context.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminUser")
 @route("/api/admin/v1/users")
 @post
 op CreateAdminUser(
-  @body body: CreateAdminUserHttpRequest
+  @body body: IdMagic.Contract.AdminUserCreateRequest
 ): CreateAdminUserSuccess_201 | CreateAdminUserError400 | CreateAdminUserError403 | CreateAdminUserError422;
-
-model ImportAdminUsersHttpRequest {
-  csv: string;
-  @doc("旧 JSON クライアント移行用。新しい streaming preview では Content-Type と endpoint semantics が preview を固定する。")
-  mode?: IdMagic.Contract.UserImportMode;
-}
-
-model ImportAdminUsersHttpResponse {
-  job: IdMagic.Contract.UserImportJob;
-}
 
 model ImportAdminUsersSuccess_202 {
   @statusCode statusCode: 202;
-  @body body: ImportAdminUsersHttpResponse;
+  @body body: IdMagic.Contract.UserImportJobRef;
 }
 
 union ImportAdminUsersError400Body {
@@ -389,26 +372,20 @@ model ImportAdminUsersError403 {
   @body body: ImportAdminUsersError403Body;
 }
 
-@doc("管理者が UTF-8 (BOM 可) CSV を streaming upload して副作用のない preview ジョブへ投入する。User export と共有する configurable transfer policy の既定は 100,000 data rows・64 MiB/file・64 KiB/field。payload は immutable artifact store に保存し、job params には tenant-scoped reference・server-computed SHA-256・size だけを保持する。ヘッダーは安定した機械キーの任意順・任意部分集合を許可し、未知・重複・password/hash 列をファイル単位で拒否する。")
+@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with User export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminUsers")
 @route("/api/admin/v1/users/imports")
 @post
 op ImportAdminUsers(
-  @body body: ImportAdminUsersHttpRequest
+  @header contentType: "text/csv",
+  @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
+  @body csv: string
 ): ImportAdminUsersSuccess_202 | ImportAdminUsersError400 | ImportAdminUsersError403;
-
-model ApplyAdminUserImportHttpRequest {
-  preview_job_id: string;
-}
-
-model ApplyAdminUserImportHttpResponse {
-  job: IdMagic.Contract.UserImportJob;
-}
 
 model ApplyAdminUserImportSuccess_202 {
   @statusCode statusCode: 202;
-  @body body: ApplyAdminUserImportHttpResponse;
+  @body body: IdMagic.Contract.UserImportJobRef;
 }
 
 union ApplyAdminUserImportError400Body {
@@ -431,23 +408,18 @@ model ApplyAdminUserImportError403 {
   @body body: ApplyAdminUserImportError403Body;
 }
 
-@doc("管理者が同一 tenant の成功済み preview job を指定して CSV を適用する。CSV は再送せず、preview payload と source_sha256 を読み、現在の repository 状態に対して同じ deterministic planner で再計画する。ファイル全体は行単位部分成功、各行の profile・roles・required actions・custom attributes は単一 aggregate mutation として原子的に確定する。")
+@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the profile, roles, required actions, and custom attributes of each row settle atomically as a single aggregate mutation.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminUserImport")
 @route("/api/admin/v1/users/imports/{preview_job_id}/apply")
 @post
 op ApplyAdminUserImport(
-  @path preview_job_id: string,
-  @body body: ApplyAdminUserImportHttpRequest
+  @path preview_job_id: string
 ): ApplyAdminUserImportSuccess_202 | ApplyAdminUserImportError400 | ApplyAdminUserImportError403;
-
-model GetAdminUserImportHttpResponse {
-  job: IdMagic.Contract.UserImportJob;
-}
 
 model GetAdminUserImportSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAdminUserImportHttpResponse;
+  @body body: IdMagic.Contract.UserImportJob;
 }
 
 union GetAdminUserImportError400Body {
@@ -470,7 +442,7 @@ model GetAdminUserImportError403 {
   @body body: GetAdminUserImportError403Body;
 }
 
-@doc("管理者が同一 tenant の CSV インポートジョブと行ごとの検証・適用結果を取得する。row error は immutable result artifact に固定件数の page chunk として保存し、tenant・job・error ordinal に結合した署名付き opaque cursor と limit（既定 100、最大 200）で双方向取得する。job result JSON は操作別件数、result artifact metadata、error_total だけを保持する。")
+@doc("An administrator reads a CSV import job of the same tenant together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the result artifact metadata, and `error_total`.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("GetAdminUserImport")
 @route("/api/admin/v1/users/imports/{job_id}")
@@ -481,17 +453,9 @@ op GetAdminUserImport(
   @query limit?: int64
 ): GetAdminUserImportSuccess_200 | GetAdminUserImportError400 | GetAdminUserImportError403;
 
-model StartUserCsvExportHttpRequest {
-  request: IdMagic.Contract.DataExportRequest;
-}
-
-model StartUserCsvExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
-
 model StartUserCsvExportSuccess_202 {
   @statusCode statusCode: 202;
-  @body body: StartUserCsvExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union StartUserCsvExportError400Body {
@@ -526,14 +490,24 @@ model StartUserCsvExportError422 {
   @body body: StartUserCsvExportError422Body;
 }
 
-@doc("管理者が User 一覧の CSV エクスポートを非同期ジョブとして開始する。CSV ヘッダーは表示 label ではなく要求した machine key と一致する。列は組み込み User allowlist (13 個のコア列 + attr:<key> の組み込み拡張属性 27 種) と実効 TenantUserAttributeSchema の custom:<key> (テナント定義属性) の部分集合に限り、status フィルタを引き継げる。生成 payload は import と同じ UserCsvTransferPolicy と immutable artifact store を使うため、成功した User export は無編集で preview できる。202 とエクスポート id を返す。")
+union StartUserCsvExportError429Body {
+  IdMagic.Contract.ActiveJobQuotaExceededError,
+}
+
+model StartUserCsvExportError429 {
+  @statusCode statusCode: 429;
+  @header contentType: "application/problem+json";
+  @body body: StartUserCsvExportError429Body;
+}
+
+@doc("An administrator starts a CSV export of the user list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels. The columns are confined to a subset of the built-in User allow list (13 core columns plus 27 built-in extension attributes as `attr:<key>`) and the `custom:<key>` tenant-defined attributes of the effective TenantUserAttributeSchema, and a status filter can be carried over. The generated payload uses the same UserCsvTransferPolicy and immutable artifact store as import, so a successful User export can be previewed without editing. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("StartUserCsvExport")
 @route("/api/admin/v1/users/exports")
 @post
 op StartUserCsvExport(
-  @body body: StartUserCsvExportHttpRequest
-): StartUserCsvExportSuccess_202 | StartUserCsvExportError400 | StartUserCsvExportError403 | StartUserCsvExportError422;
+  @body body: IdMagic.Contract.DataExportRequest
+): StartUserCsvExportSuccess_202 | StartUserCsvExportError400 | StartUserCsvExportError403 | StartUserCsvExportError422 | StartUserCsvExportError429;
 
 model ListUserExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -554,7 +528,7 @@ model ListUserExportsError403 {
   @body body: ListUserExportsError403Body;
 }
 
-@doc("管理者が User エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。CSV 本体や PII 値は含まない。")
+@doc("An administrator lists the User exports with their state, counts, expiry, and whether they can be downloaded. Neither the CSV itself nor any PII value is included.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListUserExports")
 @route("/api/admin/v1/users/exports")
@@ -563,13 +537,9 @@ op ListUserExports(
 
 ): ListUserExportsSuccess_200 | ListUserExportsError403;
 
-model GetUserExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
-
 model GetUserExportSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetUserExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union GetUserExportError400Body {
@@ -592,7 +562,7 @@ model GetUserExportError403 {
   @body body: GetUserExportError403Body;
 }
 
-@doc("管理者が User エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。")
+@doc("An administrator reads the state, progress, failure reason, and expiry of one User export.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("GetUserExport")
 @route("/api/admin/v1/users/exports/{export_id}")
@@ -601,13 +571,14 @@ op GetUserExport(
   @path export_id: string
 ): GetUserExportSuccess_200 | GetUserExportError400 | GetUserExportError403;
 
-model DownloadUserExportFileHttpResponse {
-  file: IdMagic.Contract.DataExportFile;
-}
-
 model DownloadUserExportFileSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DownloadUserExportFileHttpResponse;
+  @doc("The generated export is CSV.")
+  @header contentType: "text/csv; charset=utf-8";
+  @doc("Filename the browser saves the download under: `attachment; filename=\"<name>.csv\"`.")
+  @header("Content-Disposition") contentDisposition: string;
+  @doc("The CSV bytes.")
+  @body body: bytes;
 }
 
 union DownloadUserExportFileError400Body {
@@ -630,7 +601,7 @@ model DownloadUserExportFileError403 {
   @body body: DownloadUserExportFileError403Body;
 }
 
-@doc("管理者が完成済み User エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。")
+@doc("An administrator downloads a finished User export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("DownloadUserExportFile")
 @route("/api/admin/v1/users/exports/{export_id}/file")
@@ -639,17 +610,9 @@ op DownloadUserExportFile(
   @path export_id: string
 ): DownloadUserExportFileSuccess_200 | DownloadUserExportFileError400 | DownloadUserExportFileError403;
 
-model CancelUserExportHttpRequest {
-  export_id: string;
-}
-
-model CancelUserExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
-
 model CancelUserExportSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: CancelUserExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union CancelUserExportError400Body {
@@ -672,27 +635,17 @@ model CancelUserExportError403 {
   @body body: CancelUserExportError403Body;
 }
 
-@doc("管理者が終端前の User エクスポートを取消す。既に終端の場合は拒否する。")
+@doc("An administrator cancels a User export before it terminates. One that has already terminated is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("CancelUserExport")
 @route("/api/admin/v1/users/exports/{export_id}/cancel")
 @post
 op CancelUserExport(
-  @path export_id: string,
-  @body body: CancelUserExportHttpRequest
-): CancelUserExportSuccess_200 | CancelUserExportError400 | CancelUserExportError403;
-
-model StartGroupCsvExportHttpRequest {
-  request: IdMagic.Contract.DataExportRequest;
-}
-
-model StartGroupCsvExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
+  @path export_id: string,): CancelUserExportSuccess_200 | CancelUserExportError400 | CancelUserExportError403;
 
 model StartGroupCsvExportSuccess_202 {
   @statusCode statusCode: 202;
-  @body body: StartGroupCsvExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union StartGroupCsvExportError400Body {
@@ -727,14 +680,24 @@ model StartGroupCsvExportError422 {
   @body body: StartGroupCsvExportError422Body;
 }
 
-@doc("管理者が Group 一覧の CSV エクスポートを非同期ジョブとして開始する。列は Group allowlist の部分集合に限る。202 とエクスポート id を返す。")
+union StartGroupCsvExportError429Body {
+  IdMagic.Contract.ActiveJobQuotaExceededError,
+}
+
+model StartGroupCsvExportError429 {
+  @statusCode statusCode: 429;
+  @header contentType: "application/problem+json";
+  @body body: StartGroupCsvExportError429Body;
+}
+
+@doc("An administrator starts a CSV export of the group list as an asynchronous job. The columns are confined to a subset of the Group allow list. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupCsvExport")
 @route("/api/admin/v1/groups/exports")
 @post
 op StartGroupCsvExport(
-  @body body: StartGroupCsvExportHttpRequest
-): StartGroupCsvExportSuccess_202 | StartGroupCsvExportError400 | StartGroupCsvExportError403 | StartGroupCsvExportError422;
+  @body body: IdMagic.Contract.DataExportRequest
+): StartGroupCsvExportSuccess_202 | StartGroupCsvExportError400 | StartGroupCsvExportError403 | StartGroupCsvExportError422 | StartGroupCsvExportError429;
 
 model ListGroupExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -755,7 +718,7 @@ model ListGroupExportsError403 {
   @body body: ListGroupExportsError403Body;
 }
 
-@doc("管理者が Group エクスポート一覧を、状態・件数・期限・ダウンロード可否とともに取得する。")
+@doc("An administrator lists the Group exports with their state, counts, expiry, and whether they can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupExports")
 @route("/api/admin/v1/groups/exports")
@@ -764,13 +727,9 @@ op ListGroupExports(
 
 ): ListGroupExportsSuccess_200 | ListGroupExportsError403;
 
-model GetGroupExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
-
 model GetGroupExportSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetGroupExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union GetGroupExportError400Body {
@@ -793,7 +752,7 @@ model GetGroupExportError403 {
   @body body: GetGroupExportError403Body;
 }
 
-@doc("管理者が Group エクスポート 1 件の状態・進捗・失敗理由・期限を取得する。")
+@doc("An administrator reads the state, progress, failure reason, and expiry of one Group export.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupExport")
 @route("/api/admin/v1/groups/exports/{export_id}")
@@ -802,13 +761,14 @@ op GetGroupExport(
   @path export_id: string
 ): GetGroupExportSuccess_200 | GetGroupExportError400 | GetGroupExportError403;
 
-model DownloadGroupExportFileHttpResponse {
-  file: IdMagic.Contract.DataExportFile;
-}
-
 model DownloadGroupExportFileSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DownloadGroupExportFileHttpResponse;
+  @doc("The generated export is CSV.")
+  @header contentType: "text/csv; charset=utf-8";
+  @doc("Filename the browser saves the download under: `attachment; filename=\"<name>.csv\"`.")
+  @header("Content-Disposition") contentDisposition: string;
+  @doc("The CSV bytes.")
+  @body body: bytes;
 }
 
 union DownloadGroupExportFileError400Body {
@@ -831,7 +791,7 @@ model DownloadGroupExportFileError403 {
   @body body: DownloadGroupExportFileError403Body;
 }
 
-@doc("管理者が完成済み Group エクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。")
+@doc("An administrator downloads a finished Group export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupExportFile")
 @route("/api/admin/v1/groups/exports/{export_id}/file")
@@ -840,17 +800,9 @@ op DownloadGroupExportFile(
   @path export_id: string
 ): DownloadGroupExportFileSuccess_200 | DownloadGroupExportFileError400 | DownloadGroupExportFileError403;
 
-model CancelGroupExportHttpRequest {
-  export_id: string;
-}
-
-model CancelGroupExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
-
 model CancelGroupExportSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: CancelGroupExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union CancelGroupExportError400Body {
@@ -873,28 +825,17 @@ model CancelGroupExportError403 {
   @body body: CancelGroupExportError403Body;
 }
 
-@doc("管理者が終端前の Group エクスポートを取消す。既に終端の場合は拒否する。")
+@doc("An administrator cancels a Group export before it terminates. One that has already terminated is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupExport")
 @route("/api/admin/v1/groups/exports/{export_id}/cancel")
 @post
 op CancelGroupExport(
-  @path export_id: string,
-  @body body: CancelGroupExportHttpRequest
-): CancelGroupExportSuccess_200 | CancelGroupExportError400 | CancelGroupExportError403;
-
-model StartGroupMemberCsvExportHttpRequest {
-  group_id: string;
-  request: IdMagic.Contract.DataExportRequest;
-}
-
-model StartGroupMemberCsvExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
+  @path export_id: string,): CancelGroupExportSuccess_200 | CancelGroupExportError400 | CancelGroupExportError403;
 
 model StartGroupMemberCsvExportSuccess_202 {
   @statusCode statusCode: 202;
-  @body body: StartGroupMemberCsvExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union StartGroupMemberCsvExportError400Body {
@@ -929,15 +870,25 @@ model StartGroupMemberCsvExportError422 {
   @body body: StartGroupMemberCsvExportError422Body;
 }
 
-@doc("管理者が特定 Group のメンバー一覧の CSV エクスポートを開始する。group_id は path から取り、そのグループのメンバーだけを対象とする (Entra / Okta / Google と同じ per-group)。202 とエクスポート id を返す。")
+union StartGroupMemberCsvExportError429Body {
+  IdMagic.Contract.ActiveJobQuotaExceededError,
+}
+
+model StartGroupMemberCsvExportError429 {
+  @statusCode statusCode: 429;
+  @header contentType: "application/problem+json";
+  @body body: StartGroupMemberCsvExportError429Body;
+}
+
+@doc("An administrator starts a CSV export of the members of one Group. The `group_id` comes from the path and only that group's members are exported, the same per-group shape Entra, Okta, and Google use. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupMemberCsvExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports")
 @post
 op StartGroupMemberCsvExport(
   @path group_id: string,
-  @body body: StartGroupMemberCsvExportHttpRequest
-): StartGroupMemberCsvExportSuccess_202 | StartGroupMemberCsvExportError400 | StartGroupMemberCsvExportError403 | StartGroupMemberCsvExportError422;
+  @body body: IdMagic.Contract.DataExportRequest
+): StartGroupMemberCsvExportSuccess_202 | StartGroupMemberCsvExportError400 | StartGroupMemberCsvExportError403 | StartGroupMemberCsvExportError422 | StartGroupMemberCsvExportError429;
 
 model ListGroupMemberExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -958,7 +909,7 @@ model ListGroupMemberExportsError403 {
   @body body: ListGroupMemberExportsError403Body;
 }
 
-@doc("管理者が特定 Group のメンバーエクスポート一覧を取得する。")
+@doc("An administrator lists the member exports of one Group.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroupMemberExports")
 @route("/api/admin/v1/groups/{group_id}/members/exports")
@@ -967,13 +918,9 @@ op ListGroupMemberExports(
   @path group_id: string
 ): ListGroupMemberExportsSuccess_200 | ListGroupMemberExportsError403;
 
-model GetGroupMemberExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
-
 model GetGroupMemberExportSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetGroupMemberExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union GetGroupMemberExportError400Body {
@@ -996,7 +943,7 @@ model GetGroupMemberExportError403 {
   @body body: GetGroupMemberExportError403Body;
 }
 
-@doc("管理者が特定 Group のメンバーエクスポート 1 件の状態を取得する。別グループの export id は解決しない。")
+@doc("An administrator reads the state of one member export of a Group. An export id belonging to another group does not resolve.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroupMemberExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}")
@@ -1006,13 +953,14 @@ op GetGroupMemberExport(
   @path export_id: string
 ): GetGroupMemberExportSuccess_200 | GetGroupMemberExportError400 | GetGroupMemberExportError403;
 
-model DownloadGroupMemberExportFileHttpResponse {
-  file: IdMagic.Contract.DataExportFile;
-}
-
 model DownloadGroupMemberExportFileSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DownloadGroupMemberExportFileHttpResponse;
+  @doc("The generated export is CSV.")
+  @header contentType: "text/csv; charset=utf-8";
+  @doc("Filename the browser saves the download under: `attachment; filename=\"<name>.csv\"`.")
+  @header("Content-Disposition") contentDisposition: string;
+  @doc("The CSV bytes.")
+  @body body: bytes;
 }
 
 union DownloadGroupMemberExportFileError400Body {
@@ -1035,7 +983,7 @@ model DownloadGroupMemberExportFileError403 {
   @body body: DownloadGroupMemberExportFileError403Body;
 }
 
-@doc("管理者が完成済みメンバーエクスポートを content-disposition attachment でダウンロードする。succeeded かつ未期限のジョブに限る。")
+@doc("An administrator downloads a finished member export as a `Content-Disposition: attachment`. Only a job that has succeeded and not yet expired can be downloaded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("DownloadGroupMemberExportFile")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}/file")
@@ -1045,18 +993,9 @@ op DownloadGroupMemberExportFile(
   @path export_id: string
 ): DownloadGroupMemberExportFileSuccess_200 | DownloadGroupMemberExportFileError400 | DownloadGroupMemberExportFileError403;
 
-model CancelGroupMemberExportHttpRequest {
-  group_id: string;
-  export_id: string;
-}
-
-model CancelGroupMemberExportHttpResponse {
-  job: IdMagic.Contract.DataExportJob;
-}
-
 model CancelGroupMemberExportSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: CancelGroupMemberExportHttpResponse;
+  @body body: IdMagic.Contract.DataExportJob;
 }
 
 union CancelGroupMemberExportError400Body {
@@ -1079,29 +1018,18 @@ model CancelGroupMemberExportError403 {
   @body body: CancelGroupMemberExportError403Body;
 }
 
-@doc("管理者が終端前のメンバーエクスポートを取消す。既に終端の場合は拒否する。")
+@doc("An administrator cancels a member export before it terminates. One that has already terminated is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("CancelGroupMemberExport")
 @route("/api/admin/v1/groups/{group_id}/members/exports/{export_id}/cancel")
 @post
 op CancelGroupMemberExport(
   @path group_id: string,
-  @path export_id: string,
-  @body body: CancelGroupMemberExportHttpRequest
-): CancelGroupMemberExportSuccess_200 | CancelGroupMemberExportError400 | CancelGroupMemberExportError403;
-
-model UpdateAdminUserHttpRequest {
-  user_id: string;
-  request: IdMagic.Contract.AdminUserUpdateRequest;
-}
-
-model UpdateAdminUserHttpResponse {
-  user: IdMagic.Contract.AdminUserResponse;
-}
+  @path export_id: string,): CancelGroupMemberExportSuccess_200 | CancelGroupMemberExportError400 | CancelGroupMemberExportError403;
 
 model UpdateAdminUserSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateAdminUserHttpResponse;
+  @body body: IdMagic.Contract.AdminUserResponse;
 }
 
 union UpdateAdminUserError400Body {
@@ -1135,19 +1063,15 @@ model UpdateAdminUserError422 {
   @body body: UpdateAdminUserError422Body;
 }
 
-@doc("管理者がユーザーのプロフィール、email_verified、roles を更新する。")
+@doc("An administrator updates a user's profile, `email_verified`, and roles.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminUser")
 @route("/api/admin/v1/users/{user_id}")
 @patch
 op UpdateAdminUser(
   @path user_id: string,
-  @body body: UpdateAdminUserHttpRequest
+  @body body: IdMagic.Contract.AdminUserUpdateRequest
 ): UpdateAdminUserSuccess_200 | UpdateAdminUserError400 | UpdateAdminUserError403 | UpdateAdminUserError422;
-
-model DisableAdminUserHttpRequest {
-  user_id: string;
-}
 
 model DisableAdminUserSuccess_204 {
   @statusCode statusCode: 204;
@@ -1183,19 +1107,13 @@ model DisableAdminUserError422 {
   @body body: DisableAdminUserError422Body;
 }
 
-@doc("管理者がユーザーを無効化し、新規ログインと既存セッション利用を拒否する。")
+@doc("An administrator disables a user, refusing both new sign-ins and the use of existing sessions.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("DisableAdminUser")
 @route("/api/admin/v1/users/{user_id}/disable")
 @post
 op DisableAdminUser(
-  @path user_id: string,
-  @body body: DisableAdminUserHttpRequest
-): DisableAdminUserSuccess_204 | DisableAdminUserError400 | DisableAdminUserError403 | DisableAdminUserError422;
-
-model EnableAdminUserHttpRequest {
-  user_id: string;
-}
+  @path user_id: string,): DisableAdminUserSuccess_204 | DisableAdminUserError400 | DisableAdminUserError403 | DisableAdminUserError422;
 
 model EnableAdminUserSuccess_204 {
   @statusCode statusCode: 204;
@@ -1221,21 +1139,18 @@ model EnableAdminUserError403 {
   @body body: EnableAdminUserError403Body;
 }
 
-@doc("管理者が無効化済みユーザーを再有効化する。")
+@doc("An administrator re-enables a disabled user.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("EnableAdminUser")
 @route("/api/admin/v1/users/{user_id}/enable")
 @post
 op EnableAdminUser(
-  @path user_id: string,
-  @body body: EnableAdminUserHttpRequest
-): EnableAdminUserSuccess_204 | EnableAdminUserError400 | EnableAdminUserError403;
+  @path user_id: string,): EnableAdminUserSuccess_204 | EnableAdminUserError400 | EnableAdminUserError403;
 
 model DeleteAdminUserHttpRequest {
-  user_id: string;
-  @doc("true で即時 anonymize cascade (完全削除)。省略時は soft-delete。")
-  purge?: boolean;
-  @doc("監査用の任意自由記述。")
+  @doc("Same meaning as `?purge=true`: skip the soft delete and anonymize immediately. Omitted means a soft delete.")
+  force?: boolean;
+  @doc("Free-text note kept for the audit trail.")
   reason?: string;
 }
 
@@ -1273,27 +1188,21 @@ model DeleteAdminUserError422 {
   @body body: DeleteAdminUserError422Body;
 }
 
-@doc("管理者がユーザーを削除する。既定は SoftDelete で、status を\nPendingDeletion に遷移させ PII / Consent / RefreshToken / Session を温存する\n(猶予期間内は Restore 可能)。`purge=true` の場合は anonymize\ncascade を即時実施し tombstone 化する。いずれも冪等で、既に同じ終着状態の\nuser への再呼び出しは no-op として 204 を返す。自分自身は削除できない\n(admin / system_admin の自爆防止)。")
+@doc("An administrator deletes a user. By default this is a soft delete: the status moves to\n`pending_deletion` and the PII, Consents, RefreshTokens, and Sessions are preserved, so a Restore is possible\nwithin the grace period. With `purge=true` the anonymize cascade runs at once and leaves a tombstone. Both are\nidempotent: calling again for a user already in the same end state is a no-op that returns 204. A caller cannot\ndelete themselves, which keeps an admin or system_admin from destroying their own access.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminUser")
 @route("/api/admin/v1/users/{user_id}")
 @delete
 op DeleteAdminUser(
   @path user_id: string,
+  @doc("`true` skips the soft delete and anonymizes immediately, the same as `force` in the body. The body itself is optional.")
+  @query purge?: boolean,
   @body body: DeleteAdminUserHttpRequest
 ): DeleteAdminUserSuccess_204 | DeleteAdminUserError400 | DeleteAdminUserError403 | DeleteAdminUserError422;
 
-model RestoreAdminUserHttpRequest {
-  user_id: string;
-}
-
-model RestoreAdminUserHttpResponse {
-  user: IdMagic.Contract.AdminUserResponse;
-}
-
 model RestoreAdminUserSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RestoreAdminUserHttpResponse;
+  @body body: IdMagic.Contract.AdminUserResponse;
 }
 
 union RestoreAdminUserError400Body {
@@ -1327,28 +1236,17 @@ model RestoreAdminUserError409 {
   @body body: RestoreAdminUserError409Body;
 }
 
-@doc("管理者が PendingDeletion のユーザーを Restore する。status を Active\nに戻し PII / credential を温存したまま復元する。猶予期間を過ぎている、または\nPendingDeletion でない user に対しては InvalidRequestError を返す。復元後の\nuser を返す。自分自身への操作は use case 側で reject する (自爆防止と対称の\n扱い)。")
+@doc("An administrator restores a user in `pending_deletion`. The status returns to `active`\nand the user is restored with their PII and credentials intact. A user past the grace period, or one not in\n`pending_deletion`, gives InvalidRequestError. It returns the restored user. Acting on oneself is rejected in the\nuse case, mirroring how self-deletion is treated.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("RestoreAdminUser")
 @route("/api/admin/v1/users/{user_id}/restore")
 @post
 op RestoreAdminUser(
-  @path user_id: string,
-  @body body: RestoreAdminUserHttpRequest
-): RestoreAdminUserSuccess_200 | RestoreAdminUserError400 | RestoreAdminUserError403 | RestoreAdminUserError409;
-
-model SetUserRequiredActionHttpRequest {
-  user_id: string;
-  request: IdMagic.Contract.AdminRequiredActionRequest;
-}
-
-model SetUserRequiredActionHttpResponse {
-  user: IdMagic.Contract.AdminUserResponse;
-}
+  @path user_id: string,): RestoreAdminUserSuccess_200 | RestoreAdminUserError400 | RestoreAdminUserError403 | RestoreAdminUserError409;
 
 model SetUserRequiredActionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: SetUserRequiredActionHttpResponse;
+  @body body: IdMagic.Contract.AdminUserResponse;
 }
 
 union SetUserRequiredActionError400Body {
@@ -1381,23 +1279,19 @@ model SetUserRequiredActionError422 {
   @body body: SetUserRequiredActionError422Body;
 }
 
-@doc("管理者が対象ユーザーに次回ログイン時の強制アクション (RequiredAction) を\n付与する。update_password を付与されたユーザーは次回ログイン時に\nchange-password 画面へ強制誘導される (本人の変更で自動解除)。冪等で、既に\n付与済みなら現状を返す。admin 専用。")
+@doc("An administrator gives a target user an action to be forced at their next sign-in (a RequiredAction).\nA user given `update_password` is sent to the change-password screen at their next sign-in, and changing it clears\nthe action automatically. It is idempotent: if the action is already there, the current state is returned. Administrators only.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("SetUserRequiredAction")
 @route("/api/admin/v1/users/{user_id}/required_actions")
 @post
 op SetUserRequiredAction(
   @path user_id: string,
-  @body body: SetUserRequiredActionHttpRequest
+  @body body: IdMagic.Contract.AdminRequiredActionRequest
 ): SetUserRequiredActionSuccess_200 | SetUserRequiredActionError400 | SetUserRequiredActionError403 | SetUserRequiredActionError422;
-
-model ClearUserRequiredActionHttpResponse {
-  user: IdMagic.Contract.AdminUserResponse;
-}
 
 model ClearUserRequiredActionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ClearUserRequiredActionHttpResponse;
+  @body body: IdMagic.Contract.AdminUserResponse;
 }
 
 union ClearUserRequiredActionError400Body {
@@ -1420,7 +1314,7 @@ model ClearUserRequiredActionError403 {
   @body body: ClearUserRequiredActionError403Body;
 }
 
-@doc("管理者が対象ユーザーの強制アクションを解除する。冪等で、未付与なら\n現状を返す。admin 専用。本人のパスワード変更に伴う update_password の自動\n解除は ChangePassword / ResetPasswordWithToken 側で発火する。")
+@doc("An administrator clears a forced action from a target user. It is idempotent: if the action was not there,\nthe current state is returned. Administrators only. The automatic clearing of `update_password` when the user changes\ntheir own password happens in ChangePassword and ResetPasswordWithToken instead.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ClearUserRequiredAction")
 @route("/api/admin/v1/users/{user_id}/required_actions/{action}")
@@ -1430,13 +1324,9 @@ op ClearUserRequiredAction(
   @path action: string
 ): ClearUserRequiredActionSuccess_200 | ClearUserRequiredActionError400 | ClearUserRequiredActionError403;
 
-model ListGroupsHttpResponse {
-  response: IdMagic.Contract.GroupListResponse;
-}
-
 model ListGroupsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListGroupsHttpResponse;
+  @body body: IdMagic.Contract.GroupListResponse;
 }
 
 union ListGroupsError403Body {
@@ -1459,7 +1349,7 @@ model ListGroupsError400 {
   @body body: ListGroupsError400Body;
 }
 
-@doc("管理者が所属テナントのグループを name 昇順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。各グループは member_count を含む。cursor は応答の Link response header\n(rel=\"prev\" / rel=\"next\") から取得する。")
+@doc("An administrator lists the groups of their tenant by name ascending, with the id breaking ties, through bidirectional keyset\npagination. Each group carries its `member_count`. The cursor comes from the Link response header of the response\n(`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("ListGroups")
 @route("/api/admin/v1/groups")
@@ -1499,7 +1389,7 @@ model GetGroupError403 {
   @body body: GetGroupError403Body;
 }
 
-@doc("管理者が単一グループとそのメンバー一覧を取得する。別テナントのグループは未存在として扱う。")
+@doc("An administrator reads one group together with its member list. A group of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("GetGroup")
 @route("/api/admin/v1/groups/{group_id}")
@@ -1508,17 +1398,9 @@ op GetGroup(
   @path group_id: string
 ): GetGroupSuccess_200 | GetGroupError400 | GetGroupError403;
 
-model CreateGroupHttpRequest {
-  request: IdMagic.Contract.GroupCreateRequest;
-}
-
-model CreateGroupHttpResponse {
-  group: IdMagic.Contract.GroupSummaryResponse;
-}
-
 model CreateGroupSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: CreateGroupHttpResponse;
+  @body body: IdMagic.Contract.GroupSummaryResponse;
 }
 
 union CreateGroupError400Body {
@@ -1556,27 +1438,18 @@ model CreateGroupError422 {
   @body body: CreateGroupError422Body;
 }
 
-@doc("管理者が所属テナントにグループを作成する。name はテナント内で一意。email は形式検証のみ (一意制約なし)、attributes はテナントの TenantGroupAttributeSchema に対して検証する。")
+@doc("An administrator creates a group in their tenant. The name is unique within the tenant. The email is only checked for its form and carries no uniqueness constraint, and the attributes are validated against the tenant's TenantGroupAttributeSchema.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("CreateGroup")
 @route("/api/admin/v1/groups")
 @post
 op CreateGroup(
-  @body body: CreateGroupHttpRequest
+  @body body: IdMagic.Contract.GroupCreateRequest
 ): CreateGroupSuccess_201 | CreateGroupError400 | CreateGroupError403 | CreateGroupError422;
-
-model UpdateGroupHttpRequest {
-  group_id: string;
-  request: IdMagic.Contract.GroupUpdateRequest;
-}
-
-model UpdateGroupHttpResponse {
-  group: IdMagic.Contract.GroupSummaryResponse;
-}
 
 model UpdateGroupSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateGroupHttpResponse;
+  @body body: IdMagic.Contract.GroupSummaryResponse;
 }
 
 union UpdateGroupError400Body {
@@ -1612,14 +1485,14 @@ model UpdateGroupError422 {
   @body body: UpdateGroupError422Body;
 }
 
-@doc("管理者がグループの name / description / email / attributes / roles を更新する。")
+@doc("An administrator updates the name, description, email, attributes, or roles of a group.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("UpdateGroup")
 @route("/api/admin/v1/groups/{group_id}")
 @patch
 op UpdateGroup(
   @path group_id: string,
-  @body body: UpdateGroupHttpRequest
+  @body body: IdMagic.Contract.GroupUpdateRequest
 ): UpdateGroupSuccess_200 | UpdateGroupError400 | UpdateGroupError403 | UpdateGroupError422;
 
 model DeleteGroupSuccess_204 {
@@ -1646,7 +1519,7 @@ model DeleteGroupError403 {
   @body body: DeleteGroupError403Body;
 }
 
-@doc("管理者がグループを削除する。所属 membership は cascade で解除する。")
+@doc("An administrator deletes a group. The memberships in it are released by cascade.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("DeleteGroup")
 @route("/api/admin/v1/groups/{group_id}")
@@ -1654,11 +1527,6 @@ model DeleteGroupError403 {
 op DeleteGroup(
   @path group_id: string
 ): DeleteGroupSuccess_204 | DeleteGroupError400 | DeleteGroupError403;
-
-model AddGroupMemberHttpRequest {
-  group_id: string;
-  user_id: string;
-}
 
 model AddGroupMemberSuccess_204 {
   @statusCode statusCode: 204;
@@ -1684,15 +1552,14 @@ model AddGroupMemberError403 {
   @body body: AddGroupMemberError403Body;
 }
 
-@doc("管理者が User をグループに所属させる。同一テナントの User のみ許可し、既所属なら no-op (冪等)。")
+@doc("An administrator makes a User a member of a group. Only a User of the same tenant is permitted, and an existing membership is a no-op, so the call is idempotent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("AddGroupMember")
 @route("/api/admin/v1/groups/{group_id}/members/{user_id}")
 @post
 op AddGroupMember(
   @path group_id: string,
-  @path user_id: string,
-  @body body: AddGroupMemberHttpRequest
+  @path user_id: string
 ): AddGroupMemberSuccess_204 | AddGroupMemberError400 | AddGroupMemberError403;
 
 model RemoveGroupMemberSuccess_204 {
@@ -1719,7 +1586,7 @@ model RemoveGroupMemberError403 {
   @body body: RemoveGroupMemberError403Body;
 }
 
-@doc("管理者が User をグループから外す。非所属なら no-op (冪等)。")
+@doc("An administrator removes a User from a group. A user who is not a member is a no-op, so the call is idempotent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("RemoveGroupMember")
 @route("/api/admin/v1/groups/{group_id}/members/{user_id}")
@@ -1729,18 +1596,9 @@ op RemoveGroupMember(
   @path user_id: string
 ): RemoveGroupMemberSuccess_204 | RemoveGroupMemberError400 | RemoveGroupMemberError403;
 
-model UpdateDynamicGroupRuleHttpRequest {
-  group_id: string;
-  request: IdMagic.Contract.DynamicGroupRuleRequest;
-}
-
-model UpdateDynamicGroupRuleHttpResponse {
-  rule: IdMagic.Contract.DynamicGroupRule;
-}
-
 model UpdateDynamicGroupRuleSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateDynamicGroupRuleHttpResponse;
+  @body body: IdMagic.Contract.DynamicGroupRule;
 }
 
 union UpdateDynamicGroupRuleError400Body {
@@ -1773,20 +1631,15 @@ model UpdateDynamicGroupRuleError422 {
   @body body: UpdateDynamicGroupRuleError422Body;
 }
 
-@doc("管理者が dynamic group の制限 CEL rule を検証して保存する。未知属性、型不一致、非 Boolean、許可外構文、上限超過は拒否する。")
+@doc("An administrator validates and saves the restricted CEL rule of a dynamic group. An unknown attribute, a type mismatch, a non-boolean result, syntax outside the permitted subset, and exceeding a ceiling are all refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("UpdateDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule")
 @put
 op UpdateDynamicGroupRule(
   @path group_id: string,
-  @body body: UpdateDynamicGroupRuleHttpRequest
+  @body body: IdMagic.Contract.DynamicGroupRuleRequest
 ): UpdateDynamicGroupRuleSuccess_200 | UpdateDynamicGroupRuleError400 | UpdateDynamicGroupRuleError403 | UpdateDynamicGroupRuleError422;
-
-model PreviewDynamicGroupRuleHttpRequest {
-  group_id: string;
-  request: IdMagic.Contract.DynamicGroupPreviewRequest;
-}
 
 model PreviewDynamicGroupRuleHttpResponse {
   results: IdMagic.Contract.DynamicGroupPreviewResult[];
@@ -1827,27 +1680,19 @@ model PreviewDynamicGroupRuleError422 {
   @body body: PreviewDynamicGroupRuleError422Body;
 }
 
-@doc("最大100 Userに未保存 CEL を副作用なしで評価し、現在所属との差分だけを返す。")
+@doc("Evaluates an unsaved CEL against at most 100 Users without any side effect, and returns only what differs from the current membership.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("PreviewDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/preview")
 @post
 op PreviewDynamicGroupRule(
   @path group_id: string,
-  @body body: PreviewDynamicGroupRuleHttpRequest
+  @body body: IdMagic.Contract.DynamicGroupPreviewRequest
 ): PreviewDynamicGroupRuleSuccess_200 | PreviewDynamicGroupRuleError400 | PreviewDynamicGroupRuleError403 | PreviewDynamicGroupRuleError422;
-
-model EnableDynamicGroupRuleHttpRequest {
-  group_id: string;
-}
-
-model EnableDynamicGroupRuleHttpResponse {
-  rule: IdMagic.Contract.DynamicGroupRule;
-}
 
 model EnableDynamicGroupRuleSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: EnableDynamicGroupRuleHttpResponse;
+  @body body: IdMagic.Contract.DynamicGroupRule;
 }
 
 union EnableDynamicGroupRuleError400Body {
@@ -1870,27 +1715,17 @@ model EnableDynamicGroupRuleError403 {
   @body body: EnableDynamicGroupRuleError403Body;
 }
 
-@doc("検証済み rule を有効化し、旧 version membership を即時無効化して全件再評価 Job を予約する。")
+@doc("Activates a validated rule, invalidates the membership of the old version at once, and schedules a job that re-evaluates everything.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("EnableDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/enable")
 @post
 op EnableDynamicGroupRule(
-  @path group_id: string,
-  @body body: EnableDynamicGroupRuleHttpRequest
-): EnableDynamicGroupRuleSuccess_200 | EnableDynamicGroupRuleError400 | EnableDynamicGroupRuleError403;
-
-model DisableDynamicGroupRuleHttpRequest {
-  group_id: string;
-}
-
-model DisableDynamicGroupRuleHttpResponse {
-  rule: IdMagic.Contract.DynamicGroupRule;
-}
+  @path group_id: string,): EnableDynamicGroupRuleSuccess_200 | EnableDynamicGroupRuleError400 | EnableDynamicGroupRuleError403;
 
 model DisableDynamicGroupRuleSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DisableDynamicGroupRuleHttpResponse;
+  @body body: IdMagic.Contract.DynamicGroupRule;
 }
 
 union DisableDynamicGroupRuleError400Body {
@@ -1913,23 +1748,17 @@ model DisableDynamicGroupRuleError403 {
   @body body: DisableDynamicGroupRuleError403Body;
 }
 
-@doc("rule を無効化して、全 dynamic membership を認可・割当判定から即時除外する。")
+@doc("Deactivates a rule, so every dynamic membership is excluded from authorization and assignment decisions at once.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("DisableDynamicGroupRule")
 @route("/api/admin/v1/groups/{group_id}/dynamic-rule/disable")
 @post
 op DisableDynamicGroupRule(
-  @path group_id: string,
-  @body body: DisableDynamicGroupRuleHttpRequest
-): DisableDynamicGroupRuleSuccess_200 | DisableDynamicGroupRuleError400 | DisableDynamicGroupRuleError403;
-
-model ListUserGroupsHttpResponse {
-  response: IdMagic.Contract.UserGroupsResponse;
-}
+  @path group_id: string,): DisableDynamicGroupRuleSuccess_200 | DisableDynamicGroupRuleError400 | DisableDynamicGroupRuleError403;
 
 model ListUserGroupsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListUserGroupsHttpResponse;
+  @body body: IdMagic.Contract.UserGroupsResponse;
 }
 
 union ListUserGroupsError400Body {
@@ -1952,7 +1781,7 @@ model ListUserGroupsError403 {
   @body body: ListUserGroupsError403Body;
 }
 
-@doc("管理者が指定 User の所属グループと有効ロール内訳 (明示 / グループ由来 / union) を取得する。")
+@doc("An administrator reads the groups a named User belongs to and the breakdown of their effective roles: direct, inherited from groups, and the union.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:read"])
 @TypeSpec.OpenAPI.operationId("ListUserGroups")
 @route("/api/admin/v1/users/{user_id}/groups")
@@ -1961,13 +1790,9 @@ op ListUserGroups(
   @path user_id: string
 ): ListUserGroupsSuccess_200 | ListUserGroupsError400 | ListUserGroupsError403;
 
-model ListAgentsHttpResponse {
-  response: IdMagic.Contract.AgentListResponse;
-}
-
 model ListAgentsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListAgentsHttpResponse;
+  @body body: IdMagic.Contract.AgentListResponse;
 }
 
 union ListAgentsError403Body {
@@ -1990,7 +1815,7 @@ model ListAgentsError400 {
   @body body: ListAgentsError400Body;
 }
 
-@doc("管理者が所属テナントの Agent を name 昇順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@doc("An administrator lists the Agents of their tenant by name ascending, with the id breaking ties, through bidirectional keyset\npagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
 @TypeSpec.OpenAPI.operationId("ListAgents")
 @route("/api/admin/v1/agents")
@@ -2000,13 +1825,9 @@ op ListAgents(
   @query limit?: int64
 ): ListAgentsSuccess_200 | ListAgentsError403 | ListAgentsError400;
 
-model GetAgentHttpResponse {
-  response: IdMagic.Contract.AgentSummaryResponse;
-}
-
 model GetAgentSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAgentHttpResponse;
+  @body body: IdMagic.Contract.AgentSummaryResponse;
 }
 
 union GetAgentError400Body {
@@ -2029,7 +1850,7 @@ model GetAgentError403 {
   @body body: GetAgentError403Body;
 }
 
-@doc("管理者が単一 Agent を取得する。別テナントの Agent は未存在として扱う。")
+@doc("An administrator reads one Agent. An Agent of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:read"])
 @TypeSpec.OpenAPI.operationId("GetAgent")
 @route("/api/admin/v1/agents/{agent_id}")
@@ -2038,17 +1859,9 @@ op GetAgent(
   @path agent_id: string
 ): GetAgentSuccess_200 | GetAgentError400 | GetAgentError403;
 
-model RegisterAgentHttpRequest {
-  request: IdMagic.Contract.AgentRegisterRequest;
-}
-
-model RegisterAgentHttpResponse {
-  response: IdMagic.Contract.AgentSummaryResponse;
-}
-
 model RegisterAgentSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: RegisterAgentHttpResponse;
+  @body body: IdMagic.Contract.AgentSummaryResponse;
 }
 
 union RegisterAgentError400Body {
@@ -2085,27 +1898,18 @@ model RegisterAgentError422 {
   @body body: RegisterAgentError422Body;
 }
 
-@doc("管理者が所属テナントに Agent を登録する。name はテナント内で一意、owner_user_id 省略時は actor を所有者とする。")
+@doc("An administrator registers an Agent in their tenant. The name is unique within the tenant, and leaving out `owner_user_id` makes the caller the owner.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("RegisterAgent")
 @route("/api/admin/v1/agents")
 @post
 op RegisterAgent(
-  @body body: RegisterAgentHttpRequest
+  @body body: IdMagic.Contract.AgentRegisterRequest
 ): RegisterAgentSuccess_201 | RegisterAgentError400 | RegisterAgentError403 | RegisterAgentError422;
-
-model UpdateAgentHttpRequest {
-  agent_id: string;
-  request: IdMagic.Contract.AgentUpdateRequest;
-}
-
-model UpdateAgentHttpResponse {
-  response: IdMagic.Contract.AgentSummaryResponse;
-}
 
 model UpdateAgentSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateAgentHttpResponse;
+  @body body: IdMagic.Contract.AgentSummaryResponse;
 }
 
 union UpdateAgentError400Body {
@@ -2141,19 +1945,15 @@ model UpdateAgentError422 {
   @body body: UpdateAgentError422Body;
 }
 
-@doc("管理者が Agent の name / description / kind / owner_user_id / roles を更新する。owner_user_id の変更は所有権移転。")
+@doc("An administrator updates the name, description, kind, `owner_user_id`, or roles of an Agent. Changing `owner_user_id` transfers ownership.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAgent")
 @route("/api/admin/v1/agents/{agent_id}")
 @patch
 op UpdateAgent(
   @path agent_id: string,
-  @body body: UpdateAgentHttpRequest
+  @body body: IdMagic.Contract.AgentUpdateRequest
 ): UpdateAgentSuccess_200 | UpdateAgentError400 | UpdateAgentError403 | UpdateAgentError422;
-
-model DisableAgentHttpRequest {
-  agent_id: string;
-}
 
 model DisableAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2179,19 +1979,13 @@ model DisableAgentError403 {
   @body body: DisableAgentError403Body;
 }
 
-@doc("管理者が Agent を可逆に運用停止する。")
+@doc("An administrator suspends an Agent reversibly.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DisableAgent")
 @route("/api/admin/v1/agents/{agent_id}/disable")
 @post
 op DisableAgent(
-  @path agent_id: string,
-  @body body: DisableAgentHttpRequest
-): DisableAgentSuccess_204 | DisableAgentError400 | DisableAgentError403;
-
-model EnableAgentHttpRequest {
-  agent_id: string;
-}
+  @path agent_id: string,): DisableAgentSuccess_204 | DisableAgentError400 | DisableAgentError403;
 
 model EnableAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2217,19 +2011,13 @@ model EnableAgentError403 {
   @body body: EnableAgentError403Body;
 }
 
-@doc("管理者が運用停止中の Agent を再稼働する。")
+@doc("An administrator returns a suspended Agent to service.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("EnableAgent")
 @route("/api/admin/v1/agents/{agent_id}/enable")
 @post
 op EnableAgent(
-  @path agent_id: string,
-  @body body: EnableAgentHttpRequest
-): EnableAgentSuccess_204 | EnableAgentError400 | EnableAgentError403;
-
-model KillAgentHttpRequest {
-  agent_id: string;
-}
+  @path agent_id: string,): EnableAgentSuccess_204 | EnableAgentError400 | EnableAgentError403;
 
 model KillAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2255,15 +2043,13 @@ model KillAgentError403 {
   @body body: KillAgentError403Body;
 }
 
-@doc("管理者が Agent を緊急停止する (一方向終端、復帰不能)。")
+@doc("An administrator kills an Agent. This is one-way and terminal; there is no way back.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("KillAgent")
 @route("/api/admin/v1/agents/{agent_id}/kill")
 @post
 op KillAgent(
-  @path agent_id: string,
-  @body body: KillAgentHttpRequest
-): KillAgentSuccess_204 | KillAgentError400 | KillAgentError403;
+  @path agent_id: string,): KillAgentSuccess_204 | KillAgentError400 | KillAgentError403;
 
 model DeleteAgentSuccess_204 {
   @statusCode statusCode: 204;
@@ -2289,7 +2075,7 @@ model DeleteAgentError403 {
   @body body: DeleteAgentError403Body;
 }
 
-@doc("管理者が Agent を削除する。束縛は cascade で解除する。Killed の Agent は削除できない (fail-closed。削除により束縛先 OAuth2Client が client_credentials で無制限に token を再取得できてしまうため)。")
+@doc("An administrator deletes an Agent. Its bindings are released by cascade. A killed Agent cannot be deleted, fail-closed: deleting it would let the OAuth2Client it was bound to fetch tokens again through client_credentials without limit.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAgent")
 @route("/api/admin/v1/agents/{agent_id}")
@@ -2297,11 +2083,6 @@ model DeleteAgentError403 {
 op DeleteAgent(
   @path agent_id: string
 ): DeleteAgentSuccess_204 | DeleteAgentError400 | DeleteAgentError403;
-
-model BindAgentCredentialHttpRequest {
-  agent_id: string;
-  request: IdMagic.Contract.AgentCredentialBindRequest;
-}
 
 model BindAgentCredentialSuccess_204 {
   @statusCode statusCode: 204;
@@ -2327,14 +2108,14 @@ model BindAgentCredentialError403 {
   @body body: BindAgentCredentialError403Body;
 }
 
-@doc("管理者が Agent に OAuth2Client を束縛する。")
+@doc("An administrator binds an OAuth2Client to an Agent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("BindAgentCredential")
 @route("/api/admin/v1/agents/{agent_id}/credentials")
 @post
 op BindAgentCredential(
   @path agent_id: string,
-  @body body: BindAgentCredentialHttpRequest
+  @body body: IdMagic.Contract.AgentCredentialBindRequest
 ): BindAgentCredentialSuccess_204 | BindAgentCredentialError400 | BindAgentCredentialError403;
 
 model UnbindAgentCredentialSuccess_204 {
@@ -2361,7 +2142,7 @@ model UnbindAgentCredentialError403 {
   @body body: UnbindAgentCredentialError403Body;
 }
 
-@doc("管理者が Agent から OAuth2Client の束縛を解除する。")
+@doc("An administrator unbinds an OAuth2Client from an Agent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["agents:write"])
 @TypeSpec.OpenAPI.operationId("UnbindAgentCredential")
 @route("/api/admin/v1/agents/{agent_id}/credentials/{client_id}")

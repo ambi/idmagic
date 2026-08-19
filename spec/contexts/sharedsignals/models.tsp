@@ -1,24 +1,18 @@
 namespace IdMagic.Contract {
 
-@doc("リクエストに必須パラメータの欠落・不正値がある、または対象が別テナントに属し未存在として扱われる。OAuth2 context が定義する共通 error の published language stub。")
-model InvalidRequestError {
-
-}
+@doc("The request is missing a required parameter or carries an invalid value, or the target belongs to another tenant and is treated as nonexistent. Published-language stub for the shared error the OAuth2 context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_request`. The OAuth 2.0 endpoints report the same condition as OAuthInvalidRequestError instead.")
+model InvalidRequestError is ProblemDetails;
 
 
-@doc("principal が対象操作の policy を満たさない。Authentication context が定義する共通 error の published language stub。")
-model AccessDeniedError {
-
-}
+@doc("The principal does not satisfy the policy for the operation. Published-language stub for the shared error the Authentication context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:access_denied`. The OAuth 2.0 endpoints report the same condition as OAuthAccessDeniedError instead.")
+model AccessDeniedError is ProblemDetails;
 
 
-@doc("テナントのリソース作成上限 (Quota) に達している。Tenancy context が定義する共通 error の published language stub。")
-model QuotaExceededError {
-
-}
+@doc("The tenant has reached its resource creation ceiling (Quota). Published-language stub for the shared error the Tenancy context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:quota_exceeded`, written by the shared error handler on every path, the Dynamic Client Registration endpoint included.")
+model QuotaExceededError is ProblemDetails;
 
 
-@doc("IdManagement が publish する Agent principal の最小 stub。")
+@doc("The minimal stub of the Agent principal the IdManagement context publishes.")
 model Agent {
   id: string;
   tenant_id: string;
@@ -27,69 +21,58 @@ model Agent {
 }
 
 
-@doc("受信した SET の検証が fail-closed で失敗した (未登録 issuer・署名不正・期限切れ・audience 不一致・jti 重複・subject 未解決)。")
+@doc("Verification of a received SET failed fail-closed: an unregistered issuer, a bad signature, an expired token, an audience mismatch, a duplicate `jti`, or a subject that could not be resolved. The receive endpoint is a contact point whose shape RFC 8935 fixes, so it does not return Problem Details; the body is `application/json`. IdMagic currently emits `error` and `message` rather than the `err` and `description` of RFC 8935 section 2.3, and this model records what the server sends today.")
 model SecurityEventRejectedError {
-
+  @doc("Always `security_event_rejected`.")
+  error: string;
+  @doc("Human-readable explanation of the rejection. Always English and never localized.")
+  message: string;
 }
 
 
-@doc("event_types が空である。")
-model SsfStreamEventTypesRequiredError {
-
-}
+@doc("`event_types` is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:ssf_stream_event_types_required`.")
+model SsfStreamEventTypesRequiredError is ProblemDetails;
 
 
-@doc("event_types に未知の CAEP event type が含まれる。")
-model SsfStreamEventTypeInvalidError {
-
-}
+@doc("`event_types` contains a CAEP event type the server does not know. RFC 9457 Problem Details with `type` = `urn:idmagic:error:ssf_stream_event_type_invalid`.")
+model SsfStreamEventTypeInvalidError is ProblemDetails;
 
 
-@doc("delivery_endpoint が未指定、または https URL でない。")
-model SsfTransmitterDeliveryEndpointInvalidError {
-
-}
+@doc("`delivery_endpoint` is absent or is not an https URL. RFC 9457 Problem Details with `type` = `urn:idmagic:error:ssf_transmitter_delivery_endpoint_invalid`.")
+model SsfTransmitterDeliveryEndpointInvalidError is ProblemDetails;
 
 
-@doc("audience が未指定である。")
-model SsfTransmitterAudienceRequiredError {
-
-}
+@doc("`audience` is absent. RFC 9457 Problem Details with `type` = `urn:idmagic:error:ssf_transmitter_audience_required`.")
+model SsfTransmitterAudienceRequiredError is ProblemDetails;
 
 
-@doc("trusted_issuer が未指定、または https URL でない。")
-model SsfReceiverTrustedIssuerInvalidError {
-
-}
+@doc("`trusted_issuer` is absent or is not an https URL. RFC 9457 Problem Details with `type` = `urn:idmagic:error:ssf_receiver_trusted_issuer_invalid`.")
+model SsfReceiverTrustedIssuerInvalidError is ProblemDetails;
 
 
-@doc("jwks_uri と jwks のいずれも指定されていない。")
-model SsfReceiverJwksRequiredError {
-
-}
+@doc("Neither `jwks_uri` nor `jwks` was given. RFC 9457 Problem Details with `type` = `urn:idmagic:error:ssf_receiver_jwks_required`.")
+model SsfReceiverJwksRequiredError is ProblemDetails;
 
 
-@doc("accepted_audiences が空である。")
-model SsfReceiverAcceptedAudiencesRequiredError {
-
-}
+@doc("`accepted_audiences` is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:ssf_receiver_accepted_audiences_required`.")
+model SsfReceiverAcceptedAudiencesRequiredError is ProblemDetails;
 
 
-@doc("idmagic からみた stream の向き。Transmit は idmagic が外部 receiver へ CAEP イベントを push する、Receive は idmagic が外部 transmitter からのイベントを受理する。")
+@doc("Which way the stream runs, seen from IdMagic. `Transmit` means IdMagic pushes CAEP events to an external receiver; `Receive` means IdMagic accepts events from an external transmitter.")
 enum SsfStreamDirection {
   Transmit: "Transmit",
   Receive: "Receive",
 }
 
 
-@doc("stream の稼働状態。")
+@doc("Whether the stream is running.")
 enum SsfStreamStatus {
   enabled: "enabled",
   disabled: "disabled",
 }
 
 
-@doc("実装する CAEP イベント種別。")
+@doc("The CAEP event types that are implemented.")
 enum CaepEventType {
   session_revoked: "session-revoked",
   token_claims_change: "token-claims-change",
@@ -98,7 +81,7 @@ enum CaepEventType {
 }
 
 
-@doc("revocation epoch を前進させた起点。")
+@doc("What moved the revocation epoch forward.")
 enum RevocationReason {
   AgentKilled: "AgentKilled",
   AgentDisabled: "AgentDisabled",
@@ -110,7 +93,7 @@ enum RevocationReason {
 }
 
 
-@doc("outbound SET 配送の状態。")
+@doc("The delivery state of an outbound SET.")
 enum SecurityEventDeliveryStatus {
   pending: "pending",
   delivered: "delivered",
@@ -119,7 +102,7 @@ enum SecurityEventDeliveryStatus {
 }
 
 
-@doc("inbound SET の検証結果。")
+@doc("The verification outcome of an inbound SET.")
 enum SecurityEventVerificationResult {
   accepted: "accepted",
   rejected_signature: "rejected_signature",
@@ -130,39 +113,39 @@ enum SecurityEventVerificationResult {
 }
 
 
-@doc("CAEP イベントが指す対象。idmagic 自身が発行する access token の subject 表現 (tenant_id + principal_id) とそのまま対応させ、WorkloadIdentity のような別テーブルでの subject mapping を新設しない。")
+@doc("What a CAEP event is about. It maps one-to-one onto the subject representation of the access tokens IdMagic itself issues (tenant_id plus principal_id), so there is no separate subject mapping table of the kind WorkloadIdentity keeps.")
 model SsfSubject {
-  @doc("\"Agent\" または \"User\"。")
+  @doc("Either `Agent` or `User`.")
   subject_type: string;
   tenant_id: string;
   principal_id: string;
 }
 
 
-@doc("SET へ署名して包む前の、CAEP イベントの意味内容。")
+@doc("What a CAEP event means, before it is signed and wrapped into a SET.")
 model CaepEvent {
   event_type: CaepEventType;
   subject: SsfSubject;
   reason?: RevocationReason;
   event_timestamp: utcDateTime;
-  @doc("\"policy\" | \"admin\" | \"user\" のいずれか。")
+  @doc("One of `policy`, `admin`, or `user`.")
   initiating_entity: string;
 }
 
 
-@doc("RFC 8417 の Security Event Token。署名済み compact JWT と、そのデコード済み標準クレーム。")
+@doc("A Security Event Token (RFC 8417): the signed compact JWT together with its decoded standard claims.")
 model SecurityEventToken {
   jti: string;
   iss: url;
   aud: string;
   iat: utcDateTime;
   event: CaepEvent;
-  @doc("署名済み JWT の compact serialization。")
+  @doc("The compact serialization of the signed JWT.")
   compact: string;
 }
 
 
-@doc("管理者が direction=Transmit の SsfStream を登録する JSON リクエスト。")
+@doc("The JSON request an administrator sends to register an SsfStream with `direction=Transmit`.")
 model SsfTransmitterStreamRegisterRequest {
   event_types: CaepEventType[];
   delivery_endpoint: url;
@@ -172,46 +155,46 @@ model SsfTransmitterStreamRegisterRequest {
 }
 
 
-@doc("管理者が direction=Receive の SsfStream を登録する JSON リクエスト。")
+@doc("The JSON request an administrator sends to register an SsfStream with `direction=Receive`.")
 model SsfReceiverStreamRegisterRequest {
   event_types: CaepEventType[];
   trusted_issuer: url;
   jwks_uri?: url;
-  jwks?: unknown;
+  jwks?: JWKS;
   accepted_audiences: string[];
 }
 
 
-@doc("管理者が SsfStream の event_types を更新する JSON リクエスト。省略フィールドは現状維持。")
+@doc("The JSON request an administrator sends to update the `event_types` of an SsfStream. A field left out keeps its current value.")
 model SsfStreamUpdateRequest {
   event_types?: CaepEventType[];
 }
 
 
 model RevocationEpochResponse {
-  @doc("前進済みの epoch。未失効の Agent には存在しない。")
+  @doc("The epoch already advanced to. Absent for an Agent that has never been revoked.")
   epoch?: utcDateTime;
 }
 
 
-@doc("Agent ごとの revocation epoch を保持する 1 対 1 の付随レコード。epoch 以前に issued_at を持つ access token / session は無効とみなす (fail-closed)。KillAgent・DisableAgent・UnbindAgentCredential・所有者 (owner_user_id) の Disable/Delete・受理済み inbound SecurityEvent のいずれかで前進する。行が存在しない Agent は未失効を意味する。")
+@doc("The one-to-one companion record holding the revocation epoch of an Agent. An access token or session whose `issued_at` precedes the epoch is treated as invalid (fail-closed). The epoch advances on KillAgent, DisableAgent, UnbindAgentCredential, a Disable or Delete of the owner (`owner_user_id`), or an accepted inbound SecurityEvent. An Agent with no row has never been revoked.")
 model AgentRevocationEpoch {
   agent_id: string;
   tenant_id: string;
   epoch: utcDateTime;
   reason: RevocationReason;
   advanced_at: utcDateTime;
-  @doc("epoch を前進させた domain event / inbound SET の jti など追跡用の参照。")
+  @doc("A reference for tracing what advanced the epoch: the domain event, or the `jti` of the inbound SET.")
   source_event_id?: string;
 }
 
 
-@doc("tenant が登録する SSF stream の共通メタデータ。direction ごとに SsfTransmitterConfig または SsfReceiverConfig が 1 対 1 で付随する。")
+@doc("The metadata every SSF stream a tenant registers shares. Depending on the direction, exactly one SsfTransmitterConfig or SsfReceiverConfig accompanies it.")
 model SsfStream {
-  id: unknown;
+  id: string;
   tenant_id: string;
   direction: SsfStreamDirection;
-  @doc("この stream が送受信対象とするイベント種別の部分集合。")
+  @doc("The subset of event types this stream sends or accepts.")
   event_types: CaepEventType[];
   status: SsfStreamStatus = SsfStreamStatus.enabled;
   created_at: utcDateTime;
@@ -219,35 +202,35 @@ model SsfStream {
 }
 
 
-@doc("direction=Transmit の SsfStream に 1 対 1 で付随する配送先設定。")
+@doc("The delivery settings accompanying an SsfStream with `direction=Transmit`, one per stream.")
 model SsfTransmitterConfig {
-  stream_id: unknown;
-  @doc("外部 receiver の push 受理 endpoint。https 必須。")
+  stream_id: string;
+  @doc("The endpoint of the external receiver that accepts the push. It must be https.")
   delivery_endpoint: url;
-  @doc("発行する SET の aud claim。")
+  @doc("The `aud` claim of the SETs issued on this stream.")
   audience: string;
-  @doc("receiver への push 時に Authorization header で提示する任意の bearer secret。")
+  @doc("An optional bearer secret presented in the Authorization header when pushing to the receiver.")
   delivery_authorization?: string;
   max_delivery_attempts: int64 = 8;
 }
 
 
-@doc("direction=Receive の SsfStream に 1 対 1 で付随する、外部 transmitter の信頼設定。WorkloadTrustBundle と同型の登録済み issuer 検証を再利用する。jwks_uri と jwks (inline) は少なくとも一方が必須。")
+@doc("The trust settings for the external transmitter, accompanying an SsfStream with `direction=Receive`, one per stream. It reuses the same registered-issuer verification WorkloadTrustBundle uses. At least one of `jwks_uri` and inline `jwks` is required.")
 model SsfReceiverConfig {
-  stream_id: unknown;
-  @doc("外部 transmitter の SET iss claim と一致しなければならない発行者 URL。")
+  stream_id: string;
+  @doc("The issuer URL the `iss` claim of the external transmitter's SET must match.")
   trusted_issuer: url;
   jwks_uri?: url;
-  jwks?: unknown;
+  jwks?: JWKS;
   accepted_audiences: string[];
 }
 
 
-@doc("outbound SET の配送状態。RevocationEpochAdvanced から projector が生成し、at-least-once で配送・再試行する。")
+@doc("The delivery state of an outbound SET. A projector creates it from RevocationEpochAdvanced, and delivery and retry are at-least-once.")
 model SecurityEventDelivery {
-  id: unknown;
+  id: string;
   tenant_id: string;
-  stream_id: unknown;
+  stream_id: string;
   set_jti: string;
   set: SecurityEventToken;
   status: SecurityEventDeliveryStatus = SecurityEventDeliveryStatus.pending;
@@ -259,22 +242,22 @@ model SecurityEventDelivery {
 }
 
 
-@doc("inbound SET の受理記録。set_jti は stream 内で一意とし、重複 (replay) を検知して拒否する。")
+@doc("The record of an accepted inbound SET. `set_jti` is unique within the stream, so a replay is detected and refused.")
 model ReceivedSecurityEvent {
-  id: unknown;
+  id: string;
   tenant_id: string;
-  stream_id: unknown;
+  stream_id: string;
   set_jti: string;
   event_type: CaepEventType;
   subject: SsfSubject;
   verification_result: SecurityEventVerificationResult;
   received_at: utcDateTime;
-  @doc("検証を通過し、ローカル revocation epoch へ反映した時刻。")
+  @doc("When the SET passed verification and was applied to the local revocation epoch.")
   reflected_at?: utcDateTime;
 }
 
 
-@doc("Agent の revocation epoch が前進した (LocalRevocation の確定)。transmitter projector がこのイベントを起点に CaepEvent/SecurityEventDelivery を生成する。")
+@doc("The revocation epoch of an Agent moved forward, settling a local revocation. The transmitter projector takes this event as its starting point and creates the CaepEvent and SecurityEventDelivery.")
 model RevocationEpochAdvanced {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -284,7 +267,7 @@ model RevocationEpochAdvanced {
 }
 
 
-@doc("kill-switch / 所有者オフボードを起点に Agent のアクセスが即時失効したことを表す、監査・ガバナンス向けの要約イベント。")
+@doc("A summary event for audit and governance, recording that an Agent's access was revoked at once because of a kill switch or an owner offboarding.")
 model AgentAccessRevoked {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -293,102 +276,120 @@ model AgentAccessRevoked {
 }
 
 
-@doc("管理者が SsfStream を新規登録した。")
+@doc("An administrator registered a new SsfStream.")
 model SsfStreamRegistered {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
   direction: SsfStreamDirection;
 }
 
 
-@doc("管理者が SsfStream のメタデータを更新した。")
+@doc("An administrator updated the metadata of an SsfStream.")
 model SsfStreamUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
 }
 
 
-@doc("管理者が SsfStream を無効化した。以後配送/受理を行わない。")
+@doc("An administrator disabled an SsfStream. It neither delivers nor accepts anything afterwards.")
 model SsfStreamDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
 }
 
 
-@doc("管理者が無効化済みの SsfStream を再有効化した。")
+@doc("An administrator re-enabled a disabled SsfStream.")
 model SsfStreamEnabled {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
 }
 
 
-@doc("管理者が SsfStream を削除した。付随する Transmitter/ReceiverConfig は cascade で削除する。")
+@doc("An administrator deleted an SsfStream. The TransmitterConfig or ReceiverConfig attached to it was deleted with it.")
 model SsfStreamDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
 }
 
 
-@doc("SecurityEventDelivery が配送に成功した。")
+@doc("A SecurityEventDelivery was delivered successfully.")
 model SecurityEventTransmitted {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
   setJti: string;
 }
 
 
-@doc("SecurityEventDelivery が配送に失敗し再試行をスケジュールした。")
+@doc("A SecurityEventDelivery failed and a retry was scheduled.")
 model SecurityEventDeliveryFailed {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
   setJti: string;
   attemptCount: int64;
 }
 
 
-@doc("failed 状態の SecurityEventDelivery を再試行のため pending へ戻した。")
+@doc("A failed SecurityEventDelivery was returned to pending for another attempt.")
 model SecurityEventDeliveryRetried {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
   setJti: string;
   attemptCount: int64;
 }
 
 
-@doc("SecurityEventDelivery が max_delivery_attempts を使い切り dead_letter へ遷移した。")
+@doc("A SecurityEventDelivery used up `max_delivery_attempts` and moved to dead_letter.")
 model SecurityEventDeliveryDeadLettered {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
   setJti: string;
 }
 
 
-@doc("inbound SET を検証し、ローカル revocation として反映した。")
+@doc("An inbound SET was verified and applied as a local revocation.")
 model SecurityEventReceived {
   occurredAt: utcDateTime;
   tenantId: string;
-  streamId: unknown;
+  streamId: string;
   setJti: string;
   eventType: CaepEventType;
 }
 
 
-@doc("inbound SET の検証が fail-closed で失敗し反映しなかった。")
+@doc("Verification of an inbound SET failed fail-closed and nothing was applied.")
 model SecurityEventRejected {
   occurredAt: utcDateTime;
   tenantId: string;
-  @doc("issuer 解決前に拒否した場合は stream を特定できないことがある。")
-  streamId?: unknown;
+  @doc("When the rejection happened before the issuer was resolved, the stream may not be identifiable.")
+  streamId?: string;
   verificationResult: SecurityEventVerificationResult;
+}
+
+
+@doc("The Security Event Token in the request body is larger than the receive endpoint accepts. The receive endpoint is a contact point whose shape RFC 8935 fixes, so the body is `application/json` and carries `error` and `message` rather than Problem Details.")
+model SecurityEventTokenTooLargeError {
+  @doc("Always `security_event_token_too_large`.")
+  error: string;
+  @doc("Human-readable explanation. Always English and never localized.")
+  message: string;
+}
+
+
+@doc("The `stream_id` in the path does not name an SsfStream of this tenant. Returned by the receive endpoint, so the body is the `application/json` shape of that contact point, not Problem Details; the administration API reports the same condition as Problem Details with `type` = `urn:idmagic:error:ssf_stream_not_found`.")
+model SecurityEventStreamNotFoundError {
+  @doc("Always `ssf_stream_not_found`.")
+  error: string;
+  @doc("Human-readable explanation. Always English and never localized.")
+  message: string;
 }
 
 }

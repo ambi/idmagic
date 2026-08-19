@@ -1,108 +1,108 @@
 namespace IdMagic.Contract {
 
-@doc("WS-Federation で発行する assertion の SAML バージョン (RSTR の TokenType にもなる)。 SAML 1.1 (urn:oasis:names:tc:SAML:1.0:assertion) は Entra / AD FS の WS-Fed 既定。")
+@doc("The SAML version of the assertion WS-Federation issues, which also becomes the TokenType of the RSTR. SAML 1.1 (urn:oasis:names:tc:SAML:1.0:assertion) is what Entra and AD FS default to for WS-Fed.")
 enum WsFedTokenType {
   urn_oasis_names_tc_SAML_1_0_assertion: "urn:oasis:names:tc:SAML:1.0:assertion",
   urn_oasis_names_tc_SAML_2_0_assertion: "urn:oasis:names:tc:SAML:2.0:assertion",
 }
 
 
-@doc("WS-Federation passive の relying party (RP) 登録。wtrealm で識別し、許可する wreply (返信先) の閉集合、audience、claim 発行 policy を束ねる。application_id が NULL の catalog 外 RP も許容し、非 NULL の場合は同一 tenant の wsfed Application を参照して Application 1件に最大1 RP だけが紐づく。")
+@doc("The registration of a relying party (RP) for WS-Federation passive. It is identified by its wtrealm and bundles the closed set of permitted `wreply` targets, the audience, and the claim issuance policy. An RP outside the catalogue, whose `application_id` is null, is allowed; when it is not null it names a `wsfed` Application of the same tenant, and at most one RP is bound to one Application.")
 model WsFedRelyingParty {
-  @doc("所属テナント ID。")
+  @doc("The tenant it belongs to.")
   tenant_id: string = "default";
-  @doc("RP の識別子 (WS-Fed wtrealm / SAML audience)。WS-Federation は URI としか定めないので上限は URI 区分に従う。btree の索引行に収める資源上限として、別に 2048 バイトの上限も課す。")
+  @doc("The identifier of the RP: the WS-Fed wtrealm, which is also the SAML audience. WS-Federation says only that it is a URI, so the ceiling follows the URI class. A separate ceiling of 2048 bytes applies as the resource limit that keeps the value inside a btree index row.")
   @minLength(1)
   @maxLength(2048)
   wtrealm: string;
-  @doc("対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。")
-  application_id?: unknown;
-  @doc("管理 UI 表示名。")
+  @doc("The Application it corresponds to. Ordinary CRUD leaves it alone; only the bulk creation and deletion of an Application manage the relationship.")
+  application_id?: string;
+  @doc("The display name in the administration UI.")
   display_name?: string;
-  @doc("許可する wreply の閉集合。wreply はこの集合との完全一致のみ受理する。")
+  @doc("The closed set of permitted `wreply` targets. Only an exact match against this set is accepted.")
   reply_urls: string[];
-  @doc("発行 assertion の audience。空なら wtrealm を用いる。")
+  @doc("The audience of an issued assertion. Empty means the wtrealm is used.")
   audience?: string;
-  @doc("発行 assertion の SAML バージョン。空なら SAML 1.1 (Entra WS-Fed 互換の既定)。")
+  @doc("The SAML version of an issued assertion. Empty means SAML 1.1, the default Entra's WS-Fed expects.")
   token_type?: WsFedTokenType;
-  @doc("この RP 向けの claim 発行 policy。")
+  @doc("The claim issuance policy for this RP.")
   claim_policy: ClaimMappingPolicy;
-  @doc("Microsoft Entra domain federation preset。設定時に required claims と sourceAnchor 変換を束ねる。")
+  @doc("The Microsoft Entra domain federation preset. It bundles the required claims and the sourceAnchor transform used when the federation is configured.")
   entra_profile?: EntraFederationProfile;
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("Microsoft Entra domain federation 用 profile。IssuerUri、sourceAnchor 属性、 passive / active / MEX endpoint を束ね、UPN / ImmutableID / persistent NameID の claim preset を WS-Fed RP に適用する。")
+@doc("The profile for Microsoft Entra domain federation. It bundles the IssuerUri, the sourceAnchor attribute, and the passive, active, and MEX endpoints, and applies the claim preset for UPN, ImmutableID, and a persistent NameID to the WS-Fed RP.")
 model EntraFederationProfile {
-  @doc("Entra で検証済みの DNS domain。")
+  @doc("A DNS domain already verified in Entra.")
   @minLength(1)
   domain: string;
-  @doc("Entra に登録する IssuerUri。発行 token の issuer / RP wtrealm と一致させる。")
+  @doc("The IssuerUri registered in Entra. It matches the issuer of the tokens issued and the wtrealm of the RP.")
   @minLength(1)
   issuer_uri: string;
-  @doc("ImmutableID の元になる不変 user 属性。objectGUID の GUID 文字列または既に base64 化済みの値。")
+  @doc("The immutable user attribute the ImmutableID is built from: either the GUID string of objectGUID or a value already base64-encoded.")
   @minLength(1)
   source_anchor_attribute: string;
-  @doc("変換後 ImmutableID を格納する合成属性名。既定 entra_immutable_id。")
+  @doc("The synthetic attribute name the converted ImmutableID is stored under; `entra_immutable_id` by default.")
   @minLength(1)
   immutable_id_attribute: string;
-  @doc("Entra PassiveLogOnUri。通常 /wsfed。")
+  @doc("The Entra PassiveLogOnUri, normally `/wsfed`.")
   passive_logon_uri: string;
-  @doc("Entra ActiveLogOnUri。通常 /trust/usernamemixed。")
+  @doc("The Entra ActiveLogOnUri, normally `/trust/usernamemixed`.")
   active_logon_uri: string;
-  @doc("Entra MetadataExchangeUri。通常 /trust/mex。")
+  @doc("The Entra MetadataExchangeUri, normally `/trust/mex`.")
   metadata_exchange_uri: string;
 }
 
 
-@doc("WS-Trust / WS-Federation metadata に広告する STS endpoint。受理する認証方式と binding を表す。")
+@doc("An STS endpoint advertised in the WS-Trust and WS-Federation metadata, describing the authentication method and the binding it accepts.")
 model SecurityTokenEndpoint {
-  @doc("公開 endpoint URL。")
+  @doc("The published endpoint URL.")
   url: string;
-  @doc("例: usernamemixed, mex, passive。")
+  @doc("For instance `usernamemixed`, `mex`, or `passive`.")
   @minLength(1)
   binding: string;
-  @doc("受理する認証方式。例: UsernameToken。")
+  @doc("The authentication method accepted, `UsernameToken` for instance.")
   auth_methods: string[];
 }
 
 
-@doc("WS-Trust 1.3 Issue binding の RST から検証対象を抽出した中間表現。")
+@doc("The intermediate form holding what has to be checked, extracted from the RST of the WS-Trust 1.3 Issue binding.")
 model WsTrustRequestSecurityToken {
-  @doc("WS-Addressing MessageID。replay 防止に使う。")
+  @doc("The WS-Addressing MessageID, used to prevent replay.")
   @minLength(1)
   message_id: string;
-  @doc("WS-Addressing To。要求先 STS endpoint。")
+  @doc("WS-Addressing `To`: the STS endpoint the request was addressed to.")
   to: string;
-  @doc("WS-Addressing Action。Issue のみ受理する。")
+  @doc("WS-Addressing `Action`. Only Issue is accepted.")
   action: string;
-  @doc("WS-Security UsernameToken username。")
+  @doc("The username of the WS-Security UsernameToken.")
   @minLength(1)
   username: string;
-  @doc("WS-Security UsernameToken password credential。")
+  @doc("The password credential of the WS-Security UsernameToken.")
   @minLength(1)
   password: string;
-  @doc("WS-Security Timestamp Created。")
+  @doc("WS-Security Timestamp `Created`.")
   created_at: utcDateTime;
-  @doc("WS-Security Timestamp Expires。")
+  @doc("WS-Security Timestamp `Expires`.")
   expires_at: utcDateTime;
-  @doc("対象 RP / audience。登録済み WsFedRelyingParty に解決する。")
+  @doc("The RP, that is, the audience. It resolves to a registered WsFedRelyingParty.")
   @minLength(1)
   applies_to: string;
-  @doc("要求 token type。空なら RP 既定。")
+  @doc("The token type requested. Empty means the RP's default.")
   token_type?: WsFedTokenType;
-  @doc("WS-Trust RequestType。空または Issue のみ受理する。")
+  @doc("The WS-Trust RequestType. Only absent or Issue is accepted.")
   request_type?: string;
-  @doc("WS-Trust KeyType。空または Bearer のみ受理する。")
+  @doc("The WS-Trust KeyType. Only absent or Bearer is accepted.")
   key_type?: string;
 }
 
 
-@doc("WS-Trust Issue に対する RSTR。署名済み SAML assertion と lifetime / appliesTo を含む。")
+@doc("The RSTR for a WS-Trust Issue. It carries the signed SAML assertion together with the lifetime and appliesTo.")
 model WsTrustResponse {
-  @doc("元 RST の MessageID。")
+  @doc("The MessageID of the originating RST.")
   relates_to?: string;
   @minLength(1)
   applies_to: string;
@@ -113,73 +113,88 @@ model WsTrustResponse {
 }
 
 
-@doc("WS-Federation passive sign-in で署名済み assertion を RP へ発行した。")
+@doc("A signed assertion was issued to an RP through WS-Federation passive sign-in.")
 model WsFedSignInIssued {
   occurredAt: utcDateTime;
-  @doc("発行したテナント ID。")
+  @doc("The tenant that issued it.")
   tenantId: string;
-  @doc("発行先 RP の wtrealm。")
+  @doc("The wtrealm of the RP it was issued to.")
   wtrealm: string;
-  @doc("subject (NameID 由来の user)。")
+  @doc("The subject, the user the NameID resolved to.")
   userId: string;
 }
 
 
-@doc("WS-Federation passive sign-in を拒否した (未登録 wtrealm・許可外 wreply・検証失敗など)。")
+@doc("A WS-Federation passive sign-in was refused: an unregistered wtrealm, a `wreply` outside the permitted set, a failed check, and the like.")
 model WsFedSignInRejected {
   occurredAt: utcDateTime;
-  @doc("拒否したテナント ID。")
+  @doc("The tenant that refused it.")
   tenantId: string;
-  @doc("要求された wtrealm (判明していれば)。")
+  @doc("The wtrealm that was asked for, when it could be determined.")
   wtrealm?: string;
-  @doc("拒否理由の要約。")
+  @doc("A summary of why it was refused.")
   reason: string;
 }
 
 
-@doc("WS-Federation sign-out でローカルセッションを破棄した。")
+@doc("A WS-Federation sign-out destroyed the local session.")
 model WsFedSignOut {
   occurredAt: utcDateTime;
-  @doc("sign-out したテナント ID。")
+  @doc("The tenant that signed out.")
   tenantId: string;
-  @doc("sign-out を要求した RP の wtrealm (判明していれば)。")
+  @doc("The wtrealm of the RP that asked for the sign-out, when it could be determined.")
   wtrealm?: string;
 }
 
 
-@doc("WS-Trust active STS で署名済み assertion を発行した。")
+@doc("A signed assertion was issued through the WS-Trust active STS.")
 model WsTrustTokenIssued {
   occurredAt: utcDateTime;
-  @doc("発行したテナント ID。")
+  @doc("The tenant that issued it.")
   tenantId: string;
-  @doc("発行先 RP / audience。")
+  @doc("The RP, that is, the audience, it was issued to.")
   appliesTo: string;
-  @doc("subject user。")
+  @doc("The subject user.")
   userId: string;
 }
 
 
-@doc("WS-Trust active STS の Issue 要求を拒否した。")
+@doc("An Issue request to the WS-Trust active STS was refused.")
 model WsTrustTokenRejected {
   occurredAt: utcDateTime;
-  @doc("拒否したテナント ID。")
+  @doc("The tenant that refused it.")
   tenantId: string;
-  @doc("要求された AppliesTo (判明していれば)。")
+  @doc("The AppliesTo that was asked for, when it could be determined.")
   appliesTo?: string;
-  @doc("拒否理由の要約。")
+  @doc("A summary of why it was refused.")
   reason: string;
 }
 
 
-@doc("Microsoft Entra domain federation preset を設定し、対応する WS-Fed RP trust を upsert した。")
+@doc("A Microsoft Entra domain federation preset was configured and the matching WS-Fed RP trust was upserted.")
 model EntraFederationConfigured {
   occurredAt: utcDateTime;
-  @doc("設定したテナント ID。")
+  @doc("The tenant that was configured.")
   tenantId: string;
-  @doc("Entra 検証済み domain。")
+  @doc("The domain verified in Entra.")
   domain: string;
-  @doc("Entra に登録する IssuerUri。")
+  @doc("The IssuerUri registered in Entra.")
   issuerUri: string;
+}
+
+
+@doc("The JSON request registering or updating a WS-Federation relying party. It carries only what the caller may set; `application_id`, the tenant, and the timestamps stay with the server.")
+model WsFedRelyingPartyRequest {
+  @doc("The identifier of the RP: the WS-Fed wtrealm, which is also the SAML audience.")
+  wtrealm: string;
+  @doc("The display name in the administration UI.")
+  display_name: string;
+  @doc("The closed set of permitted `wreply` targets. Only an exact match against this set is accepted.")
+  reply_urls: url[];
+  @doc("The audience of an issued assertion. Empty means the wtrealm is used.")
+  audience?: string;
+  @doc("The claim issuance policy for this RP.")
+  claim_policy: ClaimMappingPolicy;
 }
 
 }

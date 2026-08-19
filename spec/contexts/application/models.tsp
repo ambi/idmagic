@@ -1,13 +1,13 @@
 namespace IdMagic.Contract {
 
-@doc("OAuth2 context が publish する client 種別の published language stub。")
+@doc("Published-language stub for the client kind owned by the OAuth2 context. Wire values follow RFC 6749 section 2.1.")
 enum ClientType {
-  Public: "Public",
-  Confidential: "Confidential",
+  Public: "public",
+  Confidential: "confidential",
 }
 
 
-@doc("OAuth2 context が publish する client secret credential 状態の published language stub。")
+@doc("Published-language stub for the client secret credential state the OAuth2 context publishes.")
 enum ClientSecretCredentialStatus {
   Active: "Active",
   Expired: "Expired",
@@ -15,68 +15,66 @@ enum ClientSecretCredentialStatus {
 }
 
 
-@doc("OAuth2 context が publish するトークン発行方式の published language stub。")
+@doc("Published-language stub for the grant types owned by the OAuth2 context. Wire values are the `grant_type` values registered by RFC 6749 section 4, RFC 8628 section 3.4 (device code), RFC 8693 section 2.1 (token exchange), and OpenID Connect CIBA Core section 4.")
 enum GrantType {
-  AuthorizationCode: "AuthorizationCode",
-  RefreshToken: "RefreshToken",
-  ClientCredentials: "ClientCredentials",
-  DeviceCode: "DeviceCode",
-  TokenExchange: "TokenExchange",
-  Ciba: "Ciba",
+  AuthorizationCode: "authorization_code",
+  RefreshToken: "refresh_token",
+  ClientCredentials: "client_credentials",
+  DeviceCode: "urn:ietf:params:oauth:grant-type:device_code",
+  TokenExchange: "urn:ietf:params:oauth:grant-type:token-exchange",
+  Ciba: "urn:openid:params:grant-type:ciba",
 }
 
 
-@doc("OAuth2 context が publish する /token クライアント認証方式の published language stub。")
+@doc("Published-language stub for the token endpoint client authentication methods owned by the OAuth2 context. Wire values are the `token_endpoint_auth_method` values of OpenID Connect Discovery 1.0 section 3 and RFC 8705 section 2.")
 enum TokenEndpointAuthMethod {
-  ClientSecretBasic: "ClientSecretBasic",
-  ClientSecretPost: "ClientSecretPost",
-  PrivateKeyJwt: "PrivateKeyJwt",
-  TlsClientAuth: "TlsClientAuth",
-  None: "None",
+  ClientSecretBasic: "client_secret_basic",
+  ClientSecretPost: "client_secret_post",
+  PrivateKeyJwt: "private_key_jwt",
+  TlsClientAuth: "tls_client_auth",
+  None: "none",
 }
 
 
-@doc("OAuth2 context が publish する /authorize 応答種別の published language stub。")
+@doc("Published-language stub for the authorization response type owned by the OAuth2 context. Wire value follows RFC 6749 section 3.1.1; only the authorization code flow is supported.")
 enum ResponseType {
-  Code: "Code",
+  Code: "code",
 }
 
 
-@doc("OAuth2 context が publish する FAPI セキュリティプロファイルの published language stub。")
+@doc("Published-language stub for the FAPI security profile owned by the OAuth2 context. Wire values are IdMagic-defined (backend/oauth2/client/domain/client.go).")
 enum FapiProfile {
-  None: "None",
-  Fapi2SecurityProfile: "Fapi2SecurityProfile",
+  None: "none",
+  Fapi2SecurityProfile: "fapi_2_security_profile",
 }
 
 
-@doc("OAuth2 context が定義する Active client secret credential 最大2件の上限 error の published language stub。")
-model ClientSecretLimitExceededError {
-
-}
+@doc("An OAuth2Client already holds the maximum of two Active client secret credentials, so another one cannot be issued. Published-language stub for the limit error the OAuth2 context defines. RFC 9457 Problem Details with `type` = `urn:idmagic:error:client_secret_limit_exceeded`.")
+model ClientSecretLimitExceededError is ProblemDetails;
 
 
-@doc("OAuth2 context が publish する client secret 追加発行イベントの published language stub。secret と hash は含めない。")
+@doc("Published-language stub for the event the OAuth2 context publishes when a client secret is additionally issued. It carries neither the secret nor its hash.")
 model ClientSecretIssued {
   occurredAt: utcDateTime;
   tenantId: string;
   actorUserId: string;
   clientId: string;
-  credentialId: unknown;
+  credentialId: string;
   expiresAt: utcDateTime;
 }
 
 
-@doc("OAuth2 context が publish する client secret 個別失効イベントの published language stub。secret と hash は含めない。")
+@doc("Published-language stub for the event the OAuth2 context publishes when one client secret is revoked. It carries neither the secret nor its hash.")
 model ClientSecretRevoked {
   occurredAt: utcDateTime;
   tenantId: string;
   actorUserId: string;
   clientId: string;
-  credentialId: unknown;
+  credentialId: string;
 }
 
 
-@doc("Application の種別。federated は SSO フェデレーションを束ねる業務アプリ、weblink は SSO しない外部リンク、service は M2M / client_credentials の API クライアント (Okta の API Services 相当。ポータルタイル・利用者割当を持たない)。")
+@doc("The kind of an Application. `federated` is a business application tied together by SSO federation, `weblink` is an external link with no SSO, and `service` is a machine-to-machine client_credentials API client -- Okta's API Services, with neither a portal tile nor user assignments.")
 enum ApplicationKind {
   federated: "federated",
   weblink: "weblink",
@@ -84,14 +82,14 @@ enum ApplicationKind {
 }
 
 
-@doc("Application の有効状態。")
+@doc("Whether an Application is enabled.")
 enum ApplicationStatus {
   active: "active",
   disabled: "disabled",
 }
 
 
-@doc("Application が利用する単一 protocol の種別。作成後は変更できない。")
+@doc("The single protocol an Application uses. It cannot be changed after creation.")
 enum ApplicationProtocolType {
   oidc: "oidc",
   saml: "saml",
@@ -99,7 +97,7 @@ enum ApplicationProtocolType {
 }
 
 
-@doc("一括作成で選ぶアプリ種別。oidc / saml / wsfed は federated Application と対応する protocol 設定を作成して catalog へ原子的に公開し、weblink は SSO なしの外部リンク、service は M2M / client_credentials の OAuth2 client (service kind) を作る。")
+@doc("The application kind chosen at bulk creation. `oidc`, `saml`, and `wsfed` create a federated Application together with the matching protocol settings and publish both to the catalogue atomically; `weblink` creates an external link with no SSO; and `service` creates a machine-to-machine client_credentials OAuth2 client of the `service` kind.")
 enum ApplicationProvisionType {
   oidc: "oidc",
   saml: "saml",
@@ -109,51 +107,51 @@ enum ApplicationProvisionType {
 }
 
 
-@doc("Application に紐づく単一 protocol 設定への参照。type に対応する key だけを持ち、protocol row の application_id から Application へ通常の外部キーで関連付ける。")
+@doc("A reference to the single protocol configuration an Application is tied to. It carries only the key that matches `type`, and the protocol row is related back to the Application through its `application_id` as an ordinary foreign key.")
 model ApplicationProtocol {
-  @doc("protocol 種別。")
+  @doc("The protocol kind.")
   type: ApplicationProtocolType;
-  @doc("oidc が指す OAuth2 client_id。")
+  @doc("The OAuth2 `client_id` that `oidc` points at.")
   client_id?: string;
-  @doc("saml が指す SAML entity_id。")
+  @doc("The SAML `entity_id` that `saml` points at.")
   @maxLength(2048)
   entity_id?: string;
-  @doc("wsfed が指す WS-Fed RP の wtrealm。")
+  @doc("The `wtrealm` of the WS-Fed RP that `wsfed` points at.")
   @maxLength(2048)
   wtrealm?: string;
 }
 
 
-@doc("管理者が tenant 単位で定義するポータルの分類セクション。Application に 0..N 個\n付与され、利用者ポータルはこのカテゴリ単位でタイルをセクション表示する。割当境界は越えず、\nセクションには利用者に割当済みのアプリだけが並ぶ。")
+@doc("A portal section an administrator defines per tenant. An Application carries zero or more of them, and\nthe user portal groups its tiles into sections by category. It never crosses the assignment boundary: a section holds\nonly the apps assigned to that user.")
 model ApplicationCategory {
-  @doc("所属テナント ID。")
+  @doc("The tenant it belongs to.")
   tenant_id: string = "default";
-  @doc("カテゴリ識別子。")
-  id: unknown;
-  @doc("セクション表示名。")
+  @doc("The category identifier.")
+  id: string;
+  @doc("The section display name.")
   @minLength(1)
   name: string;
-  @doc("セクションの表示順。小さいほど先。同値は name 昇順。")
+  @doc("The display order of the section; smaller comes first, and ties break by name ascending.")
   position: int64;
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("サインインポリシーが要求する認証強度。Password は追加要求なし (acr ⊇ urn:idmagic:acr:pwd)、Mfa は第二要素必須 (acr = urn:idmagic:acr:mfa、amr に otp / webauthn / hwk / swk のいずれかを含む)。")
+@doc("The authentication strength the sign-in policy demands. `Password` asks for nothing more (acr includes urn:idmagic:acr:pwd), and `Mfa` requires a second factor (acr equals urn:idmagic:acr:mfa, and amr holds one of otp, webauthn, hwk, or swk).")
 enum RequiredAuthnStrength {
   Password: "Password",
   Mfa: "Mfa",
 }
 
 
-@doc("サインインポリシーが要求する認証強度。制約された選択肢 (Password / Mfa) を内部の acr / amr へ写像する。Mfa を満たさない場合は step-up で昇格を促す。")
+@doc("The authentication strength the sign-in policy demands. It maps the constrained choices, Password and Mfa, onto the internal acr and amr. When Mfa is not satisfied, the user is nudged to step up.")
 model RequiredAuthnLevel {
   strength: RequiredAuthnStrength = RequiredAuthnStrength.Password;
 }
 
 
-@doc("MFA 必須化の事前登録期間と、強制開始後の管理者承認済みオンボーディングを制御する。enforcement_start_at より前は通常ログインを許可して self-service 登録を促し、開始後は未登録ユーザーをログイン完了させず、allow_admin_bypass=true かつ有効な単発 enrollment bypass がある場合だけ登録専用 flow へ進める。grace_period_seconds は開始後に bypass を利用できる期間であり、自由登録期間ではない。")
+@doc("Governs the pre-enrollment period before MFA becomes mandatory, and the administrator-approved onboarding after enforcement starts. Before `enforcement_start_at` an ordinary sign-in is allowed, which nudges the user to enroll through self-service; after it, an unenrolled user does not complete sign-in, and only when `allow_admin_bypass` is true and a valid single-use enrollment bypass exists do they proceed into the enrollment-only flow. `grace_period_seconds` is how long a bypass may be used after enforcement starts, not a period of free enrollment.")
 model MfaEnrollmentPolicy {
   enforcement_start_at?: utcDateTime;
   grace_period_seconds?: int64;
@@ -161,15 +159,15 @@ model MfaEnrollmentPolicy {
 }
 
 
-@doc("サインインポリシーの静的アクセス条件。すべて初期実装で実際に評価できる構造化条件のみを持つ。network_allow_cidrs はクライアント IP を許可 CIDR に突き合わせ、reauth_max_age_seconds は認証または step-up の recency として評価する。旧 network / device の自由入力は廃止した。")
+@doc("The static access conditions of a sign-in policy. Every one of them is a structured condition the initial implementation can actually evaluate. `network_allow_cidrs` matches the client IP against the permitted CIDRs, and `reauth_max_age_seconds` is evaluated as the recency of an authentication or a step-up. The old free-text network and device fields have been dropped.")
 model AccessCondition {
-  @doc("許可するクライアント IP の CIDR 一覧。空なら制限なし。非空でクライアント IP がいずれの CIDR にも含まれない、または IP を取得できない場合は fail-closed で拒否する。")
+  @doc("The CIDRs the client IP is permitted to fall in. Empty means no restriction. When it is non-empty and the client IP falls in none of them, or the IP cannot be determined at all, the request is refused fail-closed.")
   network_allow_cidrs: string[];
   reauth_max_age_seconds?: int64;
 }
 
 
-@doc("サインインポリシーの単一ルール。")
+@doc("One rule of a sign-in policy.")
 model SignInRule {
   rule_id: string;
   name: string;
@@ -177,22 +175,22 @@ model SignInRule {
   required_authn: RequiredAuthnLevel;
   condition: AccessCondition;
   mfa_enrollment?: MfaEnrollmentPolicy;
-  @doc("required_authn=Mfa のとき、記憶済みの信頼済みデバイス (amr に tdev) で MFA 要件を\n満たしてよいかどうか。false は「毎回 MFA」を意味し、本物の第二要素の提示だけを認める。\n既定は true だが、テナントが trusted_device_max_age_seconds を 0 のままにしていれば\nそもそも信頼済みデバイスは発行も評価もされないので、実効的な既定は「記憶しない」である。")
+  @doc("When `required_authn` is `Mfa`, whether a remembered trusted device (amr holding `tdev`) may satisfy the MFA\nrequirement. False means MFA every time, admitting nothing but a genuine second factor.\nIt defaults to true, but as long as the tenant leaves `trusted_device_max_age_seconds` at zero, no trusted device is\never issued or evaluated, so the effective default is not to remember anything.")
   allow_trusted_device: boolean = true;
 }
 
 
-@doc("Application ごとのサインインポリシー。ApplicationCatalog が所有する。有効ルールを持つときテナントデフォルトを完全に上書き (置換) して評価され、持たなければデフォルトが適用される (上書きモデル)。デフォルトより弱い設定でも保存でき、その場合は UI で警告する。")
+@doc("The sign-in policy of one Application, owned by the ApplicationCatalog. When it holds any rule it replaces the tenant default outright for that application; when it holds none, the default applies. This is an override model. A setting weaker than the default can still be saved, and the UI warns about it.")
 model AppSignInPolicy {
-  @doc("親 Application の global UUID foreign key。tenant 境界は親 Application から導出する。")
-  application_id: unknown;
+  @doc("The global UUID foreign key to the parent Application. The tenant boundary follows from that parent.")
+  application_id: string;
   rules: SignInRule[];
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("テナントデフォルトのサインインポリシー。ApplicationCatalog が tenant 単位で所有し、独自ポリシーを持たない全 Application の federation 開始で適用される baseline。アプリ個別ポリシーが設定されるとそのアプリではデフォルトを上書きする。")
+@doc("The tenant default sign-in policy. The ApplicationCatalog owns one per tenant, and it is the baseline applied when federation starts for every Application that has no policy of its own. Setting a policy on an application overrides the default for that application.")
 model TenantDefaultSignInPolicy {
   tenant_id: string = "default";
   rules: SignInRule[];
@@ -201,9 +199,9 @@ model TenantDefaultSignInPolicy {
 }
 
 
-@doc("管理 API が返す Application 表現。")
+@doc("How the administration API represents an Application.")
 model AdminApplicationResponse {
-  id: unknown;
+  id: string;
   name: string;
   kind: ApplicationKind;
   status: ApplicationStatus;
@@ -211,7 +209,7 @@ model AdminApplicationResponse {
   icon_object_key?: string;
   launch_url?: string;
   protocol?: ApplicationProtocol;
-  category_ids: unknown[];
+  category_ids: string[];
   category_names: string[];
   protocol_summary?: string;
   assigned_subject_count: int64;
@@ -221,13 +219,13 @@ model AdminApplicationResponse {
 }
 
 
-@doc("Application 一覧レスポンス。")
+@doc("The Application list response.")
 model AdminApplicationListResponse {
   applications: AdminApplicationResponse[];
 }
 
 
-@doc("ApplicationCategory の作成 / 更新リクエスト。position 省略時は末尾扱い。")
+@doc("The request to create or update an ApplicationCategory. Leaving `position` out places it last.")
 model AdminApplicationCategoryRequest {
   @minLength(1)
   name: string;
@@ -235,9 +233,9 @@ model AdminApplicationCategoryRequest {
 }
 
 
-@doc("管理 API が返す ApplicationCategory 表現。")
+@doc("How the administration API represents an ApplicationCategory.")
 model AdminApplicationCategoryResponse {
-  id: unknown;
+  id: string;
   name: string;
   position: int64;
   created_at: utcDateTime;
@@ -245,67 +243,67 @@ model AdminApplicationCategoryResponse {
 }
 
 
-@doc("ApplicationCategory 一覧レスポンス。position 昇順 (同値は name 昇順)。")
+@doc("The ApplicationCategory list response, by position ascending with ties breaking by name ascending.")
 model AdminApplicationCategoryListResponse {
   categories: AdminApplicationCategoryResponse[];
 }
 
 
-@doc("Application に付与するカテゴリ集合を置き換えるリクエスト。category_ids は所属テナントの 既存カテゴリのみを含む。")
+@doc("The request replacing the set of categories assigned to an Application. `category_ids` may hold only categories that already exist in the tenant.")
 model ApplicationCategoriesRequest {
-  category_ids: unknown[];
+  category_ids: string[];
 }
 
 
-@doc("Application 一括作成リクエスト。種別を選び、対応する protocol 設定もまとめて受け取る。backend は protocol row を catalog 外として準備した後、Application insert と protocol row.application_id の設定を同一 transaction で行う。後半が失敗した protocol row は有効な catalog 外設定であり、意味のない Application は残さない。")
+@doc("The request that creates an Application in one call. It names the kind and carries the matching protocol settings with it. The backend prepares the protocol row outside the catalogue first, then inserts the Application and sets `row.application_id` in a single transaction. A protocol row whose second half failed is a valid configuration outside the catalogue, so no meaningless Application is left behind.")
 model AdminApplicationCreateRequest {
   @minLength(1)
   name: string;
-  @doc("oidc / saml / wsfed / weblink / service。")
+  @doc("One of oidc, saml, wsfed, weblink, or service.")
   type: ApplicationProvisionType;
-  @doc("ポータルのタイルから開く起動 URL。weblink では必須。")
+  @doc("The launch URL a portal tile opens. Required for `weblink`.")
   launch_url?: string;
-  @doc("type=oidc のとき必須。生成する OAuth2 client のリダイレクト URI。")
+  @doc("Required when `type` is `oidc`: the redirect URIs of the OAuth2 client to create.")
   redirect_uris?: string[];
-  @doc("生成する OAuth2 client のスコープ。")
+  @doc("The scopes of the OAuth2 client to create.")
   scope?: string;
-  @doc("type=oidc の生成 client 種別。既定は confidential。")
+  @doc("The kind of client to create when `type` is `oidc`; `confidential` by default.")
   client_type?: ClientType;
-  @doc("type=oidc の生成 client 認証方式。作成時に確定し以後不変。")
+  @doc("The client authentication method of the client created when `type` is `oidc`. It is settled at creation and immutable afterwards.")
   token_endpoint_auth_method?: TokenEndpointAuthMethod;
-  @doc("token_endpoint_auth_method=private_key_jwt の公開鍵 JWKS URI。")
+  @doc("The public key JWKS URI for `token_endpoint_auth_method=private_key_jwt`.")
   jwks_uri?: url;
-  @doc("token_endpoint_auth_method=tls_client_auth の証明書 Subject DN。")
+  @doc("The certificate Subject DN for `token_endpoint_auth_method=tls_client_auth`.")
   @maxLength(2048)
   tls_client_auth_subject_dn?: string;
-  @doc("type=wsfed のとき必須。生成する WS-Fed RP の wtrealm。")
+  @doc("Required when `type` is `wsfed`: the `wtrealm` of the WS-Fed RP to create.")
   @maxLength(2048)
   wtrealm?: string;
-  @doc("type=wsfed のとき必須。許可する wreply。")
+  @doc("Required when `type` is `wsfed`: the permitted `wreply` targets.")
   reply_urls?: string[];
-  @doc("type=wsfed の NameID 形式。")
+  @doc("The NameID format for `type=wsfed`.")
   name_id_format?: string;
-  @doc("type=wsfed の NameID ソース属性。")
+  @doc("The NameID source attribute for `type=wsfed`.")
   name_id_source?: string;
-  @doc("type=saml のとき必須。生成する SAML SP の entity ID。")
+  @doc("Required when `type` is `saml`: the entity ID of the SAML SP to create.")
   @maxLength(2048)
   entity_id?: string;
-  @doc("type=saml のとき必須。Assertion Consumer Service URL。")
+  @doc("Required when `type` is `saml`: the Assertion Consumer Service URL.")
   acs_urls?: string[];
 }
 
 
-@doc("一括作成の結果。type=oidc のときは生成した OAuth2 client の client_id / client_secret を 一度だけ返す (再表示不可)。")
+@doc("The result of a bulk creation. For `type=oidc` it returns the `client_id` and `client_secret` of the OAuth2 client it created, once; the secret cannot be read again.")
 model AdminApplicationCreateResponse {
   application: AdminApplicationResponse;
-  @doc("type=oidc のとき返る生成クライアント ID。")
+  @doc("The generated client id, returned when `type` is `oidc`.")
   client_id?: string;
-  @doc("type=oidc のとき一度だけ返るシークレット。")
+  @doc("The secret, returned once when `type` is `oidc`.")
   client_secret?: string;
 }
 
 
-@doc("Application の OIDC protocol が指す OAuth2 client の実設定 (アプリ詳細表示用)。advanced 項目を含む。token_endpoint_auth_method / client_type / fapi_profile は更新契約上の不変項目で 表示専用。")
+@doc("The real settings of the OAuth2 client the OIDC protocol of an Application points at, for the application detail screen. Advanced fields are included. `token_endpoint_auth_method`, `client_type`, and `fapi_profile` are immutable under the update contract and are shown for reference only.")
 model ApplicationOidcConfig {
   client_id: string;
   client_type: ClientType;
@@ -317,20 +315,20 @@ model ApplicationOidcConfig {
   require_pushed_authorization_requests: boolean;
   dpop_bound_access_tokens: boolean;
   fapi_profile: FapiProfile;
-  @doc("client_secret_basic / client_secret_post の confidential client のみ true。private_key_jwt、mTLS、public client は false。")
+  @doc("True only for a confidential client using client_secret_basic or client_secret_post. False for private_key_jwt, mTLS, and a public client.")
   client_secret_rotatable: boolean;
-  @doc("hash・平文を含まない credential metadata。editor は作成日時・有効期限・Active/Expired/Revoked 状態を表示する。")
+  @doc("Credential metadata carrying neither a hash nor a plaintext. The editor shows the creation time, the expiry, and whether the credential is Active, Expired, or Revoked.")
   secret_credentials: ApplicationClientSecretCredentialMetadata[];
-  @doc("ID Token / UserInfo の sub claim に使う source 属性。未設定なら\nuser の内部 id (既定挙動) を使う。WS-Fed/SAML の name_id_source と同じ位置付けの subject\n識別子上書き。")
+  @doc("The source attribute used for the `sub` claim of the ID token and UserInfo. Left unset, the\nuser's internal id is used, which is the default behaviour. It overrides the subject identifier the same way\n`name_id_source` does for WS-Fed and SAML.")
   sub_source_attribute?: string;
-  @doc("このアプリ向けの claim release 上書き。scope 主導の標準 claim\n(profile/email 等) による開示可否とは独立に、開示範囲を絞る/写像するために追加する。\nvisibility=Private の属性や reserved claim type は floor により拒否される。")
+  @doc("The claim release override for this application. Independently of what the scope-driven\nstandard claims (profile, email, and so on) would disclose, it narrows or remaps what is released.\nAn attribute whose visibility is `private`, and a reserved claim type, are refused by the floor.")
   rules: ClaimMappingRule[];
 }
 
 
-@doc("Application editor 向けに OAuth2 credential を写像した非機密メタデータ。OAuth2 の hash や平文を露出せず、状態は revoked_at、expires_at、評価時刻から導出する。")
+@doc("Non-sensitive metadata projecting an OAuth2 credential for the Application editor. It exposes neither the OAuth2 hash nor the plaintext, and derives the state from `revoked_at`, `expires_at`, and the time of evaluation.")
 model ApplicationClientSecretCredentialMetadata {
-  credential_id: unknown;
+  credential_id: string;
   created_at: utcDateTime;
   expires_at?: utcDateTime;
   revoked_at?: utcDateTime;
@@ -338,7 +336,7 @@ model ApplicationClientSecretCredentialMetadata {
 }
 
 
-@doc("Application の WS-Fed protocol が指す relying party の実設定 (アプリ詳細表示用)。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は テナント単位の設定として別に扱う。")
+@doc("The real settings of the relying party the WS-Fed protocol of an Application points at, for the application detail screen. The per-RP advanced fields -- audience, token type, claim rules -- are included. Entra domain federation is handled separately, as a per-tenant setting.")
 model ApplicationWsFedConfig {
   wtrealm: string;
   reply_urls: string[];
@@ -350,9 +348,9 @@ model ApplicationWsFedConfig {
 }
 
 
-@doc("Application の SAML protocol が指す service provider の実設定 (アプリ詳細表示用)。")
+@doc("The real settings of the service provider the SAML protocol of an Application points at, for the application detail screen.")
 model ApplicationSamlConfig {
-  @doc("SAML SPに必ず割り当てられる同一テナント内のIdP profile ID。")
+  @doc("The id of the IdP profile in the same tenant that every SAML SP is assigned to.")
   idp_profile_id: string;
   entity_id: string;
   acs_urls: string[];
@@ -368,7 +366,7 @@ model ApplicationSamlConfig {
 }
 
 
-@doc("アプリ詳細レスポンス。Application 本体に加え、protocol relation から解決した実設定を含む。oidc / saml / wsfed のうち Application.protocol.type に対応する最大1個だけが設定される。")
+@doc("The application detail response. Besides the Application itself it carries the real settings resolved through the protocol relation. At most one of `oidc`, `saml`, and `wsfed` is set, the one matching `Application.protocol.type`.")
 model AdminApplicationDetailResponse {
   application: AdminApplicationResponse;
   oidc?: ApplicationOidcConfig;
@@ -377,7 +375,7 @@ model AdminApplicationDetailResponse {
 }
 
 
-@doc("OIDC protocol 設定の更新リクエスト。指定フィールドのみ変更する。advanced 項目を含む。 token_endpoint_auth_method など更新契約上の不変項目は含めない。")
+@doc("The request updating the OIDC protocol settings. Only the fields given are changed. Advanced fields are included, while\nfields immutable under the update contract, `token_endpoint_auth_method` among them, are not.")
 model ApplicationOidcConfigUpdateRequest {
   redirect_uris?: string[];
   grant_types?: GrantType[];
@@ -385,20 +383,20 @@ model ApplicationOidcConfigUpdateRequest {
   scope?: string;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
-  @doc("省略時は既存設定を維持する。空文字列を送ると既定 (user の内部 id) に戻す。")
+  @doc("Left out, the existing setting is kept. Sending an empty string returns it to the default, the user's internal id.")
   sub_source_attribute?: string;
-  @doc("省略時は既存の claim release 上書きを維持する。空配列を送ると上書きなし (標準 claim のみ) に戻す。")
+  @doc("Left out, the existing claim release override is kept. Sending an empty array returns it to no override, meaning the standard claims alone.")
   rules?: ClaimMappingRule[];
 }
 
 
-@doc("Application の OIDC protocol に対する secret rotation 要求。grace_days は未指定時7、0（即時 revoke）または1..30日だけ受理する。")
+@doc("The request to rotate the secret of an Application's OIDC protocol. `grace_days` is 7 when left out, and only 0 -- revoke at once -- or 1 to 30 days is accepted.")
 model RotateApplicationClientSecretRequest {
   grace_days?: int64;
 }
 
 
-@doc("新 secret を一度だけ返す。hash、既存 secret、平文の再取得経路は含まない。")
+@doc("Returns the new secret once. It carries no hash, no existing secret, and no way to read the plaintext again.")
 model RotateApplicationClientSecretResponse {
   client_secret: string;
   grace_until?: utcDateTime;
@@ -406,13 +404,13 @@ model RotateApplicationClientSecretResponse {
 }
 
 
-@doc("Application の OIDC protocol に対し、既存 credential を変更せず期限付き secret を追加発行する要求。expires_in_days は未指定時90、1..730日だけ受理する。")
+@doc("The request that issues an additional secret with an expiry on an Application's OIDC protocol, leaving existing credentials alone. `expires_in_days` is 90 when left out, and only 1 to 730 days is accepted.")
 model IssueApplicationClientSecretRequest {
   expires_in_days?: int64;
 }
 
 
-@doc("追加発行した secret を一度だけ返す。hash、既存 secret、平文の再取得経路は含まない。")
+@doc("Returns the additionally issued secret once. It carries no hash, no existing secret, and no way to read the plaintext again.")
 model IssueApplicationClientSecretResponse {
   client_secret: string;
   credential: ApplicationClientSecretCredentialMetadata;
@@ -420,13 +418,13 @@ model IssueApplicationClientSecretResponse {
 }
 
 
-@doc("指定 credential の個別失効後に返す非機密 metadata 一覧。")
+@doc("The list of non-sensitive metadata returned after one named credential has been revoked.")
 model RevokeApplicationClientSecretResponse {
   credentials: ApplicationClientSecretCredentialMetadata[];
 }
 
 
-@doc("WS-Federation protocol 設定の更新リクエスト。指定フィールドのみ変更する。per-RP の advanced 項目 (audience / token_type / claim 規則) を含む。Entra domain federation は対象外。")
+@doc("The request updating the WS-Federation protocol settings. Only the fields given are changed. The per-RP advanced fields -- audience, token type, claim rules -- are included. Entra domain federation is out of scope here.")
 model ApplicationWsFedConfigUpdateRequest {
   reply_urls?: string[];
   audience?: string;
@@ -437,9 +435,9 @@ model ApplicationWsFedConfigUpdateRequest {
 }
 
 
-@doc("SAML protocol 設定の部分更新リクエスト。ACS/SLO、audience、NameID、署名方針、claim 規則を更新する。")
+@doc("The request partially updating the SAML protocol settings. It updates the ACS and SLO URLs, the audience, the NameID, the signature policy, and the claim rules.")
 model ApplicationSamlConfigUpdateRequest {
-  @doc("SPへ割り当てる同一テナント内のIdP profile。dedicated profileが別SPで使用中なら更新を拒否する。")
+  @doc("The IdP profile in the same tenant to assign to the SP. When a dedicated profile is already in use by another SP, the update is refused.")
   idp_profile_id?: string;
   acs_urls?: string[];
   slo_url?: string;
@@ -454,7 +452,7 @@ model ApplicationSamlConfigUpdateRequest {
 }
 
 
-@doc("Application 更新リクエスト。指定フィールドのみ変更する。")
+@doc("The request updating an Application. Only the fields given are changed.")
 model AdminApplicationUpdateRequest {
   name?: string;
   status?: ApplicationStatus;
@@ -462,13 +460,13 @@ model AdminApplicationUpdateRequest {
 }
 
 
-@doc("Application icon アップロードまたは削除後の Application 表現。")
+@doc("How an Application is represented after its icon has been uploaded or deleted.")
 model ApplicationIconUploadResponse {
   application: AdminApplicationResponse;
 }
 
 
-@doc("Application 割当リクエスト。visibility 省略時は visible。")
+@doc("The request assigning an Application. Leaving `visibility` out means `visible`.")
 model ApplicationAssignmentRequest {
   subject_type: AssignmentSubjectType;
   @minLength(1)
@@ -477,7 +475,7 @@ model ApplicationAssignmentRequest {
 }
 
 
-@doc("割当表現。")
+@doc("How an assignment is represented.")
 model ApplicationAssignmentResponse {
   subject_type: AssignmentSubjectType;
   subject_id: string;
@@ -486,91 +484,91 @@ model ApplicationAssignmentResponse {
 }
 
 
-@doc("割当一覧レスポンス。")
+@doc("The assignment list response.")
 model ApplicationAssignmentListResponse {
   assignments: ApplicationAssignmentResponse[];
 }
 
 
-@doc("管理者が Application の sign-in policy を置き換えるリクエスト。有効ルールを送るとテナントデフォルトを上書きし、空で送るとデフォルト適用に戻る。")
+@doc("The request in which an administrator replaces the sign-in policy of an Application. Sending any rule overrides the tenant default; sending none returns it to applying the default.")
 model AppSignInPolicyRequest {
   rules: SignInRule[];
 }
 
 
-@doc("Application の sign-in policy 表現。アプリ詳細で「このアプリの上書き (policy)」「テナントデフォルト (tenant_default)」\n「実際に適用される effective ルール列」を区別して表示できるようにする。")
+@doc("How the sign-in policy of an Application is represented. It lets the application detail screen tell apart the application's\nown override (`policy`), the tenant default (`tenant_default`), and the effective rule sequence that actually applies.")
 model AppSignInPolicyResponse {
   policy: AppSignInPolicy;
   tenant_default: TenantDefaultSignInPolicy;
-  @doc("上書きモデルで実際に評価されるルール列。アプリが有効ルールを持てば policy.rules、持たなければ tenant_default.rules。")
+  @doc("The rule sequence actually evaluated under the override model: `policy.rules` when the application holds any rule, and `tenant_default.rules` when it does not.")
   effective_rules: SignInRule[];
-  @doc("アプリ独自ポリシーがデフォルトより弱い (認証強度・再認証時間・許可ネットワークのいずれかを緩める) とき true。UI 警告用で評価は妨げない。")
+  @doc("True when the application's own policy is weaker than the default, that is, when it loosens the authentication strength, the reauthentication window, or the permitted networks. It is for a UI warning and does not stop evaluation.")
   weaker_than_default: boolean;
 }
 
 
-@doc("管理者がテナントデフォルト sign-in policy を置き換えるリクエスト。")
+@doc("The request in which an administrator replaces the tenant default sign-in policy.")
 model TenantDefaultSignInPolicyRequest {
   rules: SignInRule[];
 }
 
 
-@doc("テナントデフォルト sign-in policy 表現。")
+@doc("How the tenant default sign-in policy is represented.")
 model TenantDefaultSignInPolicyResponse {
   policy: TenantDefaultSignInPolicy;
-  @doc("テナント内の active user のうち TOTP / WebAuthn factor を 1 件も持たない人数。MFA 必須化前の影響確認に使う。")
+  @doc("How many active users of the tenant hold no TOTP or WebAuthn factor at all. It is used to gauge the impact before making MFA mandatory.")
   unenrolled_user_count: int64;
 }
 
 
-@doc("利用者ポータルに表示する割当済みアプリ 1 件。")
+@doc("One assigned application shown on the user portal.")
 model MyApplication {
-  id: unknown;
+  id: string;
   name: string;
   kind: ApplicationKind;
   icon_url?: string;
   launch_url?: string;
-  @doc("付与カテゴリの id 群。ポータルはこれでタイルをセクションに振り分ける。")
-  category_ids: unknown[];
+  @doc("The ids of the categories it carries. The portal sorts its tiles into sections by these.")
+  category_ids: string[];
 }
 
 
-@doc("利用者ポータルのセクション見出し 1 件。tenant のカテゴリ定義を position 昇順で表す。")
+@doc("One section heading of the user portal, representing the tenant's category definitions by position ascending.")
 model PortalApplicationCategory {
-  id: unknown;
+  id: string;
   name: string;
 }
 
 
-@doc("利用者ポータルの割当済みアプリ一覧。手動並び順があればそれを優先し、無ければ name 昇順。\ncategories は tenant のカテゴリ定義を position 昇順で含み、ポータルはこれをセクション見出しに使う。")
+@doc("The list of assigned applications for the user portal. A manual order takes precedence when one is saved, and name ascending is used otherwise.\n`categories` carries the tenant's category definitions by position ascending, and the portal uses them as section headings.")
 model MyApplicationListResponse {
   applications: MyApplication[];
   categories: PortalApplicationCategory[];
 }
 
 
-@doc("利用者ポータルでの手動並び順。user_id をキーに、Application の\n表示順を application_id の順序列として持つ。user_id は global unique な既存 User を指す。\n順序列に在って現在は未割当の application は一覧から除外し、順序列に無い割当アプリは name 昇順で末尾に付ける。application_ids は配列で保持するため DB 外部キーではなく ReorderMyApplications の use case 検証で、本人に割当済み visible な Application のみに制限する。")
+@doc("The manual order on the user portal. Keyed by `user_id`, it holds the display order of Applications as a\nsequence of `application_id` values. `user_id` names an existing, globally unique User.\nAn application in the sequence that is no longer assigned drops out of the list, and an assigned app absent from the\nsequence is appended by name ascending. `application_ids` is kept as an array rather than a database foreign key, so\nthe use case validation of ReorderMyApplications is what confines it to Applications assigned to that user and visible.")
 model ApplicationOrdering {
   user_id: string;
-  application_ids: unknown[];
+  application_ids: string[];
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible なアプリのみを含む。")
+@doc("A user saves their own manual portal order. `application_ids` may hold only apps assigned to them and visible.")
 model ReorderMyApplicationsRequest {
-  application_ids: unknown[];
+  application_ids: string[];
 }
 
 
-@doc("利用者が保存済みのポータル手動並び順。未保存なら application_ids は空。")
+@doc("The manual portal order a user has saved. With nothing saved, `application_ids` is empty.")
 model MyApplicationOrderResponse {
-  application_ids: unknown[];
+  application_ids: string[];
 }
 
 
-@doc("Application を作成した。")
+@doc("An Application was created.")
 model ApplicationCreated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -579,7 +577,7 @@ model ApplicationCreated {
 }
 
 
-@doc("Application のメタデータを更新した。")
+@doc("The metadata of an Application was updated.")
 model ApplicationUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -589,7 +587,7 @@ model ApplicationUpdated {
 }
 
 
-@doc("Application の保存済みアイコンをアップロードまたは削除した。")
+@doc("The stored icon of an Application was uploaded or deleted.")
 model ApplicationIconUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -599,7 +597,7 @@ model ApplicationIconUpdated {
 }
 
 
-@doc("Application を削除した。")
+@doc("An Application was deleted.")
 model ApplicationDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -608,7 +606,7 @@ model ApplicationDeleted {
 }
 
 
-@doc("Application にユーザー / グループを割当てた。")
+@doc("A user or a group was assigned to an Application.")
 model ApplicationAssigned {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -619,7 +617,7 @@ model ApplicationAssigned {
 }
 
 
-@doc("Application の割当を解除した。")
+@doc("An assignment was removed from an Application.")
 model ApplicationUnassigned {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -630,7 +628,7 @@ model ApplicationUnassigned {
 }
 
 
-@doc("ApplicationCategory を作成した。")
+@doc("An ApplicationCategory was created.")
 model ApplicationCategoryCreated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -639,7 +637,7 @@ model ApplicationCategoryCreated {
 }
 
 
-@doc("ApplicationCategory を更新した。")
+@doc("An ApplicationCategory was updated.")
 model ApplicationCategoryUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -648,7 +646,7 @@ model ApplicationCategoryUpdated {
 }
 
 
-@doc("ApplicationCategory を削除した。付与済みの Application からも除かれる。")
+@doc("An ApplicationCategory was deleted. It was removed from the Applications it was assigned to as well.")
 model ApplicationCategoryDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -657,7 +655,7 @@ model ApplicationCategoryDeleted {
 }
 
 
-@doc("Application の sign-in policy を更新した。")
+@doc("The sign-in policy of an Application was updated.")
 model AppSignInPolicyUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -666,7 +664,7 @@ model AppSignInPolicyUpdated {
 }
 
 
-@doc("Application の claim release 上書き (rules / sub または NameID の source 属性) を更新した。")
+@doc("The claim release override of an Application was updated: the rules, and the source attribute of `sub` or of the NameID.")
 model ApplicationClaimMappingUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -676,7 +674,7 @@ model ApplicationClaimMappingUpdated {
 }
 
 
-@doc("テナントデフォルト sign-in policy を更新した (クリアを含む)。")
+@doc("The tenant default sign-in policy was updated, clearing it included.")
 model TenantDefaultSignInPolicyUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -684,7 +682,7 @@ model TenantDefaultSignInPolicyUpdated {
 }
 
 
-@doc("Application sign-in policy により federation を拒否した。")
+@doc("Federation was refused by an Application sign-in policy.")
 model AppAccessDeniedByPolicy {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -695,7 +693,7 @@ model AppAccessDeniedByPolicy {
 }
 
 
-@doc("Application sign-in policy の認証強度を満たすため step-up が必要になった。")
+@doc("A step-up became necessary to satisfy the authentication strength of an Application sign-in policy.")
 model AppStepUpRequired {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -705,15 +703,11 @@ model AppStepUpRequired {
 }
 
 
-@doc("ApplicationCategory の name が空。")
-model CategoryNameRequiredError {
-
-}
+@doc("The `name` of an ApplicationCategory is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:category_name_required`.")
+model CategoryNameRequiredError is ProblemDetails;
 
 
-@doc("Application に付与しようとした category_id が所属テナントの ApplicationCategory に存在しない。")
-model UnknownCategoryError {
-
-}
+@doc("A `category_id` assigned to an Application does not exist among the ApplicationCategory records of its tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:unknown_category`.")
+model UnknownCategoryError is ProblemDetails;
 
 }

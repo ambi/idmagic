@@ -27,7 +27,7 @@ model ListApiTokensError403 {
   @body body: ListApiTokensError403Body;
 }
 
-@doc("テナントの API アクセストークンを一覧する。JWT 本文は返さない。")
+@doc("Lists the API access tokens of the tenant. The JWT itself is never returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListApiTokens")
 @route("/api/admin/v1/api-tokens")
@@ -37,7 +37,6 @@ op ListApiTokens(
 ): ListApiTokensSuccess_200 | ListApiTokensError403;
 
 model IssueApiTokenHttpRequest {
-  tenant_id: string;
   client_id: string;
   description: string;
   scopes: IdMagic.Contract.ApiTokenScope[];
@@ -75,7 +74,7 @@ model IssueApiTokenError403 {
   @body body: IssueApiTokenError403Body;
 }
 
-@doc("テナントの API アクセストークンを新規発行する。付与する scope 集合と有効日数を 指定する。RFC 9068 JWT access token を含む応答を一度だけ返す。")
+@doc("Issues a new API access token for the tenant, with the scope set and the lifetime in days the caller asks for. The response carries the RFC 9068 JWT access token, and it is the only time the token is returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("IssueApiToken")
 @route("/api/admin/v1/api-tokens")
@@ -108,7 +107,7 @@ model RevokeApiTokenError403 {
   @body body: RevokeApiTokenError403Body;
 }
 
-@doc("テナントの API アクセストークンを失効する。存在しない id への呼び出しも冪等に成功する。")
+@doc("Revokes an API access token of the tenant. Calling it for an id that does not exist succeeds as well, so the operation is idempotent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("RevokeApiToken")
 @route("/api/admin/v1/api-tokens/{id}")

@@ -9,18 +9,13 @@ namespace IdMagic.Provisioning {
 
 namespace Operations {
 model RegisterProvisioningConnectionHttpRequest {
-  id: string;
   base_url: url;
   credential: IdMagic.Contract.ProvisioningCredentialInput;
 }
 
-model RegisterProvisioningConnectionHttpResponse {
-  connection: IdMagic.Contract.ProvisioningConnection;
-}
-
 model RegisterProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RegisterProvisioningConnectionHttpResponse;
+  @body body: IdMagic.Contract.ProvisioningConnection;
 }
 
 union RegisterProvisioningConnectionError400Body {
@@ -53,7 +48,7 @@ model RegisterProvisioningConnectionError403 {
   @body body: RegisterProvisioningConnectionError403Body;
 }
 
-@doc("管理者が Application に ProvisioningConnection を新規登録する。属性マッピングは SCIM core User の既定を自動 seed する。")
+@doc("An administrator registers a new ProvisioningConnection on an Application. The attribute mappings are seeded automatically with the SCIM core User defaults.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("RegisterProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
@@ -63,13 +58,9 @@ op RegisterProvisioningConnection(
   @body body: RegisterProvisioningConnectionHttpRequest
 ): RegisterProvisioningConnectionSuccess_200 | RegisterProvisioningConnectionError400 | RegisterProvisioningConnectionError409 | RegisterProvisioningConnectionError403;
 
-model GetProvisioningConnectionHttpResponse {
-  connection: IdMagic.Contract.ProvisioningConnection;
-}
-
 model GetProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetProvisioningConnectionHttpResponse;
+  @body body: IdMagic.Contract.ProvisioningConnection;
 }
 
 union GetProvisioningConnectionError404Body {
@@ -92,7 +83,7 @@ model GetProvisioningConnectionError403 {
   @body body: GetProvisioningConnectionError403Body;
 }
 
-@doc("管理者が Application の ProvisioningConnection を取得する。別テナントは未存在として扱う。")
+@doc("An administrator reads the ProvisioningConnection of an Application. Another tenant's is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("GetProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
@@ -102,7 +93,6 @@ op GetProvisioningConnection(
 ): GetProvisioningConnectionSuccess_200 | GetProvisioningConnectionError404 | GetProvisioningConnectionError403;
 
 model UpdateProvisioningConnectionHttpRequest {
-  id: string;
   base_url?: url;
   status?: IdMagic.Contract.ProvisioningConnectionStatus;
   credential?: IdMagic.Contract.ProvisioningCredentialInput;
@@ -118,13 +108,9 @@ model UpdateProvisioningConnectionHttpRequest {
   quarantine_after_consecutive_failures?: int64;
 }
 
-model UpdateProvisioningConnectionHttpResponse {
-  connection: IdMagic.Contract.ProvisioningConnection;
-}
-
 model UpdateProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateProvisioningConnectionHttpResponse;
+  @body body: IdMagic.Contract.ProvisioningConnection;
 }
 
 union UpdateProvisioningConnectionError400Body {
@@ -157,7 +143,7 @@ model UpdateProvisioningConnectionError403 {
   @body body: UpdateProvisioningConnectionError403Body;
 }
 
-@doc("管理者が ProvisioningConnection の設定を更新する。credential を含む更新は\ncredential rotation として扱い ProvisioningCredentialRotated も発行する。")
+@doc("An administrator updates the settings of a ProvisioningConnection. An update that carries a credential counts as a\ncredential rotation and also emits ProvisioningCredentialRotated.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("UpdateProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
@@ -191,7 +177,7 @@ model DeleteProvisioningConnectionError403 {
   @body body: DeleteProvisioningConnectionError403Body;
 }
 
-@doc("管理者が ProvisioningConnection を削除する (hard delete)。既存の RemoteResourceLink・ProvisioningDelivery は履歴として残す。")
+@doc("An administrator deletes a ProvisioningConnection outright. The RemoteResourceLinks and ProvisioningDeliveries already recorded are kept as history.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("DeleteProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning")
@@ -199,10 +185,6 @@ model DeleteProvisioningConnectionError403 {
 op DeleteProvisioningConnection(
   @path id: string
 ): DeleteProvisioningConnectionSuccess_200 | DeleteProvisioningConnectionError404 | DeleteProvisioningConnectionError403;
-
-model TestProvisioningConnectionHttpRequest {
-  id: string;
-}
 
 model TestProvisioningConnectionHttpResponse {
   reachable: boolean;
@@ -235,29 +217,22 @@ model TestProvisioningConnectionError403 {
   @body body: TestProvisioningConnectionError403Body;
 }
 
-@doc("管理者が下流 /ServiceProviderConfig への到達性を確認し capabilities を再取得してキャッシュを更新する。")
+@doc("An administrator checks that the downstream /ServiceProviderConfig is reachable, re-reads its capabilities, and refreshes the cache.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("TestProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning/test")
 @post
 op TestProvisioningConnection(
-  @path id: string,
-  @body body: TestProvisioningConnectionHttpRequest
-): TestProvisioningConnectionSuccess_200 | TestProvisioningConnectionError404 | TestProvisioningConnectionError403;
+  @path id: string,): TestProvisioningConnectionSuccess_200 | TestProvisioningConnectionError404 | TestProvisioningConnectionError403;
 
 model ProvisionOnDemandHttpRequest {
-  id: string;
   subject_type: IdMagic.Contract.ProvisioningSourceType;
   subject_id: string;
 }
 
-model ProvisionOnDemandHttpResponse {
-  delivery: IdMagic.Contract.ProvisioningDelivery;
-}
-
 model ProvisionOnDemandSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ProvisionOnDemandHttpResponse;
+  @body body: IdMagic.Contract.ProvisioningDelivery;
 }
 
 union ProvisionOnDemandError404Body {
@@ -290,7 +265,7 @@ model ProvisionOnDemandError403 {
   @body body: ProvisionOnDemandError403Body;
 }
 
-@doc("管理者が単一 subject を指定して即時に試験配送する ProvisioningDelivery を作成する。")
+@doc("An administrator creates a ProvisioningDelivery that delivers one named subject immediately, as a trial.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("ProvisionOnDemand")
 @route("/api/admin/v1/applications/{id}/provisioning/on-demand")
@@ -299,10 +274,6 @@ op ProvisionOnDemand(
   @path id: string,
   @body body: ProvisionOnDemandHttpRequest
 ): ProvisionOnDemandSuccess_200 | ProvisionOnDemandError404 | ProvisionOnDemandError422 | ProvisionOnDemandError403;
-
-model StartFullResyncHttpRequest {
-  id: string;
-}
 
 model StartFullResyncHttpResponse {
   enqueued_count: int64;
@@ -333,15 +304,13 @@ model StartFullResyncError403 {
   @body body: StartFullResyncError403Body;
 }
 
-@doc("管理者が connection の scope 内 subject 全件を再走査し収束させる full resync を開始する。完了は非同期で FullResyncCompleted が発行される。")
+@doc("An administrator starts a full resync, which re-walks every subject inside the connection's scope until they converge. Completion is asynchronous and emits FullResyncCompleted.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("StartFullResync")
 @route("/api/admin/v1/applications/{id}/provisioning/full-resync")
 @post
 op StartFullResync(
-  @path id: string,
-  @body body: StartFullResyncHttpRequest
-): StartFullResyncSuccess_200 | StartFullResyncError404 | StartFullResyncError403;
+  @path id: string,): StartFullResyncSuccess_200 | StartFullResyncError404 | StartFullResyncError403;
 
 model ListProvisioningDeliveriesHttpResponse {
   deliveries: IdMagic.Contract.ProvisioningDelivery[];
@@ -372,7 +341,7 @@ model ListProvisioningDeliveriesError400 {
   @body body: ListProvisioningDeliveriesError400Body;
 }
 
-@doc("管理者が connection の配送状況を created_at 降順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。status/source_type で絞り込める。cursor は応答の Link response header\n(rel=\"prev\" / rel=\"next\") から取得する。")
+@doc("An administrator lists the delivery state of a connection, newest `created_at` first with the id breaking ties, through\nbidirectional keyset pagination. `status` and `source_type` narrow the list. The cursor comes from the Link response header\nof the response (`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("ListProvisioningDeliveries")
 @route("/api/admin/v1/applications/{id}/provisioning/deliveries")
@@ -385,13 +354,9 @@ op ListProvisioningDeliveries(
   @query limit?: int64
 ): ListProvisioningDeliveriesSuccess_200 | ListProvisioningDeliveriesError403 | ListProvisioningDeliveriesError400;
 
-model GetProvisioningDeliveryHttpResponse {
-  delivery: IdMagic.Contract.ProvisioningDelivery;
-}
-
 model GetProvisioningDeliverySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetProvisioningDeliveryHttpResponse;
+  @body body: IdMagic.Contract.ProvisioningDelivery;
 }
 
 union GetProvisioningDeliveryError404Body {
@@ -414,7 +379,7 @@ model GetProvisioningDeliveryError403 {
   @body body: GetProvisioningDeliveryError403Body;
 }
 
-@doc("管理者が配送 1 件の詳細を取得する。")
+@doc("An administrator reads one delivery in detail.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("GetProvisioningDelivery")
 @route("/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}")
@@ -424,18 +389,9 @@ op GetProvisioningDelivery(
   @path delivery_id: string
 ): GetProvisioningDeliverySuccess_200 | GetProvisioningDeliveryError404 | GetProvisioningDeliveryError403;
 
-model RetryProvisioningDeliveryHttpRequest {
-  id: string;
-  delivery_id: string;
-}
-
-model RetryProvisioningDeliveryHttpResponse {
-  delivery: IdMagic.Contract.ProvisioningDelivery;
-}
-
 model RetryProvisioningDeliverySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RetryProvisioningDeliveryHttpResponse;
+  @body body: IdMagic.Contract.ProvisioningDelivery;
 }
 
 union RetryProvisioningDeliveryError404Body {
@@ -468,28 +424,18 @@ model RetryProvisioningDeliveryError403 {
   @body body: RetryProvisioningDeliveryError403Body;
 }
 
-@doc("管理者が dead_letter の配送を手動で再試行する。pending へ戻し dispatcher の再走査対象にする。")
+@doc("An administrator retries a dead-lettered delivery by hand. It returns to pending and the dispatcher picks it up again.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("RetryProvisioningDelivery")
 @route("/api/admin/v1/applications/{id}/provisioning/deliveries/{delivery_id}/retry")
 @post
 op RetryProvisioningDelivery(
   @path id: string,
-  @path delivery_id: string,
-  @body body: RetryProvisioningDeliveryHttpRequest
-): RetryProvisioningDeliverySuccess_200 | RetryProvisioningDeliveryError404 | RetryProvisioningDeliveryError409 | RetryProvisioningDeliveryError403;
-
-model ResumeProvisioningConnectionHttpRequest {
-  id: string;
-}
-
-model ResumeProvisioningConnectionHttpResponse {
-  connection: IdMagic.Contract.ProvisioningConnection;
-}
+  @path delivery_id: string,): RetryProvisioningDeliverySuccess_200 | RetryProvisioningDeliveryError404 | RetryProvisioningDeliveryError409 | RetryProvisioningDeliveryError403;
 
 model ResumeProvisioningConnectionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ResumeProvisioningConnectionHttpResponse;
+  @body body: IdMagic.Contract.ProvisioningConnection;
 }
 
 union ResumeProvisioningConnectionError404Body {
@@ -512,15 +458,13 @@ model ResumeProvisioningConnectionError403 {
   @body body: ResumeProvisioningConnectionError403Body;
 }
 
-@doc("管理者が quarantine された ProvisioningConnection を解除し配送を再開する。運用手順に quarantine 解除の経路が明記されていなかったため、本 interface を追加した。")
+@doc("An administrator lifts the quarantine on a ProvisioningConnection and lets delivery resume. The interface exists because the operational runbook had no documented way out of quarantine.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:write"])
 @TypeSpec.OpenAPI.operationId("ResumeProvisioningConnection")
 @route("/api/admin/v1/applications/{id}/provisioning/resume")
 @post
 op ResumeProvisioningConnection(
-  @path id: string,
-  @body body: ResumeProvisioningConnectionHttpRequest
-): ResumeProvisioningConnectionSuccess_200 | ResumeProvisioningConnectionError404 | ResumeProvisioningConnectionError403;
+  @path id: string,): ResumeProvisioningConnectionSuccess_200 | ResumeProvisioningConnectionError404 | ResumeProvisioningConnectionError403;
 
 model ListTenantProvisioningConnectionsHttpResponse {
   connections: IdMagic.Contract.ProvisioningConnection[];
@@ -541,7 +485,7 @@ model ListTenantProvisioningConnectionsError403 {
   @body body: ListTenantProvisioningConnectionsError403Body;
 }
 
-@doc("管理者がテナント内で有効な ProvisioningConnection を横断的に一覧する (テナント設定の read-only 集約ビュー)。書き込みは各 Application 側の interface へ誘導する。")
+@doc("An administrator lists the live ProvisioningConnections across their tenant, as a read-only aggregate view of the tenant settings. Writes are directed to the per-Application interfaces.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["provisioning:read"])
 @TypeSpec.OpenAPI.operationId("ListTenantProvisioningConnections")
 @route("/api/admin/v1/provisioning/connections")

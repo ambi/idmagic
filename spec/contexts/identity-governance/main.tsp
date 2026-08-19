@@ -8,13 +8,9 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.IdGovernance {
 
 namespace Operations {
-model ListLifecycleWorkflowsHttpResponse {
-  response: IdMagic.Contract.LifecycleWorkflowListResponse;
-}
-
 model ListLifecycleWorkflowsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListLifecycleWorkflowsHttpResponse;
+  @body body: IdMagic.Contract.LifecycleWorkflowListResponse;
 }
 
 union ListLifecycleWorkflowsError403Body {
@@ -27,7 +23,7 @@ model ListLifecycleWorkflowsError403 {
   @body body: ListLifecycleWorkflowsError403Body;
 }
 
-@doc("管理者が所属テナントの未削除 LifecycleWorkflow を一覧する。削除済み定義は返さない。")
+@doc("An administrator lists the LifecycleWorkflows of their tenant that have not been deleted. Deleted definitions are not returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflows")
 @route("/api/admin/v1/lifecycle_workflows")
@@ -36,17 +32,9 @@ op ListLifecycleWorkflows(
 
 ): ListLifecycleWorkflowsSuccess_200 | ListLifecycleWorkflowsError403;
 
-model CreateLifecycleWorkflowHttpRequest {
-  request: IdMagic.Contract.LifecycleWorkflowCreateRequest;
-}
-
-model CreateLifecycleWorkflowHttpResponse {
-  workflow: IdMagic.Contract.LifecycleWorkflowResponse;
-}
-
 model CreateLifecycleWorkflowSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: CreateLifecycleWorkflowHttpResponse;
+  @body body: IdMagic.Contract.LifecycleWorkflowResponse;
 }
 
 union CreateLifecycleWorkflowError400Body {
@@ -69,22 +57,18 @@ model CreateLifecycleWorkflowError403 {
   @body body: CreateLifecycleWorkflowError403Body;
 }
 
-@doc("管理者が LifecycleWorkflow を作成する。workflow 本体と revision 1 の draft をともに永続化し、name は未削除 workflow の間でテナント内一意とする。削除済み workflow の name は再利用できる。")
+@doc("An administrator creates a LifecycleWorkflow. The workflow itself and the draft of revision 1 are both persisted, and `name` is unique within the tenant among workflows that have not been deleted. The name of a deleted workflow may be used again.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("CreateLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows")
 @post
 op CreateLifecycleWorkflow(
-  @body body: CreateLifecycleWorkflowHttpRequest
+  @body body: IdMagic.Contract.LifecycleWorkflowCreateRequest
 ): CreateLifecycleWorkflowSuccess_201 | CreateLifecycleWorkflowError400 | CreateLifecycleWorkflowError403;
-
-model GetLifecycleWorkflowHttpResponse {
-  workflow: IdMagic.Contract.LifecycleWorkflowResponse;
-}
 
 model GetLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetLifecycleWorkflowHttpResponse;
+  @body body: IdMagic.Contract.LifecycleWorkflowResponse;
 }
 
 union GetLifecycleWorkflowError400Body {
@@ -107,7 +91,7 @@ model GetLifecycleWorkflowError403 {
   @body body: GetLifecycleWorkflowError403Body;
 }
 
-@doc("管理者が LifecycleWorkflow 1 件を取得する。別テナントの workflow は未存在として扱う。")
+@doc("An administrator reads one LifecycleWorkflow. A workflow of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
@@ -116,18 +100,9 @@ op GetLifecycleWorkflow(
   @path workflow_id: string
 ): GetLifecycleWorkflowSuccess_200 | GetLifecycleWorkflowError400 | GetLifecycleWorkflowError403;
 
-model UpdateLifecycleWorkflowHttpRequest {
-  workflow_id: string;
-  request: IdMagic.Contract.LifecycleWorkflowUpdateRequest;
-}
-
-model UpdateLifecycleWorkflowHttpResponse {
-  workflow: IdMagic.Contract.LifecycleWorkflowResponse;
-}
-
 model UpdateLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateLifecycleWorkflowHttpResponse;
+  @body body: IdMagic.Contract.LifecycleWorkflowResponse;
 }
 
 union UpdateLifecycleWorkflowError400Body {
@@ -160,28 +135,23 @@ model UpdateLifecycleWorkflowError409 {
   @body body: UpdateLifecycleWorkflowError409Body;
 }
 
-@doc("管理者が LifecycleWorkflow の trigger/actions/表示情報を更新する。expected_revision が\ncurrent_revision と一致しない場合は WorkflowRevisionConflictError で拒否する (lost update 防止)。\ntrigger または actions が変わる場合は current_revision を 1 増やすが status/enabled_revision は\n変えない (再度 EnableLifecycleWorkflow を呼ぶまで旧 revision の trigger 評価が続く)。archived\nworkflow は拒否する。")
+@doc("An administrator updates the trigger, the actions, or the display fields of a LifecycleWorkflow. When `expected_revision`\ndoes not match `current_revision` the update is rejected with WorkflowRevisionConflictError, so a lost update cannot happen.\nA change to the trigger or the actions raises `current_revision` by one but leaves `status` and `enabled_revision` alone,\nso the old revision keeps being evaluated until EnableLifecycleWorkflow is called again. An archived workflow is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("UpdateLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
 @put
 op UpdateLifecycleWorkflow(
   @path workflow_id: string,
-  @body body: UpdateLifecycleWorkflowHttpRequest
+  @body body: IdMagic.Contract.LifecycleWorkflowUpdateRequest
 ): UpdateLifecycleWorkflowSuccess_200 | UpdateLifecycleWorkflowError400 | UpdateLifecycleWorkflowError403 | UpdateLifecycleWorkflowError409;
 
 model EnableLifecycleWorkflowHttpRequest {
-  workflow_id: string;
   expected_revision: int64;
-}
-
-model EnableLifecycleWorkflowHttpResponse {
-  workflow: IdMagic.Contract.LifecycleWorkflowResponse;
 }
 
 model EnableLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: EnableLifecycleWorkflowHttpResponse;
+  @body body: IdMagic.Contract.LifecycleWorkflowResponse;
 }
 
 union EnableLifecycleWorkflowError400Body {
@@ -204,7 +174,7 @@ model EnableLifecycleWorkflowError403 {
   @body body: EnableLifecycleWorkflowError403Body;
 }
 
-@doc("管理者が current_revision を validation し、成功すれば enabled_revision に設定して\nstatus=enabled にする。以後この revision が trigger 評価対象になる。validation 失敗または\narchived workflow は拒否する。")
+@doc("An administrator validates `current_revision` and, if it passes, sets it as `enabled_revision` and moves `status` to `enabled`.\nFrom then on it is that revision the trigger evaluates. A failed validation, and an archived workflow, are both refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("EnableLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/enable")
@@ -215,17 +185,12 @@ op EnableLifecycleWorkflow(
 ): EnableLifecycleWorkflowSuccess_200 | EnableLifecycleWorkflowError400 | EnableLifecycleWorkflowError403;
 
 model DisableLifecycleWorkflowHttpRequest {
-  workflow_id: string;
   expected_revision: int64;
-}
-
-model DisableLifecycleWorkflowHttpResponse {
-  workflow: IdMagic.Contract.LifecycleWorkflowResponse;
 }
 
 model DisableLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DisableLifecycleWorkflowHttpResponse;
+  @body body: IdMagic.Contract.LifecycleWorkflowResponse;
 }
 
 union DisableLifecycleWorkflowError400Body {
@@ -248,7 +213,7 @@ model DisableLifecycleWorkflowError403 {
   @body body: DisableLifecycleWorkflowError403Body;
 }
 
-@doc("管理者が LifecycleWorkflow を disable する。新規 trigger を止め、未開始の queued run を\ncanceled にする。running run は現在 step の checkpoint 後、次 step の前で停止する。")
+@doc("An administrator disables a LifecycleWorkflow. No new run is triggered, and a queued run that has not started is canceled.\nA running run stops after the checkpoint of its current step and before the next one.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DisableLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/disable")
@@ -282,7 +247,7 @@ model DeleteLifecycleWorkflowError403 {
   @body body: DeleteLifecycleWorkflowError403Body;
 }
 
-@doc("管理者が LifecycleWorkflow を状態に関係なく削除する。削除後は一覧・取得・更新・名前重複判定から除外する。enabled の場合は新規 trigger を止め、queued run を canceled にする。既存 run と監査イベントは保持する。")
+@doc("An administrator deletes a LifecycleWorkflow whatever its state. Afterwards it is excluded from listing, reading, updating, and the name uniqueness check. If it was enabled, no new run is triggered and queued runs are canceled. Existing runs and audit events are kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("DeleteLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}")
@@ -292,18 +257,9 @@ op DeleteLifecycleWorkflow(
   @query expected_revision: int64
 ): DeleteLifecycleWorkflowSuccess_204 | DeleteLifecycleWorkflowError400 | DeleteLifecycleWorkflowError403;
 
-model DryRunLifecycleWorkflowHttpRequest {
-  workflow_id: string;
-  request: IdMagic.Contract.LifecycleWorkflowDryRunRequest;
-}
-
-model DryRunLifecycleWorkflowHttpResponse {
-  response: IdMagic.Contract.LifecycleWorkflowDryRunResponse;
-}
-
 model DryRunLifecycleWorkflowSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DryRunLifecycleWorkflowHttpResponse;
+  @body body: IdMagic.Contract.LifecycleWorkflowDryRunResponse;
 }
 
 union DryRunLifecycleWorkflowError400Body {
@@ -326,23 +282,19 @@ model DryRunLifecycleWorkflowError403 {
   @body body: DryRunLifecycleWorkflowError403Body;
 }
 
-@doc("管理者が enabled_revision (未指定なら current_revision) を対象 user へ試算する。同じ\nvalidator / trigger evaluator / action planner を使い、対象 User の現在の group membership /\napplication assignment / required action / status / email 検証状態を実際に読んで action ごとの\nwould_change / no_op / blocked を判定する。trigger の filter が対象 User に一致しない場合は\n全 action を blocked (reason: trigger_not_matched) として返す。対象 user が存在しないか別\ntenant の場合は InvalidRequestError を返す。WorkflowRun / Job / membership / assignment /\nrequired action / status / email のいずれも作成・変更しない。")
+@doc("An administrator dry-runs `enabled_revision`, or `current_revision` when none is named, against a target user. It uses the same\nvalidator, trigger evaluator, and action planner as a real run, and reads the target User's current group memberships,\napplication assignments, required actions, status, and email verification state to decide per action whether it would_change,\nis a no_op, or is blocked. When the trigger filter does not match the target User, every action comes back blocked with the\nreason `trigger_not_matched`. A target user that does not exist, or belongs to another tenant, gives InvalidRequestError.\nNothing is created or changed: no WorkflowRun, no Job, no membership, assignment, required action, status, or email.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("DryRunLifecycleWorkflow")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/dry_run")
 @post
 op DryRunLifecycleWorkflow(
   @path workflow_id: string,
-  @body body: DryRunLifecycleWorkflowHttpRequest
+  @body body: IdMagic.Contract.LifecycleWorkflowDryRunRequest
 ): DryRunLifecycleWorkflowSuccess_200 | DryRunLifecycleWorkflowError400 | DryRunLifecycleWorkflowError403;
-
-model ListLifecycleWorkflowRunsHttpResponse {
-  response: IdMagic.Contract.WorkflowRunListResponse;
-}
 
 model ListLifecycleWorkflowRunsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListLifecycleWorkflowRunsHttpResponse;
+  @body body: IdMagic.Contract.WorkflowRunListResponse;
 }
 
 union ListLifecycleWorkflowRunsError400Body {
@@ -365,7 +317,7 @@ model ListLifecycleWorkflowRunsError403 {
   @body body: ListLifecycleWorkflowRunsError403Body;
 }
 
-@doc("管理者が特定 LifecycleWorkflow の run 履歴を新しい順に一覧する。")
+@doc("An administrator lists the run history of one LifecycleWorkflow, newest first.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("ListLifecycleWorkflowRuns")
 @route("/api/admin/v1/lifecycle_workflows/{workflow_id}/runs")
@@ -374,13 +326,9 @@ op ListLifecycleWorkflowRuns(
   @path workflow_id: string
 ): ListLifecycleWorkflowRunsSuccess_200 | ListLifecycleWorkflowRunsError400 | ListLifecycleWorkflowRunsError403;
 
-model GetLifecycleWorkflowRunHttpResponse {
-  response: IdMagic.Contract.WorkflowRunResponse;
-}
-
 model GetLifecycleWorkflowRunSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetLifecycleWorkflowRunHttpResponse;
+  @body body: IdMagic.Contract.WorkflowRunResponse;
 }
 
 union GetLifecycleWorkflowRunError400Body {
@@ -403,7 +351,7 @@ model GetLifecycleWorkflowRunError403 {
   @body body: GetLifecycleWorkflowRunError403Body;
 }
 
-@doc("管理者が WorkflowRun 1 件の詳細 (trigger、revision、target user、Job attempt、各 step) を取得する。別テナントの run は未存在として扱う。")
+@doc("An administrator reads one WorkflowRun in detail: its trigger, revision, target user, Job attempts, and each step. A run of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:read"])
 @TypeSpec.OpenAPI.operationId("GetLifecycleWorkflowRun")
 @route("/api/admin/v1/lifecycle_workflow_runs/{run_id}")
@@ -412,17 +360,9 @@ op GetLifecycleWorkflowRun(
   @path run_id: string
 ): GetLifecycleWorkflowRunSuccess_200 | GetLifecycleWorkflowRunError400 | GetLifecycleWorkflowRunError403;
 
-model RetryLifecycleWorkflowRunHttpRequest {
-  run_id: string;
-}
-
-model RetryLifecycleWorkflowRunHttpResponse {
-  response: IdMagic.Contract.WorkflowRunResponse;
-}
-
 model RetryLifecycleWorkflowRunSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RetryLifecycleWorkflowRunHttpResponse;
+  @body body: IdMagic.Contract.WorkflowRunResponse;
 }
 
 union RetryLifecycleWorkflowRunError400Body {
@@ -445,15 +385,13 @@ model RetryLifecycleWorkflowRunError403 {
   @body body: RetryLifecycleWorkflowRunError403Body;
 }
 
-@doc("管理者が partially_failed または failed の WorkflowRun を再試行する。未完了 (failed) step\nだけを対象に新しい Job を関連付ける。changed / no_op 済み step は変更しない。disable と競合する\n場合は新しい step を開始しない。")
+@doc("An administrator retries a WorkflowRun that is `partially_failed` or `failed`. A new Job is attached to the failed steps only;\nsteps already `changed` or `no_op` are left alone. When it races a disable, no new step is started.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["lifecycle-workflows:write"])
 @TypeSpec.OpenAPI.operationId("RetryLifecycleWorkflowRun")
 @route("/api/admin/v1/lifecycle_workflow_runs/{run_id}/retry")
 @post
 op RetryLifecycleWorkflowRun(
-  @path run_id: string,
-  @body body: RetryLifecycleWorkflowRunHttpRequest
-): RetryLifecycleWorkflowRunSuccess_200 | RetryLifecycleWorkflowRunError400 | RetryLifecycleWorkflowRunError403;
+  @path run_id: string,): RetryLifecycleWorkflowRunSuccess_200 | RetryLifecycleWorkflowRunError400 | RetryLifecycleWorkflowRunError403;
 }
 
 }

@@ -8,13 +8,9 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.Application {
 
 namespace Operations {
-model ListAdminApplicationsHttpResponse {
-  response: IdMagic.Contract.AdminApplicationListResponse;
-}
-
 model ListAdminApplicationsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListAdminApplicationsHttpResponse;
+  @body body: IdMagic.Contract.AdminApplicationListResponse;
 }
 
 union ListAdminApplicationsError403Body {
@@ -37,7 +33,7 @@ model ListAdminApplicationsError400 {
   @body body: ListAdminApplicationsError400Body;
 }
 
-@doc("管理者が所属テナントの Application を name 昇順 (同値は id で tie-break) の双方向 keyset\npagination で一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@doc("An administrator lists the Applications of their tenant by name ascending, with the id breaking ties, through bidirectional keyset\npagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminApplications")
 @route("/api/admin/v1/applications")
@@ -47,13 +43,9 @@ op ListAdminApplications(
   @query limit?: int64
 ): ListAdminApplicationsSuccess_200 | ListAdminApplicationsError403 | ListAdminApplicationsError400;
 
-model GetAdminApplicationHttpResponse {
-  response: IdMagic.Contract.AdminApplicationDetailResponse;
-}
-
 model GetAdminApplicationSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAdminApplicationHttpResponse;
+  @body body: IdMagic.Contract.AdminApplicationDetailResponse;
 }
 
 union GetAdminApplicationError400Body {
@@ -76,7 +68,7 @@ model GetAdminApplicationError403 {
   @body body: GetAdminApplicationError403Body;
 }
 
-@doc("管理者が Application を取得する。protocol relation から解決した実設定も含む。OIDC / SAML application の詳細画面は、この登録済み相手側設定と Tenancy.GetAdminIntegrationEndpoints が返す IdMagic 側の setup guidance を並べて表示し、client secret は再表示しない。別テナントは未存在として扱う。")
+@doc("An administrator reads an Application, including the real settings resolved through its protocol relation. The detail screen of an OIDC or SAML application shows these registered counterpart settings side by side with the IdMagic setup guidance Tenancy.GetAdminIntegrationEndpoints returns, and never shows a client secret again. Another tenant's is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminApplication")
 @route("/api/admin/v1/applications/{id}")
@@ -85,17 +77,9 @@ op GetAdminApplication(
   @path id: string
 ): GetAdminApplicationSuccess_200 | GetAdminApplicationError400 | GetAdminApplicationError403;
 
-model CreateAdminApplicationHttpRequest {
-  request: IdMagic.Contract.AdminApplicationCreateRequest;
-}
-
-model CreateAdminApplicationHttpResponse {
-  response: IdMagic.Contract.AdminApplicationCreateResponse;
-}
-
 model CreateAdminApplicationSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: CreateAdminApplicationHttpResponse;
+  @body body: IdMagic.Contract.AdminApplicationCreateResponse;
 }
 
 union CreateAdminApplicationError400Body {
@@ -128,27 +112,18 @@ model CreateAdminApplicationError422 {
   @body body: CreateAdminApplicationError422Body;
 }
 
-@doc("管理者が Application を一括作成する。種別に応じた protocol row を準備し、Application と application_id relation を同一 transaction で catalog へ公開する。protocol 種別は作成後に変更できない。")
+@doc("An administrator creates an Application in one call. The protocol row for its kind is prepared, and the Application together with the `application_id` relation is published to the catalogue in a single transaction. The protocol kind cannot be changed afterwards.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("CreateAdminApplication")
 @route("/api/admin/v1/applications")
 @post
 op CreateAdminApplication(
-  @body body: CreateAdminApplicationHttpRequest
+  @body body: IdMagic.Contract.AdminApplicationCreateRequest
 ): CreateAdminApplicationSuccess_201 | CreateAdminApplicationError400 | CreateAdminApplicationError403 | CreateAdminApplicationError422;
-
-model UpdateAdminApplicationHttpRequest {
-  id: string;
-  request: IdMagic.Contract.AdminApplicationUpdateRequest;
-}
-
-model UpdateAdminApplicationHttpResponse {
-  application: IdMagic.Contract.AdminApplicationResponse;
-}
 
 model UpdateAdminApplicationSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateAdminApplicationHttpResponse;
+  @body body: IdMagic.Contract.AdminApplicationResponse;
 }
 
 union UpdateAdminApplicationError400Body {
@@ -171,28 +146,19 @@ model UpdateAdminApplicationError403 {
   @body body: UpdateAdminApplicationError403Body;
 }
 
-@doc("管理者が Application のメタデータを更新する。")
+@doc("An administrator updates the metadata of an Application.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminApplication")
 @route("/api/admin/v1/applications/{id}")
 @patch
 op UpdateAdminApplication(
   @path id: string,
-  @body body: UpdateAdminApplicationHttpRequest
+  @body body: IdMagic.Contract.AdminApplicationUpdateRequest
 ): UpdateAdminApplicationSuccess_200 | UpdateAdminApplicationError400 | UpdateAdminApplicationError403;
-
-model UploadApplicationIconHttpRequest {
-  id: string;
-  file: string;
-}
-
-model UploadApplicationIconHttpResponse {
-  response: IdMagic.Contract.ApplicationIconUploadResponse;
-}
 
 model UploadApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UploadApplicationIconHttpResponse;
+  @body body: IdMagic.Contract.ApplicationIconUploadResponse;
 }
 
 union UploadApplicationIconError400Body {
@@ -215,23 +181,23 @@ model UploadApplicationIconError403 {
   @body body: UploadApplicationIconError403Body;
 }
 
-@doc("管理者が Application のアイコン画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。")
+@doc("An administrator uploads the icon image of an Application as multipart. PNG, JPEG, WebP, and GIF are accepted, up to 256 KiB, and the format is checked against the magic bytes.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UploadApplicationIcon")
 @route("/api/admin/v1/applications/{id}/icon")
 @post
 op UploadApplicationIcon(
   @path id: string,
-  @body body: UploadApplicationIconHttpRequest
+  @header contentType: "multipart/form-data",
+  @multipartBody body: {
+    @doc("The image to store, under the form field name `file`.")
+    file: HttpPart<File>,
+  }
 ): UploadApplicationIconSuccess_200 | UploadApplicationIconError400 | UploadApplicationIconError403;
-
-model DeleteApplicationIconHttpResponse {
-  response: IdMagic.Contract.ApplicationIconUploadResponse;
-}
 
 model DeleteApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DeleteApplicationIconHttpResponse;
+  @body body: IdMagic.Contract.ApplicationIconUploadResponse;
 }
 
 union DeleteApplicationIconError400Body {
@@ -254,7 +220,7 @@ model DeleteApplicationIconError403 {
   @body body: DeleteApplicationIconError403Body;
 }
 
-@doc("管理者が Application の保存済みアイコンを削除する。削除後は icon_url を返さない。")
+@doc("An administrator deletes the stored icon of an Application. `icon_url` is no longer returned afterwards.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationIcon")
 @route("/api/admin/v1/applications/{id}/icon")
@@ -263,13 +229,12 @@ op DeleteApplicationIcon(
   @path id: string
 ): DeleteApplicationIconSuccess_200 | DeleteApplicationIconError400 | DeleteApplicationIconError403;
 
-model GetApplicationIconHttpResponse {
-  file: string;
-}
-
 model GetApplicationIconSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetApplicationIconHttpResponse;
+  @doc("Fixed to the validated format of the stored icon, and served with `X-Content-Type-Options: nosniff`.")
+  @header contentType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  @doc("The icon bytes.")
+  @body body: bytes;
 }
 
 union GetApplicationIconError400Body {
@@ -282,7 +247,7 @@ model GetApplicationIconError400 {
   @body body: GetApplicationIconError400Body;
 }
 
-@doc("保存済み Application アイコンを配信する公開 interface。Content-Type は検証済み形式に固定し、X-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。")
+@doc("Public interface serving a stored Application icon. The Content-Type is fixed to the validated format and `X-Content-Type-Options: nosniff` is set. An object of another tenant, and a deleted one, are both treated as nonexistent.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetApplicationIcon")
 @route("/application-icons/{application_id}/{id}")
@@ -316,7 +281,7 @@ model DeleteAdminApplicationError403 {
   @body body: DeleteAdminApplicationError403Body;
 }
 
-@doc("管理者が Application を削除する (冪等)。関連する protocol row は同一 transaction で cascade delete される。")
+@doc("An administrator deletes an Application, idempotently. The related protocol rows are cascade-deleted in the same transaction.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteAdminApplication")
 @route("/api/admin/v1/applications/{id}")
@@ -324,11 +289,6 @@ model DeleteAdminApplicationError403 {
 op DeleteAdminApplication(
   @path id: string
 ): DeleteAdminApplicationSuccess_204 | DeleteAdminApplicationError400 | DeleteAdminApplicationError403;
-
-model UpdateApplicationOidcConfigHttpRequest {
-  id: string;
-  request: IdMagic.Contract.ApplicationOidcConfigUpdateRequest;
-}
 
 model UpdateApplicationOidcConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -354,28 +314,19 @@ model UpdateApplicationOidcConfigError403 {
   @body body: UpdateApplicationOidcConfigError403Body;
 }
 
-@doc("管理者が Application の OIDC protocol が指す OAuth2 client の設定を更新する。rules /\nsub_source_attribute は claim release 上書きであり、visibility=Private の\n属性や reserved claim type を参照する rule は拒否する。")
+@doc("An administrator updates the settings of the OAuth2 client the OIDC protocol of an Application points at. `rules` and\n`sub_source_attribute` override claim release, so a rule referring to an attribute whose visibility is `private`, or to a\nreserved claim type, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationOidcConfig")
 @route("/api/admin/v1/applications/{id}/oidc")
 @patch
 op UpdateApplicationOidcConfig(
   @path id: string,
-  @body body: UpdateApplicationOidcConfigHttpRequest
+  @body body: IdMagic.Contract.ApplicationOidcConfigUpdateRequest
 ): UpdateApplicationOidcConfigSuccess_204 | UpdateApplicationOidcConfigError400 | UpdateApplicationOidcConfigError403;
-
-model RotateApplicationClientSecretHttpRequest {
-  id: string;
-  request: IdMagic.Contract.RotateApplicationClientSecretRequest;
-}
-
-model RotateApplicationClientSecretHttpResponse {
-  response: IdMagic.Contract.RotateApplicationClientSecretResponse;
-}
 
 model RotateApplicationClientSecretSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RotateApplicationClientSecretHttpResponse;
+  @body body: IdMagic.Contract.RotateApplicationClientSecretResponse;
 }
 
 union RotateApplicationClientSecretError400Body {
@@ -398,28 +349,19 @@ model RotateApplicationClientSecretError403 {
   @body body: RotateApplicationClientSecretError403Body;
 }
 
-@doc("互換性のため、管理者が Application の OIDC protocol の client secret を従来方式で回す。旧 credential は指定した overlap 期間だけ有効にし、0日は即時 revoke とする。新しい管理 UI は IssueApplicationClientSecret と RevokeApplicationClientSecret を使用する。")
+@doc("For compatibility, an administrator rotates the client secret of an Application's OIDC protocol the old way. The previous credential stays valid for the overlap given, and zero days means revoking it at once. The newer administration UI uses IssueApplicationClientSecret and RevokeApplicationClientSecret instead.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RotateApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/rotate-secret")
 @post
 op RotateApplicationClientSecret(
   @path id: string,
-  @body body: RotateApplicationClientSecretHttpRequest
+  @body body: IdMagic.Contract.RotateApplicationClientSecretRequest
 ): RotateApplicationClientSecretSuccess_200 | RotateApplicationClientSecretError400 | RotateApplicationClientSecretError403;
-
-model IssueApplicationClientSecretHttpRequest {
-  id: string;
-  request: IdMagic.Contract.IssueApplicationClientSecretRequest;
-}
-
-model IssueApplicationClientSecretHttpResponse {
-  response: IdMagic.Contract.IssueApplicationClientSecretResponse;
-}
 
 model IssueApplicationClientSecretSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: IssueApplicationClientSecretHttpResponse;
+  @body body: IdMagic.Contract.IssueApplicationClientSecretResponse;
 }
 
 union IssueApplicationClientSecretError400Body {
@@ -452,23 +394,19 @@ model IssueApplicationClientSecretError422 {
   @body body: IssueApplicationClientSecretError422Body;
 }
 
-@doc("管理者が Application の secret-based OIDC client に期限付き credential を追加発行する。既存 credential は変更せず、Active credential が2件なら原子的に拒否する。secret-based でない client は拒否する。")
+@doc("An administrator issues an additional credential with an expiry on the secret-based OIDC client of an Application. Existing credentials are left alone, and when two Active credentials already exist the request is refused atomically. A client that is not secret-based is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("IssueApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/client-secrets")
 @post
 op IssueApplicationClientSecret(
   @path id: string,
-  @body body: IssueApplicationClientSecretHttpRequest
+  @body body: IdMagic.Contract.IssueApplicationClientSecretRequest
 ): IssueApplicationClientSecretSuccess_201 | IssueApplicationClientSecretError400 | IssueApplicationClientSecretError403 | IssueApplicationClientSecretError422;
-
-model RevokeApplicationClientSecretHttpResponse {
-  response: IdMagic.Contract.RevokeApplicationClientSecretResponse;
-}
 
 model RevokeApplicationClientSecretSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RevokeApplicationClientSecretHttpResponse;
+  @body body: IdMagic.Contract.RevokeApplicationClientSecretResponse;
 }
 
 union RevokeApplicationClientSecretError400Body {
@@ -491,7 +429,7 @@ model RevokeApplicationClientSecretError403 {
   @body body: RevokeApplicationClientSecretError403Body;
 }
 
-@doc("管理者が Application の secret-based OIDC client に属する指定 credential だけを即時失効する。既に失効済みなら冪等に成功し、別 client または存在しない credential は拒否する。")
+@doc("An administrator revokes one named credential of an Application's secret-based OIDC client, at once. Revoking an already-revoked credential succeeds idempotently, and a credential of another client, or one that does not exist, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("RevokeApplicationClientSecret")
 @route("/api/admin/v1/applications/{id}/oidc/client-secrets/{credential_id}")
@@ -500,11 +438,6 @@ op RevokeApplicationClientSecret(
   @path id: string,
   @path credential_id: string
 ): RevokeApplicationClientSecretSuccess_200 | RevokeApplicationClientSecretError400 | RevokeApplicationClientSecretError403;
-
-model UpdateApplicationWsFedConfigHttpRequest {
-  id: string;
-  request: IdMagic.Contract.ApplicationWsFedConfigUpdateRequest;
-}
 
 model UpdateApplicationWsFedConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -530,20 +463,15 @@ model UpdateApplicationWsFedConfigError403 {
   @body body: UpdateApplicationWsFedConfigError403Body;
 }
 
-@doc("管理者が Application の WS-Fed protocol が指す relying party の設定を更新する。rules /\nname_id_source は claim release 上書きであり、visibility=Private の属性や\nreserved claim type を参照する rule は拒否する。")
+@doc("An administrator updates the settings of the relying party the WS-Fed protocol of an Application points at. `rules` and\n`name_id_source` override claim release, so a rule referring to an attribute whose visibility is `private`, or to a\nreserved claim type, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationWsFedConfig")
 @route("/api/admin/v1/applications/{id}/wsfed")
 @patch
 op UpdateApplicationWsFedConfig(
   @path id: string,
-  @body body: UpdateApplicationWsFedConfigHttpRequest
+  @body body: IdMagic.Contract.ApplicationWsFedConfigUpdateRequest
 ): UpdateApplicationWsFedConfigSuccess_204 | UpdateApplicationWsFedConfigError400 | UpdateApplicationWsFedConfigError403;
-
-model UpdateApplicationSamlConfigHttpRequest {
-  id: string;
-  request: IdMagic.Contract.ApplicationSamlConfigUpdateRequest;
-}
 
 model UpdateApplicationSamlConfigSuccess_204 {
   @statusCode statusCode: 204;
@@ -569,23 +497,19 @@ model UpdateApplicationSamlConfigError403 {
   @body body: UpdateApplicationSamlConfigError403Body;
 }
 
-@doc("管理者が Application の SAML protocol が指す service provider 設定とIdP profile bindingを\n部分更新する。署名要求を有効にする場合は検証可能な証明書を必須とする。rules / name_id_source は\nclaim release 上書きであり、visibility=Private の属性や reserved claim type\nを参照する rule は拒否する。")
+@doc("An administrator partially updates the service provider settings and the IdP profile binding the SAML protocol of an Application\npoints at. Turning on the signature requirement makes a verifiable certificate mandatory. `rules` and `name_id_source` override\nclaim release, so a rule referring to an attribute whose visibility is `private`, or to a reserved claim type, is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationSamlConfig")
 @route("/api/admin/v1/applications/{id}/saml")
 @patch
 op UpdateApplicationSamlConfig(
   @path id: string,
-  @body body: UpdateApplicationSamlConfigHttpRequest
+  @body body: IdMagic.Contract.ApplicationSamlConfigUpdateRequest
 ): UpdateApplicationSamlConfigSuccess_204 | UpdateApplicationSamlConfigError400 | UpdateApplicationSamlConfigError403;
-
-model ListApplicationAssignmentsHttpResponse {
-  response: IdMagic.Contract.ApplicationAssignmentListResponse;
-}
 
 model ListApplicationAssignmentsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListApplicationAssignmentsHttpResponse;
+  @body body: IdMagic.Contract.ApplicationAssignmentListResponse;
 }
 
 union ListApplicationAssignmentsError400Body {
@@ -608,7 +532,7 @@ model ListApplicationAssignmentsError403 {
   @body body: ListApplicationAssignmentsError403Body;
 }
 
-@doc("管理者が Application の割当を subject_type, subject_id 昇順の双方向 keyset pagination で\n一覧する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。")
+@doc("An administrator lists the assignments of an Application by `subject_type` and `subject_id` ascending, through bidirectional keyset\npagination. The cursor comes from the Link response header of the response (`rel=\"prev\"` and `rel=\"next\"`).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListApplicationAssignments")
 @route("/api/admin/v1/applications/{id}/assignments")
@@ -619,18 +543,9 @@ op ListApplicationAssignments(
   @query limit?: int64
 ): ListApplicationAssignmentsSuccess_200 | ListApplicationAssignmentsError400 | ListApplicationAssignmentsError403;
 
-model AssignApplicationHttpRequest {
-  id: string;
-  request: IdMagic.Contract.ApplicationAssignmentRequest;
-}
-
-model AssignApplicationHttpResponse {
-  assignment: IdMagic.Contract.ApplicationAssignmentResponse;
-}
-
 model AssignApplicationSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: AssignApplicationHttpResponse;
+  @body body: IdMagic.Contract.ApplicationAssignmentResponse;
 }
 
 union AssignApplicationError400Body {
@@ -653,14 +568,14 @@ model AssignApplicationError403 {
   @body body: AssignApplicationError403Body;
 }
 
-@doc("管理者が Application にユーザー / グループを割当てる。")
+@doc("An administrator assigns a user or a group to an Application.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("AssignApplication")
 @route("/api/admin/v1/applications/{id}/assignments")
 @post
 op AssignApplication(
   @path id: string,
-  @body body: AssignApplicationHttpRequest
+  @body body: IdMagic.Contract.ApplicationAssignmentRequest
 ): AssignApplicationSuccess_201 | AssignApplicationError400 | AssignApplicationError403;
 
 model UnassignApplicationSuccess_204 {
@@ -687,7 +602,7 @@ model UnassignApplicationError403 {
   @body body: UnassignApplicationError403Body;
 }
 
-@doc("管理者が Application の割当を解除する (冪等)。")
+@doc("An administrator removes an assignment from an Application, idempotently.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UnassignApplication")
 @route("/api/admin/v1/applications/{id}/assignments/{subject_type}/{subject_id}")
@@ -698,13 +613,9 @@ op UnassignApplication(
   @path subject_id: string
 ): UnassignApplicationSuccess_204 | UnassignApplicationError400 | UnassignApplicationError403;
 
-model GetAppSignInPolicyHttpResponse {
-  response: IdMagic.Contract.AppSignInPolicyResponse;
-}
-
 model GetAppSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAppSignInPolicyHttpResponse;
+  @body body: IdMagic.Contract.AppSignInPolicyResponse;
 }
 
 union GetAppSignInPolicyError400Body {
@@ -727,7 +638,7 @@ model GetAppSignInPolicyError403 {
   @body body: GetAppSignInPolicyError403Body;
 }
 
-@doc("管理者が Application の sign-in policy を取得する。アプリ個別ポリシー・テナントデフォルト・上書き後に実際に適用される effective ルール列と、デフォルトより弱いかの警告フラグを返す。未設定なら空 rules を返す。")
+@doc("An administrator reads the sign-in policy of an Application. It returns the application's own policy, the tenant default, the effective rule sequence that actually applies after the override, and a warning flag for a policy weaker than the default. When nothing is set it returns empty rules.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("GetAppSignInPolicy")
 @route("/api/admin/v1/applications/{id}/sign-in-policy")
@@ -736,18 +647,9 @@ op GetAppSignInPolicy(
   @path id: string
 ): GetAppSignInPolicySuccess_200 | GetAppSignInPolicyError400 | GetAppSignInPolicyError403;
 
-model UpdateAppSignInPolicyHttpRequest {
-  id: string;
-  request: IdMagic.Contract.AppSignInPolicyRequest;
-}
-
-model UpdateAppSignInPolicyHttpResponse {
-  response: IdMagic.Contract.AppSignInPolicyResponse;
-}
-
 model UpdateAppSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateAppSignInPolicyHttpResponse;
+  @body body: IdMagic.Contract.AppSignInPolicyResponse;
 }
 
 union UpdateAppSignInPolicyError400Body {
@@ -770,23 +672,19 @@ model UpdateAppSignInPolicyError403 {
   @body body: UpdateAppSignInPolicyError403Body;
 }
 
-@doc("管理者が Application の sign-in policy を置き換える。無効な CIDR を含む条件は拒否する。")
+@doc("An administrator replaces the sign-in policy of an Application. A condition holding an invalid CIDR is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAppSignInPolicy")
 @route("/api/admin/v1/applications/{id}/sign-in-policy")
 @put
 op UpdateAppSignInPolicy(
   @path id: string,
-  @body body: UpdateAppSignInPolicyHttpRequest
+  @body body: IdMagic.Contract.AppSignInPolicyRequest
 ): UpdateAppSignInPolicySuccess_200 | UpdateAppSignInPolicyError400 | UpdateAppSignInPolicyError403;
-
-model GetTenantDefaultSignInPolicyHttpResponse {
-  response: IdMagic.Contract.TenantDefaultSignInPolicyResponse;
-}
 
 model GetTenantDefaultSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetTenantDefaultSignInPolicyHttpResponse;
+  @body body: IdMagic.Contract.TenantDefaultSignInPolicyResponse;
 }
 
 union GetTenantDefaultSignInPolicyError403Body {
@@ -799,7 +697,7 @@ model GetTenantDefaultSignInPolicyError403 {
   @body body: GetTenantDefaultSignInPolicyError403Body;
 }
 
-@doc("管理者がテナントデフォルト sign-in policy と MFA 未登録 active user 数を取得する。未設定なら空 rules の policy を返す。")
+@doc("An administrator reads the tenant default sign-in policy together with the number of active users not enrolled in MFA. When nothing is set it returns a policy with empty rules.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetTenantDefaultSignInPolicy")
 @route("/api/admin/v1/default-sign-in-policy")
@@ -808,17 +706,9 @@ op GetTenantDefaultSignInPolicy(
 
 ): GetTenantDefaultSignInPolicySuccess_200 | GetTenantDefaultSignInPolicyError403;
 
-model UpdateTenantDefaultSignInPolicyHttpRequest {
-  request: IdMagic.Contract.TenantDefaultSignInPolicyRequest;
-}
-
-model UpdateTenantDefaultSignInPolicyHttpResponse {
-  response: IdMagic.Contract.TenantDefaultSignInPolicyResponse;
-}
-
 model UpdateTenantDefaultSignInPolicySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateTenantDefaultSignInPolicyHttpResponse;
+  @body body: IdMagic.Contract.TenantDefaultSignInPolicyResponse;
 }
 
 union UpdateTenantDefaultSignInPolicyError400Body {
@@ -841,22 +731,18 @@ model UpdateTenantDefaultSignInPolicyError403 {
   @body body: UpdateTenantDefaultSignInPolicyError403Body;
 }
 
-@doc("管理者がテナントデフォルト sign-in policy を置き換える。MFA 必須化では強制開始日時、enrollment bypass を利用できる猶予、管理者承認の可否を明示する。無効な CIDR、過去の強制開始日時、非正値の猶予は拒否する。空 rules で保存すればデフォルトは allow-all に戻る。")
+@doc("An administrator replaces the tenant default sign-in policy. Making MFA mandatory states the enforcement start time, the grace during which an enrollment bypass may be used, and whether administrator approval is allowed. An invalid CIDR, an enforcement start time in the past, and a non-positive grace are all refused. Saving empty rules returns the default to allow-all.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantDefaultSignInPolicy")
 @route("/api/admin/v1/default-sign-in-policy")
 @put
 op UpdateTenantDefaultSignInPolicy(
-  @body body: UpdateTenantDefaultSignInPolicyHttpRequest
+  @body body: IdMagic.Contract.TenantDefaultSignInPolicyRequest
 ): UpdateTenantDefaultSignInPolicySuccess_200 | UpdateTenantDefaultSignInPolicyError400 | UpdateTenantDefaultSignInPolicyError403;
-
-model ListApplicationCategoriesHttpResponse {
-  response: IdMagic.Contract.AdminApplicationCategoryListResponse;
-}
 
 model ListApplicationCategoriesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListApplicationCategoriesHttpResponse;
+  @body body: IdMagic.Contract.AdminApplicationCategoryListResponse;
 }
 
 union ListApplicationCategoriesError403Body {
@@ -869,7 +755,7 @@ model ListApplicationCategoriesError403 {
   @body body: ListApplicationCategoriesError403Body;
 }
 
-@doc("管理者が所属テナントの ApplicationCategory を position 昇順で一覧する。")
+@doc("An administrator lists the ApplicationCategories of their tenant by position ascending.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:read"])
 @TypeSpec.OpenAPI.operationId("ListApplicationCategories")
 @route("/api/admin/v1/application-categories")
@@ -877,10 +763,6 @@ model ListApplicationCategoriesError403 {
 op ListApplicationCategories(
 
 ): ListApplicationCategoriesSuccess_200 | ListApplicationCategoriesError403;
-
-model CreateApplicationCategoryHttpRequest {
-  request: IdMagic.Contract.AdminApplicationCategoryRequest;
-}
 
 model CreateApplicationCategoryHttpResponse {
   category: IdMagic.Contract.AdminApplicationCategoryResponse;
@@ -921,19 +803,14 @@ model CreateApplicationCategoryError403 {
   @body body: CreateApplicationCategoryError403Body;
 }
 
-@doc("管理者が ApplicationCategory を作成する。")
+@doc("An administrator creates an ApplicationCategory.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("CreateApplicationCategory")
 @route("/api/admin/v1/application-categories")
 @post
 op CreateApplicationCategory(
-  @body body: CreateApplicationCategoryHttpRequest
+  @body body: IdMagic.Contract.AdminApplicationCategoryRequest
 ): CreateApplicationCategorySuccess_201 | CreateApplicationCategoryError400 | CreateApplicationCategoryError422 | CreateApplicationCategoryError403;
-
-model UpdateApplicationCategoryHttpRequest {
-  id: string;
-  request: IdMagic.Contract.AdminApplicationCategoryRequest;
-}
 
 model UpdateApplicationCategoryHttpResponse {
   category: IdMagic.Contract.AdminApplicationCategoryResponse;
@@ -974,14 +851,14 @@ model UpdateApplicationCategoryError403 {
   @body body: UpdateApplicationCategoryError403Body;
 }
 
-@doc("管理者が ApplicationCategory の名前 / 並び順を更新する。")
+@doc("An administrator updates the name or the position of an ApplicationCategory.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("UpdateApplicationCategory")
 @route("/api/admin/v1/application-categories/{id}")
 @patch
 op UpdateApplicationCategory(
   @path id: string,
-  @body body: UpdateApplicationCategoryHttpRequest
+  @body body: IdMagic.Contract.AdminApplicationCategoryRequest
 ): UpdateApplicationCategorySuccess_200 | UpdateApplicationCategoryError400 | UpdateApplicationCategoryError422 | UpdateApplicationCategoryError403;
 
 model DeleteApplicationCategorySuccess_204 {
@@ -1008,7 +885,7 @@ model DeleteApplicationCategoryError403 {
   @body body: DeleteApplicationCategoryError403Body;
 }
 
-@doc("管理者が ApplicationCategory を削除する (冪等)。付与済みの Application からも除く。")
+@doc("An administrator deletes an ApplicationCategory, idempotently. It is removed from the Applications it was assigned to as well.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("DeleteApplicationCategory")
 @route("/api/admin/v1/application-categories/{id}")
@@ -1017,18 +894,9 @@ op DeleteApplicationCategory(
   @path id: string
 ): DeleteApplicationCategorySuccess_204 | DeleteApplicationCategoryError400 | DeleteApplicationCategoryError403;
 
-model SetApplicationCategoriesHttpRequest {
-  id: string;
-  request: IdMagic.Contract.ApplicationCategoriesRequest;
-}
-
-model SetApplicationCategoriesHttpResponse {
-  application: IdMagic.Contract.AdminApplicationResponse;
-}
-
 model SetApplicationCategoriesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: SetApplicationCategoriesHttpResponse;
+  @body body: IdMagic.Contract.AdminApplicationResponse;
 }
 
 union SetApplicationCategoriesError400Body {
@@ -1061,23 +929,19 @@ model SetApplicationCategoriesError403 {
   @body body: SetApplicationCategoriesError403Body;
 }
 
-@doc("管理者が Application に付与するカテゴリ集合を置き換える。所属テナントの既存カテゴリのみ受け付ける。")
+@doc("An administrator replaces the set of categories assigned to an Application. Only categories that already exist in their tenant are accepted.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["applications:write"])
 @TypeSpec.OpenAPI.operationId("SetApplicationCategories")
 @route("/api/admin/v1/applications/{id}/categories")
 @put
 op SetApplicationCategories(
   @path id: string,
-  @body body: SetApplicationCategoriesHttpRequest
+  @body body: IdMagic.Contract.ApplicationCategoriesRequest
 ): SetApplicationCategoriesSuccess_200 | SetApplicationCategoriesError400 | SetApplicationCategoriesError422 | SetApplicationCategoriesError403;
-
-model ListMyApplicationsHttpResponse {
-  response: IdMagic.Contract.MyApplicationListResponse;
-}
 
 model ListMyApplicationsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListMyApplicationsHttpResponse;
+  @body body: IdMagic.Contract.MyApplicationListResponse;
 }
 
 union ListMyApplicationsError403Body {
@@ -1090,7 +954,7 @@ model ListMyApplicationsError403 {
   @body body: ListMyApplicationsError403Body;
 }
 
-@doc("利用者が自分に割当済み (visible) の Application を一覧する。hidden 割当は除外する。\n手動並び順 (ApplicationOrdering) があればそれを優先し、無ければ name 昇順。応答の categories は\ntenant のカテゴリ定義を position 昇順で含み、各アプリの category_ids でセクションに振り分ける。")
+@doc("A user lists the Applications assigned to them and visible; hidden assignments are excluded.\nA manual order (ApplicationOrdering) takes precedence when one is saved, and name ascending is used otherwise. The `categories`\nof the response carry the tenant's category definitions by position ascending, and each app is sorted into a section by its `category_ids`.")
 @TypeSpec.OpenAPI.operationId("ListMyApplications")
 @route("/api/account/v1/applications")
 @get
@@ -1098,13 +962,9 @@ op ListMyApplications(
 
 ): ListMyApplicationsSuccess_200 | ListMyApplicationsError403;
 
-model GetMyApplicationOrderHttpResponse {
-  response: IdMagic.Contract.MyApplicationOrderResponse;
-}
-
 model GetMyApplicationOrderSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetMyApplicationOrderHttpResponse;
+  @body body: IdMagic.Contract.MyApplicationOrderResponse;
 }
 
 union GetMyApplicationOrderError403Body {
@@ -1117,7 +977,7 @@ model GetMyApplicationOrderError403 {
   @body body: GetMyApplicationOrderError403Body;
 }
 
-@doc("利用者が保存済みのポータル手動並び順を取得する。未保存なら空配列を返す。")
+@doc("A user reads the manual portal order they saved. When nothing is saved it returns an empty array.")
 @TypeSpec.OpenAPI.operationId("GetMyApplicationOrder")
 @route("/api/account/v1/applications/order")
 @get
@@ -1125,17 +985,9 @@ op GetMyApplicationOrder(
 
 ): GetMyApplicationOrderSuccess_200 | GetMyApplicationOrderError403;
 
-model ReorderMyApplicationsHttpRequest {
-  request: IdMagic.Contract.ReorderMyApplicationsRequest;
-}
-
-model ReorderMyApplicationsHttpResponse {
-  response: IdMagic.Contract.MyApplicationOrderResponse;
-}
-
 model ReorderMyApplicationsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ReorderMyApplicationsHttpResponse;
+  @body body: IdMagic.Contract.MyApplicationOrderResponse;
 }
 
 union ReorderMyApplicationsError400Body {
@@ -1158,12 +1010,12 @@ model ReorderMyApplicationsError403 {
   @body body: ReorderMyApplicationsError403Body;
 }
 
-@doc("利用者が自分のポータル手動並び順を保存する。application_ids は自分に割当済み visible な\nアプリのみを含み、それ以外を含むと拒否する。")
+@doc("A user saves their own manual portal order. `application_ids` may hold only apps assigned to them and visible; anything else is refused.")
 @TypeSpec.OpenAPI.operationId("ReorderMyApplications")
 @route("/api/account/v1/applications/order")
 @put
 op ReorderMyApplications(
-  @body body: ReorderMyApplicationsHttpRequest
+  @body body: IdMagic.Contract.ReorderMyApplicationsRequest
 ): ReorderMyApplicationsSuccess_200 | ReorderMyApplicationsError400 | ReorderMyApplicationsError403;
 }
 

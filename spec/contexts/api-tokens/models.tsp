@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("API アクセストークンに付与できる scope の正準リスト。<resource>:<action> 形式 (read=参照系 / write=変更系)。scim:* は SCIM 2.0 inbound provisioning API 専用の scope で、users/groups × read/write に分ける。SCIM discovery endpoint (ServiceProviderConfig / ResourceTypes / Schemas) は scim:* のいずれかを持てば 参照できる。Application aggregate とその protocol binding は applications:*、独立した protocol/resource 管理 API は oauth-clients:* / authorization-detail-types:* / mcp-resource-servers:* / saml:* / wsfed:* / provisioning:* / workload-identity:* / shared-signals:* に分ける。アカウント自己管理 account:* は発行者本人の自己管理 API 専用で、read / write と MFA / session / consent / password の sensitive facet を分離する。公開・プロトコル・step-up・email verification endpoint は scope 対象外。")
+@doc("The canonical list of scopes an API access token may carry, written as `<resource>:<action>` (read for queries, write for changes). The `scim:*` scopes belong to the SCIM 2.0 inbound provisioning API alone and split users and groups against read and write. The SCIM discovery endpoints (ServiceProviderConfig, ResourceTypes, Schemas) are readable with any `scim:*` scope. The Application aggregate and its protocol bindings sit under `applications:*`, while the standalone protocol and resource management APIs split into `oauth-clients:*`, `authorization-detail-types:*`, `mcp-resource-servers:*`, `saml:*`, `wsfed:*`, `provisioning:*`, `workload-identity:*`, and `shared-signals:*`. The `account:*` scopes belong to the self-service API of the token's own issuer, separating read from write and carving out the sensitive facets of MFA, sessions, consent, and passwords. Public, protocol, step-up, and email verification endpoints take no scope at all.")
 enum ApiTokenScope {
   users_read: "users:read",
   users_write: "users:write",
@@ -52,14 +52,14 @@ enum ApiTokenScope {
 }
 
 
-@doc("管理用 API / SCIM API / 発行者本人の account API を認証する tenant-scoped JWT アクセストークンの管理 record。scopes が空、expires_at を過ぎた、または revoked_at が設定された token は認可されない。JWT 本文は発行時に一度だけ返し永続化しない。")
+@doc("The management record of a tenant-scoped JWT access token, which authenticates the administration API, the SCIM API, and the issuer's own account API. A token is not authorized once its scopes are empty, once `expires_at` has passed, or once `revoked_at` is set. The JWT itself is returned once, at issuance, and never stored.")
 model ApiToken {
   tenant_id: string;
-  @doc("token を発行した active User。account:* 操作の対象は常にこの User に固定する。")
+  @doc("The active User that issued the token. An `account:*` operation always acts on this User and no other.")
   user_id: string;
   id: string;
   jti: string;
-  @doc("realm が所有する built-in public client id。管理発行では OAuth client の事前登録を要求しない。")
+  @doc("The built-in public client id the realm owns. Issuing a token through the administration API does not require an OAuth client to be registered first.")
   client_id: string;
   scopes: ApiTokenScope[];
   audience: string;
@@ -71,7 +71,7 @@ model ApiToken {
 }
 
 
-@doc("一覧・発行応答で返すトークンのメタデータ。JWT 本文を含まない。")
+@doc("The token metadata returned by the list and issue responses. It never carries the JWT itself.")
 model ApiTokenMetadata {
   id: string;
   jti: string;
@@ -86,7 +86,7 @@ model ApiTokenMetadata {
 }
 
 
-@doc("有効な API アクセストークンから解決した tenant、発行者 subject、scope の認証コンテキスト。")
+@doc("The authentication context resolved from a valid API access token: the tenant, the issuer's subject, and the scopes.")
 model ApiTokenPrincipal {
   tenant_id: string;
   user_id: string;

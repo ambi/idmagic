@@ -16,7 +16,7 @@ model WsFederationSignInSuccess_303 {
   @statusCode statusCode: 303;
 }
 
-@doc("WS-Federation passive requestor profile の単一 HTTP endpoint。wa で sign-in と sign-out を dispatch する。sign-in は wtrealm で relying party を解決し、wreply を許可集合に限定する (open redirect 防止)。未認証はログインへ誘導し、認証済みなら relying party の claim policy で発行した claim を署名済み SAML assertion (既定 SAML 1.1 / Entra 互換、RP 設定で SAML 2.0) に載せ、RSTR に包んで自動 POST する。wfresh が示す最大経過時間より認証が古ければ再認証へ誘導し、wauth が要求する認証方式を尊重する。sign-out の意味契約は WsFederationSignOut が所有する。")
+@doc("The single HTTP endpoint of the WS-Federation passive requestor profile. `wa` dispatches between sign-in and sign-out. Sign-in resolves the relying party from `wtrealm` and confines `wreply` to the allowed set, so it cannot become an open redirect. An unauthenticated caller is sent to sign in; an authenticated one gets the claims built by the relying party's claim policy, carried in a signed SAML assertion (SAML 1.1 by default, which Entra expects; SAML 2.0 when the RP is configured for it), wrapped in an RSTR and auto-posted. When the authentication is older than the maximum age `wfresh` states, the caller is sent to reauthenticate, and the authentication method `wauth` asks for is honoured. The meaning of sign-out belongs to WsFederationSignOut.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("WsFederationSignIn")
 @route("/wsfed")
@@ -31,17 +31,9 @@ op WsFederationSignIn(
   @query whr?: string
 ): WsFederationSignInSuccess_200 | WsFederationSignInSuccess_303;
 
-model WsTrustIssueHttpRequest {
-  request: IdMagic.Contract.WsTrustRequestSecurityToken;
-}
-
-model WsTrustIssueHttpResponse {
-  response: IdMagic.Contract.WsTrustResponse;
-}
-
 model WsTrustIssueSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: WsTrustIssueHttpResponse;
+  @body body: IdMagic.Contract.WsTrustResponse;
 }
 
 union WsTrustIssueError400Body {
@@ -64,24 +56,22 @@ model WsTrustIssueError403 {
   @body body: WsTrustIssueError403Body;
 }
 
-@doc("WS-Trust 1.3 active STS Issue endpoint。UsernameToken を検証し、 To を現在 realm の active STS endpoint、Action / RequestType を Issue、KeyType を Bearer に限定し、AppliesTo を登録済み WsFedRelyingParty に解決する。RP の claim policy で組み立てた claim を署名済み SAML assertion に載せ、RSTR として返す。未登録 AppliesTo、期限切れ Timestamp、不正な To / Action / RequestType / KeyType / TokenType は fail-closed で拒否する。")
+@doc("The WS-Trust 1.3 active STS Issue endpoint. It verifies the UsernameToken, confines `To` to the active STS endpoint of the current realm, `Action` and `RequestType` to Issue, and `KeyType` to Bearer, and resolves `AppliesTo` to a registered WsFedRelyingParty. The claims built by the RP's claim policy are carried in a signed SAML assertion and returned as an RSTR. An unregistered `AppliesTo`, an expired Timestamp, and a malformed `To`, `Action`, `RequestType`, `KeyType`, or `TokenType` are all rejected fail-closed.")
 @TypeSpec.OpenAPI.operationId("WsTrustIssue")
 @route("/trust/usernamemixed")
 @post
 op WsTrustIssue(
-  @body body: WsTrustIssueHttpRequest
+  @body body: IdMagic.Contract.WsTrustRequestSecurityToken
 ): WsTrustIssueSuccess_200 | WsTrustIssueError400 | WsTrustIssueError403;
-
-model WsTrustMetadataExchangeHttpResponse {
-  endpoint: IdMagic.Contract.SecurityTokenEndpoint;
-}
 
 model WsTrustMetadataExchangeSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: WsTrustMetadataExchangeHttpResponse;
+  @header contentType: "application/xml; charset=utf-8";
+  @doc("The WS-MetadataExchange document, as `mex:Metadata` XML.")
+  @body body: string;
 }
 
-@doc("WS-Trust MEX endpoint。active STS の usernamemixed endpoint、UsernameToken policy、WS-Addressing / SOAP binding を realm issuer から派生して広告する。")
+@doc("The WS-Trust MEX endpoint. It advertises the usernamemixed endpoint of the active STS, the UsernameToken policy, and the WS-Addressing and SOAP bindings, all derived from the realm issuer.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("WsTrustMetadataExchange")
 @route("/trust/mex")
@@ -90,16 +80,14 @@ op WsTrustMetadataExchange(
 
 ): WsTrustMetadataExchangeSuccess_200;
 
-model PublishWsFederationMetadataHttpResponse {
-  endpoint: IdMagic.Contract.SecurityTokenEndpoint;
-}
-
 model PublishWsFederationMetadataSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: PublishWsFederationMetadataHttpResponse;
+  @header contentType: "application/xml; charset=utf-8";
+  @doc("The AD FS compatible `federationmetadata.xml` document, as `EntityDescriptor` XML.")
+  @body body: string;
 }
 
-@doc("WS-Federation / WS-Trust metadata publication。realm entityID、passive endpoint、 active STS endpoint、MEX endpoint、tenant の XmlFederationSigning 証明書を AD FS 互換 federationmetadata.xml として公開する。active 証明書に加え rotation grace 中の verifying 証明書も掲載する。")
+@doc("WS-Federation and WS-Trust metadata publication. It publishes the realm entityID, the passive endpoint, the active STS endpoint, the MEX endpoint, and the tenant's XmlFederationSigning certificate as an AD FS compatible `federationmetadata.xml`. Alongside the active certificate it lists any verifying certificate still inside its rotation grace.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("PublishWsFederationMetadata")
 @route("/federationmetadata/2007-06/federationmetadata.xml")
@@ -109,19 +97,23 @@ op PublishWsFederationMetadata(
 ): PublishWsFederationMetadataSuccess_200;
 
 model ConfigureEntraFederationHttpRequest {
-  @doc("Entra で検証済みの DNS domain。")
+  @doc("A DNS domain already verified in Entra.")
   domain: string;
-  @doc("空なら domain から安定生成する IssuerUri。")
+  @doc("The IssuerUri. Left empty, it is derived from the domain, stably.")
   issuer_uri?: string;
-  @doc("ImmutableID の元になる不変 user 属性。")
+  @doc("The immutable user attribute the ImmutableID is built from.")
   source_anchor_attribute: string;
-  @doc("Entra が wreply に使う URL。空なら Microsoft Online の既定 URL。")
+  @doc("The URL Entra uses as `wreply`. Left empty, the default Microsoft Online URL is used.")
   reply_url?: string;
 }
 
 model ConfigureEntraFederationHttpResponse {
   profile: IdMagic.Contract.EntraFederationProfile;
   relying_party: IdMagic.Contract.WsFedRelyingParty;
+  @doc("The values to feed into `Set-MsolDomainAuthentication`, keyed by its parameter names: IssuerUri, PassiveLogOnUri, ActiveLogOnUri, MetadataExchangeUri, and SigningCertificate.")
+  powershell: Record<string>;
+  @doc("What this preset does not provide, stated so the operator finds out before configuring rather than after. Hybrid Azure AD Join device registration is listed here.")
+  known_limitations: string[];
 }
 
 model ConfigureEntraFederationSuccess_200 {
@@ -149,7 +141,7 @@ model ConfigureEntraFederationError403 {
   @body body: ConfigureEntraFederationError403Body;
 }
 
-@doc("Microsoft Entra domain federation preset を設定する。検証済み domain、 IssuerUri、sourceAnchor 属性を受け取り、sourceAnchor が既存 user で欠落・重複しないこと、 GUID または base64 ImmutableID として正規化できることを検証する。成功時は UPN / ImmutableID / persistent NameID の claim preset を持つ WsFedRelyingParty を upsert し、Entra に登録する PassiveLogOnUri / ActiveLogOnUri / MetadataExchangeUri を返す。 Hybrid Azure AD Join device registration は windowstransport + コンピュータアカウント Kerberos を要するため未提供として診断に含める。")
+@doc("Configures the Microsoft Entra domain federation preset. It takes the verified domain, the IssuerUri, and the sourceAnchor attribute, and checks that sourceAnchor is neither missing nor duplicated across the existing users and that it normalizes to a GUID or a base64 ImmutableID. On success it upserts a WsFedRelyingParty carrying the claim preset for UPN, ImmutableID, and a persistent NameID, and returns the PassiveLogOnUri, ActiveLogOnUri, and MetadataExchangeUri to register in Entra. Hybrid Azure AD Join device registration needs windowstransport and computer-account Kerberos, so the diagnostics report it as not offered.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("ConfigureEntraFederation")
 @route("/api/admin/v1/wsfed/entra-federation")
@@ -158,22 +150,14 @@ op ConfigureEntraFederation(
   @body body: ConfigureEntraFederationHttpRequest
 ): ConfigureEntraFederationSuccess_200 | ConfigureEntraFederationError400 | ConfigureEntraFederationError403;
 
-model RegisterWsFedRelyingPartyHttpRequest {
-  relying_party: IdMagic.Contract.WsFedRelyingParty;
-}
-
-model RegisterWsFedRelyingPartyHttpResponse {
-  relying_party: IdMagic.Contract.WsFedRelyingParty;
-}
-
 model RegisterWsFedRelyingPartySuccess_201 {
   @statusCode statusCode: 201;
-  @body body: RegisterWsFedRelyingPartyHttpResponse;
+  @body body: IdMagic.Contract.WsFedRelyingPartyRequest;
 }
 
 model RegisterWsFedRelyingPartySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RegisterWsFedRelyingPartyHttpResponse;
+  @body body: IdMagic.Contract.WsFedRelyingParty;
 }
 
 union RegisterWsFedRelyingPartyError400Body {
@@ -196,13 +180,13 @@ model RegisterWsFedRelyingPartyError403 {
   @body body: RegisterWsFedRelyingPartyError403Body;
 }
 
-@doc("管理者が WS-Federation relying party trust を登録または更新する。wtrealm、reply_urls、audience、token_type、claim_policy を契約として保存し、reply_urls は空でない閉集合にする。管理操作は AdminFederationTrustsManage で保護する。")
+@doc("An administrator registers or updates a WS-Federation relying party trust. `wtrealm`, `reply_urls`, `audience`, `token_type`, and `claim_policy` are stored as the contract, and `reply_urls` is a non-empty closed set. The operation is guarded by AdminFederationTrustsManage.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("RegisterWsFedRelyingParty")
 @route("/api/admin/v1/wsfed/relying-parties")
 @post
 op RegisterWsFedRelyingParty(
-  @body body: RegisterWsFedRelyingPartyHttpRequest
+  @body body: IdMagic.Contract.WsFedRelyingParty
 ): RegisterWsFedRelyingPartySuccess_201 | RegisterWsFedRelyingPartySuccess_200 | RegisterWsFedRelyingPartyError400 | RegisterWsFedRelyingPartyError403;
 
 model ListWsFedRelyingPartiesHttpResponse {
@@ -224,7 +208,7 @@ model ListWsFedRelyingPartiesError403 {
   @body body: ListWsFedRelyingPartiesError403Body;
 }
 
-@doc("管理者が所属テナントの WS-Federation relying party trust を一覧する。管理操作は AdminFederationTrustsManage で保護する。")
+@doc("An administrator lists the WS-Federation relying party trusts of their tenant. The operation is guarded by AdminFederationTrustsManage.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:read"])
 @TypeSpec.OpenAPI.operationId("ListWsFedRelyingParties")
 @route("/api/admin/v1/wsfed/relying-parties")
@@ -267,7 +251,7 @@ model DeleteWsFedRelyingPartyError409 {
   @body body: DeleteWsFedRelyingPartyError409Body;
 }
 
-@doc("管理者が所属テナントの catalog 外 WS-Federation relying party trust を wtrealm で削除する。application_id が非 NULL の RP は ApplicationOwnedProtocolError (HTTP 409) で拒否する。")
+@doc("An administrator deletes, by `wtrealm`, a WS-Federation relying party trust of their tenant that sits outside the catalog. An RP whose `application_id` is not null is refused with ApplicationOwnedProtocolError (HTTP 409).")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["wsfed:write"])
 @TypeSpec.OpenAPI.operationId("DeleteWsFedRelyingParty")
 @route("/api/admin/v1/wsfed/relying-parties")

@@ -1,125 +1,111 @@
 namespace IdMagic.Contract {
 
-@doc("IdManagement が publish する Agent principal を、束縛検証に必要な属性だけで表す published language stub。")
+@doc("Published-language stub for the Agent principal the IdManagement context publishes, carrying only the attributes binding verification needs.")
 model AgentRef {
   id: string;
   tenant_id: string;
-  @doc("Active / Disabled / Killed。Active 以外への束縛は fail-closed で拒否する。")
+  @doc("Active, Disabled, or Killed. Binding to anything but Active is refused fail-closed.")
   status: string;
 }
 
 
-@doc("外部 attestation token の検証が fail-closed で失敗した (未登録 issuer・署名不正・期限切れ・audience 不一致・TTL 超過・pattern 不一致・ambiguous match・束縛先 Agent が Active でない)。")
+@doc("Verification of an external attestation token failed fail-closed: an unregistered issuer, a bad signature, an expired token, an audience mismatch, a TTL over the ceiling, a pattern mismatch, an ambiguous match, or a bound Agent that is not active. A domain condition; over HTTP it reaches the client as the token exchange InvalidGrantError.")
 model WorkloadAttestationRejectedError {
 
 }
 
 
-@doc("jwks_uri と jwks のいずれも指定されていない。")
-model WorkloadTrustBundleJwksRequiredError {
-
-}
+@doc("Neither `jwks_uri` nor `jwks` was given. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_jwks_required`.")
+model WorkloadTrustBundleJwksRequiredError is ProblemDetails;
 
 
-@doc("name が空である。")
-model WorkloadTrustBundleNameRequiredError {
-
-}
+@doc("`name` is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_name_required`.")
+model WorkloadTrustBundleNameRequiredError is ProblemDetails;
 
 
-@doc("issuer が空である。")
-model WorkloadTrustBundleIssuerRequiredError {
-
-}
+@doc("`issuer` is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_issuer_required`.")
+model WorkloadTrustBundleIssuerRequiredError is ProblemDetails;
 
 
-@doc("accepted_audiences が空である。")
-model WorkloadTrustBundleAudiencesRequiredError {
-
-}
+@doc("`accepted_audiences` is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_audiences_required`.")
+model WorkloadTrustBundleAudiencesRequiredError is ProblemDetails;
 
 
-@doc("max_subject_token_ttl_seconds が正の値でない。")
-model WorkloadTrustBundleInvalidTtlError {
-
-}
+@doc("`max_subject_token_ttl_seconds` is not a positive value. RFC 9457 Problem Details with `type` = `urn:idmagic:error:workload_trust_bundle_invalid_ttl`.")
+model WorkloadTrustBundleInvalidTtlError is ProblemDetails;
 
 
-@doc("指定した agent_id がテナント内の Agent に解決できない。")
-model AgentWorkloadBindingAgentNotFoundError {
-
-}
+@doc("The `agent_id` given does not resolve to an Agent in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_workload_binding_agent_not_found`.")
+model AgentWorkloadBindingAgentNotFoundError is ProblemDetails;
 
 
-@doc("subject_pattern が空である。")
-model AgentWorkloadBindingPatternRequiredError {
-
-}
+@doc("`subject_pattern` is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_workload_binding_pattern_required`.")
+model AgentWorkloadBindingPatternRequiredError is ProblemDetails;
 
 
-@doc("WorkloadTrustBundleLifecycle の状態。")
+@doc("The states of WorkloadTrustBundleLifecycle.")
 enum WorkloadTrustBundleStatus {
   enabled: "enabled",
   disabled: "disabled",
 }
 
 
-@doc("AgentWorkloadBindingLifecycle の状態。")
+@doc("The states of AgentWorkloadBindingLifecycle.")
 enum AgentWorkloadBindingStatus {
   enabled: "enabled",
   disabled: "disabled",
 }
 
 
-@doc("テナントスコープの外部 attestation 発行者信頼設定。issuer は tenant 内で一意。jwks_uri と jwks (inline) は少なくとも一方が必須。")
+@doc("A tenant-scoped trust setting for an external attestation issuer. `issuer` is unique within the tenant, and at least one of `jwks_uri` and inline `jwks` is required.")
 model WorkloadTrustBundle {
-  @doc("生成識別子。UUID v4。不変。")
+  @doc("The generated identifier (UUID v4). Immutable.")
   @minLength(1)
   @maxLength(64)
   id: string;
-  @doc("所属テナント ID。cross-tenant 参照は禁止。")
+  @doc("The tenant it belongs to. Cross-tenant references are forbidden.")
   tenant_id: string = "default";
-  @doc("テナント内で一意な管理用表示名。")
+  @doc("The administrative display name, unique within the tenant.")
   @minLength(1)
   @maxLength(100)
   name: string;
-  @doc("SPIFFE trust domain、または運用者が定める発行者グループのラベル。")
+  @doc("The SPIFFE trust domain, or a label the operator gives an issuer group.")
   @minLength(1)
   @maxLength(255)
   trust_domain: string;
-  @doc("外部 attestation token の iss claim と一致しなければならない発行者 URL。テナント内で一意。")
+  @doc("The issuer URL the `iss` claim of the external attestation token must match. Unique within the tenant.")
   issuer: url;
-  @doc("JWKS 取得元。https 必須。")
+  @doc("Where the JWKS is fetched from. It must be https.")
   jwks_uri?: url;
-  @doc("inline JWKS。jwks_uri の代替。")
-  jwks?: unknown;
-  @doc("外部 attestation token の aud claim が最低 1 つ一致しなければならない受理 audience 集合。")
+  @doc("An inline JWKS, as an alternative to `jwks_uri`.")
+  jwks?: JWKS;
+  @doc("The accepted audiences; the `aud` claim of the external attestation token must match at least one of them.")
   accepted_audiences: string[];
-  @doc("外部 attestation token 自身の (exp - iat) に許容する上限。超過は fail-closed で拒否する。")
+  @doc("The ceiling on the external attestation token's own `exp - iat`. Exceeding it is refused fail-closed.")
   max_subject_token_ttl_seconds: int64 = 3600;
   status: WorkloadTrustBundleStatus = WorkloadTrustBundleStatus.enabled;
   created_at: utcDateTime;
   updated_at?: utcDateTime;
-  @doc("JWKS の最終取得成功時刻。last-known-good キャッシュの鮮度判定に使う。")
+  @doc("When the JWKS was last fetched successfully. Used to judge how fresh the last-known-good cache is.")
   jwks_cached_at?: utcDateTime;
 }
 
 
-@doc("WorkloadTrustBundle 配下で外部 subject の glob pattern を同一テナントの Agent へ写す mapping。agent_id は WorkloadTrustBundle と同一 tenant_id の既存 Agent でなければならない (WorkloadIdentityReferencesStayTenantLocal)。")
+@doc("A mapping under a WorkloadTrustBundle that projects a glob pattern over external subjects onto an Agent of the same tenant. `agent_id` must name an existing Agent whose `tenant_id` matches the WorkloadTrustBundle's (WorkloadIdentityReferencesStayTenantLocal).")
 model AgentWorkloadBinding {
-  @doc("生成識別子。UUID v4。不変。")
+  @doc("The generated identifier (UUID v4). Immutable.")
   @minLength(1)
   @maxLength(64)
   id: string;
-  @doc("所属テナント ID。WorkloadTrustBundle.tenant_id と一致する。")
+  @doc("The tenant it belongs to. It matches `WorkloadTrustBundle.tenant_id`.")
   tenant_id: string = "default";
-  @doc("属する WorkloadTrustBundle の id。")
+  @doc("The id of the WorkloadTrustBundle it belongs to.")
   trust_bundle_id: string;
-  @doc("外部 attestation token の sub claim に対する glob pattern (例: spiffe://example.org/ns/*/sa/agent-*、system:serviceaccount:prod-agents:*)。同一 trust_bundle_id 内で重複禁止。")
+  @doc("A glob pattern matched against the `sub` claim of the external attestation token, such as `spiffe://example.org/ns/*/sa/agent-*` or `system:serviceaccount:prod-agents:*`. Duplicates within one `trust_bundle_id` are forbidden.")
   @minLength(1)
   @maxLength(500)
   subject_pattern: string;
-  @doc("写像先の Agent id。WorkloadTrustBundle と同一 tenant_id の既存 Agent でなければならない。")
+  @doc("The Agent to project onto. It must be an existing Agent whose `tenant_id` matches the WorkloadTrustBundle's.")
   agent_id: string;
   status: AgentWorkloadBindingStatus = AgentWorkloadBindingStatus.enabled;
   created_at: utcDateTime;
@@ -128,7 +114,7 @@ model AgentWorkloadBinding {
 }
 
 
-@doc("管理者が WorkloadTrustBundle を登録する JSON リクエスト。")
+@doc("The JSON request an administrator sends to register a WorkloadTrustBundle.")
 model WorkloadTrustBundleRegisterRequest {
   @minLength(1)
   @maxLength(100)
@@ -138,25 +124,25 @@ model WorkloadTrustBundleRegisterRequest {
   trust_domain: string;
   issuer: url;
   jwks_uri?: url;
-  jwks?: unknown;
+  jwks?: JWKS;
   accepted_audiences: string[];
   max_subject_token_ttl_seconds?: int64;
 }
 
 
-@doc("管理者が WorkloadTrustBundle の name / jwks_uri / jwks / accepted_audiences / max_subject_token_ttl_seconds を更新する JSON リクエスト。省略フィールドは現状維持。issuer / trust_domain は不変 (変更したい場合は登録し直す)。")
+@doc("The JSON request an administrator sends to update the `name`, `jwks_uri`, `jwks`, `accepted_audiences`, or `max_subject_token_ttl_seconds` of a WorkloadTrustBundle. A field left out keeps its current value. `issuer` and `trust_domain` are immutable; changing them means registering again.")
 model WorkloadTrustBundleUpdateRequest {
   @minLength(1)
   @maxLength(100)
   name?: string;
   jwks_uri?: url;
-  jwks?: unknown;
+  jwks?: JWKS;
   accepted_audiences?: string[];
   max_subject_token_ttl_seconds?: int64;
 }
 
 
-@doc("WorkloadTrustBundle 表現。管理 API の一覧・詳細で同じ表現を返す。jwks の秘密情報は含まない (公開鍵材料のみ)。")
+@doc("How a WorkloadTrustBundle is represented. The list and the detail endpoints of the administration API return the same representation. It carries no secret from `jwks`, only public key material.")
 model WorkloadTrustBundleResponse {
   id: string;
   tenant_id: string;
@@ -164,7 +150,7 @@ model WorkloadTrustBundleResponse {
   trust_domain: string;
   issuer: url;
   jwks_uri?: url;
-  @doc("inline jwks が設定されているかどうか (jwks 本体は返さない)。")
+  @doc("Whether an inline `jwks` is set. The `jwks` itself is not returned.")
   has_inline_jwks: boolean;
   accepted_audiences: string[];
   max_subject_token_ttl_seconds: int64;
@@ -175,13 +161,13 @@ model WorkloadTrustBundleResponse {
 }
 
 
-@doc("管理 API の WorkloadTrustBundle 一覧。")
+@doc("The WorkloadTrustBundle list of the administration API.")
 model WorkloadTrustBundleListResponse {
   trust_bundles: WorkloadTrustBundleResponse[];
 }
 
 
-@doc("RefreshWorkloadTrustBundleJWKS の応答。実際に JWKS を取得できたかどうかを返す (テナントが設定ミスを事前に発見するための test 操作)。")
+@doc("The response of RefreshWorkloadTrustBundleJWKS: whether the JWKS could actually be fetched. It is a test operation, so that a tenant finds a misconfiguration before it matters.")
 model WorkloadTrustBundleRefreshResponse {
   reachable: boolean;
   key_count?: int64;
@@ -189,7 +175,7 @@ model WorkloadTrustBundleRefreshResponse {
 }
 
 
-@doc("管理者が AgentWorkloadBinding を作成する JSON リクエスト。")
+@doc("The JSON request an administrator sends to create an AgentWorkloadBinding.")
 model AgentWorkloadBindingCreateRequest {
   @minLength(1)
   @maxLength(500)
@@ -199,7 +185,7 @@ model AgentWorkloadBindingCreateRequest {
 }
 
 
-@doc("AgentWorkloadBinding 表現。管理 API の一覧・詳細で同じ表現を返す。")
+@doc("How an AgentWorkloadBinding is represented. The list and the detail endpoints of the administration API return the same representation.")
 model AgentWorkloadBindingResponse {
   id: string;
   tenant_id: string;
@@ -213,32 +199,32 @@ model AgentWorkloadBindingResponse {
 }
 
 
-@doc("管理 API の AgentWorkloadBinding 一覧。")
+@doc("The AgentWorkloadBinding list of the administration API.")
 model AgentWorkloadBindingListResponse {
   bindings: AgentWorkloadBindingResponse[];
 }
 
 
-@doc("OAuth2 の token-exchange grant から渡す、外部 attestation token の生値と検証コンテキスト。VerifyWorkloadAttestation の input。")
+@doc("The raw external attestation token and its verification context, handed over by the OAuth 2.0 token-exchange grant. The input of VerifyWorkloadAttestation.")
 model WorkloadAttestation {
-  @doc("外部 attestation token (JWT-SVID 等) の生の文字列。")
+  @doc("The external attestation token as a raw string, a JWT-SVID for instance.")
   subject_token: string;
-  @doc("token-exchange の resource パラメータ (RFC 8707)。監査イベントに残す。")
+  @doc("The `resource` parameter of the token exchange (RFC 8707). It is kept in the audit event.")
   requested_audience: string;
 }
 
 
-@doc("検証を通過した外部 attestation を写した idmagic principal。OAuth2 の token-exchange usecase はこれを subject として扱い、client_id が指す束縛済み OAuth2Client を自身の repository で解決して scope / grant_types のダウンスコープ上限を得る (WorkloadIdentity は OAuth2Client の詳細を持たない)。")
+@doc("The IdMagic principal an external attestation was projected onto once it passed verification. The OAuth 2.0 token-exchange use case treats it as the subject and resolves the bound OAuth2Client that `client_id` names through its own repository, to get the downscoping ceiling on scopes and grant types; WorkloadIdentity itself knows nothing about OAuth2Client.")
 model WorkloadIdentityGrant {
   agent_id: string;
-  @doc("束縛先 Agent が保持する AgentCredentialBinding の client_id。発行トークンの sub になる。")
+  @doc("The `client_id` of the AgentCredentialBinding the bound Agent holds. It becomes the `sub` of the issued token.")
   client_id: string;
   trust_bundle_id: string;
   binding_id: string;
 }
 
 
-@doc("管理者が WorkloadTrustBundle を新規登録した。")
+@doc("An administrator registered a new WorkloadTrustBundle.")
 model WorkloadTrustBundleConfigured {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -247,7 +233,7 @@ model WorkloadTrustBundleConfigured {
 }
 
 
-@doc("管理者が WorkloadTrustBundle のメタデータを更新した。")
+@doc("An administrator updated the metadata of a WorkloadTrustBundle.")
 model WorkloadTrustBundleUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -255,7 +241,7 @@ model WorkloadTrustBundleUpdated {
 }
 
 
-@doc("管理者が WorkloadTrustBundle を無効化した。以後この bundle 配下の binding は交換に使えない。")
+@doc("An administrator disabled a WorkloadTrustBundle. No binding under it can be used for an exchange afterwards.")
 model WorkloadTrustBundleDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -263,7 +249,7 @@ model WorkloadTrustBundleDisabled {
 }
 
 
-@doc("管理者が無効化済みの WorkloadTrustBundle を再有効化した。")
+@doc("An administrator re-enabled a disabled WorkloadTrustBundle.")
 model WorkloadTrustBundleEnabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -271,7 +257,7 @@ model WorkloadTrustBundleEnabled {
 }
 
 
-@doc("管理者が WorkloadTrustBundle を削除した。配下の AgentWorkloadBinding は cascade で削除する。")
+@doc("An administrator deleted a WorkloadTrustBundle. The AgentWorkloadBindings under it were deleted with it.")
 model WorkloadTrustBundleDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -279,7 +265,7 @@ model WorkloadTrustBundleDeleted {
 }
 
 
-@doc("管理者が RefreshWorkloadTrustBundleJWKS を呼び、JWKS の再取得を試みた。")
+@doc("An administrator called RefreshWorkloadTrustBundleJWKS and tried to fetch the JWKS again.")
 model WorkloadTrustBundleJWKSRefreshed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -288,7 +274,7 @@ model WorkloadTrustBundleJWKSRefreshed {
 }
 
 
-@doc("管理者が AgentWorkloadBinding を作成した。")
+@doc("An administrator created an AgentWorkloadBinding.")
 model AgentWorkloadBindingCreated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -298,7 +284,7 @@ model AgentWorkloadBindingCreated {
 }
 
 
-@doc("管理者が AgentWorkloadBinding を無効化した。")
+@doc("An administrator disabled an AgentWorkloadBinding.")
 model AgentWorkloadBindingDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -306,7 +292,7 @@ model AgentWorkloadBindingDisabled {
 }
 
 
-@doc("管理者が無効化済みの AgentWorkloadBinding を再有効化した。")
+@doc("An administrator re-enabled a disabled AgentWorkloadBinding.")
 model AgentWorkloadBindingEnabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -314,7 +300,7 @@ model AgentWorkloadBindingEnabled {
 }
 
 
-@doc("管理者が AgentWorkloadBinding を削除した。")
+@doc("An administrator deleted an AgentWorkloadBinding.")
 model AgentWorkloadBindingDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -322,7 +308,7 @@ model AgentWorkloadBindingDeleted {
 }
 
 
-@doc("外部 attestation の検証を通過し、束縛先 Agent の資格情報として idmagic token を発行した。")
+@doc("An external attestation passed verification and an IdMagic token was issued as the credential of the bound Agent.")
 model WorkloadTokenExchanged {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -333,13 +319,13 @@ model WorkloadTokenExchanged {
 }
 
 
-@doc("外部 attestation token の検証が fail-closed で拒否された。")
+@doc("Verification of an external attestation token was refused fail-closed.")
 model WorkloadAttestationRejected {
   occurredAt: utcDateTime;
   tenantId: string;
-  @doc("unregistered_issuer / trust_bundle_disabled / jwks_unavailable / invalid_signature / expired / audience_mismatch / ttl_exceeded / no_binding_match / ambiguous_match / agent_not_active / agent_unbound のいずれか。")
+  @doc("One of unregistered_issuer, trust_bundle_disabled, jwks_unavailable, invalid_signature, expired, audience_mismatch, ttl_exceeded, no_binding_match, ambiguous_match, agent_not_active, or agent_unbound.")
   reason: string;
-  @doc("issuer が登録済みだった場合のみ設定する。")
+  @doc("Set only when the issuer was registered.")
   trustBundleId?: string;
 }
 

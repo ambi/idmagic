@@ -1,29 +1,29 @@
 namespace IdMagic.Contract {
 
-@doc("属性値の sum type discriminator。Tenancy context が所有する定義の published language stub。")
+@doc("The sum type discriminator of an attribute value. Published-language stub for a definition the Tenancy context owns.")
 enum AttributeType {
-  String: "String",
-  Number: "Number",
-  Boolean: "Boolean",
-  Date: "Date",
-  StringArray: "StringArray",
+  String: "string",
+  Number: "number",
+  Boolean: "boolean",
+  Date: "date",
+  StringArray: "string_array",
 }
 
 
-@doc("Group の所属管理方式。作成後は変更できない。")
+@doc("How a Group's membership is managed. It cannot be changed after creation.")
 enum GroupMembershipType {
   manual: "manual",
   dynamic: "dynamic",
 }
 
 
-@doc("GroupMember を作成した唯一の経路。")
+@doc("The one path that created a GroupMember.")
 enum GroupMembershipSource {
   manual: "manual",
   dynamic_rule: "dynamic_rule",
 }
 
-@doc("tenant-scoped ロール束集約。所属 User に roles を一斉付与する。id は不変の生成識別子、name はテナント内で一意な編集可能ラベル。email は連絡先メールアドレス (認証には使わない)、attributes はテナント定義の TenantGroupAttributeSchema に対して検証される sparse な custom 属性 bag。")
+@doc("The tenant-scoped role bundle aggregate. It grants its `roles` to every member User at once. `id` is an immutable generated identifier and `name` an editable label unique within the tenant. `email` is a contact address and is never used to authenticate, and `attributes` is a sparse bag of custom attributes validated against the tenant's TenantGroupAttributeSchema.")
 model Group {
   @minLength(1)
   @maxLength(64)
@@ -34,10 +34,10 @@ model Group {
   name: string;
   @maxLength(500)
   description?: string;
-  @doc("グループ宛の連絡先メールアドレス。User.email と異なり認証・検証フローは持たない。")
+  @doc("The contact email address of the group. Unlike `User.email` it has no authentication or verification flow.")
   @maxLength(254)
   email?: string;
-  @doc("テナント定義の TenantGroupAttributeSchema に対して検証される custom 属性。")
+  @doc("The custom attributes, validated against the tenant's TenantGroupAttributeSchema.")
   attributes?: Record<AttributeValue>;
   roles: string[];
   membership_type: GroupMembershipType = GroupMembershipType.manual;
@@ -46,7 +46,7 @@ model Group {
 }
 
 
-@doc("Group の custom 属性 1 件の定義。User の UserAttributeDef と異なり、Group には builtin OIDC/SCIM カタログ・self-service 編集主体・claim 露出が存在しないため、型と要否だけを持つ簡略版。")
+@doc("The definition of one custom attribute of a Group. Unlike the UserAttributeDef of User, Group has no built-in OIDC or SCIM catalogue, no self-service editor, and no claim exposure, so this is the reduced form carrying only the type and whether it is required.")
 model GroupAttributeDef {
   @minLength(1)
   key: string;
@@ -58,7 +58,7 @@ model GroupAttributeDef {
 }
 
 
-@doc("rule version 単位の全件再評価状態。")
+@doc("The state of a full re-evaluation for one rule version.")
 enum DynamicMembershipEvaluationStatus {
   queued: "queued",
   running: "running",
@@ -67,133 +67,97 @@ enum DynamicMembershipEvaluationStatus {
 }
 
 
-@doc("Agent の運用状態。Active は通常稼働、Disabled は可逆な運用停止、Killed は緊急停止 (一方向終端)。Active 以外は新規トークンを発行しない (fail-closed)。")
+@doc("The operational state of an Agent. `active` runs normally, `disabled` is a reversible suspension, and `killed` is an emergency stop that is one-way and terminal. Anything but `active` issues no new token, fail-closed.")
 enum AgentStatus {
-  Active: "Active",
-  Disabled: "Disabled",
-  Killed: "Killed",
+  Active: "active",
+  Disabled: "disabled",
+  Killed: "killed",
 }
 
 
-@doc("Agent の自律性区分。Autonomous は自律実行、Supervised は人間の監督下で実行する。")
+@doc("How autonomous an Agent is. `autonomous` runs on its own; `supervised` runs under human supervision.")
 enum AgentKind {
-  Autonomous: "Autonomous",
-  Supervised: "Supervised",
+  Autonomous: "autonomous",
+  Supervised: "supervised",
 }
 
 
-@doc("roles に未知のロールが含まれる。")
-model InvalidRoleError {
-
-}
+@doc("`roles` contains a role the server does not know. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_role`.")
+model InvalidRoleError is ProblemDetails;
 
 
-@doc("操作者が自分自身の User を削除しようとした。")
-model SelfDeleteForbiddenError {
-
-}
+@doc("The operator tried to delete their own User. RFC 9457 Problem Details with `type` = `urn:idmagic:error:self_delete_forbidden`.")
+model SelfDeleteForbiddenError is ProblemDetails;
 
 
-@doc("操作者が自分自身の User を無効化しようとした。")
-model SelfDisableForbiddenError {
-
-}
+@doc("The operator tried to disable their own User. RFC 9457 Problem Details with `type` = `urn:idmagic:error:self_disable_forbidden`.")
+model SelfDisableForbiddenError is ProblemDetails;
 
 
-@doc("RestoreAdminUser の対象 User が PendingDeletion 状態でない。")
-model UserNotPendingDeletionError {
-
-}
+@doc("The User that RestoreAdminUser targets is not in the `pending_deletion` state. RFC 9457 Problem Details with `type` = `urn:idmagic:error:not_pending_deletion`.")
+model UserNotPendingDeletionError is ProblemDetails;
 
 
-@doc("RestoreAdminUser が削除猶予期間の経過後に呼ばれた。")
-model RestoreGracePeriodExpiredError {
-
-}
+@doc("RestoreAdminUser was called after the deletion grace period had elapsed. RFC 9457 Problem Details with `type` = `urn:idmagic:error:restore_grace_expired`.")
+model RestoreGracePeriodExpiredError is ProblemDetails;
 
 
-@doc("カスタム属性値がテナントの属性スキーマを満たさない。")
-model InvalidUserAttributeError {
-
-}
+@doc("A custom attribute value does not satisfy the tenant attribute schema. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_attribute`, the same code the group attribute rejection uses; the endpoint tells the two apart.")
+model InvalidUserAttributeError is ProblemDetails;
 
 
-@doc("Group のカスタム属性値がテナントの Group 属性スキーマ (TenantGroupAttributeSchema) を満たさない。")
-model InvalidGroupAttributeError {
-
-}
+@doc("A custom attribute value on a Group does not satisfy the tenant Group attribute schema (TenantGroupAttributeSchema). RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_attribute`, the same code the user attribute rejection uses; the endpoint tells the two apart.")
+model InvalidGroupAttributeError is ProblemDetails;
 
 
-@doc("SetUserRequiredAction に未知の RequiredAction 値が指定された。")
-model InvalidRequiredActionError {
-
-}
+@doc("SetUserRequiredAction was given a RequiredAction value the server does not know. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_required_action`.")
+model InvalidRequiredActionError is ProblemDetails;
 
 
-@doc("Group の name が空である。")
-model GroupNameRequiredError {
-
-}
+@doc("The `name` of a Group is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:group_name_required`.")
+model GroupNameRequiredError is ProblemDetails;
 
 
-@doc("dynamic group rule (CEL 式) がコンパイル・検証に失敗した (未知の属性・非Boolean・構文エラー等)。")
-model InvalidDynamicGroupRuleError {
-
-}
+@doc("The dynamic group rule (a CEL expression) failed to compile or validate: an unknown attribute, a non-boolean result, a syntax error, and so on. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_dynamic_group_rule`.")
+model InvalidDynamicGroupRuleError is ProblemDetails;
 
 
-@doc("Agent の name が空である。")
-model AgentNameRequiredError {
-
-}
+@doc("The `name` of an Agent is empty. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_name_required`.")
+model AgentNameRequiredError is ProblemDetails;
 
 
-@doc("owner が必須な Agent 種別で owner_user_id が指定されていない。")
-model AgentOwnerRequiredError {
-
-}
+@doc("`owner_user_id` is absent for an Agent kind that requires an owner. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_owner_required`.")
+model AgentOwnerRequiredError is ProblemDetails;
 
 
-@doc("指定した owner_user_id がテナント内の User に解決できない。")
-model AgentOwnerNotFoundError {
-
-}
+@doc("The `owner_user_id` given does not resolve to a User in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_owner_not_found`.")
+model AgentOwnerNotFoundError is ProblemDetails;
 
 
-@doc("指定された email がメールアドレスの形式を満たさない。")
-model InvalidEmailError {
-
-}
+@doc("The email address given is not a well-formed address. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_email`.")
+model InvalidEmailError is ProblemDetails;
 
 
-@doc("指定された新しい email が現在の email と同一である。")
-model EmailUnchangedError {
-
-}
+@doc("The new email address given is the same as the current one. RFC 9457 Problem Details with `type` = `urn:idmagic:error:email_unchanged`.")
+model EmailUnchangedError is ProblemDetails;
 
 
-@doc("指定した export column が対象の許可リストに含まれない。")
-model InvalidExportColumnsError {
-
-}
+@doc("An export column named in the request is not on the allow list for the target. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_columns`.")
+model InvalidExportColumnsError is ProblemDetails;
 
 
-@doc("export target の種別がサポートされていない。")
-model InvalidExportTargetError {
-
-}
+@doc("The export target kind is not supported. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_target`.")
+model InvalidExportTargetError is ProblemDetails;
 
 
-@doc("指定した status filter が対象の export target に許可されていない。")
-model InvalidExportFilterError {
-
-}
+@doc("The status filter given is not permitted for the export target. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_filter`.")
+model InvalidExportFilterError is ProblemDetails;
 
 
-@doc("User の運用ライフサイクル属性。status は状態機械 UserLifecycle\n(states セクション) と一致する唯一の真実で、旧 disabled_at / deleted_at は\nstatus + status_changed_at に統合した。tombstone は status == Deleted。")
+@doc("The operational lifecycle attributes of a User. `status` is the single source of truth and matches the\nUserLifecycle state machine in the states section; the old `disabled_at` and `deleted_at` were folded into\n`status` plus `status_changed_at`. A tombstone is `status == deleted`.")
 model UserLifecycle {
   status: UserStatus = UserStatus.Active;
-  @doc("現在の status になった時刻。詳細な遷移履歴は監査イベントが持つ。")
+  @doc("When the current status was reached. The detailed transition history lives in the audit events.")
   status_changed_at?: utcDateTime;
   last_login_at?: utcDateTime;
   password_changed_at?: utcDateTime;
@@ -201,17 +165,17 @@ model UserLifecycle {
 }
 
 
-@doc("属性 1 件の値 (sum type)。type が示すフィールドだけが設定される。OIDC 組み込み属性と tenant 定義 custom で共通。")
+@doc("The value of one attribute, as a sum type: only the field `type` names is set. It is shared by the built-in OIDC attributes and the tenant-defined custom ones.")
 model AttributeValue {
   type: AttributeType;
   string?: string;
-  number?: unknown;
+  number?: float64;
   boolean?: boolean;
   date?: string;
   string_array?: string[];
 }
 
-@doc("IdP の canonical user aggregate。protocol subject はこの id から写像し、プロフィール拡張は sparse attributes に保持する。")
+@doc("The canonical user aggregate of the IdP. Protocol subjects are projected from this id, and profile extensions are kept in the sparse `attributes`.")
 model User {
   @minLength(1)
   id: string;
@@ -238,7 +202,7 @@ model User {
 }
 
 
-@doc("管理者がユーザーを作成する JSON リクエスト。初期パスワードには Authentication context の PasswordPolicy を適用する。")
+@doc("The JSON request in which an administrator creates a user. The PasswordPolicy of the Authentication context applies to the initial password.")
 model AdminUserCreateRequest {
   @minLength(1)
   @maxLength(100)
@@ -253,7 +217,7 @@ model AdminUserCreateRequest {
 }
 
 
-@doc("管理者がユーザーの可変プロフィールとロールを更新する JSON リクエスト。id と password_hash は変更しない。")
+@doc("The JSON request in which an administrator updates a user's mutable profile and roles. `id` and `password_hash` are left alone.")
 model AdminUserUpdateRequest {
   @minLength(1)
   @maxLength(100)
@@ -267,18 +231,18 @@ model AdminUserUpdateRequest {
 }
 
 
-@doc("管理 API のユーザー一覧と、query / status に依存せず削除済みを除いた tenant 内の正確な総ユーザー数。")
+@doc("The user list of the administration API, together with the exact total number of users in the tenant, excluding the deleted ones and independent of `query` and `status`.")
 model AdminUserListResponse {
   users: AdminUserResponse[];
-  @doc("tenant 内で lifecycle status が deleted ではない User の正確な件数。query / status の影響を受けない。")
+  @doc("The exact number of Users in the tenant whose lifecycle status is not `deleted`. It is unaffected by `query` and `status`.")
   total_users?: int64;
 }
 
 
-@doc("管理 API が返すユーザー表現。password_hash は契約上含めない。")
+@doc("How the administration API represents a user. `password_hash` is deliberately not part of the contract.")
 model AdminUserResponse {
   id: string;
-  @doc("所属テナント ID。")
+  @doc("The tenant it belongs to.")
   tenant_id: string;
   preferred_username: string;
   name?: string;
@@ -286,27 +250,27 @@ model AdminUserResponse {
   email_verified: boolean;
   mfa_enrolled: boolean;
   roles: string[];
-  @doc("次回ログイン時の強制アクション。")
+  @doc("The actions forced at the next sign-in.")
   required_actions?: RequiredAction[];
-  @doc("直近の認証完了時刻。")
+  @doc("When authentication last completed.")
   last_login_at?: utcDateTime;
-  @doc("直近のパスワード変更時刻。")
+  @doc("When the password was last changed.")
   password_changed_at?: utcDateTime;
-  @doc("旧世代の無効化時刻フィールド。User.lifecycle.status + status_changed_at が唯一の真実であり、本フィールドは現状レスポンス後方互換のためだけに残る (別途整理が必要な既存ギャップ、本移行のスコープ外)。")
+  @doc("The previous-generation field holding when the user was disabled. `User.lifecycle.status` plus `status_changed_at` is the single source of truth, and this field survives only for backward compatibility of the current response. It is an existing gap that needs its own cleanup, outside the scope of this migration.")
   disabled_at?: utcDateTime;
   created_at: utcDateTime;
-  @doc("作成時は created_at と同じ値を持ち、以後管理操作ごとに更新する。")
+  @doc("It equals `created_at` at creation and is updated on every administrative operation afterwards.")
   updated_at: utcDateTime;
 }
 
 
-@doc("SetUserRequiredAction の JSON リクエスト。action は RequiredAction enum の wire 値。")
+@doc("The JSON request of SetUserRequiredAction. `action` is the wire value of the RequiredAction enum.")
 model AdminRequiredActionRequest {
   action: RequiredAction;
 }
 
 
-@doc("`/api/account/profile` の返り値 (self-service)。呼び出しユーザ自身の表示用\nprojection。attributes は self が読める分 (self_readable / claim_exposed) のみ、\neditable_attributes は editable_by_user=true の定義一覧で、UI のフォーム描画に使う。")
+@doc("What `/api/account/profile` returns (self-service): a display projection of the calling user themselves.\n`attributes` carries only what they may read of their own (`self_readable` or `claim_exposed`), and\n`editable_attributes` lists the definitions with `editable_by_user=true`, which the UI uses to render its form.")
 model AccountProfileResponse {
   id: string;
   preferred_username: string;
@@ -317,40 +281,67 @@ model AccountProfileResponse {
   email_verified: boolean;
   mfa_enrolled: boolean;
   status: UserStatus;
-  attributes: unknown;
+  attributes: Record<AttributeValue>;
   editable_attributes: UserAttributeDef[];
 }
 
 
-@doc("self-service プロフィール更新リクエスト。表示名と editable_by_user=true の属性\nのみを受け付ける。attributes は key 単位の merge (指定 key のみ upsert、未指定は\n現状維持) で、admin 管理属性 (status / roles / organization) は対象外。")
+@doc("The self-service profile update request. It accepts only the display name and the attributes marked\n`editable_by_user=true`. `attributes` merges per key -- the keys given are upserted and the rest are left alone -- and the\nadministrator-managed attributes (status, roles, organization) are out of its reach.")
 model AccountProfileUpdateRequest {
   name?: string;
   given_name?: string;
   family_name?: string;
-  attributes?: unknown;
+  attributes?: Record<AttributeValue>;
 }
 
 
-@doc("CSV ユーザーインポートジョブの公開ビュー。preview は副作用を起こさず、apply は同一 tenant の成功済み preview と source_sha256 に結合する。結果は操作別件数と値を含まない stable row error を持ち、password/hash は入力・保存しない。")
-model UserImportJob {
+@doc("What the CSV user import endpoints return when a preview or an apply has been accepted. The job runs asynchronously; poll GetAdminUserImport with the `id` for progress and results.")
+model UserImportJobRef {
+  @doc("Job id, used to poll GetAdminUserImport and to start an apply from a preview.")
   id: string;
+  @doc("Job status, from the Jobs context lifecycle.")
   status: string;
   mode: UserImportMode;
-  source_sha256?: string;
-  preview_job_id?: string;
-  total_rows: int64;
-  created_rows?: int64;
-  updated_rows?: int64;
-  unchanged_rows?: int64;
-  @doc("旧クライアント移行用の互換フィールド。created_rows + updated_rows + unchanged_rows。新規クライアントは操作別件数を使う。")
-  accepted_rows?: int64;
-  rejected_rows: int64;
-  errors?: UserImportRowError[];
-  error_total?: int64;
 }
 
 
-@doc("CSV の 1 行に対する安全な検証または適用エラー。値そのものは返さず、列名と stable code のみを返す。")
+@doc("The public view of a CSV user import job. A preview causes no side effects; an apply joins a succeeded preview of the same tenant on its `source_sha256`. Row errors name the column and a stable code, never the value, and neither passwords nor hashes are read or stored.")
+model UserImportJob {
+  @doc("Job id.")
+  id: string;
+  @doc("Job status, from the Jobs context lifecycle.")
+  status: string;
+  mode: UserImportMode;
+  @doc("Counts and digests the job produced. Absent until the job has run.")
+  result?: UserImportResult;
+  @doc("One page of row errors, paginated by the standard cursor headers. Empty while the job is still running.")
+  errors?: UserImportRowError[];
+}
+
+
+@doc("Counts and digests a finished CSV user import job produced.")
+model UserImportResult {
+  @doc("SHA-256 of the uploaded CSV. An apply must name a preview with the same digest.")
+  source_sha256: string;
+  @doc("For an apply, the preview job it was started from.")
+  preview_job_id?: string;
+  total_rows: int64;
+  created_rows: int64;
+  updated_rows: int64;
+  unchanged_rows: int64;
+  @doc("Compatibility field for older clients: created_rows + updated_rows + unchanged_rows. New clients use the per-operation counts.")
+  accepted_rows?: int64;
+  rejected_rows: int64;
+  @doc("Reference to the stored error artifact, when the job produced one.")
+  error_artifact_ref?: string;
+  @doc("SHA-256 of the stored error artifact.")
+  error_artifact_sha256?: string;
+  @doc("How many row errors the job produced in total, not how many this page carries.")
+  error_total: int64;
+}
+
+
+@doc("A safe validation or application error for one CSV row. It returns no value, only the column name and a stable code.")
 model UserImportRowError {
   row: int64;
   column?: string;
@@ -358,7 +349,7 @@ model UserImportRowError {
 }
 
 
-@doc("CSV ユーザーインポートジョブの段階。preview は read-only な計画、apply は成功済み preview payload の現在状態に対する再計画と適用。")
+@doc("The stage of a CSV user import job. A preview is a read-only plan; an apply replans a succeeded preview payload against the current state and applies it.")
 enum UserImportMode {
   dry_run: "dry_run",
   preview: "preview",
@@ -366,7 +357,7 @@ enum UserImportMode {
 }
 
 
-@doc("User export/import が共有する configurable safety policy。既定は 100,000 data rows・64 MiB/file・64 KiB/field。成功した User export は常に同じ policy 内にあり、そのまま preview できる。上限は tenant 容量の意味ではなく、一つの非同期 artifact に対する運用上の境界である。")
+@doc("The configurable safety policy User export and import share. It defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. A successful User export always sits inside the same policy, so it can be previewed as it is. The ceilings do not express tenant capacity; they are an operational boundary on a single asynchronous artifact.")
 model UserCsvTransferPolicy {
   max_rows: int64;
   max_bytes: int64;
@@ -374,7 +365,7 @@ model UserCsvTransferPolicy {
 }
 
 
-@doc("CSV エクスポートの対象リソース種別。列定義は種別ごとの allowlist に閉じ、未レビュー属性が自動で外へ出ないようにする。")
+@doc("The resource kind a CSV export targets. The column definitions are closed within a per-kind allow list, so an unreviewed attribute cannot leave on its own.")
 enum DataExportTargetKind {
   user: "user",
   group: "group",
@@ -382,13 +373,13 @@ enum DataExportTargetKind {
 }
 
 
-@doc("エクスポートの出力形式。初期は CSV (RFC 4180) のみ。")
+@doc("The output format of an export. At first, CSV (RFC 4180) alone.")
 enum DataExportFormat {
   csv: "csv",
 }
 
 
-@doc("リソースエクスポートジョブの状態。DataExportLifecycle と一致する。succeeded はファイルをダウンロード可能な状態、expired はファイル本体が TTL 経過で purge され metadata と監査だけが残る状態。")
+@doc("The state of a resource export job, matching DataExportLifecycle. `succeeded` means the file can be downloaded; `expired` means the file itself has been purged by its TTL and only the metadata and the audit trail remain.")
 enum DataExportStatus {
   queued: "queued",
   running: "running",
@@ -399,7 +390,7 @@ enum DataExportStatus {
 }
 
 
-@doc("エクスポート対象種別の allowlist に含まれる 1 列。key は CSV ヘッダーにも使う安定した機械名、label は画面表示専用、pii は個人情報を含むか。User の allowlist は 13 個の組み込みコア列に加え、attr:<key> (OIDC profile/phone/address 相当と SCIM enterprise 相当の組織属性からなる、全 tenant 共通の組み込み拡張属性 27 種) と custom:<key> (実効 TenantUserAttributeSchema から tenant ごとに解決するテナント定義属性) を含む。password_hash・secret・token・recovery code・MFA secret などの sensitive 値は allowlist に一切含めない。")
+@doc("One column of the allow list for an export kind. `key` is the stable machine name, which is also the CSV header; `label` is for display alone; and `pii` says whether it holds personal information. The User allow list holds 13 built-in core columns plus `attr:<key>` -- 27 built-in extension attributes shared by every tenant, drawn from the OIDC profile, phone, and address claims and the SCIM enterprise organizational attributes -- and `custom:<key>`, the tenant-defined attributes resolved per tenant from the effective TenantUserAttributeSchema. Sensitive values such as `password_hash`, secrets, tokens, recovery codes, and MFA secrets are on no allow list at all.")
 model DataExportColumn {
   key: string;
   label: string;
@@ -407,15 +398,15 @@ model DataExportColumn {
 }
 
 
-@doc("管理者がエクスポートを開始する入力。対象種別は endpoint (path) が決めるため body には持たない。出力形式、列選択 (allowlist の部分集合)、一覧画面から引き継いだフィルタを持つ。列に allowlist 外の key を含む場合は拒否する。")
+@doc("The input starting an export. The target kind comes from the endpoint path and so is not in the body. It carries the output format, the column selection (a subset of the allow list), and the filter carried over from the list screen. A column key outside the allow list is refused.")
 model DataExportRequest {
   format: DataExportFormat = DataExportFormat.csv;
   columns: string[];
-  filter?: unknown;
+  filter?: Record<string>;
 }
 
 
-@doc("リソースエクスポートジョブの公開ビュー兼監査可能な記録。CSV 本体や PII の値は含まず、対象種別・選択列 key・件数・バイト数・状態・期限・要求者だけを持つ。")
+@doc("The public view of a resource export job, which doubles as its auditable record. It carries neither the CSV itself nor any PII value: only the target kind, the selected column keys, the counts, the byte size, the state, the expiry, and who asked for it.")
 model DataExportJob {
   id: string;
   status: DataExportStatus;
@@ -434,7 +425,7 @@ model DataExportJob {
 }
 
 
-@doc("ダウンロード時に返す完成済みエクスポートファイル。content は CSV 本体で PII を含みうるため、succeeded かつ未期限のジョブに対してのみ、認可済み管理者へ content-disposition attachment として返す。")
+@doc("The finished export file returned on download. `content` is the CSV itself and may hold PII, so it is returned as a `Content-Disposition: attachment` only to an authorized administrator, and only for a job that has succeeded and not yet expired.")
 model DataExportFile {
   filename: string;
   content_type: string;
@@ -443,13 +434,13 @@ model DataExportFile {
 }
 
 
-@doc("エクスポートの失敗理由。値そのものは返さず stable code のみを返す。")
+@doc("Why an export failed. It returns no value, only a stable code.")
 model DataExportError {
   code: string;
 }
 
 
-@doc("管理者がリソースエクスポートを要求し、ジョブが受理された。CSV 値は持たず、対象種別・選択列 key・要求者だけを記録する。")
+@doc("An administrator asked for a resource export and the job was accepted. It carries no CSV value: only the target kind, the selected column keys, and who asked.")
 model DataExportRequested {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -460,7 +451,7 @@ model DataExportRequested {
 }
 
 
-@doc("worker がリソースエクスポートの生成を開始した。")
+@doc("A worker started generating a resource export.")
 model DataExportStarted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -469,7 +460,7 @@ model DataExportStarted {
 }
 
 
-@doc("リソースエクスポートの生成が完了し、ファイルがダウンロード可能になった。行数とバイト数だけを記録し、値は持たない。")
+@doc("A resource export finished generating and the file became downloadable. Only the row count and the byte size are recorded; no value is.")
 model DataExportSucceeded {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -480,7 +471,7 @@ model DataExportSucceeded {
 }
 
 
-@doc("リソースエクスポートの生成が失敗し、不完全ファイルはダウンロード不可のまま終端した。")
+@doc("Generating a resource export failed, and the incomplete file terminated without becoming downloadable.")
 model DataExportFailed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -490,7 +481,7 @@ model DataExportFailed {
 }
 
 
-@doc("終端前のリソースエクスポートが管理者によって取消された。")
+@doc("An administrator cancelled a resource export before it terminated.")
 model DataExportCanceled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -499,7 +490,7 @@ model DataExportCanceled {
 }
 
 
-@doc("管理者が完成済みエクスポートファイルをダウンロードした。PII を大量に取り出す高リスク操作として監査に残す。")
+@doc("An administrator downloaded a finished export file. It is kept in the audit trail as a high-risk operation that extracts PII in bulk.")
 model DataExportDownloaded {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -509,7 +500,7 @@ model DataExportDownloaded {
 }
 
 
-@doc("保持期限を経過し、エクスポートファイル本体が purge された。metadata と監査は残る。")
+@doc("The retention period elapsed and the export file itself was purged. The metadata and the audit trail remain.")
 model DataExportExpired {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -517,7 +508,7 @@ model DataExportExpired {
 }
 
 
-@doc("`/api/account/summary` の返り値 (end-user account portal のホーム)。呼び出し\nユーザ自身のアカウント概要で、admin shell 用の AccountContext (/api/auth/account)\nとは別契約。roles は含めず、最終ログイン・パスワード変更日時・MFA 状態・未対応の\nrequired actions を portal home の summary card 用に返す。")
+@doc("What `/api/account/summary` returns, the home of the end-user account portal. It is the calling user's own\naccount summary, a separate contract from the AccountContext of the administration shell (`/api/auth/account`).\nIt carries no roles, and returns the last sign-in, the password change time, the MFA state, and the outstanding\nrequired actions for the summary card of the portal home.")
 model AccountSummary {
   id: string;
   preferred_username: string;
@@ -532,20 +523,20 @@ model AccountSummary {
 }
 
 
-@doc("primary email 変更の起票リクエスト (self-service)。新アドレスへ確認リンクを\n送るだけで、User.email の反映は確認完了 (ConfirmEmailChange) まで起きない。")
+@doc("The request raising a primary email change (self-service). It only sends a confirmation link to the\nnew address; `User.email` does not change until ConfirmEmailChange completes.")
 model AccountEmailChangeRequest {
   new_email: string;
 }
 
 
-@doc("新アドレスへ送ったワンタイムリンクの確認リクエスト (self-service)。token が\n新アドレス所有の証左なので認証済みセッションは要求しない (reset password と同方針)。")
+@doc("The request confirming the one-time link sent to the new address (self-service). The token is itself the\nproof that the new address is owned, so no authenticated session is required, following the same principle as password reset.")
 model AccountEmailChangeConfirm {
   @minLength(1)
   token: string;
 }
 
 
-@doc("end-user 自身の個人データエクスポート (GDPR 第15条 right of access)。本ステージは\n同期生成で、現状 API から得られる profile と接続済みアプリ (consents) をまとめる。")
+@doc("An end user's export of their own personal data (GDPR Article 15, the right of access). At this stage it is\ngenerated synchronously and gathers the profile and the connected applications (consents) available from the current API.")
 model AccountDataExport {
   exported_at: utcDateTime;
   profile: AccountProfileResponse;
@@ -553,18 +544,18 @@ model AccountDataExport {
 }
 
 
-@doc("User と Group の所属関係。group_id × user_id で一意。")
+@doc("The membership relation between a User and a Group. It is unique on `group_id` and `user_id`.")
 model GroupMember {
   group_id: string;
   user_id: string;
   source: GroupMembershipSource = GroupMembershipSource.manual;
-  @doc("dynamic_rule の場合に評価した DynamicGroupRule.version。")
+  @doc("For `dynamic_rule`, the `DynamicGroupRule.version` that was evaluated.")
   rule_version?: int64;
   created_at: utcDateTime;
 }
 
 
-@doc("dynamic Group と一対一の制限 CEL rule。expression は Boolean を返し、未知属性・許可外関数・過大な式を保存できない。")
+@doc("The restricted CEL rule paired one-to-one with a dynamic Group. The expression returns a boolean, and an unknown attribute, a function outside the permitted set, and an oversized expression can none of them be saved.")
 model DynamicGroupRule {
   group_id: string;
   tenant_id: string;
@@ -579,7 +570,7 @@ model DynamicGroupRule {
 }
 
 
-@doc("rule version の全件再評価と所属差分の監査可能な結果。")
+@doc("The auditable result of a full re-evaluation of a rule version and the membership it changed.")
 model DynamicMembershipEvaluation {
   id: string;
   tenant_id: string;
@@ -596,7 +587,7 @@ model DynamicMembershipEvaluation {
 }
 
 
-@doc("CEL rule の作成・更新入力。")
+@doc("The input creating or updating a CEL rule.")
 model DynamicGroupRuleRequest {
   @minLength(1)
   @maxLength(4096)
@@ -604,14 +595,14 @@ model DynamicGroupRuleRequest {
 }
 
 
-@doc("保存前 CEL と最大100 userの read-only preview入力。")
+@doc("The input for a read-only preview of an unsaved CEL against at most 100 users.")
 model DynamicGroupPreviewRequest {
   expression: string;
   user_ids: string[];
 }
 
 
-@doc("Userごとの一致と現在所属との差分。属性値は含めない。")
+@doc("Per User, whether the rule matched and how that differs from the current membership. It carries no attribute value.")
 model DynamicGroupPreviewResult {
   user_id: string;
   matched: boolean;
@@ -620,7 +611,7 @@ model DynamicGroupPreviewResult {
 }
 
 
-@doc("管理者がグループを作成する JSON リクエスト。")
+@doc("The JSON request in which an administrator creates a group.")
 model GroupCreateRequest {
   @minLength(1)
   @maxLength(100)
@@ -636,7 +627,7 @@ model GroupCreateRequest {
 }
 
 
-@doc("管理者がグループの name / description / email / attributes / roles を更新する JSON リクエスト。省略フィールドは現状維持。")
+@doc("The JSON request in which an administrator updates a group's name, description, email, attributes, or roles. A field left out keeps its current value.")
 model GroupUpdateRequest {
   @minLength(1)
   @maxLength(100)
@@ -650,7 +641,7 @@ model GroupUpdateRequest {
 }
 
 
-@doc("グループ表現。管理 UI の一覧と詳細で同じ表現を返す。")
+@doc("How a group is represented. The list and the detail views of the administration UI return the same representation.")
 model GroupSummaryResponse {
   id: string;
   tenant_id: string;
@@ -667,13 +658,13 @@ model GroupSummaryResponse {
 }
 
 
-@doc("管理 API のグループ一覧。")
+@doc("The group list of the administration API.")
 model GroupListResponse {
   groups: GroupSummaryResponse[];
 }
 
 
-@doc("グループ所属メンバー表現。")
+@doc("How a group member is represented.")
 model GroupMemberResponse {
   user_id: string;
   preferred_username: string;
@@ -681,25 +672,25 @@ model GroupMemberResponse {
 }
 
 
-@doc("User 詳細画面など group_id を body で指定して所属させる際の任意リクエスト。")
+@doc("The optional request body naming `group_id` when a membership is created from a screen such as the user detail view.")
 model GroupAddMemberRequest {
   group_id: string;
 }
 
 
-@doc("指定 User の所属グループと有効ロール内訳。明示ロール (user.roles) と\nグループ由来ロール、その union を分けて返し、管理 UI が effective roles を\n理解しやすくする。effective_roles = direct_roles ∪ group_roles で、User と Group\n両方にまたがる導出値であるため models.User の constraint ではなく本 response の\nフィールドとして計算・公開する。")
+@doc("The groups a named User belongs to and the breakdown of their effective roles. The direct roles\n(`user.roles`) and the roles inherited from groups are returned separately alongside their union, so the\nadministration UI can make effective roles easy to follow. `effective_roles` is `direct_roles` united with\n`group_roles`; because it is derived across both User and Group, it is computed and exposed as a field of this\nresponse rather than as a constraint on the User model.")
 model UserGroupsResponse {
   groups: GroupSummaryResponse[];
-  @doc("user.roles。")
+  @doc("`user.roles`.")
   direct_roles: string[];
-  @doc("所属グループ由来ロールの union。")
+  @doc("The union of the roles inherited from the groups they belong to.")
   group_roles: string[];
-  @doc("direct_roles ∪ group_roles。")
+  @doc("`direct_roles` united with `group_roles`.")
   effective_roles: string[];
 }
 
 
-@doc("Agent と同一テナントの OAuth2Client の束縛関係。agent_id × client_id で一意。Agent は束縛した Client の資格情報を用いてトークンを得る。束縛先 client_id は Agent と同一 tenant_id の OAuth2Client でなければならない (AgentReferencesStayTenantLocal)。client_id は他の Agent と重複して束縛できない (1 client_id につき Agent は最大 1 つ。BindAgentCredential の requires で検証)。")
+@doc("The binding between an Agent and an OAuth2Client of the same tenant, unique on `agent_id` and `client_id`. An Agent obtains tokens using the credentials of the Client it is bound to. The `client_id` must name an OAuth2Client whose `tenant_id` matches the Agent's (AgentReferencesStayTenantLocal). One `client_id` cannot be bound to more than one Agent, which BindAgentCredential checks in its preconditions.")
 model AgentCredentialBinding {
   agent_id: string;
   client_id: string;
@@ -707,7 +698,7 @@ model AgentCredentialBinding {
 }
 
 
-@doc("管理者が Agent を登録する JSON リクエスト。owner_user_id 省略時は actor を所有者とする。")
+@doc("The JSON request in which an administrator registers an Agent. Leaving `owner_user_id` out makes the caller the owner.")
 model AgentRegisterRequest {
   @minLength(1)
   @maxLength(100)
@@ -715,13 +706,13 @@ model AgentRegisterRequest {
   @maxLength(500)
   description?: string;
   kind?: AgentKind;
-  @doc("省略時は actor の id を所有者とする。")
+  @doc("Left out, the caller's id becomes the owner.")
   owner_user_id?: string;
   roles?: string[];
 }
 
 
-@doc("管理者が Agent の name / description / kind / owner_user_id / roles を更新する JSON リクエスト。省略フィールドは現状維持。owner_user_id の変更は所有権移転。")
+@doc("The JSON request in which an administrator updates an Agent's name, description, kind, `owner_user_id`, or roles. A field left out keeps its current value. Changing `owner_user_id` transfers ownership.")
 model AgentUpdateRequest {
   @minLength(1)
   @maxLength(100)
@@ -729,20 +720,20 @@ model AgentUpdateRequest {
   @maxLength(500)
   description?: string;
   kind?: AgentKind;
-  @doc("変更は所有権移転 (AgentOwnerChanged)。")
+  @doc("Changing it transfers ownership (AgentOwnerChanged).")
   owner_user_id?: string;
   roles?: string[];
 }
 
 
-@doc("Agent に OAuth2Client を束縛する JSON リクエスト。")
+@doc("The JSON request binding an OAuth2Client to an Agent.")
 model AgentCredentialBindRequest {
   @minLength(1)
   client_id: string;
 }
 
 
-@doc("Agent 表現。管理 UI の一覧と詳細で同じ表現を返す。")
+@doc("How an Agent is represented. The list and the detail views of the administration UI return the same representation.")
 model AgentSummaryResponse {
   id: string;
   tenant_id: string;
@@ -752,7 +743,7 @@ model AgentSummaryResponse {
   owner_user_id: string;
   status: AgentStatus;
   roles: string[];
-  @doc("束縛済み OAuth2Client id。")
+  @doc("The id of the OAuth2Client it is bound to.")
   client_ids: string[];
   created_at: utcDateTime;
   updated_at?: utcDateTime;
@@ -761,13 +752,13 @@ model AgentSummaryResponse {
 }
 
 
-@doc("管理 API の Agent 一覧。")
+@doc("The Agent list of the administration API.")
 model AgentListResponse {
   agents: AgentSummaryResponse[];
 }
 
 
-@doc("ローカル user に外部 IdP の identity を紐付けた (account linking)。")
+@doc("An external IdP identity was linked to a local user (account linking).")
 model FederationLinked {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -776,7 +767,7 @@ model FederationLinked {
 }
 
 
-@doc("ローカル user から外部 IdP の identity を解除した。")
+@doc("An external IdP identity was unlinked from a local user.")
 model FederationUnlinked {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -785,40 +776,40 @@ model FederationUnlinked {
 }
 
 
-@doc("end-user が primary email の変更を起票し、新アドレスへ確認リンクを送った\n(self-service)。実際の email 反映は ConfirmEmailChange まで起きない。\nnewEmailHash は SHA-256 で、平文を audit log に流さない。")
+@doc("An end user raised a change of their primary email and a confirmation link was sent to the new address\n(self-service). The email itself does not change until ConfirmEmailChange.\n`newEmailHash` is a SHA-256, so the plaintext never reaches the audit log.")
 model EmailChangeRequested {
   occurredAt: utcDateTime;
-  @doc("対象 user の所属テナント ID。")
+  @doc("The tenant the target user belongs to.")
   tenantId: string;
   userId: string;
-  @doc("新 email の SHA-256 hex")
+  @doc("The SHA-256 of the new email, as hex.")
   newEmailHash: string;
 }
 
 
-@doc("新アドレスへ送ったワンタイムリンクの確認が完了し、primary email を確定した\n(self-service)。email_verified=true に更新し、verify_email の\nrequired action があれば自動解除する。")
+@doc("The one-time link sent to the new address was confirmed and the primary email was settled\n(self-service). `email_verified` becomes true, and a `verify_email` required action, if there is one, is\ncleared automatically.")
 model EmailChanged {
   occurredAt: utcDateTime;
-  @doc("対象 user の所属テナント ID。")
+  @doc("The tenant the target user belongs to.")
   tenantId: string;
   userId: string;
 }
 
 
-@doc("管理者がユーザーを作成した。初期パスワードと password_hash は監査イベントに含めない。")
+@doc("An administrator created a user. Neither the initial password nor `password_hash` is in the audit event.")
 model UserCreated {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
 }
 
 
-@doc("管理者がユーザーのプロフィールまたは roles を更新した。")
+@doc("An administrator updated a user's profile or roles.")
 model UserUpdated {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
@@ -826,30 +817,30 @@ model UserUpdated {
 }
 
 
-@doc("管理者がユーザーを無効化した。対象ユーザーの新規ログインと既存セッション利用を拒否する。")
+@doc("An administrator disabled a user, refusing both new sign-ins and the use of existing sessions for them.")
 model UserDisabled {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
 }
 
 
-@doc("管理者が無効化済みユーザーを再有効化した。")
+@doc("An administrator re-enabled a disabled user.")
 model UserEnabled {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
 }
 
 
-@doc("管理者がユーザーを SoftDelete した。status は PendingDeletion に遷移し、PII / Consent / RefreshToken / Session は温存される。reason は admin が任意に残せる自由記述。")
+@doc("An administrator soft-deleted a user. The status moved to `pending_deletion` and the PII, Consents, RefreshTokens, and Sessions were preserved. `reason` is a free-text note the administrator may leave.")
 model UserSoftDeleted {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
@@ -857,20 +848,20 @@ model UserSoftDeleted {
 }
 
 
-@doc("管理者が PendingDeletion のユーザーを Restore した。status は Active に戻り、PII / credential は温存されたままでログインが再開する。")
+@doc("An administrator restored a user in `pending_deletion`. The status returned to `active`, and they can sign in again with their PII and credentials intact.")
 model UserRestored {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
 }
 
 
-@doc("管理者または 猶予期間経過後の自動 purge がユーザーを Purge した。PII は anonymize 済みで、関連 aggregate は cascade 削除されている。reason は admin が任意に残せる自由記述 (自動 purge では auto_purge)。")
+@doc("A user was purged, either by an administrator or by the automatic purge once the grace period had elapsed. The PII has been anonymized and the related aggregates cascade-deleted. `reason` is a free-text note the administrator may leave, and is `auto_purge` for an automatic one.")
 model UserDeleted {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
@@ -878,41 +869,41 @@ model UserDeleted {
 }
 
 
-@doc("管理者が次回ログイン時の強制アクション (RequiredAction) を付与した。action は enum 値で、監査に平文で残しても安全。")
+@doc("An administrator gave a user an action to be forced at their next sign-in (a RequiredAction). `action` is an enum value and is safe to keep in the audit trail in plaintext.")
 model UserRequiredActionSet {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
   actorUserId: string;
   targetUserId: string;
 }
 
 
-@doc("強制アクションが解除された。admin の明示解除のほか、本人がパスワードを変更した結果 update_password が自動解除される場合も発火し、その際 actor の id は対象本人の id になる。")
+@doc("A forced action was cleared. Besides an administrator clearing it explicitly, it also fires when `update_password` is cleared automatically because the user changed their own password, and in that case the actor id is the target's own.")
 model UserRequiredActionCleared {
   occurredAt: utcDateTime;
-  @doc("操作対象テナント ID。actor / target と一致する。")
+  @doc("The tenant the operation acted in. It matches both the actor and the target.")
   tenantId: string;
-  @doc("解除を行った主体。自動解除時は対象本人。")
+  @doc("Who cleared it. For an automatic clearing, the target themselves.")
   actorUserId: string;
   targetUserId: string;
 }
 
 
-@doc("管理者がグループを作成した。")
+@doc("An administrator created a group.")
 model GroupCreated {
   occurredAt: utcDateTime;
-  @doc("グループが属するテナント ID。")
+  @doc("The tenant the group belongs to.")
   tenantId: string;
   actorUserId: string;
   groupId: string;
 }
 
 
-@doc("管理者がグループの name / description / roles を更新した。")
+@doc("An administrator updated a group's name, description, or roles.")
 model GroupUpdated {
   occurredAt: utcDateTime;
-  @doc("グループが属するテナント ID。")
+  @doc("The tenant the group belongs to.")
   tenantId: string;
   actorUserId: string;
   groupId: string;
@@ -920,20 +911,20 @@ model GroupUpdated {
 }
 
 
-@doc("管理者がグループを削除した。所属 membership は cascade で解除され、各々 GroupMemberRemoved を伴う。")
+@doc("An administrator deleted a group. The memberships were released by cascade, each with its own GroupMemberRemoved.")
 model GroupDeleted {
   occurredAt: utcDateTime;
-  @doc("グループが属するテナント ID。")
+  @doc("The tenant the group belongs to.")
   tenantId: string;
   actorUserId: string;
   groupId: string;
 }
 
 
-@doc("管理者が User をグループに所属させた。既に所属済みの場合は emit されない (冪等)。")
+@doc("An administrator made a User a member of a group. It is not emitted when they were already a member, so the operation is idempotent.")
 model GroupMemberAdded {
   occurredAt: utcDateTime;
-  @doc("グループが属するテナント ID。")
+  @doc("The tenant the group belongs to.")
   tenantId: string;
   actorUserId: string;
   groupId: string;
@@ -941,10 +932,10 @@ model GroupMemberAdded {
 }
 
 
-@doc("管理者が User をグループから外した、またはグループ削除に伴い解除された。所属していない場合は emit されない (冪等)。")
+@doc("An administrator removed a User from a group, or the membership was released by the group's deletion. It is not emitted when they were not a member, so the operation is idempotent.")
 model GroupMemberRemoved {
   occurredAt: utcDateTime;
-  @doc("グループが属するテナント ID。")
+  @doc("The tenant the group belongs to.")
   tenantId: string;
   actorUserId: string;
   groupId: string;
@@ -952,7 +943,7 @@ model GroupMemberRemoved {
 }
 
 
-@doc("管理者が dynamic group の CEL rule を新しい version へ更新した。")
+@doc("An administrator updated the CEL rule of a dynamic group to a new version.")
 model DynamicGroupRuleUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -962,7 +953,7 @@ model DynamicGroupRuleUpdated {
 }
 
 
-@doc("管理者が検証済み rule を有効化し全件再評価を予約した。")
+@doc("An administrator activated a validated rule and scheduled a full re-evaluation.")
 model DynamicGroupRuleEnabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -972,7 +963,7 @@ model DynamicGroupRuleEnabled {
 }
 
 
-@doc("管理者が rule を無効化し旧 dynamic membership を即時無効にした。")
+@doc("An administrator deactivated a rule and invalidated the old dynamic membership at once.")
 model DynamicGroupRuleDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -982,7 +973,7 @@ model DynamicGroupRuleDisabled {
 }
 
 
-@doc("rule version の全件再評価が完了した。属性値は持たず差分件数だけを記録する。")
+@doc("The full re-evaluation of a rule version finished. It carries no attribute value, only how many memberships changed.")
 model DynamicMembershipEvaluated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -995,7 +986,7 @@ model DynamicMembershipEvaluated {
 }
 
 
-@doc("worker が dynamic membership 全件再評価を開始した。")
+@doc("A worker started a full re-evaluation of dynamic membership.")
 model DynamicMembershipEvaluationStarted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -1004,7 +995,7 @@ model DynamicMembershipEvaluationStarted {
 }
 
 
-@doc("dynamic membership 全件再評価が失敗し、対象 rule version は fail-closed のままになった。")
+@doc("A full re-evaluation of dynamic membership failed, and the rule version stayed fail-closed.")
 model DynamicMembershipEvaluationFailed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -1013,20 +1004,20 @@ model DynamicMembershipEvaluationFailed {
 }
 
 
-@doc("管理者が Agent を登録した。")
+@doc("An administrator registered an Agent.")
 model AgentRegistered {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
 }
 
 
-@doc("管理者が Agent の name / description / kind / roles を更新した。")
+@doc("An administrator updated an Agent's name, description, kind, or roles.")
 model AgentUpdated {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
@@ -1034,50 +1025,50 @@ model AgentUpdated {
 }
 
 
-@doc("管理者が Agent を可逆に運用停止した。")
+@doc("An administrator suspended an Agent reversibly.")
 model AgentDisabled {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
 }
 
 
-@doc("管理者が運用停止中の Agent を再稼働した。")
+@doc("An administrator returned a suspended Agent to service.")
 model AgentEnabled {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
 }
 
 
-@doc("管理者が Agent を緊急停止した (一方向終端)。以後復帰不能。")
+@doc("An administrator killed an Agent. This is one-way and terminal; there is no way back.")
 model AgentKilled {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
 }
 
 
-@doc("管理者が Agent を削除した。束縛は cascade で解除される。")
+@doc("An administrator deleted an Agent. Its bindings were released by cascade.")
 model AgentDeleted {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
 }
 
 
-@doc("管理者が Agent の所有者 (owner_user_id) を移転した。")
+@doc("An administrator transferred the owner (`owner_user_id`) of an Agent.")
 model AgentOwnerChanged {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
@@ -1086,10 +1077,10 @@ model AgentOwnerChanged {
 }
 
 
-@doc("管理者が Agent に OAuth2Client を束縛した。")
+@doc("An administrator bound an OAuth2Client to an Agent.")
 model AgentCredentialBound {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
@@ -1097,14 +1088,22 @@ model AgentCredentialBound {
 }
 
 
-@doc("管理者が Agent から OAuth2Client の束縛を解除した。")
+@doc("An administrator unbound an OAuth2Client from an Agent.")
 model AgentCredentialUnbound {
   occurredAt: utcDateTime;
-  @doc("Agent が属するテナント ID。")
+  @doc("The tenant the Agent belongs to.")
   tenantId: string;
   actorUserId: string;
   agentId: string;
   clientId: string;
 }
+
+
+@doc("The User the request targets does not exist in this tenant. A User in another tenant is treated as nonexistent. RFC 9457 Problem Details with `type` = `urn:idmagic:error:user_not_found`.")
+model UserNotFoundError is ProblemDetails;
+
+
+@doc("The tenant already has as many export jobs running as it may have at once, so another one cannot start. Retrying after the running jobs finish succeeds, which is why the response is 429 rather than the 422 of QuotaExceededError. The two conditions currently share the error code `quota_exceeded`, so the `type` is `urn:idmagic:error:quota_exceeded` here as well; the concurrency ceiling and the tenant resource quota are separate concepts and the shared code is a defect on the server side.")
+model ActiveJobQuotaExceededError is ProblemDetails;
 
 }

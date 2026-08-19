@@ -27,7 +27,7 @@ model ListTenantDataKeyHealthError403 {
   @body body: ListTenantDataKeyHealthError403Body;
 }
 
-@doc("system_admin がテナント横断で DEK 健全性 (active version / status / provider 到達性) を一覧する。鍵材料は返さない。fail-closed 判定や rotation 漏れの検知に使う。")
+@doc("A system_admin lists DEK health across tenants: active version, status, and provider reachability. No key material is returned. Used to judge fail-closed conditions and to catch tenants a rotation missed.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListTenantDataKeyHealth")
 @route("/api/admin/v1/data-keys/health")

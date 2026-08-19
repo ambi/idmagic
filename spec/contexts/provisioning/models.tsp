@@ -1,20 +1,20 @@
 namespace IdMagic.Contract {
 
-@doc("Application context が所有する published stub。ProvisioningConnection は Application 1 件に対し最大 1 件。")
+@doc("A published stub the Application context owns. A ProvisioningConnection exists at most once per Application.")
 model Application {
   id: string;
   tenant_id: string;
 }
 
 
-@doc("Application context が所有する定義の published language stub。")
+@doc("Published-language stub for a definition the Application context owns.")
 enum AssignmentSubjectType {
   user: "user",
   group: "group",
 }
 
 
-@doc("Application context が所有する published stub。scope=assigned_only の対象範囲解決に用いる。")
+@doc("A published stub the Application context owns, used to resolve the target set when `scope` is `assigned_only`.")
 model ApplicationAssignment {
   application_id: string;
   subject_type: AssignmentSubjectType;
@@ -22,58 +22,48 @@ model ApplicationAssignment {
 }
 
 
-@doc("指定 application_id に有効な ProvisioningConnection が存在しない、または別テナントに属する (別テナントは未存在として扱う)。")
-model ProvisioningConnectionNotFoundError {
-
-}
+@doc("No live ProvisioningConnection exists for the `application_id` given, or it belongs to another tenant (which is treated as nonexistent). RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_not_found`.")
+model ProvisioningConnectionNotFoundError is ProblemDetails;
 
 
-@doc("指定 Application に既に ProvisioningConnection が存在する (1 Application 1 connection の一意制約)。")
-model ProvisioningConnectionAlreadyExistsError {
-
-}
+@doc("The Application already has a ProvisioningConnection; at most one connection exists per Application. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_conflict`.")
+model ProvisioningConnectionAlreadyExistsError is ProblemDetails;
 
 
-@doc("指定 delivery_id の ProvisioningDelivery が存在しない、または指定 connection に属さない。")
-model ProvisioningDeliveryNotFoundError {
-
-}
+@doc("No ProvisioningDelivery exists with the `delivery_id` given, or it does not belong to the connection given. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_not_found`.")
+model ProvisioningDeliveryNotFoundError is ProblemDetails;
 
 
-@doc("dead_letter 以外の状態の ProvisioningDelivery に対して RetryProvisioningDelivery が呼ばれた。")
-model ProvisioningDeliveryNotRetryableError {
-
-}
+@doc("RetryProvisioningDelivery was called on a ProvisioningDelivery whose state is not `dead_letter`. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_conflict`.")
+model ProvisioningDeliveryNotRetryableError is ProblemDetails;
 
 
-@doc("ProvisionOnDemand が指定した subject が connection の scope (assigned_only の場合は割当) に含まれない。")
-model ProvisioningSubjectNotInScopeError {
-
-}
+@doc("The subject ProvisionOnDemand names is outside the scope of the connection; under `assigned_only` that means the subject is not assigned. RFC 9457 Problem Details with `type` = `urn:idmagic:error:provisioning_conflict`.")
+model ProvisioningSubjectNotInScopeError is ProblemDetails;
 
 
-@doc("下流 SCIM service provider への認証方式。")
+@doc("How to authenticate to the downstream SCIM service provider.")
 enum ProvisioningAuthMethod {
   bearer_token: "bearer_token",
   oauth2_client_credentials: "oauth2_client_credentials",
 }
 
 
-@doc("配送対象 subject の決め方。assigned_only は ApplicationAssignment を参照し、all_users はテナント全 User を対象にする上級オプション。")
+@doc("How the subjects to deliver are chosen. `assigned_only` reads the ApplicationAssignments; `all_users` is an advanced option covering every User of the tenant.")
 enum ProvisioningScope {
   assigned_only: "assigned_only",
   all_users: "all_users",
 }
 
 
-@doc("管理者が切り替える有効状態。ApplicationStatus と同様、削除は状態を持たず行を除去する (履歴は ProvisioningConnectionDeleted イベントに残る)。")
+@doc("The enabled state an administrator toggles. As with ApplicationStatus, deletion is not a state -- the row is removed, and the history stays in the ProvisioningConnectionDeleted event.")
 enum ProvisioningConnectionStatus {
   active: "active",
   disabled: "disabled",
 }
 
 
-@doc("配送エンジンから見た connection の健全性。quarantined は ResumeProvisioningConnection まで配送を停止する。")
+@doc("How healthy the connection looks to the delivery engine. `quarantined` stops delivery until ResumeProvisioningConnection.")
 enum ProvisioningHealth {
   ok: "ok",
   degraded: "degraded",
@@ -81,28 +71,28 @@ enum ProvisioningHealth {
 }
 
 
-@doc("push_groups 有効時に対象グループをどう選ぶか。")
+@doc("How the target groups are chosen while `push_groups` is on.")
 enum ProvisioningGroupSelection {
   assigned_groups: "assigned_groups",
   explicit: "explicit",
 }
 
 
-@doc("AttributeMappingRule の値の供給元。expression (関数評価) は初期版の対象外とし、直参照と固定値のみ許す。")
+@doc("Where the value of an AttributeMappingRule comes from. An `expression` (a function evaluation) is out of scope for the first version; only a direct reference and a fixed value are permitted.")
 enum AttributeSourceKind {
   attribute: "attribute",
   constant: "constant",
 }
 
 
-@doc("AttributeMappingRule をいつ適用するか。create_only は下流での手動変更を尊重したい項目に使う。")
+@doc("When an AttributeMappingRule applies. Use `create_only` for a field whose manual change downstream should be respected.")
 enum AttributeApplyOn {
   create_and_update: "create_and_update",
   create_only: "create_only",
 }
 
 
-@doc("deprovision trigger を下流へどう翻訳するか。")
+@doc("How a deprovision trigger is translated for the downstream.")
 enum ProvisioningDeprovisionAction {
   deactivate: "deactivate",
   delete: "delete",
@@ -110,14 +100,14 @@ enum ProvisioningDeprovisionAction {
 }
 
 
-@doc("ProvisioningDelivery / RemoteResourceLink が指す内部集約の種別。")
+@doc("Which internal aggregate a ProvisioningDelivery or RemoteResourceLink refers to.")
 enum ProvisioningSourceType {
   user: "user",
   group: "group",
 }
 
 
-@doc("ProvisioningDelivery が下流へ適用する操作。")
+@doc("The operation a ProvisioningDelivery applies downstream.")
 enum ProvisioningOperation {
   create: "create",
   update: "update",
@@ -128,7 +118,7 @@ enum ProvisioningOperation {
 }
 
 
-@doc("ProvisioningDelivery.status の値集合。in_flight は dispatcher が Jobs.Job を関連付けてから\n終端に至るまでを表し、Jobs レベルの attempt retry 中も in_flight のまま保持する\n(WorkflowRunLifecycle と同じく、下位の retry loop をこの層の状態には反映しない)。\nfailed という非終端の中間状態は持たない — dead_letter は Job が max_attempts を\n使い切った時点で一度だけ到達する終端状態。")
+@doc("The value set of `ProvisioningDelivery.status`. `in_flight` covers everything from the moment the dispatcher attaches a\nJobs.Job until a terminal state is reached, and it stays `in_flight` through attempt retries at the Jobs level -- as with\nWorkflowRunLifecycle, a retry loop one layer down is not reflected in the state at this layer.\nThere is no non-terminal intermediate state called `failed`: `dead_letter` is a terminal state reached exactly once, when\nthe Job has used up `max_attempts`.")
 enum ProvisioningDeliveryStatus {
   pending: "pending",
   in_flight: "in_flight",
@@ -137,7 +127,7 @@ enum ProvisioningDeliveryStatus {
 }
 
 
-@doc("connection が下流へ行ってよい操作のトグル (Okta 準拠)。sync_password は out of scope。")
+@doc("Toggles for the operations the connection may perform downstream, following Okta. `sync_password` is out of scope.")
 model ProvisioningFeatureFlags {
   create_users: boolean = true;
   update_users: boolean = true;
@@ -147,7 +137,7 @@ model ProvisioningFeatureFlags {
 }
 
 
-@doc("TestProvisioningConnection の discovery (下流 /ServiceProviderConfig) がキャッシュする read-only capability。PATCH 非対応先は PUT にフォールバックする判断に使う。")
+@doc("The read-only capabilities the discovery of TestProvisioningConnection caches from the downstream /ServiceProviderConfig. They decide whether to fall back to PUT for a target that does not support PATCH.")
 model ProvisioningCapabilities {
   supports_patch: boolean;
   supports_bulk: boolean;
@@ -158,21 +148,21 @@ model ProvisioningCapabilities {
 }
 
 
-@doc("Application editor 向けに credential を写像した非機密メタデータ。平文・hash を露出しない (ApplicationClientSecretCredentialMetadata と同型)。")
+@doc("Non-sensitive credential metadata projected for the Application editor. It exposes neither the plaintext nor a hash, the same way ApplicationClientSecretCredentialMetadata does.")
 model ProvisioningConnectionCredentialMetadata {
-  credential_id: unknown;
+  credential_id: string;
   auth_method: ProvisioningAuthMethod;
   created_at: utcDateTime;
   rotated_at?: utcDateTime;
 }
 
 
-@doc("RegisterProvisioningConnection / UpdateProvisioningConnection が受け取る書き込み専用 credential 入力。応答・監査ログ・エラーに値をそのまま含めない。")
+@doc("The write-only credential input RegisterProvisioningConnection and UpdateProvisioningConnection take. The value never appears in a response, an audit log, or an error.")
 model ProvisioningCredentialInput {
   auth_method: ProvisioningAuthMethod;
-  @doc("auth_method=bearer_token のとき必須。")
+  @doc("Required when `auth_method` is `bearer_token`.")
   bearer_token?: string;
-  @doc("auth_method=oauth2_client_credentials のとき必須。")
+  @doc("Required when `auth_method` is `oauth2_client_credentials`.")
   oauth2_token_url?: url;
   oauth2_client_id?: string;
   oauth2_client_secret?: string;
@@ -180,50 +170,50 @@ model ProvisioningCredentialInput {
 }
 
 
-@doc("push_groups 有効時の対象グループ選択と表示名の供給元。")
+@doc("How the target groups are chosen while `push_groups` is on, and where their display names come from.")
 model GroupPushConfig {
   selection: ProvisioningGroupSelection = ProvisioningGroupSelection.assigned_groups;
-  @doc("selection=explicit のとき使う明示的な Group.id 一覧。")
+  @doc("The explicit list of `Group.id` values used when `selection` is `explicit`.")
   explicit_group_ids?: string[];
-  @doc("下流 displayName に写す idmagic Group 属性キー。")
+  @doc("The IdMagic Group attribute key projected onto the downstream `displayName`.")
   display_name_source: string = "name";
 }
 
 
-@doc("1 出力属性の宣言的写像。target_path は SCIM 属性パス (単純・複合・多値フィルタ・enterprise 拡張を許す)。")
+@doc("The declarative mapping of one output attribute. `target_path` is a SCIM attribute path, and may be simple, complex, a multi-valued filter, or an enterprise extension.")
 model AttributeMappingRule {
   @minLength(1)
   target_path: string;
   source_kind: AttributeSourceKind;
-  @doc("source_kind=attribute のとき必須。idmagic 側の属性キー。")
+  @doc("Required when `source_kind` is `attribute`: the attribute key on the IdMagic side.")
   source_key?: string;
-  @doc("source_kind=constant のとき必須。")
+  @doc("Required when `source_kind` is `constant`. Any JSON value, because the constant is written straight into the target attribute and the remote SCIM schema decides what that attribute may hold.")
   constant_value?: unknown;
   apply_on: AttributeApplyOn = AttributeApplyOn.create_and_update;
-  @doc("true のとき値が解決不能なら配送を fail-closed で失敗させる。")
+  @doc("When true, a value that cannot be resolved fails the delivery, fail-closed.")
   required: boolean = false;
-  @doc("source が空のとき使う既定値。")
+  @doc("Used when the source resolves to nothing. Any JSON value, for the same reason as `constant_value`: the remote SCIM schema decides what the target attribute may hold.")
   default_value?: unknown;
 }
 
 
-@doc("409 (既存衝突) 時に下流の既存 resource を養子縁組するための比較属性。externalId 相関 (idmagic の id) が主で、このルールは externalId 未設定の既存 resource との衝突解決に使う二次手段。")
+@doc("The attributes compared to adopt an existing downstream resource on a 409 conflict. Correlation by `externalId` -- the IdMagic id -- is the primary route; this rule is the secondary one, for resolving a conflict with an existing resource that has no `externalId` set.")
 model MatchingRule {
   conflict_match_attribute: string = "userName";
 }
 
 
-@doc("deprovision trigger を下流アクションへ翻訳する規則。user disable → deactivate は固定 (設定不可)。\ngroup membership 削除 → PATCH members remove も固定。既定は破壊性が低い側に倒す。")
+@doc("How a deprovision trigger is translated into a downstream action. Disabling a user always maps to deactivate, and that is\nnot configurable; so is removing a group membership mapping to a PATCH that removes members. The defaults lean towards\nthe less destructive option.")
 model DeprovisionPolicy {
-  @doc("Application からの unassign trigger。")
+  @doc("The unassign trigger coming from the Application.")
   on_unassign: ProvisioningDeprovisionAction = ProvisioningDeprovisionAction.deactivate;
-  @doc("user soft-delete/delete trigger。delete を選ぶと grace_period_days 後に purge する。")
+  @doc("The user soft-delete or delete trigger. Choosing `delete` purges after `grace_period_days`.")
   on_delete: ProvisioningDeprovisionAction = ProvisioningDeprovisionAction.deactivate;
-  @doc("group 削除/unassign trigger。group に deactivate 相当は無いため delete/none のみ許す。")
+  @doc("The group deletion or unassign trigger. A group has no equivalent of deactivate, so only `delete` and `none` are permitted.")
   on_group_deleted_or_unassigned: ProvisioningDeprovisionAction = ProvisioningDeprovisionAction.none;
   @minValue(0)
   grace_period_days: int64 = 0;
-  @doc("1 回の sync でこの件数を超える deactivate/delete が生じたら実行せず quarantine する。")
+  @doc("When one sync would produce more deactivates and deletes than this, it is not run and the connection is quarantined instead.")
   accidental_deletion_count_threshold?: int64;
   @minValue(1)
   @maxValue(100)
@@ -231,21 +221,21 @@ model DeprovisionPolicy {
 }
 
 
-@doc("Application 1 件に対し最大 1 件だけ存在する outbound provisioning 設定。真実源は\nidmagic 側の User/Group aggregate、下流は mirror。scope は既存 ApplicationAssignment を再利用し、\n専用の割当 model は持たない。identity を application_id とすることで 1 Application 1 connection の\n一意制約を構造的に表す。")
+@doc("The outbound provisioning settings, of which at most one exists per Application. The source of truth is the User and Group\naggregates on the IdMagic side, and the downstream is a mirror. `scope` reuses the existing ApplicationAssignment rather\nthan carrying an assignment model of its own. Making `application_id` the identity expresses the one-connection-per-\nApplication constraint structurally.")
 model ProvisioningConnection {
-  application_id: unknown;
+  application_id: string;
   tenant_id: string;
   status: ProvisioningConnectionStatus = ProvisioningConnectionStatus.active;
-  @doc("下流 SCIM v2 base URL。https 必須、内部/リンクローカル IP・任意 redirect を拒否する。")
+  @doc("The downstream SCIM v2 base URL. It must be https, and an internal or link-local IP and an arbitrary redirect are refused.")
   base_url: url;
   credential: ProvisioningConnectionCredentialMetadata;
-  @doc("TestProvisioningConnection の discovery でキャッシュする。未実行の間は未設定。")
+  @doc("Cached by the discovery of TestProvisioningConnection. Unset until that has run.")
   capabilities?: ProvisioningCapabilities;
   feature_flags: ProvisioningFeatureFlags;
   scope: ProvisioningScope = ProvisioningScope.assigned_only;
-  @doc("feature_flags.push_groups が有効なときのみ意味を持つ。")
+  @doc("Meaningful only while `feature_flags.push_groups` is on.")
   group_push?: GroupPushConfig;
-  @doc("登録時に SCIM core User の既定マッピングを seed する。")
+  @doc("Seeded with the SCIM core User default mappings at registration.")
   attribute_mappings: AttributeMappingRule[];
   matching: MatchingRule;
   deprovision_policy: DeprovisionPolicy;
@@ -253,12 +243,12 @@ model ProvisioningConnection {
   rate_limit_per_minute: int64 = 60;
   @minValue(1)
   max_attempts: int64 = 8;
-  @doc("失敗・quarantine の通知先。")
+  @doc("Where failures and quarantines are notified.")
   notification_email?: string;
   @minValue(1)
   quarantine_after_consecutive_failures: int64 = 10;
   health: ProvisioningHealth = ProvisioningHealth.ok;
-  @doc("quarantine 判定用の内部カウンタ。配送成功でゼロへ戻る。")
+  @doc("The internal counter that decides quarantine. A successful delivery resets it to zero.")
   consecutive_failure_count: int64 = 0;
   last_full_sync_at?: utcDateTime;
   quarantined_at?: utcDateTime;
@@ -268,39 +258,39 @@ model ProvisioningConnection {
 }
 
 
-@doc("idmagic の User/Group と下流 resource の相関の durable な記録。409/404 を冪等に解決するために保持する。")
+@doc("The durable record correlating an IdMagic User or Group with a downstream resource. It is kept so that a 409 or a 404 can be resolved idempotently.")
 model RemoteResourceLink {
-  connection_id: unknown;
+  connection_id: string;
   tenant_id: string;
   source_type: ProvisioningSourceType;
-  @doc("idmagic 側の User.id または Group.id。")
+  @doc("The `User.id` or `Group.id` on the IdMagic side.")
   source_id: string;
-  @doc("下流 SCIM resource の id。")
+  @doc("The id of the downstream SCIM resource.")
   remote_id: string;
-  @doc("下流へ送出した externalId (既定は idmagic の source_id)。")
+  @doc("The `externalId` sent downstream; the IdMagic `source_id` by default.")
   external_id: string;
-  @doc("capabilities.supports_etag が true のときだけ意味を持つ。")
+  @doc("Meaningful only when `capabilities.supports_etag` is true.")
   etag?: string;
-  @doc("最後に反映した source_version。out-of-order な配送をここで解決する。")
+  @doc("The `source_version` most recently applied. It is what resolves an out-of-order delivery.")
   last_synced_version: int64;
   updated_at: utcDateTime;
 }
 
 
-@doc("内部 lifecycle event 1 件分の配送単位。idempotency key\n(tenant_id, connection_id, source_type, source_id, source_version) は一意制約であり、\n同一 key の重複 enqueue は既存行への no-op とする。job_id は dispatcher が Jobs\nへ enqueue した後に関連付ける (未 enqueue の間は未設定)。")
+@doc("One delivery unit for one internal lifecycle event. The idempotency key\n`(tenant_id, connection_id, source_type, source_id, source_version)` is a uniqueness constraint, and enqueueing the same\nkey again is a no-op on the existing row. The dispatcher attaches `job_id` after enqueueing to Jobs, and it is unset\nuntil then.")
 model ProvisioningDelivery {
-  id: unknown;
+  id: string;
   tenant_id: string;
-  connection_id: unknown;
+  connection_id: string;
   source_type: ProvisioningSourceType;
   source_id: string;
-  @doc("same-Tx capture が発行する単調増加カウンタ。out-of-order 配送の解決に使う。")
+  @doc("A monotonically rising counter the same-transaction capture emits. It is what resolves an out-of-order delivery.")
   source_version: int64;
   operation: ProvisioningOperation;
   status: ProvisioningDeliveryStatus = ProvisioningDeliveryStatus.pending;
-  @doc("dispatcher が enqueue 後に関連付ける Jobs.JobRef.id。")
+  @doc("The `Jobs.JobRef.id` the dispatcher attaches after enqueueing.")
   job_id?: string;
-  @doc("直近の失敗の sanitised error。secret や属性値は含めない。")
+  @doc("The sanitized error of the most recent failure. It carries no secret and no attribute value.")
   last_error?: string;
   created_at: utcDateTime;
   updated_at: utcDateTime;
@@ -308,7 +298,7 @@ model ProvisioningDelivery {
 }
 
 
-@doc("管理者が Application へ ProvisioningConnection を新規登録した。")
+@doc("An administrator registered a new ProvisioningConnection on an Application.")
 model ProvisioningConnectionRegistered {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -316,7 +306,7 @@ model ProvisioningConnectionRegistered {
 }
 
 
-@doc("管理者が ProvisioningConnection の設定 (credential 以外) を更新した。")
+@doc("An administrator updated the settings of a ProvisioningConnection, the credential aside.")
 model ProvisioningConnectionUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -324,7 +314,7 @@ model ProvisioningConnectionUpdated {
 }
 
 
-@doc("管理者が ProvisioningConnection.status を disabled にした。配送を新規に生成しなくなる。")
+@doc("An administrator set `ProvisioningConnection.status` to disabled. No new delivery is created.")
 model ProvisioningConnectionDisabled {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -332,7 +322,7 @@ model ProvisioningConnectionDisabled {
 }
 
 
-@doc("管理者が ProvisioningConnection を削除した (ApplicationStatus と同じく行そのものを除去する hard delete)。")
+@doc("An administrator deleted a ProvisioningConnection. As with ApplicationStatus, the row itself is removed.")
 model ProvisioningConnectionDeleted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -340,16 +330,16 @@ model ProvisioningConnectionDeleted {
 }
 
 
-@doc("管理者が connection の credential を更新した。")
+@doc("An administrator updated the credential of a connection.")
 model ProvisioningCredentialRotated {
   occurredAt: utcDateTime;
   tenantId: string;
   applicationId: string;
-  credentialId: unknown;
+  credentialId: string;
 }
 
 
-@doc("dispatcher が ProvisioningDelivery に Jobs.Job を関連付け配送を開始した (LifecycleWorkflowRunStarted と同型)。")
+@doc("The dispatcher attached a Jobs.Job to a ProvisioningDelivery and delivery began, the same shape as LifecycleWorkflowRunStarted.")
 model ProvisioningDeliveryStarted {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -359,7 +349,7 @@ model ProvisioningDeliveryStarted {
 }
 
 
-@doc("user の create/update が下流へ反映され配送が succeeded に確定した。")
+@doc("A user create or update reached the downstream and the delivery settled as succeeded.")
 model UserProvisioned {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -370,7 +360,7 @@ model UserProvisioned {
 }
 
 
-@doc("user の deactivate/delete が下流へ反映され配送が succeeded に確定した。")
+@doc("A user deactivate or delete reached the downstream and the delivery settled as succeeded.")
 model UserDeprovisioned {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -381,7 +371,7 @@ model UserDeprovisioned {
 }
 
 
-@doc("user 向け配送が max_attempts を使い切り dead_letter に確定した (attempt ごとには発行しない)。group 向け配送の dead-letter でも同一イベントを用いる。")
+@doc("A user delivery used up `max_attempts` and settled as dead_letter. It is not emitted per attempt. A group delivery that dead-letters uses the same event.")
 model UserProvisioningFailed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -393,7 +383,7 @@ model UserProvisioningFailed {
 }
 
 
-@doc("group の create/update/deactivate/delete が下流へ反映され配送が succeeded に確定した。")
+@doc("A group create, update, deactivate, or delete reached the downstream and the delivery settled as succeeded.")
 model GroupPushed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -404,7 +394,7 @@ model GroupPushed {
 }
 
 
-@doc("group membership の変更が下流へ PATCH members として反映され配送が succeeded に確定した。")
+@doc("A group membership change reached the downstream as a PATCH on members and the delivery settled as succeeded.")
 model GroupMembershipPushed {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -414,7 +404,7 @@ model GroupMembershipPushed {
 }
 
 
-@doc("連続失敗または誤削除ガード超過により ProvisioningConnection.health が quarantined になった。以後の配送を生成しない。")
+@doc("`ProvisioningConnection.health` became quarantined, either from consecutive failures or from crossing the accidental-deletion guard. No further delivery is created.")
 model ConnectionQuarantined {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -424,7 +414,7 @@ model ConnectionQuarantined {
 }
 
 
-@doc("管理者が ResumeProvisioningConnection で quarantine を解除した。quarantine を解除する経路が無いと復旧不能になるため、イベント一覧へ追加した。")
+@doc("An administrator lifted the quarantine through ResumeProvisioningConnection. The event was added because without a way out of quarantine there is no recovery.")
 model ProvisioningConnectionQuarantineCleared {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -432,7 +422,7 @@ model ProvisioningConnectionQuarantineCleared {
 }
 
 
-@doc("StartFullResync が対象にした scope 内 subject 全件の収束が完了した。")
+@doc("Every subject inside the scope StartFullResync targeted has converged.")
 model FullResyncCompleted {
   occurredAt: utcDateTime;
   tenantId: string;

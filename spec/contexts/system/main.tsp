@@ -17,7 +17,7 @@ model LivenessProbeSuccess_200 {
   @body body: LivenessProbeHttpResponse;
 }
 
-@doc("プロセスが要求を処理できることを示す liveness probe。依存サービスの一時障害では失敗させない。")
+@doc("Liveness probe: reports whether the process can serve requests at all. A dependency that is temporarily unreachable does not fail it.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("LivenessProbe")
 @route("/livez")
@@ -28,7 +28,7 @@ op LivenessProbe(
 
 model ReadinessProbeHttpResponse {
   status: string;
-  dependencies?: unknown;
+  dependencies?: Record<IdMagic.Contract.DependencyStatus>;
 }
 
 model ReadinessProbeSuccess_200 {
@@ -36,7 +36,7 @@ model ReadinessProbeSuccess_200 {
   @body body: ReadinessProbeHttpResponse;
 }
 
-@doc("起動完了、drain 状態、構成された永続化依存の到達性を確認する readiness probe。verbose 指定時だけ依存詳細を返す。")
+@doc("Readiness probe: reports whether startup has finished, whether the process is draining, and whether the configured persistence dependencies are reachable. The per-dependency detail is returned only when `verbose` is set.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ReadinessProbe")
 @route("/readyz")
@@ -54,7 +54,7 @@ model StartupProbeSuccess_200 {
   @body body: StartupProbeHttpResponse;
 }
 
-@doc("初期化完了までは 503 starting、完了後は 200 healthy を返す startup probe。")
+@doc("Startup probe: 503 `starting` until initialization has finished, 200 `healthy` afterwards.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartupProbe")
 @route("/startupz")
@@ -63,17 +63,14 @@ op StartupProbe(
 
 ): StartupProbeSuccess_200;
 
-model MetricsExpositionHttpResponse {
-  @doc("OpenMetrics text format")
-  body: string;
-}
-
 model MetricsExpositionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: MetricsExpositionHttpResponse;
+  @header contentType: "text/plain; version=0.0.4; charset=utf-8";
+  @doc("The metric families in Prometheus / OpenMetrics text exposition format.")
+  @body body: string;
 }
 
-@doc("Prometheus/OpenMetrics 形式でスクレイプ可能な集約メトリクスを公開する management endpoint。\nidmagic-api は HTTP RED (リクエスト数・エラー率・レイテンシ) と認証ドメインのゴールデンシグナル\n(login 成否、token 発行、throttle ヒット) を、idmagic-worker は Jobs の実行レーン別ゴールデンシグナル\n(queue depth、claim latency、成功・失敗、retry。lane は ExecutionLane の有限集合) を公開する\nindependent な endpoint インスタンスであり、両者は同一プロセスを共有しない。tenant_id、user_id、\nclient_id、job_id、path 実値など高カーディナリティな値は label に含めず、route template や\noutcome class、lane などの有限集合だけを label とする。application API の tenant middleware から\n分離し、deploy policy で loopback/management network または認証のいずれかにより公開範囲を制限する。")
+@doc("Management endpoint exposing aggregated metrics for a Prometheus / OpenMetrics scrape.\nidmagic-api exposes HTTP RED (request count, error rate, latency) together with the golden signals of the\nauthentication domain (login outcome, token issuance, throttle hits); idmagic-worker exposes the golden signals\nof Jobs per execution lane (queue depth, claim latency, success and failure, retry, where the lane is drawn from\nthe finite ExecutionLane set). They are independent endpoint instances and never share a process. High-cardinality\nvalues -- tenant_id, user_id, client_id, job_id, the concrete path -- are kept out of the labels; only finite sets\nsuch as the route template, the outcome class, and the lane become labels. The endpoint sits outside the tenant\nmiddleware of the application API, and deploy policy narrows who can reach it, either by binding it to a loopback\nor management network or by requiring authentication.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("MetricsExposition")
 @route("/metrics")

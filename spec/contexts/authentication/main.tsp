@@ -8,13 +8,9 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.Authentication {
 
 namespace Operations {
-model GetAccountContextHttpResponse {
-  context: IdMagic.Contract.AccountContextResponse;
-}
-
 model GetAccountContextSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAccountContextHttpResponse;
+  @body body: IdMagic.Contract.AccountContextResponse;
 }
 
 union GetAccountContextError403Body {
@@ -27,7 +23,7 @@ model GetAccountContextError403 {
   @body body: GetAccountContextError403Body;
 }
 
-@doc("認証済み browser session の portal 共通 bootstrap 情報と CSRF token を取得する。 Bearer token では管理 portal の idmagic.admin、account portal の idmagic.account、 または自己管理 API client の account:read scope のいずれかを要求する。認証途中の session と、それ以外の scope だけを持つ Bearer token は拒否する。")
+@doc("Reads the portal bootstrap information and the CSRF token shared by an authenticated browser session. A Bearer token must carry one of `idmagic.admin` for the administration portal, `idmagic.account` for the account portal, or `account:read` for a self-service API client. A session still partway through authentication, and a Bearer token carrying only some other scope, are both refused.")
 @TypeSpec.OpenAPI.operationId("GetAccountContext")
 @route("/api/auth/account")
 @get
@@ -35,16 +31,12 @@ op GetAccountContext(
 
 ): GetAccountContextSuccess_200 | GetAccountContextError403;
 
-model GetPasswordResetContextHttpResponse {
-  context: IdMagic.Contract.BrowserCsrfContext;
-}
-
 model GetPasswordResetContextSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetPasswordResetContextHttpResponse;
+  @body body: IdMagic.Contract.BrowserCsrfContext;
 }
 
-@doc("未認証のパスワードリセット画面が POST を保護する CSRF token を取得する。")
+@doc("The unauthenticated password reset screen reads the CSRF token that protects its POST.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetPasswordResetContext")
 @route("/api/auth/password_reset_context")
@@ -53,13 +45,9 @@ op GetPasswordResetContext(
 
 ): GetPasswordResetContextSuccess_200;
 
-model StartStepUpWebAuthnChallengeHttpResponse {
-  options: IdMagic.Contract.WebAuthnAssertionOptions;
-}
-
 model StartStepUpWebAuthnChallengeSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: StartStepUpWebAuthnChallengeHttpResponse;
+  @body body: IdMagic.Contract.WebAuthnAssertionOptions;
 }
 
 union StartStepUpWebAuthnChallengeError400Body {
@@ -82,7 +70,7 @@ model StartStepUpWebAuthnChallengeError403 {
   @body body: StartStepUpWebAuthnChallengeError403Body;
 }
 
-@doc("認証済み session に束縛した step-up 用 WebAuthn assertion challenge を発行する。CSRF を検証し、WebAuthn 無効時は fail closed とする。")
+@doc("Issues a WebAuthn assertion challenge for step-up, bound to the authenticated session. It verifies CSRF, and fails closed when WebAuthn is disabled.")
 @TypeSpec.OpenAPI.operationId("StartStepUpWebAuthnChallenge")
 @route("/api/account/v1/step_up/webauthn/challenge")
 @post
@@ -91,21 +79,15 @@ op StartStepUpWebAuthnChallenge(
 ): StartStepUpWebAuthnChallengeSuccess_200 | StartStepUpWebAuthnChallengeError400 | StartStepUpWebAuthnChallengeError403;
 
 model SubmitBrowserLoginHttpRequest {
-  body: {
-    username: string;
-    password: string;
-    @doc("同一 realm の /admin 配下に限定したログイン後遷移先。")
-    return_to?: string;
-  };
-}
-
-model SubmitBrowserLoginHttpResponse {
-  response: IdMagic.Contract.BrowserFlowResponse;
+  username: string;
+  password: string;
+  @doc("Where to go after signing in, confined to the `/admin` subtree of the same realm.")
+  return_to?: string;
 }
 
 model SubmitBrowserLoginSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: SubmitBrowserLoginHttpResponse;
+  @body body: IdMagic.Contract.BrowserFlowResponse;
 }
 
 union SubmitBrowserLoginError400Body {
@@ -144,11 +126,13 @@ union SubmitBrowserLoginError429Body {
 
 model SubmitBrowserLoginError429 {
   @statusCode statusCode: 429;
-  @header contentType: "application/problem+json";
+  @header contentType: "application/json";
+  @doc("Seconds the client must wait before retrying, the same number the body carries in `retry_after_seconds`.")
+  @header("Retry-After") retryAfter: int32;
   @body body: SubmitBrowserLoginError429Body;
 }
 
-@doc("SPA JSON API から browser password step を処理する。MFA 必須かつ factor 未登録の場合、強制開始前は password session でログインを許可して事前登録を促し、開始後は有効な単発 enrollment bypass と猶予期限の両方を満たすときだけ同一 LoginSession を Enrollment pending にする。それ以外は fail closed でログインを完了しない。per-account (10 回 / 900 秒窓、900 秒ロックアウト) と per-IP (30 回 / 900 秒窓、900 秒ロックアウト) のスロットリングを cluster_wide カウンタで適用し、共有カウンタストア到達不能時も fail_closed とする。この失敗回数ベースの login throttle とは別に、成功/失敗を問わず全リクエストを消費する EndpointRateLimitPolicy (IP+tenant ベース) も適用する。")
+@doc("Handles the browser password step through the SPA JSON API. When MFA is required and no factor is enrolled: before the enforcement start the password session is allowed to sign in, which nudges the user to enroll ahead of time; after it, the same LoginSession moves to Enrollment pending only when both a valid single-use enrollment bypass and the grace deadline are satisfied. Anything else fails closed and the sign-in is not completed. Throttling applies per account (10 attempts in a 900-second window, 900-second lockout) and per IP (30 attempts in a 900-second window, 900-second lockout) through a cluster-wide counter, and stays fail-closed when the shared counter store is unreachable. Separately from this failure-count throttle, an EndpointRateLimitPolicy keyed by IP and tenant consumes every request, successful or not.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SubmitBrowserLogin")
 @route("/api/auth/login")
@@ -157,13 +141,9 @@ op SubmitBrowserLogin(
   @body body: SubmitBrowserLoginHttpRequest
 ): SubmitBrowserLoginSuccess_200 | SubmitBrowserLoginError400 | SubmitBrowserLoginError403 | SubmitBrowserLoginError422 | SubmitBrowserLoginError429;
 
-model StartBrowserMfaEnrollmentHttpResponse {
-  enrollment: IdMagic.Contract.TOTPEnrollmentStart;
-}
-
 model StartBrowserMfaEnrollmentSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: StartBrowserMfaEnrollmentHttpResponse;
+  @body body: IdMagic.Contract.TOTPEnrollmentStart;
 }
 
 union StartBrowserMfaEnrollmentError400Body {
@@ -178,6 +158,7 @@ model StartBrowserMfaEnrollmentError400 {
 
 union StartBrowserMfaEnrollmentError403Body {
   IdMagic.Contract.AccessDeniedError,
+  IdMagic.Contract.MfaEnrollmentNotAllowedError,
 }
 
 model StartBrowserMfaEnrollmentError403 {
@@ -186,7 +167,7 @@ model StartBrowserMfaEnrollmentError403 {
   @body body: StartBrowserMfaEnrollmentError403Body;
 }
 
-@doc("pending_purpose=Enrollment かつ期限内の LoginSession だけが TOTP 登録を開始する。通常の未認証 session、Challenge pending、期限切れ、既登録 user は拒否する。secret は確定まで永続化しない。")
+@doc("Only a LoginSession with `pending_purpose=Enrollment` that has not expired may start a TOTP enrollment. An ordinary unauthenticated session, one pending a Challenge, an expired one, and an already-enrolled user are all refused. The secret is not persisted until the enrollment is settled.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartBrowserMfaEnrollment")
 @route("/api/auth/mfa/enrollment/totp/start")
@@ -195,17 +176,9 @@ op StartBrowserMfaEnrollment(
 
 ): StartBrowserMfaEnrollmentSuccess_200 | StartBrowserMfaEnrollmentError400 | StartBrowserMfaEnrollmentError403;
 
-model ConfirmBrowserMfaEnrollmentHttpRequest {
-  request: IdMagic.Contract.BrowserMfaEnrollmentConfirmRequest;
-}
-
-model ConfirmBrowserMfaEnrollmentHttpResponse {
-  response: IdMagic.Contract.BrowserFlowResponse;
-}
-
 model ConfirmBrowserMfaEnrollmentSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ConfirmBrowserMfaEnrollmentHttpResponse;
+  @body body: IdMagic.Contract.BrowserFlowResponse;
 }
 
 union ConfirmBrowserMfaEnrollmentError400Body {
@@ -220,6 +193,7 @@ model ConfirmBrowserMfaEnrollmentError400 {
 
 union ConfirmBrowserMfaEnrollmentError403Body {
   IdMagic.Contract.AccessDeniedError,
+  IdMagic.Contract.MfaEnrollmentNotAllowedError,
 }
 
 model ConfirmBrowserMfaEnrollmentError403 {
@@ -228,26 +202,18 @@ model ConfirmBrowserMfaEnrollmentError403 {
   @body body: ConfirmBrowserMfaEnrollmentError403Body;
 }
 
-@doc("pending_purpose=Enrollment かつ期限内の LoginSession で TOTP 所持証明を検証して factor を保存し、同一 LoginSession に otp を加えて MFA 済みに昇格させ、元の authorization transaction を継続する。通常 self-service 登録 endpoint と権限を共有しない。")
+@doc("With a LoginSession whose `pending_purpose` is Enrollment and which has not expired, verifies proof of possession of the TOTP, saves the factor, adds `otp` to the same LoginSession to promote it to MFA-satisfied, and resumes the original authorization transaction. It does not share permissions with the ordinary self-service enrollment endpoint.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ConfirmBrowserMfaEnrollment")
 @route("/api/auth/mfa/enrollment/totp/confirm")
 @post
 op ConfirmBrowserMfaEnrollment(
-  @body body: ConfirmBrowserMfaEnrollmentHttpRequest
+  @body body: IdMagic.Contract.BrowserMfaEnrollmentConfirmRequest
 ): ConfirmBrowserMfaEnrollmentSuccess_200 | ConfirmBrowserMfaEnrollmentError400 | ConfirmBrowserMfaEnrollmentError403;
-
-model SubmitBrowserTotpHttpRequest {
-  request: IdMagic.Contract.BrowserTotpRequest;
-}
-
-model SubmitBrowserTotpHttpResponse {
-  response: IdMagic.Contract.BrowserFlowResponse;
-}
 
 model SubmitBrowserTotpSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: SubmitBrowserTotpHttpResponse;
+  @body body: IdMagic.Contract.BrowserFlowResponse;
 }
 
 union SubmitBrowserTotpError400Body {
@@ -270,18 +236,14 @@ model SubmitBrowserTotpError403 {
   @body body: SubmitBrowserTotpError403Body;
 }
 
-@doc("SPA JSON API から TOTP コードを検証する。成功すれば LoginSession を認証完了状態に昇格させ、後続フロー (consent / authorization code 発行) に進む。他 factor は別 endpoint として定義する。未認証の pending login session cookie が対象ユーザーを解決するため認証は要求しない。")
+@doc("Verifies a TOTP code through the SPA JSON API. On success the LoginSession is promoted to fully authenticated and the flow continues into consent and authorization code issuance. Other factors have their own endpoints. No authentication is required, because the unauthenticated pending login session cookie is what resolves the target user.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SubmitBrowserTotp")
 @route("/api/auth/totp")
 @post
 op SubmitBrowserTotp(
-  @body body: SubmitBrowserTotpHttpRequest
+  @body body: IdMagic.Contract.BrowserTotpRequest
 ): SubmitBrowserTotpSuccess_200 | SubmitBrowserTotpError400 | SubmitBrowserTotpError403;
-
-model ChangePasswordHttpRequest {
-  request: IdMagic.Contract.BrowserChangePasswordRequest;
-}
 
 model ChangePasswordSuccess_200 {
   @statusCode statusCode: 200;
@@ -317,21 +279,17 @@ model ChangePasswordError422 {
   @body body: ChangePasswordError422Body;
 }
 
-@doc("認証済みユーザーが自身のパスワードを変更する。current_password を verify し、new_password は 12〜128 文字の長さ制約と直近 history_depth (5) 件のハッシュとの不一致 (PasswordHistoryNoReuse) を満たさなければならない。")
+@doc("An authenticated user changes their own password. `current_password` is verified, and `new_password` has to satisfy the length constraint of 12 to 128 characters and differ from the most recent `history_depth` (5) hashes (PasswordHistoryNoReuse).")
 @TypeSpec.OpenAPI.operationId("ChangePassword")
 @route("/api/auth/change_password")
 @post
 op ChangePassword(
-  @body body: ChangePasswordHttpRequest
+  @body body: IdMagic.Contract.BrowserChangePasswordRequest
 ): ChangePasswordSuccess_200 | ChangePasswordError400 | ChangePasswordError403 | ChangePasswordError422;
-
-model GetAccountSecurityHttpResponse {
-  security: IdMagic.Contract.AccountSecurityResponse;
-}
 
 model GetAccountSecuritySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAccountSecurityHttpResponse;
+  @body body: IdMagic.Contract.AccountSecurityResponse;
 }
 
 union GetAccountSecurityError403Body {
@@ -344,7 +302,7 @@ model GetAccountSecurityError403 {
   @body body: GetAccountSecurityError403Body;
 }
 
-@doc("認証済みユーザーが自身のセキュリティ概要を取得する (self-service)。対象は subject.id に\n固定。パスワード変更日時と MFA (TOTP) 登録状態を返す。")
+@doc("An authenticated user reads their own security summary (self-service). The target is fixed to\n`subject.id`. It returns the password change time and whether MFA (TOTP) is enrolled.")
 @TypeSpec.OpenAPI.operationId("GetAccountSecurity")
 @route("/api/account/v1/security")
 @get
@@ -352,13 +310,9 @@ op GetAccountSecurity(
 
 ): GetAccountSecuritySuccess_200 | GetAccountSecurityError403;
 
-model GetMyNotificationPreferencesHttpResponse {
-  preferences: IdMagic.Contract.AccountNotificationPreferences;
-}
-
 model GetMyNotificationPreferencesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetMyNotificationPreferencesHttpResponse;
+  @body body: IdMagic.Contract.AccountNotificationPreferences;
 }
 
 union GetMyNotificationPreferencesError403Body {
@@ -371,7 +325,7 @@ model GetMyNotificationPreferencesError403 {
   @body body: GetMyNotificationPreferencesError403Body;
 }
 
-@doc("認証済みユーザーが自身のセキュリティ通知の受信設定を取得する (self-service)。対象は\nactor.sub に固定。全種別を仕様が定める安定した並びで返し、本人が無効化できない種別には\nmandatory=true を付ける。")
+@doc("An authenticated user reads their own security notification preferences (self-service). The target is fixed to\n`actor.sub`. Every category is returned in the stable order the specification fixes, and a category the user may not\nturn off carries `mandatory=true`.")
 @TypeSpec.OpenAPI.operationId("GetMyNotificationPreferences")
 @route("/api/account/v1/notification_preferences")
 @get
@@ -379,17 +333,9 @@ op GetMyNotificationPreferences(
 
 ): GetMyNotificationPreferencesSuccess_200 | GetMyNotificationPreferencesError403;
 
-model UpdateMyNotificationPreferencesHttpRequest {
-  request: IdMagic.Contract.UpdateNotificationPreferencesRequest;
-}
-
-model UpdateMyNotificationPreferencesHttpResponse {
-  preferences: IdMagic.Contract.AccountNotificationPreferences;
-}
-
 model UpdateMyNotificationPreferencesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateMyNotificationPreferencesHttpResponse;
+  @body body: IdMagic.Contract.AccountNotificationPreferences;
 }
 
 union UpdateMyNotificationPreferencesError400Body {
@@ -412,21 +358,17 @@ model UpdateMyNotificationPreferencesError403 {
   @body body: UpdateMyNotificationPreferencesError403Body;
 }
 
-@doc("認証済みユーザーが自身のセキュリティ通知の受信設定を更新する (self-service)。対象は\nactor.sub に固定。通知を止める操作は乗っ取り後に最初に行われる操作なので、直近の\nステップアップ再認証を要求する。必須の種別を disabled_categories に含む要求は 400 で\n拒否し、一部だけを適用することはしない。")
+@doc("An authenticated user updates their own security notification preferences (self-service). The target is fixed to\n`actor.sub`. Silencing notifications is the first thing an attacker does after taking over an account, so a recent\nstep-up reauthentication is required. A request listing a mandatory category in `disabled_categories` is refused with\n400, and nothing is applied partially.")
 @TypeSpec.OpenAPI.operationId("UpdateMyNotificationPreferences")
 @route("/api/account/v1/notification_preferences")
 @put
 op UpdateMyNotificationPreferences(
-  @body body: UpdateMyNotificationPreferencesHttpRequest
+  @body body: IdMagic.Contract.UpdateNotificationPreferencesRequest
 ): UpdateMyNotificationPreferencesSuccess_200 | UpdateMyNotificationPreferencesError400 | UpdateMyNotificationPreferencesError403;
-
-model StartTotpEnrollmentHttpResponse {
-  enrollment: IdMagic.Contract.TOTPEnrollmentStart;
-}
 
 model StartTotpEnrollmentSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: StartTotpEnrollmentHttpResponse;
+  @body body: IdMagic.Contract.TOTPEnrollmentStart;
 }
 
 union StartTotpEnrollmentError400Body {
@@ -449,17 +391,13 @@ model StartTotpEnrollmentError403 {
   @body body: StartTotpEnrollmentError403Body;
 }
 
-@doc("認証済みユーザーが TOTP 登録を開始する (self-service)。新しい secret (20 バイト) と\notpauth URI を返すだけで永続化はしない。既に TOTP factor がある場合は拒否する。")
+@doc("An authenticated user starts a TOTP enrollment (self-service). It returns a new 20-byte secret and an\n`otpauth` URI and persists nothing. A user who already has a TOTP factor is refused.")
 @TypeSpec.OpenAPI.operationId("StartTotpEnrollment")
 @route("/api/account/v1/mfa/totp/enroll/start")
 @post
 op StartTotpEnrollment(
 
 ): StartTotpEnrollmentSuccess_200 | StartTotpEnrollmentError400 | StartTotpEnrollmentError403;
-
-model ConfirmTotpEnrollmentHttpRequest {
-  request: IdMagic.Contract.TOTPEnrollmentConfirmRequest;
-}
 
 model ConfirmTotpEnrollmentSuccess_200 {
   @statusCode statusCode: 200;
@@ -485,17 +423,13 @@ model ConfirmTotpEnrollmentError403 {
   @body body: ConfirmTotpEnrollmentError403Body;
 }
 
-@doc("secret に対するコードの所持証明を検証し、TOTP factor を永続化する (self-service)。\nsubject.id に固定し、確定時に User.mfa_enrolled を true にする。")
+@doc("Verifies proof of possession of a code against the secret and persists the TOTP factor (self-service).\nThe target is fixed to `subject.id`, and settling it sets `User.mfa_enrolled` to true.")
 @TypeSpec.OpenAPI.operationId("ConfirmTotpEnrollment")
 @route("/api/account/v1/mfa/totp/enroll/confirm")
 @post
 op ConfirmTotpEnrollment(
-  @body body: ConfirmTotpEnrollmentHttpRequest
+  @body body: IdMagic.Contract.TOTPEnrollmentConfirmRequest
 ): ConfirmTotpEnrollmentSuccess_200 | ConfirmTotpEnrollmentError400 | ConfirmTotpEnrollmentError403;
-
-model RemoveTotpFactorHttpRequest {
-  request: IdMagic.Contract.MfaFactorRemoveRequest;
-}
 
 model RemoveTotpFactorSuccess_200 {
   @statusCode statusCode: 200;
@@ -521,21 +455,17 @@ model RemoveTotpFactorError403 {
   @body body: RemoveTotpFactorError403Body;
 }
 
-@doc("有効な TOTP コード (所持証明) を検証してから TOTP factor を解除する (self-service)。\nsubject.id に固定し、解除時に User.mfa_enrolled を false に戻す。")
+@doc("Verifies a valid TOTP code as proof of possession and then removes the TOTP factor (self-service).\nThe target is fixed to `subject.id`, and removing it returns `User.mfa_enrolled` to false.")
 @TypeSpec.OpenAPI.operationId("RemoveTotpFactor")
 @route("/api/account/v1/mfa/totp/remove")
 @post
 op RemoveTotpFactor(
-  @body body: RemoveTotpFactorHttpRequest
+  @body body: IdMagic.Contract.MfaFactorRemoveRequest
 ): RemoveTotpFactorSuccess_200 | RemoveTotpFactorError400 | RemoveTotpFactorError403;
-
-model StartWebAuthnRegistrationHttpResponse {
-  options: IdMagic.Contract.WebAuthnRegistrationOptions;
-}
 
 model StartWebAuthnRegistrationSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: StartWebAuthnRegistrationHttpResponse;
+  @body body: IdMagic.Contract.WebAuthnRegistrationOptions;
 }
 
 union StartWebAuthnRegistrationError400Body {
@@ -558,17 +488,13 @@ model StartWebAuthnRegistrationError403 {
   @body body: StartWebAuthnRegistrationError403Body;
 }
 
-@doc("認証済みユーザーが WebAuthn / Passkey 登録を開始する (self-service)。\nPublicKeyCredentialCreationOptions を返し、challenge をサーバー側セッションに束縛する。\n永続化はまだ行わない。")
+@doc("An authenticated user starts a WebAuthn or passkey registration (self-service).\nIt returns the PublicKeyCredentialCreationOptions and binds the challenge to the server-side session.\nNothing is persisted yet.")
 @TypeSpec.OpenAPI.operationId("StartWebAuthnRegistration")
 @route("/api/account/v1/mfa/webauthn/register/start")
 @post
 op StartWebAuthnRegistration(
 
 ): StartWebAuthnRegistrationSuccess_200 | StartWebAuthnRegistrationError400 | StartWebAuthnRegistrationError403;
-
-model FinishWebAuthnRegistrationHttpRequest {
-  request: IdMagic.Contract.WebAuthnRegistrationRequest;
-}
 
 model FinishWebAuthnRegistrationSuccess_200 {
   @statusCode statusCode: 200;
@@ -594,17 +520,13 @@ model FinishWebAuthnRegistrationError403 {
   @body body: FinishWebAuthnRegistrationError403Body;
 }
 
-@doc("attestation を検証して WebAuthn credential を永続化する (self-service)。subject.id に\n固定し、最初の 1 件で User.mfa_enrolled を true にする。RP ID / origin / challenge を検証する。")
+@doc("Verifies the attestation and persists the WebAuthn credential (self-service). The target is fixed to\n`subject.id`, and the first credential sets `User.mfa_enrolled` to true. The RP ID, the origin, and the challenge are all verified.")
 @TypeSpec.OpenAPI.operationId("FinishWebAuthnRegistration")
 @route("/api/account/v1/mfa/webauthn/register/finish")
 @post
 op FinishWebAuthnRegistration(
-  @body body: FinishWebAuthnRegistrationHttpRequest
+  @body body: IdMagic.Contract.WebAuthnRegistrationRequest
 ): FinishWebAuthnRegistrationSuccess_200 | FinishWebAuthnRegistrationError400 | FinishWebAuthnRegistrationError403;
-
-model RemoveWebAuthnCredentialHttpRequest {
-  request: IdMagic.Contract.WebAuthnCredentialRemoveRequest;
-}
 
 model RemoveWebAuthnCredentialSuccess_200 {
   @statusCode statusCode: 200;
@@ -630,21 +552,17 @@ model RemoveWebAuthnCredentialError403 {
   @body body: RemoveWebAuthnCredentialError403Body;
 }
 
-@doc("指定した WebAuthn credential を解除する (self-service, step-up 必須)。subject.id に固定し、\n残る第二要素が無くなれば User.mfa_enrolled を false に戻す。")
+@doc("Removes a named WebAuthn credential (self-service; step-up required). The target is fixed to `subject.id`, and\nwhen no second factor is left `User.mfa_enrolled` returns to false.")
 @TypeSpec.OpenAPI.operationId("RemoveWebAuthnCredential")
 @route("/api/account/v1/mfa/webauthn/remove")
 @post
 op RemoveWebAuthnCredential(
-  @body body: RemoveWebAuthnCredentialHttpRequest
+  @body body: IdMagic.Contract.WebAuthnCredentialRemoveRequest
 ): RemoveWebAuthnCredentialSuccess_200 | RemoveWebAuthnCredentialError400 | RemoveWebAuthnCredentialError403;
-
-model StartBrowserWebAuthnHttpResponse {
-  options: IdMagic.Contract.WebAuthnAssertionOptions;
-}
 
 model StartBrowserWebAuthnSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: StartBrowserWebAuthnHttpResponse;
+  @body body: IdMagic.Contract.WebAuthnAssertionOptions;
 }
 
 union StartBrowserWebAuthnError400Body {
@@ -667,7 +585,7 @@ model StartBrowserWebAuthnError403 {
   @body body: StartBrowserWebAuthnError403Body;
 }
 
-@doc("SPA JSON API から WebAuthn assertion challenge を発行する。pending login session が\nsub を解決し、PublicKeyCredentialRequestOptions を返す。challenge はそのセッションに束縛する。")
+@doc("Issues a WebAuthn assertion challenge through the SPA JSON API. The pending login session resolves the\n`sub`, and the PublicKeyCredentialRequestOptions are returned. The challenge is bound to that session.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartBrowserWebAuthn")
 @route("/api/auth/webauthn/challenge")
@@ -676,17 +594,9 @@ op StartBrowserWebAuthn(
 
 ): StartBrowserWebAuthnSuccess_200 | StartBrowserWebAuthnError400 | StartBrowserWebAuthnError403;
 
-model SubmitBrowserWebAuthnHttpRequest {
-  request: IdMagic.Contract.BrowserWebAuthnRequest;
-}
-
-model SubmitBrowserWebAuthnHttpResponse {
-  response: IdMagic.Contract.BrowserFlowResponse;
-}
-
 model SubmitBrowserWebAuthnSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: SubmitBrowserWebAuthnHttpResponse;
+  @body body: IdMagic.Contract.BrowserFlowResponse;
 }
 
 union SubmitBrowserWebAuthnError400Body {
@@ -709,26 +619,18 @@ model SubmitBrowserWebAuthnError403 {
   @body body: SubmitBrowserWebAuthnError403Body;
 }
 
-@doc("SPA JSON API から WebAuthn assertion を検証する。成功すれば LoginSession を認証完了\n状態に昇格させ、後続フロー (consent / authorization code 発行) に進む。sign_count 逆行は\nclone として拒否する (sign_count_regression=reject)。")
+@doc("Verifies a WebAuthn assertion through the SPA JSON API. On success the LoginSession is promoted to fully\nauthenticated and the flow continues into consent and authorization code issuance. A `sign_count` that goes backwards is\nrefused as a clone (`sign_count_regression=reject`).")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SubmitBrowserWebAuthn")
 @route("/api/auth/webauthn")
 @post
 op SubmitBrowserWebAuthn(
-  @body body: SubmitBrowserWebAuthnHttpRequest
+  @body body: IdMagic.Contract.BrowserWebAuthnRequest
 ): SubmitBrowserWebAuthnSuccess_200 | SubmitBrowserWebAuthnError400 | SubmitBrowserWebAuthnError403;
-
-model SubmitBrowserRecoveryCodeHttpRequest {
-  request: IdMagic.Contract.BrowserRecoveryCodeRequest;
-}
-
-model SubmitBrowserRecoveryCodeHttpResponse {
-  response: IdMagic.Contract.BrowserFlowResponse;
-}
 
 model SubmitBrowserRecoveryCodeSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: SubmitBrowserRecoveryCodeHttpResponse;
+  @body body: IdMagic.Contract.BrowserFlowResponse;
 }
 
 union SubmitBrowserRecoveryCodeError400Body {
@@ -751,22 +653,18 @@ model SubmitBrowserRecoveryCodeError403 {
   @body body: SubmitBrowserRecoveryCodeError403Body;
 }
 
-@doc("SPA JSON API から backup recovery code を第二要素として検証する。成功すれば\nLoginSession を認証完了状態に昇格させ、消費した code は再利用不可にする。")
+@doc("Verifies a backup recovery code as a second factor through the SPA JSON API. On success the\nLoginSession is promoted to fully authenticated and the consumed code cannot be used again.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("SubmitBrowserRecoveryCode")
 @route("/api/auth/recovery-code")
 @post
 op SubmitBrowserRecoveryCode(
-  @body body: SubmitBrowserRecoveryCodeHttpRequest
+  @body body: IdMagic.Contract.BrowserRecoveryCodeRequest
 ): SubmitBrowserRecoveryCodeSuccess_200 | SubmitBrowserRecoveryCodeError400 | SubmitBrowserRecoveryCodeError403;
-
-model GenerateRecoveryCodesHttpResponse {
-  codes: IdMagic.Contract.RecoveryCodesResponse;
-}
 
 model GenerateRecoveryCodesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GenerateRecoveryCodesHttpResponse;
+  @body body: IdMagic.Contract.RecoveryCodesResponse;
 }
 
 union GenerateRecoveryCodesError400Body {
@@ -789,7 +687,7 @@ model GenerateRecoveryCodesError403 {
   @body body: GenerateRecoveryCodesError403Body;
 }
 
-@doc("認証済みユーザーが backup recovery code を生成 / 再生成する (self-service, step-up 必須)。\n平文を一度だけ返し、DB には hash のみ保存する。既存 set は全置換する (count=10 件)。")
+@doc("An authenticated user generates or regenerates backup recovery codes (self-service; step-up required).\nThe plaintext is returned once and only the hashes are stored. An existing set is replaced outright (10 codes).")
 @TypeSpec.OpenAPI.operationId("GenerateRecoveryCodes")
 @route("/api/account/v1/mfa/recovery-codes/generate")
 @post
@@ -821,7 +719,7 @@ model RevokeRecoveryCodesError403 {
   @body body: RevokeRecoveryCodesError403Body;
 }
 
-@doc("認証済みユーザーが backup recovery code を明示的に失効する (self-service, step-up 必須)。\nsubject.id に固定し、有効な code をすべて削除する。")
+@doc("An authenticated user explicitly invalidates their backup recovery codes (self-service; step-up required).\nThe target is fixed to `subject.id`, and every valid code is deleted.")
 @TypeSpec.OpenAPI.operationId("RevokeRecoveryCodes")
 @route("/api/account/v1/mfa/recovery-codes/revoke")
 @post
@@ -829,13 +727,9 @@ op RevokeRecoveryCodes(
 
 ): RevokeRecoveryCodesSuccess_200 | RevokeRecoveryCodesError400 | RevokeRecoveryCodesError403;
 
-model ListMySignInActivityHttpResponse {
-  activity: IdMagic.Contract.UserSignInActivityResponse;
-}
-
 model ListMySignInActivitySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListMySignInActivityHttpResponse;
+  @body body: IdMagic.Contract.UserSignInActivityResponse;
 }
 
 union ListMySignInActivityError403Body {
@@ -858,7 +752,7 @@ model ListMySignInActivityError400 {
   @body body: ListMySignInActivityError400Body;
 }
 
-@doc("認証済みユーザーが自身の直近サインイン履歴を取得する (self-service)。対象は\nsubject.id に固定。既存の監査イベントストア (UserAuthenticated) から発生時刻の降順で\n最大 limit 件を返す。limit 既定 10 / 上限 50。")
+@doc("An authenticated user reads their own recent sign-in history (self-service). The target is fixed to\n`subject.id`. It returns at most `limit` UserAuthenticated events from the existing audit event store, newest first.\n`limit` defaults to 10 and tops out at 50.")
 @TypeSpec.OpenAPI.operationId("ListMySignInActivity")
 @route("/api/account/v1/signin_activity")
 @get
@@ -866,13 +760,9 @@ op ListMySignInActivity(
   @query limit?: int64
 ): ListMySignInActivitySuccess_200 | ListMySignInActivityError403 | ListMySignInActivityError400;
 
-model ListUserSignInActivityHttpResponse {
-  activity: IdMagic.Contract.UserSignInActivityResponse;
-}
-
 model ListUserSignInActivitySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListUserSignInActivityHttpResponse;
+  @body body: IdMagic.Contract.UserSignInActivityResponse;
 }
 
 union ListUserSignInActivityError403Body {
@@ -895,7 +785,7 @@ model ListUserSignInActivityError400 {
   @body body: ListUserSignInActivityError400Body;
 }
 
-@doc("admin が対象ユーザーのサインイン履歴を取得する。tenant 境界内に限定し、\nパス sub のユーザーの UserAuthenticated を発生時刻の降順で最大 limit 件返す。\nlimit 既定 10 / 上限 50。")
+@doc("An administrator reads the sign-in history of a target user. It stays inside the tenant boundary and returns\nat most `limit` UserAuthenticated events for the user named in the path, newest first.\n`limit` defaults to 10 and tops out at 50.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:read"])
 @TypeSpec.OpenAPI.operationId("ListUserSignInActivity")
 @route("/api/admin/v1/users/{user_id}/signin_activity")
@@ -905,13 +795,9 @@ op ListUserSignInActivity(
   @query limit?: int64
 ): ListUserSignInActivitySuccess_200 | ListUserSignInActivityError403 | ListUserSignInActivityError400;
 
-model ListAuthenticationEventBucketsHttpResponse {
-  buckets: IdMagic.Contract.AuthenticationEventBucketListResponse;
-}
-
 model ListAuthenticationEventBucketsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListAuthenticationEventBucketsHttpResponse;
+  @body body: IdMagic.Contract.AuthenticationEventBucketListResponse;
 }
 
 union ListAuthenticationEventBucketsError403Body {
@@ -934,7 +820,7 @@ model ListAuthenticationEventBucketsError400 {
   @body body: ListAuthenticationEventBucketsError400Body;
 }
 
-@doc("admin が認証イベント集約 (bucket) を window_start の降順で一覧する。攻撃時に個別行へ\n落とさず 5 分窓へ集約したログイン失敗などを、所属テナント境界内で双方向 keyset pagination により\n取得する。cursor は応答の Link response header (rel=\"prev\" / rel=\"next\") から取得する。limit 既定\n50 / 上限 200。")
+@doc("An administrator lists the authentication event aggregates (buckets) by `window_start` descending. Sign-in failures and\nthe like, aggregated into 5-minute windows rather than kept as individual rows during an attack, are read inside the tenant\nboundary through bidirectional keyset pagination. The cursor comes from the Link response header of the response\n(`rel=\"prev\"` and `rel=\"next\"`). `limit` defaults to 50 and tops out at 200.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ListAuthenticationEventBuckets")
 @route("/api/admin/v1/authentication_event_buckets")
@@ -944,13 +830,9 @@ op ListAuthenticationEventBuckets(
   @query limit?: int64
 ): ListAuthenticationEventBucketsSuccess_200 | ListAuthenticationEventBucketsError403 | ListAuthenticationEventBucketsError400;
 
-model ListMySessionsHttpResponse {
-  sessions: IdMagic.Contract.AccountSessionListResponse;
-}
-
 model ListMySessionsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListMySessionsHttpResponse;
+  @body body: IdMagic.Contract.AccountSessionListResponse;
 }
 
 union ListMySessionsError403Body {
@@ -963,7 +845,7 @@ model ListMySessionsError403 {
   @body body: ListMySessionsError403Body;
 }
 
-@doc("認証済みユーザーが自身の有効なセッションを取得する (self-service)。対象は\nsubject.id に固定。現在のセッションを current=true でマークし、開始時刻の降順で返す。")
+@doc("An authenticated user reads their own live sessions (self-service). The target is fixed to\n`subject.id`. The current session is marked `current=true` and they are returned newest first.")
 @TypeSpec.OpenAPI.operationId("ListMySessions")
 @route("/api/account/v1/sessions")
 @get
@@ -995,7 +877,7 @@ model RevokeMySessionError403 {
   @body body: RevokeMySessionError403Body;
 }
 
-@doc("認証済みユーザーが自身のセッション 1 件を失効する (self-service)。対象が本人の\nものでなければ拒否する。失効は LoginSession に revoked_at / revoke_reason=self_revoke を\n設定する tombstone であり、物理削除しない。既に失効済みの対象への再失効は idempotent に\n成功する (revoked_at は初回の値を保持する)。")
+@doc("An authenticated user revokes one of their own sessions (self-service). A session that is not theirs\nis refused. Revocation is a tombstone that sets `revoked_at` and `revoke_reason=self_revoke` on the LoginSession; the row\nis not deleted. Revoking an already-revoked session succeeds idempotently, and `revoked_at` keeps its first value.")
 @TypeSpec.OpenAPI.operationId("RevokeMySession")
 @route("/api/account/v1/sessions/{id}/revoke")
 @post
@@ -1017,7 +899,7 @@ model RevokeMyOtherSessionsError403 {
   @body body: RevokeMyOtherSessionsError403Body;
 }
 
-@doc("認証済みユーザーが現在のセッションを除く自身の全セッションを失効する (self-service)。\n\"他のセッションを全て終了\" 操作。各対象は revoked_at / revoke_reason=self_revoke を設定する\ntombstone であり、既に失効済みの対象は idempotent にスキップする。")
+@doc("An authenticated user revokes all of their own sessions except the current one (self-service).\nThis is the \"sign out everywhere else\" operation. Each target is a tombstone setting `revoked_at` and\n`revoke_reason=self_revoke`, and one already revoked is skipped idempotently.")
 @TypeSpec.OpenAPI.operationId("RevokeMyOtherSessions")
 @route("/api/account/v1/sessions/revoke_others")
 @post
@@ -1025,13 +907,9 @@ op RevokeMyOtherSessions(
 
 ): RevokeMyOtherSessionsSuccess_204 | RevokeMyOtherSessionsError403;
 
-model ListMyTrustedDevicesHttpResponse {
-  trusted_devices: IdMagic.Contract.AccountTrustedDeviceListResponse;
-}
-
 model ListMyTrustedDevicesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListMyTrustedDevicesHttpResponse;
+  @body body: IdMagic.Contract.AccountTrustedDeviceListResponse;
 }
 
 union ListMyTrustedDevicesError403Body {
@@ -1044,7 +922,7 @@ model ListMyTrustedDevicesError403 {
   @body body: ListMyTrustedDevicesError403Body;
 }
 
-@doc("認証済みユーザーが自身の有効な信頼済みデバイスを取得する (self-service)。対象は\nsubject.id に固定し、最終利用時刻の降順で返す。現在のリクエストが提示した cookie に\n対応するデバイスを current=true でマークする。selector と verifier_hash は返さない。")
+@doc("An authenticated user reads their own live trusted devices (self-service). The target is fixed to\n`subject.id`, and they are returned by last use, newest first. The device matching the cookie the current request\npresented is marked `current=true`. Neither the selector nor `verifier_hash` is returned.")
 @TypeSpec.OpenAPI.operationId("ListMyTrustedDevices")
 @route("/api/account/v1/trusted_devices")
 @get
@@ -1076,7 +954,7 @@ model RevokeMyTrustedDeviceError403 {
   @body body: RevokeMyTrustedDeviceError403Body;
 }
 
-@doc("認証済みユーザーが自身の信頼済みデバイス 1 件を失効する (self-service)。第二要素を\n条件付きで飛ばす能力を取り消す機微操作なので、直近のステップアップ再認証を要求する。\n対象が本人のものでなければ拒否する。失効は revoked_at / revoke_reason=self_revoke を\n設定する tombstone であり、既に失効済みの対象への再失効は idempotent に成功する。")
+@doc("An authenticated user revokes one of their own trusted devices (self-service). Taking away the ability to\nskip the second factor conditionally is a sensitive operation, so a recent step-up reauthentication is required.\nA device that is not theirs is refused. Revocation is a tombstone setting `revoked_at` and `revoke_reason=self_revoke`,\nand revoking an already-revoked device succeeds idempotently.")
 @TypeSpec.OpenAPI.operationId("RevokeMyTrustedDevice")
 @route("/api/account/v1/trusted_devices/{id}/revoke")
 @post
@@ -1098,7 +976,7 @@ model RevokeMyTrustedDevicesError403 {
   @body body: RevokeMyTrustedDevicesError403Body;
 }
 
-@doc("認証済みユーザーが自身の信頼済みデバイスをすべて失効する (self-service)。現在の\nデバイスも対象に含む \"すべての記憶を解除\" 操作で、直近のステップアップ再認証を要求する。\n各対象は tombstone として失効し、既に失効済みの対象は idempotent にスキップする。")
+@doc("An authenticated user revokes all of their own trusted devices (self-service). This is the \"forget every\ndevice\" operation and includes the current one, so a recent step-up reauthentication is required.\nEach target is revoked as a tombstone, and one already revoked is skipped idempotently.")
 @TypeSpec.OpenAPI.operationId("RevokeMyTrustedDevices")
 @route("/api/account/v1/trusted_devices/revoke_all")
 @post
@@ -1106,13 +984,9 @@ op RevokeMyTrustedDevices(
 
 ): RevokeMyTrustedDevicesSuccess_204 | RevokeMyTrustedDevicesError403;
 
-model ListSessionsHttpResponse {
-  sessions: IdMagic.Contract.SessionRecordListResponse;
-}
-
 model ListSessionsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListSessionsHttpResponse;
+  @body body: IdMagic.Contract.SessionRecordListResponse;
 }
 
 union ListSessionsError403Body {
@@ -1125,7 +999,7 @@ model ListSessionsError403 {
   @body body: ListSessionsError403Body;
 }
 
-@doc("admin が対象ユーザーの有効なセッションを一覧する。tenant 境界内に\n限定し、開始時刻の降順で返す。ListMySessions と異なり対象は任意の user_id で、\ncurrent マーカーは持たない。")
+@doc("An administrator lists the live sessions of a target user. It stays inside the tenant boundary and\nreturns them newest first. Unlike ListMySessions the target is any `user_id`, and there is no\n`current` marker.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:read"])
 @TypeSpec.OpenAPI.operationId("ListSessions")
 @route("/api/admin/v1/users/{user_id}/sessions")
@@ -1133,10 +1007,6 @@ model ListSessionsError403 {
 op ListSessions(
   @path user_id: string
 ): ListSessionsSuccess_200 | ListSessionsError403;
-
-model RevokeSessionHttpRequest {
-  user_id: string;
-}
 
 model RevokeSessionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1162,20 +1032,14 @@ model RevokeSessionError403 {
   @body body: RevokeSessionError403Body;
 }
 
-@doc("admin が対象ユーザーのセッション1件を失効する。RevokeMySession と同じ\ntombstone 契約 (revoked_at / revoke_reason=admin_revoke を設定し物理削除しない)。\n既に失効済みの対象への再失効は idempotent に成功する。")
+@doc("An administrator revokes one session of a target user. The tombstone contract is the same as\nRevokeMySession: `revoked_at` and `revoke_reason=admin_revoke` are set and the row is not deleted.\nRevoking an already-revoked session succeeds idempotently.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:write"])
 @TypeSpec.OpenAPI.operationId("RevokeSession")
 @route("/api/admin/v1/users/{user_id}/sessions/{id}/revoke")
 @post
 op RevokeSession(
   @path user_id: string,
-  @path id: string,
-  @body body: RevokeSessionHttpRequest
-): RevokeSessionSuccess_204 | RevokeSessionError400 | RevokeSessionError403;
-
-model RevokeUserSessionsHttpRequest {
-  user_id: string;
-}
+  @path id: string,): RevokeSessionSuccess_204 | RevokeSessionError400 | RevokeSessionError403;
 
 model RevokeUserSessionsSuccess_204 {
   @statusCode statusCode: 204;
@@ -1191,23 +1055,17 @@ model RevokeUserSessionsError403 {
   @body body: RevokeUserSessionsError403Body;
 }
 
-@doc("admin が対象ユーザーの全セッションを失効する。\"全セッションを終了\"\n操作。RevokeMyOtherSessions と異なり操作者自身のセッションではないため除外対象は\n無く、対象ユーザーの有効な全セッションを tombstone にする。各対象は idempotent に\n失効する。")
+@doc("An administrator revokes every session of a target user -- the \"sign out everywhere\"\noperation. Unlike RevokeMyOtherSessions the sessions are not the caller's own, so nothing is excluded and every\nlive session of the target user becomes a tombstone. Each one is revoked idempotently.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["sessions:write"])
 @TypeSpec.OpenAPI.operationId("RevokeUserSessions")
 @route("/api/admin/v1/users/{user_id}/sessions/revoke_all")
 @post
 op RevokeUserSessions(
-  @path user_id: string,
-  @body body: RevokeUserSessionsHttpRequest
-): RevokeUserSessionsSuccess_204 | RevokeUserSessionsError403;
-
-model StartStepUpAuthenticationHttpResponse {
-  methods: IdMagic.Contract.StepUpStartResponse;
-}
+  @path user_id: string,): RevokeUserSessionsSuccess_204 | RevokeUserSessionsError403;
 
 model StartStepUpAuthenticationSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: StartStepUpAuthenticationHttpResponse;
+  @body body: IdMagic.Contract.StepUpStartResponse;
 }
 
 union StartStepUpAuthenticationError403Body {
@@ -1220,17 +1078,13 @@ model StartStepUpAuthenticationError403 {
   @body body: StartStepUpAuthenticationError403Body;
 }
 
-@doc("高 sensitivity 操作の前段として step-up 再認証を開始する (self-service)。subject 本人のセッションに固定し、利用可能な factor (password 常時 / totp は\nenrolled 時) を返す。本 interface 自体には step-up を要求しない (再認証の入口のため)。")
+@doc("Starts a step-up reauthentication ahead of a high-sensitivity operation (self-service). It is fixed to the subject's own session and returns the factors available: password always, TOTP once enrolled. The interface itself does not require step-up, being the way into a reauthentication.")
 @TypeSpec.OpenAPI.operationId("StartStepUpAuthentication")
 @route("/api/account/v1/step_up/start")
 @post
 op StartStepUpAuthentication(
 
 ): StartStepUpAuthenticationSuccess_200 | StartStepUpAuthenticationError403;
-
-model CompleteStepUpAuthenticationHttpRequest {
-  request: IdMagic.Contract.StepUpCompleteRequest;
-}
 
 model CompleteStepUpAuthenticationSuccess_200 {
   @statusCode statusCode: 200;
@@ -1256,26 +1110,17 @@ model CompleteStepUpAuthenticationError403 {
   @body body: CompleteStepUpAuthenticationError403Body;
 }
 
-@doc("提示された factor (password または totp コード) を検証し、成立すればセッションに\nstep_up_at を刻む。以降 recency 窓 (5 分) 内は step_up: required の\n操作を許可する。検証失敗は AccessDeniedError。")
+@doc("Verifies the factor presented -- a password or a TOTP code -- and, when it holds, stamps `step_up_at` on the\nsession. Inside the recency window of five minutes, operations marked `step_up: required` are then permitted. A failed\nverification gives AccessDeniedError.")
 @TypeSpec.OpenAPI.operationId("CompleteStepUpAuthentication")
 @route("/api/account/v1/step_up/complete")
 @post
 op CompleteStepUpAuthentication(
-  @body body: CompleteStepUpAuthenticationHttpRequest
+  @body body: IdMagic.Contract.StepUpCompleteRequest
 ): CompleteStepUpAuthenticationSuccess_200 | CompleteStepUpAuthenticationError400 | CompleteStepUpAuthenticationError403;
-
-model IssueMfaEnrollmentBypassHttpRequest {
-  user_id: string;
-  request: IdMagic.Contract.MfaEnrollmentBypassIssueRequest;
-}
-
-model IssueMfaEnrollmentBypassHttpResponse {
-  response: IdMagic.Contract.MfaEnrollmentBypassResponse;
-}
 
 model IssueMfaEnrollmentBypassSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: IssueMfaEnrollmentBypassHttpResponse;
+  @body body: IdMagic.Contract.MfaEnrollmentBypassResponse;
 }
 
 union IssueMfaEnrollmentBypassError400Body {
@@ -1308,14 +1153,14 @@ model IssueMfaEnrollmentBypassError422 {
   @body body: IssueMfaEnrollmentBypassError422Body;
 }
 
-@doc("テナント管理者が同一テナントの MFA 未登録 active user に短期・単発の enrollment bypass を発行する。同一 user の既存未消費 bypass は取り消して置換する。ログイン免除ではなく登録専用 pending flow への承認である。")
+@doc("A tenant administrator issues a short-lived, single-use enrollment bypass to an active user of the same tenant who has no MFA enrolled. An existing unconsumed bypass for the same user is revoked and replaced. It is not an exemption from signing in; it is approval for a pending flow that exists only to enroll.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("IssueMfaEnrollmentBypass")
 @route("/api/admin/v1/users/{user_id}/mfa-enrollment-bypass")
 @post
 op IssueMfaEnrollmentBypass(
   @path user_id: string,
-  @body body: IssueMfaEnrollmentBypassHttpRequest
+  @body body: IdMagic.Contract.MfaEnrollmentBypassIssueRequest
 ): IssueMfaEnrollmentBypassSuccess_200 | IssueMfaEnrollmentBypassError400 | IssueMfaEnrollmentBypassError403 | IssueMfaEnrollmentBypassError422;
 
 model RevokeMfaEnrollmentBypassSuccess_204 {
@@ -1332,7 +1177,7 @@ model RevokeMfaEnrollmentBypassError403 {
   @body body: RevokeMfaEnrollmentBypassError403Body;
 }
 
-@doc("テナント管理者が対象 user の未消費 enrollment bypass を取り消す。既に消費・期限切れの場合もログインを許可せず冪等に終了する。")
+@doc("A tenant administrator revokes the unconsumed enrollment bypass of a target user. When it has already been consumed or has expired, the call still does not permit a sign-in and finishes idempotently.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("RevokeMfaEnrollmentBypass")
 @route("/api/admin/v1/users/{user_id}/mfa-enrollment-bypass")
@@ -1341,18 +1186,9 @@ op RevokeMfaEnrollmentBypass(
   @path user_id: string
 ): RevokeMfaEnrollmentBypassSuccess_204 | RevokeMfaEnrollmentBypassError403;
 
-model ResetUserAuthenticatorsHttpRequest {
-  user_id: string;
-  request: IdMagic.Contract.AuthenticatorResetRequest;
-}
-
-model ResetUserAuthenticatorsHttpResponse {
-  response: IdMagic.Contract.AuthenticatorResetResponse;
-}
-
 model ResetUserAuthenticatorsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ResetUserAuthenticatorsHttpResponse;
+  @body body: IdMagic.Contract.AuthenticatorResetResponse;
 }
 
 union ResetUserAuthenticatorsError400Body {
@@ -1385,19 +1221,15 @@ model ResetUserAuthenticatorsError422 {
   @body body: ResetUserAuthenticatorsError422Body;
 }
 
-@doc("テナント管理者が対象 user の認証器 (TOTP factor / WebAuthn credential /\nrecovery code) から選択した種別を削除し、mfa_enrolled を再計算する (緊急\nbackstop)。管理者は新しい factor を代わりに登録できず、削除と再登録要求に限定する。\nTOTP と WebAuthn が両方無くなった場合は既存の管理者承認 enrollment bypass\n(IssueMfaEnrollmentBypass と同じ機構) を自動発行して置換し、次回ログインを\nfail-closed な enrollment-required flow へ誘導する。片方の要素のみ削除するなど mfa_enrolled\nが true のまま残る場合は bypass を発行せず、残存要素で通常ログインを継続できる。")
+@doc("A tenant administrator deletes the chosen kinds of authenticator from a target user -- the TOTP factor,\nthe WebAuthn credentials, the recovery codes -- and recomputes `mfa_enrolled`. It is an emergency backstop.\nAn administrator cannot enroll a new factor in the user's place; they may only delete and require re-enrollment.\nWhen both TOTP and WebAuthn are gone, an administrator-approved enrollment bypass is issued automatically -- the same\nmechanism as IssueMfaEnrollmentBypass -- replacing any existing one, so the next sign-in is directed into the\nfail-closed enrollment-required flow. When `mfa_enrolled` stays true because only one kind was deleted, no bypass is\nissued and the remaining factor carries the ordinary sign-in.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["users:write"])
 @TypeSpec.OpenAPI.operationId("ResetUserAuthenticators")
 @route("/api/admin/v1/users/{user_id}/authenticator-reset")
 @post
 op ResetUserAuthenticators(
   @path user_id: string,
-  @body body: ResetUserAuthenticatorsHttpRequest
+  @body body: IdMagic.Contract.AuthenticatorResetRequest
 ): ResetUserAuthenticatorsSuccess_200 | ResetUserAuthenticatorsError400 | ResetUserAuthenticatorsError403 | ResetUserAuthenticatorsError422;
-
-model RequestPasswordResetHttpRequest {
-  request: IdMagic.Contract.BrowserForgotPasswordRequest;
-}
 
 model RequestPasswordResetSuccess_200 {
   @statusCode statusCode: 200;
@@ -1409,25 +1241,29 @@ union RequestPasswordResetError429Body {
 
 model RequestPasswordResetError429 {
   @statusCode statusCode: 429;
-  @header contentType: "application/problem+json";
+  @header contentType: "application/json";
+  @doc("Seconds the client must wait before retrying, the same number the body carries in `retry_after_seconds`.")
+  @header("Retry-After") retryAfter: int32;
   @body body: RequestPasswordResetError429Body;
 }
 
-@doc("未認証ユーザーがパスワードリセットリンクの送信を要求する。\nanti-enumeration のため、email の存在有無に関わらず常に 204 を返し、\nverified email を持つ user が見つかった場合のみ token を発行して送信する。\n文面は Tenancy の通知テンプレートカタログ (template_key=PasswordReset) から\n解決する。locale は受信者 User の locale 属性 → テナントの default_locale →\nシステム既定 locale の順に決め、テナント上書きがあれば組込み既定より優先する。\nプレーンテキストと HTML の両方を必ず生成し、リセットリンクは\nリクエストの発行元 URL から組み立てる (テンプレート側に URL 結合をさせない)。")
+@doc("An unauthenticated user asks for a password reset link.\nTo prevent enumeration it always returns 204, whether or not the email exists, and a token is issued and sent only\nwhen a user with a verified email is found.\nThe wording is resolved from the Tenancy notification template catalogue (`template_key=PasswordReset`).\nThe locale is decided in the order: the recipient User's locale attribute, the tenant's `default_locale`, the system\ndefault locale; a tenant override takes precedence over the built-in default.\nBoth a plain text and an HTML body are always produced, and the reset link is built from the issuer URL of the\nrequest, so the template never has to join URLs itself.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("RequestPasswordReset")
 @route("/api/auth/forgot_password")
 @post
 op RequestPasswordReset(
-  @body body: RequestPasswordResetHttpRequest
+  @body body: IdMagic.Contract.BrowserForgotPasswordRequest
 ): RequestPasswordResetSuccess_200 | RequestPasswordResetError429;
 
-model ResetPasswordWithTokenHttpRequest {
-  request: IdMagic.Contract.BrowserResetPasswordRequest;
+model ResetPasswordWithTokenHttpResponse {
+  @doc("Always `ok`.")
+  status: string;
 }
 
 model ResetPasswordWithTokenSuccess_200 {
   @statusCode statusCode: 200;
+  @body body: ResetPasswordWithTokenHttpResponse;
 }
 
 union ResetPasswordWithTokenError400Body {
@@ -1460,13 +1296,13 @@ model ResetPasswordWithTokenError422 {
   @body body: ResetPasswordWithTokenError422Body;
 }
 
-@doc("reset リンクから戻ってきたユーザーが新パスワードを設定する。\ntoken を単発消費し (期限 1800 秒、consumed_at 設定済みは再利用不可)、12〜128 文字の\n長さ制約と直近 history_depth (5) 件のハッシュとの不一致 (PasswordHistoryNoReuse) を\n通過した new_password で User.password_hash を更新する。成功時 PasswordChanged を emit。")
+@doc("A user returning from the reset link sets a new password.\nThe token is consumed once -- it lives 1800 seconds and cannot be reused once `consumed_at` is set -- and\n`User.password_hash` is updated with a `new_password` that passed the length constraint of 12 to 128 characters and\ndiffers from the most recent `history_depth` (5) hashes (PasswordHistoryNoReuse). On success PasswordChanged is emitted.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ResetPasswordWithToken")
 @route("/api/auth/reset_password")
 @post
 op ResetPasswordWithToken(
-  @body body: ResetPasswordWithTokenHttpRequest
+  @body body: IdMagic.Contract.BrowserResetPasswordRequest
 ): ResetPasswordWithTokenSuccess_200 | ResetPasswordWithTokenError400 | ResetPasswordWithTokenError403 | ResetPasswordWithTokenError422;
 
 model DiscoverIdentityProvidersHttpResponse {
@@ -1478,7 +1314,7 @@ model DiscoverIdentityProvidersSuccess_200 {
   @body body: DiscoverIdentityProvidersHttpResponse;
 }
 
-@doc("login UI が request tenant で Active な upstream provider の表示用情報だけを取得する。secret、endpoint、certificate、link policy は公開しない。optional email/domain hint は管理時に検証済み routing rule だけに適用する。")
+@doc("The sign-in UI reads nothing but the display information of the upstream providers that are Active in the request tenant. Secrets, endpoints, certificates, and the link policy are not exposed. An optional email or domain hint is applied only against routing rules already validated at configuration time.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("DiscoverIdentityProviders")
 @route("/api/auth/federation/providers")
@@ -1487,13 +1323,9 @@ op DiscoverIdentityProviders(
   @query hint?: string
 ): DiscoverIdentityProvidersSuccess_200;
 
-model StartFederatedLoginHttpResponse {
-  response: IdMagic.Contract.FederatedLoginStartResponse;
-}
-
 model StartFederatedLoginSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: StartFederatedLoginHttpResponse;
+  @body body: IdMagic.Contract.FederatedLoginStartResponse;
 }
 
 union StartFederatedLoginError400Body {
@@ -1516,7 +1348,7 @@ model StartFederatedLoginError403 {
   @body body: StartFederatedLoginError403Body;
 }
 
-@doc("Active connection を tenant 内で解決し、OIDC state / nonce / PKCE または SAML RelayState / AuthnRequest ID を単発 FederatedLoginAttempt に保存して、管理時検証済み upstream endpoint への redirect を返す。任意 URL は受け取らない。")
+@doc("Resolves an Active connection inside the tenant, stores the OIDC state, nonce, and PKCE, or the SAML RelayState and AuthnRequest ID, in a single-use FederatedLoginAttempt, and returns a redirect to the upstream endpoint validated at configuration time. It never accepts an arbitrary URL.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartFederatedLogin")
 @route("/api/auth/federation/start")
@@ -1527,13 +1359,10 @@ op StartFederatedLogin(
   @query link?: boolean
 ): StartFederatedLoginSuccess_200 | StartFederatedLoginError400 | StartFederatedLoginError403;
 
-model CompleteFederatedLogin1HttpResponse {
-  completion: IdMagic.Contract.FederatedLoginCompletion;
-}
-
 model CompleteFederatedLogin1Success_200 {
   @statusCode statusCode: 200;
-  @body body: CompleteFederatedLogin1HttpResponse;
+  @doc("Where the browser continues: the caller's `return_to`, the account security page after a link, or the resume path of a pending authorization.")
+  @header("Location") location: url;
 }
 
 union CompleteFederatedLogin1Error400Body {
@@ -1566,30 +1395,22 @@ model CompleteFederatedLogin1Error422 {
   @body body: CompleteFederatedLogin1Error422Body;
 }
 
-@doc("callback を single-use login attempt と相関し、OIDC token または SAML response の trust、issuer、audience、nonce/InResponseTo、time、replay を検証する。既存 link、明示 policy 下の verified-email link、明示 JIT の順で local User を解決し、LoginSession 発行へ渡す。")
+@doc("Correlates the callback with the single-use login attempt and verifies the trust, issuer, audience, nonce or InResponseTo, time, and replay of the OIDC token or the SAML response. The local User is resolved in the order: an existing link, a verified-email link under an explicit policy, then explicit JIT provisioning, and handed on to issue a LoginSession.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("CompleteFederatedLogin")
 @route("/api/auth/federation/oidc/callback")
 @get
 op CompleteFederatedLogin1(
-  @query provider_id: string,
+  @doc("The single-use FederatedLoginAttempt this callback belongs to. The provider is resolved from the attempt, not from the query.")
   @query state: string,
-  @query response: string
+  @doc("The upstream authorization code (RFC 6749 section 4.1.2).")
+  @query code: string
 ): CompleteFederatedLogin1Success_200 | CompleteFederatedLogin1Error400 | CompleteFederatedLogin1Error403 | CompleteFederatedLogin1Error422;
-
-model CompleteFederatedLogin2HttpRequest {
-  provider_id: string;
-  state: string;
-  response: string;
-}
-
-model CompleteFederatedLogin2HttpResponse {
-  completion: IdMagic.Contract.FederatedLoginCompletion;
-}
 
 model CompleteFederatedLogin2Success_200 {
   @statusCode statusCode: 200;
-  @body body: CompleteFederatedLogin2HttpResponse;
+  @doc("Where the browser continues: the caller's `return_to`, the account security page after a link, or the resume path of a pending authorization.")
+  @header("Location") location: url;
 }
 
 union CompleteFederatedLogin2Error400Body {
@@ -1622,13 +1443,19 @@ model CompleteFederatedLogin2Error422 {
   @body body: CompleteFederatedLogin2Error422Body;
 }
 
-@doc("callback を single-use login attempt と相関し、OIDC token または SAML response の trust、issuer、audience、nonce/InResponseTo、time、replay を検証する。既存 link、明示 policy 下の verified-email link、明示 JIT の順で local User を解決し、LoginSession 発行へ渡す。")
+@doc("Correlates the callback with the single-use login attempt and verifies the trust, issuer, audience, nonce or InResponseTo, time, and replay of the OIDC token or the SAML response. The local User is resolved in the order: an existing link, a verified-email link under an explicit policy, then explicit JIT provisioning, and handed on to issue a LoginSession.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("CompleteFederatedLogin")
 @route("/api/auth/federation/saml/callback")
 @post
 op CompleteFederatedLogin2(
-  @body body: CompleteFederatedLogin2HttpRequest
+  @header contentType: "application/x-www-form-urlencoded",
+  @body body: {
+    @doc("The base64-encoded SAML Response, as the HTTP POST binding of SAML 2.0 sends it.")
+    SAMLResponse: string;
+    @doc("The RelayState the AuthnRequest carried, correlating this callback with its single-use FederatedLoginAttempt.")
+    RelayState?: string;
+  }
 ): CompleteFederatedLogin2Success_200 | CompleteFederatedLogin2Error400 | CompleteFederatedLogin2Error403 | CompleteFederatedLogin2Error422;
 
 model ListLinkedExternalIdentitiesHttpResponse {
@@ -1650,7 +1477,7 @@ model ListLinkedExternalIdentitiesError403 {
   @body body: ListLinkedExternalIdentitiesError403Body;
 }
 
-@doc("ResourceOwner が自身に結び付く external identity の provider 表示名、protocol、linked_at、last_login_at を取得する。external subject と token は返さない。")
+@doc("A ResourceOwner reads the provider display name, protocol, `linked_at`, and `last_login_at` of the external identities tied to them. Neither the external subject nor any token is returned.")
 @TypeSpec.OpenAPI.operationId("ListLinkedExternalIdentities")
 @route("/api/account/v1/linked-identities")
 @get
@@ -1658,17 +1485,9 @@ op ListLinkedExternalIdentities(
 
 ): ListLinkedExternalIdentitiesSuccess_200 | ListLinkedExternalIdentitiesError403;
 
-model LinkExternalIdentityHttpRequest {
-  provider_id: string;
-}
-
-model LinkExternalIdentityHttpResponse {
-  response: IdMagic.Contract.FederatedLoginStartResponse;
-}
-
 model LinkExternalIdentitySuccess_200 {
   @statusCode statusCode: 200;
-  @body body: LinkExternalIdentityHttpResponse;
+  @body body: IdMagic.Contract.FederatedLoginStartResponse;
 }
 
 union LinkExternalIdentityError400Body {
@@ -1691,14 +1510,12 @@ model LinkExternalIdentityError403 {
   @body body: LinkExternalIdentityError403Body;
 }
 
-@doc("直近5分以内に step-up 済みの ResourceOwner が provider の外部認証を開始し、callback で得た subject を自身へ明示 link する。既に他 user に link 済みの subject は付け替えない。")
+@doc("A ResourceOwner who stepped up within the last five minutes starts external authentication at a provider and explicitly links the subject the callback returns to themselves. A subject already linked to another user is not moved.")
 @TypeSpec.OpenAPI.operationId("LinkExternalIdentity")
 @route("/api/account/v1/linked-identities/{provider_id}")
 @post
 op LinkExternalIdentity(
-  @path provider_id: string,
-  @body body: LinkExternalIdentityHttpRequest
-): LinkExternalIdentitySuccess_200 | LinkExternalIdentityError400 | LinkExternalIdentityError403;
+  @path provider_id: string,): LinkExternalIdentitySuccess_200 | LinkExternalIdentityError400 | LinkExternalIdentityError403;
 
 model UnlinkExternalIdentitySuccess_204 {
   @statusCode statusCode: 204;
@@ -1724,7 +1541,7 @@ model UnlinkExternalIdentityError403 {
   @body body: UnlinkExternalIdentityError403Body;
 }
 
-@doc("直近5分以内に step-up 済みの ResourceOwner が自身の provider link を解除する。利用可能な password credential も他の link も無い場合は account lockout 防止のため拒否する。")
+@doc("A ResourceOwner who stepped up within the last five minutes unlinks one of their own providers. When they would be left with neither a usable password credential nor another link, it is refused, so the account cannot lock itself out.")
 @TypeSpec.OpenAPI.operationId("UnlinkExternalIdentity")
 @route("/api/account/v1/linked-identities/{provider_id}")
 @delete
@@ -1751,7 +1568,7 @@ model ListIdentityProviderConnectionsError403 {
   @body body: ListIdentityProviderConnectionsError403Body;
 }
 
-@doc("tenant administrator が connection 一覧を取得する。secret_reference と secret は返さない。")
+@doc("A tenant administrator reads the connection list. Neither `secret_reference` nor the secret is returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ListIdentityProviderConnections")
 @route("/api/admin/v1/identity-providers")
@@ -1760,17 +1577,9 @@ op ListIdentityProviderConnections(
 
 ): ListIdentityProviderConnectionsSuccess_200 | ListIdentityProviderConnectionsError403;
 
-model CreateIdentityProviderConnectionHttpRequest {
-  connection: IdMagic.Contract.IdentityProviderConnection;
-}
-
-model CreateIdentityProviderConnectionHttpResponse {
-  connection: IdMagic.Contract.IdentityProviderConnection;
-}
-
 model CreateIdentityProviderConnectionSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: CreateIdentityProviderConnectionHttpResponse;
+  @body body: IdMagic.Contract.IdentityProviderConnection;
 }
 
 union CreateIdentityProviderConnectionError400Body {
@@ -1793,27 +1602,18 @@ model CreateIdentityProviderConnectionError403 {
   @body body: CreateIdentityProviderConnectionError403Body;
 }
 
-@doc("tenant administrator が connection を作る。作成直後の初期状態は Disabled。OIDC issuer または SAML metadata を管理時に検証し last-known-good trust material を保存する。client secret は secret_reference で受け取り、書き込み専用のエンベロープ暗号化保存にまわす。")
+@doc("A tenant administrator creates a connection. It starts Disabled. The OIDC issuer or the SAML metadata is validated at configuration time and the last-known-good trust material is stored. The client secret arrives as a `secret_reference` and goes into write-only envelope-encrypted storage.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("CreateIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers")
 @post
 op CreateIdentityProviderConnection(
-  @body body: CreateIdentityProviderConnectionHttpRequest
+  @body body: IdMagic.Contract.IdentityProviderConnectionRequest
 ): CreateIdentityProviderConnectionSuccess_201 | CreateIdentityProviderConnectionError400 | CreateIdentityProviderConnectionError403;
-
-model UpdateIdentityProviderConnectionHttpRequest {
-  provider_id: string;
-  connection: IdMagic.Contract.IdentityProviderConnection;
-}
-
-model UpdateIdentityProviderConnectionHttpResponse {
-  connection: IdMagic.Contract.IdentityProviderConnection;
-}
 
 model UpdateIdentityProviderConnectionSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateIdentityProviderConnectionHttpResponse;
+  @body body: IdMagic.Contract.IdentityProviderConnection;
 }
 
 union UpdateIdentityProviderConnectionError400Body {
@@ -1836,14 +1636,14 @@ model UpdateIdentityProviderConnectionError403 {
   @body body: UpdateIdentityProviderConnectionError403Body;
 }
 
-@doc("tenant administrator が connection の display、mapping、policy、secret reference、trust source を更新する。issuer / endpoint / certificate / protocol などの trust source を変更したときだけ Active を Disabled に落とし、display_name や claim_mapping など非 trust フィールドの変更では状態を保持する。trust source 変更時に再検証が失敗した場合は last-known-good を維持する。")
+@doc("A tenant administrator updates the display, mapping, policy, secret reference, or trust source of a connection. Only a change to a trust source -- the issuer, an endpoint, a certificate, the protocol -- drops Active to Disabled; a change to a non-trust field such as `display_name` or `claim_mapping` keeps the state. When revalidation fails during a trust source change, the last-known-good material is kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("UpdateIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}")
 @put
 op UpdateIdentityProviderConnection(
   @path provider_id: string,
-  @body body: UpdateIdentityProviderConnectionHttpRequest
+  @body body: IdMagic.Contract.IdentityProviderConnectionRequest
 ): UpdateIdentityProviderConnectionSuccess_200 | UpdateIdentityProviderConnectionError400 | UpdateIdentityProviderConnectionError403;
 
 model DeleteIdentityProviderConnectionSuccess_204 {
@@ -1870,7 +1670,7 @@ model DeleteIdentityProviderConnectionError403 {
   @body body: DeleteIdentityProviderConnectionError403Body;
 }
 
-@doc("tenant administrator が connection を状態を問わずいつでも削除する。link が残る場合は削除を拒否し、先に明示 cleanup を要求する。")
+@doc("A tenant administrator deletes a connection at any time, whatever its state. When links to it remain, the deletion is refused and an explicit cleanup is required first.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("DeleteIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}")
@@ -1878,10 +1678,6 @@ model DeleteIdentityProviderConnectionError403 {
 op DeleteIdentityProviderConnection(
   @path provider_id: string
 ): DeleteIdentityProviderConnectionSuccess_204 | DeleteIdentityProviderConnectionError400 | DeleteIdentityProviderConnectionError403;
-
-model ActivateIdentityProviderConnectionHttpRequest {
-  provider_id: string;
-}
 
 model ActivateIdentityProviderConnectionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1907,19 +1703,13 @@ model ActivateIdentityProviderConnectionError403 {
   @body body: ActivateIdentityProviderConnectionError403Body;
 }
 
-@doc("trust validation と接続 test に成功した Disabled connection を Active にする。")
+@doc("Moves a Disabled connection to Active once trust validation and a connection test have both succeeded.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("ActivateIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/activate")
 @post
 op ActivateIdentityProviderConnection(
-  @path provider_id: string,
-  @body body: ActivateIdentityProviderConnectionHttpRequest
-): ActivateIdentityProviderConnectionSuccess_204 | ActivateIdentityProviderConnectionError400 | ActivateIdentityProviderConnectionError403;
-
-model DisableIdentityProviderConnectionHttpRequest {
-  provider_id: string;
-}
+  @path provider_id: string,): ActivateIdentityProviderConnectionSuccess_204 | ActivateIdentityProviderConnectionError400 | ActivateIdentityProviderConnectionError403;
 
 model DisableIdentityProviderConnectionSuccess_204 {
   @statusCode statusCode: 204;
@@ -1935,27 +1725,17 @@ model DisableIdentityProviderConnectionError403 {
   @body body: DisableIdentityProviderConnectionError403Body;
 }
 
-@doc("Active connection を Disabled にし、新規 routing と callback completion を直ちに拒否する。")
+@doc("Moves an Active connection to Disabled, refusing new routing and callback completion immediately.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("DisableIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/disable")
 @post
 op DisableIdentityProviderConnection(
-  @path provider_id: string,
-  @body body: DisableIdentityProviderConnectionHttpRequest
-): DisableIdentityProviderConnectionSuccess_204 | DisableIdentityProviderConnectionError403;
-
-model RefreshIdentityProviderMetadataHttpRequest {
-  provider_id: string;
-}
-
-model RefreshIdentityProviderMetadataHttpResponse {
-  connection: IdMagic.Contract.IdentityProviderConnection;
-}
+  @path provider_id: string,): DisableIdentityProviderConnectionSuccess_204 | DisableIdentityProviderConnectionError403;
 
 model RefreshIdentityProviderMetadataSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: RefreshIdentityProviderMetadataHttpResponse;
+  @body body: IdMagic.Contract.IdentityProviderConnection;
 }
 
 union RefreshIdentityProviderMetadataError400Body {
@@ -1978,19 +1758,13 @@ model RefreshIdentityProviderMetadataError403 {
   @body body: RefreshIdentityProviderMetadataError403Body;
 }
 
-@doc("tenant administrator が固定済み issuer / metadata source から discovery/JWKS または SAML metadata を再取得し、SSRF と trust validation 成功時だけ last-known-good を更新する。")
+@doc("A tenant administrator re-fetches the discovery document and JWKS, or the SAML metadata, from the pinned issuer or metadata source, and updates the last-known-good material only when the SSRF guard and trust validation both pass.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("RefreshIdentityProviderMetadata")
 @route("/api/admin/v1/identity-providers/{provider_id}/refresh")
 @post
 op RefreshIdentityProviderMetadata(
-  @path provider_id: string,
-  @body body: RefreshIdentityProviderMetadataHttpRequest
-): RefreshIdentityProviderMetadataSuccess_200 | RefreshIdentityProviderMetadataError400 | RefreshIdentityProviderMetadataError403;
-
-model TestIdentityProviderConnectionHttpRequest {
-  provider_id: string;
-}
+  @path provider_id: string,): RefreshIdentityProviderMetadataSuccess_200 | RefreshIdentityProviderMetadataError400 | RefreshIdentityProviderMetadataError403;
 
 model TestIdentityProviderConnectionHttpResponse {
   result: IdMagic.Contract.IdentityProviderConnectionTestResult;
@@ -2021,19 +1795,16 @@ model TestIdentityProviderConnectionError403 {
   @body body: TestIdentityProviderConnectionError403Body;
 }
 
-@doc("保存済み last-known-good trust source に対して実際に到達性・解決可能性を検査する。OIDC は authorization_endpoint/token_endpoint/jwks_uri への到達性と secret_reference の解決可能性を、SAML は保存済み証明書の X.509 パース可否と有効期限を確認する。secret の実値、token、certificate 本文は返さない。")
+@doc("Actually tests whether the stored last-known-good trust source is reachable and resolvable. For OIDC it checks reachability of the authorization_endpoint, token_endpoint, and jwks_uri and whether the `secret_reference` resolves; for SAML it checks that the stored certificate parses as X.509 and is still valid. Neither the secret value, nor a token, nor the certificate body is returned.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("TestIdentityProviderConnection")
 @route("/api/admin/v1/identity-providers/{provider_id}/test")
 @post
 op TestIdentityProviderConnection(
-  @path provider_id: string,
-  @body body: TestIdentityProviderConnectionHttpRequest
-): TestIdentityProviderConnectionSuccess_200 | TestIdentityProviderConnectionError400 | TestIdentityProviderConnectionError403;
+  @path provider_id: string,): TestIdentityProviderConnectionSuccess_200 | TestIdentityProviderConnectionError400 | TestIdentityProviderConnectionError403;
 
 model PreviewIdentityProviderMappingHttpRequest {
-  provider_id: string;
-  claims: unknown;
+  claims: Record<unknown>;
 }
 
 model PreviewIdentityProviderMappingHttpResponse {
@@ -2065,7 +1836,7 @@ model PreviewIdentityProviderMappingError403 {
   @body body: PreviewIdentityProviderMappingError403Body;
 }
 
-@doc("tenant administrator が保存済み test response の検証済み claim を mapping し、token/assertionを含まない正規化 preview を取得する。")
+@doc("A tenant administrator maps the verified claims of a stored test response and reads a normalized preview that carries neither the token nor the assertion.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["interactive_session"])
 @TypeSpec.OpenAPI.operationId("PreviewIdentityProviderMapping")
 @route("/api/admin/v1/identity-providers/{provider_id}/mapping-preview")

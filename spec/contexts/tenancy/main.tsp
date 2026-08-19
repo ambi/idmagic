@@ -8,13 +8,9 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.Tenancy {
 
 namespace Operations {
-model ListTenantsHttpResponse {
-  response: IdMagic.Contract.TenantListResponse;
-}
-
 model ListTenantsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListTenantsHttpResponse;
+  @body body: IdMagic.Contract.TenantListResponse;
 }
 
 union ListTenantsError403Body {
@@ -27,7 +23,7 @@ model ListTenantsError403 {
   @body body: ListTenantsError403Body;
 }
 
-@doc("system_admin がテナント一覧を取得する。テナント横断操作のため system_admin\nロールでゲートし、システムコンソール (/system) から呼ぶ。default テナントに解決する\nbare path と control-plane path (/realms/default 配下、cookie session 整合) の両方から\n同じ handler に入る。")
+@doc("A system_admin reads the tenant list. It crosses tenants, so it is gated on the system_admin\nrole and called from the system console (/system). It is reached through the same handler from both the\nbare path that resolves to the default tenant and the control-plane path under /realms/default, which keeps the\ncookie session consistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:read"])
 @TypeSpec.OpenAPI.operationId("ListTenants")
 @route("/api/admin/v1/tenants")
@@ -36,13 +32,9 @@ op ListTenants(
 
 ): ListTenantsSuccess_200 | ListTenantsError403;
 
-model GetTenantHttpResponse {
-  tenant: IdMagic.Contract.TenantSummaryResponse;
-}
-
 model GetTenantSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetTenantHttpResponse;
+  @body body: IdMagic.Contract.TenantSummaryResponse;
 }
 
 union GetTenantError400Body {
@@ -65,7 +57,7 @@ model GetTenantError403 {
   @body body: GetTenantError403Body;
 }
 
-@doc("system_admin が単一テナントを取得する。")
+@doc("A system_admin reads one tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:read"])
 @TypeSpec.OpenAPI.operationId("GetTenant")
 @route("/api/admin/v1/tenants/{tenant_id}")
@@ -74,17 +66,9 @@ op GetTenant(
   @path tenant_id: string
 ): GetTenantSuccess_200 | GetTenantError400 | GetTenantError403;
 
-model CreateTenantHttpRequest {
-  request: IdMagic.Contract.TenantCreateRequest;
-}
-
-model CreateTenantHttpResponse {
-  tenant: IdMagic.Contract.TenantSummaryResponse;
-}
-
 model CreateTenantSuccess_201 {
   @statusCode statusCode: 201;
-  @body body: CreateTenantHttpResponse;
+  @body body: IdMagic.Contract.TenantSummaryResponse;
 }
 
 union CreateTenantError400Body {
@@ -107,27 +91,18 @@ model CreateTenantError403 {
   @body body: CreateTenantError403Body;
 }
 
-@doc("system_admin が新規テナントを作成する。")
+@doc("A system_admin creates a tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("CreateTenant")
 @route("/api/admin/v1/tenants")
 @post
 op CreateTenant(
-  @body body: CreateTenantHttpRequest
+  @body body: IdMagic.Contract.TenantCreateRequest
 ): CreateTenantSuccess_201 | CreateTenantError400 | CreateTenantError403;
-
-model UpdateTenantHttpRequest {
-  tenant_id: string;
-  request: IdMagic.Contract.TenantUpdateRequest;
-}
-
-model UpdateTenantHttpResponse {
-  tenant: IdMagic.Contract.TenantSummaryResponse;
-}
 
 model UpdateTenantSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateTenantHttpResponse;
+  @body body: IdMagic.Contract.TenantSummaryResponse;
 }
 
 union UpdateTenantError400Body {
@@ -160,19 +135,15 @@ model UpdateTenantError422 {
   @body body: UpdateTenantError422Body;
 }
 
-@doc("system_admin がテナントの表示名を更新する。")
+@doc("A system_admin updates the display name of a tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenant")
 @route("/api/admin/v1/tenants/{tenant_id}")
 @patch
 op UpdateTenant(
   @path tenant_id: string,
-  @body body: UpdateTenantHttpRequest
+  @body body: IdMagic.Contract.TenantUpdateRequest
 ): UpdateTenantSuccess_200 | UpdateTenantError400 | UpdateTenantError403 | UpdateTenantError422;
-
-model DisableTenantHttpRequest {
-  tenant_id: string;
-}
 
 model DisableTenantSuccess_204 {
   @statusCode statusCode: 204;
@@ -198,19 +169,13 @@ model DisableTenantError403 {
   @body body: DisableTenantError403Body;
 }
 
-@doc("system_admin が default 以外のテナントを無効化する。/authorize / /token / /login 等は一律 invalid_request になる。")
+@doc("A system_admin disables a tenant other than default. /authorize, /token, /login, and the rest all give invalid_request afterwards.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("DisableTenant")
 @route("/api/admin/v1/tenants/{tenant_id}/disable")
 @post
 op DisableTenant(
-  @path tenant_id: string,
-  @body body: DisableTenantHttpRequest
-): DisableTenantSuccess_204 | DisableTenantError400 | DisableTenantError403;
-
-model EnableTenantHttpRequest {
-  tenant_id: string;
-}
+  @path tenant_id: string,): DisableTenantSuccess_204 | DisableTenantError400 | DisableTenantError403;
 
 model EnableTenantSuccess_204 {
   @statusCode statusCode: 204;
@@ -236,18 +201,15 @@ model EnableTenantError403 {
   @body body: EnableTenantError403Body;
 }
 
-@doc("system_admin が無効化済みテナントを再有効化する。")
+@doc("A system_admin re-enables a disabled tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("EnableTenant")
 @route("/api/admin/v1/tenants/{tenant_id}/enable")
 @post
 op EnableTenant(
-  @path tenant_id: string,
-  @body body: EnableTenantHttpRequest
-): EnableTenantSuccess_204 | EnableTenantError400 | EnableTenantError403;
+  @path tenant_id: string,): EnableTenantSuccess_204 | EnableTenantError400 | EnableTenantError403;
 
 model SetTenantEndpointStyleHttpRequest {
-  tenant_id: string;
   endpoint_style: IdMagic.Contract.TenantEndpointStyle;
 }
 
@@ -275,7 +237,7 @@ model SetTenantEndpointStyleError403 {
   @body body: SetTenantEndpointStyleError403Body;
 }
 
-@doc("system_admin がテナントの正規ロケーションの形を切り替える。\n通常の属性更新 (UpdateTenant) から分離するのは、これがテナントの identity を\n作り替える破壊的操作だからである: issuer が変わるため既発行 token の `iss` 検証と\n全 RP の設定が壊れ、WebAuthn RP ID が変わるため既存 passkey がすべて無効になり、\ncookie scope が変わるため進行中のセッションが切れる。\nSubdomain は tenant_base_domain が設定された配備でのみ選択でき、未設定なら\nInvalidRequestError とする。realm は不変なので、切り替え後のホスト名は既存 realm から\n一意に決まる。")
+@doc("A system_admin switches the shape of a tenant's canonical location.\nIt is kept apart from the ordinary attribute update (UpdateTenant) because it is a destructive operation that\nremakes the tenant's identity: the issuer changes, which breaks `iss` verification of already-issued tokens and the\nconfiguration of every relying party; the WebAuthn RP ID changes, which invalidates every existing passkey; and the\ncookie scope changes, which cuts sessions that are in progress.\n`Subdomain` can be chosen only in a deployment where `tenant_base_domain` is configured; without it the request gives\nInvalidRequestError. The realm is immutable, so the hostname after the switch follows from the existing realm.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("SetTenantEndpointStyle")
 @route("/api/admin/v1/tenants/{tenant_id}/endpoint_style")
@@ -285,18 +247,9 @@ op SetTenantEndpointStyle(
   @body body: SetTenantEndpointStyleHttpRequest
 ): SetTenantEndpointStyleSuccess_204 | SetTenantEndpointStyleError400 | SetTenantEndpointStyleError403;
 
-model UpdateTenantQuotaHttpRequest {
-  tenant_id: string;
-  request: IdMagic.Contract.TenantQuotaUpdateRequest;
-}
-
-model UpdateTenantQuotaHttpResponse {
-  tenant: IdMagic.Contract.TenantSummaryResponse;
-}
-
 model UpdateTenantQuotaSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateTenantQuotaHttpResponse;
+  @body body: IdMagic.Contract.TenantQuota;
 }
 
 union UpdateTenantQuotaError400Body {
@@ -319,23 +272,19 @@ model UpdateTenantQuotaError403 {
   @body body: UpdateTenantQuotaError403Body;
 }
 
-@doc("system_admin が特定テナントの Quota を更新する。")
+@doc("A system_admin updates the Quota of one tenant.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["tenants:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantQuota")
 @route("/api/admin/v1/tenants/{tenant_id}/quota")
 @put
 op UpdateTenantQuota(
   @path tenant_id: string,
-  @body body: UpdateTenantQuotaHttpRequest
+  @body body: IdMagic.Contract.TenantQuotaUpdateRequest
 ): UpdateTenantQuotaSuccess_200 | UpdateTenantQuotaError400 | UpdateTenantQuotaError403;
-
-model GetAdminSettingsHttpResponse {
-  settings: IdMagic.Contract.AdminSettingsResponse;
-}
 
 model GetAdminSettingsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAdminSettingsHttpResponse;
+  @body body: IdMagic.Contract.AdminSettingsResponse;
 }
 
 union GetAdminSettingsError403Body {
@@ -348,7 +297,7 @@ model GetAdminSettingsError403 {
   @body body: GetAdminSettingsError403Body;
 }
 
-@doc("テナント内 admin が自身のテナントの設定 (表示名 / 既定 locale / パスワードポリシー上書き) を取得する。\n対象テナントは context.tenant_id (解決済みテナント) に固定するため cross-tenant 読み出しは構造的に発生しない。\n`/api/admin/tenants` (system_admin 専用) とは別経路で、admin にも開放される。\nレスポンスには Authentication context の PasswordPolicy の現行値 (password_policy_defaults) と、\nカタログが同梱翻訳を持つ locale 一覧 (supported_locales) を含め、UI が「上書きしないときに\n実際に適用される値」と既定 locale の選択肢を具体的に示せるようにする。")
+@doc("A tenant administrator reads their own tenant's settings: the display name, the default locale, and the password policy override.\nThe target is fixed to `context.tenant_id`, the resolved tenant, so a cross-tenant read cannot arise structurally.\nIt is a separate route from `/api/admin/tenants`, which only a system_admin may use, and it is open to an admin as well.\nThe response carries the current values of the Authentication context's PasswordPolicy (`password_policy_defaults`) and\nthe locales the catalogue ships translations for (`supported_locales`), so the UI can show concretely what applies when\nnothing is overridden and which default locales can be chosen.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminSettings")
 @route("/api/admin/v1/settings")
@@ -357,13 +306,9 @@ op GetAdminSettings(
 
 ): GetAdminSettingsSuccess_200 | GetAdminSettingsError403;
 
-model GetAdminIntegrationEndpointsHttpResponse {
-  catalog: IdMagic.Contract.AdminIntegrationEndpointCatalog;
-}
-
 model GetAdminIntegrationEndpointsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAdminIntegrationEndpointsHttpResponse;
+  @body body: IdMagic.Contract.AdminIntegrationEndpointCatalog;
 }
 
 union GetAdminIntegrationEndpointsError403Body {
@@ -376,7 +321,7 @@ model GetAdminIntegrationEndpointsError403 {
   @body body: GetAdminIntegrationEndpointsError403Body;
 }
 
-@doc("テナント内 admin が、外部の OIDC RP / SAML SP / WS-Federation RP / SCIM client / management client に投入する IdMagic の正規連携情報を一括取得する。全 URL は解決済み request tenant の canonical issuer から server が導出し、frontend は realm や origin を連結しない。秘密情報は含めず Cache-Control: no-store で返す。")
+@doc("A tenant administrator reads, in one call, the canonical IdMagic integration details to feed into an external OIDC RP, SAML SP, WS-Federation RP, SCIM client, or management client. The server derives every URL from the canonical issuer of the resolved request tenant, so the frontend concatenates neither realm nor origin. It carries no secret and is returned with `Cache-Control: no-store`.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminIntegrationEndpoints")
 @route("/api/admin/v1/integration-endpoints")
@@ -385,17 +330,9 @@ op GetAdminIntegrationEndpoints(
 
 ): GetAdminIntegrationEndpointsSuccess_200 | GetAdminIntegrationEndpointsError403;
 
-model UpdateAdminSettingsHttpRequest {
-  request: IdMagic.Contract.TenantUpdateRequest;
-}
-
-model UpdateAdminSettingsHttpResponse {
-  settings: IdMagic.Contract.AdminSettingsResponse;
-}
-
 model UpdateAdminSettingsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateAdminSettingsHttpResponse;
+  @body body: IdMagic.Contract.AdminSettingsResponse;
 }
 
 union UpdateAdminSettingsError400Body {
@@ -418,22 +355,18 @@ model UpdateAdminSettingsError403 {
   @body body: UpdateAdminSettingsError403Body;
 }
 
-@doc("テナント内 admin が自身のテナントの設定を更新する。display_name、default_locale、\npassword_policy_override のいずれかを任意フィールドとして受け取り、\ncontext.tenant_id に固定した上で UpdateTenant のロジックを実行する。\npassword_policy_override が Authentication context の PasswordPolicy の標準値より弱い場合\n(min_length 下回り / max_length 上回り / history_depth 下回り) と、\nmax_age_days が system ceiling (30 日以上 3650 日以下) の範囲外の場合は use case\n側で拒否する。default_locale はカタログが同梱翻訳を持つ locale のみ受け付け、\n空文字列でシステム既定へ戻す。")
+@doc("A tenant administrator updates their own tenant's settings. It takes `display_name`, `default_locale`, and\n`password_policy_override` as optional fields, fixes the target to `context.tenant_id`, and then runs the UpdateTenant\nlogic. A `password_policy_override` weaker than the standard values of the Authentication context's PasswordPolicy --\na smaller `min_length`, a larger `max_length`, or a smaller `history_depth` -- and a `max_age_days` outside the system\nceiling of 30 to 3650 days are both refused in the use case. `default_locale` accepts only a locale the catalogue ships\ntranslations for, and an empty string returns it to the system default.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateAdminSettings")
 @route("/api/admin/v1/settings")
 @patch
 op UpdateAdminSettings(
-  @body body: UpdateAdminSettingsHttpRequest
+  @body body: IdMagic.Contract.TenantUpdateRequest
 ): UpdateAdminSettingsSuccess_200 | UpdateAdminSettingsError400 | UpdateAdminSettingsError403;
-
-model GetTenantUserAttributeSchemaHttpResponse {
-  schema: IdMagic.Contract.TenantUserAttributeSchemaResponse;
-}
 
 model GetTenantUserAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetTenantUserAttributeSchemaHttpResponse;
+  @body body: IdMagic.Contract.TenantUserAttributeSchemaResponse;
 }
 
 union GetTenantUserAttributeSchemaError403Body {
@@ -446,7 +379,7 @@ model GetTenantUserAttributeSchemaError403 {
   @body body: GetTenantUserAttributeSchemaError403Body;
 }
 
-@doc("テナント内 admin が自身のテナントの custom 属性定義を取得する。\n対象テナントは context.tenant_id に固定し cross-tenant 読み出しを構造的に排除する。\nレスポンスには tenant 固有の custom 定義に加えて組み込みカタログ (builtin) も\n含め、UI が全属性を一覧しつつ key 衝突を避けられるようにする。")
+@doc("A tenant administrator reads their own tenant's custom attribute definitions.\nThe target is fixed to `context.tenant_id`, which rules out a cross-tenant read structurally.\nBesides the tenant's own custom definitions the response carries the built-in catalogue (`builtin`), so the UI can list\nevery attribute and avoid a key collision.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetTenantUserAttributeSchema")
 @route("/api/admin/v1/tenant/user_attribute_schema")
@@ -455,17 +388,9 @@ op GetTenantUserAttributeSchema(
 
 ): GetTenantUserAttributeSchemaSuccess_200 | GetTenantUserAttributeSchemaError403;
 
-model UpdateTenantUserAttributeSchemaHttpRequest {
-  request: IdMagic.Contract.TenantUserAttributeSchemaUpdateRequest;
-}
-
-model UpdateTenantUserAttributeSchemaHttpResponse {
-  schema: IdMagic.Contract.TenantUserAttributeSchemaResponse;
-}
-
 model UpdateTenantUserAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateTenantUserAttributeSchemaHttpResponse;
+  @body body: IdMagic.Contract.TenantUserAttributeSchemaResponse;
 }
 
 union UpdateTenantUserAttributeSchemaError400Body {
@@ -498,22 +423,18 @@ model UpdateTenantUserAttributeSchemaError422 {
   @body body: UpdateTenantUserAttributeSchemaError422Body;
 }
 
-@doc("テナント内 admin が custom 属性定義を全置換する。context.tenant_id に\n固定した上で、各 UserAttributeDef を検証し、組み込み属性との key 衝突・重複 key を\n拒否する。DynamicGroupRule が参照中の key は削除または型変更できない。値そのものは保持せず定義のみを扱う。")
+@doc("A tenant administrator replaces the custom attribute definitions outright. With the target fixed to `context.tenant_id`,\neach UserAttributeDef is validated and a key that collides with a built-in attribute, or a duplicate key, is refused. A\nkey a DynamicGroupRule still refers to can be neither removed nor retyped. Only the definitions are handled; no value is kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantUserAttributeSchema")
 @route("/api/admin/v1/tenant/user_attribute_schema")
 @put
 op UpdateTenantUserAttributeSchema(
-  @body body: UpdateTenantUserAttributeSchemaHttpRequest
+  @body body: IdMagic.Contract.TenantUserAttributeSchemaUpdateRequest
 ): UpdateTenantUserAttributeSchemaSuccess_200 | UpdateTenantUserAttributeSchemaError400 | UpdateTenantUserAttributeSchemaError403 | UpdateTenantUserAttributeSchemaError422;
-
-model GetTenantGroupAttributeSchemaHttpResponse {
-  schema: IdMagic.Contract.TenantGroupAttributeSchemaResponse;
-}
 
 model GetTenantGroupAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetTenantGroupAttributeSchemaHttpResponse;
+  @body body: IdMagic.Contract.TenantGroupAttributeSchemaResponse;
 }
 
 union GetTenantGroupAttributeSchemaError403Body {
@@ -526,7 +447,7 @@ model GetTenantGroupAttributeSchemaError403 {
   @body body: GetTenantGroupAttributeSchemaError403Body;
 }
 
-@doc("テナント内 admin が自身のテナントの Group custom 属性定義を取得する。\n対象テナントは context.tenant_id に固定し cross-tenant 読み出しを構造的に排除する。\nGroup には builtin catalog が無いため、レスポンスは tenant 固有の custom 定義だけを返す。")
+@doc("A tenant administrator reads their own tenant's Group custom attribute definitions.\nThe target is fixed to `context.tenant_id`, which rules out a cross-tenant read structurally.\nGroup has no built-in catalogue, so the response carries the tenant's own custom definitions alone.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetTenantGroupAttributeSchema")
 @route("/api/admin/v1/tenant/group_attribute_schema")
@@ -535,17 +456,9 @@ op GetTenantGroupAttributeSchema(
 
 ): GetTenantGroupAttributeSchemaSuccess_200 | GetTenantGroupAttributeSchemaError403;
 
-model UpdateTenantGroupAttributeSchemaHttpRequest {
-  request: IdMagic.Contract.TenantGroupAttributeSchemaUpdateRequest;
-}
-
-model UpdateTenantGroupAttributeSchemaHttpResponse {
-  schema: IdMagic.Contract.TenantGroupAttributeSchemaResponse;
-}
-
 model UpdateTenantGroupAttributeSchemaSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateTenantGroupAttributeSchemaHttpResponse;
+  @body body: IdMagic.Contract.TenantGroupAttributeSchemaResponse;
 }
 
 union UpdateTenantGroupAttributeSchemaError400Body {
@@ -578,25 +491,21 @@ model UpdateTenantGroupAttributeSchemaError422 {
   @body body: UpdateTenantGroupAttributeSchemaError422Body;
 }
 
-@doc("テナント内 admin が Group custom 属性定義を全置換する。context.tenant_id に\n固定した上で、各 GroupAttributeDef を検証し、重複 key を拒否する。値そのものは保持せず定義のみを扱う。")
+@doc("A tenant administrator replaces the Group custom attribute definitions outright. With the target fixed to `context.tenant_id`,\neach GroupAttributeDef is validated and a duplicate key is refused. Only the definitions are handled; no value is kept.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantGroupAttributeSchema")
 @route("/api/admin/v1/tenant/group_attribute_schema")
 @put
 op UpdateTenantGroupAttributeSchema(
-  @body body: UpdateTenantGroupAttributeSchemaHttpRequest
+  @body body: IdMagic.Contract.TenantGroupAttributeSchemaUpdateRequest
 ): UpdateTenantGroupAttributeSchemaSuccess_200 | UpdateTenantGroupAttributeSchemaError400 | UpdateTenantGroupAttributeSchemaError403 | UpdateTenantGroupAttributeSchemaError422;
-
-model GetTenantBrandingHttpResponse {
-  branding: IdMagic.Contract.TenantBrandingResponse;
-}
 
 model GetTenantBrandingSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetTenantBrandingHttpResponse;
+  @body body: IdMagic.Contract.TenantBrandingResponse;
 }
 
-@doc("解決済みテナントの hosted UI ブランディングを取得する公開 interface。認証を要求しない\n(login / consent / device 画面が未認証のうちに読む)。branding 未設定・値不正・アセット欠損の\nいずれでもシステム既定にフォールバックし、常に成功する。対象テナントは realm 解決 (ResolveTenant)\nで既に確定しているため入力を取らない。")
+@doc("Public interface returning the hosted UI branding of the resolved tenant. It requires no authentication, because the sign-in,\nconsent, and device screens read it before anyone has authenticated. Branding that is unset, invalid, or missing its asset each\nfall back to the system default, so the call always succeeds. It takes no input, because realm resolution (ResolveTenant) has\nalready settled the target tenant.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetTenantBranding")
 @route("/api/branding")
@@ -605,17 +514,9 @@ op GetTenantBranding(
 
 ): GetTenantBrandingSuccess_200;
 
-model UpdateTenantBrandingHttpRequest {
-  request: IdMagic.Contract.TenantBrandingUpdateRequest;
-}
-
-model UpdateTenantBrandingHttpResponse {
-  branding: IdMagic.Contract.TenantBrandingResponse;
-}
-
 model UpdateTenantBrandingSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateTenantBrandingHttpResponse;
+  @body body: IdMagic.Contract.TenantBrandingResponse;
 }
 
 union UpdateTenantBrandingError400Body {
@@ -638,27 +539,18 @@ model UpdateTenantBrandingError403 {
   @body body: UpdateTenantBrandingError403Body;
 }
 
-@doc("テナント内 admin が自身のテナントの branding (製品名 / 色 / 順序固定の footer リンク /\nフッターテキスト) を更新する。画像アセットは別 interface で扱う。色は `#rrggbb` 形式のみを\n検証し、コントラスト比を理由に拒否しない。各 footer link は label と https URL の組で、どちらか\n一方だけの指定は拒否する。")
+@doc("A tenant administrator updates their own tenant's branding: the product name, the colours, the footer links in a fixed order, and\nthe footer text. Image assets are handled by a separate interface. A colour is validated only as `#rrggbb`, and is never refused\nover its contrast ratio. Each footer link pairs a label with an https URL, and giving only one of the two is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateTenantBranding")
 @route("/api/admin/v1/tenant/branding")
 @put
 op UpdateTenantBranding(
-  @body body: UpdateTenantBrandingHttpRequest
+  @body body: IdMagic.Contract.TenantBrandingUpdateRequest
 ): UpdateTenantBrandingSuccess_200 | UpdateTenantBrandingError400 | UpdateTenantBrandingError403;
-
-model UploadTenantBrandingAssetHttpRequest {
-  kind: IdMagic.Contract.TenantBrandingAssetKind;
-  file: string;
-}
-
-model UploadTenantBrandingAssetHttpResponse {
-  response: IdMagic.Contract.TenantBrandingUploadResponse;
-}
 
 model UploadTenantBrandingAssetSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UploadTenantBrandingAssetHttpResponse;
+  @body body: IdMagic.Contract.TenantBrandingUploadResponse;
 }
 
 union UploadTenantBrandingAssetError400Body {
@@ -681,23 +573,23 @@ model UploadTenantBrandingAssetError403 {
   @body body: UploadTenantBrandingAssetError403Body;
 }
 
-@doc("管理者が branding のロゴまたは favicon 画像を multipart でアップロードする。受理形式は PNG / JPEG / WebP / GIF、最大 256KiB とし、magic byte で検証する。")
+@doc("An administrator uploads the branding logo or favicon as multipart. PNG, JPEG, WebP, and GIF are accepted, up to 256 KiB, and the format is checked against the magic bytes.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UploadTenantBrandingAsset")
 @route("/api/admin/v1/tenant/branding/assets/{kind}")
 @post
 op UploadTenantBrandingAsset(
   @path kind: IdMagic.Contract.TenantBrandingAssetKind,
-  @body body: UploadTenantBrandingAssetHttpRequest
+  @header contentType: "multipart/form-data",
+  @multipartBody body: {
+    @doc("The image to store, under the form field name `file`.")
+    file: HttpPart<File>,
+  }
 ): UploadTenantBrandingAssetSuccess_200 | UploadTenantBrandingAssetError400 | UploadTenantBrandingAssetError403;
-
-model DeleteTenantBrandingAssetHttpResponse {
-  response: IdMagic.Contract.TenantBrandingUploadResponse;
-}
 
 model DeleteTenantBrandingAssetSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: DeleteTenantBrandingAssetHttpResponse;
+  @body body: IdMagic.Contract.TenantBrandingUploadResponse;
 }
 
 union DeleteTenantBrandingAssetError400Body {
@@ -720,7 +612,7 @@ model DeleteTenantBrandingAssetError403 {
   @body body: DeleteTenantBrandingAssetError403Body;
 }
 
-@doc("管理者が branding の保存済みロゴまたは favicon を削除する。削除後は該当アセットの URL を返さない。")
+@doc("An administrator deletes the stored branding logo or favicon. The URL of that asset is no longer returned afterwards.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("DeleteTenantBrandingAsset")
 @route("/api/admin/v1/tenant/branding/assets/{kind}")
@@ -729,13 +621,9 @@ op DeleteTenantBrandingAsset(
   @path kind: IdMagic.Contract.TenantBrandingAssetKind
 ): DeleteTenantBrandingAssetSuccess_200 | DeleteTenantBrandingAssetError400 | DeleteTenantBrandingAssetError403;
 
-model ListNotificationTemplatesHttpResponse {
-  response: IdMagic.Contract.NotificationTemplateListResponse;
-}
-
 model ListNotificationTemplatesSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListNotificationTemplatesHttpResponse;
+  @body body: IdMagic.Contract.NotificationTemplateListResponse;
 }
 
 union ListNotificationTemplatesError403Body {
@@ -748,7 +636,7 @@ model ListNotificationTemplatesError403 {
   @body body: ListNotificationTemplatesError403Body;
 }
 
-@doc("テナント内 admin が通知テンプレートの一覧を取得する。カタログの全 template_key × 全サポート locale を、上書きの有無 (customized) と現在有効な件名つきで返す。対象テナントは context.tenant_id に固定するため cross-tenant 読み出しは構造的に発生しない。")
+@doc("A tenant administrator lists the notification templates. It returns every template_key of the catalogue against every supported locale, each with whether it is customized and the subject currently in force. The target is fixed to `context.tenant_id`, so a cross-tenant read cannot arise structurally.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("ListNotificationTemplates")
 @route("/api/admin/v1/tenant/notification_templates")
@@ -757,13 +645,9 @@ op ListNotificationTemplates(
 
 ): ListNotificationTemplatesSuccess_200 | ListNotificationTemplatesError403;
 
-model GetNotificationTemplateHttpResponse {
-  template: IdMagic.Contract.NotificationTemplateDetail;
-}
-
 model GetNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetNotificationTemplateHttpResponse;
+  @body body: IdMagic.Contract.NotificationTemplateDetail;
 }
 
 union GetNotificationTemplateError400Body {
@@ -786,7 +670,7 @@ model GetNotificationTemplateError403 {
   @body body: GetNotificationTemplateError403Body;
 }
 
-@doc("テナント内 admin がテンプレート 1 件を編集用に取得する。現在有効な文面、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。カタログに無い template_key / locale は InvalidRequestError で拒否する。")
+@doc("A tenant administrator reads one template for editing. It returns the wording currently in force, the built-in default wording, and the permitted set of substitution variables together. A template_key or locale the catalogue does not know is refused with InvalidRequestError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("GetNotificationTemplate")
 @route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}")
@@ -796,19 +680,9 @@ op GetNotificationTemplate(
   @path locale: string
 ): GetNotificationTemplateSuccess_200 | GetNotificationTemplateError400 | GetNotificationTemplateError403;
 
-model UpdateNotificationTemplateHttpRequest {
-  template_key: IdMagic.Contract.NotificationTemplateKey;
-  locale: string;
-  request: IdMagic.Contract.NotificationTemplateUpdateRequest;
-}
-
-model UpdateNotificationTemplateHttpResponse {
-  template: IdMagic.Contract.NotificationTemplateDetail;
-}
-
 model UpdateNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: UpdateNotificationTemplateHttpResponse;
+  @body body: IdMagic.Contract.NotificationTemplateDetail;
 }
 
 union UpdateNotificationTemplateError400Body {
@@ -831,7 +705,7 @@ model UpdateNotificationTemplateError403 {
   @body body: UpdateNotificationTemplateError403Body;
 }
 
-@doc("テナント内 admin がテンプレート上書きを保存する。件名 / テキスト本文 / HTML 本文を必須の組として全置換し、テキストだけ・HTML だけの上書きは作れない。本文と件名に含まれる差し込み変数が template_key の許可集合に収まらない場合は、実行時に空文字列へ潰れる前に保存時点で拒否する (fail-closed)。差出人メールアドレスはサーバ設定であり上書きできず、表示名だけを上書きできる。")
+@doc("A tenant administrator saves a template override. The subject, the text body, and the HTML body are replaced as one required set, so an override of only the text or only the HTML cannot be made. A substitution variable in the body or the subject that falls outside the permitted set of the template_key is refused at save time, before it could collapse into an empty string at run time (fail-closed). The sender email address is a server setting and cannot be overridden; only the display name can.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("UpdateNotificationTemplate")
 @route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}")
@@ -839,16 +713,12 @@ model UpdateNotificationTemplateError403 {
 op UpdateNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string,
-  @body body: UpdateNotificationTemplateHttpRequest
+  @body body: IdMagic.Contract.NotificationTemplateUpdateRequest
 ): UpdateNotificationTemplateSuccess_200 | UpdateNotificationTemplateError400 | UpdateNotificationTemplateError403;
-
-model ResetNotificationTemplateHttpResponse {
-  template: IdMagic.Contract.NotificationTemplateDetail;
-}
 
 model ResetNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ResetNotificationTemplateHttpResponse;
+  @body body: IdMagic.Contract.NotificationTemplateDetail;
 }
 
 union ResetNotificationTemplateError400Body {
@@ -871,7 +741,7 @@ model ResetNotificationTemplateError403 {
   @body body: ResetNotificationTemplateError403Body;
 }
 
-@doc("テナント内 admin がテンプレート上書きを削除し組込み既定へ戻す。上書きが無いテンプレートに対しても成功する冪等操作。版管理は持たないため、戻り先は直前の上書きではなく常に組込み既定である。")
+@doc("A tenant administrator deletes a template override and returns to the built-in default. It succeeds for a template that has no override too, so it is idempotent. There is no version history, so what it returns to is always the built-in default and never the previous override.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("ResetNotificationTemplate")
 @route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}")
@@ -881,19 +751,9 @@ op ResetNotificationTemplate(
   @path locale: string
 ): ResetNotificationTemplateSuccess_200 | ResetNotificationTemplateError400 | ResetNotificationTemplateError403;
 
-model PreviewNotificationTemplateHttpRequest {
-  template_key: IdMagic.Contract.NotificationTemplateKey;
-  locale: string;
-  request: IdMagic.Contract.NotificationTemplatePreviewRequest;
-}
-
-model PreviewNotificationTemplateHttpResponse {
-  preview: IdMagic.Contract.NotificationTemplatePreviewResponse;
-}
-
 model PreviewNotificationTemplateSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: PreviewNotificationTemplateHttpResponse;
+  @body body: IdMagic.Contract.NotificationTemplatePreviewResponse;
 }
 
 union PreviewNotificationTemplateError400Body {
@@ -916,7 +776,7 @@ model PreviewNotificationTemplateError403 {
   @body body: PreviewNotificationTemplateError403Body;
 }
 
-@doc("テナント内 admin が保存前の文面をサンプル値で描画する。省略したフィールドは現在有効な文面を使う。HTML 側の差し込み値は必ずエスケープして展開し、リンク URL はサンプルの発行元 URL から組み立てる。メールは送信せず、上書きも保存しない。")
+@doc("A tenant administrator renders unsaved wording against sample values. A field left out uses the wording currently in force. Substituted values on the HTML side are always escaped before expansion, and link URLs are built from the sample issuer URL. No mail is sent and no override is saved.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:read"])
 @TypeSpec.OpenAPI.operationId("PreviewNotificationTemplate")
 @route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/preview")
@@ -924,21 +784,12 @@ model PreviewNotificationTemplateError403 {
 op PreviewNotificationTemplate(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
   @path locale: string,
-  @body body: PreviewNotificationTemplateHttpRequest
+  @body body: IdMagic.Contract.NotificationTemplatePreviewRequest
 ): PreviewNotificationTemplateSuccess_200 | PreviewNotificationTemplateError400 | PreviewNotificationTemplateError403;
-
-model SendTestNotificationHttpRequest {
-  template_key: IdMagic.Contract.NotificationTemplateKey;
-  locale: string;
-}
-
-model SendTestNotificationHttpResponse {
-  result: IdMagic.Contract.NotificationTemplateTestSendResponse;
-}
 
 model SendTestNotificationSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: SendTestNotificationHttpResponse;
+  @body body: IdMagic.Contract.NotificationTemplateTestSendResponse;
 }
 
 union SendTestNotificationError400Body {
@@ -961,24 +812,21 @@ model SendTestNotificationError403 {
   @body body: SendTestNotificationError403Body;
 }
 
-@doc("テナント内 admin が現在有効な文面のテストメールを受け取る。宛先は操作した管理者本人の検証済みメールアドレスに固定し、リクエストでは指定できない。任意宛先を許すと管理者権限がメール送信の踏み台になるため、この固定は仕様である。操作者に検証済みアドレスが無い場合は InvalidRequestError で拒否する。")
+@doc("A tenant administrator receives a test message using the wording currently in force. The recipient is fixed to the administrator's own verified email address and cannot be named in the request. Permitting an arbitrary recipient would make administrative privilege a relay for sending mail, so fixing it is deliberate. When the caller has no verified address, the request is refused with InvalidRequestError.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["settings:write"])
 @TypeSpec.OpenAPI.operationId("SendTestNotification")
 @route("/api/admin/v1/tenant/notification_templates/{template_key}/{locale}/test")
 @post
 op SendTestNotification(
   @path template_key: IdMagic.Contract.NotificationTemplateKey,
-  @path locale: string,
-  @body body: SendTestNotificationHttpRequest
-): SendTestNotificationSuccess_200 | SendTestNotificationError400 | SendTestNotificationError403;
-
-model GetTenantBrandingAssetHttpResponse {
-  file: string;
-}
+  @path locale: string,): SendTestNotificationSuccess_200 | SendTestNotificationError400 | SendTestNotificationError403;
 
 model GetTenantBrandingAssetSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetTenantBrandingAssetHttpResponse;
+  @doc("Fixed to the validated format of the stored asset, and served with `X-Content-Type-Options: nosniff`.")
+  @header contentType: "image/png" | "image/jpeg" | "image/webp" | "image/gif";
+  @doc("The asset bytes.")
+  @body body: bytes;
 }
 
 union GetTenantBrandingAssetError400Body {
@@ -991,7 +839,7 @@ model GetTenantBrandingAssetError400 {
   @body body: GetTenantBrandingAssetError400Body;
 }
 
-@doc("保存済み branding アセット (ロゴ / favicon) を配信する公開 interface。アップロード後に返す URL は、\n解決済み realm prefix を含むこの interface へ同一 origin で到達可能であり、管理画面プレビューと\nhosted UI はその URL を画像として取得・描画できる。Content-Type は検証済み形式に固定し、\nX-Content-Type-Options: nosniff を付ける。別テナントまたは削除済み object は未存在として扱う。")
+@doc("Public interface serving a stored branding asset, the logo or the favicon. The URL returned after an upload reaches this interface\nover the same origin, including the resolved realm prefix, so the administration console preview and the hosted UI can both fetch\nand render it as an image. The Content-Type is fixed to the validated format and `X-Content-Type-Options: nosniff` is set. An object\nof another tenant, and a deleted one, are both treated as nonexistent.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("GetTenantBrandingAsset")
 @route("/tenant-branding-assets/{kind}/{id}")

@@ -1,6 +1,6 @@
 namespace IdMagic.Contract {
 
-@doc("テナント単位のリソース上限値 (Hard / Soft)。システム管理者がテナントごとに上書きできる。")
+@doc("The per-tenant resource ceilings, hard and soft. A system administrator may override them per tenant.")
 model TenantQuota {
   users: int64;
   groups: int64;
@@ -10,14 +10,14 @@ model TenantQuota {
   active_sessions: int64;
   consents: int64;
   active_jobs: int64;
-  @doc("送信側と受信側を合わせた SsfStream の上限。")
+  @doc("The ceiling on SsfStreams, transmit and receive counted together.")
   ssf_streams: int64;
   audit_events_retained: int64;
   export_artifacts_bytes: int64;
 }
 
 
-@doc("テナント単位の現在のリソース利用量。")
+@doc("How much of each resource a tenant currently uses.")
 model TenantUsage {
   users: int64;
   groups: int64;
@@ -33,7 +33,7 @@ model TenantUsage {
 }
 
 
-@doc("system_admin がテナントの Quota を上書きする JSON リクエスト。")
+@doc("The JSON request in which a system_admin overrides a tenant's Quota.")
 model TenantQuotaUpdateRequest {
   users?: int64;
   groups?: int64;
@@ -49,34 +49,34 @@ model TenantQuotaUpdateRequest {
 }
 
 
-@doc("テナント状態。Active は通常稼働、Disabled はテナント全体のプロトコル受付を停止 (`/authorize` `/token` 等が一律 invalid_request)。")
+@doc("The tenant state. `active` runs normally; `disabled` stops the tenant accepting any protocol traffic, so `/authorize`, `/token`, and the rest all give invalid_request.")
 enum TenantStatus {
-  Active: "Active",
-  Disabled: "Disabled",
+  Active: "active",
+  Disabled: "disabled",
 }
 
 
-@doc("テナントの正規ロケーションの形。1 テナントは 1 つの正規ロケーションしか持たず、そこから issuer / cookie scope / WebAuthn RP ID が一意に決まる。Path は共有ホスト上の `{base}/realms/{realm}` で、ワイルドカード DNS も証明書も要らない既定。Subdomain はテナント固有ホスト `{realm}.{tenant_base_domain}` で、テナント固有 origin を必要とする機能 (`__Host-` cookie、テナント別 WebAuthn RP ID、テナント別ブランド origin) が成立する。tenant_base_domain が未設定の配備では Subdomain を選べない。")
+@doc("The shape of a tenant's canonical location. A tenant has exactly one, and the issuer, the cookie scope, and the WebAuthn RP ID all follow from it. `path` is `{base}/realms/{realm}` on a shared host, and is the default because it needs neither wildcard DNS nor a certificate. `subdomain` is the tenant-specific host `{realm}.{tenant_base_domain}`, and it is what makes the features that need a tenant-specific origin work: `__Host-` cookies, a per-tenant WebAuthn RP ID, and a per-tenant branded origin. In a deployment where `tenant_base_domain` is unset, `subdomain` cannot be chosen.")
 enum TenantEndpointStyle {
-  Path: "Path",
-  Subdomain: "Subdomain",
+  Path: "path",
+  Subdomain: "subdomain",
 }
 
 
-@doc("テナント固有のパスワードポリシー上書き値。Authentication context の PasswordPolicy 標準値を\nテナント解決ポートで差し替えるためのスキーマ。省略フィールドは global default を継承し、\nchange_password / reset_password / 管理者によるユーザー作成の評価経路では\nテナント値が global より厳しい方向にのみ働く。")
+@doc("The per-tenant password policy overrides. It is the schema for replacing the standard PasswordPolicy values of the\nAuthentication context at the tenant resolution port. A field left out inherits the global default, and on the\nevaluation paths of change_password, reset_password, and administrative user creation a tenant value may only move in\nthe stricter direction from the global one.")
 model PasswordPolicyOverride {
-  @doc("下限長 (≥ global default を推奨)")
+  @doc("The minimum length; at or above the global default is recommended.")
   min_length?: int64;
-  @doc("上限長")
+  @doc("The maximum length.")
   max_length?: int64;
-  @doc("履歴照合件数 (PasswordHistoryNoReuse)")
+  @doc("How many past passwords are checked against (PasswordHistoryNoReuse).")
   history_depth?: int64;
-  @doc("パスワードの有効期限 (日)。0 または省略で無効 (NIST SP 800-63B-4 に沿った既定)。\n正の値を設定したテナントでは、期限を過ぎたパスワードを持つユーザーが次回ログイン成立後に\nupdate_password required action へ誘導される。認証自体は失敗しない。\nsystem ceiling は 30 日以上 3650 日以下で、範囲外は PolicyOverrideWeakerError で拒否する。")
+  @doc("How many days a password stays valid. Zero, or leaving it out, disables expiry, which is the default in line with\nNIST SP 800-63B-4. In a tenant that sets a positive value, a user whose password is past its expiry is directed into the\n`update_password` required action after their next sign-in succeeds; the authentication itself does not fail.\nThe system ceiling is 30 to 3650 days, and a value outside that is refused with PolicyOverrideWeakerError.")
   @minValue(0)
   max_age_days?: int64;
 }
 
-@doc("テナント (realm) 集約。Client、User、Consent、policy、branding はこの認可境界に閉じる。")
+@doc("The tenant (realm) aggregate. Clients, Users, Consents, policies, and branding all stay inside this authorization boundary.")
 model Tenant {
   @minLength(1)
   id: string;
@@ -93,7 +93,7 @@ model Tenant {
   @doc("Tenant override for the maximum Token Exchange (RFC 8693) `act` chain depth. When omitted, the system default applies.\nThe override may only tighten the limit; PolicyOverrideWeakerError rejects values above the system default.\nThis asymmetric rule matches password_policy_override and prevents tenant settings from widening an authorization boundary.")
   @minValue(1)
   max_delegation_depth?: int64;
-  @doc("Authentication context の信頼済みデバイス (remember this device) の有効期間 (秒)。\n0 または省略でテナント全体の機能無効となり、デバイスの記憶も第二要素のスキップも起こらない。\nsystem ceiling は 7776000 秒 (90 日) で、超える値は PolicyOverrideWeakerError で拒否する。")
+  @doc("How many seconds a trusted device -- \"remember this device\" in the Authentication context -- stays valid.\nZero, or leaving it out, disables the feature for the whole tenant: no device is remembered and no second factor is skipped.\nThe system ceiling is 7,776,000 seconds (90 days), and a larger value is refused with PolicyOverrideWeakerError.")
   @minValue(0)
   trusted_device_max_age_seconds?: int64;
   @pattern("^[a-z]{2}$")
@@ -104,46 +104,46 @@ model Tenant {
 }
 
 
-@doc("tenant 単位の custom 属性定義集合。組み込み属性はコード (BuiltinUserAttributeDefs) が持ち、本集合は tenant 固有分のみ。tenant aggregate には埋め込まず独立 aggregate として持ち、tenant 削除時に cascade する。")
+@doc("The set of custom attribute definitions of one tenant. The built-in attributes live in code (BuiltinUserAttributeDefs), and this set holds only what the tenant added. It is a separate aggregate rather than something embedded in the tenant aggregate, and it cascades when the tenant is deleted.")
 model TenantUserAttributeSchema {
-  @doc("所属テナント ID。")
+  @doc("The tenant it belongs to.")
   tenant_id: string = "default";
-  @doc("key が一意で組み込み属性と衝突しない定義の並び。")
+  @doc("The definitions, whose keys are unique and collide with no built-in attribute.")
   attributes: UserAttributeDef[];
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("tenant 単位の Group custom 属性定義集合。Group には TenantUserAttributeSchema の builtin catalog に相当するものが無いため、本集合が実効定義そのものになる。tenant aggregate には埋め込まず独立 aggregate として持ち、tenant 削除時に cascade する。")
+@doc("The set of Group custom attribute definitions of one tenant. Group has nothing corresponding to the built-in catalogue of TenantUserAttributeSchema, so this set is the effective definition in full. It is a separate aggregate rather than something embedded in the tenant aggregate, and it cascades when the tenant is deleted.")
 model TenantGroupAttributeSchema {
-  @doc("所属テナント ID。")
+  @doc("The tenant it belongs to.")
   tenant_id: string = "default";
-  @doc("key が一意な定義の並び。")
+  @doc("The definitions, whose keys are unique.")
   attributes: GroupAttributeDef[];
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("Authentication context の PasswordPolicy の現行値。テナント設定 UI が「テナント上書きが\n無いときに実際に適用される値」をユーザに具体数字で示せるよう、API レスポンスに\n埋め込む。同時に override がこの値より弱い場合の reject 閾値でもある。")
+@doc("The current values of the PasswordPolicy of the Authentication context. They are embedded in the API response so the\ntenant settings UI can show the user, as concrete numbers, what actually applies when the tenant overrides nothing.\nThey are at the same time the threshold at which an override is rejected as weaker.")
 model PasswordPolicyDefaults {
-  @doc("Authentication context の PasswordPolicy.min_length。")
+  @doc("The `min_length` of the PasswordPolicy of the Authentication context.")
   min_length: int64;
-  @doc("Authentication context の PasswordPolicy.max_length。")
+  @doc("The `max_length` of the PasswordPolicy of the Authentication context.")
   max_length: int64;
-  @doc("Authentication context の PasswordPolicy.history_depth。")
+  @doc("The `history_depth` of the PasswordPolicy of the Authentication context.")
   history_depth: int64;
-  @doc("Authentication context の PasswordPolicy.max_age_days。省略は 0 (有効期限なし) と同じ意味で、\nこのフィールドを知らない旧クライアントの解釈と一致する。")
+  @doc("The `max_age_days` of the PasswordPolicy of the Authentication context. Leaving it out means 0, no expiry, which\nmatches how an older client that does not know the field reads it.")
   max_age_days?: int64;
 }
 
 
-@doc("`/api/admin/settings` の返り値。テナント本体ではなく管理 UI 向けの projection で、\ntenant_id (UUID) / realm (URL slug) / display_name / password_policy_override に加え、\nUI 表示と weaker policy gating に使う Authentication context の PasswordPolicy 標準値を併せて返す。")
+@doc("What `/api/admin/settings` returns. It is a projection for the administration UI rather than the tenant itself, and\nbesides the tenant_id (a UUID), the realm (a URL slug), the display name, and the password policy override it returns the\nstandard PasswordPolicy values of the Authentication context, used both for display and for the weaker-policy gate.")
 model AdminSettingsResponse {
-  @doc("テナントの不変 UUID キー。")
+  @doc("The immutable UUID key of the tenant.")
   tenant_id: string;
-  @doc("URL `/realms/{realm}/` に現れる slug。SCIM エンドポイント URL 等の組み立てに使う。")
+  @doc("The slug that appears in the URL `/realms/{realm}/`. It is used to build the SCIM endpoint URLs and the like.")
   realm: string;
   display_name: string;
   password_policy_override?: PasswordPolicyOverride;
@@ -153,21 +153,21 @@ model AdminSettingsResponse {
   max_delegation_depth?: int64;
   @doc("Delegation depth applied when the tenant has no override, and the ceiling that an override cannot exceed.\nThe response exposes this value so the administrative UI can display the concrete limit and reject an excessive value before sending it.")
   max_delegation_depth_default: int64;
-  @doc("信頼済みデバイスの有効期間 (秒)。0 または省略で機能無効。")
+  @doc("How many seconds a trusted device stays valid. Zero, or leaving it out, disables the feature.")
   @minValue(0)
   trusted_device_max_age_seconds?: int64;
-  @doc("信頼済みデバイスの有効期間に許される上限 (秒)。管理 UI が具体的な上限を提示し、\n超過値を送信前に弾けるように返す。")
+  @doc("The ceiling on how many seconds a trusted device may stay valid. It is returned so the administration UI can state the\nlimit concretely and reject a larger value before sending it.")
   trusted_device_max_age_seconds_ceiling: int64;
-  @doc("テナントの既定 locale。未設定ならシステム既定 locale を使う。")
+  @doc("The tenant's default locale. Unset, the system default locale is used.")
   default_locale?: string;
-  @doc("カタログが同梱翻訳を持つ locale の一覧。管理 UI が既定 locale と通知テンプレートの選択肢を組み立てるために返す。")
+  @doc("The locales the catalogue ships translations for. It is returned so the administration UI can build the choices for the default locale and for notification templates.")
   supported_locales: string[];
   quota: TenantQuota;
   usage: TenantUsage;
 }
 
 
-@doc("管理者が OAuth 2.0 AS / OIDC OP を RP または API client に設定するための正規エンドポイント集合。discovery / authorization server metadata を機械可読な正本とし、個別 URL は手動設定用に返す。")
+@doc("The canonical endpoints an administrator needs to configure a relying party or an API client against the OAuth 2.0 authorization server and OpenID Connect provider. The discovery and authorization server metadata are the machine-readable authority; the individual URLs are returned for configuring by hand.")
 model AdminOAuthEndpointSet {
   openid_configuration: string;
   oauth_authorization_server: string;
@@ -184,17 +184,17 @@ model AdminOAuthEndpointSet {
 }
 
 
-@doc("IdMagic が XML federation の新規署名に使う active X.509 証明書の公開情報。秘密鍵は含めず、rotation overlap の全証明書は metadata を正本とする。")
+@doc("The public part of the active X.509 certificate IdMagic uses to sign new XML federation messages. It carries no private key, and the metadata remains the authority for every certificate inside a rotation overlap.")
 model AdminFederationCertificate {
   download_url: string;
-  @doc("大文字16進数を colon 区切りにした SHA-256 fingerprint。")
+  @doc("The SHA-256 fingerprint, as uppercase hex separated by colons.")
   fingerprint_sha256: string;
   not_before: utcDateTime;
   not_after: utcDateTime;
 }
 
 
-@doc("SP に投入する tenant 共有 SAML IdP の正規情報。")
+@doc("The canonical details of the tenant's shared SAML IdP, to feed into an SP.")
 model AdminSamlIdentityProviderEndpointSet {
   entity_id: string;
   metadata_url: string;
@@ -204,7 +204,7 @@ model AdminSamlIdentityProviderEndpointSet {
 }
 
 
-@doc("WS-Federation RP / Microsoft Entra domain federation に投入する tenant の正規情報。")
+@doc("The canonical details of the tenant, to feed into a WS-Federation RP or Microsoft Entra domain federation.")
 model AdminWsFederationEndpointSet {
   realm: string;
   metadata_url: string;
@@ -214,7 +214,7 @@ model AdminWsFederationEndpointSet {
 }
 
 
-@doc("外部管理 client、SCIM client、本人用 client が API token と組み合わせて使う正規ベースURL。")
+@doc("The canonical base URLs an external management client, a SCIM client, or a self-service client uses together with an API token.")
 model AdminApiEndpointSet {
   management_api_base_url: string;
   scim_base_url: string;
@@ -222,7 +222,7 @@ model AdminApiEndpointSet {
 }
 
 
-@doc("`/api/admin/integration-endpoints` の read-only projection。request tenant の canonical issuer だけから導出し、path / subdomain / custom domain の知識を UI に持たせない。client secret、token、秘密鍵は含めない。")
+@doc("The read-only projection of `/api/admin/integration-endpoints`. Everything is derived from the canonical issuer of the request tenant alone, so the UI needs to know nothing about paths, subdomains, or custom domains. It carries no client secret, token, or private key.")
 model AdminIntegrationEndpointCatalog {
   issuer: string;
   oauth: AdminOAuthEndpointSet;
@@ -232,56 +232,56 @@ model AdminIntegrationEndpointCatalog {
 }
 
 
-@doc("`/api/admin/tenant/user_attribute_schema` の返り値。tenant 固有の custom 属性定義\n(attributes) に加え、参照用にコードが持つ組み込みカタログ (builtin) を併せて返し、\nUI が key 衝突を避けつつ全属性を一覧できるようにする。")
+@doc("What `/api/admin/tenant/user_attribute_schema` returns. Besides the tenant's own custom attribute definitions\n(`attributes`) it returns the built-in catalogue code holds (`builtin`) for reference, so the UI can list every attribute\nwhile avoiding a key collision.")
 model TenantUserAttributeSchemaResponse {
   tenant_id: string;
-  @doc("tenant が編集可能な custom 定義。")
+  @doc("The custom definitions the tenant may edit.")
   attributes: UserAttributeDef[];
-  @doc("コード提供の読み取り専用カタログ (BuiltinUserAttributeDefs)。")
+  @doc("The read-only catalogue code provides (BuiltinUserAttributeDefs).")
   builtin: UserAttributeDef[];
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("tenant の custom 属性定義を全置換する JSON リクエスト。組み込み属性との key 衝突・重複 key は use case 側で拒否する。")
+@doc("The JSON request replacing the tenant's custom attribute definitions outright. A key that collides with a built-in attribute, and a duplicate key, are both refused in the use case.")
 model TenantUserAttributeSchemaUpdateRequest {
-  @doc("新しい custom 定義一覧。空配列で全削除。")
+  @doc("The new list of custom definitions. An empty array deletes them all.")
   attributes: UserAttributeDef[];
 }
 
 
-@doc("`/api/admin/tenant/group_attribute_schema` の返り値。Group には builtin catalog が無いため、User 版と異なり builtin フィールドを持たない。")
+@doc("What `/api/admin/tenant/group_attribute_schema` returns. Group has no built-in catalogue, so unlike the User version it carries no `builtin` field.")
 model TenantGroupAttributeSchemaResponse {
   tenant_id: string;
-  @doc("tenant が編集可能な Group custom 定義。")
+  @doc("The Group custom definitions the tenant may edit.")
   attributes: GroupAttributeDef[];
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("tenant の Group custom 属性定義を全置換する JSON リクエスト。重複 key は use case 側で拒否する。")
+@doc("The JSON request replacing the tenant's Group custom attribute definitions outright. A duplicate key is refused in the use case.")
 model TenantGroupAttributeSchemaUpdateRequest {
-  @doc("新しい custom 定義一覧。空配列で全削除。")
+  @doc("The new list of custom definitions. An empty array deletes them all.")
   attributes: GroupAttributeDef[];
 }
 
 
-@doc("TenantBranding が持つ画像アセットの種別。")
+@doc("The kinds of image asset a TenantBranding holds.")
 enum TenantBrandingAssetKind {
-  Logo: "Logo",
-  Favicon: "Favicon",
+  Logo: "logo",
+  Favicon: "favicon",
 }
 
 
-@doc("hosted UI footer に表示する、順序固定の安全な外部リンク。ラベルはプレーンテキストとして描画し、URL は HTTPS のみを許可する。存在する場合は label と url の両方が非空でなければならない (片側だけの指定を拒否する)。")
+@doc("A safe external link shown in the hosted UI footer, in a fixed order. The label is rendered as plain text and the URL may only be HTTPS. When one is present, both `label` and `url` have to be non-empty; giving only one of the two is refused.")
 model TenantFooterLink {
-  @doc("利用者に表示するリンクテキスト。HTML / Markdown として解釈しない。")
+  @doc("The link text shown to the user. It is never interpreted as HTML or Markdown.")
   @minLength(1)
   @maxLength(80)
   label: string;
-  @doc("遷移先。https scheme のみ許可する allowlist。")
+  @doc("Where the link goes. Only the https scheme is on the allow list.")
   @minLength(1)
   @maxLength(2048)
   @pattern("^https://")
@@ -289,41 +289,41 @@ model TenantFooterLink {
 }
 
 
-@doc("テナント単位の hosted UI ブランディング設定。Tenant 集約には埋め込まず、\nTenantUserAttributeSchema と同じ理由 (sparse な per-tenant config を Tenant 本体から分離する) で\n独立 entity として持つ。全フィールド optional で、行が存在しない、または全フィールドが未設定なら\n「branding 未設定」を意味し、GetTenantBranding はシステム既定にフォールバックする。\n色・リンク・テキストは限定トークンのみを受け付け、任意 CSS / HTML は構造的に受け付けない。")
+@doc("The per-tenant hosted UI branding settings. They are not embedded in the Tenant aggregate but held as a separate\nentity, for the same reason as TenantUserAttributeSchema: sparse per-tenant configuration is kept apart from the Tenant\nitself. Every field is optional, and a missing row, or a row with every field unset, means branding is unset and\nGetTenantBranding falls back to the system default.\nThe colours, links, and text accept only a limited set of tokens; arbitrary CSS or HTML cannot be accepted structurally.")
 model TenantBranding {
-  @doc("所属テナント ID。")
+  @doc("The tenant it belongs to.")
   tenant_id: string;
-  @doc("sign-in 画面等に出す表示名。空文字列は未設定を意味し、システム既定 (IdMagic) を表示する。")
+  @doc("The name shown on the sign-in screen and elsewhere. An empty string means unset, and the system default (IdMagic) is shown.")
   @maxLength(80)
   product_name?: string;
-  @doc("テナント境界内に保存されたロゴ画像 object の opaque key。管理者は直接入力せず UploadTenantBrandingAsset (kind=Logo) を経由する。")
+  @doc("The opaque key of the logo image object stored inside the tenant boundary. An administrator never enters it directly; it comes from UploadTenantBrandingAsset with `kind=Logo`.")
   logo_object_key?: string;
-  @doc("IdP が保存済みロゴから生成する内部配信 URL。")
+  @doc("The internal serving URL the IdP builds from the stored logo.")
   logo_url?: string;
-  @doc("テナント境界内に保存された favicon 画像 object の opaque key。UploadTenantBrandingAsset (kind=Favicon) を経由する。")
+  @doc("The opaque key of the favicon image object stored inside the tenant boundary. It comes from UploadTenantBrandingAsset with `kind=Favicon`.")
   favicon_object_key?: string;
-  @doc("IdP が保存済み favicon から生成する内部配信 URL。")
+  @doc("The internal serving URL the IdP builds from the stored favicon.")
   favicon_url?: string;
-  @doc("ブランドカラー (プライマリ)。CSS custom property `--tenant-brand-primary` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。")
+  @doc("The primary brand colour. It is injected only as the CSS custom property `--tenant-brand-primary`. Anything in `#rrggbb` form can be saved whatever its contrast ratio, and an empty string normalizes to unset and returns to the system default. Whether the palette is legible is the tenant's judgement.")
   @pattern("^#[0-9a-fA-F]{6}$")
   primary_color?: string;
-  @doc("ブランドカラー (アクセント)。CSS custom property `--tenant-brand-accent` としてのみ注入する。`#rrggbb` 形式ならコントラスト比にかかわらず保存でき、空文字列は未設定へ正規化してシステム既定へ戻す。配色の可読性はテナントが判断する。")
+  @doc("The accent brand colour. It is injected only as the CSS custom property `--tenant-brand-accent`. Anything in `#rrggbb` form can be saved whatever its contrast ratio, and an empty string normalizes to unset and returns to the system default. Whether the palette is legible is the tenant's judgement.")
   @pattern("^#[0-9a-fA-F]{6}$")
   accent_color?: string;
-  @doc("footer の先頭リンク。リンク順序は footer_link_1、footer_link_2 に固定する。")
+  @doc("The first footer link. The order is fixed as footer_link_1 then footer_link_2.")
   footer_link_1?: TenantFooterLink;
-  @doc("footer の二番目のリンク。リンク順序は footer_link_1、footer_link_2 に固定する。")
+  @doc("The second footer link. The order is fixed as footer_link_1 then footer_link_2.")
   footer_link_2?: TenantFooterLink;
-  @doc("footer に表示する補足テキスト (著作権表示等)。プレーンテキストとして描画側の既定エスケープでのみ表示する。")
+  @doc("The supplementary text shown in the footer, a copyright notice for instance. It is rendered as plain text, protected by nothing more than the renderer's default escaping.")
   @maxLength(280)
   footer_text?: string;
   created_at: utcDateTime;
-  @doc("更新のたびに進む。公開レスポンスの version / ETag として使う。")
+  @doc("It advances on every update. It serves as the version and the ETag of the public response.")
   updated_at: utcDateTime;
 }
 
 
-@doc("GetTenantBranding / UpdateTenantBranding / asset upload・削除が返す公開安全な projection。\n未設定フィールドはシステム既定を表す (クライアント側で `IdMagic` 等のデフォルトに解決する)。")
+@doc("The publicly safe projection GetTenantBranding, UpdateTenantBranding, and the asset upload and delete return.\nAn unset field stands for the system default, which the client resolves to `IdMagic` and the like.")
 model TenantBrandingResponse {
   product_name?: string;
   logo_url?: string;
@@ -333,12 +333,12 @@ model TenantBrandingResponse {
   footer_link_1?: TenantFooterLink;
   footer_link_2?: TenantFooterLink;
   footer_text?: string;
-  @doc("branding が一度でも設定されていれば version / ETag として使う。未設定なら省略する。")
+  @doc("Used as the version and the ETag once branding has been set at least once. Left out while it is unset.")
   updated_at?: utcDateTime;
 }
 
 
-@doc("管理者が branding のテキスト / 色 / リンクを更新する JSON リクエスト。画像アセットは UploadTenantBrandingAsset / DeleteTenantBrandingAsset 経由で別途扱う。指定フィールドのみ変更し、null を渡すとそのフィールドを未設定に戻す。primary_color / accent_color は空文字列でも未設定に戻す。")
+@doc("The JSON request in which an administrator updates the branding text, colours, and links. Image assets are handled separately, through UploadTenantBrandingAsset and DeleteTenantBrandingAsset. Only the fields given are changed, and passing null returns that field to unset. `primary_color` and `accent_color` return to unset on an empty string as well.")
 model TenantBrandingUpdateRequest {
   product_name?: string;
   primary_color?: string;
@@ -349,13 +349,13 @@ model TenantBrandingUpdateRequest {
 }
 
 
-@doc("画像アセットのアップロードまたは削除後の branding 表現。")
+@doc("How branding is represented after an image asset has been uploaded or deleted.")
 model TenantBrandingUploadResponse {
   branding: TenantBrandingResponse;
 }
 
 
-@doc("テナント内 admin が branding (テキスト / 色 / リンク / 画像アセット) を更新した。")
+@doc("A tenant administrator updated the branding: its text, colours, links, or image assets.")
 model TenantBrandingUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -364,39 +364,39 @@ model TenantBrandingUpdated {
 }
 
 
-@doc("通知の用途を表す固定識別子。カタログはこの全 key に対し ja / en の組込み既定テンプレートを持つ。テナントは key を追加できない。AccountSecurityAlert は 1 つの key で全種別のセキュリティ通知を賄い、何が起きたかは event_description と device_summary の差し込みで表す。")
+@doc("The fixed identifier naming what a notification is for. The catalogue holds a built-in default template in Japanese and English for every one of these keys, and a tenant cannot add a key. AccountSecurityAlert covers every kind of security notification under one key, and what happened is expressed through the `event_description` and `device_summary` substitutions.")
 enum NotificationTemplateKey {
-  PasswordReset: "PasswordReset",
-  EmailVerification: "EmailVerification",
-  EmailChangeConfirmation: "EmailChangeConfirmation",
-  AccountSecurityAlert: "AccountSecurityAlert",
-  AgentActionApprovalRequest: "AgentActionApprovalRequest",
-  LifecycleWorkflowNotification: "LifecycleWorkflowNotification",
+  PasswordReset: "password_reset",
+  EmailVerification: "email_verification",
+  EmailChangeConfirmation: "email_change_confirmation",
+  AccountSecurityAlert: "account_security_alert",
+  AgentActionApprovalRequest: "agent_action_approval_request",
+  LifecycleWorkflowNotification: "lifecycle_workflow_notification",
 }
 
 
-@doc("テナントによる通知テンプレート上書き 1 件。(tenant_id, template_key, locale) で一意。行が存在しない組み合わせは組込み既定 (BuiltinNotificationTemplate) を使う。上書きできるのは件名 / プレーンテキスト本文 / HTML 本文 / 差出人表示名だけで、任意 HTML 文書や CSS の全面差し替えは受け付けない。本文が使える差し込み変数は template_key ごとの許可集合に限られる。")
+@doc("One notification template override by a tenant, unique on `(tenant_id, template_key, locale)`. A combination with no row uses the built-in default (BuiltinNotificationTemplate). Only the subject, the plain text body, the HTML body, and the sender display name can be overridden; replacing the whole HTML document or the CSS is not accepted. The substitution variables a body may use are confined to the permitted set of its template_key.")
 model NotificationTemplate {
-  @doc("所属テナント ID。")
+  @doc("The tenant it belongs to.")
   tenant_id: string;
   template_key: NotificationTemplateKey;
-  @doc("この上書きが適用される locale。カタログが同梱翻訳を持つ locale のみ受け付ける。")
+  @doc("The locale this override applies to. Only a locale the catalogue ships translations for is accepted.")
   @minLength(1)
   @pattern("^[a-z]{2}$")
   locale: string;
-  @doc("メール件名。改行を含められない単一行のテキストとして扱う。")
+  @doc("The mail subject. It is treated as a single line and may hold no newline.")
   @minLength(1)
   @maxLength(200)
   subject: string;
-  @doc("プレーンテキスト本文。HTML として解釈しない。")
+  @doc("The plain text body. It is never interpreted as HTML.")
   @minLength(1)
   @maxLength(8000)
   body_text: string;
-  @doc("HTML 本文。`<body>` 内に入る fragment であり、doctype / `<head>` / 文字エンコーディング / 本文コンテナのスタイルはシステムが供給する外枠が持つ。差し込み値は必ずエスケープして展開する。テキスト本文と必ず対で保存し、片方だけの上書きは作れない。")
+  @doc("The HTML body. It is a fragment that goes inside `<body>`; the doctype, the `<head>`, the character encoding, and the styling of the body container all come from the system-supplied outer frame. Substituted values are always escaped before expansion. It is always saved together with the text body, and an override of only one of the two cannot be made.")
   @minLength(1)
   @maxLength(20000)
   body_html: string;
-  @doc("差出人の表示名。空文字列は未設定を意味し、システム既定の差出人表示になる。メールアドレス自体はサーバ設定であり上書きできない。")
+  @doc("The sender display name. An empty string means unset, and the system default sender display is used. The email address itself is a server setting and cannot be overridden.")
   @maxLength(80)
   from_display_name?: string;
   created_at: utcDateTime;
@@ -404,27 +404,27 @@ model NotificationTemplate {
 }
 
 
-@doc("テンプレート一覧の 1 行。key × locale の組ごとに、上書き済みかどうかと現在有効な件名を返す。")
+@doc("One row of the template list. For each key and locale pair it returns whether it has been overridden and the subject currently in force.")
 model NotificationTemplateSummary {
   template_key: NotificationTemplateKey;
   locale: string;
-  @doc("true ならテナント上書きが存在する。false なら組込み既定。")
+  @doc("True when a tenant override exists; false when the built-in default is in force.")
   customized: boolean;
-  @doc("現在有効な件名 (上書きがあれば上書き、無ければ組込み既定)。")
+  @doc("The subject currently in force: the override if there is one, the built-in default otherwise.")
   subject: string;
-  @doc("上書きが存在する場合の最終更新時刻。組込み既定のみなら省略する。")
+  @doc("When the override was last updated, if there is one. Left out when only the built-in default is in force.")
   updated_at?: utcDateTime;
 }
 
 
-@doc("テンプレート一覧。カタログの全 key × 全サポート locale を、上書きの有無にかかわらず返す。")
+@doc("The template list. It returns every key of the catalogue against every supported locale, overridden or not.")
 model NotificationTemplateListResponse {
   templates: NotificationTemplateSummary[];
   supported_locales: string[];
 }
 
 
-@doc("テンプレート 1 件の編集用表現。現在有効な文面と、組込み既定の文面、および使用できる差し込み変数の許可集合を同時に返す。管理 UI は既定との差分提示と「既定に戻す」を追加の問い合わせなしに描ける。")
+@doc("How one template is represented for editing. It returns the wording currently in force, the built-in default wording, and the permitted set of substitution variables together, so the administration UI can show the difference from the default and offer \"restore the default\" without another request.")
 model NotificationTemplateDetail {
   template_key: NotificationTemplateKey;
   locale: string;
@@ -433,17 +433,17 @@ model NotificationTemplateDetail {
   body_text: string;
   body_html: string;
   from_display_name?: string;
-  @doc("組込み既定の件名。")
+  @doc("The built-in default subject.")
   default_subject: string;
   default_body_text: string;
   default_body_html: string;
-  @doc("この template_key で使える差し込み変数名の許可集合。")
+  @doc("The permitted set of substitution variable names for this template_key.")
   placeholders: string[];
   updated_at?: utcDateTime;
 }
 
 
-@doc("テンプレート上書きの保存リクエスト。4 フィールドをまとめて置換する部分更新ではない全置換で、件名 / テキスト本文 / HTML 本文はいずれも必須。許可集合外の差し込み変数を含む場合は保存せず拒否する。")
+@doc("The request saving a template override. The four fields are replaced as a set -- this is not a partial update -- and the subject, the text body, and the HTML body are all required. A substitution variable outside the permitted set means nothing is saved and the request is refused.")
 model NotificationTemplateUpdateRequest {
   @minLength(1)
   @maxLength(200)
@@ -459,7 +459,7 @@ model NotificationTemplateUpdateRequest {
 }
 
 
-@doc("保存前の文面をサンプル値で描画するリクエスト。省略したフィールドは現在有効な文面を使う。")
+@doc("The request rendering unsaved wording against sample values. A field left out uses the wording currently in force.")
 model NotificationTemplatePreviewRequest {
   subject?: string;
   body_text?: string;
@@ -468,7 +468,7 @@ model NotificationTemplatePreviewRequest {
 }
 
 
-@doc("サンプル値を展開した描画結果。実際のメール送信は起こらない。")
+@doc("The rendering with the sample values expanded. No mail is actually sent.")
 model NotificationTemplatePreviewResponse {
   subject: string;
   body_text: string;
@@ -477,15 +477,15 @@ model NotificationTemplatePreviewResponse {
 }
 
 
-@doc("テスト送信の結果。宛先は操作した管理者本人の検証済みメールアドレスに固定され、リクエストでは指定できない。")
+@doc("The result of a test send. The recipient is fixed to the acting administrator's own verified email address and cannot be named in the request.")
 model NotificationTemplateTestSendResponse {
   delivered: boolean;
-  @doc("実際に送信した宛先 (操作者本人のアドレス)。UI が「どこへ送ったか」を明示するために返す。")
+  @doc("The address the message actually went to, the caller's own. It is returned so the UI can state plainly where it was sent.")
   to: string;
 }
 
 
-@doc("テナント内 admin が通知テンプレートの上書きを保存した。文面そのものは記録せず、対象の key と locale のみを記録する。")
+@doc("A tenant administrator saved a notification template override. The wording itself is not recorded; only the key and locale it applies to.")
 model NotificationTemplateUpdated {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -495,7 +495,7 @@ model NotificationTemplateUpdated {
 }
 
 
-@doc("テナント内 admin が通知テンプレートの上書きを削除し組込み既定へ戻した。")
+@doc("A tenant administrator deleted a notification template override and returned to the built-in default.")
 model NotificationTemplateReset {
   occurredAt: utcDateTime;
   tenantId: string;
@@ -505,7 +505,7 @@ model NotificationTemplateReset {
 }
 
 
-@doc("管理者が新規テナントを登録する JSON リクエスト。`realm` は URL-safe slug。UUID キー (id) はサーバが採番する。")
+@doc("The JSON request in which an administrator registers a new tenant. `realm` is a URL-safe slug, and the server mints the UUID key (`id`).")
 model TenantCreateRequest {
   @minLength(1)
   @maxLength(63)
@@ -517,36 +517,36 @@ model TenantCreateRequest {
 }
 
 
-@doc("管理者がテナントの表示名 / パスワードポリシー上書きを更新する JSON リクエスト。`id` と status は変更しない。status 変更は disable/enable 専用エンドポイントを経由。")
+@doc("The JSON request in which an administrator updates a tenant's display name or password policy override. `id` and `status` are left alone; a status change goes through the dedicated disable and enable endpoints.")
 model TenantUpdateRequest {
   @minLength(1)
   @maxLength(200)
   display_name?: string;
-  @doc("省略時は既存値を維持。null を渡したい場合は明示する。")
+  @doc("Left out, the existing value is kept. Pass null explicitly to clear it.")
   password_policy_override?: PasswordPolicyOverride;
   @doc("Maximum delegation depth. Omission preserves the current value, and zero restores the system default. Values above the system default are rejected.")
   @minValue(0)
   max_delegation_depth?: int64;
-  @doc("信頼済みデバイスの有効期間 (秒)。省略時は既存値を維持し、0 で機能を無効へ戻す。\nsystem ceiling (7776000 秒 = 90 日) を超える値は拒否する。")
+  @doc("How many seconds a trusted device stays valid. Left out, the existing value is kept; 0 turns the feature off again.\nA value above the system ceiling of 7,776,000 seconds (90 days) is refused.")
   @minValue(0)
   trusted_device_max_age_seconds?: int64;
-  @doc("テナント既定 locale。省略時は既存値を維持し、空文字列でシステム既定へ戻す。サポート外の locale は拒否する。")
+  @doc("The tenant's default locale. Left out, the existing value is kept; an empty string returns it to the system default. An unsupported locale is refused.")
   default_locale?: string;
 }
 
 
-@doc("テナント表現。管理 UI の一覧と詳細で同じ表現を返す。")
+@doc("How a tenant is represented. The list and the detail views of the administration UI return the same representation.")
 model TenantSummaryResponse {
-  @doc("テナントの不変 UUID キー。")
+  @doc("The immutable UUID key of the tenant.")
   id: string;
-  @doc("URL `/realms/{realm}/` に現れる slug 識別子。")
+  @doc("The slug identifier that appears in the URL `/realms/{realm}/`.")
   realm: string;
   display_name: string;
   status: TenantStatus;
   password_policy_override?: PasswordPolicyOverride;
   @minValue(1)
   max_delegation_depth?: int64;
-  @doc("信頼済みデバイスの有効期間 (秒)。0 または省略で機能無効。")
+  @doc("How many seconds a trusted device stays valid. Zero, or leaving it out, disables the feature.")
   @minValue(0)
   trusted_device_max_age_seconds?: int64;
   default_locale?: string;
@@ -558,13 +558,13 @@ model TenantSummaryResponse {
 }
 
 
-@doc("管理 API のテナント一覧。")
+@doc("The tenant list of the administration API.")
 model TenantListResponse {
   tenants: TenantSummaryResponse[];
 }
 
 
-@doc("system_admin が新規テナントを作成した。")
+@doc("A system_admin created a new tenant.")
 model TenantCreated {
   occurredAt: utcDateTime;
   actorUserId: string;
@@ -572,7 +572,7 @@ model TenantCreated {
 }
 
 
-@doc("system_admin がテナントの表示名を更新した。")
+@doc("A system_admin updated a tenant's display name.")
 model TenantUpdated {
   occurredAt: utcDateTime;
   actorUserId: string;
@@ -581,7 +581,7 @@ model TenantUpdated {
 }
 
 
-@doc("system_admin がテナントのリソースクォータを上書きした。")
+@doc("A system_admin overrode a tenant's resource quota.")
 model TenantQuotaUpdated {
   occurredAt: utcDateTime;
   actorUserId: string;
@@ -589,7 +589,7 @@ model TenantQuotaUpdated {
 }
 
 
-@doc("テナント内 admin が custom 属性定義 (TenantUserAttributeSchema) を更新した。値は持たず、変更後の custom 属性 key 一覧のみを記録する。")
+@doc("A tenant administrator updated the custom attribute definitions (TenantUserAttributeSchema). No value is kept; only the list of custom attribute keys after the change is recorded.")
 model TenantUserAttributeSchemaUpdated {
   occurredAt: utcDateTime;
   actorUserId: string;
@@ -598,7 +598,7 @@ model TenantUserAttributeSchemaUpdated {
 }
 
 
-@doc("テナント内 admin が Group custom 属性定義 (TenantGroupAttributeSchema) を更新した。値は持たず、変更後の custom 属性 key 一覧のみを記録する。")
+@doc("A tenant administrator updated the Group custom attribute definitions (TenantGroupAttributeSchema). No value is kept; only the list of custom attribute keys after the change is recorded.")
 model TenantGroupAttributeSchemaUpdated {
   occurredAt: utcDateTime;
   actorUserId: string;
@@ -607,7 +607,7 @@ model TenantGroupAttributeSchemaUpdated {
 }
 
 
-@doc("system_admin がテナントを無効化した。当該テナントのすべてのプロトコルルートは invalid_request で拒否される。")
+@doc("A system_admin disabled a tenant. Every protocol route of that tenant is refused with invalid_request.")
 model TenantDisabled {
   occurredAt: utcDateTime;
   actorUserId: string;
@@ -615,7 +615,7 @@ model TenantDisabled {
 }
 
 
-@doc("system_admin が無効化済みテナントを再有効化した。")
+@doc("A system_admin re-enabled a disabled tenant.")
 model TenantEnabled {
   occurredAt: utcDateTime;
   actorUserId: string;
@@ -623,21 +623,15 @@ model TenantEnabled {
 }
 
 
-@doc("テナントの password_policy_override がグローバルな下限ポリシーより弱いか、max_age_days が system ceiling の範囲外である。")
-model PolicyOverrideWeakerError {
-
-}
+@doc("The tenant's `password_policy_override` is weaker than the global floor policy, or its `max_age_days` is outside the system ceiling. RFC 9457 Problem Details with `type` = `urn:idmagic:error:policy_override_weaker`.")
+model PolicyOverrideWeakerError is ProblemDetails;
 
 
-@doc("user_attribute_schema の定義が不正 (型不正、キー重複、組込み属性との衝突等)。")
-model InvalidUserAttributeSchemaError {
-
-}
+@doc("The `user_attribute_schema` definition is invalid: a bad type, a duplicate key, a collision with a built-in attribute, and so on. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_attribute_schema`, the same code the group schema rejection uses; the endpoint tells the two apart.")
+model InvalidUserAttributeSchemaError is ProblemDetails;
 
 
-@doc("group_attribute_schema の定義が不正 (型不正、キー重複等)。")
-model InvalidGroupAttributeSchemaError {
-
-}
+@doc("The `group_attribute_schema` definition is invalid: a bad type, a duplicate key, and so on. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_attribute_schema`, the same code the user schema rejection uses; the endpoint tells the two apart.")
+model InvalidGroupAttributeSchemaError is ProblemDetails;
 
 }

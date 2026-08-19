@@ -1,37 +1,31 @@
 namespace IdMagic.Contract {
 
-@doc("ClaimMapping context が publish する trust ごとの claim 発行規則の最小 stub。")
+@doc("The minimal stub of the per-trust claim issuance rules the ClaimMapping context publishes.")
 model ClaimMappingPolicy {
-  configuration?: unknown;
+  configuration?: Record<unknown>;
 }
 
 
-@doc("SAML service provider が Application に所有されているため直接削除できない。HTTP 409 とし、Application 削除を利用する。")
-model ApplicationOwnedProtocolError {
-
-}
+@doc("The SAML service provider is owned by an Application and cannot be deleted on its own; delete the Application instead. Returned with HTTP 409. RFC 9457 Problem Details with `type` = `urn:idmagic:error:application_owned_protocol`.")
+model ApplicationOwnedProtocolError is ProblemDetails;
 
 
-@doc("SAML IdP profileがSPから参照されているため削除できない。HTTP 409とする。")
-model IdPProfileInUseError {
-
-}
+@doc("The SAML IdP profile is referenced by a service provider and cannot be deleted. Returned with HTTP 409. RFC 9457 Problem Details with `type` = `urn:idmagic:error:profile_in_use`.")
+model IdPProfileInUseError is ProblemDetails;
 
 
-@doc("テナントのdefault SAML IdP profileは変更または削除できない。")
-model DefaultIdPProfileError {
-
-}
+@doc("The tenant's default SAML IdP profile cannot be changed or deleted. Returned with HTTP 409 and `type` = `urn:idmagic:error:profile_in_use`, the same code the in-use rejection uses.")
+model DefaultIdPProfileError is ProblemDetails;
 
 
-@doc("SAML 2.0 message binding。SP-initiated の AuthnRequest 受信と SAMLResponse 返送に用いる。HTTP-Redirect は GET でクエリに deflate+base64 を載せ、HTTP-POST は base64 を自動 POST フォームで運ぶ。")
+@doc("The SAML 2.0 message bindings, used to receive an SP-initiated AuthnRequest and to return a SAMLResponse. HTTP-Redirect puts deflate+base64 in the query of a GET; HTTP-POST carries base64 in an auto-submitting form.")
 enum SamlBinding {
   urn_oasis_names_tc_SAML_2_0_bindings_HTTP_Redirect: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
   urn_oasis_names_tc_SAML_2_0_bindings_HTTP_POST: "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
 }
 
 
-@doc("発行 assertion の NameID format。SP metadata と AuthnRequest の NameIDPolicy で要求しうる。AuthnRequest が unspecified 以外を指定した場合はそれを尊重し、未指定なら SP の claim policy に定めた format を用いる。")
+@doc("The NameID format of an issued assertion. Both the SP metadata and the NameIDPolicy of an AuthnRequest may ask for one. When the AuthnRequest names anything other than unspecified it is honoured; when it names nothing, the format set in the SP's claim policy is used.")
 enum SamlNameIDFormat {
   urn_oasis_names_tc_SAML_2_0_nameid_format_unspecified: "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified",
   urn_oasis_names_tc_SAML_1_1_nameid_format_emailAddress: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
@@ -40,14 +34,14 @@ enum SamlNameIDFormat {
 }
 
 
-@doc("IdP profileを複数SPで共有できるかを表す。")
+@doc("Whether an IdP profile may be shared by several SPs.")
 enum SamlIdentityProviderProfileMode {
   shared: "shared",
   dedicated: "dedicated",
 }
 
 
-@doc("テナント内のSAML IdP trust境界。default profileはテナント共通entityIDと既存SAMLエンドポイントを使う。追加profileはprofile IDを含む固有entityID・エンドポイント・XmlFederationSigning鍵scopeを持つ。")
+@doc("A SAML IdP trust boundary inside a tenant. The default profile uses the tenant-wide entityID and the existing SAML endpoints. An additional profile gets its own entityID, endpoints, and XmlFederationSigning key scope, each carrying the profile id.")
 model SamlIdentityProviderProfile {
   tenant_id: string = "default";
   @minLength(1)
@@ -61,7 +55,7 @@ model SamlIdentityProviderProfile {
 }
 
 
-@doc("管理画面向けIdP profile表現。永続profileに加え、request tenantのcanonical issuerからserverが生成した設定値と現在のSP割当数を返す。")
+@doc("How an IdP profile is represented for the administration console. Besides the persisted profile it returns the settings the server derived from the request tenant's canonical issuer, and how many SPs are currently assigned to it.")
 model SamlIdentityProviderProfileAdminResponse {
   profile: SamlIdentityProviderProfile;
   entity_id: string;
@@ -74,99 +68,99 @@ model SamlIdentityProviderProfileAdminResponse {
 }
 
 
-@doc("SAML 2.0 Web Browser SSO の service provider (SP) 登録。entityID で識別し、許可する AssertionConsumerService URL の閉集合、audience、NameID format、署名方針、claim 発行 policy を束ねる。application_id が NULL の catalog 外 SP も許容し、非 NULL の場合は同一 tenant の saml Application を参照して Application 1件に最大1 SP だけが紐づく。")
+@doc("The registration of a service provider (SP) for SAML 2.0 Web Browser SSO. It is identified by its entityID and bundles the closed set of permitted AssertionConsumerService URLs, the audience, the NameID format, the signature policy, and the claim issuance policy. An SP outside the catalogue, whose `application_id` is null, is allowed; when it is not null it names a `saml` Application of the same tenant, and at most one SP is bound to one Application.")
 model SamlServiceProvider {
-  @doc("所属テナント ID。SP 登録と SAMLエンドポイントは realm ごとに分離する。")
+  @doc("The tenant it belongs to. SP registrations and the SAML endpoints are separated per realm.")
   tenant_id: string = "default";
-  @doc("同一テナント内でこのSPに割り当てられたSAML IdP profile。SSO/SLO要求はrouteのprofileと一致する場合だけ受理する。")
+  @doc("The SAML IdP profile assigned to this SP inside the tenant. An SSO or SLO request is accepted only when it matches the profile of the route.")
   @minLength(1)
   idp_profile_id: string = "default";
-  @doc("SP の識別子 (SAML entityID)。AuthnRequest の Issuer と完全一致しなければならない。saml-schema-metadata-2.0.xsd の entityIDType は 1024 文字を定めるが、それを超える非準拠 SP を拒否しないため上限は外側に取る。btree の索引行に収める資源上限として、別に 2048 バイトの上限も課す。")
+  @doc("The identifier of the SP (its SAML entityID). It has to match the Issuer of the AuthnRequest exactly. The entityIDType of saml-schema-metadata-2.0.xsd fixes 1024 characters, but the ceiling here sits outside that so a non-conforming SP is not refused. A separate ceiling of 2048 bytes applies as the resource limit that keeps the value inside a btree index row.")
   @minLength(1)
   @maxLength(2048)
   entity_id: string;
-  @doc("対応する Application の ID。通常 CRUD では変更せず、Application 一括作成・削除だけが関係を管理する。")
-  application_id?: unknown;
-  @doc("管理 UI 表示名。")
+  @doc("The Application it corresponds to. Ordinary CRUD leaves it alone; only the bulk creation and deletion of an Application manage the relationship.")
+  application_id?: string;
+  @doc("The display name in the administration UI.")
   display_name?: string;
-  @doc("許可する AssertionConsumerService URL の閉集合。AuthnRequest が ACS URL を指定する場合はこの集合との完全一致のみ受理し、ACS URL と index がともに省略された場合だけ先頭を既定の返信先とする。初期実装では index 解決は提供しない。")
+  @doc("The closed set of permitted AssertionConsumerService URLs. When an AuthnRequest names an ACS URL, only an exact match against this set is accepted, and only when both the ACS URL and the index are absent does the first entry become the default reply target. Resolving an index is not offered in the initial implementation.")
   acs_urls: string[];
-  @doc("SP の SingleLogoutService URL。Single Logout の返送先。")
+  @doc("The SingleLogoutService URL of the SP, where a Single Logout reply is sent.")
   slo_url?: string;
-  @doc("発行 assertion の AudienceRestriction。空なら entity_id を用いる。")
+  @doc("The AudienceRestriction of an issued assertion. Empty means the entity_id is used.")
   audience?: string;
-  @doc("この SP 向けの NameID と attribute (claim) 発行 policy。")
+  @doc("The NameID and attribute (claim) issuance policy for this SP.")
   claim_policy: ClaimMappingPolicy;
-  @doc("発行する Assertion を enveloped 署名するか。既定で署名する。")
+  @doc("Whether the issued Assertion carries an enveloped signature. It does by default.")
   sign_assertion: boolean = true;
-  @doc("Response 全体を enveloped 署名するか。SP が \"Sign Response\" を要求する場合に有効化する。")
+  @doc("Whether the whole Response carries an enveloped signature. Turn it on for an SP that asks to \"sign response\".")
   sign_response: boolean = false;
-  @doc("SP ごとの AuthnRequest / LogoutRequest 署名検証 policy。true の場合は authn_request_signing_certificate_pem で Redirect binding 署名または XML 署名を検証する。IdP metadata の WantAuthnRequestsSigned には反映しない。")
+  @doc("The per-SP policy for verifying signatures on an AuthnRequest or a LogoutRequest. When true, either the Redirect binding signature or the XML signature is verified against `authn_request_signing_certificate_pem`. It is not reflected in WantAuthnRequestsSigned in the IdP metadata.")
   want_authn_requests_signed: boolean = false;
-  @doc("AuthnRequest / LogoutRequest 署名検証に使う SP の X.509 証明書 PEM。want_authn_requests_signed=true の場合は必須。")
+  @doc("The X.509 certificate of the SP, as PEM, used to verify signatures on an AuthnRequest or a LogoutRequest. Required when `want_authn_requests_signed` is true.")
   authn_request_signing_certificate_pem?: string;
   created_at: utcDateTime;
   updated_at: utcDateTime;
 }
 
 
-@doc("SP-initiated SSO で受信した <samlp:AuthnRequest> から検証対象を抽出した中間表現。HTTP-Redirect は deflate+base64、HTTP-POST は base64 を復号して解析する。復号後 XML には上限を課し、deflate 爆弾を防ぐ。Version は 2.0、IssueInstant は必須で現在時刻の許容 skew と最大年齢内でなければならない。")
+@doc("The intermediate form holding what has to be checked, extracted from a `<samlp:AuthnRequest>` received during SP-initiated SSO. HTTP-Redirect is deflate+base64 and HTTP-POST is base64; both are decoded before parsing. The decoded XML has a size ceiling, so a deflate bomb cannot get through. Version must be 2.0, and IssueInstant is required and has to sit inside both the permitted clock skew and the maximum age.")
 model SamlAuthnRequest {
-  @doc("要求 ID。SAMLResponse の InResponseTo と assertion の SubjectConfirmationData に往復させる。")
+  @doc("The request id. It round-trips as the InResponseTo of the SAMLResponse and in the SubjectConfirmationData of the assertion.")
   @minLength(1)
   id: string;
-  @doc("SP の entityID。登録済み SamlServiceProvider に解決する。")
+  @doc("The entityID of the SP. It resolves to a registered SamlServiceProvider.")
   @minLength(1)
   issuer: string;
-  @doc("AuthnRequest/@Version。\"2.0\" だけを受理する。")
+  @doc("`AuthnRequest/@Version`. Only `2.0` is accepted.")
   @minLength(1)
   version: string;
-  @doc("AuthnRequest/@IssueInstant。未来の skew と最大年齢を超える要求は拒否する。")
+  @doc("`AuthnRequest/@IssueInstant`. A request beyond the future skew or the maximum age is refused.")
   issue_instant: utcDateTime;
-  @doc("要求が指定する AssertionConsumerService URL。許可集合との完全一致のみ受理する。")
+  @doc("The AssertionConsumerService URL the request names. Only an exact match against the permitted set is accepted.")
   acs_url?: string;
-  @doc("AssertionConsumerServiceIndex。ACS URL との併用は拒否し、初期実装では明示的な index 指定を解決しないため拒否する。")
+  @doc("AssertionConsumerServiceIndex. Using it together with an ACS URL is refused, and so is naming it at all, because the initial implementation does not resolve an explicit index.")
   acs_index?: int64;
-  @doc("AuthnRequest/@ProtocolBinding。省略または HTTP-POST のみを受理する。")
+  @doc("`AuthnRequest/@ProtocolBinding`. Only absent or HTTP-POST is accepted.")
   protocol_binding?: SamlBinding;
-  @doc("要求が宛てた IdP の SSO endpoint URL。")
+  @doc("The IdP SSO endpoint URL the request was addressed to.")
   destination?: string;
-  @doc("NameIDPolicy/@Format。unspecified 以外なら発行 assertion の NameID format に反映する。")
+  @doc("`NameIDPolicy/@Format`. Anything other than unspecified becomes the NameID format of the issued assertion.")
   name_id_format?: SamlNameIDFormat;
-  @doc("再認証の要求。true の場合、直近再認証済みでなければログインへ戻す。")
+  @doc("A demand to reauthenticate. When true, a caller who did not reauthenticate recently is sent back to sign in.")
   force_authn: boolean = false;
-  @doc("対話を禁止する要求。true で既存セッションを使えない場合はログインへ遷移せず NoPassive response を返す。")
+  @doc("A demand that there be no interaction. When true and the existing session cannot be used, a NoPassive response is returned rather than a move to the sign-in page.")
   is_passive: boolean = false;
 }
 
 
-@doc("SP へ返送する <samlp:Response>。Status Success、IdP entityID の Issuer、署名済み Assertion を含み、SP 設定により Response 全体も署名する。Destination は確定した ACS URL、InResponseTo は SP-initiated の AuthnRequest ID。HTTP-POST binding で base64 化し ACS へ自動 POST する。")
+@doc("The `<samlp:Response>` returned to the SP. It carries Status Success, an Issuer holding the IdP entityID, and a signed Assertion, and the whole Response is signed too when the SP is configured for it. Destination is the settled ACS URL, and InResponseTo is the AuthnRequest id for an SP-initiated flow. It is base64-encoded under the HTTP-POST binding and auto-posted to the ACS.")
 model SamlResponse {
-  @doc("Response ID。")
+  @doc("The Response id.")
   @minLength(1)
   id: string;
-  @doc("確定した ACS URL (許可集合内)。")
+  @doc("The settled ACS URL, drawn from the permitted set.")
   @minLength(1)
   destination: string;
-  @doc("SP-initiated の AuthnRequest ID。IdP-initiated では空。")
+  @doc("The AuthnRequest id for an SP-initiated flow. Empty for an IdP-initiated one.")
   in_response_to?: string;
   issue_instant: utcDateTime;
-  @doc("埋め込む署名済み assertion。")
+  @doc("The signed assertion to embed.")
   assertion: SamlAssertion;
 }
 
 
-@doc("SAMLResponse に埋め込む <saml:Assertion>。Subject (NameID と bearer SubjectConfirmation)、AudienceRestriction、AuthnStatement、AttributeStatement を持つ。bearer SubjectConfirmationData は Recipient (ACS)、NotOnOrAfter、SP-initiated では InResponseTo を含む。")
+@doc("The `<saml:Assertion>` embedded in the SAMLResponse. It carries a Subject (the NameID and a bearer SubjectConfirmation), an AudienceRestriction, an AuthnStatement, and an AttributeStatement. The bearer SubjectConfirmationData carries Recipient (the ACS), NotOnOrAfter, and, for an SP-initiated flow, InResponseTo.")
 model SamlAssertion {
   @minLength(1)
   id: string;
-  @doc("IdP の entityID。")
+  @doc("The entityID of the IdP.")
   @minLength(1)
   issuer: string;
-  @doc("SP の audience (既定 entity_id)。")
+  @doc("The audience of the SP; the entity_id by default.")
   @minLength(1)
   audience: string;
-  @doc("bearer SubjectConfirmationData の Recipient (ACS URL)。")
+  @doc("The Recipient of the bearer SubjectConfirmationData, that is, the ACS URL.")
   recipient: string;
   not_before: utcDateTime;
   not_on_or_after: utcDateTime;
@@ -177,37 +171,73 @@ model SamlAssertion {
 }
 
 
-@doc("SAML SSO で署名済み SAMLResponse を SP へ発行した。")
+@doc("A signed SAMLResponse was issued to an SP through SAML SSO.")
 model SamlSignInIssued {
   occurredAt: utcDateTime;
-  @doc("発行したテナント ID。")
+  @doc("The tenant that issued it.")
   tenantId: string;
-  @doc("発行先 SP の entityID。")
+  @doc("The entityID of the SP it was issued to.")
   entityId: string;
-  @doc("subject (NameID 由来の user)。")
+  @doc("The subject, the user the NameID resolved to.")
   userId: string;
 }
 
 
-@doc("SAML SSO 要求を拒否した (未登録 entityID・許可外 ACS URL・未割当 subject・解析失敗など)。")
+@doc("A SAML SSO request was refused: an unregistered entityID, an ACS URL outside the permitted set, an unassigned subject, a parse failure, and the like.")
 model SamlSignInRejected {
   occurredAt: utcDateTime;
-  @doc("拒否したテナント ID。")
+  @doc("The tenant that refused it.")
   tenantId: string;
-  @doc("要求された SP entityID (判明していれば)。")
+  @doc("The SP entityID that was asked for, when it could be determined.")
   entityId?: string;
-  @doc("拒否理由の要約。")
+  @doc("A summary of why it was refused.")
   reason: string;
 }
 
 
-@doc("SAML Single Logout でローカルセッションを破棄した。LogoutRequest がある場合は LogoutResponse を登録済み SLO URL へ返す。")
+@doc("A SAML Single Logout destroyed the local session. When there was a LogoutRequest, a LogoutResponse is returned to the registered SLO URL.")
 model SamlLogout {
   occurredAt: utcDateTime;
-  @doc("logout したテナント ID。")
+  @doc("The tenant that logged out.")
   tenantId: string;
-  @doc("logout を要求した SP の entityID (判明していれば)。")
+  @doc("The entityID of the SP that asked for the logout, when it could be determined.")
   entityId?: string;
+}
+
+
+@doc("The JSON request registering or updating a SAML service provider (an upsert). It carries only what the caller may set; `application_id`, the tenant, and the timestamps stay with the server.")
+model SamlServiceProviderRequest {
+  @doc("The identifier of the SP (its SAML entityID). It has to match the Issuer of the AuthnRequest exactly.")
+  entity_id: string;
+  @doc("The display name in the administration UI.")
+  display_name: string;
+  @doc("The SAML IdP profile in the same tenant to assign to this SP.")
+  idp_profile_id?: string;
+  @doc("The closed set of permitted AssertionConsumerService URLs.")
+  acs_urls: url[];
+  @doc("The SingleLogoutService URL of the SP.")
+  slo_url?: url;
+  @doc("The AudienceRestriction of an issued assertion. Empty means the entity_id is used.")
+  audience?: string;
+  @doc("The NameID and attribute (claim) issuance policy for this SP.")
+  claim_policy: ClaimMappingPolicy;
+  @doc("Whether the issued Assertion carries an enveloped signature. Left out, it does.")
+  sign_assertion?: boolean;
+  @doc("Whether the whole Response carries an enveloped signature.")
+  sign_response?: boolean;
+  @doc("Whether an AuthnRequest and a LogoutRequest have their signatures verified.")
+  want_authn_requests_signed?: boolean;
+  @doc("The X.509 certificate of the SP, as PEM, used to verify those signatures. Required when `want_authn_requests_signed` is true.")
+  authn_request_signing_certificate_pem?: string;
+}
+
+
+@doc("The JSON request creating or updating an additional SAML IdP profile. The default profile can be neither created nor changed this way.")
+model SamlIdentityProviderProfileRequest {
+  @doc("The display name of the profile.")
+  name: string;
+  @doc("Whether the profile may be shared by several SPs.")
+  mode: SamlIdentityProviderProfileMode;
 }
 
 }

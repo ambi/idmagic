@@ -214,6 +214,14 @@ HTTP ルーティングは `backend/shared/http/server_http/routes.go` で組み
 
 OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handlers_http`）、Dynamic Client Registration（RFC 7591、`backend/oauth2/handlers_http` の一部）、SharedSignals の受信エンドポイント（RFC 8935、`/ssf/streams/{stream_id}/events`）は、各標準が定めるエラーレスポンスを返す。標準に従うクライアントとの相互運用性を保つため、これらには Problem Details を適用しない。この境界は接点ごとに引く。同じパッケージの中でも、ブラウザーや管理コンソールが呼ぶ汎用 API は Problem Details を返し、標準が形を定める相手だけが例外である。
 
+契約側では、この 3 通りの本文をそれぞれ 1 つのモデルが持つ。汎用 API のエラーは `IdMagic.Contract.ProblemDetails` で、`type` / `title` / `status` / `detail` / `instance` を宣言する。個々のエラーは `model <Name>Error is ProblemDetails;` と書き、どの `type` URN 接尾辞 (= サーバーが返す error code) に対応するかを `@doc` で名指しする。標準が形を定める接点のうち OAuth 2.0 / OIDC 系は `IdMagic.Contract.OAuthError` (`error` / `error_description`、RFC 6749 §5.2) を、SCIM は `IdMagic.Contract.ScimProtocolError` (RFC 7644 §3.12) を同じ形で参照する。どちらにも当てはまらない独自形状は、`EndpointRateLimitPolicy` の 429 (`error` / `retry_after_seconds` / `message` と `Retry-After` ヘッダー) と SharedSignals 受信エンドポイントの拒否 (`error` / `message`) の 2 つだけで、それぞれ本文を直接宣言する。同じ error code が接点によって別の本文で返るときは、`AccessDeniedError` と `OAuthAccessDeniedError` のように接点ごとにモデルを分ける。1 つのモデルが 2 つの形を名乗ることは許さない。
+
+#### Wire bodies in the contract
+
+TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し返す JSON そのものである。サーバーが送らない封筒を契約側で 1 段挟まない。ハンドラーが `map[string]any{"groups": ...}` のような封筒を書くときにだけ、契約もその封筒を持つ。パスやクエリのパラメータは要求本体のプロパティにしない。本文が JSON でない接点 (CSV のアップロード、SET の受信、XML メタデータ、画像の配信、メトリクスの公開) は、その media type と本文の型をそのまま宣言する。
+
+同じ規則が値にも及ぶ。enum の値は member 名の複製ではなく線上の値そのものを書き、標準が定める値は標準から、独自の値は Go の定数から写す。`unknown` は「任意の JSON 値」と読まれるので、実在する型やモデルがあるならそれを書き、本当に任意でよい場合だけ、なぜ任意なのかを `@doc` に残す。
+
 #### String length limits
 
 文字列フィールドの長さ上限は、公開契約、Go の検証、PostgreSQL の制約、UI の入力欄という 4 つの境界に同じ数で現れる。数が同じでも数える単位が違えば別々の上限になるので、単位を先に固定する。

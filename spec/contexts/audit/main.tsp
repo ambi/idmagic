@@ -8,13 +8,9 @@ using TypeSpec.OpenAPI;
 namespace IdMagic.Audit {
 
 namespace Operations {
-model ListAdminAuditEventsHttpResponse {
-  response: IdMagic.Contract.AdminAuditEventListResponse;
-}
-
 model ListAdminAuditEventsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ListAdminAuditEventsHttpResponse;
+  @body body: IdMagic.Contract.AdminAuditEventListResponse;
 }
 
 union ListAdminAuditEventsError400Body {
@@ -37,7 +33,7 @@ model ListAdminAuditEventsError403 {
   @body body: ListAdminAuditEventsError403Body;
 }
 
-@doc("管理者が所属テナントの監査用 DomainEvent を時系列降順の双方向 keyset pagination で取得する。\nSOC / コンプライアンス用途を想定し、期間絞り込み (after / before) と件数上限 (limit)、継続取得\n(cursor、Link response header の rel=\"prev\" / rel=\"next\" 経由) と type / user_id / username\n(操作者) による絞り込みを提供する。認証イベント (ログイン成功 / 失敗 / MFA / セッション / 集約) も\n同一ストアに属し、category (authentication / success / fail / aggregated / user / group / client /\nconsent / token / tenant / key) で絞り込んでセキュリティ調査や運用調査に使える。さらに q (raw text\n部分一致) と filter (registry allowlist の field/operator による構造化式) で汎用検索できる。filter の\nfield は AuditEventSearchAttribute registry で許可されたもののみで、任意 SQL / JSONPath は受け付けない。\nuser_id と filter の actor.id は操作者を指し、username は操作者のログイン名を検索時に user_id へ\n解決する (hash 化せず、該当ユーザーが無ければ 0 件)。filter の actor.username は実在しないアカウント名も\n追跡する認証失敗イベント専用の平文一致検索。filter の target.id は管理操作の対象ユーザーを指す別概念\n(AuditActorVsTarget)。system_admin であれば default tenant 経路から全テナント横断、admin は所属テナント内に\n閉じる (クエリが tenant_id 入力を取らないため所属テナントに構造的に閉じ、system_admin だけが専用経路から\n横断できる)。")
+@doc("An administrator reads the audit DomainEvents of their tenant, newest first, through bidirectional keyset pagination.\nBuilt for SOC and compliance work, it offers a time window (`after` / `before`), a page size (`limit`), continuation\n(`cursor`, reached through the `rel=\"prev\"` and `rel=\"next\"` links of the Link response header), and filtering by\n`type`, `user_id`, and `username` (the actor). Authentication events -- login success and failure, MFA, sessions,\naggregates -- live in the same store, so `category` (authentication / success / fail / aggregated / user / group /\nclient / consent / token / tenant / key) narrows the search for a security or an operational investigation. Beyond\nthat, `q` matches raw text as a substring and `filter` takes a structured expression over the field/operator allow\nlist of the registry. Only fields the AuditEventSearchAttribute registry permits may appear in `filter`; arbitrary\nSQL or JSONPath is refused. `user_id` and the `actor.id` of `filter` name the actor, and `username` resolves the\nactor's login name to a user id at search time -- not hashed, and matching nothing when no such user exists.\n`actor.username` in `filter` is a plaintext match reserved for authentication failures, so that an account name\nthat never existed can still be traced. `target.id` in `filter` is a different concept: the user an administrative\noperation acted on (AuditActorVsTarget). A system_admin reaching the endpoint through the default tenant sees\nevery tenant; an admin stays inside their own. The query takes no tenant_id input, so an admin is confined to\ntheir tenant structurally, and only a system_admin can cross that line, through the dedicated route.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ListAdminAuditEvents")
 @route("/api/admin/v1/audit_events")
@@ -46,13 +42,9 @@ op ListAdminAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
 ): ListAdminAuditEventsSuccess_200 | ListAdminAuditEventsError400 | ListAdminAuditEventsError403;
 
-model ExportAdminAuditEventsHttpResponse {
-  response: IdMagic.Contract.AdminAuditEventListResponse;
-}
-
 model ExportAdminAuditEventsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: ExportAdminAuditEventsHttpResponse;
+  @body body: IdMagic.Contract.AdminAuditEventListResponse;
 }
 
 union ExportAdminAuditEventsError400Body {
@@ -75,7 +67,7 @@ model ExportAdminAuditEventsError403 {
   @body body: ExportAdminAuditEventsError403Body;
 }
 
-@doc("管理者が監査イベント (認証イベントを含む) を期間 / フィルタ指定でエクスポートする。\nSIEM への streaming は別 WI で、本 interface は 1 回分のダウンロードを返すのみ。\nフィルタは ListAdminAuditEvents と同じ AuditEventQuery (q / filter / category / type / 期間)。\nfilter の field は registry allowlist のみ。")
+@doc("An administrator exports audit events, authentication events included, over a time window and a filter.\nStreaming to a SIEM belongs to a separate work item; this interface returns one download.\nThe filter is the same AuditEventQuery ListAdminAuditEvents takes (q / filter / category / type / time window),\nand only fields on the registry allow list may appear in `filter`.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("ExportAdminAuditEvents")
 @route("/api/admin/v1/audit_events/export")
@@ -84,13 +76,9 @@ op ExportAdminAuditEvents(
   @query query: IdMagic.Contract.AuditEventQuery
 ): ExportAdminAuditEventsSuccess_200 | ExportAdminAuditEventsError400 | ExportAdminAuditEventsError403;
 
-model GetAdminAuditEventSearchOptionsHttpResponse {
-  response: IdMagic.Contract.AuditEventSearchOptionsResponse;
-}
-
 model GetAdminAuditEventSearchOptionsSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAdminAuditEventSearchOptionsHttpResponse;
+  @body body: IdMagic.Contract.AuditEventSearchOptionsResponse;
 }
 
 union GetAdminAuditEventSearchOptionsError403Body {
@@ -103,7 +91,7 @@ model GetAdminAuditEventSearchOptionsError403 {
   @body body: GetAdminAuditEventSearchOptionsError403Body;
 }
 
-@doc("管理者が監査イベント検索フォームの event.type / outcome を選択式にするための選択肢一覧を取得する。\n値は AuditSearchRegistry / auditEventCategoryTypes と同じ Go 側の単一の正から導出し、UI 側で\nハードコードした allowlist との drift を防ぐ。")
+@doc("An administrator reads the choices that turn the `event.type` and `outcome` fields of the audit search form into\npick lists. The values come from the same single source of truth in Go as AuditSearchRegistry and\nauditEventCategoryTypes, so a hard-coded allow list in the UI cannot drift from what the server accepts.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminAuditEventSearchOptions")
 @route("/api/admin/v1/audit_events/search_options")
@@ -112,13 +100,9 @@ op GetAdminAuditEventSearchOptions(
 
 ): GetAdminAuditEventSearchOptionsSuccess_200 | GetAdminAuditEventSearchOptionsError403;
 
-model GetAdminAuditEventHttpResponse {
-  event: IdMagic.Contract.AdminAuditEventResponse;
-}
-
 model GetAdminAuditEventSuccess_200 {
   @statusCode statusCode: 200;
-  @body body: GetAdminAuditEventHttpResponse;
+  @body body: IdMagic.Contract.AdminAuditEventResponse;
 }
 
 union GetAdminAuditEventError400Body {
@@ -141,7 +125,7 @@ model GetAdminAuditEventError403 {
   @body body: GetAdminAuditEventError403Body;
 }
 
-@doc("管理者が監査イベント 1 件を ID で取得する。別テナントのイベントは未存在として扱う。")
+@doc("An administrator reads one audit event by id. An event of another tenant is treated as nonexistent.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["audit:read"])
 @TypeSpec.OpenAPI.operationId("GetAdminAuditEvent")
 @route("/api/admin/v1/audit_events/{id}")
