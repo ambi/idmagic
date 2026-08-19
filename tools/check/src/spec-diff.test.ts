@@ -124,6 +124,20 @@ describe('diffSpecifications', () => {
     ])
   })
 
+  it('does not read a declaration out of English doc prose', () => {
+    const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds')), '')
+    const head = snapshot(
+      document(scenario('REQ-DEMO-001', 'it succeeds')),
+      [
+        '@doc("The union of the direct roles and the group roles. The model was renamed.")',
+        'model Task {}',
+      ].join('\n'),
+    )
+    expect(diffSpecifications(base, head).addedDeclarations).toEqual([
+      'spec/contexts/demo/main.tsp:Task',
+    ])
+  })
+
   it('formats only the groups that have entries', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds')))
     const head = snapshot(

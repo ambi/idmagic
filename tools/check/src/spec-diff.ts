@@ -37,7 +37,9 @@ export type SpecificationDiff = {
   removedDeclarations: string[]
 }
 
-const DECLARATION = /\b(?:alias|enum|model|op|scalar|union)\s+([A-Za-z_][A-Za-z0-9_]*)/g
+// Anchored to the start of a line because `@doc` text is English prose: an
+// unanchored match turns "the union of the roles" into a declaration named `of`.
+const DECLARATION = /^[ \t]*(?:alias|enum|model|op|scalar|union)\s+([A-Za-z_][A-Za-z0-9_]*)/gm
 
 /**
  * Per-operation transport wrappers follow the operation they belong to and say
