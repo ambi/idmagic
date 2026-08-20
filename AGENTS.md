@@ -6,6 +6,7 @@
 |---|---|
 | Repository-root `README.md`, headings included | Japanese |
 | `CONFIGURATION.md`, `DEVELOPMENT.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
+| `DOCUMENTATION_GUIDE.md`, headings included | Japanese |
 | `spec/**/*.tsp`, doc comments included | English |
 | Prose in `spec/SPECIFICATION.md` and `spec/contexts/*/SPECIFICATION.md` | Japanese |
 | `work-items/**` | Japanese |
@@ -62,6 +63,9 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
     [DEVELOPMENT.md](DEVELOPMENT.md) for the stage/skill/gate loop and the verification ladder,
     [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) for specification documents, and
     [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) for work items.
+  - [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) describes the intended future document system.
+    It is not current policy: where it differs from the three documents above, follow those. Migrating
+    to it is its own work item; do not restructure individual documents on its authority.
   - Expect repository tools to discover the standard layout without a registry file; use `just` recipes
     rather than a methodology-specific CLI.
   - Regenerate untracked TypeSpec and HTML artifacts after specification changes.
