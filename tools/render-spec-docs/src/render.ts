@@ -391,7 +391,10 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const link = (entry: RenderedDocument, child: boolean) => {
     const current = entry.outputPath === page ? ' aria-current="page"' : ''
     const cls = child ? ' class="nav-child"' : ''
-    return `<a data-site-link${cls}${current} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(entry.title)}</a>`
+    // A child repeats its owner's name in its own title, which reads as noise
+    // directly beneath it; the file name is what tells the files apart here.
+    const label = child ? (entry.path.split('/').at(-1) ?? entry.title) : entry.title
+    return `<a data-site-link${cls}${current} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(label)}</a>`
   }
   const group = (title: string, entries: RenderedDocument[]) =>
     `<section class="nav-group"><h2>${escapeHtml(title)}</h2>${entries
