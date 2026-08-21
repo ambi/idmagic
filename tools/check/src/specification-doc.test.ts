@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { validateSpecification } from './specification-doc.ts'
+import { documentKind, validateDocument, validateSpecification } from './specification-doc.ts'
 
 const valid = `---
 context: demo
@@ -241,5 +241,108 @@ https://example.invalid/other
     expect(validateSpecification(source).findings.map((finding) => finding.message)).toContain(
       'duplicate standard id DEMO-CORE (first seen on line 26)',
     )
+  })
+})
+
+describe('documentKind', () => {
+  it('names the grammar of each split-layout document', () => {
+    expect(documentKind('spec/contexts/demo/states.md')).toBe('states')
+    expect(documentKind('spec/contexts/demo/scenarios.md')).toBe('scenarios')
+    expect(documentKind('spec/contexts/demo/decisions.md')).toBe('prose')
+    expect(documentKind('spec/standards.md')).toBe('standards')
+    expect(documentKind('spec/authorization.md')).toBe('prose')
+    expect(documentKind('spec/SPECIFICATION.md')).toBe('legacy')
+  })
+
+  it('rejects a name the layout does not define, and a context-only name at the root', () => {
+    expect(documentKind('spec/contexts/demo/notes.md')).toBeUndefined()
+    expect(documentKind('spec/states.md')).toBeUndefined()
+    expect(documentKind('spec/contexts/demo/user/scenarios.md')).toBeUndefined()
+    expect(documentKind('frontend/README.md')).toBeUndefined()
+  })
+})
+
+const states = `# Demo の状態遷移
+
+## Lifecycle
+
+| State | Kind | Meaning |
+|---|---|---|
+| Ready | initial | 受理直後 |
+| Done | terminal | 完了 |
+
+| From | Event | Guard | To | Effects |
+|---|---|---|---|---|
+| Ready | Run | — | Done | Completed |
+`
+
+describe('validateDocument', () => {
+  it('accepts a states.md that declares its states before its transitions', () => {
+    const result = validateDocument('spec/contexts/demo/states.md', states)
+    expect(result.findings).toEqual([])
+  })
+
+  it('requires the state table', () => {
+    const source = states.replace(
+      /\| State \| Kind \| Meaning \|\n\|---\|---\|---\|\n\| Ready \| initial \| 受理直後 \|\n\| Done \| terminal \| 完了 \|\n\n/,
+      '',
+    )
+    const result = validateDocument('spec/contexts/demo/states.md', source)
+    expect(result.findings.map((finding) => finding.message)).toEqual([
+      'state machine must declare its states with | State | Kind | Meaning |',
+    ])
+  })
+
+  it('rejects a transition into a state the state table does not declare', () => {
+    const source = states.replace('| Ready | Run | — | Done |', '| Ready | Run | — | Gone |')
+    const result = validateDocument('spec/contexts/demo/states.md', source)
+    expect(result.findings.map((finding) => finding.message)).toEqual([
+      'transition names Gone, which the state table does not declare',
+    ])
+  })
+
+  it('rejects a Kind outside the vocabulary and a machine without one initial state', () => {
+    const source = states.replace('| Ready | initial |', '| Ready | 初期 |')
+    const result = validateDocument('spec/contexts/demo/states.md', source)
+    expect(result.findings.map((finding) => finding.message)).toEqual([
+      'state Ready has Kind "初期"; use one of initial, terminal, —',
+      'state machine must declare exactly one initial state, found 0',
+    ])
+  })
+
+  it('accepts scenarios.md and reports the ids it declares', () => {
+    const source = `# Demo のシナリオ
+
+### REQ-DEMO-001: A valid request succeeds
+- ACTOR User
+- GIVEN a valid request
+- WHEN the request is submitted
+- THEN the request succeeds
+`
+    const result = validateDocument('spec/contexts/demo/scenarios.md', source)
+    expect(result.findings).toEqual([])
+    expect(result.scenarioIds.map((scenario) => scenario.id)).toEqual(['REQ-DEMO-001'])
+  })
+
+  it('keeps normative scenarios out of the other documents', () => {
+    const source = `# Demo の設計判断
+
+### REQ-DEMO-002: A behavior
+- ACTOR User
+- WHEN it happens
+- THEN it holds
+`
+    const result = validateDocument('spec/contexts/demo/decisions.md', source)
+    expect(result.findings.map((finding) => finding.message)).toEqual([
+      'REQ-DEMO-002 must be declared in scenarios.md',
+    ])
+    expect(result.scenarioIds).toEqual([])
+  })
+
+  it('rejects a path the canonical layout does not define', () => {
+    const result = validateDocument('spec/contexts/demo/notes.md', '# Notes\n')
+    expect(result.findings.map((finding) => finding.message)).toEqual([
+      'not a canonical specification document',
+    ])
   })
 })

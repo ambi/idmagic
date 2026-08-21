@@ -15,6 +15,7 @@
 
 import { readdir } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
+import { documentKind } from './specification-doc.ts'
 
 /** Repository-relative path to file contents. */
 export type Snapshot = Map<string, string>
@@ -79,7 +80,10 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
       continue
     }
 
-    const scenarios = section(source, 'Scenarios')
+    // In the split layout the file name says what the file holds, so the whole
+    // file is the section; the single canonical document names its sections.
+    const name = path.split('/').at(-1) ?? ''
+    const scenarios = name === 'scenarios.md' ? source : section(source, 'Scenarios')
     const starts = [...scenarios.matchAll(/^### (REQ-[A-Z0-9-]+):/gm)]
     for (const [index, start] of starts.entries()) {
       const from = start.index ?? 0
@@ -87,17 +91,30 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
       facts.scenarios.set(start[1] ?? '', normalize(scenarios.slice(from, to)))
     }
 
-    const transitions = section(source, 'State Transitions')
+    const split = name === 'states.md'
+    const transitions = split ? source : section(source, 'State Transitions')
+    const machineHeading = split ? /^## (?!#)(.+)$/ : /^### (.+)$/
     let machine = ''
+    // Only the rows under the transition header are transitions. A states.md
+    // also carries the state table, whose rows say nothing about a transition.
+    let inTransitions = false
     for (const line of transitions.split('\n')) {
-      const heading = line.match(/^### (.+)$/)
+      const heading = line.match(machineHeading)
       if (heading) {
         machine = `${path}#${heading[1]}`
+        inTransitions = false
         continue
       }
       const row = line.trim()
-      if (!machine || !row.startsWith('|') || /^\|[\s|:-]+\|$/.test(row)) continue
-      if (row.includes('| From | Event |')) continue
+      if (row.includes('| From | Event |')) {
+        inTransitions = true
+        continue
+      }
+      if (!row.startsWith('|')) {
+        if (row.length > 0) inTransitions = false
+        continue
+      }
+      if (!machine || !inTransitions || /^\|[\s|:-]+\|$/.test(row)) continue
       const rows = facts.transitions.get(machine) ?? new Set<string>()
       rows.add(row)
       facts.transitions.set(machine, rows)
@@ -162,9 +179,7 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
 
 function isSpecificationSource(path: string): boolean {
   if (path.startsWith('spec/generated/')) return false
-  return (
-    path.endsWith('/SPECIFICATION.md') || path === 'spec/SPECIFICATION.md' || path.endsWith('.tsp')
-  )
+  return path.endsWith('.tsp') || documentKind(path) !== undefined
 }
 
 async function readWorkingTree(root: string): Promise<Snapshot> {

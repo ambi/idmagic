@@ -4,6 +4,7 @@ import { compile, formatDiagnostic, NodeHost } from '@typespec/compiler'
 import { Window } from 'happy-dom'
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { basename, dirname, relative, resolve } from 'node:path'
+import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
 import { discoverGeneratedOpenApi } from '../../workspace/src/workspace.ts'
 import { renderSpecificationSite, type ScenarioTrace, type SourceDocument } from './render.ts'
 import { extractTypeSpecCatalog } from './typespec-catalog.ts'
@@ -14,15 +15,25 @@ const typespecPath = resolve(root, 'spec/main.tsp')
 const checkOnly = process.argv.includes('--check')
 const openapiPath = await discoverGeneratedOpenApi(root)
 
-const paths = [
-  'DEVELOPMENT.md',
-  'SPECIFICATION_FORMAT.md',
-  'WORK_ITEM_FORMAT.md',
-  'spec/SPECIFICATION.md',
-]
+/**
+ * A directory is in the split layout once it holds a README.md; until then the
+ * single SPECIFICATION.md is its canonical document. Only the names the layout
+ * defines are read, so an unrelated Markdown file beside them is not rendered.
+ */
+async function canonicalDocuments(directory: string, names: readonly string[]): Promise<string[]> {
+  const entries = await readdir(resolve(root, directory), { withFileTypes: true })
+  const files = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name))
+  if (!files.has('README.md')) return [`${directory}/SPECIFICATION.md`]
+  return names.filter((name) => files.has(name)).map((name) => `${directory}/${name}`)
+}
+
+const paths = ['DEVELOPMENT.md', 'SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
+paths.push(...(await canonicalDocuments('spec', ROOT_DOCUMENTS)))
 const contextRoot = resolve(root, 'spec/contexts')
 for (const entry of await readdir(contextRoot, { withFileTypes: true })) {
-  if (entry.isDirectory()) paths.push(`spec/contexts/${entry.name}/SPECIFICATION.md`)
+  if (entry.isDirectory()) {
+    paths.push(...(await canonicalDocuments(`spec/contexts/${entry.name}`, CONTEXT_DOCUMENTS)))
+  }
 }
 
 const documents: SourceDocument[] = []

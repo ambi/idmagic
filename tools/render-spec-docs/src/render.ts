@@ -39,8 +39,17 @@ type RenderedDocument = SourceDocument & {
   title: string
   sections: string[]
   outputPath: string
-  category: 'method' | 'whole-system' | 'context'
+  category: DocumentCategory
+  /** For a context document and its children, the context slug they belong to. */
+  context?: string
 }
+
+type DocumentCategory =
+  | 'method'
+  | 'whole-system'
+  | 'whole-system-child'
+  | 'context'
+  | 'context-child'
 
 export type RenderedSpecificationSite = {
   files: Record<string, string>
@@ -74,31 +83,61 @@ function stripFrontmatter(source: string): string {
   return source.replace(/^---\n[\s\S]*?\n---\n+/, '')
 }
 
+/** The file that declares a boundary is the page a reader lands on. */
+function isEntryDocument(name: string): boolean {
+  return name === 'SPECIFICATION.md' || name === 'README.md'
+}
+
 function documentMetadata(document: SourceDocument): RenderedDocument {
   const title = document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
-  if (document.path === 'spec/SPECIFICATION.md') {
-    return {
-      ...document,
-      id: 'whole-system',
-      title,
-      sections,
-      outputPath: 'specification/index.html',
-      category: 'whole-system',
-    }
+  const rootDocument = document.path.match(/^spec\/([^/]+)$/)?.[1]
+  if (rootDocument) {
+    const stem = rootDocument.replace(/\.md$/, '')
+    return isEntryDocument(rootDocument)
+      ? {
+          ...document,
+          id: 'whole-system',
+          title,
+          sections,
+          outputPath: 'specification/index.html',
+          category: 'whole-system',
+        }
+      : {
+          ...document,
+          id: `whole-system-${slug(stem)}`,
+          title,
+          sections,
+          outputPath: `specification/${slug(stem)}.html`,
+          category: 'whole-system-child',
+        }
   }
-  const context = document.path.match(/^spec\/contexts\/([^/]+)\/SPECIFICATION\.md$/)?.[1]
-  if (context) {
-    return {
-      ...document,
-      id: `context-${context}`,
-      title,
-      sections,
-      outputPath: `contexts/${context}/index.html`,
-      category: 'context',
-    }
+  const contextDocument = document.path.match(/^spec\/contexts\/([^/]+)\/([^/]+)$/)
+  const context = contextDocument?.[1]
+  const contextFile = contextDocument?.[2]
+  if (context && contextFile) {
+    const stem = contextFile.replace(/\.md$/, '')
+    return isEntryDocument(contextFile)
+      ? {
+          ...document,
+          id: `context-${context}`,
+          title,
+          sections,
+          outputPath: `contexts/${context}/index.html`,
+          category: 'context',
+          context,
+        }
+      : {
+          ...document,
+          id: `context-${context}-${slug(stem)}`,
+          title,
+          sections,
+          outputPath: `contexts/${context}/${slug(stem)}.html`,
+          category: 'context-child',
+          context,
+        }
   }
   const name = document.path.split('/').at(-1)?.replace(/\.md$/, '') ?? document.path
   return {
@@ -194,19 +233,28 @@ function stateDiagram(machine: string, rows: string[][]): string {
   return lines.join('\n')
 }
 
-export function addDerivedStateDiagrams(source: string): string {
+/**
+ * `standalone` is a states.md, where every H2 is a machine. In the single
+ * canonical document the machines are the H3s under `## State Transitions`.
+ */
+export function addDerivedStateDiagrams(source: string, standalone = false): string {
   const lines = source.split('\n')
   const insertions = new Map<number, string[]>()
-  let inStates = false
+  let inStates = standalone
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index] ?? ''
-    if (line === '## State Transitions') {
-      inStates = true
-      continue
+    if (!standalone) {
+      if (line === '## State Transitions') {
+        inStates = true
+        continue
+      }
+      if (line.startsWith('## ')) inStates = false
     }
-    if (line.startsWith('## ') && line !== '## State Transitions') inStates = false
-    if (!inStates || !line.startsWith('### ')) continue
-    const machine = line.slice(4).trim()
+    const isMachine = standalone
+      ? line.startsWith('## ') && !line.startsWith('### ')
+      : line.startsWith('### ')
+    if (!inStates || !isMachine) continue
+    const machine = line.slice(standalone ? 3 : 4).trim()
     let table = index + 1
     while (
       table < lines.length &&
@@ -335,15 +383,31 @@ function assetHref(page: string, asset: string): string {
 function navigation(page: string, documents: RenderedDocument[]): string {
   const method = documents.filter((document) => document.category === 'method')
   const root = documents.find((document) => document.category === 'whole-system')
+  const rootChildren = documents.filter((document) => document.category === 'whole-system-child')
   const contexts = documents.filter((document) => document.category === 'context')
+  // The context a reader is inside is the only one whose files are worth
+  // listing; expanding all of them at once buries the context list itself.
+  const open = documents.find((document) => document.outputPath === page)?.context
+  const link = (entry: RenderedDocument, child: boolean) => {
+    const current = entry.outputPath === page ? ' aria-current="page"' : ''
+    const cls = child ? ' class="nav-child"' : ''
+    return `<a data-site-link${cls}${current} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(entry.title)}</a>`
+  }
   const group = (title: string, entries: RenderedDocument[]) =>
     `<section class="nav-group"><h2>${escapeHtml(title)}</h2>${entries
       .map((entry) => {
-        const current = entry.outputPath === page ? ' aria-current="page"' : ''
-        return `<a data-site-link${current} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(entry.title)}</a>`
+        const children =
+          entry.category === 'context' && entry.context === open
+            ? documents.filter(
+                (document) =>
+                  document.category === 'context-child' && document.context === entry.context,
+              )
+            : []
+        return link(entry, false) + children.map((child) => link(child, true)).join('')
       })
       .join('')}</section>`
-  return `${group('Method', method)}${root ? group('Whole System', [root]) : ''}${group('Contexts', contexts)}<section class="nav-group"><h2>References</h2>${siteLink(page, 'api/index.html', 'API Reference')}${siteLink(page, 'models/index.html', 'Model Catalog')}${siteLink(page, 'traceability/index.html', 'Traceability')}</section>`
+  const whole = root ? group('Whole System', [root, ...rootChildren]) : ''
+  return `${group('Method', method)}${whole}${group('Contexts', contexts)}<section class="nav-group"><h2>References</h2>${siteLink(page, 'api/index.html', 'API Reference')}${siteLink(page, 'models/index.html', 'Model Catalog')}${siteLink(page, 'traceability/index.html', 'Traceability')}</section>`
 }
 
 function breadcrumbs(page: string, current: string): string {
@@ -370,7 +434,10 @@ function documentPage(
   documents: RenderedDocument[],
   markdown: MarkdownIt,
 ): string {
-  const source = addDerivedStateDiagrams(stripFrontmatter(document.source))
+  const source = addDerivedStateDiagrams(
+    stripFrontmatter(document.source),
+    document.path.endsWith('/states.md'),
+  )
   const body = `<article class="document">${markdown.render(source, { document })}</article>`
   const scripts = `<script src="${escapeHtml(assetHref(document.outputPath, 'mermaid.min.js'))}"></script><script src="${escapeHtml(assetHref(document.outputPath, 'site.js'))}"></script>`
   return shell({
@@ -634,7 +701,7 @@ function validateSiteLinks(files: Record<string, string>): void {
 const styles = `
 :root{color-scheme:light dark;--bg:#f4f6fb;--panel:#fff;--panel-2:#f8f9fd;--text:#182033;--muted:#667085;--line:#d9dfeb;--accent:#3457d5;--accent-soft:#e9eeff;--code:#edf1f8;--shadow:0 12px 32px rgba(25,35,60,.08);--actor:#6d28d9;--given:#176b87;--when:#9a5b00;--then:#157347;--alt:#b42318;--diagram-line:#294cba}
 @media(prefers-color-scheme:dark){:root{--bg:#0f131b;--panel:#171c27;--panel-2:#1d2431;--text:#eef2f8;--muted:#a7b0c1;--line:#30394b;--accent:#9db1ff;--accent-soft:#242f52;--code:#242b39;--shadow:none;--actor:#c4a7ff;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--alt:#ff9a91;--diagram-line:#b9c8ff}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group h2{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.actor{color:var(--actor)}.scenario-keyword.given{color:var(--given)}.scenario-keyword.when{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword.alt{color:var(--alt)}li:has(>.scenario-keyword){margin:.45em 0}li>ul li:has(>.scenario-keyword.alt){padding-left:8px;border-left:3px solid var(--alt)}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-title{color:var(--muted);font-weight:400}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group h2{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:22px;font-size:13px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.actor{color:var(--actor)}.scenario-keyword.given{color:var(--given)}.scenario-keyword.when{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword.alt{color:var(--alt)}li:has(>.scenario-keyword){margin:.45em 0}li>ul li:has(>.scenario-keyword.alt){padding-left:8px;border-left:3px solid var(--alt)}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-title{color:var(--muted);font-weight:400}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
 .model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--panel-2)}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
 @media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}main{width:auto;margin:0;padding:18px}.document,.reference-page,.model-detail,.hero{padding:24px 20px}.hero h1{font-size:34px}.diagram-shell .mermaid{min-width:480px}}
 @media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link{display:none}main{width:auto;margin:0;padding:0}.document,.reference-page,.model-detail,.hero{border:0;box-shadow:none;padding:0}a{color:inherit;text-decoration:none}}

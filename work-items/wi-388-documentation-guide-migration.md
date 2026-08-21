@@ -1,5 +1,5 @@
 ---
-status: pending
+status: in_progress
 authors: [tn]
 risk: high
 created_at: 2026-08-21
@@ -9,6 +9,31 @@ change_kind: refactor
 spec_impact:
   kind: none
   reason: "規範的シナリオ、Standards の行、状態遷移の内容と ID を変えず、ファイル配置と節構成だけを変える。REQ ID の追加、変更、退役を伴わない。"
+initial_context:
+  specification:
+    - DOCUMENTATION_GUIDE.md
+    - SPECIFICATION_FORMAT.md
+    - DEVELOPMENT.md
+    - spec/SPECIFICATION.md
+  typespec: []
+  source:
+    - spec/contexts
+    - tools/check/src/specification-doc.ts
+    - tools/check/src/check-specifications.ts
+    - tools/check/src/spec-diff.ts
+    - tools/workspace/src/workspace.ts
+    - tools/render-spec-docs/src/render.ts
+    - tools/render-spec-docs/src/main.ts
+    - tools/check/schemas/work-item.schema.json
+  tests:
+    - tools/check/src/specification-doc.test.ts
+    - tools/check/src/spec-diff.test.ts
+    - tools/render-spec-docs/src/render.test.ts
+    - tools/workspace/src/workspace.test.ts
+  stop_before_reading:
+    - backend
+    - frontend
+    - work-items/done
 ---
 
 # 仕様の正本を種類ごとのファイルへ分割し、DOCUMENTATION_GUIDE の構成へ移行する
@@ -95,11 +120,11 @@ Context の移行順は、小さいものから始めて形式を固めてから
 
 ## Tasks
 
-- [ ] T001 [Tools] `check-specifications` に新構成の分岐を追加し、両構成を受け入れる
-- [ ] T002 [Tools] `specification-doc` の節検査を、新構成ではファイル単位の検査へ振り分ける
-- [ ] T003 [Tools] `states.md` の状態の表を検査対象に加え、`State` 列と TypeSpec の列挙値の一致を確かめる
-- [ ] T004 [Tools] `render-spec-docs` が分割後のファイル群から生成できるようにする
-- [ ] T005 [Tools] `spec-diff` が分割後のファイルから差分を導けることを確認する
+- [x] T001 [Tools] `check-specifications` に新構成の分岐を追加し、両構成を受け入れる
+- [x] T002 [Tools] `specification-doc` の節検査を、新構成ではファイル単位の検査へ振り分ける
+- [x] T003 [Tools] `states.md` の状態の表を検査対象に加える。`Kind` の語彙、初期状態が 1 つであること、遷移表の `From` と `To` が状態の表に現れることを検査する。TypeSpec の列挙値との一致は取らない（下記の Completion に理由）
+- [x] T004 [Tools] `render-spec-docs` が分割後のファイル群から生成できるようにする
+- [x] T005 [Tools] `spec-diff` が分割後のファイルから差分を導けることを確認する
 - [ ] T006 [Spec] 小さい Context から順に分割する。1 コミット 1 Context
 - [ ] T007 [Spec] `Design` の内容を `decisions.md` と `internals.md` へ振り分ける
 - [ ] T008 [Spec] 各 Context の状態遷移に状態の表を追加する
