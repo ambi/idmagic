@@ -27,7 +27,7 @@ affected_spec:
 
 ## Scope
 
-- `spec/contexts/audit/SPECIFICATION.md` に、エージェントを主体とする監査イベントの検索と、委譲チェーンによる相関を求める規範シナリオを追加する。既存の REQ-AUDIT-003 (`workflow_id` / `run_id` による検索) と同じ形の軸拡張とする。
+- `spec/contexts/audit/scenarios.md` に、エージェントを主体とする監査イベントの検索と、委譲チェーンによる相関を求める規範シナリオを追加する。既存の REQ-AUDIT-003 (`workflow_id` / `run_id` による検索) と同じ形の軸拡張とする。
 - 追加する検索軸を確定する。少なくとも次を含む。
   - `actor.type` — 主体が `user` か `agent` かを区別する。既存の `actor.id` の意味を変えずに種別を分ける。
   - `agent.id` — エージェント自身の識別子。

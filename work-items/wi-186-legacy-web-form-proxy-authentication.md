@@ -25,10 +25,10 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
   - `wi-151-managed-device-inventory-and-posture-access-conditions` 完了後に、検証済み
     管理端末向けの認証freshness緩和を利用する。完了前は全端末を未管理として扱う。
 - **scl**:
-  - `spec/SPECIFICATION.md` の context map に `LegacyAccess` を追加する。
-  - `spec/contexts/legacy-access/SPECIFICATION.md` の glossary、models、interfaces、states、constraints/contracts、
+  - `spec/README.md` の Context Map に `LegacyAccess` を追加する。
+  - `spec/contexts/legacy-access/` の `README.md`、`glossary.md`、`states.md`、`decisions.md`、`scenarios.md`、`models.tsp`、
     scenarios、authorization/access、objectives、flows/scenarios を追加する。
-  - `spec/contexts/application/SPECIFICATION.md` に `legacy_form` protocol binding と、代理認証を使う
+  - `spec/contexts/application/` に `legacy_form` protocol binding と、代理認証を使う
     Application のポータル起動情報を追加する。
 - **decision**:
   - 新規 ADR で、標準フェデレーションを優先する境界、秘密情報の保管/発行境界、
@@ -47,7 +47,7 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
   - admin application 管理に legacy form binding、共有資格情報、auto-submit 承認状態を追加する。
   - account portal に本人用資格情報の登録/置換/削除と、拡張導入状態を追加する。
 - **architecture / documentation**:
-  - `spec/SPECIFICATION.md` に LegacyAccess context と依存方向を同期する。
+  - `spec/README.md` と `spec/structure.md` に LegacyAccess context と依存方向を同期する。
   - README に対象範囲、Vault設定、拡張配布、対応外ログイン形態、運用上の残余リスクを追加する。
 
 ## Out of Scope

@@ -67,7 +67,7 @@ Bulk を対象外とした。
 ## Tasks
 
 - [ ] T001 [Spec] `/Bulk` の契約(request/response 形状、`bulkId` 解決、
-      `failOnErrors`、`ServiceProviderConfig.bulk` 広告値)を `spec/contexts/sourcing/SPECIFICATION.md` に追加する。
+      `failOnErrors`、`ServiceProviderConfig.bulk` 広告値)を `spec/contexts/sourcing/standards.md` と `models.tsp` に追加する。
 - [ ] T002 [Domain] RED: bulkId 参照解決・operation validation の test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: `/Bulk` の HTTP contract test(部分失敗、`failOnErrors`、
       上限超過)を先に失敗させて実装する。

@@ -58,7 +58,7 @@ lost update を防ぐ。
 
 ## Tasks
 
-- [ ] T001 [Spec] sortBy/sortOrder と ETag/If-Match の契約を `spec/contexts/sourcing/SPECIFICATION.md` に追加する。
+- [ ] T001 [Spec] sortBy/sortOrder と ETag/If-Match の契約を `spec/contexts/sourcing/standards.md` と `models.tsp` に追加する。
 - [ ] T002 [Domain] RED: sort と version 比較の test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: sort 付き LIST と If-Match 付き PUT/PATCH の
       HTTP contract test (412 を含む) を先に失敗させて実装する。

@@ -35,7 +35,7 @@ React Testing Library テストのみで、Playwright e2e テストが存在し�
   上限の境界テストを追加する。
 - `frontend/tests/e2e/` に、lifecycle workflow の作成 → enable → run 履歴確認 → retry の一連を
   検証する Playwright e2e テストを追加する。
-- `spec/contexts/identity-management/SPECIFICATION.md` の scenarios (`emitted.exists(...)` 等) と Go 実装の
+- `spec/contexts/identity-governance/scenarios.md` と Go 実装の
   対応を確認する最小限の統合テストを追加する ([[wi-221-lifecycle-workflow-audit-event-emission]]
   の成果と連携する)。
 

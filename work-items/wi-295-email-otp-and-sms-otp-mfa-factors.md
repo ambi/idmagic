@@ -40,7 +40,7 @@ affected_spec:
 ## Motivation
 
 現在の MFA factor は `MfaFactorType` = `Totp` / `Webauthn` / `Hwk` / `Swk` のみである
-(`spec/contexts/authentication/SPECIFICATION.md`)。強い factor は揃っているが、**低摩擦な代替が無い**。
+(`spec/contexts/authentication/`)。強い factor は揃っているが、**低摩擦な代替が無い**。
 
 これは 2 つの実務的な壁になる:
 

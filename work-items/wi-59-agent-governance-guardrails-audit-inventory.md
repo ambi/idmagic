@@ -33,7 +33,7 @@ IdMagic は監査イベント基盤とエンドポイント単位のレート制
   - **未束縛の資格情報。** `AgentCredentialBinding` を持たない、または束縛先クライアントが失われたエージェント。
 - **管理 UI。** エージェント詳細に所有者・束縛クライアント・実効ガードレール・直近の委譲・判断・キル操作を統合し、棚卸しの観点で絞り込めるようにする。専用の権限で制御する。
 - ガードレールの設定・違反・棚卸しの投影をイベントとして残し、[[wi-377-agent-and-delegation-chain-audit-axes]] が加える監査軸から辿れるようにする。
-- durable な設計判断 (ガードレールの種別、評価点、承認への降格規則、棚卸しの観点) は `spec/contexts/identity-management/SPECIFICATION.md` の Design へ、本変更固有の分析と却下した代替案は本ファイルの `## Design` へ置く。
+- durable な設計判断 (ガードレールの種別、評価点、承認への降格規則、棚卸しの観点) は `spec/contexts/identity-management/decisions.md` へ、本変更固有の分析と却下した代替案は本ファイルの `## Design` へ置く。
 
 ## Out of Scope
 
@@ -63,7 +63,7 @@ IdMagic は監査イベント基盤とエンドポイント単位のレート制
 
 ## Tasks
 
-- [ ] T001 [Design] ガードレールの種別、評価点、承認への降格規則、棚卸しの観点を確定し `## Design` と `SPECIFICATION.md` の Design へ振り分ける。
+- [ ] T001 [Design] ガードレールの種別、評価点、承認への降格規則、棚卸しの観点を確定し、本ファイルの `## Design` と `spec/contexts/identity-management/decisions.md` へ振り分ける。
 - [ ] T002 [Spec] ガードレールのポリシー、違反イベント、棚卸しの検索、専用権限を仕様へ追加して再生成する。
 - [ ] T003 [Domain] ポリシー・版・判断と理由・棚卸しの投影モデルを実装する。
 - [ ] T004 [Persistence] ポリシーの保存と、イベントログのカーソルおよび読み取りモデルを追加し、冪等な再構築を実装する。

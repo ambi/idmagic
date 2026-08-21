@@ -60,9 +60,9 @@ CreateScimUser/UpdateScimUser/PatchScimUser はこの属性を黙殺する。
 ## Tasks
 
 - [ ] T000 [Decision] 対応するかどうかを ADR で判断する。却下する場合は
-      `spec/contexts/sourcing/SPECIFICATION.md` の `RFC7643-CORE-RESOURCES.reason` に明記して
+      `spec/contexts/sourcing/standards.md` の `RFC7643-CORE-RESOURCES` 行に明記して
       work item を `cancelled` にする。
-- [ ] T001 [Spec] (対応する場合) password の契約を `spec/contexts/sourcing/SPECIFICATION.md` に追加する。
+- [ ] T001 [Spec] (対応する場合) password の契約を `spec/contexts/sourcing/standards.md` と `models.tsp` に追加する。
 - [ ] T002 [Domain] RED: password のハッシュ化・ポリシー検証 test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: CreateScimUser/UpdateScimUser/PatchScimUser の
       password 処理 HTTP contract test を先に失敗させて実装する。ログ・エラー

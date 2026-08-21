@@ -34,7 +34,7 @@ affected_spec:
 - 全 operation について、宣言するステータスコード集合と handler が到達しうるコードを突き合わせた表を作る。
 - 差分を「契約が足りない」「契約が余っている」「実装が仕様どおりでない」に分類する。
 - 契約側を直せるものは直す。実装の変更を要するものは分類だけ残し、別 work item に切り出す。
-- middleware が operation の手前で返す応答をどう契約に書くか (共通の応答として宣言するか、書かないと決めるか) を決め、根拠を `spec/SPECIFICATION.md` に残す。
+- middleware が operation の手前で返す応答をどう契約に書くか (共通の応答として宣言するか、書かないと決めるか) を決め、根拠を `spec/api-rules.md` に残す。
 
 ## Out of Scope
 

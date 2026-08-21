@@ -20,7 +20,7 @@ IdMagic の wi-153 は意図的に「workflow enable 時の全 User への遡及
 trigger/filter/action から構築する必要があり、導入コストが高い。
 
 ## Scope
-- `spec/contexts/identity-management/SPECIFICATION.md` に `LifecycleWorkflowTemplate` (読み取り専用のカタログ、
+- `spec/contexts/identity-governance/models.tsp` に `LifecycleWorkflowTemplate` (読み取り専用のカタログ、
   trigger/action の雛形) を追加し、新規 workflow 作成時にテンプレートから初期値を埋められるように
   する。
 - 初期テンプレート例として「入社時の標準グループ付与」「退職時のアクセス剥奪」「部署異動時のグループ

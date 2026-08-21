@@ -23,7 +23,7 @@ frontend (`AdminLifecycleWorkflowsPage.tsx`) は一覧・run 履歴に検索/フ
 timestamp 表示、queued run の cancel 操作がない。
 
 ## Scope
-- `spec/contexts/identity-management/SPECIFICATION.md` の `ListLifecycleWorkflows` / `ListLifecycleWorkflowRuns`
+- `spec/contexts/identity-governance/main.tsp` の `ListLifecycleWorkflows` / `ListLifecycleWorkflowRuns`
   interface に pagination 契約 (`page_size` / cursor、または既存 admin 一覧に揃えた形) を追加する。
   [[wi-159-admin-resource-cursor-pagination]] が完了していればその cursor 契約に合わせ、未完了なら
   暫定契約とし、wi-159 完了時に移行可能な設計にする (`depends_on` には加えない。完了前提ではなく
