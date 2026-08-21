@@ -1099,7 +1099,7 @@ affected_spec:
 
 ## Quick start
 
-`just dev`でAPI、管理Web、PostgreSQLを起動する。
+`mise run dev`でAPI、管理Web、PostgreSQLを起動する。
 
 ## Documentation
 

@@ -57,8 +57,7 @@ func TestNormalizePageNegativeCountIsError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for negative count")
 	}
-	var pageErr *domain.PaginationError
-	if !errors.As(err, &pageErr) {
+	if _, ok := errors.AsType[*domain.PaginationError](err); !ok {
 		t.Fatalf("expected *domain.PaginationError, got %T: %v", err, err)
 	}
 }

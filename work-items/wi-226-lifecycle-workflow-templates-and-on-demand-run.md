@@ -54,9 +54,9 @@ trigger/filter/action から構築する必要があり、導入コストが高�
 - [ ] T005 [Verify] specification/Go/UI および大量対象時の非同期化を検証する。
 
 ## Verification
-- `just yaml-check`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: テンプレートから作成した workflow が編集可能な状態で開始されることを確認する。
 - 手動: 既存 User 50 名を選んで on-demand run を実行し、通常 run と同じ run 履歴・監査証跡が残る
   ことを確認する。

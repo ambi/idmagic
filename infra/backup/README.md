@@ -26,13 +26,13 @@ export PGDATABASE=idmagic
 
 ```bash
 # バックアップを取得する（pg_dump カスタム形式と SHA-256 チェックサム）。
-just backup-postgres <output-dir>
+mise run backup-postgres <output-dir>
 
 # 空の対象データベースへバックアップを復元する。本番環境以外であることを保証するため、データベース名を明示的に入力しなければならない。
-just restore-postgres <backup-file> <db-name>
+mise run restore-postgres <backup-file> <db-name>
 
 # 使い捨ての Docker Compose プロジェクトに対して、ローカルバックアップ、損失の模擬、復元、整合性検査からなる訓練全体を実行する。
-just restore-drill
+mise run restore-drill
 ```
 
 `restore-postgres.sh` は、テナントの行がすでにあるデータベースに対する実行を拒否する。新しく作った空のデータベースへ復元すること。最初に `psqldef` で `infra/schema/postgres.sql` を適用し、データを復元し、一時的な `UNLOGGED` / `LOGGED` テーブルを空にして、最後に `idmagic-batch restore-consistency-check` を実行する。

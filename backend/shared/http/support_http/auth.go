@@ -58,13 +58,11 @@ func protectedResourceMetadataURL(c *echo.Context) string {
 // WriteAccessTokenError maps RFC 6750 bearer-token failures to their resource
 // server response. It returns handled=false for non-token errors.
 func WriteAccessTokenError(c *echo.Context, err error) (handled bool, result error) {
-	var tokenErr *InvalidTokenError
-	if errors.As(err, &tokenErr) {
+	if _, ok := errors.AsType[*InvalidTokenError](err); ok {
 		SetBearerChallenge(c, "invalid_token", "")
 		return true, WriteProblem(c, http.StatusUnauthorized, "invalid_token", "The access token is invalid.")
 	}
-	var scopeErr *InsufficientScopeError
-	if errors.As(err, &scopeErr) {
+	if scopeErr, ok := errors.AsType[*InsufficientScopeError](err); ok {
 		SetBearerChallenge(c, "insufficient_scope", scopeErr.Required)
 		return true, WriteProblem(c, http.StatusForbidden, "insufficient_scope", "The required scope is missing.")
 	}

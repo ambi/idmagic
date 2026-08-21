@@ -84,8 +84,7 @@ func TestKeyStringAppliesBothCeilings(t *testing.T) {
 	if err == nil {
 		t.Fatalf("entity id of %d bytes must be rejected before it reaches btree", len(multibyte))
 	}
-	var lengthErr *LengthError
-	if !errors.As(err, &lengthErr) {
+	if _, ok := errors.AsType[*LengthError](err); !ok {
 		t.Fatalf("byte ceiling violation is not a *LengthError: %T %v", err, err)
 	}
 	if !strings.Contains(err.Error(), "bytes") {
@@ -109,8 +108,7 @@ func TestCheckKeyStringReportsTheCeilingThatFailed(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "bytes") {
 		t.Fatalf("byte violation must be reported in bytes: %v", err)
 	}
-	var lengthErr *LengthError
-	if !errors.As(err, &lengthErr) {
+	if _, ok := errors.AsType[*LengthError](err); !ok {
 		t.Fatalf("byte ceiling violation is not a *LengthError: %T %v", err, err)
 	}
 	if !strings.Contains(err.Error(), "entity_id") {

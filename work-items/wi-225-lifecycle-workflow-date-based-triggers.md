@@ -54,9 +54,9 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 - [ ] T004 [Verify] 境界日 (offset 当日、前後日)、タイムゾーン、重複実行を検証する。
 
 ## Verification
-- `just yaml-check`
-- `just test-go`
-- `just verify-go`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-go`
 - 自動: 対象日付の N 日前に達した User に対して 1 回だけ run が生成される。
 - 自動: スキャンが 1 日に複数回走っても同一 run が重複生成されない。
 - 手動: 入社日 3 日前に account を enable する workflow を作成し、対象日到達時に run が生成される

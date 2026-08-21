@@ -164,8 +164,7 @@ func (d Deps) issueCodeURL(
 		Sid:       authn.SessionID,
 	})
 	if err != nil {
-		var oauthErr *authorizationusecases.OAuthError
-		if errors.As(err, &oauthErr) {
+		if oauthErr, ok := errors.AsType[*authorizationusecases.OAuthError](err); ok {
 			return authorizationErrorURL(req, iss, oauthErr.Code, oauthErr.Description), nil
 		}
 		return "", err

@@ -17,7 +17,7 @@ OpenBao の Transit 鍵をバックアップせずに失うと、すべてのテ
 ### PostgreSQL の論理バックアップ
 
 ```sh
-just backup-postgres <output-dir> [database-url]
+mise run backup-postgres <output-dir> [database-url]
 ```
 
 `infra/backup/backup-postgres.sh` が `pg_dump -Fc`（カスタム形式）でタイムスタンプ付きのダンプを取得し、SHA-256 チェックサムを併記して出力する。接続先はデフォルト値を持たず、呼び出し側が明示する。
@@ -34,7 +34,7 @@ just backup-postgres <output-dir> [database-url]
 ## 復元手順
 
 ```sh
-just restore-postgres <backup-file> [database-url]
+mise run restore-postgres <backup-file> [database-url]
 ```
 
 `infra/backup/restore-postgres.sh` は次の順で実行する（`infra/schema/check-convergence.sh` と同じ、使い捨ての Compose プロジェクトを終了時に片付ける方式を使う）。
@@ -51,7 +51,7 @@ KMS / Vault へのアクセス確認、PostgreSQL の復元（スキーマを先
 
 ## 復元後の確認一覧
 
-`just restore-postgres` の最後に自動実行される `idmagic-batch restore-consistency-check` が次を検査する。
+`mise run restore-postgres` の最後に自動実行される `idmagic-batch restore-consistency-check` が次を検査する。
 
 - [ ] テナント、ユーザー、クライアントのレコード件数が 0 でない。
 - [ ] 各テナントの有効な署名鍵を解決でき、JWKS を構成できる。
@@ -67,7 +67,7 @@ KMS / Vault へのアクセス確認、PostgreSQL の復元（スキーマを先
 
 ### データベースの喪失
 
-1. 直近の PITR ベースバックアップ（本番）または `pg_dump`（訓練・小規模環境）から `just restore-postgres` を実行する。
+1. 直近の PITR ベースバックアップ（本番）または `pg_dump`（訓練・小規模環境）から `mise run restore-postgres` を実行する。
 2. 復元の整合順序に従い、整合性検査に合格するまで API を再開しない。
 3. RPO は最後の WAL アーカイブまたはダンプからの経過時間、RTO は障害検知から整合性検査の合格までの経過時間で計測する。
 
@@ -94,7 +94,7 @@ KMS / Vault へのアクセス確認、PostgreSQL の復元（スキーマを先
 
 ## 運用
 
-- **定期訓練**: `just restore-drill` を最低でも四半期に 1 回実行し、バックアップの成功だけでなく復元できること自体を確認する。実測した RPO / RTO を下記の表に追記する。
+- **定期訓練**: `mise run restore-drill` を最低でも四半期に 1 回実行し、バックアップの成功だけでなく復元できること自体を確認する。実測した RPO / RTO を下記の表に追記する。
 - **アクセスレビュー**: 暗号化されたバックアップ保存先と Vault / OpenBao のスナップショットへのアクセス権限を、鍵ローテーションと同じ頻度で棚卸しする。
 - **有効期限**: バックアップの保持期間を明示し、期限切れのダンプを自動削除する運用を設ける。
 - **スケジュールとアラート**: cron や Alertmanager などの運用基盤から定期訓練と失敗通知を実行する。
@@ -103,6 +103,6 @@ KMS / Vault へのアクセス確認、PostgreSQL の復元（スキーマを先
 
 | Date | Environment | Scenario | Measured RPO | Measured RTO | Notes |
 | --- | --- | --- | --- | --- | --- |
-| 2026-08-01 | ローカル Docker Compose（`just restore-drill`） | テナント 1 件、ユーザー 2 件、クライアント 3 件、署名鍵 1 件の `pg_dump` バックアップ → データベースの破棄・再作成 → 復元 → 整合性検査 | 0 秒（バックアップ直後に破棄したため差分は無視できる） | 6.3 秒（全体。うち復元と整合性検査は 2 秒） | データ量が少ないローカル訓練の下限値。本番規模の RPO / RTO は PITR を使うステージング環境で実測する。 |
+| 2026-08-01 | ローカル Docker Compose（`mise run restore-drill`） | テナント 1 件、ユーザー 2 件、クライアント 3 件、署名鍵 1 件の `pg_dump` バックアップ → データベースの破棄・再作成 → 復元 → 整合性検査 | 0 秒（バックアップ直後に破棄したため差分は無視できる） | 6.3 秒（全体。うち復元と整合性検査は 2 秒） | データ量が少ないローカル訓練の下限値。本番規模の RPO / RTO は PITR を使うステージング環境で実測する。 |
 
 Vault Transit を含むステージング環境での実際の訓練は、開発環境に Vault / OpenBao サービスが存在しないため未実施である。実施可能な環境が用意され次第、上表に追記する。

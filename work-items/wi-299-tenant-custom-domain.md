@@ -126,7 +126,7 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
 
 - [ ] T001 [Spec] `TenantDomain` / `TenantDomainState` / interface 5 件 / event 4 件 /
       `TenantEndpointStyle.CustomDomain` / quota `custom_domains` / scenario 4 件を追加し
-      `just check-scl` を通す。
+      `mise run check-spec` を通す。
 - [ ] T002 [ADR] 所有権検証方式・`Pending` 非予約・apex 拒否・quota・一意制約の範囲を
       ADR に記録する。
 - [ ] T003 [Domain] hostname 正規化 (lowercase / IDNA / trailing dot)、apex 拒否、
@@ -147,13 +147,13 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
       削除確認を含める。RED: presentation logic の unit test → GREEN。
 - [ ] T008 [Docs] README と `infra/README.md` に独自ドメイン運用手順 (DNS / TLS /
       WebAuthn / issuer 移行) を追記する。
-- [ ] T009 [Verify] 下記 Verification を緑にする。`just spec-render` で派生物を再生成する。
+- [ ] T009 [Verify] 下記 Verification を緑にする。`mise run spec-render` で派生物を再生成する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui` / `just test-ui-unit`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui` / `mise run test-ui-unit`
 - 手動: (1) ローカルで `/etc/hosts` にカスタムドメインを割り当て、検証済みにした
   テナントのログイン画面と branding が出ることを確認する。(2) 未検証ドメインで
   到達できないことを確認する。(3) custom domain 上の

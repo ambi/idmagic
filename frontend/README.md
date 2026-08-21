@@ -79,7 +79,7 @@ SPA は TanStack Router のファイルベースルーティング（`src/routes
 
 UI を変更したときは、次の検証を実行する。
 ```bash
-just verify-ui
+mise run verify-ui
 ```
 
 API 契約を変更したときは、Go の HTTP E2E テストを実行し、Cookie、CSRF 防御、OAuth のリダイレクト、JSON スキーマが正しいことを検証する。
@@ -90,7 +90,7 @@ Vite CLI は `#!/usr/bin/env node` を使うが、開発とビルドのスクリ
 
 次のコマンドで SPA の主要経路（`/authorize → login → consent → callback`）を検証する。
 ```bash
-just test-ui-e2e
+mise run test-ui-e2e
 ```
 
 テストランナーは `bun test` と組込みの `Bun.WebView` を使う。macOS では WKWebView、Linux と Windows では CDP 経由の Chrome を使うため、大規模なブラウザー自動化フレームワークや手動でのドライバーのダウンロードは不要である。
@@ -106,7 +106,7 @@ just test-ui-e2e
 
 ホステッド認証とアカウント管理の UI が対応するのは日本語 (`ja`) と英語 (`en`) だけである。製品のデフォルトは英語である。明示されたロケールもブラウザーのロケールも利用できないときの最終的なフォールバックを選ぶには、アプリケーションの起動時に `VITE_DEFAULT_LOCALE=ja` または `VITE_DEFAULT_LOCALE=en` を設定する。未設定または無効な値の場合は英語を使う。
 
-利用者に見える文言は、その機能が持つ辞書（例: `frontend/src/features/auth-flow/LoginPage.i18n.ts`）に追加し、同じ変更で両方のロケールの値を用意する。足りないキーや余分なキーを TypeScript が拒否するように `defineDictionary` を使い、コミット前に `just verify-ui` を実行する。別途仕様化した製品上の決定なしにロケールを追加しない。受信側 UI の辞書では、安定したバックエンドのエラーコードだけを翻訳する。バックエンドのエラーメッセージは英語だけなので、未知のメッセージは変更せず表示する。
+利用者に見える文言は、その機能が持つ辞書（例: `frontend/src/features/auth-flow/LoginPage.i18n.ts`）に追加し、同じ変更で両方のロケールの値を用意する。足りないキーや余分なキーを TypeScript が拒否するように `defineDictionary` を使い、コミット前に `mise run verify-ui` を実行する。別途仕様化した製品上の決定なしにロケールを追加しない。受信側 UI の辞書では、安定したバックエンドのエラーコードだけを翻訳する。バックエンドのエラーメッセージは英語だけなので、未知のメッセージは変更せず表示する。
 
 ### テスト時のロケール
 

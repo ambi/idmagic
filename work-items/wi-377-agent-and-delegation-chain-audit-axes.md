@@ -70,11 +70,11 @@ affected_spec:
 
 ## Verification
 
-- `just verify-spec`
-- `just test-go`
+- `mise run verify-spec`
+- `mise run test-go`
   - reason: 検索軸の許可リスト、抽出器のフォールバック除去、委譲チェーンによる相関、テナント境界、PII の非露出。
-- `just verify-ui`
-- `just verify`
+- `mise run verify-ui`
+- `mise run verify`
 - 手動: エージェントにユーザーを代行させて操作し、`actor.type=agent` と `agent.id` で引けること、同じ操作がユーザー本人の検索結果に混ざらないこと、チェーンを展開して代行の連なりが読めることを確認する。
 
 ## Risk Notes

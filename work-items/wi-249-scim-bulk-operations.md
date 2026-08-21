@@ -71,13 +71,13 @@ Bulk を対象外とした。
 - [ ] T002 [Domain] RED: bulkId 参照解決・operation validation の test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: `/Bulk` の HTTP contract test(部分失敗、`failOnErrors`、
       上限超過)を先に失敗させて実装する。
-- [ ] T004 [Verify] `just yaml-check`、`just test-go`、`just verify-go` を実行する。
+- [ ] T004 [Verify] `mise run check`、`mise run test-go`、`mise run verify-go` を実行する。
 
 ## Verification
 
-- `just yaml-check`
-- `just test-go`
-- `just verify-go`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-go`
 - 手動: 複数 User の create と、その `bulkId` を参照する Group member 追加を含む
   Bulk request を送り、想定通り解決されることを確認する。
 - 手動: `failOnErrors` を超えた場合に残りの operation が実行されないことを確認する。

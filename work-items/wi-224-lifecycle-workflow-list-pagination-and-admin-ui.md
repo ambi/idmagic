@@ -51,12 +51,12 @@ timestamp 表示、queued run の cancel 操作がない。
 - [ ] T002 [Go] usecase/handler/repository を pagination 対応にする。
 - [ ] T003 [UI] 一覧・run 履歴の検索/フィルタ/ページ送り、確認ダイアログ、run detail 画面、cancel
   操作を実装する。
-- [ ] T004 [Verify] `just verify-go` / `just verify-ui` / `just test-ui-e2e` を通す。
+- [ ] T004 [Verify] `mise run verify-go` / `mise run verify-ui` / `mise run test-ui-e2e` を通す。
 
 ## Verification
-- `just verify-go`
-- `just verify-ui`
-- `just test-ui-e2e`
+- `mise run verify-go`
+- `mise run verify-ui`
+- `mise run test-ui-e2e`
 - 手動: 100 件超の workflow および 100 件超の run を持つテナントで一覧・履歴のページ送りが正しく
   動くことを確認する。
 - 手動: `window.prompt`/`window.confirm` を使わずに対象ユーザー指定と削除確認ができることを確認する。

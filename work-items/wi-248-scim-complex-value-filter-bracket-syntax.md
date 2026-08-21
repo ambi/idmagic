@@ -74,13 +74,13 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
       記す — ADR-121)。
 - [ ] T003 [Usecase/Adapter] RED: LIST filter と PATCH path 双方の HTTP contract test を
       先に失敗させて実装する。
-- [ ] T004 [Verify] `just yaml-check`、`just test-go`、`just verify-go` を実行する。
+- [ ] T004 [Verify] `mise run check`、`mise run test-go`、`mise run verify-go` を実行する。
 
 ## Verification
 
-- `just yaml-check`
-- `just test-go`
-- `just verify-go`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-go`
 - 手動: `/scim/v2/Users?filter=emails[type eq "work"].value eq "..."` が期待通りの
   部分集合を返すことを確認する。
 - 手動: PATCH で `members[value eq "..."]` を path に指定した remove operation が

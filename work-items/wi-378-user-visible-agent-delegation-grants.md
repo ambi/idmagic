@@ -66,11 +66,11 @@ affected_spec:
 
 ## Verification
 
-- `just verify-spec`
-- `just test-go`
+- `mise run verify-spec`
+- `mise run test-go`
   - reason: 付与判定のフェイルクローズ、撤回から失効エポックまでの伝播、粒度 (当該ユーザーの代行だけが止まる)、期限切れ、テナント境界。
-- `just verify-ui`
-- `just verify`
+- `mise run verify-ui`
+- `mise run verify`
 - 手動: エージェントに代行を許可し、アカウントポータルに現れること、撤回すると発行済みトークンがイントロスペクションで無効になること、同じエージェントの他ユーザー向け代行が生きていることを確認する。
 
 ## Risk Notes

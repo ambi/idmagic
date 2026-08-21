@@ -46,11 +46,11 @@ Go バックエンドのカバレッジ改善は複数の work item に分割さ
 - [ ] T003 [Go] `internal/scim/usecases` の provisioning use case テストを追加する。
 - [ ] T004 [Go] `backend/shared/resilience` / `eventsink` / `observability` の横断パッケージをテストする。
 - [ ] T005 [Go] `internal/application/domain`、`internal/relay`、`cmd/idmagic-relay` の残り低カバレッジ領域をテストする。
-- [ ] T006 [Verify] `just verify-go` と `just test-go-cover` を通し、対象 package の改善を確認する。
+- [ ] T006 [Verify] `mise run verify-go` と `mise run test-go-cover` を通し、対象 package の改善を確認する。
 
 ## Verification
-- `just verify-go`
-- `just test-go-cover` で以下を確認:
+- `mise run verify-go`
+- `mise run test-go-cover` で以下を確認:
   - `backend/shared/security/tokens_jose と backend/signingkeys/keys_memory` >= 75%
   - `backend/shared/spec` >= 75%
   - `backend/authentication/handlers_http` >= 70%

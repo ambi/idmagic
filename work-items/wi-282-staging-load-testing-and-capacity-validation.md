@@ -79,7 +79,7 @@ ADR-139）は、高 churn テーブルの **UNLOGGED / LOGGED 選択**と **GC�
 - 実測メトリクス（dead tuple / autovacuum / bloat / WAL / p99）を Evidence に記録。
 - failover 後の回復・残存を実挙動で確認。
 - specification objective（login 応答成功率・latency、introspection p99）への適合を数値で確認。
-- 調整コミットがあれば `just verify` green。
+- 調整コミットがあれば `mise run verify` green。
 
 ## Risk Notes
 

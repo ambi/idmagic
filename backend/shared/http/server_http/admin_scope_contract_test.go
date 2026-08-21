@@ -15,7 +15,7 @@ import (
 // 到達可否を宣言していることを確かめる (REQ-APITOKENS-004)。
 //
 // TestAssembledRoutesMatchGeneratedOpenAPI がルート集合と OpenAPI の一致を保証し、
-// just check-admin-scopes が operation ごとの宣言の有無を保証する。この検査が足すのは
+// mise run check-admin-scopes が operation ごとの宣言の有無を保証する。この検査が足すのは
 // 実行時の解決そのもので、router のテンプレート (`:sub`) と契約のテンプレート
 // (`{user_id}`) を突き合わせる正規化が実際に機能していることを固定する。
 func TestEveryAdminRouteResolvesDeclaredApiTokenScopes(t *testing.T) {

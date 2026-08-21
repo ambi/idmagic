@@ -47,5 +47,5 @@ Why this change is needed / what problem it solves (not a restatement of the dif
 - Commit on the current branch; this repository commits to its default branch directly.
 - Leave TypeSpec derived artifacts untracked, and do not update the release baseline in an ordinary
   commit. A work-item commit in a parallel worktree normally carries no generated files. A commit that
-  lands on integration or main includes the result of `just spec-render`, keeping TypeSpec and its
+  lands on integration or main includes the result of `mise run spec-render`, keeping TypeSpec and its
   derived artifacts in step (see the `spec-render` Skill).

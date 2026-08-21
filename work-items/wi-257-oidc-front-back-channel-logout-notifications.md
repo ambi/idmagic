@@ -179,8 +179,8 @@ Go 実装スコープ:
       `GET /session/check` の route 契約差分は T006 で解消済み。
 
 ## Verification
-- `just yaml-check`
-- `just test-go` / `just lint-go` / `just build-go`
+- `mise run check`
+- `mise run test-go` / `mise run lint-go` / `mise run build-go`
 - 手動: `backchannel_logout_uri` を登録した test RP に対し、session revoke で
   logout token が POST されることを確認する。
 - 手動: `frontchannel_logout_uri` を登録した RP への iframe が `/end_session`

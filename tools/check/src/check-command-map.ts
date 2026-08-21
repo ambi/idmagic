@@ -20,13 +20,11 @@ try {
   // A repository without workflows has nothing to disagree with.
 }
 
-const justfile = await Bun.file(resolve(root, 'justfile')).text()
-const findings = verifyCommandMap(justfile, workflows)
+const miseToml = await Bun.file(resolve(root, 'mise.toml')).text()
+const findings = verifyCommandMap(miseToml, workflows)
 
 for (const finding of findings) {
-  console.error(
-    `${finding.file}: workflow calls a recipe the justfile does not define: ${finding.recipe}`,
-  )
+  console.error(`${finding.file}: workflow calls a task mise.toml does not define: ${finding.task}`)
 }
 if (findings.length > 0) process.exit(1)
 console.log(`ok  command map (${workflows.length} workflow file(s))`)

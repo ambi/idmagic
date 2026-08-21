@@ -14,6 +14,6 @@ Design section of the owning `SPECIFICATION.md`.
   document, API contracts belong in TypeSpec, and change-specific comparisons and history belong in
   the work item.
 - Do not create an architecture ledger. Structure is derived from directories and imports, and only
-  forbidden boundaries are checked, by `just check-boundaries`.
+  forbidden boundaries are checked, by `mise run check-boundaries`.
 - Do not create a new ADR. Fold rationale that stays true into the design text, concisely.
-- Pass `just check-spec` and `just check-boundaries` afterwards.
+- Pass `mise run check-spec` and `mise run check-boundaries` afterwards.

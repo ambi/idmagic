@@ -60,12 +60,12 @@ const entries = operations
       `\t${quote(name)}: {Method: ${quote(method)}, Path: ${quote(path)}, Deprecated: ${deprecated}, ApiTokenScopes: ${scopeLiteral(apiTokenScopes)}},`,
   )
   .join('\n')
-const generated = `// Code generated from spec/main.tsp by just spec-render; DO NOT EDIT.\n\npackage spec\n\nvar generatedOperations = map[string]Operation{\n${entries}\n}\n`
+const generated = `// Code generated from spec/main.tsp by mise run spec-render; DO NOT EDIT.\n\npackage spec\n\nvar generatedOperations = map[string]Operation{\n${entries}\n}\n`
 
 if (check) {
   const current = await readFile(output, 'utf8').catch(() => '')
   if (current !== generated) {
-    console.error('backend/shared/spec/operations_gen.go is stale; run just spec-render')
+    console.error('backend/shared/spec/operations_gen.go is stale; run mise run spec-render')
     process.exit(1)
   }
 } else {

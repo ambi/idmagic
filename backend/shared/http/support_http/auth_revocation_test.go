@@ -114,8 +114,7 @@ func TestResolveAuthnContextAppliesRevocation(t *testing.T) {
 				}
 				return
 			}
-			var tokenErr *InvalidTokenError
-			if !errors.As(err, &tokenErr) {
+			if _, ok := errors.AsType[*InvalidTokenError](err); !ok {
 				t.Fatalf("err=%v authn=%+v; want InvalidTokenError", err, got)
 			}
 		})

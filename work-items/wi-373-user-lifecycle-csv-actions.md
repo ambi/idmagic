@@ -77,7 +77,7 @@ CSV の受け取りは 1 回だけ、適用は成功済みプレビューの ID 
 
 ## Tasks
 
-- [ ] T001 [Spec] `lifecycle_action` の語彙、遷移ガード、操作別権限、自己操作・source-managed 拒否、`purge` の確認手段を TypeSpec と REQ-IDMANAGEMENT-004 系 scenario へ書き、`just check-scl` を通す。
+- [ ] T001 [Spec] `lifecycle_action` の語彙、遷移ガード、操作別権限、自己操作・source-managed 拒否、`purge` の確認手段を TypeSpec と REQ-IDMANAGEMENT-004 系 scenario へ書き、`mise run check-spec` を通す。
 - [ ] T002 [Domain] 列スキーマへの `lifecycle_action` 追加、閉じた語彙の解析、空セルと列欠落の同値、エクスポートでの常時空出力を test-first で実装する。
 - [ ] T003 [UseCase] `UserLifecycle` ガードを再利用する行計画を実装し、冪等な no-op、到達不能な遷移、猶予期間未達の `purge`、プロフィール更新との組み合わせを網羅する。
 - [ ] T004 [UseCase] 行単位の権限判定と、自己操作・source-managed・所有権判定不能の fail-closed 拒否を実装する。権限不足の行だけが拒否され他行が続くことを固定する。
@@ -88,12 +88,12 @@ CSV の受け取りは 1 回だけ、適用は成功済みプレビューの ID 
 
 ## Verification
 
-- `just check`
-- `just spec-render`
-- `just check-api-compat`
-- `just verify-go`
-- `just verify-ui`
-- `just test-ui-e2e`
+- `mise run check`
+- `mise run spec-render`
+- `mise run check-api-compat`
+- `mise run verify-go`
+- `mise run verify-ui`
+- `mise run test-ui-e2e`
 - integration: 10,000 User を全互換列で export→apply し、lifecycle が 1 件も変化せず全行 `unchanged` になる。
 - integration: `admin:user_delete` のみを持つ実行者が `soft_delete` と `purge` を混在させたファイルを適用し、`purge` の行だけが拒否される。
 - integration: プレビュー後に対象 User を別操作で `Deleted` にし、適用が古い計画を実行せず現在状態から拒否する。

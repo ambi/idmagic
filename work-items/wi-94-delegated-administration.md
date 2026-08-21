@@ -58,12 +58,12 @@ created_at: 2026-07-03
 - [ ] T006 [Verify] list count/ID enumeration、scope移動/削除、expiry/cache、自己昇格/再委任、複数assignment合成、tenant越境を検証する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run build-go`
+- `mise run typecheck-ui`
+- `mise run lint-ui`
+- `mise run build-ui`
 - 手動: 特定グループのみ管理できる副管理者を割当 → そのグループは操作でき、 scope 外のユーザ / グループ / アプリの管理操作が拒否されることを確認する。
 
 ## Risk Notes

@@ -51,7 +51,7 @@ Implementation order, migration, and unresolved questions.
 - [ ] T003 [Verify] Verify the change.
 
 ## Verification
-- `just verify`
+- `mise run verify`
 
 ## Risk Notes
 Risks and mitigations.
@@ -74,7 +74,7 @@ spec_impact: { kind: none, reason: "A concrete reason." }
 reading list that points at moved or deleted files is worse than none. A pending item needs only
 Motivation, Scope, and Out of Scope to be useful.
 
-Once the item is `in_progress`, `just check-work-items` resolves that list: every path must exist, and a
+Once the item is `in_progress`, `mise run check-work-items` resolves that list: every path must exist, and a
 `spec/contexts/<context>/scenarios.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
 
 `affected_spec` is resolved for every record, completed ones included, because it indexes the normative
@@ -93,5 +93,5 @@ to `work-items/done/`:
 - **Summary**:
   The semantic difference introduced by the work.
 - **Verification Results**:
-  - `just verify` - passed
+  - `mise run verify` - passed
 ```

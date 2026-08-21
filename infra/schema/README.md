@@ -69,7 +69,7 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 開発用 Compose ファイルには、1 回だけ実行する `schema` サービスがある:
 
 ```bash
-just dev-compose
+mise run dev-compose
 ```
 
 `schema` は PostgreSQL を待ち、`psqldef --apply --file /schema/postgres.sql` を実行して終了する。その後に `idp` が起動する。適用処理は冪等であり、データベースが `postgres.sql` と一致した後に Compose を再実行しても、追加の DDL は生成されない。
@@ -77,7 +77,7 @@ just dev-compose
 スキーマだけを変更し、スタックがすでに動いている場合は、スタック全体を作り直さずに適用する:
 
 ```bash
-just schema-compose
+mise run schema-compose
 ```
 
 適用前に開発用データベースを確認するには、`psqldef` をインストールしたホストからプレビューを実行する:
@@ -89,10 +89,10 @@ psqldef -U idmagic -h localhost -p 5432 idmagic \
 
 ## CI での収束検査
 
-CI はプッシュとプルリクエストのたびに `just check-schema` を実行する。破棄可能な空の PostgreSQL データベース (開発スタックではなく、隔離した Compose プロジェクト) へ `postgres.sql` を適用し、「適用 → プレビュー (何もしないこと) → 再適用 → プレビュー (引き続き何もしないこと)」の順で収束を検証する。これは `work-items/done/wi-308-reconsider-psqldef-adoption.md` に記録した psqldef の不具合群に対する、恒久的かつ機械検査可能な防御である。特に、対応する `ADD` を伴わない暗黙の `DROP CONSTRAINT` (下の Rules を参照) は、1 回のプレビューを人が確認するだけでは見落としやすい。ローカルでは次のコマンドで実行する:
+CI はプッシュとプルリクエストのたびに `mise run check-schema` を実行する。破棄可能な空の PostgreSQL データベース (開発スタックではなく、隔離した Compose プロジェクト) へ `postgres.sql` を適用し、「適用 → プレビュー (何もしないこと) → 再適用 → プレビュー (引き続き何もしないこと)」の順で収束を検証する。これは `work-items/done/wi-308-reconsider-psqldef-adoption.md` に記録した psqldef の不具合群に対する、恒久的かつ機械検査可能な防御である。特に、対応する `ADD` を伴わない暗黙の `DROP CONSTRAINT` (下の Rules を参照) は、1 回のプレビューを人が確認するだけでは見落としやすい。ローカルでは次のコマンドで実行する:
 
 ```bash
-just check-schema
+mise run check-schema
 ```
 
 ## 本番環境への配備
@@ -128,7 +128,7 @@ psqldef -U "$PGUSER" -h "$PGHOST" -p "$PGPORT" "$PGDATABASE" \
 - `postgres.sql` に SQL コメント (`--`) を書かない。理由は独立して 2 つある:
   - 設計上の根拠は DDL ファイルではなく、責務を持つ `spec/` の正本に置く。「なぜ」を言い直すコメントは、意思決定を複製した場合と同じように正本の設計記録からずれる。列型の規則と `tenant_id` の保持区分は `spec/persistence.md` を参照し、ここでは繰り返さない。
   - `postgres.sql` にコメントを含めない。`psqldef` の依存順序の解決へコメントが影響しないようにするためである。
-- 複数列を対象とする制約には、PostgreSQL が無名の単一列制約へ付けるデフォルト名と衝突しない明示名を付ける。`UNIQUE` の `<table>_<column>_key` と `CHECK` の `<table>_<column>_check` に相当する名前を避け、たとえば整合性制約には `..._consistency` を使う。衝突すると `psqldef` が制約を自動生成扱いし、再適用時に対応する追加なしで削除する可能性があるためである。`just check-schema` はこの問題を検出する安全網であり、命名規則の代替ではない。
+- 複数列を対象とする制約には、PostgreSQL が無名の単一列制約へ付けるデフォルト名と衝突しない明示名を付ける。`UNIQUE` の `<table>_<column>_key` と `CHECK` の `<table>_<column>_check` に相当する名前を避け、たとえば整合性制約には `..._consistency` を使う。衝突すると `psqldef` が制約を自動生成扱いし、再適用時に対応する追加なしで削除する可能性があるためである。`mise run check-schema` はこの問題を検出する安全網であり、命名規則の代替ではない。
 - すべての `CHECK (col IN (...))` の値一覧をアルファベット順に書く。意味のない制約の再作成を避け、`psqldef` のプレビューを実際の変更を示す信頼できる信号に保つためである。
 - 次の規約は設計ではなく SQL の書き方に関するため、このファイルで維持する。これを超える内容は `spec/persistence.md` を参照する:
   - テーブル自身の識別子は `id` とする。別のテーブルから `User` を参照する列は `user_id` とし、所有者の参照は `owner_user_id` とする。

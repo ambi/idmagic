@@ -75,10 +75,10 @@ Okta も cloud STS では正面提供しておらず (managed/PHS や AD FS 併�
 - [ ] T006 [Verify/Docs] Samba/AD fixture と browser/proxy test で valid ticket、expired/replayed token、wrong SPN/realm、spoofed header、fallback、keytab rotation を検証し運用手順を記載する。
 
 ## Verification
-- `just test-go`
+- `mise run test-go`
   - reason: SPNEGO 検証・principal 解決・replay/skew 拒否・passive WIA・イントラ判定の境界。
-- `just lint-go`
-- `just build-go`
+- `mise run lint-go`
+- `mise run build-go`
 - 手動: keytab を構成し、ドメイン PC のブラウザから passive サインインがフォーム無しで 無音完了すること、改竄・期限切れチケットが拒否されることを確認する。
 - 手動: 社外 (イントラ判定が偽) からはフォーム認証に倒れることを確認する。
 

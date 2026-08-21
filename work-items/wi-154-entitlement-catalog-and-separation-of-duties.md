@@ -56,10 +56,10 @@ rule を導入し、将来の access request / access review / outbound provisio
 - [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run check-ids`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: 同一ユーザーに競合する entitlement を割り当てようとすると保存前 preview と保存時検証で拒否されることを確認する。
 - 手動: group 経由の entitlement と直接 entitlement の合算で SoD conflict が検出されることを確認する。
 

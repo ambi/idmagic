@@ -163,8 +163,7 @@ func TestDeviceFlowDeny(t *testing.T) {
 }
 
 func oauthErrorCode(err error) string {
-	var oauthErr *OAuthError
-	if errors.As(err, &oauthErr) {
+	if oauthErr, ok := errors.AsType[*OAuthError](err); ok {
 		return oauthErr.Code
 	}
 	return ""

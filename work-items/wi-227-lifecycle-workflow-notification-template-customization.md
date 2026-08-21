@@ -43,9 +43,9 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
 - [ ] T005 [Verify] injection 耐性・fallback・locale 切り替えを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-ui`
 - 自動: 許可外の placeholder や HTML/script を含むテンプレート保存が拒否される。
 - 手動: テナント管理者がテンプレートを編集し、実際の workflow 実行メールに反映されることを確認する。
 

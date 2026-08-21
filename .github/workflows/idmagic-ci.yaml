@@ -14,37 +14,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache-dependency-path: go.sum
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-      - uses: extractions/setup-just@v2
+      - uses: jdx/mise-action@v4
       - name: Install dependencies
-        run: just setup
+        run: mise run setup
       - name: Verify Core (Tools & Configs)
         run: |
-          just check
-          just check-api-compat
-          just test-tools
-          just typecheck-tools
+          mise run check
+          mise run check-api-compat
+          mise run test-tools
+          mise run typecheck-tools
       - name: Go lint
-        uses: golangci/golangci-lint-action@v9.3.0
-        with:
-          version: v2.12.2
-          args: ./...
+        run: mise run lint-go
       - name: Test Go (Race Detector)
-        run: just test-go-race
+        run: mise run test-go-race
       - name: Verify UI (Lint & Format)
         run: |
-          just format-check-ui
-          just lint-ui
+          mise run format-check-ui
+          mise run lint-ui
       - name: Test UI (Coverage)
-        run: just test-ui-cover
+        run: mise run test-ui-cover
       - name: Build UI
-        run: just build-ui
+        run: mise run build-ui
       - name: Upload UI coverage artifact
         uses: actions/upload-artifact@v4
         with:
@@ -56,9 +46,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: extractions/setup-just@v2
+      - uses: jdx/mise-action@v4
       - name: Verify empty-database convergence
-        run: just check-schema
+        run: mise run check-schema
 
   sast:
     name: CodeQL

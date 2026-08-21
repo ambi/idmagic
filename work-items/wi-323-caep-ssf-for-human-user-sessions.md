@@ -115,8 +115,8 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
 
 ## Verification
 
-- `just check-scl` / `just verify-spec`
-- `just test-go`
+- `mise run check-spec` / `mise run verify-spec`
+- `mise run test-go`
   - reason: revocation epoch の単調増加、Introspect の fail-closed 判定、各トリガーからの
     epoch 前進を検証する。
 - 手動: ユーザーを disable/delete、または管理者がセッションを強制終了 → 発行済み token が

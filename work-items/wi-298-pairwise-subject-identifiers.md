@@ -165,14 +165,14 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
       salt の不変性・逆引き・SAML NameID との対応・切り替えの不可逆性)。
 - [ ] T003 [Spec] `OAuth2Client.subject_type`、`subject_types_supported` への pairwise 追加、
       Token / UserInfo / ID Token の写像記述、ClaimMapping / Saml への追記、event、
-      scenario 6 件を追加し `just check-scl` を通す。
+      scenario 6 件を追加し `mise run check-spec` を通す。
 - [ ] T004 [Domain] subject 写像関数 (public / pairwise) を実装する。RED: 同一 sector で
       安定、異なる sector で異なる、public は従来と一致するテストを先に書く
       (scenario `OAuth2.pairwise_subject_stable_per_sector`) → GREEN。
 - [ ] T005 [Internal ID] T001 で見つかった「内部処理が `sub` を使っている箇所」を内部 ID に
       置換する。RED: 該当経路が pairwise クライアントでも動くテスト → GREEN。
 - [ ] T006 [Persistence] tenant salt と `(tenant, sector, pairwise_sub) -> user_id` の
-      マッピングを `infra/schema/postgres.sql` に追加し、`just sqlc-generate` を実行する。
+      マッピングを `infra/schema/postgres.sql` に追加し、`mise run sqlc-generate` を実行する。
       salt はテナント作成時に生成し不変とする。
 - [ ] T007 [Output paths] ID Token / access token / UserInfo / introspection の 4 経路が
       同一の写像を通ることを実装で強制する。RED: 4 経路で `sub` が一貫するテスト → GREEN。
@@ -187,15 +187,15 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 - [ ] T012 [UI] Application の OIDC 詳細設定に `subject_type` と切り替え警告を追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T013 [Docs] README に pairwise の設定・sector の決め方・切り替えの影響を追記する。
-- [ ] T014 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [ ] T014 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui` / `just test-ui-unit`
-- `just demo` — 既存の OIDC デモ (public クライアント) の `sub` が変わらないこと
-- 手動: `just dev` で (1) pairwise クライアント 2 件 (別 Application) で同一ユーザーの
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui` / `mise run test-ui-unit`
+- `mise run demo` — 既存の OIDC デモ (public クライアント) の `sub` が変わらないこと
+- 手動: `mise run dev` で (1) pairwise クライアント 2 件 (別 Application) で同一ユーザーの
   `sub` が異なること、(2) 同一 Application の複数 client で一致すること、
   (3) ID Token / UserInfo / introspection の `sub` が一致すること、
   (4) 管理 API で pairwise sub からユーザーを解決できること、
@@ -211,4 +211,4 @@ ADR にローテーション不可を明記し、切り替えの不可逆性を 
 内部処理が `sub` 文字列に依存している箇所を見落とすと、pairwise クライアントで
 セッションや失効が静かに壊れる。T001 の棚卸しを実装前に完了させる。
 既定を public に維持することで既存 RP への影響はゼロだが、それを回帰テスト
-(`just demo` と contract テスト) で明示的に守る。
+(`mise run demo` と contract テスト) で明示的に守る。

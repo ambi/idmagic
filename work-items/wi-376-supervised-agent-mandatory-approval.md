@@ -61,10 +61,10 @@ OAuth2 の仕様は「どのエージェントが承認を要するか」の判�
 
 ## Verification
 
-- `just verify-spec`
-- `just test-go`
+- `mise run verify-spec`
+- `mise run test-go`
   - reason: 3 つの発行経路それぞれで `Supervised` の拒否と承認後の発行、`Autonomous` の非退行、判定不能時のフェイルクローズを確認する。
-- `just verify`
+- `mise run verify`
 - 手動: `Supervised` のエージェントを登録し、承認なしにトークンが得られないこと、アカウントポータルで承認するとトークンが得られること、監査に区分を根拠とした判断が残ることを確認する。
 
 ## Risk Notes

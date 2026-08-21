@@ -32,7 +32,7 @@ affected_spec:
 
 ## Verification
 
-- `just verify`
+- `mise run verify`
 - 手動確認: MFA 登録済みの user がブラウザー経路で登録を開始すると、「登録が許可されていない」とは別の code が返る。
 
 ## Risk Notes

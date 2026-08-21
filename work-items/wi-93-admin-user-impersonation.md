@@ -57,12 +57,12 @@ impersonation 中の可視バナー・機微操作の禁止を備えた形で導
 - [ ] T006 [Verify] self/system-admin/cross-tenant拒否、role変化中session、token refresh、expiry/end replay、危険操作、audit/notificationをE2E検証する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run build-go`
+- `mise run typecheck-ui`
+- `mise run lint-ui`
+- `mise run build-ui`
 - 手動: 専用権限を持つ admin が代理ログイン → バナーが出て対象ユーザ画面を閲覧 できる。機微操作が禁止され、開始 / 終了 / 操作が監査に impersonator 付きで 残ることを確認する。
 - 手動: 権限が無い admin / cross-tenant では impersonation が拒否されることを確認する。
 

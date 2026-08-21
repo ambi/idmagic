@@ -81,10 +81,10 @@ no-response 時の既定失効、campaign 結果のレポートを提供する�
 - [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run check-ids`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: campaign 作成後、対象の group membership / application assignment が reviewer
   向け一覧に現れ、承認 / 失効を記録できることを確認する。
 - 手動: 締切を過ぎても decision が記録されなかった対象が、既定動作 (失効) に従って

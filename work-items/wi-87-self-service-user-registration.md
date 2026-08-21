@@ -65,12 +65,12 @@ self-service registration を標準機能として持つ:
 - [ ] T006 [Verify] existing/disabled/deleted user、domain policy、token replay/expiry、concurrent verify、default group、enumeration/load を検証する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run build-go`
+- `mise run typecheck-ui`
+- `mise run lint-ui`
+- `mise run build-ui`
 - 手動: テナント設定で登録を有効化 → RegisterPage で email/password 登録 → 確認メールのリンクで検証 → login 成立。設定を無効化すると登録導線が塞がる ことを確認する。
 - 手動: 既存 email で登録しても「存在する」ことが応答から判別できないことを 確認する。
 

@@ -247,7 +247,7 @@ func TestSetPaginationLinksEmitsFirstPreviousNextLast(t *testing.T) {
 			t.Fatalf("Link missing rel=%s: %q", rel, link)
 		}
 	}
-	firstPart := strings.Split(link, ", ")[0]
+	firstPart, _, _ := strings.Cut(link, ", ")
 	if strings.Contains(firstPart, "cursor=") {
 		t.Fatalf("first link contains cursor: %q", firstPart)
 	}

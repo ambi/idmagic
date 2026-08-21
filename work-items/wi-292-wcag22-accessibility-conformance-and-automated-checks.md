@@ -96,7 +96,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
   - SPA ルーティングのフォーカス管理: 画面遷移後に見出しへフォーカスを移し、
     ページタイトルを更新する ([[ADR-086-ui-navigation-consistency-and-page-title-policy]] と整合)。
 - **tooling**:
-  - `justfile` に `just test-ui-a11y` を追加し、`verify-ui` または CI の UI ジョブに組み込む。
+  - `mise.toml` に `mise run test-ui-a11y` を追加し、`verify-ui` または CI の UI ジョブに組み込む。
 - **documentation**:
   - `frontend/README.md` にアクセシビリティ方針、対象範囲、検査の実行方法、
     手動確認チェックリスト (スクリーンリーダーでの確認手順) を追記する。
@@ -137,10 +137,10 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 ## Tasks
 
 - [ ] T001 [Spec] `System.standards.WCAG22` の各要件に検証手段の対応を追記し、
-      scenario 3 件と対象画面の段階を追加して `just check-scl` を通す。
+      scenario 3 件と対象画面の段階を追加して `mise run check-spec` を通す。
 - [ ] T002 [ADR] アクセシビリティ適合の範囲と検証方法の ADR を起票する
       (準拠レベル・対象段階・自動 / 手動の分界・ブランディングとの整合・CI 閾値)。
-- [ ] T003 [Tooling] E2E に axe-core を組み込み、`just test-ui-a11y` を `justfile` に追加する。
+- [ ] T003 [Tooling] E2E に axe-core を組み込み、`mise run test-ui-a11y` を `mise.toml` に追加する。
       対象画面のリストを設定として持つ。
 - [ ] T004 [Baseline] 認証 UI とアカウントポータルの現状 violations を棚卸しし、
       深刻度別の件数を記録する。
@@ -165,8 +165,8 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items`
-- `just verify-ui` / `just test-ui-unit` / `just test-ui-e2e` / `just test-ui-a11y` (新設)
+- `mise run check` / `mise run check-spec` / `mise run check-work-items`
+- `mise run verify-ui` / `mise run test-ui-unit` / `mise run test-ui-e2e` / `mise run test-ui-a11y` (新設)
 - 手動: キーボードのみ (マウス不使用) でログイン → MFA → アカウントポータルの
   主要操作を完了できることを確認する。
 - 手動: スクリーンリーダー (VoiceOver または NVDA) で、(1) 入力ラベルが読まれる、

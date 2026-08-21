@@ -159,7 +159,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 
 - [ ] T001 [Spec] `standards` に RFC9101 / JARM、client メタデータ 3 件、`request` パラメータ、
       Authorize / PAR の requires、discovery メタデータ、event、scenario 8 件を追加し
-      `just check-scl` を通す。
+      `mise run check-spec` を通す。
 - [ ] T002 [ADR] 署名付き認可メッセージの ADR を起票する (request_uri 非対応の理由・
       アルゴリズム許可集合・パラメータ競合規則・JARM の範囲・鍵の出所)。
 - [ ] T003 [Domain] request object の検証 (署名・`iss` / `aud` / `exp` / `nbf` / `jti`) と
@@ -182,17 +182,17 @@ FAPI を掲げる以上の整合性の問題でもある。
 - [ ] T009 [UI] Application の OIDC 詳細設定に 3 つのメタデータを追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T010 [Docs] README に JAR / JARM の設定と `request_uri` 非対応の理由を追記する。
-- [ ] T011 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui`
-- 手動: `just dev` で (1) 署名付き request object を使った認可コードフローが完了すること、
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui`
+- 手動: `mise run dev` で (1) 署名付き request object を使った認可コードフローが完了すること、
   (2) 署名を改変すると拒否されること、(3) `response_mode=jwt` で署名付きレスポンスが返り、
   公開鍵で検証できること、(4) `request_uri=https://...` が明示エラーになること、を確認する。
-- 手動: `just demo` の OIDC デモが従来どおり動作すること (既存クライアントの回帰確認)。
+- 手動: `mise run demo` の OIDC デモが従来どおり動作すること (既存クライアントの回帰確認)。
 
 ## Risk Notes
 

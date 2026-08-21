@@ -38,7 +38,7 @@ wi-216 で動的グループの編集画面に簡易的な条件ビルダーUI�
 - [ ] T002 [Architecture/Design] 任意のCEL式を表現可能なビジュアルエディタUIの設計と、逆パース手法（フロントエンド完結 vs バックエンドAPI）の技術選定を行う。
 - [ ] T003 [Backend/UI] CEL文字列からASTへの逆パース処理を実装する。
 - [ ] T004 [UI] ツリー/ブロック型へ進化した高度な `DynamicRuleEditor` を実装し、双方向の変換（CEL文字列 ↔ UI状態）を可能にする。
-- [ ] T005 [Verify] `just yaml-check`, `just verify-ui` の通過と、複雑なCEL式のビジュアル編集の動作確認を行う。
+- [ ] T005 [Verify] `mise run check`, `mise run verify-ui` の通過と、複雑なCEL式のビジュアル編集の動作確認を行う。
 
 ## Verification
 - 手動: 作成画面からビルダーを使って動的グループを作成できることを確認。

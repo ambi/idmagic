@@ -272,8 +272,7 @@ func writeDataExportError(c *echo.Context, err error) error {
 	case errors.Is(err, jobsports.ErrJobAlreadyTerminal):
 		return support.WriteProblem(c, http.StatusConflict, "data_export_not_cancelable", "The export has already finished.")
 	}
-	var quotaErr *tenancydomain.QuotaExceededError
-	if errors.As(err, &quotaErr) {
+	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		return support.WriteProblem(c, http.StatusTooManyRequests, "quota_exceeded", "The active job quota has been exceeded.")
 	}
 	return support.WriteServerError(c, err)

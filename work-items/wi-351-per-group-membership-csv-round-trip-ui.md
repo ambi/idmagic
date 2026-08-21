@@ -101,12 +101,12 @@ Membershipは「CSVに無い行を削除」と解釈すると、分割ファイ�
 
 ## Verification
 
-- `just check`
-- `just spec-render`
-- `just check-api-compat`
-- `just verify-go`
-- `just verify-ui`
-- `just test-ui-e2e`
+- `mise run check`
+- `mise run spec-render`
+- `mise run check-api-compat`
+- `mise run verify-go`
+- `mise run verify-ui`
+- `mise run test-ui-e2e`
 - integration: 10,000 manual membershipsをexport→previewし全行unchanged。
 - integration: exportを2ファイルに分けて片方だけapplyしても、他方のmembershipが削除されない。
 - integration: preview後の並行add/removeをapplyが現在状態から再計画する。

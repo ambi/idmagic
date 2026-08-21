@@ -57,14 +57,14 @@ worker 実行モデルとは分け、ユーザー操作面と運用面の品質�
 - [ ] T003 [UI] ジョブ一覧 / 詳細 / キャンセル操作を admin に追加する。
 - [ ] T004 [Obs] queue metrics と structured log を追加し、PII を載せないことを検証する。
 - [ ] T005 [Ops] worker deployment、drain、スケール、失敗調査の runbook を追加する。
-- [ ] T006 [Verify] `just yaml-check`、`just spec-render`、`just verify-go`、`just verify-ui`、必要に応じて `just test-ui-e2e` を通す。
+- [ ] T006 [Verify] `mise run check`、`mise run spec-render`、`mise run verify-go`、`mise run verify-ui`、必要に応じて `mise run test-ui-e2e` を通す。
 
 ## Verification
-- `just yaml-check`
-- `just spec-render`
-- `just verify-go`
-- `just verify-ui`
-- `just test-ui-e2e`
+- `mise run check`
+- `mise run spec-render`
+- `mise run verify-go`
+- `mise run verify-ui`
+- `mise run test-ui-e2e`
   - reason: 管理 UI の一覧・詳細・キャンセル操作は browser behavior を含むため。
 - 手動: 複数 tenant のジョブを作り、tenant admin には自 tenant のみ、system_admin には許可された範囲だけ見えることを確認する。
 - 手動: Running / Failed / Succeeded / Canceled の代表ジョブで、一覧・詳細・キャンセル・失敗理由表示を確認する。

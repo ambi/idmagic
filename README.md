@@ -21,7 +21,7 @@ IdMagic は Go で実装したマルチテナントの IdP / IdM である。OAu
 組み込み PostgreSQL、バックエンド API、非同期処理の `worker`、フロントエンドを含む Docker 不要のローカルスタックを起動する。
 
 ```bash
-just dev
+mise run dev
 ```
 
 初回実行時に、約 190 MB の組み込み PostgreSQL バイナリをダウンロードしてキャッシュする。開発データは一時的なもので、スタックの停止時に削除される。PostgreSQL のローカルエンドポイントは `127.0.0.1:55432` である。
@@ -29,26 +29,27 @@ just dev
 <http://localhost:5173/> を開き、ローカルデモ認証を選択する。使用できるアカウントは `alice`（テナント管理者）と `root`（テナント管理者とシステム管理者を兼ねる）で、どちらもパスワードは `demo-password-1234` である。
 
 ```bash
-just dev-memory     # 永続ジョブと worker を使わない最小構成
-just dev-compose    # PostgreSQL、OTel Collector、Prometheus、API、UI ゲートウェイ (http://localhost:8080/)
-just demo-ciba      # CIBA のポーリング方式による承認フローを試す
+mise run dev-memory     # 永続ジョブと worker を使わない最小構成
+mise run dev-compose    # PostgreSQL、OTel Collector、Prometheus、API、UI ゲートウェイ (http://localhost:8080/)
+mise run demo-ciba      # CIBA のポーリング方式による承認フローを試す
 ```
 
 ## 主なコマンド
 
-このリポジトリはコマンド一覧として `just` を使う。基本的なコマンドは、下地のツール (`bun`、`go`、`docker`) を直接叩かず `just` のレシピから実行する。
+このリポジトリはツールのバージョン管理とコマンド一覧を `mise` に統合している。最初に `mise install` で固定バージョンを導入し、基本的なコマンドは下地のツール（`bun`、`go`、`docker` など）を直接呼ばず `mise run` のタスクから実行する。
 
 ```bash
-just --list
-just setup
-just verify
-just verify-go
-just verify-ui
-just test-ui-e2e
-just spec-render     # 仕様の HTML を spec/generated/docs/index.html へ生成する
+mise install
+mise tasks
+mise run setup
+mise run verify
+mise run verify-go
+mise run verify-ui
+mise run test-ui-e2e
+mise run spec-render     # 仕様の HTML を spec/generated/docs/index.html へ生成する
 ```
 
-ビルド時にバージョンのメタデータを埋め込むには `VERSION=1.0.0 just build-go` とする。指定しない場合は `0.0.0-dev` になる。Docker ビルドではビルド引数 (`VERSION`、`GIT_COMMIT`、`BUILD_DATE`) で渡す。
+ビルド時にバージョンのメタデータを埋め込むには `VERSION=1.0.0 mise run build-go` とする。指定しない場合は `0.0.0-dev` になる。Docker ビルドではビルド引数 (`VERSION`、`GIT_COMMIT`、`BUILD_DATE`) で渡す。
 
 ## 設定
 
@@ -60,7 +61,7 @@ WebAuthn はパスキーをブラウザーのオリジンと RP ID に束縛す�
 
 ```bash
 mailpit --smtp 127.0.0.1:1025 --listen 127.0.0.1:8025
-EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=noreply@idmagic.test just dev
+EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=noreply@idmagic.test mise run dev
 ```
 
 ### 運用上の注意
@@ -73,7 +74,7 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 | 読みたいこと | 場所 |
 | --- | --- |
 | 仕様と設計の入口、Context Map | [spec/README.md](spec/README.md) |
-| API とモデルの契約 | [spec/main.tsp](spec/main.tsp)、`just spec-render` で生成する HTML |
+| API とモデルの契約 | [spec/main.tsp](spec/main.tsp)、`mise run spec-render` で生成する HTML |
 | 開発の進め方（仕様先行のループと検証） | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | 仕様文書と work item の書式 | [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、[WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) |
 | 起動時設定の一覧 | [CONFIGURATION.md](CONFIGURATION.md) |

@@ -48,9 +48,9 @@ field/operator/value の AND 結合のみで、operator も `eq`/`not_eq`/`in`/`
 - [ ] T005 [Verify] 既存 workflow の互換動作と新条件の評価を検証する。
 
 ## Verification
-- `just yaml-check`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-ui`
 - 自動: 既存の単一 trigger/filter workflow が変更なく同じ挙動を維持する (後方互換)。
 - 自動: OR 条件・比較演算子を使った filter が意図通りに評価される。
 

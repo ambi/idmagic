@@ -41,7 +41,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 `runbook_url` annotation も無い。結果として:
 
 1. **オンコールが機能しない**。深夜に `TokenErrorRateBudgetBurn` が鳴っても、
-   最初に何を見るか (どのダッシュボード / どのログ / どの `just` コマンド) が
+   最初に何を見るか (どのダッシュボード / どのログ / どの `mise` タスク) が
    コードベースの知識に依存する。IdP は停止が全依存システムのログイン停止に直結するため、
    復旧の初動が属人的なのは可用性目標 (`OverallAvailability` 99.9%) と整合しない。
 2. **エンタープライズ調達で不足を突かれる**。運用引き渡し (運用移管) の審査では
@@ -83,10 +83,10 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
     `runbook_url` annotation と対応する specification objective 名を付ける。
   - `infra/runbooks/README.md` に索引 (アラート名 → runbook) と runbook の書式規約を置く。
 - **tooling**:
-  - `just check-monitoring` を拡張し、(1) すべての `alert:` が `runbook_url` を持つこと、
+  - `mise run check-monitoring` を拡張し、(1) すべての `alert:` が `runbook_url` を持つこと、
     (2) `runbook_url` の指す runbook ファイルが存在すること、(3) runbook が必須見出しを
     持つこと、を検査して CI で落とす。
-  - `justfile` に `check-runbooks` を追加する (または `check-monitoring` に統合する)。
+  - `mise.toml` に `check-runbooks` を追加する (または `check-monitoring` に統合する)。
 - **documentation**:
   - README の Documentation Guide に runbook 索引へのリンクを追加する。
 
@@ -108,9 +108,9 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 - **runbook の構成を固定し、CI で検査する**。文書はレビュー圧が弱いと腐るため、
   必須見出しを機械検査する。「アラートに runbook_url が無ければ CI が落ちる」ようにすれば、
   今後アラートを追加する WI が自動的に runbook を伴う。
-- **一次対応は必ず実行可能なコマンドで書く**。`just` レシピ・`kubectl` コマンド・
+- **一次対応は必ず実行可能なコマンドで書く**。`mise` タスク・`kubectl` コマンド・
   確認用エンドポイント (`/readyz`, `/metrics`) を具体的に書き、抽象的な「調査する」を禁じる。
-  この repo は `just` が単一のコマンドマップなので、runbook のコマンドも `just` 経由に寄せる。
+  このリポジトリは `mise.toml` が単一のコマンドマップなので、runbook のコマンドも `mise run` 経由に寄せる。
 - **既存の 1 本 (`tenant-quotas.md`) を新書式の参照実装にする**。まずこれを新構成に書き換え、
   検査ツールを通し、残りをその型で量産する。
 - **誤検知条件を必ず書く**。オンコールが「これは無害」と判断できないアラートは
@@ -122,10 +122,10 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 ## Tasks
 
 - [ ] T001 [Spec] `System.interfaces.MetricsExposition` に runbook 参照要件を追記し、
-      対応する scenario を追加して `just check-scl` を通す。
+      対応する scenario を追加して `mise run check-spec` を通す。
 - [ ] T002 [Format] `infra/runbooks/README.md` に索引と書式規約 (必須見出し 7 項目) を作る。
       既存 `tenant-quotas.md` を新書式に書き換えて参照実装にする。
-- [ ] T003 [Tooling] `just check-monitoring` を拡張し、alert → runbook_url → ファイル存在 →
+- [ ] T003 [Tooling] `mise run check-monitoring` を拡張し、alert → runbook_url → ファイル存在 →
       必須見出しの検査を実装する。RED: runbook_url の無いアラートを一時的に混ぜて検査が
       落ちることを確認 → 実装 → GREEN (混ぜた分は戻す)。
 - [ ] T004 [Runbook] `prometheus-rule.yaml` の SLO アラート全件 (Token / Login の
@@ -136,7 +136,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 - [ ] T006 [Annotation] `infra/k8s/monitoring/prometheus-rule.yaml` と
       `infra/docker/prometheus-rules.yml` の全アラートに `runbook_url` と対応 objective 名を
       付与する。
-- [ ] T007 [CI] `just check-monitoring` (または新設 `check-runbooks`) を
+- [ ] T007 [CI] `mise run check-monitoring` (または新設 `check-runbooks`) を
       `.github/workflows/idmagic-ci.yaml` の Verify Core に組み込む。
 - [ ] T008 [Docs] README の Documentation Guide に runbook 索引を追加する。
 - [ ] T009 [Verify] 下記 Verification を緑にする。runbook のコマンドを 1 件ずつローカルで
@@ -144,9 +144,9 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 
 ## Verification
 
-- `just check` / `just check-monitoring` / `just check-scl` / `just check-work-items`
-- `just check-k8s` (annotation 追加後も overlay が妥当であること)
-- 手動: `just dev-compose` で Prometheus を起動し、(1) 各 record rule / alert rule が
+- `mise run check` / `mise run check-monitoring` / `mise run check-spec` / `mise run check-work-items`
+- `mise run check-k8s` (annotation 追加後も overlay が妥当であること)
+- 手動: `mise run dev-compose` で Prometheus を起動し、(1) 各 record rule / alert rule が
   読み込まれること、(2) 意図的に負荷や失敗を作って 1 件アラートを発火させ、
   runbook の「確認」節のコマンドがそのまま動くこと、を確認する。
 - 手動: runbook 1 本を、コードベースを知らない読者が辿れるかレビューする
@@ -158,7 +158,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 「書いたが腐る」ことである。CI 検査 (alert → runbook 存在 → 必須見出し) を入れて、
 アラート追加時に runbook が伴うことを構造的に強制する。
 runbook のコマンドが実際に動かないと、障害時にオンコールを誤誘導して復旧を遅らせる。
-記載したコマンドは全件ローカルで実行して確認し、`just` 経由に寄せて
-コマンド変更時に `justfile` 側で追随できるようにする。
+記載したコマンドは全件ローカルで実行して確認し、`mise run` 経由に寄せて
+コマンド変更時に `mise.toml` 側で追随できるようにする。
 `runbook_url` に外部 URL を書くと repo とドキュメントが乖離する。repo 内の相対参照を
 既定とし、公開ホスティングが必要になった時点で索引だけを外部化する。

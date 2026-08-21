@@ -65,10 +65,10 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 
 ## Verification
 
-- `just yaml-check`
-- `just test-go`
-- `just verify-ui`
-- `just test-ui-e2e`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-ui`
+- `mise run test-ui-e2e`
 - 手動確認:
   - 認証器 1 個のみのユーザーに account security で復旧単一の警告が出る。
   - 2 個目の passkey / TOTP を登録すると警告が消える。

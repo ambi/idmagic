@@ -145,7 +145,7 @@ push される」汎用 outbound hook を導入する。
 
 - [ ] T001 [Spec] `Audit` に EventHookSubscription / EventHookDelivery / EventHookState、
       interface 8 件、event 4 件、objective、authorization、scenario 6 件を追加し
-      `just check-scl` を通す。
+      `mise run check-spec` を通す。
 - [ ] T002 [ADR] outbound event hook と配送保証の ADR を起票する (署名方式・再試行・
       自動 Suspend・SSRF 対策・PII 範囲・CAEP との分界)。
 - [ ] T003 [Domain] subscription の状態遷移、イベント種別フィルタ照合、宛先 URL 検証を実装する。
@@ -168,14 +168,14 @@ push される」汎用 outbound hook を導入する。
 - [ ] T010 [Streaming] 全 event 種別 + バッチ配送プロファイルを subscription の設定として
       表現し、SIEM 連携ケースを同じ機構で満たす。RED: バッチ境界のテスト → GREEN。
 - [ ] T011 [Docs] README に署名検証の擬似コード、再試行方針、SIEM 連携例を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui` / `just test-ui-unit`
-- 手動: `just dev` でローカル受信サーバ (署名検証付き) を立て、(1) ログイン失敗イベントが
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui` / `mise run test-ui-unit`
+- 手動: `mise run dev` でローカル受信サーバ (署名検証付き) を立て、(1) ログイン失敗イベントが
   配送されること、(2) 受信側 500 応答で再試行されること、(3) 400 応答で再試行されないこと、
   (4) `http://169.254.169.254/` を宛先に登録できないこと、を確認する。
 

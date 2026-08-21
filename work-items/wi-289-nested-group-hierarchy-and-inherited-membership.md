@@ -151,7 +151,7 @@ affected_spec:
 
 - [ ] T001 [Spec] `Group` に parent_id / depth、GroupHierarchyError、MoveGroup、
       GroupParentChanged、ListGroups/ListUserGroups の拡張、EffectiveRoles の定義更新、
-      objective、scenario 6 件を追加し `just check-scl` を通す。
+      objective、scenario 6 件を追加し `mise run check-spec` を通す。
 - [ ] T002 [ADR] グループ階層と継承の意味の ADR を起票し、[[ADR-038-group-aggregate-and-effective-roles]]
       の該当箇所を superseded として参照する。
 - [ ] T003 [Domain] 階層不変条件 (単一親 / 循環禁止 / 深さ上限 / dynamic 親禁止) と
@@ -159,11 +159,11 @@ affected_spec:
       落ちるテストと、子所属者が親ロールを得るテストを先に書く
       (scenario `IdManagement.nested_group_role_inheritance`) → GREEN。
 - [ ] T004 [Persistence] `groups.parent_id` と `group_closure` を `infra/schema/postgres.sql` に
-      追加し、`just sqlc-generate` でクエリを再生成する。RED: 既存グループが全て根として
+      追加し、`mise run sqlc-generate` でクエリを再生成する。RED: 既存グループが全て根として
       読めるマイグレーション互換テスト → GREEN。
 - [ ] T005 [Closure] 作成 / 親変更 / 削除時の閉包更新をトランザクション内で実装する。
       RED: 深い階層の親を移動しても閉包が正しく再構築されるテスト、並行更新で閉包が
-      壊れないテスト (`just test-go-race`) → GREEN。
+      壊れないテスト (`mise run test-go-race`) → GREEN。
 - [ ] T006 [Usecase] `MoveGroup`、ツリー取得、`ListUserGroups` の直接 / 継承区別、
       親削除の拒否を実装する。RED → GREEN。
 - [ ] T007 [Assignment] ApplicationAssignment の解決に継承メンバーシップを含める。
@@ -176,14 +176,14 @@ affected_spec:
 - [ ] T010 [Perf] 深さ上限・グループ数の想定上限で effective roles 解決の計測を行い、
       objective を満たすことを確認する (満たさない場合は closure のインデックスを見直す)。
 - [ ] T011 [Docs] README に階層の意味と運用上の注意を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui` / `just test-ui-unit`
-- 手動: `just dev` で 3 段の階層を作り、(1) 末端グループのユーザーが最上位グループの
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui` / `mise run test-ui-unit`
+- 手動: `mise run dev` で 3 段の階層を作り、(1) 末端グループのユーザーが最上位グループの
   ロールを得ること、(2) 最上位グループへのアプリ割当がポータルに反映されること、
   (3) 循環する親設定が UI でエラーになること、(4) 子を持つグループが削除できないこと、
   を確認する。

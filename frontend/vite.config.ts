@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 // The dev server port and API proxy target are overridable so isolated
-// environments (e.g. E2E on 5174/8082) can run alongside `just dev` (5173/8081).
+// environments (e.g. E2E on 5174/8082) can run alongside `mise run dev` (5173/8081).
 const devPort = Number(process.env.VITE_DEV_PORT ?? 5173)
 const apiTarget = process.env.VITE_API_TARGET ?? 'http://localhost:8081'
 

@@ -134,8 +134,7 @@ func TestResourceDPoPProofBindsToPresentedAccessToken(t *testing.T) {
 				}
 				return
 			}
-			var tokenErr *InvalidTokenError
-			if !errors.As(err, &tokenErr) {
+			if _, ok := errors.AsType[*InvalidTokenError](err); !ok {
 				t.Fatalf("err=%v authn=%+v; want InvalidTokenError", err, got)
 			}
 		})
@@ -194,8 +193,7 @@ func TestAccountContextAcceptsBothPortalScopes(t *testing.T) {
 				}
 				return
 			}
-			var scopeErr *InsufficientScopeError
-			if !errors.As(err, &scopeErr) {
+			if _, ok := errors.AsType[*InsufficientScopeError](err); !ok {
 				t.Fatalf("err=%v; want InsufficientScopeError", err)
 			}
 		})
@@ -228,8 +226,7 @@ func TestManagedAccountTokenRequiresActiveRecordAndRouteScope(t *testing.T) {
 				return
 			}
 			if tc.name == "missing lifecycle record" {
-				var tokenErr *InvalidTokenError
-				if !errors.As(err, &tokenErr) {
+				if _, ok := errors.AsType[*InvalidTokenError](err); !ok {
 					t.Fatalf("err=%v", err)
 				}
 				return

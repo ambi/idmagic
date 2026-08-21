@@ -68,7 +68,7 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
   - [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) describes the document system in general, without
     depending on this repository. The three documents above are what this repository enforces; where they
     differ, follow those.
-  - Expect repository tools to discover the standard layout without a registry file; use `just` recipes
+  - Expect repository tools to discover the standard layout without a registry file; use `mise` tasks
     rather than a methodology-specific CLI.
   - Regenerate untracked TypeSpec and HTML artifacts after specification changes.
   - If bounded contexts, global directory structures, adopted technologies, or core design rules change,
@@ -77,13 +77,13 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
     put change-specific analysis, alternatives, and implementation history in the work item.
   - Do not add architecture ledgers. Boundary checks infer structure from paths and reject forbidden dependencies only.
 
-## Commands via just
+## Commands via mise
 
-The `justfile` is the single command map for this repo. Run every basic command — verify, build, test, lint, format, dev servers, demos, codegen — through its `just` recipe, never by invoking the underlying tool (`bun`, `go`, `golangci-lint`, `docker`, a `*.sh` script, …) directly.
+`mise.toml` is the single tool-version, environment, and command map for this repo. Install the pinned tools with `mise install`. Run every basic command — verify, build, test, lint, format, dev servers, demos, codegen — through `mise run <task>`, never by invoking the underlying tool (`bun`, `go`, `golangci-lint`, `docker`, a `*.sh` script, …) directly.
 
-- Run `just --list` to discover the recipe before reaching for a raw tool. If a common command has no recipe yet, add one to the `justfile` instead of running it ad hoc.
+- Run `mise tasks` to discover the task before reaching for a raw tool. If a common command has no task yet, add one to `mise.toml` instead of running it ad hoc.
 - `golangci-lint` already enables the `govet` linter and formats with `gofumpt`+`goimports`, so `go vet`,
-  `gofmt`, and `gofumpt` are redundant: use `just lint-go` / `just format-go` / `just test-go`.
+  `gofmt`, and `gofumpt` are redundant: use `mise run lint-go` / `mise run format-go` / `mise run test-go`.
   Do not hand-prefix `GOCACHE=` — the default build cache is correct and faster.
 
 ## Tooling
@@ -110,4 +110,4 @@ reads and edits through those tools, and reaches for a shell only for what they 
 | Read an HTML page, extract from the web | `ax` | `curl` + a parsing script |
 | GitHub PRs, issues, API | `gh` | `curl` against api.github.com |
 
-Run `just setup-cli-tools` if any of these are missing.
+Run `mise run setup-cli-tools` if any of these are missing.

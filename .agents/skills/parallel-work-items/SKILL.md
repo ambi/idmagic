@@ -64,7 +64,7 @@ Every branch follows the order in the `implement-work-item` Skill.
 
 - Use the `spec-change` Skill first whenever the specification changes.
 - Do not commit TypeSpec derived artifacts, such as OpenAPI, on a work-item branch.
-- Running `just spec-render` to check something is fine; leave the generated files untracked.
+- Running `mise run spec-render` to check something is fine; leave the generated files untracked.
 - On completion, append `completion` to the work item, move it to `work-items/done/`, and commit.
 - Do not push until the user explicitly asks.
 
@@ -74,7 +74,7 @@ Keep each branch inside its work item's `scope` so conflicts surface early.
 
 - When several branches touch the same normative scenario, standard id, or TypeSpec symbol, agree on
   the order first.
-- When two branches create the same id or filename, follow `just check-ids` and renumber one of them.
+- When two branches create the same id or filename, follow `mise run check-ids` and renumber one of them.
 - Do not resolve conflicts in generated files by hand. Regenerate from the integrated TypeSpec.
 
 ## 4. Integrate
@@ -92,9 +92,9 @@ git merge --no-ff work-item/wi-43-example
 Verify the derived TypeSpec artifacts after integrating:
 
 ```sh
-just check
-just spec-render
-just verify
+mise run check
+mise run spec-render
+mise run verify
 ```
 
 Do not commit `spec/generated/`, and do not update the release baseline during ordinary integration.

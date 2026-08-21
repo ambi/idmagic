@@ -84,7 +84,7 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	resilientDB := postgres.NewResilientDB(pool, dbBreaker, cfg.DB.QueryTimeout)
 	tenantRepo := &tenancypostgres.TenantRepository{Pool: resilientDB}
 	// NewKeyStore bootstraps the default tenant signing key, whose FK requires
-	// the tenant row to exist first. Fresh databases (including `just dev`) must
+	// the tenant row to exist first. Fresh databases (including `mise run dev`) must
 	// establish this root aggregate before assembling dependent adapters.
 	if err := tenantusecases.EnsureDefault(ctx, tenantRepo, time.Now().UTC()); err != nil {
 		pool.Close()

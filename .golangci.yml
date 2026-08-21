@@ -105,6 +105,12 @@ linters:
           - forcetypeassert
           - noctx
           - bodyclose
+      # server_http.Deps keeps these direct fields only as explicit test
+      # compatibility inputs while module migrations wi-177..179 complete.
+      - path: _test\.go
+        text: "\\.(AttrSchemaRepo|UserRepo|MfaFactorRepo|TokenIssuer|KeyStore) is deprecated:"
+        linters:
+          - staticcheck
       # backend/cmd/ の main.go は log.Fatal を許容
       - path: backend/cmd/
         linters:
@@ -180,7 +186,8 @@ formatters:
   settings:
     gofumpt:
       module-path: idmagic
-      extra-rules: true
+      extra:
+        group-params: true
     goimports:
       local-prefixes:
         - idmagic

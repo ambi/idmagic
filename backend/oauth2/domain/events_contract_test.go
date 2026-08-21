@@ -18,7 +18,7 @@ func TestResolvableUserEventsDoNotExposeUsernamePayloadFields(t *testing.T) {
 	for _, event := range events {
 		typ := reflect.TypeOf(event)
 		for field := range typ.Fields() {
-			jsonName := strings.Split(field.Tag.Get("json"), ",")[0]
+			jsonName, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 			if jsonName == "username" || jsonName == "usernameHash" {
 				t.Errorf("%s must not expose %q; resolve username to userId at query time", typ.Name(), jsonName)
 			}

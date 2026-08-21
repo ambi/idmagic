@@ -55,10 +55,10 @@ unmatched / ambiguous / disabled mismatch を管理者が確認・解決でき�
 - [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run check-ids`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: 外部 inventory に IdMagic に存在しない account を含めると orphan として表示されることを確認する。
 - 手動: 同一 email の候補が複数ある場合は ambiguous として自動解決されないことを確認する。
 

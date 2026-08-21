@@ -206,7 +206,14 @@ func publicKeyFromJWK(jwk map[string]any) (crypto.PublicKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		return &ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(xBytes), Y: new(big.Int).SetBytes(yBytes)}, nil
+		if len(xBytes) != 32 || len(yBytes) != 32 {
+			return nil, errors.New("invalid P-256 coordinate length")
+		}
+		point := make([]byte, 65)
+		point[0] = 4
+		copy(point[1:33], xBytes)
+		copy(point[33:], yBytes)
+		return ecdsa.ParseUncompressedPublicKey(elliptic.P256(), point)
 	}
 	return nil, fmt.Errorf("unsupported kty %q", kty)
 }

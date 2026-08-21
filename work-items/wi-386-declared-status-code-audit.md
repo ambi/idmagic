@@ -42,9 +42,9 @@ affected_spec:
 
 ## Verification
 
-- `just check-spec`
-- `just check-api-compat`
-- `just verify`
+- `mise run check-spec`
+- `mise run check-api-compat`
+- `mise run verify`
 - 手動確認: 監査表に 327 operation すべてが載り、突き合わせられなかった行が残っていない。
 
 ## Risk Notes

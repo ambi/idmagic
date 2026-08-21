@@ -10,6 +10,7 @@
 │   └── contexts/<context>/
 ├── infra/             # container, local runtime, and database schema assets
 ├── load/k6/           # tenant-local OAuth SLO smoke
+├── mise.toml          # pinned development tools and repository task map
 ├── tools/             # specification, boundary, compatibility, and rendering tools
 └── work-items/        # units of work, decision history, and completion records
 ```
@@ -36,6 +37,7 @@
 - **フロントエンド**：React/TypeScript、Bun。
 - **データベース**：PostgreSQL。
 - **インフラ基盤**：Docker Compose、Kubernetes、Prometheus、Grafana、Loki、Promtail、k6。
+- **開発ツール管理**：mise。Go、Bun、golangci-lint、sqlc、psqldef、PostgreSQL クライアントのバージョンとリポジトリタスクを `mise.toml` に集約する。
 
 ## Context internals
 

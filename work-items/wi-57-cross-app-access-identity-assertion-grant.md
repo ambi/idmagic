@@ -73,11 +73,11 @@ IdMagic は現状 RFC 7523 をクライアント認証 (`client_assertion`) に�
 
 ## Verification
 
-- `just verify-spec`
-- `just test-go`
+- `mise run verify-spec`
+- `mise run test-go`
   - reason: アサーションの検証、許可ポリシーの照合 (未許可は拒否)、受け手の限定、取消後の拒否、`jti` 再送の境界。
-- `just verify-ui`
-- `just verify`
+- `mise run verify-ui`
+- `mise run verify`
 - 手動: アプリ A のアサーションでアプリ B 向けトークンを取得し、許可ポリシー外のアプリが拒否され、ポリシーを取り消すと以後拒否されることを確認する。
 
 ## Risk Notes

@@ -146,8 +146,7 @@ func StartDataExport(ctx context.Context, deps DataExportDeps, actorUserID, targ
 	kind := idmdomain.DataExportTargetKind(target)
 	if kind == idmdomain.ExportTargetUser && deps.UserCSVExporter != nil {
 		if err := deps.UserCSVExporter.ValidateUserCSVColumns(ctx, columns); err != nil {
-			var csvErr *userdomain.UserCSVError
-			if errors.As(err, &csvErr) {
+			if csvErr, ok := errors.AsType[*userdomain.UserCSVError](err); ok {
 				return nil, fmt.Errorf("%w: %s", idmdomain.ErrInvalidExportColumns, csvErr.Code)
 			}
 			return nil, err

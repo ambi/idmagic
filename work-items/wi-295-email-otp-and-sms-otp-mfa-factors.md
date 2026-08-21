@@ -160,7 +160,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
 
 - [ ] T001 [Spec] `MfaFactorType` に EmailOtp / SmsOtp、宛先検証済み要件、
       `allowed_mfa_factor_types`、interface 6 件、event 3 件、
-      NISTSP80063B4 の restricted 要件、scenario 7 件を追加し `just check-scl` を通す。
+      NISTSP80063B4 の restricted 要件、scenario 7 件を追加し `mise run check-spec` を通す。
 - [ ] T002 [ADR] restricted MFA factor の位置付けの ADR を起票する (既定無効・防御パラメータ・
       AMR・phishing-resistant 判定に含めない・adapter 未設定時の fail-closed)。
 - [ ] T003 [Domain] OTP challenge の生成 / ハッシュ保存 / 期限 / 試行回数 / 再送間隔 /
@@ -184,13 +184,13 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
       (残り試行・再送・待ち時間)、管理コンソールの `allowed_mfa_factor_types` 設定と
       注意書きを追加する。RED: presentation logic の unit test → GREEN。
 - [ ] T012 [Docs] README に SMS adapter 設定、既定無効、NIST の位置付けを追記する。
-- [ ] T013 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [ ] T013 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui` / `just test-ui-unit`
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui` / `mise run test-ui-unit`
 - 手動: Mailpit で (1) Email OTP を登録し、ログイン時に第 2 要素として使えること、
   (2) 期限切れコードが拒否されること、(3) 試行回数超過で throttle されること、
   (4) 再送が間隔制限に従うこと、(5) テナントで factor を無効化すると登録も認証も

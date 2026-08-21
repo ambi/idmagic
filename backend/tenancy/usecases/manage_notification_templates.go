@@ -18,8 +18,7 @@ import (
 // へ包むと「3 点セットと差し込み変数」の汎用メッセージに潰れ、どのフィールドを何文字
 // 短くすればよいかが利用者に伝わらない。
 func wrapTemplateValidation(err error) error {
-	var lengthErr *spec.LengthError
-	if errors.As(err, &lengthErr) {
+	if _, ok := errors.AsType[*spec.LengthError](err); ok {
 		return err
 	}
 	return errors.Join(ErrInvalidNotificationTemplate, err)

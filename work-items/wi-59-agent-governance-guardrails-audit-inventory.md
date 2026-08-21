@@ -74,11 +74,11 @@ IdMagic は監査イベント基盤とエンドポイント単位のレート制
 
 ## Verification
 
-- `just verify-spec`
-- `just test-go`
+- `mise run verify-spec`
+- `mise run test-go`
   - reason: レート・予算・回数・有効期限の上限強制、超過時の分岐、依存が利用できないときのフェイルクローズ、棚卸し投影の冪等性、テナント境界。
-- `just verify-ui`
-- `just verify`
+- `mise run verify-ui`
+- `mise run verify`
 - 手動: エージェントにレートと予算の上限を設定し、上限内は許可され超過は拒否されること、拒否がその版と理由とともに監査へ残ることを確認する。
 - 手動: 所有者を退職させ、そのエージェントが棚卸しで所有者不在として現れることを確認する。
 

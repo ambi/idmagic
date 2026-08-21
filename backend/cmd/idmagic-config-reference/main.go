@@ -1,8 +1,8 @@
 // Command idmagic-config-reference writes the operator-facing
 // ConfigurationReference (CONFIGURATION.md) from the startup Config
 // definition, or checks that the tracked file still matches it
-// (REQ-SYSTEM-017). Run it through `just generate-config-reference` and
-// `just check-config-reference`.
+// (REQ-SYSTEM-017). Run it through `mise run generate-config-reference` and
+// `mise run check-config-reference`.
 package main
 
 import (
@@ -46,7 +46,7 @@ func run(args []string) error {
 		return err
 	}
 	if string(current) != generated {
-		return fmt.Errorf("%s is out of date; run `just generate-config-reference`", *output)
+		return fmt.Errorf("%s is out of date; run `mise run generate-config-reference`", *output)
 	}
 	fmt.Printf("ok  %s matches the startup configuration definition\n", *output)
 	return nil

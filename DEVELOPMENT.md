@@ -27,12 +27,12 @@ authorization remains executable application behavior unless a later work item a
 
 | Stage | Skill | Gate |
 |---|---|---|
-| Frame one change | `new-work-item` | `just check-work-items`, `just check-ids` |
-| Change the specification first | `spec-change` | `just check-spec` |
+| Frame one change | `new-work-item` | `mise run check-work-items`, `mise run check-ids` |
+| Change the specification first | `spec-change` | `mise run check-spec` |
 | Implement inner behavior to outer adapters | `implement-work-item` | layer-local tests |
-| Sync current design when structure changes | `update-design` | `just check-boundaries` |
-| Regenerate derived views | `spec-render` | `just check-api-compat` |
-| Record completion and commit | `commit` | `just verify` |
+| Sync current design when structure changes | `update-design` | `mise run check-boundaries` |
+| Regenerate derived views | `spec-render` | `mise run check-api-compat` |
+| Record completion and commit | `commit` | `mise run verify` |
 
 Before changing behavior, update the smallest owning specification: models, APIs, HTTP contracts, and
 authentication schemes in TypeSpec; scenarios, terms, standards, state transitions, decisions, and
@@ -45,11 +45,11 @@ express state machines as a state table and a transition table.
 
 Run the cheapest gate that can still fail on what you just changed, and widen only at the end.
 
-1. While changing the specification: `just check-spec`.
+1. While changing the specification: `mise run check-spec`.
 2. While implementing one layer: the narrowest per-package or per-file test recipe that covers what you
-   touched — `just test-go-package <package>` or `just test-ui-unit-file <file>` here, whatever
-   `just --list` offers elsewhere.
-3. Before completing the work item: `just verify`.
+   touched — `mise run test-go-package <package>` or `mise run test-ui-unit-file <file>` here, whatever
+   `mise tasks` offers elsewhere.
+3. Before completing the work item: `mise run verify`.
 
 Running the full suite after every edit is the most common way to lose time in this repository.
 
@@ -75,7 +75,7 @@ A work item is the design and execution record for one meaningful change. It hol
 alternatives, plan, tasks, risks, and completion evidence. When the work lands, copy only the conclusion
 that remains true into TypeSpec or the canonical file that owns that kind of content.
 
-`just spec-diff [ref]` derives what the working tree changed in the specification — scenarios added,
+`mise run spec-diff [ref]` derives what the working tree changed in the specification — scenarios added,
 removed, or changed, transition rows moved, declarations gained or lost. Read it before review and when
 writing the completion summary, so the recorded semantic difference is observed rather than recalled.
 
@@ -87,9 +87,9 @@ Start from the work item's `initial_context`, which is written when the item sta
 specification, code, and tests to read — and what to leave unread. Naming a file is enough to say what to
 read, because the file names carry the kinds: `scenarios.md` for what a context must do,
 `decisions.md` for why it does it that way, `internals.md` for how a mechanism works. Reach anything else
-with `just spec-where <requirement-id-or-term>`, which returns locations rather than whole files. Do not
+with `mise run spec-where <requirement-id-or-term>`, which returns locations rather than whole files. Do not
 preload generated artifacts, unrelated contexts, or repository-wide method documents for an ordinary
 feature change.
 
 Naming a requirement ID in a test or in the code that implements it is what makes that link findable
-later, both from `just spec-where` and from the generated Traceability page.
+later, both from `mise run spec-where` and from the generated Traceability page.

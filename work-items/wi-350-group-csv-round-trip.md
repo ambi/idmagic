@@ -100,7 +100,7 @@ Group の削除も同じ経路に含める。組織改編で不要になった G
 
 ## Tasks
 
-- [ ] T001 [Spec] Group CSV models、preview/apply/get interfaces、round-trip・immutable membership type・source拒否 scenarios、AdminGroups flowを更新し、`just check-scl`を通す。
+- [ ] T001 [Spec] Group CSV models、preview/apply/get interfaces、round-trip・immutable membership type・source拒否 scenarios、AdminGroups flowを更新し、`mise run check-spec`を通す。
 - [ ] T002 [Architecture] User固有名のCSV policy/artifact portをfeature-neutralな共有moduleへ一般化し、設計正本とledgerの依存方向を同期する。CSV種別ごとのartifact/error tableは増やさない。
 - [ ] T003 [Domain] machine-key schema、presence/empty、可逆codec、Group typed rowとtransfer policyをtest-firstで実装する。fuzz対象は外部入力がroles/dynamic ruleを駆動する範囲に置く。
 - [ ] T004 [UseCase] ID/name解決、create/update/unchanged/deleted/rejected、immutable membership type、dynamic rule最終状態検証、`lifecycle_action` の閉じた語彙と削除計画、source-managed fail-closed plannerを実装する。存在しない Group への `delete` と、同一行での更新と削除の同時指定の扱いを固定する。
@@ -112,12 +112,12 @@ Group の削除も同じ経路に含める。組織改編で不要になった G
 
 ## Verification
 
-- `just check`
-- `just spec-render`
-- `just check-api-compat`
-- `just verify-go`
-- `just verify-ui`
-- `just test-ui-e2e`
+- `mise run check`
+- `mise run spec-render`
+- `mise run check-api-compat`
+- `mise run verify-go`
+- `mise run verify-ui`
+- `mise run test-ui-e2e`
 - integration: 10,000 Groupを全互換列でexport→previewし全行unchanged。`lifecycle_action` が空のまま出力され、1件も削除されない。
 - integration: `lifecycle_action=delete` の行だけがGroupと所属membershipを削除し、同一ファイルの他行のcreate/updateは影響を受けない。
 - integration: preview後にGroupを別操作で更新し、applyが現在状態から再計画する。

@@ -124,7 +124,7 @@ scheduled auto-rotation を標準搭載する。
   のみで実現できるため、実装せず README への言及に留める。
 
 ## Plan
-1. specification: `spec/contexts/data-keys/` の該当ファイルを更新し `just check` を通す
+1. specification: `spec/contexts/data-keys/` の該当ファイルを更新し `mise run check` を通す
    (`spec-change` Skill)。
 2. Go (Adapters, test-first): `backend/datakeys/handlers_http` に
    rotate/disable ハンドラを追加し、`backend/signingkeys/handlers_http` の
@@ -134,13 +134,13 @@ scheduled auto-rotation を標準搭載する。
    `data-key-lifecycle` サブコマンドを追加する。cadence 判定ロジックが
    usecase 層に必要ならそこは test-first で先に書く。
 4. Documentation: README 更新。
-5. `just verify` 一式を通し、work item を完了させる。
+5. `mise run verify` 一式を通し、work item を完了させる。
 
 ## Tasks
 - [ ] T001 [Spec] `RotateTenantDataKey`/`DisableTenantDataKey` の access を
   `TenantAdministrator` + `bindings: http` に変更し、`DestroyTenantDataKey`
   は internal のまま維持する。`authorization.principals` に
-  `TenantAdministrator` を追加する。`just check` で検証する。
+  `TenantAdministrator` を追加する。`mise run check` で検証する。
 - [ ] T002 [Go/Adapters] `backend/datakeys/handlers_http` に
   `POST /api/admin/data-keys/rotate` / `POST /api/admin/data-keys/disable`
   を実装する (test-first)。
@@ -153,9 +153,9 @@ scheduled auto-rotation を標準搭載する。
   T006 の再暗号化ジョブが自動 enqueue されることを確認する。
 
 ## Verification
-- `just check`
-- `just verify-go`
-- `just build-go`
+- `mise run check`
+- `mise run verify-go`
+- `mise run build-go`
 - 手動: `idmagic-batch data-key-lifecycle` を実行し、cadence を超えた
   テナントの DEK が rotate され、再暗号化ジョブが enqueue されることを
   確認する。

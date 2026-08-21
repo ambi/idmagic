@@ -54,10 +54,10 @@ recommendations を導入する。
 - [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run check-ids`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: MFA 未強制アプリ、古い signing key、期限なし SCIM token が recommendation として表示されることを確認する。
 - 手動: recommendation を dismiss でき、対象設定を改善すると resolved 扱いになることを確認する。
 

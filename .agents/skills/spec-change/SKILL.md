@@ -26,11 +26,11 @@ Update the smallest owning specification before the implementation.
    `REQ-SYSTEM-NNN` — naming the participating contexts.
 7. Do not add a fine-grained authorization policy DSL. TypeSpec records the authentication scheme and
    each admin operation's `x-api-token-scopes`; authorization behavior stays in code and tests. Never
-   restate the operation-to-scope mapping in prose — `just check-admin-scopes` verifies the annotation,
+   restate the operation-to-scope mapping in prose — `mise run check-admin-scopes` verifies the annotation,
    nothing verifies the prose.
 8. Sync the work item's `affected_spec` with the normative scenario or standard id, or the TypeSpec
    symbol.
-9. Pass `just check-spec` and `just check-api-compat`. Do not commit generated OpenAPI or HTML.
+9. Pass `mise run check-spec` and `mise run check-api-compat`. Do not commit generated OpenAPI or HTML.
 
 Use the `update-design` Skill as well, but only when structure, technology, or directory conventions
 change too.

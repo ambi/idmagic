@@ -53,10 +53,10 @@ created_at: 2026-07-10
 - [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run check-ids`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: eligible なユーザーが step-up 後に admin role を短時間有効化し、期限後に権限が消えることを確認する。
 - 手動: eligible でないユーザー、期限切れ activation、承認拒否済み activation では管理 API が拒否されることを確認する。
 

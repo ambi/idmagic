@@ -31,7 +31,7 @@ func assertJSONFields(t *testing.T, event any, want []string) {
 	typ := reflect.TypeOf(event)
 	got := make([]string, 0, typ.NumField())
 	for field := range typ.Fields() {
-		jsonName := strings.Split(field.Tag.Get("json"), ",")[0]
+		jsonName, _, _ := strings.Cut(field.Tag.Get("json"), ",")
 		if jsonName != "-" {
 			got = append(got, jsonName)
 		}

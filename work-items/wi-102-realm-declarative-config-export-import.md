@@ -54,12 +54,12 @@ Keycloak は realm を JSON で export/import でき、これが環境昇格・G
 - [ ] T003 [Context Ports] tenancy/identity/application/oauth2/saml/wsfederation等にcanonical export DTOとvalidate/apply command adapterを追加する。
 - [ ] T004 [Planner] version migration、reference graph、redacted semantic diff、dependency order、manifest digest/idempotencyを実装する。
 - [ ] T005 [Executor] stage checkpoint/resume、existing usecase経由apply、explicit prune、failure result/compensationを実装する。
-- [ ] T006 [HTTP/CLI] streamed export、plan upload、review/apply/statusとGitOps向けnoninteractive commandをjust recipe経由で追加する。
+- [ ] T006 [HTTP/CLI] ストリーミング export、plan upload、review/apply/status と GitOps 向けの非対話コマンドを mise タスク経由で追加する。
 - [ ] T007 [Verify] export→empty realm import→re-export、version upgrade、rename/reference、partial resume、prune、cross-tenant/secret injection、redactionを検証する。
 
 ## Verification
-- `just test-go-race`
-- `just lint-go`
+- `mise run test-go-race`
+- `mise run lint-go`
 - 手動: あるテナントを export → 空テナントへ import し、client/application/割当/claim policy が 再現されることを確認する。再 import しても差分ゼロ（冪等）であることを確認する。
 - 手動: export に秘密鍵・パスワードハッシュ・client secret 平文が含まれないことを確認する。
 

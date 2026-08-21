@@ -31,7 +31,7 @@ affected_spec:
 
 ## Verification
 
-- `just verify`
+- `mise run verify`
 - 手動確認: 不正な SET を送ると `{"err": ..., "description": ...}` が返る。
 - 手動確認: 生成された OpenAPI の 400 / 404 / 413 が同じ形を記述している。
 

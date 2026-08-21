@@ -56,8 +56,8 @@ Go プロジェクト自身が stdlib のパーサをファジングしている
 - [ ] T007 [Verify/Docs] 全targetを固定seedで再現し、panic/OOM/hang/valid rejectionのtriage・security disclosure手順を記載する。
 
 ## Verification
-- `just test-go-race`
-- `just test-go-fuzz ./internal/saml/... 30s`
+- `mise run test-go-race`
+- `mise run test-go-fuzz ./internal/saml/... 30s`
 - 手動: 既知の悪性入力（XXE ペイロード、alg=none JWT、部分一致 redirect_uri）で fuzz target が期待どおり拒否/非パニックであることを確認する。
 
 ## Risk Notes

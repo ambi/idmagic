@@ -66,11 +66,11 @@ IdMagic は上流 IdP からのログイン連携 ([[wi-30-inbound-federation-an
 
 ## Verification
 
-- `just verify-spec`
-- `just test-go`
+- `mise run verify-spec`
+- `mise run test-go`
   - reason: トークンの暗号化保管・更新・失効、仲介時のスコープと委譲による絞り込み、解除後の取得拒否、SSRF 対策の境界。
-- `just verify-ui`
-- `just verify`
+- `mise run verify-ui`
+- `mise run verify`
 - 手動: ユーザーが外部プロバイダを連携し、エージェントが Vault 経由で外部 API を呼べること、連携を解除すると以後の呼び出しが拒否されることを確認する。
 
 ## Risk Notes

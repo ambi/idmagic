@@ -34,7 +34,7 @@ affected_spec:
 
 ## Verification
 
-- `just verify`
+- `mise run verify`
 - 手動確認: `PATCH /api/account/v1/profile` に属性スキーマ違反を送ると 422 と `urn:idmagic:error:invalid_attribute` が返る。
 - 手動確認: 実行中ジョブ数の上限に達した export 開始が、テナント資源クォータとは別の code を 429 で返す。
 

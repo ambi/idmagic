@@ -9,7 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url))
 const uiDir = resolve(here, '../..')
 const goDir = resolve(here, '../../../backend')
 
-// E2E は `just dev` (UI:5173 / API:8081) と衝突しない専用ポートを使い、常に
+// E2E は `mise run dev` (UI:5173 / API:8081) と衝突しない専用ポートを使い、常に
 // 自前のサーバを起動する。dev が並走していても互いに影響しない。
 const apiPort = 8082
 const uiPort = 5174

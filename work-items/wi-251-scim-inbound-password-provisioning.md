@@ -67,13 +67,13 @@ CreateScimUser/UpdateScimUser/PatchScimUser はこの属性を黙殺する。
 - [ ] T003 [Usecase/Adapter] RED: CreateScimUser/UpdateScimUser/PatchScimUser の
       password 処理 HTTP contract test を先に失敗させて実装する。ログ・エラー
       メッセージに平文 password が含まれないことを検証する test を含める。
-- [ ] T004 [Verify] `just yaml-check`、`just test-go`、`just verify-go` を実行する。
+- [ ] T004 [Verify] `mise run check`、`mise run test-go`、`mise run verify-go` を実行する。
 
 ## Verification
 
-- `just yaml-check`
-- `just test-go`
-- `just verify-go`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-go`
 - 手動: password 付きで User を作成し、ハッシュ化されて格納されること(平文が
   どこにも残らないこと)を確認する。
 - 手動: パスワードポリシーに違反する password が拒否されることを確認する。

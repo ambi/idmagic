@@ -37,7 +37,7 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 
 ## Plan
 - 対象を OIDC Core authorization-code、OAuth 2.0 基本 endpoint、FAPI 2.0 Security Profile smoke に分ける。外部 conformance suite の全 certification を PR ごとに回すのではなく、ローカル deterministic test、PR smoke、夜間 full suite の三段階にする。
-- suite は `just` recipe から disposable stack と専用 realm/client/user を seed し、公開 issuer URL が必要な場合だけ CI service/tunnel を使う。固定 client secret や管理者 token を repository/artifact に残さない。
+- suite は `mise` task から disposable stack と専用 realm/client/user を seed し、公開 issuer URL が必要な場合だけ CI service/tunnel を使う。固定 client secret や管理者 token を repository/artifact に残さない。
 - expected failure は protocol、test ID、根拠 Design/Spec、owner、expiry を持つ allowlist とし、未知 failure と解消済み allowlist の残存を CI failure にする。
 - conformance が見つけた製品契約差異は本 WI 内で場当たり修正せず、先に該当 context specification を変更してから実装する。suite wrapper と結果正規化だけを本 WI の恒久資産にする。
 
@@ -52,10 +52,10 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 - [ ] T008 [Verify] clean environment で連続実行し、seed 衝突・secret 漏洩・flaky test がないことを確認する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just build-go`
-- `just dev-compose`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run build-go`
+- `mise run dev-compose`
   - reason: conformance smoke の対象環境を起動できることを確認する。
 - `conformance smoke command TBD`
   - reason: 選定した harness で最小 suite が pass することを確認する。

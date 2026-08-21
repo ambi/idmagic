@@ -81,9 +81,9 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 - [ ] T008 [Verify] specification、Go、UI、各ブラウザE2E、Vault障害と拒否シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just verify`
+- `mise run check`
+- `mise run check-ids`
+- `mise run verify`
 - 手動: 本人用資格情報を登録し、割当済みの正規originでだけ拡張が入力し、別originでは拒否する。
 - 手動: 本人用が無いときだけ単一の共有grantを使い、複数共有grantが一致する設定は保存できない。
 - 手動: MFA freshness不足、未割当、binding未検証、Vault障害では credential が発行されない。

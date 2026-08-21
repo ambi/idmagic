@@ -75,10 +75,10 @@ group membership / application assignment を反映する access request workflo
 - [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run check-ids`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: requestable catalog からユーザーが group access を要求し、approver が承認する
   と group membership が自動的に付与されることを確認する。
 - 手動: 却下された request では group membership が付与されず、requester に却下が

@@ -92,30 +92,30 @@ backend の一覧は `limit` だけを取り、上限 1000 で `Link` ヘッダ�
 - **クライアント側での完全な検証**: 循環検出まで写すと、フェイルクローズの判断の正本が 2 か所になる。
 
 ## Plan
-1. TypeSpec を先に直し、`just check-spec` を通す。
+1. TypeSpec を先に直し、`mise run check-spec` を通す。
 2. API クライアントと型を足す。
 3. モデルの変換と検証を純関数として実装し、往復テストを付ける。
 4. 画面を 3 系統・5 ルート実装する。コンテナと表示用コンポーネントを分け、抽出した単位に単体テストを付ける。
 5. ルート、ナビ、ページタイトル、辞書を登録する。
-6. `just verify-ui` と `just verify` を通し、一連の流れを手動で確認する。
+6. `mise run verify-ui` と `mise run verify` を通し、一連の流れを手動で確認する。
 
 ## Tasks
-- [ ] T001 [Spec] `FgaCheckRequest` と `ListAccessibleResourcesHttpRequest` に `granted_scopes` / `required_scopes` を追加し、`just check-spec` と `just check-api-compat` を通す。
+- [ ] T001 [Spec] `FgaCheckRequest` と `ListAccessibleResourcesHttpRequest` に `granted_scopes` / `required_scopes` を追加し、`mise run check-spec` と `mise run check-api-compat` を通す。
 - [ ] T002 [API] `frontend/src/types.ts` と `frontend/src/api/admin.ts` に 6 操作のクライアントと型を追加する。テスト: `frontend/src/api/admin.test.ts`。
 - [ ] T003 [Pure] `toModelDraft()` / `toResourceTypes()` とクライアント検証を純関数として実装する。テスト: `authorizationModel.test.ts` の往復等価と検証境界 (REQ-AUTHORIZATION-001)。
 - [ ] T004 [UI] 認可モデルの詳細ページと編集ページ (フォーム / JSON の 2 モード、発行前の差分提示) を実装する。テスト: `AdminAuthorizationModelPage.test.tsx` / `AdminAuthorizationModelEditPage.test.tsx`。
 - [ ] T005 [UI] 関係タプルの一覧・追加フォーム・削除・オブジェクト波及削除の確認ダイアログを実装する。テスト: `AdminAuthorizationTuplesPage.test.tsx` (REQ-AUTHORIZATION-002, REQ-AUTHORIZATION-008)。
 - [ ] T006 [UI] アクセス判定デバッガを実装し、`relation_path` の経路表示と `reasons` の翻訳、未知コードの素通しを検証する。テスト: `AdminAuthorizationCheckPage.test.tsx` (REQ-AUTHORIZATION-004, REQ-AUTHORIZATION-005)。
 - [ ] T007 [Nav] ルート、`adminNav`、`shell.i18n`、ページタイトル、辞書を登録する。テスト: `adminNav.test.ts`。
-- [ ] T008 [Verify] `just verify-ui` と `just verify` を通し、手動の一連の流れを確認する。
+- [ ] T008 [Verify] `mise run verify-ui` と `mise run verify` を通し、手動の一連の流れを確認する。
 
 ## Verification
-- `just check-spec`
+- `mise run check-spec`
   - reason: TypeSpec の追記が契約として通ること。
-- `just check-api-compat`
+- `mise run check-api-compat`
   - reason: 任意フィールドの追加がリリース済みワイヤ契約を壊さないこと。
-- `just verify-ui`
-- `just verify`
+- `mise run verify-ui`
+- `mise run verify`
 - 手動: モデルを発行 → タプルを 1 件追加 → 判定デバッガで許可と `relation_path` を確認 → 代行チェーンにエージェントを足して拒否と理由を確認 → オブジェクト波及削除 → 再判定で拒否になることを確認する。
 - E2E は追加しない。`frontend/tests/e2e/README.md` の方針どおり、破壊的な CRUD の E2E はブラウザー操作自体にリスクがある場合に限る。判定の境界は Go 側のテストが既に持っている。
 

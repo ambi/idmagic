@@ -99,7 +99,7 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
   - HIBP を ADR の決定に従って処理する (無効化する場合は
     `BREACHED_PASSWORD_CHECKER` が `hibp` のとき FIPS モードで起動を拒否する等)。
 - **build / infra**:
-  - FIPS 対応ビルドの手順を `justfile` に追加する (`just build-go-fips` 相当)。
+  - FIPS 対応ビルドの手順を `mise.toml` に追加する (`mise run build-go-fips` 相当)。
     Go の FIPS 140-3 モジュールを使うビルドタグ / 環境変数を明示する。
   - Dockerfile に FIPS ビルドのターゲットを追加するか、ビルド引数で切り替える。
 - **documentation**:
@@ -153,7 +153,7 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
       移行・HIBP の扱い・ビルド方法・起動時自己検査・無効化される機能一覧)。
 - [ ] T003 [Spec] SignatureAlgorithm の FIPS 許可集合、client metadata の requires、
       `password_hash_scheme`、System の FIPS 設定と自己検査、guarantee、scenario 4 件を
-      追加し `just check-scl` を通す。
+      追加し `mise run check-spec` を通す。
 - [ ] T004 [Hash] パスワードハッシュを方式付きにする。既存 Argon2id ハッシュの判別、
       PBKDF2 実装の追加、検証成功時の現行方式への再ハッシュを実装する。
       RED: 既存 Argon2id ハッシュのユーザーが検証でき、成功後に現行方式へ移行する
@@ -166,7 +166,7 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
       テスト → GREEN。
 - [ ] T007 [Fail-closed] 承認外アルゴリズムを要求する経路 (client metadata / XML 署名 /
       OTP / HIBP) を FIPS モードで拒否する。RED: 各経路の拒否テスト → GREEN。
-- [ ] T008 [Build] `justfile` に FIPS ビルドレシピを追加し、Dockerfile に FIPS ターゲット
+- [ ] T008 [Build] `mise.toml` に FIPS ビルドレシピを追加し、Dockerfile に FIPS ターゲット
       またはビルド引数を追加する。ビルド成果物が FIPS モジュールを使っていることを
       確認する手順を残す。
 - [ ] T009 [Docs] README に FIPS モードの設定・制約・ビルド手順・「認証取得とは別」である
@@ -176,9 +176,9 @@ IdMagic の暗号選択は現状「強度重視」で、FIPS 140-3 承認アル�
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just build-go` および FIPS ビルド (新設レシピ) の両方が成功する
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run build-go` および FIPS ビルド (新設レシピ) の両方が成功する
 - 手動: (1) 非 FIPS モードで既存の Argon2id ユーザーがログインでき、挙動が変わらないこと、
   (2) FIPS モードで起動し、既存 Argon2id ユーザーがログインでき、次回から現行方式に
   なっていること、(3) FIPS モードで承認外署名アルゴリズムのクライアントを登録できないこと、

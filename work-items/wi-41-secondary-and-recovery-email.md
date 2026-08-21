@@ -60,9 +60,9 @@ created_at: 2026-06-21
 - [ ] T007 [Verify] Unicode/phone normalization、重複、token replay/expiry、送信失敗、最後の回復手段、tenant 越境と account enumeration を検証する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just build-ui`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run build-ui`
 - 手動: recovery email を設定 → 確認メールのリンクで検証完了 → 再ロードで "確認済み" 表示。secondary email を追加 → 検証 → primary に昇格できる。
 
 ## Risk Notes

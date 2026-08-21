@@ -292,8 +292,7 @@ func TestApprovalExchangeConcurrentConsume(t *testing.T) {
 }
 
 func approvalOAuthErrorCode(err error) string {
-	var oauthErr *sharedusecases.OAuthError
-	if errors.As(err, &oauthErr) {
+	if oauthErr, ok := errors.AsType[*sharedusecases.OAuthError](err); ok {
 		return oauthErr.Code
 	}
 	return ""

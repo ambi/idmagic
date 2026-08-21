@@ -19,7 +19,7 @@ cross-tenant ID の not-found 正規化、エラーマッピングが未検証�
 
 frontend は `AdminLifecycleWorkflowPages.test.tsx` (3件) / `WorkflowDefinitionForm.test.tsx` (5件) の
 React Testing Library テストのみで、Playwright e2e テストが存在しない。wi-220 の完了報告は
-`just test-ui-e2e` を検証コマンドとして挙げているが、`frontend/tests/e2e/` に lifecycle workflow を
+`mise run test-ui-e2e` を検証コマンドとして挙げているが、`frontend/tests/e2e/` に lifecycle workflow を
 対象にした spec ファイルはなく (唯一 lifecycle を名に含む `ui-scenario-actions.spec.ts` は無関係な
 "application lifecycle" を指す)、この検証は実質的に lifecycle workflow の挙動を確認していない。
 
@@ -52,12 +52,12 @@ React Testing Library テストのみで、Playwright e2e テストが存在し�
 - [ ] T001 [Go] `admin_lifecycle_workflow_handler_test.go` を追加する。
 - [ ] T002 [Go] domain validator の operator/上限境界テストを追加する。
 - [ ] T003 [UI] Playwright e2e シナリオを追加する。
-- [ ] T004 [Verify] `just verify-go` / `just test-ui-e2e` / `just verify` を通す。
+- [ ] T004 [Verify] `mise run verify-go` / `mise run test-ui-e2e` / `mise run verify` を通す。
 
 ## Verification
-- `just verify-go`
-- `just test-ui-e2e`
-- `just verify`
+- `mise run verify-go`
+- `mise run test-ui-e2e`
+- `mise run verify`
 
 ## Risk Notes
 テスト追加のみで本番挙動は変えない想定だが、追加したテストが本 WI の対象外の未発見バグを検出した

@@ -60,13 +60,13 @@ Okta Integration Network も Entra ID のアプリギャラリーも、よく使
 - [ ] T006 [Verify] 全 template の schema fixture、version provenance、invalid field、protocol provisioning rollback、tenant permission と snapshot/accessibility を検証する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
-- `just yaml-check-work-items`
-- `just yaml-check-scl`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run typecheck-ui`
+- `mise run lint-ui`
+- `mise run build-ui`
+- `mise run check-work-items`
+- `mise run check-spec`
 - 手動: テンプレートを選び必須入力を埋めて Application を作成し、生成された OIDC binding と 既定 claim release が正しく、そのまま SSO できることを確認する。
 
 ## Risk Notes

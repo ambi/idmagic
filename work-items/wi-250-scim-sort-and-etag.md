@@ -62,13 +62,13 @@ lost update を防ぐ。
 - [ ] T002 [Domain] RED: sort と version 比較の test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: sort 付き LIST と If-Match 付き PUT/PATCH の
       HTTP contract test (412 を含む) を先に失敗させて実装する。
-- [ ] T004 [Verify] `just yaml-check`、`just test-go`、`just verify-go` を実行する。
+- [ ] T004 [Verify] `mise run check`、`mise run test-go`、`mise run verify-go` を実行する。
 
 ## Verification
 
-- `just yaml-check`
-- `just test-go`
-- `just verify-go`
+- `mise run check`
+- `mise run test-go`
+- `mise run verify-go`
 - 手動: `sortBy=userName&sortOrder=descending` で LIST 結果の順序が反転することを確認する。
 - 手動: 古い ETag を `If-Match` に指定した PUT が 412 になることを確認する。
 

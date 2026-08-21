@@ -44,8 +44,7 @@ func checkStreamQuota(ctx context.Context, deps AdminStreamDeps, tenantID string
 		return nil
 	}
 	err := tenancyusecases.CheckQuotaAndIncrement(ctx, deps.QuotaRepo, tenantID, tenancydomain.ResourceSsfStreams, 1)
-	var quotaErr *tenancydomain.QuotaExceededError
-	if errors.As(err, &quotaErr) {
+	if quotaErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
 		// The audit trail must not mask the rejection it records.
 		_ = emit(deps.Emit, &tenancydomain.QuotaExceeded{
 			At: now, TenantID: tenantID, Resource: quotaErr.Resource, HardLimit: true,

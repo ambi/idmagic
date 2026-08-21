@@ -26,7 +26,7 @@ spec_impact:
   - 要求本体のプロパティ集合と decode 先構造体の JSON タグの差。
   - path / query パラメータが要求本体のプロパティとして重複して宣言されていること。
 - 突き合わせられなかった operation を沈黙させず、未解決として報告する。検査が「何を見ていないか」が読めることを優先する。
-- `just check` に組み込む。
+- `mise run check` に組み込む。
 
 ## Out of Scope
 
@@ -35,7 +35,7 @@ spec_impact:
 
 ## Verification
 
-- `just check`
+- `mise run check`
 - 手動確認: `wi-381` と `wi-382` が直した食い違いを意図的に 1 件戻すと、検査が落ちる。
 - 手動確認: 突き合わせられなかった operation が未解決として報告され、沈黙しない。
 

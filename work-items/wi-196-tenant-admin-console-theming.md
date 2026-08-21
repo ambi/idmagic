@@ -36,10 +36,10 @@ depends_on: [wi-192-tenant-branding-logo-display-regression, wi-193-simplify-ten
 - [ ] T005 [Visual/Verify] 代表管理画面の visual / UI 回帰とキーボード focus を検証する。
 
 ## Verification
-- `just spec-render`
-- `just test-ui-unit`
-- `just test-ui-e2e`
-- `just verify-ui`
+- `mise run spec-render`
+- `mise run test-ui-unit`
+- `mise run test-ui-e2e`
+- `mise run verify-ui`
 - 手動: 二つの realm に異なるロゴ・配色を設定し、それぞれの tenant admin console にだけ反映され、`/system` は IdMagic 既定テーマのままであることを確認する。
 
 ## Risk Notes

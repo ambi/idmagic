@@ -53,8 +53,7 @@ func (h *Handler) authenticate(c *echo.Context, allowedScopes ...apitokendomain.
 }
 
 func (h *Handler) writeScimAuthError(c *echo.Context, err error) error {
-	var scopeErr *support.InsufficientScopeError
-	if errors.As(err, &scopeErr) {
+	if scopeErr, ok := errors.AsType[*support.InsufficientScopeError](err); ok {
 		support.SetBearerChallenge(c, "insufficient_scope", scopeErr.Required)
 		return h.writeScimError(c, http.StatusForbidden, err.Error(), "")
 	}

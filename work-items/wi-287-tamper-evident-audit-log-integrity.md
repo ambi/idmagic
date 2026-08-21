@@ -147,7 +147,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 
 - [ ] T001 [Spec] `Audit` に sequence_no / prev_hash / entry_hash、AuditCheckpoint、
       AuditIntegrityStatus、interface 3 件、event 2 件、guarantee、scenario 5 件を追加し
-      `just check-scl` を通す。
+      `mise run check-spec` を通す。
 - [ ] T002 [ADR] 監査ログ完全性の ADR を起票する (正規化規則・チェーン単位・チェックポイント
       間隔と鍵・保持期間削除との両立・append-only 権限・検証失敗時手順)。
 - [ ] T003 [Domain] 正規化関数とハッシュ計算、チェーン検証ロジック (不一致種別の判別) を実装する。
@@ -155,8 +155,8 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
       (scenario `Audit.chain_verification_detects_mutation`) → GREEN。
 - [ ] T004 [Persistence] `sequence_no` / `prev_hash` / `entry_hash` 列、`(tenant_id, sequence_no)`
       一意制約、`audit_checkpoints` テーブルを `infra/schema/postgres.sql` に追加し、sqlc
-      クエリを再生成する (`just sqlc-generate`)。RED: 並行 INSERT で sequence が重複しない
-      テスト (`just test-go-race`) → GREEN。
+      クエリを再生成する (`mise run sqlc-generate`)。RED: 並行 INSERT で sequence が重複しない
+      テスト (`mise run test-go-race`) → GREEN。
 - [ ] T005 [Write path] 監査イベント書き込みにチェーン連結を組み込む。RED: 連続書き込みで
       prev_hash が繋がるテスト → GREEN。既存の監査書き込み経路すべてを通ることを確認する。
 - [ ] T006 [Batch] `idmagic-batch` にチェックポイント発行タスクを追加し、保持期間削除の
@@ -171,14 +171,14 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 - [ ] T009 [UI] 監査ログ画面に完全性ステータス、検証実行、検証可能エクスポートを追加する。
       RED: presentation logic の unit test → GREEN。
 - [ ] T010 [Docs] README に外部検証手順と検証失敗時のエスカレーションを追記する。
-- [ ] T011 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [ ] T011 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui`
-- 手動: `just dev` (postgres モード) で (1) 数件の監査イベントを作り検証が成功すること、
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui`
+- 手動: `mise run dev` (postgres モード) で (1) 数件の監査イベントを作り検証が成功すること、
   (2) DB で 1 行の内容を直接書き換えると検証が該当 sequence を指して失敗すること、
   (3) 1 行を直接削除すると欠落として検知されること、(4) 検証可能エクスポートを
   IdMagic 外のスクリプトで再計算して一致すること、を確認する。

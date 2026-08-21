@@ -41,7 +41,7 @@ W3C Trace Context を用いたコンテキスト伝播と OpenTelemetry Tracing 
 - [ ] T007 [Verify] browser request→DB/outbox→relayのsingle trace、remote parent、error/retry、exporter outage/backpressure、attribute PII scanを検証する。
 
 ## Verification
-- just verify-go
+- mise run verify-go
 - 手動: ローカル Docker Compose 環境で OpenTelemetry Collector と Jaeger を起動し、ログインを実行した際に DB クエリや Valkey アクセスがネストしたスパンとして Jaeger UI 上に正しく描画されることを確認する。
 
 ## Risk Notes

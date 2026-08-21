@@ -54,10 +54,10 @@ sign-in policy で「管理済み端末のみ」「承認済み端末のみ」�
 - [ ] T006 [Verify] specification、Go、UI、手動シナリオを検証する。
 
 ## Verification
-- `just yaml-check`
-- `just check-ids`
-- `just test-go`
-- `just verify-ui`
+- `mise run check`
+- `mise run check-ids`
+- `mise run test-go`
+- `mise run verify-ui`
 - 手動: approved device 条件付きアプリに未承認端末からアクセスすると拒否され、承認後に許可されることを確認する。
 - 手動: device を失効すると既存 session / 次回 authorize の扱いが仕様どおりになることを確認する。
 

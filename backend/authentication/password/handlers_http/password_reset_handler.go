@@ -105,8 +105,7 @@ func HandleResetPasswordAPI(d httpdeps.Deps, c *echo.Context) error {
 	case errors.Is(err, authusecases.ErrPasswordReused):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "password_reuse", "A recently used password cannot be reused.")
 	default:
-		var policyErr *authusecases.PasswordPolicyError
-		if errors.As(err, &policyErr) {
+		if policyErr, ok := errors.AsType[*authusecases.PasswordPolicyError](err); ok {
 			violations := make([]string, len(policyErr.Violations))
 			for i, violation := range policyErr.Violations {
 				violations[i] = string(violation)

@@ -23,7 +23,7 @@ SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うの�
 ## Scope
 
 - `spec/contexts/data-keys/` 1 件で、`glossary.md`・`standards.md`・`states.md` の 3 表を ` ```yaml ` フェンスへ移す試作を行う。
-- レンダラーと検査の改修量、手書きテーブルパーサを JSON Schema 検証へ置換できるか、ソース最長行の変化、`just spec-diff` の出力の読みやすさを実測する。
+- レンダラーと検査の改修量、手書きテーブルパーサを JSON Schema 検証へ置換できるか、ソース最長行の変化、`mise run spec-diff` の出力の読みやすさを実測する。
 - 採否と、採らない場合の再評価条件を Completion に記録する。試作は評価後に撤去する。
 
 ## Out of Scope
@@ -37,7 +37,7 @@ SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うの�
 
 - 目的は品質改善ではなく執筆と検証の人間工学である。wi-374 で確認したとおり Glossary と Scenarios の内容品質は既に良く、YAML 化してもそこは変わらない。混同すると評価軸がぶれる。
 - フェンスを選ぶのは、種類とファイルの対応とレンダラーの文書走査を保てるからである。フェンス処理は mermaid 用に既に存在する。
-- 採用条件を着手前に決める。(1) 手書きのテーブルパーサと `specification-doc.ts` の表検査を JSON Schema 検証へ置き換えられ、正味のコード量が減ること。(2) 生成 HTML の出力が現在と同等であること。(3) ソース最長行が明確に短くなること。(4) `just spec-diff` が現在と同等以上に意味の差分を出せること。1 つでも満たさなければ採らない。
+- 採用条件を着手前に決める。(1) 手書きのテーブルパーサと `specification-doc.ts` の表検査を JSON Schema 検証へ置き換えられ、正味のコード量が減ること。(2) 生成 HTML の出力が現在と同等であること。(3) ソース最長行が明確に短くなること。(4) `mise run spec-diff` が現在と同等以上に意味の差分を出せること。1 つでも満たさなければ採らない。
 - 進め方は `wi-354` の Cedar 評価に倣う。試作を作り、受け入れ基準で測り、採否と再評価条件を記録して試作を撤去する。
 
 ## Plan
@@ -51,15 +51,15 @@ SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うの�
 
 - [ ] T001 [Design] 3 表の JSON Schema と受け入れ基準を確定する。
 - [ ] T002 [Tooling] `data-keys` で試作し、レンダラーと検査の改修量を測る。
-- [ ] T003 [Verify] 生成 HTML、ソース最長行、`just spec-diff` の出力を現行と比較する。
+- [ ] T003 [Verify] 生成 HTML、ソース最長行、`mise run spec-diff` の出力を現行と比較する。
 - [ ] T004 [Decision] 採否と再評価条件を記録し、試作を撤去する。
 
 ## Verification
 
-- `just check-spec`
-- `just spec-render`
-- `just spec-diff`
-- `just verify-spec`
+- `mise run check-spec`
+- `mise run spec-render`
+- `mise run spec-diff`
+- `mise run verify-spec`
 
 ## Risk Notes
 

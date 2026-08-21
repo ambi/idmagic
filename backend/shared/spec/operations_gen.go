@@ -1,4 +1,4 @@
-// Code generated from spec/main.tsp by just spec-render; DO NOT EDIT.
+// Code generated from spec/main.tsp by mise run spec-render; DO NOT EDIT.
 
 package spec
 

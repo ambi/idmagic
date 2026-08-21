@@ -40,14 +40,14 @@ attestation + 検証可能な provenance を「リリースと atomic に」生�
 
 ## Plan
 - [[ADR-020-supply-chain-protection]] の対象を現行成果物（Go binaries、frontend assetsを含むcontainer image）へ具体化する。現在は `.github/workflows/idmagic-ci.yaml` だけなので、PR CIを変更せずtag/手動dispatch専用のrelease workflowを追加する。
-- buildは既存`just build-go`/`just build-ui`と`infra/docker/Dockerfile`を正本にし、version/commit/dateを固定したartifactとimage digestを一度だけ生成する。SBOM/署名のために別buildしてdigestをずらさない。
+- buildは既存`mise run build-go`/`mise run build-ui`と`infra/docker/Dockerfile`を正本にし、version/commit/dateを固定したartifactとimage digestを一度だけ生成する。SBOM/署名のために別buildしてdigestをずらさない。
 - CycloneDX SBOMはGo module、frontend package、container filesystemを対象にartifact/image digestへ紐付け、release artifactとOCI attestationの双方に格納する。
 - cosign keyless署名はGitHub Actions OIDC、SLSA provenanceは公式generator/reusable workflowを用いる。長寿命signing keyをrepository secretに置かず、workflow permissionを最小化・actionをcommit SHA pinする。
 - release publish前にidentity issuer/workflow ref、signature、provenance subject digest、SBOM schemaを別verify jobで検査する。READMEには利用者が同じpolicyで検証するcommandとexpected identityを記載する。
 
 ## Tasks
 - [ ] T001 [Inventory] release対象、artifact名/platform、container registry、tag→version/commit mappingとADR-020未実装差分を確定する。
-- [ ] T002 [Build] release用just recipe/workflowでGo/UI/containerを一度だけbuildし、checksumsとimmutable digestをjob output/artifactへ渡す。
+- [ ] T002 [Build] リリース用の mise タスクとワークフローで Go、UI、コンテナを一度だけビルドし、チェックサムと不変ダイジェストをジョブの出力または成果物へ渡す。
 - [ ] T003 [SBOM] pinned generatorでbinary/module/frontend/containerのCycloneDX SBOMを生成・validateし、checksum/OCI subjectへ関連付ける。
 - [ ] T004 [Sign] GitHub OIDC permissionを持つ隔離jobでartifact/imageをcosign keyless署名し、transparency log bundleを保存する。
 - [ ] T005 [Provenance] SLSA generatorでbuild inputs/subject digestをattestし、release/imageへ付与する。
@@ -58,7 +58,7 @@ attestation + 検証可能な provenance を「リリースと atomic に」生�
 - CI: リリースワークフローで SBOM・署名・provenance が生成され、`cosign verify` と `cosign verify-attestation` が成功する.
 - CI: semgrep OAuth ruleset がパイプラインで実行される。
 - 手動: 生成されたイメージに対し外部から cosign verify が透明性ログ込みで通ることを確認する。
-- `just build-go`
+- `mise run build-go`
 
 ## Risk Notes
 keyless 署名は GitHub OIDC 権限（id-token: write）とワークフロー分離に依存する。

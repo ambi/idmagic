@@ -161,7 +161,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 
 - [ ] T001 [Spec] `User` に user_kind / guest_metadata、Invitation / InvitationState、
       interface 7 件、event 5 件、authorization 規則 2 件、scenario 7 件を追加し
-      `just check-scl` を通す。
+      `mise run check-spec` を通す。
 - [ ] T002 [ADR] ゲストユーザーと招待の ADR を起票する (種別方式の理由・認証経路・既定権限・
       期限と失効・ディレクトリ非公開・二重招待の扱い)。
 - [ ] T003 [Domain] Invitation の状態遷移、期限、トークン生成 / 検証 (ハッシュ保存・単回使用) を
@@ -169,7 +169,7 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
       (scenario `IdManagement.invitation_expired_rejected`) → GREEN。
 - [ ] T004 [Persistence] `invitations` テーブル ((tenant_id, email) の Pending 一意制約) と
       `users.user_kind` / ゲストメタデータ列を `infra/schema/postgres.sql` に追加し、
-      `just sqlc-generate` を実行する。RED: 既存ユーザーが Member として読めるテスト → GREEN。
+      `mise run sqlc-generate` を実行する。RED: 既存ユーザーが Member として読めるテスト → GREEN。
 - [ ] T005 [Authz] ゲストの既定 deny を認可に織り込む (ディレクトリ参照不可、
       アプリ割当なしでのアクセス不可)。RED: ゲストがユーザー一覧を引けないテストを
       先に書く → GREEN。
@@ -185,14 +185,14 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 - [ ] T010 [UI] 招待画面 (作成 / 一覧 / 再送 / 失効)、ユーザー一覧の Member/Guest 区別と絞り込み、
       アクセス期限の表示・変更、受諾画面を追加する。RED: presentation logic の unit test → GREEN。
 - [ ] T011 [Docs] README に招待運用・ゲスト既定権限・期限・外部 IdP 前提を追記する。
-- [ ] T012 [Verify] 下記 Verification を緑にする。`just spec-render` を実行する。
+- [ ] T012 [Verify] 下記 Verification を緑にする。`mise run spec-render` を実行する。
 
 ## Verification
 
-- `just check` / `just check-scl` / `just check-work-items` / `just check-ids`
-- `just test-go` / `just test-go-race` / `just verify-go`
-- `just verify-ui` / `just test-ui-unit`
-- 手動: `just dev` で (1) 招待を作成しメールのリンクから受諾できること、
+- `mise run check` / `mise run check-spec` / `mise run check-work-items` / `mise run check-ids`
+- `mise run test-go` / `mise run test-go-race` / `mise run verify-go`
+- `mise run verify-ui` / `mise run test-ui-unit`
+- 手動: `mise run dev` で (1) 招待を作成しメールのリンクから受諾できること、
   (2) 受諾後のゲストが割当済みアプリだけ使えること、(3) ゲストがユーザー一覧 API を
   叩くと 403 になること、(4) アクセス期限を過去に設定するとログインできなくなること、
   (5) 失効した招待が受諾できないこと、を確認する。

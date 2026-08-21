@@ -1,27 +1,26 @@
 import { describe, expect, it } from 'bun:test'
-import { invokedRecipes, recipeNames, verifyCommandMap } from './command-map.ts'
+import { invokedTasks, taskNames, verifyCommandMap } from './command-map.ts'
 
-const justfile = [
-  'golangci_cache := env("CACHE", "/tmp/cache")',
+const miseToml = [
+  '[tools]',
+  'go = "1.26.5"',
   '',
-  '# Run everything.',
-  'verify: check test-go',
+  '[tasks.verify]',
+  'depends = ["check", "test-go"]',
   '',
-  '# Check one package.',
-  'test-go-package package:',
-  '    go test {{package}}',
+  '[tasks.test-go-package]',
+  'run = "go test $1"',
   '',
-  '# Check the workspace.',
-  'check:',
-  '    bun run check.ts',
+  '[tasks.check]',
+  'run = "bun run check.ts"',
   '',
-  'test-go:',
-  '    go test ./...',
+  '[tasks.test-go]',
+  'run = "go test ./..."',
 ].join('\n')
 
-describe('recipeNames', () => {
-  it('reads plain, dependent, and parameterized recipes but not assignments', () => {
-    expect([...recipeNames(justfile)].sort()).toEqual([
+describe('taskNames', () => {
+  it('reads task names without treating tools as tasks', () => {
+    expect([...taskNames(miseToml)].sort()).toEqual([
       'check',
       'test-go',
       'test-go-package',
@@ -30,36 +29,35 @@ describe('recipeNames', () => {
   })
 })
 
-describe('invokedRecipes', () => {
-  it('finds recipes called from a workflow step', () => {
-    expect(invokedRecipes('run: |\n  just check\n  just test-go-package ./backend\n')).toEqual([
-      'check',
-      'test-go-package',
-    ])
+describe('invokedTasks', () => {
+  it('finds tasks called from a workflow step', () => {
+    expect(
+      invokedTasks('run: |\n  mise run check\n  mise run test-go-package -- ./backend\n'),
+    ).toEqual(['check', 'test-go-package'])
   })
 })
 
 describe('verifyCommandMap', () => {
-  it('accepts a workflow that only calls declared recipes', () => {
-    const workflow = { file: 'ci.yaml', source: 'run: just check\nrun: just verify\n' }
-    expect(verifyCommandMap(justfile, [workflow])).toEqual([])
+  it('accepts a workflow that only calls declared tasks', () => {
+    const workflow = { file: 'ci.yaml', source: 'run: mise run check\nrun: mise run verify\n' }
+    expect(verifyCommandMap(miseToml, [workflow])).toEqual([])
   })
 
-  it('reports a recipe the justfile no longer declares', () => {
+  it('reports a task mise.toml no longer declares', () => {
     const workflow = {
       file: 'ci.yaml',
-      source: 'run: |\n  just check\n  just traceability-strict\n',
+      source: 'run: |\n  mise run check\n  mise run traceability-strict\n',
     }
-    expect(verifyCommandMap(justfile, [workflow])).toEqual([
-      { file: 'ci.yaml', recipe: 'traceability-strict' },
+    expect(verifyCommandMap(miseToml, [workflow])).toEqual([
+      { file: 'ci.yaml', task: 'traceability-strict' },
     ])
   })
 
-  it('reports each missing recipe once', () => {
+  it('reports each missing task once', () => {
     const workflows = [
-      { file: 'a.yaml', source: 'run: just gone\n' },
-      { file: 'b.yaml', source: 'run: just gone\n' },
+      { file: 'a.yaml', source: 'run: mise run gone\n' },
+      { file: 'b.yaml', source: 'run: mise run gone\n' },
     ]
-    expect(verifyCommandMap(justfile, workflows)).toEqual([{ file: 'a.yaml', recipe: 'gone' }])
+    expect(verifyCommandMap(miseToml, workflows)).toEqual([{ file: 'a.yaml', task: 'gone' }])
   })
 })

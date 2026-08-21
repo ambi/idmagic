@@ -59,19 +59,19 @@ idmagic は IdP として、ダウンすると全依存システムのログイ�
 ## Tasks
 - [ ] T001 [ADR] HA / フェイルオーバートポロジ（マルチAZ・自動昇格・LB 連携・リージョン分界）を記録する。
 - [ ] T002 [ADR] 縮退マトリクスと load shedding / backpressure / 統一 retry-timeout-breaker 方針を記録する。
-- [ ] T003 [Spec] 可用性トポロジ objective、fail-safe/fail-closed 縮退 guarantee、前後方互換 constraint、障害 scenarios を追加し `just spec-render` を通す。
+- [ ] T003 [Spec] 可用性トポロジ objective、fail-safe/fail-closed 縮退 guarantee、前後方互換 constraint、障害 scenarios を追加し `mise run spec-render` を通す。
 - [ ] T004 [Go/HTTP] 過負荷保護ミドルウェア（同時実行上限・503+Retry-After・経路優先度 load shedding）を追加する。
 - [ ] T005 [Go] 依存縮退 state を readiness / metrics に反映する。
 - [ ] T006 [Migration] スキーマ移行を expand/contract 2 段に分ける規約を適用する。
 - [ ] T007 [Drill] docker compose で app kill / DB 昇格 / Valkey 停止 / スパイク / zero-downtime deploy の drill recipe を追加する。
-- [ ] T008 [Verify] `just yaml-check`、`just verify-go`、`just check-ids`、failover drill を通す。
+- [ ] T008 [Verify] `mise run check`、`mise run verify-go`、`mise run check-ids`、failover drill を通す。
 
 ## Verification
-- `just yaml-check`
-- `just spec-render`
-- `just verify-go`
-- `just check-ids`
-- failover / chaos / zero-downtime drill 用 `just` recipe
+- `mise run check`
+- `mise run spec-render`
+- `mise run verify-go`
+- `mise run check-ids`
+- failover / chaos / zero-downtime drill 用 `mise` task
 - 手動: docker compose 上で PostgreSQL primary を停止し、standby 昇格後に `/token` `/authorize` が継続することを確認する。
 - 手動: Valkey ノードを停止し、共有状態が HA 構成で継続、または throttle が fail-closed に落ちて安全側になることを確認する。
 - 手動: app レプリカを 1 台 kill し、drain と LB 経路除外でリクエストが落ちないことを確認する。

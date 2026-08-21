@@ -64,12 +64,12 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 - [ ] T006 [Verify] replay/resend race、forwarded link、brute force、enumeration timing、disabled user、MFA-required app、multi-replica を検証する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run build-go`
+- `mise run typecheck-ui`
+- `mise run lint-ui`
+- `mise run build-ui`
 - 手動: テナント設定で有効化 → email でログイン開始 → 届いた code / link で サインイン成立。期限切れ / 使用済み challenge が拒否されることを確認する。
 
 ## Risk Notes

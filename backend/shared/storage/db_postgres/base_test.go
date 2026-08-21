@@ -186,7 +186,7 @@ func (r *contextCheckingRow) Scan(dest ...any) error {
 	if r.err != nil {
 		return r.err
 	}
-	*(dest[0].(*int)) = 42
+	*dest[0].(*int) = 42
 	return nil
 }
 
@@ -221,7 +221,7 @@ func (r *contextCheckingRows) Scan(dest ...any) error {
 	if err := r.ctx.Err(); err != nil {
 		return err
 	}
-	*(dest[0].(*int)) = 42
+	*dest[0].(*int) = 42
 	return nil
 }
 func (*contextCheckingRows) Values() ([]any, error) { return []any{42}, nil }

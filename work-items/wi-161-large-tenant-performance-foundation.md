@@ -50,26 +50,26 @@ created_at: 2026-07-10
 - 既存 UI の全件取得・list endpoint 集計パターンを棚卸しし、summary が必要な画面とページングで十分な画面を分ける。
 - PostgreSQL を主対象に query plan と index を整える。memory persistence は contract 検証に留め、大規模性能保証の主対象にはしない。
 - Read model は freshness を明示する。認可や quota enforcement に必要な値は強整合、dashboard 表示は短時間 stale を許容する。
-- 性能検証は `just` recipe に載せ、通常 verify と長時間 perf smoke を分ける。
+- 性能検証は `mise` task に載せ、通常 verify と長時間 perf smoke を分ける。
 
 ## Tasks
 - [ ] T001 [ADR] 大規模テナント scale profile、read model 方針、freshness、検索制約、性能検証方式を記録する。
 - [ ] T002 [Spec] performance objectives、large-tenant scenarios、UX の全件取得禁止・summary freshness を追加する。
-- [ ] T003 [Render] `just spec-render` で派生物を更新する。
+- [ ] T003 [Render] `mise run spec-render` で派生物を更新する。
 - [ ] T004 [Audit] 既存 UI / API の全件取得、list endpoint 集計、未制限検索を棚卸しして置換対象を確定する。
 - [ ] T005 [Persistence] 主要 query の index / read model / counter cache / migration を実装する。
 - [ ] T006 [Go] summary endpoint、検索 validation、slow query metrics / structured log を追加する。
 - [ ] T007 [UI] dashboard / detail summary / 高コスト検索 UI を summary API と cancellable loading に移行する。
-- [ ] T008 [Perf] 大規模 seed、query benchmark、画面 smoke、`just` recipe を追加する。
-- [ ] T009 [Verify] `just yaml-check`、`just verify-go`、`just verify-ui`、perf smoke recipe を通す。
+- [ ] T008 [Perf] 大規模 seed、query benchmark、画面 smoke、`mise` task を追加する。
+- [ ] T009 [Verify] `mise run check`、`mise run verify-go`、`mise run verify-ui`、perf smoke recipe を通す。
 
 ## Verification
-- `just yaml-check`
-- `just spec-render`
-- `just verify-go`
-- `just verify-ui`
-- `just test-ui-e2e`
-- perf smoke 用 `just` recipe
+- `mise run check`
+- `mise run spec-render`
+- `mise run verify-go`
+- `mise run verify-ui`
+- `mise run test-ui-e2e`
+- perf smoke 用 `mise` task
   - reason: 大規模 seed と query / UI 応答時間は通常 verify から分離しても、再現可能な recipe として必要なため。
 - 手動: scale profile の tenant で admin dashboard、users、groups、agents、applications、audit events を開き、初期表示と検索が objective 内に収まることを確認する。
 - 手動: query plan に tenant_id 条件と期待 index が使われ、全 tenant scan や filesort 相当の高コスト plan が出ていないことを確認する。

@@ -101,12 +101,12 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
 - [ ] T007 [Verify] Samba/OpenLDAP fixtureでfull/delta/rename/delete/group nesting、TLS failure、cursor replay、conflict、secret非露出、tenant越境を検証する。
 
 ## Verification
-- `just test-go`
-- `just lint-go`
-- `just build-go`
-- `just typecheck-ui`
-- `just lint-ui`
-- `just build-ui`
+- `mise run test-go`
+- `mise run lint-go`
+- `mise run build-go`
+- `mise run typecheck-ui`
+- `mise run lint-ui`
+- `mise run build-ui`
 - 手動（テスト用 LDAP / AD と別ネットワークの Connector）: tenant admin が source と
   enrollment token を作成 → Connector が mTLS で enrollment → 初回同期でユーザー属性を
   provisioning → 属性変更・無効化を差分同期 → 同一差分の再送が冪等であることを確認する。

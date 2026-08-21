@@ -1,6 +1,6 @@
 # Specification Format
 
-The exact, current grammar is whatever `just check-spec` accepts; its diagnostics are the precise rule.
+The exact, current grammar is whatever `mise run check-spec` accepts; its diagnostics are the precise rule.
 This document states intent, examples, and the decisions a checker cannot make for you. Rules marked
 *(checked)* fail the build; the rest are review judgment.
 

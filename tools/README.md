@@ -6,7 +6,7 @@ This workspace contains deterministic tooling for the repository:
   OpenAPI artifacts without a product-name registry.
 - `check` validates Markdown frontmatter and the remaining YAML formats, resolves the references a
   work item makes into the specification, rejects forbidden dependency directions, guards the command
-  map against workflow steps calling recipes that no longer exist, and derives the normative diff
+  map against workflow steps calling tasks that no longer exist, and derives the normative diff
   between a git ref and the working tree.
 - `check-api-compat` compares the TypeSpec-generated OpenAPI contract with the released baseline.
 - `generate-contract` derives the small Go runtime operation catalog from TypeSpec OpenAPI.
@@ -18,4 +18,8 @@ The tools derive application-specific values from canonical sources and standard
 comes from compiler source locations, OpenAPI filenames are discovered under `spec/`, and Go import roots
 come from `go.mod`; tool source must not embed an application name or module path.
 
-Run all routine operations from the repository root through `just`.
+Run all routine operations from the repository root through `mise run`.
+
+`mise.toml` pins Go, Bun, golangci-lint, sqlc, psqldef, and PostgreSQL client tools. `mise install` installs
+missing versions into mise's shared user-level store. Renovate reads `mise.toml` with its built-in manager and
+proposes upgrades; CI uses the same tool definitions.
