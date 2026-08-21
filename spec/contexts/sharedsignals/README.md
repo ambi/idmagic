@@ -1,6 +1,6 @@
 # SharedSignals
 
-Shared Signals Framework (SSF) と Continuous Access Evaluation Profile (CAEP) による、エージェントのほぼリアルタイムな失効を所有する。IdMagic は SSF の送信側と受信側の両方として振る舞う。
+Shared Signals Framework (SSF) と Continuous Access Evaluation Profile (CAEP) による、エージェントのほぼリアルタイムな失効を担う。IdMagic は SSF の送信側と受信側の両方として振る舞う。
 
 中心となるのは `Agent` ごとの失効エポックである。`KillAgent`、`DisableAgent`、`UnbindAgentCredential`、所有者のオフボーディング、検証済みの受信 Security Event Token (SET、RFC 8417) のいずれかを契機に単調に前進する。OAuth2 の `Introspect` はこの値をアクセストークンの `issued_at` と比較し、即時失効へ反映する (`LocalRevocation`)。
 

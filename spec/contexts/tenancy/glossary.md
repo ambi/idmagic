@@ -11,7 +11,7 @@
 | Enable | Disabled の対象を Active に戻す。Tenant では `/api/admin/tenants/{id}/enable` から発火。 | enable |
 | System | IdP プロセス自身。起動時にデフォルトテナントを自動作成する。 |  |
 | OAuth2Client | OIDC / OAuth2 プロトコルエンドポイントを呼び出す外部クライアントアプリケーション。 |  |
-| EndUser | テナントに所属する人間の利用者。通知メールの受信者であり、その `locale` 属性が通知言語を解決する第 1 段になる。IdManagement が所有する User を公開用の語彙で表す。 | エンドユーザー, 利用者 |
+| EndUser | テナントに所属する人間の利用者。通知メールの受信者であり、その `locale` 属性が通知言語を解決する第 1 段になる。IdManagement の User を公開用の語彙で表す。 | エンドユーザー, 利用者 |
 | HardQuota | 超過するとリソース作成が同期的にエラーとなる厳格な上限。 |  |
 | SoftQuota | 超過しても作成は成功するが、警告が通知される遅延評価の上限。 |  |
 | NotificationTemplate | 利用者へ送る通知メール 1 通の文面定義。`template_key` と `locale` の組で一意に定まり、件名、プレーンテキスト本文、HTML 本文、差出人表示名を持つ。システムが同梱する `ja` / `en` の組込みデフォルトとテナントによる上書きの 2 段で解決する。 | 通知テンプレート, メールテンプレート |

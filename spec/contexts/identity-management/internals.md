@@ -35,7 +35,7 @@ OIDC と SCIM の組み込みの属性も、テナントが定義する独自の
 
 ## User CSV Round Trip
 
-`User` CSV は 2 つ目のプロビジョニング権威ではなく、IdManagement が所有する部分更新の窓口である。機械処理用の列名の語彙と可逆なセル変換はユーザーのドメインに置き、エクスポートとインポートが HTTP のラベルや UI のロケールに依存せず 1 つの定義を共有する。組み込みの書き込み可能列、読み取り専用列、禁止列は閉じた集合とする。テナント定義の列は、ユーザーのユースケースポートを介して実効属性スキーマを解決した後にだけ `custom:<key>` として追加する。これにより解析を決定的に保ちながら、テナントのスキーマを CSV 処理とは独立して発展させられる。
+`User` CSV は 2 つ目のプロビジョニング権威ではなく、IdManagement が備える部分更新の窓口である。機械処理用の列名の語彙と可逆なセル変換はユーザーのドメインに置き、エクスポートとインポートが HTTP のラベルや UI のロケールに依存せず 1 つの定義を共有する。組み込みの書き込み可能列、読み取り専用列、禁止列は閉じた集合とする。テナント定義の列は、ユーザーのユースケースポートを介して実効属性スキーマを解決した後にだけ `custom:<key>` として追加する。これにより解析を決定的に保ちながら、テナントのスキーマを CSV 処理とは独立して発展させられる。
 
 ドメインの解析器は列の有無とセルの内容を別々に保持する。列がないことは Aggregate を変更しないことを意味する一方、存在する空の列は項目を消す意味を持ちうるからである。どの行も計画する前に、未知のヘッダー、重複するヘッダー、シークレットを含むヘッダーを拒否する。数式に対して安全な変換器は、表計算で危険な先頭文字と既存の先頭アポストロフィーに可逆な形で接頭辞を付け、レコードの引用処理を RFC 4180 CSV の変換器に委ねる。したがってエクスポートとインポートは、報告専用のエクスポートで使われる情報を失うアポストロフィーのエスケープを受け入れず、カンマ、引用符、複数行の値を含めて `decode(encode(value)) == value` という不変条件を共有する。
 
@@ -43,7 +43,7 @@ OIDC と SCIM の組み込みの属性も、テナントが定義する独自の
 
 解析と直列化は `io.Reader` と `io.Writer` に対して動作し、CSV 全体を文字列、2 次元のレコードスライス、ジョブ JSON 内の base64 として実体化しない。解析器は byte、行、項目の上限を段階的に強制する。計画ではページ単位のリポジトリ読み取りから上限付きの ID と username のインデックスを構築し、適用では行ごとのトランザクション境界を保ちながら上限付きのまとまりで進める。これにより `worker` のメモリを成果物全体の大きさから独立させ、CSV の行ごとにリポジトリを検索することを避ける。
 
-ユーザーのユースケース層は プレビュー と 適用 に共通する 1 個の決定的な計画器を所有する。既存の集約を不変な ID、次に優先 username で解決し、型付きの独自属性と行間の衝突を検証し、状態を変更せず `created`、`updated`、`unchanged`、`rejected` のいずれかを生成する。適用 は プレビュー 時の古い変更計画を実行せず、現在のリポジトリ状態に対して同じ計画器を再び実行する。これにより同時変更を 適用 時に可視化し、プレビュー が暗黙の楽観的ロックの迂回路になることを防ぐ。
+ユーザーのユースケース層は プレビュー と 適用 に共通する 1 個の決定的な計画器を持つ。既存の集約を不変な ID、次に優先 username で解決し、型付きの独自属性と行間の衝突を検証し、状態を変更せず `created`、`updated`、`unchanged`、`rejected` のいずれかを生成する。適用 は プレビュー 時の古い変更計画を実行せず、現在のリポジトリ状態に対して同じ計画器を再び実行する。これにより同時変更を 適用 時に可視化し、プレビュー が暗黙の楽観的ロックの迂回路になることを防ぐ。
 
 プレビュー が CSV を受け取るのは 1 回だけである。テナント単位の不変な成果物ストアが stream を受け取り、中身の見えない参照、サーバーが計算した SHA-256、byte 数、行数を返す。ジョブのパラメーターと結果はそのメタデータと要約だけを保存し、CSV の本文や base64 を決して含まない。永続化アダプターは上限付きのまとまりを使うため、永続化と読み取りに成果物と同じ大きさの単一のデータベース値やプロセスのバッファーを必要としない。メモリアダプターはテストとローカルの組み立てに同じポートを提供する。
 
@@ -65,11 +65,11 @@ User の実効ロールは `user.roles ∪ ⋃_{g ∈ user.groups} g.roles` で�
 
 `Group` は任意の `email` (部署のメーリングリストなど単純な連絡先) と、テナントが定義する任意の項目を入れる疎な `attributes` も持つ。スキーマを持たない自由形式のキー・値ではなく、管理者が定義したスキーマでグループのプロフィールを拡張する方式を採り、`User` の属性と同じ統治の姿勢を保つ。`email` は `User.email` と同じ形式検査だけを行い、検証済みフラグ、変更要求のフロー、一意性の制約は持たない。グループには受信箱を支配していることを示せる本人がおらず、それに依存する認証経路もないからである。
 
-`Group.attributes` は、`GroupAttributeDef` で定義する `TenantGroupAttributeSchema` に対して検証する。これは `Tenancy` が所有するテナント単位の Aggregate である。どのプリンシパルを統治するスキーマであっても、テナント単位のスキーマ管理は `Tenancy` の関心事であるため、`TenantUserAttributeSchema` と同じ場所に置く。`GroupAttributeDef` は `UserAttributeDef` と異なり、`key`、`label`、`type`、`multi_valued`、`required` だけを持ち、`editable_by_user`、`claim_name` / `oidc_scope`、`visibility` は持たない。`Group` にはセルフサービスの編集画面がなく、その属性を OIDC / SAML クレームへ射影しないためである。和集合にする組み込みカタログもない。`User` の組み込み層は、OIDC §5.1 と SCIM `enterprise:User` が多数の任意プロフィールクレームを固定的に定めるため存在するが、Group には同様の標準語彙がない。そのため `TenantGroupAttributeSchema.attributes` だけが実効定義の集合になる。未定義キーの拒否、型の一致、`multi_valued` の整合性、`required` の充足という `ValidateAttributes` 型の検査は概念として再利用する。一方で、2 つの定義がすべてのフィールドを共有するわけではないため、`GroupAttributeDef` に対する Group 固有の処理として実装する。管理者は、ユーザースキーマと同じ形の 2 つのエンドポイント `GetTenantGroupAttributeSchema` / `UpdateTenantGroupAttributeSchema` (`/api/admin/v1/tenant/group_attribute_schema`) を通じてスキーマを管理する。
+`Group.attributes` は、`GroupAttributeDef` で定義する `TenantGroupAttributeSchema` に対して検証する。これは `Tenancy` に属するテナント単位の Aggregate である。どのプリンシパルを統治するスキーマであっても、テナント単位のスキーマ管理は `Tenancy` の関心事であるため、`TenantUserAttributeSchema` と同じ場所に置く。`GroupAttributeDef` は `UserAttributeDef` と異なり、`key`、`label`、`type`、`multi_valued`、`required` だけを持ち、`editable_by_user`、`claim_name` / `oidc_scope`、`visibility` は持たない。`Group` にはセルフサービスの編集画面がなく、その属性を OIDC / SAML クレームへ射影しないためである。和集合にする組み込みカタログもない。`User` の組み込み層は、OIDC §5.1 と SCIM `enterprise:User` が多数の任意プロフィールクレームを固定的に定めるため存在するが、Group には同様の標準語彙がない。そのため `TenantGroupAttributeSchema.attributes` だけが実効定義の集合になる。未定義キーの拒否、型の一致、`multi_valued` の整合性、`required` の充足という `ValidateAttributes` 型の検査は概念として再利用する。一方で、2 つの定義がすべてのフィールドを共有するわけではないため、`GroupAttributeDef` に対する Group 固有の処理として実装する。管理者は、ユーザースキーマと同じ形の 2 つのエンドポイント `GetTenantGroupAttributeSchema` / `UpdateTenantGroupAttributeSchema` (`/api/admin/v1/tenant/group_attribute_schema`) を通じてスキーマを管理する。
 
 ## Agent Principal
 
-`Agent` は、`User` と OAuth2 が所有する資格情報プリミティブに並ぶ、第 3 の第一級プリンシパル型である。この Context が所有するのは、アイデンティティ、所有権、ライフサイクル、資格情報のバインディングを含む Aggregate 自体である。エージェントがトークン交換のチェーンで actor として振る舞うための委譲機構は `OAuth2` が所有する。
+`Agent` は、`User` と、OAuth2 が持つ資格情報プリミティブに並ぶ、第 3 の第一級プリンシパル型である。この Context が受け持つのは、アイデンティティ、所有者、ライフサイクル、資格情報のバインディングを含む Aggregate 自体である。エージェントがトークン交換のチェーンで actor として振る舞うための委譲機構は `OAuth2` が担う。
 
 `Agent` Aggregate は `(id, tenant_id, display_name, kind, status, owner, purpose, created_at, updated_at, disabled_at?, killed_at?)` を持つ。`id` は URL セーフなスラッグであり、`kind` はエージェントの行為に人間がどの程度関与するかを宣言するため、`autonomous` と `supervised` を区別する。登録、検索、変更はすべてテナント単位とし、IdManagement の他の Aggregate と同じテナント境界に従う。
 

@@ -10,7 +10,7 @@
 
 ## Sign-in policy evaluation
 
-ApplicationCatalog は、テナントとアプリケーションごとに順序付けた `SignInRule` の集合を `AppSignInPolicy` として所有する。OIDC の認可、SAML の SSO、WS-Fed のサインインなど、フェデレーションを開始するたびにトークンや Assertion の発行前に評価する。アプリケーションとプロトコル設定の関連付けを確認するのと同じ関門で評価するため、別のプロトコルを入口に選んでもポリシー評価を迂回できない。設定できるのは評価器が実際に確認できる値だけである。
+ApplicationCatalog は、テナントとアプリケーションごとに順序付けた `SignInRule` の集合を `AppSignInPolicy` として持つ。OIDC の認可、SAML の SSO、WS-Fed のサインインなど、フェデレーションを開始するたびにトークンや Assertion の発行前に評価する。アプリケーションとプロトコル設定の関連付けを確認するのと同じ関門で評価するため、別のプロトコルを入口に選んでもポリシー評価を迂回できない。設定できるのは評価器が実際に確認できる値だけである。
 
 必須の認証強度は自由入力ではなく、`Password` または `Mfa` に制約した `RequiredAuthnStrength` 列挙であり、内部の ACR URN と AMR 値へ 1 対 1 で対応付ける。実際に存在する ACR 値は 2 種類だけで、制約のない文字列は設定ミスを招くためである。`reauth_max_age_seconds` は Authentication のステップアップ認証の直近性に対して評価し、`network_allow_cidrs` は管理者が指定して保存時に検証した CIDR に対してリクエスト元のクライアント IP を検査する。評価器が確認できない端末条件は受け付けない。
 
@@ -32,10 +32,10 @@ Application が持つプロトコル設定は最大 1 つとし、作成時に�
 
 各プロトコルのテーブル（`oauth2_clients`、`saml_service_providers`、`wsfed_relying_parties`）は、`NULL` を許容する一意な `application_id` を持つ。`application_id` が `NULL` でない場合は、テナントと固定のプロトコル判別子も含む複合外部キーで参照する。これにより、2 つのプロトコル行が同じ Application を参照すること、テーブルをまたいで重複して参照すること、テナントや種別が食い違うことをデータベース自身が拒否する。`NULL` は、Dynamic Client Registration や信頼管理 API で作成され、Application カタログには表示しない正当なレコードを表す。そのため、すべてのプロトコル設定に Application を必須とはしない。
 
-カタログへの作成では、Application 行の作成とプロトコル行への `application_id` の設定を 1 つのトランザクションで確定する。後半が失敗しても、カタログにだけ表示される孤立した Application は残らない。Application を削除すると、それが所有するプロトコル設定も連鎖して削除する。一方、Application が所有するプロトコル設定を各プロトコルの管理 API から直接削除しようとした場合は、競合として拒否する。削除は必ず所有元の Application を経由する。
+カタログへの作成では、Application 行の作成とプロトコル行への `application_id` の設定を 1 つのトランザクションで確定する。後半が失敗しても、カタログにだけ表示される孤立した Application は残らない。Application を削除すると、それに紐づくプロトコル設定も連鎖して削除する。一方、Application が所有するプロトコル設定を各プロトコルの管理 API から直接削除しようとした場合は、競合として拒否する。削除は必ず所有元の Application を経由する。
 
 OAuth2 のプロトコルテーブルは `oauth2_clients` とする。SAML と WS-Fed のテーブル（`saml_service_providers`、`wsfed_relying_parties`）と同様に、プロトコル固有の標準用語を使う。
 
 ## Portal application ordering and category
 
-ApplicationCatalog は、エンドユーザーポータルでの手動の並び順と、管理者が定義するカテゴリの両方を所有する。どちらも IdentityManagement の User Aggregate ではなく、`Application` の表示に関する概念だからである。手動の並び順は `ApplicationOrdering` として、`(tenant_id, user_sub)` ごとの `application_id` の一覧で表す。`ListMyApplications` は、割り当て済みで可視かつ有効なアプリケーションを解決してから保存済みの並び順を適用する。割り当てが外れた項目は除外し、保存済みの一覧にない割り当て済みアプリケーションは名前順で末尾に加える。並び順が保存されていない場合は、すべてを名前の昇順に並べる。このため、割り当てが並行して変わっても一覧は壊れない。`ReorderMyApplications` は並び順の一覧を作成または更新するだけであり、個人の表示設定なのでドメインイベントを発行しない。カテゴリはテナントごとに管理者が定義し、Application ごとに 0 個以上を割り当てる。
+ApplicationCatalog は、エンドユーザーポータルでの手動の並び順と、管理者が定義するカテゴリの両方を扱う。どちらも IdentityManagement の User Aggregate ではなく、`Application` の表示に関する概念だからである。手動の並び順は `ApplicationOrdering` として、`(tenant_id, user_sub)` ごとの `application_id` の一覧で表す。`ListMyApplications` は、割り当て済みで可視かつ有効なアプリケーションを解決してから保存済みの並び順を適用する。割り当てが外れた項目は除外し、保存済みの一覧にない割り当て済みアプリケーションは名前順で末尾に加える。並び順が保存されていない場合は、すべてを名前の昇順に並べる。このため、割り当てが並行して変わっても一覧は壊れない。`ReorderMyApplications` は並び順の一覧を作成または更新するだけであり、個人の表示設定なのでドメインイベントを発行しない。カテゴリはテナントごとに管理者が定義し、Application ごとに 0 個以上を割り当てる。

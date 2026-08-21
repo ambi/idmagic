@@ -1,8 +1,8 @@
 # OAuth2
 
-OAuth 2.0 / OIDC プロトコル群の全責務を所有する。クライアントメタデータと Dynamic Client Registration、認可判断（認可、同意、認可コード、PAR、Device Authorization、RP-Initiated Logout）、トークンの発行とライフサイクル（アクセストークン、リフレッシュトークン、ID トークン、イントロスペクション、失効、UserInfo、Proof of Possession）、Discovery Metadata、Authorization Server Metadata、健全性報告をこの Bounded Context に集約する。
+OAuth 2.0 / OIDC プロトコル群の全責務を担う。クライアントメタデータと Dynamic Client Registration、認可判断（認可、同意、認可コード、PAR、Device Authorization、RP-Initiated Logout）、トークンの発行とライフサイクル（アクセストークン、リフレッシュトークン、ID トークン、イントロスペクション、失効、UserInfo、Proof of Possession）、Discovery Metadata、Authorization Server Metadata、健全性報告をこの Bounded Context に集約する。
 
-トークンに載せるクレームの決定は `ClaimMapping`、署名鍵のライフサイクルは `SigningKeys`、利用者を認証してセッションを保つのは `Authentication`、その `client_id` にそもそも到達してよいかという関門は `Application` が持つ。この Context が所有するのは、それらの結果をプロトコルの語彙で組み立てて外部へ返す部分である。
+トークンに載せるクレームの決定は `ClaimMapping`、署名鍵のライフサイクルは `SigningKeys`、利用者を認証してセッションを保つのは `Authentication`、その `client_id` にそもそも到達してよいかという関門は `Application` が担う。この Context が受け持つのは、それらの結果をプロトコルの語彙で組み立てて外部へ返す部分である。
 
 | File | Content |
 |---|---|

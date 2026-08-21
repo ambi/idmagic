@@ -1,8 +1,8 @@
 # Tenancy
 
-Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストからのテナント解決、テナント単位の設定・外装・属性スキーマ・通知テンプレート・リソース上限、そして制御面のテナント管理 API を所有する。Tenant は IdMagic のあらゆる Aggregate が属する境界である。
+Tenant (Realm) の Aggregate、ライフサイクル、HTTP リクエストからのテナント解決、テナント単位の設定・外装・属性スキーマ・通知テンプレート・リソース上限、そして制御面のテナント管理 API を担う。Tenant は IdMagic のあらゆる Aggregate が属する境界である。
 
-テナントの中に置かれる記録は所有しない。User と Group は `IdManagement`、Application は `Application`、資格情報とセッションは `Authentication` が持つ。この Context が決めるのは、それらがどの境界に属し、その境界にどんな上限と既定が効くかである。
+テナントの中に置かれる記録そのものは扱わない。User と Group は `IdManagement`、Application は `Application`、資格情報とセッションは `Authentication` が持つ。この Context が決めるのは、それらがどの境界に属し、その境界にどんな上限と既定が効くかである。
 
 テナント分離の規則そのものは製品全体の関心事なので [spec/authorization.md](../../authorization.md) が正であり、ここはその境界を決める側の記録を持つ。
 
