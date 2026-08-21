@@ -19,6 +19,8 @@
 | `oauth2_token_issuance_total`, `oauth2_token_issuance_duration_seconds` | `grant_type`, `outcome` | grant 別の `/token` の発行率と遅延 |
 | `http_request_aborts_total`, `operation_detached_completion_failures_total` | `kind` | 中断の扱い |
 
+`idmagic-worker` は自身の `/metrics` を管理専用の別リスナーで公開する。API プロセスの `/metrics` とは別のプロセスかつ別の実体であり、レーンごとに `jobs_claim_latency_seconds`、`jobs_outcome_total`、`jobs_retry_total`、`jobs_queue_depth` を持つ。
+
 ラベルの値は有限の集合に限る。値の種類に上限がない `tenant_id`、`user_id`、`client_id`、解決済みのリクエストパスはラベルにしない。エンドポイントは常に登録するが、起動時に Prometheus の構築が完了するまでは `503` を返す。公開先はループバックアドレス、管理ネットワーク、または認証付きプロキシの背後に限る。
 
 ## Logging

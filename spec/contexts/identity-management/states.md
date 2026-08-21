@@ -2,7 +2,9 @@
 
 ## UserLifecycle
 
-User Aggregate のライフサイクル。`Active` は通常稼働、Disable は復元可能な無効化を表す。SoftDelete で削除予約 (`PendingDeletion`) に入り、猶予期間内は Restore で `Active` に戻せる。Purge では Tombstone 化し、匿名化をカスケードする。`Deleted` は終端状態であり復元できない。`PendingDeletion` から `Deleted` への遷移ガードは、猶予期間（業界で一般的な 7〜30 日に合わせたデフォルト 30 日）が経過したこと、または管理者が明示的に `purge=true` を指定したことのいずれかを要求する。猶予期間の経過前に `purge=false` で PendingDeletion のユーザーに対して呼び出した場合、`DeleteAdminUser.requires` が InvalidRequestError で拒否し、この遷移は発生しない。
+User Aggregate のライフサイクル。`Active` は通常稼働、`Disabled` は復元可能な無効化である。削除の既定は予約であり、`PendingDeletion` に入って猶予期間内は `Active` へ戻せる。`Deleted` は Tombstone 化して匿名化をカスケードした終端状態で、復元できない。
+
+`Deleted` へ入る経路は 2 つあり、どちらも `purge` の指定を要求する点で共通する。管理者が明示的に `purge=true` を指定すればどの状態からでも即時に `Deleted` へ入り、`PendingDeletion` の行はそれに加えて、猶予期間（業界で一般的な 7〜30 日に合わせたデフォルト 30 日）の経過でも `Deleted` へ入る。指定のない削除要求は必ず `PendingDeletion` を経由し、すでに `PendingDeletion` の User に対する再要求は冪等な no-op になる。
 
 | State | Kind | Meaning |
 |---|---|---|
@@ -19,8 +21,8 @@ User Aggregate のライフサイクル。`Active` は通常稼働、Disable は
 | Disabled | UserSoftDeleted | — | PendingDeletion |  |
 | PendingDeletion | UserRestored | — | Active |  |
 | PendingDeletion | UserDeleted | input.purge == true \|\| duration_since(status_changed_at) >= duration('2592000s') | Deleted | UserDeleted |
-| Active | UserDeleted | — | Deleted |  |
-| Disabled | UserDeleted | — | Deleted |  |
+| Active | UserDeleted | input.purge == true | Deleted | UserDeleted |
+| Disabled | UserDeleted | input.purge == true | Deleted | UserDeleted |
 
 ## DynamicMembershipEvaluationLifecycle
 

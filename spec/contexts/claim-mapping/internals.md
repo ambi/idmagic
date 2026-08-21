@@ -1,8 +1,8 @@
 # ClaimMapping Internals
 
-## ResolveEffectiveClaims
+## The single claim-resolution path
 
-`ClaimMappingPolicy` と解決済みの属性から `NameID` と `IssuedClaim[]` を組み立てる。WS-Fed、SAML、OIDC の各 issuer が共有する唯一のクレーム解決経路である。テナントの属性可視性 (`visibility != Private`) と予約済みクレーム型の固定集合は、ポリシーでは緩和できない制約として強制する。
+`NameID` と `IssuedClaim[]` の組み立ては、WS-Fed、SAML、OIDC の各 issuer が共有する唯一の経路を通る。プロトコルごとに解決を書くと、あるプロトコルでだけ非公開属性が漏れる形が作れてしまう。テナントの属性可視性 (`visibility != Private`) と予約済みクレーム型の固定集合は、ポリシーでは緩和できない制約として、この経路の中で強制する。
 
 `User` の中核フィールド (`user_id`、`email`、`name`、`given_name`、`family_name`、`preferred_username`、`email_verified`、ロール) は `UserAttributeDef` に現れないため、常に解決対象とする。カスタム属性については、`attribute_defs` にないキー、または `visibility=Private` のキーをソースに持つ規則を下限の検査で拒否する。
 

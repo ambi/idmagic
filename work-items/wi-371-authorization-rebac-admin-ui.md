@@ -54,7 +54,7 @@ affected_spec:
 
 feature は `frontend/src/features/admin-authorization/` にまとめる。既存の `admin-authz-detail-types` は RFC 9396 の authorization details 型を扱う別機能なので、名前が紛らわしくないよう UI 上の見出しでも「細粒度認可 (ReBAC)」と「OAuth2 認可詳細」を明確に分ける。
 
-作成・編集を専用ルートに置き、一覧の操作を行内に出し、破壊的操作を確認ダイアログにするのは `spec/contexts/system/SPECIFICATION.md` の Admin Console Policy と UI navigation and consistency policy に従う。
+作成・編集を専用ルートに置き、一覧の操作を行内に出し、破壊的操作を確認ダイアログにするのは `frontend/README.md` の管理コンソールの情報設計とナビゲーションの規約に従う。
 
 ### 認可モデルのフォーム ⇄ JSON
 
@@ -86,7 +86,7 @@ backend の一覧は `limit` だけを取り、上限 1000 で `Link` ヘッダ�
 
 ### 却下した案
 
-- **モーダルでのモデル編集**: Admin Console Policy が主要リソースの作成・編集に専用ルートを要求している。ディープリンクとブラウザーの戻る操作を壊さない。
+- **モーダルでのモデル編集**: `frontend/README.md` のナビゲーションの規約が主要リソースの作成・編集に専用ルートを要求している。ディープリンクとブラウザーの戻る操作を壊さない。
 - **JSON エディタのみ**: 実装は最も軽いが、書き換え規則の組み合わせ制約をすべて 422 に委ねることになる。フォームなら選択肢の段階で大半を潰せる。
 - **フォームのみ**: 他環境からのモデル持ち込みと、大きなモデルの一括編集ができなくなる。
 - **クライアント側での完全な検証**: 循環検出まで写すと、フェイルクローズの判断の正本が 2 か所になる。

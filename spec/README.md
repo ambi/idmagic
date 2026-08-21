@@ -1,21 +1,10 @@
 # Whole-System Specification
 
-この文書は、システム全体に適用する仕様と設計を記録する。一つの Bounded Context に属する振る舞いと設計は、その Context の `spec/contexts/<context>/` に置く。API とモデルの契約は隣接する TypeSpec に、変更ごとの検討と実装の経緯は work item に記録する。
+システム全体が従う仕様と設計を所有する。ここに置くのは、二つ以上の Bounded Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるものだけである。
 
-エンドポイント、フィールド、画面など、個別機能の詳細はここに置かない。それぞれ `spec/contexts/*/*.tsp`、コード、UI 文書を正とする。
+1 つの Context が単独で満たし検証できる振る舞いと設計は所有しない。それはその Context の `spec/contexts/<context>/` にある。モデルと API の契約は隣接する TypeSpec が、変更ごとの検討と経緯は work item が持つ。エンドポイント、フィールド、画面といった個別機能の詳細もここには無い。
 
-## Reading order
-
-機能の変更では、次の順に読む。
-
-1. この文書。システム全体の設計と所有権の所在をつかむ。全体の規則が要るときだけ、下の索引が指すファイルを開く。
-2. 所有する Context の `README.md` と、そこが指す種類ごとのファイル、`models.tsp`、`main.tsp`。変更に先立って仕様を更新する。
-3. 進行中の work item。変更ごとの設計と実装の経緯を確認する。
-4. Go の実装。`domain/`、`usecase/`、`ports/`、関連する `<role>_<technology>/` アダプターの順に読む。
-5. `backend/shared/` と `backend/cmd/internal/bootstrap/`。横断的な HTTP や永続化の振る舞いを変更するときだけ読む。
-6. UI を変更するときは `spec/contexts/system/` と `frontend/src/features/README.md` を先に読む。
-
-実装から仕様を探す場合は、原則としてパッケージ名に対応する Context を参照する。Context に属さない技術的な共通機能は `backend/shared/` に集約している。
+実装から仕様を引くときは、パッケージ名に対応する Context を見る。Context に属さない技術的な共通機能は `backend/shared/` に集約している。
 
 ## Context Map
 
@@ -113,6 +102,8 @@ flowchart LR
 | File | Content |
 |---|---|
 | [structure.md](structure.md) | ディレクトリ、依存の向き、層の構成、アーキテクチャスタイル |
+| [glossary.md](glossary.md) | Context を跨いで意味が固定される語 |
+| [standards.md](standards.md) | 製品全体が従う外部規範 |
 | [api-rules.md](api-rules.md) | 外部に見える契約の規則 |
 | [observability.md](observability.md) | 相関、ログ、メトリクス |
 | [deployment.md](deployment.md) | 実行単位、信頼境界、可用性 |

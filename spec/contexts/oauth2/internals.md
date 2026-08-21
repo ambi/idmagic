@@ -1,11 +1,5 @@
 # OAuth2 Internals
 
-## FrontChannelLogout
-対象の `sid` に ClientSession を持つ RP のうち、`frontchannel_logout_uri` を登録したものについて、EndSession のレスポンスへ埋め込む iframe の送信先一覧を算出する（OpenID Connect Front-Channel Logout 1.0）。`frontchannel_logout_session_required=true` のクライアントには `iss` / `sid` クエリパラメーターを付与する。到達失敗（RP 側での iframe 読み込みエラーなど）は許容し、ローカル失効の成否に影響させない。
-
-## BackChannelLogout
-1 件の LogoutNotification を配信するジョブハンドラー（OpenID Connect Back-Channel Logout 1.0）。署名済みのログアウトトークン（`iss`、`sub`、`aud`、`iat`、`jti`、イベント、`sid`）を `target_uri` へ POST し、2xx を成功、それ以外のレスポンス、タイムアウト、接続失敗を再試行対象とする。Jobs Context の `kind=backchannel_logout_delivery` Job から呼び出し、`max_attempts` へ到達すると LogoutNotification を `Failed`（配信不能）に確定する。ローカル失効はこのインターフェースの成否にかかわらず、すでに確定している。
-
 ## Authorization and device lifecycles as declarative state machines
 
 `AuthorizationRequest` とデバイスコードのライフサイクルは、`if` / `switch` のロジックへ分散させず、本書の State Transitions が規定する宣言的な遷移表（状態、イベント、遷移）で表す。アダプター層を再生成しても、クライアントに許可する遷移の集合が暗黙にずれないようにするためである。リフレッシュトークンファミリーは意図的に対象外とする。その状態空間は実質的に `{active, revoked, rotated}` だけであり、遷移の適否より親子関係のローテーショングラフが重要なため、レコードのフィールドと失効規則で表す（下記の Refresh token rotation を参照）。`authorization/usecase` と `device/usecase` は遷移ロジックを再実装せず、これらの表を直接使う。
@@ -96,4 +90,4 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 
 `sid` クレームは `LoginSession.id` 自体であり、RP ごとの値ではなく、1 つのブラウザーセッションについてすべての relying party が共有する。OIDC の `sid` は OP セッションを表すため、RP ごとの `sid` では 1 回のセッション失効から影響する全 RP をたどれない。`sid` は `authenticate_user` の完了時に一度だけ `AuthorizationRequest` へ伝播し、その後 `AuthorizationCodeRecord` → `RefreshTokenRecord` → `IdTokenClaims` を通る。Authentication の `LoginSession` が唯一の正であり、その属性を OAuth2 へ複製しない。`ClientSession` はログアウト通知用の `(sid, client_id)` 配信インデックスであり、2 つ目のセッション状態ではない。`RefreshTokenRecord.sid` はローテーション後も残るため、ファミリーごとにたどらず、1 回の「このブラウザーセッション」の失効で、同じ `sid` にバインドされた全クライアント・全ファミリーのリフレッシュトークンを失効できる。
 
-`/end_session` の `id_token_hint` は、署名、`iss`、`aud`、`sub`、`sid` をフェイルクローズに検証する。`aud` は明示的な `client_id` パラメーターと一致しなければならず、暗黙には無視しない。ログアウト時に ID トークンが期限切れであることは一般的なため、`exp` は意図的に検査しない。ヒントがなければ `client_id` とブラウザーの Cookie で解決する。バックチャネルログアウトの配信は専用キューではなく、永続的で冪等な `Job` として Jobs Context に渡す。配信に失敗してもローカルセッションとリフレッシュトークンの失効はロールバックしない。フロントチャネルログアウトは同じリクエスト内で計算する `iframe` の送信先一覧であり、RP 側の `iframe` の失敗は許容し、配信を保証しない。アクセストークンの失効は対象外とする。アクセストークンは署名だけで検証する自己完結型 JWT のままとし、即時失効のために全リソースサーバーの検証をストア参照へ変える代わりに、リフレッシュトークンファミリーの即時失効と RP 通知に加えて最大 600 秒の残存リスクを受け入れる。`check_session_iframe`（OIDC Session Management 1.0）は、Discovery Metadata での広告と、ブラウザーの Cookie が有効なセッションを示すかどうかの静的検査だけを提供する。
+`/end_session` の `id_token_hint` は、署名、`iss`、`aud`、`sub`、`sid` をフェイルクローズに検証する。`aud` は明示的な `client_id` パラメーターと一致しなければならず、暗黙には無視しない。ログアウト時に ID トークンが期限切れであることは一般的なため、`exp` は意図的に検査しない。ヒントがなければ `client_id` とブラウザーの Cookie で解決する。バックチャネルログアウトの配信は専用キューではなく、永続的で冪等な `Job` として Jobs Context に渡す。配信に失敗してもローカルセッションとリフレッシュトークンの失効はロールバックしない。フロントチャネルログアウトは同じリクエスト内で計算する `iframe` の送信先一覧であり、`frontchannel_logout_session_required=true` を宣言した RP には `iss` と `sid` を付ける。RP 側の `iframe` の失敗は許容し、配信を保証しない。バックチャネルの配信では、署名済みのログアウトトークンを登録先へ POST し、2xx だけを成功とみなす。それ以外の応答、タイムアウト、接続失敗はいずれも Job の再試行に委ね、試行上限に達した通知は配信不能として確定する。アクセストークンの失効は対象外とする。アクセストークンは署名だけで検証する自己完結型 JWT のままとし、即時失効のために全リソースサーバーの検証をストア参照へ変える代わりに、リフレッシュトークンファミリーの即時失効と RP 通知に加えて最大 600 秒の残存リスクを受け入れる。`check_session_iframe`（OIDC Session Management 1.0）は、Discovery Metadata での広告と、ブラウザーの Cookie が有効なセッションを示すかどうかの静的検査だけを提供する。

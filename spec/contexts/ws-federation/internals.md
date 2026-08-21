@@ -1,12 +1,8 @@
 # WsFederation Internals
 
-## WsFederationSignOut
-`WsFederationSignIn` が所有する単一のパッシブ HTTP エンドポイントにおけるサインアウトの意味を定める。ローカルセッションを破棄し、`wsignout1.0` では許可済みの `wreply` へのリダイレクトまで行い、`wsignoutcleanup1.0` では破棄だけを行って 200 を返す。
-- Input invariant: input.wa == "wsignout1.0" || input.wa == "wsignoutcleanup1.0"
-- Input invariant: input.wtrealm == null || wtrealm_registered(input.wtrealm, context.tenant_id)
-- Input invariant: input.wreply == null || reply_url_allowed(input.wtrealm, input.wreply, context.tenant_id)
-- Result invariant: local_session_cleared
-- Result invariant: no_unregistered_redirect
+## Sign-out on the passive endpoint
+
+サインインとサインアウトは 1 本のパッシブエンドポイントを共有し、`wa` パラメーターで分かれる。どちらの `wa` でもローカルセッションを破棄したうえで、`wsignout1.0` では許可済みの `wreply` へのリダイレクトまで行い、`wsignoutcleanup1.0` では破棄だけを行って 200 を返す。`wreply` へのリダイレクトは、その `wtrealm` に登録済みの宛先に限る。登録されていない宛先へ送る経路が無いことが、サインアウトを開いたリダイレクターに変えないことの保証である。
 
 ## Tenant signing
 

@@ -1,10 +1,12 @@
 # Application Internals
 
-## AssignApplicationDesiredState
-呼び出し元の Bounded Context（IdManagement の LifecycleWorkflow など）が、あるべき状態を指定して Application へのユーザー割り当てを作成する内部インターフェースである。HTTP には公開せず、同じプロセス内の Go 呼び出しとして各 Context のユースケースから利用する。同じ `id` と `user_id` の割り当てが指定した `visibility` ですでに存在する場合は、変更せずに `changed=false` を返す。呼び出し元が渡せるのは、同じテナントの `id` と `user_id` だけである。
+## Assignment as a desired state, not a command
 
-## UnassignApplicationDesiredState
-呼び出し元の Bounded Context が、あるべき状態を指定して Application へのユーザー割り当てを解除する内部インターフェースである。割り当てが存在しない場合も何も変更せず、`changed=false` を返して正常終了する。
+割り当ての作成と解除は、呼び出し元の Bounded Context (IdManagement の LifecycleWorkflow など) が「こうあるべき」という状態を渡す形をとる。HTTP には公開せず、同じプロセス内の Go 呼び出しとして各 Context のユースケースから使う。
+
+すでにその状態であれば何も変えず、変更しなかったことを返す。存在しない割り当ての解除も同じく正常終了する。ワークフローは同じ発火事象で何度も再実行されうるので、この冪等性が無いと、再実行のたびに割り当てが増えるか、解除が失敗して実行全体を止めることになる。
+
+呼び出し元が渡せるのは同じテナント内の識別子だけである。内部インターフェースであっても、テナント境界を呼び出し元の作法に委ねない。
 
 ## Sign-in policy evaluation
 

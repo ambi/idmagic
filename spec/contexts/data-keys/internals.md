@@ -1,20 +1,19 @@
 # DataKeys Internals
 
-## BootstrapTenantDataKey
-テナントの最初の `DataEncryptionKey` (バージョン 1) を生成し、`MasterKey` プロバイダーでラップして `active` にする内部インターフェース。プロバイダーへ到達できない場合はフェイルクローズで失敗する。
-- Result invariant: active_key_count(input.tenant_id) <= 1
+## Key version overlap
 
-## RotateTenantDataKey
-テナントに新しい `DataEncryptionKey` (バージョン + 1) を生成して `active` に切り替え、以前の `active` を `retiring` に遷移させる。旧バージョンは即座に `destroy` せず、引き続き復号できる。
-- Input invariant: tenant_has_active_data_key(input.tenant_id)
-- Result invariant: active_key_count(input.tenant_id) <= 1
+テナントごとに、新規の暗号化に使える `DataEncryptionKey` は常に高々 1 本である。ローテーションは新しいバージョンをその 1 本として有効化し、直前のバージョンは復号可能なまま残す。復号できるバージョンが複数あって暗号化できるバージョンが 1 本しかないというこの非対称が、再暗号化を待つ間も読み取りを止めないことの根拠である。
 
-## DisableTenantDataKey
-ローテーション済み (`retiring`) の `DataEncryptionKey` 1 本を即時に無効化する。危殆化への対応など、`destroy` による暗号学的消去の前に復号を止める場合に使う。`active` なバージョンは対象にできず、先に `RotateTenantDataKey` でローテーションする必要がある。
-- Input invariant: data_key_is_not_active(input.tenant_id, input.version)
+最初のバージョンはテナントの初期化時に生成し、`MasterKey` プロバイダーでラップする。プロバイダーへ到達できなければテナントは平文の鍵を持たずに失敗する。ラップできない鍵を暫定的に平文で保持する経路は無い。
 
-## DestroyTenantDataKey
-`retiring` または `disabled` の `DataEncryptionKey` 1 本について、`wrapped_dek` を破棄して `destroyed` とし、暗号学的に消去する。所有する Context ごとに登録された再暗号化ジョブ (`Jobs` 経由の `data_key_reencryption`) が、すべての参照を `active` バージョンへ移行済みであることを呼び出し前に検証する。未移行の参照が残っていれば `DataKeyStillReferencedError` でフェイルクローズに拒否する。この操作は不可逆である。
-- Input invariant: data_key_is_not_active(input.tenant_id, input.version)
-- Input invariant: no_pending_reencryption_references(input.tenant_id)
+## Destruction requires a completed migration
 
+鍵素材を消せるのは、その版を参照する暗号文が 1 件も残っていないことを確認した後だけである。確認は `DataKeys` 自身が行わず、各 Context が `FieldMigrator` として登録した再暗号化処理の残件報告に委ねる。いずれかの移行処理が残件を報告している間、破棄要求は `DataKeyStillReferencedError` で拒否される。`DataKeys` が利用側のスキーマを知らないまま安全に破棄できるのは、この委譲があるためである。
+
+破棄は行を削除せず `wrapped_dek` だけを消す。素材を失った後も、その版がいつ有効化され、いつ退役し、いつ破棄されたかを参照できるようにするためである。
+
+危殆化への対応では、再暗号化の完了を待たずに復号を止めたい。そのための状態が `disabled` であり、破棄と違って移行の完了を要求しない代わりに、その版で暗号化された値は読めなくなる。どちらも `active` な版には適用できず、先にローテーションして退役させる必要がある。
+
+## Fail-closed decryption
+
+アンラップに失敗した場合、プロバイダーへ到達できない場合、追加認証データが一致しない場合、改ざんを検知した場合は復号を拒否する。呼び出し元が平文へ退避したり、その項目だけを読み飛ばして残りを返したりする経路は無い。追加認証データに `(tenant, context, table, record id, field)` と鍵のバージョンを含めるため、暗号文を別のテナント、テーブル、フィールドへ複製しても復号できない。

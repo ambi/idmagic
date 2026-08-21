@@ -6,6 +6,11 @@ IdMagic は認証基盤の単一障害点になりうるため、この手順書
 
 1. **PostgreSQL**: 永続テーブルと一時テーブル（認可の中間状態、コード、PAR、デバイスコード、リプレイ記録、WebAuthn チャレンジ、拒否リスト、ログインスロットル、SAML AuthnRequest のリプレイ記録）を含む単一のデータベース。
 2. **署名鍵素材**: `KeyProvider` が `Local` / `Postgres` なら PostgreSQL のバックアップに含まれる。`VaultTransit` では秘密鍵が Vault 外に出ないため、Vault 側のスナップショットが正本であり、PostgreSQL 側は公開鍵の写しにすぎない。
+3. **データ暗号鍵のマスターキー**: `DATA_KEY_PROVIDER` が保持するマスターキー。`tenant_data_encryption_keys` の PostgreSQL バックアップにはマスターキーでラップした形しか含まれないため、それだけでは復旧できない。
+
+### マスターキーの喪失は復旧できない
+
+OpenBao の Transit 鍵をバックアップせずに失うと、すべてのテナントのラップ済み DEK を恒久的にアンラップできなくなる。これは `DestroyTenantDataKey` が意図的に実現する暗号学的消去と同じ結果が、事故として起きることを意味する。**Transit エンジンのストレージは OpenBao 自身のバックアップ手段で保護する。** PostgreSQL のバックアップ計画とは別に計画し、別に訓練する。
 
 ## バックアップ手順
 

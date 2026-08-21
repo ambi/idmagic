@@ -1,22 +1,25 @@
 # Seeding Internals
 
-## SeedData
-seed を同じ決定的な計画器でプレビューし、適用する内部運用インターフェースである。適用時は記録を所有する各 Context が公開するコマンドだけを呼び、SQL フィクスチャを直接使って不変条件を迂回しない。
-- Input invariant: manifest_schema_supported(input.request)
-- Input invariant: manifest_profile_matches_request(input.request)
-- Input invariant: manifest_paths_are_local_and_contained(input.request)
-- Input invariant: input.request.environment in ['staging', 'production'] implies manifest_secret_providers(input.request) == ['file']
-- Result invariant: input.request.mode == 'dry_run' implies persistent_state_unchanged()
-- Result invariant: reapply_same_request_is_noop(input.request)
-- Result invariant: input.request.environment == 'production' && input.request.profile == 'bootstrap' implies production_safe_redirect_uris(input.request.first_party_redirect_uris)
-- Result invariant: seed_plan_and_diagnostics_exclude_secret_values(output.plan)
+## One planner for preview and apply
 
-## Environment policy and planning
+プレビューと適用は同じ決定的な計画器を通る。`dry_run` は永続状態を一切変えずに、適用したときに何が起きるかを返す。プレビューだけが通って適用で落ちる差を作らないために、計画器を 2 つ持たない。
 
-本番が受け付けるのは `bootstrap` プロファイルだけであり、それ以外は書き込み前にフェイルクローズで拒否する。これにより、宛先を誤ったリクエストからデモ用の資格情報が本番へ投入されることを防ぐ。
+適用は、記録を所有する各 Context が公開するコマンドだけを呼ぶ。SQL フィクスチャで行を直接書き込む経路は無い。これが、seed で作ったデータにも通常の作成経路と同じ不変条件が成立することの根拠である。
 
-適用は Context をまたぐ単一トランザクションではなく、依存順に並べた上限付きバッチの冪等なコマンドで行う。`performance` プロファイルのバッチサイズはデフォルト 250、上限 1,000 とする。専用の進捗テーブルは設けない。論理キーと ID をプロファイルと生成 seed から決定的に導くため、途中で失敗しても同じリクエストを再実行すれば未完了分だけが適用される。直列化には、リクエストキーごとのプロセス内ミューテックスと、プロセス間では既存の接続に対する PostgreSQL アドバイザリーロックを使う。
+## Idempotence without a progress table
+
+適用は Context をまたぐ単一トランザクションではなく、依存順に並べた上限付きバッチの冪等なコマンドで行う（`performance` プロファイルのバッチサイズはデフォルト 250、上限 1,000）。専用の進捗テーブルは持たない。論理キーと ID をプロファイルと生成 seed から決定的に導くため、同じリクエストの再実行は未完了分だけを適用し、完了済みの部分には作用しない。
+
+直列化には、リクエストキーごとのプロセス内ミューテックスと、プロセス間では既存の接続に対する PostgreSQL アドバイザリーロックを使う。
+
+## Environment policy
+
+本番が受け付けるのは `bootstrap` プロファイルだけであり、それ以外は書き込みを始める前に拒否する。宛先を誤ったリクエストからデモ用の資格情報が本番へ投入されることを防ぐためである。本番の `bootstrap` では、ファーストパーティーのリダイレクト URI が本番として安全な形であることも同時に要求する。
 
 ## Seed manifests and secret references
 
-`models.SeedManifest` は、バージョンを持ち厳密に解釈する YAML の望ましい状態である。`manifests_yaml` アダプターが Domain の型へ変換してから、リソースごとの既存処理へ渡す。Domain とユースケースは、パーサー、ファイルシステム、環境変数 API を直接参照しない。`include` で読み込めるのはマニフェストルート配下のローカル相対パスだけとし、深さと総数に上限を設ける。パストラバーサルや注入の余地を避けるため、YAML のマージキー、テンプレート展開、リモート URL、環境変数展開は文法から除外する。シークレット値はマニフェストに直接書かず、`models.SeedSecretReference` で参照する。`env` プロバイダーはどの環境でも使えるが、ステージングと本番で許可するのは `file` プロバイダーだけである。プレビューでは参照を解決できることを検証するが、取得した値を計画、ログ、エラーへ渡すことは一切ない。
+`models.SeedManifest` は、バージョンを持ち厳密に解釈する YAML の望ましい状態である。`manifests_yaml` アダプターが Domain の型へ変換してから、リソースごとの既存処理へ渡す。Domain とユースケースは、パーサー、ファイルシステム、環境変数 API を直接参照しない。
+
+`include` で読み込めるのはマニフェストルート配下のローカル相対パスだけとし、深さと総数に上限を設ける。パストラバーサルや注入の余地を避けるため、YAML のマージキー、テンプレート展開、リモート URL、環境変数展開は文法から除外する。
+
+シークレット値はマニフェストに直接書かず、`models.SeedSecretReference` で参照する。`env` プロバイダーはどの環境でも使えるが、ステージングと本番で許可するのは `file` プロバイダーだけである。プレビューは参照を解決できることを検証するが、取得した値が計画、診断、ログ、エラーのいずれかへ現れることは無い。

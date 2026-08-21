@@ -268,6 +268,10 @@ check-config-reference:
 check-api-compat:
     cd tools && bun run check-api-compat/src/main.ts
 
+# Freeze the generated OpenAPI as the new release baseline. Run this only as a release step.
+update-api-baseline: spec-render
+    cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.json
+
 # Accepts a requirement id or any term. Prints locations only, never whole documents.
 [doc("Locate a term across the specification, the code, and the work items.")]
 spec-where term:

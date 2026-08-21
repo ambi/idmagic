@@ -10,6 +10,20 @@
 
 すべての実行単位は、同じ Go モジュールと Bounded Context の実装を再利用する。実行単位の一覧は別の台帳に重複して持たず、エントリーポイントと対応する `just` のビルド手順から導く。
 
+React の UI はこれらとは別のビルド成果物であり、別のサービスとして配信する。ブラウザーから見える境界を同一オリジンに揃えるのはゲートウェイの役目である。
+
+```text
+Browser
+  |
+  | same origin
+  v
+Gateway / static server (Caddy, Nginx, CDN + proxy, etc.)
+  |-- /login, /consent, /device, /status, /admin/* -> React SPA
+  `-- /api/* and OAuth/OIDC endpoints                -> Go
+```
+
+Caddy は参照用の設定であり、必須のランタイムではない。同一オリジンの境界、TLS、ヘッダー、経路制御という契約を保つゲートウェイなら置き換えられる。同一オリジンであることは利便のためではなく、Cookie のスコープと `Origin` の検証がこの前提の上に成り立っているためである。
+
 ## Health probes and graceful drain
 
 Kubernetes 向けのヘルスチェックは、生存確認、受付可否、起動完了を別々のエンドポイントに分ける。これらを 1 つにまとめると、PostgreSQL の一時的な障害で回復可能な Pod を繰り返し再起動したり、応答できないレプリカへ通信を流し続けたりするためである。従来の `/health` は起動時設定のラベルを返すだけなので、後方互換のために残す。

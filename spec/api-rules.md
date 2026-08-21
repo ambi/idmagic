@@ -12,6 +12,30 @@ OAuth2（`backend/oauth2/handlers_http`）、SCIM（`backend/sourcing/scim/handl
 
 契約側では、この 3 通りの本文をそれぞれ 1 つのモデルが持つ。汎用 API のエラーは `IdMagic.Contract.ProblemDetails` で、`type` / `title` / `status` / `detail` / `instance` を宣言する。個々のエラーは `model <Name>Error is ProblemDetails;` と書き、どの `type` URN 接尾辞 (= サーバーが返す error code) に対応するかを `@doc` で名指しする。標準が形を定める接点のうち OAuth 2.0 / OIDC 系は `IdMagic.Contract.OAuthError` (`error` / `error_description`、RFC 6749 §5.2) を、SCIM は `IdMagic.Contract.ScimProtocolError` (RFC 7644 §3.12) を同じ形で参照する。どちらにも当てはまらない独自形状は、`EndpointRateLimitPolicy` の 429 (`error` / `retry_after_seconds` / `message` と `Retry-After` ヘッダー) と SharedSignals 受信エンドポイントの拒否 (`error` / `message`) の 2 つだけで、それぞれ本文を直接宣言する。同じ error code が接点によって別の本文で返るときは、`AccessDeniedError` と `OAuthAccessDeniedError` のように接点ごとにモデルを分ける。1 つのモデルが 2 つの形を名乗ることは許さない。
 
+エラー本文の文字列は、`DisplayLanguage` にかかわらず常に英語で固定する。`message`、`error_description`、`detail`、プレーンテキストの本文がこれにあたる。翻訳して返すと、同じ失敗が呼び出し側の設定次第で別の文字列になり、ログの照合も相互運用も壊れるためである。翻訳は、安定したエラーコードを鍵として UI 側が行う。Problem Details では `type` の `urn:idmagic:error:` に続く部分がその鍵であり、UI は辞書に無いコードに出会ったとき、`detail` または `title` を英語のまま表示する。
+
+## Interface stability and versioning
+
+管理 API とセルフサービスのアカウント API は外部契約である。外部インターフェースは TypeSpec の契約で 3 つに分類する。
+
+| Stability | 意味 |
+| --- | --- |
+| `stable` | バージョン付きの外部契約。下記の互換性保証の対象。 |
+| `beta` | まだ互換性保証の対象でない外部契約。 |
+| `internal` | 外部契約に含まれない。ファーストパーティーのブラウザーセッションからだけ到達でき、API アクセストークンでは到達できない。予告なく変更する。 |
+
+後方互換な変更はフィールドの追加、任意パラメーターの追加、新しいエンドポイントの追加である。破壊的変更はフィールドの削除または名前変更、フィールド型の変更、フィールドの必須化、エラーコードの変更、デフォルト値の変更である。
+
+`stable` と `beta` はパスでバージョンを表す (`/api/admin/v1/...`、`/api/account/v1/...`)。バージョンなしの形は設けない。破壊的変更は既存パスを変更せず新しい接頭辞で導入し、同時に提供するバージョンは最大 2 つとする。
+
+この方式の対象外は、OAuth 2.0 / OIDC、SAML、WS-Federation、SCIM、SharedSignals のプロトコルエンドポイントである。これらの互換性は各標準が規定し、Discovery Metadata (`/.well-known/...`)、`/scim/v2/ServiceProviderConfig`、SAML / WS-Fed メタデータが正である。IdMagic 側のパスの版を重ねると、標準が定めた探索経路と食い違う。
+
+## Deprecation
+
+非推奨の予定は TypeSpec に記録し、散文の側に一覧を持たない。`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け、廃止時期が決まって `sunset_at` を設定した後は `Sunset` ヘッダーも付ける。`sunset_at` は `deprecated_since` の最低 12 か月後とする。
+
+破壊的変更の検出は、TypeSpec から生成した OpenAPI と、実際に配布した内容を固定したリリースベースラインとの比較で行う。ベースラインを更新してよいのはリリース作業の一部としてだけである。リリースせずに更新すれば実際の後退を検出できなくなり、リリースしても更新しなければベースラインが古くなって同じ結果になる。
+
 ## Wire bodies in the contract
 
 TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し返す JSON そのものである。サーバーが送らない封筒を契約側で 1 段挟まない。ハンドラーが `map[string]any{"groups": ...}` のような封筒を書くときにだけ、契約もその封筒を持つ。パスやクエリのパラメータは要求本体のプロパティにしない。本文が JSON でない接点 (CSV のアップロード、SET の受信、XML メタデータ、画像の配信、メトリクスの公開) は、その media type と本文の型をそのまま宣言する。

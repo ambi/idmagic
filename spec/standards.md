@@ -1,4 +1,8 @@
-# System Standards
+# Standards
+
+製品全体が従う外部規範を宣言する。ここに置くのは、二つ以上の Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるものだけである。1 つの Context が単独で満たす規範 — OAuth 2.0 と OIDC、SAML 2.0、SCIM 2.0、WS-Federation、SSF — は、その Context の `standards.md` が持つ。
+
+`Statement` は製品が何をするかを書き、標準の側の義務を要約しない。各行は、規範 ID をテスト名に含めた対応するテストを持つ。
 
 ## Web Content Accessibility Guidelines 2.2
 

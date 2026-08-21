@@ -1,30 +1,22 @@
 # Tenancy Internals
 
-## ResolveTenant
-HTTP リクエストの Host ヘッダーとパスから所属テナントを解決する内部インターフェース。
-
-**不変条件: 1 テナント = 1 正規ロケーション = 1 発行者。** テナントは `endpoint_style` が指す正規ロケーションからだけ到達でき、他方の経路では不在として扱う。同一テナントへ 2 つのオリジンから到達できると発行者が一意に定まらず、Discovery Metadata の `issuer` が取得元 URL と一致しなくなる (OpenID Connect Discovery 1.0 §4.3 / RFC 8414 §3.3 違反)。
-
-解決順序:
-1. `tenant_base_domain` が設定され、Host が `{label}.{tenant_base_domain}` に一致するなら、ラベルをレルムとして対応付ける。見つかったテナントの `endpoint_style` が `Subdomain` でなければ不在として扱う。
-2. パスが `/realms/{realm}/...` に一致するなら realm を対応付ける。見つかったテナントの `endpoint_style` が `Path` でなければ不在として扱う。
-3. どちらにも一致しないリクエストは、テナントが存在しないものとして扱う。任意の Host や接頭辞のないパスをデフォルトテナントへフォールバックさせず、フェイルクローズで拒否する。
-
-発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、解決した正規ロケーションから組み立てる。`Path` の場合、発行者は `{base}/realms/{realm}`、`Subdomain` の場合は `{scheme}://{realm}.{tenant_base_domain}` とする。存在しないテナントには `404 tenant_not_found`、無効なテナントには OAuth/OIDC のプロトコルルートで `400 invalid_request` を返し、いずれも存在やステータスの詳細を漏らさない。
-
-## Admin authorization gate
-
-ロール名は `User.roles` に直接保持し、テナント所属を表す別のモデルは設けない。現在の管理対象は User のライフサイクルであり、`system_admin` はデフォルトの制御面テナントから操作するためである。将来テナント単位のロールが必要になっても、テナント ID を `roles` の文字列へ埋め込まず、独立したモデルとして設計する。
-
-`disabled_at` は `deleted_at` とは異なる、元に戻せる停止である。停止されたユーザーは新規のサインイン、既存のセッション、トークンの再発行、UserInfo のいずれも拒否されるが、アカウントとその履歴は復帰のために残る。管理レスポンスは `password_hash` を決して含まない専用の `AdminUserResponse` を使い、管理による変更は監査で追跡できるよう、操作者と対象の両方の `sub` を載せたドメインイベントを発行する。
-
 ## Tenant resolution
 
-プロトコルと管理のルートはすべて `/realms/{realm}/...` の下に置く。テナントの作成や更新はテナントをまたぐ制御面の操作なので、`/realms/default/admin/tenants/...` に置く。これにより、デフォルトテナントのセッション Cookie のパスだけで対象を覆い、Cookie のスコープをルートパスまで広げずに済む。デフォルトをパス方式とするのは、ブラウザーフローにおける OIDC の `iss` クレームと Discovery Metadata を、クライアントが使用した URL から導出できるためである。ヘッダーはプロキシを越えて保持されるとは限らず、サブドメイン方式だけではローカル開発と CI にワイルドカード DNS とテナントごとの TLS が必要になる。
+**1 テナント = 1 正規ロケーション = 1 発行者。** テナントは `endpoint_style` が指す正規ロケーションからだけ到達でき、もう一方の経路では不在として扱う。同一テナントへ 2 つのオリジンから到達できると発行者が一意に定まらず、Discovery Metadata の `issuer` が取得元 URL と一致しなくなる (OpenID Connect Discovery 1.0 §4.3 / RFC 8414 §3.3 違反)。この 1 対 1 が、以下の解決規則が守っているものである。
 
-`TenantResolver` のミドルウェアは `^/realms/([a-z0-9][a-z0-9-]{0,62})(/|$)` で realm の区間を取り出し、`TenantRepository` で解決して、解決した `Tenant` と発行者の文字列をリクエストコンテキストに付ける。レスポンスの形が場合ごとに変わらないため、解決器のレスポンスだけからテナントを列挙することはできない。
+解決は Host ヘッダーとパスだけを見て、次の順に進む。
 
-`Subdomain` を選べるのは、デプロイ時に基底ドメインを設定している場合だけである。設定しないデプロイは `Path` のままとなり、ワイルドカード DNS も証明書も必要ない。`realm` は変更できるが、発行者と、`Subdomain` 方式ではホスト名にも現れるため、その変更は `endpoint_style` の変更と同様に既存クライアントとの互換性を壊す。
+1. `tenant_base_domain` が設定され、Host が `{label}.{tenant_base_domain}` に一致するなら、ラベルを realm として対応付ける。見つかったテナントの `endpoint_style` が `Subdomain` でなければ不在として扱う。
+2. パスが `/realms/{realm}/...` に一致するなら realm を対応付ける。見つかったテナントの `endpoint_style` が `Path` でなければ不在として扱う。
+3. どちらにも一致しないリクエストは、テナントが存在しないものとして扱う。任意の Host や接頭辞のないパスをデフォルトテナントへフォールバックさせない。
+
+ミドルウェアは `^/realms/([a-z0-9][a-z0-9-]{0,62})(/|$)` で realm の区間を取り出し、解決した `Tenant` と発行者の文字列をリクエストコンテキストに付ける。発行者、URL の接頭辞、Cookie のスコープ、WebAuthn の RP ID は、いずれもこの正規ロケーションから組み立てる。`Path` では発行者が `{base}/realms/{realm}`、`Subdomain` では `{scheme}://{realm}.{tenant_base_domain}` になる。
+
+存在しないテナントには `404 tenant_not_found`、無効なテナントには OAuth / OIDC のプロトコルルートで `400 invalid_request` を返す。レスポンスの形が場合ごとに変わらないため、解決器の応答だけからテナントを列挙することはできない。
+
+プロトコルと管理のルートはすべて `/realms/{realm}/...` の下に置き、テナントをまたぐ制御面のテナント管理だけを `/realms/default/admin/tenants/...` に置く。こうすると、デフォルトテナントのセッション Cookie のパスだけで対象を覆えるので、Cookie のスコープをルートパスまで広げずに済む。
+
+`Subdomain` を選べるのは配備時に基底ドメインを設定した場合だけであり、設定しない配備は `Path` のままでワイルドカード DNS も証明書も要らない。`realm` は変更できるが、発行者にも `Subdomain` ではホスト名にも現れるため、その変更は `endpoint_style` の変更と同じく既存クライアントとの互換性を壊す。RP の再設定、既存パスキーの再登録、進行中のセッションの終了を伴うので、アイデンティティの移行として計画する。
 
 ## Tenant identity: UUID key and realm slug
 

@@ -1,15 +1,14 @@
 # System
 
-外部標準、共有語彙、横断的なユーザー体験、複数の Context にまたがるシナリオを所有する。
+システムの入口を所有する。ブラウザーが最初に触れる面 — ホステッドの認証画面 (ログイン、同意、デバイス認証)、管理コンソール、アカウントポータル — と、それらを支える認可トランザクション、API の経路の分け方、表示言語の解決がここに属する。
 
-React UI と Go API は別々にビルドし、ゲートウェイを通じて同一オリジンで公開する。組み込みの認証画面 (ログイン、同意、デバイス認証)、管理コンソール、アカウントポータルはこの Context に属する。
+業務データそのものは所有しない。どのユーザーに何ができるかは記録を所有する各 Context が決め、この Context が決めるのは、どの経路へどの資格情報で到達できるかである。
 
-実行手順と検証コマンドは所有せず、`README.md` に置く。
+製品全体が従う外部規範は [spec/standards.md](../../standards.md)、Context を跨ぐ語は [spec/glossary.md](../../glossary.md)、実行単位と信頼境界は [spec/deployment.md](../../deployment.md) が持つ。実行手順と検証コマンドは仕様ではなく、リポジトリの `README.md` にある。
 
 | File | Content |
 |---|---|
 | [glossary.md](glossary.md) | この Context での語義 |
-| [standards.md](standards.md) | 準拠する外部規範 |
 | [decisions.md](decisions.md) | 設計判断 |
 | [internals.md](internals.md) | 機構の説明 |
 | [scenarios.md](scenarios.md) | 受け入れシナリオ |

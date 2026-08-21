@@ -1,9 +1,10 @@
 # IdManagement Internals
 
-## ProvisionFederatedUser
-Authentication Context が、検証済みの上流アイデンティティとテナントの明示的な JIT ポリシーおよびクレームマッピングに基づいて、パスワード資格情報を持たない `Active` の User を作成するための内部公開インターフェース。テナントのクォータ、ユーザー名とメールアドレスの一意性、属性スキーマ、`UserCreated` イベントには、通常の作成と同じ契約を適用する。
-- Result invariant: output.user.password_hash == null
-- Result invariant: output.user.lifecycle.status == Active
+## Just-in-time provisioning from federation
+
+フェデレーションのログイン時に User を作る経路は、通常の作成経路と同じ不変条件を通る。テナントのクォータ、ユーザー名とメールアドレスの一意性、属性スキーマ、`UserCreated` イベントは、上流からの作成であっても緩まない。この経路のためだけの近道は存在しない。
+
+作られる User はパスワード資格情報を持たない。上流が認証の権威である以上、ローカルの資格情報を同時に持たせると、上流を無効にした後もローカルのパスワードでサインインできる経路が残るからである。資格情報を後から追加するかどうかは、テナントの明示的な設定に委ねる。
 
 ## User Lifecycle: Deletion and Anonymization
 
