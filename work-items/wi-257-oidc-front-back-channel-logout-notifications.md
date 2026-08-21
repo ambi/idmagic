@@ -40,11 +40,11 @@ affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.LogoutNotification }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.FrontChannelLogoutTarget }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DiscoveryDocument }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-023 }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-025 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-023 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-025 }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.Contract.CheckSessionIframe }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
+  - { path: spec/contexts/oauth2/standards.md, requirement: OIDC-FRONTCHANNEL-IFRAME }
+  - { path: spec/contexts/oauth2/standards.md, requirement: OIDC-BACKCHANNEL-LOGOUT-TOKEN }
   - { path: spec/contexts/jobs/models.tsp, symbol: IdMagic.Contract.JobKind }
 ---
 

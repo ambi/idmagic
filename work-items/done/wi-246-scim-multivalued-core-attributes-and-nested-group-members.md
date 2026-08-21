@@ -29,9 +29,9 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/SPECIFICATION.md, requirement: RFC7643-CORE-RESOURCES }
-  - { path: spec/contexts/sourcing/SPECIFICATION.md, requirement: RFC7644-PATCH }
-  - { path: spec/contexts/sourcing/SPECIFICATION.md, requirement: REQ-SOURCING-006 }
+  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7644-PATCH }
+  - { path: spec/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-006 }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimSchemas }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }

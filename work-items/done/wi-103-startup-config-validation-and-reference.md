@@ -22,8 +22,8 @@ initial_context:
     - backend/cmd/internal/bootstrap
     - backend/cmd/idmagic-worker
 affected_spec:
-  - { path: spec/contexts/system/SPECIFICATION.md, requirement: REQ-SYSTEM-016 }
-  - { path: spec/contexts/system/SPECIFICATION.md, requirement: REQ-SYSTEM-017 }
+  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
+  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-017 }
 ---
 
 # 起動時の設定を集約・検証し fail-fast させ、単一の設定リファレンスを生成する

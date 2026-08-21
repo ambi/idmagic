@@ -31,9 +31,9 @@ initial_context:
     - backend/saml
     - backend/wsfederation
 affected_spec:
-  - { path: spec/contexts/authorization/SPECIFICATION.md, requirement: REQ-AUTHORIZATION-001 }
-  - { path: spec/contexts/authorization/SPECIFICATION.md, requirement: REQ-AUTHORIZATION-004 }
-  - { path: spec/contexts/authorization/SPECIFICATION.md, requirement: REQ-AUTHORIZATION-005 }
+  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-001 }
+  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-004 }
+  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-005 }
   - { path: spec/contexts/authorization/models.tsp, symbol: IdMagic.Contract.RelationTuple }
   - { path: spec/contexts/authorization/main.tsp, symbol: IdMagic.Authorization.Operations.CheckAccess }
 ---

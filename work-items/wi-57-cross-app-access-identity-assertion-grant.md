@@ -7,7 +7,7 @@ priority: p2
 depends_on: [wi-50-token-exchange-delegation-actor-chain, wi-56-mcp-authorization-server]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-048 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
   - { path: spec/contexts/oauth2/models.tsp, symbol: TokenRequest }
 ---
 

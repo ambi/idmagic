@@ -20,7 +20,7 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/SPECIFICATION.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
 ---

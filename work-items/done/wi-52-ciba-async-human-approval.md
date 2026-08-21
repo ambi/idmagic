@@ -41,10 +41,10 @@ initial_context:
     - backend/provisioning
     - backend/sourcing
 affected_spec:
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-041 }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-042 }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-043 }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: CIBA-CORE-BACKCHANNEL-REQUEST }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-041 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-042 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-043 }
+  - { path: spec/contexts/oauth2/standards.md, requirement: CIBA-CORE-BACKCHANNEL-REQUEST }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.ApprovalRequest }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.ApprovalRequestState }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.BackchannelAuthenticationRequest }

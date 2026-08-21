@@ -83,11 +83,6 @@ function stripFrontmatter(source: string): string {
   return source.replace(/^---\n[\s\S]*?\n---\n+/, '')
 }
 
-/** The file that declares a boundary is the page a reader lands on. */
-function isEntryDocument(name: string): boolean {
-  return name === 'SPECIFICATION.md' || name === 'README.md'
-}
-
 function documentMetadata(document: SourceDocument): RenderedDocument {
   const title = document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
@@ -96,7 +91,7 @@ function documentMetadata(document: SourceDocument): RenderedDocument {
   const rootDocument = document.path.match(/^spec\/([^/]+)$/)?.[1]
   if (rootDocument) {
     const stem = rootDocument.replace(/\.md$/, '')
-    return isEntryDocument(rootDocument)
+    return rootDocument === 'README.md'
       ? {
           ...document,
           id: 'whole-system',
@@ -119,7 +114,7 @@ function documentMetadata(document: SourceDocument): RenderedDocument {
   const contextFile = contextDocument?.[2]
   if (context && contextFile) {
     const stem = contextFile.replace(/\.md$/, '')
-    return isEntryDocument(contextFile)
+    return contextFile === 'README.md'
       ? {
           ...document,
           id: `context-${context}`,

@@ -6,7 +6,7 @@ created_at: 2026-08-15
 depends_on: []
 change_kind: docs
 affected_spec:
-  - { path: spec/contexts/authentication/SPECIFICATION.md, requirement: NIST63B4-PASSWORD-MINIMUM }
+  - { path: spec/contexts/authentication/standards.md, requirement: NIST63B4-PASSWORD-MINIMUM }
 ---
 
 # SPECIFICATION.md の Overview に模範例を与え、Standards の 2 列を定義し、Authorization Boundary を Design へ畳む

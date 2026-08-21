@@ -29,7 +29,7 @@ initial_context:
     - backend/workloadidentity/verification_jose
     - backend/workloadidentity/db_postgres
 affected_spec:
-  - { path: spec/contexts/workloadidentity/SPECIFICATION.md, requirement: REQ-WORKLOADIDENTITY-008 }
+  - { path: spec/contexts/workloadidentity/scenarios.md, requirement: REQ-WORKLOADIDENTITY-008 }
 ---
 
 # ワークロード ID の信頼設定とバインディングを管理コンソールから運用できるようにする

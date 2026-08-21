@@ -14,7 +14,7 @@ initial_context:
     - DOCUMENTATION_GUIDE.md
     - SPECIFICATION_FORMAT.md
     - DEVELOPMENT.md
-    - spec/SPECIFICATION.md
+    - spec/README.md
   typespec: []
   source:
     - spec/contexts
@@ -99,9 +99,11 @@ initial_context:
 
 ### 完了済み work item の参照
 
-`work-items/done/` には `spec/contexts/<context>/SPECIFICATION.md#REQ-...` 形式の参照が 26 件ある。`tools/check/src/work-item-references.ts` は `pending` と `in_progress` の項目だけを検証するため、移行しても検査は落ちない。
+着手前の見込みは誤っていた。`tools/check/src/work-item-references.ts` が `pending` と `in_progress` に限るのは `initial_context` の検証だけで、`affected_spec` のパス解決はすべての記録に対して行う。したがって、完了済みの記録も現在の正本を指していなければ `just check-work-items` が落ちる。
 
-これらは書き換えない。`initial_context` は着手時にその担当者が読んだ資料の記録であり、後から現在のパスへ直すと、当時読んだものと違うものを読んだことにしてしまう。
+`affected_spec` と `initial_context` は性質が違うので、扱いも分ける。`affected_spec` はその変更が影響した規範的要素への索引であり、REQ ID も Standards の ID も変わっていない以上、それを載せるファイル名だけを現在のパスへ直す。`REQ-` で始まるものは `scenarios.md`、それ以外は `standards.md` である。
+
+`initial_context` は着手時にその担当者が読んだ資料の記録なので、書き換えない。後から現在のパスへ直すと、当時読んだものと違うものを読んだことにしてしまう。
 
 ## Plan
 
@@ -125,12 +127,12 @@ Context の移行順は、小さいものから始めて形式を固めてから
 - [x] T003 [Tools] `states.md` の状態の表を検査対象に加える。`Kind` の語彙、初期状態が 1 つであること、遷移表の `From` と `To` が状態の表に現れることを検査する。TypeSpec の列挙値との一致は取らない（下記の Completion に理由）
 - [x] T004 [Tools] `render-spec-docs` が分割後のファイル群から生成できるようにする
 - [x] T005 [Tools] `spec-diff` が分割後のファイルから差分を導けることを確認する
-- [ ] T006 [Spec] 小さい Context から順に分割する。1 コミット 1 Context
-- [ ] T007 [Spec] `Design` の内容を `decisions.md` と `internals.md` へ振り分ける
-- [ ] T008 [Spec] 各 Context の状態遷移に状態の表を追加する
-- [ ] T009 [Spec] 主体の種類、スコープの語彙、テナント境界を `spec/authorization.md` へ集約する
-- [ ] T010 [Spec] ルートの `SPECIFICATION.md` を種類ごとのファイルへ分割する
-- [ ] T011 [Tools] 旧構成の受け入れを外す
+- [x] T006 [Spec] 小さい Context から順に分割する。1 コミット 1 Context
+- [x] T007 [Spec] `Design` の内容を `decisions.md` と `internals.md` へ振り分ける
+- [x] T008 [Spec] 各 Context の状態遷移に状態の表を追加する
+- [x] T009 [Spec] 主体の種類、スコープの語彙、テナント境界を `spec/authorization.md` へ集約する
+- [x] T010 [Spec] ルートの `SPECIFICATION.md` を種類ごとのファイルへ分割する
+- [x] T011 [Tools] 旧構成の受け入れを外す
 - [ ] T012 [Docs] `SPECIFICATION_FORMAT.md` と `DEVELOPMENT.md` を新構成へ更新する
 - [ ] T013 [Docs] `DOCUMENTATION_GUIDE.md` の位置づけの節を削除し、`AGENTS.md` の該当項を更新する
 - [ ] T014 [Verify] 全体の検証を通す

@@ -42,10 +42,9 @@ export const ROOT_DOCUMENTS = [
 ] as const
 
 /** What a file's name says about the grammar its body must follow. */
-export type DocumentKind = 'legacy' | 'standards' | 'states' | 'scenarios' | 'prose'
+export type DocumentKind = 'standards' | 'states' | 'scenarios' | 'prose'
 
 const KIND_BY_NAME = new Map<string, DocumentKind>([
-  ['SPECIFICATION.md', 'legacy'],
   ['standards.md', 'standards'],
   ['states.md', 'states'],
   ['scenarios.md', 'scenarios'],
@@ -57,7 +56,6 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
  */
 export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
-  if (name === 'SPECIFICATION.md') return 'legacy'
   const allowed = /^spec\/contexts\/[^/]+\/[^/]+$/.test(path)
     ? (CONTEXT_DOCUMENTS as readonly string[])
     : /^spec\/[^/]+$/.test(path)
@@ -72,17 +70,6 @@ const TRANSITION_HEADER = '| From | Event | Guard | To | Effects |'
 
 /** Whether a state starts the machine, ends it, or does neither. */
 const STATE_KINDS = new Set(['initial', 'terminal', '—'])
-
-const SECTION_ORDER = [
-  'Overview',
-  'Glossary',
-  'Standards',
-  'State Transitions',
-  'Design',
-  'Scenarios',
-] as const
-
-type SectionName = (typeof SECTION_ORDER)[number]
 
 const STANDARDS_HEADER = '| ID | Adoption | Strength | Statement |'
 
@@ -114,21 +101,6 @@ function isSeparatorRow(line: string): boolean {
 
 function lineAt(source: string, offset: number): number {
   return source.slice(0, offset).split('\n').length
-}
-
-function sectionBody(
-  source: string,
-  sections: Array<{ name: string; index: number; bodyStart: number }>,
-  name: string,
-): { body: string; offset: number } | undefined {
-  const index = sections.findIndex((section) => section.name === name)
-  if (index < 0) return undefined
-  const section = sections[index]
-  if (!section) return undefined
-  return {
-    body: source.slice(section.bodyStart, sections[index + 1]?.index ?? source.length),
-    offset: section.bodyStart,
-  }
 }
 
 function validateScenario(
@@ -280,15 +252,12 @@ function cellValue(cell: string | undefined): string {
  * is what makes the set of states explicit and gives each one a meaning: derived
  * from the From and To columns alone, a state nothing transitions into vanishes.
  *
- * `requireStates` is false for the single canonical document, which predates the
- * state table, and true for a states.md in the split layout.
  */
 function validateStateMachines(
   body: string,
   offset: number,
   source: string,
   heading: RegExp,
-  requireStates: boolean,
   findings: SpecificationFinding[],
 ): void {
   const machines = [...body.matchAll(heading)]
@@ -309,8 +278,6 @@ function validateStateMachines(
         message: 'unconditional state transition guard must use — instead of an empty string',
       })
     }
-    if (!requireStates) continue
-
     if (!block.includes(STATE_HEADER)) {
       findings.push({
         line: lineAt(source, offset + (machine.index ?? 0)),
@@ -418,103 +385,6 @@ function validateStandards(
   }
 }
 
-export function validateSpecification(source: string): SpecificationValidation {
-  const findings: SpecificationFinding[] = []
-  const frontmatter = source.match(/^---\n([\s\S]*?)\n---\n/)
-  if (!frontmatter) {
-    findings.push({ line: 1, message: 'SPECIFICATION.md requires YAML frontmatter' })
-  } else {
-    const parsed = Bun.YAML.parse(frontmatter[1] ?? '') as Record<string, unknown>
-    if (typeof parsed.context !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(parsed.context)) {
-      findings.push({ line: 2, message: 'frontmatter context must be a lowercase slug' })
-    }
-    if (typeof parsed.updated_at !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(parsed.updated_at)) {
-      findings.push({ line: 3, message: 'frontmatter updated_at must be YYYY-MM-DD' })
-    }
-  }
-
-  const titles = [...source.matchAll(/^# (?!#).+$/gm)]
-  if (titles.length !== 1)
-    findings.push({ line: 1, message: 'document must contain exactly one H1' })
-
-  const sections = [...source.matchAll(/^## (.+)$/gm)].map((match) => ({
-    name: match[1]?.trim() ?? '',
-    index: match.index ?? 0,
-    bodyStart: (match.index ?? 0) + match[0].length,
-  }))
-  const seenSections = new Set<string>()
-  let previousOrder = -1
-  for (const section of sections) {
-    const order = SECTION_ORDER.indexOf(section.name as SectionName)
-    if (order < 0) {
-      findings.push({
-        line: lineAt(source, section.index),
-        message: `unknown top-level section ${section.name}`,
-      })
-      continue
-    }
-    if (seenSections.has(section.name)) {
-      findings.push({
-        line: lineAt(source, section.index),
-        message: `duplicate top-level section ${section.name}`,
-      })
-    }
-    if (order < previousOrder) {
-      findings.push({
-        line: lineAt(source, section.index),
-        message: `${section.name} is out of canonical section order`,
-      })
-    }
-    seenSections.add(section.name)
-    previousOrder = Math.max(previousOrder, order)
-  }
-  if (!seenSections.has('Overview'))
-    findings.push({ line: 1, message: 'Overview section is required' })
-
-  for (const match of source.matchAll(/\[[^\]]+\]\([^\n)]*decisions\/[^\n)]*\)/g)) {
-    findings.push({
-      line: lineAt(source, match.index ?? 0),
-      message: 'current specification must be self-contained and must not link to decisions/',
-    })
-  }
-
-  const scenarioIds = [...source.matchAll(/^### (REQ-[A-Z0-9-]+): .+$/gm)].map((match) => ({
-    id: match[1] ?? '',
-    line: lineAt(source, match.index ?? 0),
-    supersededBy: match[0].match(SUPERSEDED_HEADING)?.[1],
-  }))
-  const localIds = new Set<string>()
-  for (const scenario of scenarioIds) {
-    if (localIds.has(scenario.id)) {
-      findings.push({ line: scenario.line, message: `duplicate scenario id ${scenario.id}` })
-    }
-    localIds.add(scenario.id)
-  }
-
-  const states = sectionBody(source, sections, 'State Transitions')
-  if (states) {
-    validateStateMachines(states.body, states.offset, source, /^### .+$/gm, false, findings)
-  }
-
-  const standards = sectionBody(source, sections, 'Standards')
-  if (standards) validateStandards(standards.body, standards.offset, source, /^### .+$/gm, findings)
-
-  const scenarioSection = sectionBody(source, sections, 'Scenarios')
-  if (scenarioSection) {
-    const starts = [...scenarioSection.body.matchAll(/^### /gm)].map((match) => match.index ?? 0)
-    for (const [index, start] of starts.entries()) {
-      const block = scenarioSection.body.slice(
-        start,
-        starts[index + 1] ?? scenarioSection.body.length,
-      )
-      if (SUPERSEDED_HEADING.test(block.split('\n')[0] ?? '')) continue
-      validateScenario(block, scenarioSection.offset + start, source, findings)
-    }
-  }
-
-  return { findings, scenarioIds }
-}
-
 /** Every canonical document names itself once, whatever kind it is. */
 function validateShared(source: string, findings: SpecificationFinding[]): void {
   const titles = [...source.matchAll(/^# (?!#).+$/gm)]
@@ -537,9 +407,8 @@ function collectScenarioIds(source: string): SpecificationValidation['scenarioId
 }
 
 /**
- * Validate one canonical document. In the split layout the file name says which
- * grammar applies, so each file is checked against that grammar alone; the
- * single SPECIFICATION.md is still checked as a whole against its section order.
+ * Validate one canonical document. The file name says which grammar applies,
+ * so each file is checked against that grammar alone.
  */
 export function validateDocument(path: string, source: string): SpecificationValidation {
   const kind = documentKind(path)
@@ -549,13 +418,12 @@ export function validateDocument(path: string, source: string): SpecificationVal
       scenarioIds: [],
     }
   }
-  if (kind === 'legacy') return validateSpecification(source)
 
   const findings: SpecificationFinding[] = []
   validateShared(source, findings)
 
   if (kind === 'standards') validateStandards(source, 0, source, /^## .+$/gm, findings)
-  if (kind === 'states') validateStateMachines(source, 0, source, /^## .+$/gm, true, findings)
+  if (kind === 'states') validateStateMachines(source, 0, source, /^## .+$/gm, findings)
 
   const scenarioIds = kind === 'scenarios' ? collectScenarioIds(source) : []
   if (kind === 'scenarios') {

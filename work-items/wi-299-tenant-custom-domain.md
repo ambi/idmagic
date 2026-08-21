@@ -31,7 +31,7 @@ affected_spec:
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantEndpointStyle }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.Tenant }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuota }
-  - { path: spec/contexts/tenancy/SPECIFICATION.md, requirement: REQ-TENANCY-009 }
+  - { path: spec/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-009 }
   - { path: spec/contexts/tenancy/main.tsp, symbol: IdMagic.Contract.SetTenantEndpointStyle }
 ---
 

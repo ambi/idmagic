@@ -16,14 +16,12 @@ const checkOnly = process.argv.includes('--check')
 const openapiPath = await discoverGeneratedOpenApi(root)
 
 /**
- * A directory is in the split layout once it holds a README.md; until then the
- * single SPECIFICATION.md is its canonical document. Only the names the layout
- * defines are read, so an unrelated Markdown file beside them is not rendered.
+ * Only the names the canonical layout defines are read, so an unrelated
+ * Markdown file beside them is not rendered as specification.
  */
 async function canonicalDocuments(directory: string, names: readonly string[]): Promise<string[]> {
   const entries = await readdir(resolve(root, directory), { withFileTypes: true })
   const files = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name))
-  if (!files.has('README.md')) return [`${directory}/SPECIFICATION.md`]
   return names.filter((name) => files.has(name)).map((name) => `${directory}/${name}`)
 }
 

@@ -21,7 +21,7 @@ initial_context:
     - backend/oauth2/handlers_http/userinfo_handler_test.go
   stop_before_reading: [frontend, infra]
 affected_spec:
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-045 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-045 }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.SenderConstraintCnf }
 ---
 

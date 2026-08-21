@@ -3,53 +3,62 @@ import { renderSpecificationSite } from './render.ts'
 import type { CatalogSymbol } from './typespec-catalog.ts'
 
 const rootDocument = {
-  path: 'spec/SPECIFICATION.md',
-  source: `---
-context: repository
-updated_at: 2026-08-11
----
-
-# Whole-System Specification
-
-## Overview
+  path: 'spec/README.md',
+  source: `# Whole-System Specification
 
 The whole system.
 
-## Design
-
-### Context Map
+## Context Map
 
 \`\`\`mermaid
 flowchart LR
   Demo --> Other
 \`\`\`
+
+## Documents
+
+| File | Content |
+|---|---|
+| [contexts/demo/README.md](contexts/demo/README.md) | The demo context |
 `,
 }
 
 const contextDocument = {
-  path: 'spec/contexts/demo/SPECIFICATION.md',
-  source: `---
-context: demo
-updated_at: 2026-08-11
----
-
-# Demo Specification
-
-## Overview
+  path: 'spec/contexts/demo/README.md',
+  source: `# Demo
 
 The demo context.
 
-## State Transitions
+| File | Content |
+|---|---|
+| [states.md](states.md) | 状態と遷移 |
+| [scenarios.md](scenarios.md) | 受け入れシナリオ |
+`,
+}
 
-### DemoLifecycle
+const statesDocument = {
+  path: 'spec/contexts/demo/states.md',
+  source: `# Demo State Transitions
+
+## DemoLifecycle
+
+| State | Kind | Meaning |
+|---|---|---|
+| Ready | initial | 受理直後 |
+| Running | — | 実行中 |
+| Done | terminal | 完了 |
 
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 | Ready | Start | allowed \\| privileged | Running | emit Started |
 | Running | Finish | complete | Done | emit Completed |
 | Done | Reset | "" | Ready | emit Reset |
+`,
+}
 
-## Scenarios
+const scenariosDocument = {
+  path: 'spec/contexts/demo/scenarios.md',
+  source: `# Demo Scenarios
 
 ### REQ-DEMO-001: a demo runs
 - ACTOR Developer
@@ -91,7 +100,7 @@ const models: CatalogSymbol[] = [
 describe('renderSpecificationSite', () => {
   it('renders a linked multi-page specification site', () => {
     const result = renderSpecificationSite({
-      documents: [rootDocument, contextDocument, guideDocument],
+      documents: [rootDocument, contextDocument, statesDocument, scenariosDocument, guideDocument],
       repositoryRoot: '/repo',
       outputDirectory: '/repo/spec/generated/docs',
       openapiFileName: 'example.openapi.json',
@@ -109,6 +118,8 @@ describe('renderSpecificationSite', () => {
     expect(Object.keys(result.files).sort()).toEqual([
       'api/index.html',
       'contexts/demo/index.html',
+      'contexts/demo/scenarios.html',
+      'contexts/demo/states.html',
       'index.html',
       'method/work-item-format.html',
       'models/example-demo-internalrecord.html',
@@ -118,11 +129,12 @@ describe('renderSpecificationSite', () => {
     ])
     expect(result.files['index.html']).toContain('Whole-System Specification')
     expect(result.files['index.html']).toContain('href="contexts/demo/index.html"')
-    expect(result.files['contexts/demo/index.html']).toContain('stateDiagram-v2')
-    expect(result.files['contexts/demo/index.html']).toContain('state_3 --&gt; state_1: Reset')
-    expect(result.files['contexts/demo/index.html']).not.toContain('Reset [')
-    expect(result.files['contexts/demo/index.html']).toContain('class="scenario-keyword when"')
-    expect(result.files['contexts/demo/index.html']).toContain('class="scenario-keyword alt"')
+    expect(result.files['contexts/demo/index.html']).toContain('href="states.html"')
+    expect(result.files['contexts/demo/states.html']).toContain('stateDiagram-v2')
+    expect(result.files['contexts/demo/states.html']).toContain('state_3 --&gt; state_1: Reset')
+    expect(result.files['contexts/demo/states.html']).not.toContain('Reset [')
+    expect(result.files['contexts/demo/scenarios.html']).toContain('class="scenario-keyword when"')
+    expect(result.files['contexts/demo/scenarios.html']).toContain('class="scenario-keyword alt"')
     expect(result.files['specification/index.html']).toContain('class="mermaid"')
     expect(result.files['api/index.html']).toContain('swagger-ui-bundle.js')
     expect(result.files['api/index.html']).toContain('class="swagger-shell"')

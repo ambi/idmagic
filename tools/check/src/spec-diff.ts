@@ -182,6 +182,10 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
 
 function isSpecificationSource(path: string): boolean {
   if (path.startsWith('spec/generated/')) return false
+  // A revision from before the per-kind split still holds SPECIFICATION.md.
+  // This tool reads history, so it keeps understanding that shape even though
+  // nothing writes it any more.
+  if (path.endsWith('/SPECIFICATION.md')) return true
   return path.endsWith('.tsp') || documentKind(path) !== undefined
 }
 

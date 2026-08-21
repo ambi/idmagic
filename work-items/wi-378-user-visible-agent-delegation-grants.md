@@ -7,7 +7,7 @@ priority: p1
 depends_on: [wi-50-token-exchange-delegation-actor-chain]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-032 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-032 }
   - { path: spec/contexts/oauth2/models.tsp, symbol: Consent }
 ---
 

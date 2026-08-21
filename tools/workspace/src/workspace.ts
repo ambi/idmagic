@@ -73,7 +73,7 @@ async function scanNamed(root: string, names: Set<string>, dir = root, found: st
  * the layout defines are returned, so an unrelated Markdown file next to them
  * is not mistaken for specification source.
  */
-async function scanSplitLayout(root: string, directory: string): Promise<string[]> {
+async function scanCanonicalDocuments(root: string, directory: string): Promise<string[]> {
   const names = new Set<string>(directory === 'spec' ? ROOT_DOCUMENTS : CONTEXT_DOCUMENTS)
   let entries: Dirent[]
   try {
@@ -81,16 +81,13 @@ async function scanSplitLayout(root: string, directory: string): Promise<string[
   } catch {
     return []
   }
-  const found = entries
+  return entries
     .filter((entry) => entry.isFile() && names.has(entry.name))
     .map((entry) => `${directory}/${entry.name}`)
-  // A directory takes the split layout only once it declares its boundary.
-  return found.some((path) => path.endsWith('/README.md')) ? found : []
 }
 
 async function discoverSpecificationDocuments(root: string): Promise<string[]> {
-  const documents = await scanNamed(root, new Set(['SPECIFICATION.md']))
-  documents.push(...(await scanSplitLayout(root, 'spec')))
+  const documents = await scanCanonicalDocuments(root, 'spec')
   let contexts: Dirent[] = []
   try {
     contexts = await readdir(resolve(root, 'spec/contexts'), { withFileTypes: true })
@@ -99,7 +96,7 @@ async function discoverSpecificationDocuments(root: string): Promise<string[]> {
   }
   for (const entry of contexts) {
     if (entry.isDirectory()) {
-      documents.push(...(await scanSplitLayout(root, `spec/contexts/${entry.name}`)))
+      documents.push(...(await scanCanonicalDocuments(root, `spec/contexts/${entry.name}`)))
     }
   }
   return documents.sort()
@@ -110,7 +107,7 @@ export async function discoverWorkspaceConfig(root = WORKSPACE_ROOT): Promise<Wo
   const workItems = existsSync(resolve(root, 'work-items')) ? 'work-items' : undefined
   const documents = await discoverSpecificationDocuments(root)
   const legacyDocuments = (
-    await scanNamed(root, new Set(['ARCHITECTURE.md', 'requirements.md']))
+    await scanNamed(root, new Set(['ARCHITECTURE.md', 'requirements.md', 'SPECIFICATION.md']))
   ).sort()
   if (legacyDocuments.length > 0) {
     throw new Error(`legacy specification documents found: ${legacyDocuments.join(', ')}`)

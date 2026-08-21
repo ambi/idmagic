@@ -7,8 +7,8 @@ priority: p1
 depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-52-ciba-async-human-approval, wi-58-continuous-access-evaluation-agent-revocation, wi-184-transactional-event-log-foundation, wi-377-agent-and-delegation-chain-audit-axes]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/SPECIFICATION.md, requirement: REQ-IDMANAGEMENT-009 }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-046 }
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-046 }
 ---
 
 # エージェントのガードレールと棚卸しを統制層として与える

@@ -26,10 +26,10 @@ initial_context:
   stop_before_reading:
     - backend
 affected_spec:
-  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-KEYBOARD }
-  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-FOCUS }
-  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-LABELS-ERRORS }
-  - { path: spec/contexts/system/SPECIFICATION.md, requirement: WCAG22-STATUS }
+  - { path: spec/contexts/system/standards.md, requirement: WCAG22-KEYBOARD }
+  - { path: spec/contexts/system/standards.md, requirement: WCAG22-FOCUS }
+  - { path: spec/contexts/system/standards.md, requirement: WCAG22-LABELS-ERRORS }
+  - { path: spec/contexts/system/standards.md, requirement: WCAG22-STATUS }
 ---
 
 # WCAG 2.2 AA 準拠を自動検査で保証し、認証 UI のアクセシビリティを担保する

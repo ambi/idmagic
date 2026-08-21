@@ -7,8 +7,8 @@ priority: p0
 depends_on: [wi-50-token-exchange-delegation-actor-chain, wi-368-delegation-depth-policy-and-delegation-mode-claim]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/audit/SPECIFICATION.md, requirement: REQ-AUDIT-003 }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-049 }
+  - { path: spec/contexts/audit/scenarios.md, requirement: REQ-AUDIT-003 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-049 }
 ---
 
 # 監査の検索軸にエージェントと委譲チェーンを加え、代行操作を本人の操作と区別できるようにする

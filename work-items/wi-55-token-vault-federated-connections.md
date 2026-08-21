@@ -7,8 +7,8 @@ priority: p2
 depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-97-envelope-encryption-at-rest]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-048 }
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-032 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-032 }
 ---
 
 # エージェントが外部 API を代行するための Token Vault を設ける

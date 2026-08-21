@@ -7,7 +7,7 @@ priority: p0
 depends_on: [wi-52-ciba-async-human-approval]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/SPECIFICATION.md, requirement: REQ-OAUTH2-041 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-041 }
   - { path: spec/contexts/identity-management/models.tsp, symbol: AgentKind }
 ---
 

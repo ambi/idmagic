@@ -6,7 +6,7 @@ created_at: 2026-08-15
 depends_on: [wi-284-improve-csv-import-export]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/SPECIFICATION.md, requirement: REQ-IDMANAGEMENT-004 }
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-004 }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.UserImportJob }
   - { path: spec/contexts/identity-management/main.tsp, symbol: IdMagic.Contract.ApplyAdminUserImport }
 ---

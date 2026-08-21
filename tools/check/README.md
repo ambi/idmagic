@@ -12,7 +12,7 @@ bun run check/src/main.ts --list-schemas
 ```
 
 The packaged schema is `work-item`. TypeSpec is validated by the TypeSpec compiler,
-and canonical `SPECIFICATION.md` documents have a dedicated checker.
+and the canonical specification documents have a dedicated checker.
 
 Exit code 0 means every input is valid, 1 means findings were reported, and 2
 means the command usage was invalid.

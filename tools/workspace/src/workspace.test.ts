@@ -44,8 +44,10 @@ async function workspace(): Promise<string> {
   await mkdir(join(root, 'spec', 'contexts', 'demo'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
   await writeFile(join(root, 'spec', 'main.tsp'), 'namespace Demo;\n')
-  await writeFile(join(root, 'spec', 'SPECIFICATION.md'), '# Specification\n')
-  await writeFile(join(root, 'spec', 'contexts', 'demo', 'SPECIFICATION.md'), '# Demo\n')
+  await writeFile(join(root, 'spec', 'README.md'), '# Specification\n')
+  await writeFile(join(root, 'spec', 'authorization.md'), '# Authorization\n')
+  await writeFile(join(root, 'spec', 'contexts', 'demo', 'README.md'), '# Demo\n')
+  await writeFile(join(root, 'spec', 'contexts', 'demo', 'scenarios.md'), '# Demo Scenarios\n')
   return root
 }
 
@@ -55,35 +57,29 @@ describe('discoverWorkspaceConfig', () => {
     const config = await discoverWorkspaceConfig(root)
     expect(config.specification).toBe('spec/main.tsp')
     expect(config.documents).toEqual([
-      'spec/SPECIFICATION.md',
-      'spec/contexts/demo/SPECIFICATION.md',
+      'spec/README.md',
+      'spec/authorization.md',
+      'spec/contexts/demo/README.md',
+      'spec/contexts/demo/scenarios.md',
     ])
     expect(config.workItems).toBe('work-items')
   })
 
-  it('discovers the split layout, and only the names the layout defines', async () => {
+  it('ignores a Markdown file the layout does not name', async () => {
     const root = await workspace()
-    await rm(join(root, 'spec', 'contexts', 'demo', 'SPECIFICATION.md'))
-    for (const name of ['README.md', 'decisions.md', 'scenarios.md', 'notes.md']) {
-      await writeFile(join(root, 'spec', 'contexts', 'demo', name), `# ${name}\n`)
-    }
+    await writeFile(join(root, 'spec', 'contexts', 'demo', 'notes.md'), '# Notes\n')
+    await writeFile(join(root, 'spec', 'states.md'), '# States\n')
     const config = await discoverWorkspaceConfig(root)
-    expect(config.documents).toEqual([
-      'spec/SPECIFICATION.md',
-      'spec/contexts/demo/README.md',
-      'spec/contexts/demo/decisions.md',
-      'spec/contexts/demo/scenarios.md',
-    ])
+    expect(config.documents).not.toContain('spec/contexts/demo/notes.md')
+    expect(config.documents).not.toContain('spec/states.md')
   })
 
-  it('leaves a directory on the single canonical document until it declares a README', async () => {
+  it('rejects a leftover SPECIFICATION.md as a second source of truth', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'spec', 'contexts', 'demo', 'decisions.md'), '# Decisions\n')
-    const config = await discoverWorkspaceConfig(root)
-    expect(config.documents).toEqual([
-      'spec/SPECIFICATION.md',
-      'spec/contexts/demo/SPECIFICATION.md',
-    ])
+    await writeFile(join(root, 'spec', 'contexts', 'demo', 'SPECIFICATION.md'), '# Demo\n')
+    await expect(discoverWorkspaceConfig(root)).rejects.toThrow(
+      'legacy specification documents found: spec/contexts/demo/SPECIFICATION.md',
+    )
   })
 
   it('rejects an empty directory with no specification targets', async () => {
