@@ -1,5 +1,5 @@
 ---
-status: in_progress
+status: completed
 authors: [tn]
 risk: high
 created_at: 2026-08-21
@@ -115,10 +115,10 @@ initial_context:
 
 Context の移行順は、小さいものから始めて形式を固めてから大きいものへ移る。`spec/contexts/system` と `spec/contexts/identity-management` は `Design` の小節が多く、判断と機構の説明の振り分けに判断がいるため最後に回す。
 
-未解決の問い。
+未解決だった問いの結論。
 
-- `spec/contexts/<context>/<feature>/` への機能分割を本項目に含めるか、別項目にするか。`identity-management` は `user` / `group` / `agent` の 3 機能を持つため候補になる
-- 仕様サイトの URL 構造が変わる。既存のリンクを保つ必要があるか
+- **機能分割は含めない。** `spec/contexts/<context>/<feature>/` への分割は別項目とする。本項目で `identity-management` は 470 行から最大 150 行のファイル群になり、機能分割の動機だった長さの問題は解消した。検査ツールも `spec/contexts/<context>/<file>` の 1 段だけを正本として受け付ける実装のままなので、機能分割にはツールの変更が別途要る
+- **仕様サイトの URL は保たない。** `spec/generated/docs/` は追跡しない生成物であり、外部から参照している箇所はリポジトリ内に無かった。Context のページ (`contexts/<context>/index.html`) は URL が変わらないので、変わるのは新しく増えたページの追加だけである
 
 ## Tasks
 
@@ -135,7 +135,7 @@ Context の移行順は、小さいものから始めて形式を固めてから
 - [x] T011 [Tools] 旧構成の受け入れを外す
 - [x] T012 [Docs] `SPECIFICATION_FORMAT.md` と `DEVELOPMENT.md` を新構成へ更新する
 - [x] T013 [Docs] `DOCUMENTATION_GUIDE.md` の位置づけの節を削除し、`AGENTS.md` の該当項を更新する
-- [ ] T014 [Verify] 全体の検証を通す
+- [x] T014 [Verify] 全体の検証を通す
 
 ## Verification
 
@@ -154,3 +154,29 @@ Context の移行順は、小さいものから始めて形式を固めてから
 - **ツールの両構成対応が残り続ける。** T011 を独立したタスクとして持ち、移行完了後に確実に外す
 - **`done/` の参照が現在のパスを指さなくなる。** 検査は落ちないが、リンクとしては解決しない。上の Design のとおり書き換えない
 - **仕様サイトの URL が変わる。** 外部から参照している箇所があれば移行前に洗い出す
+
+## Completion
+
+- **Completed At**: 2026-08-22
+- **Summary**:
+  仕様の正本を、1 Context 1 ファイルから種類ごとのファイルへ移した。規範的な内容は動かしていない。`just spec-diff` は全工程を通して規範的差分を報告せず、シナリオ、Standards の行、遷移の行、TypeSpec の宣言はいずれも移行前と同一である。
+
+  6086 行の `SPECIFICATION.md` 22 個が、`README.md` / `glossary.md` / `standards.md` / `states.md` / `decisions.md` / `internals.md` / `scenarios.md`（Context）と `README.md` / `structure.md` / `api-rules.md` / `observability.md` / `deployment.md` / `persistence.md` / `authorization.md`（ルート）になった。`Design` は寿命で分けた。理由を持つ判断は `decisions.md` の一覧に、コードから復元できない機構の説明は `internals.md` の散文になり、`Internal Interfaces` や `Design Decisions` のような観点名の見出しは消えた。
+
+  仕様が得たものが 3 つある。1 つ目は状態の表である。全 22 の状態機械が `| State | Kind | Meaning |` を持ち、初期状態がちょうど 1 つであること、遷移表の `From` と `To` が表に現れることを機械検査する。従来の `Initial: X Terminal: Y` の 1 行では、状態の集合も各状態の意味も書けなかった。2 つ目は `spec/authorization.md` である。主体の種類、スコープの名前空間、対話セッション限定の規則とその 2 つの理由、テナント境界を 1 か所に集約した。従来は 21 Context の `Authorization boundary` に同じ規則が散っていた。3 つ目は通知テンプレートのカタログの移動である。`Database design policy` の下にあったが、これは通知機能の製品仕様であって永続化の方針ではないので、`NotificationTemplate` を所有する `Tenancy` の `internals.md` へ移した。
+
+  ツール側では、`documentKind` がリポジトリ相対パスから適用する文法を決め、`validateDocument` がそれで分岐する。移行中は両構成を受け入れ、完了後に旧構成の受け入れを外した。`spec-diff` は状態機械を、それを載せるファイルではなく所有する Context で識別するようになったので、機械がファイル間を移動しても遷移の変更として報告しない。表のセルはエスケープされた `|` を保持する。`UserLifecycle` の purge ガードが CEL の論理和を `\|\|` と書いており、これを分割していた既存の不具合が状態の表の検査で表面化した。
+
+- **Verification Results**:
+  - `just check-spec` - passed
+  - `just check-work-items` - passed
+  - `just check-ids` - passed
+  - `just spec-diff` - 全 Context の移行を通して `no normative specification change against main`
+  - `just spec-render` - 967 ページを生成。Context のページから兄弟ファイルのページへの索引リンクが解決し、状態図は `states.md` から導出される
+  - `just verify` - `lint-go` 以外すべて passed。`lint-go` は golangci-lint が Go 1.27 の標準ライブラリを型検査できずに落ちるもので、着手前のコミット 0a9b9a76 でも同一のエラーで落ちる。本変更が触れた Go ファイルはコメントのみである
+
+- **Left Undone**:
+  - `spec/capacity.md` は作らなかった。想定規模、縮退の順序、上限の置き方の方針にあたる記述がリポジトリに無く、唯一近い文字列長の区分は、それを使う契約の規則と一緒に読めないと判断できないため `api-rules.md` に残した
+  - `spec/glossary.md`、`spec/standards.md`、`spec/scenarios.md` も同じ理由で作らなかった。ルートに Published Language、全体が従う外部規範、Context を跨ぐシナリオにあたる記述が無い
+  - T003 の「`State` 列と TypeSpec の列挙値の一致」は実装しなかった。状態機械が扱う集合は列挙型の部分集合であることが多く（`UserLifecycle` は `UserStatus` の 7 個のうち 4 個）、しかもその列挙型は別の Context にある。等値検査は偽になるため、対応関係を宣言する書式を先に決める必要がある。検査したのは `Kind` の語彙、初期状態が 1 つであること、遷移表の `From` と `To` が状態の表に現れることの 3 つである
+  - `spec/contexts/system/internals.md` の UI 指針（デザイン指針、管理コンソールの方針、ライブラリ選定表、ナビゲーション方針、コンテナ／表示の分割）は、`DOCUMENTATION_GUIDE.md` §5.9 ではコードの近くに置くものだが、本項目では移動先を作らずそのまま移した
