@@ -133,8 +133,8 @@ Context の移行順は、小さいものから始めて形式を固めてから
 - [x] T009 [Spec] 主体の種類、スコープの語彙、テナント境界を `spec/authorization.md` へ集約する
 - [x] T010 [Spec] ルートの `SPECIFICATION.md` を種類ごとのファイルへ分割する
 - [x] T011 [Tools] 旧構成の受け入れを外す
-- [ ] T012 [Docs] `SPECIFICATION_FORMAT.md` と `DEVELOPMENT.md` を新構成へ更新する
-- [ ] T013 [Docs] `DOCUMENTATION_GUIDE.md` の位置づけの節を削除し、`AGENTS.md` の該当項を更新する
+- [x] T012 [Docs] `SPECIFICATION_FORMAT.md` と `DEVELOPMENT.md` を新構成へ更新する
+- [x] T013 [Docs] `DOCUMENTATION_GUIDE.md` の位置づけの節を削除し、`AGENTS.md` の該当項を更新する
 - [ ] T014 [Verify] 全体の検証を通す
 
 ## Verification

@@ -1,6 +1,6 @@
 // Package spec: 仕様の Go バインディング。
 //
-// 仕様本体（language-agnostic）は spec/**/*.tsp と spec/**/SPECIFICATION.md。
+// 仕様本体（language-agnostic）は spec/**/*.tsp と spec/ の Markdown。
 // 本ファイルはランタイム検証のための Go バインディングで、仕様を変更したら合わせて
 // 更新する。
 package spec

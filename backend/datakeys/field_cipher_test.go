@@ -54,7 +54,7 @@ func TestFieldCipherEncryptDecryptRoundTrip(t *testing.T) {
 }
 
 // TestFieldCipherEncryptBootstrapsFirstDataKey mirrors SigningKeys' lazy
-// per-tenant key creation (spec/contexts/data-keys/SPECIFICATION.md): a tenant's first
+// per-tenant key creation (spec/contexts/data-keys/internals.md): a tenant's first
 // encrypt call must not require a separate provisioning step to have
 // already run BootstrapTenantDataKey.
 func TestFieldCipherEncryptBootstrapsFirstDataKey(t *testing.T) {

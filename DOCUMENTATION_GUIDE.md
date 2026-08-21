@@ -4,29 +4,6 @@
 
 例はすべて、複数企業へ提供するマルチテナント型IdP/IdM（Identity Provider / Identity Management）を題材とする。特定のリポジトリに依存しない形で書く。
 
-## 0. このリポジトリでの位置づけ
-
-**本書は目指す姿であり、現行の正ではない。** いま従うべき書式は次の三つである。
-
-| 文書 | 範囲 |
-|---|---|
-| [DEVELOPMENT.md](DEVELOPMENT.md) | 段階、スキル、ゲート、検証の順序 |
-| [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) | 仕様文書の書式。`just check-spec`が受け付けるものが厳密な規則 |
-| [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) | work itemの書式 |
-
-本書の構成は現行と次の点で異なる。移行は独立したwork itemで行い、それまでは現行に従う。
-
-| 論点 | 現行 | 本書 |
-|---|---|---|
-| コンテキストの正本 | `SPECIFICATION.md`一つ。H2の六節を固定順で持つ | 種類ごとのファイル（`README.md`、`glossary.md`、`standards.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.md`） |
-| `Design`節 | 現在の構造、依存方向、技術、境界、根拠をまとめて持つ | 判断（`decisions.md`）と機構の説明（`internals.md`）に分ける。観点名の見出しを使わない |
-| 状態遷移 | 遷移表と、初期・終端を示す一行 | 状態の表と遷移の表の二つ |
-| 全体の正本 | `spec/SPECIFICATION.md`一つ | 種類ごとに分割（`structure.md`、`api-rules.md`、`observability.md`、`deployment.md`、`capacity.md`、`persistence.md`、`authorization.md`） |
-| 認可 | 各コンテキストの`Design`の小節 | `spec/authorization.md`に集約。割り当てはTypeSpecの注釈が正本 |
-| 開発・運用文書 | 定めていない | ビルド、CI、テスト、SLO、リリース、復旧、Runbookの置き場所を定める |
-
-移行にはツール（`tools/check`、`tools/render-spec-docs`）と全コンテキストの再配置が伴う。本書を根拠に個別の文書を先行して作り替えない。
-
 ## 1. 目的
 
 現在の仕様と設計を、一意の正本として、人間とAIの双方が読めて検証できる形で維持する。

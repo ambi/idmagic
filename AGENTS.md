@@ -8,14 +8,15 @@
 | `CONFIGURATION.md`, `DEVELOPMENT.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
 | `DOCUMENTATION_GUIDE.md`, headings included | Japanese |
 | `spec/**/*.tsp`, doc comments included | English |
-| Prose in `spec/SPECIFICATION.md` and `spec/contexts/*/SPECIFICATION.md` | Japanese |
+| Prose in the canonical documents under `spec/`, `spec/README.md` and `spec/contexts/*/README.md` included | Japanese |
 | `work-items/**` | Japanese |
-| READMEs below the repository root except `tools/**`, headings included | Japanese |
+| READMEs below the repository root except `spec/**` and `tools/**`, headings included | Japanese |
 | `infra/runbooks/*`, headings included | Japanese |
 | `tools/**` | English |
 | Go and TypeScript comments | Japanese |
 | Go and TypeScript identifiers, database columns, event names, error codes, scopes | English |
 | `REQ-<CONTEXT>-NNN`, TypeSpec symbols, section headings, table headers, frontmatter keys | English |
+| Headings and file names of the canonical documents under `spec/`, `README.md` included | English |
 | API error messages, log messages, CLI help | English |
 | User-facing UI text | Localized; `ja` and `en` both live in the `*.i18n.ts` dictionaries |
 | Commit messages | English |
@@ -56,22 +57,23 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
 - Use the specification-first development workflow.
   - Keep feature and behavior changes specification-first.
   - Put models, API interfaces, and authentication mechanisms in `spec/**/*.tsp`.
-  - Put overview, glossary, standards, language-independent state transitions, current design,
-    and scenarios in the owning `spec/**/SPECIFICATION.md`.
+  - Put the boundary declaration, glossary, standards, language-independent state transitions,
+    decisions, mechanism, and scenarios in the canonical file under `spec/` whose name says what that
+    kind of content is. The file name is the division; there is no single per-context document.
   - Use stable `REQ-<CONTEXT>-NNN` normative scenario IDs and TypeSpec symbols in work-item references.
   - Treat these as section-addressable references, not required reading:
     [DEVELOPMENT.md](DEVELOPMENT.md) for the stage/skill/gate loop and the verification ladder,
     [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) for specification documents, and
     [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) for work items.
-  - [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) describes the intended future document system.
-    It is not current policy: where it differs from the three documents above, follow those. Migrating
-    to it is its own work item; do not restructure individual documents on its authority.
+  - [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) describes the document system in general, without
+    depending on this repository. The three documents above are what this repository enforces; where they
+    differ, follow those.
   - Expect repository tools to discover the standard layout without a registry file; use `just` recipes
     rather than a methodology-specific CLI.
   - Regenerate untracked TypeSpec and HTML artifacts after specification changes.
   - If bounded contexts, global directory structures, adopted technologies, or core design rules change,
-    synchronize the owning `SPECIFICATION.md` Design section.
-  - Put durable current design and rationale in `SPECIFICATION.md`;
+    synchronize `spec/README.md` and `spec/structure.md`.
+  - Put durable decisions in `decisions.md` and durable mechanism in `internals.md`;
     put change-specific analysis, alternatives, and implementation history in the work item.
   - Do not add architecture ledgers. Boundary checks infer structure from paths and reject forbidden dependencies only.
 

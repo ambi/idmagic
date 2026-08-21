@@ -6,17 +6,41 @@ This document states intent, examples, and the decisions a checker cannot make f
 
 ## 1. Layout
 
+Sections do not divide the specification; files do. A file's name says what kind of content it holds, and
+that name is what the checker validates the body against.
+
 ```text
 spec/
+  README.md            # boundary declaration, context map, index
+  structure.md         # directories, dependency direction, layers, architecture style
+  glossary.md          # published language
+  standards.md         # external norms the whole system follows
+  api-rules.md         # rules for externally visible contracts
+  observability.md     # correlation, logs, metrics
+  deployment.md        # runtime units, trust boundaries, availability
+  capacity.md          # assumed scale, how limits are set, degradation
+  persistence.md       # database design policy
+  authorization.md     # principals, scopes, authorization boundaries
+  scenarios.md         # behavior no single context can satisfy alone
   main.tsp
   tspconfig.yaml
-  SPECIFICATION.md
   <product>.openapi.baseline.json
   contexts/<context>/
+    README.md          # boundary declaration and index
+    glossary.md
+    standards.md
+    states.md
+    decisions.md
+    internals.md       # rare; only when a mechanism needs explaining
+    scenarios.md
     models.tsp
     main.tsp
-    SPECIFICATION.md
 ```
+
+`README.md` is the file a reader lands on when they open the directory, so it holds the boundary
+declaration and the index of its siblings. Create no file that has no content to hold: a small context
+needs only `README.md` and `scenarios.md`. The file set and the file names are *(checked)*; anything else
+in these directories is not a canonical document and is rejected.
 
 `main.tsp` composes the TypeSpec program. `models.tsp` owns model declarations and the context `main.tsp`
 owns operations. Generated OpenAPI and documentation live below ignored `spec/generated/`.
@@ -30,30 +54,23 @@ Each operation must inherit an OpenAPI tag from its owning context; do not leave
 Keep stable wire names when source ownership moves. Do not recreate TypeSpec constructs in Markdown or a
 project-specific YAML dialect.
 
-## 3. Canonical document
+## 3. The canonical documents
 
-Every root or context `SPECIFICATION.md` has frontmatter with a lowercase context slug and update date, one
-H1 title, and these H2 sections in order when applicable:
+Every canonical document has exactly one H1 *(checked)*. There is no frontmatter and no fixed section set:
+the file name has already said what the file holds, so what would have been a section is now a file, and
+its H2s are free to name what the content actually is.
 
-1. `Overview`
-2. `Glossary`
-3. `Standards`
-4. `State Transitions`
-5. `Design`
-6. `Scenarios`
+### README.md — the boundary declaration
 
-`Overview` is required. Omit empty optional sections. Frontmatter, the single H1, the section set, and
-their order are *(checked)*. Put the overview in this document once; do not repeat it in an
-implementation-side design file.
-
-`Overview` states what the context owns, what it does not own and which owner takes it instead, and — when
-membership is easy to get wrong — the criterion that decides. It is a boundary declaration, not a guide to
-the document. A reading order and a plan for later both fail that test: the first describes the file rather
-than the system, and the second describes a system that does not exist yet. Keep planned work in the work
-item; a deliberate non-adoption belongs in `Design` with the condition that would reopen it.
+`README.md` states what the directory owns, what it does not own and which owner takes it instead, and —
+when membership is easy to get wrong — the criterion that decides. It is a boundary declaration, not a
+guide to the document. A reading order and a plan for later both fail that test: the first describes the
+file rather than the system, and the second describes a system that does not exist yet. Keep planned work
+in the work item; a deliberate non-adoption belongs in `decisions.md` with the condition that would reopen
+it.
 
 ```markdown
-## Overview
+# Directory
 <!-- good: ownership, delegation, and the criterion that settles the hard cases -->
 Owns the lifecycle of X and the metadata around it.
 Does not own the cryptography itself; that is a shared adapter. Signing keys belong to <other context>.
@@ -65,41 +82,79 @@ This document covers A, then B, then C, in that order.
 A fourth source kind will be added to this context later.
 ```
 
-A context document owns only behavior that context can satisfy and verify on its own. Behavior that holds
-only when several contexts cooperate belongs to whichever document declares ownership of the
-cross-context view — the root document, or a system-level context that says so in its `Overview` — and
-names the participating contexts in the scenario. Splitting such a flow into per-context fragments leaves
-no place where the real guarantee is stated.
+Below the declaration, index the sibling files as Markdown links. That index is what makes them reachable
+from the generated site, and it is the only place a reader is told which of them exist.
 
-`Design` records current structure, dependency direction, runtime composition, adopted technologies,
-security boundaries, operational constraints, and concise durable rationale. Change-specific comparisons
-and rejected alternatives stay in the work item.
+A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several
+contexts cooperate belongs to `spec/scenarios.md`, and the scenario names the participating contexts.
+Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
-Authorization boundaries are one of those security boundaries and have no section of their own. Give them
-a subsection of `Design` and keep the name identical across documents, so a reviewer can still read every
-boundary in one sweep. Where the boundary is a single sentence, state it beside the mechanism it
-constrains rather than under a heading of its own.
+### decisions.md — what was decided and why
+
+One item per decision: what was decided, and why, each in a sentence. An item with no reason is a restated
+rule, not a decision. The test is whether the code could be read to recover it; if it could, leave it out.
+Include what was decided against, with the condition that would reopen it.
+
+Make the heading the decision, never the aspect. `Invariants`, `Concurrency`, and `Failure handling` are
+aspect names: a writer reads them as boxes to fill, and either invents prose for an aspect that does not
+apply or splits one decision across several. Do not enumerate invariants at all — uniqueness and
+referential integrity belong to the schema, observable properties to `scenarios.md`, and the rest is
+unbounded. An invariant worth writing down is usually a decision with a reason, and written as one it
+keeps the reason.
+
+A decision large enough to need rejected alternatives, the conditions under which it holds, and the
+condition that would reopen it gets a heading of its own.
+
+### internals.md — how a mechanism works
+
+Write this only when the working of a mechanism cannot be recovered from the code. **Most contexts do not
+need it.** The test is whether someone could read the code alone and know how to fix the mechanism when it
+breaks. If they could, leave it out. Write what is guaranteed, not the steps the implementation takes.
+
+Decisions and mechanism live in separate files because they have different lifetimes. A decision is
+revisited when circumstances change and is audited as a list; a mechanism holds as long as the
+implementation does and is read as prose. Together in one file, every audit of the first means skimming
+past the second.
+
+Neither file carries directory listings, package inventories, change history, comparisons of alternatives,
+plans, summaries of external standards, states and transitions, acceptance examples, request and response
+shapes, columns and indexes, permission assignments, or rules every context follows. Each of those has an
+owner: the code, the work item, `standards.md`, `states.md`, `scenarios.md`, TypeSpec, the schema file,
+`spec/authorization.md`, or the matching file directly under `spec/`.
 
 ## 4. State transitions
 
-Use a language-independent table for every state machine:
+`states.md` gives every state machine an H2 heading and two language-independent tables under it, the
+states first and then the transitions:
 
 ```markdown
+| State | Kind | Meaning |
+|---|---|---|
+
 | From | Event | Guard | To | Effects |
 |---|---|---|---|---|
 ```
 
+`Kind` is `initial`, `terminal`, or `—`. Exactly one state is `initial`; any number may be `terminal`
+*(checked)*. Every `From` and `To` must name a state the state table declares *(checked)*.
+
+The state table exists because the set of states is otherwise never stated. Derived from the `From` and
+`To` columns it silently loses any state nothing transitions into, and no state gets to say in one line
+what it means — which is exactly what a reader needs to tell two similar-looking waiting states apart.
+
 Use `—` in `Guard` when the transition is unconditional *(checked)*. Do not use an empty string literal
-such as `""`; it looks like an executable condition in both the source table and the derived diagram.
+such as `""`; it looks like an executable condition in both the source table and the derived diagram. A
+guard may contain an escaped pipe, which does not end the cell.
 
 Application code and tests are executable evidence, not the only state-transition documentation.
-The table is the normative source. The generated specification site derives one Mermaid state diagram
-from the same rows and displays the table with the diagram; do not maintain a second hand-written state
-diagram for the same machine.
+The tables are the normative source. The generated specification site derives one Mermaid state diagram
+from the transition rows and displays the tables with the diagram; do not maintain a second hand-written
+state diagram for the same machine.
 
 ## 5. Standards
 
-Give every adopted standard a subsection named after it, a source URL on its own line, and one table:
+In `standards.md`, give every adopted standard an H2 named after it, a source URL on its own line, and one
+table:
 
 ```markdown
 | ID | Adoption | Strength | Statement |
@@ -121,13 +176,16 @@ for both columns are *(checked)*.
 
 ## 6. Scenarios and normative IDs
 
-A scenario heading identifies one observable, non-negotiable behavior. The `REQ-*` marker already carries
+In `scenarios.md`, an H3 heading identifies one observable, non-negotiable behavior. Scenario headings
+stay at H3 even though nothing sits above them: `### REQ-...` is the form every reference, every checker,
+and every generated anchor already uses, and the identifier is what carries normative force, not the
+heading level. The `REQ-*` marker already carries
 normative force. Do not add a separate `Requirements` section or a second boilerplate sentence using
 `SHALL` or `MUST`. Write one behavior per scenario so a tester can determine whether it holds.
 
 IDs are immutable once referenced. Models and external interfaces belong in TypeSpec; adopted protocol
-rules belong in Standards; lifecycle invariants belong in State Transitions; internal interface and
-structural constraints belong in Design. Do not duplicate those concerns as prose requirements. Use
+rules belong in `standards.md`; lifecycle invariants belong in `states.md`; decisions belong in
+`decisions.md` and mechanism in `internals.md`. Do not duplicate those concerns as prose requirements. Use
 `SHOULD` or `MAY` only in explanatory or standards policy text when an exception or option is genuinely
 intended.
 
@@ -141,8 +199,8 @@ Replaced by session-scoped account access.
 The successor must exist *(checked)*. A retired ID is never reused. Deleting the heading outright leaves
 nothing saying the behavior existed, and the work item alone cannot be searched by ID. Before retiring,
 map every precondition, postcondition, failure case, and invariant to its new owner — TypeSpec, Scenarios,
-Standards, State Transitions, or Design. A title matching a TypeSpec operation is not by itself evidence
-that a scenario became redundant.
+`standards.md`, `states.md`, or `decisions.md`. A title matching a TypeSpec operation is not by itself
+evidence that a scenario became redundant.
 
 Use uppercase keywords without colons *(checked)*. Nest an alternative immediately below the `WHEN` or
 `THEN` step that it replaces or interrupts. The Markdown structure carries the relationship; do not add
@@ -169,6 +227,12 @@ operation whose behavior changes, not under `GIVEN`.
 
 ## 7. Authorization
 
+Authorization is not a section of each context. It is `spec/authorization.md`, because someone checking
+authorization wants the product's authorization, not one context's share of it. That file holds the
+principal kinds, the scope namespaces, the tenant boundary, and the rules that apply when a decision
+cannot be made. What one context decides about its own operations stays in that context's
+`decisions.md`.
+
 TypeSpec records whether an API is authenticated or public, and carries whatever per-operation permission
 or scope annotation the project enforces. Fine-grained authorization is executable application behavior
 with tests unless the project explicitly adopts a standard policy language. Do not add an ad hoc
@@ -186,9 +250,10 @@ follow from its name.
 
 - Compile TypeSpec and validate canonical documents through the repository's specification check.
 - Compare generated OpenAPI with the released baseline for compatibility.
-- Generate OpenAPI and a multi-page, navigation-linked HTML site from TypeSpec and `SPECIFICATION.md`
-  sources. The entry point is `spec/generated/docs/index.html`; Method, whole-system, context, API, and
-  model content are separate pages.
+- Generate OpenAPI and a multi-page, navigation-linked HTML site from TypeSpec and the canonical Markdown.
+  The entry point is `spec/generated/docs/index.html`; Method, whole-system, context, API, and model
+  content are separate pages, and each canonical file is its own page reached from its directory's
+  `README.md`.
 - Delegate API operation/schema presentation to an OpenAPI-native viewer over the generated OpenAPI.
   Generate the broader model catalog from repository-owned TypeSpec model, enum, union, and scalar
   declarations, including declarations not reachable from HTTP operations. Transport wrapper declarations
@@ -196,6 +261,7 @@ follow from its name.
 - Render Mermaid fences from canonical documents and derive state diagrams from normative transition
   tables. Scenario keywords remain plain Markdown grammar in the source and receive semantic styling in
   the generated view.
-- Current `SPECIFICATION.md` files must be self-contained: state design and rationale inline rather than
-  linking out to another document for it.
+- Canonical documents state design and rationale inline rather than linking out to a separate decision
+  archive for it. Linking between canonical files is how the layout works; linking to `decisions/` is
+  rejected *(checked)*.
 - Never edit or treat generated HTML/OpenAPI as normative source.

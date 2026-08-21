@@ -29,7 +29,7 @@ func receiverInput() ssusecases.RegisterSsfReceiverStreamInput {
 }
 
 // TestRegisterSsfStream_HardQuota — RED: REQ-SHAREDSIGNALS-009
-// (spec/contexts/sharedsignals/SPECIFICATION.md)。SsfStream の登録は Hard Quota を
+// (spec/contexts/sharedsignals/scenarios.md)。SsfStream の登録は Hard Quota を
 // 超えると QuotaExceededError で拒否され、stream も付随する設定も作成されない。
 // transmitter と receiver は `ssf_streams` という同一の上限を共有し、削除すると
 // 利用量が戻る。

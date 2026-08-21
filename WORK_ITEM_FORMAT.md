@@ -6,7 +6,7 @@ Pending items live in `work-items/`; completed or cancelled items live in `work-
 
 A work item is also the task list, change-specific design document, and implementation history for that
 change. When the item is completed, conclusions that remain current must be reflected in TypeSpec or the
-owning context's `SPECIFICATION.md`.
+canonical file that owns that kind of content.
 
 ```markdown
 ---
@@ -18,13 +18,13 @@ priority: p1
 depends_on: []
 change_kind: feature
 initial_context: # written when the item starts, not when it is filed
-  specification: [spec/contexts/system/SPECIFICATION.md#REQ-SYSTEM-001]
+  specification: [spec/contexts/system/scenarios.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
   source: [backend/system]
   tests: [backend/system]
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: spec/contexts/system/SPECIFICATION.md, requirement: REQ-SYSTEM-001 }
+  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
 ---
 
@@ -75,7 +75,11 @@ reading list that points at moved or deleted files is worse than none. A pending
 Motivation, Scope, and Out of Scope to be useful.
 
 Once the item is `in_progress`, `just check-work-items` resolves that list: every path must exist, and a
-`spec/**/SPECIFICATION.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
+`spec/contexts/<context>/scenarios.md#REQ-<CONTEXT>-NNN` entry must name a scenario the document declares.
+
+`affected_spec` is resolved for every record, completed ones included, because it indexes the normative
+element the change touched rather than what someone read at the time. When a normative element moves to a
+different file, repoint those references; when it is retired, the retired heading keeps them resolving.
 
 For medium and larger changes, make `Design` and `Plan` concrete. Domain, Use Cases, and Adapters tasks
 must retain the corresponding test and normative scenario ID as self-evidence.
