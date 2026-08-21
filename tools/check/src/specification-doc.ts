@@ -95,12 +95,17 @@ const STRENGTH_VALUES = new Set(['MUST', 'MUST NOT', 'SHOULD', 'MAY'])
 /** An excluded capability carries no obligation, so these strengths cannot describe one. */
 const OBLIGATION_STRENGTHS = new Set(['MUST', 'SHOULD'])
 
-/** Splits a Markdown table row into trimmed cells, dropping the empty edges. */
+/**
+ * Splits a Markdown table row into trimmed cells, dropping the empty edges.
+ * A cell may contain an escaped pipe — a CEL guard writes disjunction as
+ * `\|\|` — which does not end the cell.
+ */
 function tableRowCells(line: string): string[] {
   return line
+    .replaceAll('\\|', '\u0000')
     .split('|')
     .slice(1, -1)
-    .map((cell) => cell.trim())
+    .map((cell) => cell.trim().replaceAll('\u0000', '\\|'))
 }
 
 function isSeparatorRow(line: string): boolean {

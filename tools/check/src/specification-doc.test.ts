@@ -346,3 +346,14 @@ describe('validateDocument', () => {
     ])
   })
 })
+
+describe('table cells', () => {
+  it('keeps an escaped pipe inside a guard rather than ending the cell', () => {
+    const source = states.replace(
+      '| Ready | Run | — | Done | Completed |',
+      '| Ready | Run | input.purge \\|\\| expired | Done | Completed |',
+    )
+    const result = validateDocument('spec/contexts/demo/states.md', source)
+    expect(result.findings).toEqual([])
+  })
+})

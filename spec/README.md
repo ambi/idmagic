@@ -88,7 +88,7 @@ flowchart LR
 | --- | --- | --- |
 | [System](contexts/system/README.md) | `backend/cmd/internal/bootstrap`, `backend/shared/http/server_http`, `frontend/` | 起動、経路の組み立て、健全性、フロントエンド UI。 |
 | [Tenancy](contexts/tenancy/README.md) | `backend/tenancy` | Tenant と realm、テナント単位の設定、ユーザーの属性スキーマ、制御面のテナント管理。 |
-| [IdManagement](contexts/identity-management/SPECIFICATION.md) | `backend/idmanagement` | User、Group、Agent、自身のプロフィール、アイデンティティのライフサイクル、CEL による動的メンバーシップ規則と再評価。 |
+| [IdManagement](contexts/identity-management/README.md) | `backend/idmanagement` | User、Group、Agent、自身のプロフィール、アイデンティティのライフサイクル、CEL による動的メンバーシップ規則と再評価。 |
 | [IdGovernance](contexts/identity-governance/README.md) | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション。記録の正は IdManagement に残る。 |
 | [Authentication](contexts/authentication/SPECIFICATION.md) | `backend/authentication` | 資格情報の検証、MFA、ログインセッション、ステップアップ認証、パスワードの変更とリセット、認証イベント。 |
 | [OAuth2](contexts/oauth2/README.md) | `backend/oauth2` | OAuth 2.0 と OIDC のプロトコルエンドポイント、クライアント、同意、トークン、ロールのポリシー。 |
