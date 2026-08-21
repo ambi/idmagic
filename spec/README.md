@@ -86,7 +86,7 @@ flowchart LR
 
 | Specification context | Go package | Responsibility |
 | --- | --- | --- |
-| [System](contexts/system/SPECIFICATION.md) | `backend/cmd/internal/bootstrap`, `backend/shared/http/server_http`, `frontend/` | 起動、経路の組み立て、健全性、フロントエンド UI。 |
+| [System](contexts/system/README.md) | `backend/cmd/internal/bootstrap`, `backend/shared/http/server_http`, `frontend/` | 起動、経路の組み立て、健全性、フロントエンド UI。 |
 | [Tenancy](contexts/tenancy/README.md) | `backend/tenancy` | Tenant と realm、テナント単位の設定、ユーザーの属性スキーマ、制御面のテナント管理。 |
 | [IdManagement](contexts/identity-management/SPECIFICATION.md) | `backend/idmanagement` | User、Group、Agent、自身のプロフィール、アイデンティティのライフサイクル、CEL による動的メンバーシップ規則と再評価。 |
 | [IdGovernance](contexts/identity-governance/README.md) | `backend/idgovernance` | LifecycleWorkflow のポリシーとオーケストレーション。記録の正は IdManagement に残る。 |
