@@ -265,6 +265,7 @@ depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "c
 
 [tasks.check-admin-scopes]
 description = "Check admin API scope declarations"
+depends = ["compile-spec"]
 dir = "tools"
 run = "bun run check/src/check-admin-scopes.ts"
 
@@ -275,8 +276,8 @@ run = "bun run check/src/check-command-map.ts"
 
 [tasks.check-spec]
 description = "Compile TypeSpec and validate canonical specification documents"
+depends = ["compile-spec"]
 run = [
-  "mise run compile-spec",
   "mise run check-generated-contract",
   "cd tools && bun run workspace/src/check-workspace.ts --documents",
   "cd tools && bun run render-spec-docs/src/main.ts --check",
@@ -307,6 +308,7 @@ run = "go run ./backend/cmd/idmagic-config-reference --check --output CONFIGURAT
 
 [tasks.check-api-compat]
 description = "Detect OpenAPI breaking changes against the release baseline"
+depends = ["compile-spec"]
 dir = "tools"
 run = "bun run check-api-compat/src/main.ts"
 

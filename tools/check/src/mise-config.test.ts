@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 type MiseConfig = {
   tools?: Record<string, unknown>
   env?: Record<string, unknown>
-  tasks?: Record<string, { tools?: Record<string, unknown> }>
+  tasks?: Record<string, { depends?: string[]; tools?: Record<string, unknown> }>
 }
 
 const root = resolve(import.meta.dir, '../../..')
@@ -16,6 +16,14 @@ describe('mise operational tool boundary', () => {
     expect(Object.keys(config.env ?? {}).filter((name) => name.startsWith('POSTGRES_'))).toEqual([])
     for (const task of Object.values(config.tasks ?? {})) {
       expect(task.tools?.postgres).toBeUndefined()
+    }
+  })
+})
+
+describe('mise generated OpenAPI dependencies', () => {
+  it('compiles the specification before every parallel verification consumer', () => {
+    for (const task of ['check-spec', 'check-admin-scopes', 'check-api-compat']) {
+      expect(config.tasks?.[task]?.depends).toContain('compile-spec')
     }
   })
 })
