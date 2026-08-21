@@ -99,13 +99,13 @@ reads and edits through those tools, and reaches for a shell only for what they 
 | Task | Use | Not |
 |---|---|---|
 | Read a file, or part of one | the Read tool (`offset`/`limit`) | `cat`, `head`, `tail`, `sed -n 'N,Mp'` |
+| Map a file or subtree before reading it | `ast-grep outline` | opening every file to find the entry point |
 | Edit code | the Edit tool, or `sd` for one literal string across files | `sed -i`, a `python3` / `bun` heredoc rewriting files |
 | Query/extract JSON | `jq` | throwaway `python3 -c` / `bun -e` |
-| Explore JSON of unknown shape | `gron file.json \| rg pattern` | reading the whole file |
 | Query/extract YAML | `yq` | `grep` against indentation |
 | Search file contents | `rg` | `grep -r`, `find … -exec grep` |
 | Find files by name | `fd` | `find` |
-| Search/rewrite code by structure | `ast-grep` | multi-file regex, the deprecated `sg` alias |
+| Same shape, different identifiers, across many sites | `ast-grep` | multi-line regex in `sd` / `perl -pi`, the deprecated `sg` alias |
 | Bulk literal replace across files | `sd` | `sed -i` |
 | Read an HTML page, extract from the web | `ax` | `curl` + a parsing script |
 | GitHub PRs, issues, API | `gh` | `curl` against api.github.com |
