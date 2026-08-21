@@ -61,6 +61,31 @@ describe('discoverWorkspaceConfig', () => {
     expect(config.workItems).toBe('work-items')
   })
 
+  it('discovers the split layout, and only the names the layout defines', async () => {
+    const root = await workspace()
+    await rm(join(root, 'spec', 'contexts', 'demo', 'SPECIFICATION.md'))
+    for (const name of ['README.md', 'decisions.md', 'scenarios.md', 'notes.md']) {
+      await writeFile(join(root, 'spec', 'contexts', 'demo', name), `# ${name}\n`)
+    }
+    const config = await discoverWorkspaceConfig(root)
+    expect(config.documents).toEqual([
+      'spec/SPECIFICATION.md',
+      'spec/contexts/demo/README.md',
+      'spec/contexts/demo/decisions.md',
+      'spec/contexts/demo/scenarios.md',
+    ])
+  })
+
+  it('leaves a directory on the single canonical document until it declares a README', async () => {
+    const root = await workspace()
+    await writeFile(join(root, 'spec', 'contexts', 'demo', 'decisions.md'), '# Decisions\n')
+    const config = await discoverWorkspaceConfig(root)
+    expect(config.documents).toEqual([
+      'spec/SPECIFICATION.md',
+      'spec/contexts/demo/SPECIFICATION.md',
+    ])
+  })
+
   it('rejects an empty directory with no specification targets', async () => {
     const root = await mkdtemp(join(tmpdir(), 'spec-workspace-test-'))
     cleanup.push(root)

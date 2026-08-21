@@ -176,7 +176,7 @@ func TestDestroyTenantDataKeyErasesWrappedDEK(t *testing.T) {
 }
 
 // TestRotateTenantDataKeyEnqueuesReencryptionJobForRegisteredMigrators covers
-// the spec/SPECIFICATION.md persistence design: rotation must kick off the
+// the spec/persistence.md design: rotation must kick off the
 // resumable re-encryption job for every registered FieldMigrator so old
 // references eventually migrate onto the new active version.
 func TestRotateTenantDataKeyEnqueuesReencryptionJobForRegisteredMigrators(t *testing.T) {

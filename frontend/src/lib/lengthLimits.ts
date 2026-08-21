@@ -1,5 +1,5 @@
 /**
- * 文字列フィールドの長さ上限。正本は spec/SPECIFICATION.md の "String length limits" で、
+ * 文字列フィールドの長さ上限。正本は spec/api-rules.md の "String length limits" で、
  * サーバの backend/shared/spec/length.go と同じ数を持つ。
  *
  * ここでの用途は入力欄の `maxLength` 属性だけであり、保証はサーバ側にある。属性は

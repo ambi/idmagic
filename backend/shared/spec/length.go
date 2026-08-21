@@ -10,7 +10,7 @@ import (
 
 // 文字列長の上限の既定区分。単位は Unicode コードポイントで、TypeSpec の
 // @maxLength、OpenAPI の maxLength、PostgreSQL の char_length() と同じものを数える。
-// 正本は spec/SPECIFICATION.md の "String length limits"。
+// 正本は spec/api-rules.md の "String length limits"。
 const (
 	// LengthHandle は IdMagic が採番する集約の ID と、関係名や型名のような語彙的な名前。
 	LengthHandle = 64
@@ -51,7 +51,7 @@ const (
 )
 
 // 索引の鍵の成分になる文字列の、契約の上限 (コードポイント)。資源の上限 (バイト) が
-// 対になっており、両方を課す。数の根拠は spec/SPECIFICATION.md の
+// 対になっており、両方を課す。数の根拠は spec/api-rules.md の
 // "String length limits" にある。
 const (
 	// LengthSamlEntityID は SAML SP の entityID。saml-schema-metadata-2.0.xsd の

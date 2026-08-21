@@ -110,7 +110,7 @@ VERSION=1.0.0 just build-go
 
 ### エンベロープ暗号化とデータ鍵
 
-データベースに残す必要がある可逆なシークレット（現在は MFA の TOTP seed）は、保存時に[エンベロープ暗号化](spec/SPECIFICATION.md#3-envelope-encryption-for-reversible-secrets)する。テナントごとの `DataEncryptionKey`（DEK）が各シークレットを直接暗号化し、差し替え可能な `DATA_KEY_PROVIDER` が保持するマスターキーで DEK をラップする。
+データベースに残す必要がある可逆なシークレット（現在は MFA の TOTP seed）は、保存時に[エンベロープ暗号化](spec/persistence.md#envelope-encryption-for-reversible-secrets)する。テナントごとの `DataEncryptionKey`（DEK）が各シークレットを直接暗号化し、差し替え可能な `DATA_KEY_PROVIDER` が保持するマスターキーで DEK をラップする。
 
 - **開発用フォールバック**: `DATA_KEY_PROVIDER` を設定しない場合は、プロセス内の Tink 平文鍵セットを使うため、開発時に外部サービスは不要である。本番では決して選択してはならない。
 - **マスターキーを失うと復旧できない。** OpenBao の Transit 鍵をバックアップせずに失うと、すべてのテナントのラップ済み DEK を恒久的にアンラップできなくなる。これは `DestroyTenantDataKey` が意図的に実現する暗号学的消去と同じ性質が、事故によって発生することを意味する。OpenBao の Transit エンジンのストレージは OpenBao 自身のバックアップ手段で保護する。`tenant_data_encryption_keys` の PostgreSQL バックアップには、マスターキーで暗号化した形しか含まれないため、それだけでは復旧できない。
@@ -213,7 +213,7 @@ cp spec/generated/openapi/idmagic.openapi.json spec/idmagic.openapi.baseline.jso
 
 各領域の詳細は次の文書を参照する:
 
-- **仕様と設計**: [spec/SPECIFICATION.md](spec/SPECIFICATION.md)
+- **仕様と設計**: [spec/README.md](spec/README.md)
 - **API とモデルの仕様**: [spec/main.tsp](spec/main.tsp)
 - **仕様の HTML 化**: `just spec-render` で `spec/generated/docs/index.html` を生成する。手法、システム全体、Bounded Context、Swagger UI API、検索可能な TypeSpec モデルを別々のページとして含む
 - **インフラストラクチャと Kubernetes**: [infra/README.md](infra/README.md)

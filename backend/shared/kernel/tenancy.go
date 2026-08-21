@@ -1,5 +1,5 @@
 // Package kernel は複数 bounded context から真に published language として参照される、
-// ごく小さな型・定数のみを持つ。何を収録するかは spec/SPECIFICATION.md Design の
+// ごく小さな型・定数のみを持つ。何を収録するかは spec/README.md の Context Map が示す
 // context 関係（各 context が publish するもの / 依存するもの）を規範とする。
 package kernel
 
