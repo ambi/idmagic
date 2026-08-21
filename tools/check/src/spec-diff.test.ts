@@ -93,8 +93,43 @@ describe('diffSpecifications', () => {
       document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Completed')),
     )
     expect(diffSpecifications(base, changed).changedTransitions).toEqual([
-      'spec/contexts/demo/SPECIFICATION.md#Lifecycle',
+      'spec/contexts/demo#Lifecycle',
     ])
+  })
+
+  it('reports nothing when a context moves to the split layout', () => {
+    const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Done')))
+    const head: Snapshot = new Map([
+      [
+        'spec/contexts/demo/scenarios.md',
+        `# Demo Scenarios\n\n${scenario('REQ-DEMO-001', 'it succeeds')}\n`,
+      ],
+      [
+        'spec/contexts/demo/states.md',
+        [
+          '# Demo State Transitions',
+          '',
+          '## Lifecycle',
+          '',
+          '| State | Kind | Meaning |',
+          '|---|---|---|',
+          '| Ready | initial | 受理直後 |',
+          '| Done | terminal | 完了 |',
+          '',
+          machine('emit Done').split('\n').slice(1).join('\n'),
+        ].join('\n'),
+      ],
+      ['spec/contexts/demo/main.tsp', 'op StartTask(): void;'],
+    ])
+    const diff = diffSpecifications(base, head)
+    expect(diff).toEqual({
+      addedScenarios: [],
+      removedScenarios: [],
+      changedScenarios: [],
+      changedTransitions: [],
+      addedDeclarations: [],
+      removedDeclarations: [],
+    })
   })
 
   it('tracks TypeSpec declarations coming and going', () => {

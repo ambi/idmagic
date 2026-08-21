@@ -23,7 +23,7 @@ export type Snapshot = Map<string, string>
 export type SpecificationFacts = {
   /** Normative scenario id to its normalized body. */
   scenarios: Map<string, string>
-  /** `<document>#<machine>` to its transition rows. */
+  /** `<owning directory>#<machine>` to its transition rows. */
   transitions: Map<string, Set<string>>
   /** `<path>:<declaration>` for every TypeSpec declaration. */
   declarations: Set<string>
@@ -91,6 +91,9 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
       facts.scenarios.set(start[1] ?? '', normalize(scenarios.slice(from, to)))
     }
 
+    // A machine belongs to the context that owns it, not to the file that
+    // happens to hold it, so moving it between files is not a change.
+    const owner = path.slice(0, Math.max(0, path.length - name.length - 1)) || path
     const split = name === 'states.md'
     const transitions = split ? source : section(source, 'State Transitions')
     const machineHeading = split ? /^## (?!#)(.+)$/ : /^### (.+)$/
@@ -101,7 +104,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     for (const line of transitions.split('\n')) {
       const heading = line.match(machineHeading)
       if (heading) {
-        machine = `${path}#${heading[1]}`
+        machine = `${owner}#${heading[1]}`
         inTransitions = false
         continue
       }
