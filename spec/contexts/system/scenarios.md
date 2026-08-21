@@ -4,11 +4,13 @@
 - ACTOR Operator
 - GIVEN API、UI ゲートウェイ、イベントリレーは個別の実行単位としてデプロイされる
 - GIVEN `MetricsExposition` の公開範囲は管理ネットワークに制限される
+- GIVEN OAuth2/OIDC のサービス目標、母集団、時間窓、除外条件は `spec/capacity.md` に定められている
+- GIVEN 各サービス目標は `spec/observability.md` の HTTP RED メトリクスと Prometheus のスクレイプ状態に対応づけられている
 - WHEN Operator が環境のオーバーレイを選んで運用マニフェストを適用する
   - ALT PostgreSQL へ到達できない → `ReadinessProbe` は `unavailable` を返し、API は新規トラフィックを受けない → `LivenessProbe` は `healthy` を維持し、依存障害だけでは再起動しない
   - ALT Prometheus Operator が導入されていない → `ServiceMonitor` は適用対象から外し、標準の Prometheus スクレイプ設定で `MetricsExposition` を収集する
 - THEN API の生存、受付可否、起動完了の各プローブは、それぞれ `LivenessProbe`、`ReadinessProbe`、`StartupProbe` を呼ぶ
-- THEN Prometheus が `MetricsExposition` をスクレイプし、OAuth2 の可用性、レイテンシー、エラー率の目標を表示および評価する
+- THEN Prometheus が `MetricsExposition` をスクレイプし、定められた母集団と時間窓で OAuth2/OIDC の可用性、レイテンシー、非 5xx 比率を表示および評価する
 
 ### REQ-SYSTEM-002: オーケストレーション用プローブはプロセスのライフサイクルと依存先の状態を区別する
 - ACTOR Operator

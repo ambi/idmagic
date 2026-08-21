@@ -19,6 +19,8 @@
 | `oauth2_token_issuance_total`, `oauth2_token_issuance_duration_seconds` | `grant_type`, `outcome` | grant 別の `/token` の発行率と遅延 |
 | `http_request_aborts_total`, `operation_detached_completion_failures_total` | `kind` | 中断の扱い |
 
+サービス目標の母集団、時間窓、除外条件、目標値は [capacity.md](capacity.md) が定める。Prometheus は HTTP RED メトリクスとスクレイプ状態をその定義に従って集約し、レイテンシー、非 5xx 比率、可用性を評価する。
+
 `idmagic-worker` は自身の `/metrics` を管理専用の別リスナーで公開する。API プロセスの `/metrics` とは別のプロセスかつ別の実体であり、レーンごとに `jobs_claim_latency_seconds`、`jobs_outcome_total`、`jobs_retry_total`、`jobs_queue_depth` を持つ。
 
 ラベルの値は有限の集合に限る。値の種類に上限がない `tenant_id`、`user_id`、`client_id`、解決済みのリクエストパスはラベルにしない。エンドポイントは常に登録するが、起動時に Prometheus の構築が完了するまでは `503` を返す。公開先はループバックアドレス、管理ネットワーク、または認証付きプロキシの背後に限る。
@@ -27,7 +29,7 @@
 
 アプリケーションログは、`timestamp`、`level`、`service`、`message` と、相関用の `trace_id`、`span_id`、`request_id` を持つ JSON Lines として標準出力へ書く（`backend/shared/logging`）。プロセス自身は他の場所へログを書かない。
 
-**ローカル**（`infra/docker/docker-compose.dev.yaml`）：Promtail は Docker Engine API（`docker_sd_configs`）ですべてのコンテナを検出し、ログを Loki へ送る。ホストのログディレクトリをマウントする必要はなく、Docker ソケットだけを使用する。Grafana には初回起動時に Prometheus と Loki のデータソースとゴールデンシグナルのダッシュボードを設定する。`just dev-compose` だけでメトリクスとログを閲覧できる。
+**ローカル**（`infra/docker/docker-compose.dev.yaml`）：Promtail は Docker Engine API（`docker_sd_configs`）ですべてのコンテナを検出し、ログを Loki へ送る。ホストのログディレクトリをマウントする必要はなく、Docker ソケットだけを使用する。Grafana には初回起動時に Prometheus と Loki のデータソースとゴールデンシグナルのダッシュボードを設定する。`mise run dev-compose` だけでメトリクスとログを閲覧できる。
 
 **Kubernetes**（`infra/k8s/monitoring/loki/`）：Promtail は DaemonSet として動作し、`kubernetes_sd_configs` で Pod を検出して `/var/log/pods` を追尾する。Loki は永続ボリュームを持つ単一レプリカの StatefulSet として動作する。ファイルシステムへの保存は開発用の既定であり、本番クラスターではオブジェクトストレージを使う保持設定で上書きする。
 

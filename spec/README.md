@@ -6,6 +6,8 @@
 
 実装から仕様を引くときは、パッケージ名に対応する Context を見る。Context に属さない技術的な共通機能は `backend/shared/` に集約している。
 
+開発ツールのバージョンとリポジトリのコマンドマップはルートの `mise.toml` に集約する。同じ固定バージョンは mise の利用者単位の共有ストアを再利用し、リポジトリ固有の導入手順や別のタスクランナーを併存させない。
+
 ## Context Map
 
 この図は DDD の Context Map であり、ドメイン上の関係と統合境界を示す。ソースコードの import 関係を網羅するものではない。矢印は Supplier（上流）から Customer（下流）へ向かう。`OHS/PL` は Published Language を伴う Open Host Service、`C/S` は Customer/Supplier、`ACL` は Anti-Corruption Layer、`Events` は公開イベントによる関係を表す。
@@ -107,5 +109,6 @@ flowchart LR
 | [api-rules.md](api-rules.md) | 外部に見える契約の規則 |
 | [observability.md](observability.md) | 相関、ログ、メトリクス |
 | [deployment.md](deployment.md) | 実行単位、信頼境界、可用性 |
+| [capacity.md](capacity.md) | サービス目標、参照運用プロファイル、容量算出、縮退順序 |
 | [persistence.md](persistence.md) | データベース設計方針 |
 | [authorization.md](authorization.md) | 主体、スコープ、認可の境界 |
