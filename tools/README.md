@@ -20,6 +20,7 @@ come from `go.mod`; tool source must not embed an application name or module pat
 
 Run all routine operations from the repository root through `mise run`.
 
-`mise.toml` pins Go, Bun, golangci-lint, sqlc, psqldef, and PostgreSQL client tools. `mise install` installs
-missing versions into mise's shared user-level store. Renovate reads `mise.toml` with its built-in manager and
-proposes upgrades; CI uses the same tool definitions.
+`mise.toml` pins Go, Bun, golangci-lint, sqlc, and psqldef. `mise install` installs missing versions into mise's
+shared user-level store. Renovate reads `mise.toml` with its built-in manager and proposes upgrades; CI uses the
+same tool definitions. Operational PostgreSQL client tools are supplied by the backup or restore execution
+environment rather than managed by this development toolchain.

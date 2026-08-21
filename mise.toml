@@ -4,12 +4,9 @@ bun = "1.3.14"
 "aqua:golangci/golangci-lint" = "2.13.1"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.18"
-postgres = "17.11"
 
 [env]
 GOLANGCI_LINT_CACHE = "/tmp/idmagic-golangci-cache"
-POSTGRES_SKIP_INITDB = "1"
-POSTGRES_EXTRA_CONFIGURE_OPTIONS = "--without-icu"
 
 [tasks.setup]
 description = "Install repository dependencies and link agent skills"
@@ -26,7 +23,7 @@ run = [
 
 [tasks.tool-versions]
 description = "Show the development tool versions selected by mise"
-run = ["go version", "bun --version", "golangci-lint version", "sqlc version", "psqldef --version", "psql --version"]
+run = ["go version", "bun --version", "golangci-lint version", "sqlc version", "psqldef --version"]
 
 [tasks.setup-cli-tools]
 description = "Install host CLI tools used by repository instructions"

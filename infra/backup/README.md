@@ -8,6 +8,8 @@
 - `psqldef`（インストール手順は `infra/schema/README.md` を参照）。
 - Go ツールチェーン（`restore-postgres.sh` が `go run` 経由で呼び出す `idmagic-batch restore-consistency-check` 用）。
 
+PostgreSQL クライアントは開発用の `mise` 管理には含めない。バックアップまたは復元を実行する運用環境に PostgreSQL 17 クライアントを用意する。
+
 ## 接続変数
 
 すべてのスクリプトは標準の libpq 環境変数で接続する。これは `infra/schema/README.md` が `psqldef` に使うのと同じ規約である。
