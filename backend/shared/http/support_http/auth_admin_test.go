@@ -154,8 +154,10 @@ func TestWriteAdminAccessError(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/x", http.NoBody)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			if err := a.WriteAdminAccessError(c, tc.err); err != nil {
-				t.Fatal(err)
+			// 応答を書いたうえで、呼び出し元が止まれる合図を返す。nil を返すと、
+			// この関数を包む認可ヘルパーの拒否が呼び出し元へ伝わらない。
+			if err := a.WriteAdminAccessError(c, tc.err); !errors.Is(err, ErrResponseWritten) {
+				t.Fatalf("err=%v, want a refusal wrapping ErrResponseWritten", err)
 			}
 			if rec.Code != tc.wantStatus {
 				t.Fatalf("status=%d, want %d", rec.Code, tc.wantStatus)

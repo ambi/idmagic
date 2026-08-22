@@ -3,6 +3,7 @@ package support_http
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
@@ -24,6 +25,11 @@ var (
 	ErrAdminAuthenticationRequired = errors.New("admin authentication required")
 	ErrAdminAccessDenied           = errors.New("admin access denied")
 )
+
+// ErrAdminAccessRefused は WriteAdminAccessError が拒否の応答を書き終えたことを表す。
+// ErrResponseWritten を包むので、応答済みかどうかだけを見たい呼び出し元は
+// errors.Is(err, ErrResponseWritten) で足りる。
+var ErrAdminAccessRefused = fmt.Errorf("%w: admin access refused", ErrResponseWritten)
 
 type InsufficientScopeError struct{ Required string }
 
@@ -273,17 +279,31 @@ func (a *Authenticator) RequireAdmin(c *echo.Context) (*userdomain.User, error) 
 	return user, nil
 }
 
+// WriteAdminAccessError は管理 API の認証・認可の失敗を応答へ写し、応答を書き終えた
+// 合図として ErrAdminAccessRefused を返す。応答を書いた結果 (成功時は nil) を返しては
+// ならない。この関数を包んで拒否を判定するヘルパーがあり、そこへ nil を返すと
+// `if err != nil { return err }` が素通りし、403 を書いた後も操作が実行される。
+// 写像できないエラーはそのまま返し、呼び出し元とエラーハンドラーに委ねる。
 func (a *Authenticator) WriteAdminAccessError(c *echo.Context, err error) error {
 	if handled, result := WriteAccessTokenError(c, err); handled {
-		return result
+		return refused(result)
 	}
 	if errors.Is(err, ErrAdminAuthenticationRequired) {
-		return WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required.")
+		return refused(WriteProblem(c, http.StatusUnauthorized, "authentication_required", "An authenticated session is required."))
 	}
 	if errors.Is(err, ErrAdminAccessDenied) {
-		return WriteProblem(c, http.StatusForbidden, "access_denied", "Administrator privileges are required.")
+		return refused(WriteProblem(c, http.StatusForbidden, "access_denied", "Administrator privileges are required."))
 	}
 	return err
+}
+
+// refused は応答の書き込み結果を、呼び出し元が止まれる形へ変える。書き込み自体が
+// 失敗していればその失敗を優先する。
+func refused(writeErr error) error {
+	if writeErr != nil {
+		return writeErr
+	}
+	return ErrAdminAccessRefused
 }
 
 // ResolveAdminActor は認証済みかつ有効なユーザを、グループ由来ロールを合成した
