@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -17,13 +18,18 @@ const (
 	CSRFHeader = "X-Csrf-Token"
 )
 
-// ErrBrowserVerificationFailed は VerifyBrowserRequest が Origin または CSRF トークンの
-// 検証に失敗し、403 の応答を書き終えたことを表す。
+// ErrResponseWritten は、拒否の応答を書き終えたので呼び出し元は処理を止めよ、という
+// 合図である。応答を書いたヘルパーがこれを返さなければ、呼び出し元の
+// `if err != nil { return err }` は素通りし、拒否を書いた後もハンドラーが副作用まで
+// 進んでしまう。応答だけが拒否に見えて実際には要求が通る状態は、検査が無いより危険である。
 //
-// 検証の失敗を戻り値で表さなければ、呼び出し元の `if err != nil { return err }` は
-// 素通りし、403 を書いた後もハンドラーが副作用まで進んでしまう。応答だけが拒否に見えて
-// 実際には要求が通る状態は、検証が無いより危険である。
-var ErrBrowserVerificationFailed = errors.New("support_http: browser request verification failed")
+// 応答は書き終えているので、エラーハンドラーはこれを未処理として記録し直さない。
+var ErrResponseWritten = errors.New("support_http: refusal already written to the client")
+
+// ErrBrowserVerificationFailed は VerifyBrowserRequest が Origin または CSRF トークンの
+// 検証に失敗したことを表す。ErrResponseWritten を包むので、応答済みかどうかだけを見たい
+// 呼び出し元は errors.Is(err, ErrResponseWritten) で足りる。
+var ErrBrowserVerificationFailed = fmt.Errorf("%w: browser request verification failed", ErrResponseWritten)
 
 // VerifyBrowserRequest は Origin 一致と double-submit CSRF トークンを検証する。
 // 認証必須のブラウザ向け POST/PATCH 系ハンドラが冒頭で呼ぶ。

@@ -59,6 +59,15 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 			wantRequired: "saml:write",
 		},
 		{
+			// REQ-WSFEDERATION-001: wsfed:read だけで変更操作を要求すると拒否される。
+			// 参照のスコープが変更へ届かないことは、そのスコープを配った相手が信頼設定を
+			// 書き換えられないことそのものなので、宣言だけでなくここで固定する。
+			name: "ws-federation read scope does not reach a write operation", method: http.MethodPost,
+			routePath:    "/api/admin/v1/wsfed/relying-parties",
+			granted:      []apitokendomain.Scope{apitokendomain.ScopeWsFedRead},
+			wantRequired: "wsfed:write",
+		},
+		{
 			name: "another resource's scope does not reach", method: http.MethodGet,
 			routePath: "/api/admin/v1/users",
 			granted:   []apitokendomain.Scope{apitokendomain.ScopeSamlRead},

@@ -53,6 +53,28 @@ Run the cheapest gate that can still fail on what you just changed, and widen on
 
 Running the full suite after every edit is the most common way to lose time in this repository.
 
+### Testing a refusal
+
+A control that refuses — authorization, the tenant boundary, CSRF and origin, scope, a fail-closed
+branch — is tested by two assertions, not one.
+
+1. **What the caller observes.** The status and the kind of error.
+2. **What the refusal left untouched.** Read the state back and assert the operation had no effect: the
+   row was not created, the value still holds what it held, the event was not emitted.
+
+The second is the one that matters and the one that gets left out. A test that checks only the first
+passes just as happily against a control that writes "denied" and then performs the operation anyway.
+That is not hypothetical: it is what shipped, survived review, and held full line coverage until a
+refusal was tested for its effect rather than its wording.
+
+Name the scenario the refusal comes from in the test, so the specification and the test can be read
+against each other. `mise run check` requires this of a refusal declared from now on.
+
+A helper that a caller guards with — anything called as `if err := guard(...); err != nil` — reports its
+refusal through the return value. Write the response, then return an error; never hand back what writing
+the response returned, because that is nil and the caller will carry on. `mise run check` rejects the
+shape.
+
 ## 5. Current-state documents
 
 `spec/` holds the cross-context structure and policy, one file per kind; `spec/contexts/<context>/` holds

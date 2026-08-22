@@ -160,7 +160,8 @@ func (d Deps) handleDeleteAdminMcpResourceServer(c *echo.Context) error {
 
 func (d Deps) saveValidatedMcpResourceServer(c *echo.Context, m *oauthdomain.McpResourceServer) error {
 	if err := m.Validate(); err != nil {
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", err.Error())
+		_ = support.WriteProblem(c, http.StatusBadRequest, "invalid_resource_server", err.Error())
+		return support.ErrResponseWritten
 	}
 	if err := d.McpResourceServerRepo.Save(c.Request().Context(), m); err != nil {
 		return err

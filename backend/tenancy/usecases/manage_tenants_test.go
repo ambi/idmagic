@@ -23,10 +23,20 @@ func TestEnsureDefaultAndRejectDefaultDisable(t *testing.T) {
 	if tenant == nil || tenant.Status != domain.TenantStatusActive {
 		t.Fatalf("default tenant = %#v", tenant)
 	}
+	// REQ-TENANCY-003: default テナントの無効化は拒否される。
 	if _, err := SetDisabled(
 		context.Background(), repo, domain.DefaultTenantID, true, now,
 	); !errors.Is(err, ErrDefaultTenant) {
 		t.Fatalf("disable default error = %v", err)
+	}
+	// 拒否は「エラーを返したこと」ではなく「無効化されなかったこと」で確かめる。
+	// エラーだけを見るテストは、先に無効化してから拒否を返す実装も通してしまう。
+	refused, err := repo.FindByID(context.Background(), domain.DefaultTenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refused.Status != domain.TenantStatusActive {
+		t.Fatalf("the refused disable left the default tenant %q", refused.Status)
 	}
 }
 

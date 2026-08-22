@@ -76,6 +76,8 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
   - Put durable decisions in `decisions.md` and durable mechanism in `internals.md`;
     put change-specific analysis, alternatives, and implementation history in the work item.
   - Do not add architecture ledgers. Boundary checks infer structure from paths and reject forbidden dependencies only.
+  - Test a refusal for the effect it prevented, not only for the status it returned; see the verification
+    ladder in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Commands via mise
 

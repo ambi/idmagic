@@ -261,7 +261,17 @@ run = "bun run test:e2e"
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, and command map"
-depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "check-command-map", "check-config-reference", "check-admin-scopes"]
+depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "check-command-map", "check-config-reference", "check-admin-scopes", "check-security-controls"]
+
+[tasks.check-security-controls]
+description = "Reject guards that cannot refuse and declared refusals no test names"
+dir = "tools"
+run = "bun run check/src/check-security-controls.ts"
+
+[tasks.report-security-test-gaps]
+description = "List refused state changes no test proves were left untouched"
+dir = "tools"
+run = "bun run check/src/report-security-test-gaps.ts"
 
 [tasks.check-admin-scopes]
 description = "Check admin API scope declarations"

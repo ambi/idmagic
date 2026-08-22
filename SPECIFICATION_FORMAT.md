@@ -225,6 +225,18 @@ An `ALT` is a two-space-indented child list item of exactly one `WHEN` or `THEN`
 condition and result with `→`. An alternative to setup belongs in a separate scenario or under the
 operation whose behavior changes, not under `GIVEN`.
 
+A refusal a security control is responsible for — an unauthorized caller, another tenant's resource, a
+request that cannot prove it came from the product's own UI, a token without the scope, a decision that
+cannot be made — is observable behavior, and belongs in the scenario on the same footing as the path that
+succeeds. Write it as an `ALT` under the operation it refuses, or as its own scenario when the refusal is
+the behavior being specified. A control whose refusal is written down nowhere has nothing to be checked
+against: an implementation that stops refusing then contradicts no statement, and the specification cannot
+say the product regressed.
+
+State what the caller observes and what the refusal leaves untouched. "Rejected with an error" is only
+half of it; the half that matters to a reader deciding whether the control works is that the operation had
+no effect.
+
 ## 7. Authorization
 
 Authorization is not a section of each context. It is `spec/authorization.md`, because someone checking

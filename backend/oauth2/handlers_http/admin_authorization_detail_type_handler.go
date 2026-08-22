@@ -154,11 +154,13 @@ func (d Deps) handleDeleteAuthorizationDetailType(c *echo.Context) error {
 // 参照するフィールドが schema 規則に存在するかも軽く確認する (fail-closed 寄り)。
 func (d Deps) saveValidatedType(c *echo.Context, t *oauthdomain.AuthorizationDetailType) error {
 	if err := t.Validate(); err != nil {
-		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_type", err.Error())
+		_ = support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_type", err.Error())
+		return support.ErrResponseWritten
 	}
 	for _, rule := range t.Schema.Rules {
 		if !rule.Semantics.Valid() {
-			return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_type", "Unknown field semantics: "+string(rule.Semantics))
+			_ = support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_type", "Unknown field semantics: "+string(rule.Semantics))
+			return support.ErrResponseWritten
 		}
 	}
 	if err := d.AuthzDetailTypeRepo.Save(c.Request().Context(), t); err != nil {
