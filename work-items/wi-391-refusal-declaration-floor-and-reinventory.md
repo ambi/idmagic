@@ -38,9 +38,9 @@ spec_impact: { kind: none, reason: "検査の追加と、既存シナリオへ�
 
 ## Out of Scope
 
-- 拒否テストが副作用の不在を assert していない 84 件の修正。wi-390 が報告タスクとして可視にした範囲に留め、個別に切り出す。
-- R1 / R2 の拡張。ユースケース層のセンチネルを返す防護への拡大は別途。
-- フロントエンドの拒否の扱い。
+- 拒否テストが副作用の不在を assert していない 84 件の修正。[[wi-392-refusal-tests-assert-the-absent-effect]] が持つ。
+- R1 / R2 の拡張。ユースケース層への拡大は [[wi-393-guard-rules-reach-the-usecase-layer]] が持つ。
+- フロントエンド。`spec/authorization.md` により強制はサーバー側にあり、UI が唯一の強制点になっている箇所は無い。
 - 新しい防護の追加。既に実装されている拒否を書き起こすことに限る。実装が拒否していない箇所が見つかった場合は、本 work item では直さず欠陥として切り出す。
 
 ## Design
