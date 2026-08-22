@@ -18173,6 +18173,10 @@
               "$ref": "#/components/schemas/Contract.AuthorizationDetail"
             },
             "description": "RFC 9396: the structured details bound to the token. It is the resource server's checkpoint. Optional, for backward compatibility."
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "The id of the Agent the token was issued for, present only when the issuing client is bound to one. It marks the token as belonging to a non-human principal, which introspection reads to derive the delegation mode (REQ-OAUTH2-049). It says nothing about the Agent's kind: a `supervised` Agent's token carries the same claim, and the approval that permitted it is traceable through the audit trail instead (REQ-OAUTH2-050)."
           }
         },
         "description": "The claims of a JWT access token (RFC 9068). TTL 600 seconds."
@@ -20135,24 +20139,71 @@
         "required": [
           "id",
           "tenant_id",
+          "name",
+          "kind",
           "owner_user_id",
-          "status"
+          "status",
+          "roles",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
           "id": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
           },
           "tenant_id": {
-            "type": "string"
+            "type": "string",
+            "default": "default"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "kind": {
+            "$ref": "#/components/schemas/Contract.AgentKind"
           },
           "owner_user_id": {
-            "type": "string"
+            "type": "string",
+            "description": "The User accountable for the Agent. Offboarding them stops new issuance without changing `status`."
           },
           "status": {
-            "type": "string"
+            "$ref": "#/components/schemas/Contract.AgentStatus",
+            "default": "active"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": []
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "disabled_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the reversible suspension took effect. Absent unless `status` is `disabled`."
+          },
+          "killed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the emergency stop took effect. Absent unless `status` is `killed`; once set, it never clears."
           }
         },
-        "description": "The minimal stub of the Agent principal the IdManagement context publishes."
+        "description": "The non-human identity principal, scoped to a tenant. An Agent holds no credential of its own: it obtains tokens through the OAuth2Client an AgentCredentialBinding binds it to. `owner_user_id` names the User accountable for it, and issuance resolves that owner on every request rather than freezing the result into `status` (REQ-OAUTH2-046). `status` gates issuance operationally and `kind` gates it by supervision: anything but `active` issues no new token, and anything but `autonomous` issues one only through a path that records a human approval (REQ-OAUTH2-050). Both gates are fail-closed and independent — an `active` `supervised` Agent still needs the approval."
       },
       "Contract.AgentAccessRevoked": {
         "type": "object",
@@ -20178,6 +20229,43 @@
           }
         },
         "description": "A summary event for audit and governance, recording that an Agent's access was revoked at once because of a kill switch or an owner offboarding."
+      },
+      "Contract.AgentApprovalRequired": {
+        "type": "object",
+        "required": [
+          "occurredAt",
+          "tenantId",
+          "agentId",
+          "clientId",
+          "kind",
+          "grantType"
+        ],
+        "properties": {
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "The tenant the refusal happened in."
+          },
+          "agentId": {
+            "type": "string"
+          },
+          "clientId": {
+            "type": "string",
+            "description": "The client the Agent is bound to and authenticated as."
+          },
+          "kind": {
+            "type": "string",
+            "description": "The kind the decision was taken on. A value outside AgentKind is recorded as read, since it is exactly the case the fail-closed rule exists for."
+          },
+          "grantType": {
+            "type": "string",
+            "description": "The grant type the refused request asked for, `client_credentials` for instance."
+          }
+        },
+        "description": "Issuance was refused fail-closed because the Agent's kind requires a human approval that this path does not record (REQ-OAUTH2-050). It covers `client_credentials`, token exchange, and the workload identity federation exchange; the approval-bearing path is CIBA, whose outcome is expressed by BackchannelAuthApproved instead. Carrying the kind that was read makes the decision reproducible from the audit event alone, without resolving the Agent again."
       },
       "Contract.AgentCredentialBindRequest": {
         "type": "object",
@@ -20383,7 +20471,39 @@
           "autonomous",
           "supervised"
         ],
-        "description": "How autonomous an Agent is. `autonomous` runs on its own; `supervised` runs under human supervision."
+        "description": "How autonomous an Agent is. `autonomous` runs on its own; `supervised` runs under human supervision, and obtains a token only through an issuance path that records a human approval (REQ-OAUTH2-050). The requirement is decided by the absence of `autonomous` rather than the presence of `supervised`, so a value the server does not recognise requires approval too."
+      },
+      "Contract.AgentKindRequiredError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "`kind` is absent from an Agent registration. The kind decides at runtime whether the Agent can obtain a token without human approval, so no default value stands in for it. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_kind_required`."
       },
       "Contract.AgentListResponse": {
         "type": "object",
@@ -20554,7 +20674,8 @@
       "Contract.AgentRegisterRequest": {
         "type": "object",
         "required": [
-          "name"
+          "name",
+          "kind"
         ],
         "properties": {
           "name": {
@@ -20567,7 +20688,8 @@
             "maxLength": 500
           },
           "kind": {
-            "$ref": "#/components/schemas/Contract.AgentKind"
+            "$ref": "#/components/schemas/Contract.AgentKind",
+            "description": "Required. An omission is AgentKindRequiredError and an unknown value InvalidAgentKindError; neither falls back to a default."
           },
           "owner_user_id": {
             "type": "string",
@@ -20580,7 +20702,7 @@
             }
           }
         },
-        "description": "The JSON request in which an administrator registers an Agent. Leaving `owner_user_id` out makes the caller the owner."
+        "description": "The JSON request in which an administrator registers an Agent. Leaving `owner_user_id` out makes the caller the owner. `kind` is required and has no default: it decides whether the Agent needs a human approval to obtain a token, and either default value would be wrong — `supervised` would register Agents that silently cannot obtain a token, `autonomous` would let an omission grant unsupervised issuance."
       },
       "Contract.AgentRegistered": {
         "type": "object",
@@ -20731,7 +20853,8 @@
             "maxLength": 500
           },
           "kind": {
-            "$ref": "#/components/schemas/Contract.AgentKind"
+            "$ref": "#/components/schemas/Contract.AgentKind",
+            "description": "Left out, the current kind stays. An unknown value is InvalidAgentKindError."
           },
           "owner_user_id": {
             "type": "string",
@@ -24080,6 +24203,10 @@
           },
           "clientId": {
             "type": "string"
+          },
+          "agentId": {
+            "type": "string",
+            "description": "The Agent the approval was raised for, when the requesting client is bound to one. It is what makes a `supervised` Agent's issuance traceable to the human who permitted it (REQ-OAUTH2-050)."
           },
           "userId": {
             "type": "string"
@@ -28982,6 +29109,38 @@
           }
         },
         "description": "The `/introspect` response (RFC 7662 section 2.2). It returns whether the token is active and, when it is, its metadata."
+      },
+      "Contract.InvalidAgentKindError": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable summary derived from the error code: `invalid_role` becomes `Invalid role`. Stable for a given `type`."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code of the response, repeated in the body (RFC 9457 section 3.1)."
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence. Always English and never localized; a UI that localizes maps the `type` URN suffix to its own message instead."
+          },
+          "instance": {
+            "type": "string",
+            "description": "Request correlation id, the same value the response carries in the `X-Request-ID` header. Absent when the request had no correlation id."
+          }
+        },
+        "description": "`kind` is not a value AgentKind declares. It is rejected rather than rounded to a known one, because rounding would decide the approval requirement on the caller's behalf. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_agent_kind`."
       },
       "Contract.InvalidAuthorizationDetailTypeError": {
         "type": "object",
@@ -41973,6 +42132,12 @@
             "$ref": "#/components/schemas/Contract.AgentNameRequiredError"
           },
           {
+            "$ref": "#/components/schemas/Contract.AgentKindRequiredError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidAgentKindError"
+          },
+          {
             "$ref": "#/components/schemas/Contract.AgentOwnerRequiredError"
           },
           {
@@ -42128,6 +42293,9 @@
         "anyOf": [
           {
             "$ref": "#/components/schemas/Contract.AgentNameRequiredError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.InvalidAgentKindError"
           },
           {
             "$ref": "#/components/schemas/Contract.AgentOwnerRequiredError"
@@ -42495,6 +42663,9 @@
           },
           {
             "$ref": "#/components/schemas/Contract.InvalidGrantError"
+          },
+          {
+            "$ref": "#/components/schemas/Contract.UnauthorizedClientError"
           },
           {
             "$ref": "#/components/schemas/Contract.UnsupportedGrantTypeError"

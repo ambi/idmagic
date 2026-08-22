@@ -12,15 +12,6 @@ model AccessDeniedError is ProblemDetails;
 model QuotaExceededError is ProblemDetails;
 
 
-@doc("The minimal stub of the Agent principal the IdManagement context publishes.")
-model Agent {
-  id: string;
-  tenant_id: string;
-  owner_user_id: string;
-  status: string;
-}
-
-
 @doc("Verification of a received SET failed fail-closed: an unregistered issuer, a bad signature, an expired token, an audience mismatch, a duplicate `jti`, or a subject that could not be resolved. The receive endpoint is a contact point whose shape RFC 8935 fixes, so it does not return Problem Details; the body is `application/json`. IdMagic currently emits `error` and `message` rather than the `err` and `description` of RFC 8935 section 2.3, and this model records what the server sends today.")
 model SecurityEventRejectedError {
   @doc("Always `security_event_rejected`.")

@@ -185,9 +185,11 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 		// client に Agent が束縛されている場合、Agent 自身が Active でない
 		// (Disabled / Killed) か、所有者がオフボードされていれば新規トークンを
 		// 発行しない (fail-closed)。束縛があれば agent_id を token に載せる。
-		agent, err := tokenusecases.ResolveIssuableAgent(ctx, tokenusecases.AgentIssuanceDeps{
-			AgentRepo: d.AgentRepo, UserRepo: d.UserRepo,
-		}, client.ClientID)
+		// client_credentials は人間の承認を記録しないため、Autonomous と確認できた
+		// Agent だけが通る (REQ-OAUTH2-050)。
+		agent, err := tokenusecases.ResolveIssuableAgentWithoutApproval(ctx, tokenusecases.AgentIssuanceDeps{
+			AgentRepo: d.AgentRepo, UserRepo: d.UserRepo, Emit: d.Emit,
+		}, client.ClientID, grantType, now)
 		if err != nil {
 			return writeOAuthError(c, err)
 		}
@@ -280,6 +282,7 @@ func (d Deps) dispatchToken(c *echo.Context) error {
 			ClientRepo: d.ClientRepo, Introspector: d.TokenIntrospector,
 			TokenIssuer: d.TokenIssuer, Authorizer: d.Authorizer,
 			AuthzDetailTypeRepo: d.AuthzDetailTypeRepo, McpResourceServerRepo: d.McpResourceServerRepo,
+			AgentRepo:        d.AgentRepo,
 			WorkloadVerifier: d.WorkloadVerifier, Emit: d.Emit,
 			DelegationPolicy: policytenancy.DelegationPolicyResolver{Tenants: d.TenantRepo},
 		}, tokenusecases.ExchangeTokenInput{

@@ -138,9 +138,15 @@ func HandleRegisterAgent(d Deps, c *echo.Context) error {
 	if input.OwnerUserID != nil {
 		ownerUserID = *input.OwnerUserID
 	}
+	// kind の省略は空文字として使い分けに渡す。use case が「未指定」と「既知でない値」を
+	// 別の error で拒否し、どちらも既定値へは倒さない (REQ-OAUTH2-050)。
+	kind := idmdomain.AgentKind("")
+	if input.Kind != nil {
+		kind = *input.Kind
+	}
 	agent, err := agentusecases.RegisterAgent(c.Request().Context(), adminAgentDeps(d), agentusecases.RegisterAgentInput{
 		ActorUserID: actor.ID, Name: input.Name, Description: input.Description,
-		Kind: input.Kind, OwnerUserID: ownerUserID, Roles: input.Roles, Now: time.Now().UTC(),
+		Kind: kind, OwnerUserID: ownerUserID, Roles: input.Roles, Now: time.Now().UTC(),
 	})
 	if err != nil {
 		return writeAdminAgentError(c, err)
@@ -286,6 +292,10 @@ func writeAdminAgentError(c *echo.Context, err error) error {
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_owner_required", "An owner is required.")
 	case errors.Is(err, agentusecases.ErrAgentOwnerNotFound):
 		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_owner_not_found", "The owner user does not exist.")
+	case errors.Is(err, agentusecases.ErrAgentKindRequired):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "agent_kind_required", "The agent kind is required.")
+	case errors.Is(err, agentusecases.ErrAgentKindInvalid):
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_agent_kind", "The agent kind is invalid.")
 	case errors.Is(err, agentusecases.ErrAgentKilled):
 		return support.WriteProblem(c, http.StatusConflict, "agent_killed", "A stopped agent cannot be modified.")
 	case errors.Is(err, agentusecases.ErrAgentClientBound):

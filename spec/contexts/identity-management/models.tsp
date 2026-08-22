@@ -75,7 +75,7 @@ enum AgentStatus {
 }
 
 
-@doc("How autonomous an Agent is. `autonomous` runs on its own; `supervised` runs under human supervision.")
+@doc("How autonomous an Agent is. `autonomous` runs on its own; `supervised` runs under human supervision, and obtains a token only through an issuance path that records a human approval (REQ-OAUTH2-050). The requirement is decided by the absence of `autonomous` rather than the presence of `supervised`, so a value the server does not recognise requires approval too.")
 enum AgentKind {
   Autonomous: "autonomous",
   Supervised: "supervised",
@@ -132,6 +132,14 @@ model AgentOwnerRequiredError is ProblemDetails;
 
 @doc("The `owner_user_id` given does not resolve to a User in the tenant. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_owner_not_found`.")
 model AgentOwnerNotFoundError is ProblemDetails;
+
+
+@doc("`kind` is absent from an Agent registration. The kind decides at runtime whether the Agent can obtain a token without human approval, so no default value stands in for it. RFC 9457 Problem Details with `type` = `urn:idmagic:error:agent_kind_required`.")
+model AgentKindRequiredError is ProblemDetails;
+
+
+@doc("`kind` is not a value AgentKind declares. It is rejected rather than rounded to a known one, because rounding would decide the approval requirement on the caller's behalf. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_agent_kind`.")
+model InvalidAgentKindError is ProblemDetails;
 
 
 @doc("The email address given is not a well-formed address. RFC 9457 Problem Details with `type` = `urn:idmagic:error:invalid_email`.")
@@ -690,6 +698,31 @@ model UserGroupsResponse {
 }
 
 
+@doc("The non-human identity principal, scoped to a tenant. An Agent holds no credential of its own: it obtains tokens through the OAuth2Client an AgentCredentialBinding binds it to. `owner_user_id` names the User accountable for it, and issuance resolves that owner on every request rather than freezing the result into `status` (REQ-OAUTH2-046). `status` gates issuance operationally and `kind` gates it by supervision: anything but `active` issues no new token, and anything but `autonomous` issues one only through a path that records a human approval (REQ-OAUTH2-050). Both gates are fail-closed and independent — an `active` `supervised` Agent still needs the approval.")
+model Agent {
+  @minLength(1)
+  @maxLength(64)
+  id: string;
+  tenant_id: string = "default";
+  @minLength(1)
+  @maxLength(100)
+  name: string;
+  @maxLength(500)
+  description?: string;
+  kind: AgentKind;
+  @doc("The User accountable for the Agent. Offboarding them stops new issuance without changing `status`.")
+  owner_user_id: string;
+  status: AgentStatus = AgentStatus.Active;
+  roles: string[] = #[];
+  created_at: utcDateTime;
+  updated_at: utcDateTime;
+  @doc("When the reversible suspension took effect. Absent unless `status` is `disabled`.")
+  disabled_at?: utcDateTime;
+  @doc("When the emergency stop took effect. Absent unless `status` is `killed`; once set, it never clears.")
+  killed_at?: utcDateTime;
+}
+
+
 @doc("The binding between an Agent and an OAuth2Client of the same tenant, unique on `agent_id` and `client_id`. An Agent obtains tokens using the credentials of the Client it is bound to. The `client_id` must name an OAuth2Client whose `tenant_id` matches the Agent's (AgentReferencesStayTenantLocal). One `client_id` cannot be bound to more than one Agent, which BindAgentCredential checks in its preconditions.")
 model AgentCredentialBinding {
   agent_id: string;
@@ -698,14 +731,15 @@ model AgentCredentialBinding {
 }
 
 
-@doc("The JSON request in which an administrator registers an Agent. Leaving `owner_user_id` out makes the caller the owner.")
+@doc("The JSON request in which an administrator registers an Agent. Leaving `owner_user_id` out makes the caller the owner. `kind` is required and has no default: it decides whether the Agent needs a human approval to obtain a token, and either default value would be wrong — `supervised` would register Agents that silently cannot obtain a token, `autonomous` would let an omission grant unsupervised issuance.")
 model AgentRegisterRequest {
   @minLength(1)
   @maxLength(100)
   name: string;
   @maxLength(500)
   description?: string;
-  kind?: AgentKind;
+  @doc("Required. An omission is AgentKindRequiredError and an unknown value InvalidAgentKindError; neither falls back to a default.")
+  kind: AgentKind;
   @doc("Left out, the caller's id becomes the owner.")
   owner_user_id?: string;
   roles?: string[];
@@ -719,6 +753,7 @@ model AgentUpdateRequest {
   name?: string;
   @maxLength(500)
   description?: string;
+  @doc("Left out, the current kind stays. An unknown value is InvalidAgentKindError.")
   kind?: AgentKind;
   @doc("Changing it transfers ownership (AgentOwnerChanged).")
   owner_user_id?: string;

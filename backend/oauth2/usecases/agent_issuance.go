@@ -2,10 +2,14 @@ package usecases
 
 import (
 	"context"
+	"time"
 
 	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	"github.com/ambi/idmagic/backend/oauth2/domain"
+	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 )
 
@@ -16,6 +20,9 @@ import (
 type AgentIssuanceDeps struct {
 	AgentRepo agentports.AgentRepository
 	UserRepo  userports.UserRepository
+	// Emit は区分を根拠とした拒否を監査へ流す。nil の配線では拒否そのものは変わらず、
+	// 記録だけが落ちる。
+	Emit func(spec.DomainEvent)
 }
 
 // ResolveIssuableAgent は clientID に束縛された Agent を、新しいトークンを発行して
@@ -68,4 +75,54 @@ func AgentOwnerIsActive(ctx context.Context, userRepo userports.UserRepository, 
 		return false, err
 	}
 	return owner != nil && owner.TenantID == tenancy.TenantID(ctx) && owner.IsActive(), nil
+}
+
+// AgentRequiresHumanApproval は agent が人間の承認を記録する経路からしかトークンを
+// 得られない区分かを返す (REQ-OAUTH2-050)。承認を記録するのは現在 CIBA だけで、
+// client_credentials・トークン交換・ワークロード ID 連携による交換は true の Agent
+// に対して拒否する。束縛された Agent がない client (agent == nil) は対象外。
+//
+// 判定は Supervised との一致ではなく Autonomous の否定で書く。区分に既知でない値が
+// 入った場合 (データ破損、将来の区分追加) に、承認不要側へ倒れないためである。
+//
+// ResolveIssuableAgent には含めない。CIBA の StartApproval も同じ関数を通っており、
+// そこは Supervised を通してよい唯一の経路だからである。
+func AgentRequiresHumanApproval(agent *agentdomain.Agent) bool {
+	return agent != nil && agent.Kind != idmdomain.AgentKindAutonomous
+}
+
+// ResolveIssuableAgentWithoutApproval は ResolveIssuableAgent の判定に区分のゲートを
+// 重ね、人間の承認を記録しない発行経路 (client_credentials、トークン交換、ワークロード
+// ID 連携による交換) が使ってよい Agent だけを返す。
+func ResolveIssuableAgentWithoutApproval(
+	ctx context.Context, deps AgentIssuanceDeps, clientID, grantType string, now time.Time,
+) (*agentdomain.Agent, error) {
+	agent, err := ResolveIssuableAgent(ctx, deps, clientID)
+	if err != nil {
+		return nil, err
+	}
+	if err := RejectAgentIssuanceWithoutApproval(ctx, deps.Emit, agent, clientID, grantType, now); err != nil {
+		return nil, err
+	}
+	return agent, nil
+}
+
+// RejectAgentIssuanceWithoutApproval は既に手元にある Agent へ同じ区分のゲートを適用する。
+// client_id から Agent を引かない経路 (ワークロード ID 連携の grant、subject_token が
+// 名指す Agent) のためにある。
+//
+// 拒否は RFC 6749 の unauthorized_client (認証済みクライアントがその grant type を使う
+// 権限を持たない) とする。この事実そのものであり、Agent 自身の状態や所有者を理由とする
+// invalid_client (REQ-OAUTH2-046) と監査上も区別できる。
+func RejectAgentIssuanceWithoutApproval(
+	ctx context.Context, emitFn func(spec.DomainEvent), agent *agentdomain.Agent, clientID, grantType string, now time.Time,
+) error {
+	if !AgentRequiresHumanApproval(agent) {
+		return nil
+	}
+	emit(emitFn, &domain.AgentApprovalRequired{
+		At: now, TenantID: tenancy.TenantID(ctx), AgentID: agent.ID,
+		ClientID: clientID, Kind: string(agent.Kind), GrantType: grantType,
+	})
+	return NewOAuthError("unauthorized_client", "supervised agent requires human approval")
 }

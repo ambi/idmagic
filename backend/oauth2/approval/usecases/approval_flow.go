@@ -373,7 +373,9 @@ func DecideApproval(ctx context.Context, store approvalports.ApprovalRequestStor
 		return sharedusecases.NewOAuthError("invalid_request", "approval request was already decided")
 	}
 	if approve {
-		emit(emitFn, &oauthdomain.BackchannelAuthApproved{At: now, TenantID: decided.TenantID, ApprovalRequestID: decided.ID, ClientID: decided.ClientID, UserID: userID})
+		// AgentID を載せるのは、Supervised な Agent が得たトークンを、それを許可した
+		// 人間へ監査から結び付けるためである (REQ-OAUTH2-050)。
+		emit(emitFn, &oauthdomain.BackchannelAuthApproved{At: now, TenantID: decided.TenantID, ApprovalRequestID: decided.ID, ClientID: decided.ClientID, AgentID: deref(decided.AgentID), UserID: userID})
 	} else {
 		emit(emitFn, &oauthdomain.BackchannelAuthDenied{At: now, TenantID: decided.TenantID, ApprovalRequestID: decided.ID, ClientID: decided.ClientID, UserID: userID})
 	}

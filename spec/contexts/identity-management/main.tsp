@@ -1887,6 +1887,8 @@ model RegisterAgentError403 {
 union RegisterAgentError422Body {
   IdMagic.Contract.QuotaExceededError,
   IdMagic.Contract.AgentNameRequiredError,
+  IdMagic.Contract.AgentKindRequiredError,
+  IdMagic.Contract.InvalidAgentKindError,
   IdMagic.Contract.AgentOwnerRequiredError,
   IdMagic.Contract.AgentOwnerNotFoundError,
   IdMagic.Contract.InvalidRoleError,
@@ -1934,6 +1936,7 @@ model UpdateAgentError403 {
 
 union UpdateAgentError422Body {
   IdMagic.Contract.AgentNameRequiredError,
+  IdMagic.Contract.InvalidAgentKindError,
   IdMagic.Contract.AgentOwnerRequiredError,
   IdMagic.Contract.AgentOwnerNotFoundError,
   IdMagic.Contract.InvalidRoleError,

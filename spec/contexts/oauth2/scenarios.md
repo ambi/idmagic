@@ -477,3 +477,22 @@
   - ALT 代行が無く subject が人間の利用者である → 直接のアクセスとして返す
 - THEN 応答の委譲モードは、同じ交換が監査へ残したモードと一致する
 - THEN リソースサーバーは `act` と principal 種別から導出し直す必要がない
+
+### REQ-OAUTH2-050: `Supervised` な Agent は人間の承認を経ずに新しいトークンを得られない
+- ACTOR Agent
+- GIVEN `kind` が `supervised` の `Active` な Agent "A1" が confidential クライアント "agent-app" に束縛されている
+- GIVEN "A1" の所有者は active User "alice" である
+- WHEN "agent-app" として client_credentials でトークンを要求する
+  - ALT "A1" の `kind` が `autonomous` である → リクエストは受理され、アクセストークンが発行される
+  - ALT "A1" の `kind` が既知のどの値でもない → 承認が必要な側へ倒し、エラー "UnauthorizedClientError"
+  - ALT "agent-app" にどの Agent も束縛されていない → 区分の判定を行わず、リクエストは受理される
+- THEN エラー "UnauthorizedClientError" で拒否され、トークンは発行されない
+- THEN "AgentApprovalRequired" が発行され、判断の根拠とした区分が残る
+- WHEN "agent-app" が Token Exchange で委任トークンを要求する
+  - ALT ワークロード ID 連携の attestation が "A1" の client へ写る交換である → エラー "UnauthorizedClientError"
+  - ALT `subject_token` が承認を経て "A1" へ発行済みのトークンである → エラー "UnauthorizedClientError" → 一つの承認は一つのトークンに対応し、派生トークンへは継承しない
+  - ALT 交換に関与するどの Agent も `autonomous` である → 交換は成立する
+- THEN エラー "UnauthorizedClientError" で拒否され、"AgentApprovalRequired" が発行される
+- WHEN "agent-app" が "alice" 宛のバックチャネル認可を開始し、"alice" の承認後に `auth_req_id` を交換する
+- THEN アクセストークンが発行される (REQ-OAUTH2-041)
+- THEN "BackchannelAuthApproved" は承認の対象となった Agent の id を含む

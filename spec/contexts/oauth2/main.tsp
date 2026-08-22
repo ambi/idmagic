@@ -366,6 +366,7 @@ model TokenSuccess_200 {
 union TokenError400Body {
   IdMagic.Contract.OAuthInvalidRequestError,
   IdMagic.Contract.InvalidGrantError,
+  IdMagic.Contract.UnauthorizedClientError,
   IdMagic.Contract.UnsupportedGrantTypeError,
   IdMagic.Contract.InvalidScopeError,
   IdMagic.Contract.AuthorizationPendingError,

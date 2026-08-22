@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	agentdomain "github.com/ambi/idmagic/backend/idmanagement/agent/domain"
+	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -76,6 +78,10 @@ type ExchangeTokenDeps struct {
 	Authorizer            ports.Authorizer
 	AuthzDetailTypeRepo   ports.AuthorizationDetailTypeRepository
 	McpResourceServerRepo ports.McpResourceServerRepository
+	// AgentRepo は交換に関与する Agent の自律性区分を引く (REQ-OAUTH2-050)。nil の
+	// 配線ではこのゲートを行わない。Agent を持たない構成の軽量な配線に合わせた、
+	// 本コードベース共通の nil-skips-enforcement に倣う。
+	AgentRepo agentports.AgentRepository
 	// WorkloadVerifier verifies external workload attestation tokens
 	// (subject_token_type=JWT URN) and maps them to a bound Agent's client
 	// ([[wi-54-workload-identity-federation-spiffe]]). nil rejects
@@ -174,6 +180,11 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 	if currentActorSub == "" {
 		return reject("", NewOAuthError("invalid_request", "The current actor cannot be determined."))
+	}
+
+	// --- Agent の自律性区分 (REQ-OAUTH2-050) ---
+	if err := rejectSupervisedAgents(ctx, deps, in, subject, workloadGrant, now); err != nil {
+		return reject(currentActorSub, err)
 	}
 
 	// --- may_act 強制 (fail-closed) ---
@@ -402,4 +413,63 @@ func nonEmpty(values []string) []string {
 		}
 	}
 	return out
+}
+
+// rejectSupervisedAgents は交換に関与する Agent を洗い出し、人間の承認を要する区分が
+// 一つでもあれば交換を拒否する (REQ-OAUTH2-050)。関与するのは 3 者ある。ワークロード
+// ID 連携の grant が名指す Agent、subject_token を持つ Agent、そして交換を行う
+// クライアント自身に束縛された Agent である。
+//
+// 承認を経て発行済みのトークンからの派生も拒否する。トークン交換は承認を記録しないため、
+// 継承を許すと audience と scope が hop ごとに変わりうる派生の連鎖へ、一度の承認が
+// 無限に伸びる。一つの承認は一つのトークンに対応させる。
+func rejectSupervisedAgents(
+	ctx context.Context, deps ExchangeTokenDeps, in ExchangeTokenInput,
+	subject *ports.IntrospectionResult, workloadGrant *workloaddomain.WorkloadIdentityGrant, now time.Time,
+) *OAuthError {
+	if deps.AgentRepo == nil {
+		return nil
+	}
+	tenantID := tenancy.TenantID(ctx)
+	seen := map[string]bool{}
+	// Agent を引けないまま交換を通すと区分の判定ごと失われるため、解決の失敗も拒否に倒す。
+	unresolved := NewOAuthError("invalid_request", "The agent kind could not be resolved.")
+	check := func(agent *agentdomain.Agent, clientID string) *OAuthError {
+		if agent == nil || seen[agent.ID] {
+			return nil
+		}
+		seen[agent.ID] = true
+		err := RejectAgentIssuanceWithoutApproval(ctx, deps.Emit, agent, clientID, string(spec.GrantTokenExchange), now)
+		if err == nil {
+			return nil
+		}
+		oauthErr, _ := errors.AsType[*OAuthError](err)
+		return oauthErr
+	}
+	byID := func(agentID, clientID string) *OAuthError {
+		if agentID == "" {
+			return nil
+		}
+		agent, err := deps.AgentRepo.FindByID(ctx, tenantID, agentID)
+		if err != nil {
+			return unresolved
+		}
+		return check(agent, clientID)
+	}
+
+	if workloadGrant != nil {
+		if rejection := byID(workloadGrant.AgentID, workloadGrant.ClientID); rejection != nil {
+			return rejection
+		}
+	}
+	if subject != nil {
+		if rejection := byID(subject.AgentID, subject.ClientID); rejection != nil {
+			return rejection
+		}
+	}
+	acting, err := deps.AgentRepo.FindByClientID(ctx, tenantID, in.ClientID)
+	if err != nil {
+		return unresolved
+	}
+	return check(acting, in.ClientID)
 }

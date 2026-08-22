@@ -37,6 +37,8 @@ var (
 	ErrAgentNameEmpty      = errors.New("agent name is required")
 	ErrAgentOwnerRequired  = errors.New("agent owner is required")
 	ErrAgentOwnerNotFound  = errors.New("agent owner not found")
+	ErrAgentKindRequired   = errors.New("agent kind is required")
+	ErrAgentKindInvalid    = errors.New("agent kind is not a known value")
 	ErrAgentKilled         = errors.New("agent is killed and cannot be modified")
 	ErrAgentClientNotFound = errors.New("client not found")
 	ErrAgentClientBound    = errors.New("client is already bound to another agent")
@@ -107,11 +109,14 @@ func GetAgent(ctx context.Context, deps AdminAgentDeps, id string) (*AgentView, 
 	return &AgentView{Agent: agent, ClientIDs: clientIDs}, nil
 }
 
+// RegisterAgentInput の Kind は必須である。区分は実行時にトークンを承認なしで発行して
+// よいかを決めるため (REQ-OAUTH2-050)、既定値で補うとどちらへ倒しても誤る。空文字は
+// 未指定、既知の列挙に無い値は不正として、それぞれ別の error で拒否する。
 type RegisterAgentInput struct {
 	ActorUserID string
 	Name        string
 	Description *string
-	Kind        *idmdomain.AgentKind
+	Kind        idmdomain.AgentKind
 	OwnerUserID string
 	Roles       []string
 	Now         time.Time
@@ -125,6 +130,12 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	}
 	if err := ensureAgentNameAvailable(ctx, deps, tenantID, name, ""); err != nil {
 		return nil, err
+	}
+	if in.Kind == "" {
+		return nil, ErrAgentKindRequired
+	}
+	if !in.Kind.Valid() {
+		return nil, ErrAgentKindInvalid
 	}
 	owner := strings.TrimSpace(in.OwnerUserID)
 	if owner == "" {
@@ -150,7 +161,7 @@ func RegisterAgent(ctx context.Context, deps AdminAgentDeps, in RegisterAgentInp
 	}
 	agent := &agentdomain.Agent{
 		ID: id, TenantID: tenantID, Name: name, Description: idmusecases.NormalizeDescription(in.Description),
-		Kind: normalizeAgentKind(in.Kind), OwnerUserID: owner, Status: idmdomain.AgentStatusActive,
+		Kind: in.Kind, OwnerUserID: owner, Status: idmdomain.AgentStatusActive,
 		Roles: roles, CreatedAt: now, UpdatedAt: now,
 	}
 	if err := agent.Validate(); err != nil {
@@ -213,9 +224,11 @@ func UpdateAgent(ctx context.Context, deps AdminAgentDeps, in UpdateAgentInput) 
 		}
 	}
 	if in.Kind != nil {
-		kind := normalizeAgentKind(in.Kind)
-		if kind != agent.Kind {
-			updated.Kind = kind
+		if !in.Kind.Valid() {
+			return nil, ErrAgentKindInvalid
+		}
+		if *in.Kind != agent.Kind {
+			updated.Kind = *in.Kind
 			changed = append(changed, "kind")
 		}
 	}
@@ -487,11 +500,4 @@ func ensureAgentNameAvailable(ctx context.Context, deps AdminAgentDeps, tenantID
 		}
 	}
 	return nil
-}
-
-func normalizeAgentKind(kind *idmdomain.AgentKind) idmdomain.AgentKind {
-	if kind == nil || !kind.Valid() {
-		return idmdomain.AgentKindSupervised
-	}
-	return *kind
 }

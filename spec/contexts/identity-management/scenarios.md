@@ -114,8 +114,10 @@
 ### REQ-IDMANAGEMENT-009: 管理者はエージェントを登録しクライアント資格情報をバインドできる
 - ACTOR TenantAdministrator
 - GIVEN ロール=["admin"] のユーザー "operator" が管理画面のエージェント一覧を開いている
-- WHEN 管理者 "operator" がエージェント "batch-agent" を登録する
-- THEN エージェント "batch-agent" が登録される
+- WHEN 管理者 "operator" がエージェント "batch-agent" を `kind` を指定して登録する
+  - ALT `kind` を指定しない → エラー "AgentKindRequiredError" → 区分は実行時のトークン発行可否を決めるため、既定値で補わない (REQ-OAUTH2-050)
+  - ALT `kind` が既知のどの値でもない → エラー "InvalidAgentKindError" → 既知の値へ丸めない
+- THEN エージェント "batch-agent" が指定した区分で登録される
 - WHEN 管理者 "operator" がエージェント "batch-agent" にクライアント資格情報をバインドする
   - ALT 別テナントのクライアント資格情報をバインドする → テナント "acme" の Agent にテナント "default" の `client_id` を指定する → エラー "InvalidRequestError"
 - THEN クライアント資格情報がバインドされる

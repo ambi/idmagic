@@ -653,7 +653,9 @@ CREATE TABLE agents (
     tenant_id UUID NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
-    kind TEXT NOT NULL DEFAULT 'supervised',
+    -- 区分は既定値を持たない。承認なしでトークンを発行してよいかを決めるため
+    -- (REQ-OAUTH2-050)、省略を既定値で補うとどちらへ倒しても誤る。登録時に必ず与える。
+    kind TEXT NOT NULL,
     owner_user_id UUID NOT NULL,
     status TEXT NOT NULL DEFAULT 'active'
         CHECK (status IN ('active', 'disabled', 'killed')),

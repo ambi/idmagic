@@ -644,6 +644,8 @@ model AccessTokenClaims {
   may_act?: Record<unknown>;
   @doc("RFC 9396: the structured details bound to the token. It is the resource server's checkpoint. Optional, for backward compatibility.")
   authorization_details?: AuthorizationDetail[];
+  @doc("The id of the Agent the token was issued for, present only when the issuing client is bound to one. It marks the token as belonging to a non-human principal, which introspection reads to derive the delegation mode (REQ-OAUTH2-049). It says nothing about the Agent's kind: a `supervised` Agent's token carries the same claim, and the approval that permitted it is traceable through the audit trail instead (REQ-OAUTH2-050).")
+  agent_id?: string;
 }
 
 
@@ -1611,6 +1613,21 @@ model DeviceAuthorizationDenied {
 }
 
 
+@doc("Issuance was refused fail-closed because the Agent's kind requires a human approval that this path does not record (REQ-OAUTH2-050). It covers `client_credentials`, token exchange, and the workload identity federation exchange; the approval-bearing path is CIBA, whose outcome is expressed by BackchannelAuthApproved instead. Carrying the kind that was read makes the decision reproducible from the audit event alone, without resolving the Agent again.")
+model AgentApprovalRequired {
+  occurredAt: utcDateTime;
+  @doc("The tenant the refusal happened in.")
+  tenantId: string;
+  agentId: string;
+  @doc("The client the Agent is bound to and authenticated as.")
+  clientId: string;
+  @doc("The kind the decision was taken on. A value outside AgentKind is recorded as read, since it is exactly the case the fail-closed rule exists for.")
+  kind: string;
+  @doc("The grant type the refused request asked for, `client_credentials` for instance.")
+  grantType: string;
+}
+
+
 @doc("CIBA Core section 7.3: an approval request was raised for a human to settle. The `auth_req_id` is a bearer secret and does not reach the audit log.")
 model BackchannelAuthRequested {
   occurredAt: utcDateTime;
@@ -1631,6 +1648,8 @@ model BackchannelAuthApproved {
   tenantId: string;
   approvalRequestId: string;
   clientId: string;
+  @doc("The Agent the approval was raised for, when the requesting client is bound to one. It is what makes a `supervised` Agent's issuance traceable to the human who permitted it (REQ-OAUTH2-050).")
+  agentId?: string;
   userId: string;
 }
 

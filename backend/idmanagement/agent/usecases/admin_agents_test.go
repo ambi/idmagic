@@ -90,6 +90,7 @@ func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Roles: []string{"deploy:run"}, Now: now,
 	})
 	if err != nil {
@@ -98,12 +99,14 @@ func TestRegisterAgentNameUniquenessAndOwnerDefault(t *testing.T) {
 	if agent.OwnerUserID != "operator" {
 		t.Fatalf("owner_sub default = %q, want operator", agent.OwnerUserID)
 	}
-	if agent.Status != idmdomain.AgentStatusActive || agent.Kind != idmdomain.AgentKindSupervised {
+	// status だけが既定を持つ。kind は呼び出し側が宣言したものがそのまま残る。
+	if agent.Status != idmdomain.AgentStatusActive || agent.Kind != idmdomain.AgentKindAutonomous {
 		t.Fatalf("unexpected defaults: status=%q kind=%q", agent.Status, agent.Kind)
 	}
 
 	// 名前一意性 (大文字小文字無視)
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "Deploy-Bot", Now: now,
 	}); !errors.Is(err, agentusecases.ErrAgentNameConflict) {
 		t.Fatalf("expected name conflict, got %v", err)
@@ -122,11 +125,13 @@ func TestRegisterAgent_rejectsWhenHardQuotaExceeded(t *testing.T) {
 	deps := newAgentDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	}); err != nil {
 		t.Fatalf("first RegisterAgent: %v", err)
 	}
 	_, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "build-bot", Now: now,
 	})
 	var qErr *tenancydomain.QuotaExceededError
@@ -153,6 +158,7 @@ func TestDeleteAgent_decrementsQuotaUsage(t *testing.T) {
 	deps := newAgentDepsWithQuota(t, tenancydomain.DefaultTenantID, 1)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -162,6 +168,7 @@ func TestDeleteAgent_decrementsQuotaUsage(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "build-bot", Now: now,
 	}); err != nil {
 		t.Fatalf("expected register to succeed after delete freed quota, got %v", err)
@@ -173,6 +180,7 @@ func TestListAgentsAndUpdateDetails(t *testing.T) {
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -226,16 +234,19 @@ func TestAgentInputValidationErrors(t *testing.T) {
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: " ", Now: now,
 	}); !errors.Is(err, agentusecases.ErrAgentNameEmpty) {
 		t.Fatalf("expected ErrAgentNameEmpty, got %v", err)
 	}
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind: idmdomain.AgentKindAutonomous,
 		Name: "ownerless", Now: now,
 	}); !errors.Is(err, agentusecases.ErrAgentOwnerRequired) {
 		t.Fatalf("expected ErrAgentOwnerRequired, got %v", err)
 	}
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -271,6 +282,7 @@ func TestGetAgentRejectsCrossTenant(t *testing.T) {
 	deps, _ := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(defaultTenantCtx(), deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -287,6 +299,7 @@ func TestSetAgentDisabledThenEnable(t *testing.T) {
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -318,6 +331,7 @@ func TestKillAgentIsIrreversible(t *testing.T) {
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -354,6 +368,7 @@ func TestUpdateAgentOwnerChangeEmitsOwnerChanged(t *testing.T) {
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -380,11 +395,13 @@ func TestRegisterAndUpdateAgentRejectUnknownOwner(t *testing.T) {
 	deps, _ := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	if _, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", OwnerUserID: "ghost", Now: now,
 	}); !errors.Is(err, agentusecases.ErrAgentOwnerNotFound) {
 		t.Fatalf("expected ErrAgentOwnerNotFound on register, got %v", err)
 	}
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -402,6 +419,7 @@ func TestBindUnbindCredentialAndFindByClientID(t *testing.T) {
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -458,12 +476,14 @@ func TestBindCredentialRejectsClientAlreadyBoundToAnotherAgent(t *testing.T) {
 	deps, _ := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	first, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	second, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "report-bot", Now: now,
 	})
 	if err != nil {
@@ -482,6 +502,7 @@ func TestDeleteAgentEmitsAgentDeleted(t *testing.T) {
 	deps, events := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {
@@ -504,6 +525,7 @@ func TestDeleteKilledAgentIsRejected(t *testing.T) {
 	deps, _ := newAgentDeps(t)
 	now := time.Date(2026, 6, 22, 12, 0, 0, 0, time.UTC)
 	agent, err := agentusecases.RegisterAgent(ctx, deps, agentusecases.RegisterAgentInput{
+		Kind:        idmdomain.AgentKindAutonomous,
 		ActorUserID: "operator", Name: "deploy-bot", Now: now,
 	})
 	if err != nil {

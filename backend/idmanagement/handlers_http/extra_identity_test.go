@@ -111,7 +111,7 @@ func TestAdminAgentLifecycle(t *testing.T) {
 
 	// --- 1. Agent 1 (Create, Update, Bind, Unbind, Delete) ---
 	desc := "Agent 1 Description"
-	kind := "daemon"
+	kind := "autonomous"
 	create1 := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{
 		"name": "Agent 1", "description": &desc, "kind": &kind, "roles": []string{"support"},
 	})
@@ -226,7 +226,7 @@ func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 	})
 
 	csrf, cookie := adminCSRF(t, e)
-	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{"name": "kill-me"})
+	create := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{"name": "kill-me", "kind": "autonomous"})
 	if create.Code != http.StatusCreated {
 		t.Fatalf("register agent status=%d body=%s", create.Code, create.Body.String())
 	}
@@ -578,7 +578,7 @@ func TestIdentityAPIErrors(t *testing.T) {
 
 	// Agent name conflict (409)
 	descAg := "agent description"
-	kindAg := "daemon"
+	kindAg := "autonomous"
 	createAgtSeed := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/agents", csrf, cookie, map[string]any{
 		"name": "DuplicateAgent", "description": &descAg, "kind": &kindAg,
 	})

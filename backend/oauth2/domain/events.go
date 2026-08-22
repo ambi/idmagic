@@ -147,6 +147,25 @@ type TokenExchangeRejected struct {
 func (e *TokenExchangeRejected) EventType() string     { return "TokenExchangeRejected" }
 func (e *TokenExchangeRejected) OccurredAt() time.Time { return e.At }
 
+// AgentApprovalRequired は Agent の区分が人間の承認を要求するため、承認を記録しない
+// 発行経路を fail-closed で拒否した (REQ-OAUTH2-050)。client_credentials、トークン
+// 交換、ワークロード ID 連携による交換が対象で、承認を伴う CIBA 経路の結果は
+// BackchannelAuthApproved が表す。
+//
+// Kind は解決した値をそのまま残す。既知の列挙に無い値こそフェイルクローズ規則が
+// 存在する理由であり、丸めた値を記録すると判断の再現ができなくなる。
+type AgentApprovalRequired struct {
+	At        time.Time `json:"-"`
+	TenantID  string    `json:"tenantId"`
+	AgentID   string    `json:"agentId"`
+	ClientID  string    `json:"clientId"`
+	Kind      string    `json:"kind"`
+	GrantType string    `json:"grantType"`
+}
+
+func (e *AgentApprovalRequired) EventType() string     { return "AgentApprovalRequired" }
+func (e *AgentApprovalRequired) OccurredAt() time.Time { return e.At }
+
 // ProtectedResourceMetadataServed は RFC 9728 — /.well-known/oauth-protected-resource
 // が登録済み McpResourceServer の metadata を配信した。
 type ProtectedResourceMetadataServed struct {
@@ -238,7 +257,10 @@ type BackchannelAuthApproved struct {
 	TenantID          string    `json:"tenantId"`
 	ApprovalRequestID string    `json:"approvalRequestId"`
 	ClientID          string    `json:"clientId"`
-	UserID            string    `json:"userId"`
+	// AgentID は承認の対象となった Agent。Supervised な Agent が得たトークンを、
+	// それを許可した人間へ結び付ける唯一の手掛かりになる (REQ-OAUTH2-050)。
+	AgentID string `json:"agentId,omitempty"`
+	UserID  string `json:"userId"`
 }
 
 func (e *BackchannelAuthApproved) EventType() string     { return "BackchannelAuthApproved" }
