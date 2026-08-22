@@ -132,6 +132,12 @@ type TokenExchanged struct {
 	MaxDelegationDepth int `json:"maxDelegationDepth"`
 	// DelegationMode は発行トークンの委譲モード。introspection と同じ導出関数を通す。
 	DelegationMode DelegationMode `json:"delegationMode"`
+	// AgentID は交換したクライアントに束縛された Agent。監査の actor.type / agent.id が
+	// 行為者の種別を推測ではなくイベントから読めるようにする。
+	AgentID string `json:"agentId,omitempty"`
+	// ActorChain は発行トークンの act チェーンに現れる主体を外側から順に並べたもの。
+	// 深さと両端だけでは中間の行為者を辿れないため、参加者そのものを残す。
+	ActorChain []string `json:"actorChain"`
 }
 
 func (e *TokenExchanged) EventType() string     { return "TokenExchanged" }

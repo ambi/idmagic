@@ -40,6 +40,20 @@ type AuditFilterField =
   | 'outcome'
   | 'target.id'
   | 'session.id'
+  | 'actor.type'
+  | 'agent.id'
+  | 'delegation.actor'
+  | 'delegation.depth'
+  | 'delegation.mode'
+
+// wi-377: 委譲の軸。エージェントが利用者を代行した操作を、利用者本人の操作と区別して引く。
+const DELEGATION_FIELDS: AuditFilterField[] = [
+  'actor.type',
+  'agent.id',
+  'delegation.actor',
+  'delegation.depth',
+  'delegation.mode',
+]
 
 type AuditFilterRow = {
   id: number
@@ -80,6 +94,23 @@ function auditFilterFields(
       label: t.filterFieldSession,
       placeholder: t.filterFieldSessionPlaceholder,
     },
+    { value: 'actor.type', label: t.filterFieldActorType },
+    {
+      value: 'agent.id',
+      label: t.filterFieldAgentId,
+      placeholder: t.filterFieldAgentIdPlaceholder,
+    },
+    {
+      value: 'delegation.actor',
+      label: t.filterFieldDelegationActor,
+      placeholder: t.filterFieldDelegationActorPlaceholder,
+    },
+    {
+      value: 'delegation.depth',
+      label: t.filterFieldDelegationDepth,
+      placeholder: t.filterFieldDelegationDepthPlaceholder,
+    },
+    { value: 'delegation.mode', label: t.filterFieldDelegationMode },
   ]
 }
 
@@ -127,11 +158,49 @@ function kindLabel(kind: EventKind, t: AdminAuditEventsDictionary): string {
 }
 
 const DEFAULT_OUTCOME_CHOICES = ['success', 'failure']
+const DEFAULT_ACTOR_TYPE_CHOICES = ['user', 'agent']
+const DEFAULT_DELEGATION_MODE_CHOICES = ['direct', 'autonomous', 'on_behalf_of']
 
 function outcomeLabel(value: string, t: AdminAuditEventsDictionary): string {
   if (value === 'success') return t.outcomeSuccessOption
   if (value === 'failure') return t.outcomeFailureOption
   return value
+}
+
+function actorTypeLabel(value: string, t: AdminAuditEventsDictionary): string {
+  if (value === 'user') return t.actorTypeUserOption
+  if (value === 'agent') return t.actorTypeAgentOption
+  return value
+}
+
+function delegationModeLabel(value: string, t: AdminAuditEventsDictionary): string {
+  if (value === 'direct') return t.delegationModeDirectOption
+  if (value === 'autonomous') return t.delegationModeAutonomousOption
+  if (value === 'on_behalf_of') return t.delegationModeOnBehalfOfOption
+  return value
+}
+
+// 監査イベントの payload から委譲チェーンを読み出す。チェーンを持たないイベント
+// (この軸が追加される前の記録を含む) では undefined を返す。
+type DelegationChain = {
+  participants: string[]
+  depth?: number
+  mode?: string
+  agentId?: string
+}
+
+function delegationChainOf(event: AdminAuditEvent | null): DelegationChain | undefined {
+  const payload = event?.payload as Record<string, unknown> | undefined
+  if (!payload) return undefined
+  const raw = payload.actorChain
+  const participants = Array.isArray(raw)
+    ? raw.filter((v): v is string => typeof v === 'string')
+    : []
+  const depth = typeof payload.delegationDepth === 'number' ? payload.delegationDepth : undefined
+  const mode = typeof payload.delegationMode === 'string' ? payload.delegationMode : undefined
+  const agentId = typeof payload.agentId === 'string' ? payload.agentId : undefined
+  if (participants.length === 0 && depth === undefined && mode === undefined) return undefined
+  return { participants, depth, mode, agentId }
 }
 
 // datetime-local 入力は timezone を持たないローカル時刻表記を要求する。API 用 ISO 文字列
@@ -216,6 +285,10 @@ export function AdminAuditEventsPage({
   const canCrossTenant = actorRoles.includes('system_admin') && actorRealm === DEFAULT_REALM
   const eventTypeChoices = searchOptions?.event_types ?? []
   const outcomeChoices = searchOptions?.outcomes ?? DEFAULT_OUTCOME_CHOICES
+  const actorTypeChoices = searchOptions?.actor_types ?? DEFAULT_ACTOR_TYPE_CHOICES
+  const delegationModeChoices = searchOptions?.delegation_modes ?? DEFAULT_DELEGATION_MODE_CHOICES
+  const delegationSelected = filters.some((row) => DELEGATION_FIELDS.includes(row.field))
+  const delegationChain = delegationChainOf(selected)
 
   function buildQuery(): AdminAuditEventsSearchParams {
     const parsedLimit = limit.trim() ? Number.parseInt(limit, 10) : undefined
@@ -328,6 +401,9 @@ export function AdminAuditEventsPage({
               </Button>
             </div>
             <p className="text-xs text-slate-500">{t.searchAttributesHint}</p>
+            {delegationSelected ? (
+              <p className="text-xs text-slate-500">{t.delegationAxesHint}</p>
+            ) : null}
             <div className="grid gap-2">
               {filters.map((filter) => {
                 const fields = auditFilterFields(t)
@@ -400,6 +476,32 @@ export function AdminAuditEventsPage({
                         {outcomeChoices.map((choice) => (
                           <option key={choice} value={choice}>
                             {outcomeLabel(choice, t)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : filter.field === 'actor.type' ? (
+                      <select
+                        value={filter.value}
+                        onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                        className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+                      >
+                        <option value="">{t.filterFieldAnyOption}</option>
+                        {actorTypeChoices.map((choice) => (
+                          <option key={choice} value={choice}>
+                            {actorTypeLabel(choice, t)}
+                          </option>
+                        ))}
+                      </select>
+                    ) : filter.field === 'delegation.mode' ? (
+                      <select
+                        value={filter.value}
+                        onChange={(e) => updateFilter(filter.id, { value: e.target.value })}
+                        className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
+                      >
+                        <option value="">{t.filterFieldAnyOption}</option>
+                        {delegationModeChoices.map((choice) => (
+                          <option key={choice} value={choice}>
+                            {delegationModeLabel(choice, t)}
                           </option>
                         ))}
                       </select>
@@ -534,6 +636,15 @@ export function AdminAuditEventsPage({
                 <dt className="text-slate-500">{t.dateTimeLabel}</dt>
                 <dd>{formatDate(selected.occurred_at, locale)}</dd>
               </dl>
+              {delegationChain ? (
+                <DelegationChainView
+                  chain={delegationChain}
+                  t={t}
+                  onSearchParticipant={(participant) =>
+                    setFilters([{ id: Date.now(), field: 'delegation.actor', value: participant }])
+                  }
+                />
+              ) : null}
               <pre className="mt-4 max-h-[420px] overflow-auto rounded-md bg-slate-950 p-3 text-xs text-slate-50">
                 {JSON.stringify(selected.payload, null, 2)}
               </pre>
@@ -544,6 +655,68 @@ export function AdminAuditEventsPage({
         </Card>
       </div>
     </AdminShell>
+  )
+}
+
+// wi-377: 委譲チェーンを展開して表示する。参加者は外側 (現在の行為者) から内側へ並び、
+// 最後が代行された主体である。参加者をクリックすると、その参加者がチェーンのどの段に
+// いても引ける delegation.actor での絞り込みに切り替える。
+function DelegationChainView({
+  chain,
+  t,
+  onSearchParticipant,
+}: {
+  chain: DelegationChain
+  t: AdminAuditEventsDictionary
+  onSearchParticipant: (participant: string) => void
+}) {
+  return (
+    <section className="mt-4 rounded-md border border-slate-200 p-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {t.delegationChainHeading}
+      </h3>
+      <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+        {chain.mode ? (
+          <div className="flex gap-1">
+            <dt className="text-slate-500">{t.delegationChainModeLabel}</dt>
+            <dd>{delegationModeLabel(chain.mode, t)}</dd>
+          </div>
+        ) : null}
+        {chain.depth !== undefined ? (
+          <div className="flex gap-1">
+            <dt className="text-slate-500">{t.delegationChainDepthLabel}</dt>
+            <dd className="font-mono">{chain.depth}</dd>
+          </div>
+        ) : null}
+        {chain.agentId ? (
+          <div className="flex gap-1">
+            <dt className="text-slate-500">{t.delegationChainAgentLabel}</dt>
+            <dd className="break-all font-mono">{chain.agentId}</dd>
+          </div>
+        ) : null}
+      </dl>
+      {chain.participants.length === 0 ? (
+        <p className="mt-2 text-xs text-slate-500">{t.delegationChainAbsentNotice}</p>
+      ) : (
+        <ol className="mt-2 flex flex-wrap items-center gap-1 text-xs">
+          {chain.participants.map((participant, index) => (
+            <li key={participant} className="flex items-center gap-1">
+              {index > 0 ? (
+                <span className="text-slate-400">{t.delegationChainActingFor}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onSearchParticipant(participant)}
+                aria-label={`${t.delegationChainSearchAria}: ${participant}`}
+                className="break-all rounded bg-slate-100 px-2 py-0.5 font-mono hover:bg-slate-200"
+              >
+                {participant}
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   )
 }
 

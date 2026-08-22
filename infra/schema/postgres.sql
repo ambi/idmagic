@@ -642,7 +642,12 @@ CREATE TABLE audit_event_search_attributes (
     attr_name TEXT NOT NULL,
     attr_value TEXT NOT NULL,
     occurred_at TIMESTAMPTZ NOT NULL,
-    PRIMARY KEY (event_id, attr_name)
+    -- attr_value is part of the key so one event can carry several values on one
+    -- axis. A delegation chain names every principal that took part in it, and a
+    -- filter matches when any of them matches; every other axis simply holds one
+    -- row. The sidecar is derived from audit_events.payload, so widening the key
+    -- does not touch the append-only record itself.
+    PRIMARY KEY (event_id, attr_name, attr_value)
 );
 
 CREATE INDEX audit_event_search_attributes_lookup_idx

@@ -1514,6 +1514,10 @@ model TokenExchanged {
   maxDelegationDepth: int64;
   @doc("Delegation mode of the issued token, produced by the same derivation function used for introspection.")
   delegationMode: DelegationMode;
+  @doc("The Agent the exchanging client is bound to, when one is. It makes the actor's kind readable from the event instead of\ninferred, which is what the `actor.type` and `agent.id` audit axes need (REQ-AUDIT-005).")
+  agentId?: string;
+  @doc("Every principal of the issued token's `act` chain, the current actor first and the subject last, each named once. The\ndepth alone says how far the delegation went but not through whom, so an intermediate actor cannot be found from it; this\nlist is what the `delegation.actor` audit axis searches (REQ-AUDIT-006). These are token subjects, not Agent ids: only the\ncurrent actor's Agent is resolvable at exchange time, and naming that one alone would misplace where in the chain an Agent\nstood. `agentId` answers the Agent-level question instead. Identifiers only -- never a username, per\nResolvableUserEventPayloadPolicy.")
+  actorChain: string[];
 }
 
 

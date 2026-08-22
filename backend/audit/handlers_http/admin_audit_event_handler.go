@@ -18,6 +18,7 @@ import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	auditusecases "github.com/ambi/idmagic/backend/audit/usecases"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	oauth2domain "github.com/ambi/idmagic/backend/oauth2/domain"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
@@ -281,12 +282,25 @@ func (d Deps) handleExportAdminAuditEvents(c *echo.Context) error {
 
 // AuditEventSearchOptionsResponse は SCL AuditEventSearchOptionsResponse の双子。
 type AuditEventSearchOptionsResponse struct {
-	EventTypes []string `json:"event_types"`
-	Outcomes   []string `json:"outcomes"`
+	EventTypes      []string `json:"event_types"`
+	Outcomes        []string `json:"outcomes"`
+	ActorTypes      []string `json:"actor_types"`
+	DelegationModes []string `json:"delegation_modes"`
 }
 
 // auditEventOutcomeChoices は outcome フィルタの選択肢 (eventOutcome() の分類先と一致させる)。
 var auditEventOutcomeChoices = []string{"success", "failure"}
+
+// auditActorTypeChoices は actor.type フィルタの選択肢。
+var auditActorTypeChoices = []string{auditports.ActorTypeUser, auditports.ActorTypeAgent}
+
+// auditDelegationModeChoices は delegation.mode フィルタの選択肢。REQ-OAUTH2-049 が定める
+// 列挙をそのまま使い、監査側で別の一覧を持たない。
+var auditDelegationModeChoices = []string{
+	string(oauth2domain.DelegationModeDirect),
+	string(oauth2domain.DelegationModeAutonomous),
+	string(oauth2domain.DelegationModeOnBehalfOf),
+}
 
 // handleAdminAuditEventSearchOptions は event.type / outcome を選択式にするための選択肢一覧を
 // 返す (wi-147)。event_types は auditEventCategoryTypes (category 絞り込みと同じ単一の正) の
@@ -308,8 +322,10 @@ func (d Deps) handleAdminAuditEventSearchOptions(c *echo.Context) error {
 	}
 	slices.Sort(eventTypes)
 	return support.NoStoreJSON(c, http.StatusOK, AuditEventSearchOptionsResponse{
-		EventTypes: eventTypes,
-		Outcomes:   auditEventOutcomeChoices,
+		EventTypes:      eventTypes,
+		Outcomes:        auditEventOutcomeChoices,
+		ActorTypes:      auditActorTypeChoices,
+		DelegationModes: auditDelegationModeChoices,
 	})
 }
 

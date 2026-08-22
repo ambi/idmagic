@@ -44,6 +44,9 @@ type AuditSearchAttribute struct {
 	Transform AuditSearchTransform
 	// AllowedOperators はこの属性に許可される operator の allowlist。
 	AllowedOperators []AuditFilterOperator
+	// MultiValued は 1 イベントがこの軸に複数の値を持ちうるか。委譲チェーンの参加者
+	// (delegation.actor) だけが多値で、いずれかの値が一致すればそのイベントが返る。
+	MultiValued bool
 	// UIVisible は admin 検索ビルダーの UI プリセットに出すか。
 	UIVisible bool
 }
@@ -167,7 +170,57 @@ var AuditSearchRegistry = map[string]AuditSearchAttribute{
 		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
 		UIVisible:        true,
 	},
+	// 委譲の軸 (REQ-AUDIT-005 / REQ-AUDIT-006)。エージェントが利用者を代行した操作を、
+	// 利用者本人の操作と区別して引くための軸。値はいずれも不透明な識別子か列挙値で、
+	// ユーザー名は含まない。
+	"actor.type": {
+		Field:            "actor.type",
+		RawStorable:      true,
+		Transform:        TransformNone,
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		UIVisible:        true,
+	},
+	"agent.id": {
+		Field:            "agent.id",
+		RawStorable:      true,
+		Transform:        TransformNone,
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		UIVisible:        true,
+	},
+	"delegation.actor": {
+		Field:       "delegation.actor",
+		RawStorable: true,
+		Transform:   TransformNone,
+		// act チェーンに現れる主体をすべて載せる唯一の多値属性。参加者のいずれか 1 人を
+		// 知っていればチェーン全体を引ける。
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		MultiValued:      true,
+		UIVisible:        true,
+	},
+	"delegation.depth": {
+		Field:            "delegation.depth",
+		RawStorable:      true,
+		Transform:        TransformNone,
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		UIVisible:        true,
+	},
+	"delegation.mode": {
+		Field:            "delegation.mode",
+		RawStorable:      true,
+		Transform:        TransformNone,
+		AllowedOperators: []AuditFilterOperator{OpEq, OpIn},
+		UIVisible:        true,
+	},
 }
+
+// ActorType は actor.type 軸が取る値。行為者が人間の利用者か Agent かを区別する。
+const (
+	// ActorTypeUser は行為者が人間の利用者である。
+	ActorTypeUser = "user"
+	// ActorTypeAgent は行為者が Agent である。この場合 actor.id は Agent の識別子であり、
+	// 利用者の識別子へ読み替えない。
+	ActorTypeAgent = "agent"
+)
 
 // LookupSearchAttribute は field 名で registry を引く。第 2 戻り値は存在有無。
 func LookupSearchAttribute(field string) (AuditSearchAttribute, bool) {

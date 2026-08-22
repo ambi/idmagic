@@ -53,6 +53,39 @@ func DeriveDelegationMode(in DelegationSubject) DelegationMode {
 // 上限に達したチェーンは、深さの検査が別途拒否する側の入力なので代行として扱う。
 const maxActChainScan = 64
 
+// ActorChainParticipants は act チェーンに現れる主体を、外側 (現在の行為者) から
+// 内側へ並べ、最後に subject を置いて返す。監査はこの並びを多値の検索属性
+// `delegation.actor` として保存し、チェーンのどの段の参加者からでも同じ連なりを引く。
+//
+// 深さの整数だけでは「どこまで委譲されたか」は分かっても「誰を経由したか」は分からず、
+// 中間の行為者を後から辿れない。チェーンに ID を振らないのは、参加者が act から導出
+// できる以上、採番した ID は委譲モードの導出と食い違いうる第二の真実になるためである。
+//
+// 同じ主体が複数の段に現れても 1 度しか並べない。workload identity の自己交換では
+// sub と act.sub が同じクライアントになるので、重複を残すと参加者が水増しされる。
+func ActorChainParticipants(act map[string]any, sub string) []string {
+	participants := make([]string, 0, 4)
+	seen := map[string]bool{}
+	add := func(id string) {
+		if id == "" || seen[id] {
+			return
+		}
+		seen[id] = true
+		participants = append(participants, id)
+	}
+	for depth := 0; act != nil && depth < maxActChainScan; depth++ {
+		actor, _ := act["sub"].(string)
+		add(actor)
+		nested, ok := act["act"].(map[string]any)
+		if !ok {
+			break
+		}
+		act = nested
+	}
+	add(sub)
+	return participants
+}
+
 // actChainDelegates は act チェーンに subject と異なる行為者がいるかを返す。
 // 自分自身だけを指す act は代行ではない。workload identity の自己交換は
 // sub と act.sub が同じクライアントになるので、これを代行と数えると

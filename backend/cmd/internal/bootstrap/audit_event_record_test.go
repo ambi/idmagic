@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	igdomain "github.com/ambi/idmagic/backend/idgovernance/domain"
 
@@ -64,15 +65,19 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.SearchAttributes["workflow.id"] != "workflow-1" {
-		t.Fatalf("workflow.id = %q, want workflow-1", rec.SearchAttributes["workflow.id"])
+	attrIs := func(rec *auditports.AuditEventRecord, field, want string) bool {
+		got := rec.SearchAttributes[field]
+		return len(got) == 1 && got[0] == want
+	}
+	if !attrIs(rec, "workflow.id", "workflow-1") {
+		t.Fatalf("workflow.id = %v, want [workflow-1]", rec.SearchAttributes["workflow.id"])
 	}
 
 	rec, err = NewAuditEventRecord(&igdomain.LifecycleWorkflowRunSucceeded{At: now, TenantID: "acme", WorkflowID: "workflow-1", RunID: "run-1", TargetUserID: "user-1"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.SearchAttributes["workflow.id"] != "workflow-1" || rec.SearchAttributes["workflow_run.id"] != "run-1" {
+	if !attrIs(rec, "workflow.id", "workflow-1") || !attrIs(rec, "workflow_run.id", "run-1") {
 		t.Fatalf("search attrs = %#v, want workflow.id=workflow-1 workflow_run.id=run-1", rec.SearchAttributes)
 	}
 
@@ -80,7 +85,7 @@ func TestNewAuditEventRecordExtractsLifecycleWorkflowSearchAttributes(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rec.SearchAttributes["workflow_run.id"] != "run-1" || rec.SearchAttributes["workflow_step.id"] != "2" {
+	if !attrIs(rec, "workflow_run.id", "run-1") || !attrIs(rec, "workflow_step.id", "2") {
 		t.Fatalf("search attrs = %#v, want workflow_run.id=run-1 workflow_step.id=2", rec.SearchAttributes)
 	}
 }

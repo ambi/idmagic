@@ -81,14 +81,18 @@ func (r *AuditEventRepository) Append(ctx context.Context, rec *ports.AuditEvent
 		return err
 	}
 	// wi-145: sidecar 検索属性を書く。attr_name は AuditSearchRegistry の Field。冪等 (ON CONFLICT)。
-	for name, value := range rec.SearchAttributes {
-		if value == "" {
-			continue
-		}
-		if err := queries.AppendAuditEventSearchAttribute(ctx, AppendAuditEventSearchAttributeParams{
-			EventID: rec.ID, TenantID: rec.TenantID, AttrName: name, AttrValue: value, OccurredAt: rec.OccurredAt,
-		}); err != nil {
-			return err
+	// wi-377: 1 属性が複数の値を持ちうる (委譲チェーンの参加者)。値ごとに 1 行を書き、
+	// 検索側の EXISTS がいずれかの行に当たれば一致とする。
+	for name, values := range rec.SearchAttributes {
+		for _, value := range values {
+			if value == "" {
+				continue
+			}
+			if err := queries.AppendAuditEventSearchAttribute(ctx, AppendAuditEventSearchAttributeParams{
+				EventID: rec.ID, TenantID: rec.TenantID, AttrName: name, AttrValue: value, OccurredAt: rec.OccurredAt,
+			}); err != nil {
+				return err
+			}
 		}
 	}
 	return tx.Commit(ctx)

@@ -42,7 +42,7 @@ func (q *Queries) AppendAuditEvent(ctx context.Context, arg AppendAuditEventPara
 const appendAuditEventSearchAttribute = `-- name: AppendAuditEventSearchAttribute :exec
 INSERT INTO audit_event_search_attributes (event_id, tenant_id, attr_name, attr_value, occurred_at)
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (event_id, attr_name) DO NOTHING
+ON CONFLICT (event_id, attr_name, attr_value) DO NOTHING
 `
 
 type AppendAuditEventSearchAttributeParams struct {

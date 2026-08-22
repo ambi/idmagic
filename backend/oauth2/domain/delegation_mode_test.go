@@ -102,3 +102,53 @@ func TestDeriveDelegationModeTerminatesOnSelfReferentialAct(t *testing.T) {
 		t.Fatal("DeriveDelegationMode did not terminate on a self-referential act chain")
 	}
 }
+
+// REQ-AUDIT-006: act チェーンの参加者は、監査がチェーンのどの段からでも引ける形で列挙できる。
+func TestActorChainParticipants(t *testing.T) {
+	cases := []struct {
+		name string
+		act  map[string]any
+		sub  string
+		want []string
+	}{
+		{
+			name: "direct access has the subject alone",
+			sub:  "user-alice",
+			want: []string{"user-alice"},
+		},
+		{
+			name: "one agent acting for a user",
+			act:  map[string]any{"sub": "agent-a"},
+			sub:  "user-alice",
+			want: []string{"agent-a", "user-alice"},
+		},
+		{
+			name: "a multi-step chain keeps the intermediate actor",
+			act: map[string]any{
+				"sub": "agent-b",
+				"act": map[string]any{"sub": "agent-a"},
+			},
+			sub:  "user-alice",
+			want: []string{"agent-b", "agent-a", "user-alice"},
+		},
+		{
+			name: "a self exchange names the principal once",
+			act:  map[string]any{"sub": "svc-client"},
+			sub:  "svc-client",
+			want: []string{"svc-client"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := domain.ActorChainParticipants(tc.act, tc.sub)
+			if len(got) != len(tc.want) {
+				t.Fatalf("participants = %v, want %v", got, tc.want)
+			}
+			for i := range tc.want {
+				if got[i] != tc.want[i] {
+					t.Fatalf("participants = %v, want %v", got, tc.want)
+				}
+			}
+		})
+	}
+}

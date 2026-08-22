@@ -211,7 +211,7 @@ model FgaCheckEvaluated {
   relationPath: string[];
   @doc("The rules that denied it. Empty when `permitted` is true.")
   reasons: string[];
-  @doc("How many steps the delegation chain had. Zero means direct access.")
+  @doc("How many steps the delegation chain had. Zero means direct access. It feeds the `delegation.depth` audit axis. The\nparticipants themselves stay out: this context does not copy principal identifiers into the audit trail, and the chain is\ncorrelated instead through the OAuth2 TokenExchanged that established it (REQ-AUDIT-006).")
   actorChainDepth: int32;
 }
 

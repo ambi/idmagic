@@ -163,3 +163,49 @@ func TestAuditEventStoreKeysetPagination(t *testing.T) {
 		t.Fatalf("end page = %+v, err=%v", fromEnd, err)
 	}
 }
+
+// REQ-AUDIT-006: 多値の検索属性は、いずれか 1 つの参加者が一致すればそのイベントを返す。
+// PostgreSQL 側の EXISTS 照合と同じ意味論であることを、memory store でも保つ。
+func TestAuditEventStoreMatchesAnyValueOfAMultiValuedAttribute(t *testing.T) {
+	store := NewAuditEventStore(0)
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	chained := newAuditEvent(t, "acme", "TokenExchanged", base, "alice")
+	chained.SearchAttributes = map[string][]string{
+		"delegation.actor": {"app-b", "app-a", "alice"},
+		"delegation.mode":  {"on_behalf_of"},
+	}
+	direct := newAuditEvent(t, "acme", "TokenExchanged", base.Add(time.Second), "bob")
+	direct.SearchAttributes = map[string][]string{
+		"delegation.actor": {"bob"},
+		"delegation.mode":  {"direct"},
+	}
+	for i, ev := range []*ports.AuditEventRecord{chained, direct} {
+		if err := store.Append(context.Background(), ev); err != nil {
+			t.Fatalf("append #%d: %v", i, err)
+		}
+	}
+
+	// チェーンの中間にいる参加者からでも引ける。
+	events, err := store.List(context.Background(), ports.AuditEventQuery{
+		TenantID: "acme",
+		Filters:  []ports.AuditFilterExpression{{Field: "delegation.actor", Operator: ports.OpEq, Values: []string{"app-a"}}},
+	})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(events) != 1 || events[0].ID != chained.ID {
+		t.Fatalf("delegation.actor=app-a returned %d event(s), want only the chained one", len(events))
+	}
+
+	// 参加していない主体では引けない。
+	events, err = store.List(context.Background(), ports.AuditEventQuery{
+		TenantID: "acme",
+		Filters:  []ports.AuditFilterExpression{{Field: "delegation.actor", Operator: ports.OpEq, Values: []string{"app-c"}}},
+	})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if len(events) != 0 {
+		t.Fatalf("delegation.actor=app-c returned %d event(s), want 0", len(events))
+	}
+}

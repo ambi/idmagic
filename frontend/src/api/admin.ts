@@ -768,11 +768,14 @@ export function adminAuditEventsExportURL(query: AdminAuditEventQuery): string {
   return tenantURL(`/api/admin/v1/audit_events/export?${params.toString()}`)
 }
 
-// event.type / outcome を選択式にするための選択肢一覧 (wi-147)。UI 側でハードコードせず、
-// Go 側の単一の正 (auditEventCategoryTypes / eventOutcome) から機械的に取得する。
+// event.type / outcome / actor.type / delegation.mode を選択式にするための選択肢一覧
+// (wi-147 / wi-377)。UI 側でハードコードせず、Go 側の単一の正 (auditEventCategoryTypes /
+// eventOutcome / DelegationMode) から機械的に取得する。
 export type AdminAuditEventSearchOptions = {
   event_types: string[]
   outcomes: string[]
+  actor_types?: string[]
+  delegation_modes?: string[]
 }
 
 export async function listAdminAuditEventSearchOptions(): Promise<AdminAuditEventSearchOptions> {

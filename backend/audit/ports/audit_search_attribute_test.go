@@ -72,3 +72,32 @@ func TestActorUsernameAndClientIPAreVisibleAndRawStorable(t *testing.T) {
 		}
 	}
 }
+
+// REQ-AUDIT-005 / REQ-AUDIT-006: 委譲の軸が registry にあり、多値なのは
+// チェーンの参加者だけであること。多値の軸が増えれば sidecar の書き込みも
+// 照合も影響を受けるので、境界をここで固定する。
+func TestAuditSearchRegistryHasDelegationAxes(t *testing.T) {
+	want := []string{"actor.type", "agent.id", "delegation.actor", "delegation.depth", "delegation.mode"}
+	for _, field := range want {
+		attr, ok := LookupSearchAttribute(field)
+		if !ok {
+			t.Fatalf("registry missing expected attribute %q", field)
+		}
+		if !attr.UIVisible {
+			t.Errorf("%s should be available in the admin search builder", field)
+		}
+		if !attr.AllowsOperator(OpEq) || !attr.AllowsOperator(OpIn) {
+			t.Errorf("%s should allow eq and in", field)
+		}
+		// 参加者は不透明な識別子であって、ユーザー名のような照合前の変換を要する値ではない。
+		if !attr.RawStorable || attr.Transform != TransformNone {
+			t.Errorf("%s should be stored raw with no transform", field)
+		}
+	}
+
+	for field, attr := range AuditSearchRegistry {
+		if attr.MultiValued != (field == "delegation.actor") {
+			t.Errorf("attr %q multi_valued = %v; only delegation.actor is multi-valued", field, attr.MultiValued)
+		}
+	}
+}

@@ -25,11 +25,11 @@ func TestAuditEventRepositoryAppendAndList(t *testing.T) {
 	base := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	first := &ports.AuditEventRecord{
 		ID: newUUID(), TenantID: tenantID, Type: "UserAuthenticated", OccurredAt: base,
-		Payload: map[string]any{"userId": userID}, SearchAttributes: map[string]string{"outcome": "success"},
+		Payload: map[string]any{"userId": userID}, SearchAttributes: map[string][]string{"outcome": {"success"}},
 	}
 	second := &ports.AuditEventRecord{
 		ID: newUUID(), TenantID: tenantID, Type: "AuthenticationFailed", OccurredAt: base.Add(time.Minute),
-		Payload: map[string]any{"userId": userID}, SearchAttributes: map[string]string{"outcome": "failure"},
+		Payload: map[string]any{"userId": userID}, SearchAttributes: map[string][]string{"outcome": {"failure"}},
 	}
 	for _, event := range []*ports.AuditEventRecord{first, second, first} {
 		if err := repo.Append(ctx, event); err != nil {
@@ -109,5 +109,107 @@ func TestAuditEventRepositoryListRejectsMalformedUserIDAsNoMatch(t *testing.T) {
 	}
 	if len(events) != 0 {
 		t.Fatalf("expected 0 events for malformed user_id, got %d", len(events))
+	}
+}
+
+// REQ-AUDIT-005 / REQ-AUDIT-006: 委譲の軸で、エージェントが代行した操作を本人の操作と
+// 区別して引ける。チェーンの参加者は多値なので、どの段からでも同じイベントに当たる。
+func TestAuditEventRepositoryDelegationAxes(t *testing.T) {
+	db := pgtest.Require(t)
+	newUUID := func() string {
+		id, err := spec.NewUUIDv4()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	tenantID := "tenant-audit-delegation-test"
+	repo := &AuditEventRepository{Pool: db}
+	ctx := context.Background()
+	base := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	// audit_events.user_id は UUID 列なので、利用者の識別子は実在する形の UUID を使う。
+	alice := newUUID()
+
+	delegated := &ports.AuditEventRecord{
+		ID: newUUID(), TenantID: tenantID, Type: "TokenExchanged", OccurredAt: base,
+		Payload: map[string]any{"actorUserId": "app-b", "subjectUserId": alice},
+		SearchAttributes: map[string][]string{
+			"actor.type":       {ports.ActorTypeAgent},
+			"agent.id":         {"agent-a"},
+			"actor.id":         {"app-b"},
+			"target.id":        {alice},
+			"delegation.actor": {"app-b", "app-a", alice},
+			"delegation.mode":  {"on_behalf_of"},
+			"delegation.depth": {"2"},
+		},
+	}
+	inPerson := &ports.AuditEventRecord{
+		ID: newUUID(), TenantID: tenantID, Type: "UserAuthenticated", OccurredAt: base.Add(time.Minute),
+		Payload: map[string]any{"userId": alice},
+		SearchAttributes: map[string][]string{
+			"actor.type": {ports.ActorTypeUser},
+			"actor.id":   {alice},
+		},
+	}
+	// 二重の Append が多値の行を重複させないこと (冪等) も併せて確かめる。
+	for _, ev := range []*ports.AuditEventRecord{delegated, inPerson, delegated} {
+		if err := repo.Append(ctx, ev); err != nil {
+			t.Fatalf("append: %v", err)
+		}
+	}
+
+	cases := []struct {
+		name    string
+		filters []ports.AuditFilterExpression
+		wantID  string
+		wantLen int
+	}{
+		{
+			name: "the agent's own action",
+			filters: []ports.AuditFilterExpression{
+				{Field: "actor.type", Operator: ports.OpEq, Values: []string{ports.ActorTypeAgent}},
+				{Field: "agent.id", Operator: ports.OpEq, Values: []string{"agent-a"}},
+			},
+			wantID: delegated.ID, wantLen: 1,
+		},
+		{
+			name:    "the user's own action does not include what was done for them",
+			filters: []ports.AuditFilterExpression{{Field: "actor.id", Operator: ports.OpEq, Values: []string{alice}}},
+			wantID:  inPerson.ID, wantLen: 1,
+		},
+		{
+			name:    "an intermediate participant of the chain",
+			filters: []ports.AuditFilterExpression{{Field: "delegation.actor", Operator: ports.OpEq, Values: []string{"app-a"}}},
+			wantID:  delegated.ID, wantLen: 1,
+		},
+		{
+			name:    "the subject is a participant of the chain too",
+			filters: []ports.AuditFilterExpression{{Field: "delegation.actor", Operator: ports.OpIn, Values: []string{alice, "nobody"}}},
+			wantID:  delegated.ID, wantLen: 1,
+		},
+		{
+			name:    "a principal outside the chain matches nothing",
+			filters: []ports.AuditFilterExpression{{Field: "delegation.actor", Operator: ports.OpEq, Values: []string{"app-c"}}},
+			wantLen: 0,
+		},
+		{
+			name:    "the delegation mode comes from the payload of the exchange",
+			filters: []ports.AuditFilterExpression{{Field: "delegation.mode", Operator: ports.OpEq, Values: []string{"on_behalf_of"}}},
+			wantID:  delegated.ID, wantLen: 1,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			events, err := repo.List(ctx, ports.AuditEventQuery{TenantID: tenantID, Filters: tc.filters})
+			if err != nil {
+				t.Fatalf("list: %v", err)
+			}
+			if len(events) != tc.wantLen {
+				t.Fatalf("got %d event(s), want %d: %#v", len(events), tc.wantLen, events)
+			}
+			if tc.wantLen == 1 && events[0].ID != tc.wantID {
+				t.Fatalf("got event %s, want %s", events[0].ID, tc.wantID)
+			}
+		})
 	}
 }

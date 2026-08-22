@@ -183,8 +183,9 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 	}
 
 	// --- Agent の自律性区分 (REQ-OAUTH2-050) ---
-	if err := rejectSupervisedAgents(ctx, deps, in, subject, workloadGrant, now); err != nil {
-		return reject(currentActorSub, err)
+	actingAgentID, agentErr := rejectSupervisedAgents(ctx, deps, in, subject, workloadGrant, now)
+	if agentErr != nil {
+		return reject(currentActorSub, agentErr)
 	}
 
 	// --- may_act 強制 (fail-closed) ---
@@ -311,6 +312,11 @@ func ExchangeToken(ctx context.Context, deps ExchangeTokenDeps, in ExchangeToken
 		DelegationMode: domain.DeriveDelegationMode(domain.DelegationSubject{
 			Sub: subject.Sub, ClientID: client.ClientID, PrincipalType: principalType, Act: act,
 		}),
+		// チェーンの参加者を残す。深さと両端だけでは、中間の行為者を後から辿れない。
+		// AgentID は交換を行った側の Agent であり、トークンへ載せる agentID (ワークロード
+		// ID 連携の grant 由来に限る) より広い。監査は資格情報の束縛による代行も
+		// Agent の操作として区別する必要がある。
+		AgentID: actingAgentID, ActorChain: domain.ActorChainParticipants(act, subject.Sub),
 	})
 	if workloadGrant != nil {
 		emit(deps.Emit, &workloaddomain.WorkloadTokenExchanged{
@@ -423,12 +429,15 @@ func nonEmpty(values []string) []string {
 // 承認を経て発行済みのトークンからの派生も拒否する。トークン交換は承認を記録しないため、
 // 継承を許すと audience と scope が hop ごとに変わりうる派生の連鎖へ、一度の承認が
 // 無限に伸びる。一つの承認は一つのトークンに対応させる。
+//
+// 第 1 戻り値は交換を行った側の Agent の識別子で、監査の actor.type / agent.id が
+// 使う (REQ-AUDIT-005)。ここで既に解決しているので、監査のために引き直さない。
 func rejectSupervisedAgents(
 	ctx context.Context, deps ExchangeTokenDeps, in ExchangeTokenInput,
 	subject *ports.IntrospectionResult, workloadGrant *workloaddomain.WorkloadIdentityGrant, now time.Time,
-) *OAuthError {
+) (string, *OAuthError) {
 	if deps.AgentRepo == nil {
-		return nil
+		return "", nil
 	}
 	tenantID := tenancy.TenantID(ctx)
 	seen := map[string]bool{}
@@ -457,19 +466,24 @@ func rejectSupervisedAgents(
 		return check(agent, clientID)
 	}
 
+	actingAgentID := ""
 	if workloadGrant != nil {
 		if rejection := byID(workloadGrant.AgentID, workloadGrant.ClientID); rejection != nil {
-			return rejection
+			return "", rejection
 		}
+		actingAgentID = workloadGrant.AgentID
 	}
 	if subject != nil {
 		if rejection := byID(subject.AgentID, subject.ClientID); rejection != nil {
-			return rejection
+			return "", rejection
 		}
 	}
 	acting, err := deps.AgentRepo.FindByClientID(ctx, tenantID, in.ClientID)
 	if err != nil {
-		return unresolved
+		return "", unresolved
 	}
-	return check(acting, in.ClientID)
+	if actingAgentID == "" && acting != nil {
+		actingAgentID = acting.ID
+	}
+	return actingAgentID, check(acting, in.ClientID)
 }

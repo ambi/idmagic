@@ -20,7 +20,7 @@ model AuditEventQuery {
   limit?: int64;
   @doc("Free text matched as a substring against the text columns stored raw (`type`, `outcome`, and the like). PII columns are excluded.")
   q?: string;
-  @doc("A conjunction (AND) of structured search terms over the field/operator allow list of the registry. `actor.username` is a\nplaintext match reserved for authentication failures, where an account name that never existed still has to be traceable;\nit is not hashed. To search events where the real account is settled, use the `username` query parameter instead -- a\ndifferent path from this field. `client.ip` is matched in plaintext too, neither truncated nor hashed. `event.type` draws\nfrom the allow list of type names in the events section of the specification (`owns_events`), and `outcome` from the enum\nthe Go `eventOutcome` classification defines (success or failure); both are picked from a list rather than typed freely\n(see AuditActorVsTarget and AuditSearchRegistry). `actor.id` and `actor.username` name the actor while `target.id` names\nthe user an administrative operation acted on -- different meanings. `workflow.id`, `workflow_run.id`, and\n`workflow_step.id` are registry attributes matched with `eq` against the workflowId, runId, and stepIndex of the\nIdGovernance LifecycleWorkflow*, WorkflowRun*, and WorkflowStepFailed events. Attribute values and email bodies are not in\nthe payload, so they are not searchable either.")
+  @doc("A conjunction (AND) of structured search terms over the field/operator allow list of the registry. `actor.username` is a\nplaintext match reserved for authentication failures, where an account name that never existed still has to be traceable;\nit is not hashed. To search events where the real account is settled, use the `username` query parameter instead -- a\ndifferent path from this field. `client.ip` is matched in plaintext too, neither truncated nor hashed. `event.type` draws\nfrom the allow list of type names in the events section of the specification (`owns_events`), and `outcome` from the enum\nthe Go `eventOutcome` classification defines (success or failure); both are picked from a list rather than typed freely\n(see AuditActorVsTarget and AuditSearchRegistry). `actor.id` and `actor.username` name the actor while `target.id` names\nthe user an administrative operation acted on -- different meanings. `workflow.id`, `workflow_run.id`, and\n`workflow_step.id` are registry attributes matched with `eq` against the workflowId, runId, and stepIndex of the\nIdGovernance LifecycleWorkflow*, WorkflowRun*, and WorkflowStepFailed events. `actor.type` (`user` or `agent`),\n`agent.id`, `delegation.actor`, `delegation.depth`, and `delegation.mode` are the delegation axes. `delegation.actor`\nnames every principal of the event's `act` chain and matches when any of them matches, so one filter finds the whole chain\nfrom any participant. `delegation.mode` is read from the payload, where the derivation REQ-OAUTH2-049 defines put it;\naudit does not derive it a second time. Events recorded before these axes existed carry none of them and so match no value\non them. Attribute values and email bodies are not in the payload, so they are not searchable either.")
   filter?: AuditEventFilterExpression[];
 }
 
@@ -40,7 +40,7 @@ enum AuditEventSearchTransform {
 }
 
 
-@doc("A search axis permitted in audit event search, that is, one registry entry. It declares the field/operator allow list and\nso fixes a closed search grammar in place of arbitrary SQL or JSONPath. The Go AuditSearchRegistry is the twin of this\nvalue object. Every attribute, `actor.username` and `client.ip` included, is stored and searched in the sidecar as\nplaintext. `actor.id` and `actor.username` name the actor -- who did it -- while `target.id` names the user an\nadministrative operation acted on -- who it was done to; the same word \"user\" means different things (AuditActorVsTarget).\n`event.type` and `outcome` are picked from a list rather than typed freely: `event.type` from the type names in the events\nsection (`owns_events`), and `outcome` from the two values Go's `eventOutcome()` returns, success and failure, with no\nvalue at all for events it does not classify.")
+@doc("A search axis permitted in audit event search, that is, one registry entry. It declares the field/operator allow list and\nso fixes a closed search grammar in place of arbitrary SQL or JSONPath. The Go AuditSearchRegistry is the twin of this\nvalue object. Every attribute, `actor.username` and `client.ip` included, is stored and searched in the sidecar as\nplaintext. `actor.id` and `actor.username` name the actor -- who did it -- while `target.id` names the user an\nadministrative operation acted on -- who it was done to; the same word \"user\" means different things (AuditActorVsTarget).\n`event.type` and `outcome` are picked from a list rather than typed freely: `event.type` from the type names in the events\nsection (`owns_events`), and `outcome` from the two values Go's `eventOutcome()` returns, success and failure, with no\nvalue at all for events it does not classify. `actor.type`, `agent.id`, `delegation.actor`, `delegation.depth`, and\n`delegation.mode` are the delegation axes (REQ-AUDIT-005, REQ-AUDIT-006): they separate what an Agent did for a user from\nwhat the user did (AuditDelegationChain).")
 model AuditEventSearchAttribute {
   @doc("The canonical dotted name of the search axis, such as `actor.username`, `client.ip`, or `event.type`.")
   field: string;
@@ -50,6 +50,8 @@ model AuditEventSearchAttribute {
   transform: AuditEventSearchTransform;
   @doc("The allow list of operators this attribute permits.")
   allowed_operators: AuditEventFilterOperator[];
+  @doc("Whether one event may carry several values on this axis. `delegation.actor` is the only multi-valued axis today: one\nevent names every principal of its `act` chain, and a filter matches when any of them matches. Every other axis holds at\nmost one value per event.")
+  multi_valued: boolean;
   @doc("Whether to offer it as a UI preset in the administrative search builder.")
   ui_visible: boolean;
 }
@@ -86,12 +88,16 @@ model AdminAuditEventListResponse {
 }
 
 
-@doc("The choices that turn `event.type` and `outcome` into pick lists. The UI does not hard-code them; it reads them from the\nsame single source of truth in Go (the category-to-type map and the eventOutcome classification).")
+@doc("The choices that turn the enumerated search axes into pick lists. The UI does not hard-code them; it reads them from the\nsame single source of truth in Go (the category-to-type map, the eventOutcome classification, and the DelegationMode\nderivation REQ-OAUTH2-049 defines).")
 model AuditEventSearchOptionsResponse {
   @doc("The `event.type` values that can be picked, that is, the type names of the events section. It is the union of the\ncategorized types, the same population the event category picker in the administration UI draws from.")
   event_types: string[];
   @doc("The `outcome` values that can be picked. Today there are two, success and failure, and only authentication events are classified.")
   outcomes: string[];
+  @doc("The `actor.type` values that can be picked: `user` and `agent`.")
+  actor_types: string[];
+  @doc("The `delegation.mode` values that can be picked. They are the members of DelegationMode, so the audit filter and an\nintrospection response name the same modes.")
+  delegation_modes: string[];
 }
 
 }

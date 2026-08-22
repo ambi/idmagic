@@ -240,6 +240,93 @@ describe('AdminAuditEventsPage', () => {
     await screen.findByText(t.noMatchingEventsNotice)
   })
 
+  it('builds a delegation filter from the agent axes (REQ-AUDIT-005, wi-377)', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, { events: [] }))),
+    )
+    const onSearch = mock()
+    await renderWithRouter(
+      <AdminAuditEventsPage
+        actorUsername="admin"
+        actorRoles={[]}
+        actorRealm="tenant-1"
+        events={[event]}
+        nextCursor={null}
+        onSearch={onSearch}
+      />,
+    )
+
+    const fieldTypeSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement
+    fireEvent.change(fieldTypeSelect, { target: { value: 'agent.id' } })
+    fireEvent.change(screen.getByPlaceholderText(t.filterFieldAgentIdPlaceholder), {
+      target: { value: 'agt_1' },
+    })
+    // 委譲の軸を選ぶと、過去のイベントには付かないことを注記する。
+    expect(screen.getByText(t.delegationAxesHint)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: t.filterAction }))
+
+    expect(onSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: ['agent.id:eq:agt_1'] }),
+    )
+    await screen.findByText(t.noMatchingEventsNotice)
+  })
+
+  it('expands the delegation chain and filters by a participant (REQ-AUDIT-006, wi-377)', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, { events: [] }))),
+    )
+    const onSearch = mock()
+    const exchanged: AdminAuditEvent = {
+      id: 'evt-exchanged',
+      tenant_id: 'tenant-1',
+      type: 'TokenExchanged',
+      occurred_at: '2026-01-01T00:00:00Z',
+      payload: {
+        actorChain: ['app-b', 'app-a', 'usr_alice'],
+        delegationDepth: 2,
+        delegationMode: 'on_behalf_of',
+        agentId: 'agt_1',
+      },
+    }
+    await renderWithRouter(
+      <AdminAuditEventsPage
+        actorUsername="admin"
+        actorRoles={[]}
+        actorRealm="tenant-1"
+        events={[exchanged]}
+        nextCursor={null}
+        onSearch={onSearch}
+      />,
+    )
+
+    expect(screen.getByText(t.delegationChainHeading)).toBeInTheDocument()
+    expect(screen.getByText(t.delegationModeOnBehalfOfOption)).toBeInTheDocument()
+    // チェーンの中間にいる参加者から、その参加者を含むイベントを引き直せる。
+    fireEvent.click(screen.getByRole('button', { name: `${t.delegationChainSearchAria}: app-a` }))
+    fireEvent.click(screen.getByRole('button', { name: t.filterAction }))
+
+    expect(onSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ filter: ['delegation.actor:eq:app-a'] }),
+    )
+    await screen.findByText(t.noMatchingEventsNotice)
+  })
+
+  it('shows no delegation chain for an event that has none (wi-377)', async () => {
+    await renderWithRouter(
+      <AdminAuditEventsPage
+        actorUsername="admin"
+        actorRoles={[]}
+        actorRealm="tenant-1"
+        events={[event]}
+        nextCursor={null}
+      />,
+    )
+
+    expect(screen.queryByText(t.delegationChainHeading)).not.toBeInTheDocument()
+  })
+
   it('navigates to the next addressable page without appending rows', async () => {
     const onPage = mock()
     await renderWithRouter(

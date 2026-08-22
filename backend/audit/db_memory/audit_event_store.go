@@ -180,34 +180,39 @@ func auditEventMatches(rec *ports.AuditEventRecord, q ports.AuditEventQuery) boo
 }
 
 // auditFilterExprMatches は 1 filter 式を sidecar 検索属性に照合する。PostgreSQL の
-// EXISTS 照合と同じ意味論 (eq / in の完全一致、contains の部分一致) を保つ。
+// EXISTS 照合と同じ意味論 (eq / in の完全一致、contains の部分一致) を保つ。属性が多値の
+// 場合、EXISTS と同じくいずれか 1 つの値が一致すれば真とする。
 func auditFilterExprMatches(rec *ports.AuditEventRecord, expr ports.AuditFilterExpression) bool {
-	val, ok := rec.SearchAttributes[expr.Field]
+	values, ok := rec.SearchAttributes[expr.Field]
 	if !ok {
 		return false
 	}
-	switch expr.Operator {
-	case ports.OpEq:
-		return len(expr.Values) == 1 && val == expr.Values[0]
-	case ports.OpIn:
-		return slices.Contains(expr.Values, val)
-	case ports.OpContains:
-		return len(expr.Values) == 1 && strings.Contains(strings.ToLower(val), strings.ToLower(expr.Values[0]))
-	default:
-		return false
-	}
+	return slices.ContainsFunc(values, func(val string) bool {
+		switch expr.Operator {
+		case ports.OpEq:
+			return len(expr.Values) == 1 && val == expr.Values[0]
+		case ports.OpIn:
+			return slices.Contains(expr.Values, val)
+		case ports.OpContains:
+			return len(expr.Values) == 1 && strings.Contains(strings.ToLower(val), strings.ToLower(expr.Values[0]))
+		default:
+			return false
+		}
+	})
 }
 
 // auditQMatches は q を raw 保存された属性値に対する部分一致で照合する (PII 列は対象外)。
 func auditQMatches(rec *ports.AuditEventRecord, query string) bool {
 	needle := strings.ToLower(query)
-	for field, val := range rec.SearchAttributes {
+	for field, values := range rec.SearchAttributes {
 		attr, ok := ports.LookupSearchAttribute(field)
 		if !ok || !attr.RawStorable {
 			continue
 		}
-		if strings.Contains(strings.ToLower(val), needle) {
-			return true
+		for _, val := range values {
+			if strings.Contains(strings.ToLower(val), needle) {
+				return true
+			}
 		}
 	}
 	return false
