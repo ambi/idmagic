@@ -37,6 +37,11 @@ func ErrorHandler(logger logging.Logger, metrics Metrics) echo.HTTPErrorHandler 
 		logger = logging.Default()
 	}
 	return func(c *echo.Context, err error) {
+		// VerifyBrowserRequest は 403 を書き終えてからこのエラーを返す。要求は
+		// 完全に応答済みなので、未処理のエラーとして記録し直さない。
+		if errors.Is(err, ErrBrowserVerificationFailed) {
+			return
+		}
 		if handled, _ := WriteAccessTokenError(c, err); handled {
 			return
 		}

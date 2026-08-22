@@ -1,6 +1,7 @@
 package support_http
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -45,8 +46,9 @@ func TestVerifyBrowserRequest(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/x", http.NoBody)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		if err := d.VerifyBrowserRequest(c); err != nil {
-			t.Fatal(err)
+		// 403 を書くだけでは足りない。呼び出し元が処理を止められるよう、エラーも返す。
+		if err := d.VerifyBrowserRequest(c); !errors.Is(err, ErrBrowserVerificationFailed) {
+			t.Fatalf("err = %v, want ErrBrowserVerificationFailed", err)
 		}
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status=%d", rec.Code)
@@ -59,8 +61,9 @@ func TestVerifyBrowserRequest(t *testing.T) {
 		req.Header.Set("Origin", "https://idp.test")
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		if err := d.VerifyBrowserRequest(c); err != nil {
-			t.Fatal(err)
+		// 403 を書くだけでは足りない。呼び出し元が処理を止められるよう、エラーも返す。
+		if err := d.VerifyBrowserRequest(c); !errors.Is(err, ErrBrowserVerificationFailed) {
+			t.Fatalf("err = %v, want ErrBrowserVerificationFailed", err)
 		}
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status=%d", rec.Code)
@@ -75,8 +78,9 @@ func TestVerifyBrowserRequest(t *testing.T) {
 		req.AddCookie(&http.Cookie{Name: CSRFCookie, Value: "token-b"})
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
-		if err := d.VerifyBrowserRequest(c); err != nil {
-			t.Fatal(err)
+		// 403 を書くだけでは足りない。呼び出し元が処理を止められるよう、エラーも返す。
+		if err := d.VerifyBrowserRequest(c); !errors.Is(err, ErrBrowserVerificationFailed) {
+			t.Fatalf("err = %v, want ErrBrowserVerificationFailed", err)
 		}
 		if rec.Code != http.StatusForbidden {
 			t.Fatalf("status=%d", rec.Code)
