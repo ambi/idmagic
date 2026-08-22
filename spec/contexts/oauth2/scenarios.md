@@ -396,7 +396,7 @@
 - ACTOR RegisteredClient
 - GIVEN `agent-app` が起票した承認要求 `AR1` が存在する
 - WHEN `agent-app` が `auth_req_id=AR1` を交換する
-  - ALT ユーザーが "AR1" を拒否済みである → エラー "AccessDeniedError" → 承認要求 "AR1" の状態は Denied のままになる
+  - ALT ユーザーが "AR1" を拒否済みである → エラー "OAuthAccessDeniedError" → トークンは発行されず、承認要求 "AR1" の状態は Denied のままになる
   - ALT "AR1" が expires_at を過ぎている → requested_at "2026-01-01T00:00:00Z"・expires_at "2026-01-01T00:05:00Z" の "AR1" を時刻 "2026-01-01T00:06:00Z" で交換する → エラー "ExpiredTokenError" → 承認要求 "AR1" の状態は Expired になる
   - ALT 承認済みの "AR1" を 2 回交換する → 1 回目の応答には access_token が含まれる → 2 回目はエラー "InvalidGrantError" → 承認要求 "AR1" の状態は Consumed のままになる
   - ALT 承認済みの "AR1" を並行に 2 回交換する → ちょうど一方が成功し、もう一方はエラー "InvalidGrantError"

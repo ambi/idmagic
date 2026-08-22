@@ -520,6 +520,9 @@ func TestBrowserAuthorizationFlowEnrollsUnregisteredUserWithAdminBypass(t *testi
 	}
 }
 
+// REQ-AUTHENTICATION-018: 管理者が承認していないユーザーはログインを完了できず、
+// 認証要素の登録 API も使えない。ログインの拒否だけを確かめると、拒否された後に
+// 登録 API を直接叩いて認証要素を作る経路が残る。
 func TestBrowserAuthorizationFlowRejectsUnregisteredUserWithoutEnrollmentApproval(t *testing.T) {
 	srv := newServerWithTOTPPolicy(t, "", true)
 	defer srv.Close()
@@ -532,6 +535,25 @@ func TestBrowserAuthorizationFlowRejectsUnregisteredUserWithoutEnrollmentApprova
 	result := postJSON[map[string]string](t, client, srv.URL+"/realms/default/api/auth/login", transaction.CSRFToken, map[string]string{"username": demoUsername, "password": demoPassword})
 	if !strings.Contains(result["redirect_to"], "error=access_denied") {
 		t.Fatalf("redirect=%q", result["redirect_to"])
+	}
+
+	payload := mustJSONBytes(t, map[string]string{})
+	req, _ := http.NewRequest(http.MethodPost, srv.URL+"/realms/default/api/auth/mfa/enrollment/totp/start", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Csrf-Token", transaction.CSRFToken)
+	req.Header.Set("Origin", "http://test")
+	enrollment, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("POST /api/auth/mfa/enrollment/totp/start: %v", err)
+	}
+	defer enrollment.Body.Close()
+	body, _ := io.ReadAll(enrollment.Body)
+	if enrollment.StatusCode != http.StatusForbidden {
+		t.Fatalf("enrollment status=%d, want 403; body=%s", enrollment.StatusCode, body)
+	}
+	// 登録が始まっていないので、シークレットは応答に現れない。
+	if !strings.Contains(string(body), "mfa_enrollment_not_allowed") || strings.Contains(string(body), "secret") {
+		t.Fatalf("enrollment body=%s, want an mfa_enrollment_not_allowed refusal carrying no secret", body)
 	}
 }
 

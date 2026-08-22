@@ -8,8 +8,11 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
 import {
+  checkContractRefusalsAreDeclared,
   checkRefusalCoverage,
   checkSecurityGuards,
+  contractRefusalsOfStateChanges,
+  declaredRefusalTypes,
   type Finding,
   type GoFile,
   refusalScenarioIds,
@@ -39,12 +42,26 @@ const goFiles: GoFile[] = await Promise.all(
 const findings: Finding[] = [...checkSecurityGuards(goFiles)]
 
 // R3 reads the refusals the specification declares and the ids the tests name.
+// R4 reads the same scenarios against the 403 responses TypeSpec declares.
 const contextsDir = resolve(root, 'spec/contexts')
 const declared: string[] = []
+let promised = 0
 for (const context of await readdir(contextsDir)) {
-  const scenarios = resolve(contextsDir, context, 'scenarios.md')
-  const source = await readFile(scenarios, 'utf8').catch(() => undefined)
-  if (source) declared.push(...refusalScenarioIds(source))
+  const dir = resolve(contextsDir, context)
+  const source = await readFile(resolve(dir, 'scenarios.md'), 'utf8').catch(() => undefined)
+  if (!source) continue
+  declared.push(...refusalScenarioIds(source))
+
+  const contract = new Map<string, string[]>()
+  for (const entry of await readdir(dir)) {
+    if (!entry.endsWith('.tsp')) continue
+    const typespec = await readFile(resolve(dir, entry), 'utf8')
+    for (const [type, operations] of contractRefusalsOfStateChanges(typespec)) {
+      contract.set(type, [...(contract.get(type) ?? []), ...operations])
+    }
+  }
+  promised += contract.size
+  findings.push(...checkContractRefusalsAreDeclared(context, contract, declaredRefusalTypes(source)))
 }
 
 const cited = new Set<string>()
@@ -62,5 +79,6 @@ for (const finding of findings) {
 }
 if (findings.length > 0) process.exit(1)
 console.log(
-  `ok  security controls (${declared.length} declared refusal(s), ${debt.untested.length} awaiting a test)`,
+  `ok  security controls (${declared.length} declared refusal(s), ${promised} promised by a 403 on a ` +
+    `state change, ${debt.untested.length} awaiting a test)`,
 )

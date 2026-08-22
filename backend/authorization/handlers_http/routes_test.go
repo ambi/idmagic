@@ -61,7 +61,10 @@ func activeAgent(id string) *agentdomain.Agent {
 	}
 }
 
-func newServer(t *testing.T, user *userdomain.User, agents ...*agentdomain.Agent) (*echo.Echo, *[]spec.DomainEvent) {
+// newServer は組み立てたサーバーに加えて、発行イベントと保管庫を返す。拒否された
+// ことは応答だけでは分からないので、拒否された書き込みが保管庫に何も残していない
+// ことを、テストが API を介さずに読み直せるようにしている。
+func newServer(t *testing.T, user *userdomain.User, agents ...*agentdomain.Agent) (*echo.Echo, *[]spec.DomainEvent, *authorizationmemory.Store) {
 	t.Helper()
 	userRepo := usermemory.NewUserRepository()
 	userRepo.Seed(user)
@@ -98,7 +101,7 @@ func newServer(t *testing.T, user *userdomain.User, agents ...*agentdomain.Agent
 		Authorizer:    authorizationLocal.Local{},
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: user.ID, AuthTime: time.Now().Unix()}},
 	})
-	return e, &events
+	return e, &events, store
 }
 
 func get(t *testing.T, e *echo.Echo, path string) *httptest.ResponseRecorder {
@@ -166,7 +169,7 @@ func decode(t *testing.T, rec *httptest.ResponseRecorder, into any) {
 
 func TestAuthorizationAdminRoutes(t *testing.T) {
 	t.Run("publishing a model, writing tuples, and checking access", func(t *testing.T) {
-		e, events := newServer(t, actor("admin", []string{"admin"}))
+		e, events, _ := newServer(t, actor("admin", []string{"admin"}))
 
 		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/model"); rec.Code != http.StatusNotFound {
 			t.Fatalf("an unpublished model must be 404, got %d %s", rec.Code, rec.Body.String())
@@ -255,7 +258,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 	// wi-53 の手動確認手順そのもの: 文書 A だけを許可し、エージェント代行で
 	// A は許可・B は拒否になることを HTTP 経由で確かめる。
 	t.Run("an agent delegate reaches only the document the user was granted", func(t *testing.T) {
-		e, _ := newServer(t, actor("admin", []string{"admin"}), activeAgent("researcher"))
+		e, _, _ := newServer(t, actor("admin", []string{"admin"}), activeAgent("researcher"))
 		if rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", referenceModelRequest()); rec.Code != http.StatusCreated {
 			t.Fatalf("PutAuthorizationModel status=%d body=%s", rec.Code, rec.Body.String())
 		}
@@ -301,7 +304,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 	})
 
 	t.Run("an inconsistent model is rejected with 422", func(t *testing.T) {
-		e, _ := newServer(t, actor("admin", []string{"admin"}))
+		e, _, _ := newServer(t, actor("admin", []string{"admin"}))
 		rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", map[string]any{
 			"resource_types": []map[string]any{
 				{"name": "document", "relations": []map[string]any{
@@ -317,7 +320,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 	})
 
 	t.Run("a tuple the model does not declare is rejected with 422", func(t *testing.T) {
-		e, _ := newServer(t, actor("admin", []string{"admin"}))
+		e, _, _ := newServer(t, actor("admin", []string{"admin"}))
 		if rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", referenceModelRequest()); rec.Code != http.StatusCreated {
 			t.Fatalf("PutAuthorizationModel status=%d body=%s", rec.Code, rec.Body.String())
 		}
@@ -331,7 +334,7 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 
 	// REQ-AUTHORIZATION-006: 呼び出し元のテナントで解決した境界が常に優先される。
 	t.Run("tuples written in one realm are invisible from another", func(t *testing.T) {
-		e, _ := newServer(t, actor("admin", []string{"admin"}))
+		e, _, _ := newServer(t, actor("admin", []string{"admin"}))
 		if rec := post(t, e, realmPrefix+"/api/admin/v1/authorization/model", referenceModelRequest()); rec.Code != http.StatusCreated {
 			t.Fatalf("PutAuthorizationModel status=%d body=%s", rec.Code, rec.Body.String())
 		}
@@ -346,23 +349,47 @@ func TestAuthorizationAdminRoutes(t *testing.T) {
 		}
 	})
 
+	// REQ-AUTHORIZATION-010: 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる。
+	// 拒否は 403 だけでは確かめたことにならない。妥当な本文をそのまま送って拒否させ、
+	// 版もタプルも 1 つも増えていないことを保管庫から読み直す。
 	t.Run("a non-administrator is rejected on every endpoint", func(t *testing.T) {
-		e, _ := newServer(t, actor("alice", nil))
+		e, _, store := newServer(t, actor("alice", nil))
 		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/model"); rec.Code != http.StatusForbidden {
 			t.Fatalf("GetAuthorizationModel status=%d, want 403", rec.Code)
 		}
 		if rec := get(t, e, realmPrefix+"/api/admin/v1/authorization/relation-tuples"); rec.Code != http.StatusForbidden {
 			t.Fatalf("ListRelationTuples status=%d, want 403", rec.Code)
 		}
-		for _, path := range []string{
-			"/api/admin/v1/authorization/model",
-			"/api/admin/v1/authorization/relation-tuples",
-			"/api/admin/v1/authorization/check",
-			"/api/admin/v1/authorization/list-accessible-resources",
+		for _, call := range []struct {
+			path string
+			body map[string]any
+		}{
+			{"/api/admin/v1/authorization/model", referenceModelRequest()},
+			{"/api/admin/v1/authorization/relation-tuples", map[string]any{
+				"writes": []map[string]any{viewerTuple("user", "alice")},
+			}},
+			{"/api/admin/v1/authorization/check", map[string]any{}},
+			{"/api/admin/v1/authorization/list-accessible-resources", map[string]any{}},
 		} {
-			if rec := post(t, e, realmPrefix+path, map[string]any{}); rec.Code != http.StatusForbidden {
-				t.Fatalf("POST %s status=%d, want 403", path, rec.Code)
+			if rec := post(t, e, realmPrefix+call.path, call.body); rec.Code != http.StatusForbidden {
+				t.Fatalf("POST %s status=%d, want 403", call.path, rec.Code)
 			}
+		}
+
+		ctx := context.Background()
+		model, err := authorizationmemory.NewAuthorizationModelRepository(store).Latest(ctx, "acme")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if model != nil {
+			t.Fatalf("model = %+v, want the refused publish to have created no version", model)
+		}
+		version, err := authorizationmemory.NewRelationTupleRepository(store).Version(ctx, "acme")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if version != 0 {
+			t.Fatalf("tuple version = %d, want the refused write to have left the store untouched", version)
 		}
 	})
 }

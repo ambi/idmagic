@@ -82,3 +82,11 @@
 - WHEN CheckAccess が判定を下す
 - THEN 監査イベントはリソース型、関係、許可・不許可、モデルの版、関係名だけの経路、拒否理由、代行チェーンの段数を持つ
 - THEN リソース識別子はダイジェストとして残り、主体識別子とタプルの内容は監査へ複製されない
+
+### REQ-AUTHORIZATION-010: 認可モデルとタプルの更新も判定の呼び出しも管理者に限られる
+- ACTOR TenantAdministrator
+- GIVEN "alice" は認証済みだが `admin` ロールを持たない
+- WHEN "alice" が PutAuthorizationModel または WriteRelationTuples を呼ぶ
+  - ALT "alice" が CheckAccess または ListAccessibleResources を呼ぶ → AccessDeniedError で拒否される
+- THEN AccessDeniedError で拒否される
+- THEN 認可モデルの版は 1 つも作られず、タプルは 1 件も書き込まれない

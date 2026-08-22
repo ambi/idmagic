@@ -10,12 +10,14 @@
  * client read a 403.
  *
  * R1 and R2 make that shape unrepresentable. R3 makes the absence of a test for
- * a declared refusal visible instead of silent.
+ * a declared refusal visible instead of silent. R4 asks the question R3 cannot:
+ * not whether a declared refusal is tested, but whether the refusal the contract
+ * already promises was declared at all.
  */
 
 export type GoFile = { path: string; source: string }
 
-export type Finding = { path: string; rule: 'R1' | 'R2' | 'R3'; message: string }
+export type Finding = { path: string; rule: 'R1' | 'R2' | 'R3' | 'R4'; message: string }
 
 /**
  * A function used as a guard: somewhere a caller writes
@@ -162,8 +164,8 @@ const REFUSAL_WORDS =
  * fragile, and the property being checked — a declared refusal has a test that
  * names it — is worth having either way.
  */
-export function refusalScenarioIds(scenarios: string): string[] {
-  const ids: string[] = []
+function refusalSteps(scenarios: string): Array<{ id: string; line: string }> {
+  const steps: Array<{ id: string; line: string }> = []
   let current = ''
   for (const line of scenarios.split('\n')) {
     const heading = line.match(/^### (REQ-[A-Z0-9]+-\d+)/)
@@ -175,7 +177,15 @@ export function refusalScenarioIds(scenarios: string): string[] {
     const step = /^\s+- ALT /.test(line) || /^- THEN /.test(line)
     if (!step) continue
     if (!REFUSAL_ERROR.test(line) && !REFUSAL_WORDS.test(line)) continue
-    if (!ids.includes(current)) ids.push(current)
+    steps.push({ id: current, line })
+  }
+  return steps
+}
+
+export function refusalScenarioIds(scenarios: string): string[] {
+  const ids: string[] = []
+  for (const step of refusalSteps(scenarios)) {
+    if (!ids.includes(step.id)) ids.push(step.id)
   }
   return ids
 }
@@ -221,6 +231,75 @@ export function checkRefusalCoverage(
         message: `${id} now has a test that names it. Remove it from the list; the list only shrinks.`,
       })
     }
+  }
+  return findings
+}
+
+/**
+ * The refusals the contract promises for the operations that change state.
+ *
+ * TypeSpec already says, per operation, which error body a 403 carries, and a
+ * 403 on a state-changing operation is the contract stating who may not perform
+ * it. That is the join R4 needs: the error type is written on both sides — in
+ * TypeSpec as the response body, in the scenario as the name of what refuses —
+ * so no reference has to be invented for the scenario to carry.
+ *
+ * Returns error type -> the operations that answer 403 with it.
+ */
+export function contractRefusalsOfStateChanges(typespec: string): Map<string, string[]> {
+  const bodies = new Map<string, string[]>()
+  for (const union of typespec.matchAll(/union\s+(\w+)Error(\d{3})Body\s*\{([^}]*)\}/g)) {
+    const types = [...(union[3] ?? '').matchAll(/\b(\w+Error)\b/g)].map((match) => match[1] ?? '')
+    bodies.set(`${union[1]}:${union[2]}`, types)
+  }
+  const refusals = new Map<string, string[]>()
+  for (const op of typespec.matchAll(/@(get|post|put|patch|delete)\s*\nop\s+(\w+)\s*\(/g)) {
+    if (op[1] === 'get') continue
+    for (const type of bodies.get(`${op[2]}:403`) ?? []) {
+      refusals.set(type, [...(refusals.get(type) ?? []), op[2] ?? ''])
+    }
+  }
+  return refusals
+}
+
+/** The error types the scenarios name in a step that refuses. */
+export function declaredRefusalTypes(scenarios: string): Set<string> {
+  const types = new Set<string>()
+  for (const step of refusalSteps(scenarios)) {
+    for (const match of step.line.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)) types.add(match[1] ?? '')
+  }
+  return types
+}
+
+/**
+ * R4: a refusal the contract promises must be declared as behavior.
+ *
+ * R3 checks the refusals that were written down. A context that writes none
+ * passes it without being asked anything, and that is the hole: a 403 on a
+ * state-changing operation is a control the product relies on, and if no
+ * scenario says when it fires, an implementation that stops refusing
+ * contradicts nothing.
+ *
+ * The judgment is per context, not per operation, so a refusal declared for a
+ * read satisfies the state-changing operations that answer with the same type.
+ * Reaching per-operation needs a link between an operation and a scenario that
+ * neither side carries today; see wi-391 for the measurement.
+ */
+export function checkContractRefusalsAreDeclared(
+  context: string,
+  contract: Map<string, string[]>,
+  declared: Set<string>,
+): Finding[] {
+  const findings: Finding[] = []
+  for (const [type, operations] of contract) {
+    if (declared.has(type)) continue
+    findings.push({
+      path: `spec/contexts/${context}/scenarios.md`,
+      rule: 'R4',
+      message:
+        `${operations.join(', ')} answer 403 with ${type}, but no scenario declares that refusal. ` +
+        'State when the operation refuses and what the refusal leaves untouched.',
+    })
   }
   return findings
 }

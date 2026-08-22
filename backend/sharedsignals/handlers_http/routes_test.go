@@ -34,6 +34,11 @@ func newSharedSignalsHandler(t *testing.T) *echo.Echo {
 		ID: "admin", PreferredUsername: "admin", PasswordHash: "unused",
 		Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now,
 	})
+	// 管理者でない主体でも同じ経路を通せるようにしておく (REQ-SHAREDSIGNALS-011)。
+	userRepo.Seed(&userdomain.User{
+		ID: "alice", PreferredUsername: "alice", PasswordHash: "unused",
+		CreatedAt: now, UpdatedAt: now,
+	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
 		Deps:          support.Deps{Issuer: "http://idp.test"},
@@ -88,6 +93,45 @@ func sharedSignalsAdminPost(t *testing.T, e *echo.Echo, path, csrf string, cooki
 	response := httptest.NewRecorder()
 	e.ServeHTTP(response, request)
 	return response
+}
+
+// REQ-SHAREDSIGNALS-011: SsfStream の登録は管理者に限られる。管理者なら受理される
+// 本文をそのまま送って拒否させ、ストリームが 1 本も増えていないことを読み直す。
+func TestRegisterTransmitterStreamRejectsNonAdmin(t *testing.T) {
+	e := newSharedSignalsHandler(t)
+	csrf, cookie := sharedSignalsAdminCSRF(t, e)
+
+	request := httptest.NewRequest(http.MethodPost, "/realms/default/api/admin/v1/shared-signals/streams/transmitter",
+		bytes.NewReader([]byte(`{"delivery_endpoint":"https://receiver.example/events","audience":"https://receiver.example","event_types":["https://schemas.openid.net/secevent/caep/event-type/session-revoked"]}`)))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Origin", "http://idp.test")
+	request.Header.Set("X-Csrf-Token", csrf)
+	request.Header.Set("X-Demo-Sub", "alice")
+	request.AddCookie(cookie)
+	response := httptest.NewRecorder()
+	e.ServeHTTP(response, request)
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s, want 403", response.Code, response.Body.String())
+	}
+
+	listed := httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/shared-signals/streams", http.NoBody)
+	listed.Header.Set("X-Demo-Sub", "admin")
+	listing := httptest.NewRecorder()
+	e.ServeHTTP(listing, listed)
+	if listing.Code != http.StatusOK {
+		t.Fatalf("list status=%d body=%s", listing.Code, listing.Body.String())
+	}
+	var view struct {
+		Streams []struct {
+			ID string `json:"id"`
+		} `json:"streams"`
+	}
+	if err := json.Unmarshal(listing.Body.Bytes(), &view); err != nil {
+		t.Fatal(err)
+	}
+	if len(view.Streams) != 0 {
+		t.Fatalf("streams = %#v, want the refused registration to have left none behind", view.Streams)
+	}
 }
 
 // 管理 API 側: 業務規則違反は 422 の Problem Details。

@@ -120,3 +120,11 @@
   - ALT ワークフローのトリガーフィルターが対象 User の現在の属性に一致しない → レスポンスはすべてのアクションを `blocked`、理由を `trigger_not_matched` として返す
 - THEN すでに目的の状態にあるアクションは `no_op`、状態が変わるアクションは `would_change`、リソースが存在しないなど実行不能なアクションは `blocked` と理由を返す
 - THEN WorkflowRun、Job、メンバーシップ、割り当て、必須操作、ステータス、メールアドレスは一切作成・変更されない
+
+### REQ-IDGOVERNANCE-014: ライフサイクルワークフローの管理は管理者に限られる
+- ACTOR TenantAdministrator
+- GIVEN "alice" は認証済みだが `admin` ロールを持たない
+- WHEN "alice" がワークフローの作成、更新、有効化、無効化、削除、プレビュー、または WorkflowRun の再試行を要求する
+  - ALT "alice" がワークフローの一覧または詳細を要求する → AccessDeniedError で拒否される
+- THEN AccessDeniedError で拒否される
+- THEN ワークフローは作成も変更もされず、WorkflowRun と Job は生成されない

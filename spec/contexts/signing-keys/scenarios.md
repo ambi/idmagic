@@ -73,3 +73,11 @@
   - ALT 管理者が現在の署名鍵 K2 を無効化しようとする → エラー "InvalidRequestError"
 - THEN K1 は JWKS から除去される
 - THEN K2 は現在の署名鍵のまま残る
+
+### REQ-SIGNINGKEYS-011: 署名鍵の回転と無効化は自テナントの管理者だけが要求できる
+- ACTOR TenantAdministrator
+- GIVEN テナント "tenant-a" の現在の署名鍵は `kid` "kid-1" である
+- WHEN `admin` も `system_admin` も持たない "alice" が署名鍵の回転を要求する
+  - ALT `signing-keys:read` だけを持つ API アクセストークンで回転または無効化を要求する → 必要なスコープが `signing-keys:write` であることを示して拒否される
+- THEN AccessDeniedError で拒否される
+- THEN 現在の署名鍵は "kid-1" のまま変わらず、SigningKeyRotated は発行されない

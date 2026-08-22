@@ -188,13 +188,29 @@ func TestAdminKeysRotateAllowsTenantAdmin(t *testing.T) {
 	}
 }
 
+// REQ-SIGNINGKEYS-011: admin / system_admin いずれのロールも持たないユーザーは回転を
+// 要求できない。拒否されたことは 403 だけでは分からないので、現在の署名鍵が変わって
+// いないことと、回転イベントが 1 件も出ていないことまで確かめる。
 func TestAdminKeysRotateRejectsNonAdmin(t *testing.T) {
-	// admin / system_admin いずれのロールも持たないユーザーは回転できない。
 	plain := keyAdminUser("user_alice", tenancydomain.DefaultTenantID, []string{})
-	e, _, _ := newKeyAdminServer(t, plain)
+	e, keyStore, events := newKeyAdminServer(t, plain)
+	before, err := keyStore.GetActiveKey(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
 	rec := postRotate(t, e, "/realms/default/api/admin/v1/keys/rotate")
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	after, err := keyStore.GetActiveKey(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Kid != before.Kid {
+		t.Fatalf("active kid = %q, want the refusal to leave %q in place", after.Kid, before.Kid)
+	}
+	if len(*events) != 0 {
+		t.Fatalf("events = %+v, want no rotation to be emitted", *events)
 	}
 }
 
@@ -273,6 +289,8 @@ func TestAdminKeysHealthListsPerTenantHealth(t *testing.T) {
 	}
 }
 
+// REQ-SIGNINGKEYS-009: 通常のテナント管理者はシステムコンソールの署名鍵ヘルスに
+// アクセスできない。
 func TestAdminKeysHealthRejectsPlainAdmin(t *testing.T) {
 	admin := keyAdminUser("user_admin", tenancydomain.DefaultTenantID, []string{"admin"})
 	e, _, _ := newKeyAdminServer(t, admin)

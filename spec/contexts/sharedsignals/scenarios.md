@@ -83,3 +83,11 @@
   - ALT `sub` がどの Agent にも束縛先クライアントにも一致しない → `SecurityEventRejectedError` で拒否される
 - THEN "A1" の AgentRevocationEpoch が前進する
 - THEN "SecurityEventReceived" が発行される
+
+### REQ-SHAREDSIGNALS-011: SsfStream の登録と状態変更は管理者に限られる
+- ACTOR TenantAdministrator
+- GIVEN "alice" は認証済みだが `admin` ロールを持たない
+- WHEN "alice" が送信側または受信側の SsfStream を登録する
+  - ALT "alice" がストリームの無効化、有効化、更新、削除を要求する → AccessDeniedError で拒否される
+- THEN AccessDeniedError で拒否される
+- THEN SsfStream は作成されず、既存のストリームの状態も変わらない

@@ -175,7 +175,7 @@
 - GIVEN ユーザーは TOTP と WebAuthn のいずれの認証要素も持たない
 - GIVEN 管理者が対象ユーザーへ有効な単回限りの登録バイパスを発行済みである
 - WHEN ユーザーが正しいパスワードを送信する
-  - ALT 登録バイパスがない、取り消し済み、消費済み、または期限切れである → パスワードが正しくてもログインを完了せずアクセスを拒否する → 認証要素の登録 API も利用できない
+  - ALT 登録バイパスがない、取り消し済み、消費済み、または期限切れである → パスワードが正しくてもログインを完了せずアクセスを拒否する → 認証要素の登録 API は MfaEnrollmentNotAllowedError で拒否し、認証要素を作らない
 - THEN バイパスを消費し、同じ LoginSession は `pending_purpose=Enrollment` の未完了状態になる
 - THEN `MfaEnrollmentRequired` と `MfaEnrollmentBypassConsumed` が発行され、登録専用画面へ進む
 - WHEN ユーザーが TOTP のシークレットに対する正しいコードで登録を確定する

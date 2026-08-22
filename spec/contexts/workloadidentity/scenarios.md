@@ -64,3 +64,11 @@
 - GIVEN Agent "other-tenant-agent" はテナント "tenant-b" に属する
 - WHEN "prod-cluster" 配下に `agent_id="other-tenant-agent"` を指定して CreateAgentWorkloadBinding を呼ぶ
 - THEN CreateAgentWorkloadBinding が InvalidRequestError で拒否され、関連付けは作成されない
+
+### REQ-WORKLOADIDENTITY-010: 信頼設定と関連付けの管理は管理者に限られる
+- ACTOR TenantAdministrator
+- GIVEN "alice" は認証済みだが `admin` ロールを持たない
+- WHEN "alice" が WorkloadTrustBundle の登録を要求する
+  - ALT "alice" が信頼設定の更新、無効化、再有効化、削除、JWKS の再取得、または関連付けの作成・無効化・再有効化・削除を要求する → AccessDeniedError で拒否される
+- THEN AccessDeniedError で拒否される
+- THEN WorkloadTrustBundle は作成されず、既存の信頼設定と関連付けの状態も変わらない

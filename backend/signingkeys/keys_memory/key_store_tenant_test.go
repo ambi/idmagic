@@ -21,6 +21,7 @@ func tenantCtx(id string) context.Context {
 }
 
 // SCL scenario "XML federation署名資格情報はテナントと用途で分離される" の RED。
+// REQ-SIGNINGKEYS-005: XML フェデレーション署名資格情報はテナントと用途で分離される。
 func TestInMemoryKeyStoreSeparatesXMLFederationUsage(t *testing.T) {
 	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
@@ -55,6 +56,7 @@ func TestInMemoryKeyStoreSeparatesXMLFederationUsage(t *testing.T) {
 }
 
 // SCL scenario "grace期間終了後の署名鍵はJWKSから除去されarchiveされる" の RED。
+// REQ-SIGNINGKEYS-002: 猶予期間を過ぎた検証用鍵は JWKS から除かれる。
 func TestInMemoryKeyStoreArchivesExpiredVerifyingKey(t *testing.T) {
 	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
@@ -84,6 +86,7 @@ func TestInMemoryKeyStoreArchivesExpiredVerifyingKey(t *testing.T) {
 }
 
 // TenantJwksIsolation 不変条件: テナント指定 JWKS に載る鍵はすべて当該テナントに属する。
+// REQ-SIGNINGKEYS-004: テナントごとの JWKS は互いに分離される。
 func TestInMemoryKeyStoreTenantIsolation(t *testing.T) {
 	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {
@@ -161,6 +164,7 @@ func TestInMemoryKeyStoreRotateKeepsTenantScope(t *testing.T) {
 	}
 }
 
+// REQ-SIGNINGKEYS-010: 現在の署名鍵は即時無効化できない。
 func TestInMemoryKeyStoreRejectsDisablingActiveKey(t *testing.T) {
 	ks, err := signingcrypto.NewInMemoryKeyStore()
 	if err != nil {

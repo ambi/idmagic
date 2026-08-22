@@ -68,6 +68,15 @@ func TestAdminApiTokenScopeEnforcement(t *testing.T) {
 			wantRequired: "wsfed:write",
 		},
 		{
+			// REQ-SIGNINGKEYS-011: signing-keys:read だけでは鍵の回転へ届かない。
+			// 参照のスコープを配った相手が署名鍵を差し替えられないことそのものなので、
+			// 宣言だけでなくここで固定する。
+			name: "signing key read scope does not reach a rotation", method: http.MethodPost,
+			routePath:    "/api/admin/v1/keys/rotate",
+			granted:      []apitokendomain.Scope{apitokendomain.ScopeSigningKeysRead},
+			wantRequired: "signing-keys:write",
+		},
+		{
 			name: "another resource's scope does not reach", method: http.MethodGet,
 			routePath: "/api/admin/v1/users",
 			granted:   []apitokendomain.Scope{apitokendomain.ScopeSamlRead},

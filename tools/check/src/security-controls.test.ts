@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'bun:test'
 import {
+  checkContractRefusalsAreDeclared,
   checkRefusalCoverage,
   checkSecurityGuards,
+  contractRefusalsOfStateChanges,
+  declaredRefusalTypes,
   refusalScenarioIds,
 } from './security-controls.ts'
 
@@ -219,5 +222,87 @@ describe('checkRefusalCoverage', () => {
     const findings = checkRefusalCoverage([], new Set(), ['REQ-JOBS-012'])
     expect(findings).toHaveLength(1)
     expect(findings[0]?.message).toContain('no longer declares one')
+  })
+})
+
+// The shape TypeSpec is generated in: the 403 body is a union named after the
+// operation, and the decorators sit above the method.
+const rotateKey = [
+  'union RotateTenantSigningKeyError403Body {',
+  '  IdMagic.Contract.AccessDeniedError,',
+  '}',
+  '',
+  '@TypeSpec.OpenAPI.operationId("RotateTenantSigningKey")',
+  '@route("/api/admin/v1/keys/rotate")',
+  '@post',
+  'op RotateTenantSigningKey(',
+  '',
+  '): RotateTenantSigningKeySuccess_200 | RotateTenantSigningKeyError403;',
+].join('\n')
+
+describe('contractRefusalsOfStateChanges', () => {
+  it('reads the 403 body of a state-changing operation', () => {
+    expect([...contractRefusalsOfStateChanges(rotateKey)]).toEqual([
+      ['AccessDeniedError', ['RotateTenantSigningKey']],
+    ])
+  })
+
+  // A refused read runs no risk of leaving an effect behind, and demanding a
+  // scenario for every listing would drown the rule in paperwork.
+  it('ignores a read', () => {
+    const listKeys = rotateKey
+      .replaceAll('RotateTenantSigningKey', 'ListAdminKeys')
+      .replace('@post', '@get')
+    expect([...contractRefusalsOfStateChanges(listKeys)]).toEqual([])
+  })
+
+  it('ignores a status other than 403', () => {
+    const badRequest = rotateKey.replaceAll('403', '400')
+    expect([...contractRefusalsOfStateChanges(badRequest)]).toEqual([])
+  })
+})
+
+describe('checkContractRefusalsAreDeclared', () => {
+  const contract = contractRefusalsOfStateChanges(rotateKey)
+
+  it('rejects a promised refusal no scenario declares', () => {
+    const scenarios = [
+      '### REQ-SIGNINGKEYS-001: rotation keeps the previous kid on the JWKS',
+      '- WHEN the administrator rotates the signing key',
+      '- THEN both kids are on the JWKS',
+    ].join('\n')
+    const findings = checkContractRefusalsAreDeclared(
+      'signing-keys',
+      contract,
+      declaredRefusalTypes(scenarios),
+    )
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.rule).toBe('R4')
+    expect(findings[0]?.message).toContain('RotateTenantSigningKey')
+    expect(findings[0]?.path).toBe('spec/contexts/signing-keys/scenarios.md')
+  })
+
+  it('accepts the refusal once a scenario declares it', () => {
+    const scenarios = [
+      '### REQ-SIGNINGKEYS-011: only an administrator rotates a signing key',
+      '- WHEN "operator" rotates the signing key',
+      '- THEN AccessDeniedError で拒否され、有効な鍵は変わらない',
+    ].join('\n')
+    expect(
+      checkContractRefusalsAreDeclared('signing-keys', contract, declaredRefusalTypes(scenarios)),
+    ).toEqual([])
+  })
+
+  // The error type has to be named where the refusal is, not anywhere in the
+  // document: a success step mentioning the type says nothing about when it fires.
+  it('does not accept the type named outside a refusal', () => {
+    const scenarios = [
+      '### REQ-SIGNINGKEYS-001: rotation keeps the previous kid on the JWKS',
+      '- GIVEN the AccessDeniedError body is documented',
+      '- THEN both kids are on the JWKS',
+    ].join('\n')
+    expect(
+      checkContractRefusalsAreDeclared('signing-keys', contract, declaredRefusalTypes(scenarios)),
+    ).toHaveLength(1)
   })
 })

@@ -200,6 +200,40 @@ func TestApprovalFlowPollingDecisionAndReplay(t *testing.T) {
 	}
 }
 
+// REQ-OAUTH2-042: a denied approval never becomes a token. The refusal is the
+// OAuth-shaped access_denied, and the request stays Denied: an exchange that
+// answered "denied" while still issuing would look identical from the error alone.
+func TestApprovalExchangeRejectsDeniedRequest(t *testing.T) {
+	f := newApprovalFixture(t)
+	t0 := time.Now().UTC()
+	started, err := approvalusecases.StartApproval(f.ctx, f.startDeps, approvalusecases.StartApprovalInput{
+		ClientID: "agent-app", LoginHint: "alice", Scope: "openid",
+	}, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	records, _ := f.store.ListPendingForUser(f.ctx, "alice-id")
+	if err := approvalusecases.DecideApproval(f.ctx, f.store, nil, "alice-id", records[0].ID, false, t0.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	_, err = approvalusecases.ExchangeApproval(f.ctx, f.exchangeDeps, approvalusecases.ExchangeApprovalInput{
+		ClientID: "agent-app", AuthReqID: started.AuthReqID,
+	}, t0.Add(2*time.Second))
+	if approvalOAuthErrorCode(err) != "access_denied" {
+		t.Fatalf("exchange error = %v, want access_denied", err)
+	}
+	if f.issuer.accessCalls != 0 {
+		t.Fatalf("token issues = %d, want the refusal to have issued nothing", f.issuer.accessCalls)
+	}
+	record, err := f.store.FindByID(f.ctx, records[0].ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if record.State != spec.ApprovalDenied {
+		t.Fatalf("state = %v, want the refused exchange to leave the request denied", record.State)
+	}
+}
+
 // REQ-OAUTH2-042: the agent kill switch is checked again after human approval.
 func TestApprovalExchangeFailsClosedAfterAgentKill(t *testing.T) {
 	f := newApprovalFixture(t)
