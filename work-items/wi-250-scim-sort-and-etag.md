@@ -3,16 +3,10 @@ status: pending
 authors: [tn]
 risk: low
 created_at: 2026-07-18
+priority: p3
 depends_on: []
 change_kind: feature
 initial_context:
-  scl:
-    Sourcing:
-      - interfaces.ListScimUsers
-      - interfaces.ListScimGroups
-      - interfaces.UpdateScimUser
-      - interfaces.PatchScimUser
-      - interfaces.GetScimServiceProviderConfig
   source:
     - backend/sourcing/scim/usecases/list.go
     - backend/sourcing/scim/handlers_http/handlers.go

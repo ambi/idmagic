@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-06-21
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-017 }
+  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 
 # セカンダリ / リカバリ用メール・電話の self-service 管理
@@ -24,12 +29,12 @@ created_at: 2026-06-21
 (`user_emails`) を一旦ドロップした (thin-core / sparse attribute 方針)。
 本 WI ではまず「単数の recovery_email / recovery_phone を属性として持つ」
 最小形から入り、複数 secondary email が必要になった段階で companion table を
-足すか attribute の string_array で表すかを ADR で決める。
+足すか attribute の string_array で表すかを `spec/contexts/identity-management/decisions.md` で決める。
 
 ## Scope
 - **decision**:
-  - 新規 ADR: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (ADR-040 の sparse attribute) として持つか、 専用 companion table を切るかを決める。検証は ADR-030 の one-time token と 同方針 (hash 保存・単発消費・期限付き) にする。
-- **scl**:
+  - `spec/contexts/identity-management/decisions.md` へ記録する決定: recovery / secondary 連絡先の格納形式。recovery_email / recovery_phone を組み込み属性 (`spec/contexts/identity-management/decisions.md` の疎な属性) として持つか、 専用 companion table を切るかを決める。検証は `spec/contexts/authentication/decisions.md` のワンタイムトークンと同じ方針 (hash 保存・単発消費・期限付き) にする。
+- **specification**:
   - 新規 interface: UpdateRecoveryEmail / UpdateRecoveryPhone / AddSecondaryEmail / VerifySecondaryEmail / RemoveSecondaryEmail (self)。 対応 model と検証イベント (RecoveryContactUpdated 等) を追加する。
 - **go**:
   - 検証トークンストア (port + memory + postgres + migration) を email change の パターン (EmailChangeTokenStore) に倣って追加。usecase は actor.sub 固定。
@@ -46,8 +51,8 @@ created_at: 2026-06-21
 
 ## Plan
 - `User` の primary email/phone を直接増殖させず、Identity Management 所有の `RecoveryContact`（kind、normalized value、verified_at、status）として1:N管理する。ログイン識別子・通知先・recovery 手段の役割を混同しない。
-- [[ADR-042-end-user-account-portal-scope]] と [[ADR-043-account-portal-csrf-and-step-up]] に従い、追加、再送、verify、primary化、削除を account portal の step-up + CSRF 対象にする。最後の利用可能な recovery contact 削除ルールは既存 MFA/recovery code と合成する。
-- verification challenge は contact/action/browser transaction/tenant/user/TTL に束縛した hash のみを保存し、一回消費にする。email は [[ADR-035-smtp-email-sender-adapter]] の EmailSender、電話は provider port だけ定義し、本 WI で vendor 固定しない。
+- `spec/contexts/authentication/decisions.md` のアカウントポータルの範囲 と 同じ文書の CSRF とステップアップ認証 に従い、追加、再送、verify、primary化、削除を account portal の step-up + CSRF 対象にする。最後の利用可能な recovery contact 削除ルールは既存 MFA/recovery code と合成する。
+- verification challenge は contact/action/browser transaction/tenant/user/TTL に束縛した hash のみを保存し、一回消費にする。email は `spec/contexts/authentication/decisions.md` の `EmailSender` の EmailSender、電話は provider port だけ定義し、本 WI で vendor 固定しない。
 - verified secondary email の login alias/recovery利用は tenant policy で別々に opt-in し、未検証値はどちらにも使わない。値重複の許否と account enumeration 応答を specification invariant にする。
 
 ## Tasks
@@ -67,6 +72,6 @@ created_at: 2026-06-21
 
 ## Risk Notes
 multi-valued contacts は wi-19 で一旦ドロップした経緯があるため、モデルの
-作り方 (attribute か companion table か) を ADR で明示してから実装する。
+作り方 (attribute か companion table か) を `spec/contexts/identity-management/decisions.md` で明示してから実装する。
 検証トークンの単発消費・期限の取り違えが最大のリスクで、email change と同じ
 テスト観点 (期限切れ・再利用拒否) を必ず置く。

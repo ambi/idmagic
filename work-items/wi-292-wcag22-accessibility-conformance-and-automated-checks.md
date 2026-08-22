@@ -3,19 +3,10 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-07-25
+priority: p1
 depends_on: []
 change_kind: feature
 initial_context:
-  scl:
-    System:
-      - standards.WCAG22.WCAG22-KEYBOARD
-      - standards.WCAG22.WCAG22-FOCUS
-      - standards.WCAG22.WCAG22-LABELS-ERRORS
-      - standards.WCAG22.WCAG22-STATUS
-  decisions:
-    - decisions/ADR-086-ui-navigation-consistency-and-page-title-policy.md
-    - decisions/ADR-097-tenant-branding-color-contrast-is-advisory.md
-    - decisions/ADR-105-system-runtime-hardening-and-i18n-tooling.md
   source:
     - frontend/src/components
     - frontend/src/features
@@ -67,17 +58,17 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 
 ## Scope
 
-- **scl**:
+- **specification**:
   - `System.standards.WCAG22` の各要件に、検証手段 (自動検査 + 手動確認) の対応を明示する。
   - `System.scenarios` に「キーボードのみでログインを完了できる」「送信エラーが
     フォーカス移動なしに支援技術へ通知される」「フォーカスが常に視認できる」を追加する。
   - 対象画面の範囲を明示する: 認証 UI (ログイン / MFA / パスワードリセット / consent /
     device 確認) を必達、アカウントポータルを次点、管理コンソールを第 3 段とする。
 - **decision**:
-  - 新規 ADR (アクセシビリティ適合の範囲と検証方法): 準拠レベル (WCAG 2.2 AA)、
+  - `spec/standards.md` と `spec/contexts/system/decisions.md` へ記録する決定 (アクセシビリティ適合の範囲と検証方法): 準拠レベル (WCAG 2.2 AA)、
     必達対象画面の段階、自動検査で担保する範囲と手動確認に残す範囲
     (axe-core は全項目を検出できないため、境界を明記する)、
-    [[ADR-097-tenant-branding-color-contrast-is-advisory]] との整合
+    `spec/contexts/tenancy/decisions.md` のブランド配色のコントラスト検査 との整合
     (テナントブランディングのコントラストは advisory のままで、既定テーマは AA を満たす)、
     違反を CI で落とす閾値を記録する。
 - **frontend**:
@@ -94,7 +85,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
   - ステータス通知: 非同期の成功 / 失敗を `role="status"` / `role="alert"` の live region で
     通知する共通機構を追加し、既存の各画面のエラー表示をそこへ寄せる。
   - SPA ルーティングのフォーカス管理: 画面遷移後に見出しへフォーカスを移し、
-    ページタイトルを更新する ([[ADR-086-ui-navigation-consistency-and-page-title-policy]] と整合)。
+    ページタイトルを更新する (`frontend/README.md` の `PAGE_TITLES` / `PageMarker` 規約と整合)。
 - **tooling**:
   - `mise.toml` に `mise run test-ui-a11y` を追加し、`verify-ui` または CI の UI ジョブに組み込む。
 - **documentation**:
@@ -108,7 +99,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 - 管理コンソール全画面の AA 準拠 (第 3 段として範囲に入れるが、本 WI の必達は認証 UI と
   アカウントポータル)。
 - テナントが設定したブランディング色のコントラスト強制。
-  → [[ADR-097-tenant-branding-color-contrast-is-advisory]] の advisory 方針を維持する。
+  → `spec/contexts/tenancy/decisions.md` のブランド配色のコントラスト検査 の advisory 方針を維持する。
 - 実ユーザー (支援技術利用者) を招いたユーザビリティテスト。
 - 正式な VPAT / ACR の第三者監査。本 WI は自己試験結果を書ける状態を作るところまで。
 - メール本文のアクセシビリティ。→ [[wi-288-localized-notification-template-catalog-and-tenant-customization]]
@@ -117,7 +108,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 
 - **自動検査の限界を最初に線引きする**。axe-core は WCAG 達成基準の 3〜4 割程度しか
   自動検出できない。「自動で担保する項目」と「手動チェックリストで担保する項目」を
-  ADR で分け、後者を `frontend/README.md` の手順として残す。自動検査だけで
+  `spec/contexts/system/decisions.md` で分け、後者を `frontend/README.md` の手順として残す。自動検査だけで
   「AA 準拠」と言わないことを明記する。
 - **認証 UI を最優先にする**。ここが通れないと全アプリからロックアウトされるため、
   影響度が管理コンソールと桁違いである。段階を specification に明記して、部分適合の状態を
@@ -138,7 +129,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 
 - [ ] T001 [Spec] `System.standards.WCAG22` の各要件に検証手段の対応を追記し、
       scenario 3 件と対象画面の段階を追加して `mise run check-spec` を通す。
-- [ ] T002 [ADR] アクセシビリティ適合の範囲と検証方法の ADR を起票する
+- [ ] T002 [Spec] アクセシビリティ適合の範囲と検証方法を `spec/standards.md` と `spec/contexts/system/decisions.md` に記録する
       (準拠レベル・対象段階・自動 / 手動の分界・ブランディングとの整合・CI 閾値)。
 - [ ] T003 [Tooling] E2E に axe-core を組み込み、`mise run test-ui-a11y` を `mise.toml` に追加する。
       対象画面のリストを設定として持つ。
@@ -156,7 +147,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 - [ ] T008 [Keyboard] キーボードのみでログイン → MFA → 完了に到達する E2E を追加する。
       RED: 先に落ちる E2E を書く → GREEN。
 - [ ] T009 [Routing] SPA 遷移後のフォーカス移動とページタイトル更新を共通化する
-      ([[ADR-086-ui-navigation-consistency-and-page-title-policy]] と整合)。RED → GREEN。
+      (`frontend/README.md` の `PAGE_TITLES` / `PageMarker` 規約と整合)。RED → GREEN。
 - [ ] T010 [CI] `test-ui-a11y` を `.github/workflows/idmagic-ci.yaml` の UI ジョブに追加し、
       `critical` / `serious` で落とす閾値を設定する。
 - [ ] T011 [Docs] `frontend/README.md` にアクセシビリティ方針・検査手順・手動チェックリスト・
@@ -183,4 +174,4 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 axe-core を CI ブロッキングにすると、ライブラリ更新でルールが増えたときに無関係な PR が
 落ちうる。深刻度で絞り、棚卸しでベースラインを 0 件にしてから有効化する。
 自動検査で検出できない達成基準が多数残るため、「自動検査が緑 = AA 準拠」と誤読されないよう
-ADR と `frontend/README.md` に明記する。
+`spec/contexts/system/decisions.md` と `frontend/README.md` に明記する。

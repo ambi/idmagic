@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-04
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-001 }
+  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-007 }
 ---
 
 # テナント（Realm）設定の宣言的 export/import を提供し GitOps・環境昇格・DR を可能にする
@@ -24,8 +29,8 @@ Keycloak は realm を JSON で export/import でき、これが環境昇格・G
 
 ## Scope
 - **decision**:
-  - 新規 ADR: export/import の対象範囲（構成のみか一部データも含むか）、機密除外方針 （秘密鍵・パスワード・client secret は含めず参照のみ）、import の冪等性と衝突解決 （create / update / fail-on-drift）を定義する。
-- **scl**:
+  - `spec/contexts/tenancy/decisions.md` へ記録する決定: export/import の対象範囲（構成のみか一部データも含むか）、機密除外方針 （秘密鍵・パスワード・client secret は含めず参照のみ）、import の冪等性と衝突解決 （create / update / fail-on-drift）を定義する。
+- **specification**:
   - Tenancy context に ExportTenantConfig / ImportTenantConfig の objective を追加する。
   - export ドキュメントの版・スキーマ・含む集約の範囲を定義する。
 - **go**:
@@ -42,14 +47,14 @@ Keycloak は realm を JSON で export/import でき、これが環境昇格・G
 - 双方向リアルタイム同期。
 
 ## Plan
-- [[ADR-032-tenant-as-first-class-aggregate]] と [[ADR-064-protocol-contexts-and-application-catalog]] の所有境界を保ち、Tenancyが全設定を直接更新せず、context別exporter/importer portをorchestrateする。manifestはtop-level realm identity/versionとcontext sectionから成る。
+- `spec/contexts/tenancy/decisions.md` と `spec/contexts/application/decisions.md` の所有境界を保ち、Tenancyが全設定を直接更新せず、context別exporter/importer portをorchestrateする。manifestはtop-level realm identity/versionとcontext sectionから成る。
 - export対象をtenant settings、attribute schema、groups/roles、Applications+protocol bindings/policies、upstream/provisioning metadata等のScope記載集合に固定する。users、consents、sessions、audit/events、secret/private key、generated IDsは除外またはlogical referenceにする。
 - manifest JSON Schema/versionを公開し、stable logical keyでsection間参照を解決する。secretは`${secretRef}`等のopaque referenceだけを許し、export/import response/logに値を出さない。
 - importはparse/schema validate→reference graph/cycle→current snapshotとのredacted semantic diff→plan→explicit applyの二段階にする。context順序はtenant→schema→groups/roles→applications→bindings/policiesで、各commandは既存use case/permission/eventを通す。
 - applyはmanifest digest+operation keyで再実行可能にし、全realm巨大transactionではなくdependency stageごとにcheckpointする。失敗後のresume/compensateと削除policy（default preserve、explicit prune）を明示する。
 
 ## Tasks
-- [ ] T001 [Inventory/ADR] context別export対象/除外/secretRef/logical key、merge/prune、transaction/checkpoint semanticsを決定する。
+- [ ] T001 [Inventory/`spec/contexts/tenancy/decisions.md`] context別export対象/除外/secretRef/logical key、merge/prune、transaction/checkpoint semanticsを決定する。
 - [ ] T002 [specification/Schema] RealmManifest/Plan/Operation/Result、Export/PlanImport/Apply interfaces/events/constraints/contractsを追加しJSON Schemaと派生物を生成する。
 - [ ] T003 [Context Ports] tenancy/identity/application/oauth2/saml/wsfederation等にcanonical export DTOとvalidate/apply command adapterを追加する。
 - [ ] T004 [Planner] version migration、reference graph、redacted semantic diff、dependency order、manifest digest/idempotencyを実装する。

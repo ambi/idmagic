@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-10
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-025 }
 ---
 
 # 管理者ロールの JIT 特権昇格を導入する
@@ -17,7 +22,7 @@ created_at: 2026-07-10
 管理者ロールを一時的に有効化する privileged role activation を導入する。
 
 ## Scope
-- **scl**:
+- **specification**:
   - `IdentityManagement` に PrivilegedRoleEligibility / PrivilegedRoleActivation / ActivationStatus を追加する。
   - admin role の effective evaluation に「eligible だが未 activate」と「active activation」を区別して反映する。
   - activation request / approve / deny / expire / revoke events を追加する。
@@ -46,7 +51,7 @@ created_at: 2026-07-10
 
 ## Tasks
 - [ ] T001 [Spec] Eligibility / Activation model、state、events、effective role invariant を追加する。
-- [ ] T002 [Decision] activation 条件、期限上限、承認要否、break-glass 境界を ADR に記録する。
+- [ ] T002 [Decision] activation 条件、期限上限、承認要否、break-glass 境界を `spec/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] activation usecase と effective roles 評価を実装する。
 - [ ] T004 [HTTP] activation / approval API を追加する。
 - [ ] T005 [UI] activation と承認 queue の UI を追加する。

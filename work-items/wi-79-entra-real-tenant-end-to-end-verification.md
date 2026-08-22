@@ -4,6 +4,9 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-06-28
+priority: p3
+change_kind: tooling
+spec_impact: { kind: none, reason: "実テナントに対する既存実装の検証であり、検出した欠陥は個別の work item として起票する。" }
 ---
 
 # Microsoft Entra ID 実テナントに対する WS-* / domain federation の end-to-end 検証
@@ -24,12 +27,12 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 検証を一箇所に集約し、各 WI からは「実テナント検証は本 WI が担う」として範囲外にする。
 
 ## Scope
-- **verification**: 検証用 Entra テナントの検証済みドメインを idmagic に federation 設定 (managed → federated 切替) し、ブラウザサインイン (passive / wi-61) が成功し、発行 token に UPN / ImmutableID が 含まれることを確認する (wi-64)。, rich client / legacy active 認証経路 (WS-Trust usernamemixed / MEX、wi-62) で token が 発行され Microsoft 365 にサインインできることを確認する。, federation metadata (wi-63) を Entra が取り込み、issuer / passive / active endpoint / 署名証明書が一致することを確認する。, ドメイン参加 PC から Microsoft 365 への無音サインイン (wi-65) が成立することを確認する。, Hybrid Azure AD Join のデバイス登録が未提供である旨が設定時に診断・案内されることを実テナントで確認する (wi-64、ADR-065)。, 複数の検証済みドメインを 1 テナントで federation した場合に、ドメインごとに正しい profile / issuerUri へ解決されることを確認する。
+- **verification**: 検証用 Entra テナントの検証済みドメインを idmagic に federation 設定 (managed → federated 切替) し、ブラウザサインイン (passive / wi-61) が成功し、発行 token に UPN / ImmutableID が 含まれることを確認する (wi-64)。, rich client / legacy active 認証経路 (WS-Trust usernamemixed / MEX、wi-62) で token が 発行され Microsoft 365 にサインインできることを確認する。, federation metadata (wi-63) を Entra が取り込み、issuer / passive / active endpoint / 署名証明書が一致することを確認する。, ドメイン参加 PC から Microsoft 365 への無音サインイン (wi-65) が成立することを確認する。, Hybrid Azure AD Join のデバイス登録が未提供である旨が設定時に診断・案内されることを実テナントで確認する (wi-64)。, 複数の検証済みドメインを 1 テナントで federation した場合に、ドメインごとに正しい profile / issuerUri へ解決されることを確認する。
 - **documentation**: 実テナント検証の手順・結果・既知の落とし穴 (claim 形状不一致・sourceAnchor 不一致) を運用ドキュメントに残す。
 
 ## Out of Scope
 - WS-Fed passive / WS-Trust active / metadata / Entra preset / 無音 SSO の実装 (wi-61〜65)。本 WI は実テナント検証のみ。
-- Hybrid Azure AD Join のデバイス登録対応。Okta 同様の既知制約として未提供 (ADR-065)。
+- Hybrid Azure AD Join のデバイス登録対応。Okta 同様の既知制約として未提供 (`spec/contexts/ws-federation/decisions.md`)。
 - Entra Connect (オンプレ同期) の同梱。sourceAnchor の供給はオンプレ側責務とする。
 
 ## Plan

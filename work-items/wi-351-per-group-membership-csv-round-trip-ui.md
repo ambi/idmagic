@@ -3,21 +3,14 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-08-10
+priority: p3
 depends_on: [wi-284-improve-csv-import-export, wi-350-group-csv-round-trip]
 change_kind: feature
 initial_context:
-  scl:
-    IdManagement:
-      - models.GroupMember
-      - models.GroupMembershipSource
-      - models.GroupMembershipType
-      - interfaces.AddGroupMember
-      - interfaces.RemoveGroupMember
-      - interfaces.StartGroupMemberCsvExport
   source:
     - backend/idmanagement/group/domain/groups.go
     - backend/idmanagement/group/usecases/admin_groups.go
-    - backend/idmanagement/group/handlers_http/group_members_handler.go
+    - backend/idmanagement/group/handlers_http/admin_group_handler.go
     - backend/idmanagement/usecases/data_export.go
     - backend/idmanagement/user/usecases/user_import.go
     - frontend/src/features/admin-groups

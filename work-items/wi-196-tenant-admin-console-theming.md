@@ -3,6 +3,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-12
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-004 }
+  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-009 }
 depends_on: [wi-192-tenant-branding-logo-display-regression, wi-193-simplify-tenant-branding-color-validation]
 ---
 

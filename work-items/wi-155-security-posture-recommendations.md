@@ -4,6 +4,10 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-10
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # セキュリティ姿勢レコメンドを管理者に提示する
@@ -19,7 +23,7 @@ IdMagic には MFA、鍵、SCIM token、sign-in policy、監査、HTTP hardening
 recommendations を導入する。
 
 ## Scope
-- **scl**:
+- **specification**:
   - `System` に SecurityPostureRecommendation / RecommendationSeverity / RecommendationStatus を追加する。
   - `Tenancy` / `Application` / `Authentication` / `SigningKeys` の設定検査 scenario を追加する。
   - recommendation dismissed / resolved events を追加する。
@@ -47,7 +51,7 @@ recommendations を導入する。
 
 ## Tasks
 - [ ] T001 [Spec] Recommendation model、status、events、初期 check scenarios を追加する。
-- [ ] T002 [Decision] check registry、severity 基準、dismiss / resolved 方針を ADR に記録する。
+- [ ] T002 [Decision] check registry、severity 基準、dismiss / resolved 方針を `spec/contexts/system/decisions.md` に記録する。
 - [ ] T003 [App] posture evaluator と dismissed state を実装する。
 - [ ] T004 [HTTP] recommendation API を追加する。
 - [ ] T005 [UI] security posture 画面を追加する。

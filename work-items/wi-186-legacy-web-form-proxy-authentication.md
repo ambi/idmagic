@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: critical
 created_at: 2026-07-11
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-007 }
+  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
 ---
 
 # レガシーWebフォームへの代理認証を安全な限定互換機能として導入する
@@ -20,18 +25,19 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 
 ## Scope
 - **dependencies**:
-  - `wi-97-envelope-encryption-at-rest` の tenant-scoped envelope encryption を、可逆な
-    代理認証資格情報の保管・復号に必須とする。
-  - `wi-151-managed-device-inventory-and-posture-access-conditions` 完了後に、検証済み
+  - [[wi-97-envelope-encryption-at-rest]] の tenant-scoped envelope encryption を、可逆な
+    代理認証資格情報の保管・復号に必須とする。**これは完了済み**であり、`DataKeys` Context と
+    `EnvelopeCrypto` ポートをそのまま使う (`spec/persistence.md` の Envelope encryption for reversible secrets)。
+  - [[wi-151-managed-device-inventory-and-posture-access-conditions]] 完了後に、検証済み
     管理端末向けの認証freshness緩和を利用する。完了前は全端末を未管理として扱う。
-- **scl**:
+- **specification**:
   - `spec/README.md` の Context Map に `LegacyAccess` を追加する。
-  - `spec/contexts/legacy-access/` の `README.md`、`glossary.md`、`states.md`、`decisions.md`、`scenarios.md`、`models.tsp`、
-    scenarios、authorization/access、objectives、flows/scenarios を追加する。
+  - `spec/contexts/legacy-access/` に `README.md`、`glossary.md`、`states.md`、`decisions.md`、`scenarios.md`、
+    `models.tsp`、`main.tsp` を追加する。権限境界は `spec/authorization.md` に合流させる。
   - `spec/contexts/application/` に `legacy_form` protocol binding と、代理認証を使う
     Application のポータル起動情報を追加する。
 - **decision**:
-  - 新規 ADR で、標準フェデレーションを優先する境界、秘密情報の保管/発行境界、
+  - `spec/contexts/application/decisions.md` に、標準フェデレーションを優先する境界、秘密情報の保管/発行境界、
     browser extension の信頼境界、auto-submit の例外運用、共有資格情報の監査を記録する。
 - **go**:
   - `backend/legacyaccess/` に domain、usecases、ports、HTTP/persistence adapters、module を追加する。
@@ -48,7 +54,7 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
   - account portal に本人用資格情報の登録/置換/削除と、拡張導入状態を追加する。
 - **architecture / documentation**:
   - `spec/README.md` と `spec/structure.md` に LegacyAccess context と依存方向を同期する。
-  - README に対象範囲、Vault設定、拡張配布、対応外ログイン形態、運用上の残余リスクを追加する。
+  - README に対象範囲、マスターキー提供元 (OpenBao) の設定、拡張配布、対応外ログイン形態、運用上の残余リスクを追加する。
 
 ## Out of Scope
 - OIDC/SAML/WS-Fed 化できるサービスへの代理認証適用。
@@ -71,14 +77,15 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
   渡す。ページやcontent scriptからのメッセージはすべて非信頼入力として検証する。
 
 ## Tasks
-- [ ] T001 [Dependency] wi-97 の暗号化基盤を完了し、可逆秘密を安全に保存できる状態にする。
+- [ ] T001 [Domain] 完了済みの `DataKeys` / `EnvelopeCrypto` に代理認証資格情報の
+      `FieldMigrator` を登録し、DEK ローテーションの再暗号化対象に含める。
 - [ ] T002 [Spec] LegacyAccess と Application binding の規範仕様、scenario、不変条件、権限、UX を追加する。
-- [ ] T003 [Decision] 代理認証の安全境界と運用例外を ADR に記録する。
+- [ ] T003 [Spec] 代理認証の安全境界と運用例外を `spec/contexts/application/decisions.md` に記録する。
 - [ ] T004 [Domain] credential、grant、binding、発行判定を実装し、unit test を追加する。
-- [ ] T005 [Adapter] memory/postgres/Vault persistence、HTTP API、監査、DI/route を実装する。
+- [ ] T005 [Adapter] memory/postgres persistence（暗号化は `EnvelopeCrypto` に委ねる）、HTTP API、監査、DI/route を実装する。
 - [ ] T006 [UI] admin/account UI と Chrome/Edge/Firefox 拡張を実装する。
 - [ ] T007 [Dependency] wi-151 完了後に端末posture連動の freshness policy を有効化する。
-- [ ] T008 [Verify] specification、Go、UI、各ブラウザE2E、Vault障害と拒否シナリオを検証する。
+- [ ] T008 [Verify] specification、Go、UI、各ブラウザE2E、マスターキー提供元の障害と拒否シナリオを検証する。
 
 ## Verification
 - `mise run check`
@@ -86,11 +93,11 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 - `mise run verify`
 - 手動: 本人用資格情報を登録し、割当済みの正規originでだけ拡張が入力し、別originでは拒否する。
 - 手動: 本人用が無いときだけ単一の共有grantを使い、複数共有grantが一致する設定は保存できない。
-- 手動: MFA freshness不足、未割当、binding未検証、Vault障害では credential が発行されない。
+- 手動: MFA freshness不足、未割当、binding未検証、マスターキー提供元の障害では credential が発行されない。
 - 手動: auto-submit未承認bindingは入力後に利用者が送信し、承認済みbindingだけが自動送信する。
 
 ## Risk Notes
 代理認証は集中保管した秘密情報を対象ページDOMへ渡すため、対象サービスのXSS、端末侵害、
 誤ったURL/セレクタ設定による漏洩の影響が大きい。暗号化基盤の未実装時に平文保管へ
 フォールバックしてはならない。標準プロトコルを優先し、origin/pathを厳格照合し、MFA、
-最小権限、単回発行、監査、Vault障害時fail-closed を必須とする。
+最小権限、単回発行、監査、マスターキー提供元の障害時 fail-closed を必須とする。

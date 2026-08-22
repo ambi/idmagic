@@ -4,6 +4,10 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-06-27
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-007 }
 ---
 
 # アプリ統合テンプレートカタログ (gallery) からアプリケーションを作成する
@@ -22,8 +26,8 @@ Okta Integration Network も Entra ID のアプリギャラリーも、よく使
 
 ## Scope
 - **decision**:
-  - 新規 ADR-068: テンプレートの所有と供給形態を確定する。テンプレートは Application が所有する read-only カタログ (リポジトリ同梱の宣言データ) とし、 テナント横断の共有定義と、テナント独自テンプレート登録を許すかを決める。テンプレートが 規定する内容 (推奨 binding type、既定 claim release、icon、必須入力フィールドの schema、 ベンダー metadata) と、instantiate 時に Application へコピーする範囲を決める。
-- **scl**:
+  - `spec/contexts/application/decisions.md` へ記録する決定: テンプレートの所有と供給形態を確定する。テンプレートは Application が所有する read-only カタログ (リポジトリ同梱の宣言データ) とし、 テナント横断の共有定義と、テナント独自テンプレート登録を許すかを決める。テンプレートが 規定する内容 (推奨 binding type、既定 claim release、icon、必須入力フィールドの schema、 ベンダー metadata) と、instantiate 時に Application へコピーする範囲を決める。
+- **specification**:
   - Application に ApplicationTemplate / TemplateProtocolDefault / TemplateClaimDefault / TemplateInputField を追加する。
   - interface: ListApplicationTemplates / GetApplicationTemplate / CreateApplicationFromTemplate (テンプレ + 入力値から Application + binding を生成)。
   - event: ApplicationCreatedFromTemplate。
@@ -45,7 +49,7 @@ Okta Integration Network も Entra ID のアプリギャラリーも、よく使
 - Application 本体・割当 ([[wi-69-application-catalog-aggregate-and-assignment]])。
 
 ## Plan
-- [[ADR-064-protocol-contexts-and-application-catalog]] と [[ADR-066-application-as-single-editor-surface]] に従い、template は Application Catalog の seed capability とし、OAuth2/SAML/WS-Fed の別々の作成 UI を復活させない。
+- `spec/contexts/application/decisions.md` と `spec/contexts/application/decisions.md` に従い、template は Application Catalog の seed capability とし、OAuth2/SAML/WS-Fed の別々の作成 UI を復活させない。
 - catalog entry は stable key/version、表示 metadata、application kind、protocol binding blueprint、入力 field schema/default/validation、documentation URL を持つ。secret、tenant ID、実 client/RP ID は含めない。
 - catalog 自体は versioned static artifact から開始し、tenant override/marketplace は scope 外にする。template 更新は既に作成済み Application を自動変更せず、作成時の template key/version を provenance として記録する。
 - instantiate は field validation→Application create→protocol binding provisioning を既存 application provisioning use case の transaction/compensation semantics で実行し、OIDC secret は既存契約どおり一度だけ返す。

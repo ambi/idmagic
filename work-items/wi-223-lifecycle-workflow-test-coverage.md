@@ -3,6 +3,9 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-16
+priority: p1
+change_kind: tooling
+spec_impact: { kind: none, reason: "既存の lifecycle workflow 管理面に対するテストの追加であり、契約も規範シナリオも変えない。" }
 depends_on: [wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admin-ui-and-operations, wi-222-lifecycle-workflow-dry-run-real-evaluation]
 ---
 

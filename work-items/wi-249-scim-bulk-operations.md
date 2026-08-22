@@ -3,19 +3,10 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-07-18
+priority: p3
 depends_on: []
 change_kind: feature
 initial_context:
-  scl:
-    Sourcing:
-      - standards.RFC7644.RFC7644-RESOURCE-OPERATIONS
-      - standards.RFC7644.RFC7644-ERROR-RESPONSE
-      - interfaces.CreateScimUser
-      - interfaces.UpdateScimUser
-      - interfaces.PatchScimUser
-      - interfaces.DeleteScimUser
-      - interfaces.CreateScimGroup
-      - interfaces.GetScimServiceProviderConfig
   source:
     - backend/sourcing/scim/handlers_http/handlers.go
     - backend/sourcing/scim/usecases
@@ -53,14 +44,14 @@ Bulk を対象外とした。
 
 - Bulk 内での filter/query 操作(RFC は method GET を Bulk に含めない)。
 - 非同期・バックグラウンド実行(RFC は同期応答を前提とする。将来的に
-  パフォーマンス上必要なら別途 ADR で検討)。
+  パフォーマンス上必要なら別途 `spec/contexts/sourcing/decisions.md` で検討)。
 
 ## Plan
 
 - 各 Bulk operation は既存の単体 usecase メソッド(CreateUser/UpdateUser/...)を
   そのまま呼び出し、新しい mutation ロジックを重複実装しない。
 - 部分失敗時の atomicity は [[wi-239-scim-inbound-resource-contract-conformance]] の
-  ADR-122(validate-first + 補償クリーンアップ)と同じ方針を踏襲し、Bulk 全体を
+  `spec/contexts/sourcing/decisions.md` の変更原子性 (validate-first + 補償クリーンアップ)と同じ方針を踏襲し、Bulk 全体を
   1つの DB transaction にはしない。`failOnErrors` のしきい値超過で残りの
   operation を打ち切る。
 
@@ -87,5 +78,5 @@ Bulk を対象外とした。
 Bulk は1リクエストで大量の副作用を起こせるため、誤操作時の影響範囲が単体
 API より大きい。`maxOperations`/`maxPayloadSize` を厳格に強制し、tenant
 isolation を Bulk 内の全 operation で漏れなく検証する。atomicity は
-[[wi-239-scim-inbound-resource-contract-conformance]] の ADR-122 と同じ限界
+[[wi-239-scim-inbound-resource-contract-conformance]] と同じ限界
 (真の transaction ではない)を継承する。

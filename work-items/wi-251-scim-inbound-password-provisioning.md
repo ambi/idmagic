@@ -3,15 +3,10 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-07-18
+priority: p3
 depends_on: []
 change_kind: feature
 initial_context:
-  scl:
-    Sourcing:
-      - standards.RFC7643.RFC7643-CORE-RESOURCES
-      - interfaces.CreateScimUser
-      - interfaces.UpdateScimUser
-      - interfaces.PatchScimUser
   source:
     - backend/sourcing/scim/domain/mutation.go
     - backend/sourcing/scim/usecases/users.go
@@ -53,13 +48,13 @@ CreateScimUser/UpdateScimUser/PatchScimUser はこの属性を黙殺する。
 
 ## Plan
 
-- 対応可否の判断を ADR として先に記録する(却下する場合もその理由を残す)。
+- 対応可否の判断を `spec/contexts/sourcing/decisions.md` として先に記録する(却下する場合もその理由を残す)。
 - 対応する場合、平文 password が SCIM request body・ログ・トレースに残らない
   ことを実装・テストの両方で保証する。
 
 ## Tasks
 
-- [ ] T000 [Decision] 対応するかどうかを ADR で判断する。却下する場合は
+- [ ] T000 [Decision] 対応するかどうかを `spec/contexts/sourcing/decisions.md` で判断する。却下する場合は
       `spec/contexts/sourcing/standards.md` の `RFC7643-CORE-RESOURCES` 行に明記して
       work item を `cancelled` にする。
 - [ ] T001 [Spec] (対応する場合) password の契約を `spec/contexts/sourcing/standards.md` と `models.tsp` に追加する。
@@ -84,4 +79,4 @@ CreateScimUser/UpdateScimUser/PatchScimUser はこの属性を黙殺する。
 攻撃面を広げる(弱いパスワードの一括投入、パスワードポリシー回避、transport/ログ
 上の露出リスク)。既存の自己サービスパスワードフロー・パスワードポリシーとの
 整合が取れない場合は、恒久的に非対応とする判断も正当である。実装前に必ず
-方針を ADR で確定してから着手する(T000 を他の Task より先に完了させる)。
+方針を `spec/contexts/sourcing/decisions.md` で確定してから着手する(T000 を他の Task より先に完了させる)。

@@ -4,26 +4,29 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-06-20
+priority: p2
+change_kind: tooling
+spec_impact: { kind: none, reason: "外部 conformance suite を CI で回す仕組みの追加であり、製品の振る舞いと配線契約を変えない。" }
 ---
 
 # OAuth / OIDC / FAPI conformance smoke を CI 検証に追加する
 
 ## Motivation
-idmagic は OAuth/OIDC/FAPI 系の仕様を specification と ADR に多く取り込んでいるが、
+idmagic は OAuth/OIDC/FAPI 系の仕様を 正準文書の `standards.md` に多く取り込んでいるが、
 実装が標準 conformance から drift していないことを継続的に検証する仕組みが不足している。
 production-ready IdP では、unit test だけでなく外部 conformance suite / smoke が必要になる。
 
 ## Scope
 - **decision**:
-  - 新規 ADR: conformance 検証を assurance evidence として扱う方針を定義する。 full certification ではなく、CI で回す smoke と release 前に回す expanded suite を分ける。
-- **scl**:
+  - `spec/standards.md` へ記録する決定: conformance 検証を assurance evidence として扱う方針を定義する。 full certification ではなく、CI で回す smoke と release 前に回す expanded suite を分ける。
+- **specification**:
   - assurance に OAuth/OIDC/FAPI conformance evidence を追加する。
   - Discovery / JWKS / Authorization Code / PKCE / PAR / DPoP / private_key_jwt の acceptance を更新する。
 - **go**:
   - conformance 用 seed tenant / client / user を起動時に用意できる test mode を追加する。
   - discovery metadata の conformance profile を確認し、不足 claim を補う。
 - **ci**:
-  - Docker Compose で idmagic + UI + Postgres + Valkey を起動する conformance profile を追加する。
+  - Docker Compose で idmagic + UI + PostgreSQL を起動する conformance profile を追加する。
   - OpenID Foundation conformance suite または軽量 smoke harness を導入する。
   - 最初は authorization_code + PKCE、discovery、JWKS、token、userinfo、PAR の最小 suite に絞る。
   - FAPI は smoke から始め、full certification は手動 release gate とする。

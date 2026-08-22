@@ -3,6 +3,7 @@ status: pending
 authors: [tn]
 risk: low
 created_at: 2026-08-15
+priority: p3
 depends_on: [wi-374-specification-overview-exemplars-and-standards-columns]
 change_kind: tooling
 spec_impact:
@@ -16,9 +17,9 @@ spec_impact:
 
 正準文書の Markdown ソースは、表のところだけ読めない。ソース最長行は `oauth2` の `glossary.md` で 782 文字、`authorization` で 339 文字、`authentication` で 284 文字ある。実際の閲覧は生成 HTML で行うため、ソースの役割は執筆と検証に寄っている。
 
-そしてこれらの表は既にデータである。`tools/render-spec-docs/src/render.ts:203-234` は正準ヘッダー行 `| From | Event | Guard | To | Effects |` と区切り行の形を検証し、壊れていれば throw する。つまり Markdown は手書きパーサ付きの保存形式として使われている。wi-374 で追加した Standards の値集合検査も、本来 JSON Schema が担う種類の検証を正規表現で書いたものである。
+そしてこれらの表は既にデータである。`tools/render-spec-docs/src/render.ts` の状態遷移表の読み取りは正準ヘッダー行 `| From | Event | Guard | To | Effects |` と区切り行の形を検証し、壊れていれば throw する。つまり Markdown は手書きパーサ付きの保存形式として使われている。wi-374 で追加した Standards の値集合検査も、本来 JSON Schema が担う種類の検証を正規表現で書いたものである。
 
-SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うのは正確でない。`wi-355` の Motivation は「手書き SCL は約 1.1 MB、27,409 行で、その約 73% を models/interfaces が占める」であり、主因は形式ではなく TypeSpec が持つべき契約の重複だった。その 73% は TypeSpec へ移って解決済みで、残り 27% を Markdown にした分は `tools/render-spec-docs` の 1,426 行として支払っている。
+SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うのは正確でない。`wi-355` の Motivation は「手書き SCL は約 1.1 MB、27,409 行で、その約 73% を models/interfaces が占める」であり、主因は形式ではなく TypeSpec が持つべき契約の重複だった。その 73% は TypeSpec へ移って解決済みで、残り 27% を Markdown にした分は `tools/render-spec-docs` のレンダラー実装として支払っている。
 
 ## Scope
 

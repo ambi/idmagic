@@ -3,6 +3,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-16
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-002 }
 depends_on: [wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admin-ui-and-operations]
 ---
 
@@ -10,28 +15,29 @@ depends_on: [wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admi
 
 ## Motivation
 `ListLifecycleWorkflows` はテナント内の全 workflow を無制限に返し、`ListLifecycleWorkflowRuns` は
-`limit=100` を決め打ちで offset/cursor を持たない
-(`admin_lifecycle_workflow_handler.go` L280)。テナント規模や run 実行回数が増えると、古い run 履歴を
-閲覧する手段がない。wi-153 は「list/history の pagination は既存 admin API の契約に合わせ、本 WI で
-独自の pagination 方式を増やさない」と明記していたが、実際には他 admin 一覧とも揃っていない独自の
-固定 limit になっている。
+`limit=100` を決め打ちで offset も cursor も持たない
+(`backend/idgovernance/handlers_http/admin_lifecycle_workflow_handler.go` の `handleListLifecycleWorkflowRuns`)。
+テナント規模や run 実行回数が増えると、古い run 履歴を閲覧する手段がない。
+wi-153 は「list/history の pagination は既存 admin API の契約に合わせ、本 WI で独自の pagination 方式を
+増やさない」と明記していたが、実際には他 admin 一覧とも揃っていない独自の固定 limit になっている。
 
-frontend (`AdminLifecycleWorkflowsPage.tsx`) は一覧・run 履歴に検索/フィルタ/ソートがなく、対象
-ユーザー ID の指定に `window.prompt` (L97)、削除確認に `window.confirm` (L120) を使っている。この
-2 つはリポジトリ全体で本機能にしか存在しないパターンであり、他の admin 機能が使っている確認導線と
-一致しない。run 詳細も一覧行へのインライン展開のみで、専用の run detail 画面や step ごとの
-timestamp 表示、queued run の cancel 操作がない。
+**この乖離は起票時より大きくなっている。** [[wi-159-admin-resource-cursor-pagination]] と
+[[wi-347-admin-pagination-totals-and-compact-cursors]] が完了し、`spec/api-rules.md` は管理用一覧 API に
+「署名済みで版の付いたキーセット方式のカーソルを RFC 8288 の `Link` ヘッダーで返す」ことを規則として定めた。
+lifecycle workflow の 2 本だけがこの規則の外に取り残されている。
+
+frontend (`AdminLifecycleWorkflowsPage.tsx`) は一覧・run 履歴に検索/フィルタ/ソートがない。
+run 詳細も一覧行へのインライン展開のみで、専用の run detail 画面や step ごとの timestamp 表示、
+queued run の cancel 操作がない。
+なお起票時に挙げていた `window.prompt` / `window.confirm` は既に取り除かれており、
+テストが `prompt` を呼ばないことを固定している。この項目は解消済みとして扱う。
 
 ## Scope
 - `spec/contexts/identity-governance/main.tsp` の `ListLifecycleWorkflows` / `ListLifecycleWorkflowRuns`
-  interface に pagination 契約 (`page_size` / cursor、または既存 admin 一覧に揃えた形) を追加する。
-  [[wi-159-admin-resource-cursor-pagination]] が完了していればその cursor 契約に合わせ、未完了なら
-  暫定契約とし、wi-159 完了時に移行可能な設計にする (`depends_on` には加えない。完了前提ではなく
-  整合性を取るべき参照)。
+  interface に、`spec/api-rules.md` が定めるキーセットカーソルと `Link` ヘッダーの契約を適用する。
+  独自の pagination 方式は増やさない。
 - backend: 上記 pagination を usecase / handler / repository に実装する。
 - frontend: 一覧・run 履歴に検索/フィルタ/ページ送りを追加する。
-- `window.prompt` / `window.confirm` を、確認ダイアログ・対象選択フォームに置き換える。リポジトリに
-  流用できる確認ダイアログコンポーネントがなければ新設する (他機能への横展開は本 WI の範囲外)。
 - run detail を専用画面または panel に切り出し、trigger snapshot、各 step の timestamp/outcome/
   error_code、job attempt 情報を表示する。
 - queued 状態の run に対する cancel 操作を UI に追加する。
@@ -39,18 +45,18 @@ timestamp 表示、queued run の cancel 操作がない。
 ## Out of Scope
 - workflow を図として可視化するダイアグラム UI ([[wi-226-lifecycle-workflow-templates-and-on-demand-run]]
   以降で検討)。
-- [[wi-159-admin-resource-cursor-pagination]] 本体のスコープ (他 admin resource 全体の cursor 化)。
+- 他 admin resource の cursor 化。[[wi-159-admin-resource-cursor-pagination]] で完了済みであり、
+  本 work item は取り残された lifecycle workflow の 2 本を合流させるだけである。
 
 ## Plan
-- pagination は [[wi-159-admin-resource-cursor-pagination]] の `PageRequest`/`PageResult` 語彙を
-  先取りして設計し、wi-159 が後から完了しても契約の衝突が起きないようにする。
-- 確認ダイアログは新設する場合、他機能へ強制的に展開せず、本機能の置き換えに閉じる。
+- pagination は既存のキーセットカーソル契約 (`spec/api-rules.md`、[[wi-347-admin-pagination-totals-and-compact-cursors]])
+  をそのまま使い、新しい語彙を作らない。他の管理一覧と同じ形になることが成功条件である。
+- 確認ダイアログは他機能で使っている導線に合わせ、本機能専用の作法を増やさない。
 
 ## Tasks
-- [ ] T001 [Spec] 一覧系 interface に pagination 契約を追加する。
+- [ ] T001 [Spec] 一覧系 interface に既存のカーソル pagination 契約を適用する。
 - [ ] T002 [Go] usecase/handler/repository を pagination 対応にする。
-- [ ] T003 [UI] 一覧・run 履歴の検索/フィルタ/ページ送り、確認ダイアログ、run detail 画面、cancel
-  操作を実装する。
+- [ ] T003 [UI] 一覧・run 履歴の検索/フィルタ/ページ送り、run detail 画面、cancel 操作を実装する。
 - [ ] T004 [Verify] `mise run verify-go` / `mise run verify-ui` / `mise run test-ui-e2e` を通す。
 
 ## Verification
@@ -59,7 +65,7 @@ timestamp 表示、queued run の cancel 操作がない。
 - `mise run test-ui-e2e`
 - 手動: 100 件超の workflow および 100 件超の run を持つテナントで一覧・履歴のページ送りが正しく
   動くことを確認する。
-- 手動: `window.prompt`/`window.confirm` を使わずに対象ユーザー指定と削除確認ができることを確認する。
+- 手動: 他の管理一覧と同じページ送りの操作感で run 履歴をたどれることを確認する。
 
 ## Risk Notes
 pagination 契約の変更は API の後方互換に影響するため、既存フロントエンドの呼び出し側を同時に

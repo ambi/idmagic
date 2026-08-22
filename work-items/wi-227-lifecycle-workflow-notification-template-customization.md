@@ -3,6 +3,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-16
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-008 }
+  - { path: spec/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-016 }
 depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-email-sender-adapter]
 ---
 
@@ -37,7 +42,7 @@ depends_on: [wi-218-lifecycle-workflow-action-execution-and-audit, wi-6-real-ema
 
 ## Tasks
 - [ ] T001 [Spec] `NotificationTemplate` モデル、authorization、scenarios を追加する。
-- [ ] T002 [Decision] placeholder 許可リストと sanitization 方針を ADR に記録する。
+- [ ] T002 [Decision] placeholder 許可リストと sanitization 方針を `spec/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] テンプレート管理 usecase と `send_email` action の参照解決を実装する。
 - [ ] T004 [UI] テンプレート編集・プレビュー画面を追加する。
 - [ ] T005 [Verify] injection 耐性・fallback・locale 切り替えを検証する。

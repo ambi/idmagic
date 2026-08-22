@@ -3,16 +3,10 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-08-10
+priority: p2
 depends_on: [wi-284-improve-csv-import-export]
 change_kind: feature
 initial_context:
-  scl:
-    IdManagement:
-      - models.Group
-      - models.GroupMembershipType
-      - models.DataExportColumn
-      - interfaces.StartGroupCsvExport
-      - interfaces.ListGroupExports
   source:
     - backend/idmanagement/group/domain/groups.go
     - backend/idmanagement/group/usecases/admin_groups.go
@@ -29,7 +23,7 @@ initial_context:
     - frontend/src/features/admin-exports/DataExportPage.test.tsx
   stop_before_reading:
     - backend/idmanagement/user/db_postgres/user_import_committer.go
-    - backend/idmanagement/group/handlers_http/group_members_handler.go
+    - backend/idmanagement/group/handlers_http/admin_group_handler.go
 affected_spec:
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.Group }
   - { path: spec/contexts/identity-management/models.tsp, symbol: IdMagic.Contract.DataExportColumn }

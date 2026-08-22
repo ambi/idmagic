@@ -4,32 +4,43 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-10
+priority: p3
+change_kind: operations
+affected_spec:
+  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-012 }
+  - { path: spec/contexts/audit/scenarios.md, requirement: REQ-AUDIT-004 }
 ---
 
-# データ層を 10万テナント・1000万ユーザで飽和しないよう分割・リードレプリカ・接続プール・Valkey クラスタ化する
+# データ層を 10万テナント・1000万ユーザで飽和しないよう分割・リードレプリカ・接続プールで支える
 
 ## Motivation
 app 層を stateless に水平スケールしても、1000万ユーザ・10万テナント規模では
 最初に飽和するのは共有データ層である。具体的には (1) 全テナントのユーザ・監査イベント・トークンが
 同一テーブルに積み上がり index / autovacuum / plan が肥大化する、(2) レプリカ数を増やすほど
 PostgreSQL への直結コネクションが線形に増え `max_connections` を食い潰す、
-(3) 読み取り負荷（discovery / JWKS / introspection / 一覧）が単一 primary に集中する、
-(4) Valkey が単一ノードだと session / code / throttle 用のメモリと帯域が上限になる、という 4 点。
+(3) 読み取り負荷（discovery / JWKS / introspection / 一覧）が単一 primary に集中する、という 3 点。
+
+**4 点目は形が変わった。** 起票時は「Valkey が単一ノードだと session / code / throttle のメモリと帯域が上限になる」と書いていたが、
+[[wi-278-consolidate-ephemeral-state-into-postgresql-remove-valkey]] で揮発性の一時状態はすべて PostgreSQL へ移り、Valkey は廃止された。
+別基盤の容量上限という問題は消え、代わりに **同じ PostgreSQL クラスタに高 churn テーブルが 9 つ増えた**という形で戻ってきている。
+認可コード・PAR・device code・WebAuthn チャレンジ・リプレイ JTI は `UNLOGGED`、失効リストとログインスロットルは `LOGGED` で、
+いずれも書き込みと削除の回転が速い。したがって本 work item が扱うべきなのはクラスタ化ではなく、
+**これら高 churn テーブルの dead tuple と autovacuum、そして introspection ごとに走りうる失効リストのホット読み取り**である。
 
 [[wi-108-database-connection-resilience-circuit-breaker]] は障害時の**耐性**、
 [[wi-161-large-tenant-performance-foundation]] は大規模**単一**テナントの read path を扱うが、
 「テナント総数・総行数がフリート規模で増えたときにデータ層をどうスケールさせるか」は未着手である。
 この WI は [[wi-163-fleet-scale-capacity-and-horizontal-scaling-architecture]] が定めた容量目標を、
-データ層のトポロジ（分割 / リードレプリカ / 接続プール / Valkey クラスタ）で実際に満たす。
+データ層のトポロジ（分割 / リードレプリカ / 接続プール / 高 churn テーブルの回転）で実際に満たす。
 
 ## Scope
-- **decision**:
-  - 新規 ADR: PostgreSQL の大規模化方針。テナント / 時系列でのパーティショニング境界（特に audit event, token, session, auth-event bucket など append-heavy テーブル）、
-    read/write 分離の可否と一貫性境界、接続プール（アプリ側プール vs 外部 pooler）の選定、`tenant_id` key policy ([[tenant-id-key-policy-adr083]]) との整合を記録する。
-  - 新規 or 既存 ADR 追補: Valkey のクラスタ / シャーディング / レプリケーション方針。key 空間（session / authz code / PAR / device code / throttle / denylist）のシャード適合性と、fail-closed 縮退（[[wi-106-distributed-login-throttle-and-shared-state-ha]] と整合）を維持することを明記する。
-- **scl**:
-  - `System` の該当 objective / constraint に、read/write 分離時の**読み取り一貫性境界**（認可・quota・throttle は強整合、discovery / 一覧 / dashboard は短時間 stale 許容）を明文化する。
-  - パーティション / レプリカ運用でも tenant isolation が崩れない guarantee を追記する。
+- **specification**:
+  - `spec/persistence.md` と `spec/capacity.md` へ記録する決定: PostgreSQL の大規模化方針。テナント / 時系列でのパーティショニング境界（特に audit event, token, session, auth-event bucket など append-heavy テーブル）、
+    read/write 分離の可否と一貫性境界、接続プール（アプリ側プール vs 外部 pooler）の選定、`spec/persistence.md` の tenant_id retention classes との整合を記録する。
+  - `spec/persistence.md` へ、揮発性テーブル群（認可中間状態 / 認可コード / PAR / device code / リプレイ JTI / 失効リスト / WebAuthn チャレンジ / ログインスロットル / SAML リプレイ）の
+    高 churn 対策を記録する。時間パーティション + `DROP PARTITION` による GC、`fillfactor` と HOT update、fail-closed 縮退（[[wi-106-distributed-login-throttle-and-shared-state-ha]] と整合）の維持を明記する。
+  - `spec/capacity.md` に、read/write 分離時の**読み取り一貫性境界**（認可・quota・throttle は強整合、discovery / 一覧 / dashboard は短時間 stale 許容）と、
+    パーティション / レプリカ運用でも tenant isolation が崩れないことを書く。
 - **persistence**:
   - `infra/schema/postgres.sql`（宣言的スキーマ）に append-heavy テーブルのパーティション定義を導入し、既存 index / 制約 / タイムスタンプ列ポリシーと整合させる。
   - 読み取りをリードレプリカへ振り分けられるよう、repository / 接続取得層に read/write のルーティング境界を用意する（強整合が必要な path は primary 固定）。
@@ -44,7 +55,7 @@ PostgreSQL への直結コネクションが線形に増え `max_connections` �
 ## Out of Scope
 - app 層 stateless 化そのものと容量目標の定義。→ [[wi-163-fleet-scale-capacity-and-horizontal-scaling-architecture]]
 - マルチAZ / 自動フェイルオーバー / DR。→ [[wi-165-high-availability-and-failover-resilience-topology]] と [[wi-101-backup-restore-and-disaster-recovery]]
-- アプリケーション水準のシャーディング（複数 DB クラスタへのテナント分散配置）。まず単一クラスタ内の分割・レプリカで容量目標を満たせるか検証し、届かない場合に別 WI と ADR を切る。
+- アプリケーション水準のシャーディング（複数 DB クラスタへのテナント分散配置）。まず単一クラスタ内の分割・レプリカで容量目標を満たせるか検証し、届かない場合に別 WI と `spec/persistence.md` を切る。
 - 外部検索エンジン導入。
 - memory persistence adapter の大規模化（単一レプリカ / テスト専用のまま）。
 
@@ -54,12 +65,15 @@ PostgreSQL への直結コネクションが線形に増え `max_connections` �
 - read/write 分離は「まず抽象だけ入れて全て primary、その後 stale 許容 path を replica へ」の段階移行にし、
   一貫性事故（throttle / quota / 認可を stale で読む）を設計で塞ぐ。
 - 接続プールは外部 pooler（例: transaction pooling）でも壊れない実装制約を先に点検し、アプリ挙動を非依存に保つ。
-- Valkey クラスタ化は key 空間のシャード適合性を確認し、fail-closed 縮退方針を維持する。
+- 高 churn な揮発性テーブルは、時間パーティション + `DROP PARTITION` を第一候補にする。行単位の `DELETE` による GC は dead tuple と autovacuum の負荷そのものを生むため、規模が上がるほど不利になる。
+  失効リストのホット読み取りは、共有ストアの選択と独立に「per-request lookup を避ける設計（短命トークン / インスタンス内キャッシュ / push 失効）」で解く。
+- **[[wi-282-staging-load-testing-and-capacity-validation]] の実測結果を入力にする。** UNLOGGED / LOGGED の選択と ephemeral sweep の間隔は wi-282 が staging で確定する暫定値なので、
+  本 work item の設計はその結果が出てから確定させる。順序を逆にすると、測っていない値を前提にパーティション設計を決めることになる。
 - 大規模性能検証は [[wi-161-large-tenant-performance-foundation]] の seed / benchmark 基盤を再利用し、通常 verify と perf smoke を分離する。
 
 ## Tasks
-- [ ] T001 [ADR] PostgreSQL パーティション / read-write 分離 / 接続プール方針を記録する。
-- [ ] T002 [ADR] Valkey クラスタ / シャーディング / 縮退方針を記録する。
+- [ ] T001 [Spec] PostgreSQL パーティション / read-write 分離 / 接続プール方針を記録する。
+- [ ] T002 [Spec] 高 churn な揮発性テーブルの時間パーティションと GC 方針、fail-closed 縮退の維持を記録する。
 - [ ] T003 [Spec] 読み取り一貫性境界と tenant isolation guarantee を追記し、`mise run spec-render` を通す。
 - [ ] T004 [Persistence] declarative schema に append-heavy テーブルのパーティションを導入する。
 - [ ] T005 [Persistence/Go] read/write ルーティング抽象を追加し、既存 usecase を write=primary 既定で移行する。
@@ -81,4 +95,4 @@ PostgreSQL への直結コネクションが線形に増え `max_connections` �
 パーティション境界と `tenant_id` key policy を誤ると、tenant 混在や pruning 不発という不可逆・高コストな事故になる。
 read/write 分離は「stale を読んではいけない path を replica に流す」のが最大の危険で、既定を write=primary にして明示的にだけ replica-eligible にすることで fail-safe にする。
 接続プール（transaction pooling）は prepared statement / セッション状態の前提を壊すことがあるため、アプリ側の依存を先に洗い出す。
-Valkey クラスタ化でも throttle の fail-closed 縮退を崩さないことを最優先で検証する。
+高 churn テーブルの GC 方式を変えても throttle の fail-closed 縮退を崩さないことを最優先で検証する。

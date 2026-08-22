@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-06-21
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-005 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-014 }
 ---
 
 # 検証可能クレデンシャル (OID4VCI 発行 / OID4VP 検証) に対応する
@@ -26,9 +31,9 @@ idmagic は現状 OIDC の id_token / access_token 発行に閉じており、wa
 
 ## Scope
 - **decision**:
-  - 新規 ADR: credential フォーマット (SD-JWT VC を既定、mdoc は将来)、issuer metadata、holder binding (cnf)、選択的開示、status list による失効、署名鍵 (既存 KeyStore / per-tenant 鍵の流用) を確定する。
+  - `spec/contexts/oauth2/decisions.md`（または新設 Context の `decisions.md`）へ記録する決定: credential フォーマット (SD-JWT VC を既定、mdoc は将来)、issuer metadata、holder binding (cnf)、選択的開示、status list による失効、署名鍵 (既存 KeyStore / per-tenant 鍵の流用) を確定する。
   - フロー確定: OID4VCI は authorization code flow + pre-authorized code flow、 credential offer の受け渡し (QR / deep link)。OID4VP は presentation request (DCQL / presentation_definition) と vp_token 検証 (direct_post) を採用する。
-- **scl**:
+- **specification**:
   - 新規 model: VerifiableCredential / CredentialConfiguration / CredentialOffer / CredentialRequest / CredentialResponse / PresentationRequest / VpVerificationResult / CredentialStatus。
   - 新規イベント: CredentialOffered / CredentialIssued / CredentialRevoked / PresentationVerified / PresentationRejected。
   - 新規 interface: GetCredentialIssuerMetadata / CreateCredentialOffer / IssueCredential / GetCredentialStatusList / CreatePresentationRequest / VerifyPresentation。permission `AdminCredentialConfigWrite`。
@@ -52,13 +57,13 @@ idmagic は現状 OIDC の id_token / access_token 発行に閉じており、wa
 
 ## Plan
 - VC は既存 OAuth2 token model へ直接詰め込まず、新規 Verifiable Credentials context が credential configuration、offer/issuance、status、presentation verification を所有する。OAuth2 は authorization/token capability、Signing Keys は issuer key を提供する。
-- 初期 format として SD-JWT VC または JWT VC の一方を ADR で確定し、JSON-LD canonicalization/独自暗号実装を避ける。OID4VCI pre-authorized code と authorization code のどちらを初期 scope にするか、wallet 相互運用性から決める。
+- 初期 format として SD-JWT VC または JWT VC の一方を `spec/contexts/oauth2/decisions.md` で確定し、JSON-LD canonicalization/独自暗号実装を避ける。OID4VCI pre-authorized code と authorization code のどちらを初期 scope にするか、wallet 相互運用性から決める。
 - offer、nonce、authorization detail、credential request は tenant/issuer/client/holder key/TTL に束縛し、一回消費する。credential payload・presentation は audit/event log に保存せず、type、issuer、subject correlation hash、result だけを記録する。
 - OID4VP は request object/response mode、nonce/state、client_id scheme、presentation definition、holder proof と credential status を検証して policy decision を返す。検証結果から local session を作るかは明示された Authentication integration scenario に限定する。
 - status/revocation は privacy-preserving な status list と cache semantics を定め、key rotation 中も既発行 credential を検証できるよう signing-key retention と整合させる。
 
 ## Tasks
-- [ ] T001 [ADR] 初期 credential format、OID4VCI grant、holder binding、OID4VP client_id scheme/response mode、status mechanism、context ownership を決定する。
+- [ ] T001 [Spec] 初期 credential format、OID4VCI grant、holder binding、OID4VP client_id scheme/response mode、status mechanism、context ownership を決定する。
 - [ ] T002 [specification/Architecture] VC context の models/states/interfaces/events/constraints/contracts/objectives/scenarios と OAuth2/SigningKeys published language を追加し、ARCHITECTURE map と派生物を同期する。
 - [ ] T003 [Domain] CredentialConfiguration、IssuanceTransaction、CredentialRecord/Status、PresentationRequest/Result を実装し、nonce/code/state の一回性をテストする。
 - [ ] T004 [Crypto Ports] issuer signer、holder proof verifier、credential verifier/status resolver を既存 signing-key port 上に定義し、選定 library の adapter を実装する。

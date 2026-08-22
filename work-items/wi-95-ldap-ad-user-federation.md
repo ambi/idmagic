@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-03
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-002 }
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # LDAP / Active Directory 閉域コネクタでユーザーをプロビジョニングする
@@ -28,7 +33,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
 
 ## Scope
 - **decision**:
-  - 新規 ADR: Connector を DC 上ではなく AD と同じ閉域ネットワーク内の専用ホストに
+  - `spec/contexts/sourcing/decisions.md` へ記録する決定: Connector を DC 上ではなく AD と同じ閉域ネットワーク内の専用ホストに
     配置し、IdMagic への outbound-only + mTLS 接続とする境界を記録する。Connector
     enrollment、証明書の発行・失効・ローテーション、テナントへの所属、および最小権限の
     AD サービスアカウントの責務を定める。
@@ -36,7 +41,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
     による冪等な upsert、削除・無効化の扱い、属性・グループ mapping、差分同期 cursor と
     再同期の規則を定める。IdMagic から AD への write-back、IdMagic による LDAP 直接接続、
     password import / LDAP bind 認証委譲を採らない理由も記録する。
-- **scl**:
+- **specification**:
   - glossary: Directory Connector、directory source、external immutable ID、同期 cursor、
     enrollment を追加し、LDAP federation / protocol federation / SCIM provisioning との
     用語上の境界を明確にする。
@@ -92,7 +97,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
 - password bindによるinteractive federationはprovisioning syncと別trust boundaryなので初期scopeを明確化し、含める場合もraw passwordをserver/event/logへ残さない。
 
 ## Tasks
-- [ ] T001 [ADR/Architecture] connector deployment/trust/secret/bootstrap、sync保証、interactive auth範囲を決定しARCHITECTUREを同期する。
+- [ ] T001 [Spec] connector deployment/trust/secret/bootstrap、sync保証、interactive auth範囲を決定しARCHITECTUREを同期する。
 - [ ] T002 [Spec] DirectoryConnection、cursor/link/quarantine lifecycle、connector/admin interfaces/events/constraints/contracts/scenariosを追加して再生成する。
 - [ ] T003 [Server Domain] connection/mapping/link/sync batch use caseとmemory/PostgreSQL repositoryを実装し、Identity Management commandsへ接続する。
 - [ ] T004 [Connector] LDAPS/StartTLS、paged search、AD DirSyncまたはmodifyTimestamp cursor、objectGUID/entryUUID、nested group解決を実装する。

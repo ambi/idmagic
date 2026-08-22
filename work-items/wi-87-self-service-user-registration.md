@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-03
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # セルフサービスのユーザ登録 (self-service sign-up) を導入する
@@ -25,8 +30,8 @@ self-service registration を標準機能として持つ:
 
 ## Scope
 - **decision**:
-  - 新規 ADR: self-registration をテナント設定 (allow_self_registration、既定 off) でゲートする。email 検証必須 (ADR-030 の one-time token 方針を踏襲)、 tenant 内 email 一意、登録直後は未検証 = login 不可 (fail-closed)、 account enumeration を避ける応答方針を記録する。
-- **scl**:
+  - `spec/contexts/authentication/decisions.md` へ記録する決定: self-registration をテナント設定 (allow_self_registration、既定 off) でゲートする。email 検証必須 (`spec/contexts/authentication/decisions.md` のワンタイムトークン方針を踏襲)、 tenant 内 email 一意、登録直後は未検証 = login 不可 (fail-closed)、 account enumeration を避ける応答方針を記録する。
+- **specification**:
   - §3.3 interfaces: RegisterUser (public / unauthenticated / tenant-scoped) と、 browser フロー用の登録トランザクション取得を追加する。
   - §3.2 models: RegistrationRequest (email / password / 表示名) を追加する。
   - §3.4 states/events: UserSelfRegistered イベントを追加する。
@@ -46,7 +51,10 @@ self-service registration を標準機能として持つ:
 ## Out of Scope
 - 外部 IdP / ソーシャル経由の JIT 登録 ([[wi-30-inbound-federation-and-identity-broker]])。
 - rate limit ([[wi-27-endpoint-rate-limit-and-bot-mitigation]])。CAPTCHA / bot mitigation は wi-27 の対象外となったため、現時点でどの WI の対象でもない（必要になれば改めて起票する）。
-- 招待ベースのオンボーディング (invite flow)。
+- 招待ベースのオンボーディング (invite flow)。→ [[wi-294-b2b-guest-invitation-and-external-collaboration]]。
+- パスワードレスの first-factor。→ [[wi-88-passwordless-email-login]]。
+  両者はメールアドレス検証のためのワンタイムトークン (ハッシュのみ保存・一回消費・期限付き) を
+  同じ形で必要とするので、先に完了したほうがその基盤を置き、後のほうは再実装しない。
 - progressive profiling / 多段の追加属性収集。
 
 ## Plan
@@ -58,7 +66,7 @@ self-service registration を標準機能として持つ:
 
 ## Tasks
 - [ ] T001 [Spec] PendingRegistration lifecycle、tenant RegistrationPolicy、Start/Verify/Approve interfaces、events/constraints/contracts/scenarios を追加して再生成する。
-- [ ] T002 [Domain/Store] registration/token model、normalization、memory/ValkeyまたはPostgreSQL store、TTL/one-time consume を実装する。
+- [ ] T002 [Domain/Store] registration/token model、normalization、memory / PostgreSQL store、TTL/one-time consume を実装する。
 - [ ] T003 [Usecases] start/resend/verify/approve/expire を EmailSender、limiter、password policy、Identity Management user creationへ接続する。
 - [ ] T004 [HTTP] realm-scoped signup/verify endpoints と uniform response、CSRF/browser transaction、secure cookie を追加する。
 - [ ] T005 [UI] signup/check-email/expired/approval/complete 画面と tenant policy 管理を追加する。

@@ -3,18 +3,10 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-07-26
+priority: p2
 depends_on: [wi-285-tenant-endpoint-style-and-host-based-resolution]
 change_kind: feature
 initial_context:
-  scl:
-    Tenancy:
-      - interfaces.ResolveTenant
-      - models.Tenant
-      - models.TenantEndpointStyle
-      - models.TenantQuota
-  decisions:
-    - decisions/ADR-033-tenant-resolution-via-path-prefix.md
-    - decisions/ADR-134-tenant-resource-quotas.md
   source:
     - backend/tenancy/domain
     - backend/tenancy/usecases
@@ -60,10 +52,10 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
 ## Scope
 
 - **decision**:
-  - 新規 ADR: `TenantDomain` の所有権検証方式 (DNS TXT)、`Pending` を予約にしない
+  - `spec/contexts/tenancy/decisions.md` へ記録する決定: `TenantDomain` の所有権検証方式 (DNS TXT)、`Pending` を予約にしない
     設計とその理由、apex ドメインを拒否する理由、quota による登録数制御、
     hostname のグローバル一意制約の範囲を記録する。
-- **scl**:
+- **specification**:
   - `Tenancy` に `TenantDomain` model (hostname / state / verification_token /
     verified_at) と `TenantDomainState` enum (`Pending` | `Verified` | `Active` |
     `Disabled`) を追加する。
@@ -113,7 +105,7 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
 - **apex ドメインを拒否する** (`login.example.com` は可、`example.com` は不可)。
   Okta / OneLogin と同じ制約。apex CNAME の DNS 制約を避け、顧客の Web サイトごと
   IdP に向ける事故を防ぐ。
-- **トライアル抑止は既存 quota 機構に乗せる**。ADR-134 の resource に `custom_domains` を
+- **トライアル抑止は既存 quota 機構に乗せる**。`spec/contexts/tenancy/scenarios.md` の `TenantQuota` の resource に `custom_domains` を
   追加し既定 1 とする。トライアルは override で 0 にすれば登録自体が塞がる
   (Auth0 の「有料プランのみ」に相当)。新しい plan / tier 概念を持ち込まない。
 - **DNS 検証はアプリから外向き HTTP を出さない**。DNS resolver 経由の TXT 参照のみを行い、
@@ -127,8 +119,8 @@ cookie、WebAuthn RP ID の仕組みは wi-285 のものをそのまま使う。
 - [ ] T001 [Spec] `TenantDomain` / `TenantDomainState` / interface 5 件 / event 4 件 /
       `TenantEndpointStyle.CustomDomain` / quota `custom_domains` / scenario 4 件を追加し
       `mise run check-spec` を通す。
-- [ ] T002 [ADR] 所有権検証方式・`Pending` 非予約・apex 拒否・quota・一意制約の範囲を
-      ADR に記録する。
+- [ ] T002 [Spec] 所有権検証方式・`Pending` 非予約・apex 拒否・quota・一意制約の範囲を
+      `spec/contexts/tenancy/decisions.md` に記録する。
 - [ ] T003 [Domain] hostname 正規化 (lowercase / IDNA / trailing dot)、apex 拒否、
       予約ドメイン拒否、検証トークン生成、状態遷移を実装する。
       RED: 不正 hostname と不正遷移が落ちるテストを先に書く

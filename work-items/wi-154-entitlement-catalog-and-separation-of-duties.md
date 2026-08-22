@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-10
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-015 }
 ---
 
 # アプリ権限台帳と SoD 競合ルールを導入する
@@ -20,7 +25,7 @@ rule を導入し、将来の access request / access review / outbound provisio
 権限台帳を作る。
 
 ## Scope
-- **scl**:
+- **specification**:
   - `Application` に ApplicationEntitlement / EntitlementAssignment / SeparationOfDutiesRule を追加する。
   - User / Group への entitlement assignment と application assignment の関係を明示する。
   - SoD conflict 検出、assignment 拒否、例外承認 events / scenarios を追加する。
@@ -49,7 +54,7 @@ rule を導入し、将来の access request / access review / outbound provisio
 
 ## Tasks
 - [ ] T001 [Spec] Entitlement catalog、assignment、SoD rule、events / scenarios を追加する。
-- [ ] T002 [Decision] entitlement と application assignment の関係、SoD 例外方針を ADR に記録する。
+- [ ] T002 [Decision] entitlement と application assignment の関係、SoD 例外方針を `spec/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] catalog / assignment / SoD evaluator を実装する。
 - [ ] T004 [HTTP] entitlement と SoD 管理 API を追加する。
 - [ ] T005 [UI] Application detail に entitlement 管理 UI を追加する。

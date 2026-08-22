@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-03
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 
 # パスワードレスの email ログイン (magic link / email OTP) を導入する
@@ -24,8 +29,8 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 
 ## Scope
 - **decision**:
-  - 新規 ADR: email magic link / email OTP を passwordless first-factor として 採用する。challenge は期限付き・単発消費 (ADR-030 の one-time token 方針)、 amr / acr へ反映 (例 amr: otp / mfa)、account enumeration 抑止、テナント設定 (allow_passwordless_email) でのゲートを記録する。
-- **scl**:
+  - `spec/contexts/authentication/decisions.md` へ記録する決定: email magic link / email OTP を passwordless first-factor として 採用する。challenge は期限付き・単発消費 (`spec/contexts/authentication/decisions.md` のワンタイムトークン方針)、 amr / acr へ反映 (例 amr: otp / mfa)、account enumeration 抑止、テナント設定 (allow_passwordless_email) でのゲートを記録する。
+- **specification**:
   - §3.3 interfaces: StartEmailLogin (email 入力で challenge 発行) と CompleteEmailLogin (code 入力 / link 検証) を追加する。
   - §3.2 models: EmailLoginChallenge を追加する。
   - §3.4 states/events: EmailLoginChallengeIssued / EmailLoginSucceeded を 追加する。
@@ -43,21 +48,24 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
   - README に passwordless email login の有効化と磁気リンクの扱いを追記する。
 
 ## Out of Scope
-- SMS / 音声 OTP (外部 gateway 依存の別 WI)。
+- SMS / 音声 OTP。→ [[wi-295-email-otp-and-sms-otp-mfa-factors]] が第二要素としての Email/SMS OTP を扱う。
+  本 WI は first-factor としてのパスワードレスログインであり、目的が異なる。ただし
+  「一回消費・期限付き・ハッシュのみ保存の OTP チャレンジ」という中身は同じ形になるので、
+  先に完了したほうが実装を置き、後のほうは再実装せずそれを使う。
 - passwordless-only テナントポリシー (password を無効化する強制)。
 - WebAuthn / passkey ([[wi-26-webauthn-passkey-and-recovery-codes]])。
 - step-up での email factor 利用 (初期は first-factor login に限定)。
 
 ## Plan
 - magic link と email OTP は `EmailLoginChallenge` の delivery/verification variant とし、tenant policy で一方または両方を許可する。challenge は login transaction、normalized verified email、user、TTL、attempt count に束縛する。
-- OTP/token は hash のみを Valkey shared state に保存し、一回消費・再送時旧challenge失効にする。開始応答と送信時間は user 存在/状態で差を出さず、EmailSender と wi-27 limiter を使う。
+- OTP/token は hash のみを PostgreSQL の共有一時状態に保存し、一回消費・再送時旧challenge失効にする。開始応答と送信時間は user 存在/状態で差を出さず、EmailSender と wi-27 limiter を使う。
 - magic link が別 browser で開かれた場合は token だけで完了させず、短い code confirmation または元 browser との transaction binding を要求して forwarding/phishing の被害を抑える。
 - 成功結果の `amr=email` と `acr` を明示し、Application sign-in policy が MFA/step-up を要求する場合は既存 second-factor flow へ進める。passwordless を WebAuthn と同じ phishing-resistant 強度に扱わない。
 - account disabled/deleted、email変更、password/credential global revoke で未消費 challenge を無効化する。
 
 ## Tasks
 - [ ] T001 [Spec] EmailLoginChallenge states、tenant method policy、Start/Complete interfaces、amr/acr、events/constraints/contracts/scenarios を追加して再生成する。
-- [ ] T002 [Domain/Store] challenge、OTP/token hash、attempt/resend/expiry と memory/Valkey adapter を実装する。
+- [ ] T002 [Domain/Store] challenge、OTP/token hash、attempt/resend/expiry と memory / PostgreSQL adapter を実装する。
 - [ ] T003 [Usecases] uniform start、EmailSender template、magic-link/OTP consume、login session handoff、credential-change revoke を実装する。
 - [ ] T004 [HTTP/UI] realm-aware email start、check-email、OTP入力、cross-browser confirmation、expired/restart 導線を追加する。
 - [ ] T005 [Policy] `amr=email` を Application/tenant sign-in policy と second-factor selection に接続する。

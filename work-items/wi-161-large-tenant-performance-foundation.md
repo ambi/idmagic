@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-10
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: spec/contexts/audit/scenarios.md, requirement: REQ-AUDIT-004 }
 ---
 
 # 大規模テナントでも軽快に動く検索・集計・性能保証を整備する
@@ -18,12 +23,12 @@ created_at: 2026-07-10
 「大量データでも最初の画面が速い」状態を保証する。
 
 ## Scope
-- **scl**:
+- **specification**:
   - `System` または各 context の `objectives` に、大規模テナント時の admin / account 主要画面 p95 / p99、DB query budget、最大 page size、dashboard 集計 freshness を追加する。
   - `scenarios` に大量 users / groups / agents / audit events / applications を持つ tenant での検索・集計・画面表示例を追加する。
   - `flows` と `scenarios` に一覧や dashboard が全件取得に依存しないこと、件数は近似または非同期集計を許容する境界を明記する。
 - **decision**:
-  - 新規 ADR: read model / counter cache / materialized view / search index の採用方針、freshness、再構築、tenant isolation、PII 取り扱いを決める。
+  - `spec/capacity.md` へ記録する決定: read model / counter cache / materialized view / search index の採用方針、freshness、再構築、tenant isolation、PII 取り扱いを決める。
 - **persistence**:
   - 主要検索条件に合わせた PostgreSQL index、covering index、partial index、text search 方針を追加する。
   - dashboard / role count / assignment count / quota usage などは必要に応じて read model または counter cache に切り出す。
@@ -42,18 +47,18 @@ created_at: 2026-07-10
 ## Out of Scope
 - 一覧 API の cursor pagination 本体。これは [[wi-159-admin-resource-cursor-pagination]] で扱う。
 - テナント resource quota の定義と作成拒否。これは [[wi-160-tenant-resource-quotas]] で扱う。
-- 外部検索エンジンの導入を前提にした全文検索基盤。PostgreSQL で足りないことが確認された場合に別 WI と ADR を切る。
+- 外部検索エンジンの導入を前提にした全文検索基盤。PostgreSQL で足りないことが確認された場合に別 WI と `spec/capacity.md` を切る。
 - CSV / bulk operation のジョブ化。
 
 ## Plan
-- まず specification objective で「大規模テナント」を具体化する。例: users 100k、groups 20k、agents 10k、applications 10k、audit events 10M retained など、ADR で検証用 scale profile を決める。
+- まず specification objective で「大規模テナント」を具体化する。例: users 100k、groups 20k、agents 10k、applications 10k、audit events 10M retained など、`spec/capacity.md` で検証用 scale profile を決める。
 - 既存 UI の全件取得・list endpoint 集計パターンを棚卸しし、summary が必要な画面とページングで十分な画面を分ける。
 - PostgreSQL を主対象に query plan と index を整える。memory persistence は contract 検証に留め、大規模性能保証の主対象にはしない。
 - Read model は freshness を明示する。認可や quota enforcement に必要な値は強整合、dashboard 表示は短時間 stale を許容する。
 - 性能検証は `mise` task に載せ、通常 verify と長時間 perf smoke を分ける。
 
 ## Tasks
-- [ ] T001 [ADR] 大規模テナント scale profile、read model 方針、freshness、検索制約、性能検証方式を記録する。
+- [ ] T001 [Spec] 大規模テナント scale profile、read model 方針、freshness、検索制約、性能検証方式を記録する。
 - [ ] T002 [Spec] performance objectives、large-tenant scenarios、UX の全件取得禁止・summary freshness を追加する。
 - [ ] T003 [Render] `mise run spec-render` で派生物を更新する。
 - [ ] T004 [Audit] 既存 UI / API の全件取得、list endpoint 集計、未制限検索を棚卸しして置換対象を確定する。

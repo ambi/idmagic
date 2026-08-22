@@ -4,49 +4,51 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-04
+priority: p2
+change_kind: tooling
+spec_impact: { kind: none, reason: "リリース成果物の生成と検証だけを変え、規範シナリオと配線契約には触れない。真正性の方針は spec/deployment.md の散文として記録する。" }
 ---
 
-# ADR-020 を実装し SBOM 同梱・cosign keyless 署名・SLSA provenance をリリース成果物に付与する
+# SBOM 同梱・cosign keyless 署名・SLSA provenance をリリース成果物に付与する
 
 ## Motivation
-ADR-020 はサプライチェーン保護として SLSA Level 3・Sigstore(cosign) 署名・
-CycloneDX SBOM 同梱・再現性検証を「採用」と決定しているが、現行 CI
-(idmagic-ci.yaml) が実装しているのは Trivy スキャン・CodeQL・frozen-lockfile・
-no-push のイメージビルドまでで、SBOM 生成、cosign 署名、SLSA provenance、
-Rekor 透明性ログ、semgrep OAuth ルールは未実装。OAuth2/OIDC IdP は他システムが
-認証を委ねる pivot 攻撃の起点であり、成果物が改ざん不能で内容を即答できる体制は
-本番前提である。ADR は在るが実装が無い状態を WI として着地させる。
+OAuth2/OIDC IdP は他システムが認証を委ねる pivot 攻撃の起点であり、配布した成果物が改ざんされていないことと、その中身に何が入っているかを即答できることは本番運用の前提である。現状はどちらも満たせない。
 
-Kubernetes リリースや Sigstore が示すとおり、keyless 署名（GitHub OIDC）+ SBOM
-attestation + 検証可能な provenance を「リリースと atomic に」生成することが要点で、
-リリース後生成では攻撃時に稼働版と SBOM が乖離する（ADR-020 が却下した案）。
+`.github/workflows/idmagic-ci.yaml` にあるのは CodeQL と `mise run verify` だけで、リリースを作るワークフローが存在しない。コンテナイメージのビルドと Trivy スキャンのジョブは `b2a395b7` でコメントアウトされたまま復帰していない。したがって SBOM 生成、cosign 署名、SLSA provenance、Rekor 透明性ログのいずれも無い。
+
+かつてサプライチェーン保護を「採用」と決めた記録は退役した ADR アーカイブにあり、正準文書へは引き継がれなかった。`spec/` を検索しても SLSA・cosign・SBOM は 1 件も現れない。つまり現在この方針はどこにも記録されていない。本 work item は実装だけでなく、その決定を `spec/deployment.md` に置き直すところから始める。
+
+keyless 署名（GitHub OIDC）+ SBOM attestation + 検証可能な provenance は、リリースと不可分に生成することが要点である。リリース後に別ビルドで生成すると、攻撃を受けたときに稼働版と SBOM が乖離して真正性の主張が成立しない。
 
 ## Scope
+- **specification**:
+  - `spec/deployment.md` に、リリース成果物の真正性（署名・SBOM・provenance をリリースと不可分に生成し、リリース後生成を採らない）と到達目標の SLSA レベルを記録する。
 - **ci_release**:
+  - コメントアウトされたコンテナビルドのジョブを、リリース用ワークフローとして復帰させる。
   - リリース時にコンテナイメージへ Syft で CycloneDX SBOM を生成し、 `cosign attest` で attestation として署名する。
   - `cosign sign`（GitHub OIDC keyless）でイメージ署名し、Rekor に記録する。 検証手順（`cosign verify` / `cosign verify-attestation`）を文書化する。
   - SLSA provenance generator でビルド provenance を生成し non-falsifiable に保つ。 到達可能な SLSA レベルを明記する（GitHub-hosted runner 前提）。
-  - semgrep で OAuth 2.0 Security BCP 由来の禁止パターン ruleset を CI に追加する （ADR-020 の依存スキャン節）。
-  - WI-99 の version stamp と、署名対象イメージ tag・SBOM を対応付ける。
+  - [[wi-99-build-version-stamp-and-version-endpoint]] の version stamp と、署名対象イメージ tag・SBOM を対応付ける。
 - **documentation**:
   - README に成果物検証手順（cosign verify、SBOM 取得、provenance 確認）を書く。
   - Kubernetes 側で未署名イメージを拒否する admission（Policy Controller 等）の前提を記す。
 
 ## Out of Scope
 - Kubernetes admission controller 本体のデプロイ・運用（前提として記述のみ）。
-- SLSA L4（two-person review）— ADR-020 が out of scope とする。
+- SLSA L4（two-person review）。到達目標は GitHub-hosted runner で成立する範囲に留める。
+- 脆弱性の検知面（govulncheck / osv-scanner / Trivy / semgrep ruleset と対応方針）。[[wi-291-dependency-vulnerability-management-and-disclosure-policy]] が担う。本 work item は真正性の面だけを担う。
 - アプリケーションコード・HTTP API の変更。
-- UI バンドルの本番堅牢化（別途 WI-104 系の範囲）。
+- UI バンドルの本番堅牢化。
 
 ## Plan
-- [[ADR-020-supply-chain-protection]] の対象を現行成果物（Go binaries、frontend assetsを含むcontainer image）へ具体化する。現在は `.github/workflows/idmagic-ci.yaml` だけなので、PR CIを変更せずtag/手動dispatch専用のrelease workflowを追加する。
+- サプライチェーン保護の対象を現行成果物（Go binaries、frontend assets を含む container image）へ具体化し、`spec/deployment.md` に方針として記録する。現在は `.github/workflows/idmagic-ci.yaml` だけなので、PR CI を変更せず tag/手動 dispatch 専用の release workflow を追加する。
 - buildは既存`mise run build-go`/`mise run build-ui`と`infra/docker/Dockerfile`を正本にし、version/commit/dateを固定したartifactとimage digestを一度だけ生成する。SBOM/署名のために別buildしてdigestをずらさない。
 - CycloneDX SBOMはGo module、frontend package、container filesystemを対象にartifact/image digestへ紐付け、release artifactとOCI attestationの双方に格納する。
 - cosign keyless署名はGitHub Actions OIDC、SLSA provenanceは公式generator/reusable workflowを用いる。長寿命signing keyをrepository secretに置かず、workflow permissionを最小化・actionをcommit SHA pinする。
 - release publish前にidentity issuer/workflow ref、signature、provenance subject digest、SBOM schemaを別verify jobで検査する。READMEには利用者が同じpolicyで検証するcommandとexpected identityを記載する。
 
 ## Tasks
-- [ ] T001 [Inventory] release対象、artifact名/platform、container registry、tag→version/commit mappingとADR-020未実装差分を確定する。
+- [ ] T001 [Spec] `spec/deployment.md` にリリース成果物の真正性の方針と到達目標の SLSA レベルを記録し、release 対象、artifact 名/platform、container registry、tag→version/commit mapping を確定する。
 - [ ] T002 [Build] リリース用の mise タスクとワークフローで Go、UI、コンテナを一度だけビルドし、チェックサムと不変ダイジェストをジョブの出力または成果物へ渡す。
 - [ ] T003 [SBOM] pinned generatorでbinary/module/frontend/containerのCycloneDX SBOMを生成・validateし、checksum/OCI subjectへ関連付ける。
 - [ ] T004 [Sign] GitHub OIDC permissionを持つ隔離jobでartifact/imageをcosign keyless署名し、transparency log bundleを保存する。
@@ -55,9 +57,9 @@ attestation + 検証可能な provenance を「リリースと atomic に」生�
 - [ ] T007 [Hardening/Docs] action SHA pin、least permissions、artifact retentionと利用者検証/runbookを記載し、test tagでend-to-end検証する。
 
 ## Verification
-- CI: リリースワークフローで SBOM・署名・provenance が生成され、`cosign verify` と `cosign verify-attestation` が成功する.
-- CI: semgrep OAuth ruleset がパイプラインで実行される。
+- CI: リリースワークフローで SBOM・署名・provenance が生成され、`cosign verify` と `cosign verify-attestation` が成功する。
 - 手動: 生成されたイメージに対し外部から cosign verify が透明性ログ込みで通ることを確認する。
+- `mise run check`
 - `mise run build-go`
 
 ## Risk Notes

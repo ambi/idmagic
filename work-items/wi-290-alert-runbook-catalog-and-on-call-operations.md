@@ -3,17 +3,10 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-07-25
+priority: p1
 depends_on: []
 change_kind: operations
 initial_context:
-  scl:
-    System:
-      - interfaces.MetricsExposition
-      - interfaces.ReadinessProbe
-  decisions:
-    - decisions/ADR-017-opentelemetry-as-observability-interface.md
-    - decisions/ADR-078-kubernetes-health-probes-and-graceful-drain.md
-    - decisions/ADR-129-job-execution-lanes.md
   source:
     - infra/k8s/monitoring/prometheus-rule.yaml
     - infra/docker/prometheus-rules.yml
@@ -57,10 +50,10 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 ## Scope
 
 - **decision**:
-  - ADR は新規に起こさない。運用文書の構造とアラート命名規約は本 WI の成果物
-    (`infra/runbooks/README.md`) に置き、[[ADR-017-opentelemetry-as-observability-interface]] の
+  - `decisions.md` へ新しい決定は起こさない。運用文書の構造とアラート命名規約は本 WI の成果物
+    (`infra/runbooks/README.md`) に置き、`spec/observability.md` の
     観測インタフェース方針を参照する。
-- **scl**:
+- **specification**:
   - `System.interfaces.MetricsExposition` の記述に「各 SLO アラートは runbook 参照を持つ」
     という運用要件を追記する。
   - `System` に `scenarios` として「SLO 逸脱アラート発火時、オンコールは runbook を辿って
@@ -77,7 +70,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
     `LoginErrorRateBudgetBurn` / `LoginLatencyBudgetBurn` / `LoginThrottleHitRatioHigh` /
     `JobsLatencySensitiveClaimLatencyHigh` および `prometheus-rule.yaml` の残りのアラート全件。
   - 加えて、アラートは無いが初動が必要な運用事象の runbook を追加する:
-    署名鍵プロバイダ (Vault) 到達不能による fail-closed、DB 接続枯渇 /
+    署名鍵プロバイダ (OpenBao) 到達不能による fail-closed、DB 接続枯渇 /
     circuit breaker open、ジョブ queue 滞留、テナント quota 超過 (既存文書を統合)。
   - `prometheus-rule.yaml` と `infra/docker/prometheus-rules.yml` の各アラートに
     `runbook_url` annotation と対応する specification objective 名を付ける。

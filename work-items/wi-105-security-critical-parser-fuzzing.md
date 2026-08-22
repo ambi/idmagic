@@ -4,6 +4,9 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-04
+priority: p1
+change_kind: tooling
+spec_impact: { kind: none, reason: "攻撃者制御の入力を扱う既存パーサに fuzz target を足すだけで、契約も規範シナリオも変えない。" }
 ---
 
 # SAML XML・JWT/JWE・redirect_uri・PKCE 等のセキュリティクリティカルなパーサに Go native fuzzing を導入する

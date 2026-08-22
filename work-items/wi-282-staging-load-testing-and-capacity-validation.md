@@ -3,6 +3,10 @@ status: pending  # pending | in_progress | completed | cancelled
 authors: [tn]
 risk: medium      # low | medium | high | critical
 created_at: 2026-07-25  # YYYY-MM-DD
+priority: p1
+change_kind: operations
+affected_spec:
+  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
 depends_on: []
 ---
 
@@ -12,7 +16,7 @@ depends_on: []
 
 idmagic には specification の非機能 objective（login 応答成功率・latency、introspection の p99 等）と、
 実測で確定すべき暫定の実装判断が複数ある。特に wi-278（揮発性状態の PostgreSQL 統合、
-ADR-139）は、高 churn テーブルの **UNLOGGED / LOGGED 選択**と **GC（ephemeral sweep）間隔**を
+`spec/persistence.md`）は、高 churn テーブルの **UNLOGGED / LOGGED 選択**と **GC（ephemeral sweep）間隔**を
 「staging 実測で確定する」暫定のまま実装を完了しており、この検証だけが未了で残っている。
 
 これらは机上では決められない。write 増幅・autovacuum 負荷・dead tuple 肥大・p99 latency は

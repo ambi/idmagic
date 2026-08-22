@@ -3,6 +3,12 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-29
+priority: p1
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-002 }
+  - { path: spec/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-003 }
+  - { path: spec/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-005 }
 depends_on: [wi-97-envelope-encryption-at-rest]
 ---
 
@@ -16,7 +22,7 @@ scheduled batch trigger も無い) ことが、同 WI の完了報告時のユ�
 きっかけに判明した。
 
 調査の結果:
-- 他の work item / ADR にはこの gap への言及が一切無い。
+- 他の work item にも正準文書にも、この gap への言及が一切無い。
 - wi-97 自身は T007 と Completion の両方で「rotate/disable/destroy の admin
   endpoint は追加していない (将来 WI での配線を想定)」と開示しているが、
   その「将来 WI」を実際には起票していなかった (宣言だけで未追跡)。

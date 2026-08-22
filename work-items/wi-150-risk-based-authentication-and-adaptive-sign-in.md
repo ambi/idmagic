@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-10
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-009 }
 ---
 
 # リスクベース認証と adaptive sign-in 判定を導入する
@@ -18,7 +23,7 @@ Okta adaptive policy のように、匿名 IP、異常な国変更、password sp
 MFA 要求、ブロック、パスワード変更要求に反映できる adaptive sign-in を導入する。
 
 ## Scope
-- **scl**:
+- **specification**:
   - `Authentication` に RiskSignal / RiskScore / RiskLevel / RiskAssessment を追加する。
   - 認証イベントの riskScore を実値として算出・保存する scenario を追加する。
   - `Application` の AppSignInPolicy condition に risk level 条件と adaptive action を追加する。
@@ -48,7 +53,7 @@ MFA 要求、ブロック、パスワード変更要求に反映できる adapti
 
 ## Tasks
 - [ ] T001 [Spec] RiskSignal / RiskAssessment と policy condition / action を追加する。
-- [ ] T002 [Decision] risk signal、score 境界、初期 action、監査保持方針を ADR に記録する。
+- [ ] T002 [Decision] risk signal、score 境界、初期 action、監査保持方針を `spec/contexts/authentication/decisions.md` に記録する。
 - [ ] T003 [App] risk evaluator と login / authorize への適用を実装する。
 - [ ] T004 [HTTP] risk policy と risky sign-in report API を追加する。
 - [ ] T005 [UI] risk 条件の policy editor と report 画面を追加する。

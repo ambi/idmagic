@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-10
+priority: p1
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-002 }
+  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-005 }
 ---
 
 # 非同期ジョブの管理 API・運用 UI・観測面を整備する
@@ -18,7 +23,7 @@ CSV export、bulk import、outbound SCIM、DR drill などの長時間処理は�
 worker 実行モデルとは分け、ユーザー操作面と運用面の品質に集中する。
 
 ## Scope
-- **scl**:
+- **specification**:
   - `Jobs` context に管理者向け `ListJobs` / `GetJob` / `CancelJob` を追加する。
   - `AdminJobsRead` / `AdminJobsCancel` permission を追加する。
   - job progress、failure reason、attempts、lease / worker id、cancellation requested など、

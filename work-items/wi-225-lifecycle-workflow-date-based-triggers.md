@@ -3,6 +3,11 @@ status: pending
 authors: ["tn"]
 risk: high
 created_at: 2026-07-16
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-003 }
+  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-007 }
 depends_on: [wi-153-identity-lifecycle-workflows, wi-217-lifecycle-workflow-durable-run-handoff, wi-218-lifecycle-workflow-action-execution-and-audit]
 ---
 
@@ -31,7 +36,7 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
   (`source_occurrence_id` を評価日ベースで構成する等) を設計する。
 - スキャン対象の日付属性は `TenantUserAttributeSchema` の日付型属性に限定する fail-closed な
   validation を追加する。
-- ADR に、日次スキャン方式 (cron ではなく既存 job runner の recurring job) を採用する理由と、
+- `spec/contexts/identity-governance/decisions.md` に、日次スキャン方式 (cron ではなく既存 job runner の recurring job) を採用する理由と、
   タイムゾーン・DST・スキャン遅延時の扱いを記録する。
 
 ## Out of Scope
@@ -40,16 +45,21 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 - 分/時間単位の精度。日次粒度に限定する。
 - [[wi-226-lifecycle-workflow-templates-and-on-demand-run]] の on-demand 実行 (本 WI は日付が
   到来したことによる自動発火のみを扱う)。
+- trigger の構造そのものの拡張 (複数 kind の OR、filter の入れ子、比較演算子)。
+  → [[wi-228-lifecycle-workflow-trigger-filter-expressiveness]]。
+  本 WI は `WorkflowTriggerKind` に日付起点の kind を 1 つ足すだけに留め、`WorkflowTriggerDef` の
+  形は変えない。両方を同時に変えると、どちらの変更が壊したのか切り分けられなくなる。
+  順序としては本 WI を先に出し、wi-228 が後から構造を広げるほうが安全である。
 
 ## Plan
 - 既存の trigger evaluator / run planner の構造 (kind 別の trigger 定義 + filter) を再利用し、
   `date_attribute_offset` を 4 つ目の kind として追加する。
-- 日次スキャンは DynamicGroupRule の全件再評価 job (ADR-111) のパターンを参考にする。
+- 日次スキャンは DynamicGroupRule の全件再評価 job (`spec/contexts/identity-management/decisions.md` の CEL 動的グループ規則) のパターンを参考にする。
 - 重複排除は「同一 User × workflow × revision × 評価日」を一意制約にする。
 
 ## Tasks
 - [ ] T001 [Spec] `date_attribute_offset` trigger kind、日次スキャン scenario、objective を追加する。
-- [ ] T002 [Decision] 日次スキャン方式、タイムゾーン方針、dedup 方針を ADR に記録する。
+- [ ] T002 [Decision] 日次スキャン方式、タイムゾーン方針、dedup 方針を `spec/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] trigger evaluator の拡張と日次スキャン job を実装する。
 - [ ] T004 [Verify] 境界日 (offset 当日、前後日)、タイムゾーン、重複実行を検証する。
 
@@ -66,4 +76,4 @@ IdMagic だけで完結できず、外部 cron や手動運用に頼らざるを
 日次スキャンは大規模テナントで全 User 走査コストがかかるため、対象日付属性を持つ User への
 インデックス等のパフォーマンス配慮が必要であり、[[wi-161-large-tenant-performance-foundation]] と
 連携する可能性がある。タイムゾーンの扱いを誤ると意図しない日に trigger が発火するため、テナントの
-タイムゾーン設定または固定 UTC 基準を ADR で明確に固定する。
+タイムゾーン設定または固定 UTC 基準を `spec/contexts/identity-governance/decisions.md` で明確に固定する。

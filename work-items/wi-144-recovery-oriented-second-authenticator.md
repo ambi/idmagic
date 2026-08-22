@@ -4,6 +4,11 @@ status: pending
 authors: ["tn"]
 risk: medium
 created_at: 2026-07-09
+priority: p2
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-011 }
+  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-022 }
 ---
 
 # 復旧目的の 2 個目認証器登録を推奨し手段冗長化でロックアウトを予防する
@@ -11,12 +16,12 @@ created_at: 2026-07-09
 ## Motivation
 
 TOTP / WebAuthn 喪失時の復旧を backup recovery code **単独**に依存させると、コード紛失で
-復旧経路が絶たれる（[ADR-088](file:///Users/tn/src/idmagic/decisions/ADR-088-layered-account-recovery.md)）。
+復旧経路が絶たれる（`spec/contexts/authentication/decisions.md` の層状のアカウント復旧）。
 Google / Entra ID（combined registration）が示すとおり、最も費用対効果の高い予防策は
 **手段の冗長化**——認証器を 2 個以上登録させ、1 台紛失をロックアウトにしないことである。
 
 idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき、同期 passkey を示す
-`backup_eligible` / `backup_state` も保存済みで、この層に自然に乗る。ADR-088 の第 1 層として、
+`backup_eligible` / `backup_state` も保存済みで、この層に自然に乗る。層状のアカウント復旧の第 1 層として、
 2 個目認証器（2 個目の passkey、または TOTP + passkey）の登録を推奨・任意強制できる仕組みを
 仕様化する。MFA 登録オンボーディング（[wi-127](file:///Users/tn/src/idmagic/work-items/wi-127-mfa-enrollment-onboarding-and-enforcement.md)）と連携し、初回登録直後に 2 個目を促す。
 
@@ -33,8 +38,8 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 
 ## Out of Scope
 
-- 管理者による認証器リセット（ADR-088 第 2 層。[wi-143](file:///Users/tn/src/idmagic/work-items/wi-143-admin-authenticator-reset-and-account-recovery.md)）。
-- recovery code の設計変更（ADR-087 の hash-only / single-use / 全置換は維持）。
+- 管理者による認証器リセット（層状のアカウント復旧の第 2 層。[[wi-143-admin-authenticator-reset-and-account-recovery]]）。
+- recovery code の設計変更（`spec/contexts/authentication/decisions.md` の hash-only / single-use / 全置換は維持）。
 - 新しい factor 種別（SMS / voice）の追加。
 - 本人確認ベース復旧（SSAR 相当）。
 
@@ -50,7 +55,7 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 - 参考にする外部パターン: Entra ID combined registration、Google の複数手段・同期 passkey。
 - 却下する代替案:
   - 常に 2 個目を必須化: 小規模運用の導入摩擦が大きい。既定は推奨に留めオプトインで必須化。
-  - recovery code を廃止して冗長化のみに依存: セルフサービスの最終手段を失う（ADR-088 で却下済み）。
+  - recovery code を廃止して冗長化のみに依存: セルフサービスの最終手段を失う（`spec/contexts/authentication/decisions.md` で却下済み）。
 - 未決定事項: 「復旧手段が単一」の厳密な判定基準（同期 passkey 1 個を単一とみなすか）、
   推奨導線を wi-127 に統合するか独立ステップにするか。
 

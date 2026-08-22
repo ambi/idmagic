@@ -3,21 +3,10 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-07-25
+priority: p2
 depends_on: []
 change_kind: feature
 initial_context:
-  scl:
-    OAuth2:
-      - interfaces.Authorize
-      - interfaces.PushAuthorizationRequest
-      - interfaces.GetOpenidConfiguration
-      - models.AuthorizationRequest
-      - models.OAuth2Client
-      - standards.FAPI2SecurityProfile
-  decisions:
-    - decisions/ADR-006-par-mandatory-fapi-clients.md
-    - decisions/ADR-003-jwt-signing-algorithm.md
-    - decisions/ADR-023-private-key-jwt-verification.md
   source:
     - backend/oauth2/handlers_http/authorize_handler.go
     - backend/oauth2/handlers_http/par_handler.go
@@ -71,16 +60,16 @@ FAPI を掲げる以上の整合性の問題でもある。
 ## Scope
 
 - **decision**:
-  - 新規 ADR (署名付き認可メッセージ): JAR の受け入れ方式 (`request` パラメータのみ対応し、
+  - `spec/contexts/oauth2/decisions.md` へ記録する決定 (署名付き認可メッセージ): JAR の受け入れ方式 (`request` パラメータのみ対応し、
     外部 `request_uri` fetch は SSRF 面のため**対応しない**方針を明記する)、署名アルゴリズムの
-    許可集合 ([[ADR-003-jwt-signing-algorithm]] と整合し PS256 / ES256 に限定)、
+    許可集合 (`spec/contexts/oauth2/standards.md` の `RFC7518-SIGNATURE-ALGORITHMS` と整合し PS256 / ES256 に限定)、
     request object 内パラメータと素のクエリパラメータが競合した場合の優先規則
     (OIDC Core は request object 優先、FAPI はクエリ側の重複を禁止) 、
     クライアントごとの必須化設定 (`require_signed_request_object`)、
     JARM の `response_mode` (`jwt` / `query.jwt` / `fragment.jwt` / `form_post.jwt`) の対応範囲、
-    レスポンス署名鍵 ([[ADR-075-per-tenant-signing-keys-and-key-provider]] の tenant key を使う)、
+    レスポンス署名鍵 (`spec/contexts/signing-keys/decisions.md` のテナントごとの署名鍵 の tenant key を使う)、
     PAR との組み合わせ (PAR に署名付き request object を POST する経路) を記録する。
-- **scl**:
+- **specification**:
   - `standards` に `RFC9101` (JAR) と JARM の仕様参照を追加し、要件を書き下す。
   - `OAuth2.models.OAuth2Client` に `request_object_signing_alg` /
     `require_signed_request_object` / `authorization_signed_response_alg` を追加する。
@@ -102,8 +91,8 @@ FAPI を掲げる以上の整合性の問題でもある。
 - **go**:
   - request object の検証を `backend/oauth2` に実装する。クライアントの登録済み JWKS
     (または `jwks_uri` の取得済みキャッシュ) で署名検証する。
-    [[ADR-023-private-key-jwt-verification]] の検証基盤を再利用する。
-  - `jti` のリプレイ防止ストア (短命 / PostgreSQL、[[ADR-139-consolidate-ephemeral-state-into-postgresql]]
+    `spec/contexts/oauth2/internals.md` の `private_key_jwt` 検証 の検証基盤を再利用する。
+  - `jti` のリプレイ防止ストア (短命 / PostgreSQL、`spec/persistence.md` の一時状態の PostgreSQL 統合
     に従う) を追加する。
   - request object 展開後のパラメータ正規化を `/authorize` と `/par` の共通経路に置き、
     両方で同一の検証が効くようにする。
@@ -117,7 +106,7 @@ FAPI を掲げる以上の整合性の問題でもある。
   - 管理コンソールのアプリケーション編集 (OIDC 詳細設定) に
     `request_object_signing_alg` / `require_signed_request_object` /
     `authorization_signed_response_alg` を追加する
-    ([[ADR-066-application-as-single-editor-surface]] に従い Application 配下に置く)。
+    (`spec/contexts/application/decisions.md` に従い Application 配下に置く)。
 - **documentation**:
   - README に JAR / JARM の設定手順と、`request_uri` 非対応の理由を追記する。
 
@@ -136,8 +125,8 @@ FAPI を掲げる以上の整合性の問題でもある。
 
 - **`request_uri` を非対応にするのが安全側の設計判断**である。外部 URL を取得する実装は
   SSRF とサービス間の可用性結合を生む。PAR が既にあるため、「事前に POST して短命の
-  `request_uri` を得る」という等価な体験は既に提供できている。ADR にこの等価性を書く。
-- **検証は既存の private_key_jwt 検証基盤に載せる**。[[ADR-023-private-key-jwt-verification]] で
+  `request_uri` を得る」という等価な体験は既に提供できている。`spec/contexts/oauth2/decisions.md` にこの等価性を書く。
+- **検証は既存の private_key_jwt 検証基盤に載せる**。`spec/contexts/oauth2/internals.md` の `private_key_jwt` 検証 で
   クライアント JWKS の解決と署名検証は既に実装されているため、新しい鍵解決経路を作らない。
 - **`/authorize` と `/par` で同一の展開・検証経路を通す**。ここを分けると、片方だけ
   検証が緩いという典型的な脆弱性を作る。展開後の正規化パラメータを 1 つの型にして、
@@ -150,7 +139,7 @@ FAPI を掲げる以上の整合性の問題でもある。
   scenario で固定する。
 - **リプレイ防止は `jti` + `exp` で行う**。`jti` ストアの保持期間は `exp` の最大許容値に
   揃える。無期限に持つと肥大化するため、既存の短命状態の掃除機構
-  ([[ADR-107-audit-retention-and-jobs-dev-environment-topology]] の retention sweep) に載せる。
+  (`spec/contexts/audit/decisions.md` の保持期間 の retention sweep) に載せる。
 - 未決定: `require_signed_request_object` をテナント既定として持つか、クライアント個別のみか。
   第 1 段はクライアント個別とし、テナント既定は
   [[wi-115-tenant-default-application-login-policy]] の形に倣って必要なら後続で足す。
@@ -160,7 +149,7 @@ FAPI を掲げる以上の整合性の問題でもある。
 - [ ] T001 [Spec] `standards` に RFC9101 / JARM、client メタデータ 3 件、`request` パラメータ、
       Authorize / PAR の requires、discovery メタデータ、event、scenario 8 件を追加し
       `mise run check-spec` を通す。
-- [ ] T002 [ADR] 署名付き認可メッセージの ADR を起票する (request_uri 非対応の理由・
+- [ ] T002 [Spec] 署名付き認可メッセージの決定を `spec/contexts/oauth2/decisions.md` に記録する (request_uri 非対応の理由・
       アルゴリズム許可集合・パラメータ競合規則・JARM の範囲・鍵の出所)。
 - [ ] T003 [Domain] request object の検証 (署名・`iss` / `aud` / `exp` / `nbf` / `jti`) と
       パラメータ展開・競合検出を実装する。RED: 署名不正 / `exp` 超過 / `aud` 不一致 /

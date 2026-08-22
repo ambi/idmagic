@@ -4,6 +4,11 @@ authors: [tn]
 risk: medium
 created_at: 2026-08-08
 priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-001 }
+  - { path: spec/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-010 }
+  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-047 }
 depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 ---
 
@@ -11,7 +16,7 @@ depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 
 ## Motivation
 
-[[wi-58-continuous-access-evaluation-agent-revocation]] / [[ADR-057]] は Motivation・specification
+[[wi-58-continuous-access-evaluation-agent-revocation]] / `spec/contexts/sharedsignals/` は Motivation・specification
 (`spec/contexts/sharedsignals/`)・実装のいずれも Agent プリンシパル限定でスコープされている。
 `AgentRevocationEpoch` は `agent_id` をキーに `agents` テーブルへ直接 FK する専用テーブルで、
 OAuth2 `Introspect` への `ensures` 節も `access_token_subject_is_agent(...)` というガード付きで
@@ -24,7 +29,7 @@ Agent 主体の token にしか revocation epoch 判定をかけない。
 User 側のローカル revocation epoch 機構と、それを既存の human 側失効トリガーに接続する部分が
 丸ごと欠けている**。README ロードマップ (Phase 3) は元々 CAEP/SSF を汎用機能として位置づけていた。
 
-人間ユーザーは RFC 7009 Token Revocation・refresh token family revocation ([[ADR-004]])・`sid`
+人間ユーザーは RFC 7009 Token Revocation・refresh token family revocation (`spec/contexts/oauth2/decisions.md` のリフレッシュトークン回転)・`sid`
 ベースのセッション失効 ([[wi-28-session-management-and-oidc-logout-completion]]) というローカルの
 失効プリミティブは既に持っているが、これらは当該 IdP 内で完結し、外部 resource server / 別 IdP へ
 CAEP イベントとして伝播しない (EcosystemPropagation が無い)。また外部から届く User 主体の inbound

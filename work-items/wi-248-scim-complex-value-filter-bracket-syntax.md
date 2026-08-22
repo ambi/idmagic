@@ -3,16 +3,10 @@ status: pending
 authors: [tn]
 risk: medium
 created_at: 2026-07-18
+priority: p2
 depends_on: [wi-246-scim-multivalued-core-attributes-and-nested-group-members]
 change_kind: feature
 initial_context:
-  scl:
-    Sourcing:
-      - standards.RFC7644.RFC7644-PATCH
-      - interfaces.ListScimUsers
-      - interfaces.ListScimGroups
-      - interfaces.PatchScimUser
-      - interfaces.PatchScimGroup
   source:
     - backend/sourcing/scim/domain/filter.go
     - backend/sourcing/scim/domain/mutation.go
@@ -71,7 +65,7 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
 - [ ] T002 [Domain] RED: bracket 構文 parser/evaluator の test (複合条件、資源上限、
       allowlist 外属性の拒否)を先に失敗させて実装する(未信頼入力を parse する
       複雑な文法のため、fuzz/property test 採用の要否を検討し判断根拠を Risk Notes に
-      記す — ADR-121)。
+      記す — SPECIFICATION_FORMAT.md の `partial` adoption)。
 - [ ] T003 [Usecase/Adapter] RED: LIST filter と PATCH path 双方の HTTP contract test を
       先に失敗させて実装する。
 - [ ] T004 [Verify] `mise run check`、`mise run test-go`、`mise run verify-go` を実行する。
@@ -91,4 +85,4 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
 `backend/sourcing/scim/domain/filter.go` は既に外部 untrusted input を parse する
 security-sensitive なコードであり、bracket 構文はネスト・組み合わせ爆発を招きやすい
 文法拡張である。既存の資源上限機構を必ず適用し、fuzz test 採用を検討する
-(ADR-121: 文法が複雑・高リスクな parser は要検討・要記録)。
+(SPECIFICATION_FORMAT.md の `partial` adoption: 標準を部分的にしか採用しないことは `standards.md` に明示する)。

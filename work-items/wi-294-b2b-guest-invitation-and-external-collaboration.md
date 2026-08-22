@@ -3,24 +3,10 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-07-25
+priority: p3
 depends_on: [wi-30-inbound-federation-and-identity-broker]
 change_kind: feature
 initial_context:
-  scl:
-    IdManagement:
-      - models.User
-      - models.UserLifecycle
-      - interfaces.CreateAdminUser
-      - interfaces.ListAdminUsers
-      - interfaces.DisableAdminUser
-    Application:
-      - interfaces.AssignApplication
-      - interfaces.ListApplicationAssignments
-  decisions:
-    - decisions/ADR-032-tenant-as-first-class-aggregate.md
-    - decisions/ADR-039-user-profile-shape.md
-    - decisions/ADR-072-two-stage-user-deletion-soft-delete-and-restore.md
-    - decisions/ADR-141-inbound-identity-sourcing-taxonomy.md
   source:
     - backend/idmanagement/user/domain
     - backend/idmanagement/user/usecases
@@ -71,15 +57,15 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 ## Scope
 
 - **decision**:
-  - 新規 ADR (ゲストユーザーと招待): ゲストを別 aggregate にせず `User` の種別
+  - `spec/contexts/identity-management/decisions.md` へ記録する決定 (ゲストユーザーと招待): ゲストを別 aggregate にせず `User` の種別
     (`user_kind: Member | Guest`) として表す理由、ゲストの認証経路
     (外部 IdP 委任を既定とし、ローカル資格情報を持つゲストを許すか)、ゲストの既定権限
     (グループ / ロール / アプリ割当の既定 deny)、招待の有効期限と再送、
     受諾時の JIT provisioning と [[wi-30-inbound-federation-and-identity-broker]] の
     account linking との関係、ゲストのアクセス期限 (expiration) と失効時の挙動
-    (無効化か削除か。[[ADR-072-two-stage-user-deletion-soft-delete-and-restore]] と整合)、
+    (無効化か削除か。`spec/contexts/identity-management/states.md` の `UserLifecycle` と整合)、
     ゲストに見せない情報 (テナント内ディレクトリの閲覧制限) を記録する。
-- **scl**:
+- **specification**:
   - `IdManagement.models.User` に `user_kind` (Member / Guest) と、ゲスト固有の
     `guest_metadata` (invited_by / invited_at / accepted_at / access_expires_at /
     home_domain) を追加する。
@@ -155,14 +141,14 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
   取引先に社員名簿を渡すことになる。認可側で `user_kind == Guest` を deny 条件に入れ、
   ここを最初のテストにする。
 - 未決定: ローカル資格情報を持つゲスト (外部 IdP を持たない小規模取引先向け) を許すか。
-  第 1 段では**許さない** (外部 IdP 委任のみ) とし、需要があれば ADR を改訂して開く。
+  第 1 段では**許さない** (外部 IdP 委任のみ) とし、需要があれば `spec/contexts/identity-management/decisions.md` を改訂して開く。
 
 ## Tasks
 
 - [ ] T001 [Spec] `User` に user_kind / guest_metadata、Invitation / InvitationState、
       interface 7 件、event 5 件、authorization 規則 2 件、scenario 7 件を追加し
       `mise run check-spec` を通す。
-- [ ] T002 [ADR] ゲストユーザーと招待の ADR を起票する (種別方式の理由・認証経路・既定権限・
+- [ ] T002 [Spec] ゲストユーザーと招待の決定を `spec/contexts/identity-management/decisions.md` に記録する (種別方式の理由・認証経路・既定権限・
       期限と失効・ディレクトリ非公開・二重招待の扱い)。
 - [ ] T003 [Domain] Invitation の状態遷移、期限、トークン生成 / 検証 (ハッシュ保存・単回使用) を
       実装する。RED: 期限切れ / 失効済み / 再使用が拒否されるテストを先に書く

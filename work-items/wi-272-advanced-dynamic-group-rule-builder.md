@@ -3,6 +3,11 @@ status: pending
 authors: [tn]
 risk: high
 created_at: 2026-07-22
+priority: p3
+change_kind: feature
+affected_spec:
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-020 }
+  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-021 }
 depends_on: [wi-216-dynamic-group-rule-builder-ui]
 ---
 
