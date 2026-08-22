@@ -142,7 +142,7 @@ describe('checkSecurityGuards', () => {
 })
 
 describe('refusalScenarioIds', () => {
-  it('collects the scenarios whose alternatives declare a refusal', () => {
+  it('collects a refusal declared as an alternative', () => {
     const scenarios = [
       '### REQ-JOBS-012: an administrator lists their tenant',
       '- WHEN the administrator lists jobs',
@@ -155,6 +155,37 @@ describe('refusalScenarioIds', () => {
       '- THEN the page is ordered',
     ].join('\n')
     expect(refusalScenarioIds(scenarios)).toEqual(['REQ-JOBS-012'])
+  })
+
+  // The refusal is the whole point of the scenario, so there is no alternative
+  // to hang it on. Reading only ALT missed REQ-SIGNINGKEYS-009 entirely.
+  it('collects a refusal declared as the outcome', () => {
+    const scenarios = [
+      '### REQ-SIGNINGKEYS-009: a tenant administrator cannot reach signing key health',
+      '- ACTOR TenantAdministrator',
+      '- WHEN "operator" calls the signing key health listing',
+      '- THEN AccessDeniedError で拒否される',
+    ].join('\n')
+    expect(refusalScenarioIds(scenarios)).toEqual(['REQ-SIGNINGKEYS-009'])
+  })
+
+  // A tenant boundary is stated as what the caller sees, not as an error.
+  it('collects a refusal phrased as an outcome rather than an error', () => {
+    const scenarios = [
+      '### REQ-IDGOVERNANCE-012: another tenant cannot reach the workflow',
+      "- WHEN the administrator reads another tenant's workflow",
+      '- THEN ワークフローは存在しないものとして扱われる',
+    ].join('\n')
+    expect(refusalScenarioIds(scenarios)).toEqual(['REQ-IDGOVERNANCE-012'])
+  })
+
+  it('leaves a scenario that declares no refusal alone', () => {
+    const scenarios = [
+      '### REQ-JOBS-002: a submitted job succeeds',
+      '- WHEN a job is enqueued',
+      '- THEN the worker claims it and it succeeds',
+    ].join('\n')
+    expect(refusalScenarioIds(scenarios)).toEqual([])
   })
 })
 

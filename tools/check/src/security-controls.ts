@@ -135,10 +135,33 @@ function checkGuardResultsAreUsed(files: GoFile[], guards: Set<string>): Finding
   return findings
 }
 
-/** A scenario id whose ALT branches declare a refusal a security control owns. */
-const REFUSAL =
-  /(拒否|却下|失敗させる|Denied|denied|Unauthorized|Forbidden|AccessDenied|存在しないものとして)/
+/**
+ * Signals that a scenario step declares a refusal.
+ *
+ * Naming an error type is the sturdy one: the specification's errors are
+ * declared in TypeSpec and written into the step, so it survives rephrasing.
+ * The vocabulary is the fallback for a refusal stated as an outcome rather than
+ * an error — "treated as nonexistent", "no token is issued".
+ */
+const REFUSAL_ERROR = /\b[A-Z][A-Za-z0-9]*Error\b/
+const REFUSAL_WORDS =
+  /(拒否|却下|禁じ|認めな|できない|返らな|見えな|含まれな|発行しない|失敗させる|存在しないものとして|Denied|Unauthorized|Forbidden)/
 
+/**
+ * The scenarios that declare a refusal.
+ *
+ * Both `ALT` and `THEN` are read. An earlier version looked only at `ALT` and
+ * matched a list of keywords, and it missed two whole shapes: a refusal that is
+ * the scenario's own outcome rather than an alternative
+ * (REQ-SIGNINGKEYS-009, "THEN AccessDeniedError で拒否される"), and a tenant
+ * boundary phrased as an outcome (REQ-IDGOVERNANCE-012, "THEN ワークフローは
+ * 存在しないものとして扱われる").
+ *
+ * No attempt is made to sort a refusal an authorization control owns from one
+ * an input validation owns. Drawing that line was what made the first version
+ * fragile, and the property being checked — a declared refusal has a test that
+ * names it — is worth having either way.
+ */
 export function refusalScenarioIds(scenarios: string): string[] {
   const ids: string[] = []
   let current = ''
@@ -149,7 +172,10 @@ export function refusalScenarioIds(scenarios: string): string[] {
       continue
     }
     if (!current) continue
-    if (/^\s+- ALT /.test(line) && REFUSAL.test(line) && !ids.includes(current)) ids.push(current)
+    const step = /^\s+- ALT /.test(line) || /^- THEN /.test(line)
+    if (!step) continue
+    if (!REFUSAL_ERROR.test(line) && !REFUSAL_WORDS.test(line)) continue
+    if (!ids.includes(current)) ids.push(current)
   }
   return ids
 }
@@ -175,7 +201,7 @@ export function checkRefusalCoverage(
       path: 'spec/contexts',
       rule: 'R3',
       message:
-        `${id} declares a refusal a security control owns, but no test names it. ` +
+        `${id} declares a refusal, but no test names it. ` +
         'Cite the id from the test that exercises the refusal.',
     })
   }
