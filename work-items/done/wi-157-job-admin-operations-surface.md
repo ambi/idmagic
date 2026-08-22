@@ -117,6 +117,8 @@ Jobs には「キューを操作する HTTP のエンドポイントは持たな
 
 本 work item が追加する取り消しはこの防護に依存するため、放置して新しい状態変更経路を足すことはできない。`ErrBrowserVerificationFailed` を返すよう改め、既存の呼び出し元の防護がそのまま働くようにした。エラーハンドラーは応答済みのこのエラーを未処理として記録し直さない。
 
+この防護にはテストがあり、カバレッジもあった。それでも見つからなかったのは、3 つの拒否ケースがいずれも 403 のステータスコードだけを assert し、戻り値が `nil` であることを「期待どおり」として固定していたからである。再発防止は [[wi-390-security-control-test-standard-and-gate]] が扱う。
+
 ## Plan
 - [[wi-126-async-job-runner]] 完了後、既存 `Job` read model を拡張せずに管理表示に必要な projection を切る。
 - API は read と cancel に閉じる。retry / replay / force-complete は初期導入では提供しない。
