@@ -204,3 +204,31 @@ func TestWorkloadJWKSCache(t *testing.T) {
 		}
 	})
 }
+
+func TestAudienceStrings(t *testing.T) {
+	cases := []struct {
+		name string
+		in   any
+		want []string
+	}{
+		{"single string", "aud-1", []string{"aud-1"}},
+		{"string array", []any{"a", "b"}, []string{"a", "b"}},
+		{"array with non-string entries", []any{"a", 1, false}, []string{"a"}},
+		{"empty array", []any{}, []string{}},
+		{"unsupported type", 42, nil},
+		{"nil", nil, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := audienceStrings(tc.in)
+			if len(got) != len(tc.want) {
+				t.Fatalf("audienceStrings(%#v) = %#v, want %#v", tc.in, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("audienceStrings(%#v) = %#v, want %#v", tc.in, got, tc.want)
+				}
+			}
+		})
+	}
+}

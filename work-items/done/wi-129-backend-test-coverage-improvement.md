@@ -1,12 +1,38 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-07-05
 priority: p2
 change_kind: tooling
 spec_impact: { kind: none, reason: "既存の振る舞いに対するテストの追加だけであり、契約も規範シナリオも変えない。" }
+initial_context:
+  specification: []
+  typespec: []
+  source:
+    - backend/shared/security/tokens_jose
+    - backend/signingkeys/keys_memory
+    - backend/shared/spec
+    - backend/authentication/handlers_http
+    - backend/shared/http/support_http
+    - backend/sourcing/scim/usecases
+    - backend/shared/resilience
+    - backend/shared/events/sinks_console
+    - backend/shared/observability/telemetry_otlp
+    - backend/application/domain
+  tests:
+    - backend/shared/security/tokens_jose
+    - backend/signingkeys/keys_memory
+    - backend/shared/spec
+    - backend/authentication/handlers_http
+    - backend/shared/http/support_http
+    - backend/sourcing/scim/usecases
+    - backend/shared/resilience
+    - backend/shared/events/sinks_console
+    - backend/shared/observability/telemetry_otlp
+    - backend/application/domain
+  stop_before_reading: []
 ---
 
 # Go バックエンドの残り低カバレッジ領域をまとめて底上げする
@@ -65,13 +91,13 @@ Go バックエンドのカバレッジ改善は複数の work item に分割さ
 - observability / event sink は外部出力を fake sink に閉じ、ログや metric label に PII が出ないことも確認する。
 
 ## Tasks
-- [ ] T001 [Go] `mise run test-go-cover` で現在の低カバレッジ package を棚卸しし、下の閾値表を更新する。
-- [ ] T002 [Go] `backend/shared/security/tokens_jose` と `backend/signingkeys/keys_memory` と `backend/shared/spec` のユニットテストを追加する。
-- [ ] T003 [Go] `backend/authentication/handlers_http` と `backend/shared/http/support_http` の HTTP 境界テストを追加する。
-- [ ] T004 [Go] `backend/sourcing/scim/usecases` の provisioning use case テストを追加する。
-- [ ] T005 [Go] `backend/shared/resilience` / `backend/shared/events` / `backend/shared/observability` の横断パッケージをテストする。
-- [ ] T006 [Go] `backend/application/domain` の残り低カバレッジ領域をテストする。
-- [ ] T007 [Verify] `mise run verify-go` と `mise run test-go-cover` を通し、対象 package の改善を確認する。
+- [x] T001 [Go] `mise run test-go-cover` で現在の低カバレッジ package を棚卸しし、下の閾値表を更新する。実装着手時に再実測し、Motivation の表の数値と完全に一致することを確認した (更新不要)。
+- [x] T002 [Go] `backend/shared/security/tokens_jose` と `backend/signingkeys/keys_memory` と `backend/shared/spec` のユニットテストを追加する。結果: tokens_jose 88.9%、keys_memory 91.6%、spec 84.2% (いずれも閾値超過)。tokens_jose の ES256 DPoP で `jwkThumbprint` が RSA 専用のメンバー (e/kty/n) を前提としており EC 鍵の proof が署名検証後に必ず拒否される既存の制約を発見し、現状の挙動としてテストに固定した (振る舞いは変更せず、別途起票を推奨)。
+- [x] T003 [Go] `backend/authentication/handlers_http` と `backend/shared/http/support_http` の HTTP 境界テストを追加する。結果: authentication/handlers_http 29.7% → 74.8%、support_http 62.3% → 85.7% (いずれも閾値超過)。
+- [x] T004 [Go] `backend/sourcing/scim/usecases` の provisioning use case テストを追加する。結果: 29.4% → 79.9% (閾値超過)。
+- [x] T005 [Go] `backend/shared/resilience` / `backend/shared/events` / `backend/shared/observability` の横断パッケージをテストする。結果: resilience 0% → 95.4%、events/sinks_console 0% → 100%、observability/telemetry_otlp 0% → 94.0% (いずれも閾値超過)。
+- [x] T006 [Go] `backend/application/domain` の残り低カバレッジ領域をテストする。結果: 82.9% → 96.1% (`ValidateApplication`/`ValidateProtocol` の不変条件分岐を追加)。
+- [x] T007 [Verify] `mise run verify-go` と `mise run test-go-cover` を通し、対象 package の改善を確認する。両方パス。`mise run spec-diff` は "no normative specification change against main" (想定通り無変更)。
 
 ## Verification
 - `mise run verify-go`
@@ -91,3 +117,35 @@ Go バックエンドのカバレッジ改善は複数の work item に分割さ
 crypto と authentication HTTP はセキュリティ境界に近いため、正常系だけでなく拒否・期限切れ・tenant 不一致を
 明示する。event sink / observability は副作用中心なので fake 実装で観測点を固定し、ログや metric label に
 PII が混ざらないことを確認する。カバレッジの数値のみを追い求め、価値の低いテストを量産しないように注意する。
+
+## Completion
+- **Completed At**: 2026-08-22
+- **Summary**:
+  対象 10 package すべてに、拒否・期限切れ・tenant 不一致・CSRF 境界などの安全側分岐を中心とした
+  ユニットテストを追加した。既存の振る舞いへの変更は無く (`spec_impact: none` の通り)、契約・規範シナリオへの
+  影響も無い (`mise run spec-diff` で無変更を確認済み)。
+
+  | Package | Before | After | 閾値 |
+  |---|---|---|---|
+  | `backend/shared/security/tokens_jose` | 62.0% | 88.9% | >=75% |
+  | `backend/signingkeys/keys_memory` | 75.7% | 91.6% | >=75% |
+  | `backend/shared/spec` | 58.4% | 84.2% | >=75% |
+  | `backend/authentication/handlers_http` | 29.7% | 74.8% | >=70% |
+  | `backend/shared/http/support_http` | 62.3% | 85.7% | >=70% |
+  | `backend/sourcing/scim/usecases` | 29.4% | 79.9% | >=70% |
+  | `backend/shared/resilience` | 0.0% | 95.4% | >=70% |
+  | `backend/shared/events/sinks_console` | 0.0% | 100.0% | >=70% |
+  | `backend/shared/observability/telemetry_otlp` | 0.0% | 94.0% | >=70% |
+  | `backend/application/domain` | 82.9% | 96.1% | >=80% |
+
+  全 package が閾値を超過した。全体平均 (`mise run test-go-cover` の `total`) は 60.5% → 63.3%。
+
+  実装中に副次的な発見が 1 件あった: `tokens_jose.jwkThumbprint` (RFC 7638 canonical form) が RSA 専用の
+  メンバー集合 (`e`/`kty`/`n`) を前提にしており、DPoP が受理を宣言している ES256 (EC 鍵) の proof は
+  署名検証成功後もサムプリント計算で必ず拒否される。本 WI はテストの追加のみを scope とするため、この
+  制約は現状の挙動としてテストに固定しただけで、修正はしていない。ES256 DPoP を実際に使うクライアントが
+  出た時点で別途 work item を起票して直すことを推奨する。
+- **Verification Results**:
+  - `mise run verify-go` - passed (lint 0 issues, race テスト全 package pass)
+  - `mise run test-go-cover` - passed, 上表の通り全対象 package が閾値超過
+  - `mise run spec-diff` - "no normative specification change against main"

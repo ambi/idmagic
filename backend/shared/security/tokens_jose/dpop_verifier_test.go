@@ -6,6 +6,8 @@ package tokens_jose
 import (
 	"context"
 	cryptostd "crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -17,6 +19,49 @@ import (
 
 	memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 )
+
+func dpopTestECKey(t *testing.T) (*ecdsa.PrivateKey, map[string]any) {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Uncompressed SEC1 point: 0x04 || X (32 bytes) || Y (32 bytes).
+	point, err := key.PublicKey.Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwk := map[string]any{
+		"kty": "EC",
+		"crv": "P-256",
+		"x":   base64.RawURLEncoding.EncodeToString(point[1:33]),
+		"y":   base64.RawURLEncoding.EncodeToString(point[33:65]),
+	}
+	return key, jwk
+}
+
+func encodeECDPoPProof(t *testing.T, key *ecdsa.PrivateKey, header, payload map[string]any) string {
+	t.Helper()
+	hb, err := json.Marshal(header)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pb, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signingInput := base64.RawURLEncoding.EncodeToString(hb) + "." +
+		base64.RawURLEncoding.EncodeToString(pb)
+	digest := sha256.Sum256([]byte(signingInput))
+	r, s, err := ecdsa.Sign(rand.Reader, key, digest[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig := make([]byte, 64)
+	r.FillBytes(sig[:32])
+	s.FillBytes(sig[32:])
+	return signingInput + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
 
 func dpopTestKey(t *testing.T) (*rsa.PrivateKey, map[string]any) {
 	t.Helper()
@@ -283,6 +328,161 @@ func TestVerifyDPoPForTokenAcceptsProofWithoutATH(t *testing.T) {
 	)
 	if err != nil || res == nil {
 		t.Fatalf("token endpoint proof without ath: res=%v err=%v", res, err)
+	}
+}
+
+func TestVerifyDPoPES256ProofFailsAtThumbprint(t *testing.T) {
+	// Pins a known limitation rather than the RFC 9449-intended behavior:
+	// alg validation accepts ES256 ("alg must be PS256 or ES256" above), and
+	// signature verification over the EC key succeeds, but jwkThumbprint
+	// hardcodes the RSA member set (e/kty/n) for the RFC 7638 canonical
+	// form. An EC jwk has none of those, so every ES256 DPoP proof is
+	// rejected at the last step regardless of a valid signature. Coverage
+	// task wi-129 documents current behavior rather than changing it
+	// (spec_impact: none); fixing this is tracked separately.
+	key, jwk := dpopTestECKey(t)
+	now := time.Now().UTC()
+	proof := encodeECDPoPProof(
+		t, key,
+		map[string]any{"typ": "dpop+jwt", "alg": "ES256", "jwk": jwk},
+		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "es256-ok", "iat": now.Unix()},
+	)
+	_, err := VerifyDPoPForToken(
+		context.Background(), proof, "POST", "https://idp.example/token",
+		memory.NewDpopReplayStore(), now,
+	)
+	if err == nil || !strings.Contains(err.Error(), "missing required member") {
+		t.Fatalf("expected thumbprint rejection for EC jwk, got %v", err)
+	}
+}
+
+func TestVerifyDPoPRejectsES256WithWrongKey(t *testing.T) {
+	signer, _ := dpopTestECKey(t)
+	_, claimedJWK := dpopTestECKey(t)
+	now := time.Now().UTC()
+	proof := encodeECDPoPProof(
+		t, signer,
+		map[string]any{"typ": "dpop+jwt", "alg": "ES256", "jwk": claimedJWK},
+		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "es256-bad", "iat": now.Unix()},
+	)
+	_, err := VerifyDPoPForToken(
+		context.Background(), proof, "POST", "https://idp.example/token",
+		memory.NewDpopReplayStore(), now,
+	)
+	if err == nil || !strings.Contains(err.Error(), "signature") {
+		t.Fatalf("expected signature rejection, got %v", err)
+	}
+}
+
+func TestPublicKeyFromJWK(t *testing.T) {
+	_, rsaJWK := dpopTestKey(t)
+	_, ecJWK := dpopTestECKey(t)
+
+	t.Run("parses RSA jwk", func(t *testing.T) {
+		pub, err := publicKeyFromJWK(rsaJWK)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := pub.(*rsa.PublicKey); !ok {
+			t.Fatalf("got %T, want *rsa.PublicKey", pub)
+		}
+	})
+
+	t.Run("parses EC P-256 jwk", func(t *testing.T) {
+		pub, err := publicKeyFromJWK(ecJWK)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, ok := pub.(*ecdsa.PublicKey); !ok {
+			t.Fatalf("got %T, want *ecdsa.PublicKey", pub)
+		}
+	})
+
+	t.Run("rejects unsupported kty", func(t *testing.T) {
+		if _, err := publicKeyFromJWK(map[string]any{"kty": "OKP"}); err == nil {
+			t.Fatal("expected error for unsupported kty")
+		}
+	})
+
+	t.Run("rejects unsupported EC curve", func(t *testing.T) {
+		jwk := map[string]any{"kty": "EC", "crv": "P-384", "x": "", "y": ""}
+		if _, err := publicKeyFromJWK(jwk); err == nil {
+			t.Fatal("expected error for unsupported curve")
+		}
+	})
+
+	t.Run("rejects malformed RSA n", func(t *testing.T) {
+		jwk := map[string]any{"kty": "RSA", "n": "not-base64!", "e": rsaJWK["e"]}
+		if _, err := publicKeyFromJWK(jwk); err == nil {
+			t.Fatal("expected error for malformed n")
+		}
+	})
+
+	t.Run("rejects malformed RSA e", func(t *testing.T) {
+		jwk := map[string]any{"kty": "RSA", "n": rsaJWK["n"], "e": "not-base64!"}
+		if _, err := publicKeyFromJWK(jwk); err == nil {
+			t.Fatal("expected error for malformed e")
+		}
+	})
+
+	t.Run("rejects malformed EC x", func(t *testing.T) {
+		jwk := map[string]any{"kty": "EC", "crv": "P-256", "x": "not-base64!", "y": ecJWK["y"]}
+		if _, err := publicKeyFromJWK(jwk); err == nil {
+			t.Fatal("expected error for malformed x")
+		}
+	})
+
+	t.Run("rejects malformed EC y", func(t *testing.T) {
+		jwk := map[string]any{"kty": "EC", "crv": "P-256", "x": ecJWK["x"], "y": "not-base64!"}
+		if _, err := publicKeyFromJWK(jwk); err == nil {
+			t.Fatal("expected error for malformed y")
+		}
+	})
+
+	t.Run("rejects wrong-length EC coordinates", func(t *testing.T) {
+		jwk := map[string]any{
+			"kty": "EC", "crv": "P-256",
+			"x": base64.RawURLEncoding.EncodeToString([]byte{1, 2, 3}),
+			"y": ecJWK["y"],
+		}
+		if _, err := publicKeyFromJWK(jwk); err == nil {
+			t.Fatal("expected error for short coordinate")
+		}
+	})
+}
+
+func TestVerifyJWTSignatureRejectsAlgKeyMismatch(t *testing.T) {
+	_, rsaJWK := dpopTestKey(t)
+	rsaPub, err := publicKeyFromJWK(rsaJWK)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, ecJWK := dpopTestECKey(t)
+	ecPub, err := publicKeyFromJWK(ecJWK)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := []string{
+		base64.RawURLEncoding.EncodeToString([]byte("h")),
+		base64.RawURLEncoding.EncodeToString([]byte("p")),
+		base64.RawURLEncoding.EncodeToString(make([]byte, 64)),
+	}
+
+	if err := verifyJWTSignature(parts, "ES256", rsaPub); err == nil {
+		t.Fatal("expected error: ES256 requires an EC public key")
+	}
+	if err := verifyJWTSignature(parts, "PS256", ecPub); err == nil {
+		t.Fatal("expected error: PS256 requires an RSA public key")
+	}
+	if err := verifyJWTSignature(parts, "RS256", ecPub); err == nil {
+		t.Fatal("expected error: RS256 requires an RSA public key")
+	}
+	if err := verifyJWTSignature(parts, "none", rsaPub); err == nil {
+		t.Fatal("expected error for unsupported alg")
+	}
+	shortSig := []string{parts[0], parts[1], base64.RawURLEncoding.EncodeToString(make([]byte, 10))}
+	if err := verifyJWTSignature(shortSig, "ES256", ecPub); err == nil {
+		t.Fatal("expected error for wrong-length ES256 signature")
 	}
 }
 
