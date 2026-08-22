@@ -30,6 +30,7 @@
 | Authentication | `sessions:*`、`users:write`、`audit:read` |
 | IdGovernance | `lifecycle-workflows:*` |
 | IdManagement | `users:*`、`groups:*`、`agents:*` |
+| Jobs | `jobs:read`、`jobs:cancel` |
 | OAuth2 | `oauth-clients:*`、`consents:*`、`authorization-detail-types:*`、`mcp-resource-servers:*` |
 | Provisioning | `provisioning:*` |
 | Saml | `saml:*` |

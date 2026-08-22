@@ -21,6 +21,12 @@ type JobsMetrics interface {
 	// RecordJobRetry records one non-terminal failure returned to Queued for
 	// a later retry attempt.
 	RecordJobRetry(lane domain.ExecutionLane)
+	// RecordJobDuration records how long one attempt's handler ran, from the
+	// moment the Runner started it to the moment it returned (wi-157). Claim
+	// latency says how long a Job waited; this says how long it worked, and
+	// only the two together explain where a slow queue is spending its time.
+	// outcome is "succeeded" or "failed".
+	RecordJobDuration(lane domain.ExecutionLane, outcome string, duration time.Duration)
 }
 
 // jobsMetrics returns deps.Metrics, or a no-op implementation when unset, so
@@ -34,6 +40,7 @@ func (rn *Runner) jobsMetrics() JobsMetrics {
 
 type noopJobsMetrics struct{}
 
-func (noopJobsMetrics) RecordJobClaimLatency(domain.ExecutionLane, time.Duration) {}
-func (noopJobsMetrics) RecordJobOutcome(domain.ExecutionLane, string)             {}
-func (noopJobsMetrics) RecordJobRetry(domain.ExecutionLane)                       {}
+func (noopJobsMetrics) RecordJobClaimLatency(domain.ExecutionLane, time.Duration)     {}
+func (noopJobsMetrics) RecordJobOutcome(domain.ExecutionLane, string)                 {}
+func (noopJobsMetrics) RecordJobRetry(domain.ExecutionLane)                           {}
+func (noopJobsMetrics) RecordJobDuration(domain.ExecutionLane, string, time.Duration) {}

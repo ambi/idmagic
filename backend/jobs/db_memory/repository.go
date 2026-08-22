@@ -277,6 +277,74 @@ func (r *JobRepository) ListByTenantAndKinds(_ context.Context, tenantID string,
 	return out, nil
 }
 
+// ListForAdmin implements the wi-157 console read. The PostgreSQL adapter does
+// the same narrowing in SQL; keeping the two in step matters because the memory
+// runtime is what the usecases tests exercise.
+func (r *JobRepository) ListForAdmin(_ context.Context, filter ports.AdminJobFilter) ([]*domain.Job, error) {
+	if filter.TenantID == "" && !filter.AllTenants {
+		return nil, ports.ErrAdminJobFilterUnscoped
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	statuses := make(map[domain.JobStatus]struct{}, len(filter.Statuses))
+	for _, s := range filter.Statuses {
+		statuses[s] = struct{}{}
+	}
+	kinds := make(map[domain.JobKind]struct{}, len(filter.Kinds))
+	for _, k := range filter.Kinds {
+		kinds[k] = struct{}{}
+	}
+
+	var out []*domain.Job
+	for _, j := range r.byID {
+		if !filter.AllTenants && j.TenantID != filter.TenantID {
+			continue
+		}
+		if len(statuses) > 0 {
+			if _, ok := statuses[j.Status]; !ok {
+				continue
+			}
+		}
+		if len(kinds) > 0 {
+			if _, ok := kinds[j.Kind]; !ok {
+				continue
+			}
+		}
+		if filter.Lane != "" && j.Lane != filter.Lane {
+			continue
+		}
+		if !afterKeyset(j, filter.BeforeCreatedAt, filter.BeforeID) {
+			continue
+		}
+		out = append(out, copyJob(j))
+	}
+	sort.Slice(out, func(i, k int) bool {
+		if !out[i].CreatedAt.Equal(out[k].CreatedAt) {
+			return out[i].CreatedAt.After(out[k].CreatedAt)
+		}
+		return out[i].ID > out[k].ID
+	})
+	if filter.Limit > 0 && len(out) > filter.Limit {
+		out = out[:filter.Limit]
+	}
+	return out, nil
+}
+
+// afterKeyset reports whether j sorts strictly after the (created_at DESC,
+// id DESC) anchor. A zero anchor starts from the newest row. The id is part of
+// the comparison because two Jobs enqueued in the same instant would otherwise
+// let a page boundary drop or repeat one of them.
+func afterKeyset(j *domain.Job, beforeCreatedAt time.Time, beforeID string) bool {
+	if beforeCreatedAt.IsZero() && beforeID == "" {
+		return true
+	}
+	if j.CreatedAt.Before(beforeCreatedAt) {
+		return true
+	}
+	return j.CreatedAt.Equal(beforeCreatedAt) && j.ID < beforeID
+}
+
 func (r *JobRepository) Get(_ context.Context, jobID string) (*domain.Job, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

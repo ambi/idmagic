@@ -101,10 +101,49 @@ type JobRepository interface {
 	// ListByTenantAndKinds returns the tenant's Jobs whose Kind is in kinds,
 	// newest-created first, capped at limit (limit <= 0 means no cap). It is a
 	// scoped read for feature consumers that surface their own kind's Jobs to
-	// admins (wi-148 DataExport listing); the cross-kind admin job console
-	// is wi-157's separate concern. Passing no kinds returns no rows.
+	// admins (wi-148 DataExport listing). Passing no kinds returns no rows.
 	ListByTenantAndKinds(ctx context.Context, tenantID string, kinds []domain.JobKind, limit int) ([]*domain.Job, error)
+
+	// ListForAdmin returns one keyset page of the cross-kind administration
+	// listing (wi-157), newest-created first. It is the console's read: the
+	// filter is assembled at request time from optional status/kind/lane
+	// narrowing, so unlike every other query here it cannot be a static
+	// statement. Tenant scoping is part of the filter and is decided by the
+	// caller's authorization, never by a request parameter.
+	ListForAdmin(ctx context.Context, filter AdminJobFilter) ([]*domain.Job, error)
 }
+
+// AdminJobFilter narrows ListForAdmin. The zero value would list every tenant's
+// Jobs, so a caller must set either TenantID or AllTenants deliberately;
+// implementations reject a filter that sets neither rather than reading across
+// tenants by omission (JobTenantIsolation).
+type AdminJobFilter struct {
+	// TenantID confines the listing to one tenant. Ignored when AllTenants.
+	TenantID string
+	// AllTenants lifts the tenant confinement. Only a system_admin calling
+	// through the control-plane tenant may set it (REQ-JOBS-012); the
+	// repository takes it as already-authorized.
+	AllTenants bool
+	// Statuses, when non-empty, keeps only Jobs in one of these states.
+	Statuses []domain.JobStatus
+	// Kinds, when non-empty, keeps only Jobs of one of these kinds.
+	Kinds []domain.JobKind
+	// Lane, when non-empty, keeps only Jobs on that lane.
+	Lane domain.ExecutionLane
+	// Limit caps the page (<= 0 means the implementation's default page size).
+	Limit int
+	// BeforeCreatedAt and BeforeID continue a previous page: return only rows
+	// ordering strictly after (created_at DESC, id DESC). Zero values start
+	// from the newest row.
+	BeforeCreatedAt time.Time
+	BeforeID        string
+}
+
+// ErrAdminJobFilterUnscoped is returned by ListForAdmin when the filter names
+// neither a tenant nor an authorized cross-tenant read. Listing every tenant
+// because a field was left empty is exactly the failure JobTenantIsolation
+// exists to prevent, so it is an error rather than a default.
+var ErrAdminJobFilterUnscoped = errors.New("jobs: admin job filter must set TenantID or AllTenants")
 
 // LaneDepth is one ExecutionLane's current queue depth (wi-261 T006).
 type LaneDepth struct {

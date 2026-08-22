@@ -21,7 +21,7 @@
 
 サービス目標の母集団、時間窓、除外条件、目標値は [capacity.md](capacity.md) が定める。Prometheus は HTTP RED メトリクスとスクレイプ状態をその定義に従って集約し、レイテンシー、非 5xx 比率、可用性を評価する。
 
-`idmagic-worker` は自身の `/metrics` を管理専用の別リスナーで公開する。API プロセスの `/metrics` とは別のプロセスかつ別の実体であり、レーンごとに `jobs_claim_latency_seconds`、`jobs_outcome_total`、`jobs_retry_total`、`jobs_queue_depth` を持つ。
+`idmagic-worker` は自身の `/metrics` を管理専用の別リスナーで公開する。API プロセスの `/metrics` とは別のプロセスかつ別の実体であり、レーンごとに `jobs_claim_latency_seconds`、`jobs_duration_seconds`、`jobs_outcome_total`、`jobs_retry_total`、`jobs_queue_depth` を持つ。取得までの待ち時間と実行そのものにかかった時間は別の指標である。片方だけでは、遅いのが滞留なのか処理なのかを分けられない。`jobs_outcome_total` の `outcome="failed"` は試行上限に達した確定だけを数えるので、配信不能の件数はこれで読む。
 
 ラベルの値は有限の集合に限る。値の種類に上限がない `tenant_id`、`user_id`、`client_id`、解決済みのリクエストパスはラベルにしない。エンドポイントは常に登録するが、起動時に Prometheus の構築が完了するまでは `503` を返す。公開先はループバックアドレス、管理ネットワーク、または認証付きプロキシの背後に限る。
 

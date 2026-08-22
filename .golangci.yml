@@ -154,6 +154,10 @@ linters:
         text: "return both a `nil` error and an invalid value"
         linters:
           - nilnil
+      - path: backend/jobs/handlers_http/admin_job_handler_test\.go
+        text: "return both a `nil` error and an invalid value"
+        linters:
+          - nilnil
       # Persistence repository Find* methods use nil result + nil error for
       # "not found" to match existing port contracts. Matches both the
       # Per-context, per-feature, and shared persistence adapters in Flat Architecture.

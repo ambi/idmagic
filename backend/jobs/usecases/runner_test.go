@@ -115,6 +115,7 @@ func TestRunner_OnlyClaimsConfiguredLane(t *testing.T) {
 type fakeJobsMetrics struct {
 	mu             sync.Mutex
 	claimLatencies []time.Duration
+	durations      []string
 	outcomes       []string
 	retries        int
 }
@@ -135,6 +136,18 @@ func (f *fakeJobsMetrics) RecordJobRetry(domain.ExecutionLane) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.retries++
+}
+
+func (f *fakeJobsMetrics) RecordJobDuration(_ domain.ExecutionLane, outcome string, _ time.Duration) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.durations = append(f.durations, outcome)
+}
+
+func (f *fakeJobsMetrics) durationOutcomes() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.durations...)
 }
 
 func (f *fakeJobsMetrics) snapshot() (outcomes []string, retries int) {
@@ -193,6 +206,12 @@ func TestRunner_RecordsMetrics(t *testing.T) {
 	metrics.mu.Unlock()
 	if gotLatencies != 2 {
 		t.Errorf("claim latency recordings = %d, want 2 (one per claim attempt)", gotLatencies)
+	}
+	// wi-157: 実行時間は試行ごとに記録する。失敗して再試行された 1 回目も含めて
+	// 測らないと、遅いのが滞留なのか処理そのものなのかを分けられない。
+	durations := metrics.durationOutcomes()
+	if len(durations) != 2 || durations[0] != "failed" || durations[1] != "succeeded" {
+		t.Errorf("duration outcomes = %v, want [failed succeeded] (one per attempt)", durations)
 	}
 }
 

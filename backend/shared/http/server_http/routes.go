@@ -39,6 +39,7 @@ import (
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
+	jobshttp "github.com/ambi/idmagic/backend/jobs/handlers_http"
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2http "github.com/ambi/idmagic/backend/oauth2/handlers_http"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
@@ -444,6 +445,13 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		Authenticator: authenticator,
 		KeyStore:      d.SigningKeys.KeyStore,
 		TenantRepo:    d.TenantRepo,
+	})
+
+	jobshttp.RegisterRoutes(g, jobshttp.Deps{
+		Deps:          d.Deps,
+		Authenticator: authenticator,
+		Repo:          d.Jobs.Repo,
+		Emit:          d.Emit,
 	})
 
 	datakeyshttp.RegisterRoutes(g, datakeyshttp.Deps{

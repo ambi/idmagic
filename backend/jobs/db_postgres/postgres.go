@@ -8,7 +8,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -236,6 +238,93 @@ func (r *JobRepository) ListByTenantAndKinds(ctx context.Context, tenantID strin
 	}
 	return jobs, nil
 }
+
+// adminJobColumns は ListForAdmin が読む列。jobFromRow が期待する並びと一致させる。
+const adminJobColumns = `id, tenant_id, kind, lane, status, params, result, error, attempts, ` +
+	`max_attempts, dedup_key, lease_owner, lease_expires_at, run_at, created_at, updated_at`
+
+// ListForAdmin は管理コンソールの一覧を 1 ページ返す (wi-157)。
+//
+// 絞り込みが要求ごとに変わるため、この文だけは sqlc の静的な文にできない
+// (spec/persistence.md の「問い合わせの構造が実行時まで決まらない場合」)。値はすべて
+// プレースホルダーで渡し、SQL の文字列へは列名と演算子しか組み立てない。
+func (r *JobRepository) ListForAdmin(ctx context.Context, filter ports.AdminJobFilter) ([]*domain.Job, error) {
+	if filter.TenantID == "" && !filter.AllTenants {
+		return nil, ports.ErrAdminJobFilterUnscoped
+	}
+	var conds []string
+	var args []any
+	add := func(expr string, val any) {
+		args = append(args, val)
+		conds = append(conds, fmt.Sprintf(expr, len(args)))
+	}
+	if !filter.AllTenants {
+		add("tenant_id = $%d", filter.TenantID)
+	}
+	if len(filter.Statuses) > 0 {
+		statuses := make([]string, len(filter.Statuses))
+		for i, s := range filter.Statuses {
+			statuses[i] = string(s)
+		}
+		add("status = ANY($%d::text[])", statuses)
+	}
+	if len(filter.Kinds) > 0 {
+		kinds := make([]string, len(filter.Kinds))
+		for i, k := range filter.Kinds {
+			kinds[i] = string(k)
+		}
+		add("kind = ANY($%d::text[])", kinds)
+	}
+	if filter.Lane != "" {
+		add("lane = $%d", string(filter.Lane))
+	}
+	// キーセットの継続。id を組に含めるのは、同じ瞬間に投入された 2 件がページの
+	// 境目で落ちたり重複したりしないようにするためである。
+	if !filter.BeforeCreatedAt.IsZero() || filter.BeforeID != "" {
+		args = append(args, filter.BeforeCreatedAt)
+		createdIdx := len(args)
+		args = append(args, filter.BeforeID)
+		idIdx := len(args)
+		conds = append(conds, fmt.Sprintf("(created_at, id) < ($%d, $%d)", createdIdx, idIdx))
+	}
+
+	where := ""
+	if len(conds) > 0 {
+		where = " WHERE " + strings.Join(conds, " AND ")
+	}
+	limit := filter.Limit
+	if limit <= 0 || limit > math.MaxInt32 {
+		limit = defaultAdminJobPageSize
+	}
+	args = append(args, limit)
+
+	query := "SELECT " + adminJobColumns + " FROM jobs" + where +
+		" ORDER BY created_at DESC, id DESC" + fmt.Sprintf(" LIMIT $%d", len(args))
+	rows, err := r.Pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var jobs []*domain.Job
+	for rows.Next() {
+		var row Job
+		if err := rows.Scan(&row.ID, &row.TenantID, &row.Kind, &row.Lane, &row.Status, &row.Params,
+			&row.Result, &row.Error, &row.Attempts, &row.MaxAttempts, &row.DedupKey,
+			&row.LeaseOwner, &row.LeaseExpiresAt, &row.RunAt, &row.CreatedAt, &row.UpdatedAt); err != nil {
+			return nil, err
+		}
+		jobs = append(jobs, jobFromRow(&row))
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
+// defaultAdminJobPageSize は Limit を与えられなかった場合の上限。usecases が既定を
+// 決めるので通常は使われないが、無制限に読むより閉じた値へ倒す。
+const defaultAdminJobPageSize = 50
 
 func (r *JobRepository) Get(ctx context.Context, jobID string) (*domain.Job, error) {
 	row, err := New(r.Pool).GetJob(ctx, jobID)

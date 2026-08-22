@@ -12,9 +12,9 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/ports"
 )
 
-// Module holds the Jobs bounded context's persistence dependency. Unlike
-// other contexts' Module, there is no Register method: this WI has no HTTP
-// surface (admin list/get/cancel API is wi-157-job-admin-operations-surface).
+// Module holds the Jobs bounded context's persistence dependency. The HTTP
+// surface (handlers_http) is read-and-cancel only: nothing over HTTP enqueues
+// or claims, so the queue keeps a single entrance through in-process Go calls.
 type Module struct {
 	Repo ports.JobRepository
 }

@@ -550,3 +550,127 @@ func TestListByTenantAndKinds_ScopesAndOrders(t *testing.T) {
 		t.Errorf("no kinds got %d jobs, want 0", len(none))
 	}
 }
+
+// REQ-JOBS-012: 管理 API の一覧が、テナント、状態、種別、レーンで絞り込まれ、
+// キーセットでページを継ぎ、範囲を与えられなければ全件へ退避せず拒否すること。
+// memory の実装と同じ意味論を、実際の SQL に対しても固定する。
+func TestListForAdmin(t *testing.T) {
+	pool := pgtest.Require(t)
+	resetJobsTable(t, pool)
+	tenantA := pgfixtures.SeedTenant(t, pool)
+	tenantB := pgfixtures.SeedTenant(t, pool)
+	r := &postgres.JobRepository{Pool: pool}
+	base := pgtest.Now()
+
+	enqueue := func(tenantID string, kind domain.JobKind, lane domain.ExecutionLane, offset time.Duration) *domain.Job {
+		t.Helper()
+		job, _, err := r.Enqueue(context.Background(), ports.EnqueueInput{
+			TenantID: tenantID, Kind: kind, Lane: lane, Params: json.RawMessage(`{}`),
+			MaxAttempts: domain.DefaultMaxAttempts, Now: base.Add(offset), RunAt: base.Add(offset),
+		})
+		if err != nil {
+			t.Fatalf("Enqueue() error = %v", err)
+		}
+		return job
+	}
+	oldest := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, 0)
+	middle := enqueue(tenantA.ID, domain.KindUserImportApply, domain.LaneBulk, time.Minute)
+	newest := enqueue(tenantA.ID, domain.KindNoopEcho, domain.LaneDefault, 2*time.Minute)
+	foreign := enqueue(tenantB.ID, domain.KindNoopEcho, domain.LaneDefault, 3*time.Minute)
+
+	ctx := context.Background()
+	ids := func(jobs []*domain.Job) []string {
+		out := make([]string, len(jobs))
+		for i, j := range jobs {
+			out[i] = j.ID
+		}
+		return out
+	}
+
+	t.Run("tenant scoped and newest first", func(t *testing.T) {
+		jobs, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		want := []string{newest.ID, middle.ID, oldest.ID}
+		if got := ids(jobs); fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("ids = %v, want %v", got, want)
+		}
+	})
+
+	t.Run("another tenant is absent", func(t *testing.T) {
+		jobs, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		for _, j := range jobs {
+			if j.ID == foreign.ID {
+				t.Fatal("another tenant's job appeared in a tenant-scoped listing")
+			}
+		}
+	})
+
+	t.Run("all tenants", func(t *testing.T) {
+		jobs, err := r.ListForAdmin(ctx, ports.AdminJobFilter{AllTenants: true})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		if len(jobs) != 4 {
+			t.Fatalf("got %d jobs, want 4", len(jobs))
+		}
+	})
+
+	t.Run("kind, lane, and status narrow the page", func(t *testing.T) {
+		byKind, err := r.ListForAdmin(ctx, ports.AdminJobFilter{
+			TenantID: tenantA.ID, Kinds: []domain.JobKind{domain.KindUserImportApply},
+		})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		if len(byKind) != 1 || byKind[0].ID != middle.ID {
+			t.Fatalf("kind filter = %v, want [%s]", ids(byKind), middle.ID)
+		}
+		byLane, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID, Lane: domain.LaneBulk})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		if len(byLane) != 1 || byLane[0].ID != middle.ID {
+			t.Fatalf("lane filter = %v, want [%s]", ids(byLane), middle.ID)
+		}
+		byStatus, err := r.ListForAdmin(ctx, ports.AdminJobFilter{
+			TenantID: tenantA.ID, Statuses: []domain.JobStatus{domain.StatusFailed},
+		})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		if len(byStatus) != 0 {
+			t.Fatalf("status filter = %v, want none", ids(byStatus))
+		}
+	})
+
+	t.Run("keyset continues without a gap or a repeat", func(t *testing.T) {
+		first, err := r.ListForAdmin(ctx, ports.AdminJobFilter{TenantID: tenantA.ID, Limit: 2})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		if len(first) != 2 {
+			t.Fatalf("first page = %d jobs, want 2", len(first))
+		}
+		last := first[len(first)-1]
+		second, err := r.ListForAdmin(ctx, ports.AdminJobFilter{
+			TenantID: tenantA.ID, Limit: 2, BeforeCreatedAt: last.CreatedAt, BeforeID: last.ID,
+		})
+		if err != nil {
+			t.Fatalf("ListForAdmin() error = %v", err)
+		}
+		if len(second) != 1 || second[0].ID != oldest.ID {
+			t.Fatalf("second page = %v, want [%s]", ids(second), oldest.ID)
+		}
+	})
+
+	t.Run("an unscoped filter is refused", func(t *testing.T) {
+		if _, err := r.ListForAdmin(ctx, ports.AdminJobFilter{}); !errors.Is(err, ports.ErrAdminJobFilterUnscoped) {
+			t.Fatalf("err = %v, want ErrAdminJobFilterUnscoped", err)
+		}
+	})
+}

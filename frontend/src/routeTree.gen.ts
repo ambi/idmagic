@@ -40,6 +40,7 @@ import { Route as AdminAuthorizationDetailTypesRouteImport } from './routes/admi
 import { Route as AdminConsentsRouteImport } from './routes/admin/consents'
 import { Route as AdminGroupsRouteImport } from './routes/admin/groups'
 import { Route as AdminIdentityProvidersRouteImport } from './routes/admin/identity-providers'
+import { Route as AdminJobsRouteImport } from './routes/admin/jobs'
 import { Route as AdminKeysRouteImport } from './routes/admin/keys'
 import { Route as AdminLifecycleWorkflowsRouteImport } from './routes/admin/lifecycle-workflows'
 import { Route as AdminMcpResourceServersRouteImport } from './routes/admin/mcp-resource-servers'
@@ -257,6 +258,11 @@ const AdminGroupsRoute = AdminGroupsRouteImport.update({
 const AdminIdentityProvidersRoute = AdminIdentityProvidersRouteImport.update({
   id: '/identity-providers',
   path: '/identity-providers',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminJobsRoute = AdminJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminKeysRoute = AdminKeysRouteImport.update({
@@ -626,6 +632,7 @@ export interface FileRoutesByFullPath {
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/identity-providers': typeof AdminIdentityProvidersRoute
+  '/admin/jobs': typeof AdminJobsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
@@ -718,6 +725,7 @@ export interface FileRoutesByTo {
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/identity-providers': typeof AdminIdentityProvidersRoute
+  '/admin/jobs': typeof AdminJobsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
@@ -806,6 +814,7 @@ export interface FileRoutesById {
   '/admin/consents': typeof AdminConsentsRoute
   '/admin/groups': typeof AdminGroupsRoute
   '/admin/identity-providers': typeof AdminIdentityProvidersRoute
+  '/admin/jobs': typeof AdminJobsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/lifecycle-workflows': typeof AdminLifecycleWorkflowsRoute
   '/admin/mcp-resource-servers': typeof AdminMcpResourceServersRoute
@@ -903,6 +912,7 @@ export interface FileRouteTypes {
     | '/admin/consents'
     | '/admin/groups'
     | '/admin/identity-providers'
+    | '/admin/jobs'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
     | '/admin/mcp-resource-servers'
@@ -995,6 +1005,7 @@ export interface FileRouteTypes {
     | '/admin/consents'
     | '/admin/groups'
     | '/admin/identity-providers'
+    | '/admin/jobs'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
     | '/admin/mcp-resource-servers'
@@ -1082,6 +1093,7 @@ export interface FileRouteTypes {
     | '/admin/consents'
     | '/admin/groups'
     | '/admin/identity-providers'
+    | '/admin/jobs'
     | '/admin/keys'
     | '/admin/lifecycle-workflows'
     | '/admin/mcp-resource-servers'
@@ -1381,6 +1393,13 @@ declare module '@tanstack/react-router' {
       path: '/identity-providers'
       fullPath: '/admin/identity-providers'
       preLoaderRoute: typeof AdminIdentityProvidersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/jobs': {
+      id: '/admin/jobs'
+      path: '/jobs'
+      fullPath: '/admin/jobs'
+      preLoaderRoute: typeof AdminJobsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/keys': {
@@ -1979,6 +1998,7 @@ interface AdminRouteRouteChildren {
   AdminConsentsRoute: typeof AdminConsentsRoute
   AdminGroupsRoute: typeof AdminGroupsRoute
   AdminIdentityProvidersRoute: typeof AdminIdentityProvidersRoute
+  AdminJobsRoute: typeof AdminJobsRoute
   AdminKeysRoute: typeof AdminKeysRoute
   AdminLifecycleWorkflowsRoute: typeof AdminLifecycleWorkflowsRoute
   AdminMcpResourceServersRoute: typeof AdminMcpResourceServersRoute
@@ -2029,6 +2049,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminConsentsRoute: AdminConsentsRoute,
   AdminGroupsRoute: AdminGroupsRoute,
   AdminIdentityProvidersRoute: AdminIdentityProvidersRoute,
+  AdminJobsRoute: AdminJobsRoute,
   AdminKeysRoute: AdminKeysRoute,
   AdminLifecycleWorkflowsRoute: AdminLifecycleWorkflowsRoute,
   AdminMcpResourceServersRoute: AdminMcpResourceServersRoute,

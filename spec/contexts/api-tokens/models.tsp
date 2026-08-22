@@ -21,6 +21,8 @@ enum ApiTokenScope {
   signing_keys_read: "signing-keys:read",
   signing_keys_write: "signing-keys:write",
   audit_read: "audit:read",
+  jobs_read: "jobs:read",
+  jobs_cancel: "jobs:cancel",
   applications_read: "applications:read",
   applications_write: "applications:write",
   oauth_clients_read: "oauth-clients:read",

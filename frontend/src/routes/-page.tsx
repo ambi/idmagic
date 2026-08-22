@@ -50,6 +50,7 @@ const PAGE_TITLES_JA: Record<string, string> = {
   'admin-role-detail': `ロール詳細 | ${ADMIN}`,
   'admin-consents': `同意 | ${ADMIN}`,
   'admin-audit-events': `監査イベント | ${ADMIN}`,
+  'admin-jobs': `非同期ジョブ | ${ADMIN}`,
   'admin-authz-detail-types': `認可詳細の種類 | ${ADMIN}`,
   'admin-authz-detail-type-create': `認可詳細タイプを追加 | ${ADMIN}`,
   'admin-authz-detail-type-edit': `認可詳細タイプを編集 | ${ADMIN}`,

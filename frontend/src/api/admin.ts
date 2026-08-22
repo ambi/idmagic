@@ -782,6 +782,71 @@ export async function listAdminAuditEventSearchOptions(): Promise<AdminAuditEven
   return request<AdminAuditEventSearchOptions>('/api/admin/v1/audit_events/search_options')
 }
 
+// 非同期ジョブの管理 API (wi-157)。参照と取り消しだけで、投入も再試行も持たない。
+export type AdminJobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled'
+export type AdminJobLane = 'latency_sensitive' | 'default' | 'bulk'
+
+// params / result / dedup_key はサーバー側が返さない。投入した文脈が意味を決める
+// 不透明な値であり、個人情報が混ざっていないことを保証できないためである。
+export type AdminJob = {
+  id: string
+  tenant_id: string
+  kind: string
+  lane: AdminJobLane
+  status: AdminJobStatus
+  attempts: number
+  max_attempts: number
+  error?: string
+  progress?: { percent?: number; message?: string; updated_at: string }
+  lease_owner?: string
+  lease_expires_at?: string
+  run_at: string
+  created_at: string
+  updated_at: string
+}
+
+export type AdminJobQuery = {
+  status?: AdminJobStatus[]
+  kind?: string[]
+  lane?: AdminJobLane
+  limit?: number
+  cursor?: string
+  allTenants?: boolean
+}
+
+export type AdminJobPage = {
+  jobs: AdminJob[]
+  next_cursor?: string
+}
+
+function adminJobParams(query: AdminJobQuery): URLSearchParams {
+  const params = new URLSearchParams()
+  for (const status of query.status ?? []) params.append('status', status)
+  for (const kind of query.kind ?? []) params.append('kind', kind)
+  if (query.lane) params.set('lane', query.lane)
+  if (query.limit !== undefined) params.set('limit', String(query.limit))
+  if (query.cursor) params.set('cursor', query.cursor)
+  if (query.allTenants) params.set('all_tenants', 'true')
+  return params
+}
+
+export async function listAdminJobs(query: AdminJobQuery = {}): Promise<AdminJobPage> {
+  const params = adminJobParams(query)
+  const url = params.size > 0 ? `/api/admin/v1/jobs?${params.toString()}` : '/api/admin/v1/jobs'
+  return request<AdminJobPage>(url)
+}
+
+export async function getAdminJob(jobID: string): Promise<AdminJob> {
+  return request<AdminJob>(`/api/admin/v1/jobs/${encodeURIComponent(jobID)}`)
+}
+
+export async function cancelAdminJob(csrfToken: string, jobID: string): Promise<AdminJob> {
+  return request<AdminJob>(
+    `/api/admin/v1/jobs/${encodeURIComponent(jobID)}/cancel`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
 export async function listAdminKeys(): Promise<AdminKey[]> {
   return (await request<AdminKeyListResponse>('/api/admin/v1/keys')).keys
 }

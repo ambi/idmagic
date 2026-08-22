@@ -83,6 +83,63 @@ model JobProgress {
 }
 
 
+@doc("No Job exists with the `job_id` given, or it belongs to another tenant, which is treated as nonexistent so that an id alone cannot confirm a Job in a tenant the caller cannot see. RFC 9457 Problem Details with `type` = `urn:idmagic:error:job_not_found`.")
+model JobNotFoundError is ProblemDetails;
+
+
+@doc("CancelJob was called on a Job that had already reached a terminal JobLifecycle state (Succeeded, Failed, or Canceled).\nA terminal state is immutable, so the request is refused rather than being treated as a no-op success: an operator who\nasked to stop work needs to know whether the work had already finished. RFC 9457 Problem Details with `type` =\n`urn:idmagic:error:job_not_cancelable`.")
+model JobNotCancelableError is ProblemDetails;
+
+
+@doc("A Job as the administration API exposes it. It deliberately omits `params`, `result`, and `dedup_key`: those are values\nthe enqueueing context chose and this context only stores opaquely, so their contents cannot be vouched for\n(REQ-JOBS-014). What remains is what an operator needs in order to judge a Job -- what it is, where it is, how many\nattempts it has spent, which worker holds it, and why it last failed.")
+model AdminJobResponse {
+  id: string;
+  @doc("The tenant the Job belongs to. Only a cross-tenant listing shows more than one value.")
+  tenant_id: string;
+  kind: JobKind;
+  lane: ExecutionLane;
+  status: JobStatus;
+  attempts: int64;
+  max_attempts: int64;
+  @doc("The most recent failure message the handler reported. Present on a Job that has failed at least once, including one that has since been retried.")
+  error?: string;
+  @doc("The progress the handler last reported. Absent unless the handler reports progress.")
+  progress?: JobProgress;
+  @doc("The worker holding the Running lease. Absent while Queued and in a terminal state.")
+  lease_owner?: string;
+  lease_expires_at?: utcDateTime;
+  @doc("When the Job next becomes claimable. On a Job waiting out a retry backoff this is in the future.")
+  run_at: utcDateTime;
+  created_at: utcDateTime;
+  updated_at: utcDateTime;
+}
+
+
+@doc("The filter of ListJobs. `tenant_id` comes from the authentication context and is never a parameter.")
+model AdminJobQuery {
+  @doc("Narrows to these JobStatus values. Omitted, every status is returned.")
+  status?: JobStatus[];
+  @doc("Narrows to these JobKind values. Omitted, every kind is returned.")
+  kind?: JobKind[];
+  @doc("Narrows to this ExecutionLane.")
+  lane?: ExecutionLane;
+  @doc("The page size ceiling (default 50, maximum 200).")
+  limit?: int64;
+  @doc("Pass through `next_cursor` from the previous response. It is an opaque keyset anchor over `(created_at, id)`; a cursor\nissued for a different tenant or a different filter is rejected rather than silently re-anchored.")
+  cursor?: string;
+  @doc("Return every tenant's Jobs. Honoured only for a `system_admin` calling through the control-plane tenant; anyone else stays inside their own tenant (REQ-JOBS-012).")
+  all_tenants?: boolean;
+}
+
+
+@doc("One page of the Job listing, newest-created first.")
+model AdminJobListResponse {
+  jobs: AdminJobResponse[];
+  @doc("The anchor that continues the listing. Absent on the last page.")
+  next_cursor?: string;
+}
+
+
 @doc("The published language another bounded context holds when it has enqueued a Job or wants to refer to one. It carries\nthe smallest reference fit to publish, not the whole Job aggregate.")
 model JobRef {
   id: string;

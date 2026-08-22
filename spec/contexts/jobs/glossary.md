@@ -15,5 +15,7 @@
 | Retry | 失敗後、バックオフを経て再試行のため Queued に戻す遷移。 | retry |
 | Cancel | 終端状態に達していない Job を取消す。 | cancel |
 | ExecutionLane | JobKind の登録情報が一意に決める実行枠の区分。レイテンシーや資源特性が異なる JobKind 間で、取得処理と `worker` の実行枠を分離するために使う。投入元はレーンを指定できない。`latency_sensitive` / `default` / `bulk` の 3 種類がある。 | lane, 実行レーン |
+| AdminJobView | 管理 API がジョブについて公開する読み取り専用の像。種別、レーン、状態、試行回数と上限、直近の失敗理由、進捗、リースの保有者と期限、時刻からなる。`params`、`result`、`dedup_key` は含まない。投入した Context が意味を決める不透明な値であり、Jobs はその中身を検証しないため、個人情報が混ざっていないことを主張できないからである。 | job read model, 管理向けジョブ表現 |
+| TenantAdministrator | 自テナントのジョブを参照し、終端に達していないジョブを取り消す権限を持つ管理者。全テナント横断の参照は `system_admin` ロールと制御面テナントの経路を合わせて要求する。 |  |
 | Developer | 標準開発環境でこのリポジトリを動かす開発者。 |  |
 | System | Jobs の永続キューと `worker` の実行環境そのもの。人間の操作者を伴わない技術的な主体を指す。 |  |

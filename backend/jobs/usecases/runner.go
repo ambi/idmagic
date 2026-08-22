@@ -169,11 +169,17 @@ func (rn *Runner) execute(ctx context.Context, job *domain.Job) {
 		rn.fail(execCtx, job, err)
 		return
 	}
+	// 実行時間は取得待ちの時間と別に測る。滞留が長いのか処理が重いのかは、
+	// 片方だけを見ても区別できない (wi-157)。
+	startedAt := rn.deps.Now()
 	result, err := handler(execCtx, job)
+	elapsed := rn.deps.Now().Sub(startedAt)
 	if err != nil {
+		rn.jobsMetrics().RecordJobDuration(rn.cfg.Lane, "failed", elapsed)
 		rn.fail(execCtx, job, err)
 		return
 	}
+	rn.jobsMetrics().RecordJobDuration(rn.cfg.Lane, "succeeded", elapsed)
 	rn.complete(execCtx, job, result)
 }
 
@@ -236,6 +242,15 @@ func (rn *Runner) fail(ctx context.Context, job *domain.Job, handlerErr error) {
 
 	if terminal {
 		decrementActiveJobsQuota(ctx, rn.deps.QuotaRepo, updated.TenantID)
+		// 配信不能の確定は運用者が最初に探すものなので、構造化ログにも残す。
+		// tenant_id と job_id は調査の入口として必要だが、ラベルの基数が問題に
+		// なるメトリクスの側には決して載せない (spec/observability.md)。
+		// ハンドラーのエラー文は載せない。中身は投入側が決めるので、個人情報が
+		// 混ざっていないことをここから主張できない。監査の JobFailed が持つ。
+		logging.Warn(ctx, "jobs: job dead-lettered",
+			"job_id", updated.ID, "tenant_id", updated.TenantID,
+			"kind", string(updated.Kind), "lane", string(rn.cfg.Lane),
+			"attempts", updated.Attempts, "max_attempts", updated.MaxAttempts)
 	}
 	emit(rn.deps.Emit, &domain.JobFailed{
 		At: now, JobID: updated.ID, TenantID: updated.TenantID,

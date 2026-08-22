@@ -6,6 +6,7 @@ import {
   IconCloudUpload,
   IconForms,
   IconLayoutDashboard,
+  IconListCheck,
   IconNetwork,
   IconPlugConnected,
   IconRobot,
@@ -37,6 +38,7 @@ export type AdminNavKey =
   | 'workload-identity'
   | 'consents'
   | 'audit-events'
+  | 'jobs'
   | 'keys'
   | 'tenant-attributes'
   | 'tenant-group-attributes'
@@ -150,6 +152,13 @@ export function adminNavItems(active: AdminNavKey, locale: Locale = 'ja'): Admin
       icon: IconActivity,
       href: tenantURL('/admin/audit_events'),
       active: active === 'audit-events',
+    },
+    {
+      key: 'jobs',
+      label: t.jobs,
+      icon: IconListCheck,
+      href: tenantURL('/admin/jobs'),
+      active: active === 'jobs',
     },
     {
       key: 'keys',

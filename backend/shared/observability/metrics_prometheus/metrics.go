@@ -48,6 +48,7 @@ type Metrics struct {
 	// "failed" — never tenant_id/job_id (spec/contexts/system.yaml
 	// MetricsExposition).
 	jobsClaimLatency metric.Float64Histogram
+	jobsDuration     metric.Float64Histogram
 	jobsOutcome      metric.Int64Counter
 	jobsRetry        metric.Int64Counter
 	jobsQueueDepth   metric.Int64Gauge
@@ -126,6 +127,10 @@ func NewMetrics(serviceName, serviceVersion string) (*Metrics, error) {
 		return nil, err
 	}
 	if m.jobsClaimLatency, err = meter.Float64Histogram("jobs_claim_latency_seconds", metric.WithUnit("s")); err != nil {
+		return nil, err
+	}
+	if m.jobsDuration, err = meter.Float64Histogram("jobs_duration_seconds", metric.WithUnit("s"),
+		metric.WithDescription("How long a job handler ran for one attempt")); err != nil {
 		return nil, err
 	}
 	if m.jobsOutcome, err = meter.Int64Counter("jobs_outcome_total"); err != nil {
@@ -218,6 +223,15 @@ func (m *Metrics) IncDetachedCompletionFailure() {
 // RecordJobClaimLatency implements usecases.JobsMetrics (wi-261 T006).
 func (m *Metrics) RecordJobClaimLatency(lane domain.ExecutionLane, latency time.Duration) {
 	m.jobsClaimLatency.Record(context.Background(), latency.Seconds(), metric.WithAttributes(attribute.String("lane", string(lane))))
+}
+
+// RecordJobDuration implements usecases.JobsMetrics (wi-157). jobs_outcome_total
+// with outcome="failed" counts only terminal failures, so it doubles as the
+// dead-letter count; this histogram covers every attempt, retried or not.
+func (m *Metrics) RecordJobDuration(lane domain.ExecutionLane, outcome string, duration time.Duration) {
+	m.jobsDuration.Record(context.Background(), duration.Seconds(), metric.WithAttributes(
+		attribute.String("lane", string(lane)), attribute.String("outcome", outcome),
+	))
 }
 
 // RecordJobOutcome implements usecases.JobsMetrics (wi-261 T006).
