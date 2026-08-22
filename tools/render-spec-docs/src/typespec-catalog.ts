@@ -1,6 +1,7 @@
 import {
   getDoc,
   getFormat,
+  getTags,
   getMaxItemsAsNumeric,
   getMaxLengthAsNumeric,
   getMaxValueAsNumeric,
@@ -22,6 +23,7 @@ import {
   type Value,
 } from '@typespec/compiler'
 import { SyntaxKind } from '@typespec/compiler/ast'
+import { relative } from 'node:path'
 
 export type CatalogProperty = {
   name: string
@@ -51,6 +53,28 @@ export type CatalogSymbol = {
   properties: CatalogProperty[]
   members: CatalogMember[]
   references: string[]
+  /** The bounded context whose directory declares the symbol, when it has one. */
+  context?: string
+}
+
+export type TypeSpecCatalog = {
+  symbols: CatalogSymbol[]
+  /** OpenAPI tag names, by the bounded context that declares them. */
+  contextTags: Record<string, string[]>
+}
+
+/**
+ * The owning context of a declaration is where its source file sits. The
+ * standard layout already says it, so no table has to repeat it.
+ */
+function declaringContext(
+  type: Model | Enum | Union | Scalar | Namespace,
+  repositoryRoot: string,
+): string | undefined {
+  const node = type.node
+  if (!node) return undefined
+  const path = relative(repositoryRoot, getSourceLocation(node).file.path).replaceAll('\\', '/')
+  return path.match(/^spec\/contexts\/([^/]+)\//)?.[1]
 }
 
 function namespaceName(namespace: Namespace | undefined): string {
@@ -321,25 +345,64 @@ function collectProjectTypes(program: Program, namespace: Namespace, output: Set
   for (const child of namespace.namespaces.values()) collectProjectTypes(program, child, output)
 }
 
-export function extractTypeSpecCatalog(program: Program, apiSchemas: Set<string>): CatalogSymbol[] {
+/**
+ * An operation namespace carries the OpenAPI tag its context owns, so the tag a
+ * reader sees in the API Reference resolves back to a context directory.
+ */
+function collectContextTags(
+  program: Program,
+  namespace: Namespace,
+  repositoryRoot: string,
+  output: Map<string, Set<string>>,
+): void {
+  const context = declaringContext(namespace, repositoryRoot)
+  if (context) {
+    for (const tag of getTags(program, namespace)) {
+      const tags = output.get(context) ?? new Set<string>()
+      tags.add(tag)
+      output.set(context, tags)
+    }
+  }
+  for (const child of namespace.namespaces.values())
+    collectContextTags(program, child, repositoryRoot, output)
+}
+
+export function extractTypeSpecCatalog(
+  program: Program,
+  apiSchemas: Set<string>,
+  repositoryRoot: string,
+): TypeSpecCatalog {
   const projectTypes = new Set<Type>()
   collectProjectTypes(program, program.getGlobalNamespaceType(), projectTypes)
-  const output: CatalogSymbol[] = []
+  const symbols: CatalogSymbol[] = []
   for (const value of projectTypes) {
     switch (value.kind) {
       case 'Model':
-        output.push(modelSymbol(program, value, apiSchemas, projectTypes))
+        symbols.push(modelSymbol(program, value, apiSchemas, projectTypes))
         break
       case 'Enum':
-        output.push(enumSymbol(program, value, apiSchemas))
+        symbols.push(enumSymbol(program, value, apiSchemas))
         break
       case 'Union':
-        output.push(unionSymbol(program, value, apiSchemas, projectTypes))
+        symbols.push(unionSymbol(program, value, apiSchemas, projectTypes))
         break
       case 'Scalar':
-        output.push(scalarSymbol(program, value, apiSchemas, projectTypes))
+        symbols.push(scalarSymbol(program, value, apiSchemas, projectTypes))
         break
+      default:
+        continue
     }
+    const symbol = symbols[symbols.length - 1]
+    if (symbol) symbol.context = declaringContext(value, repositoryRoot)
   }
-  return output.sort((a, b) => a.name.localeCompare(b.name))
+  const tags = new Map<string, Set<string>>()
+  collectContextTags(program, program.getGlobalNamespaceType(), repositoryRoot, tags)
+  return {
+    symbols: symbols.sort((a, b) => a.name.localeCompare(b.name)),
+    contextTags: Object.fromEntries(
+      [...tags.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => [key, [...value].sort()]),
+    ),
+  }
 }

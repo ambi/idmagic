@@ -28,14 +28,18 @@ async function canonicalDocuments(directory: string, names: readonly string[]): 
 const paths = ['DEVELOPMENT.md', 'SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
 paths.push(...(await canonicalDocuments('spec', ROOT_DOCUMENTS)))
 const contextRoot = resolve(root, 'spec/contexts')
-for (const entry of await readdir(contextRoot, { withFileTypes: true })) {
-  if (entry.isDirectory()) {
-    paths.push(...(await canonicalDocuments(`spec/contexts/${entry.name}`, CONTEXT_DOCUMENTS)))
-  }
+const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => entry.name)
+  .sort()
+for (const name of contextDirectories) {
+  paths.push(...(await canonicalDocuments(`spec/contexts/${name}`, CONTEXT_DOCUMENTS)))
 }
 
+// The order the canonical layout defines is the order the site lists, so the
+// paths are not re-sorted into the alphabet here.
 const documents: SourceDocument[] = []
-for (const path of paths.sort()) {
+for (const path of paths) {
   documents.push({ path, source: await readFile(resolve(root, path), 'utf8') })
 }
 const openapi = JSON.parse(await readFile(openapiPath, 'utf8'))
@@ -95,14 +99,15 @@ if (program.hasError()) {
   throw new Error(program.diagnostics.map((diagnostic) => formatDiagnostic(diagnostic)).join('\n'))
 }
 const apiSchemas = new Set<string>(Object.keys(openapi.components?.schemas ?? {}))
-const models = extractTypeSpecCatalog(program, apiSchemas)
+const catalog = extractTypeSpecCatalog(program, apiSchemas, root)
 const result = renderSpecificationSite({
   documents,
   openapi,
   repositoryRoot: root,
   outputDirectory,
   openapiFileName: basename(openapiPath),
-  models,
+  models: catalog.symbols,
+  contextTags: catalog.contextTags,
   traces,
 })
 

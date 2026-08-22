@@ -1,5 +1,6 @@
 import { dirname, posix, relative, resolve } from 'node:path'
 import MarkdownIt from 'markdown-it'
+import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
 /**
@@ -40,6 +41,8 @@ type RenderedDocument = SourceDocument & {
   sections: string[]
   outputPath: string
   category: DocumentCategory
+  /** Position within the group the document is listed in. */
+  order: number
   /** For a context document and its children, the context slug they belong to. */
   context?: string
 }
@@ -71,6 +74,17 @@ export function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;')
 }
 
+/**
+ * A TypeSpec doc comment is Markdown, so the catalog renders it as Markdown
+ * rather than printing the backticks a reader is meant to see as code. Raw HTML
+ * stays disabled, so untrusted markup is still escaped.
+ */
+const inlineMarkdown = new MarkdownIt({ html: false, linkify: false, typographer: false })
+
+function renderDoc(value: string | undefined, fallback = 'No description.'): string {
+  return inlineMarkdown.renderInline(value ?? fallback)
+}
+
 function slug(value: string): string {
   return value
     .normalize('NFKD')
@@ -83,7 +97,16 @@ function stripFrontmatter(source: string): string {
   return source.replace(/^---\n[\s\S]*?\n---\n+/, '')
 }
 
-function documentMetadata(document: SourceDocument): RenderedDocument {
+/**
+ * The canonical layout already states the order the documents are meant to be
+ * read in, so the listing follows the name list rather than the alphabet.
+ */
+function canonicalOrder(names: readonly string[], name: string, fallback: number): number {
+  const index = names.indexOf(name)
+  return index < 0 ? fallback : index
+}
+
+function documentMetadata(document: SourceDocument, index: number): RenderedDocument {
   const title = document.source.match(/^# (.+)$/m)?.[1]?.trim() ?? document.path
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
@@ -99,6 +122,7 @@ function documentMetadata(document: SourceDocument): RenderedDocument {
           sections,
           outputPath: 'specification/index.html',
           category: 'whole-system',
+          order: 0,
         }
       : {
           ...document,
@@ -107,6 +131,7 @@ function documentMetadata(document: SourceDocument): RenderedDocument {
           sections,
           outputPath: `specification/${slug(stem)}.html`,
           category: 'whole-system-child',
+          order: canonicalOrder(ROOT_DOCUMENTS, rootDocument, index),
         }
   }
   const contextDocument = document.path.match(/^spec\/contexts\/([^/]+)\/([^/]+)$/)
@@ -122,6 +147,7 @@ function documentMetadata(document: SourceDocument): RenderedDocument {
           sections,
           outputPath: `contexts/${context}/index.html`,
           category: 'context',
+          order: index,
           context,
         }
       : {
@@ -131,6 +157,7 @@ function documentMetadata(document: SourceDocument): RenderedDocument {
           sections,
           outputPath: `contexts/${context}/${slug(stem)}.html`,
           category: 'context-child',
+          order: canonicalOrder(CONTEXT_DOCUMENTS, contextFile, index),
           context,
         }
   }
@@ -142,6 +169,7 @@ function documentMetadata(document: SourceDocument): RenderedDocument {
     sections,
     outputPath: `method/${slug(name)}.html`,
     category: 'method',
+    order: index,
   }
 }
 
@@ -326,6 +354,17 @@ function markdownRenderer(
     return `<div class="diagram-shell"><pre class="mermaid">${escapeHtml(source)}</pre></div>\n`
   }
 
+  const defaultTableOpen =
+    md.renderer.rules.table_open ??
+    ((tokens, index, options, _env, self) => self.renderToken(tokens, index, options))
+  md.renderer.rules.table_open = (tokens, index, options, env, self) => {
+    // A glossary term is a single identifier. Letting the layout break it apart
+    // to widen the definition column leaves the term column unreadable.
+    const heading = tokens.slice(index, index + 6).find((token) => token.type === 'inline')
+    if (heading?.content.trim() === 'Term') tokens[index]?.attrJoin('class', 'term-table')
+    return defaultTableOpen(tokens, index, options, env, self)
+  }
+
   const defaultLinkOpen =
     md.renderer.rules.link_open ??
     ((tokens, index, options, _env, self) => self.renderToken(tokens, index, options))
@@ -375,37 +414,72 @@ function assetHref(page: string, asset: string): string {
   return pageHref(page, `assets/${asset}`)
 }
 
+function inGroup(documents: RenderedDocument[], category: DocumentCategory): RenderedDocument[] {
+  return documents
+    .filter((document) => document.category === category)
+    .sort((a, b) => a.order - b.order)
+}
+
+/**
+ * A child repeats its owner's name in its own title, which reads as noise
+ * directly beneath it. Dropping that prefix leaves the kind of content the
+ * file holds, which is what tells the children apart.
+ */
+function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): string {
+  const owner = documents.find(
+    (document) => document.category === 'context' && document.context === entry.context,
+  )
+  return owner && entry.title.startsWith(`${owner.title} `)
+    ? entry.title.slice(owner.title.length + 1)
+    : entry.title
+}
+
 function navigation(page: string, documents: RenderedDocument[]): string {
-  const method = documents.filter((document) => document.category === 'method')
+  const method = inGroup(documents, 'method')
   const root = documents.find((document) => document.category === 'whole-system')
-  const rootChildren = documents.filter((document) => document.category === 'whole-system-child')
-  const contexts = documents.filter((document) => document.category === 'context')
-  // The context a reader is inside is the only one whose files are worth
-  // listing; expanding all of them at once buries the context list itself.
-  const open = documents.find((document) => document.outputPath === page)?.context
+  const rootChildren = inGroup(documents, 'whole-system-child')
+  const contexts = inGroup(documents, 'context')
+  const current = documents.find((document) => document.outputPath === page)
+  // The section a reader is inside is the only one whose files are worth
+  // listing; expanding all of them at once buries the section list itself.
+  const openContext = current?.context
+  const insideWholeSystem =
+    current?.category === 'whole-system' || current?.category === 'whole-system-child'
   const link = (entry: RenderedDocument, child: boolean) => {
-    const current = entry.outputPath === page ? ' aria-current="page"' : ''
+    const marker = entry.outputPath === page ? ' aria-current="page"' : ''
     const cls = child ? ' class="nav-child"' : ''
-    // A child repeats its owner's name in its own title, which reads as noise
-    // directly beneath it; the file name is what tells the files apart here.
-    const label = child ? (entry.path.split('/').at(-1) ?? entry.title) : entry.title
-    return `<a data-site-link${cls}${current} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(label)}</a>`
+    const label = child ? childLabel(entry, documents) : entry.title
+    return `<a data-site-link${cls}${marker} href="${escapeHtml(pageHref(page, entry.outputPath))}">${escapeHtml(label)}</a>`
   }
-  const group = (title: string, entries: RenderedDocument[]) =>
-    `<section class="nav-group"><h2>${escapeHtml(title)}</h2>${entries
-      .map((entry) => {
-        const children =
-          entry.category === 'context' && entry.context === open
-            ? documents.filter(
-                (document) =>
-                  document.category === 'context-child' && document.context === entry.context,
-              )
-            : []
-        return link(entry, false) + children.map((child) => link(child, true)).join('')
-      })
-      .join('')}</section>`
-  const whole = root ? group('Whole System', [root, ...rootChildren]) : ''
-  return `${group('Method', method)}${whole}${group('Contexts', contexts)}<section class="nav-group"><h2>References</h2>${siteLink(page, 'api/index.html', 'API Reference')}${siteLink(page, 'models/index.html', 'Model Catalog')}${siteLink(page, 'traceability/index.html', 'Traceability')}</section>`
+  const branch = (entry: RenderedDocument, children: RenderedDocument[]) =>
+    link(entry, false) + children.map((child) => link(child, true)).join('')
+  // Every group folds the same way, so no group looks like a different kind of
+  // thing. Method guidance is read once rather than while navigating the
+  // specification, so it is the one that starts folded.
+  const group = (title: string, body: string, open: boolean) =>
+    `<details class="nav-group"${open ? ' open' : ''}><summary>${escapeHtml(title)}</summary>${body}</details>`
+  const contextChildren = (entry: RenderedDocument) =>
+    entry.context === openContext
+      ? inGroup(documents, 'context-child').filter((document) => document.context === entry.context)
+      : []
+  return [
+    group(
+      'Method',
+      method.map((entry) => link(entry, false)).join(''),
+      current?.category === 'method',
+    ),
+    root ? group('Whole System', branch(root, insideWholeSystem ? rootChildren : []), true) : '',
+    group(
+      'Contexts',
+      contexts.map((entry) => branch(entry, contextChildren(entry))).join(''),
+      true,
+    ),
+    group(
+      'References',
+      `${siteLink(page, 'api/index.html', 'API Reference')}${siteLink(page, 'models/index.html', 'Model Catalog')}${siteLink(page, 'traceability/index.html', 'Traceability')}`,
+      true,
+    ),
+  ].join('')
 }
 
 function breadcrumbs(page: string, current: string): string {
@@ -427,16 +501,54 @@ function shell(args: {
 <body><a class="skip-link" href="#content">Skip to content</a><header class="mobile-header">${siteLink(args.page, 'index.html', 'Specification')}<details><summary>Navigation</summary><nav aria-label="Mobile">${nav}</nav></details></header><aside class="sidebar"><div class="site-title">${siteLink(args.page, 'index.html', 'Specification')}</div><nav aria-label="Primary">${nav}</nav></aside><main id="content">${breadcrumbs(args.page, args.current)}${args.body}</main>${args.scripts ?? ''}</body></html>\n`
 }
 
+function modelGroupId(context: string): string {
+  return `context-${slug(context)}`
+}
+
+/**
+ * The API Reference and the Model Catalog stay whole, because one TypeSpec
+ * program produces them. What a context needs is the way down into its own
+ * share of them, which the declaring directory already determines.
+ */
+function contextReference(args: {
+  document: RenderedDocument
+  tags: string[]
+  operations: ApiOperation[]
+  models: CatalogSymbol[]
+}): string {
+  const context = args.document.context
+  if (!context || (args.operations.length === 0 && args.models.length === 0)) return ''
+  const page = args.document.outputPath
+  const id = `${args.document.id}-api-and-models`
+  const filtered = (tag: string) =>
+    `<a data-site-link href="${escapeHtml(`${pageHref(page, 'api/index.html')}?tag=${encodeURIComponent(tag)}`)}">${escapeHtml(tag)}</a>`
+  const operations = args.operations.length
+    ? `<h3 id="${id}-operations">Operations</h3><p class="muted">Tagged ${args.tags.map(filtered).join(', ')} in the API Reference.</p><div class="table-wrap"><table><thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">Summary</th></tr></thead><tbody>${args.operations
+        .map(
+          (operation) =>
+            `<tr><th scope="row"><code>${escapeHtml(operation.method)}</code></th><td><code>${escapeHtml(operation.path)}</code></td><td>${operation.summary ? renderDoc(operation.summary) : '<span class="muted">—</span>'}</td></tr>`,
+        )
+        .join('')}</tbody></table></div>`
+    : ''
+  const models = args.models.length
+    ? `<h3 id="${id}-models">Models</h3><p class="muted">${args.models.length} TypeSpec symbol(s), also listed under ${siteLink(page, 'models/index.html', context, modelGroupId(context))} in the Model Catalog.</p><ul class="symbol-links">${args.models
+        .map((model) => `<li>${siteLink(page, modelPath(model), model.shortName)}</li>`)
+        .join('')}</ul>`
+    : ''
+  return `<section class="context-reference"><h2 id="${id}">API and Models</h2><p>Derived from the TypeSpec this context declares.</p>${operations}${models}</section>`
+}
+
 function documentPage(
   document: RenderedDocument,
   documents: RenderedDocument[],
   markdown: MarkdownIt,
+  reference: string,
 ): string {
   const source = addDerivedStateDiagrams(
     stripFrontmatter(document.source),
     document.path.endsWith('/states.md'),
   )
-  const body = `<article class="document">${markdown.render(source, { document })}</article>`
+  const body = `<article class="document">${markdown.render(source, { document })}${reference}</article>`
   const scripts = `<script src="${escapeHtml(assetHref(document.outputPath, 'mermaid.min.js'))}"></script><script src="${escapeHtml(assetHref(document.outputPath, 'site.js'))}"></script>`
   return shell({
     page: document.outputPath,
@@ -455,8 +567,8 @@ function card(page: string, path: string, title: string, description: string): s
 function landingPage(documents: RenderedDocument[], modelCount: number): string {
   const page = 'index.html'
   const root = documents.find((document) => document.category === 'whole-system')
-  const method = documents.filter((document) => document.category === 'method')
-  const contexts = documents.filter((document) => document.category === 'context')
+  const method = inGroup(documents, 'method')
+  const contexts = inGroup(documents, 'context')
   const body = `<section class="hero"><p class="eyebrow">Generated from canonical Markdown and TypeSpec</p><h1>Specification</h1><p>Read the whole-system design, bounded-context specifications, API contract, and complete TypeSpec model catalog without treating this generated site as a source.</p></section>
 <section aria-labelledby="start"><h2 id="start">Start here</h2><div class="card-grid">${root ? card(page, root.outputPath, root.title, 'Cross-context ownership, current design, and the DDD context map.') : ''}${card(page, 'api/index.html', 'API Reference', 'The generated OpenAPI rendered by Swagger UI.')}${card(page, 'models/index.html', 'Model Catalog', `${modelCount} repository-owned TypeSpec symbols, including non-HTTP models.`)}</div></section>
 <section aria-labelledby="method"><h2 id="method">Method</h2><div class="card-grid">${method.map((entry) => card(page, entry.outputPath, entry.title, 'Specification-first development guidance.')).join('')}</div></section>
@@ -485,9 +597,11 @@ function apiPage(
   documents: RenderedDocument[],
 ): string {
   const page = 'api/index.html'
-  const body = `<article class="reference-page"><header class="reference-header"><p class="eyebrow">OpenAPI-native reference</p><h1>API Reference</h1><p>Rendered directly from generated OpenAPI by Swagger UI. <a href="../../openapi/${encodeURIComponent(openapiFileName)}">Open raw OpenAPI JSON</a>.</p></header><div class="swagger-shell"><div id="swagger-ui" aria-label="API operations"></div></div></article>`
+  const body = `<article class="reference-page"><header class="reference-header"><p class="eyebrow">OpenAPI-native reference</p><h1>API Reference</h1><p>Rendered directly from generated OpenAPI by Swagger UI. A <code>?tag=</code> query narrows the view to one context's operations. <a href="../../openapi/${encodeURIComponent(openapiFileName)}">Open raw OpenAPI JSON</a>.</p></header><div class="swagger-shell"><div id="swagger-ui" aria-label="API operations"></div></div></article>`
   const head = `<link rel="stylesheet" href="${escapeHtml(assetHref(page, 'swagger-ui.css'))}">`
-  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){SwaggerUIBundle({spec:${safeJson(openapi)},dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:'list',defaultModelsExpandDepth:1});});</script>`
+  // Swagger UI builds its own anchors at runtime, so the context pages arrive
+  // with a query the generated-link check can still resolve to this page.
+  const scripts = `<script src="${escapeHtml(assetHref(page, 'swagger-ui-bundle.js'))}"></script><script>window.addEventListener('DOMContentLoaded',function(){var tag=new URLSearchParams(window.location.search).get('tag');SwaggerUIBundle({spec:${safeJson(openapi)},dom_id:'#swagger-ui',deepLinking:true,displayRequestDuration:true,tryItOutEnabled:false,persistAuthorization:false,docExpansion:tag?'full':'list',defaultModelsExpandDepth:1,filter:tag||true});});</script>`
   return shell({
     page,
     title: 'API Reference',
@@ -530,7 +644,7 @@ function propertyRows(
   return properties
     .map(
       (property) =>
-        `<tr><th scope="row"><code>${escapeHtml(property.name)}</code>${property.optional ? '<span class="optional">optional</span>' : '<span class="required">required</span>'}</th><td><code>${escapeHtml(property.type)}</code>${property.default ? `<div class="meta">Default: <code>${escapeHtml(property.default)}</code></div>` : ''}</td><td>${property.doc ? escapeHtml(property.doc) : '<span class="muted">No description.</span>'}${property.constraints.length ? `<ul class="compact">${property.constraints.map((constraint) => `<li><code>${escapeHtml(constraint)}</code></li>`).join('')}</ul>` : ''}${property.references.length ? `<div class="meta">References: ${referenceList(page, property.references, symbols)}</div>` : ''}</td></tr>`,
+        `<tr><th scope="row"><code>${escapeHtml(property.name)}</code>${property.optional ? '<span class="optional">optional</span>' : '<span class="required">required</span>'}</th><td><code>${escapeHtml(property.type)}</code>${property.default ? `<div class="meta">Default: <code>${escapeHtml(property.default)}</code></div>` : ''}</td><td>${property.doc ? renderDoc(property.doc) : '<span class="muted">No description.</span>'}${property.constraints.length ? `<ul class="compact">${property.constraints.map((constraint) => `<li><code>${escapeHtml(constraint)}</code></li>`).join('')}</ul>` : ''}${property.references.length ? `<div class="meta">References: ${referenceList(page, property.references, symbols)}</div>` : ''}</td></tr>`,
     )
     .join('')
 }
@@ -582,24 +696,47 @@ function traceabilityPage(documents: RenderedDocument[], traces: ScenarioTrace[]
   return shell({ page, title: 'Traceability', current: 'Traceability', body, documents })
 }
 
+/**
+ * Every model in the program shares one contract namespace, so a namespace
+ * heading would say nothing. The declaring directory is what separates them.
+ */
+function modelGroups(
+  models: CatalogSymbol[],
+  documents: RenderedDocument[],
+): Array<{ id: string; title: string; entries: CatalogSymbol[] }> {
+  const groups: Array<{ id: string; title: string; entries: CatalogSymbol[] }> = []
+  const owners = new Set<string>()
+  for (const document of inGroup(documents, 'context')) {
+    const context = document.context
+    if (!context) continue
+    owners.add(context)
+    const entries = models.filter((model) => model.context === context)
+    if (entries.length) groups.push({ id: modelGroupId(context), title: document.title, entries })
+  }
+  const rest = new Map<string, CatalogSymbol[]>()
+  for (const model of models) {
+    if (model.context && owners.has(model.context)) continue
+    const entries = rest.get(model.namespace) ?? []
+    entries.push(model)
+    rest.set(model.namespace, entries)
+  }
+  for (const [namespace, entries] of [...rest.entries()].sort(([a], [b]) => a.localeCompare(b)))
+    groups.push({ id: `namespace-${slug(namespace)}`, title: namespace, entries })
+  return groups
+}
+
 function modelIndex(models: CatalogSymbol[], documents: RenderedDocument[]): string {
   const page = 'models/index.html'
-  const groups = new Map<string, CatalogSymbol[]>()
-  for (const model of models) {
-    const entries = groups.get(model.namespace) ?? []
-    entries.push(model)
-    groups.set(model.namespace, entries)
-  }
-  const body = `<header class="reference-header"><p class="eyebrow">TypeSpec program</p><h1>Model Catalog</h1><p>Repository-owned models, enums, unions, and scalars are included whether or not an HTTP operation exposes them. Transport wrappers in <code>Operations</code> namespaces remain in the OpenAPI-native API Reference.</p><label class="model-search">Filter models <input type="search" data-model-search placeholder="Name, namespace, or description" autocomplete="off"></label></header>${[
-    ...groups.entries(),
-  ]
-    .sort(([a], [b]) => a.localeCompare(b))
+  const body = `<header class="reference-header"><p class="eyebrow">TypeSpec program</p><h1>Model Catalog</h1><p>Repository-owned models, enums, unions, and scalars are included whether or not an HTTP operation exposes them, and are grouped by the bounded context that declares them. Transport wrappers in <code>Operations</code> namespaces remain in the OpenAPI-native API Reference.</p><label class="model-search">Filter models <input type="search" data-model-search placeholder="Name, context, or description" autocomplete="off"></label></header>${modelGroups(
+    models,
+    documents,
+  )
     .map(
-      ([namespace, entries]) =>
-        `<section class="model-group" data-model-group><h2>${escapeHtml(namespace)}</h2><div class="model-list">${entries
+      (group) =>
+        `<section class="model-group" data-model-group><h2 id="${escapeHtml(group.id)}">${escapeHtml(group.title)}</h2><div class="model-list">${group.entries
           .map(
             (entry) =>
-              `<article data-model-card data-search="${escapeHtml(`${entry.name} ${entry.doc ?? ''}`.toLowerCase())}"><div><span class="kind">${escapeHtml(entry.kind)}</span>${entry.apiExposed ? '<span class="api-exposed">API-exposed</span>' : ''}</div><h3>${siteLink(page, modelPath(entry), entry.shortName)}</h3><p>${escapeHtml(entry.doc ?? 'No description.')}</p></article>`,
+              `<article data-model-card data-search="${escapeHtml(`${entry.name} ${group.title} ${entry.doc ?? ''}`.toLowerCase())}"><div><span class="kind">${escapeHtml(entry.kind)}</span>${entry.apiExposed ? '<span class="api-exposed">API-exposed</span>' : ''}</div><h3>${siteLink(page, modelPath(entry), entry.shortName)}</h3><p>${renderDoc(entry.doc)}</p></article>`,
           )
           .join('')}</div></section>`,
     )
@@ -610,6 +747,9 @@ function modelIndex(models: CatalogSymbol[], documents: RenderedDocument[]): str
     current: 'Model Catalog',
     body,
     documents,
+    // The filter box is inert without the site script, which only the pages
+    // that ask for it receive.
+    scripts: `<script src="${escapeHtml(assetHref(page, 'site.js'))}"></script>`,
   })
 }
 
@@ -629,11 +769,11 @@ function modelPage(
     ? `<section><h2>${model.kind === 'union' ? 'Variants' : 'Members'}</h2><div class="table-wrap"><table><thead><tr><th>Name</th><th>Value or type</th><th>Description</th></tr></thead><tbody>${model.members
         .map(
           (member) =>
-            `<tr><th scope="row"><code>${escapeHtml(member.name)}</code></th><td><code>${escapeHtml(member.value ?? member.type ?? '—')}</code></td><td>${escapeHtml(member.doc ?? '—')}</td></tr>`,
+            `<tr><th scope="row"><code>${escapeHtml(member.name)}</code></th><td><code>${escapeHtml(member.value ?? member.type ?? '—')}</code></td><td>${renderDoc(member.doc, '—')}</td></tr>`,
         )
         .join('')}</tbody></table></div></section>`
     : ''
-  const body = `<article class="model-detail"><header><p class="eyebrow">${escapeHtml(model.namespace)} · ${escapeHtml(model.kind)}</p><h1>${escapeHtml(model.shortName)}</h1><div class="badges">${exposure}</div><p>${escapeHtml(model.doc ?? 'No description.')}</p><p class="qualified"><strong>TypeSpec symbol</strong> <code>${escapeHtml(model.name)}</code></p>${model.base ? `<p><strong>Base</strong> ${modelLink(page, model.base, symbols)}</p>` : ''}</header>${properties}${members}<section><h2>References</h2><p>${referenceList(page, model.references, symbols)}</p></section></article>`
+  const body = `<article class="model-detail"><header><p class="eyebrow">${escapeHtml(model.namespace)} · ${escapeHtml(model.kind)}</p><h1>${escapeHtml(model.shortName)}</h1><div class="badges">${exposure}</div><p>${renderDoc(model.doc)}</p><p class="qualified"><strong>TypeSpec symbol</strong> <code>${escapeHtml(model.name)}</code></p>${model.base ? `<p><strong>Base</strong> ${modelLink(page, model.base, symbols)}</p>` : ''}</header>${properties}${members}<section><h2>References</h2><p>${referenceList(page, model.references, symbols)}</p></section></article>`
   return shell({
     page,
     title: model.shortName,
@@ -643,19 +783,32 @@ function modelPage(
   })
 }
 
-function inspectOpenApi(openapi: OpenApiDocument): { operations: number; tags: string[] } {
-  let operations = 0
+type ApiOperation = {
+  method: string
+  path: string
+  summary?: string
+  tags: string[]
+}
+
+function inspectOpenApi(openapi: OpenApiDocument): { operations: ApiOperation[]; tags: string[] } {
+  const operations: ApiOperation[] = []
   const tags = new Set<string>()
   for (const [path, pathItem] of Object.entries(openapi.paths ?? {})) {
     for (const [method, operation] of Object.entries(pathItem)) {
       if (!HTTP_METHODS.has(method.toLowerCase())) continue
-      operations++
       const owners = operation.tags ?? []
       if (owners.length === 0 || owners.includes('default'))
         throw new Error(`${method.toUpperCase()} ${path} has no owning context tag`)
       for (const tag of owners) tags.add(tag)
+      operations.push({
+        method: method.toUpperCase(),
+        path,
+        summary: operation.summary ?? operation.operationId,
+        tags: owners,
+      })
     }
   }
+  operations.sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method))
   return { operations, tags: [...tags].sort() }
 }
 
@@ -674,7 +827,9 @@ function validateSiteLinks(files: Record<string, string>): void {
       if (!tag.includes('data-site-link')) continue
       const href = tag.match(/\shref="([^"]+)"/)?.[1]
       if (!href) continue
-      const [pathPart, fragment] = href.split('#', 2)
+      const [locator, fragment] = href.split('#', 2)
+      // A query selects a view of the target page, not another page.
+      const pathPart = locator?.split('?', 1)[0]
       const target = pathPart ? posix.normalize(posix.join(posix.dirname(path), pathPart)) : path
       if (!files[target]) throw new Error(`${path} links to missing generated page ${target}`)
       if (fragment && !ids.get(target)?.has(fragment))
@@ -699,8 +854,8 @@ function validateSiteLinks(files: Record<string, string>): void {
 const styles = `
 :root{color-scheme:light dark;--bg:#f4f6fb;--panel:#fff;--panel-2:#f8f9fd;--text:#182033;--muted:#667085;--line:#d9dfeb;--accent:#3457d5;--accent-soft:#e9eeff;--code:#edf1f8;--shadow:0 12px 32px rgba(25,35,60,.08);--actor:#6d28d9;--given:#176b87;--when:#9a5b00;--then:#157347;--alt:#b42318;--diagram-line:#294cba}
 @media(prefers-color-scheme:dark){:root{--bg:#0f131b;--panel:#171c27;--panel-2:#1d2431;--text:#eef2f8;--muted:#a7b0c1;--line:#30394b;--accent:#9db1ff;--accent-soft:#242f52;--code:#242b39;--shadow:none;--actor:#c4a7ff;--given:#7bd6f0;--when:#ffc36b;--then:#74d6a0;--alt:#ff9a91;--diagram-line:#b9c8ff}}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group h2{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:22px;font-size:13px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.actor{color:var(--actor)}.scenario-keyword.given{color:var(--given)}.scenario-keyword.when{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword.alt{color:var(--alt)}li:has(>.scenario-keyword){margin:.45em 0}li>ul li:has(>.scenario-keyword.alt){padding-left:8px;border-left:3px solid var(--alt)}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-title{color:var(--muted);font-weight:400}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
-.model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top}th{background:var(--panel-2)}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;color:var(--text);background:var(--bg);font:15px/1.7 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-wrap:anywhere}.skip-link{position:fixed;z-index:20;top:8px;left:8px;transform:translateY(-160%);padding:8px 12px;background:var(--panel);border:2px solid var(--accent);border-radius:8px}.skip-link:focus{transform:none}.sidebar{position:fixed;inset:0 auto 0 0;width:300px;overflow:auto;padding:24px 18px;border-right:1px solid var(--line);background:var(--panel)}.site-title{margin:0 8px 18px;font-size:18px;font-weight:800}.site-title a{text-decoration:none}.nav-group{margin:18px 0}.nav-group>summary{margin:0 8px 6px;color:var(--muted);font-size:11px;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;list-style:none}.nav-group>summary::-webkit-details-marker{display:none}.nav-group>summary::before{content:"▸";display:inline-block;width:12px}.nav-group[open]>summary::before{content:"▾"}.nav-group a{display:block;padding:5px 8px;color:var(--text);text-decoration:none;border-radius:7px}.nav-group a.nav-child{padding-left:22px;font-size:13px;color:var(--muted)}.nav-group a:hover,.nav-group a[aria-current=page]{color:var(--accent);background:var(--accent-soft)}main{width:min(1120px,calc(100% - 340px));margin-left:320px;padding:30px 26px 96px}.breadcrumbs{display:flex;gap:8px;align-items:center;margin:0 0 18px;color:var(--muted);font-size:13px}.mobile-header{display:none}.document,.reference-page,.model-detail,.hero{padding:38px 46px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}.hero{margin-bottom:28px;background:linear-gradient(145deg,var(--panel),var(--accent-soft))}.hero h1{margin:.1em 0;font-size:42px}.eyebrow{margin:0;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}h1,h2,h3,h4{line-height:1.25;scroll-margin-top:18px}h1{font-size:32px}h2{margin-top:38px;padding-bottom:8px;border-bottom:1px solid var(--line)}h3{margin-top:28px}a{color:var(--accent);text-underline-offset:2px}a:focus-visible,summary:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:4px}code{padding:.12em .35em;border-radius:5px;background:var(--code);font-size:.92em}pre{max-width:100%;overflow:auto;padding:16px;border-radius:10px;background:var(--code)}pre code{padding:0}.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}.card{padding:20px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.card h2{margin:0;border:0;padding:0;font-size:18px}.card p{margin:.5em 0 0;color:var(--muted)}.diagram-shell{max-width:100%;overflow:auto;margin:20px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.diagram-shell .mermaid{min-width:560px;background:transparent}.diagram-shell .mermaid svg .edgePath path,.diagram-shell .mermaid svg .flowchart-link,.diagram-shell .mermaid svg .transition{stroke:var(--diagram-line)!important;stroke-width:2.4px!important}.diagram-shell .mermaid svg marker path{fill:var(--diagram-line)!important;stroke:var(--diagram-line)!important}.scenario-keyword{display:inline-block;min-width:58px;margin-right:5px;padding:1px 7px;border:1px solid currentColor;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.04em;text-align:center}.scenario-keyword.actor{color:var(--actor)}.scenario-keyword.given{color:var(--given)}.scenario-keyword.when{color:var(--when)}.scenario-keyword.then{color:var(--then)}.scenario-keyword.alt{color:var(--alt)}li:has(>.scenario-keyword){margin:.45em 0}li>ul li:has(>.scenario-keyword.alt){padding-left:8px;border-left:3px solid var(--alt)}.reference-header{margin-bottom:24px}.reference-page{max-width:none}.swagger-shell{color-scheme:light;margin:24px -20px -20px;padding:20px;overflow:auto;border-radius:12px;background:#fff;color:#3b4151}.model-group{margin-top:32px}.model-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}.model-list article{padding:16px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}.model-list h3{margin:.4em 0}.model-list p{color:var(--muted)}.trace-table th[scope=row]{display:grid;gap:2px;text-align:left;vertical-align:top}.trace-title{color:var(--muted);font-weight:400}.trace-paths{margin:0;padding-left:16px}.trace-paths code{font-size:12px}.trace-empty{color:var(--muted)}
+.model-search{display:grid;max-width:520px;gap:6px;margin-top:20px;font-weight:700}.model-search input{width:100%;padding:10px 12px;color:var(--text);background:var(--panel);border:1px solid var(--line);border-radius:8px;font:inherit}.kind,.api-exposed,.not-exposed,.required,.optional{display:inline-block;margin:0 6px 4px 0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800}.kind,.optional{color:var(--muted);background:var(--code)}.api-exposed,.required{color:#fff;background:#28664b}.not-exposed{color:var(--muted);border:1px solid var(--line)}.qualified{padding:12px;border-radius:8px;background:var(--panel-2)}.badges{margin:.5em 0}.table-wrap,table{max-width:100%;overflow:auto}table{width:100%;border-collapse:collapse;display:block}th,td{padding:10px 12px;border:1px solid var(--line);text-align:left;vertical-align:top;overflow-wrap:break-word}th{background:var(--panel-2)}.term-table td:first-child{white-space:nowrap}.context-reference{margin-top:38px;padding-top:8px;border-top:1px solid var(--line)}.symbol-links{display:flex;flex-wrap:wrap;gap:6px 14px;margin:.6em 0;padding:0;list-style:none}.meta{margin-top:7px;color:var(--muted);font-size:13px}.compact{margin:.5em 0;padding-left:20px}.muted{color:var(--muted)}[hidden]{display:none!important}
 @media(max-width:900px){.sidebar{display:none}.mobile-header{display:flex;position:sticky;z-index:10;top:0;justify-content:space-between;align-items:flex-start;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}.mobile-header>details{position:relative}.mobile-header details>nav{position:absolute;right:0;width:min(86vw,320px);max-height:75vh;overflow:auto;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}main{width:auto;margin:0;padding:18px}.document,.reference-page,.model-detail,.hero{padding:24px 20px}.hero h1{font-size:34px}.diagram-shell .mermaid{min-width:480px}}
 @media print{.sidebar,.mobile-header,.breadcrumbs,.skip-link{display:none}main{width:auto;margin:0;padding:0}.document,.reference-page,.model-detail,.hero{border:0;box-shadow:none;padding:0}a{color:inherit;text-decoration:none}}
 `
@@ -729,6 +884,7 @@ export function renderSpecificationSite(args: {
   openapiFileName: string
   models: CatalogSymbol[]
   traces?: ScenarioTrace[]
+  contextTags?: Record<string, string[]>
 }): RenderedSpecificationSite {
   const documents = args.documents.map(documentMetadata)
   const openapi = inspectOpenApi(args.openapi)
@@ -753,14 +909,27 @@ export function renderSpecificationSite(args: {
     'models/index.html': modelIndex(args.models, documents),
     'traceability/index.html': traceabilityPage(documents, args.traces ?? []),
   }
-  for (const document of documents)
-    files[document.outputPath] = documentPage(document, documents, markdown)
+  for (const document of documents) {
+    const tags = (document.context ? args.contextTags?.[document.context] : undefined) ?? []
+    const reference =
+      document.category === 'context'
+        ? contextReference({
+            document,
+            tags,
+            operations: openapi.operations.filter((operation) =>
+              operation.tags.some((tag) => tags.includes(tag)),
+            ),
+            models: args.models.filter((model) => model.context === document.context),
+          })
+        : ''
+    files[document.outputPath] = documentPage(document, documents, markdown, reference)
+  }
   for (const model of args.models) files[modelPath(model)] = modelPage(model, symbols, documents)
   validateSiteLinks(files)
   return {
     files,
     assets: { 'site.css': styles, 'site.js': siteScript },
-    operations: openapi.operations,
+    operations: openapi.operations.length,
     tags: openapi.tags,
     models: args.models.length,
     mermaidSources,

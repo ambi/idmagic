@@ -23,6 +23,21 @@ flowchart LR
 `,
 }
 
+const rootGlossaryDocument = {
+  path: 'spec/glossary.md',
+  source: `# Glossary
+
+| Term | Definition |
+|---|---|
+| InterfaceStability | 外部契約としての安定性の区分。 |
+`,
+}
+
+const rootStructureDocument = {
+  path: 'spec/structure.md',
+  source: '# Structure\n\nディレクトリの配置。\n',
+}
+
 const contextDocument = {
   path: 'spec/contexts/demo/README.md',
   source: `# Demo
@@ -69,6 +84,16 @@ const scenariosDocument = {
 `,
 }
 
+const glossaryDocument = {
+  path: 'spec/contexts/demo/glossary.md',
+  source: `# Demo Glossary
+
+| Term | Definition |
+|---|---|
+| DemoRun | 1 回の実行。 |
+`,
+}
+
 const guideDocument = {
   path: 'WORK_ITEM_FORMAT.md',
   source: '# Work Item Format\n\nEnglish method guidance.\n',
@@ -82,6 +107,7 @@ const models: CatalogSymbol[] = [
     shortName: 'InternalRecord',
     doc: 'A specification model that is not exposed by HTTP.',
     apiExposed: false,
+    context: 'demo',
     properties: [
       {
         name: 'id',
@@ -97,26 +123,48 @@ const models: CatalogSymbol[] = [
   },
 ]
 
-describe('renderSpecificationSite', () => {
-  it('renders a linked multi-page specification site', () => {
-    const result = renderSpecificationSite({
-      documents: [rootDocument, contextDocument, statesDocument, scenariosDocument, guideDocument],
-      repositoryRoot: '/repo',
-      outputDirectory: '/repo/spec/generated/docs',
-      openapiFileName: 'example.openapi.json',
-      openapi: {
-        info: { title: 'Demo API', version: '1.0.0' },
-        paths: {
-          '/things': {
-            get: { operationId: 'ListThings', tags: ['Demo'] },
-          },
+/** The canonical order is glossary before states before scenarios, not the alphabet. */
+const site = () =>
+  renderSpecificationSite({
+    documents: [
+      rootDocument,
+      rootGlossaryDocument,
+      rootStructureDocument,
+      contextDocument,
+      statesDocument,
+      glossaryDocument,
+      scenariosDocument,
+      guideDocument,
+    ],
+    repositoryRoot: '/repo',
+    outputDirectory: '/repo/spec/generated/docs',
+    openapiFileName: 'example.openapi.json',
+    openapi: {
+      info: { title: 'Demo API', version: '1.0.0' },
+      paths: {
+        '/things': {
+          get: { operationId: 'ListThings', summary: 'List things', tags: ['Demo'] },
         },
       },
-      models,
-    })
+    },
+    models,
+    contextTags: { demo: ['Demo'] },
+  })
+
+/** Every page carries the navigation twice, once for the sidebar and once for the mobile header. */
+const sidebar = (html: string | undefined) =>
+  (html ?? '').slice((html ?? '').indexOf('<aside class="sidebar">'))
+
+const childLabels = (html: string | undefined) =>
+  [...sidebar(html).matchAll(/class="nav-child"[^>]*>([^<]+)</g)].map((match) => match[1])
+
+describe('renderSpecificationSite', () => {
+  it('renders a linked multi-page specification site', () => {
+    const result = site()
 
     expect(Object.keys(result.files).sort()).toEqual([
       'api/index.html',
+      'contexts/demo/glossary.html',
       'contexts/demo/index.html',
       'contexts/demo/scenarios.html',
       'contexts/demo/states.html',
@@ -124,7 +172,9 @@ describe('renderSpecificationSite', () => {
       'method/work-item-format.html',
       'models/example-demo-internalrecord.html',
       'models/index.html',
+      'specification/glossary.html',
       'specification/index.html',
+      'specification/structure.html',
       'traceability/index.html',
     ])
     expect(result.files['index.html']).toContain('Whole-System Specification')
@@ -142,9 +192,91 @@ describe('renderSpecificationSite', () => {
     expect(result.files['api/index.html']).toContain('../../openapi/example.openapi.json')
     expect(result.files['models/index.html']).toContain('InternalRecord')
     expect(result.files['models/index.html']).toContain('data-model-search')
+    expect(result.files['models/index.html']).toContain('assets/site.js')
     expect(result.assets['site.css']).toContain('--diagram-line:#b9c8ff')
     expect(result.files['models/example-demo-internalrecord.html']).toContain('Not API-exposed')
     expect(result.files['models/example-demo-internalrecord.html']).toContain('minLength: 3')
+  })
+
+  it('names context children by content and lists them in canonical order', () => {
+    const page = site().files['contexts/demo/index.html']
+
+    expect(childLabels(page)).toEqual(['Glossary', 'State Transitions', 'Scenarios'])
+    expect(page).not.toContain('>glossary.md<')
+  })
+
+  it('lists whole-system children in canonical order, only from inside', () => {
+    const result = site()
+    expect(childLabels(result.files['specification/index.html'])).toEqual(['Structure', 'Glossary'])
+    expect(result.files['contexts/demo/index.html']).not.toContain('specification/structure.html')
+  })
+
+  it('folds every navigation group the same way, with method alone starting folded', () => {
+    const result = site()
+    const groups = (page: string) =>
+      [
+        ...sidebar(result.files[page]).matchAll(
+          /<details class="nav-group"( open)?><summary>([^<]+)/g,
+        ),
+      ].map((match) => `${match[2]}${match[1] ? ' open' : ''}`)
+
+    expect(groups('contexts/demo/index.html')).toEqual([
+      'Method',
+      'Whole System open',
+      'Contexts open',
+      'References open',
+    ])
+    expect(groups('method/work-item-format.html')[0]).toBe('Method open')
+  })
+
+  it('keeps a glossary term on one line', () => {
+    expect(site().files['contexts/demo/glossary.html']).toContain('<table class="term-table">')
+    expect(site().assets['site.css']).toContain('.term-table td:first-child{white-space:nowrap}')
+  })
+
+  it('leads from a context to its own operations and models', () => {
+    const result = site()
+    const page = result.files['contexts/demo/index.html'] ?? ''
+
+    expect(page).toContain('API and Models')
+    expect(page).toContain('href="../../api/index.html?tag=Demo"')
+    expect(page).toContain('List things')
+    expect(page).toContain('href="../../models/index.html#context-demo"')
+    expect(page).toContain('href="../../models/example-demo-internalrecord.html"')
+    expect(result.files['models/index.html']).toContain('<h2 id="context-demo">Demo</h2>')
+  })
+
+  it('renders doc comments as the Markdown they are written in', () => {
+    const result = renderSpecificationSite({
+      documents: [rootDocument, contextDocument],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/spec/generated/docs',
+      openapiFileName: 'example.openapi.json',
+      openapi: { paths: {} },
+      models: [
+        {
+          ...models[0]!,
+          doc: 'Expires at `expires_at`.',
+          properties: [
+            {
+              name: 'id',
+              type: 'string',
+              optional: false,
+              doc: 'Paired with `expires_at`.',
+              constraints: [],
+              references: [],
+            },
+          ],
+          members: [{ name: 'ready', value: '"ready"', doc: 'Set once `expires_at` passes.' }],
+        },
+      ],
+    })
+    const page = result.files['models/example-demo-internalrecord.html'] ?? ''
+
+    expect(page).toContain('Expires at <code>expires_at</code>.')
+    expect(page).toContain('Paired with <code>expires_at</code>.')
+    expect(page).toContain('Set once <code>expires_at</code> passes.')
+    expect(result.files['models/index.html']).toContain('Expires at <code>expires_at</code>.')
   })
 
   it('rejects unclassified operations', () => {

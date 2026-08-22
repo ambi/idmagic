@@ -35,16 +35,16 @@ namespace Operations {
     )
     await host.compile('main.tsp')
 
-    const catalog = extractTypeSpecCatalog(host.program, new Set(['Demo.PublicRecord']))
+    const catalog = extractTypeSpecCatalog(host.program, new Set(['Demo.PublicRecord']), '/test')
 
-    expect(catalog.map((symbol) => symbol.name)).toEqual([
+    expect(catalog.symbols.map((symbol) => symbol.name)).toEqual([
       'Example.Demo.Identifier',
       'Example.Demo.InternalRecord',
       'Example.Demo.PublicRecord',
       'Example.Demo.Result',
       'Example.Demo.Status',
     ])
-    const publicRecord = catalog.find((symbol) => symbol.shortName === 'PublicRecord')
+    const publicRecord = catalog.symbols.find((symbol) => symbol.shortName === 'PublicRecord')
     expect(publicRecord?.apiExposed).toBe(true)
     expect(publicRecord?.properties[0]).toMatchObject({
       name: 'id',
@@ -53,6 +53,48 @@ namespace Operations {
       constraints: ['minLength: 3'],
     })
     expect(publicRecord?.references).toContain('Example.Demo.InternalRecord')
-    expect(catalog.find((symbol) => symbol.shortName === 'InternalRecord')?.apiExposed).toBe(false)
+    expect(
+      catalog.symbols.find((symbol) => symbol.shortName === 'InternalRecord')?.apiExposed,
+    ).toBe(false)
+  })
+
+  it('reads the owning context and its API tag from the declaring directory', async () => {
+    const host = await createTestHost()
+    host.addTypeSpecFile(
+      'spec/contexts/demo/models.tsp',
+      `namespace Example.Contract {
+  model DemoRecord { id: string; }
+}
+`,
+    )
+    host.addTypeSpecFile(
+      'spec/contexts/demo/main.tsp',
+      `import "./models.tsp";
+
+@tag("Demo")
+namespace Example.Demo {
+}
+`,
+    )
+    host.addTypeSpecFile('main.tsp', 'import "./spec/contexts/demo/main.tsp";\n')
+    await host.compile('main.tsp')
+
+    const catalog = extractTypeSpecCatalog(host.program, new Set(), '/test')
+
+    expect(catalog.symbols.find((symbol) => symbol.shortName === 'DemoRecord')?.context).toBe(
+      'demo',
+    )
+    expect(catalog.contextTags).toEqual({ demo: ['Demo'] })
+  })
+
+  it('leaves symbols declared outside a context directory unowned', async () => {
+    const host = await createTestHost()
+    host.addTypeSpecFile('main.tsp', 'namespace Example.Loose;\nmodel Free { id: string; }\n')
+    await host.compile('main.tsp')
+
+    const catalog = extractTypeSpecCatalog(host.program, new Set(), '/test')
+
+    expect(catalog.symbols[0]?.context).toBeUndefined()
+    expect(catalog.contextTags).toEqual({})
   })
 })
