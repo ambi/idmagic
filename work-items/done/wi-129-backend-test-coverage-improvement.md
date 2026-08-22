@@ -143,8 +143,8 @@ PII が混ざらないことを確認する。カバレッジの数値のみを�
   実装中に副次的な発見が 1 件あった: `tokens_jose.jwkThumbprint` (RFC 7638 canonical form) が RSA 専用の
   メンバー集合 (`e`/`kty`/`n`) を前提にしており、DPoP が受理を宣言している ES256 (EC 鍵) の proof は
   署名検証成功後もサムプリント計算で必ず拒否される。本 WI はテストの追加のみを scope とするため、この
-  制約は現状の挙動としてテストに固定しただけで、修正はしていない。ES256 DPoP を実際に使うクライアントが
-  出た時点で別途 work item を起票して直すことを推奨する。
+  制約は現状の挙動としてテストに固定しただけで、修正はしていない。修正は [[wi-389-dpop-ec-key-thumbprint-support]]
+  として起票済み。
 - **Verification Results**:
   - `mise run verify-go` - passed (lint 0 issues, race テスト全 package pass)
   - `mise run test-go-cover` - passed, 上表の通り全対象 package が閾値超過
