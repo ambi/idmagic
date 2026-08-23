@@ -35,3 +35,10 @@ describe('mise change-resistance boundary', () => {
     expect(config.tasks?.verify?.depends).not.toContain('test-go-mutation-package')
   })
 })
+
+describe('mise agent-guidance boundary', () => {
+  it('runs repository-local guidance checks from the standard check suite', () => {
+    expect(config.tasks?.['check-agent-guidance']?.run).toBeDefined()
+    expect(config.tasks?.check?.depends).toContain('check-agent-guidance')
+  })
+})

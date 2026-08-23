@@ -1,36 +1,31 @@
 ---
 name: spec-change
-description: Specification-first workflow for feature and behavior changes. Update TypeSpec for models, APIs, and authentication, and the owning SPECIFICATION.md for normative scenarios, glossary, standards, state transitions, and design before implementation.
+description: Specification-first workflow for feature and behavior changes. Update TypeSpec for models, APIs, and authentication, and the owning canonical document under docs/ before implementation.
 ---
 
 # Changing the specification first
 
-Update the smallest owning specification before the implementation.
+Update the smallest owning specification before the implementation. `SPECIFICATION_FORMAT.md` defines the
+current document kinds and grammar.
 
-1. Put models, APIs, HTTP bindings, status and error shapes, and authentication schemes in
+1. Put models, API operations, HTTP bindings, request and response shapes, status codes, error unions,
+   deprecation metadata, and authentication mechanisms in
    `spec/contexts/<context>/{models,main}.tsp`.
-2. Put normative behavior, scenarios, glossary, standards, and state transitions in the section of the
-   owning `SPECIFICATION.md` that owns that meaning. Authorization boundaries have no section of their
-   own: they belong to `Design`, under an `Authorization boundary` subsection named the same way in
-   every document.
-3. Before writing an `Overview`, read `spec/contexts/data-keys/SPECIFICATION.md` and
-   `spec/contexts/sourcing/SPECIFICATION.md`. The first shows ownership stated together with what is
-   delegated and to whom; the second shows the criterion that decides membership, with the adjacent
-   cases it excludes named. Match them rather than the average of the other documents.
-4. Express state transitions as a language-independent `From | Event | Guard | To | Effects` table.
-5. Give each new observable normative behavior an unused `REQ-<CONTEXT>-NNN`. Never reuse or reorder
-   an existing id. Retire a behavior with `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather
-   than deleting it.
-6. Keep behavior that holds only when several contexts cooperate in the document that owns the
-   cross-context view — in this repository `spec/contexts/system/SPECIFICATION.md`, as
-   `REQ-SYSTEM-NNN` — naming the participating contexts.
-7. Do not add a fine-grained authorization policy DSL. TypeSpec records the authentication scheme and
-   each admin operation's `x-api-token-scopes`; authorization behavior stays in code and tests. Never
-   restate the operation-to-scope mapping in prose — `mise run check-admin-scopes` verifies the annotation,
-   nothing verifies the prose.
-8. Sync the work item's `affected_spec` with the normative scenario or standard id, or the TypeSpec
-   symbol.
-9. Pass `mise run check-spec` and `mise run check-api-compat`. Do not commit generated OpenAPI or HTML.
+2. Put context boundaries in `docs/contexts/<context>/README.md`, observable behavior in
+   `docs/contexts/<context>/scenarios.md`, vocabulary in `glossary.md`, adopted protocol rules in
+   `standards.md`, state machines in `states.md`, durable rationale in `decisions.md`, and durable mechanism
+   that cannot be recovered from code in `internals.md`. Use the matching file directly under `docs/` for a
+   whole-system fact.
+3. Give each new observable normative behavior an unused `REQ-<CONTEXT>-NNN`. Retire a referenced behavior
+   with `(superseded by REQ-<CONTEXT>-NNN)` in its heading rather than deleting or reusing its id.
+4. Keep behavior that only several contexts can satisfy in `docs/scenarios.md`, name the participating
+   contexts, and keep context-local fragments out of their individual scenario files.
+5. Keep fine-grained authorization behavior in code and tests unless the project adopts a policy language.
+   TypeSpec records authentication and enforced operation scopes; `docs/authorization.md` owns the shared
+   principal, scope, tenant-boundary, and fail-closed rules.
+6. Sync the work item's `affected_spec` with the normative scenario or standard id, or the TypeSpec symbol.
+7. Pass `mise run check-spec` and `mise run check-api-compat`. Regenerate derived views with `spec-render`
+   when the specification changed; generated OpenAPI and HTML remain untracked views.
 
-Use the `update-design` Skill as well, but only when structure, technology, or directory conventions
-change too.
+Use `update-design` as well only when bounded contexts, global structure, technology, runtime composition, or
+core design rules change.

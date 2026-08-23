@@ -176,7 +176,11 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
               completion.verification = currentText
                 .map((l) => l.replace(/^-\s*/, '').trim())
                 .filter(Boolean)
-            } else if (currentField === 'red_evidence') {
+            } else if (
+              currentField === 'red_evidence' ||
+              currentField === 'acceptance_red_evidence' ||
+              currentField === 'unit_red_evidence'
+            ) {
               const redEvidence: Record<string, string> = {}
               const labels: Record<string, string> = {
                 test: 'test',
@@ -189,7 +193,7 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
                 const key = field?.[1] ? labels[field[1].trim().toLowerCase()] : undefined
                 if (key && field?.[2]) redEvidence[key] = field[2].trim()
               }
-              completion.red_evidence = redEvidence
+              completion[currentField] = redEvidence
             } else {
               completion[currentField] = currentText.join('\n').trim()
             }
@@ -214,6 +218,12 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
               if (value) currentText.push(value)
             } else if (label === 'red evidence') {
               currentField = 'red_evidence'
+              if (value) currentText.push(value)
+            } else if (label === 'acceptance red evidence') {
+              currentField = 'acceptance_red_evidence'
+              if (value) currentText.push(value)
+            } else if (label === 'unit red evidence') {
+              currentField = 'unit_red_evidence'
               if (value) currentText.push(value)
             } else if (label === 'post-approval changes') {
               currentField = 'post_approval_changes'

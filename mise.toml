@@ -276,8 +276,8 @@ dir = "frontend"
 run = "bun run test:e2e"
 
 [tasks.check]
-description = "Validate specifications, records, dependencies, and command map"
-depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "check-command-map", "check-config-reference", "check-admin-scopes", "check-security-controls", "check-slo-references"]
+description = "Validate specifications, records, dependencies, commands, and agent guidance"
+depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-security-controls", "check-slo-references"]
 
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"
@@ -309,6 +309,11 @@ run = "bun run check/src/check-slo-references.ts"
 description = "Check workflow calls against mise tasks"
 dir = "tools"
 run = "bun run check/src/check-command-map.ts"
+
+[tasks.check-agent-guidance]
+description = "Check repository-local agent guidance against the current workflow"
+dir = "tools"
+run = "bun run check/src/check-agent-guidance.ts"
 
 [tasks.check-spec]
 description = "Compile TypeSpec and validate canonical specification documents"

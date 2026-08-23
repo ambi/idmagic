@@ -8,7 +8,9 @@ description: Create a specification-first work item under work-items using the c
 1. Read `WORK_ITEM_FORMAT.md` as the authority for the format.
 2. Find the highest number across `work-items/` and `done/`, then create an unused
    `wi-NNN-kebab-title.md`.
-3. Write Motivation, Scope, Out of Scope, Design, Plan, Tasks, Verification, and Risk Notes.
+3. Write Motivation, Scope, Out of Scope, Design, Plan, Tasks, Verification, and Risk Notes. Surface open
+   questions in Design or Plan; resolve every question that would change what gets built before approval or
+   implementation, and move genuinely deferred choices to Out of Scope.
 4. For `feature`, `bugfix`, and `operations` items, make `affected_spec` a direct reference to a
    normative scenario or standard id, or to a TypeSpec symbol. Do not write `initial_context` when
    filing the item; it is written when the work starts.
