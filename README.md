@@ -87,6 +87,7 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 | --- | --- |
 | 貢献の作法と Pull Request に求めること | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | 脆弱性の報告 | [SECURITY.md](SECURITY.md) |
+| 利用条件 | [LICENSE](LICENSE)（MIT License） |
 | 仕様と設計の入口、Context Map | [spec/README.md](spec/README.md) |
 | API とモデルの契約 | [spec/main.tsp](spec/main.tsp)、`mise run spec-render` で生成する HTML |
 | 開発の進め方（仕様先行のループと検証） | [DEVELOPMENT.md](DEVELOPMENT.md) |
