@@ -128,7 +128,7 @@
       "additionalProperties": false,
       "properties": {
         "specification": {
-          "description": "normative scenario への direct reference。spec/contexts/<context>/scenarios.md#REQ-<CONTEXT>-NNN 形式。",
+          "description": "normative scenario への direct reference。docs/contexts/<context>/scenarios.md#REQ-<CONTEXT>-NNN 形式。",
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         },
@@ -163,9 +163,9 @@
             "additionalProperties": false,
             "properties": {
               "path": {
-                "description": "spec/ 直下または spec/contexts/<context>/ 直下の正本。完了済み記録が指す SPECIFICATION.md も受け付ける。",
+                "description": "docs/ 直下または docs/contexts/<context>/ 直下の正本。完了済み記録が指す SPECIFICATION.md も受け付ける。",
                 "type": "string",
-                "pattern": "^spec/(?:[^/]+|contexts/[^/]+/[^/]+)\\.md$"
+                "pattern": "^docs/(?:[^/]+|contexts/[^/]+/[^/]+)\\.md$"
               },
               "requirement": { "type": "string", "pattern": "^[A-Z][A-Z0-9-]+$" }
             }

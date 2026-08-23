@@ -3,7 +3,7 @@ import { renderSpecificationSite } from './render.ts'
 import type { CatalogSymbol } from './typespec-catalog.ts'
 
 const rootDocument = {
-  path: 'spec/README.md',
+  path: 'docs/README.md',
   source: `# Whole-System Specification
 
 The whole system.
@@ -24,7 +24,7 @@ flowchart LR
 }
 
 const rootGlossaryDocument = {
-  path: 'spec/glossary.md',
+  path: 'docs/glossary.md',
   source: `# Glossary
 
 | Term | Definition |
@@ -34,12 +34,12 @@ const rootGlossaryDocument = {
 }
 
 const rootStructureDocument = {
-  path: 'spec/structure.md',
+  path: 'docs/structure.md',
   source: '# Structure\n\nディレクトリの配置。\n',
 }
 
 const contextDocument = {
-  path: 'spec/contexts/demo/README.md',
+  path: 'docs/contexts/demo/README.md',
   source: `# Demo
 
 The demo context.
@@ -52,7 +52,7 @@ The demo context.
 }
 
 const statesDocument = {
-  path: 'spec/contexts/demo/states.md',
+  path: 'docs/contexts/demo/states.md',
   source: `# Demo State Transitions
 
 ## DemoLifecycle
@@ -72,7 +72,7 @@ const statesDocument = {
 }
 
 const scenariosDocument = {
-  path: 'spec/contexts/demo/scenarios.md',
+  path: 'docs/contexts/demo/scenarios.md',
   source: `# Demo Scenarios
 
 ### REQ-DEMO-001: a demo runs
@@ -85,7 +85,7 @@ const scenariosDocument = {
 }
 
 const glossaryDocument = {
-  path: 'spec/contexts/demo/glossary.md',
+  path: 'docs/contexts/demo/glossary.md',
   source: `# Demo Glossary
 
 | Term | Definition |

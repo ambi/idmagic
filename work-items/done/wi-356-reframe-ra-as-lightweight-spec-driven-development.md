@@ -19,10 +19,10 @@ initial_context:
     - ARCHITECTURE.md
     - backend/*/ARCHITECTURE.md
     - frontend/ARCHITECTURE.md
-    - spec/requirements.md
-    - spec/contexts/*/requirements.md
+    - docs/requirements.md
+    - docs/contexts/*/requirements.md
     - spec/main.tsp
-    - spec/contexts/*/main.tsp
+    - docs/contexts/*/main.tsp
     - spec/tspconfig.yaml
     - tools/ra
     - tools/check
@@ -48,7 +48,7 @@ management を想起させ、方法論の理解コストを不必要に上げる
 残す価値のある原則を特定したうえで、方法論、文書、CLI、skills の名称を実態に合う最小の
 語彙へ揃える必要がある。
 
-同時に、current-state の仕様と設計が `spec/contexts/*/requirements.md` と実装側の
+同時に、current-state の仕様と設計が `docs/contexts/*/requirements.md` と実装側の
 `*/ARCHITECTURE.md` に離れており、同じ context を理解するために往復が必要になっている。
 ファイル名の casing も不統一で、context 概要をどちらへ書くかが曖昧なため、概要を欠くか
 重複させるかになりやすい。シナリオは通常の英文と制御語の区別や alternative の対応先も
@@ -111,8 +111,8 @@ worker、外部実装など複数 consumer があり得るため、`spec/` 集�
 context ownership を最も安定して表現できるかを決める。選択後は root と全 context に同じ原則を
 適用し、概要は canonical document に一度だけ書く。
 
-**Decision:** 案 1 を採用し、root は `spec/SPECIFICATION.md`、各 context は
-`spec/contexts/<context>/SPECIFICATION.md` を唯一の current-state 文書とする。TypeSpec と同じ
+**Decision:** 案 1 を採用し、root は `docs/SPECIFICATION.md`、各 context は
+`docs/contexts/<context>/SPECIFICATION.md` を唯一の current-state 文書とする。TypeSpec と同じ
 言語非依存の `spec/` tree に置くことで backend、frontend、worker、将来の別言語実装から等距離に
 保つ。source-adjacent 文書を重ねる代わりに、生成 HTML の context navigation と repository search
 で code からの discovery を支える。既存の requirements と architecture の内容は失わず統合し、

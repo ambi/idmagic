@@ -18,7 +18,7 @@ import (
 )
 
 // TestAgentRequiresHumanApproval — RED: REQ-OAUTH2-050
-// (spec/contexts/oauth2/scenarios.md)。承認を記録しない発行経路を通ってよいのは
+// (docs/contexts/oauth2/scenarios.md)。承認を記録しない発行経路を通ってよいのは
 // autonomous と確認できた Agent だけで、判定は区分の否定形で行う。
 func TestAgentRequiresHumanApproval(t *testing.T) {
 	cases := []struct {

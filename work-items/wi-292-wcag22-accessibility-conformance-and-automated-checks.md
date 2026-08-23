@@ -17,10 +17,10 @@ initial_context:
   stop_before_reading:
     - backend
 affected_spec:
-  - { path: spec/standards.md, requirement: WCAG22-KEYBOARD }
-  - { path: spec/standards.md, requirement: WCAG22-FOCUS }
-  - { path: spec/standards.md, requirement: WCAG22-LABELS-ERRORS }
-  - { path: spec/standards.md, requirement: WCAG22-STATUS }
+  - { path: docs/standards.md, requirement: WCAG22-KEYBOARD }
+  - { path: docs/standards.md, requirement: WCAG22-FOCUS }
+  - { path: docs/standards.md, requirement: WCAG22-LABELS-ERRORS }
+  - { path: docs/standards.md, requirement: WCAG22-STATUS }
 ---
 
 # WCAG 2.2 AA 準拠を自動検査で保証し、認証 UI のアクセシビリティを担保する
@@ -65,10 +65,10 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
   - 対象画面の範囲を明示する: 認証 UI (ログイン / MFA / パスワードリセット / consent /
     device 確認) を必達、アカウントポータルを次点、管理コンソールを第 3 段とする。
 - **decision**:
-  - `spec/standards.md` と `spec/contexts/system/decisions.md` へ記録する決定 (アクセシビリティ適合の範囲と検証方法): 準拠レベル (WCAG 2.2 AA)、
+  - `docs/standards.md` と `docs/contexts/system/decisions.md` へ記録する決定 (アクセシビリティ適合の範囲と検証方法): 準拠レベル (WCAG 2.2 AA)、
     必達対象画面の段階、自動検査で担保する範囲と手動確認に残す範囲
     (axe-core は全項目を検出できないため、境界を明記する)、
-    `spec/contexts/tenancy/decisions.md` のブランド配色のコントラスト検査 との整合
+    `docs/contexts/tenancy/decisions.md` のブランド配色のコントラスト検査 との整合
     (テナントブランディングのコントラストは advisory のままで、既定テーマは AA を満たす)、
     違反を CI で落とす閾値を記録する。
 - **frontend**:
@@ -99,7 +99,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 - 管理コンソール全画面の AA 準拠 (第 3 段として範囲に入れるが、本 WI の必達は認証 UI と
   アカウントポータル)。
 - テナントが設定したブランディング色のコントラスト強制。
-  → `spec/contexts/tenancy/decisions.md` のブランド配色のコントラスト検査 の advisory 方針を維持する。
+  → `docs/contexts/tenancy/decisions.md` のブランド配色のコントラスト検査 の advisory 方針を維持する。
 - 実ユーザー (支援技術利用者) を招いたユーザビリティテスト。
 - 正式な VPAT / ACR の第三者監査。本 WI は自己試験結果を書ける状態を作るところまで。
 - メール本文のアクセシビリティ。→ [[wi-288-localized-notification-template-catalog-and-tenant-customization]]
@@ -108,7 +108,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 
 - **自動検査の限界を最初に線引きする**。axe-core は WCAG 達成基準の 3〜4 割程度しか
   自動検出できない。「自動で担保する項目」と「手動チェックリストで担保する項目」を
-  `spec/contexts/system/decisions.md` で分け、後者を `frontend/README.md` の手順として残す。自動検査だけで
+  `docs/contexts/system/decisions.md` で分け、後者を `frontend/README.md` の手順として残す。自動検査だけで
   「AA 準拠」と言わないことを明記する。
 - **認証 UI を最優先にする**。ここが通れないと全アプリからロックアウトされるため、
   影響度が管理コンソールと桁違いである。段階を specification に明記して、部分適合の状態を
@@ -129,7 +129,7 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 
 - [ ] T001 [Spec] `System.standards.WCAG22` の各要件に検証手段の対応を追記し、
       scenario 3 件と対象画面の段階を追加して `mise run check-spec` を通す。
-- [ ] T002 [Spec] アクセシビリティ適合の範囲と検証方法を `spec/standards.md` と `spec/contexts/system/decisions.md` に記録する
+- [ ] T002 [Spec] アクセシビリティ適合の範囲と検証方法を `docs/standards.md` と `docs/contexts/system/decisions.md` に記録する
       (準拠レベル・対象段階・自動 / 手動の分界・ブランディングとの整合・CI 閾値)。
 - [ ] T003 [Tooling] E2E に axe-core を組み込み、`mise run test-ui-a11y` を `mise.toml` に追加する。
       対象画面のリストを設定として持つ。
@@ -174,4 +174,4 @@ unit test があるが、アクセシビリティ検査 (axe-core 等) は入っ
 axe-core を CI ブロッキングにすると、ライブラリ更新でルールが増えたときに無関係な PR が
 落ちうる。深刻度で絞り、棚卸しでベースラインを 0 件にしてから有効化する。
 自動検査で検出できない達成基準が多数残るため、「自動検査が緑 = AA 準拠」と誤読されないよう
-`spec/contexts/system/decisions.md` と `frontend/README.md` に明記する。
+`docs/contexts/system/decisions.md` と `frontend/README.md` に明記する。

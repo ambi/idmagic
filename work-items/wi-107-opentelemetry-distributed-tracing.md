@@ -7,7 +7,7 @@ created_at: 2026-07-04
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # OpenTelemetry 分散トレーシングを統合し、リクエスト追跡とボトルネック検出を可能にする
@@ -29,14 +29,14 @@ W3C Trace Context を用いたコンテキスト伝播と OpenTelemetry Tracing 
 - プロファイラ（pprof 等）の常時監視統合。
 
 ## Plan
-- `spec/observability.md` と既存 `backend/shared/observability/telemetry_otlp/otel.go` を拡張し、global SDKを各contextが直接設定しない。server composition rootがTracerProvider/propagator/resourceを構築してshutdownを所有する。
+- `docs/observability.md` と既存 `backend/shared/observability/telemetry_otlp/otel.go` を拡張し、global SDKを各contextが直接設定しない。server composition rootがTracerProvider/propagator/resourceを構築してshutdownを所有する。
 - ingressはotelhttp/Echo middlewareでW3C traceparent/tracestateを抽出し、route template、method、statusを低cardinality属性にする。request_idは別の相関値としてspan/log/event metadataへ付与するが、trace IDの代用にしない。
 - usecaseは重要なorchestrationだけmanual spanを持ち、domain entity/modelはOTel依存をimportしない。pgxと外部HTTP呼び出しは公式instrumentationまたはport wrapperでchild spanを作る。
 - 非同期の境界は PostgreSQL のジョブキューだけである（[[wi-305-remove-external-message-brokers]] で外部ブローカーと outbox リレーは撤廃済み）。`Job` の `params` に trace context を明示伝播し、worker 側で producer span へ link した consumer span を作る。business payloadへtrace headerを混ぜない。
 - attribute allowlistでtenant/user/client/token/IP/SQL bind値を禁止またはhashed分類にし、samplingはparent-based ratio + error tailのcollector側方針とする。exporter障害はrequestを失敗させずbounded queue/drop metricで観測する。
 
 ## Tasks
-- [ ] T001 [Spec] 現行OTel初期化、HTTP/pgx/Jobs境界を棚卸しし、span taxonomy、async propagation、attribute/redaction/samplingを確定して `spec/observability.md` に記録する。
+- [ ] T001 [Spec] 現行OTel初期化、HTTP/pgx/Jobs境界を棚卸しし、span taxonomy、async propagation、attribute/redaction/samplingを確定して `docs/observability.md` に記録する。
 - [ ] T002 [Bootstrap] shared observabilityにTracerProvider/OTLP exporter/resource/propagator/shutdownとdisabled no-op modeを実装する。
 - [ ] T003 [HTTP] Echo ingress/client instrumentation、route template/status/error、request_id log correlationを追加する。
 - [ ] T004 [Storage/Usecase] pgx instrumentationと選定usecase manual spansを追加し、SQL値/PIIをrecordしない。

@@ -53,4 +53,4 @@ Ingress に `*.${TENANT_BASE_DOMAIN}` のワイルドカード DNS とワイル�
 
 エンドポイント形式を変えると、発行者、Cookie のスコープ、WebAuthn の RP ID が変わる。システムテナントのコンソールで切り替える前に、RP メタデータの変更とパスキーの再登録を調整する。
 
-これらの資材が実装する横断的な実行時設計は、ここではなくリポジトリの設計記録に記載する。高可用性と共有状態、HTTP サーバーの堅牢化、セキュリティレスポンスヘッダーは [`spec/deployment.md`](../spec/deployment.md)、リクエストの相関付けとメトリクスの契約は [`spec/observability.md`](../spec/observability.md) を参照する。このファイルには、スタックを動かすコマンドと設定手順を記載する。
+これらの資材が実装する横断的な実行時設計は、ここではなくリポジトリの設計記録に記載する。高可用性と共有状態、HTTP サーバーの堅牢化、セキュリティレスポンスヘッダーは [`docs/deployment.md`](../docs/deployment.md)、リクエストの相関付けとメトリクスの契約は [`docs/observability.md`](../docs/observability.md) を参照する。このファイルには、スタックを動かすコマンドと設定手順を記載する。

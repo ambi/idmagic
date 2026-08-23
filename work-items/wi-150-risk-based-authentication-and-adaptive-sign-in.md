@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-009 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-009 }
 ---
 
 # リスクベース認証と adaptive sign-in 判定を導入する
@@ -53,7 +53,7 @@ MFA 要求、ブロック、パスワード変更要求に反映できる adapti
 
 ## Tasks
 - [ ] T001 [Spec] RiskSignal / RiskAssessment と policy condition / action を追加する。
-- [ ] T002 [Decision] risk signal、score 境界、初期 action、監査保持方針を `spec/contexts/authentication/decisions.md` に記録する。
+- [ ] T002 [Decision] risk signal、score 境界、初期 action、監査保持方針を `docs/contexts/authentication/decisions.md` に記録する。
 - [ ] T003 [App] risk evaluator と login / authorize への適用を実装する。
 - [ ] T004 [HTTP] risk policy と risky sign-in report API を追加する。
 - [ ] T005 [UI] risk 条件の policy editor と report 画面を追加する。

@@ -40,7 +40,7 @@ R1 は導入した日に HTTP 層で現存欠陥を 2 件見つけている。�
 - 新しい防護の追加。既にある拒否が伝わることを確かめる手段の整備に限る。
 - 拒否の宣言の床と 137 件の分類。[[wi-391-refusal-declaration-floor-and-reinventory]] が持つ。
 - 拒否テストへの副作用の不在の追加。[[wi-392-refusal-tests-assert-the-absent-effect]] が持つ。
-- フロントエンド。`spec/authorization.md` が「UI での非表示は認可判定ではない」と定め、強制はサーバー側にある。UI が唯一の強制点になっている箇所は無い。
+- フロントエンド。`docs/authorization.md` が「UI での非表示は認可判定ではない」と定め、強制はサーバー側にある。UI が唯一の強制点になっている箇所は無い。
 
 ## Design
 

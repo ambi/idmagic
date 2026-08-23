@@ -156,7 +156,7 @@ func scopeFor(tenantID string, roles []string) jobusecases.TenantScope {
 }
 
 // actorMayReadAllTenants は全テナント横断が許されるかを返す。system_admin ロールと
-// 制御面テナントへの所属の両方を要求する (spec/authorization.md のテナント境界)。
+// 制御面テナントへの所属の両方を要求する (docs/authorization.md のテナント境界)。
 func actorMayReadAllTenants(roles []string, tenantID string) bool {
 	return slices.Contains(roles, "system_admin") && tenantID == tenancydomain.DefaultTenantID
 }

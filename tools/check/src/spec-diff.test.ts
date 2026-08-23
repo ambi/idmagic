@@ -37,7 +37,7 @@ const scenario = (id: string, result: string): string =>
 
 const snapshot = (documentSource: string, tsp = 'op StartTask(): void;'): Snapshot =>
   new Map([
-    ['spec/contexts/demo/SPECIFICATION.md', documentSource],
+    ['docs/contexts/demo/SPECIFICATION.md', documentSource],
     ['spec/contexts/demo/main.tsp', tsp],
   ])
 
@@ -93,7 +93,7 @@ describe('diffSpecifications', () => {
       document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Completed')),
     )
     expect(diffSpecifications(base, changed).changedTransitions).toEqual([
-      'spec/contexts/demo#Lifecycle',
+      'docs/contexts/demo#Lifecycle',
     ])
   })
 
@@ -101,11 +101,11 @@ describe('diffSpecifications', () => {
     const base = snapshot(document(scenario('REQ-DEMO-001', 'it succeeds'), machine('emit Done')))
     const head: Snapshot = new Map([
       [
-        'spec/contexts/demo/scenarios.md',
+        'docs/contexts/demo/scenarios.md',
         `# Demo Scenarios\n\n${scenario('REQ-DEMO-001', 'it succeeds')}\n`,
       ],
       [
-        'spec/contexts/demo/states.md',
+        'docs/contexts/demo/states.md',
         [
           '# Demo State Transitions',
           '',

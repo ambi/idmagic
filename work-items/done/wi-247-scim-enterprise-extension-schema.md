@@ -24,7 +24,7 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimSchemas }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
 ---
@@ -63,7 +63,7 @@ schema を discovery(`/Schemas`)にも request body 処理にも一切持たず�
 
 ## Tasks
 
-- [x] T001 [Spec] enterprise extension の対応属性・schema 契約を `spec/contexts/sourcing/SPECIFICATION.md` に追加する。
+- [x] T001 [Spec] enterprise extension の対応属性・schema 契約を `docs/contexts/sourcing/SPECIFICATION.md` に追加する。
 - [x] T002 [Domain] RED: enterprise extension の parse/validation test を先に失敗させて実装する。
 - [x] T003 [Usecase/Adapter] RED: `/Schemas` と CRUD/PATCH の HTTP contract test を先に失敗させて実装する。
 - [x] T004 [Verify] `just check-spec`、`just test-go`、`just verify-go` を実行する。
@@ -100,7 +100,7 @@ schema を discovery(`/Schemas`)にも request body 処理にも一切持たず�
   `{value: "..."}` オブジェクトと素の文字列(Entra ID が送る形)の両方を受け付ける。
   response の `schemas` と拡張オブジェクトは、いずれかの enterprise extension 属性を
   保持する場合だけ付与する(値が無ければ何も広告しない)。
-  `spec/contexts/sourcing/SPECIFICATION.md` に Standards 行
+  `docs/contexts/sourcing/SPECIFICATION.md` に Standards 行
   (`RFC7643-ENTERPRISE-EXTENSION`, partial)、Design 節への属性マッピングと
   tenant-scoped manager 解決の説明、新規 scenario `REQ-SOURCING-007` を追加した。
   `main.tsp` の該当 op docstring も同期した。

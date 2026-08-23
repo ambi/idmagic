@@ -10,14 +10,14 @@ completion:
     本 work item が立てた二択は [[wi-372-admin-api-granular-scope-enforcement]] (2026-08-15 完了) が
     包含して決着させたため、実施せずに中止する。wi-372 は `IdManagement` コンテキスト全体へ
     `ManagementApiClient` 系 principal を導入し、Agent 管理 interface に `agents:read` / `agents:write`
-    を配線した。結果は `spec/contexts/identity-management/SPECIFICATION.md` の REQ-IDMANAGEMENT-025 が
+    を配線した。結果は `docs/contexts/identity-management/SPECIFICATION.md` の REQ-IDMANAGEMENT-025 が
     正本として保持している。本 work item が明示的な判断を求めた `KillAgent` の扱いも wi-372 の Design で
     確定済みで、結論は「`agents:write` に含める」。理由は、削除が既に同じスコープにあり、削除はキルより
     厳密に破壊的であるため、キルだけを外しても防御にならないこと、および漏洩時の懸念よりも
     侵害された Agent の自動化された即時停止という正当な用途を優先すべきことである。
     Motivation が「全体設計は別 work item とする」と書いた相手が wi-372 そのものであった。
   verification:
-    - cmd: rg -n '^### REQ-IDMANAGEMENT-025' spec/contexts/identity-management/SPECIFICATION.md
+    - cmd: rg -n '^### REQ-IDMANAGEMENT-025' docs/contexts/identity-management/SPECIFICATION.md
       result: 管理 API クライアントの粒度別スコープ制御シナリオが宣言済みであることを確認した。
 ---
 
@@ -25,7 +25,7 @@ completion:
 
 ## Motivation
 
-`spec/contexts/api-tokens/SPECIFICATION.md` の `ApiTokenScope` には `agents:read`/`agents:write` が正準 scope として定義されているが、`spec/contexts/identity-management/SPECIFICATION.md` の Agent 管理系 interface(`ListAgents`/`GetAgent`/`RegisterAgent`/`UpdateAgent`/`DisableAgent`/`EnableAgent`/`KillAgent`/`DeleteAgent`/`BindAgentCredential`/`UnbindAgentCredential`)は `TenantAdministrator`(人間の管理者セッション)のみで認可されており、これらの scope を消費する `ManagementApiClient` 系ポリシーが存在しない。
+`docs/contexts/api-tokens/SPECIFICATION.md` の `ApiTokenScope` には `agents:read`/`agents:write` が正準 scope として定義されているが、`docs/contexts/identity-management/SPECIFICATION.md` の Agent 管理系 interface(`ListAgents`/`GetAgent`/`RegisterAgent`/`UpdateAgent`/`DisableAgent`/`EnableAgent`/`KillAgent`/`DeleteAgent`/`BindAgentCredential`/`UnbindAgentCredential`)は `TenantAdministrator`(人間の管理者セッション)のみで認可されており、これらの scope を消費する `ManagementApiClient` 系ポリシーが存在しない。
 
 `WorkloadIdentity`(`ManagementApiClientReadWorkloadIdentity`/`ManagementApiClientWriteWorkloadIdentity`)、MCP リソースサーバー、`AuthorizationDetailType` 管理などは同種の scope を実際に配線しており、API access token(`api_token`/`oauth2_access_token`)経由での運用自動化が可能になっている。Agent 管理だけがこのパターンから外れており、`agents:read`/`agents:write` scope を持つ API access token を発行しても Agent の一覧・登録・kill 等はできない。
 
@@ -33,11 +33,11 @@ completion:
 
 ## Scope
 
-- `spec/contexts/identity-management/SPECIFICATION.md`
+- `docs/contexts/identity-management/SPECIFICATION.md`
   - `authorization.principals` に `ManagementApiClient`(type: Agent、`WorkloadIdentity` コンテキストの定義を踏襲)を追加するかどうかの決定。
   - 追加する場合: `authorization.policies` に `ManagementApiClientReadAgents`(`agents:read`)/`ManagementApiClientWriteAgents`(`agents:write`)を追加し、該当 interface の `access.policies` に配線する。
   - `KillAgent`(一方向・取り消し不能な kill-switch)を `agents:write` に含めるか、`TenantAdministrator` 限定のまま残すかを明示的に決定し、理由を記録する。
-  - 不採用の場合: `spec/contexts/api-tokens/SPECIFICATION.md` の `ApiTokenScope` から `agents:read`/`agents:write` を削除する。
+  - 不採用の場合: `docs/contexts/api-tokens/SPECIFICATION.md` の `ApiTokenScope` から `agents:read`/`agents:write` を削除する。
 - 判断根拠は本ファイルの `## Design` に記録する。
 
 ## Out of Scope
@@ -56,13 +56,13 @@ completion:
 ## Plan
 
 - 未定(上記 Design の2択を実装セッションの冒頭で確定させてから着手する)。
-- 配線する場合: `spec/contexts/identity-management/SPECIFICATION.md` の specification 変更 → `just spec-render` → 対応する Go 実装(`backend/idmanagement/agent/`)への authorizer/ルーティング変更 → テスト。
-- 削除する場合: `spec/contexts/api-tokens/SPECIFICATION.md` の specification 変更のみ(scope が他で未使用であることを grep で確認してから削除)。
+- 配線する場合: `docs/contexts/identity-management/SPECIFICATION.md` の specification 変更 → `just spec-render` → 対応する Go 実装(`backend/idmanagement/agent/`)への authorizer/ルーティング変更 → テスト。
+- 削除する場合: `docs/contexts/api-tokens/SPECIFICATION.md` の specification 変更のみ(scope が他で未使用であることを grep で確認してから削除)。
 
 ## Tasks
 
 - [ ] T001 [Decision] 配線する/しないを決定し、本ファイルの `## Design` に確定した結論と根拠を追記する。
-- [ ] T002 [Spec] 決定に応じて `spec/contexts/identity-management/SPECIFICATION.md` または `spec/contexts/api-tokens/SPECIFICATION.md` を更新する。
+- [ ] T002 [Spec] 決定に応じて `docs/contexts/identity-management/SPECIFICATION.md` または `docs/contexts/api-tokens/SPECIFICATION.md` を更新する。
 - [ ] T003 [App] (配線する場合のみ) `backend/idmanagement/agent/` の authorizer/ルーティングに scope チェックを実装する。
 - [ ] T004 [Verify] `just check-scl` / `just verify-spec` を通す。配線する場合は Go テストも追加・実行する。
 

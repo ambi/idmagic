@@ -2,9 +2,11 @@
 
 システム全体が従う仕様と設計を集めた場所である。ここに置くのは、二つ以上の Bounded Context が同じ従い方をしなければならず、Context ごとに違う従い方をすることが選択ではなく欠陥であるものだけである。
 
-1 つの Context が単独で満たし検証できる振る舞いと設計は、ここには置かない。それはその Context の `spec/contexts/<context>/` にある。モデルと API の契約は隣接する TypeSpec が、変更ごとの検討と経緯は work item が持つ。エンドポイント、フィールド、画面といった個別機能の詳細もここには無い。
+1 つの Context が単独で満たし検証できる振る舞いと設計は、ここには置かない。それはその Context の `docs/contexts/<context>/` にある。モデルと API の契約は隣接する TypeSpec が、変更ごとの検討と経緯は work item が持つ。エンドポイント、フィールド、画面といった個別機能の詳細もここには無い。
 
 実装から仕様を引くときは、パッケージ名に対応する Context を見る。Context に属さない技術的な共通機能は `backend/shared/` に集約している。
+
+人が書く文書はこの `docs/` にすべて集める。機械が食う契約——TypeSpec のソースと、そこから導いた OpenAPI の互換性ベースライン——だけが `spec/` にあり、2 つの木は `contexts/<context>/` で対応する。1 つの Context の散文は `docs/contexts/oauth2/`、その契約は `spec/contexts/oauth2/` にある。生成物はすべて追跡しない `spec/generated/` へ出るので、**`docs/` の下にあるものはすべて人が書いたものである。**
 
 開発ツールのバージョンとリポジトリのコマンドマップはルートの `mise.toml` に集約する。同じ固定バージョンは mise の利用者単位の共有ストアを再利用し、リポジトリ固有の導入手順や別のタスクランナーを併存させない。
 
@@ -112,3 +114,5 @@ flowchart LR
 | [capacity.md](capacity.md) | サービス目標、参照運用プロファイル、容量算出、縮退順序 |
 | [persistence.md](persistence.md) | データベース設計方針 |
 | [authorization.md](authorization.md) | 主体、スコープ、認可の境界 |
+
+手順はこの平面には置かない。障害時の手順は [operations/runbooks/](operations/runbooks/) にある。開発環境、ビルド、検証の進め方はルートの [DEVELOPMENT.md](../DEVELOPMENT.md) と [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。

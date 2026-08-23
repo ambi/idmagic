@@ -7,11 +7,11 @@ created_at: 2026-08-23
 priority: p1
 change_kind: docs
 initial_context:
-  specification: [spec/README.md]
-  source: [README.md, DEVELOPMENT.md, spec/api-rules.md, .github/workflows/idmagic-ci.yaml]
+  specification: [docs/README.md]
+  source: [README.md, DEVELOPMENT.md, docs/api-rules.md, .github/workflows/idmagic-ci.yaml]
   tests: []
   stop_before_reading: [backend, frontend, work-items/done]
-spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を足す作業である。規範的な振る舞い、契約、Context の境界のいずれにも触れない。README への対象外の宣言は、spec/README.md の Context Map 索引を範囲宣言として参照する形にするので、範囲そのものを新たに定義することもしない。" }
+spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を足す作業である。規範的な振る舞い、契約、Context の境界のいずれにも触れない。README への対象外の宣言は、docs/README.md の Context Map 索引を範囲宣言として参照する形にするので、範囲そのものを新たに定義することもしない。" }
 ---
 
 # リポジトリ入口の文書を置く——脆弱性の報告経路、貢献の作法、変更の告知、対象外の宣言
@@ -33,7 +33,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 
 **`SECURITY.md` が最も重い。** IdP は認証を預かる製品であり、脆弱性の報告は必ず来る想定で置くべきものである。報告経路が無ければ、報告者は公開 issue を立てるか、報告をやめるかのどちらかを選ぶ。前者は未修正の脆弱性を公開することであり、報告者の善意が製品の利用者を害する形になる。
 
-**`CHANGELOG.md` は宙に浮いた約束を回収する。** [spec/api-rules.md](../spec/api-rules.md) §Deprecation は「`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け」と定め、[DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §9.3 は「CHANGELOG はその告知である」と書く。ヘッダーは付くが、**告知の本体を読む場所が無い。** `Deprecation: true` を受け取った利用者に、何がいつどう変わるのかを伝える手段が存在しない。
+**`CHANGELOG.md` は宙に浮いた約束を回収する。** [docs/api-rules.md](../docs/api-rules.md) §Deprecation は「`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け」と定め、[DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §9.3 は「CHANGELOG はその告知である」と書く。ヘッダーは付くが、**告知の本体を読む場所が無い。** `Deprecation: true` を受け取った利用者に、何がいつどう変わるのかを伝える手段が存在しない。
 
 **対象外の宣言。** DOCUMENTATION_GUIDE §9.2 は、対象範囲を機能の箇条書きにしないこと、そして**対象外とその引き受け先**を書くことを求める。現状の `README.md` は「主な機能」8 件の箇条書きで範囲を語っており、対象外の記述は無い。IdP/IdM は特権アクセス管理、人事情報の正、アプリケーション内部の認可判定と境界を接する。**接する相手が具体的なほど、担わないことの宣言が要る。**
 
@@ -43,7 +43,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 
 - `SECURITY.md` を置く。報告経路、対応する版の範囲、応答の目安、開示の方針を書く。
 - `CONTRIBUTING.md` を置く。DOCUMENTATION_GUIDE §9.3 の形に従い、環境構築とコマンドは既存文書へ委ね、**Pull Request に求めるもの**（仕様先行、生成物の再生成、1 変更 1 work item と `affected_spec`）だけを書く。必須の検査の一覧は複製せず CI 定義を正本とする。
-- 対象外の宣言を置く。IdP/IdM として担わないものと、その引き受け先を表にする。対象範囲は `spec/README.md` の Context Map 索引を参照する形にし、機能の箇条書きにしない。
+- 対象外の宣言を置く。IdP/IdM として担わないものと、その引き受け先を表にする。対象範囲は `docs/README.md` の Context Map 索引を参照する形にし、機能の箇条書きにしない。
 - `README.md` の文書表に `DOCUMENTATION_GUIDE.md`、`tools/README.md`、`work-items/` の行を足す。
 - `CHANGELOG.md` は Design の 3 の判断次第で置く。
 
@@ -58,7 +58,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 
 3 点とも着手時に確定した。1 と 2 は人が決めた（DOCUMENTATION_GUIDE §12.3 が「プロダクトの目的、対象ユーザー、対象外の線引き」「許容するセキュリティ・運用リスク」を人間の責任とする）。
 
-1. **対象外の宣言は `README.md` の節に置く。** DOCUMENTATION_GUIDE §9.2 は `/docs/product-overview.md` を挙げるが、このリポジトリに `docs/` は無く、手順は `DEVELOPMENT.md`（ルート）、`infra/README.md`、`infra/runbooks/`、`frontend/README.md` と、**それが動かすものの隣**に置かれている。対象外 3 行のためにディレクトリを 1 つ増やすと、`DEVELOPMENT.md` などをそこへ移すかどうかの判断まで巻き込む。`spec/` と `docs/` の区別そのものへの疑問は別の work item が持つ。
+1. **対象外の宣言は `README.md` の節に置く。** DOCUMENTATION_GUIDE §9.2 は `/docs/product-overview.md` を挙げるが、このリポジトリに `docs/` は無く、手順は `DEVELOPMENT.md`（ルート）、`infra/README.md`、`docs/operations/runbooks/`、`frontend/README.md` と、**それが動かすものの隣**に置かれている。対象外 3 行のためにディレクトリを 1 つ増やすと、`DEVELOPMENT.md` などをそこへ移すかどうかの判断まで巻き込む。`spec/` と `docs/` の区別そのものへの疑問は別の work item が持つ。
 
 2. **`SECURITY.md` は GitHub Security Advisories の非公開報告を経路とし、応答の日数を約束しない。** リモートが `github.com/ambi/idmagic` なので追加の運用なしに使え、報告者に公開 issue 以外の選択肢を渡せる。日数を約束しないのは、守れない期限を書くことが期限を書かないことより悪いためである。後から厳しくするのは容易で、緩めるのは難しい。
 
@@ -78,9 +78,9 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 ## Tasks
 
 - [x] T001 [Design] 対象外の宣言の置き場所、`SECURITY.md` で約束する内容、`CHANGELOG.md` の要否を確定し `## Design` に記録する。
-- [x] T002 [Docs] `SECURITY.md` を置く。GitHub Security Advisories を経路とし、扱う境界を `spec/authorization.md` に紐づけた。
+- [x] T002 [Docs] `SECURITY.md` を置く。GitHub Security Advisories を経路とし、扱う境界を `docs/authorization.md` に紐づけた。
 - [x] T003 [Docs] `CONTRIBUTING.md` を置く。必須の検査の一覧を複製せず、CI 定義を正本として指す。
-- [x] T004 [Docs] 対象外の宣言を `README.md` の節へ置いた。対象範囲は `spec/README.md` の Context Map 索引を参照する形にした。
+- [x] T004 [Docs] 対象外の宣言を `README.md` の節へ置いた。対象範囲は `docs/README.md` の Context Map 索引を参照する形にした。
 - [x] T005 [Docs] `README.md` の文書表に `DOCUMENTATION_GUIDE.md`、`tools/README.md`、`work-items/`、および新設した 2 件の行を足す。
 - [x] T006 [Docs] `CHANGELOG.md` は作らない。`deprecated_since` が 1 件も無く、告知すべき非推奨が存在しないため（Design 3）。
 - [x] T007 [Verify] `mise run verify` を通し、README からの相対リンクがすべて解決することを確認した。
@@ -106,7 +106,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 
 - **Completed At**: 2026-08-23
 - **Summary**:
-  リポジトリの入口に、これまで存在しなかった 3 つの経路を置いた。`SECURITY.md` は脆弱性の報告を GitHub Security Advisories の非公開経路へ導き、扱う境界を `spec/authorization.md` のテナント境界・フェイルクローズ・鍵素材に紐づけ、開発用の既定値を本番で使った場合を対象外として切り分けた。応答の日数は約束していない。`CONTRIBUTING.md` は Pull Request に求める 5 点（仕様先行、1 変更 1 work item、生成物の再生成、拒否の二重の assert、英語のコミット）を述べ、必須の検査の一覧は複製せず CI 定義を正本として指す。`README.md` には対象外の表 3 行を足し、対象範囲の宣言は `spec/README.md` の Context Map 索引に委ねた。あわせて文書表に `CONTRIBUTING.md`、`SECURITY.md`、`DOCUMENTATION_GUIDE.md`、`work-items/`、`tools/README.md` の 5 行を足した。`CHANGELOG.md` は作っていない。`deprecated_since` と `@deprecated` が `spec/**/*.tsp` に 1 件も無く、告知すべき非推奨が存在しないためである。規範的な仕様は変えていない（`mise run spec-diff` が `no normative specification change`）。
+  リポジトリの入口に、これまで存在しなかった 3 つの経路を置いた。`SECURITY.md` は脆弱性の報告を GitHub Security Advisories の非公開経路へ導き、扱う境界を `docs/authorization.md` のテナント境界・フェイルクローズ・鍵素材に紐づけ、開発用の既定値を本番で使った場合を対象外として切り分けた。応答の日数は約束していない。`CONTRIBUTING.md` は Pull Request に求める 5 点（仕様先行、1 変更 1 work item、生成物の再生成、拒否の二重の assert、英語のコミット）を述べ、必須の検査の一覧は複製せず CI 定義を正本として指す。`README.md` には対象外の表 3 行を足し、対象範囲の宣言は `docs/README.md` の Context Map 索引に委ねた。あわせて文書表に `CONTRIBUTING.md`、`SECURITY.md`、`DOCUMENTATION_GUIDE.md`、`work-items/`、`tools/README.md` の 5 行を足した。`CHANGELOG.md` は作っていない。`deprecated_since` と `@deprecated` が `spec/**/*.tsp` に 1 件も無く、告知すべき非推奨が存在しないためである。規範的な仕様は変えていない（`mise run spec-diff` が `no normative specification change`）。
 - **Verification Results**:
   - `mise run verify` - passed（exit 0）
   - `mise run spec-diff` - no normative specification change against main

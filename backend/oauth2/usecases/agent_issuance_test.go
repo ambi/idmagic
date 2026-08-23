@@ -16,7 +16,7 @@ import (
 )
 
 // TestResolveIssuableAgent_OwnerOffboarding — RED: REQ-OAUTH2-046
-// (spec/contexts/oauth2/scenarios.md)。所有者がオフボードされた Agent は
+// (docs/contexts/oauth2/scenarios.md)。所有者がオフボードされた Agent は
 // client_credentials で新しいトークンを取得できない。所有者の状態は Agent の
 // status を書き換えず、発行のたびに解決する。
 func TestResolveIssuableAgent_OwnerOffboarding(t *testing.T) {

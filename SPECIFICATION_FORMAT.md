@@ -9,9 +9,14 @@ This document states intent, examples, and the decisions a checker cannot make f
 Sections do not divide the specification; files do. A file's name says what kind of content it holds, and
 that name is what the checker validates the body against.
 
+Prose lives under `docs/`; the TypeSpec a compiler consumes lives under `spec/`. The two trees mirror each
+other at `contexts/<context>/`, so one context's specification is one name looked up in two places — the
+prose in `docs/contexts/oauth2/`, the contract in `spec/contexts/oauth2/`.
+
 ```text
-spec/
+docs/
   README.md            # boundary declaration, context map, index
+  product-overview.md  # problem, users, non-goals
   structure.md         # directories, dependency direction, layers, architecture style
   glossary.md          # published language
   standards.md         # external norms the whole system follows
@@ -22,9 +27,6 @@ spec/
   persistence.md       # database design policy
   authorization.md     # principals, scopes, authorization boundaries
   scenarios.md         # behavior no single context can satisfy alone
-  main.tsp
-  tspconfig.yaml
-  <product>.openapi.baseline.json
   contexts/<context>/
     README.md          # boundary declaration and index
     glossary.md
@@ -33,17 +35,26 @@ spec/
     decisions.md
     internals.md       # rare; only when a mechanism needs explaining
     scenarios.md
-    models.tsp
-    main.tsp
+  development/         # procedures: environment, build, generation, CI, testing
+  operations/          # SLO, release and rollback, backup, runbooks/<event>.md
+
+spec/
+  main.tsp
+  tspconfig.yaml
+  <product>.openapi.baseline.json
+  contexts/<context>/{models.tsp,main.tsp}
 ```
 
 `README.md` is the file a reader lands on when they open the directory, so it holds the boundary
 declaration and the index of its siblings. Create no file that has no content to hold: a small context
-needs only `README.md` and `scenarios.md`. The file set and the file names are *(checked)*; anything else
-in these directories is not a canonical document and is rejected.
+needs only `README.md` and `scenarios.md`. The file set and the file names are *(checked)* for `docs/` and
+`docs/contexts/<context>/`; anything else at those two levels is not a canonical document and is rejected.
+`docs/development/` and `docs/operations/` sit below that closed set and name their files freely, because
+procedures are not a fixed set of kinds.
 
 `main.tsp` composes the TypeSpec program. `models.tsp` owns model declarations and the context `main.tsp`
-owns operations. Generated OpenAPI and documentation live below ignored `spec/generated/`.
+owns operations. Generated OpenAPI and documentation live below ignored `spec/generated/`, which keeps
+every generated artifact out of `docs/`: everything under `docs/` is written by a person.
 
 ## 2. TypeSpec scope
 
@@ -86,7 +97,7 @@ Below the declaration, index the sibling files as Markdown links. That index is 
 from the generated site, and it is the only place a reader is told which of them exist.
 
 A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several
-contexts cooperate belongs to `spec/scenarios.md`, and the scenario names the participating contexts.
+contexts cooperate belongs to `docs/scenarios.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
 ### decisions.md — what was decided and why
@@ -120,7 +131,7 @@ Neither file carries directory listings, package inventories, change history, co
 plans, summaries of external standards, states and transitions, acceptance examples, request and response
 shapes, columns and indexes, permission assignments, or rules every context follows. Each of those has an
 owner: the code, the work item, `standards.md`, `states.md`, `scenarios.md`, TypeSpec, the schema file,
-`spec/authorization.md`, or the matching file directly under `spec/`.
+`docs/authorization.md`, or the matching file directly under `docs/`.
 
 ## 4. State transitions
 
@@ -239,7 +250,7 @@ no effect.
 
 ## 7. Authorization
 
-Authorization is not a section of each context. It is `spec/authorization.md`, because someone checking
+Authorization is not a section of each context. It is `docs/authorization.md`, because someone checking
 authorization wants the product's authorization, not one context's share of it. That file holds the
 principal kinds, the scope namespaces, the tenant boundary, and the rules that apply when a decision
 cannot be made. What one context decides about its own operations stays in that context's

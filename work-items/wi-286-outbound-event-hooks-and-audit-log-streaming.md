@@ -56,10 +56,10 @@ push される」汎用 outbound hook を導入する。
 ## Scope
 
 - **decision**:
-  - `spec/contexts/audit/decisions.md` へ記録する決定 (outbound event hook と配送保証): 配送セマンティクス (at-least-once、順序保証は
+  - `docs/contexts/audit/decisions.md` へ記録する決定 (outbound event hook と配送保証): 配送セマンティクス (at-least-once、順序保証は
     しない、重複は購読側が `event_id` で冪等化)、HMAC 署名方式とヘッダ仕様、再試行と指数
     バックオフ、連続失敗時の自動無効化 (circuit) 条件、SSRF 対策 (宛先の URL 検証と private
-    IP 範囲の拒否)、payload に載せる PII の範囲 (`spec/contexts/authentication/decisions.md` の認証イベント PII 方針 と
+    IP 範囲の拒否)、payload に載せる PII の範囲 (`docs/contexts/authentication/decisions.md` の認証イベント PII 方針 と
     整合)、[[wi-58-continuous-access-evaluation-agent-revocation]] の CAEP/SSF との分界
     (CAEP は標準準拠の security event 配信、本 WI は汎用 hook) を記録する。
 - **specification**:
@@ -73,7 +73,7 @@ push される」汎用 outbound hook を導入する。
   - `states` に EventHookRegistered / EventHookDelivered / EventHookDeliveryFailed /
     EventHookSuspended event を追加する。
   - `objectives` に配送捕捉レイテンシ (イベント発生から delivery 行の作成まで) の目標を追加する
-    (`spec/contexts/provisioning/decisions.md` の
+    (`docs/contexts/provisioning/decisions.md` の
     ProvisioningDeliveryCaptureLatency と同じ考え方)。
   - `authorization` に hook 管理を `audit:write` 相当の scope / tenant admin に限定する規則を追加する。
   - `scenarios`: 正常配送 / 4xx で再試行せず失敗記録 / 5xx で指数バックオフ再試行 /
@@ -115,18 +115,18 @@ push される」汎用 outbound hook を導入する。
 
 - **transactional capture を先に決める**。「イベントは発生したが配送行が作られていない」状態を
   作らないため、監査イベント永続化と delivery enqueue を同一トランザクションに入れる。
-  `spec/contexts/provisioning/decisions.md` が
+  `docs/contexts/provisioning/decisions.md` が
   Provisioning で既に同じ形を採っているので、その構造を踏襲し新しい発明をしない。
 - **配送は既存 Jobs 基盤に載せる**。retry / lease / 進捗可視化は
-  `spec/contexts/jobs/decisions.md` の永続キュー と
-  `spec/contexts/jobs/decisions.md` のワーカー実行モデル が既に提供しているので、
+  `docs/contexts/jobs/decisions.md` の永続キュー と
+  `docs/contexts/jobs/decisions.md` のワーカー実行モデル が既に提供しているので、
   独自の retry ループを書かない。lane は `default` を使い、`latency_sensitive` を汚さない。
 - **SSRF を最初のテストにする**。webhook は「テナント管理者が任意 URL を指定できる」機能で、
   内部メタデータエンドポイントへの到達に使われうる。登録時検証だけでは DNS rebinding を
   防げないため、送信時にも解決 IP を検証する。ここを最初に落とすテストにする。
 - **PII は既定で最小**。payload には event_id / type / 時刻 / tenant / actor 識別子 /
   対象リソース識別子を入れ、メール本文・トークン・資格情報・生の IP は入れない。
-  詳細が必要な購読者は管理 API で引く前提にする (`spec/contexts/authentication/decisions.md` の認証イベント PII 方針)。
+  詳細が必要な購読者は管理 API で引く前提にする (`docs/contexts/authentication/decisions.md` の認証イベント PII 方針)。
 - **自動 Suspend を入れる**。宛先が長期間死んでいるときに無限に job を積むと queue が
   汚染される。連続失敗回数と経過時間の閾値で Suspend し、UI から明示復帰させる。
 - 未決定: バッチ配送 (ストリーミング用途) のバッチサイズと最大遅延は、
@@ -137,7 +137,7 @@ push される」汎用 outbound hook を導入する。
 - [ ] T001 [Spec] `Audit` に EventHookSubscription / EventHookDelivery / EventHookState、
       interface 8 件、event 4 件、objective、authorization、scenario 6 件を追加し
       `mise run check-spec` を通す。
-- [ ] T002 [Spec] outbound event hook と配送保証の決定を `spec/contexts/audit/decisions.md` に記録する (署名方式・再試行・
+- [ ] T002 [Spec] outbound event hook と配送保証の決定を `docs/contexts/audit/decisions.md` に記録する (署名方式・再試行・
       自動 Suspend・SSRF 対策・PII 範囲・CAEP との分界)。
 - [ ] T003 [Domain] subscription の状態遷移、イベント種別フィルタ照合、宛先 URL 検証を実装する。
       RED: private IP / http / リダイレクト宛先が拒否されるテストを先に書く
@@ -178,7 +178,7 @@ push される」汎用 outbound hook を導入する。
 落とすテストで固定する。
 配送 job が queue を汚染するリスクがある (死んだ宛先へ無限に積む)。自動 Suspend と
 lane 分離で認証ホットパスへの影響を防ぐ。
-payload の PII 過多は情報漏洩面を広げる。既定を最小にし、拡張は明示的な `spec/contexts/audit/decisions.md` 更新を要する。
+payload の PII 過多は情報漏洩面を広げる。既定を最小にし、拡張は明示的な `docs/contexts/audit/decisions.md` 更新を要する。
 監査書き込みトランザクションに delivery 作成を含めるため、hook 定義が多いテナントで
 書き込みレイテンシが伸びうる。capture は「1 行の delivery + job」に留め、
 宛先ごとの展開は worker 側で行う。

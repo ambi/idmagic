@@ -7,8 +7,8 @@ created_at: 2026-07-03
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-002 }
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-001 }
+  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-002 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # LDAP / Active Directory 閉域コネクタでユーザーをプロビジョニングする
@@ -33,7 +33,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
 
 ## Scope
 - **decision**:
-  - `spec/contexts/sourcing/decisions.md` へ記録する決定: Connector を DC 上ではなく AD と同じ閉域ネットワーク内の専用ホストに
+  - `docs/contexts/sourcing/decisions.md` へ記録する決定: Connector を DC 上ではなく AD と同じ閉域ネットワーク内の専用ホストに
     配置し、IdMagic への outbound-only + mTLS 接続とする境界を記録する。Connector
     enrollment、証明書の発行・失効・ローテーション、テナントへの所属、および最小権限の
     AD サービスアカウントの責務を定める。
@@ -64,7 +64,7 @@ provisioning** を扱う。認証用の LDAP bind 委譲はパスワード配送
     と監査ログにパスワードを含めないこと、失敗した差分を安全に再試行できることを定める。
 - **architecture**:
   - Connector runtime とその IdMagic 側受信境界を追加するため、bounded context の所有関係、
-    新規 process / directory 規約を `spec/structure.md` と `spec/deployment.md` に同期する。
+    新規 process / directory 規約を `docs/structure.md` と `docs/deployment.md` に同期する。
 - **go**:
   - Directory Connector の runtime（LDAP(S) read、AD 実装向けの差分取得、mapping、local
     cursor、再試行）と、IdMagic 側の enrollment / mTLS 認証 / 同期受理 use case を追加する。

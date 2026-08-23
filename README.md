@@ -6,7 +6,7 @@ IdMagic は Go で実装したマルチテナントの IdP / IdM である。OAu
 
 ## 主な機能
 
-- **ID プロトコル**: OAuth 2.0 / OIDC の認可サーバー、SAML 2.0 IdP、WS-Federation Passive Profile、WS-Trust STS。FAPI 2.0 Security Profile と RFC 9700 (BCP 240) に沿って運用する。対応する RFC と対応範囲は [spec/contexts/oauth2/standards.md](spec/contexts/oauth2/standards.md) をはじめとする各 Context の `standards.md` が持つ。
+- **ID プロトコル**: OAuth 2.0 / OIDC の認可サーバー、SAML 2.0 IdP、WS-Federation Passive Profile、WS-Trust STS。FAPI 2.0 Security Profile と RFC 9700 (BCP 240) に沿って運用する。対応する RFC と対応範囲は [docs/contexts/oauth2/standards.md](docs/contexts/oauth2/standards.md) をはじめとする各 Context の `standards.md` が持つ。
 - **マルチテナント**: テナントごとの正規ロケーションと発行者、自動ローテーションする署名鍵、ブランドを差し替えられるログイン画面とポータル。
 - **エージェントを第一級の主体として扱う**: 自律型・監督型の AI エージェントを `Agent` として登録し、所有者、目的、ライフサイクルを管理する。Kubernetes や SPIFFE の JWT-SVID を長期シークレットなしでトークンへ交換でき、代行はなりすましではなく委譲を既定とする。人間の承認が要る操作は CIBA を通し、キルスイッチは即時に効く。
 - **ID ガバナンス**: 入社・異動・退職をライフサイクルワークフローとして自動化し、実行前に結果を試算できる。
@@ -18,7 +18,7 @@ IdMagic は Go で実装したマルチテナントの IdP / IdM である。OAu
 
 ## 対象外
 
-対象範囲の宣言は [spec/README.md](spec/README.md) の Context Map の索引である。Bounded Context が増減したときだけ変わるので、機能の箇条書きより長く正しくいられる。
+対象範囲の宣言は [docs/README.md](docs/README.md) の Context Map の索引である。Bounded Context が増減したときだけ変わるので、機能の箇条書きより長く正しくいられる。
 
 次は IdMagic が担わない。境界を接する相手が具体的なものだけを挙げる。
 
@@ -26,7 +26,7 @@ IdMagic は Go で実装したマルチテナントの IdP / IdM である。OAu
 | --- | --- |
 | 人事情報の正本 | 人事システムなどの上流の権威。IdMagic は `Sourcing` として取り込む側であり、在籍情報の発生源にはならない。 |
 | メールと SMS の配信経路の運用 | 外部の SMTP サーバーと配信事業者。IdMagic は送信を依頼するだけで、到達性、送信者評判、キャリア接続は持たない。 |
-| 汎用の API ゲートウェイと WAF | 前段のゲートウェイまたはリバースプロキシ。TLS の終端、同一オリジン境界の成立、slowloris のような過負荷への対処はそちらが担う（[spec/deployment.md](spec/deployment.md)）。 |
+| 汎用の API ゲートウェイと WAF | 前段のゲートウェイまたはリバースプロキシ。TLS の終端、同一オリジン境界の成立、slowloris のような過負荷への対処はそちらが担う（[docs/deployment.md](docs/deployment.md)）。 |
 
 ## クイックスタート
 
@@ -78,7 +78,7 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 
 ### 運用上の注意
 
-- **データ暗号鍵のマスターキーを失うと復旧できない。** `DATA_KEY_PROVIDER` が保持するマスターキーは PostgreSQL のバックアップに含まれない。手順と危険性は [バックアップ・復元・災害復旧のランブック](infra/runbooks/backup-restore-dr.md) を参照する。`DATA_KEY_PROVIDER` を設定しない場合はプロセス内の平文鍵セットを使うため、本番では決して選択してはならない。
+- **データ暗号鍵のマスターキーを失うと復旧できない。** `DATA_KEY_PROVIDER` が保持するマスターキーは PostgreSQL のバックアップに含まれない。手順と危険性は [バックアップ・復元・災害復旧のランブック](docs/operations/runbooks/backup-restore-dr.md) を参照する。`DATA_KEY_PROVIDER` を設定しない場合はプロセス内の平文鍵セットを使うため、本番では決して選択してはならない。
 - **テナントの正規ロケーションの変更は ID 移行である。** `path` 形式と `subdomain` 形式を切り替えると発行者とプロトコルメタデータの URL が変わり、RP の再設定、既存パスキーの再登録、進行中セッションの終了が必要になる。`subdomain` 形式にはワイルドカード DNS と対応する TLS 証明書が要る（[infra/README.md](infra/README.md)）。
 
 ## 文書
@@ -88,7 +88,7 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 | 貢献の作法と Pull Request に求めること | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | 脆弱性の報告 | [SECURITY.md](SECURITY.md) |
 | 利用条件 | [LICENSE](LICENSE)（MIT License） |
-| 仕様と設計の入口、Context Map | [spec/README.md](spec/README.md) |
+| 仕様と設計の入口、Context Map | [docs/README.md](docs/README.md) |
 | API とモデルの契約 | [spec/main.tsp](spec/main.tsp)、`mise run spec-render` で生成する HTML |
 | 開発の進め方（仕様先行のループと検証） | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | 仕様文書と work item の書式 | [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、[WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) |
@@ -98,6 +98,6 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 | 起動時設定の一覧 | [CONFIGURATION.md](CONFIGURATION.md) |
 | Kubernetes、監視、負荷スモーク | [infra/README.md](infra/README.md) |
 | PostgreSQL のスキーマ運用 | [infra/schema/README.md](infra/schema/README.md) |
-| 障害時の手順 | [infra/runbooks/](infra/runbooks/) |
+| 障害時の手順 | [docs/operations/runbooks/](docs/operations/runbooks/) |
 | UI の設計指針とローカライズ | [frontend/README.md](frontend/README.md) |
 | seed プロファイル | [seed/README.md](seed/README.md) |

@@ -37,7 +37,7 @@ envelope 変更と切り離すと後から再度 75+ 個を洗い直すことに
   追加する記述。
 - `tools/check/schemas/scl-v3.schema.json` — `Model` (`additionalProperties:
   false`) と `Binding` の `http` 分岐に対応する field を追加。
-- `spec/contexts/*.yaml` の全 19 ファイル・75+ 個の `kind: error` model へ
+- `docs/contexts/*.yaml` の全 19 ファイル・75+ 個の `kind: error` model へ
   `status` を付与。
 - `spec/contexts/oauth2.yaml`、`spec/contexts/sourcing.yaml` (SCIM)、
   RFC 7591 Dynamic Client Registration を持つ binding への `error_format`
@@ -187,11 +187,11 @@ envelope 変更と切り離すと後から再度 75+ 個を洗い直すことに
 
 1. `SPECIFICATION_CORE_LANGUAGE.md` と `tools/check/schemas/scl-v3.schema.json`
    を更新し、`just verify-spec` 相当のチェックで言語拡張自体が壊れていない
-   ことを確認する (既存 `spec/contexts/*.yaml` は `status` 未設定のまま
+   ことを確認する (既存 `docs/contexts/*.yaml` は `status` 未設定のまま
    一時的に検証が落ちる可能性があるため、`status` を MUST にする変更は
    全 error model への付与とセットでコミットする)。
 2. SharedSignals inbound SET receiver の RFC 8935 エラー形式を調査する。
-3. `spec/contexts/*.yaml` を 1 ファイルずつ (または関連するまとまり単位で)
+3. `docs/contexts/*.yaml` を 1 ファイルずつ (または関連するまとまり単位で)
    `status` を付与し、都度 `just verify-spec` を通す。
 4. OAuth2 / SCIM / DCR / (必要なら SSF receiver) の該当 binding に
    `error_format` を設定する。
@@ -214,7 +214,7 @@ envelope 変更と切り離すと後から再度 75+ 個を洗い直すことに
       エラー形式規定の有無を調査する。→ RFC 8935 §2.3 が `{err,
       description}` 固定形式・400・`application/json` を MUST で規定して
       いることを確認。`error_format: set_delivery` を新設して対応する。
-- [x] T004 [SCL] `spec/contexts/*.yaml` の全 `kind: error` model へ
+- [x] T004 [SCL] `docs/contexts/*.yaml` の全 `kind: error` model へ
       `status` を付与した (37 種類のユニークな error model 名、
       19 コンテキストファイル + `tools/ra`/`tools/scl-to-openapi` の
       自己記述 SCL を含む 21 ファイル・77 箇所)。Design 節に最終

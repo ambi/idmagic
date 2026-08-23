@@ -7,8 +7,8 @@ depends_on: []
 change_kind: bugfix
 initial_context:
   specification:
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-010
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-045
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-010
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-045
   typespec: [IdMagic.Contract.SenderConstraintCnf]
   source:
     - backend/shared/security/tokens_jose/dpop_verifier.go
@@ -21,7 +21,7 @@ initial_context:
     - backend/oauth2/handlers_http/userinfo_handler_test.go
   stop_before_reading: [frontend, infra]
 affected_spec:
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-045 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-045 }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.SenderConstraintCnf }
 ---
 
@@ -49,7 +49,7 @@ proof と token の対応が緩いほど、取り違えと流用の窓が構造�
 
 ## Scope
 
-- `spec/contexts/oauth2/SPECIFICATION.md` の DPoP 節に `ath` 検証の normative scenario
+- `docs/contexts/oauth2/SPECIFICATION.md` の DPoP 節に `ath` 検証の normative scenario
   (REQ-OAUTH2-045) と standards 要件行 (RFC9449-ATH) を追加する。
   起票時に想定した REQ-OAUTH2-042 は CIBA の承認要求に既に使われていたため 045 を採番した。
 - `tokens_jose.VerifyDPoP` に access token を渡し、`ath` を検証できるようにする。

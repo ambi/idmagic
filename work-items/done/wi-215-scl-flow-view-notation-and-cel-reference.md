@@ -74,7 +74,7 @@ interface の裏付けが薄い view は Risk Notes に明記し、推測で埋�
       を新記法へ移行する。
 - [x] T004 [Tool] `tools/scl-to-html` の `Flow` 型・`renderFlows`・`render.test.ts` を
       新記法に対応させる。あわせて `tools/scl-to-html/spec/scl.yaml` の自己記述 flow も移行する。
-- [x] T005 [SCL] `spec/contexts/*.yaml`(10 ファイル、32 flow)の `flows` を新記法へ移行し、
+- [x] T005 [SCL] `docs/contexts/*.yaml`(10 ファイル、32 flow)の `flows` を新記法へ移行し、
       実内容(`sees`/`does`)を記述する。
 - [x] T006 [SCL] `SPECIFICATION_CORE_LANGUAGE.md` を全セクション、
       tooling の制約と一対一対応する形式へ書き直す。

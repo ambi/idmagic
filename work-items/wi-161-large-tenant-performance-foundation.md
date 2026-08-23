@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-005 }
-  - { path: spec/contexts/audit/scenarios.md, requirement: REQ-AUDIT-004 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-005 }
+  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-004 }
 ---
 
 # 大規模テナントでも軽快に動く検索・集計・性能保証を整備する
@@ -28,7 +28,7 @@ affected_spec:
   - `scenarios` に大量 users / groups / agents / audit events / applications を持つ tenant での検索・集計・画面表示例を追加する。
   - `flows` と `scenarios` に一覧や dashboard が全件取得に依存しないこと、件数は近似または非同期集計を許容する境界を明記する。
 - **decision**:
-  - `spec/capacity.md` へ記録する決定: read model / counter cache / materialized view / search index の採用方針、freshness、再構築、tenant isolation、PII 取り扱いを決める。
+  - `docs/capacity.md` へ記録する決定: read model / counter cache / materialized view / search index の採用方針、freshness、再構築、tenant isolation、PII 取り扱いを決める。
 - **persistence**:
   - 主要検索条件に合わせた PostgreSQL index、covering index、partial index、text search 方針を追加する。
   - dashboard / role count / assignment count / quota usage などは必要に応じて read model または counter cache に切り出す。
@@ -47,11 +47,11 @@ affected_spec:
 ## Out of Scope
 - 一覧 API の cursor pagination 本体。これは [[wi-159-admin-resource-cursor-pagination]] で扱う。
 - テナント resource quota の定義と作成拒否。これは [[wi-160-tenant-resource-quotas]] で扱う。
-- 外部検索エンジンの導入を前提にした全文検索基盤。PostgreSQL で足りないことが確認された場合に別 WI と `spec/capacity.md` を切る。
+- 外部検索エンジンの導入を前提にした全文検索基盤。PostgreSQL で足りないことが確認された場合に別 WI と `docs/capacity.md` を切る。
 - CSV / bulk operation のジョブ化。
 
 ## Plan
-- まず specification objective で「大規模テナント」を具体化する。例: users 100k、groups 20k、agents 10k、applications 10k、audit events 10M retained など、`spec/capacity.md` で検証用 scale profile を決める。
+- まず specification objective で「大規模テナント」を具体化する。例: users 100k、groups 20k、agents 10k、applications 10k、audit events 10M retained など、`docs/capacity.md` で検証用 scale profile を決める。
 - 既存 UI の全件取得・list endpoint 集計パターンを棚卸しし、summary が必要な画面とページングで十分な画面を分ける。
 - PostgreSQL を主対象に query plan と index を整える。memory persistence は contract 検証に留め、大規模性能保証の主対象にはしない。
 - Read model は freshness を明示する。認可や quota enforcement に必要な値は強整合、dashboard 表示は短時間 stale を許容する。

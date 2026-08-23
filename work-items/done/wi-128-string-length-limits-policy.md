@@ -54,7 +54,7 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
   - RFC・外部仕様・主要 IdP の慣行・UI 表示上限・検索 index サイズ・ログ/監査保存量を参照し、上限を置く値と置かない値を分類する。
   - 上限を DB に置く場合、`varchar(n)` と `TEXT CHECK (char_length(column) <= n)` のどちらを採用するかを `wi-127-postgres-column-type-policy` の型ポリシーと整合させる。
 - **spec**:
-  - 最大文字数が公開 contract、管理 UI 入力制約、または保証義務に関わる場合は、specification-first で `spec/SPECIFICATION.md` を最小限更新し、derived artifacts を再生成する。
+  - 最大文字数が公開 contract、管理 UI 入力制約、または保証義務に関わる場合は、specification-first で `docs/SPECIFICATION.md` を最小限更新し、derived artifacts を再生成する。
 - **implementation**:
   - 決定した上限を、HTTP request validation、domain/service validation、UI form validation、OpenAPI/JSON Schema など該当する境界に反映する。
   - DB 側の最後の防衛線が必要な列には、`infra/schema/postgres.sql` と migration / seed / test fixture を更新する。
@@ -99,7 +99,7 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
 
 ### 違反を 422 で返す
 
-長さ違反は解析できた内容が業務規則に違反する場合なので、`spec/SPECIFICATION.md` の HTTP error responses が定める 422 に当たる。`spec.Chars` の検査失敗だけを型付きの `*spec.LengthError` として返し、`support_http.ErrorHandler` が既存の `quotaExceeded` と同じ構造的インターフェースで受けて `422` の Problem Details に写像する。context ごとの handler を 1 つずつ直さずに全経路が同時に直り、かつ長さ以外の検証失敗の現在の挙動は変えない。
+長さ違反は解析できた内容が業務規則に違反する場合なので、`docs/SPECIFICATION.md` の HTTP error responses が定める 422 に当たる。`spec.Chars` の検査失敗だけを型付きの `*spec.LengthError` として返し、`support_http.ErrorHandler` が既存の `quotaExceeded` と同じ構造的インターフェースで受けて `422` の Problem Details に写像する。context ごとの handler を 1 つずつ直さずに全経路が同時に直り、かつ長さ以外の検証失敗の現在の挙動は変えない。
 
 ### 検討して採らなかった案
 
@@ -177,14 +177,14 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
   - **マルチバイト入力が上限の 1/3 で拒否されていた**。zog の `String().Max(n)` は `len(string)`、すなわち UTF-8 バイト数を数える（ドキュメントコメントは "at most n characters long" と書いてある）。上限 100 文字と宣言したグループ名に日本語を入れると 34 文字で拒否されていた。`backend/shared/spec/length.go` に `Chars` / `CharsAtMost` を追加し、`utf8.RuneCountInString` で数えるようにしたうえで、10 ファイル・30 か所の `.Max(` を置き換えた。`authorization/domain/tuple.go` の「256 bytes」判定と、CIBA `binding_message` の usecase（コードポイント）と domain（バイト）の食い違いも同じ数え方に寄せた。
   - **上限超過が HTTP 500 になっていた**。domain の `Validate()` が返す素の error が各 handler のエラー写像の `default:` を素通りし、`{"message":"Internal Server Error"}` だけが返っていた。長さ違反だけを型付きの `*spec.LengthError` にし、`support_http.ErrorHandler` が既存の `quotaExceeded` と同じ構造的インターフェースで受けて `422` / `field_length_exceeded` の Problem Details に写像する。`detail` には違反したフィールドの wire 名と上限が載る（`name: must be at most 100 characters`）。長さ以外の検証失敗は素の error のまま残し、保存済みデータの破損がサーバの不具合として扱われる余地を保った。
   - このエラー写像は `backend/cmd/idmagic/server.go` だけで組み立てられていたため、ハンドラのテストは本番と別のエラー経路を通っていた。既定版を `server_http.Register` へ移し、ログとメトリクスを持つ版は起動時に cmd が差し替える形にした。分類漏れがテストから見えるようになる。
-  - **仕様**：`spec/SPECIFICATION.md` の Cross-cutting Concerns に `String length limits` を追加。単位、既定の 9 区分、外部の標準や固定の表示面から決まる 7 つの例外、4 つの境界の役割、上限を置かない値、違反時の 422 を記述した。Database design policy §1 の「`TEXT` + `CHECK` か `varchar(N)` のいずれか」という未決を `TEXT` + `CHECK` に確定した。
+  - **仕様**：`docs/SPECIFICATION.md` の Cross-cutting Concerns に `String length limits` を追加。単位、既定の 9 区分、外部の標準や固定の表示面から決まる 7 つの例外、4 つの境界の役割、上限を置かない値、違反時の 422 を記述した。Database design policy §1 の「`TEXT` + `CHECK` か `varchar(N)` のいずれか」という未決を `TEXT` + `CHECK` に確定した。
   - **契約の穴埋め**：`User.name` / `given_name` / `family_name` / `email`、`Group.email`、`GroupAttributeDef.label`、CIBA `binding_message` に `@maxLength` を追加した。メールは RFC 5321 の 254。いずれも従来 Go 側だけが持っていた上限か、どこにも無かった上限である。
   - **DB の最後の防壁**：`users`、`groups`、`agents`、`tenants`、`tenant_brandings`、`oauth2_clients`、`mcp_resource_servers`、`authorization_detail_types`、`workload_trust_bundles`、`agent_workload_bindings` に `CHECK (char_length(col) ...)` を追加した。通知テンプレートは DB と TypeSpec に上限があるのに Go 側の検査が無く、超過が制約違反として返って 500 になっていたので、`template.ValidateDefinition` に同じ上限を入れた。
   - **UI**：`frontend/src/lib/lengthLimits.ts` に同じ区分を置き、group / user / agent の作成・編集、テナント設定、通知テンプレート、ライフサイクルワークフローの各入力欄の `maxLength` をそこから引くようにした。既存の直書きの数値も同じ表に寄せた。パスワード欄には付けない（貼り付けを黙って切り詰めるため）。
   - **上限値の変更**：`UserAttributeDef.OIDCScope` の 60 を Handle 区分の 64 へ広げた 1 件のみ。他はすべて据え置きで、引き下げは行っていない。
 - **`CHECK` に置く規則の切り分け**:
   レビューで、`tenant_brandings.footer_link_{1,2}_url` のスキーム allowlist（`~ '^https://'`）を SQL に置くのが適切かを問われた。置かないのが正しい。上の表が `CHECK` に与えた役割は「実装の不具合だけが落ちる最後の防壁」であり、管理者が `http://` と打ったという通常の入力誤りで落ちる規則はその定義に反する。加えてスキームの集合は `mailto:` やオンプレの `http://` へ広がりうる可変な製品ポリシーで、DDL に置くと変更のたびに全配備でスキーマ移行が要る。長さは安定した資源境界なので SQL に残す資格がある。
-  そこで `_url_format` を廃し、`_url_length`（2048）だけを置いた。スキーム規則は Go の `TenantBranding.Validate()` が引き続き強制し、`manage_branding_test.go` が `javascript:` / `http://` / `data:` の拒否を、`branding_handler_test.go` が HTTP 境界を検証している。この切り分けは `spec/SPECIFICATION.md` の String length limits に明文化した。
+  そこで `_url_format` を廃し、`_url_length`（2048）だけを置いた。スキーム規則は Go の `TenantBranding.Validate()` が引き続き強制し、`manage_branding_test.go` が `javascript:` / `http://` / `data:` の拒否を、`branding_handler_test.go` が HTTP 境界を検証している。この切り分けは `docs/SPECIFICATION.md` の String length limits に明文化した。
   なお psqldef が同一列に `CHECK` を 2 つ置くと収束しない件（当初これを理由に長さ CHECK を見送っていた）は、1 つの `CHECK` にまとめれば回避できることを確認した。今回は上の設計判断により、そもそもまとめる必要がなくなっている。
 - **意図的に見送った点**:
   - `entity_id`、`wtrealm`、`scim_id`、`kid`、token hash など、現に上限を持たない外部由来の値。Out of Scope のとおり根拠なく上限を導入していないが、「上限なし」もまた検討されていない既定でしかない、というレビュー指摘は妥当である。実測では、これらが主キー成分になっている列は btree v4 の索引行上限 2704 バイトで既に破綻し、`SQLSTATE 54000`（`index row size ... exceeds btree version 4 maximum 2704`）という低水準のエラーを返す。資源上限としての明示的な天井を与える作業を `wi-380` に分離した。既存データの棚卸しを挟む必要があるため、この work item では扱わない。
@@ -201,5 +201,5 @@ PostgreSQL では `TEXT` と制約なし `varchar` に実質的な性能差は�
   - `just spec-diff` - `no normative specification change against main`（規範シナリオの追加・削除・変更なし。変更は Design と TypeSpec の制約）
   - `just check-work-items` / `just check-ids` - passed
   - 新規テスト: `backend/shared/spec/length_test.go`（境界ちょうど・1 超過を ASCII / 日本語 / 絵文字で、結合文字は書記素ではなくコードポイントで数えること、型付きエラー、wire 名、`snakeCase`）、`backend/idmanagement/group/handlers_http/admin_group_length_test.go`（100 文字の日本語名が 201、101 文字が 422 と Problem Details の `detail`、説明の境界 ±1）、`backend/idmanagement/group/db_postgres/groups_length_test.go`（domain が受ける値は DB も受ける / domain を迂回した超過は `groups_name_length` が止める）、`frontend/src/lib/lengthLimits.test.ts`（UI の表がサーバと一致すること）。
-  - 手動確認: 上限を置く値と置かない値、およびその根拠を `spec/SPECIFICATION.md` の `String length limits` に記載した。
+  - 手動確認: 上限を置く値と置かない値、およびその根拠を `docs/SPECIFICATION.md` の `String length limits` に記載した。
   - 手動確認: グループ名で API / DB / UI が同じ 100 という数を同じ単位で適用し、超過時に `422 field_length_exceeded` とフィールド名・上限を含む `detail` が返ることを確認した。

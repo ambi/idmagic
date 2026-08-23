@@ -8,15 +8,15 @@
 | `CONFIGURATION.md`, `DEVELOPMENT.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
 | `DOCUMENTATION_GUIDE.md`, headings included | Japanese |
 | `spec/**/*.tsp`, doc comments included | English |
-| Prose in the canonical documents under `spec/`, `spec/README.md` and `spec/contexts/*/README.md` included | Japanese |
+| Prose in the canonical documents under `docs/`, `docs/README.md` and `docs/contexts/*/README.md` included | Japanese |
 | `work-items/**` | Japanese |
-| READMEs below the repository root except `spec/**` and `tools/**`, headings included | Japanese |
-| `infra/runbooks/*`, headings included | Japanese |
+| READMEs below the repository root except `docs/**` and `tools/**`, headings included | Japanese |
+| `docs/operations/runbooks/*`, headings included | Japanese |
 | `tools/**` | English |
 | Go and TypeScript comments | Japanese |
 | Go and TypeScript identifiers, database columns, event names, error codes, scopes | English |
 | `REQ-<CONTEXT>-NNN`, TypeSpec symbols, section headings, table headers, frontmatter keys | English |
-| Headings and file names of the canonical documents under `spec/`, `README.md` included | English |
+| Headings and file names of the canonical documents under `docs/`, `README.md` included | English |
 | API error messages, log messages, CLI help | English |
 | User-facing UI text | Localized; `ja` and `en` both live in the `*.i18n.ts` dictionaries |
 | Commit messages | English |
@@ -58,7 +58,7 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
   - Keep feature and behavior changes specification-first.
   - Put models, API interfaces, and authentication mechanisms in `spec/**/*.tsp`.
   - Put the boundary declaration, glossary, standards, language-independent state transitions,
-    decisions, mechanism, and scenarios in the canonical file under `spec/` whose name says what that
+    decisions, mechanism, and scenarios in the canonical file under `docs/` whose name says what that
     kind of content is. The file name is the division; there is no single per-context document.
   - Use stable `REQ-<CONTEXT>-NNN` normative scenario IDs and TypeSpec symbols in work-item references.
   - Treat these as section-addressable references, not required reading:
@@ -72,7 +72,7 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
     rather than a methodology-specific CLI.
   - Regenerate untracked TypeSpec and HTML artifacts after specification changes.
   - If bounded contexts, global directory structures, adopted technologies, or core design rules change,
-    synchronize `spec/README.md` and `spec/structure.md`.
+    synchronize `docs/README.md` and `docs/structure.md`.
   - Put durable decisions in `decisions.md` and durable mechanism in `internals.md`;
     put change-specific analysis, alternatives, and implementation history in the work item.
   - Do not add architecture ledgers. Boundary checks infer structure from paths and reject forbidden dependencies only.

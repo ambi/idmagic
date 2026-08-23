@@ -42,12 +42,13 @@ async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'spec-workspace-test-'))
   cleanup.push(root)
   await mkdir(join(root, 'spec', 'contexts', 'demo'), { recursive: true })
+  await mkdir(join(root, 'docs', 'contexts', 'demo'), { recursive: true })
   await mkdir(join(root, 'work-items', 'done'), { recursive: true })
   await writeFile(join(root, 'spec', 'main.tsp'), 'namespace Demo;\n')
-  await writeFile(join(root, 'spec', 'README.md'), '# Specification\n')
-  await writeFile(join(root, 'spec', 'authorization.md'), '# Authorization\n')
-  await writeFile(join(root, 'spec', 'contexts', 'demo', 'README.md'), '# Demo\n')
-  await writeFile(join(root, 'spec', 'contexts', 'demo', 'scenarios.md'), '# Demo Scenarios\n')
+  await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
+  await writeFile(join(root, 'docs', 'authorization.md'), '# Authorization\n')
+  await writeFile(join(root, 'docs', 'contexts', 'demo', 'README.md'), '# Demo\n')
+  await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.md'), '# Demo Scenarios\n')
   return root
 }
 
@@ -57,28 +58,28 @@ describe('discoverWorkspaceConfig', () => {
     const config = await discoverWorkspaceConfig(root)
     expect(config.specification).toBe('spec/main.tsp')
     expect(config.documents).toEqual([
-      'spec/README.md',
-      'spec/authorization.md',
-      'spec/contexts/demo/README.md',
-      'spec/contexts/demo/scenarios.md',
+      'docs/README.md',
+      'docs/authorization.md',
+      'docs/contexts/demo/README.md',
+      'docs/contexts/demo/scenarios.md',
     ])
     expect(config.workItems).toBe('work-items')
   })
 
   it('ignores a Markdown file the layout does not name', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'spec', 'contexts', 'demo', 'notes.md'), '# Notes\n')
-    await writeFile(join(root, 'spec', 'states.md'), '# States\n')
+    await writeFile(join(root, 'docs', 'contexts', 'demo', 'notes.md'), '# Notes\n')
+    await writeFile(join(root, 'docs', 'states.md'), '# States\n')
     const config = await discoverWorkspaceConfig(root)
-    expect(config.documents).not.toContain('spec/contexts/demo/notes.md')
-    expect(config.documents).not.toContain('spec/states.md')
+    expect(config.documents).not.toContain('docs/contexts/demo/notes.md')
+    expect(config.documents).not.toContain('docs/states.md')
   })
 
   it('rejects a leftover SPECIFICATION.md as a second source of truth', async () => {
     const root = await workspace()
-    await writeFile(join(root, 'spec', 'contexts', 'demo', 'SPECIFICATION.md'), '# Demo\n')
+    await writeFile(join(root, 'docs', 'contexts', 'demo', 'SPECIFICATION.md'), '# Demo\n')
     await expect(discoverWorkspaceConfig(root)).rejects.toThrow(
-      'legacy specification documents found: spec/contexts/demo/SPECIFICATION.md',
+      'legacy specification documents found: docs/contexts/demo/SPECIFICATION.md',
     )
   })
 

@@ -8,7 +8,7 @@ change_kind: bugfix
 priority: p2
 initial_context:
   specification:
-    - spec/SPECIFICATION.md
+    - docs/SPECIFICATION.md
   typespec:
     - Product.Saml.SamlServiceProvider
     - Product.WsFederation.WsFedRelyingParty
@@ -54,7 +54,7 @@ affected_spec:
 ## Scope
 - 外部が値を決める識別子ごとに、上限の根拠を「標準が定めている」「資源上限として置く」のどちらかに分類する。対象は、btree の鍵の成分になっている外部由来の列すべて。
 - 標準が定める値は原典を引いて記録する。定めていない値には、btree の索引行上限より内側で、実運用の実例を拒否しない上限を置く。
-- `spec/SPECIFICATION.md` の String length limits に、資源上限の区分とその根拠を追記する。「上限を置かない値もある」という現在の記述を改める。
+- `docs/SPECIFICATION.md` の String length limits に、資源上限の区分とその根拠を追記する。「上限を置かない値もある」という現在の記述を改める。
 - Go の domain / usecase で上限を強制する。管理 API は `wi-128` が用意した `spec.LengthError` 経由で 422 として返し、プロトコル接点はそれぞれのプロトコルのエラー形で返す。DB には `CHECK` を最後の防壁として置く。
 - 鍵の成分ではない外部由来の文字列（token hash、`tls_client_auth_subject_dn`、`quarantine_reason` など）についても、上限を置くか置かないかを判断して記録する。
 
@@ -181,7 +181,7 @@ affected_spec:
 - **Summary**:
   外部が値を決める識別子の「上限なし」を、宣言された上限に置き換えた。意味上の差分は 3 点である。
   - **暗黙の上限を宣言された上限にした**。これらの列は主キーや一意索引の成分であり、PostgreSQL の btree v4 が索引行 1 件を 2704 バイトに制限する。つまり上限は既に存在し、宣言されておらず、超過は `SQLSTATE 54000` として 500 で返っていた。`wi-128` が長さ違反に与えた 422 の扱いから漏れていた。上限を宣言し、超過が btree に到達する前に止まるようにした。回帰テストは `TestAdminServiceProvider_RejectsMultibyteEntityIDOverTheByteCeiling`（着手時は 201 を返し、PostgreSQL へ渡していた）。
-  - **上限を 2 段にした**。契約の上限はコードポイント、索引の鍵の成分にはバイトの資源上限を重ねる。コードポイントだけでは足りない。標準が 1024 文字と定める entity ID でも、すべて 3 バイト文字なら 3072 バイトになり、宣言した契約を満たす値のまま btree で落ちる。資源をバイトで測るのは、btree が制限しているものがバイトだからである。`spec/SPECIFICATION.md` の「単位はコードポイント」という原則の例外に、「標準自身がオクテットで定めている値」に加えて「資源そのものがバイトで測られる場合」を足した。
+  - **上限を 2 段にした**。契約の上限はコードポイント、索引の鍵の成分にはバイトの資源上限を重ねる。コードポイントだけでは足りない。標準が 1024 文字と定める entity ID でも、すべて 3 バイト文字なら 3072 バイトになり、宣言した契約を満たす値のまま btree で落ちる。資源をバイトで測るのは、btree が制限しているものがバイトだからである。`docs/SPECIFICATION.md` の「単位はコードポイント」という原則の例外に、「標準自身がオクテットで定めている値」に加えて「資源そのものがバイトで測られる場合」を足した。
   - **違反の伝え方を接点ごとに分けた**。管理 API は `wi-128` どおり 422 / `field_length_exceeded`。SAML・WS-Federation・OAuth 2.0・WebAuthn の接点は、そのプロトコルが定めるエラー形で返す。AuthnRequest を送ってきた相手に Problem Details を返しても読めない。プロトコル接点では型付きの `*spec.LengthError` を返さないことを `TestParseAuthnRequestLengthErrorIsNotAFieldLengthViolation` が守る。
 - **着手時の前提の訂正**:
   - `scim_id` と `kid` は外部が決めない。`scim_id` は `backend/sourcing/scim/usecases/users.go` が採番する 16 バイト乱数の hex 32 文字で、RFC 7643 §3.1 の `id` は service provider が割り当てる値である（IdMagic がその service provider）。`kid` は `backend/signingkeys/keys_jose/rsa_jwk.go` が計算する RFC 7638 の JWK thumbprint（base64url 43 文字）で、OpenBao 経路も同じ関数を通る。これらを外から受け取るのは検索経路だけで、`SELECT` は btree の索引行上限に触れない。
@@ -210,5 +210,5 @@ affected_spec:
   - `just spec-diff` - `no normative specification change against main`（規範シナリオの追加・削除・変更なし。変更は Design と TypeSpec の制約）
   - `just check-work-items` / `just check-ids` - passed
   - 新規テスト: `backend/shared/spec/key_length_test.go`（鍵ごとのバイト予算が btree 上限の内側であること、`KeyString` が 2 つの上限を課すこと、違反した上限の単位で報告すること、標準が許す実例を拒否しないこと、`TruncateChars` がコードポイント境界で切ること）、`backend/saml/handlers_http/admin_service_provider_length_test.go`（標準の 1024 文字と上限ちょうどを受理、上限 +1 と多バイト超過を 422 とフィールド名つき `detail`）、`backend/wsfederation/handlers_http/admin_relying_party_length_test.go`（同上）、`backend/saml/domain/authnrequest_length_test.go`（AuthnRequest の `ID` の上限 ±1、プロトコル接点が型付きの長さエラーを返さないこと）、`backend/saml/db_postgres/service_provider_length_test.go`（domain が受ける値は DB も受ける / domain を迂回した超過を `saml_service_providers_entity_id_length` が止める / 多バイト超過が btree ではなく `CHECK` で止まる）。
-  - 手動確認: 各識別子について、上限の根拠が標準の引用か資源上限の説明として `spec/SPECIFICATION.md` の String length limits に記録されている。
+  - 手動確認: 各識別子について、上限の根拠が標準の引用か資源上限の説明として `docs/SPECIFICATION.md` の String length limits に記録されている。
   - 手動確認: 2704 バイトに達する前に、管理 API・プロトコル接点・DB のいずれの経路も宣言された上限で止まる。

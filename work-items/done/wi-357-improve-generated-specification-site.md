@@ -15,9 +15,9 @@ initial_context:
     - WORK_ITEM_FORMAT.md
     - SPECIFICATION_FORMAT.md
     - spec/main.tsp
-    - spec/SPECIFICATION.md
-    - spec/contexts/*/SPECIFICATION.md
-    - spec/contexts/*/*.tsp
+    - docs/SPECIFICATION.md
+    - docs/contexts/*/SPECIFICATION.md
+    - docs/contexts/*/*.tsp
     - spec/generated/openapi/*.json
     - tools/render-spec-docs/src/main.ts
     - tools/render-spec-docs/src/render.ts
@@ -69,7 +69,7 @@ initial_context:
 
 - `WORK_ITEM_FORMAT.md` の H1、見出し、本文、例を英語へ統一し、Method navigation では
   `Work Item Format` と表示する。
-- `spec/SPECIFICATION.md` の root title を application 名に依存しない `Whole-System Specification` とし、
+- `docs/SPECIFICATION.md` の root title を application 名に依存しない `Whole-System Specification` とし、
   repository 管理情報ではなく全 bounded context を横断する specification/current design であることを Overview と
   navigation で明示する。
 - root `Context Map` に bounded context 間の domain relationship を表す Mermaid graph と legend を追加し、
@@ -158,7 +158,7 @@ integration pattern を edge label で示す。意味のない全 pair や sourc
 relationship label の legend と、詳細責務を読む一覧を置く。実装時に current interfaces と context ownership を監査し、
 推測の edge は追加しない。
 
-graph の Mermaid source は `spec/SPECIFICATION.md` に置き、current design の一部として review 可能にする。renderer は
+graph の Mermaid source は `docs/SPECIFICATION.md` に置き、current design の一部として review 可能にする。renderer は
 Mermaid syntax error を生成時に検出し、図を安全な SVG または repository-local asset として表示する。
 
 ### ADR retirement in current documentation
@@ -228,7 +228,7 @@ current item、method badge、property required marker、focus ring を共通 to
 ## Plan
 
 最初に canonical documents、state tables、scenario grammar、TypeSpec symbol と OpenAPI viewer integration、現行 internal links を
-inventory 化し、representative fixture と期待する page graph を固定する。次に `spec/SPECIFICATION.md`、各 owning context の Design、
+inventory 化し、representative fixture と期待する page graph を固定する。次に `docs/SPECIFICATION.md`、各 owning context の Design、
 `SPECIFICATION_FORMAT.md`、`WORK_ITEM_FORMAT.md` を specification-first に更新する。
 
 その後 renderer を source parsing、presentation model、link graph、page rendering、asset emission に分け、まず multi-page
@@ -242,7 +242,7 @@ generated files は ignored artifact のままとし、source、tests、recipe �
 ## Tasks
 
 - [x] T001 [Inventory] canonical document/ADR link/state table/scenario、全 TypeSpec symbol、OpenAPI viewer 候補、現行 output/link を棚卸しし、代表 fixture と欠落情報を記録する。
-- [x] T002 [Spec] `Whole-System Specification` title/Overview と DDD Context Map graph を `spec/SPECIFICATION.md` に追加し、現在も有効な ADR rationale を owning root/context Design へ移して historical link を除く。
+- [x] T002 [Spec] `Whole-System Specification` title/Overview と DDD Context Map graph を `docs/SPECIFICATION.md` に追加し、現在も有効な ADR rationale を owning root/context Design へ移して historical link を除く。
 - [x] T003 [Method] `WORK_ITEM_FORMAT.md` を例を含め英語へ統一し、`SPECIFICATION_FORMAT.md` に multi-page generated view、derived state diagram、canonical spec から ADR archive を参照しない規則を反映する。
 - [x] T004 [TypeSpec] API 到達性にかかわらず model/enum/union/scalar/property の説明欠落を監査し、欠落を catalog に明示する。domain knowledge なしの推測文は生成しない。
 - [x] T005 [Renderer] source parsing、presentation model、link graph、page template、asset emission を分離し、index/Method/root/context/API/model の multi-page output と relative link rewrite を実装する。TypeSpec/OpenAPI/Go module discovery は application 名に依存させない。

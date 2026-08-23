@@ -5,7 +5,7 @@ risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md, spec/contexts/audit/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md, docs/contexts/audit/SPECIFICATION.md]
   source: [backend/audit/handlers_http, backend/shared/http/support_http/problem.go]
   tests: [backend/audit/handlers_http]
   stop_before_reading: [frontend]
@@ -31,7 +31,7 @@ initial_context:
 ## Design
 
 - `support.WriteBrowserError(...)` を `support.WriteProblem(...)` に機械的に
-  置き換える。`spec/contexts/audit/SPECIFICATION.md` の該当 `kind: error` model はいずれも
+  置き換える。`docs/contexts/audit/SPECIFICATION.md` の該当 `kind: error` model はいずれも
   既存 Go 実装と status が一致しているため (wi-325 確認済み)、status 変更は不要。
 
 ## Plan

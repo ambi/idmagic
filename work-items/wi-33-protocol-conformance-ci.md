@@ -18,7 +18,7 @@ production-ready IdP では、unit test だけでなく外部 conformance suite 
 
 ## Scope
 - **decision**:
-  - `spec/standards.md` へ記録する決定: conformance 検証を assurance evidence として扱う方針を定義する。 full certification ではなく、CI で回す smoke と release 前に回す expanded suite を分ける。
+  - `docs/standards.md` へ記録する決定: conformance 検証を assurance evidence として扱う方針を定義する。 full certification ではなく、CI で回す smoke と release 前に回す expanded suite を分ける。
 - **specification**:
   - assurance に OAuth/OIDC/FAPI conformance evidence を追加する。
   - Discovery / JWKS / Authorization Code / PKCE / PAR / DPoP / private_key_jwt の acceptance を更新する。

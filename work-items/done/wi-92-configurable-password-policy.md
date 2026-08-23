@@ -7,10 +7,10 @@ depends_on: [wi-24-hibp-breached-password-checker]
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-010
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-016
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-022
-    - spec/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-019
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-010
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-016
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-022
+    - docs/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-019
   typespec:
     - IdMagic.Tenancy.PasswordPolicyOverride
     - IdMagic.Tenancy.PasswordPolicyDefaults
@@ -46,8 +46,8 @@ initial_context:
 affected_spec:
   - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyOverride }
   - { path: spec/contexts/tenancy/models.tsp, symbol: PasswordPolicyDefaults }
-  - { path: spec/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-019 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-024 }
+  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-019 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-024 }
 ---
 
 # テナントのパスワードポリシーを永続化し、任意の有効期限で次回ログイン時の変更を強制する

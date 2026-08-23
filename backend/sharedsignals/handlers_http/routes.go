@@ -311,7 +311,7 @@ func (d Deps) handleListDeliveries(c *echo.Context) error {
 }
 
 // writeAdminSharedSignalsError は管理 API のエラーを返す。管理 API は汎用 API なので
-// 既定の envelope である RFC 9457 Problem Details を使う (spec/api-rules.md
+// 既定の envelope である RFC 9457 Problem Details を使う (docs/api-rules.md
 // HTTP error responses)。inbound SET receiver は形式が違うので
 // writeSecurityEventReceiverError を使うこと。
 func writeAdminSharedSignalsError(c *echo.Context, err error) error {
@@ -340,7 +340,7 @@ func writeAdminSharedSignalsError(c *echo.Context, err error) error {
 // writeSecurityEventReceiverError は inbound SET receiver
 // (POST /ssf/streams/:stream_id/events) のエラーを返す。この endpoint の応答形式は
 // RFC 8935 §2.3 が固定しており、汎用 API の Problem Details を適用しない
-// (spec/api-rules.md HTTP error responses の標準準拠の例外)。
+// (docs/api-rules.md HTTP error responses の標準準拠の例外)。
 func writeSecurityEventReceiverError(c *echo.Context, status int, code, description string) error {
 	return support.NoStoreJSON(c, status, map[string]string{"error": code, "message": description})
 }

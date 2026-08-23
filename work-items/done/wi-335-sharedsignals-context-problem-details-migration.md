@@ -5,7 +5,7 @@ risk: medium
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md, spec/contexts/sharedsignals/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md, docs/contexts/sharedsignals/SPECIFICATION.md]
   source: [backend/sharedsignals/handlers_http, backend/shared/http/support_http/problem.go]
   tests: [backend/sharedsignals/handlers_http]
   stop_before_reading: [frontend]
@@ -19,7 +19,7 @@ initial_context:
 `backend/shared/http/support_http/problem.go`、参照実装
 `backend/apitoken/handlers_http/routes.go`) を SharedSignals の admin stream
 管理 API に適用する。inbound SET receiver (`POST /ssf/streams/:id/events`) は
-`spec/contexts/sharedsignals/SPECIFICATION.md` の `error_format: set_delivery`
+`docs/contexts/sharedsignals/SPECIFICATION.md` の `error_format: set_delivery`
 (RFC 8935 §2.3 が `{err, description}` 固定形式を MUST で規定、`wi-325` で
 確認済み) のため対象外 (ADR-154、`wi-326` Scope)。`wi-325` で新設した 7 個の
 granular error model (いずれも 422) に対応する Go 呼び出し箇所も、admin API

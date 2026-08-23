@@ -159,7 +159,7 @@ describe('validateAgainstSchema — work-item', () => {
         {
           ...feature,
           affected_spec: [
-            { path: 'spec/contexts/demo/scenarios.md', requirement: 'REQ-DEMO-CHECK' },
+            { path: 'docs/contexts/demo/scenarios.md', requirement: 'REQ-DEMO-CHECK' },
           ],
         },
         '',
@@ -285,7 +285,7 @@ describe('validateAgainstSchema — work-item', () => {
     expect(
       validateAgainstSchema(
         'work-item',
-        { ...started, initial_context: { specification: ['spec/scenarios.md#REQ-DEMO-001'] } },
+        { ...started, initial_context: { specification: ['docs/scenarios.md#REQ-DEMO-001'] } },
         '',
       ),
     ).toEqual([])

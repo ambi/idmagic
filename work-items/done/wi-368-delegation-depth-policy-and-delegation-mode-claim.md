@@ -7,8 +7,8 @@ depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-de
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-046
-    - spec/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-019
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-046
+    - docs/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-019
   typespec:
     - IdMagic.Contract.Tenant
     - IdMagic.Contract.PasswordPolicyOverride
@@ -61,9 +61,9 @@ affected_spec:
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.DelegationMode }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.IntrospectionResponse }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.TokenExchanged }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-049 }
-  - { path: spec/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-021 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-049 }
+  - { path: docs/contexts/tenancy/scenarios.md, requirement: REQ-TENANCY-021 }
 ---
 
 # 委譲深さの上限をテナントポリシーにし、トークンが自律実行か代理実行かを判別可能にする
@@ -72,7 +72,7 @@ affected_spec:
 
 2 つの問題が同じ場所にある。
 
-**(1) 仕様と実装が乖離している。** `spec/contexts/oauth2/SPECIFICATION.md` は Token Exchange の
+**(1) 仕様と実装が乖離している。** `docs/contexts/oauth2/SPECIFICATION.md` は Token Exchange の
 制約として "a configurable maximum delegation depth" と書いているが、実装は
 `backend/oauth2/token/usecases/exchange_token.go` の `const MaxDelegationDepth = 3` で
 ハードコードされている。テナントごとにリスク許容度は異なる — 社内の閉じた
@@ -94,7 +94,7 @@ delegation-only + 深さ上限 + `may_act` 強制で既に先行している。�
 ## Scope
 
 - `spec/contexts/tenancy/models.tsp` の `Tenant` に委譲深さ上限の override を追加する。
-- `spec/contexts/oauth2/SPECIFICATION.md` に、テナント上限を超える委譲が拒否される
+- `docs/contexts/oauth2/SPECIFICATION.md` に、テナント上限を超える委譲が拒否される
   normative scenario (REQ-OAUTH2-048) と、委譲モードを一貫して返す scenario
   (REQ-OAUTH2-049) を追加する。
 - `exchange_token.go` の `const MaxDelegationDepth` をテナント設定からの解決に置き換える。

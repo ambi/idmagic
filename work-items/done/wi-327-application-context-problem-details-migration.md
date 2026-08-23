@@ -5,7 +5,7 @@ risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md, spec/contexts/application/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md, docs/contexts/application/SPECIFICATION.md]
   typespec: [IdMagic.Contract.CategoryNameRequiredError, IdMagic.Contract.UnknownCategoryError, IdMagic.Contract.ClientSecretLimitExceededError]
   source: [backend/application/handlers_http, backend/shared/http/support_http/problem.go]
   tests: [backend/application/handlers_http]
@@ -32,7 +32,7 @@ initial_context:
 `admin_category_handler.go` の `category_name_required`/`unknown_category`
 (`wi-326` T003 で新設した distinguishable code) はここで envelope を
 Problem Details 化すると同時に status も specification 宣言値 422 へ揃える
-(`spec/contexts/application/SPECIFICATION.md` の `CategoryNameRequiredError`/
+(`docs/contexts/application/SPECIFICATION.md` の `CategoryNameRequiredError`/
 `UnknownCategoryError`)。他の call site (`category_not_found` 404,
 `application_not_found` 404 等) は既存 status のまま envelope だけ変える。
 

@@ -7,9 +7,9 @@ created_at: 2026-07-03
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-013
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-014
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-026
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-013
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-014
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-026
   typespec:
     - IdMagic.Contract.TrustedDevice
     - IdMagic.Contract.NotificationTemplateKey
@@ -33,11 +33,11 @@ initial_context:
     - backend/provisioning
     - backend/sharedsignals
 affected_spec:
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-030 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-031 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-032 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-033 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-034 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-030 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-031 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-032 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-033 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-034 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.SecurityNotificationCategory }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.NotificationPreference }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.KnownSignInDevice }

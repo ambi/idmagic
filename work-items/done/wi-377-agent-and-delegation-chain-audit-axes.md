@@ -8,8 +8,8 @@ depends_on: [wi-50-token-exchange-delegation-actor-chain, wi-368-delegation-dept
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/audit/scenarios.md#REQ-AUDIT-003
-    - spec/contexts/oauth2/scenarios.md#REQ-OAUTH2-049
+    - docs/contexts/audit/scenarios.md#REQ-AUDIT-003
+    - docs/contexts/oauth2/scenarios.md#REQ-OAUTH2-049
   typespec:
     - IdMagic.Contract.AuditEventSearchAttribute
     - IdMagic.Contract.AuditEventQuery
@@ -36,10 +36,10 @@ initial_context:
     - backend/idgovernance
     - backend/provisioning
 affected_spec:
-  - { path: spec/contexts/audit/scenarios.md, requirement: REQ-AUDIT-003 }
-  - { path: spec/contexts/audit/scenarios.md, requirement: REQ-AUDIT-005 }
-  - { path: spec/contexts/audit/scenarios.md, requirement: REQ-AUDIT-006 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-049 }
+  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-003 }
+  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-005 }
+  - { path: docs/contexts/audit/scenarios.md, requirement: REQ-AUDIT-006 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-049 }
 ---
 
 # 監査の検索軸にエージェントと委譲チェーンを加え、代行操作を本人の操作と区別できるようにする
@@ -58,7 +58,7 @@ affected_spec:
 
 ## Scope
 
-- `spec/contexts/audit/scenarios.md` に、エージェントを主体とする監査イベントの検索と、委譲チェーンによる相関を求める規範シナリオを追加する。既存の REQ-AUDIT-003 (`workflow_id` / `run_id` による検索) と同じ形の軸拡張とする。
+- `docs/contexts/audit/scenarios.md` に、エージェントを主体とする監査イベントの検索と、委譲チェーンによる相関を求める規範シナリオを追加する。既存の REQ-AUDIT-003 (`workflow_id` / `run_id` による検索) と同じ形の軸拡張とする。
 - 追加する検索軸を確定する。少なくとも次を含む。
   - `actor.type` — 主体が `user` か `agent` かを区別する。既存の `actor.id` の意味を変えずに種別を分ける。
   - `agent.id` — エージェント自身の識別子。
@@ -124,7 +124,7 @@ affected_spec:
 ### ペイロードへ載せる範囲
 
 - `TokenExchanged` に `agentId` と `actorChain` を足す。深さと両端 (`actorUserId` / `subjectUserId`) だけでは中間の参加者を辿れない。
-- `FgaCheckEvaluated` と `FgaResourcesEnumerated` は据え置く。Motivation は `FgaCheckEvaluated` が深さの整数しか持たない点を欠落として挙げているが、Authorization には「タプルの内容と主体識別子は監査へ複製しない」という既存の判断があり (`spec/contexts/authorization/internals.md` の Audit 節)、リソース識別子をダイジェストへ落とすのも同じ判断に基づく。参加者を載せることはこの判断の撤回にあたり、監査軸の追加の副産物として行ってよい変更ではない。`FgaCheckEvaluated` は識別子を含まない `actorChainDepth` を `delegation.depth` へ供給するにとどめ、チェーンの相関はそれを成立させた OAuth2 の `TokenExchanged` 側で取る。判断そのものを見直す必要があれば別の work item で扱う。
+- `FgaCheckEvaluated` と `FgaResourcesEnumerated` は据え置く。Motivation は `FgaCheckEvaluated` が深さの整数しか持たない点を欠落として挙げているが、Authorization には「タプルの内容と主体識別子は監査へ複製しない」という既存の判断があり (`docs/contexts/authorization/internals.md` の Audit 節)、リソース識別子をダイジェストへ落とすのも同じ判断に基づく。参加者を載せることはこの判断の撤回にあたり、監査軸の追加の副産物として行ってよい変更ではない。`FgaCheckEvaluated` は識別子を含まない `actorChainDepth` を `delegation.depth` へ供給するにとどめ、チェーンの相関はそれを成立させた OAuth2 の `TokenExchanged` 側で取る。判断そのものを見直す必要があれば別の work item で扱う。
 
 ### 索引
 
@@ -144,7 +144,7 @@ Scope に挙げた `spec/contexts/identity-management/models.tsp` への `model 
 
 - [x] T001 [Design] 委譲チェーンの表現、既存イベントの後方互換、PII の扱いを確定し `## Design` に記録する。
 - [x] T002 [Spec] 監査の検索軸とエージェント相関の規範シナリオを追加し、必要なイベントのペイロードに委譲チェーンを載せて再生成する。
-  - REQ-AUDIT-005 / REQ-AUDIT-006 を `spec/contexts/audit/scenarios.md` に追加。`AuditEventSearchAttribute.multi_valued` と `AuditEventSearchOptionsResponse.actor_types` / `delegation_modes` を追加。`TokenExchanged` に `agentId` / `actorChain` を追加。`AuditDelegationChain` / `AuditActorType` を用語集へ、多値の検索属性を `internals.md` へ。
+  - REQ-AUDIT-005 / REQ-AUDIT-006 を `docs/contexts/audit/scenarios.md` に追加。`AuditEventSearchAttribute.multi_valued` と `AuditEventSearchOptionsResponse.actor_types` / `delegation_modes` を追加。`TokenExchanged` に `agentId` / `actorChain` を追加。`AuditDelegationChain` / `AuditActorType` を用語集へ、多値の検索属性を `internals.md` へ。
 - [x] T003 [App] `AuditSearchRegistry` と `ExtractSearchAttributes` を更新し、エージェント主体のフォールバックを止める。
   - RED: `TestActorChainParticipants` (`backend/oauth2/domain`, REQ-AUDIT-006) → `domain.ActorChainParticipants` を実装。
   - RED: `TestExtractSearchAttributesAgentActorDoesNotFallBackToTheUser` / `TestExtractSearchAttributesDelegationChainIsMultiValued` / `TestExtractSearchAttributesLeavesDelegationAxesAbsent` (`backend/audit/usecases`, REQ-AUDIT-005 / REQ-AUDIT-006) → 抽出器を多値化し、委譲の軸を追加。

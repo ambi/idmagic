@@ -7,15 +7,15 @@ created_at: 2026-07-10
 change_kind: operations
 initial_context:
   specification:
-    - spec/contexts/system/scenarios.md#REQ-SYSTEM-001
-    - spec/README.md
-    - spec/deployment.md
-    - spec/observability.md
-    - spec/structure.md
-    - spec/contexts/audit/decisions.md
-    - spec/contexts/authentication/internals.md
-    - spec/contexts/jobs/internals.md
-    - spec/contexts/oauth2/internals.md
+    - docs/contexts/system/scenarios.md#REQ-SYSTEM-001
+    - docs/README.md
+    - docs/deployment.md
+    - docs/observability.md
+    - docs/structure.md
+    - docs/contexts/audit/decisions.md
+    - docs/contexts/authentication/internals.md
+    - docs/contexts/jobs/internals.md
+    - docs/contexts/oauth2/internals.md
   typespec:
     - IdMagic.System.Operations.MetricsExposition
     - IdMagic.OAuth2.Operations.RegisterClient
@@ -40,28 +40,28 @@ initial_context:
     - frontend
     - infra
 affected_spec:
-  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
 ---
 
 # 1000万ユーザー、10万テナント規模の容量目標と水平スケール参照構成を定義する
 
 ## Motivation
 
-SCL の `objectives` は `dc0961d0` で削除され、後続の `1b7b2cef` で仕様が TypeSpec と正典文書へ移行した際にも移送先が作られなかった。このため、`REQ-SYSTEM-001` は Prometheus が OAuth2 の可用性、レイテンシー、エラー率の目標を評価すると規定している一方、現在の `spec/` にはその目標値が存在しない。`spec/observability.md` は評価に使うメトリクスを定め、`spec/structure.md` は SLO をサービス分割の判断材料に挙げているが、どちらも目標値の正典ではない。
+SCL の `objectives` は `dc0961d0` で削除され、後続の `1b7b2cef` で仕様が TypeSpec と正典文書へ移行した際にも移送先が作られなかった。このため、`REQ-SYSTEM-001` は Prometheus が OAuth2 の可用性、レイテンシー、エラー率の目標を評価すると規定している一方、現在の `spec/` にはその目標値が存在しない。`docs/observability.md` は評価に使うメトリクスを定め、`docs/structure.md` は SLO をサービス分割の判断材料に挙げているが、どちらも目標値の正典ではない。
 
 フリート全体の容量前提も未定義である。1000万ユーザー、10万テナントを扱うという目標だけでは、同時アクティブ数、オブジェクト数、保持期間、ストレージ成長、集中時間帯の要求率が決まらず、API レプリカ数、PostgreSQL 接続数、ワーカー実行枠を算出できない。計画上の仮定と実測済みの上限を区別しなければ、参照構成が目標を満たすかどうかも判断できない。
 
-現在の共有状態ストアは Valkey ではない。[[wi-278-consolidate-ephemeral-state-into-postgresql-remove-valkey]] により、永続状態と一時状態は PostgreSQL に統合され、`spec/deployment.md` も PostgreSQL を唯一の共有状態ストアとしている。本 WI はこの現行構成を出発点として、失われた SLO の正典、フリート規模の容量前提、水平スケールの参照構成を整備する。データ層の改修は [[wi-164-data-tier-scalability-partitioning-read-replica-pooling]]、高可用性とフェイルオーバーの実装は [[wi-165-high-availability-and-failover-resilience-topology]]、ステージングでの実測は [[wi-282-staging-load-testing-and-capacity-validation]] が受け持つ。
+現在の共有状態ストアは Valkey ではない。[[wi-278-consolidate-ephemeral-state-into-postgresql-remove-valkey]] により、永続状態と一時状態は PostgreSQL に統合され、`docs/deployment.md` も PostgreSQL を唯一の共有状態ストアとしている。本 WI はこの現行構成を出発点として、失われた SLO の正典、フリート規模の容量前提、水平スケールの参照構成を整備する。データ層の改修は [[wi-164-data-tier-scalability-partitioning-read-replica-pooling]]、高可用性とフェイルオーバーの実装は [[wi-165-high-availability-and-failover-resilience-topology]]、ステージングでの実測は [[wi-282-staging-load-testing-and-capacity-validation]] が受け持つ。
 
 ## Scope
 
-- `spec/capacity.md` を作成し、`spec/README.md` の正典文書索引から参照できるようにする。
-- 旧 SCL に存在した主要なレイテンシー、非 5xx 比率、可用性、スループットの数値を現在の API とメトリクスに照合し、測定対象、母集団、時間窓、除外条件を備えた目標として `spec/capacity.md` に復元する。
+- `docs/capacity.md` を作成し、`docs/README.md` の正典文書索引から参照できるようにする。
+- 旧 SCL に存在した主要なレイテンシー、非 5xx 比率、可用性、スループットの数値を現在の API とメトリクスに照合し、測定対象、母集団、時間窓、除外条件を備えた目標として `docs/capacity.md` に復元する。
 - 10万テナント、1000万ユーザーを参照運用プロファイルとし、テナント規模分布、同時アクティブセッション、主要オブジェクト総数、保持期間、ストレージ成長率、集中時間帯のエンドポイント別要求率を定める。
-- 計画上の仮定、仕様上の目標、実測結果を区別し、API レプリカ数、ワーカー実行枠、PostgreSQL 接続予算、ストレージ予算を算出する式と安全余裕を `spec/capacity.md` に定める。
-- 容量超過時はセキュリティ境界と監査の完全性を弱めず、対話的な認証処理より先にバルク処理を遅延させ、受け付けられない要求は黙って破棄せず明示的に拒否するという縮退順序を `spec/capacity.md` に定める。障害種別ごとの詳細な縮退マトリクスと実装は wi-165 に委ねる。
-- `spec/deployment.md` に、ゲートウェイまたは負荷分散装置、水平スケールするステートレスな API レプリカ、独立して水平スケールするワーカー、外部スケジューラーから起動するバッチ、共有状態を持つ PostgreSQL から成る製品中立の参照トポロジを記載する。
-- `REQ-SYSTEM-001` を、`spec/capacity.md` に定めた SLO を `spec/observability.md` のメトリクスで評価するシナリオとして整合させる。
+- 計画上の仮定、仕様上の目標、実測結果を区別し、API レプリカ数、ワーカー実行枠、PostgreSQL 接続予算、ストレージ予算を算出する式と安全余裕を `docs/capacity.md` に定める。
+- 容量超過時はセキュリティ境界と監査の完全性を弱めず、対話的な認証処理より先にバルク処理を遅延させ、受け付けられない要求は黙って破棄せず明示的に拒否するという縮退順序を `docs/capacity.md` に定める。障害種別ごとの詳細な縮退マトリクスと実装は wi-165 に委ねる。
+- `docs/deployment.md` に、ゲートウェイまたは負荷分散装置、水平スケールするステートレスな API レプリカ、独立して水平スケールするワーカー、外部スケジューラーから起動するバッチ、共有状態を持つ PostgreSQL から成る製品中立の参照トポロジを記載する。
+- `REQ-SYSTEM-001` を、`docs/capacity.md` に定めた SLO を `docs/observability.md` のメトリクスで評価するシナリオとして整合させる。
 
 ## Out of Scope
 
@@ -77,9 +77,9 @@ SCL の `objectives` は `dc0961d0` で削除され、後続の `1b7b2cef` で�
 
 ### 正典文書の分担
 
-フリート全体の決定は Context 固有の `decisions.md` には置かない。`spec/contexts/system/decisions.md` はシステム入口の境界を所有しており、データ層とワーカーを含むフリート全体はその責務を超える。実行単位と接続関係は `spec/deployment.md`、想定規模、目標値、限界の決め方、縮退順序は `spec/capacity.md` に置く。変更時に検討した代替案と判断履歴は本 work item に残し、ADR は作成しない。
+フリート全体の決定は Context 固有の `decisions.md` には置かない。`docs/contexts/system/decisions.md` はシステム入口の境界を所有しており、データ層とワーカーを含むフリート全体はその責務を超える。実行単位と接続関係は `docs/deployment.md`、想定規模、目標値、限界の決め方、縮退順序は `docs/capacity.md` に置く。変更時に検討した代替案と判断履歴は本 work item に残し、ADR は作成しない。
 
-`spec/capacity.md` だけにトポロジも集約する案は採らない。容量の数値を変えずに実行単位や接続関係だけを変更する場合があり、両者を同じ文書に置くと変更理由とレビュー対象が混ざるためである。
+`docs/capacity.md` だけにトポロジも集約する案は採らない。容量の数値を変えずに実行単位や接続関係だけを変更する場合があり、両者を同じ文書に置くと変更理由とレビュー対象が混ざるためである。
 
 ### 復元するサービス目標
 
@@ -119,25 +119,25 @@ SLO の復元を別 work item へ分けない。`REQ-SYSTEM-001` がすでに目
 
 ### PostgreSQL を共有状態の正とする参照構成
 
-API とワーカーはプロセス内に正となる状態を持たず、永続状態と一時状態を PostgreSQL で共有する。プロセス内キャッシュ、ゲートウェイ、CDN は Discovery や JWKS などから導出できる応答の負荷軽減に利用できるが、認可コード、セッション、再送防止、流量制限の正にはしない。キャッシュを失っても正しさを損なわず、失効や更新を TTL だけに依存させない境界を `spec/deployment.md` に記載する。
+API とワーカーはプロセス内に正となる状態を持たず、永続状態と一時状態を PostgreSQL で共有する。プロセス内キャッシュ、ゲートウェイ、CDN は Discovery や JWKS などから導出できる応答の負荷軽減に利用できるが、認可コード、セッション、再送防止、流量制限の正にはしない。キャッシュを失っても正しさを損なわず、失効や更新を TTL だけに依存させない境界を `docs/deployment.md` に記載する。
 
-Valkey を参照構成へ戻す案は採らない。現在の実装と `spec/deployment.md` は PostgreSQL への統合を完了しており、本 WI には新しい共有ストアを必要とする実測根拠がない。PostgreSQL の論理的な単一の正を、どの物理トポロジと接続方式で支えるかは wi-164 と wi-165 が決める。
+Valkey を参照構成へ戻す案は採らない。現在の実装と `docs/deployment.md` は PostgreSQL への統合を完了しており、本 WI には新しい共有ストアを必要とする実測根拠がない。PostgreSQL の論理的な単一の正を、どの物理トポロジと接続方式で支えるかは wi-164 と wi-165 が決める。
 
 ## Plan
 
-1. 削除前の SCL から目標値、測定窓、対象操作を棚卸しし、現在の TypeSpec の操作、HTTP ルート、`spec/observability.md` のメトリクスへ対応づける。対応先がない項目は後継または不採用理由を記録する。
-2. `spec/capacity.md` を作成し、サービス目標、参照運用プロファイル、オブジェクト数と保持前提、ピーク負荷、算出式、安全余裕、容量超過時の縮退順序を記載する。未実測値には仮定であることと、wi-282 で置き換える条件を付ける。
-3. `spec/deployment.md` に現行の PostgreSQL 単一共有ストアを前提とする参照トポロジ、各実行単位の水平スケール境界、キャッシュの責務、wi-164 と wi-165 に委ねる物理トポロジの境界を記載する。
-4. `spec/README.md` の索引と `REQ-SYSTEM-001` を新しい正典へ接続し、削除済みの SCL、ADR、Valkey を参照していないことを確認する。
+1. 削除前の SCL から目標値、測定窓、対象操作を棚卸しし、現在の TypeSpec の操作、HTTP ルート、`docs/observability.md` のメトリクスへ対応づける。対応先がない項目は後継または不採用理由を記録する。
+2. `docs/capacity.md` を作成し、サービス目標、参照運用プロファイル、オブジェクト数と保持前提、ピーク負荷、算出式、安全余裕、容量超過時の縮退順序を記載する。未実測値には仮定であることと、wi-282 で置き換える条件を付ける。
+3. `docs/deployment.md` に現行の PostgreSQL 単一共有ストアを前提とする参照トポロジ、各実行単位の水平スケール境界、キャッシュの責務、wi-164 と wi-165 に委ねる物理トポロジの境界を記載する。
+4. `docs/README.md` の索引と `REQ-SYSTEM-001` を新しい正典へ接続し、削除済みの SCL、ADR、Valkey を参照していないことを確認する。
 5. 仕様を生成して検証し、規範的な差分が容量目標と参照構成の追加に限られることを確認する。
 
 ## Tasks
 
 - [x] T001 [Inventory] 旧 SCL のサービス目標を現在の TypeSpec 操作、HTTP ルート、メトリクスへ対応づけ、維持、後継への移行、不採用を決める。
-- [x] T002 [Spec] `spec/capacity.md` を作成し、復元した SLO と容量受入れ目標の測定対象、母集団、時間窓、除外条件を定義する。
-- [x] T003 [Spec] `spec/capacity.md` に10万テナント、1000万ユーザーの参照運用プロファイル、主要オブジェクト数、保持期間、ストレージ成長、ピーク要求率、算出式、安全余裕、縮退順序を定義する。
-- [x] T004 [Spec] `spec/deployment.md` に PostgreSQL を唯一の共有状態ストアとする水平スケール参照トポロジと、API、ワーカー、バッチ、キャッシュ、データ層の責務境界を記載する。
-- [x] T005 [Spec] `spec/README.md` の索引と `REQ-SYSTEM-001` を `spec/capacity.md` に接続し、`spec/observability.md` のメトリクスで各 SLO を評価できることを確認する。
+- [x] T002 [Spec] `docs/capacity.md` を作成し、復元した SLO と容量受入れ目標の測定対象、母集団、時間窓、除外条件を定義する。
+- [x] T003 [Spec] `docs/capacity.md` に10万テナント、1000万ユーザーの参照運用プロファイル、主要オブジェクト数、保持期間、ストレージ成長、ピーク要求率、算出式、安全余裕、縮退順序を定義する。
+- [x] T004 [Spec] `docs/deployment.md` に PostgreSQL を唯一の共有状態ストアとする水平スケール参照トポロジと、API、ワーカー、バッチ、キャッシュ、データ層の責務境界を記載する。
+- [x] T005 [Spec] `docs/README.md` の索引と `REQ-SYSTEM-001` を `docs/capacity.md` に接続し、`docs/observability.md` のメトリクスで各 SLO を評価できることを確認する。
 - [x] T006 [Render] `mise run spec-render` で TypeSpec と正典文書から派生成果物を再生成する。
 - [x] T007 [Verify] `mise run check-spec`、`mise run check-work-items`、`mise run check-ids`、`mise run verify-spec`、`mise run spec-diff` を通す。
 
@@ -151,7 +151,7 @@ Valkey を参照構成へ戻す案は採らない。現在の実装と `spec/dep
 - `mise run spec-diff`
 - 手動で、各 SLO に測定対象、母集団、時間窓、除外条件、対応するメトリクスがあり、スループットが負荷条件を伴う容量受入れ目標として読めることを確認する。
 - 手動で、参照運用プロファイルのユーザー数、テナント数、オブジェクト数、保持期間、ストレージ成長、ピーク要求率からレプリカ数と接続予算を再計算できることを確認する。
-- 手動で、`spec/deployment.md` と `spec/capacity.md` が削除済みの SCL、ADR、Valkey を参照せず、`spec/deployment.md` の PostgreSQL 共有状態方針と矛盾しないことを確認する。
+- 手動で、`docs/deployment.md` と `docs/capacity.md` が削除済みの SCL、ADR、Valkey を参照せず、`docs/deployment.md` の PostgreSQL 共有状態方針と矛盾しないことを確認する。
 - 手動で、wi-164 がデータ層の容量機構、wi-165 が高可用性と障害時の詳細な縮退、wi-282 が実測を所有する分界を一意に読めることを確認する。
 
 ## Risk Notes
@@ -168,9 +168,9 @@ PostgreSQL が最初のボトルネックになる可能性はあるが、ボト
 
 - **Completed At**: 2026-08-22
 - **Summary**:
-  - 主要な OAuth2/OIDC 操作の SLO と容量受入れ目標を、測定母集団、時間窓、除外条件を含む正典として `spec/capacity.md` に復元した。
+  - 主要な OAuth2/OIDC 操作の SLO と容量受入れ目標を、測定母集団、時間窓、除外条件を含む正典として `docs/capacity.md` に復元した。
   - 10万テナント、1000万ユーザーの参照運用プロファイル、オブジェクト数、保持期間、ストレージ成長、ピーク要求率、算定式、安全余裕、縮退順序を定義した。
-  - PostgreSQL を唯一の共有状態ストアとし、API、ワーカー、バッチ、キャッシュの水平スケール境界を `spec/deployment.md` に同期した。
+  - PostgreSQL を唯一の共有状態ストアとし、API、ワーカー、バッチ、キャッシュの水平スケール境界を `docs/deployment.md` に同期した。
 - **Verification Results**:
   - `mise run verify` - passed
   - `mise run spec-render` - passed

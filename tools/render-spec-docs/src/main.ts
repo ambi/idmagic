@@ -26,14 +26,14 @@ async function canonicalDocuments(directory: string, names: readonly string[]): 
 }
 
 const paths = ['DEVELOPMENT.md', 'SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
-paths.push(...(await canonicalDocuments('spec', ROOT_DOCUMENTS)))
-const contextRoot = resolve(root, 'spec/contexts')
+paths.push(...(await canonicalDocuments('docs', ROOT_DOCUMENTS)))
+const contextRoot = resolve(root, 'docs/contexts')
 const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
   .sort()
 for (const name of contextDirectories) {
-  paths.push(...(await canonicalDocuments(`spec/contexts/${name}`, CONTEXT_DOCUMENTS)))
+  paths.push(...(await canonicalDocuments(`docs/contexts/${name}`, CONTEXT_DOCUMENTS)))
 }
 
 // The order the canonical layout defines is the order the site lists, so the
@@ -74,7 +74,7 @@ async function collectTraces(): Promise<ScenarioTrace[]> {
         continue
       }
       // The specification declares the scenarios; only what points at them counts.
-      if (path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path)) continue
+      if (path.startsWith('docs/') || path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path)) continue
       const target = path.startsWith('work-items/') ? workItems : sources
       for (const match of (await readFile(absolute, 'utf8')).matchAll(SCENARIO_IDENTIFIER)) {
         const paths = target.get(match[0]) ?? new Set<string>()

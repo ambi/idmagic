@@ -8,10 +8,10 @@ priority: p1
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/jobs/scenarios.md#REQ-JOBS-002
-    - spec/contexts/jobs/scenarios.md#REQ-JOBS-005
-    - spec/contexts/jobs/scenarios.md#REQ-JOBS-006
-    - spec/authorization.md
+    - docs/contexts/jobs/scenarios.md#REQ-JOBS-002
+    - docs/contexts/jobs/scenarios.md#REQ-JOBS-005
+    - docs/contexts/jobs/scenarios.md#REQ-JOBS-006
+    - docs/authorization.md
   typespec:
     - IdMagic.Contract.Job
     - IdMagic.Contract.JobStatus
@@ -38,11 +38,11 @@ initial_context:
     - backend/oauth2
     - backend/saml
 affected_spec:
-  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-002 }
-  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-005 }
-  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-012 }
-  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-013 }
-  - { path: spec/contexts/jobs/scenarios.md, requirement: REQ-JOBS-014 }
+  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-002 }
+  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-005 }
+  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-012 }
+  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-013 }
+  - { path: docs/contexts/jobs/scenarios.md, requirement: REQ-JOBS-014 }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.ListJobs }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.GetJob }
   - { path: spec/contexts/jobs/main.tsp, symbol: IdMagic.Jobs.Operations.CancelJob }
@@ -127,8 +127,8 @@ Jobs には「キューを操作する HTTP のエンドポイントは持たな
 
 ## Tasks
 - [x] T001 [Spec] 管理 API、authorization/access、read model、UX を `Jobs` context に追加する。
-  - REQ-JOBS-012 / REQ-JOBS-013 / REQ-JOBS-014 を `spec/contexts/jobs/scenarios.md` に追加。`ListJobs` / `GetJob` / `CancelJob` を `main.tsp` に、`AdminJobResponse` / `AdminJobQuery` / `AdminJobListResponse` / `JobNotFoundError` / `JobNotCancelableError` を `models.tsp` に追加。
-  - `ApiTokenScope` に `jobs:read` / `jobs:cancel` を追加し、`spec/authorization.md` の名前空間表へ Jobs の行を足した。権限の対応表そのものは TypeSpec の `x-api-token-scopes` が正本なので散文には書かない。
+  - REQ-JOBS-012 / REQ-JOBS-013 / REQ-JOBS-014 を `docs/contexts/jobs/scenarios.md` に追加。`ListJobs` / `GetJob` / `CancelJob` を `main.tsp` に、`AdminJobResponse` / `AdminJobQuery` / `AdminJobListResponse` / `JobNotFoundError` / `JobNotCancelableError` を `models.tsp` に追加。
+  - `ApiTokenScope` に `jobs:read` / `jobs:cancel` を追加し、`docs/authorization.md` の名前空間表へ Jobs の行を足した。権限の対応表そのものは TypeSpec の `x-api-token-scopes` が正本なので散文には書かない。
   - 「キューを操作する HTTP のエンドポイントは持たない」という既存の判断を、投入と取得に限る形へ改めた (`decisions.md` / `README.md`)。用語 `AdminJobView` / `TenantAdministrator` を `glossary.md` へ追加。
 - [x] T002 [Go/HTTP] `ListJobs` / `GetJob` / `CancelJob` を実装し、RBAC・tenant 境界・状態遷移をテストする。
   - RED: `TestListJobsForAdmin_StaysInsideTheTenant` ほか `backend/jobs/usecases/admin_test.go` の 6 件 (REQ-JOBS-012 / REQ-JOBS-013) → `ports.ListForAdmin` と `usecases.ListJobsForAdmin` / `GetJobForAdmin` / `CancelJobForAdmin` を実装。
@@ -139,9 +139,9 @@ Jobs には「キューを操作する HTTP のエンドポイントは持たな
 - [x] T004 [Obs] queue metrics と structured log を追加し、PII を載せないことを検証する。
   - `jobs_duration_seconds{lane,outcome}` を追加。既存の `jobs_claim_latency_seconds` (待ち時間)、`jobs_queue_depth` (滞留と実行中)、`jobs_outcome_total` (確定した成否。`outcome="failed"` が配信不能の件数)、`jobs_retry_total` と合わせて、Scope が挙げた観測項目を満たす。`TestRunner_RecordsMetrics` が試行ごとの記録を固定。
   - 配信不能の確定を `jobs: job dead-lettered` として構造化ログへ残す。`job_id` / `tenant_id` は調査の入口として必要なのでログには載せ、基数が問題になるメトリクスのラベルには載せない。ハンドラーのエラー文はログにも載せない (中身を保証できないため)。
-  - Grafana と Prometheus の資産、`spec/observability.md` を更新。
+  - Grafana と Prometheus の資産、`docs/observability.md` を更新。
 - [x] T005 [Ops] worker deployment、drain、スケール、失敗調査の runbook を追加する。
-  - `infra/runbooks/async-jobs.md` を追加。レーン、起動設定、スケール、退避、確認、失敗調査、取り消し、監視、保持期間を扱う。
+  - `docs/operations/runbooks/async-jobs.md` を追加。レーン、起動設定、スケール、退避、確認、失敗調査、取り消し、監視、保持期間を扱う。
 - [x] T006 [Verify] `mise run check`、`mise run spec-render`、`mise run verify-go`、`mise run verify-ui`、必要に応じて `mise run test-ui-e2e` を通す。
 
 ## Verification

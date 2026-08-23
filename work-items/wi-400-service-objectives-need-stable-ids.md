@@ -6,21 +6,21 @@ risk: low
 created_at: 2026-08-23
 priority: p2
 change_kind: docs
-spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、資材側の参照を張り替える作業である。目標値も製品の振る舞いも変えない。affected_spec が索引するのは既存の normative scenario / standard ID または TypeSpec symbol だが、spec/capacity.md には現在いかなる規範 ID も無く、この変更こそが最初の ID を作るため、指せる既存要素が存在しない。" }
+spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、資材側の参照を張り替える作業である。目標値も製品の振る舞いも変えない。affected_spec が索引するのは既存の normative scenario / standard ID または TypeSpec symbol だが、docs/capacity.md には現在いかなる規範 ID も無く、この変更こそが最初の ID を作るため、指せる既存要素が存在しない。" }
 ---
 
 # サービス目標に安定 ID を与え、しきい値の複製と宙に浮いた参照を畳む
 
 ## Motivation
 
-[spec/capacity.md](../spec/capacity.md) の `Service level objectives` は、母集団・時間窓・除外条件まで踏み込んだ目標を持っている。**しかしどの行にも ID が無い。** 参照する手段が無いので、他の文書と資材は目標を指すかわりに数値を写している。
+[docs/capacity.md](../docs/capacity.md) の `Service level objectives` は、母集団・時間窓・除外条件まで踏み込んだ目標を持っている。**しかしどの行にも ID が無い。** 参照する手段が無いので、他の文書と資材は目標を指すかわりに数値を写している。
 
 2026-08-23 時点で `/token` の p99 300 ms は 4 か所、非 5xx 99.9% は 3 か所に現れる。
 
 | 場所 | 書かれているもの |
 |---|---|
-| `spec/capacity.md:34` | `/token` p99 ≤ 300 ms（正本） |
-| `spec/capacity.md:50` | `/token` 非 5xx 比率 ≥ 99.9%（正本） |
+| `docs/capacity.md:34` | `/token` p99 ≤ 300 ms（正本） |
+| `docs/capacity.md:50` | `/token` 非 5xx 比率 ≥ 99.9%（正本） |
 | `infra/docker/prometheus-rules.yml:63` | `> 0.3` |
 | `infra/docker/prometheus-rules.yml:57` | `> 0.001` |
 | `infra/README.md:34` | 「p99 トークンレイテンシーを 300 ms 未満、エラー率を 0.1% 未満とする」 |
@@ -39,16 +39,16 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 
 読み手はアラートの `summary` から正本へ辿れず、辿ろうとすると存在しないファイルを探すことになる。数値が一致しているのは現時点で偶然そうなっているだけで、それを保証している仕組みは無い。
 
-**page 級のアラートに手順が無い。** `prometheus-rules.yml` の `severity: page` は 5 件（`TokenErrorRateBudgetBurn`、`TokenLatencyBudgetBurn`、`LoginErrorRateBudgetBurn`、`LoginLatencyBudgetBurn`、`JobsLatencySensitiveClaimLatencyHigh`）。このうち runbook があるのはジョブ系だけで、`infra/runbooks/` は `async-jobs.md`、`backup-restore-dr.md`、`tenant-quotas.md` の 3 件しかない。**トークン発行とログインという製品の中核が落ちたときに、当番が開くものが存在しない。** どのアラートにも `runbook_url` の annotation は無い。
+**page 級のアラートに手順が無い。** `prometheus-rules.yml` の `severity: page` は 5 件（`TokenErrorRateBudgetBurn`、`TokenLatencyBudgetBurn`、`LoginErrorRateBudgetBurn`、`LoginLatencyBudgetBurn`、`JobsLatencySensitiveClaimLatencyHigh`）。このうち runbook があるのはジョブ系だけで、`docs/operations/runbooks/` は `async-jobs.md`、`backup-restore-dr.md`、`tenant-quotas.md` の 3 件しかない。**トークン発行とログインという製品の中核が落ちたときに、当番が開くものが存在しない。** どのアラートにも `runbook_url` の annotation は無い。
 
 ## Scope
 
-- `spec/capacity.md` のサービス目標の各行に安定 ID を与える。レイテンシー、非 5xx 比率、可用性、容量受入れ目標のすべてを対象にする。
+- `docs/capacity.md` のサービス目標の各行に安定 ID を与える。レイテンシー、非 5xx 比率、可用性、容量受入れ目標のすべてを対象にする。
 - ID を付けたうえで、`infra/README.md` の数値の再掲を目標 ID の参照に置き換える。
 - `prometheus-rules.yml` と `infra/k8s/monitoring/prometheus-rule.yaml` のコメントと annotations から、存在しないファイル名を落とし、目標 ID を名指しする。
 - `load/k6/oauth-smoke.js` のコメントを目標 ID へ張り替える。しきい値そのものは k6 の設定なので残す。
 - `severity: page` のアラートに対応する runbook を置き、各アラートに `runbook_url` を付ける。
-- `spec/observability.md` の「サービス目標の母集団、時間窓、除外条件、目標値は capacity.md が定める」という記述を、ID を指す形にする。
+- `docs/observability.md` の「サービス目標の母集団、時間窓、除外条件、目標値は capacity.md が定める」という記述を、ID を指す形にする。
 
 ## Out of Scope
 
@@ -77,12 +77,12 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 ## Tasks
 
 - [ ] T001 [Design] ID の形と置き場所、複製の扱い、アラートと目標の関係を確定し `## Design` に記録する。
-- [ ] T002 [Spec] `spec/capacity.md` のサービス目標に ID を付ける。
-- [ ] T003 [Spec] `spec/observability.md` の参照を ID を指す形にする。
+- [ ] T002 [Spec] `docs/capacity.md` のサービス目標に ID を付ける。
+- [ ] T003 [Spec] `docs/observability.md` の参照を ID を指す形にする。
 - [ ] T004 [Ops] `infra/README.md` の数値の再掲を ID 参照へ置き換える。
 - [ ] T005 [Ops] `prometheus-rules.yml` と `prometheus-rule.yaml` のコメントと annotations を ID へ張り替える。
 - [ ] T006 [Ops] `load/k6/oauth-smoke.js` のコメントを張り替える。
-- [ ] T007 [Ops] `page` の 5 件に対応する runbook を `infra/runbooks/` へ置き、各アラートへ `runbook_url` を足す。
+- [ ] T007 [Ops] `page` の 5 件に対応する runbook を `docs/operations/runbooks/` へ置き、各アラートへ `runbook_url` を足す。
 - [ ] T008 [Tooling] 2 で検査を足すと決めた場合、`check-monitoring` を拡張する。
 - [ ] T009 [Verify] `mise run check-spec`、`mise run check-monitoring`、`mise run verify` を通す。
 

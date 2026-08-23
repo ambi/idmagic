@@ -17,7 +17,7 @@ affected_spec:
 
 `wi-382` は契約を実装に合わせる作業だったが、T009 で「同じ code を別 status で返している 3 件」の判断を求められ、そのうち 2 件は実装側の欠陥だと結論した。契約は正しい側を書いてあるので、いま実装と契約がずれているのはこの 2 点である。
 
-**`invalid_attribute` の status。** `PATCH /api/account/v1/profile` は属性スキーマ違反を 400 で返す (`backend/idmanagement/user/handlers_http/account_handler.go`)。同じ違反を `UpdateAdminUser` は 422 で返す。`spec/api-rules.md` の HTTP error responses は 400 を「リクエストを解析できないこと」、422 を「解析できた内容が業務規則に違反すること」と定める。テナントの属性スキーマへの適合は後者なので、422 が正しい。`wi-382` は契約側に 422 を書いた。
+**`invalid_attribute` の status。** `PATCH /api/account/v1/profile` は属性スキーマ違反を 400 で返す (`backend/idmanagement/user/handlers_http/account_handler.go`)。同じ違反を `UpdateAdminUser` は 422 で返す。`docs/api-rules.md` の HTTP error responses は 400 を「リクエストを解析できないこと」、422 を「解析できた内容が業務規則に違反すること」と定める。テナントの属性スキーマへの適合は後者なので、422 が正しい。`wi-382` は契約側に 422 を書いた。
 
 **`quota_exceeded` の code。** export の開始 (`handleStartExport`) は「実行中ジョブ数の上限」に達したとき 429 で `quota_exceeded` を返し、共通のエラーハンドラー (`backend/shared/http/support_http/error_handler.go`) は「テナント資源クォータ」に達したとき 422 で同じ `quota_exceeded` を返す。status は両方とも正しい — 前者は待てば通る一時的な状態 (RFC 6585)、後者は解析できた内容の業務規則違反である。欠陥は 1 つの code が 2 つの別概念を指していることで、クライアントは code だけでは再試行すべきかを判断できない。`wi-382` は契約側に `ActiveJobQuotaExceededError` を分けて置き、`type` がいまは同じ URN であることを `@doc` に明記した。
 

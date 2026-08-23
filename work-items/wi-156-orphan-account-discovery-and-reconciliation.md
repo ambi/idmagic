@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-013 }
-  - { path: spec/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-008 }
+  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-013 }
+  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-008 }
 ---
 
 # 外部アプリの orphan account 検出と照合を導入する
@@ -53,7 +53,7 @@ unmatched / ambiguous / disabled mismatch を管理者が確認・解決でき�
 
 ## Tasks
 - [ ] T001 [Spec] ExternalAccountInventory、match 状態、events / scenarios を追加する。
-- [ ] T002 [Decision] inventory 形式、matching 優先順位、危険 action の境界を `spec/contexts/identity-governance/decisions.md` に記録する。
+- [ ] T002 [Decision] inventory 形式、matching 優先順位、危険 action の境界を `docs/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] import / matching / reconciliation store を実装する。
 - [ ] T004 [HTTP] inventory import と reconciliation API を追加する。
 - [ ] T005 [UI] orphan account discovery / reconciliation UI を追加する。

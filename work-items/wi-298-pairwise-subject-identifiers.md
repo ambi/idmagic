@@ -60,7 +60,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 ## Scope
 
 - **decision**:
-  - `spec/contexts/oauth2/decisions.md` へ記録する決定 (subject identifier の写像): `public` を既定に維持する理由、`pairwise` の
+  - `docs/contexts/oauth2/decisions.md` へ記録する決定 (subject identifier の写像): `public` を既定に維持する理由、`pairwise` の
     算出方式 (OIDC Core §8.1 に従い sector identifier + local account id + salt の
     ハッシュ)、sector identifier の決定規則 (`sector_identifier_uri` を対応するか、
     redirect_uri のホストから導出するか、Application 単位にするか)、salt の保管と
@@ -77,7 +77,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
   - `Token` / `UserInfo` / ID Token の `sub` 算出を「client の subject_type に従う写像」として
     記述する。同一ユーザー・同一 sector で安定、異なる sector で異なることを requires に書く。
   - `ClaimMapping` に subject 写像の位置付けを追記する
-    (`spec/contexts/claim-mapping/decisions.md` の claim 発行境界と整合)。
+    (`docs/contexts/claim-mapping/decisions.md` の claim 発行境界と整合)。
   - SAML の NameID 形式 (`persistent`) と pairwise の対応を `Saml` 側に記述する。
   - `states` に PairwiseSubjectIssued を追加する (初回算出の監査可能性のため)。
   - `scenarios`: pairwise クライアントで同一ユーザーの `sub` が安定する /
@@ -128,26 +128,26 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
   `sub` は境界での出力専用にする。着手時にこの棚卸しを先に行う。
 - **salt は不変にする**。salt をローテーションすると全 RP でユーザーが「別人」になり、
   RP 側のローカルアカウント紐付けが全て壊れる。テナント作成時に生成して不変とし、
-  `spec/contexts/oauth2/decisions.md` に「ローテーション不可」を明記する。鍵ローテーション
-  (`spec/contexts/signing-keys/decisions.md` の鍵ローテーション方針) の対象外であることも書く。
+  `docs/contexts/oauth2/decisions.md` に「ローテーション不可」を明記する。鍵ローテーション
+  (`docs/contexts/signing-keys/decisions.md` の鍵ローテーション方針) の対象外であることも書く。
 - **逆引きマッピングを持つ**。運用上「この sub は誰か」を調べられないと、
   障害調査とサポートが成立しない。マッピングを保存し、管理者のみ参照可能にする。
   これは相関防止 (RP 間) と運用可能性 (IdP 内) の両立である。
 - **切り替えの不可逆性を UI で示す**。public → pairwise の変更は RP 側のユーザー紐付けを
-  壊す。設定変更時に警告を出し、`spec/contexts/oauth2/decisions.md` にも影響として書く。
+  壊す。設定変更時に警告を出し、`docs/contexts/oauth2/decisions.md` にも影響として書く。
 - **既定を変えないことで回帰面をゼロにする**。既存クライアントは全て public のままなので、
   `sub` の値は変わらない。これを回帰テストで固定する。
 - 未決定: sector identifier を `sector_identifier_uri` で持つか、Application 単位にするか。
-  この repo は Application を単一の編集面とする方針 (`spec/contexts/application/decisions.md`)
+  この repo は Application を単一の編集面とする方針 (`docs/contexts/application/decisions.md`)
   なので、**Application を sector の単位とする**のが最も整合する。第一候補とし、
-  OIDC 準拠のため `sector_identifier_uri` を将来の拡張余地として `spec/contexts/oauth2/decisions.md` に残す。
+  OIDC 準拠のため `sector_identifier_uri` を将来の拡張余地として `docs/contexts/oauth2/decisions.md` に残す。
 
 ## Tasks
 
 - [ ] T001 [Survey] `sub` を使っている経路を棚卸しする。出力経路 (ID Token / access token /
       UserInfo / introspection / SAML NameID) と、内部処理で `sub` 文字列を使っている箇所を
       分けて一覧化する。内部利用があれば内部 ID へ置換する対象として記録する。
-- [ ] T002 [Spec] subject identifier の写像の決定を `spec/contexts/oauth2/decisions.md` に記録する (算出方式・sector の単位・
+- [ ] T002 [Spec] subject identifier の写像の決定を `docs/contexts/oauth2/decisions.md` に記録する (算出方式・sector の単位・
       salt の不変性・逆引き・SAML NameID との対応・切り替えの不可逆性)。
 - [ ] T003 [Spec] `OAuth2Client.subject_type`、`subject_types_supported` への pairwise 追加、
       Token / UserInfo / ID Token の写像記述、ClaimMapping / Saml への追記、event、
@@ -191,7 +191,7 @@ OIDC `sub` claim / SAML NameID / WS-Fed subject / SCIM リソース参照」と�
 
 **`sub` は RP 側でユーザーを識別する主キーとして使われる**。写像の実装ミスや salt の
 変更は、全 RP でユーザーが「別人」になる不可逆な事故になる。salt を不変とし、
-`spec/contexts/oauth2/decisions.md` にローテーション不可を明記し、切り替えの不可逆性を UI で警告する。
+`docs/contexts/oauth2/decisions.md` にローテーション不可を明記し、切り替えの不可逆性を UI で警告する。
 出力経路が 4 つあるため、どこか 1 つが写像を通らないと相関防止が破れる (かつ気付きにくい)。
 4 経路の一貫性をテストで固定するのを完了条件にする。
 内部処理が `sub` 文字列に依存している箇所を見落とすと、pairwise クライアントで

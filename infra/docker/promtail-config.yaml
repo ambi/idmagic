@@ -4,7 +4,7 @@
 # fields become Loki labels (bounded sets), while `trace_id`/`span_id`/
 # `request_id` are attached as structured metadata rather than labels, because
 # they are unbounded and would blow up the index (same rationale as
-# spec/observability.md for tenant_id/user_id).
+# docs/observability.md for tenant_id/user_id).
 server:
   http_listen_port: 9080
   grpc_listen_port: 0

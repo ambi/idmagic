@@ -43,7 +43,7 @@ const findings: Finding[] = [...checkSecurityGuards(goFiles)]
 
 // R3 reads the refusals the specification declares and the ids the tests name.
 // R4 reads the same scenarios against the 403 responses TypeSpec declares.
-const contextsDir = resolve(root, 'spec/contexts')
+const contextsDir = resolve(root, 'docs/contexts')
 const declared: string[] = []
 let promised = 0
 for (const context of await readdir(contextsDir)) {

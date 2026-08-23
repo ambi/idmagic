@@ -6,9 +6,9 @@ created_at: 2026-07-29
 priority: p1
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-002 }
-  - { path: spec/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-003 }
-  - { path: spec/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-005 }
+  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-002 }
+  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-003 }
+  - { path: docs/contexts/data-keys/scenarios.md, requirement: REQ-DATAKEYS-005 }
 depends_on: [wi-97-envelope-encryption-at-rest]
 ---
 
@@ -26,7 +26,7 @@ scheduled batch trigger も無い) ことが、同 WI の完了報告時のユ�
 - wi-97 自身は T007 と Completion の両方で「rotate/disable/destroy の admin
   endpoint は追加していない (将来 WI での配線を想定)」と開示しているが、
   その「将来 WI」を実際には起票していなかった (宣言だけで未追跡)。
-- `spec/contexts/data-keys/` は Rotate/Disable/Destroy/Bootstrap を
+- `docs/contexts/data-keys/` は Rotate/Disable/Destroy/Bootstrap を
   `access: internal` と明記しており、HTTP 経由の手動操作は元々想定していない
   意図的な決定 (wi-97 Scope の「管理面は最小限の可視化のみ」と整合)。
 - 一方で **scheduled cadence trigger の欠如は誰にも検討・判断されていない
@@ -47,7 +47,7 @@ scheduled batch trigger も無い) ことが、同 WI の完了報告時のユ�
 ことが確認できた。
 
 ## Scope
-- **spec**: `spec/contexts/data-keys/` の `RotateTenantDataKey` /
+- **spec**: `docs/contexts/data-keys/` の `RotateTenantDataKey` /
   `DisableTenantDataKey` インターフェースの `access` を `internal` から
   `TenantAdministrator` policy (自テナント限定) に変更し `bindings: http`
   を追加する。`authorization.principals` に `TenantAdministrator` を追加する。
@@ -130,7 +130,7 @@ scheduled auto-rotation を標準搭載する。
   のみで実現できるため、実装せず README への言及に留める。
 
 ## Plan
-1. specification: `spec/contexts/data-keys/` の該当ファイルを更新し `mise run check` を通す
+1. specification: `docs/contexts/data-keys/` の該当ファイルを更新し `mise run check` を通す
    (`spec-change` Skill)。
 2. Go (Adapters, test-first): `backend/datakeys/handlers_http` に
    rotate/disable ハンドラを追加し、`backend/signingkeys/handlers_http` の

@@ -5,7 +5,7 @@ risk: medium
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md, spec/contexts/authentication/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md, docs/contexts/authentication/SPECIFICATION.md]
   source: [backend/authentication, backend/shared/http/support_http/problem.go]
   tests: [backend/authentication, backend/shared/http/server_http]
   stop_before_reading: [frontend]

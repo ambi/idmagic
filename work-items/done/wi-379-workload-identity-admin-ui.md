@@ -8,8 +8,8 @@ depends_on: [wi-54-workload-identity-federation-spiffe]
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/workloadidentity/SPECIFICATION.md#REQ-WORKLOADIDENTITY-008
-    - spec/contexts/workloadidentity/SPECIFICATION.md#REQ-WORKLOADIDENTITY-009
+    - docs/contexts/workloadidentity/SPECIFICATION.md#REQ-WORKLOADIDENTITY-008
+    - docs/contexts/workloadidentity/SPECIFICATION.md#REQ-WORKLOADIDENTITY-009
   typespec:
     - IdMagic.WorkloadIdentity.Operations.ListWorkloadTrustBundles
     - IdMagic.WorkloadIdentity.Operations.RefreshWorkloadTrustBundleJWKS
@@ -29,7 +29,7 @@ initial_context:
     - backend/workloadidentity/verification_jose
     - backend/workloadidentity/db_postgres
 affected_spec:
-  - { path: spec/contexts/workloadidentity/scenarios.md, requirement: REQ-WORKLOADIDENTITY-008 }
+  - { path: docs/contexts/workloadidentity/scenarios.md, requirement: REQ-WORKLOADIDENTITY-008 }
 ---
 
 # ワークロード ID の信頼設定とバインディングを管理コンソールから運用できるようにする

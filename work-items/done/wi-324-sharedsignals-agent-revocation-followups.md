@@ -7,12 +7,12 @@ depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-012
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-026
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-045
-    - spec/contexts/sharedsignals/SPECIFICATION.md#REQ-SHAREDSIGNALS-002
-    - spec/contexts/sharedsignals/SPECIFICATION.md#REQ-SHAREDSIGNALS-005
-    - spec/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-013
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-012
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-026
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-045
+    - docs/contexts/sharedsignals/SPECIFICATION.md#REQ-SHAREDSIGNALS-002
+    - docs/contexts/sharedsignals/SPECIFICATION.md#REQ-SHAREDSIGNALS-005
+    - docs/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-013
   typespec:
     - IdMagic.Contract.TenantQuota
     - IdMagic.Contract.TenantUsage
@@ -36,10 +36,10 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-046 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-047 }
-  - { path: spec/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-009 }
-  - { path: spec/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-010 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-046 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-047 }
+  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-009 }
+  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-010 }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantQuota }
   - { path: spec/contexts/tenancy/models.tsp, symbol: IdMagic.Contract.TenantUsage }
 ---
@@ -54,7 +54,7 @@ affected_spec:
 ものではないため先送りしたが、いずれも「fail-closed / 迷ったら失効する側に倒す」という
 ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消しておく価値がある。
 
-1. **Hard Quota 未実装**: `spec/contexts/sharedsignals/SPECIFICATION.md` の `RegisterSsfTransmitterStream`/
+1. **Hard Quota 未実装**: `docs/contexts/sharedsignals/SPECIFICATION.md` の `RegisterSsfTransmitterStream`/
    `RegisterSsfReceiverStream` は T001 時点で `QuotaExceededError` を宣言しているが、
    Tenancy 側に新規 quota resource を追加する作業が stream CRUD 単体 (T005) の範囲を大きく
    超えるため実装を見送った。specification の宣言と実装が乖離した状態が残っている。
@@ -86,11 +86,11 @@ ADR-057 の方針に対して緩みが残る箇所であり、まとめて解消
 
 ## Scope
 
-- `spec/contexts/tenancy/SPECIFICATION.md`: `TenantQuota`/`TenantUsage` に `SsfStream` を Hard Quota resource
+- `docs/contexts/tenancy/SPECIFICATION.md`: `TenantQuota`/`TenantUsage` に `SsfStream` を Hard Quota resource
   として追加する (既定値は ADR-134 の他リソースと同じ桁感で検討)。
-- `spec/contexts/sharedsignals/SPECIFICATION.md`: `RegisterSsfTransmitterStream`/`RegisterSsfReceiverStream` の
+- `docs/contexts/sharedsignals/SPECIFICATION.md`: `RegisterSsfTransmitterStream`/`RegisterSsfReceiverStream` の
   `QuotaExceededError` に対応する `requires` を実装可能な形に確認・調整する。
-- `spec/contexts/identity-management/SPECIFICATION.md` または `spec/contexts/oauth2/SPECIFICATION.md`: 所有者オフボード時に
+- `docs/contexts/identity-management/SPECIFICATION.md` または `docs/contexts/oauth2/SPECIFICATION.md`: 所有者オフボード時に
   配下 Agent の新規 token 発行を止める `ensures`/`requires` (Agent 側で明示的な状態遷移を新設する
   か、client_credentials 発行時に owner の Active 状態を確認するガードを追加するかは `## Design`
   で判断する)。

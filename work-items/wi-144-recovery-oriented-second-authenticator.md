@@ -7,8 +7,8 @@ created_at: 2026-07-09
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-011 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-022 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-011 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-022 }
 ---
 
 # 復旧目的の 2 個目認証器登録を推奨し手段冗長化でロックアウトを予防する
@@ -16,7 +16,7 @@ affected_spec:
 ## Motivation
 
 TOTP / WebAuthn 喪失時の復旧を backup recovery code **単独**に依存させると、コード紛失で
-復旧経路が絶たれる（`spec/contexts/authentication/decisions.md` の層状のアカウント復旧）。
+復旧経路が絶たれる（`docs/contexts/authentication/decisions.md` の層状のアカウント復旧）。
 Google / Entra ID（combined registration）が示すとおり、最も費用対効果の高い予防策は
 **手段の冗長化**——認証器を 2 個以上登録させ、1 台紛失をロックアウトにしないことである。
 
@@ -27,11 +27,11 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 
 ## Scope
 
-- `spec/contexts/authentication/` (`scenarios.md`、`decisions.md`、`models.tsp`):
+- `docs/contexts/authentication/` (`scenarios.md`、`decisions.md`、`models.tsp`):
   - 「復旧手段が単一（single point of failure）」を表す派生状態（例: 認証器 1 個のみ / 同期不可
     passkey のみ / recovery code のみ）と、その account security への提示。
   - 2 個目認証器登録の推奨状態と、任意強制ポリシー（推奨 / 必須）の表現。
-- `spec/contexts/application/` および管理 UI: テナント既定 / アプリ単位で「2 個目認証器を
+- `docs/contexts/application/` および管理 UI: テナント既定 / アプリ単位で「2 個目認証器を
   推奨するか必須にするか」を設定する項目。
 - Account UI（`AccountSecurityPage`）: 復旧手段が単一のときの警告と、2 個目登録への導線。
 - 登録オンボーディング（wi-127）: 初回 MFA 登録完了直後に 2 個目認証器登録を促すステップ。
@@ -39,7 +39,7 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 ## Out of Scope
 
 - 管理者による認証器リセット（層状のアカウント復旧の第 2 層。[[wi-143-admin-authenticator-reset-and-account-recovery]]）。
-- recovery code の設計変更（`spec/contexts/authentication/decisions.md` の hash-only / single-use / 全置換は維持）。
+- recovery code の設計変更（`docs/contexts/authentication/decisions.md` の hash-only / single-use / 全置換は維持）。
 - 新しい factor 種別（SMS / voice）の追加。
 - 本人確認ベース復旧（SSAR 相当）。
 
@@ -55,7 +55,7 @@ idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき�
 - 参考にする外部パターン: Entra ID combined registration、Google の複数手段・同期 passkey。
 - 却下する代替案:
   - 常に 2 個目を必須化: 小規模運用の導入摩擦が大きい。既定は推奨に留めオプトインで必須化。
-  - recovery code を廃止して冗長化のみに依存: セルフサービスの最終手段を失う（`spec/contexts/authentication/decisions.md` で却下済み）。
+  - recovery code を廃止して冗長化のみに依存: セルフサービスの最終手段を失う（`docs/contexts/authentication/decisions.md` で却下済み）。
 - 未決定事項: 「復旧手段が単一」の厳密な判定基準（同期 passkey 1 個を単一とみなすか）、
   推奨導線を wi-127 に統合するか独立ステップにするか。
 

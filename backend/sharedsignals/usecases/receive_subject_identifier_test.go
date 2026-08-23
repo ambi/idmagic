@@ -25,7 +25,7 @@ func subjectIdentifierEvent(jti string, subjectID map[string]any) *ssports.Verif
 }
 
 // TestReceiveSecurityEvent_Rfc9493SubjectIdentifiers — RED: REQ-SHAREDSIGNALS-010
-// (spec/contexts/sharedsignals/scenarios.md)。外部の transmitter が RFC 9493 の
+// (docs/contexts/sharedsignals/scenarios.md)。外部の transmitter が RFC 9493 の
 // Subject Identifier (`iss_sub` / `opaque`) で送った SET でも主体を解決する。
 // テナントは受信ストリームが属するテナントで決まり、識別子は Agent の識別子か、
 // Agent に束縛済みの OAuth2Client の識別子として解決する。

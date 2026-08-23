@@ -4,7 +4,7 @@
 
 業務データそのものは扱わない。どのユーザーに何ができるかは記録の正を持つ各 Context が決め、この Context が決めるのは、どの経路へどの資格情報で到達できるかである。
 
-製品全体が従う外部規範は [spec/standards.md](../../standards.md)、Context を跨ぐ語は [spec/glossary.md](../../glossary.md)、実行単位と信頼境界は [spec/deployment.md](../../deployment.md) が持つ。実行手順と検証コマンドは仕様ではなく、リポジトリの `README.md` にある。
+製品全体が従う外部規範は [docs/standards.md](../../standards.md)、Context を跨ぐ語は [docs/glossary.md](../../glossary.md)、実行単位と信頼境界は [docs/deployment.md](../../deployment.md) が持つ。実行手順と検証コマンドは仕様ではなく、リポジトリの `README.md` にある。
 
 | File | Content |
 |---|---|

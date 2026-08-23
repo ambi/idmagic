@@ -15,7 +15,7 @@
 | 関心事 | 正本 |
 |---|---|
 | モデル、API操作、HTTPバインディング、ステータスコード、認証機構 | TypeSpec（`spec/**/*.tsp`） |
-| 境界の宣言、用語、準拠する規範、状態遷移、設計判断、受け入れシナリオ | `spec/`のMarkdown |
+| 境界の宣言、用語、準拠する規範、状態遷移、設計判断、受け入れシナリオ | `docs/`のMarkdown |
 | 一つの変更の動機、代替案、計画、経緯 | work item |
 | 実行できる振る舞い | アプリケーションコードとテスト |
 | データベースの構造 | 宣言的なスキーマファイル |
@@ -33,14 +33,14 @@
 
 | 判断の種類 | 置き場所 |
 |---|---|
-| Bounded Contextの分割と関係 | `spec/README.md` |
-| ディレクトリ、依存方向、層構成、アーキテクチャスタイル | `spec/structure.md` |
-| 外部に見える契約の規則 | `spec/api-rules.md` |
-| 相関、ログ、指標 | `spec/observability.md` |
-| 実行単位、信頼境界、可用性 | `spec/deployment.md` |
-| 想定規模、上限の方針、縮退 | `spec/capacity.md` |
-| データベースの型と制約の方針 | `spec/persistence.md` |
-| 主体、スコープ、認可の境界 | `spec/authorization.md` |
+| Bounded Contextの分割と関係 | `docs/README.md` |
+| ディレクトリ、依存方向、層構成、アーキテクチャスタイル | `docs/structure.md` |
+| 外部に見える契約の規則 | `docs/api-rules.md` |
+| 相関、ログ、指標 | `docs/observability.md` |
+| 実行単位、信頼境界、可用性 | `docs/deployment.md` |
+| 想定規模、上限の方針、縮退 | `docs/capacity.md` |
+| データベースの型と制約の方針 | `docs/persistence.md` |
+| 主体、スコープ、認可の境界 | `docs/authorization.md` |
 | コンテキストが担う概念と担わない概念 | そのコンテキストの`README.md` |
 | 外部標準・法令・ガイドラインへの準拠 | 該当スコープの`standards.md` |
 | エンティティのライフサイクル | 該当スコープの`states.md` |
@@ -64,16 +64,20 @@
 
 節ではなくファイルで分ける。ファイル名が内容の種類を表す。
 
+**人が読む文書は`docs/`に集める。** 機械が食う契約——インターフェース定義言語のソースと、そこから導いた互換性の基準線——だけを別に置き、そのディレクトリはその契約の名前で呼ぶ。
+
 ```text
 /
 ├── README.md
 ├── CONTRIBUTING.md
 ├── CHANGELOG.md
 ├── SECURITY.md
+├── LICENSE
 ├── CONFIGURATION.md              # 生成物
 │
-├── spec/
+├── docs/
 │   ├── README.md                 # 境界の宣言、Context Map、索引
+│   ├── product-overview.md       # 解決する問題、対象ユーザー、対象外
 │   ├── structure.md              # ディレクトリ、依存方向、層構成、スタイル
 │   ├── glossary.md               # Published Language
 │   ├── standards.md              # 全体が従う外部規範
@@ -84,44 +88,51 @@
 │   ├── persistence.md            # データベース設計方針
 │   ├── authorization.md          # 主体、スコープ、認可の境界
 │   ├── scenarios.md              # コンテキストを跨ぐ振る舞い
+│   │
+│   ├── contexts/<context>/
+│   │   ├── README.md             # 境界の宣言と索引
+│   │   ├── glossary.md
+│   │   ├── standards.md
+│   │   ├── states.md
+│   │   ├── decisions.md
+│   │   ├── internals.md          # 稀。機構の説明が要るときだけ
+│   │   └── scenarios.md
+│   │
+│   ├── development/              # 手順。環境構築、ビルド、生成、CI、テスト
+│   └── operations/               # SLO、リリースと後退、バックアップ、runbooks/<event>.md
+│
+├── spec/                         # 機械が食う契約
 │   ├── main.tsp
 │   ├── <product>.openapi.baseline.json
-│   └── contexts/<context>/
-│       ├── README.md             # 境界の宣言と索引
-│       ├── glossary.md
-│       ├── standards.md
-│       ├── states.md
-│       ├── decisions.md
-│       ├── internals.md          # 稀。機構の説明が要るときだけ
-│       ├── scenarios.md
-│       ├── models.tsp
-│       └── main.tsp
-│
-├── docs/
-│   ├── product-overview.md
-│   ├── build.md                  # 開発環境、ビルド、コード生成
-│   ├── ci.md                     # 必須の検査、品質ゲート
-│   └── testing.md
+│   └── contexts/<context>/{models.tsp,main.tsp}
 │
 ├── infra/
 │   └── schema/postgres.sql       # データベース構造の正本
-│
-├── operations/
-│   ├── reliability.md            # SLO
-│   ├── release-and-rollback.md
-│   ├── backup-and-recovery.md
-│   └── runbooks/<event>.md
 │
 └── work-items/
 ```
 
 `README.md`はディレクトリを開いたときに表示されるため、境界の宣言と索引の置き場所として使う。
 
-該当する内容が無いファイルは作らない。小さいコンテキストは`README.md`と`scenarios.md`だけで足りる。
+### 深さは重要度の裏返しにする
 
-`docs/architecture/`、`docs/api/`、`docs/ui/`、`docs/security/`は設けない。それらの内容は`spec/`が持つ。
+`docs/`直下に置くのは、**現在の仕様と設計そのもの**である。これらは他のすべての文書から参照され、変更のたびに開かれる。サブディレクトリへ落とすと、参照するたびに 1 階層余分に降りることになる。
 
-生成物は追跡しない`spec/generated/`へ置く。
+手順（`development/`、`operations/`）はサブディレクトリへ入れる。読む頻度が低いからではなく、**読む人と読む場面が違うから**である。当番担当者が障害の最中に読むものと、実装者が変更の前に読むものが、仕様と同じ平面に並んでいると、探すものが増える。
+
+### 境界の判定
+
+`docs/`直下と`development/`・`operations/`のどちらへ置くかは、§5.9 の判定で決まる。**それが変わったとき、外部から観測できる振る舞いか、守るべき境界が変わるか。** 変わるなら直下、変わらないなら手順である。
+
+ディレクトリ名は`docs/`直下に何が入るかを言わないので、この判定は名前からは読めない。**読めるようにするのは`docs/README.md`の索引の仕事である。** 索引がその平面にあるファイルを列挙し、それぞれが何の種類かを一行で言う。
+
+### 分けないもの
+
+`docs/architecture/`、`docs/api/`、`docs/ui/`、`docs/security/`は設けない。それらは種類別の文書であり、§1 が増やさないと決めたものである。内容は`docs/`直下と`contexts/`が持つ。
+
+### 生成物
+
+生成物は追跡しない`spec/generated/`へ置く。インターフェース定義言語のコンパイル結果（OpenAPI、仕様サイト）はすべてここに集まるので、`docs/`には生成物が混ざらない。**`docs/`配下はすべて人が書いたものである**と言い切れることが、この配置の利点である。
 ## 5. コンテキストの仕様
 
 ### 5.1 README.md — 境界の宣言
@@ -158,7 +169,7 @@ User、Group、Accountのライフサイクルと、それらに付随するメ�
 | Suspend | 在籍状態をsuspendedにすること。セッション失効はAuthenticationの責務 |
 | Purge | 保持期間の満了による識別情報の匿名化。物理削除ではない |
 
-コンテキストを跨いで意味が固定される語（Published Language）は`spec/glossary.md`に置く。
+コンテキストを跨いで意味が固定される語（Published Language）は`docs/glossary.md`に置く。
 
 ### 5.3 standards.md
 
@@ -338,8 +349,8 @@ Markdownの表が窮屈なら、同じ内容をYAMLのフェンス付きブロ�
 | 受け入れ例、入出力の具体例 | `scenarios.md` |
 | 要求と応答の形、状態コード | TypeSpec |
 | 列、索引、一意制約 | スキーマファイル |
-| 権限の割り当て | `spec/authorization.md` |
-| 全コンテキストが従う規則 | `spec/`直下の該当ファイル |
+| 権限の割り当て | `docs/authorization.md` |
+| 全コンテキストが従う規則 | `docs/`直下の該当ファイル |
 | 機構の働きの説明 | `internals.md` |
 
 #### 悪い例
@@ -453,7 +464,7 @@ handlers_http は usecase を呼び、usecase は ports を経由して db_postg
 コンテキストが独立した機能を二つ以上持つとき、機能ごとのディレクトリへ分ける。実装が同じ理由で垂直分割されるなら、仕様も同じ線で分かれる。
 
 ```text
-spec/contexts/directory/
+docs/contexts/directory/
   README.md            # 境界の宣言と、機能への索引
   glossary.md          # 機能を跨いで意味が固定される語
   standards.md
@@ -494,7 +505,7 @@ spec/contexts/directory/
 
 ## 6. 全体の仕様
 
-`spec/`直下のファイルがアーキテクチャ文書を兼ねる。独立した`ARCHITECTURE.md`は設けない。
+`docs/`直下のファイルがアーキテクチャ文書を兼ねる。独立した`ARCHITECTURE.md`は設けない。
 
 置くのは、**二つ以上のコンテキストが従わなければならず、コンテキストごとに違う従い方をすることが選択ではなく欠陥であるもの**だけである。この条件を満たさないものは、たとえ基盤らしく見えてもコンテキスト側へ置く。
 
@@ -588,7 +599,7 @@ flowchart LR
 ```text
 backend/    # Go の Bounded Context、共有基盤、エントリーポイント
 frontend/   # React の UI とゲートウェイ
-spec/       # TypeSpec と仕様の正本
+spec/       # TypeSpec の正本
 infra/      # コンテナ、実行環境、データベーススキーマ
 work-items/ # 作業の単位と判断の履歴
 ```
@@ -960,7 +971,7 @@ SQLと宣言的な差分適用ツールの組み合わせ、ORMのスキーマ�
 モデル、制約、API操作、HTTPルート、要求と応答の形、状態コード、エラーの直和、非推奨のメタデータ、認証機構、スコープの注釈をTypeSpecで書く。
 
 ```typespec
-// spec/contexts/directory/models.tsp
+// docs/contexts/directory/models.tsp
 namespace Product.Directory;
 
 @pattern("^usr_[A-Za-z0-9]+$")
@@ -994,7 +1005,7 @@ model User {
 |---|---|
 | 複合的な一意性、参照整合性、索引 | スキーマファイル |
 | ライフサイクルの遷移 | `states.md` |
-| 細粒度の認可、境界の規則 | `spec/authorization.md` と実装 |
+| 細粒度の認可、境界の規則 | `docs/authorization.md` と実装 |
 | 競合解決、冪等性の判断 | `decisions.md` |
 | 受け入れ条件 | `scenarios.md` |
 
@@ -1039,13 +1050,13 @@ priority: p1
 depends_on: []
 change_kind: feature
 initial_context:      # 着手時に書く。起票時ではない
-  specification: [spec/contexts/directory/scenarios.md#REQ-DIRECTORY-011]
+  specification: [docs/contexts/directory/scenarios.md#REQ-DIRECTORY-011]
   typespec: [Product.Directory.Operations.SoftDeleteUser]
   source: [backend/directory]
   tests: [backend/directory]
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: spec/contexts/directory/scenarios.md, requirement: REQ-DIRECTORY-011 }
+  - { path: docs/contexts/directory/scenarios.md, requirement: REQ-DIRECTORY-011 }
 ---
 
 # 一文で表す意味上の変更
@@ -1104,7 +1115,7 @@ affected_spec:
 ## Documentation
 
 - [Product overview](docs/product-overview.md)
-- [Specification](spec/README.md)
+- [Specification](docs/README.md)
 - [Contributing](CONTRIBUTING.md)
 ```
 
@@ -1140,7 +1151,7 @@ affected_spec:
 
 ## 対象範囲
 
-[Context Mapの索引](../spec/README.md)を範囲の宣言とする。
+[Context Mapの索引](../docs/README.md)を範囲の宣言とする。
 ```
 
 対象範囲を機能の箇条書きにしない。機能が増えるたびに一行増え、誰も消さないので実装済み機能の不完全な変更履歴になる。Context Mapの索引なら、変わるのはコンテキストが増減したときだけである。
@@ -1168,6 +1179,12 @@ CHANGELOGには利用者に影響するリリース済み変更だけを記録�
 
 ## 10. 開発文書
 
+**配置:** `docs/development/`
+
+手順であって仕様ではない。ビルド方法が変わっても、外部から観測できる振る舞いも守るべき境界も変わらないためである（§5.9）。
+
+三つに分けるのは内容が三つあるからであって、ファイルを三つ作る決まりではない。手元で実行するもの、パイプラインが強制するもの、テストの水準——このうち書くべきものが一つしかないなら、一つでよい。
+
 ### 10.1 build.md
 
 開発者が手元で実行するものを書く。
@@ -1185,7 +1202,7 @@ CHANGELOGには利用者に影響するリリース済み変更だけを記録�
 ```mermaid
 flowchart LR
     TSP[spec/**/*.tsp] --> OAS[OpenAPI]
-    MD[spec/**/*.md] --> Site[仕様サイト]
+    MD[docs/**/*.md] --> Site[仕様サイト]
     OAS --> Site
     TSP --> Types[各言語の型定義]
     CFG[設定定義] --> Ref[設定リファレンス]
@@ -1298,7 +1315,13 @@ feature flagは実験と段階的展開のためのものであり、恒久的�
 
 ## 11. 運用文書
 
+**配置:** `docs/operations/`
+
 当番担当者が障害の最中に読むものと、実装者が変更の前に読むものを同じ場所へ置かない。
+
+**runbookを、それが操作するインフラ資材の隣へ置かない。** 資材の隣は変更する人にとって近いが、**障害の最中に探す人にとっては遠い。** 当番担当者は「どのディレクトリの資材の話か」を知らない状態で呼び出される。読み手で分ける規則が、対象で分ける規則に優先する。
+
+これは手順一般の規則ではない。あるコンポーネントを動かすためのREADMEは、そのコンポーネントの隣でよい。runbookが違うのは、**読み始める時点で原因が分かっていない**ことが前提だからである。
 
 ### 11.1 reliability.md — SLO
 
@@ -1529,13 +1552,13 @@ flagで無効化できる変更は、配備の後退より先にflagを戻す。
 ## 15. 導入順序
 
 1. README、Product Overview、開発環境とCIの最小構成
-2. `spec/README.md`のContext Mapと構成
+2. `docs/README.md`のContext Mapと構成
 3. 主要コンテキストの`README.md`、TypeSpec、`states.md`、`scenarios.md`
 4. work itemの形式と、仕様の文法検査
-5. `spec/api-rules.md`、`spec/authorization.md`
+5. `docs/api-rules.md`、`docs/authorization.md`
 6. 各コンテキストの`standards.md`——プロトコル、アクセシビリティ、法令
-7. スキーマファイルと`spec/persistence.md`
-8. `spec/observability.md`、`spec/deployment.md`、SLO、Runbook
+7. スキーマファイルと`docs/persistence.md`
+8. `docs/observability.md`、`docs/deployment.md`、SLO、Runbook
 9. 設定リファレンスの生成、追跡ページの生成、機械検査
 
 開発環境とCIを最初に置くのは、生成と検査の土台がないと仕様が単なる散文になるためである。work itemの形式を早く決めるのは、それが無いと変更時点の検討が仕様へ流れ込むためである。

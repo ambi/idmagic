@@ -111,7 +111,7 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
   const sections = [...document.source.matchAll(/^## (.+)$/gm)].map(
     (match) => match[1]?.trim() ?? '',
   )
-  const rootDocument = document.path.match(/^spec\/([^/]+)$/)?.[1]
+  const rootDocument = document.path.match(/^docs\/([^/]+)$/)?.[1]
   if (rootDocument) {
     const stem = rootDocument.replace(/\.md$/, '')
     return rootDocument === 'README.md'
@@ -134,7 +134,7 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           order: canonicalOrder(ROOT_DOCUMENTS, rootDocument, index),
         }
   }
-  const contextDocument = document.path.match(/^spec\/contexts\/([^/]+)\/([^/]+)$/)
+  const contextDocument = document.path.match(/^docs\/contexts\/([^/]+)\/([^/]+)$/)
   const context = contextDocument?.[1]
   const contextFile = contextDocument?.[2]
   if (context && contextFile) {

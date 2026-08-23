@@ -7,8 +7,8 @@ priority: p2
 depends_on: [wi-49-agent-identity-first-class-principal, wi-50-token-exchange-delegation-actor-chain, wi-97-envelope-encryption-at-rest]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-032 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-032 }
 ---
 
 # エージェントが外部 API を代行するための Token Vault を設ける
@@ -57,7 +57,7 @@ IdMagic は上流 IdP からのログイン連携 ([[wi-30-inbound-federation-an
 ## Tasks
 
 - [ ] T001 [Design] 仲介の方式、暗号化の単位、更新失敗と再認可の境界を確定し `## Design` に記録する。
-- [ ] T002 [Spec] 接続・コネクタ・付与のライフサイクルを `states.md` へ、インターフェースとイベントを `models.tsp` / `main.tsp` へ、受け入れ条件を `scenarios.md` へ追加し、新 Context を `spec/README.md` の Context Map へ同期する。
+- [ ] T002 [Spec] 接続・コネクタ・付与のライフサイクルを `states.md` へ、インターフェースとイベントを `models.tsp` / `main.tsp` へ、受け入れ条件を `scenarios.md` へ追加し、新 Context を `docs/README.md` の Context Map へ同期する。
 - [ ] T003 [Domain] コネクタ、ユーザー接続、外部付与、暗号化したトークン一式のリポジトリを、テナント・ユーザー・コネクタの鍵で実装する。
 - [ ] T004 [OAuth Client] PKCE と `state` 付きの認可、コールバックでのコード交換、単一飛行の更新、再認可への遷移を実装する。
 - [ ] T005 [Broker] Agent・委譲チェーン・`authorization_details` のポリシーを評価する実行ユースケースと、堅牢化した外向き HTTP アダプタを実装する。生のトークンを返す経路を作らない。

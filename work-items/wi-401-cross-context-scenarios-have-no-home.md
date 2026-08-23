@@ -7,20 +7,20 @@ created_at: 2026-08-23
 priority: p1
 change_kind: docs
 affected_spec:
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-009 }
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-012 }
-  - { path: spec/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-002 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-009 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-012 }
+  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-002 }
 ---
 
-# `spec/scenarios.md` を作り、Context を跨ぐ保証に置き場所を与える
+# `docs/scenarios.md` を作り、Context を跨ぐ保証に置き場所を与える
 
 ## Motivation
 
-[SPECIFICATION_FORMAT.md](../SPECIFICATION_FORMAT.md) §1 の正規文書一覧と `tools/check/src/specification-doc.ts:41` の `ROOT_DOCUMENTS` は `spec/scenarios.md` を認めている。**このファイルは存在しない。** `spec/README.md` の `Documents` 表にも行が無いので、読み手は置き場所があること自体を知らない。
+[SPECIFICATION_FORMAT.md](../SPECIFICATION_FORMAT.md) §1 の正規文書一覧と `tools/check/src/specification-doc.ts:41` の `ROOT_DOCUMENTS` は `docs/scenarios.md` を認めている。**このファイルは存在しない。** `docs/README.md` の `Documents` 表にも行が無いので、読み手は置き場所があること自体を知らない。
 
 §3 はその置き場所が何のためにあるかをこう書いている。
 
-> A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several contexts cooperate belongs to `spec/scenarios.md` ... Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
+> A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several contexts cooperate belongs to `docs/scenarios.md` ... Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
 **すでにその状態になっている。** 「主体を止めたら到達経路が閉じる」という 1 つの保証が、3 つの Context に断片として散っている。
 
@@ -40,12 +40,12 @@ affected_spec:
 
 ## Scope
 
-- `spec/scenarios.md` を作り、複数の Context が協調して初めて成り立つ振る舞いを置く。各シナリオは参加する Context を名指す。
+- `docs/scenarios.md` を作り、複数の Context が協調して初めて成り立つ振る舞いを置く。各シナリオは参加する Context を名指す。
 - 対象を洗い出す。少なくとも次の 3 系統を候補とする。
   - 主体の停止・削除予約・完全削除が、ログイン・既存セッション・エージェントトークン・下流プロビジョニングへ伝わる連鎖。
   - `Sourcing` の取り込みが `IdManagement` を経て `Provisioning` の配信を起こす、上流から下流への伝播。
   - `Seeding` が `Tenancy` / `IdManagement` / `Application` へ発行する published command の適用。
-- `spec/README.md` の `Documents` 表に行を足す。
+- `docs/README.md` の `Documents` 表に行を足す。
 - 既存の断片のうち、cross-context の保証へ引き上げたものの扱いを決めて実行する。
 
 ## Out of Scope
@@ -53,13 +53,13 @@ affected_spec:
 - 新しい振る舞いの追加。いま成り立っている保証を書き留めることに限る。書けない箇所が見つかったら、それは実装の欠陥なので個別の work item へ切り出す。
 - 断片が持つ Context 固有の部分の移動。`REQ-AUTHENTICATION-009` のうち「無効なユーザーのログインは `AccessDeniedError`」は Authentication が単独で検証できるので、Authentication に残る。
 - 対応するテストの追加。cross-context のシナリオを検証するテストがどの層に属するかは、シナリオが書けてから決まる。
-- 機能の垂直分割（SPECIFICATION_FORMAT §1 が触れる `spec/contexts/<context>/<feature>/`）。今回の分断は Context 間のものであり、Context 内の分割とは別の問題である。
+- 機能の垂直分割（SPECIFICATION_FORMAT §1 が触れる `docs/contexts/<context>/<feature>/`）。今回の分断は Context 間のものであり、Context 内の分割とは別の問題である。
 
 ## Design
 
 未定。着手時に次の 3 点を確定して本節に記録する。
 
-1. **既存の断片を移すのか、残して上に足すのか。** `REQ-*` は「一度参照されたら変更しない」ので、`REQ-AUTHENTICATION-009` を `spec/scenarios.md` へ物理的に移してもその id のままである。Context 名を持つ id がルートの文書に載る状態になる。取りうる案は 3 つある。
+1. **既存の断片を移すのか、残して上に足すのか。** `REQ-*` は「一度参照されたら変更しない」ので、`REQ-AUTHENTICATION-009` を `docs/scenarios.md` へ物理的に移してもその id のままである。Context 名を持つ id がルートの文書に載る状態になる。取りうる案は 3 つある。
    - **(a) id を保ったまま移す。** 参照は壊れない。ただし id の接頭辞が置き場所を表さなくなる。
    - **(b) 新しい id を作り、既存を退役させる。** §6 の退役の形（`superseded by`）が使え、置き場所と id が一致する。既存 3 件を参照しているテストの張り替えが要る。
    - **(c) 断片を残し、その上に cross-context の保証を新しい id で足す。** 移動が無いので安全だが、同じことを 2 か所が述べる状態になり、§3 が避けようとしたものに戻る。
@@ -74,15 +74,15 @@ affected_spec:
 
 - 全 Context の `scenarios.md` を通し、`WHEN` が他 Context の操作であるシナリオを列挙する。ここが作業量の実測になる。
 - 列挙結果を見てから 1 の案を決める。移す件数が少なければ (b)、多ければ (a) に寄る。
-- `spec/scenarios.md` を作り、まず 1 系統（主体の停止の連鎖）だけを書く。書式検査と生成サイトの導線がそれで通ることを確かめてから残りへ広げる。
+- `docs/scenarios.md` を作り、まず 1 系統（主体の停止の連鎖）だけを書く。書式検査と生成サイトの導線がそれで通ることを確かめてから残りへ広げる。
 - 「書けない」が出たら切り出して先へ進む。止まらない。
 
 ## Tasks
 
 - [ ] T001 [Spec] 全 Context の `scenarios.md` から、`WHEN` を自 Context が起こせないシナリオを列挙する。
 - [ ] T002 [Design] 既存 id の扱い、洗い出しの機械化の可否、接頭辞を確定し `## Design` に記録する。
-- [ ] T003 [Spec] `spec/scenarios.md` を作り、主体の停止の連鎖を書く。参加する Context を名指す。
-- [ ] T004 [Spec] `spec/README.md` の `Documents` 表に行を足す。
+- [ ] T003 [Spec] `docs/scenarios.md` を作り、主体の停止の連鎖を書く。参加する Context を名指す。
+- [ ] T004 [Spec] `docs/README.md` の `Documents` 表に行を足す。
 - [ ] T005 [Spec] 残る系統（上流からの伝播、published command の適用）を書く。
 - [ ] T006 [Spec] 引き上げた断片を、2 で決めた方式で処理する。
 - [ ] T007 [Triage] 保証を書こうとして書けなかった箇所を、実装の欠陥として個別の work item へ切り出す。
@@ -91,7 +91,7 @@ affected_spec:
 ## Verification
 
 - `mise run check-spec`
-  - reason: `spec/scenarios.md` は `ROOT_DOCUMENTS` にあるが、実在した状態で検査が通ったことはまだない。
+  - reason: `docs/scenarios.md` は `ROOT_DOCUMENTS` にあるが、実在した状態で検査が通ったことはまだない。
 - `mise run check-ids`
   - reason: id の一意性と、退役させた場合の後継の実在を確かめる。
 - `mise run spec-render`

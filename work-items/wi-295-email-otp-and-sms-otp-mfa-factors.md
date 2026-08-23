@@ -28,14 +28,14 @@ affected_spec:
 ## Motivation
 
 現在の MFA factor は `MfaFactorType` = `Totp` / `Webauthn` / `Hwk` / `Swk` のみである
-(`spec/contexts/authentication/`)。強い factor は揃っているが、**低摩擦な代替が無い**。
+(`docs/contexts/authentication/`)。強い factor は揃っているが、**低摩擦な代替が無い**。
 
 これは 2 つの実務的な壁になる:
 
 1. **導入初期に MFA を強制できない**。認証アプリの導入も passkey の登録もできない
    (できない事情がある) ユーザーが一定数いるテナントでは、MFA 強制を諦めるか、
    その層を例外にするしかない。「弱い MFA でも無しよりは強い」という現実的な選択肢が無い。
-2. **アカウント復旧の選択肢が薄い**。`spec/contexts/authentication/decisions.md` の層状のアカウント復旧 は層状の復旧を
+2. **アカウント復旧の選択肢が薄い**。`docs/contexts/authentication/decisions.md` の層状のアカウント復旧 は層状の復旧を
    定義しているが、認証器を失ったユーザーの手段は recovery code と管理者操作
    ([[wi-143-admin-authenticator-reset-and-account-recovery]]) に限られる。
    登録済みメールへの OTP は、多くの製品で最初の復旧手段である。
@@ -59,20 +59,20 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
 ## Scope
 
 - **decision**:
-  - `spec/contexts/authentication/decisions.md` へ記録する決定 (restricted MFA factor の位置付け): Email OTP / SMS OTP を restricted と
+  - `docs/contexts/authentication/decisions.md` へ記録する決定 (restricted MFA factor の位置付け): Email OTP / SMS OTP を restricted と
     宣言する根拠 (NIST SP 800-63B)、**テナント既定で無効**とし明示有効化を要する方針、
-    sign-in policy (`spec/contexts/application/decisions.md` のサインインポリシー評価) で
+    sign-in policy (`docs/contexts/application/decisions.md` のサインインポリシー評価) で
     「restricted factor を許容しない」を表現できること、restricted factor だけを持つ
     ユーザーに強い factor の登録を促す扱い、OTP の桁数 / 有効期限 / 試行回数上限 /
     再送間隔、AMR 値 (RFC 8176 の `sms` / `otp` / `mfa`) の出し方、
-    `spec/contexts/authentication/decisions.md` の WebAuthn の phishing-resistant 判定に
+    `docs/contexts/authentication/decisions.md` の WebAuthn の phishing-resistant 判定に
     restricted factor を含めないこと、SMS 送信 adapter を持たない配備での挙動 (fail-closed) を記録する。
 - **specification**:
   - `MfaFactorType` に `EmailOtp` / `SmsOtp` を追加する。
   - `MfaFactor` に OTP factor 用の宛先参照 (メールは User の verified email、
     SMS は verified phone) を表現し、**未検証の宛先では登録できない**ことを明記する。
   - `Tenancy` または `Authentication` のポリシー設定に `allowed_mfa_factor_types` を追加する
-    (`spec/contexts/authentication/decisions.md` の資格情報ポリシー設定 の設定面に載せる)。
+    (`docs/contexts/authentication/decisions.md` の資格情報ポリシー設定 の設定面に載せる)。
   - `StartEmailOtpEnrollment` / `ConfirmEmailOtpEnrollment` / `StartSmsOtpEnrollment` /
     `ConfirmSmsOtpEnrollment` / `SubmitBrowserOtp` / `ResendBrowserOtp` interface を追加する
     (既存の TOTP 登録 interface の形に倣う)。
@@ -95,7 +95,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
     設定で差し替え可能にし、本 WI では具体的な商用 gateway を同梱しない。
   - 電話番号の検証フロー (登録時に OTP で verified にする) を追加する。E.164 正規化を行う。
   - throttle は既存のログインスロットル基盤
-    (`spec/contexts/authentication/decisions.md` の共有一時状態のフェイルクローズ) の考え方に合わせる。
+    (`docs/contexts/authentication/decisions.md` の共有一時状態のフェイルクローズ) の考え方に合わせる。
   - AMR 値をトークンに出す経路を確認し、`otp` / `sms` を含める。
 - **http**:
   - 登録 / 確認 / 認証時の OTP 送信・検証・再送のエンドポイントを追加する。
@@ -133,7 +133,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
   handler 側の実装差で緩まないようにする。
 - **SMS は port だけ入れて adapter は差し替え式にする**。商用 gateway を同梱すると
   依存とアカウント設定が増え、この repo の「adapter は選択式」という方針
-  (`spec/persistence.md` の考え方) と合う。adapter 未設定の配備で
+  (`docs/persistence.md` の考え方) と合う。adapter 未設定の配備で
   SMS factor を有効化しようとしたら fail-closed で拒否する。
 - **既存の TOTP 実装の形に倣う**。`backend/authentication/totp` の登録 (start / confirm) と
   検証の構造がそのまま使えるため、新しいパターンを作らない。
@@ -149,7 +149,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
 - [ ] T001 [Spec] `MfaFactorType` に EmailOtp / SmsOtp、宛先検証済み要件、
       `allowed_mfa_factor_types`、interface 6 件、event 3 件、
       NISTSP80063B4 の restricted 要件、scenario 7 件を追加し `mise run check-spec` を通す。
-- [ ] T002 [Spec] restricted MFA factor の位置付けを `spec/contexts/authentication/decisions.md` に記録する (既定無効・防御パラメータ・
+- [ ] T002 [Spec] restricted MFA factor の位置付けを `docs/contexts/authentication/decisions.md` に記録する (既定無効・防御パラメータ・
       AMR・phishing-resistant 判定に含めない・adapter 未設定時の fail-closed)。
 - [ ] T003 [Domain] OTP challenge の生成 / ハッシュ保存 / 期限 / 試行回数 / 再送間隔 /
       単回使用を実装する。RED: 期限切れ・試行超過・再送間隔違反・再使用が拒否される

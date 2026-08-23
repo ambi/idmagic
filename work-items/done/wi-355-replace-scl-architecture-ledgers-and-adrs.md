@@ -36,7 +36,7 @@ OpenAPI/JSON Schema generator・Go bindingを保守しながら、実装側に�
 
 ## Design
 
-- `spec/requirements.md`と`spec/contexts/<context>/requirements.md`を言語非依存の挙動正本とする。
+- `docs/requirements.md`と`docs/contexts/<context>/requirements.md`を言語非依存の挙動正本とする。
   requirementは安定IDを持ち、scenarioはその配下、状態機械はFrom/Event/Guard/To/Effects表で表す。
 - `spec/main.tsp`とcontext別TypeSpecをwire契約の正本とし、標準emitterでOpenAPIを生成する。
 - glossary/standardsはroot/contextともrequirementsへ統一し、Architectureには技術設計だけを書く。

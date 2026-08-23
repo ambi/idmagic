@@ -7,8 +7,8 @@ depends_on: [wi-355-replace-scl-architecture-ledgers-and-adrs]
 change_kind: tooling
 initial_context:
   specification:
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-004
-    - spec/contexts/oauth2/SPECIFICATION.md#RFC8707-MCP-RESOURCE-BINDING
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-004
+    - docs/contexts/oauth2/SPECIFICATION.md#RFC8707-MCP-RESOURCE-BINDING
   typespec: []
   source:
     - backend/oauth2/ports/authorizer.go

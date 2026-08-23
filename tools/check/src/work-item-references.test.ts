@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test'
 import { type ReferenceEnvironment, verifyWorkItemReferences } from './work-item-references.ts'
 
 const files: Record<string, string> = {
-  'spec/contexts/demo/scenarios.md': [
+  'docs/contexts/demo/scenarios.md': [
     '## Standards',
     '',
     'RFC7644-PATCH is adopted.',
@@ -27,8 +27,8 @@ describe('verifyWorkItemReferences', () => {
       {
         status: 'pending',
         affected_spec: [
-          { path: 'spec/contexts/demo/scenarios.md', requirement: 'REQ-DEMO-001' },
-          { path: 'spec/contexts/demo/scenarios.md', requirement: 'RFC7644-PATCH' },
+          { path: 'docs/contexts/demo/scenarios.md', requirement: 'REQ-DEMO-001' },
+          { path: 'docs/contexts/demo/scenarios.md', requirement: 'RFC7644-PATCH' },
           { path: 'spec/contexts/demo/main.tsp', symbol: 'Demo.Operations.StartTask' },
         ],
       },
@@ -41,12 +41,12 @@ describe('verifyWorkItemReferences', () => {
     const findings = verifyWorkItemReferences(
       {
         status: 'pending',
-        affected_spec: [{ path: 'spec/contexts/demo/scenarios.md', requirement: 'REQ-DEMO-002' }],
+        affected_spec: [{ path: 'docs/contexts/demo/scenarios.md', requirement: 'REQ-DEMO-002' }],
       },
       environment,
     )
     expect(findings).toEqual([
-      'requirement does not resolve in spec/contexts/demo/scenarios.md: REQ-DEMO-002',
+      'requirement does not resolve in docs/contexts/demo/scenarios.md: REQ-DEMO-002',
     ])
   })
 
@@ -64,12 +64,12 @@ describe('verifyWorkItemReferences', () => {
         { status: 'in_progress', initial_context: { specification } },
         environment,
       )
-    expect(started(['spec/contexts/demo/scenarios.md#REQ-DEMO-001'])).toEqual([])
-    expect(started(['spec/contexts/demo/scenarios.md#REQ-DEMO-404'])).toEqual([
-      'initial_context specification does not resolve: spec/contexts/demo/scenarios.md#REQ-DEMO-404',
+    expect(started(['docs/contexts/demo/scenarios.md#REQ-DEMO-001'])).toEqual([])
+    expect(started(['docs/contexts/demo/scenarios.md#REQ-DEMO-404'])).toEqual([
+      'initial_context specification does not resolve: docs/contexts/demo/scenarios.md#REQ-DEMO-404',
     ])
-    expect(started(['spec/contexts/gone/scenarios.md#REQ-GONE-001'])).toEqual([
-      'initial_context specification path does not exist: spec/contexts/gone/scenarios.md#REQ-GONE-001',
+    expect(started(['docs/contexts/gone/scenarios.md#REQ-GONE-001'])).toEqual([
+      'initial_context specification path does not exist: docs/contexts/gone/scenarios.md#REQ-GONE-001',
     ])
   })
 

@@ -28,7 +28,7 @@ depends_on: [wi-297-management-api-versioning-and-deprecation-policy]
 
 ## Scope
 
-- `spec/contexts/*.yaml`: `/api/admin/...` を持つ interface の `bindings[].path` を
+- `docs/contexts/*.yaml`: `/api/admin/...` を持つ interface の `bindings[].path` を
   `/api/admin/v1/...` へ、`/api/account/...` を `/api/account/v1/...` へ書き換える。
   対象は wi-297 で `admin-api` / `self-api` に分類した interface (`/api/admin` 201 件、
   `/api/account` 31 件)。`/api/branding`、`/api/auth/*`、protocol endpoint、ops endpoint は
@@ -63,7 +63,7 @@ depends_on: [wi-297-management-api-versioning-and-deprecation-policy]
 
 ## Plan
 
-- **SCL が正本**。まず `spec/contexts/*.yaml` の対象 binding path を書き換え、`just check-scl` を通す。
+- **SCL が正本**。まず `docs/contexts/*.yaml` の対象 binding path を書き換え、`just check-scl` を通す。
 - **Go は機械的に追随**。各 `handlers_http/routes.go` 等の route 登録文字列リテラルを
   同じ規則で書き換える。安全網は既存の `TestAssembledRoutesMatchGeneratedOpenAPI`
   (実際に組み立てた router と生成 OpenAPI の path 集合を突合する) —— Go 側の書き換え漏れは

@@ -7,7 +7,7 @@ created_at: 2026-08-22
 priority: p2
 change_kind: bugfix
 affected_spec:
-  - { path: spec/contexts/oauth2/standards.md, requirement: RFC9449-TOKEN-BINDING }
+  - { path: docs/contexts/oauth2/standards.md, requirement: RFC9449-TOKEN-BINDING }
 ---
 
 # DPoP proof の JWK サムプリント計算を EC (ES256) 鍵にも対応させる

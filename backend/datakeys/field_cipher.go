@@ -32,7 +32,7 @@ type FieldCipher struct {
 // DEK version used (so the caller can persist it alongside the ciphertext
 // for later decryption, even after the DEK rotates out to retiring). A
 // tenant's first-ever call lazily bootstraps its DEK, mirroring SigningKeys'
-// per-tenant key creation (spec/contexts/data-keys/internals.md) - no separate
+// per-tenant key creation (docs/contexts/data-keys/internals.md) - no separate
 // provisioning step is required.
 func (f *FieldCipher) Encrypt(ctx context.Context, tenantID, recordContext, table, recordID, field, plaintext string) (keyVersion int, ciphertext []byte, err error) {
 	version, dek, err := f.Cache.GetActive(ctx, tenantID)

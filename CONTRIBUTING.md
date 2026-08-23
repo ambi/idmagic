@@ -8,7 +8,7 @@
 
 ## Pull Request に求めること
 
-- **外部から観測できる振る舞いを変えるなら、仕様を先に更新する。** モデル、API、HTTP 契約、認証方式は TypeSpec が持ち、受け入れシナリオ・用語・準拠する規範・状態遷移・設計判断・機構の説明は、その種類をファイル名が示す `spec/` 配下のファイルが持ちます。書式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) にあります。
+- **外部から観測できる振る舞いを変えるなら、仕様を先に更新する。** モデル、API、HTTP 契約、認証方式は TypeSpec が持ち、受け入れシナリオ・用語・準拠する規範・状態遷移・設計判断・機構の説明は、その種類をファイル名が示す `docs/` 配下のファイルが持ちます。書式は [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) にあります。
 - **1 つの意味上の変更につき 1 つの work item を持つ。** 形式は [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) が定め、`affected_spec` に影響する規範 ID または TypeSpec のシンボルを直接書きます。
 - **TypeSpec を変更したら生成物を再生成し、差分をコミットに含める。**
 - **拒否をテストするときは、返したステータスと、拒否が触らなかったものの両方を確かめる。** 前者だけのテストは、「拒否」と応答してから操作を実行してしまう実装に対しても同じように通ります。理由は DEVELOPMENT.md の「Testing a refusal」にあります。

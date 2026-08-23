@@ -5,20 +5,20 @@ risk: low
 created_at: 2026-08-08
 depends_on: [wi-327-application-context-problem-details-migration, wi-328-audit-context-problem-details-migration, wi-329-authentication-context-problem-details-migration, wi-330-idgovernance-context-problem-details-migration, wi-331-idmanagement-context-problem-details-migration, wi-332-oauth2-context-problem-details-migration, wi-333-provisioning-context-problem-details-migration, wi-334-saml-context-problem-details-migration, wi-335-sharedsignals-context-problem-details-migration, wi-336-signingkeys-context-problem-details-migration, wi-337-tenancy-context-problem-details-migration, wi-338-workloadidentity-context-problem-details-migration, wi-339-wsfederation-context-problem-details-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md]
   source: [backend/shared/http/support_http/response.go, backend/shared/http/support_http/problem.go]
   tests: [backend/shared/http/support_http]
   stop_before_reading: [frontend]
 ---
 
-# `WriteBrowserError` を削除し Problem Details 移行完了を spec/SPECIFICATION.md に記録する
+# `WriteBrowserError` を削除し Problem Details 移行完了を docs/SPECIFICATION.md に記録する
 
 ## Motivation
 
 `wi-326` とそのコンテキスト単位の後続 work item (`wi-327`〜`wi-339`) が全
 コンテキストの `WriteBrowserError` 呼び出しを `WriteProblem` (RFC 9457
 Problem Details、ADR-154) へ移行し終えたら、レガシー `{error, message}`
-envelope を返す `WriteBrowserError` 自体を削除し、`spec/SPECIFICATION.md` の
+envelope を返す `WriteBrowserError` 自体を削除し、`docs/SPECIFICATION.md` の
 HTTP error responses 節にある「未実装」の記載を実装完了状態に更新する
 (`wi-326` Plan 手順 5)。
 
@@ -26,7 +26,7 @@ HTTP error responses 節にある「未実装」の記載を実装完了状態�
 
 - `backend/shared/http/support_http/response.go` の `WriteBrowserError`
   関数本体の削除。
-- `spec/SPECIFICATION.md` の HTTP error responses 節
+- `docs/SPECIFICATION.md` の HTTP error responses 節
   (「この規約は未実装」段落) の更新。
 
 ## Out of Scope
@@ -48,7 +48,7 @@ HTTP error responses 節にある「未実装」の記載を実装完了状態�
    させる)。
 2. `WriteBrowserError` を `response.go` から削除する。
 3. `api_error_language_test.go` の tracking map から該当エントリを削除する。
-4. `spec/SPECIFICATION.md` の HTTP error responses 節を更新する。
+4. `docs/SPECIFICATION.md` の HTTP error responses 節を更新する。
 5. `just verify` を通す。
 
 ## Tasks
@@ -61,7 +61,7 @@ HTTP error responses 節にある「未実装」の記載を実装完了状態�
       apitoken テストのコメント参照もあわせて落とした。`wi-329` で
       過渡的に両 envelope を読ませていた `account_step_up_handler_test.go` の
       `errorCode` も Problem Details だけを読む形に戻した。
-- [x] T003 [Spec] `spec/SPECIFICATION.md` の HTTP error responses 節を実装完了
+- [x] T003 [Spec] `docs/SPECIFICATION.md` の HTTP error responses 節を実装完了
       状態に更新する。
 - [x] T004 [Verify] `just verify` を通す。
 
@@ -86,7 +86,7 @@ HTTP error responses 節にある「未実装」の記載を実装完了状態�
   だった。`api_error_language_test.go` の tracking map からもエントリを外し、
   英語リテラル検査の対象は `WriteProblem` 側で引き継がれる。
 
-  `spec/SPECIFICATION.md` の HTTP error responses 節は、起票時に想定していた
+  `docs/SPECIFICATION.md` の HTTP error responses 節は、起票時に想定していた
   「未実装」段落が既に存在しなかった (`ARCHITECTURE.md` から
   `SPECIFICATION.md` へ移る際に現在形へ書き直されていた) ため、代わりに
   実装完了で確定した内容を反映した: Problem Details を適用しない例外の一覧に

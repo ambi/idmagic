@@ -89,7 +89,7 @@ tooling側に残らないことを`just check`で確認する。
   `decisions/`配下の旧ADR 160本と`CONCEPTION.md`/`CONCEPTION_BASELINE.md`を全削除した。棚卸しの結果、大半のADRの
   決定内容は既にoauth2・authentication・tenancy・application等各`SPECIFICATION.md`のDesignへ反映
   済みだったが、application context のポータルアプリ並び替え・カテゴリ機能(旧ADR-069)だけ未反映
-  だったため`spec/contexts/application/SPECIFICATION.md`へ最小限のDesign節を追記した。CIBA・ReBAC・
+  だったため`docs/contexts/application/SPECIFICATION.md`へ最小限のDesign節を追記した。CIBA・ReBAC・
   Token Vault・Cross-App Access・Agent governance guardrails など「suggested」止まりで未実装のADRは、
   対応するwork item（wi-52・wi-53・wi-55・wi-57・wi-59等）が既に設計の続きを引き継いでいるため追記
   せず削除した。

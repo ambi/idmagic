@@ -16,7 +16,7 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7644-PATCH }
+  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-PATCH }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.ListScimUsers }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.PatchScimUser }
 ---
@@ -61,7 +61,7 @@ multi-valued 属性(複数 emails 等)を実装するまでは、この bracket 
 
 ## Tasks
 
-- [ ] T001 [Spec] bracket 構文の対応範囲を `spec/contexts/sourcing/standards.md` に明記する。
+- [ ] T001 [Spec] bracket 構文の対応範囲を `docs/contexts/sourcing/standards.md` に明記する。
 - [ ] T002 [Domain] RED: bracket 構文 parser/evaluator の test (複合条件、資源上限、
       allowlist 外属性の拒否)を先に失敗させて実装する(未信頼入力を parse する
       複雑な文法のため、fuzz/property test 採用の要否を検討し判断根拠を Risk Notes に

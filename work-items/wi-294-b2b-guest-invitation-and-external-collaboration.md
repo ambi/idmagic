@@ -57,13 +57,13 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
 ## Scope
 
 - **decision**:
-  - `spec/contexts/identity-management/decisions.md` へ記録する決定 (ゲストユーザーと招待): ゲストを別 aggregate にせず `User` の種別
+  - `docs/contexts/identity-management/decisions.md` へ記録する決定 (ゲストユーザーと招待): ゲストを別 aggregate にせず `User` の種別
     (`user_kind: Member | Guest`) として表す理由、ゲストの認証経路
     (外部 IdP 委任を既定とし、ローカル資格情報を持つゲストを許すか)、ゲストの既定権限
     (グループ / ロール / アプリ割当の既定 deny)、招待の有効期限と再送、
     受諾時の JIT provisioning と [[wi-30-inbound-federation-and-identity-broker]] の
     account linking との関係、ゲストのアクセス期限 (expiration) と失効時の挙動
-    (無効化か削除か。`spec/contexts/identity-management/states.md` の `UserLifecycle` と整合)、
+    (無効化か削除か。`docs/contexts/identity-management/states.md` の `UserLifecycle` と整合)、
     ゲストに見せない情報 (テナント内ディレクトリの閲覧制限) を記録する。
 - **specification**:
   - `IdManagement.models.User` に `user_kind` (Member / Guest) と、ゲスト固有の
@@ -141,14 +141,14 @@ IdMagic の User はすべて「そのテナントが資格情報を管理する
   取引先に社員名簿を渡すことになる。認可側で `user_kind == Guest` を deny 条件に入れ、
   ここを最初のテストにする。
 - 未決定: ローカル資格情報を持つゲスト (外部 IdP を持たない小規模取引先向け) を許すか。
-  第 1 段では**許さない** (外部 IdP 委任のみ) とし、需要があれば `spec/contexts/identity-management/decisions.md` を改訂して開く。
+  第 1 段では**許さない** (外部 IdP 委任のみ) とし、需要があれば `docs/contexts/identity-management/decisions.md` を改訂して開く。
 
 ## Tasks
 
 - [ ] T001 [Spec] `User` に user_kind / guest_metadata、Invitation / InvitationState、
       interface 7 件、event 5 件、authorization 規則 2 件、scenario 7 件を追加し
       `mise run check-spec` を通す。
-- [ ] T002 [Spec] ゲストユーザーと招待の決定を `spec/contexts/identity-management/decisions.md` に記録する (種別方式の理由・認証経路・既定権限・
+- [ ] T002 [Spec] ゲストユーザーと招待の決定を `docs/contexts/identity-management/decisions.md` に記録する (種別方式の理由・認証経路・既定権限・
       期限と失効・ディレクトリ非公開・二重招待の扱い)。
 - [ ] T003 [Domain] Invitation の状態遷移、期限、トークン生成 / 検証 (ハッシュ保存・単回使用) を
       実装する。RED: 期限切れ / 失効済み / 再使用が拒否されるテストを先に書く

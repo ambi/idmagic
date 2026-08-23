@@ -338,9 +338,9 @@ run = '''
 set -u
 test "$#" -ge 1 || { echo "usage: mise run spec-where -- <term>" >&2; exit 2; }
 echo "── specification ──"
-rg -n --no-heading --glob '!generated' "$1" spec || true
+rg -n --no-heading --glob '!generated' "$1" docs spec || true
 echo "── code and tests ──"
-rg -n --no-heading --glob '!spec/**' --glob '!work-items/**' --glob '!**/generated/**' "$1" . || true
+rg -n --no-heading --glob '!docs/**' --glob '!spec/**' --glob '!work-items/**' --glob '!**/generated/**' "$1" . || true
 echo "── work items ──"
 rg -l "$1" work-items || true
 '''

@@ -8,9 +8,9 @@ change_kind: bugfix
 priority: p2
 initial_context:
   specification:
-    - spec/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-002
-    - spec/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-020
-    - spec/SPECIFICATION.md
+    - docs/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-002
+    - docs/contexts/tenancy/SPECIFICATION.md#REQ-TENANCY-020
+    - docs/SPECIFICATION.md
   typespec:
     - Product.ClaimMapping.UserAttributeDef
     - Product.ClaimMapping.AttrVisibility

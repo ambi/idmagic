@@ -7,8 +7,8 @@ created_at: 2026-07-15
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
+  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
 ---
 
 # 定期アクセスレビュー (access certification) を導入する
@@ -79,7 +79,7 @@ no-response 時の既定失効、campaign 結果のレポートを提供する�
 
 ## Tasks
 - [ ] T001 [Spec] Campaign / CertificationItem / Decision model、events、scenarios を追加する。
-- [ ] T002 [Decision] レビュー対象範囲の初期選定、reviewer 解決規則、no-response 既定動作を `spec/contexts/identity-governance/decisions.md` に記録する。
+- [ ] T002 [Decision] レビュー対象範囲の初期選定、reviewer 解決規則、no-response 既定動作を `docs/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] scheduler / 対象抽出 / decision usecase / auto-revoke executor を実装する。
 - [ ] T004 [HTTP] campaign 管理 API と reviewer 向け決定 API を追加する。
 - [ ] T005 [UI] campaign 管理画面と reviewer 決定画面を追加する。

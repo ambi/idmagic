@@ -7,8 +7,8 @@ created_at: 2026-07-03
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-001 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-001 }
 ---
 
 # セルフサービスのユーザ登録 (self-service sign-up) を導入する
@@ -30,7 +30,7 @@ self-service registration を標準機能として持つ:
 
 ## Scope
 - **decision**:
-  - `spec/contexts/authentication/decisions.md` へ記録する決定: self-registration をテナント設定 (allow_self_registration、既定 off) でゲートする。email 検証必須 (`spec/contexts/authentication/decisions.md` のワンタイムトークン方針を踏襲)、 tenant 内 email 一意、登録直後は未検証 = login 不可 (fail-closed)、 account enumeration を避ける応答方針を記録する。
+  - `docs/contexts/authentication/decisions.md` へ記録する決定: self-registration をテナント設定 (allow_self_registration、既定 off) でゲートする。email 検証必須 (`docs/contexts/authentication/decisions.md` のワンタイムトークン方針を踏襲)、 tenant 内 email 一意、登録直後は未検証 = login 不可 (fail-closed)、 account enumeration を避ける応答方針を記録する。
 - **specification**:
   - §3.3 interfaces: RegisterUser (public / unauthenticated / tenant-scoped) と、 browser フロー用の登録トランザクション取得を追加する。
   - §3.2 models: RegistrationRequest (email / password / 表示名) を追加する。

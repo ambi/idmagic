@@ -7,8 +7,8 @@ created_at: 2026-06-24
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/ws-federation/scenarios.md, requirement: REQ-WSFEDERATION-002 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/contexts/ws-federation/scenarios.md, requirement: REQ-WSFEDERATION-002 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
 ---
 
 # Kerberos/SPNEGO inbound 認証による無音サインイン (passive WIA / エージェントレス Desktop SSO)
@@ -41,13 +41,13 @@ Okta も cloud STS では正面提供しておらず (managed/PHS や AD FS 併�
 
 ## Scope
 - **decision**:
-  - `spec/contexts/ws-federation/decisions.md` へ記録する決定: inbound IWA の信頼境界を確定する。idmagic を AD ドメインに参加させる代わりに keytab + SPN (例 `HTTP/sts.example.com@EXAMPLE.COM`) を与える方式を既定とし (Okta のエージェントレス Desktop SSO 同様にサービスアカウント/keytab を信頼の起点とする)、 Kerberos サービスチケットの検証点 (keytab 復号・clock skew・replay)、NTLM フォールバックの 可否、認証済みユーザープリンシパル (UPN) の内部 User への解決、WIA を提示する条件 (イントラ判定で社内は Negotiate・社外はフォーム) を定める。
+  - `docs/contexts/ws-federation/decisions.md` へ記録する決定: inbound IWA の信頼境界を確定する。idmagic を AD ドメインに参加させる代わりに keytab + SPN (例 `HTTP/sts.example.com@EXAMPLE.COM`) を与える方式を既定とし (Okta のエージェントレス Desktop SSO 同様にサービスアカウント/keytab を信頼の起点とする)、 Kerberos サービスチケットの検証点 (keytab 復号・clock skew・replay)、NTLM フォールバックの 可否、認証済みユーザープリンシパル (UPN) の内部 User への解決、WIA を提示する条件 (イントラ判定で社内は Negotiate・社外はフォーム) を定める。
 - **specification**:
   - 新規 model: SpnegoCredential / KerberosServicePrincipal / WindowsAuthenticatedPrincipal。 AuthenticationMethod に negotiate を追加する。
   - 新規 interface: AuthenticateWithNegotiate。passive WIA はこれを束ねる。
   - 新規 event: NegotiateAuthSucceeded / NegotiateAuthRejected。
 - **go**:
-  - HTTP `Negotiate` (SPNEGO) ハンドラを実装し、keytab で Kerberos サービスチケットを 検証して認証済みプリンシパルを取り出す。NTLM フォールバックは `spec/contexts/ws-federation/decisions.md` の判断に従う。
+  - HTTP `Negotiate` (SPNEGO) ハンドラを実装し、keytab で Kerberos サービスチケットを 検証して認証済みプリンシパルを取り出す。NTLM フォールバックは `docs/contexts/ws-federation/decisions.md` の判断に従う。
   - 認証済みプリンシパルを内部 User に fail-closed で解決する (未解決・改竄チケット・期限切れ・replay は拒否)。
   - WS-Fed passive (wi-61 のサインインエンドポイント) に WIA バリアントを足し、 イントラ判定が真なら Negotiate で無音サインインしフォームを出さない。
   - idmagic 自身のログインにも Negotiate を任意の認証方式として提供する (エージェントレス Desktop SSO)。
@@ -66,7 +66,7 @@ Okta も cloud STS では正面提供しておらず (managed/PHS や AD FS 併�
 
 ## Plan
 - depends_on の wi-61 passive flow に `wauth`/authentication method handoff が実装済みであることを前提に、Kerberos は Authentication の authenticator adapter、WS-Fed は要求・応答 orchestration のままにする。
-- 初期方式は Go process が keytab/service principal で Negotiate token を検証する direct SPNEGO とするか、明示した trusted reverse proxy header contract とするか `spec/contexts/ws-federation/decisions.md` で一つに決める。両方式を暗黙混在させない。
+- 初期方式は Go process が keytab/service principal で Negotiate token を検証する direct SPNEGO とするか、明示した trusted reverse proxy header contract とするか `docs/contexts/ws-federation/decisions.md` で一つに決める。両方式を暗黙混在させない。
 - tenant/domain→Kerberos realm、service principal、principal→UPN/local user mapping を設定し、canonical principal と verified directory attribute で user を解決する。email文字列一致だけで自動 link しない。
 - browser capability/domain/network policy により silent SSO を試し、missing/unsupported token は通常 login へ fallback、不正 token・realm mismatch・replay は認証失敗として扱う。Negotiate loop を transaction counter で止める。
 - keytab は file/secret reference として注入し、ログ・管理 API に出さない。clock skew、KDC/DNS、SPN、channel binding の診断を health/運用文書に含める。

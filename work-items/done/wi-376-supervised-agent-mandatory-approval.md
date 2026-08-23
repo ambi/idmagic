@@ -8,10 +8,10 @@ depends_on: [wi-52-ciba-async-human-approval]
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/oauth2/scenarios.md#REQ-OAUTH2-041
-    - spec/contexts/oauth2/scenarios.md#REQ-OAUTH2-042
-    - spec/contexts/oauth2/scenarios.md#REQ-OAUTH2-046
-    - spec/contexts/identity-management/scenarios.md#REQ-IDMANAGEMENT-009
+    - docs/contexts/oauth2/scenarios.md#REQ-OAUTH2-041
+    - docs/contexts/oauth2/scenarios.md#REQ-OAUTH2-042
+    - docs/contexts/oauth2/scenarios.md#REQ-OAUTH2-046
+    - docs/contexts/identity-management/scenarios.md#REQ-IDMANAGEMENT-009
   typespec:
     - IdMagic.Contract.AgentKind
     - IdMagic.Contract.AgentRegisterRequest
@@ -30,9 +30,9 @@ initial_context:
     - backend/idmanagement/agent/usecases
   stop_before_reading: [frontend]
 affected_spec:
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-050 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-041 }
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-009 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-050 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-041 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-009 }
   - { path: spec/contexts/identity-management/models.tsp, symbol: AgentKind }
   - { path: spec/contexts/identity-management/models.tsp, symbol: Agent }
   - { path: spec/contexts/oauth2/models.tsp, symbol: AccessTokenClaims }
@@ -52,7 +52,7 @@ OAuth2 の仕様は「どのエージェントが承認を要するか」の判�
 
 ## Scope
 
-- `spec/contexts/oauth2/scenarios.md` に、`Supervised` な Agent へのトークン発行が人間の承認を経ることを求める規範シナリオを追加する。対象は Agent が主体となるすべての発行経路 — `client_credentials`、トークン交換、ワークロード ID 連携による交換 — とする。
+- `docs/contexts/oauth2/scenarios.md` に、`Supervised` な Agent へのトークン発行が人間の承認を経ることを求める規範シナリオを追加する。対象は Agent が主体となるすべての発行経路 — `client_credentials`、トークン交換、ワークロード ID 連携による交換 — とする。
 - 承認が成立していない場合の応答を確定する。CIBA の承認要求を暗黙に生成するのか、承認要求の提示を要求して拒否するのかを `## Design` で決め、フェイルクローズを守る。
 - `spec/contexts/identity-management/models.tsp` に `model Agent` 集約を追加する。現在この集約はリクエスト / レスポンス / イベントとしてしか仕様に存在せず、`AgentKind` が実行時の意味を持つ本変更が [[wi-369-agent-capability-survey-2026-08]] の設定した再評価条件 (「エージェント集約に仕様変更が入る時に併せて解消する」) を発火させる。
 - `spec/contexts/oauth2/models.tsp` の `AccessTokenClaims` に `agent_id` クレームを宣言する。Go (`backend/shared/security/tokens_jose/jwt_signer.go`) では既に発行しているが仕様に無く、本変更が参照するため同時に解消する。

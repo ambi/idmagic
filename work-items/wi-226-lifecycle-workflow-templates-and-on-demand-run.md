@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-013 }
+  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-013 }
 depends_on: [wi-153-identity-lifecycle-workflows, wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admin-ui-and-operations]
 ---
 
@@ -53,7 +53,7 @@ trigger/filter/action から構築する必要があり、導入コストが高�
 
 ## Tasks
 - [ ] T001 [Spec] `LifecycleWorkflowTemplate` モデルと on-demand run interface を追加する。
-- [ ] T002 [Decision] on-demand run の対象選定方針と trigger 評価バイパスの整合性を `spec/contexts/identity-governance/decisions.md` に記録する。
+- [ ] T002 [Decision] on-demand run の対象選定方針と trigger 評価バイパスの整合性を `docs/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] テンプレートカタログと on-demand run usecase (大量対象の非同期化含む) を実装する。
 - [ ] T004 [UI] workflow 作成画面へのテンプレート選択、run 対象選択 UI を追加する。
 - [ ] T005 [Verify] specification/Go/UI および大量対象時の非同期化を検証する。

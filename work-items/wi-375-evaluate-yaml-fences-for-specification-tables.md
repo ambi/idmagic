@@ -23,7 +23,7 @@ SCL 廃止 (`1b7b2cef`、2026-08-11) を YAML 回帰の否定材料に使うの�
 
 ## Scope
 
-- `spec/contexts/data-keys/` 1 件で、`glossary.md`・`standards.md`・`states.md` の 3 表を ` ```yaml ` フェンスへ移す試作を行う。
+- `docs/contexts/data-keys/` 1 件で、`glossary.md`・`standards.md`・`states.md` の 3 表を ` ```yaml ` フェンスへ移す試作を行う。
 - レンダラーと検査の改修量、手書きテーブルパーサを JSON Schema 検証へ置換できるか、ソース最長行の変化、`mise run spec-diff` の出力の読みやすさを実測する。
 - 採否と、採らない場合の再評価条件を Completion に記録する。試作は評価後に撤去する。
 

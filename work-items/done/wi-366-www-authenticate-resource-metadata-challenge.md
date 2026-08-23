@@ -28,9 +28,9 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/oauth2/standards.md, requirement: RFC9728-CHALLENGE }
+  - { path: docs/contexts/oauth2/standards.md, requirement: RFC9728-CHALLENGE }
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.GetProtectedResourceMetadata }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-044 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-044 }
 ---
 
 # 401 応答の WWW-Authenticate に resource_metadata を付し、保護リソースメタデータへ誘導する
@@ -51,7 +51,7 @@ metadata URL を示すことを定めており、**MCP クライアントはこ�
 いう主張が最後の 1 パラメータで未完になっている。手動設定なしに MCP クライアントが接続できる
 という体験が、この差分だけで成立しない。
 
-RFC 9728 の standards 表 (`spec/contexts/oauth2/SPECIFICATION.md`) にも
+RFC 9728 の standards 表 (`docs/contexts/oauth2/SPECIFICATION.md`) にも
 `RFC9728-METADATA` / `RFC9728-WELL-KNOWN` / `RFC9728-IDMAGIC-API` の 3 行はあるが、
 チャレンジ側の要件行が無く、仕様側でも欠落している。
 
@@ -59,7 +59,7 @@ RFC 9728 の standards 表 (`spec/contexts/oauth2/SPECIFICATION.md`) にも
 
 ## Scope
 
-- `spec/contexts/oauth2/SPECIFICATION.md` の RFC 9728 standards 表にチャレンジ要件を追加し、
+- `docs/contexts/oauth2/SPECIFICATION.md` の RFC 9728 standards 表にチャレンジ要件を追加し、
   401 応答が `resource_metadata` を含むことの normative scenario (REQ-OAUTH2-044) を追加する。
 - `backend/shared/http/support_http/auth.go` の `WriteAccessTokenError` が返す
   `WWW-Authenticate` に `resource_metadata="<PRM URL>"` を付す。

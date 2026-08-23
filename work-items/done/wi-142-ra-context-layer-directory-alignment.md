@@ -49,7 +49,7 @@ created_at: 2026-07-08
 - `internal/shared/spec` の domain 型を per-context へ分割する移設。
 - 共有 `support.ApplicationGate` / `support.Authenticator` そのものの再配置（saml/wsfed usecase 側は自前の interface で受け、adapter が既存 support 実装を橋渡しする）。
 - `internal/tenancy/context.go` の再配置。リクエストコンテキストのアクセサで実害が小さく、今回の核から外す。
-- SCL（`spec/scl.yaml` / `spec/contexts/*.yaml`）の意味変更、HTTP ルート・wire contract・DB スキーマの変更。
+- SCL（`spec/scl.yaml` / `docs/contexts/*.yaml`）の意味変更、HTTP ルート・wire contract・DB スキーマの変更。
 
 ## Plan
 

@@ -77,7 +77,7 @@ RFC 7644 §3.4.2.2 filter grammar のサブセット(属性・演算子 allowlis
       fuzz/property test 判断基準を決定として記録)。
 - [x] T003 [Tooling] `implement-work-item` skill の ADR トリガー・test-first 節・完了処理を
       ADR-121 に合わせて更新する。
-- [x] T004 [Verify] `just yaml-check`、`just check-ids` を実行し、既存の全 `spec/contexts/*.yaml` /
+- [x] T004 [Verify] `just yaml-check`、`just check-ids` を実行し、既存の全 `docs/contexts/*.yaml` /
       `spec/scl.yaml` が新 schema で引き続き通ることを確認した(全 244 work item、360 record id、
       21 SCL ファイル、ARCHITECTURE.md、traceability manifest/evidence すべて green)。
 

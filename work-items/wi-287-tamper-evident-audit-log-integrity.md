@@ -27,7 +27,7 @@ affected_spec:
 ## Motivation
 
 IdMagic は監査イベントを PostgreSQL に永続化し、検索・CSV エクスポートを提供する
-(`spec/contexts/audit/decisions.md`)。しかし現在の監査ログは
+(`docs/contexts/audit/decisions.md`)。しかし現在の監査ログは
 **アプリケーションと同じ DB 権限で UPDATE / DELETE 可能な通常テーブル**であり、
 「記録が後から書き換えられていないこと」を証明する仕組みが無い。
 
@@ -51,11 +51,11 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 ## Scope
 
 - **decision**:
-  - `spec/contexts/audit/decisions.md` へ記録する決定 (監査ログ完全性): ハッシュ対象フィールドの正規化規則 (フィールド順序・時刻表現・
+  - `docs/contexts/audit/decisions.md` へ記録する決定 (監査ログ完全性): ハッシュ対象フィールドの正規化規則 (フィールド順序・時刻表現・
     NULL 表現)、チェーンの単位 (テナント単位で独立)、チェックポイント発行間隔と署名鍵
-    (`spec/contexts/signing-keys/decisions.md` のテナントごとの署名鍵 の鍵を使うか専用用途鍵を切るか)、
-    保持期間による古いイベント削除 (`spec/contexts/authentication/decisions.md` の認証イベント保持期間 /
-    `spec/contexts/audit/decisions.md` の保持期間) とチェーン継続の両立方式
+    (`docs/contexts/signing-keys/decisions.md` のテナントごとの署名鍵 の鍵を使うか専用用途鍵を切るか)、
+    保持期間による古いイベント削除 (`docs/contexts/authentication/decisions.md` の認証イベント保持期間 /
+    `docs/contexts/audit/decisions.md` の保持期間) とチェーン継続の両立方式
     (削除区間を封印済みチェックポイントで代表する)、DB 権限による append-only 強制の適用範囲、
     検証失敗時の運用手順を記録する。
 - **specification**:
@@ -104,7 +104,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
   再検証できる形式」を提供するところまで。
 - ブロックチェーン / 外部公証サービスへのアンカリング。
 - 認証イベント以外のアプリケーションログの完全性
-  (`spec/contexts/audit/decisions.md` により別物として扱う)。
+  (`docs/contexts/audit/decisions.md` により別物として扱う)。
 - 監査ログの暗号化。→ [[wi-97-envelope-encryption-at-rest]]
 - 改ざんの「防止」。DB 権限と外部保全の責務であり、本 WI は検知可能性を作る。
 
@@ -115,7 +115,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
   [[wi-164-data-tier-scalability-partitioning-read-replica-pooling]] の分割方針とも整合する。
 - **正規化を最初に固定する**。ハッシュ対象の直列化が曖昧だと、後の実装変更で過去の
   チェーンが検証不能になる。フィールド順序・時刻フォーマット (UTC / RFC3339 nano) ・
-  NULL 表現を `spec/contexts/audit/decisions.md` に固定し、正規化関数の golden test を最初に書く。
+  NULL 表現を `docs/contexts/audit/decisions.md` に固定し、正規化関数の golden test を最初に書く。
 - **保持期間削除との両立が設計の核**。古いイベントを消すとチェーンが切れる。
   「削除区間の直前で封印チェックポイントを発行し、削除後はその区間を
   `(from_seq, to_seq, sealed_hash)` として代表させる」方式を採る。削除前に必ず
@@ -128,7 +128,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
   テナント単位の採番テーブル + `INSERT ... RETURNING` で 1 往復に収め、
   [[wi-282-staging-load-testing-and-capacity-validation]] で実測する前提を明示する。
 - 未決定: チェックポイント署名鍵を既存 tenant signing key と共用するか専用用途にするかは
-  `spec/contexts/audit/decisions.md` で決める。監査用途の鍵をトークン署名と共用すると鍵ローテーションの制約が絡むため、
+  `docs/contexts/audit/decisions.md` で決める。監査用途の鍵をトークン署名と共用すると鍵ローテーションの制約が絡むため、
   用途分離を第一候補とする。
 
 ## Tasks
@@ -136,7 +136,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 - [ ] T001 [Spec] `Audit` に sequence_no / prev_hash / entry_hash、AuditCheckpoint、
       AuditIntegrityStatus、interface 3 件、event 2 件、guarantee、scenario 5 件を追加し
       `mise run check-spec` を通す。
-- [ ] T002 [Spec] 監査ログ完全性の決定を `spec/contexts/audit/decisions.md` に記録する (正規化規則・チェーン単位・チェックポイント
+- [ ] T002 [Spec] 監査ログ完全性の決定を `docs/contexts/audit/decisions.md` に記録する (正規化規則・チェーン単位・チェックポイント
       間隔と鍵・保持期間削除との両立・append-only 権限・検証失敗時手順)。
 - [ ] T003 [Domain] 正規化関数とハッシュ計算、チェーン検証ロジック (不一致種別の判別) を実装する。
       RED: golden な正規化バイト列テストと、改変 / 欠落を検知するテストを先に書く
@@ -177,7 +177,7 @@ IdMagic が「production-ready / enterprise-ready」を主張するなら、Keyc
 テナント単位採番と 1 往復での連結に限定し、負荷実測を
 [[wi-282-staging-load-testing-and-capacity-validation]] に引き継ぐ。
 正規化規則を後から変えると過去のチェーンが検証不能になる不可逆な変更になるため、
-`spec/contexts/audit/decisions.md` に固定し golden test で守る。将来の変更は「バージョン付き正規化」で扱う余地を残す。
+`docs/contexts/audit/decisions.md` に固定し golden test で守る。将来の変更は「バージョン付き正規化」で扱う余地を残す。
 保持期間削除とチェーンの両立は順序依存 (削除前に封印) であり、バッチ順序が崩れると
 検証不能な区間が生まれる。封印済みでない区間の削除を拒否する fail-closed を実装する。
 append-only の DB 権限分離は運用手順であり、適用漏れがあると本 WI の保証が名目上のものに

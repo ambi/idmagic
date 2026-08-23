@@ -7,8 +7,8 @@ created_at: 2026-07-03
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-021 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-021 }
 ---
 
 # 管理者による代理ログイン (impersonation) を監査付きで導入する
@@ -21,12 +21,12 @@ affected_spec:
 - Okta / Entra: 管理者による代理アクセス。
 
 一方 impersonation は権限昇格・なりすまし・監査欠落のリスクが大きい。本 WI は、
-専用権限・対象と時間の境界・厳格な監査 (actor chain、`spec/contexts/oauth2/decisions.md` の委譲と actor chain に整合)・
+専用権限・対象と時間の境界・厳格な監査 (actor chain、`docs/contexts/oauth2/decisions.md` の委譲と actor chain に整合)・
 impersonation 中の可視バナー・機微操作の禁止を備えた形で導入する。
 
 ## Scope
 - **decision**:
-  - `spec/contexts/authentication/decisions.md` へ記録する決定: impersonation の許可条件 (専用権限 / 対象制限 / 時間制限)、監査 (開始・終了・操作を impersonator を含む actor chain で記録、 `spec/contexts/oauth2/decisions.md` の委譲と actor chain に整合)、可視バナーによる不可視ななりすまし防止、機微操作 (パスワード / MFA 変更 / 削除) の禁止範囲、テナント設定での有効化を記録する。
+  - `docs/contexts/authentication/decisions.md` へ記録する決定: impersonation の許可条件 (専用権限 / 対象制限 / 時間制限)、監査 (開始・終了・操作を impersonator を含む actor chain で記録、 `docs/contexts/oauth2/decisions.md` の委譲と actor chain に整合)、可視バナーによる不可視ななりすまし防止、機微操作 (パスワード / MFA 変更 / 削除) の禁止範囲、テナント設定での有効化を記録する。
 - **specification**:
   - §3.3 interfaces: StartImpersonation / EndImpersonation を追加する。
   - authorization と interface access: impersonation は専用権限に固定し fail-closed とする。
@@ -51,7 +51,7 @@ impersonation 中の可視バナー・機微操作の禁止を備えた形で導
 - 開始は専用permission、step-up、ticket/reason、短いTTLを必須にし、self、system_admin、同等以上privilege、別tenant、disabled/deleted userを拒否する。対象userのeffective roleをそのまま上限とする。
 - portal OIDC token/sessionに `act`/impersonator claimとsession typeを載せ、全backend authorization/auditがactorとsubjectを分離して受け取る。token exchangeのdelegation/impersonationとは操作目的が異なるため混同しない。
 - frontendは全画面固定banner、対象/actor、残り時間、終了操作を表示し、危険操作（role変更、impersonation開始、secret/key管理等）はimpersonated sessionから禁止する。
-- start/end/expiryと実行操作のaudit は `spec/contexts/authentication/decisions.md` の認証イベント PII 方針に従い短縮・PII masking対象外の必須証跡とし、本人へのsecurity notification（wi-90）を接続する。
+- start/end/expiryと実行操作のaudit は `docs/contexts/authentication/decisions.md` の認証イベント PII 方針に従い短縮・PII masking対象外の必須証跡とし、本人へのsecurity notification（wi-90）を接続する。
 
 ## Tasks
 - [ ] T001 [Spec] 既存eventsを核にsession model、Start/End interfaces、permission/prohibited-actions/constraints/contracts/scenariosを追加して再生成する。

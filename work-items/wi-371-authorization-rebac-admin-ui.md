@@ -8,9 +8,9 @@ depends_on: [wi-53-rebac-fine-grained-authorization]
 change_kind: feature
 affected_spec:
   - { path: spec/contexts/authorization/models.tsp, symbol: IdMagic.Contract.FgaCheckRequest }
-  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-001 }
-  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-005 }
-  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-010 }
+  - { path: docs/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-001 }
+  - { path: docs/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-005 }
+  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-010 }
 ---
 
 # 関係ベース細粒度認可 (ReBAC) の管理 UI を管理コンソールへ載せる

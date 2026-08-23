@@ -17,7 +17,7 @@ func parseEntityID(value string) error {
 }
 
 // indexKey は 1 つの btree の鍵と、その成分が使ってよいバイト数。
-// 正本は spec/api-rules.md の "String length limits"。
+// 正本は docs/api-rules.md の "String length limits"。
 type indexKey struct {
 	name       string
 	components []int

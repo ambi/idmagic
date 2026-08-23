@@ -5,7 +5,7 @@ risk: medium
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md, spec/contexts/identity-management/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md, docs/contexts/identity-management/SPECIFICATION.md]
   source: [backend/idmanagement, backend/shared/http/support_http/problem.go]
   tests: [backend/idmanagement]
   stop_before_reading: [frontend]

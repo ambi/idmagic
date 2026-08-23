@@ -32,7 +32,7 @@ sourceAnchor 不一致によるアカウント重複を招く。これは個別 
 
 ## Out of Scope
 - WS-Fed passive / WS-Trust active / metadata / Entra preset / 無音 SSO の実装 (wi-61〜65)。本 WI は実テナント検証のみ。
-- Hybrid Azure AD Join のデバイス登録対応。Okta 同様の既知制約として未提供 (`spec/contexts/ws-federation/decisions.md`)。
+- Hybrid Azure AD Join のデバイス登録対応。Okta 同様の既知制約として未提供 (`docs/contexts/ws-federation/decisions.md`)。
 - Entra Connect (オンプレ同期) の同梱。sourceAnchor の供給はオンプレ側責務とする。
 
 ## Plan

@@ -7,8 +7,8 @@ created_at: 2026-07-03
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
-  - { path: spec/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-025 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-014 }
+  - { path: docs/contexts/identity-management/scenarios.md, requirement: REQ-IDMANAGEMENT-025 }
 ---
 
 # 委任管理 (スコープ付き admin ロール) を導入する
@@ -27,7 +27,7 @@ affected_spec:
 
 ## Scope
 - **decision**:
-  - `spec/authorization.md` へ記録する決定: スコープ次元 (グループ / アプリ / 属性集合) と、既存 roles / authorization policy・interface access との関係、fail-closed な既定 (deny)、エンドユーザ向け ReBAC ([[wi-53-rebac-fine-grained-authorization]]) と被らない「管理操作の認可に 限定」する境界を記録する。
+  - `docs/authorization.md` へ記録する決定: スコープ次元 (グループ / アプリ / 属性集合) と、既存 roles / authorization policy・interface access との関係、fail-closed な既定 (deny)、エンドユーザ向け ReBAC ([[wi-53-rebac-fine-grained-authorization]]) と被らない「管理操作の認可に 限定」する境界を記録する。
 - **specification**:
   - §3.2 models: AdminRoleAssignment / ResourceSet を追加する。
   - §3.3 interfaces: admin 操作 (users / groups / applications 等) の認可に scope を反映する。副管理者割当の CRUD を追加する。

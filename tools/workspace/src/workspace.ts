@@ -74,7 +74,7 @@ async function scanNamed(root: string, names: Set<string>, dir = root, found: st
  * is not mistaken for specification source.
  */
 async function scanCanonicalDocuments(root: string, directory: string): Promise<string[]> {
-  const names = new Set<string>(directory === 'spec' ? ROOT_DOCUMENTS : CONTEXT_DOCUMENTS)
+  const names = new Set<string>(directory === 'docs' ? ROOT_DOCUMENTS : CONTEXT_DOCUMENTS)
   let entries: Dirent[]
   try {
     entries = await readdir(resolve(root, directory), { withFileTypes: true })
@@ -87,16 +87,16 @@ async function scanCanonicalDocuments(root: string, directory: string): Promise<
 }
 
 async function discoverSpecificationDocuments(root: string): Promise<string[]> {
-  const documents = await scanCanonicalDocuments(root, 'spec')
+  const documents = await scanCanonicalDocuments(root, 'docs')
   let contexts: Dirent[] = []
   try {
-    contexts = await readdir(resolve(root, 'spec/contexts'), { withFileTypes: true })
+    contexts = await readdir(resolve(root, 'docs/contexts'), { withFileTypes: true })
   } catch {
     contexts = []
   }
   for (const entry of contexts) {
     if (entry.isDirectory()) {
-      documents.push(...(await scanCanonicalDocuments(root, `spec/contexts/${entry.name}`)))
+      documents.push(...(await scanCanonicalDocuments(root, `docs/contexts/${entry.name}`)))
     }
   }
   return documents.sort()

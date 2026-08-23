@@ -7,8 +7,8 @@ created_at: 2026-07-04
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/system/SPECIFICATION.md#REQ-SYSTEM-016
-    - spec/contexts/system/SPECIFICATION.md#REQ-SYSTEM-017
+    - docs/contexts/system/SPECIFICATION.md#REQ-SYSTEM-016
+    - docs/contexts/system/SPECIFICATION.md#REQ-SYSTEM-017
   source:
     - backend/cmd/internal/bootstrap
     - backend/cmd/idmagic/server.go
@@ -22,8 +22,8 @@ initial_context:
     - backend/cmd/internal/bootstrap
     - backend/cmd/idmagic-worker
 affected_spec:
-  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
-  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-017 }
+  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-017 }
 ---
 
 # 起動時の設定を集約・検証し fail-fast させ、単一の設定リファレンスを生成する
@@ -34,7 +34,7 @@ affected_spec:
 パース失敗や負値を「静かに fallback へ戻す」ため、`TRUSTED_FORWARDED_HOPS` や
 リテンション間隔のような security/運用に効く値をタイポしても、警告なく既定値で
 起動してしまう。本番でこれは、意図した閾値が実は効いていないという silent
-misconfiguration を招く。設定項目の網羅一覧も存在せず、spec/SPECIFICATION.md も
+misconfiguration を招く。設定項目の網羅一覧も存在せず、docs/SPECIFICATION.md も
 「全環境変数一覧は置かない」としているため、運用者が正となる設定表を持てない。
 
 12-factor と Kubernetes のコンポーネント設定検証（無効な設定は起動拒否）に倣い、
@@ -47,7 +47,7 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 - **decision**:
   - ADR は廃止済み (wi-358)。設定を集約する Config 型の位置づけ、fail-fast の対象
     （必須欠落・型不正・範囲外・相互矛盾）は本 work item と owning
-    `spec/contexts/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
+    `docs/contexts/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
     secret は値をログに出さない方針も同様にそこへ明記する。
 - **go**:
   - env 由来設定を単一の Config 構造体へ集約してパース・検証する層を bootstrap に追加する。 検証失敗は Run() の起動前に集約エラーで返し、部分起動させない。
@@ -64,7 +64,7 @@ idmagic も設定を 1 つの型へ集約し、起動時に検証して不正な
 
 ## Design
 - ADR は廃止済み (wi-358) のため、判断根拠は本 work item とこの Design section、および
-  `spec/contexts/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
+  `docs/contexts/system/SPECIFICATION.md` の Design section / REQ-SYSTEM-016 に記録する。
 - 検証と組み立てを2段階に分離する: `LoadSharedConfig`/`LoadAPIConfig` は I/O を一切行わず
   env を型付き struct へパースしながら `ConfigLoader` へ全エラーを集約するだけで、
   `Assemble()`/`assemblePostgres()` 等の実際の adapter 組み立て (DB pool open 等) は

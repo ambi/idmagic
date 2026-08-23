@@ -26,7 +26,7 @@ affected_spec:
 SCL と `decisions/` は撤去済みだが、そこを指すポインタが残っている。今回の方式整備で「読み手を存在
 しない場所へ送る導線」を潰してきたので、同じ基準で残りも片付ける。
 
-- `spec/SPECIFICATION.md` の Structure ツリーが、削除済みの `decisions/` を現在のディレクトリとして
+- `docs/SPECIFICATION.md` の Structure ツリーが、削除済みの `decisions/` を現在のディレクトリとして
   掲載している。現在設計を記す文書が実態と食い違っている。
 - `infra/k8s/base/configmap.yaml`・`infra/docker/docker-compose.dev.yaml`・
   `infra/deploy/gcp/cloudrun-idmagic.yaml` が `SCL_PATH=/app/spec/scl.yaml` を設定している。
@@ -38,12 +38,12 @@ SCL と `decisions/` は撤去済みだが、そこを指すポインタが残�
   導出された」と説明している。生成 OpenAPI 経由で API 利用者にも見える。
 - wi-359 で追加した cross-context 配置規約が「root `SPECIFICATION.md` に `REQ-SYSTEM-NNN` を置く」と
   書いているが、実際には root は Overview と Design だけで Scenarios を持たず、context 横断シナリオは
-  `spec/contexts/system/SPECIFICATION.md` が所有している（同文書の Overview がそう宣言している）。
+  `docs/contexts/system/SPECIFICATION.md` が所有している（同文書の Overview がそう宣言している）。
   規約の側が実態と食い違っている。
 
 ## Scope
 
-- `spec/SPECIFICATION.md` の Structure から `decisions/` を除去する。併せて traceability に関する
+- `docs/SPECIFICATION.md` の Structure から `decisions/` を除去する。併せて traceability に関する
   Design 記述に、導出ビューが存在する現状を反映する。
 - 3 つの infra 設定から `SCL_PATH` を除去する。
 - Go コメントの `spec/scl.yaml` 参照を、現在の所有文書（root / context の `SPECIFICATION.md`、
@@ -68,7 +68,7 @@ SCL と `decisions/` は撤去済みだが、そこを指すポインタが残�
 
 ## Plan
 
-1. `spec/SPECIFICATION.md` と TypeSpec の `@doc` を直す。
+1. `docs/SPECIFICATION.md` と TypeSpec の `@doc` を直す。
 2. infra 設定から `SCL_PATH` を除去する。
 3. Go コメントの参照を付け替える。
 4. `tools/README.md` を更新する。
@@ -76,7 +76,7 @@ SCL と `decisions/` は撤去済みだが、そこを指すポインタが残�
 
 ## Tasks
 
-- [x] T001 [Spec] `spec/SPECIFICATION.md` の Structure と traceability 記述を実態へ揃える。
+- [x] T001 [Spec] `docs/SPECIFICATION.md` の Structure と traceability 記述を実態へ揃える。
 - [x] T002 [Spec] `ListAdminRolePolicies` の `@doc` を直す。
 - [x] T003 [Ops] 3 つの infra 設定から `SCL_PATH` を除去する。
 - [x] T004 [App] Go コメント 5 箇所の参照を現在の所有文書へ付け替える。
@@ -111,7 +111,7 @@ SCL と `decisions/` は撤去済みだが、そこを指すポインタが残�
   tenancy の PasswordPolicyDefaults、`just check-boundaries`）へ付け替え、既に存在しない coherence
   test への言及を削除した。`ListAdminRolePolicies` の `@doc` から SCL の語を外した。
   加えて wi-359 で入れた cross-context 配置規約の誤りを修正した。root `SPECIFICATION.md` は Overview
-  と Design だけで Scenarios を持たず、context 横断シナリオは `spec/contexts/system/SPECIFICATION.md`
+  と Design だけで Scenarios を持たず、context 横断シナリオは `docs/contexts/system/SPECIFICATION.md`
   が所有している。`SPECIFICATION_FORMAT.md` は製品非依存に「cross-context view の所有を宣言している
   文書に置く」とし、`spec-change` skill でこのリポジトリの所有者を示した。この誤りは、wi-360 で入れた
   `initial_context` の参照解決検査が本 work item 自身の `REQ-SYSTEM-001` 参照を落として発覚した。

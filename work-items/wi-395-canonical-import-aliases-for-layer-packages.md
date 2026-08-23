@@ -43,7 +43,7 @@ spec_impact:
 - `.golangci.yml` に `importas` を追加し、`domain` / `ports` / `usecases` の別名を規則として定める。
 - 規則から外れている 78 行を修正する。
 - 規則を追加した後に新しく生えるパッケージも網羅されるよう、正規表現による包括規則を置く。
-- `spec/structure.md` に、層名パッケージの別名が lint で強制されることを記す。
+- `docs/structure.md` に、層名パッケージの別名が lint で強制されることを記す。
 
 ## Out of Scope
 
@@ -101,14 +101,14 @@ importas:
 
 当初は `backend/<context>/(<feature>/)domain/` を廃止し、ドメイン層を Context / Feature 直下へ引き上げる案を検討した。DDD / Clean Architecture で最も中心となる層が境界の名前をそのまま名乗る、という点で筋は通っている。採らなかったのは次の理由による。
 
-- **別名の問題を解かない。** 原因は「`domain` という名前」ではなく「パッケージ名が層名であること」で、それは `ports`（520 行）と `usecases`（332 行）でも同一である。ドメイン層だけ動かしても 58% しか触れず、残りは同じ形で残る。非対称を `spec/structure.md` で説明する負債だけが増える。
+- **別名の問題を解かない。** 原因は「`domain` という名前」ではなく「パッケージ名が層名であること」で、それは `ports`（520 行）と `usecases`（332 行）でも同一である。ドメイン層だけ動かしても 58% しか触れず、残りは同じ形で残る。非対称を `docs/structure.md` で説明する負債だけが増える。
 - **語彙の観点でも利得が小さい。** `userdomain.User` の `User` は既に語彙を持っている。`user.User` は短いが stutter は残る。
 - **`tools/check/src/check-boundaries.ts` の層判定が名前判定から位置判定へ緩む。** 移動の途中で検査が誤って通ると、層の逆流に気づけない。
 - 代わりに検討した「core の 3 層を Context / Feature の 1 パッケージへ統合する」案（`tenancy.Tenant` / `tenancy.TenantRepository` / `tenancy.CreateTenant`）は別名を完全に消し、元の発想を最後まで通した形になる。ただし `domain` が `usecases` を import しないという規則がパッケージ境界を失って強制不能になり、リポジトリ全体の書き換えを要する。**本 work item はこの案を否定しない。** `importas` は統合の前提を壊さないので、統合をやる際は明示エントリを捨てるだけで済む。
 
 ### 却下した案
 
-- **規約を `spec/structure.md` に書く。** 機械検査が無い規約は腐る。今の 24 パッケージの割れがその実例である。
+- **規約を `docs/structure.md` に書く。** 機械検査が無い規約は腐る。今の 24 パッケージの割れがその実例である。
 - **`importas` を機械的導出だけで構成する。** 350 行以上を長くする方向に書き換えることになり、目的と釣り合わない。
 - **`no-extra-aliases: true` にする。** 規則の無いパッケージへの別名付けまで禁じると、標準ライブラリや外部依存の import にまで影響する。今回解きたい範囲を超える。
 
@@ -131,7 +131,7 @@ importas:
 - [ ] T002 [Tooling] `.golangci.yml` に `importas` を追加する。明示エントリを先に、正規表現の受け皿を後段に置く。
 - [ ] T003 [Tooling] 正規表現のアンカーと評価順を、意図的に規則違反の import を書いて確認する。
 - [ ] T004 [Refactor] 規則から外れた 78 行を `sd` で修正する。
-- [ ] T005 [Spec] `spec/structure.md` に、層名パッケージの別名が lint で強制されることと、正準な別名の決め方を記す。
+- [ ] T005 [Spec] `docs/structure.md` に、層名パッケージの別名が lint で強制されることと、正準な別名の決め方を記す。
 - [ ] T006 [Verify] `mise run lint-go` と `mise run verify` を通す。
 
 ## Verification

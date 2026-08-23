@@ -22,7 +22,7 @@ import (
 )
 
 // TestResolveAuthnContextAppliesRevocation — RED: REQ-OAUTH2-047
-// (spec/contexts/oauth2/scenarios.md)。admin / account portal の Bearer 認証は
+// (docs/contexts/oauth2/scenarios.md)。admin / account portal の Bearer 認証は
 // /introspect と同じ失効判定 (AgentRevocationEpoch と AccessTokenDenylist) を通る。
 // wi-58 T006 の時点では、この経路だけが両判定を迂回していた。
 func TestResolveAuthnContextAppliesRevocation(t *testing.T) {

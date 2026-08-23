@@ -6,8 +6,8 @@ created_at: 2026-07-16
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-002 }
+  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-002 }
 depends_on: [wi-219-lifecycle-workflow-admin-api, wi-220-lifecycle-workflow-admin-ui-and-operations]
 ---
 
@@ -22,7 +22,7 @@ wi-153 は「list/history の pagination は既存 admin API の契約に合わ�
 増やさない」と明記していたが、実際には他 admin 一覧とも揃っていない独自の固定 limit になっている。
 
 **この乖離は起票時より大きくなっている。** [[wi-159-admin-resource-cursor-pagination]] と
-[[wi-347-admin-pagination-totals-and-compact-cursors]] が完了し、`spec/api-rules.md` は管理用一覧 API に
+[[wi-347-admin-pagination-totals-and-compact-cursors]] が完了し、`docs/api-rules.md` は管理用一覧 API に
 「署名済みで版の付いたキーセット方式のカーソルを RFC 8288 の `Link` ヘッダーで返す」ことを規則として定めた。
 lifecycle workflow の 2 本だけがこの規則の外に取り残されている。
 
@@ -34,7 +34,7 @@ queued run の cancel 操作がない。
 
 ## Scope
 - `spec/contexts/identity-governance/main.tsp` の `ListLifecycleWorkflows` / `ListLifecycleWorkflowRuns`
-  interface に、`spec/api-rules.md` が定めるキーセットカーソルと `Link` ヘッダーの契約を適用する。
+  interface に、`docs/api-rules.md` が定めるキーセットカーソルと `Link` ヘッダーの契約を適用する。
   独自の pagination 方式は増やさない。
 - backend: 上記 pagination を usecase / handler / repository に実装する。
 - frontend: 一覧・run 履歴に検索/フィルタ/ページ送りを追加する。
@@ -49,7 +49,7 @@ queued run の cancel 操作がない。
   本 work item は取り残された lifecycle workflow の 2 本を合流させるだけである。
 
 ## Plan
-- pagination は既存のキーセットカーソル契約 (`spec/api-rules.md`、[[wi-347-admin-pagination-totals-and-compact-cursors]])
+- pagination は既存のキーセットカーソル契約 (`docs/api-rules.md`、[[wi-347-admin-pagination-totals-and-compact-cursors]])
   をそのまま使い、新しい語彙を作らない。他の管理一覧と同じ形になることが成功条件である。
 - 確認ダイアログは他機能で使っている導線に合わせ、本機能専用の作法を増やさない。
 

@@ -29,6 +29,7 @@ export const CONTEXT_DOCUMENTS = [
 
 export const ROOT_DOCUMENTS = [
   'README.md',
+  'product-overview.md',
   'structure.md',
   'glossary.md',
   'standards.md',
@@ -56,9 +57,9 @@ const KIND_BY_NAME = new Map<string, DocumentKind>([
  */
 export function documentKind(path: string): DocumentKind | undefined {
   const name = path.split('/').at(-1) ?? ''
-  const allowed = /^spec\/contexts\/[^/]+\/[^/]+$/.test(path)
+  const allowed = /^docs\/contexts\/[^/]+\/[^/]+$/.test(path)
     ? (CONTEXT_DOCUMENTS as readonly string[])
-    : /^spec\/[^/]+$/.test(path)
+    : /^docs\/[^/]+$/.test(path)
       ? (ROOT_DOCUMENTS as readonly string[])
       : undefined
   if (!allowed?.includes(name)) return undefined

@@ -6,9 +6,9 @@ created_at: 2026-08-14
 depends_on: []
 change_kind: docs
 initial_context:
-  specification: [spec/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md]
   typespec: []
-  source: [AGENTS.md, README.md, infra/runbooks]
+  source: [AGENTS.md, README.md, docs/operations/runbooks]
   tests: []
   stop_before_reading: [backend, frontend]
 spec_impact:
@@ -23,12 +23,12 @@ spec_impact:
 
 | 区分 | 実態 |
 |---|---|
-| `README.md` / `CONFIGURATION.md` / `DEVELOPMENT.md` / `*_FORMAT.md` / `AGENTS.md` / `spec/SPECIFICATION.md` | 英語 100% |
-| `spec/contexts/*/SPECIFICATION.md` 21 件 | 混在 |
+| `README.md` / `CONFIGURATION.md` / `DEVELOPMENT.md` / `*_FORMAT.md` / `AGENTS.md` / `docs/SPECIFICATION.md` | 英語 100% |
+| `docs/contexts/*/SPECIFICATION.md` 21 件 | 混在 |
 | `work-items/**` | 368/368 が日本語 |
 | Go のコードコメント | 705 ファイル / 約 4,746 行が日本語 |
 
-問題は「どちらの言語か」ではなく、**どちらの言語でもない状態**にある。`spec/contexts/authentication/SPECIFICATION.md` の `Overview` には日本語と英語でほぼ同じ内容を述べる段落があり、二重管理が発生している。`Standards` の `Statement` 列にも、一般語を英字のまま残して日本語の述語をつなぐ表現があり、日本語話者にも英語話者にも読みにくい。
+問題は「どちらの言語か」ではなく、**どちらの言語でもない状態**にある。`docs/contexts/authentication/SPECIFICATION.md` の `Overview` には日本語と英語でほぼ同じ内容を述べる段落があり、二重管理が発生している。`Standards` の `Statement` 列にも、一般語を英字のまま残して日本語の述語をつなぐ表現があり、日本語話者にも英語話者にも読みにくい。
 
 さらに `AGENTS.md` の "Code comments must be written in English." は 705 ファイルで守られておらず、規則と実態のどちらかを変える必要がある。
 
@@ -41,10 +41,10 @@ spec_impact:
   - ルートの `README.md` を日本語とし、英語版を併記しない。
   - `Formatting` 節を追加する。Markdown に桁数の上限を設けず、日本語の散文は 1 段落 1 行にする。段落内の改行は描画時に空白になるため、日本語の文字どうしの間で改行すると本来ない空白が入る。ソースファイルは 150 桁程度で折り返す。
 - **spec**:
-  - `spec/SPECIFICATION.md` を日本語化する。
-  - `spec/contexts/*/SPECIFICATION.md` 21 件から日英重複段落を除去し、`Glossary` の `Definition` 列と `Standards` の `Statement` 列の日英混在を解消する。
+  - `docs/SPECIFICATION.md` を日本語化する。
+  - `docs/contexts/*/SPECIFICATION.md` 21 件から日英重複段落を除去し、`Glossary` の `Definition` 列と `Standards` の `Statement` 列の日英混在を解消する。
 - **docs**:
-  - `frontend/` `infra/` `seed/` 配下の README と `infra/runbooks/*` を日本語化する。
+  - `frontend/` `infra/` `seed/` 配下の README と `docs/operations/runbooks/*` を日本語化する。
   - 既存の英語版 `README.md` を日本語版で置き換え、`README.ja.md` は残さない。
 
 ## Out of Scope
@@ -104,15 +104,15 @@ spec_impact:
 
 ## Plan
 - 言語方針を先に確定させる。文面が決まらないうちに 8,000 行規模の書き換えを始めない。
-- `spec/contexts/*` は Context 単位で作業する。言語検査を追加しないため、途中状態で `just check` が失敗する順序制約はない。
+- `docs/contexts/*` は Context 単位で作業する。言語検査を追加しないため、途中状態で `just check` が失敗する順序制約はない。
 - 規範文の書き換えでは REQ ID、`Strength` 列、`Adoption` 列、RFC の参照 URL、TypeSpec シンボルに触れない。変更するのは `Statement` と `Definition` の散文だけとする。
-- `spec/SPECIFICATION.md` は全文が英語なので和訳になる。`Reading order` の手順番号と参照パスは維持する。
+- `docs/SPECIFICATION.md` は全文が英語なので和訳になる。`Reading order` の手順番号と参照パスは維持する。
 
 ## Tasks
 - [x] T001 [Policy] `AGENTS.md` に `Language` 節を追加し、コードコメントを日本語に変更する。
-- [x] T002 [Spec] `spec/SPECIFICATION.md` を日本語化する。
-- [x] T003 [Spec] `spec/contexts/*/SPECIFICATION.md` 21 件の日英重複と不自然な混在を解消する。
-- [x] T004 [Docs] `tools/**` を除くサブディレクトリの README と `infra/runbooks/*` を日本語化する。
+- [x] T002 [Spec] `docs/SPECIFICATION.md` を日本語化する。
+- [x] T003 [Spec] `docs/contexts/*/SPECIFICATION.md` 21 件の日英重複と不自然な混在を解消する。
+- [x] T004 [Docs] `tools/**` を除くサブディレクトリの README と `docs/operations/runbooks/*` を日本語化する。
 - [x] T005 [Docs] ルートの `README.md` を日本語版で置き換え、英語版と `README.ja.md` を廃止する。
 - [x] T006 [Verify] `just check-work-items`、`just check-spec`、`just spec-render`、`just verify` を通す。
 

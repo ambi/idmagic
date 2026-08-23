@@ -7,9 +7,9 @@ created_at: 2026-08-23
 priority: p2
 change_kind: docs
 affected_spec:
-  - { path: spec/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-002 }
-  - { path: spec/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-007 }
-  - { path: spec/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-009 }
+  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-002 }
+  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-007 }
+  - { path: docs/contexts/provisioning/scenarios.md, requirement: REQ-PROVISIONING-009 }
 ---
 
 # Provisioning に `standards.md` を置き、外向き SCIM の準拠範囲を宣言する
@@ -18,7 +18,7 @@ affected_spec:
 
 IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サーバー）と外向き（`Provisioning`、SCIM クライアント）である。**準拠範囲を宣言しているのは内向きだけである。**
 
-`spec/contexts/sourcing/standards.md` は RFC 7643 と RFC 7644 に 8 行の `Adoption` / `Strength` / `Statement` を与えている。`spec/contexts/provisioning/` に `standards.md` は無く、`README.md` の索引にも行が無い。
+`docs/contexts/sourcing/standards.md` は RFC 7643 と RFC 7644 に 8 行の `Adoption` / `Strength` / `Statement` を与えている。`docs/contexts/provisioning/` に `standards.md` は無く、`README.md` の索引にも行が無い。
 
 宣言が無いだけで、外向きも同じ RFC が形を定める部分を実装している。`provisioning/internals.md` 自身がそう書いている。
 
@@ -32,7 +32,7 @@ IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サ�
 
 ## Scope
 
-- `spec/contexts/provisioning/standards.md` を作り、外向き SCIM クライアントとしての RFC 7643 / RFC 7644 の準拠範囲を宣言する。
+- `docs/contexts/provisioning/standards.md` を作り、外向き SCIM クライアントとしての RFC 7643 / RFC 7644 の準拠範囲を宣言する。
 - 少なくとも次を `Adoption` / `Strength` / `Statement` の行として決める。
   - User / Group リソースの作成・置換・削除。
   - 部分更新に PATCH を使うか PUT を使うか、接続設定で選べるのか。
@@ -41,7 +41,7 @@ IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サ�
   - 連携先の `ServiceProviderConfig` / `ResourceTypes` / `Schemas` の探索と、探索結果に従うのか無視するのか。
   - フィルターを使う場面と、組み立てる構文の範囲。
   - 連携先が返す SCIM エラーレスポンスの解釈（どの状態を再試行し、どれを隔離するか）。
-- `spec/contexts/provisioning/README.md` の索引に行を足す。
+- `docs/contexts/provisioning/README.md` の索引に行を足す。
 - 各行に対応するテストを確かめ、無い行にはテストを足す。
 
 ## Out of Scope
@@ -81,8 +81,8 @@ IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サ�
 
 - [ ] T001 [Spec] 外向き SCIM の実装を読み、いま何を送り何を送っていないかを列挙する。
 - [ ] T002 [Design] `Adoption` の読み替え、ID 空間の分け方、証拠テストの過不足を確定し `## Design` に記録する。
-- [ ] T003 [Spec] `spec/contexts/provisioning/standards.md` を作る。
-- [ ] T004 [Spec] `spec/contexts/provisioning/README.md` の索引に行を足す。
+- [ ] T003 [Spec] `docs/contexts/provisioning/standards.md` を作る。
+- [ ] T004 [Spec] `docs/contexts/provisioning/README.md` の索引に行を足す。
 - [ ] T005 [Test] 各行の証拠テストを確かめ、名指しを足す。無い行にはテストを書く。
 - [ ] T006 [Test] `excluded` の行に否定テストを置く。
 - [ ] T007 [Triage] 実装が仕様として妥当でない箇所を、欠陥として個別の work item へ切り出す。
@@ -95,7 +95,7 @@ IdMagic は SCIM 2.0 を両方向で扱う。内向き（`Sourcing`、SCIM サ�
 - `mise run test-go`
 - `mise run verify`
 - 手動: `excluded` と宣言した行を 1 つ選び、その機能を実際に送るよう実装を一時的に変えて、否定テストが落ちることを確認する。落ちなければ、その行は誰も守っていない。
-- 手動: `spec/contexts/sourcing/standards.md` と並べて読み、内向きと外向きで同じ RFC の同じ条項について矛盾した宣言をしていないことを確認する。
+- 手動: `docs/contexts/sourcing/standards.md` と並べて読み、内向きと外向きで同じ RFC の同じ条項について矛盾した宣言をしていないことを確認する。
 
 ## Risk Notes
 

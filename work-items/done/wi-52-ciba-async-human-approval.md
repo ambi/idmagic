@@ -7,10 +7,10 @@ created_at: 2026-06-22
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-027
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-012
-    - spec/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-032
-    - spec/contexts/oauth2/SPECIFICATION.md#RFC8628-POLLING
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-027
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-012
+    - docs/contexts/oauth2/SPECIFICATION.md#REQ-OAUTH2-032
+    - docs/contexts/oauth2/SPECIFICATION.md#RFC8628-POLLING
   typespec:
     - IdMagic.Contract.DeviceAuthorization
     - IdMagic.Contract.DeviceCodeState
@@ -41,10 +41,10 @@ initial_context:
     - backend/provisioning
     - backend/sourcing
 affected_spec:
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-041 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-042 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-043 }
-  - { path: spec/contexts/oauth2/standards.md, requirement: CIBA-CORE-BACKCHANNEL-REQUEST }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-041 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-042 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-043 }
+  - { path: docs/contexts/oauth2/standards.md, requirement: CIBA-CORE-BACKCHANNEL-REQUEST }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.ApprovalRequest }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.ApprovalRequestState }
   - { path: spec/contexts/oauth2/models.tsp, symbol: IdMagic.Contract.BackchannelAuthenticationRequest }

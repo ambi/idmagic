@@ -7,9 +7,9 @@ created_at: 2026-07-03
 change_kind: feature
 initial_context:
   specification:
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-015
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-017
-    - spec/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-012
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-015
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-017
+    - docs/contexts/authentication/SPECIFICATION.md#REQ-AUTHENTICATION-012
   typespec:
     - IdMagic.Contract.RecoveryCode
     - IdMagic.Contract.AccountSession
@@ -31,10 +31,10 @@ initial_context:
     - backend/wsfederation
     - backend/provisioning
 affected_spec:
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-026 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-027 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-028 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-029 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-026 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-027 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-028 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-029 }
   - { path: spec/contexts/authentication/models.tsp, symbol: IdMagic.Contract.TrustedDevice }
   - { path: spec/contexts/authentication/main.tsp, symbol: IdMagic.Contract.Operations.ListMyTrustedDevices }
   - { path: spec/contexts/application/models.tsp, symbol: IdMagic.Contract.SignInRule }

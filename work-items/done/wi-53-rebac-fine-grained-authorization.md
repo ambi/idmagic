@@ -7,9 +7,9 @@ created_at: 2026-06-22
 change_kind: feature
 initial_context:
   specification:
-    - spec/SPECIFICATION.md
-    - spec/contexts/authorization/SPECIFICATION.md#REQ-AUTHORIZATION-001
-    - spec/contexts/oauth2/SPECIFICATION.md
+    - docs/SPECIFICATION.md
+    - docs/contexts/authorization/SPECIFICATION.md#REQ-AUTHORIZATION-001
+    - docs/contexts/oauth2/SPECIFICATION.md
   typespec:
     - IdMagic.Contract.AuthorizationModel
     - IdMagic.Contract.RelationTuple
@@ -31,9 +31,9 @@ initial_context:
     - backend/saml
     - backend/wsfederation
 affected_spec:
-  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-001 }
-  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-004 }
-  - { path: spec/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-005 }
+  - { path: docs/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-001 }
+  - { path: docs/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-004 }
+  - { path: docs/contexts/authorization/scenarios.md, requirement: REQ-AUTHORIZATION-005 }
   - { path: spec/contexts/authorization/models.tsp, symbol: IdMagic.Contract.RelationTuple }
   - { path: spec/contexts/authorization/main.tsp, symbol: IdMagic.Authorization.Operations.CheckAccess }
 ---
@@ -51,7 +51,7 @@ idmagic は AuthZEN スタイルの `Authorizer` ポートを持つが、判定�
   - モデル: `AuthorizationModel` / `ResourceTypeDefinition` / `RelationDefinition` / `RelationRewrite` / `RelationTuple` / `FgaCheckRequest` / `FgaCheckResult` / `FgaListAccessibleResourcesResult`。
   - 操作: `PutAuthorizationModel` / `GetAuthorizationModel` / `WriteRelationTuples` / `ListRelationTuples` / `CheckAccess` / `ListAccessibleResources`。
   - 権限 `AdminAuthorizationModelManage` (AuthZEN action `admin:authorization_model_manage`) と、AuthZEN 判定 context への actor チェーンおよび関係事実 (relationship facts) の追加。
-  - ルート `spec/SPECIFICATION.md` の Context Map、責務表、構造上の決定、データベース設計の同期。
+  - ルート `docs/SPECIFICATION.md` の Context Map、責務表、構造上の決定、データベース設計の同期。
 - **Go**:
   - `backend/authorization/domain`: タプル・モデル・書き換え規則と、深さ制限つき・循環検出つきのグラフ評価器。
   - `backend/authorization/ports` と `db_memory` / `db_postgres`: テナント境界を持つタプル/モデルの永続化と整合トークン。

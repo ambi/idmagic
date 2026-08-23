@@ -25,7 +25,7 @@ SCL 3.0 を IdMagic の規範仕様へ適用する前に、読み込み・表示
 
 ## Out of Scope
 
-- `spec/contexts/*.yaml` と root `spec/scl.yaml` の移行。
+- `docs/contexts/*.yaml` と root `spec/scl.yaml` の移行。
 - IdMagic runtime の policy evaluator または UI の変更。
 - SCL 2.0 document を SCL 3.0 renderer/generator へ自動変換する compatibility layer。
 - IdMagic の派生 HTML/OpenAPI/model schema の最終再生成。

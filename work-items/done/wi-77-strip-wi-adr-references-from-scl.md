@@ -42,7 +42,7 @@ ADR / git 履歴) に依存してはならない。しかし現状の scl.yaml �
 - **Summary**:
   SCL 正本から wi / ADR / commit 参照を全除去し、純粋な仕様文に整えた。本 WI
   起票後に context が物理分割 (wi-31) されたため、scope の「scl.yaml」を SCL spec
-  全体 (spec/scl.yaml + spec/contexts/*.yaml) と解釈して適用した。除去前は 6 ファイル
+  全体 (spec/scl.yaml + docs/contexts/*.yaml) と解釈して適用した。除去前は 6 ファイル
   計 138 箇所の参照があり、除去後は 0 件。型・フィールド・制約・列挙・scenario の
   意味は不変。
 - **Verification Results**:
@@ -50,7 +50,7 @@ ADR / git 履歴) に依存してはならない。しかし現状の scl.yaml �
     - result: ok (All 13 file(s) OK)
   - `GOCACHE=/tmp/idmagic-cache go test ./...` (in: idmagic)
     - result: ok (全 pass)
-  - 手動: `grep -rnE 'wi-[0-9]|ADR-[0-9]|commit [0-9a-f]{7}' spec/scl.yaml spec/contexts/*.yaml` が 0 件、整形崩れ (空括弧・行頭句点・区切り残り) も 0 件であることを確認した。
+  - 手動: `grep -rnE 'wi-[0-9]|ADR-[0-9]|commit [0-9a-f]{7}' spec/scl.yaml docs/contexts/*.yaml` が 0 件、整形崩れ (空括弧・行頭句点・区切り残り) も 0 件であることを確認した。
 - **Affected Guarantees State**:
   - layering: scl.yaml / contexts/*.yaml に wi / ADR / commit 参照が一切残らない ことを grep で確認 (0 件)。最内の純粋仕様正本である状態を回復した。
   - meaning preservation: yaml-check:scl が全 13 ファイル OK、idmagic の go test ./... が全 pass。型・フィールド・制約・列挙・scenario の意味は不変。

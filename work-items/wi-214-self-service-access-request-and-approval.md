@@ -7,8 +7,8 @@ created_at: 2026-07-15
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
-  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
+  - { path: docs/contexts/identity-governance/scenarios.md, requirement: REQ-IDGOVERNANCE-001 }
+  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-011 }
 ---
 
 # セルフサービスの access 要求ワークフローを導入する
@@ -73,7 +73,7 @@ group membership / application assignment を反映する access request workflo
 
 ## Tasks
 - [ ] T001 [Spec] Catalog / AccessRequest / Approval model、状態遷移、events、scenarios を追加する。
-- [ ] T002 [Decision] catalog 登録方針、approver 解決規則、期限付き付与の失効方針を `spec/contexts/identity-governance/decisions.md` に記録する。
+- [ ] T002 [Decision] catalog 登録方針、approver 解決規則、期限付き付与の失効方針を `docs/contexts/identity-governance/decisions.md` に記録する。
 - [ ] T003 [App] catalog 管理 / request submission / approval / 自動付与・失効 executor を実装する。
 - [ ] T004 [HTTP] catalog、request、approval API を追加する。
 - [ ] T005 [UI] account portal の request 導線と approval queue UI を追加する。

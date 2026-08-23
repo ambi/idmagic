@@ -246,7 +246,7 @@ const adminJobColumns = `id, tenant_id, kind, lane, status, params, result, erro
 // ListForAdmin は管理コンソールの一覧を 1 ページ返す (wi-157)。
 //
 // 絞り込みが要求ごとに変わるため、この文だけは sqlc の静的な文にできない
-// (spec/persistence.md の「問い合わせの構造が実行時まで決まらない場合」)。値はすべて
+// (docs/persistence.md の「問い合わせの構造が実行時まで決まらない場合」)。値はすべて
 // プレースホルダーで渡し、SQL の文字列へは列名と演算子しか組み立てない。
 func (r *JobRepository) ListForAdmin(ctx context.Context, filter ports.AdminJobFilter) ([]*domain.Job, error) {
 	if filter.TenantID == "" && !filter.AllTenants {

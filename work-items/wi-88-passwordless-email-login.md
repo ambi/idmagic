@@ -7,8 +7,8 @@ created_at: 2026-07-03
 priority: p2
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-016 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-007 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-016 }
 ---
 
 # パスワードレスの email ログイン (magic link / email OTP) を導入する
@@ -29,7 +29,7 @@ passkey は [[wi-26-webauthn-passkey-and-recovery-codes]] の範囲とする。
 
 ## Scope
 - **decision**:
-  - `spec/contexts/authentication/decisions.md` へ記録する決定: email magic link / email OTP を passwordless first-factor として 採用する。challenge は期限付き・単発消費 (`spec/contexts/authentication/decisions.md` のワンタイムトークン方針)、 amr / acr へ反映 (例 amr: otp / mfa)、account enumeration 抑止、テナント設定 (allow_passwordless_email) でのゲートを記録する。
+  - `docs/contexts/authentication/decisions.md` へ記録する決定: email magic link / email OTP を passwordless first-factor として 採用する。challenge は期限付き・単発消費 (`docs/contexts/authentication/decisions.md` のワンタイムトークン方針)、 amr / acr へ反映 (例 amr: otp / mfa)、account enumeration 抑止、テナント設定 (allow_passwordless_email) でのゲートを記録する。
 - **specification**:
   - §3.3 interfaces: StartEmailLogin (email 入力で challenge 発行) と CompleteEmailLogin (code 入力 / link 検証) を追加する。
   - §3.2 models: EmailLoginChallenge を追加する。

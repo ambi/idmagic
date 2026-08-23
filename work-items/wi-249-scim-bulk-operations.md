@@ -15,7 +15,7 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7644-RESOURCE-OPERATIONS }
+  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-RESOURCE-OPERATIONS }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimServiceProviderConfig }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
 ---
@@ -44,21 +44,21 @@ Bulk を対象外とした。
 
 - Bulk 内での filter/query 操作(RFC は method GET を Bulk に含めない)。
 - 非同期・バックグラウンド実行(RFC は同期応答を前提とする。将来的に
-  パフォーマンス上必要なら別途 `spec/contexts/sourcing/decisions.md` で検討)。
+  パフォーマンス上必要なら別途 `docs/contexts/sourcing/decisions.md` で検討)。
 
 ## Plan
 
 - 各 Bulk operation は既存の単体 usecase メソッド(CreateUser/UpdateUser/...)を
   そのまま呼び出し、新しい mutation ロジックを重複実装しない。
 - 部分失敗時の atomicity は [[wi-239-scim-inbound-resource-contract-conformance]] の
-  `spec/contexts/sourcing/decisions.md` の変更原子性 (validate-first + 補償クリーンアップ)と同じ方針を踏襲し、Bulk 全体を
+  `docs/contexts/sourcing/decisions.md` の変更原子性 (validate-first + 補償クリーンアップ)と同じ方針を踏襲し、Bulk 全体を
   1つの DB transaction にはしない。`failOnErrors` のしきい値超過で残りの
   operation を打ち切る。
 
 ## Tasks
 
 - [ ] T001 [Spec] `/Bulk` の契約(request/response 形状、`bulkId` 解決、
-      `failOnErrors`、`ServiceProviderConfig.bulk` 広告値)を `spec/contexts/sourcing/standards.md` と `models.tsp` に追加する。
+      `failOnErrors`、`ServiceProviderConfig.bulk` 広告値)を `docs/contexts/sourcing/standards.md` と `models.tsp` に追加する。
 - [ ] T002 [Domain] RED: bulkId 参照解決・operation validation の test を先に失敗させて実装する。
 - [ ] T003 [Usecase/Adapter] RED: `/Bulk` の HTTP contract test(部分失敗、`failOnErrors`、
       上限超過)を先に失敗させて実装する。

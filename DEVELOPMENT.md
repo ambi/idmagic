@@ -15,7 +15,7 @@ section you need; none of them is required reading.
 | Concern | Source of truth |
 |---|---|
 | Models, API interfaces, HTTP bindings, authentication | TypeSpec (`spec/**/*.tsp`) |
-| Normative scenarios, glossary, standards, states, decisions, mechanism | The Markdown under `spec/` |
+| Normative scenarios, glossary, standards, states, decisions, mechanism | The Markdown under `docs/` |
 | One change's motivation, alternatives, plan, and history | `work-items/wi-*.md` |
 | Executable behavior | Application code and tests |
 | Released HTTP compatibility | The tracked OpenAPI release baseline |
@@ -78,7 +78,7 @@ returns what a writer returned is the same defect one call further away.
 
 ## 5. Current-state documents
 
-`spec/` holds the cross-context structure and policy, one file per kind; `spec/contexts/<context>/` holds
+`docs/` holds the cross-context structure and policy, one file per kind; `docs/contexts/<context>/` holds
 that context's vocabulary, adopted standards, state transitions, decisions, mechanism, and acceptance
 scenarios, again one file per kind. Each directory's `README.md` declares what it owns and indexes its
 siblings.
@@ -88,8 +88,9 @@ it grows the file whose kind the new content belongs to, and the rest stay the s
 boundary declaration and one home for each fact; do not create a second copy beside one implementation
 language.
 
-TypeSpec and the canonical Markdown are colocated under `spec/` so backend, frontend, workers, and
-external implementations see the same language-independent source. A generated HTML view provides
+TypeSpec under `spec/` and the canonical Markdown under `docs/` mirror each other at `contexts/<context>/`,
+so backend, frontend, workers, and external implementations see the same
+language-independent source. A generated HTML view provides
 cross-document navigation without becoming an authored format.
 
 ## 6. Work items

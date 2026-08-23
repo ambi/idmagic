@@ -6,9 +6,9 @@ created_at: 2026-08-08
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-001 }
-  - { path: spec/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-010 }
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-047 }
+  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-001 }
+  - { path: docs/contexts/sharedsignals/scenarios.md, requirement: REQ-SHAREDSIGNALS-010 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-047 }
 depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 ---
 
@@ -16,8 +16,8 @@ depends_on: [wi-58-continuous-access-evaluation-agent-revocation]
 
 ## Motivation
 
-[[wi-58-continuous-access-evaluation-agent-revocation]] / `spec/contexts/sharedsignals/` は Motivation・specification
-(`spec/contexts/sharedsignals/`)・実装のいずれも Agent プリンシパル限定でスコープされている。
+[[wi-58-continuous-access-evaluation-agent-revocation]] / `docs/contexts/sharedsignals/` は Motivation・specification
+(`docs/contexts/sharedsignals/`)・実装のいずれも Agent プリンシパル限定でスコープされている。
 `AgentRevocationEpoch` は `agent_id` をキーに `agents` テーブルへ直接 FK する専用テーブルで、
 OAuth2 `Introspect` への `ensures` 節も `access_token_subject_is_agent(...)` というガード付きで
 Agent 主体の token にしか revocation epoch 判定をかけない。
@@ -29,7 +29,7 @@ Agent 主体の token にしか revocation epoch 判定をかけない。
 User 側のローカル revocation epoch 機構と、それを既存の human 側失効トリガーに接続する部分が
 丸ごと欠けている**。README ロードマップ (Phase 3) は元々 CAEP/SSF を汎用機能として位置づけていた。
 
-人間ユーザーは RFC 7009 Token Revocation・refresh token family revocation (`spec/contexts/oauth2/decisions.md` のリフレッシュトークン回転)・`sid`
+人間ユーザーは RFC 7009 Token Revocation・refresh token family revocation (`docs/contexts/oauth2/decisions.md` のリフレッシュトークン回転)・`sid`
 ベースのセッション失効 ([[wi-28-session-management-and-oidc-logout-completion]]) というローカルの
 失効プリミティブは既に持っているが、これらは当該 IdP 内で完結し、外部 resource server / 別 IdP へ
 CAEP イベントとして伝播しない (EcosystemPropagation が無い)。また外部から届く User 主体の inbound
@@ -40,7 +40,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
 
 ## Scope
 
-- `spec/contexts/sharedsignals/` (`scenarios.md`、`internals.md`、`models.tsp`):
+- `docs/contexts/sharedsignals/` (`scenarios.md`、`internals.md`、`models.tsp`):
   - `AgentRevocationEpoch` と対称な新規 model `UserRevocationEpoch` (`user_id` をキーに `users`
     テーブルへ FK する専用テーブル) を追加する。
   - `CheckUserRevocationEpoch` / `AdvanceUserRevocationEpoch` (`access: internal`) interface を
@@ -51,7 +51,7 @@ SharedSignals の既存パイプラインに乗せて生態系へ伝播し、外
     (`UserRevocationReason`) にするかは `## Design` で判断する。
   - `ReceiveSecurityEvent` の subject 解決を Agent だけでなく User にも対応させる (現状は
     `security_event_subject_resolves_to_tenant_local_principal` が Agent のみを解決する前提)。
-- `spec/contexts/oauth2/` (`scenarios.md`、`internals.md`):
+- `docs/contexts/oauth2/` (`scenarios.md`、`internals.md`):
   - `Introspect` の `ensures` 節に、`access_token_subject_is_user(...)` の場合も同様に revocation
     epoch を判定する節を追加する (現状の Agent 向け節と対称)。
 - specification 変更なしで既存イベントをトリガーとして利用する対象 (`SharedSignals` が構造的に反応する、

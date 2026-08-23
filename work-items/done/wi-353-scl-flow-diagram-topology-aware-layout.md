@@ -39,7 +39,7 @@ SVG 図のノード配置を `√n × √n` の単純グリッドに index 順�
    `id="diagram-flow-demo"` の存在確認のみで、自己ループ・並行/重複 edge・
    flow 横断遷移のケースを一切カバーしていない。
 
-これは `spec/scl.yaml`・`spec/contexts/*.yaml`・`tools/check/schemas/scl-v3.schema.json`
+これは `spec/scl.yaml`・`docs/contexts/*.yaml`・`tools/check/schemas/scl-v3.schema.json`
 のいずれにも起因しない、`tools/scl-to-html` 側の描画実装の不具合であり、SCL の
 スキーマ自体(views/sees/does 記法、ADR-112 で確立)は変更しない。
 
@@ -57,7 +57,7 @@ states の図にも副次的に効くが、対応が急務なのは「同一 vie
 
 ## Out of Scope
 
-- `spec/scl.yaml` / `spec/contexts/*.yaml` の `flows` セクションの記法変更
+- `spec/scl.yaml` / `docs/contexts/*.yaml` の `flows` セクションの記法変更
   (views/sees/does 記法自体は変更しない)
 - `tools/check/schemas/scl-v3.schema.json` / `tools/check/src/scl-semantics.ts`
   の変更(到達可能性・参照解決ロジックは現状のままで問題なく、今回直すのは
@@ -186,7 +186,7 @@ href は該当 flow のカードアンカーへリンク)を動的に追加し�
   `spec/idmagic.full.html` を確認し、5本の自己ループが分離した円弧として
   描画され、`Login` flow の cross-flow 遷移3本(`Totp`/`MfaEnrollment`/
   `ForgotPassword`)が図とテーブル双方に正しく現れることを確認した。
-  SCLスキーマ(`spec/scl.yaml`/`spec/contexts/*.yaml`/`scl-v3.schema.json`)は
+  SCLスキーマ(`spec/scl.yaml`/`docs/contexts/*.yaml`/`scl-v3.schema.json`)は
   Out of Scope どおり変更していない。
 - **Verification Results**:
   - `just test-tools` - passed (301 tests)

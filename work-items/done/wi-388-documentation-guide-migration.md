@@ -14,7 +14,7 @@ initial_context:
     - DOCUMENTATION_GUIDE.md
     - SPECIFICATION_FORMAT.md
     - DEVELOPMENT.md
-    - spec/README.md
+    - docs/README.md
   typespec: []
   source:
     - spec/contexts
@@ -44,7 +44,7 @@ initial_context:
 
 `Design` 節には書式が無い。`SPECIFICATION_FORMAT.md` は「現在の構造、依存方向、実行時構成、採用技術、セキュリティ境界、運用制約、簡潔な根拠」と 7 項目を列挙するだけで、順序も判定基準も例も与えていない。結果として各 Context の `Design` は場当たりの見出しの並びになり、判断と実装の写しが混ざる。
 
-ルートの `spec/SPECIFICATION.md` も同じ理由で溜まり場になっている。`Cross-cutting Concerns` は「どの Context にも属さない」という不在を基準にした見出しなので、所属条件を持たない。実際に `Database design policy` の下に通知メールテンプレートのカタログが入っており、これは通知機能の製品仕様であってデータベース設計方針ではない。
+ルートの `docs/SPECIFICATION.md` も同じ理由で溜まり場になっている。`Cross-cutting Concerns` は「どの Context にも属さない」という不在を基準にした見出しなので、所属条件を持たない。実際に `Database design policy` の下に通知メールテンプレートのカタログが入っており、これは通知機能の製品仕様であってデータベース設計方針ではない。
 
 `DOCUMENTATION_GUIDE.md` はこれらに対する目指す構成を記録している。本項目はその移行を行う。
 
@@ -52,11 +52,11 @@ initial_context:
 
 - `tools/check`：正本のファイル名と節構成の検査を、種類ごとのファイル構成へ対応させる
 - `tools/render-spec-docs`：分割後のファイル群から仕様サイトを生成する
-- `spec/contexts/*`：全 Context の `SPECIFICATION.md` を `README.md`、`glossary.md`、`standards.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.md` へ分割する
-- `spec/SPECIFICATION.md`：`README.md`、`structure.md`、`api-rules.md`、`observability.md`、`deployment.md`、`capacity.md`、`persistence.md`、`authorization.md` へ分割する
+- `docs/contexts/*`：全 Context の `SPECIFICATION.md` を `README.md`、`glossary.md`、`standards.md`、`states.md`、`decisions.md`、`internals.md`、`scenarios.md` へ分割する
+- `docs/SPECIFICATION.md`：`README.md`、`structure.md`、`api-rules.md`、`observability.md`、`deployment.md`、`capacity.md`、`persistence.md`、`authorization.md` へ分割する
 - `states.md`：状態の表（`State` / 種別 / 意味）を追加し、`Initial:` / `Terminal:` の行を置き換える
 - `Design` の内容を、判断（`decisions.md`）と機構の説明（`internals.md`）へ振り分ける
-- 各 Context の `Authorization boundary` のうち、主体の種類、スコープの語彙、テナント境界を `spec/authorization.md` へ集約する
+- 各 Context の `Authorization boundary` のうち、主体の種類、スコープの語彙、テナント境界を `docs/authorization.md` へ集約する
 - `SPECIFICATION_FORMAT.md` と `DEVELOPMENT.md` を新しい構成へ更新する
 - `DOCUMENTATION_GUIDE.md` の `## 0. このリポジトリでの位置づけ` を削除する
 
@@ -117,7 +117,7 @@ Context の移行順は、小さいものから始めて形式を固めてから
 
 未解決だった問いの結論。
 
-- **機能分割は含めない。** `spec/contexts/<context>/<feature>/` への分割は別項目とする。本項目で `identity-management` は 470 行から最大 150 行のファイル群になり、機能分割の動機だった長さの問題は解消した。検査ツールも `spec/contexts/<context>/<file>` の 1 段だけを正本として受け付ける実装のままなので、機能分割にはツールの変更が別途要る
+- **機能分割は含めない。** `docs/contexts/<context>/<feature>/` への分割は別項目とする。本項目で `identity-management` は 470 行から最大 150 行のファイル群になり、機能分割の動機だった長さの問題は解消した。検査ツールも `docs/contexts/<context>/<file>` の 1 段だけを正本として受け付ける実装のままなので、機能分割にはツールの変更が別途要る
 - **仕様サイトの URL は保たない。** `spec/generated/docs/` は追跡しない生成物であり、外部から参照している箇所はリポジトリ内に無かった。Context のページ (`contexts/<context>/index.html`) は URL が変わらないので、変わるのは新しく増えたページの追加だけである
 
 ## Tasks
@@ -130,7 +130,7 @@ Context の移行順は、小さいものから始めて形式を固めてから
 - [x] T006 [Spec] 小さい Context から順に分割する。1 コミット 1 Context
 - [x] T007 [Spec] `Design` の内容を `decisions.md` と `internals.md` へ振り分ける
 - [x] T008 [Spec] 各 Context の状態遷移に状態の表を追加する
-- [x] T009 [Spec] 主体の種類、スコープの語彙、テナント境界を `spec/authorization.md` へ集約する
+- [x] T009 [Spec] 主体の種類、スコープの語彙、テナント境界を `docs/authorization.md` へ集約する
 - [x] T010 [Spec] ルートの `SPECIFICATION.md` を種類ごとのファイルへ分割する
 - [x] T011 [Tools] 旧構成の受け入れを外す
 - [x] T012 [Docs] `SPECIFICATION_FORMAT.md` と `DEVELOPMENT.md` を新構成へ更新する
@@ -163,7 +163,7 @@ Context の移行順は、小さいものから始めて形式を固めてから
 
   6086 行の `SPECIFICATION.md` 22 個が、`README.md` / `glossary.md` / `standards.md` / `states.md` / `decisions.md` / `internals.md` / `scenarios.md`（Context）と `README.md` / `structure.md` / `api-rules.md` / `observability.md` / `deployment.md` / `persistence.md` / `authorization.md`（ルート）になった。`Design` は寿命で分けた。理由を持つ判断は `decisions.md` の一覧に、コードから復元できない機構の説明は `internals.md` の散文になり、`Internal Interfaces` や `Design Decisions` のような観点名の見出しは消えた。
 
-  仕様が得たものが 3 つある。1 つ目は状態の表である。全 22 の状態機械が `| State | Kind | Meaning |` を持ち、初期状態がちょうど 1 つであること、遷移表の `From` と `To` が表に現れることを機械検査する。従来の `Initial: X Terminal: Y` の 1 行では、状態の集合も各状態の意味も書けなかった。2 つ目は `spec/authorization.md` である。主体の種類、スコープの名前空間、対話セッション限定の規則とその 2 つの理由、テナント境界を 1 か所に集約した。従来は 21 Context の `Authorization boundary` に同じ規則が散っていた。3 つ目は通知テンプレートのカタログの移動である。`Database design policy` の下にあったが、これは通知機能の製品仕様であって永続化の方針ではないので、`NotificationTemplate` を所有する `Tenancy` の `internals.md` へ移した。
+  仕様が得たものが 3 つある。1 つ目は状態の表である。全 22 の状態機械が `| State | Kind | Meaning |` を持ち、初期状態がちょうど 1 つであること、遷移表の `From` と `To` が表に現れることを機械検査する。従来の `Initial: X Terminal: Y` の 1 行では、状態の集合も各状態の意味も書けなかった。2 つ目は `docs/authorization.md` である。主体の種類、スコープの名前空間、対話セッション限定の規則とその 2 つの理由、テナント境界を 1 か所に集約した。従来は 21 Context の `Authorization boundary` に同じ規則が散っていた。3 つ目は通知テンプレートのカタログの移動である。`Database design policy` の下にあったが、これは通知機能の製品仕様であって永続化の方針ではないので、`NotificationTemplate` を所有する `Tenancy` の `internals.md` へ移した。
 
   ツール側では、`documentKind` がリポジトリ相対パスから適用する文法を決め、`validateDocument` がそれで分岐する。移行中は両構成を受け入れ、完了後に旧構成の受け入れを外した。`spec-diff` は状態機械を、それを載せるファイルではなく所有する Context で識別するようになったので、機械がファイル間を移動しても遷移の変更として報告しない。表のセルはエスケープされた `|` を保持する。`UserLifecycle` の purge ガードが CEL の論理和を `\|\|` と書いており、これを分割していた既存の不具合が状態の表の検査で表面化した。
 
@@ -176,7 +176,7 @@ Context の移行順は、小さいものから始めて形式を固めてから
   - `just verify` - `lint-go` 以外すべて passed。`lint-go` は golangci-lint が Go 1.27 の標準ライブラリを型検査できずに落ちるもので、着手前のコミット 0a9b9a76 でも同一のエラーで落ちる。本変更が触れた Go ファイルはコメントのみである
 
 - **Left Undone**:
-  - `spec/capacity.md` は作らなかった。想定規模、縮退の順序、上限の置き方の方針にあたる記述がリポジトリに無く、唯一近い文字列長の区分は、それを使う契約の規則と一緒に読めないと判断できないため `api-rules.md` に残した
-  - `spec/glossary.md`、`spec/standards.md`、`spec/scenarios.md` も同じ理由で作らなかった。ルートに Published Language、全体が従う外部規範、Context を跨ぐシナリオにあたる記述が無い
+  - `docs/capacity.md` は作らなかった。想定規模、縮退の順序、上限の置き方の方針にあたる記述がリポジトリに無く、唯一近い文字列長の区分は、それを使う契約の規則と一緒に読めないと判断できないため `api-rules.md` に残した
+  - `docs/glossary.md`、`docs/standards.md`、`docs/scenarios.md` も同じ理由で作らなかった。ルートに Published Language、全体が従う外部規範、Context を跨ぐシナリオにあたる記述が無い
   - T003 の「`State` 列と TypeSpec の列挙値の一致」は実装しなかった。状態機械が扱う集合は列挙型の部分集合であることが多く（`UserLifecycle` は `UserStatus` の 7 個のうち 4 個）、しかもその列挙型は別の Context にある。等値検査は偽になるため、対応関係を宣言する書式を先に決める必要がある。検査したのは `Kind` の語彙、初期状態が 1 つであること、遷移表の `From` と `To` が状態の表に現れることの 3 つである
-  - `spec/contexts/system/internals.md` の UI 指針（デザイン指針、管理コンソールの方針、ライブラリ選定表、ナビゲーション方針、コンテナ／表示の分割）は、`DOCUMENTATION_GUIDE.md` §5.9 ではコードの近くに置くものだが、本項目では移動先を作らずそのまま移した
+  - `docs/contexts/system/internals.md` の UI 指針（デザイン指針、管理コンソールの方針、ライブラリ選定表、ナビゲーション方針、コンテナ／表示の分割）は、`DOCUMENTATION_GUIDE.md` §5.9 ではコードの近くに置くものだが、本項目では移動先を作らずそのまま移した

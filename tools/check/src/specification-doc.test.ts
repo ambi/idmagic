@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'bun:test'
 import { documentKind, validateDocument } from './specification-doc.ts'
 
-const SCENARIOS = 'spec/contexts/demo/scenarios.md'
-const STATES = 'spec/contexts/demo/states.md'
-const STANDARDS = 'spec/contexts/demo/standards.md'
+const SCENARIOS = 'docs/contexts/demo/scenarios.md'
+const STATES = 'docs/contexts/demo/states.md'
+const STANDARDS = 'docs/contexts/demo/standards.md'
 
 const scenarios = `# Demo Scenarios
 
@@ -20,27 +20,27 @@ const messages = (path: string, source: string) =>
 
 describe('documentKind', () => {
   it('names the grammar of each canonical document', () => {
-    expect(documentKind('spec/contexts/demo/states.md')).toBe('states')
-    expect(documentKind('spec/contexts/demo/scenarios.md')).toBe('scenarios')
-    expect(documentKind('spec/contexts/demo/decisions.md')).toBe('prose')
-    expect(documentKind('spec/standards.md')).toBe('standards')
-    expect(documentKind('spec/authorization.md')).toBe('prose')
+    expect(documentKind('docs/contexts/demo/states.md')).toBe('states')
+    expect(documentKind('docs/contexts/demo/scenarios.md')).toBe('scenarios')
+    expect(documentKind('docs/contexts/demo/decisions.md')).toBe('prose')
+    expect(documentKind('docs/standards.md')).toBe('standards')
+    expect(documentKind('docs/authorization.md')).toBe('prose')
   })
 
   it('rejects a name the layout does not define, and a context-only name at the root', () => {
-    expect(documentKind('spec/contexts/demo/notes.md')).toBeUndefined()
-    expect(documentKind('spec/states.md')).toBeUndefined()
-    expect(documentKind('spec/contexts/demo/user/scenarios.md')).toBeUndefined()
+    expect(documentKind('docs/contexts/demo/notes.md')).toBeUndefined()
+    expect(documentKind('docs/states.md')).toBeUndefined()
+    expect(documentKind('docs/contexts/demo/user/scenarios.md')).toBeUndefined()
     expect(documentKind('frontend/README.md')).toBeUndefined()
   })
 
   it('no longer recognizes the single canonical document', () => {
-    expect(documentKind('spec/SPECIFICATION.md')).toBeUndefined()
-    expect(documentKind('spec/contexts/demo/SPECIFICATION.md')).toBeUndefined()
+    expect(documentKind('docs/SPECIFICATION.md')).toBeUndefined()
+    expect(documentKind('docs/contexts/demo/SPECIFICATION.md')).toBeUndefined()
   })
 
   it('rejects a path the canonical layout does not define', () => {
-    expect(messages('spec/contexts/demo/notes.md', '# Notes\n')).toEqual([
+    expect(messages('docs/contexts/demo/notes.md', '# Notes\n')).toEqual([
       'not a canonical specification document',
     ])
   })
@@ -150,7 +150,7 @@ Replaced by the valid request scenario.
 - WHEN it happens
 - THEN it holds
 `
-    const result = validateDocument('spec/contexts/demo/decisions.md', source)
+    const result = validateDocument('docs/contexts/demo/decisions.md', source)
     expect(result.findings.map((finding) => finding.message)).toEqual([
       'REQ-DEMO-002 must be declared in scenarios.md',
     ])

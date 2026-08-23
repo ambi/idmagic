@@ -314,7 +314,7 @@ export function checkRefusalCoverage(
   for (const id of declared) {
     if (citedByTests.has(id) || allowedSet.has(id)) continue
     findings.push({
-      path: 'spec/contexts',
+      path: 'docs/contexts',
       rule: 'R3',
       message:
         `${id} declares a refusal, but no test names it. ` +
@@ -400,7 +400,7 @@ export function checkContractRefusalsAreDeclared(
   for (const [type, operations] of contract) {
     if (declared.has(type)) continue
     findings.push({
-      path: `spec/contexts/${context}/scenarios.md`,
+      path: `docs/contexts/${context}/scenarios.md`,
       rule: 'R4',
       message:
         `${operations.join(', ')} answer 403 with ${type}, but no scenario declares that refusal. ` +

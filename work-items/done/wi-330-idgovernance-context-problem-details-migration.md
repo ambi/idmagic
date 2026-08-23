@@ -5,7 +5,7 @@ risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md, spec/contexts/identity-governance/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md, docs/contexts/identity-governance/SPECIFICATION.md]
   source: [backend/idgovernance/handlers_http, backend/shared/http/support_http/problem.go]
   tests: [backend/idgovernance/handlers_http]
   stop_before_reading: [frontend]
@@ -30,7 +30,7 @@ initial_context:
 ## Design
 
 - `support.WriteBrowserError(...)` を `support.WriteProblem(...)` に機械的に
-  置き換える。`spec/contexts/identity-governance/SPECIFICATION.md` の該当 model は
+  置き換える。`docs/contexts/identity-governance/SPECIFICATION.md` の該当 model は
   wi-325 でこのコンテキストの granular error model を新設していないため、
   status 変更は不要 (`WorkflowRevisionConflictError` 等は元々 409 が既に
   Go 実装と一致している想定 — 実装時に個別確認する)。

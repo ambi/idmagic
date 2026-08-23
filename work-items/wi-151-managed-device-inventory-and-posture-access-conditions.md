@@ -7,8 +7,8 @@ created_at: 2026-07-10
 priority: p3
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/application/scenarios.md, requirement: REQ-APPLICATION-009 }
-  - { path: spec/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-026 }
+  - { path: docs/contexts/application/scenarios.md, requirement: REQ-APPLICATION-009 }
+  - { path: docs/contexts/authentication/scenarios.md, requirement: REQ-AUTHENTICATION-026 }
 ---
 
 # 管理デバイス台帳とデバイスポスチャ条件を導入する
@@ -52,7 +52,7 @@ sign-in policy で「管理済み端末のみ」「承認済み端末のみ」�
 
 ## Tasks
 - [ ] T001 [Spec] Device model、posture、policy condition、events / scenarios を追加する。
-- [ ] T002 [Decision] device identity、posture 信頼境界、MDM 連携余地を `spec/contexts/authentication/decisions.md` に記録する。
+- [ ] T002 [Decision] device identity、posture 信頼境界、MDM 連携余地を `docs/contexts/authentication/decisions.md` に記録する。
 - [ ] T003 [App] device repository と posture evaluator を実装する。
 - [ ] T004 [HTTP] account/admin device API を追加する。
 - [ ] T005 [UI] account/admin の device 管理画面を追加する。

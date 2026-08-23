@@ -101,7 +101,7 @@ ADR-055 の再ピン留めが必要か、[[wi-57-cross-app-access-identity-asser
   - **結論**: ADR-055 の pin を 2025-11-25 → 2026-07-28 に更新し、監査結果を ADR-055 本文に記録した。
     追加の SCL 変更は不要(既存の RFC 8707/9728/8414/7591 サブセットで対象改訂を満たす)。
 - SCL に変更を加えた場合は `just check-scl` / `just verify-spec` を通す。→ 本 work item では SCL
-  (`spec/scl.yaml` / `spec/contexts/*.yaml`)への変更なし。`just check` で work-item・ADR 記録の
+  (`spec/scl.yaml` / `docs/contexts/*.yaml`)への変更なし。`just check` で work-item・ADR 記録の
   整合を検証した。
 
 ## Risk Notes
@@ -136,5 +136,5 @@ ADR-055 の再ピン留めが必要か、[[wi-57-cross-app-access-identity-asser
 - **Verification Results**:
   - `just check` - passed (work-item 339 件・change-record id 488 件・architecture ledger 23 件・
     traceability manifest/evidence を含め all green)。
-  - SCL (`spec/scl.yaml` / `spec/contexts/*.yaml`) への変更なし。差分は ADR-055 の pin 文言更新
+  - SCL (`spec/scl.yaml` / `docs/contexts/*.yaml`) への変更なし。差分は ADR-055 の pin 文言更新
     (2025-11-25 → 2026-07-28)と、wi-57 Plan への訂正追記のみで吸収した。

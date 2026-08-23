@@ -50,7 +50,7 @@ OpenSLO、テストなど、関心ごとに適した正本を context の近傍�
 
 ## Out of Scope
 - `SPECIFICATION_CORE_LANGUAGE.md` の改訂、廃止、または歴史文書化。
-- `spec/scl.yaml` と `spec/contexts/*.yaml` の移行・削除。
+- `spec/scl.yaml` と `docs/contexts/*.yaml` の移行・削除。
 - TypeSpec、Cedar、OpenSLO、Storybookなどの依存導入や実装。
 - SCL loader、validator、renderer、OpenAPI / JSON Schema generator の削除。
 - `ARCHITECTURE.md`、agent skills、work item format、AGENTS.md の新方針への同期。
@@ -132,7 +132,7 @@ skills、agent instructions、work item workflowへ大きく波及する。今�
 
   そのため、今回の変更方針は本 work item として**塩漬け（一旦見送り）**とし、着手前の状態へ
   戻した。`REGENERATIVE_ARCHITECTURE.md`・`SPECIFICATION_CORE_LANGUAGE.md`・agent skills・
-  `AGENTS.md`・`tools/ra/src/main.ts`・`justfile`・`spec/scl.yaml`・`spec/contexts/*.yaml`
+  `AGENTS.md`・`tools/ra/src/main.ts`・`justfile`・`spec/scl.yaml`・`docs/contexts/*.yaml`
   （13 context 全て）を、本 work item 着手前の commit（`31bf9bd9`）の内容まで
   `git reset --hard` で復元し、それに伴う 14 commit（wi-183・wi-207・wi-208・wi-209 系列）を
   履歴から完全に削除した。`spec/templates/` など新規追加していたディレクトリ・ファイルも

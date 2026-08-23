@@ -3,7 +3,7 @@ package spec
 import "fmt"
 
 // ApprovalRequestLifecycle mirrors the normative transition table in
-// spec/contexts/oauth2/states.md. Only Approved can reach Consumed, so a satisfied request
+// docs/contexts/oauth2/states.md. Only Approved can reach Consumed, so a satisfied request
 // can be converted to tokens exactly once.
 
 type ApprovalRequestEvent string

@@ -8,13 +8,13 @@ priority: p1
 change_kind: tooling
 initial_context:
   specification:
-    - spec/contexts/signing-keys/scenarios.md
-    - spec/contexts/authorization/scenarios.md
-    - spec/contexts/identity-governance/scenarios.md
-    - spec/contexts/sharedsignals/scenarios.md
-    - spec/contexts/workloadidentity/scenarios.md
-    - spec/contexts/authentication/scenarios.md
-    - spec/contexts/oauth2/scenarios.md
+    - docs/contexts/signing-keys/scenarios.md
+    - docs/contexts/authorization/scenarios.md
+    - docs/contexts/identity-governance/scenarios.md
+    - docs/contexts/sharedsignals/scenarios.md
+    - docs/contexts/workloadidentity/scenarios.md
+    - docs/contexts/authentication/scenarios.md
+    - docs/contexts/oauth2/scenarios.md
   typespec:
     - IdMagic.SigningKeys.Operations.RotateTenantSigningKey
     - IdMagic.SigningKeys.Operations.DisableTenantKey
@@ -65,7 +65,7 @@ spec_impact: { kind: none, reason: "検査の追加と、既存シナリオへ�
 
 - 拒否テストが副作用の不在を assert していない 84 件の修正。[[wi-392-refusal-tests-assert-the-absent-effect]] が持つ。ただし本 work item が新しく参照するテストは、その規範を満たす形で書く。
 - R1 / R2 の拡張。ユースケース層への拡大は [[wi-393-guard-rules-reach-the-usecase-layer]] が持つ。
-- フロントエンド。`spec/authorization.md` により強制はサーバー側にあり、UI が唯一の強制点になっている箇所は無い。
+- フロントエンド。`docs/authorization.md` により強制はサーバー側にあり、UI が唯一の強制点になっている箇所は無い。
 - 新しい防護の追加。既に実装されている拒否を書き起こすことに限る。実装が拒否していない箇所や、契約と実装が食い違う箇所が見つかった場合は、本 work item では直さず欠陥として切り出す。
 
 ## Design

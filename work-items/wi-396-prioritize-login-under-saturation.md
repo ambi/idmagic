@@ -7,19 +7,19 @@ created_at: 2026-08-23
 priority: p2
 change_kind: operations
 affected_spec:
-  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
-  - { path: spec/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
+  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
+  - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-016 }
 ---
 
 # 容量が足りないときにログインが管理系トラフィックより先に生き残るようにする
 
 ## Motivation
 
-IdP としての idmagic は、止まると依存する全システムのログインが止まる。`spec/capacity.md` のサービス目標も、対話的な認証の母集団に対して定義されている。
+IdP としての idmagic は、止まると依存する全システムのログインが止まる。`docs/capacity.md` のサービス目標も、対話的な認証の母集団に対して定義されている。
 
 **その優先度を実現する機構が、現在ひとつも無い。**
 
-`spec/capacity.md` の Degradation order は、容量を超過したときの縮退順序を規範として既に定めている。
+`docs/capacity.md` の Degradation order は、容量を超過したときの縮退順序を規範として既に定めている。
 
 > 1. `bulk` レーンの新規取得と外部スケジューラーの保守バッチを遅延させる。
 > 2. `default` レーンの新規取得を遅延させ、`latency_sensitive` レーンの専用枠を維持する。
@@ -38,11 +38,11 @@ IdP としての idmagic は、止まると依存する全システムのログ�
 ## Scope
 
 - API プロセスの水平スケールを自動化する（HPA）。
-- `spec/capacity.md` の Degradation order 3 から 5 を実装する。要求を優先度クラスに分類し、飽和時に低優先度から明示的に拒否する。
+- `docs/capacity.md` の Degradation order 3 から 5 を実装する。要求を優先度クラスに分類し、飽和時に低優先度から明示的に拒否する。
 - 優先度クラスごとの PostgreSQL 接続予算。
-- 縮退が発動したことを観測できるメトリクスと、`spec/capacity.md` のサービス目標に対する影響の測定。
+- 縮退が発動したことを観測できるメトリクスと、`docs/capacity.md` のサービス目標に対する影響の測定。
 - 縮退の閾値を運用者が調整できる起動時設定（REQ-SYSTEM-016 に従って検証する）。
-- 縮退の振る舞いを規範的シナリオとして `spec/contexts/system/scenarios.md` に追加する。
+- 縮退の振る舞いを規範的シナリオとして `docs/contexts/system/scenarios.md` に追加する。
 
 ## Out of Scope
 
@@ -66,7 +66,7 @@ API はステートレスなので、水平にスケールできる。だから�
 
 ### 優先度クラス
 
-要求を分類し、飽和時に低い側から拒否する。分類は `spec/capacity.md` の Degradation order の段をそのまま写す。
+要求を分類し、飽和時に低い側から拒否する。分類は `docs/capacity.md` の Degradation order の段をそのまま写す。
 
 | クラス | 対象 | 縮退時の扱い |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ Discovery と JWKS はキャッシュ済み応答を返せるので分類の対�
 
 当初は API を認証プレーンと管理プレーンに分け、同一イメージのまま Deployment を 2 つにする案を検討した。ワーカーが `JOB_WORKER_LANES` で実行レーンごとに分かれている前例もある。採らなかったのは次の理由による。
 
-- **得られるものが上記の優先度と重なる。** プレーン分割が与えるのは「管理系がログインの実行枠を奪わない」ことで、入場制御が与えるものと同じである。入場制御のほうが粒度が細かく、`spec/capacity.md` が指定している機構でもある。
+- **得られるものが上記の優先度と重なる。** プレーン分割が与えるのは「管理系がログインの実行枠を奪わない」ことで、入場制御が与えるものと同じである。入場制御のほうが粒度が細かく、`docs/capacity.md` が指定している機構でもある。
 - **PostgreSQL の競合は分割しても残る。** 共有ストアが束縛条件である限り、API 側を分けても DB 側は分かれない。接続予算をクラス別に分けるほうが直接的である。
 - **コストが重い。** HA を保つには両プレーンがそれぞれ最小レプリカ数と余裕枠を持つ必要があり、3 Pod が最低 6 Pod になる。中規模以下の構成では純粋な無駄である。
 - **今は存在しない障害モードが生まれる。** 管理プレーンの過小サイズという新しい失敗の形が増える。容量設計も 2 系統になる。
@@ -102,7 +102,7 @@ Discovery と JWKS はキャッシュ済み応答を返せるので分類の対�
 
 - **HPA だけを入れる。** 反応時間の窓が残り、DB が束縛条件のときは逆効果になりうる。
 - **エンドポイント別のレート制限の閾値を下げる。** 濫用には効くが正当な一括操作には効かない。抑えたいのは正当な管理操作の影響であって、拒否したいわけではない。
-- **管理 API を別のバイナリにする。** ログイン経路は IdM 側の読み取りに依存しており、リンクされるコードはほとんど同じである。`spec/structure.md` が定める単一の `Config` も 2 系統になり、REQ-SYSTEM-016 が避けている「あるプロセスだけ検証されていない値を持つ」状態を作る。
+- **管理 API を別のバイナリにする。** ログイン経路は IdM 側の読み取りに依存しており、リンクされるコードはほとんど同じである。`docs/structure.md` が定める単一の `Config` も 2 系統になり、REQ-SYSTEM-016 が避けている「あるプロセスだけ検証されていない値を持つ」状態を作る。
 
 ## Plan
 
@@ -121,9 +121,9 @@ Discovery と JWKS はキャッシュ済み応答を返せるので分類の対�
 ## Tasks
 
 - [ ] T001 [Measure] 管理系バースト下でログインのレイテンシーがサービス目標をどれだけ侵すかを実測する。侵さないなら T003 以降を取り下げる。
-- [ ] T002 [Ops] API に HPA を入れる。`replicas` 固定をやめ、最小値、最大値、判定指標を `spec/capacity.md` の Sizing rules と整合させる。
+- [ ] T002 [Ops] API に HPA を入れる。`replicas` 固定をやめ、最小値、最大値、判定指標を `docs/capacity.md` の Sizing rules と整合させる。
 - [ ] T003 [Design] 飽和の判定基準、優先度クラスの境界、拒否の状態コード、接続予算の分け方を確定し `## Design` に記録する。
-- [ ] T004 [Spec] 縮退の振る舞いを `spec/contexts/system/scenarios.md` に規範的シナリオとして追加する。
+- [ ] T004 [Spec] 縮退の振る舞いを `docs/contexts/system/scenarios.md` に規範的シナリオとして追加する。
 - [ ] T005 [App] 優先度クラスの分類をルート登録と同じ場所で宣言し、**分類の無いルートが存在しないことを検査するテスト**を同時に入れる。ルートを 1 つ分類から外すと落ちることを確認する。
 - [ ] T006 [App] 負荷連動の入場制御を実装する。Degradation order の段 3、4、5 に対応させる。
 - [ ] T007 [App] PostgreSQL 接続予算をクラス別に分け、`management_bulk` が `interactive_auth` の接続枠を奪えないようにする。
@@ -157,6 +157,6 @@ Discovery と JWKS はキャッシュ済み応答を返せるので分類の対�
 
 飽和の判定基準をレプリカ数に依存する量（たとえばプロセス単体の CPU 使用率）に置くと、HPA でレプリカが増えたときに判定がずれる。T003 の未解決点 1 はこの理由による。
 
-**この変更は高可用性ではない。** PostgreSQL は依然として単一の正であり、共通の障害域は解消しない。優先度を付けたことで可用性が確保されたと読まれると、[[wi-165-high-availability-and-failover-resilience-topology]] が扱う本来の課題が過小評価される。`spec/deployment.md` にはこの限界を明記する。
+**この変更は高可用性ではない。** PostgreSQL は依然として単一の正であり、共通の障害域は解消しない。優先度を付けたことで可用性が確保されたと読まれると、[[wi-165-high-availability-and-failover-resilience-topology]] が扱う本来の課題が過小評価される。`docs/deployment.md` にはこの限界を明記する。
 
 T001 の実測で劣化が観測できなかった場合に、それでも「入れておいたほうがよい」として T003 以降へ進むと、根拠の無い複雑さを恒久的に抱えることになる。**測定を取り下げの根拠として使えるようにしておく**ことが、この計画の要である。

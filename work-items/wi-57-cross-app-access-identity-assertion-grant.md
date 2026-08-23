@@ -7,7 +7,7 @@ priority: p2
 depends_on: [wi-50-token-exchange-delegation-actor-chain, wi-56-mcp-authorization-server]
 change_kind: feature
 affected_spec:
-  - { path: spec/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
+  - { path: docs/contexts/oauth2/scenarios.md, requirement: REQ-OAUTH2-048 }
   - { path: spec/contexts/oauth2/models.tsp, symbol: TokenRequest }
 ---
 
@@ -38,7 +38,7 @@ IdMagic は現状 RFC 7523 をクライアント認証 (`client_assertion`) に�
 - `jti` の再送窓、短い有効期限、発信元と宛先のテナント一致、発信元アプリの許可リスト、ユーザーの同意または企業ポリシー、`authorization_details` の縮小をすべて満たす場合だけ、宛先を受け手とするトークンを発行する。
 - 交換の結果は既存の `act` チェーンへ発信元アプリとエージェントを加える。アサーションの本文とユーザーのデータは保存しない。
 - 管理コンソールにアプリ間アクセス許可の付与・一覧・取消を追加する。
-- durable な設計判断は `spec/contexts/oauth2/decisions.md` と `spec/contexts/application/decisions.md` へ、機構の説明は各 `internals.md` へ、本変更固有の分析と却下した代替案は本ファイルの `## Design` へ置く。
+- durable な設計判断は `docs/contexts/oauth2/decisions.md` と `docs/contexts/application/decisions.md` へ、機構の説明は各 `internals.md` へ、本変更固有の分析と却下した代替案は本ファイルの `## Design` へ置く。
 
 ## Out of Scope
 

@@ -244,7 +244,7 @@ func (rn *Runner) fail(ctx context.Context, job *domain.Job, handlerErr error) {
 		decrementActiveJobsQuota(ctx, rn.deps.QuotaRepo, updated.TenantID)
 		// 配信不能の確定は運用者が最初に探すものなので、構造化ログにも残す。
 		// tenant_id と job_id は調査の入口として必要だが、ラベルの基数が問題に
-		// なるメトリクスの側には決して載せない (spec/observability.md)。
+		// なるメトリクスの側には決して載せない (docs/observability.md)。
 		// ハンドラーのエラー文は載せない。中身は投入側が決めるので、個人情報が
 		// 混ざっていないことをここから主張できない。監査の JobFailed が持つ。
 		logging.Warn(ctx, "jobs: job dead-lettered",

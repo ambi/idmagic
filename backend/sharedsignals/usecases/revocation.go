@@ -82,7 +82,7 @@ type AgentRevocationReactor struct {
 	EpochRepo ssports.AgentRevocationEpochRepository
 	// AgentRepo resolves the agent set owned by a disabled/deleted user
 	// (SharedSignals depends on IdManagement's AgentRepository; the context
-	// relationships live in spec/README.md の Context Map).
+	// relationships live in docs/README.md の Context Map).
 	AgentRepo agentports.AgentRepository
 	// Emit records the derived RevocationEpochAdvanced / AgentAccessRevoked
 	// events (best-effort audit trail is the caller's concern to compose;

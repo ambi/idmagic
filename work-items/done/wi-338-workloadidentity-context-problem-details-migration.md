@@ -5,7 +5,7 @@ risk: low
 created_at: 2026-08-08
 depends_on: [wi-326-http-error-responses-rfc9457-migration]
 initial_context:
-  specification: [spec/SPECIFICATION.md, spec/contexts/workloadidentity/SPECIFICATION.md]
+  specification: [docs/SPECIFICATION.md, docs/contexts/workloadidentity/SPECIFICATION.md]
   source: [backend/workloadidentity/handlers_http, backend/shared/http/support_http/problem.go]
   tests: [backend/workloadidentity/handlers_http]
   stop_before_reading: [frontend]

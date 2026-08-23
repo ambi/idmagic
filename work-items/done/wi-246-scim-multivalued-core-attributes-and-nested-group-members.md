@@ -29,9 +29,9 @@ initial_context:
   stop_before_reading:
     - frontend
 affected_spec:
-  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
-  - { path: spec/contexts/sourcing/standards.md, requirement: RFC7644-PATCH }
-  - { path: spec/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-006 }
+  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7643-CORE-RESOURCES }
+  - { path: docs/contexts/sourcing/standards.md, requirement: RFC7644-PATCH }
+  - { path: docs/contexts/sourcing/scenarios.md, requirement: REQ-SOURCING-006 }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.GetScimSchemas }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.CreateScimUser }
   - { path: spec/contexts/sourcing/main.tsp, symbol: IdMagic.Contract.UpdateScimUser }
@@ -90,7 +90,7 @@ nested group を正直に discovery・validation へ反映する。
 - Group response の各 member は canonical な `type: "User"` を返す。
 - GetScimSchemas は実装済み subset だけを公開する。Group `members.$ref` の `referenceTypes` は
   `User` のみにし、`phoneNumbers`、`addresses`、nested Group 対応を広告しない。
-- `spec/contexts/sourcing/SPECIFICATION.md` の Design と normative scenarios、および関連 TypeSpec
+- `docs/contexts/sourcing/SPECIFICATION.md` の Design と normative scenarios、および関連 TypeSpec
   operation documentation に、projection 順序・正規化した応答・非対応属性のエラーを先に定める。
 
 ## Out of Scope
@@ -134,7 +134,7 @@ Group-in-Group は IdMagic の認可・membership model に意味を持たない
 
 ## Tasks
 
-- [x] T000 [Spec] `spec/contexts/sourcing/SPECIFICATION.md` の Design と normative scenarios に、
+- [x] T000 [Spec] `docs/contexts/sourcing/SPECIFICATION.md` の Design と normative scenarios に、
       email projection 順序、単一 work/primary 応答、unsupported `phoneNumbers` / `addresses` / Group member
       のエラー、discovery の subset を定め、関連 TypeSpec operation documentation を同期する。
 - [x] T001 [Domain] RED: email 選択規則、複数 primary、不正な element/value/type、fallback 順序、

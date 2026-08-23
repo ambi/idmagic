@@ -49,7 +49,7 @@ type Scenario = { id: string; title: string; context: string; step: string; type
 /** Read every scenario that declares a refusal, with the step that declares it. */
 async function scenarios(): Promise<Map<string, Scenario>> {
   const found = new Map<string, Scenario>()
-  const contextsDir = resolve(root, 'spec/contexts')
+  const contextsDir = resolve(root, 'docs/contexts')
   for (const context of await readdir(contextsDir)) {
     const source = await readFile(resolve(contextsDir, context, 'scenarios.md'), 'utf8').catch(
       () => undefined,
