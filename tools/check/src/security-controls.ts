@@ -372,7 +372,8 @@ export function contractRefusalsOfStateChanges(typespec: string): Map<string, st
 export function declaredRefusalTypes(scenarios: string): Set<string> {
   const types = new Set<string>()
   for (const step of refusalSteps(scenarios)) {
-    for (const match of step.line.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g)) types.add(match[1] ?? '')
+    for (const match of step.line.matchAll(/\b([A-Z][A-Za-z0-9]*Error)\b/g))
+      types.add(match[1] ?? '')
   }
   return types
 }

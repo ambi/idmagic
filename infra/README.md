@@ -31,7 +31,7 @@ mise run k6-smoke # デフォルト値: http://host.docker.internal:8080/realms/
 mise run check-k6
 ```
 
-スモークテストのしきい値は `OAuth2/objective/TokenLatency` と `OAuth2/objective/TokenErrorRate` から導き、p99 トークンレイテンシーを 300 ms 未満、エラー率を 0.1% 未満とする。CI はフィクスチャーを用意した後、隔離したサービス URL に対して同じレシピを実行する。本番テナントに対して実行してはならない。
+スモークテストのしきい値は [SLO-TOKEN-LATENCY と SLO-PRIMARY-ERRORS](../docs/capacity.md#service-level-objectives) から導く。数値はここに再掲せず、`load/k6/oauth-smoke.js` が持つ値がその目標に由来することだけを記録する。CI はフィクスチャーを用意した後、隔離したサービス URL に対して同じレシピを実行する。本番テナントに対して実行してはならない。
 
 宣言的な PostgreSQL スキーマだけを再適用する。
 

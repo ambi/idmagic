@@ -261,7 +261,7 @@ run = "bun run test:e2e"
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, and command map"
-depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "check-command-map", "check-config-reference", "check-admin-scopes", "check-security-controls"]
+depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "check-command-map", "check-config-reference", "check-admin-scopes", "check-security-controls", "check-slo-references"]
 
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"
@@ -283,6 +283,11 @@ description = "Check admin API scope declarations"
 depends = ["compile-spec"]
 dir = "tools"
 run = "bun run check/src/check-admin-scopes.ts"
+
+[tasks.check-slo-references]
+description = "Check that monitoring assets name declared service level objectives"
+dir = "tools"
+run = "bun run check/src/check-slo-references.ts"
 
 [tasks.check-command-map]
 description = "Check workflow calls against mise tasks"

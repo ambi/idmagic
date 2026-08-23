@@ -84,7 +84,9 @@ async function scenarios(): Promise<Map<string, Scenario>> {
  */
 function packageFor(id: string, backendDirs: string[]): string | undefined {
   const prefix = (id.match(/^REQ-([A-Z0-9]+)-/)?.[1] ?? '').toLowerCase()
-  return backendDirs.find((dir) => dir === prefix) ?? backendDirs.find((dir) => prefix.startsWith(dir))
+  return (
+    backendDirs.find((dir) => dir === prefix) ?? backendDirs.find((dir) => prefix.startsWith(dir))
+  )
 }
 
 /** Cut top-level test functions out of a file; gofumpt closes them at column zero. */
@@ -133,7 +135,8 @@ for (const path of (await walk(resolve(root, 'backend'))).filter((p) => p.endsWi
   }
 }
 
-const REFUSAL = /StatusForbidden|StatusUnauthorized|StatusConflict|StatusNotFound|StatusBadRequest|StatusUnprocessableEntity|Denied|Forbidden|Unauthorized|Rejects|Refuses/
+const REFUSAL =
+  /StatusForbidden|StatusUnauthorized|StatusConflict|StatusNotFound|StatusBadRequest|StatusUnprocessableEntity|Denied|Forbidden|Unauthorized|Rejects|Refuses/
 
 type Row = { id: string; scenario?: Scenario; pkg?: string; named: string[]; nearby: string[] }
 const rows: Row[] = []

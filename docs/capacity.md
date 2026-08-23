@@ -24,50 +24,58 @@
 
 次の Specification target は 30 日の移動窓で評価する。パーセンタイルはフリート全体の `http_request_duration_seconds` ヒストグラムから算出し、各表の `Population` と `Exclusions` は [Measurement boundary](#measurement-boundary) に従う。
 
+**各行は安定した ID を持つ。ID は一度参照されたら変更しない。** 他の文書、アラート定義、負荷試験は**この ID を参照し、数値を再掲しない**。数値を写すと、正本を変えたときに写しが黙って古くなる。数値そのものを持たざるをえない資材（Prometheus の式、k6 のしきい値）は、その数がどの目標に由来するかを ID で名指しする。
+
+アラートは目標そのものを判定しない。**アラートが判定するのは error budget の消費速度であり、時間窓が違う。** たとえば SLO-PRIMARY-ERRORS は 30 日の移動窓で評価するが、対応するアラートは 5 分のバーンレート窓を見る。同じ数を使っていても、それは現在の設計判断であって、一致し続ける義務ではない。
+
 ### Latency
 
-| Endpoint population | Method | Target | Metric | Notes |
-| --- | --- | --- | --- | --- |
-| `/api/auth/login` | `POST` | p99 ≤ 300 ms | `http_request_duration_seconds` | `SubmitBrowserLogin` |
-| `/authorize` | `GET` | p99 ≤ 500 ms | `http_request_duration_seconds` | `Authorize` |
-| `/par` | `POST` | p99 ≤ 200 ms | `http_request_duration_seconds` | `PushAuthorizationRequest` |
-| `/token` | `POST` | p99 ≤ 300 ms | `http_request_duration_seconds` | `Token` |
-| `/introspect` | `POST` | p99 ≤ 50 ms | `http_request_duration_seconds` | `Introspect` |
-| `/revoke` | `POST` | p99 ≤ 100 ms | `http_request_duration_seconds` | `Revoke` |
-| `/userinfo` | `GET`, `POST` | p99 ≤ 100 ms | `http_request_duration_seconds` | `UserInfo`, `PostUserInfo` |
-| `/.well-known/openid-configuration`, `/.well-known/oauth-authorization-server` | `GET` | p99 ≤ 20 ms | `http_request_duration_seconds` | OIDC Discovery と RFC 8414 の後継操作を同じ目標で評価する |
-| `/jwks`, `/realms/{tenant_id}/jwks` | `GET` | p99 ≤ 20 ms | `http_request_duration_seconds` | 既定テナントと明示テナントを含む |
-| `/register` | `POST` | p99 ≤ 500 ms | `http_request_duration_seconds` | `RegisterClient` |
-| `/device_authorization` | `POST` | p99 ≤ 300 ms | `http_request_duration_seconds` | `DeviceAuthorization` |
-| `/api/auth/federation/oidc/callback`, `/api/auth/federation/saml/callback` | `GET`, `POST` | p95 ≤ 2 s | `http_request_duration_seconds` | 上流とのネットワーク交換を含む |
+| ID | Endpoint population | Method | Target | Metric | Notes |
+| --- | --- | --- | --- | --- | --- |
+| SLO-LOGIN-LATENCY | `/api/auth/login` | `POST` | p99 ≤ 300 ms | `http_request_duration_seconds` | `SubmitBrowserLogin` |
+| SLO-AUTHORIZE-LATENCY | `/authorize` | `GET` | p99 ≤ 500 ms | `http_request_duration_seconds` | `Authorize` |
+| SLO-PAR-LATENCY | `/par` | `POST` | p99 ≤ 200 ms | `http_request_duration_seconds` | `PushAuthorizationRequest` |
+| SLO-TOKEN-LATENCY | `/token` | `POST` | p99 ≤ 300 ms | `http_request_duration_seconds` | `Token` |
+| SLO-INTROSPECT-LATENCY | `/introspect` | `POST` | p99 ≤ 50 ms | `http_request_duration_seconds` | `Introspect` |
+| SLO-REVOKE-LATENCY | `/revoke` | `POST` | p99 ≤ 100 ms | `http_request_duration_seconds` | `Revoke` |
+| SLO-USERINFO-LATENCY | `/userinfo` | `GET`, `POST` | p99 ≤ 100 ms | `http_request_duration_seconds` | `UserInfo`, `PostUserInfo` |
+| SLO-DISCOVERY-LATENCY | `/.well-known/openid-configuration`, `/.well-known/oauth-authorization-server` | `GET` | p99 ≤ 20 ms | `http_request_duration_seconds` | OIDC Discovery と RFC 8414 の後継操作を同じ目標で評価する |
+| SLO-JWKS-LATENCY | `/jwks`, `/realms/{tenant_id}/jwks` | `GET` | p99 ≤ 20 ms | `http_request_duration_seconds` | 既定テナントと明示テナントを含む |
+| SLO-REGISTER-LATENCY | `/register` | `POST` | p99 ≤ 500 ms | `http_request_duration_seconds` | `RegisterClient` |
+| SLO-DEVICE-AUTHORIZATION-LATENCY | `/device_authorization` | `POST` | p99 ≤ 300 ms | `http_request_duration_seconds` | `DeviceAuthorization` |
+| SLO-FEDERATION-CALLBACK-LATENCY | `/api/auth/federation/oidc/callback`, `/api/auth/federation/saml/callback` | `GET`, `POST` | p95 ≤ 2 s | `http_request_duration_seconds` | 上流とのネットワーク交換を含む |
 
 旧目標にあった「セッション一覧の先頭ページの p95 ≤ 100 ms」は Specification target に復元しない。現行の `route`、`method`、`status_code` ラベルでは `/api/account/v1/sessions` の先頭ページと後続ページを区別できず、測定不能な保証になるためである。低カーディナリティの測定方法を定めた時点で再導入を判断する。
 
 ### Non-5xx ratio
 
-| Endpoint population | Target | Metric |
-| --- | --- | --- |
-| `/api/auth/login`, `/authorize`, `/par`, `/token`, `/revoke`, `/userinfo`, `/register`, `/device_authorization` | ≥ 99.9% | `http_requests_total` |
-| `/introspect`, `/.well-known/openid-configuration`, `/.well-known/oauth-authorization-server`, `/jwks`, `/realms/{tenant_id}/jwks` | ≥ 99.99% | `http_requests_total` |
+| ID | Endpoint population | Target | Metric |
+| --- | --- | --- | --- |
+| SLO-PRIMARY-ERRORS | `/api/auth/login`, `/authorize`, `/par`, `/token`, `/revoke`, `/userinfo`, `/register`, `/device_authorization` | ≥ 99.9% | `http_requests_total` |
+| SLO-LOOKUP-ERRORS | `/introspect`, `/.well-known/openid-configuration`, `/.well-known/oauth-authorization-server`, `/jwks`, `/realms/{tenant_id}/jwks` | ≥ 99.99% | `http_requests_total` |
+
+母集団が Context をまたぐため、ID は Context ではなく要求の性質で名付ける。`PRIMARY` は主要な要求経路、`LOOKUP` は参照専用で目標の厳しい経路である。
 
 外部連携ログインのコールバックにはレイテンシー目標だけを復元し、非 5xx 比率の新しい数値は設けない。旧 SCL に対応する値がなく、上流 IdP の拒否や障害を IdMagic の失敗と区別する母集団も未定義だからである。
 
 ### Availability
 
-| Population | Target | Window and budgeting | Metric |
-| --- | --- | --- | --- |
-| Non-5xx ratio の対象となる OAuth2/OIDC エンドポイント全体 | ≥ 99.9% | 30 日、5 分の時間区分 | `http_requests_total` と Prometheus のスクレイプ状態 |
-| `/token` | ≥ 99.95% | 30 日、5 分の時間区分 | `http_requests_total` と Prometheus のスクレイプ状態 |
+| ID | Population | Target | Window and budgeting | Metric |
+| --- | --- | --- | --- | --- |
+| SLO-OAUTH2-AVAILABILITY | Non-5xx ratio の対象となる OAuth2/OIDC エンドポイント全体 | ≥ 99.9% | 30 日、5 分の時間区分 | `http_requests_total` と Prometheus のスクレイプ状態 |
+| SLO-TOKEN-AVAILABILITY | `/token` | ≥ 99.95% | 30 日、5 分の時間区分 | `http_requests_total` と Prometheus のスクレイプ状態 |
 
 ### Capacity acceptance
 
 フリートは、[Reference operating profile](#reference-operating-profile) の全データを投入し、[Peak request profile](#peak-request-profile) の要求を同時に 15 分間ウォームアップした後、60 分間処理して次の Specification target を満たす。
 
-| Endpoint | Required rate | Required objectives |
-| --- | --- | --- |
-| `/token` | 5,000 rps | p99 ≤ 300 ms、非 5xx 比率 ≥ 99.9% |
-| `/authorize` | 1,000 rps | p99 ≤ 500 ms、非 5xx 比率 ≥ 99.9% |
-| `/introspect` | 20,000 rps | p99 ≤ 50 ms、非 5xx 比率 ≥ 99.99% |
+| ID | Endpoint | Required rate | Required objectives |
+| --- | --- | --- | --- |
+| CAP-TOKEN-THROUGHPUT | `/token` | 5,000 rps | SLO-TOKEN-LATENCY と SLO-PRIMARY-ERRORS を満たす |
+| CAP-AUTHORIZE-THROUGHPUT | `/authorize` | 1,000 rps | SLO-AUTHORIZE-LATENCY と SLO-PRIMARY-ERRORS を満たす |
+| CAP-INTROSPECT-THROUGHPUT | `/introspect` | 20,000 rps | SLO-INTROSPECT-LATENCY と SLO-LOOKUP-ERRORS を満たす |
+
+`SLO-` は 30 日の移動窓で評価する運用上の目標、`CAP-` は固定した試験条件で確かめる容量受入れ目標である。前者は本番の観測、後者は試験で判定する。
 
 このスループットは本番の 30 日窓で要求のない時間まで成功扱いする SLO ではなく、データ分布、要求構成、試験時間を固定した容量受入れ目標である。試験中に流量制限で返した 429 は非 5xx 比率には含むが、Required rate の処理済み要求には数えない。
 

@@ -74,7 +74,8 @@ async function collectTraces(): Promise<ScenarioTrace[]> {
         continue
       }
       // The specification declares the scenarios; only what points at them counts.
-      if (path.startsWith('docs/') || path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path)) continue
+      if (path.startsWith('docs/') || path.startsWith('spec/') || !TEXT_EXTENSIONS.test(path))
+        continue
       const target = path.startsWith('work-items/') ? workItems : sources
       for (const match of (await readFile(absolute, 'utf8')).matchAll(SCENARIO_IDENTIFIER)) {
         const paths = target.get(match[0]) ?? new Set<string>()

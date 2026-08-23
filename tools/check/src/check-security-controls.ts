@@ -61,7 +61,9 @@ for (const context of await readdir(contextsDir)) {
     }
   }
   promised += contract.size
-  findings.push(...checkContractRefusalsAreDeclared(context, contract, declaredRefusalTypes(source)))
+  findings.push(
+    ...checkContractRefusalsAreDeclared(context, contract, declaredRefusalTypes(source)),
+  )
 }
 
 const cited = new Set<string>()

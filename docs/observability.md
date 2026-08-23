@@ -19,7 +19,7 @@
 | `oauth2_token_issuance_total`, `oauth2_token_issuance_duration_seconds` | `grant_type`, `outcome` | grant 別の `/token` の発行率と遅延 |
 | `http_request_aborts_total`, `operation_detached_completion_failures_total` | `kind` | 中断の扱い |
 
-サービス目標の母集団、時間窓、除外条件、目標値は [capacity.md](capacity.md) が定める。Prometheus は HTTP RED メトリクスとスクレイプ状態をその定義に従って集約し、レイテンシー、非 5xx 比率、可用性を評価する。
+サービス目標の母集団、時間窓、除外条件、目標値は [capacity.md](capacity.md) が `SLO-*` と `CAP-*` の ID を付けて定める。アラートと負荷試験はその ID を名指しし、数値を再掲しない。Prometheus は HTTP RED メトリクスとスクレイプ状態をその定義に従って集約し、レイテンシー、非 5xx 比率、可用性を評価する。
 
 `idmagic-worker` は自身の `/metrics` を管理専用の別リスナーで公開する。API プロセスの `/metrics` とは別のプロセスかつ別の実体であり、レーンごとに `jobs_claim_latency_seconds`、`jobs_duration_seconds`、`jobs_outcome_total`、`jobs_retry_total`、`jobs_queue_depth` を持つ。取得までの待ち時間と実行そのものにかかった時間は別の指標である。片方だけでは、遅いのが滞留なのか処理なのかを分けられない。`jobs_outcome_total` の `outcome="failed"` は試行上限に達した確定だけを数えるので、配信不能の件数はこれで読む。
 

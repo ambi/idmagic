@@ -19,7 +19,7 @@ export const options = {
   thresholds: {
     checks: ['rate>0.99'],
     http_req_failed: ['rate<0.001'],
-    idmagic_token_latency: ['p(99)<300'], // OAuth2/objective/TokenLatency
+    idmagic_token_latency: ['p(99)<300'], // SLO-TOKEN-LATENCY (docs/capacity.md)
   },
 }
 

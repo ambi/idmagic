@@ -35,39 +35,55 @@ spec:
           expr: idmagic:http_request_error_ratio:ratio_rate5m{route=~".*/token"} > 0.001
           for: 5m
           labels: { severity: page }
-          annotations: { summary: "/token non-5xx rate violates OAuth2 TokenErrorRate (99.9%)" }
+          annotations:
+            summary: "/token is burning the error budget of SLO-PRIMARY-ERRORS"
+            runbook_url: "docs/runbooks/token-endpoint-error-rate.md"
         - alert: TokenLatencyBudgetBurn
           expr: idmagic:http_request_duration_seconds:p99_5m{route=~".*/token"} > 0.3
           for: 5m
           labels: { severity: page }
-          annotations: { summary: "/token p99 latency violates OAuth2 TokenLatency (300ms)" }
+          annotations:
+            summary: "/token is burning the error budget of SLO-TOKEN-LATENCY"
+            runbook_url: "docs/runbooks/token-endpoint-latency.md"
         - alert: LoginErrorRateBudgetBurn
           expr: idmagic:http_request_error_ratio:ratio_rate5m{route=~".*/api/auth/login"} > 0.001
           for: 5m
           labels: { severity: page }
-          annotations: { summary: "/api/auth/login non-5xx rate violates Authentication LoginErrorRate (99.9%)" }
+          annotations:
+            summary: "/api/auth/login is burning the error budget of SLO-PRIMARY-ERRORS"
+            runbook_url: "docs/runbooks/login-error-rate.md"
         - alert: LoginLatencyBudgetBurn
           expr: idmagic:http_request_duration_seconds:p99_5m{route=~".*/api/auth/login"} > 0.3
           for: 5m
           labels: { severity: page }
-          annotations: { summary: "/api/auth/login p99 latency violates Authentication LoginLatency (300ms)" }
+          annotations:
+            summary: "/api/auth/login is burning the error budget of SLO-LOGIN-LATENCY"
+            runbook_url: "docs/runbooks/login-latency.md"
         - alert: LoginThrottleHitRatioHigh
           expr: idmagic:login_throttle_hit_ratio:ratio_rate5m > 0.2
           for: 10m
           labels: { severity: warn }
-          annotations: { summary: "sustained high login throttle rate; investigate credential stuffing" }
+          annotations:
+            summary: "sustained high login throttle rate; investigate credential stuffing"
+            runbook_url: "docs/runbooks/login-throttle-hit-ratio.md"
         - alert: JobsLatencySensitiveClaimLatencyHigh
           expr: idmagic:jobs_claim_latency_seconds:p99_5m{lane="latency_sensitive"} > 5
           for: 5m
           labels: { severity: page }
-          annotations: { summary: "latency_sensitive lane p99 claim latency exceeds 5s despite lane isolation" }
+          annotations:
+            summary: "latency_sensitive lane p99 claim latency exceeds 5s despite lane isolation"
+            runbook_url: "docs/runbooks/async-jobs.md"
         - alert: JobsFailureRatioBudgetBurn
           expr: idmagic:jobs_failure_ratio:ratio_rate5m > 0.05
           for: 10m
           labels: { severity: warn }
-          annotations: { summary: "sustained >5% dead-letter rate on a jobs lane" }
+          annotations:
+            summary: "sustained >5% dead-letter rate on a jobs lane"
+            runbook_url: "docs/runbooks/async-jobs.md"
         - alert: JobsLatencySensitiveQueueDepthHigh
           expr: jobs_queue_depth{status="queued", lane="latency_sensitive"} > 100
           for: 10m
           labels: { severity: warn }
-          annotations: { summary: "latency_sensitive lane queued depth sustained above 100; its dedicated worker may be undersized or down" }
+          annotations:
+            summary: "latency_sensitive lane queued depth sustained above 100; its dedicated worker may be undersized or down"
+            runbook_url: "docs/runbooks/async-jobs.md"
