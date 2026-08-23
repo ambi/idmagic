@@ -16,6 +16,18 @@ IdMagic は Go で実装したマルチテナントの IdP / IdM である。OAu
 - **資格情報ポリシー**: NIST SP 800-63B-4 に沿ったパスワード規則を既定とし、TOTP、パスキー (WebAuthn)、復旧コードによる多要素認証に対応する。
 - **単一のデータストア**: 状態は PostgreSQL に集約し、第 2 のデータストアを運用しない。永続ジョブはレーンごとの `worker` が処理し、API とは独立して台数を増やせる。
 
+## 対象外
+
+対象範囲の宣言は [spec/README.md](spec/README.md) の Context Map の索引である。Bounded Context が増減したときだけ変わるので、機能の箇条書きより長く正しくいられる。
+
+次は IdMagic が担わない。境界を接する相手が具体的なものだけを挙げる。
+
+| 対象外 | 代わりに担うもの |
+| --- | --- |
+| 人事情報の正本 | 人事システムなどの上流の権威。IdMagic は `Sourcing` として取り込む側であり、在籍情報の発生源にはならない。 |
+| メールと SMS の配信経路の運用 | 外部の SMTP サーバーと配信事業者。IdMagic は送信を依頼するだけで、到達性、送信者評判、キャリア接続は持たない。 |
+| 汎用の API ゲートウェイと WAF | 前段のゲートウェイまたはリバースプロキシ。TLS の終端、同一オリジン境界の成立、slowloris のような過負荷への対処はそちらが担う（[spec/deployment.md](spec/deployment.md)）。 |
+
 ## クイックスタート
 
 組み込み PostgreSQL、バックエンド API、非同期処理の `worker`、フロントエンドを含む Docker 不要のローカルスタックを起動する。
@@ -73,10 +85,15 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 
 | 読みたいこと | 場所 |
 | --- | --- |
+| 貢献の作法と Pull Request に求めること | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| 脆弱性の報告 | [SECURITY.md](SECURITY.md) |
 | 仕様と設計の入口、Context Map | [spec/README.md](spec/README.md) |
 | API とモデルの契約 | [spec/main.tsp](spec/main.tsp)、`mise run spec-render` で生成する HTML |
 | 開発の進め方（仕様先行のループと検証） | [DEVELOPMENT.md](DEVELOPMENT.md) |
 | 仕様文書と work item の書式 | [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)、[WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) |
+| 文書の種類、責務、配置の考え方 | [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) |
+| 進行中と完了済みの変更の記録 | [work-items/](work-items/) |
+| 仕様、境界、互換性、生成の各ツール | [tools/README.md](tools/README.md) |
 | 起動時設定の一覧 | [CONFIGURATION.md](CONFIGURATION.md) |
 | Kubernetes、監視、負荷スモーク | [infra/README.md](infra/README.md) |
 | PostgreSQL のスキーマ運用 | [infra/schema/README.md](infra/schema/README.md) |
