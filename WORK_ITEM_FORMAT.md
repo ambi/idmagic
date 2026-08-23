@@ -43,12 +43,14 @@ Why the change is needed.
 The selected design, considerations, and rejected alternatives.
 
 ## Plan
-Implementation order, migration, and unresolved questions.
+Implementation order, migration, and open questions. Resolve every question that would change what gets built
+before approval or implementation.
 
 ## Tasks
 - [ ] T001 [Spec] Update the specification.
-- [ ] T002 [App] Confirm RED and implement the behavior.
-- [ ] T003 [Verify] Verify the change.
+- [ ] T002 [Acceptance] Confirm Acceptance RED at an observable boundary.
+- [ ] T003 [App] Confirm Unit RED, reach GREEN, and refactor the behavior.
+- [ ] T004 [Verify] Verify the change.
 
 ## Verification
 - `mise run verify`
@@ -61,11 +63,11 @@ Risks and mitigations.
 completed first; it is machine-checked and it constrains order. `priority` states what deserves attention
 first among the items nothing blocks; it is advisory, and an item may be left unset to mean unranked.
 
-When an item enters `in_progress`, add `evidence_policy: risk-based-v1`. For `medium`, `high`, and
+When an item enters `in_progress`, add `evidence_policy: risk-based-v2`. For `medium`, `high`, and
 `critical` risk, record the human approval before implementation begins:
 
 ```yaml
-evidence_policy: risk-based-v1
+evidence_policy: risk-based-v2
 approval:
   by: name
   at: 2026-01-01
@@ -76,7 +78,9 @@ approval:
 `approval` is an implementation boundary, not permission to push, merge, operate production, or modify an
 external system. If a normative change is discovered after approval, return to specification work, obtain
 approval for the corrected scope, update the baseline, and retain an explanation in the completion record.
-The risk-to-evidence rules live in [DEVELOPMENT.md](DEVELOPMENT.md#4-evidence-contract-and-approval).
+Resolve every open question that would change product behavior, the public contract, the selected design
+boundary, or the task breakdown before recording approval. The risk-to-evidence rules live in
+[DEVELOPMENT.md](DEVELOPMENT.md#4-evidence-contract-and-approval).
 
 `affected_spec` is required for `feature`, `bugfix`, and `operations` items. It directly references a
 normative scenario/standard ID or a TypeSpec symbol. Changes with no specification impact (`refactor`,
@@ -98,9 +102,12 @@ Once the item is `in_progress`, `mise run check-work-items` resolves that list: 
 element the change touched rather than what someone read at the time. When a normative element moves to a
 different file, repoint those references; when it is retired, the retired heading keeps them resolving.
 
-For medium and larger changes, make `Design` and `Plan` concrete. Domain, Use Cases, and Adapters tasks
-must retain the corresponding test and normative scenario ID as self-evidence. The independent verifier must
-not be the person or agent that implemented the change; a fresh-context agent is acceptable.
+For medium and larger changes, make `Design` and `Plan` concrete. For changed core logic, name the principal
+domain data types and operation signatures, and identify time, randomness, identifier generation,
+configuration, persistence, notification, and other effects at the boundary where they enter or leave the
+calculation. Domain, Use Cases, and Adapters tasks must retain the corresponding tests and normative scenario
+ID as self-evidence. The independent verifier must not be the person or agent that implemented the change; a
+fresh-context agent is acceptable.
 
 When the work is complete, set `status` to `completed`, append the following section, and move the file
 to `work-items/done/`:
@@ -110,12 +117,18 @@ to `work-items/done/`:
 - **Completed At**: 2026-01-01
 - **Summary**:
   The semantic difference introduced by the work.
-- **RED Evidence**:
+- **Acceptance RED Evidence**:
   - **Test**: The failing test or check observed before implementation.
   - **Requirement**: `REQ-CONTEXT-NNN`, or `N/A: <reason>` for work with no normative product requirement.
   - **Observed Failure**: The expected failure that was actually observed.
   - **Detection Reason**: Why the assertion distinguishes a plausible wrong implementation from the required
-    behavior. For work where RED is inapplicable, identify the alternate check that could have failed.
+    behavior. When an acceptance boundary is inapplicable, identify the alternate check that actually failed.
+- **Unit RED Evidence**:
+  - **Test**: The failing test or check observed before implementation.
+  - **Requirement**: `REQ-CONTEXT-NNN`, or `N/A: <reason>` for work with no normative product requirement.
+  - **Observed Failure**: The expected failure that was actually observed.
+  - **Detection Reason**: Why the assertion distinguishes a plausible wrong implementation from the required
+    inner behavior. When a unit boundary is inapplicable, identify the alternate check that actually failed.
 - **Post-Approval Changes**:
   For medium risk and above, the result of `mise run spec-diff <baseline>`, the reason for any normative
   change, and its reapproval. Write `none` when there was no change.

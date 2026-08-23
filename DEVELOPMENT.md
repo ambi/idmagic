@@ -29,8 +29,9 @@ authorization remains executable application behavior unless a later work item a
 |---|---|---|
 | Frame one change | `new-work-item` | `mise run check-work-items`, `mise run check-ids` |
 | Change the specification first | `spec-change` | `mise run check-spec` |
-| Fix the evidence contract and obtain any required approval | `implement-work-item` | `mise run check-work-items` |
-| Confirm RED and implement inner behavior to outer adapters | `implement-work-item` | layer-local tests |
+| Resolve material questions, fix the evidence contract, and obtain any required approval | `implement-work-item` | `mise run check-work-items` |
+| Confirm Acceptance RED | `implement-work-item` | the narrowest test at an observable boundary |
+| Confirm Unit RED, reach GREEN, and refactor inner behavior to outer adapters | `implement-work-item` | layer-local tests |
 | Sync current design when structure changes | `update-design` | `mise run check-boundaries` |
 | Regenerate derived views | `spec-render` | `mise run check-api-compat` |
 | Verify change resistance and review independently when required | `code-review` | risk-selected evidence, `mise run verify` |
@@ -46,13 +47,13 @@ to the specification stage; do not relax a scenario merely to make an implementa
 
 ## 4. Evidence contract and approval
 
-Every work item that enters `in_progress` declares `evidence_policy: risk-based-v1`. The risk selects the
+Every work item that enters `in_progress` declares `evidence_policy: risk-based-v2`. The risk selects the
 minimum evidence and approval contract; it does not grant permission to push, merge, write to an external
 system, or operate production.
 
 | Risk | Before implementation | Before completion |
 |---|---|---|
-| `low` | The implementer fixes `initial_context` and the intended RED check. | Record RED evidence. If RED is not applicable, record why and the cheapest alternate check that could have failed. |
+| `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended Acceptance RED and Unit RED checks. | Record both RED results. If either is not applicable, record why and the cheapest alternate check that could have failed. |
 | `medium` | A human approves the scope and baseline in `approval` before implementation. | Run `mise run spec-diff <baseline>`, obtain independent verification, and show that a representative incorrect implementation is detected. |
 | `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements and use `mise run test-go-mutation-package -- <package> <git-ref>` or explicit fault injection for changed pure logic. Record equivalent mutations and tool limits rather than hiding them. |
 
@@ -71,16 +72,43 @@ change. It compares the normative diff and implementation diff, checks repositor
 the tests reject plausible wrong behavior rather than merely repeat the implementation. It reports findings
 back to the owning stage; it does not redesign the change while reviewing it.
 
+### Acceptance and unit evidence
+
+Acceptance RED and Unit RED have different responsibilities. Acceptance RED fails at the narrowest boundary
+where a caller can observe the normative behavior and names the applicable `REQ-<CONTEXT>-NNN`. Unit RED fails
+on the changed domain or use-case logic without depending on the acceptance test as its only proof. A product
+behavior change records both before implementation. Tooling, documentation, and pure refactoring may mark one
+or both as not applicable only when they record the reason and an alternate check that was actually observed
+failing.
+
+After both boundaries are fixed, implement one behavior at a time: make the narrow unit test GREEN with the
+simplest complete behavior, refactor while it remains GREEN, then widen through adapters until the acceptance
+test passes. Do not treat a generated or broad acceptance test as the unit test for the inner calculation.
+
+### Type and effect design
+
+Before approval or implementation, resolve every open question whose answer would change product behavior,
+the public contract, the chosen design boundary, or the task breakdown. Record genuinely deferred choices in
+Out of Scope instead of turning an unstated assumption into implementation.
+
+For changed core logic, use the work item's Design to sketch the domain data types and principal operation
+signatures before filling in behavior. Identify time, randomness, identifier generation, configuration,
+persistence, notification, and other effects as explicit inputs, outputs, or ports. Keep deterministic
+decisions as calculations over data where that separation makes the rule easier to test or read, and let
+use cases orchestrate the actions. This is a design test for the changed logic, not a repository-wide purity
+or wrapper-type quota.
+
 ## 5. Verification ladder
 
 Run the cheapest gate that can still fail on what you just changed, and widen only at the end.
 
 1. While changing the specification: `mise run check-spec`.
-2. While implementing one layer: the narrowest per-package or per-file test recipe that covers what you
-   touched — `mise run test-go-package <package>` or `mise run test-ui-unit-file <file>` here, whatever
-   `mise tasks` offers elsewhere.
-3. For `medium` risk and above: perform the selected change-resistance check and independent verification.
-4. Before completing the work item: `mise run verify`.
+2. Before implementing behavior: run the named acceptance check and observe the required behavior fail.
+3. While implementing one layer: confirm Unit RED, reach GREEN, refactor while GREEN, and run the narrowest
+   per-package or per-file test recipe that covers what you touched — `mise run test-go-package <package>` or
+   `mise run test-ui-unit-file <file>` here, whatever `mise tasks` offers elsewhere.
+4. For `medium` risk and above: perform the selected change-resistance check and independent verification.
+5. Before completing the work item: `mise run verify`.
 
 Running the full suite after every edit is the most common way to lose time in this repository.
 
