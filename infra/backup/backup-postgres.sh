@@ -3,7 +3,7 @@
 # writes a timestamped dump + sha256 checksum into the given output
 # directory (wi-101). This is the portable-export / small-drill
 # path; production-scale RPO is met by PITR (base backup + WAL archive),
-# documented in docs/operations/backup-restore-dr.md and not automated here.
+# documented in docs/runbooks/backup-restore-dr.md and not automated here.
 #
 # Connects via the standard libpq PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE
 # environment variables (same convention as infra/schema/README.md's

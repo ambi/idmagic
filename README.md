@@ -78,7 +78,7 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 
 ### 運用上の注意
 
-- **データ暗号鍵のマスターキーを失うと復旧できない。** `DATA_KEY_PROVIDER` が保持するマスターキーは PostgreSQL のバックアップに含まれない。手順と危険性は [バックアップ・復元・災害復旧のランブック](docs/operations/backup-restore-dr.md) を参照する。`DATA_KEY_PROVIDER` を設定しない場合はプロセス内の平文鍵セットを使うため、本番では決して選択してはならない。
+- **データ暗号鍵のマスターキーを失うと復旧できない。** `DATA_KEY_PROVIDER` が保持するマスターキーは PostgreSQL のバックアップに含まれない。手順と危険性は [バックアップ・復元・災害復旧のランブック](docs/runbooks/backup-restore-dr.md) を参照する。`DATA_KEY_PROVIDER` を設定しない場合はプロセス内の平文鍵セットを使うため、本番では決して選択してはならない。
 - **テナントの正規ロケーションの変更は ID 移行である。** `path` 形式と `subdomain` 形式を切り替えると発行者とプロトコルメタデータの URL が変わり、RP の再設定、既存パスキーの再登録、進行中セッションの終了が必要になる。`subdomain` 形式にはワイルドカード DNS と対応する TLS 証明書が要る（[infra/README.md](infra/README.md)）。
 
 ## 文書
@@ -98,6 +98,6 @@ EMAIL_SENDER=smtp SMTP_HOST=127.0.0.1 SMTP_PORT=1025 SMTP_TLS=none SMTP_FROM=nor
 | 起動時設定の一覧 | [CONFIGURATION.md](CONFIGURATION.md) |
 | Kubernetes、監視、負荷スモーク | [infra/README.md](infra/README.md) |
 | PostgreSQL のスキーマ運用 | [infra/schema/README.md](infra/schema/README.md) |
-| 障害時の手順 | [docs/operations/](docs/operations/) |
+| 障害時の手順 | [docs/runbooks/](docs/runbooks/) |
 | UI の設計指針とローカライズ | [frontend/README.md](frontend/README.md) |
 | seed プロファイル | [seed/README.md](seed/README.md) |

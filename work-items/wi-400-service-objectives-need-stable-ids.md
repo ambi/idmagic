@@ -39,7 +39,7 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 
 読み手はアラートの `summary` から正本へ辿れず、辿ろうとすると存在しないファイルを探すことになる。数値が一致しているのは現時点で偶然そうなっているだけで、それを保証している仕組みは無い。
 
-**page 級のアラートに手順が無い。** `prometheus-rules.yml` の `severity: page` は 5 件（`TokenErrorRateBudgetBurn`、`TokenLatencyBudgetBurn`、`LoginErrorRateBudgetBurn`、`LoginLatencyBudgetBurn`、`JobsLatencySensitiveClaimLatencyHigh`）。このうち runbook があるのはジョブ系だけで、`docs/operations/` は `async-jobs.md`、`backup-restore-dr.md`、`tenant-quotas.md` の 3 件しかない。**トークン発行とログインという製品の中核が落ちたときに、当番が開くものが存在しない。** どのアラートにも `runbook_url` の annotation は無い。
+**page 級のアラートに手順が無い。** `prometheus-rules.yml` の `severity: page` は 5 件（`TokenErrorRateBudgetBurn`、`TokenLatencyBudgetBurn`、`LoginErrorRateBudgetBurn`、`LoginLatencyBudgetBurn`、`JobsLatencySensitiveClaimLatencyHigh`）。このうち runbook があるのはジョブ系だけで、`docs/runbooks/` は `async-jobs.md`、`backup-restore-dr.md`、`tenant-quotas.md` の 3 件しかない。**トークン発行とログインという製品の中核が落ちたときに、当番が開くものが存在しない。** どのアラートにも `runbook_url` の annotation は無い。
 
 ## Scope
 
@@ -82,7 +82,7 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 - [ ] T004 [Ops] `infra/README.md` の数値の再掲を ID 参照へ置き換える。
 - [ ] T005 [Ops] `prometheus-rules.yml` と `prometheus-rule.yaml` のコメントと annotations を ID へ張り替える。
 - [ ] T006 [Ops] `load/k6/oauth-smoke.js` のコメントを張り替える。
-- [ ] T007 [Ops] `page` の 5 件に対応する runbook を `docs/operations/` へ置き、各アラートへ `runbook_url` を足す。
+- [ ] T007 [Ops] `page` の 5 件に対応する runbook を `docs/runbooks/` へ置き、各アラートへ `runbook_url` を足す。
 - [ ] T008 [Tooling] 2 で検査を足すと決めた場合、`check-monitoring` を拡張する。
 - [ ] T009 [Verify] `mise run check-spec`、`mise run check-monitoring`、`mise run verify` を通す。
 

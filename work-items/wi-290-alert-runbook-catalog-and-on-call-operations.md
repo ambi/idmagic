@@ -10,7 +10,7 @@ initial_context:
   source:
     - infra/k8s/monitoring/prometheus-rule.yaml
     - infra/docker/prometheus-rules.yml
-    - docs/operations
+    - docs/runbooks
   tests:
     - infra/k8s
   stop_before_reading:
@@ -30,7 +30,7 @@ affected_spec:
 LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 
 しかし **アラートが鳴ったときに何をするかが書かれていない**。
-`docs/operations/` にあるのは `tenant-quotas.md` 1 本だけで、アラート定義に
+`docs/runbooks/` にあるのは `tenant-quotas.md` 1 本だけで、アラート定義に
 `runbook_url` annotation も無い。結果として:
 
 1. **オンコールが機能しない**。深夜に `TokenErrorRateBudgetBurn` が鳴っても、
@@ -51,7 +51,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 
 - **decision**:
   - `decisions.md` へ新しい決定は起こさない。運用文書の構造とアラート命名規約は本 WI の成果物
-    (`docs/operations/README.md`) に置き、`docs/observability.md` の
+    (`docs/runbooks/README.md`) に置き、`docs/observability.md` の
     観測インタフェース方針を参照する。
 - **specification**:
   - `System.interfaces.MetricsExposition` の記述に「各 SLO アラートは runbook 参照を持つ」
@@ -62,7 +62,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
   - 既存 objectives (OAuth2 / Authentication / SigningKeys / Tenancy / Jobs) と
     アラートの対応表を保守できるよう、objective 名をアラート annotation に含める規約を書く。
 - **operations / infra**:
-  - `docs/operations/` に定義済みアラート 1 件ごとの runbook を追加する。各 runbook は
+  - `docs/runbooks/` に定義済みアラート 1 件ごとの runbook を追加する。各 runbook は
     固定構成にする: **影響 (ユーザーに何が起きているか) / 確認 (見るべき metric・ログ・
     エンドポイント) / 切り分け (分岐条件) / 一次対応 (実行するコマンド) /
     エスカレーション (誰に・何を渡すか) / 誤検知条件 / 関連 objective と WI**。
@@ -74,7 +74,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
     circuit breaker open、ジョブ queue 滞留、テナント quota 超過 (既存文書を統合)。
   - `prometheus-rule.yaml` と `infra/docker/prometheus-rules.yml` の各アラートに
     `runbook_url` annotation と対応する specification objective 名を付ける。
-  - `docs/operations/README.md` に索引 (アラート名 → runbook) と runbook の書式規約を置く。
+  - `docs/runbooks/README.md` に索引 (アラート名 → runbook) と runbook の書式規約を置く。
 - **tooling**:
   - `mise run check-monitoring` を拡張し、(1) すべての `alert:` が `runbook_url` を持つこと、
     (2) `runbook_url` の指す runbook ファイルが存在すること、(3) runbook が必須見出しを
@@ -116,7 +116,7 @@ LoginThrottleHitRatioHigh / JobsLatencySensitiveClaimLatencyHigh など)。
 
 - [ ] T001 [Spec] `System.interfaces.MetricsExposition` に runbook 参照要件を追記し、
       対応する scenario を追加して `mise run check-spec` を通す。
-- [ ] T002 [Format] `docs/operations/README.md` に索引と書式規約 (必須見出し 7 項目) を作る。
+- [ ] T002 [Format] `docs/runbooks/README.md` に索引と書式規約 (必須見出し 7 項目) を作る。
       既存 `tenant-quotas.md` を新書式に書き換えて参照実装にする。
 - [ ] T003 [Tooling] `mise run check-monitoring` を拡張し、alert → runbook_url → ファイル存在 →
       必須見出しの検査を実装する。RED: runbook_url の無いアラートを一時的に混ぜて検査が

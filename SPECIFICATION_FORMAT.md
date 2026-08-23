@@ -35,8 +35,8 @@ docs/
     decisions.md
     internals.md       # rare; only when a mechanism needs explaining
     scenarios.md
-  development/         # procedures: environment, build, generation, CI, testing
-  operations/          # SLO, release and rollback, backup, <event>.md
+  development/         # procedures: environment, build, generation, CI, testing, release
+  runbooks/<event>.md  # what on-call reads mid-incident
 
 spec/
   main.tsp
@@ -49,7 +49,7 @@ spec/
 declaration and the index of its siblings. Create no file that has no content to hold: a small context
 needs only `README.md` and `scenarios.md`. The file set and the file names are *(checked)* for `docs/` and
 `docs/contexts/<context>/`; anything else at those two levels is not a canonical document and is rejected.
-`docs/development/` and `docs/operations/` sit below that closed set and name their files freely, because
+`docs/development/` and `docs/runbooks/` sit below that closed set and name their files freely, because
 procedures are not a fixed set of kinds.
 
 `main.tsp` composes the TypeSpec program. `models.tsp` owns model declarations and the context `main.tsp`

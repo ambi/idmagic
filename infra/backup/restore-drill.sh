@@ -8,7 +8,7 @@
 #
 # This drill covers the pg_dump / logical-restore path only. PITR and a
 # Vault Transit key-provider drill are documented in
-# docs/operations/backup-restore-dr.md as follow-up work: this repo's dev
+# docs/runbooks/backup-restore-dr.md as follow-up work: this repo's dev
 # compose has no Vault/OpenBao service and no staging environment to run
 # them against.
 set -euo pipefail

@@ -46,9 +46,9 @@ durable state と ephemeral state を単一の PostgreSQL に統合済みであ�
 - [x] T002 [Backup] pg_dump (checksum付き) をdeploy資産に追加する。→ `infra/backup/backup-postgres.sh`、`just backup-postgres`。PostgreSQL base/WAL archive (PITR) の自動化とVault/provider側backupの確認は本セッションでは未実施 (`docs/operations/runbooks/backup-restore-dr.md` に手順のみ記載、Completion参照)。
 - [x] T003 [Restore] explicit target、non-production guard (`--yes-restore-into-this-database` による db 名の明示一致)、schema検査/ephemeralテーブルtruncate/consistency-check起動までを自動化するjust recipeを追加する。→ `infra/backup/restore-postgres.sh`、`just restore-postgres`。explicit time (PITRのtime point指定) は物理バックアップ未実装のため対象外。
 - [x] T004 [Consistency] tenant/user/client、jobsテーブルのdedup_key/lease整合、signing key/JWKS、ephemeralテーブルが空であることを検査するpost-restore toolを実装する。→ `backend/cmd/idmagic-batch restore-consistency-check`。RED: `TestCheckRestoreConsistency_emptyDatabaseReportsMissingBaseline` / `TestCheckRestoreConsistency_tenantMissingActiveSigningKeyIsReported` / `TestCheckRestoreConsistency_nonEmptyEphemeralTableIsReported` を先に fail 確認 (常に空レポートを返すスタブに対して) → GREEN。token verify (既発行tokenの実検証) はrunbookのリストア後検証チェックリストに手動項目として残し、本toolはDB状態の検査に限定する。
-- [x] T005 [Runbooks] DB loss、point-in-time誤削除、region loss、key provider loss、partial restoreごとのdecision treeとrollback/escalationを記載する。→ [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/operations/backup-restore-dr.md)。
-- [x] T006 [Drill] disposable composeでpg_dumpベースのfull restoreドリルを実行し、実測RPO/RTOとartifact hashを記録する。→ `just restore-drill` (`infra/backup/restore-drill.sh`)、実測値は [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/operations/backup-restore-dr.md) の表に記載 (2026-08-01)。PITR drillとstagingでのVault鍵providerを含むdrillは未実施 (dev composeにVault/OpenBaoサービスが無く、staging環境も本リポジトリには存在しないため。Completion参照)。
-- [ ] T007 [Operations] schedule/alertの実配線、backup成功だけでなくrestore可能性を確認する定期drillの自動実行、アクセスレビューとexpiryの運用化は本セッションでは未実施。cadence・アクセスレビュー・expiryの運用ルールは [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/operations/backup-restore-dr.md) の「運用」節に記載したが、実際のcron/alertmanager配線は行っていない (Completion参照)。
+- [x] T005 [Runbooks] DB loss、point-in-time誤削除、region loss、key provider loss、partial restoreごとのdecision treeとrollback/escalationを記載する。→ [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/runbooks/backup-restore-dr.md)。
+- [x] T006 [Drill] disposable composeでpg_dumpベースのfull restoreドリルを実行し、実測RPO/RTOとartifact hashを記録する。→ `just restore-drill` (`infra/backup/restore-drill.sh`)、実測値は [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/runbooks/backup-restore-dr.md) の表に記載 (2026-08-01)。PITR drillとstagingでのVault鍵providerを含むdrillは未実施 (dev composeにVault/OpenBaoサービスが無く、staging環境も本リポジトリには存在しないため。Completion参照)。
+- [ ] T007 [Operations] schedule/alertの実配線、backup成功だけでなくrestore可能性を確認する定期drillの自動実行、アクセスレビューとexpiryの運用化は本セッションでは未実施。cadence・アクセスレビュー・expiryの運用ルールは [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/runbooks/backup-restore-dr.md) の「運用」節に記載したが、実際のcron/alertmanager配線は行っていない (Completion参照)。
 
 ## Verification
 - 手動: docker compose 上で PostgreSQL をバックアップ → 破棄 → リストアし、 tenant / user / client / 監査が復元され JWKS が継続することを確認する。
@@ -71,7 +71,7 @@ durable state と ephemeral state を単一の PostgreSQL に統合済みであ�
   UNLOGGED/LOGGED ephemeral テーブル、`jobs` テーブルの dedup_key 整合) に
   書き換えた。その上で [[ADR-153-backup-restore-and-disaster-recovery]] で
   バックアップ対象の分類・RPO/RTO 方針・リストア整合順序を決定し、
-  [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/operations/backup-restore-dr.md)
+  [`docs/operations/runbooks/backup-restore-dr.md`](../../docs/runbooks/backup-restore-dr.md)
   に手順・署名鍵退避・検証チェックリスト・障害シナリオ別 decision tree・
   運用cadenceを runbook 化した。tooling として `infra/backup/backup-postgres.sh`
   / `restore-postgres.sh` / `restore-drill.sh` と対応する just recipe
