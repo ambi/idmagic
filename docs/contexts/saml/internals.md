@@ -1,8 +1,6 @@
 # Saml Internals
 
-## SSO Profile scope
-
-初期対応の範囲は SAML 2.0 の Web Browser SSO Profile に限る。HTTP-Redirect (deflate と Base64) および HTTP-POST (Base64) のバインディング、署名済みの Response と Assertion、メタデータの公開、SP 起点と IdP 起点の SSO、Single Logout を提供する。SAML ECP、暗号化された Assertion、IdMagic が SAML SP として外部 IdP と連携する機能は対象外とし、必要になった時点で別の実装単位として扱う。対応範囲を狭めることで、SAML で知られている署名ラッピング攻撃への露出を抑える。
+## Signing reuses the WS-Federation builder
 
 クレームの発行と Assertion の署名には、WS-Federation と WS-Trust で共有している構築器と署名器 (`backend/wsfederation/tokens_saml`) を再利用する。これらは SAML のバージョン、Bearer SubjectConfirmation、audience の制限をすでに扱っている。この Context では署名処理を作り直さず、`InResponseTo` の対応付けなど SP 起点のフローに固有の入力だけを追加する。
 

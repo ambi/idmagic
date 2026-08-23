@@ -33,7 +33,7 @@ docs/
     standards.md
     states.md
     decisions.md
-    internals.md       # rare; only when a mechanism needs explaining
+    internals.md       # only when a mechanism cannot be read out of the code
     scenarios.md
   development/         # procedures: environment, build, generation, CI, testing, release
   runbooks/<event>.md  # what on-call reads mid-incident
@@ -118,9 +118,17 @@ condition that would reopen it gets a heading of its own.
 
 ### internals.md — how a mechanism works
 
-Write this only when the working of a mechanism cannot be recovered from the code. **Most contexts do not
-need it.** The test is whether someone could read the code alone and know how to fix the mechanism when it
-breaks. If they could, leave it out. Write what is guaranteed, not the steps the implementation takes.
+Write this only when the working of a mechanism cannot be recovered from the code. The test is whether
+someone could read the code alone and know how to fix the mechanism when it breaks. If they could, leave it
+out. Write what is guaranteed, not the steps the implementation takes.
+
+**How many contexts need one is a property of the domain, not a quota.** A context shaped like CRUD over a
+table rarely has a mechanism worth explaining. One built on fail-closed refusals, key lifetimes, leases,
+epochs, or same-transaction capture usually does, and a product made mostly of those will have one almost
+everywhere. Never delete a file to reach an expected count: the test is the rule, and the count is whatever
+the test leaves behind. The failure this guards against is the opposite of the obvious one — not a directory
+of thin files, but the deletion of the few paragraphs that would have told the next person how to repair
+something they cannot read out of the code.
 
 Decisions and mechanism live in separate files because they have different lifetimes. A decision is
 revisited when circumstances change and is audited as a list; a mechanism holds as long as the
