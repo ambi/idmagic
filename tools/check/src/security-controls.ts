@@ -13,6 +13,11 @@
  * a declared refusal visible instead of silent. R4 asks the question R3 cannot:
  * not whether a declared refusal is tested, but whether the refusal the contract
  * already promises was declared at all.
+ *
+ * R1 and R2 first named `WriteProblem`, and naming one writer is what let the
+ * shape back out: four admin guards returned `WriteAdminAccessError`, which
+ * returned `WriteProblem`, and one call of distance was enough to be invisible.
+ * The writer is now derived rather than named -- see responseWriters.
  */
 
 export type GoFile = { path: string; source: string }
@@ -68,25 +73,115 @@ function isRequestScoped(signature: string): boolean {
 }
 
 /**
+ * echo's own response methods: the point where a response actually goes on the
+ * wire. The seed is the framework's boundary rather than one of this
+ * repository's writer names, because choosing a name of ours is what needs
+ * revisiting every time someone wraps it.
+ */
+const ECHO_WRITERS =
+  /^(?:JSON|JSONPretty|JSONBlob|JSONP|XML|XMLBlob|HTML|HTMLBlob|String|Blob|Stream|File|Attachment|Inline|NoContent|Redirect|Render)$/
+
+/**
+ * The name the `*echo.Context` arrives under, so `c.JSON(...)` is told from
+ * `enc.JSON(...)`. A method named like a writer on anything else is an encoder
+ * or a DTO, not a response.
+ */
+function contextParam(signature: string): string | undefined {
+  return signature.match(/(\w+)\s+\*echo\.Context/)?.[1]
+}
+
+type Call = { receiver?: string; name: string }
+
+/** The calls whose result a function hands straight back. */
+function returnedCalls(body: string): Call[] {
+  return [...body.matchAll(/return\s+(?:([\w.]+)\.)?(\w+)\s*\(/g)].map((match) => ({
+    receiver: match[1],
+    name: match[2] ?? '',
+  }))
+}
+
+function isEchoWrite(signature: string, call: Call): boolean {
+  const ctx = contextParam(signature)
+  return ctx !== undefined && call.receiver === ctx && ECHO_WRITERS.test(call.name)
+}
+
+/**
+ * The functions that can hand a caller the result of writing a response.
+ *
+ * A fixpoint from echo's writers outward: a function joins the set when one of
+ * its returns hands back a call to something already in it. `WriteProblem` is
+ * not privileged, it is derived through `NoStoreJSON` down to `c.JSON`, and so
+ * is any helper written on top of it tomorrow.
+ *
+ * Existence, not universality. Collecting only functions whose every return is
+ * a write reads tidier and would have missed the case this exists for: the
+ * `WriteAdminAccessError` that shipped ended in `return err` for the errors it
+ * could not map, and that one honest branch would have exempted the three that
+ * handed back a nil.
+ *
+ * Returns each writer with the call that put it in the set, so a finding can
+ * show the chain down to the framework instead of just its first link.
+ */
+export function responseWriters(files: GoFile[]): Map<string, string> {
+  const all = files.flatMap((file) => functions(file.source))
+  const writers = new Map<string, string>()
+  for (;;) {
+    let grew = false
+    for (const fn of all) {
+      if (writers.has(fn.name)) continue
+      for (const call of returnedCalls(fn.body)) {
+        const direct = isEchoWrite(fn.signature, call)
+        if (!direct && !writers.has(call.name)) continue
+        writers.set(fn.name, direct ? `${call.receiver}.${call.name}` : call.name)
+        grew = true
+        break
+      }
+    }
+    if (!grew) return writers
+  }
+}
+
+/** `requireWorkflowAdmin -> WriteAdminAccessError -> WriteProblem -> c.JSON`. */
+function writerChain(name: string, writers: Map<string, string>): string {
+  const chain = [name]
+  for (let next = writers.get(name); next !== undefined; next = writers.get(next)) {
+    if (chain.includes(next)) break
+    chain.push(next)
+  }
+  return chain.join(' -> ')
+}
+
+/**
  * R1: a guard must report its refusal through the return value.
  *
  * `return WriteProblem(...)` hands back what writing the response returned,
  * which is nil on success. A guard that does this has written "denied" to the
- * client and told its caller to carry on.
+ * client and told its caller to carry on -- and so has a guard that returns
+ * anything else which ends up doing the same, however many calls away.
  */
-function checkGuardsReportRefusal(files: GoFile[], guards: Set<string>): Finding[] {
+function checkGuardsReportRefusal(
+  files: GoFile[],
+  guards: Set<string>,
+  writers: Map<string, string>,
+): Finding[] {
   const findings: Finding[] = []
   for (const file of files) {
     for (const fn of functions(file.source)) {
       if (!guards.has(fn.name) || !isRequestScoped(fn.signature)) continue
-      if (!/return\s+(?:\w+\.)?WriteProblem\s*\(/.test(fn.body)) continue
-      findings.push({
-        path: file.path,
-        rule: 'R1',
-        message:
-          `${fn.name} is used as a guard but returns the result of WriteProblem, which is nil. ` +
-          'Write the response, then return a non-nil error so the caller stops.',
-      })
+      for (const call of returnedCalls(fn.body)) {
+        const direct = isEchoWrite(fn.signature, call)
+        if (!direct && !writers.has(call.name)) continue
+        const chain = direct ? `${call.receiver}.${call.name}` : writerChain(call.name, writers)
+        findings.push({
+          path: file.path,
+          rule: 'R1',
+          message:
+            `${fn.name} is used as a guard but returns the result of ${chain}, which is nil ` +
+            'once the response is written. Write the response, then return a non-nil error so ' +
+            'the caller stops.',
+        })
+        break
+      }
     }
   }
   return findings
@@ -99,12 +194,23 @@ function checkGuardsReportRefusal(files: GoFile[], guards: Set<string>): Finding
  * and discarded on another, and neither has anything to do with refusing a
  * request.
  */
-function requestGuardNames(files: GoFile[], guards: Set<string>): Set<string> {
+function requestGuardNames(
+  files: GoFile[],
+  guards: Set<string>,
+  writers: Map<string, string>,
+): Set<string> {
   const names = new Set<string>()
   for (const file of files) {
     for (const fn of functions(file.source)) {
       if (!guards.has(fn.name) || !isRequestScoped(fn.signature)) continue
-      if (!/(?:\w+\.)?WriteProblem\s*\(/.test(fn.body)) continue
+      // "Writes a refusal" is asked of the writer set too, for the same reason
+      // R1 asks it: a guard that refuses through a helper is still a guard, and
+      // one that only ever named WriteProblem stopped seeing it there.
+      const calls = [...fn.body.matchAll(/(?:([\w.]+)\.)?(\w+)\s*\(/g)].map((match) => ({
+        receiver: match[1],
+        name: match[2] ?? '',
+      }))
+      if (!calls.some((call) => writers.has(call.name) || isEchoWrite(fn.signature, call))) continue
       names.add(fn.name)
     }
   }
@@ -311,8 +417,9 @@ export function checkSecurityGuards(files: GoFile[]): Finding[] {
   // response writer inside `if err := ...` to assert what it returns, which
   // says nothing about how the product uses it.
   const guards = guardCallees(production)
+  const writers = responseWriters(production)
   return [
-    ...checkGuardsReportRefusal(production, guards),
-    ...checkGuardResultsAreUsed(production, requestGuardNames(production, guards)),
+    ...checkGuardsReportRefusal(production, guards, writers),
+    ...checkGuardResultsAreUsed(production, requestGuardNames(production, guards, writers)),
   ]
 }

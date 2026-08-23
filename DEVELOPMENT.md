@@ -73,7 +73,8 @@ against each other. `mise run check` requires this of a refusal declared from no
 A helper that a caller guards with — anything called as `if err := guard(...); err != nil` — reports its
 refusal through the return value. Write the response, then return an error; never hand back what writing
 the response returned, because that is nil and the caller will carry on. `mise run check` rejects the
-shape.
+shape, and follows it through whatever helpers stand between the guard and the response: a wrapper that
+returns what a writer returned is the same defect one call further away.
 
 ## 5. Current-state documents
 

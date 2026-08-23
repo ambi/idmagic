@@ -8,6 +8,23 @@ import {
   refusalScenarioIds,
 } from './security-controls.ts'
 
+// The writers every fixture needs, because the rule seeds on echo's own
+// response methods and derives the rest. `WriteProblem` is not privileged: it
+// reaches the set through `NoStoreJSON` down to `c.JSON`, the same way any
+// helper someone writes tomorrow will.
+const supportWriters = {
+  path: 'backend/shared/http/support_http/problem.go',
+  source: [
+    'func WriteProblem(c *echo.Context, status int, code, detail string) error {',
+    '\treturn NoStoreJSON(c, status, Problem{Type: code})',
+    '}',
+    '',
+    'func NoStoreJSON(c *echo.Context, status int, body any) error {',
+    '\treturn c.JSON(status, body)',
+    '}',
+  ].join('\n'),
+}
+
 // The shape of the defect this check exists for: the guard writes its refusal
 // and hands the caller a nil, so the caller runs on.
 const fallThroughGuard = {
@@ -36,7 +53,7 @@ const guardCaller = {
 
 describe('checkSecurityGuards', () => {
   it('rejects a guard that returns the result of writing its refusal', () => {
-    const findings = checkSecurityGuards([fallThroughGuard, guardCaller])
+    const findings = checkSecurityGuards([supportWriters, fallThroughGuard, guardCaller])
     expect(findings).toHaveLength(1)
     expect(findings[0]?.rule).toBe('R1')
     expect(findings[0]?.message).toContain('VerifyBrowserRequest')
@@ -55,7 +72,7 @@ describe('checkSecurityGuards', () => {
         '}',
       ].join('\n'),
     }
-    expect(checkSecurityGuards([fixed, guardCaller])).toEqual([])
+    expect(checkSecurityGuards([supportWriters, fixed, guardCaller])).toEqual([])
   })
 
   // A route handler's job is to write the response and return. It is only a
@@ -72,7 +89,7 @@ describe('checkSecurityGuards', () => {
         '}',
       ].join('\n'),
     }
-    expect(checkSecurityGuards([handler])).toEqual([])
+    expect(checkSecurityGuards([supportWriters, handler])).toEqual([])
   })
 
   // A test may call a writer inside `if err := ...` to assert what it returns.
@@ -96,7 +113,7 @@ describe('checkSecurityGuards', () => {
         '}',
       ].join('\n'),
     }
-    expect(checkSecurityGuards([test, writer])).toEqual([])
+    expect(checkSecurityGuards([supportWriters, test, writer])).toEqual([])
   })
 
   it('rejects discarding the result of something used as a guard elsewhere', () => {
@@ -120,7 +137,7 @@ describe('checkSecurityGuards', () => {
         '}',
       ].join('\n'),
     }
-    const findings = checkSecurityGuards([guard, guardCaller, discarding])
+    const findings = checkSecurityGuards([supportWriters, guard, guardCaller, discarding])
     expect(findings.map((f) => f.rule)).toContain('R2')
   })
 
@@ -141,6 +158,149 @@ describe('checkSecurityGuards', () => {
       ].join('\n'),
     }
     expect(checkSecurityGuards([repository, guarded])).toEqual([])
+  })
+
+  // What actually shipped, and what naming `WriteProblem` directly could not
+  // see: the guard returns a helper, and the helper is the one handing back
+  // what writing the response returned. Two non-administrators reached a model
+  // version and a workflow listing through this, each reading its own 403.
+  const adminAccessWriter = {
+    path: 'backend/shared/http/support_http/auth.go',
+    source: [
+      'func (a *Authenticator) WriteAdminAccessError(c *echo.Context, err error) error {',
+      '\tif errors.Is(err, ErrAdminAccessDenied) {',
+      '\t\treturn WriteProblem(c, http.StatusForbidden, "access_denied", "no")',
+      '\t}',
+      '\treturn err',
+      '}',
+    ].join('\n'),
+  }
+
+  const indirectGuard = {
+    path: 'backend/authorization/handlers_http/routes.go',
+    source: [
+      'func (d Deps) requireAuthorizationAdmin(c *echo.Context) error {',
+      '\tif _, err := d.RequireAdmin(c); err != nil {',
+      '\t\treturn d.WriteAdminAccessError(c, err)',
+      '\t}',
+      '\treturn nil',
+      '}',
+      '',
+      'func (d Deps) handlePutAuthorizationModel(c *echo.Context) error {',
+      '\tif err := d.requireAuthorizationAdmin(c); err != nil {',
+      '\t\treturn err',
+      '\t}',
+      '\treturn d.saveModel(c)',
+      '}',
+    ].join('\n'),
+  }
+
+  it('rejects a guard that returns a writer one call away', () => {
+    const findings = checkSecurityGuards([supportWriters, adminAccessWriter, indirectGuard])
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.rule).toBe('R1')
+    expect(findings[0]?.message).toContain('requireAuthorizationAdmin')
+    // The chain is named so the fix is obvious from the finding alone.
+    expect(findings[0]?.message).toContain('WriteAdminAccessError')
+    expect(findings[0]?.message).toContain('WriteProblem')
+  })
+
+  // One level was the defect that shipped; there is nothing about the shape
+  // that stops at one. A per-context wrapper around the shared writer is the
+  // obvious next step, and it must not buy an exemption.
+  it('rejects a guard that returns a writer two calls away', () => {
+    const contextWriter = {
+      path: 'backend/idgovernance/handlers_http/errors.go',
+      source: [
+        'func (d Deps) writeWorkflowAccessError(c *echo.Context, err error) error {',
+        '\treturn d.WriteAdminAccessError(c, err)',
+        '}',
+      ].join('\n'),
+    }
+    const guard = {
+      path: 'backend/idgovernance/handlers_http/admin_lifecycle_workflow_handler.go',
+      source: [
+        'func (d Deps) requireWorkflowAdmin(c *echo.Context) error {',
+        '\tif _, err := d.RequireAdmin(c); err != nil {',
+        '\t\treturn d.writeWorkflowAccessError(c, err)',
+        '\t}',
+        '\treturn nil',
+        '}',
+        '',
+        'func (d Deps) handleListLifecycleWorkflows(c *echo.Context) error {',
+        '\tif err := d.requireWorkflowAdmin(c); err != nil {',
+        '\t\treturn err',
+        '\t}',
+        '\treturn support.NoStoreJSON(c, http.StatusOK, workflows)',
+        '}',
+      ].join('\n'),
+    }
+    const findings = checkSecurityGuards([supportWriters, adminAccessWriter, contextWriter, guard])
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.rule).toBe('R1')
+    expect(findings[0]?.message).toContain('requireWorkflowAdmin')
+    expect(findings[0]?.message).toContain('writeWorkflowAccessError')
+  })
+
+  // The fix wi-391 applied: the writer returns a sentinel, so nothing that
+  // wraps it hands a caller a nil. The guards above become correct without
+  // being touched, which is the point of judging the writer and not the name.
+  it('accepts the same guards once the writer returns a sentinel', () => {
+    const refusing = {
+      ...adminAccessWriter,
+      source: [
+        'func (a *Authenticator) WriteAdminAccessError(c *echo.Context, err error) error {',
+        '\tif errors.Is(err, ErrAdminAccessDenied) {',
+        '\t\treturn refused(WriteProblem(c, http.StatusForbidden, "access_denied", "no"))',
+        '\t}',
+        '\treturn err',
+        '}',
+        '',
+        'func refused(writeErr error) error {',
+        '\tif writeErr != nil {',
+        '\t\treturn writeErr',
+        '\t}',
+        '\treturn ErrAdminAccessRefused',
+        '}',
+      ].join('\n'),
+    }
+    expect(checkSecurityGuards([supportWriters, refusing, indirectGuard])).toEqual([])
+  })
+
+  // The seed is echo's own writers, so a guard that skips the repository's
+  // helpers and writes the refusal itself is judged the same way.
+  it('rejects a guard that returns an echo write directly', () => {
+    const guard = {
+      path: 'backend/shared/http/support_http/csrf.go',
+      source: [
+        'func (d Deps) VerifyBrowserRequest(c *echo.Context) error {',
+        '\tif origin != issuer {',
+        '\t\treturn c.NoContent(http.StatusForbidden)',
+        '\t}',
+        '\treturn nil',
+        '}',
+      ].join('\n'),
+    }
+    const findings = checkSecurityGuards([guard, guardCaller])
+    expect(findings).toHaveLength(1)
+    expect(findings[0]?.rule).toBe('R1')
+  })
+
+  // `JSON` on something that is not the request context is an encoder, a
+  // fixture, a DTO -- not a response going out.
+  it('does not treat a writer-shaped method on another receiver as a write', () => {
+    const guard = {
+      path: 'backend/shared/http/support_http/csrf.go',
+      source: [
+        'func (d Deps) VerifyBrowserRequest(c *echo.Context) error {',
+        '\tif origin != issuer {',
+        '\t\treturn d.encoder.JSON(origin)',
+        '\t}',
+        '\treturn nil',
+        '}',
+      ].join('\n'),
+    }
+    expect(checkSecurityGuards([guard, guardCaller])).toEqual([])
   })
 })
 
