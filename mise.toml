@@ -1,6 +1,7 @@
 [tools]
 go = "1.26.5"
 bun = "1.3.14"
+"go:github.com/go-gremlins/gremlins/cmd/gremlins" = "0.6.0"
 "aqua:golangci/golangci-lint" = "2.13.1"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.18"
@@ -127,6 +128,21 @@ run = '''
 set -eu
 test "$#" -ge 1 || { echo "usage: mise run test-go-package -- <package>" >&2; exit 2; }
 go test "$1"
+'''
+
+[tasks.test-go-mutation-package]
+description = "Run mutation tests for one Go package, optionally limited to a Git diff"
+run = '''
+#!/usr/bin/env sh
+set -eu
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+  echo "usage: mise run test-go-mutation-package -- <package> [git-ref]" >&2
+  exit 2
+fi
+if [ "$#" -eq 2 ]; then
+  exec gremlins unleash "$1" --diff "$2" --workers 1 --test-cpu 1
+fi
+exec gremlins unleash "$1" --workers 1 --test-cpu 1
 '''
 
 [tasks.benchmark-go-package]

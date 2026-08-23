@@ -30,7 +30,7 @@
         "properties": { "status": { "const": "in_progress" } },
         "required": ["status"]
       },
-      "then": { "required": ["initial_context"] }
+      "then": { "required": ["evidence_policy", "initial_context"] }
     },
     {
       "if": {
@@ -38,6 +38,60 @@
         "required": ["status"]
       },
       "then": { "required": ["completion"] }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_policy": { "const": "risk-based-v1" },
+          "risk": { "enum": ["medium", "high", "critical"] },
+          "status": { "enum": ["in_progress", "completed"] }
+        },
+        "required": ["evidence_policy", "risk", "status"]
+      },
+      "then": { "required": ["approval"] }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_policy": { "const": "risk-based-v1" },
+          "status": { "const": "completed" }
+        },
+        "required": ["evidence_policy", "status"]
+      },
+      "then": {
+        "properties": {
+          "completion": { "required": ["red_evidence"] }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "id": {
+            "pattern": "^wi-(?:4(?:1[0-9]|[2-9][0-9])|[5-9][0-9]{2}|[1-9][0-9]{3,})-"
+          },
+          "status": { "const": "completed" }
+        },
+        "required": ["id", "status"]
+      },
+      "then": { "required": ["evidence_policy"] }
+    },
+    {
+      "if": {
+        "properties": {
+          "evidence_policy": { "const": "risk-based-v1" },
+          "risk": { "enum": ["medium", "high", "critical"] },
+          "status": { "const": "completed" }
+        },
+        "required": ["evidence_policy", "risk", "status"]
+      },
+      "then": {
+        "properties": {
+          "completion": {
+            "required": ["post_approval_changes", "independent_verification", "change_resistance"]
+          }
+        }
+      }
     },
     {
       "if": {
@@ -215,6 +269,28 @@
       "type": "string",
       "enum": ["low", "medium", "high", "critical"]
     },
+    "evidence_policy": {
+      "description": "The risk-based evidence contract applied after work starts.",
+      "type": "string",
+      "enum": ["risk-based-v1"]
+    },
+    "approval": {
+      "description": "The approval boundary fixed before medium-risk or higher implementation begins.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["by", "at", "scope", "baseline"],
+      "properties": {
+        "by": { "type": "string", "minLength": 1 },
+        "at": {
+          "oneOf": [
+            { "type": "string", "format": "date" },
+            { "type": "string", "format": "date-time" }
+          ]
+        },
+        "scope": { "type": "string", "minLength": 1 },
+        "baseline": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
     "risk_notes": {
       "type": "string",
       "minLength": 1
@@ -232,6 +308,36 @@
         },
         "summary": {
           "description": "意味上の差分の要約。",
+          "type": "string",
+          "minLength": 1
+        },
+        "red_evidence": {
+          "description": "The failing check observed before implementation and why it detects wrong behavior.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["test", "requirement", "observed_failure", "detection_reason"],
+          "properties": {
+            "test": { "type": "string", "minLength": 1 },
+            "requirement": {
+              "type": "string",
+              "pattern": "^(?:REQ-[A-Z0-9]+-[0-9]{3}|N/A: .+)"
+            },
+            "observed_failure": { "type": "string", "minLength": 1 },
+            "detection_reason": { "type": "string", "minLength": 1 }
+          }
+        },
+        "post_approval_changes": {
+          "description": "Normative or scope changes since approval; use none when unchanged.",
+          "type": "string",
+          "minLength": 1
+        },
+        "independent_verification": {
+          "description": "Results from a verifier independent of the implementer.",
+          "type": "string",
+          "minLength": 1
+        },
+        "change_resistance": {
+          "description": "Results from detecting a representative wrong implementation, mutation, or injected fault.",
           "type": "string",
           "minLength": 1
         },

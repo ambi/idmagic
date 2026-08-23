@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 type MiseConfig = {
   tools?: Record<string, unknown>
   env?: Record<string, unknown>
-  tasks?: Record<string, { depends?: string[]; tools?: Record<string, unknown> }>
+  tasks?: Record<string, { depends?: string[]; run?: unknown; tools?: Record<string, unknown> }>
 }
 
 const root = resolve(import.meta.dir, '../../..')
@@ -25,5 +25,13 @@ describe('mise generated OpenAPI dependencies', () => {
     for (const task of ['check-spec', 'check-admin-scopes', 'check-api-compat']) {
       expect(config.tasks?.[task]?.depends).toContain('compile-spec')
     }
+  })
+})
+
+describe('mise change-resistance boundary', () => {
+  it('pins mutation tooling without adding it to the universal verification suite', () => {
+    expect(config.tools?.['go:github.com/go-gremlins/gremlins/cmd/gremlins']).toBe('0.6.0')
+    expect(config.tasks?.['test-go-mutation-package']?.run).toBeDefined()
+    expect(config.tasks?.verify?.depends).not.toContain('test-go-mutation-package')
   })
 })

@@ -145,6 +145,21 @@ describe('validateAgainstSchema — work-item', () => {
     summary: 'done',
     verification: [{ cmd: 'go test ./...', result: 'ok' }],
   }
+  const validInitialContext = {
+    specification: ['docs/scenarios.md#REQ-DEMO-001'],
+  }
+  const validApproval = {
+    by: 'tn',
+    at: '2026-06-17',
+    scope: 'Implement the approved work item.',
+    baseline: '3cb041f1d61007a3213ead7c1bba989d1d19824a',
+  }
+  const validRedEvidence = {
+    test: 'TestDemo rejects an invalid transition',
+    requirement: 'REQ-DEMO-001',
+    observed_failure: 'expected rejection, received success',
+    detection_reason: 'the assertion distinguishes the invalid transition from success',
+  }
 
   it('accepts a minimal valid work item', () => {
     expect(validateAgainstSchema('work-item', validWorkItem, '')).toEqual([])
@@ -285,7 +300,89 @@ describe('validateAgainstSchema — work-item', () => {
     expect(
       validateAgainstSchema(
         'work-item',
-        { ...started, initial_context: { specification: ['docs/scenarios.md#REQ-DEMO-001'] } },
+        { ...started, evidence_policy: 'risk-based-v1', initial_context: validInitialContext },
+        '',
+      ),
+    ).toEqual([])
+  })
+
+  it('requires the current evidence policy once the item is in progress', () => {
+    const started = {
+      ...validWorkItem,
+      status: 'in_progress',
+      initial_context: validInitialContext,
+    }
+    const f = validateAgainstSchema('work-item', started, '')
+    expect(f.some((x) => x.message.includes('evidence_policy'))).toBe(true)
+  })
+
+  it('requires approval before medium-risk implementation starts', () => {
+    const started = {
+      ...validWorkItem,
+      status: 'in_progress',
+      risk: 'medium',
+      evidence_policy: 'risk-based-v1',
+      initial_context: validInitialContext,
+    }
+    expect(validateAgainstSchema('work-item', started, '')).not.toEqual([])
+    expect(validateAgainstSchema('work-item', { ...started, approval: validApproval }, '')).toEqual(
+      [],
+    )
+  })
+
+  it('requires RED evidence when a policy-governed item completes', () => {
+    const completed = {
+      ...validWorkItem,
+      status: 'completed',
+      evidence_policy: 'risk-based-v1',
+      completion: validCompletion,
+    }
+    expect(validateAgainstSchema('work-item', completed, '')).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        { ...completed, completion: { ...validCompletion, red_evidence: validRedEvidence } },
+        '',
+      ),
+    ).toEqual([])
+  })
+
+  it('requires the evidence policy on ratcheted completed work items', () => {
+    const completed = {
+      ...validWorkItem,
+      id: 'wi-410-demo',
+      status: 'completed',
+      completion: validCompletion,
+    }
+    const f = validateAgainstSchema('work-item', completed, '')
+    expect(f.some((x) => x.message.includes('evidence_policy'))).toBe(true)
+  })
+
+  it('requires stronger completion evidence for medium-risk work', () => {
+    const completed = {
+      ...validWorkItem,
+      status: 'completed',
+      risk: 'medium',
+      evidence_policy: 'risk-based-v1',
+      approval: validApproval,
+      completion: {
+        ...validCompletion,
+        red_evidence: validRedEvidence,
+      },
+    }
+    expect(validateAgainstSchema('work-item', completed, '')).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        {
+          ...completed,
+          completion: {
+            ...completed.completion,
+            post_approval_changes: 'none',
+            independent_verification: 'reviewed by a separate agent',
+            change_resistance: 'the representative fault was detected',
+          },
+        },
         '',
       ),
     ).toEqual([])

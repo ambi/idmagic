@@ -176,6 +176,20 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
               completion.verification = currentText
                 .map((l) => l.replace(/^-\s*/, '').trim())
                 .filter(Boolean)
+            } else if (currentField === 'red_evidence') {
+              const redEvidence: Record<string, string> = {}
+              const labels: Record<string, string> = {
+                test: 'test',
+                requirement: 'requirement',
+                'observed failure': 'observed_failure',
+                'detection reason': 'detection_reason',
+              }
+              for (const line of currentText) {
+                const field = line.match(/^-\s+\*\*([^*]+)\*\*:\s*(.*)$/)
+                const key = field?.[1] ? labels[field[1].trim().toLowerCase()] : undefined
+                if (key && field?.[2]) redEvidence[key] = field[2].trim()
+              }
+              completion.red_evidence = redEvidence
             } else {
               completion[currentField] = currentText.join('\n').trim()
             }
@@ -197,6 +211,18 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
               if (value) currentText.push(value)
             } else if (label === 'verification results') {
               currentField = 'verification'
+              if (value) currentText.push(value)
+            } else if (label === 'red evidence') {
+              currentField = 'red_evidence'
+              if (value) currentText.push(value)
+            } else if (label === 'post-approval changes') {
+              currentField = 'post_approval_changes'
+              if (value) currentText.push(value)
+            } else if (label === 'independent verification') {
+              currentField = 'independent_verification'
+              if (value) currentText.push(value)
+            } else if (label === 'change-resistance results') {
+              currentField = 'change_resistance'
               if (value) currentText.push(value)
             }
           } else if (currentField) {
