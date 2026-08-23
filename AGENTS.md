@@ -11,7 +11,7 @@
 | Prose in the canonical documents under `docs/`, `docs/README.md` and `docs/contexts/*/README.md` included | Japanese |
 | `work-items/**` | Japanese |
 | READMEs below the repository root except `docs/**` and `tools/**`, headings included | Japanese |
-| `docs/operations/runbooks/*`, headings included | Japanese |
+| `docs/operations/*`, headings included | Japanese |
 | `tools/**` | English |
 | Go and TypeScript comments | Japanese |
 | Go and TypeScript identifiers, database columns, event names, error codes, scopes | English |

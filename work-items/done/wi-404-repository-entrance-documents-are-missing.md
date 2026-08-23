@@ -33,7 +33,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 
 **`SECURITY.md` が最も重い。** IdP は認証を預かる製品であり、脆弱性の報告は必ず来る想定で置くべきものである。報告経路が無ければ、報告者は公開 issue を立てるか、報告をやめるかのどちらかを選ぶ。前者は未修正の脆弱性を公開することであり、報告者の善意が製品の利用者を害する形になる。
 
-**`CHANGELOG.md` は宙に浮いた約束を回収する。** [docs/api-rules.md](../docs/api-rules.md) §Deprecation は「`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け」と定め、[DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §9.3 は「CHANGELOG はその告知である」と書く。ヘッダーは付くが、**告知の本体を読む場所が無い。** `Deprecation: true` を受け取った利用者に、何がいつどう変わるのかを伝える手段が存在しない。
+**`CHANGELOG.md` は宙に浮いた約束を回収する。** [docs/api-rules.md](../../docs/api-rules.md) §Deprecation は「`deprecated_since` を設定したインターフェースはレスポンスに `Deprecation` ヘッダーを付け」と定め、[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §9.3 は「CHANGELOG はその告知である」と書く。ヘッダーは付くが、**告知の本体を読む場所が無い。** `Deprecation: true` を受け取った利用者に、何がいつどう変わるのかを伝える手段が存在しない。
 
 **対象外の宣言。** DOCUMENTATION_GUIDE §9.2 は、対象範囲を機能の箇条書きにしないこと、そして**対象外とその引き受け先**を書くことを求める。現状の `README.md` は「主な機能」8 件の箇条書きで範囲を語っており、対象外の記述は無い。IdP/IdM は特権アクセス管理、人事情報の正、アプリケーション内部の認可判定と境界を接する。**接する相手が具体的なほど、担わないことの宣言が要る。**
 
@@ -50,7 +50,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 ## Out of Scope
 
 - リリース・ロールバック手順の文書化。DOCUMENTATION_GUIDE §11.2 は `operations/release-and-rollback.md` を挙げるが、**このリポジトリはまだリリースを行っていない。** 手順の無い段階で手順書を作ると、§3 の「必要が生じていない文書を作らない」に反し、最初のリリースの時点で必ず書き直しになる。最初のリリースを定義する変更が持つ。
-- テスト水準の文書（§10.3 の `testing.md`）。検証のはしごと拒否のテストの規範は [DEVELOPMENT.md](../DEVELOPMENT.md) §4 が既に持っており、いま独立した文書が無いことで困っている読み手はいない。
+- テスト水準の文書（§10.3 の `testing.md`）。検証のはしごと拒否のテストの規範は [DEVELOPMENT.md](../../DEVELOPMENT.md) §4 が既に持っており、いま独立した文書が無いことで困っている読み手はいない。
 - サービス目標の正本化。[[wi-400-service-objectives-need-stable-ids]] が持つ。
 - 製品概要の詳細（対象ユーザー、解決する問題）。対象外の宣言と同じ場所に置くかは Design の 1 で決めるが、内容を書き起こすのはこの変更の後でよい。
 
@@ -110,7 +110,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 - **Verification Results**:
   - `mise run verify` - passed（exit 0）
   - `mise run spec-diff` - no normative specification change against main
-  - 手動: `README.md` / `SECURITY.md` / `CONTRIBUTING.md` の相対リンクを全件解決確認 - passed
+  - 手動: `README.md` / `SECURITY.md` / `CONTRIBUTING.md` の相対リンクを全件解決確認 - **無効（後日訂正）**。使った `fd -e md --type f --glob '!**/node_modules/**'` は 0 件を返しており、1 つも検査していなかった。[[wi-406-operations-holds-only-runbooks]] で検査を作り直して再実行し、本 work item が入れたリンクはすべて解決することを確認した。
   - 手動: 報告経路への実送信による到達確認 - **未実施**（下記）
 
 ## Left Undone

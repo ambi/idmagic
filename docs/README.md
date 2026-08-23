@@ -115,4 +115,4 @@ flowchart LR
 | [persistence.md](persistence.md) | データベース設計方針 |
 | [authorization.md](authorization.md) | 主体、スコープ、認可の境界 |
 
-手順はこの平面には置かない。障害時の手順は [operations/runbooks/](operations/runbooks/) にある。開発環境、ビルド、検証の進め方はルートの [DEVELOPMENT.md](../DEVELOPMENT.md) と [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。
+手順はこの平面には置かない。障害時の手順は [operations/](operations/) にある。開発環境、ビルド、検証の進め方はルートの [DEVELOPMENT.md](../DEVELOPMENT.md) と [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。

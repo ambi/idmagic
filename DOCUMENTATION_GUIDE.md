@@ -99,7 +99,7 @@
 │   │   └── scenarios.md
 │   │
 │   ├── development/              # 手順。環境構築、ビルド、生成、CI、テスト
-│   └── operations/               # SLO、リリースと後退、バックアップ、runbooks/<event>.md
+│   └── operations/               # SLO、リリースと後退、バックアップ、<event>.md
 │
 ├── spec/                         # 機械が食う契約
 │   ├── main.tsp
@@ -1414,9 +1414,11 @@ flagで無効化できる変更は、配備の後退より先にflagを戻す。
 ことを確認する。
 ```
 
-### 11.4 runbooks/
+### 11.4 runbook
 
 アラート一つにつき一つ置く。発火条件、最初に確認すること、緩和、確認、エスカレーションを書く。
+
+`operations/`直下に`<event>.md`として置き、**runbookのためだけのサブディレクトリを最初から作らない。** 子が一つしかない階層は、参照するたびに一段深く降りる代償だけを課す。件数が増えて他の運用文書を押しのけるようになったら、そのとき与える。索引が要るようになったら`operations/README.md`に置く。
 
 ```markdown
 # Token endpoint error rate

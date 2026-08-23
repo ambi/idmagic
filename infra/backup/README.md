@@ -1,6 +1,6 @@
 # PostgreSQL バックアップ・復元スクリプト
 
-ここにあるスクリプトは、バックアップと災害復旧戦略のうち、`pg_dump` と論理復元の経路を実装する。手順、災害復旧のシナリオ、検証チェックリストは [`docs/operations/runbooks/backup-restore-dr.md`](../runbooks/backup-restore-dr.md) にあり、この README はスクリプトの実行方法だけを扱う。
+ここにあるスクリプトは、バックアップと災害復旧戦略のうち、`pg_dump` と論理復元の経路を実装する。手順、災害復旧のシナリオ、検証チェックリストは [`docs/operations/backup-restore-dr.md`](../../docs/operations/backup-restore-dr.md) にあり、この README はスクリプトの実行方法だけを扱う。
 
 ## 必要なもの
 

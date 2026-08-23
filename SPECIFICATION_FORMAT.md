@@ -36,7 +36,7 @@ docs/
     internals.md       # rare; only when a mechanism needs explaining
     scenarios.md
   development/         # procedures: environment, build, generation, CI, testing
-  operations/          # SLO, release and rollback, backup, runbooks/<event>.md
+  operations/          # SLO, release and rollback, backup, <event>.md
 
 spec/
   main.tsp

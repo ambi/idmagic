@@ -18,7 +18,7 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 
 ## Motivation
 
-[DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §4 は文書の置き場所を 3 つに分ける。`spec/`（境界の宣言、用語、規範、状態遷移、判断、機構、シナリオ、TypeSpec）、`docs/`（product-overview、build、ci、testing）、`operations/`（SLO、リリースと後退、バックアップ、Runbook）である。
+[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §4 は文書の置き場所を 3 つに分ける。`spec/`（境界の宣言、用語、規範、状態遷移、判断、機構、シナリオ、TypeSpec）、`docs/`（product-overview、build、ci、testing）、`operations/`（SLO、リリースと後退、バックアップ、Runbook）である。
 
 **区別の基準そのものは筋が通っている。** §5.9 がそれを書いている。
 
@@ -127,7 +127,7 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
   - `mise run spec-render` - 137 document(s), 330 operation(s), 19 API tag(s), 836 TypeSpec symbol(s)
   - `mise run spec-diff` - no normative specification change against main
   - `mise run test-tools` - 167 pass / 0 fail
-  - 手動: 全 Markdown の相対リンクを全件解決確認 - passed
+  - 手動: 全 Markdown の相対リンクを全件解決確認 - **無効（後日訂正）**。使った `fd` の呼び出しが 0 件を返しており、1 つも検査していなかった。[[wi-406-operations-holds-only-runbooks]] で検査を作り直したところ、本 work item が壊した実リンクが 2 件あった（`infra/backup/README.md` と、`done/` へ移した本ファイル自身の `../DOCUMENTATION_GUIDE.md`）。いずれも wi-406 で修正した。
   - 手動: ガイド内の `§N.M` 参照が実在する節を指すことを全件確認 - passed
   - 手動: `docs/product-overview.md` を一時的に置いて検査が受理することを確認 - passed
   - 手動: このリポジトリの実配置がガイドに照らして違反でないことを確認 - passed
