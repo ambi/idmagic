@@ -83,15 +83,15 @@
 - THEN ユーザーの存在にかかわらず 204 を返す
 - THEN "PasswordResetRequested" が発行される
 
-### REQ-AUTHENTICATION-009: 無効化されたユーザーは新規ログインも既存セッションも拒否される
-- ACTOR TenantAdministrator
-- GIVEN ユーザー "alice" が認証済みセッションを持つ
-- WHEN 管理者がユーザー "alice" を無効化する
-- THEN ユーザー "alice" は無効状態になる
+### REQ-AUTHENTICATION-009: 無効なユーザーは新規ログインも既存セッションも拒否される
+- ACTOR EndUser
+- GIVEN ユーザー "alice" は無効状態であり、無効化の前に取得した認証済みセッションを持つ
 - WHEN ユーザー "alice" が既存セッションで認証必須 API を呼ぶ
 - THEN エラー "AccessDeniedError"
 - WHEN ユーザー "alice" が正しいパスワードで新規ログインを試みる
 - THEN エラー "AccessDeniedError"
+
+無効化そのものは IdManagement の操作であり、無効化から到達経路が閉じるまでの連鎖は REQ-PLATFORM-001 が持つ。ここは、無効な主体を Authentication が単独で拒否することだけを述べる。
 
 ### REQ-AUTHENTICATION-010: ユーザーは現在のパスワードを確認して新しいパスワードへ変更できる
 - ACTOR AuthenticatedSelf

@@ -123,9 +123,9 @@ spec_impact: { kind: none, reason: "文書の配置を変える変更である�
 - **Summary**:
   人が書く文書を 1 つの根へ集めた。`docs/` が正規文書 134 件（直下 10 件と `contexts/<context>/` 124 件）と `operations/runbooks/` を持ち、`spec/` は TypeSpec 43 件・`tspconfig.yaml`・OpenAPI ベースラインだけになった。2 つの木は `contexts/<context>/` で対応する。DOCUMENTATION_GUIDE §4 は構成図を差し替えたうえで、判定の理由——深さは重要度の裏返しにする、境界の判定は §5.9、`docs/` 直下に生成物が混ざらない——を 3 つの小節として明示した。§10 と §11 には配置を書き、§11 には runbook だけが読み手で分かれる理由（当番担当者は原因が分からない状態で呼び出される）を、手順一般の規則ではないと限定したうえで書いた。`ROOT_DOCUMENTS` には `product-overview.md` を足し、ガイドが挙げる名前を検査が拒否する食い違いを解消した。検査・生成・スキーマ・タスクの経路と、294 箇所の参照を張り替えた。規範的な要素は 1 件も動いていない。
 - **Verification Results**:
-  - `mise run verify` - passed（exit 0）
+  - `mise run verify` - passed（exit 0）。ただしこの移動は `check-security-controls` の R4 も壊しており、`.tsp` を `docs/contexts/` から読んで**契約が約束する 403 を 1 件も検査していなかった**。`verify` は成功を報告し続けた。[[wi-401-cross-context-scenarios-have-no-home]] で修正した。
   - `mise run spec-render` - 137 document(s), 330 operation(s), 19 API tag(s), 836 TypeSpec symbol(s)
-  - `mise run spec-diff` - no normative specification change against main
+  - `mise run spec-diff` - no normative specification change against main - **無効（後日訂正）**。この移動で `spec-diff` 自身が壊れており、`git ls-tree -- spec` と `walk(spec/)` しか見ていないため散文を 1 件も読んでいなかった。常に「変更なし」を返す状態だった。主張（規範要素は動いていない）は結果的に正しいが、根拠は空である。[[wi-401-cross-context-scenarios-have-no-home]] で両方の木を読むよう修正した。
   - `mise run test-tools` - 167 pass / 0 fail
   - 手動: 全 Markdown の相対リンクを全件解決確認 - **無効（後日訂正）**。使った `fd` の呼び出しが 0 件を返しており、1 つも検査していなかった。[[wi-406-operations-holds-only-runbooks]] で検査を作り直したところ、本 work item が壊した実リンクが 2 件あった（`infra/backup/README.md` と、`done/` へ移した本ファイル自身の `../DOCUMENTATION_GUIDE.md`）。いずれも wi-406 で修正した。
   - 手動: ガイド内の `§N.M` 参照が実在する節を指すことを全件確認 - passed

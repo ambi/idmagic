@@ -180,6 +180,12 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
     : `normative specification change against ${ref}\n\n${lines.join('\n\n')}`
 }
 
+/**
+ * The trees a specification can live in. A revision from before the prose moved
+ * holds both under `spec/`, so both names stay listed and history keeps reading.
+ */
+const SPECIFICATION_TREES = ['docs', 'spec'] as const
+
 function isSpecificationSource(path: string): boolean {
   if (path.startsWith('spec/generated/')) return false
   // A revision from before the per-kind split still holds SPECIFICATION.md.
@@ -203,7 +209,10 @@ async function readWorkingTree(root: string): Promise<Snapshot> {
       }
     }
   }
-  await walk(resolve(root, 'spec'))
+  // Prose lives under docs/, the TypeSpec contract under spec/. Walking only
+  // one of them reads as "nothing changed" rather than as an error, which is
+  // how this tool silently stopped seeing Markdown when the prose moved.
+  for (const tree of SPECIFICATION_TREES) await walk(resolve(root, tree))
   return snapshot
 }
 
@@ -217,7 +226,8 @@ function git(root: string, args: string[]): string {
 
 function readRevision(root: string, ref: string): Snapshot {
   const snapshot: Snapshot = new Map()
-  for (const path of git(root, ['ls-tree', '-r', '--name-only', ref, '--', 'spec']).split('\n')) {
+  const tracked = git(root, ['ls-tree', '-r', '--name-only', ref, '--', ...SPECIFICATION_TREES])
+  for (const path of tracked.split('\n')) {
     if (isSpecificationSource(path)) snapshot.set(path, git(root, ['show', `${ref}:${path}`]))
   }
   return snapshot

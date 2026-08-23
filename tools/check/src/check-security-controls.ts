@@ -43,7 +43,11 @@ const findings: Finding[] = [...checkSecurityGuards(goFiles)]
 
 // R3 reads the refusals the specification declares and the ids the tests name.
 // R4 reads the same scenarios against the 403 responses TypeSpec declares.
+// Prose and contract live in mirrored trees: scenarios under docs/contexts,
+// TypeSpec under spec/contexts. Reading both from one of them makes R4 check
+// nothing and still report success.
 const contextsDir = resolve(root, 'docs/contexts')
+const contractDir = resolve(root, 'spec/contexts')
 const declared: string[] = []
 let promised = 0
 for (const context of await readdir(contextsDir)) {
@@ -53,9 +57,10 @@ for (const context of await readdir(contextsDir)) {
   declared.push(...refusalScenarioIds(source))
 
   const contract = new Map<string, string[]>()
-  for (const entry of await readdir(dir)) {
+  const contractFiles = await readdir(resolve(contractDir, context)).catch(() => [])
+  for (const entry of contractFiles) {
     if (!entry.endsWith('.tsp')) continue
-    const typespec = await readFile(resolve(dir, entry), 'utf8')
+    const typespec = await readFile(resolve(contractDir, context, entry), 'utf8')
     for (const [type, operations] of contractRefusalsOfStateChanges(typespec)) {
       contract.set(type, [...(contract.get(type) ?? []), ...operations])
     }

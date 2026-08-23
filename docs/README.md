@@ -114,5 +114,6 @@ flowchart LR
 | [capacity.md](capacity.md) | サービス目標、参照運用プロファイル、容量算出、縮退順序 |
 | [persistence.md](persistence.md) | データベース設計方針 |
 | [authorization.md](authorization.md) | 主体、スコープ、認可の境界 |
+| [scenarios.md](scenarios.md) | Context を跨がないと成り立たない振る舞い |
 
 手順はこの平面には置かない。障害時の手順は [runbooks/](runbooks/) にある。開発環境、ビルド、検証の進め方はルートの [DEVELOPMENT.md](../DEVELOPMENT.md) と [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。

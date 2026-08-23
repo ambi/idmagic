@@ -144,11 +144,8 @@
 - THEN ユーザー `alice` のステータスは `Active` である
 - THEN "UserRestored" が発行される
 
-### REQ-IDMANAGEMENT-012: 削除を予約したユーザーはログインを拒否される
-- ACTOR EndUser
-- GIVEN ユーザー "alice" は PendingDeletion である
-- WHEN ユーザー "alice" が正しいパスワードでログインを試みる
-- THEN ログインは拒否される
+### REQ-IDMANAGEMENT-012: 削除を予約したユーザーはログインを拒否される (superseded by REQ-PLATFORM-002)
+引き金は IdManagement の削除予約、観測はログインの拒否であり、どちらの Context も単独では起こせない。削除の予約と復元が到達経路の開閉と対応することを、REQ-PLATFORM-002 が保証として述べる。
 
 ### REQ-IDMANAGEMENT-013: 管理者はユーザーを完全削除できる
 - ACTOR TenantAdministrator

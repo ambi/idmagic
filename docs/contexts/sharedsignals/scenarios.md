@@ -9,12 +9,8 @@
 - THEN "AT1" のイントロスペクションは `active=false` を返す
   - ALT トークンの `issued_at` が新しい失効エポックより後である → イントロスペクションは `active=true` を返す（強制終了後に再発行されたトークンは失効対象にしない）
 
-### REQ-SHAREDSIGNALS-002: 所有者のオフボードは配下エージェント群を一括失効する
-- ACTOR TenantAdministrator
-- GIVEN User "owner1" が Agent "A1"・"A2" を所有している
-- WHEN 管理者が "owner1" を DisableAdminUser する
-- THEN "A1" と "A2" の AgentRevocationEpoch が同一エポックへ前進する
-- THEN 両 Agent それぞれについて "AgentAccessRevoked" が発行される
+### REQ-SHAREDSIGNALS-002: 所有者のオフボードは配下エージェント群を一括失効する (superseded by REQ-PLATFORM-001)
+引き金の `DisableAdminUser` は IdManagement の操作である。所有者の無効化がログイン、既存セッション、配下エージェントのトークンを同時に閉じることを、REQ-PLATFORM-001 が 1 つの保証として述べる。
 
 ### REQ-SHAREDSIGNALS-003: 署名が不正な SET は反映せずに拒否する
 - ACTOR System

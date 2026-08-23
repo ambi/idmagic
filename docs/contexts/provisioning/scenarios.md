@@ -23,8 +23,9 @@
 - ACTOR System
 - GIVEN テナント "tenant-a" の Application "app-1" に有効な ProvisioningConnection (scope=assigned_only, create_users=true) が存在する
 - GIVEN User "ユーザー-1" は Application "app-1" に割り当て済みである
-- WHEN IdManagement が User "ユーザー-1" を作成し commit する
-- THEN 同一トランザクションで `ProvisioningDelivery`（`operation=create`、`status=pending`）が作成される
+- GIVEN IdManagement が User "ユーザー-1" の作成を commit し、配信捕捉のポートを同一トランザクションで呼んでいる
+- WHEN 捕捉した変更を Provisioning が処理する
+- THEN `ProvisioningDelivery`（`operation=create`、`status=pending`）が発火元と同じトランザクションで作成されている
   - ALT User がこの Application に割り当て済みでない (scope=assigned_only) → ProvisioningDelivery は作成されない
 - THEN dispatcher が Jobs.Job を関連付け ProvisioningDeliveryStarted が発行される
 - THEN `worker` プロセスが下流へ POST し、`UserProvisioned` が発行され、配信のステータスが `succeeded` になる
@@ -32,7 +33,8 @@
 ### REQ-PROVISIONING-004: ユーザーの無効化は下流への無効化として配信される
 - ACTOR System
 - GIVEN User "ユーザー-1" は下流に既に存在し RemoteResourceLink を持つ
-- WHEN IdManagement が User "ユーザー-1" を disable する
+- GIVEN IdManagement が User "ユーザー-1" の disable を commit し、配信捕捉のポートを呼んでいる
+- WHEN 捕捉した変更を Provisioning が処理する
 - THEN ProvisioningDelivery (operation=deactivate) が作成される
 - THEN `worker` プロセスが下流へ `active=false` の PATCH を送り、`UserDeprovisioned` が発行される
 
@@ -40,7 +42,8 @@
 - ACTOR System
 - GIVEN User "ユーザー-1" は Application "app-1" に割り当て済みで下流に存在する
 - GIVEN DeprovisionPolicy.on_unassign はデフォルト値 deactivate のままである
-- WHEN 管理者が User "ユーザー-1" の Application "app-1" への割り当てを解除する
+- GIVEN Application が "ユーザー-1" の "app-1" への割り当て解除を commit し、配信捕捉のポートを呼んでいる
+- WHEN 捕捉した変更を Provisioning が処理する
 - THEN ProvisioningDelivery (operation=deactivate) が作成される
 - THEN `worker` プロセスが下流へ `active=false` の PATCH を送り、`UserDeprovisioned` が発行される
 
