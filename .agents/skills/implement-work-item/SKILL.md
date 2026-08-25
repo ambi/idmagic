@@ -24,6 +24,9 @@ description: "Implement a chosen work item end to end: specification first, sepa
    Retain both failing checks, test names, and applicable normative scenario ids in the task. For tooling,
    documentation, or pure refactoring without one of those boundaries, record `N/A: <reason>` and the alternate
    check that actually failed instead of inventing a product requirement or test boundary.
+   Where the change parses, decodes, splits, normalizes, or compares untrusted input by hand, add a fuzz target
+   beside the examples and give it an oracle stronger than "does not panic"; see Properties and fuzzing in
+   `DEVELOPMENT.md`.
 8. When bounded contexts, structure, technology, runtime composition, or core design rules change, use
    `update-design`. Run the narrowest test recipe after each behavior and update its task as it completes.
 9. Collect the risk-selected change-resistance evidence and have a person or fresh-context agent that did not

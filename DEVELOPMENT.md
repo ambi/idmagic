@@ -135,6 +135,59 @@ the response returned, because that is nil and the caller will carry on. `mise r
 shape, and follows it through whatever helpers stand between the guard and the response: a wrapper that
 returns what a writer returned is the same defect one call further away.
 
+### Properties and fuzzing
+
+An example-based test is written by whoever wrote the branches, out of the same reading of the problem, so it
+inherits that reading's blind spots. This weighs more when an agent writes both: implementation and table of
+examples come out of one pass over one understanding, and the table then agrees with the code about what could
+go wrong. A property is stated from the specification instead, and a generator supplies the cases nobody
+thought of. It is the cheapest check available that is not downstream of the author's own assumptions.
+
+Reach for a property or a fuzz target when the input crosses a trust boundary and is decoded, parsed, split,
+normalized, or compared before a decision is made about it; when the parsing is hand-written rather than a call
+into a library that already has this treatment; when there is a round trip to state, such as encode and decode,
+derive and verify, or parse and serialize; or when one rule is restated at several call sites, because writing
+the target forces the rule into one place. Do not reach for it for orchestration, for a workflow whose
+correctness is a policy choice rather than a property, or for anything that needs a database to say what
+correct means. There is no coverage quota: the count follows the boundaries, and a boundary already covered
+upstream does not get a second target.
+
+**The oracle is the whole exercise.** "Does not panic" is not an oracle — it passes just as happily against a
+parser that accepts everything. State one of these instead.
+
+- **Round trip.** What was correctly built is accepted, and any mutation of it is rejected.
+- **Strictness.** Acceptance implies exact equality with something registered. On its own this also passes
+  against an implementation that rejects everything, so pair it with the assertion that a legitimate input is
+  accepted. Strictness without that pairing is a vacuous test that looks like a strong one.
+- **Structural bound.** A declared limit — size after expansion, nesting depth, segment count — always refuses.
+- **Idempotence.** Normalizing twice changes nothing.
+
+Never make time the oracle. "Returns within N milliseconds" varies by several multiples under load, on a shared
+runner and on a laptop alike, so it becomes a permanently flaky assertion. State denial-of-service resistance as
+a structural bound and leave hangs to the fuzzer's own detection. Never sign per input either: build keys and
+certificates once in the seed phase, because signing inside the loop costs two or three orders of magnitude of
+throughput and the search stops moving. A property that does not vary with the input — that an entity reference
+is refused, say — is a table, not a target.
+
+Put the target on the function that parses, not on the HTTP handler, or a failure will not say which of
+routing, middleware, and parsing produced it. Effects enter as arguments: a fixed clock, a key set built in the
+seed phase, a stub that always reports "first seen" for a replay store whose behavior is not what is under test.
+
+**How much.** Seeds and the retained corpus run inside the ordinary test suite, cost milliseconds, and are the
+part that earns its keep every day. Exploration is a separate, deliberate act: run it locally against what you
+changed, on a time budget — `mise run test-go-fuzz -- <package> <target> <time>` for one target, and
+`mise run test-go-fuzz-all -- <time>` for a sweep. Do not put exploration in the pull-request gate: it tries
+different inputs each run, so it will eventually fail on a change that has nothing to do with the finding, and
+a gate that fails for reasons unrelated to the change stops being read. What a crash costs forever is its
+corpus entry, so minimize it, promote it to a named regression test, and fold inputs of one class into one
+entry instead of accumulating raw findings.
+
+Finally, check the oracle the way section 4 asks you to check any test: write the plausible wrong
+implementation and watch the target catch it. Guards that stand separately in the code must be separated in the
+evidence too. When one guard's cases are also caught by another, removing the first changes nothing and the
+table says nothing about it. That is not hypothetical: a table meant to exercise a cost check here was entirely
+shadowed by a length check standing in front of it, and the mutation run is what exposed the table as empty.
+
 ## 6. Current-state documents
 
 `docs/` holds the cross-context structure and policy, one file per kind; `docs/contexts/<context>/` holds
@@ -226,6 +279,10 @@ adaptation.
 - **Test-Driven Development:** Kent Beck's
   [Test Driven Development: By Example](https://www.informit.com/store/test-driven-development-by-example-9780321146533)
   informs the RED-first implementation loop.
+- **Property-Based Testing:** Koen Claessen and John Hughes's
+  [QuickCheck: A Lightweight Tool for Random Testing of Haskell Programs](https://doi.org/10.1145/351240.351266)
+  informs stating an invariant and letting generated input search for the counterexample, rather than
+  enumerating the examples the author already had in mind.
 - **Behavior-Driven Development:** Dan North's
   [Introducing BDD](https://dannorth.net/introducing-bdd/)
   informs behavior-oriented normative scenarios without introducing a second Gherkin source of truth.
