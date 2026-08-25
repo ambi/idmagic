@@ -85,6 +85,7 @@ var (
 	IsCodeExpired                 = authorizationdomain.IsCodeExpired
 	IsCodeRedeemed                = authorizationdomain.IsCodeRedeemed
 	VerifyPKCES256                = authorizationdomain.VerifyPKCES256
+	RedirectURIAllowed            = authorizationdomain.RedirectURIAllowed
 	ParsePromptTokens             = authorizationdomain.ParsePromptTokens
 	NeedsReauthentication         = authorizationdomain.NeedsReauthentication
 	ParsePrompt                   = authorizationdomain.ParsePrompt

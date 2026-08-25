@@ -25,3 +25,9 @@ SSO と SLO では、リクエスト先のルートからプロファイルを�
 ## AuthnRequest replay recording
 
 `saml_authnrequest_replays` は、AuthnRequest の ID を初めて受信したときだけ記録する。`RecordIfNew` は `INSERT ... ON CONFLICT DO NOTHING` を実行し、挿入された行数によって初回のリクエストか再送かを判定する。
+
+## Fuzzed parse boundaries
+
+SP から届く受信要求の復号と解析は Go native fuzzing の対象である。`DecodeRedirect` と `DecodePost` は展開後のサイズが宣言済みの上限を超えたら必ず拒否する（HTTP-Redirect binding は DEFLATE を展開するので、圧縮爆弾がそのまま上限の根拠になる）。`ParseAuthnRequest` と `ParseLogoutRequest` は、拒否したときに部分的に埋まった値を返さない。呼び出し側がエラーを取りこぼしても未検証の Issuer や ACS URL を掴めないようにするためである。`ValidateRequestSignature` は、こちらが生成していない署名を必ず拒否する。
+
+実体参照の非展開は fuzz の表明ではなくテーブル駆動の回帰テストで押さえる。展開したかどうかは入力ごとに変わる性質ではないので、外部実体・外部 DTD・内部実体・billion laughs を並べた表のほうが読めるし、探索の当たり外れに依らない。

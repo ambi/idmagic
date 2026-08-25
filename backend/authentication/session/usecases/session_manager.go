@@ -229,13 +229,7 @@ func (m *SessionManager) RecordStepUp(
 }
 
 func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers) (*authdomain.AuthenticationContext, error) {
-	cookies := parseCookies(headers.Get("Cookie"))
-	// Subdomain tenants use the browser-enforced __Host- name. Path
-	// tenants retain the legacy name; prefer the host-only cookie if both exist.
-	sid := cookies["__Host-"+SessionCookie]
-	if sid == "" {
-		sid = cookies[SessionCookie]
-	}
+	sid := sessionIDFromCookieHeader(headers.Get("Cookie"))
 	if sid == "" {
 		return nil, nil //nolint:nilnil // A missing session cookie is an anonymous request, not an error.
 	}
@@ -258,7 +252,7 @@ func (m *SessionManager) Resolve(ctx context.Context, headers authdomain.Headers
 }
 
 func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error {
-	sid := parseCookies(cookieHeader)[SessionCookie]
+	sid := sessionIDFromCookieHeader(cookieHeader)
 	if sid == "" {
 		return nil
 	}
@@ -269,6 +263,16 @@ func (m *SessionManager) Revoke(ctx context.Context, cookieHeader string) error 
 // revoking it. RP-Initiated Logout (/end_session) uses this as the fallback
 // session resolution when no id_token_hint was given (decision 4).
 func (m *SessionManager) SessionIDFromCookie(cookieHeader string) string {
+	return sessionIDFromCookieHeader(cookieHeader)
+}
+
+// sessionIDFromCookieHeader は Cookie ヘッダからセッション ID を選ぶ唯一の場所である。
+//
+// サブドメイン形式のテナントはブラウザが強制する __Host- 名を使い、パス形式のテナントは
+// 接頭辞のない名前を使う (support_http.TenantCookieName)。両方あるときは host-only の方を採る。
+// 解決・失効・参照でこの選択が食い違うと、片方だけがセッションを見つける状態になる
+// (REQ-AUTHENTICATION-035)。
+func sessionIDFromCookieHeader(cookieHeader string) string {
 	cookies := parseCookies(cookieHeader)
 	if sid := cookies["__Host-"+SessionCookie]; sid != "" {
 		return sid

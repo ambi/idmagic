@@ -91,3 +91,13 @@ CIBA は別の認証方式ではなく、OAuth 2.0 上の承認機能として�
 `sid` クレームは `LoginSession.id` 自体であり、RP ごとの値ではなく、1 つのブラウザーセッションについてすべての relying party が共有する。OIDC の `sid` は OP セッションを表すため、RP ごとの `sid` では 1 回のセッション失効から影響する全 RP をたどれない。`sid` は `authenticate_user` の完了時に一度だけ `AuthorizationRequest` へ伝播し、その後 `AuthorizationCodeRecord` → `RefreshTokenRecord` → `IdTokenClaims` を通る。Authentication の `LoginSession` が唯一の正であり、その属性を OAuth2 へ複製しない。`ClientSession` はログアウト通知用の `(sid, client_id)` 配信インデックスであり、2 つ目のセッション状態ではない。`RefreshTokenRecord.sid` はローテーション後も残るため、ファミリーごとにたどらず、1 回の「このブラウザーセッション」の失効で、同じ `sid` にバインドされた全クライアント・全ファミリーのリフレッシュトークンを失効できる。
 
 `/end_session` の `id_token_hint` は、署名、`iss`、`aud`、`sub`、`sid` をフェイルクローズに検証する。`aud` は明示的な `client_id` パラメーターと一致しなければならず、暗黙には無視しない。ログアウト時に ID トークンが期限切れであることは一般的なため、`exp` は意図的に検査しない。ヒントがなければ `client_id` とブラウザーの Cookie で解決する。バックチャネルログアウトの配信は専用キューではなく、永続的で冪等な `Job` として Jobs Context に渡す。配信に失敗してもローカルセッションとリフレッシュトークンの失効はロールバックしない。フロントチャネルログアウトは同じリクエスト内で計算する `iframe` の送信先一覧であり、`frontchannel_logout_session_required=true` を宣言した RP には `iss` と `sid` を付ける。RP 側の `iframe` の失敗は許容し、配信を保証しない。バックチャネルの配信では、署名済みのログアウトトークンを登録先へ POST し、2xx だけを成功とみなす。それ以外の応答、タイムアウト、接続失敗はいずれも Job の再試行に委ね、試行上限に達した通知は配信不能として確定する。アクセストークンの失効は対象外とする。アクセストークンは署名だけで検証する自己完結型 JWT のままとし、即時失効のために全リソースサーバーの検証をストア参照へ変える代わりに、リフレッシュトークンファミリーの即時失効と RP 通知に加えて最大 600 秒の残存リスクを受け入れる。`check_session_iframe`（OIDC Session Management 1.0）は、Discovery Metadata での広告と、ブラウザーの Cookie が有効なセッションを示すかどうかの静的検査だけを提供する。
+
+## Fuzzed parse boundaries
+
+攻撃者が値を決められる入力の解析と照合は Go native fuzzing の対象である。
+
+`RedirectURIAllowed` は `redirect_uri` と `post_logout_redirect_uri` の唯一の照合規則である。受理するのは登録済みのいずれかとバイト単位で完全一致するときに限り、大文字小文字の同一視もパーセントエンコーディングやパスの正規化も行わない。いずれを許しても、攻撃者は登録済み URI を接頭辞に持つ別の宛先へ認可コードを配送できる。表明は厳密性と非空虚性の対で置く。厳密性だけでは「常に拒否する」実装も通ってしまうからである。
+
+`VerifyPKCES256` は S256 の往復で表明する。正しく導出した challenge は受理し、verifier と challenge のどちらを 1 文字変えても拒否する。`NormalizeUserCode` は冪等であり、宣言済みの英数字だけを残す。とりこぼせば同じ user_code が照合できず、広く畳めば総当たりの空間が縮む。
+
+クライアント認証の主体を決める経路も対象である。`ParseClientCertificateHeader` は URL エスケープ、PEM、base64 DER の 3 通りの包み方を受け取るので、どの経路で届いても同じ証明書は同じ thumbprint にならなければならない。`VerifyClientAssertion` と `VerifyDPoPForResource` は、こちらが署名していない値を必ず拒否する（`alg: none` と対称鍵混同を corpus に含む）。正当な値が受理されることは、それぞれの表駆動テストが別に押さえる。`ValidateJWKSURI` と `IsClientIDMetadataDocumentURL` は、受理した文字列を解析し直したときに https でホストを持ち userinfo も fragment も持たないことを表明する。生文字列に対する接頭辞判定へ退行すると破れる。

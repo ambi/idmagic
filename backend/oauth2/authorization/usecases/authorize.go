@@ -82,7 +82,7 @@ func Authorize(ctx context.Context, deps AuthorizeDeps, in AuthorizeRequestInput
 	if client == nil {
 		return nil, NewOAuthError("invalid_client", "unknown client_id")
 	}
-	if !slices.Contains(client.RedirectURIs, in.RedirectURI) {
+	if !domain.RedirectURIAllowed(client.RedirectURIs, in.RedirectURI) {
 		return nil, NewOAuthError("invalid_request", "redirect_uri is not a registered URI")
 	}
 	if !slices.Contains(client.GrantTypes, spec.GrantAuthorizationCode) {

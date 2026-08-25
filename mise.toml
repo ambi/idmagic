@@ -193,12 +193,48 @@ description = "Run Go tests with coverage"
 run = ["go test -coverprofile=coverage.out -covermode=atomic ./...", "go tool cover -func=coverage.out"]
 
 [tasks.test-go-fuzz]
-description = "Run Go fuzz targets for a package"
+description = "Run one Go fuzz target"
 run = '''
 #!/usr/bin/env sh
 set -eu
-test "$#" -ge 1 || { echo "usage: mise run test-go-fuzz -- <package> [fuzztime]" >&2; exit 2; }
-go test -run=Fuzz -fuzz=Fuzz -fuzztime="${2:-30s}" "$1"
+test "$#" -ge 1 || { echo "usage: mise run test-go-fuzz -- <package> [target] [fuzztime]" >&2; exit 2; }
+package="$1"
+target="${2:-}"
+if [ -z "$target" ]; then
+  # go test refuses to fuzz when the pattern matches more than one target, so resolve it here.
+  targets=$(go test -list 'Fuzz.*' "$package" | grep '^Fuzz' || true)
+  count=$(printf '%s' "$targets" | grep -c '^Fuzz' || true)
+  if [ "$count" -ne 1 ]; then
+    echo "$package has $count fuzz targets; name one:" >&2
+    printf '%s\n' "$targets" >&2
+    exit 2
+  fi
+  target="$targets"
+fi
+go test -run='^$' -fuzz="^${target}\$" -fuzztime="${3:-30s}" "$package"
+'''
+
+[tasks.test-go-fuzz-all]
+description = "Run every Go fuzz target for a time budget each"
+run = '''
+#!/usr/bin/env sh
+set -eu
+fuzztime="${1:-20s}"
+failures="$(mktemp)"
+trap 'rm -f "$failures"' EXIT
+for package in $(go list ./...); do
+  for target in $(go test -list 'Fuzz.*' "$package" 2>/dev/null | grep '^Fuzz' || true); do
+    echo "== $package $target"
+    if ! go test -run='^$' -fuzz="^${target}\$" -fuzztime="$fuzztime" "$package"; then
+      echo "$package $target" >> "$failures"
+    fi
+  done
+done
+if [ -s "$failures" ]; then
+  echo "failing fuzz targets:" >&2
+  cat "$failures" >&2
+  exit 1
+fi
 '''
 
 [tasks.build-go]

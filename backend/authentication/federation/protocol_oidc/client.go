@@ -198,25 +198,9 @@ func (c Client) ExchangeAndValidate(
 	if err != nil {
 		return empty, err
 	}
-	claims := jwt.MapClaims{}
-	parsed, err := jwt.ParseWithClaims(tokenResponse.IDToken, claims, func(token *jwt.Token) (any, error) {
-		if token.Method.Alg() != jwt.SigningMethodRS256.Alg() {
-			return nil, errors.New("unsupported ID token signing algorithm")
-		}
-		kid, _ := token.Header["kid"].(string)
-		key := keySet[kid]
-		if key == nil {
-			return nil, errors.New("ID token key not found")
-		}
-		return key, nil
-	}, jwt.WithIssuer(connection.Issuer), jwt.WithAudience(connection.ClientID),
-		jwt.WithExpirationRequired(), jwt.WithTimeFunc(func() time.Time { return normalizedNow(now) }),
-		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
-	if err != nil || !parsed.Valid {
-		return empty, fmt.Errorf("validate ID token: %w", err)
-	}
-	if nonce, _ := claims["nonce"].(string); nonce == "" || nonce != attempt.Nonce {
-		return empty, errors.New("ID token nonce mismatch")
+	claims, err := verifyUpstreamIDToken(tokenResponse.IDToken, keySet, connection, attempt, now)
+	if err != nil {
+		return empty, err
 	}
 	return normalizeClaims(connection.ClaimMapping, claims)
 }
@@ -368,6 +352,43 @@ func safeHTTPClient() *http.Client {
 func unsafeIP(ip net.IP) bool {
 	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalMulticast() ||
 		ip.IsLinkLocalUnicast() || ip.IsUnspecified()
+}
+
+// verifyUpstreamIDToken は上流 IdP の ID Token を検証して claims を返す。
+//
+// 署名アルゴリズムは RS256 に限り、kid が JWKS の鍵と一致し、issuer・audience・有効期限・
+// nonce がすべて接続とログイン試行に一致することを要求する。ここを緩めると、上流を名乗る
+// 任意の相手が任意のローカルユーザーとして認証を通せる (REQ-AUTHENTICATION-001)。
+//
+// HTTP からは切り離してあり、鍵集合と時刻を引数で受け取る。
+func verifyUpstreamIDToken(
+	idToken string,
+	keySet map[string]*rsa.PublicKey,
+	connection domain.IdentityProviderConnection,
+	attempt domain.FederatedLoginAttempt,
+	now time.Time,
+) (jwt.MapClaims, error) {
+	claims := jwt.MapClaims{}
+	parsed, err := jwt.ParseWithClaims(idToken, claims, func(token *jwt.Token) (any, error) {
+		if token.Method.Alg() != jwt.SigningMethodRS256.Alg() {
+			return nil, errors.New("unsupported ID token signing algorithm")
+		}
+		kid, _ := token.Header["kid"].(string)
+		key := keySet[kid]
+		if key == nil {
+			return nil, errors.New("ID token key not found")
+		}
+		return key, nil
+	}, jwt.WithIssuer(connection.Issuer), jwt.WithAudience(connection.ClientID),
+		jwt.WithExpirationRequired(), jwt.WithTimeFunc(func() time.Time { return normalizedNow(now) }),
+		jwt.WithValidMethods([]string{jwt.SigningMethodRS256.Alg()}))
+	if err != nil || !parsed.Valid {
+		return nil, fmt.Errorf("validate ID token: %w", err)
+	}
+	if nonce, _ := claims["nonce"].(string); nonce == "" || nonce != attempt.Nonce {
+		return nil, errors.New("ID token nonce mismatch")
+	}
+	return claims, nil
 }
 
 func normalizedNow(now time.Time) time.Time {

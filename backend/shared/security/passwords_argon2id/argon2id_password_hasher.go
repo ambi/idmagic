@@ -27,6 +27,20 @@ const (
 	owaspParallelism   uint8  = 1
 	keyLen             uint32 = 32
 	saltLen                   = 16
+
+	// argon2.IDKey は t < 1 と p < 1 でパニックし、m が大きいとその分だけメモリを確保する。
+	// 保存済みハッシュから読んだ値をそのまま渡すと、壊れた 1 行が検証経路をパニックさせるか
+	// メモリを食い潰す。復号の時点で範囲に収める。
+	maxMemoryCostKiB uint32 = 1 << 20 // 1 GiB
+	maxTimeCost      uint32 = 16
+	maxParallelism   uint8  = 16
+
+	// keyLen が 0 だと argon2 は内部で nil の blake2b digest を掴んで segfault する。
+	// salt と digest の長さも復号の時点で範囲に収める。
+	minSaltLen   = 8
+	maxSaltLen   = 64
+	minDigestLen = 16
+	maxDigestLen = 64
 )
 
 type Argon2idPasswordHasher struct {
@@ -63,8 +77,8 @@ func (h *Argon2idPasswordHasher) Verify(password, encoded string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	// len(digest) は keyLen (=32) と同じスケールで MaxUint32 を超えない。
-	candidate := argon2.IDKey([]byte(password), salt, params.timeCost, params.memoryCost, params.parallelism, uint32(len(digest))) //nolint:gosec // len bound by keyLen
+	// len(digest) は decodePHC が maxDigestLen 以下に収めているので MaxUint32 を超えない。
+	candidate := argon2.IDKey([]byte(password), salt, params.timeCost, params.memoryCost, params.parallelism, uint32(len(digest))) //nolint:gosec // len bound by maxDigestLen
 	return subtle.ConstantTimeCompare(candidate, digest) == 1, nil
 }
 
@@ -72,6 +86,20 @@ type argon2idParams struct {
 	memoryCost  uint32
 	timeCost    uint32
 	parallelism uint8
+}
+
+// validate は argon2 へ渡す前にコストを範囲へ収める。範囲外は検証失敗として扱い、
+// ライブラリのパニックにも過大な確保にも到達させない。
+func (p argon2idParams) validate() error {
+	switch {
+	case p.timeCost < 1 || p.timeCost > maxTimeCost:
+		return fmt.Errorf("argon2id: time cost %d out of range", p.timeCost)
+	case p.parallelism < 1 || p.parallelism > maxParallelism:
+		return fmt.Errorf("argon2id: parallelism %d out of range", p.parallelism)
+	case p.memoryCost < 8*uint32(p.parallelism) || p.memoryCost > maxMemoryCostKiB:
+		return fmt.Errorf("argon2id: memory cost %d out of range", p.memoryCost)
+	}
+	return nil
 }
 
 // decodePHC は $argon2id$v=19$m=...,t=...,p=...$<b64salt>$<b64hash> 形式を解く。
@@ -95,6 +123,9 @@ func decodePHC(encoded string) (argon2idParams, []byte, []byte, error) {
 	if _, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &p.memoryCost, &p.timeCost, &p.parallelism); err != nil {
 		return argon2idParams{}, nil, nil, fmt.Errorf("argon2id: parse params: %w", err)
 	}
+	if err := p.validate(); err != nil {
+		return argon2idParams{}, nil, nil, err
+	}
 	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
 	if err != nil {
 		return argon2idParams{}, nil, nil, fmt.Errorf("argon2id: decode salt: %w", err)
@@ -102,6 +133,12 @@ func decodePHC(encoded string) (argon2idParams, []byte, []byte, error) {
 	digest, err := base64.RawStdEncoding.DecodeString(parts[5])
 	if err != nil {
 		return argon2idParams{}, nil, nil, fmt.Errorf("argon2id: decode digest: %w", err)
+	}
+	if len(salt) < minSaltLen || len(salt) > maxSaltLen {
+		return argon2idParams{}, nil, nil, fmt.Errorf("argon2id: salt length %d out of range", len(salt))
+	}
+	if len(digest) < minDigestLen || len(digest) > maxDigestLen {
+		return argon2idParams{}, nil, nil, fmt.Errorf("argon2id: digest length %d out of range", len(digest))
 	}
 	return p, salt, digest, nil
 }

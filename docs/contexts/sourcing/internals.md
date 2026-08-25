@@ -27,3 +27,7 @@ SCIM の `emails` は複数値を持てるワイヤ表現だが、IdMagic の正
 Enterprise 拡張は `employeeNumber`、`department`、`manager` の 3 属性だけに対応する。`costCenter`、`division`、`organization` は対象外とする。値は `idmanagement.User.Attributes` の既存の組み込みキー（`employee_number`、`department`、`manager_sub`）を再利用し、idmanagement 側のモデル変更を不要にする。`manager` は SCIM ID への参照として受け取り、`ScimUserRef` を介して同一テナント内の `User.sub` へ解決する。テナントをまたぐ参照や存在しない SCIM ID は `invalidValue` として拒否し、テナント境界を越えた参照を保存しない。レスポンスの `schemas` には、いずれかの Enterprise 拡張属性を保持する場合だけ Enterprise 拡張の URN を含め、対応する属性オブジェクトを返す。PATCH の `path` は、`employeeNumber` などの単純名と、Enterprise 拡張 URN で修飾した完全パスの両方を受け付ける。
 
 PATCH や PUT で `active` を `false` にすると `User.lifecycle.status` は `Disabled` へ遷移し、`true` に戻すと `Active` へ戻る。`DELETE /Users/{id}` は完全な削除を行わず、プラットフォームの他の部分と同じ論理削除 (`PendingDeletion`、30 日の猶予、その後に匿名化を伴う連鎖的な完全削除) を行う。これにより設定を誤った、あるいは誤動作した外部の同期が、回復不能な PII の喪失を引き起こすことはない。SCIM の削除を既存の論理削除の方針に統合するものであり、迂回するものではない。`DELETE /Groups/{id}` は即時かつ完全である。group は PII を持たないからである。
+
+## Fuzzed parse boundaries
+
+外部 IdP から届く SCIM の書き込みボディは Go native fuzzing の対象である。フィルタ式に加えて、`ParseUserWrite`・`ParseUserPatchOps`・`ParseGroupWrite`・`ParseGroupPatchOps` が対象になる。拒否したボディから値を持ち出さないこと、受理した PATCH 操作が宣言済みの op と属性だけからなること、空の操作列を成功として返さないことを表明する。未知の op がそのまま下位へ流れると、許可属性の判定を経ないまま適用される経路ができる。

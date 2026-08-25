@@ -33,3 +33,7 @@ WS-Addressing と WS-Security の必須要素（`MessageID`、`To`、`Action`、
 必須クレームは定型設定で固定し、フェイルクローズで扱う。UPN は `preferred_username` から `http://schemas.xmlsoap.org/claims/UPN` として発行する。ImmutableID は正規化した sourceAnchor（`entra_immutable_id`）から導き、永続的な NameID と `http://schemas.xmlsoap.org/claims/nameidentifier` の両方に含める。sourceAnchor は、プロファイル設定時には既存ユーザーの欠落、重複、変換できない値を拒否し、発行時には対象ユーザーの ImmutableID を導けない場合にクレーム発行を拒否する。
 
 GUID の形をした sourceAnchor の値は、ImmutableID として使う前に .NET の `Guid.ToByteArray()` のバイト順 — AD FS と Entra の慣行 — で base64 に符号化する。既に base64 の値はそのまま通す。このバイト順を誤ると、Entra は assertion を元の社内の同じユーザーへ関連付けられず、アカウントの重複やサインインの失敗を招く。プロファイルのデフォルトのトークンの型は SAML 1.1 であり、Entra と AD FS の WS-Fed のデフォルトに合わせている。Hybrid Azure AD Join の端末の登録 (`windowstransport` とコンピューターアカウントの Kerberos) は明確に範囲外であり、設定の案内では managed や PHS、あるいは AD FS の併存のデプロイへ誘導する。
+
+## Fuzzed parse boundaries
+
+パッシブサインインの `wreply` 解決と WS-Trust の RST エンベロープ解析は Go native fuzzing の対象である。`ValidateSignIn` が返す返信先は、必ず RP に登録済みの集合の要素でなければならず、`wreply` を指定した要求が通ったならその値とバイト単位で一致していなければならない。接頭辞一致や正規化を伴う一致へ退行すると、攻撃者は RP のドメイン配下に見える別の宛先へトークンを配送できる。`ParseRST` は拒否したエンベロープから Username や AppliesTo を持ち出さない。実体参照の非展開は SAML と同じく回帰テストで押さえる。

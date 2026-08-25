@@ -72,17 +72,11 @@ func ResolveEndSession(ctx context.Context, deps EndSessionDeps, in EndSessionIn
 	if client == nil {
 		return nil, NewOAuthError("invalid_request", "The post_logout_redirect_uri is not registered.")
 	}
-	registered := ""
-	for _, uri := range client.RedirectURIs {
-		if uri == in.PostLogoutRedirectURI {
-			registered = uri
-			break
-		}
-	}
-	if registered == "" {
+	// post_logout_redirect_uri も認可の redirect_uri と同じ完全一致規則で照合する。
+	if !domain.RedirectURIAllowed(client.RedirectURIs, in.PostLogoutRedirectURI) {
 		return nil, NewOAuthError("invalid_request", "The post_logout_redirect_uri is not registered.")
 	}
 	target.Client = client
-	target.RedirectURI = registered
+	target.RedirectURI = in.PostLogoutRedirectURI
 	return target, nil
 }
