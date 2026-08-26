@@ -37,7 +37,7 @@ export const ROOT_DOCUMENTS = [
   'observability.md',
   'deployment.md',
   'capacity.md',
-  'persistence.md',
+  'database.md',
   'authorization.md',
   'scenarios.md',
 ] as const

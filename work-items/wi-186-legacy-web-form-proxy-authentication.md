@@ -27,7 +27,7 @@ OIDC、SAML、WS-Fed のいずれにも対応しないレガシーWebサービ�
 - **dependencies**:
   - [[wi-97-envelope-encryption-at-rest]] の tenant-scoped envelope encryption を、可逆な
     代理認証資格情報の保管・復号に必須とする。**これは完了済み**であり、`DataKeys` Context と
-    `EnvelopeCrypto` ポートをそのまま使う (`docs/persistence.md` の Envelope encryption for reversible secrets)。
+    `EnvelopeCrypto` ポートをそのまま使う (`docs/database.md` の Envelope encryption for reversible secrets)。
   - [[wi-151-managed-device-inventory-and-posture-access-conditions]] 完了後に、検証済み
     管理端末向けの認証freshness緩和を利用する。完了前は全端末を未管理として扱う。
 - **specification**:

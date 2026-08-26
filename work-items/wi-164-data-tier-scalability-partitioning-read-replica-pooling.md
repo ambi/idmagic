@@ -35,9 +35,9 @@ PostgreSQL への直結コネクションが線形に増え `max_connections` �
 
 ## Scope
 - **specification**:
-  - `docs/persistence.md` と `docs/capacity.md` へ記録する決定: PostgreSQL の大規模化方針。テナント / 時系列でのパーティショニング境界（特に audit event, token, session, auth-event bucket など append-heavy テーブル）、
-    read/write 分離の可否と一貫性境界、接続プール（アプリ側プール vs 外部 pooler）の選定、`docs/persistence.md` の tenant_id retention classes との整合を記録する。
-  - `docs/persistence.md` へ、揮発性テーブル群（認可中間状態 / 認可コード / PAR / device code / リプレイ JTI / 失効リスト / WebAuthn チャレンジ / ログインスロットル / SAML リプレイ）の
+  - `docs/database.md` と `docs/capacity.md` へ記録する決定: PostgreSQL の大規模化方針。テナント / 時系列でのパーティショニング境界（特に audit event, token, session, auth-event bucket など append-heavy テーブル）、
+    read/write 分離の可否と一貫性境界、接続プール（アプリ側プール vs 外部 pooler）の選定、`docs/database.md` の tenant_id retention classes との整合を記録する。
+  - `docs/database.md` へ、揮発性テーブル群（認可中間状態 / 認可コード / PAR / device code / リプレイ JTI / 失効リスト / WebAuthn チャレンジ / ログインスロットル / SAML リプレイ）の
     高 churn 対策を記録する。時間パーティション + `DROP PARTITION` による GC、`fillfactor` と HOT update、fail-closed 縮退（[[wi-106-distributed-login-throttle-and-shared-state-ha]] と整合）の維持を明記する。
   - `docs/capacity.md` に、read/write 分離時の**読み取り一貫性境界**（認可・quota・throttle は強整合、discovery / 一覧 / dashboard は短時間 stale 許容）と、
     パーティション / レプリカ運用でも tenant isolation が崩れないことを書く。
@@ -55,7 +55,7 @@ PostgreSQL への直結コネクションが線形に増え `max_connections` �
 ## Out of Scope
 - app 層 stateless 化そのものと容量目標の定義。→ [[wi-163-fleet-scale-capacity-and-horizontal-scaling-architecture]]
 - マルチAZ / 自動フェイルオーバー / DR。→ [[wi-165-high-availability-and-failover-resilience-topology]] と [[wi-101-backup-restore-and-disaster-recovery]]
-- アプリケーション水準のシャーディング（複数 DB クラスタへのテナント分散配置）。まず単一クラスタ内の分割・レプリカで容量目標を満たせるか検証し、届かない場合に別 WI と `docs/persistence.md` を切る。
+- アプリケーション水準のシャーディング（複数 DB クラスタへのテナント分散配置）。まず単一クラスタ内の分割・レプリカで容量目標を満たせるか検証し、届かない場合に別 WI と `docs/database.md` を切る。
 - 外部検索エンジン導入。
 - memory persistence adapter の大規模化（単一レプリカ / テスト専用のまま）。
 

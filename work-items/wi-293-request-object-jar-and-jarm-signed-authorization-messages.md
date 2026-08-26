@@ -92,7 +92,7 @@ FAPI を掲げる以上の整合性の問題でもある。
   - request object の検証を `backend/oauth2` に実装する。クライアントの登録済み JWKS
     (または `jwks_uri` の取得済みキャッシュ) で署名検証する。
     `docs/contexts/oauth2/internals.md` の `private_key_jwt` 検証 の検証基盤を再利用する。
-  - `jti` のリプレイ防止ストア (短命 / PostgreSQL、`docs/persistence.md` の一時状態の PostgreSQL 統合
+  - `jti` のリプレイ防止ストア (短命 / PostgreSQL、`docs/database.md` の一時状態の PostgreSQL 統合
     に従う) を追加する。
   - request object 展開後のパラメータ正規化を `/authorize` と `/par` の共通経路に置き、
     両方で同一の検証が効くようにする。

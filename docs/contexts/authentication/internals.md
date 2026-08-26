@@ -14,7 +14,7 @@
 
 ## Persistence
 
-`authentication_sessions` を `LoginSession` の単一の正とする。通常の [`tenant_id` retention classes](../../persistence.md#tenant_id-retention-classes) の例外として、ユーザーから導出できる `tenant_id` も保持する。不透明な Cookie 値であるセッション ID をすべてのリクエストで照合する際に、テナント境界をフェイルクローズで確認するためである。失効では行を削除せず、`revoked_at` と `revoke_reason` を設定する。これにより、失効の再実行は安全な no-op となり、物理削除は保持期間に従う独立した処理になる。インデックスは、ユーザーごとの有効なセッションを `auth_time DESC` でページングする処理と、`expires_at` による一括削除に使う。
+`authentication_sessions` を `LoginSession` の単一の正とする。通常の [`tenant_id` retention classes](../../database.md#tenant_id-retention-classes) の例外として、ユーザーから導出できる `tenant_id` も保持する。不透明な Cookie 値であるセッション ID をすべてのリクエストで照合する際に、テナント境界をフェイルクローズで確認するためである。失効では行を削除せず、`revoked_at` と `revoke_reason` を設定する。これにより、失効の再実行は安全な no-op となり、物理削除は保持期間に従う独立した処理になる。インデックスは、ユーザーごとの有効なセッションを `auth_time DESC` でページングする処理と、`expires_at` による一括削除に使う。
 
 セッションの有効期限は作成時に設定する固定 1 時間 (`SessionTTLSeconds`) であり、利用によって `expires_at` を延長しない。更新するのは `last_seen_at` だけで、書き込み増幅、VACUUM の負荷、ロック競合を抑えるため、最短でも 5 分間隔とする。90 日の保持期間は、期限切れの行を調査用に残す期間であり、セッションの有効期間ではない。
 
@@ -22,7 +22,7 @@
 
 `webauthn_credentials` は `credential_id` を鍵とする。1 人のユーザーが複数登録できるからであり、同じ理由で `mfa_factors` とは別のテーブルのままにしている。`public_key` は COSE の公開鍵 (base64url) を保持する。`recovery_codes` は平文のコードを決して保存せず、`code_hash` (SHA-256 の 16 進) だけを持つ。`consumed_at` が `NULL` でなければそのコードは使用済みで再送できず、再生成はユーザーの一式をまとめて置き換える。`webauthn_sessions` は WebAuthn の手続きの challenge のストアであり、`GetDel` は `DELETE ... WHERE expires_at > now() RETURNING data` である。
 
-`trusted_devices` も `authentication_sessions` と同じ理由で、通常の [`tenant_id` retention classes](../../persistence.md#tenant_id-retention-classes) の例外として `tenant_id` を保持する。`user_id` から辿れば所属テナントは分かるが、この行を引く鍵は不透明な cookie の `selector` であり、ログインのたびにテナント境界をフェイルクローズで確かめる条件が、`users` への結合ではなく行そのものに要るからである。同じ理由でテナントごとの有効な一覧にも要る。親が全体で一意なので外部キーは `users(id)` への単一列とし、テナント単位の複合外部キーは使わない。`selector` は全体で一意なので、走査ではなく 1 行の等値検索で解決する。`verifier_hash` は SHA-256 hex で、cookie の平文も生の User-Agent も IP も保存しない。インデックスは `(tenant_id, user_id, last_used_at DESC)` の部分インデックス 1 本で、本人の一覧と一括失効の両方を賄う。
+`trusted_devices` も `authentication_sessions` と同じ理由で、通常の [`tenant_id` retention classes](../../database.md#tenant_id-retention-classes) の例外として `tenant_id` を保持する。`user_id` から辿れば所属テナントは分かるが、この行を引く鍵は不透明な cookie の `selector` であり、ログインのたびにテナント境界をフェイルクローズで確かめる条件が、`users` への結合ではなく行そのものに要るからである。同じ理由でテナントごとの有効な一覧にも要る。親が全体で一意なので外部キーは `users(id)` への単一列とし、テナント単位の複合外部キーは使わない。`selector` は全体で一意なので、走査ではなく 1 行の等値検索で解決する。`verifier_hash` は SHA-256 hex で、cookie の平文も生の User-Agent も IP も保存しない。インデックスは `(tenant_id, user_id, last_used_at DESC)` の部分インデックス 1 本で、本人の一覧と一括失効の両方を賄う。
 
 `tenant_correlation_salts` はテナントごとのシークレットで、利用者名や IP の相関用ハッシュ（`SaltedHash`）と、スロットルや集計の `keyHash` の算出に使う。これにより相関がテナントをまたいで集約されることはない。あらかじめ用意するのではなく、最初に使うときに生成する。
 

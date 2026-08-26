@@ -112,7 +112,7 @@ flowchart LR
 | [observability.md](observability.md) | 相関、ログ、メトリクス |
 | [deployment.md](deployment.md) | 実行単位、信頼境界、可用性 |
 | [capacity.md](capacity.md) | サービス目標、参照運用プロファイル、容量算出、縮退順序 |
-| [persistence.md](persistence.md) | データベース設計方針 |
+| [database.md](database.md) | データベース設計方針 |
 | [authorization.md](authorization.md) | 主体、スコープ、認可の境界 |
 | [scenarios.md](scenarios.md) | Context を跨がないと成り立たない振る舞い |
 

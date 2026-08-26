@@ -24,7 +24,7 @@ docs/
   observability.md     # correlation, logs, metrics
   deployment.md        # runtime units, trust boundaries, availability
   capacity.md          # assumed scale, how limits are set, degradation
-  persistence.md       # database design policy
+  database.md          # database design policy
   authorization.md     # principals, scopes, authorization boundaries
   scenarios.md         # behavior no single context can satisfy alone
   contexts/<context>/

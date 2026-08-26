@@ -34,4 +34,4 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 |---|---|---|
 | PersistedStateModel | `created_at` を持ち、作成後に現在状態を更新する場合は `updated_at` も持つ永続状態モデルの規約。作成後は不変で、消費または削除だけを行う記録モデルは `updated_at` を持たない。`issued_at`、`granted_at`、`occurred_at`、`expires_at`、`revoked_at` などのドメイン時刻は `created_at` を置き換えない。 |  |
 
-型と制約の選び方は [persistence.md](persistence.md) が持つ。
+型と制約の選び方は [database.md](database.md) が持つ。

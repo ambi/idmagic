@@ -133,7 +133,7 @@ SIM スワップとメールアカウント侵害で突破されるため、無�
   handler 側の実装差で緩まないようにする。
 - **SMS は port だけ入れて adapter は差し替え式にする**。商用 gateway を同梱すると
   依存とアカウント設定が増え、この repo の「adapter は選択式」という方針
-  (`docs/persistence.md` の考え方) と合う。adapter 未設定の配備で
+  (`docs/database.md` の考え方) と合う。adapter 未設定の配備で
   SMS factor を有効化しようとしたら fail-closed で拒否する。
 - **既存の TOTP 実装の形に倣う**。`backend/authentication/totp` の登録 (start / confirm) と
   検証の構造がそのまま使えるため、新しいパターンを作らない。
