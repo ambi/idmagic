@@ -2,6 +2,7 @@ import { type Dirent, existsSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import type { DirectoryListing } from '../../check/src/canonical-document-set.ts'
 import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -68,35 +69,49 @@ async function scanNamed(root: string, names: Set<string>, dir = root, found: st
   return found
 }
 
-/**
- * The canonical documents of one directory in the split layout. Only the names
- * the layout defines are returned, so an unrelated Markdown file next to them
- * is not mistaken for specification source.
- */
-async function scanCanonicalDocuments(root: string, directory: string): Promise<string[]> {
-  const names = new Set<string>(directory === 'docs' ? ROOT_DOCUMENTS : CONTEXT_DOCUMENTS)
+async function listFiles(root: string, directory: string): Promise<string[]> {
   let entries: Dirent[]
   try {
     entries = await readdir(resolve(root, directory), { withFileTypes: true })
   } catch {
     return []
   }
-  return entries
-    .filter((entry) => entry.isFile() && names.has(entry.name))
-    .map((entry) => `${directory}/${entry.name}`)
+  return entries.filter((entry) => entry.isFile()).map((entry) => entry.name)
 }
 
-async function discoverSpecificationDocuments(root: string): Promise<string[]> {
-  const documents = await scanCanonicalDocuments(root, 'docs')
+/**
+ * 分割配置がファイル集合を閉じている 2 つの段、すなわち `docs/` 直下と各
+ * `docs/contexts/<context>/` 直下。文書を集める側と、文書でないファイルを拒否する
+ * 側が同じ一覧を読む。どの段を閉じた集合とみなすかで両者が食い違うことがない。
+ */
+export async function listCanonicalDirectories(root = WORKSPACE_ROOT): Promise<DirectoryListing[]> {
+  const listings: DirectoryListing[] = [{ directory: 'docs', files: await listFiles(root, 'docs') }]
   let contexts: Dirent[] = []
   try {
     contexts = await readdir(resolve(root, 'docs/contexts'), { withFileTypes: true })
   } catch {
     contexts = []
   }
-  for (const entry of contexts) {
-    if (entry.isDirectory()) {
-      documents.push(...(await scanCanonicalDocuments(root, `docs/contexts/${entry.name}`)))
+  for (const entry of contexts.sort((a, b) => a.name.localeCompare(b.name))) {
+    if (!entry.isDirectory()) continue
+    const directory = `docs/contexts/${entry.name}`
+    listings.push({ directory, files: await listFiles(root, directory) })
+  }
+  return listings
+}
+
+/**
+ * 分割配置の正本文書。配置が定める名前だけを返すので、隣にある無関係な Markdown を
+ * 仕様の原稿と取り違えることはない。そのファイルが存在してよいかどうかを問うのは
+ * `verifyCanonicalDocumentSet` であってここではない。対象を集める操作が落ちると、
+ * 差分を読むだけの操作まで未登録のファイルを理由に落ちることになる。
+ */
+async function discoverSpecificationDocuments(root: string): Promise<string[]> {
+  const documents: string[] = []
+  for (const listing of await listCanonicalDirectories(root)) {
+    const names = new Set<string>(listing.directory === 'docs' ? ROOT_DOCUMENTS : CONTEXT_DOCUMENTS)
+    for (const name of listing.files) {
+      if (names.has(name)) documents.push(`${listing.directory}/${name}`)
     }
   }
   return documents.sort()

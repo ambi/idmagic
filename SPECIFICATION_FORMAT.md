@@ -48,10 +48,13 @@ spec/
 
 `README.md` is the file a reader lands on when they open the directory, so it holds the boundary
 declaration and the index of its siblings. Create no file that has no content to hold: a small context
-needs only `README.md` and `scenarios.md`. The file set and the file names are *(checked)* for `docs/` and
-`docs/contexts/<context>/`; anything else at those two levels is not a canonical document and is rejected.
-`docs/development/` and `docs/runbooks/` sit below that closed set and name their files freely, because
-procedures are not a fixed set of kinds.
+needs only `README.md` and `scenarios.md`. The file names are *(checked)* for `docs/` and
+`docs/contexts/<context>/`: a Markdown file at either of those two levels whose name the layout does not
+define is rejected. When that name is a near miss of one the layout does define, the failure names that
+document; otherwise it lists the names the level allows. The file that needs catching is the one whose
+author believes it is already a canonical document, so a rejection that only says "not allowed" leaves the
+mistake unfound. `docs/development/` and `docs/runbooks/` sit below that closed set and name their files
+freely, because procedures are not a fixed set of kinds.
 
 `main.tsp` composes the TypeSpec program. `models.tsp` owns model declarations and the context `main.tsp`
 owns operations. Generated OpenAPI and documentation live below ignored `spec/generated/`, which keeps

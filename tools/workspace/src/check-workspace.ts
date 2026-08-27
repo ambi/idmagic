@@ -3,6 +3,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
+import { verifyCanonicalDocumentSet } from '../../check/src/canonical-document-set.ts'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
@@ -11,7 +12,7 @@ import {
   type ReferenceEnvironment,
   verifyWorkItemReferences,
 } from '../../check/src/work-item-references.ts'
-import { loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
+import { listCanonicalDirectories, loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
 
 const args = new Set(process.argv.slice(2))
 if (args.has('--help') || args.has('-h')) {
@@ -84,8 +85,18 @@ if ((all || args.has('--work-items')) && config.workItems) {
   console.log(`ok  ${records.length} work-item dependency record(s)`)
 }
 
-if ((all || args.has('--documents')) && config.documents.length > 0) {
-  await runTool(['check/src/check-specifications.ts', ...config.documents.map(rootPath)])
+if (all || args.has('--documents')) {
+  // 閉じた集合の強制は、検証すべき文書が 1 件も見つからないときこそ働かなければ
+  // ならない。名前を全部打ち間違えた作業ツリーは、集めた結果が空になるという形で
+  // 現れる。ここを文書の件数で条件付けると、その最悪の場合だけ検査が飛ぶ。
+  const findings = verifyCanonicalDocumentSet(await listCanonicalDirectories())
+  if (findings.length) {
+    for (const finding of findings) console.error(`fail  ${finding.path}: ${finding.message}`)
+    process.exit(1)
+  }
+  if (config.documents.length > 0) {
+    await runTool(['check/src/check-specifications.ts', ...config.documents.map(rootPath)])
+  }
 }
 
 if ((all || args.has('--ids')) && config.workItems) {
