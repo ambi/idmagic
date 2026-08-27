@@ -106,6 +106,7 @@ flowchart LR
 | File | Content |
 |---|---|
 | [structure.md](structure.md) | ディレクトリ、依存の向き、層の構成、アーキテクチャスタイル |
+| [design-rules.md](design-rules.md) | モジュールのインターフェース、Seam、型、作用、エラーを評価する設計規則 |
 | [glossary.md](glossary.md) | Context を跨いで意味が固定される語 |
 | [standards.md](standards.md) | 製品全体が従う外部規範 |
 | [api-rules.md](api-rules.md) | 外部に見える契約の規則 |

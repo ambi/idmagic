@@ -18,6 +18,7 @@ docs/
   README.md            # boundary declaration, context map, index
   product-overview.md  # problem, users, non-goals
   structure.md         # directories, dependency direction, layers, architecture style
+  design-rules.md      # module interfaces, seams, types, effects, and errors
   glossary.md          # published language
   standards.md         # external norms the whole system follows
   api-rules.md         # rules for externally visible contracts
@@ -104,6 +105,14 @@ A context owns only behavior it can satisfy and verify on its own. Behavior that
 contexts cooperate belongs to `docs/scenarios.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.
 
+### design-rules.md — how design choices are evaluated
+
+The root `design-rules.md` owns the system-wide criteria for module interfaces, seams, adapters, type
+ownership, effects, and errors. It states the current rule and the shape of a violation, so a reviewer can
+apply it to a concrete change. It does not own directories or dependency direction (`structure.md`), the
+rationale for one bounded decision (`decisions.md`), or mechanism that cannot be recovered from code
+(`internals.md`). Context directories do not carry their own copy of this file.
+
 ### decisions.md — what was decided and why
 
 One item per decision: what was decided, and why, each in a sentence. An item with no reason is a restated
@@ -113,9 +122,9 @@ Include what was decided against, with the condition that would reopen it.
 Make the heading the decision, never the aspect. `Invariants`, `Concurrency`, and `Failure handling` are
 aspect names: a writer reads them as boxes to fill, and either invents prose for an aspect that does not
 apply or splits one decision across several. Do not enumerate invariants at all — uniqueness and
-referential integrity belong to the schema, observable properties to `scenarios.md`, and the rest is
-unbounded. An invariant worth writing down is usually a decision with a reason, and written as one it
-keeps the reason.
+referential integrity belong to the schema, observable properties to `scenarios.md`, and construction and
+postconditions to the type or operation as directed by `docs/design-rules.md`; the rest is unbounded. An
+invariant worth writing down is usually a decision with a reason, and written as one it keeps the reason.
 
 A decision large enough to need rejected alternatives, the conditions under which it holds, and the
 condition that would reopen it gets a heading of its own.

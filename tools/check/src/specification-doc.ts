@@ -31,6 +31,7 @@ export const ROOT_DOCUMENTS = [
   'README.md',
   'product-overview.md',
   'structure.md',
+  'design-rules.md',
   'glossary.md',
   'standards.md',
   'api-rules.md',

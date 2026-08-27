@@ -26,6 +26,7 @@ describe('documentKind', () => {
     expect(documentKind('docs/standards.md')).toBe('standards')
     expect(documentKind('docs/authorization.md')).toBe('prose')
     expect(documentKind('docs/threat-model.md')).toBe('prose')
+    expect(documentKind('docs/design-rules.md')).toBe('prose')
   })
 
   it('rejects a name the layout does not define, and a context-only name at the root', () => {
