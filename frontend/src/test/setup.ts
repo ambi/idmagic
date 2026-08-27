@@ -4,6 +4,24 @@ import { afterEach } from 'bun:test'
 import { cleanup } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
+// 画面シェルは表示時にブランド設定の公開エンドポイントを読む。各テストが意図していない実通信を
+// localhost へ送らないよう、既定値だけをテスト環境で返す。それ以外の通信は個別テストが
+// 明示的に差し替えるか、未差し替えなら従来どおり失敗させる。
+const networkFetch = globalThis.fetch
+globalThis.fetch = Object.assign(
+  (input: RequestInfo | URL, init?: RequestInit) => {
+    const requestURL = new URL(input instanceof Request ? input.url : input, window.location.href)
+    const method = init?.method ?? (input instanceof Request ? input.method : 'GET')
+    if (requestURL.pathname === '/api/branding' && method === 'GET') {
+      return Promise.resolve(
+        new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }),
+      )
+    }
+    return networkFetch(input, init)
+  },
+  { preconnect: networkFetch.preconnect },
+)
+
 afterEach(() => {
   cleanup()
 })

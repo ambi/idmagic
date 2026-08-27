@@ -101,7 +101,7 @@ describe('NotificationTemplatesTab', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
-    const [url, init] = (fetch as any).mock.calls[2]
+    const [url, init] = fetch.mock.calls[2]
     expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja')
     expect(init.method).toBe('PUT')
     expect(JSON.parse(init.body)).toEqual({
@@ -172,7 +172,7 @@ describe('NotificationTemplatesTab', () => {
 
     expect(await screen.findByText(t.previewHeading)).toBeInTheDocument()
     expect(screen.getByText('IdMagic のパスワード再設定')).toBeInTheDocument()
-    const [url, init] = (fetch as any).mock.calls[2]
+    const [url, init] = fetch.mock.calls[2]
     expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja/preview')
     expect(init.method).toBe('POST')
   })
@@ -189,7 +189,7 @@ describe('NotificationTemplatesTab', () => {
     fireEvent.click(await screen.findByRole('button', { name: t.sendTest }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
-    const [url, init] = (fetch as any).mock.calls[2]
+    const [url, init] = fetch.mock.calls[2]
     expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja/test')
     expect(init.method).toBe('POST')
     // 宛先を送る手段が無いことを固定する。
@@ -212,7 +212,7 @@ describe('NotificationTemplatesTab', () => {
     fireEvent.click(await screen.findByRole('button', { name: t.resetToDefault }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
-    const [url, init] = (fetch as any).mock.calls[2]
+    const [url, init] = fetch.mock.calls[2]
     expect(url).toBe('/api/admin/v1/tenant/notification_templates/password_reset/ja')
     expect(init.method).toBe('DELETE')
     expect(await screen.findByText(t.resetNotice)).toBeInTheDocument()

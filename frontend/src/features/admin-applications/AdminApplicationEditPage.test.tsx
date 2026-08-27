@@ -1,4 +1,4 @@
-import { afterEach, describe, it, expect, mock } from 'bun:test'
+import { afterEach, beforeEach, describe, it, expect, mock } from 'bun:test'
 import { restoreGlobals, stubGlobal } from '../../test/globals'
 import { screen, fireEvent } from '@testing-library/react'
 import { renderWithRouter } from '../../test/renderWithRouter'
@@ -32,6 +32,14 @@ const detail: AdminApplicationDetail = { application: app }
 
 describe('AdminApplicationEditPage', () => {
   const originalLocation = window.location
+  beforeEach(() => {
+    stubGlobal(
+      'fetch',
+      mock().mockResolvedValue(
+        response(200, { assignments: [], categories: [], groups: [], users: [] }),
+      ),
+    )
+  })
   afterEach(() => restoreGlobals())
 
   it('shows an error and keeps the form when saving fails', async () => {

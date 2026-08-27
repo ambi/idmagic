@@ -39,7 +39,6 @@ import type { AdminUser } from '../../types'
 import { DeleteUserDialog, DisableUserDialog } from './AdminUserDialogs'
 import { adminUsersDictionary } from './AdminUsersPage.i18n'
 import {
-  daysUntil,
   DetailRow,
   formatDateTime,
   Metric,

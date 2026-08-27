@@ -1,17 +1,42 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, mock } from 'bun:test'
-import { restoreGlobals, stubGlobal } from '../../test/globals'
+import { restoreGlobals } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
 import { renderWithRouter } from '../../test/renderWithRouter'
+import type { AdminIntegrationEndpointCatalog } from '../../types'
 import { AdminEntraFederationPage, EntraFederationList } from './AdminEntraFederationPage'
 import { adminEntraFederationDictionary } from './AdminEntraFederationPage.i18n'
 
 const t = adminEntraFederationDictionary.en
 
-const integrationEndpoints = {
+const integrationEndpoints: AdminIntegrationEndpointCatalog = {
   issuer: 'https://login.idmagic.example/realms/acme',
-  oauth: {},
-  saml: {},
+  oauth: {
+    openid_configuration: '',
+    oauth_authorization_server: '',
+    authorization_endpoint: '',
+    token_endpoint: '',
+    userinfo_endpoint: '',
+    jwks_uri: '',
+    revocation_endpoint: '',
+    introspection_endpoint: '',
+    end_session_endpoint: '',
+    registration_endpoint: '',
+    pushed_authorization_request_endpoint: '',
+    device_authorization_endpoint: '',
+  },
+  saml: {
+    entity_id: '',
+    metadata_url: '',
+    sso_url: '',
+    slo_url: '',
+    signing_certificate: {
+      download_url: '',
+      fingerprint_sha256: '',
+      not_before: '',
+      not_after: '',
+    },
+  },
   ws_federation: {
     realm: 'https://login.idmagic.example/realms/acme',
     metadata_url:
@@ -20,8 +45,8 @@ const integrationEndpoints = {
     active_logon_url: 'https://login.idmagic.example/realms/acme/trust/usernamemixed',
     metadata_exchange_url: 'https://login.idmagic.example/realms/acme/trust/mex',
   },
-  apis: {},
-} as const
+  apis: { management_api_base_url: '', scim_base_url: '', account_api_base_url: '' },
+}
 
 function renderEn(ui: Parameters<typeof render>[0]) {
   return render(<LocaleProvider initialLocale="en">{ui}</LocaleProvider>)
@@ -36,7 +61,7 @@ describe('locale', () => {
         csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
-        integrationEndpoints={integrationEndpoints as any}
+        integrationEndpoints={integrationEndpoints}
       />,
     )
     expect(screen.getByRole('heading', { name: t.pageTitle })).toBeInTheDocument()
@@ -49,7 +74,7 @@ describe('locale', () => {
         csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
-        integrationEndpoints={integrationEndpoints as any}
+        integrationEndpoints={integrationEndpoints}
       />,
       { locale: 'ja' },
     )
@@ -64,7 +89,7 @@ describe('locale', () => {
         csrfToken="csrf"
         actorUsername="admin"
         relyingParties={[]}
-        integrationEndpoints={integrationEndpoints as any}
+        integrationEndpoints={integrationEndpoints}
       />,
     )
 

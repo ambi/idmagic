@@ -299,7 +299,7 @@ describe('AdminSettingsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
-    const [url, init] = (fetch as any).mock.calls[0]
+    const [url, init] = fetch.mock.calls[0]
     expect(url).toBe('/api/admin/v1/settings')
     expect(JSON.parse(init.body)).toEqual({ default_locale: 'ja' })
   })

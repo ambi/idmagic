@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, mock } from 'bun:test'
-import { restoreGlobals, stubGlobal } from '../../test/globals'
+import { restoreGlobals } from '../../test/globals'
 import { LocaleProvider } from '../../lib/i18n'
 import { renderWithRouter } from '../../test/renderWithRouter'
 import { SystemTenantsPage, TenantTable } from './SystemTenantsPage'

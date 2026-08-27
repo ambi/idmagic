@@ -81,7 +81,7 @@ describe('TrustedDeviceTab', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
-    expect(JSON.parse((fetch as any).mock.calls[0][1].body)).toEqual({
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
       trusted_device_max_age_seconds: 2592000,
     })
     expect(await screen.findByText(t.trustedDeviceUpdatedNotice)).toBeInTheDocument()
@@ -101,7 +101,7 @@ describe('TrustedDeviceTab', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
-    expect(JSON.parse((fetch as any).mock.calls[0][1].body)).toEqual({
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({
       trusted_device_max_age_seconds: 0,
     })
   })

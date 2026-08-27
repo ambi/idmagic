@@ -52,7 +52,7 @@ describe('AdminIdentityProvidersPage', () => {
   // RED (Design: 状態モデルの単純化): Disabled (旧 Draft 相当) の接続は確認なしで
   // 即座に削除できる。
   it('deletes a disabled connection immediately without a confirmation dialog', async () => {
-    const fetchMock = mock((url: string, init?: RequestInit) => {
+    const fetchMock = mock((_url: string, init?: RequestInit) => {
       if (init?.method === 'DELETE') return Promise.resolve(response(204))
       return Promise.resolve(response(200, {}))
     })

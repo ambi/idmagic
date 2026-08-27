@@ -49,7 +49,7 @@ describe('DelegationPolicyTab', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
-    expect(JSON.parse((fetch as any).mock.calls[0][1].body)).toEqual({ max_delegation_depth: 1 })
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ max_delegation_depth: 1 })
     expect(await screen.findByText(t.delegationPolicyUpdatedNotice)).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: t.edit }))
@@ -59,7 +59,7 @@ describe('DelegationPolicyTab', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
-    expect(JSON.parse((fetch as any).mock.calls[1][1].body)).toEqual({ max_delegation_depth: 0 })
+    expect(JSON.parse(fetch.mock.calls[1][1].body)).toEqual({ max_delegation_depth: 0 })
   })
 
   // REQ-TENANCY-021: システム上限を超える値は往復前に presentation logic で拒否する。

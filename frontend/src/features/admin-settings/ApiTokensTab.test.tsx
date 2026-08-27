@@ -68,14 +68,12 @@ describe('ApiTokensTab', () => {
       scopes: ['scim:users:read', 'scim:users:write'],
       created_at: '2026-07-23T00:00:00Z',
     }
-    stubGlobal(
-      'fetch',
-      mock()
-        .mockResolvedValueOnce(response(200, { tokens: [] }))
-        .mockResolvedValueOnce(response(201, { token: 'header.payload.signature', meta }))
-        .mockResolvedValueOnce(response(200, { tokens: [meta] }))
-        .mockResolvedValueOnce(response(204)),
-    )
+    const fetchMock = mock()
+      .mockResolvedValueOnce(response(200, { tokens: [] }))
+      .mockResolvedValueOnce(response(201, { token: 'header.payload.signature', meta }))
+      .mockResolvedValueOnce(response(200, { tokens: [meta] }))
+      .mockResolvedValueOnce(response(204))
+    stubGlobal('fetch', fetchMock)
 
     await renderWithRouter(
       <ApiTokensTab csrfToken="csrf" integrationEndpoints={integrationEndpoints} />,
@@ -89,7 +87,7 @@ describe('ApiTokensTab', () => {
 
     expect(await screen.findByDisplayValue('header.payload.signature')).toBeInTheDocument()
     expect(await screen.findByText('scim:users:read')).toBeInTheDocument()
-    const post = (fetch as any).mock.calls.find(([, init]: any[]) => init?.method === 'POST')
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST')
     expect(post?.[1]?.body).toBe(
       JSON.stringify({
         description: 'Okta',

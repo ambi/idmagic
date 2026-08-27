@@ -43,7 +43,7 @@ describe('BrandingTab color reset', () => {
     fireEvent.click(screen.getByRole('button', { name: t.save }))
 
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
-    expect((fetch as any).mock.calls[1]).toEqual([
+    expect(fetch.mock.calls[1]).toEqual([
       '/api/admin/v1/tenant/branding',
       expect.objectContaining({
         method: 'PUT',

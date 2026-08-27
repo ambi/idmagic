@@ -216,6 +216,10 @@ describe('AdminUsersPage', () => {
   })
 
   it('shows required actions as read-only badges, not toggle buttons (T009)', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() => Promise.resolve(response(200, { groups: [], group_roles: [] }))),
+    )
     await renderWithRouter(<AdminUsersPage csrfToken="csrf" users={[user]} nextCursor={null} />)
 
     expect(screen.getByText('Verify email address')).toBeInTheDocument()
