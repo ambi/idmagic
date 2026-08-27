@@ -60,7 +60,7 @@ run = "bun install --frozen-lockfile"
 
 [tasks.verify]
 description = "Run the standard verification suite in parallel"
-depends = ["check", "check-api-compat", "test-tools", "typecheck-tools", "lint-go", "test-go", "format-check-ui", "lint-ui", "test-ui-unit", "build-ui"]
+depends = ["check", "check-api-compat", "test-tools", "typecheck-tools", "lint-tools", "lint-go", "test-go", "format-check-ui", "lint-ui", "test-ui-unit", "build-ui"]
 
 [tasks.verify-serial]
 description = "Run the standard verification suite serially"
@@ -69,6 +69,7 @@ run = [
   "mise run check-api-compat",
   "mise run test-tools",
   "mise run typecheck-tools",
+  "mise run lint-tools",
   "mise run lint-go",
   "mise run test-go-race",
   "mise run format-check-ui",
@@ -79,7 +80,7 @@ run = [
 
 [tasks.verify-spec]
 description = "Validate specifications and embedded tooling"
-depends = ["check", "test-tools", "typecheck-tools"]
+depends = ["check", "test-tools", "typecheck-tools", "lint-tools"]
 
 [tasks.test-tools]
 description = "Run embedded repository tooling tests"

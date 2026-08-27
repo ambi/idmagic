@@ -177,7 +177,7 @@ function validateScenario(
     if (keyword === 'WHEN' || keyword === 'THEN') behaviorStarted = true
   }
 
-  for (const match of block.matchAll(/^  - ALT (.+)$/gm)) {
+  for (const match of block.matchAll(/^ {2}- ALT (.+)$/gm)) {
     if (!match[1]?.includes(' → ')) {
       findings.push({
         line: lineAt(source, offset + (match.index ?? 0)),
@@ -213,7 +213,7 @@ function validateScenario(
     })
   }
 
-  for (const match of block.matchAll(/^  - ALT \(\d+\) .+$/gm)) {
+  for (const match of block.matchAll(/^ {2}- ALT \(\d+\) .+$/gm)) {
     findings.push({
       line: lineAt(source, offset + (match.index ?? 0)),
       message: 'ALT must not use local step numbers',

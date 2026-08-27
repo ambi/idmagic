@@ -496,7 +496,7 @@ describe('validateAgainstSchema — work-item', () => {
           ...completed,
           completion: {
             ...completed.completion,
-                independent_verification: 'reviewed by a separate agent',
+            independent_verification: 'reviewed by a separate agent',
             change_resistance: 'the representative fault was detected',
           },
         },

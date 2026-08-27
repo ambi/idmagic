@@ -23,6 +23,7 @@ jobs:
           mise run check-api-compat
           mise run test-tools
           mise run typecheck-tools
+          mise run lint-tools
       - name: Go lint
         run: mise run lint-go
       - name: Test Go (Race Detector)
