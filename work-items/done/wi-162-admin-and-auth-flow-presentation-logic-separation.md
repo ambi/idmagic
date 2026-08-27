@@ -25,7 +25,7 @@ created_at: 2026-07-10
 
 ## Plan
 - SCL のドメイン仕様・外部契約・画面遷移仕様は変更しない。`spec/scl.yaml` は更新しない。
-- 分離方針は [ui/ARCHITECTURE.md](file:///Users/tn/src/idmagic/ui/ARCHITECTURE.md) の「Container / Presentation component split」セクション（`wi-132`/`wi-133` で明記済み）にそのまま従う。
+- 分離方針は `ui/ARCHITECTURE.md` の「Container / Presentation component split」セクション（`wi-132`/`wi-133` で明記済み）にそのまま従う。
   - ページ全体を 1 個の `XxxPresentation` に丸ごと包む split は避ける。意味のあるセクション（フォーム・一覧・カードなど）ごとに小さいプレゼンテーションコンポーネントへ切り出し、props は概ね 10 未満に抑える。
   - 静的な read-only マークアップは無理に切り出さず、container にインラインで残してよい。
   - `AccountShell`/`AdminShell`/`AuthShell`/`SystemShell` など TanStack Router の `Link` を使うラッパーをテストで render する場合は `src/test/renderWithRouter.tsx` を使う。

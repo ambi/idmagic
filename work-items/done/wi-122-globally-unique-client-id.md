@@ -10,10 +10,10 @@ risk_notes: |
 # client_id のグローバルユニーク強制とスキーマ・コードの単純化
 
 ## Motivation
-[ADR-034](file:///Users/tn/src/idmagic/decisions/ADR-034-tenant-scoped-persistence.md) で導入された `(tenant_id, client_id)` の複合キー設計は、管理者が任意に命名できることによる柔軟性をもたらしたが、その代償としてスキーマやアプリケーションコードに多大な複雑性を導入してしまっている。具体的には、`clients` が複合主キーを使用しているために、それを参照する `consents` や `refresh_tokens` などの子テーブルにも `tenant_id` を伝播させ、複合外部キー制約（Composite FK）を構成せざるを得なくなっている。
+`ADR-034` で導入された `(tenant_id, client_id)` の複合キー設計は、管理者が任意に命名できることによる柔軟性をもたらしたが、その代償としてスキーマやアプリケーションコードに多大な複雑性を導入してしまっている。具体的には、`clients` が複合主キーを使用しているために、それを参照する `consents` や `refresh_tokens` などの子テーブルにも `tenant_id` を伝播させ、複合外部キー制約（Composite FK）を構成せざるを得なくなっている。
 
 主要なモダン IdP（Auth0、Okta、Azure AD/Entra ID 等）では、`client_id` は管理者が命名するものではなく、システムが払い出すグローバルユニークなランダム値（UUIDや強固なランダム文字列）に強制することが一般的であり、それが事実上の標準となっている。
-`users.id` を [ADR-082](file:///Users/tn/src/idmagic/decisions/ADR-082-user-domain-id-and-tenant-key-policy.md) でグローバルユニークな ID に変更したのと同様に、`client_id` もシステム自動生成のグローバルユニークな識別子に強制することで、複合キーの複雑性をスキーマ全体から排除し、コードとデータベース設計を劇的に単純化する。
+`users.id` を `ADR-082` でグローバルユニークな ID に変更したのと同様に、`client_id` もシステム自動生成のグローバルユニークな識別子に強制することで、複合キーの複雑性をスキーマ全体から排除し、コードとデータベース設計を劇的に単純化する。
 
 ## Scope
 - SCL spec (`spec/contexts/oauth2.yaml` 等) における `OAuth2Client` エンティティの `identity` を `client_id` 単一キーに変更する。

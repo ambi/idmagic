@@ -8,7 +8,7 @@ created_at: 2026-07-05
 # 同意・連携済みアプリ画面で client_id を人間可読名で表示する
 
 ## Motivation
-[ADR-084](../../decisions/ADR-084-postgres-column-type-policy.md)（wi-127）で
+`ADR-084`（wi-127）で
 `clients.client_id` を UUID 型に閉じた結果、client_id をそのまま生表示している画面では、
 エンドユーザー / 管理者に `demo-client` のような可読名の代わりに
 `00000000-0000-4000-8000-000000000021` のような UUID が見えるようになった。機能は正常だが

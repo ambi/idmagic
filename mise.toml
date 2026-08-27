@@ -314,7 +314,12 @@ run = "bun run test:e2e"
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
-depends = ["check-spec", "check-work-items", "check-ids", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-security-controls", "check-slo-references"]
+depends = ["check-spec", "check-work-items", "check-ids", "check-links", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-security-controls", "check-slo-references"]
+
+[tasks.check-links]
+description = "Check repository-local Markdown links and anchors"
+dir = "tools"
+run = "bun run check/src/check-links.ts"
 
 [tasks.check-security-controls]
 description = "Reject guards that cannot refuse and declared refusals no test names"

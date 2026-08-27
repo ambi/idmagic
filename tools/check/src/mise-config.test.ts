@@ -42,3 +42,10 @@ describe('mise agent-guidance boundary', () => {
     expect(config.tasks?.check?.depends).toContain('check-agent-guidance')
   })
 })
+
+describe('mise Markdown link boundary', () => {
+  it('runs the Markdown link checker from the standard check suite', () => {
+    expect(config.tasks?.['check-links']?.run).toBeDefined()
+    expect(config.tasks?.check?.depends).toContain('check-links')
+  })
+})

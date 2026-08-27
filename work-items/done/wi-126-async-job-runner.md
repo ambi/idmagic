@@ -65,7 +65,7 @@ at-least-once 実行・リトライ・進捗可視化・水平スケールを共
     [[wi-157-job-admin-operations-surface]] の範囲。
 - **architecture**:
   - 新規 context / worker プロセス / ディレクトリ規約を追加するため
-    [ARCHITECTURE.md](../ARCHITECTURE.md) の map と details を同期する。
+    `ARCHITECTURE.md` の map と details を同期する。
 - **go**:
   - `Job` domain、`JobRepository` port、queue claim/lease/heartbeat/complete/retry の
     usecase、`JobKind` ごとの handler registry、worker pool (poll / concurrency /

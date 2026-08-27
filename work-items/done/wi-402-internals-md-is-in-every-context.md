@@ -18,11 +18,11 @@ spec_impact: { kind: none, reason: "internals.md と decisions.md の棚卸し�
 
 ## Motivation
 
-[SPECIFICATION_FORMAT.md](../SPECIFICATION_FORMAT.md) §3 は `internals.md` についてこう書いている。
+[SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md) §3 は `internals.md` についてこう書いている。
 
 > Write this only when the working of a mechanism cannot be recovered from the code. **Most contexts do not need it.**
 
-[DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §5.6 も「稀。機構の説明が要るときだけ」「ほとんどのコンテキストには不要である」と繰り返す。
+[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §5.6 も「稀。機構の説明が要るときだけ」「ほとんどのコンテキストには不要である」と繰り返す。
 
 **21 Context のうち 21 件が `internals.md` を持っている。** 例外は 1 件も無い。「most do not need it」と書かれた文書の種類が全数に存在する状態は、判定が働いていないことを意味する。ファイル集合が定型として埋められた疑いがある。
 
@@ -95,7 +95,7 @@ spec_impact: { kind: none, reason: "internals.md と decisions.md の棚卸し�
 
 この文は判定ではなく**頻度の予測**であり、予測が外れる領域では「件数を減らせ」という誤った圧力だけが残る。本 work item の Risk Notes が警告した「コードから復元できない機構の説明を落として、誰も気付かない」を、規定そのものが誘発する状態だった。
 
-そこで [SPECIFICATION_FORMAT.md](../SPECIFICATION_FORMAT.md) §3 と [DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §5.6 から頻度の主張を外し、**何件必要かは領域の性質であって割り当てではない**という規則に置き換えた。CRUD の形をした Context には要らず、フェイルクローズや鍵の寿命の上に建つ Context にはたいてい要る、と判定できる形にしてある。
+そこで [SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md) §3 と [DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §5.6 から頻度の主張を外し、**何件必要かは領域の性質であって割り当てではない**という規則に置き換えた。CRUD の形をした Context には要らず、フェイルクローズや鍵の寿命の上に建つ Context にはたいてい要る、と判定できる形にしてある。
 
 これは Scope の拡張である。起票時の Scope は 21 件の棚卸しだけを挙げていたが、Motivation の題は「規定と実態を一致させる」であり、[[wi-405-spec-and-docs-boundary-is-not-legible]] と [[wi-407-name-the-directory-after-the-kind]] で確立したとおり、**一致させる先が規定の側であることはありうる。**
 

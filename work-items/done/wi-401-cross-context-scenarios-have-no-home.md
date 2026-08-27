@@ -21,7 +21,7 @@ affected_spec:
 
 ## Motivation
 
-[SPECIFICATION_FORMAT.md](../SPECIFICATION_FORMAT.md) §1 の正規文書一覧と `tools/check/src/specification-doc.ts:41` の `ROOT_DOCUMENTS` は `docs/scenarios.md` を認めている。**このファイルは存在しない。** `docs/README.md` の `Documents` 表にも行が無いので、読み手は置き場所があること自体を知らない。
+[SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md) §1 の正規文書一覧と `tools/check/src/specification-doc.ts:41` の `ROOT_DOCUMENTS` は `docs/scenarios.md` を認めている。**このファイルは存在しない。** `docs/README.md` の `Documents` 表にも行が無いので、読み手は置き場所があること自体を知らない。
 
 §3 はその置き場所が何のためにあるかをこう書いている。
 

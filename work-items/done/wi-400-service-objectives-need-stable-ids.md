@@ -18,7 +18,7 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 
 ## Motivation
 
-[docs/capacity.md](../docs/capacity.md) の `Service level objectives` は、母集団・時間窓・除外条件まで踏み込んだ目標を持っている。**しかしどの行にも ID が無い。** 参照する手段が無いので、他の文書と資材は目標を指すかわりに数値を写している。
+[docs/capacity.md](../../docs/capacity.md) の `Service level objectives` は、母集団・時間窓・除外条件まで踏み込んだ目標を持っている。**しかしどの行にも ID が無い。** 参照する手段が無いので、他の文書と資材は目標を指すかわりに数値を写している。
 
 2026-08-23 時点で `/token` の p99 300 ms は 4 か所、非 5xx 99.9% は 3 か所に現れる。
 
@@ -31,7 +31,7 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 | `infra/README.md:34` | 「p99 トークンレイテンシーを 300 ms 未満、エラー率を 0.1% 未満とする」 |
 | `load/k6/oauth-smoke.js:22` | `idmagic_token_latency: ['p(99)<300']` |
 
-[DOCUMENTATION_GUIDE.md](../DOCUMENTATION_GUIDE.md) §3 は「同じ数値を二か所に書かない」、§11.1 は「他の文書は SLO ID を参照し、数値を再掲しない」と定める。現状はその逆で、正本を変えても他の 4 か所は黙って古くなる。
+[DOCUMENTATION_GUIDE.md](../../DOCUMENTATION_GUIDE.md) §3 は「同じ数値を二か所に書かない」、§11.1 は「他の文書は SLO ID を参照し、数値を再掲しない」と定める。現状はその逆で、正本を変えても他の 4 か所は黙って古くなる。
 
 **さらに、目標を指そうとした参照はすべて既に壊れている。** 参照先の名前空間が撤去済みだからである。
 
@@ -68,7 +68,7 @@ spec_impact: { kind: none, reason: "サービス目標に安定 ID を与え、�
 
 1. **ID は `capacity.md` に置き、`SLO-<SUBJECT>-<ASPECT>` という記憶しやすい形にする。**
 
-   置き場所は `capacity.md` のままとした。[[wi-407-name-the-directory-after-the-kind]] が §11.1 を「`capacity.md` が兼ねてよい。独立させるなら `reliability.md` として正規文書の集合へ加える」と両方許す形にしたので、`ROOT_DOCUMENTS` を触らない側を選べる。**目標と容量の前提は同じ測定境界（[Measurement boundary](../docs/capacity.md#measurement-boundary)）を共有しており、離すとその節を二重に持つことになる。**
+   置き場所は `capacity.md` のままとした。[[wi-407-name-the-directory-after-the-kind]] が §11.1 を「`capacity.md` が兼ねてよい。独立させるなら `reliability.md` として正規文書の集合へ加える」と両方許す形にしたので、`ROOT_DOCUMENTS` を触らない側を選べる。**目標と容量の前提は同じ測定境界（[Measurement boundary](../../docs/capacity.md#measurement-boundary)）を共有しており、離すとその節を二重に持つことになる。**
 
    ID の形は連番ではなく記憶しやすい語にした。このリポジトリは連番（`REQ-<CONTEXT>-NNN`）と語（`RFC7643-CORE-RESOURCES`、`WCAG22-KEYBOARD`）の両方を使っており、**SLO は後者に近い。** 名前の付いた恒久的な約束であって、順序に意味のある一覧ではない。決め手はアラートの `summary` での読みやすさである。`SLO-LATENCY-004 を超過` より `SLO-TOKEN-LATENCY を超過` のほうが、当番担当者が何を見ているか分かる。
 

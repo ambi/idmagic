@@ -19,7 +19,7 @@ risk_notes: |
 変更できない**。realm 名変更は運用上の正当な要求（組織改称・ブランド変更・誤命名の訂正）で
 あり、現状は不可能。
 
-[ADR-084](../../decisions/ADR-084-postgres-column-type-policy.md) は、idmagic が内部
+`ADR-084` は、idmagic が内部
 生成する id を `UUID` 型に閉じる方針を定め、`tenants.id` の UUID 化は URL に現れる mutable
 slug の分離を要するため本 WI に分離した。
 
@@ -97,7 +97,7 @@ UUID、という 2 語彙の写像に整理する。以下の層順（内→外�
 ## Completion
 
 - **Completed At**: 2026-07-05
-- **Decision**: [ADR-085](../../decisions/ADR-085-tenant-uuid-key-and-realm-identifier.md)
+- **Decision**: `ADR-085`
   を新設し、`tenants` を「不変 UUID 代理キー (`id`)」と「mutable な URL slug (`realm`)」の
   2 概念へ分離した。公開語彙（URL `/realms/{realm}/`・OIDC issuer）は realm で維持し、
   内部の全 tenant 参照は UUID キーに統一した。

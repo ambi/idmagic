@@ -11,14 +11,14 @@ created_at: 2026-07-09
 ## Motivation
 
 現状 idmagic では TOTP / WebAuthn を喪失したユーザーの復旧経路が、本人管理の backup
-recovery code **のみ**である（[ADR-087](file:///Users/tn/src/idmagic/decisions/ADR-087-webauthn-phishing-resistant-mfa.md)）。
+recovery code **のみ**である（`ADR-087`）。
 recovery code も失うと復旧経路が実質ゼロになり、単一障害点になっている。Explore 調査でも
 管理者による認証器リセットや緊急ロック解除の導線は存在しないことを確認した。
 
 Okta（Reset Authenticators）、Microsoft Entra ID（Authentication Administrator による
 リセット + Require re-register）、Keycloak（OTP credential 削除 + required action 再登録）は
 いずれも「管理者による認証器リセット + 次回ログイン時の再登録強制」を企業向けの緊急
-backstop として備える。idmagic はこの層を欠いている。[ADR-088](file:///Users/tn/src/idmagic/decisions/ADR-088-layered-account-recovery.md)
+backstop として備える。idmagic はこの層を欠いている。`ADR-088`
 の第 2 層としてこの導線を仕様化する。
 
 ## Scope
@@ -32,7 +32,7 @@ backstop として備える。idmagic はこの層を欠いている。[ADR-088]
   - ユーザー詳細画面での「認証器をリセット」操作、リセット対象 factor の選択、確認 UX。
   - 権限モデル（管理者 / 委任管理者スコープ）を既存の admin 操作に揃える。
 - Authentication use cases: リセット実行、`mfa_enrolled` 再計算、再登録強制状態のセット、
-  再登録強制と [wi-127](file:///Users/tn/src/idmagic/work-items/wi-127-mfa-enrollment-onboarding-and-enforcement.md) の enrollment-required flow の接続。
+  再登録強制と [[wi-127-mfa-enrollment-onboarding-and-enforcement]] の enrollment-required flow の接続。
 - OAuth2 browser login handlers: リセット済みユーザーは次回ログインで MFA 再登録 flow に入る。
 - Persistence adapters: 再登録強制状態 / required action の保存（必要に応じて）。
 
@@ -41,7 +41,7 @@ backstop として備える。idmagic はこの層を欠いている。[ADR-088]
 - 本人確認（ID プルーフィング / ライブネス）ベースのセルフサービス復旧（SSAR 相当）。ADR-088 で
   将来検討に回した。
 - 管理者発行の時限アクセスパス（TAP 相当）。必要なら別 work item。ここでは「リセット + 再登録強制」に絞る。
-- メールルートによる自動復旧（[wi-41](file:///Users/tn/src/idmagic/work-items/wi-41-secondary-and-recovery-email.md) の範疇）。
+- メールルートによる自動復旧（[[wi-41-secondary-and-recovery-email]] の範疇）。
 - 手段冗長化の推進（ADR-088 第 1 層。別 work item）。
 
 ## Plan
@@ -58,8 +58,8 @@ backstop として備える。idmagic はこの層を欠いている。[ADR-088]
 - 却下する代替案:
   - 管理者が新 factor を直接登録して渡す: 管理者経由のなりすまし面を作るため不可。削除 + 再登録要求に限定。
   - リセット時に recovery code を自動再発行して管理者に見せる: 平文コードが管理者を経由し漏洩面が広がる。行わない。
-- 未決定事項: 委任管理者（[wi-94](file:///Users/tn/src/idmagic/work-items/wi-94-delegated-administration.md)）とのスコープ境界、リセット時のユーザー通知メール
-  （[wi-90](file:///Users/tn/src/idmagic/work-items/wi-90-account-security-notification-emails.md)）連携の要否。
+- 未決定事項: 委任管理者（[[wi-94-delegated-administration]]）とのスコープ境界、リセット時のユーザー通知メール
+  （[[wi-90-account-security-notification-emails]]）連携の要否。
 
 ## Tasks
 
@@ -176,11 +176,11 @@ backstop として備える。idmagic はこの層を欠いている。[ADR-088]
   静的チェックボックスを提示し、存在しない factor への削除操作は冪等な no-op として扱う。
   UX 上は「今何が登録されているか」を見せられないため、必要なら別 work item で
   `AdminUserResponse` を拡張する。
-- 委任管理者 ([wi-94](file:///Users/tn/src/idmagic/work-items/wi-94-delegated-administration.md))
+- 委任管理者（[[wi-94-delegated-administration]]）
   とのスコープ境界は未決定のまま (wi-94 自体が未実装)。既存の `IssueMfaEnrollmentBypass`
   等と同じ `TenantAdministrator` ポリシーのみを適用した。
 - リセット時のユーザー通知メール
-  ([wi-90](file:///Users/tn/src/idmagic/work-items/wi-90-account-security-notification-emails.md))
+  （[[wi-90-account-security-notification-emails]]）
   連携は行っていない。監査イベントには記録されるが、対象ユーザー本人への能動的な通知は
   出さない。
 - 自己宛てのリセット (管理者が自分自身の認証器をリセットする) を禁止するガードは

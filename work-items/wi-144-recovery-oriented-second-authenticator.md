@@ -23,7 +23,7 @@ Google / Entra ID（combined registration）が示すとおり、最も費用対
 idmagic は既に 1 ユーザーが複数 `WebAuthnCredential` を登録でき、同期 passkey を示す
 `backup_eligible` / `backup_state` も保存済みで、この層に自然に乗る。層状のアカウント復旧の第 1 層として、
 2 個目認証器（2 個目の passkey、または TOTP + passkey）の登録を推奨・任意強制できる仕組みを
-仕様化する。MFA 登録オンボーディング（[wi-127](file:///Users/tn/src/idmagic/work-items/wi-127-mfa-enrollment-onboarding-and-enforcement.md)）と連携し、初回登録直後に 2 個目を促す。
+仕様化する。MFA 登録オンボーディング（[[wi-127-mfa-enrollment-onboarding-and-enforcement]]）と連携し、初回登録直後に 2 個目を促す。
 
 ## Scope
 
