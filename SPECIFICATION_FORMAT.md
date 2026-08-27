@@ -22,10 +22,11 @@ docs/
   standards.md         # external norms the whole system follows
   api-rules.md         # rules for externally visible contracts
   observability.md     # correlation, logs, metrics
-  deployment.md        # runtime units, trust boundaries, availability
+  deployment.md        # runtime units, deployment topology, availability
   capacity.md          # assumed scale, how limits are set, degradation
   database.md          # database design policy
   authorization.md     # principals, scopes, authorization boundaries
+  threat-model.md      # trust boundaries, assets, identified threats and the controls that answer them
   scenarios.md         # behavior no single context can satisfy alone
   contexts/<context>/
     README.md          # boundary declaration and index
@@ -277,7 +278,40 @@ downstream call, what stays inside a tenant, and what happens when the decision 
 scope vocabulary a context uses, and the conclusion and reason wherever an operation's assignment does not
 follow from its name.
 
-## 8. Generated views and validation
+## 8. Threat model
+
+The other documents state what the product does, so an implemented control can be checked against them. A
+control that was never built contradicts nothing: no scenario declares it, no test names it, and the refusal
+coverage check has no declaration to look for. `docs/threat-model.md` is where that gap becomes visible. It
+holds the trust boundaries and what is not trusted at each, the assets, and one row per identified threat
+naming the control that answers it.
+
+Give every threat a stable id, and a status from a closed set that separates a threat with a control from
+one without. Do not encode the boundary or the category into the id: both are reclassified as the system
+changes, and an id that carries them becomes a lie the moment it is. Carry them in columns instead.
+
+The rows with no control are the document's main output, so keep them in the same table rather than in a
+separate debt file. A reader who finishes the list must not be able to finish it without seeing them. State
+for each whether it will be fixed or is accepted, and an accepted threat carries the condition that would
+reopen it. An acceptance with no such condition is neglect with a label on it.
+
+Separate a threat nothing answers from one a control answers without a norm behind it — a procedure, a
+deployment requirement, a property of the toolchain. Both are unfinished, and they are not the same kind of
+unfinished, so a status alone cannot carry the difference. Let the control column carry it. Do not put the
+work item that will fix a threat into that column: a current-state document holds what exists, and a forward
+reference rots the moment the work item is completed and moved. Point from the work item to the threat id
+instead, so the link is findable and the direction stays one way.
+
+Say in the document that the list is not exhaustive, and name what obliges a revisit. A threat model read as
+a complete guarantee is worse than none, because a threat that was never considered becomes indistinguishable
+from one considered and dismissed.
+
+Reference existing control identifiers — normative scenarios, adopted standards, the rules in another
+canonical document. Do not mint a second identifier for a control that already has one. Write what could
+happen, never how: reproduction steps, concrete parameters, and the details of an unfixed path do not belong
+in a specification.
+
+## 9. Generated views and validation
 
 - Compile TypeSpec and validate canonical documents through the repository's specification check.
 - Compare generated OpenAPI with the released baseline for compatibility.

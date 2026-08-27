@@ -110,10 +110,11 @@ flowchart LR
 | [standards.md](standards.md) | 製品全体が従う外部規範 |
 | [api-rules.md](api-rules.md) | 外部に見える契約の規則 |
 | [observability.md](observability.md) | 相関、ログ、メトリクス |
-| [deployment.md](deployment.md) | 実行単位、信頼境界、可用性 |
+| [deployment.md](deployment.md) | 実行単位、配備の構成、可用性 |
 | [capacity.md](capacity.md) | サービス目標、参照運用プロファイル、容量算出、縮退順序 |
 | [database.md](database.md) | データベース設計方針 |
 | [authorization.md](authorization.md) | 主体、スコープ、認可の境界 |
+| [threat-model.md](threat-model.md) | 信頼境界とそこで信用しないもの、資産、識別した脅威と応える制御 |
 | [scenarios.md](scenarios.md) | Context を跨がないと成り立たない振る舞い |
 
 手順はこの平面には置かない。障害時の手順は [runbooks/](runbooks/) にある。開発環境、ビルド、検証の進め方はルートの [DEVELOPMENT.md](../DEVELOPMENT.md) と [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。

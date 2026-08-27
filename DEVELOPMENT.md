@@ -200,6 +200,12 @@ it grows the file whose kind the new content belongs to, and the rest stay the s
 boundary declaration and one home for each fact; do not create a second copy beside one implementation
 language.
 
+A change that adds a trust boundary, a principal kind, an external integration, or a new kind of secret,
+personal data, or record that must later be proven, revisits the threat model in the same pass. Those are
+exactly the changes that introduce a threat with no control, and the threat model is the only document where
+a missing control contradicts something. A threat recorded as accepted is revisited when the condition it
+names is met.
+
 TypeSpec under `spec/` and the canonical Markdown under `docs/` mirror each other at `contexts/<context>/`,
 so backend, frontend, workers, and external implementations see the same
 language-independent source. A generated HTML view provides

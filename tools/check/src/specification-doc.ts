@@ -39,6 +39,7 @@ export const ROOT_DOCUMENTS = [
   'capacity.md',
   'database.md',
   'authorization.md',
+  'threat-model.md',
   'scenarios.md',
 ] as const
 
