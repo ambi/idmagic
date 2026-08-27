@@ -148,12 +148,6 @@ describe('validateAgainstSchema — work-item', () => {
   const validInitialContext = {
     specification: ['docs/scenarios.md#REQ-DEMO-001'],
   }
-  const validApproval = {
-    by: 'tn',
-    at: '2026-06-17',
-    scope: 'Implement the approved work item.',
-    baseline: '3cb041f1d61007a3213ead7c1bba989d1d19824a',
-  }
   const validRedEvidence = {
     test: 'TestDemo rejects an invalid transition',
     requirement: 'REQ-DEMO-001',
@@ -316,7 +310,7 @@ describe('validateAgainstSchema — work-item', () => {
     expect(f.some((x) => x.message.includes('evidence_policy'))).toBe(true)
   })
 
-  it('requires approval before medium-risk implementation starts', () => {
+  it('starts medium-risk work without an approval record', () => {
     const started = {
       ...validWorkItem,
       status: 'in_progress',
@@ -324,10 +318,7 @@ describe('validateAgainstSchema — work-item', () => {
       evidence_policy: 'risk-based-v2',
       initial_context: validInitialContext,
     }
-    expect(validateAgainstSchema('work-item', started, '')).not.toEqual([])
-    expect(validateAgainstSchema('work-item', { ...started, approval: validApproval }, '')).toEqual(
-      [],
-    )
+    expect(validateAgainstSchema('work-item', started, '')).toEqual([])
   })
 
   it('requires RED evidence when a policy-governed item completes', () => {
@@ -365,7 +356,6 @@ describe('validateAgainstSchema — work-item', () => {
       status: 'in_progress',
       risk: 'medium',
       initial_context: validInitialContext,
-      approval: validApproval,
     }
     expect(
       validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v1' }, ''),
@@ -381,10 +371,8 @@ describe('validateAgainstSchema — work-item', () => {
       id: 'wi-412-demo',
       status: 'completed',
       risk: 'medium',
-      approval: validApproval,
       completion: {
         ...validCompletion,
-        post_approval_changes: 'none',
         independent_verification: 'reviewed by a separate agent',
         change_resistance: 'the schema rejects the legacy policy fixture',
         acceptance_red_evidence: validRedEvidence,
@@ -406,10 +394,8 @@ describe('validateAgainstSchema — work-item', () => {
       status: 'completed',
       risk: 'medium',
       evidence_policy: 'risk-based-v2',
-      approval: validApproval,
       completion: {
         ...validCompletion,
-        post_approval_changes: 'none',
         independent_verification: 'reviewed by a separate agent',
         change_resistance: 'the representative fault was detected',
       },
@@ -497,7 +483,6 @@ describe('validateAgainstSchema — work-item', () => {
       status: 'completed',
       risk: 'medium',
       evidence_policy: 'risk-based-v1',
-      approval: validApproval,
       completion: {
         ...validCompletion,
         red_evidence: validRedEvidence,
@@ -511,8 +496,7 @@ describe('validateAgainstSchema — work-item', () => {
           ...completed,
           completion: {
             ...completed.completion,
-            post_approval_changes: 'none',
-            independent_verification: 'reviewed by a separate agent',
+                independent_verification: 'reviewed by a separate agent',
             change_resistance: 'the representative fault was detected',
           },
         },

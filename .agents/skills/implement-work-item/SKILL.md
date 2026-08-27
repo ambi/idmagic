@@ -11,10 +11,9 @@ description: "Implement a chosen work item end to end: specification first, sepa
 3. Resolve every open question that would change product behavior, the public contract, the selected design
    boundary, or the task breakdown. Move genuinely deferred choices to Out of Scope.
 4. Rewrite `initial_context` to what you actually read, set `evidence_policy: risk-based-v2`, and apply the
-   risk contract in `DEVELOPMENT.md`. For `medium` risk and above, record explicit human approval of the
-   specified scope and its Git commit before changing the status; if it is absent, stop before implementation.
+   risk contract in `DEVELOPMENT.md`, naming the intended Acceptance RED and Unit RED checks before you start.
 5. Set the status to `in_progress` and pass `mise run check-work-items` and `mise run check-ids`. A later
-   normative change returns to step 2 and requires reapproval; never weaken a scenario to pass code.
+   normative change returns to step 2; never weaken a scenario to pass code.
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
    other effects at explicit input, output, or port boundaries.
@@ -31,8 +30,8 @@ description: "Implement a chosen work item end to end: specification first, sepa
    `update-design`. Run the narrowest test recipe after each behavior and update its task as it completes.
 9. Collect the risk-selected change-resistance evidence and have a person or fresh-context agent that did not
    implement the change run an independent specification and standards review.
-10. Pass `mise run verify`. Complete every evidence field required by `WORK_ITEM_FORMAT.md`; use
-    `mise run spec-diff <approval.baseline>` for approved work. Set the status to `completed`, pass
+10. Pass `mise run verify`. Complete every evidence field required by `WORK_ITEM_FORMAT.md`, reading the
+    completion summary out of `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items` and `mise run check-ids`, and move the file to `work-items/done/`.
 11. Create a Conventional Commit with `commit`. Do not push until explicitly told to.
 

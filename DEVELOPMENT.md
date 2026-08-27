@@ -29,7 +29,7 @@ authorization remains executable application behavior unless a later work item a
 |---|---|---|
 | Frame one change | `new-work-item` | `mise run check-work-items`, `mise run check-ids` |
 | Change the specification first | `spec-change` | `mise run check-spec` |
-| Resolve material questions, fix the evidence contract, and obtain any required approval | `implement-work-item` | `mise run check-work-items` |
+| Resolve material questions and fix the evidence contract | `implement-work-item` | `mise run check-work-items` |
 | Confirm Acceptance RED | `implement-work-item` | the narrowest test at an observable boundary |
 | Confirm Unit RED, reach GREEN, and refactor inner behavior to outer adapters | `implement-work-item` | layer-local tests |
 | Sync current design when structure changes | `update-design` | `mise run check-boundaries` |
@@ -42,30 +42,27 @@ authentication schemes in TypeSpec; scenarios, terms, standards, state transitio
 mechanism in the file that holds that kind of content. The file name says which one — a new behavior goes
 in `scenarios.md`, a new reason in `decisions.md` — so the smallest owning file is usually one file, not
 a section inside a large one. Give each normative behavior an immutable `REQ-<CONTEXT>-NNN` ID, and
-express state machines as a state table and a transition table. After approval, a normative change returns
-to the specification stage; do not relax a scenario merely to make an implementation pass.
+express state machines as a state table and a transition table. A normative change discovered during
+implementation returns to the specification stage; do not relax a scenario merely to make an implementation
+pass.
 
-## 4. Evidence contract and approval
+## 4. Evidence contract
 
 Every work item that enters `in_progress` declares `evidence_policy: risk-based-v2`. The risk selects the
-minimum evidence and approval contract; it does not grant permission to push, merge, write to an external
-system, or operate production.
+minimum evidence the work must produce; it does not grant permission to push, merge, write to an external
+system, or operate production. Filing the work item is what authorizes the work, so nothing here records a
+separate approval: an approval field would be signed without thought, while the checks below can only be
+satisfied by an observation.
 
 | Risk | Before implementation | Before completion |
 |---|---|---|
 | `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended Acceptance RED and Unit RED checks. | Record both RED results. If either is not applicable, record why and the cheapest alternate check that could have failed. |
-| `medium` | A human approves the scope and baseline in `approval` before implementation. | Run `mise run spec-diff <baseline>`, obtain independent verification, and show that a representative incorrect implementation is detected. |
+| `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary, obtain independent verification, and show that a representative incorrect implementation is detected. |
 | `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements and use `mise run test-go-mutation-package -- <package> <git-ref>` or explicit fault injection for changed pure logic. Record equivalent mutations and tool limits rather than hiding them. |
 
 Authentication, authorization, tenant boundaries, cryptography, protocol compatibility, and persistent-data
 migrations require independent verification even if their work item was initially classified lower. Raise the
 risk when the table's stronger contract describes the actual consequence.
-
-The `approval` object records who approved, when, the approved scope, and the Git commit containing the
-specification under review. If implementation discovers a legitimate normative change, return to the
-specification stage, update the
-baseline after reapproval, and describe the change in `Post-Approval Changes`. `none` is an acceptable result,
-not an omitted check.
 
 Independent verification is performed by a person or a fresh-context agent that did not implement the
 change. It compares the normative diff and implementation diff, checks repository standards, and asks whether
@@ -87,7 +84,7 @@ test passes. Do not treat a generated or broad acceptance test as the unit test 
 
 ### Type and effect design
 
-Before approval or implementation, resolve every open question whose answer would change product behavior,
+Before implementation, resolve every open question whose answer would change product behavior,
 the public contract, the chosen design boundary, or the task breakdown. Record genuinely deferred choices in
 Out of Scope instead of turning an unstated assumption into implementation.
 
@@ -219,8 +216,7 @@ that remains true into TypeSpec or the canonical file that owns that kind of con
 
 `mise run spec-diff [ref]` derives what the working tree changed in the specification — scenarios added,
 removed, or changed, transition rows moved, declarations gained or lost. Read it before review and when
-writing the completion summary, so the recorded semantic difference is observed rather than recalled. For
-approved work, run it against the recorded baseline and retain the result in the completion evidence.
+writing the completion summary, so the recorded semantic difference is observed rather than recalled.
 
 Current design must be understandable from the canonical documents and the work item alone.
 
@@ -240,8 +236,7 @@ later, both from `mise run spec-where` and from the generated Traceability page.
 ## 9. Influences and references
 
 Each entry names one representative source for one influence. The list explains provenance, not additional
-sources of truth or complete conformance. IdMagic's approval and evidence contract is a repository-specific
-adaptation.
+sources of truth or complete conformance. IdMagic's evidence contract is a repository-specific adaptation.
 
 - **Spec-Driven Development:** GitHub's
   [Specification-Driven Development](https://github.com/github/spec-kit/blob/27f50f7e6b618ea14d74dd4037f9e7c60218b16c/spec-driven.md)

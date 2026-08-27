@@ -42,17 +42,6 @@
     {
       "if": {
         "properties": {
-          "evidence_policy": { "enum": ["risk-based-v1", "risk-based-v2"] },
-          "risk": { "enum": ["medium", "high", "critical"] },
-          "status": { "enum": ["in_progress", "completed"] }
-        },
-        "required": ["evidence_policy", "risk", "status"]
-      },
-      "then": { "required": ["approval"] }
-    },
-    {
-      "if": {
-        "properties": {
           "evidence_policy": { "const": "risk-based-v1" },
           "status": { "const": "completed" }
         },
@@ -135,7 +124,7 @@
       "then": {
         "properties": {
           "completion": {
-            "required": ["post_approval_changes", "independent_verification", "change_resistance"]
+            "required": ["independent_verification", "change_resistance"]
           }
         }
       }
@@ -321,23 +310,6 @@
       "type": "string",
       "enum": ["risk-based-v1", "risk-based-v2"]
     },
-    "approval": {
-      "description": "The approval boundary fixed before medium-risk or higher implementation begins.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["by", "at", "scope", "baseline"],
-      "properties": {
-        "by": { "type": "string", "minLength": 1 },
-        "at": {
-          "oneOf": [
-            { "type": "string", "format": "date" },
-            { "type": "string", "format": "date-time" }
-          ]
-        },
-        "scope": { "type": "string", "minLength": 1 },
-        "baseline": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
-      }
-    },
     "risk_notes": {
       "type": "string",
       "minLength": 1
@@ -402,11 +374,6 @@
             "observed_failure": { "type": "string", "minLength": 1 },
             "detection_reason": { "type": "string", "minLength": 1 }
           }
-        },
-        "post_approval_changes": {
-          "description": "Normative or scope changes since approval; use none when unchanged.",
-          "type": "string",
-          "minLength": 1
         },
         "independent_verification": {
           "description": "Results from a verifier independent of the implementer.",

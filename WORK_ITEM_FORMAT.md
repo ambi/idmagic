@@ -44,7 +44,7 @@ The selected design, considerations, and rejected alternatives.
 
 ## Plan
 Implementation order, migration, and open questions. Resolve every question that would change what gets built
-before approval or implementation.
+before implementation.
 
 ## Tasks
 - [ ] T001 [Spec] Update the specification.
@@ -63,24 +63,13 @@ Risks and mitigations.
 completed first; it is machine-checked and it constrains order. `priority` states what deserves attention
 first among the items nothing blocks; it is advisory, and an item may be left unset to mean unranked.
 
-When an item enters `in_progress`, add `evidence_policy: risk-based-v2`. For `medium`, `high`, and
-`critical` risk, record the human approval before implementation begins:
-
-```yaml
-evidence_policy: risk-based-v2
-approval:
-  by: name
-  at: 2026-01-01
-  scope: "The behavior and design boundary that may be implemented."
-  baseline: "The Git commit identifying the approved state."
-```
-
-`approval` is an implementation boundary, not permission to push, merge, operate production, or modify an
-external system. If a normative change is discovered after approval, return to specification work, obtain
-approval for the corrected scope, update the baseline, and retain an explanation in the completion record.
-Resolve every open question that would change product behavior, the public contract, the selected design
-boundary, or the task breakdown before recording approval. The risk-to-evidence rules live in
-[DEVELOPMENT.md](DEVELOPMENT.md#4-evidence-contract-and-approval).
+When an item enters `in_progress`, add `evidence_policy: risk-based-v2`. The risk selects the evidence the
+item must produce before it can be completed; it grants no permission to push, merge, operate production, or
+modify an external system. Filing the item is what authorizes the work, so the item keeps no separate
+approval record. Resolve every open question that would change product behavior, the public contract, the
+selected design boundary, or the task breakdown before implementation begins. If implementation discovers a
+normative change, return to specification work; never weaken a scenario to let an implementation pass. The
+risk-to-evidence rules live in [DEVELOPMENT.md](DEVELOPMENT.md#4-evidence-contract).
 
 `affected_spec` is required for `feature`, `bugfix`, and `operations` items. It directly references a
 normative scenario/standard ID or a TypeSpec symbol. Changes with no specification impact (`refactor`,
@@ -116,7 +105,7 @@ to `work-items/done/`:
 ## Completion
 - **Completed At**: 2026-01-01
 - **Summary**:
-  The semantic difference introduced by the work.
+  The semantic difference introduced by the work, read from `mise run spec-diff` rather than recalled.
 - **Acceptance RED Evidence**:
   - **Test**: The failing test or check observed before implementation.
   - **Requirement**: `REQ-CONTEXT-NNN`, or `N/A: <reason>` for work with no normative product requirement.
@@ -129,9 +118,6 @@ to `work-items/done/`:
   - **Observed Failure**: The expected failure that was actually observed.
   - **Detection Reason**: Why the assertion distinguishes a plausible wrong implementation from the required
     inner behavior. When a unit boundary is inapplicable, identify the alternate check that actually failed.
-- **Post-Approval Changes**:
-  For medium risk and above, the result of `mise run spec-diff <baseline>`, the reason for any normative
-  change, and its reapproval. Write `none` when there was no change.
 - **Independent Verification**:
   For medium risk and above, identify the independent verifier and summarize the standards and specification
   findings.

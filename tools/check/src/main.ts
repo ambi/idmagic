@@ -225,9 +225,6 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
             } else if (label === 'unit red evidence') {
               currentField = 'unit_red_evidence'
               if (value) currentText.push(value)
-            } else if (label === 'post-approval changes') {
-              currentField = 'post_approval_changes'
-              if (value) currentText.push(value)
             } else if (label === 'independent verification') {
               currentField = 'independent_verification'
               if (value) currentText.push(value)

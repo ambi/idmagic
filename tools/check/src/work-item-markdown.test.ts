@@ -22,11 +22,6 @@ authors: [tn]
 risk: medium
 created_at: 2026-08-23
 evidence_policy: risk-based-v1
-approval:
-  by: tn
-  at: 2026-08-23
-  scope: Parse completion evidence.
-  baseline: 3cb041f1d61007a3213ead7c1bba989d1d19824a
 ---
 
 # Parse completion evidence
@@ -60,7 +55,6 @@ The parser must reject incomplete evidence.
   - **Requirement**: N/A: repository tooling has no normative product requirement
   - **Observed Failure**: the incomplete record failed validation
   - **Detection Reason**: each nested field maps to a required schema property
-- **Post-Approval Changes**: none
 - **Independent Verification**: reviewed by another agent
 - **Change-Resistance Results**: removing one field fails validation
 - **Verification Results**:
@@ -94,11 +88,6 @@ authors: [tn]
 risk: medium
 created_at: 2026-08-23
 evidence_policy: risk-based-v2
-approval:
-  by: tn
-  at: 2026-08-23
-  scope: Parse separate RED evidence.
-  baseline: 591b3d999f0d5f1a56aa53c3188a25fd4fcb9ce2
 ---
 
 # Parse separate RED evidence
@@ -137,7 +126,6 @@ The parser must reject either missing boundary.
   - **Requirement**: N/A: repository tooling has no normative product requirement
   - **Observed Failure**: the incomplete record failed validation
   - **Detection Reason**: the unit field is independently required
-- **Post-Approval Changes**: none
 - **Independent Verification**: reviewed by another agent
 - **Change-Resistance Results**: removing either field fails validation
 - **Verification Results**:
