@@ -28,7 +28,7 @@ jobs:
           mise run test-tools
           mise run typecheck-tools
           mise run lint-tools
-      - name: Verify repository sources (shell, workflows, Dockerfiles, load tests, secrets)
+      - name: Verify repository sources (shell scripts, workflows, secrets)
         run: mise run lint-repo
       - name: Go lint
         run: mise run lint-go

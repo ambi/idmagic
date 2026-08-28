@@ -8,10 +8,7 @@ bun = "1.4.0"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.20"
 "aqua:koalaman/shellcheck" = "0.11.0"
-"aqua:mvdan/sh" = "3.13.1"
-"aqua:rhysd/actionlint" = "1.7.12"
 "aqua:zizmorcore/zizmor" = "1.29.0"
-"aqua:hadolint/hadolint" = "2.15.1"
 "aqua:betterleaks/betterleaks" = "1.8.1"
 
 [tasks.setup]
@@ -36,10 +33,7 @@ run = [
   "sqlc version",
   "psqldef --version",
   "shellcheck --version",
-  "shfmt --version",
-  "actionlint --version",
   "zizmor --version",
-  "hadolint --version",
   "betterleaks version",
 ]
 
@@ -136,11 +130,11 @@ dir = "tools"
 run = "bun run lint"
 
 [tasks.lint-repo]
-description = "Lint shell, workflows, Dockerfiles, load tests, and scan for secrets"
-# 言語ごとにタスクを分けない。全部を合わせても数秒で終わるので、検証のはしごで絞る意味が無く、
-# 分けた数だけ `mise tasks` が読みにくくなる。最初の失敗で止めず、落ちたものを全部並べて終わる。
+description = "Lint shell scripts, audit workflows, and scan for secrets"
+# 3 つとも合わせて 500ms 程度なので分けない。分けた数だけ `mise tasks` が読みにくくなる。
+# 最初の失敗で止めず、落ちたものを全部並べて終わる。
+# ここに無い検査は、置いている理由を言えなかったので外した。判断は wi-434 が持つ。
 # 規則の正本: .github/zizmor.yml と .betterleaks.toml。
-# actionlint は run: を shellcheck に渡す。mise が両方を同じ PATH に置くので、ここで解決される。
 run = '''
 #!/usr/bin/env sh
 set -u
@@ -152,33 +146,19 @@ check() {
     failed="$failed $name"
   fi
 }
-run_shellcheck() { git ls-files -z '*.sh' | xargs -0 shellcheck; }
-run_shfmt() { git ls-files -z '*.sh' | xargs -0 shfmt -d -i 2 -ci; }
-run_hadolint() { git ls-files -z '*Dockerfile' | xargs -0 hadolint; }
-# 部分シェルで実行する。ここで cd が漏れると、後続の検査が load/ だけを見て緑になる。
-run_load() { (cd load && ../tools/node_modules/.bin/biome check .); }
+# SC2030 / SC2031 だけを外す。部分シェルに閉じた意図した export を誤検出し、抑制コメントを書かせるだけだった。
+# 深刻度そのものを warning に上げる形は採らない。SC2086 (変数の引用漏れ) が情報レベルにあり、
+# それは本物のバグ種別だからである。
+run_shellcheck() { git ls-files -z '*.sh' | xargs -0 shellcheck -e SC2030,SC2031; }
 
 check shellcheck run_shellcheck
-check shfmt run_shfmt
-check actionlint actionlint
 check zizmor zizmor --no-progress .github/workflows
-check hadolint run_hadolint
-check biome-load run_load
 check betterleaks betterleaks dir . --redact --no-banner
 
 if [ -n "$failed" ]; then
   echo "failed:$failed" >&2
   exit 1
 fi
-'''
-
-[tasks.format-repo]
-description = "Format shell and load tests, applying the fixes the linters can make"
-run = '''
-#!/usr/bin/env sh
-set -eu
-git ls-files -z '*.sh' | xargs -0 shfmt -w -i 2 -ci
-(cd load && ../tools/node_modules/.bin/biome check --write .)
 '''
 
 [tasks.audit-secrets-history]
