@@ -17,11 +17,9 @@ import (
 func newAdminBindingDeps(t *testing.T) usecases.AdminAgentWorkloadBindingDeps {
 	t.Helper()
 	return usecases.AdminAgentWorkloadBindingDeps{
-		AdminWorkloadIdentityDeps: usecases.AdminWorkloadIdentityDeps{
-			TrustBundleRepo: workloadmemory.NewWorkloadTrustBundleRepository(),
-			BindingRepo:     workloadmemory.NewAgentWorkloadBindingRepository(),
-		},
-		AgentRepo: agentmemory.NewAgentRepository(),
+		TrustBundleRepo: workloadmemory.NewWorkloadTrustBundleRepository(),
+		BindingRepo:     workloadmemory.NewAgentWorkloadBindingRepository(),
+		AgentRepo:       agentmemory.NewAgentRepository(),
 	}
 }
 

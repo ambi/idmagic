@@ -118,11 +118,9 @@ func newServerWithUserAccess(t *testing.T) (*httptest.Server, *usermemory.UserRe
 	e := echo.New()
 
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://test",
+		Issuer: "http://test",
 
-			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, OAuth2: oauth2.Module{
+		StartupComplete: startupComplete, ShuttingDown: shuttingDown, OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
 			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
@@ -277,11 +275,9 @@ func newTOTPServer(t *testing.T, opts totpServerOptions) *httptest.Server {
 	shuttingDown := &atomic.Bool{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:          "http://test",
-			TenantRepo:      seedTrustedDeviceTenant(t, opts.trustedDeviceMaxAgeSeconds),
-			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		}, OAuth2: oauth2.Module{
+		Issuer:          "http://test",
+		TenantRepo:      seedTrustedDeviceTenant(t, opts.trustedDeviceMaxAgeSeconds),
+		StartupComplete: startupComplete, ShuttingDown: shuttingDown, OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),
 			RefreshStore: oauth2memory.NewRefreshTokenStore(), DeviceCodeStore: oauth2memory.NewDeviceCodeStore(),
@@ -1237,13 +1233,11 @@ func TestHealthProbes(t *testing.T) {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://test",
+		Issuer: "http://test",
 
-			StartupComplete: startupComplete,
-			ShuttingDown:    shuttingDown,
-			HealthInfo:      support.HealthInfo{Persistence: "memory"},
-		}, OAuth2: oauth2.Module{ClientRepo: clientRepo},
+		StartupComplete: startupComplete,
+		ShuttingDown:    shuttingDown,
+		HealthInfo:      support.HealthInfo{Persistence: "memory"}, OAuth2: oauth2.Module{ClientRepo: clientRepo},
 		UserRepo:          userRepo,
 		KeyStore:          keyStore,
 		TokenIssuer:       tokenIssuer,

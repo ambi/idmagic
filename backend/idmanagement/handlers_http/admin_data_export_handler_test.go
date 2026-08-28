@@ -22,7 +22,6 @@ import (
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -52,7 +51,7 @@ func newExportTestHandler(t *testing.T) exportTestHandler {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: users, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
+		Issuer: "http://idp.test", UserRepo: users, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 		AgentRepo:     agentmemory.NewAgentRepository(),
 		GroupRepo:     groups,

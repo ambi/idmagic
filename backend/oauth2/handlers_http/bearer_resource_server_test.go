@@ -16,7 +16,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -45,11 +44,9 @@ func newBearerAdminServer(t *testing.T, actor *userdomain.User, introspector oau
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: newSingleTenantRepo(),
-			Emit:       func(spec.DomainEvent) {},
-		}, UserRepo: userRepo,
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: newSingleTenantRepo(),
+		Emit:       func(spec.DomainEvent) {}, UserRepo: userRepo,
 		TokenIntrospector: introspector,
 	})
 	return e
@@ -114,10 +111,8 @@ func TestBearerInactiveTokenChallengeUsesSubdomainMetadata(t *testing.T) {
 	tenants.tenant.EndpointStyle = tenancydomain.TenantEndpointStyleSubdomain
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenants, TenantBaseDomain: "idp.test", Emit: func(spec.DomainEvent) {},
-		},
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenants, TenantBaseDomain: "idp.test", Emit: func(spec.DomainEvent) {},
 		TokenIntrospector: stubIntrospector{},
 	})
 	req := httptest.NewRequest(http.MethodGet, "/api/admin/v1/policy/roles", http.NoBody)

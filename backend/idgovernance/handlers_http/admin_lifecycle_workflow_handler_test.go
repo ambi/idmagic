@@ -39,7 +39,7 @@ func newAdminLifecycleWorkflowHandler(t *testing.T) *echo.Echo {
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:          support.Deps{Issuer: "http://idp.test"},
+		Issuer:        "http://idp.test",
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 		IdManagement: idmanagement.Module{
 			UserRepo: userRepo, GroupRepo: groupRepo,

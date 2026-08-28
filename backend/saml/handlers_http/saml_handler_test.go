@@ -125,12 +125,10 @@ func newServerWithRepository(t *testing.T, authn *authdomain.AuthenticationConte
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:   "https://idp.example",
-			Contract: spec.CurrentRuntimeContract(),
+		Issuer:   "https://idp.example",
+		Contract: spec.CurrentRuntimeContract(),
 
-			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
+		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
 		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},
 		AuthnResolver:    stubResolver{ctx: authn},
@@ -301,10 +299,8 @@ func TestSamlSSO_UnsignedRequestRejectedWhenSignatureRequired(t *testing.T) {
 	userRepo.Seed(&userdomain.User{ID: "user-1", PreferredUsername: "alice"})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:   "https://idp.example",
-			Contract: spec.CurrentRuntimeContract(),
-		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
+		Issuer:   "https://idp.example",
+		Contract: spec.CurrentRuntimeContract(), Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         userRepo,
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "user-1", AuthTime: time.Now().Unix()}},
@@ -329,12 +325,10 @@ func TestSamlSLO_RedirectsToRegisteredSLOURL(t *testing.T) {
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:   "https://idp.example",
-			Contract: spec.CurrentRuntimeContract(),
+		Issuer:   "https://idp.example",
+		Contract: spec.CurrentRuntimeContract(),
 
-			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
+		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         usermemory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
@@ -368,12 +362,10 @@ func TestSamlSLO_LogoutRequestReturnsLogoutResponse(t *testing.T) {
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:   "https://idp.example",
-			Contract: spec.CurrentRuntimeContract(),
+		Issuer:   "https://idp.example",
+		Contract: spec.CurrentRuntimeContract(),
 
-			Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) },
-		}, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
+		Emit: func(ev spec.DomainEvent) { *captured = append(*captured, ev) }, Saml: saml.Module{SPRepo: spRepo, ReplayStore: samlmemory.NewAuthnRequestReplayStore()},
 		UserRepo:         usermemory.NewUserRepository(),
 		FederationSigner: devSigner(t),
 		AuthnResolver:    stubResolver{ctx: nil},
@@ -520,10 +512,8 @@ func newAdminServer(t *testing.T) *echo.Echo {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:   "https://idp.example",
-			Contract: spec.CurrentRuntimeContract(),
-		}, Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
+		Issuer:   "https://idp.example",
+		Contract: spec.CurrentRuntimeContract(), Saml: saml.Module{SPRepo: samlmemory.NewSamlServiceProviderRepository()},
 		UserRepo:         userRepo,
 		AuthnResolver:    stubResolver{ctx: &authdomain.AuthenticationContext{UserID: "admin-1"}},
 		FederationSigner: samltoken.KeyStoreSignerProvider{KeyStore: keyStore},

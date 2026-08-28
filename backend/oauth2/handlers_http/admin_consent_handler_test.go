@@ -19,7 +19,6 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -166,12 +165,10 @@ func newAdminConsentHandler() (*echo.Echo, *oauth2memory.ConsentRepository, *[]s
 	events := []spec.DomainEvent{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test",
+		Issuer: "http://idp.test",
 
-			Emit: func(event spec.DomainEvent) {
-				events = append(events, event)
-			},
+		Emit: func(event spec.DomainEvent) {
+			events = append(events, event)
 		}, UserRepo: users, OAuth2: oauth2.Module{ConsentRepo: consents},
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 	})

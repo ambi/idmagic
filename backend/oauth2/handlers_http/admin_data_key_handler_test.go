@@ -19,7 +19,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_cleartext"
 	"github.com/ambi/idmagic/backend/shared/security/envelope_crypto"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -54,10 +53,8 @@ func newDataKeyAdminServer(t *testing.T, actor *userdomain.User) *echo.Echo {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: newSingleTenantRepo(),
-		},
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo:    newSingleTenantRepo(),
 		UserRepo:      userRepo,
 		AuthnResolver: resolver,
 		DataKeys:      datakeys.Module{Repository: dataKeysRepo, Crypto: crypto},

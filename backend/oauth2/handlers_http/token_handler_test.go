@@ -24,7 +24,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -88,10 +87,8 @@ func newTokenServer(t *testing.T) tokenFixture {
 
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:     "http://test",
-			TenantRepo: tenancymemory.NewTenantRepository(),
-		},
+		Issuer:     "http://test",
+		TenantRepo: tenancymemory.NewTenantRepository(),
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore(), AccessTokenDenylist: oauth2memory.NewAccessTokenDenylist(),
 			McpResourceServerRepo: mcpResourceServerRepo,

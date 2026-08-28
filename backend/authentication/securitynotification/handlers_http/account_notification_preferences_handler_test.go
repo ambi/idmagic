@@ -59,10 +59,8 @@ func newPreferencesServer(t *testing.T) (*echo.Echo, string) {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenantRepo,
-			Emit: func(spec.DomainEvent) {},
-		},
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenantRepo,
+		Emit:           func(spec.DomainEvent) {},
 		UserRepo:       userRepo,
 		AttrSchemaRepo: usermemory.NewTenantUserAttributeSchemaRepository(),
 		SessionManager: sm, AuthnResolver: sm,

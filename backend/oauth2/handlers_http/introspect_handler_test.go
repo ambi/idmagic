@@ -20,7 +20,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -45,7 +44,7 @@ func newIntrospectServer(intro *fakeIntrospector, denylist *fakeDenylist) *echo.
 	})
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps:              support.Deps{Issuer: "http://test"},
+		Issuer:            "http://test",
 		OAuth2:            oauth2.Module{ClientRepo: clientRepo, RefreshStore: oauth2memory.NewRefreshTokenStore()},
 		TokenIntrospector: intro,
 	}

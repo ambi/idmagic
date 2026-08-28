@@ -22,7 +22,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	authorizationLocal "github.com/ambi/idmagic/backend/shared/policy/authorization_local"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -88,11 +87,9 @@ func newServer(t *testing.T, user *userdomain.User, agents ...*agentdomain.Agent
 	events := make([]spec.DomainEvent, 0)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenantRepo,
-			Emit:       func(event spec.DomainEvent) { events = append(events, event) },
-		},
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo:   tenantRepo,
+		Emit:         func(event spec.DomainEvent) { events = append(events, event) },
 		IdManagement: idmanagement.Module{UserRepo: userRepo, AgentRepo: agentRepo},
 		Authorization: authorization.Module{
 			TupleRepo: authorizationmemory.NewRelationTupleRepository(store),

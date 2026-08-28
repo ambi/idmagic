@@ -16,7 +16,6 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 
@@ -25,7 +24,7 @@ import (
 
 func TestDiscoveryRoutesIncludeRFC8414Alias(t *testing.T) {
 	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{Deps: support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract()}})
+	httpadapter.Register(e, httpadapter.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract()})
 
 	for _, path := range []string{
 		"/realms/default/.well-known/openid-configuration",
@@ -76,10 +75,8 @@ func TestPerTenantJwksIsolation(t *testing.T) {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenants,
-		}, KeyStore: keyStore,
+		Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenants, KeyStore: keyStore,
 	})
 
 	kidsA := jwksKids(t, e, "/realms/tenant-a/jwks")

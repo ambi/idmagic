@@ -95,11 +95,9 @@ func newAuditAdminServer(t *testing.T, actor *userdomain.User, events []*auditpo
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://test",
+		Issuer: "http://test",
 
-			TenantRepo: newSingleTenantRepo(),
-		}, UserRepo: userRepo,
+		TenantRepo: newSingleTenantRepo(), UserRepo: userRepo,
 		Audit: audit.Module{AuditEventRepo: auditStore}, AuthnResolver: resolver,
 	})
 	return e
@@ -149,7 +147,7 @@ func TestAdminAuditEventsResolvesUsernameToUserID(t *testing.T) {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:          support.Deps{Issuer: "http://test", TenantRepo: newSingleTenantRepo()},
+		Issuer: "http://test", TenantRepo: newSingleTenantRepo(),
 		UserRepo:      userRepo,
 		Audit:         audit.Module{AuditEventRepo: auditStore},
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},
@@ -179,7 +177,7 @@ func TestAdminAuditEventsUnknownUsernameReturnsEmptyNotError(t *testing.T) {
 	_ = auditStore.Append(context.Background(), auditEvent("acme", "UserAuthenticated", "alice", now))
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:          support.Deps{Issuer: "http://test", TenantRepo: newSingleTenantRepo()},
+		Issuer: "http://test", TenantRepo: newSingleTenantRepo(),
 		UserRepo:      userRepo,
 		Audit:         audit.Module{AuditEventRepo: auditStore},
 		AuthnResolver: &fakeAuthnResolver{ctx: &authdomain.AuthenticationContext{UserID: admin.ID, AuthTime: now.Unix(), AMR: []string{"pwd"}}},

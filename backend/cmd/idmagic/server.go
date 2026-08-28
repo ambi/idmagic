@@ -181,28 +181,26 @@ func Run() error {
 		cimdRepo.Emit = emit
 	}
 	httpadapter.Register(e, httpadapter.Deps{
-		MetricsHandler: appMetrics.Handler(),
-		Deps: httpsupport.Deps{
-			Issuer:                    issuer,
-			Contract:                  runtimeContract,
-			TenantBaseDomain:          api.TenantBaseDomain,
-			TrustedForwardedHops:      api.TrustedForwardedHops,
-			RateLimiter:               deps.RateLimit.RateLimiter,
-			OperationTimeout:          0, // 必要なら設定
-			DetachedCompletionTimeout: 0,
-			AbortMetrics:              appMetrics,
-			Metrics:                   appMetrics,
-			Emit:                      emit,
-			DbPing:                    deps.DbPing,
-			ShuttingDown:              shuttingDown,
-			StartupComplete:           startupComplete,
-			TenantRepo:                deps.Tenancy.TenantRepo,
-			PaginationCodec:           httpsupport.NewCursorCodec(bootstrap.PaginationCursorSecret(api.PaginationCursorSecret)),
-			HealthInfo: httpsupport.HealthInfo{
-				Persistence:   runtime.Persistence,
-				Observability: runtime.Observability,
-				AuthZEN:       runtime.AuthZEN,
-			},
+		MetricsHandler:            appMetrics.Handler(),
+		Issuer:                    issuer,
+		Contract:                  runtimeContract,
+		TenantBaseDomain:          api.TenantBaseDomain,
+		TrustedForwardedHops:      api.TrustedForwardedHops,
+		RateLimiter:               deps.RateLimit.RateLimiter,
+		OperationTimeout:          0, // 必要なら設定
+		DetachedCompletionTimeout: 0,
+		AbortMetrics:              appMetrics,
+		Metrics:                   appMetrics,
+		Emit:                      emit,
+		DbPing:                    deps.DbPing,
+		ShuttingDown:              shuttingDown,
+		StartupComplete:           startupComplete,
+		TenantRepo:                deps.Tenancy.TenantRepo,
+		PaginationCodec:           httpsupport.NewCursorCodec(bootstrap.PaginationCursorSecret(api.PaginationCursorSecret)),
+		HealthInfo: httpsupport.HealthInfo{
+			Persistence:   runtime.Persistence,
+			Observability: runtime.Observability,
+			AuthZEN:       runtime.AuthZEN,
 		},
 		Tenancy:          deps.Tenancy,
 		IdManagement:     deps.IdManagement,

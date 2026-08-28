@@ -21,7 +21,6 @@ import (
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
@@ -31,7 +30,7 @@ func newCheckSessionIframeServer() (*echo.Echo, *sessionmemory.SessionStore) {
 	sm := sessionusecases.NewSessionManager(store)
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:           support.Deps{Issuer: "http://idp.test"},
+		Issuer:         "http://idp.test",
 		Authentication: authentication.Module{SessionManager: sm, AuthnResolver: sm},
 	})
 	return e, store

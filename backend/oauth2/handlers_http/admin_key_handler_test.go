@@ -52,12 +52,10 @@ func newKeyAdminServer(t *testing.T, actor *userdomain.User) (*echo.Echo, *signi
 	emit := func(e spec.DomainEvent) { events = append(events, e) }
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
 
-			TenantRepo: newSingleTenantRepo(),
-			Emit:       emit,
-		}, UserRepo: userRepo,
+		TenantRepo: newSingleTenantRepo(),
+		Emit:       emit, UserRepo: userRepo,
 		KeyStore: keyStore, AuthnResolver: resolver,
 	})
 	return e, keyStore, &events

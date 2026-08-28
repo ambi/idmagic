@@ -36,14 +36,12 @@ func newAuditAdminPaginationServer(t *testing.T, events []*auditports.AuditEvent
 	}}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:          "http://test",
-			TenantRepo:      newSingleTenantRepo(),
-			PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
-		},
-		UserRepo:      userRepo,
-		Audit:         audit.Module{AuditEventRepo: auditStore},
-		AuthnResolver: resolver,
+		Issuer:          "http://test",
+		TenantRepo:      newSingleTenantRepo(),
+		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
+		UserRepo:        userRepo,
+		Audit:           audit.Module{AuditEventRepo: auditStore},
+		AuthnResolver:   resolver,
 	})
 	return e
 }

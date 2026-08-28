@@ -28,7 +28,6 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
@@ -123,12 +122,10 @@ func newMetricsTestServer(t *testing.T) (*httptest.Server, *metricsSpy) {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:          "http://test",
-			StartupComplete: startupComplete,
-			ShuttingDown:    &atomic.Bool{},
-			Metrics:         spy,
-		},
+		Issuer:          "http://test",
+		StartupComplete: startupComplete,
+		ShuttingDown:    &atomic.Bool{},
+		Metrics:         spy,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),

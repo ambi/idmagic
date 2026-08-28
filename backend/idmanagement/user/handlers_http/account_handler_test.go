@@ -22,7 +22,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userhttp "github.com/ambi/idmagic/backend/idmanagement/user/handlers_http"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -46,11 +45,9 @@ func newAccountServer(t *testing.T, user *userdomain.User) *echo.Echo {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenantRepo,
-			Emit:       func(spec.DomainEvent) {},
-		}, UserRepo: userRepo,
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenantRepo,
+		Emit:       func(spec.DomainEvent) {}, UserRepo: userRepo,
 		AttrSchemaRepo: usermemory.NewTenantUserAttributeSchemaRepository(),
 		AuthnResolver:  resolver,
 	})

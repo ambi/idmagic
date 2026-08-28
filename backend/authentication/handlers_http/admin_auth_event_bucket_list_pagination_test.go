@@ -34,7 +34,7 @@ func newAdminAuthEventBucketPaginationHandler(t *testing.T) (*echo.Echo, *authnm
 	store := authnmemory.NewAuthEventBucketStore()
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:          support.Deps{Issuer: "http://idp.test", PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret"))},
+		Issuer: "http://idp.test", PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
 		UserRepo:      users,
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 		Authentication: authentication.Module{

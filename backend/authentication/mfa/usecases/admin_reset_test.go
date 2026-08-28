@@ -29,14 +29,12 @@ func newAuthenticatorResetDeps(t *testing.T) (usecases.AuthenticatorResetDeps, *
 	})
 	var events []spec.DomainEvent
 	deps := usecases.AuthenticatorResetDeps{
-		MfaEnrollmentDeps: usecases.MfaEnrollmentDeps{
-			UserRepo:               userRepo,
-			MfaFactorRepo:          totpmemory.NewMfaFactorRepository(),
-			WebAuthnCredentialRepo: webauthnmemory.NewWebAuthnCredentialRepository(),
-			BypassRepo:             mfamemory.NewMfaEnrollmentBypassRepository(),
-			Emit:                   func(e spec.DomainEvent) { events = append(events, e) },
-		},
-		RecoveryCodeRepo: recoverymemory.NewRecoveryCodeRepository(),
+		UserRepo:               userRepo,
+		MfaFactorRepo:          totpmemory.NewMfaFactorRepository(),
+		WebAuthnCredentialRepo: webauthnmemory.NewWebAuthnCredentialRepository(),
+		BypassRepo:             mfamemory.NewMfaEnrollmentBypassRepository(),
+		Emit:                   func(e spec.DomainEvent) { events = append(events, e) },
+		RecoveryCodeRepo:       recoverymemory.NewRecoveryCodeRepository(),
 	}
 	return deps, userRepo, &events
 }

@@ -31,7 +31,6 @@ import (
 	consentmemory "github.com/ambi/idmagic/backend/oauth2/consent/db_memory"
 	consentdomain "github.com/ambi/idmagic/backend/oauth2/consent/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -59,7 +58,7 @@ func newAccountHandlerFixture(t *testing.T) *accountHandlerFixture {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:                   support.Deps{Issuer: "http://idp.test"},
+		Issuer:                 "http://idp.test",
 		UserRepo:               users,
 		AuthnResolver:          authusecases.DemoHeaderResolver{},
 		OAuth2:                 oauth2.Module{ConsentRepo: consents},

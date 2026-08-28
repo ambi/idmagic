@@ -20,7 +20,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	memory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -54,11 +53,9 @@ func newBrandingServer(t *testing.T, actor *userdomain.User, tenants ...*domain.
 	emit := func(e spec.DomainEvent) { events = append(events, e) }
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenantRepo,
-			Emit:       emit,
-		},
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenantRepo,
+		Emit:       emit,
 		Tenancy: tenancy.Module{
 			TenantRepo:         tenantRepo,
 			BrandingRepo:       brandingRepo,

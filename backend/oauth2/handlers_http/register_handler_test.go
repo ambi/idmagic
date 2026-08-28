@@ -16,7 +16,6 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
@@ -30,11 +29,9 @@ func newRegisterServer() registerFixture {
 	clientRepo := oauth2memory.NewClientRepository()
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:     "http://test",
-			TenantRepo: tenancymemory.NewTenantRepository(),
-		},
-		OAuth2: oauth2.Module{ClientRepo: clientRepo},
+		Issuer:     "http://test",
+		TenantRepo: tenancymemory.NewTenantRepository(),
+		OAuth2:     oauth2.Module{ClientRepo: clientRepo},
 	}
 	_ = deps.TenantRepo.Save(context.Background(), &tenancydomain.Tenant{
 		ID:     tenancydomain.DefaultTenantID,

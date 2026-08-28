@@ -17,7 +17,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/notification/email_memory"
 	"github.com/ambi/idmagic/backend/shared/policy/breaches_noop"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
@@ -101,7 +100,7 @@ func newPasswordResetHandler(
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: userRepo, PasswordHasher: hasher,
+		Issuer: "http://idp.test", UserRepo: userRepo, PasswordHasher: hasher,
 		PasswordHistoryRepo: historyRepo, Authentication: authentication.Module{PasswordResetTokenStore: tokenStore},
 		EmailSender: sender, BreachedPasswordChecker: breaches_noop.NoopBreachedPasswordChecker{},
 	})

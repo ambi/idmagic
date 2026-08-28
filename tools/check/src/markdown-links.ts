@@ -1,6 +1,5 @@
 import { posix } from 'node:path'
-import MarkdownIt from 'markdown-it'
-import type Token from 'markdown-it/lib/token.mjs'
+import MarkdownIt, { type Env, type Token } from 'markdown-it'
 
 export type MarkdownLinkFinding = {
   file: string
@@ -14,9 +13,7 @@ type MarkdownLink = {
   target: string
 }
 
-type MarkdownEnvironment = {
-  references?: Record<string, { href: string }>
-}
+type MarkdownEnvironment = Env
 
 const markdown = new MarkdownIt({ html: true })
 markdown.validateLink = () => true
@@ -93,8 +90,10 @@ function links(tokens: Token[], environment: MarkdownEnvironment): MarkdownLink[
     if (token.type !== 'inline') continue
     for (const child of token.children ?? []) {
       if (child.type !== 'link_open') continue
-      const target = child.attrGet('href')
-      if (!target) continue
+      // markdown-it 15 の属性値は string | number。href は常に文字列だが型の上では絞り込みが要る。
+      const attribute = child.attrGet('href')
+      if (!attribute) continue
+      const target = String(attribute)
       result.push({ line: (token.map?.[0] ?? 0) + 1, target })
       usedTargets.add(target)
     }

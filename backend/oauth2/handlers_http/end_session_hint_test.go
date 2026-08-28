@@ -27,7 +27,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/ports"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	cryptoadapter "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -68,7 +67,7 @@ func newHintTestServer(t *testing.T) hintTestServer {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"},
+		Issuer: "http://test",
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, RefreshStore: refreshStore,
 			TokenIssuer: signer, TokenIntrospector: signer, IDTokenHintVerifier: signer,

@@ -19,7 +19,6 @@ import (
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -68,7 +67,7 @@ func newTokenExchangeServer(t *testing.T) string {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test", TenantRepo: tenantRepo},
+		Issuer: "http://test", TenantRepo: tenantRepo,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(), RefreshStore: oauth2memory.NewRefreshTokenStore(),
 			McpResourceServerRepo: resourceServers,

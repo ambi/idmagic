@@ -20,7 +20,6 @@ import (
 	oauthmemory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
@@ -52,7 +51,7 @@ func TestBackchannelAuthenticateCreatesPendingRequest(t *testing.T) {
 	store := approvalmemory.NewApprovalRequestStore()
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:         support.Deps{Issuer: "http://test", TenantRepo: tenantRepo},
+		Issuer: "http://test", TenantRepo: tenantRepo,
 		OAuth2:       oauth2.Module{ClientRepo: clientRepo, ApprovalRequestStore: store},
 		IdManagement: idmanagement.Module{UserRepo: userRepo},
 	})
@@ -115,7 +114,7 @@ func newApprovalHandlerFixture(t *testing.T) approvalHandlerFixture {
 	}}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:          support.Deps{Issuer: "http://test", TenantRepo: tenantRepo},
+		Issuer: "http://test", TenantRepo: tenantRepo,
 		OAuth2:        oauth2.Module{ApprovalRequestStore: store},
 		AuthnResolver: authn,
 	})

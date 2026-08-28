@@ -26,7 +26,6 @@ import (
 	"github.com/ambi/idmagic/backend/saml"
 	samlmemory "github.com/ambi/idmagic/backend/saml/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/wsfederation"
 	wsfedmemory "github.com/ambi/idmagic/backend/wsfederation/db_memory"
@@ -48,11 +47,9 @@ func newApplicationHandler(t *testing.T) *echo.Echo {
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test",
+		Issuer: "http://idp.test",
 
-			Emit: func(spec.DomainEvent) {},
-		}, UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(),
+		Emit: func(spec.DomainEvent) {}, UserRepo: users, GroupRepo: groupmemory.NewGroupRepository(),
 		Application: application.Module{
 			Repo:                    appmemory.NewApplicationRepository(),
 			IconStore:               appmemory.NewApplicationIconStore(),

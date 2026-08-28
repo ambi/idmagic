@@ -15,22 +15,21 @@
     "check-ids:workspace": "bun run check:workspace --ids"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "^2.5.11",
     "@typespec/compiler": "latest",
     "@typespec/http": "latest",
     "@typespec/openapi": "latest",
     "@typespec/openapi3": "latest",
     "@types/bun": "latest",
-    "@types/markdown-it": "^14.1.2",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "happy-dom": "latest",
-    "markdown-it": "^14.2.0",
+    "markdown-it": "^15.0.1",
     "mermaid": "latest",
     "swagger-ui-dist": "latest"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^7.0.2"
   },
   "scarfSettings": {
     "enabled": false

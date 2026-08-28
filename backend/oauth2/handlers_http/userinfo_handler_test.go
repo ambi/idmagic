@@ -31,7 +31,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	oauthports "github.com/ambi/idmagic/backend/oauth2/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	tokensJOSE "github.com/ambi/idmagic/backend/shared/security/tokens_jose"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -118,7 +117,7 @@ func TestUserInfoDPoPBoundRequiresMatchingProof(t *testing.T) {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, UserRepo: userRepo,
+		Issuer: "http://test", UserRepo: userRepo,
 		OAuth2:            oauth2.Module{DpopReplayStore: memory.NewDpopReplayStore()},
 		TokenIntrospector: intro,
 	})
@@ -196,10 +195,8 @@ func TestUserInfoDPoPHTUUsesTenantPrefix(t *testing.T) {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:     "http://test",
-			TenantRepo: tenantRepo,
-		}, UserRepo: userRepo,
+		Issuer:     "http://test",
+		TenantRepo: tenantRepo, UserRepo: userRepo,
 		OAuth2:            oauth2.Module{DpopReplayStore: memory.NewDpopReplayStore()},
 		TokenIntrospector: intro,
 	})
@@ -283,7 +280,7 @@ func newUserInfoServer(t *testing.T, intro *fakeIntrospector, denylist *fakeDeny
 	})
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, UserRepo: userRepo,
+		Issuer: "http://test", UserRepo: userRepo,
 		OAuth2:            oauth2.Module{DpopReplayStore: memory.NewDpopReplayStore()},
 		TokenIntrospector: intro,
 	}

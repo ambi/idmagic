@@ -27,7 +27,6 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 
 	"github.com/labstack/echo/v5"
 )
@@ -56,7 +55,7 @@ func newAdminSessionsFixture(t *testing.T) adminSessionsFixture {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps:          support.Deps{Issuer: "http://idp.test"},
+		Issuer:        "http://idp.test",
 		UserRepo:      users,
 		AuthnResolver: demousecases.DemoHeaderResolver{},
 		Authentication: authentication.Module{

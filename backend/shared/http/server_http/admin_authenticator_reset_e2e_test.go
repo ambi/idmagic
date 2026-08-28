@@ -153,10 +153,8 @@ func newServerForAuthenticatorReset(t *testing.T) *httptest.Server {
 	shuttingDown := &atomic.Bool{}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:          "http://test",
-			StartupComplete: startupComplete, ShuttingDown: shuttingDown,
-		},
+		Issuer:          "http://test",
+		StartupComplete: startupComplete, ShuttingDown: shuttingDown,
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: requestStore, CodeStore: codeStore, PARStore: oauth2memory.NewPARStore(),

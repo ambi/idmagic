@@ -17,7 +17,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenantmemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenantdomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -68,12 +67,10 @@ func integrationEndpointServer(t *testing.T, endpointStyle tenantdomain.TenantEn
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:           "https://idp.example",
-			TenantBaseDomain: "idp.example",
-			Contract:         spec.CurrentRuntimeContract(),
-			TenantRepo:       tenantRepo,
-		},
+		Issuer:           "https://idp.example",
+		TenantBaseDomain: "idp.example",
+		Contract:         spec.CurrentRuntimeContract(),
+		TenantRepo:       tenantRepo,
 		UserRepo:         userRepo,
 		AuthnResolver:    stubIntegrationAuthnResolver{userID: "admin"},
 		FederationSigner: signer,

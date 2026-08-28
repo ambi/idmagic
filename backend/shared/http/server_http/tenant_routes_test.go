@@ -15,7 +15,6 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -40,7 +39,7 @@ func TestRealmDiscoveryUsesTenantIssuer(t *testing.T) {
 		t.Fatal(err)
 	}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenants}})
+	Register(e, Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenants})
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/.well-known/openid-configuration", http.NoBody))
@@ -71,7 +70,7 @@ func TestBareRouteUsesDefaultAndDisabledTenantIsRejected(t *testing.T) {
 		}
 	}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenants}})
+	Register(e, Deps{Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(), TenantRepo: tenants})
 
 	bare := httptest.NewRecorder()
 	e.ServeHTTP(bare, httptest.NewRequest(http.MethodGet, "/realms/default/.well-known/openid-configuration", http.NoBody))
@@ -113,7 +112,7 @@ func TestTenantAdminRequiresSystemAdmin(t *testing.T) {
 	})
 	resolver := &fixedAuthnResolver{sub: "ops"}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
+	Register(e, Deps{TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver})
 
 	allowed := httptest.NewRecorder()
 	e.ServeHTTP(allowed, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/tenants", http.NoBody))
@@ -149,7 +148,7 @@ func TestCrossTenantSessionRejectsSystemAdmin(t *testing.T) {
 	})
 	resolver := &fixedAuthnResolver{sub: "acme-admin"}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
+	Register(e, Deps{TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver})
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/tenants", http.NoBody))
@@ -185,7 +184,7 @@ func TestControlPlaneRoutesUnreachableFromOtherRealm(t *testing.T) {
 	})
 	resolver := &fixedAuthnResolver{sub: "acme-admin"}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
+	Register(e, Deps{TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver})
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/acme/api/admin/v1/tenants", http.NoBody))
@@ -218,7 +217,7 @@ func TestControlPlaneGetTenantResolvesPathParamNotRequestRealm(t *testing.T) {
 	})
 	resolver := &fixedAuthnResolver{sub: "ops"}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{TenantRepo: tenants}, UserRepo: users, AuthnResolver: resolver})
+	Register(e, Deps{TenantRepo: tenants, UserRepo: users, AuthnResolver: resolver})
 
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/realms/default/api/admin/v1/tenants/acme", http.NoBody))

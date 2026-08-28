@@ -114,8 +114,7 @@ func TestAcquireLoginThrottleRecordsMetricOutcome(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			spy := &spyMetrics{}
-			d := Deps{LoginAttemptThrottle: tc.throttle}
-			d.Metrics = spy
+			d := Deps{LoginAttemptThrottle: tc.throttle, Metrics: spy}
 			withEchoContext(t, func(c *echo.Context) {
 				result, _ := d.acquireLoginThrottle(c, authnports.LoginThrottleAccount, "alice")
 				if result.Allowed != tc.wantAllowed {
@@ -134,8 +133,7 @@ func TestAcquireLoginThrottleRecordsMetricOutcome(t *testing.T) {
 
 func TestAcquireLoginThrottleWithoutStoreAllowsAndSkipsMetric(t *testing.T) {
 	spy := &spyMetrics{}
-	d := Deps{}
-	d.Metrics = spy
+	d := Deps{Metrics: spy}
 	withEchoContext(t, func(c *echo.Context) {
 		result, err := d.acquireLoginThrottle(c, authnports.LoginThrottleIP, "203.0.113.10")
 		if err != nil {

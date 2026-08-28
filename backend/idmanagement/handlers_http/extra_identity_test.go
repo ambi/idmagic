@@ -35,7 +35,6 @@ import (
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 )
@@ -81,7 +80,7 @@ func newIdentityTestHandler(t *testing.T) identityTestHandler {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo, PasswordHasher: hasher,
+		Issuer: "http://idp.test", UserRepo: repo, PasswordHasher: hasher,
 		PasswordHistoryRepo: history, AuthnResolver: authusecases.DemoHeaderResolver{},
 		AgentRepo: agentmemory.NewAgentRepository(),
 		GroupRepo: groupRepo,
@@ -217,7 +216,7 @@ func TestAdminAgentKill_AdvancesRevocationEpoch(t *testing.T) {
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: userRepo,
+		Issuer: "http://idp.test", UserRepo: userRepo,
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 		AgentRepo:     agentRepo,
 		GroupRepo:     groupmemory.NewGroupRepository(),

@@ -21,7 +21,6 @@ import (
 	oauthdomain "github.com/ambi/idmagic/backend/oauth2/domain"
 
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -49,7 +48,7 @@ func newEndSessionServer(t *testing.T) *echo.Echo {
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{ClientRepo: clientRepo},
+		Issuer: "http://test", OAuth2: oauth2.Module{ClientRepo: clientRepo},
 	})
 	return e
 }

@@ -21,7 +21,6 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -51,7 +50,7 @@ func newPARTestServer(t *testing.T) *echo.Echo {
 	})
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{
+		Issuer: "http://test", OAuth2: oauth2.Module{
 			ClientRepo: clientRepo,
 			PARStore:   oauth2memory.NewPARStore(), RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
 		},
@@ -156,7 +155,7 @@ func TestPushAuthorizationRequestRejectsCrossTenantConsumption(t *testing.T) {
 		CreatedAt: time.Now().UTC(),
 	})
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{
+		Issuer: "http://test", OAuth2: oauth2.Module{
 			ClientRepo: clientRepo,
 			PARStore:   store, RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
 		},
@@ -183,7 +182,7 @@ func TestPushAuthorizationRequestUsesOperationContextAfterClientAbort(t *testing
 	store := &ctxCheckingPARStore{PARStore: oauth2memory.NewPARStore()}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://test"}, OAuth2: oauth2.Module{
+		Issuer: "http://test", OAuth2: oauth2.Module{
 			ClientRepo: clientRepo,
 			PARStore:   store, RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),
 		},

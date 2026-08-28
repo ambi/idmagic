@@ -21,7 +21,6 @@ import (
 	"github.com/ambi/idmagic/backend/jobs/domain"
 	jobports "github.com/ambi/idmagic/backend/jobs/ports"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
@@ -130,10 +129,8 @@ func newJobsAdminServer(t *testing.T, actor *userdomain.User) *jobsTestServer {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", TenantRepo: jobsTenantRepo{},
-			Emit: func(e spec.DomainEvent) { srv.emitted = append(srv.emitted, e) },
-		},
+		Issuer: "http://idp.test", TenantRepo: jobsTenantRepo{},
+		Emit:          func(e spec.DomainEvent) { srv.emitted = append(srv.emitted, e) },
 		UserRepo:      userRepo,
 		IdManagement:  idmanagement.Module{UserRepo: userRepo},
 		AuthnResolver: resolver,

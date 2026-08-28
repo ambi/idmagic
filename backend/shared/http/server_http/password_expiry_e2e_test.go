@@ -19,7 +19,6 @@ import (
 	"github.com/ambi/idmagic/backend/oauth2"
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	passwordsArgon2id "github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -74,12 +73,10 @@ func newPasswordExpiryTestServer(t *testing.T, maxAgeDays, passwordChangedDaysAg
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:          "http://test",
-			StartupComplete: startupComplete,
-			ShuttingDown:    &atomic.Bool{},
-			TenantRepo:      tenantRepo,
-		},
+		Issuer:          "http://test",
+		StartupComplete: startupComplete,
+		ShuttingDown:    &atomic.Bool{},
+		TenantRepo:      tenantRepo,
 		OAuth2: oauth2.Module{
 			ClientRepo: oauth2memory.NewClientRepository(), ConsentRepo: oauth2memory.NewConsentRepository(),
 			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(),

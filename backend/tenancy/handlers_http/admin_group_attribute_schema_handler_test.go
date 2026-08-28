@@ -20,7 +20,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/handlers_http"
@@ -53,11 +52,9 @@ func newGroupAttributeSchemaServer(
 	emit := func(e spec.DomainEvent) { events = append(events, e) }
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenantRepo,
-			Emit:       emit,
-		}, UserRepo: userRepo,
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenantRepo,
+		Emit:       emit, UserRepo: userRepo,
 		Tenancy:       tenancy.Module{GroupAttrSchemaRepo: schemaRepo},
 		AuthnResolver: resolver,
 	})

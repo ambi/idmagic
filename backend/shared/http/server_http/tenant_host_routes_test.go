@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -38,10 +37,10 @@ func hostRoutingFixture(t *testing.T, baseDomain string) *echo.Echo {
 		}
 	}
 	e := echo.New()
-	Register(e, Deps{Deps: support.Deps{
+	Register(e, Deps{
 		Issuer: "https://idp.example", Contract: spec.CurrentRuntimeContract(),
 		TenantRepo: tenants, TenantBaseDomain: baseDomain,
-	}})
+	})
 	return e
 }
 

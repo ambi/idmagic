@@ -43,13 +43,11 @@ func newApplicationPaginationHandler(t *testing.T) (*echo.Echo, *appmemory.Appli
 	appRepo := appmemory.NewApplicationRepository()
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:          "http://idp.test",
-			Emit:            func(spec.DomainEvent) {},
-			PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
-		},
-		UserRepo:  users,
-		GroupRepo: groupmemory.NewGroupRepository(),
+		Issuer:          "http://idp.test",
+		Emit:            func(spec.DomainEvent) {},
+		PaginationCodec: support.NewCursorCodec([]byte("test-pagination-secret")),
+		UserRepo:        users,
+		GroupRepo:       groupmemory.NewGroupRepository(),
 		Application: application.Module{
 			Repo:                    appRepo,
 			IconStore:               appmemory.NewApplicationIconStore(),

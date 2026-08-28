@@ -20,7 +20,6 @@ import (
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	tenancyhttp "github.com/ambi/idmagic/backend/tenancy/handlers_http"
 
@@ -52,11 +51,9 @@ func newUserAttributeSchemaServer(
 	emit := func(e spec.DomainEvent) { events = append(events, e) }
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenantRepo,
-			Emit:       emit,
-		}, UserRepo: userRepo,
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenantRepo,
+		Emit:       emit, UserRepo: userRepo,
 		AttrSchemaRepo: schemaRepo,
 		AuthnResolver:  resolver,
 	})

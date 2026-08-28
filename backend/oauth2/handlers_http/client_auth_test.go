@@ -23,7 +23,6 @@ import (
 	oauth2memory "github.com/ambi/idmagic/backend/oauth2/db_memory"
 
 	"github.com/ambi/idmagic/backend/oauth2/domain"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -59,7 +58,7 @@ func clientAuthServer(method domain.TokenEndpointAuthMethod) *echo.Echo {
 		FapiProfile:              domain.FapiNone,
 		CreatedAt:                time.Now(),
 	})
-	deps := Deps{Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo}
+	deps := Deps{Issuer: "https://idp.example", ClientRepo: repo}
 	e := echo.New()
 	e.POST("/test", func(c *echo.Context) error {
 		if err := c.Request().ParseForm(); err != nil {
@@ -227,7 +226,7 @@ func TestClientAuthenticationUsesAnyActiveCredentialOnly(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	deps := Deps{Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo}
+	deps := Deps{Issuer: "https://idp.example", ClientRepo: repo}
 	e := echo.New()
 	e.POST("/test", func(c *echo.Context) error {
 		client, err := deps.authenticateTokenClient(c)
@@ -277,7 +276,7 @@ func TestPrivateKeyJWTAuthentication(t *testing.T) {
 		CreatedAt:                time.Now(),
 	})
 	deps := Deps{
-		Deps: support.Deps{Issuer: "https://idp.example"}, ClientRepo: repo,
+		Issuer: "https://idp.example", ClientRepo: repo,
 		ClientAssertionReplayStore: oauth2memory.NewClientAssertionReplayStore(),
 	}
 	e := echo.New()

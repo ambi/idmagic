@@ -26,7 +26,6 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
 	"github.com/labstack/echo/v5"
@@ -92,10 +91,8 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	e := echo.New()
 	emitted := &[]spec.DomainEvent{}
 	deps := httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://test",
-			Emit:   func(e spec.DomainEvent) { *emitted = append(*emitted, e) },
-		},
+		Issuer: "http://test",
+		Emit:   func(e spec.DomainEvent) { *emitted = append(*emitted, e) },
 		OAuth2: oauth2.Module{
 			ClientRepo: clientRepo, ConsentRepo: consentRepo,
 			RequestStore: oauth2memory.NewAuthorizationRequestStore(), CodeStore: oauth2memory.NewAuthorizationCodeStore(), PARStore: oauth2memory.NewPARStore(),

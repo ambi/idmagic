@@ -18,7 +18,6 @@ import (
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
 	"github.com/ambi/idmagic/backend/shared/spec"
 
@@ -73,7 +72,7 @@ func TestDisabledUserCannotLogIn(t *testing.T) {
 	}
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{Issuer: "http://idp.test"}, UserRepo: repo,
+		Issuer: "http://idp.test", UserRepo: repo,
 		OAuth2:         oauth2.Module{RequestStore: requestStore},
 		PasswordHasher: hasher,
 	})

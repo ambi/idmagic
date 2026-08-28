@@ -80,7 +80,7 @@ func TestGetAdminUserImportUsesManagementCursorPaginationForArtifactErrors(t *te
 	codec := support.NewCursorCodec([]byte("user-import-pagination-test-secret"))
 	e := echo.New()
 	d := httpdeps.Deps{
-		Deps:          support.Deps{Issuer: "http://idp.test", PaginationCodec: codec},
+		Issuer: "http://idp.test", PaginationCodec: codec,
 		Authenticator: &support.Authenticator{UserRepo: repo, AuthnResolver: authusecases.DemoHeaderResolver{}},
 		UserRepo:      repo, JobRepo: jobs, UserCSVArtifacts: artifacts,
 	}

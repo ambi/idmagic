@@ -1,5 +1,5 @@
 import { dirname, posix, relative, resolve } from 'node:path'
-import MarkdownIt from 'markdown-it'
+import MarkdownIt, { type MarkdownIt as MarkdownItInstance } from 'markdown-it'
 import { CONTEXT_DOCUMENTS, ROOT_DOCUMENTS } from '../../check/src/specification-doc.ts'
 import type { CatalogProperty, CatalogSymbol } from './typespec-catalog.ts'
 
@@ -397,7 +397,8 @@ function markdownRenderer(
     const hrefIndex = tokens[index]?.attrIndex('href') ?? -1
     if (hrefIndex >= 0) {
       const token = tokens[index]
-      const href = token?.attrs?.[hrefIndex]?.[1] ?? ''
+      // markdown-it 15 の属性値は string | number。href は常に文字列だが型の上では絞り込みが要る。
+      const href = String(token?.attrs?.[hrefIndex]?.[1] ?? '')
       if (href && !/^[a-z]+:/i.test(href)) {
         const current = env as { document: RenderedDocument }
         const hash = href.indexOf('#')
@@ -573,7 +574,7 @@ function contextReference(args: {
 function documentPage(
   document: RenderedDocument,
   documents: RenderedDocument[],
-  markdown: MarkdownIt,
+  markdown: MarkdownItInstance,
   reference: string,
 ): string {
   const source = addDerivedStateDiagrams(

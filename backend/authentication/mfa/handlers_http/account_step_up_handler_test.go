@@ -98,12 +98,10 @@ func newStepUpServer(t *testing.T) (*echo.Echo, *sessionmemory.SessionStore, *[]
 
 	e := echo.New()
 	httpadapter.Register(e, httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
-			TenantRepo: tenantRepo,
+		Issuer: "http://idp.test", Contract: spec.CurrentRuntimeContract(),
+		TenantRepo: tenantRepo,
 
-			Emit: func(ev spec.DomainEvent) { events = append(events, ev) },
-		}, UserRepo: userRepo,
+		Emit: func(ev spec.DomainEvent) { events = append(events, ev) }, UserRepo: userRepo,
 		AttrSchemaRepo:        usermemory.NewTenantUserAttributeSchemaRepository(),
 		MfaFactorRepo:         mfaRepo,
 		PasswordHasher:        hasher,

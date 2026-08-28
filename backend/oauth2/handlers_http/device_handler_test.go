@@ -20,7 +20,6 @@ import (
 	authdomain "github.com/ambi/idmagic/backend/authentication/domain"
 	"github.com/ambi/idmagic/backend/oauth2/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
-	support "github.com/ambi/idmagic/backend/shared/http/support_http"
 	"github.com/ambi/idmagic/backend/shared/spec"
 	"github.com/ambi/idmagic/backend/tenancy"
 
@@ -65,10 +64,8 @@ func newDeviceServer() deviceFixture {
 
 	e := echo.New()
 	deps := httpadapter.Deps{
-		Deps: support.Deps{
-			Issuer:     "http://test",
-			TenantRepo: tenancymemory.NewTenantRepository(),
-		},
+		Issuer:        "http://test",
+		TenantRepo:    tenancymemory.NewTenantRepository(),
 		OAuth2:        oauth2.Module{ClientRepo: clientRepo, DeviceCodeStore: deviceStore},
 		AuthnResolver: authn,
 	}
