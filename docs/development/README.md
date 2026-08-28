@@ -9,7 +9,7 @@
 | 仕様先行の進め方、証拠契約、検証のはしご | [Specification-first Development Workflow](specification-first-workflow.md) | 解説、参照 |
 | 開発環境、起動、ビルド、生成 | [ローカル開発](local-development.md) | 手順 |
 | CI の正本と失敗時の切り分け | [継続的インテグレーション](continuous-integration.md) | 参照、解説 |
-| テスト水準と実行境界 | [テスト方針](testing.md) | 参照 |
+| テスト水準、実行境界、テストダブル | [テスト方針](testing.md) | 参照 |
 | 版付け、成果物、段階的な展開 | [リリース](release.md) | 手順 |
 | 開発プロセス指標の採否 | [開発プロセスの計測](process-metrics.md) | 解説、参照 |
 

@@ -34,7 +34,7 @@ authorization remains executable application behavior unless a later work item a
 | Confirm Unit RED, reach GREEN, and refactor inner behavior to outer adapters | `implement-work-item` | layer-local tests |
 | Sync current design when structure changes | `update-design` | `mise run check-boundaries` |
 | Regenerate derived views | `spec-render` | `mise run check-api-compat` |
-| Verify change resistance and review independently when required | `code-review` | risk-selected evidence, `mise run verify` |
+| Verify change resistance and review independently when required | `code-review` | evidence selected by risk and reversibility, `mise run verify` |
 | Record completion and commit | `commit` | `mise run check-work-items`, `mise run check-ids` |
 
 Before changing behavior, update the smallest owning specification: models, APIs, HTTP contracts, and
@@ -56,7 +56,7 @@ satisfied by an observation.
 
 | Risk | Before implementation | Before completion |
 |---|---|---|
-| `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended Acceptance RED and Unit RED checks. | Record both RED results. If either is not applicable, record why and the cheapest alternate check that could have failed. |
+| `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended Acceptance RED and Unit RED checks. | Record both RED results. If either is not applicable, record why and the cheapest alternate check that was actually observed failing. |
 | `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary, obtain independent verification, and show that a representative incorrect implementation is detected. |
 | `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements and use `mise run test-go-mutation-package -- <package> <git-ref>` or explicit fault injection for changed pure logic. Record equivalent mutations and tool limits rather than hiding them. |
 
@@ -64,10 +64,26 @@ Authentication, authorization, tenant boundaries, cryptography, protocol compati
 migrations require independent verification even if their work item was initially classified lower. Raise the
 risk when the table's stronger contract describes the actual consequence.
 
+The risk column reads one axis only: how much damage a wrong change does. It says nothing about whether the
+decision can be taken back, and those two come apart constantly. A work item that declares
+`reversibility: irreversible` — the field and its examples are defined in
+[WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) — obtains independent verification before completion even
+when its risk is `low`, because the cheap moment to find the mistake is the only moment there is. Nothing
+flows the other way: `reversible` never lowers what the risk row already asks for. Irreversibility adds no
+approval record either, for the reason this section opens with: a signature can be given without reading the
+diff, and a second reader cannot report a finding without reading it.
+
 Independent verification is performed by a person or a fresh-context agent that did not implement the
 change. It compares the normative diff and implementation diff, checks repository standards, and asks whether
 the tests reject plausible wrong behavior rather than merely repeat the implementation. It reports findings
 back to the owning stage; it does not redesign the change while reviewing it.
+
+This is where pair review sits in this workflow. Extreme Programming gets a second reader onto every line as
+the line is written; a repository worked by one person and by agents cannot reproduce that continuously, so
+it spends the same attention at the points the risk and reversibility axes select. What carries the value is
+the fresh context — a reader who did not build the change cannot mistake an intention for an implementation.
+Whether that reader is a person or an agent is not the load-bearing part; whether they arrive without the
+author's assumptions is.
 
 ### Acceptance and unit evidence
 
@@ -81,6 +97,26 @@ failing.
 After both boundaries are fixed, implement one behavior at a time: make the narrow unit test GREEN with the
 simplest complete behavior, refactor while it remains GREEN, then widen through adapters until the acceptance
 test passes. Do not treat a generated or broad acceptance test as the unit test for the inner calculation.
+
+### Refactoring
+
+Refactoring is changing structure without changing behavior, and the test is what makes that claim checkable:
+if a change is a refactoring, the tests do not move. Editing a test in the same step is the signal that
+behavior changed too — separate the two steps and let the behavior change go through its own RED.
+
+Refactor in the moment the test just went GREEN, while what the code is supposed to do is still in front of
+you. Deferring it turns it into a separate piece of work that has to re-establish that context, and separate
+work is what gets dropped. Stop when the next behavior can be added without fighting the current shape. That
+is the whole condition: not a metric, not a pass over everything the change touched, and not a general
+tidying of code the change did not need. A refactoring that outruns the behavior it was clearing the way for
+is a second change riding on the first one's evidence.
+
+Refactoring done this way carries no evidence of its own — it happens inside a behavior's GREEN step and that
+behavior's RED results already cover it. A work item that is *only* refactoring is the case the previous
+section's not-applicable path exists for, and what it records as the alternate check is the check that made the
+refactoring necessary: a boundary or structural gate that was failing, an import rule, a duplicated rule the
+`check` suite now rejects. If nothing was failing and no gate was asking for the change, that is worth
+noticing before starting rather than after.
 
 ### Type and effect design
 
@@ -105,6 +141,7 @@ Run the cheapest gate that can still fail on what you just changed, and widen on
    per-package or per-file test recipe that covers what you touched — `mise run test-go-package <package>` or
    `mise run test-ui-unit-file <file>` here, whatever `mise tasks` offers elsewhere.
 4. For `medium` risk and above: perform the selected change-resistance check and independent verification.
+   For `reversibility: irreversible` at any risk: perform independent verification.
 5. Before completing the work item: `mise run verify`.
 
 Running the full suite after every edit is the most common way to lose time in this repository.
@@ -290,3 +327,8 @@ sources of truth or complete conformance. IdMagic's evidence contract is a repos
 - **Acceptance Test-Driven Development:** Robert C. Martin and Grigori Melnik's
   [Tests and Requirements, Requirements and Tests: A Möbius Strip](https://doi.org/10.1109/MS.2008.24)
   informs defining acceptance evidence before implementation.
+- **Rational Reconstruction:** David L. Parnas and Paul C. Clements's
+  [A Rational Design Process: How and Why to Fake It](https://doi.org/10.1109/TSE.1986.6312940)
+  informs why a work item presents its evidence in the order the format asks for rather than the order the
+  work happened in: real work is exploratory, and a record reproducing every detour would not be readable by
+  the next person.

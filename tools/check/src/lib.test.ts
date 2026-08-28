@@ -232,6 +232,16 @@ describe('validateAgainstSchema — work-item', () => {
     expect(f.some((x) => x.message.includes('risk'))).toBe(true)
   })
 
+  it('accepts either reversibility value and rejects anything else', () => {
+    for (const reversibility of ['reversible', 'irreversible']) {
+      expect(validateAgainstSchema('work-item', { ...validWorkItem, reversibility }, '')).toEqual(
+        [],
+      )
+    }
+    const f = validateAgainstSchema('work-item', { ...validWorkItem, reversibility: 'mostly' }, '')
+    expect(f.some((x) => x.message.includes('reversibility'))).toBe(true)
+  })
+
   it('rejects an id that violates the kebab-case pattern', () => {
     const f = validateAgainstSchema('work-item', { ...validWorkItem, id: 'WI_1' }, '')
     expect(f.some((x) => x.message.toLowerCase().includes('pattern'))).toBe(true)
@@ -385,6 +395,53 @@ describe('validateAgainstSchema — work-item', () => {
     expect(
       validateAgainstSchema('work-item', { ...completed, evidence_policy: 'risk-based-v2' }, ''),
     ).toEqual([])
+  })
+
+  it('requires independent verification for an irreversible item at low risk', () => {
+    const completed = {
+      ...validWorkItem,
+      id: 'wi-412-demo',
+      status: 'completed',
+      risk: 'low',
+      reversibility: 'irreversible',
+      evidence_policy: 'risk-based-v2',
+      completion: {
+        ...validCompletion,
+        acceptance_red_evidence: validRedEvidence,
+        unit_red_evidence: validRedEvidence,
+      },
+    }
+    expect(validateAgainstSchema('work-item', completed, '')).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        {
+          ...completed,
+          completion: {
+            ...completed.completion,
+            independent_verification: 'reviewed by a separate agent',
+          },
+        },
+        '',
+      ),
+    ).toEqual([])
+  })
+
+  it('leaves a reversible low-risk item free of independent verification', () => {
+    const completed = {
+      ...validWorkItem,
+      id: 'wi-412-demo',
+      status: 'completed',
+      risk: 'low',
+      reversibility: 'reversible',
+      evidence_policy: 'risk-based-v2',
+      completion: {
+        ...validCompletion,
+        acceptance_red_evidence: validRedEvidence,
+        unit_red_evidence: validRedEvidence,
+      },
+    }
+    expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
   })
 
   it('requires separate acceptance and unit RED evidence for risk-based-v2', () => {

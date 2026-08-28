@@ -131,6 +131,20 @@
     },
     {
       "if": {
+        "properties": {
+          "reversibility": { "const": "irreversible" },
+          "status": { "const": "completed" }
+        },
+        "required": ["reversibility", "status"]
+      },
+      "then": {
+        "properties": {
+          "completion": { "required": ["independent_verification"] }
+        }
+      }
+    },
+    {
+      "if": {
         "properties": { "change_kind": { "enum": ["feature", "bugfix", "operations"] } },
         "required": ["change_kind"]
       },
@@ -304,6 +318,11 @@
     "risk": {
       "type": "string",
       "enum": ["low", "medium", "high", "critical"]
+    },
+    "reversibility": {
+      "description": "Whether the decision this change makes can be taken back afterwards. Independent of risk, and it never relaxes what risk already requires. Optional, so records written before the field existed stay valid.",
+      "type": "string",
+      "enum": ["reversible", "irreversible"]
     },
     "evidence_policy": {
       "description": "The risk-based evidence contract applied after work starts.",
