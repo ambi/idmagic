@@ -16,7 +16,8 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
 readonly PROJECT="idmagic-backup-drill"
-readonly WORKDIR="$(mktemp -d)"
+WORKDIR="$(mktemp -d)"
+readonly WORKDIR
 
 export PGHOST=localhost
 export PGPORT=15432
@@ -43,9 +44,9 @@ compose run --rm schema
 
 echo "== seeding representative data ==" >&2
 DATABASE_URL="postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=disable" \
-PERSISTENCE=postgres \
-DEMO_CLIENT_SECRET=demo-client-secret \
-DEMO_USER_PASSWORD=demo-password-1234 \
+  PERSISTENCE=postgres \
+  DEMO_CLIENT_SECRET=demo-client-secret \
+  DEMO_USER_PASSWORD=demo-password-1234 \
   go run ./backend/cmd/idmagic-seed --environment development --profile development --mode apply
 
 # The development seed manifest provisions tenants/users/clients but does
@@ -62,19 +63,24 @@ psql -Atqc "
 "
 
 echo "== backup ==" >&2
-readonly BACKUP_START="$(date +%s)"
+BACKUP_START="$(date +%s)"
+readonly BACKUP_START
 ./infra/backup/backup-postgres.sh "$WORKDIR"
-readonly BACKUP_FILE="$(ls "$WORKDIR"/*.dump)"
-readonly BACKUP_END="$(date +%s)"
+BACKUP_FILE="$(ls "$WORKDIR"/*.dump)"
+readonly BACKUP_FILE
+BACKUP_END="$(date +%s)"
+readonly BACKUP_END
 
 echo "== simulating db loss (drop and recreate the database) ==" >&2
 psql -d postgres -Atqc "DROP DATABASE ${PGDATABASE}"
 psql -d postgres -Atqc "CREATE DATABASE ${PGDATABASE}"
 
 echo "== restore ==" >&2
-readonly RESTORE_START="$(date +%s)"
+RESTORE_START="$(date +%s)"
+readonly RESTORE_START
 ./infra/backup/restore-postgres.sh "$BACKUP_FILE" --yes-restore-into-this-database "$PGDATABASE"
-readonly RESTORE_END="$(date +%s)"
+RESTORE_END="$(date +%s)"
+readonly RESTORE_END
 
 echo
 echo "== drill summary =="

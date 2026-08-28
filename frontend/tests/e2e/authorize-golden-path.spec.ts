@@ -38,7 +38,9 @@ test('authorize golden path: login -> consent -> callback keeps code and iss', a
 
     // dispatcher 不変条件: ログイン画面が描画される。
     await waitForPage(view, 'login')
-    expect(await view.evaluate('!!document.querySelector(\'input[name="username"]\')')).toBe(true)
+    expect(
+      await view.evaluate<boolean>('!!document.querySelector(\'input[name="username"]\')'),
+    ).toBe(true)
     await loginFromCurrentPage(view)
 
     // dispatcher 不変条件: 同意画面へ遷移する。
@@ -88,7 +90,7 @@ test('admin sidebar navigation is client-side (no full reload)', async () => {
     await waitForPage(view, 'admin-users')
 
     // 遷移後もマーカーが残っていれば、フルリロードしていない (= client-side 遷移)。
-    expect(await view.evaluate('window.__raSpaMarker ?? null')).toBe('kept')
+    expect(await view.evaluate<string | null>('window.__raSpaMarker ?? null')).toBe('kept')
   } finally {
     view.close()
   }

@@ -1,3 +1,5 @@
+min_version = "2026.8.0"
+
 [tools]
 go = "1.27.0"
 bun = "1.4.0"
@@ -5,9 +7,12 @@ bun = "1.4.0"
 "aqua:golangci/golangci-lint" = "2.13.1"
 "aqua:sqlc-dev/sqlc" = "1.31.1"
 "aqua:sqldef/sqldef/psqldef" = "3.11.20"
-
-[env]
-GOLANGCI_LINT_CACHE = "/tmp/idmagic-golangci-cache"
+"aqua:koalaman/shellcheck" = "0.11.0"
+"aqua:mvdan/sh" = "3.13.1"
+"aqua:rhysd/actionlint" = "1.7.12"
+"aqua:zizmorcore/zizmor" = "1.29.0"
+"aqua:hadolint/hadolint" = "2.15.1"
+"aqua:betterleaks/betterleaks" = "1.8.1"
 
 [tasks.setup]
 description = "Install repository dependencies and link agent skills"
@@ -16,7 +21,7 @@ depends = ["setup-tools", "install-ui"]
 [tasks.setup-tools]
 description = "Install embedded tooling dependencies and link agent skills"
 run = [
-  "cd tools && bun install",
+  "cd tools && bun install --frozen-lockfile",
   "ln -sfn tools/node_modules node_modules",
   "mkdir -p .agents/skills .claude",
   "ln -sfn ../.agents/skills .claude/skills",
@@ -24,7 +29,19 @@ run = [
 
 [tasks.tool-versions]
 description = "Show the development tool versions selected by mise"
-run = ["go version", "bun --version", "golangci-lint version", "sqlc version", "psqldef --version"]
+run = [
+  "go version",
+  "bun --version",
+  "golangci-lint version",
+  "sqlc version",
+  "psqldef --version",
+  "shellcheck --version",
+  "shfmt --version",
+  "actionlint --version",
+  "zizmor --version",
+  "hadolint --version",
+  "betterleaks version",
+]
 
 [tasks.setup-cli-tools]
 description = "Install host CLI tools used by repository instructions"
@@ -60,7 +77,21 @@ run = "bun install --frozen-lockfile"
 
 [tasks.verify]
 description = "Run the standard verification suite in parallel"
-depends = ["check", "check-api-compat", "test-tools", "typecheck-tools", "lint-tools", "lint-go", "test-go", "format-check-ui", "lint-ui", "test-ui-unit", "build-ui"]
+depends = [
+  "check",
+  "check-api-compat",
+  "test-tools",
+  "typecheck-tools",
+  "lint-tools",
+  "lint-repo",
+  "lint-go",
+  "test-go-race",
+  "format-check-ui",
+  "lint-ui",
+  "typecheck-ui",
+  "test-ui-unit",
+  "build-ui",
+]
 
 [tasks.verify-serial]
 description = "Run the standard verification suite serially"
@@ -70,10 +101,12 @@ run = [
   "mise run test-tools",
   "mise run typecheck-tools",
   "mise run lint-tools",
+  "mise run lint-repo",
   "mise run lint-go",
   "mise run test-go-race",
   "mise run format-check-ui",
   "mise run lint-ui",
+  "mise run typecheck-ui",
   "mise run test-ui-unit",
   "mise run build-ui",
 ]
@@ -102,6 +135,57 @@ description = "Lint embedded repository tooling"
 dir = "tools"
 run = "bun run lint"
 
+[tasks.lint-repo]
+description = "Lint shell, workflows, Dockerfiles, load tests, and scan for secrets"
+# 言語ごとにタスクを分けない。全部を合わせても数秒で終わるので、検証のはしごで絞る意味が無く、
+# 分けた数だけ `mise tasks` が読みにくくなる。最初の失敗で止めず、落ちたものを全部並べて終わる。
+# 規則の正本: .github/zizmor.yml と .betterleaks.toml。
+# actionlint は run: を shellcheck に渡す。mise が両方を同じ PATH に置くので、ここで解決される。
+run = '''
+#!/usr/bin/env sh
+set -u
+failed=""
+check() {
+  name="$1"
+  shift
+  if ! "$@"; then
+    failed="$failed $name"
+  fi
+}
+run_shellcheck() { git ls-files -z '*.sh' | xargs -0 shellcheck; }
+run_shfmt() { git ls-files -z '*.sh' | xargs -0 shfmt -d -i 2 -ci; }
+run_hadolint() { git ls-files -z '*Dockerfile' | xargs -0 hadolint; }
+# 部分シェルで実行する。ここで cd が漏れると、後続の検査が load/ だけを見て緑になる。
+run_load() { (cd load && ../tools/node_modules/.bin/biome check .); }
+
+check shellcheck run_shellcheck
+check shfmt run_shfmt
+check actionlint actionlint
+check zizmor zizmor --no-progress .github/workflows
+check hadolint run_hadolint
+check biome-load run_load
+check betterleaks betterleaks dir . --redact --no-banner
+
+if [ -n "$failed" ]; then
+  echo "failed:$failed" >&2
+  exit 1
+fi
+'''
+
+[tasks.format-repo]
+description = "Format shell and load tests, applying the fixes the linters can make"
+run = '''
+#!/usr/bin/env sh
+set -eu
+git ls-files -z '*.sh' | xargs -0 shfmt -w -i 2 -ci
+(cd load && ../tools/node_modules/.bin/biome check --write .)
+'''
+
+[tasks.audit-secrets-history]
+description = "Scan the whole Git history for secrets"
+# 履歴の走査だけは lint-repo に混ぜない。毎回のゲートに入れるには重く、監査として明示的に呼ぶものである。
+run = "betterleaks git . --redact --no-banner"
+
 [tasks.verify-go]
 description = "Verify Go with lint and race-enabled tests"
 depends = ["lint-go", "test-go-race"]
@@ -116,7 +200,7 @@ run = "golangci-lint run --fix ./..."
 
 [tasks.clean-lint-cache]
 description = "Clear the golangci-lint cache"
-run = "rm -rf /tmp/idmagic-golangci-cache"
+run = "golangci-lint cache clean"
 
 [tasks.format-go]
 description = "Format Go code"

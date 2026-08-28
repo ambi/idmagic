@@ -28,7 +28,8 @@ done
 readonly OUTPUT_DIR="$1"
 mkdir -p "$OUTPUT_DIR"
 
-readonly TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly TIMESTAMP
 readonly DUMP_FILE="${OUTPUT_DIR}/idmagic-${TIMESTAMP}.dump"
 
 echo "== pg_dump ${PGDATABASE}@${PGHOST}:${PGPORT} -> ${DUMP_FILE} ==" >&2

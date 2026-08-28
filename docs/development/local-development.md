@@ -2,7 +2,16 @@
 
 ## 環境の準備
 
-ツールの版とコマンドは `mise.toml` が正本である。固定したツールとリポジトリの依存を導入する。
+ツールの版とコマンドは `mise.toml` が正本である。ただし **mise 自身は `mise.toml` では導入できない**ので、最初の 1 つだけは外から入れる。
+
+```bash
+brew install mise         # macOS
+curl https://mise.run | sh # それ以外
+```
+
+`mise.toml` は `min_version` で必要な下限を宣言している。これより古い mise は設定を読んだ時点で止まるので、上のいずれかで入れ直す。
+
+続けて、固定したツールとリポジトリの依存を導入する。
 
 ```bash
 mise install

@@ -1,0 +1,10 @@
+{
+  // ビルドは tsconfig.app.json だけを見る。テストとスクリプトの型エラーで製品のビルドが落ちると、
+  // 原因と結果が離れるためである。型検査はこの設定を使い、src の外も含めて見る。
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["vite/client", "bun-types", "node"],
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/check.tsbuildinfo"
+  },
+  "include": ["src", "tests", "scripts", "vite.config.ts"]
+}

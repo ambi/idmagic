@@ -116,8 +116,12 @@ echo "Starting idmagic API at $DEV_API_ADDR"
   export DEMO_CLIENT_SECRET DEMO_USER_PASSWORD
   export ADDR="$DEV_API_ADDR" ISSUER="$DEV_ISSUER" SEED_ENVIRONMENT=development SEED_PROFILE=development
   if [ "$MODE" = "durable" ]; then
+    # 部分シェルの中だけで export する。API とワーカーに別々の環境を渡すための意図した局所化なので、
+    # 「部分シェルの変更は失われる」という指摘は当たらない。
+    # shellcheck disable=SC2030
     export PERSISTENCE=postgres DATABASE_URL
   else
+    # shellcheck disable=SC2030
     export PERSISTENCE=memory
   fi
   exec "$RUN_DIR/idmagic"
@@ -128,6 +132,8 @@ if [ "$MODE" = "durable" ]; then
   echo "Starting idmagic worker"
   (
     cd "$ROOT_DIR"
+    # API 側と同じく、ワーカーの部分シェルに閉じた export である。
+    # shellcheck disable=SC2031
     export PERSISTENCE=postgres DATABASE_URL
     exec "$RUN_DIR/idmagic-worker"
   ) &

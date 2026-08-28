@@ -1,6 +1,7 @@
 {
   "name": "idmagic-ui",
   "private": true,
+  "packageManager": "bun@1.4.0",
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.app.json && bun ./node_modules/vite/bin/vite.js build",
@@ -9,7 +10,7 @@
     "format:check": "biome format .",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
     "test:e2e": "bun test tests/e2e/ui-scenario-actions.spec.ts && bun test tests/e2e/ui-scenario-smoke.spec.ts && bun test tests/e2e/admin-session-recovery.spec.ts && bun test tests/e2e/authorize-golden-path.spec.ts",
     "test:unit": "bun test src/",
     "test:unit:coverage": "bun test --coverage src/",

@@ -27,5 +27,5 @@ frontend/coverage/
 spec/generated/
 spec/idmagic.full.html
 
-# Local dev state (persistent embedded PostgreSQL cluster for `just dev`)
+# Local dev state (persistent embedded PostgreSQL cluster for `mise run dev`)
 /.dev/

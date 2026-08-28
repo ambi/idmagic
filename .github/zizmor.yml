@@ -1,0 +1,13 @@
+# GitHub Actions の監査設定。
+#
+# unpinned-uses は既定では全アクションにコミットハッシュ固定を求める。ここでは所有者で分ける。
+# actions/* と github/* は GitHub 自身がタグを運用しており、タグの付け替えは GitHub の
+# アカウント侵害と同義になるので、可動タグを許してでも更新の追従を取る。
+# それ以外の発行者は、タグを付け替えられても外から見分けが付かないのでハッシュ固定を要求する。
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        actions/*: ref-pin
+        github/*: ref-pin
+        "*": hash-pin

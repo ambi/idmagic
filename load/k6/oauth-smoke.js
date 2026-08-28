@@ -1,7 +1,7 @@
-import http from 'k6/http'
+import { check, fail } from 'k6'
 import crypto from 'k6/crypto'
 import encoding from 'k6/encoding'
-import { check, fail } from 'k6'
+import http from 'k6/http'
 import { Trend } from 'k6/metrics'
 
 const baseURL = __ENV.IDMAGIC_BASE_URL || 'http://host.docker.internal:8080/realms/default'
@@ -67,20 +67,36 @@ export function setup() {
 export default function () {
   const { verifier, challenge } = pkce()
   const state = `k6-${__VU}-${__ITER}`
-  const authorize = http.get(`${baseURL}/authorize?${form({
-    response_type: 'code', client_id: clientID, redirect_uri: redirectURI,
-    scope: 'openid offline_access', state, nonce: state,
-    code_challenge: challenge, code_challenge_method: 'S256',
-  })}`, { redirects: 0 })
-  check(authorize, { 'authorization starts a login transaction': (r) => r.status === 302 || r.status === 303 })
+  const authorize = http.get(
+    `${baseURL}/authorize?${form({
+      response_type: 'code',
+      client_id: clientID,
+      redirect_uri: redirectURI,
+      scope: 'openid offline_access',
+      state,
+      nonce: state,
+      code_challenge: challenge,
+      code_challenge_method: 'S256',
+    })}`,
+    { redirects: 0 },
+  )
+  check(authorize, {
+    'authorization starts a login transaction': (r) => r.status === 302 || r.status === 303,
+  })
   if (authorize.status !== 302 && authorize.status !== 303) {
-    fail(`authorization did not start a login transaction: HTTP ${authorize.status} ${authorize.body}`)
+    fail(
+      `authorization did not start a login transaction: HTTP ${authorize.status} ${authorize.body}`,
+    )
   }
 
   const transaction = http.get(`${baseURL}/api/auth/transaction`)
   const csrfToken = transaction.json('csrf_token')
   const login = http.post(`${baseURL}/api/auth/login`, JSON.stringify({ username, password }), {
-    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken, Origin: browserOrigin },
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken,
+      Origin: browserOrigin,
+    },
   })
   check(login, { 'login succeeds': (r) => r.status === 200 })
   if (login.status !== 200) {
@@ -90,7 +106,11 @@ export default function () {
   if (login.json('next') === '/consent') {
     const consentTransaction = http.get(`${baseURL}/api/auth/transaction`)
     const consent = http.post(`${baseURL}/api/auth/consent`, JSON.stringify({ action: 'allow' }), {
-      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': consentTransaction.json('csrf_token'), Origin: browserOrigin },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': consentTransaction.json('csrf_token'),
+        Origin: browserOrigin,
+      },
     })
     check(consent, { 'consent succeeds': (r) => r.status === 200 })
     redirectTo = consent.json('redirect_to')
@@ -98,9 +118,21 @@ export default function () {
   const code = /[?&]code=([^&]+)/.exec(redirectTo || '')?.[1]
   check(code, { 'authorization code is returned': (value) => value !== null })
 
-  const authorizationCode = issueToken({ grant_type: 'authorization_code', code, code_verifier: verifier, redirect_uri: redirectURI })
-  const refreshed = issueToken({ grant_type: 'refresh_token', refresh_token: authorizationCode.refresh_token })
-  check(refreshed, { 'refresh rotation returns a replacement token': (value) => Boolean(value.refresh_token) })
+  const authorizationCode = issueToken({
+    grant_type: 'authorization_code',
+    code,
+    code_verifier: verifier,
+    redirect_uri: redirectURI,
+  })
+  const refreshed = issueToken({
+    grant_type: 'refresh_token',
+    refresh_token: authorizationCode.refresh_token,
+  })
+  check(refreshed, {
+    'refresh rotation returns a replacement token': (value) => Boolean(value.refresh_token),
+  })
   const clientCredentials = issueToken({ grant_type: 'client_credentials', scope: 'openid' })
-  check(clientCredentials, { 'client credentials returns an access token': (value) => Boolean(value.access_token) })
+  check(clientCredentials, {
+    'client credentials returns an access token': (value) => Boolean(value.access_token),
+  })
 }

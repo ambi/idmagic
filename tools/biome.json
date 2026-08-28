@@ -7,15 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": [
-      "**",
-      "!**/node_modules",
-      "!bun.lock",
-      "!gen",
-      "!infra/observability/grafana/dashboards/*.json",
-      "!infra/load-tests/k6/*.json",
-      "!**/*.html"
-    ]
+    "includes": ["**", "!**/node_modules", "!bun.lock", "!gen", "!**/*.html"]
   },
   "formatter": {
     "enabled": true,

@@ -1,3 +1,12 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json"
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits"],
+  "lockFileMaintenance": { "enabled": true },
+  "packageRules": [
+    {
+      "description": "mise が固定する開発ツールは、版が動くと検査の結果が動く。まとめて 1 本の Pull Request で見る。",
+      "matchManagers": ["mise"],
+      "groupName": "development toolchain"
+    }
+  ]
 }

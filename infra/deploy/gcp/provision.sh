@@ -13,7 +13,7 @@ set -euo pipefail
 
 PROJECT="your-project"
 REGION="asia-northeast1"
-REPO="idmagic"                 # Artifact Registry リポジトリ
+REPO="idmagic" # Artifact Registry リポジトリ
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/idmagic:latest"
 DB_INSTANCE="idmagic-pg"
 DB_NAME="idmagic"
@@ -22,7 +22,7 @@ DB_USER="idmagic"
 # ---------------------------------------------------------------------------
 gcloud artifacts repositories create "$REPO" --repository-format=docker --location="$REGION" || true
 gcloud builds submit --tag "$IMAGE" --project "$PROJECT" \
-  --config /dev/stdin <<'YAML' .
+  --config /dev/stdin . <<'YAML'
 steps:
   - name: gcr.io/cloud-builders/docker
     args: ["build","-f","infra/docker/Dockerfile","-t","${_IMAGE}","."]
@@ -41,13 +41,12 @@ gcloud sql instances create "$DB_INSTANCE" \
 gcloud sql databases create "$DB_NAME" --instance "$DB_INSTANCE"
 gcloud sql users create "$DB_USER" --instance "$DB_INSTANCE" --password "REPLACE_ME"
 
-
 # ---------------------------------------------------------------------------
 # 3) Secret（接続文字列は Secret Manager に格納し、サービスへ注入）
 # ---------------------------------------------------------------------------
 printf 'postgres://%s:REPLACE_ME@/%s?host=/cloudsql/%s:%s:%s' \
-  "$DB_USER" "$DB_NAME" "$PROJECT" "$REGION" "$DB_INSTANCE" \
-  | gcloud secrets create idmagic-database-url --data-file=- || \
+  "$DB_USER" "$DB_NAME" "$PROJECT" "$REGION" "$DB_INSTANCE" |
+  gcloud secrets create idmagic-database-url --data-file=- ||
   gcloud secrets versions add idmagic-database-url --data-file=-
 
 # ---------------------------------------------------------------------------
@@ -68,7 +67,5 @@ gcloud beta run worker-pools deploy idmagic-worker \
   --min-instances=1 --max-instances=3 \
   --set-env-vars=PERSISTENCE=postgres,OBSERVABILITY=otel \
   --set-secrets=DATABASE_URL=idmagic-database-url:latest
-
-
 
 echo "done. 前段に Cloud Load Balancing + Cloud CDN + Cloud Armor、SPA は GCS+CDN を配置する。"

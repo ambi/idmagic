@@ -1,0 +1,50 @@
+# 秘密情報スキャンの設定。既定の検出規則をそのまま土台にし、このリポジトリで既知のものだけを 1 件ずつ理由付きで
+# 許可する。
+#
+# **信頼度の閾値では絞らない。** `--confidence medium` を試したところ、埋め込んだ AWS のアクセスキーが報告
+# されなくなった。ここでの信頼度は重大度ではなく検出器の確信度であり、一般的な形の資格情報ほど下に落ちる。
+# 閾値で黙らせると、まさに見つけたいものが見えなくなる。
+#
+# 新しい許可を足すときは、なぜそれが本物の秘密ではないのかをここに書く。
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "追跡しない派生表示。入力側を走査すれば足りる。"
+paths = [
+  '''(^|/)node_modules/''',
+  '''^spec/generated/''',
+  '''^frontend/dist/''',
+  '''^frontend/coverage/''',
+  '''^\.dev/''',
+]
+
+[[allowlists]]
+description = "ローカル開発スタックの固定資格情報。dev.sh、docker-compose.dev.yaml、バックアップ訓練が起動する使い捨ての PostgreSQL とデモ利用者のもので、リポジトリの外に対して何の権限も持たない。本番で別の値を要求することは CONFIGURATION.md が定める。"
+paths = [
+  '''^dev\.sh$''',
+  '''docker-compose\.dev\.yaml$''',
+  '''^infra/backup/restore-drill\.sh$''',
+]
+
+[[allowlists]]
+description = "デモスクリプトが自分で起動したローカルサーバーに対して使う Basic 認証。demo.sh の手順そのものが公開の説明であり、値はデモ用のクライアント資格情報である。"
+paths = ['''^demo\.sh$''']
+
+[[allowlists]]
+description = "「パスワード」という語を含むだけの文字列。UI の文言辞書、テストの固定値、TypeSpec のフィールド名、ロックファイル、文書の例示であり、値そのものが資格情報ではない。"
+paths = [
+  '''\.i18n\.ts$''',
+  '''\.test\.tsx?$''',
+  '''_test\.go$''',
+  '''^frontend/tests/''',
+  '''\.tsp$''',
+  '''bun\.lock$''',
+  '''\.md$''',
+]
+
+[[allowlists]]
+description = "プロトコルが定める URN。SAML の認証コンテキストクラスと IdMagic の ACR 語彙であり、識別子であって秘密ではない。"
+regexTarget = "line"
+regexes = ['''urn:[a-zA-Z0-9:.\-]*(?i:password|pwd)''']

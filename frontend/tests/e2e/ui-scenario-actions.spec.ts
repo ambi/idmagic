@@ -244,7 +244,7 @@ test('admin signing key rotation action is available to tenant admins', async ()
     await navigateAndLogin(view, '/admin/keys', 'admin-keys')
     await waitForText(view, 'Signing keys')
     expect(
-      await view.evaluate(`(() => [...document.querySelectorAll('button')]
+      await view.evaluate<boolean>(`(() => [...document.querySelectorAll('button')]
         .some((button) => (button.textContent ?? '').includes('Rotate')))()`),
     ).toBe(true)
   } finally {
