@@ -69,7 +69,7 @@ modify an external system. Filing the item is what authorizes the work, so the i
 approval record. Resolve every open question that would change product behavior, the public contract, the
 selected design boundary, or the task breakdown before implementation begins. If implementation discovers a
 normative change, return to specification work; never weaken a scenario to let an implementation pass. The
-risk-to-evidence rules live in [DEVELOPMENT.md](DEVELOPMENT.md#4-evidence-contract).
+risk-to-evidence rules live in [specification-first-workflow.md](docs/development/specification-first-workflow.md#4-evidence-contract).
 
 `affected_spec` is required for `feature`, `bugfix`, and `operations` items. It directly references a
 normative scenario/standard ID or a TypeSpec symbol. Changes with no specification impact (`refactor`,

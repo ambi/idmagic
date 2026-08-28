@@ -25,8 +25,23 @@ async function canonicalDocuments(directory: string, names: readonly string[]): 
   return names.filter((name) => files.has(name)).map((name) => `${directory}/${name}`)
 }
 
-const paths = ['DEVELOPMENT.md', 'SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
+/** Procedures form an open set; README stays first and the remaining subjects sort by file name. */
+async function procedureDocuments(directory: string): Promise<string[]> {
+  const entries = await readdir(resolve(root, directory), { withFileTypes: true })
+  return entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.md'))
+    .map((entry) => entry.name)
+    .sort((left, right) => {
+      if (left === 'README.md') return -1
+      if (right === 'README.md') return 1
+      return left.localeCompare(right)
+    })
+    .map((name) => `${directory}/${name}`)
+}
+
+const paths = ['SPECIFICATION_FORMAT.md', 'WORK_ITEM_FORMAT.md']
 paths.push(...(await canonicalDocuments('docs', ROOT_DOCUMENTS)))
+paths.push(...(await procedureDocuments('docs/development')))
 const contextRoot = resolve(root, 'docs/contexts')
 const contextDirectories = (await readdir(contextRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory())

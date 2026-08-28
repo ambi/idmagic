@@ -31,7 +31,7 @@ Anti-Corruption Layer についても、Context Map に Sourcing と WorkloadIde
 - **Aggregate の境界の記録先**：各 Context のどのファイルが Aggregate の境界を持つかを定める。
 - **Repository の粒度**：Repository が Aggregate 単位であるかどうかを決め、現状と食い違う場合はその理由を書く。
 - **ACL の配置規約**：Anti-Corruption Layer をどのディレクトリに、どの命名で置くかを定め、Sourcing と WorkloadIdentity の現状を照合する。
-- **境界の見直しの手順**：Context の境界を引き直す必要が生じたときに何をするかを、`DEVELOPMENT.md` のループのどこに接続するか決める。
+- **境界の見直しの手順**：Context の境界を引き直す必要が生じたときに何をするかを、`docs/development/specification-first-workflow.md` のループのどこに接続するか決める。
 
 ## Out of Scope
 
@@ -50,7 +50,7 @@ Aggregate の定義を `docs/glossary.md`（全体の用語集）に置くのは
 
 Aggregate の境界をどこに記録するかには 2 案ある。各 Context の `glossary.md` に載せる案と、`decisions.md` に判断として書く案である。採るのは `decisions.md` である。境界は「なぜここで切ったか」を伴わなければ次の変更で守られず、`SPECIFICATION_FORMAT.md` は理由の無い項目を「言い換えた規則であって判断ではない」として退けている。ただし Aggregate の名前そのものは `glossary.md` に載せ、定義と判断を分ける。
 
-Event Storming は境界の引き直しが必要と判断された場合の手順として `DEVELOPMENT.md` から参照する形を採り、常時の工程には入れない。人間 1 人とエージェントで行う形式は成立するが、境界が動かない限り費用に見合わない。
+Event Storming は境界の引き直しが必要と判断された場合の手順として `docs/development/specification-first-workflow.md` から参照する形を採り、常時の工程には入れない。人間 1 人とエージェントで行う形式は成立するが、境界が動かない限り費用に見合わない。
 
 未解決の論点として、Repository が現状 Aggregate 単位になっているかどうかは調査していない。なっていない場合、規範を現状に合わせるか現状を規範に合わせるかの判断が要る。実装着手前に確定させる。
 
@@ -61,7 +61,7 @@ Event Storming は境界の引き直しが必要と判断された場合の手�
 3. `docs/glossary.md` に Aggregate を定義し、`docs/database.md` の保持区分がその定義で読めることを確認する。
 4. 各 Context の Aggregate を洗い出し、境界の判断を `decisions.md` へ書く。既に暗黙に守られている境界を記述として書き、守られていない箇所は負債として記録する。
 5. Repository の粒度と ACL の配置を現状と照合し、規範を決める。
-6. 索引表へ分類の列を足し、境界の見直しの手順を `DEVELOPMENT.md` へ接続する。
+6. 索引表へ分類の列を足し、境界の見直しの手順を `docs/development/specification-first-workflow.md` へ接続する。
 
 ## Tasks
 

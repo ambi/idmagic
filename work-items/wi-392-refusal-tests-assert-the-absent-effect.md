@@ -13,7 +13,7 @@ spec_impact: { kind: none, reason: "既存テストへのアサーション追�
 
 ## Motivation
 
-[[wi-390-security-control-test-standard-and-gate]] は `DEVELOPMENT.md` に規範を置いた。拒否は「返ったステータス」ではなく「起きなかった副作用」で確かめる。**規範を書いただけで、既存のテストは直していない。**
+[[wi-390-security-control-test-standard-and-gate]] は `docs/development/specification-first-workflow.md` に規範を置いた。拒否は「返ったステータス」ではなく「起きなかった副作用」で確かめる。**規範を書いただけで、既存のテストは直していない。**
 
 `mise run report-security-test-gaps` の実測 (2026-08-22) では、状態を変える操作の拒否を検証しているテスト 120 件のうち **84 件が、拒否のあとに状態を読み直していない**。
 
@@ -50,7 +50,7 @@ wi-390 で 1 件だけ直した `TestEnsureDefaultAndRejectDefaultDisable` が�
 未定。着手時に次の 2 点を確定して本節に記録する。
 
 1. **分割の単位。** 84 件を 1 度に扱うと着手できない。領域ごと (`application/handlers_http` の 10 件、`sourcing/scim` の 10 件…) に切るのが素直だが、テストの書き方は層 (handlers_http / usecases / db_*) で揃っているので層ごとのほうが手数が少ないかもしれない。最初の 1 領域を通してから決める。
-2. **「読み直し」の書き方の型。** handlers_http では HTTP で読み直すのか、リポジトリを直接読むのか。前者は経路ごと確かめられるが、読み取り側の認可にも依存する。後者は素直だが、テストがリポジトリを握っていない場合に書けない。型を決めて `DEVELOPMENT.md` の例に足すかを判断する。
+2. **「読み直し」の書き方の型。** handlers_http では HTTP で読み直すのか、リポジトリを直接読むのか。前者は経路ごと確かめられるが、読み取り側の認可にも依存する。後者は素直だが、テストがリポジトリを握っていない場合に書けない。型を決めて `docs/development/specification-first-workflow.md` の例に足すかを判断する。
 
 ## Plan
 

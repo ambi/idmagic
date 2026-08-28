@@ -129,7 +129,7 @@ spec_impact: { kind: none, reason: "検査の追加と、既存シナリオへ�
 
 ### 4. R4 が実際に見つけたもの — 検査が要求した assert が現存の欠陥を暴いた
 
-R4 は宣言を要求するだけで、実装は見ない。しかし宣言にはテストが要る (R3) ため、[DEVELOPMENT.md](../../DEVELOPMENT.md) の「拒否のテスト」に従って**拒否が触らなかったもの**を assert したところ、`authorization` の非管理者テストが落ちた。403 を返しながら認可モデルの版が作られていた。
+R4 は宣言を要求するだけで、実装は見ない。しかし宣言にはテストが要る (R3) ため、[仕様先行の開発手順](../../docs/development/specification-first-workflow.md) の「拒否のテスト」に従って**拒否が触らなかったもの**を assert したところ、`authorization` の非管理者テストが落ちた。403 を返しながら認可モデルの版が作られていた。
 
 原因は `WriteAdminAccessError` が `WriteProblem` の結果 (成功時は `nil`) を返していたことである。ハンドラーが直接返す限りは正しく止まるが、`requireAuthorizationAdmin` と `requireWorkflowAdmin` は**その戻り値を返すヘルパー**であり、`if err := d.requireXxx(c); err != nil` が素通りしていた。wi-390 が塞いだ CSRF の欠陥と同じ形が、writer を 1 段挟んだところに残っていた。
 
@@ -138,7 +138,7 @@ R4 は宣言を要求するだけで、実装は見ない。しかし宣言に�
 ## Plan
 
 - R4 を先に入れ、落ちるコンテキストを検査に言わせてから補完に入る。
-- 補完は 1 件ずつ、シナリオ → テスト → 検査の順で進める。テストは [DEVELOPMENT.md](../../DEVELOPMENT.md) の「拒否のテスト」に従い、返った状態と、拒否が触らなかったものの双方を assert する。
+- 補完は 1 件ずつ、シナリオ → テスト → 検査の順で進める。テストは [仕様先行の開発手順](../../docs/development/specification-first-workflow.md) の「拒否のテスト」に従い、返った状態と、拒否が触らなかったものの双方を assert する。
 - 137 件の分類は、報告タスクで順番を決めてから確認する。分類の基準が定まらないうちに自動化すると、誤分類を固定する。
 
 ## Tasks

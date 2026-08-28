@@ -50,7 +50,7 @@ spec_impact: { kind: none, reason: "リポジトリの入口に置く文書を�
 ## Out of Scope
 
 - リリース・ロールバック手順の文書化。DOCUMENTATION_GUIDE §11.2 は `operations/release-and-rollback.md` を挙げるが、**このリポジトリはまだリリースを行っていない。** 手順の無い段階で手順書を作ると、§3 の「必要が生じていない文書を作らない」に反し、最初のリリースの時点で必ず書き直しになる。最初のリリースを定義する変更が持つ。
-- テスト水準の文書（§10.3 の `testing.md`）。検証のはしごと拒否のテストの規範は [DEVELOPMENT.md](../../DEVELOPMENT.md) §4 が既に持っており、いま独立した文書が無いことで困っている読み手はいない。
+- テスト水準の文書（§10.3 の `testing.md`）。検証のはしごと拒否のテストの規範は [仕様先行の開発手順](../../docs/development/specification-first-workflow.md) §4 が既に持っており、いま独立した文書が無いことで困っている読み手はいない。
 - サービス目標の正本化。[[wi-400-service-objectives-need-stable-ids]] が持つ。
 - 製品概要の詳細（対象ユーザー、解決する問題）。対象外の宣言と同じ場所に置くかは Design の 1 で決めるが、内容を書き起こすのはこの変更の後でよい。
 

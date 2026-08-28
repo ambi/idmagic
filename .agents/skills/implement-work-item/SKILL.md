@@ -11,7 +11,8 @@ description: "Implement a chosen work item end to end: specification first, sepa
 3. Resolve every open question that would change product behavior, the public contract, the selected design
    boundary, or the task breakdown. Move genuinely deferred choices to Out of Scope.
 4. Rewrite `initial_context` to what you actually read, set `evidence_policy: risk-based-v2`, and apply the
-   risk contract in `DEVELOPMENT.md`, naming the intended Acceptance RED and Unit RED checks before you start.
+   risk contract in `docs/development/specification-first-workflow.md`, naming the intended Acceptance RED and
+   Unit RED checks before you start.
 5. Set the status to `in_progress` and pass `mise run check-work-items` and `mise run check-ids`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
@@ -25,7 +26,7 @@ description: "Implement a chosen work item end to end: specification first, sepa
    check that actually failed instead of inventing a product requirement or test boundary.
    Where the change parses, decodes, splits, normalizes, or compares untrusted input by hand, add a fuzz target
    beside the examples and give it an oracle stronger than "does not panic"; see Properties and fuzzing in
-   `DEVELOPMENT.md`.
+   `docs/development/specification-first-workflow.md`.
 8. When bounded contexts, structure, technology, runtime composition, or core design rules change, use
    `update-design`. Run the narrowest test recipe after each behavior and update its task as it completes.
 9. Collect the risk-selected change-resistance evidence and have a person or fresh-context agent that did not

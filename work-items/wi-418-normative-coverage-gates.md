@@ -21,7 +21,7 @@ affected_spec:
 
 シナリオ側にも同じ非対称がある。`tools/check/src/security-controls.ts` の `checkRefusalCoverage` は、拒否を宣言したシナリオを名指しするテストが存在することを検査し、未対応分を `tools/check/security-refusal-debt.json` に負債として明示管理している。仕組みとしては完成しているが、対象は拒否を宣言したシナリオだけである。それ以外の `REQ-<CONTEXT>-NNN` は、どのテストからも名指しされないまま存在できる。
 
-`DEVELOPMENT.md` は「テストやコードに要求 ID を書くことが、後から `spec-where` と生成されたトレーサビリティのページの両方でその対応を見つけられるようにする」と述べており、トレーサビリティのページは `render-spec-docs` が生成する。しかしそれは view であってゲートではない。名指しが無いことは、生成された表に空欄として現れるだけで、何も止めない。Behavior-Driven Development の中心はシナリオが実行されることにあるので、拒否だけが検査されている現状はその中心を半分しか満たしていない。
+`docs/development/specification-first-workflow.md` は「テストやコードに要求 ID を書くことが、後から `spec-where` と生成されたトレーサビリティのページの両方でその対応を見つけられるようにする」と述べており、トレーサビリティのページは `render-spec-docs` が生成する。しかしそれは view であってゲートではない。名指しが無いことは、生成された表に空欄として現れるだけで、何も止めない。Behavior-Driven Development の中心はシナリオが実行されることにあるので、拒否だけが検査されている現状はその中心を半分しか満たしていない。
 
 第三の穴として、`docs/glossary.md` と各 Context の `glossary.md` が Published Language を定めているのに、そこに無い語をシナリオが使っても検査は通る。用語集とシナリオが同じ語彙を使っていることは、誰も見ていない。
 

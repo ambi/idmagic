@@ -6,7 +6,7 @@
 
 実装から仕様を引くときは、パッケージ名に対応する Context を見る。Context に属さない技術的な共通機能は `backend/shared/` に集約している。
 
-人が書く文書はこの `docs/` にすべて集める。機械が食う契約——TypeSpec のソースと、そこから導いた OpenAPI の互換性ベースライン——だけが `spec/` にあり、2 つの木は `contexts/<context>/` で対応する。1 つの Context の散文は `docs/contexts/oauth2/`、その契約は `spec/contexts/oauth2/` にある。生成物はすべて追跡しない `spec/generated/` へ出るので、**`docs/` の下にあるものはすべて人が書いたものである。**
+人が書く製品文書と開発文書はこの `docs/` に集める。機械が読む契約である TypeSpec のソースと、そこから導いた OpenAPI の互換性ベースラインだけが `spec/` にあり、2 つの木は `contexts/<context>/` で対応する。1 つの Context の散文は `docs/contexts/oauth2/`、その契約は `spec/contexts/oauth2/` にある。生成物はすべて追跡しない `spec/generated/` へ出るので、`docs/` の下にあるものはすべて人が書いたものである。
 
 開発ツールのバージョンとリポジトリのコマンドマップはルートの `mise.toml` に集約する。同じ固定バージョンは mise の利用者単位の共有ストアを再利用し、リポジトリ固有の導入手順や別のタスクランナーを併存させない。
 
@@ -105,6 +105,7 @@ flowchart LR
 
 | File | Content |
 |---|---|
+| [product-overview.md](product-overview.md) | 製品が解く問題、想定する利用者、対象外 |
 | [structure.md](structure.md) | ディレクトリ、依存の向き、層の構成、アーキテクチャスタイル |
 | [design-rules.md](design-rules.md) | モジュールのインターフェース、Seam、型、作用、エラーを評価する設計規則 |
 | [glossary.md](glossary.md) | Context を跨いで意味が固定される語 |
@@ -118,4 +119,6 @@ flowchart LR
 | [threat-model.md](threat-model.md) | 信頼境界とそこで信用しないもの、資産、識別した脅威と応える制御 |
 | [scenarios.md](scenarios.md) | Context を跨がないと成り立たない振る舞い |
 
-手順はこの平面には置かない。障害時の手順は [runbooks/](runbooks/) にある。開発環境、ビルド、検証の進め方はルートの [DEVELOPMENT.md](../DEVELOPMENT.md) と [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。
+## Procedure Planes
+
+手順は上の正本文書と混ぜない。開発の進め方、環境、生成、CI、テスト、リリースは [development/](development/) にあり、障害時と手動運用の手順は [runbooks/](runbooks/) にある。Pull Request の規則はルートの [CONTRIBUTING.md](../CONTRIBUTING.md) が持つ。

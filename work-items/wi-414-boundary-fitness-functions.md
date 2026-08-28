@@ -17,7 +17,7 @@ spec_impact: { kind: none, reason: "docs/structure.md へ公開言語の定義�
 
 実際の import グラフは宣言と一致していない。`backend/oauth2` は `authentication/mfa/usecases`、`authentication/session/usecases`、`authentication/totp/usecases`、`authentication/webauthn/handlers_http` を直接 import している。Context Map が `Authentication --OHS/PL--> OAuth2` の一方向だけを宣言しているのに対し、実装は `oauth2 → authentication` と `authentication → oauth2` の双方向であり、`idmanagement ↔ authentication`、`tenancy ↔ idmanagement` にも循環がある。公開言語であるはずの `domain` と `ports` を越えて、他 Context の `usecases` と `handlers_http` に到達している。
 
-Modular Monolith の全体重は「モジュールの内部が外から見えないこと」に乗っている。それが慣習だけで支えられている限り、Context Map は現在の設計の記述ではなく努力目標にすぎず、`DEVELOPMENT.md` が求める「現在の設計は正本文書と work item だけから理解できる」状態を満たさない。同じ理由で、`domain` が純粋であるという性質もどこにも書かれておらず検査もされていないため、`domain` の中で `time.Now()` を呼ぶことは今のところ自由である。
+Modular Monolith の全体重は「モジュールの内部が外から見えないこと」に乗っている。それが慣習だけで支えられている限り、Context Map は現在の設計の記述ではなく努力目標にすぎず、`docs/development/specification-first-workflow.md` が求める「現在の設計は正本文書と work item だけから理解できる」状態を満たさない。同じ理由で、`domain` が純粋であるという性質もどこにも書かれておらず検査もされていないため、`domain` の中で `time.Now()` を呼ぶことは今のところ自由である。
 
 `checkRefusalCoverage` と `security-refusal-debt.json`（`tools/check/src/security-controls.ts:307`）は、既存の違反を負債として明示管理しながら新規の違反を止めるという型を既に持っている。同じ型を境界に適用する。
 
@@ -27,7 +27,7 @@ Modular Monolith の全体重は「モジュールの内部が外から見えな
 - **Context 間の禁止依存**：`check-boundaries` に、他 Context の非公開パッケージへの import を拒否する規則を足す。
 - **循環の非存在**：Context 単位の依存グラフを組み立て、循環を拒否する。
 - **Context Map との一致**：`docs/README.md` の Context Map の矢印を読み取り、実 import グラフが宣言に無い辺を持つ場合に拒否する。Context Map を機械可読な正本として扱えるようにする。
-- **`domain` の作用禁止**：`domain` パッケージが `time.Now`、`math/rand`、`crypto/rand`、`os`、`net`、`database/sql` を参照することを拒否する。作用は引数として入るという `DEVELOPMENT.md` の規律を、変更時の手順ではなくシステムの現在の性質として固定する。
+- **`domain` の作用禁止**：`domain` パッケージが `time.Now`、`math/rand`、`crypto/rand`、`os`、`net`、`database/sql` を参照することを拒否する。作用は引数として入るという `docs/development/specification-first-workflow.md` の規律を、変更時の手順ではなくシステムの現在の性質として固定する。
 - **迂回の検出**：`backend/shared/` を経由して禁止された方向へ到達する経路を、直接の import と同じ扱いで拒否する。
 - **負債の明示管理**：既存の違反は `tools/check/boundary-debt.json` に列挙し、新規の違反だけを落とす。負債ファイルに残る項目は、その Context 対と理由を持つ。
 - **層名の修正**：`docs/structure.md` が層を `usecase/`（単数）と書いているが実体は `usecases/`（複数）なので、実装に合わせる。
@@ -41,7 +41,7 @@ Modular Monolith の全体重は「モジュールの内部が外から見えな
 
 ## Design
 
-検査の実装場所は既存の `check-boundaries` を拡張する。独立したツールを足さないのは、`mise run check-boundaries` が既に `DEVELOPMENT.md` のループにゲートとして載っており、読み手が探す場所を増やさないためである。
+検査の実装場所は既存の `check-boundaries` を拡張する。独立したツールを足さないのは、`mise run check-boundaries` が既に `docs/development/specification-first-workflow.md` のループにゲートとして載っており、読み手が探す場所を増やさないためである。
 
 Context Map を機械可読にする方法は 2 つある。採るのは Mermaid のフェンスをそのまま解析する案である。`docs/README.md` の Context Map は既に `flowchart LR` で辺と種類を書いており、これを正本のまま読めば第二の台帳が生まれない。却下したのは、Context 間の許可された辺を YAML の一覧として別に持つ案である。`AGENTS.md` が「アーキテクチャ台帳を足さない。境界検査は経路から構造を推論し、禁止された依存だけを拒否する」と定めており、辺の一覧はまさにその台帳になる。Mermaid の解析は脆いという欠点があるが、書式が崩れれば検査が落ちるので、黙って古くなることはない。
 

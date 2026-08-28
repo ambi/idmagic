@@ -6,7 +6,11 @@
 .
 ├── backend/           # Go Bounded Contexts, shared, cmd/
 ├── frontend/          # React UI and gateway
-├── spec/              # TypeSpec, canonical specification/design Markdown, and release baseline
+├── docs/              # human-authored product, specification, development, and runbook documents
+│   ├── contexts/<context>/
+│   ├── development/
+│   └── runbooks/
+├── spec/              # TypeSpec, generated views, and the OpenAPI release baseline
 │   └── contexts/<context>/
 ├── infra/             # container, local runtime, and database schema assets
 ├── load/k6/           # tenant-local OAuth SLO smoke
@@ -21,7 +25,9 @@
 
 | 関心事 | 置き場所 | 詳細 |
 | --- | --- | --- |
-| 仕様と設計 | `spec/**/*.tsp`, `spec/` の Markdown | 規範的な振る舞い、契約、現在の根拠。変更はここから始まる。 |
+| 仕様と設計 | `spec/**/*.tsp`, `docs/*.md`, `docs/contexts/**/*.md` | 規範的な振る舞い、契約、現在の根拠。変更はここから始まる。 |
+| 開発の進め方と手順 | `docs/development/*.md` | 仕様先行のワークフロー、環境、生成、CI、テスト、リリース。 |
+| 手動の運用手順 | `docs/runbooks/*.md` | 障害時または手動作業の最中に読む手順。 |
 | 変更の記録 | `work-items/*.md` | 1 つの変更についての代替案、計画、作業、完了の記録。 |
 | ドメインモデル | `backend/<context>/(<feature>/)domain` | フレームワークに依存しないドメインモデル。 |
 | アプリケーションロジック | `backend/<context>/(<feature>/)usecase` | フレームワークに依存しないユースケース。 |

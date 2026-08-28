@@ -99,6 +99,21 @@ const guideDocument = {
   source: '# Work Item Format\n\nEnglish method guidance.\n',
 }
 
+const developmentDocument = {
+  path: 'docs/development/README.md',
+  source: `# 開発文書
+
+| 文書 | 内容 |
+| --- | --- |
+| [release.md](release.md) | リリース手順 |
+`,
+}
+
+const releaseDocument = {
+  path: 'docs/development/release.md',
+  source: '# リリース\n\n段階的に展開する。\n',
+}
+
 const models: CatalogSymbol[] = [
   {
     kind: 'model',
@@ -159,6 +174,23 @@ const childLabels = (html: string | undefined) =>
   [...sidebar(html).matchAll(/class="nav-child"[^>]*>([^<]+)</g)].map((match) => match[1])
 
 describe('renderSpecificationSite', () => {
+  it('renders development documents as their own navigable plane', () => {
+    const result = renderSpecificationSite({
+      documents: [rootDocument, developmentDocument, releaseDocument],
+      repositoryRoot: '/repo',
+      outputDirectory: '/repo/spec/generated/docs',
+      openapiFileName: 'example.openapi.json',
+      openapi: {},
+      models: [],
+    })
+
+    expect(result.files['development/index.html']).toContain('href="release.html"')
+    expect(result.files['development/release.html']).toContain('リリース')
+    expect(sidebar(result.files['development/index.html'])).toContain(
+      '<summary>Development</summary>',
+    )
+  })
+
   it('renders a linked multi-page specification site', () => {
     const result = site()
 

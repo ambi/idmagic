@@ -49,6 +49,8 @@ type RenderedDocument = SourceDocument & {
 
 type DocumentCategory =
   | 'method'
+  | 'development'
+  | 'development-child'
   | 'whole-system'
   | 'whole-system-child'
   | 'context'
@@ -132,6 +134,29 @@ function documentMetadata(document: SourceDocument, index: number): RenderedDocu
           outputPath: `specification/${slug(stem)}.html`,
           category: 'whole-system-child',
           order: canonicalOrder(ROOT_DOCUMENTS, rootDocument, index),
+        }
+  }
+  const developmentDocument = document.path.match(/^docs\/development\/([^/]+)$/)?.[1]
+  if (developmentDocument) {
+    const stem = developmentDocument.replace(/\.md$/, '')
+    return developmentDocument === 'README.md'
+      ? {
+          ...document,
+          id: 'development',
+          title,
+          sections,
+          outputPath: 'development/index.html',
+          category: 'development',
+          order: 0,
+        }
+      : {
+          ...document,
+          id: `development-${slug(stem)}`,
+          title,
+          sections,
+          outputPath: `development/${slug(stem)}.html`,
+          category: 'development-child',
+          order: index,
         }
   }
   const contextDocument = document.path.match(/^docs\/contexts\/([^/]+)\/([^/]+)$/)
@@ -436,6 +461,8 @@ function childLabel(entry: RenderedDocument, documents: RenderedDocument[]): str
 
 function navigation(page: string, documents: RenderedDocument[]): string {
   const method = inGroup(documents, 'method')
+  const development = documents.find((document) => document.category === 'development')
+  const developmentChildren = inGroup(documents, 'development-child')
   const root = documents.find((document) => document.category === 'whole-system')
   const rootChildren = inGroup(documents, 'whole-system-child')
   const contexts = inGroup(documents, 'context')
@@ -445,6 +472,8 @@ function navigation(page: string, documents: RenderedDocument[]): string {
   const openContext = current?.context
   const insideWholeSystem =
     current?.category === 'whole-system' || current?.category === 'whole-system-child'
+  const insideDevelopment =
+    current?.category === 'development' || current?.category === 'development-child'
   const link = (entry: RenderedDocument, child: boolean) => {
     const marker = entry.outputPath === page ? ' aria-current="page"' : ''
     const cls = child ? ' class="nav-child"' : ''
@@ -468,6 +497,9 @@ function navigation(page: string, documents: RenderedDocument[]): string {
       method.map((entry) => link(entry, false)).join(''),
       current?.category === 'method',
     ),
+    development
+      ? group('Development', branch(development, developmentChildren), insideDevelopment)
+      : '',
     root ? group('Whole System', branch(root, insideWholeSystem ? rootChildren : []), true) : '',
     group(
       'Contexts',
@@ -567,10 +599,11 @@ function card(page: string, path: string, title: string, description: string): s
 function landingPage(documents: RenderedDocument[], modelCount: number): string {
   const page = 'index.html'
   const root = documents.find((document) => document.category === 'whole-system')
+  const development = documents.find((document) => document.category === 'development')
   const method = inGroup(documents, 'method')
   const contexts = inGroup(documents, 'context')
   const body = `<section class="hero"><p class="eyebrow">Generated from canonical Markdown and TypeSpec</p><h1>Specification</h1><p>Read the whole-system design, bounded-context specifications, API contract, and complete TypeSpec model catalog without treating this generated site as a source.</p></section>
-<section aria-labelledby="start"><h2 id="start">Start here</h2><div class="card-grid">${root ? card(page, root.outputPath, root.title, 'Cross-context ownership, current design, and the DDD context map.') : ''}${card(page, 'api/index.html', 'API Reference', 'The generated OpenAPI rendered by Swagger UI.')}${card(page, 'models/index.html', 'Model Catalog', `${modelCount} repository-owned TypeSpec symbols, including non-HTTP models.`)}</div></section>
+<section aria-labelledby="start"><h2 id="start">Start here</h2><div class="card-grid">${root ? card(page, root.outputPath, root.title, 'Cross-context ownership, current design, and the DDD context map.') : ''}${development ? card(page, development.outputPath, development.title, 'Development workflow, local procedures, testing, and release guidance.') : ''}${card(page, 'api/index.html', 'API Reference', 'The generated OpenAPI rendered by Swagger UI.')}${card(page, 'models/index.html', 'Model Catalog', `${modelCount} repository-owned TypeSpec symbols, including non-HTTP models.`)}</div></section>
 <section aria-labelledby="method"><h2 id="method">Method</h2><div class="card-grid">${method.map((entry) => card(page, entry.outputPath, entry.title, 'Specification-first development guidance.')).join('')}</div></section>
 <section aria-labelledby="contexts"><h2 id="contexts">Bounded contexts</h2><div class="card-grid">${contexts.map((entry) => card(page, entry.outputPath, entry.title, 'Overview, current design, state transitions, and scenarios.')).join('')}</div></section>`
   return shell({

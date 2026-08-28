@@ -37,7 +37,7 @@ docs/
     decisions.md
     internals.md       # only when a mechanism cannot be read out of the code
     scenarios.md
-  development/         # procedures: environment, build, generation, CI, testing, release
+  development/         # development workflow and procedures: environment, generation, CI, testing, release
   runbooks/<event>.md  # what on-call reads mid-incident
 
 spec/
@@ -46,6 +46,11 @@ spec/
   <product>.openapi.baseline.json
   contexts/<context>/{models.tsp,main.tsp}
 ```
+
+`docs/development/` owns all development workflow and procedure documents, including the specification-first
+loop, evidence contract, local environment, generation, CI, testing, and release. Repository entry documents
+link there instead of carrying a second copy. The file set is open because procedures are not canonical
+specification kinds; its `README.md` indexes the current files and each other file is named after its subject.
 
 `README.md` is the file a reader lands on when they open the directory, so it holds the boundary
 declaration and the index of its siblings. Create no file that has no content to hold: a small context

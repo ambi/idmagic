@@ -240,4 +240,4 @@ LINDDUN は併用しない。7 分類のうちこの製品で意味を持つ Ide
 - **資産が増える。** 新しい種類の秘密、個人データ、または後から証明を求められる記録を持つとき。
 - **`accepted` の再検討の条件が満たされる。**
 
-この義務は [DEVELOPMENT.md](../DEVELOPMENT.md) の現在状態の同期に含まれる。`planned` の行は、応える規範が書かれた時点で `covered` へ移し、`Controls` にその規範 ID を入れる。`—` のまま `covered` になる行は無い。
+この義務は [仕様先行の開発ワークフロー](development/specification-first-workflow.md) の現在状態の同期に含まれる。`planned` の行は、応える規範が書かれた時点で `covered` へ移し、`Controls` にその規範 ID を入れる。`—` のまま `covered` になる行は無い。

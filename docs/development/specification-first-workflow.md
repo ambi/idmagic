@@ -6,8 +6,8 @@ This workflow keeps product behavior, current design, implementation, and verifi
 small set of established formats. It favors direct ownership, generated views, and focused checks over
 custom specification languages, exhaustive registries, and separate decision archives.
 
-Three documents carry the formats: this one for the loop, [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md)
-for specification documents, and [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) for work items. Read the
+Three documents carry the formats: this one for the loop, [SPECIFICATION_FORMAT.md](../../SPECIFICATION_FORMAT.md)
+for specification documents, and [WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) for work items. Read the
 section you need; none of them is required reading.
 
 ## 2. Sources of truth

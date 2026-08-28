@@ -6,24 +6,24 @@ risk: low
 created_at: 2026-08-27
 priority: p2
 change_kind: docs
-spec_impact: { kind: none, reason: "方法論文書（DEVELOPMENT.md、WORK_ITEM_FORMAT.md）の補強であり、製品の振る舞いと外部契約を変えない。" }
+spec_impact: { kind: none, reason: "方法論文書（docs/development/specification-first-workflow.md、WORK_ITEM_FORMAT.md）の補強であり、製品の振る舞いと外部契約を変えない。" }
 ---
 
 # 方法論文書に、判断の可逆性・テストの配分・記録の根拠を足す
 
 ## Motivation
 
-`DEVELOPMENT.md` と `WORK_ITEM_FORMAT.md` は、いくつかの点で規律が非常に厚い一方、隣接する判断を読み手の裁量に委ねたままにしている。前 2 つの分析で見つかった、方法論文書の側に属する欠落をここにまとめる。
+`docs/development/specification-first-workflow.md` と `WORK_ITEM_FORMAT.md` は、いくつかの点で規律が非常に厚い一方、隣接する判断を読み手の裁量に委ねたままにしている。前 2 つの分析で見つかった、方法論文書の側に属する欠落をここにまとめる。
 
 第一に、`risk` が結果の重大さという一軸しか持たない。低・中・高・重大は「破れたときにどれだけ困るか」を表すが、「元に戻せるか」を表さない。現実には、重大だが元に戻せる判断（レプリカ構成、キャッシュ方針、UI の配置）と、軽微だが元に戻せない判断（ワイヤ形式、識別子の意味、公開スキーマ、鍵の破棄、`REQ` 番号の割り当て）があり、後者のほうが慎重さを要する。`SPECIFICATION_FORMAT.md` が `REQ` の不変性と退役をあれほど厳密に扱っているのは、この直感が既に部分的に入っている証拠だが、軸として明示されていないため一貫して適用できない。
 
-第二に、リファクタリングの規範が 3 行しかない。`DEVELOPMENT.md` は「GREEN のままリファクタリングする」と述べるだけで、何をリファクタリングとみなすか、いつ止めるかが無い。テスト先行の規律がこれだけ厚い文書で、赤緑リファクタリングの 3 番目だけが薄いのは不均衡である。
+第二に、リファクタリングの規範が 3 行しかない。`docs/development/specification-first-workflow.md` は「GREEN のままリファクタリングする」と述べるだけで、何をリファクタリングとみなすか、いつ止めるかが無い。テスト先行の規律がこれだけ厚い文書で、赤緑リファクタリングの 3 番目だけが薄いのは不均衡である。
 
 第三に、テストダブルの方針が無い。`db_memory` と `db_postgres` の 2 実装が全 Context に揃っているため、事実上フェイクを優先する設計になっているが、それは慣習であって規則ではない。どこでモックを使ってよいか、`db_memory` が `db_postgres` と同じ振る舞いをすることを何が保証するかが書かれていない。
 
 第四に、テストの配分方針が無い。「最も狭い境界のテスト」という原則はあるが、受け入れ、統合、E2E をどこまで持つかが定まっていない。`mise run test-ui-e2e` が存在するので E2E はあるが、何を E2E で確かめ何を確かめないかが未定義である。
 
-第五に、独立検証の位置づけが手法として説明されていない。`DEVELOPMENT.md` の「実装していない人または新しい文脈のエージェントが検証する」は明らかに Extreme Programming のペアレビューの代替物だが、そう書かれていないため、なぜその形なのかが読み取れない。
+第五に、独立検証の位置づけが手法として説明されていない。`docs/development/specification-first-workflow.md` の「実装していない人または新しい文脈のエージェントが検証する」は明らかに Extreme Programming のペアレビューの代替物だが、そう書かれていないため、なぜその形なのかが読み取れない。
 
 第六に、実装前に RED を観測して記録するという規律の根拠が書かれていない。この規律は、現実には探索的に進んだ作業を、あとから合理的な過程として提示することと必ず緊張を持つ。Parnas がこの緊張を正面から扱っており、「合理的な過程の記録は不誠実な偽装ではなく、読み手のために必要な整形である」という論拠を与える。根拠が無いまま記録だけを要求すると、規律が形式的な作業として扱われる。
 
@@ -34,7 +34,7 @@ spec_impact: { kind: none, reason: "方法論文書（DEVELOPMENT.md、WORK_ITEM
 - **テストダブルの方針**：フェイクを既定とすること、モックを使ってよい場合、`db_memory` と `db_postgres` の同値性を何が保証するかを書く。
 - **テストの配分**：受け入れ、統合、E2E のそれぞれで何を確かめ何を確かめないかを書く。E2E で確かめるものを、他の層で確かめられないものに限る。
 - **独立検証の位置づけ**：ペアレビューの代替であることと、その帰結（新しい文脈であることが本質であり、人かエージェントかは本質ではない）を書く。
-- **記録の根拠**：RED を実装前に観測して記録する規律の根拠を、`DEVELOPMENT.md` の「Influences and references」へ加える。
+- **記録の根拠**：RED を実装前に観測して記録する規律の根拠を、`docs/development/specification-first-workflow.md` の「Influences and references」へ加える。
 
 ## Out of Scope
 
@@ -53,15 +53,15 @@ spec_impact: { kind: none, reason: "方法論文書（DEVELOPMENT.md、WORK_ITEM
 
 テストダブルの方針で最も重要なのは、`db_memory` と `db_postgres` が同じ振る舞いをすることを何が保証するかである。現状を調査し、共有の契約テストで保証されているならそれを規範として書き、保証されていないなら負債として記録する。ここを書かずにフェイク優先だけを書くと、「メモリ版では通るが PostgreSQL では通らない」という失敗の型を放置することになる。
 
-記録の根拠については、`DEVELOPMENT.md` の「Influences and references」が既に「各項目は 1 つの影響につき代表的な出典を 1 つ挙げる。この一覧は出自を説明するものであって、追加の正本や完全な準拠を意味しない」という書式を持つ。同じ書式で 1 項目を足す。同時に、Ousterhout と Parnas の設計面の影響は wi-415 が扱うため、本 work item が足すのは記録と過程に関する項目に限る。
+記録の根拠については、`docs/development/specification-first-workflow.md` の「Influences and references」が既に「各項目は 1 つの影響につき代表的な出典を 1 つ挙げる。この一覧は出自を説明するものであって、追加の正本や完全な準拠を意味しない」という書式を持つ。同じ書式で 1 項目を足す。同時に、Ousterhout と Parnas の設計面の影響は wi-415 が扱うため、本 work item が足すのは記録と過程に関する項目に限る。
 
 未解決の論点として、E2E で確かめるものの範囲は、現在の `test-ui-e2e` が何を確かめているかを調査してから決める。既存の E2E が広範であれば、方針を書くことが既存テストの削減を意味することになり、それは本 work item の範囲を超える。調査の結果に応じて、方針を「以後の追加に適用する」に限定する。
 
 ## Plan
 
 1. 現在の `test-ui-e2e` の対象と、`db_memory` と `db_postgres` の同値性の保証の有無を調査する。
-2. 可逆性の軸を `WORK_ITEM_FORMAT.md` の frontmatter へ足し、`DEVELOPMENT.md` の証拠契約の表へ重ねる要求を書く。
-3. リファクタリング、テストダブル、テストの配分を `DEVELOPMENT.md` へ書く。調査で見つかった保証の欠落は負債として記録する。
+2. 可逆性の軸を `WORK_ITEM_FORMAT.md` の frontmatter へ足し、`docs/development/specification-first-workflow.md` の証拠契約の表へ重ねる要求を書く。
+3. リファクタリング、テストダブル、テストの配分を `docs/development/specification-first-workflow.md` へ書く。調査で見つかった保証の欠落は負債として記録する。
 4. 独立検証の位置づけと記録の根拠を書く。
 5. `tools/check` の work item スキーマへ `reversibility` を加える。
 6. `AGENTS.md` の表へ 1 行が必要かを判断する。
@@ -69,7 +69,7 @@ spec_impact: { kind: none, reason: "方法論文書（DEVELOPMENT.md、WORK_ITEM
 ## Tasks
 
 - [ ] T001 [Baseline] E2E の現在の対象と、メモリ版と PostgreSQL 版の同値性の保証の有無を調査する。
-- [ ] T002 [Spec] `WORK_ITEM_FORMAT.md` と `DEVELOPMENT.md` へ可逆性の軸を足す。
+- [ ] T002 [Spec] `WORK_ITEM_FORMAT.md` と `docs/development/specification-first-workflow.md` へ可逆性の軸を足す。
 - [ ] T003 [Tooling] work item スキーマへ `reversibility` を加え、値の集合を検査する。
 - [ ] T004 [Spec] リファクタリング、テストダブル、テストの配分の方針を書く。
 - [ ] T005 [Spec] 独立検証の位置づけと、記録の根拠を書く。
@@ -85,7 +85,7 @@ spec_impact: { kind: none, reason: "方法論文書（DEVELOPMENT.md、WORK_ITEM
 
 ## Risk Notes
 
-方法論文書は増やすほど読まれなくなる。`DEVELOPMENT.md` は既に 291 行あり、ここへ 6 つの話題を足すと、必要な節を探す費用が上がる。同文書自身が「必要な節を読め。全体を読む必要はない」と述べているため、節の見出しが内容を正確に言い当てていることが、追加の条件になる。
+方法論文書は増やすほど読まれなくなる。`docs/development/specification-first-workflow.md` は既に 291 行あり、ここへ 6 つの話題を足すと、必要な節を探す費用が上がる。同文書自身が「必要な節を読め。全体を読む必要はない」と述べているため、節の見出しが内容を正確に言い当てていることが、追加の条件になる。
 
 可逆性の軸を導入すると、申告が形式化して全ての work item が `reversible` になるおそれがある。何が不可逆かの具体例（ワイヤ形式、識別子の意味、公開スキーマ、鍵の破棄、`REQ` 番号）を列挙し、判断を裁量に委ねすぎない。
 

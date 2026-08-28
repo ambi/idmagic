@@ -5,7 +5,7 @@
 | What | Language |
 |---|---|
 | Repository-root `README.md`, headings included | Japanese |
-| `CONFIGURATION.md`, `DEVELOPMENT.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
+| `CONFIGURATION.md`, `docs/development/specification-first-workflow.md`, `SPECIFICATION_FORMAT.md`, `WORK_ITEM_FORMAT.md`, this file | English |
 | `DOCUMENTATION_GUIDE.md`, headings included | Japanese |
 | `spec/**/*.tsp`, doc comments included | English |
 | Prose in the canonical documents under `docs/`, `docs/README.md` and `docs/contexts/*/README.md` included | Japanese |
@@ -62,7 +62,7 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
     kind of content is. The file name is the division; there is no single per-context document.
   - Use stable `REQ-<CONTEXT>-NNN` normative scenario IDs and TypeSpec symbols in work-item references.
   - Treat these as section-addressable references, not required reading:
-    [DEVELOPMENT.md](DEVELOPMENT.md) for the stage/skill/gate loop and the verification ladder,
+    [docs/development/specification-first-workflow.md](docs/development/specification-first-workflow.md) for the stage/skill/gate loop and the verification ladder,
     [SPECIFICATION_FORMAT.md](SPECIFICATION_FORMAT.md) for specification documents, and
     [WORK_ITEM_FORMAT.md](WORK_ITEM_FORMAT.md) for work items.
   - [DOCUMENTATION_GUIDE.md](DOCUMENTATION_GUIDE.md) describes the document system in general, without
@@ -77,7 +77,7 @@ Source files wrap at about 150 columns. Do not carry the old 80-column habit int
     put change-specific analysis, alternatives, and implementation history in the work item.
   - Do not add architecture ledgers. Boundary checks infer structure from paths and reject forbidden dependencies only.
   - Test a refusal for the effect it prevented, not only for the status it returned; see the verification
-    ladder in [DEVELOPMENT.md](DEVELOPMENT.md).
+    ladder in [docs/development/specification-first-workflow.md](docs/development/specification-first-workflow.md).
 
 ## Commands via mise
 
