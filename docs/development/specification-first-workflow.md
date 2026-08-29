@@ -58,7 +58,7 @@ satisfied by an observation.
 |---|---|---|
 | `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended Acceptance RED and Unit RED checks. | Record both RED results. If either is not applicable, record why and the cheapest alternate check that was actually observed failing. |
 | `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary and show that a representative incorrect implementation is detected. |
-| `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements and use `mise run test-go-mutation-package -- <package> <git-ref>` or explicit fault injection for changed pure logic. Record equivalent mutations and tool limits rather than hiding them. |
+| `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements. One representative wrong implementation is no longer enough: mutate every piece of changed pure logic systematically, or inject explicit faults across it, and record which mutations the tests killed. Record equivalent mutations and the limits of the method rather than hiding them. |
 
 Authentication, authorization, tenant boundaries, cryptography, protocol compatibility, and persistent-data
 migrations reach the stronger rows quickly. Raise the risk when the table's stronger contract describes the

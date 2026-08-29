@@ -134,8 +134,9 @@ to `work-items/done/`:
     inner behavior. When a unit boundary is inapplicable, identify the alternate check that actually failed.
 - **Change-Resistance Results**:
   For medium risk and above, record the representative incorrect implementation, diff mutation, or explicit
-  fault injection and whether the tests detected it. For high and critical pure-logic changes, use a
-  diff-scoped `mise run test-go-mutation-package -- <package> <git-ref>` check or explicit fault injection.
+  fault injection and whether the tests detected it. For high and critical pure-logic changes, one
+  representative is not enough: mutate the changed logic systematically or inject explicit faults across it,
+  and record the equivalent mutations and the limits of the method rather than hiding them.
 - **Verification Results**:
   - `mise run verify` - passed
 ```

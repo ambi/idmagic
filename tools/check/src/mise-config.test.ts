@@ -28,14 +28,6 @@ describe('mise generated OpenAPI dependencies', () => {
   })
 })
 
-describe('mise change-resistance boundary', () => {
-  it('pins mutation tooling without adding it to the universal verification suite', () => {
-    expect(config.tools?.['go:github.com/go-gremlins/gremlins/cmd/gremlins']).toBe('0.6.0')
-    expect(config.tasks?.['test-go-mutation-package']?.run).toBeDefined()
-    expect(config.tasks?.verify?.depends).not.toContain('test-go-mutation-package')
-  })
-})
-
 describe('mise agent-guidance boundary', () => {
   it('runs repository-local guidance checks from the standard check suite', () => {
     expect(config.tasks?.['check-agent-guidance']?.run).toBeDefined()
