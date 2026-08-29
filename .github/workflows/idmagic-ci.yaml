@@ -77,48 +77,54 @@ jobs:
           languages: go,javascript-typescript
       - uses: github/codeql-action/analyze@v3
 
-  # container:
-  #   name: Container build + Trivy scan
-  #   runs-on: ubuntu-latest
-  #   needs: verify
-  #   permissions:
-  #     actions: read
-  #     contents: read
-  #     security-events: write
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: docker/setup-buildx-action@v3
-  #     - name: Build image (no push)
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: .
-  #         file: ./infra/docker/Dockerfile
-  #         push: false
-  #         tags: idmagic:ci
-  #         load: true
-  #         platforms: linux/amd64
-  #     - name: Trivy scan
-  #       uses: aquasecurity/trivy-action@v0.36.0
-  #       with:
-  #         image-ref: idmagic:ci
-  #         format: sarif
-  #         output: trivy.sarif
-  #         severity: CRITICAL,HIGH
-  #         exit-code: '1'
-  #     - name: Upload Trivy SARIF
-  #       if: >-
-  #         ${{
-  #           always() &&
-  #           hashFiles('trivy.sarif') != '' &&
-  #           (
-  #             github.event_name == 'push' ||
-  #             (
-  #               github.event_name == 'pull_request' &&
-  #               github.event.pull_request.head.repo.full_name == github.repository
-  #             )
-  #           )
-  #         }}
-  #       uses: github/codeql-action/upload-sarif@v3
-  #       with:
-  #         sarif_file: trivy.sarif
-  #         category: trivy-container-idmagic
+  dependency-audit:
+    name: Audit dependencies for known vulnerabilities
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+        with:
+          version: 2026.8.14
+      - name: Require a reason and an unexpired deadline on every suppression
+        run: mise run check-vulnerability-suppressions
+      # 終了コードを残したまま失敗する。0 は検出なし、1 は検出あり、それ以外は検査器自身の
+      # 失敗である。後段のアップロードはこの 3 つ目を SARIF ごと捨てるために status を読む。
+      - name: Scan Go and Bun dependencies
+        id: scan
+        run: |
+          set +e
+          mise run audit-dependencies -- --format=sarif --output-file=osv-results.sarif
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+      # 走査が落ちたときこそ到達性の出力が要る。抑止の理由はこれを根拠に書くためである。
+      - name: Report Go vulnerabilities the code reaches
+        if: ${{ !cancelled() }}
+        run: mise run audit-go-reachability
+      # fork からの Pull Request には security-events: write が渡らないので、アップロードだけを飛ばす。
+      # 検査器自身が失敗したときも飛ばす。中身が 0 件の SARIF を上げると、code scanning 側では
+      # 既存のアラートが解決済みとして閉じられ、問い合わせ障害が「脆弱性 0 件」として残る。
+      - name: Upload OSV-Scanner SARIF
+        if: >-
+          ${{
+            always() &&
+            contains(fromJSON('["0", "1"]'), steps.scan.outputs.status) &&
+            hashFiles('osv-results.sarif') != '' &&
+            (
+              github.event_name == 'push' ||
+              (
+                github.event_name == 'pull_request' &&
+                github.event.pull_request.head.repo.full_name == github.repository
+              )
+            )
+          }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv-results.sarif
+          category: osv-scanner-source

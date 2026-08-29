@@ -1,0 +1,10 @@
+# 依存脆弱性の抑止。`mise run audit-dependencies` が --config でこのファイルを渡す。
+#
+# 各項目は reason と ignoreUntil を必ず持つ。OSV-Scanner はどちらも任意として扱うが、
+# ignoreUntil の無い抑止は永久に見直されないので、`mise run check-vulnerability-suppressions`
+# が両方を必須にして期限切れを拒否する。運用は SECURITY.md に書いてある。
+
+[[IgnoredVulns]]
+id = "GO-2026-5932"
+ignoreUntil = 2026-11-28
+reason = "golang.org/x/crypto/openpgp is unmaintained and has no fixed version. IdMagic never imports it: x/crypto enters the module graph only through backend/shared/security/passwords_argon2id, which uses golang.org/x/crypto/argon2. mise run audit-go-reachability reports the advisory as required but not called."

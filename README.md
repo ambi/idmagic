@@ -11,3 +11,4 @@ mise run dev
 - 製品が解く問題、利用者、対象外：[Product Overview](docs/product-overview.md)
 - 仕様、設計、Context Map：[Whole-System Specification](docs/README.md)
 - Pull Request と貢献の規則：[CONTRIBUTING.md](CONTRIBUTING.md)
+- 脆弱性の報告、依存脆弱性の検知 (`mise run audit-dependencies`)、抑止の運用：[SECURITY.md](SECURITY.md)

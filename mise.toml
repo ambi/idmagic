@@ -10,6 +10,11 @@ bun = "1.4.0"
 "aqua:koalaman/shellcheck" = "0.11.0"
 "aqua:zizmorcore/zizmor" = "1.29.0"
 "aqua:betterleaks/betterleaks" = "1.8.1"
+"aqua:google/osv-scanner" = "2.5.1"
+# govulncheck は配布バイナリではなく go: バックエンドで固定する。到達性の判定は go.mod が
+# 宣言する言語版でビルドされていないと成立せず、配布バイナリはリリース時点の Go で焼き固め
+# られるためである。詳細は wi-291。
+"go:golang.org/x/vuln/cmd/govulncheck" = "1.7.0"
 
 [tasks.setup]
 description = "Install repository dependencies and link agent skills"
@@ -35,6 +40,8 @@ run = [
   "shellcheck --version",
   "zizmor --version",
   "betterleaks version",
+  "osv-scanner --version",
+  "govulncheck -version",
 ]
 
 [tasks.setup-cli-tools]
@@ -160,6 +167,36 @@ if [ -n "$failed" ]; then
   exit 1
 fi
 '''
+
+[tasks.audit-dependencies]
+description = "Scan Go and Bun dependencies for known vulnerabilities"
+# 対象は列挙する。--recursive にすると、後から増えた依存定義ファイルが所有者と抑止方針の
+# 決まらないうちにゲートへ入り、CI の意味が黙って変わる。
+# 呼び出し解析は切る。OSV-Scanner は go/types を自分のバイナリに焼き込むので、go.mod が
+# 宣言する言語版を配布バイナリのビルド Go が下回った瞬間に解析が壊れ、しかもそれが検出結果に
+# 現れない。到達性は audit-go-reachability が持つ。--call-analysis=none は「none という言語」
+# として一般エラーになるだけで、無効化にはならない。
+# 出力引数は透過する。CI は同じ対象定義のまま --format=sarif を足して呼ぶ。
+run = '''
+#!/usr/bin/env sh
+set -eu
+exec osv-scanner scan source \
+  --config=osv-scanner.toml \
+  --no-call-analysis=go \
+  --lockfile=go.mod \
+  --lockfile=frontend/bun.lock \
+  --lockfile=tools/bun.lock \
+  "$@"
+'''
+
+[tasks.audit-go-reachability]
+description = "Report Go vulnerabilities the code actually reaches"
+run = "govulncheck ./..."
+
+[tasks.check-vulnerability-suppressions]
+description = "Require a reason and an unexpired deadline on every vulnerability suppression"
+dir = "tools"
+run = "bun run check/src/check-vulnerability-suppressions.ts"
 
 [tasks.audit-secrets-history]
 description = "Scan the whole Git history for secrets"
@@ -382,7 +419,7 @@ run = "bun run test:e2e"
 
 [tasks.check]
 description = "Validate specifications, records, dependencies, commands, and agent guidance"
-depends = ["check-spec", "check-work-items", "check-ids", "check-links", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-security-controls", "check-slo-references"]
+depends = ["check-spec", "check-work-items", "check-ids", "check-links", "check-boundaries", "check-command-map", "check-agent-guidance", "check-config-reference", "check-admin-scopes", "check-security-controls", "check-slo-references", "check-vulnerability-suppressions"]
 
 [tasks.check-links]
 description = "Check repository-local Markdown links and anchors"
