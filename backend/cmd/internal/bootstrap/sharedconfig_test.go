@@ -15,6 +15,22 @@ func TestLoadSharedConfigPostgresRequiresDatabaseURL(t *testing.T) {
 	}
 }
 
+// TestLoadSharedConfigPostgresRequiresExplicitKeyProvider covers
+// REQ-SIGNINGKEYS-012: 鍵素材が永続化される配備では鍵の保管先を運用者が選ぶ。
+// 未指定を既定として通すと、秘密鍵がバックアップに入る構成が誰も選ばないまま
+// 成立する。
+func TestLoadSharedConfigPostgresRequiresExplicitKeyProvider(t *testing.T) {
+	t.Parallel()
+	l := NewConfigLoader(stubEnv(map[string]string{
+		"PERSISTENCE": "postgres", "DATABASE_URL": "postgres://idmagic@db.internal:5432/idmagic",
+	}))
+	LoadSharedConfig(l)
+	err := l.Err()
+	if err == nil || !strings.Contains(err.Error(), "KEY_PROVIDER") {
+		t.Fatalf("err=%v, want a KEY_PROVIDER required error", err)
+	}
+}
+
 func TestLoadSharedConfigMemoryDoesNotRequireDatabaseURL(t *testing.T) {
 	t.Parallel()
 	cfg := loadSharedConfigOrFatal(t, map[string]string{})
@@ -142,6 +158,7 @@ func TestLoadSharedConfigSecretsAreRedactedInLoaderErrors(t *testing.T) {
 	t.Parallel()
 	l := NewConfigLoader(stubEnv(map[string]string{
 		"PERSISTENCE":  "postgres",
+		"KEY_PROVIDER": "local",
 		"DATABASE_URL": "postgres://user:hunter2@db.internal:5432/idmagic",
 	}))
 	cfg := LoadSharedConfig(l)

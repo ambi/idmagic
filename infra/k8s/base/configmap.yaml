@@ -8,6 +8,10 @@ metadata:
 data:
   ADDR: :8080
   PERSISTENCE: postgres
+  # 鍵素材が永続化される配備なので保管先を明示する (REQ-SIGNINGKEYS-012)。
+  # local は秘密鍵を signing_keys.private_jwk に平文で置くため、バックアップの
+  # 保存先を暗号化すること。Vault を用意したなら vault へ切り替える。
+  KEY_PROVIDER: local
   OBSERVABILITY: otel
   OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
   BACKEND_ADDRESS: http://idmagic-api:8080

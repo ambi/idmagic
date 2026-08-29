@@ -38,7 +38,10 @@ spec:
             - name: PERSISTENCE
               value: "postgres"
             - name: KEY_PROVIDER
-              value: "db" # DB-backed 署名鍵。全レプリカで JWKS 一致
+              # DB に置く署名鍵。全レプリカで JWKS が一致する代わりに、秘密鍵は
+              # signing_keys.private_jwk へ平文で入り Cloud SQL のバックアップに
+              # 含まれる。保存先の暗号化が前提 (REQ-SIGNINGKEYS-012)。
+              value: "local"
             - name: OBSERVABILITY
               value: "otel"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT

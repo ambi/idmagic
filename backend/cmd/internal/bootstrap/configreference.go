@@ -68,7 +68,7 @@ var configFieldDescriptions = map[string]string{
 	"DB_BREAKER_FAILURE_THRESHOLD": "Failure ratio at which the PostgreSQL circuit breaker opens.",
 	"DB_BREAKER_COOLDOWN":          "How long the PostgreSQL circuit breaker stays open before probing again.",
 	"DB_BREAKER_MIN_REQUESTS":      "Requests observed in a window before the failure ratio is allowed to open the breaker.",
-	"KEY_PROVIDER":                 "Signing key custody. `vault` requires VAULT_ADDR and VAULT_TOKEN; unset keeps keys in the application database.",
+	"KEY_PROVIDER":                 "Signing key custody, an explicit choice wherever keys are persisted. `local` stores the private JWK as cleartext in the application database, so it is in that database's backups; `vault` keeps it in Vault and requires VAULT_ADDR and VAULT_TOKEN. Required when PERSISTENCE=postgres.",
 	"VAULT_ADDR":                   "Vault base address. Required when KEY_PROVIDER=vault.",
 	"VAULT_TOKEN":                  "Vault token. Required when KEY_PROVIDER=vault.",
 	"VAULT_TRANSIT_MOUNT":          "Vault Transit engine mount path used for signing keys.",

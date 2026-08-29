@@ -65,7 +65,7 @@ gcloud run services replace infra/deploy/gcp/cloudrun-idmagic.yaml --region "$RE
 gcloud beta run worker-pools deploy idmagic-worker \
   --image "$IMAGE" --region "$REGION" --command /app/idmagic-worker \
   --min-instances=1 --max-instances=3 \
-  --set-env-vars=PERSISTENCE=postgres,OBSERVABILITY=otel \
+  --set-env-vars=PERSISTENCE=postgres,KEY_PROVIDER=local,OBSERVABILITY=otel \
   --set-secrets=DATABASE_URL=idmagic-database-url:latest
 
 echo "done. 前段に Cloud Load Balancing + Cloud CDN + Cloud Armor、SPA は GCS+CDN を配置する。"

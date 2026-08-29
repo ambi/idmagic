@@ -45,6 +45,7 @@ compose run --rm schema
 echo "== seeding representative data ==" >&2
 DATABASE_URL="postgres://${PGUSER}:${PGPASSWORD}@${PGHOST}:${PGPORT}/${PGDATABASE}?sslmode=disable" \
   PERSISTENCE=postgres \
+  KEY_PROVIDER=local \
   DEMO_CLIENT_SECRET=demo-client-secret \
   DEMO_USER_PASSWORD=demo-password-1234 \
   go run ./backend/cmd/idmagic-seed --environment development --profile development --mode apply

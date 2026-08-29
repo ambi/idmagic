@@ -89,6 +89,9 @@ services:
       WEBAUTHN_RP_ORIGINS: http://localhost:8080
       WEBAUTHN_RP_DISPLAY_NAME: IdMagic Local
       PERSISTENCE: postgres
+      # 秘密鍵は signing_keys.private_jwk に平文で入る。ローカル開発なので
+      # 選ぶが、選んだことを書き残す (REQ-SIGNINGKEYS-012)。
+      KEY_PROVIDER: local
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
       OBSERVABILITY: otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
@@ -125,6 +128,7 @@ services:
     # reserved execution slot independent of the bulk backlog.
     environment:
       PERSISTENCE: postgres
+      KEY_PROVIDER: local
       DATABASE_URL: postgres://idmagic:idmagic@postgres:5432/idmagic?sslmode=disable
       OBSERVABILITY: otel
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318

@@ -16,7 +16,7 @@ enum SigningKeyState {
 }
 
 
-@doc("Where the key material is kept and who performs the signature. Local and Database keep the private key inside the process\nand are for development and test; VaultTransit delegates the private key to Vault and is for production. Database names no\nparticular product.")
+@doc("Where the key material is kept and who performs the signature. Local holds the private key in the process only; Database\nstores it as cleartext in the application database, so it is in that database's backups; VaultTransit never lets the private\nkey leave Vault. Selecting a provider that persists cleartext key material is an explicit choice, never a default. Database\nnames no particular product.")
 enum KeyProvider {
   Local: "Local",
   Database: "Database",

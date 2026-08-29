@@ -109,10 +109,17 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 	cfg.KeyProvider = l.OptionalEnumFold("KEY_PROVIDER", "local", "vault")
 	cfg.VaultAddr = l.String("VAULT_ADDR", "")
 	cfg.VaultToken = l.Secret("VAULT_TOKEN")
+	// 鍵素材が永続化されるのは PERSISTENCE=postgres のときだけであり、そこでは
+	// local が秘密 JWK を signing_keys.private_jwk に平文で残す。保管先の選択を
+	// 既定に委ねさせず、運用者に書かせる (REQ-SIGNINGKEYS-012)。
+	l.RequiredWhen("KEY_PROVIDER", "PERSISTENCE=postgres")
 	l.RequiredWhen("VAULT_ADDR", "KEY_PROVIDER=vault")
 	l.RequiredWhen("VAULT_TOKEN", "KEY_PROVIDER=vault")
 	cfg.VaultTransitMount = l.String("VAULT_TRANSIT_MOUNT", "")
 	cfg.VaultKeyPrefix = l.String("VAULT_KEY_PREFIX", "")
+	if cfg.Persistence == "postgres" {
+		l.Require("KEY_PROVIDER", cfg.KeyProvider != "", "is required when PERSISTENCE=postgres")
+	}
 	if cfg.KeyProvider == "vault" {
 		l.Require("VAULT_ADDR", cfg.VaultAddr != "", "is required when KEY_PROVIDER=vault")
 		l.Require("VAULT_TOKEN", !cfg.VaultToken.Empty(), "is required when KEY_PROVIDER=vault")

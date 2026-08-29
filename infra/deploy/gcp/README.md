@@ -60,7 +60,7 @@ Cloud Load Balancing（HTTPS）+ Cloud CDN + Cloud Armor（WAF）
 |---|---|---|
 | `PERSISTENCE` | `postgres` | ステートレス・水平スケール前提 |
 | `DATABASE_URL` | Secret Manager の `idmagic-database-url` シークレットの `latest` 版 | Cloud Run が環境変数へ注入する Cloud SQL 接続文字列（プライベート IP または Unix ソケット） |
-| `KEY_PROVIDER` | `db` | データベース保存の署名鍵。全レプリカで JWKS が一致 |
+| `KEY_PROVIDER` | `local` | データベース保存の署名鍵。全レプリカで JWKS が一致する代わりに、秘密鍵は平文で Cloud SQL のバックアップに入る |
 | `ISSUER` | `https://id.example.com` | Discovery Metadata の `issuer` と一致必須 |
 | `OBSERVABILITY` / `OTEL_EXPORTER_OTLP_ENDPOINT` | `otel` / コレクター | OTLP 送信、`/metrics` はプル方式 |
 

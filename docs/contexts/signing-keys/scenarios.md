@@ -81,3 +81,11 @@
   - ALT `signing-keys:read` だけを持つ API アクセストークンで回転または無効化を要求する → 必要なスコープが `signing-keys:write` であることを示して拒否される
 - THEN AccessDeniedError で拒否される
 - THEN 現在の署名鍵は "kid-1" のまま変わらず、SigningKeyRotated は発行されない
+
+### REQ-SIGNINGKEYS-012: 鍵素材を平文で永続化する構成は明示の選択を要する
+- ACTOR SystemAdministrator
+- GIVEN 配備の `PERSISTENCE` が `postgres` である
+- GIVEN `KEY_PROVIDER` が指定されていない
+- WHEN `system_admin` が起動時設定を読むプロセスを起動する
+- THEN 起動は設定エラーで拒否され、`KEY_PROVIDER` を明示するよう示す
+- THEN 秘密鍵素材をデータベースへ平文で保存する KeyStore は構築されず、署名鍵も作成されない

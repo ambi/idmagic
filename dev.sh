@@ -116,7 +116,8 @@ echo "Starting idmagic API at $DEV_API_ADDR"
   export DEMO_CLIENT_SECRET DEMO_USER_PASSWORD
   export ADDR="$DEV_API_ADDR" ISSUER="$DEV_ISSUER" SEED_ENVIRONMENT=development SEED_PROFILE=development
   if [ "$MODE" = "durable" ]; then
-    export PERSISTENCE=postgres DATABASE_URL
+    # 鍵素材が永続化されるので保管先を明示する (REQ-SIGNINGKEYS-012)。
+    export PERSISTENCE=postgres KEY_PROVIDER=local DATABASE_URL
   else
     export PERSISTENCE=memory
   fi
@@ -128,7 +129,7 @@ if [ "$MODE" = "durable" ]; then
   echo "Starting idmagic worker"
   (
     cd "$ROOT_DIR"
-    export PERSISTENCE=postgres DATABASE_URL
+    export PERSISTENCE=postgres KEY_PROVIDER=local DATABASE_URL
     exec "$RUN_DIR/idmagic-worker"
   ) &
   WORKER_PID=$!

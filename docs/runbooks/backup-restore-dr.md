@@ -5,7 +5,7 @@
 IdMagic は認証基盤の単一障害点になりうるため、この手順書ではバックアップ対象の分類、バックアップと復元の手順、復元後の検証、障害シナリオごとの対応を定める。バックアップ対象は次の 2 系統である。
 
 1. **PostgreSQL**: 永続テーブルと一時テーブル（認可の中間状態、コード、PAR、デバイスコード、リプレイ記録、WebAuthn チャレンジ、拒否リスト、ログインスロットル、SAML AuthnRequest のリプレイ記録）を含む単一のデータベース。
-2. **署名鍵素材**: `KeyProvider` が `Local` / `Postgres` なら PostgreSQL のバックアップに含まれる。`VaultTransit` では秘密鍵が Vault 外に出ないため、Vault 側のスナップショットが正本であり、PostgreSQL 側は公開鍵の写しにすぎない。
+2. **署名鍵素材**: `KeyProvider` が `Local` / `Database` なら PostgreSQL のバックアップに含まれる。`VaultTransit` では Vault 側のスナップショットが正本であり、PostgreSQL 側は公開鍵の写しにすぎない。どの提供元で鍵素材が平文になるかは [SigningKeys Decisions](../contexts/signing-keys/decisions.md) が定める。
 3. **データ暗号鍵のマスターキー**: `DATA_KEY_PROVIDER` が保持するマスターキー。`tenant_data_encryption_keys` の PostgreSQL バックアップにはマスターキーでラップした形しか含まれないため、それだけでは復旧できない。
 
 ### マスターキーの喪失は復旧できない
@@ -28,7 +28,7 @@ mise run backup-postgres <output-dir> [database-url]
 
 ### 署名鍵の素材
 
-- `Local` / `Postgres` プロバイダー: 秘密鍵は `signing_keys.private_jwk` に平文で入り、PostgreSQL のバックアップにそのまま含まれる。**平文の鍵を含むバックアップの保存先自体を暗号化する**。保存先のボリュームやバケットを暗号化するか、ダンプをさらに `age` / `gpg` で暗号化してから保存する。
+- `Local` / `Database` プロバイダー: バックアップは鍵素材そのものとして扱う。保存先を暗号化する要求は [SigningKeys Decisions](../contexts/signing-keys/decisions.md) が定めており、ここが示すのはその手段である。保存先のボリュームやバケットを暗号化するか、ダンプをさらに `age` / `gpg` で暗号化してから保存する。
 - `VaultTransit` プロバイダー: 秘密鍵は Vault 内に閉じる。Vault / OpenBao 自身のスナップショット機構（`vault operator raft snapshot save` 相当）で別途バックアップする。PostgreSQL 側の `signing_keys.private_jwk` はこのプロバイダーでは空またはプレースホルダーであり、鍵の復旧には使えない。
 
 ## 復元手順
