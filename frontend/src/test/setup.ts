@@ -17,7 +17,10 @@ globalThis.fetch = Object.assign(
         new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } }),
       )
     }
-    return networkFetch(input, init)
+    // 委譲先は Bun 本来の fetch なので、文書を基準に相対 URL を解決しない。画面コードが
+    // `/api/...` を渡す経路を保つため、ここで解決済みの絶対 URL を渡す。Request は自身が
+    // 絶対 URL を持つのでそのまま通す。
+    return networkFetch(input instanceof Request ? input : requestURL, init)
   },
   { preconnect: networkFetch.preconnect },
 )

@@ -3,7 +3,15 @@
 // setup.ts とはファイルを分離している。
 import { GlobalRegistrator } from '@happy-dom/global-registrator'
 
+// Happy DOM の fetch は登録した文書オリジンを基準に CORS を適用する。bunfig.toml の preload は
+// `bun test` の全実行に効くため、E2E も同じ登録を受け、API (:8082) と開発サーバー (:5174) を
+// 読む起動待ちがすべて遮断されて必ずタイムアウトする。テストコードからの通信はブラウザーの
+// 通信ではないので、Bun 本来の fetch を退避して登録後に戻す。
+const platformFetch = globalThis.fetch
+
 GlobalRegistrator.register({ url: 'http://localhost:3000' })
+
+globalThis.fetch = platformFetch
 
 // React 19 は act() 境界外の更新を警告するが、テスト環境では RTL がラップするため抑止する。
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
