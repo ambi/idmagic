@@ -1,6 +1,7 @@
 package handlers_http
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"slices"
@@ -18,6 +19,24 @@ import (
 
 	"github.com/labstack/echo/v5"
 )
+
+// ErrSignInPolicyRefused は enforceDefaultSignInPolicy が拒否の応答を書き終えたことを表す。
+// support.ErrResponseWritten を包むので、応答済みかどうかだけを見たい呼び出し元は
+// errors.Is(err, support.ErrResponseWritten) で足りる。
+//
+// 番人が応答を書いた結果 (成功時は nil) をそのまま返すと、呼び出し元の
+// `if err != nil { return err }` は素通りし、拒否したはずの要求がそのまま先へ進む。
+// サインインポリシーの拒否では、それが認可コードの発行まで届いていた。
+var ErrSignInPolicyRefused = fmt.Errorf("%w: sign-in policy refused", support.ErrResponseWritten)
+
+// refusedBySignInPolicy は応答の書き込み結果を、呼び出し元が止まれる形へ変える。
+// 書き込み自体が失敗していればその失敗を優先する。
+func refusedBySignInPolicy(writeErr error) error {
+	if writeErr != nil {
+		return writeErr
+	}
+	return ErrSignInPolicyRefused
+}
 
 type loginAPIRequest struct {
 	Username string `json:"username"`
@@ -268,19 +287,22 @@ func (d Deps) enforceDefaultSignInPolicy(
 			} else if begun {
 				return true, nil
 			}
-			return false, support.WriteProblem(c, http.StatusForbidden, "access_denied", "MFA is required, but no second factor is available.")
+			return false, refusedBySignInPolicy(support.WriteProblem(
+				c, http.StatusForbidden, "access_denied", "MFA is required, but no second factor is available."))
 		}
 		pending, err := d.SessionManager.RequireFactor(c.Request().Context(), authn.SessionID)
 		if err != nil {
 			return false, err
 		}
 		if pending == nil {
-			return false, support.WriteProblem(c, http.StatusUnauthorized, "authentication_required", "The session has expired.")
+			return false, refusedBySignInPolicy(support.WriteProblem(
+				c, http.StatusUnauthorized, "authentication_required", "The session has expired."))
 		}
 		d.setSessionCookie(c, pending.SessionID)
 		return true, nil
 	default:
-		return false, support.WriteProblem(c, http.StatusForbidden, "access_denied", "The sign-in policy cannot be satisfied.")
+		return false, refusedBySignInPolicy(support.WriteProblem(
+			c, http.StatusForbidden, "access_denied", "The sign-in policy cannot be satisfied."))
 	}
 }
 

@@ -6,6 +6,7 @@ package handlers_http_test
 
 import (
 	"context"
+	"encoding/json"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,12 @@ import (
 	"testing"
 	"time"
 
+	appmemory "github.com/ambi/idmagic/backend/application/db_memory"
+	appdomain "github.com/ambi/idmagic/backend/application/domain"
+	sessionmemory "github.com/ambi/idmagic/backend/authentication/session/db_memory"
+	sessionusecases "github.com/ambi/idmagic/backend/authentication/session/usecases"
+	totpmemory "github.com/ambi/idmagic/backend/authentication/totp/db_memory"
+	totpdomain "github.com/ambi/idmagic/backend/authentication/totp/domain"
 	signingdomain "github.com/ambi/idmagic/backend/signingkeys/domain"
 
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
@@ -46,7 +53,12 @@ const (
 	authFirstPartyClientID = "auth-client-fp"
 )
 
-func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContext, consent *domain.Consent) (*echo.Echo, *[]spec.DomainEvent) {
+func newAuthorizeTestServer(
+	t *testing.T,
+	authn *authdomain.AuthenticationContext,
+	consent *domain.Consent,
+	options ...func(*httpadapter.Deps),
+) (*echo.Echo, *[]spec.DomainEvent) {
 	t.Helper()
 	clientRepo := oauth2memory.NewClientRepository()
 	userRepo := usermemory.NewUserRepository()
@@ -101,6 +113,9 @@ func newAuthorizeTestServer(t *testing.T, authn *authdomain.AuthenticationContex
 	}
 	if authn != nil {
 		deps.AuthnResolver = &fakeAuthnResolver{ctx: authn}
+	}
+	for _, option := range options {
+		option(&deps)
 	}
 	httpadapter.Register(e, deps)
 	return e, emitted
@@ -184,6 +199,157 @@ func TestAuthorizePromptConsentBypassesExistingConsent(t *testing.T) {
 	}
 	if loc := rec.Header().Get("Location"); !strings.HasSuffix(loc, "/consent") {
 		t.Fatalf("redirect Location=%q, want /consent", loc)
+	}
+}
+
+// テナント既定のサインインポリシーが拒否したとき、/authorize が実際に返す応答を測る。
+// Token とは違い Authorize には 403 の経路が存在するが、本文は OAuth のエラー形
+// (`{"error": ...}` + `application/json`) ではなく RFC 9457 Problem Details である。
+// 契約の AuthorizeError403 はこの実測に一致していなければならない。
+func TestAuthorizeDeniedBySignInPolicyReturnsProblemDetails403(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	policyRepo := appmemory.NewDefaultSignInPolicyRepository()
+	// 到達不能な CIDR だけを許可することで、どの試験用の client IP でも拒否させる。
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "deny-all-networks", Name: "office only", Enabled: true,
+			Condition: appdomain.AccessCondition{NetworkAllowCIDRs: []string{"203.0.113.0/32"}},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+	})
+	q := authorizeQuery(url.Values{})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/problem+json") {
+		t.Fatalf("Content-Type=%q, want application/problem+json", ct)
+	}
+	var problem struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v (body=%s)", err, rec.Body.String())
+	}
+	if problem.Type != "urn:idmagic:error:access_denied" || problem.Status != http.StatusForbidden {
+		t.Fatalf("problem=%+v, want type urn:idmagic:error:access_denied and status 403", problem)
+	}
+	if strings.Contains(rec.Body.String(), `"error"`) {
+		t.Fatalf("403 body must not be the OAuth error shape, got %s", rec.Body.String())
+	}
+	// 拒否が実際に何も通していないこと。状態を読み戻して、認可コードが 1 つも
+	// 発行されていないことを確かめる。状態と文言の一方だけを見る試験は、拒否を
+	// 書いてから操作を続行する実装にも通ってしまう。
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("denied authorization issued an authorization code: %+v", event)
+		}
+	}
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Fatalf("denied authorization must not redirect, got Location=%q", loc)
+	}
+}
+
+// MFA を要求するポリシーに対し、第二要素を 1 つも持たず登録も開始できない利用者は
+// 403 で止まる。ここも応答を書いたあとに拒否を伝えない形になっていた分岐である。
+func TestAuthorizeMfaRequiredWithoutSecondFactorIssuesNoCode(t *testing.T) {
+	now := time.Now().UTC()
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	policyRepo := appmemory.NewDefaultSignInPolicyRepository()
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "mfa-required", Name: "mfa", Enabled: true,
+			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+	})
+	q := authorizeQuery(url.Values{})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status=%d body=%s, want 403", rec.Code, rec.Body.String())
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("refused authorization issued an authorization code: %+v", event)
+		}
+	}
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Fatalf("refused authorization must not redirect, got Location=%q", loc)
+	}
+}
+
+// 第二要素は持っているがセッションが引けず、ステップアップを開始できない場合。
+// 401 を書いたあとに拒否を伝えない形になっていた 3 つめの分岐である。
+func TestAuthorizeStepUpWithExpiredSessionIssuesNoCode(t *testing.T) {
+	now := time.Now().UTC()
+	// AuthnResolver は認証済みの文脈を返すが、SessionManager の store は空なので
+	// RequireFactor は「セッションなし」を返す。ステップアップを始められない状態。
+	authn := &authdomain.AuthenticationContext{
+		UserID: "user_alice", SessionID: "sess-gone", AuthTime: now.Unix(), AMR: []string{"pwd"},
+	}
+	policyRepo := appmemory.NewDefaultSignInPolicyRepository()
+	if err := policyRepo.Save(context.Background(), &appdomain.TenantDefaultSignInPolicy{
+		TenantID: tenancydomain.DefaultTenantID,
+		Rules: []appdomain.SignInRule{{
+			RuleID: "mfa-required", Name: "mfa", Enabled: true,
+			RequiredAuthn: appdomain.RequiredAuthnLevel{Strength: appdomain.RequiredAuthnMfa},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// TOTP を登録済みにして、secondFactorMethods を空でなくする。
+	factorRepo := totpmemory.NewMfaFactorRepository()
+	secret := "JBSWY3DPEHPK3PXP"
+	if err := factorRepo.Save(context.Background(), &totpdomain.MfaFactor{
+		UserID: "user_alice", Type: spec.MfaFactorTOTP, Secret: &secret, CreatedAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	e, emitted := newAuthorizeTestServer(t, authn, nil, func(deps *httpadapter.Deps) {
+		deps.Application.DefaultSignInPolicyRepo = policyRepo
+		deps.MfaFactorRepo = factorRepo
+		deps.SessionManager = sessionusecases.NewSessionManager(sessionmemory.NewSessionStore())
+	})
+	q := authorizeQuery(url.Values{})
+	q.Set("client_id", authFirstPartyClientID)
+	q.Set("scope", "openid profile idmagic.admin")
+	rec := runAuthorize(t, e, q)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s, want 401", rec.Code, rec.Body.String())
+	}
+	for _, event := range *emitted {
+		if _, ok := event.(*domain.AuthorizationCodeIssued); ok {
+			t.Fatalf("refused authorization issued an authorization code: %+v", event)
+		}
+	}
+	if loc := rec.Header().Get("Location"); loc != "" {
+		t.Fatalf("refused authorization must not redirect, got Location=%q", loc)
 	}
 }
 

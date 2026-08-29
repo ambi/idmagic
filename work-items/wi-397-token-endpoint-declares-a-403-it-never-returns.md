@@ -1,13 +1,28 @@
 ---
 depends_on: []
-status: pending
+status: in_progress
 authors: [tn]
 risk: low
 created_at: 2026-08-23
 priority: p2
 change_kind: bugfix
+evidence_policy: risk-based-v2
+initial_context:
+  specification: [docs/contexts/oauth2/standards.md]
+  typespec:
+    - IdMagic.OAuth2.Operations.Token
+    - IdMagic.OAuth2.Operations.Authorize
+  source:
+    - backend/oauth2/handlers_http/errors.go
+    - backend/oauth2/handlers_http/token_handler.go
+    - backend/oauth2/handlers_http/authorize_handler.go
+    - backend/oauth2/handlers_http/authorize_login.go
+  tests:
+    - backend/oauth2/handlers_http
+  stop_before_reading: [frontend, backend/sourcing, backend/idmanagement]
 affected_spec:
   - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.Token }
+  - { path: spec/contexts/oauth2/main.tsp, symbol: IdMagic.OAuth2.Operations.Authorize }
 ---
 
 # Token endpoint が返さない 403 を契約が宣言している
