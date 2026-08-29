@@ -11,9 +11,11 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
+	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -79,16 +81,20 @@ func seededExportDeps(t *testing.T) (idmusecases.DataExportDeps, *eventRecorder)
 		t.Fatal(err)
 	}
 	rec := &eventRecorder{}
-	artifacts := usermemory.NewUserCSVArtifactStore()
+	artifacts := idmmemory.NewCSVArtifactStore()
 	exporter := userusecases.UserCSVExporter{
 		Deps: userusecases.UserCSVExportDeps{
 			UserRepo: users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: artifacts,
 		},
-		Policy: userdomain.DefaultUserCSVTransferPolicy(),
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
+	}
+	groupExporter := groupusecases.GroupCSVExporter{
+		Deps:   groupusecases.GroupCSVExportDeps{GroupRepo: groups, Artifacts: artifacts},
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
 	deps := idmusecases.DataExportDeps{
 		UserRepo: users, GroupRepo: groups, JobRepo: jobsmemory.NewJobRepository(),
-		UserCSVExporter: exporter, UserCSVArtifacts: artifacts,
+		UserCSVExporter: exporter, GroupCSVExporter: groupExporter, CSVArtifacts: artifacts,
 		Emit: rec.emit, Now: func() time.Time { return now },
 	}
 	return deps, rec
@@ -139,7 +145,7 @@ func TestDataExportHandler_User_GeneratesInjectionSafeCSV(t *testing.T) {
 	if result.TotalRows != 2 || result.ByteSize == 0 || result.ArtifactRef == "" || result.SHA256 == "" || result.CSVBase64 != "" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
-	reader, _, err := deps.UserCSVArtifacts.OpenUserCSVArtifact(context.Background(), "acme", result.ArtifactRef)
+	reader, _, err := deps.CSVArtifacts.OpenCSVArtifact(context.Background(), "acme", result.ArtifactRef)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,5 +299,67 @@ func TestDownloadDataExport_OnlySucceeded(t *testing.T) {
 	}
 	if got := rec.types(); len(got) != 1 || got[0] != "DataExportDownloaded" {
 		t.Errorf("events=%v, want [DataExportDownloaded]", got)
+	}
+}
+
+// scenario REQ-IDMANAGEMENT-027: Group export は User と同じ不変成果物へ書き出し、
+// ジョブ結果に CSV 本文も base64 も残さない。`lifecycle_action` は全行で空である。
+func TestDataExportHandler_GroupExportWritesAnImmutableArtifact(t *testing.T) {
+	deps, _ := seededExportDeps(t)
+	ctx := exportTestCtx()
+	columns := groupdomain.NewGroupCSVSchema().ColumnKeys()
+	view, err := idmusecases.StartDataExport(ctx, deps, "admin", "group", columns, nil, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	job, err := deps.JobRepo.Get(ctx, view.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raw, err := idmusecases.DataExportHandler(deps)(ctx, job)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result idmusecases.DataExportResult
+	if err := json.Unmarshal(raw, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.CSVBase64 != "" {
+		t.Fatalf("the job result carries the CSV itself: %q", result.CSVBase64)
+	}
+	if result.ArtifactRef == "" || result.SHA256 == "" || result.TotalRows != 1 {
+		t.Fatalf("result = %+v, want an artifact reference, a digest, and the row count", result)
+	}
+
+	reader, artifact, err := deps.CSVArtifacts.OpenCSVArtifact(ctx, "acme", result.ArtifactRef)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reader.Close() }()
+	if artifact.SHA256 != result.SHA256 {
+		t.Fatalf("digest = %q, want %q", artifact.SHA256, result.SHA256)
+	}
+	payload, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	document := string(payload)
+	header, rows, _ := strings.Cut(document, "\n")
+	if !strings.Contains(header, "lifecycle_action") {
+		t.Fatalf("header = %q, want the import-compatible columns", header)
+	}
+	if strings.Contains(rows, "delete") {
+		t.Fatalf("an export row carries an intent to delete: %q", rows)
+	}
+}
+
+// scenario REQ-IDMANAGEMENT-027: Group の許可一覧にない列は開始時点で拒否する。
+func TestStartDataExport_RejectsColumnsOutsideTheGroupAllowList(t *testing.T) {
+	deps, _ := seededExportDeps(t)
+	for _, column := range []string{"email", "attributes", "password_hash"} {
+		_, err := idmusecases.StartDataExport(exportTestCtx(), deps, "admin", "group", []string{"name", column}, nil, time.Now().UTC())
+		if !errors.Is(err, idmdomain.ErrInvalidExportColumns) {
+			t.Fatalf("column %q: got %v, want ErrInvalidExportColumns", column, err)
+		}
 	}
 }

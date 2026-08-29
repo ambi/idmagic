@@ -71,7 +71,7 @@ func importPlannerDeps(repo *usermemory.UserRepository, guard perUserImportOwner
 
 func planUserImportForTest(ctx context.Context, deps UserImportPlanDeps, input string) (userdomain.UserImportPlan, error) {
 	plan := userdomain.UserImportPlan{}
-	_, err := PlanUserImport(ctx, deps, strings.NewReader(input), userdomain.DefaultUserCSVTransferPolicy(), func(row userdomain.UserImportRowPlan) error {
+	_, err := PlanUserImport(ctx, deps, strings.NewReader(input), idmdomain.DefaultCSVTransferPolicy(), func(row userdomain.UserImportRowPlan) error {
 		plan.Rows = append(plan.Rows, row)
 		return nil
 	})
@@ -126,7 +126,7 @@ func TestPlanUserImportRejectsIdentifierMismatchInvalidTypesAndMissingIdentifier
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []userdomain.UserCSVErrorCode{"identifier_mismatch", "invalid_boolean", "missing_identifier"}
+	want := []idmdomain.CSVErrorCode{"identifier_mismatch", "invalid_boolean", "missing_identifier"}
 	if plan.RejectedRows() != len(want) {
 		t.Fatalf("plan=%+v", plan)
 	}

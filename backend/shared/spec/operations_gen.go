@@ -5,6 +5,7 @@ package spec
 var generatedOperations = map[string]Operation{
 	"ActivateIdentityProviderConnection": {Method: "POST", Path: "/api/admin/v1/identity-providers/{provider_id}/activate", Deprecated: false, ApiTokenScopes: []string{"interactive_session"}},
 	"AddGroupMember": {Method: "POST", Path: "/api/admin/v1/groups/{group_id}/members/{user_id}", Deprecated: false, ApiTokenScopes: []string{"groups:write"}},
+	"ApplyAdminGroupImport": {Method: "POST", Path: "/api/admin/v1/groups/imports/{preview_job_id}/apply", Deprecated: false, ApiTokenScopes: []string{"groups:write"}},
 	"ApplyAdminUserImport": {Method: "POST", Path: "/api/admin/v1/users/imports/{preview_job_id}/apply", Deprecated: false, ApiTokenScopes: []string{"users:write"}},
 	"AssignApplication": {Method: "POST", Path: "/api/admin/v1/applications/{id}/assignments", Deprecated: false, ApiTokenScopes: []string{"applications:write"}},
 	"Authorize": {Method: "GET", Path: "/authorize", Deprecated: false, ApiTokenScopes: nil},
@@ -97,6 +98,7 @@ var generatedOperations = map[string]Operation{
 	"GetAdminAuditEvent": {Method: "GET", Path: "/api/admin/v1/audit_events/{id}", Deprecated: false, ApiTokenScopes: []string{"audit:read"}},
 	"GetAdminAuditEventSearchOptions": {Method: "GET", Path: "/api/admin/v1/audit_events/search_options", Deprecated: false, ApiTokenScopes: []string{"audit:read"}},
 	"GetAdminConsent": {Method: "GET", Path: "/api/admin/v1/consents/{user_id}/{client_id}", Deprecated: false, ApiTokenScopes: []string{"consents:read"}},
+	"GetAdminGroupImport": {Method: "GET", Path: "/api/admin/v1/groups/imports/{job_id}", Deprecated: false, ApiTokenScopes: []string{"groups:read"}},
 	"GetAdminIntegrationEndpoints": {Method: "GET", Path: "/api/admin/v1/integration-endpoints", Deprecated: false, ApiTokenScopes: []string{"settings:read"}},
 	"GetAdminKey": {Method: "GET", Path: "/api/admin/v1/keys/{kid}", Deprecated: false, ApiTokenScopes: []string{"signing-keys:read"}},
 	"GetAdminMcpResourceServer": {Method: "GET", Path: "/api/admin/v1/mcp-resource-servers/{id}", Deprecated: false, ApiTokenScopes: []string{"mcp-resource-servers:read"}},
@@ -144,6 +146,7 @@ var generatedOperations = map[string]Operation{
 	"GetUserProfile": {Method: "GET", Path: "/api/account/v1/profile", Deprecated: false, ApiTokenScopes: nil},
 	"GetWorkloadTrustBundle": {Method: "GET", Path: "/api/admin/v1/workload-identity/trust-bundles/{trust_bundle_id}", Deprecated: false, ApiTokenScopes: []string{"workload-identity:read"}},
 	"Health": {Method: "GET", Path: "/health", Deprecated: false, ApiTokenScopes: nil},
+	"ImportAdminGroups": {Method: "POST", Path: "/api/admin/v1/groups/imports", Deprecated: false, ApiTokenScopes: []string{"groups:write"}},
 	"ImportAdminUsers": {Method: "POST", Path: "/api/admin/v1/users/imports", Deprecated: false, ApiTokenScopes: []string{"users:write"}},
 	"Introspect": {Method: "POST", Path: "/introspect", Deprecated: false, ApiTokenScopes: nil},
 	"IssueApiToken": {Method: "POST", Path: "/api/admin/v1/api-tokens", Deprecated: false, ApiTokenScopes: []string{"interactive_session"}},

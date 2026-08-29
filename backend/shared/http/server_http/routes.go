@@ -563,7 +563,7 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 		PasswordHasher:        d.Authentication.PasswordHasher,
 		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
 		EmailChangeTokenStore: d.IdManagement.EmailChangeTokenStore,
-		UserCSVArtifacts:      d.IdManagement.UserCSVArtifacts,
+		CSVArtifacts:          d.IdManagement.CSVArtifacts,
 		EmailSender:           d.Notification.EmailSender,
 		Notifier:              d.Notification.Notifier,
 		JobRepo:               d.Jobs.Repo,

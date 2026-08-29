@@ -67,6 +67,42 @@ export type UserImportJob = {
   errors: UserImportRowError[]
 }
 
+export type GroupImportMode = 'preview' | 'apply'
+
+export type GroupImportRowError = {
+  row: number
+  column?: string
+  code: string
+}
+
+// 削除は不可逆で membership へ cascade するため、件数を他の操作と分けて返す。
+export type GroupImportResult = {
+  total_rows: number
+  created_rows: number
+  updated_rows: number
+  unchanged_rows: number
+  deleted_rows: number
+  deleted_memberships: number
+  rejected_rows: number
+  error_total: number
+}
+
+// POST /api/admin/v1/groups/imports の応答。ジョブはまだ処理されておらず result は含まない。
+export type GroupImportJobSummary = {
+  id: string
+  status: UserImportJobStatus
+  mode: GroupImportMode
+}
+
+// GET /api/admin/v1/groups/imports/{id} の応答。result はジョブが終端状態になるまで未設定。
+export type GroupImportJob = {
+  id: string
+  status: UserImportJobStatus
+  mode: GroupImportMode
+  result?: GroupImportResult
+  errors: GroupImportRowError[]
+}
+
 // wi-148: 管理者向け CSV データエクスポート (per-type)。
 export type DataExportStatus =
   | 'queued'

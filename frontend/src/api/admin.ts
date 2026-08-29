@@ -43,6 +43,8 @@ import type {
   DataExportJob,
   UserImportJob,
   UserImportJobSummary,
+  GroupImportJob,
+  GroupImportJobSummary,
   WsFedClaimMappingRule,
   WsFedRelyingParty,
   WsFedTokenType,
@@ -291,6 +293,37 @@ export async function getAdminUserImport(jobId: string, cursor?: string) {
   if (cursor) query.set('cursor', cursor)
   return requestPage<UserImportJob>(
     `/api/admin/v1/users/imports/${encodeURIComponent(jobId)}?${query.toString()}`,
+  )
+}
+
+// Group CSV も User と同じ形: preview へ CSV を一度だけ送信し、apply は成功した
+// preview ID だけを参照する。
+export async function previewAdminGroups(
+  csrfToken: string,
+  file: File,
+): Promise<GroupImportJobSummary> {
+  return request('/api/admin/v1/groups/imports', {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'text/csv', 'X-CSRF-Token': csrfToken },
+    body: file,
+  })
+}
+
+export async function applyAdminGroupImport(
+  csrfToken: string,
+  previewJobId: string,
+): Promise<GroupImportJobSummary> {
+  return request(
+    `/api/admin/v1/groups/imports/${encodeURIComponent(previewJobId)}/apply`,
+    adminRequest(csrfToken, 'POST'),
+  )
+}
+
+export async function getAdminGroupImport(jobId: string, cursor?: string) {
+  const query = new URLSearchParams({ limit: '100' })
+  if (cursor) query.set('cursor', cursor)
+  return requestPage<GroupImportJob>(
+    `/api/admin/v1/groups/imports/${encodeURIComponent(jobId)}?${query.toString()}`,
   )
 }
 

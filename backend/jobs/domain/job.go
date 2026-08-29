@@ -39,6 +39,8 @@ const (
 	KindNoopEcho              JobKind = "noop_echo"
 	KindUserImportPreview     JobKind = "user_import_preview"
 	KindUserImportApply       JobKind = "user_import_apply"
+	KindGroupImportPreview    JobKind = "group_import_preview"
+	KindGroupImportApply      JobKind = "group_import_apply"
 	KindDynamicGroupReconcile JobKind = "dynamic_group_reconcile"
 	// KindDataKeyReencryption is wi-97's DataKeys re-encryption job
 	// (spec/contexts/data-keys.yaml): it drives a registered
@@ -78,6 +80,8 @@ func init() {
 	RegisterKind(KindNoopEcho, LaneDefault)
 	RegisterKind(KindUserImportPreview, LaneBulk)
 	RegisterKind(KindUserImportApply, LaneBulk)
+	RegisterKind(KindGroupImportPreview, LaneBulk)
+	RegisterKind(KindGroupImportApply, LaneBulk)
 	RegisterKind(KindDynamicGroupReconcile, LaneBulk)
 	RegisterKind(KindDataKeyReencryption, LaneBulk)
 }

@@ -11,13 +11,13 @@ import (
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
 
-func collectUserCSV(t *testing.T, input io.Reader, schema UserCSVSchema, policy UserCSVTransferPolicy) ([]string, []UserCSVRow, error) {
+func collectUserCSV(t *testing.T, input io.Reader, schema UserCSVSchema, policy idmdomain.CSVTransferPolicy) ([]string, []idmdomain.CSVRow, error) {
 	t.Helper()
-	reader, err := NewUserCSVReader(input, schema, policy)
+	reader, err := idmdomain.NewCSVReader(input, schema.Accepts, policy)
 	if err != nil {
 		return nil, nil, err
 	}
-	var rows []UserCSVRow
+	var rows []idmdomain.CSVRow
 	for {
 		record, err := reader.Next()
 		if errors.Is(err, io.EOF) {
@@ -43,7 +43,7 @@ func TestParseUserCSVAcceptsPermutedPartialHeadersAndPreservesPresence(t *testin
 		t.Fatal(err)
 	}
 
-	header, rows, csvErr := collectUserCSV(t, strings.NewReader("custom:cost_code,email,id\nEngineering,,user-1\n"), schema, DefaultUserCSVTransferPolicy())
+	header, rows, csvErr := collectUserCSV(t, strings.NewReader("custom:cost_code,email,id\nEngineering,,user-1\n"), schema, idmdomain.DefaultCSVTransferPolicy())
 	if csvErr != nil {
 		t.Fatalf("ParseUserCSV() error = %+v", csvErr)
 	}
@@ -60,7 +60,7 @@ func TestParseUserCSVAcceptsPermutedPartialHeadersAndPreservesPresence(t *testin
 	if _, ok := row.Cell("preferred_username"); ok {
 		t.Fatal("preferred_username must be absent when its header is absent")
 	}
-	if id, code := row.Identifier(); code != "" || id.ID != "user-1" || id.PreferredUsername != "" {
+	if id, code := UserCSVIdentifierOf(row); code != "" || id.ID != "user-1" || id.PreferredUsername != "" {
 		t.Fatalf("identifier = %+v, code=%q", id, code)
 	}
 }
@@ -86,7 +86,7 @@ func TestParseUserCSVResolvesBuiltinAttributeAsAttrPrefixedColumn(t *testing.T) 
 		t.Fatal("expected tenant custom attribute cost_code to resolve as custom:cost_code")
 	}
 
-	header, rows, csvErr := collectUserCSV(t, strings.NewReader("id,attr:department\nuser-1,Engineering\n"), schema, DefaultUserCSVTransferPolicy())
+	header, rows, csvErr := collectUserCSV(t, strings.NewReader("id,attr:department\nuser-1,Engineering\n"), schema, idmdomain.DefaultCSVTransferPolicy())
 	if csvErr != nil {
 		t.Fatalf("ParseUserCSV() error = %+v", csvErr)
 	}
@@ -113,9 +113,9 @@ func TestParseUserCSVRejectsUnknownDuplicateAndSecretHeaders(t *testing.T) {
 		"hash":      "preferred_username,password_hash\nalice,hash\n",
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, _, got := collectUserCSV(t, strings.NewReader(input), schema, DefaultUserCSVTransferPolicy())
-			var csvErr *UserCSVError
-			if !errors.As(got, &csvErr) || csvErr.Code != UserCSVErrorInvalidHeader || csvErr.Row != 1 {
+			_, _, got := collectUserCSV(t, strings.NewReader(input), schema, idmdomain.DefaultCSVTransferPolicy())
+			var csvErr *idmdomain.CSVError
+			if !errors.As(got, &csvErr) || csvErr.Code != idmdomain.CSVErrorInvalidHeader || csvErr.Row != 1 {
 				t.Fatalf("error = %+v, want row-1 invalid_header", got)
 			}
 		})
@@ -173,12 +173,12 @@ func TestValidateUserCSVTargetsRejectsDuplicateIdentifiersAndFinalUsernames(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, rows, csvErr := collectUserCSV(t, strings.NewReader("id,preferred_username\nuser-1,alice\nuser-1,alice-2\nuser-2,alice\n,\n"), schema, DefaultUserCSVTransferPolicy())
+	_, rows, csvErr := collectUserCSV(t, strings.NewReader("id,preferred_username\nuser-1,alice\nuser-1,alice-2\nuser-2,alice\n,\n"), schema, idmdomain.DefaultCSVTransferPolicy())
 	if csvErr != nil {
 		t.Fatal(csvErr)
 	}
 	errs := ValidateUserCSVTargets(rows)
-	want := []UserCSVErrorCode{"duplicate_target", "duplicate_username", "missing_identifier"}
+	want := []idmdomain.CSVErrorCode{"duplicate_target", "duplicate_username", "missing_identifier"}
 	if len(errs) != len(want) {
 		t.Fatalf("errors=%+v, want codes %v", errs, want)
 	}
@@ -189,47 +189,10 @@ func TestValidateUserCSVTargetsRejectsDuplicateIdentifiersAndFinalUsernames(t *t
 	}
 }
 
-func TestUserCSVFormulaSafeCodecIsReversible(t *testing.T) {
-	values := []string{
-		"plain", "=SUM(A1:A2)", "+1", "-1", "@name", "\tvalue", "\rvalue", "\nvalue",
-		"'already", "''twice", "comma,value", `quote"value`, "multi\nline", "日本語",
-	}
-	for _, value := range values {
-		encoded := EncodeUserCSVCell(value)
-		if isUserCSVFormulaTrigger(encoded) {
-			t.Errorf("EncodeUserCSVCell(%q) = %q remains dangerous", value, encoded)
-		}
-		if decoded := DecodeUserCSVCell(encoded); decoded != value {
-			t.Errorf("DecodeUserCSVCell(EncodeUserCSVCell(%q)) = %q", value, decoded)
-		}
-	}
-
-	var out strings.Builder
-	writer, err := NewUserCSVWriter(&out, []string{"id", "name"}, DefaultUserCSVTransferPolicy())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.WriteRow([]string{"user-1", "comma, quote\" and\nnewline"}); err != nil {
-		t.Fatal(err)
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatal(err)
-	}
-	schema, _ := NewUserCSVSchema(nil)
-	_, rows, csvErr := collectUserCSV(t, strings.NewReader(out.String()), schema, DefaultUserCSVTransferPolicy())
-	if csvErr != nil {
-		t.Fatal(csvErr)
-	}
-	cell, _ := rows[0].Cell("name")
-	if cell.Raw != "comma, quote\" and\nnewline" {
-		t.Fatalf("round-trip cell=%q", cell.Raw)
-	}
-}
-
 func TestUserCSVStreamsTenThousandRowsWithinDefaultPolicy(t *testing.T) {
-	policy := DefaultUserCSVTransferPolicy()
+	policy := idmdomain.DefaultCSVTransferPolicy()
 	var out strings.Builder
-	writer, err := NewUserCSVWriter(&out, []string{"id", "preferred_username", "email"}, policy)
+	writer, err := idmdomain.NewCSVWriter(&out, []string{"id", "preferred_username", "email"}, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +208,7 @@ func TestUserCSVStreamsTenThousandRowsWithinDefaultPolicy(t *testing.T) {
 		t.Fatalf("fixture bytes=%d exceeds policy=%d", out.Len(), policy.MaxBytes)
 	}
 	schema, _ := NewUserCSVSchema(nil)
-	reader, err := NewUserCSVReader(strings.NewReader(out.String()), schema, policy)
+	reader, err := idmdomain.NewCSVReader(strings.NewReader(out.String()), schema.Accepts, policy)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,33 +228,33 @@ func TestUserCSVStreamsTenThousandRowsWithinDefaultPolicy(t *testing.T) {
 	}
 }
 
-func TestUserCSVTransferPolicyEnforcesInjectedBoundaries(t *testing.T) {
+func TestCSVTransferPolicyEnforcesInjectedBoundaries(t *testing.T) {
 	schema, _ := NewUserCSVSchema(nil)
 	t.Run("rows", func(t *testing.T) {
-		policy := DefaultUserCSVTransferPolicy()
+		policy := idmdomain.DefaultCSVTransferPolicy()
 		policy.MaxRows = 2
 		_, _, err := collectUserCSV(t, strings.NewReader("id\na\nb\nc\n"), schema, policy)
-		var csvErr *UserCSVError
-		if !errors.As(err, &csvErr) || csvErr.Code != UserCSVErrorTooManyRows {
+		var csvErr *idmdomain.CSVError
+		if !errors.As(err, &csvErr) || csvErr.Code != idmdomain.CSVErrorTooManyRows {
 			t.Fatalf("error=%v", err)
 		}
 	})
 	t.Run("bytes", func(t *testing.T) {
 		input := "id\nuser-1\n"
-		policy := DefaultUserCSVTransferPolicy()
+		policy := idmdomain.DefaultCSVTransferPolicy()
 		policy.MaxBytes = len(input) - 1
 		_, _, err := collectUserCSV(t, strings.NewReader(input), schema, policy)
-		var csvErr *UserCSVError
-		if !errors.As(err, &csvErr) || csvErr.Code != UserCSVErrorCSVTooLarge {
+		var csvErr *idmdomain.CSVError
+		if !errors.As(err, &csvErr) || csvErr.Code != idmdomain.CSVErrorCSVTooLarge {
 			t.Fatalf("error=%v", err)
 		}
 	})
 	t.Run("field", func(t *testing.T) {
-		policy := DefaultUserCSVTransferPolicy()
+		policy := idmdomain.DefaultCSVTransferPolicy()
 		policy.MaxFieldBytes = 20
 		_, _, err := collectUserCSV(t, strings.NewReader("id,name\nuser-1,123456789012345678901\n"), schema, policy)
-		var csvErr *UserCSVError
-		if !errors.As(err, &csvErr) || csvErr.Code != UserCSVErrorFieldTooLarge {
+		var csvErr *idmdomain.CSVError
+		if !errors.As(err, &csvErr) || csvErr.Code != idmdomain.CSVErrorFieldTooLarge {
 			t.Fatalf("error=%v", err)
 		}
 	})
@@ -302,7 +265,7 @@ func TestUserImportPlanCountsActions(t *testing.T) {
 		{Row: 2, Action: UserImportCreate},
 		{Row: 3, Action: UserImportUpdate},
 		{Row: 4, Action: UserImportUnchanged},
-		{Row: 5, Action: UserImportRejected, Error: &UserCSVError{Code: "invalid_email"}},
+		{Row: 5, Action: UserImportRejected, Error: &idmdomain.CSVError{Code: "invalid_email"}},
 	}}
 	if plan.TotalRows() != 4 || plan.CreatedRows() != 1 || plan.UpdatedRows() != 1 || plan.UnchangedRows() != 1 || plan.RejectedRows() != 1 {
 		t.Fatalf("unexpected counts: %+v", plan)

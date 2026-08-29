@@ -690,7 +690,7 @@ model StartGroupCsvExportError429 {
   @body body: StartGroupCsvExportError429Body;
 }
 
-@doc("An administrator starts a CSV export of the group list as an asynchronous job. The columns are confined to a subset of the Group allow list. It returns 202 and the export id.")
+@doc("An administrator starts a CSV export of the group list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels, and the columns are confined to a subset of the closed Group allow list. The generated payload uses the same CsvTransferPolicy and immutable artifact store as import, so a successful Group export can be previewed without editing; `lifecycle_action` is written empty on every row, which is what keeps an unedited round trip at all rows unchanged. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupCsvExport")
 @route("/api/admin/v1/groups/exports")
@@ -698,6 +698,112 @@ model StartGroupCsvExportError429 {
 op StartGroupCsvExport(
   @body body: IdMagic.Contract.DataExportRequest
 ): StartGroupCsvExportSuccess_202 | StartGroupCsvExportError400 | StartGroupCsvExportError403 | StartGroupCsvExportError422 | StartGroupCsvExportError429;
+
+model ImportAdminGroupsSuccess_202 {
+  @statusCode statusCode: 202;
+  @body body: IdMagic.Contract.GroupImportJobRef;
+}
+
+union ImportAdminGroupsError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model ImportAdminGroupsError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: ImportAdminGroupsError400Body;
+}
+
+union ImportAdminGroupsError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ImportAdminGroupsError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ImportAdminGroupsError403Body;
+}
+
+@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with Group export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file. A row resolves its target by `id` first and by `name` second; `membership_type` may be chosen at creation but never changed afterwards, the two dynamic rule columns are validated as the final state they combine into, and a Group an external source owns is refused.")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
+@TypeSpec.OpenAPI.operationId("ImportAdminGroups")
+@route("/api/admin/v1/groups/imports")
+@post
+op ImportAdminGroups(
+  @header contentType: "text/csv",
+  @doc("The CSV document itself, streamed as the request body. There is no JSON envelope; this endpoint always runs a preview.")
+  @body csv: string
+): ImportAdminGroupsSuccess_202 | ImportAdminGroupsError400 | ImportAdminGroupsError403;
+
+model ApplyAdminGroupImportSuccess_202 {
+  @statusCode statusCode: 202;
+  @body body: IdMagic.Contract.GroupImportJobRef;
+}
+
+union ApplyAdminGroupImportError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model ApplyAdminGroupImportError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupImportError400Body;
+}
+
+union ApplyAdminGroupImportError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model ApplyAdminGroupImportError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: ApplyAdminGroupImportError403Body;
+}
+
+@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the name, description, roles, and dynamic rule of each row settle atomically as a single aggregate mutation. A row that carries `lifecycle_action=delete` deletes the Group, releases every membership in it by cascade, and writes its audit record in that same transaction; the deletion is irreversible, so a Group the CSV does not name is never deleted.")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
+@TypeSpec.OpenAPI.operationId("ApplyAdminGroupImport")
+@route("/api/admin/v1/groups/imports/{preview_job_id}/apply")
+@post
+op ApplyAdminGroupImport(
+  @path preview_job_id: string
+): ApplyAdminGroupImportSuccess_202 | ApplyAdminGroupImportError400 | ApplyAdminGroupImportError403;
+
+model GetAdminGroupImportSuccess_200 {
+  @statusCode statusCode: 200;
+  @body body: IdMagic.Contract.GroupImportJob;
+}
+
+union GetAdminGroupImportError400Body {
+  IdMagic.Contract.InvalidRequestError,
+}
+
+model GetAdminGroupImportError400 {
+  @statusCode statusCode: 400;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupImportError400Body;
+}
+
+union GetAdminGroupImportError403Body {
+  IdMagic.Contract.AccessDeniedError,
+}
+
+model GetAdminGroupImportError403 {
+  @statusCode statusCode: 403;
+  @header contentType: "application/problem+json";
+  @body body: GetAdminGroupImportError403Body;
+}
+
+@doc("An administrator reads a CSV group import job of the same tenant together with the per-row validation and application results. Row errors are kept in an immutable result artifact as page chunks of a fixed size, and are read in both directions through a signed opaque cursor bound to the tenant, the job, and the error ordinal, with a limit that defaults to 100 and tops out at 200. The job result JSON holds only the per-operation counts, the deletion counts kept apart from them, the result artifact metadata, and `error_total`.")
+@TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
+@TypeSpec.OpenAPI.operationId("GetAdminGroupImport")
+@route("/api/admin/v1/groups/imports/{job_id}")
+@get
+op GetAdminGroupImport(
+  @path job_id: string,
+  @query cursor?: string,
+  @query limit?: int64
+): GetAdminGroupImportSuccess_200 | GetAdminGroupImportError400 | GetAdminGroupImportError403;
 
 model ListGroupExportsHttpResponse {
   exports: IdMagic.Contract.DataExportJob[];
@@ -1519,7 +1625,7 @@ model DeleteGroupError403 {
   @body body: DeleteGroupError403Body;
 }
 
-@doc("An administrator deletes a group. The memberships in it are released by cascade.")
+@doc("An administrator deletes a group. The memberships in it are released by cascade, each as its own GroupMemberRemoved before the final GroupDeleted, and the group quota the group held is released. The deletion is immediate and irreversible; there is no reservation state to restore from. The CSV import path reaches the same deletion through the explicit `lifecycle_action=delete` column and settles the release, the deletion, and the audit record in one transaction per row.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("DeleteGroup")
 @route("/api/admin/v1/groups/{group_id}")

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
@@ -20,8 +20,8 @@ const userImportErrorsQuery = "GetAdminUserImport;errors"
 
 func userImportStartDeps(d Deps) userusecases.UserImportStartDeps {
 	return userusecases.UserImportStartDeps{
-		Artifacts: d.UserCSVArtifacts, Jobs: d.JobRepo, QuotaRepo: d.QuotaRepo, Emit: d.Emit,
-		Policy: userdomain.DefaultUserCSVTransferPolicy(),
+		Artifacts: d.CSVArtifacts, Jobs: d.JobRepo, QuotaRepo: d.QuotaRepo, Emit: d.Emit,
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
 }
 
@@ -33,7 +33,7 @@ func HandleImportAdminUsers(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.UserCSVArtifacts == nil {
+	if d.JobRepo == nil || d.CSVArtifacts == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
 	}
 	job, err := userusecases.StartUserImportPreview(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Request().Body, time.Now().UTC())
@@ -51,7 +51,7 @@ func HandleApplyAdminUserImport(d Deps, c *echo.Context) error {
 	if err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.UserCSVArtifacts == nil {
+	if d.JobRepo == nil || d.CSVArtifacts == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
 	}
 	job, err := userusecases.StartUserImportApply(c.Request().Context(), userImportStartDeps(d), actor.ID, c.Param("preview_job_id"), time.Now().UTC())
@@ -65,7 +65,7 @@ func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 	if _, err := d.RequireAdmin(c); err != nil {
 		return d.WriteAdminAccessError(c, err)
 	}
-	if d.JobRepo == nil || d.UserCSVArtifacts == nil {
+	if d.JobRepo == nil || d.CSVArtifacts == nil {
 		return support.WriteProblem(c, http.StatusServiceUnavailable, "user_import_unavailable", "The user import service is unavailable.")
 	}
 	tenantID := tenancy.TenantID(c.Request().Context())
@@ -104,7 +104,7 @@ func HandleGetAdminUserImport(d Deps, c *echo.Context) error {
 	case boundaryOrdinal > 0:
 		startOrdinal = boundaryOrdinal + 1
 	}
-	errorsPage, err := userusecases.ReadUserImportErrorRange(c.Request().Context(), d.UserCSVArtifacts, tenantID, result, startOrdinal, page.Limit)
+	errorsPage, err := userusecases.ReadUserImportErrorRange(c.Request().Context(), d.CSVArtifacts, tenantID, result, startOrdinal, page.Limit)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func parseUserImportErrorKeyset(primary, id, jobID string) (int, error) {
 }
 
 func writeUserImportError(c *echo.Context, err error) error {
-	var csvErr *userdomain.UserCSVError
+	var csvErr *idmdomain.CSVError
 	switch {
 	case errors.Is(err, userusecases.ErrUserImportNotFound):
 		return support.WriteProblem(c, http.StatusNotFound, "user_import_not_found", "The preview does not exist.")

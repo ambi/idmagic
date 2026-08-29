@@ -8,6 +8,7 @@ package idmanagement
 import (
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
@@ -20,8 +21,9 @@ type Module struct {
 	GroupRepo             groupports.GroupRepository
 	AgentRepo             agentports.AgentRepository
 	EmailChangeTokenStore userports.EmailChangeTokenStore
-	UserCSVArtifacts      userports.UserCSVArtifactStore
+	CSVArtifacts          idmports.CSVArtifactStore
 	UserImportCommitter   userports.UserImportRowCommitter
+	GroupImportCommitter  groupports.GroupImportRowCommitter
 	// UserMutationCommitter は User mutation を確定させる境界 port。IdGovernance が
 	// 実装を注入する。nil のとき admin usecase は UserRepo.Save に fallback する。
 	UserMutationCommitter userports.UserMutationCommitter

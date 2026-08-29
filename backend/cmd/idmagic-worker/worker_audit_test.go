@@ -18,6 +18,8 @@ import (
 	auditports "github.com/ambi/idmagic/backend/audit/ports"
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	"github.com/ambi/idmagic/backend/idmanagement"
+	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/db_postgres"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
 	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -77,7 +79,7 @@ func TestUserImportApplyRecordsUserCreatedAuditEvent(t *testing.T) {
 	}
 	result, err := userusecases.ApplyUserImport(tenancy.WithTenant(ctx, tenant, "", ""), userusecases.UserImportApplyDeps{
 		Plan: planDeps, Committer: userpostgres.UserImportRowCommitter{Pool: db}, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
-	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), userdomain.DefaultUserCSVTransferPolicy(), "admin-actor", now, nil)
+	}, strings.NewReader("preferred_username,email,name,roles\nalice,alice@example.com,Alice,admin\n"), idmdomain.DefaultCSVTransferPolicy(), "admin-actor", now, nil)
 	if err != nil {
 		t.Fatalf("run user import apply: %v", err)
 	}
@@ -128,9 +130,9 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 	}
 
 	auditRepo := &auditpostgres.AuditEventRepository{Pool: db}
-	artifacts := &userpostgres.UserCSVArtifactStore{Pool: db}
+	artifacts := &idmpostgres.CSVArtifactStore{Pool: db}
 	deps := &bootstrap.Dependencies{
-		IdManagement: idmanagement.Module{UserRepo: &userpostgres.UserRepository{Pool: db}, UserCSVArtifacts: artifacts},
+		IdManagement: idmanagement.Module{UserRepo: &userpostgres.UserRepository{Pool: db}, CSVArtifacts: artifacts},
 		OAuth2:       oauth2.Module{EventSink: sinks_console.NewConsoleSink()},
 		Audit:        audit.Module{AuditEventRepo: auditRepo},
 	}
@@ -141,12 +143,12 @@ func TestDataExportRecordsSucceededAuditEvent(t *testing.T) {
 		t.Fatalf("marshal params: %v", err)
 	}
 	handler := idmusecases.DataExportHandler(idmusecases.DataExportDeps{
-		UserRepo: deps.IdManagement.UserRepo, UserCSVArtifacts: artifacts,
+		UserRepo: deps.IdManagement.UserRepo, CSVArtifacts: artifacts,
 		UserCSVExporter: userusecases.UserCSVExporter{
 			Deps: userusecases.UserCSVExportDeps{
 				UserRepo: deps.IdManagement.UserRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: artifacts,
 			},
-			Policy: userdomain.DefaultUserCSVTransferPolicy(),
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)

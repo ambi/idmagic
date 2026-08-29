@@ -15,7 +15,6 @@ import (
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	support "github.com/ambi/idmagic/backend/shared/http/support_http"
@@ -27,13 +26,13 @@ import (
 func exportUsecaseDeps(d Deps) idmusecases.DataExportDeps {
 	exporter := userusecases.UserCSVExporter{
 		Deps: userusecases.UserCSVExportDeps{
-			UserRepo: d.UserRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{Repository: d.AttrSchemaRepo}, Artifacts: d.UserCSVArtifacts,
+			UserRepo: d.UserRepo, SchemaReader: userusecases.TenantUserCSVSchemaReader{Repository: d.AttrSchemaRepo}, Artifacts: d.CSVArtifacts,
 		},
-		Policy: userdomain.DefaultUserCSVTransferPolicy(),
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
 	return idmusecases.DataExportDeps{
 		UserRepo: d.UserRepo, GroupRepo: d.GroupRepo, JobRepo: d.JobRepo,
-		UserCSVExporter: exporter, UserCSVArtifacts: d.UserCSVArtifacts,
+		UserCSVExporter: exporter, CSVArtifacts: d.CSVArtifacts,
 		Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo,
 	}
 }

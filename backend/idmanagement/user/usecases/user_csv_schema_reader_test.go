@@ -66,7 +66,7 @@ func TestExportUserCSVSucceedsWithBuiltinAttributeValue(t *testing.T) {
 		UserRepo:     repo,
 		SchemaReader: TenantUserCSVSchemaReader{Repository: schemaRepo},
 		Artifacts:    artifacts,
-	}, []string{"id", "preferred_username"}, "", userdomain.DefaultUserCSVTransferPolicy())
+	}, []string{"id", "preferred_username"}, "", idmdomain.DefaultCSVTransferPolicy())
 	if err != nil {
 		t.Fatalf("export failed: %v", err)
 	}

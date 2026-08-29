@@ -13,9 +13,9 @@ import (
 	"github.com/ambi/idmagic/backend/cmd/internal/bootstrap"
 	datakeysusecases "github.com/ambi/idmagic/backend/datakeys/usecases"
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupusecases "github.com/ambi/idmagic/backend/idmanagement/group/usecases"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
-	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userusecases "github.com/ambi/idmagic/backend/idmanagement/user/usecases"
 	"github.com/ambi/idmagic/backend/jobs"
 	"github.com/ambi/idmagic/backend/jobs/domain"
@@ -103,16 +103,31 @@ func RunWorker() error {
 		OwnershipGuard: scimsource.UserOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
 	}
 	importJobDeps := userusecases.UserImportJobDeps{
-		Artifacts: deps.IdManagement.UserCSVArtifacts, Jobs: deps.Jobs.Repo,
+		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
 		Plan: importPlanDeps,
 		Apply: userusecases.UserImportApplyDeps{
 			Plan: importPlanDeps, Committer: deps.IdManagement.UserImportCommitter,
 			PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
 		},
-		Policy: userdomain.DefaultUserCSVTransferPolicy(),
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
 	}
 	handlers.Register(domain.KindUserImportPreview, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModePreview))
 	handlers.Register(domain.KindUserImportApply, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModeApply))
+	groupImportPlanDeps := groupusecases.GroupImportPlanDeps{
+		GroupRepo:      deps.IdManagement.GroupRepo,
+		SchemaRepo:     deps.Tenancy.AttrSchemaRepo,
+		OwnershipGuard: scimsource.GroupOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+	}
+	groupImportJobDeps := groupusecases.GroupImportJobDeps{
+		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
+		Plan: groupImportPlanDeps,
+		Apply: groupusecases.GroupImportApplyDeps{
+			Plan: groupImportPlanDeps, Committer: deps.IdManagement.GroupImportCommitter,
+		},
+		Policy: idmdomain.DefaultCSVTransferPolicy(),
+	}
+	handlers.Register(domain.KindGroupImportPreview, groupusecases.GroupImportJobHandler(groupImportJobDeps, groupusecases.GroupImportModePreview))
+	handlers.Register(domain.KindGroupImportApply, groupusecases.GroupImportJobHandler(groupImportJobDeps, groupusecases.GroupImportModeApply))
 	handlers.Register(domain.KindDynamicGroupReconcile, groupusecases.DynamicGroupReconcileHandler(groupusecases.DynamicGroupDeps{
 		GroupRepo:  deps.IdManagement.GroupRepo,
 		UserRepo:   deps.IdManagement.UserRepo,
@@ -124,14 +139,21 @@ func RunWorker() error {
 	}))
 	handlers.Register(idmusecases.KindDataExport, idmusecases.DataExportHandler(idmusecases.DataExportDeps{
 		UserRepo: deps.IdManagement.UserRepo, GroupRepo: deps.IdManagement.GroupRepo, JobRepo: deps.Jobs.Repo,
-		UserCSVArtifacts: deps.IdManagement.UserCSVArtifacts,
+		CSVArtifacts: deps.IdManagement.CSVArtifacts,
 		UserCSVExporter: userusecases.UserCSVExporter{
 			Deps: userusecases.UserCSVExportDeps{
 				UserRepo:     deps.IdManagement.UserRepo,
 				SchemaReader: userusecases.TenantUserCSVSchemaReader{Repository: deps.Tenancy.AttrSchemaRepo},
-				Artifacts:    deps.IdManagement.UserCSVArtifacts,
+				Artifacts:    deps.IdManagement.CSVArtifacts,
 			},
-			Policy: userdomain.DefaultUserCSVTransferPolicy(),
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
+		},
+		GroupCSVExporter: groupusecases.GroupCSVExporter{
+			Deps: groupusecases.GroupCSVExportDeps{
+				GroupRepo: deps.IdManagement.GroupRepo,
+				Artifacts: deps.IdManagement.CSVArtifacts,
+			},
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},
 		Emit: func(event spec.DomainEvent) error {
 			deps.NewEmitFunc(logger)(event)

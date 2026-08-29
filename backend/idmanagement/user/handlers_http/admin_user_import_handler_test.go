@@ -11,6 +11,7 @@ import (
 	"time"
 
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	httpdeps "github.com/ambi/idmagic/backend/idmanagement/deps_http"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
@@ -31,8 +32,8 @@ func TestGetAdminUserImportUsesManagementCursorPaginationForArtifactErrors(t *te
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
 	tenantID := tenancydomain.DefaultTenantID
 	repo.Seed(&userdomain.User{ID: "admin", TenantID: tenantID, PreferredUsername: "admin", PasswordHash: "unused", Roles: []string{"admin"}, CreatedAt: now, UpdatedAt: now})
-	artifacts := usermemory.NewUserCSVArtifactStore()
-	errorArtifact, err := artifacts.PutUserCSVArtifactPages(context.Background(), tenantID, func(emit func([]byte) error) error {
+	artifacts := idmmemory.NewCSVArtifactStore()
+	errorArtifact, err := artifacts.PutCSVArtifactPages(context.Background(), tenantID, func(emit func([]byte) error) error {
 		for pageNumber := range 3 {
 			page := make([]userusecases.UserImportRowError, 0, userusecases.UserImportErrorArtifactPageSize)
 			for index := range userusecases.UserImportErrorArtifactPageSize {
@@ -82,7 +83,7 @@ func TestGetAdminUserImportUsesManagementCursorPaginationForArtifactErrors(t *te
 	d := httpdeps.Deps{
 		Issuer: "http://idp.test", PaginationCodec: codec,
 		Authenticator: &support.Authenticator{UserRepo: repo, AuthnResolver: authusecases.DemoHeaderResolver{}},
-		UserRepo:      repo, JobRepo: jobs, UserCSVArtifacts: artifacts,
+		UserRepo:      repo, JobRepo: jobs, CSVArtifacts: artifacts,
 	}
 	e.GET("/api/admin/v1/users/imports/:job_id", func(c *echo.Context) error { return userhttp.HandleGetAdminUserImport(d, c) })
 

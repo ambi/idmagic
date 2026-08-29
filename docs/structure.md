@@ -78,12 +78,16 @@ backend/<context>/
 ```text
 backend/idmanagement/
   module.go                 # Context ごとに 1 つ置く DI の組み立て
-  domain/                   # 機能間で共有する型だけ（列挙、DomainEvent）
+  domain/                   # 機能間で共有する型と計算だけ（列挙、DomainEvent、CSV 基盤）
+  ports/                    # 機能間で共有するポートだけ（CSV 成果物ストア）
   usecase/                  # 機能をまたぐユースケース補助とエラー値だけ
+  db_memory/  db_postgres/  # 機能間で共有するポートのアダプター
   deps_http/                # Deps 型を定義する末端パッケージ
   handlers_http/            # ルート登録と機能をまたぐ統合テスト
   user/  group/  agent/     # 各機能の domain、ports、usecase、アダプター
 ```
+
+機能をまたぐ層に置いてよいのは、複数の機能が同じ意味で使う語彙と機構に限る。CSV の転送ポリシー、解析器、可逆なセル変換、不変な成果物ストアは `User` と `Group` が同じ意味で共有するためここに置き、列の語彙と計画器は Aggregate ごとの不変条件なので機能側に残す。
 
 ## Cross-context events
 

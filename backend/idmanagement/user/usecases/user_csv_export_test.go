@@ -12,36 +12,36 @@ import (
 	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 )
 
 type exportArtifactStore struct {
 	content []byte
 }
 
-func (s *exportArtifactStore) PutUserCSVArtifact(_ context.Context, tenantID string, write func(io.Writer) error) (userports.UserCSVArtifact, error) {
+func (s *exportArtifactStore) PutCSVArtifact(_ context.Context, tenantID string, write func(io.Writer) error) (idmports.CSVArtifact, error) {
 	var content bytes.Buffer
 	if err := write(&content); err != nil {
-		return userports.UserCSVArtifact{}, err
+		return idmports.CSVArtifact{}, err
 	}
 	s.content = append([]byte(nil), content.Bytes()...)
 	digest := sha256.Sum256(s.content)
-	return userports.UserCSVArtifact{Ref: "artifact-1", TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(len(s.content))}, nil
+	return idmports.CSVArtifact{Ref: "artifact-1", TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(len(s.content))}, nil
 }
 
-func (s *exportArtifactStore) OpenUserCSVArtifact(_ context.Context, tenantID, ref string) (io.ReadCloser, userports.UserCSVArtifact, error) {
+func (s *exportArtifactStore) OpenCSVArtifact(_ context.Context, tenantID, ref string) (io.ReadCloser, idmports.CSVArtifact, error) {
 	digest := sha256.Sum256(s.content)
-	return io.NopCloser(bytes.NewReader(s.content)), userports.UserCSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(len(s.content))}, nil
+	return io.NopCloser(bytes.NewReader(s.content)), idmports.CSVArtifact{Ref: ref, TenantID: tenantID, SHA256: hex.EncodeToString(digest[:]), ByteSize: int64(len(s.content))}, nil
 }
 
-func (s *exportArtifactStore) PutUserCSVArtifactPages(context.Context, string, func(func([]byte) error) error) (userports.UserCSVArtifact, error) {
-	return userports.UserCSVArtifact{}, errors.New("not implemented")
+func (s *exportArtifactStore) PutCSVArtifactPages(context.Context, string, func(func([]byte) error) error) (idmports.CSVArtifact, error) {
+	return idmports.CSVArtifact{}, errors.New("not implemented")
 }
 
-func (s *exportArtifactStore) ReadUserCSVArtifactPage(context.Context, string, string, int) ([]byte, userports.UserCSVArtifact, error) {
-	return nil, userports.UserCSVArtifact{}, errors.New("not implemented")
+func (s *exportArtifactStore) ReadCSVArtifactPage(context.Context, string, string, int) ([]byte, idmports.CSVArtifact, error) {
+	return nil, idmports.CSVArtifact{}, errors.New("not implemented")
 }
 
 func TestExportUserCSVTenThousandRowsRoundTripAsUnchanged(t *testing.T) {
@@ -70,7 +70,7 @@ func TestExportUserCSVTenThousandRowsRoundTripAsUnchanged(t *testing.T) {
 	artifacts := &exportArtifactStore{}
 	result, err := ExportUserCSV(ctx, UserCSVExportDeps{
 		UserRepo: repo, SchemaReader: importSchemaReader{defs: defs}, Artifacts: artifacts,
-	}, nil, "", userdomain.DefaultUserCSVTransferPolicy())
+	}, nil, "", idmdomain.DefaultCSVTransferPolicy())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestExportUserCSVTenThousandRowsRoundTripAsUnchanged(t *testing.T) {
 	var summary userdomain.UserImportPlanSummary
 	_, err = PlanUserImport(ctx, UserImportPlanDeps{
 		UserRepo: repo, SchemaReader: importSchemaReader{defs: defs}, OwnershipGuard: perUserImportOwnershipGuard{},
-	}, bytes.NewReader(artifacts.content), userdomain.DefaultUserCSVTransferPolicy(), func(row userdomain.UserImportRowPlan) error {
+	}, bytes.NewReader(artifacts.content), idmdomain.DefaultCSVTransferPolicy(), func(row userdomain.UserImportRowPlan) error {
 		summary.Observe(row)
 		return nil
 	})
@@ -102,7 +102,7 @@ func TestExportUserCSVUsesRequestedMachineColumnsAndPolicy(t *testing.T) {
 	user := importPlannerUser("user-alice", "alice")
 	repo.Seed(user)
 	artifacts := &exportArtifactStore{}
-	policy := userdomain.DefaultUserCSVTransferPolicy()
+	policy := idmdomain.DefaultCSVTransferPolicy()
 	result, err := ExportUserCSV(ctx, UserCSVExportDeps{
 		UserRepo:     repo,
 		SchemaReader: importSchemaReader{defs: []userdomain.UserAttributeDef{{Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate}}},
@@ -125,8 +125,8 @@ func TestExportUserCSVUsesRequestedMachineColumnsAndPolicy(t *testing.T) {
 		SchemaReader: importSchemaReader{defs: []userdomain.UserAttributeDef{{Key: "department", Type: idmdomain.AttributeTypeString, Visibility: idmdomain.AttrVisibilityPrivate}}},
 		Artifacts:    &exportArtifactStore{},
 	}, []string{"id", "preferred_username"}, "", policy)
-	var csvErr *userdomain.UserCSVError
-	if !errors.As(err, &csvErr) || csvErr.Code != userdomain.UserCSVErrorTooManyRows {
+	var csvErr *idmdomain.CSVError
+	if !errors.As(err, &csvErr) || csvErr.Code != idmdomain.CSVErrorTooManyRows {
 		t.Fatalf("err=%v", err)
 	}
 }

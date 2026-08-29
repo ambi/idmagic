@@ -32,6 +32,7 @@ import (
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -79,10 +80,12 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 	// data_key_reencryption job to migrate (dev/test only).
 	dataKeysMigrators := datakeysusecases.NewMigratorRegistry()
 	userRepo := usermemory.NewUserRepository()
-	userCSVArtifacts := usermemory.NewUserCSVArtifactStore()
+	csvArtifacts := idmmemory.NewCSVArtifactStore()
 	quotaRepo := tenancymemory.NewQuotaRepository()
 	passwordHistoryRepo := passwordmemory.NewPasswordHistoryRepository()
 	auditEventRepo := auditmemory.NewAuditEventStore(0)
+	groupRepo := groupmemory.NewGroupRepository()
+	groupImportCommitter := groupmemory.NewGroupImportRowCommitter(groupRepo)
 	userImportCommitter := usermemory.UserImportRowCommitter{
 		Users: userRepo, PasswordHistory: passwordHistoryRepo, Quota: quotaRepo, Audit: auditEventRepo,
 	}
@@ -114,11 +117,12 @@ func assembleMemory(cfg SharedConfig) (*Dependencies, error) {
 		},
 		IdManagement: idmanagement.Module{
 			UserRepo:              userRepo,
-			GroupRepo:             groupmemory.NewGroupRepository(),
+			GroupRepo:             groupRepo,
 			AgentRepo:             agentmemory.NewAgentRepository(),
 			EmailChangeTokenStore: usermemory.NewEmailChangeTokenStore(),
-			UserCSVArtifacts:      userCSVArtifacts,
+			CSVArtifacts:          csvArtifacts,
 			UserImportCommitter:   userImportCommitter,
+			GroupImportCommitter:  groupImportCommitter,
 			UserMutationCommitter: userMutationCommitter,
 			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},

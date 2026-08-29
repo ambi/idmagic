@@ -27,7 +27,7 @@ func ApplyUserImport(
 	ctx context.Context,
 	deps UserImportApplyDeps,
 	input io.Reader,
-	policy userdomain.UserCSVTransferPolicy,
+	policy idmdomain.CSVTransferPolicy,
 	actorUserID string,
 	now time.Time,
 	emit func(userdomain.UserImportRowPlan) error,

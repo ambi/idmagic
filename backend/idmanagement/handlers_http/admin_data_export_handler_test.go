@@ -12,6 +12,8 @@ import (
 	authusecases "github.com/ambi/idmagic/backend/authentication/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentmemory "github.com/ambi/idmagic/backend/idmanagement/agent/db_memory"
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 	groupmemory "github.com/ambi/idmagic/backend/idmanagement/group/db_memory"
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 	idmusecases "github.com/ambi/idmagic/backend/idmanagement/usecases"
@@ -33,7 +35,7 @@ type exportTestHandler struct {
 	users     *usermemory.UserRepository
 	groups    *groupmemory.GroupRepository
 	jobRepo   *jobsmemory.JobRepository
-	artifacts *usermemory.UserCSVArtifactStore
+	artifacts *idmmemory.CSVArtifactStore
 }
 
 func newExportTestHandler(t *testing.T) exportTestHandler {
@@ -41,7 +43,7 @@ func newExportTestHandler(t *testing.T) exportTestHandler {
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
 	jobRepo := jobsmemory.NewJobRepository()
-	artifacts := usermemory.NewUserCSVArtifactStore()
+	artifacts := idmmemory.NewCSVArtifactStore()
 	now := time.Now().UTC()
 	email := "alice@example.com"
 	users.Seed(&userdomain.User{ID: "admin", PreferredUsername: "admin", PasswordHash: "unused", Roles: []string{"admin"}, TenantID: tenancydomain.DefaultTenantID, CreatedAt: now, UpdatedAt: now})
@@ -56,7 +58,7 @@ func newExportTestHandler(t *testing.T) exportTestHandler {
 		AgentRepo:     agentmemory.NewAgentRepository(),
 		GroupRepo:     groups,
 		Jobs:          jobs.Module{Repo: jobRepo},
-		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, UserCSVArtifacts: artifacts},
+		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, CSVArtifacts: artifacts},
 		EmailSender:   mockEmailSender{},
 	})
 	return exportTestHandler{echo: e, users: users, groups: groups, jobRepo: jobRepo, artifacts: artifacts}
@@ -72,10 +74,10 @@ func (h exportTestHandler) runExportJob(t *testing.T, exportID string) {
 		t.Fatal(err)
 	}
 	deps := idmusecases.DataExportDeps{
-		UserRepo: h.users, GroupRepo: h.groups, JobRepo: h.jobRepo, UserCSVArtifacts: h.artifacts,
+		UserRepo: h.users, GroupRepo: h.groups, JobRepo: h.jobRepo, CSVArtifacts: h.artifacts,
 		UserCSVExporter: userusecases.UserCSVExporter{
 			Deps:   userusecases.UserCSVExportDeps{UserRepo: h.users, SchemaReader: userusecases.TenantUserCSVSchemaReader{}, Artifacts: h.artifacts},
-			Policy: userdomain.DefaultUserCSVTransferPolicy(),
+			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},
 	}
 	raw, err := idmusecases.DataExportHandler(deps)(ctx, job)

@@ -23,7 +23,7 @@ enum GroupMembershipSource {
   dynamic_rule: "dynamic_rule",
 }
 
-@doc("The tenant-scoped role bundle aggregate. It grants its `roles` to every member User at once. `id` is an immutable generated identifier and `name` an editable label unique within the tenant. `email` is a contact address and is never used to authenticate, and `attributes` is a sparse bag of custom attributes validated against the tenant's TenantGroupAttributeSchema.")
+@doc("The tenant-scoped role bundle aggregate. It grants its `roles` to every member User at once. `id` is an immutable generated identifier and `name` an editable label unique within the tenant; a CSV row resolves its target by `id` first and falls back to `name`, so a row carrying both a known `id` and a `name` held by a different Group is refused rather than resolved. `email` is a contact address and is never used to authenticate, and `attributes` is a sparse bag of custom attributes validated against the tenant's TenantGroupAttributeSchema; neither is on the CSV allow list. Deletion is immediate and irreversible: Group has no reservation state, so a CSV row asks for it through the explicit `lifecycle_action` column rather than through a target-state column.")
 model Group {
   @minLength(1)
   @maxLength(64)
@@ -365,11 +365,80 @@ enum UserImportMode {
 }
 
 
-@doc("The configurable safety policy User export and import share. It defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. A successful User export always sits inside the same policy, so it can be previewed as it is. The ceilings do not express tenant capacity; they are an operational boundary on a single asynchronous artifact.")
-model UserCsvTransferPolicy {
+@doc("The configurable safety policy every CSV export and import shares, User and Group alike. It defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. A successful export always sits inside the same policy, so it can be previewed as it is. The ceilings do not express tenant capacity; they are an operational boundary on a single asynchronous artifact.")
+model CsvTransferPolicy {
   max_rows: int64;
   max_bytes: int64;
   max_field_bytes: int64;
+}
+
+
+@doc("The row operation a Group CSV asks for beyond an upsert. It is a write-only column: a Group export always writes it empty, so re-applying an unedited export plans every row as unchanged. The vocabulary is closed -- Group has no reservation state, so `delete` is the only value, and an unknown one refuses the row rather than being rounded to a known one.")
+enum GroupCsvLifecycleAction {
+  delete: "delete",
+}
+
+
+@doc("What the CSV group import endpoints return when a preview or an apply has been accepted. The job runs asynchronously; poll GetAdminGroupImport with the `id` for progress and results.")
+model GroupImportJobRef {
+  @doc("Job id, used to poll GetAdminGroupImport and to start an apply from a preview.")
+  id: string;
+  @doc("Job status, from the Jobs context lifecycle.")
+  status: string;
+  mode: GroupImportMode;
+}
+
+
+@doc("The public view of a CSV group import job. A preview causes no side effects; an apply joins a succeeded preview of the same tenant on its `source_sha256`. Row errors name the column and a stable code, never the value.")
+model GroupImportJob {
+  @doc("Job id.")
+  id: string;
+  @doc("Job status, from the Jobs context lifecycle.")
+  status: string;
+  mode: GroupImportMode;
+  @doc("Counts and digests the job produced. Absent until the job has run.")
+  result?: GroupImportResult;
+  @doc("One page of row errors, paginated by the standard cursor headers. Empty while the job is still running.")
+  errors?: GroupImportRowError[];
+}
+
+
+@doc("Counts and digests a finished CSV group import job produced. `deleted_rows` and `deleted_memberships` are reported apart from the other operations because deletion is irreversible and cascades to every membership of the Group.")
+model GroupImportResult {
+  @doc("SHA-256 of the uploaded CSV. An apply must name a preview with the same digest.")
+  source_sha256: string;
+  @doc("For an apply, the preview job it was started from.")
+  preview_job_id?: string;
+  total_rows: int64;
+  created_rows: int64;
+  updated_rows: int64;
+  unchanged_rows: int64;
+  @doc("How many rows ask to delete a Group, or deleted one.")
+  deleted_rows: int64;
+  @doc("How many memberships those deletions release. It counts the cascade the deletion carries, not rows of the CSV.")
+  deleted_memberships: int64;
+  rejected_rows: int64;
+  @doc("Reference to the stored error artifact, when the job produced one.")
+  error_artifact_ref?: string;
+  @doc("SHA-256 of the stored error artifact.")
+  error_artifact_sha256?: string;
+  @doc("How many row errors the job produced in total, not how many this page carries.")
+  error_total: int64;
+}
+
+
+@doc("A safe validation or application error for one CSV group row. It returns no value, only the column name and a stable code.")
+model GroupImportRowError {
+  row: int64;
+  column?: string;
+  code: string;
+}
+
+
+@doc("The stage of a CSV group import job. A preview is a read-only plan; an apply replans a succeeded preview payload against the current state and applies it.")
+enum GroupImportMode {
+  preview: "preview",
+  apply: "apply",
 }
 
 
@@ -398,7 +467,7 @@ enum DataExportStatus {
 }
 
 
-@doc("One column of the allow list for an export kind. `key` is the stable machine name, which is also the CSV header; `label` is for display alone; and `pii` says whether it holds personal information. The User allow list holds 13 built-in core columns plus `attr:<key>` -- 27 built-in extension attributes shared by every tenant, drawn from the OIDC profile, phone, and address claims and the SCIM enterprise organizational attributes -- and `custom:<key>`, the tenant-defined attributes resolved per tenant from the effective TenantUserAttributeSchema. Sensitive values such as `password_hash`, secrets, tokens, recovery codes, and MFA secrets are on no allow list at all.")
+@doc("One column of the allow list for an export kind. `key` is the stable machine name, which is also the CSV header; `label` is for display alone; and `pii` says whether it holds personal information. The User allow list holds 13 built-in core columns plus `attr:<key>` -- 27 built-in extension attributes shared by every tenant, drawn from the OIDC profile, phone, and address claims and the SCIM enterprise organizational attributes -- and `custom:<key>`, the tenant-defined attributes resolved per tenant from the effective TenantUserAttributeSchema. The Group allow list is the closed set of import-compatible columns -- `id`, `name`, `description`, `membership_type`, `roles`, `dynamic_rule_expression`, `dynamic_rule_enabled`, `lifecycle_action`, `created_at`, `updated_at` -- so an unedited Group export can be previewed as it is. Sensitive values such as `password_hash`, secrets, tokens, recovery codes, and MFA secrets are on no allow list at all.")
 model DataExportColumn {
   key: string;
   label: string;

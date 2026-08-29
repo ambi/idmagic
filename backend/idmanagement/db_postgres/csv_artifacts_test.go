@@ -7,17 +7,18 @@ import (
 	"io"
 	"testing"
 
-	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
+	pgfixtures "github.com/ambi/idmagic/backend/shared/storage/fixtures_postgres"
 	pgtest "github.com/ambi/idmagic/backend/shared/storage/testing_postgres"
 )
 
-func TestUserCSVArtifactStoreStreamsChunksAndIsolatesTenant(t *testing.T) {
+func TestCSVArtifactStoreStreamsChunksAndIsolatesTenant(t *testing.T) {
 	db := pgtest.Require(t)
-	tenant := seedTenant(t, db)
-	other := seedTenant(t, db)
-	store := &UserCSVArtifactStore{Pool: db}
+	tenant := pgfixtures.SeedTenant(t, db)
+	other := pgfixtures.SeedTenant(t, db)
+	store := &CSVArtifactStore{Pool: db}
 	want := bytes.Repeat([]byte("row,with,content\n"), 10_000)
-	metadata, err := store.PutUserCSVArtifact(context.Background(), tenant.ID, func(output io.Writer) error {
+	metadata, err := store.PutCSVArtifact(context.Background(), tenant.ID, func(output io.Writer) error {
 		_, err := io.Copy(output, bytes.NewReader(want))
 		return err
 	})
@@ -27,7 +28,7 @@ func TestUserCSVArtifactStoreStreamsChunksAndIsolatesTenant(t *testing.T) {
 	if metadata.ByteSize != int64(len(want)) || metadata.SHA256 == "" {
 		t.Fatalf("metadata=%+v", metadata)
 	}
-	reader, opened, err := store.OpenUserCSVArtifact(context.Background(), tenant.ID, metadata.Ref)
+	reader, opened, err := store.OpenCSVArtifact(context.Background(), tenant.ID, metadata.Ref)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,16 +37,16 @@ func TestUserCSVArtifactStoreStreamsChunksAndIsolatesTenant(t *testing.T) {
 	if err != nil || !bytes.Equal(got, want) || opened != metadata {
 		t.Fatalf("bytes=%d metadata=%+v err=%v", len(got), opened, err)
 	}
-	if _, _, err := store.OpenUserCSVArtifact(context.Background(), other.ID, metadata.Ref); !errors.Is(err, userports.ErrUserCSVArtifactNotFound) {
+	if _, _, err := store.OpenCSVArtifact(context.Background(), other.ID, metadata.Ref); !errors.Is(err, idmports.ErrCSVArtifactNotFound) {
 		t.Fatalf("cross-tenant err=%v", err)
 	}
 }
 
-func TestUserCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.T) {
+func TestCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.T) {
 	db := pgtest.Require(t)
-	tenant := seedTenant(t, db)
-	store := &UserCSVArtifactStore{Pool: db}
-	metadata, err := store.PutUserCSVArtifactPages(context.Background(), tenant.ID, func(emit func([]byte) error) error {
+	tenant := pgfixtures.SeedTenant(t, db)
+	store := &CSVArtifactStore{Pool: db}
+	metadata, err := store.PutCSVArtifactPages(context.Background(), tenant.ID, func(emit func([]byte) error) error {
 		for _, page := range [][]byte{[]byte(`[{"row":2,"code":"invalid_email"}]`), []byte(`[{"row":202,"code":"source_managed"}]`)} {
 			if err := emit(page); err != nil {
 				return err
@@ -56,7 +57,7 @@ func TestUserCSVArtifactStorePersistsResultPagesInExistingChunkTable(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	page, opened, err := store.ReadUserCSVArtifactPage(context.Background(), tenant.ID, metadata.Ref, 1)
+	page, opened, err := store.ReadCSVArtifactPage(context.Background(), tenant.ID, metadata.Ref, 1)
 	if err != nil || string(page) != `[{"row":202,"code":"source_managed"}]` || opened.SHA256 != metadata.SHA256 {
 		t.Fatalf("page=%s metadata=%+v err=%v", page, opened, err)
 	}

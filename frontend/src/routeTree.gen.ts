@@ -65,6 +65,7 @@ import { Route as AdminAuthorizationDetailTypesNewRouteImport } from './routes/a
 import { Route as AdminFederationEntraRouteImport } from './routes/admin/federation/entra'
 import { Route as AdminGroupsGroupIdRouteImport } from './routes/admin/groups_/$groupId'
 import { Route as AdminGroupsExportsRouteImport } from './routes/admin/groups_/exports'
+import { Route as AdminGroupsImportRouteImport } from './routes/admin/groups_/import'
 import { Route as AdminGroupsNewRouteImport } from './routes/admin/groups_/new'
 import { Route as AdminIdentityProvidersIdRouteImport } from './routes/admin/identity-providers_/$id'
 import { Route as AdminIdentityProvidersNewRouteImport } from './routes/admin/identity-providers_/new'
@@ -387,6 +388,11 @@ const AdminGroupsExportsRoute = AdminGroupsExportsRouteImport.update({
   path: '/groups/exports',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminGroupsImportRoute = AdminGroupsImportRouteImport.update({
+  id: '/groups_/import',
+  path: '/groups/import',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminGroupsNewRoute = AdminGroupsNewRouteImport.update({
   id: '/groups_/new',
   path: '/groups/new',
@@ -658,6 +664,7 @@ export interface FileRoutesByFullPath {
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
+  '/admin/groups/import': typeof AdminGroupsImportRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/identity-providers/$id': typeof AdminIdentityProvidersIdRouteWithChildren
   '/admin/identity-providers/new': typeof AdminIdentityProvidersNewRoute
@@ -748,6 +755,7 @@ export interface FileRoutesByTo {
   '/admin/authorization-detail-types/new': typeof AdminAuthorizationDetailTypesNewRoute
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups/exports': typeof AdminGroupsExportsRoute
+  '/admin/groups/import': typeof AdminGroupsImportRoute
   '/admin/groups/new': typeof AdminGroupsNewRoute
   '/admin/identity-providers/new': typeof AdminIdentityProvidersNewRoute
   '/admin/lifecycle-workflows/new': typeof AdminLifecycleWorkflowsNewRoute
@@ -840,6 +848,7 @@ export interface FileRoutesById {
   '/admin/federation/entra': typeof AdminFederationEntraRoute
   '/admin/groups_/$groupId': typeof AdminGroupsGroupIdRouteWithChildren
   '/admin/groups_/exports': typeof AdminGroupsExportsRoute
+  '/admin/groups_/import': typeof AdminGroupsImportRoute
   '/admin/groups_/new': typeof AdminGroupsNewRoute
   '/admin/identity-providers_/$id': typeof AdminIdentityProvidersIdRouteWithChildren
   '/admin/identity-providers_/new': typeof AdminIdentityProvidersNewRoute
@@ -938,6 +947,7 @@ export interface FileRouteTypes {
     | '/admin/federation/entra'
     | '/admin/groups/$groupId'
     | '/admin/groups/exports'
+    | '/admin/groups/import'
     | '/admin/groups/new'
     | '/admin/identity-providers/$id'
     | '/admin/identity-providers/new'
@@ -1028,6 +1038,7 @@ export interface FileRouteTypes {
     | '/admin/authorization-detail-types/new'
     | '/admin/federation/entra'
     | '/admin/groups/exports'
+    | '/admin/groups/import'
     | '/admin/groups/new'
     | '/admin/identity-providers/new'
     | '/admin/lifecycle-workflows/new'
@@ -1119,6 +1130,7 @@ export interface FileRouteTypes {
     | '/admin/federation/entra'
     | '/admin/groups_/$groupId'
     | '/admin/groups_/exports'
+    | '/admin/groups_/import'
     | '/admin/groups_/new'
     | '/admin/identity-providers_/$id'
     | '/admin/identity-providers_/new'
@@ -1570,6 +1582,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminGroupsExportsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/groups_/import': {
+      id: '/admin/groups_/import'
+      path: '/groups/import'
+      fullPath: '/admin/groups/import'
+      preLoaderRoute: typeof AdminGroupsImportRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/groups_/new': {
       id: '/admin/groups_/new'
       path: '/groups/new'
@@ -2017,6 +2036,7 @@ interface AdminRouteRouteChildren {
   AdminFederationEntraRoute: typeof AdminFederationEntraRoute
   AdminGroupsGroupIdRoute: typeof AdminGroupsGroupIdRouteWithChildren
   AdminGroupsExportsRoute: typeof AdminGroupsExportsRoute
+  AdminGroupsImportRoute: typeof AdminGroupsImportRoute
   AdminGroupsNewRoute: typeof AdminGroupsNewRoute
   AdminIdentityProvidersIdRoute: typeof AdminIdentityProvidersIdRouteWithChildren
   AdminIdentityProvidersNewRoute: typeof AdminIdentityProvidersNewRoute
@@ -2069,6 +2089,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminFederationEntraRoute: AdminFederationEntraRoute,
   AdminGroupsGroupIdRoute: AdminGroupsGroupIdRouteWithChildren,
   AdminGroupsExportsRoute: AdminGroupsExportsRoute,
+  AdminGroupsImportRoute: AdminGroupsImportRoute,
   AdminGroupsNewRoute: AdminGroupsNewRoute,
   AdminIdentityProvidersIdRoute: AdminIdentityProvidersIdRouteWithChildren,
   AdminIdentityProvidersNewRoute: AdminIdentityProvidersNewRoute,

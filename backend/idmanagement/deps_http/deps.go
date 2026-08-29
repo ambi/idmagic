@@ -14,6 +14,7 @@ import (
 	trusteddeviceports "github.com/ambi/idmagic/backend/authentication/trusteddevice/ports"
 	agentports "github.com/ambi/idmagic/backend/idmanagement/agent/ports"
 	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	consentusecases "github.com/ambi/idmagic/backend/oauth2/consent/usecases"
@@ -66,7 +67,7 @@ type Deps struct {
 	PasswordHasher        passwordports.PasswordHasher
 	PasswordHistoryRepo   passwordports.PasswordHistoryRepository
 	EmailChangeTokenStore userports.EmailChangeTokenStore
-	UserCSVArtifacts      userports.UserCSVArtifactStore
+	CSVArtifacts          idmports.CSVArtifactStore
 	EmailSender           sharednotification.EmailSender
 	Notifier              sharednotification.Notifier
 	// QuotaRepo enforces the tenant's Hard Quota on users, groups, and agents

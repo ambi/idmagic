@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	idmmemory "github.com/ambi/idmagic/backend/idmanagement/db_memory"
 	usermemory "github.com/ambi/idmagic/backend/idmanagement/user/db_memory"
 	jobsmemory "github.com/ambi/idmagic/backend/jobs/db_memory"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
@@ -15,7 +16,7 @@ import (
 
 func TestStartUserImportPreviewStoresPayloadOutsideJobParams(t *testing.T) {
 	ctx := importPlannerContext()
-	artifacts := usermemory.NewUserCSVArtifactStore()
+	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
 	job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username\nalice\n"), time.Now().UTC())
 	if err != nil {
@@ -28,7 +29,7 @@ func TestStartUserImportPreviewStoresPayloadOutsideJobParams(t *testing.T) {
 	if err := json.Unmarshal(job.Params, &params); err != nil || params.ArtifactRef == "" || params.SourceSHA256 == "" || params.ByteSize == 0 {
 		t.Fatalf("params=%+v err=%v", params, err)
 	}
-	reader, metadata, err := artifacts.OpenUserCSVArtifact(ctx, "acme", params.ArtifactRef)
+	reader, metadata, err := artifacts.OpenCSVArtifact(ctx, "acme", params.ArtifactRef)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +41,7 @@ func TestStartUserImportPreviewStoresPayloadOutsideJobParams(t *testing.T) {
 
 func TestUserImportPreviewHandlerStoresSafeErrorsOutsideJobResult(t *testing.T) {
 	ctx := importPlannerContext()
-	artifacts := usermemory.NewUserCSVArtifactStore()
+	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
 	job, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username,email\nalice,not-an-email\n"), time.Now().UTC())
 	if err != nil {
@@ -71,7 +72,7 @@ func TestUserImportPreviewHandlerStoresSafeErrorsOutsideJobResult(t *testing.T) 
 
 func TestStartUserImportApplyRequiresSucceededSameTenantPreviewAndDigest(t *testing.T) {
 	ctx := importPlannerContext()
-	artifacts := usermemory.NewUserCSVArtifactStore()
+	artifacts := idmmemory.NewCSVArtifactStore()
 	jobs := jobsmemory.NewJobRepository()
 	preview, err := StartUserImportPreview(ctx, UserImportStartDeps{Artifacts: artifacts, Jobs: jobs}, "admin", strings.NewReader("preferred_username\nalice\n"), time.Now().UTC())
 	if err != nil {
@@ -105,8 +106,8 @@ func TestStartUserImportApplyRequiresSucceededSameTenantPreviewAndDigest(t *test
 
 func TestReadUserImportErrorRangeCrossesImmutableArtifactPages(t *testing.T) {
 	ctx := importPlannerContext()
-	artifacts := usermemory.NewUserCSVArtifactStore()
-	metadata, err := artifacts.PutUserCSVArtifactPages(ctx, "acme", func(emit func([]byte) error) error {
+	artifacts := idmmemory.NewCSVArtifactStore()
+	metadata, err := artifacts.PutCSVArtifactPages(ctx, "acme", func(emit func([]byte) error) error {
 		for pageNumber := range 3 {
 			page := make([]UserImportRowError, 0, UserImportErrorArtifactPageSize)
 			for index := range UserImportErrorArtifactPageSize {

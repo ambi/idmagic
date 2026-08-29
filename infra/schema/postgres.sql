@@ -1204,26 +1204,26 @@ CREATE UNIQUE INDEX jobs_tenant_dedup_key_active_idx
     ON jobs (tenant_id, dedup_key)
     WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running');
 
-CREATE TABLE user_csv_artifacts (
+CREATE TABLE csv_artifacts (
     id UUID PRIMARY KEY,
     tenant_id UUID NOT NULL,
     sha256 TEXT NOT NULL CHECK (length(sha256) = 64),
     byte_size BIGINT NOT NULL CHECK (byte_size >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT user_csv_artifacts_tenant_id_fkey
+    CONSTRAINT csv_artifacts_tenant_id_fkey
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 );
 
-CREATE INDEX user_csv_artifacts_tenant_created_idx
-    ON user_csv_artifacts (tenant_id, created_at);
+CREATE INDEX csv_artifacts_tenant_created_idx
+    ON csv_artifacts (tenant_id, created_at);
 
-CREATE TABLE user_csv_artifact_chunks (
+CREATE TABLE csv_artifact_chunks (
     artifact_id UUID NOT NULL,
     chunk_number INT NOT NULL CHECK (chunk_number >= 0),
     payload BYTEA NOT NULL,
     PRIMARY KEY (artifact_id, chunk_number),
-    CONSTRAINT user_csv_artifact_chunks_artifact_id_fkey
-        FOREIGN KEY (artifact_id) REFERENCES user_csv_artifacts(id) ON DELETE CASCADE
+    CONSTRAINT csv_artifact_chunks_artifact_id_fkey
+        FOREIGN KEY (artifact_id) REFERENCES csv_artifacts(id) ON DELETE CASCADE
 );
 
 CREATE TABLE lifecycle_workflows (

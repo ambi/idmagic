@@ -66,12 +66,17 @@ var exportColumns = map[DataExportTargetKind][]DataExportColumn{
 		{Key: "created_at", Label: "Created at"},
 		{Key: "updated_at", Label: "Updated at"},
 	},
+	// Group の許可一覧は import 互換列の閉じた集合そのものである。無編集の
+	// export をそのまま preview できることが、この一致に依存している。
 	ExportTargetGroup: {
 		{Key: "id", Label: "ID"},
 		{Key: "name", Label: "Name"},
 		{Key: "description", Label: "Description"},
 		{Key: "membership_type", Label: "Membership type"},
 		{Key: "roles", Label: "Roles"},
+		{Key: "dynamic_rule_expression", Label: "Dynamic rule expression"},
+		{Key: "dynamic_rule_enabled", Label: "Dynamic rule enabled"},
+		{Key: "lifecycle_action", Label: "Lifecycle action"},
 		{Key: "created_at", Label: "Created at"},
 		{Key: "updated_at", Label: "Updated at"},
 	},

@@ -26,5 +26,6 @@ type ScimRepository interface {
 	SaveGroupRef(ctx context.Context, ref *ScimGroupRef) error
 	FindGroupRefByScimID(ctx context.Context, tenantID, scimID string) (*ScimGroupRef, error)
 	FindGroupRefByGroupID(ctx context.Context, tenantID, groupID string) (*ScimGroupRef, error)
+	FindGroupRefsByGroupIDs(ctx context.Context, tenantID string, groupIDs []string) ([]*ScimGroupRef, error)
 	DeleteGroupRef(ctx context.Context, tenantID, scimID string) error
 }

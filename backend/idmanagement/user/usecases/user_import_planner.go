@@ -90,7 +90,7 @@ func PlanUserImport(
 	ctx context.Context,
 	deps UserImportPlanDeps,
 	input io.Reader,
-	policy userdomain.UserCSVTransferPolicy,
+	policy idmdomain.CSVTransferPolicy,
 	emit func(userdomain.UserImportRowPlan) error,
 ) (userdomain.UserImportPlanSummary, error) {
 	var summary userdomain.UserImportPlanSummary
@@ -106,7 +106,7 @@ func PlanUserImport(
 	if err != nil {
 		return summary, err
 	}
-	reader, err := userdomain.NewUserCSVReader(input, schema, policy)
+	reader, err := idmdomain.NewCSVReader(input, schema.Accepts, policy)
 	if err != nil {
 		return summary, err
 	}
@@ -139,22 +139,22 @@ func PlanUserImport(
 	}
 }
 
-func rejectedUserImportRow(row int, column string, code userdomain.UserCSVErrorCode) userdomain.UserImportRowPlan {
+func rejectedUserImportRow(row int, column string, code idmdomain.CSVErrorCode) userdomain.UserImportRowPlan {
 	return userdomain.UserImportRowPlan{
 		Row: row, Action: userdomain.UserImportRejected,
-		Error: &userdomain.UserCSVError{Row: row, Column: column, Code: code},
+		Error: &idmdomain.CSVError{Row: row, Column: column, Code: code},
 	}
 }
 
 func planUserImportRow(
-	row userdomain.UserCSVRow,
+	row idmdomain.CSVRow,
 	schema userdomain.UserCSVSchema,
 	defs []userdomain.UserAttributeDef,
 	index userImportIndex,
 	tenantID string,
 	seenIDs, seenUsernames map[string]struct{},
 ) userdomain.UserImportRowPlan {
-	identifier, code := row.Identifier()
+	identifier, code := userdomain.UserCSVIdentifierOf(row)
 	if code != "" {
 		return rejectedUserImportRow(row.Number, "", code)
 	}
@@ -197,7 +197,7 @@ func planUserImportRow(
 	return userdomain.UserImportRowPlan{Row: row.Number, Action: action, Identifier: identifier, Before: existing, User: &candidate}
 }
 
-func resolveUserImportTarget(identifier userdomain.UserCSVIdentifier, index userImportIndex) (*userdomain.User, userdomain.UserCSVErrorCode) {
+func resolveUserImportTarget(identifier userdomain.UserCSVIdentifier, index userImportIndex) (*userdomain.User, idmdomain.CSVErrorCode) {
 	if identifier.ID != "" {
 		user := index.byID[identifier.ID]
 		if user == nil {
@@ -241,7 +241,7 @@ func cloneImportAttributes(values map[string]userdomain.AttributeValue) map[stri
 	return out
 }
 
-func applyUserImportCells(candidate *userdomain.User, row userdomain.UserCSVRow, schema userdomain.UserCSVSchema, defs []userdomain.UserAttributeDef) (string, userdomain.UserCSVErrorCode) {
+func applyUserImportCells(candidate *userdomain.User, row idmdomain.CSVRow, schema userdomain.UserCSVSchema, defs []userdomain.UserAttributeDef) (string, idmdomain.CSVErrorCode) {
 	if cell, ok := row.Cell("preferred_username"); ok {
 		candidate.PreferredUsername = strings.TrimSpace(cell.Raw)
 		if candidate.PreferredUsername == "" {
@@ -310,7 +310,7 @@ func applyUserImportCells(candidate *userdomain.User, row userdomain.UserCSVRow,
 	return "", ""
 }
 
-func setOptionalImportString(row userdomain.UserCSVRow, key string, target **string) {
+func setOptionalImportString(row idmdomain.CSVRow, key string, target **string) {
 	cell, ok := row.Cell(key)
 	if !ok {
 		return

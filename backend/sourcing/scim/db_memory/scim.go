@@ -140,3 +140,22 @@ func (r *ScimRepository) DeleteGroupRef(_ context.Context, tenantID, scimID stri
 	}
 	return nil
 }
+
+// FindGroupRefsByGroupIDs は Group の所有権をまとめて解決する。CSV の計画器が
+// 行ごとにリポジトリを引かないための一括問い合わせである。
+func (r *ScimRepository) FindGroupRefsByGroupIDs(_ context.Context, tenantID string, groupIDs []string) ([]*ports.ScimGroupRef, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	wanted := make(map[string]struct{}, len(groupIDs))
+	for _, groupID := range groupIDs {
+		wanted[groupID] = struct{}{}
+	}
+	var out []*ports.ScimGroupRef
+	for _, ref := range r.groupRefs[tenantID] {
+		if _, ok := wanted[ref.GroupID]; ok {
+			cloned := *ref
+			out = append(out, &cloned)
+		}
+	}
+	return out, nil
+}

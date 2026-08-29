@@ -57,6 +57,8 @@ enum JobKind {
   noop_echo: "noop_echo",
   user_import_preview: "user_import_preview",
   user_import_apply: "user_import_apply",
+  group_import_preview: "group_import_preview",
+  group_import_apply: "group_import_apply",
   dynamic_group_reconcile: "dynamic_group_reconcile",
   lifecycle_workflow_run: "lifecycle_workflow_run",
   backchannel_logout_delivery: "backchannel_logout_delivery",

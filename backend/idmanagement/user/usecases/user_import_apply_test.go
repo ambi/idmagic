@@ -38,7 +38,7 @@ func applyUserImportForTest(
 	input string,
 ) (userdomain.UserImportPlanSummary, []userdomain.UserImportRowPlan, error) {
 	var rows []userdomain.UserImportRowPlan
-	summary, err := ApplyUserImport(ctx, deps, strings.NewReader(input), userdomain.DefaultUserCSVTransferPolicy(), "admin", time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC), func(row userdomain.UserImportRowPlan) error {
+	summary, err := ApplyUserImport(ctx, deps, strings.NewReader(input), idmdomain.DefaultCSVTransferPolicy(), "admin", time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC), func(row userdomain.UserImportRowPlan) error {
 		rows = append(rows, row)
 		return nil
 	})

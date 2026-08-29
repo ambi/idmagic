@@ -29,7 +29,7 @@
 - ACTOR TenantAdministrator
 - GIVEN ロール=["admin"] のユーザー "operator" が管理画面のユーザー一覧を開いている
 - WHEN 管理者が機械可読なヘッダー [id, email, roles, custom:department] を任意の順で含む CSV を事前検証へ投入する
-  - ALT CSV が実効 `UserCsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える → インポートの投入は拒否される → エラー "csv_too_large" / "too_many_rows" / "field_too_large"
+  - ALT CSV が実効 `CsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える → インポートの投入は拒否される → エラー "csv_too_large" / "too_many_rows" / "field_too_large"
   - ALT CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる → インポートの投入は拒否される → エラー "invalid_header"
 - THEN プレビュージョブは `created`、`updated`、`unchanged`、`rejected` の判定、行番号、安定したエラーコードを返し、`User` は変更されない
   - ALT 行の `id` と `preferred_username` が別の `User` を示す、識別子がない、同じ対象または同じ最終ユーザー名を複数行が示す → 対象行は `rejected` となり、安定したエラーコードを返す
@@ -87,10 +87,10 @@
 
 ### REQ-IDMANAGEMENT-007: 管理者はエクスポートしたユーザー CSV を安全に再適用できる
 - ACTOR TenantAdministrator
-- GIVEN 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `UserCsvTransferPolicy` の上限内に収まる
+- GIVEN 実効 `TenantUserAttributeSchema` に `custom:department` があり、10,000 件の `User` を含む一覧が実効 `CsvTransferPolicy` の上限内に収まる
 - WHEN 管理者がインポート可能な組み込み列、`required_actions`、`custom:department` を機械可読ヘッダーでエクスポートする
   - ALT 値が危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む → 可逆な数式安全変換と RFC 4180 の引用により `decode(encode(value))` は元の値と一致する
-  - ALT 生成結果が実効 `UserCsvTransferPolicy` のいずれかの上限を超える → `User` エクスポートは `csv_transfer_limit_exceeded` で失敗し、再インポートできない成功済み成果物を作らない → 管理者はフィルターまたは列を絞って複数の成果物に分割できる
+  - ALT 生成結果が実効 `CsvTransferPolicy` のいずれかの上限を超える → `User` エクスポートは `csv_transfer_limit_exceeded` で失敗し、再インポートできない成功済み成果物を作らない → 管理者はフィルターまたは列を絞って複数の成果物に分割できる
 - THEN `worker` プロセスは CSV を不変の成果物ストアへストリーミング出力し、ジョブ結果にはテナント単位のペイロード参照、サーバーが算出した SHA-256、サイズ、行数を保持する
 - WHEN 管理者が同じ 10,000 行の成果物を編集せずプレビューする
 - THEN 全行が `unchanged` となり、`User` は変更されない
@@ -249,8 +249,62 @@
 - GIVEN トークンの発行者は対象操作に必要なロールを今も持っている
 - WHEN クライアントが User、Group、または Agent の操作をリクエストする
   - ALT `users:read` だけで User の変更または CSV インポートを要求する → 操作は AccessDeniedError で拒否される
+  - ALT `groups:read` だけで Group の CSV インポートまたはその適用を要求する → 操作は AccessDeniedError で拒否され、`Group` は 1 件も作成、更新、削除されない
   - ALT `users:*` だけで Group または Agent の操作を要求する → 操作は AccessDeniedError で拒否される
   - ALT `agents:read` だけで Agent のキルまたは削除を要求する → 操作は AccessDeniedError で拒否される
 - THEN `users:read` は User の参照に加えて、User を変更しない CSV エクスポートの開始、参照、ダウンロード、取り消しを許可する
 - THEN `groups:read` は Group の参照に加えて、Group を変更しない動的グループ規則のプレビューと CSV エクスポートを許可する
+- THEN `groups:write` は Group の変更に加えて、CSV インポートのプレビューと適用を許可する
 - THEN `agents:write` は Agent のキルと削除の両方を許可する
+
+### REQ-IDMANAGEMENT-026: 管理者は Group CSV を検証して有効な行だけをインポートできる
+- ACTOR TenantAdministrator
+- GIVEN ロール=["admin"] のユーザー "operator" が管理画面のグループ一覧を開いている
+- WHEN 管理者が機械可読なヘッダー [id, name, roles, membership_type] を任意の順で含む CSV を事前検証へ投入する
+  - ALT CSV が実効 `CsvTransferPolicy` の `max_bytes`、`max_rows`、`max_field_bytes` のいずれかを超える → インポートの投入は拒否される → エラー "csv_too_large" / "too_many_rows" / "field_too_large"
+  - ALT CSV のヘッダーに未知の列、重複した列、`password` または `password_hash` が含まれる → インポートの投入は拒否される → エラー "invalid_header"
+- THEN プレビュージョブは `created`、`updated`、`unchanged`、`deleted`、`rejected` の判定、行番号、安定したエラーコードを返し、`Group` は変更されない
+  - ALT 行に `id` も `name` も無い、`id` と `name` が別の `Group` を示す、同じ対象または同じ最終 `name` を複数行が示す → 対象行は `rejected` となり、安定したエラーコードを返す
+- WHEN 管理者が同じテナントの成功済みプレビュージョブの ID を指定して適用を開始する
+  - ALT プレビュージョブが存在しない、`queued` または `failed` である、別テナントに属する、保存済みのペイロードとダイジェストが一致しない → 適用は `Group` を変更せず `InvalidRequestError` または `AccessDeniedError` で拒否される
+- THEN CSV は再送されず、保存済みのプレビューペイロードが使われる
+- THEN 適用はプレビューペイロードと SHA-256 を検証し、現在の Repository の状態に対して同じ計画器で再計画する
+  - ALT プレビュー後に対象 `Group` の状態が別の操作で変更されている → 適用は古いプレビュー計画を実行せず、現在状態から `updated`、`unchanged`、`rejected` を再判定する
+- THEN 有効な行は作成または更新され、無効な行は `rejected` として残る。各行の名前、説明、ロール、動的規則は不可分に保存される
+  - ALT 既存 `Group` の `membership_type` を現在値と異なる値へ変更する → 対象行は安定したエラーコード `immutable_membership_type` で `rejected` となり、その `Group` の `membership_type`、ロール、メンバーシップはいずれも変更されない
+  - ALT 対象 `Group` が外部の取り込み元に管理されている、または所有権を判定できない → 対象行は安定したエラーコード `source_managed` で `rejected` となり、`Group` は変更されない
+  - ALT `membership_type=manual` の `Group` に動的規則の式を与える、最終状態の式が空のまま規則を有効化する、または式が未定義の属性か許可外の関数を参照する → 対象行は安定したエラーコード `invalid_dynamic_rule` で `rejected` となり、その `Group` の動的規則は保存されない
+  - ALT 1 行の検証、保存、監査処理が途中で失敗する → その行の名前、説明、ロール、動的規則は一部も保存されず、他の有効な行は適用を続ける
+
+### REQ-IDMANAGEMENT-027: 管理者はエクスポートしたグループ CSV を安全に再適用できる
+- ACTOR TenantAdministrator
+- GIVEN 10,000 件の `Group` を含む一覧が実効 `CsvTransferPolicy` の上限内に収まる
+- WHEN 管理者がインポート可能な組み込み列を機械可読ヘッダーでエクスポートする
+  - ALT 値が危険な先頭文字、既存のアポストロフィー、カンマ、引用符、改行を含む → 可逆な数式安全変換と RFC 4180 の引用により `decode(encode(value))` は元の値と一致する
+  - ALT 生成結果が実効 `CsvTransferPolicy` のいずれかの上限を超える → `Group` エクスポートは `csv_transfer_limit_exceeded` で失敗し、再インポートできない成功済み成果物を作らない → 管理者は列を絞って複数の成果物に分割できる
+- THEN `worker` プロセスは CSV を不変の成果物ストアへストリーミング出力し、ジョブ結果にはテナント単位のペイロード参照、サーバーが算出した SHA-256、サイズ、行数を保持する
+- THEN `lifecycle_action` 列は全行で空として出力される
+- WHEN 管理者が同じ 10,000 行の成果物を編集せずプレビューする
+- THEN 全行が `unchanged` となり、`Group` は 1 件も作成、更新、削除されない
+- WHEN 管理者が 1 行の `roles` と `description` だけを編集して再びプレビューする
+  - ALT `id`、`created_at`、`updated_at` の値だけを編集する → 読み取り専用列は受理したうえで無視し、書き込み可能な列に差分がなければ `unchanged` とする
+  - ALT `roles` または `membership_type` の値が不正である → 対象行は安定したエラーコードで `rejected` となり、値はジョブの表示にも監査イベントにも含めない
+- THEN 変更行だけが `updated`、残りは `unchanged` と計画される
+- WHEN 管理者が成功済みプレビュージョブの ID を指定して適用する
+- THEN 指定した書き込み可能な列だけが更新され、指定しなかった列は維持される
+
+### REQ-IDMANAGEMENT-028: 管理者は CSV の明示的な行操作でグループを削除できる
+- ACTOR TenantAdministrator
+- GIVEN グループ "engineering" が存在し、ユーザー "alice" が所属している
+- GIVEN 管理者はエクスポートした CSV の "engineering" の行だけに `lifecycle_action=delete` を書き込んでいる
+- WHEN 管理者がその CSV を事前検証へ投入する
+  - ALT `lifecycle_action` に `delete` 以外の値を書く → 対象行は安定したエラーコード `invalid_lifecycle_action` で `rejected` となり、既知の値へ丸めない
+  - ALT `lifecycle_action=delete` の行が、現在状態に対して差分のある書き込み可能な列も同時に持つ → 対象行は安定したエラーコード `conflicting_lifecycle_action` で `rejected` となり、その `Group` は更新も削除もされない
+  - ALT `lifecycle_action=delete` の行が既存の `Group` を指さない → 対象行は安定したエラーコード `target_not_found` で `rejected` となり、`Group` は作成されない
+  - ALT 対象 `Group` が外部の取り込み元に管理されている、または所有権を判定できない → 対象行は安定したエラーコード `source_managed` で `rejected` となり、`Group` は削除されない
+- THEN プレビューは削除される `Group` の件数と、巻き込まれるメンバーシップの件数を他の操作と分けて返し、`Group` もメンバーシップも変更されない
+- THEN CSV に現れない `Group` は削除対象に含まれない
+- WHEN 管理者が削除を含むことを確認したうえで適用する
+- THEN "engineering" は削除され、"alice" のメンバーシップは同じトランザクションで解除され、"GroupMemberRemoved" と "GroupDeleted" が発行される
+- THEN "alice" の実効ロールから "engineering" のロールが外れる
+- THEN 同じファイルの他の行の作成と更新は削除の影響を受けずに適用される

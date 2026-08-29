@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/tenancy"
@@ -18,18 +20,18 @@ const userCSVExportPageSize = 500
 type UserCSVExportDeps struct {
 	UserRepo     userports.UserRepository
 	SchemaReader userports.EffectiveUserAttributeSchemaReader
-	Artifacts    userports.UserCSVArtifactStore
+	Artifacts    idmports.CSVArtifactStore
 }
 
 type UserCSVExportResult struct {
-	Artifact  userports.UserCSVArtifact
+	Artifact  idmports.CSVArtifact
 	Columns   []string
 	TotalRows int
 }
 
 type UserCSVExporter struct {
 	Deps   UserCSVExportDeps
-	Policy userdomain.UserCSVTransferPolicy
+	Policy idmdomain.CSVTransferPolicy
 }
 
 func (e UserCSVExporter) ValidateUserCSVColumns(ctx context.Context, columns []string) error {
@@ -47,10 +49,10 @@ func (e UserCSVExporter) ValidateUserCSVColumns(ctx context.Context, columns []s
 	return validateUserCSVExportColumns(schema, columns)
 }
 
-func (e UserCSVExporter) ExportUserCSV(ctx context.Context, columns []string, status string) (userports.UserCSVArtifact, int, error) {
+func (e UserCSVExporter) ExportUserCSV(ctx context.Context, columns []string, status string) (idmports.CSVArtifact, int, error) {
 	policy := e.Policy
-	if policy == (userdomain.UserCSVTransferPolicy{}) {
-		policy = userdomain.DefaultUserCSVTransferPolicy()
+	if policy == (idmdomain.CSVTransferPolicy{}) {
+		policy = idmdomain.DefaultCSVTransferPolicy()
 	}
 	result, err := ExportUserCSV(ctx, e.Deps, columns, status, policy)
 	return result.Artifact, result.TotalRows, err
@@ -59,7 +61,7 @@ func (e UserCSVExporter) ExportUserCSV(ctx context.Context, columns []string, st
 // ExportUserCSV writes repository pages directly into an immutable artifact.
 // A returned artifact always satisfies the same policy and schema accepted by
 // PlanUserImport.
-func ExportUserCSV(ctx context.Context, deps UserCSVExportDeps, columns []string, status string, policy userdomain.UserCSVTransferPolicy) (UserCSVExportResult, error) {
+func ExportUserCSV(ctx context.Context, deps UserCSVExportDeps, columns []string, status string, policy idmdomain.CSVTransferPolicy) (UserCSVExportResult, error) {
 	var result UserCSVExportResult
 	if deps.UserRepo == nil || deps.SchemaReader == nil || deps.Artifacts == nil {
 		return result, errors.New("user CSV export dependencies are incomplete")
@@ -88,8 +90,8 @@ func ExportUserCSV(ctx context.Context, deps UserCSVExportDeps, columns []string
 	status = strings.ToLower(strings.TrimSpace(status))
 
 	rowCount := 0
-	artifact, err := deps.Artifacts.PutUserCSVArtifact(ctx, tenantID, func(output io.Writer) error {
-		writer, err := userdomain.NewUserCSVWriter(output, columns, policy)
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+		writer, err := idmdomain.NewCSVWriter(output, columns, policy)
 		if err != nil {
 			return err
 		}
@@ -133,15 +135,15 @@ func validateUserCSVExportColumns(schema userdomain.UserCSVSchema, columns []str
 	seen := make(map[string]struct{}, len(columns))
 	for _, key := range columns {
 		if _, ok := schema.Column(key); !ok {
-			return &userdomain.UserCSVError{Row: 1, Column: key, Code: userdomain.UserCSVErrorInvalidHeader}
+			return &idmdomain.CSVError{Row: 1, Column: key, Code: idmdomain.CSVErrorInvalidHeader}
 		}
 		if _, duplicate := seen[key]; duplicate {
-			return &userdomain.UserCSVError{Row: 1, Column: key, Code: userdomain.UserCSVErrorInvalidHeader}
+			return &idmdomain.CSVError{Row: 1, Column: key, Code: idmdomain.CSVErrorInvalidHeader}
 		}
 		seen[key] = struct{}{}
 	}
 	if len(columns) == 0 {
-		return &userdomain.UserCSVError{Row: 1, Code: userdomain.UserCSVErrorInvalidHeader}
+		return &idmdomain.CSVError{Row: 1, Code: idmdomain.CSVErrorInvalidHeader}
 	}
 	return nil
 }

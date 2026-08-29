@@ -33,6 +33,7 @@ import (
 	igusecases "github.com/ambi/idmagic/backend/idgovernance/usecases"
 	"github.com/ambi/idmagic/backend/idmanagement"
 	agentpostgres "github.com/ambi/idmagic/backend/idmanagement/agent/db_postgres"
+	idmpostgres "github.com/ambi/idmagic/backend/idmanagement/db_postgres"
 	grouppostgres "github.com/ambi/idmagic/backend/idmanagement/group/db_postgres"
 	userpostgres "github.com/ambi/idmagic/backend/idmanagement/user/db_postgres"
 	"github.com/ambi/idmagic/backend/jobs"
@@ -123,8 +124,9 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 	})
 
 	userRepo := &userpostgres.UserRepository{Pool: resilientDB}
-	userCSVArtifacts := &userpostgres.UserCSVArtifactStore{Pool: resilientDB}
+	csvArtifacts := &idmpostgres.CSVArtifactStore{Pool: resilientDB}
 	userImportCommitter := userpostgres.UserImportRowCommitter{Pool: resilientDB}
+	groupImportCommitter := grouppostgres.GroupImportRowCommitter{Pool: resilientDB}
 	workflowRepo := &igpostgres.LifecycleWorkflowRepository{Pool: resilientDB}
 	workflowRunRepo := &igpostgres.LifecycleWorkflowRunRepository{Pool: resilientDB}
 	workflowCapture := &igpostgres.UserWorkflowCapture{Pool: resilientDB}
@@ -153,8 +155,9 @@ func assemblePostgres(ctx context.Context, cfg SharedConfig) (*Dependencies, err
 			GroupRepo:             &grouppostgres.GroupRepository{Pool: resilientDB},
 			AgentRepo:             &agentpostgres.AgentRepository{Pool: resilientDB},
 			EmailChangeTokenStore: &userpostgres.EmailChangeTokenStore{Pool: resilientDB},
-			UserCSVArtifacts:      userCSVArtifacts,
+			CSVArtifacts:          csvArtifacts,
 			UserImportCommitter:   userImportCommitter,
+			GroupImportCommitter:  groupImportCommitter,
 			UserMutationCommitter: userMutationCommitter,
 			ProvisioningNotifier:  provisioningModule.UserNotifier(assignmentRepo),
 		},

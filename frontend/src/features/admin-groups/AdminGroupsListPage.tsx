@@ -1,4 +1,10 @@
-import { IconFileExport, IconRefresh, IconUsersGroup, IconUsersPlus } from '@tabler/icons-react'
+import {
+  IconFileExport,
+  IconFileImport,
+  IconRefresh,
+  IconUsersGroup,
+  IconUsersPlus,
+} from '@tabler/icons-react'
 import { useEffect, useState } from 'react'
 import { AuthenticationAPIError, listAdminGroupsPage, tenantURL } from '../../api'
 import { AdminShell } from '../../components/AdminShell'
@@ -108,6 +114,15 @@ export function AdminGroupsPage({
           >
             <IconFileExport size={16} aria-hidden="true" />
             {t.exportGroups}
+          </Button>
+          <Button
+            variant="outline"
+            disabled={busy}
+            nativeButton={false}
+            render={<a href={tenantURL('/admin/groups/import')} />}
+          >
+            <IconFileImport size={16} aria-hidden="true" />
+            {t.importGroups}
           </Button>
           <Button
             disabled={busy}

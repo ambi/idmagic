@@ -97,3 +97,26 @@ func (r *ScimRepository) FindGroupRefByGroupID(ctx context.Context, tenantID, gr
 func (r *ScimRepository) DeleteGroupRef(ctx context.Context, tenantID, scimID string) error {
 	return New(r.Pool).DeleteScimGroupRef(ctx, DeleteScimGroupRefParams{TenantID: tenantID, ScimID: scimID})
 }
+
+// FindGroupRefsByGroupIDs は Group の所有権をまとめて解決する。CSV の計画器が
+// 行ごとにリポジトリを引かないための一括問い合わせである。
+func (r *ScimRepository) FindGroupRefsByGroupIDs(ctx context.Context, tenantID string, groupIDs []string) ([]*ports.ScimGroupRef, error) {
+	if len(groupIDs) == 0 {
+		return nil, nil
+	}
+	rows, err := r.Pool.Query(ctx, `SELECT tenant_id, scim_id, group_id FROM scim_group_refs
+        WHERE tenant_id = $1 AND group_id = ANY($2::uuid[])`, tenantID, groupIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]*ports.ScimGroupRef, 0, len(groupIDs))
+	for rows.Next() {
+		ref := &ports.ScimGroupRef{}
+		if err := rows.Scan(&ref.TenantID, &ref.ScimID, &ref.GroupID); err != nil {
+			return nil, err
+		}
+		result = append(result, ref)
+	}
+	return result, rows.Err()
+}

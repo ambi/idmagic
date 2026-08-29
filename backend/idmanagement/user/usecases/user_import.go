@@ -9,8 +9,9 @@ import (
 	"io"
 	"time"
 
+	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	idmports "github.com/ambi/idmagic/backend/idmanagement/ports"
 	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
-	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
@@ -68,16 +69,16 @@ type UserImportResult struct {
 }
 
 type UserImportStartDeps struct {
-	Artifacts userports.UserCSVArtifactStore
+	Artifacts idmports.CSVArtifactStore
 	Jobs      jobsports.JobRepository
 	QuotaRepo tenantports.QuotaRepository
 	Emit      func(spec.DomainEvent)
-	Policy    userdomain.UserCSVTransferPolicy
+	Policy    idmdomain.CSVTransferPolicy
 }
 
-func (d UserImportStartDeps) policy() userdomain.UserCSVTransferPolicy {
-	if d.Policy == (userdomain.UserCSVTransferPolicy{}) {
-		return userdomain.DefaultUserCSVTransferPolicy()
+func (d UserImportStartDeps) policy() idmdomain.CSVTransferPolicy {
+	if d.Policy == (idmdomain.CSVTransferPolicy{}) {
+		return idmdomain.DefaultCSVTransferPolicy()
 	}
 	return d.Policy
 }
@@ -93,14 +94,14 @@ func StartUserImportPreview(ctx context.Context, deps UserImportStartDeps, actor
 		return nil, err
 	}
 	tenantID := tenancy.TenantID(ctx)
-	artifact, err := deps.Artifacts.PutUserCSVArtifact(ctx, tenantID, func(output io.Writer) error {
+	artifact, err := deps.Artifacts.PutCSVArtifact(ctx, tenantID, func(output io.Writer) error {
 		limited := &io.LimitedReader{R: input, N: int64(policy.MaxBytes) + 1}
 		written, err := io.Copy(output, limited)
 		if err != nil {
 			return err
 		}
 		if written > int64(policy.MaxBytes) {
-			return &userdomain.UserCSVError{Code: userdomain.UserCSVErrorCSVTooLarge}
+			return &idmdomain.CSVError{Code: idmdomain.CSVErrorCSVTooLarge}
 		}
 		return nil
 	})
@@ -144,17 +145,17 @@ func StartUserImportApply(ctx context.Context, deps UserImportStartDeps, actorUs
 }
 
 type UserImportJobDeps struct {
-	Artifacts userports.UserCSVArtifactStore
+	Artifacts idmports.CSVArtifactStore
 	Jobs      jobsports.JobRepository
 	Plan      UserImportPlanDeps
 	Apply     UserImportApplyDeps
-	Policy    userdomain.UserCSVTransferPolicy
+	Policy    idmdomain.CSVTransferPolicy
 	Now       func() time.Time
 }
 
-func (d UserImportJobDeps) policy() userdomain.UserCSVTransferPolicy {
-	if d.Policy == (userdomain.UserCSVTransferPolicy{}) {
-		return userdomain.DefaultUserCSVTransferPolicy()
+func (d UserImportJobDeps) policy() idmdomain.CSVTransferPolicy {
+	if d.Policy == (idmdomain.CSVTransferPolicy{}) {
+		return idmdomain.DefaultCSVTransferPolicy()
 	}
 	return d.Policy
 }
@@ -189,7 +190,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 		} else {
 			source = params
 		}
-		reader, artifact, err := deps.Artifacts.OpenUserCSVArtifact(ctx, job.TenantID, source.ArtifactRef)
+		reader, artifact, err := deps.Artifacts.OpenCSVArtifact(ctx, job.TenantID, source.ArtifactRef)
 		if err != nil {
 			return nil, err
 		}
@@ -200,7 +201,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 
 		result := UserImportResult{SourceSHA256: source.SourceSHA256, PreviewJobID: params.PreviewJobID}
 		var summary userdomain.UserImportPlanSummary
-		errorArtifact, err := deps.Artifacts.PutUserCSVArtifactPages(ctx, job.TenantID, func(emitPage func([]byte) error) error {
+		errorArtifact, err := deps.Artifacts.PutCSVArtifactPages(ctx, job.TenantID, func(emitPage func([]byte) error) error {
 			pendingErrors := make([]UserImportRowError, 0, UserImportErrorArtifactPageSize)
 			flushErrors := func() error {
 				if len(pendingErrors) == 0 {
@@ -234,7 +235,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 				summary, runErr = PlanUserImport(ctx, deps.Plan, reader, deps.policy(), emit)
 			}
 			if runErr != nil {
-				var csvErr *userdomain.UserCSVError
+				var csvErr *idmdomain.CSVError
 				if !errors.As(runErr, &csvErr) {
 					return runErr
 				}
@@ -259,7 +260,7 @@ func UserImportJobHandler(deps UserImportJobDeps, mode UserImportMode) func(cont
 	}
 }
 
-func loadBoundPreview(ctx context.Context, jobs jobsports.JobRepository, artifacts userports.UserCSVArtifactStore, tenantID, previewJobID string) (UserImportParams, UserImportResult, error) {
+func loadBoundPreview(ctx context.Context, jobs jobsports.JobRepository, artifacts idmports.CSVArtifactStore, tenantID, previewJobID string) (UserImportParams, UserImportResult, error) {
 	preview, err := jobs.Get(ctx, previewJobID)
 	if errors.Is(err, jobsports.ErrJobNotFound) || preview == nil || preview.TenantID != tenantID || preview.Kind != jobsdomain.KindUserImportPreview {
 		return UserImportParams{}, UserImportResult{}, ErrUserImportNotFound
@@ -275,7 +276,7 @@ func loadBoundPreview(ctx context.Context, jobs jobsports.JobRepository, artifac
 	if json.Unmarshal(preview.Params, &params) != nil || json.Unmarshal(preview.Result, &result) != nil {
 		return UserImportParams{}, UserImportResult{}, ErrUserImportDigestMismatch
 	}
-	reader, artifact, err := artifacts.OpenUserCSVArtifact(ctx, tenantID, params.ArtifactRef)
+	reader, artifact, err := artifacts.OpenCSVArtifact(ctx, tenantID, params.ArtifactRef)
 	if err != nil {
 		return UserImportParams{}, UserImportResult{}, ErrUserImportDigestMismatch
 	}
@@ -288,7 +289,7 @@ func loadBoundPreview(ctx context.Context, jobs jobsports.JobRepository, artifac
 
 // ReadUserImportErrorRange maps an immutable 1-based error ordinal to bounded
 // artifact pages, so cursor pagination never scans preceding errors.
-func ReadUserImportErrorRange(ctx context.Context, artifacts userports.UserCSVArtifactStore, tenantID string, result UserImportResult, startOrdinal, limit int) ([]UserImportRowError, error) {
+func ReadUserImportErrorRange(ctx context.Context, artifacts idmports.CSVArtifactStore, tenantID string, result UserImportResult, startOrdinal, limit int) ([]UserImportRowError, error) {
 	if startOrdinal < 1 || limit < 1 || limit > UserImportMaxErrorLimit {
 		return nil, errors.New("invalid user import error range")
 	}
@@ -300,7 +301,7 @@ func ReadUserImportErrorRange(ctx context.Context, artifacts userports.UserCSVAr
 	pageOffset := (startOrdinal - 1) % UserImportErrorArtifactPageSize
 	out := make([]UserImportRowError, 0, want)
 	for len(out) < want {
-		payload, artifact, err := artifacts.ReadUserCSVArtifactPage(ctx, tenantID, result.ErrorArtifactRef, pageNumber)
+		payload, artifact, err := artifacts.ReadCSVArtifactPage(ctx, tenantID, result.ErrorArtifactRef, pageNumber)
 		if err != nil {
 			return nil, err
 		}
