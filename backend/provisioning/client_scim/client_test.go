@@ -27,6 +27,7 @@ func simpleRule(targetPath, sourceKey string) domain.AttributeMappingRule {
 	return domain.AttributeMappingRule{TargetPath: targetPath, SourceKind: domain.SourceKindAttribute, SourceKey: sourceKey, ApplyOn: domain.ApplyCreateAndUpdate}
 }
 
+// RFC7644-OUT-DISCOVERY: `/ServiceProviderConfig` から 5 つの対応可否を読む。
 func TestClient_Discover_ParsesCapabilities(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/ServiceProviderConfig" {
@@ -53,6 +54,7 @@ func TestClient_Discover_ParsesCapabilities(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-RESOURCE-OPERATIONS: 作成は `POST /Users` で送り、応答の id を相関に使う。
 func TestClient_CreateUser_ReturnsRemoteID(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.URL.Path != "/Users" {
@@ -79,6 +81,7 @@ func TestClient_CreateUser_ReturnsRemoteID(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-ERROR-RESPONSE: 409 は既存リソースへの関連付けの合図として扱う。
 func TestClient_CreateUser_ReturnsConflictErrorOn409(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict)
@@ -91,6 +94,8 @@ func TestClient_CreateUser_ReturnsConflictErrorOn409(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-PATCH: 下流の `patch.supported` が真のときだけ PATCH で送り、
+// 対象パスを持たない `replace` 操作 1 件だけで構成する。
 func TestClient_UpdateUser_UsesPatchWhenSupported(t *testing.T) {
 	var gotMethod string
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -117,6 +122,7 @@ func TestClient_UpdateUser_UsesPatchWhenSupported(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-PATCH: 条件が偽のときは PUT でリソース全体を置換する。
 func TestClient_UpdateUser_FallsBackToPutWhenPatchUnsupported(t *testing.T) {
 	var gotMethod string
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -132,6 +138,7 @@ func TestClient_UpdateUser_FallsBackToPutWhenPatchUnsupported(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-RESOURCE-OPERATIONS: 削除に対する 404 は、目的の状態に既に到達しているものとして成功に数える。
 func TestClient_DeleteUser_TreatsNotFoundAsIdempotentSuccess(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
@@ -141,6 +148,7 @@ func TestClient_DeleteUser_TreatsNotFoundAsIdempotentSuccess(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-RESOURCE-OPERATIONS: 削除は `DELETE /Users/{id}` で送る。
 func TestClient_DeleteUser_Success(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete || r.URL.Path != "/Users/remote-1" {
@@ -153,6 +161,7 @@ func TestClient_DeleteUser_Success(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-ERROR-RESPONSE: 429 は `Retry-After` に従う再試行として扱う。
 func TestClient_RetryAfter_ParsedFrom429(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "30")
@@ -168,6 +177,7 @@ func TestClient_RetryAfter_ParsedFrom429(t *testing.T) {
 	}
 }
 
+// RFC7644-OUT-FILTERING: 照合属性で既存リソースを探すときだけ、`<属性> eq "<値>"` を組み立てる。
 func TestClient_SearchUserByAttribute_FindsExisting(t *testing.T) {
 	client := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/Users" {

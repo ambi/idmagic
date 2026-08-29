@@ -3,6 +3,7 @@ package usecases_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -205,5 +206,43 @@ func TestProvisionOnDemand_RejectsSubjectOutOfScope(t *testing.T) {
 	_, err := usecases.ProvisionOnDemand(ctx, deps, "tenant-a", "app-1", domain.SourceTypeUser, "user-1", now)
 	if !errors.Is(err, usecases.ErrSubjectNotInScope) {
 		t.Errorf("ProvisionOnDemand() for an unassigned user (scope=assigned_only) error = %v, want ErrSubjectNotInScope", err)
+	}
+}
+
+// RFC7643-OUT-EXTERNAL-ID: 既定の属性対応付けは、IdMagic 側の識別子を作成時だけ
+// `externalId` として送る。以後の相関は保存した対応関係が担うので、更新では送り直さない。
+//
+// RFC7643-OUT-SCHEMA-EXTENSIONS: 既定の対応付けは拡張スキーマの属性を 1 件も含まない。
+func TestRegisterConnection_DefaultMappingSendsExternalIdOnCreateOnly(t *testing.T) {
+	deps, _, _ := newAdminDeps()
+	conn, err := usecases.RegisterConnection(context.Background(), deps, usecases.RegisterConnectionInput{
+		TenantID: "tenant-a", ApplicationID: "app-1", BaseURL: "https://downstream.example.com/scim/v2",
+		Credential: domain.ProvisioningCredentialInput{AuthMethod: domain.AuthBearerToken, BearerToken: "tok"},
+		Now:        time.Now(),
+	})
+	if err != nil {
+		t.Fatalf("RegisterConnection() error = %v", err)
+	}
+
+	var externalID *domain.AttributeMappingRule
+	for i, rule := range conn.AttributeMappings {
+		if rule.TargetPath == "externalId" {
+			externalID = &conn.AttributeMappings[i]
+		}
+		if strings.Contains(rule.TargetPath, "urn:ietf:params:scim:schemas:extension:") {
+			t.Errorf("既定の対応付けが拡張スキーマの属性 %q を含んでいる", rule.TargetPath)
+		}
+	}
+	if externalID == nil {
+		t.Fatal("既定の対応付けに externalId が無い")
+	}
+	if externalID.SourceKind != domain.SourceKindAttribute || externalID.SourceKey != "id" {
+		t.Errorf("externalId の供給元 = %v/%q, want attribute/id", externalID.SourceKind, externalID.SourceKey)
+	}
+	if externalID.ApplyOn != domain.ApplyCreateOnly {
+		t.Errorf("externalId の apply_on = %v, want create_only", externalID.ApplyOn)
+	}
+	if !externalID.Required {
+		t.Error("externalId は required でなければならない。相関の起点が欠けたまま作成が通る")
 	}
 }

@@ -7,6 +7,7 @@
 | File | Content |
 |---|---|
 | [glossary.md](glossary.md) | この Context での語義 |
+| [standards.md](standards.md) | 準拠する外部規範 |
 | [states.md](states.md) | 状態と遷移 |
 | [decisions.md](decisions.md) | 設計判断 |
 | [internals.md](internals.md) | 機構の説明 |

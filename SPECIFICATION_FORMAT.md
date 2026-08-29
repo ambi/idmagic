@@ -215,6 +215,13 @@ the ordinary case rather than a contradiction: offering the capability is a choi
 offered is not. An `excluded` row cannot carry `MUST` or `SHOULD`, because there is no obligation to state
 about a capability the product does not provide *(checked)*.
 
+The same two columns read one step over when the product consumes a standard rather than provides it — a
+client that sends, a receiver that follows someone else's contract. The capability is then what the product
+exercises: `required` is what it always sends or always does, `optional` what it does only when a configured
+or discovered condition holds, `partial` the part of the facility it uses, and `excluded` what it never
+sends. An `optional` row written from that side states the condition and what goes out when the condition
+does not hold, because a row that names neither cannot be told apart from a row that always sends.
+
 `Statement` declares what the product does or refuses to do. It is not a summary of the standard's own
 text — a row written from the standard's point of view reads as an obligation the product has accepted even
 when `Adoption` says the opposite. IDs are stable and unique within the document *(checked)*; the value sets
