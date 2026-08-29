@@ -120,6 +120,8 @@
 | Authentication event | 1,000,000 / day | 容量見積もりでは保守的に 365 日 | 1 KiB | Planning assumption |
 | Audit event | 5,000,000 / day | 2,555 日 | 1 KiB | Planning assumption / Audit の現行保持方針 |
 
+検索属性の副表 `audit_event_search_attributes` は上表に現れていないが、監査イベント 1 件につき、そのイベントが値を持つ軸の数だけ行が増える。1 件当たり 6 行、1 行 128 B を Planning assumption とすると、1 日当たり 3,000 万行、約 3.7 GiB の論理データが加わる。保持期間は本体と同じ 2,555 日であり、外部キーの連鎖削除で本体と一緒に消える。
+
 この仮定では、監査イベントだけで 1 日当たり約 4.8 GiB の論理データ、7 年で約 11.9 TiB の論理データになる。物理ストレージ予算は、`Σ(保持行数 × 実測平均行バイト数) × 2.5 + 30 日分の物理成長量` 以上とする。係数 2.5 はインデックス、MVCC、保守時の空き容量を含む Planning assumption であり、バックアップ、WAL の別保管、読み取りレプリカは含めない。上表の仮定をそのまま使う初期予算は約 32 TiB であり、実測行サイズとデータ層の物理配置に合わせて更新する。
 
 ## Peak request profile
@@ -151,6 +153,18 @@ Discovery と JWKS の 90% というヒット率は保証値ではない。キ�
 | `latency_sensitive` | 50 jobs/s | 200 ms | 15 | Planning assumption |
 | `default` | 20 jobs/s | 1 s | 30 | Planning assumption |
 | `bulk` | 2 jobs/s | 10 s | 30 | Planning assumption |
+
+### Domain event emission
+
+ドメインイベントの配信にキューは無く、発行元の要求またはジョブの中で監査記録の追記まで完了する（[deployment.md](deployment.md#domain-event-delivery)）。したがって、キューの深さ、消費者の遅れ、再生のための実行枠は、いずれも算出する対象が存在しない。代わりに費用は発行元の要求に乗るので、次を Planning assumption として算出に含める。
+
+| Item | Value | Classification |
+| --- | ---: | --- |
+| 発行 1 件当たりのデータベース書き込み | 本体 1 行 + 検索属性 6 行 | Planning assumption |
+| 発行を含む要求に上乗せされる時間 | 5 ms | Planning assumption |
+| 再生のために確保する実行枠 | 0 | 再配送の経路を持たないため |
+
+アカウントのセキュリティ通知は同じ配信点から購読するが、送信は要求から切り離して走るので、発行元の応答時間には乗らない。上限の見積もりには API プロセスの同時実行数として数える。
 
 ## Sizing rules
 

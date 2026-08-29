@@ -71,7 +71,7 @@ backend/<context>/
 
 起動時設定も同じ意味で一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。読み取り点が散らばると、あるプロセスだけが検証されない値を持つ状態が作れてしまうためである。運用者向けの設定リファレンスはこの定義から生成し、手書きの一覧を併存させない。
 
-具象のドメインイベントの構造体は、それが属する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` はイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを持つ。
+具象のドメインイベントの構造体は、それが属する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` はイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを持つ。イベントが Context の境界を越えるときに何が契約になるかは [Cross-context events](#cross-context-events) が持つ。
 
 2 つ以上の独立した機能を持つ Context は、4 層の構成に機能ごとの垂直分割を追加してよい：`backend/<context>/<feature>/{domain,ports,usecase,<role>_<technology>}/`。機能が 1 つしかない Context は分割しない。
 
@@ -84,6 +84,31 @@ backend/idmanagement/
   handlers_http/            # ルート登録と機能をまたぐ統合テスト
   user/  group/  agent/     # 各機能の domain、ports、usecase、アダプター
 ```
+
+## Cross-context events
+
+[README.md](README.md#context-map) の Context Map が `Events` と型付けする関係は、性格の異なる 2 つの機構で実現している。どちらもイベントバスではなく、メッセージ基盤も介さない。
+
+**ライフサイクルの通知は、ドメインイベントを 1 件も運ばない。** IdManagement から IdGovernance と Provisioning への通知は、上流の IdManagement が語彙とポートを宣言し、下流の Context がそれを実装する同期の呼び出しである。IdGovernance は `idmanagement/user/ports` の `UserMutationCommitter` を実装し、User の保存と、そこから導かれる LifecycleWorkflow の実行の生成を 1 つのトランザクションで確定する。Provisioning は同じ package の `ProvisioningNotifier` を実装し、呼び出し元のコミットが済んだ後に自分のトランザクションで配信対象を捕捉する。上流が公開言語を持ち下流が従う形なので、これらは公開イベントによる関係ではなく Open Host Service である。
+
+**監査の事実は、組み立て地点に 1 つだけある配信点を通る。** `backend/cmd/internal/bootstrap` が組み立てる発行の閉包が、`EventSink` への出力、アカウントのセキュリティ通知のディスパッチ、監査記録の追記を順に行う。ドメインイベントを発行する Context はこの閉包だけを関数として受け取り、監査にも通知にも依存しない。逆に消費する側も発行元の Go の型を知らず、後述のワイヤ表現の上だけで動く。したがってこの関係に import は存在せず、依存の向きはどちらの側にも生じない。
+
+### The published language of events
+
+イベントが境界を越えるときの契約は、payload の全体ではない。`AdminAuditEventResponse.payload` は意図して不透明な JSON であり、Context の内部でしか読まれない項目はその Context のものである。契約になるのは次の 2 つに限る。
+
+- **エンベロープ**：`spec.MarshalDomainEvent` が必ず載せるイベント種別名と発生時刻。監査の記録、管理 API の応答、セキュリティ通知のディスパッチがすべてこの形の上で動く。
+- **公開項目の語彙**：他の Context が名前で読む payload の項目。監査の検索属性の抽出器がこれを検索軸へ写し、セキュリティ通知が宛先と送信条件をここから解決する。
+
+どちらも `spec/contexts/system/models.tsp` の `DomainEventEnvelope` と `DomainEventPayload` が正本である。配信点を所有する System が持ち、消費者である Audit は持たない。供給側が下流の契約に従う倒立を避けるためである。
+
+宣言を置くだけでは、読み取り側と静かに食い違う。項目名を変えてもコンパイルは通り、監査の絞り込みが空を返すようになるだけだからである。`mise run check-event-contract` が、宣言された語彙と Go の読み取り点の集合が一致することを確かめる。
+
+### Compatibility of published events
+
+公開したイベント種別名と公開項目の名前は、削除も改名もしない。監査記録は追記のみで 7 年保持するので、名前を変えても既存の行は書き換えられず、古い行だけが新しい軸から見えなくなる。項目の追加と、まだ誰も読んでいない内部項目の変更は、この規則の対象ではない。
+
+リリース済みベースラインとの互換性判定は持たない。公開イベントの消費者はこのリポジトリの中にしかおらず、外部の消費者がいない契約にベースラインを敷いても守る相手がいないためである。この判断は、外部に配信する Security Event Token には及ばない。あちらは RFC 8417 が別の契約を定めている。
 
 ## Frontend component structure
 

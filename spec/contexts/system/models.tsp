@@ -23,4 +23,102 @@ model DependencyStatus {
   message?: string;
 }
 
+
+@doc("""
+The wire form every domain event takes. `spec.MarshalDomainEvent` produces it, the audit store records it, the account
+security notification dispatcher subscribes to it, and `AdminAuditEventResponse` publishes it to administrators. It is
+not an HTTP request or response body of its own: no operation accepts or returns it, and it reaches a caller only
+through the audit read model.
+""")
+model DomainEventEnvelope {
+  @doc("The event type name, the value the emitting context's `EventType()` returns. It is the vocabulary `AuditEventQuery.type` filters on.")
+  type: string;
+
+  @doc("When the event occurred, as RFC 3339 with nanosecond precision in UTC. It is the emitting context's clock, not the time the record was appended.")
+  occurredAt: utcDateTime;
+
+  @doc("The event body. Only the published fields below are contract; the rest belongs to the emitting context.")
+  payload: DomainEventPayload;
+}
+
+
+@doc("""
+The published language of domain event payloads: the fields another context reads by name. The audit search attribute
+extractor projects them into search axes and the account security notification dispatcher resolves the recipient and the
+guard from them, so renaming one leaves the emitting context compiling while an audit filter silently returns nothing.
+Every field is optional because no event carries all of them, and an event that omits a field simply does not appear
+under that axis. A payload also carries fields private to the emitting context; those are not contract and are not
+declared here. `mise run check-event-contract` holds this declaration and the reading points to the same set.
+""")
+model DomainEventPayload {
+  @doc("The tenant the event belongs to. Its absence is what leaves an event out of a tenant-scoped audit search.")
+  tenantId?: string;
+
+  @doc("The subject the event is about. It names the actor when `actorUserId` is absent and the event is not one an agent performs.")
+  userId?: string;
+
+  @doc("The administrator who performed an administrative operation, as distinct from the user it acted on.")
+  actorUserId?: string;
+
+  @doc("The user an administrative operation acted on. `actor.id` and `target.id` answer different questions and are never collapsed.")
+  targetUserId?: string;
+
+  @doc("The agent. On the token exchange and approval events an agent performs, it names the actor; elsewhere the agent is the target.")
+  agentId?: string;
+
+  @doc("The OAuth 2.0 client.")
+  clientId?: string;
+
+  @doc("The login session.")
+  sessionId?: string;
+
+  @doc("The authorization transaction.")
+  transactionId?: string;
+
+  @doc("The correlation id shared across the records of one logical operation.")
+  correlationId?: string;
+
+  @doc("The request correlation id, the same value the response carries in `X-Request-ID`.")
+  requestId?: string;
+
+  @doc("The account name as it was submitted. Kept in plaintext and reserved for authentication failures, where an account that never existed still has to be traceable.")
+  username?: string;
+
+  @doc("The client IP, matched in plaintext, neither truncated nor hashed.")
+  ip?: string;
+
+  @doc("The country the client IP resolved to, rendered into the account security notification body.")
+  countryCode?: string;
+
+  @doc("The client user agent. The notification dispatcher derives the device label and the per-tenant salted device hash from it.")
+  userAgent?: string;
+
+  @doc("Why the transition happened. Session revocations notify the account holder only for `self_revoke` and `admin_revoke`.")
+  reason?: string;
+
+  @doc("The lifecycle workflow.")
+  workflowId?: string;
+
+  @doc("The lifecycle workflow run.")
+  runId?: string;
+
+  @doc("The zero-based position of the step within a lifecycle workflow run.")
+  stepIndex?: int32;
+
+  @doc("The principals appearing in the delegation chain, so an event is reachable from any participant, not only its ends.")
+  actorChain?: string[];
+
+  @doc("How many steps of delegation a token exchange carried.")
+  delegationDepth?: int32;
+
+  @doc("The same depth under the name an authorization decision records it. Both are projected onto one search axis.")
+  actorChainDepth?: int32;
+
+  @doc("The delegation mode, the value REQ-OAUTH2-049 derives, so introspection and the audit record name the same mode.")
+  delegationMode?: string;
+
+  ...Record<unknown>;
+}
+
+
 }

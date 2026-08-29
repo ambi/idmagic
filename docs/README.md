@@ -12,7 +12,9 @@
 
 ## Context Map
 
-この図は DDD の Context Map であり、ドメイン上の関係と統合境界を示す。ソースコードの import 関係を網羅するものではない。矢印は Supplier（上流）から Customer（下流）へ向かう。`OHS/PL` は Published Language を伴う Open Host Service、`C/S` は Customer/Supplier、`ACL` は Anti-Corruption Layer、`Events` は公開イベントによる関係を表す。
+この図は DDD の Context Map であり、ドメイン上の関係と統合境界を示す。ソースコードの import 関係を網羅するものではない。矢印は Supplier（上流）から Customer（下流）へ向かう。`OHS/PL` は Published Language を伴う Open Host Service、`C/S` は Customer/Supplier、`ACL` は Anti-Corruption Layer を表す。
+
+ドメインイベントによる関係だけは、図に描かない。発行する Context のほぼすべてが同じ形でこの関係に立ち、組み立て地点にある 1 つの配信点を共有するので、どちらの向きにも import を生まない。矢印を Context の数だけ引いても、区別のある関係が読み取りにくくなるだけである。**ドメインイベントを発行する Context は、それだけで公開イベントの供給側である。** 受け取るのは監査記録を持つ Audit と、アカウントのセキュリティ通知を送る Authentication の 2 つで、どちらも発行元の型ではなく共通のワイヤ表現の上で動く。配信点の機構と、そこで何が契約になるかは [structure.md](structure.md#cross-context-events) が持つ。
 
 ```mermaid
 flowchart LR
@@ -41,9 +43,9 @@ flowchart LR
   Tenancy -->|OHS/PL: tenant boundary| IdManagement
   Tenancy -->|OHS/PL: tenant settings| Application
   IdManagement -->|OHS/PL: principals| Authentication
-  IdManagement -->|Events: lifecycle| IdGovernance
+  IdManagement -->|OHS/PL: user mutation commit| IdGovernance
   IdGovernance -->|C/S: governed mutations| IdManagement
-  IdManagement -->|Events: lifecycle| Provisioning
+  IdManagement -->|OHS/PL: user lifecycle triggers| Provisioning
   Sourcing -->|ACL: authoritative identity| IdManagement
   Authentication -->|OHS/PL: authenticated subject| OAuth2
   Application -->|C/S: protocol binding and gate| OAuth2
@@ -67,10 +69,6 @@ flowchart LR
   Seeding -->|C/S: published commands| Application
   OAuth2 -->|OHS/PL: AuthZEN policy evaluation| Authorization
   IdManagement -->|OHS/PL: principal status| Authorization
-  IdManagement -->|Events: audit facts| Audit
-  Authentication -->|Events: audit facts| Audit
-  OAuth2 -->|Events: audit facts| Audit
-  Authorization -->|Events: audit facts| Audit
   System -->|C/S: UI and runtime composition| Authentication
   System -->|C/S: UI and runtime composition| Application
 ```
