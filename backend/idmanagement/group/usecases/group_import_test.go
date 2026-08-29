@@ -53,9 +53,19 @@ func newGroupImportFixture(t *testing.T) *groupImportFixture {
 	// 所有権ガードを省くと計画器は fail-closed に全行を拒否する。既定では
 	// 「どの Group も外部管理でない」ガードを配線し、拒否を見たいテストだけが
 	// 差し替える。
-	f.plan = GroupImportPlanDeps{GroupRepo: f.groupRepo, OwnershipGuard: groupSourceGuardStub{}}
+	f.plan = GroupImportPlanDeps{
+		GroupRepo: f.groupRepo, OwnershipGuard: groupSourceGuardStub{},
+		GroupSchemaReader: groupAttributeSchemaStub{},
+	}
 	f.apply = GroupImportApplyDeps{Plan: f.plan, Committer: f.committer}
 	return f
+}
+
+// groupAttributeSchemaStub はテナントが 1 個のカスタム属性を定義している状態を表す。
+type groupAttributeSchemaStub struct{}
+
+func (groupAttributeSchemaStub) EffectiveGroupAttributeDefs(context.Context, string) ([]groupdomain.GroupAttributeDef, error) {
+	return []groupdomain.GroupAttributeDef{{Key: "cost_center", Type: idmdomain.AttributeTypeString}}, nil
 }
 
 // recordingGroupImportCommitter は確定ポートへ渡った変更集合を記録する。メモリ
@@ -101,9 +111,16 @@ func (f *groupImportFixture) seedMember(t *testing.T, groupID, userID string) {
 
 func (f *groupImportFixture) exportCSV(t *testing.T) string {
 	t.Helper()
-	result, err := ExportGroupCSV(f.ctx, GroupCSVExportDeps{
-		GroupRepo: f.groupRepo, Artifacts: f.artifacts,
-	}, groupdomain.NewGroupCSVSchema().ColumnKeys(), idmdomain.DefaultCSVTransferPolicy())
+	deps := GroupCSVExportDeps{
+		GroupRepo: f.groupRepo, SchemaReader: groupAttributeSchemaStub{}, Artifacts: f.artifacts,
+	}
+	schema, err := groupdomain.NewGroupCSVSchema([]groupdomain.GroupAttributeDef{
+		{Key: "cost_center", Type: idmdomain.AttributeTypeString},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := ExportGroupCSV(f.ctx, deps, schema.ColumnKeys(), idmdomain.DefaultCSVTransferPolicy())
 	if err != nil {
 		t.Fatalf("export: %v", err)
 	}
@@ -155,10 +172,24 @@ func rowByNumber(t *testing.T, rows []groupdomain.GroupImportRowPlan, number int
 // unchanged になり、`lifecycle_action` は全行で空として出力される。
 func TestGroupImportUneditedExportRoundTripsAsUnchanged(t *testing.T) {
 	f := newGroupImportFixture(t)
-	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
+	// 連絡先とカスタム属性を持つ Group も往復の対象である。値には数式の引き金と
+	// 引用符を含め、可逆な変換を経ても差分にならないことを確かめる。
+	first := f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
+	email := "eng@example.test"
+	center := `=SUM(A1),"quoted"`
+	first.Email = &email
+	first.Attributes = map[string]userdomain.AttributeValue{
+		"cost_center": {Type: idmdomain.AttributeTypeString, String: &center},
+	}
+	if err := f.groupRepo.Save(f.ctx, first); err != nil {
+		t.Fatal(err)
+	}
 	f.seedGroup(t, "group-2", "sales", groupdomain.GroupMembershipManual, "invoice:read")
 
 	document := f.exportCSV(t)
+	if !strings.Contains(document, "custom:cost_center") || !strings.Contains(document, "email") {
+		t.Fatalf("export header must carry email and the custom column: %q", document)
+	}
 	header, _, _ := strings.Cut(document, "\n")
 	if !strings.Contains(header, "lifecycle_action") {
 		t.Fatalf("export header %q must carry lifecycle_action so the round trip is complete", header)

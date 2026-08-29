@@ -212,3 +212,81 @@ func (ruleSchemaRepo) Delete(context.Context, string) error { return errReadOnly
 var errReadOnlySchemaRepo = errors.New("the group import test schema repository is read-only")
 
 var _ tenantports.TenantUserAttributeSchemaRepository = ruleSchemaRepo{}
+
+// scenario REQ-IDMANAGEMENT-026 / REQ-IDMANAGEMENT-027: `email` と `custom:<key>` は
+// 他の書き込み可能列と同じ規則に従う。列が無ければ維持、空セルは消去、値が不正なら
+// 行を拒否して連絡先も属性も変更しない。
+func TestGroupImportPlannerAppliesEmailAndCustomAttributes(t *testing.T) {
+	f := newGroupImportFixture(t)
+	email := "eng@example.test"
+	center := "CC-100"
+	group := f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual, "catalog:read")
+	group.Email = &email
+	group.Attributes = map[string]userdomain.AttributeValue{
+		"cost_center": {Type: idmdomain.AttributeTypeString, String: &center},
+	}
+	if err := f.groupRepo.Save(f.ctx, group); err != nil {
+		t.Fatal(err)
+	}
+
+	// 列が無ければ維持する。
+	if got := rowByNumber(t, planRows(t, f, "id\ngroup-1\n"), 2); got.Action != groupdomain.GroupImportUnchanged {
+		t.Fatalf("row without the columns = %+v, want unchanged", got)
+	}
+
+	// 値を書けば更新する。
+	rows := planRows(t, f, "id,email,custom:cost_center\ngroup-1,Sales@Example.test,CC-200\n")
+	planned := rowByNumber(t, rows, 2)
+	if planned.Action != groupdomain.GroupImportUpdate {
+		t.Fatalf("row = %+v, want updated", planned)
+	}
+	if planned.Group.Email == nil || *planned.Group.Email != "sales@example.test" {
+		t.Fatalf("email = %v, want the normalized address", planned.Group.Email)
+	}
+	if value := planned.Group.Attributes["cost_center"]; value.String == nil || *value.String != "CC-200" {
+		t.Fatalf("cost_center = %+v, want CC-200", value)
+	}
+
+	// 存在する空セルは消す。
+	rows = planRows(t, f, "id,email,custom:cost_center\ngroup-1,,\n")
+	planned = rowByNumber(t, rows, 2)
+	if planned.Action != groupdomain.GroupImportUpdate || planned.Group.Email != nil {
+		t.Fatalf("clearing row = %+v, want the email cleared", planned)
+	}
+	if _, present := planned.Group.Attributes["cost_center"]; present {
+		t.Fatalf("attributes = %+v, want the custom attribute cleared", planned.Group.Attributes)
+	}
+
+	// 不正な値は行を拒否し、保存済みの値には触れない。
+	if got := rowByNumber(t, planRows(t, f, "id,email\ngroup-1,not-an-address\n"), 2); got.Error == nil || got.Error.Code != "invalid_email" {
+		t.Fatalf("malformed email = %+v, want invalid_email", got.Error)
+	}
+	if got := rowByNumber(t, planRows(t, f, "id,custom:cost_center\ngroup-1,\"a\nb\"\n"), 2); got.Action != groupdomain.GroupImportUpdate {
+		t.Fatalf("a quoted multi-line custom value = %+v, want it accepted verbatim", got)
+	}
+	f.applyCSV(t, "id,email\ngroup-1,not-an-address\n")
+	after, err := f.groupRepo.FindByID(f.ctx, "acme", "group-1")
+	if err != nil || after == nil {
+		t.Fatal(err)
+	}
+	if after.Email == nil || *after.Email != "eng@example.test" {
+		t.Fatalf("email = %v, want the refusal to leave it untouched", after.Email)
+	}
+	if value := after.Attributes["cost_center"]; value.String == nil || *value.String != "CC-100" {
+		t.Fatalf("cost_center = %+v, want the refusal to leave it untouched", value)
+	}
+}
+
+// scenario REQ-IDMANAGEMENT-026: テナントスキーマに無い `custom:<key>` 列は
+// ヘッダーの時点でファイルごと拒否する。未検証の属性が CSV から入る余地を作らない。
+func TestGroupImportPlannerRefusesUndeclaredCustomColumns(t *testing.T) {
+	f := newGroupImportFixture(t)
+	f.seedGroup(t, "group-1", "engineering", groupdomain.GroupMembershipManual)
+
+	_, err := PlanGroupImport(f.ctx, f.plan, strings.NewReader("id,custom:unknown\ngroup-1,x\n"),
+		idmdomain.DefaultCSVTransferPolicy(), nil)
+	csvErr, ok := errors.AsType[*idmdomain.CSVError](err)
+	if !ok || csvErr.Code != idmdomain.CSVErrorInvalidHeader {
+		t.Fatalf("error = %v, want invalid_header for an undeclared custom column", err)
+	}
+}

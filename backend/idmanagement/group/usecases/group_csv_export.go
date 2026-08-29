@@ -20,8 +20,9 @@ import (
 const groupCSVExportPageSize = 500
 
 type GroupCSVExportDeps struct {
-	GroupRepo groupports.GroupRepository
-	Artifacts idmports.CSVArtifactStore
+	GroupRepo    groupports.GroupRepository
+	SchemaReader groupports.EffectiveGroupAttributeSchemaReader
+	Artifacts    idmports.CSVArtifactStore
 }
 
 type GroupCSVExportResult struct {
@@ -43,8 +44,12 @@ func (e GroupCSVExporter) policy() idmdomain.CSVTransferPolicy {
 	return e.Policy
 }
 
-func (e GroupCSVExporter) ValidateGroupCSVColumns(_ context.Context, columns []string) error {
-	return validateGroupCSVExportColumns(groupdomain.NewGroupCSVSchema(), columns)
+func (e GroupCSVExporter) ValidateGroupCSVColumns(ctx context.Context, columns []string) error {
+	schema, err := groupCSVSchemaFor(ctx, e.Deps.SchemaReader, tenancy.TenantID(ctx))
+	if err != nil {
+		return err
+	}
+	return validateGroupCSVExportColumns(schema, columns)
 }
 
 func (e GroupCSVExporter) ExportGroupCSV(ctx context.Context, columns []string) (idmports.CSVArtifact, int, error) {
@@ -60,13 +65,15 @@ func ExportGroupCSV(ctx context.Context, deps GroupCSVExportDeps, columns []stri
 	if err := policy.Validate(); err != nil {
 		return result, err
 	}
-	schema := groupdomain.NewGroupCSVSchema()
+	tenantID := tenancy.TenantID(ctx)
+	schema, err := groupCSVSchemaFor(ctx, deps.SchemaReader, tenantID)
+	if err != nil {
+		return result, err
+	}
 	if err := validateGroupCSVExportColumns(schema, columns); err != nil {
 		return result, err
 	}
 	columns = append([]string(nil), columns...)
-
-	tenantID := tenancy.TenantID(ctx)
 	rules, err := deps.GroupRepo.ListDynamicRules(ctx, tenantID)
 	if err != nil {
 		return result, err
@@ -96,7 +103,11 @@ func ExportGroupCSV(ctx context.Context, deps GroupCSVExportDeps, columns []stri
 			for _, group := range page {
 				record := make([]string, len(columns))
 				for i, key := range columns {
-					record[i] = groupCSVExportValue(group, byGroup[group.ID], key)
+					cell, err := groupCSVExportValue(group, byGroup[group.ID], schema.Column(key))
+					if err != nil {
+						return err
+					}
+					record[i] = cell
 				}
 				if err := writer.WriteRow(record); err != nil {
 					return err
@@ -134,42 +145,68 @@ func validateGroupCSVExportColumns(schema groupdomain.GroupCSVSchema, columns []
 	return nil
 }
 
+// groupCSVSchemaFor はテナントの実効属性定義から列の語彙を組み立てる。リーダーが
+// 無いテナントは custom 列を持たない。
+func groupCSVSchemaFor(ctx context.Context, reader groupports.EffectiveGroupAttributeSchemaReader, tenantID string) (groupdomain.GroupCSVSchema, error) {
+	if reader == nil {
+		return groupdomain.NewGroupCSVSchema(nil)
+	}
+	defs, err := reader.EffectiveGroupAttributeDefs(ctx, tenantID)
+	if err != nil {
+		return groupdomain.GroupCSVSchema{}, err
+	}
+	return groupdomain.NewGroupCSVSchema(defs)
+}
+
 // groupCSVExportValue は 1 セルの値。`lifecycle_action` は常に空を書く。これが、
 // 無編集の export をそのまま適用しても全行 unchanged になる往復不変条件を成り立たせる。
-func groupCSVExportValue(group *groupdomain.Group, rule *groupdomain.DynamicGroupRule, key string) string {
-	switch key {
-	case "id":
-		return group.ID
-	case "name":
-		return group.Name
-	case "description":
-		if group.Description == nil {
-			return ""
+func groupCSVExportValue(group *groupdomain.Group, rule *groupdomain.DynamicGroupRule, column groupdomain.GroupCSVColumn) (string, error) {
+	if column.Attribute != nil {
+		value, ok := group.Attributes[column.Attribute.Key]
+		if !ok {
+			return "", nil
 		}
-		return *group.Description
+		return groupdomain.FormatGroupCSVAttributeCell(value, *column.Attribute)
+	}
+	switch column.Key {
+	case "id":
+		return group.ID, nil
+	case "name":
+		return group.Name, nil
+	case "description":
+		return optionalGroupCSVString(group.Description), nil
+	case "email":
+		return optionalGroupCSVString(group.Email), nil
 	case "membership_type":
-		return string(group.MembershipType.Effective())
+		return string(group.MembershipType.Effective()), nil
 	case "roles":
-		return groupdomain.FormatGroupCSVRoles(group.Roles)
+		return groupdomain.FormatGroupCSVRoles(group.Roles), nil
 	case "dynamic_rule_expression":
 		if rule == nil {
-			return ""
+			return "", nil
 		}
-		return rule.Expression
+		return rule.Expression, nil
 	case "dynamic_rule_enabled":
 		if rule == nil {
-			return ""
+			return "", nil
 		}
-		return formatGroupCSVBool(rule.Enabled)
+		return formatGroupCSVBool(rule.Enabled), nil
 	case "lifecycle_action":
-		return ""
+		return "", nil
 	case "created_at":
-		return group.CreatedAt.UTC().Format(time.RFC3339)
+		return group.CreatedAt.UTC().Format(time.RFC3339), nil
 	case "updated_at":
-		return group.UpdatedAt.UTC().Format(time.RFC3339)
+		return group.UpdatedAt.UTC().Format(time.RFC3339), nil
 	default:
+		return "", nil
+	}
+}
+
+func optionalGroupCSVString(value *string) string {
+	if value == nil {
 		return ""
 	}
+	return *value
 }
 
 func formatGroupCSVBool(value bool) string {

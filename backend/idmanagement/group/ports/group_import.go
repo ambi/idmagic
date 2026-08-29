@@ -7,6 +7,13 @@ import (
 	groupdomain "github.com/ambi/idmagic/backend/idmanagement/group/domain"
 )
 
+// EffectiveGroupAttributeSchemaReader は `custom:<key>` 列になりうる属性定義を
+// 供給する。Tenancy の内部を CSV のユースケースへ露出させないための狭い port で、
+// User 側の EffectiveUserAttributeSchemaReader と同じ形である。
+type EffectiveGroupAttributeSchemaReader interface {
+	EffectiveGroupAttributeDefs(ctx context.Context, tenantID string) ([]groupdomain.GroupAttributeDef, error)
+}
+
 // GroupSourceOwnershipGuard は所有権をまとめて解決する。ガードが無い、または
 // 失敗した場合を、計画器は fail-closed に解釈する。IdManagement が port を所有し、
 // Sourcing の adapter が内向きに実装する。

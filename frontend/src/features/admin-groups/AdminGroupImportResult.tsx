@@ -53,6 +53,10 @@ export function groupImportRowErrorMessage(
       return t.importErrorInvalidMembershipType
     case 'invalid_roles':
       return t.importErrorInvalidRoles
+    case 'invalid_email':
+      return t.invalidEmailError
+    case 'invalid_attribute':
+      return t.invalidAttributeError
     case 'invalid_dynamic_rule':
       return t.importErrorInvalidDynamicRule
     case 'invalid_lifecycle_action':
@@ -77,6 +81,8 @@ function groupImportColumnLabel(
       return t.groupNameLabel
     case 'description':
       return t.descriptionLabel
+    case 'email':
+      return t.emailLabel
     case 'roles':
       return t.rolesLabel
     default:

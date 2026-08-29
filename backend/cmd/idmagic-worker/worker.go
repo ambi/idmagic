@@ -113,10 +113,12 @@ func RunWorker() error {
 	}
 	handlers.Register(domain.KindUserImportPreview, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModePreview))
 	handlers.Register(domain.KindUserImportApply, userusecases.UserImportJobHandler(importJobDeps, userusecases.UserImportModeApply))
+	groupCSVSchemaReader := groupusecases.TenantGroupCSVSchemaReader{Repository: deps.Tenancy.GroupAttrSchemaRepo}
 	groupImportPlanDeps := groupusecases.GroupImportPlanDeps{
-		GroupRepo:      deps.IdManagement.GroupRepo,
-		SchemaRepo:     deps.Tenancy.AttrSchemaRepo,
-		OwnershipGuard: scimsource.GroupOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
+		GroupRepo:         deps.IdManagement.GroupRepo,
+		SchemaRepo:        deps.Tenancy.AttrSchemaRepo,
+		GroupSchemaReader: groupCSVSchemaReader,
+		OwnershipGuard:    scimsource.GroupOwnershipGuard{Repository: deps.Sourcing.ScimRepo},
 	}
 	groupImportJobDeps := groupusecases.GroupImportJobDeps{
 		Artifacts: deps.IdManagement.CSVArtifacts, Jobs: deps.Jobs.Repo,
@@ -150,8 +152,9 @@ func RunWorker() error {
 		},
 		GroupCSVExporter: groupusecases.GroupCSVExporter{
 			Deps: groupusecases.GroupCSVExportDeps{
-				GroupRepo: deps.IdManagement.GroupRepo,
-				Artifacts: deps.IdManagement.CSVArtifacts,
+				GroupRepo:    deps.IdManagement.GroupRepo,
+				SchemaReader: groupCSVSchemaReader,
+				Artifacts:    deps.IdManagement.CSVArtifacts,
 			},
 			Policy: idmdomain.DefaultCSVTransferPolicy(),
 		},

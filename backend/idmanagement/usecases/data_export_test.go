@@ -307,7 +307,11 @@ func TestDownloadDataExport_OnlySucceeded(t *testing.T) {
 func TestDataExportHandler_GroupExportWritesAnImmutableArtifact(t *testing.T) {
 	deps, _ := seededExportDeps(t)
 	ctx := exportTestCtx()
-	columns := groupdomain.NewGroupCSVSchema().ColumnKeys()
+	schema, err := groupdomain.NewGroupCSVSchema(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	columns := schema.ColumnKeys()
 	view, err := idmusecases.StartDataExport(ctx, deps, "admin", "group", columns, nil, time.Now().UTC())
 	if err != nil {
 		t.Fatal(err)
@@ -353,13 +357,19 @@ func TestDataExportHandler_GroupExportWritesAnImmutableArtifact(t *testing.T) {
 	}
 }
 
-// scenario REQ-IDMANAGEMENT-027: Group の許可一覧にない列は開始時点で拒否する。
+// scenario REQ-IDMANAGEMENT-027: Group の許可一覧は import 互換列とテナントが
+// 宣言した `custom:<key>` に閉じる。宣言していないキーは開始時点で拒否する。
 func TestStartDataExport_RejectsColumnsOutsideTheGroupAllowList(t *testing.T) {
 	deps, _ := seededExportDeps(t)
-	for _, column := range []string{"email", "attributes", "password_hash"} {
+	// テナントが属性を宣言していないので、custom 列はどれも許可されない。
+	for _, column := range []string{"attributes", "attr:cost_center", "custom:cost_center", "password_hash"} {
 		_, err := idmusecases.StartDataExport(exportTestCtx(), deps, "admin", "group", []string{"name", column}, nil, time.Now().UTC())
 		if !errors.Is(err, idmdomain.ErrInvalidExportColumns) {
 			t.Fatalf("column %q: got %v, want ErrInvalidExportColumns", column, err)
 		}
+	}
+	// `email` は import 互換列なので受理する。
+	if _, err := idmusecases.StartDataExport(exportTestCtx(), deps, "admin", "group", []string{"name", "email"}, nil, time.Now().UTC()); err != nil {
+		t.Fatalf("email is an import-compatible column: %v", err)
 	}
 }

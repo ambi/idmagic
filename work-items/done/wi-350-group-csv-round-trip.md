@@ -78,6 +78,7 @@ Group の削除も同じ経路に含める。組織改編で不要になった G
 
 - Group CSV の specification model、preview/apply/result interfaces、round-trip scenario、`AdminGroups` flow。
 - machine-key header、任意順・部分集合、presence/empty、可逆 codec、configurable transfer policy。
+- `email` とテナント定義の `custom:<key>` 列。User CSV と同じ字句形と、テナント属性スキーマからの解決を共有する。
 - `id` 優先・`name` fallback の create/update/unchanged/deleted/rejected planner。
 - `lifecycle_action=delete` による Group 削除。export では常に空を出力し、空セルと列欠落はいずれも lifecycle を変更しない。削除は membership の cascade 解除と監査記録を伴う。
 - `membership_type` の作成時指定と既存 Group での immutable guard。
@@ -92,7 +93,6 @@ Group の削除も同じ経路に含める。組織改編で不要になった G
 - CSV に無い Group を自動削除する authoritative full-sync semantics。
 - Group の soft delete と restore。Group には削除予約状態が無く、`DeleteGroup` は不可逆な即時削除であるため、可逆な削除を導入するなら Group の lifecycle 自体を変える別の work item とする。
 - Group の階層。[[wi-289-nested-group-hierarchy-and-inherited-membership]] が扱う。
-- Group の `email` 列と custom attributes 列。[[wi-315-group-contact-and-custom-attributes]] が両方を後から追加したが、本 work item が固定する import-compatible 列は `email` も `attributes` も含まない。`Group.email` は一意性も検証フローも持たない自由記述であり、`Group.attributes` はテナント定義スキーマの解決を CSV schema に持ち込む。どちらも往復不変条件の確立とは独立に足せるため、列の追加だけを行う別の work item とする。
 - source-managed Group をローカル所有へ変換する操作。
 - `dynamic_rule_expression` を空にして dynamic rule を削除する操作。`GroupRepository` に rule の削除操作が無く、追加は Group aggregate の境界変更になる。空セルは Design のとおり拒否する。
 
@@ -117,19 +117,29 @@ feature-neutral な内側 module へ一般化する。
 ### 列と語彙
 
 import-compatible 列は
-`id,name,description,membership_type,roles,dynamic_rule_expression,dynamic_rule_enabled,lifecycle_action,created_at,updated_at`。
+`id,name,description,email,membership_type,roles,dynamic_rule_expression,dynamic_rule_enabled,lifecycle_action,created_at,updated_at`
+に、テナントが定義した `custom:<key>` を加えたものである。
 
 | 列 | mode | 空セルの意味 |
 |---|---|---|
 | `id` | identity | 識別子として使わない |
 | `name` | writable / fallback identifier | 拒否 (`required`) |
 | `description` | writable | clear |
+| `email` | writable | clear |
 | `membership_type` | writable-on-create | 既定 `manual` |
 | `roles` | writable | 空集合 |
 | `dynamic_rule_expression` | writable | Design のとおり条件付きで拒否 |
 | `dynamic_rule_enabled` | writable | 現在値を維持 (rule が無ければ `false`) |
 | `lifecycle_action` | action | lifecycle を変更しない |
+| `custom:<key>` | writable | clear (`required` な属性は拒否) |
 | `created_at` / `updated_at` | read-only | 受理して無視 |
+
+`email` と `custom:<key>` を含めるのは、User CSV が `email` を書き込み可能列として、テナント定義属性を
+`custom:<key>` として既に往復させているからである。`Group.email` は `User.email` より機構が少なく
+(検証フローも一意性制約も持たない)、それは往復が難しい理由ではなく簡単な理由である。属性の解決も
+`EffectiveUserAttributeSchemaReader` と同じ形の port を `TenantGroupAttributeSchema` に対して使うだけで、
+新しい問題を持ち込まない。Group には union すべき組み込みカタログが無いため、User の `attr:<key>` に
+相当する接頭辞は持たず `custom:<key>` だけとする。
 
 列が無ければ維持する。行操作は `created` / `updated` / `unchanged` / `deleted` / `rejected` の 5 種類。
 
@@ -242,6 +252,7 @@ Unit RED (実装前に観測する): `backend/idmanagement/group/domain/group_cs
 - [x] T006 [Export] 全import-compatible列をstreaming artifactへ出力し、10,000 Groupの無編集export→previewが全行unchangedになることを検証する。tests: `group/usecases/group_csv_export_test.go`、`group/usecases/group_import_test.go`。REQ-IDMANAGEMENT-027。
 - [x] T007 [Adapter] preview/apply job binding、汎用artifact adapter、paged errors、worker/bootstrap/HTTPを実装し、payload/valueがjob/auditへ露出しないcontract testを通す。tests: `group/handlers_http/admin_group_import_handler_test.go`。REQ-IDMANAGEMENT-026。
 - [x] T008 [UI] file picker、事前検証、操作別件数、apply確認、共通cursor error pager、上限・分割案内をcomponent test先行で実装する。削除件数と巻き込まれる membership 件数は他の操作と分けて独立表示し、削除を含む apply には明示確認を要求する。tests: `frontend/src/features/admin-groups/AdminGroupImportPage.test.tsx`。
+- [x] T010 [Domain/UseCase] `email` とテナント定義 `custom:<key>` 列を追加する。属性セルの字句形は User CSV と同じものを共有し、Group 側は `TenantGroupAttributeSchema` から実効定義を解決する。tests: `group/domain/group_csv_test.go`、`group/usecases/group_import_planner_test.go`、`group/usecases/group_import_test.go`。REQ-IDMANAGEMENT-026/027。
 - [x] T009 [Verify] current-state replan、tenant/source isolation、行原子性、10,000行往復、race、specification/OpenAPI/API互換、全Go/UI gateをgreenにする。
 
 ## Verification
@@ -285,6 +296,8 @@ artifact abstractionの一般化はUser CSVの既存経路を壊し得る。User
   `UserCsvTransferPolicy` 1 件で、これは `CsvTransferPolicy` への改名である
   (どの operation の body からも参照されておらず、`mise run check-api-compat` は破壊的変更なしと判定)。
   Jobs 側では `JobKind` に `group_import_preview` / `group_import_apply` を追加した。
+  `REQ-IDMANAGEMENT-026` と `REQ-IDMANAGEMENT-027` は後から `email` と `custom:<key>` 列を
+  含むよう変更した (下記「列の追加」)。
 - **Acceptance RED Evidence**:
   - **Test**: `mise run test-go-package -- ./backend/idmanagement/group/usecases`
     (`group_import_test.go`: `TestGroupImportUneditedExportRoundTripsAsUnchanged`、
@@ -356,6 +369,34 @@ artifact abstractionの一般化はUser CSVの既存経路を壊し得る。User
   fuzz の探索実行 (`FuzzGroupCSVRolesLexicalForm` 15s、`FuzzGroupCSVClosedVocabularies` 10s、
   `FuzzCSVReaderRejectsOrParses` 15s) はいずれも反例なしで、これは網羅の証明ではなく
   その時間内に反例が見つからなかったという観測である。
+- **列の追加 (レビュー指摘による差し戻し)**:
+  最初の完了時、`email` と custom attributes を Out of Scope とし、その理由として
+  「`Group.email` は一意性も検証フローも持たない自由記述だから」「`Group.attributes` は
+  テナント定義スキーマの解決を CSV schema に持ち込むから」と書いた。どちらも誤りである。
+  User CSV は `email` を書き込み可能列として持ち、テナント定義属性を `custom:<key>` として
+  既に往復させている。`Group.email` の機構が少ないことは往復が難しい理由ではなく簡単な理由であり、
+  属性スキーマの解決は `EffectiveUserAttributeSchemaReader` が解いた問題の再演にすぎない。
+  実際の理由は、本 work item の Design が [[wi-315-group-contact-and-custom-attributes]] より前に
+  列リストを固定していた、というだけだった。後付けの技術的理由を残すと、Out of Scope が
+  後から真として読まれてしまう。両列を実装して差し戻した。
+
+  この追加で、属性値 1 件の CSV 上の正規表記を `ParseAttributeCell` / `FormatAttributeCell` として
+  括り出した。表記を決めるのは属性の型であって CSV の種別ではないため、User と Group の
+  どちらの方言もここを通る。追加の変異は 6 件すべてテストが検出した。
+
+  | # | 変異 | 結果 |
+  |---|---|---|
+  | M15 | 形式を満たさない `email` を受理する | 2 件が検出 |
+  | M16 | `email` の空セルを「維持」にする | 1 件が検出 |
+  | M17 | `custom:<key>` の値を適用しない | 1 件が検出 |
+  | M18 | 属性なしの nil と空を別物として比べる | 6 件が検出 |
+  | M19 | export が `email` セルを空で書く | 1 件が検出 |
+  | M20 | export が `custom:<key>` セルを空で書く | 1 件が検出 |
+
+  M18 は実装中に実際に踏んだ欠陥である。属性を持たない `Group` は対応表が nil のまま
+  保存されるのに、候補は常に空の対応表から始まるため、`reflect.DeepEqual` が両者を
+  別物と判定し、無編集の往復が全行 `updated` になった。10,000 行の往復テストがこれを
+  検出した。
 - **Verification Results**:
   - `mise run verify` - passed
   - `mise run check` - passed
@@ -371,3 +412,5 @@ artifact abstractionの一般化はUser CSVの既存経路を壊し得る。User
     更新すると、apply は古い計画を実行せず現在状態から `unchanged` と再判定する
   - integration: `TestDataExportHandler_GroupExportWritesAnImmutableArtifact` — Group export が
     不変成果物へ書き出し、ジョブ結果に CSV 本文も base64 も残さない
+  - integration: `TestGroupImportUneditedExportRoundTripsAsUnchanged` — 数式の引き金と引用符を
+    含む `custom:<key>` 値と `email` を持つ `Group` も、無編集の往復で `unchanged` のままである

@@ -72,6 +72,7 @@ var exportColumns = map[DataExportTargetKind][]DataExportColumn{
 		{Key: "id", Label: "ID"},
 		{Key: "name", Label: "Name"},
 		{Key: "description", Label: "Description"},
+		{Key: "email", Label: "Email", PII: true},
 		{Key: "membership_type", Label: "Membership type"},
 		{Key: "roles", Label: "Roles"},
 		{Key: "dynamic_rule_expression", Label: "Dynamic rule expression"},

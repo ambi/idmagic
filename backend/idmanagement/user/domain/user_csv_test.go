@@ -154,8 +154,8 @@ func TestParseUserCSVAttributeCellUsesCanonicalTypes(t *testing.T) {
 				}
 				return
 			}
-			if !errors.Is(err, ErrInvalidUserCSVCell) {
-				t.Fatalf("error=%v, want ErrInvalidUserCSVCell", err)
+			if !errors.Is(err, ErrInvalidAttributeCell) {
+				t.Fatalf("error=%v, want ErrInvalidAttributeCell", err)
 			}
 		})
 	}
@@ -163,8 +163,8 @@ func TestParseUserCSVAttributeCellUsesCanonicalTypes(t *testing.T) {
 	if _, shouldClear, err := ParseUserCSVAttributeCell("", UserAttributeDef{Key: "department", Type: idmdomain.AttributeTypeString}); err != nil || !shouldClear {
 		t.Fatalf("optional empty string: clear=%v error=%v, want clear", shouldClear, err)
 	}
-	if _, _, err := ParseUserCSVAttributeCell("", UserAttributeDef{Key: "department", Type: idmdomain.AttributeTypeString, Required: true}); !errors.Is(err, ErrInvalidUserCSVCell) {
-		t.Fatalf("required empty error=%v, want ErrInvalidUserCSVCell", err)
+	if _, _, err := ParseUserCSVAttributeCell("", UserAttributeDef{Key: "department", Type: idmdomain.AttributeTypeString, Required: true}); !errors.Is(err, ErrInvalidAttributeCell) {
+		t.Fatalf("required empty error=%v, want ErrInvalidAttributeCell", err)
 	}
 }
 

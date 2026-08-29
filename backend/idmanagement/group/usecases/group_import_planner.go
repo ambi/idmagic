@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"reflect"
 	"slices"
 	"strings"
 	"time"
@@ -26,9 +27,12 @@ const groupImportPageSize = 500
 
 type GroupImportPlanDeps struct {
 	GroupRepo groupports.GroupRepository
-	// SchemaRepo は動的規則の式が参照できる属性定義を供給する。nil なら組み込み
-	// 定義だけを使う。
+	// SchemaRepo は動的規則の式が参照できる User 属性定義を供給する。nil なら
+	// 組み込み定義だけを使う。
 	SchemaRepo tenantports.TenantUserAttributeSchemaRepository
+	// GroupSchemaReader は `custom:<key>` 列になりうる Group 属性定義を供給する。
+	// nil のテナントは custom 列を持たない。
+	GroupSchemaReader groupports.EffectiveGroupAttributeSchemaReader
 	// OwnershipGuard は既存 Group が外部管理かどうかを返す。nil、または失敗は
 	// 「外部管理」として fail-closed に扱う。
 	OwnershipGuard groupports.GroupSourceOwnershipGuard
@@ -156,7 +160,10 @@ func PlanGroupImport(
 		return summary, errors.New("group import planner dependencies are incomplete")
 	}
 	tenantID := tenancy.TenantID(ctx)
-	schema := groupdomain.NewGroupCSVSchema()
+	schema, err := groupCSVSchemaFor(ctx, deps.GroupSchemaReader, tenantID)
+	if err != nil {
+		return summary, err
+	}
 	reader, err := idmdomain.NewCSVReader(input, schema.Accepts, policy)
 	if err != nil {
 		return summary, err
@@ -183,7 +190,7 @@ func PlanGroupImport(
 		if record.Error != nil {
 			planned = groupdomain.RejectedGroupImportRow(record.Error.Row, record.Error.Column, record.Error.Code)
 		} else {
-			planned = planGroupImportRow(ctx, deps, *record.Row, index, defs, tenantID, seenIDs, seenNames)
+			planned = planGroupImportRow(ctx, deps, *record.Row, schema, index, defs, tenantID, seenIDs, seenNames)
 		}
 		summary.Observe(planned)
 		if emit != nil {
@@ -213,6 +220,7 @@ func planGroupImportRow(
 	ctx context.Context,
 	deps GroupImportPlanDeps,
 	row idmdomain.CSVRow,
+	schema groupdomain.GroupCSVSchema,
 	index groupImportIndex,
 	defs []userdomain.UserAttributeDef,
 	tenantID string,
@@ -255,7 +263,7 @@ func planGroupImportRow(
 		return groupdomain.RejectedGroupImportRow(row.Number, "lifecycle_action", "target_not_found")
 	}
 
-	candidate, column, cellCode := groupImportCandidate(existing, row, identifier, tenantID)
+	candidate, column, cellCode := groupImportCandidate(existing, row, schema, identifier, tenantID)
 	if cellCode != "" {
 		return groupdomain.RejectedGroupImportRow(row.Number, column, cellCode)
 	}
@@ -326,6 +334,7 @@ func resolveGroupImportTarget(identifier groupdomain.GroupCSVIdentifier, index g
 func groupImportCandidate(
 	existing *groupdomain.Group,
 	row idmdomain.CSVRow,
+	schema groupdomain.GroupCSVSchema,
 	identifier groupdomain.GroupCSVIdentifier,
 	tenantID string,
 ) (*groupdomain.Group, string, idmdomain.CSVErrorCode) {
@@ -333,11 +342,15 @@ func groupImportCandidate(
 	if existing != nil {
 		candidate = *existing
 		candidate.Roles = slices.Clone(existing.Roles)
+		candidate.Attributes = cloneGroupImportAttributes(existing.Attributes)
 	} else {
 		candidate = groupdomain.Group{
 			ID: "preview", TenantID: tenantID, Name: identifier.Name, Roles: []string{},
 			MembershipType: groupdomain.GroupMembershipManual,
 		}
+	}
+	if candidate.Attributes == nil {
+		candidate.Attributes = map[string]userdomain.AttributeValue{}
 	}
 
 	if cell, ok := row.Cell("name"); ok {
@@ -349,6 +362,13 @@ func groupImportCandidate(
 	}
 	if cell, ok := row.Cell("description"); ok {
 		candidate.Description = idmusecases.NormalizeDescription(&cell.Raw)
+	}
+	if cell, ok := row.Cell("email"); ok {
+		email, _, err := groupdomain.ParseGroupCSVEmailCell(cell.Raw)
+		if err != nil {
+			return nil, "email", "invalid_email"
+		}
+		candidate.Email = email
 	}
 	if cell, ok := row.Cell("roles"); ok {
 		roles, err := groupdomain.ParseGroupCSVRoles(cell.Raw)
@@ -375,6 +395,31 @@ func groupImportCandidate(
 	}
 	if existing == nil {
 		candidate.MembershipType = candidate.MembershipType.Effective()
+	}
+	// テナント定義の属性は、列の定義が固定した型の正規字句形で読む。空セルは
+	// その属性を消す意味であり、`required` な属性では拒否される。
+	attributeDefs := make([]groupdomain.GroupAttributeDef, 0)
+	for _, column := range schema.Columns() {
+		if column.Attribute == nil {
+			continue
+		}
+		attributeDefs = append(attributeDefs, *column.Attribute)
+		cell, present := row.Cell(column.Key)
+		if !present {
+			continue
+		}
+		value, shouldClear, err := groupdomain.ParseGroupCSVAttributeCell(cell.Raw, *column.Attribute)
+		if err != nil {
+			return nil, column.Key, "invalid_attribute"
+		}
+		if shouldClear {
+			delete(candidate.Attributes, column.Attribute.Key)
+		} else {
+			candidate.Attributes[column.Attribute.Key] = value
+		}
+	}
+	if err := groupdomain.ValidateGroupAttributes(candidate.Attributes, attributeDefs); err != nil {
+		return nil, "", "invalid_attribute"
 	}
 	if err := groupImportValidateCandidate(candidate); err != nil {
 		return nil, "", "invalid_group"
@@ -473,6 +518,27 @@ func planGroupImportRule(
 	return rule, changed, ""
 }
 
+// groupImportAttributesEqual は属性なしを 1 つの意味として扱う。属性を持たない
+// Group は対応表が nil のまま保存されており、候補は常に空の対応表から始まる。
+// 両者を別物と見ると、無編集の往復が全行 updated になってしまう。
+func groupImportAttributesEqual(before, after map[string]userdomain.AttributeValue) bool {
+	if len(before) == 0 && len(after) == 0 {
+		return true
+	}
+	return reflect.DeepEqual(before, after)
+}
+
+// cloneGroupImportAttributes は StringArray まで複製する。浅い複製だと候補が
+// 保存済み集約とスライスを共有し、計画が状態を書き換えうる。
+func cloneGroupImportAttributes(values map[string]userdomain.AttributeValue) map[string]userdomain.AttributeValue {
+	out := make(map[string]userdomain.AttributeValue, len(values))
+	for key, value := range values {
+		value.StringArray = slices.Clone(value.StringArray)
+		out[key] = value
+	}
+	return out
+}
+
 func groupImportChangedFields(before, after groupdomain.Group) []string {
 	changed := make([]string, 0, 4)
 	if before.Name != after.Name {
@@ -480,6 +546,12 @@ func groupImportChangedFields(before, after groupdomain.Group) []string {
 	}
 	if !idmusecases.EqualOptionalString(before.Description, after.Description) {
 		changed = append(changed, "description")
+	}
+	if !idmusecases.EqualOptionalString(before.Email, after.Email) {
+		changed = append(changed, "email")
+	}
+	if !groupImportAttributesEqual(before.Attributes, after.Attributes) {
+		changed = append(changed, "attributes")
 	}
 	if !slices.Equal(before.Roles, after.Roles) {
 		changed = append(changed, "roles")

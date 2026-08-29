@@ -25,7 +25,7 @@ import { adminGroupsDictionary } from './AdminGroupsPage.i18n'
 // テンプレートは export と同じ import 互換列を、同じ並びで持つ。lifecycle_action は
 // 常に空で出力されるため、テンプレートでも空のままにする。
 const GROUP_IMPORT_CSV_TEMPLATE =
-  'id,name,description,membership_type,roles,dynamic_rule_expression,dynamic_rule_enabled,lifecycle_action,created_at,updated_at\n'
+  'id,name,description,email,membership_type,roles,dynamic_rule_expression,dynamic_rule_enabled,lifecycle_action,created_at,updated_at\n'
 const GROUP_IMPORT_POLL_INTERVAL_MS = 1000
 const GROUP_IMPORT_POLL_MAX_ATTEMPTS = 30
 

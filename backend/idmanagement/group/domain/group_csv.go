@@ -8,19 +8,23 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 	"slices"
 	"strings"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
+	userdomain "github.com/ambi/idmagic/backend/idmanagement/user/domain"
 )
 
 // GroupCSVColumn は 1 列の定義。ReadOnly は受理して無視する列、WriteOnly は
 // export が常に空を書く列である。`lifecycle_action` を WriteOnly にするのが、
 // 無編集の export→apply を全行 unchanged に保つ仕掛けそのものである。
+// Attribute はテナント定義の `custom:<key>` 列でだけ非 nil になる。
 type GroupCSVColumn struct {
 	Key       string
 	ReadOnly  bool
 	WriteOnly bool
+	Attribute *GroupAttributeDef
 }
 
 type GroupCSVSchema struct {
@@ -34,6 +38,7 @@ var groupCSVColumns = []GroupCSVColumn{
 	{Key: "id"},
 	{Key: "name"},
 	{Key: "description"},
+	{Key: "email"},
 	{Key: "membership_type"},
 	{Key: "roles"},
 	{Key: "dynamic_rule_expression"},
@@ -43,12 +48,30 @@ var groupCSVColumns = []GroupCSVColumn{
 	{Key: "updated_at", ReadOnly: true},
 }
 
-func NewGroupCSVSchema() GroupCSVSchema {
-	byKey := make(map[string]GroupCSVColumn, len(groupCSVColumns))
+// NewGroupCSVSchema は組み込み列に、テナントが定義した属性を `custom:<key>` として
+// 加えた列の語彙を返す。Group には union すべき組み込みカタログが無いため、User の
+// `attr:<key>` に相当する接頭辞は持たない。
+func NewGroupCSVSchema(defs []GroupAttributeDef) (GroupCSVSchema, error) {
+	ordered := make([]GroupCSVColumn, 0, len(groupCSVColumns)+len(defs))
+	byKey := make(map[string]GroupCSVColumn, len(groupCSVColumns)+len(defs))
 	for _, column := range groupCSVColumns {
 		byKey[column.Key] = column
+		ordered = append(ordered, column)
 	}
-	return GroupCSVSchema{ordered: slices.Clone(groupCSVColumns), byKey: byKey}
+	for _, def := range defs {
+		if err := def.Validate(); err != nil {
+			return GroupCSVSchema{}, err
+		}
+		key := "custom:" + def.Key
+		if _, exists := byKey[key]; exists {
+			return GroupCSVSchema{}, fmt.Errorf("duplicate group CSV column %q", key)
+		}
+		copied := def
+		column := GroupCSVColumn{Key: key, Attribute: &copied}
+		byKey[key] = column
+		ordered = append(ordered, column)
+	}
+	return GroupCSVSchema{ordered: ordered, byKey: byKey}, nil
 }
 
 func (s GroupCSVSchema) Columns() []GroupCSVColumn { return slices.Clone(s.ordered) }
@@ -183,4 +206,33 @@ func RejectedGroupImportRow(row int, column string, code idmdomain.CSVErrorCode)
 		Row: row, Action: GroupImportRejected,
 		Error: &idmdomain.CSVError{Row: row, Column: column, Code: code},
 	}
+}
+
+// ParseGroupCSVEmailCell は連絡先の字句形。空セルは連絡先を消す意味であり、
+// 形式を満たさない値は拒否する。正規化は管理 API と同じ (trim + 小文字化)。
+func ParseGroupCSVEmailCell(raw string) (*string, bool, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil, true, nil
+	}
+	address, err := mail.ParseAddress(trimmed)
+	if err != nil || address.Name != "" || address.Address != trimmed {
+		return nil, false, fmt.Errorf("%w: email", ErrInvalidGroupCSVCell)
+	}
+	lower := strings.ToLower(address.Address)
+	return &lower, false, nil
+}
+
+// ParseGroupCSVAttributeCell / FormatGroupCSVAttributeCell は Group 方言の入口で、
+// 字句形そのものは userdomain の共有実装が持つ。属性値の正規表記は属性の型が
+// 決めるものであって、CSV の種別が決めるものではない。
+func ParseGroupCSVAttributeCell(raw string, def GroupAttributeDef) (userdomain.AttributeValue, bool, error) {
+	return userdomain.ParseAttributeCell(raw, def.Type, def.Required)
+}
+
+func FormatGroupCSVAttributeCell(value userdomain.AttributeValue, def GroupAttributeDef) (string, error) {
+	if err := ValidateGroupAttributeValue(value, def); err != nil {
+		return "", err
+	}
+	return userdomain.FormatAttributeCell(value)
 }

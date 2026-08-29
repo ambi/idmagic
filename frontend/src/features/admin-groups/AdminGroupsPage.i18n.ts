@@ -118,7 +118,7 @@ export const adminGroupsDictionary = defineDictionary(
     importGroups: 'CSV インポート',
     importGroupsDescription: 'CSV からグループを事前検証して、作成・更新・削除します。',
     importInstructions:
-      'ヘッダー行には固定の列名 (id、name、roles など) を使います。列の順序を入れ替えたり、一部の列だけを使ったりできます。roles は "|" で区切ります。id があればそれで対象を決め、無ければ name で決めます。',
+      'ヘッダー行には固定の列名 (id、name、email、roles など) を使います。列の順序を入れ替えたり、一部の列だけを使ったりできます。roles は "|" で区切ります。テナントが定義したカスタム属性は custom:<key> 列として扱えます。id があればそれで対象を決め、無ければ name で決めます。',
     importImmutableFieldNotice:
       'membership_type は作成時にだけ指定でき、既存グループでは変更できません。動的規則の式と有効化は組として検証されます。',
     importTransferPolicyNotice:
@@ -305,7 +305,7 @@ export const adminGroupsDictionary = defineDictionary(
     importGroups: 'Import CSV',
     importGroupsDescription: 'Preview, create, update, and delete groups from a CSV file.',
     importInstructions:
-      'The header row uses the stable machine keys (id, name, roles, and so on). Reorder the columns or use only some of them. Separate roles with "|". A row resolves its target by id first, and by name when there is no id.',
+      'The header row uses the stable machine keys (id, name, email, roles, and so on). Reorder the columns or use only some of them. Separate roles with "|". A tenant-defined custom attribute is a custom:<key> column. A row resolves its target by id first, and by name when there is no id.',
     importImmutableFieldNotice:
       'membership_type can be chosen when a group is created but never changed afterwards. The dynamic rule expression and its enabled flag are validated as the pair they form.',
     importTransferPolicyNotice:

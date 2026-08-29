@@ -5,12 +5,7 @@ package domain
 // 属性セルの字句形、行計画の型だけを置く。
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
-	"math"
-	"strconv"
-	"time"
 
 	idmdomain "github.com/ambi/idmagic/backend/idmanagement/domain"
 )
@@ -158,77 +153,18 @@ func ValidateUserCSVTargets(rows []idmdomain.CSVRow) []idmdomain.CSVError {
 	return out
 }
 
-var ErrInvalidUserCSVCell = errors.New("invalid user CSV cell")
-
-// ParseUserCSVAttributeCell applies the canonical lexical form for one
-// schema-backed custom column. clear=true represents an optional present-empty
-// cell and is distinct from an absent column.
+// ParseUserCSVAttributeCell / FormatUserCSVAttributeCell は User 方言の入口であり、
+// 字句形そのものは attribute_cell.go の共有実装が持つ。属性値の正規表記は
+// 属性の型が決めるものであって、CSV の種別が決めるものではない。
 func ParseUserCSVAttributeCell(raw string, def UserAttributeDef) (AttributeValue, bool, error) {
-	if raw == "" {
-		if def.Required {
-			return AttributeValue{}, false, fmt.Errorf("%w: required attribute", ErrInvalidUserCSVCell)
-		}
-		return AttributeValue{}, true, nil
-	}
-	switch def.Type {
-	case idmdomain.AttributeTypeString:
-		value := raw
-		return AttributeValue{Type: def.Type, String: &value}, false, nil
-	case idmdomain.AttributeTypeDate:
-		parsed, err := time.Parse("2006-01-02", raw)
-		if err != nil || parsed.Format("2006-01-02") != raw {
-			return AttributeValue{}, false, fmt.Errorf("%w: date", ErrInvalidUserCSVCell)
-		}
-		value := raw
-		return AttributeValue{Type: def.Type, Date: &value}, false, nil
-	case idmdomain.AttributeTypeNumber:
-		value, err := strconv.ParseFloat(raw, 64)
-		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) || strconv.FormatFloat(value, 'g', -1, 64) != raw {
-			return AttributeValue{}, false, fmt.Errorf("%w: number", ErrInvalidUserCSVCell)
-		}
-		return AttributeValue{Type: def.Type, Number: &value}, false, nil
-	case idmdomain.AttributeTypeBoolean:
-		if raw != "true" && raw != "false" {
-			return AttributeValue{}, false, fmt.Errorf("%w: boolean", ErrInvalidUserCSVCell)
-		}
-		value := raw == "true"
-		return AttributeValue{Type: def.Type, Boolean: &value}, false, nil
-	case idmdomain.AttributeTypeStringArray:
-		var value []string
-		if err := json.Unmarshal([]byte(raw), &value); err != nil || value == nil {
-			return AttributeValue{}, false, fmt.Errorf("%w: string array", ErrInvalidUserCSVCell)
-		}
-		canonical, err := json.Marshal(value)
-		if err != nil || string(canonical) != raw {
-			return AttributeValue{}, false, fmt.Errorf("%w: string array", ErrInvalidUserCSVCell)
-		}
-		return AttributeValue{Type: def.Type, StringArray: value}, false, nil
-	default:
-		return AttributeValue{}, false, fmt.Errorf("%w: unsupported type", ErrInvalidUserCSVCell)
-	}
+	return ParseAttributeCell(raw, def.Type, def.Required)
 }
 
-// FormatUserCSVAttributeCell is the inverse lexical projection used by User
-// export. Formula protection is applied later by idmdomain.CSVWriter.
 func FormatUserCSVAttributeCell(value AttributeValue, def UserAttributeDef) (string, error) {
 	if err := ValidateAttributeValue(value, def); err != nil {
 		return "", err
 	}
-	switch def.Type {
-	case idmdomain.AttributeTypeString:
-		return *value.String, nil
-	case idmdomain.AttributeTypeDate:
-		return *value.Date, nil
-	case idmdomain.AttributeTypeNumber:
-		return strconv.FormatFloat(*value.Number, 'g', -1, 64), nil
-	case idmdomain.AttributeTypeBoolean:
-		return strconv.FormatBool(*value.Boolean), nil
-	case idmdomain.AttributeTypeStringArray:
-		encoded, err := json.Marshal(value.StringArray)
-		return string(encoded), err
-	default:
-		return "", fmt.Errorf("%w: unsupported type", ErrInvalidUserCSVCell)
-	}
+	return FormatAttributeCell(value)
 }
 
 type UserImportAction string

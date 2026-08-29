@@ -690,7 +690,7 @@ model StartGroupCsvExportError429 {
   @body body: StartGroupCsvExportError429Body;
 }
 
-@doc("An administrator starts a CSV export of the group list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels, and the columns are confined to a subset of the closed Group allow list. The generated payload uses the same CsvTransferPolicy and immutable artifact store as import, so a successful Group export can be previewed without editing; `lifecycle_action` is written empty on every row, which is what keeps an unedited round trip at all rows unchanged. It returns 202 and the export id.")
+@doc("An administrator starts a CSV export of the group list as an asynchronous job. The CSV header matches the machine keys that were requested, not display labels, and the columns are confined to a subset of the Group allow list: the built-in import-compatible columns plus the `custom:<key>` tenant-defined attributes of the TenantGroupAttributeSchema. The generated payload uses the same CsvTransferPolicy and immutable artifact store as import, so a successful Group export can be previewed without editing; `lifecycle_action` is written empty on every row, which is what keeps an unedited round trip at all rows unchanged. It returns 202 and the export id.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:read"])
 @TypeSpec.OpenAPI.operationId("StartGroupCsvExport")
 @route("/api/admin/v1/groups/exports")
@@ -724,7 +724,7 @@ model ImportAdminGroupsError403 {
   @body body: ImportAdminGroupsError403Body;
 }
 
-@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with Group export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file. A row resolves its target by `id` first and by `name` second; `membership_type` may be chosen at creation but never changed afterwards, the two dynamic rule columns are validated as the final state they combine into, and a Group an external source owns is refused.")
+@doc("An administrator streams a UTF-8 CSV upload, with or without a BOM, into a preview job that causes no side effects. The configurable transfer policy shared with Group export defaults to 100,000 data rows, 64 MiB per file, and 64 KiB per field. The payload is kept in the immutable artifact store, and the job params hold only a tenant-scoped reference, the server-computed SHA-256, and the size. The header may carry the stable machine keys in any order and any subset, while an unknown column, a duplicate one, and a password or hash column each refuse the whole file. A row resolves its target by `id` first and by `name` second; `membership_type` may be chosen at creation but never changed afterwards, the two dynamic rule columns are validated as the final state they combine into, a `custom:<key>` cell is parsed in the canonical lexical form its declared type fixes, and a Group an external source owns is refused.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ImportAdminGroups")
 @route("/api/admin/v1/groups/imports")
@@ -760,7 +760,7 @@ model ApplyAdminGroupImportError403 {
   @body body: ApplyAdminGroupImportError403Body;
 }
 
-@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the name, description, roles, and dynamic rule of each row settle atomically as a single aggregate mutation. A row that carries `lifecycle_action=delete` deletes the Group, releases every membership in it by cascade, and writes its audit record in that same transaction; the deletion is irreversible, so a Group the CSV does not name is never deleted.")
+@doc("An administrator applies a CSV by naming a succeeded preview job of the same tenant. The CSV is not sent again: the preview payload and `source_sha256` are read, and the same deterministic planner replans against the current repository state. The file as a whole succeeds row by row, while the name, description, contact address, roles, custom attributes, and dynamic rule of each row settle atomically as a single aggregate mutation. A row that carries `lifecycle_action=delete` deletes the Group, releases every membership in it by cascade, and writes its audit record in that same transaction; the deletion is irreversible, so a Group the CSV does not name is never deleted.")
 @TypeSpec.OpenAPI.extension("x-api-token-scopes", #["groups:write"])
 @TypeSpec.OpenAPI.operationId("ApplyAdminGroupImport")
 @route("/api/admin/v1/groups/imports/{preview_job_id}/apply")
