@@ -8,3 +8,5 @@
 | TrustDomain | `WorkloadTrustBundle` がまとめる論理グループ名。SPIFFE トラストドメイン、または運用者が定める発行者グループのラベル。 |  |
 | FailClosed | 未登録の発行者、署名不正、期限切れ、パターン不一致、一意に決められない一致、対応先の `Agent` が `Active` でない場合のいずれでも、交換を拒否する方針。判定できない場合も「交換しない」側に倒す。 |  |
 | System | `WorkloadIdentity` の検証ユースケースそのものを指す、人間の操作者を伴わない技術的な主体。 |  |
+
+この Context の Aggregate root は `WorkloadTrustBundle` と `AgentWorkloadBinding` である。関連付けは信頼束の配下にあるが独立して有効・無効を切り替えるため、信頼束の内側には置かない。

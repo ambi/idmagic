@@ -54,7 +54,7 @@ TypeSpec が `@body` に宣言する型は、サーバーが実際に受理し�
 
 | Class | Limit | Applies to |
 | --- | --- | --- |
-| Handle | 64 | IdMagic が採番する集約の ID、および関係名や型名のような語彙的な名前 |
+| Handle | 64 | IdMagic が採番する Aggregate の ID、および関係名や型名のような語彙的な名前 |
 | Name | 100 | 一行の名前 |
 | DisplayName | 200 | 利用者に見せる表示名とメールの件名 |
 | ExternalID | 256 | 呼び出し側の資源空間から来る識別子 |

@@ -1,6 +1,20 @@
 # Design Rules
 
-このファイルは、製品全体の設計でモジュールのインターフェース、Seam、型、作用、エラーをどう評価するかを持つ。ディレクトリと依存方向は `structure.md`、個別の判断と理由は各 `decisions.md`、コードから復元できない機構は各 `internals.md` が持つため、このファイルには重ねて書かない。
+このファイルは、製品全体の設計でサブドメインの区分、Aggregate の境界、モジュールのインターフェース、Seam、型、作用、エラーをどう評価するかを持つ。ディレクトリと依存方向は `structure.md`、個別の判断と理由は各 `decisions.md`、コードから復元できない機構は各 `internals.md` が持つため、このファイルには重ねて書かない。
+
+## Subdomains and design investment
+
+Bounded Context は、事業上の差別化とモデルの複雑さの二軸で `Core`、`Supporting`、`Generic` のいずれかに分ける。全 Context の区分は [README.md](README.md#context-map) の索引表が持ち、ある Context が今の区分にある理由はその Context の `decisions.md` が持つ。理由を索引表に置かないのは、理由が Context ごとに違って表のセルに収まらないためである。
+
+区分が左右するのは次の 3 つである。
+
+- **自作と委譲**。`Generic` に分類した領域では、確立した実装へ委ねられる部分を自作しない。「AEAD と鍵セットの処理は [Tink](https://developers.google.com/tink) に委ね、nonce、認証タグ、追加認証データの組み立てを自作しない」（[database.md](database.md#envelope-encryption-for-reversible-secrets)）が、この規則で説明できる既存の判断である。
+- **モデリングと文書の厚み**。`Core` の Context は固有の語彙を持ち、判断を `decisions.md` に、コードから復元できない機構を `internals.md` に書く。`Generic` の Context は表の CRUD に近い形のまま置いてよく、書くべき機構が無いのに `internals.md` を作らない。
+- **統合したときにどちらが歩み寄るか**。`Core` と非 `Core` が接するとき、相手の語彙へ翻訳するアダプターを持つのは非 `Core` の側である。`Core` は上流や下流の都合でモデルを変えない。翻訳するアダプターの置き場所そのものは [structure.md](structure.md#context-internals) が定める。
+
+**区分は検証の強度を左右しない。** どこまで検証するかは work item の `risk` と [threat-model.md](threat-model.md) が決める。両者を結ぶと、`Supporting` に分類した Context の拒否は弱く検証してよい、という読みが成立してしまう。実際 `Tenancy` は `Supporting` だが、テナント境界の拒否はこの製品で最も強く検証しなければならないものである。区分が表すのは重要度の順位ではなく差別化の所在であり、この 2 つは一致しない。
+
+区分そのものが妥当かどうかは検査できない。索引表の行に区分が書かれていないことは検査でき、`mise run check-spec` がそれを拒否する。
 
 ## Module depth and information hiding
 
@@ -19,6 +33,16 @@ Seam は、その場所を編集せずに振る舞いを差し替えられる位
 `ports/` は、永続化、通知、外部サービスなど、アプリケーションが呼び出す駆動されるポートを持つ。駆動する側のインターフェースは、複数の呼び出し方式や差し替え可能な実装が実在し、具象ユースケースへの依存を切る必要が生じた場所に置く。
 
 一つのアダプターしかない場所に、将来の差し替えだけを理由とするインターフェースは足さない。二つ以上のアダプターまたは呼び出し方式が同じ振る舞いを必要とした時点で Seam を設けるため、現在の HTTP アダプターが具象ユースケースを直接呼ぶ構成も許される。
+
+## Aggregate boundaries and repositories
+
+Aggregate は一貫性の境界である（語の定義は [glossary.md](glossary.md)）。何を 1 つの Aggregate にまとめるかは、同時に変わるかどうかではなく、**同時に正しくなければならないかどうか**で決める。同時に変わるだけのものをまとめると、競合しない更新どうしが 1 つの境界の中で直列化される。`Tenant` に外装や属性スキーマを埋め込まず別の Aggregate とする判断（[tenancy/decisions.md](contexts/tenancy/decisions.md)）は、この基準を適用した結果である。
+
+1 回のトランザクションが変更する Aggregate は 1 つとする。複数を 1 つのトランザクションで変更してよいのは、片方だけが残った状態を外部が観測できてはならない場合に限り、その判断はその Context の `decisions.md` または `internals.md` が理由とともに持つ。User の削除が `Consent`、`RefreshTokenRecord`、`LoginSession` などへ 1 つのトランザクションでカスケードする（[identity-management/internals.md](contexts/identity-management/internals.md)）のが、現在ある唯一の類型である。
+
+Repository は Aggregate root 単位に置く。1 つの Repository が複数の root を扱うと、どの操作がどの一貫性の境界に属するかがインターフェースから読めなくなり、呼び出し側は境界を知るために実装を読むことになる。反している状態は現在 1 つある。`backend/sourcing/scim/ports` の `ScimRepository` が `ScimUserRef` と `ScimGroupRef` の 2 つを扱っており、これは取り込み元との対応表という同じ役割の 2 つを 1 つのアダプターで実装したまま、ポートの側も分けなかったものである。
+
+ポート名の `Repository` と `Store` は、扱うものの種類を区別しない。`Store` を名乗るもののうち `SessionStore`、`ApprovalRequestStore`、`RefreshTokenStore`、`KeyStore` が持つのは Aggregate であり、`PARStore`、`DeviceCodeStore`、各 `ReplayStore` が持つのは不透明な鍵で引く短命なプロトコル状態、`ApplicationIconStore` や `TenantBrandingAssetStore` が持つのは Aggregate に属さない資産である。したがって、ある永続化ポートが Aggregate を扱うかどうかを接尾辞から推測してはならない。決めるのはポートが `Save` に受け取る型であり、`Core` に分類した Context ではその型の名前が `glossary.md` に Aggregate root として定義されている。
 
 ## Adapters and representations
 

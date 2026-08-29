@@ -21,7 +21,18 @@ async function workspace(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'check-workspace-test-'))
   cleanup.push(root)
   await mkdir(join(root, 'docs', 'contexts', 'demo'), { recursive: true })
-  await writeFile(join(root, 'docs', 'README.md'), '# Specification\n')
+  // Context を 1 つでも持つ作業ツリーは、索引表でその区分を宣言しなければならない。
+  await writeFile(
+    join(root, 'docs', 'README.md'),
+    [
+      '# Specification',
+      '',
+      '| Specification context | Subdomain | Go package | Responsibility |',
+      '| --- | --- | --- | --- |',
+      '| [Demo](contexts/demo/README.md) | Core | `demo` | Demo. |',
+      '',
+    ].join('\n'),
+  )
   await writeFile(join(root, 'docs', 'contexts', 'demo', 'README.md'), '# Demo\n')
   await writeFile(join(root, 'docs', 'contexts', 'demo', 'scenarios.md'), '# Demo Scenarios\n')
   return root

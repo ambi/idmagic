@@ -61,6 +61,12 @@ backend/<context>/
 
 アダプターはそれが属する Context または機能の直下に置き、snake_case の `<role>_<technology>` で命名する。
 
+`<technology>` の位置には外部技術の名前だけでなく相手の Context 名も入る。他の Context の語彙を自分のポートの語彙へ翻訳するアダプター、すなわち Anti-Corruption Layer がその形を取る。現在は `backend/provisioning/source_idmanagement`、`backend/authorization/principals_idmanagement`、`backend/oauth2/policy_tenancy`、`backend/sourcing/scim/source_idmanagement` の 4 つである。
+
+翻訳するアダプターを置くのは、Context Map が依存を許すほうの Context であり、翻訳される側ではない。`provisioning/source_idmanagement` は下流の Provisioning に立って IdManagement の `User` を自分の `AttributeSource` へ写す。`sourcing/scim/source_idmanagement` は反対に上流の Sourcing に立ち、IdManagement が公開する取り込み元判定のポートを満たす。IdManagement が Sourcing を知ると Context Map に無い向きの依存ができるためである。どちらに立つかは Context Map が決めるので、翻訳の向きから配置を推測しない。
+
+翻訳する語彙の差が無ければ、専用のパッケージも置かない。`WorkloadIdentity` から `OAuth2` への関係では、OAuth2 が `ports.WorkloadTokenVerifier` を宣言し、実装は `backend/workloadidentity/usecases` が持ち、組み立て地点で結ぶ。越えるのが WorkloadIdentity の公開言語に含まれる戻り値の型 1 つだけであり、そこにアダプターを挟むと委譲だけの浅いモジュールが残るからである。
+
 `backend/shared/` は、複数の Context が実際に共有する技術的な能力のための場所である。
 
 起動時設定も同じ意味で一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。読み取り点が散らばると、あるプロセスだけが検証されない値を持つ状態が作れてしまうためである。運用者向けの設定リファレンスはこの定義から生成し、手書きの一覧を併存させない。

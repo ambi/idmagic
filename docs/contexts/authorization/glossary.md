@@ -11,3 +11,5 @@
 | Actor chain | RFC 8693 の `act` クレームが表す代行の連なりを、外側から内側の順に並べたもの。エージェントが主体を代行して行うアクセスで、各段が独立に関係を要求される。 | 代行チェーン |
 | Consistency token | テナントごとの書き込み版を不透明に符号化した値。書き込みが返し、判定へ渡すと「ストアがその書き込み以降の状態であること」を要求できる。テナントを束縛しているため、他テナントのトークンは受理しない。 | 整合トークン |
 | FgaCheckResult | 判定の結果。許可・不許可、用いたモデルの版、整合トークン、たどった関係名だけの経路要約、拒否した規則名を持つ。オブジェクト識別子と主体識別子は経路に含めない。 | 判定結果 |
+
+この Context の Aggregate root は `AuthorizationModel` と `RelationTuple` である。`ResourceTypeDefinition`、`RelationDefinition`、`RelationRewrite` は `AuthorizationModel` の版の内側にあり、版を経由せずに変更しない。

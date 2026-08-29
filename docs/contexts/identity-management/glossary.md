@@ -14,7 +14,7 @@
 | SoftDelete | User を `Active` / `Disabled` から `PendingDeletion` へ遷移させる管理操作。個人識別情報、同意、リフレッシュトークン、セッションを残したまま削除を予約するため、誤操作を猶予期間内に取り消せる。 | soft_delete, soft-delete |
 | Restore | `PendingDeletion` の User を `Active` に戻す管理操作。猶予期間内だけ実行でき、個人識別情報と資格情報は保持しているため通常どおりログインを再開できる。 | restore |
 | Purge | User を `Active` / `Disabled` / `PendingDeletion` から `Deleted` に遷移させる確定削除操作。匿名化をカスケードし、猶予期間経過後の自動消去と、管理者による明示的な完全削除の双方から呼び出す。 | purge |
-| Group | テナント単位の Aggregate。再利用できるロールの束を持ち、所属する User へまとめて付与する。階層、拒否規則、属性による自動所属は持たず、和集合だけで構成する。連絡先メールアドレスと、`TenantGroupAttributeSchema` に対して検証する独自属性も持つ。 | group, グループ, ロールグループ |
+| Group | テナント単位の Aggregate root。再利用できるロールの束を持ち、所属する User へまとめて付与する。階層、拒否規則、属性による自動所属は持たず、和集合だけで構成する。連絡先メールアドレスと、`TenantGroupAttributeSchema` に対して検証する独自属性も持つ。 | group, グループ, ロールグループ |
 | GroupMembership | User と Group の所属関係 (`GroupMember`)。`manual` は管理者操作、`dynamic` は有効な CEL 規則の評価結果だけから変更する。`effective_roles(user) = user.roles ∪ ⋃ membership.group.roles`。 | group membership, グループ所属, membership |
 | DynamicGroupRule | User の中核属性と TenantUserAttributeSchema で定義した属性だけを参照し、所属可否を Boolean で返す制限付き CEL 式。規則のバージョンが一致する動的メンバーシップだけを有効とする。 | dynamic membership rule, 動的グループルール |
 | EffectiveRoles | 認可判断で使う User の有効ロール集合。`User.roles` と所属 Group のロールの和集合であり、管理コンソールの RBAC 制御とアカウントポータルの双方が参照する。 | 有効ロール |
@@ -25,3 +25,5 @@
 | KillAgent | Agent を Killed (一方向終端) に遷移させる緊急停止。`/api/admin/agents/{agent_id}/kill` から発火し、以後復帰不能。 | kill agent |
 | Autonomous | Agent が人間の都度承認なしに自律実行する区分。 | autonomous |
 | Supervised | Agent が人間の監督下で実行する区分。 | supervised |
+
+この Context の Aggregate root は `User`、`Group`、`Agent` の 3 つである。`GroupMembership` と `DynamicGroupRule` は `Group` の境界の内側にあり、`Group` を経由せずに参照しない。`AgentCredentialBinding` は同じく `Agent` の内側にある。

@@ -110,3 +110,5 @@
 | RevokeConsent | ResourceOwner が同意を撤回する（GDPR Art.7(3)）。 | revoke_consent |
 | Implicit | implicit grant は RFC 9700 §2.1.2 により参照実装から除外する。 | __excluded_implicit |
 | PasswordGrant | Resource Owner Password Credentials grant は RFC 9700 §2.4 により参照実装から除外する。 | __excluded_password |
+
+この Context の Aggregate root は `OAuth2Client`、`Consent`、`ApprovalRequest`、`AuthorizationRequest`、`AuthorizationCodeRecord`、`PARRecord`、`DeviceAuthorization`、`RefreshTokenRecord`、`McpResourceServer`、`AuthorizationDetailType` である。`ClaimMappingPolicy` は `OAuth2Client` の内側の値であり、独立した Aggregate ではない。

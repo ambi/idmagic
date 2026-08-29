@@ -237,6 +237,28 @@ so backend, frontend, workers, and external implementations see the same
 language-independent source. A generated HTML view provides
 cross-document navigation without becoming an authored format.
 
+### Redrawing a context boundary
+
+Moving a boundary is a change to the specification like any other, and it starts the same way: one work item,
+and the specification before the code. What makes it its own case is that the unit being moved is a context,
+so the ordinary "smallest owning file" rule does not say where to start.
+
+Start from the two things that already record where the seams are. `docs/README.md` says what each context is
+and how differentiating it is, and each context's `decisions.md` says why its aggregates were cut where they
+were. A boundary usually needs to move because one of those two turned out to be wrong — a context classified
+as `Supporting` that keeps absorbing the product's distinctive rules, or an invariant that has to hold across
+two contexts at once and therefore has no aggregate that can enforce it. State which of the two it is in the
+work item's Motivation; a move with neither reason behind it is a rename.
+
+Then: carry the `REQ-<CONTEXT>-NNN` scenarios by retiring and superseding, never by renumbering, so the old
+identifiers keep resolving; move the `docs/contexts/<context>/` and `spec/contexts/<context>/` trees together,
+because a context is one name in two places; update the Context Map, the index table, and `structure.md`
+through `update-design`; and run `mise run check-boundaries` and `mise run check-spec` as the gates.
+
+Event Storming is available as a technique for such a work item, and is not part of the ordinary loop. A
+session pays for itself when the participants disagree about where an event belongs, which is exactly the
+state a boundary move starts from and is not the state ordinary feature work starts from.
+
 ## 7. Work items
 
 A work item is the design and execution record for one meaningful change. It holds motivation, scope,

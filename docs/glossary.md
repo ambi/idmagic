@@ -19,6 +19,15 @@ Context の `glossary.md` は、ここに載る語をその Context での役割
 
 主体の種類ごとにどの境界へ到達できるかは [authorization.md](authorization.md) が持つ。
 
+## ドメインモデル
+
+| Term | Definition | Aliases |
+|---|---|---|
+| Aggregate | 1 つの単位として変更されるドメインオブジェクトの集まり。ちょうど 1 つのルートエンティティを持ち、その識別子が全体を名指す。常に成り立たなければならない不変条件は 1 つの Aggregate の内側に収め、境界を越える整合は結果整合として明示的に組む。外部からはルートの識別子で参照し、内部の要素を直接指さない。1 つの Aggregate はちょうど 1 つの Bounded Context に属する。境界の引き方、トランザクションとの対応、Repository の粒度は [design-rules.md](design-rules.md#aggregate-boundaries-and-repositories) が、テナントに属する Aggregate が `tenant_id` を持つことは [database.md](database.md#tenant_id-retention-classes) が定める。 |  |
+| Subdomain | Bounded Context を、事業上の差別化とモデルの複雑さで `Core`、`Supporting`、`Generic` のいずれかに分ける区分。全 Context の区分は [README.md](README.md#context-map) の索引表が持ち、ある Context が今の区分にある理由はその Context の `decisions.md` が持つ。区分が何を左右し、何を左右しないかは [design-rules.md](design-rules.md#subdomains-and-design-investment) が定める。 | サブドメイン |
+
+この 2 語は Latin 表記のまま使う。「集約」は日本語で観測値や設定をまとめる操作も指し、本文書群でも [capacity.md](capacity.md) と [observability.md](observability.md) がその意味で使っている。同じ語に 2 つの読みを持たせると、`tenant_id` を持つかどうかのような規則がどちらの意味で書かれているのか判別できなくなる。
+
 ## 外部契約
 
 | Term | Definition | Aliases |

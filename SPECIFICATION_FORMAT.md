@@ -106,6 +106,15 @@ A fourth source kind will be added to this context later.
 Below the declaration, index the sibling files as Markdown links. That index is what makes them reachable
 from the generated site, and it is the only place a reader is told which of them exist.
 
+The root `README.md` additionally indexes the contexts themselves, and that index says of each one whether
+it is `Core`, `Supporting`, or `Generic` *(checked)*. Every context directory appears exactly once, and a
+directory the index does not list is rejected — a new context otherwise arrives unclassified and stays that
+way, because nothing else in the layout ever asks. Which of the three a context is, and what the answer
+governs, are decisions the checker cannot make; it only refuses to let the question go unanswered. The
+reason a context sits where it does belongs in that context's `decisions.md`, not in the table, because
+the reason differs per context and does not fit a cell. A workspace with no context directories needs no
+such table.
+
 A context owns only behavior it can satisfy and verify on its own. Behavior that holds only when several
 contexts cooperate belongs to `docs/scenarios.md`, and the scenario names the participating contexts.
 Splitting such a flow into per-context fragments leaves no place where the real guarantee is stated.

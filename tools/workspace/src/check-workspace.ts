@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { readFile, readdir } from 'node:fs/promises'
 import { basename, extname, join } from 'node:path'
 import { verifyCanonicalDocumentSet } from '../../check/src/canonical-document-set.ts'
+import { verifySubdomainClassification } from '../../check/src/subdomain-classification.ts'
 import {
   type WorkItemDependencyRecord,
   verifyWorkItemDependencies,
@@ -89,9 +90,23 @@ if (all || args.has('--documents')) {
   // 閉じた集合の強制は、検証すべき文書が 1 件も見つからないときこそ働かなければ
   // ならない。名前を全部打ち間違えた作業ツリーは、集めた結果が空になるという形で
   // 現れる。ここを文書の件数で条件付けると、その最悪の場合だけ検査が飛ぶ。
-  const findings = verifyCanonicalDocumentSet(await listCanonicalDirectories())
+  const listings = await listCanonicalDirectories()
+  const findings = verifyCanonicalDocumentSet(listings)
   if (findings.length) {
     for (const finding of findings) console.error(`fail  ${finding.path}: ${finding.message}`)
+    process.exit(1)
+  }
+  const contextDirectories = listings
+    .filter((listing) => listing.directory.startsWith('docs/contexts/'))
+    .map((listing) => listing.directory.slice('docs/contexts/'.length))
+  const classifications = verifySubdomainClassification(
+    repository.read('docs/README.md') ?? '',
+    contextDirectories,
+  )
+  if (classifications.length) {
+    for (const finding of classifications) {
+      console.error(`fail  docs/README.md:${finding.line}: ${finding.message}`)
+    }
     process.exit(1)
   }
   if (config.documents.length > 0) {
