@@ -29,8 +29,7 @@ description: "Implement a chosen work item end to end: specification first, sepa
    `docs/development/specification-first-workflow.md`.
 8. When bounded contexts, structure, technology, runtime composition, or core design rules change, use
    `update-design`. Run the narrowest test recipe after each behavior and update its task as it completes.
-9. Collect the risk-selected change-resistance evidence and have a person or fresh-context agent that did not
-   implement the change run an independent specification and standards review.
+9. Collect the risk-selected change-resistance evidence.
 10. Pass `mise run verify`. Complete every evidence field required by `WORK_ITEM_FORMAT.md`, reading the
     completion summary out of `mise run spec-diff`. Set the status to `completed`, pass
     `mise run check-work-items` and `mise run check-ids`, and move the file to `work-items/done/`.

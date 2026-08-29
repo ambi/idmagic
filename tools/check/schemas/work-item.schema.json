@@ -124,22 +124,8 @@
       "then": {
         "properties": {
           "completion": {
-            "required": ["independent_verification", "change_resistance"]
+            "required": ["change_resistance"]
           }
-        }
-      }
-    },
-    {
-      "if": {
-        "properties": {
-          "reversibility": { "const": "irreversible" },
-          "status": { "const": "completed" }
-        },
-        "required": ["reversibility", "status"]
-      },
-      "then": {
-        "properties": {
-          "completion": { "required": ["independent_verification"] }
         }
       }
     },
@@ -395,7 +381,7 @@
           }
         },
         "independent_verification": {
-          "description": "Results from a verifier independent of the implementer.",
+          "description": "Optional. Results from a verifier independent of the implementer. Completed records written while this was required still carry it.",
           "type": "string",
           "minLength": 1
         },

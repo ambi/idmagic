@@ -34,7 +34,7 @@ authorization remains executable application behavior unless a later work item a
 | Confirm Unit RED, reach GREEN, and refactor inner behavior to outer adapters | `implement-work-item` | layer-local tests |
 | Sync current design when structure changes | `update-design` | `mise run check-boundaries` |
 | Regenerate derived views | `spec-render` | `mise run check-api-compat` |
-| Verify change resistance and review independently when required | `code-review` | evidence selected by risk and reversibility, `mise run verify` |
+| Verify change resistance | `code-review` | evidence selected by risk, `mise run verify` |
 | Record completion and commit | `commit` | `mise run check-work-items`, `mise run check-ids` |
 
 Before changing behavior, update the smallest owning specification: models, APIs, HTTP contracts, and
@@ -57,33 +57,26 @@ satisfied by an observation.
 | Risk | Before implementation | Before completion |
 |---|---|---|
 | `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended Acceptance RED and Unit RED checks. | Record both RED results. If either is not applicable, record why and the cheapest alternate check that was actually observed failing. |
-| `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary, obtain independent verification, and show that a representative incorrect implementation is detected. |
+| `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary and show that a representative incorrect implementation is detected. |
 | `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements and use `mise run test-go-mutation-package -- <package> <git-ref>` or explicit fault injection for changed pure logic. Record equivalent mutations and tool limits rather than hiding them. |
 
 Authentication, authorization, tenant boundaries, cryptography, protocol compatibility, and persistent-data
-migrations require independent verification even if their work item was initially classified lower. Raise the
-risk when the table's stronger contract describes the actual consequence.
+migrations reach the stronger rows quickly. Raise the risk when the table's stronger contract describes the
+actual consequence, rather than leaving the initial classification in place.
 
 The risk column reads one axis only: how much damage a wrong change does. It says nothing about whether the
 decision can be taken back, and those two come apart constantly. A work item that declares
 `reversibility: irreversible` — the field and its examples are defined in
-[WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) — obtains independent verification before completion even
-when its risk is `low`, because the cheap moment to find the mistake is the only moment there is. Nothing
-flows the other way: `reversible` never lowers what the risk row already asks for. Irreversibility adds no
-approval record either, for the reason this section opens with: a signature can be given without reading the
-diff, and a second reader cannot report a finding without reading it.
+[WORK_ITEM_FORMAT.md](../../WORK_ITEM_FORMAT.md) — records that the decision cannot be withdrawn later, so a
+reader can see which choices are load-bearing. It adds no evidence of its own, and `reversible` never lowers
+what the risk row already asks for.
 
-Independent verification is performed by a person or a fresh-context agent that did not implement the
-change. It compares the normative diff and implementation diff, checks repository standards, and asks whether
-the tests reject plausible wrong behavior rather than merely repeat the implementation. It reports findings
-back to the owning stage; it does not redesign the change while reviewing it.
-
-This is where pair review sits in this workflow. Extreme Programming gets a second reader onto every line as
-the line is written; a repository worked by one person and by agents cannot reproduce that continuously, so
-it spends the same attention at the points the risk and reversibility axes select. What carries the value is
-the fresh context — a reader who did not build the change cannot mistake an intention for an implementation.
-Whether that reader is a person or an agent is not the load-bearing part; whether they arrive without the
-author's assumptions is.
+A second reader belongs to review, not to this contract. Extreme Programming gets one onto every line as the
+line is written; a repository worked by one person and by agents spends that attention when the change is
+read as a whole instead. What the evidence contract can ask for is different in kind: an observation the
+implementer cannot satisfy by intending something. That is what the RED results and the change-resistance
+check are, and asking a work item to also record that somebody read it would only restate the review that
+already happened.
 
 ### Acceptance and unit evidence
 
@@ -140,8 +133,7 @@ Run the cheapest gate that can still fail on what you just changed, and widen on
 3. While implementing one layer: confirm Unit RED, reach GREEN, refactor while GREEN, and run the narrowest
    per-package or per-file test recipe that covers what you touched — `mise run test-go-package <package>` or
    `mise run test-ui-unit-file <file>` here, whatever `mise tasks` offers elsewhere.
-4. For `medium` risk and above: perform the selected change-resistance check and independent verification.
-   For `reversibility: irreversible` at any risk: perform independent verification.
+4. For `medium` risk and above: perform the selected change-resistance check.
 5. Before completing the work item: `mise run verify`.
 
 Running the full suite after every edit is the most common way to lose time in this repository.

@@ -71,10 +71,12 @@ while a wire format, the meaning of an identifier, a published schema, a destroy
 number is irreversible however small it looked. Write `irreversible` when undoing the decision would require
 someone outside this repository to change what they already store, send, or trust.
 
-`reversibility` only adds requirements; it never removes them. Declaring an item `reversible` leaves its
-`risk` contract exactly as it was, because a relaxation path would turn the declaration into a way around the
-evidence. The field is optional so that records written before it existed stay valid, and an unstated value
-means the axis was not assessed rather than that the change is reversible.
+`reversibility` selects no evidence of its own; it records which decisions cannot be withdrawn, so that a
+later reader can tell a choice that is still open from one the repository now has to live with. It never
+relaxes anything either: declaring an item `reversible` leaves its `risk` contract exactly as it was, because
+a relaxation path would turn the declaration into a way around the evidence. The field is optional so that
+records written before it existed stay valid, and an unstated value means the axis was not assessed rather
+than that the change is reversible.
 
 When an item enters `in_progress`, add `evidence_policy: risk-based-v2`. The risk selects the evidence the
 item must produce before it can be completed; it grants no permission to push, merge, operate production, or
@@ -108,8 +110,7 @@ For medium and larger changes, make `Design` and `Plan` concrete. For changed co
 domain data types and operation signatures, and identify time, randomness, identifier generation,
 configuration, persistence, notification, and other effects at the boundary where they enter or leave the
 calculation. Domain, Use Cases, and Adapters tasks must retain the corresponding tests and normative scenario
-ID as self-evidence. The independent verifier must not be the person or agent that implemented the change; a
-fresh-context agent is acceptable.
+ID as self-evidence.
 
 When the work is complete, set `status` to `completed`, append the following section, and move the file
 to `work-items/done/`:
@@ -131,9 +132,6 @@ to `work-items/done/`:
   - **Observed Failure**: The expected failure that was actually observed.
   - **Detection Reason**: Why the assertion distinguishes a plausible wrong implementation from the required
     inner behavior. When a unit boundary is inapplicable, identify the alternate check that actually failed.
-- **Independent Verification**:
-  For medium risk and above, and for any `reversibility: irreversible` item, identify the independent
-  verifier and summarize the standards and specification findings.
 - **Change-Resistance Results**:
   For medium risk and above, record the representative incorrect implementation, diff mutation, or explicit
   fault injection and whether the tests detected it. For high and critical pure-logic changes, use a

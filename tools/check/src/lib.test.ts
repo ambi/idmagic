@@ -383,7 +383,6 @@ describe('validateAgainstSchema — work-item', () => {
       risk: 'medium',
       completion: {
         ...validCompletion,
-        independent_verification: 'reviewed by a separate agent',
         change_resistance: 'the schema rejects the legacy policy fixture',
         acceptance_red_evidence: validRedEvidence,
         unit_red_evidence: validRedEvidence,
@@ -397,7 +396,11 @@ describe('validateAgainstSchema — work-item', () => {
     ).toEqual([])
   })
 
-  it('requires independent verification for an irreversible item at low risk', () => {
+  /**
+   * reversibility は取り消せない決定であることを記録に残す軸であって、証拠を追加で
+   * 要求する軸ではない。要求していたものは通常の Pull Request のレビューと重なっていた。
+   */
+  it('asks an irreversible item for no evidence beyond its risk row', () => {
     const completed = {
       ...validWorkItem,
       id: 'wi-412-demo',
@@ -411,23 +414,10 @@ describe('validateAgainstSchema — work-item', () => {
         unit_red_evidence: validRedEvidence,
       },
     }
-    expect(validateAgainstSchema('work-item', completed, '')).not.toEqual([])
-    expect(
-      validateAgainstSchema(
-        'work-item',
-        {
-          ...completed,
-          completion: {
-            ...completed.completion,
-            independent_verification: 'reviewed by a separate agent',
-          },
-        },
-        '',
-      ),
-    ).toEqual([])
+    expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
   })
 
-  it('leaves a reversible low-risk item free of independent verification', () => {
+  it('leaves a reversible low-risk item free of the medium-risk evidence', () => {
     const completed = {
       ...validWorkItem,
       id: 'wi-412-demo',
@@ -453,7 +443,6 @@ describe('validateAgainstSchema — work-item', () => {
       evidence_policy: 'risk-based-v2',
       completion: {
         ...validCompletion,
-        independent_verification: 'reviewed by a separate agent',
         change_resistance: 'the representative fault was detected',
       },
     }
@@ -546,6 +535,7 @@ describe('validateAgainstSchema — work-item', () => {
       },
     }
     expect(validateAgainstSchema('work-item', completed, '')).not.toEqual([])
+    /** 独立検証は任意項目になった。書いても medium の要求は満たさない。 */
     expect(
       validateAgainstSchema(
         'work-item',
@@ -554,6 +544,18 @@ describe('validateAgainstSchema — work-item', () => {
           completion: {
             ...completed.completion,
             independent_verification: 'reviewed by a separate agent',
+          },
+        },
+        '',
+      ),
+    ).not.toEqual([])
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        {
+          ...completed,
+          completion: {
+            ...completed.completion,
             change_resistance: 'the representative fault was detected',
           },
         },
