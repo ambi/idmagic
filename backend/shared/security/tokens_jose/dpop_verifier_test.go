@@ -331,15 +331,10 @@ func TestVerifyDPoPForTokenAcceptsProofWithoutATH(t *testing.T) {
 	}
 }
 
-func TestVerifyDPoPES256ProofFailsAtThumbprint(t *testing.T) {
-	// Pins a known limitation rather than the RFC 9449-intended behavior:
-	// alg validation accepts ES256 ("alg must be PS256 or ES256" above), and
-	// signature verification over the EC key succeeds, but jwkThumbprint
-	// hardcodes the RSA member set (e/kty/n) for the RFC 7638 canonical
-	// form. An EC jwk has none of those, so every ES256 DPoP proof is
-	// rejected at the last step regardless of a valid signature. Coverage
-	// task wi-129 documents current behavior rather than changing it
-	// (spec_impact: none); fixing this is tracked separately.
+func TestVerifyDPoPAcceptsES256Proof(t *testing.T) {
+	// alg 検証は ES256 を受理し (上の "alg must be PS256 or ES256")、署名検証も
+	// EC 鍵で通る。RFC9449-TOKEN-BINDING が MUST とする jkt の算出も、EC の正規
+	// メンバー集合で成立しなければ宣言と実装が食い違う。
 	key, jwk := dpopTestECKey(t)
 	now := time.Now().UTC()
 	proof := encodeECDPoPProof(
@@ -347,12 +342,19 @@ func TestVerifyDPoPES256ProofFailsAtThumbprint(t *testing.T) {
 		map[string]any{"typ": "dpop+jwt", "alg": "ES256", "jwk": jwk},
 		map[string]any{"htm": "POST", "htu": "https://idp.example/token", "jti": "es256-ok", "iat": now.Unix()},
 	)
-	_, err := VerifyDPoPForToken(
+	res, err := VerifyDPoPForToken(
 		context.Background(), proof, "POST", "https://idp.example/token",
 		memory.NewDpopReplayStore(), now,
 	)
-	if err == nil || !strings.Contains(err.Error(), "missing required member") {
-		t.Fatalf("expected thumbprint rejection for EC jwk, got %v", err)
+	if err != nil {
+		t.Fatalf("valid ES256 proof rejected: %v", err)
+	}
+	expectedJKT, err := jwkThumbprint(jwk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res == nil || res.JKT != expectedJKT {
+		t.Fatalf("JKT = %+v, want %q", res, expectedJKT)
 	}
 }
 
@@ -495,4 +497,72 @@ func TestVerifyDPoPMissingHeaderIsNoOp(t *testing.T) {
 	if err != nil || res != nil {
 		t.Fatalf("empty header: got res=%v err=%v, want nil/nil", res, err)
 	}
+}
+
+func TestJWKThumbprintFollowsRFC7638CanonicalForm(t *testing.T) {
+	// RFC 7638 §3.2 は kty ごとに正規メンバー集合を定める。RSA は {e, kty, n}、
+	// EC は {crv, kty, x, y} である。ここで固定するのはサムプリントの値そのもの
+	// なので、正規化の実装を取り違えれば値が変わって落ちる。
+	t.Run("RSA は RFC 7638 §3.1 の公表ベクタと一致する", func(t *testing.T) {
+		jwk := map[string]any{
+			"kty": "RSA",
+			"e":   "AQAB",
+			"n": "0vx7agoebGcQSuuPiLJXZptN9nndrQmbXEps2aiAFbWhM78LhWx4cbbfAAtVT86zwu1RK7aPFFxuhDR1L6tSoc_BJ" +
+				"ECPebWKRXjBZCiFV4n3oknjhMstn64tZ_2W-5JsGY4Hc5n9yBXArwl93lqt7_RN5w6Cf0h4QyQ5v-65YGjQR0_FDW2Qvzq" +
+				"Y368QQMicAtaSqzs8KJZgnYb9c7d0zgdAZHzu6qMQvRL5hajrn1n91CbOpbISD08qNLyrdkt-bFTWhAI4vMQFh6WeZu0fM" +
+				"4lFd2NcRwr3XPksINHaQ-G_xBniIqbw0Ls1jF44-csFCur-kEgU8awapJzKnqDKgw",
+		}
+		got, err := jwkThumbprint(jwk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		// RFC 7638 §3.1 が本文中に書き下している値。EC 分岐の追加でこの値が動けば、
+		// 発行済みの RSA 由来 cnf.jkt が変わったことになる。
+		const want = "NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs"
+		if got != want {
+			t.Fatalf("RSA thumbprint = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("EC P-256 は正規メンバー集合 {crv, kty, x, y} で計算される", func(t *testing.T) {
+		// 鍵は RFC 7515 Appendix A.3.1 の P-256 鍵。サムプリントは RFC 7638 §3
+		// の手順 (必須メンバーのみ、辞書順、空白なし、SHA-256、base64url) を
+		// この実装とは独立に適用して得た値である。
+		jwk := map[string]any{
+			"kty": "EC",
+			"crv": "P-256",
+			"x":   "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+			"y":   "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0",
+		}
+		got, err := jwkThumbprint(jwk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		const want = "oKIywvGUpTVTyxMQ3bwIIeQUudfr_CkLMjCE19ECD-U"
+		if got != want {
+			t.Fatalf("EC thumbprint = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("正規メンバーを欠く jwk は拒否される", func(t *testing.T) {
+		// EC 分岐が RSA の集合を流用していないこと。y を落とせば必ず落ちる。
+		jwk := map[string]any{
+			"kty": "EC",
+			"crv": "P-256",
+			"x":   "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+		}
+		if _, err := jwkThumbprint(jwk); err == nil ||
+			!strings.Contains(err.Error(), "missing required member") {
+			t.Fatalf("expected missing-member rejection, got %v", err)
+		}
+	})
+
+	t.Run("未対応の kty は明示エラーで拒否される", func(t *testing.T) {
+		// fail-closed: 知らない鍵種別を空のサムプリントで通さない。
+		jwk := map[string]any{"kty": "OKP", "crv": "Ed25519", "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo"}
+		if _, err := jwkThumbprint(jwk); err == nil ||
+			!strings.Contains(err.Error(), "unsupported kty") {
+			t.Fatalf("expected unsupported-kty rejection, got %v", err)
+		}
+	})
 }

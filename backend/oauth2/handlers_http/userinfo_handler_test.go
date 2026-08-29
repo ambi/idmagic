@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"context"
 	cryptostd "crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -366,4 +368,117 @@ func clientCertificateHeader(t *testing.T, commonName string) string {
 		t.Fatal(err)
 	}
 	return url.QueryEscape(string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})))
+}
+
+// ecJWK は P-256 公開鍵を RFC 7518 §6.2.1 の JWK として表す。
+func ecJWK(t *testing.T, pub *ecdsa.PublicKey) map[string]any {
+	t.Helper()
+	point, err := pub.Bytes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return map[string]any{
+		"kty": "EC",
+		"crv": "P-256",
+		"x":   base64.RawURLEncoding.EncodeToString(point[1:33]),
+		"y":   base64.RawURLEncoding.EncodeToString(point[33:65]),
+	}
+}
+
+// ecJWKThumbprint は EC 鍵の RFC 7638 サムプリントを、正規メンバー集合
+// {crv, kty, x, y} から検証対象の実装とは独立に組み立てる。
+func ecJWKThumbprint(t *testing.T, jwk map[string]any) string {
+	t.Helper()
+	canonical, err := json.Marshal(map[string]any{
+		"crv": jwk["crv"], "kty": jwk["kty"], "x": jwk["x"], "y": jwk["y"],
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(canonical)
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// signECDPoPProof は ES256 (ECDSA P-256 + SHA-256, JWS の R||S 形式) で GET proof を署名する。
+func signECDPoPProof(t *testing.T, key *ecdsa.PrivateKey, jwk map[string]any, htu, jti, accessToken string, now time.Time) string {
+	t.Helper()
+	header, err := json.Marshal(map[string]any{"typ": "dpop+jwt", "alg": "ES256", "jwk": jwk})
+	if err != nil {
+		t.Fatal(err)
+	}
+	claims := map[string]any{"htm": http.MethodGet, "htu": htu, "jti": jti, "iat": now.Unix()}
+	if accessToken != "" {
+		claims["ath"] = tokensJOSE.AccessTokenHash(accessToken)
+	}
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := base64.RawURLEncoding.EncodeToString(header) + "." +
+		base64.RawURLEncoding.EncodeToString(payload)
+	digest := sha256.Sum256([]byte(input))
+	r, s, err := ecdsa.Sign(rand.Reader, key, digest[:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig := make([]byte, 64)
+	r.FillBytes(sig[:32])
+	s.FillBytes(sig[32:])
+	return input + "." + base64.RawURLEncoding.EncodeToString(sig)
+}
+
+func TestUserInfoDPoPAcceptsES256Proof(t *testing.T) {
+	// RFC9449-TOKEN-BINDING / REQ-OAUTH2-045: DPoP proof の alg として ES256 を
+	// 宣言どおり受理する以上、EC 鍵でも jkt の照合が成立しなければならない。
+	now := time.Now().UTC()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	jwk := ecJWK(t, &key.PublicKey)
+	jkt := ecJWKThumbprint(t, jwk)
+
+	userRepo := usermemory.NewUserRepository()
+	userRepo.Seed(&userdomain.User{
+		ID: "user_carol", PreferredUsername: "carol", TenantID: tenancydomain.DefaultTenantID,
+		CreatedAt: now, UpdatedAt: now,
+	})
+
+	intro := &fakeIntrospector{result: &oauthports.IntrospectionResult{
+		Active: true, Sub: "user_carol", Scope: "openid profile",
+		ClientID:         "demo-client",
+		SenderConstraint: &domain.SenderConstraint{Type: spec.SenderConstraintDPoP, JKT: jkt},
+	}}
+
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{
+		Issuer: "http://test", UserRepo: userRepo,
+		OAuth2:            oauth2.Module{DpopReplayStore: memory.NewDpopReplayStore()},
+		TokenIntrospector: intro,
+	})
+
+	call := func(proof string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/realms/default/userinfo", http.NoBody)
+		req.Header.Set("Authorization", "DPoP atoken")
+		req.Header.Set("DPoP", proof)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		return rec
+	}
+
+	htu := "http://test/realms/default/userinfo"
+	if rec := call(signECDPoPProof(t, key, jwk, htu, "es256-valid", "atoken", now)); rec.Code != http.StatusOK {
+		t.Fatalf("valid ES256 proof status=%d body=%s", rec.Code, rec.Body.String())
+	}
+
+	// 結合が実際に効いていること。別の EC 鍵の proof は jkt が一致せず拒否される。
+	attacker, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	attProof := signECDPoPProof(t, attacker, ecJWK(t, &attacker.PublicKey), htu, "es256-attacker", "atoken", now)
+	if rec := call(attProof); rec.Code == http.StatusOK ||
+		!bytes.Contains(rec.Body.Bytes(), []byte(`"error":"invalid_token"`)) {
+		t.Fatalf("wrong ES256 jkt: status=%d body=%s", rec.Code, rec.Body.String())
+	}
 }

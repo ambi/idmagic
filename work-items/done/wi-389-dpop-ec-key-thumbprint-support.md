@@ -1,11 +1,21 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: [tn]
 risk: low
 created_at: 2026-08-22
 priority: p2
 change_kind: bugfix
+evidence_policy: risk-based-v2
+initial_context:
+  specification: [docs/contexts/oauth2/standards.md]
+  typespec: []
+  source:
+    - backend/shared/security/tokens_jose/dpop_verifier.go
+  tests:
+    - backend/shared/security/tokens_jose/dpop_verifier_test.go
+    - backend/oauth2/handlers_http/userinfo_handler_test.go
+  stop_before_reading: [frontend, spec, backend/signingkeys]
 affected_spec:
   - { path: docs/contexts/oauth2/standards.md, requirement: RFC9449-TOKEN-BINDING }
 ---
@@ -83,12 +93,15 @@ func jwkThumbprint(jwk map[string]any) (string, error) {
 3. `publicKeyFromJWK` や `verifyJWTSignature` 側の変更は不要 (既に EC 対応済み)。
 
 ## Tasks
-- [ ] T001 [Domain] `jwkThumbprint` (dpop_verifier.go) を kty 分岐に書き換え、EC (`crv`/`kty`/`x`/`y`)
+- [x] T001 [Domain] `jwkThumbprint` (dpop_verifier.go) を kty 分岐に書き換え、EC (`crv`/`kty`/`x`/`y`)
   を正しい正規メンバー集合として扱う。未対応 kty は明示エラーで拒否する。
-- [ ] T002 [Test] wi-129 で固定した `TestVerifyDPoPES256ProofFailsAtThumbprint` を
-  ES256 proof の受理を検証するテストへ書き換える。RSA/EC 双方で thumbprint が RFC 7638 の
-  既知ベクタ (または相互に一貫した値) と一致することを確認する直接テストを追加する。
-- [ ] T003 [Verify] `mise run verify-go` を通す。
+  Unit RED: `TestJWKThumbprintFollowsRFC7638CanonicalForm`。標準行: `RFC9449-TOKEN-BINDING`。
+- [x] T002 [Test] wi-129 で固定した `TestVerifyDPoPES256ProofFailsAtThumbprint` を
+  `TestVerifyDPoPAcceptsES256Proof` へ書き換えた。RFC 7638 の既知ベクタと照合する直接テスト
+  `TestJWKThumbprintFollowsRFC7638CanonicalForm` を追加した。
+- [x] T003 [Acceptance] `/userinfo` で ES256 proof が受理されることの受け入れ検査
+  `TestUserInfoDPoPAcceptsES256Proof` を置いた。シナリオ: `REQ-OAUTH2-045`。
+- [x] T004 [Verify] `mise run verify` を通した。
 
 ## Verification
 - `mise run verify-go`
@@ -99,3 +112,26 @@ func jwkThumbprint(jwk map[string]any) (string, error) {
 サムプリント値の計算方式を変えるため、既に発行済みの `cnf.jkt` (RSA 鍵由来) が本修正の前後で
 変わらないことを確認する — RSA 分岐の必須メンバー集合 `{e, kty, n}` は変更しないため、既存の
 RSA-DPoP クライアントの jkt 値に影響は無いはずだが、修正後にテストで明示的に固定する。
+
+## Completion
+
+- **Completed At**: 2026-08-30
+- **Summary**:
+  `jwkThumbprint` の正規メンバー集合を `kty` で分岐させ、EC は RFC 7638 §3.2 が定める `{crv, kty, x, y}` で計算するようにした。宣言どおり受理される ES256 DPoP proof が、署名検証を通ったあと最終段の jkt 算出で必ず落ちていた食い違いが解けている。未対応の `kty` は空のサムプリントで通さず明示エラーで拒否する (fail-closed)。RSA の集合 `{e, kty, n}` は変えていないので、発行済みの RSA 由来 `cnf.jkt` は動かない。`mise run spec-diff` は `no normative specification change against main` を返す。標準行 `RFC9449-TOKEN-BINDING` は元から MUST を宣言しており、実装がそれに追いついた変更である。
+- **Acceptance RED Evidence**:
+  - **Test**: `TestUserInfoDPoPAcceptsES256Proof` (`backend/oauth2/handlers_http/userinfo_handler_test.go`)
+  - **Requirement**: N/A: 該当する規範は `docs/contexts/oauth2/standards.md` の標準行 `RFC9449-TOKEN-BINDING` (MUST) であり、`REQ-` シナリオではない。近接する `REQ-OAUTH2-045` は `ath` による結び付けを述べる別の要件なので、ここには挙げない。
+  - **Observed Failure**: `valid ES256 proof status=400 body={"error":"invalid_token","error_description":"DPoP key binding mismatch"}`
+  - **Detection Reason**: 保護リソース `/userinfo` という、呼び出し側が結合の成否を観測できる最も狭い境界で、正しい ES256 proof の受理と、別の EC 鍵で署名した proof の拒否を対で確認する。受理だけを見るテストは jkt を照合しない実装にも通るため、結合が実際に効いていることを拒否側で固定した。期待値の jkt は正規メンバー集合から検証対象とは独立に組み立てており、実装を呼び戻していない。
+- **Unit RED Evidence**:
+  - **Test**: `TestJWKThumbprintFollowsRFC7638CanonicalForm` (`backend/shared/security/tokens_jose/dpop_verifier_test.go`)
+  - **Requirement**: N/A: 上と同じ理由で、対応する `REQ-` シナリオを持たない。固定しているのは RFC 7638 §3.2 の正規メンバー集合と、それを要求する `RFC9449-TOKEN-BINDING` である。
+  - **Observed Failure**: EC の部分試験が `jwk missing required member: e`、未対応 kty の部分試験が `expected unsupported-kty rejection, got jwk missing required member: e`。RSA の部分試験は当初から通った。
+  - **Detection Reason**: サムプリントの値そのものを固定する。RSA は RFC 7638 §3.1 が本文に書き下している `NzbLsXh8uDCcd-6MNwXF4W_7noWXFZAfHkxZsRGC9Xs` と照合するので、EC 分岐の追加が既存の RSA 由来 jkt を動かせば落ちる。EC は RFC 7515 Appendix A.3.1 の鍵に対して RFC 7638 §3 の手順をこの実装とは独立に適用した値を固定するので、メンバー集合や順序を取り違えた実装は通らない。`y` を落とした jwk と `OKP` の jwk が、集合を緩めた実装と fail-open した実装をそれぞれ落とす。
+- **Change-Resistance Results**:
+  リスクは `low` のため必須ではないが、代表的な誤実装を 2 つ入れて実測した。EC 分岐の必須メンバーから `y` を除くと、`TestJWKThumbprintFollowsRFC7638CanonicalForm` の EC ベクタ照合が値の相違で落ち、`TestUserInfoDPoPAcceptsES256Proof` も jkt 不一致で落ちた。`default` 分岐を `required = []string{"kty"}` に緩めると、未対応 kty の部分試験が落ちた。
+- **Verification Results**:
+  - `mise run verify` - passed (exit 0)
+  - `mise run test-go-package -- ./backend/shared/security/tokens_jose/...` - ok
+  - `mise run test-go-package -- ./backend/oauth2/handlers_http/...` - ok
+  - `mise run spec-diff` - `no normative specification change against main`

@@ -226,8 +226,23 @@ func rsaPublicJWK(pub *rsa.PublicKey) map[string]any {
 	}
 }
 
+// jwkThumbprint は RFC 7638 の JWK Thumbprint (cnf.jkt に載る値) を計算する。
+// 正規メンバー集合は RFC 7638 §3.2 が鍵種別ごとに定めるので、`kty` で分岐する。
+// `encoding/json` は map のキーをコードポイント順に出力するため、集合さえ正しければ
+// §3.1 の辞書順要件は自動的に満たされる。DPoP proof の alg は PS256 と ES256 を
+// 受理するので、RSA と EC の双方がここを通る。
 func jwkThumbprint(jwk map[string]any) (string, error) {
-	required := []string{"e", "kty", "n"}
+	kty, _ := jwk["kty"].(string)
+	var required []string
+	switch kty {
+	case "RSA":
+		required = []string{"e", "kty", "n"}
+	case "EC":
+		required = []string{"crv", "kty", "x", "y"}
+	default:
+		// fail-closed: 知らない鍵種別を、空または RSA 由来のサムプリントで通さない。
+		return "", fmt.Errorf("jwk unsupported kty for thumbprint: %q", kty)
+	}
 	canonical := map[string]any{}
 	for _, key := range required {
 		value, ok := jwk[key]
