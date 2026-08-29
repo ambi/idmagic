@@ -86,6 +86,7 @@ depends = [
   "lint-repo",
   "lint-go",
   "test-go-race",
+  "check-ui-dependencies",
   "format-check-ui",
   "lint-ui",
   "typecheck-ui",
@@ -104,6 +105,7 @@ run = [
   "mise run lint-repo",
   "mise run lint-go",
   "mise run test-go-race",
+  "mise run check-ui-dependencies",
   "mise run format-check-ui",
   "mise run lint-ui",
   "mise run typecheck-ui",
@@ -343,8 +345,30 @@ description = "Regenerate sqlc PostgreSQL query code"
 run = "sqlc generate"
 
 [tasks.verify-ui]
-description = "Verify UI format, lint, tests, and build"
-depends = ["format-check-ui", "lint-ui", "test-ui-unit", "build-ui"]
+description = "Verify UI dependencies, format, lint, types, tests, and build"
+depends = [
+  "check-ui-dependencies",
+  "format-check-ui",
+  "lint-ui",
+  "typecheck-ui",
+  "test-ui-unit",
+  "build-ui",
+]
+
+[tasks.check-ui-dependencies]
+description = "Check UI dependency declarations against actual usage"
+dir = "frontend"
+run = "bun run check:deps"
+
+[tasks.add-ui-component]
+description = "Add shadcn components with the version pinned in devDependencies"
+dir = "frontend"
+run = '''
+#!/usr/bin/env sh
+set -eu
+test "$#" -ge 1 || { echo "usage: mise run add-ui-component -- <component...>" >&2; exit 2; }
+bun run add:component "$@"
+'''
 
 [tasks.format-check-ui]
 description = "Check UI formatting"

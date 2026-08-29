@@ -9,6 +9,10 @@ type MiseConfig = {
 
 const root = resolve(import.meta.dir, '../../..')
 const config = Bun.TOML.parse(await Bun.file(resolve(root, 'mise.toml')).text()) as MiseConfig
+const { packageManager } = (await Bun.file(resolve(root, 'frontend/package.json')).json()) as {
+  packageManager?: string
+}
+const dockerfile = await Bun.file(resolve(root, 'frontend/Dockerfile')).text()
 
 describe('mise operational tool boundary', () => {
   it('does not provision PostgreSQL client tools', () => {
@@ -95,5 +99,53 @@ describe('mise Markdown link boundary', () => {
   it('runs the Markdown link checker from the standard check suite', () => {
     expect(config.tasks?.['check-links']?.run).toBeDefined()
     expect(config.tasks?.check?.depends).toContain('check-links')
+  })
+})
+
+describe('Bun version boundary', () => {
+  /**
+   * Bun は三か所が同じ版を指して初めて再現する。mise が手元と CI の実行系を選び、
+   * `packageManager` が bun install の版を宣言し、Dockerfile が配信用イメージを構築する。
+   * 一つだけ更新しても各所は動き続け、ずれは別の版が壊れたときにしか現れない。
+   */
+  const declared = String(config.tools?.bun ?? '')
+
+  it('pins an exact version rather than a range', () => {
+    expect(declared).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+
+  it('declares the same version in the UI package manifest', () => {
+    expect(packageManager).toBe(`bun@${declared}`)
+  })
+
+  it('builds the UI container from the same version', () => {
+    expect(dockerfile).toContain(`FROM oven/bun:${declared}-alpine AS build`)
+  })
+})
+
+describe('mise UI verification boundary', () => {
+  /**
+   * `verify-ui` は UI だけを触るときの入口で、`verify` はリポジトリ全体の入口である。
+   * 片方にしか無い検査は、その入口を使った人にだけ通ったように見える。
+   */
+  const verifySuite = [
+    ...(config.tasks?.verify?.depends ?? []),
+    ...[config.tasks?.['verify-serial']?.run ?? []].flat().map(String),
+  ].join('\n')
+
+  it('checks dependency declarations and types from the UI entry point', () => {
+    expect(config.tasks?.['check-ui-dependencies']?.run).toBeDefined()
+    expect(config.tasks?.['verify-ui']?.depends).toContain('check-ui-dependencies')
+    expect(config.tasks?.['verify-ui']?.depends).toContain('typecheck-ui')
+  })
+
+  it('runs every UI check of verify-ui from both repository-wide suites', () => {
+    for (const task of config.tasks?.['verify-ui']?.depends ?? []) {
+      expect(verifySuite).toContain(task)
+    }
+  })
+
+  it('adds shadcn components with the version pinned in devDependencies', () => {
+    expect(String(config.tasks?.['add-ui-component']?.run ?? '')).toContain('bun run add:component')
   })
 })

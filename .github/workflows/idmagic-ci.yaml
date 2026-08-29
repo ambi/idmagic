@@ -34,8 +34,9 @@ jobs:
         run: mise run lint-go
       - name: Test Go (Race Detector)
         run: mise run test-go-race
-      - name: Verify UI (Lint, Format & Types)
+      - name: Verify UI (Dependencies, Lint, Format & Types)
         run: |
+          mise run check-ui-dependencies
           mise run format-check-ui
           mise run lint-ui
           mise run typecheck-ui

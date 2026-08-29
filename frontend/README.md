@@ -46,13 +46,17 @@
 | React + TypeScript | UI と型安全なビュー | 単純なログイン画面から管理コンソールまで、明確なコンポーネント境界と状態管理を保つ。 |
 | Vite | 開発サーバーと本番ビルド | API ゲートウェイや CDN から配信できる静的バンドルを高速かつ単純に生成する。 |
 | Tailwind CSS | デザイントークンとスタイル | 企業のブランディング制御を保ちながら、状態、レスポンシブレイアウト、アクセシビリティのスタイルを一貫させる。 |
-| Radix UI | アクセシビリティを備えたヘッドレス部品 | 見た目から独立したキーボード操作と ARIA 準拠を提供する。 |
+| Base UI | アクセシビリティを備えたヘッドレス部品 | 見た目から独立したキーボード操作と ARIA 準拠を提供する。状態は `data-open` などの属性で表に出るため、スタイルは Tailwind CSS の側で持てる。 |
 | ローカルコンポーネント（shadcn/ui のレイアウト） | ボタン、入力、ラベル、カード、アラート | 監査とカスタマイズを容易にし、実行時依存の負荷を減らすため、リポジトリ内で保守する。 |
 | TanStack Router | 型安全なルーティング | Go バックエンドのページメタデータを対象の UI ビューへ安全に変換する。 |
-| TanStack Table | 管理用データグリッド | 並び替え、絞り込み、ページネーションのロジックを UI の表示から分離する。 |
+| dnd kit | 並べ替えの操作 | ドラッグ操作にキーボードとスクリーンリーダーの代替経路を用意する。 |
 | Tabler Icons | ベクターアイコン | 状態と操作の視覚的な補助として、一貫した線の太さと豊富なアイコンを提供する。 |
 | Class Variance Authority / Clsx / Tailwind Merge | クラスの統合 | 型安全なスタイルのバリエーションと、競合する Tailwind クラスの実行時統合を提供する。 |
-| Biome | リンターとフォーマッター | 構文、スタイル、コード品質の指針を高速に自動適用する。 |
+| Biome | リンターとフォーマッターと静的解析 | 構文、スタイル、コード品質の指針を高速に自動適用する。 |
+| Bun test + Happy DOM + Testing Library | 単体テスト | 実行系をテストランナーと共通にし、DOM を伴う描画の検証を別のランタイムへ分けない。 |
+| Knip | 依存宣言の検査 | 直接依存の過不足を、ソース、CSS、設定、スクリプトの実際の参照から判定する。 |
+
+管理用の一覧表は各ページが自前で組み立てる。汎用のデータグリッドライブラリは、並び替えと絞り込みをサーバー側の問い合わせが持つ現在の構成では層が一つ増えるだけなので使わない。
 
 ## ルーティング
 
@@ -73,7 +77,7 @@ SPA は TanStack Router のファイルベースルーティング（`src/routes
 2. **セクションの境界で抽出する。** 独立してテストする価値がある単位ごとに抽出する。自身の検証を持つフォーム（`AdminSignInPolicyPage.tsx` の `DefaultPolicyFormPresentation`）、項目一覧（`PasskeyList`）、対話的な状態を持つカード（`AccountSecurityPage.tsx` の `TotpEnrollmentForm`）が該当する。静的で読み取り専用のマークアップはコンテナ内に置いてよい。
 3. **表示用のプロパティを小さく保つ。** 自身のセクションに必要なプロパティ（通常は 10 個より十分少ない）と、実行する操作のコールバックだけを受け取る。増えるならプロパティを広げず、セクションごとのコンポーネントへさらに分ける。
 4. **表示用コンポーネントに副作用を置かない。** `fetch` や `api.*` の呼び出し、`useEffect`、ナビゲーションはコンテナに置く。セクションが自身の状態を管理して純粋なフォームへ委譲する場合は、`DefaultPolicyCard` のような小さいセクション専用コンテナに置いてよい。
-5. **抽出した単位をテストする。** 抽出した表示用コンポーネントと純粋な補助関数（日付の整形、検証、派生値の計算）に Vitest / Testing Library の単体テストを付ける。`AccountShell`、`AdminShell`、`AuthShell` を包むコンポーネントは TanStack Router の `Link` を使うため描画にルーターコンテキストが要る。テストを省略せず、`src/test/renderWithRouter.tsx` の `renderWithRouter` を使う。
+5. **抽出した単位をテストする。** 抽出した表示用コンポーネントと純粋な補助関数（日付の整形、検証、派生値の計算）に `bun test` / Testing Library の単体テストを付ける。`AccountShell`、`AdminShell`、`AuthShell` を包むコンポーネントは TanStack Router の `Link` を使うため描画にルーターコンテキストが要る。テストを省略せず、`src/test/renderWithRouter.tsx` の `renderWithRouter` を使う。
 
 ## 実装指針
 
@@ -82,9 +86,31 @@ UI を変更したときは、次の検証を実行する。
 mise run verify-ui
 ```
 
+`mise run verify-ui` は依存宣言の検査、整形の検査、静的解析、型検査、単体テスト、ビルドを実行する。同じ一式がリポジトリ全体の `mise run verify` と CI にも入っているので、どの入口から実行しても結果は変わらない。
+
 API 契約を変更したときは、Go の HTTP E2E テストを実行し、Cookie、CSRF 防御、OAuth のリダイレクト、JSON スキーマが正しいことを検証する。
 
 Vite CLI は `#!/usr/bin/env node` を使うが、開発とビルドのスクリプトは `bun` で JavaScript の起点を直接実行する。これにより Node.js のランタイムを必要とせず、実行するプロセスを `bun .../vite.js` に統一する。
+
+## 依存の宣言
+
+`idmagic-ui` は公開ライブラリではない私用アプリケーションなので、互換範囲を利用者へ伝える必要が無い。直接依存は `package.json` で範囲指定せずに固定し、推移依存は `bun.lock` で固定する。更新は Renovate か明示的な保守作業で行い、協調して動くパッケージ（React と型定義、TanStack Router と Vite プラグイン、Tailwind CSS と Vite プラグインなど）は同じ更新でそろえる。
+
+ブラウザー向けのソースから参照されて Vite が成果物へ組み込むものが `dependencies`、ビルド、生成、整形、静的解析、型検査、テストのためだけに実行するものが `devDependencies` である。`shadcn` は `src/styles.css` へ CSS を供給し、コンポーネント生成 CLI も提供するが、どちらもビルド時にしか動かないので `devDependencies` に置く。
+
+```bash
+mise run check-ui-dependencies
+```
+
+この検査は Knip が担う。直接依存の要否を TypeScript の import だけで決めず、CSS の `@import`、Vite と Biome の設定、Bun のテスト preload、パッケージスクリプト、ルート生成器も入口として数える。未使用の直接依存と、推移依存へ暗黙に頼っている未宣言の依存の両方を失敗として報告する。入口は `knip.jsonc` に書き写さず、実在する設定ファイルから Knip のプラグインが読み取る。
+
+## shadcn コンポーネントの追加
+
+```bash
+mise run add-ui-component -- button card
+```
+
+`devDependencies` に固定した版の CLI を使い、`components.json` の設定で `src/components/ui` へ生成する。`npx shadcn@latest` は使わない。実行のたびに取得する版が変わり、Bun に統一した実行環境からも外れるためである。生成されたソースと、それが必要とする直接依存は通常の差分としてレビューする。
 
 ## E2E スモークテスト
 

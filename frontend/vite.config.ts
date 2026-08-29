@@ -23,7 +23,9 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      // CommonJS の __dirname は Vite の native 設定ローダーが解決できず、既定が native へ
+      // 移る版で設定の読み込みごと壊れる。ESM 側の同等物を使う。
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   base: '/',

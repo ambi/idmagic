@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6.33.0/schema.json",
+  // 依存宣言の過不足だけを検査する。未使用ファイルと未使用 export まで有効にすると、
+  // マニフェストの整理からソース構造の変更へ範囲が広がり、依存の指摘がその中に埋もれる。
+  "include": [
+    "dependencies",
+    "devDependencies",
+    "optionalPeerDependencies",
+    "unlisted",
+    "binaries",
+    "unresolved"
+  ]
+  // 入口はここに書き写さない。Knip のプラグインが実在する設定から読み取るためであり、
+  // 二重に持てば設定が動いた側だけが更新されて食い違う。読み取り元は次のとおり。
+  //   vite.config.ts        ブラウザーの起点 (src/main.tsx) と @ alias
+  //   bunfig.toml           テストの preload (src/test/register-dom.ts, src/test/setup.ts)
+  //   package.json scripts  単体テスト、E2E、ルート生成、および biome / tsc / shadcn の各バイナリ
+  //   tsconfig*.json        types に並ぶ bun-types と node
+  //   components.json       shadcn の生成設定
+  // CSS の @import は src/main.tsx から辿る styles.css の中身として解決される。
+  // Knip が入口の書き写しを冗長と報告するので、増やすのは Knip が導出できない入口だけにする。
+}
