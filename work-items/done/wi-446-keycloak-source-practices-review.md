@@ -96,15 +96,15 @@ IdMagic は OAuth、OIDC、SAML、SCIM、認証、管理、監査、Kubernetes �
 
 | Candidate | Decision | Owner and Change Kind | Dependency or Revisit Condition |
 |---|---|---|---|
-| アクショントークン | [[wi-447-typed-action-token-core]] として採用する。目的、期限、単回消費、先読み安全性、作用との整合性だけを共通化し、用途別 payload と作用を各 Context に残す。 | Authentication と Identity Management、`feature`、`risk: high`。 | 先行依存はない。パスワード再設定とメール変更を一用途ずつ移行する。 |
-| 機能ライフサイクル | [[wi-448-feature-lifecycle-and-update-policy]] として採用する。実行時に選択できる機能だけを閉じた registry にし、API 安定性と標準採否の正本を置き換えない。 | System、`feature`、`risk: medium`。 | 後続の更新互換性と文書 gate がこの registry を入力にする。 |
+| アクショントークン | [[wi-447-typed-action-token-core]] として採用する。目的、期限、単回消費、先読み安全性、作用との整合性だけを共通化し、用途別ペイロードと作用を各 Context に残す。 | Authentication と Identity Management、`feature`、`risk: high`。 | 先行依存はない。パスワード再設定とメール変更を一用途ずつ移行する。 |
+| 機能ライフサイクル | [[wi-448-feature-lifecycle-and-update-policy]] として採用する。実行時に選択できる機能だけを閉じた登録簿にし、API 安定性と標準採否の正本を置き換えない。 | System、`feature`、`risk: medium`。 | 後続の更新互換性と文書ゲートがこの登録簿を入力にする。 |
 | 更新互換性 | [[wi-449-deployment-update-compatibility-preflight]] として採用する。読み取り専用の決定表と安定した終了コードを提供し、配備自体は行わない。 | System operations、`operations`、`risk: high`。 | [[wi-448-feature-lifecycle-and-update-policy]] の機能版と更新方針を必要とする。 |
-| 異版混在 | [[wi-450-mixed-version-release-acceptance]] として採用する。直前安定版と新成果物の版間契約を検査し、HA トポロジと障害 drill は [[wi-165-high-availability-and-failover-resilience-topology]] に残す。 | Release tooling、`tooling`、`risk: medium`。 | [[wi-449-deployment-update-compatibility-preflight]] の `rolling` 候補を検証し、`wi-165` から再利用できる境界にする。 |
-| 安定性反復 | [[wi-451-stability-repetition-gate]] として採用する。一度の失敗を後続成功で上書きせず、低頻度失敗の仮説がある suite だけを反復する。 | Test tooling、`tooling`、`risk: medium`。 | [[wi-131-testing-governance-and-ci-enforcement]] の nightly matrix と整合し、[[wi-445-main-use-case-unit-and-e2e-evidence]] の主要ユースケース証拠を代替しない。 |
-| 機能と変更の文書責任 | [[wi-452-feature-maturity-documentation-gates]] として採用する。現在状態、注目すべき差分、既存利用者の移行手順を別の文書責任として検査する。 | Development tooling、`tooling`、`risk: low`。 | [[wi-448-feature-lifecycle-and-update-policy]] の成熟度差分を入力にし、[[wi-445-main-use-case-unit-and-e2e-evidence]] の検証責任と重複させない。 |
+| 異版混在 | [[wi-450-mixed-version-release-acceptance]] として採用する。直前安定版と新成果物の版間契約を検査し、HA トポロジと障害訓練は [[wi-165-high-availability-and-failover-resilience-topology]] に残す。 | Release tooling、`tooling`、`risk: high`。 | [[wi-449-deployment-update-compatibility-preflight]] の `rolling_candidate` を動的に検証し、静的判定と合わせたリリース許可を所有する。`wi-165` から再利用できる境界にする。 |
+| 安定性反復 | [[wi-451-stability-repetition-gate]] として採用する。一度の失敗を後続成功で上書きせず、低頻度失敗の仮説があるテストスイートだけを反復する。 | Test tooling、`tooling`、`risk: medium`。 | 独立した手動タスクまでを所有し、[[wi-131-testing-governance-and-ci-enforcement]] が夜間および必須検査への接続を所有する。[[wi-445-main-use-case-unit-and-e2e-evidence]] の主要ユースケース証拠は代替しない。 |
+| 機能と変更の文書責任 | [[wi-452-feature-maturity-documentation-gates]] として採用する。現在状態、注目すべき差分、既存利用者の移行手順を別の文書責任として検査する。 | Development tooling、`tooling`、`risk: low`。 | [[wi-448-feature-lifecycle-and-update-policy]] の成熟度差分と [[wi-445-main-use-case-unit-and-e2e-evidence]] の証拠契約を入力にし、検証責任を重複させない。 |
 | 設定メタデータ | 新しい work item を起票しない。[[wi-103-startup-config-validation-and-reference]] の `ConfigField` と生成器が目的を満たしている。 | 既存の System 設定境界。 | 更新影響、非推奨、関連設定を必要とする具体的な設定変更が生じたとき、その work item 内で `ConfigField` を局所的に拡張する。 |
-| 宣言的テスト資源 | 新しい work item を起票しない。PostgreSQL と E2E の共有資源には所有者、寿命、清掃がある。 | 既存の test fixture。 | 複数のテスト群が共有する新しい外部資源を導入し、既存の小さな fixture で寿命を表現できない場合だけ再評価する。 |
-| クライアントポリシー | 要件待ちとし、汎用ポリシーエンジンを採用しない。 | 現在は OAuth2 の用途別 domain と use case。 | 同じ標準制約の適用漏れまたは重複を、複数の正式入口を通る Acceptance RED で示せた場合だけ、閉じた registry を起票する。 |
+| 宣言的テスト資源 | 新しい work item を起票しない。PostgreSQL と E2E の共有資源には所有者、寿命、清掃がある。 | 既存のテストフィクスチャ。 | 複数のテスト群が共有する新しい外部資源を導入し、既存の小さなフィクスチャで寿命を表現できない場合だけ再評価する。 |
+| クライアントポリシー | 要件待ちとし、汎用ポリシーエンジンを採用しない。 | 現在は OAuth2 の用途別ドメインとユースケース。 | 同じ標準制約の適用漏れまたは重複を、複数の正式入口を通る Acceptance RED で示せた場合だけ、閉じた登録簿を起票する。 |
 | Operator | 要件待ちとし、静的 Kubernetes 資材を維持する。 | 現在は System operations と `infra/k8s`。 | IdMagic 固有 CR の宣言状態、所有資源、継続的再調整、status API が必要になった場合だけ、`observedGeneration` と conditions を含む契約から起票する。 |
 
 後続項目は Keycloak のコードを複製せず、固定コミットにある機構を IdMagic の型、Context 境界、`mise` タスクへ再設計する。将来ソースを複製する判断を行う場合は、その項目で Apache License 2.0 の帰属、ライセンス文、NOTICE の要否を先に確定する。
@@ -181,12 +181,12 @@ IdMagic は OAuth、OIDC、SAML、SCIM、認証、管理、監査、Kubernetes �
   - **Test**: `rg -n 'wi-447-typed-action-token-core|wi-448-feature-lifecycle-and-update-policy|wi-449-deployment-update-compatibility-preflight|wi-450-mixed-version-release-acceptance|wi-451-stability-repetition-gate|wi-452-feature-maturity-documentation-gates' work-items/wi-446-keycloak-source-practices-review.md`
   - **Requirement**: N/A: 製品挙動を変えない調査と work item の起票であり、規範シナリオに対する受け入れ境界はない。
   - **Observed Failure**: 終了コード 1 で一致がなく、採用対象を実行可能な後続項目へ結び付ける参照が存在しなかった。
-  - **Detection Reason**: 候補の説明だけを増やして後続作業を作らない不完全な調査では、六つの安定した work item 参照が一つも一致せず失敗する。起票後は六件すべてが一致した。
+  - **Detection Reason**: 候補の説明だけを増やして後続作業を一件も作らない不完全な調査では一致せず失敗する。完了時は `for id in wi-447-typed-action-token-core wi-448-feature-lifecycle-and-update-policy wi-449-deployment-update-compatibility-preflight wi-450-mixed-version-release-acceptance wi-451-stability-repetition-gate wi-452-feature-maturity-documentation-gates; do rg -n "\\[\\[${id}\\]\\]" work-items/done/wi-446-keycloak-source-practices-review.md || exit 1; done` により六参照を個別に必須化した。
 - **Unit RED Evidence**:
   - **Test**: `rg -n '^### Follow-up Decisions$' work-items/wi-446-keycloak-source-practices-review.md`
   - **Requirement**: N/A: 変更する domain または use case の内部ロジックがない。
   - **Observed Failure**: 終了コード 1 で一致がなく、候補ごとの所有範囲、変更種別、依存、再評価条件を確定した表が存在しなかった。
-  - **Detection Reason**: Keycloak の仕組みを列挙しただけの文書は `Follow-up Decisions` を持たず失敗する。採用、採用済み、要件待ちを所有範囲と再評価条件まで決めた後に一致した。
+  - **Detection Reason**: Keycloak の仕組みを列挙しただけの文書は `Follow-up Decisions` を持たず失敗する。完了時は `for candidate in アクショントークン 機能ライフサイクル 更新互換性 異版混在 安定性反復 機能と変更の文書責任 設定メタデータ 宣言的テスト資源 クライアントポリシー Operator; do rg -n "^\\| ${candidate} \\| (\\[\\[wi-|新しい work item|要件待ち)[^|]*\\|[^|]+\\|[^|]+\\|$" work-items/done/wi-446-keycloak-source-practices-review.md || exit 1; done` により九候補の十判断行に、判断、所有範囲、依存または再評価条件の各列があることを個別に必須化した。
 - **Change-Resistance Results**:
   N/A: `risk: low` の文書調査であり、製品ロジック、検査ロジック、仕様を変更していない。代わりに、後続参照と最終判断表を別々に外した RED、固定 SHA 以外の Keycloak リンクを検出する検索、work item の依存とリンク検査を実行した。
 - **Verification Results**:
@@ -197,9 +197,11 @@ IdMagic は OAuth、OIDC、SAML、SCIM、認証、管理、監査、Kubernetes �
   - `mise run check-ids` - passed
   - `mise run check-links` - passed
   - `mise run verify` - passed
+  - 六件の後続参照を個別に必須化する完了検査 - passed
+  - 九候補の十判断行と四列を個別に必須化する完了検査 - passed
 
 ## Left Undone
 
 - [[wi-447-typed-action-token-core]] から [[wi-452-feature-maturity-documentation-gates]] の仕様変更と実装は、それぞれの証拠契約で行う。
-- 設定メタデータと共有 test fixture は現行の小さな仕組みを維持し、具体的な不足が生じるまで新しい基盤を作らない。
-- Operator は継続的な再調整と status 契約の要件、クライアントポリシーは複数入口での適用漏れを示す Acceptance RED が生じるまで起票しない。
+- 設定メタデータと共有テストフィクスチャは現行の小さな仕組みを維持し、具体的な不足が生じるまで新しい基盤を作らない。
+- Operator は継続的な再調整と状態契約の要件、クライアントポリシーは複数入口での適用漏れを示す Acceptance RED が生じるまで起票しない。
