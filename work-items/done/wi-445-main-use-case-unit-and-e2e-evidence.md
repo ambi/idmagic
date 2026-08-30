@@ -1,11 +1,34 @@
 ---
 depends_on: []
-status: pending
+status: completed
 authors: [tn]
 risk: medium
 created_at: 2026-08-30
 priority: p1
 change_kind: tooling
+evidence_policy: risk-based-v3
+reversibility: irreversible
+initial_context:
+  source:
+    - docs/development/testing.md
+    - docs/development/specification-first-workflow.md
+    - WORK_ITEM_FORMAT.md
+    - tools/check/schemas/work-item.schema.json
+    - tools/check/src/main.ts
+    - tools/check/src/work-item-references.ts
+    - tools/check/src/spec-diff.ts
+    - tools/workspace/src/check-workspace.ts
+    - mise.toml
+    - .agents/skills/implement-work-item/SKILL.md
+    - work-items/done/wi-439-outbound-scim-resource-body-omits-schemas.md
+    - work-items/done/wi-440-outbound-scim-oauth2-client-credentials-unimplemented.md
+    - work-items/done/wi-441-push-groups-produces-no-delivery.md
+  tests:
+    - tools/check/src/lib.test.ts
+    - tools/check/src/work-item-markdown.test.ts
+    - tools/check/src/work-item-references.test.ts
+    - tools/check/src/spec-diff.test.ts
+  stop_before_reading: [backend, frontend, spec]
 spec_impact: { kind: none, reason: "機能と標準対応に要求するテスト証拠を強化するだけで、製品契約の意味は変えない。検査が見つけた製品欠陥は個別に直す。" }
 ---
 
@@ -60,6 +83,12 @@ E2E を必須にする理由は、単体テストと同じ表明を重複させ�
 
 既存項目を一度に形式だけ満たす移行は行わない。新しい証拠方針を適用する変更から fail-closed にし、監査で見つけた既存の不足は主要ユースケースと観測結果を特定した個別の work item にする。完了済み記録は旧方針の履歴として読み続けられるようにする。
 
+新しい版は `risk-based-v3` とする。`risk-based-v1` と `risk-based-v2` の完了済み記録はそのまま受理し、新たに着手する項目は v3 を使う。対象項目は frontmatter の `primary_use_cases` に計画を置き、完了時に `Completion` の `Primary Use Case Evidence` へ結果を置く。主要型は `TestReference = { path: string; name: string; task: string }`、`PrimaryUseCasePlan = { id; requirement; observable_result; unit_test; e2e_test; unit_fault_model; e2e_fault_model }`、`PrimaryUseCaseEvidence = { id; unit_red; e2e_red; unit_fault_injection; e2e_fault_injection }` とする。検査の主操作は `verifyPrimaryUseCaseEvidence(record, environment): string[]` とし、ファイル読み取りと必須タスク集合は `environment` から受け取る。したがって検査判断は純粋で、ファイルシステム、`mise.toml`、CI 定義の読み取りは作業空間アダプターに閉じる。
+
+対象条件は `change_kind` が `feature` または `bugfix`、あるいは `affected_spec[].path` が `standards.md` で終わることである。`in_progress` では計画の構造と要求参照だけを検査し、予定テストは未作成でもよい。`completed` ではテストファイルと識別子、テストコード内の要求 ID、標準検証または CI から到達する `mise` タスク、計画と一対一に対応する RED と故障注入結果を検査する。アサーションの意味はソースから推測しない。
+
+本 work item 自身は製品機能でも標準対応でもないため、主要ユースケースは `N/A` である。Acceptance RED は主要ユースケース計画の無い対象 fixture を `mise run check-work-items` が現在は受理すること、Unit RED は新しい純粋検査の期待を `mise run test-tools` が満たさないこととする。Markdown の構造化結果は既存の `Bun.YAML` へ委ね、手書きの入力分割規則を増やさないため、新しい fuzz 対象は不要である。
+
 ## Plan
 
 1. 主要ユースケース、単体テスト、E2E テスト、故障モデルを `docs/development/testing.md` と証拠契約へ定義し、既存の Acceptance RED と Unit RED からの移行規則を決める。
@@ -70,14 +99,14 @@ E2E を必須にする理由は、単体テストと同じ表明を重複させ�
 
 ## Tasks
 
-- [ ] T001 [Docs] 主要ユースケースに対する単体テストと E2E テストの責任、表明対象、故障モデルをテスト方針と証拠契約へ定める。
-- [ ] T002 [Design] 版付きの証拠方針、work item の構造化宣言、完了証拠、既存記録の移行規則を確定する。
-- [ ] T003 [Acceptance] 適用対象の work item に主要ユースケースの計画または完了証拠が無くても `mise run check-work-items` が通る現状を RED として固定する。
-- [ ] T004 [Tooling] 適用条件、要求参照、単体テスト、E2E テスト、必須タスクからの到達を検査する。
-- [ ] T005 [Tooling] 主要ユースケースごとの Unit RED、E2E RED、二種類の故障注入結果を完了条件として検査する。
-- [ ] T006 [Regression] `wi-439`、`wi-440`、`wi-441` の修正前の証拠が不足として検出されることを確認する。
-- [ ] T007 [Migration] 適用開始時に進行中の対象 work item を移行し、完了済み記録を旧方針の履歴として検証できるようにする。
-- [ ] T008 [Verify] 検査用 fixture の各欠落を意図的に作って失敗を確認し、標準検証を通す。
+- [x] T001 [Docs] 主要ユースケースに対する単体テストと E2E テストの責任、表明対象、故障モデルをテスト方針と証拠契約へ定める。
+- [x] T002 [Design] `risk-based-v3`、`PrimaryUseCasePlan`、`PrimaryUseCaseEvidence`、既存記録の移行規則、効果境界を確定する。
+- [x] T003 [Acceptance] `check-workspace --work-items > rejects an applicable in-progress item without a primary-use-case plan` を追加し、`wi-439` 相当の feature fixture に `primary_use_cases` が無くても CLI が終了コード 0 を返すため、`expect(result.code).not.toBe(0)` が失敗する Acceptance RED を確認した。製品の規範要求は `N/A` で、観測境界は work item CLI である。Unit RED は `verifyPrimaryUseCaseEvidence` の単体検査を追加し、`Cannot find module './primary-use-case-evidence.ts'` で失敗することを確認した。
+- [x] T004 [Tooling] `verifyPrimaryUseCaseEvidence` と作業空間アダプターで、適用条件、`affected_spec` との要求照合、単体テスト、E2E テスト、標準 verify / CI の必須タスクからの到達を検査する。
+- [x] T005 [Tooling] 主要ユースケースごとの Unit RED、E2E RED、内部判断と実配線の故障注入結果を完了条件として検査し、Markdown の構造化 YAML を既存パーサーへ接続した。
+- [x] T006 [Regression] `wi-439`、`wi-440`、`wi-441` の修正前の形を、設定値の種類を判定しない三つの fixture として主要ユースケース未宣言で検出することを確認した。
+- [x] T007 [Migration] 適用時点で進行中の対象 work item は存在しなかった。完了済み `risk-based-v1` / `risk-based-v2` 記録を再解釈せず、新規着手だけを `risk-based-v3` に固定した。
+- [x] T008 [Verify] 適用条件、計画、要求参照、単体テストと E2E テストの分離、テスト実在性、識別子、必須タスクからの到達、四つの完了証拠を fixture から一つずつ欠落させて失敗を確認した。タスク到達性の判定を一時的に無効化すると完了 fixture の検査が失敗することも実測し、復元後に `mise run verify` を通した。
 
 ## Verification
 
@@ -97,3 +126,30 @@ E2E を必須にする理由は、単体テストと同じ表明を重複させ�
 主要ユースケースを広く取りすぎると、すべての分岐を E2E に重複実装する運用になる。主要ユースケースは機能または標準対応の成立を示す中心的な正常系に限定し、代替経路と拒否は仕様上のリスクに応じて単体、アダプター統合、受け入れへ置く。
 
 反対に狭く取りすぎると、入力の受理や成功ステータスだけを主要結果として宣言できてしまう。要求参照と最終的な観測結果を対にし、配線または最終効果を無作用にした故障を E2E が検出することを要求して、機能の効果まで検証対象に含める。
+
+## Completion
+
+- **Completed At**: 2026-08-30
+- **Summary**:
+  `mise run spec-diff` は `no normative specification change against main` を返した。製品の規範仕様は変更せず、機能、欠陥修正、`standards.md` の規範対応を行う新規作業項目に `risk-based-v3` を適用した。主要ユースケースごとに要求参照、観測結果、単体テストと E2E テスト、異なる故障モデルを実装前に宣言し、完了時に両方の RED と故障注入結果を残す契約を追加した。作業項目検査は、完了時のテスト実在性、識別子、要求 ID、標準検証または CI から到達可能な `mise` タスクまで検査する。完了済みの `risk-based-v1` / `risk-based-v2` 記録は履歴として再解釈しない。
+- **Acceptance RED Evidence**:
+  - **Test**: `check-workspace --work-items > rejects an applicable in-progress item without a primary-use-case plan` (`tools/workspace/src/check-workspace.test.ts`)
+  - **Requirement**: N/A: 製品の規範要求を変更しないリポジトリ検査の変更であるため。
+  - **Observed Failure**: 主要ユースケース計画を持たない `change_kind: feature` の fixture を CLI が終了コード 0 で受理し、`expect(result.code).not.toBe(0)` が失敗した（5 pass、1 fail）。
+  - **Detection Reason**: 観測境界を検査関数ではなく実際の work item CLI に置いたため、スキーマ、Markdown 解析、作業空間アダプターのいずれかが新規規則へ接続されていなければ、対象項目が受理される失敗として検出できる。
+- **Unit RED Evidence**:
+  - **Test**: `verifyPrimaryUseCaseEvidence > requires a plan for feature, bugfix, and standards work` (`tools/check/src/primary-use-case-evidence.test.ts`)
+  - **Requirement**: N/A: 製品の規範要求を変更しないリポジトリ検査の変更であるため。
+  - **Observed Failure**: 純粋検査を実装する前は `Cannot find module './primary-use-case-evidence.ts'` で失敗した（0 pass、1 error）。
+  - **Detection Reason**: `feature`、`bugfix`、`standards.md` 参照を同じ公開操作へ与え、設定値や規範 ID の個別列挙ではなく適用条件そのものを固定した。後続の検査で計画、要求照合、テスト分離、完了証拠の各欠落も個別に固定した。
+- **Change-Resistance Results**:
+  `verifyPrimaryUseCaseEvidence` の必須タスク到達性判定を一時的に常時無効化し、CI または標準検証から到達しない `test-go` を参照する完了 fixture が誤って受理される変異を与えた。`check-workspace --work-items > validates completed primary-use-case evidence and required task reachability` の `expect(unreachable.code).not.toBe(0)` が失敗し（6 pass、1 fail）、この判定を検出できることを確認した。変異を直ちに復元し、同じ対象検査が 7 pass、0 fail になることを再確認した。適用条件、計画、要求参照、単体テストと E2E テストの重複、テスト実在性、識別子、要求 ID、Unit RED、E2E RED、二種類の故障注入結果は、それぞれ一つだけ欠落させる単体 fixture で失敗する。
+- **Verification Results**:
+  - `mise run verify` - passed (exit 0)
+  - `mise run test-tools` - 354 pass、0 fail
+  - `mise run typecheck-tools` - passed
+  - `mise run lint-tools` - passed
+  - `mise run check-spec` - passed
+  - `mise run check-work-items` - passed
+  - `mise run check-ids` - passed
+  - `mise run spec-diff` - `no normative specification change against main`

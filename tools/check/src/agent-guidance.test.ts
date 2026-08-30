@@ -12,7 +12,8 @@ const currentGuidance = [
   },
   {
     file: '.agents/skills/implement-work-item/SKILL.md',
-    source: 'risk-based-v2\nAcceptance RED\nUnit RED\nGREEN\nrefactor\nN/A:\nactually failed',
+    source:
+      'risk-based-v3\nAcceptance RED\nUnit RED\nE2E RED\nGREEN\nrefactor\nN/A:\nactually failed',
   },
 ]
 
@@ -51,7 +52,7 @@ describe('verifyAgentGuidance', () => {
     }
     expect(verifyAgentGuidance(guidance)).toContainEqual({
       file: '.agents/skills/implement-work-item/SKILL.md',
-      message: 'references the retired risk-based-v1 policy',
+      message: 'references a retired evidence policy',
     })
   })
 
@@ -59,7 +60,8 @@ describe('verifyAgentGuidance', () => {
     const guidance = currentGuidance.map((document) => ({ ...document }))
     guidance[2] = {
       file: currentGuidance[2]!.file,
-      source: 'risk-based-v2\nUnit RED\nAcceptance RED\nrefactor\nGREEN\nN/A:\nactually failed',
+      source:
+        'risk-based-v3\nUnit RED\nAcceptance RED\nE2E RED\nrefactor\nGREEN\nN/A:\nactually failed',
     }
     expect(verifyAgentGuidance(guidance)).toContainEqual({
       file: '.agents/skills/implement-work-item/SKILL.md',

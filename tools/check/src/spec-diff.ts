@@ -15,6 +15,8 @@
 
 import { readdir } from 'node:fs/promises'
 import { relative, resolve } from 'node:path'
+import MarkdownIt from 'markdown-it'
+import { parseFrontmatterAndMarkdown } from './main.ts'
 import { documentKind } from './specification-doc.ts'
 
 /** Repository-relative path to file contents. */
@@ -25,6 +27,8 @@ export type SpecificationFacts = {
   scenarios: Map<string, string>
   /** `<owning directory>#<machine>` to its transition rows. */
   transitions: Map<string, Set<string>>
+  /** `<path>#<normative id>` to the normalized standards row. */
+  standards: Map<string, string>
   /** `<path>:<declaration>` for every TypeSpec declaration. */
   declarations: Set<string>
 }
@@ -34,6 +38,9 @@ export type SpecificationDiff = {
   removedScenarios: string[]
   changedScenarios: string[]
   changedTransitions: string[]
+  addedStandards: string[]
+  removedStandards: string[]
+  changedStandards: string[]
   addedDeclarations: string[]
   removedDeclarations: string[]
 }
@@ -47,6 +54,24 @@ const DECLARATION = /^[ \t]*(?:alias|enum|model|op|scalar|union)\s+([A-Za-z_][A-
  * nothing on their own. Listing them buries the declarations a reader came for.
  */
 const TRANSPORT_WRAPPER = /(?:Error\d{3}(?:Body)?|Http(?:Request|Response)|Success_\d{3})$/
+const markdown = new MarkdownIt({ html: false, linkify: false, typographer: false })
+
+function standardRows(path: string, source: string): Map<string, string> {
+  const rows = new Map<string, string>()
+  let cells: string[] | undefined
+  for (const token of markdown.parse(source, {})) {
+    if (token.type === 'tr_open') {
+      cells = []
+    } else if (token.type === 'inline' && cells) {
+      cells.push(token.content.trim().replaceAll(/\s+/g, ' '))
+    } else if (token.type === 'tr_close' && cells) {
+      const id = cells[0]
+      if (id && /^[A-Z][A-Z0-9-]+$/.test(id)) rows.set(`${path}#${id}`, cells.join(' | '))
+      cells = undefined
+    }
+  }
+  return rows
+}
 
 function section(source: string, name: string): string {
   const start = source.match(new RegExp(`^## ${name}\\s*$`, 'm'))
@@ -68,6 +93,7 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
   const facts: SpecificationFacts = {
     scenarios: new Map(),
     transitions: new Map(),
+    standards: new Map(),
     declarations: new Set(),
   }
 
@@ -83,6 +109,9 @@ export function extractFacts(snapshot: Snapshot): SpecificationFacts {
     // In the split layout the file name says what the file holds, so the whole
     // file is the section; the single canonical document names its sections.
     const name = path.split('/').at(-1) ?? ''
+    if (name === 'standards.md') {
+      for (const [id, row] of standardRows(path, source)) facts.standards.set(id, row)
+    }
     const scenarios = name === 'scenarios.md' ? source : section(source, 'Scenarios')
     const starts = [...scenarios.matchAll(/^### (REQ-[A-Z0-9-]+):/gm)]
     for (const [index, start] of starts.entries()) {
@@ -149,11 +178,23 @@ export function diffSpecifications(base: Snapshot, head: Snapshot): Specificatio
     if (!same) changedTransitions.push(machine)
   }
 
+  const addedStandards: string[] = []
+  const changedStandards: string[] = []
+  for (const [id, row] of after.standards) {
+    const previous = before.standards.get(id)
+    if (previous === undefined) addedStandards.push(id)
+    else if (previous !== row) changedStandards.push(id)
+  }
+  const removedStandards = [...before.standards.keys()].filter((id) => !after.standards.has(id))
+
   return {
     addedScenarios: addedScenarios.sort(),
     removedScenarios: removedScenarios.sort(),
     changedScenarios: changedScenarios.sort(),
     changedTransitions: changedTransitions.sort(),
+    addedStandards: addedStandards.sort(),
+    removedStandards: removedStandards.sort(),
+    changedStandards: changedStandards.sort(),
     addedDeclarations: [...after.declarations]
       .filter((one) => !before.declarations.has(one))
       .sort(),
@@ -169,6 +210,9 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
     ['removed scenarios', diff.removedScenarios],
     ['changed scenarios', diff.changedScenarios],
     ['changed state transitions', diff.changedTransitions],
+    ['added standards requirements', diff.addedStandards],
+    ['removed standards requirements', diff.removedStandards],
+    ['changed standards requirements', diff.changedStandards],
     ['added TypeSpec declarations', diff.addedDeclarations],
     ['removed TypeSpec declarations', diff.removedDeclarations],
   ]
@@ -178,6 +222,22 @@ export function formatSpecificationDiff(diff: SpecificationDiff, ref: string): s
   return lines.length === 0
     ? `no normative specification change against ${ref}`
     : `normative specification change against ${ref}\n\n${lines.join('\n\n')}`
+}
+
+export function unreferencedStandardChanges(
+  diff: SpecificationDiff,
+  affectedSpec: Array<{ path?: unknown; requirement?: unknown }>,
+): string[] {
+  const references = new Set(
+    affectedSpec.flatMap((reference) =>
+      typeof reference.path === 'string' && typeof reference.requirement === 'string'
+        ? [`${reference.path}#${reference.requirement}`]
+        : [],
+    ),
+  )
+  return [...diff.addedStandards, ...diff.changedStandards]
+    .filter((requirement) => !references.has(requirement))
+    .sort()
 }
 
 /**
@@ -233,9 +293,48 @@ function readRevision(root: string, ref: string): Snapshot {
   return snapshot
 }
 
+async function affectedSpecFromChangedWorkItems(
+  root: string,
+  ref: string,
+): Promise<Array<{ path?: unknown; requirement?: unknown }>> {
+  const changed = new Set(
+    [
+      git(root, ['diff', '--name-only', ref, '--', 'work-items']),
+      git(root, ['ls-files', '--others', '--exclude-standard', '--', 'work-items']),
+    ]
+      .join('\n')
+      .split('\n')
+      .filter((path) => path.endsWith('.md')),
+  )
+  const references: Array<{ path?: unknown; requirement?: unknown }> = []
+  for (const path of changed) {
+    const file = Bun.file(resolve(root, path))
+    if (!(await file.exists())) continue
+    const record = parseFrontmatterAndMarkdown(path, await file.text())
+    if (record.status !== 'in_progress' && record.status !== 'completed') continue
+    if (!Array.isArray(record.affected_spec)) continue
+    for (const reference of record.affected_spec) {
+      if (typeof reference === 'object' && reference !== null && !Array.isArray(reference)) {
+        references.push(reference as { path?: unknown; requirement?: unknown })
+      }
+    }
+  }
+  return references
+}
+
 if (import.meta.main) {
   const root = resolve(import.meta.dir, '../../..')
   const ref = process.argv[2] ?? 'main'
   const diff = diffSpecifications(readRevision(root, ref), await readWorkingTree(root))
   console.log(formatSpecificationDiff(diff, ref))
+  const missing = unreferencedStandardChanges(
+    diff,
+    await affectedSpecFromChangedWorkItems(root, ref),
+  )
+  if (missing.length > 0) {
+    console.error(
+      `standards requirements missing from affected_spec:\n${missing.map((one) => `  ${one}`).join('\n')}`,
+    )
+    process.exitCode = 1
+  }
 }

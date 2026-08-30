@@ -13,6 +13,11 @@ import {
   type ReferenceEnvironment,
   verifyWorkItemReferences,
 } from '../../check/src/work-item-references.ts'
+import { parseFrontmatterAndMarkdown } from '../../check/src/main.ts'
+import {
+  type PrimaryUseCaseEnvironment,
+  verifyPrimaryUseCaseEvidence,
+} from '../../check/src/primary-use-case-evidence.ts'
 import { listCanonicalDirectories, loadWorkspaceConfig, rootPath, runTool } from './workspace.ts'
 
 const args = new Set(process.argv.slice(2))
@@ -52,14 +57,69 @@ async function workItemFiles(root: string): Promise<string[]> {
   return result.sort()
 }
 
+function collectStrings(value: unknown, strings: string[]): void {
+  if (typeof value === 'string') {
+    strings.push(value)
+  } else if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, strings)
+  } else if (typeof value === 'object' && value !== null) {
+    for (const item of Object.values(value)) collectStrings(item, strings)
+  }
+}
+
+/** 標準 verify の依存グラフと CI が直接呼ぶ mise タスクを返す。 */
+async function requiredVerificationTasks(): Promise<ReadonlySet<string>> {
+  const required = new Set<string>()
+  try {
+    const source = await readFile(rootPath('mise.toml'), 'utf8')
+    const config = Bun.TOML.parse(source) as {
+      tasks?: Record<string, { depends?: unknown }>
+    }
+    const tasks = config.tasks ?? {}
+    const visit = (name: string): void => {
+      if (required.has(name)) return
+      required.add(name)
+      const dependencies = tasks[name]?.depends
+      if (!Array.isArray(dependencies)) return
+      for (const dependency of dependencies) {
+        if (typeof dependency === 'string') visit(dependency)
+      }
+    }
+    visit('verify')
+  } catch {
+    // 最小 fixture に mise.toml が無い場合、標準タスクは空集合でよい。
+  }
+
+  try {
+    const directory = rootPath('.github/workflows')
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (!entry.isFile() || !/\.ya?ml$/.test(entry.name)) continue
+      const workflow = Bun.YAML.parse(await readFile(join(directory, entry.name), 'utf8'))
+      const strings: string[] = []
+      collectStrings(workflow, strings)
+      for (const source of strings) {
+        for (const match of source.matchAll(/\bmise run ([a-z0-9][a-z0-9-]*)/g)) {
+          if (match[1]) required.add(match[1])
+        }
+      }
+    }
+  } catch {
+    // 最小 fixture に CI 定義が無い場合も空集合でよい。
+  }
+  return required
+}
+
 if ((all || args.has('--work-items')) && config.workItems) {
   const files = await workItemFiles(rootPath(config.workItems))
   await runTool(['check/src/main.ts', '--schema=work-item', ...files])
   const records: WorkItemDependencyRecord[] = []
+  const primaryUseCaseEnvironment: PrimaryUseCaseEnvironment = {
+    read: repository.read,
+    requiredTasks: await requiredVerificationTasks(),
+  }
   for (const path of files) {
     const source = await readFile(path, 'utf8')
-    const yaml = source.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n/)?.[1]
-    const data = (yaml ? Bun.YAML.parse(yaml) : {}) as {
+    const data = parseFrontmatterAndMarkdown(path, source) as {
       status?: unknown
       depends_on?: unknown
       affected_spec?: unknown
@@ -74,6 +134,10 @@ if ((all || args.has('--work-items')) && config.workItems) {
     })
 
     for (const finding of verifyWorkItemReferences(data, repository)) {
+      console.error(`${path}: ${finding}`)
+      process.exit(1)
+    }
+    for (const finding of verifyPrimaryUseCaseEvidence(data, primaryUseCaseEnvironment)) {
       console.error(`${path}: ${finding}`)
       process.exit(1)
     }

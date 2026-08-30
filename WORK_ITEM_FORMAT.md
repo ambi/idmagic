@@ -18,6 +18,7 @@ created_at: 2026-01-01
 priority: p1
 depends_on: []
 change_kind: feature
+evidence_policy: risk-based-v3 # required after the item starts
 initial_context: # written when the item starts, not when it is filed
   specification: [docs/contexts/system/scenarios.md#REQ-SYSTEM-001]
   typespec: [Product.System.Operations.StartTask]
@@ -27,6 +28,14 @@ initial_context: # written when the item starts, not when it is filed
 affected_spec:
   - { path: docs/contexts/system/scenarios.md, requirement: REQ-SYSTEM-001 }
   - { path: spec/contexts/system/main.tsp, symbol: Product.System.Operations.StartTask }
+primary_use_cases: # required for feature, bugfix, and standards.md work after it starts
+  - id: start-task
+    requirement: REQ-SYSTEM-001
+    observable_result: The caller observes the task running.
+    unit_test: { path: backend/system/usecases/start_task_test.go, name: TestStartTask_REQ_SYSTEM_001, task: test-go-race }
+    e2e_test: { path: backend/system/e2e_test.go, name: TestE2E_StartTask_REQ_SYSTEM_001, task: test-go-race }
+    unit_fault_model: The use case does not emit the start command.
+    e2e_fault_model: The configured route does not connect the handler to the use case.
 ---
 
 # One-sentence semantic change
@@ -78,7 +87,7 @@ a relaxation path would turn the declaration into a way around the evidence. The
 records written before it existed stay valid, and an unstated value means the axis was not assessed rather
 than that the change is reversible.
 
-When an item enters `in_progress`, add `evidence_policy: risk-based-v2`. The risk selects the evidence the
+When an item enters `in_progress`, add `evidence_policy: risk-based-v3`. The risk selects the evidence the
 item must produce before it can be completed; it grants no permission to push, merge, operate production, or
 modify an external system. Filing the item is what authorizes the work, so the item keeps no separate
 approval record. Resolve every open question that would change product behavior, the public contract, the
@@ -112,6 +121,20 @@ configuration, persistence, notification, and other effects at the boundary wher
 calculation. Domain, Use Cases, and Adapters tasks must retain the corresponding tests and normative scenario
 ID as self-evidence.
 
+For `feature`, `bugfix`, and any item whose `affected_spec` references a requirement in a `standards.md`, add
+`primary_use_cases` before implementation. Each entry declares one central successful route with a stable
+kebab-case `id`, its exact `REQ-*` or standards requirement, the final `observable_result`, Unit and E2E test
+references, and the distinct plausible fault each test must detect. A test reference contains the repository-
+relative `path`, stable `name`, and required `mise` or CI `task`. The test may be absent while the item is
+`in_progress`; at completion the checker requires the file and identifier, the requirement in the test source,
+and reachability through the declared standard task. Do not use input acceptance, enum validation, line
+coverage, or a directly constructed lower-level component as an E2E result when production uses a wider entry
+and composition path.
+
+`risk-based-v3` applies this contract to newly started work. Completed `risk-based-v1` and `risk-based-v2`
+records remain valid history. An applicable item that was already `in_progress` at adoption moves to v3 and
+adds the plan; no completed record is rewritten.
+
 When the work is complete, set `status` to `completed`, append the following section, and move the file
 to `work-items/done/`:
 
@@ -140,3 +163,19 @@ to `work-items/done/`:
 - **Verification Results**:
   - `mise run verify` - passed
 ```
+
+The Acceptance and Unit RED fields above are the completion shape for work without a primary-use-case
+requirement. Applicable `risk-based-v3` items use the following field instead; they may retain additional
+Acceptance or Unit evidence for non-primary behavior, but it does not replace this evidence:
+
+```markdown
+- **Primary Use Case Evidence**:
+  - id: start-task
+    unit_red: TestStartTask_REQ_SYSTEM_001 failed because no start command was emitted.
+    e2e_red: TestE2E_StartTask_REQ_SYSTEM_001 failed because the configured route produced no running task.
+    unit_fault_injection: Removing command emission made TestStartTask_REQ_SYSTEM_001 fail.
+    e2e_fault_injection: Disconnecting the route made TestE2E_StartTask_REQ_SYSTEM_001 fail.
+```
+
+The `id` must match a `primary_use_cases` plan entry. Every planned entry needs exactly one completion entry;
+each RED and fault-injection result is a non-empty observation, not a future instruction.

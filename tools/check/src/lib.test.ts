@@ -304,7 +304,7 @@ describe('validateAgainstSchema — work-item', () => {
     expect(
       validateAgainstSchema(
         'work-item',
-        { ...started, evidence_policy: 'risk-based-v2', initial_context: validInitialContext },
+        { ...started, evidence_policy: 'risk-based-v3', initial_context: validInitialContext },
         '',
       ),
     ).toEqual([])
@@ -325,7 +325,7 @@ describe('validateAgainstSchema — work-item', () => {
       ...validWorkItem,
       status: 'in_progress',
       risk: 'medium',
-      evidence_policy: 'risk-based-v2',
+      evidence_policy: 'risk-based-v3',
       initial_context: validInitialContext,
     }
     expect(validateAgainstSchema('work-item', started, '')).toEqual([])
@@ -359,7 +359,7 @@ describe('validateAgainstSchema — work-item', () => {
     expect(f.some((x) => x.message.includes('evidence_policy'))).toBe(true)
   })
 
-  it('requires risk-based-v2 whenever work starts', () => {
+  it('requires risk-based-v3 whenever work starts', () => {
     const started = {
       ...validWorkItem,
       id: 'wi-1-demo',
@@ -368,10 +368,10 @@ describe('validateAgainstSchema — work-item', () => {
       initial_context: validInitialContext,
     }
     expect(
-      validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v1' }, ''),
+      validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v2' }, ''),
     ).not.toEqual([])
     expect(
-      validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v2' }, ''),
+      validateAgainstSchema('work-item', { ...started, evidence_policy: 'risk-based-v3' }, ''),
     ).toEqual([])
   })
 
@@ -394,6 +394,69 @@ describe('validateAgainstSchema — work-item', () => {
     expect(
       validateAgainstSchema('work-item', { ...completed, evidence_policy: 'risk-based-v2' }, ''),
     ).toEqual([])
+  })
+
+  it('accepts structured primary-use-case plans and completion evidence for risk-based-v3', () => {
+    const primaryUseCase = {
+      id: 'demo-success',
+      requirement: 'REQ-DEMO-001',
+      observable_result: 'The caller observes the completed effect.',
+      unit_test: {
+        path: 'backend/demo/usecases/demo_test.go',
+        name: 'TestDemo_REQ_DEMO_001',
+        task: 'test-go-race',
+      },
+      e2e_test: {
+        path: 'backend/demo/e2e_test.go',
+        name: 'TestE2E_Demo_REQ_DEMO_001',
+        task: 'test-go-race',
+      },
+      unit_fault_model: 'The use case omits the effect.',
+      e2e_fault_model: 'The route is disconnected.',
+    }
+    const primaryEvidence = {
+      id: 'demo-success',
+      unit_red: 'The unit test observed no effect.',
+      e2e_red: 'The E2E test observed no final result.',
+      unit_fault_injection: 'Removing the effect made the unit test fail.',
+      e2e_fault_injection: 'Disconnecting the route made the E2E test fail.',
+    }
+    const completed = {
+      ...validWorkItem,
+      id: 'wi-445-demo',
+      status: 'completed',
+      risk: 'medium',
+      evidence_policy: 'risk-based-v3',
+      primary_use_cases: [primaryUseCase],
+      completion: {
+        ...validCompletion,
+        change_resistance: 'Both declared faults were detected.',
+        primary_use_case_evidence: [primaryEvidence],
+      },
+    }
+    expect(validateAgainstSchema('work-item', completed, '')).toEqual([])
+    for (const testField of ['unit_test', 'e2e_test'] as const) {
+      expect(
+        validateAgainstSchema(
+          'work-item',
+          { ...completed, primary_use_cases: [{ ...primaryUseCase, [testField]: {} }] },
+          '',
+        ),
+      ).not.toEqual([])
+    }
+    expect(
+      validateAgainstSchema(
+        'work-item',
+        {
+          ...completed,
+          completion: {
+            ...completed.completion,
+            primary_use_case_evidence: [{ ...primaryEvidence, e2e_red: '' }],
+          },
+        },
+        '',
+      ),
+    ).not.toEqual([])
   })
 
   /**

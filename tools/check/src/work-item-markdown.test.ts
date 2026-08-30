@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { parseFrontmatterAndMarkdown } from './main.ts'
 
 const temporaryDirectories: string[] = []
 
@@ -145,5 +146,37 @@ The parser must reject either missing boundary.
 
     expect(exitCode, stderr).toBe(0)
     expect(stdout).toContain('ok')
+  })
+
+  it('parses primary-use-case completion evidence as structured YAML', () => {
+    const source = `---
+status: completed
+---
+
+# Primary use-case evidence
+
+## Completion
+
+- **Completed At**: 2026-08-30
+- **Summary**: Recorded primary use-case evidence.
+- **Primary Use Case Evidence**:
+  - id: configured-delivery
+    unit_red: the use-case test observed no outgoing effect
+    e2e_red: the external entry produced no delivery
+    unit_fault_injection: removing the branch made the unit test fail
+    e2e_fault_injection: disconnecting the adapter made the E2E test fail
+`
+
+    expect(parseFrontmatterAndMarkdown('wi-445-demo.md', source).completion).toMatchObject({
+      primary_use_case_evidence: [
+        {
+          id: 'configured-delivery',
+          unit_red: 'the use-case test observed no outgoing effect',
+          e2e_red: 'the external entry produced no delivery',
+          unit_fault_injection: 'removing the branch made the unit test fail',
+          e2e_fault_injection: 'disconnecting the adapter made the E2E test fail',
+        },
+      ],
+    })
   })
 })

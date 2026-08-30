@@ -10,16 +10,17 @@ description: "Implement a chosen work item end to end: specification first, sepa
 2. Change the specification first with `spec-change`, and pass `mise run check-spec`.
 3. Resolve every open question that would change product behavior, the public contract, the selected design
    boundary, or the task breakdown. Move genuinely deferred choices to Out of Scope.
-4. Rewrite `initial_context` to what you actually read, set `evidence_policy: risk-based-v2`, and apply the
-   risk contract in `docs/development/specification-first-workflow.md`, naming the intended Acceptance RED and
-   Unit RED checks before you start.
+4. Rewrite `initial_context` to what you actually read, set `evidence_policy: risk-based-v3`, and apply the
+   risk contract in `docs/development/specification-first-workflow.md`. For an applicable feature, bugfix, or
+   standards change, name the primary use cases, Unit RED checks, E2E RED checks, and distinct fault models;
+   otherwise name the intended Acceptance RED and Unit RED checks before you start.
 5. Set the status to `in_progress` and pass `mise run check-work-items` and `mise run check-ids`. A later
    normative change returns to step 2; never weaken a scenario to pass code.
 6. For changed core logic, make the work item's Design name the principal domain data types and operation
    signatures. Place time, randomness, identifier generation, configuration, persistence, notification, and
    other effects at explicit input, output, or port boundaries.
-7. Run the named observable-boundary check and confirm Acceptance RED. Then implement Domain → Use Cases →
-   Adapters → Infrastructure / UI one behavior at a time: confirm Unit RED, reach GREEN with the simplest
+7. Run the named observable-boundary check and confirm Acceptance RED or the applicable E2E RED. Then implement
+   Domain → Use Cases → Adapters → Infrastructure / UI one behavior at a time: confirm Unit RED, reach GREEN with the simplest
    complete behavior, refactor while GREEN, and widen through the adapters until the acceptance check passes.
    Retain both failing checks, test names, and applicable normative scenario ids in the task. For tooling,
    documentation, or pure refactoring without one of those boundaries, record `N/A: <reason>` and the alternate

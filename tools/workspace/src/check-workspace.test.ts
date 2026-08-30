@@ -57,6 +57,25 @@ async function checkDocuments(root: string): Promise<{ code: number; output: str
   return { code, output: `${stdout}${stderr}` }
 }
 
+/** `--work-items` を仮の作業ツリーに対して起動し、終了コードと出力を返す。 */
+async function checkWorkItems(root: string): Promise<{ code: number; output: string }> {
+  const proc = Bun.spawn(
+    ['bun', 'run', resolve(TOOLS_DIR, 'workspace/src/check-workspace.ts'), '--work-items'],
+    {
+      cwd: TOOLS_DIR,
+      env: { ...process.env, SPEC_WORKSPACE_ROOT: root },
+      stdout: 'pipe',
+      stderr: 'pipe',
+    },
+  )
+  const [stdout, stderr, code] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ])
+  return { code, output: `${stdout}${stderr}` }
+}
+
 describe('check-workspace --documents', () => {
   it('accepts a directory whose Markdown files are all canonical documents', async () => {
     const result = await checkDocuments(await workspace())
@@ -104,5 +123,143 @@ describe('check-workspace --documents', () => {
     await writeFile(join(root, 'docs', 'development', 'release.md'), INVALID_BODY)
 
     expect((await checkDocuments(root)).code).toBe(0)
+  })
+})
+
+describe('check-workspace --work-items', () => {
+  it('rejects an applicable in-progress item without a primary-use-case plan', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'work-items'), { recursive: true })
+    await writeFile(
+      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
+      '# Demo Scenarios\n\n### REQ-DEMO-001: Demo succeeds\n',
+    )
+    await writeFile(
+      join(root, 'work-items', 'wi-439-missing-primary-use-case.md'),
+      `---
+status: in_progress
+authors: [tn]
+risk: medium
+created_at: 2026-08-30
+depends_on: []
+change_kind: feature
+evidence_policy: risk-based-v3
+initial_context:
+  source: [docs/contexts/demo/scenarios.md]
+affected_spec:
+  - { path: docs/contexts/demo/scenarios.md, requirement: REQ-DEMO-001 }
+---
+
+# Feature without a primary use case
+
+## Motivation
+
+Exercise the evidence gate.
+
+## Scope
+
+- Demo feature
+
+## Out of Scope
+
+- Other features
+
+## Verification
+
+- mise run verify
+
+## Risk Notes
+
+The feature could remain disconnected.
+`,
+    )
+
+    const result = await checkWorkItems(root)
+    expect(result.code).not.toBe(0)
+    expect(result.output).toContain('primary_use_cases')
+  })
+
+  it('accepts complete primary evidence only when both tests are reached by a required task', async () => {
+    const root = await workspace()
+    await mkdir(join(root, 'work-items'), { recursive: true })
+    await mkdir(join(root, 'backend', 'demo'), { recursive: true })
+    await writeFile(
+      join(root, 'docs', 'contexts', 'demo', 'scenarios.md'),
+      '# Demo Scenarios\n\n### REQ-DEMO-001: Demo succeeds\n',
+    )
+    await writeFile(
+      join(root, 'mise.toml'),
+      '[tasks.verify]\ndepends = ["test-go-race"]\n\n[tasks.test-go-race]\nrun = "go test -race ./..."\n',
+    )
+    await writeFile(
+      join(root, 'backend', 'demo', 'rule_test.go'),
+      'func TestDemoRule_REQ_DEMO_001(t *testing.T) { /* REQ-DEMO-001 */ }\n',
+    )
+    await writeFile(
+      join(root, 'backend', 'demo', 'e2e_test.go'),
+      'func TestE2E_Demo_REQ_DEMO_001(t *testing.T) { /* REQ-DEMO-001 */ }\n',
+    )
+    const workItem = (task: string): string => `---
+status: completed
+authors: [tn]
+risk: low
+created_at: 2026-08-30
+change_kind: feature
+evidence_policy: risk-based-v3
+affected_spec:
+  - { path: docs/contexts/demo/scenarios.md, requirement: REQ-DEMO-001 }
+primary_use_cases:
+  - id: demo-success
+    requirement: REQ-DEMO-001
+    observable_result: The caller observes the completed demo effect.
+    unit_test: { path: backend/demo/rule_test.go, name: TestDemoRule_REQ_DEMO_001, task: ${task} }
+    e2e_test: { path: backend/demo/e2e_test.go, name: TestE2E_Demo_REQ_DEMO_001, task: ${task} }
+    unit_fault_model: The use case skips the effect.
+    e2e_fault_model: The route is disconnected.
+---
+
+# Feature with primary evidence
+
+## Motivation
+
+Exercise completed evidence.
+
+## Scope
+
+- Demo feature
+
+## Out of Scope
+
+- Other features
+
+## Verification
+
+- mise run verify
+
+## Risk Notes
+
+The feature could remain disconnected.
+
+## Completion
+
+- **Completed At**: 2026-08-30
+- **Summary**: The demo route now produces its final effect.
+- **Primary Use Case Evidence**:
+  - id: demo-success
+    unit_red: the unit test observed no effect
+    e2e_red: the E2E test observed no final result
+    unit_fault_injection: removing the effect made the unit test fail
+    e2e_fault_injection: disconnecting the route made the E2E test fail
+- **Verification Results**:
+  - mise run verify - passed
+`
+    const path = join(root, 'work-items', 'wi-445-complete-primary-use-case.md')
+    await writeFile(path, workItem('test-go-race'))
+    expect((await checkWorkItems(root)).code).toBe(0)
+
+    await writeFile(path, workItem('test-go'))
+    const unreachable = await checkWorkItems(root)
+    expect(unreachable.code).not.toBe(0)
+    expect(unreachable.output).toContain('task is not required by verify or CI: test-go')
   })
 })

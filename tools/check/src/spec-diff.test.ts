@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test'
-import { type Snapshot, diffSpecifications, formatSpecificationDiff } from './spec-diff.ts'
+import {
+  type Snapshot,
+  diffSpecifications,
+  formatSpecificationDiff,
+  unreferencedStandardChanges,
+} from './spec-diff.ts'
 
 const document = (scenarios: string, transitions = ''): string =>
   [
@@ -53,6 +58,9 @@ describe('diffSpecifications', () => {
       removedScenarios: [],
       changedScenarios: [],
       changedTransitions: [],
+      addedStandards: [],
+      removedStandards: [],
+      changedStandards: [],
       addedDeclarations: [],
       removedDeclarations: [],
     })
@@ -127,6 +135,9 @@ describe('diffSpecifications', () => {
       removedScenarios: [],
       changedScenarios: [],
       changedTransitions: [],
+      addedStandards: [],
+      removedStandards: [],
+      changedStandards: [],
       addedDeclarations: [],
       removedDeclarations: [],
     })
@@ -141,6 +152,43 @@ describe('diffSpecifications', () => {
     const diff = diffSpecifications(base, head)
     expect(diff.addedDeclarations).toEqual(['spec/contexts/demo/main.tsp:StartTask'])
     expect(diff.removedDeclarations).toEqual(['spec/contexts/demo/main.tsp:Task'])
+  })
+
+  it('separates added, removed, and changed standards rows by owning path and id', () => {
+    const standard = (rows: string[]): string =>
+      [
+        '# Standards',
+        '',
+        '| Normative ID | Adoption | Strength | Statement |',
+        '| --- | --- | --- | --- |',
+        ...rows,
+      ].join('\n')
+    const base: Snapshot = new Map([
+      [
+        'docs/contexts/demo/standards.md',
+        standard([
+          '| RFC-DEMO-ONE | required | MUST | The first behavior. |',
+          '| RFC-DEMO-TWO | partial | SHOULD | The old behavior. |',
+        ]),
+      ],
+    ])
+    const head: Snapshot = new Map([
+      [
+        'docs/contexts/demo/standards.md',
+        standard([
+          '| RFC-DEMO-ONE | required | MUST | The changed behavior. |',
+          '| RFC-DEMO-THREE | required | MUST | The new behavior. |',
+        ]),
+      ],
+    ])
+
+    const diff = diffSpecifications(base, head)
+    expect(diff.addedStandards).toEqual(['docs/contexts/demo/standards.md#RFC-DEMO-THREE'])
+    expect(diff.removedStandards).toEqual(['docs/contexts/demo/standards.md#RFC-DEMO-TWO'])
+    expect(diff.changedStandards).toEqual(['docs/contexts/demo/standards.md#RFC-DEMO-ONE'])
+    expect(formatSpecificationDiff(diff, 'main')).toContain(
+      'changed standards requirements:\n  docs/contexts/demo/standards.md#RFC-DEMO-ONE',
+    )
   })
 
   it('leaves per-operation transport wrappers out of the declaration list', () => {
@@ -185,5 +233,19 @@ describe('diffSpecifications', () => {
     const text = formatSpecificationDiff(diffSpecifications(base, head), 'HEAD')
     expect(text).toContain('added scenarios:\n  REQ-DEMO-002')
     expect(text).not.toContain('removed scenarios')
+  })
+
+  it('reports added and changed standards rows absent from affected_spec', () => {
+    const diff = {
+      ...diffSpecifications(new Map(), new Map()),
+      addedStandards: ['docs/standards.md#RFC-ONE'],
+      changedStandards: ['docs/contexts/demo/standards.md#RFC-TWO'],
+      removedStandards: ['docs/standards.md#RFC-OLD'],
+    }
+    expect(
+      unreferencedStandardChanges(diff, [
+        { path: 'docs/contexts/demo/standards.md', requirement: 'RFC-TWO' },
+      ]),
+    ).toEqual(['docs/standards.md#RFC-ONE'])
   })
 })

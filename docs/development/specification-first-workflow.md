@@ -48,7 +48,7 @@ pass.
 
 ## 4. Evidence contract
 
-Every work item that enters `in_progress` declares `evidence_policy: risk-based-v2`. The risk selects the
+Every work item that enters `in_progress` declares `evidence_policy: risk-based-v3`. The risk selects the
 minimum evidence the work must produce; it does not grant permission to push, merge, write to an external
 system, or operate production. Filing the work item is what authorizes the work, so nothing here records a
 separate approval: an approval field would be signed without thought, while the checks below can only be
@@ -56,7 +56,7 @@ satisfied by an observation.
 
 | Risk | Before implementation | Before completion |
 |---|---|---|
-| `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended Acceptance RED and Unit RED checks. | Record both RED results. If either is not applicable, record why and the cheapest alternate check that was actually observed failing. |
+| `low` | The implementer fixes `initial_context`, resolves questions that would change what gets built, and names the intended RED checks. A feature, bugfix, or change referencing a `standards.md` requirement declares every primary use case, observable result, Unit test, E2E test, and the distinct fault each test must detect. Other work names the intended Acceptance RED and Unit RED checks. | For each declared primary use case, record Unit RED, E2E RED, and the results of injecting the two declared faults. Other work records Acceptance RED and Unit RED; if either is not applicable, record why and the cheapest alternate check that was actually observed failing. |
 | `medium` | Apply the `low` requirements. | Read `mise run spec-diff` into the completion summary and show that a representative incorrect implementation is detected. |
 | `high` / `critical` | Apply the `medium` requirements and make security, compatibility, migration, and rollback assumptions explicit. | Apply the `medium` requirements. One representative wrong implementation is no longer enough: mutate every piece of changed pure logic systematically, or inject explicit faults across it, and record which mutations the tests killed. Record equivalent mutations and the limits of the method rather than hiding them. |
 
@@ -90,6 +90,35 @@ failing.
 After both boundaries are fixed, implement one behavior at a time: make the narrow unit test GREEN with the
 simplest complete behavior, refactor while it remains GREEN, then widen through adapters until the acceptance
 test passes. Do not treat a generated or broad acceptance test as the unit test for the inner calculation.
+
+### Primary use-case evidence
+
+`risk-based-v3` adds a primary-use-case contract to feature and bugfix work, and to work of any `change_kind`
+whose `affected_spec` names a requirement in a `standards.md`. A primary use case is the central successful
+route that must work before the feature or standards adoption can be called implemented. It names a stable
+`REQ-*` or standards requirement, the externally observable result, one Unit test, one E2E test, and a distinct
+fault model for each. It does not turn every branch, alternative, and refusal into E2E coverage.
+
+The Unit test executes the changed domain rule or use-case branch through its public module boundary and
+asserts the resulting state transition or outgoing effect. The E2E test starts at the product's declared
+external entry point and includes the configuration, composition, adapters, and routing that select the
+feature, then asserts a result visible to a user, persistent state, or an external boundary. A directly
+constructed provider or handler is not E2E evidence when production selects it through configuration. A
+test double for an external service is valid when it records the destination, method, and payload emitted by
+the product.
+
+Before implementation, both test references name their repository path, stable test identifier, and required
+`mise` or CI task. The checker verifies that the paths and identifiers exist once the item completes, that the
+test source names the requirement, and that the task is part of the standard verification or CI path. During
+implementation a planned test may not exist yet. Completion records the observed Unit RED and E2E RED plus
+the result of injecting the declared broken internal decision and broken wiring or final effect. The checker
+does not infer assertion quality from source text; the fault-injection observations are the evidence of
+detection capability.
+
+Completed `risk-based-v1` and `risk-based-v2` records remain historical evidence and are not reinterpreted.
+An applicable item already `in_progress` when `risk-based-v3` takes effect must add the new plan before it can
+pass `mise run check-work-items`; an existing deficiency it exposes becomes a separate work item rather than
+an allow-list entry.
 
 ### Refactoring
 

@@ -98,7 +98,7 @@ const KNOWN_SECTION_HEADINGS = new Set([
   'completion',
 ])
 
-function parseFrontmatterAndMarkdown(path: string, text: string): Record<string, unknown> {
+export function parseFrontmatterAndMarkdown(path: string, text: string): Record<string, unknown> {
   const match = text.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*\r?\n([\s\S]*)$/)
   const data: Record<string, unknown> = {}
   let bodyText = text
@@ -194,6 +194,8 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
                 if (key && field?.[2]) redEvidence[key] = field[2].trim()
               }
               completion[currentField] = redEvidence
+            } else if (currentField === 'primary_use_case_evidence') {
+              completion.primary_use_case_evidence = Bun.YAML.parse(currentText.join('\n'))
             } else {
               completion[currentField] = currentText.join('\n').trim()
             }
@@ -224,6 +226,9 @@ function parseFrontmatterAndMarkdown(path: string, text: string): Record<string,
               if (value) currentText.push(value)
             } else if (label === 'unit red evidence') {
               currentField = 'unit_red_evidence'
+              if (value) currentText.push(value)
+            } else if (label === 'primary use case evidence') {
+              currentField = 'primary_use_case_evidence'
               if (value) currentText.push(value)
             } else if (label === 'independent verification') {
               currentField = 'independent_verification'
@@ -286,70 +291,72 @@ function formatFindings(path: string, findings: Finding[]): string {
   return findings.map((f) => `${rel}:${f.line}:${f.column}: ${f.message}`).join('\n')
 }
 
-const argsResult = parseArgs(process.argv.slice(2))
-if (argsResult.kind === 'error') {
-  console.error(`check: ${argsResult.message}`)
-  process.exit(argsResult.code)
-}
-const opts = argsResult.opts
+if (import.meta.main) {
+  const argsResult = parseArgs(process.argv.slice(2))
+  if (argsResult.kind === 'error') {
+    console.error(`check: ${argsResult.message}`)
+    process.exit(argsResult.code)
+  }
+  const opts = argsResult.opts
 
-if (opts.help) {
-  printUsage()
-  process.exit(0)
-}
-
-if (opts.listSchemas) {
-  for (const name of Object.keys(SCHEMAS)) console.log(name)
-  process.exit(0)
-}
-
-if (opts.schema !== null && !(opts.schema in SCHEMAS)) {
-  console.error(
-    `check: unknown schema '${opts.schema}'. Available: ${Object.keys(SCHEMAS).join(', ')}`,
-  )
-  process.exit(2)
-}
-
-if (opts.files.length === 0) {
-  console.error('check: no input files given')
-  printUsage()
-  process.exit(2)
-}
-
-const targets = await expandTargets(opts.files)
-
-if (targets.length === 0) {
-  console.error('check: no files matched')
-  process.exit(1)
-}
-
-let failed = 0
-for (const path of targets) {
-  const text = await readFile(path, 'utf8')
-  const parseResult = await parseYaml(path, text)
-  const lintFindings = lintRawText(text)
-  const findings: Finding[] = []
-  const warnings: Finding[] = []
-  if (!parseResult.ok) findings.push(parseResult.finding)
-  findings.push(...lintFindings)
-
-  if (parseResult.ok && opts.schema !== null) {
-    findings.push(...validateAgainstSchema(opts.schema, parseResult.data, text))
+  if (opts.help) {
+    printUsage()
+    process.exit(0)
   }
 
-  const rel = relative(process.cwd(), path) || path
-  if (findings.length === 0) {
-    console.log(`ok  ${rel}`)
-    if (warnings.length > 0) process.stdout.write(`${formatFindings(path, warnings)}\n`)
-    continue
+  if (opts.listSchemas) {
+    for (const name of Object.keys(SCHEMAS)) console.log(name)
+    process.exit(0)
   }
-  failed++
-  console.log(`FAIL ${rel}`)
-  process.stdout.write(`${formatFindings(path, [...findings, ...warnings])}\n`)
-}
 
-if (failed > 0) {
-  console.error(`\n${failed} file(s) failed (out of ${targets.length}).`)
-  process.exit(1)
+  if (opts.schema !== null && !(opts.schema in SCHEMAS)) {
+    console.error(
+      `check: unknown schema '${opts.schema}'. Available: ${Object.keys(SCHEMAS).join(', ')}`,
+    )
+    process.exit(2)
+  }
+
+  if (opts.files.length === 0) {
+    console.error('check: no input files given')
+    printUsage()
+    process.exit(2)
+  }
+
+  const targets = await expandTargets(opts.files)
+
+  if (targets.length === 0) {
+    console.error('check: no files matched')
+    process.exit(1)
+  }
+
+  let failed = 0
+  for (const path of targets) {
+    const text = await readFile(path, 'utf8')
+    const parseResult = await parseYaml(path, text)
+    const lintFindings = lintRawText(text)
+    const findings: Finding[] = []
+    const warnings: Finding[] = []
+    if (!parseResult.ok) findings.push(parseResult.finding)
+    findings.push(...lintFindings)
+
+    if (parseResult.ok && opts.schema !== null) {
+      findings.push(...validateAgainstSchema(opts.schema, parseResult.data, text))
+    }
+
+    const rel = relative(process.cwd(), path) || path
+    if (findings.length === 0) {
+      console.log(`ok  ${rel}`)
+      if (warnings.length > 0) process.stdout.write(`${formatFindings(path, warnings)}\n`)
+      continue
+    }
+    failed++
+    console.log(`FAIL ${rel}`)
+    process.stdout.write(`${formatFindings(path, [...findings, ...warnings])}\n`)
+  }
+
+  if (failed > 0) {
+    console.error(`\n${failed} file(s) failed (out of ${targets.length}).`)
+    process.exit(1)
+  }
+  console.error(`\nAll ${targets.length} file(s) OK.`)
 }
-console.error(`\nAll ${targets.length} file(s) OK.`)

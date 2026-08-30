@@ -21,7 +21,16 @@ const requiredMarkers = new Map<string, string[]>([
   ],
   [
     '.agents/skills/implement-work-item/SKILL.md',
-    ['risk-based-v2', 'Acceptance RED', 'Unit RED', 'GREEN', 'refactor', 'N/A:', 'actually failed'],
+    [
+      'risk-based-v3',
+      'Acceptance RED',
+      'Unit RED',
+      'E2E RED',
+      'GREEN',
+      'refactor',
+      'N/A:',
+      'actually failed',
+    ],
   ],
 ])
 
@@ -47,9 +56,9 @@ export function verifyAgentGuidance(documents: GuidanceDocument[]): AgentGuidanc
     }
     if (
       document.file === '.agents/skills/implement-work-item/SKILL.md' &&
-      document.source.includes('risk-based-v1')
+      /risk-based-v[12]/.test(document.source)
     ) {
-      findings.push({ file: document.file, message: 'references the retired risk-based-v1 policy' })
+      findings.push({ file: document.file, message: 'references a retired evidence policy' })
     }
   }
 
