@@ -368,3 +368,67 @@ func TestRemoteResourceLinkRepository_UpsertThenFind(t *testing.T) {
 		t.Errorf("Find() after second Upsert() = %+v, err=%v, want version=2", found, err)
 	}
 }
+
+// wi-440: oauth2_client_credentials のトークン取得に要る設定は、以前は API が
+// 受理して検証したあと捨てられていた。保存されなければトークンを取りに行けないので、
+// 往復して同じ値が戻ることを固定する。
+func TestProvisioningConnectionRepository_RoundTripsOAuth2CredentialMetadata(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	ctx := context.Background()
+
+	conn := testConnection(t, app.ID, tenant.ID)
+	conn.Credential.AuthMethod = domain.AuthOAuth2ClientCredentials
+	conn.Credential.OAuth2TokenURL = "https://downstream.example.com/oauth2/token"
+	conn.Credential.OAuth2ClientID = "idmagic-provisioner"
+	conn.Credential.OAuth2Scope = "scim:write"
+
+	if err := repo.Register(ctx, conn, "client-secret"); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+	found, err := repo.Find(ctx, tenant.ID, app.ID)
+	if err != nil || found == nil {
+		t.Fatalf("Find() = (%+v, %v)", found, err)
+	}
+	if found.Credential.OAuth2TokenURL != conn.Credential.OAuth2TokenURL ||
+		found.Credential.OAuth2ClientID != conn.Credential.OAuth2ClientID ||
+		found.Credential.OAuth2Scope != conn.Credential.OAuth2Scope {
+		t.Fatalf("credential = %+v, want the oauth2 settings to survive the round trip", found.Credential)
+	}
+	// 秘密は投影に載らない。載せる先が無いことを、往復の後にも確かめる。
+	if found.Credential.CredentialID == "client-secret" {
+		t.Fatal("credential metadata must never carry the secret")
+	}
+
+	listed, err := repo.ListAll(ctx, tenant.ID)
+	if err != nil || len(listed) != 1 {
+		t.Fatalf("ListAll() = (%d 件, %v)", len(listed), err)
+	}
+	if listed[0].Credential.OAuth2TokenURL != conn.Credential.OAuth2TokenURL {
+		t.Fatalf("一覧の credential = %+v, want the oauth2 settings", listed[0].Credential)
+	}
+}
+
+// active な oauth2 接続は token URL と client_id を欠いたまま保存できない。
+// 動かない設定を有効なまま置くと、原因が「配信の失敗」としてしか現れない。
+func TestProvisioningConnectionRepository_RejectsActiveOAuth2WithoutTokenURL(t *testing.T) {
+	pool := pgtest.Require(t)
+	tenant := pgfixtures.SeedTenant(t, pool)
+	app := seedApplication(t, pool, tenant.ID)
+	repo := &postgres.ProvisioningConnectionRepository{Pool: pool}
+	ctx := context.Background()
+
+	conn := testConnection(t, app.ID, tenant.ID)
+	conn.Credential.AuthMethod = domain.AuthOAuth2ClientCredentials
+	// token URL と client_id を空のままにする。
+
+	if err := repo.Register(ctx, conn, "client-secret"); err == nil {
+		t.Fatal("token URL を欠く active な oauth2 接続を受理してはならない")
+	}
+	// 拒否が何も通していないこと。行は 1 つも残っていない。
+	if found, err := repo.Find(ctx, tenant.ID, app.ID); err != nil || found != nil {
+		t.Fatalf("Find() after the refused Register() = (%+v, %v), want (nil, nil)", found, err)
+	}
+}

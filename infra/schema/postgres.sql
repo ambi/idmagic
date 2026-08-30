@@ -1304,6 +1304,12 @@ CREATE TABLE provisioning_connections (
     credential_id UUID NOT NULL,
     auth_method TEXT NOT NULL CHECK (auth_method IN ('bearer_token', 'oauth2_client_credentials')),
     credential_secret TEXT NOT NULL,
+    -- auth_method='oauth2_client_credentials' のトークン取得に要る設定。秘密ではない
+    -- (秘密は client_secret で、credential_secret として暗号化して入る)。
+    -- bearer_token の接続では空文字。
+    credential_oauth2_token_url TEXT NOT NULL DEFAULT '',
+    credential_oauth2_client_id TEXT NOT NULL DEFAULT '',
+    credential_oauth2_scope TEXT NOT NULL DEFAULT '',
     credential_created_at TIMESTAMPTZ NOT NULL,
     credential_rotated_at TIMESTAMPTZ,
     capabilities JSONB,
@@ -1333,7 +1339,13 @@ CREATE TABLE provisioning_connections (
     -- 連携先が返したエラー文。書き込み側が切り詰めるので、ここで落ちるのは
     -- 切り詰めを通らない経路ができたときだけである。
     CONSTRAINT provisioning_connections_quarantine_reason_length
-        CHECK (quarantine_reason IS NULL OR char_length(quarantine_reason) <= 500)
+        CHECK (quarantine_reason IS NULL OR char_length(quarantine_reason) <= 500),
+    -- oauth2_client_credentials はトークン取得に token URL と client_id を要する。
+    -- 揃わない接続は active になれない —— 有効なまま置くと、動かない設定が
+    -- 「配信の失敗」としてしか現れず、原因が自分を名乗らないまま残る。
+    CONSTRAINT provisioning_connections_oauth2_credential_check
+        CHECK (auth_method <> 'oauth2_client_credentials' OR status <> 'active'
+               OR (credential_oauth2_token_url <> '' AND credential_oauth2_client_id <> ''))
 );
 
 CREATE TABLE provisioning_remote_links (

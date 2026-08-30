@@ -137,7 +137,7 @@ func newE2EHarness(t *testing.T) *e2eHarness {
 		LinkRepo:        linkRepo,
 		AttributeSource: &identitysource.UserAttributeSource{UserRepo: userRepo},
 		NewTargetClient: func(_ *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
-			return &scim.Client{HTTPClient: server.Client(), BaseURL: server.URL, BearerToken: secret}, nil
+			return scim.NewBearerTokenClient(server.Client(), server.URL, secret), nil
 		},
 	}
 
@@ -364,7 +364,7 @@ func TestE2E_TransientFailureThenSuccess_ConvergesAcrossRetries(t *testing.T) {
 		ConnectionRepo: connRepo, DeliveryRepo: deliveryRepo, LinkRepo: linkRepo,
 		AttributeSource: &identitysource.UserAttributeSource{UserRepo: userRepo},
 		NewTargetClient: func(_ *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
-			return &scim.Client{HTTPClient: server.Client(), BaseURL: server.URL, BearerToken: secret}, nil
+			return scim.NewBearerTokenClient(server.Client(), server.URL, secret), nil
 		},
 	}
 

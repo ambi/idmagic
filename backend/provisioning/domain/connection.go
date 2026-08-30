@@ -125,8 +125,14 @@ type ProvisioningCapabilities struct {
 type ProvisioningConnectionCredentialMetadata struct {
 	CredentialID string                 `json:"credential_id"`
 	AuthMethod   ProvisioningAuthMethod `json:"auth_method"`
-	CreatedAt    time.Time              `json:"created_at"`
-	RotatedAt    *time.Time             `json:"rotated_at,omitempty"`
+	// auth_method=oauth2_client_credentials が使うトークン取得の設定。いずれも
+	// 秘密ではないのでこの投影に載る (秘密は client_secret だけで、それは
+	// credential_secret として暗号化して保存する)。bearer_token の接続では空。
+	OAuth2TokenURL string     `json:"oauth2_token_url,omitempty"`
+	OAuth2ClientID string     `json:"oauth2_client_id,omitempty"`
+	OAuth2Scope    string     `json:"oauth2_scope,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	RotatedAt      *time.Time `json:"rotated_at,omitempty"`
 }
 
 // ProvisioningCredentialInput is the write-only credential RegisterProvisioningConnection

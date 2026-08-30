@@ -25,23 +25,64 @@ var _ ports.ProvisioningTargetClient = (*Client)(nil)
 // the SSRF-safe dialer NewClient builds for production use (mirrors
 // backend/shared/security/tokens_jose.JWKResolver's ValidateJWKSURI/safeIPs split).
 type Client struct {
-	HTTPClient  *http.Client
-	BaseURL     string
-	BearerToken string
+	HTTPClient *http.Client
+	BaseURL    string
+	// tokenSource supplies the Authorization value for each request. bearer_token
+	// connections return the stored value; oauth2_client_credentials connections
+	// fetch, reuse and re-fetch an access token (RFC 6749 §4.4). Keeping it behind
+	// this interface is what lets every send path below stay unaware of the
+	// connection's auth method.
+	tokenSource tokenSource
 }
 
 // NewClient validates baseURL (ValidateOutboundBaseURL) and builds a Client with
-// an SSRF-safe transport for production use.
-func NewClient(baseURL, bearerToken string) (*Client, error) {
+// an SSRF-safe transport for production use. credential selects how the outbound
+// Authorization value is obtained; secret is the stored credential (a bearer
+// token, or the OAuth2 client secret).
+func NewClient(
+	baseURL string,
+	credential domain.ProvisioningConnectionCredentialMetadata,
+	secret string,
+) (*Client, error) {
 	if err := domain.ValidateOutboundBaseURL(baseURL); err != nil {
 		return nil, err
 	}
-	return &Client{HTTPClient: newSafeHTTPClient(), BaseURL: baseURL, BearerToken: bearerToken}, nil
+	httpClient := newSafeHTTPClient()
+	// The token endpoint is reached with the same SSRF-safe client as the SCIM
+	// endpoints: it is an operator-supplied URL and deserves the same treatment.
+	source, err := newTokenSource(credential, secret, httpClient, time.Now)
+	if err != nil {
+		return nil, err
+	}
+	return &Client{HTTPClient: httpClient, BaseURL: baseURL, tokenSource: source}, nil
+}
+
+// NewBearerTokenClient builds a Client that presents a fixed bearer token over
+// the supplied http.Client. Production code goes through NewClient, which also
+// builds the SSRF-safe transport and picks the token source from the auth
+// method; this exists for callers that inject their own transport.
+func NewBearerTokenClient(httpClient *http.Client, baseURL, token string) *Client {
+	return &Client{HTTPClient: httpClient, BaseURL: baseURL, tokenSource: staticToken(token)}
 }
 
 const maxResponseBytes = 1 << 20 // 1 MiB, mirrors backend/shared/security/tokens_jose.maxJWKSBytes
 
+// do sends one SCIM request. A 401 is retried exactly once with a freshly
+// fetched token, because a downstream may expire a token before its stated
+// lifetime. Retrying only once matters: a connection whose credentials are
+// simply wrong must not hammer the downstream token endpoint.
 func (c *Client) do(ctx context.Context, method, path string, body any) (*http.Response, []byte, error) {
+	resp, data, err := c.send(ctx, method, path, body, false)
+	if err != nil {
+		return nil, nil, err
+	}
+	if resp.StatusCode == http.StatusUnauthorized && c.tokenSource != nil {
+		return c.send(ctx, method, path, body, true)
+	}
+	return resp, data, nil
+}
+
+func (c *Client) send(ctx context.Context, method, path string, body any, refreshToken bool) (*http.Response, []byte, error) {
 	var reader io.Reader
 	if body != nil {
 		encoded, err := json.Marshal(body)
@@ -58,8 +99,17 @@ func (c *Client) do(ctx context.Context, method, path string, body any) (*http.R
 	if body != nil {
 		req.Header.Set("Content-Type", "application/scim+json")
 	}
-	if c.BearerToken != "" {
-		req.Header.Set("Authorization", "Bearer "+c.BearerToken)
+	if c.tokenSource != nil {
+		// The token is resolved per request. For bearer_token this is the stored
+		// value; for oauth2_client_credentials it may trigger a fetch. Failing to
+		// obtain one fails the delivery rather than sending it unauthenticated.
+		token, tokenErr := c.tokenSource.token(ctx, refreshToken)
+		if tokenErr != nil {
+			return nil, nil, tokenErr
+		}
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
 	}
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {

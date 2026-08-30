@@ -33,7 +33,7 @@ PATCH の本文だけは `urn:ietf:params:scim:api:messages:2.0:PatchOp` を持�
 
 **これは連携先を選ぶ欠陥である。** 受け取り側が `schemas` の有無を検証する実装なら、作成も置換も 400 で拒否される。拒否は `RFC7644-OUT-ERROR-RESPONSE` が「再試行しない失敗」として扱う経路に落ちるため、配信は試行上限を待たずに死に、原因は下流のエラー本文にしか残らない。IdMagic 自身の内向きサーバーは `schemas` を読み取り専用属性として無視するので、IdMagic どうしを繋いだ試験では再現しない。
 
-[docs/contexts/provisioning/standards.md](../docs/contexts/provisioning/standards.md) の `RFC7643-OUT-CORE-RESOURCES` を `partial` に留めているのはこの欠落のためである。直った時点で、この行の `Statement` は本文が `schemas` を持つことを言えるようになる。
+[docs/contexts/provisioning/standards.md](../../docs/contexts/provisioning/standards.md) の `RFC7643-OUT-CORE-RESOURCES` を `partial` に留めているのはこの欠落のためである。直った時点で、この行の `Statement` は本文が `schemas` を持つことを言えるようになる。
 
 ## Scope
 

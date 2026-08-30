@@ -46,6 +46,7 @@ func (q *Queries) DeleteProvisioningConnection(ctx context.Context, arg DeletePr
 
 const findProvisioningConnection = `-- name: FindProvisioningConnection :one
 SELECT application_id, tenant_id, status, base_url, credential_id, auth_method,
+credential_oauth2_token_url, credential_oauth2_client_id, credential_oauth2_scope,
 credential_created_at, credential_rotated_at, capabilities, feature_flags, scope, group_push,
 attribute_mappings, matching, deprovision_policy, rate_limit_per_minute, max_attempts,
 notification_email, quarantine_after_consecutive_failures, health, consecutive_failure_count,
@@ -65,6 +66,9 @@ type FindProvisioningConnectionRow struct {
 	BaseUrl                            string
 	CredentialID                       string
 	AuthMethod                         string
+	CredentialOauth2TokenUrl           string
+	CredentialOauth2ClientID           string
+	CredentialOauth2Scope              string
 	CredentialCreatedAt                time.Time
 	CredentialRotatedAt                pgtype.Timestamptz
 	Capabilities                       []byte
@@ -97,6 +101,9 @@ func (q *Queries) FindProvisioningConnection(ctx context.Context, arg FindProvis
 		&i.BaseUrl,
 		&i.CredentialID,
 		&i.AuthMethod,
+		&i.CredentialOauth2TokenUrl,
+		&i.CredentialOauth2ClientID,
+		&i.CredentialOauth2Scope,
 		&i.CredentialCreatedAt,
 		&i.CredentialRotatedAt,
 		&i.Capabilities,
@@ -199,11 +206,12 @@ func (q *Queries) GetProvisioningConnectionSecret(ctx context.Context, arg GetPr
 const insertProvisioningConnection = `-- name: InsertProvisioningConnection :one
 INSERT INTO provisioning_connections (
   application_id, tenant_id, status, base_url, credential_id, auth_method, credential_secret,
+  credential_oauth2_token_url, credential_oauth2_client_id, credential_oauth2_scope,
   credential_created_at, credential_rotated_at, capabilities, feature_flags, scope, group_push,
   attribute_mappings, matching, deprovision_policy, rate_limit_per_minute, max_attempts,
   notification_email, quarantine_after_consecutive_failures, health, consecutive_failure_count,
   last_full_sync_at, quarantined_at, quarantine_reason, created_at, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
 ON CONFLICT (application_id) DO NOTHING
 RETURNING application_id
 `
@@ -216,6 +224,9 @@ type InsertProvisioningConnectionParams struct {
 	CredentialID                       string
 	AuthMethod                         string
 	CredentialSecret                   string
+	CredentialOauth2TokenUrl           string
+	CredentialOauth2ClientID           string
+	CredentialOauth2Scope              string
 	CredentialCreatedAt                time.Time
 	CredentialRotatedAt                pgtype.Timestamptz
 	Capabilities                       []byte
@@ -247,6 +258,9 @@ func (q *Queries) InsertProvisioningConnection(ctx context.Context, arg InsertPr
 		arg.CredentialID,
 		arg.AuthMethod,
 		arg.CredentialSecret,
+		arg.CredentialOauth2TokenUrl,
+		arg.CredentialOauth2ClientID,
+		arg.CredentialOauth2Scope,
 		arg.CredentialCreatedAt,
 		arg.CredentialRotatedAt,
 		arg.Capabilities,
@@ -319,6 +333,7 @@ func (q *Queries) InsertProvisioningDelivery(ctx context.Context, arg InsertProv
 
 const listProvisioningConnectionsByTenant = `-- name: ListProvisioningConnectionsByTenant :many
 SELECT application_id, tenant_id, status, base_url, credential_id, auth_method,
+credential_oauth2_token_url, credential_oauth2_client_id, credential_oauth2_scope,
 credential_created_at, credential_rotated_at, capabilities, feature_flags, scope, group_push,
 attribute_mappings, matching, deprovision_policy, rate_limit_per_minute, max_attempts,
 notification_email, quarantine_after_consecutive_failures, health, consecutive_failure_count,
@@ -333,6 +348,9 @@ type ListProvisioningConnectionsByTenantRow struct {
 	BaseUrl                            string
 	CredentialID                       string
 	AuthMethod                         string
+	CredentialOauth2TokenUrl           string
+	CredentialOauth2ClientID           string
+	CredentialOauth2Scope              string
 	CredentialCreatedAt                time.Time
 	CredentialRotatedAt                pgtype.Timestamptz
 	Capabilities                       []byte
@@ -371,6 +389,9 @@ func (q *Queries) ListProvisioningConnectionsByTenant(ctx context.Context, tenan
 			&i.BaseUrl,
 			&i.CredentialID,
 			&i.AuthMethod,
+			&i.CredentialOauth2TokenUrl,
+			&i.CredentialOauth2ClientID,
+			&i.CredentialOauth2Scope,
 			&i.CredentialCreatedAt,
 			&i.CredentialRotatedAt,
 			&i.Capabilities,
@@ -802,11 +823,12 @@ func (q *Queries) UpdateProvisioningConnection(ctx context.Context, arg UpdatePr
 const updateProvisioningConnectionWithSecret = `-- name: UpdateProvisioningConnectionWithSecret :exec
 UPDATE provisioning_connections SET
   status=$3, base_url=$4, credential_id=$5, auth_method=$6, credential_secret=$7,
-  credential_rotated_at=$8, capabilities=$9, feature_flags=$10, scope=$11, group_push=$12,
-  attribute_mappings=$13, matching=$14, deprovision_policy=$15, rate_limit_per_minute=$16,
-  max_attempts=$17, notification_email=$18, quarantine_after_consecutive_failures=$19, health=$20,
-  consecutive_failure_count=$21, last_full_sync_at=$22, quarantined_at=$23, quarantine_reason=$24,
-  updated_at=$25
+  credential_oauth2_token_url=$8, credential_oauth2_client_id=$9, credential_oauth2_scope=$10,
+  credential_rotated_at=$11, capabilities=$12, feature_flags=$13, scope=$14, group_push=$15,
+  attribute_mappings=$16, matching=$17, deprovision_policy=$18, rate_limit_per_minute=$19,
+  max_attempts=$20, notification_email=$21, quarantine_after_consecutive_failures=$22, health=$23,
+  consecutive_failure_count=$24, last_full_sync_at=$25, quarantined_at=$26, quarantine_reason=$27,
+  updated_at=$28
 WHERE tenant_id=$1 AND application_id=$2
 `
 
@@ -818,6 +840,9 @@ type UpdateProvisioningConnectionWithSecretParams struct {
 	CredentialID                       string
 	AuthMethod                         string
 	CredentialSecret                   string
+	CredentialOauth2TokenUrl           string
+	CredentialOauth2ClientID           string
+	CredentialOauth2Scope              string
 	CredentialRotatedAt                pgtype.Timestamptz
 	Capabilities                       []byte
 	FeatureFlags                       []byte
@@ -847,6 +872,9 @@ func (q *Queries) UpdateProvisioningConnectionWithSecret(ctx context.Context, ar
 		arg.CredentialID,
 		arg.AuthMethod,
 		arg.CredentialSecret,
+		arg.CredentialOauth2TokenUrl,
+		arg.CredentialOauth2ClientID,
+		arg.CredentialOauth2Scope,
 		arg.CredentialRotatedAt,
 		arg.Capabilities,
 		arg.FeatureFlags,

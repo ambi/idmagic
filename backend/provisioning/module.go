@@ -25,13 +25,13 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// NewTargetClient builds the outbound SCIM wire client for conn (
-// decision 2). Only bearer_token auth is wired end-to-end for now;
-// oauth2_client_credentials connections authenticate with the stored secret as
-// a bearer token, which is incorrect for that auth method and is a known gap
-// left for a follow-up (wi-45 did not scope an OAuth2 token-fetch client).
+// NewTargetClient builds the outbound SCIM wire client for conn (decision 2).
+// The connection's auth method selects how the outbound Authorization value is
+// obtained: bearer_token presents the stored secret, oauth2_client_credentials
+// exchanges it for an access token (RFC 6749 §4.4) and refreshes it. secret is
+// the decrypted credential — a bearer token, or the OAuth2 client secret.
 func NewTargetClient(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error) {
-	return provisioningscim.NewClient(conn.BaseURL, secret)
+	return provisioningscim.NewClient(conn.BaseURL, conn.Credential, secret)
 }
 
 // Module holds the Provisioning bounded context's persistence dependencies.

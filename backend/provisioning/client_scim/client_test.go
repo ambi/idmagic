@@ -16,7 +16,7 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) *Client {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)
-	return &Client{HTTPClient: server.Client(), BaseURL: server.URL, BearerToken: "test-token"}
+	return &Client{HTTPClient: server.Client(), BaseURL: server.URL, tokenSource: staticToken("test-token")}
 }
 
 // simpleRule builds a single attribute-source AttributeMappingRule mapping

@@ -68,7 +68,7 @@ func RegisterConnection(ctx context.Context, deps AdminDeps, in RegisterConnecti
 		TenantID:                          in.TenantID,
 		Status:                            domain.ConnectionActive,
 		BaseURL:                           in.BaseURL,
-		Credential:                        domain.ProvisioningConnectionCredentialMetadata{CredentialID: credentialID, AuthMethod: in.Credential.AuthMethod, CreatedAt: now},
+		Credential:                        credentialMetadata(credentialID, in.Credential, now, nil),
 		FeatureFlags:                      domain.ProvisioningFeatureFlags{CreateUsers: true, UpdateUsers: true, DeactivateUsers: true},
 		Scope:                             domain.ScopeAssignedOnly,
 		AttributeMappings:                 defaultSCIMUserMapping(),
@@ -173,7 +173,7 @@ func UpdateConnection(ctx context.Context, deps AdminDeps, in UpdateConnectionIn
 		if err != nil {
 			return nil, err
 		}
-		conn.Credential = domain.ProvisioningConnectionCredentialMetadata{CredentialID: credentialID, AuthMethod: in.Credential.AuthMethod, CreatedAt: conn.Credential.CreatedAt, RotatedAt: &conn.UpdatedAt}
+		conn.Credential = credentialMetadata(credentialID, *in.Credential, conn.Credential.CreatedAt, &conn.UpdatedAt)
 		s := in.Credential.Secret()
 		secret = &s
 	}
@@ -424,4 +424,26 @@ func ResumeConnection(ctx context.Context, deps AdminDeps, tenantID, application
 // (spec/contexts/provisioning.yaml interfaces.ListTenantProvisioningConnections).
 func ListTenantConnections(ctx context.Context, deps AdminDeps, tenantID string) ([]*domain.ProvisioningConnection, error) {
 	return deps.ConnectionRepo.ListAll(ctx, tenantID)
+}
+
+// credentialMetadata は書き込み専用の資格情報入力から、保存する非秘密の投影を作る。
+// client_secret は含めない —— それは Secret() が返し、エンベロープ暗号化して
+// credential_secret へ保存する。トークン URL / client_id / scope は秘密ではないが、
+// トークン取得に必要なので保存しなければならない (wi-440 以前は検証だけして捨てていた)。
+func credentialMetadata(
+	credentialID string,
+	in domain.ProvisioningCredentialInput,
+	createdAt time.Time,
+	rotatedAt *time.Time,
+) domain.ProvisioningConnectionCredentialMetadata {
+	metadata := domain.ProvisioningConnectionCredentialMetadata{
+		CredentialID: credentialID, AuthMethod: in.AuthMethod,
+		CreatedAt: createdAt, RotatedAt: rotatedAt,
+	}
+	if in.AuthMethod == domain.AuthOAuth2ClientCredentials {
+		metadata.OAuth2TokenURL = in.OAuth2TokenURL
+		metadata.OAuth2ClientID = in.OAuth2ClientID
+		metadata.OAuth2Scope = in.OAuth2Scope
+	}
+	return metadata
 }

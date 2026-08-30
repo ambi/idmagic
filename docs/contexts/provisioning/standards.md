@@ -21,7 +21,7 @@ RFC 7644 — https://www.rfc-editor.org/rfc/rfc7644.html
 | RFC7644-OUT-DISCOVERY | partial | MUST | 接続テストで取得するのは `/ServiceProviderConfig` だけであり、`patch`、`bulk`、`filter`、`etag`、`sort` の対応可否を接続に保存する。`/ResourceTypes` と `/Schemas` は取得せず、下流が広告するスキーマに送出内容を合わせることはしない。 |
 | RFC7644-OUT-FILTERING | partial | MUST | 組み立てるフィルターは `<属性> eq "<値>"` という比較 1 つだけである。論理演算子、グループ化、複合値のブラケット構文は組み立てない。フィルターを使うのは、作成が 409 で衝突したときに照合属性で既存リソースを探す場面に限る。 |
 | RFC7644-OUT-ERROR-RESPONSE | partial | MUST | 下流の応答のうち、409 は既存リソースへの関連付けとして、404 は再作成として、429 と 5xx は `Retry-After` に従う再試行として扱い、それ以外の 2xx 以外の応答は再試行しない失敗として扱う。SCIM のエラー本文からは `detail` だけを読み、`scimType` は解釈しない。 |
-| RFC7644-OUT-AUTHENTICATION | partial | MUST | 下流への要求は、接続に保存した資格情報を `Authorization: Bearer` ヘッダーで提示して認証する。1 つの操作に対して送る HTTP 要求は 1 件であり、資格情報を得るための別の要求は送らない。 |
+| RFC7644-OUT-AUTHENTICATION | required | MUST | 下流への要求は `Authorization: Bearer` ヘッダーで認証する。ヘッダーに載せる値は接続の認証方式が決める。`bearer_token` は保存した資格情報をそのまま載せ、資格情報を得るための別の要求は送らない。`oauth2_client_credentials` はクライアント資格情報フロー (RFC 6749 §4.4) で取得したアクセストークンを載せる —— 保存した `client_secret` をそのまま提示することはない。取得したトークンは失効の 60 秒手前まで再利用し、期限切れと下流の 401 で取り直す。401 による取り直しは 1 度だけで、2 度目も 401 なら失敗として扱う。 |
 | RFC7644-OUT-BULK | excluded | MUST NOT | `/Bulk` を使わない。下流が `bulk.supported` を広告していても、配信 1 件につき 1 リソースの要求を送る。 |
 | RFC7644-OUT-SORT | excluded | MUST NOT | 照会に `sortBy` と `sortOrder` を送らない。 |
 | RFC7644-OUT-ETAG | excluded | MUST NOT | 条件付き要求を送らない。更新にも削除にも `If-Match` と `If-None-Match` を付けず、応答の `ETag` を後続の要求の前提条件に使わない。 |

@@ -222,6 +222,20 @@ type Consent struct {
 	RevokedAt pgtype.Timestamptz
 }
 
+type CsvArtifact struct {
+	ID        string
+	TenantID  string
+	Sha256    string
+	ByteSize  int64
+	CreatedAt time.Time
+}
+
+type CsvArtifactChunk struct {
+	ArtifactID  string
+	ChunkNumber int32
+	Payload     []byte
+}
+
 type DynamicGroupRule struct {
 	GroupID              string
 	TenantID             string
@@ -597,6 +611,9 @@ type ProvisioningConnection struct {
 	CredentialID                       string
 	AuthMethod                         string
 	CredentialSecret                   string
+	CredentialOauth2TokenUrl           string
+	CredentialOauth2ClientID           string
+	CredentialOauth2Scope              string
 	CredentialCreatedAt                time.Time
 	CredentialRotatedAt                pgtype.Timestamptz
 	Capabilities                       []byte
@@ -946,20 +963,6 @@ type User struct {
 	Lifecycle         []byte
 	Attributes        []byte
 	SearchText        pgtype.Text
-}
-
-type UserCsvArtifact struct {
-	ID        string
-	TenantID  string
-	Sha256    string
-	ByteSize  int64
-	CreatedAt time.Time
-}
-
-type UserCsvArtifactChunk struct {
-	ArtifactID  string
-	ChunkNumber int32
-	Payload     []byte
 }
 
 type WebauthnCredential struct {

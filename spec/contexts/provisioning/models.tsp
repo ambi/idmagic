@@ -42,7 +42,7 @@ model ProvisioningDeliveryNotRetryableError is ProblemDetails;
 model ProvisioningSubjectNotInScopeError is ProblemDetails;
 
 
-@doc("How to authenticate to the downstream SCIM service provider.")
+@doc("How to authenticate to the downstream SCIM service provider. Either way the outbound request carries `Authorization: Bearer`; the method decides where that value comes from. `bearer_token` presents the stored credential directly. `oauth2_client_credentials` exchanges the stored client secret for an access token at the connection's token endpoint (RFC 6749 section 4.4) and presents that, reusing it until shortly before it expires.")
 enum ProvisioningAuthMethod {
   bearer_token: "bearer_token",
   oauth2_client_credentials: "oauth2_client_credentials",
@@ -152,6 +152,12 @@ model ProvisioningCapabilities {
 model ProvisioningConnectionCredentialMetadata {
   credential_id: string;
   auth_method: ProvisioningAuthMethod;
+  @doc("Token endpoint the client credentials are exchanged at. Present only for `auth_method` = `oauth2_client_credentials`. Not a secret: the secret is the client secret, which this projection never carries.")
+  oauth2_token_url?: string;
+  @doc("Client identifier presented at the token endpoint. Present only for `auth_method` = `oauth2_client_credentials`.")
+  oauth2_client_id?: string;
+  @doc("Scope requested at the token endpoint. Present only for `auth_method` = `oauth2_client_credentials`, and only when the connection sets one.")
+  oauth2_scope?: string;
   created_at: utcDateTime;
   rotated_at?: utcDateTime;
 }
