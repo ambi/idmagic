@@ -12,12 +12,12 @@ model AccessDeniedError is ProblemDetails;
 model QuotaExceededError is ProblemDetails;
 
 
-@doc("Verification of a received SET failed fail-closed: an unregistered issuer, a bad signature, an expired token, an audience mismatch, a duplicate `jti`, or a subject that could not be resolved. The receive endpoint is a contact point whose shape RFC 8935 fixes, so it does not return Problem Details; the body is `application/json`. IdMagic currently emits `error` and `message` rather than the `err` and `description` of RFC 8935 section 2.3, and this model records what the server sends today.")
+@doc("Verification of a received SET failed fail-closed: an unregistered issuer, a bad signature, an expired token, an audience mismatch, a duplicate `jti`, a subject that could not be resolved, or a `stream_id` that names no receiving stream of this tenant. The receive endpoint is a contact point whose shape RFC 8935 section 2.3 fixes, so it does not return Problem Details; the body is `application/json` carrying `err` and `description`. Every one of those causes reports this single code, so that the response does not disclose whether a stream exists.")
 model SecurityEventRejectedError {
   @doc("Always `security_event_rejected`.")
-  error: string;
+  err: string;
   @doc("Human-readable explanation of the rejection. Always English and never localized.")
-  message: string;
+  description: string;
 }
 
 
@@ -366,21 +366,21 @@ model SecurityEventRejected {
 }
 
 
-@doc("The Security Event Token in the request body is larger than the receive endpoint accepts. The receive endpoint is a contact point whose shape RFC 8935 fixes, so the body is `application/json` and carries `error` and `message` rather than Problem Details.")
+@doc("The Security Event Token in the request body is larger than the receive endpoint accepts. The receive endpoint is a contact point whose shape RFC 8935 section 2.3 fixes, so the body is `application/json` and carries `err` and `description` rather than Problem Details.")
 model SecurityEventTokenTooLargeError {
   @doc("Always `security_event_token_too_large`.")
-  error: string;
+  err: string;
   @doc("Human-readable explanation. Always English and never localized.")
-  message: string;
+  description: string;
 }
 
 
-@doc("The `stream_id` in the path does not name an SsfStream of this tenant. Returned by the receive endpoint, so the body is the `application/json` shape of that contact point, not Problem Details; the administration API reports the same condition as Problem Details with `type` = `urn:idmagic:error:ssf_stream_not_found`.")
+@doc("The `stream_id` in the path does not name an SsfStream of this tenant. Returned by the receive endpoint, so the body is the `application/json` shape of that contact point, not Problem Details, carrying `err` and `description` per RFC 8935 section 2.3. The administration API reports the same condition as Problem Details with `type` = `urn:idmagic:error:ssf_stream_not_found`.")
 model SecurityEventStreamNotFoundError {
   @doc("Always `ssf_stream_not_found`.")
-  error: string;
+  err: string;
   @doc("Human-readable explanation. Always English and never localized.")
-  message: string;
+  description: string;
 }
 
 }

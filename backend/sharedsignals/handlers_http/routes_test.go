@@ -181,3 +181,66 @@ func TestReceiveSecurityEventDoesNotUseProblemDetails(t *testing.T) {
 		t.Fatalf("body=%s must not carry a Problem Details type URN", rec.Body.String())
 	}
 }
+
+// RFC 8935 §2.3 は拒否の応答本体を `err` と `description` で定める。この接点を
+// Problem Details の外に置いている理由がその標準なので、標準の形そのものになって
+// いなければ理由が成り立たない。
+func TestReceiveSecurityEventUsesRFC8935ErrorShape(t *testing.T) {
+	e := newSharedSignalsHandler(t)
+
+	// RFC 8935 §2.3 の形。`err` は登録済みのエラーコード、`description` は人間向けの説明。
+	type rfc8935Error struct {
+		Err         string `json:"err"`
+		Description string `json:"description"`
+		// 旧い形が残っていないことを見るための欄。RFC はこの 2 つを定めていない。
+		Error   string `json:"error"`
+		Message string `json:"message"`
+	}
+	decode := func(t *testing.T, rec *httptest.ResponseRecorder) rfc8935Error {
+		t.Helper()
+		var body rfc8935Error
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode receiver error: %v (body=%s)", err, rec.Body.String())
+		}
+		if body.Err == "" || body.Description == "" {
+			t.Fatalf("body=%s must carry err and description (RFC 8935 §2.3)", rec.Body.String())
+		}
+		if body.Error != "" || body.Message != "" {
+			t.Fatalf("body=%s must not keep the old error/message fields", rec.Body.String())
+		}
+		return body
+	}
+
+	t.Run("拒否された SET は 400 で security_event_rejected を返す", func(t *testing.T) {
+		// ReceiveSecurityEvent は stream が引けない場合も ErrSecurityEventRejected を
+		// 返すので、この接点から 404 は出ない。stream の存在を呼び出し側へ漏らさない
+		// fail-closed の設計であり、本文の形が変わっても保たれることを固定する。
+		request := httptest.NewRequest(http.MethodPost, "/realms/default/ssf/streams/no-such-stream/events",
+			strings.NewReader("not-a-security-event-token"))
+		request.Header.Set("Content-Type", "application/secevent+jwt")
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, request)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status=%d body=%s, want 400", rec.Code, rec.Body.String())
+		}
+		if body := decode(t, rec); body.Err != "security_event_rejected" {
+			t.Fatalf("err=%q, want security_event_rejected", body.Err)
+		}
+	})
+
+	t.Run("大きすぎる SET は 413 で security_event_token_too_large を返す", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodPost, "/realms/default/ssf/streams/no-such-stream/events",
+			strings.NewReader(strings.Repeat("a", 1<<20)))
+		request.Header.Set("Content-Type", "application/secevent+jwt")
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, request)
+
+		if rec.Code != http.StatusRequestEntityTooLarge {
+			t.Fatalf("status=%d body=%s, want 413", rec.Code, rec.Body.String())
+		}
+		if body := decode(t, rec); body.Err != "security_event_token_too_large" {
+			t.Fatalf("err=%q, want security_event_token_too_large", body.Err)
+		}
+	})
+}

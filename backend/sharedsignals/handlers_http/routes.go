@@ -341,8 +341,11 @@ func writeAdminSharedSignalsError(c *echo.Context, err error) error {
 // (POST /ssf/streams/:stream_id/events) のエラーを返す。この endpoint の応答形式は
 // RFC 8935 §2.3 が固定しており、汎用 API の Problem Details を適用しない
 // (docs/api-rules.md HTTP error responses の標準準拠の例外)。
+// writeSecurityEventReceiverError は RFC 8935 §2.3 が定める拒否の応答本体を書く。
+// この接点を Problem Details の外に置いている理由がその標準なので、欄の名前も
+// 標準どおり `err` と `description` でなければ、例外扱いの根拠が成り立たない。
 func writeSecurityEventReceiverError(c *echo.Context, status int, code, description string) error {
-	return support.NoStoreJSON(c, status, map[string]string{"error": code, "message": description})
+	return support.NoStoreJSON(c, status, map[string]string{"err": code, "description": description})
 }
 
 func writeReceivedSecurityEventError(c *echo.Context, err error) error {
