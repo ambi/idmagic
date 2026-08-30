@@ -11,6 +11,7 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -1327,4 +1328,41 @@ func TestHealthProbes(t *testing.T) {
 		t.Errorf("expected 200 for /livez during shutdown, got %d", resp.StatusCode)
 	}
 	resp.Body.Close()
+}
+
+// TestHealthReportsFeatureMetadata_REQ_SYSTEM_017 は REQ-SYSTEM-017 に対し、composition root から渡された
+// 解決済み機能を /health が捨てる誤配線を検出する。
+func TestHealthReportsFeatureMetadata_REQ_SYSTEM_017(t *testing.T) {
+	t.Parallel()
+	e := echo.New()
+	httpadapter.Register(e, httpadapter.Deps{HealthInfo: support.HealthInfo{
+		Persistence: "memory",
+		Features: support.FeatureRuntimeMetadata{
+			SchemaVersion: "1",
+			Enabled: []support.RuntimeFeatureMetadata{{
+				ID: "preview-v2", Version: "2", Maturity: "preview", UpdatePolicy: "recreate_on_version_change",
+			}},
+		},
+	}})
+	req := httptest.NewRequest(http.MethodGet, "/health", http.NoBody)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET /health status = %d, want 200", rec.Code)
+	}
+	var body struct {
+		Features support.FeatureRuntimeMetadata `json:"features"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode /health: %v", err)
+	}
+	want := support.FeatureRuntimeMetadata{
+		SchemaVersion: "1",
+		Enabled: []support.RuntimeFeatureMetadata{{
+			ID: "preview-v2", Version: "2", Maturity: "preview", UpdatePolicy: "recreate_on_version_change",
+		}},
+	}
+	if !reflect.DeepEqual(body.Features, want) {
+		t.Fatalf("features = %#v, want %#v", body.Features, want)
+	}
 }

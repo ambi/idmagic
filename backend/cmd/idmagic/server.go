@@ -61,6 +61,7 @@ func Run() error {
 	slogLogger := logging.NewSlog(os.Stdout, logLevel, serviceName, buildInfo.Version)
 	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
 	logger := logging.Default()
+	bootstrap.LogFeatureWarnings(context.Background(), shared.Features)
 
 	deps, err := bootstrap.Assemble(context.Background(), shared)
 	if err != nil {
@@ -201,6 +202,7 @@ func Run() error {
 			Persistence:   runtime.Persistence,
 			Observability: runtime.Observability,
 			AuthZEN:       runtime.AuthZEN,
+			Features:      healthFeatureMetadata(runtime.Features),
 		},
 		Tenancy:          deps.Tenancy,
 		IdManagement:     deps.IdManagement,
@@ -296,4 +298,14 @@ func Run() error {
 		logger.Error(shutdownCtx, "shutdown metrics failed", "error", err)
 	}
 	return runErr
+}
+
+func healthFeatureMetadata(metadata bootstrap.FeatureRuntimeMetadata) httpsupport.FeatureRuntimeMetadata {
+	enabled := make([]httpsupport.RuntimeFeatureMetadata, 0, len(metadata.Enabled))
+	for _, feature := range metadata.Enabled {
+		enabled = append(enabled, httpsupport.RuntimeFeatureMetadata{
+			ID: string(feature.ID), Version: string(feature.Version), Maturity: string(feature.Maturity), UpdatePolicy: string(feature.UpdatePolicy),
+		})
+	}
+	return httpsupport.FeatureRuntimeMetadata{SchemaVersion: metadata.SchemaVersion, Enabled: enabled}
 }

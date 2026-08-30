@@ -82,4 +82,17 @@ type HealthInfo struct {
 	EventSink     string
 	Observability string
 	AuthZEN       string
+	Features      FeatureRuntimeMetadata
+}
+
+type RuntimeFeatureMetadata struct {
+	ID           string `json:"id"`
+	Version      string `json:"version"`
+	Maturity     string `json:"maturity"`
+	UpdatePolicy string `json:"update_policy"`
+}
+
+type FeatureRuntimeMetadata struct {
+	SchemaVersion string                   `json:"schema_version"`
+	Enabled       []RuntimeFeatureMetadata `json:"enabled"`
 }

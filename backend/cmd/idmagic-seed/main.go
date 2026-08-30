@@ -28,6 +28,7 @@ func run() error {
 	if err := loader.Err(); err != nil {
 		return fmt.Errorf("load startup configuration: %w", err)
 	}
+	bootstrap.LogFeatureWarnings(context.Background(), shared.Features)
 
 	var environment, profile, mode, manifestPath, redirectURIs, generatorSeed string
 	var count, batchSize int

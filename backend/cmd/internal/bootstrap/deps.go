@@ -65,6 +65,7 @@ type RuntimeConfig struct {
 	Persistence   string
 	Observability string
 	AuthZEN       string
+	Features      FeatureRuntimeMetadata
 }
 
 func LoadRuntimeConfig(cfg SharedConfig) RuntimeConfig {
@@ -72,6 +73,7 @@ func LoadRuntimeConfig(cfg SharedConfig) RuntimeConfig {
 		Persistence:   cfg.Persistence,
 		Observability: cfg.Observability,
 		AuthZEN:       cfg.AuthZEN,
+		Features:      cfg.Features.Metadata,
 	}
 }
 

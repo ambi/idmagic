@@ -21,11 +21,12 @@ type ProbeResponse struct {
 }
 
 func (d Deps) handleHealth(c *echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{
+	return c.JSON(http.StatusOK, map[string]any{
 		"status":        "ok",
 		"persistence":   d.HealthInfo.Persistence,
 		"observability": d.HealthInfo.Observability,
 		"authzen":       d.HealthInfo.AuthZEN,
+		"features":      d.HealthInfo.Features,
 	})
 }
 

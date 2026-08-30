@@ -19,6 +19,8 @@ Persistence, notification, WebAuthn, authorization, and key-custody settings eve
 | --- | --- | --- | --- | --- |
 | `PERSISTENCE` | enum: `memory`, `postgres` | `memory` | no | Storage backend. `postgres` requires DATABASE_URL. |
 | `OBSERVABILITY` | enum: `noop`, `otel` | `noop` | no | Set to `otel` to export OTLP traces and metrics. Pull-based /metrics is always served regardless of this setting. |
+| `FEATURES_ENABLE` | enum list | — | no | Comma-separated runtime feature IDs to enable explicitly. Available IDs and maturity are generated from the product feature registry. |
+| `FEATURES_DISABLE` | enum list | — | no | Comma-separated runtime feature IDs to disable explicitly. A required dependency cannot be disabled. |
 | `AUTHZEN` | enum: `local`, `remote` | `local` | no | Authorization decision point. `remote` delegates to an AuthZEN PDP and requires AUTHZEN_URL. |
 | `AUTHZEN_URL` | url | — | when `AUTHZEN=remote` | AuthZEN policy decision point endpoint. Required when AUTHZEN=remote. |
 | `WEBAUTHN_RP_ID` | string | — | no | WebAuthn relying-party ID, e.g. `localhost`. WebAuthn and passkeys stay disabled while it is unset. |
@@ -137,6 +139,10 @@ The explicit seed request. idmagic applies it once at startup when SEED_PROFILE 
 | `SEED_GENERATOR_SEED` | string | — | no | Deterministic generator seed for the performance profile. |
 | `SEED_SECRET_ROOT` | string | — | no | Root directory for relative `file` secret locators in a manifest. |
 | `SEED_FIRST_PARTY_REDIRECT_URIS` | list | — | when `SEED_ENVIRONMENT=production and SEED_PROFILE=bootstrap` | Redirect URIs for the seeded first-party clients. Required for a production bootstrap. |
+
+## Runtime features
+
+This build has no runtime-selectable features. Static, always-available capabilities are intentionally not listed here.
 
 ## Externally owned variables
 

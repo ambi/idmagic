@@ -54,6 +54,8 @@ var configFieldDescriptions = map[string]string{
 	"PERSISTENCE":                  "Storage backend. `postgres` requires DATABASE_URL.",
 	"OBSERVABILITY":                "Set to `otel` to export OTLP traces and metrics. Pull-based /metrics is always served regardless of this setting.",
 	"AUTHZEN":                      "Authorization decision point. `remote` delegates to an AuthZEN PDP and requires AUTHZEN_URL.",
+	"FEATURES_ENABLE":              "Comma-separated runtime feature IDs to enable explicitly. Available IDs and maturity are generated from the product feature registry.",
+	"FEATURES_DISABLE":             "Comma-separated runtime feature IDs to disable explicitly. A required dependency cannot be disabled.",
 	"AUTHZEN_URL":                  "AuthZEN policy decision point endpoint. Required when AUTHZEN=remote.",
 	"WEBAUTHN_RP_ID":               "WebAuthn relying-party ID, e.g. `localhost`. WebAuthn and passkeys stay disabled while it is unset.",
 	"WEBAUTHN_RP_ORIGINS":          "Browser origins allowed to run WebAuthn ceremonies, e.g. `http://localhost:5173`. Required when WEBAUTHN_RP_ID is set.",
@@ -212,9 +214,39 @@ func RenderConfigReference() (string, error) {
 		return "", fmt.Errorf("configFieldDescriptions describes %s, which no process reads", strings.Join(orphans, ", "))
 	}
 
+	out.WriteString(RenderFeatureRegistryReference(ProductFeatureRegistry()))
 	out.WriteString("\n")
 	out.WriteString(externallyOwnedConfigNote)
 	return out.String(), nil
+}
+
+// RenderFeatureRegistryReference は設定と同じ正本から機能の成熟度と更新影響を描画する。
+func RenderFeatureRegistryReference(registry FeatureRegistry) string {
+	var out strings.Builder
+	out.WriteString("\n## Runtime features\n\n")
+	if len(registry) == 0 {
+		out.WriteString("This build has no runtime-selectable features. Static, always-available capabilities are intentionally not listed here.\n")
+		return out.String()
+	}
+	out.WriteString("| Feature ID | Version | Maturity | Default | Dependencies | Update policy | Specification |\n")
+	out.WriteString("| --- | --- | --- | --- | --- | --- | --- |\n")
+	for _, feature := range registry {
+		dependencies := "—"
+		if len(feature.Dependencies) > 0 {
+			values := make([]string, len(feature.Dependencies))
+			for i, dependency := range feature.Dependencies {
+				values[i] = "`" + string(dependency) + "`"
+			}
+			dependencies = strings.Join(values, ", ")
+		}
+		specification := "—"
+		if feature.SpecificationRef != "" {
+			specification = "`" + feature.SpecificationRef + "`"
+		}
+		fmt.Fprintf(&out, "| `%s` | `%s` | %s | %s | %s | %s | %s |\n",
+			feature.ID, feature.Version, feature.Maturity, feature.DefaultEnablement, dependencies, feature.UpdatePolicy, specification)
+	}
+	return out.String()
 }
 
 func undocumentedDescriptions(read map[string]bool) []string {

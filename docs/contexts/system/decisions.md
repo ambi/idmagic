@@ -10,6 +10,8 @@
 - 管理・アカウントポータルの固定 `client_id` を含む内部生成の ID 列は、`TEXT` ではなく `UUID` 型とする。
 - この Context を `Supporting` に分類する。起動、経路の組み立て、UI の合成はこの製品に固有だが、競合との差にはならない。`Generic` にしないのは、組み立てる対象がこの製品の Context 群そのものであり、既製の実装へ委ねられる部分が無いためである。
 - この Context は Aggregate を持たない。起動と経路の組み立てだけを担い、記録の正はすべて各 Context に残る。
+- 実行時に選択可能な機能は、composition root が静的に組み立てる `FeatureRegistry` を唯一の一覧とする。registry は API の安定性、標準の採否、テナント設定を所有せず、実行時選択と更新影響だけを保持する。常時提供する機能は登録せず、選択可能な機能が無いビルドでは空の registry を有効な状態として扱う。
+- `FeatureRegistry` の成熟度は `experimental`、`preview`、`supported`、`deprecated`、更新方針は `rolling`、`recreate_on_version_change`、`recreate_always` の閉じた語彙とする。実験的機能は既定無効とし、非推奨機能を新たに既定有効へ変更できないよう registry 検証で拒否する。
 
 ## No dedicated event infrastructure
 

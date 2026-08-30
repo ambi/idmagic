@@ -748,6 +748,8 @@ model HealthHttpResponse {
   observability: string;
   @doc("The AuthZEN backend the process started with.")
   authzen: string;
+  @doc("Versioned metadata for the runtime-selectable features enabled for this process.")
+  features: IdMagic.Contract.FeatureRuntimeMetadata;
 }
 
 model HealthSuccess_200 {

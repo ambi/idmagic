@@ -128,6 +128,7 @@ func withDependencies(ctx context.Context, fn func(*bootstrap.Dependencies) erro
 	if err := loader.Err(); err != nil {
 		return fmt.Errorf("load startup configuration: %w", err)
 	}
+	bootstrap.LogFeatureWarnings(ctx, shared.Features)
 	deps, err := bootstrap.Assemble(ctx, shared)
 	if err != nil {
 		return err

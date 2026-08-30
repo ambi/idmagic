@@ -4,6 +4,33 @@ using TypeSpec.Http;
 
 namespace IdMagic.Contract {
 
+enum FeatureMaturity {
+  experimental,
+  preview,
+  supported,
+  deprecated,
+}
+
+enum FeatureUpdatePolicy {
+  rolling,
+  recreate_on_version_change,
+  recreate_always,
+}
+
+@doc("One runtime-selectable feature enabled for this process. The registry, not configuration or persistence, owns these fields.")
+model RuntimeFeatureMetadata {
+  id: string;
+  version: string;
+  maturity: FeatureMaturity;
+  update_policy: FeatureUpdatePolicy;
+}
+
+@doc("Versioned operational metadata for the runtime-selectable features enabled for this process.")
+model FeatureRuntimeMetadata {
+  schema_version: "1";
+  enabled: RuntimeFeatureMetadata[];
+}
+
 @doc("RFC 9457 Problem Details, the default error body for generic APIs. `support_http.WriteProblem` emits it with `Content-Type: application/problem+json`. Contact points whose shape a standard fixes — OAuth 2.0 and OpenID Connect, Dynamic Client Registration (RFC 7591), SCIM (RFC 7644), and the SharedSignals receive endpoint (RFC 8935) — return that standard's error body instead; see the HTTP error responses section of the root specification. Every `*Error` model declared as `is ProblemDetails` shares this body and is told apart by its `type` URN suffix.")
 model ProblemDetails {
   @doc("Problem type URI. IdMagic problem types are `urn:idmagic:error:<code>`, where `<code>` is the stable error code the server reports. The URI is not dereferenceable; clients switch on the URN suffix rather than fetching it.")

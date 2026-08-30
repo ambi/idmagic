@@ -18,6 +18,7 @@ import (
 type SharedConfig struct {
 	Persistence   string
 	Observability string
+	Features      FeatureResolution
 
 	AuthZEN    string
 	AuthZENURL string
@@ -68,6 +69,7 @@ func LoadSharedConfig(l *ConfigLoader) SharedConfig {
 
 	cfg.Persistence = l.Enum("PERSISTENCE", "memory", "memory", "postgres")
 	cfg.Observability = l.EnumFold("OBSERVABILITY", "noop", "noop", "otel")
+	cfg.Features = LoadFeatureConfig(l, ProductFeatureRegistry())
 
 	cfg.AuthZEN = l.Enum("AUTHZEN", "local", "local", "remote")
 	cfg.AuthZENURL = l.URL("AUTHZEN_URL", "")

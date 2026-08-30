@@ -69,7 +69,7 @@ backend/<context>/
 
 `backend/shared/` は、複数の Context が実際に共有する技術的な能力のための場所である。
 
-起動時設定も同じ意味で一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。読み取り点が散らばると、あるプロセスだけが検証されない値を持つ状態が作れてしまうためである。運用者向けの設定リファレンスはこの定義から生成し、手書きの一覧を併存させない。
+起動時設定と実行時に選択可能な機能の定義も同じ意味で一点に集める。すべてのバックエンドプロセス (`idmagic`、`idmagic-worker`、`idmagic-batch`、`idmagic-seed`) は `backend/cmd/internal/bootstrap` が定義する単一の `Config` を通して環境を読み、`bootstrap` の外で環境変数を直接読まない。`FeatureRegistry` は実行時選択と更新影響だけを持ち、各 Context の API、標準対応、テナント設定を複製しない。読み取り点や選択規則が散らばると、あるプロセスだけが検証されない値または異なる機能集合を持つ状態が作れてしまうためである。運用者向けの設定リファレンスと機能メタデータはこれらの定義から生成し、手書きの一覧を併存させない。
 
 具象のドメインイベントの構造体は、それが属する Context の `domain/events.go` に置く。`backend/shared/spec/events.go` はイベントのエンベロープとなるインターフェースと、そのワイヤ表現への変換だけを持つ。イベントが Context の境界を越えるときに何が契約になるかは [Cross-context events](#cross-context-events) が持つ。
 

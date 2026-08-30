@@ -98,6 +98,20 @@ func TestRenderConfigReferenceKeepsProcessSpecificDefaults(t *testing.T) {
 	}
 }
 
+func TestRenderFeatureRegistryReference_REQ_SYSTEM_017(t *testing.T) {
+	t.Parallel()
+	registry := FeatureRegistry{{
+		ID: "preview-v2", Name: "preview", Version: "2", Maturity: FeaturePreview, DefaultEnablement: FeatureDisabled,
+		Dependencies: []FeatureID{"base-v1"}, UpdatePolicy: UpdateRecreateOnVersionChange, SpecificationRef: "REQ-SYSTEM-016",
+	}}
+
+	rendered := RenderFeatureRegistryReference(registry)
+	want := "| `preview-v2` | `2` | preview | disabled | `base-v1` | recreate_on_version_change | `REQ-SYSTEM-016` |"
+	if !strings.Contains(rendered, want) {
+		t.Fatalf("feature registry reference =\n%s\nwant row %s", rendered, want)
+	}
+}
+
 func referenceRow(t *testing.T, rendered, key string) string {
 	t.Helper()
 	for line := range strings.SplitSeq(rendered, "\n") {

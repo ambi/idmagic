@@ -60,6 +60,7 @@ func RunWorker() error {
 	logLevel := logging.ParseLevel(worker.LogLevel)
 	logging.SetDefault(logging.New(os.Stdout, logLevel, serviceName, buildInfo.Version))
 	logger := logging.Default()
+	bootstrap.LogFeatureWarnings(context.Background(), shared.Features)
 
 	deps, err := bootstrap.Assemble(context.Background(), shared)
 	if err != nil {
