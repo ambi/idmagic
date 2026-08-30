@@ -305,6 +305,49 @@ describe('auth-flow pages', () => {
     )
   })
 
+  // wi-384: 「既に登録済み」は 409 mfa_already_enrolled として返る。登録が許可されて
+  // いない場合とは案内が違うので、サーバーの英語の detail ではなく訳した文面を出す。
+  it('shows the localized already-enrolled notice instead of the server detail', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() =>
+        Promise.resolve(
+          response(409, {
+            type: 'urn:idmagic:error:mfa_already_enrolled',
+            title: 'Mfa already enrolled',
+            status: 409,
+            detail: 'An authenticator app is already enrolled.',
+          }),
+        ),
+      ),
+    )
+    render(<MfaEnrollmentPage csrfToken="csrf" />)
+    expect(await screen.findByText(mfaEnrollmentT.alreadyEnrolled)).toBeInTheDocument()
+    // 既定文面へ落ちていないこと。落ちていれば code を読んでいない実装でも通ってしまう。
+    expect(screen.queryByText(mfaEnrollmentT.startFailed)).not.toBeInTheDocument()
+  })
+
+  // 未知の code は従来どおりサーバーの detail を出す。上の分岐が他の code まで
+  // 巻き込んでいないことを分ける。
+  it('still shows the server detail for a code it does not special-case', async () => {
+    stubGlobal(
+      'fetch',
+      mock(() =>
+        Promise.resolve(
+          response(403, {
+            type: 'urn:idmagic:error:mfa_enrollment_not_allowed',
+            title: 'Mfa enrollment not allowed',
+            status: 403,
+            detail: 'MFA enrollment cannot be started.',
+          }),
+        ),
+      ),
+    )
+    render(<MfaEnrollmentPage csrfToken="csrf" />)
+    expect(await screen.findByText('MFA enrollment cannot be started.')).toBeInTheDocument()
+    expect(screen.queryByText(mfaEnrollmentT.alreadyEnrolled)).not.toBeInTheDocument()
+  })
+
   // wi-91: 記憶の同意は既定 off で、明示的にチェックしたときだけ送る。
   it('sends remember_device only when the user ticks the checkbox', async () => {
     render(<TotpPage csrfToken="csrf" secondFactorMethods={['totp']} canRememberDevice />)

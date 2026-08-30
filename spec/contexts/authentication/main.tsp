@@ -167,14 +167,24 @@ model StartBrowserMfaEnrollmentError403 {
   @body body: StartBrowserMfaEnrollmentError403Body;
 }
 
-@doc("Only a LoginSession with `pending_purpose=Enrollment` that has not expired may start a TOTP enrollment. An ordinary unauthenticated session, one pending a Challenge, an expired one, and an already-enrolled user are all refused. The secret is not persisted until the enrollment is settled.")
+union StartBrowserMfaEnrollmentError409Body {
+  IdMagic.Contract.MfaAlreadyEnrolledError,
+}
+
+model StartBrowserMfaEnrollmentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: StartBrowserMfaEnrollmentError409Body;
+}
+
+@doc("Only a LoginSession with `pending_purpose=Enrollment` that has not expired may start a TOTP enrollment. An ordinary unauthenticated session, one pending a Challenge, and an expired one are refused with 403. An already-enrolled user is refused with 409 instead, the same status the administration and self-service endpoints use for that condition, so the sign-in screen can tell \"nothing to do\" apart from \"contact an administrator\". The secret is not persisted until the enrollment is settled.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("StartBrowserMfaEnrollment")
 @route("/api/auth/mfa/enrollment/totp/start")
 @post
 op StartBrowserMfaEnrollment(
 
-): StartBrowserMfaEnrollmentSuccess_200 | StartBrowserMfaEnrollmentError400 | StartBrowserMfaEnrollmentError403;
+): StartBrowserMfaEnrollmentSuccess_200 | StartBrowserMfaEnrollmentError400 | StartBrowserMfaEnrollmentError403 | StartBrowserMfaEnrollmentError409;
 
 model ConfirmBrowserMfaEnrollmentSuccess_200 {
   @statusCode statusCode: 200;
@@ -202,14 +212,24 @@ model ConfirmBrowserMfaEnrollmentError403 {
   @body body: ConfirmBrowserMfaEnrollmentError403Body;
 }
 
-@doc("With a LoginSession whose `pending_purpose` is Enrollment and which has not expired, verifies proof of possession of the TOTP, saves the factor, adds `otp` to the same LoginSession to promote it to MFA-satisfied, and resumes the original authorization transaction. It does not share permissions with the ordinary self-service enrollment endpoint.")
+union ConfirmBrowserMfaEnrollmentError409Body {
+  IdMagic.Contract.MfaAlreadyEnrolledError,
+}
+
+model ConfirmBrowserMfaEnrollmentError409 {
+  @statusCode statusCode: 409;
+  @header contentType: "application/problem+json";
+  @body body: ConfirmBrowserMfaEnrollmentError409Body;
+}
+
+@doc("With a LoginSession whose `pending_purpose` is Enrollment and which has not expired, verifies proof of possession of the TOTP, saves the factor, adds `otp` to the same LoginSession to promote it to MFA-satisfied, and resumes the original authorization transaction. A user who is already enrolled is refused with 409, as at the start endpoint. It does not share permissions with the ordinary self-service enrollment endpoint.")
 @useAuth(NoAuth)
 @TypeSpec.OpenAPI.operationId("ConfirmBrowserMfaEnrollment")
 @route("/api/auth/mfa/enrollment/totp/confirm")
 @post
 op ConfirmBrowserMfaEnrollment(
   @body body: IdMagic.Contract.BrowserMfaEnrollmentConfirmRequest
-): ConfirmBrowserMfaEnrollmentSuccess_200 | ConfirmBrowserMfaEnrollmentError400 | ConfirmBrowserMfaEnrollmentError403;
+): ConfirmBrowserMfaEnrollmentSuccess_200 | ConfirmBrowserMfaEnrollmentError400 | ConfirmBrowserMfaEnrollmentError403 | ConfirmBrowserMfaEnrollmentError409;
 
 model SubmitBrowserTotpSuccess_200 {
   @statusCode statusCode: 200;

@@ -4,6 +4,8 @@ export const mfaEnrollmentPageDictionary = defineDictionary(
   {
     startFailed: '登録を開始できませんでした。',
     completeFailed: '登録を完了できませんでした。',
+    alreadyEnrolled:
+      '認証アプリは既に登録されています。この画面での操作は不要です。ログインをやり直してください。',
     eyebrow: 'MFA 登録が必要です',
     title: '認証アプリを登録',
     description:
@@ -18,6 +20,8 @@ export const mfaEnrollmentPageDictionary = defineDictionary(
   {
     startFailed: 'Could not start enrollment.',
     completeFailed: 'Could not complete enrollment.',
+    alreadyEnrolled:
+      'An authenticator app is already enrolled. There is nothing to do here — sign in again.',
     eyebrow: 'MFA enrollment required',
     title: 'Enroll an authenticator app',
     description:

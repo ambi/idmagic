@@ -147,6 +147,10 @@ model PasswordReuseError is ProblemDetails;
 model MfaEnrollmentNotAllowedError is ProblemDetails;
 
 
+@doc("The user already holds a factor of the requested type, so there is nothing to enroll. RFC 9457 Problem Details with `type` = `urn:idmagic:error:mfa_already_enrolled`. This is a conflict with the current state rather than a decision about the caller, which is what separates it from MfaEnrollmentNotAllowedError: the first asks the user to do nothing, the second asks them to contact an administrator.")
+model MfaAlreadyEnrolledError is ProblemDetails;
+
+
 @doc("The requested combination of reset targets is not valid for the current MFA state of the target user. RFC 9457 Problem Details with `type` = `urn:idmagic:error:authenticator_reset_not_allowed`.")
 model AuthenticatorResetNotAllowedError is ProblemDetails;
 

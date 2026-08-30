@@ -15,6 +15,23 @@ import { Label } from '../../components/ui/label'
 import { useDictionary } from '../../lib/i18n'
 import { mfaEnrollmentPageDictionary } from './MfaEnrollmentPage.i18n'
 
+/**
+ * enrollmentErrorMessage は登録の失敗を画面に出す文面へ写す。
+ *
+ * `mfa_already_enrolled` は登録の失敗ではなく「この画面ですることが無い」という知らせ
+ * なので、サーバーの英語の detail ではなく訳した文面を出す。他の code は従来どおり
+ * detail をそのまま出し、API 由来でない失敗は呼び出し側が渡す既定文面へ落ちる。
+ * 未知の code もこの既定に頼らず detail を出すので、code が増えても無言にはならない。
+ */
+export function enrollmentErrorMessage(
+  cause: unknown,
+  fallback: string,
+  t: { alreadyEnrolled: string },
+): string {
+  if (!(cause instanceof AuthenticationAPIError)) return fallback
+  return cause.code === 'mfa_already_enrolled' ? t.alreadyEnrolled : cause.message
+}
+
 export function MfaEnrollmentPage({
   csrfToken,
   returnTo,
@@ -31,10 +48,8 @@ export function MfaEnrollmentPage({
   useEffect(() => {
     void startMfaEnrollment(csrfToken)
       .then(setEnrollment)
-      .catch((cause: unknown) =>
-        setError(cause instanceof AuthenticationAPIError ? cause.message : t.startFailed),
-      )
-  }, [csrfToken, t.startFailed])
+      .catch((cause: unknown) => setError(enrollmentErrorMessage(cause, t.startFailed, t)))
+  }, [csrfToken, t.startFailed, t])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -46,7 +61,7 @@ export function MfaEnrollmentPage({
         await confirmMfaEnrollment(csrfToken, enrollment.secret, code.trim(), returnTo),
       )
     } catch (cause) {
-      setError(cause instanceof AuthenticationAPIError ? cause.message : t.completeFailed)
+      setError(enrollmentErrorMessage(cause, t.completeFailed, t))
       setSubmitting(false)
     }
   }

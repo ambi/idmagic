@@ -168,7 +168,13 @@ func writeBrowserEnrollmentError(c *echo.Context, err error) error {
 	switch {
 	case errors.Is(err, authusecases.ErrMfaEnrollmentExpired):
 		return support.WriteProblem(c, http.StatusForbidden, "mfa_enrollment_expired", "The MFA enrollment period has expired. Contact an administrator.")
-	case errors.Is(err, authusecases.ErrMfaEnrollmentNotAllowed), errors.Is(err, authusecases.ErrMfaAlreadyEnrolled):
+	case errors.Is(err, authusecases.ErrMfaAlreadyEnrolled):
+		// 「既に登録済み」は要求元セッションへの認可判断ではなく現在の状態との衝突なので、
+		// 「登録が許可されていない」とは別の code で返す。管理 API と account API が
+		// 同じ条件に使っている 409 mfa_already_enrolled に揃える。利用者から見て前者は
+		// 何もしなくてよい状況、後者は管理者に問い合わせる状況で、案内が違う。
+		return support.WriteProblem(c, http.StatusConflict, "mfa_already_enrolled", "An authenticator app is already enrolled.")
+	case errors.Is(err, authusecases.ErrMfaEnrollmentNotAllowed):
 		return support.WriteProblem(c, http.StatusForbidden, "mfa_enrollment_not_allowed", "MFA enrollment cannot be started.")
 	case errors.Is(err, authusecases.ErrInvalidTOTPCode), errors.Is(err, authusecases.ErrInvalidTOTPSecret):
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_totp", "Check the authentication code.")
