@@ -423,7 +423,9 @@ func TestAccountProfileHTTPExtra(t *testing.T) {
 	invalidAttr := adminJSONRequest(t, e, http.MethodPatch, "/api/account/v1/profile", csrf, cookie, map[string]any{
 		"attributes": attrs,
 	})
-	if invalidAttr.Code != http.StatusBadRequest {
+	// 属性スキーマ違反は解析できた内容の業務規則違反なので 422 (docs/api-rules.md)。
+	// 解析そのものに失敗する下の invalid-json は 400 のままで、両者は別の条件である。
+	if invalidAttr.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("invalid attr status=%d body=%s", invalidAttr.Code, invalidAttr.Body.String())
 	}
 

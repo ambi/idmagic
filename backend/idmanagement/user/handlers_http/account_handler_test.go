@@ -175,6 +175,43 @@ func TestAccountProfilePatchRejectsAdminManagedAttribute(t *testing.T) {
 	}
 }
 
+// docs/api-rules.md は 400 を「リクエストを解析できない」、422 を「解析できた内容が
+// 業務規則に違反する」と定める。テナントの属性スキーマへの適合は後者なので、
+// 属性スキーマ違反は 422 で返る。同じ違反を UpdateAdminUser は既に 422 で返しており、
+// 契約 (UpdateUserProfileError422 / InvalidUserAttributeError) もそちらを書いている。
+func TestAccountProfilePatchRejectsSchemaViolationAsUnprocessable(t *testing.T) {
+	e := newAccountServer(t, accountUser())
+	rec := patchSettings(t, e, "/realms/default/api/account/v1/profile", map[string]any{
+		"attributes": map[string]any{
+			// 実効スキーマ (組み込み ∪ tenant) に無い key。解析はできるが業務規則に反する。
+			"zone": map[string]any{"type": "string", "string": "z"},
+		},
+	})
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d body=%s, want 422", rec.Code, rec.Body.String())
+	}
+	var problem struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v (body=%s)", err, rec.Body.String())
+	}
+	if problem.Type != "urn:idmagic:error:invalid_attribute" || problem.Status != http.StatusUnprocessableEntity {
+		t.Fatalf("problem=%+v, want invalid_attribute with status 422", problem)
+	}
+	// 拒否が何も通していないこと。読み戻して属性が増えていないことを確かめる。
+	after := httptest.NewRecorder()
+	e.ServeHTTP(after, httptest.NewRequest(http.MethodGet, "/realms/default/api/account/v1/profile", http.NoBody))
+	var profile userhttp.AccountProfileResponse
+	if err := json.Unmarshal(after.Body.Bytes(), &profile); err != nil {
+		t.Fatalf("decode profile: %v (body=%s)", err, after.Body.String())
+	}
+	if _, stored := profile.Attributes["zone"]; stored {
+		t.Fatalf("refused update stored the attribute: %+v", profile.Attributes)
+	}
+}
+
 type fakeAuthnResolver struct {
 	ctx *authdomain.AuthenticationContext
 }

@@ -25,6 +25,7 @@ import (
 	jobsdomain "github.com/ambi/idmagic/backend/jobs/domain"
 	httpadapter "github.com/ambi/idmagic/backend/shared/http/server_http"
 	"github.com/ambi/idmagic/backend/shared/security/passwords_argon2id"
+	tenancymemory "github.com/ambi/idmagic/backend/tenancy/db_memory"
 	tenancydomain "github.com/ambi/idmagic/backend/tenancy/domain"
 
 	"github.com/labstack/echo/v5"
@@ -38,7 +39,7 @@ type exportTestHandler struct {
 	artifacts *idmmemory.CSVArtifactStore
 }
 
-func newExportTestHandler(t *testing.T) exportTestHandler {
+func newExportTestHandler(t *testing.T, options ...func(*httpadapter.Deps)) exportTestHandler {
 	t.Helper()
 	users := usermemory.NewUserRepository()
 	groups := groupmemory.NewGroupRepository()
@@ -52,7 +53,7 @@ func newExportTestHandler(t *testing.T) exportTestHandler {
 	_, _ = groups.AddMember(context.Background(), &groupdomain.GroupMember{GroupID: "g1", UserID: "u1", Source: groupdomain.MembershipSourceManual, CreatedAt: now})
 
 	e := echo.New()
-	httpadapter.Register(e, httpadapter.Deps{
+	deps := httpadapter.Deps{
 		Issuer: "http://idp.test", UserRepo: users, PasswordHasher: passwords_argon2id.NewArgon2idPasswordHasher(),
 		AuthnResolver: authusecases.DemoHeaderResolver{},
 		AgentRepo:     agentmemory.NewAgentRepository(),
@@ -60,7 +61,11 @@ func newExportTestHandler(t *testing.T) exportTestHandler {
 		Jobs:          jobs.Module{Repo: jobRepo},
 		IdManagement:  idmanagement.Module{UserRepo: users, GroupRepo: groups, CSVArtifacts: artifacts},
 		EmailSender:   mockEmailSender{},
-	})
+	}
+	for _, option := range options {
+		option(&deps)
+	}
+	httpadapter.Register(e, deps)
 	return exportTestHandler{echo: e, users: users, groups: groups, jobRepo: jobRepo, artifacts: artifacts}
 }
 
@@ -198,6 +203,53 @@ func TestDataExportHTTP_RejectsInvalidColumns(t *testing.T) {
 	if resp.Code != http.StatusUnprocessableEntity ||
 		!strings.Contains(resp.Body.String(), "urn:idmagic:error:invalid_columns") {
 		t.Fatalf("status=%d body=%s", resp.Code, resp.Body.String())
+	}
+}
+
+// 実行中ジョブ数の上限と、テナント資源クォータは別の概念である。前者は待てば通る
+// 一時的な状態 (RFC 6585 の 429)、後者は解析できた内容の業務規則違反 (422) で、
+// クライアントが再試行すべきかは code だけで判断できなければならない。
+// 両者が `quota_exceeded` を共有していると、その判断ができない。
+func TestDataExportHTTP_ActiveJobCeilingHasItsOwnCode(t *testing.T) {
+	quotaRepo := tenancymemory.NewQuotaRepository()
+	none := 0
+	if err := quotaRepo.SetQuota(context.Background(), tenancydomain.DefaultTenantID,
+		&tenancydomain.TenantQuota{ActiveJobs: &none}); err != nil {
+		t.Fatal(err)
+	}
+	h := newExportTestHandler(t, func(deps *httpadapter.Deps) {
+		deps.Tenancy.QuotaRepo = quotaRepo
+	})
+	e := h.echo
+	csrf, cookie := adminCSRF(t, e)
+	resp := adminJSONRequest(t, e, http.MethodPost, "/api/admin/v1/users/exports", csrf, cookie, map[string]any{
+		"columns": []string{"preferred_username", "email"},
+	})
+
+	if resp.Code != http.StatusTooManyRequests {
+		t.Fatalf("status=%d body=%s, want 429", resp.Code, resp.Body.String())
+	}
+	var problem struct {
+		Type   string `json:"type"`
+		Status int    `json:"status"`
+	}
+	if err := json.Unmarshal(resp.Body.Bytes(), &problem); err != nil {
+		t.Fatalf("decode problem: %v (body=%s)", err, resp.Body.String())
+	}
+	if problem.Type != "urn:idmagic:error:active_job_quota_exceeded" {
+		t.Fatalf("type=%q, want urn:idmagic:error:active_job_quota_exceeded", problem.Type)
+	}
+	// テナント資源クォータの 422 quota_exceeded と取り違えられないこと。
+	if strings.Contains(resp.Body.String(), "urn:idmagic:error:quota_exceeded") {
+		t.Fatalf("active job ceiling must not reuse the tenant resource quota code: %s", resp.Body.String())
+	}
+	// 拒否が何も通していないこと。実行待ちの export ジョブは 1 件も残っていない。
+	jobsList, err := h.jobRepo.ClaimBatch(context.Background(), "w1", jobsdomain.LaneBulk, 10, time.Minute, time.Now().UTC())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobsList) != 0 {
+		t.Fatalf("refused export left %d runnable job(s): %+v", len(jobsList), jobsList)
 	}
 }
 

@@ -163,7 +163,10 @@ func writeAccountError(c *echo.Context, err error) error {
 	case errors.Is(err, userusecases.ErrAttributeNotEditable):
 		return support.WriteProblem(c, http.StatusForbidden, "attribute_not_editable", "This attribute cannot be edited.")
 	case errors.Is(err, userusecases.ErrInvalidAttribute):
-		return support.WriteProblem(c, http.StatusBadRequest, "invalid_attribute", "The attribute does not conform to the schema.")
+		// docs/api-rules.md は 400 を「リクエストを解析できない」、422 を「解析できた内容が
+		// 業務規則に違反する」と分ける。テナントの属性スキーマへの適合は後者なので 422。
+		// 同じ違反を UpdateAdminUser も 422 で返す。
+		return support.WriteProblem(c, http.StatusUnprocessableEntity, "invalid_attribute", "The attribute does not conform to the schema.")
 	default:
 		return err
 	}

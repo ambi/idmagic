@@ -1207,7 +1207,7 @@ model AgentCredentialUnbound {
 model UserNotFoundError is ProblemDetails;
 
 
-@doc("The tenant already has as many export jobs running as it may have at once, so another one cannot start. Retrying after the running jobs finish succeeds, which is why the response is 429 rather than the 422 of QuotaExceededError. The two conditions currently share the error code `quota_exceeded`, so the `type` is `urn:idmagic:error:quota_exceeded` here as well; the concurrency ceiling and the tenant resource quota are separate concepts and the shared code is a defect on the server side.")
+@doc("The tenant already has as many export jobs running as it may have at once, so another one cannot start. Retrying after the running jobs finish succeeds, which is why the response is 429 rather than the 422 of QuotaExceededError. RFC 9457 Problem Details with `type` = `urn:idmagic:error:active_job_quota_exceeded`, its own code: the concurrency ceiling and the tenant resource quota are separate concepts, and a client that saw only `quota_exceeded` could not tell whether retrying would ever succeed.")
 model ActiveJobQuotaExceededError is ProblemDetails;
 
 }

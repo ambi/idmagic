@@ -271,8 +271,18 @@ func writeDataExportError(c *echo.Context, err error) error {
 	case errors.Is(err, jobsports.ErrJobAlreadyTerminal):
 		return support.WriteProblem(c, http.StatusConflict, "data_export_not_cancelable", "The export has already finished.")
 	}
+	// 実行中ジョブ数の上限とテナント資源クォータは別の概念である。前者は待てば通る
+	// 一時的な状態 (RFC 6585 の 429)、後者は解析できた内容の業務規則違反 (422) で、
+	// 再試行すべきかの判断が逆になる。code を共有すると、その判断が code だけでは
+	// できない。資源で分け、上限に固有の code を与える。
+	// 他の資源のクォータはこの接点からは起きないので、ここでは扱わずに共通のエラー
+	// ハンドラーへ委ねる。そちらが 422 quota_exceeded と指標の記録を持っている。
+	if qErr, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok &&
+		qErr.Resource == tenancydomain.ResourceActiveJobs {
+		return support.WriteProblem(c, http.StatusTooManyRequests, "active_job_quota_exceeded", "The active job quota has been exceeded.")
+	}
 	if _, ok := errors.AsType[*tenancydomain.QuotaExceededError](err); ok {
-		return support.WriteProblem(c, http.StatusTooManyRequests, "quota_exceeded", "The active job quota has been exceeded.")
+		return err
 	}
 	return support.WriteServerError(c, err)
 }
