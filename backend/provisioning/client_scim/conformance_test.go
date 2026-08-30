@@ -240,3 +240,60 @@ func TestClient_UnknownErrorStatusIsNotRetryable(t *testing.T) {
 		t.Errorf("CreateUser() on 400 error = %v, SCIM エラー本文の detail を含めるべき", err)
 	}
 }
+
+// RFC7643-OUT-CORE-RESOURCES: RFC 7643 §3 はリソース表現が `schemas` を持つことを
+// 要求する。User なら `urn:ietf:params:scim:schemas:core:2.0:User` である。
+// 受け取り側が検証する実装なら、欠けていれば作成も置換も 400 で拒否され、
+// その拒否は「再試行しない失敗」として dead_letter に落ちる。IdMagic 自身の内向き
+// サーバーは `schemas` を読み取り専用属性として無視するので、IdMagic どうしを
+// 繋いだ試験では再現しない。
+func TestClient_SendsSchemasOnResourceRepresentations(t *testing.T) {
+	const userSchemaURN = "urn:ietf:params:scim:schemas:core:2.0:User"
+	const patchOpURN = "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+
+	schemasOf := func(t *testing.T, body []byte) []string {
+		t.Helper()
+		var doc struct {
+			Schemas []string `json:"schemas"`
+		}
+		if err := json.Unmarshal(body, &doc); err != nil {
+			t.Fatalf("本文を解釈できない: %v (body=%s)", err, body)
+		}
+		return doc.Schemas
+	}
+
+	for _, request := range fullLifecycleRequests(t) {
+		switch {
+		case request.Method == http.MethodPost && request.Path == "/Users":
+			// 作成のリソース表現。
+			if got := schemasOf(t, request.Body); len(got) != 1 || got[0] != userSchemaURN {
+				t.Fatalf("POST /Users の schemas = %v, want [%s] (body=%s)", got, userSchemaURN, request.Body)
+			}
+		case request.Method == http.MethodPut:
+			// 置換もリソース表現なので、作成と同じ URN を持つ。
+			if got := schemasOf(t, request.Body); len(got) != 1 || got[0] != userSchemaURN {
+				t.Fatalf("PUT %s の schemas = %v, want [%s] (body=%s)", request.Path, got, userSchemaURN, request.Body)
+			}
+		case request.Method == http.MethodPatch:
+			// PATCH の本文はメッセージであってリソース表現ではないので、
+			// PatchOp の URN を持つ。中の value は部分断片なので `schemas` を持たない。
+			if got := schemasOf(t, request.Body); len(got) != 1 || got[0] != patchOpURN {
+				t.Fatalf("PATCH %s の schemas = %v, want [%s] (body=%s)", request.Path, got, patchOpURN, request.Body)
+			}
+			var patch struct {
+				Operations []struct {
+					Value map[string]any `json:"value"`
+				} `json:"Operations"`
+			}
+			if err := json.Unmarshal(request.Body, &patch); err != nil {
+				t.Fatalf("PatchOp を解釈できない: %v (body=%s)", err, request.Body)
+			}
+			if len(patch.Operations) != 1 {
+				t.Fatalf("Operations = %d 件, want 1 (body=%s)", len(patch.Operations), request.Body)
+			}
+			if _, present := patch.Operations[0].Value["schemas"]; present {
+				t.Fatalf("PatchOp の value は部分断片なので schemas を持ってはならない (body=%s)", request.Body)
+			}
+		}
+	}
+}

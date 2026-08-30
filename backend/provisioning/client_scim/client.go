@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -150,7 +151,7 @@ func (c *Client) CreateUser(ctx context.Context, rules []domain.AttributeMapping
 	if err != nil {
 		return "", nil, err
 	}
-	return c.createResource(ctx, "/Users", doc)
+	return c.createResource(ctx, "/Users", withSchemas(doc, userSchemaURN))
 }
 
 // CreateGroup applies rules against attrs and POSTs the result to /Groups.
@@ -159,7 +160,29 @@ func (c *Client) CreateGroup(ctx context.Context, rules []domain.AttributeMappin
 	if err != nil {
 		return "", nil, err
 	}
-	return c.createResource(ctx, "/Groups", doc)
+	return c.createResource(ctx, "/Groups", withSchemas(doc, groupSchemaURN))
+}
+
+// RFC 7643 §3 が定める core スキーマの URN。リソース表現の `schemas` に載せる。
+const (
+	userSchemaURN  = "urn:ietf:params:scim:schemas:core:2.0:User"
+	groupSchemaURN = "urn:ietf:params:scim:schemas:core:2.0:Group"
+)
+
+// withSchemas はリソース表現に必須属性 `schemas` を載せる。
+//
+// これは属性対応付けの外側に置く。`schemas` はリソース表現の必須属性であって
+// 対応付けの対象ではなく、管理者が編集できる表に置くと消せてしまうからである
+// (対応付けの対象パスの文法は配列リテラルを取れないので、そもそも書けない)。
+//
+// 載せるのはリソース表現だけである。PATCH の本文は `PatchOp` というメッセージで、
+// 自分の URN を既に持つ。その `Operations[].value` は部分断片であってリソース表現
+// ではないので、`schemas` を持たない。
+func withSchemas(doc map[string]any, urn string) map[string]any {
+	out := make(map[string]any, len(doc)+1)
+	maps.Copy(out, doc)
+	out["schemas"] = []string{urn}
+	return out
 }
 
 func resolverFromMap(attrs map[string]any) AttributeResolver {
@@ -203,7 +226,7 @@ func (c *Client) UpdateUser(ctx context.Context, remoteID string, rules []domain
 	if err != nil {
 		return nil, err
 	}
-	return c.updateResource(ctx, "/Users/"+url.PathEscape(remoteID), doc, supportsPatch)
+	return c.updateResource(ctx, "/Users/"+url.PathEscape(remoteID), doc, userSchemaURN, supportsPatch)
 }
 
 // UpdateGroup applies rules against attrs as the desired-state document for a
@@ -213,12 +236,14 @@ func (c *Client) UpdateGroup(ctx context.Context, remoteID string, rules []domai
 	if err != nil {
 		return nil, err
 	}
-	return c.updateResource(ctx, "/Groups/"+url.PathEscape(remoteID), doc, supportsPatch)
+	return c.updateResource(ctx, "/Groups/"+url.PathEscape(remoteID), doc, groupSchemaURN, supportsPatch)
 }
 
-func (c *Client) updateResource(ctx context.Context, path string, doc map[string]any, supportsPatch bool) (*string, error) {
+func (c *Client) updateResource(ctx context.Context, path string, doc map[string]any, schemaURN string, supportsPatch bool) (*string, error) {
 	method := http.MethodPut
-	body := any(doc)
+	// PUT は完全なリソース表現を送るので schemas を持つ。PATCH の本文は PatchOp
+	// というメッセージで自分の URN を持ち、その value は部分断片なので持たない。
+	body := any(withSchemas(doc, schemaURN))
 	if supportsPatch {
 		method = http.MethodPatch
 		body = map[string]any{
