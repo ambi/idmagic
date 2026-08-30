@@ -178,8 +178,14 @@ func RunWorker() error {
 	}))
 	go lifecycleWorkflowDispatchLoop(ctx, deps)
 
-	attrSource := &identitysource.UserAttributeSource{UserRepo: deps.IdManagement.UserRepo}
-	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, provisioning.NewTargetClient)))
+	// Users と Groups の両方を解決できる供給元を渡す。User だけを渡すと、Group の
+	// 配信は「対象が無い」として何も送らずに成功で終わる (wi-441 が直した形)。
+	attrSource := identitysource.CombinedAttributeSource{
+		User:  &identitysource.UserAttributeSource{UserRepo: deps.IdManagement.UserRepo},
+		Group: &identitysource.GroupAttributeSource{GroupRepo: deps.IdManagement.GroupRepo},
+	}
+	memberSource := &identitysource.GroupMemberSource{GroupRepo: deps.IdManagement.GroupRepo}
+	handlers.Register(provisioning.KindProvisioningDelivery, provisioning.Handler(deps.Provisioning.JobHandlerDeps(attrSource, memberSource, provisioning.NewTargetClient)))
 	go provisioningDispatchLoop(ctx, deps)
 	go ephemeralSweepLoop(ctx, deps, worker.EphemeralSweepInterval)
 	go sharedSignalsDeliveryLoop(ctx, deps, worker.SharedSignalsDeliveryInterval)

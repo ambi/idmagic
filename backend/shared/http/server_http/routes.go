@@ -542,32 +542,33 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 	federationhttp.RegisterRoutes(g, federationhttp.Deps{Broker: brokerDeps, Auth: authDeps, OIDC: &oidcClient})
 
 	idmhttp.RegisterRoutes(g, idmhttp.Deps{
-		Deps:                  d.Deps,
-		Authenticator:         authenticator,
-		UserRepo:              d.IdManagement.UserRepo,
-		GroupRepo:             d.IdManagement.GroupRepo,
-		AgentRepo:             d.IdManagement.AgentRepo,
-		UserMutationCommitter: d.IdManagement.UserMutationCommitter,
-		ProvisioningNotifier:  d.IdManagement.ProvisioningNotifier,
-		Reactor:               revocationReactor,
-		ClientRepo:            d.OAuth2.ClientRepo,
-		ScimRepo:              d.Sourcing.ScimRepo,
-		AttrSchemaRepo:        d.Tenancy.AttrSchemaRepo,
-		GroupAttrSchemaRepo:   d.Tenancy.GroupAttrSchemaRepo,
-		ConsentRepo:           d.OAuth2.ConsentRepo,
-		RefreshStore:          d.OAuth2.RefreshStore,
-		DeviceCodeStore:       d.OAuth2.DeviceCodeStore,
-		ApprovalRequestStore:  d.OAuth2.ApprovalRequestStore,
-		MfaFactorRepo:         d.Authentication.MfaFactorRepo,
-		TrustedDeviceRepo:     d.Authentication.TrustedDeviceRepo,
-		PasswordHasher:        d.Authentication.PasswordHasher,
-		PasswordHistoryRepo:   d.Authentication.PasswordHistoryRepo,
-		EmailChangeTokenStore: d.IdManagement.EmailChangeTokenStore,
-		CSVArtifacts:          d.IdManagement.CSVArtifacts,
-		EmailSender:           d.Notification.EmailSender,
-		Notifier:              d.Notification.Notifier,
-		JobRepo:               d.Jobs.Repo,
-		QuotaRepo:             d.Tenancy.QuotaRepo,
+		Deps:                      d.Deps,
+		Authenticator:             authenticator,
+		UserRepo:                  d.IdManagement.UserRepo,
+		GroupRepo:                 d.IdManagement.GroupRepo,
+		AgentRepo:                 d.IdManagement.AgentRepo,
+		UserMutationCommitter:     d.IdManagement.UserMutationCommitter,
+		ProvisioningNotifier:      d.IdManagement.ProvisioningNotifier,
+		GroupProvisioningNotifier: d.IdManagement.GroupProvisioningNotifier,
+		Reactor:                   revocationReactor,
+		ClientRepo:                d.OAuth2.ClientRepo,
+		ScimRepo:                  d.Sourcing.ScimRepo,
+		AttrSchemaRepo:            d.Tenancy.AttrSchemaRepo,
+		GroupAttrSchemaRepo:       d.Tenancy.GroupAttrSchemaRepo,
+		ConsentRepo:               d.OAuth2.ConsentRepo,
+		RefreshStore:              d.OAuth2.RefreshStore,
+		DeviceCodeStore:           d.OAuth2.DeviceCodeStore,
+		ApprovalRequestStore:      d.OAuth2.ApprovalRequestStore,
+		MfaFactorRepo:             d.Authentication.MfaFactorRepo,
+		TrustedDeviceRepo:         d.Authentication.TrustedDeviceRepo,
+		PasswordHasher:            d.Authentication.PasswordHasher,
+		PasswordHistoryRepo:       d.Authentication.PasswordHistoryRepo,
+		EmailChangeTokenStore:     d.IdManagement.EmailChangeTokenStore,
+		CSVArtifacts:              d.IdManagement.CSVArtifacts,
+		EmailSender:               d.Notification.EmailSender,
+		Notifier:                  d.Notification.Notifier,
+		JobRepo:                   d.Jobs.Repo,
+		QuotaRepo:                 d.Tenancy.QuotaRepo,
 	})
 
 	ighttp.RegisterRoutes(g, ighttp.Deps{
@@ -610,5 +611,5 @@ func registerTenantRoutes(g *echo.Group, d Deps) {
 
 	d.Sourcing.Register(g, d.Deps, authenticator, d.IdManagement.UserRepo, d.IdManagement.GroupRepo, d.Emit, apiTokenService)
 
-	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo)
+	d.Provisioning.Register(g, d.Deps, authenticator, d.Application.AssignmentRepo, d.IdManagement.UserRepo, d.IdManagement.GroupRepo)
 }

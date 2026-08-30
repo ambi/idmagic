@@ -33,6 +33,7 @@ type fakeTargetClient struct {
 	deleteCalls     int
 	searchCalls     int
 	lastUpdateAttrs map[string]any
+	memberPatches   []memberPatch
 }
 
 func (f *fakeTargetClient) Discover(context.Context) (domain.ProvisioningCapabilities, error) {
@@ -70,6 +71,19 @@ func (f *fakeTargetClient) UpdateGroup(context.Context, string, []domain.Attribu
 func (f *fakeTargetClient) DeleteGroup(context.Context, string) error { return nil }
 func (f *fakeTargetClient) SearchGroupByAttribute(context.Context, string, string) (string, bool, error) {
 	return "", false, nil
+}
+
+func (f *fakeTargetClient) PatchGroupMembers(_ context.Context, remoteGroupID, op string, remoteUserIDs []string) error {
+	f.memberPatches = append(f.memberPatches, memberPatch{
+		remoteGroupID: remoteGroupID, op: op, remoteUserIDs: remoteUserIDs,
+	})
+	return nil
+}
+
+type memberPatch struct {
+	remoteGroupID string
+	op            string
+	remoteUserIDs []string
 }
 
 var _ ports.ProvisioningTargetClient = (*fakeTargetClient)(nil)

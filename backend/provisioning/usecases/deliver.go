@@ -16,6 +16,9 @@ type DeliverDeps struct {
 	DeliveryRepo    ports.ProvisioningDeliveryRepository
 	LinkRepo        ports.RemoteResourceLinkRepository
 	AttributeSource ports.AttributeSource
+	// GroupMemberSource reads a Group's direct members when push_groups is on.
+	// nil means membership is not pushed; the Group's own attributes still are.
+	GroupMemberSource ports.GroupMemberSource
 	// NewTargetClient builds the protocol client for conn using its (already
 	// resolved) credential secret. Production wiring returns a *scim.Client;
 	// tests inject a fake.
@@ -178,6 +181,9 @@ func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.Provisioni
 	} else if _, err := client.UpdateGroup(ctx, remoteID, conn.AttributeMappings, attrs, conn.Capabilities != nil && conn.Capabilities.SupportsPatch); err != nil {
 		return err
 	}
+	if err := pushGroupMembers(ctx, deps, client, conn, delivery, remoteID); err != nil {
+		return err
+	}
 	newLink := domain.NewRemoteResourceLink(conn.ApplicationID, delivery.TenantID, delivery.SourceType, delivery.SourceID)
 	if link != nil {
 		*newLink = *link
@@ -189,4 +195,48 @@ func deliverGroup(ctx context.Context, deps DeliverDeps, client ports.Provisioni
 		return nil
 	}
 	return deps.LinkRepo.Upsert(ctx, newLink)
+}
+
+// pushGroupMembers sends the Group's current direct members downstream as one
+// incremental `add` (spec/contexts/provisioning.yaml events.GroupMembershipPushed).
+//
+// Only members IdMagic has already provisioned are sent: a member with no
+// RemoteResourceLink has no downstream id to name, and inventing one would make
+// the downstream create a resource this connection does not own. Sending `add`
+// for a member the downstream already has is a no-op there, which is what lets
+// this converge without IdMagic tracking downstream membership itself.
+//
+// Removal is deliberately not sent. Knowing which members to remove means
+// knowing the downstream's current set, and IdMagic does not read it back; a
+// wholesale replace would delete members this connection never added. See the
+// work item's Out of Scope.
+func pushGroupMembers(
+	ctx context.Context,
+	deps DeliverDeps,
+	client ports.ProvisioningTargetClient,
+	conn *domain.ProvisioningConnection,
+	delivery *domain.ProvisioningDelivery,
+	remoteGroupID string,
+) error {
+	if deps.GroupMemberSource == nil || remoteGroupID == "" {
+		return nil
+	}
+	userIDs, err := deps.GroupMemberSource.ListMemberUserIDs(ctx, delivery.TenantID, delivery.SourceID)
+	if err != nil {
+		return err
+	}
+	remoteUserIDs := make([]string, 0, len(userIDs))
+	for _, userID := range userIDs {
+		memberLink, err := deps.LinkRepo.Find(ctx, conn.ApplicationID, domain.SourceTypeUser, userID)
+		if err != nil {
+			return err
+		}
+		if memberLink != nil && memberLink.RemoteID != "" {
+			remoteUserIDs = append(remoteUserIDs, memberLink.RemoteID)
+		}
+	}
+	if len(remoteUserIDs) == 0 {
+		return nil
+	}
+	return client.PatchGroupMembers(ctx, remoteGroupID, "add", remoteUserIDs)
 }

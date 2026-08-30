@@ -8,6 +8,7 @@ RFC 7643 — https://www.rfc-editor.org/rfc/rfc7643.html
 |---|---|---|---|
 | RFC7643-OUT-CORE-RESOURCES | partial | MUST | 下流へ送る User リソースの本文は、必須属性 `schemas` と、接続の属性対応付けが解決した属性で組み立てる。`schemas` は `urn:ietf:params:scim:schemas:core:2.0:User` の 1 要素で、対応付けの外側で載せる —— リソース表現の必須属性であり、管理者が編集できる表に置いて消せてよいものではない。載せるのは作成 (POST) と置換 (PUT) の本文だけで、PATCH の本文は `PatchOp` のメッセージ URN を持ち、その `Operations[].value` は部分断片なので持たない。既定の対応付けは `externalId`、`userName`、`active`、`name.givenName`、`name.familyName`、`displayName`、`emails[type eq "work"].value` である。`required` の対応付けが値を解決できない配信は、部分的な本文を送らずに失敗させる。 |
 | RFC7643-OUT-EXTERNAL-ID | required | MUST | User の作成要求に、IdMagic 側の識別子を `externalId` として送る。更新要求では送り直さず、以後の相関は保存した対応関係が担う。 |
+| RFC7643-OUT-GROUP-RESOURCES | partial | MUST | 接続の `push_groups` が有効なとき、Group を SCIM の Group リソースとして送る。本文は必須属性 `schemas` (`urn:ietf:params:scim:schemas:core:2.0:Group` の 1 要素) と、接続の属性対応付けが解決した属性で組み立てる。`displayName` の取得元は `GroupPushConfig.display_name_source` が選び、既定は Group の名前である。メンバーシップはリソース本文には載せず、`members` に対する増分 `add` の PATCH として別に送る。送るのは既に下流へ provision 済みのメンバーだけで、対応関係を持たないメンバーの識別子をこちら側で作ることはしない。メンバーの除去は送らない —— 下流の現在のメンバー集合を読み戻していないので、除くべき相手を知る手段が無く、全置換はこの接続が追加していないメンバーを消す。 |
 | RFC7643-OUT-SCHEMA-EXTENSIONS | excluded | MUST NOT | 拡張スキーマの属性を送らない。属性対応付けの対象パスとして書けるのは `.` で区切った単純パスと 1 段の多値フィルターパスだけであり、拡張スキーマの URN で修飾したパスは表現できない。Enterprise 拡張 (`urn:ietf:params:scim:schemas:extension:enterprise:2.0:User`) も対象外である。 |
 
 ## System for Cross-domain Identity Management Protocol

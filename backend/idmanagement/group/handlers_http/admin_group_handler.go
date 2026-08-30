@@ -365,7 +365,8 @@ func HandleListUserGroups(d Deps, c *echo.Context) error {
 func adminGroupDeps(d Deps) groupusecases.AdminGroupDeps {
 	return groupusecases.AdminGroupDeps{
 		GroupRepo: d.GroupRepo, UserRepo: d.UserRepo, Emit: d.LegacyEmit(), QuotaRepo: d.QuotaRepo,
-		GroupAttrSchemaRepo: d.GroupAttrSchemaRepo,
+		GroupAttrSchemaRepo:  d.GroupAttrSchemaRepo,
+		ProvisioningNotifier: d.GroupProvisioningNotifier,
 	}
 }
 

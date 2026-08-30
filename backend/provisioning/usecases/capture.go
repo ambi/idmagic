@@ -7,6 +7,7 @@ package usecases
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	appdomain "github.com/ambi/idmagic/backend/application/domain"
@@ -70,7 +71,12 @@ func CaptureLifecycleEvent(ctx context.Context, deps CaptureDeps, tenantID strin
 		if !ok {
 			continue
 		}
-		if !isAssignmentTrigger(trigger) {
+		switch {
+		case isGroupTrigger(trigger):
+			if !groupInScope(*conn, subjectID) {
+				continue
+			}
+		case !isAssignmentTrigger(trigger):
 			inScope, err := inScope(ctx, deps, *conn, tenantID, subjectID)
 			if err != nil {
 				return err
@@ -132,8 +138,49 @@ func translateTrigger(trigger ports.ProvisioningTrigger, conn domain.Provisionin
 		return deprovisionOperation(conn.DeprovisionPolicy.OnDelete, conn.FeatureFlags)
 	case ports.TriggerAssignmentRemoved:
 		return deprovisionOperation(conn.DeprovisionPolicy.OnUnassign, conn.FeatureFlags)
+	case ports.TriggerGroupCreated:
+		return domain.OperationCreate, conn.FeatureFlags.PushGroups, nil
+	case ports.TriggerGroupAttributes, ports.TriggerGroupMembership:
+		// メンバーシップの変更も Group の更新として配信する。下流への書き込みは
+		// deliverGroup が members の増分 PATCH として組み立てる。
+		return domain.OperationUpdate, conn.FeatureFlags.PushGroups, nil
+	case ports.TriggerGroupDeleted:
+		// Group の削除は User の deprovision policy を借りない。User を無効化する
+		// という選択肢が Group には無く、下流に残すか消すかの 2 つしかないためである。
+		return domain.OperationDelete, conn.FeatureFlags.PushGroups, nil
 	default:
 		return "", false, fmt.Errorf("provisioning: unknown trigger %q", trigger)
+	}
+}
+
+func isGroupTrigger(trigger ports.ProvisioningTrigger) bool {
+	switch trigger {
+	case ports.TriggerGroupCreated, ports.TriggerGroupAttributes,
+		ports.TriggerGroupDeleted, ports.TriggerGroupMembership:
+		return true
+	default:
+		return false
+	}
+}
+
+// groupInScope decides whether groupID is one of the groups conn pushes.
+// The connection's GroupPushConfig owns this, not the User scope: `all_users`
+// says nothing about which groups to send, and an unset config means the
+// capability was never configured, so nothing is in scope (fail-closed).
+func groupInScope(conn domain.ProvisioningConnection, groupID string) bool {
+	if conn.GroupPush == nil {
+		return false
+	}
+	switch conn.GroupPush.Selection {
+	case domain.GroupSelectionExplicit:
+		return slices.Contains(conn.GroupPush.ExplicitGroupIDs, groupID)
+	case domain.GroupSelectionAssignedGroups:
+		// 割り当てを持つ Group に限る、が本来の意味だが、割り当ての主体種別は
+		// いま User だけである。Group の割り当てが入るまでは、push_groups を
+		// 有効にした接続のすべての Group を対象とする。
+		return true
+	default:
+		return false
 	}
 }
 

@@ -30,4 +30,17 @@ type ProvisioningTargetClient interface {
 	UpdateGroup(ctx context.Context, remoteID string, rules []domain.AttributeMappingRule, attrs map[string]any, supportsPatch bool) (etag *string, err error)
 	DeleteGroup(ctx context.Context, remoteID string) error
 	SearchGroupByAttribute(ctx context.Context, attribute, value string) (remoteID string, found bool, err error)
+	// PatchGroupMembers sends one incremental add/remove against a Group's
+	// `members`. op is "add" or "remove". The Group's own attributes go through
+	// UpdateGroup; membership moves separately because it is a set operation and
+	// replacing it wholesale would delete downstream members IdMagic cannot see.
+	PatchGroupMembers(ctx context.Context, remoteGroupID, op string, remoteUserIDs []string) error
+}
+
+// GroupMemberSource reads a Group's current direct members. Membership is not a
+// mapped attribute — the mapping engine produces a resource document, while
+// membership is pushed as its own PATCH — so the delivery engine reads it
+// through this port rather than through AttributeSource.
+type GroupMemberSource interface {
+	ListMemberUserIDs(ctx context.Context, tenantID, groupID string) ([]string, error)
 }

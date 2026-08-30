@@ -3,9 +3,11 @@ package usecases
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
@@ -15,10 +17,14 @@ import (
 // AdminDeps are the admin (Application-detail "provisioning" subroute)
 // usecases' dependencies (spec/contexts/provisioning.yaml interfaces).
 type AdminDeps struct {
-	ConnectionRepo  ports.ProvisioningConnectionRepository
-	DeliveryRepo    ports.ProvisioningDeliveryRepository
-	AssignmentRepo  appports.AssignmentRepository
-	UserRepo        userports.UserRepository
+	ConnectionRepo ports.ProvisioningConnectionRepository
+	DeliveryRepo   ports.ProvisioningDeliveryRepository
+	AssignmentRepo appports.AssignmentRepository
+	UserRepo       userports.UserRepository
+	// GroupRepo lets a full resync cover the Groups a push_groups connection
+	// targets. nil resyncs Users only; a connection whose GroupPushConfig names
+	// its groups explicitly still resyncs them, because that list needs no lookup.
+	GroupRepo       groupports.GroupRepository
 	NewTargetClient func(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error)
 }
 
@@ -324,24 +330,38 @@ func StartFullResync(ctx context.Context, deps AdminDeps, tenantID, applicationI
 			}
 		}
 	}
+	groupIDs, err := resyncGroupIDs(ctx, deps, *conn, tenantID)
+	if err != nil {
+		return 0, err
+	}
+
 	enqueued := 0
-	for _, subjectID := range subjectIDs {
-		id, err := spec.NewUUIDv4()
-		if err != nil {
-			return enqueued, err
+	enqueue := func(sourceType domain.ProvisioningSourceType, ids []string) error {
+		for _, sourceID := range ids {
+			id, err := spec.NewUUIDv4()
+			if err != nil {
+				return err
+			}
+			delivery := &domain.ProvisioningDelivery{
+				ID: id, TenantID: tenantID, ConnectionID: applicationID, SourceType: sourceType, SourceID: sourceID,
+				SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.DeliveryPending,
+				CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
+			}
+			created, err := deps.DeliveryRepo.Save(ctx, delivery)
+			if err != nil {
+				return err
+			}
+			if created {
+				enqueued++
+			}
 		}
-		delivery := &domain.ProvisioningDelivery{
-			ID: id, TenantID: tenantID, ConnectionID: applicationID, SourceType: domain.SourceTypeUser, SourceID: subjectID,
-			SourceVersion: now.UnixNano(), Operation: domain.OperationUpdate, Status: domain.DeliveryPending,
-			CreatedAt: now.UTC(), UpdatedAt: now.UTC(),
-		}
-		created, err := deps.DeliveryRepo.Save(ctx, delivery)
-		if err != nil {
-			return enqueued, err
-		}
-		if created {
-			enqueued++
-		}
+		return nil
+	}
+	if err := enqueue(domain.SourceTypeUser, subjectIDs); err != nil {
+		return enqueued, err
+	}
+	if err := enqueue(domain.SourceTypeGroup, groupIDs); err != nil {
+		return enqueued, err
 	}
 	conn.LastFullSyncAt = new(now.UTC())
 	if err := deps.ConnectionRepo.Update(ctx, conn, nil); err != nil {
@@ -446,4 +466,39 @@ func credentialMetadata(
 		metadata.OAuth2Scope = in.OAuth2Scope
 	}
 	return metadata
+}
+
+// resyncGroupIDs returns the Groups a full resync should re-send for conn.
+//
+// It applies the same two guards capture does, in the same order: the
+// push_groups feature flag, then the GroupPushConfig selection. An unset config
+// yields nothing, so enabling the capability without choosing targets does not
+// start writing every Group downstream.
+func resyncGroupIDs(
+	ctx context.Context,
+	deps AdminDeps,
+	conn domain.ProvisioningConnection,
+	tenantID string,
+) ([]string, error) {
+	if !conn.FeatureFlags.PushGroups || conn.GroupPush == nil {
+		return nil, nil
+	}
+	if conn.GroupPush.Selection == domain.GroupSelectionExplicit {
+		// 明示指定は一覧を引く必要が無い。GroupRepo が未配線でも再同期できる。
+		return slices.Clone(conn.GroupPush.ExplicitGroupIDs), nil
+	}
+	if deps.GroupRepo == nil {
+		return nil, nil
+	}
+	groups, err := deps.GroupRepo.ListAll(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(groups))
+	for _, group := range groups {
+		if groupInScope(conn, group.ID) {
+			ids = append(ids, group.ID)
+		}
+	}
+	return ids, nil
 }

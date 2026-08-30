@@ -11,6 +11,7 @@ import (
 	"time"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	jobsports "github.com/ambi/idmagic/backend/jobs/ports"
 	jobsusecases "github.com/ambi/idmagic/backend/jobs/usecases"
@@ -51,6 +52,14 @@ func (m Module) UserNotifier(assignmentRepo appports.AssignmentRepository) userp
 	return usecases.UserMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
 }
 
+// GroupNotifier builds the groupports.ProvisioningNotifier IdManagement calls
+// after committing a Group mutation. Group deliveries are gated by the
+// connection's push_groups flag inside capture, so wiring this unconditionally
+// does not start writing downstream for connections that have it off.
+func (m Module) GroupNotifier(assignmentRepo appports.AssignmentRepository) groupports.ProvisioningNotifier {
+	return usecases.GroupMutationNotifier{CaptureDeps: m.captureDeps(assignmentRepo)}
+}
+
 // AssignmentNotifier builds the appports.ProvisioningNotifier Application calls
 // after committing an assignment change.
 func (m Module) AssignmentNotifier(assignmentRepo appports.AssignmentRepository) appports.ProvisioningNotifier {
@@ -84,11 +93,17 @@ func (m Module) DispatcherDeps(jobRepo jobsports.JobRepository, quotaRepo tenant
 }
 
 // JobHandlerDeps builds ProvisioningDeliveryHandler's dependencies.
-func (m Module) JobHandlerDeps(attrSource ports.AttributeSource, newTargetClient func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error)) usecases.JobHandlerDeps {
+// memberSource is what makes push_groups reach a downstream: without it the
+// Group's own attributes still go out, but its membership does not.
+func (m Module) JobHandlerDeps(
+	attrSource ports.AttributeSource,
+	memberSource ports.GroupMemberSource,
+	newTargetClient func(*domain.ProvisioningConnection, string) (ports.ProvisioningTargetClient, error),
+) usecases.JobHandlerDeps {
 	return usecases.JobHandlerDeps{
 		DeliverDeps: usecases.DeliverDeps{
 			ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo, LinkRepo: m.RemoteLinkRepo,
-			AttributeSource: attrSource, NewTargetClient: newTargetClient,
+			AttributeSource: attrSource, GroupMemberSource: memberSource, NewTargetClient: newTargetClient,
 		},
 		ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo,
 	}
@@ -96,11 +111,12 @@ func (m Module) JobHandlerDeps(attrSource ports.AttributeSource, newTargetClient
 
 // Register registers the Application-detail "provisioning" subroute and the
 // tenant-wide aggregate view (spec/contexts/provisioning.yaml §設定の置き場所).
-func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo userports.UserRepository) {
+func (m Module) Register(g *echo.Group, deps support.Deps, authenticator *support.Authenticator, assignmentRepo appports.AssignmentRepository, userRepo userports.UserRepository, groupRepo groupports.GroupRepository) {
 	provisioninghttp.RegisterRoutes(g, provisioninghttp.Deps{
 		Deps: deps, Authenticator: authenticator,
 		ConnectionRepo: m.ConnectionRepo, DeliveryRepo: m.DeliveryRepo,
-		AssignmentRepo: assignmentRepo, UserRepo: userRepo, NewTargetClient: NewTargetClient,
+		AssignmentRepo: assignmentRepo, UserRepo: userRepo, GroupRepo: groupRepo,
+		NewTargetClient: NewTargetClient,
 	})
 }
 

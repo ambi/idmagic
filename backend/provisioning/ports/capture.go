@@ -22,6 +22,12 @@ const (
 	TriggerUserDeleted       ProvisioningTrigger = "user_deleted"
 	TriggerAssignmentAdded   ProvisioningTrigger = "assignment_added"
 	TriggerAssignmentRemoved ProvisioningTrigger = "assignment_removed"
+	// Group 側の引き金。push_groups が無効な接続では配信を生まない
+	// (translateTrigger が機能フラグで落とす)。
+	TriggerGroupCreated    ProvisioningTrigger = "group_created"
+	TriggerGroupAttributes ProvisioningTrigger = "group_attributes_changed"
+	TriggerGroupDeleted    ProvisioningTrigger = "group_deleted"
+	TriggerGroupMembership ProvisioningTrigger = "group_membership_changed"
 )
 
 // ProvisioningCapture is the boundary port IdManagement/Application call after

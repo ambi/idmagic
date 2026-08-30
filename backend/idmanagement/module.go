@@ -30,4 +30,8 @@ type Module struct {
 	// ProvisioningNotifier は outbound Provisioning (wi-45) の境界 port。
 	// nil のとき outbound provisioning は未配線として何もしない。
 	ProvisioningNotifier userports.ProvisioningNotifier
+	// GroupProvisioningNotifier は Group 変更の境界 port (wi-441)。User 側と分けて
+	// いるのは、IdManagement が持つ引き金の語彙が Group と User で別だからである。
+	// 配信を生むかどうかは接続の push_groups が決めるので、常に配線してよい。
+	GroupProvisioningNotifier groupports.ProvisioningNotifier
 }

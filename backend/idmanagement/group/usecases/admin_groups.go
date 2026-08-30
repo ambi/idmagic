@@ -54,6 +54,28 @@ type AdminGroupDeps struct {
 	// TenantGroupAttributeSchema. nil rejects any non-empty Attributes (there is no
 	// builtin catalog to fall back to, unlike User's AttrSchemaRepo).
 	GroupAttrSchemaRepo tenantports.TenantGroupAttributeSchemaRepository
+	// ProvisioningNotifier reports a committed Group mutation to outbound
+	// Provisioning, mirroring the User side. nil means outbound provisioning is
+	// not wired. Whether a delivery results is the connection's decision
+	// (push_groups and its GroupPushConfig), not this call's.
+	ProvisioningNotifier groupports.ProvisioningNotifier
+}
+
+// notifyProvisioning reports a committed Group mutation. The notification is
+// deliberately not allowed to fail the mutation that already committed: capture
+// runs in its own transaction (the User side makes the same choice), so a
+// provisioning outage must not roll back an administrator's Group edit.
+func notifyProvisioning(
+	ctx context.Context,
+	deps AdminGroupDeps,
+	tenantID, groupID string,
+	trigger groupports.ProvisioningTrigger,
+	now time.Time,
+) error {
+	if deps.ProvisioningNotifier == nil {
+		return nil
+	}
+	return deps.ProvisioningNotifier.NotifyGroupMutation(ctx, tenantID, groupID, trigger, now)
 }
 
 // normalizeGroupEmail trims and lowercases in.Email, treating an empty/whitespace-only
@@ -218,6 +240,9 @@ func CreateGroup(ctx context.Context, deps AdminGroupDeps, in CreateGroupInput) 
 	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupCreated{At: now, TenantID: group.TenantID, ActorUserID: in.ActorUserID, GroupID: group.ID}); err != nil {
 		return nil, err
 	}
+	if err := notifyProvisioning(ctx, deps, group.TenantID, group.ID, groupports.ProvisioningGroupCreated, now); err != nil {
+		return nil, err
+	}
 	return group, nil
 }
 
@@ -309,6 +334,9 @@ func UpdateGroup(ctx context.Context, deps AdminGroupDeps, in UpdateGroupInput) 
 	}); err != nil {
 		return nil, err
 	}
+	if err := notifyProvisioning(ctx, deps, group.TenantID, group.ID, groupports.ProvisioningGroupChanged, now); err != nil {
+		return nil, err
+	}
 	return &updated, nil
 }
 
@@ -349,7 +377,10 @@ func DeleteGroup(ctx context.Context, deps AdminGroupDeps, actorUserID, id strin
 			return err
 		}
 	}
-	return idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id})
+	if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupDeleted{At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: id}); err != nil {
+		return err
+	}
+	return notifyProvisioning(ctx, deps, tenantID, id, groupports.ProvisioningGroupDeleted, now)
 }
 
 // AddMember は同一テナントの User をグループに所属させる。既所属なら no-op で
@@ -381,9 +412,12 @@ func AddMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID, u
 		return err
 	}
 	if added {
-		return idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberAdded{
+		if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberAdded{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
-		})
+		}); err != nil {
+			return err
+		}
+		return notifyProvisioning(ctx, deps, tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, now)
 	}
 	return nil
 }
@@ -407,9 +441,12 @@ func RemoveMember(ctx context.Context, deps AdminGroupDeps, actorUserID, groupID
 		return err
 	}
 	if removed {
-		return idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberRemoved{
+		if err := idmusecases.AdminEmit(deps.Emit, &idmdomain.GroupMemberRemoved{
 			At: now, TenantID: tenantID, ActorUserID: actorUserID, GroupID: groupID, UserID: userID,
-		})
+		}); err != nil {
+			return err
+		}
+		return notifyProvisioning(ctx, deps, tenantID, groupID, groupports.ProvisioningGroupMembershipChanged, now)
 	}
 	return nil
 }

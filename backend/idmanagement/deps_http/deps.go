@@ -48,6 +48,10 @@ type Deps struct {
 	AgentRepo             agentports.AgentRepository
 	UserMutationCommitter userports.UserMutationCommitter
 	ProvisioningNotifier  userports.ProvisioningNotifier
+	// GroupProvisioningNotifier reports committed Group mutations to outbound
+	// Provisioning. Separate from ProvisioningNotifier because the two carry
+	// different IdManagement-owned trigger vocabularies.
+	GroupProvisioningNotifier groupports.ProvisioningNotifier
 	// Reactor fail-closed reacts to emitted DomainEvents (currently
 	// SharedSignals' Agent revocation epoch enforcement; wi-58).
 	// nil skips reaction. See ReactiveEmit.

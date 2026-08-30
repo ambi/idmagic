@@ -10,6 +10,7 @@ import (
 	"net/http"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
@@ -28,13 +29,14 @@ type Deps struct {
 	DeliveryRepo    ports.ProvisioningDeliveryRepository
 	AssignmentRepo  appports.AssignmentRepository
 	UserRepo        userports.UserRepository
+	GroupRepo       groupports.GroupRepository
 	NewTargetClient func(conn *domain.ProvisioningConnection, secret string) (ports.ProvisioningTargetClient, error)
 }
 
 func (d Deps) adminDeps() usecases.AdminDeps {
 	return usecases.AdminDeps{
 		ConnectionRepo: d.ConnectionRepo, DeliveryRepo: d.DeliveryRepo,
-		AssignmentRepo: d.AssignmentRepo, UserRepo: d.UserRepo,
+		AssignmentRepo: d.AssignmentRepo, UserRepo: d.UserRepo, GroupRepo: d.GroupRepo,
 		NewTargetClient: d.NewTargetClient,
 	}
 }

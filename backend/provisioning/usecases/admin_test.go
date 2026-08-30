@@ -246,3 +246,80 @@ func TestRegisterConnection_DefaultMappingSendsExternalIdOnCreateOnly(t *testing
 		t.Error("externalId は required でなければならない。相関の起点が欠けたまま作成が通る")
 	}
 }
+
+// wi-441: 全体再同期は push_groups が対象にする Group も含める。User だけを
+// 再同期する実装では、能力を有効にした接続の Group が下流と乖離したまま残る。
+func TestStartFullResync_CoversTheGroupsPushGroupsTargets(t *testing.T) {
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	// 明示指定は一覧の引き当てを要さないので、GroupRepo が無くても再同期できる。
+	setup := func(t *testing.T, flags domain.ProvisioningFeatureFlags, push *domain.GroupPushConfig) (usecases.AdminDeps, *memory.ProvisioningDeliveryRepository) {
+		t.Helper()
+		deps, connRepo, deliveryRepo := newAdminDeps()
+		conn := &domain.ProvisioningConnection{
+			ApplicationID: "app-1", TenantID: "tenant-a", Status: domain.ConnectionActive,
+			BaseURL:      "https://downstream.example.com/scim/v2",
+			Credential:   domain.ProvisioningConnectionCredentialMetadata{CredentialID: "cred", AuthMethod: domain.AuthBearerToken, CreatedAt: now},
+			FeatureFlags: flags, GroupPush: push,
+			Scope:              domain.ScopeAssignedOnly,
+			Matching:           domain.MatchingRule{ConflictMatchAttribute: "userName"},
+			DeprovisionPolicy:  domain.DeprovisionPolicy{OnUnassign: domain.DeprovisionDeactivate, OnDelete: domain.DeprovisionDeactivate},
+			RateLimitPerMinute: 60, MaxAttempts: 8, QuarantineAfterConsecutiveFailure: 10,
+			Health: domain.HealthOK, CreatedAt: now, UpdatedAt: now,
+		}
+		if err := connRepo.Register(ctx, conn, "tok"); err != nil {
+			t.Fatal(err)
+		}
+		return deps, deliveryRepo
+	}
+
+	groupDeliveries := func(t *testing.T, repo *memory.ProvisioningDeliveryRepository) []string {
+		t.Helper()
+		deliveries, err := repo.ListByConnection(ctx, "tenant-a", "app-1", nil, 50)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ids []string
+		for _, d := range deliveries {
+			if d.SourceType == domain.SourceTypeGroup {
+				ids = append(ids, d.SourceID)
+			}
+		}
+		return ids
+	}
+
+	t.Run("明示指定の Group を再同期する", func(t *testing.T) {
+		deps, deliveryRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true},
+			&domain.GroupPushConfig{Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1", "g2"}})
+		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
+			t.Fatalf("StartFullResync() error = %v", err)
+		}
+		if got := groupDeliveries(t, deliveryRepo); len(got) != 2 {
+			t.Fatalf("Group の配信 = %v, want g1 と g2", got)
+		}
+	})
+
+	t.Run("push_groups が無効なら Group は再同期しない", func(t *testing.T) {
+		// 対象の設定は残したまま機能フラグだけを落とす。2 つの番人を分ける。
+		deps, deliveryRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: false},
+			&domain.GroupPushConfig{Selection: domain.GroupSelectionExplicit, ExplicitGroupIDs: []string{"g1"}})
+		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
+			t.Fatalf("StartFullResync() error = %v", err)
+		}
+		if got := groupDeliveries(t, deliveryRepo); len(got) != 0 {
+			t.Fatalf("Group の配信 = %v, want none", got)
+		}
+	})
+
+	t.Run("対象の設定が無いなら Group は再同期しない", func(t *testing.T) {
+		// 機能フラグは有効のまま、対象の設定だけを落とす。fail-closed。
+		deps, deliveryRepo := setup(t, domain.ProvisioningFeatureFlags{PushGroups: true}, nil)
+		if _, err := usecases.StartFullResync(ctx, deps, "tenant-a", "app-1", now); err != nil {
+			t.Fatalf("StartFullResync() error = %v", err)
+		}
+		if got := groupDeliveries(t, deliveryRepo); len(got) != 0 {
+			t.Fatalf("Group の配信 = %v, want none", got)
+		}
+	})
+}

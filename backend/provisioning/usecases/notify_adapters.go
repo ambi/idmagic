@@ -5,6 +5,7 @@ import (
 	"time"
 
 	appports "github.com/ambi/idmagic/backend/application/ports"
+	groupports "github.com/ambi/idmagic/backend/idmanagement/group/ports"
 	userports "github.com/ambi/idmagic/backend/idmanagement/user/ports"
 	"github.com/ambi/idmagic/backend/provisioning/domain"
 	"github.com/ambi/idmagic/backend/provisioning/ports"
@@ -31,6 +32,29 @@ var userTriggerMap = map[userports.ProvisioningTrigger]ports.ProvisioningTrigger
 	userports.ProvisioningUserDisabled:          ports.TriggerUserDisabled,
 	userports.ProvisioningUserEnabled:           ports.TriggerUserEnabled,
 	userports.ProvisioningUserDeleted:           ports.TriggerUserDeleted,
+}
+
+// GroupMutationNotifier implements groupports.ProvisioningNotifier by
+// translating IdManagement's Group trigger vocabulary to CaptureLifecycleEvent.
+// Whether a delivery is actually created is decided downstream of here, by the
+// connection's push_groups flag and its GroupPushConfig selection.
+type GroupMutationNotifier struct{ CaptureDeps CaptureDeps }
+
+var _ groupports.ProvisioningNotifier = GroupMutationNotifier{}
+
+func (n GroupMutationNotifier) NotifyGroupMutation(ctx context.Context, tenantID, groupID string, trigger groupports.ProvisioningTrigger, now time.Time) error {
+	mapped, ok := groupTriggerMap[trigger]
+	if !ok {
+		return nil
+	}
+	return CaptureLifecycleEvent(ctx, n.CaptureDeps, tenantID, domain.SourceTypeGroup, groupID, mapped, "", now)
+}
+
+var groupTriggerMap = map[groupports.ProvisioningTrigger]ports.ProvisioningTrigger{
+	groupports.ProvisioningGroupCreated:           ports.TriggerGroupCreated,
+	groupports.ProvisioningGroupChanged:           ports.TriggerGroupAttributes,
+	groupports.ProvisioningGroupDeleted:           ports.TriggerGroupDeleted,
+	groupports.ProvisioningGroupMembershipChanged: ports.TriggerGroupMembership,
 }
 
 // AssignmentMutationNotifier implements appports.ProvisioningNotifier.
