@@ -221,9 +221,10 @@ model DeprovisionPolicy {
   grace_period_days: int64 = 0;
   @doc("When one sync would produce more deactivates and deletes than this, it is not run and the connection is quarantined instead.")
   accidental_deletion_count_threshold?: int64;
+  @doc("The same guard as a share of the connection's subjects rather than a count.")
   @minValue(1)
   @maxValue(100)
-  accidental_deletion_percentage_threshold?: int64;
+  accidental_deletion_percent_threshold?: int64;
 }
 
 

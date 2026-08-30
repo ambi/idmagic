@@ -121,7 +121,7 @@ func (p DeprovisionPolicy) Validate() error {
 	}
 	if p.AccidentalDeletionPercentThreshold != nil {
 		if *p.AccidentalDeletionPercentThreshold < 1 || *p.AccidentalDeletionPercentThreshold > 100 {
-			return errors.New("provisioning: accidental_deletion_percentage_threshold must be in [1, 100]")
+			return errors.New("provisioning: accidental_deletion_percent_threshold must be in [1, 100]")
 		}
 	}
 	return nil

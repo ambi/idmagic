@@ -290,6 +290,17 @@ model AdminApplicationCreateRequest {
   entity_id?: string;
   @doc("Required when `type` is `saml`: the Assertion Consumer Service URL.")
   acs_urls?: string[];
+  @doc("For `type=saml`: the Single Logout Service URL of the service provider.")
+  @maxLength(2048)
+  slo_url?: string;
+  @doc("For `type=saml`: whether the whole SAML response is signed as well as the assertion.")
+  sign_response?: boolean;
+  @doc("For `type=saml`: whether the service provider's AuthnRequests must be signed. When true, `authn_request_signing_certificate_pem` supplies the key that verifies them.")
+  want_authn_requests_signed?: boolean;
+  @doc("For `type=saml`: the PEM certificate that verifies a signed AuthnRequest.")
+  authn_request_signing_certificate_pem?: string;
+  @doc("For `type=saml` and `type=wsfed`: the identity provider profile whose issuer and signing key the assertions are issued under.")
+  idp_profile_id?: string;
 }
 
 
@@ -372,6 +383,8 @@ model AdminApplicationDetailResponse {
   oidc?: ApplicationOidcConfig;
   wsfed?: ApplicationWsFedConfig;
   saml?: ApplicationSamlConfig;
+  @doc("The same view the dedicated sign-in policy endpoint returns, so the detail screen can render the policy without a second request.")
+  sign_in_policy: AppSignInPolicyResponse;
 }
 
 

@@ -730,7 +730,7 @@ model DiscoveryDocument {
 }
 
 
-@doc("The body of a dynamic client registration request to `/register` (RFC 7591). The OAuth2Client that results is derived from it.")
+@doc("The body of a dynamic client registration request to `/register` (RFC 7591). The OAuth2Client that results is derived from it. It carries only the metadata a registering client may choose: `id_token_signed_response_alg` is not among them, because the server issues PS256 and does not take the client's preference, and `require_pkce` is a server policy rather than a client setting. Declaring either here would advertise a choice the registration does not have.")
 model ClientRegistrationRequest {
   redirect_uris: url[];
   client_name?: string;
@@ -742,9 +742,7 @@ model ClientRegistrationRequest {
   jwks_uri?: url;
   jwks?: JWKS;
   tls_client_auth_subject_dn?: string;
-  id_token_signed_response_alg?: SignatureAlgorithm;
   fapi_profile?: FapiProfile;
-  require_pkce?: boolean;
   require_pushed_authorization_requests?: boolean;
   dpop_bound_access_tokens?: boolean;
 }
@@ -769,9 +767,21 @@ model ClientIDMetadataDocument {
 
 @doc("The JSON request in which an administrator registers or updates an `authorization_details` type (RFC 9396). `type` is settable at creation only.")
 model AuthorizationDetailTypeRequest {
-  @doc("Required at creation. On update the `type` from the path is used.")
+  @doc("The type URN being created. Update does not carry it: there the path names the type, and UpdateAuthorizationDetailTypeRequest omits it so the same name is not declared twice for one request.")
   @maxLength(100)
   type?: string;
+  @maxLength(500)
+  description?: string;
+  schema: AuthorizationDetailsSchema;
+  @minLength(1)
+  @maxLength(500)
+  display_template: string;
+  state?: AuthorizationDetailTypeState;
+}
+
+
+@doc("The body of an update. Identical to AuthorizationDetailTypeRequest except that it does not carry `type`: the path already names which type is being updated, and the handler reads it from there.")
+model UpdateAuthorizationDetailTypeRequest {
   @maxLength(500)
   description?: string;
   schema: AuthorizationDetailsSchema;
@@ -1148,6 +1158,8 @@ model BrowserConsentRequest {
 @doc("The device `user_code` decision an SPA posts to `/api/auth/device`.")
 model BrowserDeviceRequest {
   user_code: string;
+  @doc("Which way the user answered: `approve` or `deny`. The endpoint exists to record that answer, so a body without it decides nothing.")
+  action: string;
 }
 
 

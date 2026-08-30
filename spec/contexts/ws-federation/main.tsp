@@ -186,7 +186,7 @@ model RegisterWsFedRelyingPartyError403 {
 @route("/api/admin/v1/wsfed/relying-parties")
 @post
 op RegisterWsFedRelyingParty(
-  @body body: IdMagic.Contract.WsFedRelyingParty
+  @body body: IdMagic.Contract.WsFedRelyingPartyRequest
 ): RegisterWsFedRelyingPartySuccess_201 | RegisterWsFedRelyingPartySuccess_200 | RegisterWsFedRelyingPartyError400 | RegisterWsFedRelyingPartyError403;
 
 model ListWsFedRelyingPartiesHttpResponse {

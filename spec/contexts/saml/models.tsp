@@ -1,8 +1,9 @@
 namespace IdMagic.Contract {
 
-@doc("The minimal stub of the per-trust claim issuance rules the ClaimMapping context publishes.")
+@doc("How a protocol's assertion names its subject and which claims it carries. The SAML and WS-Federation relying-party contracts decode the same policy, so both point here. `NameIdConfiguration` and `ClaimMappingRule` are the ClaimMapping context's; this model only names the pair the wire carries.")
 model ClaimMappingPolicy {
-  configuration?: Record<unknown>;
+  name_id: NameIdConfiguration;
+  rules?: ClaimMappingRule[];
 }
 
 

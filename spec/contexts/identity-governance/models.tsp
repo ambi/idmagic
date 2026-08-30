@@ -324,11 +324,9 @@ model WorkflowRunResponse {
 }
 
 
-@doc("The run list response for a workflow.")
+@doc("The run list response for a workflow. It is not paginated: the endpoint takes no cursor parameter and returns the most recent runs up to a server-side limit. It declared a `next_after` cursor that nothing produced and that had no parameter to be sent back to, which promised paging the endpoint does not do.")
 model WorkflowRunListResponse {
   runs: WorkflowRunResponse[];
-  @doc("The cursor that continues pagination.")
-  next_after?: utcDateTime;
 }
 
 

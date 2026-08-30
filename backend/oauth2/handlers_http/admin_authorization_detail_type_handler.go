@@ -23,6 +23,17 @@ type authorizationDetailTypeRequest struct {
 	State           oauthdomain.AuthorizationDetailTypeState `json:"state"`
 }
 
+// updateAuthorizationDetailTypeRequest omits `type`: the path already names the
+// type being updated, and the update handler reads it from there. Sharing the
+// create struct declared the same name twice for one request and left a field
+// the handler never reads.
+type updateAuthorizationDetailTypeRequest struct {
+	Description     string                                   `json:"description"`
+	Schema          oauthdomain.AuthorizationDetailsSchema   `json:"schema"`
+	DisplayTemplate string                                   `json:"display_template"`
+	State           oauthdomain.AuthorizationDetailTypeState `json:"state"`
+}
+
 func toAuthorizationDetailTypeResponse(t *oauthdomain.AuthorizationDetailType) map[string]any {
 	return map[string]any{
 		"tenant_id":        t.TenantID,
@@ -119,7 +130,7 @@ func (d Deps) handleUpdateAuthorizationDetailType(c *echo.Context) error {
 	if existing == nil {
 		return support.WriteProblem(c, http.StatusNotFound, "type_not_found", "The authorization_details type does not exist.")
 	}
-	var req authorizationDetailTypeRequest
+	var req updateAuthorizationDetailTypeRequest
 	if err := support.DecodeJSON(c.Request(), &req); err != nil {
 		return support.WriteProblem(c, http.StatusBadRequest, "invalid_request", "The JSON request body is invalid.")
 	}

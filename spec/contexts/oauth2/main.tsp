@@ -882,7 +882,7 @@ model UpdateAuthorizationDetailTypeError422 {
 @patch
 op UpdateAuthorizationDetailType(
   @path type: string,
-  @body body: IdMagic.Contract.AuthorizationDetailTypeRequest
+  @body body: IdMagic.Contract.UpdateAuthorizationDetailTypeRequest
 ): UpdateAuthorizationDetailTypeSuccess_200 | UpdateAuthorizationDetailTypeError400 | UpdateAuthorizationDetailTypeError403 | UpdateAuthorizationDetailTypeError422;
 
 model DeleteAuthorizationDetailTypeSuccess_204 {

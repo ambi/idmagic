@@ -4979,7 +4979,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Contract.AuthorizationDetailTypeRequest"
+                "$ref": "#/components/schemas/Contract.UpdateAuthorizationDetailTypeRequest"
               }
             }
           }
@@ -9394,7 +9394,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Contract.TenantUpdateRequest"
+                "$ref": "#/components/schemas/Contract.AdminSettingsUpdateRequest"
               }
             }
           }
@@ -13402,7 +13402,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Contract.WsFedRelyingParty"
+                "$ref": "#/components/schemas/Contract.WsFedRelyingPartyRequest"
               }
             }
           }
@@ -17099,15 +17099,11 @@
       "ApiTokens.Operations.IssueApiTokenHttpRequest": {
         "type": "object",
         "required": [
-          "client_id",
           "description",
           "scopes",
           "expiry_days"
         ],
         "properties": {
-          "client_id": {
-            "type": "string"
-          },
           "description": {
             "type": "string"
           },
@@ -17124,7 +17120,8 @@
           "dpop_jkt": {
             "type": "string"
           }
-        }
+        },
+        "description": "The body issuing an API token. It carries no `client_id`: every API token is issued under the built-in `idmagic-api-token` client, so the caller has nothing to choose and the server never read the field it used to declare."
       },
       "ApiTokens.Operations.IssueApiTokenHttpResponse": {
         "type": "object",
@@ -18999,6 +18996,27 @@
               "type": "string"
             },
             "description": "Required when `type` is `saml`: the Assertion Consumer Service URL."
+          },
+          "slo_url": {
+            "type": "string",
+            "maxLength": 2048,
+            "description": "For `type=saml`: the Single Logout Service URL of the service provider."
+          },
+          "sign_response": {
+            "type": "boolean",
+            "description": "For `type=saml`: whether the whole SAML response is signed as well as the assertion."
+          },
+          "want_authn_requests_signed": {
+            "type": "boolean",
+            "description": "For `type=saml`: whether the service provider's AuthnRequests must be signed. When true, `authn_request_signing_certificate_pem` supplies the key that verifies them."
+          },
+          "authn_request_signing_certificate_pem": {
+            "type": "string",
+            "description": "For `type=saml`: the PEM certificate that verifies a signed AuthnRequest."
+          },
+          "idp_profile_id": {
+            "type": "string",
+            "description": "For `type=saml` and `type=wsfed`: the identity provider profile whose issuer and signing key the assertions are issued under."
           }
         },
         "description": "The request that creates an Application in one call. It names the kind and carries the matching protocol settings with it. The backend prepares the protocol row outside the catalogue first, then inserts the Application and sets `row.application_id` in a single transaction. A protocol row whose second half failed is a valid configuration outside the catalogue, so no meaningless Application is left behind."
@@ -19026,7 +19044,8 @@
       "Contract.AdminApplicationDetailResponse": {
         "type": "object",
         "required": [
-          "application"
+          "application",
+          "sign_in_policy"
         ],
         "properties": {
           "application": {
@@ -19040,6 +19059,10 @@
           },
           "saml": {
             "$ref": "#/components/schemas/Contract.ApplicationSamlConfig"
+          },
+          "sign_in_policy": {
+            "$ref": "#/components/schemas/Contract.AppSignInPolicyResponse",
+            "description": "The same view the dedicated sign-in policy endpoint returns, so the detail screen can render the policy without a second request."
           }
         },
         "description": "The application detail response. Besides the Application itself it carries the real settings resolved through the protocol relation. At most one of `oidc`, `saml`, and `wsfed` is set, the one matching `Application.protocol.type`."
@@ -20080,6 +20103,14 @@
             "type": "string",
             "maxLength": 200
           },
+          "given_name": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "family_name": {
+            "type": "string",
+            "maxLength": 200
+          },
           "email": {
             "type": "string",
             "maxLength": 254
@@ -20092,6 +20123,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "attributes": {
+            "type": "object",
+            "unevaluatedProperties": {
+              "$ref": "#/components/schemas/Contract.AttributeValue"
+            },
+            "description": "Replaces the whole attribute bag when present, validated against the tenant's TenantUserAttributeSchema. Unlike the self-service UpdateUserProfile, an administrator may set attributes an end user cannot edit."
           }
         },
         "description": "The JSON request in which an administrator updates a user's mutable profile and roles. `id` and `password_hash` are left alone."
@@ -23678,7 +23716,7 @@
           "type": {
             "type": "string",
             "maxLength": 100,
-            "description": "Required at creation. On update the `type` from the path is used."
+            "description": "The type URN being created. Update does not carry it: there the path names the type, and UpdateAuthorizationDetailTypeRequest omits it so the same name is not declared twice for one request."
           },
           "description": {
             "type": "string",
@@ -24463,11 +24501,16 @@
       "Contract.BrowserDeviceRequest": {
         "type": "object",
         "required": [
-          "user_code"
+          "user_code",
+          "action"
         ],
         "properties": {
           "user_code": {
             "type": "string"
+          },
+          "action": {
+            "type": "string",
+            "description": "Which way the user answered: `approve` or `deny`. The endpoint exists to record that answer, so a body without it decides nothing."
           }
         },
         "description": "The device `user_code` decision an SPA posts to `/api/auth/device`."
@@ -24716,13 +24759,21 @@
       },
       "Contract.ClaimMappingPolicy": {
         "type": "object",
+        "required": [
+          "name_id"
+        ],
         "properties": {
-          "configuration": {
-            "type": "object",
-            "unevaluatedProperties": {}
+          "name_id": {
+            "$ref": "#/components/schemas/Contract.NameIdConfiguration"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contract.ClaimMappingRule"
+            }
           }
         },
-        "description": "The minimal stub of the per-trust claim issuance rules the ClaimMapping context publishes."
+        "description": "How a protocol's assertion names its subject and which claims it carries. The SAML and WS-Federation relying-party contracts decode the same policy, so both point here. `NameIdConfiguration` and `ClaimMappingRule` are the ClaimMapping context's; this model only names the pair the wire carries."
       },
       "Contract.ClaimMappingRule": {
         "type": "object",
@@ -24962,14 +25013,8 @@
           "tls_client_auth_subject_dn": {
             "type": "string"
           },
-          "id_token_signed_response_alg": {
-            "$ref": "#/components/schemas/Contract.SignatureAlgorithm"
-          },
           "fapi_profile": {
             "$ref": "#/components/schemas/Contract.FapiProfile"
-          },
-          "require_pkce": {
-            "type": "boolean"
           },
           "require_pushed_authorization_requests": {
             "type": "boolean"
@@ -24978,7 +25023,7 @@
             "type": "boolean"
           }
         },
-        "description": "The body of a dynamic client registration request to `/register` (RFC 7591). The OAuth2Client that results is derived from it."
+        "description": "The body of a dynamic client registration request to `/register` (RFC 7591). The OAuth2Client that results is derived from it. It carries only the metadata a registering client may choose: `id_token_signed_response_alg` is not among them, because the server issues PS256 and does not take the client's preference, and `require_pkce` is a server policy rather than a client setting. Declaring either here would advertise a choice the registration does not have."
       },
       "Contract.ClientRegistrationResponse": {
         "type": "object",
@@ -26126,11 +26171,12 @@
             "format": "int64",
             "description": "When one sync would produce more deactivates and deletes than this, it is not run and the connection is quarantined instead."
           },
-          "accidental_deletion_percentage_threshold": {
+          "accidental_deletion_percent_threshold": {
             "type": "integer",
             "format": "int64",
             "minimum": 1,
-            "maximum": 100
+            "maximum": 100,
+            "description": "The same guard as a share of the connection's subjects rather than a count."
           }
         },
         "description": "How a deprovision trigger is translated into a downstream action. Disabling a user always maps to deactivate, and that is\nnot configurable; so is removing a group membership mapping to a PATCH that removes members. The defaults lean towards\nthe less destructive option."
@@ -37266,7 +37312,13 @@
             "type": "string"
           },
           "code": {
-            "type": "string"
+            "type": "string",
+            "description": "The one-time code, for `totp` and `recovery_code`."
+          },
+          "assertion": {
+            "type": "object",
+            "unevaluatedProperties": {},
+            "description": "The WebAuthn assertion, for `method` = `webauthn`. Its shape is the browser's PublicKeyCredential as the WebAuthn specification defines it, so it is carried opaquely rather than restated here."
           }
         },
         "description": "The input of CompleteStepUpAuthentication. Depending on `method` it uses the password or the code.\nThe material verified never reaches the audit trail or a log."
@@ -38322,13 +38374,9 @@
             "format": "int64",
             "minimum": 0,
             "description": "How many seconds a trusted device stays valid. Left out, the existing value is kept; 0 turns the feature off again.\nA value above the system ceiling of 7,776,000 seconds (90 days) is refused."
-          },
-          "default_locale": {
-            "type": "string",
-            "description": "The tenant's default locale. Left out, the existing value is kept; an empty string returns it to the system default. An unsupported locale is refused."
           }
         },
-        "description": "The JSON request in which an administrator updates a tenant's display name or password policy override. `id` and `status` are left alone; a status change goes through the dedicated disable and enable endpoints."
+        "description": "The JSON request in which an administrator updates a tenant's display name or password policy override. `id` and `status` are left alone; a status change goes through the dedicated disable and enable endpoints, and `default_locale` through the tenant's own settings endpoint, which is where the server reads it."
       },
       "Contract.TenantUpdated": {
         "type": "object",
@@ -40384,14 +40432,9 @@
             "items": {
               "$ref": "#/components/schemas/Contract.WorkflowRunResponse"
             }
-          },
-          "next_after": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The cursor that continues pagination."
           }
         },
-        "description": "The run list response for a workflow."
+        "description": "The run list response for a workflow. It is not paginated: the endpoint takes no cursor parameter and returns the most recent runs up to a server-side limit. It declared a `next_after` cursor that nothing produced and that had no parameter to be sent back to, which promised paging the endpoint does not do."
       },
       "Contract.WorkflowRunResponse": {
         "type": "object",
@@ -41346,7 +41389,6 @@
         "type": "object",
         "required": [
           "wtrealm",
-          "display_name",
           "reply_urls",
           "claim_policy"
         ],
@@ -41357,7 +41399,7 @@
           },
           "display_name": {
             "type": "string",
-            "description": "The display name in the administration UI."
+            "description": "The display name in the administration UI. Optional: the server stores an empty name rather than refusing one."
           },
           "reply_urls": {
             "type": "array",
@@ -43723,6 +43765,62 @@
       },
       "WsFederation.Operations.WsTrustIssueError403Body": {
         "$ref": "#/components/schemas/Contract.AccessDeniedError"
+      },
+      "Contract.AdminSettingsUpdateRequest": {
+        "type": "object",
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "password_policy_override": {
+            "$ref": "#/components/schemas/Contract.PasswordPolicyOverride",
+            "description": "Left out, the existing value is kept. Pass null explicitly to clear it."
+          },
+          "max_delegation_depth": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "Maximum delegation depth. Omission preserves the current value, and zero restores the system default. Values above the system default are rejected."
+          },
+          "trusted_device_max_age_seconds": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0,
+            "description": "How many seconds a trusted device stays valid. Left out, the existing value is kept; 0 turns the feature off again.\nA value above the system ceiling of 7,776,000 seconds (90 days) is refused."
+          },
+          "default_locale": {
+            "type": "string",
+            "description": "The tenant's default locale. Left out, the existing value is kept; an empty string returns it to the system default. An unsupported locale is refused."
+          }
+        },
+        "description": "The JSON request in which a tenant administrator updates their own tenant's settings. It is TenantUpdateRequest plus `default_locale`: the locale is the tenant's own choice, so the endpoint fixed to `context.tenant_id` takes it while the cross-tenant administration endpoint does not."
+      },
+      "Contract.UpdateAuthorizationDetailTypeRequest": {
+        "type": "object",
+        "required": [
+          "schema",
+          "display_template"
+        ],
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "schema": {
+            "$ref": "#/components/schemas/Contract.AuthorizationDetailsSchema"
+          },
+          "display_template": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "state": {
+            "$ref": "#/components/schemas/Contract.AuthorizationDetailTypeState"
+          }
+        },
+        "description": "The body of an update. Identical to AuthorizationDetailTypeRequest except that it does not carry `type`: the path already names which type is being updated, and the handler reads it from there."
       }
     },
     "securitySchemes": {

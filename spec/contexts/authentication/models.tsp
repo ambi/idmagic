@@ -674,7 +674,10 @@ model StepUpStartResponse {
 model StepUpCompleteRequest {
   method: StepUpMethod;
   password?: string;
+  @doc("The one-time code, for `totp` and `recovery_code`.")
   code?: string;
+  @doc("The WebAuthn assertion, for `method` = `webauthn`. Its shape is the browser's PublicKeyCredential as the WebAuthn specification defines it, so it is carried opaquely rather than restated here.")
+  assertion?: Record<unknown>;
 }
 
 

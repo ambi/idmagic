@@ -517,8 +517,24 @@ model TenantCreateRequest {
 }
 
 
-@doc("The JSON request in which an administrator updates a tenant's display name or password policy override. `id` and `status` are left alone; a status change goes through the dedicated disable and enable endpoints.")
+@doc("The JSON request in which an administrator updates a tenant's display name or password policy override. `id` and `status` are left alone; a status change goes through the dedicated disable and enable endpoints, and `default_locale` through the tenant's own settings endpoint, which is where the server reads it.")
 model TenantUpdateRequest {
+  @minLength(1)
+  @maxLength(200)
+  display_name?: string;
+  @doc("Left out, the existing value is kept. Pass null explicitly to clear it.")
+  password_policy_override?: PasswordPolicyOverride;
+  @doc("Maximum delegation depth. Omission preserves the current value, and zero restores the system default. Values above the system default are rejected.")
+  @minValue(0)
+  max_delegation_depth?: int64;
+  @doc("How many seconds a trusted device stays valid. Left out, the existing value is kept; 0 turns the feature off again.\nA value above the system ceiling of 7,776,000 seconds (90 days) is refused.")
+  @minValue(0)
+  trusted_device_max_age_seconds?: int64;
+}
+
+
+@doc("The JSON request in which a tenant administrator updates their own tenant's settings. It is TenantUpdateRequest plus `default_locale`: the locale is the tenant's own choice, so the endpoint fixed to `context.tenant_id` takes it while the cross-tenant administration endpoint does not.")
+model AdminSettingsUpdateRequest {
   @minLength(1)
   @maxLength(200)
   display_name?: string;

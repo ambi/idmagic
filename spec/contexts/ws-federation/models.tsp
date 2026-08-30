@@ -187,8 +187,8 @@ model EntraFederationConfigured {
 model WsFedRelyingPartyRequest {
   @doc("The identifier of the RP: the WS-Fed wtrealm, which is also the SAML audience.")
   wtrealm: string;
-  @doc("The display name in the administration UI.")
-  display_name: string;
+  @doc("The display name in the administration UI. Optional: the server stores an empty name rather than refusing one.")
+  display_name?: string;
   @doc("The closed set of permitted `wreply` targets. Only an exact match against this set is accepted.")
   reply_urls: url[];
   @doc("The audience of an issued assertion. Empty means the wtrealm is used.")

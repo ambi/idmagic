@@ -232,10 +232,16 @@ model AdminUserUpdateRequest {
   preferred_username?: string;
   @maxLength(200)
   name?: string;
+  @maxLength(200)
+  given_name?: string;
+  @maxLength(200)
+  family_name?: string;
   @maxLength(254)
   email?: string;
   email_verified?: boolean;
   roles?: string[];
+  @doc("Replaces the whole attribute bag when present, validated against the tenant's TenantUserAttributeSchema. Unlike the self-service UpdateUserProfile, an administrator may set attributes an end user cannot edit.")
+  attributes?: Record<AttributeValue>;
 }
 
 

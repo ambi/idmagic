@@ -361,7 +361,7 @@ model UpdateAdminSettingsError403 {
 @route("/api/admin/v1/settings")
 @patch
 op UpdateAdminSettings(
-  @body body: IdMagic.Contract.TenantUpdateRequest
+  @body body: IdMagic.Contract.AdminSettingsUpdateRequest
 ): UpdateAdminSettingsSuccess_200 | UpdateAdminSettingsError400 | UpdateAdminSettingsError403;
 
 model GetTenantUserAttributeSchemaSuccess_200 {

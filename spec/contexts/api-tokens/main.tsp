@@ -36,8 +36,8 @@ op ListApiTokens(
   @query tenant_id: string
 ): ListApiTokensSuccess_200 | ListApiTokensError403;
 
+@doc("The body issuing an API token. It carries no `client_id`: every API token is issued under the built-in `idmagic-api-token` client, so the caller has nothing to choose and the server never read the field it used to declare.")
 model IssueApiTokenHttpRequest {
-  client_id: string;
   description: string;
   scopes: IdMagic.Contract.ApiTokenScope[];
   expiry_days: int64;
