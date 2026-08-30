@@ -3,7 +3,7 @@ depends_on: []
 status: completed
 authors: [tn]
 risk: high
-reversibility: irreversible
+reversibility: reversible
 created_at: 2026-08-29
 priority: p2
 change_kind: bugfix
@@ -103,8 +103,8 @@ affected_spec:
   Unit RED: `TestTokenGrant_NormalizesExpiry`。
 - [x] T004 [Adapters] `Client` の `BearerToken` を `tokenSource` に替え、401 での 1 度きりの
   取り直しを入れた。認証方式の分岐は `newTokenSource` の 1 か所に閉じた。
-- [x] T005 [Infrastructure] トークン取得の設定 3 つを永続化した。列 3 つ、CHECK 制約 1 つ、
-  データ移行 1 本 (`2026-08-30-provisioning-oauth2-connections-to-disabled.sql`)。
+- [x] T005 [Infrastructure] トークン取得の設定 3 つを永続化した。列 3 つと CHECK 制約 1 つ。
+  未リリースのため移行は不要。
 - [x] T006 [Spec] `RFC7644-OUT-AUTHENTICATION` を `partial` から `required` にし、TypeSpec の
   `ProvisioningAuthMethod` と `ProvisioningConnectionCredentialMetadata` を更新した。
 - [x] T007 [Verify] `mise run verify`、`mise run check-api-compat`、`mise run check-schema`。
@@ -118,21 +118,25 @@ affected_spec:
 
 ## Risk Notes
 
-リスクを `high` へ上げ、`reversibility: irreversible` を宣言した。着手前は `medium` だったが、実装する側を取った結果、資格情報の取り扱いに加えて**永続データの移行**を含むことになったためである。評価の表は認証・資格情報・永続データ移行を強い行へ置いており、実際の帰結がそちらを指している。
+リスクを `high` へ上げた。着手前は `medium` だったが、資格情報の取得・保持・提示に触れる変更であり、誤ると秘密をそのまま外部へ提示する側へ倒れうるためである。評価の表は認証と資格情報を強い行へ置いており、実際の帰結がそちらを指している。
+
+`reversibility` は `reversible` とする。未リリースなので、この変更が決めた列とスキーマ制約を、リポジトリの外の誰かが既に保存・送信・信頼しているという状態が無い。撤回するなら列を落とすだけで済む。
 
 **security**: 取得したアクセストークンはプロセス内にのみ保持し、表にもログにも監査記録にも出さない。トークン取得の失敗を報告するエラーは下流の状態コードだけを載せ、応答本文は載せない (本文にトークンや秘密が含まれうる)。トークンエンドポイントは運用者が入れた URL なので、SCIM の接点と同じ SSRF 検査 (`ValidateOutboundBaseURL` と再解決する dialer) を通す。知らない認証方式は fail-closed で拒否し、秘密をそのまま送る経路を残さない。
 
 **compatibility**: 公開 API に対しては追加のみ (`ProvisioningConnectionCredentialMetadata` に 3 つの省略可能な欄)。`mise run check-api-compat` は破壊的変更を報告しない。列挙値は取り除いていないので、既存のクライアントが送る値はすべて引き続き受理される。
 
-**migration**: 列 3 つはいずれも `NOT NULL DEFAULT ''` なので既存行はそのまま読める。ただし `auth_method='oauth2_client_credentials'` の既存行は token URL と client_id を持たない —— それらは以前 API が受理して捨てていたので、埋め直す元データが存在しない。新しい CHECK 制約はそうした行が `active` であることを拒むので、スキーマを当てる前に `infra/schema/data-migrations/2026-08-30-provisioning-oauth2-connections-to-disabled.sql` を 1 度実行し、該当する接続を `disabled` にする。管理者が資格情報を設定し直して明示的に有効化するまで戻らない。これらの接続は修正前も 1 件も配信できていなかったので、失われる機能は無い。
+**migration**: 未リリースなので移行は要らない。列 3 つはいずれも `NOT NULL DEFAULT ''` で、新しい CHECK 制約 (`active` な `oauth2_client_credentials` は token URL と client_id を持つ) を満たさない行は、配備先のどこにも存在しない。`infra/schema/postgres.sql` をそのまま当てればよい。
 
-**rollback**: コードを戻す場合、列 3 つと CHECK 制約は残しても古いコードは読み書きしないので害は無い (列は既定値を持つ)。ただしデータ移行で `disabled` にした接続は自動では戻らない。戻すのは管理者の明示的な操作である。
+一度リリースした後であれば話は別で、そのときは移行が要る。`auth_method='oauth2_client_credentials'` の既存行は token URL と client_id を持たず —— それらは以前 API が受理して捨てていたので埋め直す元データが無く —— CHECK 制約に掛かる。該当する接続を `disabled` にしてから当てることになる (修正前も 1 件も配信できていないので、失われる機能は無い)。この work item ではその状況に無いので、スクリプトは置かない。
+
+**rollback**: コードを戻す場合、列 3 つと CHECK 制約は残しても古いコードは読み書きしないので害は無い (列は既定値を持つ)。落とし直す場合も、未リリースなので保存済みのデータを気にする必要は無い。
 
 ## Completion
 
 - **Completed At**: 2026-08-30
 - **Summary**:
-  `mise run spec-diff` は `no normative specification change against main` を返す。`REQ-` シナリオは動いていない。変わったのは `RFC7644-OUT-AUTHENTICATION` の `Adoption` (`partial` → `required`) と `Statement`、TypeSpec の 2 モデルの記述、そして実装である。`oauth2_client_credentials` の接続が、クライアント資格情報フロー (RFC 6749 §4.4) で取得したアクセストークンを提示するようになった。それまでは保存した `client_secret` をそのままベアラートークンとして送っており、この方式の接続は 1 件も配信できていなかった。トークンは失効の 60 秒手前まで再利用し、期限切れと下流の 401 で取り直す。401 による取り直しは 1 度だけである。**永続化も併せて足した** —— トークン URL・`client_id`・`scope` は以前 API が受理して検証したあと捨てられており、保存先が集約にも表にも無かった。列 3 つ、`active` な oauth2 接続に token URL と client_id を要求する CHECK 制約 1 つ、既存の設定不能な接続を `disabled` にするデータ移行 1 本を加えている。
+  `mise run spec-diff` は `no normative specification change against main` を返す。`REQ-` シナリオは動いていない。変わったのは `RFC7644-OUT-AUTHENTICATION` の `Adoption` (`partial` → `required`) と `Statement`、TypeSpec の 2 モデルの記述、そして実装である。`oauth2_client_credentials` の接続が、クライアント資格情報フロー (RFC 6749 §4.4) で取得したアクセストークンを提示するようになった。それまでは保存した `client_secret` をそのままベアラートークンとして送っており、この方式の接続は 1 件も配信できていなかった。トークンは失効の 60 秒手前まで再利用し、期限切れと下流の 401 で取り直す。401 による取り直しは 1 度だけである。**永続化も併せて足した** —— トークン URL・`client_id`・`scope` は以前 API が受理して検証したあと捨てられており、保存先が集約にも表にも無かった。列 3 つと、`active` な oauth2 接続に token URL と client_id を要求する CHECK 制約 1 つを加えている。未リリースなので、制約に掛かる既存行は無く、移行は要らない。
 - **Acceptance RED Evidence**:
   - **Test**: `TestClient_OAuth2ClientCredentials_FetchesAndPresentsAnAccessToken` ほか `TestClient_OAuth2ClientCredentials_*` 6 件 (`backend/provisioning/client_scim/oauth2_test.go`)
   - **Requirement**: N/A: 該当する `REQ-` シナリオは無い。規範は `docs/contexts/provisioning/standards.md` の標準行 `RFC7644-OUT-AUTHENTICATION` (MUST) と RFC 6749 §4.4 である。
@@ -166,4 +170,4 @@ affected_spec:
 
 ## Follow-up
 
-配備前に `infra/schema/data-migrations/2026-08-30-provisioning-oauth2-connections-to-disabled.sql` を 1 度実行すること。更新後の `infra/schema/postgres.sql` を先に当てると、新しい CHECK 制約が既存の `oauth2_client_credentials` 接続 (token URL と client_id を持たない) を拒む。
+無し。未リリースのため、配備前に実行すべき移行は無い。
